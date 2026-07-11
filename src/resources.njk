@@ -1,0 +1,22 @@
+---
+layout: layouts/base.njk
+pagination:
+  data: site.languages
+  size: 1
+  alias: lang
+permalink: "/{{ lang }}/resources/index.html"
+pageTitle: resources
+---
+{% set t = i18n[lang] %}
+<header class="page"><div class="wrap">
+  <div class="cue rise">{{ t.resources.cue }}</div>
+  <h2 class="rise-2">{{ t.resources.h2_thin }} <b>{{ t.resources.h2_bold }}</b></h2>
+</div></header>
+
+<section><div class="wrap">
+  <div class="empty">
+    <h3>{{ t.resources.empty_title }}</h3>
+    <p>{{ t.resources.empty_text }}</p>
+    <a class="btn ghost" href="/{{ lang }}/contact/">{{ t.resources.empty_cta }}</a>
+  </div>
+</div></section>

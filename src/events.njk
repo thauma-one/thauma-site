@@ -1,0 +1,24 @@
+---
+layout: layouts/base.njk
+pagination:
+  data: site.languages
+  size: 1
+  alias: lang
+permalink: "/{{ lang }}/events/index.html"
+pageTitle: events
+---
+{# NOTE: This page is live at /en/events/ and /hr/events/ but hidden from
+   the nav until site.json -> "showEvents" is set to true. When real events
+   exist, replace the empty state below with event cards + registration. #}
+{% set t = i18n[lang] %}
+<header class="page"><div class="wrap">
+  <div class="cue foam rise">{{ t.events.cue }}</div>
+  <h2 class="rise-2">{{ t.events.h2_thin }} <b>{{ t.events.h2_bold }}</b></h2>
+</div></header>
+
+<section><div class="wrap">
+  <div class="empty">
+    <h3>{{ t.events.empty_title }}</h3>
+    <p>{{ t.events.empty_text }}</p>
+  </div>
+</div></section>

@@ -1,0 +1,228 @@
+# ============ THAUMA ADMIN (Decap CMS) ============
+# Point-and-click editing for all site copy.
+# Requires: Netlify Identity + Git Gateway enabled in the
+# Netlify dashboard (see README, "Admin setup").
+
+backend:
+  name: git-gateway
+  branch: main
+
+media_folder: "src/img"
+public_folder: "/img"
+
+# Shared field schema for a language file (YAML anchor, reused below)
+x_lang_fields: &lang_fields
+  - { label: "Language code", name: "code", widget: "string" }
+  - { label: "Language name", name: "name", widget: "string" }
+  - label: "Navigation"
+    name: "nav"
+    widget: "object"
+    fields:
+      - { label: "About", name: "about", widget: "string" }
+      - { label: "Mission", name: "mission", widget: "string" }
+      - { label: "Values", name: "values", widget: "string" }
+      - { label: "Resources", name: "resources", widget: "string" }
+      - { label: "Give", name: "give", widget: "string" }
+      - { label: "Contact", name: "contact", widget: "string" }
+      - { label: "Events", name: "events", widget: "string" }
+      - { label: "Staff", name: "staff", widget: "string" }
+  - label: "Home page"
+    name: "home"
+    widget: "object"
+    collapsed: true
+    fields:
+      - { label: "Hero cue line", name: "cue", widget: "string" }
+      - { label: "Hero line (thin part)", name: "h1_thin", widget: "string" }
+      - { label: "Hero line (bold part)", name: "h1_bold", widget: "string" }
+      - { label: "Hero subtitle", name: "sub", widget: "text" }
+      - { label: "Who-we-are cue", name: "who_cue", widget: "string" }
+      - { label: "Who-we-are heading (thin)", name: "who_h2_thin", widget: "string" }
+      - { label: "Who-we-are heading (bold)", name: "who_h2_bold", widget: "string" }
+      - { label: "Who-we-are lede", name: "who_lede", widget: "text" }
+      - { label: "Image caption", name: "who_img_tag", widget: "string" }
+      - { label: "Values cue", name: "values_cue", widget: "string" }
+      - { label: "Values heading (thin)", name: "values_h2_thin", widget: "string" }
+      - { label: "Values heading (bold)", name: "values_h2_bold", widget: "string" }
+      - { label: "Value 1 title", name: "value1_title", widget: "string" }
+      - { label: "Value 1 text", name: "value1_text", widget: "text" }
+      - { label: "Value 2 title", name: "value2_title", widget: "string" }
+      - { label: "Value 2 text", name: "value2_text", widget: "text" }
+      - { label: "Value 3 title", name: "value3_title", widget: "string" }
+      - { label: "Value 3 text", name: "value3_text", widget: "text" }
+      - { label: "Values link label", name: "values_link", widget: "string" }
+      - { label: "CTA cue", name: "cta_cue", widget: "string" }
+      - { label: "CTA heading (thin)", name: "cta_h2_thin", widget: "string" }
+      - { label: "CTA heading (bold)", name: "cta_h2_bold", widget: "string" }
+      - { label: "CTA lede", name: "cta_lede", widget: "text" }
+      - { label: "CTA give button", name: "cta_give", widget: "string" }
+      - { label: "CTA contact button", name: "cta_contact", widget: "string" }
+  - label: "About page"
+    name: "about"
+    widget: "object"
+    collapsed: true
+    fields:
+      - { label: "Page title", name: "title", widget: "string" }
+      - { label: "Dictionary word", name: "dict_word", widget: "string" }
+      - { label: "Dictionary pronunciation line", name: "dict_ipa", widget: "string" }
+      - { label: "Definition 1", name: "dict_def1", widget: "text" }
+      - { label: "Definition 2", name: "dict_def2", widget: "text" }
+      - { label: "Definition 3", name: "dict_def3", widget: "text" }
+      - { label: "Who cue", name: "who_cue", widget: "string" }
+      - { label: "Who heading (thin)", name: "who_h2_thin", widget: "string" }
+      - { label: "Who heading (bold)", name: "who_h2_bold", widget: "string" }
+      - { label: "Body paragraph 1", name: "body1", widget: "text" }
+      - { label: "Body paragraph 2", name: "body2", widget: "text" }
+      - { label: "Posture cue", name: "posture_cue", widget: "string" }
+      - { label: "Posture heading (thin)", name: "posture_h2_thin", widget: "string" }
+      - { label: "Posture heading (bold)", name: "posture_h2_bold", widget: "string" }
+      - { label: "Body paragraph 3", name: "body3", widget: "text" }
+      - { label: "Legal status note", name: "status_note", widget: "text" }
+  - label: "Mission page"
+    name: "mission"
+    widget: "object"
+    collapsed: true
+    fields:
+      - { label: "Page title", name: "title", widget: "string" }
+      - { label: "Cue", name: "cue", widget: "string" }
+      - { label: "Heading (thin)", name: "h2_thin", widget: "string" }
+      - { label: "Heading (bold)", name: "h2_bold", widget: "string" }
+      - { label: "Lede", name: "lede", widget: "text" }
+      - { label: "Work 1 label", name: "work1_label", widget: "string" }
+      - { label: "Work 1 title", name: "work1_title", widget: "string" }
+      - { label: "Work 1 text", name: "work1_text", widget: "text" }
+      - { label: "Work 2 label", name: "work2_label", widget: "string" }
+      - { label: "Work 2 title", name: "work2_title", widget: "string" }
+      - { label: "Work 2 text", name: "work2_text", widget: "text" }
+      - { label: "Work 3 label", name: "work3_label", widget: "string" }
+      - { label: "Work 3 title", name: "work3_title", widget: "string" }
+      - { label: "Work 3 text", name: "work3_text", widget: "text" }
+      - { label: "Horizon cue", name: "horizon_cue", widget: "string" }
+      - { label: "Horizon heading (thin)", name: "horizon_h2_thin", widget: "string" }
+      - { label: "Horizon heading (bold)", name: "horizon_h2_bold", widget: "string" }
+      - { label: "Horizon text", name: "horizon_text", widget: "text" }
+      - { label: "Success text", name: "success_text", widget: "text" }
+  - label: "Values page"
+    name: "values"
+    widget: "object"
+    collapsed: true
+    fields:
+      - { label: "Page title", name: "title", widget: "string" }
+      - { label: "Cue", name: "cue", widget: "string" }
+      - { label: "Heading (thin)", name: "h2_thin", widget: "string" }
+      - { label: "Heading (bold)", name: "h2_bold", widget: "string" }
+      - label: "Convictions"
+        name: "items"
+        widget: "list"
+        fields:
+          - { label: "Title", name: "title", widget: "string" }
+          - { label: "Text", name: "text", widget: "text" }
+  - label: "Resources page"
+    name: "resources"
+    widget: "object"
+    collapsed: true
+    fields:
+      - { label: "Page title", name: "title", widget: "string" }
+      - { label: "Cue", name: "cue", widget: "string" }
+      - { label: "Heading (thin)", name: "h2_thin", widget: "string" }
+      - { label: "Heading (bold)", name: "h2_bold", widget: "string" }
+      - { label: "Empty state title", name: "empty_title", widget: "string" }
+      - { label: "Empty state text", name: "empty_text", widget: "text" }
+      - { label: "Empty state button", name: "empty_cta", widget: "string" }
+  - label: "Give page"
+    name: "give"
+    widget: "object"
+    collapsed: true
+    fields:
+      - { label: "Page title", name: "title", widget: "string" }
+      - { label: "Cue", name: "cue", widget: "string" }
+      - { label: "Heading (thin)", name: "h2_thin", widget: "string" }
+      - { label: "Heading (bold)", name: "h2_bold", widget: "string" }
+      - { label: "Lede", name: "lede", widget: "text" }
+      - { label: "Monthly card title", name: "monthly_title", widget: "string" }
+      - { label: "Monthly card text", name: "monthly_text", widget: "text" }
+      - { label: "Project card title", name: "project_title", widget: "string" }
+      - { label: "Project card text", name: "project_text", widget: "text" }
+      - { label: "Legal note", name: "legal_note", widget: "text" }
+      - { label: "Form placeholder text", name: "form_placeholder", widget: "string" }
+  - label: "Contact page"
+    name: "contact"
+    widget: "object"
+    collapsed: true
+    fields:
+      - { label: "Page title", name: "title", widget: "string" }
+      - { label: "Cue", name: "cue", widget: "string" }
+      - { label: "Heading (thin)", name: "h2_thin", widget: "string" }
+      - { label: "Heading (bold)", name: "h2_bold", widget: "string" }
+      - { label: "Lede", name: "lede", widget: "text" }
+      - { label: "Name field placeholder", name: "form_name", widget: "string" }
+      - { label: "Email field placeholder", name: "form_email", widget: "string" }
+      - { label: "Message field placeholder", name: "form_message", widget: "string" }
+      - { label: "Send button", name: "form_send", widget: "string" }
+      - { label: "Success message", name: "form_success", widget: "string" }
+  - label: "Events page"
+    name: "events"
+    widget: "object"
+    collapsed: true
+    fields:
+      - { label: "Page title", name: "title", widget: "string" }
+      - { label: "Cue", name: "cue", widget: "string" }
+      - { label: "Heading (thin)", name: "h2_thin", widget: "string" }
+      - { label: "Heading (bold)", name: "h2_bold", widget: "string" }
+      - { label: "Empty state title", name: "empty_title", widget: "string" }
+      - { label: "Empty state text", name: "empty_text", widget: "text" }
+  - label: "Staff area"
+    name: "staff"
+    widget: "object"
+    collapsed: true
+    fields:
+      - { label: "Page title", name: "title", widget: "string" }
+      - { label: "Login note", name: "login_note", widget: "text" }
+      - { label: "Login button", name: "login_button", widget: "string" }
+  - label: "Footer"
+    name: "footer"
+    widget: "object"
+    collapsed: true
+    fields:
+      - { label: "Legal line", name: "legal", widget: "string" }
+      - { label: "Region line", name: "region", widget: "string" }
+      - { label: "Tagline", name: "tagline", widget: "string" }
+
+collections:
+  - name: "translations"
+    label: "Site Copy (by language)"
+    files:
+      - label: "English"
+        name: "en"
+        file: "src/_data/i18n/en.json"
+        fields: *lang_fields
+      - label: "Hrvatski"
+        name: "hr"
+        file: "src/_data/i18n/hr.json"
+        fields: *lang_fields
+
+  - name: "settings"
+    label: "Site Settings"
+    files:
+      - label: "General"
+        name: "general"
+        file: "src/_data/site.json"
+        fields:
+          - { label: "Site name", name: "name", widget: "string" }
+          - { label: "Site URL", name: "url", widget: "string" }
+          - label: "Languages"
+            name: "languages"
+            widget: "list"
+            field: { label: "Language code", name: "code", widget: "string" }
+          - { label: "Default language", name: "defaultLang", widget: "string" }
+          - { label: "Show Events in navigation", name: "showEvents", widget: "boolean" }
+          - label: "Photos"
+            name: "images"
+            widget: "object"
+            fields:
+              - { label: "Home — who-we-are frame", name: "home_who", widget: "image", required: false, hint: "Wide/horizontal photos work best; the cinematic dark treatment is applied automatically." }
+          - label: "Donorbox embed URLs"
+            name: "donorbox"
+            widget: "object"
+            fields:
+              - { label: "English form URL", name: "en", widget: "string", required: false }
+              - { label: "Croatian form URL", name: "hr", widget: "string", required: false }

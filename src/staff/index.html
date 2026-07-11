@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Staff · Thauma</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@100;200;600&family=Inter:wght@200;300;400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/main.css">
+<script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+</head>
+<body>
+
+<nav><div class="wrap nav-in">
+  <a class="logo" href="/">THAUMA</a>
+  <div class="nav-actions">
+    <button class="lang-toggle" id="auth-btn">Sign In</button>
+  </div>
+</div></nav>
+
+<header class="page"><div class="wrap">
+  <div class="cue">Thauma Network</div>
+  <h2 id="staff-heading">Staff <b>area.</b></h2>
+  <p class="lede" id="login-note">This area is for the Thauma network. Sign in to continue.</p>
+</div></header>
+
+<!-- Content revealed only after login. NOTE: this stub gates content
+     client-side, which is fine for low-sensitivity links and contacts.
+     Before storing anything sensitive here, move the data behind a
+     Netlify Function that verifies the Identity token server-side. -->
+<section style="display:none" id="staff-content"><div class="wrap">
+  <div class="cue foam">Quick access</div>
+  <div class="give-grid">
+    <div class="give-card">
+      <h3>Network contacts</h3>
+      <p>Placeholder — contacts for churches, partners, and technicians in the network will live here.</p>
+    </div>
+    <div class="give-card">
+      <h3>Internal resources</h3>
+      <p>Placeholder — checklists, gear inventories, and internal documents will live here.</p>
+    </div>
+  </div>
+</div></section>
+
+<footer class="wrap">
+  <div>© 2026 Thauma</div>
+</footer>
+
+<script>
+  const btn = document.getElementById('auth-btn');
+  const content = document.getElementById('staff-content');
+  const note = document.getElementById('login-note');
+
+  function render(user) {
+    if (user) {
+      btn.textContent = 'Sign Out';
+      content.style.display = 'block';
+      note.style.display = 'none';
+    } else {
+      btn.textContent = 'Sign In';
+      content.style.display = 'none';
+      note.style.display = 'block';
+    }
+  }
+  netlifyIdentity.on('init', render);
+  netlifyIdentity.on('login', function (user) { render(user); netlifyIdentity.close(); });
+  netlifyIdentity.on('logout', function () { render(null); });
+  btn.addEventListener('click', function () {
+    if (netlifyIdentity.currentUser()) { netlifyIdentity.logout(); }
+    else { netlifyIdentity.open(); }
+  });
+</script>
+</body>
+</html>

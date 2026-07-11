@@ -1,0 +1,33 @@
+---
+layout: layouts/base.njk
+pagination:
+  data: site.languages
+  size: 1
+  alias: lang
+permalink: "/{{ lang }}/about/index.html"
+pageTitle: about
+---
+{% set t = i18n[lang] %}
+<header class="dict"><div class="wrap">
+  <div class="dict-word rise">{{ t.about.dict_word }}</div>
+  <div class="dict-ipa rise-2">{{ t.about.dict_ipa }}</div>
+  <div class="dict-defs rise-3">
+    <p>{{ t.about.dict_def1 }}</p>
+    <p>{{ t.about.dict_def2 }}</p>
+    <p>{{ t.about.dict_def3 }}</p>
+  </div>
+</div></header>
+
+<section><div class="wrap">
+  <div class="cue">{{ t.about.who_cue }}</div>
+  <h2>{{ t.about.who_h2_thin }} <b>{{ t.about.who_h2_bold }}</b></h2>
+  <p class="body-text">{{ t.about.body1 }}</p>
+  <p class="body-text">{{ t.about.body2 }}</p>
+</div></section>
+
+<section class="alt"><div class="wrap">
+  <div class="cue foam">{{ t.about.posture_cue }}</div>
+  <h2>{{ t.about.posture_h2_thin }} <b>{{ t.about.posture_h2_bold }}</b></h2>
+  <p class="body-text">{{ t.about.body3 }}</p>
+  <p class="legal-note">{{ t.about.status_note }}</p>
+</div></section>

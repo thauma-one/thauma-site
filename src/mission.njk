@@ -1,0 +1,37 @@
+---
+layout: layouts/base.njk
+pagination:
+  data: site.languages
+  size: 1
+  alias: lang
+permalink: "/{{ lang }}/mission/index.html"
+pageTitle: mission
+---
+{% set t = i18n[lang] %}
+<header class="page"><div class="wrap">
+  <div class="cue rise">{{ t.mission.cue }}</div>
+  <h2 class="rise-2">{{ t.mission.h2_thin }} <b>{{ t.mission.h2_bold }}</b></h2>
+  <p class="lede rise-3">{{ t.mission.lede }}</p>
+</div></header>
+
+<section><div class="wrap">
+  <div class="work">
+    <div class="label">{{ t.mission.work1_label }}</div>
+    <div><h3>{{ t.mission.work1_title }}</h3><p>{{ t.mission.work1_text }}</p></div>
+  </div>
+  <div class="work">
+    <div class="label">{{ t.mission.work2_label }}</div>
+    <div><h3>{{ t.mission.work2_title }}</h3><p>{{ t.mission.work2_text }}</p></div>
+  </div>
+  <div class="work">
+    <div class="label">{{ t.mission.work3_label }}</div>
+    <div><h3>{{ t.mission.work3_title }}</h3><p>{{ t.mission.work3_text }}</p></div>
+  </div>
+</div></section>
+
+<section class="alt"><div class="wrap">
+  <div class="cue foam">{{ t.mission.horizon_cue }}</div>
+  <h2>{{ t.mission.horizon_h2_thin }} <b>{{ t.mission.horizon_h2_bold }}</b></h2>
+  <p class="body-text">{{ t.mission.horizon_text }}</p>
+  <p class="body-text">{{ t.mission.success_text }}</p>
+</div></section>

@@ -1,0 +1,50 @@
+---
+layout: layouts/base.njk
+pagination:
+  data: site.languages
+  size: 1
+  alias: lang
+permalink: "/{{ lang }}/index.html"
+---
+{% set t = i18n[lang] %}
+<header class="hero"><div class="wrap">
+  <div class="cue rise">{{ t.home.cue }}</div>
+  <div class="wordmark rise-2">THAUMA</div>
+  <p class="hero-line rise-3">{{ t.home.h1_thin }} <b>{{ t.home.h1_bold }}</b></p>
+  <p class="hero-sub rise-3">{{ t.home.sub }}</p>
+</div>
+<div class="meter"><i></i></div>
+</header>
+
+<section><div class="wrap">
+  <div class="cue">{{ t.home.who_cue }}</div>
+  <h2>{{ t.home.who_h2_thin }} <b>{{ t.home.who_h2_bold }}</b></h2>
+  <p class="lede">{{ t.home.who_lede }}</p>
+  <div class="frame">
+    {% if site.images.home_who %}<img src="{{ site.images.home_who }}" alt="{{ t.home.who_img_tag }}" loading="lazy">{% endif %}
+    <span class="tag">{{ t.home.who_img_tag }}</span>
+  </div>
+</div></section>
+
+<section class="alt"><div class="wrap">
+  <div class="cue foam">{{ t.home.values_cue }}</div>
+  <h2>{{ t.home.values_h2_thin }} <b>{{ t.home.values_h2_bold }}</b></h2>
+  <div class="vals">
+    <div class="val"><div class="n">I</div><h3>{{ t.home.value1_title }}</h3><p>{{ t.home.value1_text }}</p></div>
+    <div class="val"><div class="n">II</div><h3>{{ t.home.value2_title }}</h3><p>{{ t.home.value2_text }}</p></div>
+    <div class="val"><div class="n">III</div><h3>{{ t.home.value3_title }}</h3><p>{{ t.home.value3_text }}</p></div>
+  </div>
+  <div class="btn-row">
+    <a class="btn ghost" href="/{{ lang }}/values/">{{ t.home.values_link }}</a>
+  </div>
+</div></section>
+
+<section class="cta"><div class="wrap">
+  <div class="cue foam">{{ t.home.cta_cue }}</div>
+  <h2>{{ t.home.cta_h2_thin }} <b>{{ t.home.cta_h2_bold }}</b></h2>
+  <p class="lede">{{ t.home.cta_lede }}</p>
+  <div class="btn-row center">
+    <a class="btn solid" href="/{{ lang }}/give/">{{ t.home.cta_give }}</a>
+    <a class="btn ghost" href="/{{ lang }}/contact/">{{ t.home.cta_contact }}</a>
+  </div>
+</div></section>

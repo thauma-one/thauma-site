@@ -1,0 +1,35 @@
+---
+layout: layouts/base.njk
+pagination:
+  data: site.languages
+  size: 1
+  alias: lang
+permalink: "/{{ lang }}/contact/index.html"
+pageTitle: contact
+---
+{% set t = i18n[lang] %}
+<header class="page"><div class="wrap">
+  <div class="cue rise">{{ t.contact.cue }}</div>
+  <h2 class="rise-2">{{ t.contact.h2_thin }} <b>{{ t.contact.h2_bold }}</b></h2>
+  <p class="lede rise-3">{{ t.contact.lede }}</p>
+</div></header>
+
+<section><div class="wrap">
+  <!-- Netlify Forms: works automatically once deployed to Netlify -->
+  <form class="contact" name="contact" method="POST" data-netlify="true" netlify-honeypot="bot-field" action="/{{ lang }}/contact/?sent=true">
+    <input type="hidden" name="form-name" value="contact">
+    <p hidden><label>Do not fill: <input name="bot-field"></label></p>
+    <input type="text" name="name" placeholder="{{ t.contact.form_name }}" required>
+    <input type="email" name="email" placeholder="{{ t.contact.form_email }}" required>
+    <textarea name="message" placeholder="{{ t.contact.form_message }}" required></textarea>
+    <div class="btn-row" style="margin-top:10px">
+      <button class="btn solid" type="submit">{{ t.contact.form_send }}</button>
+    </div>
+  </form>
+  <p class="legal-note" id="sent-note" style="display:none">{{ t.contact.form_success }}</p>
+  <script>
+    if (new URLSearchParams(location.search).get('sent')) {
+      document.getElementById('sent-note').style.display = 'block';
+    }
+  </script>
+</div></section>

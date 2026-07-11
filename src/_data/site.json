@@ -1,0 +1,17 @@
+{
+  "name": "Thauma",
+  "url": "https://thauma.one",
+  "languages": [
+    "en",
+    "hr"
+  ],
+  "defaultLang": "en",
+  "showEvents": false,
+  "donorbox": {
+    "en": "",
+    "hr": ""
+  },
+  "images": {
+    "home_who": ""
+  }
+}

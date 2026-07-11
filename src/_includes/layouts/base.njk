@@ -1,0 +1,54 @@
+{% set t = i18n[lang] %}
+{% set otherLang = "hr" if lang == "en" else "en" %}
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% if pageTitle %}{{ t[pageTitle].title }} · {% endif %}Thauma</title>
+<meta name="description" content="{{ t.home.sub }}">
+<link rel="alternate" hreflang="{{ otherLang }}" href="{{ site.url }}{{ page.url | langSwap(otherLang) }}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@100;200;300;600;800&family=Inter:wght@200;300;400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+
+<nav><div class="wrap nav-in">
+  <a class="logo" href="/{{ lang }}/"><!-- <img src="/img/logo.svg" alt=""> -->THAUMA</a>
+  <div class="links">
+    <a href="/{{ lang }}/about/">{{ t.nav.about }}</a>
+    <a href="/{{ lang }}/mission/">{{ t.nav.mission }}</a>
+    <a href="/{{ lang }}/values/">{{ t.nav.values }}</a>
+    <a href="/{{ lang }}/resources/">{{ t.nav.resources }}</a>
+    <a href="/{{ lang }}/contact/">{{ t.nav.contact }}</a>
+    {% if site.showEvents %}<a href="/{{ lang }}/events/">{{ t.nav.events }}</a>{% endif %}
+  </div>
+  <div class="nav-actions">
+    <button class="lang-toggle" data-lang="{{ otherLang }}" data-target="{{ page.url | langSwap(otherLang) }}" aria-label="Switch language">{{ otherLang | upper }}</button>
+    <a class="give-btn" href="/{{ lang }}/give/">{{ t.nav.give }}</a>
+  </div>
+  <button class="menu-btn" aria-label="Menu"><span></span><span></span></button>
+</div></nav>
+
+<div class="mobile-menu">
+  <a href="/{{ lang }}/about/">{{ t.nav.about }}</a>
+  <a href="/{{ lang }}/mission/">{{ t.nav.mission }}</a>
+  <a href="/{{ lang }}/values/">{{ t.nav.values }}</a>
+  <a href="/{{ lang }}/resources/">{{ t.nav.resources }}</a>
+  <a href="/{{ lang }}/contact/">{{ t.nav.contact }}</a>
+  {% if site.showEvents %}<a href="/{{ lang }}/events/">{{ t.nav.events }}</a>{% endif %}
+  <a href="/{{ lang }}/give/">{{ t.nav.give }}</a>
+</div>
+
+{{ content | safe }}
+
+<footer class="wrap">
+  <div>{{ t.footer.legal }}</div>
+  <div class="foot-tag">{{ t.footer.tagline }}</div>
+  <div>{{ t.footer.region }}</div>
+</footer>
+
+<script src="/js/main.js"></script>
+</body>
+</html>

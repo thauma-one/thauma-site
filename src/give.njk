@@ -1,0 +1,38 @@
+---
+layout: layouts/base.njk
+pagination:
+  data: site.languages
+  size: 1
+  alias: lang
+permalink: "/{{ lang }}/give/index.html"
+pageTitle: give
+---
+{% set t = i18n[lang] %}
+<header class="page"><div class="wrap">
+  <div class="cue foam rise">{{ t.give.cue }}</div>
+  <h2 class="rise-2">{{ t.give.h2_thin }} <b>{{ t.give.h2_bold }}</b></h2>
+  <p class="lede rise-3">{{ t.give.lede }}</p>
+</div></header>
+
+<section><div class="wrap">
+  <div class="give-grid">
+    <div class="give-card"><h3>{{ t.give.monthly_title }}</h3><p>{{ t.give.monthly_text }}</p></div>
+    <div class="give-card"><h3>{{ t.give.project_title }}</h3><p>{{ t.give.project_text }}</p></div>
+  </div>
+
+  {# ---- DONATION EMBED SLOT ------------------------------------------
+     When your Donorbox (or other provider) campaign exists, paste its
+     embed URL into src/_data/site.json under donorbox.en / donorbox.hr.
+     The correct language embed loads automatically. ------------------- #}
+  {% if site.donorbox[lang] %}
+  <div class="donate-slot" style="padding:0;border:none;min-height:0">
+    <iframe src="{{ site.donorbox[lang] }}" name="donorbox" title="Donation form"
+      style="width:100%;max-width:500px;min-height:900px;border:none;display:block;margin:56px auto 0"
+      allowpaymentrequest></iframe>
+  </div>
+  {% else %}
+  <div class="donate-slot"><p>{{ t.give.form_placeholder }}</p></div>
+  {% endif %}
+
+  <p class="legal-note">{{ t.give.legal_note }}</p>
+</div></section>

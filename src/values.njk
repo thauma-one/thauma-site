@@ -1,0 +1,23 @@
+---
+layout: layouts/base.njk
+pagination:
+  data: site.languages
+  size: 1
+  alias: lang
+permalink: "/{{ lang }}/values/index.html"
+pageTitle: values
+---
+{% set t = i18n[lang] %}
+<header class="page"><div class="wrap">
+  <div class="cue foam rise">{{ t.values.cue }}</div>
+  <h2 class="rise-2">{{ t.values.h2_thin }} <b>{{ t.values.h2_bold }}</b></h2>
+</div></header>
+
+<section><div class="wrap">
+  {% for v in t.values["items"] %}
+  <div class="conviction">
+    <div class="num">{% if loop.index < 10 %}0{% endif %}{{ loop.index }}</div>
+    <div><h3>{{ v.title }}</h3><p>{{ v.text }}</p></div>
+  </div>
+  {% endfor %}
+</div></section>
