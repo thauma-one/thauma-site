@@ -1,5 +1,11 @@
 # Thauma Website
 
+> **First time setting this up?** Don't start here. Follow
+> **LAUNCH-CHECKLIST.md** top to bottom — it creates every account and
+> connects every service in the right order. This README is the
+> technical reference for after you're live.
+
+
 Bilingual (EN/HR), geo-aware, CMS-editable static site.
 Built with Eleventy · Deployed on Netlify · Edited with Decap CMS.
 

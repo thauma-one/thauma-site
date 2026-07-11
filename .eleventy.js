@@ -7,7 +7,9 @@ module.exports = function (eleventyConfig) {
   eleventyConfig.addPassthroughCopy({ "src/staff": "staff" });
 
   // Swap the language segment of a URL: /en/about/ -> /hr/about/
+  // (Pages skipped by the comingSoon flag have no URL; return a safe value.)
   eleventyConfig.addFilter("langSwap", function (url, targetLang) {
+    if (typeof url !== "string") return "/" + targetLang + "/";
     return url.replace(/^\/(en|hr)\//, `/${targetLang}/`);
   });
 
