@@ -83,13 +83,34 @@
     "h2_thin": "The convictions",
     "h2_bold": "this work stands on.",
     "items": [
-      { "title": "The person is the point", "text": "Care for the individual is the heart underneath everything. It is the engine of the organization and governs how every interaction is conducted." },
-      { "title": "Production is the door", "text": "The technical need is real and legitimate — not a pretense for relationship but a genuine service the church requires. We support churches in their needs as they have them." },
-      { "title": "Community is the fruit", "text": "The measure of success is a community of church production people — pastors, worship leaders, and techs together — existing where it did not before." },
-      { "title": "Multiplication", "text": "The aim is people who serve people who serve people. Everyone invested in is a potential source, not an endpoint — and we succeed precisely as our own center becomes less necessary." },
-      { "title": "For the whole church", "text": "No corner of the Protestant church owns this work. Independence and evenhandedness across denominations are identity, not preference." },
-      { "title": "Assimilation, not influence", "text": "We go as students and participants of the cultures where we serve — never as reformers of them. Language and culture come first, and the posture never ends." },
-      { "title": "God does the work", "text": "We open doors and serve faithfully; the fruit is God's. Without this conviction, none of the rest matters." }
+      {
+        "title": "The person is the point",
+        "text": "Care for the individual is the heart underneath everything. It is the engine of the organization and governs how every interaction is conducted."
+      },
+      {
+        "title": "Production is the door",
+        "text": "The technical need is real and legitimate — not a pretense for relationship but a genuine service the church requires. We support churches in their needs as they have them."
+      },
+      {
+        "title": "Community is the fruit",
+        "text": "The measure of success is a community of church production people — pastors, worship leaders, and techs together — existing where it did not before."
+      },
+      {
+        "title": "Multiplication",
+        "text": "The aim is people who serve people who serve people. Everyone invested in is a potential source, not an endpoint — and we succeed precisely as our own center becomes less necessary."
+      },
+      {
+        "title": "For the whole church",
+        "text": "No corner of the Protestant church owns this work. Independence and evenhandedness across denominations are identity, not preference."
+      },
+      {
+        "title": "Assimilation, not influence",
+        "text": "We go as students and participants of the cultures where we serve — never as reformers of them. Language and culture come first, and the posture never ends."
+      },
+      {
+        "title": "God does the work",
+        "text": "We open doors and serve faithfully; the fruit is God's. Without this conviction, none of the rest matters."
+      }
     ]
   },
   "resources": {
@@ -143,5 +164,10 @@
     "legal": "© 2026 Thauma · A Missouri nonprofit in formation",
     "region": "Croatia & the Balkans",
     "tagline": "All of it for all of Him."
+  },
+  "coming": {
+    "line_thin": "Something is being built",
+    "line_bold": "in the dark.",
+    "text": "Thauma — a production ministry for the churches of Croatia and the surrounding region — is in development. The lights come up soon."
   }
 }

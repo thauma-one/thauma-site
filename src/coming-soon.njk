@@ -1,0 +1,40 @@
+---
+pagination:
+  data: site.languages
+  size: 1
+  alias: lang
+isComingSoonPage: true
+---
+{% set t = i18n[lang] %}
+{% set otherLang = "hr" if lang == "en" else "en" %}
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thauma</title>
+<meta name="description" content="{{ t.coming.text }}">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@100;200;600&family=Inter:wght@200;300&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+<header class="hero" style="text-align:center;align-items:center">
+  <div class="wrap">
+    <div class="cue bare rise" style="display:inline-block">{{ t.home.cue }}</div>
+    <div class="wordmark rise-2">THAUMA</div>
+    <p class="hero-line rise-3">{{ t.coming.line_thin }} <b>{{ t.coming.line_bold }}</b></p>
+    <p class="hero-sub rise-3" style="margin-left:auto;margin-right:auto">{{ t.coming.text }}</p>
+    <div class="btn-row center rise-3">
+      <button class="lang-toggle" data-lang="{{ otherLang }}" data-target="/{{ otherLang }}/">{{ otherLang | upper }}</button>
+    </div>
+  </div>
+  <div class="meter"><i></i></div>
+</header>
+<footer class="wrap" style="justify-content:center">
+  <div>{{ t.footer.tagline }}</div>
+</footer>
+<script src="/js/main.js"></script>
+</body>
+</html>

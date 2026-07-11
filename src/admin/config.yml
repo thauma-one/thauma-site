@@ -178,6 +178,14 @@ x_lang_fields: &lang_fields
       - { label: "Page title", name: "title", widget: "string" }
       - { label: "Login note", name: "login_note", widget: "text" }
       - { label: "Login button", name: "login_button", widget: "string" }
+  - label: "Coming-soon landing page"
+    name: "coming"
+    widget: "object"
+    collapsed: true
+    fields:
+      - { label: "Line (thin part)", name: "line_thin", widget: "string" }
+      - { label: "Line (bold part)", name: "line_bold", widget: "string" }
+      - { label: "Text", name: "text", widget: "text" }
   - label: "Footer"
     name: "footer"
     widget: "object"
@@ -214,6 +222,7 @@ collections:
             widget: "list"
             field: { label: "Language code", name: "code", widget: "string" }
           - { label: "Default language", name: "defaultLang", widget: "string" }
+          - { label: "COMING SOON mode (only the landing page is public)", name: "comingSoon", widget: "boolean" }
           - { label: "Show Events in navigation", name: "showEvents", widget: "boolean" }
           - label: "Photos"
             name: "images"

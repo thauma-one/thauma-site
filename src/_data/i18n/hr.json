@@ -83,13 +83,34 @@
     "h2_thin": "Uvjerenja na kojima",
     "h2_bold": "ovo djelo stoji.",
     "items": [
-      { "title": "Čovjek je smisao", "text": "Briga za pojedinca srce je svega. Ona je pokretač organizacije i određuje kako se vodi svaki susret." },
-      { "title": "Produkcija su vrata", "text": "Tehnička potreba stvarna je i legitimna — nije izlika za odnos, nego istinska usluga koju crkva treba. Podržavamo crkve u njihovim potrebama, onakvima kakve jesu." },
-      { "title": "Zajednica je plod", "text": "Mjera uspjeha jest zajednica crkvenih produkcijskih ljudi — pastora, voditelja slavljenja i tehničara zajedno — koja postoji ondje gdje je prije nije bilo." },
-      { "title": "Umnožavanje", "text": "Cilj su ljudi koji služe ljudima koji služe ljudima. Svatko u koga ulažemo potencijalni je izvor, a ne krajnja točka — i uspijevamo upravo onda kad naše središte postaje sve manje potrebno." },
-      { "title": "Za cijelu Crkvu", "text": "Nijedan dio protestantske Crkve ne posjeduje ovo djelo. Neovisnost i ravnopravnost prema svim denominacijama naš su identitet, ne preferencija." },
-      { "title": "Asimilacija, ne utjecaj", "text": "Dolazimo kao učenici i sudionici kultura u kojima služimo — nikada kao njihovi reformatori. Jezik i kultura dolaze prvi, a taj stav nikada ne prestaje." },
-      { "title": "Bog čini djelo", "text": "Mi otvaramo vrata i vjerno služimo; plod je Božji. Bez ovog uvjerenja, ništa ostalo nije važno." }
+      {
+        "title": "Čovjek je smisao",
+        "text": "Briga za pojedinca srce je svega. Ona je pokretač organizacije i određuje kako se vodi svaki susret."
+      },
+      {
+        "title": "Produkcija su vrata",
+        "text": "Tehnička potreba stvarna je i legitimna — nije izlika za odnos, nego istinska usluga koju crkva treba. Podržavamo crkve u njihovim potrebama, onakvima kakve jesu."
+      },
+      {
+        "title": "Zajednica je plod",
+        "text": "Mjera uspjeha jest zajednica crkvenih produkcijskih ljudi — pastora, voditelja slavljenja i tehničara zajedno — koja postoji ondje gdje je prije nije bilo."
+      },
+      {
+        "title": "Umnožavanje",
+        "text": "Cilj su ljudi koji služe ljudima koji služe ljudima. Svatko u koga ulažemo potencijalni je izvor, a ne krajnja točka — i uspijevamo upravo onda kad naše središte postaje sve manje potrebno."
+      },
+      {
+        "title": "Za cijelu Crkvu",
+        "text": "Nijedan dio protestantske Crkve ne posjeduje ovo djelo. Neovisnost i ravnopravnost prema svim denominacijama naš su identitet, ne preferencija."
+      },
+      {
+        "title": "Asimilacija, ne utjecaj",
+        "text": "Dolazimo kao učenici i sudionici kultura u kojima služimo — nikada kao njihovi reformatori. Jezik i kultura dolaze prvi, a taj stav nikada ne prestaje."
+      },
+      {
+        "title": "Bog čini djelo",
+        "text": "Mi otvaramo vrata i vjerno služimo; plod je Božji. Bez ovog uvjerenja, ništa ostalo nije važno."
+      }
     ]
   },
   "resources": {
@@ -143,5 +164,10 @@
     "legal": "© 2026 Thauma · Neprofitna organizacija u osnivanju (Missouri, SAD)",
     "region": "Hrvatska i Balkan",
     "tagline": "Sve naše — za svega Njega."
+  },
+  "coming": {
+    "line_thin": "Nešto se gradi",
+    "line_bold": "u mraku.",
+    "text": "Thauma — produkcijska služba za crkve u Hrvatskoj i okolnoj regiji — u pripremi je. Svjetla se uskoro pale."
   }
 }
