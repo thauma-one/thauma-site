@@ -1,0 +1,12 @@
+{
+  "name": "thauma-site",
+  "version": "1.0.0",
+  "description": "Thauma ministry website — Eleventy + Decap CMS + Netlify",
+  "scripts": {
+    "build": "eleventy",
+    "dev": "eleventy --serve"
+  },
+  "devDependencies": {
+    "@11ty/eleventy": "^3.0.0"
+  }
+}
