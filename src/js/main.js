@@ -1,8 +1,8 @@
 // ---- Netlify Identity links (invites, recoveries) land on the site root
-// with a token in the URL hash; forward them to /admin/ where the widget
-// can process them. ----
+// with a token in the URL hash; forward them to /staff/ (its Identity widget
+// serves every role - admins continue to /admin after setting a password). ----
 if (location.hash && /invite_token|recovery_token|confirmation_token|email_change_token/.test(location.hash)) {
-  location.replace('/admin/' + location.hash);
+  location.replace('/staff/' + location.hash);
 }
 
 // ---- Language toggle: remember the choice, then navigate ----

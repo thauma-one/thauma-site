@@ -13,6 +13,8 @@
 <nav><div class="wrap nav-in">
   <a class="logo" href="/">THAUMA</a>
   <div class="nav-actions">
+    <span id="whoami" style="font-size:12px;color:var(--dim);letter-spacing:.05em"></span>
+    <a href="/admin/" id="admin-link" class="lang-toggle" style="display:none;text-decoration:none;line-height:1">Admin</a>
     <button class="lang-toggle" id="auth-btn">Sign In</button>
   </div>
 </div></nav>
@@ -49,16 +51,24 @@
   const btn = document.getElementById('auth-btn');
   const content = document.getElementById('staff-content');
   const note = document.getElementById('login-note');
+  const whoami = document.getElementById('whoami');
+  const adminLink = document.getElementById('admin-link');
 
   function render(user) {
     if (user) {
+      const roles = (user.app_metadata && user.app_metadata.roles) || [];
+      const name = (user.user_metadata && user.user_metadata.full_name) || user.email;
       btn.textContent = 'Sign Out';
       content.style.display = 'block';
       note.style.display = 'none';
+      whoami.textContent = name + (roles.length ? ' \u00b7 ' + roles.join(', ') : '');
+      adminLink.style.display = roles.includes('admin') ? 'inline-block' : 'none';
     } else {
       btn.textContent = 'Sign In';
       content.style.display = 'none';
       note.style.display = 'block';
+      whoami.textContent = '';
+      adminLink.style.display = 'none';
     }
   }
   netlifyIdentity.on('init', render);
