@@ -14,6 +14,7 @@ const isDevServer =
 
 module.exports = {
   eleventyComputed: {
+    lang: (data) => (data.member ? data.member.lang : data.lang),
     permalink: (data) => {
       // Team bio pages (paginated over teamPages; alias "member")
       if (data.member && data.member.slug) {
