@@ -1,12 +1,13 @@
 {
   "name": "thauma-site",
   "version": "1.0.0",
-  "description": "Thauma ministry website \u2014 Eleventy + Decap CMS + Netlify",
+  "description": "Thauma ministry website — Eleventy + Decap CMS + Netlify",
   "scripts": {
     "build": "node -e \"require('fs').rmSync('_site',{recursive:true,force:true})\" && eleventy",
-    "dev": "eleventy --serve"
+    "dev": "eleventy --serve --port 8123"
   },
   "devDependencies": {
-    "@11ty/eleventy": "^3.0.0"
+    "@11ty/eleventy": "^3.0.0",
+    "netlify-cli": "^26.2.0"
   }
 }
