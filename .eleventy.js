@@ -10,7 +10,7 @@ module.exports = function (eleventyConfig) {
   // (Pages skipped by the comingSoon flag have no URL; return a safe value.)
   eleventyConfig.addFilter("langSwap", function (url, targetLang) {
     if (typeof url !== "string") return "/" + targetLang + "/";
-    return url.replace(/^\/(en|hr)\//, `/${targetLang}/`);
+    return url.replace(/^\/[a-z]{2}\//, `/${targetLang}/`);
   });
 
   return {

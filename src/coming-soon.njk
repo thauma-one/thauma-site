@@ -6,7 +6,6 @@ pagination:
 isComingSoonPage: true
 ---
 {% set t = i18n[lang] %}
-{% set otherLang = "hr" if lang == "en" else "en" %}
 <!DOCTYPE html>
 <html lang="{{ lang }}">
 <head>
@@ -16,25 +15,80 @@ isComingSoonPage: true
 <meta name="description" content="{{ t.coming.text }}">
 <meta name="robots" content="noindex">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@100;200;600&family=Inter:wght@200;300&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@100;200;600&family=Inter:wght@200;300;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/main.css">
+<style>
+  /* Landing-only: lock to one viewport, no scroll */
+  html, body { height: 100%; overflow: hidden; }
+  .landing {
+    height: 100vh; height: 100svh;
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: center;
+    text-align: center; position: relative;
+  }
+
+  /* Wordmark: lit by the star (radial falloff toward bottom-right) */
+  .landing .wordmark {
+    position: relative;
+    text-shadow: none;
+    background-image: radial-gradient(circle at 96% 92%,
+      #FFFFFF 0%, #C9F6FF 14%, #6FE3FF 32%, #3FBEE0 55%, #58697D 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+
+  /* The star: 8-point glint anchored to the final A (sizes in em so it
+     scales with the wordmark) */
+  .star { position: absolute; width: 0; height: 0; right: -0.06em; bottom: 0.05em; }
+  .star i { position: absolute; display: block; }
+  .star .v { width: 1.5px; height: .62em; left: -0.75px; top: -.31em;
+    background: linear-gradient(to bottom, rgba(255,255,255,0), #F4FFFF 50%, rgba(255,255,255,0)); }
+  .star .h { height: 1.5px; width: .62em; top: -0.75px; left: -.31em;
+    background: linear-gradient(to right, rgba(255,255,255,0), #F4FFFF 50%, rgba(255,255,255,0)); }
+  .star .d1, .star .d2 { width: 1px; height: .28em; left: -0.5px; top: -.14em;
+    background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(239,255,255,.6) 50%, rgba(255,255,255,0)); }
+  .star .d1 { transform: rotate(45deg); }
+  .star .d2 { transform: rotate(-45deg); }
+  .star .c { width: .07em; height: .07em; left: -.035em; top: -.035em; border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 0 .18em .05em rgba(200,246,255,.9), 0 0 .5em .16em rgba(47,216,255,.4); }
+
+  /* The work line: full-bleed track below the subtext */
+  .workline { position: relative; width: 100%; height: 2px;
+    background: rgba(255,255,255,.09); overflow: hidden; margin-top: 44px; }
+  .workline i { position: absolute; top: -1px; height: 4px; width: 18%; display: block;
+    background: linear-gradient(90deg, rgba(92,242,196,0), #5CF2C4 45%, #B2FFE6 55%, rgba(92,242,196,0));
+    box-shadow: 0 0 18px rgba(92,242,196,.55); left: -22%; }
+
+  .landing .btn-row { margin-top: 40px; }
+
+  /* One shared 9s timeline: the sweep passes, the star answers, both rest */
+  @keyframes pass { 0% { left: -22%; } 38% { left: 104%; } 100% { left: 104%; } }
+  @keyframes flare {
+    0%, 10%, 55%, 100% { transform: scale(.82); opacity: .65; }
+    22% { transform: scale(1.16); opacity: 1; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .workline i { animation: pass 9s cubic-bezier(.5,.05,.5,.95) infinite; }
+    .star { animation: flare 9s ease-in-out infinite; }
+    .cue, .wordmark, .hero-line, .hero-sub { animation: rise .9s ease both; }
+    .hero-line { animation-delay: .12s; } .hero-sub { animation-delay: .24s; }
+  }
+</style>
 </head>
 <body>
-<header class="hero" style="text-align:center;align-items:center">
+<main class="landing">
   <div class="wrap">
-    <div class="cue bare rise" style="display:inline-block">{{ t.home.cue }}</div>
-    <div class="wordmark rise-2">THAUMA</div>
-    <p class="hero-line rise-3">{{ t.coming.line_thin }} <b>{{ t.coming.line_bold }}</b></p>
-    <p class="hero-sub rise-3" style="margin-left:auto;margin-right:auto">{{ t.coming.text }}</p>
-    <div class="btn-row center rise-3">
-      <button class="lang-toggle" data-lang="{{ otherLang }}" data-target="/{{ otherLang }}/">{{ otherLang | upper }}</button>
-    </div>
+    <div class="cue bare" style="display:inline-block">{{ t.home.cue }}</div>
+    <div class="wordmark">THAUMA<span class="star"><i class="v"></i><i class="h"></i><i class="d1"></i><i class="d2"></i><i class="c"></i></span></div>
+    <p class="hero-line">{{ t.coming.line_thin }} <b>{{ t.coming.line_bold }}</b></p>
+    <p class="hero-sub" style="margin-left:auto;margin-right:auto">{{ t.coming.text }}</p>
   </div>
-  <div class="meter"><i></i></div>
-</header>
-<footer class="wrap" style="justify-content:center">
-  <div>{{ t.footer.tagline }}</div>
-</footer>
+  <div class="workline"><i></i></div>
+  <div class="btn-row center">
+    {%- for l in site.languages %}{% if l != lang %}
+    <button class="lang-toggle" data-lang="{{ l }}" data-target="/{{ l }}/">{{ l | upper }}</button>{% endif %}{% endfor %}
+  </div>
+</main>
 <script src="/js/main.js"></script>
 </body>
 </html>

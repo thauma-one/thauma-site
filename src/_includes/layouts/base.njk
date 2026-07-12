@@ -1,5 +1,5 @@
 {% set t = i18n[lang] %}
-{% set otherLang = "hr" if lang == "en" else "en" %}
+
 <!DOCTYPE html>
 <html lang="{{ lang }}">
 <head>
@@ -7,7 +7,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{% if pageTitle %}{{ t[pageTitle].title }} · {% endif %}Thauma</title>
 <meta name="description" content="{{ t.home.sub }}">
-<link rel="alternate" hreflang="{{ otherLang }}" href="{{ site.url }}{{ page.url | langSwap(otherLang) }}">
+{%- for l in site.languages %}{% if l != lang %}
+<link rel="alternate" hreflang="{{ l }}" href="{{ site.url }}{{ page.url | langSwap(l) }}">{% endif %}{% endfor %}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@100;200;300;600;800&family=Inter:wght@200;300;400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/main.css">
@@ -25,7 +26,8 @@
     {% if site.showEvents %}<a href="/{{ lang }}/events/">{{ t.nav.events }}</a>{% endif %}
   </div>
   <div class="nav-actions">
-    <button class="lang-toggle" data-lang="{{ otherLang }}" data-target="{{ page.url | langSwap(otherLang) }}" aria-label="Switch language">{{ otherLang | upper }}</button>
+    {%- for l in site.languages %}{% if l != lang %}
+    <button class="lang-toggle" data-lang="{{ l }}" data-target="{{ page.url | langSwap(l) }}" aria-label="Switch language to {{ l }}">{{ l | upper }}</button>{% endif %}{% endfor %}
     <a class="give-btn" href="/{{ lang }}/give/">{{ t.nav.give }}</a>
   </div>
   <button class="menu-btn" aria-label="Menu"><span></span><span></span></button>
