@@ -11,6 +11,10 @@
 <link rel="alternate" hreflang="{{ l }}" href="{{ site.url }}{{ page.url | langSwap(l) }}">{% endif %}{% endfor %}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@100;200;300;600;800&family=Inter:wght@200;300;400;600&display=swap" rel="stylesheet">
+<link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
+<meta property="og:title" content="Thauma">
+<meta property="og:description" content="{{ t.home.sub }}">
+<meta property="og:url" content="{{ site.url }}{{ page.url }}">
 <link rel="stylesheet" href="/css/main.css">
 </head>
 <body>
@@ -21,6 +25,7 @@
     <a href="/{{ lang }}/about/">{{ t.nav.about }}</a>
     <a href="/{{ lang }}/mission/">{{ t.nav.mission }}</a>
     <a href="/{{ lang }}/values/">{{ t.nav.values }}</a>
+    <a href="/{{ lang }}/team/">{{ t.nav.team }}</a>
     <a href="/{{ lang }}/resources/">{{ t.nav.resources }}</a>
     <a href="/{{ lang }}/contact/">{{ t.nav.contact }}</a>
     {% if site.showEvents %}<a href="/{{ lang }}/events/">{{ t.nav.events }}</a>{% endif %}
@@ -48,7 +53,13 @@
 <footer class="wrap">
   <div>{{ t.footer.legal }}</div>
   <div class="foot-tag">{{ t.footer.tagline }}</div>
-  <div>{{ t.footer.region }}</div>
+  <div class="foot-right">
+    {%- if site.socials.youtube %}<a href="{{ site.socials.youtube }}" aria-label="YouTube" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M23 7.2s-.2-1.6-.9-2.3c-.9-.9-1.9-.9-2.3-1C16.6 3.6 12 3.6 12 3.6s-4.6 0-7.8.3c-.4.1-1.4.1-2.3 1-.7.7-.9 2.3-.9 2.3S.8 9.1.8 11v1.8c0 1.9.2 3.8.2 3.8s.2 1.6.9 2.3c.9.9 2 .9 2.5 1 1.8.2 7.6.3 7.6.3s4.6 0 7.8-.4c.4-.1 1.4-.1 2.3-1 .7-.7.9-2.3.9-2.3s.2-1.9.2-3.8V11c0-1.9-.2-3.8-.2-3.8zM9.9 15V8.5l6.1 3.3-6.1 3.2z"/></svg></a>{% endif %}
+    {%- if site.socials.instagram %}<a href="{{ site.socials.instagram }}" aria-label="Instagram" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4.2"/><circle cx="17.3" cy="6.7" r="1.1" fill="currentColor" stroke="none"/></svg></a>{% endif %}
+    {%- if site.socials.facebook %}<a href="{{ site.socials.facebook }}" aria-label="Facebook" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M13.5 21v-8h2.7l.4-3.1h-3.1V7.9c0-.9.3-1.5 1.6-1.5h1.6V3.6c-.3 0-1.3-.1-2.4-.1-2.4 0-4 1.4-4 4.1v2.3H7.6V13h2.7v8h3.2z"/></svg></a>{% endif %}
+    {%- if site.socials.x %}<a href="{{ site.socials.x }}" aria-label="X" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M17.7 3h3l-6.6 7.5L22 21h-6.1l-4.8-6.2L5.6 21h-3l7-8L2.5 3h6.2l4.3 5.7L17.7 3zm-1 16.2h1.7L7.8 4.7H6L16.7 19.2z"/></svg></a>{% endif %}
+    <span>{{ t.footer.region }}</span>
+  </div>
 </footer>
 
 <script src="/js/main.js"></script>

@@ -14,5 +14,11 @@
   "images": {
     "home_who": ""
   },
-  "comingSoon": true
+  "comingSoon": true,
+  "socials": {
+    "youtube": "",
+    "instagram": "",
+    "facebook": "",
+    "x": ""
+  }
 }

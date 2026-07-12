@@ -31,16 +31,11 @@
      Netlify Function that verifies the Identity token server-side. -->
 <section style="display:none" id="staff-content"><div class="wrap">
   <div class="cue foam">Quick access</div>
-  <div class="give-grid">
-    <div class="give-card">
-      <h3>Network contacts</h3>
-      <p>Placeholder — contacts for churches, partners, and technicians in the network will live here.</p>
-    </div>
-    <div class="give-card">
-      <h3>Internal resources</h3>
-      <p>Placeholder — checklists, gear inventories, and internal documents will live here.</p>
-    </div>
-  </div>
+  <h3 class="staff-h">Network contacts</h3>
+  <div class="staff-grid" id="contacts"><p class="lede">Loading…</p></div>
+  <h3 class="staff-h" style="margin-top:56px">Internal resources</h3>
+  <div class="staff-grid" id="resources"><p class="lede">Loading…</p></div>
+  <p class="legal-note" id="role-note" style="display:none">Your account doesn't have the staff role yet — ask an admin to add it in Netlify Identity.</p>
 </div></section>
 
 <footer class="wrap">
@@ -71,8 +66,41 @@
       adminLink.style.display = 'none';
     }
   }
-  netlifyIdentity.on('init', render);
-  netlifyIdentity.on('login', function (user) { render(user); netlifyIdentity.close(); });
+  async function loadStaffData(user) {
+    try {
+      const token = await user.jwt();
+      const res = await fetch('/.netlify/functions/staff-data', {
+        headers: { Authorization: 'Bearer ' + token }
+      });
+      if (res.status === 401) {
+        document.getElementById('role-note').style.display = 'block';
+        document.getElementById('contacts').innerHTML = '';
+        document.getElementById('resources').innerHTML = '';
+        return;
+      }
+      const data = await res.json();
+      const esc = (s) => String(s || '').replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+      const contactCard = (c) => '<div class="s-card">'
+        + '<h4>' + esc(c.name) + '</h4>'
+        + (c.role ? '<div class="s-role">' + esc(c.role) + '</div>' : '')
+        + (c.info ? '<p>' + esc(c.info) + '</p>' : '')
+        + (c.link ? '<a href="' + esc(c.link) + '" class="s-link">Contact →</a>' : '')
+        + '</div>';
+      const resourceCard = (r) => '<div class="s-card">'
+        + (r.photo ? '<div class="s-photo"><img src="' + esc(r.photo) + '" alt="" loading="lazy"></div>' : '')
+        + '<h4>' + esc(r.title) + '</h4>'
+        + (r.description ? '<p>' + esc(r.description) + '</p>' : '')
+        + (r.link ? '<a href="' + esc(r.link) + '" class="s-link" target="_blank" rel="noopener">Open →</a>' : '')
+        + '</div>';
+      document.getElementById('contacts').innerHTML = data.contacts.map(contactCard).join('') || '<p class="lede">None yet.</p>';
+      document.getElementById('resources').innerHTML = data.resources.map(resourceCard).join('') || '<p class="lede">None yet.</p>';
+    } catch (e) {
+      document.getElementById('contacts').innerHTML = '<p>Could not load.</p>';
+    }
+  }
+
+  netlifyIdentity.on('init', function (user) { render(user); if (user) loadStaffData(user); });
+  netlifyIdentity.on('login', function (user) { render(user); loadStaffData(user); netlifyIdentity.close(); });
   netlifyIdentity.on('logout', function () { render(null); });
   btn.addEventListener('click', function () {
     if (netlifyIdentity.currentUser()) { netlifyIdentity.logout(); }

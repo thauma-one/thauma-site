@@ -15,6 +15,11 @@ const isDevServer =
 module.exports = {
   eleventyComputed: {
     permalink: (data) => {
+      // Team bio pages (paginated over teamPages; alias "member")
+      if (data.member && data.member.slug) {
+        if (!isDevServer && data.site.comingSoon) return false;
+        return `/${data.member.lang}/team/${data.member.slug}/index.html`;
+      }
       if (data.pageSlug === undefined && !data.isComingSoonPage) return data.permalink;
 
       const lang = data.lang;

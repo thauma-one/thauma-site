@@ -7,6 +7,13 @@ backend:
   name: git-gateway
   branch: main
 
+site_url: https://thauma.one
+display_url: https://thauma.one
+
+# Remove the raw preview pane - full-width editor, far less clutter
+editor:
+  preview: false
+
 media_folder: "src/img"
 public_folder: "/img"
 
@@ -21,6 +28,7 @@ x_lang_fields: &lang_fields
       - { label: "About", name: "about", widget: "string" }
       - { label: "Mission", name: "mission", widget: "string" }
       - { label: "Values", name: "values", widget: "string" }
+      - { label: "Team", name: "team", widget: "string" }
       - { label: "Resources", name: "resources", widget: "string" }
       - { label: "Give", name: "give", widget: "string" }
       - { label: "Contact", name: "contact", widget: "string" }
@@ -116,6 +124,19 @@ x_lang_fields: &lang_fields
         fields:
           - { label: "Title", name: "title", widget: "string" }
           - { label: "Text", name: "text", widget: "text" }
+  - label: "Team page"
+    name: "team"
+    widget: "object"
+    collapsed: true
+    fields:
+      - { label: "Page title", name: "title", widget: "string" }
+      - { label: "Cue", name: "cue", widget: "string" }
+      - { label: "Heading (thin)", name: "h2_thin", widget: "string" }
+      - { label: "Heading (bold)", name: "h2_bold", widget: "string" }
+      - { label: "Based-in label", name: "base_label", widget: "string" }
+      - { label: "Contact link label", name: "contact", widget: "string" }
+      - { label: "Back link label", name: "back", widget: "string" }
+      - { label: "Bio section cue", name: "bio_cue", widget: "string" }
   - label: "Resources page"
     name: "resources"
     widget: "object"
@@ -229,9 +250,43 @@ collections:
             widget: "object"
             fields:
               - { label: "Home — who-we-are frame", name: "home_who", widget: "image", required: false, hint: "Wide/horizontal photos work best; the cinematic dark treatment is applied automatically." }
+          - label: "Social links (icons appear in the footer only when filled)"
+            name: "socials"
+            widget: "object"
+            fields:
+              - { label: "YouTube URL", name: "youtube", widget: "string", required: false }
+              - { label: "Instagram URL", name: "instagram", widget: "string", required: false }
+              - { label: "Facebook URL", name: "facebook", widget: "string", required: false }
+              - { label: "X URL", name: "x", widget: "string", required: false }
           - label: "Donorbox embed URLs"
             name: "donorbox"
             widget: "object"
             fields:
               - { label: "English form URL", name: "en", widget: "string", required: false }
               - { label: "Croatian form URL", name: "hr", widget: "string", required: false }
+
+  - name: "team"
+    label: "Team Members"
+    label_singular: "Team Member"
+    folder: "src/content/team"
+    create: true
+    slug: "{{slug}}"
+    identifier_field: name
+    fields:
+      - { label: "Name", name: "name", widget: "string" }
+      - { label: "Display order", name: "order", widget: "number", default: 10 }
+      - { label: "Photo", name: "photo", widget: "image", required: false }
+      - { label: "Home base", name: "base", widget: "string", hint: "e.g. Zagreb, Croatia" }
+      - { label: "Email", name: "email", widget: "string", required: false }
+      - label: "Role / Position"
+        name: "role"
+        widget: "object"
+        fields:
+          - { label: "English", name: "en", widget: "string" }
+          - { label: "Croatian", name: "hr", widget: "string" }
+      - label: "Bio"
+        name: "bio"
+        widget: "object"
+        fields:
+          - { label: "English", name: "en", widget: "markdown" }
+          - { label: "Croatian", name: "hr", widget: "markdown" }

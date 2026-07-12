@@ -1,0 +1,30 @@
+---
+layout: layouts/base.njk
+pagination:
+  data: site.languages
+  size: 1
+  alias: lang
+pageSlug: "team"
+pageTitle: team
+---
+{% set t = i18n[lang] %}
+<header class="page"><div class="wrap">
+  <div class="cue foam rise">{{ t.team.cue }}</div>
+  <h2 class="rise-2">{{ t.team.h2_thin }} <b>{{ t.team.h2_bold }}</b></h2>
+</div></header>
+
+<section><div class="wrap">
+  <div class="team-grid">
+    {% for person in team %}
+    <a class="person" href="/{{ lang }}/team/{{ person.slug }}/">
+      <div class="person-photo">
+        {% if person.photo %}<img src="{{ person.photo }}" alt="{{ person.name }}" loading="lazy">
+        {% else %}<span class="person-initial">{{ person.name | first }}</span>{% endif %}
+      </div>
+      <h3>{{ person.name }}</h3>
+      <div class="person-role">{{ person.role[lang] }}</div>
+      <div class="person-base">{{ t.team.base_label }}: {{ person.base }}</div>
+    </a>
+    {% endfor %}
+  </div>
+</div></section>

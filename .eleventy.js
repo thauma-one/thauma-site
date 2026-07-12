@@ -1,5 +1,14 @@
 module.exports = function (eleventyConfig) {
   eleventyConfig.setServerOptions({ host: "0.0.0.0" });
+
+  // Content collections (team, future events/resources) are read by data
+  // files, not rendered as standalone pages.
+  eleventyConfig.ignores.add("src/content/**");
+
+  // Render markdown strings from front matter (e.g. team bios)
+  const md = require("markdown-it")({ html: false, linkify: true });
+  eleventyConfig.addFilter("md", (s) => (s ? md.render(String(s)) : ""));
+
   // Static passthroughs
   eleventyConfig.addPassthroughCopy({ "src/css": "css" });
   eleventyConfig.addPassthroughCopy({ "src/js": "js" });

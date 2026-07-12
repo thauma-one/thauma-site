@@ -9,7 +9,8 @@
     "give": "Podrži",
     "contact": "Kontakt",
     "events": "Događaji",
-    "staff": "Tim"
+    "staff": "Tim",
+    "team": "Tim"
   },
   "home": {
     "cue": "θαῦμα · grčki: čudo, divljenje",
@@ -169,5 +170,15 @@
     "line_thin": "Nešto se gradi",
     "line_bold": "u mraku.",
     "text": "Thauma — produkcijska služba za crkve u Hrvatskoj i okolnoj regiji — u pripremi je. Svjetla se uskoro pale."
+  },
+  "team": {
+    "title": "Tim",
+    "cue": "Ljudi",
+    "h2_thin": "Oni koji dolaze prvi",
+    "h2_bold": "i odlaze posljednji.",
+    "base_label": "Baza",
+    "contact": "Kontakt",
+    "back": "Svi članovi tima",
+    "bio_cue": "Biografija"
   }
 }

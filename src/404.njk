@@ -1,0 +1,116 @@
+---
+permalink: /404.html
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>404 · Thauma</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@100;600&family=Inter:wght@200;600&display=swap" rel="stylesheet">
+<link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
+<style>
+  :root{ --bg:#05070B; --blue:#2FD8FF; --foam:#5CF2C4; --dim:#8A96A6; --text:#EDF2F8; }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;overflow:hidden}
+  body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-weight:200}
+
+  .stage{position:fixed;inset:0;touch-action:none;cursor:none}
+
+  /* Header text sits ABOVE the darkness */
+  .head{position:absolute;top:9vh;left:0;right:0;text-align:center;z-index:5;pointer-events:none}
+  .head .num{font-family:'Sora';font-weight:100;font-size:clamp(34px,6vw,60px);letter-spacing:.18em;color:var(--dim)}
+  .head p{margin-top:14px;font-size:13.5px;line-height:1.8;color:var(--dim);letter-spacing:.04em;padding:0 24px}
+  .head p b{font-weight:600;color:var(--text)}
+
+  /* The hidden star (revealed by the light, flares when found) */
+  .star{position:absolute;width:0;height:0;z-index:2}
+  .star i{position:absolute;display:block}
+  .star .v{width:1.5px;height:40px;left:-0.75px;top:-20px;background:linear-gradient(to bottom,rgba(255,255,255,0),#F4FFFF 50%,rgba(255,255,255,0))}
+  .star .h{height:1.5px;width:40px;top:-0.75px;left:-20px;background:linear-gradient(to right,rgba(255,255,255,0),#F4FFFF 50%,rgba(255,255,255,0))}
+  .star .d1,.star .d2{width:1px;height:18px;left:-0.5px;top:-9px;background:linear-gradient(to bottom,rgba(255,255,255,0),rgba(239,255,255,.6) 50%,rgba(255,255,255,0))}
+  .star .d1{transform:rotate(45deg)}.star .d2{transform:rotate(-45deg)}
+  .star .c{width:5px;height:5px;left:-2.5px;top:-2.5px;border-radius:50%;background:#fff;
+    box-shadow:0 0 10px 3px rgba(200,246,255,.9),0 0 30px 10px rgba(47,216,255,.4)}
+
+  /* The darkness: a flashlight hole follows the pointer */
+  .dark{position:absolute;inset:0;z-index:3;pointer-events:none;
+    background:radial-gradient(circle 150px at var(--x,50%) var(--y,120%),
+      rgba(5,7,11,0) 0 90px, rgba(5,7,11,.75) 130px, rgba(5,7,11,.985) 175px)}
+
+  /* Found state */
+  @keyframes flare{0%{transform:scale(1)}45%{transform:scale(2.4)}100%{transform:scale(1.6)}}
+  .found .dark{opacity:0;transition:opacity 1.6s ease}
+  .found .star{animation:flare 1.6s ease forwards}
+  .reveal{position:absolute;left:0;right:0;bottom:14vh;text-align:center;z-index:5;
+    opacity:0;transition:opacity 1.2s ease .8s;pointer-events:none}
+  .found .reveal{opacity:1;pointer-events:auto}
+  .reveal p{font-family:'Sora';font-weight:100;font-size:clamp(20px,4vw,30px);letter-spacing:.04em}
+  .reveal p b{font-weight:600}
+  .reveal a{display:inline-block;margin-top:26px;font-family:'Sora';font-weight:600;font-size:12.5px;
+    letter-spacing:.22em;text-transform:uppercase;color:#06110c;background:var(--foam);
+    padding:15px 36px;border-radius:2px;text-decoration:none;transition:.25s}
+  .reveal a:hover{box-shadow:0 0 26px rgba(92,242,196,.55)}
+  .found .stage{cursor:auto}
+
+  /* Always-available quiet exit (accessibility / impatience) */
+  .exit{position:absolute;bottom:22px;left:0;right:0;text-align:center;z-index:6}
+  .exit a{color:var(--dim);font-size:11px;letter-spacing:.25em;text-transform:uppercase;text-decoration:none}
+  .exit a:hover{color:var(--foam)}
+
+  /* Reduced motion / no-JS: skip the hunt, show everything */
+  @media(prefers-reduced-motion:reduce){
+    .dark{display:none}
+    .reveal{opacity:1;pointer-events:auto}
+    .stage{cursor:auto}
+  }
+  .no-js .dark{display:none}
+  .no-js .reveal{opacity:1;pointer-events:auto}
+</style>
+</head>
+<body class="no-js">
+<div class="stage" id="stage">
+  <div class="head">
+    <div class="num">404</div>
+    <p>This page is still dark — <b>sweep the light and find the star.</b><br>
+    Ova stranica je još u mraku — <b>pronađi zvijezdu.</b></p>
+  </div>
+
+  <span class="star" id="star"><i class="v"></i><i class="h"></i><i class="d1"></i><i class="d2"></i><i class="c"></i></span>
+
+  <div class="dark" id="dark"></div>
+
+  <div class="reveal">
+    <p>Wonder found. <b>Čudo pronađeno.</b></p>
+    <a href="/">thauma.one</a>
+  </div>
+
+  <div class="exit"><a href="/">skip → thauma.one</a></div>
+</div>
+
+<script>
+  document.body.classList.remove('no-js');
+  var stage = document.getElementById('stage');
+  var dark = document.getElementById('dark');
+  var star = document.getElementById('star');
+  var found = false;
+
+  // Hide the star somewhere in the middle band of the screen
+  var sx = (18 + Math.random() * 64) / 100 * window.innerWidth;
+  var sy = (34 + Math.random() * 38) / 100 * window.innerHeight;
+  star.style.left = sx + 'px';
+  star.style.top = sy + 'px';
+
+  function move(x, y) {
+    if (found) return;
+    dark.style.setProperty('--x', x + 'px');
+    dark.style.setProperty('--y', y + 'px');
+    if (Math.hypot(x - sx, y - sy) < 85) {
+      found = true;
+      document.body.classList.add('found');
+    }
+  }
+  stage.addEventListener('pointermove', function (e) { move(e.clientX, e.clientY); });
+  stage.addEventListener('pointerdown', function (e) { move(e.clientX, e.clientY); });
+</script>
+</body>
+</html>

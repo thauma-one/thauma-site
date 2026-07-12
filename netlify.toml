@@ -7,6 +7,23 @@
   path = "/"
   function = "lang-redirect"
 
+# ---- Vanity redirects / short links -------------------------------
+# Pattern for clean outbound links (thauma.one/yt -> YouTube, etc).
+# Uncomment and fill as accounts exist. status 302 = temporary
+# (changeable), force = true makes it win even if a page exists.
+#
+# [[redirects]]
+#   from = "/yt"
+#   to = "https://youtube.com/@thauma"
+#   status = 302
+#   force = true
+#
+# [[redirects]]
+#   from = "/give-now"
+#   to = "https://donorbox.org/thauma"
+#   status = 302
+#   force = true
+
 # Security headers
 [[headers]]
   for = "/*"

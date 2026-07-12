@@ -1,0 +1,27 @@
+---
+layout: layouts/base.njk
+pagination:
+  data: teamPages
+  size: 1
+  alias: member
+---
+{% set lang = member.lang %}
+{% set t = i18n[lang] %}
+<header class="page"><div class="wrap">
+  <div class="cue foam rise">{{ member.role[lang] }}</div>
+  <h2 class="rise-2">{{ member.name }}</h2>
+  <p class="lede rise-3">{{ t.team.base_label }}: {{ member.base }}
+  {% if member.email %} · <a href="mailto:{{ member.email }}" style="color:var(--blue)">{{ t.team.contact }}</a>{% endif %}</p>
+</div></header>
+
+<section><div class="wrap bio-layout">
+  <div class="person-photo bio-photo">
+    {% if member.photo %}<img src="{{ member.photo }}" alt="{{ member.name }}" loading="lazy">
+    {% else %}<span class="person-initial">{{ member.name | first }}</span>{% endif %}
+  </div>
+  <div>
+    <div class="cue">{{ t.team.bio_cue }}</div>
+    <div class="body-text bio-text">{{ member.bio[lang] | md | safe }}</div>
+    <p style="margin-top:40px"><a class="btn ghost" href="/{{ lang }}/team/">{{ t.team.back }}</a></p>
+  </div>
+</div></section>

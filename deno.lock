@@ -11,8 +11,7 @@
   "workspace": {
     "packageJson": {
       "dependencies": [
-        "npm:@11ty/eleventy@3",
-        "npm:netlify-cli@^26.2.0"
+        "npm:@11ty/eleventy@3"
       ]
     }
   }

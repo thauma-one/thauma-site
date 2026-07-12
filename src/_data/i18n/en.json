@@ -9,7 +9,8 @@
     "give": "Give",
     "contact": "Contact",
     "events": "Events",
-    "staff": "Staff"
+    "staff": "Staff",
+    "team": "Team"
   },
   "home": {
     "cue": "θαῦμα · Greek for wonder",
@@ -169,5 +170,15 @@
     "line_thin": "Something is being built",
     "line_bold": "in the dark.",
     "text": "Thauma — a production ministry for the churches of Croatia and the surrounding region — is in development. The lights come up soon."
+  },
+  "team": {
+    "title": "Team",
+    "cue": "The people",
+    "h2_thin": "The ones who go",
+    "h2_bold": "first in, last out.",
+    "base_label": "Based in",
+    "contact": "Contact",
+    "back": "All team members",
+    "bio_cue": "Bio"
   }
 }
