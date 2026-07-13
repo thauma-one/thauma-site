@@ -4,3 +4,6 @@ _site/
 
 # Local Netlify folder
 .netlify
+
+# Local secrets (Blobs access token, etc.) — never committed
+.env

@@ -7,6 +7,14 @@ backend:
   name: git-gateway
   branch: main
 
+# Local-only testing: run `npm run cms-proxy` alongside `npm run dev`, then
+# visit /admin/ from this machine (or over SSH/LAN) — Decap detects the proxy
+# and skips Netlify Identity entirely, committing straight to whatever branch
+# is checked out locally. Has no effect in production (no proxy = ignored),
+# and isn't reachable through the public tunnel (browser looks for the proxy
+# on ITS OWN localhost, not this Pi's) — so it doesn't open remote access.
+local_backend: true
+
 site_url: https://thauma.one
 display_url: https://thauma.one
 

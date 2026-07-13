@@ -11,7 +11,9 @@
   "workspace": {
     "packageJson": {
       "dependencies": [
-        "npm:@11ty/eleventy@3"
+        "npm:@11ty/eleventy@3",
+        "npm:@netlify/blobs@^10.7.9",
+        "npm:decap-server@^3.9.1"
       ]
     }
   }
