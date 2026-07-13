@@ -23,56 +23,114 @@ permalink: /404.html
   {%- if not env.isProduction %}
   /* ---- GAME-SPEC.md Phase 1 (dev-only) ---- */
   .dict-word{cursor:pointer;display:inline-block}
-  @keyframes thauma-idle-pulse{
-    0%,100%{opacity:1;filter:none;transform:none}
-    45%{opacity:.55;filter:blur(.5px);transform:translateX(1px)}
-    55%{opacity:1;filter:none;transform:none}
+  .thauma-char{display:inline-block}
+
+  /* Real glitch: RGB-split text-shadow + chunky jittery steps, not a fade */
+  @keyframes thauma-glitch{
+    0%,100%{transform:translate(0,0);text-shadow:none;filter:none}
+    7%{transform:translate(-4px,2px);text-shadow:3px 0 #ff2d6a,-3px 0 #2FD8FF;filter:brightness(1.3)}
+    14%{transform:translate(3px,-3px);text-shadow:none;filter:contrast(1.5)}
+    21%{transform:translate(-5px,1px);text-shadow:-4px 1px #ff2d6a,4px -1px #5CF2C4}
+    28%{transform:translate(4px,-1px) skewX(3deg);filter:none}
+    35%{transform:translate(-2px,3px);text-shadow:3px 0 #ff2d6a,-3px 0 #2FD8FF;filter:brightness(1.4)}
+    42%{transform:translate(0,0);text-shadow:none}
+    49%{transform:translate(-6px,-2px);text-shadow:-3px 0 #ff2d6a,3px 0 #2FD8FF;filter:contrast(1.6)}
+    56%{transform:translate(5px,2px) skewX(-2deg)}
+    63%{transform:translate(-3px,0);text-shadow:none;filter:none}
+    70%{transform:translate(2px,-2px);text-shadow:2px 1px #ff2d6a,-2px -1px #5CF2C4}
+    100%{transform:translate(0,0);text-shadow:none;filter:none}
   }
-  .dict-word.thauma-pulse{animation:thauma-idle-pulse .4s steps(2)}
+  .thauma-pulse{animation:thauma-glitch .7s steps(1,end)}
+
+  /* Screen-wide glitch burst for the trail/warming effects and death moment */
+  @keyframes thauma-screen-glitch{
+    0%,100%{filter:none;transform:translate(0,0)}
+    10%{filter:invert(.12) hue-rotate(200deg);transform:translate(-6px,0)}
+    20%{filter:contrast(1.8) brightness(1.3);transform:translate(5px,0)}
+    30%{filter:none;transform:translate(-4px,0)}
+    40%{filter:hue-rotate(60deg) saturate(2);transform:translate(6px,0)}
+    50%{filter:invert(.08);transform:translate(-3px,0)}
+    60%{filter:none;transform:translate(4px,0)}
+    70%{filter:contrast(1.5);transform:translate(-5px,0)}
+    85%{filter:none;transform:translate(0,0)}
+  }
+  html.thauma-screen-glitch{animation:thauma-screen-glitch .4s steps(1,end)}
+
+  #thauma-scanlines{position:fixed;inset:0;z-index:9998;pointer-events:none;opacity:0;
+    background:repeating-linear-gradient(0deg,rgba(255,255,255,.09) 0 1px,transparent 1px 3px),
+      repeating-linear-gradient(90deg,rgba(47,216,255,.06) 0 2px,transparent 2px 5px)}
+  #thauma-scanlines.show{opacity:1}
 
   #thauma-game{position:fixed;inset:0;z-index:50;display:none;background:#0B0F15}
   #thauma-game.open{display:block}
   #thauma-game canvas{position:absolute;inset:0;width:100%;height:100%}
-  .thauma-hud{position:absolute;top:0;left:0;right:0;padding:22px 24px;display:flex;
+  #thauma-game.shake{animation:thauma-shake .35s steps(1,end)}
+  @keyframes thauma-shake{
+    0%,100%{transform:translate(0,0)}
+    20%{transform:translate(-10px,6px)}
+    40%{transform:translate(8px,-8px)}
+    60%{transform:translate(-6px,-4px)}
+    80%{transform:translate(10px,3px)}
+  }
+
+  .thauma-hud{position:absolute;top:12px;left:0;right:0;padding:22px 24px;display:flex;
     justify-content:space-between;align-items:flex-start;font-family:'Sora',sans-serif;
     pointer-events:none;z-index:2}
   .thauma-hud .signal{font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim)}
-  .thauma-hud .signal b{color:var(--text);font-weight:600;font-size:16px;margin-left:8px}
-  .thauma-track{position:absolute;top:0;left:0;right:0;height:2px;background:rgba(255,255,255,.08);z-index:2}
-  .thauma-track i{position:absolute;left:0;top:-1px;height:4px;background:linear-gradient(90deg,var(--blue),var(--blue-hi));
+  .thauma-hud .signal b{color:var(--text);font-weight:600;font-size:20px;margin-left:8px}
+  .thauma-track{position:absolute;top:0;left:0;right:0;height:6px;background:rgba(255,255,255,.1);z-index:2}
+  .thauma-track i{position:absolute;left:0;top:0;height:100%;background:linear-gradient(90deg,var(--blue),var(--blue-hi));
     box-shadow:var(--blue-glow);transition:width .1s linear}
-  .thauma-tick{position:absolute;top:-3px;width:2px;height:8px;background:rgba(237,242,248,.35)}
-  .thauma-tick.summit{width:3px;height:10px;top:-4px;background:var(--foam);box-shadow:var(--foam-glow)}
+  .thauma-tick{position:absolute;top:-5px;width:4px;height:16px;background:var(--dim);border-radius:1px}
+  .thauma-tick.summit{width:6px;height:22px;top:-8px;background:var(--foam);box-shadow:var(--foam-glow)}
 
-  #thauma-fail{position:absolute;inset:0;z-index:3;display:none;align-items:center;justify-content:center;
-    text-align:center;background:rgba(11,15,21,.72);backdrop-filter:blur(2px)}
-  #thauma-fail.show{display:flex}
-  #thauma-fail .panel{max-width:440px;padding:0 24px}
-  #thauma-fail .taunt{font-family:'Sora';font-weight:200;font-size:clamp(20px,3.6vw,28px);margin-bottom:18px}
-  #thauma-fail .stats{color:var(--dim);font-size:13px;letter-spacing:.08em;margin-bottom:30px}
-  #thauma-fail .stats b{color:var(--foam)}
+  .thauma-overlay{position:absolute;inset:0;z-index:3;display:none;align-items:center;justify-content:center;
+    text-align:center;background:rgba(11,15,21,.82);backdrop-filter:blur(3px)}
+  .thauma-overlay.show{display:flex}
+  .thauma-overlay .panel{max-width:460px;padding:0 24px}
+  .thauma-overlay .taunt{font-family:'Sora';font-weight:200;font-size:clamp(20px,3.6vw,28px);margin-bottom:18px}
+  .thauma-overlay .stats{color:var(--dim);font-size:13px;letter-spacing:.08em;margin-bottom:30px;line-height:2}
+  .thauma-overlay .stats b{color:var(--foam)}
+  .thauma-overlay .home-word{font-family:'Sora';font-weight:100;font-size:clamp(50px,9vw,100px);
+    letter-spacing:.06em;margin-bottom:8px;text-shadow:0 0 50px rgba(47,216,255,.25)}
+  .thauma-overlay .home-tag{color:var(--dim);font-size:13px;letter-spacing:.1em;margin-bottom:30px}
 
-  .thauma-collapsing [data-lang-block]:not([hidden]) *{transition:none}
-  @keyframes thauma-tumble{
-    0%{transform:none;opacity:1;filter:none}
-    40%{transform:translateY(6px) rotate(-1deg);filter:blur(.4px)}
-    70%{opacity:.4;filter:blur(1.5px) brightness(1.6)}
-    100%{opacity:0;transform:translateY(30px) rotate(2deg);filter:blur(3px)}
+  /* Per-character scatter — each char gets its own JS-set --dx/--dy/--rot */
+  @keyframes thauma-char-fall{
+    0%{transform:translate(0,0) rotate(0deg);opacity:1;filter:none}
+    30%{text-shadow:3px 0 #ff2d6a,-3px 0 #2FD8FF}
+    100%{transform:translate(var(--dx,0),var(--dy,60px)) rotate(var(--rot,10deg));opacity:0;filter:blur(2px)}
   }
-  .thauma-collapsing [data-lang-block]:not([hidden]) > *{animation:thauma-tumble .55s ease forwards}
+  .thauma-collapsing .thauma-char{animation:thauma-char-fall 1.1s cubic-bezier(.4,.6,.3,1) forwards}
+  .thauma-collapsing .thauma-char:nth-child(1){animation-delay:0s}
+  .thauma-collapsing .thauma-char:nth-child(2){animation-delay:.08s}
+  .thauma-collapsing .thauma-char:nth-child(3){animation-delay:.16s}
+
+  /* Everything else on the page shatters too, each with its own trajectory */
+  @keyframes thauma-shatter{
+    0%{transform:translate(0,0) rotate(0deg);opacity:1}
+    100%{transform:translate(var(--dx,0),var(--dy,40px)) rotate(var(--rot,6deg));opacity:0;filter:blur(3px)}
+  }
+  .thauma-collapsing .thauma-shatter-piece{animation:thauma-shatter 1.3s ease-in forwards}
+
   #thauma-err{position:fixed;left:50%;top:48%;transform:translate(-50%,-50%);z-index:60;
-    font-family:ui-monospace,monospace;font-size:12px;letter-spacing:.08em;color:var(--foam);
-    opacity:0;pointer-events:none}
-  .thauma-collapsing #thauma-err{animation:thauma-err-flash .55s ease forwards .15s}
+    font-family:ui-monospace,monospace;font-size:13px;letter-spacing:.08em;color:var(--foam);
+    opacity:0;pointer-events:none;text-align:center}
+  .thauma-collapsing #thauma-err{animation:thauma-err-flash 1.8s steps(1,end) forwards .3s}
   @keyframes thauma-err-flash{
     0%,100%{opacity:0}
-    30%,60%{opacity:1}
-    45%{opacity:.2}
+    15%,20%{opacity:1}
+    25%{opacity:.15}
+    35%,45%{opacity:1}
+    55%{opacity:.1}
+    65%,80%{opacity:1}
   }
 
   @media(prefers-reduced-motion:reduce){
-    .dict-word.thauma-pulse{animation:none}
-    .thauma-collapsing [data-lang-block]:not([hidden]) > *{animation:none;opacity:0}
+    .thauma-pulse{animation:none}
+    html.thauma-screen-glitch{animation:none}
+    #thauma-game.shake{animation:none}
+    .thauma-collapsing .thauma-char,.thauma-collapsing .thauma-shatter-piece{animation:none;opacity:0}
     .thauma-collapsing #thauma-err{animation:none;opacity:0}
   }
   {%- endif %}
@@ -132,6 +190,7 @@ permalink: /404.html
 
 {%- if not env.isProduction %}
 <div id="thauma-err">ERR: PAGE_INTEGRITY_LOST</div>
+<div id="thauma-scanlines"></div>
 
 <div id="thauma-game">
   <canvas id="thauma-canvas"></canvas>
@@ -140,13 +199,28 @@ permalink: /404.html
     <div class="signal"><span id="thauma-signal-label">SIGNAL</span><b id="thauma-signal">0</b></div>
     <div class="signal"><span id="thauma-best-label">Best</span><b id="thauma-best">0</b></div>
   </div>
-  <div id="thauma-fail">
+
+  <div class="thauma-overlay" id="thauma-home">
+    <div class="panel">
+      <div class="home-word" id="thauma-home-word">404</div>
+      <p class="home-tag" id="thauma-home-tag">still lost.</p>
+      <p class="stats" id="thauma-home-stats"></p>
+      <p class="btn-row center">
+        <button class="btn solid" id="thauma-play">Play</button>
+      </p>
+      <p class="btn-row center" style="margin-top:14px">
+        <a class="btn ghost" href="/" id="thauma-home-exit">Go back to Thauma</a>
+      </p>
+    </div>
+  </div>
+
+  <div class="thauma-overlay" id="thauma-fail">
     <div class="panel">
       <p class="taunt" id="thauma-taunt">Page not found.</p>
       <p class="stats" id="thauma-stats"></p>
       <p class="btn-row center">
         <button class="btn solid" id="thauma-retry">Retry</button>
-        <a class="btn ghost" href="/" id="thauma-exit">Home</a>
+        <button class="btn ghost" id="thauma-fail-home">Home</button>
       </p>
     </div>
   </div>
@@ -180,14 +254,19 @@ permalink: /404.html
 <script>
 (function () {
   var LANG_DATA = {
-    en: { taunts: {{ i18n.en.notFound.taunts | dump | safe }}, signal: {{ i18n.en.notFound.signal_label | dump | safe }}, best: {{ i18n.en.notFound.best_label | dump | safe }}, newBest: {{ i18n.en.notFound.new_best | dump | safe }} },
-    hr: { taunts: {{ i18n.hr.notFound.taunts | dump | safe }}, signal: {{ i18n.hr.notFound.signal_label | dump | safe }}, best: {{ i18n.hr.notFound.best_label | dump | safe }}, newBest: {{ i18n.hr.notFound.new_best | dump | safe }} }
+    en: { taunts: {{ i18n.en.notFound.taunts | dump | safe }}, signal: {{ i18n.en.notFound.signal_label | dump | safe }}, best: {{ i18n.en.notFound.best_label | dump | safe }}, newBest: {{ i18n.en.notFound.new_best | dump | safe }}, homeTag: {{ i18n.en.notFound.home_tag | dump | safe }}, dictWord: {{ i18n.en.notFound.dict_word | dump | safe }} },
+    hr: { taunts: {{ i18n.hr.notFound.taunts | dump | safe }}, signal: {{ i18n.hr.notFound.signal_label | dump | safe }}, best: {{ i18n.hr.notFound.best_label | dump | safe }}, newBest: {{ i18n.hr.notFound.new_best | dump | safe }}, homeTag: {{ i18n.hr.notFound.home_tag | dump | safe }}, dictWord: {{ i18n.hr.notFound.dict_word | dump | safe }} }
   };
 
   var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var gameEl = document.getElementById('thauma-game');
   var canvas = document.getElementById('thauma-canvas');
   var ctx = canvas.getContext('2d');
+  var homeEl = document.getElementById('thauma-home');
+  var homeWordEl = document.getElementById('thauma-home-word');
+  var homeTagEl = document.getElementById('thauma-home-tag');
+  var homeStatsEl = document.getElementById('thauma-home-stats');
+  var homeExitEl = document.getElementById('thauma-home-exit');
   var failEl = document.getElementById('thauma-fail');
   var tauntEl = document.getElementById('thauma-taunt');
   var statsEl = document.getElementById('thauma-stats');
@@ -197,6 +276,8 @@ permalink: /404.html
   var bestLabelEl = document.getElementById('thauma-best-label');
   var progressEl = document.getElementById('thauma-progress');
   var trackEl = document.getElementById('thauma-track');
+  var scanlinesEl = document.getElementById('thauma-scanlines');
+  var errEl = document.getElementById('thauma-err');
 
   function currentLang() { return document.documentElement.lang === 'hr' ? 'hr' : 'en'; }
   function copy() { return LANG_DATA[currentLang()]; }
@@ -212,6 +293,11 @@ permalink: /404.html
   var attempts = readNum('thauma_attempts', 0);
   var bestSignal = readNum('thauma_best', 0);
   var recentDeaths = readArr('thauma_recent_deaths');
+
+  function statsLine() {
+    var deaths = recentDeaths.length ? recentDeaths.join(', ') : '—';
+    return copy().best + ': <b>' + bestSignal + '</b> &nbsp;·&nbsp; ' + copy().signal + ': ' + deaths;
+  }
 
   // ---- Door 4: the "404" numeral ----
   document.querySelectorAll('.dict-word').forEach(function (el) {
@@ -235,27 +321,95 @@ permalink: /404.html
   checkHash();
   window.addEventListener('hashchange', checkHash);
 
-  // ---- Begin: theater (unless reduced motion) then gameplay ----
+  // ---- Screen-wide glitch punch, reusable for the collapse start + death ----
+  function screenGlitch() {
+    if (reducedMotion) return;
+    document.documentElement.classList.remove('thauma-screen-glitch');
+    void document.documentElement.offsetWidth;
+    document.documentElement.classList.add('thauma-screen-glitch');
+    scanlinesEl.classList.add('show');
+    setTimeout(function () { scanlinesEl.classList.remove('show'); }, 260);
+  }
+
+  // ---- Splits an element's text into per-character spans that scatter
+  // independently (each gets its own --dx/--dy/--rot), instead of the
+  // whole block fading as one uniform piece. ----
+  function splitAndScatter(el) {
+    var text = el.textContent;
+    el.innerHTML = '';
+    var n = text.length;
+    text.split('').forEach(function (ch, i) {
+      var span = document.createElement('span');
+      span.className = 'thauma-char';
+      span.textContent = ch;
+      var t = n > 1 ? i / (n - 1) : 0.5;
+      var dx = -90 + t * 190 + (Math.random() * 30 - 15);
+      var dy = 55 + Math.random() * 70;
+      var rot = -25 + t * 55 + (Math.random() * 16 - 8);
+      span.style.setProperty('--dx', dx.toFixed(0) + 'px');
+      span.style.setProperty('--dy', dy.toFixed(0) + 'px');
+      span.style.setProperty('--rot', rot.toFixed(0) + 'deg');
+      el.appendChild(span);
+    });
+  }
+
+  function shatterPiece(el) {
+    el.classList.add('thauma-shatter-piece');
+    var dx = (Math.random() * 260 - 130).toFixed(0) + 'px';
+    var dy = (30 + Math.random() * 90).toFixed(0) + 'px';
+    var rot = (Math.random() * 40 - 20).toFixed(0) + 'deg';
+    el.style.setProperty('--dx', dx);
+    el.style.setProperty('--dy', dy);
+    el.style.setProperty('--rot', rot);
+    el.style.animationDelay = (Math.random() * 0.3).toFixed(2) + 's';
+  }
+
+  // ---- Begin: choreographed collapse (unless reduced motion), then the
+  // game's own home screen — never straight into a run. ----
   var began = false;
   function beginGame() {
     if (began) return;
     began = true;
-    if (reducedMotion) { openGameView(); return; }
+    if (reducedMotion) { openGameHome(); return; }
+
+    screenGlitch();
+
+    document.querySelectorAll('[data-lang-block]:not([hidden])').forEach(function (block) {
+      var word = block.querySelector('.dict-word');
+      if (word) splitAndScatter(word);
+      var pieces = block.querySelectorAll('.cue, .dict-ipa, .dict-defs p, .lede, .btn-row, .logo, .links, .nav-actions, .foot-col');
+      pieces.forEach(shatterPiece);
+    });
+
     document.body.classList.add('thauma-collapsing');
-    setTimeout(openGameView, 650);
+    setTimeout(function () { screenGlitch(); }, 900); // a second jolt partway through
+    setTimeout(openGameHome, 2100);
   }
 
-  function openGameView() {
+  // ---- The game's own home screen: stats, Play, and its own way back ----
+  function openGameHome() {
     document.body.classList.remove('thauma-collapsing');
     gameEl.classList.add('open');
-    signalLabelEl.textContent = copy().signal;
-    bestLabelEl.textContent = copy().best;
-    bestEl.textContent = bestSignal;
+    homeEl.classList.add('show');
+    failEl.classList.remove('show');
+    homeWordEl.textContent = copy().dictWord || '404';
+    homeTagEl.textContent = copy().homeTag;
+    homeStatsEl.innerHTML = statsLine();
+    homeExitEl.href = '/' + currentLang() + '/';
     resizeCanvas();
-    resetRun();
-    running = true;
-    requestAnimationFrame(loop);
+    updateTrackDom();
   }
+
+  document.getElementById('thauma-play').addEventListener('click', function () {
+    homeEl.classList.remove('show');
+    startRun();
+  });
+  document.getElementById('thauma-fail-home').addEventListener('click', function () {
+    running = false;
+    failEl.classList.remove('show');
+    openGameHome();
+  });
+  document.getElementById('thauma-retry').addEventListener('click', startRun);
 
   window.addEventListener('resize', resizeCanvas);
   function resizeCanvas() {
@@ -264,19 +418,25 @@ permalink: /404.html
   }
 
   // ---- Flappy Light (placeholder mechanic, §7) ----
-  var W, H, orb, columns, running, signal, speed, bestBeaten;
-  var GRAVITY = 0.35, FLAP = -6.6, COLUMN_W = 54, GAP_H = 190, ORB_R = 10;
+  // Tuned looser than the first pass: less gravity, a stronger flap, and
+  // wider/more-spaced gaps, after the original felt too punishing to
+  // actually play (verified structurally the first time, not by feel).
+  var W, H, orb, columns, running, signal, speed, bestBeaten, trail;
+  var GRAVITY = 0.22, FLAP = -7.8, COLUMN_W = 54, GAP_H = 260, ORB_R = 10, COLUMN_GAP = 420;
 
-  function resetRun() {
+  function startRun() {
     W = canvas.width; H = canvas.height;
     orb = { x: Math.max(90, W * 0.22), y: H / 2, vy: 0 };
     columns = [];
+    trail = [];
     signal = 0;
-    speed = 2.4;
+    speed = 2.0;
     bestBeaten = false;
     failEl.classList.remove('show');
     signalEl.textContent = 0;
     spawnColumn(W + 60);
+    running = true;
+    requestAnimationFrame(loop);
   }
 
   function spawnColumn(x) {
@@ -306,11 +466,12 @@ permalink: /404.html
 
   function updateTrackDom() {
     var max = trackMax();
-    progressEl.style.width = Math.min(100, (signal / max) * 100) + '%';
+    progressEl.style.width = Math.min(100, ((signal || 0) / max) * 100) + '%';
     trackEl.querySelectorAll('.thauma-tick').forEach(function (t) { t.remove(); });
     if (bestSignal > 0) {
       var s = document.createElement('span');
       s.className = 'thauma-tick summit';
+      s.title = copy().best + ': ' + bestSignal;
       s.style.left = Math.min(100, (bestSignal / max) * 100) + '%';
       trackEl.appendChild(s);
     }
@@ -325,6 +486,8 @@ permalink: /404.html
   function update() {
     orb.vy += GRAVITY;
     orb.y += orb.vy;
+    trail.push({ x: orb.x, y: orb.y });
+    if (trail.length > 14) trail.shift();
 
     for (var i = columns.length - 1; i >= 0; i--) {
       columns[i].x -= speed;
@@ -339,8 +502,8 @@ permalink: /404.html
       }
       if (columns[i].x < -COLUMN_W - 60) columns.splice(i, 1);
     }
-    if (!columns.length || columns[columns.length - 1].x < W - 300) spawnColumn(W + 40);
-    speed = 2.4 + Math.min(2.6, signal / 380);
+    if (!columns.length || columns[columns.length - 1].x < W - COLUMN_GAP) spawnColumn(W + 40);
+    speed = 2.0 + Math.min(2.4, signal / 420);
 
     if (orb.y - ORB_R < 0 || orb.y + ORB_R > H) { die(); return false; }
     for (var j = 0; j < columns.length; j++) {
@@ -363,10 +526,16 @@ permalink: /404.html
       ctx.fillRect(c.x, 0, COLUMN_W, top);
       ctx.fillRect(c.x, bottom, COLUMN_W, H - bottom);
     });
+    trail.forEach(function (p, i) {
+      ctx.beginPath();
+      ctx.fillStyle = 'rgba(92,242,196,' + (0.05 + (i / trail.length) * 0.25) + ')';
+      ctx.arc(p.x, p.y, ORB_R * (0.3 + (i / trail.length) * 0.5), 0, Math.PI * 2);
+      ctx.fill();
+    });
     ctx.beginPath();
     ctx.fillStyle = '#EDF2F8';
     ctx.shadowColor = '#2FD8FF';
-    ctx.shadowBlur = 18;
+    ctx.shadowBlur = 20;
     ctx.arc(orb.x, orb.y, ORB_R, 0, Math.PI * 2);
     ctx.fill();
     ctx.shadowBlur = 0;
@@ -394,6 +563,10 @@ permalink: /404.html
       localStorage.setItem('thauma_best', bestSignal);
     }
     updateTrackDom();
+    screenGlitch();
+    gameEl.classList.remove('shake');
+    void gameEl.offsetWidth;
+    gameEl.classList.add('shake');
 
     var taunts = copy().taunts;
     var idx = Math.min(attempts, taunts.length) - 1;
@@ -401,12 +574,6 @@ permalink: /404.html
     statsEl.innerHTML = copy().signal + ': <b>' + signal + '</b> &nbsp;·&nbsp; ' + copy().best + ': <b>' + bestSignal + '</b>';
     failEl.classList.add('show');
   }
-
-  document.getElementById('thauma-retry').addEventListener('click', function () {
-    resetRun();
-    running = true;
-    requestAnimationFrame(loop);
-  });
 })();
 </script>
 {%- endif %}

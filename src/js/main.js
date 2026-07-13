@@ -71,12 +71,50 @@ if (window.THAUMA_ENV && !window.THAUMA_ENV.isProduction) {
       return tag === 'INPUT' || tag === 'TEXTAREA' || (el && el.isContentEditable);
     }
 
-    // ---- Trail effects: generic, page-agnostic, no new CSS needed ----
-    function flashPixel() {
+    // ---- Trail effects: real glitch look (RGB-split, filter jitter, scan-
+    // lines), not a subtle fade — injected once since main.js has no static
+    // CSS file of its own at runtime. ----
+    var glitchStyleTag = document.createElement('style');
+    glitchStyleTag.textContent =
+      '@keyframes thauma-trail-glitch{' +
+      '0%,100%{filter:none;transform:translate(0,0)}' +
+      '15%{filter:invert(.18) hue-rotate(180deg);transform:translate(-6px,0)}' +
+      '30%{filter:contrast(1.9) brightness(1.35);transform:translate(5px,0)}' +
+      '45%{filter:none;transform:translate(-4px,0)}' +
+      '60%{filter:hue-rotate(90deg) saturate(2.2);transform:translate(6px,0)}' +
+      '75%{filter:invert(.12);transform:translate(-3px,0)}' +
+      '90%{filter:none;transform:translate(0,0)}}' +
+      '.thauma-trail-glitch-active{animation:thauma-trail-glitch .4s steps(1,end)}' +
+      '@keyframes thauma-trail-shake{0%,100%{transform:translate(0,0)}' +
+      '25%{transform:translate(-4px,3px)}50%{transform:translate(3px,-4px)}75%{transform:translate(-3px,-2px)}}' +
+      '.thauma-trail-shake-active{animation:thauma-trail-shake .14s steps(1,end) 3}';
+    document.head.appendChild(glitchStyleTag);
+
+    function glitchFlash() {
+      var html = document.documentElement;
+      html.classList.remove('thauma-trail-glitch-active');
+      void html.offsetWidth;
+      html.classList.add('thauma-trail-glitch-active');
+    }
+
+    function shakeBurst() {
+      var html = document.documentElement;
+      html.classList.remove('thauma-trail-shake-active');
+      void html.offsetWidth;
+      html.classList.add('thauma-trail-shake-active');
+    }
+
+    function scanlineBurst() {
       var el = document.createElement('div');
-      el.style.cssText = 'position:fixed;width:2px;height:2px;background:#EDF2F8;opacity:.85;z-index:9999;pointer-events:none;left:' + (Math.random() * 100) + 'vw;top:' + (Math.random() * 100) + 'vh;';
+      el.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:99999;opacity:.92;' +
+        'background:repeating-linear-gradient(0deg,rgba(255,255,255,.14) 0 2px,transparent 2px 4px),' +
+        'repeating-linear-gradient(90deg,rgba(47,216,255,.09) 0 3px,transparent 3px 7px)';
       document.body.appendChild(el);
-      setTimeout(function () { el.remove(); }, 120);
+      setTimeout(function () { el.remove(); }, 220);
+    }
+
+    function flashPixel() {
+      glitchFlash();
     }
 
     function flashWhisper() {
@@ -85,36 +123,35 @@ if (window.THAUMA_ENV && !window.THAUMA_ENV.isProduction) {
       var phrase = phrases[Math.floor(Math.random() * phrases.length)];
       var el = document.createElement('div');
       el.textContent = phrase;
-      el.style.cssText = 'position:fixed;left:50%;top:40%;transform:translate(-50%,-50%);color:rgba(237,242,248,.1);font-family:Sora,sans-serif;font-weight:100;font-size:clamp(20px,4vw,40px);letter-spacing:.06em;z-index:9998;pointer-events:none;white-space:nowrap;text-align:center;opacity:0;transition:opacity .5s ease';
+      el.style.cssText = 'position:fixed;left:50%;top:40%;transform:translate(-50%,-50%);' +
+        'color:rgba(237,242,248,.92);font-family:Sora,sans-serif;font-weight:200;' +
+        'font-size:clamp(24px,5vw,46px);letter-spacing:.05em;z-index:99998;pointer-events:none;' +
+        'white-space:nowrap;text-align:center;text-shadow:3px 0 rgba(255,45,106,.85),-3px 0 rgba(47,216,255,.85);' +
+        'opacity:0;transition:opacity .08s ease';
       document.body.appendChild(el);
       requestAnimationFrame(function () { el.style.opacity = '1'; });
-      setTimeout(function () { el.style.opacity = '0'; setTimeout(function () { el.remove(); }, 500); }, 650);
+      setTimeout(function () { el.style.opacity = '0'; setTimeout(function () { el.remove(); }, 150); }, 380);
+      glitchFlash();
+      scanlineBurst();
     }
 
     function glowPulse() {
-      var el = document.createElement('div');
-      el.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:9997;box-shadow:inset 0 0 70px rgba(92,242,196,.3);opacity:0;transition:opacity .2s ease';
-      document.body.appendChild(el);
-      requestAnimationFrame(function () { el.style.opacity = '1'; });
-      setTimeout(function () { el.style.opacity = '0'; setTimeout(function () { el.remove(); }, 200); }, 160);
-      document.documentElement.style.transition = 'transform .07s ease';
-      document.documentElement.style.transform = 'translateX(1px)';
-      setTimeout(function () { document.documentElement.style.transform = ''; }, 80);
+      glitchFlash();
+      shakeBurst();
+      scanlineBurst();
     }
 
     function dimPage() {
-      var el = document.createElement('div');
-      el.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:9996;background:rgba(0,0,0,.16);opacity:0;transition:opacity .5s ease';
-      document.body.appendChild(el);
-      requestAnimationFrame(function () { el.style.opacity = '1'; });
-      setTimeout(function () { el.style.opacity = '0'; setTimeout(function () { el.remove(); }, 500); }, 900);
+      glitchFlash();
+      shakeBurst();
+      scanlineBurst();
+      setTimeout(scanlineBurst, 180);
     }
 
     function staticPop() {
-      var el = document.createElement('div');
-      el.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:9999;background:repeating-linear-gradient(0deg,rgba(255,255,255,.07) 0 1px,transparent 1px 2px);opacity:.85';
-      document.body.appendChild(el);
-      setTimeout(function () { el.remove(); }, 90);
+      scanlineBurst();
+      glitchFlash();
+      shakeBurst();
     }
 
     // Back-loaded escalation: a ratio of sequence progress maps to a tier.

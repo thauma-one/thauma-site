@@ -142,6 +142,21 @@ layout shift); pure CSS/canvas, no assets.
 letters lose grip and tumble with physics, text flickers like a dying
 fixture, a tiny monospace `ERR: PAGE_INTEGRITY_LOST` appears. Optional:
 one UI fragment remains and becomes the first obstacle.
+**RESOLVED (2026-07-13), post-playtest revision:** the first build of
+this was too fast (~650ms, one uniform fade) and led straight into
+gameplay — both wrong. Now: ~2.1s, two screen-wide glitch punches
+(open + midway), and every element gets its OWN scatter trajectory
+rather than fading as one block — the "404" numeral splits into
+individual characters (first char left, last char right, per a
+specific "someone let go and the pieces scattered independently"
+note), everything else (nav, cue, ipa, definition, lede, button,
+footer) gets randomized dx/dy/rotation too. **The theater no longer
+leads into a run directly — it leads to a new home-screen state**
+(best score, last 3 deaths, a Play button, and its own "Go back to
+Thauma" button) that didn't exist in the original design. The death
+screen's Home button also returns here now, not to real-site nav or
+the static 404 look — round-tripping through the menu is the norm,
+not a one-way trip out.
 
 **Losing:** glitch burst; the 404 reassembles itself out of the game's
 debris — fragments fly back into letterforms. Retry copy escalates
@@ -338,6 +353,30 @@ ambiguous before building."
 
 ## 10. Revision log
 
+- 2026-07-13 — **Phase 1 playtest revision.** First-hand feedback
+  after the initial build: the trail/idle-pulse effects were too
+  subtle to actually notice, the collapse was too fast and went
+  straight into a run, physics were too punishing (gravity too
+  strong relative to the flap impulse, gaps too narrow/frequent),
+  the death-marker track was too small to read, and Home-on-death
+  went to real-site nav instead of somewhere game-specific. Fixed:
+  real glitch effects everywhere (RGB-split text-shadow, filter
+  jitter, scanline bursts — `main.js`'s trail functions and the
+  numeral's idle pulse both rebuilt on this); collapse slowed to
+  ~2.1s with independent per-character/per-element scatter (see §4);
+  a new game home-screen state added between theater and gameplay,
+  and as the Home button's destination, with its own "Go back to
+  Thauma" exit; physics retuned (gravity 0.35→0.22, flap -6.6→-7.8,
+  gap 190→260px, column spacing 340→460px — verified numerically:
+  peak rise per flap went from 62px into a 190px gap to 138px into a
+  260px gap) and confirmed to actually score points under a
+  physics-matched autopilot in the jsdom harness, not just avoid
+  crashing; death-marker track thickened (2px→6px bar, 2-3px→4-6px
+  ticks) and best/recent-deaths now also shown as text on the home
+  screen; added an orb particle trail and a death-moment screen
+  shake. Re-verified the full flow (theater → home screen → play →
+  death → home → play again) and doors 1-3 on a real page, both
+  error-free, before and after the changes.
 - 2026-07-13 — **Phase 1 built.** STATUS moved to PHASE 1 SHIPPED
   (dev-only). Taunts expanded from 4 sample tiers to 32 full lines per
   language (`i18n.*.notFound.taunts`, now the source of truth, spec
