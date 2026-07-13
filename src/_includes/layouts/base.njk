@@ -81,6 +81,10 @@
   </div>
 </div></footer>
 
+<script>window.THAUMA_ENV = { isProduction: {{ env.isProduction | dump | safe }} };</script>
+{%- if not env.isProduction %}
+<script>window.THAUMA_TAUNTS = { en: {{ i18n.en.notFound.taunts | dump | safe }}, hr: {{ i18n.hr.notFound.taunts | dump | safe }} };</script>
+{%- endif %}
 <script src="/js/main.js"></script>
 </body>
 </html>
