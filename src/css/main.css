@@ -20,7 +20,15 @@
   --foam-glow:0 0 26px rgba(92,242,196,.35);
 }
 *{margin:0;padding:0;box-sizing:border-box}
-html{scroll-behavior:smooth}
+html{scroll-behavior:smooth;scrollbar-width:thin;scrollbar-color:var(--blue) var(--bg2)}
+
+/* ---------- Scrollbar (WebKit/Blink) ---------- */
+::-webkit-scrollbar{width:11px;height:11px}
+::-webkit-scrollbar-track{background:var(--bg2)}
+::-webkit-scrollbar-thumb{background:linear-gradient(180deg,var(--blue),var(--foam));
+  border-radius:7px;border:2px solid var(--bg2);background-clip:padding-box}
+::-webkit-scrollbar-thumb:hover{background:linear-gradient(180deg,var(--blue-hi),var(--foam-hi));background-clip:padding-box}
+::-webkit-scrollbar-corner{background:var(--bg2)}
 body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-weight:300;
   min-height:100vh;display:flex;flex-direction:column;
   background-image:

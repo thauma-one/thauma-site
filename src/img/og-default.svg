@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <radialGradient id="blueGlow" cx="82%" cy="-10%" r="70%">
+      <stop offset="0%" stop-color="#2FD8FF" stop-opacity="0.22"/>
+      <stop offset="60%" stop-color="#2FD8FF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="foamGlow" cx="4%" cy="112%" r="70%">
+      <stop offset="0%" stop-color="#5CF2C4" stop-opacity="0.16"/>
+      <stop offset="60%" stop-color="#5CF2C4" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="#0B0F15"/>
+  <rect width="1200" height="630" fill="url(#blueGlow)"/>
+  <rect width="1200" height="630" fill="url(#foamGlow)"/>
+
+  <text x="120" y="345" font-family="Sora" font-weight="100" font-size="120"
+        letter-spacing="16.8" fill="#EDF2F8">THAUMA</text>
+</svg>

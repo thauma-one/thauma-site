@@ -1,20 +1,32 @@
 {% set t = i18n[lang] %}
+{% set pageName = title or (t[pageTitle].title if pageTitle else t.home.title) %}
+{% set fullTitle = "Thauma | " ~ pageName %}
+{% set shareImage = site.url ~ "/img/og-default.png" %}
 
 <!DOCTYPE html>
 <html lang="{{ lang }}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{% if pageTitle %}{{ t[pageTitle].title }} · {% endif %}Thauma</title>
+<title>{{ fullTitle }}</title>
 <meta name="description" content="{{ t.home.sub }}">
 {%- for l in site.languages %}{% if l != lang %}
 <link rel="alternate" hreflang="{{ l }}" href="{{ site.url }}{{ page.url | langSwap(l) }}">{% endif %}{% endfor %}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@100;200;300;600;800&family=Inter:wght@200;300;400;600&display=swap" rel="stylesheet">
 <link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
-<meta property="og:title" content="Thauma">
+<meta property="og:type" content="website">
+<meta property="og:title" content="{{ fullTitle }}">
 <meta property="og:description" content="{{ t.home.sub }}">
 <meta property="og:url" content="{{ site.url }}{{ page.url }}">
+<meta property="og:image" content="{{ shareImage }}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Thauma">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{ fullTitle }}">
+<meta name="twitter:description" content="{{ t.home.sub }}">
+<meta name="twitter:image" content="{{ shareImage }}">
 <link rel="stylesheet" href="/css/main.css">
 </head>
 <body>
