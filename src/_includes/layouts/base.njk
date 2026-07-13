@@ -48,19 +48,26 @@
   <a href="/{{ lang }}/give/">{{ t.nav.give }}</a>
 </div>
 
+<main>
 {{ content | safe }}
+</main>
 
-<footer class="wrap">
-  <div>{{ t.footer.legal }}</div>
-  <div class="foot-tag">{{ t.footer.tagline }}</div>
-  <div class="foot-right">
+<footer><div class="wrap foot-in">
+  <div class="foot-col">
+    <div class="foot-tag">{{ t.footer.tagline }}</div>
+    <div class="foot-legal">{{ t.footer.legal }}</div>
+  </div>
+  <div class="foot-col foot-right">
+    {%- set hasSocials = site.socials.youtube or site.socials.instagram or site.socials.facebook or site.socials.x %}
+    {%- if hasSocials %}<div class="foot-socials">
     {%- if site.socials.youtube %}<a href="{{ site.socials.youtube }}" aria-label="YouTube" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M23 7.2s-.2-1.6-.9-2.3c-.9-.9-1.9-.9-2.3-1C16.6 3.6 12 3.6 12 3.6s-4.6 0-7.8.3c-.4.1-1.4.1-2.3 1-.7.7-.9 2.3-.9 2.3S.8 9.1.8 11v1.8c0 1.9.2 3.8.2 3.8s.2 1.6.9 2.3c.9.9 2 .9 2.5 1 1.8.2 7.6.3 7.6.3s4.6 0 7.8-.4c.4-.1 1.4-.1 2.3-1 .7-.7.9-2.3.9-2.3s.2-1.9.2-3.8V11c0-1.9-.2-3.8-.2-3.8zM9.9 15V8.5l6.1 3.3-6.1 3.2z"/></svg></a>{% endif %}
     {%- if site.socials.instagram %}<a href="{{ site.socials.instagram }}" aria-label="Instagram" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4.2"/><circle cx="17.3" cy="6.7" r="1.1" fill="currentColor" stroke="none"/></svg></a>{% endif %}
     {%- if site.socials.facebook %}<a href="{{ site.socials.facebook }}" aria-label="Facebook" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M13.5 21v-8h2.7l.4-3.1h-3.1V7.9c0-.9.3-1.5 1.6-1.5h1.6V3.6c-.3 0-1.3-.1-2.4-.1-2.4 0-4 1.4-4 4.1v2.3H7.6V13h2.7v8h3.2z"/></svg></a>{% endif %}
     {%- if site.socials.x %}<a href="{{ site.socials.x }}" aria-label="X" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M17.7 3h3l-6.6 7.5L22 21h-6.1l-4.8-6.2L5.6 21h-3l7-8L2.5 3h6.2l4.3 5.7L17.7 3zm-1 16.2h1.7L7.8 4.7H6L16.7 19.2z"/></svg></a>{% endif %}
-    <span>{{ t.footer.region }}</span>
+    </div>{% endif %}
+    <span class="foot-region">{{ t.footer.region }}</span>
   </div>
-</footer>
+</div></footer>
 
 <script src="/js/main.js"></script>
 </body>
