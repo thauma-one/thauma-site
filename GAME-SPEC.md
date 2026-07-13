@@ -353,6 +353,45 @@ ambiguous before building."
 
 ## 10. Revision log
 
+- 2026-07-13 — **Second playtest revision.** Named the game
+  ("WONDER" / "ČUDO" — a direct translation of thauma itself, easy to
+  rename, just a text string). SIGNAL → SCORE ("REZULTAT" in HR),
+  SIGNAL read as confusing. Progress track moved from the top edge to
+  a thin neon line near the bottom with a slow breathing glow, and
+  recent-death/summit ticks now carry a small pulsing dot floating
+  above the track so they're visible during actual play, not just a
+  sliver on a line. Added a vertical "best" line that scrolls in the
+  same world as the columns and reaches the orb exactly when a run
+  matches the old best, with a full-screen flash the instant it's
+  actually beaten (tied to the authoritative score check, not the
+  line's approximate position). The orb now tilts with its own
+  velocity and carries a short comet-tail, so it visibly reads as the
+  thing moving rather than just the world scrolling under it. Pulled
+  a piece of Phase 2 forward per direct request: a parallax layer of
+  real site nav words (both languages) drifts slower than the
+  foreground, and the glitch-static columns got noise-slice texture
+  and bright gap-edges instead of flat fills. Fixed: doors 1-3
+  (arriving via #play from elsewhere) now skip the collapse theater
+  entirely and land straight on the game home screen — you never saw
+  the static page, so replaying its collapse made no sense; door 4 (on
+  the page itself) still plays the full theater. Found and fixed a
+  real bug in the wordmark-tap door: a mismatched 550ms/2000ms timer
+  pair could let a slower tap rhythm trigger a stray navigation
+  mid-sequence, wiping the count on the resulting page load — unified
+  into one forgiving ~900ms window, verified correct with a
+  deterministic fake-timer unit test (no stray nav across taps 1-4,
+  fires exactly on tap 5, a lone click still navigates normally).
+  Konami extended to accept Enter as a supplemental "Start" after B-A;
+  first two arrow presses still scroll the page normally, from the
+  3rd correct input on the page stops moving under the sequence. The
+  404 numeral no longer shows a pointer cursor (cursor:text instead),
+  so the page still reads and selects like an ordinary page until you
+  already know to interact with it. Escalating trail effects now
+  compound (multiple stacked bursts) at higher tiers instead of only
+  swapping which single function fires. All re-verified via jsdom
+  (door 4 theater path, hash-arrival direct path, gameplay with
+  seeded localStorage best/deaths, tick rendering) plus the isolated
+  timer unit test, before committing.
 - 2026-07-13 — **Phase 1 playtest revision.** First-hand feedback
   after the initial build: the trail/idle-pulse effects were too
   subtle to actually notice, the collapse was too fast and went

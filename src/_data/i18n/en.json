@@ -189,9 +189,10 @@
     "dict_def": "a page that isn't here — moved, mistyped, or never built.",
     "lede": "The link's broken, or the page wandered off. Everything else is exactly where you left it.",
     "cta": "Take me home",
-    "signal_label": "SIGNAL",
+    "signal_label": "SCORE",
     "best_label": "Best",
     "new_best": "New best.",
+    "game_title": "WONDER",
     "home_tag": "still lost.",
     "taunts": [
       "Page not found.",

@@ -22,7 +22,7 @@ permalink: /404.html
 
   {%- if not env.isProduction %}
   /* ---- GAME-SPEC.md Phase 1 (dev-only) ---- */
-  .dict-word{cursor:pointer;display:inline-block}
+  .dict-word{cursor:text;display:inline-block}
   .thauma-char{display:inline-block}
 
   /* Real glitch: RGB-split text-shadow + chunky jittery steps, not a fade */
@@ -61,8 +61,9 @@ permalink: /404.html
       repeating-linear-gradient(90deg,rgba(47,216,255,.06) 0 2px,transparent 2px 5px)}
   #thauma-scanlines.show{opacity:1}
 
-  #thauma-game{position:fixed;inset:0;z-index:50;display:none;background:#0B0F15}
-  #thauma-game.open{display:block}
+  #thauma-game{position:fixed;inset:0;z-index:50;background:#0B0F15;
+    opacity:0;visibility:hidden;pointer-events:none;transition:opacity .8s ease}
+  #thauma-game.open{opacity:1;visibility:visible;pointer-events:auto}
   #thauma-game canvas{position:absolute;inset:0;width:100%;height:100%}
   #thauma-game.shake{animation:thauma-shake .35s steps(1,end)}
   @keyframes thauma-shake{
@@ -78,15 +79,31 @@ permalink: /404.html
     pointer-events:none;z-index:2}
   .thauma-hud .signal{font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim)}
   .thauma-hud .signal b{color:var(--text);font-weight:600;font-size:20px;margin-left:8px}
-  .thauma-track{position:absolute;top:0;left:0;right:0;height:6px;background:rgba(255,255,255,.1);z-index:2}
-  .thauma-track i{position:absolute;left:0;top:0;height:100%;background:linear-gradient(90deg,var(--blue),var(--blue-hi));
-    box-shadow:var(--blue-glow);transition:width .1s linear}
-  .thauma-tick{position:absolute;top:-5px;width:4px;height:16px;background:var(--dim);border-radius:1px}
-  .thauma-tick.summit{width:6px;height:22px;top:-8px;background:var(--foam);box-shadow:var(--foam-glow)}
 
-  .thauma-overlay{position:absolute;inset:0;z-index:3;display:none;align-items:center;justify-content:center;
-    text-align:center;background:rgba(11,15,21,.82);backdrop-filter:blur(3px)}
-  .thauma-overlay.show{display:flex}
+  /* Bottom neon track with a slow "breathing" glow, instead of a flat bar
+     stuck at the very edge */
+  .thauma-track{position:absolute;bottom:34px;left:24px;right:24px;height:3px;
+    background:rgba(255,255,255,.12);border-radius:2px;z-index:2}
+  .thauma-track i{position:absolute;left:0;top:-1px;height:5px;border-radius:3px;
+    background:linear-gradient(90deg,var(--blue),var(--blue-hi));
+    box-shadow:0 0 10px 2px rgba(47,216,255,.6),0 0 22px 4px rgba(47,216,255,.3);
+    transition:width .1s linear;animation:thauma-track-breathe 2.6s ease-in-out infinite}
+  @keyframes thauma-track-breathe{
+    0%,100%{box-shadow:0 0 10px 2px rgba(47,216,255,.6),0 0 22px 4px rgba(47,216,255,.3)}
+    50%{box-shadow:0 0 16px 4px rgba(47,216,255,.85),0 0 34px 8px rgba(47,216,255,.5)}
+  }
+  .thauma-tick{position:absolute;bottom:-7px;width:4px;height:16px;background:var(--dim);border-radius:1px}
+  .thauma-tick.summit{width:6px;height:26px;bottom:-11px;background:var(--foam);box-shadow:var(--foam-glow)}
+  .thauma-tick .tick-mark{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);
+    width:7px;height:7px;border-radius:50%;background:var(--dim);margin-bottom:4px;
+    animation:thauma-tick-pulse 2.2s ease-in-out infinite}
+  .thauma-tick.summit .tick-mark{width:10px;height:10px;background:var(--foam);box-shadow:var(--foam-glow)}
+  @keyframes thauma-tick-pulse{0%,100%{opacity:.55;transform:translateX(-50%) scale(1)}50%{opacity:1;transform:translateX(-50%) scale(1.35)}}
+
+  .thauma-overlay{position:absolute;inset:0;z-index:3;display:flex;align-items:center;justify-content:center;
+    text-align:center;background:rgba(11,15,21,.82);backdrop-filter:blur(3px);
+    opacity:0;visibility:hidden;pointer-events:none;transition:opacity .5s ease}
+  .thauma-overlay.show{opacity:1;visibility:visible;pointer-events:auto}
   .thauma-overlay .panel{max-width:460px;padding:0 24px}
   .thauma-overlay .taunt{font-family:'Sora';font-weight:200;font-size:clamp(20px,3.6vw,28px);margin-bottom:18px}
   .thauma-overlay .stats{color:var(--dim);font-size:13px;letter-spacing:.08em;margin-bottom:30px;line-height:2}
@@ -206,7 +223,7 @@ permalink: /404.html
       <p class="home-tag" id="thauma-home-tag">still lost.</p>
       <p class="stats" id="thauma-home-stats"></p>
       <p class="btn-row center">
-        <button class="btn solid" id="thauma-play">Play</button>
+        <button class="btn solid" type="button" id="thauma-play">Play</button>
       </p>
       <p class="btn-row center" style="margin-top:14px">
         <a class="btn ghost" href="/" id="thauma-home-exit">Go back to Thauma</a>
@@ -219,8 +236,8 @@ permalink: /404.html
       <p class="taunt" id="thauma-taunt">Page not found.</p>
       <p class="stats" id="thauma-stats"></p>
       <p class="btn-row center">
-        <button class="btn solid" id="thauma-retry">Retry</button>
-        <button class="btn ghost" id="thauma-fail-home">Home</button>
+        <button class="btn solid" type="button" id="thauma-retry">Retry</button>
+        <button class="btn ghost" type="button" id="thauma-fail-home">Home</button>
       </p>
     </div>
   </div>
@@ -254,8 +271,8 @@ permalink: /404.html
 <script>
 (function () {
   var LANG_DATA = {
-    en: { taunts: {{ i18n.en.notFound.taunts | dump | safe }}, signal: {{ i18n.en.notFound.signal_label | dump | safe }}, best: {{ i18n.en.notFound.best_label | dump | safe }}, newBest: {{ i18n.en.notFound.new_best | dump | safe }}, homeTag: {{ i18n.en.notFound.home_tag | dump | safe }}, dictWord: {{ i18n.en.notFound.dict_word | dump | safe }} },
-    hr: { taunts: {{ i18n.hr.notFound.taunts | dump | safe }}, signal: {{ i18n.hr.notFound.signal_label | dump | safe }}, best: {{ i18n.hr.notFound.best_label | dump | safe }}, newBest: {{ i18n.hr.notFound.new_best | dump | safe }}, homeTag: {{ i18n.hr.notFound.home_tag | dump | safe }}, dictWord: {{ i18n.hr.notFound.dict_word | dump | safe }} }
+    en: { taunts: {{ i18n.en.notFound.taunts | dump | safe }}, signal: {{ i18n.en.notFound.signal_label | dump | safe }}, best: {{ i18n.en.notFound.best_label | dump | safe }}, newBest: {{ i18n.en.notFound.new_best | dump | safe }}, homeTag: {{ i18n.en.notFound.home_tag | dump | safe }}, gameTitle: {{ i18n.en.notFound.game_title | dump | safe }}, words: {{ i18n.en.nav | dump | safe }} },
+    hr: { taunts: {{ i18n.hr.notFound.taunts | dump | safe }}, signal: {{ i18n.hr.notFound.signal_label | dump | safe }}, best: {{ i18n.hr.notFound.best_label | dump | safe }}, newBest: {{ i18n.hr.notFound.new_best | dump | safe }}, homeTag: {{ i18n.hr.notFound.home_tag | dump | safe }}, gameTitle: {{ i18n.hr.notFound.game_title | dump | safe }}, words: {{ i18n.hr.nav | dump | safe }} }
   };
 
   var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -316,10 +333,23 @@ permalink: /404.html
     }, 5000);
   }
 
+  var began = false;
   // ---- Hash entry from doors 1-3 (arriving from any page via main.js) ----
-  function checkHash() { if (location.hash === '#play') beginGame(); }
+  // These never saw the static 404 render — the "discovery" already
+  // happened wherever they triggered it, so arriving here should feel
+  // like teleporting straight into the game's menu, not re-running the
+  // collapse on a page they're only passing through. Door 4 (below) is
+  // the only path that plays the theater, since that's the one place you
+  // actually watch the page fail from a standing start.
+  function checkHash() { if (location.hash === '#play') enterDirectly(); }
   checkHash();
   window.addEventListener('hashchange', checkHash);
+
+  function enterDirectly() {
+    if (began) return;
+    began = true;
+    openGameHome();
+  }
 
   // ---- Screen-wide glitch punch, reusable for the collapse start + death ----
   function screenGlitch() {
@@ -366,7 +396,6 @@ permalink: /404.html
 
   // ---- Begin: choreographed collapse (unless reduced motion), then the
   // game's own home screen — never straight into a run. ----
-  var began = false;
   function beginGame() {
     if (began) return;
     began = true;
@@ -392,10 +421,13 @@ permalink: /404.html
     gameEl.classList.add('open');
     homeEl.classList.add('show');
     failEl.classList.remove('show');
-    homeWordEl.textContent = copy().dictWord || '404';
+    homeWordEl.textContent = copy().gameTitle;
     homeTagEl.textContent = copy().homeTag;
     homeStatsEl.innerHTML = statsLine();
     homeExitEl.href = '/' + currentLang() + '/';
+    signalLabelEl.textContent = copy().signal;
+    bestLabelEl.textContent = copy().best;
+    bestEl.textContent = bestSignal;
     resizeCanvas();
     updateTrackDom();
   }
@@ -421,20 +453,32 @@ permalink: /404.html
   // Tuned looser than the first pass: less gravity, a stronger flap, and
   // wider/more-spaced gaps, after the original felt too punishing to
   // actually play (verified structurally the first time, not by feel).
-  var W, H, orb, columns, running, signal, speed, bestBeaten, trail;
+  var W, H, orb, columns, running, signal, speed, bestBeaten, trail, words, bestMarkerX, beatFlash;
   var GRAVITY = 0.22, FLAP = -7.8, COLUMN_W = 54, GAP_H = 260, ORB_R = 10, COLUMN_GAP = 420;
+
+  function siteWords() {
+    var w = copy().words || {};
+    return Object.keys(w).map(function (k) { return w[k]; }).filter(Boolean);
+  }
 
   function startRun() {
     W = canvas.width; H = canvas.height;
-    orb = { x: Math.max(90, W * 0.22), y: H / 2, vy: 0 };
+    orb = { x: Math.max(90, W * 0.22), y: H / 2, vy: 0, tilt: 0 };
     columns = [];
     trail = [];
+    words = [];
     signal = 0;
     speed = 2.0;
     bestBeaten = false;
+    beatFlash = 0;
+    // The vertical "best" line lives in the same scrolling world as the
+    // columns — it starts one best-run's-worth of distance ahead, so it
+    // naturally reaches the orb exactly when this run matches the old one.
+    bestMarkerX = bestSignal > 0 ? orb.x + (bestSignal / 10) * (COLUMN_W + COLUMN_GAP / 3) : null;
     failEl.classList.remove('show');
     signalEl.textContent = 0;
     spawnColumn(W + 60);
+    spawnWord(W + 200);
     running = true;
     requestAnimationFrame(loop);
   }
@@ -442,7 +486,17 @@ permalink: /404.html
   function spawnColumn(x) {
     var margin = 90;
     var gapY = margin + Math.random() * Math.max(40, H - margin * 2 - GAP_H) + GAP_H / 2;
-    columns.push({ x: x, gapY: gapY, passed: false });
+    // A few noise slices per column give it texture instead of a flat fill
+    var slices = [];
+    for (var i = 0; i < 5; i++) slices.push(Math.random());
+    columns.push({ x: x, gapY: gapY, passed: false, slices: slices });
+  }
+
+  function spawnWord(x) {
+    var pool = siteWords();
+    if (!pool.length) return;
+    var text = pool[Math.floor(Math.random() * pool.length)];
+    words.push({ x: x, y: 60 + Math.random() * Math.max(40, H - 160), text: text });
   }
 
   function flap() { if (running) orb.vy = FLAP; }
@@ -464,28 +518,40 @@ permalink: /404.html
     return Math.max(300, bestSignal * 1.15, signal * 1.15, deathsMax * 1.15);
   }
 
+  // Each marker gets a small pulsing dot floating just above the track
+  // (the ".tick-mark" child) so recent deaths and the best-run summit are
+  // genuinely visible on screen during play, not just a sliver on a thin
+  // line at the edge.
+  function makeTick(className, leftPct, title) {
+    var tick = document.createElement('span');
+    tick.className = className;
+    tick.style.left = leftPct + '%';
+    if (title) tick.title = title;
+    var dot = document.createElement('span');
+    dot.className = 'tick-mark';
+    tick.appendChild(dot);
+    return tick;
+  }
+
   function updateTrackDom() {
     var max = trackMax();
     progressEl.style.width = Math.min(100, ((signal || 0) / max) * 100) + '%';
     trackEl.querySelectorAll('.thauma-tick').forEach(function (t) { t.remove(); });
     if (bestSignal > 0) {
-      var s = document.createElement('span');
-      s.className = 'thauma-tick summit';
-      s.title = copy().best + ': ' + bestSignal;
-      s.style.left = Math.min(100, (bestSignal / max) * 100) + '%';
-      trackEl.appendChild(s);
+      trackEl.appendChild(makeTick('thauma-tick summit', Math.min(100, (bestSignal / max) * 100), copy().best + ': ' + bestSignal));
     }
     recentDeaths.forEach(function (v) {
-      var tick = document.createElement('span');
-      tick.className = 'thauma-tick';
-      tick.style.left = Math.min(100, (v / max) * 100) + '%';
-      trackEl.appendChild(tick);
+      trackEl.appendChild(makeTick('thauma-tick', Math.min(100, (v / max) * 100)));
     });
   }
 
   function update() {
     orb.vy += GRAVITY;
     orb.y += orb.vy;
+    // Tilt reads as forward motion — nose up while rising, nose down while
+    // falling — the classic language for "this is moving," since otherwise
+    // only the world scrolling (not the orb itself) would show speed.
+    orb.tilt = Math.max(-0.5, Math.min(0.9, orb.vy * 0.07));
     trail.push({ x: orb.x, y: orb.y });
     if (trail.length > 14) trail.shift();
 
@@ -498,12 +564,22 @@ permalink: /404.html
         if (!bestBeaten && signal > bestSignal) {
           bestBeaten = true;
           bestEl.textContent = signal;
+          beatFlash = 0.001; // the moment the run overtakes its own best - authoritative on score, not the line's approximate position
         }
       }
       if (columns[i].x < -COLUMN_W - 60) columns.splice(i, 1);
     }
     if (!columns.length || columns[columns.length - 1].x < W - COLUMN_GAP) spawnColumn(W + 40);
     speed = 2.0 + Math.min(2.4, signal / 420);
+
+    for (var k = words.length - 1; k >= 0; k--) {
+      words[k].x -= speed * 0.4; // parallax: slower than the columns
+      if (words[k].x < -400) words.splice(k, 1);
+    }
+    if (!words.length || words[words.length - 1].x < W - 500) spawnWord(W + 300 + Math.random() * 200);
+
+    if (bestMarkerX !== null) bestMarkerX -= speed;
+    if (beatFlash > 0) beatFlash = Math.min(1.6, beatFlash + 0.06);
 
     if (orb.y - ORB_R < 0 || orb.y + ORB_R > H) { die(); return false; }
     for (var j = 0; j < columns.length; j++) {
@@ -520,25 +596,88 @@ permalink: /404.html
   function draw() {
     ctx.fillStyle = bgColor();
     ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = 'rgba(47,216,255,.5)';
+
+    // Parallax background: real site words (nav labels, both languages
+    // depending which is active) drifting slower than the foreground —
+    // the game reads the site's own content, per GAME-SPEC.md §2.
+    ctx.save();
+    ctx.font = "200 56px 'Sora',sans-serif";
+    ctx.fillStyle = 'rgba(237,242,248,.07)';
+    ctx.textBaseline = 'middle';
+    words.forEach(function (w) { ctx.fillText(w.text, w.x, w.y); });
+    ctx.restore();
+
+    // Vertical "best" line: a techy marker scrolling in the same world as
+    // the columns, positioned so it reaches the orb exactly when this run
+    // matches the old best. Passing it is the moment the run gets flashy.
+    if (bestMarkerX !== null && bestMarkerX > -40 && bestMarkerX < W + 40) {
+      ctx.save();
+      var pulse = 0.5 + Math.sin(Date.now() / 260) * 0.25;
+      ctx.strokeStyle = 'rgba(92,242,196,' + (0.55 + pulse * 0.3) + ')';
+      ctx.lineWidth = 2;
+      ctx.shadowColor = '#5CF2C4';
+      ctx.shadowBlur = 16 + pulse * 10;
+      ctx.setLineDash([10, 8]);
+      ctx.beginPath();
+      ctx.moveTo(bestMarkerX, 0);
+      ctx.lineTo(bestMarkerX, H);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Columns get a few glitch-noise slices and a bright gap-edge instead
+    // of a flat fill.
     columns.forEach(function (c) {
       var top = c.gapY - GAP_H / 2, bottom = c.gapY + GAP_H / 2;
+      ctx.fillStyle = 'rgba(47,216,255,.5)';
       ctx.fillRect(c.x, 0, COLUMN_W, top);
       ctx.fillRect(c.x, bottom, COLUMN_W, H - bottom);
+      ctx.fillStyle = 'rgba(237,242,248,.16)';
+      c.slices.forEach(function (s, i) {
+        var sh = 10 + s * 16;
+        var sy1 = (i / c.slices.length) * top;
+        var sy2 = bottom + (i / c.slices.length) * (H - bottom);
+        ctx.fillRect(c.x + s * (COLUMN_W - 10), sy1, 8, Math.min(sh, top - sy1));
+        ctx.fillRect(c.x + (1 - s) * (COLUMN_W - 10), sy2, 8, Math.min(sh, H - sy2));
+      });
+      ctx.fillStyle = 'rgba(92,242,196,.9)';
+      ctx.fillRect(c.x, top - 2, COLUMN_W, 2);
+      ctx.fillRect(c.x, bottom, COLUMN_W, 2);
     });
+
     trail.forEach(function (p, i) {
       ctx.beginPath();
       ctx.fillStyle = 'rgba(92,242,196,' + (0.05 + (i / trail.length) * 0.25) + ')';
       ctx.arc(p.x, p.y, ORB_R * (0.3 + (i / trail.length) * 0.5), 0, Math.PI * 2);
       ctx.fill();
     });
+
+    // The orb tilts with its own velocity (nose up rising, nose down
+    // falling) and gets a short comet-tail toward where it came from, so
+    // it visibly reads as the thing moving, not just the world scrolling.
+    ctx.save();
+    ctx.translate(orb.x, orb.y);
+    ctx.rotate(orb.tilt);
+    ctx.beginPath();
+    ctx.fillStyle = 'rgba(47,216,255,.35)';
+    ctx.ellipse(-ORB_R * 1.4, 0, ORB_R * 1.6, ORB_R * 0.55, 0, 0, Math.PI * 2);
+    ctx.fill();
     ctx.beginPath();
     ctx.fillStyle = '#EDF2F8';
     ctx.shadowColor = '#2FD8FF';
     ctx.shadowBlur = 20;
-    ctx.arc(orb.x, orb.y, ORB_R, 0, Math.PI * 2);
+    ctx.ellipse(0, 0, ORB_R * 1.05, ORB_R * 0.92, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.shadowBlur = 0;
+    ctx.restore();
+
+    if (beatFlash > 0 && beatFlash < 1.6) {
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, 1 - beatFlash);
+      ctx.fillStyle = '#5CF2C4';
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+    }
   }
 
   function loop() {

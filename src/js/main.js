@@ -154,8 +154,10 @@ if (window.THAUMA_ENV && !window.THAUMA_ENV.isProduction) {
       shakeBurst();
     }
 
-    // Back-loaded escalation: a ratio of sequence progress maps to a tier.
-    // Regressing from progress > 0 back to 0 (wrong input) pops instead.
+    // Back-loaded escalation: a ratio of sequence progress maps to a tier,
+    // and each tier is louder than the last (more repeats/duration), not
+    // just a different function — the site should feel like it's genuinely
+    // breaking down more the closer you get.
     var lastProgress = {};
     function trailStep(kind, progress, max) {
       var prev = lastProgress[kind] || 0;
@@ -164,25 +166,36 @@ if (window.THAUMA_ENV && !window.THAUMA_ENV.isProduction) {
           staticPop();
         } else if (progress > 0) {
           var ratio = progress / max;
-          if (ratio >= 0.8) dimPage();
-          else if (ratio >= 0.6) glowPulse();
-          else if (ratio >= 0.4) flashWhisper();
-          else if (ratio >= 0.2) flashPixel();
+          if (ratio >= 0.8) {
+            dimPage();
+            glitchFlash();
+            shakeBurst();
+            setTimeout(function () { glitchFlash(); scanlineBurst(); }, 140);
+          } else if (ratio >= 0.6) {
+            glowPulse();
+            setTimeout(scanlineBurst, 100);
+          } else if (ratio >= 0.4) {
+            flashWhisper();
+          } else if (ratio >= 0.2) {
+            flashPixel();
+          }
         }
       }
       lastProgress[kind] = progress;
     }
 
-    // ---- Door 1: 5 taps on the wordmark, ~2s idle resets the count ----
+    // ---- Door 1: 5 taps on the wordmark ----
     // The logo is a real link; a normal single click still navigates home,
-    // just after a short delay so a fast follow-up tap can cancel it.
+    // just after a short wait so a fast follow-up tap can cancel it. One
+    // unified window (was two mismatched timers, which could let a slow
+    // tap rhythm navigate away mid-sequence and wipe the count) - a stray
+    // 2nd/3rd/4th tap that fizzles out just resets silently instead.
     document.querySelectorAll('.logo').forEach(function (logo) {
-      var tapCount = 0, idleTimer = null, navTimer = null;
+      var tapCount = 0, resetTimer = null;
       logo.addEventListener('click', function (e) {
         e.preventDefault();
         var href = logo.getAttribute('href');
-        clearTimeout(idleTimer);
-        clearTimeout(navTimer);
+        clearTimeout(resetTimer);
         tapCount++;
         if (tapCount >= 5) {
           tapCount = 0;
@@ -190,18 +203,27 @@ if (window.THAUMA_ENV && !window.THAUMA_ENV.isProduction) {
           return;
         }
         trailStep('tap', tapCount, 5);
-        idleTimer = setTimeout(function () { trailStep('tap', 0, 5); tapCount = 0; }, 2000);
-        navTimer = setTimeout(function () { location.href = href; }, 550);
+        resetTimer = setTimeout(function () {
+          trailStep('tap', 0, 5);
+          var finalCount = tapCount;
+          tapCount = 0;
+          if (finalCount === 1) location.href = href;
+        }, 900);
       });
     });
 
-    // ---- Door 2: Konami code, anywhere ----
-    var KONAMI = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
+    // ---- Door 2: Konami code, anywhere, Enter as a supplemental "Start" ----
+    var KONAMI = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a', 'Enter'];
+    var ARROWS = { ArrowUp: 1, ArrowDown: 1, ArrowLeft: 1, ArrowRight: 1 };
     var konamiPos = 0;
     document.addEventListener('keydown', function (e) {
       if (isTypingContext(e.target)) return;
       var key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
       if (key === KONAMI[konamiPos]) {
+        // First two arrow presses still scroll normally (could easily be
+        // incidental); from the 3rd correct input on, a sequence is clearly
+        // forming, so stop the page from moving under it.
+        if (ARROWS[key] && konamiPos >= 2) e.preventDefault();
         konamiPos++;
         if (konamiPos === KONAMI.length) {
           konamiPos = 0;
