@@ -271,8 +271,8 @@ permalink: /404.html
 <script>
 (function () {
   var LANG_DATA = {
-    en: { taunts: {{ i18n.en.notFound.taunts | dump | safe }}, signal: {{ i18n.en.notFound.signal_label | dump | safe }}, best: {{ i18n.en.notFound.best_label | dump | safe }}, newBest: {{ i18n.en.notFound.new_best | dump | safe }}, homeTag: {{ i18n.en.notFound.home_tag | dump | safe }}, gameTitle: {{ i18n.en.notFound.game_title | dump | safe }}, words: {{ i18n.en.nav | dump | safe }} },
-    hr: { taunts: {{ i18n.hr.notFound.taunts | dump | safe }}, signal: {{ i18n.hr.notFound.signal_label | dump | safe }}, best: {{ i18n.hr.notFound.best_label | dump | safe }}, newBest: {{ i18n.hr.notFound.new_best | dump | safe }}, homeTag: {{ i18n.hr.notFound.home_tag | dump | safe }}, gameTitle: {{ i18n.hr.notFound.game_title | dump | safe }}, words: {{ i18n.hr.nav | dump | safe }} }
+    en: { taunts: {{ i18n.en.notFound.taunts | dump | safe }}, signal: {{ i18n.en.notFound.signal_label | dump | safe }}, best: {{ i18n.en.notFound.best_label | dump | safe }}, newBest: {{ i18n.en.notFound.new_best | dump | safe }}, homeTag: {{ i18n.en.notFound.home_tag | dump | safe }}, gameTitle: {{ i18n.en.notFound.game_title | dump | safe }} },
+    hr: { taunts: {{ i18n.hr.notFound.taunts | dump | safe }}, signal: {{ i18n.hr.notFound.signal_label | dump | safe }}, best: {{ i18n.hr.notFound.best_label | dump | safe }}, newBest: {{ i18n.hr.notFound.new_best | dump | safe }}, homeTag: {{ i18n.hr.notFound.home_tag | dump | safe }}, gameTitle: {{ i18n.hr.notFound.game_title | dump | safe }} }
   };
 
   var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -417,7 +417,13 @@ permalink: /404.html
 
   // ---- The game's own home screen: stats, Play, and its own way back ----
   function openGameHome() {
-    document.body.classList.remove('thauma-collapsing');
+    // Deliberately NOT removing 'thauma-collapsing' here: doing so snapped
+    // the scattered elements back to normal instantly, which showed through
+    // during the game view's own fade-in (it takes a moment to reach full
+    // opacity) — the static page would flash back to "normal" before the
+    // game covered it. Once open, the game's opaque background covers
+    // everything permanently for this page load, so there's nothing to
+    // revert for.
     gameEl.classList.add('open');
     homeEl.classList.add('show');
     failEl.classList.remove('show');
@@ -453,20 +459,14 @@ permalink: /404.html
   // Tuned looser than the first pass: less gravity, a stronger flap, and
   // wider/more-spaced gaps, after the original felt too punishing to
   // actually play (verified structurally the first time, not by feel).
-  var W, H, orb, columns, running, signal, speed, bestBeaten, trail, words, bestMarkerX, beatFlash;
+  var W, H, orb, columns, running, signal, speed, bestBeaten, trail, bestMarkerX, beatFlash;
   var GRAVITY = 0.22, FLAP = -7.8, COLUMN_W = 54, GAP_H = 260, ORB_R = 10, COLUMN_GAP = 420;
-
-  function siteWords() {
-    var w = copy().words || {};
-    return Object.keys(w).map(function (k) { return w[k]; }).filter(Boolean);
-  }
 
   function startRun() {
     W = canvas.width; H = canvas.height;
     orb = { x: Math.max(90, W * 0.22), y: H / 2, vy: 0, tilt: 0 };
     columns = [];
     trail = [];
-    words = [];
     signal = 0;
     speed = 2.0;
     bestBeaten = false;
@@ -478,7 +478,6 @@ permalink: /404.html
     failEl.classList.remove('show');
     signalEl.textContent = 0;
     spawnColumn(W + 60);
-    spawnWord(W + 200);
     running = true;
     requestAnimationFrame(loop);
   }
@@ -486,17 +485,7 @@ permalink: /404.html
   function spawnColumn(x) {
     var margin = 90;
     var gapY = margin + Math.random() * Math.max(40, H - margin * 2 - GAP_H) + GAP_H / 2;
-    // A few noise slices per column give it texture instead of a flat fill
-    var slices = [];
-    for (var i = 0; i < 5; i++) slices.push(Math.random());
-    columns.push({ x: x, gapY: gapY, passed: false, slices: slices });
-  }
-
-  function spawnWord(x) {
-    var pool = siteWords();
-    if (!pool.length) return;
-    var text = pool[Math.floor(Math.random() * pool.length)];
-    words.push({ x: x, y: 60 + Math.random() * Math.max(40, H - 160), text: text });
+    columns.push({ x: x, gapY: gapY, passed: false });
   }
 
   function flap() { if (running) orb.vy = FLAP; }
@@ -572,12 +561,6 @@ permalink: /404.html
     if (!columns.length || columns[columns.length - 1].x < W - COLUMN_GAP) spawnColumn(W + 40);
     speed = 2.0 + Math.min(2.4, signal / 420);
 
-    for (var k = words.length - 1; k >= 0; k--) {
-      words[k].x -= speed * 0.4; // parallax: slower than the columns
-      if (words[k].x < -400) words.splice(k, 1);
-    }
-    if (!words.length || words[words.length - 1].x < W - 500) spawnWord(W + 300 + Math.random() * 200);
-
     if (bestMarkerX !== null) bestMarkerX -= speed;
     if (beatFlash > 0) beatFlash = Math.min(1.6, beatFlash + 0.06);
 
@@ -597,16 +580,6 @@ permalink: /404.html
     ctx.fillStyle = bgColor();
     ctx.fillRect(0, 0, W, H);
 
-    // Parallax background: real site words (nav labels, both languages
-    // depending which is active) drifting slower than the foreground —
-    // the game reads the site's own content, per GAME-SPEC.md §2.
-    ctx.save();
-    ctx.font = "200 56px 'Sora',sans-serif";
-    ctx.fillStyle = 'rgba(237,242,248,.07)';
-    ctx.textBaseline = 'middle';
-    words.forEach(function (w) { ctx.fillText(w.text, w.x, w.y); });
-    ctx.restore();
-
     // Vertical "best" line: a techy marker scrolling in the same world as
     // the columns, positioned so it reaches the orb exactly when this run
     // matches the old best. Passing it is the moment the run gets flashy.
@@ -625,26 +598,15 @@ permalink: /404.html
       ctx.restore();
     }
 
-    // Columns get a few glitch-noise slices and a bright gap-edge instead
-    // of a flat fill.
+    ctx.fillStyle = 'rgba(47,216,255,.5)';
     columns.forEach(function (c) {
       var top = c.gapY - GAP_H / 2, bottom = c.gapY + GAP_H / 2;
-      ctx.fillStyle = 'rgba(47,216,255,.5)';
       ctx.fillRect(c.x, 0, COLUMN_W, top);
       ctx.fillRect(c.x, bottom, COLUMN_W, H - bottom);
-      ctx.fillStyle = 'rgba(237,242,248,.16)';
-      c.slices.forEach(function (s, i) {
-        var sh = 10 + s * 16;
-        var sy1 = (i / c.slices.length) * top;
-        var sy2 = bottom + (i / c.slices.length) * (H - bottom);
-        ctx.fillRect(c.x + s * (COLUMN_W - 10), sy1, 8, Math.min(sh, top - sy1));
-        ctx.fillRect(c.x + (1 - s) * (COLUMN_W - 10), sy2, 8, Math.min(sh, H - sy2));
-      });
-      ctx.fillStyle = 'rgba(92,242,196,.9)';
-      ctx.fillRect(c.x, top - 2, COLUMN_W, 2);
-      ctx.fillRect(c.x, bottom, COLUMN_W, 2);
     });
 
+    // Original fading particle trail, kept as-is — just the orb itself
+    // now tilts with it (see below) rather than adding a second trail.
     trail.forEach(function (p, i) {
       ctx.beginPath();
       ctx.fillStyle = 'rgba(92,242,196,' + (0.05 + (i / trail.length) * 0.25) + ')';
@@ -653,20 +615,16 @@ permalink: /404.html
     });
 
     // The orb tilts with its own velocity (nose up rising, nose down
-    // falling) and gets a short comet-tail toward where it came from, so
-    // it visibly reads as the thing moving, not just the world scrolling.
+    // falling) — the classic language for "this is moving" — drawn as one
+    // simple elongated shape, no separate comet-tail duplicate.
     ctx.save();
     ctx.translate(orb.x, orb.y);
     ctx.rotate(orb.tilt);
     ctx.beginPath();
-    ctx.fillStyle = 'rgba(47,216,255,.35)';
-    ctx.ellipse(-ORB_R * 1.4, 0, ORB_R * 1.6, ORB_R * 0.55, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
     ctx.fillStyle = '#EDF2F8';
     ctx.shadowColor = '#2FD8FF';
     ctx.shadowBlur = 20;
-    ctx.ellipse(0, 0, ORB_R * 1.05, ORB_R * 0.92, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 0, ORB_R * 1.15, ORB_R * 0.88, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.shadowBlur = 0;
     ctx.restore();
@@ -702,16 +660,26 @@ permalink: /404.html
       localStorage.setItem('thauma_best', bestSignal);
     }
     updateTrackDom();
-    screenGlitch();
-    gameEl.classList.remove('shake');
-    void gameEl.offsetWidth;
-    gameEl.classList.add('shake');
+
+    // Death gets the same glitch language as the opening collapse — two
+    // punches before the panel reveals, not one quiet fade.
+    function punch() {
+      screenGlitch();
+      gameEl.classList.remove('shake');
+      void gameEl.offsetWidth;
+      gameEl.classList.add('shake');
+    }
+    punch();
+    if (!reducedMotion) setTimeout(punch, 220);
 
     var taunts = copy().taunts;
     var idx = Math.min(attempts, taunts.length) - 1;
-    tauntEl.textContent = (newBest ? copy().newBest + ' ' : '') + taunts[idx];
-    statsEl.innerHTML = copy().signal + ': <b>' + signal + '</b> &nbsp;·&nbsp; ' + copy().best + ': <b>' + bestSignal + '</b>';
-    failEl.classList.add('show');
+    var revealDelay = reducedMotion ? 0 : 420;
+    setTimeout(function () {
+      tauntEl.textContent = (newBest ? copy().newBest + ' ' : '') + taunts[idx];
+      statsEl.innerHTML = copy().signal + ': <b>' + signal + '</b> &nbsp;·&nbsp; ' + copy().best + ': <b>' + bestSignal + '</b>';
+      failEl.classList.add('show');
+    }, revealDelay);
   }
 })();
 </script>

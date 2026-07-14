@@ -184,18 +184,14 @@ if (window.THAUMA_ENV && !window.THAUMA_ENV.isProduction) {
       lastProgress[kind] = progress;
     }
 
-    // ---- Door 1: 5 taps on the wordmark ----
-    // The logo is a real link; a normal single click still navigates home,
-    // just after a short wait so a fast follow-up tap can cancel it. One
-    // unified window (was two mismatched timers, which could let a slow
-    // tap rhythm navigate away mid-sequence and wipe the count) - a stray
-    // 2nd/3rd/4th tap that fizzles out just resets silently instead.
-    document.querySelectorAll('.logo').forEach(function (logo) {
-      var tapCount = 0, resetTimer = null;
-      logo.addEventListener('click', function (e) {
-        e.preventDefault();
-        var href = logo.getAttribute('href');
-        clearTimeout(resetTimer);
+    // ---- Door 1: 5 taps on the homepage hero wordmark ----
+    // Deliberately the big hero ".wordmark" (index.njk only), not the nav
+    // ".logo" — that one's a real link to home on every page, which fights
+    // this same click for a different job. No time limit: tapping anywhere
+    // else on the page resets the count instead of it expiring on its own.
+    document.querySelectorAll('.wordmark').forEach(function (mark) {
+      var tapCount = 0;
+      mark.addEventListener('click', function (e) {
         tapCount++;
         if (tapCount >= 5) {
           tapCount = 0;
@@ -203,12 +199,11 @@ if (window.THAUMA_ENV && !window.THAUMA_ENV.isProduction) {
           return;
         }
         trailStep('tap', tapCount, 5);
-        resetTimer = setTimeout(function () {
-          trailStep('tap', 0, 5);
-          var finalCount = tapCount;
-          tapCount = 0;
-          if (finalCount === 1) location.href = href;
-        }, 900);
+      });
+      document.addEventListener('click', function (e) {
+        if (mark.contains(e.target)) return;
+        if (tapCount > 0) trailStep('tap', 0, 5);
+        tapCount = 0;
       });
     });
 
