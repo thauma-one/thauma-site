@@ -1,11 +1,10 @@
 # GAME-SPEC.md — The Hidden 404 Game
 
-**STATUS: PHASE 1 SHIPPED (dev-only).** Phase 2 (zones) and Phase 3
-(leaderboard) are still concept — do not build those until this line
-says so. This remains a living document: append and revise, don't
-rediscover.
+**STATUS: PHASE 2 SHIPPED (dev-only).** Phase 3 (leaderboard) is
+still concept — do not build it until this line says so. This
+remains a living document: append and revise, don't rediscover.
 
-Last revised: 2026-07-13 (Phase 1 built — see revision log)
+Last revised: 2026-07-13 (Phase 2 built — see revision log)
 
 ---
 
@@ -467,3 +466,76 @@ ambiguous before building."
 - 2026-07-12 — Initial capture: four doors, collapse theater, zones
   concept, endless + milestones, arcade leaderboard, swappable
   mechanic, logoless constraint. STATUS: CONCEPT.
+- 2026-07-13 — **Third playtest round: corrections, not new features.**
+  Columns/orb/background reverted per direct feedback: (1) column fill
+  reverted from noise-slice texture back to the original flat
+  `rgba(47,216,255,.5)` rectangles — the "spiced up" texture read as a
+  regression, not an improvement; (2) orb rendering fixed to a single
+  tilted ellipse (tilt derived from `orb.vy`) with the original fading
+  particle trail underneath — the previous pass had accidentally left
+  both a tilt AND a separate comet-tail duplicate shape, which the user
+  correctly read as "two effects fighting," not one; (3) the
+  background-parallax "site words drift past" feature was undone
+  entirely (not tuned, removed) per explicit "I didn't like that. For
+  now." — the words-in-background idea itself isn't dead, just not
+  this implementation; (4) `openGameHome()` no longer removes
+  `.thauma-collapsing` from `<body>` — that class only mattered while
+  the page was mid-collapse, and removing it early snapped the static
+  page instantly back to normal, visible for a moment through the game
+  view's own opacity fade-in, undercutting "smoothly transition from
+  glitch to game home" (there's nothing left under the now-permanently-
+  opaque game view to revert, so simply never removing it is correct,
+  not a workaround); (5) door 1 retargeted from the nav `.logo` to the
+  homepage hero `.wordmark` (index.njk only) — the header logo is a
+  real site-home link on every page and can't double as a hidden-game
+  trigger without fighting its own job; the retarget also dropped the
+  timer entirely (tapping elsewhere just resets the count, no
+  expiration) per "I'm not sure we need a time limit"; (6) death's
+  reveal (taunt/stats/buttons) now waits ~420ms behind a `punch()`
+  glitch (screen-glitch + shake, called twice) before showing, instead
+  of a quiet immediate fade — echoing the collapse theater's punch
+  rhythm, per "make that more like what we did for when the site falls
+  apart." All verified via the same jsdom scripted-play methodology
+  used in prior rounds (mocked canvas/matchMedia/RAF via `beforeParse`,
+  full open → play → death → retry cycles) plus a full 23-route site
+  regression and a production-build game-free check. Committed as
+  `7bbaada`.
+- 2026-07-13 — **Phase 2 built ("the world," §5). STATUS moved to
+  PHASE 2 SHIPPED (dev-only).** Endless run now cycles through four
+  150-SIGNAL zones themed after real pages, in order: About, Mission,
+  Values, Team — reusing each page's real i18n `.title` (About/
+  Mission/Values) so the zone names aren't invented copy; the Team
+  zone deliberately always announces in Croatian ("Tim"), hardcoded
+  regardless of site language, and also glitches the SCORE/Best HUD
+  labels to Croatian for that zone's duration before reverting — a
+  small, deliberate "everything glitches into Croatian" flavor beat
+  rather than a bug. Zone changes announce via a new
+  `#thauma-zone-banner` element styled to match the site's real `.cue`
+  label typography (small, letter-spaced, uppercase, foam-colored),
+  fading in for ~2.2s per change. Zone-specific mechanics: About drifts
+  faint translucent Greek letters (θαυμα) across the backdrop; Mission
+  spawns collectible work-words (reusing the real
+  `mission.work1/2/3_label` strings) that drift with the columns, and
+  catching all three in one zone visit awards a +20 SIGNAL bonus on
+  top of normal scoring; Values labels each column with one of the
+  real convictions' numerals (`values.items.length`, read not
+  duplicated); Team is the forced-Croatian banner/HUD beat above. After
+  a full four-zone cycle, the base speed ramp gets a flat +0.4 bump per
+  completed loop — "the loop restarts faster," compounding on the
+  existing signal-based ramp rather than replacing it. Verified via a
+  jsdom scripted run using a physics-mirroring "shadow autopilot" (an
+  external simulation using the same GRAVITY/FLAP constants and
+  per-frame order as the real update loop, since the orb's real
+  position isn't reachable from outside the game's closure) that held
+  a stable flight for 60,000 frames with `Math.random` pinned
+  deterministic for reproducibility: confirmed 14 consecutive full
+  zone cycles (all four banners in order, repeating), 21 distinct
+  mission-zone +20 collectible bonuses (isolated from normal +10
+  scoring by watching for non-10 SIGNAL deltas), and the SCORE/Best
+  labels correctly reading Croatian only during Team-zone visits and
+  English otherwise — zero runtime errors, zero unintended deaths.
+  Confirmed the production build (`npm run build`) still emits zero
+  bytes of game code (`thauma-game`, `thauma-zone-banner`,
+  `VALUES_COUNT` all absent from `_site/404.html`), and a full
+  23-route site regression stayed clean. Phase 3 (leaderboard) remains
+  CONCEPT — not authorized to build yet.

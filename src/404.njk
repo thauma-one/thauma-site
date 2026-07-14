@@ -80,6 +80,16 @@ permalink: /404.html
   .thauma-hud .signal{font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim)}
   .thauma-hud .signal b{color:var(--text);font-weight:600;font-size:20px;margin-left:8px}
 
+  /* Zone banner — same voice as the site's own .cue labels (small,
+     letter-spaced, numbered), drifting in on a zone change */
+  #thauma-zone-banner{position:absolute;top:38%;left:50%;
+    transform:translate(-50%,-50%);z-index:2;pointer-events:none;
+    font-family:'Sora',sans-serif;font-size:13px;font-weight:600;
+    letter-spacing:.35em;text-transform:uppercase;color:var(--foam);
+    opacity:0;text-align:center;white-space:nowrap}
+  #thauma-zone-banner.show{opacity:1;transition:opacity .5s ease}
+  #thauma-zone-banner.hide{opacity:0;transition:opacity 1s ease}
+
   /* Bottom neon track with a slow "breathing" glow, instead of a flat bar
      stuck at the very edge */
   .thauma-track{position:absolute;bottom:34px;left:24px;right:24px;height:3px;
@@ -216,6 +226,7 @@ permalink: /404.html
     <div class="signal"><span id="thauma-signal-label">SIGNAL</span><b id="thauma-signal">0</b></div>
     <div class="signal"><span id="thauma-best-label">Best</span><b id="thauma-best">0</b></div>
   </div>
+  <div id="thauma-zone-banner"></div>
 
   <div class="thauma-overlay" id="thauma-home">
     <div class="panel">
@@ -271,9 +282,15 @@ permalink: /404.html
 <script>
 (function () {
   var LANG_DATA = {
-    en: { taunts: {{ i18n.en.notFound.taunts | dump | safe }}, signal: {{ i18n.en.notFound.signal_label | dump | safe }}, best: {{ i18n.en.notFound.best_label | dump | safe }}, newBest: {{ i18n.en.notFound.new_best | dump | safe }}, homeTag: {{ i18n.en.notFound.home_tag | dump | safe }}, gameTitle: {{ i18n.en.notFound.game_title | dump | safe }} },
-    hr: { taunts: {{ i18n.hr.notFound.taunts | dump | safe }}, signal: {{ i18n.hr.notFound.signal_label | dump | safe }}, best: {{ i18n.hr.notFound.best_label | dump | safe }}, newBest: {{ i18n.hr.notFound.new_best | dump | safe }}, homeTag: {{ i18n.hr.notFound.home_tag | dump | safe }}, gameTitle: {{ i18n.hr.notFound.game_title | dump | safe }} }
+    en: { taunts: {{ i18n.en.notFound.taunts | dump | safe }}, signal: {{ i18n.en.notFound.signal_label | dump | safe }}, best: {{ i18n.en.notFound.best_label | dump | safe }}, newBest: {{ i18n.en.notFound.new_best | dump | safe }}, homeTag: {{ i18n.en.notFound.home_tag | dump | safe }}, gameTitle: {{ i18n.en.notFound.game_title | dump | safe }},
+      zoneTitles: [{{ i18n.en.about.title | dump | safe }}, {{ i18n.en.mission.title | dump | safe }}, {{ i18n.en.values.title | dump | safe }}, {{ i18n.en.team.title | dump | safe }}],
+      missionWords: [{{ i18n.en.mission.work1_label | dump | safe }}, {{ i18n.en.mission.work2_label | dump | safe }}, {{ i18n.en.mission.work3_label | dump | safe }}] },
+    hr: { taunts: {{ i18n.hr.notFound.taunts | dump | safe }}, signal: {{ i18n.hr.notFound.signal_label | dump | safe }}, best: {{ i18n.hr.notFound.best_label | dump | safe }}, newBest: {{ i18n.hr.notFound.new_best | dump | safe }}, homeTag: {{ i18n.hr.notFound.home_tag | dump | safe }}, gameTitle: {{ i18n.hr.notFound.game_title | dump | safe }},
+      zoneTitles: [{{ i18n.hr.about.title | dump | safe }}, {{ i18n.hr.mission.title | dump | safe }}, {{ i18n.hr.values.title | dump | safe }}, {{ i18n.hr.team.title | dump | safe }}],
+      missionWords: [{{ i18n.hr.mission.work1_label | dump | safe }}, {{ i18n.hr.mission.work2_label | dump | safe }}, {{ i18n.hr.mission.work3_label | dump | safe }}] }
   };
+  var VALUES_COUNT = {{ i18n.en.values.items.length }};
+  var TEAM_ZONE_LABEL = {{ i18n.hr.team.title | dump | safe }}; // deliberately always Croatian - see GAME-SPEC.md §5, zone 04
 
   var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var gameEl = document.getElementById('thauma-game');
@@ -295,6 +312,7 @@ permalink: /404.html
   var trackEl = document.getElementById('thauma-track');
   var scanlinesEl = document.getElementById('thauma-scanlines');
   var errEl = document.getElementById('thauma-err');
+  var zoneBannerEl = document.getElementById('thauma-zone-banner');
 
   function currentLang() { return document.documentElement.lang === 'hr' ? 'hr' : 'en'; }
   function copy() { return LANG_DATA[currentLang()]; }
@@ -462,11 +480,68 @@ permalink: /404.html
   var W, H, orb, columns, running, signal, speed, bestBeaten, trail, bestMarkerX, beatFlash;
   var GRAVITY = 0.22, FLAP = -7.8, COLUMN_W = 54, GAP_H = 260, ORB_R = 10, COLUMN_GAP = 420;
 
+  // ---- Phase 2: the world (zones, GAME-SPEC.md §5) ----
+  // Endless run cycles through four zones themed after the real pages;
+  // completing all four loops back to zone 0 but faster ("restart
+  // faster"). Zone content reads real site data — mission's work labels,
+  // the values count — per §2's "reads, doesn't contain" principle.
+  var ZONE_LENGTH = 150; // SIGNAL points per zone
+  var GREEK = ['θ', 'α', 'υ', 'μ', 'α']; // θ α υ μ α
+  var zoneIndex, loopCount, collectibles, missionCollected, zoneBannerHideTimer;
+
+  function zoneForSignal(s) { return Math.floor(s / ZONE_LENGTH) % 4; }
+
+  function announceZone(idx) {
+    var titles = copy().zoneTitles;
+    var label = idx === 3 ? TEAM_ZONE_LABEL : titles[idx]; // zone 3 always glitches to Croatian
+    zoneBannerEl.textContent = ('0' + (idx + 1)) + ' — ' + label.toUpperCase();
+    zoneBannerEl.classList.remove('hide');
+    zoneBannerEl.classList.add('show');
+    clearTimeout(zoneBannerHideTimer);
+    zoneBannerHideTimer = setTimeout(function () {
+      zoneBannerEl.classList.remove('show');
+      zoneBannerEl.classList.add('hide');
+    }, 2200);
+    // Zone 3 (Team) glitches the HUD labels to Croatian too, then restores.
+    if (idx === 3) {
+      signalLabelEl.textContent = LANG_DATA.hr.signal;
+      bestLabelEl.textContent = LANG_DATA.hr.best;
+    } else {
+      signalLabelEl.textContent = copy().signal;
+      bestLabelEl.textContent = copy().best;
+    }
+  }
+
+  function updateZone() {
+    var z = zoneForSignal(signal);
+    var loops = Math.floor(signal / (ZONE_LENGTH * 4));
+    if (z !== zoneIndex) {
+      zoneIndex = z;
+      missionCollected = {};
+      announceZone(zoneIndex);
+    }
+    if (loops !== loopCount) loopCount = loops; // read by speed ramp below
+  }
+
+  function spawnCollectible(gapY) {
+    var words = copy().missionWords;
+    var idx = Object.keys(missionCollected).length % words.length;
+    for (var i = 0; i < words.length; i++) {
+      var candidate = (idx + i) % words.length;
+      if (!missionCollected[candidate]) { idx = candidate; break; }
+    }
+    collectibles.push({ x: W + 30, y: gapY, word: words[idx], idx: idx, taken: false });
+  }
+
   function startRun() {
     W = canvas.width; H = canvas.height;
     orb = { x: Math.max(90, W * 0.22), y: H / 2, vy: 0, tilt: 0 };
     columns = [];
     trail = [];
+    collectibles = [];
+    zoneIndex = -1;
+    loopCount = 0;
+    missionCollected = {};
     signal = 0;
     speed = 2.0;
     bestBeaten = false;
@@ -477,7 +552,10 @@ permalink: /404.html
     bestMarkerX = bestSignal > 0 ? orb.x + (bestSignal / 10) * (COLUMN_W + COLUMN_GAP / 3) : null;
     failEl.classList.remove('show');
     signalEl.textContent = 0;
+    signalLabelEl.textContent = copy().signal;
+    bestLabelEl.textContent = copy().best;
     spawnColumn(W + 60);
+    updateZone();
     running = true;
     requestAnimationFrame(loop);
   }
@@ -485,7 +563,14 @@ permalink: /404.html
   function spawnColumn(x) {
     var margin = 90;
     var gapY = margin + Math.random() * Math.max(40, H - margin * 2 - GAP_H) + GAP_H / 2;
-    columns.push({ x: x, gapY: gapY, passed: false });
+    var col = { x: x, gapY: gapY, passed: false };
+    if (zoneForSignal(signal) === 2) {
+      // Values zone: each column carries one of the real convictions'
+      // numerals instead of plain glitch-static.
+      col.numeral = (Math.floor(signal / 10) % VALUES_COUNT) + 1;
+    }
+    columns.push(col);
+    if (zoneForSignal(signal) === 1 && Math.random() < 0.7) spawnCollectible(gapY);
   }
 
   function flap() { if (running) orb.vy = FLAP; }
@@ -550,6 +635,7 @@ permalink: /404.html
         columns[i].passed = true;
         signal += 10;
         signalEl.textContent = signal;
+        updateZone();
         if (!bestBeaten && signal > bestSignal) {
           bestBeaten = true;
           bestEl.textContent = signal;
@@ -559,10 +645,29 @@ permalink: /404.html
       if (columns[i].x < -COLUMN_W - 60) columns.splice(i, 1);
     }
     if (!columns.length || columns[columns.length - 1].x < W - COLUMN_GAP) spawnColumn(W + 40);
-    speed = 2.0 + Math.min(2.4, signal / 420);
+    // Base ramp per §5, plus a flat bump per completed 4-zone loop — "the
+    // loop restarts faster" each time around, on top of the usual ramp.
+    speed = 2.0 + Math.min(2.4, signal / 420) + loopCount * 0.4;
 
     if (bestMarkerX !== null) bestMarkerX -= speed;
     if (beatFlash > 0) beatFlash = Math.min(1.6, beatFlash + 0.06);
+
+    // Mission zone: collectible words drift with the world; catching all
+    // three in one visit is the zone's bonus moment (GAME-SPEC.md §5).
+    for (var k = collectibles.length - 1; k >= 0; k--) {
+      var item = collectibles[k];
+      item.x -= speed;
+      if (!item.taken && Math.abs(item.x - orb.x) < ORB_R + 16 && Math.abs(item.y - orb.y) < ORB_R + 16) {
+        item.taken = true;
+        missionCollected[item.idx] = true;
+        if (Object.keys(missionCollected).length >= copy().missionWords.length) {
+          signal += 20;
+          signalEl.textContent = signal;
+          beatFlash = Math.max(beatFlash, 0.001);
+        }
+      }
+      if (item.x < -60) collectibles.splice(k, 1);
+    }
 
     if (orb.y - ORB_R < 0 || orb.y + ORB_R > H) { die(); return false; }
     for (var j = 0; j < columns.length; j++) {
@@ -579,6 +684,22 @@ permalink: /404.html
   function draw() {
     ctx.fillStyle = bgColor();
     ctx.fillRect(0, 0, W, H);
+
+    // About zone: faint drifting Greek letters (θαυμα) in the backdrop —
+    // reads as "you're passing through the site's own name," GAME-SPEC.md §5.
+    if (zoneIndex === 0) {
+      ctx.save();
+      ctx.font = '600 46px Sora, sans-serif';
+      ctx.fillStyle = 'rgba(237,242,248,.06)';
+      ctx.textBaseline = 'middle';
+      var span = W + 200;
+      var drift = (Date.now() / 40) % span;
+      for (var g = 0; g < GREEK.length; g++) {
+        var gx = span - ((drift + g * (span / GREEK.length)) % span);
+        ctx.fillText(GREEK[g], gx - 100, H * (0.2 + 0.15 * (g % 3)));
+      }
+      ctx.restore();
+    }
 
     // Vertical "best" line: a techy marker scrolling in the same world as
     // the columns, positioned so it reaches the orb exactly when this run
@@ -603,6 +724,29 @@ permalink: /404.html
       var top = c.gapY - GAP_H / 2, bottom = c.gapY + GAP_H / 2;
       ctx.fillRect(c.x, 0, COLUMN_W, top);
       ctx.fillRect(c.x, bottom, COLUMN_W, H - bottom);
+      // Values zone: each column shows one of the real convictions' numerals.
+      if (c.numeral) {
+        ctx.save();
+        ctx.font = '700 20px Sora, sans-serif';
+        ctx.fillStyle = 'rgba(11,15,21,.85)';
+        ctx.textAlign = 'center';
+        ctx.fillText(c.numeral, c.x + COLUMN_W / 2, top - 14);
+        ctx.fillText(c.numeral, c.x + COLUMN_W / 2, bottom + 24);
+        ctx.restore();
+      }
+    });
+
+    // Mission zone: collectible work-words drift through with the columns.
+    collectibles.forEach(function (item) {
+      if (item.taken) return;
+      ctx.save();
+      ctx.font = '600 15px Sora, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#5CF2C4';
+      ctx.shadowColor = '#5CF2C4';
+      ctx.shadowBlur = 10;
+      ctx.fillText(item.word.toUpperCase(), item.x, item.y);
+      ctx.restore();
     });
 
     // Original fading particle trail, kept as-is — just the orb itself
