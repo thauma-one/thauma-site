@@ -194,6 +194,18 @@
     "new_best": "New best.",
     "game_title": "WONDER",
     "home_tag": "still lost.",
+    "pb_lines": [
+      "New best. Try not to peak here.",
+      "A new record. History will remember this fondly.",
+      "Personal best. Somewhere, a trophy is being engraved.",
+      "Best score yet. Suspiciously good, actually.",
+      "New high score. The page is a little concerned.",
+      "That's your best. For now.",
+      "Personal best achieved. Please remain calm.",
+      "New record. Framing this moment in your mind.",
+      "Best yet. The bar has been raised, slightly.",
+      "New best. This is basically a promotion."
+    ],
     "taunts": [
       "Page not found.",
       "Page still not found.",

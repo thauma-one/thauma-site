@@ -1,10 +1,12 @@
 # GAME-SPEC.md — The Hidden 404 Game
 
-**STATUS: PHASE 2 SHIPPED (dev-only).** Phase 3 (leaderboard) is
-still concept — do not build it until this line says so. This
-remains a living document: append and revise, don't rediscover.
+**STATUS: PHASE 2 SHIPPED, SIMPLIFIED (dev-only).** Phase 3
+(leaderboard) is still concept — do not build it until this line says
+so. This remains a living document: append and revise, don't
+rediscover.
 
-Last revised: 2026-07-13 (Phase 2 built — see revision log)
+Last revised: 2026-07-13 (Phase 2 world simplified, PB flash → text,
+death markers moved in-world — see revision log)
 
 ---
 
@@ -39,8 +41,7 @@ site does, with zero game edits.
 
 | Game element        | Reads from                                   |
 |---------------------|----------------------------------------------|
-| Zones               | The page/nav list (i18n nav keys)            |
-| Collectible words   | i18n JSON (mission works, value titles)      |
+| World background    | Values-page titles, i18n JSON (both languages) |
 | Whisper background  | The 404's multilingual phrase list           |
 | Colors              | CSS variables (--blue, --foam, --bg, etc.)   |
 | Language            | The thauma_lang cookie, like every page      |
@@ -188,25 +189,22 @@ static that cuts to silence on collapse (OFF by default, tiny toggle).
 
 ## 5. The world (zones) — DEPENDS ON SITE DESIGN
 
-Endless run through zones themed after the real pages, announced with
-the site's cue-label system (`01 — ABOUT` drifting past). Zone list
-generated from the nav/page data. Current sketch (revise as pages
-change):
+**SIMPLIFIED (2026-07-13) — the four-zone cycle (About/Mission/Values/
+Team) was built once (see revision log) and then deliberately cut back**:
+it read as busywork rather than spectacle — a banner every 150 SIGNAL,
+per-zone mechanics, a forced-language HUD glitch — more moving parts
+than payoff. Replaced with one continuous, much simpler backdrop: the
+site's own convictions (the real Values-page titles, both languages
+together) drift past as a single looping strip of text behind the
+columns, scrolling at its own slow constant rate — independent of run
+state, so it never resets and never accelerates. No banner, no
+per-zone mechanic, no collectibles, no forced-language moments.
 
-| Zone | Source page | Flavor                                          |
-|------|-------------|--------------------------------------------------|
-| 01   | About       | Greek letters from the dictionary entry drift by |
-| 02   | Mission     | SERVE / TRAIN / GATHER as collectible words      |
-| 03   | Values      | The seven conviction numerals as obstacles       |
-| 04   | Team        | Everything glitches into Croatian (TIM zone)     |
-| loop | —           | Restart faster                                   |
-
-Collectibles tie into milestone effects (§6): e.g., collect all three
-mission words → the dark lifts a shade.
-
-Intent: someone who plays five minutes absorbs the site map and value
-system without reading a single page. An org tour in an arcade costume.
-Zones also solve endless-game monotony: variety without new mechanics.
+Intent unchanged in spirit — the game still visibly carries the site's
+own words through the background — just delivered as ambient texture
+instead of a structured tour. If zones-as-structure get revisited later,
+treat this note and the Phase 2 revision-log entry as the "why we
+backed off" record, not a dead end to silently retry.
 
 ---
 
@@ -215,26 +213,33 @@ Zones also solve endless-game monotony: variety without new mechanics.
 Endless. No win state. Score is labeled **SIGNAL**.
 
 - **Personal best:** localStorage. The single most celebrated moment
-  is passing your OWN best mid-run: score glow + glitch-particle
-  burst at that exact instant.
-- **Milestones (spectacle, not endings):** every ~100 SIGNAL the
-  background lifts one shade lighter — long runs literally end in a
-  brighter room. Larger marks: whisper wall fades in briefly behind
-  play; a slow-motion glow beat; score counter flashes seafoam.
+  is passing your OWN best mid-run — no screen flash; instead a short
+  randomized funny-but-encouraging line (`notFound.pb_lines`, same dry
+  voice as the death taunts) appears briefly near the top of the play
+  area. **CHANGED (2026-07-13):** was a full-screen color fade; that
+  read as a jump-scare rather than a celebration, and didn't fit the
+  taunts' established deadpan tone. The randomized line does both jobs
+  — confirms the moment, keeps the game's voice consistent — in one
+  cheaper effect.
+- **Milestone brightening — REMOVED (2026-07-13).** The background no
+  longer lifts shade by SIGNAL tier; it read as a gimmick without much
+  payoff and fought the new value-words backdrop for attention. The
+  background is now a fixed dark tone throughout a run.
 - **Procedural runs (hard requirement):** every run is different —
-  obstacle placement, gap patterns, and zone events are randomized per
-  run. No memorizable layout; skill is reaction, not recall.
-- **Death markers (replaces the rejected "ghost run" idea):** a thin
-  progress track along the screen edge (the meter motif) shows current
-  run distance plus up to 4 markers: the HIGH-SCORE death uniquely
-  styled (seafoam, larger, faint glow — the "summit marker") and the
-  LAST 3 deaths as small dim glitch ticks (FIFO — newest in, oldest
-  out, so ticks always describe recent play). Markers work on
-  procedural tracks because they live on the one constant axis:
-  distance. Passing a recent tick = subtle blip; passing the summit
-  marker = THE celebration moment (this is where the personal-best
-  glow-burst fires — the marker system and milestone celebration are
-  one instrument). Marker data in localStorage.
+  obstacle placement and gap patterns are randomized per run. No
+  memorizable layout; skill is reaction, not recall.
+- **Death markers — SIMPLIFIED (2026-07-13):** the original design
+  called for a dedicated bottom progress-bar/track DOM element with
+  tick marks; built once, but its percent-of-max math silently broke
+  down once a run went past its own assumed ceiling ("stops working
+  after 300"). Replaced with the same mechanism already used for the
+  best-run line: markers now live IN the world itself as scrolling
+  vertical lines (rose/pink for the last up-to-3 deaths, seafoam for
+  the personal best), computed once at run start from the same
+  distance math as the best-line and just scrolling with everything
+  else — no separate DOM bar, no percent-of-max ceiling to outgrow.
+  Marker data (the actual death SIGNAL values) still persists in
+  localStorage; only the on-screen representation changed.
 - **Global futility counter:** the leaderboard function also counts
   every death worldwide. The reassembled 404 occasionally quotes it:
   "The page has won 4,182 times." Local markers tell your story; the
@@ -539,3 +544,45 @@ ambiguous before building."
   `VALUES_COUNT` all absent from `_site/404.html`), and a full
   23-route site regression stayed clean. Phase 3 (leaderboard) remains
   CONCEPT — not authorized to build yet.
+- 2026-07-13 — **Phase 2 simplified per direct playtest feedback: "the
+  world is kinda lackluster."** STATUS moved to PHASE 2 SHIPPED,
+  SIMPLIFIED. Three changes, all in §5/§6:
+  1. **The four-zone cycle was cut.** No more `#thauma-zone-banner`,
+     zone-indexed mechanics (Greek-letter drift, Mission collectibles,
+     Values numerals, forced-Croatian Team beat), or the per-loop speed
+     bump — all removed from `src/404.njk` along with their supporting
+     data (`zoneTitles`, `missionWords`, `VALUES_COUNT`,
+     `TEAM_ZONE_LABEL`). Replaced with one continuous backdrop: the
+     real Values-page titles (`i18n.en/hr.values.items[].title`), both
+     languages concatenated into a single looping text strip, drawn as
+     a repeating canvas tile (`buildBgTile()`/`drawBackgroundWords()`)
+     scrolling at its own slow constant rate (`bgScrollX += 0.35` per
+     frame) — independent of run state, so it keeps looping smoothly
+     across retries instead of resetting.
+  2. **Milestone background-brightening removed.** `bgColor()`'s
+     8-tier lighten-with-SIGNAL logic is gone; the play-field background
+     is now a fixed `#0B0F15` throughout a run.
+  3. **The bottom DOM progress bar/track is gone** (`.thauma-track`,
+     `#thauma-progress`, `.thauma-tick`, `trackMax()`/`makeTick()`/
+     `updateTrackDom()` all removed) — its percent-of-max math broke
+     down once a run passed its own assumed ceiling. The best-run
+     marker mechanic (a dashed vertical line scrolling through the
+     world, already working correctly) was generalized: the last-3
+     deaths now get the same treatment as a small `deathMarkers` array,
+     drawn as dimmer rose-colored lines alongside the existing seafoam
+     best-line — both live purely in canvas world-space now, no DOM bar.
+  4. **The personal-best full-screen color flash (`beatFlash`) is
+     gone**, replaced by `showPbToast()`: a short randomized
+     funny-but-encouraging line (new `notFound.pb_lines` i18n array,
+     10 lines per language, matching the death-taunts' dry deadpan
+     voice) fading in near the top of the play area for ~1.8s.
+  Verified via a jsdom scripted run (20,000 frames, physics-mirroring
+  shadow autopilot as in the Phase 2 test) confirming: the background
+  strip draws every frame with zero errors even with 3 preloaded
+  recent-death values, the PB toast fires with real randomized text on
+  the first best-beating column, and a separate no-flap run that dies
+  immediately still reaches the fail overlay with correct taunt/stats
+  and a working Retry (fresh death-marker set rebuilt, no crash).
+  Confirmed no leftover DOM references to the removed track/zone
+  elements. Production build re-confirmed fully game-free; full
+  19-route site regression stayed clean.
