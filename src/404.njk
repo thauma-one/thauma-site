@@ -647,8 +647,17 @@ permalink: /404.html
     // falling — the classic language for "this is moving," since otherwise
     // only the world scrolling (not the orb itself) would show speed.
     orb.tilt = Math.max(-0.5, Math.min(0.9, orb.vy * 0.07));
+
+    // The trail lives in WORLD space, not screen space: the orb's x is
+    // fixed on screen (the world scrolls under it, per the tilt comment
+    // above), so a trail point recorded last frame must shift left by the
+    // same `speed` the columns move by, or every point would stack up at
+    // orb.x and draw as a vertical smear instead of a comet tail streaming
+    // behind the orb's actual path.
+    for (var ti = 0; ti < trail.length; ti++) trail[ti].x -= speed;
     trail.push({ x: orb.x, y: orb.y, tilt: orb.tilt });
-    if (trail.length > 14) trail.shift();
+    if (trail.length > 40) trail.shift();
+    while (trail.length && trail[0].x < -40) trail.shift();
 
     for (var i = columns.length - 1; i >= 0; i--) {
       columns[i].x -= speed;
