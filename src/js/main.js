@@ -87,7 +87,24 @@ if (window.THAUMA_ENV && !window.THAUMA_ENV.isProduction) {
       '.thauma-trail-glitch-active{animation:thauma-trail-glitch .4s steps(1,end)}' +
       '@keyframes thauma-trail-shake{0%,100%{transform:translate(0,0)}' +
       '25%{transform:translate(-4px,3px)}50%{transform:translate(3px,-4px)}75%{transform:translate(-3px,-2px)}}' +
-      '.thauma-trail-shake-active{animation:thauma-trail-shake .14s steps(1,end) 3}';
+      '.thauma-trail-shake-active{animation:thauma-trail-shake .14s steps(1,end) 3}' +
+      // Text-only glitch: applied directly to one element (the wordmark on
+      // door 1's 4th tap) instead of the whole page — RGB-split + skew/
+      // jitter on the element itself, no page-wide filter/invert at all.
+      '@keyframes thauma-text-glitch{' +
+      '0%,100%{transform:translate(0,0) skewX(0);text-shadow:none}' +
+      '6%{transform:translate(-7px,3px) skewX(7deg);text-shadow:6px 0 rgba(255,45,106,.9),-6px 0 rgba(47,216,255,.9)}' +
+      '13%{transform:translate(6px,-4px);text-shadow:none}' +
+      '20%{transform:translate(-8px,2px) skewX(-6deg);text-shadow:-7px 1px rgba(255,45,106,.9),7px -1px rgba(92,242,196,.9)}' +
+      '28%{transform:translate(5px,-3px);text-shadow:none}' +
+      '36%{transform:translate(-4px,5px) skewX(5deg);text-shadow:5px 0 rgba(255,45,106,.85),-5px 0 rgba(47,216,255,.85)}' +
+      '45%{transform:translate(7px,-2px);text-shadow:none}' +
+      '54%{transform:translate(-6px,-3px) skewX(-4deg);text-shadow:-5px 0 rgba(255,45,106,.8),5px 0 rgba(92,242,196,.8)}' +
+      '64%{transform:translate(4px,3px);text-shadow:none}' +
+      '74%{transform:translate(-3px,-2px) skewX(3deg);text-shadow:4px 0 rgba(255,45,106,.7),-4px 0 rgba(47,216,255,.7)}' +
+      '85%{transform:translate(2px,1px);text-shadow:none}' +
+      '100%{transform:translate(0,0) skewX(0);text-shadow:none}}' +
+      '.thauma-text-glitch-active{animation:thauma-text-glitch 1s steps(1,end)}';
     document.head.appendChild(glitchStyleTag);
 
     function glitchFlash() {
@@ -117,7 +134,13 @@ if (window.THAUMA_ENV && !window.THAUMA_ENV.isProduction) {
       glitchFlash();
     }
 
-    function flashWhisper() {
+    // lingerMs: how long the phrase stays fully visible before fading (the
+    // sitewide trail's default is a quick flash; door 1's "let them read it"
+    // moment passes a much longer value). skipPageEffects: door 1's step 3
+    // is meant to be a calm, readable beat, not accompanied by a page-wide
+    // flash — the trail's own use (via trailStep) still gets both.
+    function flashWhisper(lingerMs, skipPageEffects) {
+      var linger = lingerMs || 380;
       var lang = document.documentElement.lang === 'hr' ? 'hr' : 'en';
       var phrases = (window.THAUMA_TAUNTS && window.THAUMA_TAUNTS[lang]) || ['404'];
       var phrase = phrases[Math.floor(Math.random() * phrases.length)];
@@ -130,9 +153,70 @@ if (window.THAUMA_ENV && !window.THAUMA_ENV.isProduction) {
         'opacity:0;transition:opacity .08s ease';
       document.body.appendChild(el);
       requestAnimationFrame(function () { el.style.opacity = '1'; });
-      setTimeout(function () { el.style.opacity = '0'; setTimeout(function () { el.remove(); }, 150); }, 380);
-      glitchFlash();
-      scanlineBurst();
+      setTimeout(function () { el.style.opacity = '0'; setTimeout(function () { el.remove(); }, 150); }, linger);
+      if (!skipPageEffects) {
+        glitchFlash();
+        scanlineBurst();
+      }
+    }
+
+    // A big glitch on ONE element (RGB-split + skew jitter), not the page —
+    // door 1's 4th tap: "the text glitches more than the page."
+    function textGlitchBurst(el) {
+      el.classList.remove('thauma-text-glitch-active');
+      void el.offsetWidth;
+      el.classList.add('thauma-text-glitch-active');
+    }
+
+    // A short-lived RGB-split clone of a real on-page text element, parked
+    // over its original spot and jittering slightly — "adds elements to
+    // whatever page they're on," built from that page's own text rather
+    // than an invented overlay.
+    function spawnTextGhost(el) {
+      var rect = el.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      var style = getComputedStyle(el);
+      var ghost = document.createElement('div');
+      ghost.textContent = el.textContent.trim().slice(0, 60);
+      ghost.style.cssText = 'position:fixed;left:' + rect.left + 'px;top:' + rect.top + 'px;' +
+        'width:' + rect.width + 'px;max-height:' + rect.height + 'px;overflow:hidden;' +
+        'font-family:' + style.fontFamily + ';font-size:' + style.fontSize + ';font-weight:' + style.fontWeight + ';' +
+        'letter-spacing:' + style.letterSpacing + ';color:rgba(237,242,248,.85);pointer-events:none;z-index:99997;' +
+        'text-shadow:3px 0 rgba(255,45,106,.85),-3px 0 rgba(47,216,255,.85);opacity:0;transition:opacity .08s ease';
+      document.body.appendChild(ghost);
+      requestAnimationFrame(function () { ghost.style.opacity = '.9'; });
+      var jitter = setInterval(function () {
+        ghost.style.transform = 'translate(' + (Math.random() * 8 - 4).toFixed(1) + 'px,' + (Math.random() * 6 - 3).toFixed(1) + 'px)';
+      }, 90);
+      var life = 450 + Math.random() * 300;
+      setTimeout(function () {
+        clearInterval(jitter);
+        ghost.style.opacity = '0';
+        setTimeout(function () { ghost.remove(); }, 200);
+      }, life);
+    }
+
+    // Real, currently-visible text on whatever page the sequence is being
+    // typed on — the ghosts are built from this, not a fixed invented list.
+    function pageTextTargets() {
+      return Array.prototype.filter.call(
+        document.querySelectorAll('h1, h2, h3, .cue, .lede, .links a, .nav-actions a, .wordmark, p'),
+        function (el) {
+          var r = el.getBoundingClientRect();
+          return el.textContent.trim().length > 1 && r.width > 0 && r.top < window.innerHeight && r.bottom > 0;
+        }
+      );
+    }
+
+    // Konami steps 3+: each correct input adds one more ghost element to
+    // the page (steps 1-2, both ArrowUp, add nothing at all). Fast typers
+    // naturally see several ghosts piled up at once since each lingers
+    // ~450-750ms — the escalation is in the accumulation, not a count.
+    function addPageGlitchElement() {
+      if (reducedMotion) return;
+      var targets = pageTextTargets();
+      if (!targets.length) return;
+      spawnTextGhost(targets[Math.floor(Math.random() * targets.length)]);
     }
 
     function glowPulse() {
@@ -189,6 +273,10 @@ if (window.THAUMA_ENV && !window.THAUMA_ENV.isProduction) {
     // ".logo" — that one's a real link to home on every page, which fights
     // this same click for a different job. No time limit: tapping anywhere
     // else on the page resets the count instead of it expiring on its own.
+    // Bespoke escalation (not the shared trailStep ratio-curve): taps 1-2
+    // are silent, tap 3 is a calm readable taunt (long linger, no page
+    // flash), tap 4 is a big glitch on the wordmark text itself, tap 5
+    // enters the game. A wrong click just resets the count — no static pop.
     document.querySelectorAll('.wordmark').forEach(function (mark) {
       var tapCount = 0;
       mark.addEventListener('click', function (e) {
@@ -198,16 +286,21 @@ if (window.THAUMA_ENV && !window.THAUMA_ENV.isProduction) {
           openGame();
           return;
         }
-        trailStep('tap', tapCount, 5);
+        if (tapCount === 3) flashWhisper(1900, true);
+        else if (tapCount === 4) textGlitchBurst(mark);
       });
       document.addEventListener('click', function (e) {
         if (mark.contains(e.target)) return;
-        if (tapCount > 0) trailStep('tap', 0, 5);
         tapCount = 0;
       });
     });
 
     // ---- Door 2: Konami code, anywhere, Enter as a supplemental "Start" ----
+    // Bespoke escalation: the first two inputs (both ArrowUp) are silent;
+    // every correct input after that adds one ghost-text element to
+    // whatever page the sequence is being typed on, instead of a page-wide
+    // flash — "the text glitches more than the page." Wrong input just
+    // resets the position — no static pop.
     var KONAMI = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a', 'Enter'];
     var ARROWS = { ArrowUp: 1, ArrowDown: 1, ArrowLeft: 1, ArrowRight: 1 };
     var konamiPos = 0;
@@ -225,9 +318,8 @@ if (window.THAUMA_ENV && !window.THAUMA_ENV.isProduction) {
           openGame();
           return;
         }
-        trailStep('konami', konamiPos, KONAMI.length);
+        if (konamiPos > 2) addPageGlitchElement();
       } else if (konamiPos > 0) {
-        trailStep('konami', 0, KONAMI.length);
         konamiPos = 0;
       }
     });

@@ -101,6 +101,21 @@ permalink: /404.html
     letter-spacing:.06em;margin-bottom:8px;text-shadow:0 0 50px rgba(47,216,255,.25)}
   .thauma-overlay .home-tag{color:var(--dim);font-size:13px;letter-spacing:.1em;margin-bottom:30px}
 
+  /* Phase 3: the arcade — global leaderboard + crown moment */
+  .thauma-leaderboard{margin-top:24px;padding-top:20px;border-top:1px solid rgba(255,255,255,.1)}
+  .thauma-leaderboard .lb-title{font-family:'Sora',sans-serif;font-size:12px;font-weight:600;
+    letter-spacing:.25em;text-transform:uppercase;color:var(--foam);margin-bottom:12px}
+  .thauma-leaderboard ol{list-style:none;padding:0;margin:0;color:var(--dim);font-size:13px;
+    letter-spacing:.06em;line-height:1.9;text-align:left;max-width:220px;margin:0 auto}
+  .thauma-leaderboard ol li{display:flex;justify-content:space-between}
+  .thauma-crown{margin:22px 0;padding:18px;border:1px solid rgba(92,242,196,.3);border-radius:8px;
+    background:rgba(92,242,196,.06)}
+  .thauma-crown p#thauma-crown-label{color:var(--foam);font-size:13px;letter-spacing:.06em;margin-bottom:14px}
+  #thauma-initials-input{width:70px;text-align:center;text-transform:uppercase;letter-spacing:.3em;
+    font-family:'Sora',sans-serif;font-weight:600;font-size:18px;background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.2);border-radius:6px;color:var(--text);padding:8px 6px;margin-right:10px}
+  #thauma-initials-input:focus{outline:none;border-color:var(--foam)}
+
   /* Per-character scatter — each char gets its own JS-set --dx/--dy/--rot */
   @keyframes thauma-char-fall{
     0%{transform:translate(0,0) rotate(0deg);opacity:1;filter:none}
@@ -217,6 +232,10 @@ permalink: /404.html
       <p class="btn-row center" style="margin-top:14px">
         <a class="btn ghost" href="/" id="thauma-home-exit">Go back to Thauma</a>
       </p>
+      <div class="thauma-leaderboard" id="thauma-leaderboard" hidden>
+        <div class="lb-title" id="thauma-lb-title">Global best</div>
+        <ol id="thauma-lb-list"></ol>
+      </div>
     </div>
   </div>
 
@@ -224,6 +243,13 @@ permalink: /404.html
     <div class="panel">
       <p class="taunt" id="thauma-taunt">Page not found.</p>
       <p class="stats" id="thauma-stats"></p>
+      <div class="thauma-crown" id="thauma-crown" hidden>
+        <p id="thauma-crown-label">New global best — enter your initials</p>
+        <p class="btn-row center">
+          <input type="text" id="thauma-initials-input" maxlength="3" autocomplete="off" autocapitalize="characters" spellcheck="false">
+          <button class="btn solid" type="button" id="thauma-initials-submit">Submit</button>
+        </p>
+      </div>
       <p class="btn-row center">
         <button class="btn solid" type="button" id="thauma-retry">Retry</button>
         <button class="btn ghost" type="button" id="thauma-fail-home">Home</button>
@@ -260,8 +286,10 @@ permalink: /404.html
 <script>
 (function () {
   var LANG_DATA = {
-    en: { taunts: {{ i18n.en.notFound.taunts | dump | safe }}, signal: {{ i18n.en.notFound.signal_label | dump | safe }}, best: {{ i18n.en.notFound.best_label | dump | safe }}, newBest: {{ i18n.en.notFound.new_best | dump | safe }}, homeTag: {{ i18n.en.notFound.home_tag | dump | safe }}, gameTitle: {{ i18n.en.notFound.game_title | dump | safe }}, pbLines: {{ i18n.en.notFound.pb_lines | dump | safe }} },
-    hr: { taunts: {{ i18n.hr.notFound.taunts | dump | safe }}, signal: {{ i18n.hr.notFound.signal_label | dump | safe }}, best: {{ i18n.hr.notFound.best_label | dump | safe }}, newBest: {{ i18n.hr.notFound.new_best | dump | safe }}, homeTag: {{ i18n.hr.notFound.home_tag | dump | safe }}, gameTitle: {{ i18n.hr.notFound.game_title | dump | safe }}, pbLines: {{ i18n.hr.notFound.pb_lines | dump | safe }} }
+    en: { taunts: {{ i18n.en.notFound.taunts | dump | safe }}, signal: {{ i18n.en.notFound.signal_label | dump | safe }}, best: {{ i18n.en.notFound.best_label | dump | safe }}, newBest: {{ i18n.en.notFound.new_best | dump | safe }}, homeTag: {{ i18n.en.notFound.home_tag | dump | safe }}, gameTitle: {{ i18n.en.notFound.game_title | dump | safe }}, pbLines: {{ i18n.en.notFound.pb_lines | dump | safe }},
+      leaderboardTitle: {{ i18n.en.notFound.leaderboard_title | dump | safe }}, newGlobalBest: {{ i18n.en.notFound.new_global_best | dump | safe }}, initialsSubmit: {{ i18n.en.notFound.initials_submit | dump | safe }}, globalFutility: {{ i18n.en.notFound.global_futility | dump | safe }} },
+    hr: { taunts: {{ i18n.hr.notFound.taunts | dump | safe }}, signal: {{ i18n.hr.notFound.signal_label | dump | safe }}, best: {{ i18n.hr.notFound.best_label | dump | safe }}, newBest: {{ i18n.hr.notFound.new_best | dump | safe }}, homeTag: {{ i18n.hr.notFound.home_tag | dump | safe }}, gameTitle: {{ i18n.hr.notFound.game_title | dump | safe }}, pbLines: {{ i18n.hr.notFound.pb_lines | dump | safe }},
+      leaderboardTitle: {{ i18n.hr.notFound.leaderboard_title | dump | safe }}, newGlobalBest: {{ i18n.hr.notFound.new_global_best | dump | safe }}, initialsSubmit: {{ i18n.hr.notFound.initials_submit | dump | safe }}, globalFutility: {{ i18n.hr.notFound.global_futility | dump | safe }} }
   };
 
   // ---- The world (background, GAME-SPEC.md §5, simplified) ----
@@ -293,6 +321,13 @@ permalink: /404.html
   var scanlinesEl = document.getElementById('thauma-scanlines');
   var errEl = document.getElementById('thauma-err');
   var pbToastEl = document.getElementById('thauma-pb-toast');
+  var leaderboardEl = document.getElementById('thauma-leaderboard');
+  var lbTitleEl = document.getElementById('thauma-lb-title');
+  var lbListEl = document.getElementById('thauma-lb-list');
+  var crownEl = document.getElementById('thauma-crown');
+  var crownLabelEl = document.getElementById('thauma-crown-label');
+  var initialsInputEl = document.getElementById('thauma-initials-input');
+  var initialsSubmitEl = document.getElementById('thauma-initials-submit');
 
   function currentLang() { return document.documentElement.lang === 'hr' ? 'hr' : 'en'; }
   function copy() { return LANG_DATA[currentLang()]; }
@@ -313,6 +348,76 @@ permalink: /404.html
     var deaths = recentDeaths.length ? recentDeaths.join(', ') : '—';
     return copy().best + ': <b>' + bestSignal + '</b> &nbsp;·&nbsp; ' + copy().signal + ': ' + deaths;
   }
+
+  // ---- Phase 3: the arcade (leaderboard + global futility counter) ----
+  // No auth, forgeable, low stakes on purpose (GAME-SPEC.md §6) — offline
+  // or the function being unreachable just hides the leaderboard UI, it
+  // never blocks play.
+  var LEADERBOARD_URL = '/.netlify/functions/game-scores';
+  var leaderboard = null; // { scores: [{initials,score}], totalDeaths } once loaded
+
+  function renderLeaderboard() {
+    if (!leaderboard || !leaderboard.scores || !leaderboard.scores.length) {
+      leaderboardEl.hidden = true;
+      return;
+    }
+    lbTitleEl.textContent = copy().leaderboardTitle;
+    lbListEl.innerHTML = '';
+    leaderboard.scores.forEach(function (s) {
+      var li = document.createElement('li');
+      var initials = document.createElement('span');
+      initials.textContent = s.initials;
+      var score = document.createElement('span');
+      score.textContent = s.score;
+      li.appendChild(initials);
+      li.appendChild(score);
+      lbListEl.appendChild(li);
+    });
+    leaderboardEl.hidden = false;
+  }
+
+  function fetchLeaderboard() {
+    fetch(LEADERBOARD_URL).then(function (r) {
+      if (!r.ok) throw new Error('bad status');
+      return r.json();
+    }).then(function (data) {
+      leaderboard = data;
+      renderLeaderboard();
+    }).catch(function () {
+      leaderboard = null;
+      leaderboardEl.hidden = true;
+    });
+  }
+  fetchLeaderboard();
+
+  function qualifiesForLeaderboard(score) {
+    if (!leaderboard || !leaderboard.scores || score <= 0) return false;
+    if (leaderboard.scores.length < 10) return true;
+    return score > leaderboard.scores[leaderboard.scores.length - 1].score;
+  }
+
+  function pingDeath() {
+    fetch(LEADERBOARD_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ death: true })
+    }).then(function (r) { return r.ok ? r.json() : null; }).then(function (data) {
+      if (data) leaderboard = data; // keeps totalDeaths fresh for the next taunt roll
+    }).catch(function () {});
+  }
+
+  initialsSubmitEl.addEventListener('click', function () {
+    var initials = (initialsInputEl.value || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3);
+    var score = signal;
+    crownEl.hidden = true;
+    fetch(LEADERBOARD_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ initials: initials, score: score })
+    }).then(function (r) { return r.ok ? r.json() : null; }).then(function (data) {
+      if (data) { leaderboard = data; renderLeaderboard(); }
+    }).catch(function () {});
+  });
 
   // ---- Door 4: the "404" numeral ----
   document.querySelectorAll('.dict-word').forEach(function (el) {
@@ -432,6 +537,8 @@ permalink: /404.html
     signalLabelEl.textContent = copy().signal;
     bestLabelEl.textContent = copy().best;
     bestEl.textContent = bestSignal;
+    crownEl.hidden = true;
+    renderLeaderboard();
     resizeCanvas();
   }
 
@@ -442,6 +549,7 @@ permalink: /404.html
   document.getElementById('thauma-fail-home').addEventListener('click', function () {
     running = false;
     failEl.classList.remove('show');
+    crownEl.hidden = true;
     openGameHome();
   });
   document.getElementById('thauma-retry').addEventListener('click', startRun);
@@ -497,6 +605,7 @@ permalink: /404.html
       return { x: orb.x + (v / 10) * (COLUMN_W + COLUMN_GAP / 3), value: v };
     });
     failEl.classList.remove('show');
+    crownEl.hidden = true;
     signalEl.textContent = 0;
     signalLabelEl.textContent = copy().signal;
     bestLabelEl.textContent = copy().best;
@@ -538,7 +647,7 @@ permalink: /404.html
     // falling — the classic language for "this is moving," since otherwise
     // only the world scrolling (not the orb itself) would show speed.
     orb.tilt = Math.max(-0.5, Math.min(0.9, orb.vy * 0.07));
-    trail.push({ x: orb.x, y: orb.y });
+    trail.push({ x: orb.x, y: orb.y, tilt: orb.tilt });
     if (trail.length > 14) trail.shift();
 
     for (var i = columns.length - 1; i >= 0; i--) {
@@ -595,9 +704,18 @@ permalink: /404.html
     }
     ctx.restore();
 
+    ctx.fillStyle = 'rgba(47,216,255,.5)';
+    columns.forEach(function (c) {
+      var top = c.gapY - GAP_H / 2, bottom = c.gapY + GAP_H / 2;
+      ctx.fillRect(c.x, 0, COLUMN_W, top);
+      ctx.fillRect(c.x, bottom, COLUMN_W, H - bottom);
+    });
+
     // Vertical "best" line: a techy marker scrolling in the same world as
     // the columns, positioned so it reaches the orb exactly when this run
     // matches the old best. Passing it is the moment the run gets flashy.
+    // Drawn AFTER the columns (not before) so a passing column never paints
+    // over and hides it mid-run.
     if (bestMarkerX !== null && bestMarkerX > -40 && bestMarkerX < W + 40) {
       ctx.save();
       var pulse = 0.5 + Math.sin(Date.now() / 260) * 0.25;
@@ -628,20 +746,20 @@ permalink: /404.html
       ctx.restore();
     });
 
-    ctx.fillStyle = 'rgba(47,216,255,.5)';
-    columns.forEach(function (c) {
-      var top = c.gapY - GAP_H / 2, bottom = c.gapY + GAP_H / 2;
-      ctx.fillRect(c.x, 0, COLUMN_W, top);
-      ctx.fillRect(c.x, bottom, COLUMN_W, H - bottom);
-    });
-
-    // Original fading particle trail, kept as-is — just the orb itself
-    // now tilts with it (see below) rather than adding a second trail.
+    // Original fading particle trail — each particle now tilts with the
+    // orb's velocity at the moment it was left behind (drawn as a tilted
+    // ellipse, same shape language as the orb itself), instead of a plain
+    // untilted circle.
     trail.forEach(function (p, i) {
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.tilt || 0);
       ctx.beginPath();
       ctx.fillStyle = 'rgba(92,242,196,' + (0.05 + (i / trail.length) * 0.25) + ')';
-      ctx.arc(p.x, p.y, ORB_R * (0.3 + (i / trail.length) * 0.5), 0, Math.PI * 2);
+      var r = ORB_R * (0.3 + (i / trail.length) * 0.5);
+      ctx.ellipse(0, 0, r * 1.15, r * 0.88, 0, 0, Math.PI * 2);
       ctx.fill();
+      ctx.restore();
     });
 
     // The orb tilts with its own velocity (nose up rising, nose down
@@ -682,6 +800,8 @@ permalink: /404.html
       localStorage.setItem('thauma_best', bestSignal);
     }
 
+    pingDeath(); // global futility counter (Phase 3, §6) — fire-and-forget
+
     // Death gets the same glitch language as the opening collapse — two
     // punches before the panel reveals, not one quiet fade.
     function punch() {
@@ -696,9 +816,23 @@ permalink: /404.html
     var taunts = copy().taunts;
     var idx = Math.min(attempts, taunts.length) - 1;
     var revealDelay = reducedMotion ? 0 : 420;
+    var qualifies = qualifiesForLeaderboard(signal);
     setTimeout(function () {
-      tauntEl.textContent = (newBest ? copy().newBest + ' ' : '') + taunts[idx];
+      // Occasionally (1 in 6) the reassembled page quotes the global
+      // futility count instead of a normal taunt — only once that data has
+      // actually loaded, never a fabricated number.
+      var line = taunts[idx];
+      if (leaderboard && leaderboard.totalDeaths > 0 && Math.random() < (1 / 6)) {
+        line = copy().globalFutility.replace('{n}', leaderboard.totalDeaths.toLocaleString());
+      }
+      tauntEl.textContent = (newBest ? copy().newBest + ' ' : '') + line;
       statsEl.innerHTML = copy().signal + ': <b>' + signal + '</b> &nbsp;·&nbsp; ' + copy().best + ': <b>' + bestSignal + '</b>';
+      if (qualifies) {
+        crownLabelEl.textContent = copy().newGlobalBest;
+        initialsSubmitEl.textContent = copy().initialsSubmit;
+        initialsInputEl.value = '';
+        crownEl.hidden = false;
+      }
       failEl.classList.add('show');
     }, revealDelay);
   }

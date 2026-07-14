@@ -1,12 +1,13 @@
 # GAME-SPEC.md — The Hidden 404 Game
 
-**STATUS: PHASE 2 SHIPPED, SIMPLIFIED (dev-only).** Phase 3
-(leaderboard) is still concept — do not build it until this line says
-so. This remains a living document: append and revise, don't
-rediscover.
+**STATUS: PHASE 3 SHIPPED (dev-only front-end; the leaderboard
+function itself deploys to production like any Netlify Function —
+see §8 note).** All three phases are now built. §5.5 (the collage
+wall) remains a specced-but-unbuilt idea for later — see that section.
+This remains a living document: append and revise, don't rediscover.
 
-Last revised: 2026-07-13 (Phase 2 world simplified, PB flash → text,
-death markers moved in-world — see revision log)
+Last revised: 2026-07-14 (Phase 3 arcade built; door 1/2 escalation
+redesigned; trail tilt + marker z-order fixed — see revision log)
 
 ---
 
@@ -111,7 +112,37 @@ Escalation curve is BACK-LOADED on purpose: steps 1-2 nearly
 imperceptible (arrow keys scroll pages; early Konami steps fire
 accidentally all the time — the trail must whisper before it speaks).
 
-Sketch (Konami, 10 steps):
+**Door 3 (typed word) still runs the original generic ratio-based
+curve** described below via the shared `trailStep()` function in
+`main.js` — untouched.
+
+**Doors 1 and 2 were given bespoke curves (2026-07-14), replacing the
+generic table below for those two specifically** — direct feedback was
+that the page-wide filter/invert effects were "too strong," and asked
+for text to glitch more than the page:
+
+- **Door 1 (wordmark, 5 taps):** taps 1-2 silent. Tap 3 = a sarcastic
+  taunt line (reusing the whisper phrase pool), lingering much longer
+  than the trail's usual quick flash so it's actually readable, with
+  no accompanying page-wide flash — a calm beat, not a jolt. Tap 4 = a
+  big glitch applied directly to the wordmark text itself (RGB-split +
+  skew jitter via a dedicated `.thauma-text-glitch-active` class/
+  keyframe), never touching `<html>`. Tap 5 enters the game. A wrong
+  click (anywhere off the wordmark) just resets the count — no static
+  pop.
+- **Door 2 (Konami, 11 steps):** the first two inputs (both ArrowUp)
+  are silent. Every correct input after that spawns one RGB-split
+  "ghost" clone of a real, currently-visible text element on whatever
+  page the sequence is being typed on (`spawnTextGhost()`/
+  `pageTextTargets()` in `main.js`) — parked over the original and
+  jittering briefly before fading. Fast input naturally piles up
+  several ghosts at once since each lingers ~450-750ms; that
+  accumulation IS the escalation, not a page-wide filter ramp. Wrong
+  input just resets the position — no static pop.
+
+**Original generic curve (door 3 only now):**
+
+Sketch (10 steps):
 | Steps | Effect |
 |-------|--------|
 | 1-2   | Nothing / a single faint glitch pixel |
@@ -121,13 +152,11 @@ Sketch (Konami, 10 steps):
 | 9     | Page dims a shade |
 | 10    | Collapse begins |
 
-Wordmark taps (5) run the compressed curve: nothing, glint, letter
-flicker, building glow + jitter, collapse.
-
-**Wrong input = the trail dies with a tiny static "pop."** This is
-the most important effect: it teaches (a) there IS a sequence and
-(b) you broke it — converting accidental discovery into deliberate
-puzzle-solving. Sequence timers reset after ~2s idle.
+**Wrong input (door 3) = the trail dies with a tiny static "pop."**
+This taught the "there IS a sequence, and you broke it" lesson well
+for door 3, but users reported it read as noise on doors 1/2 once
+those got their own bespoke curves — those two now just reset
+silently instead. Sequence timers reset after ~2s idle.
 
 Constraints: all effects respect prefers-reduced-motion (no trail
 under reduced motion — triggers still work, silently); effects must
@@ -206,6 +235,57 @@ instead of a structured tour. If zones-as-structure get revisited later,
 treat this note and the Phase 2 revision-log entry as the "why we
 backed off" record, not a dead end to silently retry.
 
+
+### 5.5 The collage wall (background layer) — STABLE IDEA
+
+**Reference image:** a typographic-collage poster photo sits in the
+same folder as this spec (rename to `game-collage-reference.jpg`).
+Claude Code: VIEW IT before building — match its density, mixed sizes/
+weights, and interlocking 0°/90° rotations, but in our palette at low
+opacity.
+
+The game's lowest visual layer is a continuously scrolling typographic
+collage — a wall of words built from the site's own vocabulary, in
+many languages, passing behind everything.
+
+Build requirements:
+
+1. **Layering:** drawn FIRST every frame — beneath all gameplay,
+   including obstacle columns. Nothing renders under it.
+2. **Legibility protection:** words in --dim plus faint blue tints at
+   roughly 6–12% opacity against --bg. At a glance it must read as
+   texture, not text. Gameplay readability always wins; if in doubt,
+   lower the opacity.
+3. **Motion:** scrolls with the run as parallax at ~30–40% of obstacle
+   speed — a deep wall passing by. Respects prefers-reduced-motion
+   (with the rest of the game, per §8).
+4. **Endless & non-repeating:** procedurally generate collage panels
+   ahead of the player; discard off-screen panels. Vary word choice,
+   size, weight, rotation, and packing per panel — no visible tiling
+   or repetition. (Same procedural-run philosophy as §6.)
+5. **Words = site data, MANY languages:** the collage is deliberately
+   POLYGLOT — it draws from the mission words, value titles, nav
+   labels, and page vocabulary across ALL available i18n languages,
+   plus the 404 whisper-wall phrase list (already multilingual). The
+   player's chosen language governs HUD/gameplay text (§8); the
+   collage intentionally does not — it is the ministry's vocabulary
+   across tongues, all at once. As languages are added to the site,
+   the collage grows richer automatically.
+6. **Seafoam accent words (rare):** roughly 3–4 words per 100 render
+   in --foam instead of dim slate — scaled by panel size/density
+   (denser panels may carry slightly more; sparse panels fewer), and
+   never two seafoam words adjacent to each other. These are glints,
+   not highlights: at collage opacity they should feel like catching
+   a word out of the corner of your eye. All other words stay in the
+   dim/blue-tint family; seafoam is the only accent color used.
+7. **Performance:** pre-render each generated panel to an offscreen
+   canvas once, then blit while scrolling — do not redraw hundreds of
+   text strings per frame.
+
+Expected tuning pass after first build (normal, not failure):
+density, size contrast between largest and smallest words, and
+opacity will need eyeballing against real gameplay.
+
 ---
 
 ## 6. Progression & spectacle — STABLE IDEA
@@ -240,20 +320,35 @@ Endless. No win state. Score is labeled **SIGNAL**.
   else — no separate DOM bar, no percent-of-max ceiling to outgrow.
   Marker data (the actual death SIGNAL values) still persists in
   localStorage; only the on-screen representation changed.
-- **Global futility counter:** the leaderboard function also counts
-  every death worldwide. The reassembled 404 occasionally quotes it:
-  "The page has won 4,182 times." Local markers tell your story; the
-  global number tells everyone's. (Phase 3 — requires the function.)
-- **Global leaderboard:** Netlify Function + Netlify blob storage
-  (same pattern as staff-data). GET top 10 / POST score. **Three-letter
-  initials only** — arcade-correct and nearly moderation-proof. Crown
-  moment: "NEW GLOBAL BEST — ENTER INITIALS." Offline: leaderboard
-  hides, local best still works. Accepted tradeoff: client-submitted
-  scores are forgeable; stakes are bragging rights on a hidden page.
-  Function contract sketch:
-  - `GET  /.netlify/functions/game-scores` → `[{ initials, score }]` (top 10)
-  - `POST /.netlify/functions/game-scores` `{ initials: "ABC", score: n }`
-    (server clamps initials to 3 chars A–Z, score to a sane integer)
+- **Global futility counter — SHIPPED (2026-07-14):** every death pings
+  the leaderboard function (`{ death: true }`, fire-and-forget from
+  `die()`) which increments a `totalDeaths` counter in the same Blob
+  record as the scores. On death, there's a 1-in-6 chance (only once
+  `totalDeaths` has actually loaded — never a fabricated number) that
+  the reassembled 404's taunt line is replaced with
+  `notFound.global_futility` ("The page has won {n} times.") instead
+  of a normal taunt. Local markers tell your story; the global number
+  tells everyone's.
+- **Global leaderboard — SHIPPED (2026-07-14):** `netlify/functions/
+  game-scores.js`, same Blobs pattern as `staff-data.js`, no auth (the
+  accepted tradeoff below applies). GET returns `{ scores, totalDeaths
+  }`; POST either submits a score or pings a death. **Three-letter
+  initials**, non-letters stripped and short entries padded with `?`
+  rather than rejected. Crown moment: on death, if the run's SIGNAL
+  beats the current 10th-place score (or there are fewer than 10
+  entries yet), an initials-entry panel appears on the fail screen
+  (`notFound.new_global_best`) instead of just the normal Retry/Home
+  buttons. Offline or the function being unreachable: the leaderboard
+  list on the game's home screen simply stays hidden (`fetch` failure
+  is caught silently) — local best and the rest of the game are
+  unaffected either way. Accepted tradeoff: client-submitted scores
+  are forgeable; stakes are bragging rights on a hidden page.
+  Function contract (as built):
+  - `GET  /.netlify/functions/game-scores` → `{ scores: [{ initials, score }], totalDeaths }` (top 10, desc)
+  - `POST /.netlify/functions/game-scores` `{ initials: "ABC", score: n }` → adds a score, returns the same shape
+  - `POST /.netlify/functions/game-scores` `{ death: true }` → increments `totalDeaths`, returns the same shape
+  - Server clamps initials to 3 chars A–Z (padded with `?` if shorter)
+    and score to `0..999999`; a score of 0 or below is not recorded.
 
 ---
 
@@ -341,6 +436,17 @@ ambiguous before building."
   `src/src.11tydata.js` (`isDevServer = process.env.ELEVENTY_RUN_MODE
   && process.env.ELEVENTY_RUN_MODE !== "build"`) — one consistent
   signal for "is this a real deploy," not a second detection scheme.
+- **Netlify Functions aren't env-gated the same way (noted 2026-07-14):**
+  `env.isProduction` only controls what the Eleventy *templates* emit
+  (byte-absent from `_site/` in production). `netlify/functions/*.js`
+  files deploy regardless — there's no per-file build gate for
+  functions the way there is for `.njk` templates. `game-scores.js`
+  therefore IS live and publicly callable on the production site even
+  before the game's front-end ships there. Accepted deliberately, same
+  reasoning as the leaderboard's own no-auth tradeoff above: no
+  sensitive data, forgeable by design, worst case someone pokes the
+  endpoint directly and adds a fake bragging-rights entry to a
+  leaderboard nobody can see yet.
 
 ---
 
@@ -356,6 +462,12 @@ ambiguous before building."
 ---
 
 ## 10. Revision log
+
+- 2026-07-13 — Added §5.5 the collage wall: polyglot typographic
+  scrolling background (lowest layer, parallax, procedural panels,
+  site-data words across all languages, rare seafoam accent words
+  ~3-4/100 density-scaled, offscreen-canvas performance rule,
+  reference image alongside this spec).
 
 - 2026-07-13 — **Second playtest revision.** Named the game
   ("WONDER" / "ČUDO" — a direct translation of thauma itself, easy to
@@ -586,3 +698,54 @@ ambiguous before building."
   Confirmed no leftover DOM references to the removed track/zone
   elements. Production build re-confirmed fully game-free; full
   19-route site regression stayed clean.
+- 2026-07-14 — **Fourth playtest round + Phase 3 build.** STATUS moved
+  to PHASE 3 SHIPPED. Several fixes plus the full arcade phase:
+  1. **Marker occlusion fixed.** The best-line and death-marker
+     vertical lines were drawn BEFORE the obstacle columns, so a
+     passing column's opaque fill silently painted over a marker
+     whenever their x-positions coincided — the lines were correct in
+     data but intermittently invisible on screen. Reordered so both
+     marker types draw AFTER the columns; they're now always on top.
+  2. **Trail now tilts with the orb.** Each trail particle is pushed
+     with the orb's `tilt` at that instant (`trail.push({x,y,tilt})`)
+     and drawn as a tilted ellipse (same shape language as the orb
+     itself) instead of a plain untilted circle — per direct feedback
+     that "the orb tilts, but not the trail."
+  3. **Doors 1 and 2 given bespoke escalation curves** (see §3.5 for
+     the full writeup) — replacing the generic ratio-based trailStep
+     curve for those two specifically, per feedback that the page-wide
+     glitch was "too strong" and a request that text glitch more than
+     the page. Door 3 (typed word) is unchanged.
+  4. **Phase 3 built: the arcade.** `netlify/functions/game-scores.js`
+     (Blobs-backed, no auth, same pattern as `staff-data.js`) serves a
+     top-10 leaderboard plus a global death counter. Front-end
+     (`src/404.njk`): fetches the leaderboard on game-open and renders
+     it on the home screen (hidden entirely if the fetch fails —
+     offline-safe by design); `die()` fire-and-forgets a death ping and,
+     1-in-6 of the time once the count has actually loaded, quotes it
+     instead of a normal taunt; a death whose SIGNAL beats the current
+     10th-place score (or when fewer than 10 entries exist yet) shows a
+     3-letter initials-entry panel on the fail screen instead of just
+     Retry/Home, submitting via the same function. See §8 for a note
+     that this function — unlike the `.njk`-templated game itself —
+     deploys to production regardless of `env.isProduction`, since
+     Netlify Functions aren't gated by the Eleventy build the same way;
+     accepted deliberately given the no-auth, forgeable-by-design
+     leaderboard already has no sensitive stakes.
+  Verified: the marker/trail fixes and door 1/2 redesign via a jsdom
+  scripted click/keydown harness (confirmed zero DOM changes on doors
+  1-2's silent early inputs, the taunt div appearing on tap 3, the
+  text-only glitch class landing on the wordmark — not `<html>` — on
+  tap 4, correct navigation timing on tap/step 5, and ghost elements
+  appearing on the page starting exactly at Konami's 3rd input).
+  `game-scores.js` verified directly with a mocked Blobs store
+  (initials sanitized/padded, scores sorted and trimmed to 10, garbage/
+  negative scores rejected, death counter increments). The full
+  front-end leaderboard flow (fetch, render, death ping, crown
+  qualification, submit) verified via a 12-death jsdom scripted run
+  with a mocked `fetch` and the same physics-mirroring autopilot used
+  in earlier rounds — leaderboard rendered on open, at least one
+  global-futility taunt line surfaced, the crown UI appeared and a
+  submitted score round-tripped correctly. Production build
+  re-confirmed fully game-free in `_site/404.html`; full 19-route site
+  regression stayed clean.

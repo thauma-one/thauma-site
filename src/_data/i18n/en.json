@@ -192,6 +192,10 @@
     "signal_label": "SCORE",
     "best_label": "Best",
     "new_best": "New best.",
+    "leaderboard_title": "Global best",
+    "new_global_best": "New global best — enter your initials",
+    "initials_submit": "Submit",
+    "global_futility": "The page has won {n} times.",
     "game_title": "WONDER",
     "home_tag": "still lost.",
     "pb_lines": [

@@ -192,6 +192,10 @@
     "signal_label": "REZULTAT",
     "best_label": "Najbolji",
     "new_best": "Novi rekord.",
+    "leaderboard_title": "Globalni rekord",
+    "new_global_best": "Novi globalni rekord — unesi svoje inicijale",
+    "initials_submit": "Pošalji",
+    "global_futility": "Stranica je pobijedila {n} puta.",
     "game_title": "ČUDO",
     "home_tag": "još uvijek izgubljeno.",
     "pb_lines": [
