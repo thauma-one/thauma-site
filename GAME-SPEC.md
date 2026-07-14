@@ -1,13 +1,14 @@
 # GAME-SPEC.md — The Hidden 404 Game
 
-**STATUS: PHASE 3 SHIPPED (dev-only front-end; the leaderboard
-function itself deploys to production like any Netlify Function —
-see §8 note).** All three phases are now built. §5.5 (the collage
-wall) remains a specced-but-unbuilt idea for later — see that section.
-This remains a living document: append and revise, don't rediscover.
+**STATUS: PHASE 3 SHIPPED, §5.5 COLLAGE WALL SHIPPED (dev-only
+front-end; the leaderboard function itself deploys to production like
+any Netlify Function — see §8 note).** All three phases and the
+collage wall are now built. This remains a living document: append
+and revise, don't rediscover.
 
-Last revised: 2026-07-14 (Phase 3 arcade built; door 1/2 escalation
-redesigned; trail tilt + marker z-order fixed — see revision log)
+Last revised: 2026-07-14 (collage wall built; leaderboard reworked to
+free-text names + moderation + admin delete; PB reset added; a real
+marker-distance bug fixed — see revision log)
 
 ---
 
@@ -42,7 +43,7 @@ site does, with zero game edits.
 
 | Game element        | Reads from                                   |
 |---------------------|----------------------------------------------|
-| World background    | Values-page titles, i18n JSON (both languages) |
+| World background    | Nav/mission/values/taunts, i18n JSON (ALL languages, §5.5) |
 | Whisper background  | The 404's multilingual phrase list           |
 | Colors              | CSS variables (--blue, --foam, --bg, etc.)   |
 | Language            | The thauma_lang cookie, like every page      |
@@ -236,7 +237,7 @@ treat this note and the Phase 2 revision-log entry as the "why we
 backed off" record, not a dead end to silently retry.
 
 
-### 5.5 The collage wall (background layer) — STABLE IDEA
+### 5.5 The collage wall (background layer) — SHIPPED (2026-07-14)
 
 **Reference image:** a typographic-collage poster photo sits in the
 same folder as this spec (rename to `game-collage-reference.jpg`).
@@ -286,6 +287,26 @@ Expected tuning pass after first build (normal, not failure):
 density, size contrast between largest and smallest words, and
 opacity will need eyeballing against real gameplay.
 
+**Built as specced (2026-07-14).** `src/404.njk`: `COLLAGE_WORDS`
+gathers nav labels, mission work labels, values titles, and the
+`notFound.taunts` whisper list — iterating `site.languages` (not
+hardcoded en/hr) so a future language is picked up automatically, per
+the project's own i18n convention. `buildCollagePanel()` pre-renders
+each 700px-wide panel once to an offscreen `<canvas>` (16-25 words,
+mixed 13-53px sizes, 200/700 weights, mostly 0° with ~25% at 90°,
+6-12% opacity in a dim blue tint, ~3.5% seafoam accents with a
+never-two-in-a-row guard); `updateCollage()` scrolls existing panels
+at `speed * 0.35` (within the 30-40% target), generates new panels
+just ahead of the visible edge, and discards ones that have scrolled
+off; `drawCollage()` just blits the cached canvases — no per-frame
+text redraw. Reduced motion sets the parallax rate to 0 (wall stays,
+motion doesn't). Verified via a jsdom run capturing actual
+`fillText`/`drawImage` calls: 42-51 distinct words/phrases drawn
+across a sample run (genuinely polyglot — English and Croatian mixed
+in the same wall), zero undefined/empty entries, and `drawImage` call
+volume roughly 20x `fillText` volume — confirming panels are built
+once and reused, not redrawn from scratch every frame.
+
 ---
 
 ## 6. Progression & spectacle — STABLE IDEA
@@ -329,26 +350,50 @@ Endless. No win state. Score is labeled **SIGNAL**.
   `notFound.global_futility` ("The page has won {n} times.") instead
   of a normal taunt. Local markers tell your story; the global number
   tells everyone's.
-- **Global leaderboard — SHIPPED (2026-07-14):** `netlify/functions/
-  game-scores.js`, same Blobs pattern as `staff-data.js`, no auth (the
-  accepted tradeoff below applies). GET returns `{ scores, totalDeaths
-  }`; POST either submits a score or pings a death. **Three-letter
-  initials**, non-letters stripped and short entries padded with `?`
-  rather than rejected. Crown moment: on death, if the run's SIGNAL
-  beats the current 10th-place score (or there are fewer than 10
-  entries yet), an initials-entry panel appears on the fail screen
-  (`notFound.new_global_best`) instead of just the normal Retry/Home
-  buttons. Offline or the function being unreachable: the leaderboard
-  list on the game's home screen simply stays hidden (`fetch` failure
-  is caught silently) — local best and the rest of the game are
-  unaffected either way. Accepted tradeoff: client-submitted scores
-  are forgeable; stakes are bragging rights on a hidden page.
+- **Global leaderboard — SHIPPED (2026-07-14), reworked same day per
+  feedback:** `netlify/functions/game-scores.js`, same Blobs pattern
+  as `staff-data.js`. GET returns `{ scores, totalDeaths }`; POST
+  submits a score, pings a death, or (admin-only) deletes an entry.
+  **Free-text names up to 20 characters** (not the original 3-letter-
+  initials idea) — letters/digits/spaces/`'`/`-`/`.` only, no
+  fixed-width padding (a short name is just short, no trailing `?`
+  filler). A small normalized blocklist (leetspeak substitutions
+  folded before matching) catches crude names server-side; any match,
+  or a blank name, becomes `FALLBACK_NAME` ("Anonymous") — the
+  front-end substitutes the LOADED language's own `notFound.anonymous`
+  before ever sending a blank name, so the server's hardcoded English
+  fallback is only a safety net for direct API calls, not what a
+  normal player sees. **Deletion** is gated behind a shared secret
+  (`GAME_ADMIN_TOKEN`, a Netlify site environment variable — never in
+  git, same posture as `BLOBS_LOCAL_TOKEN`): every leaderboard entry
+  on the home screen has a small "×" that prompts for the token and
+  POSTs `{ action: "delete", index }`; wrong/missing token or an unset
+  env var always 403s. The trash icon is visible to any visitor (this
+  is already a no-auth, forgeable-by-design leaderboard), but only
+  someone holding the token can actually remove anything. Crown
+  moment: on death, if the run's SIGNAL beats the current 10th-place
+  score (or there are fewer than 10 entries yet), a name-entry panel
+  appears on the fail screen (`notFound.new_global_best`) instead of
+  just the normal Retry/Home buttons. Offline or the function being
+  unreachable: the leaderboard list on the game's home screen simply
+  stays hidden (`fetch` failure is caught silently) — local best and
+  the rest of the game are unaffected either way. Accepted tradeoff:
+  client-submitted scores are still forgeable; stakes remain bragging
+  rights on a hidden page — deletion exists for cleanup/moderation,
+  not to make the leaderboard authoritative.
   Function contract (as built):
-  - `GET  /.netlify/functions/game-scores` → `{ scores: [{ initials, score }], totalDeaths }` (top 10, desc)
-  - `POST /.netlify/functions/game-scores` `{ initials: "ABC", score: n }` → adds a score, returns the same shape
+  - `GET  /.netlify/functions/game-scores` → `{ scores: [{ name, score }], totalDeaths }` (top 10, desc)
+  - `POST /.netlify/functions/game-scores` `{ name: "...", score: n }` → adds a score, returns the same shape
   - `POST /.netlify/functions/game-scores` `{ death: true }` → increments `totalDeaths`, returns the same shape
-  - Server clamps initials to 3 chars A–Z (padded with `?` if shorter)
-    and score to `0..999999`; a score of 0 or below is not recorded.
+  - `POST /.netlify/functions/game-scores` `{ action: "delete", index: n, token: "..." }` → removes `scores[n]` if `token === GAME_ADMIN_TOKEN`, else 403
+  - Server clamps names to 20 chars from an allowed charset, runs the
+    profanity check, and clamps score to `0..999999`; a score of 0 or
+    below is not recorded.
+- **Personal-best reset — SHIPPED (2026-07-14):** a small, deliberately
+  understated link on the game's home screen ("Reset personal best")
+  clears `thauma_best` after a confirm dialog — requested directly
+  ("there needs to be a way to reset your PB"). Scoped to the best
+  only; death history and attempt count are untouched.
 
 ---
 
@@ -749,3 +794,37 @@ ambiguous before building."
   submitted score round-tripped correctly. Production build
   re-confirmed fully game-free in `_site/404.html`; full 19-route site
   regression stayed clean.
+- 2026-07-14 — **Fifth playtest round: a real marker bug, PB reset,
+  leaderboard rework, and the collage wall built.**
+  1. **Fixed a genuine marker-distance bug.** `bestMarkerX`/
+     `deathMarkers` were computed using `COLUMN_W + COLUMN_GAP / 3`
+     (194px) as the world-distance per 10 SIGNAL, but the real spacing
+     between consecutive columns is `COLUMN_GAP + 40` (~460px) — more
+     than double. This made both markers reach the orb far earlier
+     than the run's actual SIGNAL warranted, relative to the columns
+     the player is actually tracking — reported as "the PB line...
+     stuck at around the 30-40 point gaps." Replaced with a single
+     `WORLD_DIST_PER_10_SIGNAL` constant matching the real spacing,
+     used by both markers.
+  2. **Personal-best reset added** (see §6) — a subtle home-screen link
+     behind a confirm dialog.
+  3. **Leaderboard reworked** (see §6's Global leaderboard entry) from
+     3-letter padded initials to free-text names up to 20 characters,
+     no `?` padding, a profanity filter with a hardcoded "Anonymous"
+     server fallback (client substitutes the loaded language's own
+     string when the input is blank), and admin-token-gated deletion
+     via a small "×" on each leaderboard entry.
+  4. **§5.5 the collage wall built** — see that section for the full
+     writeup. Replaces the simplified single-strip background from the
+     previous round with the fully-specced procedural, polyglot,
+     offscreen-cached panel system.
+  Verified: the marker fix via the existing jsdom trail/marker
+  methodology; PB reset and the leaderboard rework (name length,
+  moderation via leetspeak-normalized blocklist matching, wrong-token
+  vs. correct-token delete, empty-name fallback) via jsdom runs against
+  the real `game-scores.js` (mocked Blobs store) and the front-end
+  (mocked `fetch`/`window.prompt`/`window.confirm`); the collage wall
+  by capturing actual `fillText`/`drawImage` calls across a 400-frame
+  run (42-51 distinct polyglot words drawn, panels confirmed cached
+  and reused rather than redrawn). Production build re-confirmed fully
+  game-free; full 19-route site regression stayed clean.

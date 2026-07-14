@@ -1,17 +1,34 @@
 // Global arcade leaderboard + futility counter for the hidden 404 game
-// (GAME-SPEC.md §6, Phase 3). No auth — scores are client-submitted and
-// forgeable by design; stakes are bragging rights on a hidden page, not
-// anything worth protecting. Same Blobs pattern as staff-data.js.
+// (GAME-SPEC.md §6, Phase 3). No auth on GET/POST score — scores are
+// client-submitted and forgeable by design; stakes are bragging rights on
+// a hidden page, not anything worth protecting. Deletion is the one
+// destructive action, gated behind a shared secret (GAME_ADMIN_TOKEN, set
+// only as a Netlify site environment variable — never in git). Same Blobs
+// pattern as staff-data.js.
 //
-// GET  -> { scores: [{ initials, score }] (top 10, desc), totalDeaths }
-// POST { initials: "ABC", score: n } -> adds a score, returns the above
-// POST { death: true }               -> increments totalDeaths, returns the above
+// GET  -> { scores: [{ name, score }] (top 10, desc), totalDeaths }
+// POST { name: "...", score: n }         -> adds a score, returns the above
+// POST { death: true }                    -> increments totalDeaths, returns the above
+// POST { action: "delete", index: n, token: "..." } -> removes scores[n], returns the above
 const { getStore } = require("@netlify/blobs");
 
 const STORE_NAME = "game-scores";
 const KEY = "data";
 const MAX_SCORES = 10;
 const MAX_SCORE_VALUE = 999999;
+const MAX_NAME_LEN = 20;
+const FALLBACK_NAME = "Anonymous";
+
+// Small, deliberately non-exhaustive blocklist — normalized matching (below)
+// catches the common leetspeak dodges without needing a huge word list for
+// a low-stakes hidden-page leaderboard. Anything that matches gets replaced
+// with FALLBACK_NAME entirely, not partially censored (safer than trying
+// to mask just the offending part).
+const BLOCKLIST = [
+  "fuck", "shit", "bitch", "cunt", "asshole", "bastard", "dick", "pussy",
+  "nigger", "nigga", "faggot", "fag", "retard", "whore", "slut", "rape",
+  "nazi", "hitler", "kike", "spic", "chink", "tranny",
+];
 
 function json(body, statusCode) {
   return {
@@ -21,9 +38,36 @@ function json(body, statusCode) {
   };
 }
 
-function sanitizeInitials(v) {
-  var s = (typeof v === "string" ? v : "").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 3);
-  return (s || "?").padEnd(3, "?");
+function normalizeForModeration(s) {
+  return s
+    .toLowerCase()
+    .replace(/0/g, "o")
+    .replace(/1/g, "i")
+    .replace(/3/g, "e")
+    .replace(/4/g, "a")
+    .replace(/5/g, "s")
+    .replace(/7/g, "t")
+    .replace(/@/g, "a")
+    .replace(/\$/g, "s")
+    .replace(/[^a-z]/g, "");
+}
+
+function isCrude(s) {
+  const normalized = normalizeForModeration(s);
+  return BLOCKLIST.some((word) => normalized.includes(word));
+}
+
+function sanitizeName(v) {
+  const raw = (typeof v === "string" ? v : "").trim();
+  // Letters (any script), digits, spaces, and a few safe punctuation marks —
+  // no HTML/control characters. Collapse repeated whitespace.
+  const cleaned = raw
+    .replace(/[^\p{L}\p{N} '\-.]/gu, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, MAX_NAME_LEN);
+  if (!cleaned || isCrude(cleaned)) return FALLBACK_NAME;
+  return cleaned;
 }
 
 function sanitizeScore(v) {
@@ -58,6 +102,19 @@ exports.handler = async (event) => {
 
     const existing = (await store.get(KEY, { type: "json" })) || { scores: [], totalDeaths: 0 };
 
+    if (body.action === "delete") {
+      const adminToken = process.env.GAME_ADMIN_TOKEN;
+      if (!adminToken || body.token !== adminToken) {
+        return json({ error: "Not authorized" }, 403);
+      }
+      const index = Number(body.index);
+      if (Number.isInteger(index) && index >= 0 && index < existing.scores.length) {
+        existing.scores.splice(index, 1);
+        await store.setJSON(KEY, existing);
+      }
+      return json(existing, 200);
+    }
+
     if (body.death) {
       existing.totalDeaths = (existing.totalDeaths || 0) + 1;
       await store.setJSON(KEY, existing);
@@ -66,7 +123,7 @@ exports.handler = async (event) => {
 
     const score = sanitizeScore(body.score);
     if (score > 0) {
-      existing.scores.push({ initials: sanitizeInitials(body.initials), score: score });
+      existing.scores.push({ name: sanitizeName(body.name), score: score });
       existing.scores.sort((a, b) => b.score - a.score);
       existing.scores = existing.scores.slice(0, MAX_SCORES);
     }

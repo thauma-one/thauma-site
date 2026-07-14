@@ -101,6 +101,12 @@ permalink: /404.html
     letter-spacing:.06em;margin-bottom:8px;text-shadow:0 0 50px rgba(47,216,255,.25)}
   .thauma-overlay .home-tag{color:var(--dim);font-size:13px;letter-spacing:.1em;margin-bottom:30px}
 
+  /* Subtle by design — a way to reset, not an invitation to click by accident */
+  .reset-pb-row{margin-top:16px}
+  .link-reset{background:none;border:none;color:var(--dim);font-size:11px;letter-spacing:.06em;
+    text-decoration:underline;text-underline-offset:3px;cursor:pointer;font-family:inherit;opacity:.6}
+  .link-reset:hover{opacity:1;color:var(--foam)}
+
   /* Phase 3: the arcade — global leaderboard + crown moment */
   .thauma-leaderboard{margin-top:24px;padding-top:20px;border-top:1px solid rgba(255,255,255,.1)}
   .thauma-leaderboard .lb-title{font-family:'Sora',sans-serif;font-size:12px;font-weight:600;
@@ -111,10 +117,16 @@ permalink: /404.html
   .thauma-crown{margin:22px 0;padding:18px;border:1px solid rgba(92,242,196,.3);border-radius:8px;
     background:rgba(92,242,196,.06)}
   .thauma-crown p#thauma-crown-label{color:var(--foam);font-size:13px;letter-spacing:.06em;margin-bottom:14px}
-  #thauma-initials-input{width:70px;text-align:center;text-transform:uppercase;letter-spacing:.3em;
-    font-family:'Sora',sans-serif;font-weight:600;font-size:18px;background:rgba(255,255,255,.06);
-    border:1px solid rgba(255,255,255,.2);border-radius:6px;color:var(--text);padding:8px 6px;margin-right:10px}
+  #thauma-initials-input{width:180px;text-align:center;letter-spacing:.03em;
+    font-family:'Sora',sans-serif;font-weight:600;font-size:16px;background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.2);border-radius:6px;color:var(--text);padding:8px 10px;margin-right:10px}
   #thauma-initials-input:focus{outline:none;border-color:var(--foam)}
+  .thauma-leaderboard ol li .lb-del{background:none;border:none;color:var(--dim);opacity:.35;
+    cursor:pointer;font-size:12px;padding:0 0 0 8px;line-height:1}
+  .thauma-leaderboard ol li .lb-del:hover{opacity:1;color:#ff2d6a}
+  .thauma-leaderboard ol li{align-items:center}
+  .thauma-leaderboard ol li .lb-entry{display:flex;justify-content:space-between;flex:1;gap:8px}
+  .thauma-leaderboard ol li .lb-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px}
 
   /* Per-character scatter — each char gets its own JS-set --dx/--dy/--rot */
   @keyframes thauma-char-fall{
@@ -232,6 +244,7 @@ permalink: /404.html
       <p class="btn-row center" style="margin-top:14px">
         <a class="btn ghost" href="/" id="thauma-home-exit">Go back to Thauma</a>
       </p>
+      <p class="reset-pb-row"><button class="link-reset" type="button" id="thauma-reset-pb">Reset personal best</button></p>
       <div class="thauma-leaderboard" id="thauma-leaderboard" hidden>
         <div class="lb-title" id="thauma-lb-title">Global best</div>
         <ol id="thauma-lb-list"></ol>
@@ -246,7 +259,7 @@ permalink: /404.html
       <div class="thauma-crown" id="thauma-crown" hidden>
         <p id="thauma-crown-label">New global best — enter your initials</p>
         <p class="btn-row center">
-          <input type="text" id="thauma-initials-input" maxlength="3" autocomplete="off" autocapitalize="characters" spellcheck="false">
+          <input type="text" id="thauma-initials-input" maxlength="20" autocomplete="off" spellcheck="false">
           <button class="btn solid" type="button" id="thauma-initials-submit">Submit</button>
         </p>
       </div>
@@ -287,20 +300,31 @@ permalink: /404.html
 (function () {
   var LANG_DATA = {
     en: { taunts: {{ i18n.en.notFound.taunts | dump | safe }}, signal: {{ i18n.en.notFound.signal_label | dump | safe }}, best: {{ i18n.en.notFound.best_label | dump | safe }}, newBest: {{ i18n.en.notFound.new_best | dump | safe }}, homeTag: {{ i18n.en.notFound.home_tag | dump | safe }}, gameTitle: {{ i18n.en.notFound.game_title | dump | safe }}, pbLines: {{ i18n.en.notFound.pb_lines | dump | safe }},
-      leaderboardTitle: {{ i18n.en.notFound.leaderboard_title | dump | safe }}, newGlobalBest: {{ i18n.en.notFound.new_global_best | dump | safe }}, initialsSubmit: {{ i18n.en.notFound.initials_submit | dump | safe }}, globalFutility: {{ i18n.en.notFound.global_futility | dump | safe }} },
+      leaderboardTitle: {{ i18n.en.notFound.leaderboard_title | dump | safe }}, newGlobalBest: {{ i18n.en.notFound.new_global_best | dump | safe }}, initialsSubmit: {{ i18n.en.notFound.initials_submit | dump | safe }}, globalFutility: {{ i18n.en.notFound.global_futility | dump | safe }},
+      resetPb: {{ i18n.en.notFound.reset_pb | dump | safe }}, resetPbConfirm: {{ i18n.en.notFound.reset_pb_confirm | dump | safe }}, anonymous: {{ i18n.en.notFound.anonymous | dump | safe }}, deleteScorePrompt: {{ i18n.en.notFound.delete_score_prompt | dump | safe }} },
     hr: { taunts: {{ i18n.hr.notFound.taunts | dump | safe }}, signal: {{ i18n.hr.notFound.signal_label | dump | safe }}, best: {{ i18n.hr.notFound.best_label | dump | safe }}, newBest: {{ i18n.hr.notFound.new_best | dump | safe }}, homeTag: {{ i18n.hr.notFound.home_tag | dump | safe }}, gameTitle: {{ i18n.hr.notFound.game_title | dump | safe }}, pbLines: {{ i18n.hr.notFound.pb_lines | dump | safe }},
-      leaderboardTitle: {{ i18n.hr.notFound.leaderboard_title | dump | safe }}, newGlobalBest: {{ i18n.hr.notFound.new_global_best | dump | safe }}, initialsSubmit: {{ i18n.hr.notFound.initials_submit | dump | safe }}, globalFutility: {{ i18n.hr.notFound.global_futility | dump | safe }} }
+      leaderboardTitle: {{ i18n.hr.notFound.leaderboard_title | dump | safe }}, newGlobalBest: {{ i18n.hr.notFound.new_global_best | dump | safe }}, initialsSubmit: {{ i18n.hr.notFound.initials_submit | dump | safe }}, globalFutility: {{ i18n.hr.notFound.global_futility | dump | safe }},
+      resetPb: {{ i18n.hr.notFound.reset_pb | dump | safe }}, resetPbConfirm: {{ i18n.hr.notFound.reset_pb_confirm | dump | safe }}, anonymous: {{ i18n.hr.notFound.anonymous | dump | safe }}, deleteScorePrompt: {{ i18n.hr.notFound.delete_score_prompt | dump | safe }} }
   };
 
-  // ---- The world (background, GAME-SPEC.md §5, simplified) ----
-  // The site's own convictions (Values page titles), both languages
-  // together, drifting past as one continuous looping strip — reads
-  // real site data, never invented copy.
-  var VALUE_WORDS = [
-    {% for item in i18n.en.values.items %}{{ item.title | dump | safe }}{% if not loop.last %},{% endif %}{% endfor %}
-  ].concat([
-    {% for item in i18n.hr.values.items %}{{ item.title | dump | safe }}{% if not loop.last %},{% endif %}{% endfor %}
-  ]);
+  // ---- The world (background, GAME-SPEC.md §5.5, "the collage wall") ----
+  // Polyglot on purpose — every language the site has, mixed together,
+  // regardless of which one the player is currently reading in (that's
+  // governed separately, by the HUD/gameplay text). Iterates site.languages
+  // rather than hardcoding en/hr, per the project's own i18n convention, so
+  // a future language is picked up automatically with zero game edits.
+  var COLLAGE_WORDS = [];
+  {% for lang in site.languages %}
+  {% set t = i18n[lang] %}
+  COLLAGE_WORDS = COLLAGE_WORDS.concat([
+    {{ t.nav.about | dump | safe }}, {{ t.nav.mission | dump | safe }}, {{ t.nav.values | dump | safe }},
+    {{ t.nav.team | dump | safe }}, {{ t.nav.resources | dump | safe }}, {{ t.nav.contact | dump | safe }},
+    {{ t.nav.give | dump | safe }}, {{ t.nav.events | dump | safe }},
+    {{ t.mission.work1_label | dump | safe }}, {{ t.mission.work2_label | dump | safe }}, {{ t.mission.work3_label | dump | safe }}
+  ]).concat([
+    {% for item in t.values.items %}{{ item.title | dump | safe }}{% if not loop.last %},{% endif %}{% endfor %}
+  ]).concat({{ t.notFound.taunts | dump | safe }});
+  {% endfor %}
 
   var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var gameEl = document.getElementById('thauma-game');
@@ -328,6 +352,7 @@ permalink: /404.html
   var crownLabelEl = document.getElementById('thauma-crown-label');
   var initialsInputEl = document.getElementById('thauma-initials-input');
   var initialsSubmitEl = document.getElementById('thauma-initials-submit');
+  var resetPbEl = document.getElementById('thauma-reset-pb');
 
   function currentLang() { return document.documentElement.lang === 'hr' ? 'hr' : 'en'; }
   function copy() { return LANG_DATA[currentLang()]; }
@@ -363,17 +388,49 @@ permalink: /404.html
     }
     lbTitleEl.textContent = copy().leaderboardTitle;
     lbListEl.innerHTML = '';
-    leaderboard.scores.forEach(function (s) {
+    leaderboard.scores.forEach(function (s, i) {
       var li = document.createElement('li');
-      var initials = document.createElement('span');
-      initials.textContent = s.initials;
+      var entry = document.createElement('span');
+      entry.className = 'lb-entry';
+      var name = document.createElement('span');
+      name.className = 'lb-name';
+      name.textContent = s.name;
       var score = document.createElement('span');
       score.textContent = s.score;
-      li.appendChild(initials);
-      li.appendChild(score);
+      entry.appendChild(name);
+      entry.appendChild(score);
+      li.appendChild(entry);
+      // Visible to anyone (it's a hidden page already), but the delete only
+      // actually goes through server-side if the admin token matches — see
+      // game-scores.js. Not real access control, just keeps the button out
+      // of the way for the 99.9% of visitors who aren't Chase.
+      var del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'lb-del';
+      del.setAttribute('aria-label', 'delete');
+      del.textContent = '×';
+      del.addEventListener('click', function () { deleteScore(i); });
+      li.appendChild(del);
       lbListEl.appendChild(li);
     });
     leaderboardEl.hidden = false;
+  }
+
+  var cachedAdminToken = null;
+  function deleteScore(index) {
+    var token = cachedAdminToken || window.prompt(copy().deleteScorePrompt);
+    if (!token) return;
+    fetch(LEADERBOARD_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'delete', index: index, token: token })
+    }).then(function (r) {
+      if (r.status === 403) { cachedAdminToken = null; return null; }
+      cachedAdminToken = token; // remembered for the rest of this page load only
+      return r.ok ? r.json() : null;
+    }).then(function (data) {
+      if (data) { leaderboard = data; renderLeaderboard(); }
+    }).catch(function () {});
   }
 
   function fetchLeaderboard() {
@@ -407,13 +464,16 @@ permalink: /404.html
   }
 
   initialsSubmitEl.addEventListener('click', function () {
-    var initials = (initialsInputEl.value || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3);
+    // Blank input gets the LOADED language's "Anonymous" — the server-side
+    // fallback (game-scores.js) is English-only since it has no language
+    // context; this is the real localized path for the common case.
+    var name = (initialsInputEl.value || '').trim().slice(0, 20) || copy().anonymous;
     var score = signal;
     crownEl.hidden = true;
     fetch(LEADERBOARD_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ initials: initials, score: score })
+      body: JSON.stringify({ name: name, score: score })
     }).then(function (r) { return r.ok ? r.json() : null; }).then(function (data) {
       if (data) { leaderboard = data; renderLeaderboard(); }
     }).catch(function () {});
@@ -537,6 +597,7 @@ permalink: /404.html
     signalLabelEl.textContent = copy().signal;
     bestLabelEl.textContent = copy().best;
     bestEl.textContent = bestSignal;
+    resetPbEl.textContent = copy().resetPb;
     crownEl.hidden = true;
     renderLeaderboard();
     resizeCanvas();
@@ -554,11 +615,19 @@ permalink: /404.html
   });
   document.getElementById('thauma-retry').addEventListener('click', startRun);
 
+  resetPbEl.addEventListener('click', function () {
+    if (!window.confirm(copy().resetPbConfirm)) return;
+    bestSignal = 0;
+    localStorage.setItem('thauma_best', 0);
+    bestEl.textContent = bestSignal;
+    bestMarkerX = null;
+  });
+
   window.addEventListener('resize', resizeCanvas);
   function resizeCanvas() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
-    bgTile = null; // rebuild the looping word-strip for the new width
+    collagePanels = []; // panels are baked at a fixed height; rebuild for the new one
   }
 
   // ---- Flappy Light (placeholder mechanic, §7) ----
@@ -567,20 +636,76 @@ permalink: /404.html
   // actually play (verified structurally the first time, not by feel).
   var W, H, orb, columns, running, signal, speed, bestBeaten, trail, bestMarkerX;
   var GRAVITY = 0.22, FLAP = -7.8, COLUMN_W = 54, GAP_H = 260, ORB_R = 10, COLUMN_GAP = 420;
+  // Real world-distance between consecutive columns: a new one spawns at
+  // W+40 once the last one's x drops below W-COLUMN_GAP, so successive
+  // columns land COLUMN_GAP+40 apart — NOT the COLUMN_GAP/3 figure this used
+  // to use, which undershot by more than 2x and made the best/death markers
+  // reach the orb far earlier than the run's real SIGNAL actually warranted.
+  var WORLD_DIST_PER_10_SIGNAL = COLUMN_GAP + 40;
 
   // ---- The world (background, GAME-SPEC.md §5, simplified) ----
   // A single continuously-looping strip of the site's own value-words,
   // independent of run state (never reset by startRun) so it truly
   // loops for the whole page visit, not per-attempt.
-  var bgScrollX = 0, bgTile = null, bgTileWidth = 0;
-  function buildBgTile() {
-    ctx.font = '600 22px Sora, sans-serif';
-    var joined = VALUE_WORDS.join('   ·   ') + '   ·   ';
-    var tile = joined;
-    var guard = 0;
-    while (guard++ < 50 && ctx.measureText(tile).width < (canvas.width || 1200) * 2) tile += joined;
-    bgTile = tile;
-    bgTileWidth = ctx.measureText(tile).width || 1;
+  // Panels are pre-rendered ONCE to an offscreen canvas and then just
+  // blitted while scrolling (§5.5 point 7) — no per-frame text redraw of
+  // dozens of words. Each panel is procedurally distinct (point 4): no two
+  // panels share a layout, so the wall never visibly tiles or repeats.
+  var COLLAGE_PANEL_W = 700;
+  var collagePanels = []; // { canvas, x }
+  var collageLastWasAccent = false; // never two seafoam words adjacent, even across a panel boundary
+
+  function buildCollagePanel(height) {
+    var w = COLLAGE_PANEL_W, h = Math.max(200, height || 600);
+    var panel = document.createElement('canvas');
+    panel.width = w;
+    panel.height = h;
+    var pctx = panel.getContext('2d');
+    var count = 16 + Math.floor(Math.random() * 10);
+    for (var i = 0; i < count; i++) {
+      var word = COLLAGE_WORDS[Math.floor(Math.random() * COLLAGE_WORDS.length)];
+      var size = 13 + Math.random() * 40; // mixed sizes, per the reference collage
+      var weight = Math.random() < 0.45 ? 700 : 200; // mixed weights
+      var vertical = Math.random() < 0.25; // mostly 0°, some 90° — interlocking, not chaotic angles
+      // ~3-4 per 100 in seafoam, never twice in a row (point 6).
+      var isAccent = !collageLastWasAccent && Math.random() < 0.035;
+      collageLastWasAccent = isAccent;
+      var opacity = 0.06 + Math.random() * 0.06; // 6-12%, texture not text (point 2)
+      var fill = isAccent
+        ? 'rgba(92,242,196,' + (opacity + 0.03).toFixed(3) + ')'
+        : 'rgba(140,175,205,' + opacity.toFixed(3) + ')';
+      pctx.save();
+      pctx.font = weight + ' ' + Math.round(size) + 'px Sora, sans-serif';
+      pctx.fillStyle = fill;
+      pctx.textBaseline = 'middle';
+      pctx.translate(Math.random() * w, Math.random() * h);
+      if (vertical) pctx.rotate(Math.PI / 2);
+      pctx.fillText(word, 0, 0);
+      pctx.restore();
+    }
+    return { canvas: panel, x: 0 };
+  }
+
+  function updateCollage() {
+    // A static wall under reduced motion (still present, just not moving —
+    // point 3 respects prefers-reduced-motion the same way the rest of the
+    // game does, per §8).
+    var pspeed = reducedMotion ? 0 : speed * 0.35; // parallax: 30-40% of obstacle speed
+    for (var i = collagePanels.length - 1; i >= 0; i--) {
+      collagePanels[i].x -= pspeed;
+      if (collagePanels[i].x + COLLAGE_PANEL_W < -50) collagePanels.splice(i, 1);
+    }
+    var rightEdge = collagePanels.length ? collagePanels[collagePanels.length - 1].x + COLLAGE_PANEL_W : 0;
+    while (rightEdge < W + COLLAGE_PANEL_W) {
+      var p = buildCollagePanel(H);
+      p.x = rightEdge;
+      collagePanels.push(p);
+      rightEdge += COLLAGE_PANEL_W;
+    }
+  }
+
+  function drawCollage() {
+    collagePanels.forEach(function (p) { ctx.drawImage(p.canvas, p.x, 0); });
   }
 
   // ---- Last-3-death + best markers now live in the world itself (in-canvas
@@ -600,9 +725,9 @@ permalink: /404.html
     // The vertical "best" line lives in the same scrolling world as the
     // columns — it starts one best-run's-worth of distance ahead, so it
     // naturally reaches the orb exactly when this run matches the old one.
-    bestMarkerX = bestSignal > 0 ? orb.x + (bestSignal / 10) * (COLUMN_W + COLUMN_GAP / 3) : null;
+    bestMarkerX = bestSignal > 0 ? orb.x + (bestSignal / 10) * WORLD_DIST_PER_10_SIGNAL : null;
     deathMarkers = recentDeaths.map(function (v) {
-      return { x: orb.x + (v / 10) * (COLUMN_W + COLUMN_GAP / 3), value: v };
+      return { x: orb.x + (v / 10) * WORLD_DIST_PER_10_SIGNAL, value: v };
     });
     failEl.classList.remove('show');
     crownEl.hidden = true;
@@ -679,9 +804,7 @@ permalink: /404.html
     if (bestMarkerX !== null) bestMarkerX -= speed;
     deathMarkers.forEach(function (m) { m.x -= speed; });
 
-    // The background word-strip scrolls at its own slow, constant rate —
-    // independent of the run's speed ramp, so it just quietly loops.
-    bgScrollX += 0.35;
+    updateCollage();
 
     if (orb.y - ORB_R < 0 || orb.y + ORB_R > H) { die(); return false; }
     for (var j = 0; j < columns.length; j++) {
@@ -698,20 +821,9 @@ permalink: /404.html
     ctx.fillStyle = '#0B0F15';
     ctx.fillRect(0, 0, W, H);
 
-    // The world: the site's own value-words, both languages, drifting past
-    // as one continuously looping strip (GAME-SPEC.md §5, simplified).
-    if (!bgTile) buildBgTile();
-    ctx.save();
-    ctx.font = '600 22px Sora, sans-serif';
-    ctx.fillStyle = 'rgba(237,242,248,.07)';
-    ctx.textBaseline = 'middle';
-    var bx = -(bgScrollX % bgTileWidth);
-    var rowY = H * 0.42;
-    while (bx < W) {
-      ctx.fillText(bgTile, bx, rowY);
-      bx += bgTileWidth;
-    }
-    ctx.restore();
+    // The collage wall (§5.5) — drawn first, beneath everything else.
+    if (!collagePanels.length) updateCollage();
+    drawCollage();
 
     ctx.fillStyle = 'rgba(47,216,255,.5)';
     columns.forEach(function (c) {
