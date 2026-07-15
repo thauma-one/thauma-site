@@ -62,9 +62,10 @@ permalink: /404.html
   #thauma-scanlines.show{opacity:1}
 
   #thauma-game{position:fixed;inset:0;z-index:50;background:#0B0F15;
-    opacity:0;visibility:hidden;pointer-events:none;transition:opacity .8s ease}
+    opacity:0;visibility:hidden;pointer-events:none;transition:opacity .8s ease;
+    touch-action:manipulation}
   #thauma-game.open{opacity:1;visibility:visible;pointer-events:auto}
-  #thauma-game canvas{position:absolute;inset:0;width:100%;height:100%}
+  #thauma-game canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:manipulation}
   #thauma-game.shake{animation:thauma-shake .35s steps(1,end)}
   @keyframes thauma-shake{
     0%,100%{transform:translate(0,0)}
@@ -313,10 +314,10 @@ permalink: /404.html
   // governed separately, by the HUD/gameplay text). Iterates site.languages
   // rather than hardcoding en/hr, per the project's own i18n convention, so
   // a future language is picked up automatically with zero game edits.
-  var COLLAGE_WORDS = [];
+  var COLLAGE_RAW_PHRASES = [];
   {% for lang in site.languages %}
   {% set t = i18n[lang] %}
-  COLLAGE_WORDS = COLLAGE_WORDS.concat([
+  COLLAGE_RAW_PHRASES = COLLAGE_RAW_PHRASES.concat([
     {{ t.nav.about | dump | safe }}, {{ t.nav.mission | dump | safe }}, {{ t.nav.values | dump | safe }},
     {{ t.nav.team | dump | safe }}, {{ t.nav.resources | dump | safe }}, {{ t.nav.contact | dump | safe }},
     {{ t.nav.give | dump | safe }}, {{ t.nav.events | dump | safe }},
@@ -325,6 +326,17 @@ permalink: /404.html
     {% for item in t.values.items %}{{ item.title | dump | safe }}{% if not loop.last %},{% endif %}{% endfor %}
   ]).concat({{ t.notFound.taunts | dump | safe }});
   {% endfor %}
+
+  // §5.5 point 3b: SINGLE WORDS ONLY — every source phrase (including the
+  // taunt sentences) gets split into individual words; nothing renders as
+  // a whole sentence. Punctuation stripped; empty fragments dropped.
+  var COLLAGE_WORDS = [];
+  COLLAGE_RAW_PHRASES.forEach(function (phrase) {
+    phrase.split(/\s+/).forEach(function (raw) {
+      var word = raw.replace(/[.,!?;:'"()—–]/g, '');
+      if (word.length > 0) COLLAGE_WORDS.push(word);
+    });
+  });
 
   var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var gameEl = document.getElementById('thauma-game');
@@ -635,13 +647,31 @@ permalink: /404.html
   // wider/more-spaced gaps, after the original felt too punishing to
   // actually play (verified structurally the first time, not by feel).
   var W, H, orb, columns, running, signal, speed, bestBeaten, trail, bestMarkerX;
-  var GRAVITY = 0.22, FLAP = -7.8, COLUMN_W = 54, GAP_H = 260, ORB_R = 10, COLUMN_GAP = 420;
-  // Real world-distance between consecutive columns: a new one spawns at
-  // W+40 once the last one's x drops below W-COLUMN_GAP, so successive
-  // columns land COLUMN_GAP+40 apart — NOT the COLUMN_GAP/3 figure this used
-  // to use, which undershot by more than 2x and made the best/death markers
-  // reach the orb far earlier than the run's real SIGNAL actually warranted.
-  var WORLD_DIST_PER_10_SIGNAL = COLUMN_GAP + 40;
+  // Reference resolution the physics were originally tuned/felt right
+  // against (desktop-ish). §7.9 mobile difficulty-parity fix: every world
+  // constant below is expressed as a REF value, then scaled per-run to the
+  // actual canvas size (computeWorldScale()) — a fixed-pixel GAP_H covered
+  // proportionally MORE of a short phone screen than a tall desktop one,
+  // making the game read as easier on mobile even though nothing else
+  // changed.
+  var REF_W = 1024, REF_H = 768;
+  var GRAVITY_REF = 0.22, FLAP_REF = -7.8, COLUMN_W_REF = 54, GAP_H_REF = 260, ORB_R_REF = 10, COLUMN_GAP_REF = 420;
+  var GRAVITY, FLAP, COLUMN_W, GAP_H, ORB_R, COLUMN_GAP, WORLD_DIST_PER_10_SIGNAL, scaleX, scaleY;
+
+  function computeWorldScale() {
+    scaleX = W / REF_W;
+    scaleY = H / REF_H;
+    GRAVITY = GRAVITY_REF * scaleY;
+    FLAP = FLAP_REF * scaleY;
+    ORB_R = ORB_R_REF * scaleY;
+    GAP_H = GAP_H_REF * scaleY;
+    COLUMN_W = COLUMN_W_REF * scaleX;
+    COLUMN_GAP = COLUMN_GAP_REF * scaleX;
+    // Real world-distance between consecutive columns: a new one spawns at
+    // W+40*scaleX once the last one's x drops below W-COLUMN_GAP, so
+    // successive columns land COLUMN_GAP + 40*scaleX apart.
+    WORLD_DIST_PER_10_SIGNAL = COLUMN_GAP + 40 * scaleX;
+  }
 
   // ---- The world (background, GAME-SPEC.md §5, simplified) ----
   // A single continuously-looping strip of the site's own value-words,
@@ -661,19 +691,29 @@ permalink: /404.html
     panel.width = w;
     panel.height = h;
     var pctx = panel.getContext('2d');
-    var count = 16 + Math.floor(Math.random() * 10);
+    // Density raised to 50-80 words per panel (2026-07-14 revision) — the
+    // original 16-25 read as too sparse against the reference collage.
+    var count = 50 + Math.floor(Math.random() * 31);
     for (var i = 0; i < count; i++) {
       var word = COLLAGE_WORDS[Math.floor(Math.random() * COLLAGE_WORDS.length)];
-      var size = 13 + Math.random() * 40; // mixed sizes, per the reference collage
-      var weight = Math.random() < 0.45 ? 700 : 200; // mixed weights
+      // Size contrast widened to ~9x (was ~4x) per the reference's largest-
+      // vs-smallest spread.
+      var size = 10 + Math.random() * 80;
       var vertical = Math.random() < 0.25; // mostly 0°, some 90° — interlocking, not chaotic angles
-      // ~3-4 per 100 in seafoam, never twice in a row (point 6).
+      // ~3-4 per 100, never twice in a row (point 6). Re-graded from dim
+      // glints to vivid POP per direct feedback: thin weight, high opacity,
+      // standing out of the wall rather than blending into its texture.
       var isAccent = !collageLastWasAccent && Math.random() < 0.035;
       collageLastWasAccent = isAccent;
-      var opacity = 0.06 + Math.random() * 0.06; // 6-12%, texture not text (point 2)
-      var fill = isAccent
-        ? 'rgba(92,242,196,' + (opacity + 0.03).toFixed(3) + ')'
-        : 'rgba(140,175,205,' + opacity.toFixed(3) + ')';
+      var weight, fill;
+      if (isAccent) {
+        weight = 100 + Math.floor(Math.random() * 200); // 100-300, thin
+        fill = 'rgba(92,242,196,' + (0.85 + Math.random() * 0.15).toFixed(3) + ')'; // 85-100%
+      } else {
+        weight = Math.random() < 0.45 ? 700 : 200; // mixed weights
+        var opacity = 0.06 + Math.random() * 0.06; // 6-12%, texture not text (point 2)
+        fill = 'rgba(140,175,205,' + opacity.toFixed(3) + ')';
+      }
       pctx.save();
       pctx.font = weight + ' ' + Math.round(size) + 'px Sora, sans-serif';
       pctx.fillStyle = fill;
@@ -686,11 +726,11 @@ permalink: /404.html
     return { canvas: panel, x: 0 };
   }
 
-  function updateCollage() {
+  function updateCollage(frames) {
     // A static wall under reduced motion (still present, just not moving —
     // point 3 respects prefers-reduced-motion the same way the rest of the
     // game does, per §8).
-    var pspeed = reducedMotion ? 0 : speed * 0.35; // parallax: 30-40% of obstacle speed
+    var pspeed = reducedMotion ? 0 : speed * 0.35 * frames; // parallax: 30-40% of obstacle speed
     for (var i = collagePanels.length - 1; i >= 0; i--) {
       collagePanels[i].x -= pspeed;
       if (collagePanels[i].x + COLLAGE_PANEL_W < -50) collagePanels.splice(i, 1);
@@ -715,7 +755,10 @@ permalink: /404.html
   var deathMarkers = [];
 
   function startRun() {
+    paused = false;
+    lastFrameTs = null;
     W = canvas.width; H = canvas.height;
+    computeWorldScale();
     orb = { x: Math.max(90, W * 0.22), y: H / 2, vy: 0, tilt: 0 };
     columns = [];
     trail = [];
@@ -740,15 +783,33 @@ permalink: /404.html
   }
 
   function spawnColumn(x) {
-    var margin = 90;
+    var margin = 90 * scaleY;
     var gapY = margin + Math.random() * Math.max(40, H - margin * 2 - GAP_H) + GAP_H / 2;
     columns.push({ x: x, gapY: gapY, passed: false });
   }
 
-  function flap() { if (running) orb.vy = FLAP; }
-  canvas.addEventListener('pointerdown', flap);
+  // Debug pause (§7.8): freezes the game mid-frame for design-review
+  // screenshots — the canvas just stops updating/redrawing, nothing else
+  // resets. Only meaningful during an actual run.
+  var paused = false;
+  var lastFrameTs = null; // §7.9 delta-time: null means "treat next tick as one reference frame"
+  function flap() { if (running && !paused) orb.vy = FLAP; }
+  // touch-action:manipulation (CSS, above) is the primary double-tap-zoom
+  // guard; preventDefault here is belt-and-suspenders against any residual
+  // native gesture handling on the rapid taps flap() depends on. Scoped to
+  // the canvas only — the rest of the 404 page keeps normal pinch/zoom.
+  canvas.addEventListener('pointerdown', function (e) { e.preventDefault(); flap(); });
   window.addEventListener('keydown', function (e) {
-    if (!running) return;
+    if (e.key === 'p' || e.key === 'P') {
+      if (running) {
+        paused = !paused;
+        // Otherwise the whole paused duration would read as one giant
+        // delta-time frame the instant play resumes.
+        if (!paused) lastFrameTs = null;
+      }
+      return;
+    }
+    if (!running || paused) return;
     if (e.code === 'Space' || e.key === ' ') { e.preventDefault(); flap(); }
   });
 
@@ -765,9 +826,16 @@ permalink: /404.html
     }, 1800);
   }
 
-  function update() {
-    orb.vy += GRAVITY;
-    orb.y += orb.vy;
+  // `frames`: how many 60fps-equivalent ticks this call represents (1.0 at
+  // exactly 60fps, 0.5 at 120fps, 2.0 at 30fps) — §7.9's delta-time fix.
+  // Every constant below (GRAVITY, FLAP, speed) was tuned assuming a 60fps
+  // "frame" as the unit of time; multiplying each per-frame delta by
+  // `frames` keeps the exact same real-world feel regardless of the
+  // device's actual refresh rate, instead of the old fixed per-callback
+  // step running faster on a 120Hz phone and slower under throttling.
+  function update(frames) {
+    orb.vy += GRAVITY * frames;
+    orb.y += orb.vy * frames;
     // Tilt reads as forward motion — nose up while rising, nose down while
     // falling — the classic language for "this is moving," since otherwise
     // only the world scrolling (not the orb itself) would show speed.
@@ -779,13 +847,13 @@ permalink: /404.html
     // same `speed` the columns move by, or every point would stack up at
     // orb.x and draw as a vertical smear instead of a comet tail streaming
     // behind the orb's actual path.
-    for (var ti = 0; ti < trail.length; ti++) trail[ti].x -= speed;
+    for (var ti = 0; ti < trail.length; ti++) trail[ti].x -= speed * frames;
     trail.push({ x: orb.x, y: orb.y, tilt: orb.tilt });
     if (trail.length > 40) trail.shift();
     while (trail.length && trail[0].x < -40) trail.shift();
 
     for (var i = columns.length - 1; i >= 0; i--) {
-      columns[i].x -= speed;
+      columns[i].x -= speed * frames;
       if (!columns[i].passed && columns[i].x + COLUMN_W < orb.x - ORB_R) {
         columns[i].passed = true;
         signal += 10;
@@ -801,10 +869,10 @@ permalink: /404.html
     if (!columns.length || columns[columns.length - 1].x < W - COLUMN_GAP) spawnColumn(W + 40);
     speed = 2.0 + Math.min(2.4, signal / 420);
 
-    if (bestMarkerX !== null) bestMarkerX -= speed;
-    deathMarkers.forEach(function (m) { m.x -= speed; });
+    if (bestMarkerX !== null) bestMarkerX -= speed * frames;
+    deathMarkers.forEach(function (m) { m.x -= speed * frames; });
 
-    updateCollage();
+    updateCollage(frames);
 
     if (orb.y - ORB_R < 0 || orb.y + ORB_R > H) { die(); return false; }
     for (var j = 0; j < columns.length; j++) {
@@ -899,10 +967,18 @@ permalink: /404.html
     ctx.restore();
   }
 
-  function loop() {
+  function loop(ts) {
     if (!running) return;
-    if (update() === false) return;
-    draw();
+    if (!paused) {
+      // First tick after a run start (or after unpausing) has no prior
+      // timestamp to diff against — treat it as exactly one reference
+      // frame rather than a huge/zero delta. Clamp the rest so a lag
+      // spike (tab-switch, GC pause) can't fling the orb through a wall.
+      var frames = lastFrameTs === null ? 1 : Math.min((ts - lastFrameTs) / (1000 / 60), 3);
+      lastFrameTs = ts;
+      if (update(frames) === false) return;
+      draw();
+    }
     requestAnimationFrame(loop);
   }
 

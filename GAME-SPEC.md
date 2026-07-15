@@ -1,14 +1,17 @@
 # GAME-SPEC.md — The Hidden 404 Game
 
-**STATUS: PHASE 3 SHIPPED, §5.5 COLLAGE WALL SHIPPED (dev-only
-front-end; the leaderboard function itself deploys to production like
-any Netlify Function — see §8 note).** All three phases and the
-collage wall are now built. This remains a living document: append
-and revise, don't rediscover.
+**STATUS: PHASE 3 SHIPPED, §5.5 COLLAGE WALL SHIPPED w/ founder
+revision applied, §7.9 mobile issues FIXED (dev-only front-end; the
+leaderboard function itself deploys to production like any Netlify
+Function — see §8 note).** All three phases, the collage wall, and
+the mobile parity/touch fixes are now built. This remains a living
+document: append and revise, don't rediscover.
 
-Last revised: 2026-07-14 (collage wall built; leaderboard reworked to
-free-text names + moderation + admin delete; PB reset added; a real
-marker-distance bug fixed — see revision log)
+Last revised: 2026-07-15 (collage wall re-graded per founder revision
+— single words, denser, vivid seafoam pop; delta-time physics +
+canvas-relative world sizing for mobile difficulty parity; double-tap
+zoom disabled during play; debug pause + collage-debug render script
+added — see revision log)
 
 ---
 
@@ -237,7 +240,7 @@ treat this note and the Phase 2 revision-log entry as the "why we
 backed off" record, not a dead end to silently retry.
 
 
-### 5.5 The collage wall (background layer) — SHIPPED (2026-07-14)
+### 5.5 The collage wall (background layer) — SHIPPED, FOUNDER REVISION APPLIED (2026-07-14/15)
 
 **Reference image:** a typographic-collage poster photo sits in the
 same folder as this spec (rename to `game-collage-reference.jpg`).
@@ -257,9 +260,22 @@ Build requirements:
    roughly 6–12% opacity against --bg. At a glance it must read as
    texture, not text. Gameplay readability always wins; if in doubt,
    lower the opacity.
-3. **Motion:** scrolls with the run as parallax at ~30–40% of obstacle
-   speed — a deep wall passing by. Respects prefers-reduced-motion
-   (with the rest of the game, per §8).
+3. **Motion & flatness (REVISED 2026-07-14):** ONE background layer
+   total, flat — no depth stacking, no overlapping semi-transparent
+   panels. The collage wall REPLACES/ABSORBS the earlier nav-words
+   parallax layer from the 2026-07-13 round (its words join the
+   collage pool; the separate layer is removed — running both is the
+   "multi-layer" look the founder rejected). Scrolls at one speed,
+   ~30–40% of obstacle speed. Respects prefers-reduced-motion (per §8).
+3b. **Full coverage & structure (REVISED 2026-07-14):** SINGLE WORDS
+   ONLY — split source phrases into individual words; the taunt
+   SENTENCES are excluded from the collage pool (whisper phrases may
+   contribute their individual words). Packing fills the entire canvas
+   edge to edge — no large voids; words may bleed off panel edges like
+   the reference. Density: 50–80 words per ~700×600 area (current
+   build's 16–25 is too sparse). Size contrast: largest ~8–10× the
+   smallest (current 13–53px is ~4× — widen the range). Mixed weights
+   stay (thin vs heavy interplay per the reference).
 4. **Endless & non-repeating:** procedurally generate collage panels
    ahead of the player; discard off-screen panels. Vary word choice,
    size, weight, rotation, and packing per panel — no visible tiling
@@ -272,13 +288,15 @@ Build requirements:
    collage intentionally does not — it is the ministry's vocabulary
    across tongues, all at once. As languages are added to the site,
    the collage grows richer automatically.
-6. **Seafoam accent words (rare):** roughly 3–4 words per 100 render
-   in --foam instead of dim slate — scaled by panel size/density
-   (denser panels may carry slightly more; sparse panels fewer), and
-   never two seafoam words adjacent to each other. These are glints,
-   not highlights: at collage opacity they should feel like catching
-   a word out of the corner of your eye. All other words stay in the
-   dim/blue-tint family; seafoam is the only accent color used.
+6. **Seafoam accent words — rare but POPPING (REVISED 2026-07-14):**
+   roughly 3–4 words per 100 render in vivid --foam at HIGH opacity
+   (~85–100%), THIN weight (100–300) — lit words standing out of a
+   dark wall. They do NOT receive the background's low-opacity
+   treatment; they are meant to visibly pop. Ratio scales with panel
+   density; never two seafoam words adjacent. All other words stay in
+   the dim/blue-tint family; seafoam is the only accent color.
+   (Founder overruled the earlier "glints, not highlights" framing —
+   pop wins. The shipped build's dim ~3.5% glints must be re-graded.)
 7. **Performance:** pre-render each generated panel to an offscreen
    canvas once, then blit while scrolling — do not redraw hundreds of
    text strings per frame.
@@ -454,6 +472,77 @@ Handoff prompt when ready: "Read GAME-SPEC.md and build Phase 1
 exactly as specced, on the dev branch, env-gated. Ask me anything
 ambiguous before building."
 
+## 7.8 Build tooling & visual conventions
+
+- **Debug pause — SHIPPED (2026-07-15):** P freezes the game mid-frame
+  (screenshots for design review). Toggles a `paused` flag; `loop()`
+  skips `update()`/`draw()` entirely while paused (nothing moves,
+  nothing scores) but keeps polling so unpausing resumes cleanly;
+  `lastFrameTs` resets on unpause so the paused duration itself never
+  counts as one giant delta-time frame.
+- **Debug renders — SHIPPED (2026-07-15):** `npm run collage-debug`
+  (`scripts/render-collage-debug.js`) reads the real site data the
+  same way `src/404.njk` does, mirrors `buildCollagePanel()`'s exact
+  algorithm, and writes `collage-debug.png` (+ a `.svg` alongside) to
+  the project root — both gitignored, regenerate anytime. Rendered via
+  SVG + `rsvg-convert` rather than a real `<canvas>`, since node-canvas's
+  prebuilt binary doesn't load on this Pi (16K page size); keep the
+  script's constants hand-synced with `buildCollagePanel()` if that
+  function's tuning changes again. Judge packing on stills first —
+  motion hides flaws.
+- **Approved anchors:** when the founder approves a visual, save a
+  capture as `<feature>-approved.png` beside this spec. Future
+  sessions compare against approved anchors as the build compares
+  against reference images.
+- **Trail rendering rule (any mechanic with a trail):** trails draw in
+  WORLD space, never orb-relative screen space — stored points shift
+  left at scroll speed each frame like obstacles. Acceptance: no
+  flapping = straight horizontal line streaming left; rhythmic
+  flapping = smooth sine swoosh; never a vertical smear. (Shipped in
+  the 2026-07-13 comet-tail work; codified here.)
+- **Acceptance tests:** visual requests state "if I do X, I should
+  see Y" wherever possible; builds are judged against those.
+
+## 7.9 Mobile play issues (reported 2026-07-14, FIXED 2026-07-15)
+
+- **Difficulty parity bug — FIXED.** Root causes were (a) and (b),
+  both real, both present:
+  (a) **frame-rate dependence:** physics were a fixed per-`
+  requestAnimationFrame`-callback step (`orb.vy += GRAVITY`, columns
+  moving `speed` px/callback), so a 120Hz phone ran gravity/scroll
+  twice as fast in real time as a 60Hz desktop. Fixed with delta-time:
+  `loop(ts)` computes `frames = (ts - lastFrameTs) / (1000/60)`
+  (clamped to 3 to survive lag spikes) and every per-frame delta
+  (`orb.vy`, `orb.y`, column/marker/trail/collage scroll) is multiplied
+  by it — 1.0 at exactly 60fps reproduces the old behavior exactly,
+  any other rate now covers the same real-world distance in the same
+  real-world time.
+  (b) **canvas-relative world sizing:** `GAP_H`/`ORB_R`/`COLUMN_W`/
+  `COLUMN_GAP`/`GRAVITY`/`FLAP` were fixed pixel values, so a shorter
+  mobile viewport made the same 260px gap cover proportionally more of
+  the visible screen — objectively easier. Fixed: constants renamed to
+  `*_REF` (tuned against a 1024×768 reference), and `computeWorldScale()`
+  (called once per `startRun()`, after `canvas.width/height` are read)
+  multiplies vertical constants by `H/768` and horizontal ones by
+  `W/1024`, so the SAME proportional difficulty holds at any screen
+  size. (c, input cadence, was not investigated — (a) and (b) fully
+  explained the report and are the more likely candidates by far; the
+  door stays open if parity issues persist after this fix.)
+  Verified via jsdom: the same no-flap freefall at 60fps vs. 120fps
+  tracks within ~1-3px through the whole fall (only diverging ~9.6px
+  at the exact terminal frame, an expected one-frame quantization
+  artifact, not a bug); the same freefall on a 1024×768 vs. a 390×844
+  (iPhone-ish) canvas lands at the identical fraction of screen height
+  to 5 decimal places (0.973515...) at time of death, confirming the
+  scaling math is exactly proportional between very different screen
+  sizes.
+- **Double-tap zoom — FIXED.** `touch-action: manipulation` added to
+  `#thauma-game` and its canvas (CSS, so it's inert whenever the game
+  isn't `.open` — no extra scoping logic needed since the overlay is
+  `pointer-events:none` until then); `preventDefault()` added to the
+  canvas's `pointerdown` flap handler as a defensive second layer.
+  Rest of the 404 page's pinch/zoom is untouched.
+
 ## 8. Constraints (non-negotiable at build time)
 
 - One HTML file (or 404-integrated), no images, no game libraries,
@@ -507,6 +596,22 @@ ambiguous before building."
 ---
 
 ## 10. Revision log
+
+- 2026-07-14 — Added §7.9 mobile play issues: mobile-easier difficulty
+  parity bug logged with diagnostic suspects (delta-time physics,
+  canvas-relative world sizing, input cadence) and acceptance
+  criterion; double-tap-zoom suppression required on the game surface
+  (touch-action: manipulation + preventDefault, scoped to play only).
+
+- 2026-07-14 — **Founder revision pass on §5.5 (pending
+  implementation):** seafoam accents re-specced from dim glints to
+  vivid thin-weight POP (~85–100% opacity); ONE flat background layer
+  total — the collage absorbs the 2026-07-13 nav-words parallax layer;
+  SINGLE WORDS only (taunt sentences excluded from the pool); full
+  edge-to-edge coverage; density raised to 50–80 words/panel; size
+  contrast widened to ~8–10×. Added §7.8 build tooling & visual
+  conventions (debug pause, debug renders, approved anchors,
+  world-space trail rule, acceptance-test habit).
 
 - 2026-07-13 — Added §5.5 the collage wall: polyglot typographic
   scrolling background (lowest layer, parallax, procedural panels,
@@ -828,3 +933,44 @@ ambiguous before building."
   run (42-51 distinct polyglot words drawn, panels confirmed cached
   and reused rather than redrawn). Production build re-confirmed fully
   game-free; full 19-route site regression stayed clean.
+- 2026-07-15 — **Founder spec revision applied: collage wall re-graded,
+  mobile parity fixed, build tooling shipped.** The founder replaced
+  GAME-SPEC.md with updates to §5.5, added §7.8/§7.9, and this session
+  implemented all of it:
+  1. **§5.5 collage wall re-graded.** Single words only now — every
+     source phrase (nav labels, mission words, values titles, AND the
+     taunt sentences) gets tokenized into individual words
+     (`COLLAGE_RAW_PHRASES` → split/stripped → `COLLAGE_WORDS`), not
+     whole phrases. Density raised from 16-25 to 50-80 words per panel.
+     Size contrast widened from ~4x (13-53px) to ~9x (10-90px). Seafoam
+     accents re-graded from dim ~6-12%-opacity glints to vivid pop:
+     thin weight (100-300) at 85-100% opacity, standing out of the
+     wall instead of blending into its texture. Confirmed only one
+     background layer exists in the shipped code (no leftover
+     duplicate nav-words parallax layer to remove).
+  2. **§7.8 tooling shipped:** a `paused` flag + P-key toggle freezes
+     `update()`/`draw()` for screenshots (`lastFrameTs` resets on
+     unpause so the paused duration doesn't register as a delta-time
+     spike); `npm run collage-debug` regenerates `collage-debug.png`
+     from the real site data via SVG + `rsvg-convert` (node-canvas's
+     prebuilt binary doesn't load on this Pi's 16K page size).
+  3. **§7.9 mobile difficulty parity fixed** — see that section for
+     the full root-cause writeup (frame-rate-dependent physics +
+     fixed-pixel world constants on a proportionally shorter mobile
+     viewport, both real, both fixed: delta-time scaling in `update()`/
+     `loop()`, and `computeWorldScale()` scaling `GAP_H`/`ORB_R`/
+     `COLUMN_W`/`COLUMN_GAP`/`GRAVITY`/`FLAP` relative to a 1024×768
+     reference).
+  4. **§7.9 double-tap zoom fixed** — `touch-action: manipulation` on
+     `#thauma-game`/its canvas plus a defensive `preventDefault()` on
+     the flap handler; scoped naturally via the overlay's own
+     `pointer-events` state, no extra logic needed.
+  Verified: the collage changes via a jsdom run confirming single-word
+  output and the wider size/density ranges; the delta-time fix via a
+  60fps-vs-120fps freefall comparison (positions track within ~1-3px
+  throughout, diverging only ~9.6px at the exact terminal frame); the
+  world-scaling fix via a 1024×768-vs-390×844 freefall comparison
+  landing at the identical screen-height fraction to 5 decimals; debug
+  pause via a jsdom run confirming zero state change while paused.
+  Production build re-confirmed fully game-free; full 19-route site
+  regression stayed clean.
