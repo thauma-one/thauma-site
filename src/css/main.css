@@ -77,8 +77,11 @@ h2 b{font-weight:600}
 
 /* ---------- Home hero ---------- */
 header.hero{min-height:100vh;display:flex;flex-direction:column;justify-content:center;position:relative;padding-top:64px}
+/* touch-action:manipulation — this is also the hidden game's door 1 (5
+   quick taps, GAME-SPEC.md §3); without it, rapid taps register as a
+   native double-tap-zoom gesture instead of 5 clean clicks. */
 .wordmark{font-family:'Sora';font-weight:100;font-size:clamp(56px,11vw,150px);letter-spacing:.14em;line-height:1;
-  text-shadow:0 0 60px rgba(47,216,255,.22)}
+  text-shadow:0 0 60px rgba(47,216,255,.22);touch-action:manipulation}
 .hero-line{font-family:'Sora';font-weight:100;font-size:clamp(20px,2.6vw,30px);letter-spacing:.02em;margin-top:22px;color:var(--dim)}
 .hero-line b{font-weight:600;color:var(--text)}
 .hero-sub{margin-top:30px;max-width:520px;font-size:16px;font-weight:200;line-height:1.8;color:var(--dim)}

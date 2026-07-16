@@ -3,12 +3,14 @@
 // collage-debug.png in the project root, for judging density/packing/
 // contrast on a still image before eyeballing it in motion.
 //
-// Reads the SAME site data the real game reads (src/_data/site.json's
-// languages + src/_data/i18n/*.json), tokenizes it exactly like
-// buildCollagePanel()'s COLLAGE_WORDS/COLLAGE_RAW_PHRASES logic in
-// src/404.njk, then mirrors that function's random layout algorithm.
-// Keep the constants below (count/size/weight/opacity ranges) in sync
-// with src/404.njk's buildCollagePanel() if that function changes.
+// Reads the SAME curated wordlist the real game reads
+// (src/_data/collageWords.json — NOT i18n; runtime i18n scraping was
+// removed 2026-07-15, see GAME-SPEC.md §5.5 point 5), then mirrors
+// buildCollagePanel()'s skyline packer from src/404.njk (2026-07-16
+// rewrite — grid-jitter allowed overlapping words; skyline packing
+// guarantees zero overlap by construction). Keep the constants below
+// (slot size/size range/weight/opacity ranges) in sync with
+// src/404.njk's buildCollagePanel() if that function changes.
 //
 // Rendered via SVG + rsvg-convert rather than a real <canvas>, because
 // node-canvas's prebuilt binary doesn't load on this Pi (16K page size).
@@ -22,50 +24,63 @@ const ROOT = path.join(__dirname, "..");
 const OUT_PNG = path.join(ROOT, "collage-debug.png");
 const OUT_SVG = path.join(ROOT, "collage-debug.svg"); // kept alongside for inspection, gitignored
 
-const site = JSON.parse(fs.readFileSync(path.join(ROOT, "src/_data/site.json"), "utf8"));
+const collageWords = JSON.parse(fs.readFileSync(path.join(ROOT, "src/_data/collageWords.json"), "utf8"));
 
-function loadRawPhrases() {
-  const phrases = [];
-  site.languages.forEach((lang) => {
-    const t = JSON.parse(fs.readFileSync(path.join(ROOT, `src/_data/i18n/${lang}.json`), "utf8"));
-    phrases.push(
-      t.nav.about, t.nav.mission, t.nav.values, t.nav.team, t.nav.resources,
-      t.nav.contact, t.nav.give, t.nav.events,
-      t.mission.work1_label, t.mission.work2_label, t.mission.work3_label,
-      ...t.values.items.map((i) => i.title),
-      ...t.notFound.taunts
-    );
-  });
-  return phrases;
-}
-
-// Mirrors src/404.njk's post-Nunjucks tokenization exactly.
-function tokenize(phrases) {
-  const words = [];
-  phrases.forEach((phrase) => {
-    phrase.split(/\s+/).forEach((raw) => {
-      const word = raw.replace(/[.,!?;:'"()—–]/g, "");
-      if (word.length > 0) words.push(word);
-    });
-  });
-  return words;
-}
-
-const COLLAGE_WORDS = tokenize(loadRawPhrases());
+const COLLAGE_WORDS = [];
+Object.keys(collageWords.words).forEach((key) => {
+  const entry = collageWords.words[key];
+  collageWords.languages.forEach((lang) => COLLAGE_WORDS.push(entry[lang]));
+});
 
 const W = 700, H = 600;
-const count = 50 + Math.floor(Math.random() * 31); // keep in sync with buildCollagePanel()
-let lastWasAccent = false;
+
+// No real <canvas> here to call measureText() on, so approximate a
+// proportional sans-serif's average advance width — good enough for a
+// debug packing preview, not pixel-exact (the real game measures for real).
+function approxTextWidth(word, size) {
+  return word.length * size * 0.56;
+}
 
 function esc(s) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+// Skyline packer (2026-07-16, kept in sync with buildCollagePanel()): every
+// word is placed at the currently-lowest gap and that strip is marked
+// filled, so no two words can ever occupy the same pixels.
+const SLOT = 4;
+const slotCount = Math.max(1, Math.ceil(W / SLOT));
+const skyline = new Array(slotCount).fill(0);
+const maxSpan = W * 0.28;
+
+function fitSkyline(blockW) {
+  let need = Math.max(1, Math.ceil(blockW / SLOT));
+  if (need > slotCount) need = slotCount;
+  let bestSlot = 0, bestY = Infinity;
+  for (let s = 0; s <= slotCount - need; s++) {
+    let maxY = 0;
+    for (let k = 0; k < need; k++) if (skyline[s + k] > maxY) maxY = skyline[s + k];
+    if (maxY < bestY) { bestY = maxY; bestSlot = s; }
+  }
+  return { slot: bestSlot, need, x: bestSlot * SLOT, y: bestY };
+}
+function commitSkyline(slot, need, y) {
+  for (let k = 0; k < need; k++) skyline[slot + k] = y;
+}
+
+let lastWasAccent = false;
 const elements = [];
-for (let i = 0; i < count; i++) {
+let count = 0;
+let attempts = 0;
+const maxAttempts = 3000;
+
+while (attempts < maxAttempts) {
+  attempts++;
+  if (Math.min(...skyline) >= H) break;
+
   const word = COLLAGE_WORDS[Math.floor(Math.random() * COLLAGE_WORDS.length)];
-  const size = 10 + Math.random() * 80; // ~9x contrast, keep in sync
   const vertical = Math.random() < 0.25;
+  let size = 14 + Math.random() * 70;
   const isAccent = !lastWasAccent && Math.random() < 0.035;
   lastWasAccent = isAccent;
 
@@ -79,13 +94,36 @@ for (let i = 0; i < count; i++) {
     fill = `rgba(140,175,205,${opacity.toFixed(3)})`;
   }
 
-  const x = Math.random() * W, y = Math.random() * H;
+  let textW = approxTextWidth(word, size);
+  if (textW > maxSpan) {
+    size *= maxSpan / textW;
+    textW = approxTextWidth(word, size);
+  }
+  const textH = size * 1.15;
+  const blockW = vertical ? textH : textW;
+  const blockH = vertical ? textW : textH;
+  const fit = fitSkyline(blockW);
+
+  if (fit.y + blockH > H + 40) {
+    commitSkyline(fit.slot, fit.need, H);
+    continue;
+  }
+
+  count++;
   const rotate = vertical ? 90 : 0;
+  // Horizontal: top-left anchor at (fit.x, fit.y). Vertical: same
+  // translate+rotate derivation as buildCollagePanel() — pivot at
+  // (fit.x+blockW, fit.y) so the rotated box lands at [x,x+blockW]x[y,y+blockH].
+  const tx = vertical ? fit.x + blockW : fit.x;
+  const ty = fit.y;
+
   elements.push(
-    `<text x="0" y="0" transform="translate(${x.toFixed(1)},${y.toFixed(1)}) rotate(${rotate})" ` +
+    `<text x="0" y="0" text-anchor="start" transform="translate(${tx.toFixed(1)},${ty.toFixed(1)}) rotate(${rotate})" ` +
     `font-family="Sora, sans-serif" font-weight="${weight}" font-size="${size.toFixed(1)}" ` +
-    `fill="${fill}" dominant-baseline="middle">${esc(word)}</text>`
+    `fill="${fill}" dominant-baseline="hanging">${esc(word)}</text>`
   );
+
+  commitSkyline(fit.slot, fit.need, fit.y + blockH);
 }
 
 const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">

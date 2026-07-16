@@ -22,7 +22,10 @@ permalink: /404.html
 
   {%- if not env.isProduction %}
   /* ---- GAME-SPEC.md Phase 1 (dev-only) ---- */
-  .dict-word{cursor:text;display:inline-block}
+  /* touch-action:manipulation — this is door 4 (§3); a mistimed double-tap
+     here would otherwise trigger native double-tap-zoom before the game
+     canvas (which has its own guard) ever opens. */
+  .dict-word{cursor:text;display:inline-block;touch-action:manipulation}
   .thauma-char{display:inline-block}
 
   /* Real glitch: RGB-split text-shadow + chunky jittery steps, not a fade */
@@ -61,9 +64,22 @@ permalink: /404.html
       repeating-linear-gradient(90deg,rgba(47,216,255,.06) 0 2px,transparent 2px 5px)}
   #thauma-scanlines.show{opacity:1}
 
+  /* Background scroll lock (2026-07-16): the static page underneath
+     #thauma-game is normal, still-scrollable document flow — the fixed
+     overlay covers it visually but doesn't stop touch-scrolling it. On
+     mobile that let a stray drag scroll the page behind the game, which
+     shifts Safari's address bar and resizes the visual viewport — read as
+     "the page doesn't fit / has a scrollbar" and mistaken earlier for a
+     zoom bug. Locked the moment the game view opens (openGameHome()). */
+  html.thauma-locked, html.thauma-locked body{overflow:hidden;height:100%}
+
   #thauma-game{position:fixed;inset:0;z-index:50;background:#0B0F15;
     opacity:0;visibility:hidden;pointer-events:none;transition:opacity .8s ease;
-    touch-action:manipulation}
+    touch-action:manipulation;
+    /* Repeated flap-drags were highlighting page text as a text-selection
+       drag gesture — the flap input reads to the browser like any other
+       touch-drag unless explicitly told it isn't selectable. */
+    -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
   #thauma-game.open{opacity:1;visibility:visible;pointer-events:auto}
   #thauma-game canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:manipulation}
   #thauma-game.shake{animation:thauma-shake .35s steps(1,end)}
@@ -81,12 +97,26 @@ permalink: /404.html
   .thauma-hud .signal{font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim)}
   .thauma-hud .signal b{color:var(--text);font-weight:600;font-size:20px;margin-left:8px}
 
-  /* Personal-best toast — a short randomized line, not a screen flash */
+  /* Personal-best toast — a short randomized line, not a screen flash.
+     No white-space:nowrap (2026-07-16 fix): on a narrow phone the longer
+     pb_lines entries overflowed off both edges of the viewport since
+     nowrap forbids wrapping and nothing constrained its width. A capped
+     width lets it wrap to 2 lines instead. */
+  /* Dark backdrop, not a text stroke (2026-07-16, second pass): the
+     8-direction text-shadow + -webkit-text-stroke attempt read as a muddy
+     black blob eating the thin letterforms — worse than the problem it
+     fixed. A solid dark pill behind the text is the standard, reliable fix
+     for "legible over an unpredictable background" (same idea as video
+     captions) — contrast comes from the backdrop, not from fighting the
+     glyphs pixel-by-pixel, so it stays clean over a bar, the collage, or
+     bare dark space alike. */
   #thauma-pb-toast{position:absolute;top:30%;left:50%;
     transform:translate(-50%,-50%);z-index:2;pointer-events:none;
-    font-family:'Sora',sans-serif;font-weight:200;font-size:clamp(20px,3.4vw,30px);
-    color:var(--foam);text-align:center;white-space:nowrap;opacity:0;
-    text-shadow:0 0 30px rgba(92,242,196,.35)}
+    width:94vw;max-width:640px;padding:10px 20px;border-radius:6px;
+    background:rgba(11,15,21,.75);
+    font-family:'Sora',sans-serif;font-weight:200;font-size:clamp(20px,5vw,32px);
+    color:var(--foam);text-align:center;opacity:0;
+    text-shadow:0 0 20px rgba(92,242,196,.35)}
   #thauma-pb-toast.show{opacity:1;transition:opacity .35s ease}
   #thauma-pb-toast.hide{opacity:0;transition:opacity 1.1s ease}
 
@@ -309,34 +339,20 @@ permalink: /404.html
   };
 
   // ---- The world (background, GAME-SPEC.md §5.5, "the collage wall") ----
-  // Polyglot on purpose — every language the site has, mixed together,
-  // regardless of which one the player is currently reading in (that's
-  // governed separately, by the HUD/gameplay text). Iterates site.languages
-  // rather than hardcoding en/hr, per the project's own i18n convention, so
-  // a future language is picked up automatically with zero game edits.
-  var COLLAGE_RAW_PHRASES = [];
-  {% for lang in site.languages %}
-  {% set t = i18n[lang] %}
-  COLLAGE_RAW_PHRASES = COLLAGE_RAW_PHRASES.concat([
-    {{ t.nav.about | dump | safe }}, {{ t.nav.mission | dump | safe }}, {{ t.nav.values | dump | safe }},
-    {{ t.nav.team | dump | safe }}, {{ t.nav.resources | dump | safe }}, {{ t.nav.contact | dump | safe }},
-    {{ t.nav.give | dump | safe }}, {{ t.nav.events | dump | safe }},
-    {{ t.mission.work1_label | dump | safe }}, {{ t.mission.work2_label | dump | safe }}, {{ t.mission.work3_label | dump | safe }}
-  ]).concat([
-    {% for item in t.values.items %}{{ item.title | dump | safe }}{% if not loop.last %},{% endif %}{% endfor %}
-  ]).concat({{ t.notFound.taunts | dump | safe }});
-  {% endfor %}
-
-  // §5.5 point 3b: SINGLE WORDS ONLY — every source phrase (including the
-  // taunt sentences) gets split into individual words; nothing renders as
-  // a whole sentence. Punctuation stripped; empty fragments dropped.
+  // Words come EXCLUSIVELY from the curated src/_data/collageWords.json —
+  // 20 site-vocabulary words pre-translated into 20 languages, founder-
+  // editable. Runtime i18n scraping was removed (2026-07-15): it pulled in
+  // whole sentences and off-vocabulary words ("Loyalty", "rivalry" — not
+  // Thauma vocabulary, origin unknown) that leaked into the wall. This
+  // iterates the wordlist's OWN language set, not site.languages — adding a
+  // site language deliberately does NOT auto-extend the collage; curation
+  // over automation here (§5.5 point 5).
   var COLLAGE_WORDS = [];
-  COLLAGE_RAW_PHRASES.forEach(function (phrase) {
-    phrase.split(/\s+/).forEach(function (raw) {
-      var word = raw.replace(/[.,!?;:'"()—–]/g, '');
-      if (word.length > 0) COLLAGE_WORDS.push(word);
-    });
-  });
+  {% for key, entry in collageWords.words %}
+  {% for lang in collageWords.languages %}
+  COLLAGE_WORDS.push({{ entry[lang] | dump | safe }});
+  {% endfor %}
+  {% endfor %}
 
   var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var gameEl = document.getElementById('thauma-game');
@@ -600,6 +616,7 @@ permalink: /404.html
     // everything permanently for this page load, so there's nothing to
     // revert for.
     gameEl.classList.add('open');
+    document.documentElement.classList.add('thauma-locked');
     homeEl.classList.add('show');
     failEl.classList.remove('show');
     homeWordEl.textContent = copy().gameTitle;
@@ -647,30 +664,69 @@ permalink: /404.html
   // wider/more-spaced gaps, after the original felt too punishing to
   // actually play (verified structurally the first time, not by feel).
   var W, H, orb, columns, running, signal, speed, bestBeaten, trail, bestMarkerX;
-  // Reference resolution the physics were originally tuned/felt right
-  // against (desktop-ish). §7.9 mobile difficulty-parity fix: every world
-  // constant below is expressed as a REF value, then scaled per-run to the
-  // actual canvas size (computeWorldScale()) — a fixed-pixel GAP_H covered
-  // proportionally MORE of a short phone screen than a tall desktop one,
-  // making the game read as easier on mobile even though nothing else
-  // changed.
-  var REF_W = 1024, REF_H = 768;
-  var GRAVITY_REF = 0.22, FLAP_REF = -7.8, COLUMN_W_REF = 54, GAP_H_REF = 260, ORB_R_REF = 10, COLUMN_GAP_REF = 420;
-  var GRAVITY, FLAP, COLUMN_W, GAP_H, ORB_R, COLUMN_GAP, WORLD_DIST_PER_10_SIGNAL, scaleX, scaleY;
+  // Reference HEIGHT the physics were originally tuned/felt right against
+  // (desktop-ish). §7.9 mobile difficulty-parity fix: every world constant
+  // below is expressed as a REF value, then scaled per-run against the
+  // canvas HEIGHT ONLY (computeWorldScale()) — a fixed-pixel GAP_H covered
+  // proportionally MORE of a short screen than a tall one, making the game
+  // read as easier there even though nothing else changed.
+  var REF_H = 768, REF_W = 1024;
+  var GRAVITY_REF = 0.22, FLAP_REF = -7.8, COLUMN_W_REF = 54, GAP_H_REF = 260, ORB_R_REF = 10, COLUMN_GAP_REF = 360;
+  var SPEED_BASE_REF = 2.0, SPEED_RAMP_REF = 2.4;
+  // Progressive difficulty ramp (2026-07-16, requested directly): speed
+  // rises and the vertical gap narrows together as SIGNAL climbs, sharing
+  // one curve (rampT) so both land at their extreme at the same point,
+  // then hold there — "very slowly... up to a certain point," not an
+  // unbounded climb. GAP_H_MIN_REF is the floor the gap narrows to (~63%
+  // of the starting gap — still comfortably flyable given a single flap
+  // covers ~138px, per the 2026-07-13 physics-tuning note). RAMP_SIGNAL_REF
+  // is deliberately large (200 columns' worth) so the climb reads as slow.
+  var GAP_H_MIN_REF = 165, RAMP_SIGNAL_REF = 2000;
+  var GRAVITY, FLAP, COLUMN_W, GAP_H, ORB_R, COLUMN_GAP, WORLD_DIST_PER_10_SIGNAL, scale, spacingScale;
 
   function computeWorldScale() {
-    scaleX = W / REF_W;
-    scaleY = H / REF_H;
-    GRAVITY = GRAVITY_REF * scaleY;
-    FLAP = FLAP_REF * scaleY;
-    ORB_R = ORB_R_REF * scaleY;
-    GAP_H = GAP_H_REF * scaleY;
-    COLUMN_W = COLUMN_W_REF * scaleX;
-    COLUMN_GAP = COLUMN_GAP_REF * scaleX;
+    // Two DELIBERATELY SEPARATE factors (2026-07-16 fix, third pass) — not
+    // one uniform scale, and not height-only for everything:
+    // - `scale` (height-based): governs OBJECT SIZE — gravity, flap, orb
+    //   radius, bar thickness, vertical gap. A portrait phone is narrow,
+    //   not short, so these correctly stay near full desktop size on
+    //   virtually any phone (two earlier attempts that let width leak into
+    //   this broke it: thin bars, then a ~4px orb).
+    // - `spacingScale` (width-based): governs ONLY the horizontal distance
+    //   between columns. This one genuinely does need to shrink with
+    //   width — it's not an object's size, it's how much of the world fits
+    //   on screen at once. Leaving it on the height-based `scale` (i.e.
+    //   effectively unscaled on most phones) meant a full desktop-width gap
+    //   between columns on a screen 1/3 as wide, reported as "basically a
+    //   full screen width before I see another one." Both clamp to 1 so
+    //   desktop (>= the reference size) is never scaled up past the
+    //   hand-tuned values.
+    //
+    // Two 2026-07-16 tuning passes on top, both requested directly:
+    // 1. spacingScale is blended halfway back toward 1 (not the raw width
+    //    ratio) — the raw ratio made columns feel too tight; this splits
+    //    the difference between "full desktop gap" (the original mobile
+    //    bug) and "raw-ratio gap" (the previous fix, reported as too close
+    //    together).
+    // 2. orbBoost gives the orb a slight size+physics bump ON NARROW
+    //    SCREENS ONLY (it's 1 — no change — at spacingScale 1, i.e.
+    //    desktop-width), scaling ORB_R alongside GRAVITY/FLAP together so
+    //    the orb reads as a bit more substantial on a phone without
+    //    throwing off the gravity/flap arc-shape ratio tuned above.
+    scale = Math.min(1, H / REF_H);
+    var rawSpacingScale = Math.min(1, W / REF_W);
+    spacingScale = 0.5 + 0.5 * rawSpacingScale;
+    var orbBoost = 1 + 0.3 * (1 - rawSpacingScale);
+    GRAVITY = GRAVITY_REF * scale * orbBoost;
+    FLAP = FLAP_REF * scale * orbBoost;
+    ORB_R = ORB_R_REF * scale * orbBoost;
+    GAP_H = GAP_H_REF * scale;
+    COLUMN_W = COLUMN_W_REF * scale;
+    COLUMN_GAP = COLUMN_GAP_REF * spacingScale;
     // Real world-distance between consecutive columns: a new one spawns at
-    // W+40*scaleX once the last one's x drops below W-COLUMN_GAP, so
-    // successive columns land COLUMN_GAP + 40*scaleX apart.
-    WORLD_DIST_PER_10_SIGNAL = COLUMN_GAP + 40 * scaleX;
+    // W+40*spacingScale once the last one's x drops below W-COLUMN_GAP, so
+    // successive columns land COLUMN_GAP + 40*spacingScale apart.
+    WORLD_DIST_PER_10_SIGNAL = COLUMN_GAP + 40 * spacingScale;
   }
 
   // ---- The world (background, GAME-SPEC.md §5, simplified) ----
@@ -691,18 +747,48 @@ permalink: /404.html
     panel.width = w;
     panel.height = h;
     var pctx = panel.getContext('2d');
-    // Density raised to 50-80 words per panel (2026-07-14 revision) — the
-    // original 16-25 read as too sparse against the reference collage.
-    var count = 50 + Math.floor(Math.random() * 31);
-    for (var i = 0; i < count; i++) {
+
+    // Skyline packer (2026-07-16 rewrite — the grid-jitter approach only
+    // spaced out cell CENTERS; nothing stopped a large word in one cell
+    // from overlapping a neighbor's, which is exactly what showed up on a
+    // real phone as illegible overlapping "mush." A skyline packer (same
+    // family of algorithm as sprite-sheet packing) tracks the filled
+    // height across thin x-slices of the panel; every word is placed at
+    // the CURRENTLY LOWEST gap and then marks that strip filled, so no two
+    // words can ever occupy the same pixels — "one continuous wall of
+    // text," zero overlaps, by construction rather than by hoping the
+    // jitter stays small enough.
+    var SLOT = 4; // skyline resolution in px — finer = tighter packing, still cheap (panel built once)
+    var slotCount = Math.max(1, Math.ceil(w / SLOT));
+    var skyline = new Array(slotCount).fill(0);
+    var maxSpan = w * 0.28; // "no giant letterform fragments" — cap ~28% of panel width
+
+    function fitSkyline(blockW) {
+      var need = Math.max(1, Math.ceil(blockW / SLOT));
+      if (need > slotCount) need = slotCount;
+      var bestSlot = 0, bestY = Infinity;
+      for (var s = 0; s <= slotCount - need; s++) {
+        var maxY = 0;
+        for (var k = 0; k < need; k++) if (skyline[s + k] > maxY) maxY = skyline[s + k];
+        if (maxY < bestY) { bestY = maxY; bestSlot = s; }
+      }
+      return { slot: bestSlot, need: need, x: bestSlot * SLOT, y: bestY };
+    }
+    function commitSkyline(slot, need, y) {
+      for (var k = 0; k < need; k++) skyline[slot + k] = y;
+    }
+
+    var attempts = 0, maxAttempts = 3000;
+    while (attempts < maxAttempts) {
+      attempts++;
+      var minFilled = Math.min.apply(null, skyline);
+      if (minFilled >= h) break; // panel is full
+
       var word = COLLAGE_WORDS[Math.floor(Math.random() * COLLAGE_WORDS.length)];
-      // Size contrast widened to ~9x (was ~4x) per the reference's largest-
-      // vs-smallest spread.
-      var size = 10 + Math.random() * 80;
       var vertical = Math.random() < 0.25; // mostly 0°, some 90° — interlocking, not chaotic angles
-      // ~3-4 per 100, never twice in a row (point 6). Re-graded from dim
-      // glints to vivid POP per direct feedback: thin weight, high opacity,
-      // standing out of the wall rather than blending into its texture.
+      var size = 14 + Math.random() * 70; // ~5x contrast; packed density does the rest of the visual variety
+      // ~3-4 per 100, never twice in a row (point 6). Vivid POP, not a dim
+      // glint: thin weight, high opacity, standing out of the wall.
       var isAccent = !collageLastWasAccent && Math.random() < 0.035;
       collageLastWasAccent = isAccent;
       var weight, fill;
@@ -714,14 +800,48 @@ permalink: /404.html
         var opacity = 0.06 + Math.random() * 0.06; // 6-12%, texture not text (point 2)
         fill = 'rgba(140,175,205,' + opacity.toFixed(3) + ')';
       }
-      pctx.save();
+
       pctx.font = weight + ' ' + Math.round(size) + 'px Sora, sans-serif';
+      var textW = pctx.measureText(word).width;
+      if (textW > maxSpan) {
+        size *= maxSpan / textW;
+        pctx.font = weight + ' ' + Math.round(size) + 'px Sora, sans-serif';
+        textW = pctx.measureText(word).width;
+      }
+      var textH = size * 1.15; // approx line box, a little breathing room between stacked rows
+
+      var blockW = vertical ? textH : textW;
+      var blockH = vertical ? textW : textH;
+      var fit = fitSkyline(blockW);
+
+      if (fit.y + blockH > h + 40) {
+        // Nothing usable left in this strip — mark it exhausted so future
+        // attempts don't keep re-testing (and failing) the same gap, and
+        // move on. Leaves a small leftover void rather than looping forever.
+        commitSkyline(fit.slot, fit.need, h);
+        continue;
+      }
+
+      pctx.save();
       pctx.fillStyle = fill;
-      pctx.textBaseline = 'middle';
-      pctx.translate(Math.random() * w, Math.random() * h);
-      if (vertical) pctx.rotate(Math.PI / 2);
-      pctx.fillText(word, 0, 0);
+      if (vertical) {
+        // Rotating 90° swaps the local axes; translating to (x+blockW, y)
+        // before rotating lands the rotated text's bounding box exactly at
+        // [x, x+blockW] x [y, y+blockH] — see the 2026-07-16 revision-log
+        // entry for the derivation.
+        pctx.translate(fit.x + blockW, fit.y);
+        pctx.rotate(Math.PI / 2);
+        pctx.textAlign = 'left';
+        pctx.textBaseline = 'top';
+        pctx.fillText(word, 0, 0);
+      } else {
+        pctx.textAlign = 'left';
+        pctx.textBaseline = 'top';
+        pctx.fillText(word, fit.x, fit.y);
+      }
       pctx.restore();
+
+      commitSkyline(fit.slot, fit.need, fit.y + blockH);
     }
     return { canvas: panel, x: 0 };
   }
@@ -763,7 +883,7 @@ permalink: /404.html
     columns = [];
     trail = [];
     signal = 0;
-    speed = 2.0;
+    speed = SPEED_BASE_REF * scale;
     bestBeaten = false;
     // The vertical "best" line lives in the same scrolling world as the
     // columns — it starts one best-run's-worth of distance ahead, so it
@@ -783,7 +903,7 @@ permalink: /404.html
   }
 
   function spawnColumn(x) {
-    var margin = 90 * scaleY;
+    var margin = 90 * scale;
     var gapY = margin + Math.random() * Math.max(40, H - margin * 2 - GAP_H) + GAP_H / 2;
     columns.push({ x: x, gapY: gapY, passed: false });
   }
@@ -834,6 +954,14 @@ permalink: /404.html
   // device's actual refresh rate, instead of the old fixed per-callback
   // step running faster on a 120Hz phone and slower under throttling.
   function update(frames) {
+    // Shared difficulty-ramp progress (0 at the start of a run, 1 once
+    // SIGNAL reaches RAMP_SIGNAL_REF and beyond) — drives both the speed
+    // increase and the gap narrowing below, computed before any column
+    // spawns this frame so a freshly-spawned column already reflects the
+    // current difficulty rather than lagging a frame behind.
+    var rampT = Math.min(1, signal / RAMP_SIGNAL_REF);
+    GAP_H = (GAP_H_REF - (GAP_H_REF - GAP_H_MIN_REF) * rampT) * scale;
+
     orb.vy += GRAVITY * frames;
     orb.y += orb.vy * frames;
     // Tilt reads as forward motion — nose up while rising, nose down while
@@ -867,7 +995,7 @@ permalink: /404.html
       if (columns[i].x < -COLUMN_W - 60) columns.splice(i, 1);
     }
     if (!columns.length || columns[columns.length - 1].x < W - COLUMN_GAP) spawnColumn(W + 40);
-    speed = 2.0 + Math.min(2.4, signal / 420);
+    speed = (SPEED_BASE_REF + SPEED_RAMP_REF * rampT) * scale;
 
     if (bestMarkerX !== null) bestMarkerX -= speed * frames;
     deathMarkers.forEach(function (m) { m.x -= speed * frames; });
@@ -893,7 +1021,11 @@ permalink: /404.html
     if (!collagePanels.length) updateCollage();
     drawCollage();
 
-    ctx.fillStyle = 'rgba(47,216,255,.5)';
+    // Solid, not translucent (2026-07-16 fix): at .5 alpha the collage wall
+    // (drawn first, directly below) showed through the columns, reading as
+    // "the collage is on top" even though paint order was correct — bars
+    // are meant to fully occlude whatever's behind them.
+    ctx.fillStyle = '#2FD8FF';
     columns.forEach(function (c) {
       var top = c.gapY - GAP_H / 2, bottom = c.gapY + GAP_H / 2;
       ctx.fillRect(c.x, 0, COLUMN_W, top);
