@@ -15,29 +15,29 @@
   "home": {
     "title": "Početna",
     "cue": "θαῦμα · grčki: čudo, divljenje",
-    "h1_thin": "Čudo se stvara",
-    "h1_bold": "u mraku.",
-    "sub": "Produkcijska služba koja služi, obučava i opskrbljuje crkve u Hrvatskoj i okolnoj regiji — besplatno, kako nijedna zajednica ne bi zbog troškova ostala bez izvrsnosti.",
-    "who_cue": "Tko smo",
-    "who_h2_thin": "Služba za ljude",
-    "who_h2_bold": "iza miks-pulta.",
-    "who_lede": "Postojimo za nevidljivu ekipu — prve koji dolaze i posljednje koji odlaze. Produkcija su vrata kroz koja ulazimo, ali čovjek je oduvijek bio smisao.",
+    "h1_thin": "Prvi dolaze,",
+    "h1_bold": "posljednji odlaze.",
+    "sub": "Crkve u Hrvatskoj i okolnoj regiji nose stvarnu tehničku potrebu — zvuk, rasvjeta, video, prijenosi i ljudi koji sve to vode, često bez ikoga od koga bi učili. Thauma postoji da tu potrebu ispuni.",
+    "who_cue": "Potreba",
+    "who_h2_thin": "Stvarne crkve,",
+    "who_h2_bold": "stvarna tehnička potreba.",
+    "who_lede": "Stara oprema bez ikoga tko je obučen. Volonteri koji sami vode složene sustave. Bez obuke, bez mreže kolega. Potreba je praktična — i tiče se već ove nedjelje, pa upravo tu počinjemo.",
     "who_img_tag": "Fotografija — miks-pult u izmaglici",
-    "values_cue": "Čega se držimo",
-    "values_h2_thin": "Tri uvjerenja nose",
-    "values_h2_bold": "sve što radimo.",
-    "value1_title": "Čovjek je smisao",
-    "value1_text": "Oprema i vještina su važne, ali duše su važnije. Služimo tehničkim umjetnicima, ne samo njihovim miksevima.",
-    "value2_title": "Produkcija su vrata",
-    "value2_text": "Faderi i reflektori otvaraju prostor u kojem se događa učeništvo. Zanat je naš put unutra, nikad cilj.",
-    "value3_title": "Zajednica je plod",
-    "value3_text": "Kad se timovima služi i kad ih se obučava, raste nešto što nadživi svaki događaj: ljudi koji pripadaju.",
-    "values_link": "Sve naše vrijednosti",
+    "values_cue": "Kako pomažemo",
+    "values_h2_thin": "Tri oblika",
+    "values_h2_bold": "istoga posla.",
+    "value1_title": "Služiti",
+    "value1_text": "Praktična pomoć na stvarnim bogoslužjima — popravljamo pokvareno, poboljšavamo ono što šteka, radimo uz tim koji je već ondje.",
+    "value2_title": "Obučavati",
+    "value2_text": "Praktična obuka na hrvatskom: tok signala, miksanje, rješavanje problema i dobro upravljanje opremom koju crkva već ima.",
+    "value3_title": "Opskrbiti",
+    "value3_text": "Mudre i pristupačne odluke o opremi te pristup znanju do kojeg je teško doći — vodiči i materijali na hrvatskom i engleskom.",
+    "values_link": "Čega se držimo →",
     "cta_cue": "Partnerstvo s nama",
-    "cta_h2_thin": "Sve naše —",
-    "cta_h2_bold": "za svega Njega.",
-    "cta_lede": "Thauma se financira potporom darovatelja kako crkve nikada ne bi morale plaćati pomoć. Vaše partnerstvo to omogućuje.",
-    "cta_give": "Podržite misiju",
+    "cta_h2_thin": "Ovaj posao nose",
+    "cta_h2_bold": "partneri.",
+    "cta_lede": "Thauma se financira potporom. Partneri — pojedinci i crkve — omogućuju nam da stanemo uz timove kojima je to potrebno.",
+    "cta_give": "Podržite rad",
     "cta_contact": "Javite nam se"
   },
   "about": {
@@ -86,32 +86,32 @@
     "h2_bold": "ovo djelo stoji.",
     "items": [
       {
-        "title": "Čovjek je smisao",
-        "text": "Briga za pojedinca srce je svega. Ona je pokretač organizacije i određuje kako se vodi svaki susret."
+        "title": "Ljudi prije projekata",
+        "text": "Bilo bi jednostavnije uspjeh mjeriti popravljenom opremom ili pokrivenim bogoslužjima. Namjerno to ne radimo: volonter za pultom važniji je od pulta za kojim stoji, a to mora preživjeti susret s propuštenim rokom ili napornom probom. To je mjerilo iza posjeta, a ne parola ispred njega."
       },
       {
-        "title": "Produkcija su vrata",
-        "text": "Tehnička potreba stvarna je i legitimna — nije izlika za odnos, nego istinska usluga koju crkva treba. Podržavamo crkve u njihovim potrebama, onakvima kakve jesu."
+        "title": "Služenje je vrata",
+        "text": "Mogli bismo tehnički posao prikazati kao sredstvo za nešto drugo, ali to bi bilo neiskreno — potreba je stvarna sama po sebi, a tretirati je kao izliku za \"pravu službu\" vrijeđalo bi ljude koji traže pomoć. Zato se pult popravlja jer treba popravak. Ono što izraste iz dovoljno dugog i dobrog rada zaseban je dar, ne skriveni plan."
       },
       {
-        "title": "Zajednica je plod",
-        "text": "Mjera uspjeha jest zajednica crkvenih produkcijskih ljudi — pastora, voditelja slavljenja i tehničara zajedno — koja postoji ondje gdje je prije nije bilo."
+        "title": "Zajednica je žetva",
+        "text": "Dobro postavljen zvučni sustav ništa ne govori o tome poznaju li se ljudi koji njime upravljaju, ili itko drugi tko radi isti posao tri grada dalje. Mogli bismo tehnički posao smatrati završenim i otići. Umjesto toga smatramo ga nedovršenim dok ne nastane nešto odnosno što prije nije postojalo — tehničari, voditelji slavljenja i pastori u kontaktu, iz crkava koje se inače nikada ne bi srele."
       },
       {
-        "title": "Umnožavanje",
-        "text": "Cilj su ljudi koji služe ljudima koji služe ljudima. Svatko u koga ulažemo potencijalni je izvor, a ne krajnja točka — i uspijevamo upravo onda kad naše središte postaje sve manje potrebno."
+        "title": "Stvoreni za umnožavanje",
+        "text": "Svaki sat uložen u obuku netko je sat kojim se kladimo da će ga ta osoba uložiti u obuku nekog drugog. Ta se oklada ne isplati uvijek odmah, a znači i stvarno strpljenje s ljudima koji još uče. No organizacija čije se središte nikada ne smanjuje ne umnožava se — gradi ovisnost, a to je plod koji aktivno pokušavamo izbjeći."
       },
       {
-        "title": "Za cijelu Crkvu",
-        "text": "Nijedan dio protestantske Crkve ne posjeduje ovo djelo. Neovisnost i ravnopravnost prema svim denominacijama naš su identitet, ne preferencija."
+        "title": "Jedna Crkva, bez vlasnika",
+        "text": "Neutralnost je lako izjaviti, a teško provoditi — osobito kad je jednu denominaciju lakše doseći nego drugu, ili je bolje financirana, ili je jednostavno već u prostoriji. Ne smijemo imati favorita. Neovisnost od bilo koje crkvene zajednice ovdje nije lijepa gesta — strukturni je zahtjev, jer čim nas se počne doživljavati kao pripadnike jedne tradicije, prestajemo biti korisni ostalima."
       },
       {
-        "title": "Asimilacija, ne utjecaj",
-        "text": "Dolazimo kao učenici i sudionici kultura u kojima služimo — nikada kao njihovi reformatori. Jezik i kultura dolaze prvi, a taj stav nikada ne prestaje."
+        "title": "Gosti, ne reformatori",
+        "text": "Poriv da se dođe s gotovim odgovorima jak je, osobito za svakoga tko je ovaj posao već negdje drugdje radio. Namjerno mu se opiremo: jezik i kultura dolaze prije odnosa, a odnos dolazi prije bilo kakvog mišljenja o tome kako bi crkva trebala voditi svoju produkciju. Godine provedene kao učenik, ne kao konzultant — jer je alternativa uvoz modela koji ovdje nitko nije tražio."
       },
       {
-        "title": "Bog čini djelo",
-        "text": "Mi otvaramo vrata i vjerno služimo; plod je Božji. Bez ovog uvjerenja, ništa ostalo nije važno."
+        "title": "Mi sadimo; Bog daje rast",
+        "text": "Sve gore navedeno opis je truda, a trud sam po sebi ima strop. Možemo otvoriti vrata, dolaziti dosljedno i služiti stručno — ne možemo proizvesti zajednicu ili umnožavanje koje iz toga slijedi. Reći to jasno nije lažna skromnost; to je razlog zašto se prvih šest uvjerenja ne pretvara u pritisak da se nešto izvede."
       }
     ]
   },
@@ -127,11 +127,11 @@
   "give": {
     "title": "Podrži",
     "cue": "Partnerstvo s nama",
-    "h2_thin": "Vaš dar održava ovo",
-    "h2_bold": "besplatnim za svaku crkvu.",
-    "lede": "Thauma se financira darovima u tradiciji misijske potpore. Ne naplaćujemo crkvama kojima služimo — vaše partnerstvo čini svaki sat služenja, obuke i opskrbe besplatnim.",
+    "h2_thin": "Ovaj posao počiva na",
+    "h2_bold": "partnerstvu.",
+    "lede": "Thauma se financira potporom u misijskoj tradiciji: crkve kojima služimo nisu te koje nose trošak — nose ga partneri. Darovi ovdje stavljaju stručnu pomoć uz timove koji do nje inače ne mogu doći.",
     "monthly_title": "Mjesečni partneri",
-    "monthly_text": "Redovita mjesečna potpora kralježnica je ove službe — ona financira godine učenja jezika, služenje i dugi horizont.",
+    "monthly_text": "Redovita mjesečna potpora kralježnica je ovoga posla — ona financira godine učenja jezika, služenje na terenu i dugi horizont koji ova regija traži.",
     "project_title": "Projektni darovi",
     "project_text": "Jednokratni darovi za opremu, putovanja i troškove okupljanja kad se pojave konkretne potrebe.",
     "legal_note": "Thauma je neprofitna organizacija u osnivanju (Missouri, SAD). Dok savezni status porezne izuzetosti ne bude odobren, darovi još nisu porezno priznati u SAD-u — ovdje ćemo to jasno objaviti čim se promijeni.",
@@ -165,12 +165,12 @@
   "footer": {
     "legal": "© 2026 Thauma · Neprofitna organizacija u osnivanju (Missouri, SAD)",
     "region": "Hrvatska i Balkan",
-    "tagline": "Sve naše — za svega Njega."
+    "tagline": "θαῦμα · čudo"
   },
   "coming": {
-    "line_thin": "Nešto se gradi",
-    "line_bold": "u mraku.",
-    "text": "Thauma — produkcijska služba za crkve u Hrvatskoj i okolnoj regiji — u pripremi je. Svjetla se uskoro pale."
+    "line_thin": "Thauma je",
+    "line_bold": "u pripremi.",
+    "text": "Produkcijska služba za crkve u Hrvatskoj i okolnoj regiji — služenje, obuka i opskrba njihovih tehničkih timova. Uskoro."
   },
   "team": {
     "title": "Tim",

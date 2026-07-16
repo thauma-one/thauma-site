@@ -15,29 +15,29 @@
   "home": {
     "title": "Home",
     "cue": "θαῦμα · Greek for wonder",
-    "h1_thin": "Wonder is built",
-    "h1_bold": "in the dark.",
-    "sub": "A production ministry serving, training, and resourcing the churches of Croatia and the surrounding region — freely, so no congregation is ever priced out of excellence.",
-    "who_cue": "Who we are",
-    "who_h2_thin": "A ministry for the people",
-    "who_h2_bold": "behind the console.",
-    "who_lede": "We exist for the unseen crew — first in, last out. Production is the door we walk through, but the person has always been the point.",
+    "h1_thin": "First in,",
+    "h1_bold": "last out.",
+    "sub": "Churches across Croatia and the surrounding region carry a real technical need — sound, lighting, video, streaming, and the people who run them, often with no one to learn from. Thauma exists to meet that need.",
+    "who_cue": "The need",
+    "who_h2_thin": "Real churches,",
+    "who_h2_bold": "real technical need.",
+    "who_lede": "Aging equipment without anyone trained on it. Volunteers running complex systems alone. No training pipeline, no peer network. The need is practical, and it's this Sunday's — so that's where we start.",
     "who_img_tag": "Photo — FOH console in haze",
-    "values_cue": "What we hold to",
-    "values_h2_thin": "Three convictions carry",
-    "values_h2_bold": "everything we do.",
-    "value1_title": "The person is the point",
-    "value1_text": "Gear and skill matter, but souls matter more. We minister to technical artists, not just their mixes.",
-    "value2_title": "Production is the door",
-    "value2_text": "Faders and fixtures open the room where discipleship happens. Craft is our way in, never the end.",
-    "value3_title": "Community is the fruit",
-    "value3_text": "When teams are served and trained, something grows that outlasts any event: people who belong.",
-    "values_link": "All of our values",
+    "values_cue": "How we help",
+    "values_h2_thin": "Three forms of",
+    "values_h2_bold": "the same work.",
+    "value1_title": "Serve",
+    "value1_text": "Hands-on help in real services — fixing what's broken, improving what's struggling, working alongside the team that's already there.",
+    "value2_title": "Train",
+    "value2_text": "Practical, in-language training: signal flow, mixing, troubleshooting, and stewarding the equipment a church already owns.",
+    "value3_title": "Resource",
+    "value3_text": "Wise, affordable equipment decisions and access to knowledge that's hard to reach — guides and materials in Croatian and English.",
+    "values_link": "What we hold to →",
     "cta_cue": "Partner with us",
-    "cta_h2_thin": "All of it",
-    "cta_h2_bold": "for all of Him.",
-    "cta_lede": "Thauma is support-raised so churches never have to pay for help. Your partnership is what makes that possible.",
-    "cta_give": "Give to the Mission",
+    "cta_h2_thin": "The work is carried",
+    "cta_h2_bold": "by partnership.",
+    "cta_lede": "Thauma is support-raised. Partners — individuals and churches — are what put us alongside the teams that need it.",
+    "cta_give": "Support the Work",
     "cta_contact": "Reach Out"
   },
   "about": {
@@ -86,32 +86,32 @@
     "h2_bold": "this work stands on.",
     "items": [
       {
-        "title": "The person is the point",
-        "text": "Care for the individual is the heart underneath everything. It is the engine of the organization and governs how every interaction is conducted."
+        "title": "People over projects",
+        "text": "It would be simpler to measure success by equipment fixed or services covered. We don't, on purpose: the volunteer running the board matters more than the board they're running, and that has to survive contact with a broken deadline or a frustrating rehearsal. It's the standard behind the visit, not the pitch in front of it."
       },
       {
-        "title": "Production is the door",
-        "text": "The technical need is real and legitimate — not a pretense for relationship but a genuine service the church requires. We support churches in their needs as they have them."
+        "title": "Service is the door",
+        "text": "We could frame the technical work as a means to something else, but that would be dishonest — the need is real on its own terms, and treating it as a pretext for \"the real ministry\" would insult the people asking for help. So the console gets fixed because it needs fixing. What grows from being there long enough to do that well is a separate gift, not the hidden agenda."
       },
       {
-        "title": "Community is the fruit",
-        "text": "The measure of success is a community of church production people — pastors, worship leaders, and techs together — existing where it did not before."
+        "title": "Community is the harvest",
+        "text": "A well-run sound system says nothing about whether the people running it know each other, or anyone else doing the same work three towns over. We could call the technical work finished and leave. Instead we count it unfinished until something relational exists that didn't before — technicians, worship leaders, and pastors in contact, across churches that would otherwise never have met."
       },
       {
-        "title": "Multiplication",
-        "text": "The aim is people who serve people who serve people. Everyone invested in is a potential source, not an endpoint — and we succeed precisely as our own center becomes less necessary."
+        "title": "Built to multiply",
+        "text": "Every hour spent training someone is an hour we're betting they'll spend training someone else. That bet doesn't always pay off immediately, and it means real patience with people still learning. But an organization whose center never shrinks isn't multiplying — it's building dependency, and that's a fruit we're actively trying not to grow."
       },
       {
-        "title": "For the whole church",
-        "text": "No corner of the Protestant church owns this work. Independence and evenhandedness across denominations are identity, not preference."
+        "title": "One church, no owners",
+        "text": "Neutrality is easy to claim and hard to practice, especially when one denomination is easier to reach than another, or better funded, or simply already in the room. We don't get to have a favorite. Independence from any single church body isn't a nice sentiment here — it's structural, because the moment we're seen as belonging to one tradition, we stop being useful to the rest."
       },
       {
-        "title": "Assimilation, not influence",
-        "text": "We go as students and participants of the cultures where we serve — never as reformers of them. Language and culture come first, and the posture never ends."
+        "title": "Guests, not reformers",
+        "text": "The instinct to arrive with answers is strong, especially for anyone who's already done this work somewhere else. We resist it on purpose: language and culture come before relationship, and relationship comes before any opinion about how a church should run its production. Years spent as a student, not a consultant — because the alternative is importing a model nobody here asked for."
       },
       {
-        "title": "God does the work",
-        "text": "We open doors and serve faithfully; the fruit is God's. Without this conviction, none of the rest matters."
+        "title": "We plant; God grows",
+        "text": "Everything above describes effort, and effort alone has a ceiling. We can open a door, show up consistently, and serve competently — we cannot manufacture the community or the multiplication that follows. Saying that plainly isn't false modesty; it's the reason the first six convictions never collapse into pressure to perform."
       }
     ]
   },
@@ -127,11 +127,11 @@
   "give": {
     "title": "Give",
     "cue": "Partner with us",
-    "h2_thin": "Your giving keeps this",
-    "h2_bold": "free for every church.",
-    "lede": "Thauma is donor-funded in the missionary-support tradition. We do not charge the churches we serve — your partnership is what makes every hour of serving, training, and resourcing free.",
+    "h2_thin": "This work runs on",
+    "h2_bold": "partnership.",
+    "lede": "Thauma is support-raised in the missionary tradition: the churches we serve are not the ones who carry the cost — partners are. Giving here puts skilled help alongside teams that have no other way to reach it.",
     "monthly_title": "Monthly partners",
-    "monthly_text": "Committed monthly support is the backbone of this ministry — it funds the language years, the serving, and the long horizon.",
+    "monthly_text": "Committed monthly support is the backbone of the work — it funds the language years, the on-the-ground serving, and the long horizon this region requires.",
     "project_title": "Project gifts",
     "project_text": "One-time gifts toward equipment, travel, and gathering costs as specific needs arise.",
     "legal_note": "Thauma is a Missouri nonprofit in formation. Until federal tax-exempt status is granted, gifts are not yet tax-deductible — we will say so plainly here the moment that changes.",
@@ -165,12 +165,12 @@
   "footer": {
     "legal": "© 2026 Thauma · A Missouri nonprofit in formation",
     "region": "Croatia & the Balkans",
-    "tagline": "All of it for all of Him."
+    "tagline": "θαῦμα · wonder"
   },
   "coming": {
-    "line_thin": "Something is being built",
-    "line_bold": "in the dark.",
-    "text": "Thauma — a production ministry for the churches of Croatia and the surrounding region — is in development. The lights come up soon."
+    "line_thin": "Thauma is",
+    "line_bold": "in preparation.",
+    "text": "A production ministry for the churches of Croatia and the surrounding region — serving, training, and resourcing their technical teams. Launching soon."
   },
   "team": {
     "title": "Team",
