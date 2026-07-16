@@ -10,7 +10,8 @@ Last revised: 2026-07-16 (real-device playtest round: collage wall
 rebuilt as a true no-overlap skyline packer; mobile physics scaling
 model rewritten twice more to its final form; a progressive difficulty
 ramp added; PB-toast legibility fixed across three rounds; scroll-lock
-and text-selection fixes — see revision log)
+and text-selection fixes; leaderboard trimmed to top 3 — see revision
+log)
 
 ---
 
@@ -454,8 +455,8 @@ Endless. No win state. Score is labeled **SIGNAL**.
   env var always 403s. The trash icon is visible to any visitor (this
   is already a no-auth, forgeable-by-design leaderboard), but only
   someone holding the token can actually remove anything. Crown
-  moment: on death, if the run's SIGNAL beats the current 10th-place
-  score (or there are fewer than 10 entries yet), a name-entry panel
+  moment: on death, if the run's SIGNAL beats the current 3rd-place
+  score (or there are fewer than 3 entries yet), a name-entry panel
   appears on the fail screen (`notFound.new_global_best`) instead of
   just the normal Retry/Home buttons. Offline or the function being
   unreachable: the leaderboard list on the game's home screen simply
@@ -465,7 +466,7 @@ Endless. No win state. Score is labeled **SIGNAL**.
   rights on a hidden page — deletion exists for cleanup/moderation,
   not to make the leaderboard authoritative.
   Function contract (as built):
-  - `GET  /.netlify/functions/game-scores` → `{ scores: [{ name, score }], totalDeaths }` (top 10, desc)
+  - `GET  /.netlify/functions/game-scores` → `{ scores: [{ name, score }], totalDeaths }` (top 3, desc)
   - `POST /.netlify/functions/game-scores` `{ name: "...", score: n }` → adds a score, returns the same shape
   - `POST /.netlify/functions/game-scores` `{ death: true }` → increments `totalDeaths`, returns the same shape
   - `POST /.netlify/functions/game-scores` `{ action: "delete", index: n, token: "..." }` → removes `scores[n]` if `token === GAME_ADMIN_TOKEN`, else 403
@@ -702,6 +703,15 @@ just the numbers.
 ---
 
 ## 10. Revision log
+
+- 2026-07-16 — **Leaderboard trimmed to top 3** (requested directly),
+  down from top 10. `MAX_SCORES` in `netlify/functions/game-scores.js`
+  and the matching client-side qualification check in `src/404.njk`
+  (`qualifiesForLeaderboard()`) both updated so the crown moment
+  triggers correctly against the new cap. Existing stored data with more
+  than 3 entries self-heals on the next score submission (the server
+  re-slices to `MAX_SCORES` on every write); no migration needed for a
+  dev-only, pre-launch leaderboard.
 
 - 2026-07-16 — **Real-device playtest round.** A run of direct fixes from
   actual phone screenshots, each verified and iterated live against the

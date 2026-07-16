@@ -1,3 +1,61 @@
+/* ============ Self-hosted fonts (2026-07-16) ============
+   Previously loaded from Google Fonts (fonts.googleapis.com ->
+   fonts.gstatic.com, a two-hop external fetch). Even with preconnect and
+   a proper sans-serif fallback, a slow/high-latency connection could
+   still show the fallback font for up to a second before swapping — self-
+   hosting removes the external DNS/TLS/CDN round-trip entirely, since the
+   files now come from the same origin as the page itself.
+   font-display:swap, NOT optional (reverted 2026-07-16 — optional caused
+   a worse regression): optional tells the browser "decide once, on the
+   very first paint — if the network font isn't ready by then, don't
+   bother trying again," and Safari in particular can persist that
+   skip-it decision across loads, permanently stuck on the fallback until
+   a hard cache clear. That's strictly worse than the flash it was meant
+   to prevent. swap always eventually shows the real font; self-hosting
+   (same-origin, no external DNS/TLS/CDN hop) plus preload is what
+   actually shortens the flash to be barely perceptible, not the
+   display strategy.
+   Both are variable fonts — one file per subset covers every weight
+   actually used, so 4 files total. Only latin/latin-ext are needed; the
+   game's collage wall draws many more scripts (Cyrillic, Greek) but Sora
+   doesn't ship those glyphs anyway, so that text was always falling back
+   to system fonts regardless.
+   Sora is declared as DISCRETE weights (100/200/600 — the only ones
+   actually used), not a single font-weight:100 800 range (2026-07-16,
+   third pass): elements using Sora consistently fell back to a system
+   serif on a real iPhone while Inter — same self-hosting setup, same
+   @font-face pattern — worked. The one concrete difference: Sora is
+   requested at weight 100, which is BOTH the declared range's floor AND
+   the font file's true variable-axis minimum, while Inter is never
+   requested at its own true minimum (100) — always 200 or above. A
+   browser weight-matching quirk exactly at a variable font's axis
+   boundary is the leading suspect; discrete per-weight rules sidestep
+   range-matching entirely, each just pinning one exact instance. */
+@font-face{font-family:'Sora';font-style:normal;font-weight:100;font-display:swap;
+  src:url('/fonts/Sora-latin-v2.woff2') format('woff2');
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Sora';font-style:normal;font-weight:100;font-display:swap;
+  src:url('/fonts/Sora-latin-ext-v2.woff2') format('woff2');
+  unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:'Sora';font-style:normal;font-weight:200;font-display:swap;
+  src:url('/fonts/Sora-latin-v2.woff2') format('woff2');
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Sora';font-style:normal;font-weight:200;font-display:swap;
+  src:url('/fonts/Sora-latin-ext-v2.woff2') format('woff2');
+  unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:'Sora';font-style:normal;font-weight:600;font-display:swap;
+  src:url('/fonts/Sora-latin-v2.woff2') format('woff2');
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Sora';font-style:normal;font-weight:600;font-display:swap;
+  src:url('/fonts/Sora-latin-ext-v2.woff2') format('woff2');
+  unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:'Inter';font-style:normal;font-weight:200 600;font-display:swap;
+  src:url('/fonts/Inter-latin-v2.woff2') format('woff2');
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Inter';font-style:normal;font-weight:200 600;font-display:swap;
+  src:url('/fonts/Inter-latin-ext-v2.woff2') format('woff2');
+  unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+
 /* ============ THAUMA DESIGN SYSTEM (V4 "two tones") ============
    BLUE = the technical voice (cues, frames, structure)
    SEAFOAM = the ministry voice (values, giving, people)
@@ -42,13 +100,13 @@ a{color:inherit;text-decoration:none}
 nav{position:fixed;inset:0 0 auto;z-index:20;backdrop-filter:blur(12px);
   background:rgba(11,15,21,.72);border-bottom:1px solid rgba(255,255,255,.07)}
 .nav-in{display:flex;align-items:center;justify-content:space-between;height:64px;gap:20px}
-.logo{font-family:'Sora';font-weight:100;letter-spacing:.42em;font-size:16px;display:flex;align-items:center;gap:12px;white-space:nowrap}
+.logo{font-family:'Sora',sans-serif;font-weight:100;letter-spacing:.42em;font-size:16px;display:flex;align-items:center;gap:12px;white-space:nowrap}
 .logo img{height:26px}
 .links{display:flex;gap:24px;font-size:13px;font-weight:400;color:var(--dim)}
 .links a:hover{color:var(--text)}
 .nav-actions{display:flex;align-items:center;gap:14px}
 .lang-toggle{background:none;border:1px solid rgba(255,255,255,.18);color:var(--dim);
-  font-family:'Inter';font-size:11px;letter-spacing:.15em;font-weight:600;
+  font-family:'Inter',sans-serif;font-size:11px;letter-spacing:.15em;font-weight:600;
   padding:7px 12px;border-radius:2px;cursor:pointer;transition:.2s}
 .lang-toggle:hover{border-color:var(--blue);color:var(--blue)}
 .give-btn{border:1px solid var(--foam);color:var(--foam);padding:8px 18px;border-radius:2px;
@@ -61,7 +119,7 @@ nav{position:fixed;inset:0 0 auto;z-index:20;backdrop-filter:blur(12px);
 .menu-open .menu-btn span:last-child{transform:rotate(-45deg);bottom:10px}
 .mobile-menu{display:none;position:fixed;inset:64px 0 0;z-index:19;background:rgba(11,15,21,.97);
   backdrop-filter:blur(12px);flex-direction:column;padding:40px 24px;gap:26px;
-  font-family:'Sora';font-weight:200;font-size:22px;letter-spacing:.06em}
+  font-family:'Sora',sans-serif;font-weight:200;font-size:22px;letter-spacing:.06em}
 .menu-open .mobile-menu{display:flex}
 
 /* ---------- Shared type ---------- */
@@ -69,7 +127,7 @@ nav{position:fixed;inset:0 0 auto;z-index:20;backdrop-filter:blur(12px);
 .cue::before{content:"";display:inline-block;width:34px;height:1px;background:currentColor;vertical-align:middle;margin-right:14px}
 .cue.foam{color:var(--foam)}
 .cue.bare::before{display:none}
-h1,h2{font-family:'Sora';font-weight:100;letter-spacing:.01em}
+h1,h2{font-family:'Sora',sans-serif;font-weight:100;letter-spacing:.01em}
 h2{font-size:clamp(30px,4.4vw,48px);line-height:1.15;max-width:660px}
 h2 b{font-weight:600}
 .lede{margin-top:22px;max-width:560px;color:var(--dim);font-size:15.5px;font-weight:200;line-height:1.85}
@@ -80,9 +138,9 @@ header.hero{min-height:100vh;display:flex;flex-direction:column;justify-content:
 /* touch-action:manipulation — this is also the hidden game's door 1 (5
    quick taps, GAME-SPEC.md §3); without it, rapid taps register as a
    native double-tap-zoom gesture instead of 5 clean clicks. */
-.wordmark{font-family:'Sora';font-weight:100;font-size:clamp(56px,11vw,150px);letter-spacing:.14em;line-height:1;
+.wordmark{font-family:'Sora',sans-serif;font-weight:100;font-size:clamp(56px,11vw,150px);letter-spacing:.14em;line-height:1;
   text-shadow:0 0 60px rgba(47,216,255,.22);touch-action:manipulation}
-.hero-line{font-family:'Sora';font-weight:100;font-size:clamp(20px,2.6vw,30px);letter-spacing:.02em;margin-top:22px;color:var(--dim)}
+.hero-line{font-family:'Sora',sans-serif;font-weight:100;font-size:clamp(20px,2.6vw,30px);letter-spacing:.02em;margin-top:22px;color:var(--dim)}
 .hero-line b{font-weight:600;color:var(--text)}
 .hero-sub{margin-top:30px;max-width:520px;font-size:16px;font-weight:200;line-height:1.8;color:var(--dim)}
 .meter{position:absolute;bottom:0;left:0;right:0;height:1px;background:rgba(255,255,255,.08)}
@@ -98,14 +156,14 @@ section:last-of-type{border-bottom:none}
 
 /* ---------- Dictionary entry (About) ---------- */
 .dict{padding:170px 0 80px;border-bottom:1px solid rgba(47,216,255,.15)}
-.dict-word{font-family:'Sora';font-weight:100;font-size:clamp(52px,9vw,110px);letter-spacing:.06em;line-height:1;
+.dict-word{font-family:'Sora',sans-serif;font-weight:100;font-size:clamp(52px,9vw,110px);letter-spacing:.06em;line-height:1;
   text-shadow:0 0 60px rgba(47,216,255,.18)}
 .dict-ipa{margin-top:18px;color:var(--blue);font-size:14px;letter-spacing:.12em;font-weight:400}
 .dict-defs{margin-top:34px;max-width:620px;counter-reset:def}
 .dict-defs p{position:relative;padding-left:38px;margin-bottom:18px;color:var(--dim);
   font-size:16.5px;font-weight:200;line-height:1.75;font-style:italic}
 .dict-defs p::before{counter-increment:def;content:counter(def);position:absolute;left:0;top:2px;
-  font-family:'Sora';font-style:normal;font-weight:600;font-size:13px;color:var(--foam)}
+  font-family:'Sora',sans-serif;font-style:normal;font-weight:600;font-size:13px;color:var(--foam)}
 
 /* ---------- Imagery frame ---------- */
 .frame{margin-top:56px;aspect-ratio:21/9;border:1px solid rgba(47,216,255,.2);position:relative;overflow:hidden;
@@ -122,28 +180,28 @@ section:last-of-type{border-bottom:none}
 .val{background:var(--panel);padding:40px 32px;transition:.25s}
 .val:hover{box-shadow:inset 0 2px 0 var(--foam), inset 0 30px 60px -40px var(--foam-dim)}
 .val .n{font-size:11px;letter-spacing:.3em;color:var(--foam);font-weight:600;text-transform:uppercase}
-.val h3{font-family:'Sora';font-weight:600;font-size:19px;margin:16px 0 12px}
+.val h3{font-family:'Sora',sans-serif;font-weight:600;font-size:19px;margin:16px 0 12px}
 .val p{color:var(--dim);font-size:14px;font-weight:300;line-height:1.75}
 
 /* ---------- Values list (values page) ---------- */
 .conviction{display:flex;gap:36px;align-items:baseline;padding:44px 0;border-bottom:1px solid rgba(255,255,255,.06)}
 .conviction:last-child{border-bottom:none}
-.conviction .num{font-family:'Sora';font-weight:100;font-size:44px;color:var(--foam);min-width:76px;line-height:1;
+.conviction .num{font-family:'Sora',sans-serif;font-weight:100;font-size:44px;color:var(--foam);min-width:76px;line-height:1;
   text-shadow:0 0 30px rgba(92,242,196,.3)}
-.conviction h3{font-family:'Sora';font-weight:600;font-size:21px;margin-bottom:12px}
+.conviction h3{font-family:'Sora',sans-serif;font-weight:600;font-size:21px;margin-bottom:12px}
 .conviction p{color:var(--dim);font-size:15px;font-weight:200;line-height:1.85;max-width:560px}
 
 /* ---------- Work blocks (mission) ---------- */
 .work{display:grid;grid-template-columns:120px 1fr;gap:36px;padding:48px 0;border-bottom:1px solid rgba(255,255,255,.06)}
 .work:last-child{border-bottom:none}
 .work .label{font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:var(--blue);font-weight:600;padding-top:6px}
-.work h3{font-family:'Sora';font-weight:600;font-size:21px;margin-bottom:14px}
+.work h3{font-family:'Sora',sans-serif;font-weight:600;font-size:21px;margin-bottom:14px}
 .work p{color:var(--dim);font-size:15px;font-weight:200;line-height:1.85;max-width:620px}
 
 /* ---------- Buttons ---------- */
 .btn-row{display:flex;gap:16px;flex-wrap:wrap;margin-top:44px}
 .btn-row.center{justify-content:center}
-.btn{font-family:'Sora';font-weight:600;font-size:12.5px;letter-spacing:.2em;text-transform:uppercase;
+.btn{font-family:'Sora',sans-serif;font-weight:600;font-size:12.5px;letter-spacing:.2em;text-transform:uppercase;
   padding:16px 38px;border-radius:2px;transition:.25s;display:inline-block;cursor:pointer;border:none}
 .btn.solid{background:var(--foam);color:#06110c}
 .btn.solid:hover{box-shadow:var(--foam-glow)}
@@ -158,14 +216,14 @@ section:last-of-type{border-bottom:none}
 /* ---------- Empty states (resources, events) ---------- */
 .empty{margin-top:60px;border:1px dashed rgba(47,216,255,.25);padding:70px 40px;text-align:center;
   background:radial-gradient(500px 200px at 50% 0%, rgba(47,216,255,.05), transparent 70%)}
-.empty h3{font-family:'Sora';font-weight:200;font-size:24px;letter-spacing:.03em}
+.empty h3{font-family:'Sora',sans-serif;font-weight:200;font-size:24px;letter-spacing:.03em}
 .empty p{margin:18px auto 0;max-width:480px;color:var(--dim);font-size:15px;font-weight:200;line-height:1.85}
 .empty .btn{margin-top:34px}
 
 /* ---------- Give ---------- */
 .give-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:56px}
 .give-card{background:var(--panel);border:1px solid rgba(255,255,255,.07);padding:38px 32px}
-.give-card h3{font-family:'Sora';font-weight:600;font-size:19px;margin-bottom:12px;color:var(--foam-hi)}
+.give-card h3{font-family:'Sora',sans-serif;font-weight:600;font-size:19px;margin-bottom:12px;color:var(--foam-hi)}
 .give-card p{color:var(--dim);font-size:14.5px;font-weight:200;line-height:1.8}
 .donate-slot{margin-top:56px;border:1px solid rgba(92,242,196,.25);min-height:300px;display:grid;place-items:center;
   background:radial-gradient(500px 240px at 50% 30%, rgba(92,242,196,.06), transparent 70%);padding:40px}
@@ -176,7 +234,7 @@ section:last-of-type{border-bottom:none}
 /* ---------- Contact form ---------- */
 form.contact{margin-top:56px;max-width:560px;display:flex;flex-direction:column;gap:18px}
 form.contact input,form.contact textarea{background:var(--panel);border:1px solid rgba(255,255,255,.1);
-  color:var(--text);font-family:'Inter';font-weight:300;font-size:15px;padding:16px 18px;border-radius:2px;transition:.2s}
+  color:var(--text);font-family:'Inter',sans-serif;font-weight:300;font-size:15px;padding:16px 18px;border-radius:2px;transition:.2s}
 form.contact input:focus,form.contact textarea:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-dim)}
 form.contact textarea{min-height:160px;resize:vertical}
 form.contact ::placeholder{color:var(--dim)}
@@ -186,7 +244,7 @@ footer{flex-shrink:0;background:var(--bg2);border-top:1px solid rgba(255,255,255
 .foot-in{padding:48px 24px;color:var(--dim);font-size:13px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:24px}
 .foot-col{display:flex;flex-direction:column;gap:10px}
 .foot-col.foot-right{align-items:flex-end}
-.foot-tag{font-family:'Sora';font-weight:200;letter-spacing:.08em;color:var(--foam)}
+.foot-tag{font-family:'Sora',sans-serif;font-weight:200;letter-spacing:.08em;color:var(--foam)}
 .foot-legal{font-size:12px;opacity:.85}
 .foot-region{font-size:12px}
 
@@ -214,8 +272,8 @@ footer{flex-shrink:0;background:var(--bg2);border-top:1px solid rgba(255,255,255
 .person-photo{aspect-ratio:1/1;border:1px solid rgba(47,216,255,.2);position:relative;overflow:hidden;display:grid;place-items:center;
   background:linear-gradient(rgba(11,15,21,.3),rgba(11,15,21,.6)),radial-gradient(300px 300px at 35% 30%, rgba(47,216,255,.18), transparent 70%),linear-gradient(160deg,#16202e 0%,#0b0f15 75%)}
 .person-photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-.person-initial{font-family:'Sora';font-weight:100;font-size:64px;color:var(--blue);opacity:.6}
-.person h3{font-family:'Sora';font-weight:600;font-size:19px;margin-top:22px}
+.person-initial{font-family:'Sora',sans-serif;font-weight:100;font-size:64px;color:var(--blue);opacity:.6}
+.person h3{font-family:'Sora',sans-serif;font-weight:600;font-size:19px;margin-top:22px}
 .person-role{color:var(--foam);font-size:12px;letter-spacing:.2em;text-transform:uppercase;font-weight:600;margin-top:8px}
 .person-base{color:var(--dim);font-size:13px;font-weight:300;margin-top:10px}
 .bio-layout{display:grid;grid-template-columns:300px 1fr;gap:48px;align-items:start}
@@ -224,11 +282,11 @@ footer{flex-shrink:0;background:var(--bg2);border-top:1px solid rgba(255,255,255
 @media(max-width:820px){.team-grid{grid-template-columns:1fr}.bio-layout{grid-template-columns:1fr}}
 
 /* ---------- Staff-area cards ---------- */
-.staff-h{font-family:'Sora';font-weight:600;font-size:20px;margin:34px 0 8px}
+.staff-h{font-family:'Sora',sans-serif;font-weight:600;font-size:20px;margin:34px 0 8px}
 .staff-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:14px}
 .s-card{background:var(--panel);border:1px solid rgba(255,255,255,.07);padding:26px;transition:.25s}
 .s-card:hover{box-shadow:inset 0 2px 0 var(--foam)}
-.s-card h4{font-family:'Sora';font-weight:600;font-size:16.5px}
+.s-card h4{font-family:'Sora',sans-serif;font-weight:600;font-size:16.5px}
 .s-role{color:var(--foam);font-size:11px;letter-spacing:.2em;text-transform:uppercase;font-weight:600;margin-top:6px}
 .s-card p{color:var(--dim);font-size:13.5px;font-weight:300;line-height:1.7;margin-top:10px}
 .s-photo{aspect-ratio:16/9;overflow:hidden;border:1px solid rgba(47,216,255,.2);margin-bottom:16px;

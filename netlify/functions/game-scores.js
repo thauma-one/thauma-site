@@ -6,7 +6,7 @@
 // only as a Netlify site environment variable — never in git). Same Blobs
 // pattern as staff-data.js.
 //
-// GET  -> { scores: [{ name, score }] (top 10, desc), totalDeaths }
+// GET  -> { scores: [{ name, score }] (top 3, desc), totalDeaths }
 // POST { name: "...", score: n }         -> adds a score, returns the above
 // POST { death: true }                    -> increments totalDeaths, returns the above
 // POST { action: "delete", index: n, token: "..." } -> removes scores[n], returns the above
@@ -14,7 +14,7 @@ const { getStore } = require("@netlify/blobs");
 
 const STORE_NAME = "game-scores";
 const KEY = "data";
-const MAX_SCORES = 10;
+const MAX_SCORES = 3;
 const MAX_SCORE_VALUE = 999999;
 const MAX_NAME_LEN = 20;
 const FALLBACK_NAME = "Anonymous";
