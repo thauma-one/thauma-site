@@ -12,7 +12,12 @@
     "hr": ""
   },
   "images": {
-    "home_who": "/img/home-worship-stage.webp"
+    "home_who": {
+      "src": "/img/home-worship-stage.webp",
+      "focal_x": 50,
+      "focal_y": 50,
+      "zoom": 100
+    }
   },
   "comingSoon": true,
   "socials": {
