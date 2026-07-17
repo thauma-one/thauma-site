@@ -205,7 +205,7 @@ section:last-of-type{border-bottom:none}
 @media(max-width:900px){
   header.page, .dict{position:relative;overflow:hidden}
   header.page::before, .dict::before{content:var(--page-label,"");position:absolute;z-index:-1;
-    top:-.1em;left:-3px;text-align:left;font-family:'Sora',sans-serif;font-weight:100;text-transform:uppercase;
+    top:64px;left:-3px;text-align:left;font-family:'Sora',sans-serif;font-weight:100;text-transform:uppercase;
     letter-spacing:.02em;font-size:clamp(60px,20vw,108px);line-height:1;color:var(--foam);opacity:.07;
     white-space:nowrap;pointer-events:none;user-select:none}
 }

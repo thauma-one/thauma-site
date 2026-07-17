@@ -63,7 +63,7 @@
 <meta name="twitter:title" content="{{ fullTitle }}">
 <meta name="twitter:description" content="{{ t.home.sub }}">
 <meta name="twitter:image" content="{{ shareImage }}">
-<link rel="stylesheet" href="/css/main.css?v=10">
+<link rel="stylesheet" href="/css/main.css?v=11">
 </head>
 <body{% if navPageNum > 0 %} style="--page-label:'{{ t.nav[pageSlug] }}'"{% endif %}>
 
@@ -94,7 +94,7 @@
   {%- for slug in navPages %}{% if slug != "give" %}
   <a href="/{{ lang }}/{{ slug }}/">{{ t.nav[slug] }}</a>
   {%- endif %}{% endfor %}
-  <a class="give-btn" href="/{{ lang }}/give/">{{ t.nav.give }}</a>
+  <a href="/{{ lang }}/give/">{{ t.nav.give }}</a>
 </div>
 
 <main>
