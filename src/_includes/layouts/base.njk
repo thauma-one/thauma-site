@@ -29,12 +29,14 @@
 </div>
 {% endmacro %}
 
-{#- Mobile page-location strip (2026-07-17) — the nav bar itself has no
-   room for a location indicator at ~390px (logo + language control + Give
-   + hamburger already fill it), so this is a second, thinner bar directly
-   below it, mobile-only. navPages (src/_data/navPages.js) is the nav's own
+{#- Mobile page-location watermark (2026-07-18) — a large, low-opacity
+   background word behind each page's header (see header.page::before /
+   .dict::before in main.css), replacing the earlier thin strip. Driven by
+   a CSS custom property on <body> so it works for header.page AND .dict
+   (About uses .dict, everything else uses header.page) without touching
+   every page template. navPages (src/_data/navPages.js) is the nav's own
    order; a page not in that list (home, team bios, staff) simply doesn't
-   match and the strip doesn't render. #}
+   match and no watermark renders. #}
 {% set navPageNum = navPages.indexOf(pageSlug) + 1 %}
 
 <!DOCTYPE html>
@@ -61,9 +63,9 @@
 <meta name="twitter:title" content="{{ fullTitle }}">
 <meta name="twitter:description" content="{{ t.home.sub }}">
 <meta name="twitter:image" content="{{ shareImage }}">
-<link rel="stylesheet" href="/css/main.css?v=8">
+<link rel="stylesheet" href="/css/main.css?v=9">
 </head>
-<body>
+<body{% if navPageNum > 0 %} style="--page-label:'{{ t.nav[pageSlug] }}'"{% endif %}>
 
 <nav><div class="wrap nav-in">
   <a class="logo" href="/{{ lang }}/"><!-- <img src="/img/logo.svg" alt=""> -->THAUMA</a>
@@ -83,19 +85,17 @@
   <button class="menu-btn" aria-label="Menu"><span></span><span></span></button>
 </div></nav>
 
-{% if navPageNum > 0 %}
-<div class="page-strip"><div class="wrap"><span>{{ "0" if navPageNum < 10 else "" }}{{ navPageNum }} {{ t.nav[pageSlug] }}</span></div></div>
-{% endif %}
-
+{#- Full page nav, mobile only — looped from navPages (src/_data/navPages.js)
+   instead of a hand-copied list, so it can never drift out of sync with the
+   desktop .links above again (this list was previously missing "Team"). #}
 <div class="mobile-menu">
-  <a href="/{{ lang }}/about/">{{ t.nav.about }}</a>
-  <a href="/{{ lang }}/mission/">{{ t.nav.mission }}</a>
-  <a href="/{{ lang }}/values/">{{ t.nav.values }}</a>
-  <a href="/{{ lang }}/resources/">{{ t.nav.resources }}</a>
-  <a href="/{{ lang }}/contact/">{{ t.nav.contact }}</a>
-  {% if site.showEvents %}<a href="/{{ lang }}/events/">{{ t.nav.events }}</a>{% endif %}
-  <a href="/{{ lang }}/give/">{{ t.nav.give }}</a>
-  {{ langDropdown('menu') }}
+  {%- for slug in navPages %}{% if slug != "give" %}
+  <a href="/{{ lang }}/{{ slug }}/">{{ t.nav[slug] }}</a>
+  {%- endif %}{% endfor %}
+  <div class="mobile-menu-foot">
+    {{ langDropdown('menu') }}
+    <a class="give-btn" href="/{{ lang }}/give/">{{ t.nav.give }}</a>
+  </div>
 </div>
 
 <main>
@@ -123,6 +123,6 @@
 {%- if not env.isProduction %}
 <script>window.THAUMA_TAUNTS = { en: {{ i18n.en.notFound.taunts | dump | safe }}, hr: {{ i18n.hr.notFound.taunts | dump | safe }} };</script>
 {%- endif %}
-<script src="/js/main.js"></script>
+<script src="/js/main.js?v=2"></script>
 </body>
 </html>

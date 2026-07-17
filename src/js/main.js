@@ -18,32 +18,39 @@ document.querySelectorAll('.lang-toggle').forEach(function (btn) {
 // ---- Language dropdown: open/close + dismiss (2026-07-17) ----
 // Two copies exist in the DOM (desktop nav-actions, mobile-menu — CSS
 // picks which one is visible per breakpoint), so this wires up whichever
-// is present via a shared class rather than assuming just one.
-document.querySelectorAll('.lang-dropdown').forEach(function (dd) {
-  var trigger = dd.querySelector('.lang-dropdown-trigger');
-  var list = dd.querySelector('.lang-dropdown-list');
-  if (!trigger || !list) return;
-  function open() {
-    list.hidden = false;
-    dd.classList.add('open');
-    trigger.setAttribute('aria-expanded', 'true');
-  }
-  function close() {
-    list.hidden = true;
-    dd.classList.remove('open');
-    trigger.setAttribute('aria-expanded', 'false');
-  }
-  trigger.addEventListener('click', function (e) {
-    e.stopPropagation();
-    if (list.hidden) open(); else close();
+// is present via a shared class rather than assuming just one. The
+// outside-click/Escape listeners are registered once on document (not
+// once per dropdown instance) and just close whichever is currently open.
+(function () {
+  var dropdowns = [];
+  document.querySelectorAll('.lang-dropdown').forEach(function (dd) {
+    var trigger = dd.querySelector('.lang-dropdown-trigger');
+    var list = dd.querySelector('.lang-dropdown-list');
+    if (!trigger || !list) return;
+    function open() {
+      list.hidden = false;
+      dd.classList.add('open');
+      trigger.setAttribute('aria-expanded', 'true');
+    }
+    function close() {
+      list.hidden = true;
+      dd.classList.remove('open');
+      trigger.setAttribute('aria-expanded', 'false');
+    }
+    trigger.addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (list.hidden) open(); else close();
+    });
+    dropdowns.push({ el: dd, close: close });
   });
+  if (!dropdowns.length) return;
   document.addEventListener('click', function (e) {
-    if (!dd.contains(e.target)) close();
+    dropdowns.forEach(function (d) { if (!d.el.contains(e.target)) d.close(); });
   });
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') close();
+    if (e.key === 'Escape') dropdowns.forEach(function (d) { d.close(); });
   });
-});
+})();
 
 // ---- Mobile menu ----
 var menuBtn = document.querySelector('.menu-btn');

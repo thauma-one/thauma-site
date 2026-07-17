@@ -143,8 +143,10 @@ nav{position:fixed;inset:0 0 auto;z-index:20;backdrop-filter:blur(12px);
   backdrop-filter:blur(12px);flex-direction:column;padding:40px 24px;gap:26px;
   font-family:'Sora',sans-serif;font-weight:200;font-size:22px;letter-spacing:.06em}
 .menu-open .mobile-menu{display:flex}
-.mobile-menu .lang-dropdown{margin-top:6px}
-.mobile-menu .lang-dropdown-list{right:auto;left:0}
+/* Give + language dropdown sit side by side here (2026-07-18), the same
+   pairing/order as desktop's nav-actions, instead of the dropdown being
+   its own stacked row below Give. */
+.mobile-menu-foot{display:flex;align-items:center;gap:16px}
 
 /* Exactly one dropdown copy visible at a time, split at the same 900px
    breakpoint that already switches .links/.menu-btn (see below). */
@@ -152,23 +154,6 @@ nav{position:fixed;inset:0 0 auto;z-index:20;backdrop-filter:blur(12px);
 @media(max-width:900px){
   .lang-dropdown--nav{display:none}
   .lang-dropdown--menu{display:block}
-}
-
-/* ---------- Mobile page-location strip (2026-07-17) ----------
-   The main nav bar has no room for a location indicator at ~390px width
-   (logo + language control + Give + hamburger already fill it) — this is
-   a second, thinner bar directly below it instead, mobile-only, pinned
-   the same way the nav itself is. Numbered like the site's existing
-   section cue labels (counter(cue,decimal-leading-zero) above), just
-   computed server-side in base.njk instead of a CSS counter, since it
-   needs to match one specific page's position in the nav, not count
-   elements on the current page. */
-.page-strip{display:none}
-@media(max-width:900px){
-  .page-strip{display:block;position:fixed;top:64px;left:0;right:0;z-index:19;
-    height:34px;background:var(--bg);border-bottom:1px solid rgba(255,255,255,.07)}
-  .page-strip .wrap{height:100%;display:flex;align-items:center}
-  .page-strip span{font-size:11px;letter-spacing:.2em;text-transform:uppercase;font-weight:600;color:var(--blue)}
 }
 
 /* ---------- Shared type ---------- */
@@ -214,18 +199,23 @@ section:last-of-type{border-bottom:none}
 .dict-defs p::before{counter-increment:def;content:counter(def);position:absolute;left:0;top:2px;
   font-family:'Sora',sans-serif;font-style:normal;font-weight:600;font-size:13px;color:var(--foam)}
 
-/* Push page content down by the .page-strip's own height on mobile, so it
-   doesn't slide in underneath that new fixed bar (2026-07-17). Placed
-   AFTER both base rules above — with equal specificity, an earlier
-   position would've been silently overridden by header.page/.dict's own
-   later shorthand `padding` declaration (a real bug caught before
-   shipping: the override has to out-rank the base rule in SOURCE ORDER,
-   not just exist in a narrower media query). .dict (About) gets checked
-   explicitly here since it has a tighter bottom-padding than header.page
-   already, making it the more likely one to feel cramped. */
+/* ---------- Mobile page-location watermark (2026-07-18) ----------
+   Replaces the earlier thin strip below the nav: a large, low-opacity
+   background word sitting behind each page's own header text, mobile
+   only. --page-label is set once, on <body>, in base.njk (so it works
+   for both header.page and .dict — About uses .dict, everything else
+   uses header.page — without editing every page template). `main` is a
+   flex item of body{display:flex}, which per spec makes it establish its
+   own stacking context regardless of z-index; that's what lets z-index:-1
+   here reliably paint behind the header's real (non-positioned) text
+   while still staying above the page's own background instead of falling
+   all the way behind it. */
 @media(max-width:900px){
-  header.page{padding-top:204px}
-  .dict{padding-top:204px}
+  header.page, .dict{position:relative;overflow:hidden}
+  header.page::before, .dict::before{content:var(--page-label,"");position:absolute;z-index:-1;
+    left:-3px;bottom:-.06em;font-family:'Sora',sans-serif;font-weight:600;text-transform:uppercase;
+    letter-spacing:.02em;font-size:clamp(60px,20vw,108px);line-height:1;color:var(--foam);opacity:.14;
+    white-space:nowrap;pointer-events:none;user-select:none}
 }
 
 /* ---------- Imagery frame ---------- */
