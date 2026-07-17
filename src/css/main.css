@@ -105,16 +105,6 @@ nav{position:fixed;inset:0 0 auto;z-index:20;backdrop-filter:blur(12px);
 .nav-in{display:flex;align-items:center;justify-content:space-between;height:64px;gap:20px}
 .logo{font-family:'Sora',sans-serif;font-weight:100;letter-spacing:.42em;font-size:16px;display:flex;align-items:center;gap:12px;white-space:nowrap}
 .logo img{height:26px}
-.logo-page{display:none}
-/* Mobile page indicator (2026-07-19): a small numbered/labeled line under
-   THAUMA in the nav, styled like the site's existing numbered cue labels
-   (see .cue) — replaces the earlier full-page watermark. Desktop already
-   shows current page via the active-link underline in .links, so this
-   only needs to exist below 900px. */
-@media(max-width:900px){
-  .logo{flex-direction:column;align-items:flex-start;gap:2px}
-  .logo-page{display:block;font-size:9.5px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--blue)}
-}
 .links{display:flex;gap:24px;font-size:13px;font-weight:400;color:var(--dim)}
 .links a:hover{color:var(--text)}
 .nav-actions{display:flex;align-items:center;gap:14px}
@@ -234,6 +224,21 @@ section:last-of-type{border-bottom:none}
   font-size:16.5px;font-weight:200;line-height:1.75;font-style:italic}
 .dict-defs p::before{counter-increment:def;content:counter(def);position:absolute;left:0;top:2px;
   font-family:'Sora',sans-serif;font-style:normal;font-weight:600;font-size:13px;color:var(--foam)}
+
+/* ---------- Mobile page-location indicator (2026-07-19) ----------
+   Small numbered/labeled line, top-left, just under the nav — same spot
+   the old full-page watermark used to sit, same look the logo-adjacent
+   version had (moved out from under THAUMA per feedback: it's clearer
+   as its own thing at the top of the page than tucked under the logo).
+   --page-label is set once, on <body>, in base.njk, so this works for
+   both header.page and .dict (About uses .dict, everything else uses
+   header.page) without editing every page template. */
+@media(max-width:900px){
+  header.page, .dict{position:relative}
+  header.page::before, .dict::before{content:var(--page-label,"");position:absolute;top:80px;left:0;
+    font-family:'Inter',sans-serif;font-size:9.5px;font-weight:600;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--blue)}
+}
 
 /* ---------- Imagery frame ---------- */
 .frame{margin-top:56px;aspect-ratio:21/9;border:1px solid rgba(47,216,255,.2);position:relative;overflow:hidden;
