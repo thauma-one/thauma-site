@@ -574,13 +574,22 @@ ambiguous before building."
   produce comparable scores for comparable skill.
 - **Double-tap zoom must be disabled during play:** rapid tapping is
   the core input, and phones interpret double-taps as zoom — mid-game
-  zooming is game-breaking. Required: `touch-action: manipulation`
-  on the game canvas/stage (kills double-tap-zoom while preserving
-  normal touch), plus `preventDefault()` on the game's touch handlers,
-  plus the standard viewport meta already present. Pinch-zoom on the
-  REST of the 404 page should remain untouched (accessibility);
-  restrict the suppression to the game surface, active only while
-  the game is live.
+  zooming is game-breaking. **(2026-07-19: now handled globally, see
+  below — this no longer needs its own canvas-scoped fix.)**
+
+**2026-07-19 update — double-tap-zoom suppression moved sitewide:**
+`html { touch-action: manipulation; }` was added to src/css/main.css's
+global resets, which kills double-tap-to-zoom everywhere on the site
+(not just the game), as a bonus also removing the ~300ms tap delay on
+every button/link. `touch-action: manipulation` does not affect
+pinch-zoom or text selection, so both keep working exactly as before —
+the "restrict to the game surface" caution in the original requirement
+above assumed a site-wide cost to this that turns out not to exist.
+The game canvas inherits the global rule automatically; it no longer
+needs its own `touch-action`/`preventDefault()` handling for this
+specific issue, and neither do the trigger-side elements called out in
+"Also added" below (`.wordmark`, `.dict-word`) — those per-element
+rules are now redundant but harmless if left in place.
 
 **Resolution history — the scaling model went through three real passes
 before landing right, each from an actual phone screenshot, not

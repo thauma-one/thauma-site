@@ -78,7 +78,10 @@
   --foam-glow:0 0 26px rgba(92,242,196,.35);
 }
 *{margin:0;padding:0;box-sizing:border-box}
-html{scroll-behavior:smooth;scrollbar-width:thin;scrollbar-color:var(--blue) var(--bg2)}
+/* touch-action:manipulation kills double-tap-to-zoom sitewide (and the
+   ~300ms tap delay on buttons/links as a bonus) without touching
+   pinch-zoom or text selection — neither is affected by this value. */
+html{scroll-behavior:smooth;scrollbar-width:thin;scrollbar-color:var(--blue) var(--bg2);touch-action:manipulation}
 
 /* ---------- Scrollbar (WebKit/Blink) ---------- */
 ::-webkit-scrollbar{width:11px;height:11px}
