@@ -105,10 +105,32 @@ nav{position:fixed;inset:0 0 auto;z-index:20;backdrop-filter:blur(12px);
 .links{display:flex;gap:24px;font-size:13px;font-weight:400;color:var(--dim)}
 .links a:hover{color:var(--text)}
 .nav-actions{display:flex;align-items:center;gap:14px}
-.lang-toggle{background:none;border:1px solid rgba(255,255,255,.18);color:var(--dim);
+
+/* ---------- Language dropdown (2026-07-17) ----------
+   One trigger button regardless of language count (was one button PER
+   OTHER language — grew wider as languages were added). Rendered twice
+   (nav-actions + mobile-menu, see base.njk's langDropdown macro);
+   font-family/size set explicitly throughout since .mobile-menu's own
+   22px Sora text would otherwise be inherited into this component. */
+.lang-dropdown{position:relative;font-family:'Inter',sans-serif}
+.lang-dropdown-trigger{background:none;border:1px solid rgba(255,255,255,.18);color:var(--dim);
   font-family:'Inter',sans-serif;font-size:11px;letter-spacing:.15em;font-weight:600;
-  padding:7px 12px;border-radius:2px;cursor:pointer;transition:.2s}
-.lang-toggle:hover{border-color:var(--blue);color:var(--blue)}
+  padding:7px 12px;border-radius:2px;cursor:pointer;transition:.2s;display:inline-flex;align-items:center;gap:7px}
+.lang-dropdown-trigger:hover,.lang-dropdown.open .lang-dropdown-trigger{border-color:var(--blue);color:var(--blue)}
+.lang-dropdown-trigger::after{content:"";width:6px;height:6px;border-right:1.5px solid currentColor;
+  border-bottom:1.5px solid currentColor;transform:rotate(45deg);transition:transform .2s;margin-top:-3px}
+.lang-dropdown.open .lang-dropdown-trigger::after{transform:rotate(-135deg);margin-top:3px}
+.lang-dropdown-list{position:absolute;top:calc(100% + 8px);right:0;min-width:104px;background:var(--panel);
+  border:1px solid rgba(255,255,255,.12);border-radius:2px;padding:4px;list-style:none;z-index:30;
+  box-shadow:0 12px 30px rgba(0,0,0,.45)}
+.lang-dropdown-list[hidden]{display:none}
+.lang-dropdown-list .lang-toggle{display:block;width:100%;text-align:left;background:none;border:none;
+  color:var(--dim);font-family:'Inter',sans-serif;font-size:12px;letter-spacing:.1em;font-weight:600;
+  padding:8px 10px;border-radius:2px;cursor:pointer;transition:.15s}
+.lang-dropdown-list .lang-toggle:hover{background:rgba(47,216,255,.1);color:var(--blue)}
+.lang-dropdown-current{display:block;padding:8px 10px;color:var(--foam);font-family:'Inter',sans-serif;
+  font-size:12px;letter-spacing:.1em;font-weight:600}
+
 .give-btn{border:1px solid var(--foam);color:var(--foam);padding:8px 18px;border-radius:2px;
   font-size:11.5px;letter-spacing:.18em;text-transform:uppercase;font-weight:600;transition:.2s;white-space:nowrap}
 .give-btn:hover{background:var(--foam);color:#06110c;box-shadow:var(--foam-glow)}
@@ -121,6 +143,33 @@ nav{position:fixed;inset:0 0 auto;z-index:20;backdrop-filter:blur(12px);
   backdrop-filter:blur(12px);flex-direction:column;padding:40px 24px;gap:26px;
   font-family:'Sora',sans-serif;font-weight:200;font-size:22px;letter-spacing:.06em}
 .menu-open .mobile-menu{display:flex}
+.mobile-menu .lang-dropdown{margin-top:6px}
+.mobile-menu .lang-dropdown-list{right:auto;left:0}
+
+/* Exactly one dropdown copy visible at a time, split at the same 900px
+   breakpoint that already switches .links/.menu-btn (see below). */
+.lang-dropdown--menu{display:none}
+@media(max-width:900px){
+  .lang-dropdown--nav{display:none}
+  .lang-dropdown--menu{display:block}
+}
+
+/* ---------- Mobile page-location strip (2026-07-17) ----------
+   The main nav bar has no room for a location indicator at ~390px width
+   (logo + language control + Give + hamburger already fill it) — this is
+   a second, thinner bar directly below it instead, mobile-only, pinned
+   the same way the nav itself is. Numbered like the site's existing
+   section cue labels (counter(cue,decimal-leading-zero) above), just
+   computed server-side in base.njk instead of a CSS counter, since it
+   needs to match one specific page's position in the nav, not count
+   elements on the current page. */
+.page-strip{display:none}
+@media(max-width:900px){
+  .page-strip{display:block;position:fixed;top:64px;left:0;right:0;z-index:19;
+    height:34px;background:var(--bg);border-bottom:1px solid rgba(255,255,255,.07)}
+  .page-strip .wrap{height:100%;display:flex;align-items:center}
+  .page-strip span{font-size:11px;letter-spacing:.2em;text-transform:uppercase;font-weight:600;color:var(--blue)}
+}
 
 /* ---------- Shared type ---------- */
 .cue{font-size:11px;letter-spacing:.35em;text-transform:uppercase;font-weight:600;margin-bottom:26px;color:var(--blue)}
@@ -164,6 +213,20 @@ section:last-of-type{border-bottom:none}
   font-size:16.5px;font-weight:200;line-height:1.75;font-style:italic}
 .dict-defs p::before{counter-increment:def;content:counter(def);position:absolute;left:0;top:2px;
   font-family:'Sora',sans-serif;font-style:normal;font-weight:600;font-size:13px;color:var(--foam)}
+
+/* Push page content down by the .page-strip's own height on mobile, so it
+   doesn't slide in underneath that new fixed bar (2026-07-17). Placed
+   AFTER both base rules above — with equal specificity, an earlier
+   position would've been silently overridden by header.page/.dict's own
+   later shorthand `padding` declaration (a real bug caught before
+   shipping: the override has to out-rank the base rule in SOURCE ORDER,
+   not just exist in a narrower media query). .dict (About) gets checked
+   explicitly here since it has a tighter bottom-padding than header.page
+   already, making it the more likely one to feel cramped. */
+@media(max-width:900px){
+  header.page{padding-top:204px}
+  .dict{padding-top:204px}
+}
 
 /* ---------- Imagery frame ---------- */
 .frame{margin-top:56px;aspect-ratio:21/9;border:1px solid rgba(47,216,255,.2);position:relative;overflow:hidden;
@@ -332,7 +395,6 @@ footer{flex-shrink:0;background:var(--bg2);border-top:1px solid rgba(255,255,255
 
 /* ---------- Navigation experience ---------- */
 ::selection{background:rgba(92,242,196,.35);color:#fff}
-.links a.active{color:var(--text);box-shadow:0 12px 0 -10px var(--foam)}
 @media(prefers-reduced-motion:no-preference){
   .sr{opacity:0;transform:translateY(16px);transition:opacity .7s ease,transform .7s ease}
   .sr.in{opacity:1;transform:none}
@@ -360,20 +422,29 @@ section .cue::before{content:counter(cue,decimal-leading-zero);width:auto;height
 }
 
 /* ---------- Active nav: neon ping underline ---------- */
-.links a{position:relative}
-.links a.active{color:var(--text);box-shadow:none}
-.links a.active::after{content:"";position:absolute;left:0;right:0;bottom:-7px;height:2px;
+/* Shared with .mobile-menu a (2026-07-17): same treatment for the current
+   page's link in the hamburger panel as the desktop nav already had. */
+.links a, .mobile-menu a{position:relative}
+.links a.active, .mobile-menu a.active{color:var(--text);box-shadow:none}
+.links a.active::after, .mobile-menu a.active::after{content:"";position:absolute;left:0;right:0;bottom:-7px;height:2px;
   background:linear-gradient(90deg,var(--foam),#B2FFE6);
   box-shadow:0 0 8px var(--foam),0 0 20px rgba(92,242,196,.45);
   transform:scaleX(1);transform-origin:left}
+/* Retimed 2026-07-17 (requested directly): grow/hold/shrink keep their
+   exact original real-time durations (1.26s / 0.504s / 1.218s) — only the
+   dead pause at the end shrinks, from 1.176s to ~0.294s (a quarter), so
+   the whole cycle drops from 4.2s to 3.318s instead of sitting idle for
+   28% of each cycle. Percentages below are each phase's original duration
+   re-expressed as a fraction of the new, shorter total — same math, just
+   compressed timeline. */
 @keyframes navping{
   0%{transform:scaleX(0);transform-origin:left}
-  30%{transform:scaleX(1);transform-origin:left}
-  42%{transform:scaleX(1);transform-origin:left}
-  43%{transform:scaleX(1);transform-origin:right}
-  72%{transform:scaleX(0);transform-origin:right}
+  37.97%{transform:scaleX(1);transform-origin:left}
+  53.16%{transform:scaleX(1);transform-origin:left}
+  54.43%{transform:scaleX(1);transform-origin:right}
+  91.14%{transform:scaleX(0);transform-origin:right}
   100%{transform:scaleX(0);transform-origin:right}
 }
 @media(prefers-reduced-motion:no-preference){
-  .links a.active::after{animation:navping 4.2s cubic-bezier(.55,.05,.45,.95) infinite}
+  .links a.active::after, .mobile-menu a.active::after{animation:navping 3.318s cubic-bezier(.55,.05,.45,.95) infinite}
 }

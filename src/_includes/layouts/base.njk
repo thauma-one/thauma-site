@@ -3,6 +3,40 @@
 {% set fullTitle = "Thauma | " ~ pageName %}
 {% set shareImage = site.url ~ "/img/og-default.png" %}
 
+{#- Shared language dropdown (2026-07-17) — ONE component, rendered twice
+   (nav-actions for desktop, mobile-menu for mobile), CSS media queries
+   decide which copy is visible at a given width so there's exactly one
+   on screen at a time. Same width regardless of how many languages exist
+   (2 today, sr pending in admin) since it's a single trigger button, not
+   one button per language like the old toggle. The actual language-switch
+   itself (langSwap + cookie + navigate) is untouched — still main.js's
+   existing .lang-toggle click handler; this macro only adds the
+   open/closed list UI around it. #}
+{% macro langDropdown(variant) %}
+<div class="lang-dropdown lang-dropdown--{{ variant }}">
+  <button type="button" class="lang-dropdown-trigger" aria-haspopup="listbox" aria-expanded="false">{{ lang | upper }}</button>
+  <ul class="lang-dropdown-list" role="listbox" hidden>
+    {%- for l in site.languages %}
+    <li role="option" aria-selected="{{ 'true' if l == lang else 'false' }}">
+      {%- if l == lang %}
+      <span class="lang-dropdown-current">{{ l | upper }}</span>
+      {%- else %}
+      <button type="button" class="lang-toggle" data-lang="{{ l }}" data-target="{{ page.url | langSwap(l) }}" aria-label="Switch language to {{ l }}">{{ l | upper }}</button>
+      {%- endif %}
+    </li>
+    {%- endfor %}
+  </ul>
+</div>
+{% endmacro %}
+
+{#- Mobile page-location strip (2026-07-17) — the nav bar itself has no
+   room for a location indicator at ~390px (logo + language control + Give
+   + hamburger already fill it), so this is a second, thinner bar directly
+   below it, mobile-only. navPages (src/_data/navPages.js) is the nav's own
+   order; a page not in that list (home, team bios, staff) simply doesn't
+   match and the strip doesn't render. #}
+{% set navPageNum = navPages.indexOf(pageSlug) + 1 %}
+
 <!DOCTYPE html>
 <html lang="{{ lang }}">
 <head>
@@ -27,7 +61,7 @@
 <meta name="twitter:title" content="{{ fullTitle }}">
 <meta name="twitter:description" content="{{ t.home.sub }}">
 <meta name="twitter:image" content="{{ shareImage }}">
-<link rel="stylesheet" href="/css/main.css?v=6">
+<link rel="stylesheet" href="/css/main.css?v=8">
 </head>
 <body>
 
@@ -43,12 +77,15 @@
     {% if site.showEvents %}<a href="/{{ lang }}/events/">{{ t.nav.events }}</a>{% endif %}
   </div>
   <div class="nav-actions">
-    {%- for l in site.languages %}{% if l != lang %}
-    <button class="lang-toggle" data-lang="{{ l }}" data-target="{{ page.url | langSwap(l) }}" aria-label="Switch language to {{ l }}">{{ l | upper }}</button>{% endif %}{% endfor %}
+    {{ langDropdown('nav') }}
     <a class="give-btn" href="/{{ lang }}/give/">{{ t.nav.give }}</a>
   </div>
   <button class="menu-btn" aria-label="Menu"><span></span><span></span></button>
 </div></nav>
+
+{% if navPageNum > 0 %}
+<div class="page-strip"><div class="wrap"><span>{{ "0" if navPageNum < 10 else "" }}{{ navPageNum }} {{ t.nav[pageSlug] }}</span></div></div>
+{% endif %}
 
 <div class="mobile-menu">
   <a href="/{{ lang }}/about/">{{ t.nav.about }}</a>
@@ -58,6 +95,7 @@
   <a href="/{{ lang }}/contact/">{{ t.nav.contact }}</a>
   {% if site.showEvents %}<a href="/{{ lang }}/events/">{{ t.nav.events }}</a>{% endif %}
   <a href="/{{ lang }}/give/">{{ t.nav.give }}</a>
+  {{ langDropdown('menu') }}
 </div>
 
 <main>

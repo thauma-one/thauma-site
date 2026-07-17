@@ -5,12 +5,43 @@ if (location.hash && /invite_token|recovery_token|confirmation_token|email_chang
   location.replace('/staff/' + location.hash);
 }
 
-// ---- Language toggle: remember the choice, then navigate ----
+// ---- Language toggle: remember the choice, then navigate (unchanged —
+// this is the actual switch; the dropdown below it is just UI around it) ----
 document.querySelectorAll('.lang-toggle').forEach(function (btn) {
   btn.addEventListener('click', function () {
     var lang = btn.dataset.lang;
     document.cookie = 'thauma_lang=' + lang + ';path=/;max-age=31536000;samesite=lax';
     window.location.href = btn.dataset.target;
+  });
+});
+
+// ---- Language dropdown: open/close + dismiss (2026-07-17) ----
+// Two copies exist in the DOM (desktop nav-actions, mobile-menu — CSS
+// picks which one is visible per breakpoint), so this wires up whichever
+// is present via a shared class rather than assuming just one.
+document.querySelectorAll('.lang-dropdown').forEach(function (dd) {
+  var trigger = dd.querySelector('.lang-dropdown-trigger');
+  var list = dd.querySelector('.lang-dropdown-list');
+  if (!trigger || !list) return;
+  function open() {
+    list.hidden = false;
+    dd.classList.add('open');
+    trigger.setAttribute('aria-expanded', 'true');
+  }
+  function close() {
+    list.hidden = true;
+    dd.classList.remove('open');
+    trigger.setAttribute('aria-expanded', 'false');
+  }
+  trigger.addEventListener('click', function (e) {
+    e.stopPropagation();
+    if (list.hidden) open(); else close();
+  });
+  document.addEventListener('click', function (e) {
+    if (!dd.contains(e.target)) close();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') close();
   });
 });
 
@@ -22,8 +53,8 @@ if (menuBtn) {
   });
 }
 
-// ---- Mark the current page in the nav ----
-document.querySelectorAll('.links a').forEach(function (a) {
+// ---- Mark the current page in the nav (desktop links + mobile menu) ----
+document.querySelectorAll('.links a, .mobile-menu a').forEach(function (a) {
   if (location.pathname === a.getAttribute('href')) a.classList.add('active');
 });
 
