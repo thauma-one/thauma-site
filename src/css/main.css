@@ -460,8 +460,14 @@ section .cue::before{content:counter(cue,decimal-leading-zero);width:auto;height
    don't pause just because visibility:hidden/opacity:0 are covering them
    up), so by the time you actually see the panel it's already mid-cycle
    instead of starting clean. Scoping to .menu-open also means each open
-   restarts the animation fresh rather than resuming wherever it was. */
+   restarts the animation fresh rather than resuming wherever it was.
+   animation-fill-mode:backwards makes it hold navping's 0% frame
+   (scaleX(0), i.e. no underline at all) for the whole delay, instead of
+   falling back to the shared active-state transform:scaleX(1) baseline
+   below — so no underline shows during the unfurl either, only once the
+   panel is open and the animation's first cycle actually begins. */
 @media(prefers-reduced-motion:no-preference){
   .links a.active::after{animation:navping 3.318s cubic-bezier(.55,.05,.45,.95) infinite}
-  .menu-open .mobile-menu a.active::after{animation:navping 3.318s cubic-bezier(.55,.05,.45,.95) infinite;animation-delay:.5s}
+  .menu-open .mobile-menu a.active::after{animation:navping 3.318s cubic-bezier(.55,.05,.45,.95) infinite;
+    animation-delay:.5s;animation-fill-mode:backwards}
 }
