@@ -26,6 +26,8 @@ pageTitle: give
       style="object-position:{{ site.images.give_impact.focal_x }}% {{ site.images.give_impact.focal_y }}%;transform-origin:{{ site.images.give_impact.focal_x }}% {{ site.images.give_impact.focal_y }}%;transform:scale({{ site.images.give_impact.zoom / 100 }})">
     <span class="tag">{{ t.give.impact_img_tag }}</span>
   </div>
+  {% elif not env.isProduction %}
+  <div class="frame-placeholder"><span>{{ t.give.impact_placeholder }}</span></div>
   {% endif %}
 
   {# ---- DONATION EMBED SLOT ------------------------------------------

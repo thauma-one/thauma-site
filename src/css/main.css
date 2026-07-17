@@ -175,6 +175,16 @@ section:last-of-type{border-bottom:none}
 .frame img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.75}
 .frame .tag{position:absolute;bottom:14px;left:16px;font-size:10.5px;letter-spacing:.25em;text-transform:uppercase;color:var(--dim);z-index:2}
 
+/* Dev-only empty-frame outline (2026-07-17) — same dashed language as
+   .empty, shown only on the dev server (never in production, gated in
+   the template via env.isProduction) so a founder can see exactly where
+   an unfilled photo slot is before uploading anything. */
+.frame-placeholder{margin-top:56px;aspect-ratio:21/9;border:1px dashed rgba(47,216,255,.35);
+  display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;
+  background:radial-gradient(500px 200px at 50% 0%, rgba(47,216,255,.05), transparent 70%)}
+.frame-placeholder span{color:var(--dim);font-size:12px;letter-spacing:.08em;max-width:360px;line-height:1.6}
+.frame-placeholder b{color:var(--blue);font-weight:600}
+
 /* ---------- Values grid (home) ---------- */
 .vals{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:rgba(255,255,255,.06);margin-top:60px;border:1px solid rgba(255,255,255,.06)}
 .val{background:var(--panel);padding:40px 32px;transition:.25s}

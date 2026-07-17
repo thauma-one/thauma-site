@@ -35,6 +35,8 @@ pageTitle: about
       style="object-position:{{ site.images.about_posture.focal_x }}% {{ site.images.about_posture.focal_y }}%;transform-origin:{{ site.images.about_posture.focal_x }}% {{ site.images.about_posture.focal_y }}%;transform:scale({{ site.images.about_posture.zoom / 100 }})">
     <span class="tag">{{ t.about.posture_img_tag }}</span>
   </div>
+  {% elif not env.isProduction %}
+  <div class="frame-placeholder"><span>{{ t.about.posture_placeholder }}</span></div>
   {% endif %}
   <p class="legal-note">{{ t.about.status_note }}</p>
 </div></section>

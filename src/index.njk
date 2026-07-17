@@ -21,11 +21,15 @@ pageTitle: home
   <div class="cue">{{ t.home.who_cue }}</div>
   <h2>{{ t.home.who_h2_thin }} <b>{{ t.home.who_h2_bold }}</b></h2>
   <p class="lede">{{ t.home.who_lede }}</p>
+  {% if site.images.home_who.src %}
   <div class="frame">
-    {% if site.images.home_who.src %}<img src="{{ site.images.home_who.src }}" alt="{{ t.home.who_img_tag }}" loading="lazy"
-      style="object-position:{{ site.images.home_who.focal_x }}% {{ site.images.home_who.focal_y }}%;transform-origin:{{ site.images.home_who.focal_x }}% {{ site.images.home_who.focal_y }}%;transform:scale({{ site.images.home_who.zoom / 100 }})">{% endif %}
+    <img src="{{ site.images.home_who.src }}" alt="{{ t.home.who_img_tag }}" loading="lazy"
+      style="object-position:{{ site.images.home_who.focal_x }}% {{ site.images.home_who.focal_y }}%;transform-origin:{{ site.images.home_who.focal_x }}% {{ site.images.home_who.focal_y }}%;transform:scale({{ site.images.home_who.zoom / 100 }})">
     <span class="tag">{{ t.home.who_img_tag }}</span>
   </div>
+  {% elif not env.isProduction %}
+  <div class="frame-placeholder"><span>{{ t.home.who_placeholder }}</span></div>
+  {% endif %}
 </div></section>
 
 <section class="alt"><div class="wrap">
