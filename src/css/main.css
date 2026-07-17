@@ -220,6 +220,18 @@ section:last-of-type{border-bottom:none}
 .empty p{margin:18px auto 0;max-width:480px;color:var(--dim);font-size:15px;font-weight:200;line-height:1.85}
 .empty .btn{margin-top:34px}
 
+/* The work line — promoted here from coming-soon.njk's page-scoped style
+   (2026-07-17) so it's shared, not duplicated, now that the Resources
+   empty state uses it too: "something's in motion, still coming." */
+.workline{position:relative;width:100%;height:2px;background:rgba(255,255,255,.09);overflow:hidden;margin-top:44px}
+.workline i{position:absolute;top:-1px;height:4px;width:18%;display:block;
+  background:linear-gradient(90deg,rgba(92,242,196,0),#5CF2C4 45%,#B2FFE6 55%,rgba(92,242,196,0));
+  box-shadow:0 0 18px rgba(92,242,196,.55);left:-22%}
+@media(prefers-reduced-motion:no-preference){
+  .workline i{animation:workline-pass 9s cubic-bezier(.5,.05,.5,.95) infinite}
+  @keyframes workline-pass{0%{left:-22%}38%{left:104%}100%{left:104%}}
+}
+
 /* ---------- Give ---------- */
 .give-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:56px}
 .give-card{background:var(--panel);border:1px solid rgba(255,255,255,.07);padding:38px 32px}

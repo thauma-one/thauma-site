@@ -53,23 +53,17 @@ isComingSoonPage: true
     background: #fff;
     box-shadow: 0 0 .18em .05em rgba(200,246,255,.9), 0 0 .5em .16em rgba(47,216,255,.4); }
 
-  /* The work line: full-bleed track below the subtext */
-  .workline { position: relative; width: 100%; height: 2px;
-    background: rgba(255,255,255,.09); overflow: hidden; margin-top: 44px; }
-  .workline i { position: absolute; top: -1px; height: 4px; width: 18%; display: block;
-    background: linear-gradient(90deg, rgba(92,242,196,0), #5CF2C4 45%, #B2FFE6 55%, rgba(92,242,196,0));
-    box-shadow: 0 0 18px rgba(92,242,196,.55); left: -22%; }
-
+  /* .workline itself (the sweep track below the subtext) now lives in
+     main.css, shared with the Resources page — see that file. Only the
+     star's answering flare and this page's own entrance timing stay here. */
   .landing .btn-row { margin-top: 40px; }
 
-  /* One shared 9s timeline: the sweep passes, the star answers, both rest */
-  @keyframes pass { 0% { left: -22%; } 38% { left: 104%; } 100% { left: 104%; } }
+  /* Shared 9s timeline: the sweep (main.css) passes, the star answers, both rest */
   @keyframes flare {
     0%, 10%, 55%, 100% { transform: scale(.82); opacity: .65; }
     22% { transform: scale(1.16); opacity: 1; }
   }
   @media (prefers-reduced-motion: no-preference) {
-    .workline i { animation: pass 9s cubic-bezier(.5,.05,.5,.95) infinite; }
     .star { animation: flare 9s ease-in-out infinite; }
     .cue, .wordmark, .hero-line, .hero-sub { animation: rise .9s ease both; }
     .hero-line { animation-delay: .12s; } .hero-sub { animation-delay: .24s; }
