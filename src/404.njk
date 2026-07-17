@@ -671,17 +671,32 @@ permalink: /404.html
   // proportionally MORE of a short screen than a tall one, making the game
   // read as easier there even though nothing else changed.
   var REF_H = 768, REF_W = 1024;
-  var GRAVITY_REF = 0.22, FLAP_REF = -7.8, COLUMN_W_REF = 54, GAP_H_REF = 260, ORB_R_REF = 10, COLUMN_GAP_REF = 360;
+  var GRAVITY_REF = 0.22, FLAP_REF = -7.8, COLUMN_W_REF = 54, GAP_H_REF = 260, ORB_R_REF = 10;
+  // COLUMN_GAP has two SEPARATE anchors, not one shared REF (2026-07-17,
+  // requested directly after desktop stopped feeling like the original
+  // game): COLUMN_GAP_DESKTOP_REF (420) is the exact original hand-tuned
+  // desktop value, restored byte-for-byte from the pre-mobile-scaling
+  // build (git f68cd32). COLUMN_GAP_MOBILE_REF (360) is the separate,
+  // already-approved "split the difference" mobile tuning from earlier —
+  // left untouched so fixing desktop can't silently drag mobile's spacing
+  // back out with it (they used to share one REF*spacingScale formula,
+  // which coupled them). See computeWorldScale() for how these combine.
+  var COLUMN_GAP_DESKTOP_REF = 420, COLUMN_GAP_MOBILE_REF = 360;
   var SPEED_BASE_REF = 2.0, SPEED_RAMP_REF = 2.4;
   // Progressive difficulty ramp (2026-07-16, requested directly): speed
-  // rises and the vertical gap narrows together as SIGNAL climbs, sharing
-  // one curve (rampT) so both land at their extreme at the same point,
-  // then hold there — "very slowly... up to a certain point," not an
-  // unbounded climb. GAP_H_MIN_REF is the floor the gap narrows to (~63%
-  // of the starting gap — still comfortably flyable given a single flap
-  // covers ~138px, per the 2026-07-13 physics-tuning note). RAMP_SIGNAL_REF
-  // is deliberately large (200 columns' worth) so the climb reads as slow.
-  var GAP_H_MIN_REF = 165, RAMP_SIGNAL_REF = 2000;
+  // rises and the vertical gap narrows as SIGNAL climbs, each on its OWN
+  // pacing (2026-07-17 split — they used to share one curve, but that
+  // silently slowed speed's ramp down to match the gap's deliberately
+  // gentle pace when the gap-narrowing floor was added, which is part of
+  // why desktop stopped feeling like the original game). SPEED_RAMP_
+  // SIGNAL_REF=420 is the ORIGINAL speed-ramp cadence, restored byte-for-
+  // byte (git f68cd32: `Math.min(2.4, signal/420)`). GAP_RAMP_SIGNAL_REF
+  // stays large (200 columns' worth) so the gap-narrowing climb — a
+  // feature that didn't exist in the original game — still reads as slow,
+  // per its own original request. GAP_H_MIN_REF is the floor the gap
+  // narrows to (~63% of the starting gap — still comfortably flyable given
+  // a single flap covers ~138px, per the 2026-07-13 physics-tuning note).
+  var GAP_H_MIN_REF = 165, GAP_RAMP_SIGNAL_REF = 2000, SPEED_RAMP_SIGNAL_REF = 420;
   var GRAVITY, FLAP, COLUMN_W, GAP_H, ORB_R, COLUMN_GAP, WORLD_DIST_PER_10_SIGNAL, scale, spacingScale;
 
   function computeWorldScale() {
@@ -722,7 +737,11 @@ permalink: /404.html
     ORB_R = ORB_R_REF * scale * orbBoost;
     GAP_H = GAP_H_REF * scale;
     COLUMN_W = COLUMN_W_REF * scale;
-    COLUMN_GAP = COLUMN_GAP_REF * spacingScale;
+    // True desktop (rawSpacingScale saturated at 1, i.e. W >= REF_W) uses
+    // the restored original 420 directly, completely independent of the
+    // mobile blend below it — so tuning one can never again silently move
+    // the other, unlike when both shared a single REF*spacingScale formula.
+    COLUMN_GAP = rawSpacingScale >= 1 ? COLUMN_GAP_DESKTOP_REF : COLUMN_GAP_MOBILE_REF * spacingScale;
     // Real world-distance between consecutive columns: a new one spawns at
     // W+40*spacingScale once the last one's x drops below W-COLUMN_GAP, so
     // successive columns land COLUMN_GAP + 40*spacingScale apart.
@@ -954,13 +973,14 @@ permalink: /404.html
   // device's actual refresh rate, instead of the old fixed per-callback
   // step running faster on a 120Hz phone and slower under throttling.
   function update(frames) {
-    // Shared difficulty-ramp progress (0 at the start of a run, 1 once
-    // SIGNAL reaches RAMP_SIGNAL_REF and beyond) — drives both the speed
-    // increase and the gap narrowing below, computed before any column
-    // spawns this frame so a freshly-spawned column already reflects the
-    // current difficulty rather than lagging a frame behind.
-    var rampT = Math.min(1, signal / RAMP_SIGNAL_REF);
-    GAP_H = (GAP_H_REF - (GAP_H_REF - GAP_H_MIN_REF) * rampT) * scale;
+    // Two INDEPENDENT ramp curves (2026-07-17 split; see the constants'
+    // own comment for why), each 0 at the start of a run and 1 once SIGNAL
+    // reaches its own threshold — computed before any column spawns this
+    // frame so a freshly-spawned column already reflects the current
+    // difficulty rather than lagging a frame behind.
+    var gapRampT = Math.min(1, signal / GAP_RAMP_SIGNAL_REF);
+    var speedRampT = Math.min(1, signal / SPEED_RAMP_SIGNAL_REF);
+    GAP_H = (GAP_H_REF - (GAP_H_REF - GAP_H_MIN_REF) * gapRampT) * scale;
 
     orb.vy += GRAVITY * frames;
     orb.y += orb.vy * frames;
@@ -995,7 +1015,7 @@ permalink: /404.html
       if (columns[i].x < -COLUMN_W - 60) columns.splice(i, 1);
     }
     if (!columns.length || columns[columns.length - 1].x < W - COLUMN_GAP) spawnColumn(W + 40);
-    speed = (SPEED_BASE_REF + SPEED_RAMP_REF * rampT) * scale;
+    speed = (SPEED_BASE_REF + SPEED_RAMP_REF * speedRampT) * scale;
 
     if (bestMarkerX !== null) bestMarkerX -= speed * frames;
     deathMarkers.forEach(function (m) { m.x -= speed * frames; });

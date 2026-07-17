@@ -6,12 +6,10 @@ itself deploys to production like any Netlify Function — see §8
 note).** All three phases and the collage wall are now built. This
 remains a living document: append and revise, don't rediscover.
 
-Last revised: 2026-07-16 (real-device playtest round: collage wall
-rebuilt as a true no-overlap skyline packer; mobile physics scaling
-model rewritten twice more to its final form; a progressive difficulty
-ramp added; PB-toast legibility fixed across three rounds; scroll-lock
-and text-selection fixes; leaderboard trimmed to top 3 — see revision
-log)
+Last revised: 2026-07-17 (desktop gameplay restored to its original
+feel — COLUMN_GAP and speed-ramp pacing had drifted as side effects of
+mobile-specific fixes sharing formulas with desktop instead of having
+independent anchors — see revision log)
 
 ---
 
@@ -703,6 +701,44 @@ just the numbers.
 ---
 
 ## 10. Revision log
+
+- 2026-07-17 — **Desktop gameplay restored to original feel**, reported
+  directly after several mobile-tuning rounds left it "not as good as
+  it used to be." Root cause: `COLUMN_GAP` and the speed-ramp pacing
+  had drifted from their original hand-tuned values as side effects of
+  mobile-specific fixes, because they shared formulas/constants with
+  mobile instead of having independent desktop anchors:
+  - `COLUMN_GAP`: was `COLUMN_GAP_REF(360) * spacingScale`, a single
+    formula serving both platforms — the 360 value itself came from an
+    earlier flat difficulty request, and desktop (spacingScale=1)
+    inherited it directly instead of getting its own anchor. Split
+    into `COLUMN_GAP_DESKTOP_REF=420` (the exact original value,
+    verified against git history at commit f68cd32, used directly
+    whenever the screen is at/above the 1024px reference width) and
+    `COLUMN_GAP_MOBILE_REF=360` (the separate, already-approved
+    "split the difference" mobile tuning — untouched).
+  - Speed ramp pacing: shared one `rampT` curve with the vertical-gap-
+    narrowing difficulty ramp (`RAMP_SIGNAL_REF=2000`, deliberately
+    slow), which had silently pulled speed's ramp-to-max from the
+    original ~42-column pace (`signal/420`) out to ~200 columns. Split
+    into independent `SPEED_RAMP_SIGNAL_REF=420` (restored to the
+    original cadence, verified against git history) and
+    `GAP_RAMP_SIGNAL_REF=2000` (unchanged — the gap-narrowing feature
+    is a real addition since the original game and was asked to stay,
+    per direct confirmation, just not silently govern speed's pacing
+    too).
+  - `GRAVITY`, `FLAP`, `ORB_R`, `COLUMN_W` REF values were already
+    numerically identical to the original (only ever wrapped in a
+    scale multiplier that clamps to 1× on real desktop) — confirmed,
+    not changed.
+  Verified with a numeric simulation against both a real desktop
+  viewport and a real phone viewport: desktop now reproduces the
+  original's exact run-start values (COLUMN_GAP 420, GAP_H 260,
+  speed 2.00, ORB_R 10, COLUMN_W 54) and reaches max speed at the
+  original signal=420 threshold; mobile's already-approved values
+  (COLUMN_GAP ~249, orb boost) are completely unchanged by this fix,
+  confirming the platform-coupling bug is actually fixed, not just
+  patched over for one platform at the other's expense.
 
 - 2026-07-16 — **Leaderboard trimmed to top 3** (requested directly),
   down from top 10. `MAX_SCORES` in `netlify/functions/game-scores.js`
