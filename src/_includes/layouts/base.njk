@@ -3,17 +3,17 @@
 {% set fullTitle = "Thauma | " ~ pageName %}
 {% set shareImage = site.url ~ "/img/og-default.png" %}
 
-{#- Shared language dropdown (2026-07-17) — ONE component, rendered twice
-   (nav-actions for desktop, mobile-menu for mobile), CSS media queries
-   decide which copy is visible at a given width so there's exactly one
-   on screen at a time. Same width regardless of how many languages exist
-   (2 today, sr pending in admin) since it's a single trigger button, not
-   one button per language like the old toggle. The actual language-switch
-   itself (langSwap + cookie + navigate) is untouched — still main.js's
-   existing .lang-toggle click handler; this macro only adds the
-   open/closed list UI around it. #}
-{% macro langDropdown(variant) %}
-<div class="lang-dropdown lang-dropdown--{{ variant }}">
+{#- Shared language dropdown (2026-07-17, unified 2026-07-19) — ONE
+   component, rendered ONCE in nav-actions, next to Give, visible at every
+   width (previously had a second copy inside the mobile hamburger panel;
+   now that it's a single compact trigger rather than one button per
+   language, it fits in the primary bar on mobile too, same as desktop —
+   no need for two copies + a breakpoint switch between them). The actual
+   language-switch itself (langSwap + cookie + navigate) is untouched —
+   still main.js's existing .lang-toggle click handler; this macro only
+   adds the open/closed list UI around it. #}
+{% macro langDropdown() %}
+<div class="lang-dropdown">
   <button type="button" class="lang-dropdown-trigger" aria-haspopup="listbox" aria-expanded="false">{{ lang | upper }}</button>
   <ul class="lang-dropdown-list" role="listbox" hidden>
     {%- for l in site.languages %}
@@ -63,7 +63,7 @@
 <meta name="twitter:title" content="{{ fullTitle }}">
 <meta name="twitter:description" content="{{ t.home.sub }}">
 <meta name="twitter:image" content="{{ shareImage }}">
-<link rel="stylesheet" href="/css/main.css?v=9">
+<link rel="stylesheet" href="/css/main.css?v=10">
 </head>
 <body{% if navPageNum > 0 %} style="--page-label:'{{ t.nav[pageSlug] }}'"{% endif %}>
 
@@ -79,7 +79,7 @@
     {% if site.showEvents %}<a href="/{{ lang }}/events/">{{ t.nav.events }}</a>{% endif %}
   </div>
   <div class="nav-actions">
-    {{ langDropdown('nav') }}
+    {{ langDropdown() }}
     <a class="give-btn" href="/{{ lang }}/give/">{{ t.nav.give }}</a>
   </div>
   <button class="menu-btn" aria-label="Menu"><span></span><span></span></button>
@@ -87,15 +87,14 @@
 
 {#- Full page nav, mobile only — looped from navPages (src/_data/navPages.js)
    instead of a hand-copied list, so it can never drift out of sync with the
-   desktop .links above again (this list was previously missing "Team"). #}
+   desktop .links above again (this list was previously missing "Team"). The
+   language dropdown lives in the primary nav bar above (visible at every
+   width), not duplicated in here. #}
 <div class="mobile-menu">
   {%- for slug in navPages %}{% if slug != "give" %}
   <a href="/{{ lang }}/{{ slug }}/">{{ t.nav[slug] }}</a>
   {%- endif %}{% endfor %}
-  <div class="mobile-menu-foot">
-    {{ langDropdown('menu') }}
-    <a class="give-btn" href="/{{ lang }}/give/">{{ t.nav.give }}</a>
-  </div>
+  <a class="give-btn" href="/{{ lang }}/give/">{{ t.nav.give }}</a>
 </div>
 
 <main>

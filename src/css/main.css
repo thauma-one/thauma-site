@@ -139,22 +139,14 @@ nav{position:fixed;inset:0 0 auto;z-index:20;backdrop-filter:blur(12px);
 .menu-btn span:first-child{top:6px}.menu-btn span:last-child{bottom:6px}
 .menu-open .menu-btn span:first-child{transform:rotate(45deg);top:11px}
 .menu-open .menu-btn span:last-child{transform:rotate(-45deg);bottom:10px}
+/* align-items:flex-start (not the flex default of stretch) — otherwise
+   each <a> stretches to the full row width, and .active::after's
+   left:0/right:0 underline (shared with .links a, see below) spans the
+   whole row instead of hugging the text like it does on desktop. */
 .mobile-menu{display:none;position:fixed;inset:64px 0 0;z-index:19;background:rgba(11,15,21,.97);
-  backdrop-filter:blur(12px);flex-direction:column;padding:40px 24px;gap:26px;
+  backdrop-filter:blur(12px);flex-direction:column;align-items:flex-start;padding:40px 24px;gap:26px;
   font-family:'Sora',sans-serif;font-weight:200;font-size:22px;letter-spacing:.06em}
 .menu-open .mobile-menu{display:flex}
-/* Give + language dropdown sit side by side here (2026-07-18), the same
-   pairing/order as desktop's nav-actions, instead of the dropdown being
-   its own stacked row below Give. */
-.mobile-menu-foot{display:flex;align-items:center;gap:16px}
-
-/* Exactly one dropdown copy visible at a time, split at the same 900px
-   breakpoint that already switches .links/.menu-btn (see below). */
-.lang-dropdown--menu{display:none}
-@media(max-width:900px){
-  .lang-dropdown--nav{display:none}
-  .lang-dropdown--menu{display:block}
-}
 
 /* ---------- Shared type ---------- */
 .cue{font-size:11px;letter-spacing:.35em;text-transform:uppercase;font-weight:600;margin-bottom:26px;color:var(--blue)}
@@ -213,9 +205,16 @@ section:last-of-type{border-bottom:none}
 @media(max-width:900px){
   header.page, .dict{position:relative;overflow:hidden}
   header.page::before, .dict::before{content:var(--page-label,"");position:absolute;z-index:-1;
-    left:-3px;bottom:-.06em;font-family:'Sora',sans-serif;font-weight:600;text-transform:uppercase;
-    letter-spacing:.02em;font-size:clamp(60px,20vw,108px);line-height:1;color:var(--foam);opacity:.14;
+    top:-.1em;left:-3px;text-align:left;font-family:'Sora',sans-serif;font-weight:100;text-transform:uppercase;
+    letter-spacing:.02em;font-size:clamp(60px,20vw,108px);line-height:1;color:var(--foam);opacity:.07;
     white-space:nowrap;pointer-events:none;user-select:none}
+}
+@media(max-width:900px) and (prefers-reduced-motion:no-preference){
+  header.page::before, .dict::before{opacity:0;animation:watermarkIn 1.1s ease .1s forwards}
+  @keyframes watermarkIn{
+    from{opacity:0;transform:translateY(-14px)}
+    to{opacity:.07;transform:translateY(0)}
+  }
 }
 
 /* ---------- Imagery frame ---------- */
