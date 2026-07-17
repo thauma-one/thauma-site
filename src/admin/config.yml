@@ -285,6 +285,7 @@ collections:
             fields:
               - { label: "English form URL", name: "en", widget: "string", required: false }
               - { label: "Croatian form URL", name: "hr", widget: "string", required: false }
+              - { label: "Serbian form URL", name: "sr", widget: "string", required: false }
 
   - name: "team"
     label: "Team Members"
