@@ -56,6 +56,7 @@
     "posture_h2_thin": "Students of the culture,",
     "posture_h2_bold": "never reformers of it.",
     "body3": "We go as learners and participants of the cultures where we serve. We are not there to recreate churches in the image of any outside model — we come alongside what the local church has already established, meeting needs as those churches define them. That is why language and cultural learning come first, dominate the early years, and never fully end.",
+    "posture_img_tag": "Photo — learning the culture, before anything else",
     "status_note": "Thauma is a Missouri nonprofit in formation, serving the whole Protestant church across denominations."
   },
   "mission": {
@@ -77,7 +78,8 @@
     "horizon_h2_thin": "We measure in years,",
     "horizon_h2_bold": "not events.",
     "horizon_text": "The horizon is honest: meaningful fruit is expected on a five-to-ten-year timeline, not a two-year one. Serving grows out of the language-and-culture foundation; training grows out of serving; community and leaders grow out of both. We commit to the whole arc and refuse to rush it — the slow foundation is what makes the later fruit possible.",
-    "success_text": "Success looks like a community of church production people — techs, worship leaders, pastors — existing where it did not before, meeting and helping one another without us driving every connection."
+    "success_text": "Success looks like a community of church production people — techs, worship leaders, pastors — existing where it did not before, meeting and helping one another without us driving every connection.",
+    "horizon_img_tag": "Photo — years down the road, together"
   },
   "values": {
     "title": "Values",
@@ -135,6 +137,7 @@
     "monthly_text": "Committed monthly support is the backbone of the work — it funds the language years, the on-the-ground serving, and the long horizon this region requires.",
     "project_title": "Project gifts",
     "project_text": "One-time gifts toward equipment, travel, and gathering costs as specific needs arise.",
+    "impact_img_tag": "Photo — what your partnership makes possible",
     "legal_note": "Thauma is a Missouri nonprofit in formation. Until federal tax-exempt status is granted, gifts are not yet tax-deductible — we will say so plainly here the moment that changes.",
     "form_placeholder": "Our secure giving form will live here."
   },

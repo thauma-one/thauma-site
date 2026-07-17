@@ -20,6 +20,14 @@ pageTitle: give
     <div class="give-card"><h3>{{ t.give.project_title }}</h3><p>{{ t.give.project_text }}</p></div>
   </div>
 
+  {% if site.images.give_impact.src %}
+  <div class="frame">
+    <img src="{{ site.images.give_impact.src }}" alt="{{ t.give.impact_img_tag }}" loading="lazy"
+      style="object-position:{{ site.images.give_impact.focal_x }}% {{ site.images.give_impact.focal_y }}%;transform-origin:{{ site.images.give_impact.focal_x }}% {{ site.images.give_impact.focal_y }}%;transform:scale({{ site.images.give_impact.zoom / 100 }})">
+    <span class="tag">{{ t.give.impact_img_tag }}</span>
+  </div>
+  {% endif %}
+
   {# ---- DONATION EMBED SLOT ------------------------------------------
      When your Donorbox (or other provider) campaign exists, paste its
      embed URL into src/_data/site.json under donorbox.en / donorbox.hr.

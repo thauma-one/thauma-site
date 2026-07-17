@@ -18,6 +18,24 @@
       "focal_x": 50,
       "focal_y": 50,
       "zoom": 100
+    },
+    "about_posture": {
+      "src": "",
+      "focal_x": 50,
+      "focal_y": 50,
+      "zoom": 100
+    },
+    "mission_horizon": {
+      "src": "",
+      "focal_x": 50,
+      "focal_y": 50,
+      "zoom": 100
+    },
+    "give_impact": {
+      "src": "",
+      "focal_x": 50,
+      "focal_y": 50,
+      "zoom": 100
     }
   },
   "comingSoon": true,

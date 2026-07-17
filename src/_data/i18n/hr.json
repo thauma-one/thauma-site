@@ -56,6 +56,7 @@
     "posture_h2_thin": "Učenici kulture,",
     "posture_h2_bold": "nikada njezini reformatori.",
     "body3": "Dolazimo kao učenici i sudionici kultura u kojima služimo. Nismo ondje da crkve preoblikujemo po bilo kojem vanjskom modelu — dolazimo uz ono što je lokalna crkva već izgradila i odgovaramo na potrebe onako kako ih te crkve same definiraju. Zato jezik i kultura dolaze prvi, dominiraju prvim godinama i nikada u potpunosti ne prestaju.",
+    "posture_img_tag": "Fotografija — učenje kulture, prije svega ostalog",
     "status_note": "Thauma je neprofitna organizacija u osnivanju (Missouri, SAD) i služi cijeloj protestantskoj Crkvi, bez obzira na denominaciju."
   },
   "mission": {
@@ -77,7 +78,8 @@
     "horizon_h2_thin": "Mjerimo godinama,",
     "horizon_h2_bold": "ne događajima.",
     "horizon_text": "Horizont je iskren: smisleni plod očekujemo u razdoblju od pet do deset godina, ne dvije. Služenje izrasta iz temelja jezika i kulture; obuka izrasta iz služenja; zajednica i vođe izrastaju iz oboje. Predani smo cijelom luku i odbijamo ga požurivati — spor temelj omogućuje kasniji plod.",
-    "success_text": "Uspjeh izgleda ovako: zajednica crkvenih produkcijskih ljudi — tehničara, voditelja slavljenja, pastora — koja postoji ondje gdje je prije nije bilo, i koja se sastaje i pomaže jedna drugoj bez da mi pokrećemo svaku vezu."
+    "success_text": "Uspjeh izgleda ovako: zajednica crkvenih produkcijskih ljudi — tehničara, voditelja slavljenja, pastora — koja postoji ondje gdje je prije nije bilo, i koja se sastaje i pomaže jedna drugoj bez da mi pokrećemo svaku vezu.",
+    "horizon_img_tag": "Fotografija — godinama poslije, zajedno"
   },
   "values": {
     "title": "Vrijednosti",
@@ -135,6 +137,7 @@
     "monthly_text": "Redovita mjesečna potpora kralježnica je ovoga posla — ona financira godine učenja jezika, služenje na terenu i dugi horizont koji ova regija traži.",
     "project_title": "Projektni darovi",
     "project_text": "Jednokratni darovi za opremu, putovanja i troškove okupljanja kad se pojave konkretne potrebe.",
+    "impact_img_tag": "Fotografija — ono što vaše partnerstvo omogućuje",
     "legal_note": "Thauma je neprofitna organizacija u osnivanju (Missouri, SAD). Dok savezni status porezne izuzetosti ne bude odobren, darovi još nisu porezno priznati u SAD-u — ovdje ćemo to jasno objaviti čim se promijeni.",
     "form_placeholder": "Ovdje će se nalaziti naš sigurni obrazac za darivanje."
   },

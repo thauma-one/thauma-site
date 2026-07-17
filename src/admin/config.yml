@@ -259,6 +259,9 @@ collections:
             widget: "object"
             fields:
               - { label: "Home — who-we-are frame", name: "home_who", widget: "framed-photo", required: false, hint: "Drag the photo to reposition it, use the slider to zoom. Wide/horizontal photos work best; the cinematic dark treatment is applied automatically on the live site." }
+              - { label: "About — our posture frame", name: "about_posture", widget: "framed-photo", required: false, hint: "Shown at the bottom of the \"students of the culture\" section. Leave blank to hide — the section reads fine without it." }
+              - { label: "Mission — the horizon frame", name: "mission_horizon", widget: "framed-photo", required: false, hint: "Shown at the bottom of the \"we measure in years\" section. Leave blank to hide." }
+              - { label: "Give — impact frame", name: "give_impact", widget: "framed-photo", required: false, hint: "Shown between the giving options and the donation form. Leave blank to hide." }
           - label: "Social links (icons appear in the footer only when filled)"
             name: "socials"
             widget: "object"

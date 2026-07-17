@@ -29,5 +29,12 @@ pageTitle: about
   <div class="cue foam">{{ t.about.posture_cue }}</div>
   <h2>{{ t.about.posture_h2_thin }} <b>{{ t.about.posture_h2_bold }}</b></h2>
   <p class="body-text">{{ t.about.body3 }}</p>
+  {% if site.images.about_posture.src %}
+  <div class="frame">
+    <img src="{{ site.images.about_posture.src }}" alt="{{ t.about.posture_img_tag }}" loading="lazy"
+      style="object-position:{{ site.images.about_posture.focal_x }}% {{ site.images.about_posture.focal_y }}%;transform-origin:{{ site.images.about_posture.focal_x }}% {{ site.images.about_posture.focal_y }}%;transform:scale({{ site.images.about_posture.zoom / 100 }})">
+    <span class="tag">{{ t.about.posture_img_tag }}</span>
+  </div>
+  {% endif %}
   <p class="legal-note">{{ t.about.status_note }}</p>
 </div></section>
