@@ -139,24 +139,24 @@ nav{position:fixed;inset:0 0 auto;z-index:20;backdrop-filter:blur(12px);
 .lang-dropdown-trigger::after{content:"";width:6px;height:6px;border-right:1.5px solid currentColor;
   border-bottom:1.5px solid currentColor;transform:rotate(45deg);transition:transform .2s;margin-top:-3px}
 .lang-dropdown.open .lang-dropdown-trigger::after{transform:rotate(-135deg);margin-top:3px}
-/* Animated open (2026-07-19, strengthened 2026-07-19): unfurls downward
-   from the trigger — scaleY from the top edge, not just a fade/shift, so
-   it actually reads as "drops down" rather than a near-instant pop. Uses
-   visibility (not the `hidden` attribute/display:none) so the transition
-   can actually play — display changes can't be animated. visibility's own
-   transition-delay keeps it out of the tab order and un-clickable while
-   closed, and holds it interactive through the closing fade. Text inside
-   compresses slightly during the motion and the list can clip against the
-   trigger — both fine here, per direct request. */
+/* Animated open, instant close (2026-07-19): unfurls downward from the
+   trigger on open — scaleY from the top edge, not just a fade/shift, so
+   it reads as "drops down" — but closes with a hard cut, no reverse
+   animation. The `transition` property lives ONLY on the .open rule, not
+   on this base/closed one: a transition only plays if it's present on
+   the element's state AFTER the change, so adding .open (transition
+   present on the new state) animates in, while removing .open (no
+   transition on the new/base state) snaps out instantly. Text inside
+   compresses slightly during the open motion and the list can clip
+   against the trigger — both fine here, per direct request. */
 .lang-dropdown-list{position:absolute;top:calc(100% + 8px);right:0;min-width:104px;background:var(--panel);
   border:1px solid rgba(255,255,255,.12);border-radius:2px;padding:4px;list-style:none;z-index:30;
   box-shadow:0 12px 30px rgba(0,0,0,.45);
   transform-origin:top;
-  opacity:0;transform:scaleY(0);visibility:hidden;
-  transition:opacity .18s ease,transform .24s cubic-bezier(.16,1,.3,1),visibility 0s linear .24s}
+  opacity:0;transform:scaleY(0);visibility:hidden}
 .lang-dropdown.open .lang-dropdown-list{
   opacity:1;transform:scaleY(1);visibility:visible;
-  transition:opacity .18s ease,transform .24s cubic-bezier(.16,1,.3,1)}
+  transition:opacity .32s ease,transform .46s cubic-bezier(.16,1,.3,1)}
 .lang-dropdown-list .lang-toggle{display:block;width:100%;text-align:left;background:none;border:none;
   color:var(--dim);font-family:'Inter',sans-serif;font-size:12px;letter-spacing:.1em;font-weight:600;
   padding:8px 10px;border-radius:2px;cursor:pointer;transition:.15s}
@@ -178,20 +178,19 @@ nav{position:fixed;inset:0 0 auto;z-index:20;backdrop-filter:blur(12px);
    each <a> stretches to the full row width, and .active::after's
    left:0/right:0 underline (shared with .links a, see below) spans the
    whole row instead of hugging the text like it does on desktop. */
-/* Animated open (2026-07-19), same "drops down" language as the language
-   dropdown: unfurls from the nav edge via scaleY(transform-origin:top),
-   not just an instant display:none/flex swap. Kept in normal `display`
-   the whole time (display can't be transitioned) and shown/hidden via
-   opacity+transform+visibility instead, same pattern as .lang-dropdown-
-   list above. */
+/* Animated open, instant close (2026-07-19) — same "drops down on open,
+   cuts out on close" language as the language dropdown above: scaleY
+   unfurl from the nav edge, but the `transition` lives only on the
+   .menu-open rule (not this base one), so opening it animates and
+   closing it snaps instantly (see the longer comment on
+   .lang-dropdown-list for why that split does that). */
 .mobile-menu{position:fixed;inset:64px 0 0;z-index:19;background:rgba(11,15,21,.97);
   backdrop-filter:blur(12px);display:flex;flex-direction:column;align-items:flex-start;padding:40px 24px;gap:26px;
   font-family:'Sora',sans-serif;font-weight:200;font-size:22px;letter-spacing:.06em;
-  transform-origin:top;opacity:0;transform:scaleY(0);visibility:hidden;pointer-events:none;
-  transition:opacity .2s ease,transform .26s cubic-bezier(.16,1,.3,1),visibility 0s linear .26s}
+  transform-origin:top;opacity:0;transform:scaleY(0);visibility:hidden;pointer-events:none}
 .menu-open .mobile-menu{
   opacity:1;transform:scaleY(1);visibility:visible;pointer-events:auto;
-  transition:opacity .2s ease,transform .26s cubic-bezier(.16,1,.3,1)}
+  transition:opacity .35s ease,transform .5s cubic-bezier(.16,1,.3,1)}
 
 /* ---------- Shared type ---------- */
 .cue{font-size:11px;letter-spacing:.35em;text-transform:uppercase;font-weight:600;margin-bottom:26px;color:var(--blue)}
