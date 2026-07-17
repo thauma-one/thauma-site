@@ -16,11 +16,12 @@ document.querySelectorAll('.lang-toggle').forEach(function (btn) {
 });
 
 // ---- Language dropdown: open/close + dismiss (2026-07-17) ----
-// Two copies exist in the DOM (desktop nav-actions, mobile-menu — CSS
-// picks which one is visible per breakpoint), so this wires up whichever
-// is present via a shared class rather than assuming just one. The
-// outside-click/Escape listeners are registered once on document (not
-// once per dropdown instance) and just close whichever is currently open.
+// Open/closed state lives entirely in the .open class (not the `hidden`
+// attribute) so main.css can transition it — display:none can't be
+// animated, so the list has to stay in normal display the whole time and
+// let opacity/transform/visibility do the showing and hiding instead.
+// The outside-click/Escape listeners are registered once on document
+// (not once per dropdown instance) and just close whichever is open.
 (function () {
   var dropdowns = [];
   document.querySelectorAll('.lang-dropdown').forEach(function (dd) {
@@ -28,18 +29,16 @@ document.querySelectorAll('.lang-toggle').forEach(function (btn) {
     var list = dd.querySelector('.lang-dropdown-list');
     if (!trigger || !list) return;
     function open() {
-      list.hidden = false;
       dd.classList.add('open');
       trigger.setAttribute('aria-expanded', 'true');
     }
     function close() {
-      list.hidden = true;
       dd.classList.remove('open');
       trigger.setAttribute('aria-expanded', 'false');
     }
     trigger.addEventListener('click', function (e) {
       e.stopPropagation();
-      if (list.hidden) open(); else close();
+      if (dd.classList.contains('open')) close(); else open();
     });
     dropdowns.push({ el: dd, close: close });
   });
