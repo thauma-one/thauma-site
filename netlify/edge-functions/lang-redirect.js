@@ -3,10 +3,12 @@
 // and add the language to src/_data/site.json + a new i18n JSON file.
 const LANG_MAP = {
   hr: ["HR", "BA"], // Croatia, Bosnia & Herzegovina
-  // sr: ["RS", "ME"],  <- example: enable when Serbian translations exist
+  sr: ["RS"], // Serbia
 };
 const DEFAULT_LANG = "en";
-const SUPPORTED = ["en", "hr"];
+// Keep in sync with site.json's languages toggle — a code here that isn't
+// also enabled there will redirect visitors to pages that don't get built.
+const SUPPORTED = ["en", "hr", "sr"];
 
 export default async (request, context) => {
   // 1. A manual choice (cookie set by the toggle) always wins.

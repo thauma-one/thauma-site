@@ -236,6 +236,10 @@ collections:
         name: "hr"
         file: "src/_data/i18n/hr.json"
         fields: *lang_fields
+      - label: "Srpski"
+        name: "sr"
+        file: "src/_data/i18n/sr.json"
+        fields: *lang_fields
 
   - name: "settings"
     label: "Site Settings"
@@ -248,8 +252,13 @@ collections:
           - { label: "Site URL", name: "url", widget: "string" }
           - label: "Languages"
             name: "languages"
-            widget: "list"
-            field: { label: "Language code", name: "code", widget: "string" }
+            widget: "select"
+            multiple: true
+            options:
+              - { label: "English", value: "en" }
+              - { label: "Hrvatski", value: "hr" }
+              - { label: "Srpski", value: "sr" }
+            hint: "Toggles which languages are actually built and shown on the public site (pages, nav, hreflang). Adding a new language beyond these three still requires a code change (a new i18n JSON file + an option added here) — this only controls on/off for the languages that already exist."
           - { label: "Default language", name: "defaultLang", widget: "string" }
           - { label: "COMING SOON mode (only the landing page is public)", name: "comingSoon", widget: "boolean" }
           - { label: "Show Events in navigation", name: "showEvents", widget: "boolean" }
