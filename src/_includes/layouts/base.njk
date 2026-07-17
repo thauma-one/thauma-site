@@ -29,14 +29,11 @@
 </div>
 {% endmacro %}
 
-{#- Mobile page-location watermark (2026-07-18) — a large, low-opacity
-   background word behind each page's header (see header.page::before /
-   .dict::before in main.css), replacing the earlier thin strip. Driven by
-   a CSS custom property on <body> so it works for header.page AND .dict
-   (About uses .dict, everything else uses header.page) without touching
-   every page template. navPages (src/_data/navPages.js) is the nav's own
-   order; a page not in that list (home, team bios, staff) simply doesn't
-   match and no watermark renders. #}
+{#- Mobile page-location indicator (2026-07-19) — small numbered/labeled
+   text under the logo in the nav itself (see .logo-page in main.css),
+   replacing the earlier watermark. navPages (src/_data/navPages.js) is
+   the nav's own order; a page not in that list (home, team bios, staff)
+   simply doesn't match and nothing renders under the logo. #}
 {% set navPageNum = navPages.indexOf(pageSlug) + 1 %}
 
 <!DOCTYPE html>
@@ -63,12 +60,15 @@
 <meta name="twitter:title" content="{{ fullTitle }}">
 <meta name="twitter:description" content="{{ t.home.sub }}">
 <meta name="twitter:image" content="{{ shareImage }}">
-<link rel="stylesheet" href="/css/main.css?v=13">
+<link rel="stylesheet" href="/css/main.css?v=14">
 </head>
-<body{% if navPageNum > 0 %} style="--page-label:'{{ t.nav[pageSlug] }}'"{% endif %}>
+<body>
 
 <nav><div class="wrap nav-in">
-  <a class="logo" href="/{{ lang }}/"><!-- <img src="/img/logo.svg" alt=""> -->THAUMA</a>
+  <a class="logo" href="/{{ lang }}/">
+    <span class="logo-word"><!-- <img src="/img/logo.svg" alt=""> -->THAUMA</span>
+    {%- if navPageNum > 0 %}<span class="logo-page">{{ "0" if navPageNum < 10 else "" }}{{ navPageNum }} {{ t.nav[pageSlug] }}</span>{% endif %}
+  </a>
   <div class="links">
     <a href="/{{ lang }}/about/">{{ t.nav.about }}</a>
     <a href="/{{ lang }}/mission/">{{ t.nav.mission }}</a>
