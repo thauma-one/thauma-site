@@ -8,16 +8,39 @@ pageSlug: "resources"
 pageTitle: resources
 ---
 {% set t = i18n[lang] %}
+{#- Reveal flag (requested directly): the real resources grid only shows
+   once site.resourcesReady is flipped true in Site Settings — but the
+   dev server always sees behind it (matches the comingSoon flag's own
+   "dev server builds everything" convention), so real entries can be
+   previewed and iterated on before launch. Today the resources
+   collection is empty, so BOTH branches below currently render nothing
+   real and this falls through to the coming-soon block regardless of
+   env — dev and production look identical to today until content
+   actually gets added. #}
+{% set resourcesRevealed = site.resourcesReady or not env.isProduction %}
 <header class="page"><div class="wrap">
   <div class="cue rise">{{ t.resources.cue }}</div>
   <h2 class="rise-2">{{ t.resources.h2_thin }} <b>{{ t.resources.h2_bold }}</b></h2>
 </div></header>
 
 <section><div class="wrap">
+  {% if resourcesRevealed and resources.length %}
+  <div class="resource-grid">
+    {% for r in resources %}
+    <div class="resource-card">
+      {% if r.photo %}<div class="resource-photo"><img src="{{ r.photo }}" alt="{{ r.title[lang] }}" loading="lazy"></div>{% endif %}
+      <h3>{{ r.title[lang] }}</h3>
+      {% if r.description[lang] %}<p>{{ r.description[lang] | md | safe }}</p>{% endif %}
+      {% if r.link %}<a class="btn ghost" href="{{ r.link }}" target="_blank" rel="noopener">{{ t.resources.link_label }}</a>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
   <div class="empty">
     <h3>{{ t.resources.empty_title }}</h3>
     <p>{{ t.resources.empty_text }}</p>
     <div class="workline"><i></i></div>
     <a class="btn ghost" href="/{{ lang }}/contact/">{{ t.resources.empty_cta }}</a>
   </div>
+  {% endif %}
 </div></section>

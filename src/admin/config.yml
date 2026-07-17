@@ -253,6 +253,7 @@ collections:
           - { label: "Default language", name: "defaultLang", widget: "string" }
           - { label: "COMING SOON mode (only the landing page is public)", name: "comingSoon", widget: "boolean" }
           - { label: "Show Events in navigation", name: "showEvents", widget: "boolean" }
+          - { label: "Resources page is live", name: "resourcesReady", widget: "boolean", hint: "Off = the public site always shows the \"Resources are coming\" placeholder, no matter what's in the Resources collection below. Flip this on when ready to launch it. The dev server always shows real Resource entries regardless of this flag, so you can preview and build the page before going live." }
           - label: "Photos"
             name: "images"
             widget: "object"
@@ -299,3 +300,27 @@ collections:
         fields:
           - { label: "English", name: "en", widget: "markdown" }
           - { label: "Croatian", name: "hr", widget: "markdown" }
+
+  - name: "resources"
+    label: "Resources"
+    label_singular: "Resource"
+    folder: "src/content/resources"
+    create: true
+    slug: "{{slug}}"
+    identifier_field: title
+    fields:
+      - label: "Title"
+        name: "title"
+        widget: "object"
+        fields:
+          - { label: "English", name: "en", widget: "string" }
+          - { label: "Croatian", name: "hr", widget: "string" }
+      - { label: "Display order", name: "order", widget: "number", default: 10 }
+      - { label: "Photo", name: "photo", widget: "image", required: false }
+      - label: "Description"
+        name: "description"
+        widget: "object"
+        fields:
+          - { label: "English", name: "en", widget: "markdown" }
+          - { label: "Croatian", name: "hr", widget: "markdown" }
+      - { label: "Link", name: "link", widget: "string", required: false, hint: "Optional — e.g. a PDF, a video, or an external page. Leave blank if the description is enough on its own." }
