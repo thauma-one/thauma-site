@@ -24,8 +24,8 @@
     "about_posture": {
       "src": "/img/about-worship-team.webp",
       "focal_x": 50,
-      "focal_y": 57,
-      "zoom": 100
+      "focal_y": 66,
+      "zoom": 110
     },
     "mission_horizon": {
       "src": "/img/mission-raised-hand.webp",
