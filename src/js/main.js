@@ -312,9 +312,10 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'Intersect
     targets.forEach(function (el) {
       var r = el.getBoundingClientRect();
       // Team cards and the bio portrait keep their .sr even above the
-      // fold: their photos have a dedicated drop-in entrance (see
-      // main.css's photo drop-in block) that should play on every
-      // arrival type, not get swallowed by riding the fade.
+      // fold: their photos have a dedicated develop-from-darkness
+      // entrance (see main.css's portrait-develop block) that should
+      // play on every arrival type, not get swallowed by riding the
+      // fade.
       if (r.top < vh && r.bottom > 0 && !el.matches('.person, .bio-photo')) el.classList.remove('sr');
       else toObserve.push(el);
     });
@@ -332,17 +333,8 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'Intersect
     batch.forEach(function (el, i) {
       io.unobserve(el);
       el.style.transitionDelay = (i * 90) + 'ms';
-      // Mirror the delay into a custom property so children can sequence
-      // off it too (the photo drop-in starts +150ms after its card).
-      el.style.setProperty('--sr-delay', (i * 90) + 'ms');
       el.classList.add('in');
-      // Cleanup waits out the LONGEST child transition (the photo drop:
-      // delay + 150ms + 1s), not just the card's own .7s fade — clearing
-      // a transition-delay mid-flight can cancel the transition.
-      setTimeout(function () {
-        el.style.transitionDelay = '';
-        el.style.removeProperty('--sr-delay');
-      }, 1500 + i * 90);
+      setTimeout(function () { el.style.transitionDelay = ''; }, 800 + i * 90);
     });
   }, { threshold: 0.12 });
   whenPageSettled(function () {
@@ -464,7 +456,7 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'Intersect
   whenPageSettled(initCharReveal);
 })();
 
-// ---- Whisper-parallax on framed photos (2026-07-20) ----
+// ---- Whisper-parallax on framed photos + portraits (2026-07-20, portraits 2026-07-21) ----
 // The photo drifts vertically a touch slower than the page as its frame
 // passes through the viewport, for a subtle sense of depth. The frame's
 // focal zoom lives in an inline transform:scale() with transform-origin
@@ -475,7 +467,7 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'Intersect
 // images keep their exact framing.
 if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
   var pFrames = [];
-  document.querySelectorAll('.frame img').forEach(function (img) {
+  document.querySelectorAll('.frame img, .person-photo img').forEach(function (img) {
     var m = /scale\(([\d.]+)\)/.exec(img.style.transform || '');
     var base = m ? parseFloat(m[1]) : 1;
     var scale = Math.max(base, 1) * 1.12; // >=1.12 => >=6% overflow each side
