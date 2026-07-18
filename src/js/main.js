@@ -340,12 +340,12 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
   document.querySelectorAll('.frame img').forEach(function (img) {
     var m = /scale\(([\d.]+)\)/.exec(img.style.transform || '');
     var base = m ? parseFloat(m[1]) : 1;
-    var scale = Math.max(base, 1) * 1.18; // >=1.18 => >=9% overflow each side
+    var scale = Math.max(base, 1) * 1.12; // >=1.12 => >=6% overflow each side
     img.style.willChange = 'transform';
     pFrames.push({ frame: img.parentNode, img: img, scale: scale });
   });
   if (pFrames.length) {
-    var PMAX = 0.067; // drift, as a fraction of frame height (< the 9% headroom)
+    var PMAX = 0.045; // drift, as a fraction of frame height (< the 6% headroom)
     var pTicking = false;
     var pUpdate = function () {
       var vh = window.innerHeight;
