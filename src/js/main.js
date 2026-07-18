@@ -108,6 +108,18 @@ document.querySelectorAll('.links a, .mobile-menu a').forEach(function (a) {
   // too abrupt/constant-speed at the start of each character's roll.
   var DURATION = (DURATION_MS / 1000) + 's ' + EASING;
   if (!reduced && rowH && hasPrev && prevLabel !== currentLabel) {
+    // Measuring width via a canvas context — not getBoundingClientRect()
+    // on the actual DOM cell — because .pw-char-cell is display:block and
+    // stretches to fill whatever width its shrink-to-fit ancestor
+    // currently has; reading its rect back just returns that same
+    // (already wrong, sized-for-the-wider-character) width, not the
+    // character's own natural one. Canvas measureText has no such
+    // circularity. .toUpperCase() matches the CSS text-transform:
+    // uppercase actually being rendered.
+    var trackStyle = getComputedStyle(track);
+    var mctx = document.createElement('canvas').getContext('2d');
+    mctx.font = trackStyle.fontWeight + ' ' + trackStyle.fontSize + ' ' + trackStyle.fontFamily;
+    var charWidth = function (ch) { return mctx.measureText(ch.toUpperCase()).width; };
     var len = Math.max(prevLabel.length, currentLabel.length);
     var oldStr = prevLabel, newStr = currentLabel;
     while (oldStr.length < len) oldStr += ' ';
@@ -118,6 +130,7 @@ document.querySelectorAll('.links a, .mobile-menu a').forEach(function (a) {
     for (var i = 0; i < len; i++) {
       var wrap = document.createElement('span');
       wrap.className = 'pw-char';
+      wrap.style.width = charWidth(newStr[i]) + 'px';
       var charTrack = document.createElement('span');
       charTrack.className = 'pw-char-track';
       var oldCell = document.createElement('span');
@@ -137,38 +150,21 @@ document.querySelectorAll('.links a, .mobile-menu a').forEach(function (a) {
       charTrack.style.transform = 'translateY(-' + rowH + 'px)';
       wrap.appendChild(charTrack);
       charRow.appendChild(wrap);
-      charTracks.push({ el: charTrack, wrap: wrap, newCell: newCell, delay: START_DELAY + i * STAGGER });
+      charTracks.push({ el: charTrack, delay: START_DELAY + i * STAGGER });
     }
     track.innerHTML = '';
     track.appendChild(charRow);
-    // .pw-char has no width of its own, so it shrink-fits to the WIDER of
-    // its two stacked characters — left alone, that makes narrow/wide
-    // pairs (an "i" stacked with a "b", say) look unevenly spaced not
-    // just at rest (fixed separately below) but for the whole roll, since
-    // the box is sized for whichever character is wider the entire time.
-    // Locking each box's width to the NEW character alone — measured now
-    // that it's actually laid out — keeps every character's spacing
-    // matching its normal resting width throughout the transition; an
-    // old character wider than its replacement simply clips against
-    // .pw-char's overflow:hidden as it exits, which is fine.
-    charTracks.forEach(function (c) {
-      c.wrap.style.width = c.newCell.getBoundingClientRect().width + 'px';
-    });
+    charRow.getBoundingClientRect();
     requestAnimationFrame(function () {
       charTracks.forEach(function (c) {
         c.el.style.transition = 'transform ' + DURATION + ' ' + c.delay + 'ms';
         c.el.style.transform = 'translateY(0px)';
       });
     });
-    // Each .pw-char's width shrink-fits to the WIDER of its old/new
-    // character (needed to avoid horizontal jitter while both are still
-    // in play) — fine mid-roll, but left in place permanently it leaves
-    // narrow final characters (an "i" after a wider old "b", say) sitting
-    // left-aligned inside an oversized box, i.e. uneven-looking gaps that
-    // have nothing to do with real letter-spacing. Once the last
-    // character's transition is done, swap back to the plain, uniformly
-    // letter-spaced row so the resting state always looks like every
-    // other static label on the site.
+    // Once the last character's transition is done, swap back to the
+    // plain text row main.css already knows how to space correctly
+    // (letter-spacing, no per-character width math) rather than leaving
+    // the more complex per-character DOM sitting there indefinitely.
     var totalMs = START_DELAY + (len - 1) * STAGGER + DURATION_MS + 60;
     setTimeout(function () {
       track.innerHTML = '';
