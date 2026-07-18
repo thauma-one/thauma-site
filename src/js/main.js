@@ -137,11 +137,23 @@ document.querySelectorAll('.links a, .mobile-menu a').forEach(function (a) {
       charTrack.style.transform = 'translateY(-' + rowH + 'px)';
       wrap.appendChild(charTrack);
       charRow.appendChild(wrap);
-      charTracks.push({ el: charTrack, delay: START_DELAY + i * STAGGER });
+      charTracks.push({ el: charTrack, wrap: wrap, newCell: newCell, delay: START_DELAY + i * STAGGER });
     }
     track.innerHTML = '';
     track.appendChild(charRow);
-    charRow.getBoundingClientRect();
+    // .pw-char has no width of its own, so it shrink-fits to the WIDER of
+    // its two stacked characters — left alone, that makes narrow/wide
+    // pairs (an "i" stacked with a "b", say) look unevenly spaced not
+    // just at rest (fixed separately below) but for the whole roll, since
+    // the box is sized for whichever character is wider the entire time.
+    // Locking each box's width to the NEW character alone — measured now
+    // that it's actually laid out — keeps every character's spacing
+    // matching its normal resting width throughout the transition; an
+    // old character wider than its replacement simply clips against
+    // .pw-char's overflow:hidden as it exits, which is fine.
+    charTracks.forEach(function (c) {
+      c.wrap.style.width = c.newCell.getBoundingClientRect().width + 'px';
+    });
     requestAnimationFrame(function () {
       charTracks.forEach(function (c) {
         c.el.style.transition = 'transform ' + DURATION + ' ' + c.delay + 'ms';
