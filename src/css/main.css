@@ -100,13 +100,31 @@ html{scroll-behavior:smooth;scrollbar-width:thin;scrollbar-color:var(--blue) var
   ::view-transition-new(root){animation:none}
 }
 /* While a transition is running (html.vt-active, set/cleared by main.js's
-   whenPageSettled), every CSS on-load animation is held paused so the
-   incoming snapshot stays static — anything animating mid-fade forces the
-   snapshot to re-rasterize each frame, which is what stuttered page
-   changes. The JS-driven reveals queue behind the same gate. */
-.vt-active .rise,.vt-active .rise-2,.vt-active .rise-3{animation-play-state:paused}
+   whenPageSettled), CSS on-load animation is held so the incoming snapshot
+   stays static — anything animating mid-fade forces the snapshot to
+   re-rasterize each frame, which is what stuttered page changes. The
+   JS-driven reveals queue behind the same gate.
+
+   .rise gets animation:NONE via vt-came (persistent, not cleared at
+   settle) rather than paused-then-played: a transitioned arrival's
+   entrance IS the fade, so headers are simply present during it — pausing
+   them left the incoming page blank for the whole fade, which read as a
+   hard cut followed by a pop. The infinite underline pulse can't be
+   skipped (it must run eventually), so it stays paused-until-settle. */
+.vt-came .rise,.vt-came .rise-2,.vt-came .rise-3{animation:none}
 .vt-active .links a.active::after,
 .vt-active .mobile-menu a.active::after{animation-play-state:paused}
+/* vt-leaving (set on pageswap, the moment before the OUTGOING page's
+   snapshot is captured): freeze every interactive state back to rest so
+   the captured nav/buttons match the incoming page's resting ones —
+   otherwise a mid-press Give fill is captured and visibly "un-fills"
+   (and stutters) across the fade. !important is deliberate: these must
+   beat any :hover/:focus/:active rule regardless of specificity. */
+html.vt-leaving .give-btn,html.vt-leaving .btn{
+  transition:none!important;transform:none!important;box-shadow:none!important}
+html.vt-leaving .give-btn{color:var(--foam)!important}
+html.vt-leaving .give-btn::before,html.vt-leaving .links a::before{
+  transition:none!important;transform:scaleX(0)!important}
 
 /* ---------- Scrollbar (WebKit/Blink) ---------- */
 ::-webkit-scrollbar{width:11px;height:11px}

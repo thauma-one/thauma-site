@@ -89,12 +89,27 @@ var whenPageSettled = (function () {
     window.addEventListener('pagereveal', function (e) {
       revealSeen = true;
       if (e.viewTransition) {
-        document.documentElement.classList.add('vt-active');
+        // vt-active is removed at settle; vt-came stays for the page's
+        // lifetime — a transitioned arrival's entrance IS the fade, so the
+        // .rise header animation is skipped outright (headers visible
+        // DURING the fade, giving it real content to fade in) instead of
+        // held-then-played, which left the incoming page blank for the
+        // whole fade and made it read as a hard cut + pop.
+        document.documentElement.classList.add('vt-active', 'vt-came');
         e.viewTransition.finished.then(settle, settle);
         setTimeout(settle, 900); // failsafe: never hold the page hostage
       } else {
         settle();
       }
+    });
+    // pageswap fires on the OUTGOING page right before its snapshot is
+    // captured: freeze the nav's interactive states (Give fill/lift,
+    // link hover underlines, button lifts) back to rest (vt-leaving,
+    // see main.css) so the captured nav matches the incoming page's
+    // resting nav — otherwise a mid-press Give fill gets captured and
+    // then visibly "un-fills" across the fade.
+    window.addEventListener('pageswap', function () {
+      document.documentElement.classList.add('vt-leaving');
     });
     // pagereveal fires before load in every normal case; if it somehow
     // never fires for this navigation, settle at load rather than never.
