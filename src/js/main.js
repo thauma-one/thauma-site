@@ -64,6 +64,39 @@ document.querySelectorAll('.links a, .mobile-menu a').forEach(function (a) {
   if (location.pathname === a.getAttribute('href')) a.classList.add('active');
 });
 
+// ---- Page-location wheel: roll from the previous page's row (2026-07-20) ----
+// This is a full server-rendered multi-page site, not a client router, so
+// there's no single persistent DOM to animate a "from -> to" transition on
+// across a navigation — the trick is sessionStorage: every page load
+// stashes which row it landed on, and if the row the tab was on last time
+// differs from this page's own row, snap to the OLD row first (no
+// transition), force layout, then let the CSS transition carry it to the
+// real one on the next frame. The CSS resting position (--wheel-index,
+// set server-side) is already correct with zero JS, so a failed/blocked
+// script just means no animation, never a wrong or missing label.
+(function () {
+  var track = document.querySelector('.page-wheel-track');
+  if (!track) return;
+  var current = parseInt(track.dataset.wheelIndex, 10) || 0;
+  var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var rowH = parseFloat(getComputedStyle(track).getPropertyValue('--wheel-row-h')) || 0;
+  var prev = current;
+  try {
+    var stored = sessionStorage.getItem('thauma_wheel_index');
+    if (stored !== null) prev = parseInt(stored, 10);
+  } catch (e) { /* privacy mode etc. — just skip the animation */ }
+  if (!reduced && rowH && prev !== current) {
+    track.style.transition = 'none';
+    track.style.transform = 'translateY(' + (-prev * rowH) + 'px)';
+    track.getBoundingClientRect();
+    requestAnimationFrame(function () {
+      track.style.transition = '';
+      track.style.transform = 'translateY(' + (-current * rowH) + 'px)';
+    });
+  }
+  try { sessionStorage.setItem('thauma_wheel_index', String(current)); } catch (e) { /* same */ }
+})();
+
 // ---- Scroll reveals (skipped entirely under reduced motion) ----
 if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'IntersectionObserver' in window) {
   var targets = document.querySelectorAll('section .cue, section h2, section .lede, section .body-text, .val, .conviction, .work, .person, .give-card, .frame, .empty');

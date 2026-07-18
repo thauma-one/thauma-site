@@ -225,19 +225,33 @@ section:last-of-type{border-bottom:none}
 .dict-defs p::before{counter-increment:def;content:counter(def);position:absolute;left:0;top:2px;
   font-family:'Sora',sans-serif;font-style:normal;font-weight:600;font-size:13px;color:var(--foam)}
 
-/* ---------- Mobile page-location indicator (2026-07-19) ----------
-   Small numbered/labeled line, top-left, just under the nav — same spot
-   the old full-page watermark used to sit, same look the logo-adjacent
-   version had (moved out from under THAUMA per feedback: it's clearer
-   as its own thing at the top of the page than tucked under the logo).
-   --page-label is set once, on <body>, in base.njk, so this works for
-   both header.page and .dict (About uses .dict, everything else uses
-   header.page) without editing every page template. */
+/* ---------- Mobile page-location wheel (2026-07-20) ----------
+   Top-left, just under the nav. Every nav page's number+title is stacked
+   in one vertical track, in navPages order, with a blank spacer row
+   FIRST (index 0) standing in for "no page" (home, team bios, staff,
+   404) — the track's resting transform (--wheel-index, set server-side
+   in base.njk) always lands on the correct row with zero JS required,
+   so this degrades to a plain static label with no motion at all if JS
+   fails to load. main.js is what makes it roll: it stashes the current
+   row index in sessionStorage on every load, and if the PREVIOUS page
+   this tab visited had a different index, it snaps the track to that
+   old row (no transition) then animates to the new one on the next
+   frame — the translateY delta between two digit rows is what produces
+   the "up" or "down" combination-lock roll, entirely for free, since a
+   bigger index is simply further down the track. Going to/from a
+   no-page row means it rolls to/from the blank spacer, i.e. scrolls
+   out/in rather than landing on any label. */
+.page-wheel{display:none}
 @media(max-width:900px){
-  header.page, .dict{position:relative}
-  header.page::before, .dict::before{content:var(--page-label,"");position:absolute;top:80px;left:0;
+  .page-wheel{display:block;position:fixed;top:80px;left:0;right:0;z-index:18;
+    --wheel-row-h:15px;height:var(--wheel-row-h);overflow:hidden;padding:0 24px;pointer-events:none}
+  .page-wheel-track{transform:translateY(calc(-1 * var(--wheel-index,0) * var(--wheel-row-h)))}
+  @media(prefers-reduced-motion:no-preference){
+    .page-wheel-track{transition:transform .65s cubic-bezier(.16,1,.3,1)}
+  }
+  .page-wheel-row{height:var(--wheel-row-h);display:flex;align-items:center;
     font-family:'Inter',sans-serif;font-size:9.5px;font-weight:600;letter-spacing:.18em;
-    text-transform:uppercase;color:var(--blue)}
+    text-transform:uppercase;color:var(--blue);white-space:nowrap}
 }
 
 /* ---------- Imagery frame ---------- */

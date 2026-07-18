@@ -29,18 +29,14 @@
 </div>
 {% endmacro %}
 
-{#- Mobile page-location indicator (2026-07-19, moved out from under the
-   logo 2026-07-19) — small numbered/labeled text, top-left, just under
-   the nav (see header.page::before / .dict::before in main.css) — same
-   spot the earlier full-page watermark sat in, same small/blue/numbered
-   look the logo-adjacent version had. --page-label is set once, on
-   <body>, so it works for both header.page and .dict (About uses .dict,
-   everything else uses header.page) without touching every page
-   template. navPages (src/_data/navPages.js) is the nav's own order; a
-   page not in that list (home, team bios, staff) simply doesn't match
-   and nothing renders. #}
+{#- Mobile page-location wheel (2026-07-20) — top-left, just under the
+   nav. navPages (src/_data/navPages.js) is the nav's own order; a page
+   not in that list (home, team bios, staff, 404) gets navPageNum 0,
+   which lands on the blank spacer row main.css/main.js treat as "no
+   page." See main.css's ".page-wheel" comment for the full mechanism —
+   this block just supplies navPageNum (the resting row to land on) and
+   the track's rows (every nav page's number+title, current language). #}
 {% set navPageNum = navPages.indexOf(pageSlug) + 1 %}
-{% set pageLabel = ("0" if navPageNum < 10 else "") ~ navPageNum ~ " " ~ t.nav[pageSlug] %}
 
 <!DOCTYPE html>
 <html lang="{{ lang }}">
@@ -66,9 +62,9 @@
 <meta name="twitter:title" content="{{ fullTitle }}">
 <meta name="twitter:description" content="{{ t.home.sub }}">
 <meta name="twitter:image" content="{{ shareImage }}">
-<link rel="stylesheet" href="/css/main.css?v=19">
+<link rel="stylesheet" href="/css/main.css?v=20">
 </head>
-<body{% if navPageNum > 0 %} style="--page-label:'{{ pageLabel }}'"{% endif %}>
+<body>
 
 <nav><div class="wrap nav-in">
   <a class="logo" href="/{{ lang }}/"><!-- <img src="/img/logo.svg" alt=""> -->THAUMA</a>
@@ -87,6 +83,13 @@
   </div>
   <button class="menu-btn" aria-label="Menu"><span></span><span></span></button>
 </div></nav>
+
+<div class="page-wheel" aria-hidden="true"><div class="page-wheel-track" data-wheel-index="{{ navPageNum }}" style="--wheel-index:{{ navPageNum }}">
+  <div class="page-wheel-row"></div>
+  {%- for slug in navPages %}
+  <div class="page-wheel-row">{{ "0" if loop.index < 10 else "" }}{{ loop.index }} {{ t.nav[slug] }}</div>
+  {%- endfor %}
+</div></div>
 
 {#- Full page nav, mobile only — looped from navPages (src/_data/navPages.js)
    instead of a hand-copied list, so it can never drift out of sync with the
@@ -125,6 +128,6 @@
 {%- if not env.isProduction %}
 <script>window.THAUMA_TAUNTS = { en: {{ i18n.en.notFound.taunts | dump | safe }}, hr: {{ i18n.hr.notFound.taunts | dump | safe }} };</script>
 {%- endif %}
-<script src="/js/main.js?v=3"></script>
+<script src="/js/main.js?v=4"></script>
 </body>
 </html>
