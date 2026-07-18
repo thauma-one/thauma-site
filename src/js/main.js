@@ -188,7 +188,7 @@ document.querySelectorAll('.links a, .mobile-menu a').forEach(function (a) {
 // (the cue rolls in per-character); .work's text side (:not(.label)) still
 // fades in the ordinary way, just not the label, which rolls.
 if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'IntersectionObserver' in window) {
-  var targets = document.querySelectorAll('section h2, section .lede, section .body-text, .val, .conviction, .work > div:not(.label), .person, .give-card, .frame, .empty');
+  var targets = document.querySelectorAll('section h2, section .lede, section .body-text, .val h3, .val p, .conviction > div:not(.num), .work > div:not(.label), .person, .give-card, .frame, .empty');
   var io = new IntersectionObserver(function (entries) {
     entries.forEach(function (e) {
       if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
@@ -198,13 +198,15 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'Intersect
 }
 
 // ---- Character-reveal cascade for small labels (2026-07-20) ----
-// The section cue labels (and their leading counter number) plus the
-// Mission work labels roll their characters up into place as they scroll
-// into view. When several are on screen at once (e.g. on load) they
-// cascade top-to-bottom — each starts a beat after the one above it,
-// without waiting for it to finish. Everything is torn back down to plain
-// text once a label's roll completes, so the resting DOM (and its exact
-// letter-spacing, which the CSS counter/letter-spacing own) is untouched.
+// The section cue labels (and their leading counter number), the Mission
+// work labels, and the Values numbers (home .val numerals + the Values-
+// page .conviction numbers — numbers only, not their titles) roll their
+// characters into place as they scroll into view. When several are on
+// screen at once (e.g. on load) they cascade top-to-bottom — each starts a
+// beat after the one above it, without waiting for it to finish.
+// Everything is torn back down to plain text once a label's roll
+// completes, so the resting DOM (and its exact letter-spacing, which the
+// CSS counter/letter-spacing own) is untouched.
 if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'IntersectionObserver' in window) {
   // Matched to the page-wheel's own roll so the two read as the same
   // motion: same 1.3s duration and ease-in-out curve, same ~40ms
@@ -214,7 +216,7 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'Intersect
   var CHAR_STAGGER = 40;      // ms between characters within one label
   var ELEMENT_STAGGER = 160;  // ms between labels revealed in the same batch
   var ROLL = '1.3s cubic-bezier(.55,.05,.45,.95)';
-  var crTargets = Array.prototype.slice.call(document.querySelectorAll('section .cue, .work .label'));
+  var crTargets = Array.prototype.slice.call(document.querySelectorAll('section .cue, .work .label, .val .n, .conviction .num'));
   // Cue leading numbers mirror the CSS counter (section .cue::before,
   // decimal-leading-zero) — computed here so they can roll in with the
   // text; the ::before is hidden (.cr-nonum) only while a cue is rolling.

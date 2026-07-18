@@ -177,8 +177,15 @@ nav{position:fixed;inset:0 0 auto;z-index:20;backdrop-filter:blur(12px);
   font-size:12px;letter-spacing:.1em;font-weight:600}
 
 .give-btn{border:1px solid var(--foam);color:var(--foam);padding:8px 18px;border-radius:2px;
-  font-size:11.5px;letter-spacing:.18em;text-transform:uppercase;font-weight:600;transition:.2s;white-space:nowrap}
-.give-btn:hover{background:var(--foam);color:#06110c;box-shadow:var(--foam-glow)}
+  font-size:11.5px;letter-spacing:.18em;text-transform:uppercase;font-weight:600;
+  transition:color .25s,box-shadow .25s;white-space:nowrap;position:relative;overflow:hidden;isolation:isolate}
+/* Foam sweep (2026-07-20): fills in from the left on hover/focus instead
+   of a flat background swap. The fill is a ::before behind the label
+   (isolate + z-index:-1 keeps it inside the button, behind the text). */
+.give-btn::before{content:"";position:absolute;inset:0;background:var(--foam);
+  transform:scaleX(0);transform-origin:left;transition:transform .35s cubic-bezier(.16,1,.3,1);z-index:-1}
+.give-btn:hover::before,.give-btn:focus-visible::before{transform:scaleX(1)}
+.give-btn:hover,.give-btn:focus-visible{color:#06110c;box-shadow:var(--foam-glow)}
 .menu-btn{display:none;background:none;border:none;cursor:pointer;width:30px;height:22px;position:relative}
 .menu-btn span{position:absolute;left:0;right:0;height:1px;background:var(--text);transition:.25s}
 .menu-btn span:first-child{top:6px}.menu-btn span:last-child{bottom:6px}
@@ -482,6 +489,14 @@ footer{flex-shrink:0;background:var(--bg2);border-top:1px solid rgba(255,255,255
 .cue.foam::selection,.foot-tag::selection,.val .n::selection,.conviction .num::selection,
 .person-role::selection,.s-role::selection,.give-btn::selection,
 .lang-dropdown-current::selection{background:rgba(92,242,196,.4);color:#fff;text-shadow:none}
+
+/* Keyboard focus rings in the brand voice (2026-07-20): shown only to
+   keyboard / assistive-tech users (:focus-visible), never on mouse click.
+   Blue by default (the structural/technical voice), foam on the Give
+   button (the ministry-voice action). The outline follows each element's
+   own border-radius automatically. */
+:focus-visible{outline:2px solid var(--blue);outline-offset:3px}
+.give-btn:focus-visible{outline-color:var(--foam)}
 @media(prefers-reduced-motion:no-preference){
   .sr{opacity:0;transform:translateY(16px);transition:opacity .7s ease,transform .7s ease}
   .sr.in{opacity:1;transform:none}
@@ -496,12 +511,12 @@ footer{flex-shrink:0;background:var(--bg2);border-top:1px solid rgba(255,255,255
    Pre-hidden under no-preference so there's no flash of the finished
    label before the roll — same tradeoff as .sr (if JS never runs they
    stay hidden). Header cues are excluded (they keep their on-load .rise).*/
-section .cue, .work .label{font-kerning:none;font-variant-ligatures:none}
+section .cue, .work .label, .val .n, .conviction .num{font-kerning:none;font-variant-ligatures:none}
 .cr-box{display:inline-block;overflow:hidden;vertical-align:top}
 .cr-in{display:block}
 .cue.cr-nonum::before{display:none}
 @media(prefers-reduced-motion:no-preference){
-  section .cue, .work .label{opacity:0}
+  section .cue, .work .label, .val .n, .conviction .num{opacity:0}
   .cr-in{transition:transform 1.3s cubic-bezier(.55,.05,.45,.95)}
 }
 .foot-socials{display:flex;align-items:center;gap:16px}
