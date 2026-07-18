@@ -64,37 +64,65 @@ document.querySelectorAll('.links a, .mobile-menu a').forEach(function (a) {
   if (location.pathname === a.getAttribute('href')) a.classList.add('active');
 });
 
-// ---- Page-location wheel: roll from the previous page's row (2026-07-20) ----
+// ---- Page-location wheel: direct swap from the previous page's row (2026-07-20) ----
 // This is a full server-rendered multi-page site, not a client router, so
 // there's no single persistent DOM to animate a "from -> to" transition on
 // across a navigation — the trick is sessionStorage: every page load
-// stashes which row it landed on, and if the row the tab was on last time
-// differs from this page's own row, snap to the OLD row first (no
-// transition), force layout, then let the CSS transition carry it to the
-// real one on the next frame. The CSS resting position (--wheel-index,
-// set server-side) is already correct with zero JS, so a failed/blocked
-// script just means no animation, never a wrong or missing label.
+// stashes what it showed, and on the NEXT load, if that differs from this
+// page's own label, the track is rebuilt with exactly two rows — the old
+// label and the new one, ordered so the transition only ever has to move
+// by one row height — and transitioned between them. Nothing in between is
+// ever in the DOM, so there's no scrolling through every other nav page,
+// just old -> new. A short setTimeout (not requestAnimationFrame) is the
+// delay before it starts, giving the page a beat to settle first. The CSS
+// resting position needs no JS to be correct, so a failed/blocked script
+// just means no animation, never a wrong or missing label.
 (function () {
+  var container = document.querySelector('.page-wheel');
   var track = document.querySelector('.page-wheel-track');
-  if (!track) return;
-  var current = parseInt(track.dataset.wheelIndex, 10) || 0;
+  if (!container || !track) return;
+  var currentIndex = parseInt(track.dataset.wheelIndex, 10) || 0;
+  var currentLabel = track.dataset.wheelLabel || '';
   var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  var rowH = parseFloat(getComputedStyle(track).getPropertyValue('--wheel-row-h')) || 0;
-  var prev = current;
+  var rowH = parseFloat(getComputedStyle(container).getPropertyValue('--wheel-row-h')) || 0;
+  var prevIndex = currentIndex, prevLabel = currentLabel, hasPrev = false;
   try {
-    var stored = sessionStorage.getItem('thauma_wheel_index');
-    if (stored !== null) prev = parseInt(stored, 10);
+    var storedIndex = sessionStorage.getItem('thauma_wheel_index');
+    if (storedIndex !== null) {
+      prevIndex = parseInt(storedIndex, 10);
+      prevLabel = sessionStorage.getItem('thauma_wheel_label') || '';
+      hasPrev = true;
+    }
   } catch (e) { /* privacy mode etc. — just skip the animation */ }
-  if (!reduced && rowH && prev !== current) {
+  if (!reduced && rowH && hasPrev && prevLabel !== currentLabel) {
+    var goingDown = currentIndex < prevIndex; // lower index = earlier in the nav
+    var oldRow = document.createElement('div');
+    oldRow.className = 'page-wheel-row';
+    oldRow.textContent = prevLabel;
+    var newRow = document.createElement('div');
+    newRow.className = 'page-wheel-row';
+    newRow.textContent = currentLabel;
+    track.innerHTML = '';
     track.style.transition = 'none';
-    track.style.transform = 'translateY(' + (-prev * rowH) + 'px)';
+    if (goingDown) {
+      track.appendChild(newRow);
+      track.appendChild(oldRow);
+      track.style.transform = 'translateY(' + (-rowH) + 'px)';
+    } else {
+      track.appendChild(oldRow);
+      track.appendChild(newRow);
+      track.style.transform = 'translateY(0px)';
+    }
     track.getBoundingClientRect();
-    requestAnimationFrame(function () {
+    setTimeout(function () {
       track.style.transition = '';
-      track.style.transform = 'translateY(' + (-current * rowH) + 'px)';
-    });
+      track.style.transform = goingDown ? 'translateY(0px)' : 'translateY(' + (-rowH) + 'px)';
+    }, 350);
   }
-  try { sessionStorage.setItem('thauma_wheel_index', String(current)); } catch (e) { /* same */ }
+  try {
+    sessionStorage.setItem('thauma_wheel_index', String(currentIndex));
+    sessionStorage.setItem('thauma_wheel_label', currentLabel);
+  } catch (e) { /* same */ }
 })();
 
 // ---- Scroll reveals (skipped entirely under reduced motion) ----

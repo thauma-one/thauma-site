@@ -29,14 +29,16 @@
 </div>
 {% endmacro %}
 
-{#- Mobile page-location wheel (2026-07-20) — top-left, just under the
-   nav. navPages (src/_data/navPages.js) is the nav's own order; a page
-   not in that list (home, team bios, staff, 404) gets navPageNum 0,
-   which lands on the blank spacer row main.css/main.js treat as "no
-   page." See main.css's ".page-wheel" comment for the full mechanism —
-   this block just supplies navPageNum (the resting row to land on) and
-   the track's rows (every nav page's number+title, current language). #}
+{#- Mobile page-location wheel (2026-07-20, simplified to a direct
+   previous->current swap 2026-07-20) — top-left, just under the nav.
+   navPageNum 0 means "no page" (home, team bios, staff, 404); pageLabel
+   is empty in that case, which is exactly the blank state the wheel
+   scrolls to/from for those pages. See main.js's page-wheel block for
+   how the actual transition is built — this only ever needs the CURRENT
+   page's own row rendered server-side; main.js supplies the previous
+   one (from sessionStorage) only when it's about to animate. #}
 {% set navPageNum = navPages.indexOf(pageSlug) + 1 %}
+{% set pageLabel = (("0" if navPageNum < 10 else "") ~ navPageNum ~ " " ~ t.nav[pageSlug]) if navPageNum > 0 else "" %}
 
 <!DOCTYPE html>
 <html lang="{{ lang }}">
@@ -62,7 +64,7 @@
 <meta name="twitter:title" content="{{ fullTitle }}">
 <meta name="twitter:description" content="{{ t.home.sub }}">
 <meta name="twitter:image" content="{{ shareImage }}">
-<link rel="stylesheet" href="/css/main.css?v=20">
+<link rel="stylesheet" href="/css/main.css?v=21">
 </head>
 <body>
 
@@ -84,11 +86,8 @@
   <button class="menu-btn" aria-label="Menu"><span></span><span></span></button>
 </div></nav>
 
-<div class="page-wheel" aria-hidden="true"><div class="page-wheel-track" data-wheel-index="{{ navPageNum }}" style="--wheel-index:{{ navPageNum }}">
-  <div class="page-wheel-row"></div>
-  {%- for slug in navPages %}
-  <div class="page-wheel-row">{{ "0" if loop.index < 10 else "" }}{{ loop.index }} {{ t.nav[slug] }}</div>
-  {%- endfor %}
+<div class="page-wheel" aria-hidden="true"><div class="page-wheel-track" data-wheel-index="{{ navPageNum }}" data-wheel-label="{{ pageLabel }}">
+  <div class="page-wheel-row">{{ pageLabel }}</div>
 </div></div>
 
 {#- Full page nav, mobile only — looped from navPages (src/_data/navPages.js)
@@ -128,6 +127,6 @@
 {%- if not env.isProduction %}
 <script>window.THAUMA_TAUNTS = { en: {{ i18n.en.notFound.taunts | dump | safe }}, hr: {{ i18n.hr.notFound.taunts | dump | safe }} };</script>
 {%- endif %}
-<script src="/js/main.js?v=4"></script>
+<script src="/js/main.js?v=5"></script>
 </body>
 </html>
