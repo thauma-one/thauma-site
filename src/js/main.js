@@ -108,57 +108,49 @@ document.querySelectorAll('.links a, .mobile-menu a').forEach(function (a) {
   // too abrupt/constant-speed at the start of each character's roll.
   var DURATION = (DURATION_MS / 1000) + 's ' + EASING;
   if (!reduced && rowH && hasPrev && prevLabel !== currentLabel) {
-    // Measuring width via a canvas context — not getBoundingClientRect()
-    // on the actual DOM cell — because .pw-char-cell is display:block and
-    // stretches to fill whatever width its shrink-to-fit ancestor
-    // currently has; reading its rect back just returns that same
-    // (already wrong, sized-for-the-wider-character) width, not the
-    // character's own natural one. Canvas measureText has no such
-    // circularity. .toUpperCase() matches the CSS text-transform:
-    // uppercase actually being rendered.
-    var trackStyle = getComputedStyle(track);
-    var mctx = document.createElement('canvas').getContext('2d');
-    mctx.font = trackStyle.fontWeight + ' ' + trackStyle.fontSize + ' ' + trackStyle.fontFamily;
-    var charWidth = function (ch) { return mctx.measureText(ch.toUpperCase()).width; };
     var len = Math.max(prevLabel.length, currentLabel.length);
     var oldStr = prevLabel, newStr = currentLabel;
-    while (oldStr.length < len) oldStr += ' ';
-    while (newStr.length < len) newStr += ' ';
+    while (oldStr.length < len) oldStr += ' ';
+    while (newStr.length < len) newStr += ' ';
     var charRow = document.createElement('div');
     charRow.className = 'page-wheel-charrow';
-    var charTracks = [];
+    var cells = [];
     for (var i = 0; i < len; i++) {
       var wrap = document.createElement('span');
       wrap.className = 'pw-char';
-      wrap.style.width = charWidth(newStr[i]) + 'px';
-      var charTrack = document.createElement('span');
-      charTrack.className = 'pw-char-track';
-      var oldCell = document.createElement('span');
-      oldCell.className = 'pw-char-cell';
-      oldCell.textContent = oldStr[i];
+      // .pw-new stays in normal flow, so the incoming character is what
+      // sizes the box, matching the resting layout exactly. .pw-old is
+      // absolutely positioned (out of flow), so the outgoing character
+      // can never widen the box even when it is the wider of the two.
       var newCell = document.createElement('span');
-      newCell.className = 'pw-char-cell';
+      newCell.className = 'pw-char-cell pw-new';
       newCell.textContent = newStr[i];
-      charTrack.style.transition = 'none';
-      // Always top-down: newCell first/above, oldCell second/below — at
-      // rest the track shows oldCell (row 2), then animates to row 1,
-      // which reveals newCell sliding down into place from above while
-      // oldCell exits downward below it. Direction used to flip based on
-      // nav order, but a single consistent direction reads better.
-      charTrack.appendChild(newCell);
-      charTrack.appendChild(oldCell);
-      charTrack.style.transform = 'translateY(-' + rowH + 'px)';
-      wrap.appendChild(charTrack);
+      var oldCell = document.createElement('span');
+      oldCell.className = 'pw-char-cell pw-old';
+      oldCell.textContent = oldStr[i];
+      // Top-down: incoming char starts one row ABOVE the window and slides
+      // down into place; outgoing char starts in place and slides down and
+      // out below (clipped by .pw-char's overflow:hidden). Both move by the
+      // same one row height, so they stay locked together as they roll.
+      newCell.style.transition = 'none';
+      oldCell.style.transition = 'none';
+      newCell.style.transform = 'translateY(-' + rowH + 'px)';
+      oldCell.style.transform = 'translateY(0px)';
+      wrap.appendChild(newCell);
+      wrap.appendChild(oldCell);
       charRow.appendChild(wrap);
-      charTracks.push({ el: charTrack, delay: START_DELAY + i * STAGGER });
+      cells.push({ newCell: newCell, oldCell: oldCell, delay: START_DELAY + i * STAGGER });
     }
     track.innerHTML = '';
     track.appendChild(charRow);
     charRow.getBoundingClientRect();
     requestAnimationFrame(function () {
-      charTracks.forEach(function (c) {
-        c.el.style.transition = 'transform ' + DURATION + ' ' + c.delay + 'ms';
-        c.el.style.transform = 'translateY(0px)';
+      cells.forEach(function (c) {
+        var t = 'transform ' + DURATION + ' ' + c.delay + 'ms';
+        c.newCell.style.transition = t;
+        c.oldCell.style.transition = t;
+        c.newCell.style.transform = 'translateY(0px)';
+        c.oldCell.style.transform = 'translateY(' + rowH + 'px)';
       });
     });
     // Once the last character's transition is done, swap back to the

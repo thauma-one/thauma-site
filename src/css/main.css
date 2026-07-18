@@ -231,21 +231,23 @@ section:last-of-type{border-bottom:none}
    label (.page-wheel-row, plain text). main.js is what makes it move: on
    load, if the PREVIOUS page this tab visited (sessionStorage) had a
    different label, it replaces that plain row with a sequence of
-   .pw-char mini-wheels — one per character of the label, each an
-   independent old-character/new-character pair — and transitions each
-   by exactly one character-row height, with a per-character
-   transition-delay so they don't all move at once: character 0 starts
-   first, character 1 a beat later, and so on, giving a cascading roll
-   across the whole label instead of the text moving as one block. Every
-   mini-wheel still only ever holds two characters (old, new) — nothing
-   scrolls through intermediate ones. Direction (which one enters from
-   above vs below) matches whether the new page comes before or after
-   the old one in nav order, same as before. Landing on/leaving a page
-   with no label (home etc.) pads the shorter string with blank
-   characters, so it dissolves in/out character-by-character rather than
-   landing on a label. letter-spacing is replicated as margin-right on
-   .pw-char (not the letter-spacing property itself) since spacing after
-   inline-block elements isn't reliable across browsers. */
+   .pw-char mini-wheels — one per character of the label, each holding
+   the outgoing and incoming character for that slot — and slides each
+   pair down by one row height, with a per-character transition-delay so
+   they don't all move at once: character 0 starts first, character 1 a
+   beat later, and so on, giving a cascading roll across the whole label
+   instead of the text moving as one block.
+
+   SPACING: each .pw-char's width comes purely from the INCOMING
+   character (.pw-new, kept in normal flow); the OUTGOING one (.pw-old)
+   is absolutely positioned, so it's out of flow and can never stretch
+   the box to the wider of the two. That's what keeps horizontal spacing
+   identical to the resting text at every frame — earlier attempts sized
+   the box to whichever character was wider (directly, then via a broken
+   measurement), which left visible gaps around narrow letters. No width
+   measurement is needed at all this way; the browser lays the new
+   character out exactly as it sits at rest. margin-right:.18em
+   replicates the resting row's letter-spacing. */
 .page-wheel{display:none}
 @media(max-width:900px){
   .page-wheel{display:block;position:fixed;top:80px;left:0;right:0;z-index:18;
@@ -254,13 +256,14 @@ section:last-of-type{border-bottom:none}
     font-family:'Inter',sans-serif;font-size:9.5px;font-weight:600;
     text-transform:uppercase;color:var(--blue);white-space:nowrap}
   .page-wheel-row{height:var(--wheel-row-h);display:flex;align-items:center;letter-spacing:.18em}
-  .page-wheel-charrow{height:var(--wheel-row-h);display:flex;align-items:center}
-  .pw-char{display:inline-block;overflow:hidden;height:var(--wheel-row-h);margin-right:.18em}
-  .pw-char-track{display:block;transform:translateY(0)}
+  .page-wheel-charrow{height:var(--wheel-row-h);white-space:nowrap;line-height:var(--wheel-row-h)}
+  .pw-char{position:relative;display:inline-block;vertical-align:top;overflow:hidden;
+    height:var(--wheel-row-h);margin-right:.18em}
+  .pw-char-cell{display:block;height:var(--wheel-row-h);line-height:var(--wheel-row-h);transform:translateY(0)}
+  .pw-old{position:absolute;top:0;left:0}
   @media(prefers-reduced-motion:no-preference){
-    .pw-char-track{transition:transform 1.3s cubic-bezier(.55,.05,.45,.95)}
+    .pw-char-cell{transition:transform 1.3s cubic-bezier(.55,.05,.45,.95)}
   }
-  .pw-char-cell{display:block;height:var(--wheel-row-h);line-height:var(--wheel-row-h)}
 }
 
 /* ---------- Imagery frame ---------- */
