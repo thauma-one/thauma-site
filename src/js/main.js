@@ -64,6 +64,47 @@ document.querySelectorAll('.links a, .mobile-menu a').forEach(function (a) {
   if (location.pathname === a.getAttribute('href')) a.classList.add('active');
 });
 
+// ---- View-transition sequencing (2026-07-21) ----
+// A cross-page view transition crossfades a LIVE snapshot of this page —
+// any animation running during the fade forces that snapshot to
+// re-rasterize every frame, which is what made page changes stutter even
+// after the cascade alone was sequenced. So now EVERYTHING on-load is held
+// while a transition runs: the CSS animations (.rise headers, the
+// active-link underline pulse) via html.vt-active + animation-play-state
+// (see main.css), and the JS-driven ones (page wheel, scroll-reveal fades,
+// character cascade) by queueing through whenPageSettled(). The fade plays
+// over a fully static page; the choreography starts the moment it
+// finishes. Without a transition (or without pagereveal support) settle is
+// immediate and behavior is exactly as before.
+var whenPageSettled = (function () {
+  var settled = false, queue = [];
+  function settle() {
+    if (settled) return;
+    settled = true;
+    document.documentElement.classList.remove('vt-active');
+    queue.splice(0).forEach(function (fn) { fn(); });
+  }
+  if ('onpagereveal' in window) {
+    var revealSeen = false;
+    window.addEventListener('pagereveal', function (e) {
+      revealSeen = true;
+      if (e.viewTransition) {
+        document.documentElement.classList.add('vt-active');
+        e.viewTransition.finished.then(settle, settle);
+        setTimeout(settle, 900); // failsafe: never hold the page hostage
+      } else {
+        settle();
+      }
+    });
+    // pagereveal fires before load in every normal case; if it somehow
+    // never fires for this navigation, settle at load rather than never.
+    window.addEventListener('load', function () { if (!revealSeen) settle(); });
+  } else {
+    settled = true;
+  }
+  return function (fn) { if (settled) fn(); else queue.push(fn); };
+})();
+
 // ---- Page-location wheel: per-character cascade from the previous page's
 // label (2026-07-20) ----
 // This is a full server-rendered multi-page site, not a client router, so
@@ -87,7 +128,7 @@ document.querySelectorAll('.links a, .mobile-menu a').forEach(function (a) {
 // transition per character rather than a separate JS timer. The CSS
 // resting position needs no JS to be correct, so a failed/blocked script
 // just means no animation, never a wrong or missing label.
-(function () {
+whenPageSettled(function () {
   var container = document.querySelector('.page-wheel');
   var track = document.querySelector('.page-wheel-track');
   if (!container || !track) return;
@@ -181,7 +222,7 @@ document.querySelectorAll('.links a, .mobile-menu a').forEach(function (a) {
     }, totalMs);
   }
   try { sessionStorage.setItem('thauma_wheel_label', currentLabel); } catch (e) { /* same */ }
-})();
+});
 
 // ---- Scroll reveals (skipped entirely under reduced motion) ----
 // section .cue and .work are handled by the character-reveal below instead
@@ -189,12 +230,19 @@ document.querySelectorAll('.links a, .mobile-menu a').forEach(function (a) {
 // fades in the ordinary way, just not the label, which rolls.
 if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'IntersectionObserver' in window) {
   var targets = document.querySelectorAll('section h2, section .lede, section .body-text, .val h3, .val p, .conviction > div:not(.num), .work > div:not(.label), .person, .give-card, .frame, .empty');
+  // Hide (.sr) immediately so nothing half-fades during a page transition,
+  // but only start observing — i.e. letting things fade in — once the page
+  // has settled (whenPageSettled): mid-transition these must read as
+  // absent, not animating.
+  targets.forEach(function (el) { el.classList.add('sr'); });
   var io = new IntersectionObserver(function (entries) {
     entries.forEach(function (e) {
       if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
     });
   }, { threshold: 0.12 });
-  targets.forEach(function (el) { el.classList.add('sr'); io.observe(el); });
+  whenPageSettled(function () {
+    targets.forEach(function (el) { io.observe(el); });
+  });
 }
 
 // ---- Character-reveal cascade for small labels (2026-07-20) ----
@@ -308,22 +356,7 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'Intersect
     crTargets.forEach(function (el) { crObserver.observe(el); });
   }
 
-  var started = false;
-  function start() { if (started) return; started = true; initCharReveal(); }
-
-  // pagereveal fires on the incoming page: if a view transition brought us
-  // here, wait for it to finish; otherwise start now. A failsafe timer
-  // covers the pathological case of a transition that never settles.
-  var handled = false;
-  if ('onpagereveal' in window) {
-    window.addEventListener('pagereveal', function (e) {
-      handled = true;
-      if (e.viewTransition) { e.viewTransition.finished.then(start, start); setTimeout(start, 1000); }
-      else { start(); }
-    });
-  }
-  // Fallback: no pagereveal support, or it didn't fire for this load.
-  window.addEventListener('load', function () { if (!handled) start(); });
+  whenPageSettled(initCharReveal);
 })();
 
 // ---- Whisper-parallax on framed photos (2026-07-20) ----

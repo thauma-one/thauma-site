@@ -85,11 +85,13 @@ html{scroll-behavior:smooth;scrollbar-width:thin;scrollbar-color:var(--blue) var
 
 /* ---------- Cross-page transitions (2026-07-20, re-added 2026-07-21) ----
    MPA View Transitions: the outgoing page holds and the incoming one fades
-   in over it. The stutter this first caused is handled in main.js: the
-   on-load reveals (the .sr fades and the character cascade) are held until
-   this transition finishes (via the pagereveal event), so they no longer
-   play hidden behind the frozen page snapshot and pop when it lifts.
-   Progressive — unsupported browsers just navigate instantly. */
+   in over it. The stutter this first caused is handled by holding EVERY
+   on-load animation until the transition finishes — the JS-driven ones
+   (page wheel, .sr fades, character cascade) via main.js's whenPageSettled
+   queue, the CSS-driven ones (.rise headers, the active-link underline
+   pulse) via the html.vt-active pause rules just below — so the fade
+   always plays over a fully static page. Progressive — unsupported
+   browsers just navigate instantly. */
 @view-transition{navigation:auto}
 ::view-transition-old(root){animation:none}
 ::view-transition-new(root){animation:vt-fade-in .5s cubic-bezier(.55,.05,.45,.95) both}
@@ -97,6 +99,14 @@ html{scroll-behavior:smooth;scrollbar-width:thin;scrollbar-color:var(--blue) var
 @media(prefers-reduced-motion:reduce){
   ::view-transition-new(root){animation:none}
 }
+/* While a transition is running (html.vt-active, set/cleared by main.js's
+   whenPageSettled), every CSS on-load animation is held paused so the
+   incoming snapshot stays static — anything animating mid-fade forces the
+   snapshot to re-rasterize each frame, which is what stuttered page
+   changes. The JS-driven reveals queue behind the same gate. */
+.vt-active .rise,.vt-active .rise-2,.vt-active .rise-3{animation-play-state:paused}
+.vt-active .links a.active::after,
+.vt-active .mobile-menu a.active::after{animation-play-state:paused}
 
 /* ---------- Scrollbar (WebKit/Blink) ---------- */
 ::-webkit-scrollbar{width:11px;height:11px}
@@ -179,9 +189,14 @@ nav{position:fixed;inset:0 0 auto;z-index:20;backdrop-filter:blur(12px);
 .lang-dropdown-current{display:block;padding:8px 10px;color:var(--foam);font-family:'Inter',sans-serif;
   font-size:12px;letter-spacing:.1em;font-weight:600}
 
+/* will-change:transform gives the button its own compositor layer — it
+   sits inside the backdrop-blurred nav, and without a layer of its own the
+   hover lift/sweep dragged the nav's blur into a re-rasterize every frame,
+   which kept the sweep choppy even after box-shadow left the transition. */
 .give-btn{border:1px solid var(--foam);color:var(--foam);padding:8px 18px;border-radius:2px;
   font-size:11.5px;letter-spacing:.18em;text-transform:uppercase;font-weight:600;
-  transition:color .25s,transform .25s;white-space:nowrap;position:relative;overflow:hidden;isolation:isolate}
+  transition:color .25s,transform .25s;white-space:nowrap;position:relative;overflow:hidden;
+  isolation:isolate;will-change:transform}
 /* Foam sweep (2026-07-20): fills in from the left on hover/focus instead
    of a flat background swap. The fill is a ::before behind the label
    (isolate + z-index:-1 keeps it inside the button, behind the text).
