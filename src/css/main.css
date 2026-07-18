@@ -290,15 +290,14 @@ section:last-of-type{border-bottom:none}
    replicates the resting row's letter-spacing. */
 .page-wheel{display:none}
 @media(max-width:900px){
-  /* Pinned directly under the nav as a thin extension of it (same
-     translucent-blur background + hairline), so page content scrolling up
-     passes cleanly BEHIND it instead of colliding with the label. Was
-     transparent + floating at top:80px, which let the header text overlap
-     it on scroll. The per-character roll still clips inside each .pw-char,
-     so the container height is free to include padding. */
-  .page-wheel{display:block;position:fixed;top:64px;left:0;right:0;z-index:18;
-    --wheel-row-h:15px;overflow:hidden;padding:8px 24px;pointer-events:none;
-    background:rgba(11,15,21,.72);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.07)}
+  /* position:absolute (anchored to the document), NOT fixed — so it
+     scrolls up and away with the rest of the page instead of staying
+     pinned. Sits at the top under the fixed nav; the header content sits
+     well below (header padding-top), so they scroll up together with no
+     overlap. Transparent/minimal, as before. The roll clips inside each
+     .pw-char. */
+  .page-wheel{display:block;position:absolute;top:80px;left:0;right:0;z-index:5;
+    --wheel-row-h:15px;height:var(--wheel-row-h);overflow:hidden;padding:0 24px;pointer-events:none}
   /* font-kerning/ligatures OFF: the resting label (.page-wheel-row) is a
      continuous text run the browser would kern (e.g. "Va" in VALUES tucks
      tighter), but the per-character animated version measures and lays out
