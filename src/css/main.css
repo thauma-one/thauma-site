@@ -83,12 +83,20 @@
    pinch-zoom or text selection — neither is affected by this value. */
 html{scroll-behavior:smooth;scrollbar-width:thin;scrollbar-color:var(--blue) var(--bg2);touch-action:manipulation}
 
-/* Cross-page MPA View Transitions were tried here (2026-07-20) and pulled
-   the same day: capturing/compositing a whole-page snapshot on every
-   navigation contended with the on-load character-reveal cascade and the
-   Give-button micro-interactions, making them stutter. The instant
-   navigation (hard cut) leaves the main thread free for those, which are
-   the stronger, more consistently-visible polish. */
+/* ---------- Cross-page transitions (2026-07-20, re-added 2026-07-21) ----
+   MPA View Transitions: the outgoing page holds and the incoming one fades
+   in over it. The stutter this first caused is handled in main.js: the
+   on-load reveals (the .sr fades and the character cascade) are held until
+   this transition finishes (via the pagereveal event), so they no longer
+   play hidden behind the frozen page snapshot and pop when it lifts.
+   Progressive — unsupported browsers just navigate instantly. */
+@view-transition{navigation:auto}
+::view-transition-old(root){animation:none}
+::view-transition-new(root){animation:vt-fade-in .5s cubic-bezier(.55,.05,.45,.95) both}
+@keyframes vt-fade-in{from{opacity:0}to{opacity:1}}
+@media(prefers-reduced-motion:reduce){
+  ::view-transition-new(root){animation:none}
+}
 
 /* ---------- Scrollbar (WebKit/Blink) ---------- */
 ::-webkit-scrollbar{width:11px;height:11px}
@@ -282,8 +290,15 @@ section:last-of-type{border-bottom:none}
    replicates the resting row's letter-spacing. */
 .page-wheel{display:none}
 @media(max-width:900px){
-  .page-wheel{display:block;position:fixed;top:80px;left:0;right:0;z-index:18;
-    --wheel-row-h:15px;height:var(--wheel-row-h);overflow:hidden;padding:0 24px;pointer-events:none}
+  /* Pinned directly under the nav as a thin extension of it (same
+     translucent-blur background + hairline), so page content scrolling up
+     passes cleanly BEHIND it instead of colliding with the label. Was
+     transparent + floating at top:80px, which let the header text overlap
+     it on scroll. The per-character roll still clips inside each .pw-char,
+     so the container height is free to include padding. */
+  .page-wheel{display:block;position:fixed;top:64px;left:0;right:0;z-index:18;
+    --wheel-row-h:15px;overflow:hidden;padding:8px 24px;pointer-events:none;
+    background:rgba(11,15,21,.72);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.07)}
   /* font-kerning/ligatures OFF: the resting label (.page-wheel-row) is a
      continuous text run the browser would kern (e.g. "Va" in VALUES tucks
      tighter), but the per-character animated version measures and lays out

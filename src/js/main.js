@@ -200,107 +200,131 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'Intersect
 // ---- Character-reveal cascade for small labels (2026-07-20) ----
 // The section cue labels (and their leading counter number), the Mission
 // work labels, and the Values numbers (home .val numerals + the Values-
-// page .conviction numbers — numbers only, not their titles) roll their
-// characters into place as they scroll into view. When several are on
-// screen at once (e.g. on load) they cascade top-to-bottom — each starts a
-// beat after the one above it, without waiting for it to finish.
-// Everything is torn back down to plain text once a label's roll
-// completes, so the resting DOM (and its exact letter-spacing, which the
-// CSS counter/letter-spacing own) is untouched.
-if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'IntersectionObserver' in window) {
-  // Matched to the page-wheel's own roll so the two read as the same
-  // motion: same 1.3s duration and ease-in-out curve, same ~40ms
-  // per-character stagger, same top-down direction (character drops in
-  // from above). ELEMENT_STAGGER is this effect's own addition — the beat
-  // between labels when several reveal together.
-  var CHAR_STAGGER = 40;      // ms between characters within one label
-  var NUMBER_STAGGER = 150;   // wider gap for the 2-digit value numbers, so
-                              // the second digit clearly follows the first
-                              // instead of reading as one simultaneous pop
-  var ELEMENT_STAGGER = 160;  // ms between labels revealed in the same batch
-  var ROLL = '1.3s cubic-bezier(.55,.05,.45,.95)';
-  var crTargets = Array.prototype.slice.call(document.querySelectorAll('section .cue, .work .label, .val .n, .conviction .num'));
-  // Cue leading numbers mirror the CSS counter (section .cue::before,
-  // decimal-leading-zero) — computed here so they can roll in with the
-  // text; the ::before is hidden (.cr-nonum) only while a cue is rolling.
-  var cueNum = 0;
-  document.querySelectorAll('section .cue').forEach(function (el) {
-    cueNum++;
-    el.dataset.crNum = (cueNum < 10 ? '0' : '') + cueNum;
-  });
+// page .conviction numbers) roll their characters into place as they
+// scroll in, cascading top-to-bottom when several are on screen at once.
+// Torn back to plain text once each roll completes, so the resting DOM
+// (and the CSS counter/letter-spacing) is untouched.
+//
+// Sequenced after any incoming view transition (2026-07-21): if a cross-
+// page transition brought us here, the cascade waits for it to finish (the
+// pagereveal event) instead of running hidden behind the transition's
+// frozen page snapshot and popping into place when it lifts — which is
+// what made it stutter. Its targets are CSS-pre-hidden, so during the
+// transition they simply read as absent, then roll in once it settles.
+// Without a transition it runs immediately.
+(function () {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  if (!('IntersectionObserver' in window)) return;
 
-  function buildRun(container, str, marginPx, opacity, lh, inners) {
-    for (var i = 0; i < str.length; i++) {
-      var box = document.createElement('span');
-      box.className = 'cr-box';
-      box.style.height = lh + 'px';
-      box.style.marginRight = marginPx + 'px';
-      var inner = document.createElement('span');
-      inner.className = 'cr-in';
-      inner.style.height = lh + 'px';
-      inner.style.lineHeight = lh + 'px';
-      if (opacity !== 1) inner.style.opacity = opacity;
-      inner.textContent = str[i] === ' ' ? ' ' : str[i];
-      inner.style.transition = 'none';
-      inner.style.transform = 'translateY(-' + lh + 'px)'; // starts above; drops in (top-down, like the wheel)
-      box.appendChild(inner);
-      container.appendChild(box);
-      inners.push(inner);
-    }
-  }
+  function initCharReveal() {
+    // Matched to the page-wheel's own roll so the two read as the same
+    // motion: same 1.3s duration and ease-in-out curve, same ~40ms
+    // per-character stagger, same top-down direction. ELEMENT_STAGGER is
+    // this effect's own addition — the beat between labels in one batch.
+    var CHAR_STAGGER = 40;      // ms between characters within one label
+    var NUMBER_STAGGER = 150;   // wider gap for the 2-digit value numbers, so
+                                // the second digit clearly follows the first
+    var ELEMENT_STAGGER = 160;  // ms between labels revealed in the same batch
+    var ROLL = '1.3s cubic-bezier(.55,.05,.45,.95)';
+    var crTargets = Array.prototype.slice.call(document.querySelectorAll('section .cue, .work .label, .val .n, .conviction .num'));
+    // Cue leading numbers mirror the CSS counter (section .cue::before,
+    // decimal-leading-zero) — computed here so they can roll in with the
+    // text; the ::before is hidden (.cr-nonum) only while a cue is rolling.
+    var cueNum = 0;
+    document.querySelectorAll('section .cue').forEach(function (el) {
+      cueNum++;
+      el.dataset.crNum = (cueNum < 10 ? '0' : '') + cueNum;
+    });
 
-  function reveal(el, elDelay, charStagger) {
-    var cs = getComputedStyle(el);
-    var fs = parseFloat(cs.fontSize);
-    var lh = parseFloat(cs.lineHeight); if (isNaN(lh)) lh = fs * 1.25;
-    var labelLs = parseFloat(cs.letterSpacing); if (isNaN(labelLs)) labelLs = 0;
-    var label = el.textContent;
-    var num = el.dataset.crNum;
-    el.textContent = '';
-    el.style.letterSpacing = '0';
-    var inners = [];
-    if (num) {
-      // Leading number: the CSS counter is .2em-spaced and dimmed (.65),
-      // then a 14px gap before the label — mirror that so the revert is
-      // seamless.
-      el.classList.add('cr-nonum');
-      buildRun(el, num, fs * 0.2, 0.65, lh, inners);
-      if (el.lastChild) el.lastChild.style.marginRight = (fs * 0.2 + 14) + 'px';
+    function buildRun(container, str, marginPx, opacity, lh, inners) {
+      for (var i = 0; i < str.length; i++) {
+        var box = document.createElement('span');
+        box.className = 'cr-box';
+        box.style.height = lh + 'px';
+        box.style.marginRight = marginPx + 'px';
+        var inner = document.createElement('span');
+        inner.className = 'cr-in';
+        inner.style.height = lh + 'px';
+        inner.style.lineHeight = lh + 'px';
+        if (opacity !== 1) inner.style.opacity = opacity;
+        inner.textContent = str[i] === ' ' ? '\u00A0' : str[i];
+        inner.style.transition = 'none';
+        inner.style.transform = 'translateY(-' + lh + 'px)'; // starts above; drops in (top-down, like the wheel)
+        box.appendChild(inner);
+        container.appendChild(box);
+        inners.push(inner);
+      }
     }
-    buildRun(el, label, labelLs, 1, lh, inners);
-    el.style.opacity = '1';
-    el.getBoundingClientRect();
-    requestAnimationFrame(function () {
-      inners.forEach(function (inner, i) {
-        inner.style.transition = 'transform ' + ROLL + ' ' + (elDelay + i * charStagger) + 'ms';
-        inner.style.transform = 'translateY(0)';
+
+    function reveal(el, elDelay, charStagger) {
+      var cs = getComputedStyle(el);
+      var fs = parseFloat(cs.fontSize);
+      var lh = parseFloat(cs.lineHeight); if (isNaN(lh)) lh = fs * 1.25;
+      var labelLs = parseFloat(cs.letterSpacing); if (isNaN(labelLs)) labelLs = 0;
+      var label = el.textContent;
+      var num = el.dataset.crNum;
+      el.textContent = '';
+      el.style.letterSpacing = '0';
+      var inners = [];
+      if (num) {
+        // Leading number: the CSS counter is .2em-spaced and dimmed (.65),
+        // then a 14px gap before the label — mirror that so the revert is
+        // seamless.
+        el.classList.add('cr-nonum');
+        buildRun(el, num, fs * 0.2, 0.65, lh, inners);
+        if (el.lastChild) el.lastChild.style.marginRight = (fs * 0.2 + 14) + 'px';
+      }
+      buildRun(el, label, labelLs, 1, lh, inners);
+      el.style.opacity = '1';
+      el.getBoundingClientRect();
+      requestAnimationFrame(function () {
+        inners.forEach(function (inner, i) {
+          inner.style.transition = 'transform ' + ROLL + ' ' + (elDelay + i * charStagger) + 'ms';
+          inner.style.transform = 'translateY(0)';
+        });
       });
-    });
-    var totalMs = elDelay + (inners.length - 1) * charStagger + 1300 + 80;
-    setTimeout(function () {
-      el.textContent = label;       // back to plain text (counter reappears)
-      el.style.letterSpacing = '';
-      el.classList.remove('cr-nonum');
-    }, totalMs);
+      var totalMs = elDelay + (inners.length - 1) * charStagger + 1300 + 80;
+      setTimeout(function () {
+        el.textContent = label;       // back to plain text (counter reappears)
+        el.style.letterSpacing = '';
+        el.classList.remove('cr-nonum');
+      }, totalMs);
+    }
+
+    var crObserver = new IntersectionObserver(function (entries) {
+      var show = entries.filter(function (e) { return e.isIntersecting; })
+                        .map(function (e) { return e.target; });
+      // Cascade top-to-bottom: sort this batch by vertical position, then
+      // give each a base delay one ELEMENT_STAGGER after the one above it.
+      show.sort(function (a, b) { return a.getBoundingClientRect().top - b.getBoundingClientRect().top; });
+      show.forEach(function (el, i) {
+        crObserver.unobserve(el);
+        // The value numbers (.n / .num) are only 1-2 chars, so they get the
+        // wider NUMBER_STAGGER; multi-character labels get the tighter one.
+        var isNumber = el.classList.contains('n') || el.classList.contains('num');
+        reveal(el, i * ELEMENT_STAGGER, isNumber ? NUMBER_STAGGER : CHAR_STAGGER);
+      });
+    }, { threshold: 0.6 });
+    crTargets.forEach(function (el) { crObserver.observe(el); });
   }
 
-  var crObserver = new IntersectionObserver(function (entries) {
-    var show = entries.filter(function (e) { return e.isIntersecting; })
-                      .map(function (e) { return e.target; });
-    // Cascade top-to-bottom: sort this batch by vertical position, then
-    // give each a base delay one ELEMENT_STAGGER after the one above it.
-    show.sort(function (a, b) { return a.getBoundingClientRect().top - b.getBoundingClientRect().top; });
-    show.forEach(function (el, i) {
-      crObserver.unobserve(el);
-      // The value numbers (.n / .num) are only 1-2 chars, so they get the
-      // wider NUMBER_STAGGER; the multi-character cue/work labels get the
-      // tighter per-character CHAR_STAGGER.
-      var isNumber = el.classList.contains('n') || el.classList.contains('num');
-      reveal(el, i * ELEMENT_STAGGER, isNumber ? NUMBER_STAGGER : CHAR_STAGGER);
+  var started = false;
+  function start() { if (started) return; started = true; initCharReveal(); }
+
+  // pagereveal fires on the incoming page: if a view transition brought us
+  // here, wait for it to finish; otherwise start now. A failsafe timer
+  // covers the pathological case of a transition that never settles.
+  var handled = false;
+  if ('onpagereveal' in window) {
+    window.addEventListener('pagereveal', function (e) {
+      handled = true;
+      if (e.viewTransition) { e.viewTransition.finished.then(start, start); setTimeout(start, 1000); }
+      else { start(); }
     });
-  }, { threshold: 0.6 });
-  crTargets.forEach(function (el) { crObserver.observe(el); });
-}
+  }
+  // Fallback: no pagereveal support, or it didn't fire for this load.
+  window.addEventListener('load', function () { if (!handled) start(); });
+})();
 
 // ---- Whisper-parallax on framed photos (2026-07-20) ----
 // The photo drifts vertically a touch slower than the page as its frame
