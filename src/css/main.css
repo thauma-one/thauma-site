@@ -252,9 +252,17 @@ section:last-of-type{border-bottom:none}
 @media(max-width:900px){
   .page-wheel{display:block;position:fixed;top:80px;left:0;right:0;z-index:18;
     --wheel-row-h:15px;height:var(--wheel-row-h);overflow:hidden;padding:0 24px;pointer-events:none}
+  /* font-kerning/ligatures OFF: the resting label (.page-wheel-row) is a
+     continuous text run the browser would kern (e.g. "Va" in VALUES tucks
+     tighter), but the per-character animated version measures and lays out
+     each glyph in isolation with no kerning — so a kerned resting run ends
+     up slightly narrower and the row visibly snaps when it swaps back.
+     Disabling both here (inherited by the row AND the measuring span)
+     makes the two layouts identical, so the swap is seamless. */
   .page-wheel-track{transform:translateY(0);
     font-family:'Inter',sans-serif;font-size:9.5px;font-weight:600;
-    text-transform:uppercase;color:var(--blue);white-space:nowrap}
+    text-transform:uppercase;color:var(--blue);white-space:nowrap;
+    font-kerning:none;font-variant-ligatures:none}
   .page-wheel-row{height:var(--wheel-row-h);display:flex;align-items:center;letter-spacing:.18em}
   .page-wheel-charrow{height:var(--wheel-row-h);white-space:nowrap;line-height:var(--wheel-row-h)}
   /* Each character box's WIDTH is set inline by main.js and animated from
