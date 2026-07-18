@@ -311,7 +311,11 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'Intersect
     toObserve = [];
     targets.forEach(function (el) {
       var r = el.getBoundingClientRect();
-      if (r.top < vh && r.bottom > 0) el.classList.remove('sr');
+      // Team cards and the bio portrait keep their .sr even above the
+      // fold: their photos have a dedicated drop-in entrance (see
+      // main.css's photo drop-in block) that should play on every
+      // arrival type, not get swallowed by riding the fade.
+      if (r.top < vh && r.bottom > 0 && !el.matches('.person, .bio-photo')) el.classList.remove('sr');
       else toObserve.push(el);
     });
   });
@@ -328,8 +332,17 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'Intersect
     batch.forEach(function (el, i) {
       io.unobserve(el);
       el.style.transitionDelay = (i * 90) + 'ms';
+      // Mirror the delay into a custom property so children can sequence
+      // off it too (the photo drop-in starts +150ms after its card).
+      el.style.setProperty('--sr-delay', (i * 90) + 'ms');
       el.classList.add('in');
-      setTimeout(function () { el.style.transitionDelay = ''; }, 800 + i * 90);
+      // Cleanup waits out the LONGEST child transition (the photo drop:
+      // delay + 150ms + 1s), not just the card's own .7s fade — clearing
+      // a transition-delay mid-flight can cancel the transition.
+      setTimeout(function () {
+        el.style.transitionDelay = '';
+        el.style.removeProperty('--sr-delay');
+      }, 1500 + i * 90);
     });
   }, { threshold: 0.12 });
   whenPageSettled(function () {
