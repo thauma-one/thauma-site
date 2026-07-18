@@ -101,10 +101,12 @@ document.querySelectorAll('.links a, .mobile-menu a').forEach(function (a) {
   } catch (e) { /* privacy mode etc. — just skip the animation */ }
   var START_DELAY = 700; // ms before the roll begins at all
   var STAGGER = 40; // ms added per character, cascading left to right
-  var DURATION = '1.3s cubic-bezier(.55,.05,.45,.95)'; // same curve navping
-  // (the active-nav underline pulse) already uses elsewhere — a symmetric
+  var DURATION_MS = 1300;
+  var EASING = 'cubic-bezier(.55,.05,.45,.95)'; // same curve navping (the
+  // active-nav underline pulse) already uses elsewhere — a symmetric
   // ease-in-out, replacing the ease-out this started with, which read as
   // too abrupt/constant-speed at the start of each character's roll.
+  var DURATION = (DURATION_MS / 1000) + 's ' + EASING;
   if (!reduced && rowH && hasPrev && prevLabel !== currentLabel) {
     var len = Math.max(prevLabel.length, currentLabel.length);
     var oldStr = prevLabel, newStr = currentLabel;
@@ -146,6 +148,23 @@ document.querySelectorAll('.links a, .mobile-menu a').forEach(function (a) {
         c.el.style.transform = 'translateY(0px)';
       });
     });
+    // Each .pw-char's width shrink-fits to the WIDER of its old/new
+    // character (needed to avoid horizontal jitter while both are still
+    // in play) — fine mid-roll, but left in place permanently it leaves
+    // narrow final characters (an "i" after a wider old "b", say) sitting
+    // left-aligned inside an oversized box, i.e. uneven-looking gaps that
+    // have nothing to do with real letter-spacing. Once the last
+    // character's transition is done, swap back to the plain, uniformly
+    // letter-spaced row so the resting state always looks like every
+    // other static label on the site.
+    var totalMs = START_DELAY + (len - 1) * STAGGER + DURATION_MS + 60;
+    setTimeout(function () {
+      track.innerHTML = '';
+      var restRow = document.createElement('div');
+      restRow.className = 'page-wheel-row';
+      restRow.textContent = currentLabel;
+      track.appendChild(restRow);
+    }, totalMs);
   }
   try { sessionStorage.setItem('thauma_wheel_label', currentLabel); } catch (e) { /* same */ }
 })();
