@@ -83,25 +83,12 @@
    pinch-zoom or text selection — neither is affected by this value. */
 html{scroll-behavior:smooth;scrollbar-width:thin;scrollbar-color:var(--blue) var(--bg2);touch-action:manipulation}
 
-/* ---------- Cross-page transitions (2026-07-20) ----------
-   MPA View Transitions: a gentle crossfade between full page loads
-   instead of a hard cut, tuned to the site's own slow ease-in-out curve.
-   Fully progressive — browsers without support just navigate instantly,
-   exactly as before. The nav and page-wheel are identical page to page,
-   so crossfading them is imperceptible; only the <main> content visibly
-   dissolves. Disabled outright under reduced motion. */
-@view-transition{navigation:auto}
-/* Hold the outgoing page fully opaque and fade the incoming one in over
-   the top of it, instead of the default cross-dissolve (both animating
-   opacity at once). The cross-dissolve dips through a lighter 50/50
-   midpoint that read as a flash on desktop; this way the screen always
-   shows a complete page. */
-::view-transition-old(root){animation:none}
-::view-transition-new(root){animation:vt-fade-in .5s cubic-bezier(.55,.05,.45,.95) both}
-@keyframes vt-fade-in{from{opacity:0}to{opacity:1}}
-@media(prefers-reduced-motion:reduce){
-  ::view-transition-new(root){animation:none}
-}
+/* Cross-page MPA View Transitions were tried here (2026-07-20) and pulled
+   the same day: capturing/compositing a whole-page snapshot on every
+   navigation contended with the on-load character-reveal cascade and the
+   Give-button micro-interactions, making them stutter. The instant
+   navigation (hard cut) leaves the main thread free for those, which are
+   the stronger, more consistently-visible polish. */
 
 /* ---------- Scrollbar (WebKit/Blink) ---------- */
 ::-webkit-scrollbar{width:11px;height:11px}
