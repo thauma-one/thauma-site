@@ -228,27 +228,39 @@ section:last-of-type{border-bottom:none}
 /* ---------- Mobile page-location wheel (2026-07-20) ----------
    Top-left, just under the nav. Resting state is always just the current
    page's own row at translateY(0) — no JS needed for a correct static
-   label. main.js is what makes it move: on load, if the PREVIOUS page
-   this tab visited (sessionStorage) had a different label, it rebuilds
-   the track with exactly two rows — the old label and the new one, in
-   whichever order matches the direction — and transitions translateY by
-   exactly one row height between them. Only ever those two rows exist
-   during the transition, never anything in between (see main.js — this
-   is a direct swap, not a scroll through every nav page). Landing on/
-   leaving a page with no label (home etc.) swaps against a blank row
-   instead of a real one, i.e. scrolls out/in rather than landing on a
-   label. */
+   label (.page-wheel-row, plain text). main.js is what makes it move: on
+   load, if the PREVIOUS page this tab visited (sessionStorage) had a
+   different label, it replaces that plain row with a sequence of
+   .pw-char mini-wheels — one per character of the label, each an
+   independent old-character/new-character pair — and transitions each
+   by exactly one character-row height, with a per-character
+   transition-delay so they don't all move at once: character 0 starts
+   first, character 1 a beat later, and so on, giving a cascading roll
+   across the whole label instead of the text moving as one block. Every
+   mini-wheel still only ever holds two characters (old, new) — nothing
+   scrolls through intermediate ones. Direction (which one enters from
+   above vs below) matches whether the new page comes before or after
+   the old one in nav order, same as before. Landing on/leaving a page
+   with no label (home etc.) pads the shorter string with blank
+   characters, so it dissolves in/out character-by-character rather than
+   landing on a label. letter-spacing is replicated as margin-right on
+   .pw-char (not the letter-spacing property itself) since spacing after
+   inline-block elements isn't reliable across browsers. */
 .page-wheel{display:none}
 @media(max-width:900px){
   .page-wheel{display:block;position:fixed;top:80px;left:0;right:0;z-index:18;
     --wheel-row-h:15px;height:var(--wheel-row-h);overflow:hidden;padding:0 24px;pointer-events:none}
-  .page-wheel-track{transform:translateY(0)}
-  @media(prefers-reduced-motion:no-preference){
-    .page-wheel-track{transition:transform 1s cubic-bezier(.16,1,.3,1)}
-  }
-  .page-wheel-row{height:var(--wheel-row-h);display:flex;align-items:center;
-    font-family:'Inter',sans-serif;font-size:9.5px;font-weight:600;letter-spacing:.18em;
+  .page-wheel-track{transform:translateY(0);
+    font-family:'Inter',sans-serif;font-size:9.5px;font-weight:600;
     text-transform:uppercase;color:var(--blue);white-space:nowrap}
+  .page-wheel-row{height:var(--wheel-row-h);display:flex;align-items:center;letter-spacing:.18em}
+  .page-wheel-charrow{height:var(--wheel-row-h);display:flex;align-items:center}
+  .pw-char{display:inline-block;overflow:hidden;height:var(--wheel-row-h);margin-right:.18em}
+  .pw-char-track{display:block;transform:translateY(0)}
+  @media(prefers-reduced-motion:no-preference){
+    .pw-char-track{transition:transform 1.3s cubic-bezier(.16,1,.3,1)}
+  }
+  .pw-char-cell{display:block;height:var(--wheel-row-h);line-height:var(--wheel-row-h)}
 }
 
 /* ---------- Imagery frame ---------- */

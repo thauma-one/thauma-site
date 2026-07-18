@@ -64,19 +64,27 @@ document.querySelectorAll('.links a, .mobile-menu a').forEach(function (a) {
   if (location.pathname === a.getAttribute('href')) a.classList.add('active');
 });
 
-// ---- Page-location wheel: direct swap from the previous page's row (2026-07-20) ----
+// ---- Page-location wheel: per-character cascade from the previous page's
+// label (2026-07-20) ----
 // This is a full server-rendered multi-page site, not a client router, so
 // there's no single persistent DOM to animate a "from -> to" transition on
 // across a navigation — the trick is sessionStorage: every page load
 // stashes what it showed, and on the NEXT load, if that differs from this
-// page's own label, the track is rebuilt with exactly two rows — the old
-// label and the new one, ordered so the transition only ever has to move
-// by one row height — and transitioned between them. Nothing in between is
-// ever in the DOM, so there's no scrolling through every other nav page,
-// just old -> new. A short setTimeout (not requestAnimationFrame) is the
-// delay before it starts, giving the page a beat to settle first. The CSS
-// resting position needs no JS to be correct, so a failed/blocked script
-// just means no animation, never a wrong or missing label.
+// page's own label, the plain resting row is replaced with one mini-wheel
+// per character — each an independent old-char/new-char pair — and every
+// one of them is transitioned by exactly one character-row height, with an
+// increasing transition-delay per character index so they roll in sequence
+// rather than as one block. Only ever two characters exist in any given
+// mini-wheel (old, new) — nothing scrolls through intermediate letters or
+// intermediate nav pages. Direction (which character enters from above vs
+// below) matches whether the new page comes before or after the old one in
+// nav order. START_DELAY is baked directly into each character's own
+// transition-delay (not a setTimeout before starting anything), so the
+// whole cascade — the wait before it starts, plus its per-character
+// stagger — is one CSS transition per character rather than a separate
+// JS timer. The CSS resting position needs no JS to be correct, so a
+// failed/blocked script just means no animation, never a wrong or
+// missing label.
 (function () {
   var container = document.querySelector('.page-wheel');
   var track = document.querySelector('.page-wheel-track');
@@ -94,30 +102,52 @@ document.querySelectorAll('.links a, .mobile-menu a').forEach(function (a) {
       hasPrev = true;
     }
   } catch (e) { /* privacy mode etc. — just skip the animation */ }
+  var START_DELAY = 700; // ms before the roll begins at all
+  var STAGGER = 40; // ms added per character, cascading left to right
+  var DURATION = '1.3s cubic-bezier(.16,1,.3,1)';
   if (!reduced && rowH && hasPrev && prevLabel !== currentLabel) {
     var goingDown = currentIndex < prevIndex; // lower index = earlier in the nav
-    var oldRow = document.createElement('div');
-    oldRow.className = 'page-wheel-row';
-    oldRow.textContent = prevLabel;
-    var newRow = document.createElement('div');
-    newRow.className = 'page-wheel-row';
-    newRow.textContent = currentLabel;
-    track.innerHTML = '';
-    track.style.transition = 'none';
-    if (goingDown) {
-      track.appendChild(newRow);
-      track.appendChild(oldRow);
-      track.style.transform = 'translateY(' + (-rowH) + 'px)';
-    } else {
-      track.appendChild(oldRow);
-      track.appendChild(newRow);
-      track.style.transform = 'translateY(0px)';
+    var len = Math.max(prevLabel.length, currentLabel.length);
+    var oldStr = prevLabel, newStr = currentLabel;
+    while (oldStr.length < len) oldStr += ' ';
+    while (newStr.length < len) newStr += ' ';
+    var charRow = document.createElement('div');
+    charRow.className = 'page-wheel-charrow';
+    var charTracks = [];
+    for (var i = 0; i < len; i++) {
+      var wrap = document.createElement('span');
+      wrap.className = 'pw-char';
+      var charTrack = document.createElement('span');
+      charTrack.className = 'pw-char-track';
+      var oldCell = document.createElement('span');
+      oldCell.className = 'pw-char-cell';
+      oldCell.textContent = oldStr[i];
+      var newCell = document.createElement('span');
+      newCell.className = 'pw-char-cell';
+      newCell.textContent = newStr[i];
+      charTrack.style.transition = 'none';
+      if (goingDown) {
+        charTrack.appendChild(newCell);
+        charTrack.appendChild(oldCell);
+        charTrack.style.transform = 'translateY(-' + rowH + 'px)';
+      } else {
+        charTrack.appendChild(oldCell);
+        charTrack.appendChild(newCell);
+        charTrack.style.transform = 'translateY(0px)';
+      }
+      wrap.appendChild(charTrack);
+      charRow.appendChild(wrap);
+      charTracks.push({ el: charTrack, delay: START_DELAY + i * STAGGER });
     }
-    track.getBoundingClientRect();
-    setTimeout(function () {
-      track.style.transition = '';
-      track.style.transform = goingDown ? 'translateY(0px)' : 'translateY(' + (-rowH) + 'px)';
-    }, 350);
+    track.innerHTML = '';
+    track.appendChild(charRow);
+    charRow.getBoundingClientRect();
+    requestAnimationFrame(function () {
+      charTracks.forEach(function (c) {
+        c.el.style.transition = 'transform ' + DURATION + ' ' + c.delay + 'ms';
+        c.el.style.transform = goingDown ? 'translateY(0px)' : 'translateY(-' + rowH + 'px)';
+      });
+    });
   }
   try {
     sessionStorage.setItem('thauma_wheel_index', String(currentIndex));
