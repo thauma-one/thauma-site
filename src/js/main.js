@@ -214,6 +214,9 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'Intersect
   // from above). ELEMENT_STAGGER is this effect's own addition — the beat
   // between labels when several reveal together.
   var CHAR_STAGGER = 40;      // ms between characters within one label
+  var NUMBER_STAGGER = 150;   // wider gap for the 2-digit value numbers, so
+                              // the second digit clearly follows the first
+                              // instead of reading as one simultaneous pop
   var ELEMENT_STAGGER = 160;  // ms between labels revealed in the same batch
   var ROLL = '1.3s cubic-bezier(.55,.05,.45,.95)';
   var crTargets = Array.prototype.slice.call(document.querySelectorAll('section .cue, .work .label, .val .n, .conviction .num'));
@@ -246,7 +249,7 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'Intersect
     }
   }
 
-  function reveal(el, elDelay) {
+  function reveal(el, elDelay, charStagger) {
     var cs = getComputedStyle(el);
     var fs = parseFloat(cs.fontSize);
     var lh = parseFloat(cs.lineHeight); if (isNaN(lh)) lh = fs * 1.25;
@@ -269,11 +272,11 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'Intersect
     el.getBoundingClientRect();
     requestAnimationFrame(function () {
       inners.forEach(function (inner, i) {
-        inner.style.transition = 'transform ' + ROLL + ' ' + (elDelay + i * CHAR_STAGGER) + 'ms';
+        inner.style.transition = 'transform ' + ROLL + ' ' + (elDelay + i * charStagger) + 'ms';
         inner.style.transform = 'translateY(0)';
       });
     });
-    var totalMs = elDelay + (inners.length - 1) * CHAR_STAGGER + 1300 + 80;
+    var totalMs = elDelay + (inners.length - 1) * charStagger + 1300 + 80;
     setTimeout(function () {
       el.textContent = label;       // back to plain text (counter reappears)
       el.style.letterSpacing = '';
@@ -289,7 +292,11 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'Intersect
     show.sort(function (a, b) { return a.getBoundingClientRect().top - b.getBoundingClientRect().top; });
     show.forEach(function (el, i) {
       crObserver.unobserve(el);
-      reveal(el, i * ELEMENT_STAGGER);
+      // The value numbers (.n / .num) are only 1-2 chars, so they get the
+      // wider NUMBER_STAGGER; the multi-character cue/work labels get the
+      // tighter per-character CHAR_STAGGER.
+      var isNumber = el.classList.contains('n') || el.classList.contains('num');
+      reveal(el, i * ELEMENT_STAGGER, isNumber ? NUMBER_STAGGER : CHAR_STAGGER);
     });
   }, { threshold: 0.6 });
   crTargets.forEach(function (el) { crObserver.observe(el); });

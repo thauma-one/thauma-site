@@ -127,6 +127,14 @@ nav{position:fixed;inset:0 0 auto;z-index:20;backdrop-filter:blur(12px);
 .logo img{height:26px}
 .links{display:flex;gap:24px;font-size:13px;font-weight:400;color:var(--dim)}
 .links a:hover{color:var(--text)}
+/* Hover underline (2026-07-20): a thin blue line draws in from the left
+   on hover. Uses ::before so it never collides with the active link's
+   foam pulse (::after); the active link suppresses this one. */
+.links a::before{content:"";position:absolute;left:0;right:0;bottom:-7px;height:2px;
+  background:var(--blue);transform:scaleX(0);transform-origin:left;
+  transition:transform .3s cubic-bezier(.16,1,.3,1)}
+.links a:hover::before{transform:scaleX(1)}
+.links a.active::before{display:none}
 .nav-actions{display:flex;align-items:center;gap:14px}
 
 /* ---------- Language dropdown (2026-07-17) ----------
@@ -178,14 +186,20 @@ nav{position:fixed;inset:0 0 auto;z-index:20;backdrop-filter:blur(12px);
 
 .give-btn{border:1px solid var(--foam);color:var(--foam);padding:8px 18px;border-radius:2px;
   font-size:11.5px;letter-spacing:.18em;text-transform:uppercase;font-weight:600;
-  transition:color .25s,box-shadow .25s;white-space:nowrap;position:relative;overflow:hidden;isolation:isolate}
+  transition:color .25s,transform .25s;white-space:nowrap;position:relative;overflow:hidden;isolation:isolate}
 /* Foam sweep (2026-07-20): fills in from the left on hover/focus instead
    of a flat background swap. The fill is a ::before behind the label
-   (isolate + z-index:-1 keeps it inside the button, behind the text). */
+   (isolate + z-index:-1 keeps it inside the button, behind the text).
+   box-shadow (the glow) is deliberately NOT transitioned — animating
+   box-shadow is the one thing here that isn't GPU-composited and it made
+   the sweep-out visibly choppy; the glow snaps while the fill (a plain
+   GPU transform, will-change'd) stays smooth. */
 .give-btn::before{content:"";position:absolute;inset:0;background:var(--foam);
-  transform:scaleX(0);transform-origin:left;transition:transform .35s cubic-bezier(.16,1,.3,1);z-index:-1}
+  transform:scaleX(0);transform-origin:left;transition:transform .35s cubic-bezier(.16,1,.3,1);
+  z-index:-1;will-change:transform;backface-visibility:hidden}
 .give-btn:hover::before,.give-btn:focus-visible::before{transform:scaleX(1)}
-.give-btn:hover,.give-btn:focus-visible{color:#06110c;box-shadow:var(--foam-glow)}
+.give-btn:hover,.give-btn:focus-visible{color:#06110c;box-shadow:var(--foam-glow);transform:translateY(-2px)}
+.give-btn:active{transform:translateY(0)}
 .menu-btn{display:none;background:none;border:none;cursor:pointer;width:30px;height:22px;position:relative}
 .menu-btn span{position:absolute;left:0;right:0;height:1px;background:var(--text);transition:.25s}
 .menu-btn span:first-child{top:6px}.menu-btn span:last-child{bottom:6px}
@@ -365,6 +379,11 @@ section:last-of-type{border-bottom:none}
 .btn.solid:hover{box-shadow:var(--foam-glow)}
 .btn.ghost{border:1px solid rgba(47,216,255,.4);color:var(--blue);background:none}
 .btn.ghost:hover{background:var(--blue-dim);box-shadow:var(--blue-glow)}
+/* Tactile lift on hover (2026-07-20): buttons rise a touch, settle on
+   press. transform is GPU-composited so this stays smooth alongside the
+   glow. */
+.btn:hover{transform:translateY(-2px)}
+.btn:active{transform:translateY(0)}
 
 /* ---------- CTA ---------- */
 .cta{text-align:center;padding:130px 0}
