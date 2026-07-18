@@ -340,12 +340,12 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
   document.querySelectorAll('.frame img').forEach(function (img) {
     var m = /scale\(([\d.]+)\)/.exec(img.style.transform || '');
     var base = m ? parseFloat(m[1]) : 1;
-    var scale = Math.max(base, 1) * 1.24; // >=1.24 => >=12% overflow each side
+    var scale = Math.max(base, 1) * 1.18; // >=1.18 => >=9% overflow each side
     img.style.willChange = 'transform';
     pFrames.push({ frame: img.parentNode, img: img, scale: scale });
   });
   if (pFrames.length) {
-    var PMAX = 0.09; // drift, as a fraction of frame height (< the 12% headroom)
+    var PMAX = 0.067; // drift, as a fraction of frame height (< the 9% headroom)
     var pTicking = false;
     var pUpdate = function () {
       var vh = window.innerHeight;
@@ -354,7 +354,12 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
         var center = r.top + r.height / 2;
         var p = (center - vh / 2) / (vh / 2 + r.height / 2);
         if (p < -1) p = -1; else if (p > 1) p = 1;
-        var ty = p * PMAX * r.height; // frame near top (scrolled past) => image trails downward
+        // Negative p * drift: as you scroll down (frame travels up), the
+        // image drifts DOWN within the frame, so it moves slower than the
+        // page and reads as "further back" (true background parallax).
+        // Without the minus it swept up in sync with scroll, moving faster
+        // than the page — which felt backward.
+        var ty = -p * PMAX * r.height;
         f.img.style.transform = 'translate3d(0,' + ty.toFixed(1) + 'px,0) scale(' + f.scale.toFixed(3) + ')';
       });
       pTicking = false;
