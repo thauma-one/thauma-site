@@ -206,9 +206,14 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'Intersect
 // text once a label's roll completes, so the resting DOM (and its exact
 // letter-spacing, which the CSS counter/letter-spacing own) is untouched.
 if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'IntersectionObserver' in window) {
-  var CHAR_STAGGER = 45;      // ms between characters within one label
-  var ELEMENT_STAGGER = 150;  // ms between labels revealed in the same batch
-  var ROLL = '.6s cubic-bezier(.16,1,.3,1)';
+  // Matched to the page-wheel's own roll so the two read as the same
+  // motion: same 1.3s duration and ease-in-out curve, same ~40ms
+  // per-character stagger, same top-down direction (character drops in
+  // from above). ELEMENT_STAGGER is this effect's own addition — the beat
+  // between labels when several reveal together.
+  var CHAR_STAGGER = 40;      // ms between characters within one label
+  var ELEMENT_STAGGER = 160;  // ms between labels revealed in the same batch
+  var ROLL = '1.3s cubic-bezier(.55,.05,.45,.95)';
   var crTargets = Array.prototype.slice.call(document.querySelectorAll('section .cue, .work .label'));
   // Cue leading numbers mirror the CSS counter (section .cue::before,
   // decimal-leading-zero) — computed here so they can roll in with the
@@ -232,7 +237,7 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'Intersect
       if (opacity !== 1) inner.style.opacity = opacity;
       inner.textContent = str[i] === ' ' ? ' ' : str[i];
       inner.style.transition = 'none';
-      inner.style.transform = 'translateY(' + lh + 'px)';
+      inner.style.transform = 'translateY(-' + lh + 'px)'; // starts above; drops in (top-down, like the wheel)
       box.appendChild(inner);
       container.appendChild(box);
       inners.push(inner);
@@ -266,7 +271,7 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'Intersect
         inner.style.transform = 'translateY(0)';
       });
     });
-    var totalMs = elDelay + (inners.length - 1) * CHAR_STAGGER + 600 + 80;
+    var totalMs = elDelay + (inners.length - 1) * CHAR_STAGGER + 1300 + 80;
     setTimeout(function () {
       el.textContent = label;       // back to plain text (counter reappears)
       el.style.letterSpacing = '';

@@ -91,10 +91,16 @@ html{scroll-behavior:smooth;scrollbar-width:thin;scrollbar-color:var(--blue) var
    so crossfading them is imperceptible; only the <main> content visibly
    dissolves. Disabled outright under reduced motion. */
 @view-transition{navigation:auto}
-::view-transition-old(root),::view-transition-new(root){
-  animation-duration:.5s;animation-timing-function:cubic-bezier(.55,.05,.45,.95)}
+/* Hold the outgoing page fully opaque and fade the incoming one in over
+   the top of it, instead of the default cross-dissolve (both animating
+   opacity at once). The cross-dissolve dips through a lighter 50/50
+   midpoint that read as a flash on desktop; this way the screen always
+   shows a complete page. */
+::view-transition-old(root){animation:none}
+::view-transition-new(root){animation:vt-fade-in .5s cubic-bezier(.55,.05,.45,.95) both}
+@keyframes vt-fade-in{from{opacity:0}to{opacity:1}}
 @media(prefers-reduced-motion:reduce){
-  ::view-transition-old(root),::view-transition-new(root){animation:none}
+  ::view-transition-new(root){animation:none}
 }
 
 /* ---------- Scrollbar (WebKit/Blink) ---------- */
@@ -496,7 +502,7 @@ section .cue, .work .label{font-kerning:none;font-variant-ligatures:none}
 .cue.cr-nonum::before{display:none}
 @media(prefers-reduced-motion:no-preference){
   section .cue, .work .label{opacity:0}
-  .cr-in{transition:transform .6s cubic-bezier(.16,1,.3,1)}
+  .cr-in{transition:transform 1.3s cubic-bezier(.55,.05,.45,.95)}
 }
 .foot-socials{display:flex;align-items:center;gap:16px}
 .foot-socials a{color:var(--dim);display:inline-flex;transition:.2s}
