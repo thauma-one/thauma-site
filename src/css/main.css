@@ -257,11 +257,19 @@ section:last-of-type{border-bottom:none}
     text-transform:uppercase;color:var(--blue);white-space:nowrap}
   .page-wheel-row{height:var(--wheel-row-h);display:flex;align-items:center;letter-spacing:.18em}
   .page-wheel-charrow{height:var(--wheel-row-h);white-space:nowrap;line-height:var(--wheel-row-h)}
+  /* Each character box's WIDTH is set inline by main.js and animated from
+     the outgoing character's width to the incoming one's, so BOTH labels
+     are correctly spaced at their own ends of the roll (the from-label at
+     the start, the to-label at the end) rather than only one of them. The
+     two characters are absolutely stacked (natural width, out of flow)
+     inside the box, which the box then clips. margin-right:.18em
+     replicates the resting row's letter-spacing. */
   .pw-char{position:relative;display:inline-block;vertical-align:top;overflow:hidden;
     height:var(--wheel-row-h);margin-right:.18em}
-  .pw-char-cell{display:block;height:var(--wheel-row-h);line-height:var(--wheel-row-h);transform:translateY(0)}
-  .pw-old{position:absolute;top:0;left:0}
+  .pw-char-cell{position:absolute;top:0;left:0;height:var(--wheel-row-h);
+    line-height:var(--wheel-row-h);white-space:pre;transform:translateY(0)}
   @media(prefers-reduced-motion:no-preference){
+    .pw-char{transition:width 1.3s cubic-bezier(.55,.05,.45,.95)}
     .pw-char-cell{transition:transform 1.3s cubic-bezier(.55,.05,.45,.95)}
   }
 }

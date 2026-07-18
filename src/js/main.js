@@ -108,6 +108,17 @@ document.querySelectorAll('.links a, .mobile-menu a').forEach(function (a) {
   // too abrupt/constant-speed at the start of each character's roll.
   var DURATION = (DURATION_MS / 1000) + 's ' + EASING;
   if (!reduced && rowH && hasPrev && prevLabel !== currentLabel) {
+    // Measure each character's natural rendered width with a hidden span
+    // that inherits the track's real font (canvas measureText, tried
+    // before, reconstructs the font from a string and its metrics can
+    // diverge from the DOM's — this can't). Both the outgoing and incoming
+    // label have to be correctly spaced, at their own ends of the roll, so
+    // each character box animates its WIDTH from the old character's to the
+    // new character's alongside the vertical roll.
+    var meas = document.createElement('span');
+    meas.style.cssText = 'position:absolute;visibility:hidden;white-space:pre;font:inherit;letter-spacing:normal';
+    track.appendChild(meas);
+    var widthOf = function (ch) { meas.textContent = ch; return meas.getBoundingClientRect().width; };
     var len = Math.max(prevLabel.length, currentLabel.length);
     var oldStr = prevLabel, newStr = currentLabel;
     while (oldStr.length < len) oldStr += ' ';
@@ -118,37 +129,40 @@ document.querySelectorAll('.links a, .mobile-menu a').forEach(function (a) {
     for (var i = 0; i < len; i++) {
       var wrap = document.createElement('span');
       wrap.className = 'pw-char';
-      // .pw-new stays in normal flow, so the incoming character is what
-      // sizes the box, matching the resting layout exactly. .pw-old is
-      // absolutely positioned (out of flow), so the outgoing character
-      // can never widen the box even when it is the wider of the two.
       var newCell = document.createElement('span');
       newCell.className = 'pw-char-cell pw-new';
       newCell.textContent = newStr[i];
       var oldCell = document.createElement('span');
       oldCell.className = 'pw-char-cell pw-old';
       oldCell.textContent = oldStr[i];
-      // Top-down: incoming char starts one row ABOVE the window and slides
-      // down into place; outgoing char starts in place and slides down and
-      // out below (clipped by .pw-char's overflow:hidden). Both move by the
-      // same one row height, so they stay locked together as they roll.
+      // Start (no transition): box sized to the OLD character, old char in
+      // view, new char one row above. Both characters keep their natural
+      // width; only the box (and thus the horizontal spacing) animates.
+      wrap.style.transition = 'none';
       newCell.style.transition = 'none';
       oldCell.style.transition = 'none';
-      newCell.style.transform = 'translateY(-' + rowH + 'px)';
+      wrap.style.width = widthOf(oldStr[i]) + 'px';
       oldCell.style.transform = 'translateY(0px)';
+      newCell.style.transform = 'translateY(-' + rowH + 'px)';
       wrap.appendChild(newCell);
       wrap.appendChild(oldCell);
       charRow.appendChild(wrap);
-      cells.push({ newCell: newCell, oldCell: oldCell, delay: START_DELAY + i * STAGGER });
+      cells.push({ wrap: wrap, newCell: newCell, oldCell: oldCell,
+                   newWidth: widthOf(newStr[i]), delay: START_DELAY + i * STAGGER });
     }
+    track.removeChild(meas);
     track.innerHTML = '';
     track.appendChild(charRow);
     charRow.getBoundingClientRect();
     requestAnimationFrame(function () {
       cells.forEach(function (c) {
-        var t = 'transform ' + DURATION + ' ' + c.delay + 'ms';
-        c.newCell.style.transition = t;
-        c.oldCell.style.transition = t;
+        var t = ' ' + DURATION + ' ' + c.delay + 'ms';
+        c.wrap.style.transition = 'width' + t;
+        c.newCell.style.transition = 'transform' + t;
+        c.oldCell.style.transition = 'transform' + t;
+        // End: box sized to the NEW character; new char rolls into view,
+        // old char rolls down and out below (clipped by overflow:hidden).
+        c.wrap.style.width = c.newWidth + 'px';
         c.newCell.style.transform = 'translateY(0px)';
         c.oldCell.style.transform = 'translateY(' + rowH + 'px)';
       });
