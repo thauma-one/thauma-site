@@ -38,7 +38,6 @@ pageTitle: mission
   <div class="frame">
     <img src="{{ site.images.mission_horizon.src }}" alt="{{ t.mission.horizon_img_tag }}" loading="lazy" decoding="async"
       style="object-position:{{ site.images.mission_horizon.focal_x }}% {{ site.images.mission_horizon.focal_y }}%;transform-origin:{{ site.images.mission_horizon.focal_x }}% {{ site.images.mission_horizon.focal_y }}%;transform:scale({{ site.images.mission_horizon.zoom / 100 }})">
-    <span class="tag">{{ t.mission.horizon_img_tag }}</span>
   </div>
   {% elif not env.isProduction %}
   <div class="frame-placeholder"><span>{{ t.mission.horizon_placeholder }}</span></div>

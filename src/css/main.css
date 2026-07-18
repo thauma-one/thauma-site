@@ -394,7 +394,6 @@ section:last-of-type{border-bottom:none}
     linear-gradient(160deg,#16202e 0%, #0b0f15 70%);
   box-shadow:inset 0 0 80px rgba(47,216,255,.06)}
 .frame img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.75}
-.frame .tag{position:absolute;bottom:14px;left:16px;font-size:10.5px;letter-spacing:.25em;text-transform:uppercase;color:var(--dim);z-index:2}
 
 /* Dev-only empty-frame outline (2026-07-17) — same dashed language as
    .empty, shown only on the dev server (never in production, gated in

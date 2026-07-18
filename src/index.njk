@@ -25,7 +25,6 @@ pageTitle: home
   <div class="frame">
     <img src="{{ site.images.home_who.src }}" alt="{{ t.home.who_img_tag }}" loading="lazy" decoding="async"
       style="object-position:{{ site.images.home_who.focal_x }}% {{ site.images.home_who.focal_y }}%;transform-origin:{{ site.images.home_who.focal_x }}% {{ site.images.home_who.focal_y }}%;transform:scale({{ site.images.home_who.zoom / 100 }})">
-    <span class="tag">{{ t.home.who_img_tag }}</span>
   </div>
   {% elif not env.isProduction %}
   <div class="frame-placeholder"><span>{{ t.home.who_placeholder }}</span></div>
