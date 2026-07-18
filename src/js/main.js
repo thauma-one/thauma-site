@@ -293,7 +293,7 @@ document.querySelectorAll('.give-btn').forEach(function (btn) {
 // (the cue rolls in per-character); .work's text side (:not(.label)) still
 // fades in the ordinary way, just not the label, which rolls.
 if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'IntersectionObserver' in window) {
-  var targets = Array.prototype.slice.call(document.querySelectorAll('section h2, section .lede, section .body-text, .val h3, .val p, .conviction > div:not(.num), .work > div:not(.label), .person, .give-card, .frame, .empty, .resource-card'));
+  var targets = Array.prototype.slice.call(document.querySelectorAll('section h2, section .lede, section .body-text, .val h3, .val p, .conviction > div:not(.num), .work > div:not(.label), .person, .give-card, .frame, .empty, .resource-card, .bio-photo'));
   // Hide (.sr) immediately — pre-paint — then split by arrival type at
   // pagereveal: on a TRANSITIONED arrival, anything already inside the
   // viewport is un-hidden again (still pre-paint, so it never flashes) and
@@ -316,8 +316,20 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'Intersect
     });
   });
   var io = new IntersectionObserver(function (entries) {
-    entries.forEach(function (e) {
-      if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+    var batch = entries.filter(function (e) { return e.isIntersecting; })
+                       .map(function (e) { return e.target; });
+    if (!batch.length) return;
+    // A batch that reveals together (a grid of team cards, the values
+    // list, resource cards) cascades top-to-bottom instead of popping in
+    // as one block — same choreography the label cascade uses. The delay
+    // is cleared once the fade is over so it can't slow any later
+    // transition (hover etc.) on the same element.
+    batch.sort(function (a, b) { return a.getBoundingClientRect().top - b.getBoundingClientRect().top; });
+    batch.forEach(function (el, i) {
+      io.unobserve(el);
+      el.style.transitionDelay = (i * 90) + 'ms';
+      el.classList.add('in');
+      setTimeout(function () { el.style.transitionDelay = ''; }, 800 + i * 90);
     });
   }, { threshold: 0.12 });
   whenPageSettled(function () {

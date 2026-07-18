@@ -18,13 +18,13 @@
     "home_who": {
       "src": "/img/home-worship-stage.webp",
       "focal_x": 50,
-      "focal_y": 22,
+      "focal_y": 28,
       "zoom": 110
     },
     "about_posture": {
       "src": "/img/about-worship-team.webp",
       "focal_x": 50,
-      "focal_y": 50,
+      "focal_y": 57,
       "zoom": 100
     },
     "mission_horizon": {

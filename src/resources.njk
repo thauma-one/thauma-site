@@ -28,7 +28,7 @@ pageTitle: resources
   <div class="resource-grid">
     {% for r in resources %}
     <div class="resource-card">
-      {% if r.photo %}<div class="resource-photo"><img src="{{ r.photo }}" alt="{{ r.title[lang] }}" loading="lazy"></div>{% endif %}
+      {% if r.photo %}<div class="resource-photo"><img src="{{ r.photo }}" alt="{{ r.title[lang] }}" loading="lazy" decoding="async"></div>{% endif %}
       <h3>{{ r.title[lang] }}</h3>
       {% if r.description[lang] %}<p>{{ r.description[lang] | md | safe }}</p>{% endif %}
       {% if r.link %}<a class="btn ghost" href="{{ r.link }}" target="_blank" rel="noopener">{{ t.resources.link_label }}</a>{% endif %}

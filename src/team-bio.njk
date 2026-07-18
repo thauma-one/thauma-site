@@ -15,7 +15,7 @@ pagination:
 
 <section><div class="wrap bio-layout">
   <div class="person-photo bio-photo"{% if member.bioPhotoAspect %} style="aspect-ratio:{{ member.bioPhotoAspect }}"{% endif %}>
-    {% if member.bioPhoto %}<img src="{{ member.bioPhoto }}" alt="{{ member.name }}" loading="lazy">
+    {% if member.bioPhoto %}<img src="{{ member.bioPhoto }}" alt="{{ member.name }}" loading="lazy" decoding="async">
     {% else %}<span class="person-initial">{{ member.name | first }}</span>{% endif %}
   </div>
   <div>

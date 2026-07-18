@@ -18,7 +18,7 @@ pageTitle: team
     {% for person in team %}
     <a class="person" href="/{{ lang }}/team/{{ person.slug }}/">
       <div class="person-photo">
-        {% if person.photo %}<img src="{{ person.photo }}" alt="{{ person.name }}" loading="lazy">
+        {% if person.photo %}<img src="{{ person.photo }}" alt="{{ person.name }}" loading="lazy" decoding="async">
         {% else %}<span class="person-initial">{{ person.name | first }}</span>{% endif %}
       </div>
       <h3>{{ person.name }}</h3>

@@ -130,6 +130,14 @@ html{scroll-behavior:smooth;scrollbar-width:thin;scrollbar-color:var(--blue) var
 html.vt-leaving .btn,html.vt-leaving .give-btn{
   transition:none!important;transform:none!important;box-shadow:none!important}
 html.vt-leaving .links a::before{transition:none!important;transform:scaleX(0)!important}
+/* The active-link underline pulse is captured wherever its infinite cycle
+   happens to be — often half-grown, which read as a "cut to half filled"
+   bar in the outgoing snapshot (most visible in the open mobile menu when
+   picking a new page). Freeze it COMPLETE for the capture, same
+   philosophy as the Give fill: a full underline dissolving out with the
+   fade reads as finished, not chopped. */
+html.vt-leaving .links a.active::after,
+html.vt-leaving .mobile-menu a.active::after{animation:none!important;transform:scaleX(1)!important}
 html.vt-leaving.give-pressed .give-btn{color:#06110c!important}
 html.vt-leaving.give-pressed .give-btn::before{transition:none!important;transform:scaleX(1)!important}
 

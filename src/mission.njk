@@ -36,7 +36,7 @@ pageTitle: mission
   <p class="body-text">{{ t.mission.success_text }}</p>
   {% if site.images.mission_horizon.src %}
   <div class="frame">
-    <img src="{{ site.images.mission_horizon.src }}" alt="{{ t.mission.horizon_img_tag }}" loading="lazy"
+    <img src="{{ site.images.mission_horizon.src }}" alt="{{ t.mission.horizon_img_tag }}" loading="lazy" decoding="async"
       style="object-position:{{ site.images.mission_horizon.focal_x }}% {{ site.images.mission_horizon.focal_y }}%;transform-origin:{{ site.images.mission_horizon.focal_x }}% {{ site.images.mission_horizon.focal_y }}%;transform:scale({{ site.images.mission_horizon.zoom / 100 }})">
     <span class="tag">{{ t.mission.horizon_img_tag }}</span>
   </div>
