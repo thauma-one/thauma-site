@@ -115,16 +115,23 @@ html{scroll-behavior:smooth;scrollbar-width:thin;scrollbar-color:var(--blue) var
 .vt-active .links a.active::after,
 .vt-active .mobile-menu a.active::after{animation-play-state:paused}
 /* vt-leaving (set on pageswap, the moment before the OUTGOING page's
-   snapshot is captured): freeze every interactive state back to rest so
-   the captured nav/buttons match the incoming page's resting ones —
-   otherwise a mid-press Give fill is captured and visibly "un-fills"
-   (and stutters) across the fade. !important is deliberate: these must
-   beat any :hover/:focus/:active rule regardless of specificity. */
-html.vt-leaving .give-btn,html.vt-leaving .btn{
+   snapshot is captured): freeze interactive states so the capture is
+   clean and stable. !important is deliberate: these must beat any
+   :hover/:focus/:active rule regardless of specificity.
+
+   The Give fill is special-cased (2026-07-21): freezing it back to REST
+   visibly cut the fill off right under the user's finger. So when Give
+   was actually pressed (html.give-pressed, set on click, cleared at the
+   next pagereveal), the fill is COMPLETED for the capture instead —
+   continuing the motion the press started — and the page fade then
+   dissolves the filled button into the new page's resting one; the
+   dissolve IS the ease-out. A Give that wasn't pressed has no fill in
+   play, so it needs no fill rule at all. */
+html.vt-leaving .btn,html.vt-leaving .give-btn{
   transition:none!important;transform:none!important;box-shadow:none!important}
-html.vt-leaving .give-btn{color:var(--foam)!important}
-html.vt-leaving .give-btn::before,html.vt-leaving .links a::before{
-  transition:none!important;transform:scaleX(0)!important}
+html.vt-leaving .links a::before{transition:none!important;transform:scaleX(0)!important}
+html.vt-leaving.give-pressed .give-btn{color:#06110c!important}
+html.vt-leaving.give-pressed .give-btn::before{transition:none!important;transform:scaleX(1)!important}
 
 /* ---------- Scrollbar (WebKit/Blink) ---------- */
 ::-webkit-scrollbar{width:11px;height:11px}

@@ -76,24 +76,40 @@ document.querySelectorAll('.links a, .mobile-menu a').forEach(function (a) {
 // over a fully static page; the choreography starts the moment it
 // finishes. Without a transition (or without pagereveal support) settle is
 // immediate and behavior is exactly as before.
-var whenPageSettled = (function () {
+var whenPageSettled, atPageReveal;
+(function () {
   var settled = false, queue = [];
+  var revealRan = false, revealQueue = [], viaTransition = false;
+  function runReveal() {
+    if (revealRan) return;
+    revealRan = true;
+    revealQueue.splice(0).forEach(function (fn) { fn(viaTransition); });
+  }
   function settle() {
+    // vt-active clears even if already settled: a bfcache restore re-adds
+    // it (pagereveal fires again on the SAME, already-settled document),
+    // and an early-return here left it stuck — pausing the underline
+    // pulse forever on restored pages.
+    document.documentElement.classList.remove('vt-active');
     if (settled) return;
     settled = true;
-    document.documentElement.classList.remove('vt-active');
     queue.splice(0).forEach(function (fn) { fn(); });
   }
+  whenPageSettled = function (fn) { if (settled) fn(); else queue.push(fn); };
+  // Runs pre-first-paint, inside pagereveal itself, with a flag for
+  // whether this arrival came through a view transition — for work that
+  // must alter the page BEFORE the fade starts rendering it.
+  atPageReveal = function (fn) { if (revealRan) fn(viaTransition); else revealQueue.push(fn); };
   if ('onpagereveal' in window) {
     var revealSeen = false;
     window.addEventListener('pagereveal', function (e) {
       revealSeen = true;
-      // Clear the outgoing-snapshot freeze (set at pageswap below): on a
-      // back/forward-cache restore this same document comes back alive,
-      // and a stuck vt-leaving would leave its buttons/links with
-      // transition:none!important forever — hover states snapping instead
-      // of easing.
-      document.documentElement.classList.remove('vt-leaving');
+      // Clear the outgoing freezes (set at pageswap / Give press below):
+      // on a back/forward-cache restore this same document comes back
+      // alive, and stuck classes would leave buttons/links with
+      // transition:none!important forever — snapping instead of easing.
+      document.documentElement.classList.remove('vt-leaving', 'give-pressed');
+      viaTransition = !!e.viewTransition;
       if (e.viewTransition) {
         // vt-active is removed at settle; vt-came stays for the page's
         // lifetime — a transitioned arrival's entrance IS the fade, so the
@@ -102,34 +118,44 @@ var whenPageSettled = (function () {
         // held-then-played, which left the incoming page blank for the
         // whole fade and made it read as a hard cut + pop.
         document.documentElement.classList.add('vt-active', 'vt-came');
+        runReveal();
         e.viewTransition.finished.then(settle, settle);
         setTimeout(settle, 900); // failsafe: never hold the page hostage
       } else {
+        runReveal();
         settle();
       }
     });
     // pageswap fires on the OUTGOING page right before its snapshot is
-    // captured: freeze the nav's interactive states (Give fill/lift,
-    // link hover underlines, button lifts) back to rest (vt-leaving,
-    // see main.css) so the captured nav matches the incoming page's
-    // resting nav — otherwise a mid-press Give fill gets captured and
-    // then visibly "un-fills" across the fade.
+    // captured: freeze the nav's interactive states (vt-leaving, see
+    // main.css) so the capture is clean — including completing a
+    // mid-press Give fill rather than cutting it (give-pressed).
     window.addEventListener('pageswap', function () {
       document.documentElement.classList.add('vt-leaving');
     });
     // Belt-and-braces for the same bfcache case as above, in case a
     // restore ever fires pageshow without pagereveal.
     window.addEventListener('pageshow', function (e) {
-      if (e.persisted) document.documentElement.classList.remove('vt-leaving');
+      if (e.persisted) document.documentElement.classList.remove('vt-leaving', 'give-pressed');
     });
     // pagereveal fires before load in every normal case; if it somehow
     // never fires for this navigation, settle at load rather than never.
-    window.addEventListener('load', function () { if (!revealSeen) settle(); });
+    window.addEventListener('load', function () { if (!revealSeen) { runReveal(); settle(); } });
   } else {
     settled = true;
+    revealRan = true;
   }
-  return function (fn) { if (settled) fn(); else queue.push(fn); };
 })();
+
+// Pressing Give marks the document (give-pressed, cleared again at the
+// next pagereveal) so the pageswap freeze can COMPLETE the fill for the
+// outgoing snapshot instead of cutting it off — see main.css's
+// vt-leaving rules.
+document.querySelectorAll('.give-btn').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    document.documentElement.classList.add('give-pressed');
+  });
+});
 
 // ---- Page-location wheel: per-character cascade from the previous page's
 // label (2026-07-20) ----
@@ -267,19 +293,35 @@ var whenPageSettled = (function () {
 // (the cue rolls in per-character); .work's text side (:not(.label)) still
 // fades in the ordinary way, just not the label, which rolls.
 if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'IntersectionObserver' in window) {
-  var targets = document.querySelectorAll('section h2, section .lede, section .body-text, .val h3, .val p, .conviction > div:not(.num), .work > div:not(.label), .person, .give-card, .frame, .empty');
-  // Hide (.sr) immediately so nothing half-fades during a page transition,
-  // but only start observing — i.e. letting things fade in — once the page
-  // has settled (whenPageSettled): mid-transition these must read as
-  // absent, not animating.
+  var targets = Array.prototype.slice.call(document.querySelectorAll('section h2, section .lede, section .body-text, .val h3, .val p, .conviction > div:not(.num), .work > div:not(.label), .person, .give-card, .frame, .empty, .resource-card'));
+  // Hide (.sr) immediately — pre-paint — then split by arrival type at
+  // pagereveal: on a TRANSITIONED arrival, anything already inside the
+  // viewport is un-hidden again (still pre-paint, so it never flashes) and
+  // simply rides the fade in with the rest of the page — hiding it and
+  // fading it in after the transition read as "the transition didn't
+  // apply to it" on content-dense pages (Values' convictions, Resources'
+  // cards). Below-fold targets keep the scroll-triggered fade, observed
+  // once the page settles. On a plain load (no transition) everything
+  // keeps the load-time fade exactly as before.
   targets.forEach(function (el) { el.classList.add('sr'); });
+  var toObserve = targets;
+  atPageReveal(function (viaTransition) {
+    if (!viaTransition) return;
+    var vh = window.innerHeight;
+    toObserve = [];
+    targets.forEach(function (el) {
+      var r = el.getBoundingClientRect();
+      if (r.top < vh && r.bottom > 0) el.classList.remove('sr');
+      else toObserve.push(el);
+    });
+  });
   var io = new IntersectionObserver(function (entries) {
     entries.forEach(function (e) {
       if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
     });
   }, { threshold: 0.12 });
   whenPageSettled(function () {
-    targets.forEach(function (el) { io.observe(el); });
+    toObserve.forEach(function (el) { io.observe(el); });
   });
 }
 
