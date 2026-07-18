@@ -14,9 +14,21 @@ pagination:
 </div></header>
 
 <section><div class="wrap bio-layout">
-  <div class="person-photo bio-photo"{% if member.bioPhotoAspect %} style="aspect-ratio:{{ member.bioPhotoAspect }}"{% endif %}>
-    {% if member.bioPhoto %}<img src="{{ member.bioPhoto }}" alt="{{ member.name }}" loading="lazy" decoding="async">
-    {% else %}<span class="person-initial">{{ member.name | first }}</span>{% endif %}
+  {#- data-vt-person pairs this portrait with the same person's team-card
+     photo for the grid->bio morph (main.js assigns the shared
+     view-transition-name, desktop only). Only the FIRST photo gets the
+     pairing — the optional second photo below is bio-page-only, so it
+     has nothing to morph from and just reveals normally. #}
+  <div class="bio-photos">
+    <div class="person-photo bio-photo" data-vt-person="{{ member.slug }}"{% if member.bioPhotoAspect %} style="aspect-ratio:{{ member.bioPhotoAspect }}"{% endif %}>
+      {% if member.bioPhoto %}<img src="{{ member.bioPhoto }}" alt="{{ member.name }}" loading="lazy" decoding="async">
+      {% else %}<span class="person-initial">{{ member.name | first }}</span>{% endif %}
+    </div>
+    {% if member.bioPhoto2 %}
+    <div class="person-photo bio-photo"{% if member.bioPhoto2Aspect %} style="aspect-ratio:{{ member.bioPhoto2Aspect }}"{% endif %}>
+      <img src="{{ member.bioPhoto2 }}" alt="{{ member.name }}" loading="lazy" decoding="async">
+    </div>
+    {% endif %}
   </div>
   <div>
     <div class="cue">{{ t.team.bio_cue }}</div>

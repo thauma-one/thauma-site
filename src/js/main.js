@@ -147,6 +147,22 @@ var whenPageSettled, atPageReveal;
   }
 })();
 
+// ---- Grid -> bio portrait morph names (2026-07-21) ----
+// The team page marks each card's photo and the bio page marks its main
+// portrait with data-vt-person="<slug>"; giving the pair the same
+// view-transition-name makes the browser morph the photo from its grid
+// cell into the bio layout position (and back) across the navigation.
+// Assigned here, before first paint, so both the outgoing capture and
+// the incoming render see the names. Desktop only per direct request —
+// the mobile layouts differ enough that the morph wasn't wanted there —
+// and skipped where names aren't supported (no fallback needed; those
+// browsers just keep the plain fade).
+if (window.matchMedia('(min-width:901px)').matches && 'viewTransitionName' in document.documentElement.style) {
+  document.querySelectorAll('[data-vt-person]').forEach(function (el) {
+    el.style.viewTransitionName = 'person-' + el.dataset.vtPerson;
+  });
+}
+
 // Pressing Give marks the document (give-pressed, cleared again at the
 // next pagereveal) so the pageswap freeze can COMPLETE the fill for the
 // outgoing snapshot instead of cutting it off — see main.css's
@@ -311,12 +327,7 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'Intersect
     toObserve = [];
     targets.forEach(function (el) {
       var r = el.getBoundingClientRect();
-      // Team cards and the bio portrait keep their .sr even above the
-      // fold: their photos have a dedicated develop-from-darkness
-      // entrance (see main.css's portrait-develop block) that should
-      // play on every arrival type, not get swallowed by riding the
-      // fade.
-      if (r.top < vh && r.bottom > 0 && !el.matches('.person, .bio-photo')) el.classList.remove('sr');
+      if (r.top < vh && r.bottom > 0) el.classList.remove('sr');
       else toObserve.push(el);
     });
   });

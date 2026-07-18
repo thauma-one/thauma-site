@@ -36,11 +36,14 @@ module.exports = () => {
     .map((f) => {
       const { data } = matter(fs.readFileSync(path.join(dir, f), "utf8"));
       const bioPhoto = data.bio_photo || data.photo;
+      const bioPhoto2 = data.bio_photo_2 || null; // optional second bio-page photo
       return {
         slug: f.replace(/\.md$/, ""),
         ...data,
         bioPhoto,
         bioPhotoAspect: resolvePhotoAspect(bioPhoto),
+        bioPhoto2,
+        bioPhoto2Aspect: resolvePhotoAspect(bioPhoto2),
       };
     })
     .sort((a, b) => (a.order || 99) - (b.order || 99));

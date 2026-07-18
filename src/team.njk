@@ -17,7 +17,7 @@ pageTitle: team
   <div class="team-grid">
     {% for person in team %}
     <a class="person" href="/{{ lang }}/team/{{ person.slug }}/">
-      <div class="person-photo">
+      <div class="person-photo" data-vt-person="{{ person.slug }}">
         {% if person.photo %}<img src="{{ person.photo }}" alt="{{ person.name }}" loading="lazy" decoding="async">
         {% else %}<span class="person-initial">{{ person.name | first }}</span>{% endif %}
       </div>

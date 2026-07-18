@@ -299,6 +299,7 @@ collections:
       - { label: "Display order", name: "order", widget: "number", default: 10 }
       - { label: "Photo", name: "photo", widget: "image", required: false }
       - { label: "Bio page photo", name: "bio_photo", widget: "image", required: false, hint: "Optional — shown only on this person's bio page. Leave blank to reuse the Photo above. Any aspect ratio is fine; the frame adapts to the image, not the other way around." }
+      - { label: "Bio page photo 2", name: "bio_photo_2", widget: "image", required: false, hint: "Optional — a second photo shown below the first on the bio page. Leave blank for just one. Any aspect ratio is fine here too." }
       - { label: "Home base", name: "base", widget: "string", hint: "e.g. Zagreb, Croatia" }
       - { label: "Email", name: "email", widget: "string", required: false }
       - label: "Role / Position"
