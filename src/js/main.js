@@ -302,6 +302,46 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'Intersect
   crTargets.forEach(function (el) { crObserver.observe(el); });
 }
 
+// ---- Whisper-parallax on framed photos (2026-07-20) ----
+// The photo drifts vertically a touch slower than the page as its frame
+// passes through the viewport, for a subtle sense of depth. The frame's
+// focal zoom lives in an inline transform:scale() with transform-origin
+// at the focal point; this reads that base scale, bumps it just enough to
+// create vertical headroom (so the drift never exposes the frame edge),
+// and rewrites only `transform` (transform-origin, i.e. the focal point,
+// is left untouched). Skipped entirely under reduced motion, where the
+// images keep their exact framing.
+if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  var pFrames = [];
+  document.querySelectorAll('.frame img').forEach(function (img) {
+    var m = /scale\(([\d.]+)\)/.exec(img.style.transform || '');
+    var base = m ? parseFloat(m[1]) : 1;
+    var scale = Math.max(base, 1) * 1.12; // >=1.12 => >=6% overflow each side
+    img.style.willChange = 'transform';
+    pFrames.push({ frame: img.parentNode, img: img, scale: scale });
+  });
+  if (pFrames.length) {
+    var PMAX = 0.045; // drift, as a fraction of frame height (< the 6% headroom)
+    var pTicking = false;
+    var pUpdate = function () {
+      var vh = window.innerHeight;
+      pFrames.forEach(function (f) {
+        var r = f.frame.getBoundingClientRect();
+        var center = r.top + r.height / 2;
+        var p = (center - vh / 2) / (vh / 2 + r.height / 2);
+        if (p < -1) p = -1; else if (p > 1) p = 1;
+        var ty = p * PMAX * r.height; // frame near top (scrolled past) => image trails downward
+        f.img.style.transform = 'translate3d(0,' + ty.toFixed(1) + 'px,0) scale(' + f.scale.toFixed(3) + ')';
+      });
+      pTicking = false;
+    };
+    var pRequest = function () { if (!pTicking) { pTicking = true; requestAnimationFrame(pUpdate); } };
+    window.addEventListener('scroll', pRequest, { passive: true });
+    window.addEventListener('resize', pRequest);
+    pUpdate(); // set initial positions so there's no jump on first scroll
+  }
+}
+
 // ---- Scroll progress line (only where there's meaningful scroll) ----
 if (document.body.scrollHeight > window.innerHeight * 1.3) {
   var bar = document.createElement('div');
