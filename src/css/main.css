@@ -83,6 +83,20 @@
    pinch-zoom or text selection — neither is affected by this value. */
 html{scroll-behavior:smooth;scrollbar-width:thin;scrollbar-color:var(--blue) var(--bg2);touch-action:manipulation}
 
+/* ---------- Cross-page transitions (2026-07-20) ----------
+   MPA View Transitions: a gentle crossfade between full page loads
+   instead of a hard cut, tuned to the site's own slow ease-in-out curve.
+   Fully progressive — browsers without support just navigate instantly,
+   exactly as before. The nav and page-wheel are identical page to page,
+   so crossfading them is imperceptible; only the <main> content visibly
+   dissolves. Disabled outright under reduced motion. */
+@view-transition{navigation:auto}
+::view-transition-old(root),::view-transition-new(root){
+  animation-duration:.5s;animation-timing-function:cubic-bezier(.55,.05,.45,.95)}
+@media(prefers-reduced-motion:reduce){
+  ::view-transition-old(root),::view-transition-new(root){animation:none}
+}
+
 /* ---------- Scrollbar (WebKit/Blink) ---------- */
 ::-webkit-scrollbar{width:11px;height:11px}
 ::-webkit-scrollbar-track{background:var(--bg2)}
@@ -187,11 +201,15 @@ nav{position:fixed;inset:0 0 auto;z-index:20;backdrop-filter:blur(12px);
 .cue::before{content:"";display:inline-block;width:34px;height:1px;background:currentColor;vertical-align:middle;margin-right:14px}
 .cue.foam{color:var(--foam)}
 .cue.bare::before{display:none}
-h1,h2{font-family:'Sora',sans-serif;font-weight:100;letter-spacing:.01em}
+/* text-wrap:balance evens out the line lengths of these short display
+   headings (no more one-long-line-then-one-word); text-wrap:pretty on the
+   longer body copy only touches the last few lines to prevent orphans.
+   Both are progressive — ignored where unsupported, no fallback needed. */
+h1,h2{font-family:'Sora',sans-serif;font-weight:100;letter-spacing:.01em;text-wrap:balance}
 h2{font-size:clamp(30px,4.4vw,48px);line-height:1.15;max-width:660px}
 h2 b{font-weight:600}
-.lede{margin-top:22px;max-width:560px;color:var(--dim);font-size:15.5px;font-weight:200;line-height:1.85}
-.body-text{margin-top:22px;max-width:620px;color:var(--dim);font-size:15.5px;font-weight:200;line-height:1.9}
+.lede{margin-top:22px;max-width:560px;color:var(--dim);font-size:15.5px;font-weight:200;line-height:1.85;text-wrap:pretty}
+.body-text{margin-top:22px;max-width:620px;color:var(--dim);font-size:15.5px;font-weight:200;line-height:1.9;text-wrap:pretty}
 
 /* ---------- Home hero ---------- */
 header.hero{min-height:100vh;display:flex;flex-direction:column;justify-content:center;position:relative;padding-top:64px}
@@ -200,7 +218,7 @@ header.hero{min-height:100vh;display:flex;flex-direction:column;justify-content:
    native double-tap-zoom gesture instead of 5 clean clicks. */
 .wordmark{font-family:'Sora',sans-serif;font-weight:100;font-size:clamp(56px,11vw,150px);letter-spacing:.14em;line-height:1;
   text-shadow:0 0 60px rgba(47,216,255,.22);touch-action:manipulation}
-.hero-line{font-family:'Sora',sans-serif;font-weight:100;font-size:clamp(20px,2.6vw,30px);letter-spacing:.02em;margin-top:22px;color:var(--dim)}
+.hero-line{font-family:'Sora',sans-serif;font-weight:100;font-size:clamp(20px,2.6vw,30px);letter-spacing:.02em;margin-top:22px;color:var(--dim);text-wrap:balance}
 .hero-line b{font-weight:600;color:var(--text)}
 .hero-sub{margin-top:30px;max-width:520px;font-size:16px;font-weight:200;line-height:1.8;color:var(--dim)}
 .meter{position:absolute;bottom:0;left:0;right:0;height:1px;background:rgba(255,255,255,.08)}
@@ -448,7 +466,13 @@ footer{flex-shrink:0;background:var(--bg2);border-top:1px solid rgba(255,255,255
 @media(max-width:820px){.staff-grid{grid-template-columns:1fr}}
 
 /* ---------- Navigation experience ---------- */
-::selection{background:rgba(92,242,196,.35);color:#fff}
+/* Voice-aware text selection (2026-07-20): the site's two-color system
+   (BLUE = technical voice, FOAM = ministry voice) carries through to
+   highlighting. Default is blue; sections/headers that carry a foam cue
+   (the ministry-voice ones) tint their selection foam instead — matched
+   via :has() so it needs no per-section markup. */
+::selection{background:rgba(47,216,255,.32);color:#fff;text-shadow:none}
+:where(section,header):has(.cue.foam) ::selection{background:rgba(92,242,196,.35);color:#fff;text-shadow:none}
 @media(prefers-reduced-motion:no-preference){
   .sr{opacity:0;transform:translateY(16px);transition:opacity .7s ease,transform .7s ease}
   .sr.in{opacity:1;transform:none}
