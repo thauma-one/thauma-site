@@ -274,40 +274,42 @@ document.querySelectorAll('.give-btn').forEach(function (btn) {
     track.innerHTML = '';
     track.appendChild(charRow);
     whenPageSettled(function () {
-    charRow.getBoundingClientRect();
-    requestAnimationFrame(function () {
-      cells.forEach(function (c) {
-        var t = ' ' + DURATION + ' ' + c.delay + 'ms';
-        c.wrap.style.transition = 'width' + t;
-        c.newCell.style.transition = 'transform' + t;
-        c.oldCell.style.transition = 'transform' + t;
-        // End: box sized to the NEW character; new char rolls into view,
-        // old char rolls down and out below (clipped by overflow:hidden).
-        c.wrap.style.width = c.newWidth + 'px';
-        c.newCell.style.transform = 'translateY(0px)';
-        c.oldCell.style.transform = 'translateY(' + rowH + 'px)';
+      charRow.getBoundingClientRect();
+      requestAnimationFrame(function () {
+        cells.forEach(function (c) {
+          var t = ' ' + DURATION + ' ' + c.delay + 'ms';
+          c.wrap.style.transition = 'width' + t;
+          c.newCell.style.transition = 'transform' + t;
+          c.oldCell.style.transition = 'transform' + t;
+          // End: box sized to the NEW character; new char rolls into view,
+          // old char rolls down and out below (clipped by overflow:hidden).
+          c.wrap.style.width = c.newWidth + 'px';
+          c.newCell.style.transform = 'translateY(0px)';
+          c.oldCell.style.transform = 'translateY(' + rowH + 'px)';
+        });
       });
-    });
-    // Once the last character's transition is done, swap back to the
-    // plain text row main.css already knows how to space correctly
-    // (letter-spacing, no per-character width math) rather than leaving
-    // the more complex per-character DOM sitting there indefinitely.
-    var totalMs = START_DELAY + (len - 1) * STAGGER + DURATION_MS + 60;
-    setTimeout(function () {
-      track.innerHTML = '';
-      var restRow = document.createElement('div');
-      restRow.className = 'page-wheel-row';
-      restRow.textContent = currentLabel;
-      track.appendChild(restRow);
-    }, totalMs);
+      // Once the last character's transition is done, swap back to the
+      // plain text row main.css already knows how to space correctly
+      // (letter-spacing, no per-character width math) rather than leaving
+      // the more complex per-character DOM sitting there indefinitely.
+      var totalMs = START_DELAY + (len - 1) * STAGGER + DURATION_MS + 60;
+      setTimeout(function () {
+        track.innerHTML = '';
+        var restRow = document.createElement('div');
+        restRow.className = 'page-wheel-row';
+        restRow.textContent = currentLabel;
+        track.appendChild(restRow);
+      }, totalMs);
     });
   }
 })();
 
 // ---- Scroll reveals (skipped entirely under reduced motion) ----
-// section .cue and .work are handled by the character-reveal below instead
-// (the cue rolls in per-character); .work's text side (:not(.label)) still
-// fades in the ordinary way, just not the label, which rolls.
+// The small labels (section .cue, .work .label) and the value numbers
+// (.val .n, .conviction .num) are handled by the character-reveal cascade
+// below instead — here their parents' TEXT parts still fade normally
+// (.work > div:not(.label), .conviction > div:not(.num), .val h3/p);
+// only the label/number itself rolls.
 if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'IntersectionObserver' in window) {
   var targets = Array.prototype.slice.call(document.querySelectorAll('section h2, section .lede, section .body-text, .val h3, .val p, .conviction > div:not(.num), .work > div:not(.label), .person, .give-card, .frame, .empty, .resource-card, .bio-photo'));
   // Hide (.sr) immediately — pre-paint — then split by arrival type at
@@ -361,13 +363,11 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'Intersect
 // Torn back to plain text once each roll completes, so the resting DOM
 // (and the CSS counter/letter-spacing) is untouched.
 //
-// Sequenced after any incoming view transition (2026-07-21): if a cross-
-// page transition brought us here, the cascade waits for it to finish (the
-// pagereveal event) instead of running hidden behind the transition's
-// frozen page snapshot and popping into place when it lifts — which is
-// what made it stutter. Its targets are CSS-pre-hidden, so during the
-// transition they simply read as absent, then roll in once it settles.
-// Without a transition it runs immediately.
+// Starts via whenPageSettled (the shared view-transition gate above), so
+// during a cross-page transition its CSS-pre-hidden targets simply read
+// as absent, then roll in once the fade finishes — running during the
+// fade is what originally made transitions stutter. Without a transition
+// it runs immediately.
 (function () {
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   if (!('IntersectionObserver' in window)) return;
