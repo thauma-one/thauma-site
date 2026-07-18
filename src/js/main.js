@@ -88,6 +88,12 @@ var whenPageSettled = (function () {
     var revealSeen = false;
     window.addEventListener('pagereveal', function (e) {
       revealSeen = true;
+      // Clear the outgoing-snapshot freeze (set at pageswap below): on a
+      // back/forward-cache restore this same document comes back alive,
+      // and a stuck vt-leaving would leave its buttons/links with
+      // transition:none!important forever — hover states snapping instead
+      // of easing.
+      document.documentElement.classList.remove('vt-leaving');
       if (e.viewTransition) {
         // vt-active is removed at settle; vt-came stays for the page's
         // lifetime — a transitioned arrival's entrance IS the fade, so the
@@ -110,6 +116,11 @@ var whenPageSettled = (function () {
     // then visibly "un-fills" across the fade.
     window.addEventListener('pageswap', function () {
       document.documentElement.classList.add('vt-leaving');
+    });
+    // Belt-and-braces for the same bfcache case as above, in case a
+    // restore ever fires pageshow without pagereveal.
+    window.addEventListener('pageshow', function (e) {
+      if (e.persisted) document.documentElement.classList.remove('vt-leaving');
     });
     // pagereveal fires before load in every normal case; if it somehow
     // never fires for this navigation, settle at load rather than never.
@@ -143,7 +154,7 @@ var whenPageSettled = (function () {
 // transition per character rather than a separate JS timer. The CSS
 // resting position needs no JS to be correct, so a failed/blocked script
 // just means no animation, never a wrong or missing label.
-whenPageSettled(function () {
+(function () {
   var container = document.querySelector('.page-wheel');
   var track = document.querySelector('.page-wheel-track');
   if (!container || !track) return;
@@ -155,6 +166,10 @@ whenPageSettled(function () {
     var stored = sessionStorage.getItem('thauma_wheel_label');
     if (stored !== null) { prevLabel = stored; hasPrev = true; }
   } catch (e) { /* privacy mode etc. — just skip the animation */ }
+  // Stash for the NEXT page immediately, not at settle: a fast click
+  // mid-fade must still record where we were, or the page after next
+  // rolls from a label two pages back.
+  try { sessionStorage.setItem('thauma_wheel_label', currentLabel); } catch (e) { /* same */ }
   var START_DELAY = 700; // ms before the roll begins at all
   var STAGGER = 40; // ms added per character, cascading left to right
   var DURATION_MS = 1300;
@@ -207,8 +222,16 @@ whenPageSettled(function () {
                    newWidth: widthOf(newStr[i]), delay: START_DELAY + i * STAGGER });
     }
     track.removeChild(meas);
+    // The swap to the char-row happens NOW — before first paint — so on a
+    // transitioned arrival the wheel shows the OLD page's label during the
+    // fade, matching the outgoing snapshot underneath (that region reads
+    // as seamless). Only the roll itself waits for settle. Gating the
+    // whole build at settle instead (previous attempt) let the
+    // server-rendered CURRENT label paint during the fade and then flip
+    // back to the old one — read as blank/wrong-page for a beat.
     track.innerHTML = '';
     track.appendChild(charRow);
+    whenPageSettled(function () {
     charRow.getBoundingClientRect();
     requestAnimationFrame(function () {
       cells.forEach(function (c) {
@@ -235,9 +258,9 @@ whenPageSettled(function () {
       restRow.textContent = currentLabel;
       track.appendChild(restRow);
     }, totalMs);
+    });
   }
-  try { sessionStorage.setItem('thauma_wheel_label', currentLabel); } catch (e) { /* same */ }
-});
+})();
 
 // ---- Scroll reveals (skipped entirely under reduced motion) ----
 // section .cue and .work are handled by the character-reveal below instead
