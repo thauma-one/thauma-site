@@ -64,7 +64,7 @@
 <meta name="twitter:title" content="{{ fullTitle }}">
 <meta name="twitter:description" content="{{ t.home.sub }}">
 <meta name="twitter:image" content="{{ shareImage }}">
-<link rel="stylesheet" href="/css/main.css?v=22">
+<link rel="stylesheet" href="/css/main.css?v=23">
 </head>
 <body>
 
@@ -86,7 +86,7 @@
   <button class="menu-btn" aria-label="Menu"><span></span><span></span></button>
 </div></nav>
 
-<div class="page-wheel" aria-hidden="true"><div class="page-wheel-track" data-wheel-index="{{ navPageNum }}" data-wheel-label="{{ pageLabel }}">
+<div class="page-wheel" aria-hidden="true"><div class="page-wheel-track" data-wheel-label="{{ pageLabel }}">
   <div class="page-wheel-row">{{ pageLabel }}</div>
 </div></div>
 
@@ -127,6 +127,6 @@
 {%- if not env.isProduction %}
 <script>window.THAUMA_TAUNTS = { en: {{ i18n.en.notFound.taunts | dump | safe }}, hr: {{ i18n.hr.notFound.taunts | dump | safe }} };</script>
 {%- endif %}
-<script src="/js/main.js?v=6"></script>
+<script src="/js/main.js?v=7"></script>
 </body>
 </html>

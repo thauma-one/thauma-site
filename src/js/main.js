@@ -76,37 +76,36 @@ document.querySelectorAll('.links a, .mobile-menu a').forEach(function (a) {
 // increasing transition-delay per character index so they roll in sequence
 // rather than as one block. Only ever two characters exist in any given
 // mini-wheel (old, new) — nothing scrolls through intermediate letters or
-// intermediate nav pages. Direction (which character enters from above vs
-// below) matches whether the new page comes before or after the old one in
-// nav order. START_DELAY is baked directly into each character's own
-// transition-delay (not a setTimeout before starting anything), so the
-// whole cascade — the wait before it starts, plus its per-character
-// stagger — is one CSS transition per character rather than a separate
-// JS timer. The CSS resting position needs no JS to be correct, so a
-// failed/blocked script just means no animation, never a wrong or
-// missing label.
+// intermediate nav pages. Direction is always top-down (new character
+// slides down into place from above, old one exits downward) — this used
+// to flip based on whether the new page came before or after the old one
+// in nav order, but that made the motion feel inconsistent from one
+// navigation to the next, so it's one fixed direction now. START_DELAY is
+// baked directly into each character's own transition-delay (not a
+// setTimeout before starting anything), so the whole cascade — the wait
+// before it starts, plus its per-character stagger — is one CSS
+// transition per character rather than a separate JS timer. The CSS
+// resting position needs no JS to be correct, so a failed/blocked script
+// just means no animation, never a wrong or missing label.
 (function () {
   var container = document.querySelector('.page-wheel');
   var track = document.querySelector('.page-wheel-track');
   if (!container || !track) return;
-  var currentIndex = parseInt(track.dataset.wheelIndex, 10) || 0;
   var currentLabel = track.dataset.wheelLabel || '';
   var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var rowH = parseFloat(getComputedStyle(container).getPropertyValue('--wheel-row-h')) || 0;
-  var prevIndex = currentIndex, prevLabel = currentLabel, hasPrev = false;
+  var prevLabel = currentLabel, hasPrev = false;
   try {
-    var storedIndex = sessionStorage.getItem('thauma_wheel_index');
-    if (storedIndex !== null) {
-      prevIndex = parseInt(storedIndex, 10);
-      prevLabel = sessionStorage.getItem('thauma_wheel_label') || '';
-      hasPrev = true;
-    }
+    var stored = sessionStorage.getItem('thauma_wheel_label');
+    if (stored !== null) { prevLabel = stored; hasPrev = true; }
   } catch (e) { /* privacy mode etc. — just skip the animation */ }
   var START_DELAY = 700; // ms before the roll begins at all
   var STAGGER = 40; // ms added per character, cascading left to right
-  var DURATION = '1.3s cubic-bezier(.16,1,.3,1)';
+  var DURATION = '1.3s cubic-bezier(.55,.05,.45,.95)'; // same curve navping
+  // (the active-nav underline pulse) already uses elsewhere — a symmetric
+  // ease-in-out, replacing the ease-out this started with, which read as
+  // too abrupt/constant-speed at the start of each character's roll.
   if (!reduced && rowH && hasPrev && prevLabel !== currentLabel) {
-    var goingDown = currentIndex < prevIndex; // lower index = earlier in the nav
     var len = Math.max(prevLabel.length, currentLabel.length);
     var oldStr = prevLabel, newStr = currentLabel;
     while (oldStr.length < len) oldStr += ' ';
@@ -126,15 +125,14 @@ document.querySelectorAll('.links a, .mobile-menu a').forEach(function (a) {
       newCell.className = 'pw-char-cell';
       newCell.textContent = newStr[i];
       charTrack.style.transition = 'none';
-      if (goingDown) {
-        charTrack.appendChild(newCell);
-        charTrack.appendChild(oldCell);
-        charTrack.style.transform = 'translateY(-' + rowH + 'px)';
-      } else {
-        charTrack.appendChild(oldCell);
-        charTrack.appendChild(newCell);
-        charTrack.style.transform = 'translateY(0px)';
-      }
+      // Always top-down: newCell first/above, oldCell second/below — at
+      // rest the track shows oldCell (row 2), then animates to row 1,
+      // which reveals newCell sliding down into place from above while
+      // oldCell exits downward below it. Direction used to flip based on
+      // nav order, but a single consistent direction reads better.
+      charTrack.appendChild(newCell);
+      charTrack.appendChild(oldCell);
+      charTrack.style.transform = 'translateY(-' + rowH + 'px)';
       wrap.appendChild(charTrack);
       charRow.appendChild(wrap);
       charTracks.push({ el: charTrack, delay: START_DELAY + i * STAGGER });
@@ -145,14 +143,11 @@ document.querySelectorAll('.links a, .mobile-menu a').forEach(function (a) {
     requestAnimationFrame(function () {
       charTracks.forEach(function (c) {
         c.el.style.transition = 'transform ' + DURATION + ' ' + c.delay + 'ms';
-        c.el.style.transform = goingDown ? 'translateY(0px)' : 'translateY(-' + rowH + 'px)';
+        c.el.style.transform = 'translateY(0px)';
       });
     });
   }
-  try {
-    sessionStorage.setItem('thauma_wheel_index', String(currentIndex));
-    sessionStorage.setItem('thauma_wheel_label', currentLabel);
-  } catch (e) { /* same */ }
+  try { sessionStorage.setItem('thauma_wheel_label', currentLabel); } catch (e) { /* same */ }
 })();
 
 // ---- Scroll reveals (skipped entirely under reduced motion) ----
