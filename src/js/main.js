@@ -184,14 +184,108 @@ document.querySelectorAll('.links a, .mobile-menu a').forEach(function (a) {
 })();
 
 // ---- Scroll reveals (skipped entirely under reduced motion) ----
+// section .cue and .work are handled by the character-reveal below instead
+// (the cue rolls in per-character); .work's text side (:not(.label)) still
+// fades in the ordinary way, just not the label, which rolls.
 if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'IntersectionObserver' in window) {
-  var targets = document.querySelectorAll('section .cue, section h2, section .lede, section .body-text, .val, .conviction, .work, .person, .give-card, .frame, .empty');
+  var targets = document.querySelectorAll('section h2, section .lede, section .body-text, .val, .conviction, .work > div:not(.label), .person, .give-card, .frame, .empty');
   var io = new IntersectionObserver(function (entries) {
     entries.forEach(function (e) {
       if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
     });
   }, { threshold: 0.12 });
   targets.forEach(function (el) { el.classList.add('sr'); io.observe(el); });
+}
+
+// ---- Character-reveal cascade for small labels (2026-07-20) ----
+// The section cue labels (and their leading counter number) plus the
+// Mission work labels roll their characters up into place as they scroll
+// into view. When several are on screen at once (e.g. on load) they
+// cascade top-to-bottom — each starts a beat after the one above it,
+// without waiting for it to finish. Everything is torn back down to plain
+// text once a label's roll completes, so the resting DOM (and its exact
+// letter-spacing, which the CSS counter/letter-spacing own) is untouched.
+if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'IntersectionObserver' in window) {
+  var CHAR_STAGGER = 45;      // ms between characters within one label
+  var ELEMENT_STAGGER = 150;  // ms between labels revealed in the same batch
+  var ROLL = '.6s cubic-bezier(.16,1,.3,1)';
+  var crTargets = Array.prototype.slice.call(document.querySelectorAll('section .cue, .work .label'));
+  // Cue leading numbers mirror the CSS counter (section .cue::before,
+  // decimal-leading-zero) — computed here so they can roll in with the
+  // text; the ::before is hidden (.cr-nonum) only while a cue is rolling.
+  var cueNum = 0;
+  document.querySelectorAll('section .cue').forEach(function (el) {
+    cueNum++;
+    el.dataset.crNum = (cueNum < 10 ? '0' : '') + cueNum;
+  });
+
+  function buildRun(container, str, marginPx, opacity, lh, inners) {
+    for (var i = 0; i < str.length; i++) {
+      var box = document.createElement('span');
+      box.className = 'cr-box';
+      box.style.height = lh + 'px';
+      box.style.marginRight = marginPx + 'px';
+      var inner = document.createElement('span');
+      inner.className = 'cr-in';
+      inner.style.height = lh + 'px';
+      inner.style.lineHeight = lh + 'px';
+      if (opacity !== 1) inner.style.opacity = opacity;
+      inner.textContent = str[i] === ' ' ? ' ' : str[i];
+      inner.style.transition = 'none';
+      inner.style.transform = 'translateY(' + lh + 'px)';
+      box.appendChild(inner);
+      container.appendChild(box);
+      inners.push(inner);
+    }
+  }
+
+  function reveal(el, elDelay) {
+    var cs = getComputedStyle(el);
+    var fs = parseFloat(cs.fontSize);
+    var lh = parseFloat(cs.lineHeight); if (isNaN(lh)) lh = fs * 1.25;
+    var labelLs = parseFloat(cs.letterSpacing); if (isNaN(labelLs)) labelLs = 0;
+    var label = el.textContent;
+    var num = el.dataset.crNum;
+    el.textContent = '';
+    el.style.letterSpacing = '0';
+    var inners = [];
+    if (num) {
+      // Leading number: the CSS counter is .2em-spaced and dimmed (.65),
+      // then a 14px gap before the label — mirror that so the revert is
+      // seamless.
+      el.classList.add('cr-nonum');
+      buildRun(el, num, fs * 0.2, 0.65, lh, inners);
+      if (el.lastChild) el.lastChild.style.marginRight = (fs * 0.2 + 14) + 'px';
+    }
+    buildRun(el, label, labelLs, 1, lh, inners);
+    el.style.opacity = '1';
+    el.getBoundingClientRect();
+    requestAnimationFrame(function () {
+      inners.forEach(function (inner, i) {
+        inner.style.transition = 'transform ' + ROLL + ' ' + (elDelay + i * CHAR_STAGGER) + 'ms';
+        inner.style.transform = 'translateY(0)';
+      });
+    });
+    var totalMs = elDelay + (inners.length - 1) * CHAR_STAGGER + 600 + 80;
+    setTimeout(function () {
+      el.textContent = label;       // back to plain text (counter reappears)
+      el.style.letterSpacing = '';
+      el.classList.remove('cr-nonum');
+    }, totalMs);
+  }
+
+  var crObserver = new IntersectionObserver(function (entries) {
+    var show = entries.filter(function (e) { return e.isIntersecting; })
+                      .map(function (e) { return e.target; });
+    // Cascade top-to-bottom: sort this batch by vertical position, then
+    // give each a base delay one ELEMENT_STAGGER after the one above it.
+    show.sort(function (a, b) { return a.getBoundingClientRect().top - b.getBoundingClientRect().top; });
+    show.forEach(function (el, i) {
+      crObserver.unobserve(el);
+      reveal(el, i * ELEMENT_STAGGER);
+    });
+  }, { threshold: 0.6 });
+  crTargets.forEach(function (el) { crObserver.observe(el); });
 }
 
 // ---- Scroll progress line (only where there's meaningful scroll) ----

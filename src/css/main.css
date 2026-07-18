@@ -468,14 +468,35 @@ footer{flex-shrink:0;background:var(--bg2);border-top:1px solid rgba(255,255,255
 /* ---------- Navigation experience ---------- */
 /* Voice-aware text selection (2026-07-20): the site's two-color system
    (BLUE = technical voice, FOAM = ministry voice) carries through to
-   highlighting. Default is blue; sections/headers that carry a foam cue
-   (the ministry-voice ones) tint their selection foam instead — matched
-   via :has() so it needs no per-section markup. */
+   highlighting. Default selection is blue; the foam-COLORED elements
+   (ministry voice — cues, the tagline, roles, value numbers, the Give
+   button) highlight foam to match their own text color. Listed per
+   element rather than by section so it tracks the actual green text. */
 ::selection{background:rgba(47,216,255,.32);color:#fff;text-shadow:none}
-:where(section,header):has(.cue.foam) ::selection{background:rgba(92,242,196,.35);color:#fff;text-shadow:none}
+.cue.foam::selection,.foot-tag::selection,.val .n::selection,.conviction .num::selection,
+.person-role::selection,.s-role::selection,.give-btn::selection,
+.lang-dropdown-current::selection{background:rgba(92,242,196,.4);color:#fff;text-shadow:none}
 @media(prefers-reduced-motion:no-preference){
   .sr{opacity:0;transform:translateY(16px);transition:opacity .7s ease,transform .7s ease}
   .sr.in{opacity:1;transform:none}
+}
+
+/* ---------- Character-reveal cascade (2026-07-20) ----------
+   Section cue labels (their leading number too) and the Mission work
+   labels roll their characters up into place as they scroll into view,
+   cascading down the page. main.js builds and drives it; these are just
+   the primitives. font-kerning off so the per-character form matches the
+   plain resting text on revert (same reasoning as the page wheel).
+   Pre-hidden under no-preference so there's no flash of the finished
+   label before the roll — same tradeoff as .sr (if JS never runs they
+   stay hidden). Header cues are excluded (they keep their on-load .rise).*/
+section .cue, .work .label{font-kerning:none;font-variant-ligatures:none}
+.cr-box{display:inline-block;overflow:hidden;vertical-align:top}
+.cr-in{display:block}
+.cue.cr-nonum::before{display:none}
+@media(prefers-reduced-motion:no-preference){
+  section .cue, .work .label{opacity:0}
+  .cr-in{transition:transform .6s cubic-bezier(.16,1,.3,1)}
 }
 .foot-socials{display:flex;align-items:center;gap:16px}
 .foot-socials a{color:var(--dim);display:inline-flex;transition:.2s}
