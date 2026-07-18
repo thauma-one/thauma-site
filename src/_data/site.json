@@ -34,9 +34,9 @@
       "zoom": 100
     },
     "give_impact": {
-      "src": "",
+      "src": "/img/give-congregation.webp",
       "focal_x": 50,
-      "focal_y": 50,
+      "focal_y": 60,
       "zoom": 100
     }
   },
