@@ -1,0 +1,177 @@
+/* ============================================================
+   TOKENS — Thauma (cool sibling)
+   ============================================================
+   This file is the single source of truth for every value that
+   makes the site feel like itself: surfaces, the two accent
+   voices, type, motion, and shape.
+
+   It is EXTRACTED, not invented. Every value below was already
+   in main.css — this file names them and fills the gaps that
+   were previously hardcoded inline (the letter-spacing ramp,
+   the duration ramp, the two easings).
+
+   ------------------------------------------------------------
+   THE SIBLING CONTRACT
+   ------------------------------------------------------------
+   chaseroush.com has its own copy of this file with the SAME
+   variable names and DIFFERENT values — cool here, warm there.
+   That is the entire relationship between the two sites: a
+   shared grammar, not shared code. The files are deliberately
+   duplicated. Thauma is an org and Chase Roush is a ministry
+   partner; coupling their builds would make one able to break
+   the other.
+
+   So: if you add a token here, add it there too. If you change
+   a VALUE here, do NOT change it there — divergence in values
+   is the point.
+   ============================================================ */
+
+:root{
+
+  /* ---------- SURFACES ------------------------------------
+     Not neutral grey. Every surface is tinted TOWARD the accent
+     family (here: blue), which is what makes the black read as
+     "rich" rather than flat. The CR file mirrors these channels
+     (0B0F15 -> 150F0B) to land the same depth in warm.        */
+  --bg:        #0B0F15;   /* page ground                        */
+  --bg2:       #0E141C;   /* alternating section band           */
+  --panel:     #101823;   /* raised card / value cell           */
+  --line:      rgba(255,255,255,.06);  /* hairline divider      */
+  --line-soft: rgba(255,255,255,.05);
+  --line-hard: rgba(255,255,255,.08);
+
+  /* ---------- INK ----------------------------------------- */
+  --text: #EDF2F8;        /* cool white                         */
+  --dim:  #8A96A6;        /* cool grey — body copy, ledes       */
+
+  /* ---------- THE TWO VOICES ------------------------------
+     BLUE  = the technical voice (cues, frames, structure)
+     FOAM  = the ministry voice  (values, giving, people)
+
+     Both are BRIGHTER than the background by a wide margin —
+     that headroom is what lets them glow. An accent darker than
+     its surroundings cannot carry a glow treatment, which is
+     the single biggest reason a dark theme reads as flat.     */
+  --voice-tech:       #2FD8FF;
+  --voice-tech-hi:    #8FEBFF;
+  --voice-tech-dim:   rgba(47,216,255,.14);
+  --voice-tech-glow:  0 0 26px rgba(47,216,255,.35);
+  --voice-tech-on:    #06110c;   /* ink for text ON the accent  */
+
+  --voice-human:      #5CF2C4;
+  --voice-human-hi:   #B2FFE6;
+  --voice-human-dim:  rgba(92,242,196,.14);
+  --voice-human-glow: 0 0 26px rgba(92,242,196,.35);
+  --voice-human-on:   #06110c;
+
+  /* Site-native aliases. main.css has said --blue/--foam since
+     V4 and they read better in context than the generic role
+     names; both spellings are live so nothing has to be
+     rewritten. The role names above are what CR mirrors.      */
+  --blue:      var(--voice-tech);
+  --blue-hi:   var(--voice-tech-hi);
+  --blue-dim:  var(--voice-tech-dim);
+  --blue-glow: var(--voice-tech-glow);
+  --foam:      var(--voice-human);
+  --foam-hi:   var(--voice-human-hi);
+  --foam-dim:  var(--voice-human-dim);
+  --foam-glow: var(--voice-human-glow);
+
+  /* ---------- AMBIENT -------------------------------------
+     The two washes on <body>. Cheap, static, and doing a lot of
+     the work: they keep large dark areas from going dead flat. */
+  --wash: radial-gradient(1100px 520px at 80% -8%, rgba(47,216,255,.08), transparent 60%),
+          radial-gradient(900px 480px at 0% 108%, rgba(92,242,196,.06), transparent 60%);
+
+  /* ---------- TYPE ----------------------------------------
+     Sora carries the display voice at weight 100 — hairline at
+     large sizes is the whole identity. Inter carries body at
+     200/300. 600 is the ONLY bold, used for the <b> inside thin
+     headings. Never introduce a new weight; there are five.   */
+  --font-display: 'Sora', sans-serif;
+  --font-body:    'Inter', sans-serif;
+
+  --w-hair:  100;   /* Sora display                             */
+  --w-light: 200;   /* Inter lede / large body                  */
+  --w-body:  300;   /* Inter body                               */
+  --w-mid:   400;   /* nav links only                           */
+  --w-bold:  600;   /* Sora emphasis + all caps labels          */
+
+  --fs-micro:   11px;   /* cues, value numerals, tags           */
+  --fs-tiny:    12px;
+  --fs-sm:      13px;   /* nav                                  */
+  --fs-base:    15px;
+  --fs-md:      16px;
+  --fs-lg:      19px;   /* h3                                   */
+  --fs-xl:      21px;
+  --fs-h2:      clamp(30px, 4.4vw, 48px);
+  --fs-hero:    clamp(20px, 2.6vw, 30px);
+  --fs-display: clamp(56px, 11vw, 150px);   /* wordmark         */
+
+  --lh-flat: 1;      /* display                                 */
+  --lh-tight: 1.15;  /* headings                                */
+  --lh-body: 1.75;
+  --lh-lede: 1.85;
+
+  /* Letter-spacing ramp. Wide tracking on small uppercase text
+     is a signature — it is why 11px labels read as deliberate
+     rather than small.                                        */
+  --ls-tight: .01em;
+  --ls-body:  .06em;
+  --ls-wide:  .1em;
+  --ls-label: .15em;
+  --ls-caps:  .2em;
+  --ls-cue:   .35em;
+  --ls-mark:  .42em;   /* the logo                              */
+
+  /* ---------- SHAPE ---------------------------------------
+     Two radii on the whole site. This restraint is most of why
+     it looks designed rather than assembled.                  */
+  --radius:    2px;
+  --radius-lg: 7px;   /* scrollbar thumb only                   */
+
+  /* ---------- SPACE --------------------------------------- */
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-11: 44px;
+  --space-14: 56px;
+  --space-16: 64px;
+  --section:  100px;   /* vertical rhythm between sections      */
+  --hero:     170px;
+  --wrap:     1100px;  /* max content width                     */
+  --gutter:   24px;
+
+  /* ---------- MOTION --------------------------------------
+     TWO easings, and they mean different things:
+       ease-main   — rolls, pulses, fades, page transitions.
+                     Symmetric; reads as considered.
+       ease-unfurl — dropdown and mobile menu OPENING only.
+                     They close on a hard cut, deliberately.
+     Anything using a third curve is a bug.                    */
+  --ease-main:   cubic-bezier(.55,.05,.45,.95);
+  --ease-unfurl: cubic-bezier(.16,1,.3,1);
+
+  --dur-fast: .15s;
+  --dur-2:    .2s;
+  --dur-3:    .25s;   /* default hover/interaction              */
+  --dur-4:    .3s;
+  --dur-5:    .35s;
+  --dur-page: .5s;    /* view transition — matches main.js      */
+  --dur-slow: .7s;
+
+  --stagger: 90ms;    /* scroll-reveal batch offset             */
+  --roll:    1.3s;    /* page wheel / character cascade         */
+}
+
+/* Every animated thing on the site respects this. If you add
+   motion and don't gate it here, it is not finished.          */
+@media (prefers-reduced-motion: reduce){
+  :root{
+    --dur-fast:0s; --dur-2:0s; --dur-3:0s; --dur-4:0s;
+    --dur-5:0s; --dur-page:0s; --dur-slow:0s;
+    --stagger:0ms; --roll:0s;
+  }
+}
