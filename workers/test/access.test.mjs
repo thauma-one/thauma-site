@@ -154,5 +154,28 @@ await check("denials are JSON, not an HTML error page", async () => {
   assert((await r.denied.json()).error, "no error field");
 });
 
+await check("ACCESS_AUD accepts a COMMA-SEPARATED list", async () => {
+  // dev.thauma.one and next.thauma.one are separate Access applications with
+  // separate tags; one Worker has to accept both.
+  const other = "second-app-tag";
+  const multi = { teamDomain: TEAM, aud: `${AUD},${other}` };
+  assert(await verifyAccessJwt(await mint({ aud: AUD }), multi), "first tag rejected");
+  assert(await verifyAccessJwt(await mint({ aud: other }), multi), "second tag rejected");
+  assert(await verifyAccessJwt(await mint({ aud: "third" }), multi) === null,
+    "a tag NOT in the list was accepted");
+});
+
+await check("whitespace around list entries is tolerated", async () => {
+  const multi = { teamDomain: TEAM, aud: `  ${AUD} , other-tag  ` };
+  assert(await verifyAccessJwt(await mint(), multi), "padded tag rejected");
+});
+
+await check("an empty ACCESS_AUD denies rather than allowing everything", async () => {
+  for (const bad of ["", "   ", ",,,"]) {
+    const r = await verifyAccessJwt(await mint(), { teamDomain: TEAM, aud: bad });
+    assert(r === null, `empty aud (${JSON.stringify(bad)}) accepted a token`);
+  }
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

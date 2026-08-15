@@ -138,6 +138,48 @@ Run with `cd workers && npm test` — **90 tests**.
 - **`docs/WORKERS-AUDIT.md`** (in the CR repo) — all 30 CR functions audited
   for Workers compatibility.
 
+### Cloudflare Workers — deployed 2026-08-15
+
+```
+thauma.one       Netlify, UNPROXIED (grey cloud)   production, unchanged
+dev.thauma.one   the Pi tunnel                     Access-gated
+next.thauma.one  the Worker                        Access-gated, STAGING
+```
+
+Account `57c887d9191048d984a7607c9e9334b7` (Thauma-owned). Zone
+`f4c7e8b060ab15ebb363da7c385e0c5d`.
+
+| resource | id |
+|---|---|
+| D1 `thauma-ops` (production, empty) | `1a30f6c9-1dc7-42b0-abaa-fab3da334c9e` |
+| D1 `thauma-ops-dev` (seeded) | `db7fcd6a-56e2-4a67-98da-3da87e95dc86` |
+| KV `STAFF_DATA` | `f79f07b51f3a493a9f2bb3714115d037` |
+| KV `GAME_SCORES` | `f23971d5b4aa460daba43e97b9d84273` |
+| Access AUD, dev.thauma.one | `04468ad5…8019fdfb` |
+| Access AUD, next.thauma.one | `da1b6265…707219f8` |
+
+`wrangler.toml`'s **top level targets staging and the dev database**.
+Production is `[env.production]` and requires `--env production` every time —
+the dangerous target should take more typing. `thauma-production` has never
+been deployed.
+
+**Three things learned the hard way, all now in code comments:**
+
+1. **Workers Static Assets bypass the Worker entirely** when a file matches, so
+   an auth check in the router never runs. `/staff/data/snapshot.json` was
+   briefly public because of this. Fixed with `run_worker_first`, which is an
+   **allow-list** — paths absent from it never reach the router at all.
+2. **The Worker gates `/staff*` itself**, so it is safe on any hostname
+   regardless of how Access applications are scoped. A new hostname is a
+   dashboard edit away from being public otherwise.
+3. **`ACCESS_AUD` is a comma-separated list.** Each Access application has its
+   own tag; one Worker serving three hostnames needs all of them.
+
+**`thauma.one` cannot be Access-gated while Netlify serves it** — the zone is
+unproxied, so Cloudflare never sees the traffic. The application exists and
+starts working at cutover. Until then, do NOT merge `dev` to `main`: that
+would publish the staff console on an ungated host.
+
 ### ⚠️ Known-open
 
 **Production `thauma.one/staff/` is NOT gated by Access** — the application

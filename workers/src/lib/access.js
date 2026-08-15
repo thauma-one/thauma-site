@@ -18,7 +18,18 @@
  *
  * Bindings/vars expected on `env`:
  *   ACCESS_TEAM_DOMAIN   e.g. thaumaone.cloudflareaccess.com
- *   ACCESS_AUD           the Access application's Audience tag
+ *   ACCESS_AUD           comma-separated Audience tag(s)
+ *
+ * ACCESS_AUD IS A LIST, not a single value, and that is not speculative
+ * generality. Each Access application has its own AUD, and one Worker serves
+ * several hostnames — dev, staging and production each need their own
+ * application. Verified 2026-08-15: dev.thauma.one and next.thauma.one issue
+ * tokens with different tags, so a single-value check silently rejected every
+ * token from the newer one.
+ *
+ * The aud check itself stays strict: the token's audience must appear in this
+ * list. Widening it to "any audience" would accept a token minted for an
+ * unrelated Access application in any organisation.
  */
 
 const JWKS_TTL_MS = 60 * 60 * 1000;
@@ -116,8 +127,12 @@ export async function verifyAccessJwt(token, { teamDomain, aud }) {
   if (payload.nbf && payload.nbf > now + 60) return null;
   if (payload.iss !== `https://${teamDomain}`) return null;
 
-  const audList = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
-  if (!audList.includes(aud)) return null;
+  // Both sides can be lists: a token may carry several audiences, and we may
+  // accept several applications. Any overlap is a match; no overlap is not.
+  const tokenAuds = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
+  const allowed = String(aud).split(",").map((a) => a.trim()).filter(Boolean);
+  if (!allowed.length) return null;
+  if (!tokenAuds.some((a) => allowed.includes(a))) return null;
 
   return payload;
 }

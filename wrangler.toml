@@ -116,7 +116,9 @@ database_id = "db7fcd6a-56e2-4a67-98da-3da87e95dc86"
 # GAME_ADMIN_TOKEN) go in via `wrangler secret put` and never live here.
 [vars]
 ACCESS_TEAM_DOMAIN = "thaumaone.cloudflareaccess.com"
-ACCESS_AUD = "04468ad531e25f3c53af5d0b4ed0bdd3073241f76a070c741efe40f58019fdfb"
+# Comma-separated: one tag per Access application. dev.thauma.one and
+# next.thauma.one are separate applications with separate tags.
+ACCESS_AUD = "da1b6265b663e9152e863952d84ead73be8f8f8aa9b2ac90f50404ba707219f8,04468ad531e25f3c53af5d0b4ed0bdd3073241f76a070c741efe40f58019fdfb"
 CONTACT_TO = "admin@thauma.one"
 CONTACT_FROM = "Thauma <noreply@thauma.one>"
 
@@ -165,6 +167,9 @@ database_id = "1a30f6c9-1dc7-42b0-abaa-fab3da334c9e"
 
 [env.production.vars]
 ACCESS_TEAM_DOMAIN = "thaumaone.cloudflareaccess.com"
+# TODO: replace with thauma.one's own Access application tag at cutover.
+# The existing thauma.one application cannot issue tokens yet — the zone
+# is unproxied while Netlify serves it, so Access never sees the traffic.
 ACCESS_AUD = "04468ad531e25f3c53af5d0b4ed0bdd3073241f76a070c741efe40f58019fdfb"
 CONTACT_TO = "admin@thauma.one"
 CONTACT_FROM = "Thauma <noreply@thauma.one>"
