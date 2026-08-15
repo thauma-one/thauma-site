@@ -7,7 +7,7 @@ staffHeading: The public <b>roadmap</b>
 staffHint: what partner sites show — published entries are visible to anyone
 ---
 <div class="ms-bar">
-  <button type="button" class="solid-btn" id="msAdd">Add milestone</button>
+  <button type="button" class="solid-btn" id="msAdd" data-i18n="ms.add">Add milestone</button>
   <span class="hint" id="msStatus"></span>
 </div>
 
@@ -103,21 +103,21 @@ staffHint: what partner sites show — published entries are visible to anyone
   <div class="ms-switches">
     <button type="button" class="switch" id="msPublic" role="switch" aria-checked="false">
       <span class="switch-track"><span class="switch-state">Off</span><span class="switch-knob"></span></span>
-      <span class="switch-label">Published
-        <span class="switch-note">Visible on partner websites</span>
+      <span class="switch-label"><span data-i18n="ms.published">Published</span>
+        <span class="switch-note" data-i18n="ms.publishedNote">Visible on partner websites</span>
       </span>
     </button>
     <button type="button" class="switch" id="msFeatured" role="switch" aria-checked="false">
       <span class="switch-track"><span class="switch-state">Off</span><span class="switch-knob"></span></span>
-      <span class="switch-label">Featured
-        <span class="switch-note">Highlighted on their home page</span>
+      <span class="switch-label"><span data-i18n="ms.featured">Featured</span>
+        <span class="switch-note" data-i18n="ms.featuredNote">Highlighted on their home page</span>
       </span>
     </button>
   </div>
 
   <div class="ms-actions">
-    <button type="submit" class="solid-btn">Apply</button>
-    <button type="button" class="ghost-btn" id="msCancel">Cancel</button>
+    <button type="submit" class="solid-btn" data-i18n="ms.apply">Apply</button>
+    <button type="button" class="ghost-btn" id="msCancel" data-i18n="ms.cancel">Cancel</button>
     {#- "Apply" not "Save": this closes the form and updates the list, but
        nothing reaches the database until Save changes is pressed. Calling
        both of them Save is how people end up believing work is safe. -#}
@@ -135,7 +135,7 @@ staffHint: what partner sites show — published entries are visible to anyone
 <div class="ms-savebar" id="msSaveBar" role="status" aria-live="polite" hidden>
   <span class="ms-dirty-dot" aria-hidden="true"></span>
   <span id="msDirtyCount">0 unsaved changes</span>
-  <span class="ms-savebar-note">Nothing is live until you save.</span>
-  <button type="button" class="ghost-btn" id="msDiscard">Discard</button>
-  <button type="button" class="solid-btn" id="msSaveAll">Save changes</button>
+  <span class="ms-savebar-note" data-i18n="ms.notLive">Nothing is live until you save.</span>
+  <button type="button" class="ghost-btn" id="msDiscard" data-i18n="ms.discard">Discard</button>
+  <button type="button" class="solid-btn" id="msSaveAll" data-i18n="ms.save">Save changes</button>
 </div>

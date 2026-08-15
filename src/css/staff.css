@@ -619,3 +619,43 @@ body.has-savebar .toasts{--toast-lift:var(--ms-savebar-h,72px)}
 
 /* Room between the explanation and the control that acts on it. */
 .key-create{margin-top:28px;gap:12px;flex-wrap:wrap}
+
+/* `hidden` loses to any display declaration, so a column set to display:flex
+   stays on screen when hidden — which is how the unused language column kept
+   showing its empty boxes. Every element that sets display needs this. */
+.ms-col[hidden],.tab-panel[hidden],.key-reveal[hidden],.ms-savebar[hidden]{display:none}
+
+/* ---- toasts, louder ---- */
+/* The first pass was a thin left border on a dark panel, which on a dark page
+   read as another block of text. These are a full outline in the accent
+   colour with a tinted ground, so a message registers without being read. */
+.toast{border:1px solid var(--voice-tech);
+  background:#0d1a22;
+  box-shadow:0 0 0 1px rgba(47,216,255,.18), 0 16px 40px rgba(0,0,0,.6);
+  border-left-width:1px;font-weight:var(--w-body)}
+.toast.ok{border-color:var(--voice-human);background:#0b1d18;
+  box-shadow:0 0 0 1px rgba(92,242,196,.22), 0 16px 40px rgba(0,0,0,.6)}
+.toast.err{border-color:var(--warn,#F5B845);background:#1d1608;
+  box-shadow:0 0 0 1px rgba(245,184,69,.25), 0 16px 40px rgba(0,0,0,.6)}
+/* A dot in the same colour, so the kind of message is legible before the words
+   are — and in greyscale, where the border colour alone would not be. */
+.toast::before{content:"";width:8px;height:8px;border-radius:50%;flex:0 0 auto;
+  background:var(--voice-tech)}
+.toast.ok::before{background:var(--voice-human)}
+.toast.err::before{background:var(--warn,#F5B845)}
+
+/* ---- the persistent problem banner ---- */
+/* Overlaid, not inserted: a banner that pushes the page down moves whatever
+   someone is reading, and moves it back when the problem clears. Fixed under
+   the header, full width, out of the way of everything except the very top. */
+.problem{position:fixed;top:var(--header-h);left:0;right:0;z-index:40;
+  display:flex;align-items:center;gap:14px;
+  padding:12px max(var(--gutter),24px);
+  background:#1d1608;border-bottom:1px solid var(--warn,#F5B845);
+  box-shadow:0 8px 22px rgba(0,0,0,.5);
+  color:var(--text);font-size:var(--fs-sm)}
+.problem[hidden]{display:none}
+.problem-dot{width:8px;height:8px;border-radius:50%;background:var(--warn,#F5B845);
+  flex:0 0 auto}
+.problem-msg{flex:1;min-width:0}
+.problem .ghost-btn{flex:0 0 auto}

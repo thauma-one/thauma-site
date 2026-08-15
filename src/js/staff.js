@@ -555,6 +555,47 @@
   window.StaffToast = toast;
 
   /* =====================================================================
+     PROBLEM BANNER — a condition, not an event
+     =====================================================================
+     Toasts are for things that HAPPENED. "The server cannot be reached" is
+     a state that persists until something changes, and repeating it as a
+     toast every time a request fails stacks identical messages that each
+     have to be dismissed.
+
+     This is one banner that shows while the condition holds and goes away
+     when it clears. Fixed and overlaid rather than inserted into the flow,
+     because a banner that pushes the page down moves whatever someone is
+     reading — and moves it back again when the problem resolves.
+     ===================================================================== */
+  var problemEl = null;
+
+  function problem(message, retry) {
+    if (!problemEl) {
+      problemEl = document.createElement('div');
+      problemEl.className = 'problem';
+      problemEl.setAttribute('role', 'alert');
+      problemEl.innerHTML =
+        '<span class="problem-dot" aria-hidden="true"></span>' +
+        '<span class="problem-msg"></span>' +
+        '<button type="button" class="ghost-btn">Try again</button>';
+      document.body.appendChild(problemEl);
+    }
+    problemEl.querySelector('.problem-msg').textContent = message;
+    var btn = problemEl.querySelector('.ghost-btn');
+    btn.hidden = !retry;
+    btn.onclick = retry || null;
+    problemEl.hidden = false;
+  }
+
+  function problemClear() {
+    if (problemEl) problemEl.hidden = true;
+  }
+
+  window.StaffProblem = problem;
+  window.StaffProblemClear = problemClear;
+
+
+  /* =====================================================================
      BOOT — each page loads only what it needs
      ===================================================================== */
 

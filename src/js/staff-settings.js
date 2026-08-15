@@ -26,8 +26,9 @@
     });
   }
 
+  /* Outcomes only — see the note in staff-milestones.js. */
   function setStatus(text, kind) {
-    if (text && window.StaffToast) window.StaffToast(text, kind);
+    if (text && kind && window.StaffToast) window.StaffToast(text, kind);
   }
 
   function langLabel(l) { return (l.native_name || l.name) + ' (' + l.code + ')'; }
@@ -72,17 +73,6 @@
         (l.code === state.you.preferred_lang ? ' selected' : '') + '>' +
         esc(langLabel(l)) + '</option>';
     }).join('');
-
-    // The default may only be a language actually being published, or the
-    // fallback points at nothing.
-    var enabled = state.languages.filter(function (l) { return l.is_enabled; });
-    $('setDefaultLang').innerHTML = enabled.map(function (l) {
-      return '<option value="' + esc(l.code) + '"' +
-        (l.code === state.partner.default_lang ? ' selected' : '') + '>' +
-        esc(langLabel(l)) + '</option>';
-    }).join('');
-    $('setDefaultLang').disabled = !state.you.can.set_default_lang;
-    $('setDefaultNote').hidden = !!state.you.can.set_default_lang;
 
     $('setLangList').innerHTML = state.languages.map(function (l) {
       var isDefault = l.code === state.partner.default_lang;
@@ -134,10 +124,18 @@
           : 'Could not load settings (' + res.status + ')', 'err');
         return;
       }
+      if (window.StaffProblemClear) window.StaffProblemClear();
       state = body;
+      // The account is the source of truth; the cache is only there to
+      // avoid a flash of English on first paint.
+      if (window.StaffI18n && state.you && state.you.preferred_lang) {
+        window.StaffI18n.setLang(state.you.preferred_lang);
+      }
       render();
     } catch (e) {
-      setStatus('Could not reach the server — ' + e.message, 'err');
+      if (window.StaffProblem) {
+        window.StaffProblem('Cannot reach the server — ' + e.message, load);
+      }
     }
   }
 
@@ -145,7 +143,6 @@
      disabled throughout, so nothing can be flipped twice while in flight. */
   async function change(payload, control, message) {
     if (control) control.disabled = true;
-    setStatus('Saving…');
     try {
       var res = await fetch(API, {
         method: 'PATCH',
@@ -184,13 +181,13 @@
   });
 
   $('setPrefLang').addEventListener('change', function (e) {
-    change({ preferred_lang: e.target.value }, e.target,
-           'The editor will now open in ' + e.target.value.toUpperCase());
-  });
-
-  $('setDefaultLang').addEventListener('change', function (e) {
-    change({ default_lang: e.target.value }, e.target,
-           'Default language is now ' + e.target.value.toUpperCase());
+    var code = e.target.value;
+    // Applied before the request completes, deliberately. Translating the
+    // interface has no consequence if the save fails, and waiting for a round
+    // trip to change a language makes the control feel broken.
+    if (window.StaffI18n) window.StaffI18n.setLang(code);
+    change({ preferred_lang: code }, e.target,
+           'Language changed');
   });
 
   $('setLangList').addEventListener('click', function (e) {
@@ -214,7 +211,6 @@
     if (!name) { setStatus('Give the key a name first', 'err'); $('setKeyName').focus(); return; }
 
     $('setKeyAdd').disabled = true;
-    setStatus('Creating…');
     try {
       var res = await fetch(API, {
         method: 'POST',

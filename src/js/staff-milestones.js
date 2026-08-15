@@ -53,8 +53,12 @@
   /* Everything that used to write inline status text now raises a toast.
      The first argument is kept so call sites did not all have to change; the
      element it names is no longer written to. */
+  /* Progress messages are dropped on purpose. A toast saying "Saving…"
+     is replaced by its own result a moment later, so it is a flash of text
+     that carries nothing — the disabled control already says work is in
+     flight. Only outcomes get announced. */
   function setStatus(_el, text, kind) {
-    if (text && window.StaffToast) window.StaffToast(text, kind);
+    if (text && kind && window.StaffToast) window.StaffToast(text, kind);
   }
 
   /* ---- toggles ------------------------------------------------------- */
@@ -253,6 +257,7 @@
       var res = await fetch(API, { credentials: 'same-origin', cache: 'no-store' });
       var body = await res.json().catch(function () { return {}; });
 
+      if (window.StaffProblemClear) window.StaffProblemClear();
       if (!res.ok) {
         $('msList').innerHTML = '<p class="empty">' + (
           res.status === 401 ? 'Your session has expired. ' +
@@ -272,6 +277,9 @@
       });
       state.languages = body.languages || [];
       state.prefLang = body.preferred_lang || 'en';
+      // Same account setting that translates the console also picks the
+      // editor's first column, so "your language" means one thing.
+      if (window.StaffI18n) window.StaffI18n.setLang(state.prefLang);
 
       // Left column opens on the staff member's own language. Right opens on
       // the next language they PUBLISH, falling back to any other language —
@@ -290,8 +298,11 @@
       fillParents();
       updateSaveBar();
     } catch (e) {
-      $('msList').innerHTML = '<p class="empty">Could not reach the server — ' +
-        esc(e.message) + '.</p>';
+      // A condition, not an event: banner with a retry, not a toast that
+      // stacks another copy of itself every time a request fails.
+      if (window.StaffProblem) {
+        window.StaffProblem('Cannot reach the server — ' + e.message, load);
+      }
     }
   }
 
@@ -332,7 +343,6 @@
 
     var btn = $('msSaveAll');
     btn.disabled = true;
-    setStatus($('msStatus'), 'Saving ' + ids.length + '…');
 
     var failed = [];
     for (var i = 0; i < ids.length; i++) {
@@ -637,7 +647,6 @@
 
     if (!confirm('Delete "' + titleOf(m) + '"? This cannot be undone.')) return;
 
-    setStatus($('msStatus'), 'Deleting…');
     try {
       var res = await fetch(API + '?id=' + encodeURIComponent(id), {
         method: 'DELETE', credentials: 'same-origin'

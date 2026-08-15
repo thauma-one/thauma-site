@@ -11,9 +11,9 @@ staffHint: some of these change what the public sees
    what a public website serves. Keeping them apart makes that difference
    visible before you touch anything, instead of after. -#}
 <div class="tabs" role="tablist">
-  <button type="button" class="tab" role="tab" data-tab="account" aria-selected="true">Account</button>
-  <button type="button" class="tab" role="tab" data-tab="languages" aria-selected="false">Languages</button>
-  <button type="button" class="tab" role="tab" data-tab="keys" aria-selected="false">API keys</button>
+  <button type="button" class="tab" role="tab" data-tab="account" aria-selected="true" data-i18n="set.account">Account</button>
+  <button type="button" class="tab" role="tab" data-tab="languages" aria-selected="false" data-i18n="set.languages">Languages</button>
+  <button type="button" class="tab" role="tab" data-tab="keys" aria-selected="false" data-i18n="set.keys">API keys</button>
 </div>
 
 <span class="hint" id="setStatus"></span>
@@ -22,7 +22,7 @@ staffHint: some of these change what the public sees
 <section class="tab-panel" data-panel="account" role="tabpanel">
   <div class="set-row">
     <div class="set-label">
-      <h3>Signed in as</h3>
+      <h3 data-i18n="set.signedInAs">Signed in as</h3>
       <p id="setEmail">—</p>
     </div>
     <div class="set-control">
@@ -36,7 +36,7 @@ staffHint: some of these change what the public sees
 
   <div class="set-row">
     <div class="set-label">
-      <h3>Your access</h3>
+      <h3 data-i18n="set.yourAccess">Your access</h3>
       <p>What this account is allowed to do. Changed by an administrator, not
          here.</p>
     </div>
@@ -51,52 +51,18 @@ staffHint: some of these change what the public sees
      decisions. -#}
   <div class="set-row">
     <div class="set-label">
-      <h3>Your working language</h3>
-      <p>Which language the milestone editor opens in.</p>
-    </div>
-    <div class="set-control">
-      <p class="note-inline">Set this on the
-        <button type="button" class="link-btn" data-goto="languages">Languages</button>
-        tab, alongside the languages this site publishes.</p>
-    </div>
-  </div>
-</section>
-
-<!-- ---------------------------------------------------------- languages -->
-<section class="tab-panel" data-panel="languages" role="tabpanel" hidden>
-  <p class="note">
-    <b>These change what partner websites serve.</b> A language switched on here
-    is offered to visitors; one switched off disappears from the public API.
-    Translations you have already written are kept either way.
-  </p>
-
-  <div class="set-row">
-    <div class="set-label">
-      <h3>Your working language</h3>
-      <p><b>Affects only you.</b> Which language the milestone editor opens in.
-         It changes nothing a visitor sees.</p>
+      <h3 data-i18n="set.yourLanguage">Your language</h3>
+      <p>Translates this console and opens the milestone editor in the same
+         language. Affects only you — it does not change what a visitor sees.</p>
     </div>
     <div class="set-control">
       <select id="setPrefLang" class="lang-pick"></select>
     </div>
   </div>
 
-  <div class="set-row">
-    <div class="set-label">
-      <h3>Default language</h3>
-      <p>What a visitor sees before choosing, and what a partner site falls back
-         to when something has not been translated.</p>
-    </div>
-    <div class="set-control">
-      <select id="setDefaultLang" class="lang-pick"></select>
-      <p class="note-inline" id="setDefaultNote" hidden>
-        Only an administrator can change this.</p>
-    </div>
-  </div>
-
   <div class="set-row set-row-block">
     <div class="set-label">
-      <h3>Published languages</h3>
+      <h3 data-i18n="set.publishedLanguages">Published languages</h3>
       <p>Switch a language on to translate into it and serve it. The default
          language cannot be switched off.</p>
     </div>
@@ -115,7 +81,7 @@ staffHint: some of these change what the public sees
   <div class="ms-bar key-create">
     <input type="text" id="setKeyName" class="key-name" maxlength="80"
            placeholder="What is this key for? e.g. chaseroush.com build">
-    <button type="button" class="solid-btn" id="setKeyAdd">Create key</button>
+    <button type="button" class="solid-btn" id="setKeyAdd" data-i18n="set.createKey">Create key</button>
   </div>
 
   {#- Shown once, on creation, and never again — the database stores only a
