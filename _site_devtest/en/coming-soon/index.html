@@ -1,0 +1,82 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thauma</title>
+<meta name="description" content="A production ministry for the churches of Croatia and the surrounding region — serving, training, and resourcing their technical teams. Launching soon.">
+<meta name="robots" content="noindex">
+<link rel="preload" as="font" type="font/woff2" href="/fonts/Sora-latin-v2.woff2" crossorigin>
+<link rel="preload" as="font" type="font/woff2" href="/fonts/Inter-latin-v2.woff2" crossorigin>
+<link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/css/main.css?v=43">
+<style>
+  /* Landing-only: lock to one viewport, no scroll */
+  html, body { height: 100%; overflow: hidden; }
+  .landing {
+    height: 100vh; height: 100svh;
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: center;
+    text-align: center; position: relative;
+  }
+
+  /* Wordmark: lit by the star (radial falloff toward bottom-right) */
+  .landing .wordmark {
+    position: relative;
+    text-shadow: none;
+    background-image: radial-gradient(circle at 96% 92%,
+      #FFFFFF 0%, #C9F6FF 14%, #6FE3FF 32%, #3FBEE0 55%, #58697D 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+
+  /* The star: 8-point glint anchored to the final A (sizes in em so it
+     scales with the wordmark) */
+  .star { position: absolute; width: 0; height: 0; right: -0.06em; bottom: 0.05em; }
+  .star i { position: absolute; display: block; }
+  .star .v { width: 1.5px; height: .62em; left: -0.75px; top: -.31em;
+    background: linear-gradient(to bottom, rgba(255,255,255,0), #F4FFFF 50%, rgba(255,255,255,0)); }
+  .star .h { height: 1.5px; width: .62em; top: -0.75px; left: -.31em;
+    background: linear-gradient(to right, rgba(255,255,255,0), #F4FFFF 50%, rgba(255,255,255,0)); }
+  .star .d1, .star .d2 { width: 1px; height: .28em; left: -0.5px; top: -.14em;
+    background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(239,255,255,.6) 50%, rgba(255,255,255,0)); }
+  .star .d1 { transform: rotate(45deg); }
+  .star .d2 { transform: rotate(-45deg); }
+  .star .c { width: .07em; height: .07em; left: -.035em; top: -.035em; border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 0 .18em .05em rgba(200,246,255,.9), 0 0 .5em .16em rgba(47,216,255,.4); }
+
+  /* .workline itself (the sweep track below the subtext) now lives in
+     main.css, shared with the Resources page — see that file. Only the
+     star's answering flare and this page's own entrance timing stay here. */
+  .landing .btn-row { margin-top: 40px; }
+
+  /* Shared 9s timeline: the sweep (main.css) passes, the star answers, both rest */
+  @keyframes flare {
+    0%, 10%, 55%, 100% { transform: scale(.82); opacity: .65; }
+    22% { transform: scale(1.16); opacity: 1; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .star { animation: flare 9s ease-in-out infinite; }
+    .cue, .wordmark, .hero-line, .hero-sub { animation: rise .9s ease both; }
+    .hero-line { animation-delay: .12s; } .hero-sub { animation-delay: .24s; }
+  }
+</style>
+</head>
+<body>
+<main class="landing">
+  <div class="wrap">
+    <div class="cue bare" style="display:inline-block">θαῦμα · Greek for wonder</div>
+    <div class="wordmark">THAUMA<span class="star"><i class="v"></i><i class="h"></i><i class="d1"></i><i class="d2"></i><i class="c"></i></span></div>
+    <p class="hero-line">Thauma is <b>in preparation.</b></p>
+    <p class="hero-sub" style="margin-left:auto;margin-right:auto">A production ministry for the churches of Croatia and the surrounding region — serving, training, and resourcing their technical teams. Launching soon.</p>
+  </div>
+  <div class="workline"><i></i></div>
+  <div class="btn-row center">
+    <button class="lang-toggle" data-lang="hr" data-target="/hr/">HR</button>
+    <button class="lang-toggle" data-lang="sr" data-target="/sr/">SR</button>
+  </div>
+</main>
+<script src="/js/main.js?v=30"></script>
+</body>
+</html>

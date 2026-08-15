@@ -26,8 +26,18 @@ INSERT INTO users (id, email, name, global_role, status, created_at, last_login_
 INSERT INTO partner_users (partner_id, user_id, role, granted_by, granted_at) VALUES
   ('p_chase','u_chase','owner','u_admin','2026-01-15T09:05:00Z'),
   ('p_demo','u_demo','owner','u_admin','2026-06-01T09:05:00Z');
--- NOTE: u_admin is deliberately NOT granted access to p_chase. Org authority
--- and partner access are separate — see db/README.md.
+-- NOTE: being global_role='admin' grants u_admin NOTHING here. Org authority
+-- and partner access are separate — see db/README.md. The row below is an
+-- EXPLICIT grant, which is exactly the point: an admin reading a partner's
+-- data leaves a record saying somebody granted it.
+
+-- TESTING GRANT — remove when Chase signs in as his own address.
+-- admin@thauma.one is the address Cloudflare Access currently authenticates
+-- on dev.thauma.one, so without this the console correctly refuses him and
+-- there is nothing to look at. 'view' rather than 'owner': read-only is all
+-- that is needed to exercise the console, and least privilege costs nothing.
+INSERT INTO partner_users (partner_id, user_id, role, granted_by, granted_at) VALUES
+  ('p_chase','u_admin','view','u_admin','2026-08-15T00:00:00Z');
 
 -- ---------- contacts --------------------------------------------------------
 INSERT INTO contacts (id, partner_id, first_name, last_name, email, phone, city, region, country,

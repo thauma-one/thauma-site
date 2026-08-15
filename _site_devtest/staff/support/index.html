@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Support · Thauma Staff</title>
+<link rel="stylesheet" href="/css/tokens.css">
+<link rel="stylesheet" href="/css/staff.css?v=2">
+<link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
+</head>
+<body data-staff-page="support">
+
+<header class="top"><div class="top-in">
+  <a class="mark" href="/staff/">THAUMA<em>STAFF</em></a>
+  <nav>
+    <a href="/staff/">Dashboard</a>
+    <a href="/staff/support/" aria-current="page">Support</a>
+    <a href="/staff/stewardship/">Stewardship</a>
+    <a href="/staff/directory/">Directory</a>
+    <a href="/staff/resources/">Resources</a>
+    <a href="/staff/activity/">Activity</a>
+  </nav>
+  <div class="top-r">
+    <span class="pill" id="partnerPill">—</span>
+    <span class="who"><b id="userName">—</b><span id="userRole">—</span></span>
+    <a class="ghost-btn" href="/cdn-cgi/access/logout">Sign out</a>
+  </div>
+</div></header>
+
+<main>
+  <div class="page-head">
+    <div class="cue">02 &mdash; Support <span class="badge live">live</span></div>
+    <div class="sec-h">
+      <h2>Goals and <b>progress</b></h2><span class="hint">aggregates only — no donor records held</span>
+    </div>
+  </div>
+
+  <p class="rolegate" id="roleNote" hidden>
+    Signed in, but the staff data endpoint refused the request. That usually means this
+    deploy is missing its <b>ACCESS_TEAM_DOMAIN</b> / <b>ACCESS_AUD</b> settings.
+  </p>
+
+  <div class="goals" id="goalGrid"></div>
+
+<p class="note">
+  <b>This holds no donor records.</b> Only four numbers per goal — raised, donor count,
+  source and captured-at — pulled from the giving platform. Donor detail lives there, and
+  a partner reads their own by logging into it directly.
+</p>
+
+</main>
+
+<script src="/js/staff.js?v=2"></script>
+</body>
+</html>

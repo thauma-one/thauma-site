@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Dashboard · Thauma Staff</title>
+<link rel="stylesheet" href="/css/tokens.css">
+<link rel="stylesheet" href="/css/staff.css?v=2">
+<link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
+</head>
+<body data-staff-page="index">
+
+<header class="top"><div class="top-in">
+  <a class="mark" href="/staff/">THAUMA<em>STAFF</em></a>
+  <nav>
+    <a href="/staff/" aria-current="page">Dashboard</a>
+    <a href="/staff/support/">Support</a>
+    <a href="/staff/stewardship/">Stewardship</a>
+    <a href="/staff/directory/">Directory</a>
+    <a href="/staff/resources/">Resources</a>
+    <a href="/staff/activity/">Activity</a>
+  </nav>
+  <div class="top-r">
+    <span class="pill" id="partnerPill">—</span>
+    <span class="who"><b id="userName">—</b><span id="userRole">—</span></span>
+    <a class="ghost-btn" href="/cdn-cgi/access/logout">Sign out</a>
+  </div>
+</div></header>
+
+<main>
+  <div class="page-head">
+    <div class="cue">01 &mdash; Dashboard <span class="badge live">live</span></div>
+    <div class="sec-h">
+      <h2>Where things <b>stand</b></h2>
+    </div>
+  </div>
+
+  <p class="rolegate" id="roleNote" hidden>
+    Signed in, but the staff data endpoint refused the request. That usually means this
+    deploy is missing its <b>ACCESS_TEAM_DOMAIN</b> / <b>ACCESS_AUD</b> settings.
+  </p>
+
+  <div class="tiles" id="tiles"></div>
+
+<div class="quick">
+  <a class="quick-card" href="/staff/stewardship/">
+    <span class="qk">Stewardship</span>
+    <span class="qv tnum" id="qStale">—</span>
+    <span class="qs">people overdue a personal contact</span>
+  </a>
+  <a class="quick-card" href="/staff/support/">
+    <span class="qk">Support</span>
+    <span class="qv tnum" id="qGoal">—</span>
+    <span class="qs">of the monthly goal</span>
+  </a>
+  <a class="quick-card" href="/staff/directory/">
+    <span class="qk">Directory</span>
+    <span class="qv tnum" id="qContacts">—</span>
+    <span class="qs">network contacts</span>
+  </a>
+</div>
+
+<p class="note foot-note">
+  Dashboard, Support, Stewardship and Activity read <code>/api/staff-snapshot</code>, which runs
+  the named queries in <code>db/queries.sql</code> against the operations database and returns
+  only the rows your account has been granted. <span id="genStamp"></span>
+</p>
+
+</main>
+
+<script src="/js/staff.js?v=2"></script>
+</body>
+</html>

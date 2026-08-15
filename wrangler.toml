@@ -131,6 +131,103 @@ CONTACT_FROM = "Thauma <noreply@thauma.one>"
 
 
 # ---------------------------------------------------------------------------
+# LOCAL DEV — what dev.thauma.one serves, through the Pi's tunnel
+# ---------------------------------------------------------------------------
+# Run with:  npx wrangler dev --env dev --port 8991
+#
+# This replaced `netlify dev` on 2026-08-15. It had to: the console now reads
+# /api/staff-snapshot, which is a Worker route, and netlify dev serves the
+# static build only — the four D1-backed sections 404'd against it.
+#
+# TWO PROCESSES, NOT ONE. netlify dev ran Eleventy itself; wrangler builds
+# nothing. So thauma-dev.service runs `eleventy --watch` to keep _site current
+# AND wrangler dev to serve it.
+#
+# ASSETS ARE _site, NOT _site_next. _site is Eleventy's watch output, and it is
+# the FULL site: ELEVENTY_RUN_MODE is "watch" rather than "build", so
+# src.11tydata.js does not apply the comingSoon gate. That is the long-standing
+# behaviour of dev.thauma.one and most of why it is useful — the interior pages
+# are visible before they are public. _site_next is the GATED staging build and
+# must never be served here.
+[env.dev]
+name = "thauma-dev"
+
+# LOWER THAN THE TOP-LEVEL DATE, AND IT HAS TO BE. wrangler 4.86 ships a
+# workerd that supports no date later than 2026-05-03, so local dev refuses to
+# start against the 2026-08-04 pinned above:
+#
+#   This Worker requires compatibility date "2026-08-04", but the newest date
+#   supported by this server binary is "2026-05-03".
+#
+# Deploys are unaffected — they run on the real edge, which is current. This
+# only constrains the LOCAL runtime, so dev runs a slightly older Workers
+# runtime than staging and production. Nothing in this Worker depends on
+# behaviour that changed between those dates, but that is a fact with a
+# shelf life: re-check it when raising the top-level date.
+#
+# The fix is Node 22 + wrangler >= 4.123. Deferred because a system-wide Node
+# upgrade on this Pi also moves Chase Roush's toolchain, and those two sites
+# are meant to be independent.
+compatibility_date = "2026-05-01"
+compatibility_flags = ["nodejs_compat"]
+
+[env.dev.assets]
+directory = "_site"
+binding = "ASSETS"
+html_handling = "auto-trailing-slash"
+not_found_handling = "404-page"
+run_worker_first = ["/", "/api/*", "/.netlify/functions/*", "/staff", "/staff/*"]
+
+# LOCAL SIMULATION, INCLUDING THE DATABASE. `wrangler dev` runs D1 and KV in
+# miniflare against state under .wrangler/state — NOT against thauma-ops-dev.
+#
+# Two better-looking options were tried on 2026-08-15 and both failed:
+#
+#   experimental_remote = true   Rejected by wrangler 4.86 ("unexpected
+#                                field"). Supported from ~4.123, which
+#                                requires Node 22; the Pi runs Node 20.
+#
+#   wrangler dev --remote        Starts fine, real bindings — but it runs the
+#                                Worker inside Cloudflare's edge under
+#                                next.thauma.one's Access application. A
+#                                browser that had already passed
+#                                dev.thauma.one's Access got redirected to a
+#                                SECOND login, for a different hostname.
+#
+# So: seed the local database once and it persists.
+#
+#   npx wrangler d1 execute thauma-ops-dev --local --env dev \
+#       --file=db/migrations/0001_init.sql
+#   npx wrangler d1 execute thauma-ops-dev --local --env dev \
+#       --file=db/seed.dev.sql
+#
+# This is a THIRD database — local, remote-dev, production. It is reproducible
+# from seed.dev.sql, it is safe to break, and it needs no network. The upgrade
+# path that collapses it back to two is Node 22 + wrangler >= 4.123, which
+# makes experimental_remote work.
+[[env.dev.d1_databases]]
+binding = "DB"
+database_name = "thauma-ops-dev"
+database_id = "db7fcd6a-56e2-4a67-98da-3da87e95dc86"
+
+[[env.dev.kv_namespaces]]
+binding = "STAFF_DATA"
+id = "f79f07b51f3a493a9f2bb3714115d037"
+
+[[env.dev.kv_namespaces]]
+binding = "GAME_SCORES"
+id = "f23971d5b4aa460daba43e97b9d84273"
+
+[env.dev.vars]
+ACCESS_TEAM_DOMAIN = "thaumaone.cloudflareaccess.com"
+# dev.thauma.one's own Access application tag first; next's is kept so the
+# same config can be pointed at either hostname without an edit.
+ACCESS_AUD = "04468ad531e25f3c53af5d0b4ed0bdd3073241f76a070c741efe40f58019fdfb,da1b6265b663e9152e863952d84ead73be8f8f8aa9b2ac90f50404ba707219f8"
+CONTACT_TO = "admin@thauma.one"
+CONTACT_FROM = "Thauma <noreply@thauma.one>"
+
+
+# ---------------------------------------------------------------------------
 # PRODUCTION
 # ---------------------------------------------------------------------------
 # Deploy with:  npx wrangler deploy --env production

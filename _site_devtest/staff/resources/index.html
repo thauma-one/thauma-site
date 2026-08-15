@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Resources · Thauma Staff</title>
+<link rel="stylesheet" href="/css/tokens.css">
+<link rel="stylesheet" href="/css/staff.css?v=2">
+<link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
+</head>
+<body data-staff-page="resources">
+
+<header class="top"><div class="top-in">
+  <a class="mark" href="/staff/">THAUMA<em>STAFF</em></a>
+  <nav>
+    <a href="/staff/">Dashboard</a>
+    <a href="/staff/support/">Support</a>
+    <a href="/staff/stewardship/">Stewardship</a>
+    <a href="/staff/directory/">Directory</a>
+    <a href="/staff/resources/" aria-current="page">Resources</a>
+    <a href="/staff/activity/">Activity</a>
+  </nav>
+  <div class="top-r">
+    <span class="pill" id="partnerPill">—</span>
+    <span class="who"><b id="userName">—</b><span id="userRole">—</span></span>
+    <a class="ghost-btn" href="/cdn-cgi/access/logout">Sign out</a>
+  </div>
+</div></header>
+
+<main>
+  <div class="page-head">
+    <div class="cue">05 &mdash; Resources <span class="badge live">live</span></div>
+    <div class="sec-h">
+      <h2>Internal <b>resources</b></h2>
+    </div>
+  </div>
+
+  <p class="rolegate" id="roleNote" hidden>
+    Signed in, but the staff data endpoint refused the request. That usually means this
+    deploy is missing its <b>ACCESS_TEAM_DOMAIN</b> / <b>ACCESS_AUD</b> settings.
+  </p>
+
+  <div class="cards" id="resourceList"><p class="empty">Loading&hellip;</p></div>
+<p class="row-actions"><button class="ghost-btn" id="addResourceBtn" type="button">+ Add resource</button></p>
+
+<form class="form" id="resourceForm">
+  <input type="hidden" id="resourceIndex" value="">
+  <input type="text" id="resourceTitle" placeholder="Title" required>
+  <textarea id="resourceDescription" placeholder="Description (optional)"></textarea>
+  <input type="text" id="resourceLink" placeholder="Link — https://… (optional)">
+  <input type="text" id="resourcePhoto" placeholder="Photo URL or /img/… path (optional)">
+  <div class="frow">
+    <button class="solid-btn" type="submit">Save resource</button>
+    <button class="ghost-btn" type="button" id="resourceCancel">Cancel</button>
+  </div>
+</form>
+<p class="hint" id="saveStatus"></p>
+
+</main>
+
+<script src="/js/staff.js?v=2"></script>
+</body>
+</html>

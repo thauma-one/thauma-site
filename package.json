@@ -1,7 +1,7 @@
 {
   "name": "thauma-site",
   "version": "1.0.0",
-  "description": "Thauma ministry website — Eleventy + Decap CMS + Netlify",
+  "description": "Thauma ministry website \u2014 Eleventy + Decap CMS + Netlify",
   "scripts": {
     "build": "node -e \"require('fs').rmSync('_site',{recursive:true,force:true})\" && eleventy",
     "dev": "eleventy --serve --port 8123",
@@ -11,7 +11,8 @@
   "devDependencies": {
     "@11ty/eleventy": "^3.0.0",
     "decap-server": "^3.9.1",
-    "sharp": "^0.35.3"
+    "sharp": "^0.35.3",
+    "wrangler": "4.86.0"
   },
   "dependencies": {
     "@netlify/blobs": "^10.7.9",

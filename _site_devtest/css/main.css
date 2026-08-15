@@ -1,0 +1,664 @@
+/* ============ Self-hosted fonts (2026-07-16) ============
+   Previously loaded from Google Fonts (fonts.googleapis.com ->
+   fonts.gstatic.com, a two-hop external fetch). Even with preconnect and
+   a proper sans-serif fallback, a slow/high-latency connection could
+   still show the fallback font for up to a second before swapping — self-
+   hosting removes the external DNS/TLS/CDN round-trip entirely, since the
+   files now come from the same origin as the page itself.
+   font-display:swap, NOT optional (reverted 2026-07-16 — optional caused
+   a worse regression): optional tells the browser "decide once, on the
+   very first paint — if the network font isn't ready by then, don't
+   bother trying again," and Safari in particular can persist that
+   skip-it decision across loads, permanently stuck on the fallback until
+   a hard cache clear. That's strictly worse than the flash it was meant
+   to prevent. swap always eventually shows the real font; self-hosting
+   (same-origin, no external DNS/TLS/CDN hop) plus preload is what
+   actually shortens the flash to be barely perceptible, not the
+   display strategy.
+   Both are variable fonts — one file per subset covers every weight
+   actually used, so 4 files total. Only latin/latin-ext are needed; the
+   game's collage wall draws many more scripts (Cyrillic, Greek) but Sora
+   doesn't ship those glyphs anyway, so that text was always falling back
+   to system fonts regardless.
+   Sora is declared as DISCRETE weights (100/200/600 — the only ones
+   actually used), not a single font-weight:100 800 range (2026-07-16,
+   third pass): elements using Sora consistently fell back to a system
+   serif on a real iPhone while Inter — same self-hosting setup, same
+   @font-face pattern — worked. The one concrete difference: Sora is
+   requested at weight 100, which is BOTH the declared range's floor AND
+   the font file's true variable-axis minimum, while Inter is never
+   requested at its own true minimum (100) — always 200 or above. A
+   browser weight-matching quirk exactly at a variable font's axis
+   boundary is the leading suspect; discrete per-weight rules sidestep
+   range-matching entirely, each just pinning one exact instance. */
+@font-face{font-family:'Sora';font-style:normal;font-weight:100;font-display:swap;
+  src:url('/fonts/Sora-latin-v2.woff2') format('woff2');
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Sora';font-style:normal;font-weight:100;font-display:swap;
+  src:url('/fonts/Sora-latin-ext-v2.woff2') format('woff2');
+  unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:'Sora';font-style:normal;font-weight:200;font-display:swap;
+  src:url('/fonts/Sora-latin-v2.woff2') format('woff2');
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Sora';font-style:normal;font-weight:200;font-display:swap;
+  src:url('/fonts/Sora-latin-ext-v2.woff2') format('woff2');
+  unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:'Sora';font-style:normal;font-weight:600;font-display:swap;
+  src:url('/fonts/Sora-latin-v2.woff2') format('woff2');
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Sora';font-style:normal;font-weight:600;font-display:swap;
+  src:url('/fonts/Sora-latin-ext-v2.woff2') format('woff2');
+  unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:'Inter';font-style:normal;font-weight:200 600;font-display:swap;
+  src:url('/fonts/Inter-latin-v2.woff2') format('woff2');
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Inter';font-style:normal;font-weight:200 600;font-display:swap;
+  src:url('/fonts/Inter-latin-ext-v2.woff2') format('woff2');
+  unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+
+/* ============ THAUMA DESIGN SYSTEM (V4 "two tones") ============
+   BLUE = the technical voice (cues, frames, structure)
+   SEAFOAM = the ministry voice (values, giving, people)
+   ============================================================= */
+:root{
+  --bg:#0B0F15;
+  --bg2:#0E141C;
+  --panel:#101823;
+  --text:#EDF2F8;
+  --dim:#8A96A6;
+
+  --blue:#2FD8FF;
+  --blue-hi:#8FEBFF;
+  --blue-dim:rgba(47,216,255,.14);
+  --blue-glow:0 0 26px rgba(47,216,255,.35);
+
+  --foam:#5CF2C4;
+  --foam-hi:#B2FFE6;
+  --foam-dim:rgba(92,242,196,.14);
+  --foam-glow:0 0 26px rgba(92,242,196,.35);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+/* touch-action:manipulation kills double-tap-to-zoom sitewide (and the
+   ~300ms tap delay on buttons/links as a bonus) without touching
+   pinch-zoom or text selection — neither is affected by this value. */
+html{scroll-behavior:smooth;scrollbar-width:thin;scrollbar-color:var(--blue) var(--bg2);touch-action:manipulation}
+
+/* ---------- Cross-page transitions (2026-07-20, re-added 2026-07-21) ----
+   MPA View Transitions: the outgoing page holds and the incoming one fades
+   in over it. The stutter this first caused is handled by holding EVERY
+   on-load animation until the transition finishes — the JS-driven ones
+   (page wheel, .sr fades, character cascade) via main.js's whenPageSettled
+   queue, the CSS-driven ones (.rise headers, the active-link underline
+   pulse) via the html.vt-active pause rules just below — so the fade
+   always plays over a fully static page. Progressive — unsupported
+   browsers just navigate instantly. */
+@view-transition{navigation:auto}
+::view-transition-old(root){animation:none}
+::view-transition-new(root){animation:vt-fade-in .5s cubic-bezier(.55,.05,.45,.95) both}
+@keyframes vt-fade-in{from{opacity:0}to{opacity:1}}
+@media(prefers-reduced-motion:reduce){
+  ::view-transition-new(root){animation:none}
+  ::view-transition-group(*){animation:none}
+  ::view-transition-old(*),::view-transition-new(*){animation:none}
+}
+/* Grid -> bio portrait morph (2026-07-21): the clicked team card's photo
+   and the bio page's main portrait share a view-transition-name (set in
+   main.js, desktop only), so the browser morphs the photo from its grid
+   cell to the bio layout position during the navigation. This rule just
+   retimes ALL named groups (including that morph) to the site's own
+   curve; unpaired groups (the other cards' photos) simply fade on the
+   same clock. */
+::view-transition-group(*){animation-duration:.5s;animation-timing-function:cubic-bezier(.55,.05,.45,.95)}
+/* While a transition is running (html.vt-active, set/cleared by main.js's
+   whenPageSettled), CSS on-load animation is held so the incoming snapshot
+   stays static — anything animating mid-fade forces the snapshot to
+   re-rasterize each frame, which is what stuttered page changes. The
+   JS-driven reveals queue behind the same gate.
+
+   .rise gets animation:NONE via vt-came (persistent, not cleared at
+   settle) rather than paused-then-played: a transitioned arrival's
+   entrance IS the fade, so headers are simply present during it — pausing
+   them left the incoming page blank for the whole fade, which read as a
+   hard cut followed by a pop. The infinite underline pulse can't be
+   skipped (it must run eventually), so it stays paused-until-settle. */
+.vt-came .rise,.vt-came .rise-2,.vt-came .rise-3{animation:none}
+.vt-active .links a.active::after,
+.vt-active .mobile-menu a.active::after{animation-play-state:paused}
+/* vt-leaving (set on pageswap, the moment before the OUTGOING page's
+   snapshot is captured): freeze interactive states so the capture is
+   clean and stable. !important is deliberate: these must beat any
+   :hover/:focus/:active rule regardless of specificity.
+
+   The Give fill is special-cased (2026-07-21): freezing it back to REST
+   visibly cut the fill off right under the user's finger. So when Give
+   was actually pressed (html.give-pressed, set on click, cleared at the
+   next pagereveal), the fill is COMPLETED for the capture instead —
+   continuing the motion the press started — and the page fade then
+   dissolves the filled button into the new page's resting one; the
+   dissolve IS the ease-out. A Give that wasn't pressed has no fill in
+   play, so it needs no fill rule at all. */
+html.vt-leaving .btn,html.vt-leaving .give-btn{
+  transition:none!important;transform:none!important;box-shadow:none!important}
+html.vt-leaving .links a::before{transition:none!important;transform:scaleX(0)!important}
+/* The active-link underline pulse is captured wherever its infinite cycle
+   happens to be — often half-grown, which read as a "cut to half filled"
+   bar in the outgoing snapshot (most visible in the open mobile menu when
+   picking a new page). Freeze it COMPLETE for the capture, same
+   philosophy as the Give fill: a full underline dissolving out with the
+   fade reads as finished, not chopped. */
+html.vt-leaving .links a.active::after,
+html.vt-leaving .mobile-menu a.active::after{animation:none!important;transform:scaleX(1)!important}
+html.vt-leaving.give-pressed .give-btn{color:#06110c!important}
+html.vt-leaving.give-pressed .give-btn::before{transition:none!important;transform:scaleX(1)!important}
+
+/* ---------- Scrollbar (WebKit/Blink) ---------- */
+::-webkit-scrollbar{width:11px;height:11px}
+::-webkit-scrollbar-track{background:var(--bg2)}
+::-webkit-scrollbar-thumb{background:linear-gradient(180deg,var(--blue),var(--foam));
+  border-radius:7px;border:2px solid var(--bg2);background-clip:padding-box}
+::-webkit-scrollbar-thumb:hover{background:linear-gradient(180deg,var(--blue-hi),var(--foam-hi));background-clip:padding-box}
+::-webkit-scrollbar-corner{background:var(--bg2)}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-weight:300;
+  min-height:100vh;display:flex;flex-direction:column;
+  background-image:
+    radial-gradient(1100px 520px at 80% -8%, rgba(47,216,255,.08), transparent 60%),
+    radial-gradient(900px 480px at 0% 108%, rgba(92,242,196,.06), transparent 60%);}
+main{flex:1 0 auto}
+a{color:inherit;text-decoration:none}
+.wrap{max-width:1100px;margin:0 auto;padding:0 24px}
+
+/* ---------- Nav ---------- */
+nav{position:fixed;inset:0 0 auto;z-index:20;backdrop-filter:blur(12px);
+  background:rgba(11,15,21,.72);border-bottom:1px solid rgba(255,255,255,.07)}
+.nav-in{display:flex;align-items:center;justify-content:space-between;height:64px;gap:20px}
+.logo{font-family:'Sora',sans-serif;font-weight:100;letter-spacing:.42em;font-size:16px;display:flex;align-items:center;gap:12px;white-space:nowrap}
+.logo img{height:26px}
+.links{display:flex;gap:24px;font-size:13px;font-weight:400;color:var(--dim)}
+.links a:hover{color:var(--text)}
+/* Hover underline (2026-07-20): a thin blue line draws in from the left
+   on hover. Uses ::before so it never collides with the active link's
+   foam pulse (::after); the active link suppresses this one. */
+.links a::before{content:"";position:absolute;left:0;right:0;bottom:-7px;height:2px;
+  background:var(--blue);transform:scaleX(0);transform-origin:left;
+  transition:transform .3s cubic-bezier(.16,1,.3,1)}
+.links a:hover::before{transform:scaleX(1)}
+.links a.active::before{display:none}
+.nav-actions{display:flex;align-items:center;gap:14px}
+
+/* ---------- Language dropdown (2026-07-17) ----------
+   One trigger button regardless of language count (was one button PER
+   OTHER language — grew wider as languages were added). Rendered twice
+   (nav-actions + mobile-menu, see base.njk's langDropdown macro);
+   font-family/size set explicitly throughout since .mobile-menu's own
+   22px Sora text would otherwise be inherited into this component. */
+.lang-dropdown{position:relative;font-family:'Inter',sans-serif}
+.lang-dropdown-trigger{background:none;border:1px solid rgba(255,255,255,.18);color:var(--dim);
+  font-family:'Inter',sans-serif;font-size:11px;letter-spacing:.15em;font-weight:600;
+  padding:7px 12px;border-radius:2px;cursor:pointer;transition:.2s;display:inline-flex;align-items:center;gap:7px}
+.lang-dropdown.open .lang-dropdown-trigger{border-color:var(--blue);color:var(--blue)}
+/* hover:hover only — without this, tapping the trigger on a touch device
+   applies :hover with nothing to ever un-hover it, so the box reads as
+   "stuck blue" even after the dropdown is closed again. */
+@media(hover:hover){
+  .lang-dropdown-trigger:hover{border-color:var(--blue);color:var(--blue)}
+}
+.lang-dropdown-trigger::after{content:"";width:6px;height:6px;border-right:1.5px solid currentColor;
+  border-bottom:1.5px solid currentColor;transform:rotate(45deg);transition:transform .2s;margin-top:-3px}
+.lang-dropdown.open .lang-dropdown-trigger::after{transform:rotate(-135deg);margin-top:3px}
+/* Animated open, instant close (2026-07-19): unfurls downward from the
+   trigger on open — scaleY from the top edge, not just a fade/shift, so
+   it reads as "drops down" — but closes with a hard cut, no reverse
+   animation. The `transition` property lives ONLY on the .open rule, not
+   on this base/closed one: a transition only plays if it's present on
+   the element's state AFTER the change, so adding .open (transition
+   present on the new state) animates in, while removing .open (no
+   transition on the new/base state) snaps out instantly. Text inside
+   compresses slightly during the open motion and the list can clip
+   against the trigger — both fine here, per direct request. */
+.lang-dropdown-list{position:absolute;top:calc(100% + 8px);right:0;min-width:104px;background:var(--panel);
+  border:1px solid rgba(255,255,255,.12);border-radius:2px;padding:4px;list-style:none;z-index:30;
+  box-shadow:0 12px 30px rgba(0,0,0,.45);
+  transform-origin:top;
+  opacity:0;transform:scaleY(0);visibility:hidden}
+.lang-dropdown.open .lang-dropdown-list{
+  opacity:1;transform:scaleY(1);visibility:visible;
+  transition:opacity .32s ease,transform .46s cubic-bezier(.16,1,.3,1)}
+.lang-dropdown-list .lang-toggle{display:block;width:100%;text-align:left;background:none;border:none;
+  color:var(--dim);font-family:'Inter',sans-serif;font-size:12px;letter-spacing:.1em;font-weight:600;
+  padding:8px 10px;border-radius:2px;cursor:pointer;transition:.15s}
+@media(hover:hover){
+  .lang-dropdown-list .lang-toggle:hover{background:rgba(47,216,255,.1);color:var(--blue)}
+}
+.lang-dropdown-current{display:block;padding:8px 10px;color:var(--foam);font-family:'Inter',sans-serif;
+  font-size:12px;letter-spacing:.1em;font-weight:600}
+
+/* will-change:transform gives the button its own compositor layer — it
+   sits inside the backdrop-blurred nav, and without a layer of its own the
+   hover lift/sweep dragged the nav's blur into a re-rasterize every frame,
+   which kept the sweep choppy even after box-shadow left the transition. */
+.give-btn{border:1px solid var(--foam);color:var(--foam);padding:8px 18px;border-radius:2px;
+  font-size:11.5px;letter-spacing:.18em;text-transform:uppercase;font-weight:600;
+  transition:color .25s,transform .25s;white-space:nowrap;position:relative;overflow:hidden;
+  isolation:isolate;will-change:transform}
+/* Foam sweep (2026-07-20): fills in from the left on hover/focus instead
+   of a flat background swap. The fill is a ::before behind the label
+   (isolate + z-index:-1 keeps it inside the button, behind the text).
+   box-shadow (the glow) is deliberately NOT transitioned — animating
+   box-shadow is the one thing here that isn't GPU-composited and it made
+   the sweep-out visibly choppy; the glow snaps while the fill (a plain
+   GPU transform, will-change'd) stays smooth. */
+.give-btn::before{content:"";position:absolute;inset:0;background:var(--foam);
+  transform:scaleX(0);transform-origin:left;transition:transform .35s cubic-bezier(.16,1,.3,1);
+  z-index:-1;will-change:transform;backface-visibility:hidden}
+.give-btn:hover::before,.give-btn:focus-visible::before{transform:scaleX(1)}
+.give-btn:hover,.give-btn:focus-visible{color:#06110c;box-shadow:var(--foam-glow);transform:translateY(-2px)}
+.give-btn:active{transform:translateY(0)}
+.menu-btn{display:none;background:none;border:none;cursor:pointer;width:30px;height:22px;position:relative}
+.menu-btn span{position:absolute;left:0;right:0;height:1px;background:var(--text);transition:.25s}
+.menu-btn span:first-child{top:6px}.menu-btn span:last-child{bottom:6px}
+.menu-open .menu-btn span:first-child{transform:rotate(45deg);top:11px}
+.menu-open .menu-btn span:last-child{transform:rotate(-45deg);bottom:10px}
+/* align-items:flex-start (not the flex default of stretch) — otherwise
+   each <a> stretches to the full row width, and .active::after's
+   left:0/right:0 underline (shared with .links a, see below) spans the
+   whole row instead of hugging the text like it does on desktop. */
+/* Animated open, instant close (2026-07-19) — same "drops down on open,
+   cuts out on close" language as the language dropdown above: scaleY
+   unfurl from the nav edge, but the `transition` lives only on the
+   .menu-open rule (not this base one), so opening it animates and
+   closing it snaps instantly (see the longer comment on
+   .lang-dropdown-list for why that split does that). */
+.mobile-menu{position:fixed;inset:64px 0 0;z-index:19;background:rgba(11,15,21,.97);
+  backdrop-filter:blur(12px);display:flex;flex-direction:column;align-items:flex-start;padding:40px 24px;gap:26px;
+  font-family:'Sora',sans-serif;font-weight:200;font-size:22px;letter-spacing:.06em;
+  transform-origin:top;opacity:0;transform:scaleY(0);visibility:hidden;pointer-events:none}
+.menu-open .mobile-menu{
+  opacity:1;transform:scaleY(1);visibility:visible;pointer-events:auto;
+  transition:opacity .35s ease,transform .5s cubic-bezier(.16,1,.3,1)}
+
+/* ---------- Shared type ---------- */
+.cue{font-size:11px;letter-spacing:.35em;text-transform:uppercase;font-weight:600;margin-bottom:26px;color:var(--blue)}
+.cue::before{content:"";display:inline-block;width:34px;height:1px;background:currentColor;vertical-align:middle;margin-right:14px}
+.cue.foam{color:var(--foam)}
+.cue.bare::before{display:none}
+/* text-wrap:balance evens out the line lengths of these short display
+   headings (no more one-long-line-then-one-word); text-wrap:pretty on the
+   longer body copy only touches the last few lines to prevent orphans.
+   Both are progressive — ignored where unsupported, no fallback needed. */
+h1,h2{font-family:'Sora',sans-serif;font-weight:100;letter-spacing:.01em;text-wrap:balance}
+h2{font-size:clamp(30px,4.4vw,48px);line-height:1.15;max-width:660px}
+h2 b{font-weight:600}
+.lede{margin-top:22px;max-width:560px;color:var(--dim);font-size:15.5px;font-weight:200;line-height:1.85;text-wrap:pretty}
+.body-text{margin-top:22px;max-width:620px;color:var(--dim);font-size:15.5px;font-weight:200;line-height:1.9;text-wrap:pretty}
+
+/* ---------- Home hero ---------- */
+header.hero{min-height:100vh;display:flex;flex-direction:column;justify-content:center;position:relative;padding-top:64px}
+/* touch-action:manipulation — this is also the hidden game's door 1 (5
+   quick taps, GAME-SPEC.md §3); without it, rapid taps register as a
+   native double-tap-zoom gesture instead of 5 clean clicks. */
+.wordmark{font-family:'Sora',sans-serif;font-weight:100;font-size:clamp(56px,11vw,150px);letter-spacing:.14em;line-height:1;
+  text-shadow:0 0 60px rgba(47,216,255,.22);touch-action:manipulation}
+.hero-line{font-family:'Sora',sans-serif;font-weight:100;font-size:clamp(20px,2.6vw,30px);letter-spacing:.02em;margin-top:22px;color:var(--dim);text-wrap:balance}
+.hero-line b{font-weight:600;color:var(--text)}
+.hero-sub{margin-top:30px;max-width:520px;font-size:16px;font-weight:200;line-height:1.8;color:var(--dim)}
+.meter{position:absolute;bottom:0;left:0;right:0;height:1px;background:rgba(255,255,255,.08)}
+.meter i{position:absolute;left:0;top:-1px;height:3px;width:22%;background:linear-gradient(90deg,var(--blue),var(--blue-hi));box-shadow:var(--blue-glow)}
+
+/* ---------- Page hero (inner pages) ---------- */
+header.page{padding:170px 0 70px;border-bottom:1px solid rgba(255,255,255,.05)}
+
+/* ---------- Sections ---------- */
+section{padding:100px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+section.alt{background:var(--bg2)}
+section:last-of-type{border-bottom:none}
+
+/* ---------- Dictionary entry (About) ---------- */
+.dict{padding:170px 0 80px;border-bottom:1px solid rgba(47,216,255,.15)}
+.dict-word{font-family:'Sora',sans-serif;font-weight:100;font-size:clamp(52px,9vw,110px);letter-spacing:.06em;line-height:1;
+  text-shadow:0 0 60px rgba(47,216,255,.18)}
+.dict-ipa{margin-top:18px;color:var(--blue);font-size:14px;letter-spacing:.12em;font-weight:400}
+.dict-defs{margin-top:34px;max-width:620px;counter-reset:def}
+.dict-defs p{position:relative;padding-left:38px;margin-bottom:18px;color:var(--dim);
+  font-size:16.5px;font-weight:200;line-height:1.75;font-style:italic}
+.dict-defs p::before{counter-increment:def;content:counter(def);position:absolute;left:0;top:2px;
+  font-family:'Sora',sans-serif;font-style:normal;font-weight:600;font-size:13px;color:var(--foam)}
+
+/* ---------- Mobile page-location wheel (2026-07-20) ----------
+   Top-left, just under the nav. Resting state is always just the current
+   page's own row at translateY(0) — no JS needed for a correct static
+   label (.page-wheel-row, plain text). main.js is what makes it move: on
+   load, if the PREVIOUS page this tab visited (sessionStorage) had a
+   different label, it replaces that plain row with a sequence of
+   .pw-char mini-wheels — one per character of the label, each holding
+   the outgoing and incoming character for that slot — and slides each
+   pair down by one row height, with a per-character transition-delay so
+   they don't all move at once: character 0 starts first, character 1 a
+   beat later, and so on, giving a cascading roll across the whole label
+   instead of the text moving as one block.
+
+   SPACING: each .pw-char's width comes purely from the INCOMING
+   character (.pw-new, kept in normal flow); the OUTGOING one (.pw-old)
+   is absolutely positioned, so it's out of flow and can never stretch
+   the box to the wider of the two. That's what keeps horizontal spacing
+   identical to the resting text at every frame — earlier attempts sized
+   the box to whichever character was wider (directly, then via a broken
+   measurement), which left visible gaps around narrow letters. No width
+   measurement is needed at all this way; the browser lays the new
+   character out exactly as it sits at rest. margin-right:.18em
+   replicates the resting row's letter-spacing. */
+.page-wheel{display:none}
+@media(max-width:900px){
+  /* position:absolute (anchored to the document), NOT fixed — so it
+     scrolls up and away with the rest of the page instead of staying
+     pinned. Sits at the top under the fixed nav; the header content sits
+     well below (header padding-top), so they scroll up together with no
+     overlap. Transparent/minimal, as before. The roll clips inside each
+     .pw-char. */
+  .page-wheel{display:block;position:absolute;top:80px;left:0;right:0;z-index:5;
+    --wheel-row-h:15px;height:var(--wheel-row-h);overflow:hidden;padding:0 24px;pointer-events:none}
+  /* font-kerning/ligatures OFF: the resting label (.page-wheel-row) is a
+     continuous text run the browser would kern (e.g. "Va" in VALUES tucks
+     tighter), but the per-character animated version measures and lays out
+     each glyph in isolation with no kerning — so a kerned resting run ends
+     up slightly narrower and the row visibly snaps when it swaps back.
+     Disabling both here (inherited by the row AND the measuring span)
+     makes the two layouts identical, so the swap is seamless. */
+  .page-wheel-track{transform:translateY(0);
+    font-family:'Inter',sans-serif;font-size:9.5px;font-weight:600;
+    text-transform:uppercase;color:var(--blue);white-space:nowrap;
+    font-kerning:none;font-variant-ligatures:none}
+  .page-wheel-row{height:var(--wheel-row-h);display:flex;align-items:center;letter-spacing:.18em}
+  .page-wheel-charrow{height:var(--wheel-row-h);white-space:nowrap;line-height:var(--wheel-row-h)}
+  /* Each character box's WIDTH is set inline by main.js and animated from
+     the outgoing character's width to the incoming one's, so BOTH labels
+     are correctly spaced at their own ends of the roll (the from-label at
+     the start, the to-label at the end) rather than only one of them. The
+     two characters are absolutely stacked (natural width, out of flow)
+     inside the box, which the box then clips. margin-right:.18em
+     replicates the resting row's letter-spacing. */
+  .pw-char{position:relative;display:inline-block;vertical-align:top;overflow:hidden;
+    height:var(--wheel-row-h);margin-right:.18em}
+  .pw-char-cell{position:absolute;top:0;left:0;height:var(--wheel-row-h);
+    line-height:var(--wheel-row-h);white-space:pre;transform:translateY(0)}
+  @media(prefers-reduced-motion:no-preference){
+    .pw-char{transition:width 1.3s cubic-bezier(.55,.05,.45,.95)}
+    .pw-char-cell{transition:transform 1.3s cubic-bezier(.55,.05,.45,.95)}
+  }
+}
+
+/* ---------- Imagery frame ---------- */
+.frame{margin-top:56px;aspect-ratio:21/9;border:1px solid rgba(47,216,255,.2);position:relative;overflow:hidden;
+  background:
+    linear-gradient(rgba(11,15,21,.45), rgba(11,15,21,.78)),
+    radial-gradient(620px 300px at 30% 40%, rgba(47,216,255,.24), transparent 70%),
+    linear-gradient(160deg,#16202e 0%, #0b0f15 70%);
+  box-shadow:inset 0 0 80px rgba(47,216,255,.06)}
+.frame img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.75}
+
+/* Dev-only empty-frame outline (2026-07-17) — same dashed language as
+   .empty, shown only on the dev server (never in production, gated in
+   the template via env.isProduction) so a founder can see exactly where
+   an unfilled photo slot is before uploading anything. */
+.frame-placeholder{margin-top:56px;aspect-ratio:21/9;border:1px dashed rgba(47,216,255,.35);
+  display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;
+  background:radial-gradient(500px 200px at 50% 0%, rgba(47,216,255,.05), transparent 70%)}
+.frame-placeholder span{color:var(--dim);font-size:12px;letter-spacing:.08em;max-width:360px;line-height:1.6}
+.frame-placeholder b{color:var(--blue);font-weight:600}
+
+/* ---------- Values grid (home) ---------- */
+.vals{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:rgba(255,255,255,.06);margin-top:60px;border:1px solid rgba(255,255,255,.06)}
+.val{background:var(--panel);padding:40px 32px;transition:.25s}
+.val:hover{box-shadow:inset 0 2px 0 var(--foam), inset 0 30px 60px -40px var(--foam-dim)}
+.val .n{font-size:11px;letter-spacing:.3em;color:var(--foam);font-weight:600;text-transform:uppercase}
+.val h3{font-family:'Sora',sans-serif;font-weight:600;font-size:19px;margin:16px 0 12px}
+.val p{color:var(--dim);font-size:14px;font-weight:300;line-height:1.75}
+
+/* ---------- Values list (values page) ---------- */
+.conviction{display:flex;gap:36px;align-items:baseline;padding:44px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+.conviction:last-child{border-bottom:none}
+.conviction .num{font-family:'Sora',sans-serif;font-weight:100;font-size:44px;color:var(--foam);min-width:76px;line-height:1;
+  text-shadow:0 0 30px rgba(92,242,196,.3)}
+.conviction h3{font-family:'Sora',sans-serif;font-weight:600;font-size:21px;margin-bottom:12px}
+.conviction p{color:var(--dim);font-size:15px;font-weight:200;line-height:1.85;max-width:560px}
+
+/* ---------- Work blocks (mission) ---------- */
+.work{display:grid;grid-template-columns:120px 1fr;gap:36px;padding:48px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+.work:last-child{border-bottom:none}
+.work .label{font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:var(--blue);font-weight:600;padding-top:6px}
+.work h3{font-family:'Sora',sans-serif;font-weight:600;font-size:21px;margin-bottom:14px}
+.work p{color:var(--dim);font-size:15px;font-weight:200;line-height:1.85;max-width:620px}
+
+/* ---------- Buttons ---------- */
+.btn-row{display:flex;gap:16px;flex-wrap:wrap;margin-top:44px}
+.btn-row.center{justify-content:center}
+.btn{font-family:'Sora',sans-serif;font-weight:600;font-size:12.5px;letter-spacing:.2em;text-transform:uppercase;
+  padding:16px 38px;border-radius:2px;transition:.25s;display:inline-block;cursor:pointer;border:none}
+.btn.solid{background:var(--foam);color:#06110c}
+.btn.solid:hover{box-shadow:var(--foam-glow)}
+.btn.ghost{border:1px solid rgba(47,216,255,.4);color:var(--blue);background:none}
+.btn.ghost:hover{background:var(--blue-dim);box-shadow:var(--blue-glow)}
+/* Tactile lift on hover (2026-07-20): buttons rise a touch, settle on
+   press. transform is GPU-composited so this stays smooth alongside the
+   glow. */
+.btn:hover{transform:translateY(-2px)}
+.btn:active{transform:translateY(0)}
+
+/* ---------- CTA ---------- */
+.cta{text-align:center;padding:130px 0}
+.cta h2,.cta .lede{margin-left:auto;margin-right:auto}
+.cta .cue{display:inline-block}
+
+/* ---------- Empty states (resources, events) ---------- */
+.empty{margin-top:60px;border:1px dashed rgba(47,216,255,.25);padding:70px 40px;text-align:center;
+  background:radial-gradient(500px 200px at 50% 0%, rgba(47,216,255,.05), transparent 70%)}
+.empty h3{font-family:'Sora',sans-serif;font-weight:200;font-size:24px;letter-spacing:.03em}
+.empty p{margin:18px auto 0;max-width:480px;color:var(--dim);font-size:15px;font-weight:200;line-height:1.85}
+.empty .btn{margin-top:34px}
+
+/* The work line — promoted here from coming-soon.njk's page-scoped style
+   (2026-07-17) so it's shared, not duplicated, now that the Resources
+   empty state uses it too: "something's in motion, still coming." */
+.workline{position:relative;width:100%;height:2px;background:rgba(255,255,255,.09);overflow:hidden;margin-top:44px}
+.workline i{position:absolute;top:-1px;height:4px;width:18%;display:block;
+  background:linear-gradient(90deg,rgba(92,242,196,0),#5CF2C4 45%,#B2FFE6 55%,rgba(92,242,196,0));
+  box-shadow:0 0 18px rgba(92,242,196,.55);left:-22%}
+@media(prefers-reduced-motion:no-preference){
+  .workline i{animation:workline-pass 9s cubic-bezier(.5,.05,.5,.95) infinite}
+  @keyframes workline-pass{0%{left:-22%}38%{left:104%}100%{left:104%}}
+}
+
+/* Resource cards — shown once real content exists behind the reveal
+   flag (site.resourcesReady); same panel language as .give-card. */
+.resource-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-top:20px}
+.resource-card{background:var(--panel);border:1px solid rgba(255,255,255,.07);padding:32px;transition:.25s}
+.resource-card:hover{box-shadow:inset 0 2px 0 var(--foam), inset 0 30px 60px -40px var(--foam-dim)}
+.resource-photo{aspect-ratio:16/9;overflow:hidden;border:1px solid rgba(47,216,255,.2);margin-bottom:16px}
+.resource-photo img{width:100%;height:100%;object-fit:cover}
+.resource-card h3{font-family:'Sora',sans-serif;font-weight:600;font-size:19px}
+.resource-card p{color:var(--dim);font-size:14.5px;font-weight:200;line-height:1.8;margin-top:12px}
+.resource-card .btn{margin-top:20px}
+@media(max-width:820px){.resource-grid{grid-template-columns:1fr}}
+
+/* ---------- Give ---------- */
+.give-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:56px}
+.give-card{background:var(--panel);border:1px solid rgba(255,255,255,.07);padding:38px 32px}
+.give-card h3{font-family:'Sora',sans-serif;font-weight:600;font-size:19px;margin-bottom:12px;color:var(--foam-hi)}
+.give-card p{color:var(--dim);font-size:14.5px;font-weight:200;line-height:1.8}
+.donate-slot{margin-top:56px;border:1px solid rgba(92,242,196,.25);min-height:300px;display:grid;place-items:center;
+  background:radial-gradient(500px 240px at 50% 30%, rgba(92,242,196,.06), transparent 70%);padding:40px}
+.donate-slot p{color:var(--dim);font-size:13px;letter-spacing:.15em;text-transform:uppercase}
+.legal-note{margin-top:34px;max-width:620px;color:var(--dim);font-size:13px;font-weight:300;line-height:1.8;
+  border-left:2px solid var(--blue);padding-left:18px}
+
+/* ---------- Contact form ---------- */
+form.contact{margin-top:56px;max-width:560px;display:flex;flex-direction:column;gap:18px}
+form.contact input,form.contact textarea{background:var(--panel);border:1px solid rgba(255,255,255,.1);
+  color:var(--text);font-family:'Inter',sans-serif;font-weight:300;font-size:15px;padding:16px 18px;border-radius:2px;transition:.2s}
+form.contact input:focus,form.contact textarea:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-dim)}
+form.contact textarea{min-height:160px;resize:vertical}
+form.contact ::placeholder{color:var(--dim)}
+
+/* ---------- Footer ---------- */
+footer{flex-shrink:0;background:var(--bg2);border-top:1px solid rgba(255,255,255,.07)}
+.foot-in{padding:48px 24px;color:var(--dim);font-size:13px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:24px}
+.foot-col{display:flex;flex-direction:column;gap:10px}
+.foot-col.foot-right{align-items:flex-end}
+.foot-tag{font-family:'Sora',sans-serif;font-weight:200;letter-spacing:.08em;color:var(--foam)}
+.foot-legal{font-size:12px;opacity:.85}
+.foot-region{font-size:12px}
+
+/* ---------- Responsive ---------- */
+@media(max-width:900px){
+  .links{display:none}
+  .menu-btn{display:block}
+  .vals,.give-grid{grid-template-columns:1fr}
+  .work{grid-template-columns:1fr;gap:12px}
+  .conviction{gap:20px}
+  .conviction .num{min-width:52px;font-size:34px}
+  .foot-col.foot-right{align-items:flex-start}
+}
+@media(prefers-reduced-motion:no-preference){
+  .rise{animation:rise .9s ease both}
+  .rise-2{animation:rise .9s ease both;animation-delay:.14s}
+  .rise-3{animation:rise .9s ease both;animation-delay:.28s}
+  @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+}
+
+/* ---------- Team ---------- */
+.team-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-top:20px}
+.person{background:var(--panel);border:1px solid rgba(255,255,255,.07);padding:32px;transition:.25s;display:block}
+.person:hover{box-shadow:inset 0 2px 0 var(--foam), inset 0 30px 60px -40px var(--foam-dim);transform:translateY(-3px)}
+.person-photo{aspect-ratio:1/1;border:1px solid rgba(47,216,255,.2);position:relative;overflow:hidden;display:grid;place-items:center;
+  background:linear-gradient(rgba(11,15,21,.3),rgba(11,15,21,.6)),radial-gradient(300px 300px at 35% 30%, rgba(47,216,255,.18), transparent 70%),linear-gradient(160deg,#16202e 0%,#0b0f15 75%)}
+.person-photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.person-initial{font-family:'Sora',sans-serif;font-weight:100;font-size:64px;color:var(--blue);opacity:.6}
+.person h3{font-family:'Sora',sans-serif;font-weight:600;font-size:19px;margin-top:22px}
+.person-role{color:var(--foam);font-size:12px;letter-spacing:.2em;text-transform:uppercase;font-weight:600;margin-top:8px}
+.person-base{color:var(--dim);font-size:13px;font-weight:300;margin-top:10px}
+.bio-layout{display:grid;grid-template-columns:300px 1fr;gap:48px;align-items:start}
+.bio-photos{display:flex;flex-direction:column;gap:24px}
+.bio-photo{max-width:300px}
+.bio-text p{margin-bottom:1em}
+@media(max-width:820px){.team-grid{grid-template-columns:1fr}.bio-layout{grid-template-columns:1fr}}
+
+/* ---------- Staff-area cards ---------- */
+.staff-h{font-family:'Sora',sans-serif;font-weight:600;font-size:20px;margin:34px 0 8px}
+.staff-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:14px}
+.s-card{background:var(--panel);border:1px solid rgba(255,255,255,.07);padding:26px;transition:.25s}
+.s-card:hover{box-shadow:inset 0 2px 0 var(--foam)}
+.s-card h4{font-family:'Sora',sans-serif;font-weight:600;font-size:16.5px}
+.s-role{color:var(--foam);font-size:11px;letter-spacing:.2em;text-transform:uppercase;font-weight:600;margin-top:6px}
+.s-card p{color:var(--dim);font-size:13.5px;font-weight:300;line-height:1.7;margin-top:10px}
+.s-photo{aspect-ratio:16/9;overflow:hidden;border:1px solid rgba(47,216,255,.2);margin-bottom:16px;
+  background:linear-gradient(160deg,#16202e 0%,#0b0f15 75%)}
+.s-photo img{width:100%;height:100%;object-fit:cover}
+.s-link{display:inline-block;margin-top:14px;color:var(--blue);font-size:12.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:600}
+.s-link:hover{color:var(--blue-hi)}
+@media(max-width:820px){.staff-grid{grid-template-columns:1fr}}
+
+/* ---------- Navigation experience ---------- */
+/* Voice-aware text selection (2026-07-20): the site's two-color system
+   (BLUE = technical voice, FOAM = ministry voice) carries through to
+   highlighting. Default selection is blue; the foam-COLORED elements
+   (ministry voice — cues, the tagline, roles, value numbers, the Give
+   button) highlight foam to match their own text color. Listed per
+   element rather than by section so it tracks the actual green text. */
+::selection{background:rgba(47,216,255,.32);color:#fff;text-shadow:none}
+.cue.foam::selection,.foot-tag::selection,.val .n::selection,.conviction .num::selection,
+.person-role::selection,.s-role::selection,.give-btn::selection,
+.lang-dropdown-current::selection{background:rgba(92,242,196,.4);color:#fff;text-shadow:none}
+
+/* Keyboard focus rings in the brand voice (2026-07-20): shown only to
+   keyboard / assistive-tech users (:focus-visible), never on mouse click.
+   Blue by default (the structural/technical voice), foam on the Give
+   button (the ministry-voice action). The outline follows each element's
+   own border-radius automatically. */
+:focus-visible{outline:2px solid var(--blue);outline-offset:3px}
+.give-btn:focus-visible{outline-color:var(--foam)}
+@media(prefers-reduced-motion:no-preference){
+  .sr{opacity:0;transform:translateY(16px);transition:opacity .7s ease,transform .7s ease}
+  .sr.in{opacity:1;transform:none}
+}
+
+/* ---------- Character-reveal cascade (2026-07-20) ----------
+   Section cue labels (their leading number too) and the Mission work
+   labels roll their characters up into place as they scroll into view,
+   cascading down the page. main.js builds and drives it; these are just
+   the primitives. font-kerning off so the per-character form matches the
+   plain resting text on revert (same reasoning as the page wheel).
+   Pre-hidden under no-preference so there's no flash of the finished
+   label before the roll — same tradeoff as .sr (if JS never runs they
+   stay hidden). Header cues are excluded (they keep their on-load .rise).*/
+section .cue, .work .label, .val .n, .conviction .num{font-kerning:none;font-variant-ligatures:none}
+.cr-box{display:inline-block;overflow:hidden;vertical-align:top}
+.cr-in{display:block}
+.cue.cr-nonum::before{display:none}
+@media(prefers-reduced-motion:no-preference){
+  section .cue, .work .label, .val .n, .conviction .num{opacity:0}
+  .cr-in{transition:transform 1.3s cubic-bezier(.55,.05,.45,.95)}
+}
+.foot-socials{display:flex;align-items:center;gap:16px}
+.foot-socials a{color:var(--dim);display:inline-flex;transition:.2s}
+.foot-socials a:hover{color:var(--foam)}
+
+/* ---------- Numbered cue labels (sections only; header cues keep the line) ---------- */
+body{counter-reset:cue}
+section .cue{counter-increment:cue}
+section .cue::before{content:counter(cue,decimal-leading-zero);width:auto;height:auto;background:none;
+  vertical-align:baseline;margin-right:14px;font-size:11px;letter-spacing:.2em;opacity:.65;font-weight:600}
+
+/* ---------- Scroll progress line (inner pages) ---------- */
+.scroll-progress{position:fixed;top:0;left:0;width:100%;height:2px;z-index:40;
+  background:linear-gradient(90deg,var(--blue),var(--blue-hi));
+  box-shadow:0 0 10px rgba(47,216,255,.5);
+  transform:scaleX(0);transform-origin:left;pointer-events:none}
+
+/* ---------- Frames develop from darkness ---------- */
+@media(prefers-reduced-motion:no-preference){
+  .frame.sr{opacity:1;transform:none;filter:brightness(.12);transition:filter 1.5s ease}
+  .frame.sr.in{filter:brightness(1)}
+}
+
+/* ---------- Active nav: neon ping underline ---------- */
+/* Shared with .mobile-menu a (2026-07-17): same treatment for the current
+   page's link in the hamburger panel as the desktop nav already had. */
+.links a, .mobile-menu a{position:relative}
+.links a.active, .mobile-menu a.active{color:var(--text);box-shadow:none}
+.links a.active::after, .mobile-menu a.active::after{content:"";position:absolute;left:0;right:0;bottom:-7px;height:2px;
+  background:linear-gradient(90deg,var(--foam),#B2FFE6);
+  box-shadow:0 0 8px var(--foam),0 0 20px rgba(92,242,196,.45);
+  transform:scaleX(1);transform-origin:left}
+/* Retimed 2026-07-17 (requested directly): grow/hold/shrink keep their
+   exact original real-time durations (1.26s / 0.504s / 1.218s) — only the
+   dead pause at the end shrinks, from 1.176s to ~0.294s (a quarter), so
+   the whole cycle drops from 4.2s to 3.318s instead of sitting idle for
+   28% of each cycle. Percentages below are each phase's original duration
+   re-expressed as a fraction of the new, shorter total — same math, just
+   compressed timeline. */
+@keyframes navping{
+  0%{transform:scaleX(0);transform-origin:left}
+  37.97%{transform:scaleX(1);transform-origin:left}
+  53.16%{transform:scaleX(1);transform-origin:left}
+  54.43%{transform:scaleX(1);transform-origin:right}
+  91.14%{transform:scaleX(0);transform-origin:right}
+  100%{transform:scaleX(0);transform-origin:right}
+}
+/* Desktop starts pulsing immediately (nothing to wait on). The mobile-menu
+   copy is scoped to .menu-open only, with animation-delay matching the
+   panel's own unfurl duration (.5s, see .menu-open .mobile-menu above) —
+   without this split, the underline's `infinite` animation keeps running
+   in the background the whole time the panel is hidden (CSS animations
+   don't pause just because visibility:hidden/opacity:0 are covering them
+   up), so by the time you actually see the panel it's already mid-cycle
+   instead of starting clean. Scoping to .menu-open also means each open
+   restarts the animation fresh rather than resuming wherever it was.
+   animation-fill-mode:backwards makes it hold navping's 0% frame
+   (scaleX(0), i.e. no underline at all) for the whole delay, instead of
+   falling back to the shared active-state transform:scaleX(1) baseline
+   below — so no underline shows during the unfurl either, only once the
+   panel is open and the animation's first cycle actually begins. */
+@media(prefers-reduced-motion:no-preference){
+  .links a.active::after{animation:navping 3.318s cubic-bezier(.55,.05,.45,.95) infinite}
+  .menu-open .mobile-menu a.active::after{animation:navping 3.318s cubic-bezier(.55,.05,.45,.95) infinite;
+    animation-delay:.5s;animation-fill-mode:backwards}
+}

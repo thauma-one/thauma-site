@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Stewardship · Thauma Staff</title>
+<link rel="stylesheet" href="/css/tokens.css">
+<link rel="stylesheet" href="/css/staff.css?v=2">
+<link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
+</head>
+<body data-staff-page="stewardship">
+
+<header class="top"><div class="top-in">
+  <a class="mark" href="/staff/">THAUMA<em>STAFF</em></a>
+  <nav>
+    <a href="/staff/">Dashboard</a>
+    <a href="/staff/support/">Support</a>
+    <a href="/staff/stewardship/" aria-current="page">Stewardship</a>
+    <a href="/staff/directory/">Directory</a>
+    <a href="/staff/resources/">Resources</a>
+    <a href="/staff/activity/">Activity</a>
+  </nav>
+  <div class="top-r">
+    <span class="pill" id="partnerPill">—</span>
+    <span class="who"><b id="userName">—</b><span id="userRole">—</span></span>
+    <a class="ghost-btn" href="/cdn-cgi/access/logout">Sign out</a>
+  </div>
+</div></header>
+
+<main>
+  <div class="page-head">
+    <div class="cue">03 &mdash; Stewardship <span class="badge live">live</span></div>
+    <div class="sec-h">
+      <h2>Who needs a <b>call</b></h2><span class="hint">supporters — sorted worst first, click a row for history</span>
+    </div>
+  </div>
+
+  <p class="rolegate" id="roleNote" hidden>
+    Signed in, but the staff data endpoint refused the request. That usually means this
+    deploy is missing its <b>ACCESS_TEAM_DOMAIN</b> / <b>ACCESS_AUD</b> settings.
+  </p>
+
+  <div class="tw">
+  <table>
+    <thead><tr>
+      <th>Person</th><th>Last personal contact</th><th>Last contact (any)</th>
+      <th>Consent</th><th class="right">Touches</th>
+    </tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+</div>
+
+<p class="note">
+  <b>Newsletters do not count as personal contact.</b> A bulk send is contact, but it is not
+  a conversation — and a dashboard that conflates the two reports everyone as looked after
+  when nobody has been called in months.
+</p>
+
+</main>
+
+<script src="/js/staff.js?v=2"></script>
+</body>
+</html>

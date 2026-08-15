@@ -16,3 +16,7 @@ collage-debug.svg
 # Staging build for the Workers deploy (full/gated per site.json, like production)
 _site_next/
 __pycache__/
+
+# wrangler dev's local state — the simulated D1/KV for dev.thauma.one.
+# Reproducible from db/seed.dev.sql; never a source of truth.
+.wrangler/

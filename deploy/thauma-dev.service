@@ -1,0 +1,44 @@
+# Thauma dev server — what dev.thauma.one serves, through the Cloudflare tunnel.
+#
+# Install:
+#   sudo cp /DATA/AppData/thauma/deploy/thauma-dev.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl restart thauma-dev
+#
+# WHY THREE PROCESSES. `netlify dev` did all of this in one command until
+# 2026-08-15, when the staff console moved onto /api/staff-snapshot — a Worker
+# route netlify dev does not serve, so four sections 404'd against it. wrangler
+# replaces it, but wrangler builds nothing, so Eleventy has to run alongside.
+#
+#   socat     bridges 8992 -> 8991 so the LAN can reach the dev site directly
+#   eleventy  --watch rebuilds _site on every source change
+#   wrangler  serves _site AND the Worker routes on 8991, which the tunnel hits
+#
+# --watch, NOT --serve: Eleventy must not bind a port of its own here, and
+# ELEVENTY_RUN_MODE=watch still counts as a dev server in src/_data/env.js, so
+# the comingSoon gate stays off and the interior pages stay visible. A bare
+# build would set it to "build" and silently serve the GATED site instead.
+#
+# wrangler runs LOCAL: D1 and KV are simulated from .wrangler/state, seeded
+# once from db/seed.dev.sql. See the [env.dev] comments in wrangler.toml for
+# the two remote-binding approaches that were tried on 2026-08-15 and why both
+# failed on this machine.
+#
+# Cloudflare Access still gates this hostname at the edge, in front of the
+# tunnel. The Worker also verifies the JWT itself — dev.thauma.one's audience
+# tag is first in [env.dev.vars] ACCESS_AUD.
+[Unit]
+Description=Thauma dev server (eleventy --watch + wrangler dev + LAN bridge)
+After=network-online.target
+
+[Service]
+User=chaseroushtech
+WorkingDirectory=/DATA/AppData/thauma
+# 0600, and wrangler reads CLOUDFLARE_API_TOKEN from the environment rather
+# than taking it as an argument — an argument would be visible in `ps`.
+EnvironmentFile=/home/chaseroushtech/.config/cloudflare-thauma.env
+ExecStart=/bin/bash -lc 'socat TCP-LISTEN:8992,fork,reuseaddr TCP:127.0.0.1:8991 & npx @11ty/eleventy --watch --output=_site & exec ./node_modules/.bin/wrangler dev --env dev --port 8991 --ip 127.0.0.1 --show-interactive-dev-session false'
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

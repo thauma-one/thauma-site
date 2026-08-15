@@ -1,0 +1,267 @@
+/* ============================================================
+   staff.css — Thauma staff console
+   ============================================================
+   Everything resolves through src/css/tokens.css. No hardcoded
+   brand colour lives in this file; if the palette changes, this
+   follows automatically.
+
+   SEMANTIC COLOUR IS SEPARATE FROM BRAND COLOUR. --ok/--warn/
+   --crit below are status, not accent — a red row means "overdue",
+   never "important". Mixing the two is how dashboards stop being
+   scannable.
+   ============================================================ */
+
+:root{
+  --ok:   #5CF2C4;
+  --warn: #F5B845;
+  --crit: #FF5A6E;
+  --ok-dim:   rgba(92,242,196,.12);
+  --warn-dim: rgba(245,184,69,.12);
+  --crit-dim: rgba(255,90,110,.12);
+  --header-h: 62px;
+}
+
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);
+  font-family:var(--font-body);font-weight:var(--w-body);line-height:1.6;
+  -webkit-font-smoothing:antialiased;min-height:100vh}
+h1,h2,h3{font-family:var(--font-display);font-weight:var(--w-hair);text-wrap:balance}
+b,strong{font-weight:var(--w-bold)}
+.tnum{font-variant-numeric:tabular-nums}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+
+/* ---------- shell ---------- */
+.top{position:sticky;top:0;z-index:20;height:var(--header-h);
+  background:rgba(11,15,21,.86);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--line)}
+.top-in{max-width:1240px;margin:0 auto;padding:0 var(--gutter);height:100%;
+  display:flex;align-items:center;gap:24px}
+.mark{font-family:var(--font-display);font-weight:var(--w-hair);
+  letter-spacing:var(--ls-mark);font-size:15px;white-space:nowrap}
+.mark em{font-style:normal;font-weight:var(--w-bold);letter-spacing:var(--ls-caps);
+  color:var(--voice-tech);font-size:11px;margin-left:10px}
+.top nav{display:flex;gap:22px;margin-left:8px}
+.top nav a{font-size:var(--fs-sm);color:var(--dim);padding:4px 0;
+  border-bottom:1px solid transparent}
+.top nav a:hover{color:var(--text)}
+.top nav a[aria-current]{color:var(--text);border-bottom-color:var(--voice-tech)}
+.top-r{margin-left:auto;display:flex;align-items:center;gap:16px}
+.who{font-size:var(--fs-tiny);color:var(--dim);text-align:right;line-height:1.35}
+.who b{display:block;color:var(--text);font-size:var(--fs-sm)}
+.pill{font-size:10px;letter-spacing:var(--ls-label);text-transform:uppercase;
+  font-weight:var(--w-bold);padding:4px 9px;border-radius:var(--radius);
+  border:1px solid var(--line-hard);color:var(--dim)}
+
+main{max-width:1240px;margin:0 auto;padding:32px var(--gutter) 80px;
+  display:flex;flex-direction:column;gap:38px}
+
+.sec-h{display:flex;align-items:baseline;gap:14px;margin-bottom:16px}
+.sec-h h2{font-size:22px;line-height:1.2}
+.sec-h .hint{font-size:var(--fs-tiny);color:var(--dim);margin-left:auto}
+.cue{font-size:11px;letter-spacing:var(--ls-cue);text-transform:uppercase;
+  font-weight:var(--w-bold);color:var(--voice-tech);display:flex;align-items:center;
+  gap:12px;margin-bottom:12px}
+.cue::before{content:"";width:26px;height:1px;background:currentColor;flex:none}
+
+/* ---------- stat tiles ---------- */
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+  gap:1px;background:var(--line);border:1px solid var(--line)}
+.tile{background:var(--panel);padding:20px 22px;display:flex;flex-direction:column;gap:6px}
+.tile .k{font-size:10px;letter-spacing:var(--ls-label);text-transform:uppercase;
+  font-weight:var(--w-bold);color:var(--dim)}
+.tile .v{font-family:var(--font-display);font-weight:var(--w-hair);font-size:38px;
+  line-height:1;letter-spacing:.01em}
+.tile .s{font-size:var(--fs-tiny);color:var(--dim)}
+.tile.alert{background:linear-gradient(180deg,var(--crit-dim),transparent 70%),var(--panel);
+  box-shadow:inset 2px 0 0 var(--crit)}
+.tile.alert .v{color:var(--crit)}
+.tile.calm{box-shadow:inset 2px 0 0 var(--ok)}
+.tile.calm .v{color:var(--ok)}
+
+/* ---------- goals ---------- */
+.goals{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1px;
+  background:var(--line);border:1px solid var(--line)}
+.goal{background:var(--panel);padding:22px 24px}
+.goal-t{display:flex;align-items:baseline;gap:10px}
+.goal-t h3{font-family:var(--font-display);font-weight:var(--w-bold);font-size:14px;
+  letter-spacing:.04em}
+.goal-t .kind{font-size:10px;letter-spacing:var(--ls-label);text-transform:uppercase;
+  color:var(--dim)}
+.goal-t .pct{margin-left:auto;font-family:var(--font-display);font-weight:var(--w-hair);
+  font-size:26px;line-height:1;color:var(--voice-human)}
+.bar{height:3px;background:rgba(255,255,255,.07);margin:16px 0 10px;position:relative}
+.bar i{position:absolute;inset:0 auto 0 0;background:var(--voice-human);
+  box-shadow:var(--voice-human-glow)}
+.goal-f{display:flex;justify-content:space-between;font-size:var(--fs-tiny);color:var(--dim)}
+
+/* ---------- contacts table ---------- */
+.tw{overflow-x:auto;border:1px solid var(--line)}
+table{border-collapse:collapse;width:100%;min-width:760px;font-size:var(--fs-sm)}
+thead th{text-align:left;padding:11px 16px;font-size:10px;letter-spacing:var(--ls-label);
+  text-transform:uppercase;font-weight:var(--w-bold);color:var(--dim);
+  background:rgba(255,255,255,.025);border-bottom:1px solid var(--line);
+  position:sticky;top:var(--header-h);z-index:5}
+tbody td{padding:13px 16px;border-bottom:1px solid var(--line-soft);vertical-align:middle}
+tbody tr:last-child td{border-bottom:0}
+tbody tr{cursor:pointer;transition:background var(--dur-3) var(--ease-main)}
+tbody tr:hover{background:rgba(255,255,255,.03)}
+tbody tr[aria-expanded="true"]{background:rgba(255,255,255,.045)}
+.nm{font-weight:var(--w-bold);color:var(--text)}
+.sub{font-size:var(--fs-tiny);color:var(--dim)}
+.right{text-align:right}
+
+/* severity is carried by BOTH a stripe and a number, so it survives
+   greyscale and colour-blindness */
+.sev{display:inline-flex;align-items:center;gap:9px;font-weight:var(--w-bold)}
+.sev::before{content:"";width:3px;height:16px;border-radius:1px;background:currentColor;flex:none}
+.sev.crit{color:var(--crit)}
+.sev.warn{color:var(--warn)}
+.sev.ok{color:var(--ok)}
+.sev.none{color:var(--dim)}
+.chips{display:flex;gap:5px;flex-wrap:wrap}
+.chip{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:var(--w-bold);
+  padding:3px 7px;border-radius:var(--radius);border:1px solid var(--line-hard);color:var(--dim)}
+.chip.on{color:var(--voice-human);border-color:rgba(92,242,196,.4)}
+
+/* ---------- timeline drawer ---------- */
+tr.tl-row td{padding:0;border-bottom:1px solid var(--line-soft)}
+.tl{padding:6px 16px 20px 34px;background:rgba(0,0,0,.22)}
+.ev{display:grid;grid-template-columns:96px 14px 1fr;gap:14px;align-items:start;
+  padding:10px 0;border-bottom:1px solid var(--line-soft)}
+.ev:last-child{border-bottom:0}
+.ev-d{font-family:var(--font-display);font-weight:var(--w-bold);font-size:10.5px;
+  letter-spacing:.1em;color:var(--dim);padding-top:3px}
+.ev-m{padding-top:6px}
+.ev-m i{display:block;width:7px;height:7px;border-radius:1px;background:var(--dim);opacity:.5}
+.ev.personal .ev-m i{background:var(--voice-human);opacity:1;box-shadow:0 0 8px rgba(92,242,196,.7)}
+.ev-t{font-size:var(--fs-sm);color:var(--text)}
+.ev.bulk .ev-t{color:var(--dim);font-weight:var(--w-light)}
+.ev-n{font-size:var(--fs-tiny);color:var(--dim);margin-top:2px;max-width:70ch}
+.ev-tag{font-size:9px;letter-spacing:.12em;text-transform:uppercase;font-weight:var(--w-bold);
+  color:var(--dim);margin-left:8px}
+
+/* ---------- audit ---------- */
+.audit{border:1px solid var(--line);background:var(--panel)}
+.audit-r{display:grid;grid-template-columns:150px 90px 1fr;gap:14px;padding:10px 18px;
+  border-bottom:1px solid var(--line-soft);font-size:var(--fs-tiny);color:var(--dim)}
+.audit-r:last-child{border-bottom:0}
+.audit-r b{color:var(--text);font-weight:var(--w-bold)}
+
+.note{border-left:2px solid var(--voice-tech);padding:2px 0 2px 18px;
+  font-size:var(--fs-tiny);color:var(--dim);max-width:76ch}
+.note b{color:var(--text)}
+
+@media (max-width:760px){
+  .top nav{display:none}
+  .ev{grid-template-columns:76px 12px 1fr;gap:10px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* ============================================================
+   Integrated from the previous /staff/ page (Identity gate,
+   directory + resources CRUD). Those sections are LIVE — they
+   read and write through netlify/functions/staff-data.js. The
+   dashboard/support/stewardship sections above are still
+   prototype data. The badges say which is which, on screen,
+   because a console that hides that distinction is a console
+   that gets trusted when it shouldn't be.
+   ============================================================ */
+
+/* ---------- buttons ---------- */
+.ghost-btn,.solid-btn{font-family:var(--font-display);font-weight:var(--w-bold);
+  font-size:11px;letter-spacing:var(--ls-caps);text-transform:uppercase;
+  padding:9px 18px;border-radius:var(--radius);cursor:pointer;
+  transition:all var(--dur-3) var(--ease-main);display:inline-block;line-height:1.4}
+.ghost-btn{border:1px solid rgba(47,216,255,.4);color:var(--voice-tech);background:none}
+.ghost-btn:hover{background:var(--voice-tech-dim);box-shadow:var(--voice-tech-glow)}
+.solid-btn{background:var(--voice-human);color:var(--voice-human-on);border:0}
+.solid-btn:hover{box-shadow:var(--voice-human-glow)}
+.ghost-btn:focus-visible,.solid-btn:focus-visible{outline:2px solid var(--voice-tech);outline-offset:2px}
+
+/* ---------- signed-out gate ---------- */
+.gate{min-height:calc(100vh - var(--header-h));display:flex;align-items:center}
+.gate-in{max-width:1240px;margin:0 auto;padding:0 var(--gutter)}
+.gate h1{font-family:var(--font-display);font-weight:var(--w-hair);
+  font-size:clamp(34px,6vw,64px);line-height:1.08;margin:14px 0 0}
+.gate h1 b{font-weight:var(--w-bold);color:var(--voice-tech)}
+.gate p{color:var(--dim);font-size:var(--fs-md);font-weight:var(--w-light);
+  max-width:46ch;margin:20px 0 30px;line-height:var(--lh-lede)}
+
+/* ---------- badges: live vs prototype ---------- */
+.badge{font-size:9px;letter-spacing:.14em;text-transform:uppercase;font-weight:var(--w-bold);
+  padding:3px 8px;border-radius:var(--radius);margin-left:4px;white-space:nowrap}
+.badge.live{color:var(--ok);background:var(--ok-dim);border:1px solid rgba(92,242,196,.35)}
+.badge.proto{color:var(--warn);background:var(--warn-dim);border:1px solid rgba(245,184,69,.3)}
+.cue .badge{letter-spacing:.14em}
+
+.rolegate{border-left:2px solid var(--warn);background:var(--warn-dim);
+  padding:14px 18px;font-size:var(--fs-sm);color:var(--text);max-width:none}
+.rolegate b{color:var(--warn)}
+.foot-note code{font-family:var(--font-mono,ui-monospace,monospace);font-size:11.5px;
+  color:var(--text)}
+
+/* ---------- directory / resource cards ---------- */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1px;
+  background:var(--line);border:1px solid var(--line)}
+.card{background:var(--panel);padding:20px 22px;position:relative}
+.card h4{font-family:var(--font-display);font-weight:var(--w-bold);font-size:15px;
+  letter-spacing:.02em;padding-right:76px}
+.card .role{font-size:var(--fs-tiny);color:var(--voice-human);letter-spacing:.08em;
+  text-transform:uppercase;font-weight:var(--w-bold);margin-top:4px}
+.card p{font-size:var(--fs-sm);color:var(--dim);margin-top:8px}
+.card .lnk{display:block;font-size:var(--fs-sm);color:var(--voice-tech);margin-top:7px;
+  word-break:break-word}
+.card .lnk:hover{text-decoration:underline}
+.card .photo{margin:-20px -22px 14px;aspect-ratio:16/9;overflow:hidden;background:var(--bg2)}
+.card .photo img{width:100%;height:100%;object-fit:cover;display:block}
+.card-actions{position:absolute;top:16px;right:18px;display:flex;gap:10px}
+.card-actions button{font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  font-weight:var(--w-bold);color:var(--dim);padding:0;background:none;border:0;cursor:pointer}
+.card-actions button:hover{color:var(--voice-human)}
+.card-actions button.del:hover{color:var(--crit)}
+.empty{color:var(--dim);font-size:var(--fs-sm);padding:20px 22px;background:var(--panel);
+  grid-column:1/-1}
+.row-actions{margin-top:16px}
+
+/* ---------- forms ---------- */
+.form{margin-top:22px;max-width:520px;display:none;flex-direction:column;gap:13px}
+.form.open{display:flex}
+.form input,.form textarea{background:var(--panel);border:1px solid var(--line-hard);
+  color:var(--text);font-family:var(--font-body);font-weight:var(--w-body);
+  font-size:var(--fs-sm);padding:11px 13px;border-radius:var(--radius);width:100%}
+.form input:focus,.form textarea:focus{outline:none;border-color:var(--voice-tech);
+  box-shadow:0 0 0 1px var(--voice-tech)}
+.form textarea{min-height:82px;resize:vertical}
+.frow{display:flex;gap:11px;align-items:center}
+.frow input{flex:1}
+.fgroup{display:flex;flex-direction:column;gap:8px}
+.flabel{font-size:10px;letter-spacing:var(--ls-label);text-transform:uppercase;
+  color:var(--dim);font-weight:var(--w-bold)}
+.hint.err{color:var(--crit)}
+
+/* ============================================================
+   Added when the console was split into a page per section.
+   ============================================================ */
+
+.mark{color:var(--text);text-decoration:none}
+.top nav a[aria-current]{color:var(--text);border-bottom-color:var(--voice-tech)}
+.page-head{margin-bottom:4px}
+.page-head .sec-h{margin-bottom:0}
+
+/* Dashboard quick-links. Each is a number worth acting on, and the whole
+   card is the target — a number you can see but not click is an invitation
+   to go hunting for where it lives. */
+.quick{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1px;
+  background:var(--line);border:1px solid var(--line);margin-top:38px}
+.quick-card{background:var(--panel);padding:22px 24px;display:flex;flex-direction:column;
+  gap:5px;text-decoration:none;transition:background var(--dur-3) var(--ease-main)}
+.quick-card:hover{background:var(--bg2)}
+.quick-card:focus-visible{outline:2px solid var(--voice-tech);outline-offset:-2px}
+.qk{font-size:10px;letter-spacing:var(--ls-label);text-transform:uppercase;
+  font-weight:var(--w-bold);color:var(--voice-tech)}
+.qv{font-family:var(--font-display);font-weight:var(--w-hair);font-size:34px;
+  line-height:1;color:var(--text)}
+.qs{font-size:var(--fs-tiny);color:var(--dim)}
+
+.empty code{font-family:var(--font-mono);font-size:11.5px;color:var(--text)}

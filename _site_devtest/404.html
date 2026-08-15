@@ -1,0 +1,2100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>404 · Thauma</title>
+<meta name="robots" content="noindex">
+<link rel="preload" as="font" type="font/woff2" href="/fonts/Sora-latin-v2.woff2" crossorigin>
+<link rel="preload" as="font" type="font/woff2" href="/fonts/Inter-latin-v2.woff2" crossorigin>
+<link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/css/main.css?v=43">
+<style>
+  /* This single file serves every broken URL regardless of language
+     prefix, so — unlike every other page — language here is a runtime
+     toggle, not a build-time pagination. Both languages render; JS
+     shows one. */
+  [data-lang-block][hidden]{display:none}
+  main{display:flex;flex-direction:column;justify-content:center}
+  /* ---- GAME-SPEC.md Phase 1 (dev-only) ---- */
+  /* touch-action:manipulation — this is door 4 (§3); a mistimed double-tap
+     here would otherwise trigger native double-tap-zoom before the game
+     canvas (which has its own guard) ever opens. */
+  .dict-word{cursor:text;display:inline-block;touch-action:manipulation}
+  .thauma-char{display:inline-block}
+
+  /* Real glitch: RGB-split text-shadow + chunky jittery steps, not a fade */
+  @keyframes thauma-glitch{
+    0%,100%{transform:translate(0,0);text-shadow:none;filter:none}
+    7%{transform:translate(-4px,2px);text-shadow:3px 0 #ff2d6a,-3px 0 #2FD8FF;filter:brightness(1.3)}
+    14%{transform:translate(3px,-3px);text-shadow:none;filter:contrast(1.5)}
+    21%{transform:translate(-5px,1px);text-shadow:-4px 1px #ff2d6a,4px -1px #5CF2C4}
+    28%{transform:translate(4px,-1px) skewX(3deg);filter:none}
+    35%{transform:translate(-2px,3px);text-shadow:3px 0 #ff2d6a,-3px 0 #2FD8FF;filter:brightness(1.4)}
+    42%{transform:translate(0,0);text-shadow:none}
+    49%{transform:translate(-6px,-2px);text-shadow:-3px 0 #ff2d6a,3px 0 #2FD8FF;filter:contrast(1.6)}
+    56%{transform:translate(5px,2px) skewX(-2deg)}
+    63%{transform:translate(-3px,0);text-shadow:none;filter:none}
+    70%{transform:translate(2px,-2px);text-shadow:2px 1px #ff2d6a,-2px -1px #5CF2C4}
+    100%{transform:translate(0,0);text-shadow:none;filter:none}
+  }
+  .thauma-pulse{animation:thauma-glitch .7s steps(1,end)}
+
+  /* Screen-wide glitch burst for the trail/warming effects and death moment */
+  @keyframes thauma-screen-glitch{
+    0%,100%{filter:none;transform:translate(0,0)}
+    10%{filter:invert(.12) hue-rotate(200deg);transform:translate(-6px,0)}
+    20%{filter:contrast(1.8) brightness(1.3);transform:translate(5px,0)}
+    30%{filter:none;transform:translate(-4px,0)}
+    40%{filter:hue-rotate(60deg) saturate(2);transform:translate(6px,0)}
+    50%{filter:invert(.08);transform:translate(-3px,0)}
+    60%{filter:none;transform:translate(4px,0)}
+    70%{filter:contrast(1.5);transform:translate(-5px,0)}
+    85%{filter:none;transform:translate(0,0)}
+  }
+  html.thauma-screen-glitch{animation:thauma-screen-glitch .4s steps(1,end)}
+
+  #thauma-scanlines{position:fixed;inset:0;z-index:9998;pointer-events:none;opacity:0;
+    background:repeating-linear-gradient(0deg,rgba(255,255,255,.09) 0 1px,transparent 1px 3px),
+      repeating-linear-gradient(90deg,rgba(47,216,255,.06) 0 2px,transparent 2px 5px)}
+  #thauma-scanlines.show{opacity:1}
+
+  /* Background scroll lock (2026-07-16): the static page underneath
+     #thauma-game is normal, still-scrollable document flow — the fixed
+     overlay covers it visually but doesn't stop touch-scrolling it. On
+     mobile that let a stray drag scroll the page behind the game, which
+     shifts Safari's address bar and resizes the visual viewport — read as
+     "the page doesn't fit / has a scrollbar" and mistaken earlier for a
+     zoom bug. Locked the moment the game view opens (openGameHome()). */
+  html.thauma-locked, html.thauma-locked body{overflow:hidden;height:100%}
+
+  #thauma-game{position:fixed;inset:0;z-index:50;background:#0B0F15;
+    opacity:0;visibility:hidden;pointer-events:none;transition:opacity .8s ease;
+    touch-action:manipulation;
+    /* Repeated flap-drags were highlighting page text as a text-selection
+       drag gesture — the flap input reads to the browser like any other
+       touch-drag unless explicitly told it isn't selectable. */
+    -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  #thauma-game.open{opacity:1;visibility:visible;pointer-events:auto}
+  #thauma-game canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:manipulation}
+  #thauma-game.shake{animation:thauma-shake .35s steps(1,end)}
+  @keyframes thauma-shake{
+    0%,100%{transform:translate(0,0)}
+    20%{transform:translate(-10px,6px)}
+    40%{transform:translate(8px,-8px)}
+    60%{transform:translate(-6px,-4px)}
+    80%{transform:translate(10px,3px)}
+  }
+
+  .thauma-hud{position:absolute;top:12px;left:0;right:0;padding:22px 24px;display:flex;
+    justify-content:space-between;align-items:flex-start;font-family:'Sora',sans-serif;
+    pointer-events:none;z-index:2}
+  .thauma-hud .signal{font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim)}
+  .thauma-hud .signal b{color:var(--text);font-weight:600;font-size:20px;margin-left:8px}
+
+  /* Personal-best toast — a short randomized line, not a screen flash.
+     No white-space:nowrap (2026-07-16 fix): on a narrow phone the longer
+     pb_lines entries overflowed off both edges of the viewport since
+     nowrap forbids wrapping and nothing constrained its width. A capped
+     width lets it wrap to 2 lines instead. */
+  /* Dark backdrop, not a text stroke (2026-07-16, second pass): the
+     8-direction text-shadow + -webkit-text-stroke attempt read as a muddy
+     black blob eating the thin letterforms — worse than the problem it
+     fixed. A solid dark pill behind the text is the standard, reliable fix
+     for "legible over an unpredictable background" (same idea as video
+     captions) — contrast comes from the backdrop, not from fighting the
+     glyphs pixel-by-pixel, so it stays clean over a bar, the collage, or
+     bare dark space alike. */
+  #thauma-pb-toast{position:absolute;top:30%;left:50%;
+    transform:translate(-50%,-50%);z-index:2;pointer-events:none;
+    width:94vw;max-width:640px;padding:10px 20px;border-radius:6px;
+    background:rgba(11,15,21,.75);
+    font-family:'Sora',sans-serif;font-weight:200;font-size:clamp(20px,5vw,32px);
+    color:var(--foam);text-align:center;opacity:0;
+    text-shadow:0 0 20px rgba(92,242,196,.35)}
+  #thauma-pb-toast.show{opacity:1;transition:opacity .35s ease}
+  #thauma-pb-toast.hide{opacity:0;transition:opacity 1.1s ease}
+
+  .thauma-overlay{position:absolute;inset:0;z-index:3;display:flex;align-items:center;justify-content:center;
+    text-align:center;background:rgba(11,15,21,.82);backdrop-filter:blur(3px);
+    opacity:0;visibility:hidden;pointer-events:none;transition:opacity .5s ease}
+  .thauma-overlay.show{opacity:1;visibility:visible;pointer-events:auto}
+  .thauma-overlay .panel{max-width:460px;padding:0 24px}
+  .thauma-overlay .taunt{font-family:'Sora',sans-serif;font-weight:200;font-size:clamp(20px,3.6vw,28px);margin-bottom:18px}
+  .thauma-overlay .stats{color:var(--dim);font-size:13px;letter-spacing:.08em;margin-bottom:30px;line-height:2}
+  .thauma-overlay .stats b{color:var(--foam)}
+  .thauma-overlay .home-word{font-family:'Sora',sans-serif;font-weight:100;font-size:clamp(50px,9vw,100px);
+    letter-spacing:.06em;margin-bottom:8px;text-shadow:0 0 50px rgba(47,216,255,.25)}
+  .thauma-overlay .home-tag{color:var(--dim);font-size:13px;letter-spacing:.1em;margin-bottom:30px}
+
+  /* Subtle by design — a way to reset, not an invitation to click by accident */
+  .reset-pb-row{margin-top:16px}
+  .link-reset{background:none;border:none;color:var(--dim);font-size:11px;letter-spacing:.06em;
+    text-decoration:underline;text-underline-offset:3px;cursor:pointer;font-family:inherit;opacity:.6}
+  .link-reset:hover{opacity:1;color:var(--foam)}
+
+  /* Phase 3: the arcade — global leaderboard + crown moment */
+  .thauma-leaderboard{margin-top:24px;padding-top:20px;border-top:1px solid rgba(255,255,255,.1)}
+  .thauma-leaderboard .lb-title{font-family:'Sora',sans-serif;font-size:12px;font-weight:600;
+    letter-spacing:.25em;text-transform:uppercase;color:var(--foam);margin-bottom:12px}
+  .thauma-leaderboard ol{list-style:none;padding:0;margin:0;color:var(--dim);font-size:13px;
+    letter-spacing:.06em;line-height:1.9;text-align:left;max-width:220px;margin:0 auto}
+  .thauma-leaderboard ol li{display:flex;justify-content:space-between}
+  .thauma-crown{margin:22px 0;padding:18px;border:1px solid rgba(92,242,196,.3);border-radius:8px;
+    background:rgba(92,242,196,.06)}
+  .thauma-crown p#thauma-crown-label{color:var(--foam);font-size:13px;letter-spacing:.06em;margin-bottom:14px}
+  #thauma-initials-input{width:180px;text-align:center;letter-spacing:.03em;
+    font-family:'Sora',sans-serif;font-weight:600;font-size:16px;background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.2);border-radius:6px;color:var(--text);padding:8px 10px;margin-right:10px}
+  #thauma-initials-input:focus{outline:none;border-color:var(--foam)}
+  .thauma-leaderboard ol li .lb-del{background:none;border:none;color:var(--dim);opacity:.35;
+    cursor:pointer;font-size:12px;padding:0 0 0 8px;line-height:1}
+  .thauma-leaderboard ol li .lb-del:hover{opacity:1;color:#ff2d6a}
+  .thauma-leaderboard ol li{align-items:center}
+  .thauma-leaderboard ol li .lb-entry{display:flex;justify-content:space-between;flex:1;gap:8px}
+  .thauma-leaderboard ol li .lb-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px}
+
+  /* Per-character scatter — each char gets its own JS-set --dx/--dy/--rot */
+  @keyframes thauma-char-fall{
+    0%{transform:translate(0,0) rotate(0deg);opacity:1;filter:none}
+    30%{text-shadow:3px 0 #ff2d6a,-3px 0 #2FD8FF}
+    100%{transform:translate(var(--dx,0),var(--dy,60px)) rotate(var(--rot,10deg));opacity:0;filter:blur(2px)}
+  }
+  .thauma-collapsing .thauma-char{animation:thauma-char-fall 1.1s cubic-bezier(.4,.6,.3,1) forwards}
+  .thauma-collapsing .thauma-char:nth-child(1){animation-delay:0s}
+  .thauma-collapsing .thauma-char:nth-child(2){animation-delay:.08s}
+  .thauma-collapsing .thauma-char:nth-child(3){animation-delay:.16s}
+
+  /* Everything else on the page shatters too, each with its own trajectory */
+  @keyframes thauma-shatter{
+    0%{transform:translate(0,0) rotate(0deg);opacity:1}
+    100%{transform:translate(var(--dx,0),var(--dy,40px)) rotate(var(--rot,6deg));opacity:0;filter:blur(3px)}
+  }
+  .thauma-collapsing .thauma-shatter-piece{animation:thauma-shatter 1.3s ease-in forwards}
+
+  #thauma-err{position:fixed;left:50%;top:48%;transform:translate(-50%,-50%);z-index:60;
+    font-family:ui-monospace,monospace;font-size:13px;letter-spacing:.08em;color:var(--foam);
+    opacity:0;pointer-events:none;text-align:center}
+  .thauma-collapsing #thauma-err{animation:thauma-err-flash 1.8s steps(1,end) forwards .3s}
+  @keyframes thauma-err-flash{
+    0%,100%{opacity:0}
+    15%,20%{opacity:1}
+    25%{opacity:.15}
+    35%,45%{opacity:1}
+    55%{opacity:.1}
+    65%,80%{opacity:1}
+  }
+
+  @media(prefers-reduced-motion:reduce){
+    .thauma-pulse{animation:none}
+    html.thauma-screen-glitch{animation:none}
+    #thauma-game.shake{animation:none}
+    .thauma-collapsing .thauma-char,.thauma-collapsing .thauma-shatter-piece{animation:none;opacity:0}
+    .thauma-collapsing #thauma-err{animation:none;opacity:0}
+  }
+</style>
+</head>
+<body>
+
+
+
+<nav data-lang-block="en"><div class="wrap nav-in">
+  <a class="logo" href="/en/">THAUMA</a>
+  <div class="links">
+    <a href="/en/about/">About</a>
+    <a href="/en/mission/">Mission</a>
+    <a href="/en/values/">Values</a>
+    <a href="/en/team/">Team</a>
+    <a href="/en/resources/">Resources</a>
+    <a href="/en/contact/">Contact</a>
+    
+  </div>
+  <div class="nav-actions">
+    <button class="lang-toggle" data-lang="hr" aria-label="Switch language to hr">HR</button>
+    <button class="lang-toggle" data-lang="sr" aria-label="Switch language to sr">SR</button>
+    <a class="give-btn" href="/en/give/">Give</a>
+  </div>
+</div></nav>
+
+
+<nav data-lang-block="hr" hidden><div class="wrap nav-in">
+  <a class="logo" href="/hr/">THAUMA</a>
+  <div class="links">
+    <a href="/hr/about/">O nama</a>
+    <a href="/hr/mission/">Misija</a>
+    <a href="/hr/values/">Vrijednosti</a>
+    <a href="/hr/team/">Tim</a>
+    <a href="/hr/resources/">Materijali</a>
+    <a href="/hr/contact/">Kontakt</a>
+    
+  </div>
+  <div class="nav-actions">
+    <button class="lang-toggle" data-lang="en" aria-label="Switch language to en">EN</button>
+    <button class="lang-toggle" data-lang="sr" aria-label="Switch language to sr">SR</button>
+    <a class="give-btn" href="/hr/give/">Podrži</a>
+  </div>
+</div></nav>
+
+
+<nav data-lang-block="sr" hidden><div class="wrap nav-in">
+  <a class="logo" href="/sr/">THAUMA</a>
+  <div class="links">
+    <a href="/sr/about/">О нама</a>
+    <a href="/sr/mission/">Мисија</a>
+    <a href="/sr/values/">Вриједности</a>
+    <a href="/sr/team/">Тим</a>
+    <a href="/sr/resources/">Материјали</a>
+    <a href="/sr/contact/">Контакт</a>
+    
+  </div>
+  <div class="nav-actions">
+    <button class="lang-toggle" data-lang="en" aria-label="Switch language to en">EN</button>
+    <button class="lang-toggle" data-lang="hr" aria-label="Switch language to hr">HR</button>
+    <a class="give-btn" href="/sr/give/">Подржи</a>
+  </div>
+</div></nav>
+
+
+<main>
+
+
+<div data-lang-block="en">
+  <div class="dict"><div class="wrap">
+    <div class="cue foam">Error</div>
+    <div class="dict-word">404</div>
+    <div class="dict-ipa">/nɒt ˈfaʊnd/ · noun</div>
+    <div class="dict-defs"><p>a page that isn&#39;t here — moved, mistyped, or never built.</p></div>
+    <p class="lede">The link&#39;s broken, or the page wandered off. Everything else is exactly where you left it.</p>
+    <p class="btn-row"><a class="btn solid" href="/en/">Take me home</a></p>
+  </div></div>
+</div>
+
+
+<div data-lang-block="hr" hidden>
+  <div class="dict"><div class="wrap">
+    <div class="cue foam">Pogreška</div>
+    <div class="dict-word">404</div>
+    <div class="dict-ipa">/ne·pro·na·đe·no/ · imenica</div>
+    <div class="dict-defs"><p>stranica koje ovdje nema — premještena, pogrešno utipkana ili nikad izgrađena.</p></div>
+    <p class="lede">Poveznica je pokvarena ili je stranica nestala. Sve ostalo je točno tamo gdje ste ostavili.</p>
+    <p class="btn-row"><a class="btn solid" href="/hr/">Odvedi me kući</a></p>
+  </div></div>
+</div>
+
+
+<div data-lang-block="sr" hidden>
+  <div class="dict"><div class="wrap">
+    <div class="cue foam">Погрешка</div>
+    <div class="dict-word">404</div>
+    <div class="dict-ipa">/не·про·на·ђе·но/ · именица</div>
+    <div class="dict-defs"><p>страница које овдје нема — премјештена, погрешно утипкана или никад изграђена.</p></div>
+    <p class="lede">Повезница је покварена или је страница нестала. Све остало је точно тамо гдје сте оставили.</p>
+    <p class="btn-row"><a class="btn solid" href="/sr/">Одведи ме кући</a></p>
+  </div></div>
+</div>
+
+</main>
+
+
+
+<footer data-lang-block="en"><div class="wrap foot-in">
+  <div class="foot-col">
+    <div class="foot-tag">All of me for all of Him.</div>
+    <div class="foot-legal">© 2026 Thauma · A Missouri nonprofit in formation</div>
+  </div>
+  <div class="foot-col foot-right">
+    <span class="foot-region">Croatia &amp; the Balkans</span>
+  </div>
+</div></footer>
+
+
+<footer data-lang-block="hr" hidden><div class="wrap foot-in">
+  <div class="foot-col">
+    <div class="foot-tag">Sve od mene darujem Njemu.</div>
+    <div class="foot-legal">© 2026 Thauma · Neprofitna organizacija u osnivanju (Missouri, SAD)</div>
+  </div>
+  <div class="foot-col foot-right">
+    <span class="foot-region">Hrvatska i Balkan</span>
+  </div>
+</div></footer>
+
+
+<footer data-lang-block="sr" hidden><div class="wrap foot-in">
+  <div class="foot-col">
+    <div class="foot-tag">Све од мене дарујем Њему.</div>
+    <div class="foot-legal">© 2026 Thauma · Непрофитна организација у оснивању (Миссоури, САД)</div>
+  </div>
+  <div class="foot-col foot-right">
+    <span class="foot-region">Хрватска и Балкан</span>
+  </div>
+</div></footer>
+
+<div id="thauma-err">ERR: PAGE_INTEGRITY_LOST</div>
+<div id="thauma-scanlines"></div>
+
+<div id="thauma-game">
+  <canvas id="thauma-canvas"></canvas>
+  <div class="thauma-hud">
+    <div class="signal"><span id="thauma-signal-label">SIGNAL</span><b id="thauma-signal">0</b></div>
+    <div class="signal"><span id="thauma-best-label">Best</span><b id="thauma-best">0</b></div>
+  </div>
+  <div id="thauma-pb-toast"></div>
+
+  <div class="thauma-overlay" id="thauma-home">
+    <div class="panel">
+      <div class="home-word" id="thauma-home-word">404</div>
+      <p class="home-tag" id="thauma-home-tag">still lost.</p>
+      <p class="stats" id="thauma-home-stats"></p>
+      <p class="btn-row center">
+        <button class="btn solid" type="button" id="thauma-play">Play</button>
+      </p>
+      <p class="btn-row center" style="margin-top:14px">
+        <a class="btn ghost" href="/" id="thauma-home-exit">Go back to Thauma</a>
+      </p>
+      <p class="reset-pb-row"><button class="link-reset" type="button" id="thauma-reset-pb">Reset personal best</button></p>
+      <div class="thauma-leaderboard" id="thauma-leaderboard" hidden>
+        <div class="lb-title" id="thauma-lb-title">Global best</div>
+        <ol id="thauma-lb-list"></ol>
+      </div>
+    </div>
+  </div>
+
+  <div class="thauma-overlay" id="thauma-fail">
+    <div class="panel">
+      <p class="taunt" id="thauma-taunt">Page not found.</p>
+      <p class="stats" id="thauma-stats"></p>
+      <div class="thauma-crown" id="thauma-crown" hidden>
+        <p id="thauma-crown-label">New global best — enter your initials</p>
+        <p class="btn-row center">
+          <input type="text" id="thauma-initials-input" maxlength="20" autocomplete="off" spellcheck="false">
+          <button class="btn solid" type="button" id="thauma-initials-submit">Submit</button>
+        </p>
+      </div>
+      <p class="btn-row center">
+        <button class="btn solid" type="button" id="thauma-retry">Retry</button>
+        <button class="btn ghost" type="button" id="thauma-fail-home">Home</button>
+      </p>
+    </div>
+  </div>
+</div>
+
+<script>
+  function setLang(lang) {
+    document.querySelectorAll('[data-lang-block]').forEach(function (el) {
+      el.hidden = el.dataset.langBlock !== lang;
+    });
+    document.documentElement.lang = lang;
+    document.cookie = 'thauma_lang=' + lang + ';path=/;max-age=31536000;samesite=lax';
+  }
+
+  var initial = 'en';
+  var cookieMatch = document.cookie.match(/thauma_lang=([a-z]{2})/);
+  if (cookieMatch && ["en","hr","sr"].indexOf(cookieMatch[1]) !== -1) {
+    initial = cookieMatch[1];
+  } else if (location.pathname.indexOf('/hr/') === 0) {
+    initial = 'hr';
+  }
+  setLang(initial);
+
+  document.querySelectorAll('.lang-toggle').forEach(function (btn) {
+    btn.addEventListener('click', function () { setLang(btn.dataset.lang); });
+  });
+</script>
+<script>
+(function () {
+  var LANG_DATA = {
+    en: { taunts: ["Page not found.","Page still not found.","Still looking?","The page is winning.","This is becoming a pattern.","The page has notes on your technique.","Statistically, you should try a different link.","The page respects your persistence.","At this point it's basically a rivalry.","The page is starting to feel bad for you.","Some would call this dedication.","The page has seen worse. Barely.","You and the 404 are basically coworkers now.","Achievement unlocked: still not found.","The page suggests a snack break.","Loyalty like this deserves a raise.","The page is flattered, honestly.","Might we interest you in a working link?","The page has started keeping a diary about you.","This is either impressive or concerning.","The page would like to formally apologize. Sort of.","Legends say you're still here.","The page has put up a small plaque in your honor.","Round however-many-this-is: still 404.","The page admires the commitment.","Somewhere, a sysadmin is proud of you.","The 404 has started rooting for you, against its will.","This page has become a personality trait.","The page is considering therapy.","You have officially outlasted the page's patience.","The page surrenders. You win. There is still no page.","Welcome back. The page missed you, sort of."], signal: "SCORE", best: "Best", newBest: "New best.", homeTag: "still lost.", gameTitle: "WONDER", pbLines: ["New best. Try not to peak here.","A new record. History will remember this fondly.","Personal best. Somewhere, a trophy is being engraved.","Best score yet. Suspiciously good, actually.","New high score. The page is a little concerned.","That's your best. For now.","Personal best achieved. Please remain calm.","New record. Framing this moment in your mind.","Best yet. The bar has been raised, slightly.","New best. This is basically a promotion."],
+      leaderboardTitle: "Global best", newGlobalBest: "New global best — enter your name", initialsSubmit: "Submit", globalFutility: "The page has won {n} times.",
+      resetPb: "Reset personal best", resetPbConfirm: "Reset your personal best? This can't be undone.", anonymous: "Anonymous", deleteScorePrompt: "Admin token to delete this score:" },
+    hr: { taunts: ["Stranica nije pronađena.","Stranica i dalje nije pronađena.","Još tražite?","Stranica pobjeđuje.","Ovo postaje obrazac.","Stranica ima primjedbe na vašu tehniku.","Statistički, možda pokušajte drugu poveznicu.","Stranica poštuje vašu upornost.","U ovom trenutku, ovo je već rivalstvo.","Stranica počinje suosjećati s vama.","Neki bi ovo nazvali predanošću.","Stranica je vidjela i gore. Jedva.","Vi i 404 ste sada praktički kolege.","Postignuće otključano: i dalje nije pronađeno.","Stranica predlaže pauzu za užinu.","Ovakva odanost zaslužuje povišicu.","Stranica je, iskreno, polaskana.","Možda vas zanima poveznica koja stvarno radi?","Stranica je počela voditi dnevnik o vama.","Ovo je ili impresivno ili zabrinjavajuće.","Stranica bi se htjela službeno ispričati. Otprilike.","Legenda kaže da ste još uvijek ovdje.","Stranica vam je postavila malu spomen-ploču.","Runda tko-zna-koja: i dalje 404.","Stranica se divi vašoj upornosti.","Negdje je jedan administrator sustava ponosan na vas.","404 vam je, protiv svoje volje, počela navijati.","Ova stranica postala je osobina ličnosti.","Stranica razmišlja o terapiji.","Službeno ste nadmašili strpljenje stranice.","Stranica se predaje. Pobijedili ste. Stranice i dalje nema.","Dobrodošli natrag. Stranica vas je, na neki način, nedostajala."], signal: "REZULTAT", best: "Najbolji", newBest: "Novi rekord.", homeTag: "još uvijek izgubljeno.", gameTitle: "ČUDO", pbLines: ["Novi rekord. Nemoj se sada opustiti.","Novi rekord. Povijest će ovo pamtiti s naklonošću.","Osobni rekord. Negdje se upravo gravira trofej.","Najbolji rezultat dosad. Sumnjivo dobro, zapravo.","Novi rekord. Stranica je pomalo zabrinuta.","To ti je najbolje. Zasad.","Osobni rekord ostvaren. Ostani miran.","Novi rekord. Pamtit ćeš ovaj trenutak.","Najbolje dosad. Ljestvica je malo podignuta.","Novi rekord. Ovo je praktički unapređenje."],
+      leaderboardTitle: "Globalni rekord", newGlobalBest: "Novi globalni rekord — unesi svoje ime", initialsSubmit: "Pošalji", globalFutility: "Stranica je pobijedila {n} puta.",
+      resetPb: "Poništi osobni rekord", resetPbConfirm: "Poništiti svoj osobni rekord? Ovo se ne može poništiti.", anonymous: "Anonimno", deleteScorePrompt: "Admin token za brisanje ovog rezultata:" }
+  };
+
+  // ---- The world (background, GAME-SPEC.md §5.5, "the collage wall") ----
+  // Words come EXCLUSIVELY from the curated src/_data/collageWords.json —
+  // 20 site-vocabulary words pre-translated into 20 languages, founder-
+  // editable. Runtime i18n scraping was removed (2026-07-15): it pulled in
+  // whole sentences and off-vocabulary words ("Loyalty", "rivalry" — not
+  // Thauma vocabulary, origin unknown) that leaked into the wall. This
+  // iterates the wordlist's OWN language set, not site.languages — adding a
+  // site language deliberately does NOT auto-extend the collage; curation
+  // over automation here (§5.5 point 5).
+  var COLLAGE_WORDS = [];
+  
+  
+  COLLAGE_WORDS.push("wonder");
+  
+  COLLAGE_WORDS.push("čudo");
+  
+  COLLAGE_WORDS.push("чудо");
+  
+  COLLAGE_WORDS.push("čudo");
+  
+  COLLAGE_WORDS.push("čudež");
+  
+  COLLAGE_WORDS.push("чудо");
+  
+  COLLAGE_WORDS.push("чудо");
+  
+  COLLAGE_WORDS.push("диво");
+  
+  COLLAGE_WORDS.push("θαύμα");
+  
+  COLLAGE_WORDS.push("mrekulli");
+  
+  COLLAGE_WORDS.push("Wunder");
+  
+  COLLAGE_WORDS.push("meraviglia");
+  
+  COLLAGE_WORDS.push("merveille");
+  
+  COLLAGE_WORDS.push("maravilla");
+  
+  COLLAGE_WORDS.push("maravilha");
+  
+  COLLAGE_WORDS.push("wonder");
+  
+  COLLAGE_WORDS.push("cud");
+  
+  COLLAGE_WORDS.push("zázrak");
+  
+  COLLAGE_WORDS.push("csoda");
+  
+  COLLAGE_WORDS.push("minune");
+  
+  
+  
+  COLLAGE_WORDS.push("light");
+  
+  COLLAGE_WORDS.push("svjetlo");
+  
+  COLLAGE_WORDS.push("светло");
+  
+  COLLAGE_WORDS.push("svjetlo");
+  
+  COLLAGE_WORDS.push("svetloba");
+  
+  COLLAGE_WORDS.push("светлина");
+  
+  COLLAGE_WORDS.push("светлина");
+  
+  COLLAGE_WORDS.push("світло");
+  
+  COLLAGE_WORDS.push("φως");
+  
+  COLLAGE_WORDS.push("dritë");
+  
+  COLLAGE_WORDS.push("Licht");
+  
+  COLLAGE_WORDS.push("luce");
+  
+  COLLAGE_WORDS.push("lumière");
+  
+  COLLAGE_WORDS.push("luz");
+  
+  COLLAGE_WORDS.push("luz");
+  
+  COLLAGE_WORDS.push("licht");
+  
+  COLLAGE_WORDS.push("światło");
+  
+  COLLAGE_WORDS.push("světlo");
+  
+  COLLAGE_WORDS.push("fény");
+  
+  COLLAGE_WORDS.push("lumină");
+  
+  
+  
+  COLLAGE_WORDS.push("darkness");
+  
+  COLLAGE_WORDS.push("mrak");
+  
+  COLLAGE_WORDS.push("мрак");
+  
+  COLLAGE_WORDS.push("mrak");
+  
+  COLLAGE_WORDS.push("tema");
+  
+  COLLAGE_WORDS.push("мрак");
+  
+  COLLAGE_WORDS.push("мрак");
+  
+  COLLAGE_WORDS.push("темрява");
+  
+  COLLAGE_WORDS.push("σκοτάδι");
+  
+  COLLAGE_WORDS.push("errësirë");
+  
+  COLLAGE_WORDS.push("Dunkelheit");
+  
+  COLLAGE_WORDS.push("buio");
+  
+  COLLAGE_WORDS.push("obscurité");
+  
+  COLLAGE_WORDS.push("oscuridad");
+  
+  COLLAGE_WORDS.push("escuridão");
+  
+  COLLAGE_WORDS.push("duisternis");
+  
+  COLLAGE_WORDS.push("mrok");
+  
+  COLLAGE_WORDS.push("tma");
+  
+  COLLAGE_WORDS.push("sötétség");
+  
+  COLLAGE_WORDS.push("întuneric");
+  
+  
+  
+  COLLAGE_WORDS.push("serve");
+  
+  COLLAGE_WORDS.push("služiti");
+  
+  COLLAGE_WORDS.push("служити");
+  
+  COLLAGE_WORDS.push("služiti");
+  
+  COLLAGE_WORDS.push("služiti");
+  
+  COLLAGE_WORDS.push("служи");
+  
+  COLLAGE_WORDS.push("служа");
+  
+  COLLAGE_WORDS.push("служити");
+  
+  COLLAGE_WORDS.push("υπηρετώ");
+  
+  COLLAGE_WORDS.push("shërbej");
+  
+  COLLAGE_WORDS.push("dienen");
+  
+  COLLAGE_WORDS.push("servire");
+  
+  COLLAGE_WORDS.push("servir");
+  
+  COLLAGE_WORDS.push("servir");
+  
+  COLLAGE_WORDS.push("servir");
+  
+  COLLAGE_WORDS.push("dienen");
+  
+  COLLAGE_WORDS.push("służyć");
+  
+  COLLAGE_WORDS.push("sloužit");
+  
+  COLLAGE_WORDS.push("szolgálni");
+  
+  COLLAGE_WORDS.push("sluji");
+  
+  
+  
+  COLLAGE_WORDS.push("community");
+  
+  COLLAGE_WORDS.push("zajednica");
+  
+  COLLAGE_WORDS.push("заједница");
+  
+  COLLAGE_WORDS.push("zajednica");
+  
+  COLLAGE_WORDS.push("skupnost");
+  
+  COLLAGE_WORDS.push("заедница");
+  
+  COLLAGE_WORDS.push("общност");
+  
+  COLLAGE_WORDS.push("спільнота");
+  
+  COLLAGE_WORDS.push("κοινότητα");
+  
+  COLLAGE_WORDS.push("bashkësi");
+  
+  COLLAGE_WORDS.push("Gemeinschaft");
+  
+  COLLAGE_WORDS.push("comunità");
+  
+  COLLAGE_WORDS.push("communauté");
+  
+  COLLAGE_WORDS.push("comunidad");
+  
+  COLLAGE_WORDS.push("comunidade");
+  
+  COLLAGE_WORDS.push("gemeenschap");
+  
+  COLLAGE_WORDS.push("wspólnota");
+  
+  COLLAGE_WORDS.push("společenství");
+  
+  COLLAGE_WORDS.push("közösség");
+  
+  COLLAGE_WORDS.push("comunitate");
+  
+  
+  
+  COLLAGE_WORDS.push("person");
+  
+  COLLAGE_WORDS.push("čovjek");
+  
+  COLLAGE_WORDS.push("човек");
+  
+  COLLAGE_WORDS.push("čovjek");
+  
+  COLLAGE_WORDS.push("človek");
+  
+  COLLAGE_WORDS.push("човек");
+  
+  COLLAGE_WORDS.push("човек");
+  
+  COLLAGE_WORDS.push("людина");
+  
+  COLLAGE_WORDS.push("άνθρωπος");
+  
+  COLLAGE_WORDS.push("njeri");
+  
+  COLLAGE_WORDS.push("Mensch");
+  
+  COLLAGE_WORDS.push("persona");
+  
+  COLLAGE_WORDS.push("personne");
+  
+  COLLAGE_WORDS.push("persona");
+  
+  COLLAGE_WORDS.push("pessoa");
+  
+  COLLAGE_WORDS.push("mens");
+  
+  COLLAGE_WORDS.push("człowiek");
+  
+  COLLAGE_WORDS.push("člověk");
+  
+  COLLAGE_WORDS.push("ember");
+  
+  COLLAGE_WORDS.push("om");
+  
+  
+  
+  COLLAGE_WORDS.push("church");
+  
+  COLLAGE_WORDS.push("crkva");
+  
+  COLLAGE_WORDS.push("црква");
+  
+  COLLAGE_WORDS.push("crkva");
+  
+  COLLAGE_WORDS.push("cerkev");
+  
+  COLLAGE_WORDS.push("црква");
+  
+  COLLAGE_WORDS.push("църква");
+  
+  COLLAGE_WORDS.push("церква");
+  
+  COLLAGE_WORDS.push("εκκλησία");
+  
+  COLLAGE_WORDS.push("kishë");
+  
+  COLLAGE_WORDS.push("Kirche");
+  
+  COLLAGE_WORDS.push("chiesa");
+  
+  COLLAGE_WORDS.push("église");
+  
+  COLLAGE_WORDS.push("iglesia");
+  
+  COLLAGE_WORDS.push("igreja");
+  
+  COLLAGE_WORDS.push("kerk");
+  
+  COLLAGE_WORDS.push("kościół");
+  
+  COLLAGE_WORDS.push("církev");
+  
+  COLLAGE_WORDS.push("templom");
+  
+  COLLAGE_WORDS.push("biserică");
+  
+  
+  
+  COLLAGE_WORDS.push("together");
+  
+  COLLAGE_WORDS.push("zajedno");
+  
+  COLLAGE_WORDS.push("заједно");
+  
+  COLLAGE_WORDS.push("zajedno");
+  
+  COLLAGE_WORDS.push("skupaj");
+  
+  COLLAGE_WORDS.push("заедно");
+  
+  COLLAGE_WORDS.push("заедно");
+  
+  COLLAGE_WORDS.push("разом");
+  
+  COLLAGE_WORDS.push("μαζί");
+  
+  COLLAGE_WORDS.push("bashkë");
+  
+  COLLAGE_WORDS.push("zusammen");
+  
+  COLLAGE_WORDS.push("insieme");
+  
+  COLLAGE_WORDS.push("ensemble");
+  
+  COLLAGE_WORDS.push("juntos");
+  
+  COLLAGE_WORDS.push("juntos");
+  
+  COLLAGE_WORDS.push("samen");
+  
+  COLLAGE_WORDS.push("razem");
+  
+  COLLAGE_WORDS.push("spolu");
+  
+  COLLAGE_WORDS.push("együtt");
+  
+  COLLAGE_WORDS.push("împreună");
+  
+  
+  
+  COLLAGE_WORDS.push("door");
+  
+  COLLAGE_WORDS.push("vrata");
+  
+  COLLAGE_WORDS.push("врата");
+  
+  COLLAGE_WORDS.push("vrata");
+  
+  COLLAGE_WORDS.push("vrata");
+  
+  COLLAGE_WORDS.push("врата");
+  
+  COLLAGE_WORDS.push("врата");
+  
+  COLLAGE_WORDS.push("двері");
+  
+  COLLAGE_WORDS.push("πόρτα");
+  
+  COLLAGE_WORDS.push("derë");
+  
+  COLLAGE_WORDS.push("Tür");
+  
+  COLLAGE_WORDS.push("porta");
+  
+  COLLAGE_WORDS.push("porte");
+  
+  COLLAGE_WORDS.push("puerta");
+  
+  COLLAGE_WORDS.push("porta");
+  
+  COLLAGE_WORDS.push("deur");
+  
+  COLLAGE_WORDS.push("drzwi");
+  
+  COLLAGE_WORDS.push("dveře");
+  
+  COLLAGE_WORDS.push("ajtó");
+  
+  COLLAGE_WORDS.push("ușă");
+  
+  
+  
+  COLLAGE_WORDS.push("fruit");
+  
+  COLLAGE_WORDS.push("plod");
+  
+  COLLAGE_WORDS.push("плод");
+  
+  COLLAGE_WORDS.push("plod");
+  
+  COLLAGE_WORDS.push("sad");
+  
+  COLLAGE_WORDS.push("плод");
+  
+  COLLAGE_WORDS.push("плод");
+  
+  COLLAGE_WORDS.push("плід");
+  
+  COLLAGE_WORDS.push("καρπός");
+  
+  COLLAGE_WORDS.push("fryt");
+  
+  COLLAGE_WORDS.push("Frucht");
+  
+  COLLAGE_WORDS.push("frutto");
+  
+  COLLAGE_WORDS.push("fruit");
+  
+  COLLAGE_WORDS.push("fruto");
+  
+  COLLAGE_WORDS.push("fruto");
+  
+  COLLAGE_WORDS.push("vrucht");
+  
+  COLLAGE_WORDS.push("owoc");
+  
+  COLLAGE_WORDS.push("plod");
+  
+  COLLAGE_WORDS.push("gyümölcs");
+  
+  COLLAGE_WORDS.push("rod");
+  
+  
+  
+  COLLAGE_WORDS.push("signal");
+  
+  COLLAGE_WORDS.push("signal");
+  
+  COLLAGE_WORDS.push("сигнал");
+  
+  COLLAGE_WORDS.push("signal");
+  
+  COLLAGE_WORDS.push("signal");
+  
+  COLLAGE_WORDS.push("сигнал");
+  
+  COLLAGE_WORDS.push("сигнал");
+  
+  COLLAGE_WORDS.push("сигнал");
+  
+  COLLAGE_WORDS.push("σήμα");
+  
+  COLLAGE_WORDS.push("sinjal");
+  
+  COLLAGE_WORDS.push("Signal");
+  
+  COLLAGE_WORDS.push("segnale");
+  
+  COLLAGE_WORDS.push("signal");
+  
+  COLLAGE_WORDS.push("señal");
+  
+  COLLAGE_WORDS.push("sinal");
+  
+  COLLAGE_WORDS.push("signaal");
+  
+  COLLAGE_WORDS.push("sygnał");
+  
+  COLLAGE_WORDS.push("signál");
+  
+  COLLAGE_WORDS.push("jel");
+  
+  COLLAGE_WORDS.push("semnal");
+  
+  
+  
+  COLLAGE_WORDS.push("production");
+  
+  COLLAGE_WORDS.push("produkcija");
+  
+  COLLAGE_WORDS.push("продукција");
+  
+  COLLAGE_WORDS.push("produkcija");
+  
+  COLLAGE_WORDS.push("produkcija");
+  
+  COLLAGE_WORDS.push("продукција");
+  
+  COLLAGE_WORDS.push("продукция");
+  
+  COLLAGE_WORDS.push("продукція");
+  
+  COLLAGE_WORDS.push("παραγωγή");
+  
+  COLLAGE_WORDS.push("produksion");
+  
+  COLLAGE_WORDS.push("Produktion");
+  
+  COLLAGE_WORDS.push("produzione");
+  
+  COLLAGE_WORDS.push("production");
+  
+  COLLAGE_WORDS.push("producción");
+  
+  COLLAGE_WORDS.push("produção");
+  
+  COLLAGE_WORDS.push("productie");
+  
+  COLLAGE_WORDS.push("produkcja");
+  
+  COLLAGE_WORDS.push("produkce");
+  
+  COLLAGE_WORDS.push("produkció");
+  
+  COLLAGE_WORDS.push("producție");
+  
+  
+  
+  COLLAGE_WORDS.push("sound");
+  
+  COLLAGE_WORDS.push("zvuk");
+  
+  COLLAGE_WORDS.push("звук");
+  
+  COLLAGE_WORDS.push("zvuk");
+  
+  COLLAGE_WORDS.push("zvok");
+  
+  COLLAGE_WORDS.push("звук");
+  
+  COLLAGE_WORDS.push("звук");
+  
+  COLLAGE_WORDS.push("звук");
+  
+  COLLAGE_WORDS.push("ήχος");
+  
+  COLLAGE_WORDS.push("tingull");
+  
+  COLLAGE_WORDS.push("Klang");
+  
+  COLLAGE_WORDS.push("suono");
+  
+  COLLAGE_WORDS.push("son");
+  
+  COLLAGE_WORDS.push("sonido");
+  
+  COLLAGE_WORDS.push("som");
+  
+  COLLAGE_WORDS.push("geluid");
+  
+  COLLAGE_WORDS.push("dźwięk");
+  
+  COLLAGE_WORDS.push("zvuk");
+  
+  COLLAGE_WORDS.push("hang");
+  
+  COLLAGE_WORDS.push("sunet");
+  
+  
+  
+  COLLAGE_WORDS.push("stage");
+  
+  COLLAGE_WORDS.push("pozornica");
+  
+  COLLAGE_WORDS.push("сцена");
+  
+  COLLAGE_WORDS.push("pozornica");
+  
+  COLLAGE_WORDS.push("oder");
+  
+  COLLAGE_WORDS.push("сцена");
+  
+  COLLAGE_WORDS.push("сцена");
+  
+  COLLAGE_WORDS.push("сцена");
+  
+  COLLAGE_WORDS.push("σκηνή");
+  
+  COLLAGE_WORDS.push("skenë");
+  
+  COLLAGE_WORDS.push("Bühne");
+  
+  COLLAGE_WORDS.push("palco");
+  
+  COLLAGE_WORDS.push("scène");
+  
+  COLLAGE_WORDS.push("escenario");
+  
+  COLLAGE_WORDS.push("palco");
+  
+  COLLAGE_WORDS.push("podium");
+  
+  COLLAGE_WORDS.push("scena");
+  
+  COLLAGE_WORDS.push("jeviště");
+  
+  COLLAGE_WORDS.push("színpad");
+  
+  COLLAGE_WORDS.push("scenă");
+  
+  
+  
+  COLLAGE_WORDS.push("crew");
+  
+  COLLAGE_WORDS.push("ekipa");
+  
+  COLLAGE_WORDS.push("екипа");
+  
+  COLLAGE_WORDS.push("ekipa");
+  
+  COLLAGE_WORDS.push("ekipa");
+  
+  COLLAGE_WORDS.push("екипа");
+  
+  COLLAGE_WORDS.push("екип");
+  
+  COLLAGE_WORDS.push("команда");
+  
+  COLLAGE_WORDS.push("ομάδα");
+  
+  COLLAGE_WORDS.push("ekip");
+  
+  COLLAGE_WORDS.push("Crew");
+  
+  COLLAGE_WORDS.push("squadra");
+  
+  COLLAGE_WORDS.push("équipe");
+  
+  COLLAGE_WORDS.push("equipo");
+  
+  COLLAGE_WORDS.push("equipe");
+  
+  COLLAGE_WORDS.push("ploeg");
+  
+  COLLAGE_WORDS.push("ekipa");
+  
+  COLLAGE_WORDS.push("parta");
+  
+  COLLAGE_WORDS.push("csapat");
+  
+  COLLAGE_WORDS.push("echipă");
+  
+  
+  
+  COLLAGE_WORDS.push("mission");
+  
+  COLLAGE_WORDS.push("misija");
+  
+  COLLAGE_WORDS.push("мисија");
+  
+  COLLAGE_WORDS.push("misija");
+  
+  COLLAGE_WORDS.push("misija");
+  
+  COLLAGE_WORDS.push("мисија");
+  
+  COLLAGE_WORDS.push("мисия");
+  
+  COLLAGE_WORDS.push("місія");
+  
+  COLLAGE_WORDS.push("αποστολή");
+  
+  COLLAGE_WORDS.push("mision");
+  
+  COLLAGE_WORDS.push("Mission");
+  
+  COLLAGE_WORDS.push("missione");
+  
+  COLLAGE_WORDS.push("mission");
+  
+  COLLAGE_WORDS.push("misión");
+  
+  COLLAGE_WORDS.push("missão");
+  
+  COLLAGE_WORDS.push("missie");
+  
+  COLLAGE_WORDS.push("misja");
+  
+  COLLAGE_WORDS.push("mise");
+  
+  COLLAGE_WORDS.push("küldetés");
+  
+  COLLAGE_WORDS.push("misiune");
+  
+  
+  
+  COLLAGE_WORDS.push("one");
+  
+  COLLAGE_WORDS.push("jedno");
+  
+  COLLAGE_WORDS.push("једно");
+  
+  COLLAGE_WORDS.push("jedno");
+  
+  COLLAGE_WORDS.push("eno");
+  
+  COLLAGE_WORDS.push("едно");
+  
+  COLLAGE_WORDS.push("едно");
+  
+  COLLAGE_WORDS.push("один");
+  
+  COLLAGE_WORDS.push("ένα");
+  
+  COLLAGE_WORDS.push("një");
+  
+  COLLAGE_WORDS.push("eins");
+  
+  COLLAGE_WORDS.push("uno");
+  
+  COLLAGE_WORDS.push("un");
+  
+  COLLAGE_WORDS.push("uno");
+  
+  COLLAGE_WORDS.push("um");
+  
+  COLLAGE_WORDS.push("één");
+  
+  COLLAGE_WORDS.push("jeden");
+  
+  COLLAGE_WORDS.push("jeden");
+  
+  COLLAGE_WORDS.push("egy");
+  
+  COLLAGE_WORDS.push("unu");
+  
+  
+  
+  COLLAGE_WORDS.push("faith");
+  
+  COLLAGE_WORDS.push("vjera");
+  
+  COLLAGE_WORDS.push("вера");
+  
+  COLLAGE_WORDS.push("vjera");
+  
+  COLLAGE_WORDS.push("vera");
+  
+  COLLAGE_WORDS.push("вера");
+  
+  COLLAGE_WORDS.push("вяра");
+  
+  COLLAGE_WORDS.push("віра");
+  
+  COLLAGE_WORDS.push("πίστη");
+  
+  COLLAGE_WORDS.push("besim");
+  
+  COLLAGE_WORDS.push("Glaube");
+  
+  COLLAGE_WORDS.push("fede");
+  
+  COLLAGE_WORDS.push("foi");
+  
+  COLLAGE_WORDS.push("fe");
+  
+  COLLAGE_WORDS.push("fé");
+  
+  COLLAGE_WORDS.push("geloof");
+  
+  COLLAGE_WORDS.push("wiara");
+  
+  COLLAGE_WORDS.push("víra");
+  
+  COLLAGE_WORDS.push("hit");
+  
+  COLLAGE_WORDS.push("credință");
+  
+  
+  
+  COLLAGE_WORDS.push("hope");
+  
+  COLLAGE_WORDS.push("nada");
+  
+  COLLAGE_WORDS.push("нада");
+  
+  COLLAGE_WORDS.push("nada");
+  
+  COLLAGE_WORDS.push("upanje");
+  
+  COLLAGE_WORDS.push("надеж");
+  
+  COLLAGE_WORDS.push("надежда");
+  
+  COLLAGE_WORDS.push("надія");
+  
+  COLLAGE_WORDS.push("ελπίδα");
+  
+  COLLAGE_WORDS.push("shpresë");
+  
+  COLLAGE_WORDS.push("Hoffnung");
+  
+  COLLAGE_WORDS.push("speranza");
+  
+  COLLAGE_WORDS.push("espoir");
+  
+  COLLAGE_WORDS.push("esperanza");
+  
+  COLLAGE_WORDS.push("esperança");
+  
+  COLLAGE_WORDS.push("hoop");
+  
+  COLLAGE_WORDS.push("nadzieja");
+  
+  COLLAGE_WORDS.push("naděje");
+  
+  COLLAGE_WORDS.push("remény");
+  
+  COLLAGE_WORDS.push("speranță");
+  
+  
+  
+  COLLAGE_WORDS.push("music");
+  
+  COLLAGE_WORDS.push("glazba");
+  
+  COLLAGE_WORDS.push("музика");
+  
+  COLLAGE_WORDS.push("muzika");
+  
+  COLLAGE_WORDS.push("glasba");
+  
+  COLLAGE_WORDS.push("музика");
+  
+  COLLAGE_WORDS.push("музика");
+  
+  COLLAGE_WORDS.push("музика");
+  
+  COLLAGE_WORDS.push("μουσική");
+  
+  COLLAGE_WORDS.push("muzikë");
+  
+  COLLAGE_WORDS.push("Musik");
+  
+  COLLAGE_WORDS.push("musica");
+  
+  COLLAGE_WORDS.push("musique");
+  
+  COLLAGE_WORDS.push("música");
+  
+  COLLAGE_WORDS.push("música");
+  
+  COLLAGE_WORDS.push("muziek");
+  
+  COLLAGE_WORDS.push("muzyka");
+  
+  COLLAGE_WORDS.push("hudba");
+  
+  COLLAGE_WORDS.push("zene");
+  
+  COLLAGE_WORDS.push("muzică");
+  
+  
+
+  var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var gameEl = document.getElementById('thauma-game');
+  var canvas = document.getElementById('thauma-canvas');
+  var ctx = canvas.getContext('2d');
+  var homeEl = document.getElementById('thauma-home');
+  var homeWordEl = document.getElementById('thauma-home-word');
+  var homeTagEl = document.getElementById('thauma-home-tag');
+  var homeStatsEl = document.getElementById('thauma-home-stats');
+  var homeExitEl = document.getElementById('thauma-home-exit');
+  var failEl = document.getElementById('thauma-fail');
+  var tauntEl = document.getElementById('thauma-taunt');
+  var statsEl = document.getElementById('thauma-stats');
+  var signalEl = document.getElementById('thauma-signal');
+  var bestEl = document.getElementById('thauma-best');
+  var signalLabelEl = document.getElementById('thauma-signal-label');
+  var bestLabelEl = document.getElementById('thauma-best-label');
+  var scanlinesEl = document.getElementById('thauma-scanlines');
+  var errEl = document.getElementById('thauma-err');
+  var pbToastEl = document.getElementById('thauma-pb-toast');
+  var leaderboardEl = document.getElementById('thauma-leaderboard');
+  var lbTitleEl = document.getElementById('thauma-lb-title');
+  var lbListEl = document.getElementById('thauma-lb-list');
+  var crownEl = document.getElementById('thauma-crown');
+  var crownLabelEl = document.getElementById('thauma-crown-label');
+  var initialsInputEl = document.getElementById('thauma-initials-input');
+  var initialsSubmitEl = document.getElementById('thauma-initials-submit');
+  var resetPbEl = document.getElementById('thauma-reset-pb');
+
+  function currentLang() { return document.documentElement.lang === 'hr' ? 'hr' : 'en'; }
+  function copy() { return LANG_DATA[currentLang()]; }
+
+  function readNum(key, fallback) {
+    var v = parseInt(localStorage.getItem(key), 10);
+    return isNaN(v) ? fallback : v;
+  }
+  function readArr(key) {
+    try { return JSON.parse(localStorage.getItem(key)) || []; } catch (e) { return []; }
+  }
+
+  var attempts = readNum('thauma_attempts', 0);
+  var bestSignal = readNum('thauma_best', 0);
+  var recentDeaths = readArr('thauma_recent_deaths');
+
+  function statsLine() {
+    var deaths = recentDeaths.length ? recentDeaths.join(', ') : '—';
+    return copy().best + ': <b>' + bestSignal + '</b> &nbsp;·&nbsp; ' + copy().signal + ': ' + deaths;
+  }
+
+  // ---- Phase 3: the arcade (leaderboard + global futility counter) ----
+  // No auth, forgeable, low stakes on purpose (GAME-SPEC.md §6) — offline
+  // or the function being unreachable just hides the leaderboard UI, it
+  // never blocks play.
+  var LEADERBOARD_URL = '/.netlify/functions/game-scores';
+  var leaderboard = null; // { scores: [{initials,score}], totalDeaths } once loaded
+
+  function renderLeaderboard() {
+    if (!leaderboard || !leaderboard.scores || !leaderboard.scores.length) {
+      leaderboardEl.hidden = true;
+      return;
+    }
+    lbTitleEl.textContent = copy().leaderboardTitle;
+    lbListEl.innerHTML = '';
+    leaderboard.scores.forEach(function (s, i) {
+      var li = document.createElement('li');
+      var entry = document.createElement('span');
+      entry.className = 'lb-entry';
+      var name = document.createElement('span');
+      name.className = 'lb-name';
+      name.textContent = s.name;
+      var score = document.createElement('span');
+      score.textContent = s.score;
+      entry.appendChild(name);
+      entry.appendChild(score);
+      li.appendChild(entry);
+      // Visible to anyone (it's a hidden page already), but the delete only
+      // actually goes through server-side if the admin token matches — see
+      // game-scores.js. Not real access control, just keeps the button out
+      // of the way for the 99.9% of visitors who aren't Chase.
+      var del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'lb-del';
+      del.setAttribute('aria-label', 'delete');
+      del.textContent = '×';
+      del.addEventListener('click', function () { deleteScore(i); });
+      li.appendChild(del);
+      lbListEl.appendChild(li);
+    });
+    leaderboardEl.hidden = false;
+  }
+
+  var cachedAdminToken = null;
+  function deleteScore(index) {
+    var token = cachedAdminToken || window.prompt(copy().deleteScorePrompt);
+    if (!token) return;
+    fetch(LEADERBOARD_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'delete', index: index, token: token })
+    }).then(function (r) {
+      if (r.status === 403) { cachedAdminToken = null; return null; }
+      cachedAdminToken = token; // remembered for the rest of this page load only
+      return r.ok ? r.json() : null;
+    }).then(function (data) {
+      if (data) { leaderboard = data; renderLeaderboard(); }
+    }).catch(function () {});
+  }
+
+  function fetchLeaderboard() {
+    fetch(LEADERBOARD_URL).then(function (r) {
+      if (!r.ok) throw new Error('bad status');
+      return r.json();
+    }).then(function (data) {
+      leaderboard = data;
+      renderLeaderboard();
+    }).catch(function () {
+      leaderboard = null;
+      leaderboardEl.hidden = true;
+    });
+  }
+  fetchLeaderboard();
+
+  function qualifiesForLeaderboard(score) {
+    if (!leaderboard || !leaderboard.scores || score <= 0) return false;
+    if (leaderboard.scores.length < 3) return true;
+    return score > leaderboard.scores[leaderboard.scores.length - 1].score;
+  }
+
+  function pingDeath() {
+    fetch(LEADERBOARD_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ death: true })
+    }).then(function (r) { return r.ok ? r.json() : null; }).then(function (data) {
+      if (data) leaderboard = data; // keeps totalDeaths fresh for the next taunt roll
+    }).catch(function () {});
+  }
+
+  initialsSubmitEl.addEventListener('click', function () {
+    // Blank input gets the LOADED language's "Anonymous" — the server-side
+    // fallback (game-scores.js) is English-only since it has no language
+    // context; this is the real localized path for the common case.
+    var name = (initialsInputEl.value || '').trim().slice(0, 20) || copy().anonymous;
+    var score = signal;
+    crownEl.hidden = true;
+    fetch(LEADERBOARD_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name, score: score })
+    }).then(function (r) { return r.ok ? r.json() : null; }).then(function (data) {
+      if (data) { leaderboard = data; renderLeaderboard(); }
+    }).catch(function () {});
+  });
+
+  // ---- Door 4: the "404" numeral ----
+  document.querySelectorAll('.dict-word').forEach(function (el) {
+    el.addEventListener('click', beginGame);
+  });
+
+  if (!reducedMotion) {
+    setInterval(function () {
+      if (gameEl.classList.contains('open')) return;
+      document.querySelectorAll('.dict-word').forEach(function (el) {
+        if (el.offsetParent === null) return; // its lang block is hidden
+        el.classList.remove('thauma-pulse');
+        void el.offsetWidth;
+        el.classList.add('thauma-pulse');
+      });
+    }, 5000);
+  }
+
+  var began = false;
+  // ---- Hash entry from doors 1-3 (arriving from any page via main.js) ----
+  // These never saw the static 404 render — the "discovery" already
+  // happened wherever they triggered it, so arriving here should feel
+  // like teleporting straight into the game's menu, not re-running the
+  // collapse on a page they're only passing through. Door 4 (below) is
+  // the only path that plays the theater, since that's the one place you
+  // actually watch the page fail from a standing start.
+  function checkHash() { if (location.hash === '#play') enterDirectly(); }
+  checkHash();
+  window.addEventListener('hashchange', checkHash);
+
+  function enterDirectly() {
+    if (began) return;
+    began = true;
+    openGameHome();
+  }
+
+  // ---- Screen-wide glitch punch, reusable for the collapse start + death ----
+  function screenGlitch() {
+    if (reducedMotion) return;
+    document.documentElement.classList.remove('thauma-screen-glitch');
+    void document.documentElement.offsetWidth;
+    document.documentElement.classList.add('thauma-screen-glitch');
+    scanlinesEl.classList.add('show');
+    setTimeout(function () { scanlinesEl.classList.remove('show'); }, 260);
+  }
+
+  // ---- Splits an element's text into per-character spans that scatter
+  // independently (each gets its own --dx/--dy/--rot), instead of the
+  // whole block fading as one uniform piece. ----
+  function splitAndScatter(el) {
+    var text = el.textContent;
+    el.innerHTML = '';
+    var n = text.length;
+    text.split('').forEach(function (ch, i) {
+      var span = document.createElement('span');
+      span.className = 'thauma-char';
+      span.textContent = ch;
+      var t = n > 1 ? i / (n - 1) : 0.5;
+      var dx = -90 + t * 190 + (Math.random() * 30 - 15);
+      var dy = 55 + Math.random() * 70;
+      var rot = -25 + t * 55 + (Math.random() * 16 - 8);
+      span.style.setProperty('--dx', dx.toFixed(0) + 'px');
+      span.style.setProperty('--dy', dy.toFixed(0) + 'px');
+      span.style.setProperty('--rot', rot.toFixed(0) + 'deg');
+      el.appendChild(span);
+    });
+  }
+
+  function shatterPiece(el) {
+    el.classList.add('thauma-shatter-piece');
+    var dx = (Math.random() * 260 - 130).toFixed(0) + 'px';
+    var dy = (30 + Math.random() * 90).toFixed(0) + 'px';
+    var rot = (Math.random() * 40 - 20).toFixed(0) + 'deg';
+    el.style.setProperty('--dx', dx);
+    el.style.setProperty('--dy', dy);
+    el.style.setProperty('--rot', rot);
+    el.style.animationDelay = (Math.random() * 0.3).toFixed(2) + 's';
+  }
+
+  // ---- Begin: choreographed collapse (unless reduced motion), then the
+  // game's own home screen — never straight into a run. ----
+  function beginGame() {
+    if (began) return;
+    began = true;
+    if (reducedMotion) { openGameHome(); return; }
+
+    screenGlitch();
+
+    document.querySelectorAll('[data-lang-block]:not([hidden])').forEach(function (block) {
+      var word = block.querySelector('.dict-word');
+      if (word) splitAndScatter(word);
+      var pieces = block.querySelectorAll('.cue, .dict-ipa, .dict-defs p, .lede, .btn-row, .logo, .links, .nav-actions, .foot-col');
+      pieces.forEach(shatterPiece);
+    });
+
+    document.body.classList.add('thauma-collapsing');
+    setTimeout(function () { screenGlitch(); }, 900); // a second jolt partway through
+    setTimeout(openGameHome, 2100);
+  }
+
+  // ---- The game's own home screen: stats, Play, and its own way back ----
+  function openGameHome() {
+    // Deliberately NOT removing 'thauma-collapsing' here: doing so snapped
+    // the scattered elements back to normal instantly, which showed through
+    // during the game view's own fade-in (it takes a moment to reach full
+    // opacity) — the static page would flash back to "normal" before the
+    // game covered it. Once open, the game's opaque background covers
+    // everything permanently for this page load, so there's nothing to
+    // revert for.
+    gameEl.classList.add('open');
+    document.documentElement.classList.add('thauma-locked');
+    homeEl.classList.add('show');
+    failEl.classList.remove('show');
+    homeWordEl.textContent = copy().gameTitle;
+    homeTagEl.textContent = copy().homeTag;
+    homeStatsEl.innerHTML = statsLine();
+    homeExitEl.href = '/' + currentLang() + '/';
+    signalLabelEl.textContent = copy().signal;
+    bestLabelEl.textContent = copy().best;
+    bestEl.textContent = bestSignal;
+    resetPbEl.textContent = copy().resetPb;
+    crownEl.hidden = true;
+    renderLeaderboard();
+    resizeCanvas();
+  }
+
+  document.getElementById('thauma-play').addEventListener('click', function () {
+    homeEl.classList.remove('show');
+    startRun();
+  });
+  document.getElementById('thauma-fail-home').addEventListener('click', function () {
+    running = false;
+    failEl.classList.remove('show');
+    crownEl.hidden = true;
+    openGameHome();
+  });
+  document.getElementById('thauma-retry').addEventListener('click', startRun);
+
+  resetPbEl.addEventListener('click', function () {
+    if (!window.confirm(copy().resetPbConfirm)) return;
+    bestSignal = 0;
+    localStorage.setItem('thauma_best', 0);
+    bestEl.textContent = bestSignal;
+    bestMarkerX = null;
+  });
+
+  window.addEventListener('resize', resizeCanvas);
+  function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    collagePanels = []; // panels are baked at a fixed height; rebuild for the new one
+  }
+
+  // ---- Flappy Light (placeholder mechanic, §7) ----
+  // Tuned looser than the first pass: less gravity, a stronger flap, and
+  // wider/more-spaced gaps, after the original felt too punishing to
+  // actually play (verified structurally the first time, not by feel).
+  var W, H, orb, columns, running, signal, speed, bestBeaten, trail, bestMarkerX;
+  // Reference HEIGHT the physics were originally tuned/felt right against
+  // (desktop-ish). §7.9 mobile difficulty-parity fix: every world constant
+  // below is expressed as a REF value, then scaled per-run against the
+  // canvas HEIGHT ONLY (computeWorldScale()) — a fixed-pixel GAP_H covered
+  // proportionally MORE of a short screen than a tall one, making the game
+  // read as easier there even though nothing else changed.
+  var REF_H = 768, REF_W = 1024;
+  var GRAVITY_REF = 0.22, FLAP_REF = -7.8, COLUMN_W_REF = 54, GAP_H_REF = 260, ORB_R_REF = 10;
+  // COLUMN_GAP has two SEPARATE anchors, not one shared REF (2026-07-17,
+  // requested directly after desktop stopped feeling like the original
+  // game): COLUMN_GAP_DESKTOP_REF (420) is the exact original hand-tuned
+  // desktop value, restored byte-for-byte from the pre-mobile-scaling
+  // build (git f68cd32). COLUMN_GAP_MOBILE_REF (360) is the separate,
+  // already-approved "split the difference" mobile tuning from earlier —
+  // left untouched so fixing desktop can't silently drag mobile's spacing
+  // back out with it (they used to share one REF*spacingScale formula,
+  // which coupled them). See computeWorldScale() for how these combine.
+  var COLUMN_GAP_DESKTOP_REF = 420, COLUMN_GAP_MOBILE_REF = 360;
+  var SPEED_BASE_REF = 2.0, SPEED_RAMP_REF = 2.4;
+  // Progressive difficulty ramp (2026-07-16, requested directly): speed
+  // rises and the vertical gap narrows as SIGNAL climbs, each on its OWN
+  // pacing (2026-07-17 split — they used to share one curve, but that
+  // silently slowed speed's ramp down to match the gap's deliberately
+  // gentle pace when the gap-narrowing floor was added, which is part of
+  // why desktop stopped feeling like the original game). SPEED_RAMP_
+  // SIGNAL_REF=420 is the ORIGINAL speed-ramp cadence, restored byte-for-
+  // byte (git f68cd32: `Math.min(2.4, signal/420)`). GAP_RAMP_SIGNAL_REF
+  // stays large (200 columns' worth) so the gap-narrowing climb — a
+  // feature that didn't exist in the original game — still reads as slow,
+  // per its own original request. GAP_H_MIN_REF is the floor the gap
+  // narrows to (~63% of the starting gap — still comfortably flyable given
+  // a single flap covers ~138px, per the 2026-07-13 physics-tuning note).
+  var GAP_H_MIN_REF = 165, GAP_RAMP_SIGNAL_REF = 2000, SPEED_RAMP_SIGNAL_REF = 420;
+  var GRAVITY, FLAP, COLUMN_W, GAP_H, ORB_R, COLUMN_GAP, WORLD_DIST_PER_10_SIGNAL, scale, spacingScale;
+
+  function computeWorldScale() {
+    // Two DELIBERATELY SEPARATE factors (2026-07-16 fix, third pass) — not
+    // one uniform scale, and not height-only for everything:
+    // - `scale` (height-based): governs OBJECT SIZE — gravity, flap, orb
+    //   radius, bar thickness, vertical gap. A portrait phone is narrow,
+    //   not short, so these correctly stay near full desktop size on
+    //   virtually any phone (two earlier attempts that let width leak into
+    //   this broke it: thin bars, then a ~4px orb).
+    // - `spacingScale` (width-based): governs ONLY the horizontal distance
+    //   between columns. This one genuinely does need to shrink with
+    //   width — it's not an object's size, it's how much of the world fits
+    //   on screen at once. Leaving it on the height-based `scale` (i.e.
+    //   effectively unscaled on most phones) meant a full desktop-width gap
+    //   between columns on a screen 1/3 as wide, reported as "basically a
+    //   full screen width before I see another one." Both clamp to 1 so
+    //   desktop (>= the reference size) is never scaled up past the
+    //   hand-tuned values.
+    //
+    // Two 2026-07-16 tuning passes on top, both requested directly:
+    // 1. spacingScale is blended halfway back toward 1 (not the raw width
+    //    ratio) — the raw ratio made columns feel too tight; this splits
+    //    the difference between "full desktop gap" (the original mobile
+    //    bug) and "raw-ratio gap" (the previous fix, reported as too close
+    //    together).
+    // 2. orbBoost gives the orb a slight size+physics bump ON NARROW
+    //    SCREENS ONLY (it's 1 — no change — at spacingScale 1, i.e.
+    //    desktop-width), scaling ORB_R alongside GRAVITY/FLAP together so
+    //    the orb reads as a bit more substantial on a phone without
+    //    throwing off the gravity/flap arc-shape ratio tuned above.
+    scale = Math.min(1, H / REF_H);
+    var rawSpacingScale = Math.min(1, W / REF_W);
+    spacingScale = 0.5 + 0.5 * rawSpacingScale;
+    var orbBoost = 1 + 0.3 * (1 - rawSpacingScale);
+    GRAVITY = GRAVITY_REF * scale * orbBoost;
+    FLAP = FLAP_REF * scale * orbBoost;
+    ORB_R = ORB_R_REF * scale * orbBoost;
+    GAP_H = GAP_H_REF * scale;
+    COLUMN_W = COLUMN_W_REF * scale;
+    // True desktop (rawSpacingScale saturated at 1, i.e. W >= REF_W) uses
+    // the restored original 420 directly, completely independent of the
+    // mobile blend below it — so tuning one can never again silently move
+    // the other, unlike when both shared a single REF*spacingScale formula.
+    COLUMN_GAP = rawSpacingScale >= 1 ? COLUMN_GAP_DESKTOP_REF : COLUMN_GAP_MOBILE_REF * spacingScale;
+    // Real world-distance between consecutive columns: a new one spawns at
+    // W+40*spacingScale once the last one's x drops below W-COLUMN_GAP, so
+    // successive columns land COLUMN_GAP + 40*spacingScale apart.
+    WORLD_DIST_PER_10_SIGNAL = COLUMN_GAP + 40 * spacingScale;
+  }
+
+  // ---- The world (background, GAME-SPEC.md §5, simplified) ----
+  // A single continuously-looping strip of the site's own value-words,
+  // independent of run state (never reset by startRun) so it truly
+  // loops for the whole page visit, not per-attempt.
+  // Panels are pre-rendered ONCE to an offscreen canvas and then just
+  // blitted while scrolling (§5.5 point 7) — no per-frame text redraw of
+  // dozens of words. Each panel is procedurally distinct (point 4): no two
+  // panels share a layout, so the wall never visibly tiles or repeats.
+  var COLLAGE_PANEL_W = 700;
+  var collagePanels = []; // { canvas, x }
+  var collageLastWasAccent = false; // never two seafoam words adjacent, even across a panel boundary
+
+  function buildCollagePanel(height) {
+    var w = COLLAGE_PANEL_W, h = Math.max(200, height || 600);
+    var panel = document.createElement('canvas');
+    panel.width = w;
+    panel.height = h;
+    var pctx = panel.getContext('2d');
+
+    // Skyline packer (2026-07-16 rewrite — the grid-jitter approach only
+    // spaced out cell CENTERS; nothing stopped a large word in one cell
+    // from overlapping a neighbor's, which is exactly what showed up on a
+    // real phone as illegible overlapping "mush." A skyline packer (same
+    // family of algorithm as sprite-sheet packing) tracks the filled
+    // height across thin x-slices of the panel; every word is placed at
+    // the CURRENTLY LOWEST gap and then marks that strip filled, so no two
+    // words can ever occupy the same pixels — "one continuous wall of
+    // text," zero overlaps, by construction rather than by hoping the
+    // jitter stays small enough.
+    var SLOT = 4; // skyline resolution in px — finer = tighter packing, still cheap (panel built once)
+    var slotCount = Math.max(1, Math.ceil(w / SLOT));
+    var skyline = new Array(slotCount).fill(0);
+    var maxSpan = w * 0.28; // "no giant letterform fragments" — cap ~28% of panel width
+
+    function fitSkyline(blockW) {
+      var need = Math.max(1, Math.ceil(blockW / SLOT));
+      if (need > slotCount) need = slotCount;
+      var bestSlot = 0, bestY = Infinity;
+      for (var s = 0; s <= slotCount - need; s++) {
+        var maxY = 0;
+        for (var k = 0; k < need; k++) if (skyline[s + k] > maxY) maxY = skyline[s + k];
+        if (maxY < bestY) { bestY = maxY; bestSlot = s; }
+      }
+      return { slot: bestSlot, need: need, x: bestSlot * SLOT, y: bestY };
+    }
+    function commitSkyline(slot, need, y) {
+      for (var k = 0; k < need; k++) skyline[slot + k] = y;
+    }
+
+    var attempts = 0, maxAttempts = 3000;
+    while (attempts < maxAttempts) {
+      attempts++;
+      var minFilled = Math.min.apply(null, skyline);
+      if (minFilled >= h) break; // panel is full
+
+      var word = COLLAGE_WORDS[Math.floor(Math.random() * COLLAGE_WORDS.length)];
+      var vertical = Math.random() < 0.25; // mostly 0°, some 90° — interlocking, not chaotic angles
+      var size = 14 + Math.random() * 70; // ~5x contrast; packed density does the rest of the visual variety
+      // ~3-4 per 100, never twice in a row (point 6). Vivid POP, not a dim
+      // glint: thin weight, high opacity, standing out of the wall.
+      var isAccent = !collageLastWasAccent && Math.random() < 0.035;
+      collageLastWasAccent = isAccent;
+      var weight, fill;
+      if (isAccent) {
+        weight = 100 + Math.floor(Math.random() * 200); // 100-300, thin
+        fill = 'rgba(92,242,196,' + (0.85 + Math.random() * 0.15).toFixed(3) + ')'; // 85-100%
+      } else {
+        weight = Math.random() < 0.45 ? 700 : 200; // mixed weights
+        var opacity = 0.06 + Math.random() * 0.06; // 6-12%, texture not text (point 2)
+        fill = 'rgba(140,175,205,' + opacity.toFixed(3) + ')';
+      }
+
+      pctx.font = weight + ' ' + Math.round(size) + 'px Sora, sans-serif';
+      var textW = pctx.measureText(word).width;
+      if (textW > maxSpan) {
+        size *= maxSpan / textW;
+        pctx.font = weight + ' ' + Math.round(size) + 'px Sora, sans-serif';
+        textW = pctx.measureText(word).width;
+      }
+      var textH = size * 1.15; // approx line box, a little breathing room between stacked rows
+
+      var blockW = vertical ? textH : textW;
+      var blockH = vertical ? textW : textH;
+      var fit = fitSkyline(blockW);
+
+      if (fit.y + blockH > h + 40) {
+        // Nothing usable left in this strip — mark it exhausted so future
+        // attempts don't keep re-testing (and failing) the same gap, and
+        // move on. Leaves a small leftover void rather than looping forever.
+        commitSkyline(fit.slot, fit.need, h);
+        continue;
+      }
+
+      pctx.save();
+      pctx.fillStyle = fill;
+      if (vertical) {
+        // Rotating 90° swaps the local axes; translating to (x+blockW, y)
+        // before rotating lands the rotated text's bounding box exactly at
+        // [x, x+blockW] x [y, y+blockH] — see the 2026-07-16 revision-log
+        // entry for the derivation.
+        pctx.translate(fit.x + blockW, fit.y);
+        pctx.rotate(Math.PI / 2);
+        pctx.textAlign = 'left';
+        pctx.textBaseline = 'top';
+        pctx.fillText(word, 0, 0);
+      } else {
+        pctx.textAlign = 'left';
+        pctx.textBaseline = 'top';
+        pctx.fillText(word, fit.x, fit.y);
+      }
+      pctx.restore();
+
+      commitSkyline(fit.slot, fit.need, fit.y + blockH);
+    }
+    return { canvas: panel, x: 0 };
+  }
+
+  function updateCollage(frames) {
+    // A static wall under reduced motion (still present, just not moving —
+    // point 3 respects prefers-reduced-motion the same way the rest of the
+    // game does, per §8).
+    var pspeed = reducedMotion ? 0 : speed * 0.35 * frames; // parallax: 30-40% of obstacle speed
+    for (var i = collagePanels.length - 1; i >= 0; i--) {
+      collagePanels[i].x -= pspeed;
+      if (collagePanels[i].x + COLLAGE_PANEL_W < -50) collagePanels.splice(i, 1);
+    }
+    var rightEdge = collagePanels.length ? collagePanels[collagePanels.length - 1].x + COLLAGE_PANEL_W : 0;
+    while (rightEdge < W + COLLAGE_PANEL_W) {
+      var p = buildCollagePanel(H);
+      p.x = rightEdge;
+      collagePanels.push(p);
+      rightEdge += COLLAGE_PANEL_W;
+    }
+  }
+
+  function drawCollage() {
+    collagePanels.forEach(function (p) { ctx.drawImage(p.canvas, p.x, 0); });
+  }
+
+  // ---- Last-3-death + best markers now live in the world itself (in-canvas
+  // scrolling lines), not a separate DOM progress bar — the old bar's percent
+  // math broke down past its own assumed max; these just scroll with the
+  // world like the best-line already did. ----
+  var deathMarkers = [];
+
+  function startRun() {
+    paused = false;
+    lastFrameTs = null;
+    W = canvas.width; H = canvas.height;
+    computeWorldScale();
+    orb = { x: Math.max(90, W * 0.22), y: H / 2, vy: 0, tilt: 0 };
+    columns = [];
+    trail = [];
+    signal = 0;
+    speed = SPEED_BASE_REF * scale;
+    bestBeaten = false;
+    // The vertical "best" line lives in the same scrolling world as the
+    // columns — it starts one best-run's-worth of distance ahead, so it
+    // naturally reaches the orb exactly when this run matches the old one.
+    bestMarkerX = bestSignal > 0 ? orb.x + (bestSignal / 10) * WORLD_DIST_PER_10_SIGNAL : null;
+    deathMarkers = recentDeaths.map(function (v) {
+      return { x: orb.x + (v / 10) * WORLD_DIST_PER_10_SIGNAL, value: v };
+    });
+    failEl.classList.remove('show');
+    crownEl.hidden = true;
+    signalEl.textContent = 0;
+    signalLabelEl.textContent = copy().signal;
+    bestLabelEl.textContent = copy().best;
+    spawnColumn(W + 60);
+    running = true;
+    requestAnimationFrame(loop);
+  }
+
+  function spawnColumn(x) {
+    var margin = 90 * scale;
+    var gapY = margin + Math.random() * Math.max(40, H - margin * 2 - GAP_H) + GAP_H / 2;
+    columns.push({ x: x, gapY: gapY, passed: false });
+  }
+
+  // Debug pause (§7.8): freezes the game mid-frame for design-review
+  // screenshots — the canvas just stops updating/redrawing, nothing else
+  // resets. Only meaningful during an actual run.
+  var paused = false;
+  var lastFrameTs = null; // §7.9 delta-time: null means "treat next tick as one reference frame"
+  function flap() { if (running && !paused) orb.vy = FLAP; }
+  // touch-action:manipulation (CSS, above) is the primary double-tap-zoom
+  // guard; preventDefault here is belt-and-suspenders against any residual
+  // native gesture handling on the rapid taps flap() depends on. Scoped to
+  // the canvas only — the rest of the 404 page keeps normal pinch/zoom.
+  canvas.addEventListener('pointerdown', function (e) { e.preventDefault(); flap(); });
+  window.addEventListener('keydown', function (e) {
+    if (e.key === 'p' || e.key === 'P') {
+      if (running) {
+        paused = !paused;
+        // Otherwise the whole paused duration would read as one giant
+        // delta-time frame the instant play resumes.
+        if (!paused) lastFrameTs = null;
+      }
+      return;
+    }
+    if (!running || paused) return;
+    if (e.code === 'Space' || e.key === ' ') { e.preventDefault(); flap(); }
+  });
+
+  var pbToastTimer;
+  function showPbToast() {
+    var lines = copy().pbLines;
+    pbToastEl.textContent = lines[Math.floor(Math.random() * lines.length)];
+    pbToastEl.classList.remove('hide');
+    pbToastEl.classList.add('show');
+    clearTimeout(pbToastTimer);
+    pbToastTimer = setTimeout(function () {
+      pbToastEl.classList.remove('show');
+      pbToastEl.classList.add('hide');
+    }, 1800);
+  }
+
+  // `frames`: how many 60fps-equivalent ticks this call represents (1.0 at
+  // exactly 60fps, 0.5 at 120fps, 2.0 at 30fps) — §7.9's delta-time fix.
+  // Every constant below (GRAVITY, FLAP, speed) was tuned assuming a 60fps
+  // "frame" as the unit of time; multiplying each per-frame delta by
+  // `frames` keeps the exact same real-world feel regardless of the
+  // device's actual refresh rate, instead of the old fixed per-callback
+  // step running faster on a 120Hz phone and slower under throttling.
+  function update(frames) {
+    // Two INDEPENDENT ramp curves (2026-07-17 split; see the constants'
+    // own comment for why), each 0 at the start of a run and 1 once SIGNAL
+    // reaches its own threshold — computed before any column spawns this
+    // frame so a freshly-spawned column already reflects the current
+    // difficulty rather than lagging a frame behind.
+    var gapRampT = Math.min(1, signal / GAP_RAMP_SIGNAL_REF);
+    var speedRampT = Math.min(1, signal / SPEED_RAMP_SIGNAL_REF);
+    GAP_H = (GAP_H_REF - (GAP_H_REF - GAP_H_MIN_REF) * gapRampT) * scale;
+
+    orb.vy += GRAVITY * frames;
+    orb.y += orb.vy * frames;
+    // Tilt reads as forward motion — nose up while rising, nose down while
+    // falling — the classic language for "this is moving," since otherwise
+    // only the world scrolling (not the orb itself) would show speed.
+    orb.tilt = Math.max(-0.5, Math.min(0.9, orb.vy * 0.07));
+
+    // The trail lives in WORLD space, not screen space: the orb's x is
+    // fixed on screen (the world scrolls under it, per the tilt comment
+    // above), so a trail point recorded last frame must shift left by the
+    // same `speed` the columns move by, or every point would stack up at
+    // orb.x and draw as a vertical smear instead of a comet tail streaming
+    // behind the orb's actual path.
+    for (var ti = 0; ti < trail.length; ti++) trail[ti].x -= speed * frames;
+    trail.push({ x: orb.x, y: orb.y, tilt: orb.tilt });
+    if (trail.length > 40) trail.shift();
+    while (trail.length && trail[0].x < -40) trail.shift();
+
+    for (var i = columns.length - 1; i >= 0; i--) {
+      columns[i].x -= speed * frames;
+      if (!columns[i].passed && columns[i].x + COLUMN_W < orb.x - ORB_R) {
+        columns[i].passed = true;
+        signal += 10;
+        signalEl.textContent = signal;
+        if (!bestBeaten && signal > bestSignal) {
+          bestBeaten = true;
+          bestEl.textContent = signal;
+          showPbToast(); // authoritative on score, not the line's approximate position
+        }
+      }
+      if (columns[i].x < -COLUMN_W - 60) columns.splice(i, 1);
+    }
+    if (!columns.length || columns[columns.length - 1].x < W - COLUMN_GAP) spawnColumn(W + 40);
+    speed = (SPEED_BASE_REF + SPEED_RAMP_REF * speedRampT) * scale;
+
+    if (bestMarkerX !== null) bestMarkerX -= speed * frames;
+    deathMarkers.forEach(function (m) { m.x -= speed * frames; });
+
+    updateCollage(frames);
+
+    if (orb.y - ORB_R < 0 || orb.y + ORB_R > H) { die(); return false; }
+    for (var j = 0; j < columns.length; j++) {
+      var c = columns[j];
+      if (orb.x + ORB_R > c.x && orb.x - ORB_R < c.x + COLUMN_W) {
+        var top = c.gapY - GAP_H / 2, bottom = c.gapY + GAP_H / 2;
+        if (orb.y - ORB_R < top || orb.y + ORB_R > bottom) { die(); return false; }
+      }
+    }
+    return true;
+  }
+
+  function draw() {
+    ctx.fillStyle = '#0B0F15';
+    ctx.fillRect(0, 0, W, H);
+
+    // The collage wall (§5.5) — drawn first, beneath everything else.
+    if (!collagePanels.length) updateCollage();
+    drawCollage();
+
+    // Solid, not translucent (2026-07-16 fix): at .5 alpha the collage wall
+    // (drawn first, directly below) showed through the columns, reading as
+    // "the collage is on top" even though paint order was correct — bars
+    // are meant to fully occlude whatever's behind them.
+    ctx.fillStyle = '#2FD8FF';
+    columns.forEach(function (c) {
+      var top = c.gapY - GAP_H / 2, bottom = c.gapY + GAP_H / 2;
+      ctx.fillRect(c.x, 0, COLUMN_W, top);
+      ctx.fillRect(c.x, bottom, COLUMN_W, H - bottom);
+    });
+
+    // Vertical "best" line: a techy marker scrolling in the same world as
+    // the columns, positioned so it reaches the orb exactly when this run
+    // matches the old best. Passing it is the moment the run gets flashy.
+    // Drawn AFTER the columns (not before) so a passing column never paints
+    // over and hides it mid-run.
+    if (bestMarkerX !== null && bestMarkerX > -40 && bestMarkerX < W + 40) {
+      ctx.save();
+      var pulse = 0.5 + Math.sin(Date.now() / 260) * 0.25;
+      ctx.strokeStyle = 'rgba(92,242,196,' + (0.55 + pulse * 0.3) + ')';
+      ctx.lineWidth = 2;
+      ctx.shadowColor = '#5CF2C4';
+      ctx.shadowBlur = 16 + pulse * 10;
+      ctx.setLineDash([10, 8]);
+      ctx.beginPath();
+      ctx.moveTo(bestMarkerX, 0);
+      ctx.lineTo(bestMarkerX, H);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Last-3-death markers, same mechanism as the best line, dimmer and in
+    // the site's other accent (rose) so the two read as distinct signals.
+    deathMarkers.forEach(function (m) {
+      if (m.x < -40 || m.x > W + 40) return;
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,45,106,.4)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([6, 6]);
+      ctx.beginPath();
+      ctx.moveTo(m.x, 0);
+      ctx.lineTo(m.x, H);
+      ctx.stroke();
+      ctx.restore();
+    });
+
+    // Original fading particle trail — each particle now tilts with the
+    // orb's velocity at the moment it was left behind (drawn as a tilted
+    // ellipse, same shape language as the orb itself), instead of a plain
+    // untilted circle.
+    trail.forEach(function (p, i) {
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.tilt || 0);
+      ctx.beginPath();
+      ctx.fillStyle = 'rgba(92,242,196,' + (0.05 + (i / trail.length) * 0.25) + ')';
+      var r = ORB_R * (0.3 + (i / trail.length) * 0.5);
+      ctx.ellipse(0, 0, r * 1.15, r * 0.88, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    });
+
+    // The orb tilts with its own velocity (nose up rising, nose down
+    // falling) — the classic language for "this is moving" — drawn as one
+    // simple elongated shape, no separate comet-tail duplicate.
+    ctx.save();
+    ctx.translate(orb.x, orb.y);
+    ctx.rotate(orb.tilt);
+    ctx.beginPath();
+    ctx.fillStyle = '#EDF2F8';
+    ctx.shadowColor = '#2FD8FF';
+    ctx.shadowBlur = 20;
+    ctx.ellipse(0, 0, ORB_R * 1.15, ORB_R * 0.88, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.restore();
+  }
+
+  function loop(ts) {
+    if (!running) return;
+    if (!paused) {
+      // First tick after a run start (or after unpausing) has no prior
+      // timestamp to diff against — treat it as exactly one reference
+      // frame rather than a huge/zero delta. Clamp the rest so a lag
+      // spike (tab-switch, GC pause) can't fling the orb through a wall.
+      var frames = lastFrameTs === null ? 1 : Math.min((ts - lastFrameTs) / (1000 / 60), 3);
+      lastFrameTs = ts;
+      if (update(frames) === false) return;
+      draw();
+    }
+    requestAnimationFrame(loop);
+  }
+
+  function die() {
+    running = false;
+    attempts++;
+    localStorage.setItem('thauma_attempts', attempts);
+
+    recentDeaths.unshift(signal);
+    recentDeaths = recentDeaths.slice(0, 3);
+    localStorage.setItem('thauma_recent_deaths', JSON.stringify(recentDeaths));
+
+    var newBest = signal > bestSignal;
+    if (newBest) {
+      bestSignal = signal;
+      localStorage.setItem('thauma_best', bestSignal);
+    }
+
+    pingDeath(); // global futility counter (Phase 3, §6) — fire-and-forget
+
+    // Death gets the same glitch language as the opening collapse — two
+    // punches before the panel reveals, not one quiet fade.
+    function punch() {
+      screenGlitch();
+      gameEl.classList.remove('shake');
+      void gameEl.offsetWidth;
+      gameEl.classList.add('shake');
+    }
+    punch();
+    if (!reducedMotion) setTimeout(punch, 220);
+
+    var taunts = copy().taunts;
+    var idx = Math.min(attempts, taunts.length) - 1;
+    var revealDelay = reducedMotion ? 0 : 420;
+    var qualifies = qualifiesForLeaderboard(signal);
+    setTimeout(function () {
+      // Occasionally (1 in 6) the reassembled page quotes the global
+      // futility count instead of a normal taunt — only once that data has
+      // actually loaded, never a fabricated number.
+      var line = taunts[idx];
+      if (leaderboard && leaderboard.totalDeaths > 0 && Math.random() < (1 / 6)) {
+        line = copy().globalFutility.replace('{n}', leaderboard.totalDeaths.toLocaleString());
+      }
+      tauntEl.textContent = (newBest ? copy().newBest + ' ' : '') + line;
+      statsEl.innerHTML = copy().signal + ': <b>' + signal + '</b> &nbsp;·&nbsp; ' + copy().best + ': <b>' + bestSignal + '</b>';
+      if (qualifies) {
+        crownLabelEl.textContent = copy().newGlobalBest;
+        initialsSubmitEl.textContent = copy().initialsSubmit;
+        initialsInputEl.value = '';
+        crownEl.hidden = false;
+      }
+      failEl.classList.add('show');
+    }, revealDelay);
+  }
+})();
+</script>
+</body>
+</html>

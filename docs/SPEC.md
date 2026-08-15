@@ -366,7 +366,7 @@ single most important thing to test before committing to a platform.
 
 | service | what | scope |
 |---|---|---|
-| `thauma-dev` | `netlify dev --port 8991` (+socat 8992) | system |
+| `thauma-dev` | `eleventy --watch` + `wrangler dev --env dev --port 8991` (+socat 8992) | system |
 | `cloudflared-thauma-dev` | tunnel, `~/.cloudflared/config.yml` | system |
 | `chaseroush-dev` | `netlify dev --port 8993` (+socat 8994) | **user** |
 | `cloudflared-chaseroush-dev` | tunnel, `config-cr.yml` | **user** |
@@ -377,6 +377,23 @@ single most important thing to test before committing to a platform.
 - The dev sites serve **whatever branch is checked out** in those directories.
   Switching branches in place changes what is live. Use worktrees, and put
   them somewhere agreed — not a new folder in `$HOME`.
+- **`wrangler` is pinned to exactly 4.86.0, not a caret range.** 4.123+ needs
+  Node 22; this Pi runs Node 20.20.2, and the newer wrangler refuses to start
+  at all. A routine `npm install` under `^4.86.0` would break local dev with a
+  message about Node versions that looks unrelated to whatever you were doing.
+- **`wrangler dev` needs `--env dev`**, which serves `_site` and simulates D1
+  and KV locally from `.wrangler/state`. Seed it once:
+  `npx wrangler d1 execute thauma-ops-dev --local --env dev --file=db/seed.dev.sql`.
+  This is a **third** database — local, remote-dev, production. Collapsing it
+  back to two needs Node 22 + wrangler ≥ 4.123 (`experimental_remote`).
+- **`wrangler dev --remote` is not usable here.** It runs the Worker on
+  Cloudflare's edge under *next.thauma.one's* Access application, so a browser
+  that had already passed dev.thauma.one's Access got bounced to a second
+  login for a different hostname.
+- **`eleventy --watch`, never `--serve`, in the dev service.** `--watch` keeps
+  `ELEVENTY_RUN_MODE` at a value `src/_data/env.js` treats as a dev server, so
+  the comingSoon gate stays off. A bare build sets it to `build` and silently
+  serves the gated site.
 - The Netlify CLI is logged into **two accounts** but only one is active.
   Thauma is active; CR's service carries its own token via
   `~/.config/netlify-cr-auth.env` (0600) so both work without switching.

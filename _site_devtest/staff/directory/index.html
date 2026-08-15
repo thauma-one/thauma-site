@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Directory · Thauma Staff</title>
+<link rel="stylesheet" href="/css/tokens.css">
+<link rel="stylesheet" href="/css/staff.css?v=2">
+<link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
+</head>
+<body data-staff-page="directory">
+
+<header class="top"><div class="top-in">
+  <a class="mark" href="/staff/">THAUMA<em>STAFF</em></a>
+  <nav>
+    <a href="/staff/">Dashboard</a>
+    <a href="/staff/support/">Support</a>
+    <a href="/staff/stewardship/">Stewardship</a>
+    <a href="/staff/directory/" aria-current="page">Directory</a>
+    <a href="/staff/resources/">Resources</a>
+    <a href="/staff/activity/">Activity</a>
+  </nav>
+  <div class="top-r">
+    <span class="pill" id="partnerPill">—</span>
+    <span class="who"><b id="userName">—</b><span id="userRole">—</span></span>
+    <a class="ghost-btn" href="/cdn-cgi/access/logout">Sign out</a>
+  </div>
+</div></header>
+
+<main>
+  <div class="page-head">
+    <div class="cue">04 &mdash; Directory <span class="badge live">live</span></div>
+    <div class="sec-h">
+      <h2>Network <b>contacts</b></h2><span class="hint">people in the Thauma network — not supporters</span>
+    </div>
+  </div>
+
+  <p class="rolegate" id="roleNote" hidden>
+    Signed in, but the staff data endpoint refused the request. That usually means this
+    deploy is missing its <b>ACCESS_TEAM_DOMAIN</b> / <b>ACCESS_AUD</b> settings.
+  </p>
+
+  <div class="cards" id="contacts"><p class="empty">Loading&hellip;</p></div>
+<p class="row-actions"><button class="ghost-btn" id="addContactBtn" type="button">+ Add contact</button></p>
+
+<form class="form" id="contactForm">
+  <input type="hidden" id="contactIndex" value="">
+  <input type="text" id="contactName" placeholder="Name" required>
+  <input type="text" id="contactRole" placeholder="Role (optional)">
+  <div class="fgroup">
+    <span class="flabel">Emails</span>
+    <div id="contactEmails"></div>
+    <button class="ghost-btn" type="button" id="addEmailRow">+ Add email</button>
+  </div>
+  <div class="fgroup">
+    <span class="flabel">Phone numbers</span>
+    <div id="contactPhones"></div>
+    <button class="ghost-btn" type="button" id="addPhoneRow">+ Add phone</button>
+  </div>
+  <div class="frow">
+    <button class="solid-btn" type="submit">Save contact</button>
+    <button class="ghost-btn" type="button" id="contactCancel">Cancel</button>
+  </div>
+</form>
+<p class="hint" id="saveStatus"></p>
+
+</main>
+
+<script src="/js/staff.js?v=2"></script>
+</body>
+</html>
