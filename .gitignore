@@ -20,3 +20,4 @@ __pycache__/
 # wrangler dev's local state — the simulated D1/KV for dev.thauma.one.
 # Reproducible from db/seed.dev.sql; never a source of truth.
 .wrangler/
+_site_prod/

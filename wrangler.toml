@@ -238,8 +238,23 @@ CONTACT_FROM = "Thauma <noreply@thauma.one>"
 [env.production]
 name = "thauma-production"
 
+# ITS OWN DIRECTORY. This said `_site` until 2026-08-15, and that was a loaded
+# gun: `_site` is what the dev server's `eleventy --watch` writes continuously,
+# and a watch build is the UNGATED site — every interior page, because
+# ELEVENTY_RUN_MODE is "watch" and src/_data/env.js treats that as a dev
+# server. Deploying production from it would have published the entire
+# unreleased site.
+#
+# Measured before the first production deploy: _site had 41 pages, a build had
+# 11. Nothing in the config would have complained.
+#
+# Build with:  npx @11ty/eleventy --output=_site_prod
+# Eleventy forces ELEVENTY_RUN_MODE=build for a plain build regardless of what
+# you export, so this directory is always the comingSoon-gated shape. When
+# site.json flips comingSoon to false, the same command emits the full site and
+# nothing here changes.
 [env.production.assets]
-directory = "_site"
+directory = "_site_prod"
 binding = "ASSETS"
 html_handling = "auto-trailing-slash"
 not_found_handling = "404-page"
@@ -247,6 +262,14 @@ run_worker_first = ["/", "/api/*", "/.netlify/functions/*", "/staff", "/staff/*"
 
 [[env.production.routes]]
 pattern = "thauma.one/*"
+zone_name = "thauma.one"
+
+# www needs its OWN route: a Workers route matches a hostname exactly, so
+# "thauma.one/*" does not cover "www.thauma.one/*". Without this, www would
+# keep falling through to Netlify — which works right up until the Netlify
+# site is archived. The Worker 301s it to the apex; see worker.js.
+[[env.production.routes]]
+pattern = "www.thauma.one/*"
 zone_name = "thauma.one"
 
 [[env.production.kv_namespaces]]
@@ -264,9 +287,22 @@ database_id = "1a30f6c9-1dc7-42b0-abaa-fab3da334c9e"
 
 [env.production.vars]
 ACCESS_TEAM_DOMAIN = "thaumaone.cloudflareaccess.com"
-# TODO: replace with thauma.one's own Access application tag at cutover.
-# The existing thauma.one application cannot issue tokens yet — the zone
-# is unproxied while Netlify serves it, so Access never sees the traffic.
-ACCESS_AUD = "04468ad531e25f3c53af5d0b4ed0bdd3073241f76a070c741efe40f58019fdfb"
+
+# ACCESS_AUD IS DELIBERATELY ABSENT, AND THAT IS THE SAFE STATE.
+#
+# requireAccess() denies with 500 when it is missing, so thauma.one/staff/ is
+# HARD CLOSED until somebody creates the Access application for this hostname
+# and puts its tag here. Nothing behind it is reachable in the meantime.
+#
+# It briefly held dev.thauma.one's tag as a placeholder. That was worse than
+# nothing: Access sets CF_Authorization across the parent domain, so a dev
+# session's token would have been sent to thauma.one and ACCEPTED — the exact
+# cross-application hole the aud check exists to close, opened by a
+# placeholder. An audience tag is not a formality to fill in.
+#
+# To finish: create an Access application for thauma.one/staff*, copy its
+# Application Audience tag here, and redeploy with --env production.
+# See docs/MIGRATION-RUNBOOK.md, Phase 5.
+
 CONTACT_TO = "admin@thauma.one"
 CONTACT_FROM = "Thauma <noreply@thauma.one>"

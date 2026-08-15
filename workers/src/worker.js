@@ -101,6 +101,19 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
+    // www -> apex, permanently. Netlify did this until the 2026-08-15 cutover;
+    // doing it here means www stops depending on a host we are leaving, and
+    // the Netlify site can be archived without breaking it.
+    //
+    // Before the language redirect, so www.thauma.one/ makes ONE hop to
+    // thauma.one/ and lands on /en/ from there rather than bouncing twice.
+    // Path and query are preserved: a shared link to www.thauma.one/en/give/
+    // must arrive at the same page, not the home page.
+    if (url.hostname.startsWith("www.")) {
+      url.hostname = url.hostname.slice(4);
+      return Response.redirect(url.toString(), 301);
+    }
+
     const route = ROUTES[url.pathname];
     if (route) return route.fetch(request, env, ctx);
 
