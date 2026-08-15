@@ -47,7 +47,7 @@
   // db/build_snapshot.py and still served at /staff/data/snapshot.json —
   // point this back at it to work on the console without a database.
   var SNAPSHOT_URL = '/api/staff-snapshot';
-  var STAFF_API = '/.netlify/functions/staff-data';
+  var STAFF_API = '/api/staff-data';
 
   var CRIT_DAYS = 120;
   var WARN_DAYS = 60;
@@ -269,53 +269,70 @@
   async function loadStaffData() {
     try {
       var res = await fetch(STAFF_API, { credentials: 'same-origin' });
-      if (res.status === 401 || res.status === 500) {
-        if ($('roleNote')) $('roleNote').hidden = false;
-        var why = res.status === 500 ? 'Access is not configured on this deploy.'
-                                     : 'The token was refused.';
-        if ($('contacts')) $('contacts').innerHTML = '<p class="empty">' + why + '</p>';
-        if ($('resourceList')) $('resourceList').innerHTML = '<p class="empty">' + why + '</p>';
+      var body = await res.json().catch(function () { return {}; });
+
+      if (!res.ok) {
+        var why = res.status === 500 ? tr('err.unreachable')
+                : res.status === 403 ? tr('err.noPartner')
+                : tr('err.expired');
+        if ($('contacts')) $('contacts').innerHTML = '<p class="empty">' + esc(why) + '</p>';
+        if ($('resourceList')) $('resourceList').innerHTML = '<p class="empty">' + esc(why) + '</p>';
         return;
       }
-      var data = await res.json();
-      state.contacts = data.contacts || [];
-      state.resources = data.resources || [];
+      state.contacts = body.contacts || [];
+      state.resources = body.resources || [];
+      state.canSetVisibility = !!(body.can && body.can.set_visibility);
       renderCards();
-      showUpdated(data);
     } catch (e) {
       if ($('contacts')) {
-        $('contacts').innerHTML = '<p class="empty">Could not load — ' + esc(e.message) + '</p>';
+        $('contacts').innerHTML = '<p class="empty">' + esc(tr('err.unreachable')) + '</p>';
       }
     }
   }
 
-  // Render the optimistic local state immediately, then persist. On any
-  // failure, reload real server state so the UI never shows something that
-  // did not actually save.
-  async function saveData() {
-    renderCards();
-    setStatus('Saving…', false);
+  /* ONE ITEM AT A TIME.
+
+     This used to POST the entire document — every contact and every resource
+     — on any change. With a single shared store that quietly meant last write
+     wins: two people editing the same afternoon and the second erased the
+     first. Now each save touches one row, and the server returns the fresh
+     list rather than this page assuming its own copy is right. */
+  async function saveItem(kind, item) {
+    setStatus(tr('common.saving'), false);
     try {
       var res = await fetch(STAFF_API, {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contacts: state.contacts, resources: state.resources })
+        body: JSON.stringify(Object.assign({ kind: kind }, item))
       });
-      if (!res.ok) {
-        var msg = 'Save failed (' + res.status + ')';
-        try { var err = await res.json(); if (err && err.error) msg += ': ' + err.error; } catch (e) {}
-        setStatus(msg, true);
-        await loadStaffData();
-        return;
-      }
-      var data = await res.json();
-      state.contacts = data.contacts || [];
-      state.resources = data.resources || [];
+      var body = await res.json().catch(function () { return {}; });
+      if (!res.ok) throw new Error(body.error || ('save failed (' + res.status + ')'));
+
+      if (body.contacts) state.contacts = body.contacts;
+      if (body.resources) state.resources = body.resources;
       renderCards();
-      showUpdated(data);
+      setStatus('');
+      if (window.StaffToast) window.StaffToast(tr('toast.saved'), 'ok');
     } catch (e) {
-      setStatus('Save failed: ' + e.message, true);
+      setStatus(e.message, true);
+      await loadStaffData();
+    }
+  }
+
+  async function deleteItem(kind, id) {
+    try {
+      var res = await fetch(STAFF_API + '?kind=' + kind + '&id=' + encodeURIComponent(id), {
+        method: 'DELETE', credentials: 'same-origin'
+      });
+      var body = await res.json().catch(function () { return {}; });
+      if (!res.ok) throw new Error(body.error || ('delete failed (' + res.status + ')'));
+      if (body.contacts) state.contacts = body.contacts;
+      if (body.resources) state.resources = body.resources;
+      renderCards();
+      if (window.StaffToast) window.StaffToast(tr('toast.deleted'), 'ok');
+    } catch (e) {
+      setStatus(e.message, true);
       await loadStaffData();
     }
   }
@@ -366,17 +383,18 @@
         phones: Array.from(document.querySelectorAll('.c-phone'))
                   .map(function (i) { return i.value.trim(); }).filter(Boolean)
       };
-      if (idx === '') state.contacts.push(entry); else state.contacts[idx] = entry;
+      if (idx !== '') entry.id = state.contacts[idx] && state.contacts[idx].id;
       cForm.classList.remove('open'); cForm.reset();
       emails.innerHTML = ''; phones.innerHTML = '';
-      saveData();
+      saveItem('contact', entry);
     });
 
     // event delegation — cards re-render on every save
     $('contacts').addEventListener('click', function (e) {
       if (e.target.dataset.editContact !== undefined) open(e.target.dataset.editContact);
       if (e.target.dataset.deleteContact !== undefined) {
-        state.contacts.splice(Number(e.target.dataset.deleteContact), 1); saveData();
+        var c = state.contacts[Number(e.target.dataset.deleteContact)];
+        if (c && confirm('Delete "' + c.name + '"?')) deleteItem('contact', c.id);
       }
     });
   }
@@ -406,15 +424,16 @@
         link: $('resourceLink').value,
         photo: $('resourcePhoto').value
       };
-      if (idx === '') state.resources.push(entry); else state.resources[idx] = entry;
+      if (idx !== '') entry.id = state.resources[idx] && state.resources[idx].id;
       rForm.classList.remove('open'); rForm.reset();
-      saveData();
+      saveItem('resource', entry);
     });
 
     $('resourceList').addEventListener('click', function (e) {
       if (e.target.dataset.editResource !== undefined) open(e.target.dataset.editResource);
       if (e.target.dataset.deleteResource !== undefined) {
-        state.resources.splice(Number(e.target.dataset.deleteResource), 1); saveData();
+        var r = state.resources[Number(e.target.dataset.deleteResource)];
+        if (r && confirm('Delete "' + r.title + '"?')) deleteItem('resource', r.id);
       }
     });
   }

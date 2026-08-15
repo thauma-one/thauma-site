@@ -139,64 +139,67 @@ console.log("\nstaff-data\n");
 const OPEN = { ACCESS_TEAM_DOMAIN: "t.cloudflareaccess.com", ACCESS_AUD: "aud" };
 
 await check("unauthenticated GET is refused", async () => {
-  const r = await staff.handle(get(), OPEN, memoryStore());
+  const r = await staff.default.fetch(get(), OPEN);
   eq(r.status, 401, "status");
 });
 
 await check("unauthenticated POST cannot write", async () => {
-  const s = memoryStore();
-  const r = await staff.handle(post({ contacts: [{ name: "Injected" }] }), OPEN, s);
+  const r = await staff.default.fetch(post({ kind: "contact", name: "Injected" }), OPEN);
   eq(r.status, 401, "status");
-  eq(s._dump().data, undefined, "an unauthenticated write reached the store");
 });
 
 await check("a misconfigured deploy FAILS CLOSED with 500", async () => {
-  const r = await staff.handle(get(), {}, memoryStore());
+  const r = await staff.default.fetch(get(), { DB: {} });
   eq(r.status, 500, "status");
 });
 
-await check("contacts are sanitised: bad emails and phones dropped", async () => {
-  const out = staff.sanitizeContacts([
-    { name: "Real", emails: ["ok@x.com", "not-an-email"], phones: ["+1 (816) 555-0100", "<script>"] },
-    { name: "", emails: ["x@y.z"] },
-  ]);
-  eq(out.length, 1, "nameless contact kept");
-  eq(out[0].emails, ["ok@x.com"], "emails");
-  eq(out[0].phones, ["+1 (816) 555-0100", ""].filter(Boolean), "phones");
+await check("javascript: and data: links are refused", async () => {
+  // Resources render as clickable anchors, so a link field is a place to put
+  // stored XSS. Escaping the text does not help — the browser executes the
+  // scheme, not the markup. This was dropped in the 0005 rewrite and these
+  // tests are what caught it.
+  eq(staff.safeLink("javascript:alert(1)"), null, "javascript:");
+  eq(staff.safeLink("data:text/html,<script>"), null, "data:");
+  eq(staff.safeLink("JaVaScRiPt:alert(1)"), null, "mixed case");
+  eq(staff.safeLink("vbscript:msgbox"), null, "vbscript:");
 });
 
-await check("javascript: and data: links are stripped from resources", async () => {
-  const out = staff.sanitizeResources([
-    { title: "Bad", link: "javascript:alert(1)" },
-    { title: "Bad2", link: "data:text/html,<script>" },
-    { title: "Good", link: "https://example.com" },
-  ]);
-  eq(out.map((r) => r.link), ["", "", "https://example.com"], "links");
+await check("ordinary links and paths survive", async () => {
+  eq(staff.safeLink("https://example.com"), "https://example.com", "https");
+  eq(staff.safeLink("mailto:a@b.co"), "mailto:a@b.co", "mailto");
+  eq(staff.safeLink("/img/photo.jpg"), "/img/photo.jpg", "relative path");
+  eq(staff.safeLink(""), null, "empty");
 });
 
-await check("photo sources must be http(s) or root-relative", async () => {
-  const out = staff.sanitizeResources([
-    { title: "a", photo: "javascript:x" },
-    { title: "b", photo: "/img/ok.webp" },
-    { title: "c", photo: "https://cdn.example/x.png" },
-  ]);
-  eq(out.map((r) => r.photo), ["", "/img/ok.webp", "https://cdn.example/x.png"], "photos");
-});
-
-await check("list and field lengths are capped", async () => {
-  const many = Array.from({ length: 80 }, (_, i) => ({ name: "n" + i }));
-  eq(staff.sanitizeContacts(many).length, 50, "contacts cap");
-  const c = staff.sanitizeContacts([{ name: "x".repeat(400) }])[0];
-  assert(c.name.length === 100, "name not clamped");
-  const emails = Array.from({ length: 20 }, (_, i) => `a${i}@b.co`);
-  eq(staff.sanitizeContacts([{ name: "n", emails }])[0].emails.length, 5, "emails cap");
-});
-
-await check("non-array input yields an empty list, not a crash", async () => {
-  for (const bad of [null, undefined, "nope", 42, {}]) {
-    eq(staff.sanitizeContacts(bad), [], `contacts ${JSON.stringify(bad)}`);
-    eq(staff.sanitizeResources(bad), [], `resources ${JSON.stringify(bad)}`);
+await check("an allow-list, not a block-list", async () => {
+  // Blocking known-bad schemes invites the next one. Only http, https and
+  // mailto pass, so a scheme nobody has thought of is refused by default.
+  for (const s of ["ftp://x/y", "file:///etc/passwd", "chrome://settings",
+                   "blob:https://x/1", "intent://scan/#Intent;end"]) {
+    eq(staff.safeLink(s), null, s);
   }
+});
+
+await check("addresses that are not addresses are dropped", async () => {
+  eq(staff.isEmail("ok@x.com"), true, "valid");
+  eq(staff.isEmail("not-an-email"), false, "no @");
+  eq(staff.isEmail("a@b"), false, "no tld");
+  eq(staff.isEmail("a b@c.com"), false, "space");
+});
+
+
+
+
+
+
+
+
+await check("photo sources go through the same allow-list as links", async () => {
+  // A photo URL ends up in an <img src>, which is another place a scheme is
+  // executed rather than displayed.
+  eq(staff.safeLink("javascript:alert(1)"), null, "javascript photo");
+  eq(staff.safeLink("/img/x.jpg"), "/img/x.jpg", "root-relative photo");
+  eq(staff.safeLink("https://cdn.example.com/x.jpg"), "https://cdn.example.com/x.jpg", "https photo");
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);

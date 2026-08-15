@@ -44,7 +44,7 @@ await check("queries.generated.js is in sync with db/queries.sql", async () => {
     `stale generated file — run: python3 db/generate_queries_module.py`);
 });
 
-await check("all thirty-two named queries are present", async () => {
+await check("all thirty-eight named queries are present", async () => {
   const expected = [
     "api_key_lookup", "api_key_touch",
     "audit_recent_for_partner", "contact_timeline", "contacts_stewardship",
@@ -60,6 +60,9 @@ await check("all thirty-two named queries are present", async () => {
     // settings
     "api_key_create", "api_key_revoke", "api_keys_for_partner", "audit_write",
     "partner_set_default_lang", "partner_settings", "user_set_preferred_lang",
+    // directory + resources
+    "directory_delete", "directory_for_user", "directory_upsert",
+    "resource_delete", "resource_upsert", "resources_visible",
   ].sort();
   eq(Object.keys(QUERIES).sort(), expected, "query names");
 });
@@ -71,6 +74,33 @@ await check("NO query names a language column — languages are data now", async
     assert(!/\b\w+_(hr|sr|en|de|es)\b/i.test(sql),
       `${name} names a language-suffixed column — text belongs in milestone_translations`);
   }
+});
+
+await check("a directory contact is scoped by its OWNER, not just the partner", async () => {
+  // The whole point of 0005. A colleague sharing the partner must not be able
+  // to read, rewrite or delete somebody else's address book.
+  for (const q of ["directory_for_user", "directory_upsert", "directory_delete"]) {
+    assert(/user_id\s*=\s*:user_id/.test(QUERIES[q]),
+      `${q} is not scoped by the contact's owner`);
+    assert(/partner_id\s*=\s*:partner_id/.test(QUERIES[q]),
+      `${q} is not tenant-scoped`);
+  }
+});
+
+await check("the upsert cannot be used to take over another person's contact", async () => {
+  // The UPDATE half needs the ownership check too, or an id from elsewhere
+  // rewrites their row rather than being refused.
+  const update = QUERIES.directory_upsert.slice(QUERIES.directory_upsert.indexOf("DO UPDATE"));
+  assert(/directory_contacts\.user_id\s*=\s*:user_id/.test(update),
+    "ON CONFLICT DO UPDATE is not scoped by owner");
+});
+
+await check("resource visibility is matched exactly, not by prefix", async () => {
+  // instr() on a padded list: ',staff,' inside ',staff,admin,'. Without the
+  // commas, a level named 'staffing' would match a reader allowed 'staff'.
+  const sql = QUERIES.resources_visible;
+  assert(/instr\(\s*','/.test(sql) && /','\s*\|\|\s*visibility/.test(sql),
+    "visibility matching is not delimited — a prefix could match");
 });
 
 await check("the API key list NEVER selects key_hash", async () => {
@@ -164,8 +194,11 @@ await check("every real query converts with its documented params", async () => 
     milestone_id: "m_1", lang: "en", is_enabled: 1,
     // settings
     name: "a key", scopes: "read:public", created_by: null,
-    user_id: "chase@thauma.one", action: "update", entity: "x", entity_id: null,
+    user_id: "u_chase", action: "update", entity: "x", entity_id: null,
     detail: null,
+    // directory + resources
+    emails: "[]", phones: "[]", role: null, link: null, photo: null,
+    visibility: "staff", created_by: "u_chase", levels: "staff",
   };
   // The ONE query with no parameters: the language catalogue belongs to the
   // organisation, not to a partner, so there is nothing to scope it by. Named

@@ -160,7 +160,7 @@ ORDER BY captured_at ASC;
 -- preferred_lang rides along so the editor can open in the staff member's own
 -- language without a second query on every page load.
 SELECT p.id, p.slug, p.display_name, p.status, pu.role AS access_role,
-       u.global_role, COALESCE(u.preferred_lang, 'en') AS preferred_lang
+       u.id AS user_id, u.global_role, COALESCE(u.preferred_lang, 'en') AS preferred_lang
 FROM users u
 JOIN partner_users pu ON pu.user_id = u.id
 JOIN partners p ON p.id = pu.partner_id
@@ -279,6 +279,71 @@ INSERT INTO partner_languages (partner_id, lang, is_enabled, sort_order)
 VALUES (:partner_id, :lang, :is_enabled, :sort_order)
 ON CONFLICT(partner_id, lang) DO UPDATE SET
   is_enabled = :is_enabled, sort_order = :sort_order;
+
+
+-- ============================================================================
+-- DIRECTORY (per person) and RESOURCES (shared, with levels)
+-- ============================================================================
+
+-- name: directory_for_user
+-- SOMEBODY'S OWN address book. Scoped by user AND partner: the user id decides
+-- whose it is, the partner id is the tenant guard every table here carries.
+-- A colleague sharing the partner sees none of this.
+SELECT id, name, role, emails, phones, created_at, updated_at
+FROM directory_contacts
+WHERE user_id = :user_id AND partner_id = :partner_id
+ORDER BY name COLLATE NOCASE;
+
+
+-- name: directory_upsert
+INSERT INTO directory_contacts
+  (id, user_id, partner_id, name, role, emails, phones, created_at, updated_at)
+VALUES
+  (:id, :user_id, :partner_id, :name, :role, :emails, :phones, :now, :now)
+ON CONFLICT(id) DO UPDATE SET
+  name = :name, role = :role, emails = :emails, phones = :phones,
+  updated_at = :now
+-- Both halves of the ownership check: an id alone must never be enough to
+-- rewrite a card, and neither must an id plus the right partner.
+WHERE directory_contacts.user_id = :user_id
+  AND directory_contacts.partner_id = :partner_id;
+
+
+-- name: directory_delete
+DELETE FROM directory_contacts
+WHERE id = :id AND user_id = :user_id AND partner_id = :partner_id;
+
+
+-- name: resources_visible
+-- The library, filtered to what this person may see.
+--
+-- :levels is a comma-separated list the caller builds from the reader's role,
+-- matched with instr() against a padded string so 'staff' cannot match
+-- 'staffing'. Roles are not in the database yet; when they are, this query
+-- does not change — only the list handed to it.
+SELECT id, partner_id, title, description, link, photo, visibility,
+       created_at, updated_at
+FROM resources
+WHERE (partner_id = :partner_id OR partner_id IS NULL)
+  AND instr(',' || :levels || ',', ',' || visibility || ',') > 0
+ORDER BY title COLLATE NOCASE;
+
+
+-- name: resource_upsert
+INSERT INTO resources
+  (id, partner_id, title, description, link, photo, visibility,
+   created_by, created_at, updated_at)
+VALUES
+  (:id, :partner_id, :title, :description, :link, :photo, :visibility,
+   :created_by, :now, :now)
+ON CONFLICT(id) DO UPDATE SET
+  title = :title, description = :description, link = :link, photo = :photo,
+  visibility = :visibility, updated_at = :now
+WHERE resources.partner_id IS :partner_id;
+
+
+-- name: resource_delete
+DELETE FROM resources WHERE id = :id AND partner_id IS :partner_id;
 
 
 -- ============================================================================

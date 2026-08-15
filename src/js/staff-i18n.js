@@ -28,6 +28,7 @@
   var STRINGS = {
     en: {
       "common.loading": "Loading…",
+      "common.saving": "Saving…",
       "common.cancel": "Cancel",
       "common.copy": "Copy",
       "common.signedIn": "Signed in",
@@ -164,6 +165,7 @@
 
     hr: {
       "common.loading": "Učitavanje…",
+      "common.saving": "Spremanje…",
       "common.cancel": "Odustani",
       "common.copy": "Kopiraj",
       "common.signedIn": "Prijavljeni",
@@ -300,6 +302,7 @@
 
     sr: {
       "common.loading": "Учитавање…",
+      "common.saving": "Чување…",
       "common.cancel": "Откажи",
       "common.copy": "Копирај",
       "common.signedIn": "Пријављени",

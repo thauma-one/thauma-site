@@ -40,6 +40,8 @@ const TENANT_SCOPED = new Set([
   "partner_languages_for_partner",
   "partner_settings",
   "api_keys_for_partner",
+  "directory_for_user",
+  "resources_visible",
 ]);
 
 /**

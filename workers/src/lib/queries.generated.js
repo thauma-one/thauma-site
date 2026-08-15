@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "5d0e95b84e517443";
+export const SOURCE_DIGEST = "7f765f4656c365c6";
 
 export const QUERIES = {
   api_key_create: `INSERT INTO api_keys (id, partner_id, name, key_hash, scopes, created_by, created_at)
@@ -85,6 +85,21 @@ WHERE partner_id = :partner_id
        AND occurred_on >= date(:today, '-30 days'))                              AS personal_last_30,
   (SELECT COUNT(*) FROM goals
      WHERE partner_id = :partner_id)                                             AS goals_total;`,
+  directory_delete: `DELETE FROM directory_contacts
+WHERE id = :id AND user_id = :user_id AND partner_id = :partner_id;`,
+  directory_for_user: `SELECT id, name, role, emails, phones, created_at, updated_at
+FROM directory_contacts
+WHERE user_id = :user_id AND partner_id = :partner_id
+ORDER BY name COLLATE NOCASE;`,
+  directory_upsert: `INSERT INTO directory_contacts
+  (id, user_id, partner_id, name, role, emails, phones, created_at, updated_at)
+VALUES
+  (:id, :user_id, :partner_id, :name, :role, :emails, :phones, :now, :now)
+ON CONFLICT(id) DO UPDATE SET
+  name = :name, role = :role, emails = :emails, phones = :phones,
+  updated_at = :now
+WHERE directory_contacts.user_id = :user_id
+  AND directory_contacts.partner_id = :partner_id;`,
   goal_history: `SELECT raised_cents, donor_count, captured_at
 FROM goal_snapshots
 WHERE goal_id = :goal_id AND partner_id = :partner_id
@@ -166,7 +181,7 @@ ORDER BY sort_order, l.name;`,
        COALESCE(p.default_lang, 'en') AS default_lang
 FROM partners p WHERE p.id = :partner_id;`,
   partners_for_user: `SELECT p.id, p.slug, p.display_name, p.status, pu.role AS access_role,
-       u.global_role, COALESCE(u.preferred_lang, 'en') AS preferred_lang
+       u.id AS user_id, u.global_role, COALESCE(u.preferred_lang, 'en') AS preferred_lang
 FROM users u
 JOIN partner_users pu ON pu.user_id = u.id
 JOIN partners p ON p.id = pu.partner_id
@@ -203,5 +218,22 @@ FROM milestones
 WHERE partner_id = :partner_id
   AND is_public = 1
 ORDER BY sort_order ASC, (actual_date IS NULL), actual_date ASC;`,
+  resource_delete: `DELETE FROM resources WHERE id = :id AND partner_id IS :partner_id;`,
+  resource_upsert: `INSERT INTO resources
+  (id, partner_id, title, description, link, photo, visibility,
+   created_by, created_at, updated_at)
+VALUES
+  (:id, :partner_id, :title, :description, :link, :photo, :visibility,
+   :created_by, :now, :now)
+ON CONFLICT(id) DO UPDATE SET
+  title = :title, description = :description, link = :link, photo = :photo,
+  visibility = :visibility, updated_at = :now
+WHERE resources.partner_id IS :partner_id;`,
+  resources_visible: `SELECT id, partner_id, title, description, link, photo, visibility,
+       created_at, updated_at
+FROM resources
+WHERE (partner_id = :partner_id OR partner_id IS NULL)
+  AND instr(',' || :levels || ',', ',' || visibility || ',') > 0
+ORDER BY title COLLATE NOCASE;`,
   user_set_preferred_lang: `UPDATE users SET preferred_lang = :lang WHERE email = :email AND status = 'active';`
 };
