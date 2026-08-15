@@ -82,10 +82,31 @@ binding = "GAME_SCORES"
 id = "f23971d5b4aa460daba43e97b9d84273"
 
 # D1 for the relational data: partners, users, contacts, interactions, goals.
+#
+# TWO DATABASES, DELIBERATELY. The top-level binding here is the DEV database,
+# because the top-level config is what `wrangler deploy` uses for staging
+# (next.thauma.one). Production is in [env.production] below and is the only
+# thing that ever touches real supporter data.
+#
+# "Dev should always match production" and "dev should be safe to edit" cannot
+# both be true — a mirror you can change is not a mirror. So they are split by
+# what actually needs to match:
+#
+#   SCHEMA  must always match. That is what migrations are for. Apply every
+#           numbered migration to BOTH, in order, and never hand-edit a
+#           database. Dev is where a migration is supposed to fail first,
+#           which only works if it is separate.
+#
+#   DATA    does not need to match. Dev runs db/seed.dev.sql, which contains
+#           the edge cases ON PURPOSE (the contact overdue by 165 days).
+#           When production's shape is genuinely needed, refresh explicitly
+#           with db/refresh_dev.py — which SCRUBS names and emails on the way
+#           in. Keeping a full copy of supporter PII in a poked-at dev
+#           database would undo much of why this schema holds so little.
 [[d1_databases]]
 binding = "DB"
-database_name = "thauma-ops"
-database_id = "1a30f6c9-1dc7-42b0-abaa-fab3da334c9e"
+database_name = "thauma-ops-dev"
+database_id = "db7fcd6a-56e2-4a67-98da-3da87e95dc86"
 
 # ---------------------------------------------------------------------------
 # Public configuration
@@ -105,3 +126,45 @@ CONTACT_FROM = "Thauma <noreply@thauma.one>"
 # ---------------------------------------------------------------------------
 # [triggers]
 # crons = []
+
+
+# ---------------------------------------------------------------------------
+# PRODUCTION
+# ---------------------------------------------------------------------------
+# Deploy with:  npx wrangler deploy --env production
+#
+# The ONLY configuration pointing at the real database and the real hostname.
+# A plain `wrangler deploy` cannot reach either, which is the point: the
+# dangerous target has to be named explicitly every single time.
+[env.production]
+name = "thauma-production"
+
+[env.production.assets]
+directory = "_site"
+binding = "ASSETS"
+html_handling = "auto-trailing-slash"
+not_found_handling = "404-page"
+run_worker_first = ["/", "/api/*", "/.netlify/functions/*", "/staff", "/staff/*"]
+
+[[env.production.routes]]
+pattern = "thauma.one/*"
+zone_name = "thauma.one"
+
+[[env.production.kv_namespaces]]
+binding = "STAFF_DATA"
+id = "f79f07b51f3a493a9f2bb3714115d037"
+
+[[env.production.kv_namespaces]]
+binding = "GAME_SCORES"
+id = "f23971d5b4aa460daba43e97b9d84273"
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "thauma-ops"
+database_id = "1a30f6c9-1dc7-42b0-abaa-fab3da334c9e"
+
+[env.production.vars]
+ACCESS_TEAM_DOMAIN = "thaumaone.cloudflareaccess.com"
+ACCESS_AUD = "04468ad531e25f3c53af5d0b4ed0bdd3073241f76a070c741efe40f58019fdfb"
+CONTACT_TO = "admin@thauma.one"
+CONTACT_FROM = "Thauma <noreply@thauma.one>"
