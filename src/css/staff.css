@@ -470,9 +470,7 @@ body.has-savebar{padding-bottom:var(--ms-savebar-h,72px)}
 .ms-row:focus-visible{outline:2px solid var(--voice-tech);outline-offset:-2px}
 /* The open row and its panel read as one object rather than a row with a
    detached slab under it. */
-.ms-row.is-open{background:var(--bg2,#0b1119);
-  box-shadow:inset 3px 0 0 var(--voice-tech)}
-.ms-row.is-open.is-dirty{box-shadow:inset 3px 0 0 var(--warn,#F5B845)}
+.ms-row.is-open{background:var(--bg2,#0b1119)}
 
 /* Points down when closed, up when open — the same direction the panel moves,
    so it says where the content went rather than merely that something is on. */
@@ -491,8 +489,15 @@ body.has-savebar{padding-bottom:var(--ms-savebar-h,72px)}
    Only the OPEN row is sticky. Making every row sticky would stack them all
    against the top as you scroll and bury the list. */
 .ms-row.is-open{position:sticky;top:var(--header-h);z-index:8;
-  /* Opaque for the same reason as the bar: rows pass underneath it. */
-  background:#0e141d}
+  /* Opaque, because the form scrolls underneath it. */
+  background:#0e141d;
+  /* The accent edge marks it as open; the drop shadow makes it read as
+     floating above the form rather than as a row that happens to be there.
+     Both in one declaration — a second box-shadow rule would replace this
+     one rather than adding to it. */
+  box-shadow:inset 3px 0 0 var(--voice-tech), 0 10px 22px rgba(0,0,0,.45)}
+.ms-row.is-open.is-dirty{
+  box-shadow:inset 3px 0 0 var(--warn,#F5B845), 0 10px 22px rgba(0,0,0,.45)}
 
 /* The panel scrolls under its own row rather than over it. */
 .ms-form{position:relative;z-index:1}

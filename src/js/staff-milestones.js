@@ -175,12 +175,18 @@
     markOpenRow();
   }
 
-  /* The row knows it is the open one, so the chevron and highlight survive a
-     re-render rather than resetting every time the list refreshes. */
+  /* The row knows it is the open one, so the chevron, highlight and sticky
+     position survive a re-render rather than resetting every refresh.
+
+     KEYED ON state.editing, NOT on the form's hidden attribute. It used to ask
+     whether the panel was visible, but this runs BEFORE openPanel() unhides
+     it — so the answer was always "no" and the class was never applied at all.
+     The sticky row looked like a CSS problem and was a sequencing one.
+     state.editing is set before this runs and cleared before it runs again on
+     close, so it is correct in both directions. */
   function markOpenRow() {
-    var open = !$('msForm').hidden && state.editing;
     Array.prototype.forEach.call($('msList').querySelectorAll('.ms-row'), function (r) {
-      var isOpen = !!(open && r.dataset.id === state.editing);
+      var isOpen = !!(state.editing && r.dataset.id === state.editing);
       r.classList.toggle('is-open', isOpen);
       r.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
     });
