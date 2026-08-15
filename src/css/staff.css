@@ -409,24 +409,28 @@ tr.tl-row td{padding:0;border-bottom:1px solid var(--line-soft)}
 @media (max-width:760px){ .ms-langs{grid-template-columns:1fr} }
 
 /* ---- the unsaved-changes bar ---- */
-/* Sticky because the edit you made may be scrolled off by the time you think
-   about leaving, and a state indicator you have to go looking for is not one.
-   BELOW the header, not level with it: both were z-index 20 at top 0, so the
-   one later in the document won and drew straight over the navigation. The
-   header is the one thing that must always be on top. */
-.ms-savebar{position:sticky;top:var(--header-h);z-index:10;display:flex;align-items:center;gap:14px;
-  margin:0 0 20px;padding:13px 18px;
-  /* OPAQUE. It is sticky, so the form scrolls underneath it — a translucent
-     background let two layers of text sit on top of each other and read as a
-     rendering fault rather than as one thing passing behind another. The warn
-     colour moves to the edge, where it still identifies the bar. */
+/* AT THE BOTTOM, not stuck under the header.
+   It was sticky at the top, which put three things in a queue for the same
+   edge — header, this bar, and the open row — and made it impossible to tell
+   which was pinning what. Anchoring it to the bottom of the viewport removes
+   the contest: nothing scrolls behind the header, the open row only has to
+   clear a constant, and the bar is if anything more visible than before
+   because it no longer shares space with navigation.
+   body.has-savebar adds matching bottom padding, so the last row can always
+   be scrolled clear of it rather than being permanently covered. */
+.ms-savebar{position:fixed;left:0;right:0;bottom:0;z-index:30;
+  display:flex;align-items:center;gap:14px;
+  padding:14px max(var(--gutter),24px);
   background:#171207;
-  border:1px solid rgba(245,184,69,.45);
-  box-shadow:inset 3px 0 0 var(--warn,#F5B845), 0 10px 24px rgba(0,0,0,.5);
-  border-radius:var(--radius);font-size:var(--fs-sm);color:var(--text)}
+  border-top:1px solid rgba(245,184,69,.45);
+  box-shadow:0 -10px 30px rgba(0,0,0,.55);
+  font-size:var(--fs-sm);color:var(--text)}
 .ms-savebar-note{color:var(--dim);font-size:var(--fs-tiny)}
-.ms-savebar .solid-btn,.ms-savebar .ghost-btn{margin-left:auto}
 .ms-savebar .solid-btn{margin-left:0}
+.ms-savebar .ghost-btn{margin-left:auto}
+/* Keeps the last row clear of the bar. Set from JS to the bar's real height,
+   so it is right whether the buttons wrap onto two lines or not. */
+body.has-savebar{padding-bottom:var(--ms-savebar-h,72px)}
 .ms-dirty-dot{width:8px;height:8px;border-radius:50%;background:var(--warn,#F5B845);
   flex:0 0 auto}
 
@@ -479,14 +483,14 @@ tr.tl-row td{padding:0;border-bottom:1px solid var(--line-soft)}
 .ms-row.is-open .ms-chev{transform:rotate(-135deg);border-color:var(--voice-tech)}
 
 /* ---- the open row stays put ---- */
-/* Pinned beneath the header and the unsaved bar for as long as its panel is
-   open, so scrolling through a long form never loses which milestone you are
-   editing. --ms-sticky-top is measured in JS because the unsaved bar comes and
-   goes, so this offset is not a constant CSS could hold.
+/* Pinned beneath the header for as long as its panel is open, so scrolling
+   through a long form never loses which milestone you are editing. The offset
+   is a constant now that the unsaved bar lives at the bottom — it used to be
+   measured in JS because the bar's height came and went above it.
 
    Only the OPEN row is sticky. Making every row sticky would stack them all
    against the top as you scroll and bury the list. */
-.ms-row.is-open{position:sticky;top:var(--ms-sticky-top,var(--header-h));z-index:8;
+.ms-row.is-open{position:sticky;top:var(--header-h);z-index:8;
   /* Opaque for the same reason as the bar: rows pass underneath it. */
   background:#0e141d}
 

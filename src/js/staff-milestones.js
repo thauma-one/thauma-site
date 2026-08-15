@@ -281,6 +281,7 @@
       fillLangPickers();
       render();
       fillParents();
+      updateSaveBar();
     } catch (e) {
       $('msList').innerHTML = '<p class="empty">Could not reach the server — ' +
         esc(e.message) + '.</p>';
@@ -369,21 +370,26 @@
 
   /* ---- the sticky stack ------------------------------------------------ */
 
-  /* Three things want the top of the screen: the site header, the unsaved bar,
-     and — while the panel is open — the row being edited. Their heights are
-     not all known to CSS: the unsaved bar comes and goes, so `top` for the row
-     beneath it cannot be a constant. This measures the stack and publishes it
-     as a custom property that the CSS positions against. */
+  /* Only two things want the top now: the header, and the open row beneath it.
+     The unsaved bar moved to the bottom of the viewport, which removed a
+     three-way contest for the same edge — and with it the need to publish a
+     measured offset for the row, which is a plain constant again. */
   function stickyTop() {
     var header = document.querySelector('.top');
-    var bar = $('msSaveBar');
-    var h = header ? header.offsetHeight : 0;
-    var b = (bar && !bar.hidden) ? bar.offsetHeight : 0;
-    return h + b;
+    return header ? header.offsetHeight : 0;
   }
 
+  /* The bar is fixed to the bottom, so the page needs matching padding or the
+     last row sits permanently underneath it. Measured rather than guessed:
+     the buttons wrap onto a second line on narrow screens. */
   function updateStickyOffsets() {
-    document.documentElement.style.setProperty('--ms-sticky-top', stickyTop() + 'px');
+    var bar = $('msSaveBar');
+    var showing = bar && !bar.hidden;
+    document.body.classList.toggle('has-savebar', !!showing);
+    if (showing) {
+      document.documentElement.style.setProperty(
+        '--ms-savebar-h', bar.offsetHeight + 'px');
+    }
   }
 
   /* Put a row's top edge just under the sticky stack.

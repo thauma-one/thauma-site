@@ -11,16 +11,6 @@ staffHint: what partner sites show — published entries are visible to anyone
   <span class="hint" id="msStatus"></span>
 </div>
 
-{#- Only appears when something is actually unsaved, so its presence is the
-   signal. Sticky, because the change you made may be off-screen by the time
-   you think about leaving. -#}
-<div class="ms-savebar" id="msSaveBar" hidden>
-  <span class="ms-dirty-dot" aria-hidden="true"></span>
-  <span id="msDirtyCount">0 unsaved changes</span>
-  <span class="ms-savebar-note">Nothing is live until you save.</span>
-  <button type="button" class="ghost-btn" id="msDiscard">Discard</button>
-  <button type="button" class="solid-btn" id="msSaveAll">Save changes</button>
-</div>
 
 {#- Said plainly and near the toggles, because this is the one screen in the
    console where a mistake is visible to strangers rather than to staff. -#}
@@ -134,3 +124,18 @@ staffHint: what partner sites show — published entries are visible to anyone
     <span class="hint" id="msFormStatus">Applies to the list — save to publish</span>
   </div>
 </form>
+
+{#- Only appears when something is actually unsaved, so its presence is the
+   signal. Fixed to the bottom of the viewport and LAST in the document, so
+   reading order matches what you see — a bar announced before the content
+   it refers to reads oddly to a screen reader.
+
+   role=status so the change in count is announced without stealing focus
+   from whatever is being edited. -#}
+<div class="ms-savebar" id="msSaveBar" role="status" aria-live="polite" hidden>
+  <span class="ms-dirty-dot" aria-hidden="true"></span>
+  <span id="msDirtyCount">0 unsaved changes</span>
+  <span class="ms-savebar-note">Nothing is live until you save.</span>
+  <button type="button" class="ghost-btn" id="msDiscard">Discard</button>
+  <button type="button" class="solid-btn" id="msSaveAll">Save changes</button>
+</div>
