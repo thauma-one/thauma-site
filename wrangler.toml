@@ -287,22 +287,11 @@ database_id = "1a30f6c9-1dc7-42b0-abaa-fab3da334c9e"
 
 [env.production.vars]
 ACCESS_TEAM_DOMAIN = "thaumaone.cloudflareaccess.com"
+# thauma.one's OWN Access application tag. Not dev's, not staging's:
+# Access sets CF_Authorization across the parent domain, so another
+# application's token would reach this host and be accepted.
+ACCESS_AUD = "b0c56c5b0e4009cd1d5e47025966abb413ff1dabe5244e5480a18170ba6b6602"
 
-# ACCESS_AUD IS DELIBERATELY ABSENT, AND THAT IS THE SAFE STATE.
-#
-# requireAccess() denies with 500 when it is missing, so thauma.one/staff/ is
-# HARD CLOSED until somebody creates the Access application for this hostname
-# and puts its tag here. Nothing behind it is reachable in the meantime.
-#
-# It briefly held dev.thauma.one's tag as a placeholder. That was worse than
-# nothing: Access sets CF_Authorization across the parent domain, so a dev
-# session's token would have been sent to thauma.one and ACCEPTED — the exact
-# cross-application hole the aud check exists to close, opened by a
-# placeholder. An audience tag is not a formality to fill in.
-#
-# To finish: create an Access application for thauma.one/staff*, copy its
-# Application Audience tag here, and redeploy with --env production.
-# See docs/MIGRATION-RUNBOOK.md, Phase 5.
 
 CONTACT_TO = "admin@thauma.one"
 CONTACT_FROM = "Thauma <noreply@thauma.one>"
