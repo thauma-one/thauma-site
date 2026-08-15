@@ -157,8 +157,38 @@
     return '';
   }
 
+  /* Park the panel somewhere innerHTML cannot reach, then put it back under
+     its row afterwards. This is the whole fix for "changing the language
+     closed the editor and it would not reopen": render() rebuilt the list the
+     panel was sitting inside, and took the element with it. */
+  function detachForm() {
+    var form = $('msForm');
+    if (form && form.parentNode !== $('msFormHolder')) $('msFormHolder').appendChild(form);
+    return form;
+  }
+
+  function reattachForm() {
+    var form = $('msForm');
+    if (!form || form.hidden || !state.editing) return;
+    var row = $('msList').querySelector('[data-id="' + cssEscape(state.editing) + '"]');
+    if (row) row.after(form);
+    markOpenRow();
+  }
+
+  /* The row knows it is the open one, so the chevron and highlight survive a
+     re-render rather than resetting every time the list refreshes. */
+  function markOpenRow() {
+    var open = !$('msForm').hidden && state.editing;
+    Array.prototype.forEach.call($('msList').querySelectorAll('.ms-row'), function (r) {
+      var isOpen = !!(open && r.dataset.id === state.editing);
+      r.classList.toggle('is-open', isOpen);
+      r.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    });
+  }
+
   function render() {
     var host = $('msList');
+    detachForm();
     if (!state.order.length) {
       host.innerHTML = '<p class="empty">No milestones yet. ' +
         'Add one and it will stay unpublished until you switch it on.</p>';
@@ -168,8 +198,11 @@
     host.innerHTML = list().map(function (m) {
       var child = m.parent_id ? ' ms-child' : '';
       var rid = m.localId || m.id;
+      // The row IS the control: role and aria-expanded so it reads as an
+      // expander to a screen reader, not as decoration with a button in it.
       return '<div class="ms-row' + child + (isDirty(rid) ? ' is-dirty' : '') +
-        '" data-id="' + esc(rid) + '">' +
+        '" data-id="' + esc(rid) + '" role="button" tabindex="0"' +
+        ' aria-expanded="false">' +
         '<div class="ms-main">' +
           '<div class="ms-t">' +
             '<span class="ms-title">' + esc(titleOf(m)) + '</span>' +
@@ -193,16 +226,22 @@
           '</button>' +
         '</div>' +
         '<div class="ms-row-actions">' +
+          '<span class="ms-chev" aria-hidden="true"></span>' +
           '<button type="button" data-edit="' + esc(rid) + '">Edit</button>' +
           '<button type="button" class="del" data-del="' + esc(rid) + '">Delete</button>' +
         '</div>' +
       '</div>';
     }).join('');
+
+    reattachForm();
   }
 
   /* ---- loading -------------------------------------------------------- */
 
   async function load() {
+    // Same reason render() does it: the error branches below write innerHTML
+    // straight into the list, and the panel may be sitting inside it.
+    detachForm();
     try {
       var res = await fetch(API, { credentials: 'same-origin', cache: 'no-store' });
       var body = await res.json().catch(function () { return {}; });
@@ -334,7 +373,11 @@
      guess means the timing is the same for a one-line milestone and a long
      one — a max-height large enough for the longest makes short panels appear
      to snap open early and hang. */
-  var PANEL_MS = 420;
+  /* 600ms, up from 420. The first pass was measured to be "not instant" and
+     it cleared that bar without clearing the real one: a panel that carries a
+     whole form needs long enough that the eye follows the edge down rather
+     than noticing the result. Matches the duration in staff.css. */
+  var PANEL_MS = 600;
 
   function reducedMotion() {
     return window.matchMedia &&
@@ -467,6 +510,7 @@
     var row = id ? $('msList').querySelector('[data-id="' + cssEscape(id) + '"]') : null;
     if (row) row.after(form); else $('msList').after(form);
 
+    markOpenRow();
     await openPanel(form);
     form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     var first = form.querySelector('[data-col="a"][data-tx="title"]');
@@ -476,6 +520,7 @@
   async function closeForm() {
     await closePanel($('msForm'));
     state.editing = null;
+    markOpenRow();
   }
 
   /* Applies to the WORKING COPY. Nothing reaches the database until Save. */
@@ -580,11 +625,28 @@
 
   // Delegated: the list re-renders after every change.
   $('msList').addEventListener('click', function (e) {
-    var t = e.target.closest('button');
-    if (!t) return;
-    if (t.dataset.pub !== undefined) togglePublished(t, t.dataset.pub);
-    else if (t.dataset.edit !== undefined) openForm(t.dataset.edit);
-    else if (t.dataset.del !== undefined) remove(t.dataset.del);
+    var btn = e.target.closest('button');
+    if (btn) {
+      if (btn.dataset.pub !== undefined) return togglePublished(btn, btn.dataset.pub);
+      if (btn.dataset.edit !== undefined) return openForm(btn.dataset.edit);
+      if (btn.dataset.del !== undefined) return remove(btn.dataset.del);
+      return;
+    }
+    // THE WHOLE BAR IS THE TARGET. Clicking a row opens it, the way a
+    // disclosure row does everywhere else — the Edit button stays because it
+    // is the discoverable affordance, but nobody should have to find it.
+    // Clicks that land inside the open panel are not the row's business.
+    if (e.target.closest('.ms-form')) return;
+    var row = e.target.closest('.ms-row');
+    if (row) openForm(row.dataset.id);
+  });
+
+  // Keyboard parity: the row is focusable and announces itself as a button.
+  $('msList').addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    if (e.target.closest('button') || e.target.closest('.ms-form')) return;
+    var row = e.target.closest('.ms-row');
+    if (row) { e.preventDefault(); openForm(row.dataset.id); }
   });
 
   // The browser's own dialog: wording is not ours to choose, and a custom

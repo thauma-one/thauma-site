@@ -34,6 +34,14 @@ staffHint: what partner sites show — published entries are visible to anyone
   <p class="empty">Loading…</p>
 </div>
 
+{#- Where the editor panel lives when it is not attached under a row.
+
+   It has to live OUTSIDE #msList: render() rebuilds that list with innerHTML,
+   which destroyed the form element whenever the list refreshed while the panel
+   was open — after which Edit could never reopen it, because the element it
+   looked for no longer existed. -#}
+<div id="msFormHolder"></div>
+
 {#- One form, reused for create and edit. Hidden until opened. -#}
 <form class="ms-form" id="msForm" hidden>
   <input type="hidden" id="msId">

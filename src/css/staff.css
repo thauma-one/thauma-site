@@ -410,8 +410,11 @@ tr.tl-row td{padding:0;border-bottom:1px solid var(--line-soft)}
 
 /* ---- the unsaved-changes bar ---- */
 /* Sticky because the edit you made may be scrolled off by the time you think
-   about leaving, and a state indicator you have to go looking for is not one. */
-.ms-savebar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;
+   about leaving, and a state indicator you have to go looking for is not one.
+   BELOW the header, not level with it: both were z-index 20 at top 0, so the
+   one later in the document won and drew straight over the navigation. The
+   header is the one thing that must always be on top. */
+.ms-savebar{position:sticky;top:var(--header-h);z-index:10;display:flex;align-items:center;gap:14px;
   margin:0 0 20px;padding:13px 18px;background:var(--warn-dim,rgba(245,184,69,.14));
   border:1px solid rgba(245,184,69,.4);border-radius:var(--radius);
   font-size:var(--fs-sm);color:var(--text)}
@@ -437,9 +440,34 @@ tr.tl-row td{padding:0;border-bottom:1px solid var(--line-soft)}
    420ms: slow enough to read as a panel unfolding from its row rather than
    appearing, short enough not to be in the way when moving between rows. */
 .ms-form.is-animating{overflow:hidden;
-  transition:height .42s var(--ease-main), opacity .28s var(--ease-main)}
+  transition:height .6s var(--ease-panel), opacity .38s var(--ease-panel)}
 .ms-form[hidden]{display:none}
 
 @media (prefers-reduced-motion: reduce){
   .ms-form,.ms-form.is-animating{transition:none}
 }
+
+/* ---- the row as a disclosure control ---- */
+/* A gentler curve than --ease-main, which is a steep symmetrical S built for
+   quick hover feedback. Over 600ms that S reads as a lurch; this eases in
+   softly and settles out slowly, which is what stops a large panel feeling
+   rushed. Duration lives in two places by necessity — staff-milestones.js
+   waits PANEL_MS to hand height back to the layout — so they must match. */
+:root{--ease-panel:cubic-bezier(.32,.06,.16,1)}
+
+.ms-row{cursor:pointer;transition:background var(--dur-3) var(--ease-main)}
+@media(hover:hover){ .ms-row:hover{background:var(--bg2,#0b1119)} }
+.ms-row:focus-visible{outline:2px solid var(--voice-tech);outline-offset:-2px}
+/* The open row and its panel read as one object rather than a row with a
+   detached slab under it. */
+.ms-row.is-open{background:var(--bg2,#0b1119);
+  box-shadow:inset 3px 0 0 var(--voice-tech)}
+.ms-row.is-open.is-dirty{box-shadow:inset 3px 0 0 var(--warn,#F5B845)}
+
+/* Points down when closed, up when open — the same direction the panel moves,
+   so it says where the content went rather than merely that something is on. */
+.ms-chev{width:7px;height:7px;border-right:1.5px solid var(--dim);
+  border-bottom:1.5px solid var(--dim);transform:rotate(45deg);
+  margin-right:6px;transition:transform var(--dur-4) var(--ease-panel),
+  border-color var(--dur-3) var(--ease-main)}
+.ms-row.is-open .ms-chev{transform:rotate(-135deg);border-color:var(--voice-tech)}
