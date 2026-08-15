@@ -565,3 +565,57 @@ body.has-savebar{padding-bottom:var(--ms-savebar-h,72px)}
 }
 
 @media (max-width:760px){ .set-row{grid-template-columns:1fr;gap:16px} }
+
+/* ============================================================
+   TOASTS
+   ============================================================ */
+/* Bottom centre, above the unsaved bar when that is showing — the bar owns
+   the very bottom edge, and a toast covering the Save button would be a
+   notification getting in the way of the thing it is telling you about. */
+.toasts{position:fixed;left:50%;transform:translateX(-50%);
+  bottom:calc(24px + var(--toast-lift,0px));z-index:60;
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+  pointer-events:none;width:min(92vw,520px)}
+body.has-savebar .toasts{--toast-lift:var(--ms-savebar-h,72px)}
+
+.toast{pointer-events:auto;display:flex;align-items:center;gap:12px;
+  background:#111a25;border:1px solid var(--line);
+  border-left:3px solid var(--voice-tech);
+  border-radius:var(--radius);padding:13px 18px;
+  color:var(--text);font-size:var(--fs-sm);line-height:1.45;
+  box-shadow:0 14px 34px rgba(0,0,0,.55);
+  opacity:0;transform:translateY(10px);
+  transition:opacity .26s var(--ease-main),transform .26s var(--ease-main)}
+.toast.in{opacity:1;transform:translateY(0)}
+.toast.ok{border-left-color:var(--voice-human)}
+.toast.err{border-left-color:var(--crit,#FF6B6B)}
+
+/* Errors carry a dismiss button because they do not time out. */
+.toast-x{margin-left:auto;background:none;border:0;color:var(--dim);
+  font-size:18px;line-height:1;cursor:pointer;padding:0 2px}
+@media(hover:hover){ .toast-x:hover{color:var(--text)} }
+
+@media (prefers-reduced-motion: reduce){ .toast{transition:none} }
+
+/* One published language means one column, at full width. */
+.ms-langs.single{grid-template-columns:1fr}
+
+/* Role tags — a list rather than a sentence, because there will be more of
+   them (board, and whatever the org grows into) and a list reads the same at
+   one item as at four. */
+.role-tags{display:flex;flex-wrap:wrap;gap:8px}
+.role-tag{font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  font-weight:var(--w-bold);padding:6px 11px;border-radius:var(--radius);
+  color:var(--dim);border:1px solid rgba(255,255,255,.18)}
+.role-tag.admin{color:var(--voice-tech);border-color:rgba(47,216,255,.4);
+  background:var(--voice-tech-dim)}
+.role-tag.partner{color:var(--voice-human);border-color:rgba(92,242,196,.35);
+  background:var(--voice-human-dim)}
+
+/* A button that reads as a link — used to send someone to another tab rather
+   than telling them where to look. */
+.link-btn{background:none;border:0;padding:0;color:var(--voice-tech);
+  font:inherit;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+
+/* Room between the explanation and the control that acts on it. */
+.key-create{margin-top:28px;gap:12px;flex-wrap:wrap}

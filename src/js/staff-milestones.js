@@ -50,19 +50,11 @@
 
   /* ---- status line -------------------------------------------------- */
 
-  var statusTimer = null;
-  function setStatus(el, text, kind) {
-    if (!el) return;
-    clearTimeout(statusTimer);
-    el.textContent = text || '';
-    el.className = 'hint' + (kind ? ' ' + kind : '');
-    // "Saved" is worth showing and not worth keeping. An error stays until
-    // something replaces it.
-    if (kind === 'ok') {
-      statusTimer = setTimeout(function () {
-        if (el.textContent === text) { el.textContent = ''; el.className = 'hint'; }
-      }, 2600);
-    }
+  /* Everything that used to write inline status text now raises a toast.
+     The first argument is kept so call sites did not all have to change; the
+     element it names is no longer written to. */
+  function setStatus(_el, text, kind) {
+    if (text && window.StaffToast) window.StaffToast(text, kind);
   }
 
   /* ---- toggles ------------------------------------------------------- */
@@ -105,6 +97,15 @@
   }
 
   function fillLangPickers() {
+    // ONE LANGUAGE, ONE COLUMN. A second column offering the same language as
+    // the first is a side-by-side comparison of a thing with itself, and it
+    // halves the width available for the text you are actually writing.
+    var only = enabledLangs().length < 2;
+    document.querySelector('.ms-langs').classList.toggle('single', only);
+    var colB = document.querySelectorAll('.ms-col')[1];
+    if (colB) colB.hidden = only;
+    if (only) state.colB = null;
+
     [['msLangA', 'colA', 'msTagA'], ['msLangB', 'colB', 'msTagB']].forEach(function (t) {
       var sel = $(t[0]); if (!sel) return;
       sel.innerHTML = enabledLangs().map(function (l) {

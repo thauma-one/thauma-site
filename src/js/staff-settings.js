@@ -26,17 +26,8 @@
     });
   }
 
-  var statusTimer = null;
   function setStatus(text, kind) {
-    var el = $('setStatus');
-    clearTimeout(statusTimer);
-    el.textContent = text || '';
-    el.className = 'hint' + (kind ? ' ' + kind : '');
-    if (kind === 'ok') {
-      statusTimer = setTimeout(function () {
-        if (el.textContent === text) { el.textContent = ''; el.className = 'hint'; }
-      }, 2600);
-    }
+    if (text && window.StaffToast) window.StaffToast(text, kind);
   }
 
   function langLabel(l) { return (l.native_name || l.name) + ' (' + l.code + ')'; }
@@ -59,6 +50,19 @@
 
   function render() {
     $('setEmail').textContent = state.you.email;
+
+    // Roles as tags rather than a sentence, because there will be more of them
+    // — board, and whatever else the org grows into — and a list reads the
+    // same at one item as at four.
+    var roles = [];
+    if (state.you.is_admin) roles.push({ label: 'Administrator', cls: 'admin' });
+    else roles.push({ label: 'Staff', cls: '' });
+    if (state.partner && state.partner.display_name) {
+      roles.push({ label: state.partner.display_name, cls: 'partner' });
+    }
+    $('setRoles').innerHTML = roles.map(function (r) {
+      return '<span class="role-tag ' + r.cls + '">' + esc(r.label) + '</span>';
+    }).join('');
 
     // Your own working language: every language the organisation offers, not
     // just the ones this partner publishes — you might work in a language the
@@ -167,6 +171,16 @@
 
   Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (b) {
     b.addEventListener('click', function () { showTab(b.dataset.tab); });
+  });
+
+  // In-page links that move to another tab, so a pointer to a setting lands on
+  // it rather than telling you where to look.
+  document.addEventListener('click', function (e) {
+    var go = e.target.closest('[data-goto]');
+    if (!go) return;
+    showTab(go.dataset.goto);
+    var target = $('setPrefLang');
+    if (target) target.focus();
   });
 
   $('setPrefLang').addEventListener('change', function (e) {

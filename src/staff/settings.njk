@@ -36,12 +36,28 @@ staffHint: some of these change what the public sees
 
   <div class="set-row">
     <div class="set-label">
-      <h3>Your working language</h3>
-      <p>Which language the milestone editor opens in. Affects only you —
-         it does not change what any website shows.</p>
+      <h3>Your access</h3>
+      <p>What this account is allowed to do. Changed by an administrator, not
+         here.</p>
     </div>
     <div class="set-control">
-      <select id="setPrefLang" class="lang-pick"></select>
+      <div class="role-tags" id="setRoles"></div>
+    </div>
+  </div>
+
+  {#- The working-language control used to be here as well as on Languages,
+     and the two were not kept in sync — the same setting in two places is one
+     of them being wrong. It lives on Languages, next to the other language
+     decisions. -#}
+  <div class="set-row">
+    <div class="set-label">
+      <h3>Your working language</h3>
+      <p>Which language the milestone editor opens in.</p>
+    </div>
+    <div class="set-control">
+      <p class="note-inline">Set this on the
+        <button type="button" class="link-btn" data-goto="languages">Languages</button>
+        tab, alongside the languages this site publishes.</p>
     </div>
   </div>
 </section>
@@ -53,6 +69,17 @@ staffHint: some of these change what the public sees
     is offered to visitors; one switched off disappears from the public API.
     Translations you have already written are kept either way.
   </p>
+
+  <div class="set-row">
+    <div class="set-label">
+      <h3>Your working language</h3>
+      <p><b>Affects only you.</b> Which language the milestone editor opens in.
+         It changes nothing a visitor sees.</p>
+    </div>
+    <div class="set-control">
+      <select id="setPrefLang" class="lang-pick"></select>
+    </div>
+  </div>
 
   <div class="set-row">
     <div class="set-label">
@@ -85,7 +112,7 @@ staffHint: some of these change what the public sees
     interactions, no drafts.
   </p>
 
-  <div class="ms-bar">
+  <div class="ms-bar key-create">
     <input type="text" id="setKeyName" class="key-name" maxlength="80"
            placeholder="What is this key for? e.g. chaseroush.com build">
     <button type="button" class="solid-btn" id="setKeyAdd">Create key</button>

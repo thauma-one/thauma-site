@@ -490,6 +490,70 @@
       });
   }
 
+
+  /* =====================================================================
+     TOASTS — transient messages, bottom of the screen
+     =====================================================================
+     Replaces the inline status text each screen used to keep beside its
+     controls. That text competed with the labels around it, moved the
+     layout when it appeared, and was easy to miss when it sat next to a
+     button you had already looked away from.
+
+     One live region for the whole console, so a screen reader announces
+     these the same way everywhere. aria-live="polite" rather than
+     "assertive": a confirmation should not interrupt someone mid-sentence.
+
+     Errors do NOT auto-dismiss. A success message is worth showing and not
+     worth keeping; a failure is the one thing you may need to still be
+     there when you look back.
+     ===================================================================== */
+  var toastHost = null;
+
+  function toastRoot() {
+    if (toastHost) return toastHost;
+    toastHost = document.createElement('div');
+    toastHost.className = 'toasts';
+    toastHost.setAttribute('role', 'status');
+    toastHost.setAttribute('aria-live', 'polite');
+    document.body.appendChild(toastHost);
+    return toastHost;
+  }
+
+  function toast(message, kind) {
+    if (!message) return;
+    var el = document.createElement('div');
+    el.className = 'toast' + (kind ? ' ' + kind : '');
+    el.textContent = message;
+
+    if (kind === 'err') {
+      var close = document.createElement('button');
+      close.type = 'button';
+      close.className = 'toast-x';
+      close.setAttribute('aria-label', 'Dismiss');
+      close.textContent = '\u00d7';
+      close.addEventListener('click', function () { dismiss(el); });
+      el.appendChild(close);
+    }
+
+    toastRoot().appendChild(el);
+    // Animate in on the next frame; setting the class in the same frame as
+    // the insert gives the browser nothing to transition from.
+    requestAnimationFrame(function () { el.classList.add('in'); });
+
+    if (kind !== 'err') setTimeout(function () { dismiss(el); }, 3200);
+    return el;
+  }
+
+  function dismiss(el) {
+    if (!el || el.dataset.going) return;
+    el.dataset.going = '1';
+    el.classList.remove('in');
+    setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 260);
+  }
+
+  // Shared with the per-page scripts, which load after this one.
+  window.StaffToast = toast;
+
   /* =====================================================================
      BOOT — each page loads only what it needs
      ===================================================================== */
