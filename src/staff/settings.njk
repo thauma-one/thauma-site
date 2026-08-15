@@ -30,15 +30,14 @@ staffHint: some of these change what the public sees
       {#- Access owns the identity, so there is no password here to change and
          pretending otherwise would send people looking for a control that
          does not exist. -#}
-      <p class="note-inline">Your sign-in is managed by Cloudflare Access.
-        Changing your email address or password is done there, not here.</p>
+      <p class="note-inline" data-i18n="set.identityNote">Your sign-in is managed by Cloudflare Access. Changing your email address or password is done there, not here.</p>
     </div>
   </div>
 
   <div class="set-row">
     <div class="set-label">
       <h3 data-i18n="set.yourAccess">Your access</h3>
-      <p>What this account is allowed to do. Changed by an administrator.</p>
+      <p data-i18n="set.accessNote">What this account is allowed to do. Changed by an administrator.</p>
     </div>
     <div class="set-control">
       <div class="role-tags" id="setRoles"></div>
@@ -54,17 +53,9 @@ staffHint: some of these change what the public sees
   <div class="set-row">
     <div class="set-label">
       <h3 data-i18n="set.yourLanguage">Your language</h3>
-      <p>Translates this console and opens the milestone editor in the same
-         language.</p>
-      {#- Said here rather than discovered later: for an administrator this
-         control has a second effect, and the switches below will move when
-         it is used. -#}
-      <p class="note-inline" id="setLangConsequence" hidden>
-        <b>You are an administrator</b>, so this also becomes the site's
-        default language — what a visitor sees before choosing. It will be
-        switched on below automatically.</p>
-      <p class="note-inline" id="setLangPersonal" hidden>
-        Affects only you. It changes nothing a visitor sees.</p>
+      <p data-i18n="set.yourLanguageDesc">Translates this console and opens the milestone editor in the same language.</p>
+      <p class="note-inline" data-i18n="set.yourLanguageNote">Affects only you.
+        It changes nothing a visitor sees, whatever your role.</p>
     </div>
     <div class="set-control">
       <select id="setPrefLang" class="lang-pick"></select>
@@ -80,8 +71,7 @@ staffHint: some of these change what the public sees
   <div class="set-row set-row-block">
     <div class="set-label">
       <h3 data-i18n="set.publishedLanguages">Published languages</h3>
-      <p>Switch a language on to translate into it and serve it on partner
-         sites. The site's default language cannot be switched off.</p>
+      <p data-i18n="set.publishedDesc">Switch a language on to translate into it and serve it on partner sites. The site's default language cannot be switched off.</p>
     </div>
     <div class="set-control" id="setLangList"></div>
   </div>

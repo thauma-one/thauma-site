@@ -76,12 +76,6 @@
     if (state.partner && state.partner.display_name) {
       roles.push({ label: state.partner.display_name, cls: 'partner' });
     }
-    // Which of the two notes applies depends on the account, so only the
-    // true one is ever on screen.
-    var admin = !!state.you.is_admin;
-    if ($('setLangConsequence')) $('setLangConsequence').hidden = !admin;
-    if ($('setLangPersonal')) $('setLangPersonal').hidden = admin;
-
     $('setRoles').innerHTML = roles.map(function (r) {
       return '<span class="role-tag ' + r.cls + '">' + esc(r.label) + '</span>';
     }).join('');

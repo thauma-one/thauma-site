@@ -27,6 +27,33 @@
 
   var STRINGS = {
     en: {
+      'mark.staff': 'STAFF',
+      'set.accessNote': 'What this account is allowed to do. Changed by an administrator.',
+      'set.identityNote': 'Your sign-in is managed by Cloudflare Access. Changing your email address or password is done there, not here.',
+      'set.yourLanguageDesc': 'Translates this console and opens the milestone editor in the same language.',
+      'set.publishedDesc': "Switch a language on to translate into it and serve it on partner sites. The site's default language cannot be switched off.",
+      'set.yourLanguageNote': 'Affects only you. It changes nothing a visitor sees, whatever your role.',
+
+      'page.index.title': 'Dashboard',
+      'page.index.heading': 'Where things <b>stand</b>',
+      'page.support.title': 'Support',
+      'page.support.heading': 'Goals and <b>progress</b>',
+      'page.support.hint': 'aggregates only — no donor records held',
+      'page.stewardship.title': 'Stewardship',
+      'page.stewardship.heading': 'Who needs a <b>call</b>',
+      'page.stewardship.hint': 'supporters — sorted worst first, click a row for history',
+      'page.milestones.title': 'Milestones',
+      'page.milestones.heading': 'The public <b>roadmap</b>',
+      'page.milestones.hint': 'what partner sites show — published entries are visible to anyone',
+      'page.directory.title': 'Directory',
+      'page.resources.title': 'Resources',
+      'page.activity.title': 'Activity',
+      'page.activity.heading': 'Who looked at <b>what</b>',
+      'page.activity.hint': 'visible to the partner, not just to admins',
+      'page.settings.title': 'Settings',
+      'page.settings.heading': 'How this <b>works</b>',
+      'page.settings.hint': 'some of these change what the public sees',
+
       'nav.dashboard': 'Dashboard', 'nav.support': 'Support',
       'nav.stewardship': 'Stewardship', 'nav.milestones': 'Milestones',
       'nav.directory': 'Directory', 'nav.resources': 'Resources',
@@ -62,6 +89,33 @@
     },
 
     hr: {
+      'mark.staff': 'OSOBLJE',
+      'set.accessNote': 'Što ovaj račun smije raditi. Mijenja administrator.',
+      'set.identityNote': 'Vašom prijavom upravlja Cloudflare Access. Promjena e-pošte ili lozinke radi se ondje, ne ovdje.',
+      'set.yourLanguageDesc': 'Prevodi ovu konzolu i otvara uređivač prekretnica na istom jeziku.',
+      'set.publishedDesc': 'Uključite jezik da biste prevodili na njega i objavili ga na partnerskim stranicama. Zadani jezik stranice ne može se isključiti.',
+      'set.yourLanguageNote': 'Utječe samo na vas. Ne mijenja ništa što posjetitelj vidi, bez obzira na vašu ulogu.',
+
+      'page.index.title': 'Nadzorna ploča',
+      'page.index.heading': 'Kako <b>stojimo</b>',
+      'page.support.title': 'Podrška',
+      'page.support.heading': 'Ciljevi i <b>napredak</b>',
+      'page.support.hint': 'samo zbirni podaci — ne čuvaju se podaci o donatorima',
+      'page.stewardship.title': 'Skrb',
+      'page.stewardship.heading': 'Tko treba <b>poziv</b>',
+      'page.stewardship.hint': 'podupiratelji — najhitniji prvi, kliknite red za povijest',
+      'page.milestones.title': 'Prekretnice',
+      'page.milestones.heading': 'Javni <b>plan</b>',
+      'page.milestones.hint': 'ono što partnerske stranice prikazuju — objavljeno je vidljivo svima',
+      'page.directory.title': 'Imenik',
+      'page.resources.title': 'Resursi',
+      'page.activity.title': 'Aktivnost',
+      'page.activity.heading': 'Tko je što <b>gledao</b>',
+      'page.activity.hint': 'vidljivo partneru, ne samo administratorima',
+      'page.settings.title': 'Postavke',
+      'page.settings.heading': 'Kako ovo <b>radi</b>',
+      'page.settings.hint': 'neke od ovih mijenjaju ono što javnost vidi',
+
       'nav.dashboard': 'Nadzorna ploča', 'nav.support': 'Podrška',
       'nav.stewardship': 'Skrb', 'nav.milestones': 'Prekretnice',
       'nav.directory': 'Imenik', 'nav.resources': 'Resursi',
@@ -97,6 +151,33 @@
     },
 
     sr: {
+      'mark.staff': 'ОСОБЉЕ',
+      'set.accessNote': 'Шта овај налог сме да ради. Мења администратор.',
+      'set.identityNote': 'Вашом пријавом управља Cloudflare Access. Промена е-поште или лозинке ради се тамо, не овде.',
+      'set.yourLanguageDesc': 'Преводи ову конзолу и отвара уређивач прекретница на истом језику.',
+      'set.publishedDesc': 'Укључите језик да бисте преводили на њега и објавили га на партнерским сајтовима. Подразумевани језик сајта не може се искључити.',
+      'set.yourLanguageNote': 'Утиче само на вас. Не мења ништа што посетилац види, без обзира на вашу улогу.',
+
+      'page.index.title': 'Контролна табла',
+      'page.index.heading': 'Како <b>стојимо</b>',
+      'page.support.title': 'Подршка',
+      'page.support.heading': 'Циљеви и <b>напредак</b>',
+      'page.support.hint': 'само збирни подаци — не чувају се подаци о донаторима',
+      'page.stewardship.title': 'Брига',
+      'page.stewardship.heading': 'Коме треба <b>позив</b>',
+      'page.stewardship.hint': 'подржаваоци — најхитнији први, кликните ред за историју',
+      'page.milestones.title': 'Прекретнице',
+      'page.milestones.heading': 'Јавни <b>план</b>',
+      'page.milestones.hint': 'оно што партнерски сајтови приказују — објављено је видљиво свима',
+      'page.directory.title': 'Именик',
+      'page.resources.title': 'Ресурси',
+      'page.activity.title': 'Активност',
+      'page.activity.heading': 'Ко је шта <b>гледао</b>',
+      'page.activity.hint': 'видљиво партнеру, не само администраторима',
+      'page.settings.title': 'Подешавања',
+      'page.settings.heading': 'Како ово <b>ради</b>',
+      'page.settings.hint': 'неке од ових мењају оно што јавност види',
+
       'nav.dashboard': 'Контролна табла', 'nav.support': 'Подршка',
       'nav.stewardship': 'Брига', 'nav.milestones': 'Прекретнице',
       'nav.directory': 'Именик', 'nav.resources': 'Ресурси',
@@ -148,11 +229,21 @@
      text in the markup, so the console is readable with JavaScript disabled
      and legible in the source. */
   function apply(root) {
-    (root || document).querySelectorAll('[data-i18n]').forEach(function (el) {
-      var key = el.dataset.i18n;
-      var val = t(key);
+    var scope = root || document;
+
+    scope.querySelectorAll('[data-i18n]').forEach(function (el) {
+      var val = t(el.dataset.i18n);
       if (val) el.textContent = val;
     });
+
+    // Headings carry markup — "How this <b>works</b>" — and textContent would
+    // flatten it. innerHTML is safe HERE and only here: every one of these
+    // strings is a literal in this file, never anything a user typed.
+    scope.querySelectorAll('[data-i18n-html]').forEach(function (el) {
+      var val = t(el.dataset.i18nHtml);
+      if (val) el.innerHTML = val;
+    });
+
     document.documentElement.setAttribute('lang', current);
   }
 

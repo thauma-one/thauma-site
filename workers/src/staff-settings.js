@@ -10,11 +10,15 @@
  *   PERSONAL   users.preferred_lang — which language the editor opens in.
  *              Anyone changes their own; nobody changes anyone else's.
  *
- *   PARTNER    partner_languages, partners.default_lang, API keys — these
- *              change what a public website serves. Language toggles and keys
- *              belong to whoever holds the partner; default_lang is ADMIN
- *              ONLY, because it decides what a visitor sees before choosing
- *              and that is not a preference.
+ *   PARTNER    partner_languages and API keys — these change what a public
+ *              website serves, and belong to whoever holds the partner.
+ *
+ *   ADMIN      partners.default_lang is deliberately NOT settable here. It
+ *              decides what every visitor sees before choosing, there can be
+ *              several administrators, and no public setting should move
+ *              because somebody changed the language of their own console.
+ *              It belongs on an admin screen. Until that exists it stays at
+ *              its stored value.
  *
  * Every write is written to audit_log. The log is append-only by trigger, so
  * this endpoint can add to the record of who changed what and cannot edit it.
@@ -103,45 +107,21 @@ export default {
       const known_languages = await db.query("languages_all", {});
       const codes = new Set(known_languages.filter((l) => l.is_active).map((l) => l.code));
 
-      // --- your language, and for an admin the site's default with it ---
+      // --- personal: your own language. NOTHING ELSE. ---
       //
-      // You asked for these to be one setting rather than two controls that
-      // looked alike. For ordinary staff it stays personal: it translates
-      // their console and nothing else. For an ADMIN it also becomes the
-      // site's default language, because an admin choosing a language is the
-      // only person entitled to make that call — and the default has to be a
-      // language the site actually publishes, so it is switched on first.
-      //
-      // The consequence is worth being clear about: an admin changing their
-      // own console language changes what a visitor sees before choosing.
-      // That is the coupling you asked for; it is not an accident.
+      // This briefly also set the site's default language for admins, on the
+      // reasoning that one control was simpler than two. That was wrong and
+      // the reason is worth keeping: there can be several administrators, so
+      // tying a public setting to a personal one means whichever admin last
+      // changed their console decides what visitors see. A site-wide default
+      // belongs on an admin screen, set deliberately and once.
       if (body.preferred_lang !== undefined) {
         const lang = body.preferred_lang;
         if (!codes.has(lang)) return json({ error: "Unknown language" }, 400);
-
         await db.query("user_set_preferred_lang", { email: user.email, lang });
         await audit(db, { user, partner, action: "update", entity: "user.preferred_lang",
                           entity_id: user.email, detail: { lang } });
-
-        let becameDefault = false;
-        if (isAdmin) {
-          const known = known_languages.find((l) => l.code === lang);
-          await db.query("partner_language_set", {
-            partner_id, lang, is_enabled: 1,
-            sort_order: known ? known.sort_order : 0,
-          });
-          await db.query("partner_set_default_lang", { partner_id, lang, now });
-          await audit(db, { user, partner, action: "update", entity: "partner.default_lang",
-                            detail: { lang, via: "preferred_lang" } });
-          becameDefault = true;
-        }
-
-        const languages = await db.query("partner_languages_for_partner", { partner_id });
-        return json({
-          preferred_lang: lang,
-          became_default: becameDefault,
-          languages: languages.map((l) => ({ ...l, is_enabled: !!l.is_enabled })),
-        });
+        return json({ preferred_lang: lang });
       }
 
       // --- partner: which languages this site publishes ---
