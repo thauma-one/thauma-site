@@ -27,8 +27,20 @@
   var API = '/api/staff-milestones';
 
   var $ = function (id) { return document.getElementById(id); };
-  var state = { milestones: [], languages: [], editing: null,
-              colA: null, colB: null, prefLang: 'en' };
+  /* A WORKING COPY, NOT A LIVE WIRE.
+     `saved` is what the server last told us. `draft` is what the screen shows.
+     Nothing reaches the database until Save is pressed, so a publish toggle is
+     a decision you can change your mind about, and "what is live" never
+     depends on having noticed a switch move. */
+  var state = { saved: {}, draft: {}, order: [], languages: [], editing: null,
+                colA: null, colB: null, prefLang: 'en' };
+
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+  function isDirty(id) {
+    return JSON.stringify(state.saved[id]) !== JSON.stringify(state.draft[id]);
+  }
+  function dirtyIds() { return state.order.filter(isDirty); }
+  function list() { return state.order.map(function (id) { return state.draft[id]; }); }
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -138,20 +150,23 @@
 
   function render() {
     var host = $('msList');
-    if (!state.milestones.length) {
+    if (!state.order.length) {
       host.innerHTML = '<p class="empty">No milestones yet. ' +
         'Add one and it will stay unpublished until you switch it on.</p>';
       return;
     }
 
-    host.innerHTML = state.milestones.map(function (m) {
+    host.innerHTML = list().map(function (m) {
       var child = m.parent_id ? ' ms-child' : '';
-      return '<div class="ms-row' + child + '" data-id="' + esc(m.id) + '">' +
+      var rid = m.localId || m.id;
+      return '<div class="ms-row' + child + (isDirty(rid) ? ' is-dirty' : '') +
+        '" data-id="' + esc(rid) + '">' +
         '<div class="ms-main">' +
           '<div class="ms-t">' +
             '<span class="ms-title">' + esc(titleOf(m)) + '</span>' +
             (m.is_featured ? '<span class="badge live">featured</span>' : '') +
-            (m.is_public ? '' : '<span class="badge proto">draft</span>') +
+            (m.is_public ? '' : '<span class="badge proto">not published</span>') +
+            (isDirty(m.localId || m.id) ? '<span class="badge unsaved">unsaved</span>' : '') +
           '</div>' +
           '<div class="ms-meta">' +
             '<span>' + esc(STATUS_LABEL[m.status] || m.status) + '</span>' +
@@ -161,7 +176,7 @@
           '</div>' +
         '</div>' +
         '<div class="ms-toggle">' +
-          '<button type="button" class="switch" role="switch" data-pub="' + esc(m.id) + '"' +
+          '<button type="button" class="switch" role="switch" data-pub="' + esc(rid) + '"' +
             ' aria-checked="' + (m.is_public ? 'true' : 'false') + '"' +
             ' aria-label="Published">' +
             '<span class="switch-track"><span class="switch-state">' +
@@ -169,8 +184,8 @@
           '</button>' +
         '</div>' +
         '<div class="ms-row-actions">' +
-          '<button type="button" data-edit="' + esc(m.id) + '">Edit</button>' +
-          '<button type="button" class="del" data-del="' + esc(m.id) + '">Delete</button>' +
+          '<button type="button" data-edit="' + esc(rid) + '">Edit</button>' +
+          '<button type="button" class="del" data-del="' + esc(rid) + '">Delete</button>' +
         '</div>' +
       '</div>';
     }).join('');
@@ -194,7 +209,12 @@
         ) + '</p>';
         return;
       }
-      state.milestones = body.milestones || [];
+      state.saved = {}; state.draft = {}; state.order = [];
+      (body.milestones || []).forEach(function (m) {
+        state.saved[m.id] = m;
+        state.draft[m.id] = clone(m);
+        state.order.push(m.id);
+      });
       state.languages = body.languages || [];
       state.prefLang = body.preferred_lang || 'en';
 
@@ -219,42 +239,80 @@
     }
   }
 
-  /* ---- the publish toggle, saved immediately -------------------------- */
+  /* ---- publishing is a DRAFT change, not an instant one ---------------- */
 
-  async function togglePublished(btn, id) {
-    var m = state.milestones.filter(function (x) { return x.id === id; })[0];
+  /* Previously this wrote to the database the moment the switch moved. That
+     made "published" always true on screen, but it also meant there was no
+     such thing as changing your mind, and no moment where you could see what
+     you were about to do. Now it edits the working copy and the row is marked
+     unsaved until you press Save. */
+  function togglePublished(btn, id) {
+    var m = state.draft[id];
     if (!m) return;
+    m.is_public = !m.is_public;
+    setSwitch(btn, m.is_public);
+    render();
+    updateSaveBar();
+  }
 
-    var next = !isOn(btn);
-    // Show the intent, but lock the control: the state on screen is a claim
-    // about the database, and it must not be made before it is true.
-    setSwitch(btn, next);
-    btn.disabled = true;
-    setStatus($('msStatus'), next ? 'Publishing…' : 'Unpublishing…');
+  /* ---- saving, explicitly ---------------------------------------------- */
 
-    try {
-      var res = await fetch(API, {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(Object.assign({}, m, { is_public: next }))
-      });
-      var body = await res.json().catch(function () { return {}; });
-      if (!res.ok) throw new Error(body.error || ('save failed (' + res.status + ')'));
-
-      // Adopt the server's row rather than our guess.
-      state.milestones = state.milestones.map(function (x) {
-        return x.id === id ? body.saved : x;
-      });
-      render();
-      setStatus($('msStatus'),
-        body.saved.is_public ? 'Published — now visible on partner sites' : 'Unpublished',
-        'ok');
-    } catch (e) {
-      setSwitch(btn, !next);          // put it back; nothing was saved
-      btn.disabled = false;
-      setStatus($('msStatus'), 'Could not save: ' + e.message, 'err');
+  function updateSaveBar() {
+    var n = dirtyIds().length;
+    var bar = $('msSaveBar');
+    if (!bar) return;
+    bar.hidden = n === 0;
+    var label = $('msDirtyCount');
+    if (label) {
+      label.textContent = n === 1 ? '1 unsaved change' : n + ' unsaved changes';
     }
+  }
+
+  async function saveAll() {
+    var ids = dirtyIds();
+    if (!ids.length) return;
+
+    var btn = $('msSaveAll');
+    btn.disabled = true;
+    setStatus($('msStatus'), 'Saving ' + ids.length + '…');
+
+    var failed = [];
+    for (var i = 0; i < ids.length; i++) {
+      var m = state.draft[ids[i]];
+      try {
+        var res = await fetch(API, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(m)
+        });
+        if (!res.ok) {
+          var body = await res.json().catch(function () { return {}; });
+          throw new Error(body.error || ('save failed (' + res.status + ')'));
+        }
+      } catch (e) {
+        // Keep going: one bad milestone should not strand the others as
+        // unsaved, and the reload afterwards shows exactly what landed.
+        failed.push(titleOf(m) + ' — ' + e.message);
+      }
+    }
+
+    btn.disabled = false;
+    await load();
+    if (failed.length) {
+      setStatus($('msStatus'), failed.length + ' could not be saved: ' + failed[0], 'err');
+    } else {
+      setStatus($('msStatus'), 'Saved. Published entries are now live on partner sites.', 'ok');
+    }
+  }
+
+  function discardAll() {
+    if (!confirm('Discard ' + dirtyIds().length + ' unsaved change(s)?')) return;
+    state.order.forEach(function (id) { state.draft[id] = clone(state.saved[id]); });
+    closeForm();
+    render();
+    updateSaveBar();
+    setStatus($('msStatus'), 'Changes discarded', 'ok');
   }
 
   /* ---- the form -------------------------------------------------------- */
@@ -264,12 +322,12 @@
     if (!sel) return;
     var current = state.editing;
     sel.innerHTML = '<option value="">— top level —</option>' +
-      state.milestones
+      list()
         // A milestone cannot be its own parent, and one level of nesting is
         // all the partner sites render.
         .filter(function (m) { return m.id !== current && !m.parent_id; })
         .map(function (m) {
-          return '<option value="' + esc(m.id) + '">' + esc(m.title) + '</option>';
+          return '<option value="' + esc(m.id) + '">' + esc(titleOf(m)) + '</option>';
         }).join('');
   }
 
@@ -290,8 +348,14 @@
     return out;
   }
 
+  /* Ids are generated by us, but a milestone id still ends up inside an
+     attribute selector, and CSS.escape is not in older Safari. */
+  function cssEscape(s) {
+    return window.CSS && CSS.escape ? CSS.escape(s) : String(s).replace(/["\\]/g, '\\$&');
+  }
+
   function openForm(id) {
-    var m = id ? state.milestones.filter(function (x) { return x.id === id; })[0] : null;
+    var m = id ? state.draft[id] : null;
     state.editing = id || null;
 
     $('msId').value = m ? m.id : '';
@@ -308,8 +372,19 @@
     $('msParent').value = m && m.parent_id ? m.parent_id : '';
 
     setStatus($('msFormStatus'), '');
-    $('msForm').hidden = false;
-    $('msTitle').focus();
+    var form = $('msForm');
+    form.hidden = false;
+
+    // OPEN IT WHERE THE WORK IS. The form used to live at the bottom of the
+    // page, so editing the third of twelve milestones meant scrolling past
+    // nine unrelated rows and losing sight of the one you meant. Moving the
+    // element puts it directly under its own row.
+    var row = id ? $('msList').querySelector('[data-id="' + cssEscape(id) + '"]') : null;
+    if (row) row.after(form); else $('msList').after(form);
+
+    form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    var first = form.querySelector('[data-col="a"][data-tx="title"]');
+    if (first) first.focus({ preventScroll: true });
   }
 
   function closeForm() {
@@ -317,57 +392,64 @@
     state.editing = null;
   }
 
-  async function submitForm(e) {
+  /* Applies to the WORKING COPY. Nothing reaches the database until Save. */
+  function submitForm(e) {
     e.preventDefault();
-    // Only the two visible languages are sent. The endpoint upserts exactly
-    // what it receives, so a language not on screen is left untouched rather
-    // than being wiped by an editor that could not see it.
+
     var text = {};
     if (state.colA) text[state.colA] = readColumn('a');
     if (state.colB && state.colB !== state.colA) text[state.colB] = readColumn('b');
 
-    var payload = {
-      id: $('msId').value || undefined,
-      text: text,
+    var id = $('msId').value;
+    var isNew = !id;
+    if (isNew) {
+      // A local id until the server issues a real one. Prefixed so it is
+      // obvious in any log that this row has never been saved.
+      id = 'new_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+      state.order.push(id);
+      state.saved[id] = null;
+    }
+
+    var existing = state.draft[id] || { text: {} };
+    // Merge rather than replace: a language not on screen keeps its text.
+    var merged = Object.assign({}, existing.text || {}, text);
+
+    state.draft[id] = Object.assign({}, existing, {
+      id: isNew ? undefined : id,
+      localId: id,
+      text: merged,
       actual_date: $('msDate').value,
       status: $('msStatusSel').value,
-      completion: $('msCompletion').value,
-      parent_id: $('msParent').value,
+      completion: Number($('msCompletion').value) || 0,
+      parent_id: $('msParent').value || null,
       is_public: isOn($('msPublic')),
       is_featured: isOn($('msFeatured'))
-    };
+    });
 
-    var submit = $('msForm').querySelector('[type="submit"]');
-    submit.disabled = true;
-    setStatus($('msFormStatus'), 'Saving…');
-
-    try {
-      var res = await fetch(API, {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      var body = await res.json().catch(function () { return {}; });
-      if (!res.ok) throw new Error(body.error || ('save failed (' + res.status + ')'));
-
-      setStatus($('msFormStatus'), 'Saved', 'ok');
-      closeForm();
-      await load();
-      setStatus($('msStatus'), body.created ? 'Milestone added' : 'Milestone updated', 'ok');
-    } catch (err) {
-      // The form stays open with the text still in it. Losing what someone
-      // typed because a request failed is the worst thing an editor can do.
-      setStatus($('msFormStatus'), err.message, 'err');
-    } finally {
-      submit.disabled = false;
-    }
+    closeForm();
+    render();
+    updateSaveBar();
+    setStatus($('msStatus'), isNew ? 'Milestone added — not saved yet'
+                                   : 'Updated — not saved yet');
   }
 
   async function remove(id) {
-    var m = state.milestones.filter(function (x) { return x.id === id; })[0];
+    var m = state.draft[id];
     if (!m) return;
-    if (!confirm('Delete "' + m.title + '"? This cannot be undone.')) return;
+
+    // A milestone that has never been saved exists only in this tab. Asking
+    // the server to delete it would 404 on an id it has never seen, and
+    // confirming a "permanent" delete for something that was never stored
+    // would be theatre.
+    if (!state.saved[id]) {
+      delete state.draft[id];
+      state.order = state.order.filter(function (x) { return x !== id; });
+      closeForm(); render(); updateSaveBar();
+      setStatus($('msStatus'), 'Discarded', 'ok');
+      return;
+    }
+
+    if (!confirm('Delete "' + titleOf(m) + '"? This cannot be undone.')) return;
 
     setStatus($('msStatus'), 'Deleting…');
     try {
@@ -399,7 +481,7 @@
       state[cfg[1]] = e.target.value;
       fillLangPickers();
       var m = state.editing
-        ? state.milestones.filter(function (x) { return x.id === state.editing; })[0]
+        ? state.draft[state.editing]
         : null;
       fillColumn(cfg[2], m);
       render();
@@ -418,6 +500,18 @@
     else if (t.dataset.edit !== undefined) openForm(t.dataset.edit);
     else if (t.dataset.del !== undefined) remove(t.dataset.del);
   });
+
+  // The browser's own dialog: wording is not ours to choose, and a custom
+  // one cannot block navigation. Only armed when something is actually
+  // unsaved, so it never cries wolf.
+  window.addEventListener('beforeunload', function (e) {
+    if (!dirtyIds().length) return;
+    e.preventDefault();
+    e.returnValue = '';
+  });
+
+  $('msSaveAll').addEventListener('click', saveAll);
+  $('msDiscard').addEventListener('click', discardAll);
 
   load();
 })();

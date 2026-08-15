@@ -11,6 +11,17 @@ staffHint: what partner sites show — published entries are visible to anyone
   <span class="hint" id="msStatus"></span>
 </div>
 
+{#- Only appears when something is actually unsaved, so its presence is the
+   signal. Sticky, because the change you made may be off-screen by the time
+   you think about leaving. -#}
+<div class="ms-savebar" id="msSaveBar" hidden>
+  <span class="ms-dirty-dot" aria-hidden="true"></span>
+  <span id="msDirtyCount">0 unsaved changes</span>
+  <span class="ms-savebar-note">Nothing is live until you save.</span>
+  <button type="button" class="ghost-btn" id="msDiscard">Discard</button>
+  <button type="button" class="solid-btn" id="msSaveAll">Save changes</button>
+</div>
+
 {#- Said plainly and near the toggles, because this is the one screen in the
    console where a mistake is visible to strangers rather than to staff. -#}
 <p class="note ms-note">
@@ -107,8 +118,11 @@ staffHint: what partner sites show — published entries are visible to anyone
   </div>
 
   <div class="ms-actions">
-    <button type="submit" class="solid-btn">Save milestone</button>
+    <button type="submit" class="solid-btn">Apply</button>
     <button type="button" class="ghost-btn" id="msCancel">Cancel</button>
-    <span class="hint" id="msFormStatus"></span>
+    {#- "Apply" not "Save": this closes the form and updates the list, but
+       nothing reaches the database until Save changes is pressed. Calling
+       both of them Save is how people end up believing work is safe. -#}
+    <span class="hint" id="msFormStatus">Applies to the list — save to publish</span>
   </div>
 </form>

@@ -407,3 +407,25 @@ tr.tl-row td{padding:0;border-bottom:1px solid var(--line-soft)}
 .ms-neutral{margin-top:26px;padding-top:22px;border-top:1px solid var(--line)}
 
 @media (max-width:760px){ .ms-langs{grid-template-columns:1fr} }
+
+/* ---- the unsaved-changes bar ---- */
+/* Sticky because the edit you made may be scrolled off by the time you think
+   about leaving, and a state indicator you have to go looking for is not one. */
+.ms-savebar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;
+  margin:0 0 20px;padding:13px 18px;background:var(--warn-dim,rgba(245,184,69,.14));
+  border:1px solid rgba(245,184,69,.4);border-radius:var(--radius);
+  font-size:var(--fs-sm);color:var(--text)}
+.ms-savebar-note{color:var(--dim);font-size:var(--fs-tiny)}
+.ms-savebar .solid-btn,.ms-savebar .ghost-btn{margin-left:auto}
+.ms-savebar .solid-btn{margin-left:0}
+.ms-dirty-dot{width:8px;height:8px;border-radius:50%;background:var(--warn,#F5B845);
+  flex:0 0 auto}
+
+/* A row with unsaved work carries the same colour as the bar, so the two read
+   as one state rather than two unrelated warnings. */
+.ms-row.is-dirty{box-shadow:inset 3px 0 0 var(--warn,#F5B845)}
+.badge.unsaved{color:var(--warn,#F5B845);background:var(--warn-dim,rgba(245,184,69,.14));
+  border:1px solid rgba(245,184,69,.3)}
+
+/* The form now sits inside the list, directly under the row being edited. */
+.ms-form{margin:0;border-top:0}
