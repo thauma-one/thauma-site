@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "69e4e18508d1220d";
+export const SOURCE_DIGEST = "79201c53e0b5d6ea";
 
 export const QUERIES = {
   api_key_lookup: `SELECT k.id AS key_id, k.partner_id, k.scopes, p.slug, p.display_name
@@ -101,34 +101,58 @@ LEFT JOIN users u ON u.id = i.logged_by
 WHERE i.partner_id = :partner_id
   AND c.status = 'active'
 ORDER BY i.occurred_on DESC, i.created_at DESC;`,
+  languages_all: `SELECT code, name, native_name, is_active, sort_order
+FROM languages ORDER BY sort_order, name;`,
   milestone_delete: `DELETE FROM milestones WHERE id = :id AND partner_id = :partner_id;`,
   milestone_reorder: `UPDATE milestones SET sort_order = :sort_order, updated_at = :now
 WHERE id = :id AND partner_id = :partner_id;`,
+  milestone_translation_delete: `DELETE FROM milestone_translations
+WHERE milestone_id = :milestone_id AND lang = :lang AND partner_id = :partner_id;`,
+  milestone_translation_upsert: `INSERT INTO milestone_translations (
+  milestone_id, lang, partner_id, title, description, target_label, updated_at
+) VALUES (
+  :milestone_id, :lang, :partner_id, :title, :description, :target_label, :now
+)
+ON CONFLICT(milestone_id, lang) DO UPDATE SET
+  title = :title, description = :description,
+  target_label = :target_label, updated_at = :now
+WHERE milestone_translations.partner_id = :partner_id;`,
+  milestone_translations_for_staff: `SELECT milestone_id, lang, title, description, target_label, updated_at
+FROM milestone_translations
+WHERE partner_id = :partner_id
+ORDER BY milestone_id, lang;`,
   milestone_upsert: `INSERT INTO milestones (
-  id, partner_id, parent_id, title, title_hr, description, description_hr,
-  target_label, target_label_hr, actual_date, status, completion,
+  id, partner_id, parent_id, actual_date, status, completion,
   is_public, is_featured, sort_order, created_at, updated_at
 ) VALUES (
-  :id, :partner_id, :parent_id, :title, :title_hr, :description, :description_hr,
-  :target_label, :target_label_hr, :actual_date, :status, :completion,
+  :id, :partner_id, :parent_id, :actual_date, :status, :completion,
   :is_public, :is_featured, :sort_order, :now, :now
 )
 ON CONFLICT(id) DO UPDATE SET
-  parent_id = :parent_id, title = :title, title_hr = :title_hr,
-  description = :description, description_hr = :description_hr,
-  target_label = :target_label, target_label_hr = :target_label_hr,
-  actual_date = :actual_date, status = :status, completion = :completion,
-  is_public = :is_public, is_featured = :is_featured, sort_order = :sort_order,
-  updated_at = :now
+  parent_id = :parent_id, actual_date = :actual_date, status = :status,
+  completion = :completion, is_public = :is_public, is_featured = :is_featured,
+  sort_order = :sort_order, updated_at = :now
 WHERE milestones.partner_id = :partner_id;`,
   milestones_for_staff: `SELECT
-  id, parent_id, title, title_hr, description, description_hr,
-  target_label, target_label_hr, actual_date, status, completion,
+  id, parent_id, actual_date, status, completion,
   is_public, is_featured, sort_order, created_at, updated_at
 FROM milestones
 WHERE partner_id = :partner_id
 ORDER BY sort_order ASC, (actual_date IS NULL), actual_date ASC;`,
-  partners_for_user: `SELECT p.id, p.slug, p.display_name, p.status, pu.role AS access_role
+  partner_language_set: `INSERT INTO partner_languages (partner_id, lang, is_enabled, sort_order)
+VALUES (:partner_id, :lang, :is_enabled, :sort_order)
+ON CONFLICT(partner_id, lang) DO UPDATE SET
+  is_enabled = :is_enabled, sort_order = :sort_order;`,
+  partner_languages_for_partner: `SELECT l.code, l.name, l.native_name, l.sort_order AS catalogue_order,
+       COALESCE(pl.is_enabled, 0) AS is_enabled,
+       COALESCE(pl.sort_order, l.sort_order) AS sort_order
+FROM languages l
+LEFT JOIN partner_languages pl
+  ON pl.lang = l.code AND pl.partner_id = :partner_id
+WHERE l.is_active = 1
+ORDER BY sort_order, l.name;`,
+  partners_for_user: `SELECT p.id, p.slug, p.display_name, p.status, pu.role AS access_role,
+       u.global_role, COALESCE(u.preferred_lang, 'en') AS preferred_lang
 FROM users u
 JOIN partner_users pu ON pu.user_id = u.id
 JOIN partners p ON p.id = pu.partner_id
@@ -142,12 +166,25 @@ FROM goal_progress
 WHERE partner_id = :partner_id
   AND is_public = 1
 ORDER BY kind, label;`,
+  public_languages_for_partner: `SELECT l.code, l.name, l.native_name, pl.sort_order
+FROM partner_languages pl
+JOIN languages l ON l.code = pl.lang
+WHERE pl.partner_id = :partner_id
+  AND pl.is_enabled = 1
+  AND l.is_active = 1
+ORDER BY pl.sort_order, l.name;`,
+  public_milestone_translations: `SELECT t.milestone_id, t.lang, t.title, t.description, t.target_label
+FROM milestone_translations t
+JOIN milestones m ON m.id = t.milestone_id
+JOIN partner_languages pl ON pl.partner_id = t.partner_id AND pl.lang = t.lang
+JOIN languages l ON l.code = t.lang
+WHERE t.partner_id = :partner_id
+  AND m.is_public = 1
+  AND pl.is_enabled = 1
+  AND l.is_active = 1
+ORDER BY t.milestone_id, l.sort_order;`,
   public_milestones_for_partner: `SELECT
-  id, parent_id,
-  title, title_hr,
-  description, description_hr,
-  target_label, target_label_hr,
-  actual_date, status, completion, is_featured, sort_order
+  id, parent_id, actual_date, status, completion, is_featured, sort_order
 FROM milestones
 WHERE partner_id = :partner_id
   AND is_public = 1

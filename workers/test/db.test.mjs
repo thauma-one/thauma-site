@@ -44,17 +44,30 @@ await check("queries.generated.js is in sync with db/queries.sql", async () => {
     `stale generated file — run: python3 db/generate_queries_module.py`);
 });
 
-await check("all seventeen named queries are present", async () => {
+await check("all twenty-three named queries are present", async () => {
   const expected = [
     "api_key_lookup", "api_key_touch",
     "audit_recent_for_partner", "contact_timeline", "contacts_stewardship",
     "dashboard_needs_attention", "dashboard_partner_summary", "goal_history",
     "goals_for_partner", "interactions_for_partner",
-    "milestone_delete", "milestone_reorder", "milestone_upsert",
-    "milestones_for_staff", "partners_for_user",
-    "public_goals_for_partner", "public_milestones_for_partner",
-  ];
+    "languages_all",
+    "milestone_delete", "milestone_reorder", "milestone_translation_delete",
+    "milestone_translation_upsert", "milestone_translations_for_staff",
+    "milestone_upsert", "milestones_for_staff",
+    "partner_language_set", "partner_languages_for_partner", "partners_for_user",
+    "public_goals_for_partner", "public_languages_for_partner",
+    "public_milestone_translations", "public_milestones_for_partner",
+  ].sort();
   eq(Object.keys(QUERIES).sort(), expected, "query names");
+});
+
+await check("NO query names a language column — languages are data now", async () => {
+  // 0002's title_hr made a fourth language a migration. If a _hr, _sr or _en
+  // suffixed column reappears in a query, that constraint is back.
+  for (const [name, sql] of Object.entries(QUERIES)) {
+    assert(!/\b\w+_(hr|sr|en|de|es)\b/i.test(sql),
+      `${name} names a language-suffixed column — text belongs in milestone_translations`);
+  }
 });
 
 await check("the stewardship query does NOT select email or phone", async () => {
@@ -117,15 +130,24 @@ await check("every real query converts with its documented params", async () => 
     contact_id: "c_1", goal_id: "g_1", email: "chase@thauma.one", limit: 10,
     key_hash: "0".repeat(64), key_id: "k_1", now: "2026-08-15T00:00:00Z",
     // milestone columns
-    parent_id: null, title: "t", title_hr: null, description: null,
-    description_hr: null, target_label: null, target_label_hr: null,
+    parent_id: null, title: "t", description: null, target_label: null,
     actual_date: null, status: "upcoming", completion: 0,
     is_public: 0, is_featured: 0, sort_order: 0, id: "m_1",
+    milestone_id: "m_1", lang: "en", is_enabled: 1,
   };
+  // The ONE query with no parameters: the language catalogue belongs to the
+  // organisation, not to a partner, so there is nothing to scope it by. Named
+  // rather than skipped by a rule, so a second parameterless query has to be
+  // justified here rather than quietly slipping past.
+  const NO_PARAMS = new Set(["languages_all"]);
+
   for (const [name, sql] of Object.entries(QUERIES)) {
     const r = toPositional(sql, params);
     assert(!r.sql.includes(":"), `${name} left a named placeholder behind`);
-    assert(r.args.length > 0, `${name} bound no arguments`);
+    if (!NO_PARAMS.has(name)) {
+      assert(r.args.length > 0,
+        `${name} bound no arguments — if that is deliberate, add it to NO_PARAMS`);
+    }
   }
 });
 

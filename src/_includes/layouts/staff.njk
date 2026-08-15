@@ -29,7 +29,7 @@
 <meta name="robots" content="noindex, nofollow">
 <title>{{ staffTitle }} · Thauma Staff</title>
 <link rel="stylesheet" href="/css/tokens.css">
-<link rel="stylesheet" href="/css/staff.css?v=3">
+<link rel="stylesheet" href="/css/staff.css?v=4">
 <link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
 </head>
 <body data-staff-page="{{ staffPage }}">
@@ -74,6 +74,6 @@
 {#- Only the Milestones page needs this; the script no-ops elsewhere. Kept
    separate from staff.js rather than folded in, because the editor is a
    different job from the read-only console and will keep growing. -#}
-{% if staffPage == "milestones" %}<script src="/js/staff-milestones.js?v=1"></script>{% endif %}
+{% if staffPage == "milestones" %}<script src="/js/staff-milestones.js?v=2"></script>{% endif %}
 </body>
 </html>

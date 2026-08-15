@@ -27,34 +27,47 @@ staffHint: what partner sites show — published entries are visible to anyone
 <form class="ms-form" id="msForm" hidden>
   <input type="hidden" id="msId">
 
-  <div class="ms-grid">
-    <label class="fld fld-wide">
-      <span>Title <em>English</em></span>
-      <input type="text" id="msTitle" maxlength="200" required>
-    </label>
-    <label class="fld fld-wide">
-      <span>Title <em>Croatian</em></span>
-      <input type="text" id="msTitleHr" maxlength="200">
-    </label>
+  {#- TWO LANGUAGE COLUMNS, EITHER OF WHICH CAN BE ANY LANGUAGE.
 
-    <label class="fld fld-wide">
-      <span>Description <em>English</em></span>
-      <textarea id="msDesc" rows="4"></textarea>
-    </label>
-    <label class="fld fld-wide">
-      <span>Description <em>Croatian</em></span>
-      <textarea id="msDescHr" rows="4"></textarea>
-    </label>
+     Not "English and Croatian": the columns are built from whatever the
+     organisation offers, so adding Portuguese needs no change here. The left
+     column opens on the staff member's own language and the right on the next
+     one they publish, but both are free to change.
 
-    <label class="fld">
-      <span>When <em>English, free text</em></span>
-      <input type="text" id="msTarget" maxlength="120" placeholder="End of September 2027">
-    </label>
-    <label class="fld">
-      <span>When <em>Croatian</em></span>
-      <input type="text" id="msTargetHr" maxlength="120" placeholder="Kraj rujna 2027.">
-    </label>
+     Side by side because a missing or stale translation is invisible when you
+     edit one language at a time — which is how a trilingual site ends up with
+     three versions that disagree. -#}
+  <div class="ms-langs">
+    <div class="ms-col">
+      <div class="ms-col-head">
+        <select id="msLangA" class="lang-pick" aria-label="Language, left column"></select>
+        <span class="ms-col-tag" id="msTagA"></span>
+      </div>
+      <label class="fld"><span>Title</span>
+        <input type="text" data-tx="title" data-col="a" maxlength="200"></label>
+      <label class="fld"><span>Description</span>
+        <textarea data-tx="description" data-col="a" rows="5"></textarea></label>
+      <label class="fld"><span>When <em>free text</em></span>
+        <input type="text" data-tx="target_label" data-col="a" maxlength="120"
+               placeholder="End of September 2027"></label>
+    </div>
 
+    <div class="ms-col">
+      <div class="ms-col-head">
+        <select id="msLangB" class="lang-pick" aria-label="Language, right column"></select>
+        <span class="ms-col-tag" id="msTagB"></span>
+      </div>
+      <label class="fld"><span>Title</span>
+        <input type="text" data-tx="title" data-col="b" maxlength="200"></label>
+      <label class="fld"><span>Description</span>
+        <textarea data-tx="description" data-col="b" rows="5"></textarea></label>
+      <label class="fld"><span>When <em>free text</em></span>
+        <input type="text" data-tx="target_label" data-col="b" maxlength="120"></label>
+    </div>
+  </div>
+
+  {#- Language-neutral: true regardless of which language you are reading. -#}
+  <div class="ms-grid ms-neutral">
     <label class="fld">
       <span>Sort date <em>for ordering only</em></span>
       <input type="date" id="msDate">
@@ -68,7 +81,6 @@ staffHint: what partner sites show — published entries are visible to anyone
         <option value="cancelled">Cancelled</option>
       </select>
     </label>
-
     <label class="fld">
       <span>Completion <em>percent</em></span>
       <input type="number" id="msCompletion" min="0" max="100" step="1" value="0">

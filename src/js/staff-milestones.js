@@ -27,7 +27,8 @@
   var API = '/api/staff-milestones';
 
   var $ = function (id) { return document.getElementById(id); };
-  var state = { milestones: [], editing: null };
+  var state = { milestones: [], languages: [], editing: null,
+              colA: null, colB: null, prefLang: 'en' };
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -67,12 +68,73 @@
     btn.addEventListener('click', function () { setSwitch(btn, !isOn(btn)); });
   }
 
+  function has(code) {
+    return state.languages.some(function (l) { return l.code === code; });
+  }
+  function langName(code) {
+    var l = state.languages.filter(function (x) { return x.code === code; })[0];
+    return l ? (l.native_name || l.name) : code;
+  }
+  function isEnabled(code) {
+    var l = state.languages.filter(function (x) { return x.code === code; })[0];
+    return !!(l && l.is_enabled);
+  }
+
+  /* Both pickers list every language. A disabled one is still selectable —
+     you must be able to write a translation before switching it on. */
+  function fillLangPickers() {
+    [['msLangA', 'colA', 'msTagA'], ['msLangB', 'colB', 'msTagB']].forEach(function (t) {
+      var sel = $(t[0]); if (!sel) return;
+      sel.innerHTML = state.languages.map(function (l) {
+        return '<option value="' + esc(l.code) + '">' + esc(l.native_name || l.name) +
+               (l.is_enabled ? '' : ' — not published') + '</option>';
+      }).join('');
+      sel.value = state[t[1]] || '';
+      var tag = $(t[2]);
+      if (tag) {
+        var on = isEnabled(sel.value);
+        tag.textContent = on ? 'published' : 'not published';
+        tag.className = 'ms-col-tag' + (on ? ' on' : '');
+      }
+    });
+  }
+
   /* ---- rendering ------------------------------------------------------ */
 
   var STATUS_LABEL = {
     upcoming: 'Upcoming', in_progress: 'In progress',
     complete: 'Complete', cancelled: 'Cancelled'
   };
+
+  /* The list shows the left column's language, falling back to any other so a
+     milestone translated only into Croatian is never a blank row. */
+  function titleOf(m) {
+    var tx = m.text || {};
+    if (state.colA && tx[state.colA] && tx[state.colA].title) return tx[state.colA].title;
+    for (var code in tx) if (tx[code].title) return tx[code].title + ' (' + langName(code) + ')';
+    return '(untitled)';
+  }
+
+  /* Which PUBLISHED languages this milestone is still missing. Only published
+     ones: a gap in a language nobody serves is not a problem to nag about. */
+  function missingWarning(m) {
+    var tx = m.text || {};
+    var missing = state.languages
+      .filter(function (l) { return l.is_enabled && !(tx[l.code] && tx[l.code].title); })
+      .map(function (l) { return l.native_name || l.name; });
+    if (!missing.length) return '';
+    return '<span class="ms-warn">missing ' + esc(missing.join(', ')) + '</span>';
+  }
+
+  /* Same fallback as the title: show the left column's wording, or any. */
+  function whenOf(m) {
+    var tx = m.text || {};
+    if (state.colA && tx[state.colA] && tx[state.colA].target_label) {
+      return tx[state.colA].target_label;
+    }
+    for (var code in tx) if (tx[code].target_label) return tx[code].target_label;
+    return '';
+  }
 
   function render() {
     var host = $('msList');
@@ -87,15 +149,15 @@
       return '<div class="ms-row' + child + '" data-id="' + esc(m.id) + '">' +
         '<div class="ms-main">' +
           '<div class="ms-t">' +
-            '<span class="ms-title">' + esc(m.title) + '</span>' +
+            '<span class="ms-title">' + esc(titleOf(m)) + '</span>' +
             (m.is_featured ? '<span class="badge live">featured</span>' : '') +
             (m.is_public ? '' : '<span class="badge proto">draft</span>') +
           '</div>' +
           '<div class="ms-meta">' +
             '<span>' + esc(STATUS_LABEL[m.status] || m.status) + '</span>' +
-            (m.target_label ? '<span>' + esc(m.target_label) + '</span>' : '') +
+            (whenOf(m) ? '<span>' + esc(whenOf(m)) + '</span>' : '') +
             (m.completion ? '<span class="tnum">' + m.completion + '%</span>' : '') +
-            (m.title_hr ? '' : '<span class="ms-warn">no Croatian title</span>') +
+            missingWarning(m) +
           '</div>' +
         '</div>' +
         '<div class="ms-toggle">' +
@@ -133,6 +195,22 @@
         return;
       }
       state.milestones = body.milestones || [];
+      state.languages = body.languages || [];
+      state.prefLang = body.preferred_lang || 'en';
+
+      // Left column opens on the staff member's own language. Right opens on
+      // the next language they PUBLISH, falling back to any other language —
+      // so the pairing is useful on first load without being fixed.
+      if (!state.colA) {
+        state.colA = has(state.prefLang) ? state.prefLang
+                   : (state.languages[0] || {}).code;
+      }
+      if (!state.colB) {
+        var others = state.languages.filter(function (l) { return l.code !== state.colA; });
+        var enabled = others.filter(function (l) { return l.is_enabled; });
+        state.colB = (enabled[0] || others[0] || {}).code || null;
+      }
+      fillLangPickers();
       render();
       fillParents();
     } catch (e) {
@@ -195,17 +273,30 @@
         }).join('');
   }
 
+  function colFields(col) {
+    return Array.prototype.slice.call(
+      document.querySelectorAll('[data-col="' + col + '"]'));
+  }
+
+  function fillColumn(col, m) {
+    var code = col === 'a' ? state.colA : state.colB;
+    var tx = (m && m.text && code) ? (m.text[code] || {}) : {};
+    colFields(col).forEach(function (el) { el.value = tx[el.dataset.tx] || ''; });
+  }
+
+  function readColumn(col) {
+    var out = {};
+    colFields(col).forEach(function (el) { out[el.dataset.tx] = el.value; });
+    return out;
+  }
+
   function openForm(id) {
     var m = id ? state.milestones.filter(function (x) { return x.id === id; })[0] : null;
     state.editing = id || null;
 
     $('msId').value = m ? m.id : '';
-    $('msTitle').value = m ? (m.title || '') : '';
-    $('msTitleHr').value = m ? (m.title_hr || '') : '';
-    $('msDesc').value = m ? (m.description || '') : '';
-    $('msDescHr').value = m ? (m.description_hr || '') : '';
-    $('msTarget').value = m ? (m.target_label || '') : '';
-    $('msTargetHr').value = m ? (m.target_label_hr || '') : '';
+    fillColumn('a', m);
+    fillColumn('b', m);
     $('msDate').value = m ? (m.actual_date || '') : '';
     $('msStatusSel').value = m ? (m.status || 'upcoming') : 'upcoming';
     $('msCompletion').value = m ? (m.completion || 0) : 0;
@@ -228,14 +319,16 @@
 
   async function submitForm(e) {
     e.preventDefault();
+    // Only the two visible languages are sent. The endpoint upserts exactly
+    // what it receives, so a language not on screen is left untouched rather
+    // than being wiped by an editor that could not see it.
+    var text = {};
+    if (state.colA) text[state.colA] = readColumn('a');
+    if (state.colB && state.colB !== state.colA) text[state.colB] = readColumn('b');
+
     var payload = {
       id: $('msId').value || undefined,
-      title: $('msTitle').value,
-      title_hr: $('msTitleHr').value,
-      description: $('msDesc').value,
-      description_hr: $('msDescHr').value,
-      target_label: $('msTarget').value,
-      target_label_hr: $('msTargetHr').value,
+      text: text,
       actual_date: $('msDate').value,
       status: $('msStatusSel').value,
       completion: $('msCompletion').value,
@@ -298,6 +391,20 @@
 
   wireLocalSwitch($('msPublic'));
   wireLocalSwitch($('msFeatured'));
+
+  // Switching a column's language re-reads that column from the milestone
+  // being edited, so unsaved text in the OTHER column is never disturbed.
+  [['msLangA', 'colA', 'a'], ['msLangB', 'colB', 'b']].forEach(function (cfg) {
+    $(cfg[0]).addEventListener('change', function (e) {
+      state[cfg[1]] = e.target.value;
+      fillLangPickers();
+      var m = state.editing
+        ? state.milestones.filter(function (x) { return x.id === state.editing; })[0]
+        : null;
+      fillColumn(cfg[2], m);
+      render();
+    });
+  });
 
   $('msAdd').addEventListener('click', function () { openForm(null); });
   $('msCancel').addEventListener('click', closeForm);

@@ -56,9 +56,6 @@ function clean(body, existingIds) {
     return s === "" ? null : s.slice(0, max);
   };
 
-  const title = str(body.title, 200);
-  if (!title) return { error: "A title is required" };
-
   const status = String(body.status || "upcoming");
   if (!STATUSES.has(status)) {
     return { error: `status must be one of: ${[...STATUSES].join(", ")}` };
@@ -76,9 +73,6 @@ function clean(body, existingIds) {
     return { error: "actual_date must be YYYY-MM-DD, or empty" };
   }
 
-  // A milestone cannot be its own parent, and cannot point at something that
-  // does not exist. The schema stops CROSS-PARTNER nesting; this stops the
-  // two mistakes an editor can actually make.
   const parent_id = str(body.parent_id, 64);
   if (parent_id && parent_id === body.id) {
     return { error: "A milestone cannot be its own parent" };
@@ -87,15 +81,12 @@ function clean(body, existingIds) {
     return { error: "That parent milestone does not exist" };
   }
 
+  // TEXT IS NOT HERE. Titles and descriptions live in milestone_translations,
+  // one row per language, and are validated by cleanText() below. Keeping the
+  // two apart is what lets a language be added without touching this function.
   return {
     value: {
       parent_id,
-      title,
-      title_hr: str(body.title_hr, 200),
-      description: str(body.description),
-      description_hr: str(body.description_hr),
-      target_label: str(body.target_label, 120),
-      target_label_hr: str(body.target_label_hr, 120),
       actual_date,
       status,
       completion,
@@ -108,9 +99,68 @@ function clean(body, existingIds) {
   };
 }
 
+/**
+ * Validate the per-language text.
+ *
+ * `text` arrives as { en: {title, description, target_label}, hr: {...} }.
+ * Language codes are checked against the catalogue rather than a list in this
+ * file — adding Portuguese is a row in `languages`, and this keeps working.
+ *
+ * At least one language must have a title. A milestone with no text in any
+ * language is not a draft, it is an empty row nothing can render.
+ */
+function cleanText(text, validCodes) {
+  if (text === undefined || text === null) return { value: {} };
+  if (typeof text !== "object" || Array.isArray(text)) {
+    return { error: "text must be an object keyed by language code" };
+  }
+
+  const out = {};
+  for (const [lang, fields] of Object.entries(text)) {
+    if (!validCodes.has(lang)) {
+      return { error: `"${lang}" is not a language this organisation offers` };
+    }
+    if (!fields || typeof fields !== "object") {
+      return { error: `text.${lang} must be an object` };
+    }
+    const title = fields.title == null ? "" : String(fields.title).trim();
+    // An empty title means "remove this translation", handled by the caller.
+    // Storing an empty row would make "not translated" and "translated to
+    // nothing" indistinguishable, and the editor needs to tell them apart.
+    out[lang] = {
+      title: title.slice(0, 200),
+      description: fields.description == null ? null
+        : String(fields.description).trim().slice(0, 4000) || null,
+      target_label: fields.target_label == null ? null
+        : String(fields.target_label).trim().slice(0, 120) || null,
+    };
+  }
+  return { value: out };
+}
+
 /** Ids are generated server-side so a client cannot choose one. */
 function newId() {
   return "m_" + crypto.randomUUID().replace(/-/g, "").slice(0, 20);
+}
+
+/** milestones + their translations, assembled into one list. */
+async function listWithText(db, partner_id) {
+  const [rows, tx] = await Promise.all([
+    db.query("milestones_for_staff", { partner_id }),
+    db.query("milestone_translations_for_staff", { partner_id }),
+  ]);
+  const byId = {};
+  for (const r of tx) {
+    (byId[r.milestone_id] ||= {})[r.lang] = {
+      title: r.title, description: r.description, target_label: r.target_label,
+    };
+  }
+  return rows.map((m) => ({
+    ...m,
+    is_public: !!m.is_public,
+    is_featured: !!m.is_featured,
+    text: byId[m.id] || {},
+  }));
 }
 
 export default {
@@ -124,14 +174,20 @@ export default {
 
     // ---- list ----
     if (request.method === "GET") {
-      const rows = await db.query("milestones_for_staff", { partner_id });
+      const [milestones, languages] = await Promise.all([
+        listWithText(db, partner_id),
+        db.query("partner_languages_for_partner", { partner_id }),
+      ]);
       return json({
         partner: { id: partner.id, display_name: partner.display_name },
-        milestones: rows.map((m) => ({
-          ...m,
-          is_public: !!m.is_public,
-          is_featured: !!m.is_featured,
-        })),
+        // The editor opens in this person's own language rather than always
+        // English. NULL in the database means English, resolved in SQL.
+        preferred_lang: partner.preferred_lang || "en",
+        // The editor renders a column per language from THIS, never from a
+        // hard-coded list. Disabled ones are included so text can be prepared
+        // before it is switched on.
+        languages: languages.map((l) => ({ ...l, is_enabled: !!l.is_enabled })),
+        milestones,
       });
     }
 
@@ -140,8 +196,12 @@ export default {
       const body = await readJson(request);
       if (!body) return json({ error: "Invalid JSON" }, 400);
 
-      const existing = await db.query("milestones_for_staff", { partner_id });
+      const [existing, langs] = await Promise.all([
+        db.query("milestones_for_staff", { partner_id }),
+        db.query("languages_all", {}),
+      ]);
       const ids = new Set(existing.map((m) => m.id));
+      const codes = new Set(langs.filter((l) => l.is_active).map((l) => l.code));
 
       const isNew = !body.id || !ids.has(body.id);
       const id = isNew ? newId() : body.id;
@@ -149,8 +209,18 @@ export default {
       const { value, error } = clean({ ...body, id }, ids);
       if (error) return json({ error }, 400);
 
-      // New rows go to the end rather than to position 0, so creating one
-      // never silently reshuffles the list somebody just ordered.
+      const { value: text, error: textError } = cleanText(body.text, codes);
+      if (textError) return json({ error: textError }, 400);
+
+      // Every milestone needs a title in at least one language, otherwise it
+      // is not a draft — it is a row nothing can ever render.
+      const titled = Object.values(text).filter((v) => v.title);
+      if (isNew && !titled.length) {
+        return json({ error: "A title is required in at least one language" }, 400);
+      }
+
+      // New rows go to the end rather than position 0, so creating one never
+      // silently reshuffles a list somebody just ordered.
       if (isNew && !body.sort_order) {
         value.sort_order = existing.length
           ? Math.max(...existing.map((m) => m.sort_order || 0)) + 1
@@ -159,37 +229,68 @@ export default {
 
       await db.query("milestone_upsert", { ...value, id, partner_id, now });
 
-      const rows = await db.query("milestones_for_staff", { partner_id });
-      const saved = rows.find((m) => m.id === id);
-      return json({
-        saved: { ...saved, is_public: !!saved.is_public, is_featured: !!saved.is_featured },
-        created: isNew,
-      });
+      // Then the text, one language at a time. An emptied title DELETES that
+      // translation rather than storing a blank one, so "not translated yet"
+      // stays distinguishable from "translated to nothing".
+      for (const [lang, fields] of Object.entries(text)) {
+        if (fields.title) {
+          await db.query("milestone_translation_upsert", {
+            milestone_id: id, lang, partner_id, now, ...fields,
+          });
+        } else {
+          await db.query("milestone_translation_delete", {
+            milestone_id: id, lang, partner_id,
+          });
+        }
+      }
+
+      const all = await listWithText(db, partner_id);
+      return json({ saved: all.find((m) => m.id === id), created: isNew });
     }
 
     // ---- delete ----
     if (request.method === "DELETE") {
       const id = url.searchParams.get("id");
       if (!id) return json({ error: "id is required" }, 400);
+      // Translations follow via ON DELETE CASCADE.
       await db.query("milestone_delete", { id, partner_id });
       return json({ deleted: id });
     }
 
-    // ---- reorder ----
+    // ---- reorder, or switch a language on/off ----
     if (request.method === "PATCH") {
       const body = await readJson(request);
-      if (!body || !Array.isArray(body.order)) {
-        return json({ error: "Expected { order: [id, id, …] }" }, 400);
+      if (!body) return json({ error: "Invalid JSON" }, 400);
+
+      if (Array.isArray(body.order)) {
+        // Positions come from this array's order, not from the client's
+        // numbers, so duplicate or sparse values cannot corrupt the sequence.
+        for (let i = 0; i < body.order.length; i++) {
+          await db.query("milestone_reorder", {
+            id: String(body.order[i]), partner_id, sort_order: i, now,
+          });
+        }
+        return json({ reordered: body.order.length });
       }
-      // Positions come from this array's order, not from the client's numbers.
-      // A client that sends duplicate or sparse sort_orders cannot corrupt the
-      // sequence, because it never supplies one.
-      for (let i = 0; i < body.order.length; i++) {
-        await db.query("milestone_reorder", {
-          id: String(body.order[i]), partner_id, sort_order: i, now,
+
+      if (body.language) {
+        const langs = await db.query("languages_all", {});
+        const known = langs.find((l) => l.code === body.language);
+        if (!known) return json({ error: "Unknown language" }, 400);
+        // A partner switching THEIR OWN publishing on or off. Adding a
+        // language to the catalogue is an admin action and not this endpoint.
+        await db.query("partner_language_set", {
+          partner_id,
+          lang: body.language,
+          is_enabled: body.is_enabled ? 1 : 0,
+          sort_order: Number.isFinite(Number(body.sort_order))
+            ? Number(body.sort_order) : known.sort_order,
         });
+        const languages = await db.query("partner_languages_for_partner", { partner_id });
+        return json({ languages: languages.map((l) => ({ ...l, is_enabled: !!l.is_enabled })) });
       }
-      return json({ reordered: body.order.length });
+
+      return json({ error: "Expected { order: [...] } or { language, is_enabled }" }, 400);
     }
 
     return json({ error: "Method not allowed" }, 405, {
