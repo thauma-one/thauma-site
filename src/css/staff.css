@@ -429,3 +429,17 @@ tr.tl-row td{padding:0;border-bottom:1px solid var(--line-soft)}
 
 /* The form now sits inside the list, directly under the row being edited. */
 .ms-form{margin:0;border-top:0}
+
+/* ---- the editor panel's open/close motion ---- */
+/* Height is animated from JS, which measures the real value; this supplies the
+   curve and duration. --ease-main is the site's symmetrical ease-in-out, so
+   opening and closing mirror each other rather than one feeling heavier.
+   420ms: slow enough to read as a panel unfolding from its row rather than
+   appearing, short enough not to be in the way when moving between rows. */
+.ms-form.is-animating{overflow:hidden;
+  transition:height .42s var(--ease-main), opacity .28s var(--ease-main)}
+.ms-form[hidden]{display:none}
+
+@media (prefers-reduced-motion: reduce){
+  .ms-form,.ms-form.is-animating{transition:none}
+}

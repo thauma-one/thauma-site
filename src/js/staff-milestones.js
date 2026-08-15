@@ -92,22 +92,31 @@
     return !!(l && l.is_enabled);
   }
 
-  /* Both pickers list every language. A disabled one is still selectable —
-     you must be able to write a translation before switching it on. */
+  /* ONLY the languages this partner publishes. A language switched off in
+     Settings does not appear here at all — offering a column for a language
+     nobody serves invites work that goes nowhere. To translate into a new
+     language, turn it on in Settings first; that publishes nothing by itself,
+     because each milestone still has its own publish switch.
+
+     missingWarning() filters the same way, so a language you do not serve is
+     never reported as missing either. */
+  function enabledLangs() {
+    return state.languages.filter(function (l) { return l.is_enabled; });
+  }
+
   function fillLangPickers() {
     [['msLangA', 'colA', 'msTagA'], ['msLangB', 'colB', 'msTagB']].forEach(function (t) {
       var sel = $(t[0]); if (!sel) return;
-      sel.innerHTML = state.languages.map(function (l) {
+      sel.innerHTML = enabledLangs().map(function (l) {
         return '<option value="' + esc(l.code) + '">' + esc(l.native_name || l.name) +
-               (l.is_enabled ? '' : ' — not published') + '</option>';
+               '</option>';
       }).join('');
       sel.value = state[t[1]] || '';
+      // Every language in the list is published, so the old published /
+      // not-published tag said the same thing on every column. It now shows
+      // the code, which is the useful thing when two columns look alike.
       var tag = $(t[2]);
-      if (tag) {
-        var on = isEnabled(sel.value);
-        tag.textContent = on ? 'published' : 'not published';
-        tag.className = 'ms-col-tag' + (on ? ' on' : '');
-      }
+      if (tag) tag.textContent = sel.value ? sel.value.toUpperCase() : '';
     });
   }
 
@@ -221,14 +230,14 @@
       // Left column opens on the staff member's own language. Right opens on
       // the next language they PUBLISH, falling back to any other language —
       // so the pairing is useful on first load without being fixed.
-      if (!state.colA) {
-        state.colA = has(state.prefLang) ? state.prefLang
-                   : (state.languages[0] || {}).code;
+      var on = enabledLangs();
+      if (!state.colA || !on.some(function (l) { return l.code === state.colA; })) {
+        state.colA = on.some(function (l) { return l.code === state.prefLang; })
+          ? state.prefLang : (on[0] || {}).code || null;
       }
-      if (!state.colB) {
-        var others = state.languages.filter(function (l) { return l.code !== state.colA; });
-        var enabled = others.filter(function (l) { return l.is_enabled; });
-        state.colB = (enabled[0] || others[0] || {}).code || null;
+      if (!state.colB || !on.some(function (l) { return l.code === state.colB; })) {
+        var others = on.filter(function (l) { return l.code !== state.colA; });
+        state.colB = (others[0] || {}).code || null;
       }
       fillLangPickers();
       render();
@@ -317,6 +326,73 @@
 
   /* ---- the form -------------------------------------------------------- */
 
+  /* ---- opening and closing the panel ----------------------------------- */
+
+  /* Height cannot be transitioned to or from `auto`, so each direction
+     measures the real height and animates between that and zero, then hands
+     control back to the layout. Doing it in JS rather than with a max-height
+     guess means the timing is the same for a one-line milestone and a long
+     one — a max-height large enough for the longest makes short panels appear
+     to snap open early and hang. */
+  var PANEL_MS = 420;
+
+  function reducedMotion() {
+    return window.matchMedia &&
+           window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+
+  function openPanel(el) {
+    return new Promise(function (resolve) {
+      el.hidden = false;
+      if (reducedMotion()) { el.style.height = ''; el.style.opacity = ''; return resolve(); }
+
+      el.classList.add('is-animating');
+      el.style.height = '0px';
+      el.style.opacity = '0';
+      // Force the browser to accept 0 as a starting point before changing it,
+      // or both assignments collapse into one frame and nothing animates.
+      void el.offsetHeight;
+      el.style.height = el.scrollHeight + 'px';
+      el.style.opacity = '1';
+
+      setTimeout(function () {
+        // Back to auto so the panel can grow as its content does — a fixed
+        // height would clip a description someone keeps typing into.
+        el.style.height = '';
+        el.style.opacity = '';
+        el.classList.remove('is-animating');
+        resolve();
+      }, PANEL_MS);
+    });
+  }
+
+  function closePanel(el) {
+    return new Promise(function (resolve) {
+      if (el.hidden) return resolve();
+      if (reducedMotion()) { el.hidden = true; el.style.height = ''; return resolve(); }
+
+      el.classList.add('is-animating');
+      el.style.height = el.scrollHeight + 'px';
+      el.style.opacity = '1';
+      void el.offsetHeight;
+      el.style.height = '0px';
+      // Fades faster than it collapses (see the CSS), so the text stops being
+      // legible early rather than shrinking while still readable — that is
+      // what makes a collapsing panel feel like a flicker.
+      el.style.opacity = '0';
+
+      setTimeout(function () {
+        el.hidden = true;
+        el.style.height = '';
+        el.style.opacity = '';
+        el.classList.remove('is-animating');
+        resolve();
+      }, PANEL_MS);
+    });
+  }
+
+
+
   function fillParents() {
     var sel = $('msParent');
     if (!sel) return;
@@ -354,11 +430,23 @@
     return window.CSS && CSS.escape ? CSS.escape(s) : String(s).replace(/["\\]/g, '\\$&');
   }
 
-  function openForm(id) {
+  async function openForm(id) {
+    var form = $('msForm');
+
+    // ALREADY OPEN ON THIS ROW -> close it. Pressing Edit again to put the
+    // panel away is what everyone reaches for first, and having it do nothing
+    // reads as a broken button.
+    if (!form.hidden && state.editing === id) { await closeForm(); return; }
+
+    // Open on a DIFFERENT row: close where it is before moving it. Without
+    // the wait, the panel jumps to its new position at full height and then
+    // animates from there, which looks like two unrelated things happening.
+    if (!form.hidden) await closePanel(form);
+
     var m = id ? state.draft[id] : null;
     state.editing = id || null;
 
-    $('msId').value = m ? m.id : '';
+    $('msId').value = m && state.saved[id] ? id : '';
     fillColumn('a', m);
     fillColumn('b', m);
     $('msDate').value = m ? (m.actual_date || '') : '';
@@ -371,24 +459,22 @@
     fillParents();
     $('msParent').value = m && m.parent_id ? m.parent_id : '';
 
-    setStatus($('msFormStatus'), '');
-    var form = $('msForm');
-    form.hidden = false;
+    setStatus($('msFormStatus'), 'Applies to the list — save to publish');
 
-    // OPEN IT WHERE THE WORK IS. The form used to live at the bottom of the
+    // Directly beneath its own row. The form used to sit at the bottom of the
     // page, so editing the third of twelve milestones meant scrolling past
-    // nine unrelated rows and losing sight of the one you meant. Moving the
-    // element puts it directly under its own row.
+    // nine unrelated rows and losing sight of the one you meant.
     var row = id ? $('msList').querySelector('[data-id="' + cssEscape(id) + '"]') : null;
     if (row) row.after(form); else $('msList').after(form);
 
+    await openPanel(form);
     form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     var first = form.querySelector('[data-col="a"][data-tx="title"]');
     if (first) first.focus({ preventScroll: true });
   }
 
-  function closeForm() {
-    $('msForm').hidden = true;
+  async function closeForm() {
+    await closePanel($('msForm'));
     state.editing = null;
   }
 
