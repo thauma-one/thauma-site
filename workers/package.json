@@ -1,0 +1,9 @@
+{
+  "name": "thauma-workers",
+  "private": true,
+  "type": "module",
+  "description": "Cloudflare Workers port of the Netlify functions. Scoped 'type: module' here rather than in the root package.json, which must stay CommonJS for the existing netlify/functions/*.",
+  "scripts": {
+    "test": "for f in test/*.test.mjs; do node \"$f\" || exit 1; done"
+  }
+}
