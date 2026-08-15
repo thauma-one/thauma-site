@@ -1,6 +1,7 @@
 # Thauma & Chase Roush — architecture and direction
 
-**Status:** living document. Last substantive update 2026-08-15.
+**Status:** living document. Last substantive update 2026-08-15 (overnight
+port session).
 **Purpose:** continuity. If this work is picked up cold — by someone else, or
 by the same people months later — this file should be enough to understand
 what exists, why it is shaped this way, and what comes next.
@@ -111,12 +112,39 @@ The schema is portable SQLite precisely so that is cheap.
 
 - **`db/`** — the operations schema. 10 tables, 2 views, 5 triggers,
   14 passing tests (`python3 db/test_schema.py`).
-- **`/staff/`** — the staff console. Six sections; Directory and Resources are
-  live against `staff-data.js`, the other four render
-  `src/staff/data/snapshot.json`. Badged on screen so the distinction is
-  visible.
+- **`/staff/`** — the staff console, now **a page per section** sharing
+  `layouts/staff.njk`: dashboard, support, stewardship, directory, resources,
+  activity. Directory and Resources are live against `staff-data.js`; the
+  other four render `src/staff/data/snapshot.json`. Badged on screen so the
+  distinction is visible. One script serves all six and loads only what each
+  page needs.
 - **`netlify/functions/_shared/access.js`** — Cloudflare Access JWT
   verification, 15 passing tests.
+- **`workers/`** — the Cloudflare Workers port. **Nothing is wired up**; these
+  are new files alongside the working Netlify ones.
+
+| file | what | tests |
+|---|---|---|
+| `workers/src/lang-redirect.js` | geo language routing | 17 |
+| `workers/src/lib/access.js` | Access JWT via WebCrypto | 16 |
+| `workers/src/game-scores.js` + `staff-data.js` | ported functions, KV-backed | 23 |
+| `workers/src/contact-form.js` | Netlify Forms replacement | 16 |
+| `workers/src/lib/db.js` | D1 query layer | 18 |
+
+Run with `cd workers && npm test` — **90 tests**.
+
+- **`docs/MIGRATION-RUNBOOK.md`** — ordered, checkable migration phases with
+  rollback points. **Read its warning before merging `dev` to `main`.**
+- **`docs/WORKERS-AUDIT.md`** (in the CR repo) — all 30 CR functions audited
+  for Workers compatibility.
+
+### ⚠️ Known-open
+
+**Production `thauma.one/staff/` is NOT gated by Access** — the application
+covers `dev.thauma.one/staff*` only. Harmless today, because `main` is 90+
+commits behind and serves a page whose backing function 404s. **It stops being
+harmless the moment `dev` merges to `main`.** A second Access application for
+`thauma.one/staff*` is required first. See the runbook.
 
 ### Known-blocked
 
@@ -230,6 +258,8 @@ tier is ~1000× what this needs. **The cost is migration effort and risk.**
 | Netlify Forms (contact page) | Worker handler + Resend | to do |
 | Edge function (geo language) | Worker using `request.cf.country` | to do |
 
+Full step-by-step in **`docs/MIGRATION-RUNBOOK.md`**. Summary:
+
 ### Order
 
 1. **Access** in front of `/staff/` — done, on Netlify, before anything moved.
@@ -241,8 +271,13 @@ tier is ~1000× what this needs. **The cost is migration effort and risk.**
 Removing the hard dependencies one at a time, rather than all at once during a
 hosting move.
 
-**Chase Roush migrates later, separately.** It is the harder port — 30
-functions using `require()`, Node `crypto`, `Buffer` and `aws4fetch`.
+**Chase Roush migrates later, separately.** Audited in
+`docs/WORKERS-AUDIT.md` (CR repo): the only Node built-in used across all 30
+functions is `crypto`, there is no Identity coupling, and the recommendation is
+**one adapter** presenting the Netlify V1 handler interface over a Workers
+`fetch` handler — so every function keeps working unchanged and can be
+modernised individually. The genuinely uncertain part is translating
+`_redirects`, not the functions.
 
 ---
 
