@@ -13,12 +13,20 @@
 
      LIVE — directory and resources.
        Reads/writes netlify/functions/staff-data.js, which
-       verifies the Netlify Identity token and role server-side
-       and stores in Netlify Blobs. Carried over unchanged in
-       behaviour from the previous /staff/ page.
+       verifies the CLOUDFLARE ACCESS token server-side and
+       stores in Netlify Blobs.
 
-   The whole console is behind the Identity gate. Before this
-   merge the prototype console had no auth at all.
+   AUTH is Cloudflare Access, not Netlify Identity. Access gates
+   /staff* at the edge, so by the time this script runs the
+   visitor is already authenticated — there is no sign-in state
+   to manage, no widget to load, and no gate to render. Identity
+   comes from Cloudflare's /cdn-cgi/access/get-identity endpoint
+   and sign-out is /cdn-cgi/access/logout.
+
+   Requests to the function are same-origin, so the browser sends
+   the CF_Authorization cookie automatically; the function
+   verifies it rather than trusting the edge (functions live
+   outside /staff*, so Access does not necessarily cover them).
 
    No framework, no build step: this runs under Eleventy's
    passthrough copy with zero tooling.
@@ -33,7 +41,7 @@
   var WARN_DAYS = 60;
 
   var $ = function (id) { return document.getElementById(id); };
-  var state = { user: null, contacts: [], resources: [] };
+  var state = { contacts: [], resources: [] };
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -216,14 +224,15 @@
       : '', false);
   }
 
-  async function loadStaffData(user) {
+  async function loadStaffData() {
     try {
-      var token = await user.jwt();
-      var res = await fetch(STAFF_API, { headers: { Authorization: 'Bearer ' + token } });
-      if (res.status === 401) {
+      var res = await fetch(STAFF_API, { credentials: 'same-origin' });
+      if (res.status === 401 || res.status === 500) {
         $('roleNote').hidden = false;
-        $('contacts').innerHTML = '<p class="empty">Needs the staff role.</p>';
-        $('resourceList').innerHTML = '<p class="empty">Needs the staff role.</p>';
+        var why = res.status === 500 ? 'Access is not configured on this deploy.'
+                                     : 'The token was refused.';
+        $('contacts').innerHTML = '<p class="empty">' + why + '</p>';
+        $('resourceList').innerHTML = '<p class="empty">' + why + '</p>';
         return;
       }
       var data = await res.json();
@@ -243,17 +252,17 @@
     renderCards();
     setStatus('Saving…', false);
     try {
-      var token = await state.user.jwt();
       var res = await fetch(STAFF_API, {
         method: 'POST',
-        headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ contacts: state.contacts, resources: state.resources })
       });
       if (!res.ok) {
         var msg = 'Save failed (' + res.status + ')';
         try { var err = await res.json(); if (err && err.error) msg += ': ' + err.error; } catch (e) {}
         setStatus(msg, true);
-        await loadStaffData(state.user);
+        await loadStaffData();
         return;
       }
       var data = await res.json();
@@ -263,7 +272,7 @@
       showUpdated(data);
     } catch (e) {
       setStatus('Save failed: ' + e.message, true);
-      await loadStaffData(state.user);
+      await loadStaffData();
     }
   }
 
@@ -360,32 +369,25 @@
   }
 
   /* =====================================================================
-     AUTH GATE — the whole console sits behind this
+     IDENTITY — supplied by Cloudflare Access, not managed here
      ===================================================================== */
 
-  function showSignedIn(user) {
-    var roles = ((user.app_metadata && user.app_metadata.roles) || [])
-                  .map(function (r) { return String(r).toLowerCase(); });
-    var name = (user.user_metadata && user.user_metadata.full_name) || user.email;
-
-    $('gate').hidden = true;
-    $('app').hidden = false;
-    $('nav').hidden = false;
-    $('who').hidden = false;
-    $('userName').textContent = name;
-    $('userRole').textContent = roles.length ? roles.join(' · ') : 'no role assigned';
-    $('adminLink').hidden = roles.indexOf('admin') === -1;
-    $('authBtn').textContent = 'Sign out';
-  }
-
-  function showSignedOut() {
-    $('gate').hidden = false;
-    $('app').hidden = true;
-    $('nav').hidden = true;
-    $('who').hidden = true;
-    $('partnerPill').hidden = true;
-    $('adminLink').hidden = true;
-    $('authBtn').textContent = 'Sign in';
+  // Access exposes the signed-in user at this endpoint on any gated hostname.
+  // Purely cosmetic: authorisation already happened at the edge and is
+  // re-verified server-side by the function.
+  function loadIdentity() {
+    return fetch('/cdn-cgi/access/get-identity', { credentials: 'same-origin' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (id) {
+        if (!id) throw new Error('no identity');
+        $('userName').textContent = id.name || id.email || 'Signed in';
+        $('userRole').textContent = id.email && id.name ? id.email : 'Cloudflare Access';
+      })
+      .catch(function () {
+        // Not fatal — the data calls are what actually matter.
+        $('userName').textContent = 'Signed in';
+        $('userRole').textContent = 'Cloudflare Access';
+      });
   }
 
   function loadSnapshot() {
@@ -399,35 +401,8 @@
       });
   }
 
-  function onLogin(user) {
-    state.user = user;
-    showSignedIn(user);
-    loadSnapshot();
-    loadStaffData(user);
-  }
-
   wireForms();
-
-  if (typeof netlifyIdentity === 'undefined') {
-    // Identity widget blocked or offline — say so rather than showing a
-    // dead Sign in button.
-    $('gate').querySelector('p').textContent =
-      'The Netlify Identity widget could not load, so sign-in is unavailable. ' +
-      'Check the network connection or any content blocker.';
-    $('gateBtn').disabled = true;
-    $('authBtn').disabled = true;
-  } else {
-    netlifyIdentity.on('init', function (user) {
-      if (user) onLogin(user); else showSignedOut();
-    });
-    netlifyIdentity.on('login', function (user) { onLogin(user); netlifyIdentity.close(); });
-    netlifyIdentity.on('logout', function () { state.user = null; showSignedOut(); });
-
-    function toggleAuth() {
-      if (netlifyIdentity.currentUser()) netlifyIdentity.logout();
-      else netlifyIdentity.open();
-    }
-    $('authBtn').addEventListener('click', toggleAuth);
-    $('gateBtn').addEventListener('click', toggleAuth);
-  }
+  loadIdentity();
+  loadSnapshot();
+  loadStaffData();
 })();

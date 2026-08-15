@@ -1,18 +1,29 @@
-// Serves and updates staff-area content for logged-in users with the
-// staff or admin role. Data lives in Netlify Blobs (never in git / the
-// public repo) — see /staff/ for the edit UI that talks to this.
+// Serves and updates staff-area content. Data lives in Netlify Blobs (never
+// in git / the public repo) — see /staff/ for the edit UI that talks to this.
 //
-// Uses the V1 handler signature (not the newer fetch-style export default)
-// because only V1's context carries clientContext.user — Identity/JWT info
-// isn't part of the documented V2 Context type. That's a real tradeoff:
-// netlify dev doesn't wire up automatic Blobs context for V1 functions
-// locally (a local-dev-only gap — production supports both simultaneously),
-// so getStore() calls here can only be exercised end-to-end via a real
-// deploy, or locally by temporarily stubbing the auth check.
+// AUTH: Cloudflare Access, verified here via _shared/access.js. This replaced
+// the Netlify Identity check (context.clientContext.user) on 2026-08-14.
+//
+// The verification happens in THIS function rather than relying on the Access
+// application being in front of it. The Access app is scoped to /staff*, but
+// functions are served from /.netlify/functions/*, which is outside that path
+// — measured, not assumed. An endpoint that is only safe because of a routing
+// rule elsewhere is one dashboard edit away from being public.
+//
+// ROLES: Access has no notion of the old staff/admin roles, so for now the
+// Access policy IS the gate — whoever it admits is staff. When the users /
+// partner_users tables go live (see db/README.md), look the email up there and
+// enforce real roles. Do not reintroduce a role list in an env var; that is
+// the thing the schema already models properly.
+//
+// Still the V1 handler signature: netlify dev does not wire up automatic Blobs
+// context for V1 functions locally (a local-dev-only gap — production supports
+// both), so getStore() can only be exercised end-to-end via a real deploy.
 //
 // GET  -> returns { contacts, resources, updatedAt, updatedBy }
 // POST -> body { contacts, resources } replaces the stored data
 const { getStore } = require("@netlify/blobs");
+const { requireAccess } = require("./_shared/access");
 
 const STORE_NAME = "staff-directory";
 const KEY = "data";
@@ -110,15 +121,11 @@ function getStaffStore() {
   return getStore(STORE_NAME);
 }
 
-exports.handler = async (event, context) => {
-  const user = context.clientContext && context.clientContext.user;
-  const roles = ((user && user.app_metadata && user.app_metadata.roles) || []).map((r) => String(r).toLowerCase());
-  // Admin implies staff access — no need to assign both roles to the same person.
-  const allowed = roles.includes("staff") || roles.includes("admin");
-
-  if (!user || !allowed) {
-    return json({ error: "Not authorized" }, 401);
-  }
+exports.handler = async (event) => {
+  // Fails closed: a deploy missing ACCESS_TEAM_DOMAIN / ACCESS_AUD returns 500
+  // rather than serving staff data unauthenticated.
+  const { user, denied } = await requireAccess(event);
+  if (denied) return denied;
 
   const store = getStaffStore();
 

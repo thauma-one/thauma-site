@@ -8,13 +8,12 @@
 <link rel="stylesheet" href="/css/tokens.css">
 <link rel="stylesheet" href="/staff/staff.css?v=1">
 <link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
-<script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
 </head>
 <body>
 
 <header class="top"><div class="top-in">
   <span class="mark">THAUMA<em>STAFF</em></span>
-  <nav id="nav" hidden>
+  <nav id="nav">
     <a href="#dashboard">Dashboard</a>
     <a href="#support">Support</a>
     <a href="#stewardship">Stewardship</a>
@@ -22,30 +21,17 @@
     <a href="#resources">Resources</a>
   </nav>
   <div class="top-r">
-    <span class="pill" id="partnerPill" hidden>—</span>
-    <span class="who" id="who" hidden><b id="userName">—</b><span id="userRole">—</span></span>
-    <a class="ghost-btn" href="/admin/" id="adminLink" hidden>Admin</a>
-    <button class="ghost-btn" id="authBtn" type="button">Sign in</button>
+    <span class="pill" id="partnerPill">—</span>
+    <span class="who"><b id="userName">—</b><span id="userRole">—</span></span>
+    <a class="ghost-btn" href="/cdn-cgi/access/logout">Sign out</a>
   </div>
 </div></header>
 
-<!-- ===================== SIGNED OUT ===================== -->
-<div class="gate" id="gate">
-  <div class="gate-in">
-    <div class="cue">Thauma Network</div>
-    <h1>Staff <b>area</b></h1>
-    <p>Sign in to continue. Accounts are issued by an admin &mdash; this area is not
-      open for registration.</p>
-    <button class="solid-btn" id="gateBtn" type="button">Sign in</button>
-  </div>
-</div>
-
-<!-- ===================== SIGNED IN ====================== -->
-<main id="app" hidden>
+<main id="app">
 
   <p class="rolegate" id="roleNote" hidden>
-    Your account does not have the <b>staff</b> role yet &mdash; ask an admin to add it in
-    Netlify Identity. You are signed in, but the network sections below will stay empty.
+    Signed in, but the staff data endpoint refused the request. That usually means this
+    deploy is missing its <b>ACCESS_TEAM_DOMAIN</b> / <b>ACCESS_AUD</b> settings.
   </p>
 
   <!-- ---------- 01 DASHBOARD ---------- -->
@@ -161,7 +147,8 @@
     the real queries in <code>db/queries.sql</code> against the schema and seed. Shapes are real;
     there is no live database behind them yet. Sections marked
     <span class="badge live">live</span> read and write through
-    <code>netlify/functions/staff-data.js</code>, which verifies your Identity token server-side.
+    <code>netlify/functions/staff-data.js</code>, which verifies your Cloudflare Access token
+    server-side.
     <span id="genStamp"></span>
   </p>
 
