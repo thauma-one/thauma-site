@@ -64,20 +64,46 @@ site, so the old page works again immediately.
 
 ---
 
-## Phase 2 — D1
+## Phase 2 — D1 — done 2026-08-15
 
-- [ ] `wrangler login` (in the **Thauma** account)
-- [ ] `wrangler d1 create thauma-ops`
-- [ ] `wrangler d1 execute thauma-ops --file=db/migrations/0001_init.sql`
-- [ ] Optionally seed: `--file=db/seed.dev.sql` (**local only** — fixed ids, fake people)
-- [ ] **Verify:** `wrangler d1 execute thauma-ops --command "SELECT name FROM sqlite_master WHERE type='table'"`
-      → 10 tables
-- [ ] Point the console's four prototype sections at `partnerSnapshot()`
-      (`workers/src/lib/db.js`) instead of `snapshot.json`
-- [ ] **Verify:** the stewardship table still shows *"165 days since personal
-      contact"* for the seeded overdue contact — same numbers, live source
+- [x] Authenticate wrangler (scoped API token in `~/.config/cloudflare-thauma.env`
+      — `wrangler login` cannot complete on a headless Pi)
+- [x] `wrangler d1 create thauma-ops` and `thauma-ops-dev`
+- [x] Apply `db/migrations/0001_init.sql` to both
+- [x] Seed **the dev database only**: `--file=db/seed.dev.sql`
+- [x] **Verified:** 10 tables
+- [x] Point the console's four snapshot sections at `/api/staff-snapshot`
+      (`partnerSnapshot()` in `workers/src/lib/db.js`) instead of `snapshot.json`
+- [x] **Verified:** Jordan Reyes shows **166 days** since personal contact
+      against `thauma-ops-dev`, with last-contact-any 14 days ago
 
-**Rollback:** the console reads `snapshot.json` again; one URL.
+> **The number is 166, not the 165 this runbook used to predict, and that is
+> the point.** `db/build_snapshot.py` pins `TODAY = "2026-08-14"`; the live
+> endpoint uses the real current date, so the figure now advances by one every
+> day. A frozen number here would have meant the console was still reading the
+> file.
+
+**Two defects were found by wiring this up, both invisible until now:**
+
+- `partners_for_user` was keyed on `users.id` (`u_chase`) while Cloudflare
+  Access only ever supplies an email address. **Every authenticated request
+  would have returned 403.** Now keyed on `users.email`, which is UNIQUE
+  COLLATE NOCASE, and gated on `users.status = 'active'`.
+- `partnerSnapshot()` never returned `timelines`, which the stewardship drawer
+  reads as `d.timelines[c.id]`. The page threw on first render. Added, along
+  with `interactions_for_partner` so it costs one query rather than one per
+  contact.
+
+**Rollback:** set `SNAPSHOT_URL` in `src/js/staff.js` back to
+`/staff/data/snapshot.json`; the generated file is still built and still
+served. One line.
+
+### Still to do in this phase
+
+- [ ] Grant Chase's **actual** Access email a partner. The seed grants
+      `chase@thauma.one`; if the address Access authenticates with differs, the
+      console shows "no partner access yet" and names the address it saw.
+- [ ] Apply the schema to `thauma-ops` (production) — it is created but empty.
 
 **Do not skip:** take an export as soon as there is real data.
 `wrangler d1 export thauma-ops --output=backup.sql`, kept **off Cloudflare**.
@@ -194,8 +220,8 @@ open that should not be.** That is the check worth wiring into a cron.
 
 ```bash
 python3 db/test_schema.py          # 14 — schema guarantees
-python3 db/build_snapshot.py       # regenerates the console's prototype data
-cd workers && npm test             # 90 — Access, lang, functions, contact, db
+python3 db/build_snapshot.py       # regenerates the offline console dataset
+cd workers && npm test             # 100 — Access, lang, functions, contact, db
 node netlify/functions/_shared/access.test.js   # 15 — the Netlify-side Access check
 ```
 

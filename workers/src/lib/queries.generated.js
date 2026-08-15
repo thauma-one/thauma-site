@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "3aa7254dbac4f822";
+export const SOURCE_DIGEST = "068637fdb2ec3da8";
 
 export const QUERIES = {
   audit_recent_for_partner: `SELECT a.at, a.action, a.entity, a.entity_id, u.name AS actor
@@ -80,9 +80,27 @@ ORDER BY captured_at ASC;`,
 FROM goal_progress
 WHERE partner_id = :partner_id
 ORDER BY kind, label;`,
+  interactions_for_partner: `SELECT
+  i.contact_id,
+  i.id,
+  i.type,
+  i.is_personal,
+  i.channel,
+  i.occurred_on,
+  i.note,
+  i.source,
+  u.name AS logged_by_name
+FROM interactions i
+JOIN contacts c ON c.id = i.contact_id
+LEFT JOIN users u ON u.id = i.logged_by
+WHERE i.partner_id = :partner_id
+  AND c.status = 'active'
+ORDER BY i.occurred_on DESC, i.created_at DESC;`,
   partners_for_user: `SELECT p.id, p.slug, p.display_name, p.status, pu.role AS access_role
-FROM partner_users pu
+FROM users u
+JOIN partner_users pu ON pu.user_id = u.id
 JOIN partners p ON p.id = pu.partner_id
-WHERE pu.user_id = :user_id
+WHERE u.email = :email
+  AND u.status = 'active'
 ORDER BY p.display_name;`
 };

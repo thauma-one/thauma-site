@@ -110,18 +110,18 @@ The schema is portable SQLite precisely so that is cheap.
 
 ### Built, not yet live
 
-- **`db/`** — the operations schema. 10 tables, 2 views, 5 triggers,
+- **`db/`** — the operations schema. 10 tables, 2 views, 4 triggers,
   14 passing tests (`python3 db/test_schema.py`).
-- **`/staff/`** — the staff console, now **a page per section** sharing
+- **`/staff/`** — the staff console, **a page per section** sharing
   `layouts/staff.njk`: dashboard, support, stewardship, directory, resources,
-  activity. Directory and Resources are live against `staff-data.js`; the
-  other four render `src/staff/data/snapshot.json`. Badged on screen so the
-  distinction is visible. One script serves all six and loads only what each
-  page needs.
+  activity. One script serves all six and loads only what each page needs.
+  **All six read live data as of 2026-08-15**: Directory and Resources from
+  `staff-data` (KV), the other four from `/api/staff-snapshot` (D1).
+  `db/build_snapshot.py` still writes `src/staff/data/snapshot.json`, so the
+  console can be worked on with no database — point `SNAPSHOT_URL` back at it.
 - **`netlify/functions/_shared/access.js`** — Cloudflare Access JWT
   verification, 15 passing tests.
-- **`workers/`** — the Cloudflare Workers port. **Nothing is wired up**; these
-  are new files alongside the working Netlify ones.
+- **`workers/`** — the Cloudflare Workers port, deployed to staging.
 
 | file | what | tests |
 |---|---|---|
@@ -129,9 +129,9 @@ The schema is portable SQLite precisely so that is cheap.
 | `workers/src/lib/access.js` | Access JWT via WebCrypto | 16 |
 | `workers/src/game-scores.js` + `staff-data.js` | ported functions, KV-backed | 23 |
 | `workers/src/contact-form.js` | Netlify Forms replacement | 16 |
-| `workers/src/lib/db.js` | D1 query layer | 18 |
+| `workers/src/lib/db.js` | D1 query layer | 25 |
 
-Run with `cd workers && npm test` — **90 tests**.
+Run with `cd workers && npm test` — **100 tests**.
 
 - **`docs/MIGRATION-RUNBOOK.md`** — ordered, checkable migration phases with
   rollback points. **Read its warning before merging `dev` to `main`.**
@@ -242,6 +242,16 @@ Two independent layers. `users.global_role` is org authority (`admin`/`staff`);
 `partner_users.role` is a per-partner grant (`owner`/`assist`/`view`). **An
 admin is not automatically entitled to read a partner's contacts.**
 `audit_log` is append-only, enforced by triggers on UPDATE and DELETE.
+
+**Email is the join between the identity provider and the database.**
+`partners_for_user` looks a person up by `users.email`, not by `users.id`.
+Cloudflare Access — and any SAML/OIDC provider that replaces it — hands over an
+email address and nothing else; `u_chase` is an internal id no IdP has ever
+heard of. The query was originally keyed on the id, which meant every
+authenticated request returned 403; caught on 2026-08-15 when the console was
+first pointed at live data. The lookup also requires `users.status = 'active'`,
+so revoking someone is one column update rather than a hunt through
+`partner_users`.
 
 Whoever holds the credentials can read the database — no schema prevents that.
 What a schema can do is make access deliberate, logged, and visible to the

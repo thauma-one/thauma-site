@@ -1,20 +1,21 @@
 /* ============================================================
    staff.js — Thauma staff console
    ============================================================
-   Two data sources, deliberately kept separate and labelled on
-   screen:
+   Two data sources, deliberately kept separate:
 
-     PROTOTYPE — dashboard, support, stewardship, activity.
-       Reads /staff/data/snapshot.json, produced by
-       db/build_snapshot.py running the real queries in
-       db/queries.sql. Real query SHAPES, no live database.
-       Pointing these at an endpoint later changes SNAPSHOT_URL
-       and nothing else.
+     D1 — dashboard, support, stewardship, activity.
+       Reads /api/staff-snapshot, which runs the named queries
+       in db/queries.sql against the D1 database and returns
+       the shape db/build_snapshot.py used to write to a file.
 
-     LIVE — directory and resources.
-       Reads/writes netlify/functions/staff-data.js, which
-       verifies the CLOUDFLARE ACCESS token server-side and
-       stores in Netlify Blobs.
+       That equivalence was the point of building the UI against
+       query OUTPUT rather than fixtures: going live changed this
+       one URL. build_snapshot.py still exists for working
+       offline — see SNAPSHOT_URL below.
+
+     KV — directory and resources.
+       Reads/writes staff-data, which verifies the CLOUDFLARE
+       ACCESS token server-side.
 
    AUTH is Cloudflare Access, not Netlify Identity. Access gates
    /staff* at the edge, so by the time this script runs the
@@ -42,7 +43,10 @@
 (function () {
   'use strict';
 
-  var SNAPSHOT_URL = '/staff/data/snapshot.json';
+  // Live D1, via the Worker. The generated file it replaced is still built by
+  // db/build_snapshot.py and still served at /staff/data/snapshot.json —
+  // point this back at it to work on the console without a database.
+  var SNAPSHOT_URL = '/api/staff-snapshot';
   var STAFF_API = '/.netlify/functions/staff-data';
 
   var CRIT_DAYS = 120;
@@ -90,7 +94,11 @@
       $('partnerPill').textContent = d.partner.display_name;
       $('partnerPill').hidden = false;
     }
-    if ($('genStamp')) $('genStamp').textContent = 'Snapshot generated ' + d.generated_at + '.';
+    if ($('genStamp')) {
+      var when = new Date(d.generated_at);
+      $('genStamp').textContent = 'Live from the operations database · loaded ' +
+        (isNaN(when) ? d.generated_at : when.toLocaleTimeString()) + '.';
+    }
 
     var s = d.summary, stale = d.needs_attention.stale_count;
 
@@ -424,16 +432,53 @@
       });
   }
 
+  // Every element a snapshot-backed page might render into. Used to place an
+  // error where the reader is actually looking, whichever page they are on.
+  function snapshotHosts() {
+    return ['tiles', 'goalGrid', 'rows', 'auditList'].map($).filter(Boolean);
+  }
+
+  function snapshotError(html) {
+    var hosts = snapshotHosts();
+    if (!hosts.length) return;
+    // A table body needs a cell; a div does not.
+    hosts.forEach(function (h) {
+      h.innerHTML = h.tagName === 'TBODY'
+        ? '<tr><td colspan="5"><p class="empty">' + html + '</p></td></tr>'
+        : '<p class="empty">' + html + '</p>';
+    });
+  }
+
+  /* The static file only ever failed one way: missing. A live endpoint has
+     distinct failures that call for distinct answers, and "check the console"
+     is not one of them:
+
+       401  the Access token was refused — signing in again is the fix
+       403  authenticated, but this address is not granted a partner. The
+            body carries the email, which is the one fact needed to fix it.
+       500  no database bound, or Access unconfigured on this deploy */
   function loadSnapshot() {
-    return fetch(SNAPSHOT_URL, { cache: 'no-store' })
-      .then(function (r) { if (!r.ok) throw new Error('snapshot ' + r.status); return r.json(); })
-      .then(function (d) { renderSnapshot(d); wireStewardshipRows(); })
-      .catch(function (err) {
-        var host = $('tiles') || $('goalGrid') || $('rows') || $('auditList');
-        if (host) {
-          host.innerHTML = '<p class="empty">Could not load ' + esc(SNAPSHOT_URL) + ' — ' +
-            esc(err.message) + '. Run <code>python3 db/build_snapshot.py</code>.</p>';
+    return fetch(SNAPSHOT_URL, { cache: 'no-store', credentials: 'same-origin' })
+      .then(function (r) {
+        return r.json().catch(function () { return {}; })
+          .then(function (body) { return { status: r.status, ok: r.ok, body: body }; });
+      })
+      .then(function (res) {
+        if (res.ok) { renderSnapshot(res.body); wireStewardshipRows(); return; }
+
+        if (res.status === 401) {
+          snapshotError('Your session has expired. ' +
+            '<a href="/cdn-cgi/access/logout">Sign in again</a>.');
+        } else if (res.status === 403) {
+          snapshotError('Signed in as <b>' + esc(res.body.email || 'unknown') +
+            '</b>, but that address has no partner access yet.');
+        } else {
+          snapshotError('The operations database did not answer (' + res.status + ')' +
+            (res.body.error ? ' — ' + esc(res.body.error) : '') + '.');
         }
+      })
+      .catch(function (err) {
+        snapshotError('Could not reach ' + esc(SNAPSHOT_URL) + ' — ' + esc(err.message) + '.');
       });
   }
 

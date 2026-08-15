@@ -55,16 +55,20 @@ async function staffSnapshot(request, env) {
   // Which partner is this person allowed to see? Access says WHO they are;
   // the database decides WHAT they may read. Never trust a partner id from
   // the query string.
-  const partners = await db.query("partners_for_user", { user_id: user.email });
+  //
+  // Looked up by EMAIL: Access knows email addresses, not our internal user
+  // ids. See partners_for_user in db/queries.sql.
+  const partners = await db.query("partners_for_user", { email: user.email });
   if (!partners.length) {
     return json({
       error: "No partner access for this account",
       email: user.email,
-      hint: "Add a row to partner_users for this user before the console can load data.",
+      hint: "This account authenticated, but no active user row grants it a " +
+            "partner. Add the address to `users` and grant it in `partner_users`.",
     }, 403);
   }
 
-  const snap = await partnerSnapshot(db, partners[0].partner_id || partners[0].id);
+  const snap = await partnerSnapshot(db, partners[0].id);
   return json({ ...snap, partner: partners[0], generated_at: new Date().toISOString() });
 }
 

@@ -87,6 +87,35 @@ WHERE i.contact_id = :contact_id
 ORDER BY i.occurred_on DESC, i.created_at DESC;
 
 
+-- name: interactions_for_partner
+-- Every timeline on one screen, in ONE query.
+--
+-- The stewardship table renders a drawer per contact, so the snapshot needs a
+-- timeline for each. Running contact_timeline in a loop is N round trips to
+-- D1 for one page — fine for the six seeded contacts, quietly awful at two
+-- hundred. This returns the same columns for the whole partner and the caller
+-- groups by contact_id.
+--
+-- contact_timeline stays: it is the right query for one person's history, and
+-- a per-contact view will want it.
+SELECT
+  i.contact_id,
+  i.id,
+  i.type,
+  i.is_personal,
+  i.channel,
+  i.occurred_on,
+  i.note,
+  i.source,
+  u.name AS logged_by_name
+FROM interactions i
+JOIN contacts c ON c.id = i.contact_id
+LEFT JOIN users u ON u.id = i.logged_by
+WHERE i.partner_id = :partner_id
+  AND c.status = 'active'
+ORDER BY i.occurred_on DESC, i.created_at DESC;
+
+
 -- name: goals_for_partner
 -- Progress meters. Reads the view, so the percentage is always derived from
 -- the latest snapshot and can never disagree with it.
@@ -111,10 +140,21 @@ ORDER BY captured_at ASC;
 -- What a signed-in user is allowed to see. The admin must call this FIRST and
 -- scope everything else to the result. Org-level global_role deliberately
 -- grants nothing here — see db/README.md.
+--
+-- KEYED ON EMAIL, NOT users.id. The identity provider (Cloudflare Access)
+-- hands us an email address and nothing else; `u_chase` is an internal id it
+-- has never heard of. Looking up by :user_id meant every request 403'd,
+-- because no Access email will ever equal a `u_` id. users.email is UNIQUE
+-- COLLATE NOCASE for exactly this lookup.
+--
+-- status = 'active' is part of the gate: revoking access must be one column
+-- update, not a scramble to find every partner_users row.
 SELECT p.id, p.slug, p.display_name, p.status, pu.role AS access_role
-FROM partner_users pu
+FROM users u
+JOIN partner_users pu ON pu.user_id = u.id
 JOIN partners p ON p.id = pu.partner_id
-WHERE pu.user_id = :user_id
+WHERE u.email = :email
+  AND u.status = 'active'
 ORDER BY p.display_name;
 
 
