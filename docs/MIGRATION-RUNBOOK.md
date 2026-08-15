@@ -136,7 +136,93 @@ anger for a week.
 
 ---
 
-## Phase 5 — hosting
+## Phase 5 — hosting — PREPARED 2026-08-15, awaiting two dashboard actions
+
+Reordered ahead of Phase 3 deliberately. The runbook claimed Decap had to go
+first because Git Gateway dies with Identity — but that is a *consequence* of
+the hosting move, not a prerequisite. Checked before deciding: Decap manages
+the trilingual copy files, and exactly one commit in the repo's history was
+ever CMS-authored. `/admin` goes dark at the flip; copy stays editable in git.
+
+### Done
+
+- [x] Production D1 `thauma-ops` has the schema — 11 tables, 2 views, 6
+      triggers, **zero rows**
+- [x] `[env.production]` builds from `_site_prod`, its own directory
+- [x] `thauma-production` deployed, routes `thauma.one/*` and
+      `www.thauma.one/*` registered
+- [x] Worker 301s `www` to the apex, so www stops depending on Netlify
+- [x] `ACCESS_AUD` removed from production so `/staff/` is hard closed
+- [x] Staging proven: `next.thauma.one` has run the same Worker for a day
+
+### Step 1 — flip two DNS records (thauma.one zone)
+
+| record | from | to |
+|---|---|---|
+| `thauma.one` | **A** `75.2.60.5`, DNS only | **AAAA** `100::`, **Proxied** |
+| `www.thauma.one` | **CNAME** `unrivaled-snickerdoodle-1134e3.netlify.app`, DNS only | **AAAA** `100::`, **Proxied** |
+
+`100::` is the discard prefix. Nothing is ever sent there — the address exists
+only to give the hostname a proxied record so the Workers route can fire. This
+is the same pattern `next.thauma.one` already uses.
+
+**Verify immediately:**
+```bash
+curl -sI https://thauma.one/en/ | grep -iE '^(server|cf-ray)'   # expect cf-ray, no "Netlify"
+curl -s -o /dev/null -w 'apex %{http_code}\n' https://thauma.one/
+curl -s -o /dev/null -w 'en   %{http_code}\n' https://thauma.one/en/
+curl -s -o /dev/null -w 'www  %{http_code}\n' https://www.thauma.one/
+curl -s -o /dev/null -w 'staff %{http_code}\n' https://thauma.one/staff/
+dig +short MX thauma.one
+```
+Expect `302`, `200`, `301`, **`500`** for staff (hard closed — correct until
+step 2), and the three `route*.mx.cloudflare.net` unchanged. **The MX records
+are untouched by this change; email keeps working.**
+
+**Rollback**, if anything is wrong — restore the two records exactly:
+```
+thauma.one       A      75.2.60.5                                    DNS only
+www.thauma.one   CNAME  unrivaled-snickerdoodle-1134e3.netlify.app    DNS only
+```
+The Netlify site stays deployed and unchanged, so this is a full rollback.
+Keep it that way for at least a week.
+
+### Step 2 — Access application for production
+
+Zero Trust → Access → Applications → **Add a self-hosted application**
+
+- Application domain: `thauma.one`, path `staff`
+- Same policy as the `dev.thauma.one` application
+- Copy the **Application Audience (AUD) tag**
+
+Then in `wrangler.toml`, under `[env.production.vars]`, replace the
+ACCESS_AUD comment block with the real value and redeploy:
+
+```toml
+ACCESS_AUD = "<the new tag>"
+```
+```bash
+npx @11ty/eleventy --output=_site_prod
+npx wrangler deploy --env production
+curl -s -o /dev/null -w 'staff %{http_code}\n' https://thauma.one/staff/   # now 302
+```
+
+**Do not paste dev's tag here.** Access sets `CF_Authorization` across the
+parent domain, so a dev session's token reaches `thauma.one` and would be
+accepted — the exact cross-application hole the `aud` check exists to close.
+
+### Step 3 — afterwards
+
+- [ ] Keep the Netlify site deployed but idle for a week
+- [ ] Then Phase 3: replace Decap
+- [ ] `main` still lags `dev` by 112 commits. The Worker deploys from the
+      working tree, not from `main`, so the cutover never needed that merge —
+      but Netlify still builds from `main`, so leave it alone while Netlify is
+      the rollback.
+
+---
+
+## Phase 5 (original notes)
 
 Only now, and by this point it really is just hosting.
 
