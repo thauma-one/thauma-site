@@ -8,9 +8,16 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "068637fdb2ec3da8";
+export const SOURCE_DIGEST = "e4be888bcb3e4309";
 
 export const QUERIES = {
+  api_key_lookup: `SELECT k.id AS key_id, k.partner_id, k.scopes, p.slug, p.display_name
+FROM api_keys k
+JOIN partners p ON p.id = k.partner_id
+WHERE k.key_hash = :key_hash
+  AND k.revoked_at IS NULL
+  AND p.status = 'active';`,
+  api_key_touch: `UPDATE api_keys SET last_used_at = :now WHERE id = :key_id;`,
   audit_recent_for_partner: `SELECT a.at, a.action, a.entity, a.entity_id, u.name AS actor
 FROM audit_log a
 LEFT JOIN users u ON u.id = a.user_id
@@ -35,8 +42,6 @@ ORDER BY i.occurred_on DESC, i.created_at DESC;`,
   c.id,
   c.first_name,
   c.last_name,
-  c.email,
-  c.phone,
   c.city,
   c.country,
   c.newsletter_consent,
@@ -102,5 +107,22 @@ JOIN partner_users pu ON pu.user_id = u.id
 JOIN partners p ON p.id = pu.partner_id
 WHERE u.email = :email
   AND u.status = 'active'
-ORDER BY p.display_name;`
+ORDER BY p.display_name;`,
+  public_goals_for_partner: `SELECT
+  goal_id, label, kind, target_cents, currency,
+  raised_cents, donor_count, percent, captured_at
+FROM goal_progress
+WHERE partner_id = :partner_id
+  AND is_public = 1
+ORDER BY kind, label;`,
+  public_milestones_for_partner: `SELECT
+  id, parent_id,
+  title, title_hr,
+  description, description_hr,
+  target_label, target_label_hr,
+  actual_date, status, completion, is_featured, sort_order
+FROM milestones
+WHERE partner_id = :partner_id
+  AND is_public = 1
+ORDER BY sort_order ASC, (actual_date IS NULL), actual_date ASC;`
 };

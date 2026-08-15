@@ -44,13 +44,24 @@ await check("queries.generated.js is in sync with db/queries.sql", async () => {
     `stale generated file — run: python3 db/generate_queries_module.py`);
 });
 
-await check("all nine named queries are present", async () => {
+await check("all thirteen named queries are present", async () => {
   const expected = [
+    "api_key_lookup", "api_key_touch",
     "audit_recent_for_partner", "contact_timeline", "contacts_stewardship",
     "dashboard_needs_attention", "dashboard_partner_summary", "goal_history",
     "goals_for_partner", "interactions_for_partner", "partners_for_user",
+    "public_goals_for_partner", "public_milestones_for_partner",
   ];
   eq(Object.keys(QUERIES).sort(), expected, "query names");
+});
+
+await check("the stewardship query does NOT select email or phone", async () => {
+  // Regression. Both were selected and neither was ever rendered, so every
+  // console load shipped the partner's whole contact list to draw a column of
+  // dates. Add a single-row contact_detail query if a screen needs them.
+  const sql = QUERIES.contacts_stewardship;
+  assert(!/\bc\.email\b/i.test(sql), "contacts_stewardship selects email again");
+  assert(!/\bc\.phone\b/i.test(sql), "contacts_stewardship selects phone again");
 });
 
 await check("no generated query still contains a comment marker", async () => {
@@ -102,6 +113,7 @@ await check("every real query converts with its documented params", async () => 
   const params = {
     partner_id: "p_chase", today: "2026-08-15", stale_days: 120,
     contact_id: "c_1", goal_id: "g_1", email: "chase@thauma.one", limit: 10,
+    key_hash: "0".repeat(64), key_id: "k_1", now: "2026-08-15T00:00:00Z",
   };
   for (const [name, sql] of Object.entries(QUERIES)) {
     const r = toPositional(sql, params);

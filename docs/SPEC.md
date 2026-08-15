@@ -32,6 +32,10 @@ The **only** link is a versioned HTTP API that Thauma publishes and CR
 consumes **at build time**. Not shared repos, not shared code, not a shared
 build.
 
+**Built 2026-08-15: `GET /api/partner/v1/site`**, authenticated by a partner
+API key. Returns public goal aggregates and public milestones. Nothing else,
+ever — see §4a.
+
 Build-time and not browser-side, for three reasons: an API key shipped to the
 browser is public; CR must survive Thauma being down; and runtime fetching is
 the exact flaw CR has today (`header-loader.js` pulls page titles from R2 on
@@ -110,8 +114,8 @@ The schema is portable SQLite precisely so that is cheap.
 
 ### Built, not yet live
 
-- **`db/`** — the operations schema. 10 tables, 2 views, 4 triggers,
-  14 passing tests (`python3 db/test_schema.py`).
+- **`db/`** — the operations schema. 11 tables, 2 views, 6 triggers, 16 passing tests
+  (`python3 db/test_schema.py`, which runs every migration in order).
 - **`/staff/`** — the staff console, **a page per section** sharing
   `layouts/staff.njk`: dashboard, support, stewardship, directory, resources,
   activity. One script serves all six and loads only what each page needs.
@@ -129,9 +133,10 @@ The schema is portable SQLite precisely so that is cheap.
 | `workers/src/lib/access.js` | Access JWT via WebCrypto | 16 |
 | `workers/src/game-scores.js` + `staff-data.js` | ported functions, KV-backed | 23 |
 | `workers/src/contact-form.js` | Netlify Forms replacement | 16 |
-| `workers/src/lib/db.js` | D1 query layer | 25 |
+| `workers/src/lib/db.js` | D1 query layer | 26 |
+| `workers/src/partner-api.js` + `lib/apikey.js` | the public boundary | 21 |
 
-Run with `cd workers && npm test` — **100 tests**.
+Run with `cd workers && npm test` — **122 tests**.
 
 - **`docs/MIGRATION-RUNBOOK.md`** — ordered, checkable migration phases with
   rollback points. **Read its warning before merging `dev` to `main`.**
@@ -256,6 +261,65 @@ so revoking someone is one column update rather than a hunt through
 Whoever holds the credentials can read the database — no schema prevents that.
 What a schema can do is make access deliberate, logged, and visible to the
 partner whose data it is.
+
+---
+
+## 4a. The public boundary — read before adding any endpoint
+
+Two APIs. They authenticate different things, and they must never merge.
+
+| | staff console | partner API |
+|---|---|---|
+| route | `/api/staff-*` | `/api/partner/v1/site` |
+| authenticates | a **person**, via Cloudflare Access | a **build**, via an API key |
+| audience | staff, signed in | chaseroush.com's CI |
+| may return | that partner's operational data | only what is safe on a public page |
+
+A build has no browser and nobody to click a login, so it cannot use Access. A
+public site's credential must therefore be one that unlocks almost nothing —
+which is the whole design.
+
+### The three guarantees, enforced rather than promised
+
+1. **`PUBLIC_QUERIES` is an allow-list.** The partner API may run exactly two
+   queries. A query added tomorrow is private until somebody deliberately adds
+   it to that set. A deny-list would have silently exposed every future query.
+2. **`assertPublicSafe()` proves the public queries cannot reach private
+   tables.** It greps their SQL for `contacts`, `interactions`, `users`,
+   `audit_log`, `api_keys`, and for a missing `is_public = 1` or `:partner_id`.
+   It runs in the test suite **and at Worker startup**, so a bad deploy fails
+   at boot rather than serving supporter records to a website.
+3. **`partnerPublicSite()` names every field it returns.** It does not spread
+   database rows. Adding a column to `milestones` does not publish it; someone
+   has to write it down. The private endpoint fails toward showing too much,
+   the public one toward showing too little.
+
+Keys are **SHA-256 hashed** in `api_keys`; the raw key is printed once by
+`db/mint_api_key.py` and never stored. `?key=` in a query string is refused —
+query strings reach access logs, browser history and `Referer` headers. The
+partner id comes from the key, never from the request.
+
+### ⚠️ "Timeline" means two opposite things
+
+| | what it is | publishable |
+|---|---|---|
+| **milestones** | public ministry roadmap — trips, training, support raising | yes, that is its purpose |
+| **interactions** | private stewardship history — who was called and the note about it | **never** |
+
+They share a word and nothing else. The partner API never uses the word
+"timeline", and the public table is named `milestones`, so "expose the
+timeline" cannot be resolved to the wrong table by someone moving quickly.
+This is the single most dangerous ambiguity in the system.
+
+### Data minimisation is not automatic
+
+Found 2026-08-15: `contacts_stewardship` selected `email` and `phone`, and the
+stewardship table rendered **neither**. Every console load shipped a partner's
+whole contact list to draw a column of dates. Behind Access, so not a breach —
+but a payload is what ends up in a log, an extension or a screenshot, and
+"we sent it but drew it invisibly" is not minimisation. Both columns removed;
+a test asserts they stay gone. If a screen needs to contact someone, add a
+`contact_detail` query returning **one** person by id.
 
 ---
 

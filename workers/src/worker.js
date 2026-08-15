@@ -33,9 +33,16 @@ import langRedirect from "./lang-redirect.js";
 import gameScores from "./game-scores.js";
 import staffData from "./staff-data.js";
 import contactForm from "./contact-form.js";
-import { createDb, partnerSnapshot } from "./lib/db.js";
+import partnerApi from "./partner-api.js";
+import { createDb, partnerSnapshot, assertPublicSafe } from "./lib/db.js";
 import { requireAccess } from "./lib/access.js";
 import { json } from "./lib/store.js";
+
+// Runs once per isolate, at module load. If a public query has grown a join
+// onto `contacts`, this throws and the deploy fails loudly instead of quietly
+// serving supporter records to chaseroush.com. The tests assert the same
+// thing, but tests are run by people and this is run by the runtime.
+assertPublicSafe();
 
 /**
  * Live replacement for /staff/data/snapshot.json.
@@ -78,6 +85,11 @@ const ROUTES = {
   "/api/game-scores": gameScores,
   "/api/staff-data": staffData,
   "/api/staff-snapshot": { fetch: staffSnapshot },
+
+  // THE ONLY ROUTE A CREDENTIAL OUTSIDE THAUMA CAN REACH. Key-authenticated,
+  // public-safe by construction, versioned in the path so a breaking change
+  // becomes /v2 rather than a broken partner site. See partner-api.js.
+  "/api/partner/v1/site": partnerApi,
 
   // Netlify-style paths kept alive so nothing has to change on the same day
   // hosting does. Remove once the front end has moved to /api/*.

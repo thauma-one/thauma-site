@@ -31,7 +31,61 @@ const TENANT_SCOPED = new Set([
   "goals_for_partner",
   "goal_history",
   "audit_recent_for_partner",
+  "public_goals_for_partner",
+  "public_milestones_for_partner",
 ]);
+
+/**
+ * The ONLY queries the partner API may run.
+ *
+ * An allow-list, not a deny-list, and that asymmetry is the whole point: a
+ * new query is private until somebody deliberately adds it here. A deny-list
+ * would silently expose every query written after it.
+ *
+ * Everything in this set is filtered on is_public = 1 and returns no person
+ * data. `assertPublicSafe()` re-checks the second half against the actual SQL
+ * rather than trusting this list to stay honest.
+ */
+export const PUBLIC_QUERIES = new Set([
+  "public_goals_for_partner",
+  "public_milestones_for_partner",
+]);
+
+/** Tables a query in PUBLIC_QUERIES must never mention. */
+const PRIVATE_TABLES = ["contacts", "interactions", "users", "audit_log", "api_keys"];
+
+/**
+ * Static check that the public query set cannot reach private data.
+ *
+ * Run by the tests, and again at Worker startup — cheap, and it means a bad
+ * deploy fails loudly at boot instead of quietly serving supporter records to
+ * a public website.
+ */
+export function assertPublicSafe(queries = QUERIES) {
+  for (const name of PUBLIC_QUERIES) {
+    const sql = queries[name];
+    if (!sql) throw new Error(`PUBLIC_QUERIES names a query that does not exist: ${name}`);
+
+    // Word-boundary match: `contacts` must fail, `contacts_total` need not,
+    // but no public query has any business with either.
+    for (const table of PRIVATE_TABLES) {
+      if (new RegExp(`\\b${table}\\b`, "i").test(sql)) {
+        throw new Error(
+          `public query "${name}" references the private table "${table}" — ` +
+          `it would publish it. See the PARTNER API section of db/queries.sql.`);
+      }
+    }
+    if (!/\bis_public\s*=\s*1\b/i.test(sql)) {
+      throw new Error(
+        `public query "${name}" does not filter is_public = 1 — ` +
+        `it would publish unpublished rows.`);
+    }
+    if (!/:partner_id\b/.test(sql)) {
+      throw new Error(`public query "${name}" is not scoped by :partner_id`);
+    }
+  }
+  return true;
+}
 
 /**
  * Rewrite `:name` placeholders to `?` and build the matching argument list.
@@ -69,7 +123,14 @@ export function createDb(binding, exec) {
     return results || [];
   });
 
-  async function query(name, params = {}) {
+  async function query(name, params = {}, { publicOnly = false } = {}) {
+    // Second gate for the partner API. The endpoint only asks for public
+    // queries, but "only asks" is a property of today's code; this is a
+    // property of the layer underneath it.
+    if (publicOnly && !PUBLIC_QUERIES.has(name)) {
+      throw new Error(
+        `query "${name}" is not in PUBLIC_QUERIES and must not be served to a partner site`);
+    }
     const sql = QUERIES[name];
     if (!sql) {
       throw new Error(`unknown query: ${name} (have: ${Object.keys(QUERIES).sort().join(", ")})`);
@@ -85,6 +146,10 @@ export function createDb(binding, exec) {
 
   return {
     query,
+    /** Restricted view of the same layer, for the partner API. */
+    publicQuery(name, params) {
+      return query(name, params, { publicOnly: true });
+    },
     /** First row or null — for queries that return exactly one. */
     async queryOne(name, params) {
       const rows = await query(name, params);
@@ -94,6 +159,61 @@ export function createDb(binding, exec) {
     today() {
       return new Date().toISOString().slice(0, 10);
     },
+  };
+}
+
+/**
+ * Everything a PARTNER SITE'S BUILD may render, in one call.
+ *
+ * The counterpart to partnerSnapshot(), and deliberately not built the same
+ * way. partnerSnapshot spreads query rows straight into its response, which is
+ * fine for a console behind Access — it is how `email` and `phone` reached a
+ * browser that never drew them.
+ *
+ * Here every field is named explicitly. Adding a column to `milestones` does
+ * NOT publish it; somebody has to come here and write it down. That asymmetry
+ * is intentional: the private endpoint fails toward showing too much, the
+ * public one fails toward showing too little.
+ *
+ * Uses publicQuery(), so the layer refuses anything outside PUBLIC_QUERIES
+ * even if this function asks for it.
+ */
+export async function partnerPublicSite(db, partnerId) {
+  if (!partnerId) throw new Error("partnerPublicSite requires a partnerId");
+
+  const [goals, milestones] = await Promise.all([
+    db.publicQuery("public_goals_for_partner", { partner_id: partnerId }),
+    db.publicQuery("public_milestones_for_partner", { partner_id: partnerId }),
+  ]);
+
+  return {
+    goals: goals.map((g) => ({
+      id: g.goal_id,
+      label: g.label,
+      kind: g.kind,
+      target_cents: g.target_cents,
+      currency: g.currency,
+      raised_cents: g.raised_cents,
+      donor_count: g.donor_count,
+      percent: g.percent,
+      captured_at: g.captured_at,
+    })),
+    // The PUBLIC ROADMAP. Not stewardship history — see
+    // db/migrations/0002_milestones.sql before adding anything here.
+    milestones: milestones.map((m) => ({
+      id: m.id,
+      parent_id: m.parent_id,
+      title: m.title,
+      title_hr: m.title_hr,
+      description: m.description,
+      description_hr: m.description_hr,
+      target_label: m.target_label,
+      target_label_hr: m.target_label_hr,
+      actual_date: m.actual_date,
+      status: m.status,
+      completion: m.completion,
+      is_featured: !!m.is_featured,
+    })),
   };
 }
 

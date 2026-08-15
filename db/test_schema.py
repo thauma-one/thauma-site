@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Schema tests for db/migrations/0001_init.sql
+Schema tests for db/migrations/
 
-Runs the migration into an in-memory SQLite database and asserts the
-guarantees the schema is supposed to provide. These are the rules that are
-expensive to discover later:
+Runs EVERY migration, in numbered order, into an in-memory SQLite database and
+asserts the guarantees the schema is supposed to provide. These are the rules
+that are expensive to discover later:
 
   * a newsletter can never be logged as personal contact
   * an interaction cannot be filed under the wrong partner
@@ -12,13 +12,23 @@ expensive to discover later:
   * deleting a partner takes their data with it
   * last_personal_contact ignores bulk sends
   * goal progress is derived, and clamps at 100%
+  * a milestone cannot be nested under another partner's milestone
+  * nothing publishes unless somebody set is_public
+
+This used to read 0001_init.sql by name, which meant migration 0002's triggers
+were never exercised and every future migration would have been silently
+untested. Globbing also proves the migrations apply IN ORDER against a clean
+database — the thing production does exactly once, and cannot redo.
 
 Run:  python3 db/test_schema.py
 """
 import sqlite3, pathlib, sys, datetime
 
 HERE = pathlib.Path(__file__).parent
-SQL = (HERE / "migrations" / "0001_init.sql").read_text()
+MIGRATIONS = sorted((HERE / "migrations").glob("*.sql"))
+if not MIGRATIONS:
+    sys.exit("no migrations found in db/migrations/")
+SQL = "\n".join(p.read_text() for p in MIGRATIONS)
 
 NOW = "2026-08-14T12:00:00Z"
 passed, failed = 0, 0
@@ -237,10 +247,58 @@ def t_goal_progress_computed_and_clamped():
     assert pct == 100, f"overfunded goal should clamp to 100, got {pct}"
 
 
+def t_milestones_default_to_private():
+    """Publication is a decision, never a default.
+
+    A draft milestone about an unannounced trip must not reach a partner site
+    because somebody forgot a column. Both publish flags default to 0.
+    """
+    db = fresh()
+    db.execute("INSERT INTO partners (id,slug,display_name,status,created_at,updated_at) "
+               "VALUES ('p_1','p-one','P One','active',?,?)", (NOW, NOW))
+    db.execute("INSERT INTO milestones (id,partner_id,title,created_at,updated_at) "
+               "VALUES ('m_1','p_1','Unannounced trip',?,?)", (NOW, NOW))
+    db.commit()
+    pub, feat = db.execute(
+        "SELECT is_public, is_featured FROM milestones WHERE id='m_1'").fetchone()
+    assert pub == 0, f"milestone published by default (is_public={pub})"
+    assert feat == 0, f"milestone featured by default (is_featured={feat})"
+
+
+def t_milestone_parent_must_match_partner():
+    """A sub-step cannot hang off another partner's milestone."""
+    db = fresh()
+    for pid in ("p_1", "p_2"):
+        db.execute("INSERT INTO partners (id,slug,display_name,status,created_at,updated_at) "
+                   f"VALUES ('{pid}','{pid}','{pid}','active',?,?)", (NOW, NOW))
+    db.execute("INSERT INTO milestones (id,partner_id,title,created_at,updated_at) "
+               "VALUES ('m_1','p_1','Parent',?,?)", (NOW, NOW))
+    db.commit()
+
+    try:
+        db.execute("INSERT INTO milestones (id,partner_id,parent_id,title,created_at,updated_at) "
+                   "VALUES ('m_2','p_2','m_1','Child',?,?)", (NOW, NOW))
+        db.commit()
+        raise AssertionError("a milestone was nested under another partner's milestone")
+    except sqlite3.IntegrityError:
+        pass
+
+    # And the same guarantee on UPDATE, which is the half people forget.
+    db.execute("INSERT INTO milestones (id,partner_id,title,created_at,updated_at) "
+               "VALUES ('m_3','p_2','Other partner step',?,?)", (NOW, NOW))
+    db.commit()
+    try:
+        db.execute("UPDATE milestones SET parent_id='m_1' WHERE id='m_3'")
+        db.commit()
+        raise AssertionError("UPDATE re-parented across partners")
+    except sqlite3.IntegrityError:
+        pass
+
+
 def t_partner_scoping_is_queryable():
     """Every tenant table must be filterable by partner_id alone."""
     db = fresh()
-    for tbl in ("contacts", "interactions", "goals", "goal_snapshots", "api_keys"):
+    for tbl in ("contacts", "interactions", "goals", "goal_snapshots", "api_keys", "milestones"):
         cols = [r[1] for r in db.execute(f"PRAGMA table_info({tbl})")]
         assert "partner_id" in cols, f"{tbl} has no partner_id — it cannot be scoped"
         nn = [r for r in db.execute(f"PRAGMA table_info({tbl})") if r[1] == "partner_id"][0][3]
@@ -248,9 +306,12 @@ def t_partner_scoping_is_queryable():
 
 
 if __name__ == "__main__":
-    print("schema tests — db/migrations/0001_init.sql\n")
+    print(f"schema tests — {len(MIGRATIONS)} migrations: "
+          f"{', '.join(p.name for p in MIGRATIONS)}\n")
     for name, fn in [
         ("migration runs and creates all tables/views", t_migration_runs),
+        ("milestones default to unpublished",           t_milestones_default_to_private),
+        ("milestone parent must match partner",         t_milestone_parent_must_match_partner),
         ("no donor PII columns exist anywhere",         t_no_donor_pii_columns),
         ("every tenant table is partner-scoped NOT NULL", t_partner_scoping_is_queryable),
         ("newsletter cannot be marked personal",        t_newsletter_cannot_be_personal),
