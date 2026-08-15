@@ -314,6 +314,8 @@
     if (label) {
       label.textContent = n === 1 ? '1 unsaved change' : n + ' unsaved changes';
     }
+    // The bar appearing or leaving changes how far down the open row must sit.
+    updateStickyOffsets();
   }
 
   async function saveAll() {
@@ -364,6 +366,39 @@
   }
 
   /* ---- the form -------------------------------------------------------- */
+
+  /* ---- the sticky stack ------------------------------------------------ */
+
+  /* Three things want the top of the screen: the site header, the unsaved bar,
+     and — while the panel is open — the row being edited. Their heights are
+     not all known to CSS: the unsaved bar comes and goes, so `top` for the row
+     beneath it cannot be a constant. This measures the stack and publishes it
+     as a custom property that the CSS positions against. */
+  function stickyTop() {
+    var header = document.querySelector('.top');
+    var bar = $('msSaveBar');
+    var h = header ? header.offsetHeight : 0;
+    var b = (bar && !bar.hidden) ? bar.offsetHeight : 0;
+    return h + b;
+  }
+
+  function updateStickyOffsets() {
+    document.documentElement.style.setProperty('--ms-sticky-top', stickyTop() + 'px');
+  }
+
+  /* Put a row's top edge just under the sticky stack.
+
+     scrollIntoView cannot do this: it knows nothing about sticky elements, so
+     `block:"start"` parks the row underneath the header where it cannot be
+     seen, and `block:"nearest"` often does not move at all. */
+  function scrollRowToTop(row) {
+    if (!row) return;
+    var y = window.scrollY + row.getBoundingClientRect().top - stickyTop() - 10;
+    window.scrollTo({
+      top: Math.max(0, y),
+      behavior: reducedMotion() ? 'auto' : 'smooth'
+    });
+  }
 
   /* ---- opening and closing the panel ----------------------------------- */
 
@@ -511,8 +546,15 @@
     if (row) row.after(form); else $('msList').after(form);
 
     markOpenRow();
+    updateStickyOffsets();
+
+    // The ROW goes to the top, not the panel. It stays pinned there while you
+    // scroll the form, so which milestone you are editing never leaves the
+    // screen — the panel is tall enough that its own heading would otherwise
+    // scroll away within a few lines.
+    scrollRowToTop(row);
     await openPanel(form);
-    form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
     var first = form.querySelector('[data-col="a"][data-tx="title"]');
     if (first) first.focus({ preventScroll: true });
   }
@@ -660,6 +702,9 @@
 
   $('msSaveAll').addEventListener('click', saveAll);
   $('msDiscard').addEventListener('click', discardAll);
+
+  updateStickyOffsets();
+  window.addEventListener('resize', updateStickyOffsets);
 
   load();
 })();

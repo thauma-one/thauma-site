@@ -415,9 +415,15 @@ tr.tl-row td{padding:0;border-bottom:1px solid var(--line-soft)}
    one later in the document won and drew straight over the navigation. The
    header is the one thing that must always be on top. */
 .ms-savebar{position:sticky;top:var(--header-h);z-index:10;display:flex;align-items:center;gap:14px;
-  margin:0 0 20px;padding:13px 18px;background:var(--warn-dim,rgba(245,184,69,.14));
-  border:1px solid rgba(245,184,69,.4);border-radius:var(--radius);
-  font-size:var(--fs-sm);color:var(--text)}
+  margin:0 0 20px;padding:13px 18px;
+  /* OPAQUE. It is sticky, so the form scrolls underneath it — a translucent
+     background let two layers of text sit on top of each other and read as a
+     rendering fault rather than as one thing passing behind another. The warn
+     colour moves to the edge, where it still identifies the bar. */
+  background:#171207;
+  border:1px solid rgba(245,184,69,.45);
+  box-shadow:inset 3px 0 0 var(--warn,#F5B845), 0 10px 24px rgba(0,0,0,.5);
+  border-radius:var(--radius);font-size:var(--fs-sm);color:var(--text)}
 .ms-savebar-note{color:var(--dim);font-size:var(--fs-tiny)}
 .ms-savebar .solid-btn,.ms-savebar .ghost-btn{margin-left:auto}
 .ms-savebar .solid-btn{margin-left:0}
@@ -471,3 +477,18 @@ tr.tl-row td{padding:0;border-bottom:1px solid var(--line-soft)}
   margin-right:6px;transition:transform var(--dur-4) var(--ease-panel),
   border-color var(--dur-3) var(--ease-main)}
 .ms-row.is-open .ms-chev{transform:rotate(-135deg);border-color:var(--voice-tech)}
+
+/* ---- the open row stays put ---- */
+/* Pinned beneath the header and the unsaved bar for as long as its panel is
+   open, so scrolling through a long form never loses which milestone you are
+   editing. --ms-sticky-top is measured in JS because the unsaved bar comes and
+   goes, so this offset is not a constant CSS could hold.
+
+   Only the OPEN row is sticky. Making every row sticky would stack them all
+   against the top as you scroll and bury the list. */
+.ms-row.is-open{position:sticky;top:var(--ms-sticky-top,var(--header-h));z-index:8;
+  /* Opaque for the same reason as the bar: rows pass underneath it. */
+  background:#0e141d}
+
+/* The panel scrolls under its own row rather than over it. */
+.ms-form{position:relative;z-index:1}
