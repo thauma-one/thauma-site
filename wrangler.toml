@@ -1,0 +1,107 @@
+# Cloudflare Workers configuration — Thauma
+#
+# STAGING ONLY FOR NOW. This deploys to next.thauma.one so the whole stack can
+# be exercised against real Cloudflare without touching anything live:
+#
+#   thauma.one       -> Netlify (production, unchanged)
+#   dev.thauma.one   -> the Pi tunnel (unchanged)
+#   next.thauma.one  -> this Worker
+#
+# A subdomain of thauma.one rather than a workers.dev address because
+# Cloudflare Access can only gate zones you own, and testing the Access
+# integration is most of the point.
+#
+# Account: Admin@thauma.one's Account (57c887d9…) — the Thauma-owned one.
+# See docs/SPEC.md §2 for why that distinction matters.
+
+name = "thauma"
+main = "workers/src/worker.js"
+
+# nodejs_compat is on by default from this date, but pinning it makes the
+# dependency explicit rather than inherited from a default that could change.
+compatibility_date = "2026-08-04"
+compatibility_flags = ["nodejs_compat"]
+
+
+# Eleventy's build output for STAGING, built separately so this never touches
+# _site (which dev.thauma.one is serving live).
+#
+# Built with: npx @11ty/eleventy --output=_site_next
+# NOTE: Eleventy sets ELEVENTY_RUN_MODE=build itself, overriding any value you
+# export — so a build here is always the comingSoon-GATED shape, exactly like
+# production. That is correct for staging: /staff/* and the landing pages are
+# emitted, the gated interior pages are not. When site.json flips comingSoon
+# to false, the same command produces the full site.
+[assets]
+directory = "_site_next"
+binding = "ASSETS"
+# Trailing-slash directory URLs like /en/ and /staff/support/ resolve to
+# index.html, matching how Netlify serves the same build today.
+html_handling = "auto-trailing-slash"
+not_found_handling = "404-page"
+
+# WITHOUT THIS, THE STAFF AREA IS PUBLIC.
+#
+# Workers Static Assets serve matching files straight from the edge WITHOUT
+# invoking the Worker at all — that is the whole performance point. So the
+# auth check in worker.js never ran for /staff/*, because those are real
+# files, and /staff/data/snapshot.json was served to anyone who asked.
+# Discovered by testing, not by reading: the deploy looked fine and the
+# routes all returned sensible codes.
+#
+# run_worker_first forces the Worker to run for these paths so it can refuse
+# the request before any file is served. Everything else keeps the fast
+# asset-first path.
+# EVERY path the Worker needs to handle must be listed. This is an allow-list,
+# not an addition: paths absent from it are served asset-first and never reach
+# the router at all. Omitting "/" made the language redirect 404, and omitting
+# "/api/*" made every endpoint 404 — both caught by testing immediately after.
+run_worker_first = [
+  "/",                          # geo language redirect
+  "/api/*",                     # contact, game-scores, staff-data, snapshot
+  "/.netlify/functions/*",      # legacy paths, kept alive during the cutover
+  "/staff",                     # auth gate
+  "/staff/*"                    # ...including the snapshot JSON
+]
+
+[[routes]]
+pattern = "next.thauma.one/*"
+zone_name = "thauma.one"
+
+# ---------------------------------------------------------------------------
+# Storage
+# ---------------------------------------------------------------------------
+# KV for the two documents that were in Netlify Blobs — read and written
+# whole, nothing to query. See workers/src/lib/store.js.
+[[kv_namespaces]]
+binding = "STAFF_DATA"
+id = "f79f07b51f3a493a9f2bb3714115d037"
+
+[[kv_namespaces]]
+binding = "GAME_SCORES"
+id = "f23971d5b4aa460daba43e97b9d84273"
+
+# D1 for the relational data: partners, users, contacts, interactions, goals.
+[[d1_databases]]
+binding = "DB"
+database_name = "thauma-ops"
+database_id = "1a30f6c9-1dc7-42b0-abaa-fab3da334c9e"
+
+# ---------------------------------------------------------------------------
+# Public configuration
+# ---------------------------------------------------------------------------
+# Not secrets. The AUD tag identifies an Access application; it does not
+# authorise anything on its own. Real secrets (RESEND_API_KEY,
+# GAME_ADMIN_TOKEN) go in via `wrangler secret put` and never live here.
+[vars]
+ACCESS_TEAM_DOMAIN = "thaumaone.cloudflareaccess.com"
+ACCESS_AUD = "04468ad531e25f3c53af5d0b4ed0bdd3073241f76a070c741efe40f58019fdfb"
+CONTACT_TO = "admin@thauma.one"
+CONTACT_FROM = "Thauma <noreply@thauma.one>"
+
+# ---------------------------------------------------------------------------
+# Scheduled work — replaces Netlify's schedule() wrapper.
+# Nothing is scheduled for Thauma yet; the CR migration will need these.
+# ---------------------------------------------------------------------------
+# [triggers]
+# crons = []

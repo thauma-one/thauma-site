@@ -12,3 +12,6 @@ _site/
 # visuals get saved as <feature>-approved.png instead, which IS committed.
 collage-debug.png
 collage-debug.svg
+
+# Staging build for the Workers deploy (full/gated per site.json, like production)
+_site_next/
