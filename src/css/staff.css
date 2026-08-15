@@ -664,3 +664,35 @@ body.has-savebar .toasts{--toast-lift:var(--ms-savebar-h,72px)}
 }
 .problem-msg{flex:1;min-width:0}
 .problem .ghost-btn{flex:0 0 auto}
+
+/* ---- the header, with a long name in it ---- */
+/* .who had no bound, so a long name pushed into the navigation and eventually
+   over it. Capped and ellipsised: the full value is in the title attribute,
+   and Settings shows it in full where there is room. The nav keeps its space
+   because it is the thing people are aiming for. */
+.who{max-width:190px;min-width:0}
+.who b, .who span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.top nav{min-width:0;flex-wrap:wrap}
+.top-in{flex-wrap:wrap;row-gap:6px}
+
+/* Below the width where the nav and the identity block can share a line, the
+   identity drops its cap and the nav wraps rather than being squeezed. */
+@media (max-width:1100px){
+  .who{max-width:140px}
+}
+@media (max-width:820px){
+  .top{height:auto;padding:10px 0}
+  .top-in{align-items:flex-start}
+  .who{max-width:none;text-align:left}
+  .top-r{margin-left:0;width:100%;justify-content:space-between}
+}
+
+/* Roles are roles. Which partner you work with is a different fact and reads
+   as one now, rather than sitting in the same row of tags. */
+.role-partner{display:block;margin-top:10px;font-size:var(--fs-tiny);color:var(--dim)}
+.role-partner b{color:var(--text);font-weight:var(--w-body)}
+.role-tag.admin{color:var(--voice-tech);border-color:rgba(47,216,255,.4);
+  background:var(--voice-tech-dim)}
+.role-tag.board{color:var(--voice-human);border-color:rgba(92,242,196,.35);
+  background:var(--voice-human-dim)}
+.role-tag.staff{color:var(--dim)}

@@ -67,7 +67,10 @@
   /* ---- rendering ------------------------------------------------------ */
 
   function render() {
-    $('setEmail').textContent = state.you.email;
+    // Name AND address. The header shows whatever Cloudflare Access happens
+    // to carry, which is often just an email; this is the record we hold.
+    $('setEmail').innerHTML = (state.you.name ? '<b>' + esc(state.you.name) + '</b><br>' : '') +
+      esc(state.you.email);
 
     // Roles as tags rather than a sentence, because there will be more of them
     // — board, and whatever else the org grows into — and a list reads the

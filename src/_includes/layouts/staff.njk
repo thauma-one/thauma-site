@@ -30,7 +30,7 @@
 <meta name="robots" content="noindex, nofollow">
 <title>{{ staffTitle }} · Thauma Staff</title>
 <link rel="stylesheet" href="/css/tokens.css">
-<link rel="stylesheet" href="/css/staff.css?v=14">
+<link rel="stylesheet" href="/css/staff.css?v=15">
 <link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
 </head>
 <body data-staff-page="{{ staffPage }}">
@@ -75,12 +75,12 @@
 {#- Before everything else: it reads the cached language and rewrites the
    page synchronously, so the console does not render in English and then
    visibly correct itself. -#}
-<script src="/js/staff-i18n.js?v=5"></script>
-<script src="/js/staff.js?v=8"></script>
+<script src="/js/staff-i18n.js?v=6"></script>
+<script src="/js/staff.js?v=9"></script>
 {#- Only the Milestones page needs this; the script no-ops elsewhere. Kept
    separate from staff.js rather than folded in, because the editor is a
    different job from the read-only console and will keep growing. -#}
-{% if staffPage == "milestones" %}<script src="/js/staff-milestones.js?v=13"></script>{% endif %}
-{% if staffPage == "settings" %}<script src="/js/staff-settings.js?v=7"></script>{% endif %}
+{% if staffPage == "milestones" %}<script src="/js/staff-milestones.js?v=14"></script>{% endif %}
+{% if staffPage == "settings" %}<script src="/js/staff-settings.js?v=8"></script>{% endif %}
 </body>
 </html>

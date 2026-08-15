@@ -159,8 +159,14 @@ ORDER BY captured_at ASC;
 -- update, not a scramble to find every partner_users row.
 -- preferred_lang rides along so the editor can open in the staff member's own
 -- language without a second query on every page load.
+-- roles is a comma-separated list from user_roles, which replaced
+-- users.global_role in 0006 — a person may hold more than one. Handlers split
+-- it rather than running a second query on every request.
 SELECT p.id, p.slug, p.display_name, p.status, pu.role AS access_role,
-       u.id AS user_id, u.global_role, COALESCE(u.preferred_lang, 'en') AS preferred_lang
+       u.id AS user_id, u.name AS user_name,
+       COALESCE((SELECT GROUP_CONCAT(r.role) FROM user_roles r WHERE r.user_id = u.id),
+                u.global_role) AS roles,
+       COALESCE(u.preferred_lang, 'en') AS preferred_lang
 FROM users u
 JOIN partner_users pu ON pu.user_id = u.id
 JOIN partners p ON p.id = pu.partner_id

@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "7f765f4656c365c6";
+export const SOURCE_DIGEST = "fbeca63e4bc0a1f6";
 
 export const QUERIES = {
   api_key_create: `INSERT INTO api_keys (id, partner_id, name, key_hash, scopes, created_by, created_at)
@@ -181,7 +181,10 @@ ORDER BY sort_order, l.name;`,
        COALESCE(p.default_lang, 'en') AS default_lang
 FROM partners p WHERE p.id = :partner_id;`,
   partners_for_user: `SELECT p.id, p.slug, p.display_name, p.status, pu.role AS access_role,
-       u.id AS user_id, u.global_role, COALESCE(u.preferred_lang, 'en') AS preferred_lang
+       u.id AS user_id, u.name AS user_name,
+       COALESCE((SELECT GROUP_CONCAT(r.role) FROM user_roles r WHERE r.user_id = u.id),
+                u.global_role) AS roles,
+       COALESCE(u.preferred_lang, 'en') AS preferred_lang
 FROM users u
 JOIN partner_users pu ON pu.user_id = u.id
 JOIN partners p ON p.id = pu.partner_id

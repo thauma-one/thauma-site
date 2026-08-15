@@ -179,6 +179,13 @@ export default {
         db.query("partner_languages_for_partner", { partner_id }),
       ]);
       return json({
+        // The same identity block every staff endpoint returns, so the header
+        // can be filled from whatever request a page was already making.
+        you: {
+          email: user.email,
+          name: partner.user_name || null,
+          roles: String(partner.roles || "staff").split(","),
+        },
         partner: { id: partner.id, display_name: partner.display_name },
         // The editor opens in this person's own language rather than always
         // English. NULL in the database means English, resolved in SQL.

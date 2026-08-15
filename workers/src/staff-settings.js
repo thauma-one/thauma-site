@@ -40,11 +40,13 @@ async function context(request, env) {
     return { denied: json({ error: "No partner access for this account", email: user.email }, 403) };
   }
   const partner = partners[0];
+  // 0006 moved roles to user_roles; a person may hold more than one.
+  const roles = String(partner.roles || "staff").split(",");
   return {
     db, user, partner,
-    // global_role is org authority. It is NOT partner access — that is what
-    // partners_for_user just established. See docs/SPEC.md §4.
-    isAdmin: partner.global_role === "admin",
+    // Org authority. NOT partner access — that is what partners_for_user
+    // just established. See docs/SPEC.md §4.
+    roles, isAdmin: roles.includes("admin"),
   };
 }
 
@@ -83,7 +85,11 @@ export default {
       return json({
         you: {
           email: user.email,
+          // From the database, not from Access: the console controls this
+          // value, and Access does not always carry a name at all.
+          name: partner.user_name || null,
           preferred_lang: partner.preferred_lang || "en",
+          roles,
           is_admin: isAdmin,
           // What this account may do, decided here rather than in the browser.
           // The UI hides what it cannot do; the endpoint refuses it.

@@ -41,7 +41,8 @@ async function context(request, env) {
     return { denied: json({ error: "No partner access for this account", email: user.email }, 403) };
   }
   const partner = partners[0];
-  const isAdmin = partner.global_role === "admin";
+  const roles = String(partner.roles || "staff").split(",");
+  const isAdmin = roles.includes("admin");
 
   // Which resource levels this person may read. Everyone sees staff material;
   // admins also see admin material. 'board' has no role behind it yet, so
@@ -115,6 +116,13 @@ export default {
         db.query("resources_visible", { partner_id, levels }),
       ]);
       return json({
+        // The same identity block every staff endpoint returns, so the header
+        // can be filled from whatever request a page was already making.
+        you: {
+          email: user.email,
+          name: partner.user_name || null,
+          roles: String(partner.roles || "staff").split(","),
+        },
         // Named so the screen can say whose these are, rather than implying
         // they are everyone's.
         owner: { email: user.email },

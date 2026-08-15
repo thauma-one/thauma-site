@@ -279,6 +279,7 @@
         if ($('resourceList')) $('resourceList').innerHTML = '<p class="empty">' + esc(why) + '</p>';
         return;
       }
+      if (body.you) rememberIdentity(body.you);
       state.contacts = body.contacts || [];
       state.resources = body.resources || [];
       state.canSetVisibility = !!(body.can && body.can.set_visibility);
@@ -445,45 +446,67 @@
   // Access exposes the signed-in user at this endpoint on any gated hostname.
   // Cosmetic only: authorisation already happened at the edge and is
   // re-verified server-side by the function.
+  /* WHO IS SIGNED IN.
+
+     Two sources, in order of authority:
+
+       our database   the name we hold for this account. Cached, because not
+                      every page makes a request that returns it, and a header
+                      that fills in a second late reads as a glitch.
+
+       Access         the fallback. It carries whatever the identity provider
+                      chose to share, which is frequently an email and nothing
+                      else — which is why the name was missing on some pages
+                      and present on others. */
+  var IDENT = 'thauma.staff.who';
+
+  function paintIdentity(who) {
+    if (!who) return;
+    if (who.name) $('userName').textContent = who.name;
+    // The role sits under the name. The email is on Settings, where there is
+    // room for it; up here it would be the longest thing in the header.
+    var LABEL = { admin: 'Administration', staff: 'Staff', board: 'Board' };
+    var roles = (who.roles || []).map(function (r) { return LABEL[r] || r; });
+    if (roles.length) $('userRole').textContent = roles.join(' · ');
+    $('userName').title = who.email || '';
+  }
+
+  /* Called by any page whose data included an identity block. */
+  function rememberIdentity(who) {
+    if (!who || !who.email) return;
+    try { localStorage.setItem(IDENT, JSON.stringify(who)); } catch (e) {}
+    paintIdentity(who);
+  }
+  window.StaffIdentity = rememberIdentity;
+
   function loadIdentity() {
+    try {
+      var cached = JSON.parse(localStorage.getItem(IDENT) || 'null');
+      if (cached) paintIdentity(cached);
+    } catch (e) {}
+
     return fetch('/cdn-cgi/access/get-identity', { credentials: 'same-origin' })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (id) {
         if (!id) throw new Error('no identity');
-        $('userName').textContent = id.name || id.email || 'Signed in';
-        $('userRole').textContent = id.email && id.name ? id.email : 'Cloudflare Access';
+        // Only fills gaps — a name from our own records outranks whatever the
+        // identity provider happens to carry.
+        if (!$('userName').textContent || $('userName').textContent === '—') {
+          $('userName').textContent = id.name || id.email || tr('common.signedIn');
+        }
+        if (!$('userRole').textContent || $('userRole').textContent === '—') {
+          $('userRole').textContent = id.email && id.name ? id.email : 'Cloudflare Access';
+        }
+        $('userName').title = id.email || '';
       })
       .catch(function () {
-        $('userName').textContent = tr('common.signedIn');
-        $('userRole').textContent = 'Cloudflare Access';
+        if (!$('userName').textContent || $('userName').textContent === '—') {
+          $('userName').textContent = tr('common.signedIn');
+          $('userRole').textContent = 'Cloudflare Access';
+        }
       });
   }
 
-  // Every element a snapshot-backed page might render into. Used to place an
-  // error where the reader is actually looking, whichever page they are on.
-  function snapshotHosts() {
-    return ['tiles', 'goalGrid', 'rows', 'auditList'].map($).filter(Boolean);
-  }
-
-  function snapshotError(html) {
-    var hosts = snapshotHosts();
-    if (!hosts.length) return;
-    // A table body needs a cell; a div does not.
-    hosts.forEach(function (h) {
-      h.innerHTML = h.tagName === 'TBODY'
-        ? '<tr><td colspan="5"><p class="empty">' + html + '</p></td></tr>'
-        : '<p class="empty">' + html + '</p>';
-    });
-  }
-
-  /* The static file only ever failed one way: missing. A live endpoint has
-     distinct failures that call for distinct answers, and "check the console"
-     is not one of them:
-
-       401  the Access token was refused — signing in again is the fix
-       403  authenticated, but this address is not granted a partner. The
-            body carries the email, which is the one fact needed to fix it.
-       500  no database bound, or Access unconfigured on this deploy */
   function loadSnapshot() {
     return fetch(SNAPSHOT_URL, { cache: 'no-store', credentials: 'same-origin' })
       .then(function (r) {

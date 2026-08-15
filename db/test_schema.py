@@ -389,12 +389,98 @@ def t_deleting_a_milestone_takes_its_translations():
     assert left == 0, f"{left} orphaned translations survived their milestone"
 
 
+def t_three_roles_and_only_three():
+    """Administration, staff, board — and nothing else."""
+    db = fresh()
+    db.execute("INSERT INTO users (id,email,name,created_at) VALUES ('u_r','r@x.co','R',?)", (NOW,))
+    db.commit()
+    for role in ("admin", "staff", "board"):
+        db.execute("INSERT INTO user_roles (user_id,role,granted_at) VALUES ('u_r',?,?)", (role, NOW))
+    db.commit()
+    assert db.execute("SELECT COUNT(*) FROM user_roles WHERE user_id='u_r'").fetchone()[0] == 3
+
+    try:
+        db.execute("INSERT INTO user_roles (user_id,role,granted_at) VALUES ('u_r','superuser',?)", (NOW,))
+        db.commit()
+        raise AssertionError("an invented role was accepted")
+    except sqlite3.IntegrityError:
+        pass
+
+
+def t_a_person_can_hold_two_roles():
+    """A board member who also does staff work is ordinary, not an edge case —
+    which is why roles moved out of users.global_role, a column that could only
+    ever hold one answer."""
+    db = fresh()
+    db.execute("INSERT INTO users (id,email,name,created_at) VALUES ('u_b','b@x.co','B',?)", (NOW,))
+    db.execute("INSERT INTO user_roles (user_id,role,granted_at) VALUES ('u_b','board',?)", (NOW,))
+    db.execute("INSERT INTO user_roles (user_id,role,granted_at) VALUES ('u_b','staff',?)", (NOW,))
+    db.commit()
+    roles = {r[0] for r in db.execute("SELECT role FROM user_roles WHERE user_id='u_b'")}
+    assert roles == {"board", "staff"}, roles
+
+
+def t_removing_a_user_removes_their_roles():
+    db = fresh()
+    db.execute("INSERT INTO users (id,email,name,created_at) VALUES ('u_g','g@x.co','G',?)", (NOW,))
+    db.execute("INSERT INTO user_roles (user_id,role,granted_at) VALUES ('u_g','staff',?)", (NOW,))
+    db.commit()
+    db.execute("DELETE FROM users WHERE id='u_g'")
+    db.commit()
+    left = db.execute("SELECT COUNT(*) FROM user_roles WHERE user_id='u_g'").fetchone()[0]
+    assert left == 0, f"{left} roles outlived their user"
+
+
+def t_a_directory_contact_belongs_to_one_person():
+    """The reason 0005 exists: a colleague sharing the partner must not be
+    able to reach somebody else's address book."""
+    db = fresh()
+    db.execute("INSERT INTO users (id,email,name,created_at) VALUES ('u_a','a@x.co','A',?)", (NOW,))
+    db.execute("INSERT INTO partner_users (partner_id,user_id,role,granted_at) VALUES ('p_chase','u_a','assist',?)", (NOW,))
+    db.commit()
+    db.execute("INSERT INTO directory_contacts (id,user_id,partner_id,name,created_at,updated_at) "
+               "VALUES ('dc_1','u_a','p_chase','Someone',?,?)", (NOW, NOW))
+    db.commit()
+
+    mine = db.execute("SELECT COUNT(*) FROM directory_contacts "
+                      "WHERE user_id='u_chase' AND partner_id='p_chase'").fetchone()[0]
+    assert mine == 0, "another user's contact appeared in this user's directory"
+
+
+def t_a_contact_cannot_be_filed_under_a_partner_you_lack():
+    db = fresh()
+    db.execute("INSERT INTO users (id,email,name,created_at) VALUES ('u_x','x@x.co','X',?)", (NOW,))
+    db.commit()
+    try:
+        db.execute("INSERT INTO directory_contacts (id,user_id,partner_id,name,created_at,updated_at) "
+                   "VALUES ('dc_2','u_x','p_chase','Nope',?,?)", (NOW, NOW))
+        db.commit()
+        raise AssertionError("a contact was filed under a partner its owner cannot access")
+    except sqlite3.IntegrityError:
+        pass
+
+
+def t_resources_default_to_staff_visible():
+    db = fresh()
+    db.execute("INSERT INTO resources (id,partner_id,title,created_at,updated_at) "
+               "VALUES ('rs_1','p_chase','Handbook',?,?)", (NOW, NOW))
+    db.commit()
+    v = db.execute("SELECT visibility FROM resources WHERE id='rs_1'").fetchone()[0]
+    assert v == "staff", f"default visibility is {v}, not staff"
+
+
 if __name__ == "__main__":
     print(f"schema tests — {len(MIGRATIONS)} migrations: "
           f"{', '.join(p.name for p in MIGRATIONS)}\n")
     for name, fn in [
         ("migration runs and creates all tables/views", t_migration_runs),
         ("milestones default to unpublished",           t_milestones_default_to_private),
+        ("three roles, and only three",                 t_three_roles_and_only_three),
+        ("a person can hold two roles",                 t_a_person_can_hold_two_roles),
+        ("removing a user removes their roles",         t_removing_a_user_removes_their_roles),
+        ("a directory contact belongs to one person",   t_a_directory_contact_belongs_to_one_person),
+        ("a contact needs its owner to hold the partner", t_a_contact_cannot_be_filed_under_a_partner_you_lack),
+        ("resources default to staff-visible",          t_resources_default_to_staff_visible),
         ("milestone parent must match partner",         t_milestone_parent_must_match_partner),
         ("milestones hold no language columns",        t_milestones_hold_no_language_columns),
         ("a language is a row, not a migration",        t_language_catalogue_is_open),

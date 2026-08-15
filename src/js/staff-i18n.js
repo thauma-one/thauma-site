@@ -28,6 +28,7 @@
   var STRINGS = {
     en: {
       "common.loading": "Loading…",
+      "set.workingWith": "Working with",
       "common.saving": "Saving…",
       "common.cancel": "Cancel",
       "common.copy": "Copy",
@@ -165,6 +166,7 @@
 
     hr: {
       "common.loading": "Učitavanje…",
+      "set.workingWith": "Radite s",
       "common.saving": "Spremanje…",
       "common.cancel": "Odustani",
       "common.copy": "Kopiraj",
@@ -302,6 +304,7 @@
 
     sr: {
       "common.loading": "Учитавање…",
+      "set.workingWith": "Радите са",
       "common.saving": "Чување…",
       "common.cancel": "Откажи",
       "common.copy": "Копирај",
