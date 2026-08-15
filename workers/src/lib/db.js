@@ -38,6 +38,8 @@ const TENANT_SCOPED = new Set([
   "milestones_for_staff",
   "milestone_translations_for_staff",
   "partner_languages_for_partner",
+  "partner_settings",
+  "api_keys_for_partner",
 ]);
 
 /**

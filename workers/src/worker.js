@@ -35,6 +35,7 @@ import staffData from "./staff-data.js";
 import contactForm from "./contact-form.js";
 import partnerApi from "./partner-api.js";
 import staffMilestones from "./staff-milestones.js";
+import staffSettings from "./staff-settings.js";
 import { createDb, partnerSnapshot, assertPublicSafe } from "./lib/db.js";
 import { requireAccess } from "./lib/access.js";
 import { json } from "./lib/store.js";
@@ -87,6 +88,7 @@ const ROUTES = {
   "/api/staff-data": staffData,
   "/api/staff-snapshot": { fetch: staffSnapshot },
   "/api/staff-milestones": staffMilestones,
+  "/api/staff-settings": staffSettings,
 
   // THE ONLY ROUTE A CREDENTIAL OUTSIDE THAUMA CAN REACH. Key-authenticated,
   // public-safe by construction, versioned in the path so a breaking change

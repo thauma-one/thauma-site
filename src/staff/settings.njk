@@ -1,0 +1,106 @@
+---
+layout: layouts/staff.njk
+staffPage: settings
+staffNum: "07"
+staffTitle: Settings
+staffHeading: How this <b>works</b>
+staffHint: some of these change what the public sees
+---
+{#- Tabs rather than one long page: these groups have different audiences and
+   different blast radii. Account affects only you. Languages and Keys change
+   what a public website serves. Keeping them apart makes that difference
+   visible before you touch anything, instead of after. -#}
+<div class="tabs" role="tablist">
+  <button type="button" class="tab" role="tab" data-tab="account" aria-selected="true">Account</button>
+  <button type="button" class="tab" role="tab" data-tab="languages" aria-selected="false">Languages</button>
+  <button type="button" class="tab" role="tab" data-tab="keys" aria-selected="false">API keys</button>
+</div>
+
+<span class="hint" id="setStatus"></span>
+
+<!-- ------------------------------------------------------------ account -->
+<section class="tab-panel" data-panel="account" role="tabpanel">
+  <div class="set-row">
+    <div class="set-label">
+      <h3>Signed in as</h3>
+      <p id="setEmail">—</p>
+    </div>
+    <div class="set-control">
+      {#- Access owns the identity, so there is no password here to change and
+         pretending otherwise would send people looking for a control that does
+         not exist. -#}
+      <p class="note-inline">Your sign-in is managed by Cloudflare Access.
+        Changing your email address or password is done there, not here.</p>
+    </div>
+  </div>
+
+  <div class="set-row">
+    <div class="set-label">
+      <h3>Your working language</h3>
+      <p>Which language the milestone editor opens in. Affects only you —
+         it does not change what any website shows.</p>
+    </div>
+    <div class="set-control">
+      <select id="setPrefLang" class="lang-pick"></select>
+    </div>
+  </div>
+</section>
+
+<!-- ---------------------------------------------------------- languages -->
+<section class="tab-panel" data-panel="languages" role="tabpanel" hidden>
+  <p class="note">
+    <b>These change what partner websites serve.</b> A language switched on here
+    is offered to visitors; one switched off disappears from the public API.
+    Translations you have already written are kept either way.
+  </p>
+
+  <div class="set-row">
+    <div class="set-label">
+      <h3>Default language</h3>
+      <p>What a visitor sees before choosing, and what a partner site falls back
+         to when something has not been translated.</p>
+    </div>
+    <div class="set-control">
+      <select id="setDefaultLang" class="lang-pick"></select>
+      <p class="note-inline" id="setDefaultNote" hidden>
+        Only an administrator can change this.</p>
+    </div>
+  </div>
+
+  <div class="set-row set-row-block">
+    <div class="set-label">
+      <h3>Published languages</h3>
+      <p>Switch a language on to translate into it and serve it. The default
+         language cannot be switched off.</p>
+    </div>
+    <div class="set-control" id="setLangList"></div>
+  </div>
+</section>
+
+<!-- --------------------------------------------------------------- keys -->
+<section class="tab-panel" data-panel="keys" role="tabpanel" hidden>
+  <p class="note">
+    An API key lets a partner website read your <b>published</b> milestones and
+    goal totals at build time. It can read nothing else — no contacts, no
+    interactions, no drafts.
+  </p>
+
+  <div class="ms-bar">
+    <input type="text" id="setKeyName" class="key-name" maxlength="80"
+           placeholder="What is this key for? e.g. chaseroush.com build">
+    <button type="button" class="solid-btn" id="setKeyAdd">Create key</button>
+  </div>
+
+  {#- Shown once, on creation, and never again — the database stores only a
+     hash. Deliberately loud, because there is no second chance to copy it. -#}
+  <div class="key-reveal" id="setKeyReveal" hidden>
+    <h4>Copy this now — it cannot be shown again</h4>
+    <code id="setKeyValue"></code>
+    <button type="button" class="ghost-btn" id="setKeyCopy">Copy</button>
+    <p>Store it in the partner site's build environment as
+       <code>THAUMA_API_KEY</code>. Never in a repository, and never in
+       client-side JavaScript.</p>
+  </div>
+
+  <div class="key-list" id="setKeyList"></div>
+</section>

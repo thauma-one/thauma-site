@@ -19,7 +19,8 @@
   { slug: "milestones",  url: "/staff/milestones/",  label: "Milestones" },
   { slug: "directory",   url: "/staff/directory/",   label: "Directory" },
   { slug: "resources",   url: "/staff/resources/",   label: "Resources" },
-  { slug: "activity",    url: "/staff/activity/",    label: "Activity" }
+  { slug: "activity",    url: "/staff/activity/",    label: "Activity" },
+  { slug: "settings",    url: "/staff/settings/",    label: "Settings" }
 ] -%}
 <!DOCTYPE html>
 <html lang="en">
@@ -29,7 +30,7 @@
 <meta name="robots" content="noindex, nofollow">
 <title>{{ staffTitle }} · Thauma Staff</title>
 <link rel="stylesheet" href="/css/tokens.css">
-<link rel="stylesheet" href="/css/staff.css?v=10">
+<link rel="stylesheet" href="/css/staff.css?v=11">
 <link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
 </head>
 <body data-staff-page="{{ staffPage }}">
@@ -75,5 +76,6 @@
    separate from staff.js rather than folded in, because the editor is a
    different job from the read-only console and will keep growing. -#}
 {% if staffPage == "milestones" %}<script src="/js/staff-milestones.js?v=8"></script>{% endif %}
+{% if staffPage == "settings" %}<script src="/js/staff-settings.js?v=1"></script>{% endif %}
 </body>
 </html>

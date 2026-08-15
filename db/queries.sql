@@ -282,6 +282,61 @@ ON CONFLICT(partner_id, lang) DO UPDATE SET
 
 
 -- ============================================================================
+-- SETTINGS
+-- ============================================================================
+
+-- name: user_set_preferred_lang
+-- A person choosing which language the editor opens in. Their own row only —
+-- keyed on the email Access supplies, so one staff member cannot set another's
+-- preference by guessing an id.
+UPDATE users SET preferred_lang = :lang WHERE email = :email AND status = 'active';
+
+
+-- name: partner_settings
+-- The partner-level settings screen. default_lang is admin-only to CHANGE;
+-- everyone who can see the partner can see what it is.
+SELECT p.id, p.slug, p.display_name, p.status,
+       COALESCE(p.default_lang, 'en') AS default_lang
+FROM partners p WHERE p.id = :partner_id;
+
+
+-- name: partner_set_default_lang
+-- ADMIN ONLY — the endpoint checks global_role before running this. It changes
+-- what a public website shows before a visitor chooses, which is not a
+-- personal preference and should not be reachable from an account screen.
+UPDATE partners SET default_lang = :lang, updated_at = :now WHERE id = :partner_id;
+
+
+-- name: api_keys_for_partner
+-- Never selects key_hash. The screen needs to know a key exists, what it is
+-- for, and when it was last used — the hash is not useful to a human and a
+-- payload that carries it is a payload that can leak it.
+SELECT id, name, scopes, created_at, last_used_at, revoked_at
+FROM api_keys
+WHERE partner_id = :partner_id
+ORDER BY revoked_at IS NOT NULL, created_at DESC;
+
+
+-- name: api_key_create
+INSERT INTO api_keys (id, partner_id, name, key_hash, scopes, created_by, created_at)
+VALUES (:id, :partner_id, :name, :key_hash, :scopes, :created_by, :now);
+
+
+-- name: api_key_revoke
+-- Revoking sets a timestamp rather than deleting the row: a key that was once
+-- live is part of the record of who could read what, and last_used_at is
+-- evidence worth keeping after the key stops working.
+UPDATE api_keys SET revoked_at = :now
+WHERE id = :id AND partner_id = :partner_id AND revoked_at IS NULL;
+
+
+-- name: audit_write
+-- Append-only by trigger; this is the only way anything is ever added.
+INSERT INTO audit_log (id, at, user_id, partner_id, action, entity, entity_id, detail)
+VALUES (:id, :now, :user_id, :partner_id, :action, :entity, :entity_id, :detail);
+
+
+-- ============================================================================
 -- PARTNER API — everything below this line may be served to a PUBLIC WEBSITE
 -- ============================================================================
 -- Queries above this line answer a signed-in human in the staff console.

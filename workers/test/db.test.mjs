@@ -44,7 +44,7 @@ await check("queries.generated.js is in sync with db/queries.sql", async () => {
     `stale generated file — run: python3 db/generate_queries_module.py`);
 });
 
-await check("all twenty-three named queries are present", async () => {
+await check("all thirty-two named queries are present", async () => {
   const expected = [
     "api_key_lookup", "api_key_touch",
     "audit_recent_for_partner", "contact_timeline", "contacts_stewardship",
@@ -57,6 +57,9 @@ await check("all twenty-three named queries are present", async () => {
     "partner_language_set", "partner_languages_for_partner", "partners_for_user",
     "public_goals_for_partner", "public_languages_for_partner",
     "public_milestone_translations", "public_milestones_for_partner",
+    // settings
+    "api_key_create", "api_key_revoke", "api_keys_for_partner", "audit_write",
+    "partner_set_default_lang", "partner_settings", "user_set_preferred_lang",
   ].sort();
   eq(Object.keys(QUERIES).sort(), expected, "query names");
 });
@@ -68,6 +71,31 @@ await check("NO query names a language column — languages are data now", async
     assert(!/\b\w+_(hr|sr|en|de|es)\b/i.test(sql),
       `${name} names a language-suffixed column — text belongs in milestone_translations`);
   }
+});
+
+await check("the API key list NEVER selects key_hash", async () => {
+  // The screen needs to know a key exists and when it was last used. The hash
+  // is useless to a human and a payload that carries it is one that can leak
+  // it — a stored hash is only safe while it stays stored.
+  assert(!/key_hash/i.test(QUERIES.api_keys_for_partner),
+    "api_keys_for_partner selects key_hash");
+});
+
+await check("revoking a key keeps the row", async () => {
+  // A key that was once live is part of the record of who could read what,
+  // and last_used_at is evidence worth keeping after it stops working.
+  assert(/^\s*UPDATE/i.test(QUERIES.api_key_revoke.trim()),
+    "api_key_revoke deletes rather than revokes");
+  assert(/revoked_at IS NULL/i.test(QUERIES.api_key_revoke),
+    "re-revoking would overwrite the original timestamp");
+});
+
+await check("a person can only set THEIR OWN language preference", async () => {
+  // Keyed on the email Access supplies, so one staff member cannot change
+  // another's preference by guessing an id.
+  const sql = QUERIES.user_set_preferred_lang;
+  assert(/email\s*=\s*:email/i.test(sql), "not scoped to the caller's own email");
+  assert(!/:user_id|:id\b/.test(sql), "takes an id, which the caller could choose");
 });
 
 await check("the stewardship query does NOT select email or phone", async () => {
@@ -134,6 +162,10 @@ await check("every real query converts with its documented params", async () => 
     actual_date: null, status: "upcoming", completion: 0,
     is_public: 0, is_featured: 0, sort_order: 0, id: "m_1",
     milestone_id: "m_1", lang: "en", is_enabled: 1,
+    // settings
+    name: "a key", scopes: "read:public", created_by: null,
+    user_id: "chase@thauma.one", action: "update", entity: "x", entity_id: null,
+    detail: null,
   };
   // The ONE query with no parameters: the language catalogue belongs to the
   // organisation, not to a partner, so there is nothing to scope it by. Named

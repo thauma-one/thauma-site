@@ -8,22 +8,32 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "79201c53e0b5d6ea";
+export const SOURCE_DIGEST = "5d0e95b84e517443";
 
 export const QUERIES = {
+  api_key_create: `INSERT INTO api_keys (id, partner_id, name, key_hash, scopes, created_by, created_at)
+VALUES (:id, :partner_id, :name, :key_hash, :scopes, :created_by, :now);`,
   api_key_lookup: `SELECT k.id AS key_id, k.partner_id, k.scopes, p.slug, p.display_name
 FROM api_keys k
 JOIN partners p ON p.id = k.partner_id
 WHERE k.key_hash = :key_hash
   AND k.revoked_at IS NULL
   AND p.status = 'active';`,
+  api_key_revoke: `UPDATE api_keys SET revoked_at = :now
+WHERE id = :id AND partner_id = :partner_id AND revoked_at IS NULL;`,
   api_key_touch: `UPDATE api_keys SET last_used_at = :now WHERE id = :key_id;`,
+  api_keys_for_partner: `SELECT id, name, scopes, created_at, last_used_at, revoked_at
+FROM api_keys
+WHERE partner_id = :partner_id
+ORDER BY revoked_at IS NOT NULL, created_at DESC;`,
   audit_recent_for_partner: `SELECT a.at, a.action, a.entity, a.entity_id, u.name AS actor
 FROM audit_log a
 LEFT JOIN users u ON u.id = a.user_id
 WHERE a.partner_id = :partner_id
 ORDER BY a.at DESC
 LIMIT :limit;`,
+  audit_write: `INSERT INTO audit_log (id, at, user_id, partner_id, action, entity, entity_id, detail)
+VALUES (:id, :now, :user_id, :partner_id, :action, :entity, :entity_id, :detail);`,
   contact_timeline: `SELECT
   i.id,
   i.type,
@@ -151,6 +161,10 @@ LEFT JOIN partner_languages pl
   ON pl.lang = l.code AND pl.partner_id = :partner_id
 WHERE l.is_active = 1
 ORDER BY sort_order, l.name;`,
+  partner_set_default_lang: `UPDATE partners SET default_lang = :lang, updated_at = :now WHERE id = :partner_id;`,
+  partner_settings: `SELECT p.id, p.slug, p.display_name, p.status,
+       COALESCE(p.default_lang, 'en') AS default_lang
+FROM partners p WHERE p.id = :partner_id;`,
   partners_for_user: `SELECT p.id, p.slug, p.display_name, p.status, pu.role AS access_role,
        u.global_role, COALESCE(u.preferred_lang, 'en') AS preferred_lang
 FROM users u
@@ -188,5 +202,6 @@ ORDER BY t.milestone_id, l.sort_order;`,
 FROM milestones
 WHERE partner_id = :partner_id
   AND is_public = 1
-ORDER BY sort_order ASC, (actual_date IS NULL), actual_date ASC;`
+ORDER BY sort_order ASC, (actual_date IS NULL), actual_date ASC;`,
+  user_set_preferred_lang: `UPDATE users SET preferred_lang = :lang WHERE email = :email AND status = 'active';`
 };
