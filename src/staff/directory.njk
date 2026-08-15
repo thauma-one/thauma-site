@@ -1,0 +1,32 @@
+---
+layout: layouts/staff.njk
+staffPage: directory
+staffNum: "04"
+staffTitle: Directory
+staffLive: true
+staffHeading: Network <b>contacts</b>
+staffHint: people in the Thauma network — not supporters
+---
+<div class="cards" id="contacts"><p class="empty">Loading&hellip;</p></div>
+<p class="row-actions"><button class="ghost-btn" id="addContactBtn" type="button">+ Add contact</button></p>
+
+<form class="form" id="contactForm">
+  <input type="hidden" id="contactIndex" value="">
+  <input type="text" id="contactName" placeholder="Name" required>
+  <input type="text" id="contactRole" placeholder="Role (optional)">
+  <div class="fgroup">
+    <span class="flabel">Emails</span>
+    <div id="contactEmails"></div>
+    <button class="ghost-btn" type="button" id="addEmailRow">+ Add email</button>
+  </div>
+  <div class="fgroup">
+    <span class="flabel">Phone numbers</span>
+    <div id="contactPhones"></div>
+    <button class="ghost-btn" type="button" id="addPhoneRow">+ Add phone</button>
+  </div>
+  <div class="frow">
+    <button class="solid-btn" type="submit">Save contact</button>
+    <button class="ghost-btn" type="button" id="contactCancel">Cancel</button>
+  </div>
+</form>
+<p class="hint" id="saveStatus"></p>

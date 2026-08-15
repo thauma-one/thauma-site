@@ -1,0 +1,23 @@
+---
+layout: layouts/staff.njk
+staffPage: resources
+staffNum: "05"
+staffTitle: Resources
+staffLive: true
+staffHeading: Internal <b>resources</b>
+---
+<div class="cards" id="resourceList"><p class="empty">Loading&hellip;</p></div>
+<p class="row-actions"><button class="ghost-btn" id="addResourceBtn" type="button">+ Add resource</button></p>
+
+<form class="form" id="resourceForm">
+  <input type="hidden" id="resourceIndex" value="">
+  <input type="text" id="resourceTitle" placeholder="Title" required>
+  <textarea id="resourceDescription" placeholder="Description (optional)"></textarea>
+  <input type="text" id="resourceLink" placeholder="Link — https://… (optional)">
+  <input type="text" id="resourcePhoto" placeholder="Photo URL or /img/… path (optional)">
+  <div class="frow">
+    <button class="solid-btn" type="submit">Save resource</button>
+    <button class="ghost-btn" type="button" id="resourceCancel">Cancel</button>
+  </div>
+</form>
+<p class="hint" id="saveStatus"></p>

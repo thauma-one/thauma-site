@@ -239,3 +239,29 @@ tr.tl-row td{padding:0;border-bottom:1px solid var(--line-soft)}
 .flabel{font-size:10px;letter-spacing:var(--ls-label);text-transform:uppercase;
   color:var(--dim);font-weight:var(--w-bold)}
 .hint.err{color:var(--crit)}
+
+/* ============================================================
+   Added when the console was split into a page per section.
+   ============================================================ */
+
+.mark{color:var(--text);text-decoration:none}
+.top nav a[aria-current]{color:var(--text);border-bottom-color:var(--voice-tech)}
+.page-head{margin-bottom:4px}
+.page-head .sec-h{margin-bottom:0}
+
+/* Dashboard quick-links. Each is a number worth acting on, and the whole
+   card is the target — a number you can see but not click is an invitation
+   to go hunting for where it lives. */
+.quick{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1px;
+  background:var(--line);border:1px solid var(--line);margin-top:38px}
+.quick-card{background:var(--panel);padding:22px 24px;display:flex;flex-direction:column;
+  gap:5px;text-decoration:none;transition:background var(--dur-3) var(--ease-main)}
+.quick-card:hover{background:var(--bg2)}
+.quick-card:focus-visible{outline:2px solid var(--voice-tech);outline-offset:-2px}
+.qk{font-size:10px;letter-spacing:var(--ls-label);text-transform:uppercase;
+  font-weight:var(--w-bold);color:var(--voice-tech)}
+.qv{font-family:var(--font-display);font-weight:var(--w-hair);font-size:34px;
+  line-height:1;color:var(--text)}
+.qs{font-size:var(--fs-tiny);color:var(--dim)}
+
+.empty code{font-family:var(--font-mono);font-size:11.5px;color:var(--text)}

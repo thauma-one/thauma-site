@@ -15,7 +15,10 @@ module.exports = function (eleventyConfig) {
   eleventyConfig.addPassthroughCopy({ "src/img": "img" });
   eleventyConfig.addPassthroughCopy({ "src/fonts": "fonts" });
   eleventyConfig.addPassthroughCopy({ "src/admin": "admin" });
-  eleventyConfig.addPassthroughCopy({ "src/staff": "staff" });
+  // /staff/ pages are Eleventy templates now (they share layouts/staff.njk),
+  // so only their DATA is copied verbatim. Their CSS and JS live in src/css
+  // and src/js, which are already passed through above.
+  eleventyConfig.addPassthroughCopy({ "src/staff/data": "staff/data" });
 
   // Swap the language segment of a URL: /en/about/ -> /hr/about/
   // (Pages skipped by the comingSoon flag have no URL; return a safe value.)

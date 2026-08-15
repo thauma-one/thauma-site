@@ -28,6 +28,14 @@
    verifies it rather than trusting the edge (functions live
    outside /staff*, so Access does not necessarily cover them).
 
+   ONE FILE, SIX PAGES. The console is now a page per section
+   (layouts/staff.njk), but they share this script. Each page
+   sets data-staff-page on <body>; boot() reads it and runs only
+   what that page needs — so /staff/directory/ never fetches the
+   snapshot, and /staff/stewardship/ never calls the staff-data
+   endpoint. Splitting the file six ways would have meant six
+   copies of esc(), shortDate() and severity().
+
    No framework, no build step: this runs under Eleventy's
    passthrough copy with zero tooling.
    ============================================================ */
@@ -75,15 +83,30 @@
      PROTOTYPE SECTIONS — snapshot.json
      ===================================================================== */
 
+  // Each block is guarded: a page only has the elements it needs, and a
+  // missing one means "not on this page", not "something broke".
   function renderSnapshot(d) {
-    $('partnerPill').textContent = d.partner.display_name;
-    $('partnerPill').hidden = false;
-    $('asOf').textContent = 'as of ' + shortDate(d.as_of);
-    $('genStamp').textContent = 'Snapshot generated ' + d.generated_at + '.';
+    if ($('partnerPill')) {
+      $('partnerPill').textContent = d.partner.display_name;
+      $('partnerPill').hidden = false;
+    }
+    if ($('genStamp')) $('genStamp').textContent = 'Snapshot generated ' + d.generated_at + '.';
+
+    var s = d.summary, stale = d.needs_attention.stale_count;
+
+    // --- dashboard quick-links ---
+    if ($('qStale')) $('qStale').textContent = stale;
+    // NOTE: qContacts is the DIRECTORY count and comes from staff-data, not
+    // from here. s.contacts_total is SUPPORTERS — a different thing with a
+    // confusingly similar name, which is exactly why the two live on
+    // separate pages.
+    if ($('qGoal')) {
+      var monthly = d.goals.filter(function (g) { return g.kind === 'monthly'; })[0];
+      $('qGoal').textContent = monthly ? monthly.percent + '%' : '—';
+    }
 
     // --- tiles ---
-    var s = d.summary, stale = d.needs_attention.stale_count;
-    $('tiles').innerHTML = [
+    if ($('tiles')) $('tiles').innerHTML = [
       { k: 'Needs attention', v: stale,
         s: 'no personal contact in ' + d.stale_days + '+ days',
         cls: stale > 0 ? 'alert' : 'calm' },
@@ -99,7 +122,7 @@
     }).join('');
 
     // --- goals ---
-    $('goalGrid').innerHTML = d.goals.map(function (g) {
+    if ($('goalGrid')) $('goalGrid').innerHTML = d.goals.map(function (g) {
       var pct = g.percent == null ? 0 : g.percent;
       return '<div class="goal">' +
         '<div class="goal-t"><h3>' + esc(g.label) + '</h3>' +
@@ -113,7 +136,7 @@
     }).join('');
 
     // --- stewardship table ---
-    $('rows').innerHTML = d.contacts.map(function (c) {
+    if ($('rows')) $('rows').innerHTML = d.contacts.map(function (c) {
       var sev = severity(c.days_since_personal);
       var where = [c.city, c.country].filter(Boolean).join(', ');
       return '<tr data-id="' + esc(c.id) + '" aria-expanded="false" tabindex="0">' +
@@ -134,7 +157,7 @@
     }).join('');
 
     // --- activity ---
-    $('auditList').innerHTML = d.audit.map(function (a) {
+    if ($('auditList')) $('auditList').innerHTML = d.audit.map(function (a) {
       return '<div class="audit-r">' +
         '<span class="tnum">' + esc(a.at.replace('T', ' ').replace('Z', '')) + '</span>' +
         '<span><b>' + esc(a.action) + '</b></span>' +
@@ -163,6 +186,7 @@
   }
 
   function wireStewardshipRows() {
+    if (!$('rows')) return;
     function toggle(tr) {
       var drawer = document.querySelector('.tl-row[data-for="' + tr.getAttribute('data-id') + '"]');
       var open = tr.getAttribute('aria-expanded') === 'true';
@@ -184,12 +208,14 @@
 
   function setStatus(text, isError) {
     var el = $('saveStatus');
+    if (!el) return;
     el.textContent = text || '';
     el.className = 'hint' + (isError ? ' err' : '');
   }
 
   function renderCards() {
-    $('contacts').innerHTML = state.contacts.map(function (c, i) {
+    if ($('qContacts')) $('qContacts').textContent = state.contacts.length;
+    if ($('contacts')) $('contacts').innerHTML = state.contacts.map(function (c, i) {
       return '<div class="card">' +
         '<div class="card-actions">' +
           '<button type="button" data-edit-contact="' + i + '">Edit</button>' +
@@ -204,7 +230,7 @@
       '</div>';
     }).join('') || '<p class="empty">No contacts yet.</p>';
 
-    $('resourceList').innerHTML = state.resources.map(function (r, i) {
+    if ($('resourceList')) $('resourceList').innerHTML = state.resources.map(function (r, i) {
       return '<div class="card">' +
         '<div class="card-actions">' +
           '<button type="button" data-edit-resource="' + i + '">Edit</button>' +
@@ -228,11 +254,11 @@
     try {
       var res = await fetch(STAFF_API, { credentials: 'same-origin' });
       if (res.status === 401 || res.status === 500) {
-        $('roleNote').hidden = false;
+        if ($('roleNote')) $('roleNote').hidden = false;
         var why = res.status === 500 ? 'Access is not configured on this deploy.'
                                      : 'The token was refused.';
-        $('contacts').innerHTML = '<p class="empty">' + why + '</p>';
-        $('resourceList').innerHTML = '<p class="empty">' + why + '</p>';
+        if ($('contacts')) $('contacts').innerHTML = '<p class="empty">' + why + '</p>';
+        if ($('resourceList')) $('resourceList').innerHTML = '<p class="empty">' + why + '</p>';
         return;
       }
       var data = await res.json();
@@ -241,7 +267,9 @@
       renderCards();
       showUpdated(data);
     } catch (e) {
-      $('contacts').innerHTML = '<p class="empty">Could not load — ' + esc(e.message) + '</p>';
+      if ($('contacts')) {
+        $('contacts').innerHTML = '<p class="empty">Could not load — ' + esc(e.message) + '</p>';
+      }
     }
   }
 
@@ -289,16 +317,15 @@
     container.appendChild(row);
   }
 
-  function wireForms() {
-    var cForm = $('contactForm'), rForm = $('resourceForm');
+  function wireContactForm() {
+    var cForm = $('contactForm');
+    if (!cForm) return;
     var emails = $('contactEmails'), phones = $('contactPhones');
 
-    $('addEmailRow').addEventListener('click', function () {
-      addRow(emails, 'email', 'c-email', ''); });
-    $('addPhoneRow').addEventListener('click', function () {
-      addRow(phones, 'tel', 'c-phone', ''); });
+    $('addEmailRow').addEventListener('click', function () { addRow(emails, 'email', 'c-email', ''); });
+    $('addPhoneRow').addEventListener('click', function () { addRow(phones, 'tel', 'c-phone', ''); });
 
-    function openContact(index) {
+    function open(index) {
       var c = (index === '' || index === undefined) ? {} : state.contacts[index];
       $('contactIndex').value = index === undefined ? '' : index;
       $('contactName').value = c.name || '';
@@ -309,8 +336,9 @@
       (c.phones || []).forEach(function (v) { addRow(phones, 'tel', 'c-phone', v); });
       cForm.classList.add('open');
     }
-    $('addContactBtn').addEventListener('click', function () { openContact(''); });
+    $('addContactBtn').addEventListener('click', function () { open(''); });
     $('contactCancel').addEventListener('click', function () { cForm.classList.remove('open'); });
+
     cForm.addEventListener('submit', function (e) {
       e.preventDefault();
       var idx = $('contactIndex').value;
@@ -328,7 +356,20 @@
       saveData();
     });
 
-    function openResource(index) {
+    // event delegation — cards re-render on every save
+    $('contacts').addEventListener('click', function (e) {
+      if (e.target.dataset.editContact !== undefined) open(e.target.dataset.editContact);
+      if (e.target.dataset.deleteContact !== undefined) {
+        state.contacts.splice(Number(e.target.dataset.deleteContact), 1); saveData();
+      }
+    });
+  }
+
+  function wireResourceForm() {
+    var rForm = $('resourceForm');
+    if (!rForm) return;
+
+    function open(index) {
       var r = (index === '' || index === undefined) ? {} : state.resources[index];
       $('resourceIndex').value = index === undefined ? '' : index;
       $('resourceTitle').value = r.title || '';
@@ -337,8 +378,9 @@
       $('resourcePhoto').value = r.photo || '';
       rForm.classList.add('open');
     }
-    $('addResourceBtn').addEventListener('click', function () { openResource(''); });
+    $('addResourceBtn').addEventListener('click', function () { open(''); });
     $('resourceCancel').addEventListener('click', function () { rForm.classList.remove('open'); });
+
     rForm.addEventListener('submit', function (e) {
       e.preventDefault();
       var idx = $('resourceIndex').value;
@@ -353,15 +395,8 @@
       saveData();
     });
 
-    // event delegation — cards re-render on every save
-    $('contacts').addEventListener('click', function (e) {
-      if (e.target.dataset.editContact !== undefined) openContact(e.target.dataset.editContact);
-      if (e.target.dataset.deleteContact !== undefined) {
-        state.contacts.splice(Number(e.target.dataset.deleteContact), 1); saveData();
-      }
-    });
     $('resourceList').addEventListener('click', function (e) {
-      if (e.target.dataset.editResource !== undefined) openResource(e.target.dataset.editResource);
+      if (e.target.dataset.editResource !== undefined) open(e.target.dataset.editResource);
       if (e.target.dataset.deleteResource !== undefined) {
         state.resources.splice(Number(e.target.dataset.deleteResource), 1); saveData();
       }
@@ -373,7 +408,7 @@
      ===================================================================== */
 
   // Access exposes the signed-in user at this endpoint on any gated hostname.
-  // Purely cosmetic: authorisation already happened at the edge and is
+  // Cosmetic only: authorisation already happened at the edge and is
   // re-verified server-side by the function.
   function loadIdentity() {
     return fetch('/cdn-cgi/access/get-identity', { credentials: 'same-origin' })
@@ -384,7 +419,6 @@
         $('userRole').textContent = id.email && id.name ? id.email : 'Cloudflare Access';
       })
       .catch(function () {
-        // Not fatal — the data calls are what actually matter.
         $('userName').textContent = 'Signed in';
         $('userRole').textContent = 'Cloudflare Access';
       });
@@ -395,14 +429,31 @@
       .then(function (r) { if (!r.ok) throw new Error('snapshot ' + r.status); return r.json(); })
       .then(function (d) { renderSnapshot(d); wireStewardshipRows(); })
       .catch(function (err) {
-        $('tiles').innerHTML = '<div class="tile"><span class="k">Snapshot</span>' +
-          '<span class="s">Could not load ' + esc(SNAPSHOT_URL) + ' — ' + esc(err.message) +
-          '. Run <code>python3 db/build_snapshot.py</code>.</span></div>';
+        var host = $('tiles') || $('goalGrid') || $('rows') || $('auditList');
+        if (host) {
+          host.innerHTML = '<p class="empty">Could not load ' + esc(SNAPSHOT_URL) + ' — ' +
+            esc(err.message) + '. Run <code>python3 db/build_snapshot.py</code>.</p>';
+        }
       });
   }
 
-  wireForms();
+  /* =====================================================================
+     BOOT — each page loads only what it needs
+     ===================================================================== */
+
+  // Pages that render snapshot-backed sections. /staff/directory/ and
+  // /staff/resources/ are live-only, so they never fetch the snapshot; the
+  // dashboard needs both.
+  var NEEDS_SNAPSHOT = ['index', 'support', 'stewardship', 'activity'];
+  var NEEDS_STAFF_API = ['index', 'directory', 'resources'];
+
+  var page = document.body.getAttribute('data-staff-page') || 'index';
+
   loadIdentity();
-  loadSnapshot();
-  loadStaffData();
+  if (NEEDS_SNAPSHOT.indexOf(page) !== -1) loadSnapshot();
+  if (NEEDS_STAFF_API.indexOf(page) !== -1) {
+    wireContactForm();
+    wireResourceForm();
+    loadStaffData();
+  }
 })();
