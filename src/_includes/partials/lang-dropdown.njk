@@ -1,0 +1,39 @@
+{#- ============================================================
+    lang-dropdown.njk — the language picker, in ONE place
+
+    Lived inside layouts/base.njk until 2026-08-15, which meant the
+    landing page could not use it without importing a whole layout.
+    So the landing page kept its own bare .lang-toggle buttons — and
+    when 7b724c3 rescoped the CSS to `.lang-dropdown-list .lang-toggle`
+    to unify the picker, those buttons silently lost every style and
+    rendered as default browser chrome. Nobody saw it for weeks
+    because production was still serving an older build.
+
+    One definition, imported by both, is what stops that recurring.
+
+    The switch itself is still main.js's .lang-toggle click handler:
+    langSwap + cookie + navigate. This only draws the open/closed list
+    around it, and main.js binds any .lang-dropdown on the page, so a
+    new consumer needs no JavaScript.
+
+    modifier — "up" makes the list unfurl UPWARD. The landing page
+    puts the picker at the bottom of a viewport that is locked to
+    100% height with overflow:hidden, so a downward list would open
+    off-screen and be clipped away entirely.
+    ============================================================ -#}
+{% macro langDropdown(modifier="") %}
+<div class="lang-dropdown{% if modifier %} {{ modifier }}{% endif %}">
+  <button type="button" class="lang-dropdown-trigger" aria-haspopup="listbox" aria-expanded="false">{{ lang | upper }}</button>
+  <ul class="lang-dropdown-list" role="listbox">
+    {%- for l in site.languages %}
+    <li role="option" aria-selected="{{ 'true' if l == lang else 'false' }}">
+      {%- if l == lang %}
+      <span class="lang-dropdown-current">{{ l | upper }}</span>
+      {%- else %}
+      <button type="button" class="lang-toggle" data-lang="{{ l }}" data-target="{{ page.url | langSwap(l) }}" aria-label="Switch language to {{ l }}">{{ l | upper }}</button>
+      {%- endif %}
+    </li>
+    {%- endfor %}
+  </ul>
+</div>
+{% endmacro %}

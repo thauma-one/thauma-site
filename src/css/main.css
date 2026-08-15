@@ -232,6 +232,35 @@ nav{position:fixed;inset:0 0 auto;z-index:20;backdrop-filter:blur(12px);
 .lang-dropdown-current{display:block;padding:8px 10px;color:var(--foam);font-family:'Inter',sans-serif;
   font-size:12px;letter-spacing:.1em;font-weight:600}
 
+/* Upward variant — the landing page puts the picker at the bottom of a
+   viewport locked to 100% height with overflow:hidden, so the default
+   downward list would unfurl off-screen and be clipped away entirely.
+   transform-origin flips too, or it would still grow from its top edge and
+   read as sliding up into place rather than unfurling from the trigger.
+   Centred rather than right-aligned, because there the trigger is centred
+   in the viewport instead of sitting at the end of a nav bar. */
+.lang-dropdown.up .lang-dropdown-list{top:auto;bottom:calc(100% + 8px);
+  right:50%;transform:translateX(50%) scaleY(0);transform-origin:bottom}
+.lang-dropdown.up.open .lang-dropdown-list{transform:translateX(50%) scaleY(1)}
+/* Chevron up when closed, down when open — the mirror of the downward
+   picker, so the arrow always points where the list is about to go. */
+.lang-dropdown.up .lang-dropdown-trigger::after{transform:rotate(-135deg);margin-top:3px}
+.lang-dropdown.up.open .lang-dropdown-trigger::after{transform:rotate(45deg);margin-top:-3px}
+
+/* Standalone language buttons. The 404 page switches language IN PLACE
+   (its own setLang, no navigation) and so cannot use the dropdown, which
+   navigates. Its buttons were styled by a bare `.lang-toggle` rule until
+   7b724c3 rescoped that to `.lang-dropdown-list .lang-toggle` to unify the
+   picker — which orphaned them, leaving default browser chrome on the page.
+   Scoped to .nav-actions rather than restoring the bare selector, so it can
+   never bleed back into the dropdown's own buttons. */
+.nav-actions .lang-toggle{background:none;border:1px solid rgba(255,255,255,.18);
+  color:var(--dim);font-family:'Inter',sans-serif;font-size:11px;letter-spacing:.15em;
+  font-weight:600;padding:7px 12px;border-radius:2px;cursor:pointer;transition:.2s}
+@media(hover:hover){
+  .nav-actions .lang-toggle:hover{border-color:var(--blue);color:var(--blue)}
+}
+
 /* will-change:transform gives the button its own compositor layer — it
    sits inside the backdrop-blurred nav, and without a layer of its own the
    hover lift/sweep dragged the nav's blur into a re-rasterize every frame,

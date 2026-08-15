@@ -3,31 +3,10 @@
 {% set fullTitle = "Thauma | " ~ pageName %}
 {% set shareImage = site.url ~ "/img/og-default.png" %}
 
-{#- Shared language dropdown (2026-07-17, unified 2026-07-19) — ONE
-   component, rendered ONCE in nav-actions, next to Give, visible at every
-   width (previously had a second copy inside the mobile hamburger panel;
-   now that it's a single compact trigger rather than one button per
-   language, it fits in the primary bar on mobile too, same as desktop —
-   no need for two copies + a breakpoint switch between them). The actual
-   language-switch itself (langSwap + cookie + navigate) is untouched —
-   still main.js's existing .lang-toggle click handler; this macro only
-   adds the open/closed list UI around it. #}
-{% macro langDropdown() %}
-<div class="lang-dropdown">
-  <button type="button" class="lang-dropdown-trigger" aria-haspopup="listbox" aria-expanded="false">{{ lang | upper }}</button>
-  <ul class="lang-dropdown-list" role="listbox">
-    {%- for l in site.languages %}
-    <li role="option" aria-selected="{{ 'true' if l == lang else 'false' }}">
-      {%- if l == lang %}
-      <span class="lang-dropdown-current">{{ l | upper }}</span>
-      {%- else %}
-      <button type="button" class="lang-toggle" data-lang="{{ l }}" data-target="{{ page.url | langSwap(l) }}" aria-label="Switch language to {{ l }}">{{ l | upper }}</button>
-      {%- endif %}
-    </li>
-    {%- endfor %}
-  </ul>
-</div>
-{% endmacro %}
+{#- The language dropdown now lives in partials/lang-dropdown.njk so the
+   landing page can use the same component without importing a layout.
+   Rendered ONCE here, in nav-actions next to Give, at every width. #}
+{% from "partials/lang-dropdown.njk" import langDropdown with context %}
 
 {#- Mobile page-location wheel (2026-07-20, simplified to a direct
    previous->current swap 2026-07-20) — top-left, just under the nav.
@@ -64,7 +43,7 @@
 <meta name="twitter:title" content="{{ fullTitle }}">
 <meta name="twitter:description" content="{{ t.home.sub }}">
 <meta name="twitter:image" content="{{ shareImage }}">
-<link rel="stylesheet" href="/css/main.css?v=43">
+<link rel="stylesheet" href="/css/main.css?v=44">
 </head>
 <body>
 

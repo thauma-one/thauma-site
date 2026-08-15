@@ -6,6 +6,7 @@ pagination:
 isComingSoonPage: true
 ---
 {% set t = i18n[lang] %}
+{% from "partials/lang-dropdown.njk" import langDropdown with context %}
 <!DOCTYPE html>
 <html lang="{{ lang }}">
 <head>
@@ -17,7 +18,7 @@ isComingSoonPage: true
 <link rel="preload" as="font" type="font/woff2" href="/fonts/Sora-latin-v2.woff2" crossorigin>
 <link rel="preload" as="font" type="font/woff2" href="/fonts/Inter-latin-v2.woff2" crossorigin>
 <link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/css/main.css?v=43">
+<link rel="stylesheet" href="/css/main.css?v=44">
 <style>
   /* Landing-only: lock to one viewport, no scroll */
   html, body { height: 100%; overflow: hidden; }
@@ -79,9 +80,11 @@ isComingSoonPage: true
     <p class="hero-sub" style="margin-left:auto;margin-right:auto">{{ t.coming.text }}</p>
   </div>
   <div class="workline"><i></i></div>
+  {#- The same picker the rest of the site uses. "up" because this sits at
+     the bottom of a viewport locked to 100% height with overflow:hidden —
+     a downward list would open off-screen and be clipped away entirely. #}
   <div class="btn-row center">
-    {%- for l in site.languages %}{% if l != lang %}
-    <button class="lang-toggle" data-lang="{{ l }}" data-target="/{{ l }}/">{{ l | upper }}</button>{% endif %}{% endfor %}
+    {{ langDropdown("up") }}
   </div>
 </main>
 <script src="/js/main.js?v=30"></script>
