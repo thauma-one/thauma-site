@@ -62,11 +62,9 @@ staffHint: some of these change what the public sees
     </div>
   </div>
 
-  <p class="note">
-    <b>Everything below changes what partner websites serve.</b> A language
+  <p class="note" data-i18n-html="set.publicWarn"><b>Everything below changes what partner websites serve.</b> A language
     switched on here is offered to visitors; one switched off disappears from
-    the public API. Translations you have already written are kept either way.
-  </p>
+    the public API. Translations you have already written are kept either way.</p>
 
   <div class="set-row set-row-block">
     <div class="set-label">
@@ -79,14 +77,12 @@ staffHint: some of these change what the public sees
 
 <!-- ================================================================ KEYS -->
 <section class="tab-panel" data-panel="keys" role="tabpanel" hidden>
-  <p class="note">
-    An API key lets a partner website read your <b>published</b> milestones and
+  <p class="note" data-i18n-html="set.keysNote">An API key lets a partner website read your <b>published</b> milestones and
     goal totals at build time. It can read nothing else — no contacts, no
-    interactions, no drafts.
-  </p>
+    interactions, no drafts.</p>
 
   <div class="ms-bar key-create">
-    <input type="text" id="setKeyName" class="key-name" maxlength="80"
+    <input type="text" id="setKeyName" class="key-name" maxlength="80" data-i18n-attr="placeholder:set.keyPlaceholder"
            placeholder="What is this key for? e.g. chaseroush.com build">
     <button type="button" class="solid-btn" id="setKeyAdd"
             data-i18n="set.createKey">Create key</button>
@@ -95,10 +91,10 @@ staffHint: some of these change what the public sees
   {#- Shown once, on creation, and never again — the database stores only a
      hash. Deliberately loud, because there is no second chance to copy it. -#}
   <div class="key-reveal" id="setKeyReveal" hidden>
-    <h4>Copy this now — it cannot be shown again</h4>
+    <h4 data-i18n="set.keyRevealTitle">Copy this now — it cannot be shown again</h4>
     <code id="setKeyValue"></code>
-    <button type="button" class="ghost-btn" id="setKeyCopy">Copy</button>
-    <p>Store it in the partner site's build environment as
+    <button type="button" class="ghost-btn" id="setKeyCopy" data-i18n="common.copy">Copy</button>
+    <p data-i18n-html="set.keyRevealNote">Store it in the partner site's build environment as
        <code>THAUMA_API_KEY</code>. Never in a repository, and never in
        client-side JavaScript.</p>
   </div>

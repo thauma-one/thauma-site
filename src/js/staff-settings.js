@@ -38,6 +38,8 @@
      the language arrives IN that language. Passing an already-built English
      string here was the bug: the interface translated and its notifications
      did not. */
+  function tr(key) { return window.StaffI18n ? window.StaffI18n.t(key) : key; }
+
   function toastKey(key, kind) {
     setStatus(window.StaffI18n ? window.StaffI18n.t(key) : key, kind);
   }
@@ -100,7 +102,7 @@
             (l.is_enabled ? 'On' : 'Off') + '</span><span class="switch-knob"></span></span>' +
         '</button>' +
         '<span class="switch-label">' + esc(langLabel(l)) +
-          (isDefault ? '<span class="switch-note">the default language — cannot be switched off</span>'
+          (isDefault ? '<span class="switch-note">' + tr('set.defaultLangNote') + '</span>'
                      : '') +
         '</span></div>';
     }).join('');
@@ -115,7 +117,7 @@
   function renderKeys() {
     var keys = state.api_keys || [];
     if (!keys.length) {
-      $('setKeyList').innerHTML = '<p class="empty">No API keys yet.</p>';
+      $('setKeyList').innerHTML = '<p class="empty">' + tr('set.keysEmpty') + '</p>';
       return;
     }
     $('setKeyList').innerHTML = keys.map(function (k) {
@@ -126,7 +128,7 @@
             ? 'last used ' + esc(k.last_used_at.slice(0, 10))
             : 'never used') + '</span></div>' +
         (k.revoked
-          ? '<span class="badge proto">revoked</span>'
+          ? '<span class="badge proto">' + tr('set.revoked') + '</span>'
           : '<button type="button" class="del" data-revoke="' + esc(k.id) + '">Revoke</button>') +
       '</div>';
     }).join('');
@@ -153,26 +155,24 @@
     try {
       res = await fetch(API, { credentials: 'same-origin', cache: 'no-store' });
     } catch (e) {
-      problem('Cannot reach the server. Check your connection — ' + e.message, load);
+      problem(tr('err.unreachable') + ' ' + e.message, load);
       return;
     }
 
     try {
       body = await res.json();
     } catch (e) {
-      problem('The server sent a reply this page could not read (' +
-              res.status + ').', load);
+      problem(tr('err.unreadable') + ' (' + res.status + ')', load);
       return;
     }
 
     if (!res.ok) {
       problem(
         res.status === 401
-          ? 'Your session has expired. Reload the page to sign in again.'
+          ? tr('err.expired')
         : res.status === 403
-          ? 'Signed in as ' + (body.email || 'unknown') +
-            ', but that address has no partner access yet.'
-          : 'The server refused this request (' + res.status + ')' +
+          ? tr('err.noPartner') + ' (' + (body.email || 'unknown') + ')'
+          : tr('err.refused') + ' (' + res.status + ')' +
             (body.error ? ' — ' + body.error : '') + '.',
         res.status === 401 ? null : load);
       return;
@@ -192,7 +192,7 @@
     } catch (e) {
       // NOT a network problem, and saying so would send you looking in the
       // wrong place entirely.
-      problem('This page failed to display: ' + e.message, null);
+      problem(tr('err.renderFailed') + ': ' + e.message, null);
       console.error('settings render failed:', e);
     }
   }
@@ -267,7 +267,7 @@
 
   $('setKeyAdd').addEventListener('click', async function () {
     var name = $('setKeyName').value.trim();
-    if (!name) { setStatus('Give the key a name first', 'err'); $('setKeyName').focus(); return; }
+    if (!name) { toastKey('err.nameKeyFirst', 'err'); $('setKeyName').focus(); return; }
 
     $('setKeyAdd').disabled = true;
     try {

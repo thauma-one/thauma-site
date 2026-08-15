@@ -8,8 +8,6 @@ staffHint: visible to the partner, not just to admins
 ---
 <div class="audit" id="auditList"></div>
 
-<p class="note">
-  Whoever holds the database credentials can read the database — no schema prevents that.
+<p class="note" data-i18n-html="act.note">Whoever holds the database credentials can read the database — no schema prevents that.
   What a schema <b>can</b> do is make access deliberate, logged, and visible to the partner
-  whose data it is. <code>audit_log</code> is append-only, enforced by triggers.
-</p>
+  whose data it is. <code>audit_log</code> is append-only, enforced by triggers.</p>

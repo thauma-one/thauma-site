@@ -5,18 +5,18 @@ staffNum: "05"
 staffTitle: Resources
 staffHeading: Internal <b>resources</b>
 ---
-<div class="cards" id="resourceList"><p class="empty">Loading&hellip;</p></div>
-<p class="row-actions"><button class="ghost-btn" id="addResourceBtn" type="button">+ Add resource</button></p>
+<div class="cards" id="resourceList"><p class="empty" data-i18n="common.loading">Loading&hellip;</p></div>
+<p class="row-actions"><button class="ghost-btn" id="addResourceBtn" type="button" data-i18n="res.add">+ Add resource</button></p>
 
 <form class="form" id="resourceForm">
   <input type="hidden" id="resourceIndex" value="">
-  <input type="text" id="resourceTitle" placeholder="Title" required>
-  <textarea id="resourceDescription" placeholder="Description (optional)"></textarea>
-  <input type="text" id="resourceLink" placeholder="Link — https://… (optional)">
-  <input type="text" id="resourcePhoto" placeholder="Photo URL or /img/… path (optional)">
+  <input type="text" id="resourceTitle" placeholder="Title" data-i18n-attr="placeholder:res.title" required>
+  <textarea id="resourceDescription" placeholder="Description (optional)" data-i18n-attr="placeholder:res.description"></textarea>
+  <input type="text" id="resourceLink" placeholder="Link — https://… (optional)" data-i18n-attr="placeholder:res.link">
+  <input type="text" id="resourcePhoto" placeholder="Photo URL or /img/… path (optional)" data-i18n-attr="placeholder:res.photo">
   <div class="frow">
-    <button class="solid-btn" type="submit">Save resource</button>
-    <button class="ghost-btn" type="button" id="resourceCancel">Cancel</button>
+    <button class="solid-btn" type="submit" data-i18n="res.save">Save resource</button>
+    <button class="ghost-btn" type="button" id="resourceCancel" data-i18n="common.cancel">Cancel</button>
   </div>
 </form>
 <p class="hint" id="saveStatus"></p>

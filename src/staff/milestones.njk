@@ -14,14 +14,12 @@ staffHint: what partner sites show — published entries are visible to anyone
 
 {#- Said plainly and near the toggles, because this is the one screen in the
    console where a mistake is visible to strangers rather than to staff. -#}
-<p class="note ms-note">
-  <b>Published entries leave this building.</b> Anything switched to Published is
+<p class="note ms-note" data-i18n-html="ms.publishedLeave"><b>Published entries leave this building.</b> Anything switched to Published is
   served to partner websites through the public API and can be read by anyone.
-  New milestones start unpublished.
-</p>
+  New milestones start unpublished.</p>
 
 <div class="ms-list" id="msList">
-  <p class="empty">Loading…</p>
+  <p class="empty" data-i18n="common.loading">Loading…</p>
 </div>
 
 {#- Where the editor panel lives when it is not attached under a row.
@@ -52,11 +50,11 @@ staffHint: what partner sites show — published entries are visible to anyone
         <select id="msLangA" class="lang-pick" aria-label="Language, left column"></select>
         <span class="ms-col-tag" id="msTagA"></span>
       </div>
-      <label class="fld"><span>Title</span>
+      <label class="fld"><span data-i18n="ms.title">Title</span>
         <input type="text" data-tx="title" data-col="a" maxlength="200"></label>
-      <label class="fld"><span>Description</span>
+      <label class="fld"><span data-i18n="ms.description">Description</span>
         <textarea data-tx="description" data-col="a" rows="5"></textarea></label>
-      <label class="fld"><span>When <em>free text</em></span>
+      <label class="fld"><span data-i18n="ms.when">When</span> <em data-i18n="ms.freeText">free text</em>
         <input type="text" data-tx="target_label" data-col="a" maxlength="120"
                placeholder="End of September 2027"></label>
     </div>
@@ -66,11 +64,11 @@ staffHint: what partner sites show — published entries are visible to anyone
         <select id="msLangB" class="lang-pick" aria-label="Language, right column"></select>
         <span class="ms-col-tag" id="msTagB"></span>
       </div>
-      <label class="fld"><span>Title</span>
+      <label class="fld"><span data-i18n="ms.title">Title</span>
         <input type="text" data-tx="title" data-col="b" maxlength="200"></label>
-      <label class="fld"><span>Description</span>
+      <label class="fld"><span data-i18n="ms.description">Description</span>
         <textarea data-tx="description" data-col="b" rows="5"></textarea></label>
-      <label class="fld"><span>When <em>free text</em></span>
+      <label class="fld"><span data-i18n="ms.when">When</span> <em data-i18n="ms.freeText">free text</em>
         <input type="text" data-tx="target_label" data-col="b" maxlength="120"></label>
     </div>
   </div>
@@ -78,25 +76,25 @@ staffHint: what partner sites show — published entries are visible to anyone
   {#- Language-neutral: true regardless of which language you are reading. -#}
   <div class="ms-grid ms-neutral">
     <label class="fld">
-      <span>Sort date <em>for ordering only</em></span>
+      <span data-i18n="ms.sortDate">Sort date</span> <em data-i18n="ms.orderingOnly">for ordering only</em>
       <input type="date" id="msDate">
     </label>
     <label class="fld">
-      <span>Status</span>
+      <span data-i18n="ms.status">Status</span>
       <select id="msStatusSel">
-        <option value="upcoming">Upcoming</option>
-        <option value="in_progress">In progress</option>
-        <option value="complete">Complete</option>
-        <option value="cancelled">Cancelled</option>
+        <option value="upcoming" data-i18n="ms.upcoming">Upcoming</option>
+        <option value="in_progress" data-i18n="ms.inProgress">In progress</option>
+        <option value="complete" data-i18n="ms.complete">Complete</option>
+        <option value="cancelled" data-i18n="ms.cancelled">Cancelled</option>
       </select>
     </label>
     <label class="fld">
-      <span>Completion <em>percent</em></span>
+      <span data-i18n="ms.completion">Completion</span> <em data-i18n="ms.percent">percent</em>
       <input type="number" id="msCompletion" min="0" max="100" step="1" value="0">
     </label>
     <label class="fld">
-      <span>Part of <em>optional</em></span>
-      <select id="msParent"><option value="">— top level —</option></select>
+      <span data-i18n="ms.partOf">Part of</span> <em data-i18n="ms.optional">optional</em>
+      <select id="msParent"><option value="" data-i18n="ms.topLevel">— top level —</option></select>
     </label>
   </div>
 
@@ -121,7 +119,7 @@ staffHint: what partner sites show — published entries are visible to anyone
     {#- "Apply" not "Save": this closes the form and updates the list, but
        nothing reaches the database until Save changes is pressed. Calling
        both of them Save is how people end up believing work is safe. -#}
-    <span class="hint" id="msFormStatus">Applies to the list — save to publish</span>
+    <span class="hint" id="msFormStatus" data-i18n="ms.applyNote">Applies to the list — save to publish</span>
   </div>
 </form>
 

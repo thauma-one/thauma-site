@@ -57,6 +57,8 @@
      is replaced by its own result a moment later, so it is a flash of text
      that carries nothing — the disabled control already says work is in
      flight. Only outcomes get announced. */
+  function tr(key) { return window.StaffI18n ? window.StaffI18n.t(key) : key; }
+
   function toastKey(key, kind) {
     setStatus(null, window.StaffI18n ? window.StaffI18n.t(key) : key, kind);
   }
@@ -142,7 +144,7 @@
     var tx = m.text || {};
     if (state.colA && tx[state.colA] && tx[state.colA].title) return tx[state.colA].title;
     for (var code in tx) if (tx[code].title) return tx[code].title + ' (' + langName(code) + ')';
-    return '(untitled)';
+    return tr('ms.untitled');
   }
 
   /* Which PUBLISHED languages this milestone is still missing. Only published
@@ -153,7 +155,7 @@
       .filter(function (l) { return l.is_enabled && !(tx[l.code] && tx[l.code].title); })
       .map(function (l) { return l.native_name || l.name; });
     if (!missing.length) return '';
-    return '<span class="ms-warn">missing ' + esc(missing.join(', ')) + '</span>';
+    return '<span class="ms-warn">' + tr('ms.missing') + ' ' + esc(missing.join(', ')) + '</span>';
   }
 
   /* Same fallback as the title: show the left column's wording, or any. */
@@ -221,9 +223,9 @@
         '<div class="ms-main">' +
           '<div class="ms-t">' +
             '<span class="ms-title">' + esc(titleOf(m)) + '</span>' +
-            (m.is_featured ? '<span class="badge live">featured</span>' : '') +
-            (m.is_public ? '' : '<span class="badge proto">not published</span>') +
-            (isDirty(m.localId || m.id) ? '<span class="badge unsaved">unsaved</span>' : '') +
+            (m.is_featured ? '<span class="badge live">' + tr('ms.featuredBadge') + '</span>' : '') +
+            (m.is_public ? '' : '<span class="badge proto">' + tr('ms.draft') + '</span>') +
+            (isDirty(m.localId || m.id) ? '<span class="badge unsaved">' + tr('ms.unsaved') + '</span>' : '') +
           '</div>' +
           '<div class="ms-meta">' +
             '<span>' + esc(STATUS_LABEL[m.status] || m.status) + '</span>' +
@@ -264,8 +266,7 @@
       res = await fetch(API, { credentials: 'same-origin', cache: 'no-store' });
     } catch (e) {
       if (window.StaffProblem) {
-        window.StaffProblem('Cannot reach the server. Check your connection — ' +
-                            e.message, load);
+        window.StaffProblem(tr('err.unreachable') + ' ' + e.message, load);
       }
       return;
     }
@@ -273,8 +274,7 @@
     try { body = await res.json(); }
     catch (e) {
       if (window.StaffProblem) {
-        window.StaffProblem('The server sent a reply this page could not read (' +
-                            res.status + ').', load);
+        window.StaffProblem(tr('err.unreadable') + ' (' + res.status + ')', load);
       }
       return;
     }
@@ -283,11 +283,11 @@
       if (window.StaffProblem) {
         window.StaffProblem(
           res.status === 401
-            ? 'Your session has expired. Reload the page to sign in again.'
+            ? tr('err.expired')
           : res.status === 403
             ? 'Signed in as ' + (body.email || 'unknown') +
               ', but that address has no partner access yet.'
-            : 'The server refused this request (' + res.status + ')' +
+            : tr('err.refused') + ' (' + res.status + ')' +
               (body.error ? ' — ' + body.error : '') + '.',
           res.status === 401 ? null : load);
       }
@@ -323,7 +323,7 @@
       updateSaveBar();
     } catch (e) {
       if (window.StaffProblem) {
-        window.StaffProblem('This page failed to display: ' + e.message, null);
+        window.StaffProblem(tr('err.renderFailed') + ': ' + e.message, null);
       }
       console.error('milestones render failed:', e);
     }
@@ -648,8 +648,7 @@
     closeForm();
     render();
     updateSaveBar();
-    setStatus($('msStatus'), isNew ? 'Milestone added — not saved yet'
-                                   : 'Updated — not saved yet');
+    toastKey(isNew ? 'toast.added' : 'toast.updated', 'ok');
   }
 
   async function remove(id) {

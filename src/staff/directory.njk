@@ -6,26 +6,26 @@ staffTitle: Directory
 staffHeading: Network <b>contacts</b>
 staffHint: people in the Thauma network — not supporters
 ---
-<div class="cards" id="contacts"><p class="empty">Loading&hellip;</p></div>
-<p class="row-actions"><button class="ghost-btn" id="addContactBtn" type="button">+ Add contact</button></p>
+<div class="cards" id="contacts"><p class="empty" data-i18n="common.loading">Loading&hellip;</p></div>
+<p class="row-actions"><button class="ghost-btn" id="addContactBtn" type="button" data-i18n="dir.add">+ Add contact</button></p>
 
 <form class="form" id="contactForm">
   <input type="hidden" id="contactIndex" value="">
-  <input type="text" id="contactName" placeholder="Name" required>
-  <input type="text" id="contactRole" placeholder="Role (optional)">
+  <input type="text" id="contactName" placeholder="Name" data-i18n-attr="placeholder:dir.name" required>
+  <input type="text" id="contactRole" placeholder="Role (optional)" data-i18n-attr="placeholder:dir.role">
   <div class="fgroup">
-    <span class="flabel">Emails</span>
+    <span class="flabel" data-i18n="dir.emails">Emails</span>
     <div id="contactEmails"></div>
-    <button class="ghost-btn" type="button" id="addEmailRow">+ Add email</button>
+    <button class="ghost-btn" type="button" id="addEmailRow" data-i18n="dir.addEmail">+ Add email</button>
   </div>
   <div class="fgroup">
-    <span class="flabel">Phone numbers</span>
+    <span class="flabel" data-i18n="dir.phones">Phone numbers</span>
     <div id="contactPhones"></div>
-    <button class="ghost-btn" type="button" id="addPhoneRow">+ Add phone</button>
+    <button class="ghost-btn" type="button" id="addPhoneRow" data-i18n="dir.addPhone">+ Add phone</button>
   </div>
   <div class="frow">
-    <button class="solid-btn" type="submit">Save contact</button>
-    <button class="ghost-btn" type="button" id="contactCancel">Cancel</button>
+    <button class="solid-btn" type="submit" data-i18n="dir.save">Save contact</button>
+    <button class="ghost-btn" type="button" id="contactCancel" data-i18n="common.cancel">Cancel</button>
   </div>
 </form>
 <p class="hint" id="saveStatus"></p>

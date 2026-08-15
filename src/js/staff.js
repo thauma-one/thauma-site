@@ -53,6 +53,14 @@
   var WARN_DAYS = 60;
 
   var $ = function (id) { return document.getElementById(id); };
+
+  /* Strings built here rather than sitting in the markup cannot be reached by
+     a data-i18n sweep, so they go through the dictionary by hand. Falls back
+     to the key's English if i18n has not loaded, which is better than a blank
+     tile. */
+  function tr(key) {
+    return window.StaffI18n ? window.StaffI18n.t(key) : key;
+  }
   var state = { contacts: [], resources: [] };
 
   function esc(s) {
@@ -115,13 +123,13 @@
 
     // --- tiles ---
     if ($('tiles')) $('tiles').innerHTML = [
-      { k: 'Needs attention', v: stale,
+      { k: tr('dash.needsAttention'), v: stale,
         s: 'no personal contact in ' + d.stale_days + '+ days',
         cls: stale > 0 ? 'alert' : 'calm' },
-      { k: 'Supporters', v: s.contacts_total, s: 'active records' },
-      { k: 'Newsletter opt-in', v: s.newsletter_optin,
+      { k: tr('dash.supporters'), v: s.contacts_total, s: 'active records' },
+      { k: tr('dash.newsletterOptin'), v: s.newsletter_optin,
         s: 'of ' + s.contacts_total + ' — consent recorded separately' },
-      { k: 'Personal touches', v: s.personal_last_30, s: 'in the last 30 days' }
+      { k: tr('dash.personalTouches'), v: s.personal_last_30, s: 'in the last 30 days' }
     ].map(function (t) {
       return '<div class="tile ' + (t.cls || '') + '">' +
         '<span class="k">' + esc(t.k) + '</span>' +
@@ -236,7 +244,7 @@
           return '<a class="lnk" href="tel:' + esc(String(p).replace(/[^0-9+]/g, '')) + '">' +
                  esc(p) + '</a>'; }).join('') +
       '</div>';
-    }).join('') || '<p class="empty">No contacts yet.</p>';
+    }).join('') || '<p class="empty">' + tr('dir.empty') + '</p>';
 
     if ($('resourceList')) $('resourceList').innerHTML = state.resources.map(function (r, i) {
       return '<div class="card">' +
@@ -248,7 +256,7 @@
         (r.description ? '<p>' + esc(r.description) + '</p>' : '') +
         (r.link ? '<a class="lnk" href="' + esc(r.link) + '" target="_blank" rel="noopener">Open →</a>' : '') +
       '</div>';
-    }).join('') || '<p class="empty">No resources yet.</p>';
+    }).join('') || '<p class="empty">' + tr('res.empty') + '</p>';
   }
 
   function showUpdated(data) {
@@ -427,7 +435,7 @@
         $('userRole').textContent = id.email && id.name ? id.email : 'Cloudflare Access';
       })
       .catch(function () {
-        $('userName').textContent = 'Signed in';
+        $('userName').textContent = tr('common.signedIn');
         $('userRole').textContent = 'Cloudflare Access';
       });
   }
@@ -581,12 +589,14 @@
       problemEl.setAttribute('role', 'alert');
       problemEl.innerHTML =
         '<span class="problem-msg"></span>' +
-        '<button type="button" class="toast-act">Try again</button>';
+        '<button type="button" class="toast-act" data-i18n="err.tryAgain">Try again</button>';
 
       var host = document.createElement('div');
       host.className = 'toasts toasts-top';
       host.appendChild(problemEl);
       document.body.appendChild(host);
+      // Created after the initial sweep, so it needs translating on the spot.
+      if (window.StaffI18n) window.StaffI18n.apply(host);
     }
     problemEl.querySelector('.problem-msg').textContent = message;
 
