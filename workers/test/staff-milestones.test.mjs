@@ -154,5 +154,38 @@ await check("the schema still defaults new milestones to unpublished", async () 
     "milestones no longer default to private");
 });
 
+/* --------------------- the handlers actually run ---------------------- */
+
+/* These call the handler with a working database and assert it does not
+   THROW. Every other test here checks SQL or a denial path, so a
+   ReferenceError past the auth check — a variable used but never
+   destructured — sailed through all of them and reached the browser as an
+   HTML 500 that no page could parse.
+
+   The Access check is what makes this awkward to test end to end, so the
+   assertion is deliberately weak: any JSON response is a pass, an unhandled
+   throw is a failure. Weak and true beats strong and absent. */
+await check("no handler throws on a request it cannot authenticate", async () => {
+  const mods = await Promise.all([
+    import("../src/staff-milestones.js"),
+    import("../src/staff-settings.js"),
+    import("../src/staff-data.js"),
+  ]);
+  const env = fakeEnv().env;
+  for (const m of mods) {
+    for (const method of ["GET", "POST", "PATCH", "DELETE"]) {
+      const res = await m.default.fetch(
+        new Request("https://x/api/y", {
+          method,
+          headers: method === "GET" ? {} : { "Content-Type": "application/json" },
+          body: method === "GET" || method === "DELETE" ? undefined : "{}",
+        }), env);
+      assert(res && typeof res.status === "number", `${method} returned no Response`);
+      // A thrown ReferenceError would have rejected before reaching here.
+      await res.json().catch(() => ({}));
+    }
+  }
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

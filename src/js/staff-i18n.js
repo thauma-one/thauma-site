@@ -110,6 +110,9 @@
       'set.publishedDesc': "Switch a language on to translate into it and serve it on partner sites. The site's default language cannot be switched off.",
       'set.yourLanguageNote': 'Affects only you. It changes nothing a visitor sees, whatever your role.',
 
+      "page.directory.heading": "Network <b>contacts</b>",
+      "page.directory.hint": "your own address book — not supporters",
+      "page.resources.heading": "Internal <b>resources</b>",
       'page.index.title': 'Dashboard',
       'page.index.heading': 'Where things <b>stand</b>',
       'page.support.title': 'Support',
@@ -248,6 +251,9 @@
       'set.publishedDesc': 'Uključite jezik da biste prevodili na njega i objavili ga na partnerskim stranicama. Zadani jezik stranice ne može se isključiti.',
       'set.yourLanguageNote': 'Utječe samo na vas. Ne mijenja ništa što posjetitelj vidi, bez obzira na vašu ulogu.',
 
+      "page.directory.heading": "Kontakti u <b>mreži</b>",
+      "page.directory.hint": "vaš vlastiti imenik — ne podupiratelji",
+      "page.resources.heading": "Interni <b>resursi</b>",
       'page.index.title': 'Nadzorna ploča',
       'page.index.heading': 'Kako <b>stojimo</b>',
       'page.support.title': 'Podrška',
@@ -386,6 +392,9 @@
       'set.publishedDesc': 'Укључите језик да бисте преводили на њега и објавили га на партнерским сајтовима. Подразумевани језик сајта не може се искључити.',
       'set.yourLanguageNote': 'Утиче само на вас. Не мења ништа што посетилац види, без обзира на вашу улогу.',
 
+      "page.directory.heading": "Контакти у <b>мрежи</b>",
+      "page.directory.hint": "ваш сопствени именик — не подржаваоци",
+      "page.resources.heading": "Интерни <b>ресурси</b>",
       'page.index.title': 'Контролна табла',
       'page.index.heading': 'Како <b>стојимо</b>',
       'page.support.title': 'Подршка',
@@ -446,12 +455,23 @@
 
   try { current = localStorage.getItem(CACHE) || 'en'; } catch (e) {}
 
+  /* Returns null when a key exists in NO language, so the caller can leave
+     the markup alone.
+
+     It used to return the key itself, which put "page.directory.heading" on
+     the screen as a page heading — worse than the untranslated English that
+     was already sitting there. A missing translation should degrade to the
+     original text, never to a debugging artefact. */
   function t(key) {
     var table = STRINGS[current] || STRINGS.en;
-    // Falls back to English rather than showing the key. A missing string
-    // should read as an untranslated interface, not a broken one.
-    return table[key] || STRINGS.en[key] || key;
+    if (table[key]) return table[key];
+    if (STRINGS.en[key]) return STRINGS.en[key];
+    return null;
   }
+
+  /* For callers that need SOMETHING back — the key is a better last resort
+     than an empty string when it is going into a log or a title attribute. */
+  function tOr(key) { return t(key) || key; }
 
   /* Walks the page and replaces anything tagged. Elements keep their English
      text in the markup, so the console is readable with JavaScript disabled
@@ -497,7 +517,7 @@
     apply();
   }
 
-  window.StaffI18n = { t: t, apply: apply, setLang: setLang,
+  window.StaffI18n = { t: tOr, apply: apply, setLang: setLang,
                        get lang() { return current; },
                        available: Object.keys(STRINGS) };
 

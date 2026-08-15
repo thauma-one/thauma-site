@@ -165,7 +165,7 @@ async function listWithText(db, partner_id) {
 
 export default {
   async fetch(request, env) {
-    const { db, partner, denied } = await partnerFor(request, env);
+    const { db, user, partner, denied } = await partnerFor(request, env);
     if (denied) return denied;
 
     const partner_id = partner.id;

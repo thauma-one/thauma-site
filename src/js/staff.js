@@ -469,10 +469,19 @@
     var roles = (who.roles || []).map(function (r) { return LABEL[r] || r; });
     if (roles.length) $('userRole').textContent = roles.join(' · ');
     $('userName').title = who.email || '';
+
+    // The partner pill, on every page rather than only the ones that load a
+    // snapshot — it is a fact about the session, not about the screen.
+    if (who.partner_name && $('partnerPill')) {
+      $('partnerPill').textContent = who.partner_name;
+      $('partnerPill').hidden = false;
+    }
   }
 
   /* Called by any page whose data included an identity block. */
-  function rememberIdentity(who) {
+  function rememberIdentity(who, partner) {
+    if (partner && partner.display_name) who = Object.assign({}, who, {
+      partner_name: partner.display_name });
     if (!who || !who.email) return;
     try { localStorage.setItem(IDENT, JSON.stringify(who)); } catch (e) {}
     paintIdentity(who);

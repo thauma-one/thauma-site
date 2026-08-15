@@ -69,7 +69,7 @@ async function audit(db, { user, partner, action, entity, entity_id = null, deta
 
 export default {
   async fetch(request, env) {
-    const { db, user, partner, isAdmin, denied } = await context(request, env);
+    const { db, user, partner, roles, isAdmin, denied } = await context(request, env);
     if (denied) return denied;
 
     const partner_id = partner.id;
