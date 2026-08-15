@@ -30,6 +30,7 @@
  */
 import { createDb, partnerPublicSite } from "./lib/db.js";
 import { requirePartnerKey } from "./lib/apikey.js";
+import { assertNoPersonalData } from "./lib/nopii.js";
 import { json } from "./lib/store.js";
 
 export default {
@@ -54,14 +55,32 @@ export default {
       /* not worth failing a build over */
     }
 
-    return json({
+    const body = {
       // Versioned in the payload as well as the path, so a consumer can
       // assert on it without parsing a URL.
       version: 1,
       partner: { slug: partner.slug, display_name: partner.display_name },
       generated_at: new Date().toISOString(),
       ...site,
-    }, 200, {
+    };
+
+    // LAST GATE. The three guarantees upstream all constrain the response's
+    // SHAPE; this one reads its CONTENT, because milestone descriptions are
+    // free text and nothing else stops a supporter's address being pasted into
+    // one. Refuses the whole response rather than publishing a suspect field.
+    try {
+      assertNoPersonalData(body, { where: "partner API" });
+    } catch (err) {
+      // Log the detail, return a generic message. The reason names a field and
+      // sometimes quotes a value, and this response goes to a partner site.
+      console.error("partner API blocked a response:", err.message);
+      return json({
+        error: "Response withheld: it contained data that must not be published. " +
+               "An administrator needs to check the milestone and goal records.",
+      }, 500);
+    }
+
+    return json(body, 200, {
       // A build fetches this; a browser must not be able to. No CORS headers
       // are sent, deliberately — a partner site's BUILD is same-process, and
       // no Access-Control-Allow-Origin means a page cannot fetch this with a

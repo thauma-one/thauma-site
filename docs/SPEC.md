@@ -311,6 +311,61 @@ They share a word and nothing else. The partner API never uses the word
 timeline" cannot be resolved to the wrong table by someone moving quickly.
 This is the single most dangerous ambiguity in the system.
 
+### The fourth gate: content, not shape
+
+The three guarantees above all constrain the **shape** of a response.
+`milestones.description` is free text a human types, and no shape rule stops
+somebody pasting a supporter's address into it.
+
+`workers/src/lib/nopii.js` walks the assembled payload and refuses it — 500,
+publishing nothing — if any field NAME looks personal at any depth, or if any
+string VALUE contains an email address. A build breaking is a bad afternoon; a
+supporter's address on a public page is scraped, cached and indexed before
+anyone notices.
+
+Phone numbers are deliberately **not** value-matched: every pattern loose
+enough to catch `+1 816 555 0142` also catches dates, amounts and percentages,
+and a guard that cries wolf gets switched off.
+
+`ALLOWED_EXACT` is the only way a name-matching field passes, and every entry
+carries its reason. It currently holds two, and a test fails if it grows past
+four:
+
+- `display_name` — the partner's own published identity, not a supporter's.
+- `donor_count` — an aggregate. `donor` stays forbidden, so `donor_name` and
+  `donor_email` are still refused. **This entry exists because the guard
+  caught the real payload on first run** — which is the mechanism working.
+
+### Planned: embeddable widgets — and what they change
+
+Not built, deliberately deferred. Recorded because it constrains decisions
+being made now.
+
+The intent is embeddable **timeline** and **goal card** widgets a partner can
+drop onto their own site, configured per-milestone in the console: background
+on/off, colours, milestone line colour, shimmer, default currency, colour
+scheme, start date — with a visualiser showing the result. Essentially CR's
+admin timeline plus presentation controls, served over the API.
+
+**This changes the threat model, so build it deliberately.** Today's partner
+API is consumed by a *build*, server-side, with a key that never reaches a
+browser. An embed is consumed by a *browser*, on someone else's page, and its
+credential is public by construction.
+
+Consequences to design for when the time comes:
+
+- **A second key tier.** An embed key is public and must be treated as such —
+  scoped to one partner, read-only, rate-limited, revocable, and never the
+  same credential as a build key. Do not widen `read:public`; add a scope.
+- **CORS becomes necessary**, which today's endpoint deliberately omits. That
+  is a real loosening and should apply to the embed route only, never to
+  `/api/partner/v1/site`.
+- **Presentation config belongs on the milestone**, which is why `milestones`
+  has room for it — add a `display_config` JSON column in a later migration
+  rather than a parallel table.
+- The `nopii` gate applies to embed responses too. It is not optional there;
+  it is more important.
+
 ### Data minimisation is not automatic
 
 Found 2026-08-15: `contacts_stewardship` selected `email` and `phone`, and the
