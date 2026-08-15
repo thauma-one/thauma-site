@@ -16,9 +16,6 @@ module.exports = function (eleventyConfig) {
   eleventyConfig.addPassthroughCopy({ "src/fonts": "fonts" });
   eleventyConfig.addPassthroughCopy({ "src/admin": "admin" });
   eleventyConfig.addPassthroughCopy({ "src/staff": "staff" });
-  // Operations console (prototype). Static like /admin and /staff — it reads
-  // its own data and is not part of the multilingual page system.
-  eleventyConfig.addPassthroughCopy({ "src/ops": "ops" });
 
   // Swap the language segment of a URL: /en/about/ -> /hr/about/
   // (Pages skipped by the comingSoon flag have no URL; return a safe value.)

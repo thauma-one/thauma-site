@@ -90,6 +90,9 @@
      headings. Never introduce a new weight; there are five.   */
   --font-display: 'Sora', sans-serif;
   --font-body:    'Inter', sans-serif;
+  /* Unused by the public site — the staff console sets code and paths in it.
+     Defined so the token set stays identical to chaseroush.com's. */
+  --font-mono:    ui-monospace, 'SF Mono', Menlo, monospace;
 
   --w-hair:  100;   /* Sora display                             */
   --w-light: 200;   /* Inter lede / large body                  */

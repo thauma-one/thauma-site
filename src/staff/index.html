@@ -3,328 +3,170 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
 <title>Staff · Thauma</title>
-<link rel="stylesheet" href="/css/main.css?v=43">
+<link rel="stylesheet" href="/css/tokens.css">
+<link rel="stylesheet" href="/staff/staff.css?v=1">
+<link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
 <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
-<style>
-  .s-card{position:relative}
-  .s-card-actions{position:absolute;top:14px;right:14px;display:flex;gap:10px}
-  .s-card-actions button{background:none;border:none;color:var(--dim);font-size:11px;
-    letter-spacing:.1em;text-transform:uppercase;font-weight:600;cursor:pointer;padding:0}
-  .s-card-actions button:hover{color:var(--foam)}
-  .s-card .s-link{display:block;margin-top:6px}
-  .s-form{margin-top:24px;max-width:480px;display:none;flex-direction:column;gap:14px}
-  .s-form.open{display:flex}
-  .s-form input,.s-form textarea{background:var(--panel);border:1px solid rgba(255,255,255,.1);
-    color:var(--text);font-family:'Inter',sans-serif;font-weight:300;font-size:14px;padding:12px 14px;
-    border-radius:2px;width:100%}
-  .s-form textarea{min-height:80px;resize:vertical}
-  .s-form-row{display:flex;gap:12px}
-  .s-form-row button{flex-shrink:0}
-  .s-form-group{display:flex;flex-direction:column;gap:8px}
-  .s-form-group-label{font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:var(--dim);font-weight:600}
-  .s-updated{font-size:11.5px;color:var(--dim);margin-top:10px}
-  .s-updated.error{color:#ff8080}
-</style>
 </head>
 <body>
 
-<nav><div class="wrap nav-in">
-  <a class="logo" href="/">THAUMA</a>
-  <div class="nav-actions">
-    <span id="whoami" style="font-size:12px;color:var(--dim);letter-spacing:.05em"></span>
-    <a href="/admin/" id="admin-link" class="lang-toggle" style="display:none;text-decoration:none;line-height:1">Admin</a>
-    <button class="lang-toggle" id="auth-btn">Sign In</button>
+<header class="top"><div class="top-in">
+  <span class="mark">THAUMA<em>STAFF</em></span>
+  <nav id="nav" hidden>
+    <a href="#dashboard">Dashboard</a>
+    <a href="#support">Support</a>
+    <a href="#stewardship">Stewardship</a>
+    <a href="#directory">Directory</a>
+    <a href="#resources">Resources</a>
+  </nav>
+  <div class="top-r">
+    <span class="pill" id="partnerPill" hidden>—</span>
+    <span class="who" id="who" hidden><b id="userName">—</b><span id="userRole">—</span></span>
+    <a class="ghost-btn" href="/admin/" id="adminLink" hidden>Admin</a>
+    <button class="ghost-btn" id="authBtn" type="button">Sign in</button>
   </div>
-</div></nav>
-
-<header class="page"><div class="wrap">
-  <div class="cue">Thauma Network</div>
-  <h2 id="staff-heading">Staff <b>area.</b></h2>
-  <p class="lede" id="login-note">This area is for the Thauma network. Sign in to continue.</p>
 </div></header>
 
-<!-- Content revealed only after login. Data is served by
-     netlify/functions/staff-data.js, which verifies the Identity token
-     and staff/admin role server-side, and stores everything in Netlify
-     Blobs — never in git. -->
-<section style="display:none" id="staff-content"><div class="wrap">
-  <div class="cue foam">Quick access</div>
-  <h3 class="staff-h">Network contacts</h3>
-  <div class="staff-grid" id="contacts"><p class="lede">Loading…</p></div>
-  <p class="btn-row"><button class="btn ghost" id="add-contact-btn" type="button">+ Add contact</button></p>
-  <form class="s-form" id="contact-form">
-    <input type="hidden" id="contact-index" value="">
-    <input type="text" id="contact-name" placeholder="Name" required>
-    <input type="text" id="contact-role" placeholder="Role (optional)">
-    <div class="s-form-group">
-      <span class="s-form-group-label">Emails</span>
-      <div id="contact-emails"></div>
-      <button class="btn ghost" type="button" id="add-email-row">+ Add email</button>
+<!-- ===================== SIGNED OUT ===================== -->
+<div class="gate" id="gate">
+  <div class="gate-in">
+    <div class="cue">Thauma Network</div>
+    <h1>Staff <b>area</b></h1>
+    <p>Sign in to continue. Accounts are issued by an admin &mdash; this area is not
+      open for registration.</p>
+    <button class="solid-btn" id="gateBtn" type="button">Sign in</button>
+  </div>
+</div>
+
+<!-- ===================== SIGNED IN ====================== -->
+<main id="app" hidden>
+
+  <p class="rolegate" id="roleNote" hidden>
+    Your account does not have the <b>staff</b> role yet &mdash; ask an admin to add it in
+    Netlify Identity. You are signed in, but the network sections below will stay empty.
+  </p>
+
+  <!-- ---------- 01 DASHBOARD ---------- -->
+  <section id="dashboard">
+    <div class="cue">01 &mdash; Dashboard <span class="badge proto">prototype data</span></div>
+    <div class="sec-h">
+      <h2>Where things <b>stand</b></h2>
+      <span class="hint" id="asOf"></span>
     </div>
-    <div class="s-form-group">
-      <span class="s-form-group-label">Phone numbers</span>
-      <div id="contact-phones"></div>
-      <button class="btn ghost" type="button" id="add-phone-row">+ Add phone</button>
+    <div class="tiles" id="tiles"></div>
+  </section>
+
+  <!-- ---------- 02 SUPPORT ---------- -->
+  <section id="support">
+    <div class="cue">02 &mdash; Support <span class="badge proto">prototype data</span></div>
+    <div class="sec-h">
+      <h2>Goals and <b>progress</b></h2>
+      <span class="hint">aggregates only &mdash; no donor records held</span>
     </div>
-    <div class="s-form-row">
-      <button class="btn solid" type="submit">Save contact</button>
-      <button class="btn ghost" type="button" id="contact-cancel">Cancel</button>
+    <div class="goals" id="goalGrid"></div>
+  </section>
+
+  <!-- ---------- 03 STEWARDSHIP ---------- -->
+  <section id="stewardship">
+    <div class="cue">03 &mdash; Stewardship <span class="badge proto">prototype data</span></div>
+    <div class="sec-h">
+      <h2>Who needs a <b>call</b></h2>
+      <span class="hint">supporters &mdash; sorted worst first, click a row for history</span>
     </div>
-  </form>
-
-  <h3 class="staff-h" style="margin-top:56px">Internal resources</h3>
-  <div class="staff-grid" id="resources"><p class="lede">Loading…</p></div>
-  <p class="btn-row"><button class="btn ghost" id="add-resource-btn" type="button">+ Add resource</button></p>
-  <form class="s-form" id="resource-form">
-    <input type="hidden" id="resource-index" value="">
-    <input type="text" id="resource-title" placeholder="Title" required>
-    <textarea id="resource-description" placeholder="Description (optional)"></textarea>
-    <input type="text" id="resource-link" placeholder="Link — https://... (optional)">
-    <input type="text" id="resource-photo" placeholder="Photo URL or /img/... path (optional)">
-    <div class="s-form-row">
-      <button class="btn solid" type="submit">Save resource</button>
-      <button class="btn ghost" type="button" id="resource-cancel">Cancel</button>
+    <div class="tw">
+      <table>
+        <thead><tr>
+          <th>Person</th><th>Last personal contact</th><th>Last contact (any)</th>
+          <th>Consent</th><th class="right">Touches</th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
     </div>
-  </form>
+    <p class="note">
+      <b>Newsletters do not count as personal contact.</b> A bulk send is contact, but it is not
+      a conversation &mdash; and a dashboard that conflates the two reports everyone as looked
+      after when nobody has been called in months.
+    </p>
+  </section>
 
-  <p class="s-updated" id="save-status"></p>
-  <p class="legal-note" id="role-note" style="display:none">Your account doesn't have the staff role yet — ask an admin to add it in Netlify Identity.</p>
-</div></section>
+  <!-- ---------- 04 DIRECTORY (live) ---------- -->
+  <section id="directory">
+    <div class="cue">04 &mdash; Directory <span class="badge live">live</span></div>
+    <div class="sec-h">
+      <h2>Network <b>contacts</b></h2>
+      <span class="hint">people in the Thauma network &mdash; not supporters</span>
+    </div>
+    <div class="cards" id="contacts"><p class="empty">Loading&hellip;</p></div>
+    <p class="row-actions"><button class="ghost-btn" id="addContactBtn" type="button">+ Add contact</button></p>
 
-<footer class="wrap">
-  <div>© 2026 Thauma</div>
-</footer>
+    <form class="form" id="contactForm">
+      <input type="hidden" id="contactIndex" value="">
+      <input type="text" id="contactName" placeholder="Name" required>
+      <input type="text" id="contactRole" placeholder="Role (optional)">
+      <div class="fgroup">
+        <span class="flabel">Emails</span>
+        <div id="contactEmails"></div>
+        <button class="ghost-btn" type="button" id="addEmailRow">+ Add email</button>
+      </div>
+      <div class="fgroup">
+        <span class="flabel">Phone numbers</span>
+        <div id="contactPhones"></div>
+        <button class="ghost-btn" type="button" id="addPhoneRow">+ Add phone</button>
+      </div>
+      <div class="frow">
+        <button class="solid-btn" type="submit">Save contact</button>
+        <button class="ghost-btn" type="button" id="contactCancel">Cancel</button>
+      </div>
+    </form>
+  </section>
 
-<script>
-  const btn = document.getElementById('auth-btn');
-  const content = document.getElementById('staff-content');
-  const note = document.getElementById('login-note');
-  const whoami = document.getElementById('whoami');
-  const adminLink = document.getElementById('admin-link');
-  const statusEl = document.getElementById('save-status');
-  const esc = (s) => String(s || '').replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  <!-- ---------- 05 RESOURCES (live) ---------- -->
+  <section id="resources">
+    <div class="cue">05 &mdash; Resources <span class="badge live">live</span></div>
+    <div class="sec-h">
+      <h2>Internal <b>resources</b></h2>
+      <span class="hint" id="saveStatus"></span>
+    </div>
+    <div class="cards" id="resourceList"><p class="empty">Loading&hellip;</p></div>
+    <p class="row-actions"><button class="ghost-btn" id="addResourceBtn" type="button">+ Add resource</button></p>
 
-  const state = { contacts: [], resources: [], currentUser: null };
+    <form class="form" id="resourceForm">
+      <input type="hidden" id="resourceIndex" value="">
+      <input type="text" id="resourceTitle" placeholder="Title" required>
+      <textarea id="resourceDescription" placeholder="Description (optional)"></textarea>
+      <input type="text" id="resourceLink" placeholder="Link — https://… (optional)">
+      <input type="text" id="resourcePhoto" placeholder="Photo URL or /img/… path (optional)">
+      <div class="frow">
+        <button class="solid-btn" type="submit">Save resource</button>
+        <button class="ghost-btn" type="button" id="resourceCancel">Cancel</button>
+      </div>
+    </form>
+  </section>
 
-  function render(user) {
-    if (user) {
-      const roles = (user.app_metadata && user.app_metadata.roles) || [];
-      const normalizedRoles = roles.map((r) => String(r).toLowerCase());
-      const name = (user.user_metadata && user.user_metadata.full_name) || user.email;
-      btn.textContent = 'Sign Out';
-      content.style.display = 'block';
-      note.style.display = 'none';
-      whoami.textContent = name + (roles.length ? ' · ' + roles.join(', ') : '');
-      adminLink.style.display = normalizedRoles.includes('admin') ? 'inline-block' : 'none';
-    } else {
-      btn.textContent = 'Sign In';
-      content.style.display = 'none';
-      note.style.display = 'block';
-      whoami.textContent = '';
-      adminLink.style.display = 'none';
-    }
-  }
+  <!-- ---------- 06 ACTIVITY ---------- -->
+  <section id="activity">
+    <div class="cue">06 &mdash; Activity <span class="badge proto">prototype data</span></div>
+    <div class="sec-h">
+      <h2>Who looked at <b>what</b></h2>
+      <span class="hint">visible to the partner, not just to admins</span>
+    </div>
+    <div class="audit" id="auditList"></div>
+  </section>
 
-  function showStatus(text, isError) {
-    statusEl.textContent = text;
-    statusEl.className = 's-updated' + (isError ? ' error' : '');
-  }
+  <p class="note foot-note">
+    Sections marked <span class="badge proto">prototype data</span> render
+    <code>/staff/data/snapshot.json</code>, generated by <code>db/build_snapshot.py</code> running
+    the real queries in <code>db/queries.sql</code> against the schema and seed. Shapes are real;
+    there is no live database behind them yet. Sections marked
+    <span class="badge live">live</span> read and write through
+    <code>netlify/functions/staff-data.js</code>, which verifies your Identity token server-side.
+    <span id="genStamp"></span>
+  </p>
 
-  function showLastUpdated(data) {
-    showStatus(data.updatedAt
-      ? 'Last updated ' + new Date(data.updatedAt).toLocaleString() + (data.updatedBy ? ' by ' + data.updatedBy : '')
-      : '', false);
-  }
+</main>
 
-  function renderCards() {
-    const contactCard = (c, i) => '<div class="s-card">'
-      + '<div class="s-card-actions"><button type="button" data-edit-contact="' + i + '">Edit</button>'
-      + '<button type="button" data-delete-contact="' + i + '">Delete</button></div>'
-      + '<h4>' + esc(c.name) + '</h4>'
-      + (c.role ? '<div class="s-role">' + esc(c.role) + '</div>' : '')
-      + (c.emails || []).map((e) => '<a href="mailto:' + esc(e) + '" class="s-link">' + esc(e) + '</a>').join('')
-      + (c.phones || []).map((p) => '<a href="tel:' + esc(p.replace(/[^0-9+]/g, '')) + '" class="s-link">' + esc(p) + '</a>').join('')
-      + '</div>';
-    const resourceCard = (r, i) => '<div class="s-card">'
-      + '<div class="s-card-actions"><button type="button" data-edit-resource="' + i + '">Edit</button>'
-      + '<button type="button" data-delete-resource="' + i + '">Delete</button></div>'
-      + (r.photo ? '<div class="s-photo"><img src="' + esc(r.photo) + '" alt="" loading="lazy"></div>' : '')
-      + '<h4>' + esc(r.title) + '</h4>'
-      + (r.description ? '<p>' + esc(r.description) + '</p>' : '')
-      + (r.link ? '<a href="' + esc(r.link) + '" class="s-link" target="_blank" rel="noopener">Open →</a>' : '')
-      + '</div>';
-    document.getElementById('contacts').innerHTML = state.contacts.map(contactCard).join('') || '<p class="lede">None yet.</p>';
-    document.getElementById('resources').innerHTML = state.resources.map(resourceCard).join('') || '<p class="lede">None yet.</p>';
-  }
-
-  async function loadStaffData(user) {
-    try {
-      const token = await user.jwt();
-      const res = await fetch('/.netlify/functions/staff-data', {
-        headers: { Authorization: 'Bearer ' + token }
-      });
-      if (res.status === 401) {
-        document.getElementById('role-note').style.display = 'block';
-        document.getElementById('contacts').innerHTML = '';
-        document.getElementById('resources').innerHTML = '';
-        return;
-      }
-      const data = await res.json();
-      state.contacts = data.contacts || [];
-      state.resources = data.resources || [];
-      renderCards();
-      showLastUpdated(data);
-    } catch (e) {
-      document.getElementById('contacts').innerHTML = '<p>Could not load.</p>';
-    }
-  }
-
-  // Renders the optimistic local state immediately, then persists it.
-  // On any failure, reloads the real server state so the UI never shows
-  // something that didn't actually save.
-  async function saveData() {
-    renderCards();
-    showStatus('Saving…', false);
-    try {
-      const token = await state.currentUser.jwt();
-      const res = await fetch('/.netlify/functions/staff-data', {
-        method: 'POST',
-        headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contacts: state.contacts, resources: state.resources })
-      });
-      if (!res.ok) {
-        let msg = 'Save failed (' + res.status + ')';
-        try { const err = await res.json(); if (err && err.error) msg += ': ' + err.error; } catch (e) {}
-        showStatus(msg, true);
-        await loadStaffData(state.currentUser);
-        return;
-      }
-      const data = await res.json();
-      state.contacts = data.contacts || [];
-      state.resources = data.resources || [];
-      renderCards();
-      showLastUpdated(data);
-    } catch (e) {
-      showStatus('Save failed: ' + e.message, true);
-      await loadStaffData(state.currentUser);
-    }
-  }
-
-  // ---- Contact form ----
-  const contactForm = document.getElementById('contact-form');
-  const emailsContainer = document.getElementById('contact-emails');
-  const phonesContainer = document.getElementById('contact-phones');
-
-  function addRow(container, inputType, className, value) {
-    const row = document.createElement('div');
-    row.className = 's-form-row';
-    const input = document.createElement('input');
-    input.type = inputType;
-    input.className = className;
-    input.value = value || '';
-    const remove = document.createElement('button');
-    remove.type = 'button';
-    remove.className = 'btn ghost';
-    remove.textContent = 'Remove';
-    remove.addEventListener('click', function () { row.remove(); });
-    row.appendChild(input);
-    row.appendChild(remove);
-    container.appendChild(row);
-  }
-
-  document.getElementById('add-email-row').addEventListener('click', function () {
-    addRow(emailsContainer, 'email', 'contact-email-input', '');
-  });
-  document.getElementById('add-phone-row').addEventListener('click', function () {
-    addRow(phonesContainer, 'tel', 'contact-phone-input', '');
-  });
-
-  function openContactForm(index) {
-    const c = index === '' || index === undefined ? {} : state.contacts[index];
-    document.getElementById('contact-index').value = index === undefined ? '' : index;
-    document.getElementById('contact-name').value = (c && c.name) || '';
-    document.getElementById('contact-role').value = (c && c.role) || '';
-    emailsContainer.innerHTML = '';
-    phonesContainer.innerHTML = '';
-    const emails = (c && c.emails && c.emails.length) ? c.emails : [''];
-    const phones = (c && c.phones) || [];
-    emails.forEach((v) => addRow(emailsContainer, 'email', 'contact-email-input', v));
-    phones.forEach((v) => addRow(phonesContainer, 'tel', 'contact-phone-input', v));
-    contactForm.classList.add('open');
-  }
-  document.getElementById('add-contact-btn').addEventListener('click', function () { openContactForm(''); });
-  document.getElementById('contact-cancel').addEventListener('click', function () { contactForm.classList.remove('open'); });
-  contactForm.addEventListener('submit', function (e) {
-    e.preventDefault();
-    const idx = document.getElementById('contact-index').value;
-    const emails = Array.from(document.querySelectorAll('.contact-email-input')).map((i) => i.value.trim()).filter(Boolean);
-    const phones = Array.from(document.querySelectorAll('.contact-phone-input')).map((i) => i.value.trim()).filter(Boolean);
-    const entry = {
-      name: document.getElementById('contact-name').value,
-      role: document.getElementById('contact-role').value,
-      emails: emails,
-      phones: phones,
-    };
-    if (idx === '') state.contacts.push(entry); else state.contacts[idx] = entry;
-    contactForm.classList.remove('open');
-    contactForm.reset();
-    emailsContainer.innerHTML = '';
-    phonesContainer.innerHTML = '';
-    saveData();
-  });
-
-  // ---- Resource form ----
-  const resourceForm = document.getElementById('resource-form');
-  function openResourceForm(index) {
-    const r = index === '' || index === undefined ? {} : state.resources[index];
-    document.getElementById('resource-index').value = index === undefined ? '' : index;
-    document.getElementById('resource-title').value = (r && r.title) || '';
-    document.getElementById('resource-description').value = (r && r.description) || '';
-    document.getElementById('resource-link').value = (r && r.link) || '';
-    document.getElementById('resource-photo').value = (r && r.photo) || '';
-    resourceForm.classList.add('open');
-  }
-  document.getElementById('add-resource-btn').addEventListener('click', function () { openResourceForm(''); });
-  document.getElementById('resource-cancel').addEventListener('click', function () { resourceForm.classList.remove('open'); });
-  resourceForm.addEventListener('submit', function (e) {
-    e.preventDefault();
-    const idx = document.getElementById('resource-index').value;
-    const entry = {
-      title: document.getElementById('resource-title').value,
-      description: document.getElementById('resource-description').value,
-      link: document.getElementById('resource-link').value,
-      photo: document.getElementById('resource-photo').value,
-    };
-    if (idx === '') state.resources.push(entry); else state.resources[idx] = entry;
-    resourceForm.classList.remove('open');
-    resourceForm.reset();
-    saveData();
-  });
-
-  // ---- Edit/delete clicks (event delegation, since cards re-render) ----
-  document.getElementById('contacts').addEventListener('click', function (e) {
-    if (e.target.dataset.editContact !== undefined) openContactForm(e.target.dataset.editContact);
-    if (e.target.dataset.deleteContact !== undefined) {
-      state.contacts.splice(Number(e.target.dataset.deleteContact), 1);
-      saveData();
-    }
-  });
-  document.getElementById('resources').addEventListener('click', function (e) {
-    if (e.target.dataset.editResource !== undefined) openResourceForm(e.target.dataset.editResource);
-    if (e.target.dataset.deleteResource !== undefined) {
-      state.resources.splice(Number(e.target.dataset.deleteResource), 1);
-      saveData();
-    }
-  });
-
-  netlifyIdentity.on('init', function (user) { state.currentUser = user; render(user); if (user) loadStaffData(user); });
-  netlifyIdentity.on('login', function (user) { state.currentUser = user; render(user); loadStaffData(user); netlifyIdentity.close(); });
-  netlifyIdentity.on('logout', function () { state.currentUser = null; render(null); });
-  btn.addEventListener('click', function () {
-    if (netlifyIdentity.currentUser()) { netlifyIdentity.logout(); }
-    else { netlifyIdentity.open(); }
-  });
-</script>
+<script src="/staff/staff.js?v=1"></script>
 </body>
 </html>

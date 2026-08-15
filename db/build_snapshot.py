@@ -9,13 +9,13 @@ changes and nothing else does.
 
     python3 db/build_snapshot.py
 
-Writes src/ops/data/snapshot.json
+Writes src/staff/data/snapshot.json
 """
 import sqlite3, pathlib, json, re, datetime, sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 DB_DIR = ROOT / "db"
-OUT = ROOT / "src" / "ops" / "data" / "snapshot.json"
+OUT = ROOT / "src" / "staff" / "data" / "snapshot.json"
 
 PARTNER = "p_chase"
 TODAY = "2026-08-14"
