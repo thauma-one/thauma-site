@@ -50,9 +50,12 @@
 
 <main>
   <div class="page-head">
-    <div class="cue">{{ staffNum }} &mdash; {{ staffTitle }}
-      {%- if staffLive %} <span class="badge live">live</span>
-      {%- else %} <span class="badge proto">prototype data</span>{% endif %}</div>
+    {#- The live/prototype badge is gone: it separated sections reading a
+       generated file from those reading the database, and since 2026-08-15
+       every page reads the database. A badge on all seven distinguishes
+       nothing and trains people to stop reading badges. The .badge styles
+       stay — the milestone list uses them for draft and featured. -#}
+    <div class="cue">{{ staffNum }} &mdash; {{ staffTitle }}</div>
     <div class="sec-h">
       <h2>{{ staffHeading | safe }}</h2>
       {%- if staffHint %}<span class="hint">{{ staffHint }}</span>{% endif %}
