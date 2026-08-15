@@ -256,8 +256,8 @@ def t_milestones_default_to_private():
     db = fresh()
     db.execute("INSERT INTO partners (id,slug,display_name,status,created_at,updated_at) "
                "VALUES ('p_1','p-one','P One','active',?,?)", (NOW, NOW))
-    db.execute("INSERT INTO milestones (id,partner_id,title,created_at,updated_at) "
-               "VALUES ('m_1','p_1','Unannounced trip',?,?)", (NOW, NOW))
+    db.execute("INSERT INTO milestones (id,partner_id,created_at,updated_at) "
+               "VALUES ('m_1','p_1',?,?)", (NOW, NOW))
     db.commit()
     pub, feat = db.execute(
         "SELECT is_public, is_featured FROM milestones WHERE id='m_1'").fetchone()
@@ -271,21 +271,21 @@ def t_milestone_parent_must_match_partner():
     for pid in ("p_1", "p_2"):
         db.execute("INSERT INTO partners (id,slug,display_name,status,created_at,updated_at) "
                    f"VALUES ('{pid}','{pid}','{pid}','active',?,?)", (NOW, NOW))
-    db.execute("INSERT INTO milestones (id,partner_id,title,created_at,updated_at) "
-               "VALUES ('m_1','p_1','Parent',?,?)", (NOW, NOW))
+    db.execute("INSERT INTO milestones (id,partner_id,created_at,updated_at) "
+               "VALUES ('m_1','p_1',?,?)", (NOW, NOW))
     db.commit()
 
     try:
-        db.execute("INSERT INTO milestones (id,partner_id,parent_id,title,created_at,updated_at) "
-                   "VALUES ('m_2','p_2','m_1','Child',?,?)", (NOW, NOW))
+        db.execute("INSERT INTO milestones (id,partner_id,parent_id,created_at,updated_at) "
+                   "VALUES ('m_2','p_2','m_1',?,?)", (NOW, NOW))
         db.commit()
         raise AssertionError("a milestone was nested under another partner's milestone")
     except sqlite3.IntegrityError:
         pass
 
     # And the same guarantee on UPDATE, which is the half people forget.
-    db.execute("INSERT INTO milestones (id,partner_id,title,created_at,updated_at) "
-               "VALUES ('m_3','p_2','Other partner step',?,?)", (NOW, NOW))
+    db.execute("INSERT INTO milestones (id,partner_id,created_at,updated_at) "
+               "VALUES ('m_3','p_2',?,?)", (NOW, NOW))
     db.commit()
     try:
         db.execute("UPDATE milestones SET parent_id='m_1' WHERE id='m_3'")
@@ -305,6 +305,90 @@ def t_partner_scoping_is_queryable():
         assert nn == 1, f"{tbl}.partner_id is nullable — scoping can be bypassed"
 
 
+def t_milestones_hold_no_language_columns():
+    """Text lives in milestone_translations, one row per language.
+
+    0002 had title/title_hr, which mirrored a bilingual partner site and left
+    Serbian nowhere to go. If a _hr column ever comes back, a fourth language
+    is a migration again.
+    """
+    db = fresh()
+    cols = [r[1] for r in db.execute("PRAGMA table_info(milestones)")]
+    for banned in ("title", "title_hr", "description", "description_hr",
+                   "target_label", "target_label_hr"):
+        assert banned not in cols, f"milestones.{banned} is back — text belongs in translations"
+
+
+def t_language_catalogue_is_open():
+    """Adding a language is a row, not a migration."""
+    db = fresh()
+    have = {r[0] for r in db.execute("SELECT code FROM languages")}
+    assert {"en", "hr", "sr"} <= have, f"expected en/hr/sr, got {have}"
+    db.execute("INSERT INTO languages (code,name,native_name,sort_order,created_at) "
+               "VALUES ('pt-BR','Portuguese','Portugues',3,?)", (NOW,))
+    db.commit()
+    assert db.execute("SELECT COUNT(*) FROM languages WHERE code='pt-BR'").fetchone()[0] == 1
+
+
+def t_translation_cannot_cross_partners():
+    """A translation cannot be filed under a partner other than its milestone's."""
+    db = fresh()
+    for pid in ("p_1", "p_2"):
+        db.execute("INSERT INTO partners (id,slug,display_name,status,created_at,updated_at) "
+                   f"VALUES ('{pid}','{pid}','{pid}','active',?,?)", (NOW, NOW))
+    db.execute("INSERT INTO milestones (id,partner_id,created_at,updated_at) "
+               "VALUES ('m_1','p_1',?,?)", (NOW, NOW))
+    db.commit()
+    try:
+        db.execute("INSERT INTO milestone_translations "
+                   "(milestone_id,lang,partner_id,title,updated_at) "
+                   "VALUES ('m_1','en','p_2','Stolen',?)", (NOW,))
+        db.commit()
+        raise AssertionError("a translation was filed under another partner")
+    except sqlite3.IntegrityError:
+        pass
+
+
+def t_disabling_a_language_keeps_its_text():
+    """Switching a language off is a publishing decision, never a delete.
+
+    Text already written must survive, so a translation can be prepared before
+    it goes live and switching one off is reversible.
+    """
+    db = fresh()
+    db.execute("INSERT INTO partners (id,slug,display_name,status,created_at,updated_at) "
+               "VALUES ('p_1','p1','P One','active',?,?)", (NOW, NOW))
+    db.execute("INSERT INTO milestones (id,partner_id,created_at,updated_at) "
+               "VALUES ('m_1','p_1',?,?)", (NOW, NOW))
+    db.execute("INSERT INTO milestone_translations "
+               "(milestone_id,lang,partner_id,title,updated_at) "
+               "VALUES ('m_1','hr','p_1','Preseljenje',?)", (NOW,))
+    db.execute("INSERT INTO partner_languages (partner_id,lang,is_enabled) VALUES ('p_1','hr',1)")
+    db.commit()
+
+    db.execute("UPDATE partner_languages SET is_enabled=0 WHERE partner_id='p_1' AND lang='hr'")
+    db.commit()
+    kept = db.execute("SELECT title FROM milestone_translations "
+                      "WHERE milestone_id='m_1' AND lang='hr'").fetchone()
+    assert kept and kept[0] == "Preseljenje", "disabling a language destroyed its text"
+
+
+def t_deleting_a_milestone_takes_its_translations():
+    db = fresh()
+    db.execute("INSERT INTO partners (id,slug,display_name,status,created_at,updated_at) "
+               "VALUES ('p_1','p1','P One','active',?,?)", (NOW, NOW))
+    db.execute("INSERT INTO milestones (id,partner_id,created_at,updated_at) "
+               "VALUES ('m_1','p_1',?,?)", (NOW, NOW))
+    db.execute("INSERT INTO milestone_translations "
+               "(milestone_id,lang,partner_id,title,updated_at) "
+               "VALUES ('m_1','en','p_1','Title',?)", (NOW,))
+    db.commit()
+    db.execute("DELETE FROM milestones WHERE id='m_1'")
+    db.commit()
+    left = db.execute("SELECT COUNT(*) FROM milestone_translations").fetchone()[0]
+    assert left == 0, f"{left} orphaned translations survived their milestone"
+
+
 if __name__ == "__main__":
     print(f"schema tests — {len(MIGRATIONS)} migrations: "
           f"{', '.join(p.name for p in MIGRATIONS)}\n")
@@ -312,6 +396,11 @@ if __name__ == "__main__":
         ("migration runs and creates all tables/views", t_migration_runs),
         ("milestones default to unpublished",           t_milestones_default_to_private),
         ("milestone parent must match partner",         t_milestone_parent_must_match_partner),
+        ("milestones hold no language columns",        t_milestones_hold_no_language_columns),
+        ("a language is a row, not a migration",        t_language_catalogue_is_open),
+        ("translation cannot cross partners",           t_translation_cannot_cross_partners),
+        ("disabling a language keeps its text",         t_disabling_a_language_keeps_its_text),
+        ("deleting a milestone takes its translations", t_deleting_a_milestone_takes_its_translations),
         ("no donor PII columns exist anywhere",         t_no_donor_pii_columns),
         ("every tenant table is partner-scoped NOT NULL", t_partner_scoping_is_queryable),
         ("newsletter cannot be marked personal",        t_newsletter_cannot_be_personal),
