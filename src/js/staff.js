@@ -466,7 +466,15 @@
       .then(function (res) {
         if (res.ok) { renderSnapshot(res.body); wireStewardshipRows(); return; }
 
-        if (res.status === 401) {
+        if (res.status === 404) {
+          // Almost always `netlify dev`, which serves the static build but not
+          // the Worker routes. Blaming the database here would send someone
+          // looking in entirely the wrong place.
+          snapshotError('This server does not provide <code>' + esc(SNAPSHOT_URL) +
+            '</code>. It is a Worker route — run <code>wrangler dev</code>, or ' +
+            'point <code>SNAPSHOT_URL</code> at <code>/staff/data/snapshot.json</code> ' +
+            'to work offline.');
+        } else if (res.status === 401) {
           snapshotError('Your session has expired. ' +
             '<a href="/cdn-cgi/access/logout">Sign in again</a>.');
         } else if (res.status === 403) {
