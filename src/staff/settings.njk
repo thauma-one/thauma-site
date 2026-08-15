@@ -7,18 +7,19 @@ staffHeading: How this <b>works</b>
 staffHint: some of these change what the public sees
 ---
 {#- Tabs rather than one long page: these groups have different audiences and
-   different blast radii. Account affects only you. Languages and Keys change
+   different blast radii. Account is about you. Languages and API keys change
    what a public website serves. Keeping them apart makes that difference
    visible before you touch anything, instead of after. -#}
 <div class="tabs" role="tablist">
-  <button type="button" class="tab" role="tab" data-tab="account" aria-selected="true" data-i18n="set.account">Account</button>
-  <button type="button" class="tab" role="tab" data-tab="languages" aria-selected="false" data-i18n="set.languages">Languages</button>
-  <button type="button" class="tab" role="tab" data-tab="keys" aria-selected="false" data-i18n="set.keys">API keys</button>
+  <button type="button" class="tab" role="tab" data-tab="account"
+          aria-selected="true" data-i18n="set.account">Account</button>
+  <button type="button" class="tab" role="tab" data-tab="languages"
+          aria-selected="false" data-i18n="set.languages">Languages</button>
+  <button type="button" class="tab" role="tab" data-tab="keys"
+          aria-selected="false" data-i18n="set.keys">API keys</button>
 </div>
 
-<span class="hint" id="setStatus"></span>
-
-<!-- ------------------------------------------------------------ account -->
+<!-- ============================================================= ACCOUNT -->
 <section class="tab-panel" data-panel="account" role="tabpanel">
   <div class="set-row">
     <div class="set-label">
@@ -27,8 +28,8 @@ staffHint: some of these change what the public sees
     </div>
     <div class="set-control">
       {#- Access owns the identity, so there is no password here to change and
-         pretending otherwise would send people looking for a control that does
-         not exist. -#}
+         pretending otherwise would send people looking for a control that
+         does not exist. -#}
       <p class="note-inline">Your sign-in is managed by Cloudflare Access.
         Changing your email address or password is done there, not here.</p>
     </div>
@@ -37,40 +38,48 @@ staffHint: some of these change what the public sees
   <div class="set-row">
     <div class="set-label">
       <h3 data-i18n="set.yourAccess">Your access</h3>
-      <p>What this account is allowed to do. Changed by an administrator, not
-         here.</p>
+      <p>What this account is allowed to do. Changed by an administrator.</p>
     </div>
     <div class="set-control">
       <div class="role-tags" id="setRoles"></div>
     </div>
   </div>
+</section>
 
-  {#- The working-language control used to be here as well as on Languages,
-     and the two were not kept in sync — the same setting in two places is one
-     of them being wrong. It lives on Languages, next to the other language
-     decisions. -#}
+<!-- =========================================================== LANGUAGES -->
+<section class="tab-panel" data-panel="languages" role="tabpanel" hidden>
+  {#- YOUR language first, and marked as personal, because everything below it
+     changes what strangers see. Reading order is blast radius: smallest
+     first. -#}
   <div class="set-row">
     <div class="set-label">
       <h3 data-i18n="set.yourLanguage">Your language</h3>
-      <p>Translates this console and opens the milestone editor in the same
-         language. Affects only you — it does not change what a visitor sees.</p>
+      <p><b>Affects only you.</b> Translates this console and opens the
+         milestone editor in the same language. It changes nothing a visitor
+         sees.</p>
     </div>
     <div class="set-control">
       <select id="setPrefLang" class="lang-pick"></select>
     </div>
   </div>
 
+  <p class="note">
+    <b>Everything below changes what partner websites serve.</b> A language
+    switched on here is offered to visitors; one switched off disappears from
+    the public API. Translations you have already written are kept either way.
+  </p>
+
   <div class="set-row set-row-block">
     <div class="set-label">
       <h3 data-i18n="set.publishedLanguages">Published languages</h3>
-      <p>Switch a language on to translate into it and serve it. The default
-         language cannot be switched off.</p>
+      <p>Switch a language on to translate into it and serve it on partner
+         sites. The site's default language cannot be switched off.</p>
     </div>
     <div class="set-control" id="setLangList"></div>
   </div>
 </section>
 
-<!-- --------------------------------------------------------------- keys -->
+<!-- ================================================================ KEYS -->
 <section class="tab-panel" data-panel="keys" role="tabpanel" hidden>
   <p class="note">
     An API key lets a partner website read your <b>published</b> milestones and
@@ -81,7 +90,8 @@ staffHint: some of these change what the public sees
   <div class="ms-bar key-create">
     <input type="text" id="setKeyName" class="key-name" maxlength="80"
            placeholder="What is this key for? e.g. chaseroush.com build">
-    <button type="button" class="solid-btn" id="setKeyAdd" data-i18n="set.createKey">Create key</button>
+    <button type="button" class="solid-btn" id="setKeyAdd"
+            data-i18n="set.createKey">Create key</button>
   </div>
 
   {#- Shown once, on creation, and never again — the database stores only a

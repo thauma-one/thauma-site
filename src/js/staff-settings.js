@@ -27,6 +27,13 @@
   }
 
   /* Outcomes only — see the note in staff-milestones.js. */
+  function problem(msg, retry) {
+    if (window.StaffProblem) window.StaffProblem(msg, retry);
+  }
+  function problemClear() {
+    if (window.StaffProblemClear) window.StaffProblemClear();
+  }
+
   function setStatus(text, kind) {
     if (text && kind && window.StaffToast) window.StaffToast(text, kind);
   }
@@ -114,28 +121,66 @@
 
   /* ---- loading and saving --------------------------------------------- */
 
+  /* WHY THE ERROR HANDLING IS THIS FUSSY
+
+     This used to be one try/catch that reported everything as "Could not
+     reach the server". That sentence was often untrue: the catch also caught
+     bugs in the rendering code below it, so a null element or a bad property
+     access was reported as a network failure. It told you nothing because it
+     was not describing what happened.
+
+     Three separate failures now say three different things:
+       the request never completed   -> the network, retryable
+       the server answered an error  -> the status, with its message
+       the page failed to draw       -> a fault in the console itself
+  */
   async function load() {
+    var res, body;
+
     try {
-      var res = await fetch(API, { credentials: 'same-origin', cache: 'no-store' });
-      var body = await res.json().catch(function () { return {}; });
-      if (!res.ok) {
-        setStatus(res.status === 403
-          ? 'Signed in as ' + (body.email || 'unknown') + ', but that address has no partner access yet.'
-          : 'Could not load settings (' + res.status + ')', 'err');
-        return;
-      }
-      if (window.StaffProblemClear) window.StaffProblemClear();
-      state = body;
-      // The account is the source of truth; the cache is only there to
-      // avoid a flash of English on first paint.
-      if (window.StaffI18n && state.you && state.you.preferred_lang) {
-        window.StaffI18n.setLang(state.you.preferred_lang);
-      }
+      res = await fetch(API, { credentials: 'same-origin', cache: 'no-store' });
+    } catch (e) {
+      problem('Cannot reach the server. Check your connection — ' + e.message, load);
+      return;
+    }
+
+    try {
+      body = await res.json();
+    } catch (e) {
+      problem('The server sent a reply this page could not read (' +
+              res.status + ').', load);
+      return;
+    }
+
+    if (!res.ok) {
+      problem(
+        res.status === 401
+          ? 'Your session has expired. Reload the page to sign in again.'
+        : res.status === 403
+          ? 'Signed in as ' + (body.email || 'unknown') +
+            ', but that address has no partner access yet.'
+          : 'The server refused this request (' + res.status + ')' +
+            (body.error ? ' — ' + body.error : '') + '.',
+        res.status === 401 ? null : load);
+      return;
+    }
+
+    problemClear();
+    state = body;
+
+    // The account is the source of truth; the cache only avoids a flash of
+    // English on first paint.
+    if (window.StaffI18n && state.you && state.you.preferred_lang) {
+      window.StaffI18n.setLang(state.you.preferred_lang);
+    }
+
+    try {
       render();
     } catch (e) {
-      if (window.StaffProblem) {
-        window.StaffProblem('Cannot reach the server — ' + e.message, load);
-      }
+      // NOT a network problem, and saying so would send you looking in the
+      // wrong place entirely.
+      problem('This page failed to display: ' + e.message, null);
+      console.error('settings render failed:', e);
     }
   }
 

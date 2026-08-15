@@ -644,18 +644,23 @@ body.has-savebar .toasts{--toast-lift:var(--ms-savebar-h,72px)}
 .toast.ok::before{background:var(--voice-human)}
 .toast.err::before{background:var(--warn,#F5B845)}
 
-/* ---- the persistent problem banner ---- */
-/* Overlaid, not inserted: a banner that pushes the page down moves whatever
-   someone is reading, and moves it back when the problem clears. Fixed under
-   the header, full width, out of the way of everything except the very top. */
-.problem{position:fixed;top:var(--header-h);left:0;right:0;z-index:40;
-  display:flex;align-items:center;gap:14px;
-  padding:12px max(var(--gutter),24px);
-  background:#1d1608;border-bottom:1px solid var(--warn,#F5B845);
-  box-shadow:0 8px 22px rgba(0,0,0,.5);
-  color:var(--text);font-size:var(--fs-sm)}
-.problem[hidden]{display:none}
-.problem-dot{width:8px;height:8px;border-radius:50%;background:var(--warn,#F5B845);
-  flex:0 0 auto}
+/* ---- the persistent problem toast ---- */
+/* Same visual language as the transient toasts, pinned to the TOP so it is not
+   mistaken for one of them — and so a condition that persists does not sit in
+   the queue where messages are expected to come and go. */
+.toasts-top{top:calc(var(--header-h) + 16px);bottom:auto}
+.toasts-top .toast{transform:translateY(-10px)}
+.toasts-top .toast.in{transform:translateY(0)}
+.toast.warn{border-color:var(--warn,#F5B845);background:#1d1608;
+  box-shadow:0 0 0 1px rgba(245,184,69,.3), 0 16px 40px rgba(0,0,0,.6)}
+.toast.warn::before{background:var(--warn,#F5B845)}
+.problem-msg{flex:1;min-width:0}
+.toast-act{flex:0 0 auto;background:none;border:1px solid var(--warn,#F5B845);
+  color:var(--warn,#F5B845);font-family:var(--font-display);font-size:10px;
+  letter-spacing:var(--ls-caps);text-transform:uppercase;font-weight:var(--w-bold);
+  padding:6px 12px;border-radius:var(--radius);cursor:pointer}
+@media(hover:hover){
+  .toast-act:hover{background:var(--warn,#F5B845);color:#1d1608}
+}
 .problem-msg{flex:1;min-width:0}
 .problem .ghost-btn{flex:0 0 auto}

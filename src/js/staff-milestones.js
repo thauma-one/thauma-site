@@ -249,60 +249,79 @@
 
   /* ---- loading -------------------------------------------------------- */
 
+  /* Three failures, three messages — see the note in staff-settings.js. One
+     catch reporting everything as "cannot reach the server" was wrong often
+     enough to be useless. */
   async function load() {
-    // Same reason render() does it: the error branches below write innerHTML
-    // straight into the list, and the panel may be sitting inside it.
     detachForm();
+
+    var res, body;
     try {
-      var res = await fetch(API, { credentials: 'same-origin', cache: 'no-store' });
-      var body = await res.json().catch(function () { return {}; });
+      res = await fetch(API, { credentials: 'same-origin', cache: 'no-store' });
+    } catch (e) {
+      if (window.StaffProblem) {
+        window.StaffProblem('Cannot reach the server. Check your connection — ' +
+                            e.message, load);
+      }
+      return;
+    }
 
-      if (window.StaffProblemClear) window.StaffProblemClear();
-      if (!res.ok) {
-        $('msList').innerHTML = '<p class="empty">' + (
-          res.status === 401 ? 'Your session has expired. ' +
-            '<a href="/cdn-cgi/access/logout">Sign in again</a>.' :
-          res.status === 403 ? 'Signed in as <b>' + esc(body.email || 'unknown') +
-            '</b>, but that address has no partner access yet.' :
-          'Could not load milestones (' + res.status + ')' +
-            (body.error ? ' — ' + esc(body.error) : '') + '.'
-        ) + '</p>';
-        return;
+    try { body = await res.json(); }
+    catch (e) {
+      if (window.StaffProblem) {
+        window.StaffProblem('The server sent a reply this page could not read (' +
+                            res.status + ').', load);
       }
-      state.saved = {}; state.draft = {}; state.order = [];
-      (body.milestones || []).forEach(function (m) {
-        state.saved[m.id] = m;
-        state.draft[m.id] = clone(m);
-        state.order.push(m.id);
-      });
-      state.languages = body.languages || [];
-      state.prefLang = body.preferred_lang || 'en';
-      // Same account setting that translates the console also picks the
-      // editor's first column, so "your language" means one thing.
-      if (window.StaffI18n) window.StaffI18n.setLang(state.prefLang);
+      return;
+    }
 
-      // Left column opens on the staff member's own language. Right opens on
-      // the next language they PUBLISH, falling back to any other language —
-      // so the pairing is useful on first load without being fixed.
-      var on = enabledLangs();
-      if (!state.colA || !on.some(function (l) { return l.code === state.colA; })) {
-        state.colA = on.some(function (l) { return l.code === state.prefLang; })
-          ? state.prefLang : (on[0] || {}).code || null;
+    if (!res.ok) {
+      if (window.StaffProblem) {
+        window.StaffProblem(
+          res.status === 401
+            ? 'Your session has expired. Reload the page to sign in again.'
+          : res.status === 403
+            ? 'Signed in as ' + (body.email || 'unknown') +
+              ', but that address has no partner access yet.'
+            : 'The server refused this request (' + res.status + ')' +
+              (body.error ? ' — ' + body.error : '') + '.',
+          res.status === 401 ? null : load);
       }
-      if (!state.colB || !on.some(function (l) { return l.code === state.colB; })) {
-        var others = on.filter(function (l) { return l.code !== state.colA; });
-        state.colB = (others[0] || {}).code || null;
-      }
+      return;
+    }
+
+    if (window.StaffProblemClear) window.StaffProblemClear();
+
+    state.saved = {}; state.draft = {}; state.order = [];
+    (body.milestones || []).forEach(function (m) {
+      state.saved[m.id] = m;
+      state.draft[m.id] = clone(m);
+      state.order.push(m.id);
+    });
+    state.languages = body.languages || [];
+    state.prefLang = body.preferred_lang || 'en';
+    if (window.StaffI18n) window.StaffI18n.setLang(state.prefLang);
+
+    var on = enabledLangs();
+    if (!state.colA || !on.some(function (l) { return l.code === state.colA; })) {
+      state.colA = on.some(function (l) { return l.code === state.prefLang; })
+        ? state.prefLang : (on[0] || {}).code || null;
+    }
+    if (!state.colB || !on.some(function (l) { return l.code === state.colB; })) {
+      var others = on.filter(function (l) { return l.code !== state.colA; });
+      state.colB = (others[0] || {}).code || null;
+    }
+
+    try {
       fillLangPickers();
       render();
       fillParents();
       updateSaveBar();
     } catch (e) {
-      // A condition, not an event: banner with a retry, not a toast that
-      // stacks another copy of itself every time a request fails.
       if (window.StaffProblem) {
-        window.StaffProblem('Cannot reach the server — ' + e.message, load);
+        window.StaffProblem('This page failed to display: ' + e.message, null);
       }
+      console.error('milestones render failed:', e);
     }
   }
 

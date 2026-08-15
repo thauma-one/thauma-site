@@ -536,8 +536,11 @@
     }
 
     toastRoot().appendChild(el);
-    // Animate in on the next frame; setting the class in the same frame as
-    // the insert gives the browser nothing to transition from.
+    // Force the browser to lay the element out in its starting state before
+    // changing it. requestAnimationFrame alone can still coalesce with the
+    // insert, and then there is nothing to transition FROM — the toast simply
+    // appears. Reading offsetHeight makes the start state real.
+    void el.offsetHeight;
     requestAnimationFrame(function () { el.classList.add('in'); });
 
     if (kind !== 'err') setTimeout(function () { dismiss(el); }, 3200);
@@ -562,33 +565,45 @@
      toast every time a request fails stacks identical messages that each
      have to be dismissed.
 
-     This is one banner that shows while the condition holds and goes away
-     when it clears. Fixed and overlaid rather than inserted into the flow,
-     because a banner that pushes the page down moves whatever someone is
-     reading — and moves it back again when the problem resolves.
+     This is one message that shows while the condition holds and goes away
+     when it clears. Same toast styling, but pinned to the TOP so it is not
+     mistaken for the transient ones stacking at the bottom, and overlaid
+     rather than inserted into the flow — a banner that pushes the page down
+     moves whatever someone is reading, then moves it back when the problem
+     resolves.
      ===================================================================== */
   var problemEl = null;
 
   function problem(message, retry) {
     if (!problemEl) {
       problemEl = document.createElement('div');
-      problemEl.className = 'problem';
+      problemEl.className = 'toast warn problem-toast';
       problemEl.setAttribute('role', 'alert');
       problemEl.innerHTML =
-        '<span class="problem-dot" aria-hidden="true"></span>' +
         '<span class="problem-msg"></span>' +
-        '<button type="button" class="ghost-btn">Try again</button>';
-      document.body.appendChild(problemEl);
+        '<button type="button" class="toast-act">Try again</button>';
+
+      var host = document.createElement('div');
+      host.className = 'toasts toasts-top';
+      host.appendChild(problemEl);
+      document.body.appendChild(host);
     }
     problemEl.querySelector('.problem-msg').textContent = message;
-    var btn = problemEl.querySelector('.ghost-btn');
+
+    var btn = problemEl.querySelector('.toast-act');
     btn.hidden = !retry;
     btn.onclick = retry || null;
-    problemEl.hidden = false;
+
+    problemEl.parentNode.hidden = false;
+    void problemEl.offsetHeight;
+    problemEl.classList.add('in');
   }
 
   function problemClear() {
-    if (problemEl) problemEl.hidden = true;
+    if (!problemEl) return;
+    problemEl.classList.remove('in');
+    var host = problemEl.parentNode;
+    setTimeout(function () { if (host) host.hidden = true; }, 260);
   }
 
   window.StaffProblem = problem;
