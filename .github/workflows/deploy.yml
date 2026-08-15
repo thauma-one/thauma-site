@@ -1,0 +1,116 @@
+# Deploy thauma.one
+#
+# main IS production. A push here builds the site and deploys the Worker —
+# there is no separate publish step and no manual deploy to remember.
+#
+# Replaces Netlify's build-on-push, which stopped applying when hosting moved
+# to Cloudflare Workers on 2026-08-15. For two weeks after the cutover the only
+# way to update the live site was someone running `wrangler deploy` by hand on
+# a Raspberry Pi, which is not a deployment strategy.
+#
+# `dev` remains the working branch. Nothing here runs until it reaches main.
+name: Deploy production
+
+on:
+  push:
+    branches: [main]
+  # Deploy the current main without pushing anything — for re-running a failed
+  # deploy, or shipping a config change made in the Cloudflare dashboard.
+  workflow_dispatch:
+
+# One deploy at a time. Two pushes in quick succession would otherwise race,
+# and the loser could finish LAST and overwrite the newer build.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Node 20 to match the Raspberry Pi, where every local deploy has been
+      # tested. wrangler is pinned to exactly 4.86.0 because 4.123+ requires
+      # Node 22 — see the note in docs/SPEC.md. Keeping CI and local on the
+      # same runtime means a deploy that works in one works in the other.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - run: npm ci
+
+      # The GATED production build, into its own directory.
+      #
+      # _site is the dev server's watch output and is the UNGATED site; the
+      # config used to point production at it, which would have published every
+      # unreleased page. Building to _site_prod here keeps CI and the local
+      # script doing literally the same thing.
+      - name: Build
+        run: npx @11ty/eleventy --output=_site_prod
+
+      # Assert the build matches what site.json actually asked for.
+      #
+      # comingSoon true  -> interior pages MUST be absent
+      # comingSoon false -> interior pages MUST be present
+      #
+      # Both directions, because the dangerous failure is asymmetric: shipping
+      # a gated build after launch is an outage somebody notices in minutes,
+      # while shipping an ungated build before launch publishes unfinished work
+      # and cannot be taken back once it is crawled.
+      - name: Verify the build matches the comingSoon setting
+        run: |
+          coming=$(node -p "require('./src/_data/site.json').comingSoon")
+          pages=$(find _site_prod -name '*.html' | wc -l)
+          echo "comingSoon=$coming, $pages pages built"
+          if [ "$coming" = "true" ]; then
+            if [ -f _site_prod/en/about/index.html ]; then
+              echo "::error::comingSoon is true but interior pages were built — this would publish unreleased content."
+              exit 1
+            fi
+            echo "Gated build confirmed: interior pages absent."
+          else
+            if [ ! -f _site_prod/en/about/index.html ]; then
+              echo "::error::comingSoon is false but interior pages are missing — this would take the site down."
+              exit 1
+            fi
+            echo "Full build confirmed: interior pages present."
+          fi
+
+      # Fast, and they need no credentials or network services.
+      - name: Test
+        run: |
+          python3 db/test_schema.py
+          cd workers && npm test
+
+      - name: Deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: 57c887d9191048d984a7607c9e9334b7
+        # --env production is required every time by design: the default target
+        # is staging, so the dangerous one has to be named out loud.
+        run: npx wrangler deploy --env production
+
+      # Deploying is not the same as working. These are the four codes that
+      # would reveal the staff area open or the site down.
+      - name: Verify the live site
+        run: |
+          sleep 5
+          fail=0
+          check() {
+            got=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$1")
+            if [ "$got" = "$2" ]; then
+              echo "ok   $1 -> $got"
+            else
+              echo "::error::$1 returned $got, expected $2"
+              fail=1
+            fi
+          }
+          check https://thauma.one/en/ 200
+          check https://thauma.one/ 302
+          check https://thauma.one/staff/ 302
+          check https://thauma.one/api/staff-snapshot 401
+          exit $fail
