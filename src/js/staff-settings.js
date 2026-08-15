@@ -34,6 +34,14 @@
     if (window.StaffProblemClear) window.StaffProblemClear();
   }
 
+  /* Toast text goes through the dictionary, so a message raised by changing
+     the language arrives IN that language. Passing an already-built English
+     string here was the bug: the interface translated and its notifications
+     did not. */
+  function toastKey(key, kind) {
+    setStatus(window.StaffI18n ? window.StaffI18n.t(key) : key, kind);
+  }
+
   function setStatus(text, kind) {
     if (text && kind && window.StaffToast) window.StaffToast(text, kind);
   }
@@ -68,6 +76,12 @@
     if (state.partner && state.partner.display_name) {
       roles.push({ label: state.partner.display_name, cls: 'partner' });
     }
+    // Which of the two notes applies depends on the account, so only the
+    // true one is ever on screen.
+    var admin = !!state.you.is_admin;
+    if ($('setLangConsequence')) $('setLangConsequence').hidden = !admin;
+    if ($('setLangPersonal')) $('setLangPersonal').hidden = admin;
+
     $('setRoles').innerHTML = roles.map(function (r) {
       return '<span class="role-tag ' + r.cls + '">' + esc(r.label) + '</span>';
     }).join('');
@@ -100,12 +114,17 @@
     renderKeys();
   }
 
+  /* Reads state.api_keys, which is what the endpoint actually returns. It
+     read state.keys until 2026-08-15 — undefined, so .length threw and the
+     whole Settings page failed to draw. The error was visible only because
+     render failures stopped being reported as network problems. */
   function renderKeys() {
-    if (!state.keys.length) {
+    var keys = state.api_keys || [];
+    if (!keys.length) {
       $('setKeyList').innerHTML = '<p class="empty">No API keys yet.</p>';
       return;
     }
-    $('setKeyList').innerHTML = state.keys.map(function (k) {
+    $('setKeyList').innerHTML = keys.map(function (k) {
       return '<div class="key-row' + (k.revoked ? ' is-revoked' : '') + '">' +
         '<div><span class="key-title">' + esc(k.name) + '</span>' +
           '<span class="key-meta">created ' + esc((k.created_at || '').slice(0, 10)) +
@@ -198,7 +217,7 @@
       var body = await res.json().catch(function () { return {}; });
       if (!res.ok) throw new Error(body.error || ('failed (' + res.status + ')'));
       await load();
-      setStatus(message || 'Saved', 'ok');
+      toastKey(message || 'toast.saved', 'ok');
     } catch (e) {
       // Reload rather than reverting by hand: the server is the only thing
       // that knows what actually happened.
@@ -230,9 +249,10 @@
     // Applied before the request completes, deliberately. Translating the
     // interface has no consequence if the save fails, and waiting for a round
     // trip to change a language makes the control feel broken.
+    // Applied before the request completes, so the toast that follows is
+    // already in the new language.
     if (window.StaffI18n) window.StaffI18n.setLang(code);
-    change({ preferred_lang: code }, e.target,
-           'Language changed');
+    change({ preferred_lang: code }, e.target, 'toast.langChanged');
   });
 
   $('setLangList').addEventListener('click', function (e) {
@@ -240,7 +260,7 @@
     if (!sw || sw.disabled) return;
     var on = sw.getAttribute('aria-checked') !== 'true';
     change({ language: sw.dataset.lang, is_enabled: on }, sw,
-           (on ? 'Publishing ' : 'No longer publishing ') + sw.dataset.lang.toUpperCase());
+           on ? 'toast.published' : 'toast.unpublished');
   });
 
   $('setKeyList').addEventListener('click', function (e) {
@@ -248,7 +268,7 @@
     if (!btn) return;
     if (!confirm('Revoke this key? Any site using it will stop receiving data ' +
                  'immediately, and it cannot be un-revoked.')) return;
-    change({ revoke_key: btn.dataset.revoke }, btn, 'Key revoked');
+    change({ revoke_key: btn.dataset.revoke }, btn, 'toast.keyRevoked');
   });
 
   $('setKeyAdd').addEventListener('click', async function () {
@@ -270,9 +290,9 @@
       $('setKeyValue').textContent = body.key;
       $('setKeyReveal').hidden = false;
       $('setKeyName').value = '';
-      state.keys = body.api_keys || [];
+      state.api_keys = body.api_keys || [];
       renderKeys();
-      setStatus('Key created', 'ok');
+      toastKey('toast.keyCreated', 'ok');
     } catch (e) {
       setStatus(e.message, 'err');
     } finally {
@@ -283,7 +303,7 @@
   $('setKeyCopy').addEventListener('click', function () {
     var v = $('setKeyValue').textContent;
     if (navigator.clipboard) {
-      navigator.clipboard.writeText(v).then(function () { setStatus('Copied', 'ok'); });
+      navigator.clipboard.writeText(v).then(function () { toastKey('toast.copied', 'ok'); });
     } else {
       // Older Safari over http has no clipboard API; select it so Ctrl-C works.
       var r = document.createRange();

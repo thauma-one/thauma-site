@@ -54,9 +54,17 @@ staffHint: some of these change what the public sees
   <div class="set-row">
     <div class="set-label">
       <h3 data-i18n="set.yourLanguage">Your language</h3>
-      <p><b>Affects only you.</b> Translates this console and opens the
-         milestone editor in the same language. It changes nothing a visitor
-         sees.</p>
+      <p>Translates this console and opens the milestone editor in the same
+         language.</p>
+      {#- Said here rather than discovered later: for an administrator this
+         control has a second effect, and the switches below will move when
+         it is used. -#}
+      <p class="note-inline" id="setLangConsequence" hidden>
+        <b>You are an administrator</b>, so this also becomes the site's
+        default language — what a visitor sees before choosing. It will be
+        switched on below automatically.</p>
+      <p class="note-inline" id="setLangPersonal" hidden>
+        Affects only you. It changes nothing a visitor sees.</p>
     </div>
     <div class="set-control">
       <select id="setPrefLang" class="lang-pick"></select>

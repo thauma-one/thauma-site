@@ -47,6 +47,17 @@
       'set.signedInAs': 'Signed in as', 'set.yourAccess': 'Your access',
       'set.yourLanguage': 'Your language',
       'set.publishedLanguages': 'Published languages',
+      'toast.langChanged': 'Language changed',
+      'toast.saved': 'Saved',
+      'toast.published': 'Published — now visible on partner sites',
+      'toast.unpublished': 'Unpublished',
+      'toast.added': 'Milestone added',
+      'toast.updated': 'Milestone updated',
+      'toast.deleted': 'Deleted',
+      'toast.discarded': 'Changes discarded',
+      'toast.keyCreated': 'Key created',
+      'toast.keyRevoked': 'Key revoked',
+      'toast.copied': 'Copied',
       'set.createKey': 'Create key'
     },
 
@@ -71,6 +82,17 @@
       'set.signedInAs': 'Prijavljeni kao', 'set.yourAccess': 'Vaš pristup',
       'set.yourLanguage': 'Vaš jezik',
       'set.publishedLanguages': 'Objavljeni jezici',
+      'toast.langChanged': 'Jezik promijenjen',
+      'toast.saved': 'Spremljeno',
+      'toast.published': 'Objavljeno — sada vidljivo na partnerskim stranicama',
+      'toast.unpublished': 'Objava uklonjena',
+      'toast.added': 'Prekretnica dodana',
+      'toast.updated': 'Prekretnica ažurirana',
+      'toast.deleted': 'Obrisano',
+      'toast.discarded': 'Promjene odbačene',
+      'toast.keyCreated': 'Ključ stvoren',
+      'toast.keyRevoked': 'Ključ opozvan',
+      'toast.copied': 'Kopirano',
       'set.createKey': 'Stvori ključ'
     },
 
@@ -95,6 +117,17 @@
       'set.signedInAs': 'Пријављени као', 'set.yourAccess': 'Ваш приступ',
       'set.yourLanguage': 'Ваш језик',
       'set.publishedLanguages': 'Објављени језици',
+      'toast.langChanged': 'Језик промењен',
+      'toast.saved': 'Сачувано',
+      'toast.published': 'Објављено — сада видљиво на партнерским сајтовима',
+      'toast.unpublished': 'Објава уклоњена',
+      'toast.added': 'Прекретница додата',
+      'toast.updated': 'Прекретница ажурирана',
+      'toast.deleted': 'Обрисано',
+      'toast.discarded': 'Промене одбачене',
+      'toast.keyCreated': 'Кључ направљен',
+      'toast.keyRevoked': 'Кључ опозван',
+      'toast.copied': 'Копирано',
       'set.createKey': 'Направи кључ'
     }
   };

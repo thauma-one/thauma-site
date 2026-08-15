@@ -57,6 +57,10 @@
      is replaced by its own result a moment later, so it is a flash of text
      that carries nothing — the disabled control already says work is in
      flight. Only outcomes get announced. */
+  function toastKey(key, kind) {
+    setStatus(null, window.StaffI18n ? window.StaffI18n.t(key) : key, kind);
+  }
+
   function setStatus(_el, text, kind) {
     if (text && kind && window.StaffToast) window.StaffToast(text, kind);
   }
@@ -389,7 +393,7 @@
     if (failed.length) {
       setStatus($('msStatus'), failed.length + ' could not be saved: ' + failed[0], 'err');
     } else {
-      setStatus($('msStatus'), 'Saved. Published entries are now live on partner sites.', 'ok');
+      toastKey('toast.saved', 'ok');
     }
   }
 
@@ -399,7 +403,7 @@
     closeForm();
     render();
     updateSaveBar();
-    setStatus($('msStatus'), 'Changes discarded', 'ok');
+    toastKey('toast.discarded', 'ok');
   }
 
   /* ---- the form -------------------------------------------------------- */
@@ -660,7 +664,7 @@
       delete state.draft[id];
       state.order = state.order.filter(function (x) { return x !== id; });
       closeForm(); render(); updateSaveBar();
-      setStatus($('msStatus'), 'Discarded', 'ok');
+      toastKey('toast.discarded', 'ok');
       return;
     }
 
@@ -675,7 +679,7 @@
         throw new Error(body.error || ('delete failed (' + res.status + ')'));
       }
       await load();
-      setStatus($('msStatus'), 'Deleted', 'ok');
+      toastKey('toast.deleted', 'ok');
     } catch (e) {
       setStatus($('msStatus'), e.message, 'err');
     }
