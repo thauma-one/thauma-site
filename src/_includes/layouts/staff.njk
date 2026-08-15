@@ -16,6 +16,7 @@
   { slug: "index",       url: "/staff/",             label: "Dashboard" },
   { slug: "support",     url: "/staff/support/",     label: "Support" },
   { slug: "stewardship", url: "/staff/stewardship/", label: "Stewardship" },
+  { slug: "milestones",  url: "/staff/milestones/",  label: "Milestones" },
   { slug: "directory",   url: "/staff/directory/",   label: "Directory" },
   { slug: "resources",   url: "/staff/resources/",   label: "Resources" },
   { slug: "activity",    url: "/staff/activity/",    label: "Activity" }
@@ -28,7 +29,7 @@
 <meta name="robots" content="noindex, nofollow">
 <title>{{ staffTitle }} · Thauma Staff</title>
 <link rel="stylesheet" href="/css/tokens.css">
-<link rel="stylesheet" href="/css/staff.css?v=2">
+<link rel="stylesheet" href="/css/staff.css?v=3">
 <link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
 </head>
 <body data-staff-page="{{ staffPage }}">
@@ -66,6 +67,10 @@
   {{ content | safe }}
 </main>
 
-<script src="/js/staff.js?v=2"></script>
+<script src="/js/staff.js?v=3"></script>
+{#- Only the Milestones page needs this; the script no-ops elsewhere. Kept
+   separate from staff.js rather than folded in, because the editor is a
+   different job from the read-only console and will keep growing. -#}
+{% if staffPage == "milestones" %}<script src="/js/staff-milestones.js?v=1"></script>{% endif %}
 </body>
 </html>

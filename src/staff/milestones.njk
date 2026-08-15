@@ -1,0 +1,103 @@
+---
+layout: layouts/staff.njk
+staffPage: milestones
+staffNum: "04"
+staffTitle: Milestones
+staffLive: true
+staffHeading: The public <b>roadmap</b>
+staffHint: what partner sites show — published entries are visible to anyone
+---
+<div class="ms-bar">
+  <button type="button" class="solid-btn" id="msAdd">Add milestone</button>
+  <span class="hint" id="msStatus"></span>
+</div>
+
+{#- Said plainly and near the toggles, because this is the one screen in the
+   console where a mistake is visible to strangers rather than to staff. -#}
+<p class="note ms-note">
+  <b>Published entries leave this building.</b> Anything switched to Published is
+  served to partner websites through the public API and can be read by anyone.
+  New milestones start unpublished.
+</p>
+
+<div class="ms-list" id="msList">
+  <p class="empty">Loading…</p>
+</div>
+
+{#- One form, reused for create and edit. Hidden until opened. -#}
+<form class="ms-form" id="msForm" hidden>
+  <input type="hidden" id="msId">
+
+  <div class="ms-grid">
+    <label class="fld fld-wide">
+      <span>Title <em>English</em></span>
+      <input type="text" id="msTitle" maxlength="200" required>
+    </label>
+    <label class="fld fld-wide">
+      <span>Title <em>Croatian</em></span>
+      <input type="text" id="msTitleHr" maxlength="200">
+    </label>
+
+    <label class="fld fld-wide">
+      <span>Description <em>English</em></span>
+      <textarea id="msDesc" rows="4"></textarea>
+    </label>
+    <label class="fld fld-wide">
+      <span>Description <em>Croatian</em></span>
+      <textarea id="msDescHr" rows="4"></textarea>
+    </label>
+
+    <label class="fld">
+      <span>When <em>English, free text</em></span>
+      <input type="text" id="msTarget" maxlength="120" placeholder="End of September 2027">
+    </label>
+    <label class="fld">
+      <span>When <em>Croatian</em></span>
+      <input type="text" id="msTargetHr" maxlength="120" placeholder="Kraj rujna 2027.">
+    </label>
+
+    <label class="fld">
+      <span>Sort date <em>for ordering only</em></span>
+      <input type="date" id="msDate">
+    </label>
+    <label class="fld">
+      <span>Status</span>
+      <select id="msStatusSel">
+        <option value="upcoming">Upcoming</option>
+        <option value="in_progress">In progress</option>
+        <option value="complete">Complete</option>
+        <option value="cancelled">Cancelled</option>
+      </select>
+    </label>
+
+    <label class="fld">
+      <span>Completion <em>percent</em></span>
+      <input type="number" id="msCompletion" min="0" max="100" step="1" value="0">
+    </label>
+    <label class="fld">
+      <span>Part of <em>optional</em></span>
+      <select id="msParent"><option value="">— top level —</option></select>
+    </label>
+  </div>
+
+  <div class="ms-switches">
+    <button type="button" class="switch" id="msPublic" role="switch" aria-checked="false">
+      <span class="switch-track"><span class="switch-state">Off</span><span class="switch-knob"></span></span>
+      <span class="switch-label">Published
+        <span class="switch-note">Visible on partner websites</span>
+      </span>
+    </button>
+    <button type="button" class="switch" id="msFeatured" role="switch" aria-checked="false">
+      <span class="switch-track"><span class="switch-state">Off</span><span class="switch-knob"></span></span>
+      <span class="switch-label">Featured
+        <span class="switch-note">Highlighted on their home page</span>
+      </span>
+    </button>
+  </div>
+
+  <div class="ms-actions">
+    <button type="submit" class="solid-btn">Save milestone</button>
+    <button type="button" class="ghost-btn" id="msCancel">Cancel</button>
+    <span class="hint" id="msFormStatus"></span>
+  </div>
+</form>

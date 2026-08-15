@@ -265,3 +265,126 @@ tr.tl-row td{padding:0;border-bottom:1px solid var(--line-soft)}
 .qs{font-size:var(--fs-tiny);color:var(--dim)}
 
 .empty code{font-family:var(--font-mono);font-size:11.5px;color:var(--text)}
+
+/* ============================================================
+   TOGGLE SWITCH
+   ============================================================
+   Oval track, circular knob, and the word ON or OFF inside it.
+
+   The word is the point. A coloured pill alone asks the reader to
+   remember which side means enabled, and gets that wrong under
+   every kind of colour blindness — the two states would differ
+   only by hue and knob position. Redundant encoding: position,
+   colour AND text, so it reads correctly in greyscale.
+
+   Built on a real <button role="switch"> rather than a styled
+   checkbox: aria-checked is what screen readers announce, and it
+   cannot drift from the visible word because both are set from
+   the same attribute.
+
+   ON uses --voice-human (seafoam) rather than a generic green,
+   because that is this site's affirmative colour — the same one
+   the "live" badge and healthy meters use. */
+.switch{display:inline-flex;align-items:center;gap:10px;background:none;
+  border:0;padding:0;cursor:pointer;font-family:var(--font-display)}
+.switch-track{position:relative;width:62px;height:30px;border-radius:999px;
+  background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.14);
+  display:flex;align-items:center;flex:0 0 auto;
+  transition:background var(--dur-3) var(--ease-main),
+             border-color var(--dur-3) var(--ease-main)}
+.switch-knob{position:absolute;top:50%;left:3px;width:22px;height:22px;
+  border-radius:50%;background:#fff;transform:translateY(-50%);
+  box-shadow:0 1px 3px rgba(0,0,0,.4);
+  transition:left var(--dur-3) var(--ease-main)}
+/* The label sits opposite the knob, so neither ever overlaps it. */
+.switch-state{position:absolute;font-size:9px;font-weight:var(--w-bold);
+  letter-spacing:.12em;text-transform:uppercase;pointer-events:none;
+  right:9px;color:var(--dim);transition:color var(--dur-3) var(--ease-main)}
+
+.switch[aria-checked="true"] .switch-track{background:var(--voice-human);
+  border-color:var(--voice-human)}
+.switch[aria-checked="true"] .switch-knob{left:calc(100% - 25px)}
+.switch[aria-checked="true"] .switch-state{right:auto;left:9px;
+  color:var(--voice-human-on)}
+
+.switch:focus-visible{outline:none}
+.switch:focus-visible .switch-track{outline:2px solid var(--voice-tech);outline-offset:3px}
+@media(hover:hover){
+  .switch:hover .switch-track{border-color:rgba(255,255,255,.30)}
+  .switch[aria-checked="true"]:hover .switch-track{background:var(--voice-human-hi)}
+}
+/* Saving: the control is not a lie while the request is in flight. */
+.switch[disabled]{opacity:.55;cursor:progress}
+
+.switch-label{font-size:var(--fs-sm);color:var(--text);font-weight:var(--w-light)}
+.switch-note{display:block;font-size:var(--fs-tiny);color:var(--dim);margin-top:2px}
+
+@media(prefers-reduced-motion:reduce){
+  .switch-track,.switch-knob,.switch-state{transition:none}
+}
+
+/* ============================================================
+   MILESTONES EDITOR
+   ============================================================ */
+.ms-bar{display:flex;align-items:center;gap:16px;margin-bottom:18px}
+.ms-note{margin-bottom:24px}
+.ms-note b{color:var(--warn)}
+
+.ms-list{display:flex;flex-direction:column;gap:1px;background:var(--line);
+  border:1px solid var(--line)}
+.ms-row{background:var(--panel);padding:16px 20px;display:grid;
+  grid-template-columns:1fr auto auto;align-items:center;gap:20px}
+/* Sub-steps are indented and marked with a rule, so nesting is visible
+   without reading the "Part of" field on every row. */
+.ms-child{padding-left:44px;position:relative}
+.ms-child::before{content:"";position:absolute;left:22px;top:50%;width:12px;
+  height:1px;background:var(--line-hi,rgba(255,255,255,.2))}
+
+.ms-t{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ms-title{font-size:var(--fs-md);color:var(--text)}
+.ms-meta{display:flex;gap:14px;flex-wrap:wrap;margin-top:5px;
+  font-size:var(--fs-tiny);color:var(--dim)}
+/* A missing translation is a real defect on a trilingual site and is
+   otherwise invisible until somebody switches language on the live page. */
+.ms-warn{color:var(--warn)}
+
+.ms-row-actions{display:flex;gap:8px}
+.ms-row-actions button{background:none;border:1px solid rgba(255,255,255,.18);
+  color:var(--dim);font-family:var(--font-display);font-size:10px;
+  letter-spacing:var(--ls-caps);text-transform:uppercase;font-weight:var(--w-bold);
+  padding:7px 12px;border-radius:var(--radius);cursor:pointer;transition:.2s}
+@media(hover:hover){
+  .ms-row-actions button:hover{border-color:var(--voice-tech);color:var(--voice-tech)}
+  .ms-row-actions .del:hover{border-color:var(--crit,#FF6B6B);color:var(--crit,#FF6B6B)}
+}
+
+/* ---- the form ---- */
+.ms-form{margin-top:28px;background:var(--panel);border:1px solid var(--line);
+  padding:26px 24px}
+.ms-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.fld{display:flex;flex-direction:column;gap:6px}
+.fld > span{font-size:10px;letter-spacing:var(--ls-label);text-transform:uppercase;
+  font-weight:var(--w-bold);color:var(--voice-tech)}
+/* The language marker rides along with the label rather than sitting in the
+   field name, so EN and HR pairs scan as one thing with two halves. */
+.fld > span em{font-style:normal;color:var(--dim);font-weight:var(--w-light);
+  letter-spacing:.04em;text-transform:none;margin-left:6px}
+.fld input,.fld textarea,.fld select{background:var(--bg2,#0b1119);
+  border:1px solid rgba(255,255,255,.14);color:var(--text);
+  font-family:var(--font-body);font-size:var(--fs-sm);padding:10px 12px;
+  border-radius:var(--radius);width:100%}
+.fld textarea{resize:vertical;line-height:1.55}
+.fld input:focus,.fld textarea:focus,.fld select:focus{outline:none;
+  border-color:var(--voice-tech);box-shadow:var(--voice-tech-glow)}
+
+.ms-switches{display:flex;gap:38px;flex-wrap:wrap;margin:26px 0 6px;
+  padding-top:22px;border-top:1px solid var(--line)}
+.ms-actions{display:flex;align-items:center;gap:14px;margin-top:24px}
+.hint.ok{color:var(--ok,var(--voice-human))}
+.hint.err{color:var(--crit,#FF6B6B)}
+
+@media (max-width:760px){
+  .ms-grid{grid-template-columns:1fr}
+  .ms-row{grid-template-columns:1fr;gap:14px}
+  .ms-row-actions{justify-content:flex-start}
+}

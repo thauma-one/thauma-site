@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "e4be888bcb3e4309";
+export const SOURCE_DIGEST = "69e4e18508d1220d";
 
 export const QUERIES = {
   api_key_lookup: `SELECT k.id AS key_id, k.partner_id, k.scopes, p.slug, p.display_name
@@ -101,6 +101,33 @@ LEFT JOIN users u ON u.id = i.logged_by
 WHERE i.partner_id = :partner_id
   AND c.status = 'active'
 ORDER BY i.occurred_on DESC, i.created_at DESC;`,
+  milestone_delete: `DELETE FROM milestones WHERE id = :id AND partner_id = :partner_id;`,
+  milestone_reorder: `UPDATE milestones SET sort_order = :sort_order, updated_at = :now
+WHERE id = :id AND partner_id = :partner_id;`,
+  milestone_upsert: `INSERT INTO milestones (
+  id, partner_id, parent_id, title, title_hr, description, description_hr,
+  target_label, target_label_hr, actual_date, status, completion,
+  is_public, is_featured, sort_order, created_at, updated_at
+) VALUES (
+  :id, :partner_id, :parent_id, :title, :title_hr, :description, :description_hr,
+  :target_label, :target_label_hr, :actual_date, :status, :completion,
+  :is_public, :is_featured, :sort_order, :now, :now
+)
+ON CONFLICT(id) DO UPDATE SET
+  parent_id = :parent_id, title = :title, title_hr = :title_hr,
+  description = :description, description_hr = :description_hr,
+  target_label = :target_label, target_label_hr = :target_label_hr,
+  actual_date = :actual_date, status = :status, completion = :completion,
+  is_public = :is_public, is_featured = :is_featured, sort_order = :sort_order,
+  updated_at = :now
+WHERE milestones.partner_id = :partner_id;`,
+  milestones_for_staff: `SELECT
+  id, parent_id, title, title_hr, description, description_hr,
+  target_label, target_label_hr, actual_date, status, completion,
+  is_public, is_featured, sort_order, created_at, updated_at
+FROM milestones
+WHERE partner_id = :partner_id
+ORDER BY sort_order ASC, (actual_date IS NULL), actual_date ASC;`,
   partners_for_user: `SELECT p.id, p.slug, p.display_name, p.status, pu.role AS access_role
 FROM users u
 JOIN partner_users pu ON pu.user_id = u.id

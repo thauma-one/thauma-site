@@ -44,12 +44,14 @@ await check("queries.generated.js is in sync with db/queries.sql", async () => {
     `stale generated file — run: python3 db/generate_queries_module.py`);
 });
 
-await check("all thirteen named queries are present", async () => {
+await check("all seventeen named queries are present", async () => {
   const expected = [
     "api_key_lookup", "api_key_touch",
     "audit_recent_for_partner", "contact_timeline", "contacts_stewardship",
     "dashboard_needs_attention", "dashboard_partner_summary", "goal_history",
-    "goals_for_partner", "interactions_for_partner", "partners_for_user",
+    "goals_for_partner", "interactions_for_partner",
+    "milestone_delete", "milestone_reorder", "milestone_upsert",
+    "milestones_for_staff", "partners_for_user",
     "public_goals_for_partner", "public_milestones_for_partner",
   ];
   eq(Object.keys(QUERIES).sort(), expected, "query names");
@@ -114,6 +116,11 @@ await check("every real query converts with its documented params", async () => 
     partner_id: "p_chase", today: "2026-08-15", stale_days: 120,
     contact_id: "c_1", goal_id: "g_1", email: "chase@thauma.one", limit: 10,
     key_hash: "0".repeat(64), key_id: "k_1", now: "2026-08-15T00:00:00Z",
+    // milestone columns
+    parent_id: null, title: "t", title_hr: null, description: null,
+    description_hr: null, target_label: null, target_label_hr: null,
+    actual_date: null, status: "upcoming", completion: 0,
+    is_public: 0, is_featured: 0, sort_order: 0, id: "m_1",
   };
   for (const [name, sql] of Object.entries(QUERIES)) {
     const r = toPositional(sql, params);
