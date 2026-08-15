@@ -554,5 +554,6 @@ single most important thing to test before committing to a platform.
 - Queries live as literal SQL in `db/queries.sql`, parsed by name. No ORM, so
   swapping database drivers never touches the interface.
 - The UI is built against **query output**, not fixtures.
-- Work on `dev`. **Never push to `main`** — that is a human decision and it
-  deploys.
+- Work on `dev`. **`main` is production**: pushing there builds, tests and
+  deploys automatically via `.github/workflows/deploy.yml`. Merge to it
+  deliberately — there is no confirmation step and no manual publish.

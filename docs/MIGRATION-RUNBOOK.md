@@ -110,6 +110,38 @@ served. One line.
 
 ---
 
+## Phase 2.5 — main is production — done 2026-08-15
+
+Not in the original plan. It became necessary the moment hosting moved: for
+two weeks the only way to update thauma.one was someone running
+`wrangler deploy` by hand on a Raspberry Pi, and there was no branch that
+meant "what is live" — the live site was a snapshot of a working directory.
+An editor needs somewhere real to commit to, so this had to come first.
+
+- [x] Netlify builds **stopped**. It still serves its last deploy as the
+      rollback, and no longer picks up commits. This mattered more than it
+      looks: `unrivaled-snickerdoodle-1134e3.netlify.app/staff/` returns 200,
+      and had Netlify rebuilt from the merge it would have published the
+      current staff console to a public address with no Access in front of it.
+- [x] `main` fast-forwarded to `dev` — 118 commits, no conflicts possible
+- [x] `.github/workflows/deploy.yml`: push to `main` → build → test → deploy →
+      verify
+- [x] First automated deploy confirmed: a new Worker version landed without
+      anyone touching a terminal
+- [x] Netlify byte-for-byte unchanged afterwards, proving builds really are off
+
+**`main` now means production. Anything merged there goes live.** `dev` stays
+the working branch.
+
+### Still to do here
+
+- [ ] After the rollback week, archive the Netlify site. Until then
+      `…netlify.app/staff/` serves a stale, harmless build — its backing
+      function 404s — but it is a public URL with a staff page on it, and it
+      should not outlive its usefulness.
+
+---
+
 ## Phase 3 — replace Decap
 
 Git Gateway is a Netlify Identity service, so it dies with Identity. `/admin`
