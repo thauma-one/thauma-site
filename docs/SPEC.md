@@ -1,7 +1,7 @@
 # Thauma & Chase Roush — architecture and direction
 
 **Status:** living document. Last substantive update 2026-08-15, after the
-production cutover and the first three console screens.
+production cutover, both consoles, and the content editor.
 **Purpose:** continuity. If this work is picked up cold — by someone else, or
 by the same people months later — this file should be enough to understand
 what exists, why it is shaped this way, and what comes next.
@@ -120,7 +120,7 @@ working branch.
 
 ### The database
 
-Six migrations, applied to all three databases in order. **30 schema tests**
+Eight migrations, applied to all three databases in order. **30 schema tests**
 (`python3 db/test_schema.py`), which run every migration against a clean
 SQLite and assert the guarantees below.
 
@@ -143,7 +143,7 @@ local            the Pi       .wrangler/state, reseeded from seed.dev.sql
 
 ### The Worker
 
-One entry point, `workers/src/worker.js`. **180 tests** (`cd workers && npm test`).
+One entry point, `workers/src/worker.js`. **226 tests** (`cd workers && npm test`).
 
 | file | what |
 |---|---|
@@ -157,6 +157,8 @@ One entry point, `workers/src/worker.js`. **180 tests** (`cd workers && npm test
 | `staff-settings.js` | account, languages, API keys |
 | `staff-data.js` | directory (per person) + resources (per partner) |
 | `admin.js` | organisation administration — the only UNSCOPED endpoint |
+| `admin-content.js` | the site's own words and settings — the only endpoint that COMMITS |
+| `lib/github.js` | the Contents API, with UTF-8-safe base64 |
 | `partner-api.js` | `/api/partner/v1/site` — the only public-facing key route |
 | `contact-form.js`, `game-scores.js` | ported from Netlify |
 
@@ -167,9 +169,9 @@ One entry point, `workers/src/worker.js`. **180 tests** (`cd workers && npm test
           directory, resources, activity, settings. PARTNER-SCOPED: what one
           person sees of one ministry.
 
-/admin/   four pages — overview, people, partners, activity. ORG-WIDE:
-          accounts, roles, partner access, each partner's default language,
-          and the whole audit log.
+/admin/   six pages — overview, people, partners, content, site, activity.
+          ORG-WIDE: accounts, roles, partner access, each partner's default
+          language, the site's own words and settings, and the whole audit log.
 ```
 
 They look different on purpose — amber accent, ADMINISTRATION wordmark, a
@@ -429,6 +431,38 @@ Consequences to design for when the time comes:
 - The `nopii` gate applies to embed responses too. It is not optional there;
   it is more important.
 
+### The other boundary: writing to the repository
+
+`/api/admin/content` is the only endpoint that holds a **GitHub token**. A save
+there is a commit, and a commit on `main` is a deploy. Every other handler's
+worst case is showing the wrong data to somebody already signed in; this one's
+worst case is changing the site.
+
+Four things follow, and each has a test:
+
+1. **The admin role, checked first, failing closed** — the same gate as
+   `admin.js`, and it runs before GitHub is contacted at all.
+2. **The path is never taken from the request.** The client sends a short key
+   (`en`, `site`); the server derives the path from it. There is no input that
+   reaches a path, so there is nothing to traverse — `../../.github/workflows/`
+   is simply not a language code.
+3. **The client sends leaf edits, not a document.** `home.title` → new value.
+   The server re-reads the file and applies each one in place, so keys cannot
+   be added, removed, reordered or retyped however the browser behaves.
+   Structural change stays a git operation, because a CMS that can restructure
+   the data its own build depends on can break the build. It also keeps the
+   diff to one line per edited string.
+4. **`CONTENT_BRANCH` decides where it lands.** Staging and local dev write to
+   `dev`; only production writes to `main`. Trying the editor out cannot reach
+   the live site.
+
+⚠ **`btoa` is wrong for these files.** It throws above U+00FF and `atob`
+returns one byte per character — and every file this endpoint moves is Croatian
+or Serbian. It does not fail loudly; it mangles multi-byte characters into
+mojibake, commits them, and deploys them. `lib/github.js` encodes through
+`TextEncoder`/`TextDecoder`, with round-trip tests for Cyrillic and for an
+emoji, because an English test cannot catch this.
+
 ### Data minimisation is not automatic
 
 Found 2026-08-15: `contacts_stewardship` selected `email` and `phone`, and the
@@ -492,12 +526,13 @@ thauma.one runs on Cloudflare Workers. What is left is listed in
 | Netlify Forms | `contact-form.js` + Resend | done |
 | Edge function (geo language) | `lang-redirect.js` | done |
 | build on push | GitHub Actions | done |
-| **Git Gateway (Decap CMS)** | **custom editor** | **NOT done — `/admin` is dark** |
+| **Git Gateway (Decap CMS)** | **custom editor** | **built 2026-08-15 — needs its token** |
 
-**Site copy cannot currently be edited through a UI.** Decap died with
-Identity, and its replacement has not been built. The trilingual copy in
-`src/_data/i18n/*.json` is editable in git and nowhere else. This is the
-largest outstanding piece of the original Phase 3.
+Site copy is editable through `/admin/content/` and `/admin/site/`, which
+commit to the repository rather than writing to D1. **The editor needs a
+GitHub token before it can do anything** — see the runbook. Until one is set it
+loads and says it is not connected, which is the correct state rather than a
+failure.
 
 ### Two things that cost real time, worth remembering
 
@@ -691,20 +726,12 @@ Hiding a `display:flex` column left its fields on screen.
 
 ### Next, in order
 
-1. **PHASE 3 — the content editor.** The last piece of the original plan and
-   the largest outstanding one. `src/_data/i18n/*.json` (the site's words) and
-   `site.json` (its settings) are editable in git and nowhere else. Both belong
-   in `/admin/`: they are the same kind of thing, org-level rather than
-   partner-scoped.
-
-   **It needs a GitHub token** — fine-grained, scoped to `thauma-one/thauma-site`
-   only, Contents: read and write, with an expiry. Not a classic token with
-   `repo` scope, which can delete repositories. It goes in as a Worker secret
-   (`wrangler secret put GITHUB_TOKEN`), never in the repo.
-
-   **Reuse rather than reinvent:** the working-copy model and save bar from the
-   milestone editor, the language columns, the toast/problem split, and
-   `StaffConfirm` for anything that publishes. See §8a.
+1. **Set `GITHUB_TOKEN` and verify the content editor.** Phase 3 is built and
+   tested; the one thing it cannot have without a person is its credential.
+   Fine-grained, scoped to `thauma-one/thauma-site` only, Contents: read and
+   write, with an expiry — never a classic `repo`-scoped token, which can
+   delete repositories. `wrangler secret put GITHUB_TOKEN --env production`.
+   Then edit one string and watch the commit and the deploy. Runbook, Phase 3.
 
 2. **Acting-as** — viewing the console as another person, with the audit trail
    and an unmissable banner. Chase's instinct was a flashing banner; a

@@ -128,41 +128,82 @@ the working branch.
 
 ---
 
-## Phase 3 — the content editor — OUTSTANDING, and next
+## Phase 3 — the content editor — BUILT 2026-08-15, awaiting its token
 
-The last piece of the original plan. `/admin/` is now a real area, and
-`src/admin/` (Decap) has been deleted — it had been inert since the cutover and
-was occupying the path.
+The last piece of the original plan. Decap died with Netlify Identity at the
+cutover and `src/admin/` was deleted; this is its replacement.
 
-**Site copy cannot be edited through a UI.** `src/_data/i18n/{en,hr,sr}.json`
-and `src/_data/site.json` are editable in git and nowhere else.
+```
+/admin/content/   the words     src/_data/i18n/*.json    210 strings each
+/admin/site/      the settings  src/_data/site.json
+```
 
-Not urgent yet: exactly one commit in this repo's history was ever
-CMS-authored, and the site is still coming-soon gated. It becomes urgent at
-launch, and `site.json` holds the switch that ends the gating — so the thing
-that makes it urgent is the thing it controls.
+### Built
 
-### What it needs
-
-- [ ] A **fine-grained** GitHub token, scoped to this repository only,
-      Contents: read and write, with an expiry. `wrangler secret put
-      GITHUB_TOKEN`. Never a classic `repo`-scoped token — that can delete
-      repositories.
-- [ ] An editor under `/admin/`, not `/staff/`: site copy and settings are
+- [x] An editor under `/admin/`, not `/staff/` — copy and settings are
       org-level, not partner-scoped.
-- [ ] Writes through the GitHub Contents API, as CR's `save-file.js` does.
-      The SHA it requires gives optimistic locking for free — an edit made in
-      an editor and another made in VS Code cannot silently overwrite each
-      other, they conflict.
-- [ ] **Verify:** edit a string, confirm the commit lands and the Action
-      deploys it.
-- [ ] Drop `decap-server` from `package.json`.
+- [x] `workers/src/lib/github.js` — the Contents API, with UTF-8-safe base64.
+      `btoa` throws above U+00FF and `atob` returns one byte per character,
+      and every file this moves is Croatian or Serbian. It mangles rather than
+      throwing, so an English test cannot catch it. There are round-trip tests
+      for Cyrillic and for an emoji.
+- [x] `workers/src/admin-content.js` — admin role, a derived path, leaf edits
+      only, audited.
+- [x] SHA-based conflict detection. An edit here and an edit in VS Code cannot
+      silently overwrite each other; the second gets a 409 saying to reload.
+- [x] `decap-server` dropped from `package.json`. **`@netlify/blobs` stays** —
+      `netlify/functions/*`, kept as the rollback, still requires it. Remove it
+      when the Netlify site is archived, not before.
+- [x] 32 tests for the endpoint, 14 for the client. Four run against the real
+      content files.
 
-### What it should reuse
+### Left to do — needs a person
 
-The working-copy model and save bar from the milestone editor — copy is edited
-in passes and must not save per keystroke. The language columns. The
-toast/problem split. `StaffConfirm` for publishing. All in SPEC §8a.
+- [ ] **Create the token.** GitHub → Settings → Developer settings → Personal
+      access tokens → **Fine-grained tokens**:
+      - Repository access: **Only select repositories** → `thauma-one/thauma-site`
+      - Permissions → Repository permissions → **Contents: Read and write**
+      - Expiration: set one. 90 days is reasonable; it lands in the calendar.
+      - **Never a classic token with `repo` scope** — that one can delete
+        repositories.
+- [ ] `npx wrangler secret put GITHUB_TOKEN --env production` and paste it.
+      Not in the repo, not in `wrangler.toml`, not in `.dev.vars`.
+- [ ] **Verify:** open `/admin/content/`, change one string, save, and check
+      that the commit lands on `main` and the Action deploys it. Until this is
+      done the editor loads and says it is not connected — which is the
+      correct state, not a failure.
+
+### CONTENT_BRANCH is the safety catch
+
+| environment | commits to |
+|---|---|
+| staging (`next.thauma.one`), local dev | `dev` |
+| **production (`thauma.one`)** | **`main` — which publishes** |
+
+Trying the editor out cannot reach the live site. **The consequence for
+development:** copy edited in production lands on `main` and not on `dev`, so
+pull `main` into `dev` before working on the site's words, or the next merge
+presents somebody's content edit as a conflict.
+
+### What it cannot do, deliberately
+
+Add a key, remove one, reorder them, or change a value's type. The browser
+sends leaf edits — `home.title` → new value — and the server re-reads the file
+and applies each one in place. Structural change is a git operation, because a
+CMS that can restructure the data its own build depends on can break the build.
+That also keeps the diff to one line per edited string, so `git log` stays
+usable for reviewing what somebody actually changed.
+
+`site.json`'s `languages` list is refused on the server as well as in the
+browser: renaming an entry orphans a translation file and breaks the build.
+
+### Known gap
+
+**Adding an array item** — a new `notFound.taunts` line — is structural, so it
+is a git edit. Doing it in the console would mean writing all three language
+files in one commit, which the Contents API cannot do; that needs the Git Data
+API (blob → tree → commit → ref). Worth it only if it turns out to be asked
+for.
 
 ---
 
