@@ -18,8 +18,12 @@ INSERT INTO partners (id, slug, display_name, status, giving_provider, giving_ur
   ('p_demo','demo-partner','Demo Partner','prospective',NULL,NULL,0,'2026-06-01T09:00:00Z','2026-06-01T09:00:00Z');
 
 -- ---------- users -----------------------------------------------------------
+-- NAMES ARE NAMES. u_admin was seeded as "Org Admin", which reads like a role
+-- and is not one — the console shows users.name in the header, so a
+-- placeholder that describes the account rather than the person made the
+-- header look like it was reporting a role twice.
 INSERT INTO users (id, email, name, global_role, status, created_at, last_login_at) VALUES
-  ('u_admin','admin@thauma.one','Org Admin','admin','active','2026-01-10T09:00:00Z','2026-08-14T08:00:00Z'),
+  ('u_admin','admin@thauma.one','Chase Roush','admin','active','2026-01-10T09:00:00Z','2026-08-14T08:00:00Z'),
   ('u_chase','chase@thauma.one','Chase Roush','staff','active','2026-01-15T09:00:00Z','2026-08-14T07:30:00Z'),
   ('u_demo','demo@thauma.one','Demo Partner','staff','invited','2026-06-01T09:00:00Z',NULL);
 
