@@ -74,6 +74,7 @@ independently of Chase.
 | GitHub `thauma-one` | ✅ |
 | Netlify account "Thauma" (`admin@thauma.one`) | ✅ |
 | **Cloudflare account** | ✅ **as of 2026-08-14** |
+| **GitHub App** (content editor's credential) | ✅ **org-owned, not a personal token** |
 
 The Cloudflare split was done on 2026-08-14. Before that, `thauma.one` lived
 in Chase's personal account alongside his house, NAS and Plex.
@@ -143,7 +144,7 @@ local            the Pi       .wrangler/state, reseeded from seed.dev.sql
 
 ### The Worker
 
-One entry point, `workers/src/worker.js`. **226 tests** (`cd workers && npm test`).
+One entry point, `workers/src/worker.js`. **254 tests** (`cd workers && npm test`).
 
 | file | what |
 |---|---|
@@ -158,7 +159,8 @@ One entry point, `workers/src/worker.js`. **226 tests** (`cd workers && npm test
 | `staff-data.js` | directory (per person) + resources (per partner) |
 | `admin.js` | organisation administration — the only UNSCOPED endpoint |
 | `admin-content.js` | the site's own words and settings — the only endpoint that COMMITS |
-| `lib/github.js` | the Contents API, with UTF-8-safe base64 |
+| `admin-publish.js` | promoting the working branch to live — the only endpoint that DEPLOYS |
+| `lib/github.js` | the Contents API, App authentication, UTF-8-safe base64 |
 | `partner-api.js` | `/api/partner/v1/site` — the only public-facing key route |
 | `contact-form.js`, `game-scores.js` | ported from Netlify |
 
@@ -169,9 +171,10 @@ One entry point, `workers/src/worker.js`. **226 tests** (`cd workers && npm test
           directory, resources, activity, settings. PARTNER-SCOPED: what one
           person sees of one ministry.
 
-/admin/   six pages — overview, people, partners, content, site, activity.
-          ORG-WIDE: accounts, roles, partner access, each partner's default
-          language, the site's own words and settings, and the whole audit log.
+/admin/   seven pages — overview, people, partners, content, site, publish,
+          activity. ORG-WIDE: accounts, roles, partner access, each partner's
+          default language, the site's own words and settings, moving the
+          working branch onto the live one, and the whole audit log.
 ```
 
 They look different on purpose — amber accent, ADMINISTRATION wordmark, a
@@ -433,10 +436,19 @@ Consequences to design for when the time comes:
 
 ### The other boundary: writing to the repository
 
-`/api/admin/content` is the only endpoint that holds a **GitHub token**. A save
-there is a commit, and a commit on `main` is a deploy. Every other handler's
-worst case is showing the wrong data to somebody already signed in; this one's
-worst case is changing the site.
+`/api/admin/content` and `/api/admin/publish` are the only endpoints that hold
+a **GitHub credential**. A save is a commit; a publish moves the live branch
+and the Action deploys it. Every other handler's worst case is showing the
+wrong data to somebody already signed in; these two can change the site.
+
+**The credential is a GitHub App owned by the organisation, not a personal
+access token.** A fine-grained PAT is owned by a human and acts as them, so the
+content pipeline would hang off one individual — which §2 rules out. An App
+belongs to `thauma-one`; nobody's departure touches it, and its installation
+tokens are minted on demand and last an hour, so there is no expiry date on
+which the editor quietly stops working. A PAT is still accepted (a machine
+account holding one is a legitimate simpler answer) and the App wins when both
+are set.
 
 Four things follow, and each has a test:
 
@@ -455,6 +467,23 @@ Four things follow, and each has a test:
 4. **`CONTENT_BRANCH` decides where it lands.** Staging and local dev write to
    `dev`; only production writes to `main`. Trying the editor out cannot reach
    the live site.
+
+### Publishing is a separate act from editing
+
+`/admin/publish/` merges the working branch onto the live one. It is not a
+content operation and the page does not pretend it is: a promote carries every
+commit on the branch — code, migrations, half-finished experiments — not only
+the words somebody edited. So it lists the commits and the changed files, names
+any **database migrations** separately and above the button, and takes the word
+`PUBLISH` typed out and checked on the server.
+
+`dev` was 35 commits and 58 files ahead of `main` the day this was built. A
+button with no list behind it would have shipped two consoles and seven
+migrations because somebody wanted to fix a typo.
+
+The reverse merge lives on the same page. Production's own content editor
+commits to `main`, so `main` accumulates commits `dev` has not got; a drift
+nobody can fix from the console is one that grows until it is a conflict.
 
 ⚠ **`btoa` is wrong for these files.** It throws above U+00FF and `atob`
 returns one byte per character — and every file this endpoint moves is Croatian
@@ -525,7 +554,7 @@ thauma.one runs on Cloudflare Workers. What is left is listed in
 | Netlify Blobs | D1 | done — see §4 |
 | Netlify Forms | `contact-form.js` + Resend | done |
 | Edge function (geo language) | `lang-redirect.js` | done |
-| build on push | GitHub Actions | done |
+| build on push | GitHub Actions — `main` AND `dev` | done |
 | **Git Gateway (Decap CMS)** | **custom editor** | **built 2026-08-15 — needs its token** |
 
 Site copy is editable through `/admin/content/` and `/admin/site/`, which
@@ -726,12 +755,12 @@ Hiding a `display:flex` column left its fields on screen.
 
 ### Next, in order
 
-1. **Set `GITHUB_TOKEN` and verify the content editor.** Phase 3 is built and
+1. **Create the GitHub App and verify the editor.** Phase 3 is built and
    tested; the one thing it cannot have without a person is its credential.
-   Fine-grained, scoped to `thauma-one/thauma-site` only, Contents: read and
-   write, with an expiry — never a classic `repo`-scoped token, which can
-   delete repositories. `wrangler secret put GITHUB_TOKEN --env production`.
-   Then edit one string and watch the commit and the deploy. Runbook, Phase 3.
+   An App owned by `thauma-one` with Contents: read and write — not a personal
+   token, for the reason in §2. Full steps in the runbook, Phase 3, including
+   the PKCS#1 → PKCS#8 conversion and the one surprising check: **confirm the
+   App's commit actually triggers the deploy workflow.**
 
 2. **Acting-as** — viewing the console as another person, with the audit trail
    and an unmissable banner. Chase's instinct was a flashing banner; a

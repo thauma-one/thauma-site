@@ -38,6 +38,7 @@ import staffMilestones from "./staff-milestones.js";
 import staffSettings from "./staff-settings.js";
 import adminApi from "./admin.js";
 import adminContent from "./admin-content.js";
+import adminPublish from "./admin-publish.js";
 import { createDb, partnerSnapshot, assertPublicSafe } from "./lib/db.js";
 import { requireAccess } from "./lib/access.js";
 import { json } from "./lib/store.js";
@@ -101,6 +102,11 @@ const ROUTES = {
   // role, a derived path that no request can influence, and leaf-level edits
   // only — see admin-content.js.
   "/api/admin/content": adminContent,
+
+  // Moves the working branch onto the live one, which deploys it. Carries
+  // every code change on that branch, not only the words — so it lists what
+  // it is about to ship, and takes a typed confirmation. See admin-publish.js.
+  "/api/admin/publish": adminPublish,
 
   // THE ONLY ROUTE A CREDENTIAL OUTSIDE THAUMA CAN REACH. Key-authenticated,
   // public-safe by construction, versioned in the path so a breaking change

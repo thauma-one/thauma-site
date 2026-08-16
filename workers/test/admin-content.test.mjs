@@ -249,11 +249,14 @@ await check("no handler method throws", async () => {
   } finally { g.restore(); }
 });
 
-await check("a missing GITHUB_TOKEN explains itself instead of 500ing blankly", async () => {
+await check("a missing credential explains itself instead of 500ing blankly", async () => {
+  // "Not configured" and "configured wrongly" are different afternoons, and a
+  // content editor that returns a bare 500 sends somebody to the database.
   const res = await handler.fetch(req("GET", { query: "?file=en" }), envWith("admin", { token: "" }));
   const b = await res.json();
   eq(b.configured, false, "configured");
-  assert(/GITHUB_TOKEN/.test(b.error), "names the variable");
+  assert(/GITHUB_APP_ID/.test(b.error), "names the App variables");
+  assert(/RUNBOOK/.test(b.error), "points at the instructions");
 });
 
 /* --------------------------------- read -------------------------------- */

@@ -159,19 +159,68 @@ cutover and `src/admin/` was deleted; this is its replacement.
 
 ### Left to do — needs a person
 
-- [ ] **Create the token.** GitHub → Settings → Developer settings → Personal
-      access tokens → **Fine-grained tokens**:
-      - Repository access: **Only select repositories** → `thauma-one/thauma-site`
-      - Permissions → Repository permissions → **Contents: Read and write**
-      - Expiration: set one. 90 days is reasonable; it lands in the calendar.
-      - **Never a classic token with `repo` scope** — that one can delete
-        repositories.
-- [ ] `npx wrangler secret put GITHUB_TOKEN --env production` and paste it.
-      Not in the repo, not in `wrangler.toml`, not in `.dev.vars`.
-- [ ] **Verify:** open `/admin/content/`, change one string, save, and check
-      that the commit lands on `main` and the Action deploys it. Until this is
-      done the editor loads and says it is not connected — which is the
-      correct state, not a failure.
+**Create a GitHub App owned by the `thauma-one` organisation.** Not a personal
+access token: a fine-grained PAT is owned by a HUMAN and acts as them, so the
+site's content pipeline would stop working the day that person left the org —
+which SPEC §2 rules out in as many words. An App belongs to the organisation,
+and its installation tokens are minted on demand and last an hour, so there is
+also no expiry date on which the editor quietly stops working.
+
+- [ ] **github.com/organizations/thauma-one/settings/apps → New GitHub App**
+      - Name: `Thauma Content`, Homepage: `https://thauma.one`
+      - **Uncheck "Webhook → Active"** — nothing here listens for webhooks, and
+        an App with one configured and no listener produces failed deliveries
+        forever.
+      - Permissions → **Repository permissions → Contents: Read and write**.
+        Nothing else. Contents covers reading files, committing them, and the
+        merge the Publish page performs.
+      - "Where can this GitHub App be installed": **Only on this account**
+      - Create, then note the **App ID** shown at the top.
+- [ ] **Generate a private key** on the same page. It downloads a `.pem`.
+- [ ] **Install it**: left sidebar → Install App → `thauma-one` → **Only select
+      repositories** → `thauma-site`. After installing, the URL ends in
+      `/settings/installations/<NUMBER>` — that number is the **installation ID**.
+- [ ] **Convert the key.** GitHub gives you PKCS#1; WebCrypto imports PKCS#8
+      and nothing else, and its failure for the wrong one names neither format:
+      ```
+      openssl pkcs8 -topk8 -inform PEM -outform PEM -nocrypt \
+        -in ~/Downloads/thauma-content.*.private-key.pem \
+        -out ~/key-pkcs8.pem
+      ```
+      (`github.js` checks for this and says so, but converting first is quicker
+      than reading the error.)
+- [ ] **Set all three as secrets** — no file editing, and the App ID and
+      installation ID authorise nothing without the key, so keeping them
+      together is simpler than splitting them across `wrangler.toml`:
+      ```
+      npx wrangler secret put GITHUB_APP_ID --env production
+      npx wrangler secret put GITHUB_INSTALLATION_ID --env production
+      npx wrangler secret put GITHUB_APP_PRIVATE_KEY --env production   # paste the whole PKCS#8 file
+      ```
+      Repeat without `--env production` to give staging the same credential.
+- [ ] **Delete the downloaded `.pem` files** once the secret is set. They are
+      the credential.
+
+### Verifying — three things, and the third is the one that surprises people
+
+- [ ] **Read:** open `/admin/content/`. It should list the sections rather than
+      saying it is not connected.
+- [ ] **Write:** change one string, save, and confirm the commit appears in
+      `git log` attributed to the person who typed it.
+- [ ] **⚠ Confirm the commit TRIGGERS THE DEPLOY.** Commits made with a GitHub
+      App installation token do fire `push` events and do start workflows —
+      unlike the `GITHUB_TOKEN` handed to a running Action, which deliberately
+      does not, to stop loops. These are different credentials and the rule is
+      different, but they are confusable enough to check rather than assume. If
+      the Action does not start, the editor will appear to work while nothing
+      ever reaches the site.
+
+### A PAT still works, if you would rather
+
+`githubConfig()` accepts `GITHUB_TOKEN` as an alternative and the App wins when
+both are set. A machine account (`thauma-bot`, on `admin@thauma.one`) holding a
+fine-grained token is a legitimate simpler answer — org-controlled, no code
+path to learn. It costs an account to look after and a token that expires.
 
 ### CONTENT_BRANCH is the safety catch
 
@@ -184,6 +233,38 @@ Trying the editor out cannot reach the live site. **The consequence for
 development:** copy edited in production lands on `main` and not on `dev`, so
 pull `main` into `dev` before working on the site's words, or the next merge
 presents somebody's content edit as a conflict.
+
+### Publishing — moving `dev` onto `main`
+
+`/admin/publish/` — added because the promote used to be a terminal command,
+so the review step it was meant to provide only existed for whoever had the Pi
+in front of them.
+
+The page shows the commits, the changed files grouped by directory, and — named
+separately and above the button — **any database migrations in the release**.
+That last one is the warning that has to arrive before publishing rather than
+after: code expecting a table `thauma-ops` has not got fails on the live site,
+and the fix is a migration somebody runs by hand.
+
+Publishing takes the word `PUBLISH` typed out, checked on the server as well as
+in the browser. The gap is re-read at merge time rather than trusted from the
+browser, because what the page showed may be minutes old and it is what gets
+audited.
+
+**The reverse merge is on the same page.** Production's content editor commits
+to `main`, so `main` accumulates commits `dev` has not got. When it does, the
+page says so and offers to bring them back. A drift nobody can fix from the
+console is a drift that grows until it is a conflict.
+
+### Staging now deploys itself
+
+`.github/workflows/deploy-staging.yml` — push to `dev`, and `next.thauma.one`
+rebuilds with the same build and the same tests as production.
+
+This was missing and it made the whole review flow imaginary: an edit made on
+staging committed to `dev`, and with nothing watching `dev`, staging never
+rebuilt. You could not see your own change. "Edit on dev, review, then publish"
+had no review step in it.
 
 ### What it cannot do, deliberately
 
