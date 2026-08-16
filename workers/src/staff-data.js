@@ -36,12 +36,35 @@ async function context(request, env) {
   if (!env.DB) return { denied: json({ error: "No database bound to this deploy" }, 500) };
 
   const db = createDb(env.DB);
+
+  /* Two questions, asked separately.
+
+     WHO: an account can exist with no partner — an administrator, a board
+     member, somebody invited and not yet placed. Resolving identity through
+     partner access meant none of them had a name.
+
+     WHICH PARTNER: these screens are partner-scoped, so they do still need
+     one. The difference is that the refusal can now say which of the two is
+     missing instead of "no access". */
+  const me = await db.queryOne("user_by_email", { email: user.email });
+  if (!me) {
+    return { denied: json({
+      error: "This address is not an active account.", email: user.email }, 403) };
+  }
+
   const partners = await db.query("partners_for_user", { email: user.email });
   if (!partners.length) {
-    return { denied: json({ error: "No partner access for this account", email: user.email }, 403) };
+    return { denied: json({
+      error: "This account is not attached to a partner yet, so there is " +
+             "nothing here to show. An administrator can grant access.",
+      email: user.email,
+      you: { email: user.email, name: me.user_name,
+             roles: String(me.roles || "").split(",").filter(Boolean) },
+    }, 403) };
   }
   const partner = partners[0];
-  const roles = String(partner.roles || "staff").split(",");
+
+  const roles = String(me.roles || "staff").split(",");
   const isAdmin = roles.includes("admin");
 
   // Which resource levels this person may read. Everyone sees staff material;
@@ -50,7 +73,7 @@ async function context(request, env) {
   // assumption that admin implies everything.
   const levels = isAdmin ? "staff,admin" : "staff";
 
-  return { db, user, partner, isAdmin, levels };
+  return { db, user, me, partner, isAdmin, levels };
 }
 
 /** JSON array of trimmed strings, capped. Never trusts what the form sent. */
@@ -101,11 +124,11 @@ const newId = (p) => p + "_" + crypto.randomUUID().replace(/-/g, "").slice(0, 16
 
 export default {
   async fetch(request, env) {
-    const { db, user, partner, isAdmin, levels, denied } = await context(request, env);
+    const { db, user, me, partner, isAdmin, levels, denied } = await context(request, env);
     if (denied) return denied;
 
     const partner_id = partner.id;
-    const user_id = partner.user_id;
+    const user_id = me.user_id;
     const now = new Date().toISOString();
     const url = new URL(request.url);
 
@@ -120,8 +143,8 @@ export default {
         // can be filled from whatever request a page was already making.
         you: {
           email: user.email,
-          name: partner.user_name || null,
-          roles: String(partner.roles || "staff").split(","),
+          name: me.user_name || null,
+          roles: String(me.roles || "staff").split(","),
         },
         partner: { id: partner.id, display_name: partner.display_name },
         // Named so the screen can say whose these are, rather than implying

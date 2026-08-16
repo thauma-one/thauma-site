@@ -45,14 +45,22 @@ async function requireAdmin(request, env) {
   if (!env.DB) return { denied: json({ error: "No database bound to this deploy" }, 500) };
 
   const db = createDb(env.DB);
-  const rows = await db.query("partners_for_user", { email: user.email });
 
-  // No partner grant at all still means no admin screen. An account has to be
-  // a known, active user before its roles mean anything.
-  if (!rows.length) {
-    return { denied: json({ error: "No access for this account", email: user.email }, 403) };
+  /* Identity, NOT partner access. This used partners_for_user, which requires
+     a partner_users row — so an administrator with no partner grant was locked
+     out of administration entirely. Deleting a partner could do it, and did.
+
+     Administering the organisation has nothing to do with belonging to one of
+     its ministries. */
+  const me = await db.queryOne("user_by_email", { email: user.email });
+  if (!me) {
+    return {
+      denied: json({
+        error: "This address is not an active account.",
+        email: user.email,
+      }, 403),
+    };
   }
-  const me = rows[0];
   const roles = String(me.roles || "").split(",").filter(Boolean);
   if (!roles.includes("admin")) {
     return {

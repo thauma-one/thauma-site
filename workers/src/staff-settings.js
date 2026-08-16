@@ -35,15 +35,38 @@ async function context(request, env) {
   if (!env.DB) return { denied: json({ error: "No database bound to this deploy" }, 500) };
 
   const db = createDb(env.DB);
+
+  /* Two questions, asked separately.
+
+     WHO: an account can exist with no partner — an administrator, a board
+     member, somebody invited and not yet placed. Resolving identity through
+     partner access meant none of them had a name.
+
+     WHICH PARTNER: these screens are partner-scoped, so they do still need
+     one. The difference is that the refusal can now say which of the two is
+     missing instead of "no access". */
+  const me = await db.queryOne("user_by_email", { email: user.email });
+  if (!me) {
+    return { denied: json({
+      error: "This address is not an active account.", email: user.email }, 403) };
+  }
+
   const partners = await db.query("partners_for_user", { email: user.email });
   if (!partners.length) {
-    return { denied: json({ error: "No partner access for this account", email: user.email }, 403) };
+    return { denied: json({
+      error: "This account is not attached to a partner yet, so there is " +
+             "nothing here to show. An administrator can grant access.",
+      email: user.email,
+      you: { email: user.email, name: me.user_name,
+             roles: String(me.roles || "").split(",").filter(Boolean) },
+    }, 403) };
   }
   const partner = partners[0];
+
   // 0006 moved roles to user_roles; a person may hold more than one.
-  const roles = String(partner.roles || "staff").split(",");
+  const roles = String(me.roles || "staff").split(",");
   return {
-    db, user, partner,
+    db, user, me, partner,
     // Org authority. NOT partner access — that is what partners_for_user
     // just established. See docs/SPEC.md §4.
     roles, isAdmin: roles.includes("admin"),
@@ -69,7 +92,7 @@ async function audit(db, { user, partner, action, entity, entity_id = null, deta
 
 export default {
   async fetch(request, env) {
-    const { db, user, partner, roles, isAdmin, denied } = await context(request, env);
+    const { db, user, me, partner, roles, isAdmin, denied } = await context(request, env);
     if (denied) return denied;
 
     const partner_id = partner.id;
@@ -87,8 +110,8 @@ export default {
           email: user.email,
           // From the database, not from Access: the console controls this
           // value, and Access does not always carry a name at all.
-          name: partner.user_name || null,
-          preferred_lang: partner.preferred_lang || "en",
+          name: me.user_name || null,
+          preferred_lang: me.preferred_lang || "en",
           roles,
           is_admin: isAdmin,
           // What this account may do, decided here rather than in the browser.

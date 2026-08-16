@@ -144,6 +144,26 @@ WHERE goal_id = :goal_id AND partner_id = :partner_id
 ORDER BY captured_at ASC;
 
 
+-- name: user_by_email
+-- WHO SOMEBODY IS. Nothing about what they can reach.
+--
+-- This exists because partners_for_user was doing both jobs, and a person with
+-- no partner therefore had no identity: an administrator whose partner grant
+-- was removed could not open the administration area, because the query that
+-- was supposed to tell the Worker their name and roles returned no rows.
+--
+-- An account with no partner is an ordinary thing. An administrator does not
+-- need one. A board member does not need one. Someone invited last week and
+-- not yet placed does not need one. "Which partners" is a separate question,
+-- asked separately, and allowed to answer "none".
+SELECT u.id AS user_id, u.email, u.name AS user_name, u.status,
+       COALESCE(u.preferred_lang, 'en') AS preferred_lang,
+       COALESCE((SELECT GROUP_CONCAT(r.role) FROM user_roles r WHERE r.user_id = u.id),
+                u.global_role) AS roles
+FROM users u
+WHERE u.email = :email AND u.status = 'active';
+
+
 -- name: partners_for_user
 -- What a signed-in user is allowed to see. The admin must call this FIRST and
 -- scope everything else to the result. Org-level global_role deliberately

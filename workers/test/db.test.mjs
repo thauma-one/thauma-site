@@ -44,7 +44,7 @@ await check("queries.generated.js is in sync with db/queries.sql", async () => {
     `stale generated file — run: python3 db/generate_queries_module.py`);
 });
 
-await check("all fifty-one named queries are present", async () => {
+await check("all fifty-two named queries are present", async () => {
   const expected = [
     "api_key_lookup", "api_key_touch",
     "audit_recent_for_partner", "contact_timeline", "contacts_stewardship",
@@ -69,7 +69,7 @@ await check("all fifty-one named queries are present", async () => {
     "admin_role_revoke", "admin_user_create", "admin_user_delete",
     "admin_user_set", "admin_users",
     "admin_partner_create", "admin_partner_set",
-    "admin_partner_delete", "admin_partner_stats",
+    "admin_partner_delete", "admin_partner_stats", "user_by_email",
   ].sort();
   eq(Object.keys(QUERIES).sort(), expected, "query names");
 });
@@ -125,6 +125,30 @@ await check("revoking a key keeps the row", async () => {
     "api_key_revoke deletes rather than revokes");
   assert(/revoked_at IS NULL/i.test(QUERIES.api_key_revoke),
     "re-revoking would overwrite the original timestamp");
+});
+
+await check("identity does NOT require a partner", async () => {
+  // The bug: partners_for_user was doing two jobs, so a person with no partner
+  // had no identity at all — an administrator whose grant was removed could
+  // not open the administration area, because the query meant to supply their
+  // name and roles returned nothing.
+  const sql = QUERIES.user_by_email;
+  assert(!/partner_users/.test(sql), "user_by_email joins partner_users");
+  assert(!/:partner_id/.test(sql), "user_by_email is partner-scoped");
+  assert(/status\s*=\s*'active'/.test(sql), "a suspended account still resolves");
+});
+
+await check("the admin endpoint identifies by ROLE, not by partner", async () => {
+  const src = await import("node:fs").then((fs) =>
+    fs.readFileSync(new URL("../src/admin.js", import.meta.url), "utf8"));
+  assert(/user_by_email/.test(src), "admin.js still resolves identity via partners");
+  // Looks for a CALL, not the string — the explanation of why this changed
+  // mentions partners_for_user by name, and a test that cannot tell code from
+  // a comment fails on its own documentation.
+  const i = src.indexOf("async function requireAdmin");
+  const seg = src.slice(i, src.indexOf("\n}", i));
+  assert(!/query\w*\(\s*"partners_for_user"/.test(seg),
+    "requireAdmin still queries for a partner — an admin without one would be locked out");
 });
 
 await check("a person can only set THEIR OWN language preference", async () => {

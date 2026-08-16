@@ -281,8 +281,12 @@
       var body = await res.json().catch(function () { return {}; });
 
       if (!res.ok) {
+        // A 403 here usually means "no partner", which is a normal state for
+        // an administrator or a board member — not a fault. The endpoint says
+        // which, and its wording is used rather than a generic message.
+        if (body.you && window.StaffIdentity) window.StaffIdentity(body.you);
         var why = res.status === 500 ? tr('err.unreachable')
-                : res.status === 403 ? tr('err.noPartner')
+                : res.status === 403 ? (body.error || tr('err.noPartner'))
                 : tr('err.expired');
         if ($('contacts')) $('contacts').innerHTML = '<p class="empty">' + esc(why) + '</p>';
         if ($('resourceList')) $('resourceList').innerHTML = '<p class="empty">' + esc(why) + '</p>';
