@@ -467,6 +467,16 @@
                       chose to share, which is frequently an email and nothing
                       else — which is why the name was missing on some pages
                       and present on others. */
+  /* sessionStorage, NOT localStorage.
+
+     The cache exists to stop the header flashing blank while navigating
+     between pages — which is a within-one-session problem, and sessionStorage
+     is scoped to exactly that: one tab, cleared when it closes.
+
+     localStorage would outlive the session, so on a shared machine the next
+     person to sign in would briefly see the PREVIOUS person's name before
+     their own arrived. Small, and wrong in the one direction that matters —
+     showing nothing is never incorrect, showing somebody else always is. */
   var IDENT = 'thauma.staff.who';
 
   /* THE HEADER SAYS WHO YOU ARE, ONCE.
@@ -501,14 +511,14 @@
     if (partner && partner.display_name) who = Object.assign({}, who, {
       partner_name: partner.display_name });
     if (!who || !who.email) return;
-    try { localStorage.setItem(IDENT, JSON.stringify(who)); } catch (e) {}
+    try { sessionStorage.setItem(IDENT, JSON.stringify(who)); } catch (e) {}
     paintIdentity(who);
   }
   window.StaffIdentity = rememberIdentity;
 
   function loadIdentity() {
     try {
-      var cached = JSON.parse(localStorage.getItem(IDENT) || 'null');
+      var cached = JSON.parse(sessionStorage.getItem(IDENT) || 'null');
       if (cached) paintIdentity(cached);
     } catch (e) {}
 
@@ -705,6 +715,15 @@
   var NEEDS_STAFF_API = ['index', 'directory', 'resources'];
 
   var page = document.body.getAttribute('data-staff-page') || 'index';
+
+  // Clear the cached identity on the way out, so the next person to use this
+  // browser starts from nothing rather than from whoever was here last.
+  var signOut = document.querySelector('a[href*="access/logout"]');
+  if (signOut) {
+    signOut.addEventListener('click', function () {
+      try { sessionStorage.removeItem(IDENT); } catch (e) {}
+    });
+  }
 
   loadIdentity();
   if (NEEDS_SNAPSHOT.indexOf(page) !== -1) loadSnapshot();
