@@ -1,7 +1,7 @@
 # Thauma & Chase Roush — architecture and direction
 
-**Status:** living document. Last substantive update 2026-08-15 (overnight
-port session).
+**Status:** living document. Last substantive update 2026-08-15, after the
+production cutover and the first three console screens.
 **Purpose:** continuity. If this work is picked up cold — by someone else, or
 by the same people months later — this file should be enough to understand
 what exists, why it is shaped this way, and what comes next.
@@ -18,8 +18,8 @@ and the migration in progress.
 |---|---|---|
 | what | the **organisation** — a US entity, 501(c)(3) in progress | a **ministry partner** of Thauma |
 | repo | `thauma-one/thauma-site` | `chaseroushtech/chaseroush_missions` |
-| stack | Eleventy 3, Netlify, trilingual EN/HR/SR | static HTML, Netlify, 30 functions, EN/HR |
-| live | thauma.one (coming-soon gated) | chaseroush.com |
+| stack | Eleventy 3, **Cloudflare Workers + D1**, multilingual | static HTML, Netlify, 30 functions, EN/HR |
+| live | thauma.one (coming-soon gated, on Workers) | chaseroush.com (still Netlify) |
 | dev | dev.thauma.one | dev.chaseroush.com |
 
 **They are siblings, not one system.** Thauma will eventually operate as its
@@ -100,111 +100,73 @@ The schema is portable SQLite precisely so that is cheap.
 
 ## 3. Where things are
 
-### Live and working
-
-- **dev.thauma.one** — Eleventy dev server on :8991 via a tunnel in the
-  Thauma account (`thauma-dev`, `31c1630c…`). `/staff*` is gated by
-  Cloudflare Access; `/en/` is deliberately open so the site can be shown
-  without handing out logins.
-- **dev.chaseroush.com** — `netlify dev --offline` on :8993 via
-  `chaseroush-dev` in the personal account, fully gated by Access. Runs with
-  live Netlify env, so it behaves like production including the admin.
-- Both survive reboot (systemd; CR's are **user** units + `loginctl
-  enable-linger`, Thauma's are system units).
-
-### Built, not yet live
-
-- **`db/`** — the operations schema. 11 tables, 2 views, 6 triggers, 16 passing tests
-  (`python3 db/test_schema.py`, which runs every migration in order).
-- **`/staff/`** — the staff console, **a page per section** sharing
-  `layouts/staff.njk`: dashboard, support, stewardship, directory, resources,
-  activity. One script serves all six and loads only what each page needs.
-  **All six read live data as of 2026-08-15**: Directory and Resources from
-  `staff-data` (KV), the other four from `/api/staff-snapshot` (D1).
-  `db/build_snapshot.py` still writes `src/staff/data/snapshot.json`, so the
-  console can be worked on with no database — point `SNAPSHOT_URL` back at it.
-- **`netlify/functions/_shared/access.js`** — Cloudflare Access JWT
-  verification, 15 passing tests.
-- **`workers/`** — the Cloudflare Workers port, deployed to staging.
-
-| file | what | tests |
-|---|---|---|
-| `workers/src/lang-redirect.js` | geo language routing | 17 |
-| `workers/src/lib/access.js` | Access JWT via WebCrypto | 16 |
-| `workers/src/game-scores.js` + `staff-data.js` | ported functions, KV-backed | 23 |
-| `workers/src/contact-form.js` | Netlify Forms replacement | 16 |
-| `workers/src/lib/db.js` | D1 query layer | 26 |
-| `workers/src/partner-api.js` + `lib/apikey.js` | the public boundary | 21 |
-
-Run with `cd workers && npm test` — **122 tests**.
-
-- **`docs/MIGRATION-RUNBOOK.md`** — ordered, checkable migration phases with
-  rollback points. **Read its warning before merging `dev` to `main`.**
-- **`docs/WORKERS-AUDIT.md`** (in the CR repo) — all 30 CR functions audited
-  for Workers compatibility.
-
-### Cloudflare Workers — deployed 2026-08-15
+### Live
 
 ```
-thauma.one       Netlify, UNPROXIED (grey cloud)   production, unchanged
-dev.thauma.one   the Pi tunnel                     Access-gated
-next.thauma.one  the Worker                        Access-gated, STAGING
+thauma.one       the Worker, PROXIED       production — cut over 2026-08-15
+next.thauma.one  the Worker                staging, same code, dev database
+dev.thauma.one   the Pi tunnel             wrangler dev, local D1
+chaseroush.com   Netlify                   untouched, migrates later
 ```
 
-Account `57c887d9191048d984a7607c9e9334b7` (Thauma-owned). Zone
-`f4c7e8b060ab15ebb363da7c385e0c5d`.
+**Netlify no longer serves Thauma.** Its builds are stopped and its last
+deploy is kept as the rollback. `…netlify.app/staff/` is still a public URL
+with a stale staff page on it — archive the site once the rollback window
+closes.
 
-| resource | id |
+`main` is production: pushing there builds, tests, deploys and verifies via
+`.github/workflows/deploy.yml`. There is no manual publish step. `dev` is the
+working branch.
+
+### The database
+
+Six migrations, applied to all three databases in order. **27 schema tests**
+(`python3 db/test_schema.py`), which run every migration against a clean
+SQLite and assert the guarantees below.
+
+| migration | what it added |
 |---|---|
-| D1 `thauma-ops` (production, empty) | `1a30f6c9-1dc7-42b0-abaa-fab3da334c9e` |
-| D1 `thauma-ops-dev` (seeded) | `db7fcd6a-56e2-4a67-98da-3da87e95dc86` |
-| KV `STAFF_DATA` | `f79f07b51f3a493a9f2bb3714115d037` |
-| KV `GAME_SCORES` | `f23971d5b4aa460daba43e97b9d84273` |
-| Access AUD, dev.thauma.one | `04468ad5…8019fdfb` |
-| Access AUD, next.thauma.one | `da1b6265…707219f8` |
-
-`wrangler.toml`'s **top level targets staging and the dev database**.
-Production is `[env.production]` and requires `--env production` every time —
-the dangerous target should take more typing. `thauma-production` has never
-been deployed.
-
-**Three things learned the hard way, all now in code comments:**
-
-1. **Workers Static Assets bypass the Worker entirely** when a file matches, so
-   an auth check in the router never runs. `/staff/data/snapshot.json` was
-   briefly public because of this. Fixed with `run_worker_first`, which is an
-   **allow-list** — paths absent from it never reach the router at all.
-2. **The Worker gates `/staff*` itself**, so it is safe on any hostname
-   regardless of how Access applications are scoped. A new hostname is a
-   dashboard edit away from being public otherwise.
-3. **`ACCESS_AUD` is a comma-separated list.** Each Access application has its
-   own tag; one Worker serving three hostnames needs all of them.
-
-**`thauma.one` cannot be Access-gated while Netlify serves it** — the zone is
-unproxied, so Cloudflare never sees the traffic. The application exists and
-starts working at cutover. Until then, do NOT merge `dev` to `main`: that
-would publish the staff console on an ungated host.
-
-### ⚠️ Known-open
-
-**Production `thauma.one/staff/` is NOT gated by Access** — the application
-covers `dev.thauma.one/staff*` only. Harmless today, because `main` is 90+
-commits behind and serves a page whose backing function 404s. **It stops being
-harmless the moment `dev` merges to `main`.** A second Access application for
-`thauma.one/staff*` is required first. See the runbook.
-
-### Known-blocked
-
-`ACCESS_TEAM_DOMAIN` and `ACCESS_AUD` are **not yet set** on the Netlify site,
-so `staff-data.js` returns 500 (fails closed). Directory and Resources will
-not work until they are:
+| `0001_init` | partners, users, contacts, interactions, goals, audit |
+| `0002_milestones` | the public roadmap |
+| `0003_languages` | language catalogue + per-partner publishing + translations |
+| `0004_settings` | `partners.default_lang` |
+| `0005_directory_resources` | per-person address book, shared library with levels |
+| `0006_roles` | `user_roles` — administration, staff, board |
 
 ```
-ACCESS_TEAM_DOMAIN = thaumaone.cloudflareaccess.com
-ACCESS_AUD         = 04468ad531e25f3c53af5d0b4ed0bdd3073241f76a070c741efe40f58019fdfb
+thauma-ops       production   schema only, no real data yet
+thauma-ops-dev   shared dev   seeded, scrubbed by db/refresh_dev.py
+local            the Pi       .wrangler/state, reseeded from seed.dev.sql
 ```
 
-Then `sudo systemctl restart thauma-dev` — `netlify dev` reads env at startup.
+### The Worker
+
+One entry point, `workers/src/worker.js`. **159 tests** (`cd workers && npm test`).
+
+| file | what |
+|---|---|
+| `lang-redirect.js` | geo language routing on `/` |
+| `lib/access.js` | Cloudflare Access JWT, WebCrypto |
+| `lib/db.js` | named queries, tenant scoping, the public allow-list |
+| `lib/apikey.js` | partner API keys, SHA-256 |
+| `lib/nopii.js` | the content gate on the public boundary |
+| `staff-snapshot` (in worker.js) | dashboard/support/stewardship/activity |
+| `staff-milestones.js` | the roadmap editor |
+| `staff-settings.js` | account, languages, API keys |
+| `staff-data.js` | directory (per person) + resources (per partner) |
+| `partner-api.js` | `/api/partner/v1/site` — the only public-facing key route |
+| `contact-form.js`, `game-scores.js` | ported from Netlify |
+
+### The console
+
+Eight pages under `/staff/`, sharing `layouts/staff.njk`: dashboard, support,
+stewardship, milestones, directory, resources, activity, settings.
+
+**Not yet built:** the admin area — user management, role assignment, the site
+master language, acting-as, and the resource visibility picker. Roles exist in
+the database and are read everywhere; nothing can grant `board` yet, so
+board-level resources are invisible to everyone by design rather than by
+accident.
 
 ---
 
@@ -240,6 +202,45 @@ This is the single most important behaviour in the system. The seed data
 demonstrates why: Jordan Reyes was newslettered 13 days ago but has not been
 personally contacted in 165. One `last_contacted` column would have shown 13
 and hidden the problem entirely.
+
+### Who owns what — added after the KV mistake
+
+| | scope | why |
+|---|---|---|
+| `contacts` | partner | supporters belong to the partner, not a person |
+| `directory_contacts` | **person** | somebody's own address book |
+| `resources` | partner, or org-wide | a library, shared on purpose |
+| `milestones` | partner | published to partner websites |
+
+Directory and Resources lived in a **single KV entry** until 2026-08-15 — one
+document for the whole installation, shared by every staff member of every
+partner, saved whole on every change so two people editing on the same
+afternoon meant the second erased the first. Both are now rows with owners,
+and every write touches one of them.
+
+### Languages are data, not columns
+
+`0002` gave milestones `title` and `title_hr`, mirroring a bilingual partner
+site. Thauma already had three languages and Serbian had nowhere to go.
+
+```
+languages           the ORGANISATION's catalogue. Admin-managed.
+partner_languages   which of those a partner publishes.
+milestone_translations   one row per milestone per language.
+```
+
+Adding a language is a row. Disabling one hides it from the **public API
+only** — text already written stays, so a translation can be prepared before
+it goes live, and switching one off is never destructive. A test asserts that.
+
+### Roles
+
+`user_roles` holds **administration, staff, board**, and a person may hold
+more than one — a board member who also does staff work is ordinary.
+
+`users.global_role` is **legacy**. It was a single-value column with a CHECK,
+and widening a CHECK means rebuilding the table, which D1 refuses while seven
+tables reference `users`. It is backfilled and must not be read.
 
 ### Access control
 
@@ -400,10 +401,15 @@ application in any org would be accepted.
 
 `requireAccess` fails closed: missing config returns 500, never open.
 
-**Roles are currently absent.** Access has no equivalent of the old
-staff/admin roles, so for now the Access policy *is* the gate. When
-`users`/`partner_users` go live, look the email up there. **Do not
-reintroduce a role list in an env var** — the schema already models it.
+**Roles live in the database, not in Access.** Access answers *who is this*;
+`partners_for_user` answers *what may they touch*, and `user_roles` answers
+*what authority do they hold*. Every handler resolves all three before doing
+anything. **Do not reintroduce a role list in an env var** — the schema models
+it, and an env var cannot be audited.
+
+The identity a handler gets is an **email address and nothing more**. Names
+come from `users.name`; Access frequently carries no name at all, which is why
+the console shows its own record and treats Access as a fallback.
 
 Longer term, Access federates to SAML/OIDC, so UniFi Identity Enterprise could
 be the IdP and Ubiquiti Verify the MFA. Access is for *the team*; if
@@ -411,44 +417,44 @@ supporters ever need accounts, that is app-level auth and a different problem.
 
 ---
 
-## 6. The migration: Netlify → Cloudflare Workers
+## 6. The migration — done 2026-08-15
 
-**Decided 2026-08-14.** Target is **Workers with static assets**, not Pages —
-Cloudflare now steers new projects to Workers and directs all investment there.
+thauma.one runs on Cloudflare Workers. What is left is listed in
+`docs/MIGRATION-RUNBOOK.md`; the summary:
 
-Cost is not a factor: hosting is $0 with unmetered static bandwidth, D1's free
-tier is ~1000× what this needs. **The cost is migration effort and risk.**
-
-### What breaks, and its replacement
-
-| Netlify dependency | replacement | status |
+| Netlify dependency | replacement | state |
 |---|---|---|
-| Netlify Identity | Cloudflare Access | ✅ done |
-| Git Gateway (Decap CMS) | custom admin | planned — dies with Identity |
-| Netlify Blobs | D1 or KV | to do |
-| Netlify Forms (contact page) | Worker handler + Resend | to do |
-| Edge function (geo language) | Worker using `request.cf.country` | to do |
+| Netlify Identity | Cloudflare Access | done |
+| Netlify Functions | one Worker, one router | done |
+| Netlify Blobs | D1 | done — see §4 |
+| Netlify Forms | `contact-form.js` + Resend | done |
+| Edge function (geo language) | `lang-redirect.js` | done |
+| build on push | GitHub Actions | done |
+| **Git Gateway (Decap CMS)** | **custom editor** | **NOT done — `/admin` is dark** |
 
-Full step-by-step in **`docs/MIGRATION-RUNBOOK.md`**. Summary:
+**Site copy cannot currently be edited through a UI.** Decap died with
+Identity, and its replacement has not been built. The trilingual copy in
+`src/_data/i18n/*.json` is editable in git and nowhere else. This is the
+largest outstanding piece of the original Phase 3.
 
-### Order
+### Two things that cost real time, worth remembering
 
-1. **Access** in front of `/staff/` — done, on Netlify, before anything moved.
-2. **D1** in the Thauma account; wire the console's four prototype sections.
-3. **Custom admin** replacing Decap.
-4. **Hosting → Workers**, last, when it is just hosting + edge function + form
-   handler.
+**A migration can pass on local SQLite and fail on D1.** `0006` was first
+written as a table rebuild, which worked via `executescript` and was refused
+by D1 with a foreign-key error — because `PRAGMA foreign_keys = OFF` is
+ignored inside a transaction, and D1 wraps a migration file in one. Test both.
 
-Removing the hard dependencies one at a time, rather than all at once during a
-hosting move.
+**Order matters inside a migration.** A trigger or foreign key naming a table
+being rebuilt is validated mid-swap and fails. `0003` carries the working
+order in its comments.
 
-**Chase Roush migrates later, separately.** Audited in
-`docs/WORKERS-AUDIT.md` (CR repo): the only Node built-in used across all 30
-functions is `crypto`, there is no Identity coupling, and the recommendation is
-**one adapter** presenting the Netlify V1 handler interface over a Workers
-`fetch` handler — so every function keeps working unchanged and can be
-modernised individually. The genuinely uncertain part is translating
-`_redirects`, not the functions.
+### Chase Roush migrates later
+
+Audited in `docs/WORKERS-AUDIT.md` (CR repo): the only Node built-in used
+across all 30 functions is `crypto`, there is no Identity coupling, and the
+recommendation is one adapter presenting the Netlify handler interface over a
+Workers `fetch`. The genuinely uncertain part is `_redirects`, not the
+functions.
 
 ---
 
@@ -479,69 +485,165 @@ single most important thing to test before committing to a platform.
 ## 8. Local development (the Raspberry Pi)
 
 ```
-/DATA/AppData/thauma              Thauma repo, branch dev  → serves dev.thauma.one
-~/projects/chaseroush_missions    CR repo, branch dev      → serves dev.chaseroush.com
+/DATA/AppData/thauma              Thauma repo, branch dev  → dev.thauma.one
+~/projects/chaseroush_missions    CR repo, branch dev      → dev.chaseroush.com
 ```
 
 | service | what | scope |
 |---|---|---|
-| `thauma-dev` | `eleventy --watch` + `wrangler dev --env dev --port 8991` (+socat 8992) | system |
-| `cloudflared-thauma-dev` | tunnel, `~/.cloudflared/config.yml` | system |
-| `chaseroush-dev` | `netlify dev --port 8993` (+socat 8994) | **user** |
-| `cloudflared-chaseroush-dev` | tunnel, `config-cr.yml` | **user** |
-| `cloudflared` | RemoteHouse Pi tunnel (personal, unrelated) | system |
+| `thauma-dev` | `eleventy --watch` + `wrangler dev --env dev` (+socat 8992) | system |
+| `cloudflared-thauma-dev` | tunnel | system |
+| `chaseroush-dev` | `netlify dev --port 8993` | **user** |
+| `cloudflared-chaseroush-dev` | tunnel | **user** |
 
-**Gotchas that cost time before:**
+The unit lives in `deploy/thauma-dev.service`, version-controlled rather than
+only in `/etc`.
 
-- The dev sites serve **whatever branch is checked out** in those directories.
-  Switching branches in place changes what is live. Use worktrees, and put
-  them somewhere agreed — not a new folder in `$HOME`.
-- **`wrangler` is pinned to exactly 4.86.0, not a caret range.** 4.123+ needs
-  Node 22; this Pi runs Node 20.20.2, and the newer wrangler refuses to start
-  at all. A routine `npm install` under `^4.86.0` would break local dev with a
-  message about Node versions that looks unrelated to whatever you were doing.
+### Gotchas, in the order they will bite
+
+- **`wrangler` is pinned EXACTLY to 4.86.0.** 4.123+ needs Node 22; this Pi
+  has Node 20, and the newer wrangler refuses to start. A caret range would
+  break local dev on a routine `npm install`, with an error about Node that
+  looks unrelated to whatever you were doing.
 - **`wrangler dev` needs `--env dev`**, which serves `_site` and simulates D1
-  and KV locally from `.wrangler/state`. Seed it once:
-  `npx wrangler d1 execute thauma-ops-dev --local --env dev --file=db/seed.dev.sql`.
-  This is a **third** database — local, remote-dev, production. Collapsing it
-  back to two needs Node 22 + wrangler ≥ 4.123 (`experimental_remote`).
+  and KV locally. Seed it once from `db/seed.dev.sql`. This is a **third**
+  database; Node 22 + wrangler ≥ 4.123 would collapse it back to two.
 - **`wrangler dev --remote` is not usable here.** It runs the Worker on
   Cloudflare's edge under *next.thauma.one's* Access application, so a browser
-  that had already passed dev.thauma.one's Access got bounced to a second
-  login for a different hostname.
-- **`eleventy --watch`, never `--serve`, in the dev service.** `--watch` keeps
+  that already passed dev.thauma.one's Access gets bounced to a second login.
+- **`eleventy --watch`, never `--serve`,** in the dev service. `--watch` keeps
   `ELEVENTY_RUN_MODE` at a value `src/_data/env.js` treats as a dev server, so
   the comingSoon gate stays off. A bare build sets it to `build` and silently
   serves the gated site.
-- The Netlify CLI is logged into **two accounts** but only one is active.
-  Thauma is active; CR's service carries its own token via
-  `~/.config/netlify-cr-auth.env` (0600) so both work without switching.
-- `netlify dev` reads env vars **at startup**. Changing them in the dashboard
-  requires a service restart.
-- Eleventy's incremental serve does not delete removed files from `_site/`.
-  Clean stale paths by hand — never run a bare `npm run build` while the dev
-  server is up (see `CLAUDE.md` rule 9).
-- Split-horizon DNS: Pi-hole resolves several hostnames to LAN IPs, so testing
-  from the Pi does **not** exercise the public path. Force it with
-  `curl --resolve` against the Cloudflare IP.
-- Pi-hole caches negative DNS answers for 30 minutes. Create a record
-  *before* querying it, or flush with `docker exec Roushhouse-PiHole pihole
-  reloaddns`.
-- Secrets in systemd `Environment=` are expanded into the process command
-  line and visible in `ps`. Use `EnvironmentFile=` **and** have the program
-  read the variable itself rather than passing it as an argument.
+- **Three build directories, and mixing them publishes the wrong thing.**
+  `_site` is the dev server's ungated watch output, `_site_next` staging,
+  `_site_prod` production. Production pointed at `_site` once; it would have
+  published every unreleased page.
+- **Split-horizon DNS.** Pi-hole resolves several hostnames to LAN IPs, so
+  testing from the Pi does not exercise the public path. Use `curl --resolve`.
+- **Pi-hole caches negative DNS for 30 minutes.** Create a record *before*
+  querying it, or `docker exec Roushhouse-PiHole pihole reloaddns`.
+- **Secrets in systemd `Environment=`** are expanded into the command line and
+  visible in `ps`. Use `EnvironmentFile=` *and* have the program read the
+  variable itself.
+- **`wrangler tail thauma`** shows Worker errors. An uncaught exception
+  becomes a Cloudflare HTML 500, which a page reports as "a reply this page
+  could not read" — the message will not name the variable.
 
 ---
 
-## 9. Open decisions
+## 8a. The console — conventions worth keeping
+
+Decisions made across the milestone editor and Settings. They are not
+preferences; each was arrived at by getting it wrong first.
+
+### Two save models, chosen per screen
+
+**Milestones holds a working copy.** `saved` is the last server response,
+`draft` is what the screen shows, and a row is unsaved when they differ.
+Nothing reaches the database until Save. A sticky bar appears only when
+something is unsaved, unsaved rows carry a coloured edge, and leaving the page
+warns. Publishing is a decision somebody should be able to change their mind
+about before it is live.
+
+**Settings saves immediately.** Each control is one decision with an obvious
+result, and a working copy would be ceremony around flipping a switch. The
+cost is a moment where the screen could lead the database, so every control
+disables while its request is in flight and the page reloads from the server
+afterwards.
+
+Do not unify these. The difference is the point.
+
+### Errors say which failure happened
+
+One try/catch around a fetch AND its rendering reports a render bug as a
+network failure. That happened, said "cannot reach the server" for two rounds,
+and hid a real crash. Three paths, three messages:
+
+```
+the request never completed  -> the network, with a retry
+the server answered an error -> the status and its message
+the page failed to draw      -> "this page failed to display", plus console
+```
+
+The third is the one that matters — it cannot be mistaken for a connection
+problem, so it does not send anyone looking in the wrong place.
+
+### Toasts for events, a pinned message for conditions
+
+Bottom-centre toasts announce outcomes. Progress messages are not announced —
+a "Saving…" toast is replaced by its own result and carries nothing the
+disabled control did not. Errors do not auto-dismiss.
+
+"Cannot reach the server" is a **condition**, so it is one message pinned top
+centre that clears when a request succeeds, not a toast stacking copies of
+itself.
+
+### Translation
+
+`staff-i18n.js` translates the interface in the browser, keyed on the
+account's language and cached per tab. Everything user-visible needs a key,
+including **placeholders, aria-labels and titles** — a text box is not
+translated because its label is. Strings built in JavaScript need one too.
+
+A missing key returns null and the sweep leaves the element alone, so a gap
+degrades to the original English rather than printing `page.directory.heading`
+on the screen. Identifiers — `audit_log`, `THAUMA_API_KEY`, query paths — are
+deliberately **not** translated: they are things you type, not things you read.
+
+### Who is who, in the header
+
+The pill is the **signed-in person**, from `users.name`. Beside it is their
+role. Each fact appears once, and only `paintIdentity()` writes the pill —
+`renderSnapshot()` used to overwrite it with the partner's name a moment after
+load, on the four pages that fetch a snapshot.
+
+Which partner's records are on screen is named **on the page**, where there is
+room to label it. A bare name in a corner cannot carry that distinction.
+
+The identity cache is `sessionStorage`, not `localStorage`: it exists to stop
+a flash while navigating within one session, and on a shared machine
+`localStorage` would show the previous person's name to the next one.
+
+### `hidden` loses to `display`
+
+Any element that sets `display` needs an explicit `[hidden]{display:none}`.
+Hiding a `display:flex` column left its fields on screen.
+
+---
+
+## 9. Open decisions and what is next
+
+### Next, in order
+
+1. **The admin area.** Unblocks four things at once: user management (add,
+   remove, assign roles), the site master language, acting-as with an audit
+   trail and an unmissable banner, and the resource visibility picker. Also
+   the staff/admin layout split.
+2. **The site copy editor** — the last piece of Phase 3. `/admin` is dark.
+3. **Timeline visualiser**, then **goal cards**.
+4. **The embed** last, deliberately: it is the one that puts a credential in a
+   browser. See §4a.
+
+### Open
 
 | decision | notes |
 |---|---|
-| **CR palette** | provisional, ~8 rounds without resolution. See the reference rule in §1. |
-| **Giving platform** | leaning Donorbox; per-staff donor scoping untested |
-| **Auth IdP long-term** | Access now; UniFi Identity Enterprise possible via SAML/OIDC |
+| **Node 22 on the Pi** | would remove the third database and let dev bind to the real dev D1. Deferred because it moves Chase Roush's toolchain too, and the sites are meant to be independent. |
+| **CR palette** | provisional, ~8 rounds without resolution |
+| **Giving platform** | leaning Donorbox; per-staff donor scoping still untested |
 | **CR migration timing** | agreed in principle, not scheduled |
-| **Subscribers** | old lists deleted (they were publicly readable in R2); starting fresh in `contacts` |
+| **Translations** | written by an assistant, not a speaker. Structurally correct, good enough to prove the mechanism, and wanting a real pass before anyone relies on them. |
+| **Untranslated-string CI check** | offered, not built. Today's sweep decays otherwise. |
+
+### Housekeeping
+
+- **Archive the Netlify site** once the rollback window closes.
+  `…netlify.app/staff/` is a public URL with a stale staff page on it.
+- **`www` deep-link redirect rule** — `www.thauma.one/en/` serves rather than
+  redirecting, because `run_worker_first` is an allow-list and `/en/` is not
+  on it. A Cloudflare Redirect Rule fixes it without routing every asset
+  through the Worker.
 
 ---
 

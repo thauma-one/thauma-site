@@ -1,23 +1,17 @@
 # Thauma → Cloudflare Workers: runbook
 
-> ## ⚠️ BLOCKING — read before merging `dev` into `main`
+> ## Cutover complete — 2026-08-15
 >
-> **The Access application covers `dev.thauma.one/staff*` only. Production
-> `thauma.one/staff/` is NOT gated** — verified 2026-08-15, it returns 200 to
-> anyone.
+> thauma.one is served by the Worker. Netlify's builds are stopped and its
+> last deploy is the rollback. `main` is production and deploys itself.
 >
-> Today that is harmless: `main` is 90+ commits behind and serves the old
-> Identity page whose backing function 404s, so there is no data behind it.
+> The warning that stood here — do not merge `dev` to `main`, because the
+> staff console would land on an ungated host — is resolved. Access gates
+> `/staff*` on thauma.one, and the Worker verifies the token itself regardless.
 >
-> **The moment `dev` merges to `main`, that changes.** The staff console —
-> including the stewardship table with supporter names, emails and contact
-> history — deploys to a public URL with no gate in front of it.
->
-> **Before merging:** add a second Access application for `thauma.one/staff*`
-> with the same policy, and confirm:
-> ```
-> curl -s -o /dev/null -w '%{http_code}' https://thauma.one/staff/    # must be 302
-> ```
+> **Still open:** archive the Netlify site once the rollback window closes.
+> `unrivaled-snickerdoodle-1134e3.netlify.app/staff/` answers 200 with a stale
+> page.
 
 Ordered, checkable steps. Every phase ends with something verifiable and
 something you can roll back to.
@@ -42,25 +36,17 @@ which one broke.
 
 ---
 
-## Phase 1 — finish Access (blocked on you)
+## Phase 1 — Access — done
 
-- [ ] Netlify → Site configuration → Environment variables:
-      ```
-      ACCESS_TEAM_DOMAIN = thaumaone.cloudflareaccess.com
-      ACCESS_AUD         = 04468ad531e25f3c53af5d0b4ed0bdd3073241f76a070c741efe40f58019fdfb
-      ```
-- [ ] `sudo systemctl restart thauma-dev` — `netlify dev` reads env at startup
-- [ ] **Verify:** `curl -s -o /dev/null -w '%{http_code}' https://dev.thauma.one/.netlify/functions/staff-data`
-      → **401**, not 500. 500 means the variables did not take.
-- [ ] **Verify in a browser:** load `/staff/`, confirm Directory and Resources
-      list, add a contact, reload, confirm it persisted.
-- [ ] Optionally add a second Access application covering
-      `/.netlify/functions/staff-data` so unauthenticated requests never reach
-      the function. Do this **after** the above works, not before — otherwise a
-      failure is ambiguous.
+- [x] Access gates `/staff*` on dev, staging and production, each with its own
+      application and audience tag
+- [x] The Worker verifies the JWT itself, so an endpoint outside `/staff*` is
+      not protected only by a routing rule
+- [x] `ACCESS_AUD` is a comma-separated list — one Worker serves several
+      hostnames, each with its own tag
 
-**Rollback:** revert `677677e`. Netlify Identity is still configured on the
-site, so the old page works again immediately.
+The Netlify environment variables this phase once described are moot: Netlify
+no longer serves Thauma.
 
 ---
 
@@ -142,33 +128,44 @@ the working branch.
 
 ---
 
-## Phase 3 — replace Decap
+## Phase 3 — replace Decap — OUTSTANDING
 
-Git Gateway is a Netlify Identity service, so it dies with Identity. `/admin`
-must be replaced before hosting moves.
+The last piece of the original plan. `/admin` went dark at the cutover, so
+**site copy cannot currently be edited through a UI** — the trilingual files in
+`src/_data/i18n/` are editable in git and nowhere else.
 
-- [ ] Build the content editor into `/staff/` (CR's admin is the pattern)
-- [ ] Writes go to GitHub via the API, as CR's page editor already does
-- [ ] **Verify:** edit a string, confirm the commit lands and the site rebuilds
+Not urgent: exactly one commit in this repo's history was ever CMS-authored,
+and the site is still coming-soon gated. It becomes urgent at launch.
+
+- [ ] Build the content editor into `/staff/`
+- [ ] Writes go to GitHub via the Contents API, as CR's `save-file.js` does
+- [ ] **Verify:** edit a string, confirm the commit lands and the Action
+      deploys it
 - [ ] Delete `src/admin/`, drop `decap-server` from `package.json`
 
-**Rollback:** keep Decap installed until the replacement has been used in
-anger for a week.
+**What it should reuse rather than reinvent:** the working-copy model and save
+bar from the milestone editor, the language columns, and the toast/problem
+split. See SPEC §8a.
+
+**Before it:** the admin area, which gives user management, roles and the site
+master language somewhere to live — and which the content editor will want for
+deciding who may publish copy.
 
 ---
 
-## Phase 4 — KV for the blob stores
+## Phase 4 — KV — SUPERSEDED
 
-- [ ] `wrangler kv namespace create STAFF_DATA`
-- [ ] `wrangler kv namespace create GAME_SCORES`
-- [ ] Export the current Netlify Blobs contents (via the live function: `GET
-      /.netlify/functions/staff-data`, save the JSON)
-- [ ] `wrangler kv key put --binding=STAFF_DATA data '<the json>'`
-- [ ] **Verify:** `wrangler kv key get --binding=STAFF_DATA data`
+This planned to move Netlify Blobs into KV. It happened, and then 0005 moved
+the same data out of KV and into D1, because a single KV document could not
+express ownership: directory and resources shared one entry for the whole
+installation, and saving it whole meant concurrent edits destroyed each other.
+
+KV still holds `GAME_SCORES`, which is genuinely a document read and written
+whole. `STAFF_DATA` is unused and can be deleted.
 
 ---
 
-## Phase 5 — hosting — PREPARED 2026-08-15, awaiting two dashboard actions
+## Phase 5 — hosting — DONE 2026-08-15
 
 Reordered ahead of Phase 3 deliberately. The runbook claimed Decap had to go
 first because Git Gateway dies with Identity — but that is a *consequence* of
@@ -254,32 +251,14 @@ accepted — the exact cross-application hole the `aud` check exists to close.
 
 ---
 
-## Phase 5 (original notes)
-
-Only now, and by this point it really is just hosting.
-
-- [ ] `wrangler.toml` with static assets, D1 + KV bindings, and Cron Triggers
-- [ ] Route `/` through `lang-redirect`, `/api/contact` through `contact-form`
-- [ ] Set every env var: `ACCESS_*`, `RESEND_API_KEY`, `CONTACT_TO`,
-      `CONTACT_FROM`, `GAME_ADMIN_TOKEN`
-- [ ] Deploy to a workers.dev subdomain **first** and test everything there
-- [ ] **Verify on workers.dev:** `/` redirects by language, `/en/` renders,
-      `/staff/` challenges, the contact form sends, the 404 game saves a score
-- [ ] Point `thauma.one` at the Worker
-- [ ] Update the contact form's `action` to `/api/contact` and remove
-      `data-netlify="true"`
-- [ ] Keep the Netlify site alive but undeployed for a week
-
-**Rollback:** point DNS back at Netlify. Keep it deployable until you are sure.
-
----
-
 ## Phase 6 — cleanup
 
 - [ ] Delete `netlify/functions/*`, `netlify/edge-functions/*`, `netlify.toml`
+      — nothing serves them, but they still look like live code
 - [ ] Remove `@netlify/blobs` from `package.json`
-- [ ] Update `CLAUDE.md` and `docs/SPEC.md`
-- [ ] Archive the Netlify site
+- [ ] Delete the unused `STAFF_DATA` KV namespace (see Phase 4)
+- [ ] Archive the Netlify site once the rollback window closes
+- [x] `docs/SPEC.md` rewritten 2026-08-15
 
 ---
 
@@ -299,12 +278,11 @@ curl -s -o /dev/null -w 'staffdata %{http_code}\n' https://thauma.one/.netlify/f
 dig +short MX thauma.one
 ```
 
-Expected **once Phase 1 is complete and production is gated**: `302/301`,
-`200`, `302`, `401`, three `route*.mx.cloudflare.net`.
+Expected, and true as of the cutover: `302`, `200`, `302`, `401`, three
+`route*.mx.cloudflare.net`.
 
-Actual on production today: `302`, `200`, **`200`**, `404`, 3 MX. The third
-value is the one that must change before `dev` merges — see the warning at the
-top.
+**`staff` returning 200 means something is open that should not be.** That is
+the check worth wiring into a cron.
 
 **`staff` returning 200, or `staffdata` returning 200, means something is
 open that should not be.** That is the check worth wiring into a cron.
@@ -337,9 +315,9 @@ open that should not be.** That is the check worth wiring into a cron.
 ## Test suites
 
 ```bash
-python3 db/test_schema.py          # 14 — schema guarantees
+python3 db/test_schema.py          # 27 — every migration, in order
 python3 db/build_snapshot.py       # regenerates the offline console dataset
-cd workers && npm test             # 100 — Access, lang, functions, contact, db
+cd workers && npm test             # 159 — Access, boundary, editors, db
 node netlify/functions/_shared/access.test.js   # 15 — the Netlify-side Access check
 ```
 
