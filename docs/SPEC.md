@@ -144,7 +144,7 @@ local            the Pi       .wrangler/state, reseeded from seed.dev.sql
 
 ### The Worker
 
-One entry point, `workers/src/worker.js`. **255 tests** (`cd workers && npm test`).
+One entry point, `workers/src/worker.js`. **270 tests** (`cd workers && npm test`).
 
 | file | what |
 |---|---|
@@ -160,6 +160,8 @@ One entry point, `workers/src/worker.js`. **255 tests** (`cd workers && npm test
 | `admin.js` | organisation administration — the only UNSCOPED endpoint |
 | `admin-content.js` | the site's own words and settings — the only endpoint that COMMITS |
 | `admin-publish.js` | Preview and Publish — the only endpoint that DEPLOYS |
+| `admin-actas.js` | start/stop viewing another person's console |
+| `lib/actas.js` | who a request counts as, and the record of what was touched |
 | `lib/github.js` | the Contents API, App authentication, UTF-8-safe base64 |
 | `partner-api.js` | `/api/partner/v1/site` — the only public-facing key route |
 | `contact-form.js`, `game-scores.js` | ported from Netlify |
@@ -183,9 +185,7 @@ in will eventually do something org-wide believing it was local. Each links to
 the other; the link INTO administration appears only for accounts holding the
 role.
 
-**Still not built:** acting-as (viewing the console as another person, with the
-audit trail and banner), the resource visibility picker, and a board-facing
-view. `src/admin/` — Decap CMS — was deleted at the same time; it had been
+**Still not built:** the resource visibility picker and a board-facing view. `src/admin/` — Decap CMS — was deleted at the same time; it had been
 inert since the cutover and was occupying the path.
 
 ---
@@ -308,6 +308,38 @@ key enforces that a reference points at something CURRENT, which is the
 opposite of what a historical record needs. `ON DELETE SET NULL` was tried
 first and was refused by the append-only trigger — correctly, and the refusal
 pointed at the better answer.
+
+### Acting as somebody else
+
+An administrator can open a partner's console to see exactly what they see —
+the alternative to building this is asking for their password.
+
+**The cookie is a request, not a credential.** `thauma_act_as` names a user id
+and grants nothing. Every request still carries a Cloudflare Access JWT, that
+JWT is still verified, and the REAL caller is looked up and checked for the
+admin role *before* the cookie is read. A staff member who sets it by hand gets
+exactly their own data, so there is nothing to sign and no session to store —
+the worst a forged cookie achieves is being ignored.
+
+Everything falls back to the caller's own identity when anything is off: not an
+admin, no such person, suspended. Failing back to yourself is the only safe
+direction; the opposite failure is an administrator silently editing the wrong
+person's ministry.
+
+**Three signals at once**, for the same reason the admin area has three: a band
+across the top naming whose account it is, a border round the whole viewport,
+and a fixed watermark. Chase's first instinct was a flashing banner — that is a
+photosensitivity hazard, and self-defeating, because a thing that blinks becomes
+background while a thing that is always there is a thing you are looking at.
+
+**Audited in three places.** Start and stop, by the endpoint; and every request
+that CHANGES something, by `auditActingWrite` at the single point every method
+passes through — a per-handler approach has to be remembered by whoever writes
+the next handler, and eventually is not. Reads are deliberately not logged per
+request: a page load is a dozen of them, and a log that records every one hides
+the writes that matter. The audit row names the ADMINISTRATOR, never the person
+being acted as; a row naming the target would say a partner did something they
+did not do.
 
 ### Access control
 
@@ -812,23 +844,19 @@ Hiding a `display:flex` column left its fields on screen.
 
 1. **Create the GitHub App and verify the editor.** Phase 3 is built and
    tested; the one thing it cannot have without a person is its credential.
-   An App owned by `thauma-one` with Contents: read and write — not a personal
-   token, for the reason in §2. Full steps in the runbook, Phase 3, including
+   An App owned by `thauma-one` with Contents AND Actions: read and write —
+   not a personal token, for the reason in §2. Full steps in the runbook, Phase 3, including
    the PKCS#1 → PKCS#8 conversion and the one surprising check: **confirm the
    App's commit actually triggers the deploy workflow.**
 
-2. **Acting-as** — viewing the console as another person, with the audit trail
-   and an unmissable banner. Chase's instinct was a flashing banner; a
-   permanent one plus a full-viewport border is both more obvious and not a
-   photosensitivity hazard.
-3. **A board view.** `board` currently grants board-marked resources and
+2. **A board view.** `board` currently grants board-marked resources and
    nothing else, so a board member with no partner signs in to an empty
    console. What they should see — org-wide goal totals, the roadmap, and
    explicitly NOT supporters — is a governance decision, not a technical one.
-4. **Resource visibility picker.** The levels work server-side; nothing sets
+3. **Resource visibility picker.** The levels work server-side; nothing sets
    them.
-5. **Timeline visualiser**, then **goal cards**.
-6. **The embed** last, deliberately: it is the one that puts a credential in a
+4. **Timeline visualiser**, then **goal cards**.
+5. **The embed** last, deliberately: it is the one that puts a credential in a
    browser. See §4a.
 
 ### Open

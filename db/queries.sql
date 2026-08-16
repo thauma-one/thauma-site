@@ -164,6 +164,26 @@ FROM users u
 WHERE u.email = :email AND u.status = 'active';
 
 
+-- name: user_by_id
+-- The same row, found by id instead of address.
+--
+-- ONLY for acting-as. Everything else looks a person up by EMAIL, because that
+-- is what Cloudflare Access hands over and `u_chase` is an internal id no
+-- identity provider has ever heard of. Here the id is right: an administrator
+-- picks a person from a list this system produced, so the id is ours already
+-- and asking for their email address first would be a round trip to learn
+-- something we are about to look up anyway.
+--
+-- Same `status = 'active'` gate. Suspending somebody must also stop an
+-- administrator standing inside their account.
+SELECT u.id AS user_id, u.email, u.name AS user_name, u.status,
+       COALESCE(u.preferred_lang, 'en') AS preferred_lang,
+       COALESCE((SELECT GROUP_CONCAT(r.role) FROM user_roles r WHERE r.user_id = u.id),
+                u.global_role) AS roles
+FROM users u
+WHERE u.id = :id AND u.status = 'active';
+
+
 -- name: partners_for_user
 -- What a signed-in user is allowed to see. The admin must call this FIRST and
 -- scope everything else to the result. Org-level global_role deliberately

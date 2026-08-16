@@ -436,3 +436,13 @@
   .v-head,.v-row{grid-template-columns:minmax(0,1fr) 76px 76px;gap:8px}
   .v-head span{display:none}
 }
+
+/* The support control, in the same row as Remove but not styled like it.
+   Opening somebody's console is routine; deleting them is not, and the two
+   must not look equivalent. */
+.adm-person .view-as{margin-left:auto;font-size:var(--fs-micro);
+  border-color:rgba(199,125,255,.4);color:var(--acting,#C77DFF)}
+@media(hover:hover){
+  .adm-person .view-as:hover{background:var(--acting,#C77DFF);color:#1A0A22;
+    border-color:var(--acting,#C77DFF)}
+}

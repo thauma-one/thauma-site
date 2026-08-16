@@ -177,7 +177,9 @@ export default {
       }
 
       return json({
-        you: { email: user.email, name: me.user_name || null, roles: ["admin"] },
+        // id included so the People list can tell which row is YOU and
+        // not offer "view as" on your own account.
+        you: { id: me.user_id, email: user.email, name: me.user_name || null, roles: ["admin"] },
         partner_stats: stats,
         users: users.map((u) => ({
           ...u,

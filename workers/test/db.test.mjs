@@ -44,34 +44,69 @@ await check("queries.generated.js is in sync with db/queries.sql", async () => {
     `stale generated file — run: python3 db/generate_queries_module.py`);
 });
 
-await check("all fifty-two named queries are present", async () => {
-  const expected = [
-    "api_key_lookup", "api_key_touch",
-    "audit_recent_for_partner", "contact_timeline", "contacts_stewardship",
-    "dashboard_needs_attention", "dashboard_partner_summary", "goal_history",
-    "goals_for_partner", "interactions_for_partner",
-    "languages_all",
-    "milestone_delete", "milestone_reorder", "milestone_translation_delete",
-    "milestone_translation_upsert", "milestone_translations_for_staff",
-    "milestone_upsert", "milestones_for_staff",
-    "partner_language_set", "partner_languages_for_partner", "partners_for_user",
-    "public_goals_for_partner", "public_languages_for_partner",
-    "public_milestone_translations", "public_milestones_for_partner",
-    // settings
-    "api_key_create", "api_key_revoke", "api_keys_for_partner", "audit_write",
-    "partner_set_default_lang", "partner_settings", "user_set_preferred_lang",
-    // directory + resources
-    "directory_delete", "directory_for_user", "directory_upsert",
-    "resource_delete", "resource_upsert", "resources_visible",
-    // administration
-    "admin_audit_recent", "admin_count_admins", "admin_partner_grant",
-    "admin_partner_revoke", "admin_partners", "admin_role_grant",
-    "admin_role_revoke", "admin_user_create", "admin_user_delete",
-    "admin_user_set", "admin_users",
-    "admin_partner_create", "admin_partner_set",
-    "admin_partner_delete", "admin_partner_stats", "user_by_email",
-  ].sort();
-  eq(Object.keys(QUERIES).sort(), expected, "query names");
+await check("every query the Worker calls actually exists", async () => {
+  /* Replaced a hand-written list of fifty-two names, which had to be edited
+     every time a query was added and said nothing about whether the code and
+     the SQL agreed. This asks the real question in both directions:
+
+       · a name the code calls that is not in queries.sql is a runtime crash
+       · a query nobody calls is either dead or a caller that was never wired
+
+     Both are found by reading the source rather than by remembering. */
+  const { readdirSync, readFileSync } = await import("node:fs");
+  const { fileURLToPath } = await import("node:url");
+
+  const srcDir = fileURLToPath(new URL("../src/", import.meta.url));
+  const files = [];
+  (function walk(dir) {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      if (e.isDirectory()) walk(`${dir}${e.name}/`);
+      else if (e.name.endsWith(".js") && e.name !== "queries.generated.js") files.push(dir + e.name);
+    }
+  })(srcDir);
+
+  /* TWO extractors, because the two directions need different precision.
+
+     `called` is strict — only `db.query("name")` literals. A name here that
+     does not exist is definitely a crash, so false positives would be bad.
+
+     `mentioned` is loose — every string in the source that LOOKS like a query
+     name. Used only for the orphan check, where over-collecting can only
+     cause a missed orphan, never a false alarm. It has to be loose: real call
+     sites include `db.query(grant ? "a" : "b")` and the public allow-list,
+     which is a bare array of names. */
+  const called = new Set();
+  const mentioned = new Set();
+  for (const f of files) {
+    const src = readFileSync(f, "utf8");
+    for (const m of src.matchAll(/\bquery(?:One)?\(\s*"([a-z0-9_]+)"/g)) called.add(m[1]);
+    for (const m of src.matchAll(/"([a-z][a-z0-9_]{3,})"/g)) mentioned.add(m[1]);
+  }
+
+  /* A regex-driven test can break silently: if the extractor stops matching,
+     both lists come back empty and everything "passes". These two floors mean
+     that failure shows up as a failure. */
+  assert(files.length > 8, `only found ${files.length} source files — the walk is broken`);
+  assert(called.size > 20, `only extracted ${called.size} query calls — the regex is broken`);
+
+  const defined = new Set(Object.keys(QUERIES));
+
+  const missing = [...called].filter((n) => !defined.has(n)).sort();
+  eq(missing, [], "queries the code calls but queries.sql does not define");
+
+  /* Queries with no caller in this Worker, each with a reason. A name landing
+     here by accident means somebody added SQL and forgot to wire it up. */
+  const DELIBERATELY_UNUSED = new Set([
+    // Read by db/build_snapshot.py and db/refresh_dev.py, not by the Worker.
+    "audit_recent_for_partner",
+    "contact_timeline",
+    "goal_history",
+  ]);
+
+  const orphans = [...defined]
+    .filter((n) => !mentioned.has(n) && !DELIBERATELY_UNUSED.has(n))
+    .sort();
+  eq(orphans, [], "queries nothing calls — dead SQL, or a caller never wired up");
 });
 
 await check("NO query names a language column — languages are data now", async () => {

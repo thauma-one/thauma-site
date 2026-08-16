@@ -77,7 +77,12 @@ function envWith(roles, { token = "t" } = {}) {
     DB: {
       prepare() {
         return { bind() { return { async all() {
-          return { results: roles === null ? [] : [{ id: "u_1", name: "Chase Roush", roles }] };
+          /* The REAL column names user_by_email returns. A stub that invents
+             `id` and `name` will pass while the code reads undefined — which
+             is exactly what happened, twice, before this was corrected. */
+          return { results: roles === null ? [] :
+            [{ user_id: "u_1", email: "admin@thauma.one", user_name: "Chase Roush",
+               status: "active", preferred_lang: "en", roles }] };
         } }; } };
       },
     },

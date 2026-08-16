@@ -285,6 +285,7 @@
         // an administrator or a board member — not a fault. The endpoint says
         // which, and its wording is used rather than a generic message.
         if (body.you && window.StaffIdentity) window.StaffIdentity(body.you);
+        noteActing(body);
         var why = res.status === 500 ? tr('err.unreachable')
                 : res.status === 403 ? (body.error || tr('err.noPartner'))
                 : tr('err.expired');
@@ -293,6 +294,7 @@
         return;
       }
       if (body.you) rememberIdentity(body.you, body.partner);
+      noteActing(body);
       state.contacts = body.contacts || [];
       state.resources = body.resources || [];
       state.canSetVisibility = !!(body.can && body.can.set_visibility);
@@ -528,6 +530,105 @@
   }
   window.StaffIdentity = rememberIdentity;
 
+  /* =====================================================================
+     ACTING AS SOMEBODY ELSE — unmissable, permanent, not flashing
+     =====================================================================
+     An administrator can open a partner's console to see what they see.
+     Every screen then shows one person's data while a different person is
+     signed in, and the failure mode is somebody editing the wrong ministry
+     believing it was their own.
+
+     So the state is carried THREE ways at once, for the same reason the
+     admin area is: it has to survive being seen in a hurry, in greyscale,
+     or by somebody who does not perceive colour the way the designer does.
+
+       a band across the top naming whose account it is
+       a border round the entire viewport
+       a watermark fixed in the corner, visible while scrolling
+
+     A FLASHING banner was the first instinct and is a photosensitivity
+     hazard. A permanent one is both safer and harder to ignore — a thing
+     that blinks becomes background, a thing that is always there is a
+     thing you are looking at.
+
+     THE SERVER DECIDES. This is painted only from `acting` in an API
+     response, never from the cookie: a person could set the cookie by hand
+     and the server would ignore it, and a banner claiming otherwise would
+     be a lie about who you are.
+     ===================================================================== */
+
+  var actingNow = null;
+
+  function paintActing(acting) {
+    var had = !!actingNow;
+    actingNow = acting || null;
+
+    if (!actingNow) {
+      if (had) {
+        document.body.classList.remove('is-acting');
+        var old = document.getElementById('actingBar');
+        if (old) old.remove();
+        var mark = document.getElementById('actingMark');
+        if (mark) mark.remove();
+      }
+      return;
+    }
+
+    document.body.classList.add('is-acting');
+
+    var bar = document.getElementById('actingBar');
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.id = 'actingBar';
+      bar.className = 'acting-bar';
+      bar.setAttribute('role', 'status');
+      document.body.appendChild(bar);
+    }
+    bar.innerHTML =
+      '<span class="acting-eye" aria-hidden="true">\u25C9</span>' +
+      '<span class="acting-text">' +
+        '<b>' + esc(actingNow.name) + '</b>' +
+        '<span>' + esc(tr('act.youAreViewing')) + '</span>' +
+      '</span>' +
+      '<button type="button" class="acting-stop" id="actingStop">' +
+        esc(tr('act.stop')) + '</button>';
+
+    var mark = document.getElementById('actingMark');
+    if (!mark) {
+      mark = document.createElement('div');
+      mark.id = 'actingMark';
+      mark.className = 'acting-mark';
+      mark.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(mark);
+    }
+    mark.textContent = tr('act.watermark').replace('{name}', actingNow.name);
+  }
+
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest('#actingStop')) return;
+    var btn = e.target.closest('#actingStop');
+    btn.disabled = true;
+    fetch('/api/admin/act-as', { method: 'DELETE', credentials: 'same-origin' })
+      .then(function () {
+        // A full reload, deliberately. Every panel on the page was rendered
+        // from somebody else's data; re-fetching piecemeal would leave the
+        // screen a mixture of two people's records.
+        location.reload();
+      })
+      .catch(function () { btn.disabled = false; });
+  });
+
+  /* Called by every loader with whatever the server said. Passing undefined
+     means "this response carried no opinion", which must NOT clear a banner
+     another response has already justified. */
+  function noteActing(body) {
+    if (!body || typeof body !== 'object') return;
+    if (!Object.prototype.hasOwnProperty.call(body, 'acting')) return;
+    paintActing(body.acting);
+  }
+  window.StaffActing = noteActing;
+
+
   function loadIdentity() {
     try {
       var cached = JSON.parse(sessionStorage.getItem(IDENT) || 'null');
@@ -565,6 +666,10 @@
           .then(function (body) { return { status: r.status, ok: r.ok, body: body }; });
       })
       .then(function (res) {
+        // Before the branches: a 403 carries the banner too, and somebody
+        // standing in an account with no partner still needs to be told whose
+        // account they are standing in.
+        noteActing(res.body);
         if (res.ok) { renderSnapshot(res.body); wireStewardshipRows(); return; }
 
         if (res.status === 404) {

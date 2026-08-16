@@ -296,7 +296,7 @@ async function write(request, env, db, user, me, cfg) {
   const trailing = current.text.endsWith("\n") ? "\n" : "";
   const text = JSON.stringify(doc, null, 2) + trailing;
 
-  const who = (me && me.name) || user.email;
+  const who = (me && me.user_name) || user.email;
   const label = body.file === "site" ? "site settings" : `${body.file} content`;
   const message =
     `Update ${label}: ${applied.length} ${applied.length === 1 ? "value" : "values"}\n\n` +

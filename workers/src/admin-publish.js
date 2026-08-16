@@ -183,7 +183,7 @@ async function act(request, env, db, user, me) {
     user,
     action: action === "publish" ? "release.publish" : "release.preview",
     entity_id: `${workflow}@${branch}`,
-    detail: { by: (me && me.name) || user.email, branch },
+    detail: { by: (me && me.user_name) || user.email, branch },
   });
 
   return json({

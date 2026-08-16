@@ -183,6 +183,8 @@
 
     problemClear();
     state = body;
+    // The banner is painted from the SERVER's word, never from the cookie.
+    if (window.StaffActing) window.StaffActing(body);
 
     // The account is the source of truth; the cache only avoids a flash of
     // English on first paint.

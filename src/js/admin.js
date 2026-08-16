@@ -42,6 +42,47 @@
      quietly builds a thing should say so first. */
   var CONFIRM_ROLES = { admin: true, partner: true };
 
+  /* ---- viewing somebody else's console --------------------------------- */
+
+  async function viewAs(userId, name, btn) {
+    /* A sentence about what happens, not "are you sure". What happens is that
+       every screen starts showing a different person's data — including their
+       supporters — and that is worth one deliberate pause. */
+    var ok = await window.StaffConfirm({
+      title: tr('act.confirmTitle').replace('{name}', name),
+      body: tr('act.confirmBody').replace('{name}', name),
+      note: tr('act.confirmNote'),
+      confirm: tr('act.confirmDo'),
+      cancel: tr('ms.cancel')
+    });
+    if (!ok) return;
+
+    btn.disabled = true;
+    var res, body;
+    try {
+      res = await fetch('/api/admin/act-as', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId })
+      });
+      body = await res.json();
+    } catch (err) {
+      toast(tr('err.unreachable') + ' ' + err.message, 'bad');
+      btn.disabled = false;
+      return;
+    }
+    if (!res.ok) {
+      toast((body && body.error) || tr('err.refused'), 'bad');
+      btn.disabled = false;
+      return;
+    }
+    // Straight into the console being supported. Staying on the admin page
+    // after starting would show the acting banner over a page the banner does
+    // not apply to, which reads as a bug.
+    location.href = '/staff/';
+  }
+
   /* ---- loading -------------------------------------------------------- */
 
   async function load() {
@@ -246,6 +287,16 @@
           '</select>' +
           '<span class="switch-note">' + esc(tr('adm.statusNote')) + '</span>' +
         '</div>' +
+        /* IT SUPPORT, NOT IMPERSONATION. Opening somebody's console is how
+           you answer "my stewardship page is empty and it should not be"
+           without asking for their password. It is audited on the way in, on
+           the way out, and on every change made in between, and the console
+           says whose account it is on every screen while it lasts. */
+        (u.status === 'active' && u.id !== (state.you && state.you.id)
+          ? '<button type="button" class="ghost-btn view-as" data-view-as="' + esc(u.id) +
+            '" data-name="' + esc(u.name || u.email) + '">' +
+              esc(tr('act.viewAs')) + '</button>'
+          : '') +
         '<button type="button" class="del" data-remove="' + esc(u.id) + '">' +
           esc(tr('adm.removePerson')) + '</button>' +
       '</div>' +
@@ -396,6 +447,9 @@
     }
     var dp = e.target.closest('[data-del-partner]');
     if (dp) return deletePartner(dp.dataset.delPartner, dp);
+
+    var va = e.target.closest('[data-view-as]');
+    if (va) return viewAs(va.dataset.viewAs, va.dataset.name, va);
 
     var rm = e.target.closest('[data-remove]');
     if (rm) {

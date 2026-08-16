@@ -39,8 +39,10 @@ import staffSettings from "./staff-settings.js";
 import adminApi from "./admin.js";
 import adminContent from "./admin-content.js";
 import adminPublish from "./admin-publish.js";
+import adminActAs from "./admin-actas.js";
 import { createDb, partnerSnapshot, assertPublicSafe } from "./lib/db.js";
 import { requireAccess } from "./lib/access.js";
+import { resolveActor, withActing } from "./lib/actas.js";
 import { json } from "./lib/store.js";
 
 // Runs once per isolate, at module load. If a public query has grown a join
@@ -70,18 +72,23 @@ async function staffSnapshot(request, env) {
   //
   // Looked up by EMAIL: Access knows email addresses, not our internal user
   // ids. See partners_for_user in db/queries.sql.
-  const partners = await db.query("partners_for_user", { email: user.email });
+  // Who this counts as: normally the signed-in person, or the person an
+  // administrator is currently viewing. See lib/actas.js.
+  const actor = await resolveActor(request, env, db, user);
+
+  const partners = await db.query("partners_for_user", { email: actor.email });
   if (!partners.length) {
-    return json({
+    return json(withActing({
       error: "No partner access for this account",
-      email: user.email,
+      email: actor.email,
       hint: "This account authenticated, but no active user row grants it a " +
             "partner. Add the address to `users` and grant it in `partner_users`.",
-    }, 403);
+    }, actor), 403);
   }
 
   const snap = await partnerSnapshot(db, partners[0].id);
-  return json({ ...snap, partner: partners[0], generated_at: new Date().toISOString() });
+  return json(withActing(
+    { ...snap, partner: partners[0], generated_at: new Date().toISOString() }, actor));
 }
 
 /** Exact-path routes. Checked before static assets. */
@@ -107,6 +114,11 @@ const ROUTES = {
   // every code change on that branch, not only the words — so it lists what
   // it is about to ship, and takes a typed confirmation. See admin-publish.js.
   "/api/admin/publish": adminPublish,
+
+  // Start and stop viewing somebody else's console. Sets a cookie that names
+  // a user id and grants nothing — authority is re-derived from the Access
+  // token on every request. See lib/actas.js.
+  "/api/admin/act-as": adminActAs,
 
   // THE ONLY ROUTE A CREDENTIAL OUTSIDE THAUMA CAN REACH. Key-authenticated,
   // public-safe by construction, versioned in the path so a breaking change

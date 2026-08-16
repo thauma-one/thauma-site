@@ -19,6 +19,7 @@
  */
 import { createDb } from "./lib/db.js";
 import { requireAccess } from "./lib/access.js";
+import { resolveActor, auditActingWrite, withActing } from "./lib/actas.js";
 import { json, readJson } from "./lib/store.js";
 
 const STATUSES = new Set(["upcoming", "in_progress", "complete", "cancelled"]);
@@ -40,13 +41,20 @@ async function partnerFor(request, env) {
      WHICH PARTNER: these screens are partner-scoped, so they do still need
      one. The difference is that the refusal can now say which of the two is
      missing instead of "no access". */
-  const me = await db.queryOne("user_by_email", { email: user.email });
+  /* WHO THIS REQUEST COUNTS AS. Normally the signed-in person; when an
+     administrator is viewing somebody else's console, that person instead.
+     resolveActor re-checks the admin role on the REAL caller every time and
+     falls back to the caller's own identity if anything is off — see
+     lib/actas.js. Everything downstream uses actor.email, so no query in this
+     file needs to know acting-as exists. */
+  const actor = await resolveActor(request, env, db, user);
+  const me = actor.me;
   if (!me) {
     return { denied: json({
       error: "This address is not an active account.", email: user.email }, 403) };
   }
 
-  const partners = await db.query("partners_for_user", { email: user.email });
+  const partners = await db.query("partners_for_user", { email: actor.email });
   if (!partners.length) {
     return { denied: json({
       error: "This account is not attached to a partner yet, so there is " +
@@ -183,8 +191,14 @@ async function listWithText(db, partner_id) {
 
 export default {
   async fetch(request, env) {
-    const { db, user, me, partner, denied } = await partnerFor(request, env);
+    const { db, user, me, partner, actor, denied } = await partnerFor(request, env);
     if (denied) return denied;
+
+    /* Recorded before the handler runs, so a change is logged even if the
+       handler then fails. One call, at the one place every method passes
+       through — a per-write approach has to be remembered by whoever adds the
+       next write, and eventually is not. */
+    await auditActingWrite(request, db, actor);
 
     const partner_id = partner.id;
     const now = new Date().toISOString();
@@ -196,7 +210,7 @@ export default {
         listWithText(db, partner_id),
         db.query("partner_languages_for_partner", { partner_id }),
       ]);
-      return json({
+      return json(withActing({
         // The same identity block every staff endpoint returns, so the header
         // can be filled from whatever request a page was already making.
         you: {
@@ -213,7 +227,7 @@ export default {
         // before it is switched on.
         languages: languages.map((l) => ({ ...l, is_enabled: !!l.is_enabled })),
         milestones,
-      });
+      }, actor));
     }
 
     // ---- create or update ----

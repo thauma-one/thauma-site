@@ -296,6 +296,7 @@
 
     if (window.StaffProblemClear) window.StaffProblemClear();
 
+    if (window.StaffActing) window.StaffActing(body);
     state.saved = {}; state.draft = {}; state.order = [];
     (body.milestones || []).forEach(function (m) {
       state.saved[m.id] = m;
