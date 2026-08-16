@@ -719,3 +719,11 @@ body.has-savebar .toasts{--toast-lift:var(--ms-savebar-h,72px)}
 @media(hover:hover){
   .area-switch:hover{color:var(--warn,#F5B845);border-color:var(--warn,#F5B845)}
 }
+
+/* The arrow is what makes it read as a way out rather than a label. */
+.area-switch{display:inline-flex;align-items:center;gap:7px}
+.area-arrow{opacity:.6}
+@media(hover:hover){ .area-switch:hover .area-arrow{opacity:1} }
+/* The role sits quietly beside the name — it qualifies who you are, and it is
+   not competing with the link to somewhere else. */
+.who{color:var(--dim);font-size:var(--fs-tiny)}

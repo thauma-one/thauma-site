@@ -21,7 +21,7 @@
 
   var API = '/api/admin';
   var $ = function (id) { return document.getElementById(id); };
-  var state = { users: [], partners: [], languages: [], audit: [] };
+  var state = { users: [], partners: [], languages: [], audit: [], editing: null };
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -94,7 +94,11 @@
       });
       var body = await res.json().catch(function () { return {}; });
       if (!res.ok) throw new Error(body.error || ('failed (' + res.status + ')'));
+      var keep = state.editing;
       await load();
+      // The panel stays open: you are usually making several changes to
+      // one person, and closing it after each would be its own chore.
+      if (keep) { state.editing = keep; renderPeople(); }
       toast(tr('toast.saved'), 'ok');
       return body;
     } catch (e) {
@@ -139,52 +143,104 @@
     }).join('');
   }
 
+  /* ROWS THAT OPEN, not a wall of controls.
+
+     The first version put every switch and chip for every person on screen at
+     once. With three accounts that is a block of text; with thirty it is
+     unusable, and nothing tells you which person you are about to change.
+
+     Same pattern as the milestone editor, for the same reason: a row you can
+     read, and a panel that belongs to it. */
   function renderPeople() {
     if (!state.users.length) {
       $('admPeople').innerHTML = '<p class="empty">' + esc(tr('adm.noPeople')) + '</p>';
       return;
     }
+
     $('admPeople').innerHTML = state.users.map(function (u) {
-      var roleSwitches = ALL_ROLES.map(function (r) {
-        var on = u.roles.indexOf(r) >= 0;
-        return '<button type="button" class="switch small" role="switch"' +
-          ' data-user="' + esc(u.id) + '" data-role="' + esc(r) + '"' +
-          ' aria-checked="' + (on ? 'true' : 'false') + '"' +
-          ' aria-label="' + esc(ROLE_LABEL[r]) + '">' +
-          '<span class="switch-track"><span class="switch-state">' +
-            (on ? 'On' : 'Off') + '</span><span class="switch-knob"></span></span>' +
-          '<span class="switch-label">' + esc(ROLE_LABEL[r]) + '</span></button>';
-      }).join('');
+      var open = state.editing === u.id;
+      var roleTags = u.roles.length
+        ? u.roles.map(function (r) {
+            return '<span class="role-tag ' + esc(r) + '">' +
+              esc(ROLE_LABEL[r] || r) + '</span>';
+          }).join('')
+        : '<span class="role-tag none">' + esc(tr('adm.noRoles')) + '</span>';
 
-      var partners = state.partners.map(function (p) {
-        var has = u.partner_ids.indexOf(p.id) >= 0;
-        return '<button type="button" class="chip-toggle' + (has ? ' on' : '') + '"' +
-          ' data-user="' + esc(u.id) + '" data-partner="' + esc(p.id) + '">' +
-          esc(p.display_name) + '</button>';
-      }).join('');
+      return '<div class="adm-person' + (u.status !== 'active' ? ' is-inactive' : '') +
+             (open ? ' is-open' : '') + '" data-person="' + esc(u.id) + '">' +
 
-      return '<div class="adm-person' + (u.status !== 'active' ? ' is-inactive' : '') + '">' +
-        '<div class="adm-person-head">' +
-          '<div><span class="adm-name">' + esc(u.name) + '</span>' +
-            '<span class="adm-email">' + esc(u.email) + '</span></div>' +
-          '<div class="adm-person-actions">' +
-            '<select class="status-pick" data-user="' + esc(u.id) + '">' +
-              ['invited', 'active', 'suspended'].map(function (s) {
-                return '<option value="' + s + '"' + (u.status === s ? ' selected' : '') + '>' +
-                  esc(tr('adm.status.' + s)) + '</option>';
-              }).join('') +
-            '</select>' +
-            '<button type="button" class="del" data-remove="' + esc(u.id) + '">' +
-              esc(tr('ms.delete')) + '</button>' +
+        '<div class="adm-row" role="button" tabindex="0" aria-expanded="' +
+          (open ? 'true' : 'false') + '">' +
+          '<span class="ms-chev" aria-hidden="true"></span>' +
+          '<div class="adm-who">' +
+            '<span class="adm-name">' + esc(u.name) + '</span>' +
+            '<span class="adm-email">' + esc(u.email) + '</span>' +
           '</div>' +
+          '<div class="adm-tags">' + roleTags + '</div>' +
+          '<div class="adm-access">' +
+            (u.partner_names.length
+              ? esc(u.partner_names.join(', '))
+              : '<span class="adm-none">' + esc(tr('adm.noPartners')) + '</span>') +
+          '</div>' +
+          '<span class="adm-status s-' + esc(u.status) + '">' +
+            esc(tr('adm.status.' + u.status)) + '</span>' +
         '</div>' +
-        '<div class="adm-section"><span class="adm-label">' + esc(tr('adm.roles')) + '</span>' +
-          '<div class="adm-roles">' + roleSwitches + '</div></div>' +
-        '<div class="adm-section"><span class="adm-label">' + esc(tr('adm.partnerAccess')) + '</span>' +
-          '<div class="adm-chips">' + (partners || '<span class="hint">—</span>') + '</div>' +
-          '<span class="switch-note">' + esc(tr('adm.partnerAccessNote')) + '</span></div>' +
+
+        (open ? personPanel(u) : '') +
       '</div>';
     }).join('');
+  }
+
+  /* Everything you can change about one person, in one place, with what each
+     control actually does written next to it. */
+  function personPanel(u) {
+    var roles = ALL_ROLES.map(function (r) {
+      var on = u.roles.indexOf(r) >= 0;
+      return '<button type="button" class="switch small" role="switch"' +
+        ' data-user="' + esc(u.id) + '" data-role="' + esc(r) + '"' +
+        ' aria-checked="' + (on ? 'true' : 'false') + '">' +
+        '<span class="switch-track"><span class="switch-state">' +
+          (on ? 'On' : 'Off') + '</span><span class="switch-knob"></span></span>' +
+        '<span class="switch-label">' + esc(ROLE_LABEL[r]) +
+          '<span class="switch-note">' + esc(tr('adm.role.' + r)) + '</span>' +
+        '</span></button>';
+    }).join('');
+
+    var partners = state.partners.map(function (p) {
+      var has = u.partner_ids.indexOf(p.id) >= 0;
+      return '<button type="button" class="chip-toggle' + (has ? ' on' : '') + '"' +
+        ' data-user="' + esc(u.id) + '" data-partner="' + esc(p.id) + '"' +
+        ' aria-pressed="' + (has ? 'true' : 'false') + '">' +
+        esc(p.display_name) + '</button>';
+    }).join('');
+
+    return '<div class="adm-panel">' +
+      '<div class="adm-section">' +
+        '<span class="adm-label">' + esc(tr('adm.roles')) + '</span>' +
+        '<div class="adm-roles">' + roles + '</div>' +
+      '</div>' +
+
+      '<div class="adm-section">' +
+        '<span class="adm-label">' + esc(tr('adm.partnerAccess')) + '</span>' +
+        '<div class="adm-chips">' + (partners || '<span class="hint">—</span>') + '</div>' +
+        '<span class="switch-note">' + esc(tr('adm.partnerAccessNote')) + '</span>' +
+      '</div>' +
+
+      '<div class="adm-section adm-danger">' +
+        '<div class="fld">' +
+          '<span>' + esc(tr('adm.signInStatus')) + '</span>' +
+          '<select class="status-pick" data-user="' + esc(u.id) + '">' +
+            ['invited', 'active', 'suspended'].map(function (s) {
+              return '<option value="' + s + '"' + (u.status === s ? ' selected' : '') + '>' +
+                esc(tr('adm.status.' + s)) + '</option>';
+            }).join('') +
+          '</select>' +
+          '<span class="switch-note">' + esc(tr('adm.statusNote')) + '</span>' +
+        '</div>' +
+        '<button type="button" class="del" data-remove="' + esc(u.id) + '">' +
+          esc(tr('adm.removePerson')) + '</button>' +
+      '</div>' +
+    '</div>';
   }
 
   function renderPartners() {
@@ -223,6 +279,13 @@
   /* ---- wiring --------------------------------------------------------- */
 
   document.addEventListener('click', function (e) {
+    var row = e.target.closest('.adm-row');
+    if (row) {
+      var id = row.closest('[data-person]').dataset.person;
+      state.editing = state.editing === id ? null : id;
+      return renderPeople();
+    }
+
     var sw = e.target.closest('[data-role]');
     if (sw) {
       var grant = sw.getAttribute('aria-checked') !== 'true';
@@ -258,6 +321,16 @@
       toast(e.message, 'err');
     } finally { btn.disabled = false; }
   }
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    var row = e.target.closest('.adm-row');
+    if (!row) return;
+    e.preventDefault();
+    var id = row.closest('[data-person]').dataset.person;
+    state.editing = state.editing === id ? null : id;
+    renderPeople();
+  });
 
   document.addEventListener('change', function (e) {
     if (e.target.classList.contains('status-pick')) {
