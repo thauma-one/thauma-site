@@ -369,6 +369,34 @@ UPDATE partners SET display_name = :display_name, status = :status, updated_at =
 WHERE id = :id;
 
 
+-- name: admin_partner_stats
+-- What deleting this partner would destroy. Counted BEFORE asking, so the
+-- confirmation can name real numbers instead of a generic warning — "this
+-- cannot be undone" means nothing next to "4 supporters and 8 interactions".
+SELECT
+  (SELECT COUNT(*) FROM contacts      WHERE partner_id = :partner_id) AS contacts,
+  (SELECT COUNT(*) FROM interactions  WHERE partner_id = :partner_id) AS interactions,
+  (SELECT COUNT(*) FROM goals         WHERE partner_id = :partner_id) AS goals,
+  (SELECT COUNT(*) FROM milestones    WHERE partner_id = :partner_id) AS milestones,
+  (SELECT COUNT(*) FROM api_keys      WHERE partner_id = :partner_id
+                                        AND revoked_at IS NULL)       AS live_keys,
+  (SELECT COUNT(*) FROM partner_users WHERE partner_id = :partner_id) AS members,
+  (SELECT COUNT(*) FROM resources     WHERE partner_id = :partner_id) AS resources,
+  (SELECT COUNT(*) FROM directory_contacts WHERE partner_id = :partner_id) AS directory;
+
+
+-- name: admin_partner_delete
+-- Destroys the ministry and everything hanging off it: supporters,
+-- interactions, goals, milestones, translations, API keys, resources and the
+-- directories filed under it. All by ON DELETE CASCADE, so nothing is left
+-- orphaned — and nothing is recoverable.
+--
+-- Guarded in admin.js by an exact-name confirmation, not by hiding the button.
+-- A partner that cannot be removed is a database that fills with test data
+-- nobody can clear.
+DELETE FROM partners WHERE id = :partner_id;
+
+
 -- name: admin_partners
 SELECT p.id, p.slug, p.display_name, p.status,
        COALESCE(p.default_lang, 'en') AS default_lang,

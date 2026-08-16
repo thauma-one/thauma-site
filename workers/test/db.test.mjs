@@ -44,7 +44,7 @@ await check("queries.generated.js is in sync with db/queries.sql", async () => {
     `stale generated file — run: python3 db/generate_queries_module.py`);
 });
 
-await check("all forty-nine named queries are present", async () => {
+await check("all fifty-one named queries are present", async () => {
   const expected = [
     "api_key_lookup", "api_key_touch",
     "audit_recent_for_partner", "contact_timeline", "contacts_stewardship",
@@ -69,6 +69,7 @@ await check("all forty-nine named queries are present", async () => {
     "admin_role_revoke", "admin_user_create", "admin_user_delete",
     "admin_user_set", "admin_users",
     "admin_partner_create", "admin_partner_set",
+    "admin_partner_delete", "admin_partner_stats",
   ].sort();
   eq(Object.keys(QUERIES).sort(), expected, "query names");
 });

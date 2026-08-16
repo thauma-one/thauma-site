@@ -760,3 +760,20 @@ body.has-savebar .toasts{--toast-lift:var(--ms-savebar-h,72px)}
 .dlg .is-danger{background:var(--crit,#FF6B6B);color:#150607}
 @media(hover:hover){ .dlg .is-danger:hover{box-shadow:0 0 22px rgba(255,107,107,.4)} }
 @media (prefers-reduced-motion: reduce){ .dlg-back,.dlg{transition:none} }
+
+/* Type-to-confirm. The word is monospaced and the field is plain, so what has
+   to be typed is unambiguous — a proportional font makes DELETE and DELETE
+   with a trailing space look identical. */
+.dlg-type{display:block;margin-top:18px}
+.dlg-type span{display:block;font-size:var(--fs-tiny);color:var(--dim);
+  margin-bottom:8px}
+.dlg-type input{width:100%;background:var(--bg2,#0b1119);
+  border:1px solid rgba(255,255,255,.16);color:var(--text);
+  font-family:var(--font-mono,ui-monospace,monospace);font-size:var(--fs-sm);
+  letter-spacing:.08em;padding:11px 13px;border-radius:var(--radius)}
+.dlg-type input:focus{outline:none;border-color:var(--crit,#FF6B6B)}
+.dlg .solid-btn[disabled]{opacity:.4;cursor:not-allowed;box-shadow:none}
+/* The thing being destroyed, unmissable — typing DELETE proves intent to
+   delete something, not that the right row was picked. */
+.dlg-target{display:block;margin-top:6px;font-family:var(--font-display);
+  font-size:var(--fs-md);color:var(--text)}

@@ -725,6 +725,8 @@
         '<div class="dlg" role="dialog" aria-modal="true">' +
           '<h3></h3><p class="dlg-body"></p>' +
           '<p class="dlg-note" hidden></p>' +
+          '<label class="dlg-type" hidden><span></span>' +
+            '<input type="text" autocomplete="off" spellcheck="false"></label>' +
           '<div class="dlg-actions">' +
             '<button type="button" class="ghost-btn dlg-no"></button>' +
             '<button type="button" class="solid-btn dlg-yes"></button>' +
@@ -739,6 +741,24 @@
       }
       var yes = wrap.querySelector('.dlg-yes');
       var no = wrap.querySelector('.dlg-no');
+
+      /* TYPE-TO-CONFIRM. For anything that destroys data somebody cannot get
+         back. The button stays disabled until the word matches exactly, so
+         the pause is real rather than decorative — and the word is checked
+         again on the server, because a dialog is only a suggestion. */
+      var typeField = null;
+      if (opts.type) {
+        var box = wrap.querySelector('.dlg-type');
+        box.hidden = false;
+        box.querySelector('span').textContent =
+          (opts.typeLabel || 'Type') + ' ' + opts.type + ' to confirm';
+        typeField = box.querySelector('input');
+        typeField.placeholder = opts.type;
+        yes.disabled = true;
+        typeField.addEventListener('input', function () {
+          yes.disabled = typeField.value.trim() !== opts.type;
+        });
+      }
       yes.textContent = opts.confirm || 'Confirm';
       no.textContent = opts.cancel || 'Cancel';
       if (opts.danger) yes.classList.add('is-danger');
@@ -751,7 +771,10 @@
       }
       function onKey(e) { if (e.key === 'Escape') close(false); }
 
-      yes.addEventListener('click', function () { close(true); });
+      yes.addEventListener('click', function () {
+        if (typeField && typeField.value.trim() !== opts.type) return;
+        close(true);
+      });
       no.addEventListener('click', function () { close(false); });
       wrap.addEventListener('click', function (e) { if (e.target === wrap) close(false); });
       document.addEventListener('keydown', onKey);
@@ -759,9 +782,10 @@
       document.body.appendChild(wrap);
       void wrap.offsetHeight;
       wrap.classList.add('in');
-      // Focus lands on CANCEL. A dialog that opens with the destructive
-      // button focused turns a stray Enter into the thing it was asking about.
-      no.focus();
+      // Focus lands on CANCEL, or on the field when one has to be filled. A
+      // dialog that opens with the destructive button focused turns a stray
+      // Enter into the thing it was asking about.
+      (typeField || no).focus();
     });
   }
   window.StaffConfirm = confirmDialog;

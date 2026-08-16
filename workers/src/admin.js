@@ -160,8 +160,17 @@ export default {
         db.query("languages_all", {}),
         db.query("admin_audit_recent", { limit: 40 }),
       ]);
+      // What each partner would take with it. Fetched with the list rather
+      // than on click, so the confirmation can show real numbers the moment
+      // it opens.
+      const stats = {};
+      for (const p of partners) {
+        stats[p.id] = await db.queryOne("admin_partner_stats", { partner_id: p.id });
+      }
+
       return json({
         you: { email: user.email, name: me.user_name || null, roles: ["admin"] },
+        partner_stats: stats,
         users: users.map((u) => ({
           ...u,
           roles: String(u.roles || "").split(",").filter(Boolean),
@@ -392,6 +401,47 @@ export default {
     if (request.method === "DELETE") {
       const id = url.searchParams.get("id");
       if (!id) return json({ error: "id is required" }, 400);
+
+      // ---- a partner, and everything it holds ----
+      if (url.searchParams.get("kind") === "partner") {
+        const partners = await db.query("admin_partners", {});
+        const target = partners.find((p) => p.id === id);
+        if (!target) return json({ error: "No such partner" }, 404);
+
+        /* DELETE has to be typed. Not theatre: this destroys supporters and
+           their contact history, and a confirm button sitting next to a delete
+           button is one slip away from doing it.
+
+           Checked on the SERVER, because a dialog is a suggestion — anything
+           that can send a DELETE can skip the browser entirely.
+
+           Typing the word rather than the partner's name is the weaker of the
+           two guards: it proves intent to delete SOMETHING, not that the right
+           row was picked. The dialog compensates by putting the name where it
+           cannot be missed, and the response says what was destroyed. */
+        const typed = (url.searchParams.get("confirm") || "").trim();
+        if (typed !== "DELETE") {
+          return json({
+            error: 'Type DELETE to confirm removing a partner.',
+          }, 400);
+        }
+
+        const stats = await db.queryOne("admin_partner_stats", { partner_id: id });
+        await db.query("admin_partner_delete", { partner_id: id });
+
+        // Written AFTER, and deliberately carrying the counts: the rows are
+        // gone, so this entry is the only remaining record that they existed.
+        await audit(db, {
+          user, action: "delete", entity: "partner", entity_id: id,
+          detail: { display_name: target.display_name, destroyed: stats },
+        });
+        return json({
+          deleted: id,
+          destroyed: stats,
+          partners: await db.query("admin_partners", {}),
+          users: await listUsers(db),
+        });
+      }
 
       if (id === me.user_id) {
         return json({ error: "You cannot remove your own account." }, 409);

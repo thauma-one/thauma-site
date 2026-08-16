@@ -281,6 +281,8 @@
                 esc(tr('adm.pstatus.' + s)) + '</option>';
             }).join('') +
           '</select></label>' +
+        '<button type="button" class="del danger" data-del-partner="' + esc(p.id) + '">' +
+          esc(tr('adm.deletePartner')) + '</button>' +
         '<label class="fld"><span>' + esc(tr('adm.defaultLang')) + '</span>' +
           '<select class="lang-pick" data-partner="' + esc(p.id) + '">' +
             langs.map(function (l) {
@@ -289,6 +291,8 @@
                 esc((l.native_name || l.name) + ' (' + l.code + ')') + '</option>';
             }).join('') +
           '</select></label>' +
+        '<button type="button" class="del danger" data-del-partner="' + esc(p.id) + '">' +
+          esc(tr('adm.deletePartner')) + '</button>' +
       '</div>';
     }).join('') || '<p class="empty">—</p>';
   }
@@ -389,6 +393,9 @@
       return change({ user_id: chip.dataset.user, partner_id: chip.dataset.partner,
                       partner_role: 'view', grant: give }, chip);
     }
+    var dp = e.target.closest('[data-del-partner]');
+    if (dp) return deletePartner(dp.dataset.delPartner, dp);
+
     var rm = e.target.closest('[data-remove]');
     if (rm) {
       var person = state.users.filter(function (x) { return x.id === rm.dataset.remove; })[0];
@@ -434,6 +441,58 @@
         cancel: tr('adm.stayHere')
       }).then(function (go) { if (go) location.href = '/admin/partners/'; });
     }
+  }
+
+  /* Deleting a partner destroys supporters and their contact history. The
+     dialog names what goes, counted from the database rather than described
+     in the abstract — "this cannot be undone" means nothing next to
+     "4 supporters, 8 interactions". */
+  async function deletePartner(id, btn) {
+    var p = state.partners.filter(function (x) { return x.id === id; })[0];
+    if (!p) return;
+    var s = (state.partner_stats || {})[id] || {};
+
+    var parts = [];
+    function add(n, key) { if (n) parts.push(n + ' ' + tr('adm.count.' + key)); }
+    add(s.contacts, 'contacts');
+    add(s.interactions, 'interactions');
+    add(s.goals, 'goals');
+    add(s.milestones, 'milestones');
+    add(s.resources, 'resources');
+    add(s.directory, 'directory');
+    add(s.live_keys, 'liveKeys');
+    add(s.members, 'members');
+
+    var ok = await window.StaffConfirm({
+      title: tr('adm.deletePartner'),
+      body: parts.length
+        ? tr('adm.deleteBody') + ' ' + parts.join(', ') + '.'
+        : tr('adm.deleteEmpty'),
+      note: tr('adm.deleteNote'),
+      // The name goes in the label, because typing DELETE proves you meant to
+      // delete something — not that you picked the right row.
+      typeLabel: p.display_name + ' —',
+      type: 'DELETE',
+      confirm: tr('adm.deleteDo'),
+      cancel: tr('ms.cancel'),
+      danger: true
+    });
+    if (!ok) return;
+
+    btn.disabled = true;
+    try {
+      var res = await fetch(API + '?kind=partner&id=' + encodeURIComponent(id) +
+                            '&confirm=DELETE', {
+        method: 'DELETE', credentials: 'same-origin'
+      });
+      var body = await res.json().catch(function () { return {}; });
+      if (!res.ok) throw new Error(body.error || ('failed (' + res.status + ')'));
+      await load();
+      toast(tr('toast.deleted'), 'ok');
+    } catch (e) {
+      await load();
+      toast(e.message, 'err');
+    } finally { btn.disabled = false; }
   }
 
   async function removeUser(id, btn) {

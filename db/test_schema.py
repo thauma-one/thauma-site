@@ -469,6 +469,78 @@ def t_resources_default_to_staff_visible():
     assert v == "staff", f"default visibility is {v}, not staff"
 
 
+def t_deleting_a_partner_takes_everything_with_it():
+    """A partner can be removed, and leaves nothing behind.
+
+    Testing accounts have to be clearable. This failed the first time it ran:
+    audit_log referenced partners with no ON DELETE rule, so the foreign key
+    refused the delete outright — and there is always at least one audit row,
+    because creating a partner writes one.
+    """
+    db = fresh()
+    db.execute("INSERT INTO users (id,email,name,created_at) VALUES ('u_p','p@x.co','P',?)", (NOW,))
+    db.execute("INSERT INTO partner_users (partner_id,user_id,role,granted_at) "
+               "VALUES ('p_chase','u_p','owner',?)", (NOW,))
+    db.execute("INSERT INTO milestones (id,partner_id,created_at,updated_at) "
+               "VALUES ('m_x','p_chase',?,?)", (NOW, NOW))
+    db.execute("INSERT INTO milestone_translations "
+               "(milestone_id,lang,partner_id,title,updated_at) "
+               "VALUES ('m_x','en','p_chase','T',?)", (NOW,))
+    db.execute("INSERT INTO directory_contacts (id,user_id,partner_id,name,created_at,updated_at) "
+               "VALUES ('dc_x','u_p','p_chase','Someone',?,?)", (NOW, NOW))
+    db.execute("INSERT INTO audit_log (id,at,user_id,partner_id,action,entity) "
+               "VALUES ('a_x',?,'u_p','p_chase','create','partner')", (NOW,))
+    db.commit()
+
+    db.execute("DELETE FROM partners WHERE id='p_chase'")
+    db.commit()
+
+    for tbl in ("contacts", "interactions", "goals", "goal_snapshots", "milestones",
+                "milestone_translations", "partner_users", "api_keys",
+                "resources", "directory_contacts", "partner_languages"):
+        n = db.execute(f"SELECT COUNT(*) FROM {tbl} WHERE partner_id='p_chase'").fetchone()[0]
+        assert n == 0, f"{tbl} left {n} rows behind"
+
+
+def t_the_audit_entry_outlives_the_partner():
+    """An audit log that vanishes with what it describes is not an audit log.
+
+    Deleting a partner destroys their supporters and history; the record that
+    somebody did it is the one thing that must survive. So audit_log carries
+    partner_id as a plain value with no foreign key — a historical record has
+    to be able to name something that no longer exists.
+    """
+    db = fresh()
+    db.execute("INSERT INTO audit_log (id,at,user_id,partner_id,action,entity,detail) "
+               "VALUES ('a_y',?,'u_chase','p_chase','delete','partner','{\"display_name\":\"Chase Roush\"}')",
+               (NOW,))
+    db.commit()
+    db.execute("DELETE FROM partners WHERE id='p_chase'")
+    db.commit()
+
+    row = db.execute("SELECT partner_id, detail FROM audit_log WHERE id='a_y'").fetchone()
+    assert row is not None, "the audit entry was destroyed with the partner"
+    assert row[0] == "p_chase", f"the entry stopped naming the partner: {row[0]!r}"
+    assert "Chase Roush" in (row[1] or ""), "the name was not preserved in detail"
+
+
+def t_audit_is_still_append_only_after_the_rebuild():
+    """0008 rebuilt the table. Dropping it drops its triggers, and an
+    append-only table that quietly stopped being one would be worse than the
+    bug that caused the rebuild."""
+    db = fresh()
+    db.execute("INSERT INTO audit_log (id,at,user_id,partner_id,action,entity) "
+               "VALUES ('a_z',?,'u_chase','p_chase','read','goals')", (NOW,))
+    db.commit()
+    for sql in ("UPDATE audit_log SET action='nope' WHERE id='a_z'",
+                "DELETE FROM audit_log WHERE id='a_z'"):
+        try:
+            db.execute(sql); db.commit()
+            raise AssertionError(f"audit_log allowed: {sql}")
+        except sqlite3.IntegrityError:
+            db.rollback()
+
+
 if __name__ == "__main__":
     print(f"schema tests — {len(MIGRATIONS)} migrations: "
           f"{', '.join(p.name for p in MIGRATIONS)}\n")
@@ -481,6 +553,9 @@ if __name__ == "__main__":
         ("a directory contact belongs to one person",   t_a_directory_contact_belongs_to_one_person),
         ("a contact needs its owner to hold the partner", t_a_contact_cannot_be_filed_under_a_partner_you_lack),
         ("resources default to staff-visible",          t_resources_default_to_staff_visible),
+        ("deleting a partner takes everything with it", t_deleting_a_partner_takes_everything_with_it),
+        ("the audit entry outlives the partner",        t_the_audit_entry_outlives_the_partner),
+        ("audit is append-only after the rebuild",      t_audit_is_still_append_only_after_the_rebuild),
         ("milestone parent must match partner",         t_milestone_parent_must_match_partner),
         ("milestones hold no language columns",        t_milestones_hold_no_language_columns),
         ("a language is a row, not a migration",        t_language_catalogue_is_open),

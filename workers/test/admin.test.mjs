@@ -226,9 +226,8 @@ await check("revoking PARTNER does not delete the ministry", async () => {
     fs.readFileSync(new URL("../src/admin.js", import.meta.url), "utf8"));
   // Supporters, goals and milestones live there. A toggle must not be able to
   // destroy them.
-  assert(!/grant[\s\S]{0,300}partner_delete/.test(src),
+  assert(!/body\.role === "partner"[\s\S]{0,400}admin_partner_delete/.test(src),
     "revoking the partner role deletes the partner");
-  assert(!QUERIES.admin_partner_delete, "a partner delete query exists — is it guarded?");
 });
 
 await check("the four roles are exactly what the schema allows", async () => {
@@ -240,6 +239,60 @@ await check("the four roles are exactly what the schema allows", async () => {
     assert(src.includes(`"${r}"`), `handler does not allow ${r}`);
     assert(schema.includes(`'${r}'`), `schema does not allow ${r}`);
   }
+});
+
+await check("deleting a partner requires DELETE typed, checked on the SERVER", async () => {
+  // A dialog is a suggestion. Anything that can send a DELETE request can skip
+  // the browser entirely, so the guard cannot live in the confirmation.
+  const src = await import("node:fs").then((fs) =>
+    fs.readFileSync(new URL("../src/admin.js", import.meta.url), "utf8"));
+  assert(/typed !== "DELETE"/.test(src), "the server does not check the word");
+  assert(/searchParams\.get\("confirm"\)/.test(src),
+    "the confirmation is not read from the request");
+  // And it must be reached BEFORE the delete runs.
+  const i = src.indexOf('typed !== "DELETE"');
+  const j = src.indexOf("admin_partner_delete");
+  assert(i > 0 && j > i, "the delete runs before the confirmation is checked");
+});
+
+await check("what a partner delete destroys is counted before it happens", async () => {
+  // "This cannot be undone" means nothing next to "4 supporters, 8
+  // interactions". The counts also go into the audit entry — once the rows are
+  // gone, that entry is the only record they existed.
+  const sql = QUERIES.admin_partner_stats;
+  for (const table of ["contacts", "interactions", "goals", "milestones",
+                       "api_keys", "partner_users", "resources", "directory_contacts"]) {
+    assert(new RegExp(`FROM ${table}\\b`).test(sql),
+      `the confirmation would not mention ${table}`);
+  }
+  const src = await import("node:fs").then((fs) =>
+    fs.readFileSync(new URL("../src/admin.js", import.meta.url), "utf8"));
+  assert(/destroyed: stats/.test(src), "the audit entry does not record what was lost");
+});
+
+/* The cascade assertion lives in db/test_schema.py, not here.
+
+   It was written in this file first, grepping the migration SOURCE — and it
+   kept failing on 0001's original audit_log definition, which 0008 has since
+   replaced. Migrations are forward-only, so the old text stays on disk
+   forever and grepping it answers a question about history rather than about
+   the database. The Python tests build the real schema and can simply ask it. */
+
+await check("audit_log does NOT reference partners", async () => {
+  // On purpose, and the opposite of the rule above. A historical record must
+  // be able to name something that no longer exists — an entry saying
+  // "deleted partner p_chase" should go on saying it afterwards. A foreign key
+  // enforces that a reference points at something CURRENT, which is exactly
+  // wrong for a log.
+  const sql = await import("node:fs").then((fs) =>
+    fs.readFileSync(new URL("../../db/migrations/0008_audit_survives_deletion.sql",
+      import.meta.url), "utf8"));
+  const table = sql.slice(sql.indexOf("CREATE TABLE audit_log_new"),
+                          sql.indexOf(");", sql.indexOf("CREATE TABLE audit_log_new")));
+  assert(!/partner_id[^,]*REFERENCES/.test(table),
+    "audit_log references partners — deleting one would erase its own record");
+  assert(/trg_audit_no_update/.test(sql) && /trg_audit_no_delete/.test(sql),
+    "the rebuild dropped the append-only triggers");
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);
