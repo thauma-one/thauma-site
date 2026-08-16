@@ -243,13 +243,36 @@
     '</div>';
   }
 
+  var PARTNER_STATUS = ['prospective', 'active', 'on_leave', 'alumni'];
+
   function renderPartners() {
+    // Anyone who could own a partner. Board members are not offered: the role
+    // is about oversight, not about being sent.
+    var sel = $('admPartnerUser');
+    if (sel) {
+      sel.innerHTML = '<option value="">' + esc(tr('adm.nobodyYet')) + '</option>' +
+        state.users.filter(function (u) { return u.roles.indexOf('staff') >= 0; })
+          .map(function (u) {
+            return '<option value="' + esc(u.id) + '">' + esc(u.name) + '</option>';
+          }).join('');
+    }
+
     $('admPartners').innerHTML = state.partners.map(function (p) {
       var langs = state.languages.filter(function (l) { return l.is_active; });
       return '<div class="adm-partner">' +
-        '<div><span class="adm-name">' + esc(p.display_name) + '</span>' +
+        '<div><span class="adm-name">' + esc(p.display_name) +
+          '<span class="adm-status s-' + esc(p.status) + '">' +
+            esc(tr('adm.pstatus.' + p.status)) + '</span></span>' +
           '<span class="adm-email">' + esc(p.slug) + ' · ' +
-          p.member_count + ' ' + esc(tr('adm.members')) + '</span></div>' +
+          p.member_count + ' ' + esc(tr('adm.members')) +
+          (p.member_count ? '' : ' — ' + esc(tr('adm.nobodyAttached'))) + '</span></div>' +
+        '<label class="fld"><span>' + esc(tr('adm.pstatusLabel')) + '</span>' +
+          '<select class="status-pick" data-partner-status="' + esc(p.id) + '">' +
+            PARTNER_STATUS.map(function (s) {
+              return '<option value="' + s + '"' + (p.status === s ? ' selected' : '') + '>' +
+                esc(tr('adm.pstatus.' + s)) + '</option>';
+            }).join('') +
+          '</select></label>' +
         '<label class="fld"><span>' + esc(tr('adm.defaultLang')) + '</span>' +
           '<select class="lang-pick" data-partner="' + esc(p.id) + '">' +
             langs.map(function (l) {
@@ -336,6 +359,10 @@
     if (e.target.classList.contains('status-pick')) {
       return change({ user_id: e.target.dataset.user, status: e.target.value }, e.target);
     }
+    if (e.target.dataset.partnerStatus) {
+      return change({ for_partner: e.target.dataset.partnerStatus,
+                      partner_status: e.target.value }, e.target);
+    }
     if (e.target.classList.contains('lang-pick') && e.target.dataset.partner) {
       return change({ for_partner: e.target.dataset.partner, default_lang: e.target.value }, e.target);
     }
@@ -368,6 +395,39 @@
       } catch (err) {
         toast(err.message, 'err');
       } finally { btn.disabled = false; }
+    });
+  }
+
+  if ($('admAddPartner')) {
+    $('admAddPartner').addEventListener('click', function () {
+      $('admPartnerForm').hidden = false;
+      $('admPartnerName').focus();
+    });
+    $('admPartnerCancel').addEventListener('click', function () {
+      $('admPartnerForm').hidden = true;
+    });
+    $('admPartnerForm').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      var btn = e.target.querySelector('[type="submit"]');
+      btn.disabled = true;
+      try {
+        var res = await fetch(API, {
+          method: 'POST', credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            kind: 'partner',
+            display_name: $('admPartnerName').value,
+            user_id: $('admPartnerUser').value || undefined
+          })
+        });
+        var body = await res.json().catch(function () { return {}; });
+        if (!res.ok) throw new Error(body.error || ('failed (' + res.status + ')'));
+        $('admPartnerForm').hidden = true;
+        $('admPartnerName').value = '';
+        await load();
+        toast(tr('toast.saved'), 'ok');
+      } catch (err) { toast(err.message, 'err'); }
+      finally { btn.disabled = false; }
     });
   }
 

@@ -30,7 +30,7 @@
 <meta name="robots" content="noindex, nofollow">
 <title>{{ staffTitle }} · Thauma Staff</title>
 <link rel="stylesheet" href="/css/tokens.css">
-<link rel="stylesheet" href="/css/staff.css?v=19">
+<link rel="stylesheet" href="/css/staff.css?v=20">
 <link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
 </head>
 <body data-staff-page="{{ staffPage }}">
@@ -57,9 +57,6 @@
       <span class="area-arrow" aria-hidden="true">&rarr;</span>
     </a>
     <span class="pill" id="partnerPill" hidden></span>
-    {#- The role only. The name is in the pill beside it — showing it in both
-       places was the same fact twice, and left nowhere for the role to go. -#}
-    <span class="who"><span id="userRole"></span></span>
     <a class="ghost-btn" href="/cdn-cgi/access/logout" data-i18n="nav.signout">Sign out</a>
   </div>
 </div></header>
@@ -89,8 +86,8 @@
 {#- Before everything else: it reads the cached language and rewrites the
    page synchronously, so the console does not render in English and then
    visibly correct itself. -#}
-<script src="/js/staff-i18n.js?v=10"></script>
-<script src="/js/staff.js?v=14"></script>
+<script src="/js/staff-i18n.js?v=11"></script>
+<script src="/js/staff.js?v=15"></script>
 {#- Only the Milestones page needs this; the script no-ops elsewhere. Kept
    separate from staff.js rather than folded in, because the editor is a
    different job from the read-only console and will keep growing. -#}

@@ -351,6 +351,24 @@ VALUES (:partner_id, :user_id, :role, :granted_by, :now);
 DELETE FROM partner_users WHERE partner_id = :partner_id AND user_id = :user_id;
 
 
+-- name: admin_partner_create
+-- Creating a partner is creating a MINISTRY, not a login. It is the bundle a
+-- sent person's supporters, goals, milestones and website content hang off,
+-- and it exists separately from the account that manages it — because one
+-- partner can have several people, and a person can help with more than one.
+--
+-- Starts 'prospective': a partner nobody has been sent as yet should not look
+-- active on a dashboard.
+INSERT INTO partners (id, slug, display_name, status, is_public, default_lang,
+                      created_at, updated_at)
+VALUES (:id, :slug, :display_name, 'prospective', 0, 'en', :now, :now);
+
+
+-- name: admin_partner_set
+UPDATE partners SET display_name = :display_name, status = :status, updated_at = :now
+WHERE id = :id;
+
+
 -- name: admin_partners
 SELECT p.id, p.slug, p.display_name, p.status,
        COALESCE(p.default_lang, 'en') AS default_lang,

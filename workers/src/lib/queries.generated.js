@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "856578500db20ac1";
+export const SOURCE_DIGEST = "d67f3fd9d4bada4c";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -20,9 +20,14 @@ LIMIT :limit;`,
   admin_count_admins: `SELECT COUNT(*) AS n
 FROM user_roles r JOIN users u ON u.id = r.user_id
 WHERE r.role = 'admin' AND u.status = 'active';`,
+  admin_partner_create: `INSERT INTO partners (id, slug, display_name, status, is_public, default_lang,
+                      created_at, updated_at)
+VALUES (:id, :slug, :display_name, 'prospective', 0, 'en', :now, :now);`,
   admin_partner_grant: `INSERT OR IGNORE INTO partner_users (partner_id, user_id, role, granted_by, granted_at)
 VALUES (:partner_id, :user_id, :role, :granted_by, :now);`,
   admin_partner_revoke: `DELETE FROM partner_users WHERE partner_id = :partner_id AND user_id = :user_id;`,
+  admin_partner_set: `UPDATE partners SET display_name = :display_name, status = :status, updated_at = :now
+WHERE id = :id;`,
   admin_partners: `SELECT p.id, p.slug, p.display_name, p.status,
        COALESCE(p.default_lang, 'en') AS default_lang,
        (SELECT COUNT(*) FROM partner_users pu WHERE pu.partner_id = p.id) AS member_count

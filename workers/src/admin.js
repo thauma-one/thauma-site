@@ -131,6 +131,62 @@ export default {
       const body = await readJson(request);
       if (!body) return json({ error: "Invalid JSON" }, 400);
 
+      /* ---- a partner ----
+         Asked for because granting somebody the staff role did not make one
+         appear, which is correct and was invisible: a ROLE says what a person
+         may do, a PARTNER is the ministry whose supporters and goals they
+         manage. Sending a new person means creating both and joining them. */
+      if (body.kind === "partner") {
+        const displayName = str(body.display_name, 200);
+        if (!displayName) return json({ error: "A name is required" }, 400);
+
+        // Slug is derived, not typed. It ends up in URLs and API payloads, and
+        // letting somebody enter one invites spaces and capitals that then
+        // have to be lived with.
+        const slug = displayName.toLowerCase().normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60);
+        if (!slug) return json({ error: "That name has no letters or digits in it" }, 400);
+
+        const pid = "p_" + slug.replace(/-/g, "_").slice(0, 40);
+        try {
+          await db.query("admin_partner_create", {
+            id: pid, slug, display_name: displayName, now,
+          });
+        } catch (e) {
+          return json({ error: "A partner with that name already exists." }, 409);
+        }
+
+        // Every language the organisation offers, switched OFF except the
+        // default. A new partner publishing three languages on day one would
+        // promise translations nobody has written.
+        const langs = await db.query("languages_all", {});
+        for (const l of langs) {
+          await db.query("partner_language_set", {
+            partner_id: pid, lang: l.code,
+            is_enabled: l.code === "en" ? 1 : 0,
+            sort_order: l.sort_order,
+          });
+        }
+
+        // Whoever it is for, granted straight away — a partner with nobody
+        // attached is a row that does nothing.
+        if (body.user_id) {
+          await db.query("admin_partner_grant", {
+            partner_id: pid, user_id: str(body.user_id, 64),
+            role: "owner", granted_by: me.user_id, now,
+          });
+        }
+
+        await audit(db, { user, action: "create", entity: "partner", entity_id: pid,
+                          partner_id: pid, detail: { display_name: displayName } });
+        return json({
+          created: pid,
+          partners: await db.query("admin_partners", {}),
+          users: await listUsers(db),
+        });
+      }
+
       const email = str(body.email, 200);
       const name = str(body.name, 200);
       if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
@@ -234,6 +290,25 @@ export default {
         await audit(db, { user, action: "update", entity: "user", entity_id: userId,
                           detail: { name: body.name, status } });
         return json({ users: await listUsers(db) });
+      }
+
+      // ---- a partner's own details ----
+      if (body.for_partner && (body.partner_status || body.partner_name)) {
+        const partners = await db.query("admin_partners", {});
+        const target = partners.find((p) => p.id === body.for_partner);
+        if (!target) return json({ error: "No such partner" }, 404);
+        // The values the schema actually allows — checked rather than assumed.
+        const status = ["prospective", "active", "on_leave", "alumni"]
+          .includes(body.partner_status) ? body.partner_status : target.status;
+        await db.query("admin_partner_set", {
+          id: body.for_partner,
+          display_name: str(body.partner_name, 200) || target.display_name,
+          status, now,
+        });
+        await audit(db, { user, action: "update", entity: "partner",
+                          entity_id: body.for_partner, partner_id: body.for_partner,
+                          detail: { status } });
+        return json({ partners: await db.query("admin_partners", {}) });
       }
 
       // ---- a partner's default language ----

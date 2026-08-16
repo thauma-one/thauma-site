@@ -32,10 +32,14 @@ a{color:inherit;text-decoration:none}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 
 /* ---------- shell ---------- */
-.top{position:sticky;top:0;z-index:20;height:var(--header-h);
+/* min-height, NOT height. It was a fixed 62px while its contents were allowed
+   to wrap, so a second row appeared inside a box that could not grow and the
+   two layers overlapped. A header either fits on one line or gets taller —
+   never both. */
+.top{position:sticky;top:0;z-index:20;min-height:var(--header-h);
   background:rgba(11,15,21,.86);backdrop-filter:blur(12px);
   border-bottom:1px solid var(--line)}
-.top-in{max-width:1240px;margin:0 auto;padding:0 var(--gutter);height:100%;
+.top-in{max-width:1240px;margin:0 auto;padding:8px var(--gutter);min-height:var(--header-h);
   display:flex;align-items:center;gap:24px}
 .mark{font-family:var(--font-display);font-weight:var(--w-hair);
   letter-spacing:var(--ls-mark);font-size:15px;white-space:nowrap}
@@ -672,8 +676,9 @@ body.has-savebar .toasts{--toast-lift:var(--ms-savebar-h,72px)}
    because it is the thing people are aiming for. */
 .who{max-width:190px;min-width:0}
 .who b, .who span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.top nav{min-width:0;flex-wrap:wrap}
-.top-in{flex-wrap:wrap;row-gap:6px}
+/* Wrapping is allowed, and now costs height rather than overlap. */
+.top nav{min-width:0;flex-wrap:wrap;row-gap:4px}
+.top-in{flex-wrap:wrap;row-gap:10px}
 
 /* Below the width where the nav and the identity block can share a line, the
    identity drops its cap and the nav wraps rather than being squeezed. */
@@ -699,10 +704,15 @@ body.has-savebar .toasts{--toast-lift:var(--ms-savebar-h,72px)}
 
 /* The pill is who is signed in. Sized so a long name shortens rather than
    pushing the navigation, with the full value in its title attribute. */
-.pill{color:var(--text);border-color:var(--line-hard);max-width:220px;
+.pill{color:var(--text);border-color:var(--line-hard);max-width:320px;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   text-transform:none;letter-spacing:.02em;font-size:var(--fs-sm);
   font-weight:var(--w-body);padding:6px 12px}
+/* The role rides inside the chip after a separator. It was a second element
+   beside it, which made the right-hand side four items wide and pushed the
+   whole block onto its own line. */
+.pill .role{color:var(--dim);font-size:var(--fs-tiny)}
+.pill .role::before{content:"·";margin:0 7px;opacity:.6}
 .pill[hidden]{display:none}
 /* The role sits beside it, quieter — it qualifies the name rather than
    competing with it. */

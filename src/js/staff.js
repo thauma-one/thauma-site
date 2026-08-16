@@ -496,15 +496,18 @@
   function paintIdentity(who) {
     if (!who) return;
 
+    var raw = who.roles || [];
+    var roles = raw.map(function (r) { return ROLE_LABEL[r] || r; });
+
+    // Name and role in ONE chip. They were two elements side by side, which
+    // made the right of the header four items wide and wrapped the lot onto a
+    // second line inside a header that could not grow.
     if (who.name && $('partnerPill')) {
-      $('partnerPill').textContent = who.name;
+      $('partnerPill').innerHTML = esc(who.name) +
+        (roles.length ? '<span class="role">' + esc(roles.join(' · ')) + '</span>' : '');
       $('partnerPill').hidden = false;
       $('partnerPill').title = who.email || '';
     }
-
-    var raw = who.roles || [];
-    var roles = raw.map(function (r) { return ROLE_LABEL[r] || r; });
-    if (roles.length && $('userRole')) $('userRole').textContent = roles.join(' · ');
 
     // The door to administration, shown only to people who can open it. The
     // endpoint refuses everyone else regardless — this is about not offering.
@@ -540,9 +543,6 @@
           pill.textContent = id.name || id.email || tr('common.signedIn');
           pill.title = id.email || '';
           pill.hidden = false;
-        }
-        if ($('userRole') && !$('userRole').textContent) {
-          $('userRole').textContent = 'Cloudflare Access';
         }
       })
       .catch(function () {

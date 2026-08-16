@@ -108,5 +108,38 @@ await check("removing a user takes their roles and access with them", async () =
     "user_roles would outlive the user");
 });
 
+await check("a new partner starts prospective and private", async () => {
+  // A partner nobody has been sent as yet should not look active on a
+  // dashboard, and should not be publishing anything.
+  const sql = QUERIES.admin_partner_create;
+  assert(/'prospective'/.test(sql), "new partners are not created prospective");
+  assert(/is_public[\s\S]*?\b0\b|,\s*0\s*,/.test(sql), "new partners may be public");
+});
+
+await check("a partner's slug is derived, never taken from the client", async () => {
+  // It ends up in URLs and API payloads. Letting somebody type one invites
+  // spaces and capitals that then have to be lived with forever.
+  const src = await import("node:fs").then((fs) =>
+    fs.readFileSync(new URL("../src/admin.js", import.meta.url), "utf8"));
+  assert(/const slug = displayName/.test(src), "slug is not derived from the name");
+  assert(!/str\(body\.slug/.test(src), "slug is read from the request body");
+});
+
+await check("partner status values match the schema", async () => {
+  const src = await import("node:fs").then((fs) =>
+    fs.readFileSync(new URL("../src/admin.js", import.meta.url), "utf8"));
+  const schema = await import("node:fs").then((fs) =>
+    fs.readFileSync(new URL("../../db/migrations/0001_init.sql", import.meta.url), "utf8"));
+  // The handler first shipped with "paused" and "ended", which the CHECK
+  // constraint does not allow — the write would have failed at runtime.
+  for (const s of ["prospective", "active", "on_leave", "alumni"]) {
+    assert(src.includes(`"${s}"`), `handler does not allow ${s}`);
+    assert(schema.includes(`'${s}'`), `schema does not allow ${s}`);
+  }
+  for (const bad of ["paused", "ended"]) {
+    assert(!new RegExp(`"${bad}"`).test(src), `handler still allows ${bad}`);
+  }
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
