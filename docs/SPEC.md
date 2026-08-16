@@ -120,7 +120,7 @@ working branch.
 
 ### The database
 
-Six migrations, applied to all three databases in order. **27 schema tests**
+Six migrations, applied to all three databases in order. **30 schema tests**
 (`python3 db/test_schema.py`), which run every migration against a clean
 SQLite and assert the guarantees below.
 
@@ -131,7 +131,9 @@ SQLite and assert the guarantees below.
 | `0003_languages` | language catalogue + per-partner publishing + translations |
 | `0004_settings` | `partners.default_lang` |
 | `0005_directory_resources` | per-person address book, shared library with levels |
-| `0006_roles` | `user_roles` — administration, staff, board |
+| `0006_roles` | `user_roles` — replaced the single-value `global_role` |
+| `0007_partner_role` | the fourth role: **partner** |
+| `0008_audit_survives_deletion` | audit entries outlive what they describe |
 
 ```
 thauma-ops       production   schema only, no real data yet
@@ -141,7 +143,7 @@ local            the Pi       .wrangler/state, reseeded from seed.dev.sql
 
 ### The Worker
 
-One entry point, `workers/src/worker.js`. **159 tests** (`cd workers && npm test`).
+One entry point, `workers/src/worker.js`. **180 tests** (`cd workers && npm test`).
 
 | file | what |
 |---|---|
@@ -154,19 +156,32 @@ One entry point, `workers/src/worker.js`. **159 tests** (`cd workers && npm test
 | `staff-milestones.js` | the roadmap editor |
 | `staff-settings.js` | account, languages, API keys |
 | `staff-data.js` | directory (per person) + resources (per partner) |
+| `admin.js` | organisation administration — the only UNSCOPED endpoint |
 | `partner-api.js` | `/api/partner/v1/site` — the only public-facing key route |
 | `contact-form.js`, `game-scores.js` | ported from Netlify |
 
-### The console
+### Two consoles
 
-Eight pages under `/staff/`, sharing `layouts/staff.njk`: dashboard, support,
-stewardship, milestones, directory, resources, activity, settings.
+```
+/staff/   eight pages — dashboard, support, stewardship, milestones,
+          directory, resources, activity, settings. PARTNER-SCOPED: what one
+          person sees of one ministry.
 
-**Not yet built:** the admin area — user management, role assignment, the site
-master language, acting-as, and the resource visibility picker. Roles exist in
-the database and are read everywhere; nothing can grant `board` yet, so
-board-level resources are invisible to everyone by design rather than by
-accident.
+/admin/   four pages — overview, people, partners, activity. ORG-WIDE:
+          accounts, roles, partner access, each partner's default language,
+          and the whole audit log.
+```
+
+They look different on purpose — amber accent, ADMINISTRATION wordmark, a
+stripe above the header — because somebody who cannot tell which one they are
+in will eventually do something org-wide believing it was local. Each links to
+the other; the link INTO administration appears only for accounts holding the
+role.
+
+**Still not built:** acting-as (viewing the console as another person, with the
+audit trail and banner), the resource visibility picker, and a board-facing
+view. `src/admin/` — Decap CMS — was deleted at the same time; it had been
+inert since the cutover and was occupying the path.
 
 ---
 
@@ -233,14 +248,61 @@ Adding a language is a row. Disabling one hides it from the **public API
 only** — text already written stays, so a translation can be prepared before
 it goes live, and switching one off is never destructive. A test asserts that.
 
-### Roles
+### Roles — four, and a person may hold several
 
-`user_roles` holds **administration, staff, board**, and a person may hold
-more than one — a board member who also does staff work is ordinary.
+| role | what it means |
+|---|---|
+| **admin** | administers the organisation: accounts, roles, partner settings |
+| **partner** | somebody Thauma SENDS. Granting it CREATES their ministry record |
+| **staff** | helps with somebody else's ministry. No record of their own |
+| **board** | board-level resources only. No supporter data, no administration |
 
-`users.global_role` is **legacy**. It was a single-value column with a CHECK,
-and widening a CHECK means rebuilding the table, which D1 refuses while seven
-tables reference `users`. It is backfilled and must not be read.
+`partner` and `staff` were one role until 0007, and the gap was invisible:
+granting `staff` and waiting for a partner to appear did nothing, because
+nothing in the system knew that was supposed to mean anything.
+
+Revoking `partner` does **not** delete the ministry. Supporters, goals and
+milestones live there; a toggle must never destroy them. Removing a partner is
+a separate, deliberate act — see below.
+
+`users.global_role` is **legacy**. Widening its CHECK meant rebuilding
+`users`, which D1 refuses while seven tables reference it. Backfilled, never
+read.
+
+### Identity is not access
+
+This cost real time and is easy to reintroduce.
+
+```
+user_by_email        WHO somebody is. Name, roles, language. No partner.
+partners_for_user    WHICH partners they can reach. May return NONE.
+```
+
+They were one query, so a person with no partner had no identity — no name, no
+roles, no way in. An administrator whose partner grant was removed could not
+open the administration area, because the query meant to supply their roles
+returned no rows.
+
+**An account with no partner is ordinary.** An administrator does not need one.
+A board member does not need one. Somebody invited and not yet placed does not
+need one. Administration requires the admin ROLE; staff screens require a
+partner and say which of the two is missing when there is not one.
+
+### Deleting a partner
+
+Destroys supporters, interactions, goals, milestones, translations, API keys,
+resources and directories — by cascade, so nothing is orphaned and nothing is
+recoverable. Guarded by typing DELETE, checked **on the server**, because a
+dialog is only a suggestion. The confirmation counts what will go first: "4
+supporters, 8 logged interactions" says something "this cannot be undone" does
+not.
+
+**`audit_log` deliberately has no foreign key to `partners`.** An entry saying
+"somebody deleted partner p_chase" must go on saying it afterwards. A foreign
+key enforces that a reference points at something CURRENT, which is the
+opposite of what a historical record needs. `ON DELETE SET NULL` was tried
+first and was refused by the append-only trigger — correctly, and the refusal
+pointed at the better answer.
 
 ### Access control
 
@@ -605,6 +667,19 @@ The identity cache is `sessionStorage`, not `localStorage`: it exists to stop
 a flash while navigating within one session, and on a shared machine
 `localStorage` would show the previous person's name to the next one.
 
+### Confirming something irreversible
+
+`window.StaffConfirm()` — a real dialog, because `window.confirm` cannot say
+more than a sentence, cannot mark which button is dangerous, and looks like the
+browser rather than the application.
+
+- The **consequence** is stated, not "are you sure": *Administration reaches
+  every partner's settings.* *Partner builds a record with its own supporters.*
+- Focus lands on **Cancel**. A dialog that opens with the destructive button
+  focused turns a stray Enter into the thing it was asking about.
+- `type: 'DELETE'` adds a type-to-confirm field and keeps the button disabled
+  until it matches — and the server checks the same word.
+
 ### `hidden` loses to `display`
 
 Any element that sets `display` needs an explicit `[hidden]{display:none}`.
@@ -616,13 +691,33 @@ Hiding a `display:flex` column left its fields on screen.
 
 ### Next, in order
 
-1. **The admin area.** Unblocks four things at once: user management (add,
-   remove, assign roles), the site master language, acting-as with an audit
-   trail and an unmissable banner, and the resource visibility picker. Also
-   the staff/admin layout split.
-2. **The site copy editor** — the last piece of Phase 3. `/admin` is dark.
-3. **Timeline visualiser**, then **goal cards**.
-4. **The embed** last, deliberately: it is the one that puts a credential in a
+1. **PHASE 3 — the content editor.** The last piece of the original plan and
+   the largest outstanding one. `src/_data/i18n/*.json` (the site's words) and
+   `site.json` (its settings) are editable in git and nowhere else. Both belong
+   in `/admin/`: they are the same kind of thing, org-level rather than
+   partner-scoped.
+
+   **It needs a GitHub token** — fine-grained, scoped to `thauma-one/thauma-site`
+   only, Contents: read and write, with an expiry. Not a classic token with
+   `repo` scope, which can delete repositories. It goes in as a Worker secret
+   (`wrangler secret put GITHUB_TOKEN`), never in the repo.
+
+   **Reuse rather than reinvent:** the working-copy model and save bar from the
+   milestone editor, the language columns, the toast/problem split, and
+   `StaffConfirm` for anything that publishes. See §8a.
+
+2. **Acting-as** — viewing the console as another person, with the audit trail
+   and an unmissable banner. Chase's instinct was a flashing banner; a
+   permanent one plus a full-viewport border is both more obvious and not a
+   photosensitivity hazard.
+3. **A board view.** `board` currently grants board-marked resources and
+   nothing else, so a board member with no partner signs in to an empty
+   console. What they should see — org-wide goal totals, the roadmap, and
+   explicitly NOT supporters — is a governance decision, not a technical one.
+4. **Resource visibility picker.** The levels work server-side; nothing sets
+   them.
+5. **Timeline visualiser**, then **goal cards**.
+6. **The embed** last, deliberately: it is the one that puts a credential in a
    browser. See §4a.
 
 ### Open

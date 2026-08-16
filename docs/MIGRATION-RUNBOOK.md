@@ -128,28 +128,41 @@ the working branch.
 
 ---
 
-## Phase 3 — replace Decap — OUTSTANDING
+## Phase 3 — the content editor — OUTSTANDING, and next
 
-The last piece of the original plan. `/admin` went dark at the cutover, so
-**site copy cannot currently be edited through a UI** — the trilingual files in
-`src/_data/i18n/` are editable in git and nowhere else.
+The last piece of the original plan. `/admin/` is now a real area, and
+`src/admin/` (Decap) has been deleted — it had been inert since the cutover and
+was occupying the path.
 
-Not urgent: exactly one commit in this repo's history was ever CMS-authored,
-and the site is still coming-soon gated. It becomes urgent at launch.
+**Site copy cannot be edited through a UI.** `src/_data/i18n/{en,hr,sr}.json`
+and `src/_data/site.json` are editable in git and nowhere else.
 
-- [ ] Build the content editor into `/staff/`
-- [ ] Writes go to GitHub via the Contents API, as CR's `save-file.js` does
+Not urgent yet: exactly one commit in this repo's history was ever
+CMS-authored, and the site is still coming-soon gated. It becomes urgent at
+launch, and `site.json` holds the switch that ends the gating — so the thing
+that makes it urgent is the thing it controls.
+
+### What it needs
+
+- [ ] A **fine-grained** GitHub token, scoped to this repository only,
+      Contents: read and write, with an expiry. `wrangler secret put
+      GITHUB_TOKEN`. Never a classic `repo`-scoped token — that can delete
+      repositories.
+- [ ] An editor under `/admin/`, not `/staff/`: site copy and settings are
+      org-level, not partner-scoped.
+- [ ] Writes through the GitHub Contents API, as CR's `save-file.js` does.
+      The SHA it requires gives optimistic locking for free — an edit made in
+      an editor and another made in VS Code cannot silently overwrite each
+      other, they conflict.
 - [ ] **Verify:** edit a string, confirm the commit lands and the Action
-      deploys it
-- [ ] Delete `src/admin/`, drop `decap-server` from `package.json`
+      deploys it.
+- [ ] Drop `decap-server` from `package.json`.
 
-**What it should reuse rather than reinvent:** the working-copy model and save
-bar from the milestone editor, the language columns, and the toast/problem
-split. See SPEC §8a.
+### What it should reuse
 
-**Before it:** the admin area, which gives user management, roles and the site
-master language somewhere to live — and which the content editor will want for
-deciding who may publish copy.
+The working-copy model and save bar from the milestone editor — copy is edited
+in passes and must not save per keystroke. The language columns. The
+toast/problem split. `StaffConfirm` for publishing. All in SPEC §8a.
 
 ---
 
@@ -315,9 +328,9 @@ open that should not be.** That is the check worth wiring into a cron.
 ## Test suites
 
 ```bash
-python3 db/test_schema.py          # 27 — every migration, in order
+python3 db/test_schema.py          # 30 — every migration, in order
 python3 db/build_snapshot.py       # regenerates the offline console dataset
-cd workers && npm test             # 159 — Access, boundary, editors, db
+cd workers && npm test             # 180 — Access, boundary, editors, admin, db
 node netlify/functions/_shared/access.test.js   # 15 — the Netlify-side Access check
 ```
 
