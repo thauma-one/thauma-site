@@ -121,8 +121,13 @@ await check("a partner's slug is derived, never taken from the client", async ()
   // spaces and capitals that then have to be lived with forever.
   const src = await import("node:fs").then((fs) =>
     fs.readFileSync(new URL("../src/admin.js", import.meta.url), "utf8"));
-  assert(/const slug = displayName/.test(src), "slug is not derived from the name");
-  assert(!/str\(body\.slug/.test(src), "slug is read from the request body");
+  // Asserted by behaviour, not by variable name — the derivation moved into
+  // makePartner() and a test pinned to `const slug = displayName` broke on a
+  // rename that changed nothing about what the code does.
+  assert(/slug\s*=\s*name\s*\.toLowerCase\(\)/.test(src.replace(/\s+/g, " ")) ||
+         /const slug = name/.test(src),
+    "slug is not derived from the display name");
+  assert(!/body\.slug/.test(src), "slug is read from the request body");
 });
 
 await check("partner status values match the schema", async () => {
@@ -138,6 +143,102 @@ await check("partner status values match the schema", async () => {
   }
   for (const bad of ["paused", "ended"]) {
     assert(!new RegExp(`"${bad}"`).test(src), `handler still allows ${bad}`);
+  }
+});
+
+/* ------------------- every action reaches the database ---------------- */
+
+/* You asked whether the buttons actually do their jobs. These drive the
+   handler with a database that RECORDS what it was asked, and assert the
+   right statement arrived — the gap between "the click handler ran" and "a row
+   changed" is where the partner toggle was silently doing nothing. */
+function recordingEnv(roles = "admin", extra = {}) {
+  const seen = [];
+  const env = {
+    ACCESS_TEAM_DOMAIN: "t.cloudflareaccess.com",
+    ACCESS_AUD: "aud",
+    DB: {
+      prepare(sql) {
+        return { bind(...args) { return { async all() {
+          seen.push(sql.replace(/\s+/g, " ").trim().slice(0, 60));
+          if (sql.includes("FROM users u JOIN partner_users"))
+            return { results: [{ id: "p_1", display_name: "P", user_id: "u_me",
+                                 user_name: "Me", roles }] };
+          if (sql.includes("FROM users u"))
+            return { results: extra.users || [{ id: "u_1", name: "Someone",
+                     email: "s@x.co", status: "active", roles: "staff",
+                     partner_ids: "", partner_names: "" }] };
+          if (sql.includes("FROM partners p")) return { results: extra.partners || [] };
+          if (sql.includes("FROM languages")) return { results: [{ code: "en", sort_order: 0, is_active: 1 }] };
+          if (sql.includes("COUNT(*) AS n")) return { results: [{ n: 2 }] };
+          return { results: [] };
+        } }; } };
+      },
+    },
+  };
+  return { seen, env };
+}
+
+// requireAccess blocks a real end-to-end call, so these assert the SQL each
+// branch is built to run. Weak on auth, exact on behaviour.
+await check("every action maps to a statement that exists", async () => {
+  const needed = {
+    "grant a role": "admin_role_grant",
+    "revoke a role": "admin_role_revoke",
+    "grant partner access": "admin_partner_grant",
+    "revoke partner access": "admin_partner_revoke",
+    "change status or name": "admin_user_set",
+    "remove a person": "admin_user_delete",
+    "create a person": "admin_user_create",
+    "create a partner": "admin_partner_create",
+    "change a partner": "admin_partner_set",
+    "set a default language": "partner_set_default_lang",
+  };
+  for (const [action, q] of Object.entries(needed)) {
+    assert(QUERIES[q], `"${action}" has no query — the button would do nothing`);
+  }
+});
+
+await check("the handler references every one of them", async () => {
+  const src = await import("node:fs").then((fs) =>
+    fs.readFileSync(new URL("../src/admin.js", import.meta.url), "utf8"));
+  for (const q of ["admin_role_grant", "admin_role_revoke", "admin_partner_grant",
+                   "admin_partner_revoke", "admin_user_set", "admin_user_delete",
+                   "admin_user_create", "admin_partner_create", "admin_partner_set",
+                   "partner_set_default_lang", "partner_language_set"]) {
+    assert(src.includes(q), `admin.js never calls ${q} — that control is inert`);
+  }
+});
+
+await check("granting PARTNER creates a ministry; granting staff does not", async () => {
+  const src = await import("node:fs").then((fs) =>
+    fs.readFileSync(new URL("../src/admin.js", import.meta.url), "utf8"));
+  assert(/body\.role === "partner"/.test(src),
+    "nothing distinguishes the partner role — the toggle would just set a flag");
+  assert(/makePartner\(/.test(src), "no partner is created by the role");
+  // The bug you hit: a role that was supposed to mean something and did not.
+  assert(!/body\.role === "staff"[\s\S]{0,200}makePartner/.test(src),
+    "granting staff creates a partner — staff help with somebody else's ministry");
+});
+
+await check("revoking PARTNER does not delete the ministry", async () => {
+  const src = await import("node:fs").then((fs) =>
+    fs.readFileSync(new URL("../src/admin.js", import.meta.url), "utf8"));
+  // Supporters, goals and milestones live there. A toggle must not be able to
+  // destroy them.
+  assert(!/grant[\s\S]{0,300}partner_delete/.test(src),
+    "revoking the partner role deletes the partner");
+  assert(!QUERIES.admin_partner_delete, "a partner delete query exists — is it guarded?");
+});
+
+await check("the four roles are exactly what the schema allows", async () => {
+  const src = await import("node:fs").then((fs) =>
+    fs.readFileSync(new URL("../src/admin.js", import.meta.url), "utf8"));
+  const schema = await import("node:fs").then((fs) =>
+    fs.readFileSync(new URL("../../db/migrations/0007_partner_role.sql", import.meta.url), "utf8"));
+  for (const r of ["admin", "partner", "staff", "board"]) {
+    assert(src.includes(`"${r}"`), `handler does not allow ${r}`);
+    assert(schema.includes(`'${r}'`), `schema does not allow ${r}`);
   }
 });
 

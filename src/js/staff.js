@@ -705,6 +705,67 @@
     setTimeout(function () { if (host) host.hidden = true; }, 260);
   }
 
+
+  /* =====================================================================
+     CONFIRM — a real dialog, not window.confirm
+     =====================================================================
+     window.confirm cannot say more than one sentence, cannot mark which
+     button is the dangerous one, and looks like the browser rather than
+     like this application. Granting somebody administration deserves a
+     sentence about what that means before it happens.
+
+     Returns a promise. Escape and the backdrop both cancel, because the
+     safe answer should be the easy one to reach.
+     ===================================================================== */
+  function confirmDialog(opts) {
+    return new Promise(function (resolve) {
+      var wrap = document.createElement('div');
+      wrap.className = 'dlg-back';
+      wrap.innerHTML =
+        '<div class="dlg" role="dialog" aria-modal="true">' +
+          '<h3></h3><p class="dlg-body"></p>' +
+          '<p class="dlg-note" hidden></p>' +
+          '<div class="dlg-actions">' +
+            '<button type="button" class="ghost-btn dlg-no"></button>' +
+            '<button type="button" class="solid-btn dlg-yes"></button>' +
+          '</div>' +
+        '</div>';
+      wrap.querySelector('h3').textContent = opts.title || '';
+      wrap.querySelector('.dlg-body').textContent = opts.body || '';
+      if (opts.note) {
+        var n = wrap.querySelector('.dlg-note');
+        n.textContent = opts.note;
+        n.hidden = false;
+      }
+      var yes = wrap.querySelector('.dlg-yes');
+      var no = wrap.querySelector('.dlg-no');
+      yes.textContent = opts.confirm || 'Confirm';
+      no.textContent = opts.cancel || 'Cancel';
+      if (opts.danger) yes.classList.add('is-danger');
+
+      function close(answer) {
+        document.removeEventListener('keydown', onKey);
+        wrap.classList.remove('in');
+        setTimeout(function () { wrap.remove(); }, 200);
+        resolve(answer);
+      }
+      function onKey(e) { if (e.key === 'Escape') close(false); }
+
+      yes.addEventListener('click', function () { close(true); });
+      no.addEventListener('click', function () { close(false); });
+      wrap.addEventListener('click', function (e) { if (e.target === wrap) close(false); });
+      document.addEventListener('keydown', onKey);
+
+      document.body.appendChild(wrap);
+      void wrap.offsetHeight;
+      wrap.classList.add('in');
+      // Focus lands on CANCEL. A dialog that opens with the destructive
+      // button focused turns a stray Enter into the thing it was asking about.
+      no.focus();
+    });
+  }
+  window.StaffConfirm = confirmDialog;
+
   window.StaffProblem = problem;
   window.StaffProblemClear = problemClear;
 

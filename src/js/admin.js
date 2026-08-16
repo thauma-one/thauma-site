@@ -31,8 +31,16 @@
   function tr(key) { return window.StaffI18n ? window.StaffI18n.t(key) : key; }
   function toast(msg, kind) { if (window.StaffToast) window.StaffToast(msg, kind); }
 
-  var ROLE_LABEL = { admin: 'Administration', staff: 'Staff', board: 'Board' };
-  var ALL_ROLES = ['admin', 'staff', 'board'];
+  var ROLE_LABEL = { admin: 'Administration', partner: 'Partner',
+                     staff: 'Staff', board: 'Board' };
+  // Order matters on screen: the two that change what somebody IS come first.
+  var ALL_ROLES = ['admin', 'partner', 'staff', 'board'];
+
+  /* Roles that deserve a sentence before they are granted. Administration
+     because of what it reaches, Partner because it CREATES something — a
+     ministry record with its own supporters, goals and site. A toggle that
+     quietly builds a thing should say so first. */
+  var CONFIRM_ROLES = { admin: true, partner: true };
 
   /* ---- loading -------------------------------------------------------- */
 
@@ -186,14 +194,14 @@
             esc(tr('adm.status.' + u.status)) + '</span>' +
         '</div>' +
 
-        (open ? personPanel(u) : '') +
+        personPanel(u, open) +
       '</div>';
     }).join('');
   }
 
   /* Everything you can change about one person, in one place, with what each
      control actually does written next to it. */
-  function personPanel(u) {
+  function personPanel(u, open) {
     var roles = ALL_ROLES.map(function (r) {
       var on = u.roles.indexOf(r) >= 0;
       return '<button type="button" class="switch small" role="switch"' +
@@ -214,7 +222,7 @@
         esc(p.display_name) + '</button>';
     }).join('');
 
-    return '<div class="adm-panel">' +
+    return '<div class="adm-panel"' + (open ? '' : ' hidden') + '>' +
       '<div class="adm-section">' +
         '<span class="adm-label">' + esc(tr('adm.roles')) + '</span>' +
         '<div class="adm-roles">' + roles + '</div>' +
@@ -301,19 +309,80 @@
 
   /* ---- wiring --------------------------------------------------------- */
 
+  var PANEL_MS = 600;
+  function reducedMotion() {
+    return window.matchMedia &&
+           window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+
+  /* The same measure-then-animate as the milestone panel: height cannot
+     transition to or from `auto`, and a max-height guess makes short panels
+     appear to snap open and then hang. */
+  function slide(el, opening) {
+    return new Promise(function (resolve) {
+      if (reducedMotion()) {
+        el.hidden = !opening; el.style.height = ''; el.style.opacity = '';
+        return resolve();
+      }
+      el.classList.add('is-animating');
+      if (opening) {
+        el.hidden = false;
+        el.style.height = '0px'; el.style.opacity = '0';
+        void el.offsetHeight;
+        el.style.height = el.scrollHeight + 'px'; el.style.opacity = '1';
+      } else {
+        el.style.height = el.scrollHeight + 'px'; el.style.opacity = '1';
+        void el.offsetHeight;
+        el.style.height = '0px'; el.style.opacity = '0';
+      }
+      setTimeout(function () {
+        if (!opening) el.hidden = true;
+        el.style.height = ''; el.style.opacity = '';
+        el.classList.remove('is-animating');
+        resolve();
+      }, PANEL_MS);
+    });
+  }
+
+  async function togglePerson(id) {
+    var wasOpen = state.editing;
+    // Close whatever is open first, so two panels are never moving at once.
+    if (wasOpen && wasOpen !== id) {
+      var prev = document.querySelector('[data-person="' + wasOpen + '"] .adm-panel');
+      if (prev && !prev.hidden) await slide(prev, false);
+      document.querySelector('[data-person="' + wasOpen + '"]')
+        .classList.remove('is-open');
+    }
+
+    var card = document.querySelector('[data-person="' + id + '"]');
+    var panel = card && card.querySelector('.adm-panel');
+    if (!panel) return;
+
+    if (wasOpen === id) {
+      state.editing = null;
+      card.classList.remove('is-open');
+      card.querySelector('.adm-row').setAttribute('aria-expanded', 'false');
+      return slide(panel, false);
+    }
+
+    state.editing = id;
+    card.classList.add('is-open');
+    card.querySelector('.adm-row').setAttribute('aria-expanded', 'true');
+    await slide(panel, true);
+    var top = window.scrollY + card.getBoundingClientRect().top -
+              (document.querySelector('.top') || { offsetHeight: 0 }).offsetHeight - 12;
+    window.scrollTo({ top: Math.max(0, top),
+                      behavior: reducedMotion() ? 'auto' : 'smooth' });
+  }
+
   document.addEventListener('click', function (e) {
     var row = e.target.closest('.adm-row');
     if (row) {
-      var id = row.closest('[data-person]').dataset.person;
-      state.editing = state.editing === id ? null : id;
-      return renderPeople();
+      return togglePerson(row.closest('[data-person]').dataset.person);
     }
 
     var sw = e.target.closest('[data-role]');
-    if (sw) {
-      var grant = sw.getAttribute('aria-checked') !== 'true';
-      return change({ user_id: sw.dataset.user, role: sw.dataset.role, grant: grant }, sw);
-    }
+    if (sw) return roleToggle(sw);
     var chip = e.target.closest('[data-partner][data-user]');
     if (chip) {
       var give = !chip.classList.contains('on');
@@ -322,12 +391,50 @@
     }
     var rm = e.target.closest('[data-remove]');
     if (rm) {
-      var u = state.users.filter(function (x) { return x.id === rm.dataset.remove; })[0];
-      if (!u) return;
-      if (!confirm(tr('adm.confirmRemove') + '\n\n' + u.name + ' (' + u.email + ')')) return;
-      return removeUser(rm.dataset.remove, rm);
+      var person = state.users.filter(function (x) { return x.id === rm.dataset.remove; })[0];
+      if (!person) return;
+      return window.StaffConfirm({
+        title: tr('adm.removePerson'),
+        body: person.name + ' (' + person.email + ')',
+        note: tr('adm.confirmRemove'),
+        confirm: tr('adm.confirmRemoveDo'),
+        cancel: tr('ms.cancel'),
+        danger: true
+      }).then(function (ok) { if (ok) removeUser(rm.dataset.remove, rm); });
     }
   });
+
+  async function roleToggle(sw) {
+    var role = sw.dataset.role;
+    var grant = sw.getAttribute('aria-checked') !== 'true';
+    var u = state.users.filter(function (x) { return x.id === sw.dataset.user; })[0];
+    if (!u) return;
+
+    if (CONFIRM_ROLES[role]) {
+      var ok = await window.StaffConfirm({
+        title: (grant ? tr('adm.confirm.grant') : tr('adm.confirm.revoke')) +
+               ' ' + ROLE_LABEL[role],
+        body: u.name + ' (' + u.email + ')',
+        note: tr('adm.confirm.' + role + (grant ? 'On' : 'Off')),
+        confirm: grant ? tr('adm.confirm.doGrant') : tr('adm.confirm.doRevoke'),
+        cancel: tr('ms.cancel'),
+        danger: !grant || role === 'admin'
+      });
+      if (!ok) return;
+    }
+
+    var body = await change({ user_id: sw.dataset.user, role: role, grant: grant }, sw);
+
+    // Granting Partner builds a ministry. Say what appeared, and where.
+    if (body && body.created_partner) {
+      await window.StaffConfirm({
+        title: tr('adm.partnerCreated'),
+        body: tr('adm.partnerCreatedBody').replace('{name}', body.created_partner.display_name),
+        confirm: tr('adm.goToPartners'),
+        cancel: tr('adm.stayHere')
+      }).then(function (go) { if (go) location.href = '/admin/partners/'; });
+    }
+  }
 
   async function removeUser(id, btn) {
     btn.disabled = true;
@@ -350,9 +457,7 @@
     var row = e.target.closest('.adm-row');
     if (!row) return;
     e.preventDefault();
-    var id = row.closest('[data-person]').dataset.person;
-    state.editing = state.editing === id ? null : id;
-    renderPeople();
+    togglePerson(row.closest('[data-person]').dataset.person);
   });
 
   document.addEventListener('change', function (e) {

@@ -49,9 +49,14 @@
 /* ---- people ---- */
 /* Rows that open, not a wall of controls. Everything about one person lives in
    one panel; the row itself carries only what you scan for. */
-.adm-people{display:flex;flex-direction:column;gap:1px;background:var(--line);
-  border:1px solid var(--line)}
-.adm-person{background:var(--panel)}
+/* SEPARATED, not stacked. A hairline between rows makes a list of accounts
+   read as one block of text; each person is a thing you act on, so each gets
+   its own card and its own room. */
+.adm-people{display:flex;flex-direction:column;gap:12px}
+.adm-person{background:var(--panel);border:1px solid var(--line);
+  border-radius:var(--radius);overflow:hidden;
+  transition:border-color var(--dur-3) var(--ease-main)}
+.adm-person.is-open{border-color:rgba(245,184,69,.4)}
 /* Somebody who cannot sign in should LOOK like it, not merely say so in a
    dropdown two clicks down. */
 .adm-person.is-inactive .adm-who{opacity:.55}
@@ -81,7 +86,15 @@
 .adm-status.s-active{color:var(--voice-human);border-color:rgba(92,242,196,.35)}
 .adm-status.s-suspended{color:var(--crit,#FF6B6B);border-color:rgba(255,107,107,.35)}
 
-.adm-panel{padding:6px 22px 26px 50px;border-top:1px solid var(--line)}
+/* Animated exactly like the milestone editor's panel, and by the same code —
+   height measured in JS, 600ms, the same easing. Two disclosure patterns in
+   one product that open at different speeds is the kind of difference nobody
+   can name and everybody notices. */
+.adm-panel{padding:6px 22px 26px 50px;border-top:1px solid var(--line);
+  overflow:hidden}
+.adm-panel.is-animating{transition:height .6s var(--ease-panel),
+  opacity .38s var(--ease-panel)}
+.adm-panel[hidden]{display:none}
 .adm-section{padding-top:22px}
 .adm-section + .adm-section{margin-top:4px}
 .adm-label{display:block;font-size:10px;letter-spacing:var(--ls-label);

@@ -28,7 +28,7 @@ import { createDb } from "./lib/db.js";
 import { requireAccess } from "./lib/access.js";
 import { json, readJson } from "./lib/store.js";
 
-const ROLES = new Set(["admin", "staff", "board"]);
+const ROLES = new Set(["admin", "partner", "staff", "board"]);
 const STATUSES = new Set(["invited", "active", "suspended"]);
 const PARTNER_ROLES = new Set(["owner", "assist", "view"]);
 
@@ -96,6 +96,54 @@ async function wouldStrandOrg(db, { userId, removingRole, removingUser }) {
   return targetRoles.includes("admin") && target.status === "active";
 }
 
+/**
+ * Create a partner and, optionally, hand it to somebody.
+ *
+ * Shared by the Partner role switch and the Partners page, so the two cannot
+ * drift into making different things.
+ */
+async function makePartner(db, { displayName, forUser, grantedBy, now, user }) {
+  const name = String(displayName || "").trim().slice(0, 200);
+  if (!name) return null;
+
+  // Derived, never typed: it lands in URLs and API payloads, and a slug
+  // somebody entered by hand has to be lived with.
+  const slug = name.toLowerCase().normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60);
+  if (!slug) return null;
+
+  const pid = "p_" + slug.replace(/-/g, "_").slice(0, 40);
+  try {
+    await db.query("admin_partner_create", { id: pid, slug, display_name: name, now });
+  } catch (e) {
+    return null; // already exists — the caller decides whether that matters
+  }
+
+  // Every language the organisation offers, switched OFF except English. A new
+  // partner publishing three languages on day one promises translations nobody
+  // has written.
+  const langs = await db.query("languages_all", {});
+  for (const l of langs) {
+    await db.query("partner_language_set", {
+      partner_id: pid, lang: l.code,
+      is_enabled: l.code === "en" ? 1 : 0,
+      sort_order: l.sort_order,
+    });
+  }
+
+  if (forUser) {
+    await db.query("admin_partner_grant", {
+      partner_id: pid, user_id: forUser, role: "owner", granted_by: grantedBy, now,
+    });
+  }
+  if (user) {
+    await audit(db, { user, action: "create", entity: "partner", entity_id: pid,
+                      partner_id: pid, detail: { display_name: name } });
+  }
+  return { id: pid, display_name: name };
+}
+
 export default {
   async fetch(request, env) {
     const { db, user, me, denied } = await requireAdmin(request, env);
@@ -137,51 +185,19 @@ export default {
          may do, a PARTNER is the ministry whose supporters and goals they
          manage. Sending a new person means creating both and joining them. */
       if (body.kind === "partner") {
-        const displayName = str(body.display_name, 200);
-        if (!displayName) return json({ error: "A name is required" }, 400);
-
-        // Slug is derived, not typed. It ends up in URLs and API payloads, and
-        // letting somebody enter one invites spaces and capitals that then
-        // have to be lived with.
-        const slug = displayName.toLowerCase().normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "")
-          .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60);
-        if (!slug) return json({ error: "That name has no letters or digits in it" }, 400);
-
-        const pid = "p_" + slug.replace(/-/g, "_").slice(0, 40);
-        try {
-          await db.query("admin_partner_create", {
-            id: pid, slug, display_name: displayName, now,
-          });
-        } catch (e) {
-          return json({ error: "A partner with that name already exists." }, 409);
+        const made = await makePartner(db, {
+          displayName: body.display_name,
+          forUser: str(body.user_id, 64),
+          grantedBy: me.user_id, now, user,
+        });
+        if (!made) {
+          return json({
+            error: "Could not create that partner — the name may already be in " +
+                   "use, or have no letters or digits in it.",
+          }, 409);
         }
-
-        // Every language the organisation offers, switched OFF except the
-        // default. A new partner publishing three languages on day one would
-        // promise translations nobody has written.
-        const langs = await db.query("languages_all", {});
-        for (const l of langs) {
-          await db.query("partner_language_set", {
-            partner_id: pid, lang: l.code,
-            is_enabled: l.code === "en" ? 1 : 0,
-            sort_order: l.sort_order,
-          });
-        }
-
-        // Whoever it is for, granted straight away — a partner with nobody
-        // attached is a row that does nothing.
-        if (body.user_id) {
-          await db.query("admin_partner_grant", {
-            partner_id: pid, user_id: str(body.user_id, 64),
-            role: "owner", granted_by: me.user_id, now,
-          });
-        }
-
-        await audit(db, { user, action: "create", entity: "partner", entity_id: pid,
-                          partner_id: pid, detail: { display_name: displayName } });
         return json({
-          created: pid,
+          created: made.id,
           partners: await db.query("admin_partners", {}),
           users: await listUsers(db),
         });
@@ -242,7 +258,39 @@ export default {
         await audit(db, { user, action: body.grant ? "grant" : "revoke",
                           entity: "user_role", entity_id: userId,
                           detail: { role: body.role } });
-        return json({ users: await listUsers(db) });
+
+        /* GRANTING 'partner' CREATES THE MINISTRY.
+           This is the piece that was missing: the role and the partner record
+           were two separate acts, and nothing said so, so granting a role and
+           waiting for a partner to appear did nothing at all. Now the switch
+           does what it says — the person becomes a partner, which means they
+           have one. */
+        let createdPartner = null;
+        if (body.grant && body.role === "partner") {
+          const target = (await db.query("admin_users", {}))
+            .find((u) => u.id === userId);
+          const existing = await db.query("admin_partners", {});
+          const already = String(target && target.partner_ids || "")
+            .split(",").filter(Boolean);
+
+          // Only if they do not already own one. Re-granting the role to
+          // somebody who does should not mint a second ministry.
+          const ownsOne = existing.some((p) => already.includes(p.id));
+          if (target && !ownsOne) {
+            createdPartner = await makePartner(db, {
+              displayName: target.name, forUser: userId, grantedBy: me.user_id, now, user,
+            });
+          }
+        }
+
+        // Revoking it does NOT delete the partner. Supporters, goals and
+        // milestones live there, and a toggle should never be able to destroy
+        // them — removing a ministry is a separate, deliberate act.
+        return json({
+          users: await listUsers(db),
+          partners: await db.query("admin_partners", {}),
+          created_partner: createdPartner,
+        });
       }
 
       // ---- grant or revoke access to a partner ----

@@ -737,3 +737,26 @@ body.has-savebar .toasts{--toast-lift:var(--ms-savebar-h,72px)}
 /* The role sits quietly beside the name — it qualifies who you are, and it is
    not competing with the link to somewhere else. */
 .who{color:var(--dim);font-size:var(--fs-tiny)}
+
+/* ---- confirmation dialog ---- */
+.dlg-back{position:fixed;inset:0;z-index:80;display:flex;align-items:center;
+  justify-content:center;padding:24px;background:rgba(3,6,10,.72);
+  backdrop-filter:blur(3px);opacity:0;transition:opacity .2s var(--ease-main)}
+.dlg-back.in{opacity:1}
+.dlg{background:var(--panel);border:1px solid var(--line-hard);
+  border-radius:var(--radius);padding:28px 30px;max-width:520px;width:100%;
+  box-shadow:0 24px 60px rgba(0,0,0,.6);
+  transform:translateY(8px);transition:transform .24s var(--ease-panel,ease)}
+.dlg-back.in .dlg{transform:translateY(0)}
+.dlg h3{font-family:var(--font-display);font-weight:var(--w-light);
+  font-size:var(--fs-lg,20px);color:var(--text);margin:0 0 12px}
+.dlg-body{color:var(--dim);font-size:var(--fs-sm);line-height:1.6;margin:0}
+/* The consequence, set apart — it is the part people skip. */
+.dlg-note{margin:14px 0 0;padding:12px 14px;border-radius:var(--radius);
+  background:var(--warn-dim,rgba(245,184,69,.12));
+  border-left:2px solid var(--warn,#F5B845);
+  color:var(--text);font-size:var(--fs-tiny);line-height:1.55}
+.dlg-actions{display:flex;gap:12px;justify-content:flex-end;margin-top:24px}
+.dlg .is-danger{background:var(--crit,#FF6B6B);color:#150607}
+@media(hover:hover){ .dlg .is-danger:hover{box-shadow:0 0 22px rgba(255,107,107,.4)} }
+@media (prefers-reduced-motion: reduce){ .dlg-back,.dlg{transition:none} }
