@@ -1,0 +1,18 @@
+---
+layout: layouts/admin.njk
+adminPage: activity
+adminNum: "04"
+adminTitle: Activity
+adminHeading: What has been <b>done</b>
+adminHint: org-wide, append-only
+permalink: /admin/activity/index.html
+---
+<p class="note">
+  Every administrative action is recorded here, and the log is append-only —
+  enforced by database triggers, not by this application choosing to behave.
+  <b>Reading it is itself an administrative act.</b>
+</p>
+
+<div class="audit" id="admAudit">
+  <p class="empty" data-i18n="common.loading">Loading…</p>
+</div>

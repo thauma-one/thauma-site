@@ -1,0 +1,20 @@
+---
+layout: layouts/admin.njk
+adminPage: partners
+adminNum: "03"
+adminTitle: Partners
+adminHeading: Sending <b>relationships</b>
+adminHint: the site language a visitor gets before choosing
+permalink: /admin/partners/index.html
+---
+<p class="note">
+  A partner's <b>default language</b> is what a visitor to their site sees
+  before choosing, and what a translation falls back to when one is missing.
+  It is set here rather than in the staff console: there can be several
+  administrators, and no public setting should move because somebody changed
+  the language of their own screen.
+</p>
+
+<div class="adm-partners" id="admPartners">
+  <p class="empty" data-i18n="common.loading">Loading…</p>
+</div>

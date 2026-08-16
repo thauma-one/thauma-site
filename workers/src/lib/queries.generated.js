@@ -8,9 +8,43 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "fbeca63e4bc0a1f6";
+export const SOURCE_DIGEST = "856578500db20ac1";
 
 export const QUERIES = {
+  admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
+       a.partner_id, COALESCE(u.name, a.user_id) AS actor
+FROM audit_log a
+LEFT JOIN users u ON u.id = a.user_id
+ORDER BY a.at DESC
+LIMIT :limit;`,
+  admin_count_admins: `SELECT COUNT(*) AS n
+FROM user_roles r JOIN users u ON u.id = r.user_id
+WHERE r.role = 'admin' AND u.status = 'active';`,
+  admin_partner_grant: `INSERT OR IGNORE INTO partner_users (partner_id, user_id, role, granted_by, granted_at)
+VALUES (:partner_id, :user_id, :role, :granted_by, :now);`,
+  admin_partner_revoke: `DELETE FROM partner_users WHERE partner_id = :partner_id AND user_id = :user_id;`,
+  admin_partners: `SELECT p.id, p.slug, p.display_name, p.status,
+       COALESCE(p.default_lang, 'en') AS default_lang,
+       (SELECT COUNT(*) FROM partner_users pu WHERE pu.partner_id = p.id) AS member_count
+FROM partners p
+ORDER BY p.display_name COLLATE NOCASE;`,
+  admin_role_grant: `INSERT OR IGNORE INTO user_roles (user_id, role, granted_by, granted_at)
+VALUES (:user_id, :role, :granted_by, :now);`,
+  admin_role_revoke: `DELETE FROM user_roles WHERE user_id = :user_id AND role = :role;`,
+  admin_user_create: `INSERT INTO users (id, email, name, global_role, status, created_at)
+VALUES (:id, :email, :name, 'staff', 'invited', :now);`,
+  admin_user_delete: `DELETE FROM users WHERE id = :id;`,
+  admin_user_set: `UPDATE users SET name = :name, status = :status WHERE id = :id;`,
+  admin_users: `SELECT
+  u.id, u.email, u.name, u.status, u.created_at, u.last_login_at,
+  COALESCE(u.preferred_lang, 'en') AS preferred_lang,
+  (SELECT GROUP_CONCAT(r.role) FROM user_roles r WHERE r.user_id = u.id) AS roles,
+  (SELECT GROUP_CONCAT(p.display_name, ' | ')
+     FROM partner_users pu JOIN partners p ON p.id = pu.partner_id
+    WHERE pu.user_id = u.id) AS partner_names,
+  (SELECT GROUP_CONCAT(pu.partner_id) FROM partner_users pu WHERE pu.user_id = u.id) AS partner_ids
+FROM users u
+ORDER BY u.status, u.name COLLATE NOCASE;`,
   api_key_create: `INSERT INTO api_keys (id, partner_id, name, key_hash, scopes, created_by, created_at)
 VALUES (:id, :partner_id, :name, :key_hash, :scopes, :created_by, :now);`,
   api_key_lookup: `SELECT k.id AS key_id, k.partner_id, k.scopes, p.slug, p.display_name

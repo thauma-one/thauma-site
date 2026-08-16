@@ -44,7 +44,7 @@ await check("queries.generated.js is in sync with db/queries.sql", async () => {
     `stale generated file — run: python3 db/generate_queries_module.py`);
 });
 
-await check("all thirty-eight named queries are present", async () => {
+await check("all forty-seven named queries are present", async () => {
   const expected = [
     "api_key_lookup", "api_key_touch",
     "audit_recent_for_partner", "contact_timeline", "contacts_stewardship",
@@ -63,6 +63,11 @@ await check("all thirty-eight named queries are present", async () => {
     // directory + resources
     "directory_delete", "directory_for_user", "directory_upsert",
     "resource_delete", "resource_upsert", "resources_visible",
+    // administration
+    "admin_audit_recent", "admin_count_admins", "admin_partner_grant",
+    "admin_partner_revoke", "admin_partners", "admin_role_grant",
+    "admin_role_revoke", "admin_user_create", "admin_user_delete",
+    "admin_user_set", "admin_users",
   ].sort();
   eq(Object.keys(QUERIES).sort(), expected, "query names");
 });
@@ -199,12 +204,17 @@ await check("every real query converts with its documented params", async () => 
     // directory + resources
     emails: "[]", phones: "[]", role: null, link: null, photo: null,
     visibility: "staff", created_by: "u_chase", levels: "staff",
+    // administration
+    user_id: "u_1", role: "admin", granted_by: "u_1", status: "active",
   };
   // The ONE query with no parameters: the language catalogue belongs to the
   // organisation, not to a partner, so there is nothing to scope it by. Named
   // rather than skipped by a rule, so a second parameterless query has to be
   // justified here rather than quietly slipping past.
-  const NO_PARAMS = new Set(["languages_all"]);
+  // Queries with nothing to scope by. languages_all is the organisation's
+  // catalogue; the admin ones are unscoped BY DESIGN — see admin.test.mjs.
+  const NO_PARAMS = new Set(["languages_all", "admin_users", "admin_partners",
+                             "admin_count_admins"]);
 
   for (const [name, sql] of Object.entries(QUERIES)) {
     const r = toPositional(sql, params);

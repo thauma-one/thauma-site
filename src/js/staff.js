@@ -502,8 +502,13 @@
       $('partnerPill').title = who.email || '';
     }
 
-    var roles = (who.roles || []).map(function (r) { return ROLE_LABEL[r] || r; });
+    var raw = who.roles || [];
+    var roles = raw.map(function (r) { return ROLE_LABEL[r] || r; });
     if (roles.length && $('userRole')) $('userRole').textContent = roles.join(' · ');
+
+    // The door to administration, shown only to people who can open it. The
+    // endpoint refuses everyone else regardless — this is about not offering.
+    if ($('toAdmin')) $('toAdmin').hidden = raw.indexOf('admin') < 0;
   }
 
   /* Called by any page whose data included an identity block. */

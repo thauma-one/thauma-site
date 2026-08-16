@@ -1,0 +1,45 @@
+---
+layout: layouts/admin.njk
+adminPage: users
+adminNum: "02"
+adminTitle: People
+adminHeading: Who can <b>do what</b>
+adminHint: roles are org-wide; partner access is granted separately
+permalink: /admin/users/index.html
+---
+<div class="ms-bar">
+  <button type="button" class="solid-btn" id="admAddUser" data-i18n="adm.addPerson">Add person</button>
+</div>
+
+{#- Said before anyone adds somebody and wonders why they cannot sign in.
+   Two systems have to agree, and this is only one of them. -#}
+<p class="note">
+  <b>Adding somebody here does not let them in.</b> They must also exist in
+  Cloudflare Access, and their status must be <em>active</em>. Two doors on
+  purpose — a mistake on this page grants nothing on its own.
+</p>
+
+<form class="ms-form adm-form" id="admUserForm" hidden>
+  <div class="ms-grid">
+    <label class="fld">
+      <span data-i18n="adm.name">Name</span>
+      <input type="text" id="admName" maxlength="200" required>
+    </label>
+    <label class="fld">
+      <span data-i18n="adm.email">Email</span>
+      <input type="email" id="admEmail" maxlength="200" required>
+    </label>
+  </div>
+  <p class="note-inline" data-i18n="adm.emailNote">
+    The email is how Cloudflare Access is matched to this record, so it cannot
+    be changed later. Remove and re-invite instead — which leaves a trace.
+  </p>
+  <div class="ms-actions">
+    <button type="submit" class="solid-btn" data-i18n="adm.invite">Invite</button>
+    <button type="button" class="ghost-btn" id="admCancel" data-i18n="ms.cancel">Cancel</button>
+  </div>
+</form>
+
+<div class="adm-people" id="admPeople">
+  <p class="empty" data-i18n="common.loading">Loading…</p>
+</div>

@@ -14,7 +14,10 @@ module.exports = function (eleventyConfig) {
   eleventyConfig.addPassthroughCopy({ "src/js": "js" });
   eleventyConfig.addPassthroughCopy({ "src/img": "img" });
   eleventyConfig.addPassthroughCopy({ "src/fonts": "fonts" });
-  eleventyConfig.addPassthroughCopy({ "src/admin": "admin" });
+  // src/admin was Decap CMS. Git Gateway is a Netlify Identity service, so it
+  // stopped working at the cutover and the directory only served to occupy the
+  // /admin path that the administration area now uses. Removed 2026-08-15;
+  // Phase 3 of the runbook replaces what it did.
   // /staff/ pages are Eleventy templates now (they share layouts/staff.njk),
   // so only their DATA is copied verbatim. Their CSS and JS live in src/css
   // and src/js, which are already passed through above.

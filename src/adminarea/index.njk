@@ -1,0 +1,35 @@
+---
+layout: layouts/admin.njk
+adminPage: index
+adminNum: "01"
+adminTitle: Overview
+adminHeading: The <b>organisation</b>
+adminHint: everything here reaches every partner
+permalink: /admin/index.html
+---
+<div class="tiles" id="admTiles"></div>
+
+<p class="note">
+  <b>Nothing on these pages is scoped to one partner.</b> The staff console
+  shows you your own work; this shows everyone's accounts and access. That is
+  the whole difference between the two areas, and the reason this one looks
+  different.
+</p>
+
+<div class="quick">
+  <a class="quick-card" href="/admin/users/">
+    <span class="qk" data-i18n="adm.nav.users">People</span>
+    <span class="qv tnum" id="admUserCount">—</span>
+    <span class="qs" data-i18n="adm.tile.users">accounts, roles and access</span>
+  </a>
+  <a class="quick-card" href="/admin/partners/">
+    <span class="qk" data-i18n="adm.nav.partners">Partners</span>
+    <span class="qv tnum" id="admPartnerCount">—</span>
+    <span class="qs" data-i18n="adm.tile.partners">sending relationships</span>
+  </a>
+  <a class="quick-card" href="/admin/activity/">
+    <span class="qk" data-i18n="adm.nav.activity">Activity</span>
+    <span class="qv tnum" id="admAuditCount">—</span>
+    <span class="qs" data-i18n="adm.tile.activity">recent recorded actions</span>
+  </a>
+</div>

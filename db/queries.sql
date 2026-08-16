@@ -288,6 +288,97 @@ ON CONFLICT(partner_id, lang) DO UPDATE SET
 
 
 -- ============================================================================
+-- ADMINISTRATION
+-- ============================================================================
+-- Everything here is gated on the caller holding the 'admin' role, checked in
+-- workers/src/admin.js before any of it runs. These queries are NOT
+-- partner-scoped — that is the whole point of them — which makes the role
+-- check the only thing standing between a staff account and the whole
+-- organisation. It is done once, at the top, and every branch runs after it.
+
+-- name: admin_users
+-- Everyone, with their roles and which partners they can reach. Two
+-- GROUP_CONCATs rather than two round trips; the console splits them.
+SELECT
+  u.id, u.email, u.name, u.status, u.created_at, u.last_login_at,
+  COALESCE(u.preferred_lang, 'en') AS preferred_lang,
+  (SELECT GROUP_CONCAT(r.role) FROM user_roles r WHERE r.user_id = u.id) AS roles,
+  (SELECT GROUP_CONCAT(p.display_name, ' | ')
+     FROM partner_users pu JOIN partners p ON p.id = pu.partner_id
+    WHERE pu.user_id = u.id) AS partner_names,
+  (SELECT GROUP_CONCAT(pu.partner_id) FROM partner_users pu WHERE pu.user_id = u.id) AS partner_ids
+FROM users u
+ORDER BY u.status, u.name COLLATE NOCASE;
+
+
+-- name: admin_user_create
+-- Invited, not active. A row here does not grant access on its own: the person
+-- must also exist in Cloudflare Access, and partners_for_user requires
+-- status = 'active'. Two doors, deliberately — adding somebody here by mistake
+-- lets them in nowhere.
+INSERT INTO users (id, email, name, global_role, status, created_at)
+VALUES (:id, :email, :name, 'staff', 'invited', :now);
+
+
+-- name: admin_user_set
+-- Name and status. Email is NOT editable: it is the join to Cloudflare Access,
+-- and changing it here would silently detach the account from the identity
+-- that signs in. Delete and re-invite instead, which leaves a record.
+UPDATE users SET name = :name, status = :status WHERE id = :id;
+
+
+-- name: admin_user_delete
+-- Cascades to user_roles, partner_users and their directory. Deliberate: a
+-- person's private address book should not outlive their account.
+DELETE FROM users WHERE id = :id;
+
+
+-- name: admin_role_grant
+INSERT OR IGNORE INTO user_roles (user_id, role, granted_by, granted_at)
+VALUES (:user_id, :role, :granted_by, :now);
+
+
+-- name: admin_role_revoke
+DELETE FROM user_roles WHERE user_id = :user_id AND role = :role;
+
+
+-- name: admin_partner_grant
+INSERT OR IGNORE INTO partner_users (partner_id, user_id, role, granted_by, granted_at)
+VALUES (:partner_id, :user_id, :role, :granted_by, :now);
+
+
+-- name: admin_partner_revoke
+DELETE FROM partner_users WHERE partner_id = :partner_id AND user_id = :user_id;
+
+
+-- name: admin_partners
+SELECT p.id, p.slug, p.display_name, p.status,
+       COALESCE(p.default_lang, 'en') AS default_lang,
+       (SELECT COUNT(*) FROM partner_users pu WHERE pu.partner_id = p.id) AS member_count
+FROM partners p
+ORDER BY p.display_name COLLATE NOCASE;
+
+
+-- name: admin_count_admins
+-- Used before removing the admin role or an account. An organisation with no
+-- administrator cannot appoint one — the screen that grants roles is itself
+-- admin-only — so the last one is refused rather than left to be discovered.
+SELECT COUNT(*) AS n
+FROM user_roles r JOIN users u ON u.id = r.user_id
+WHERE r.role = 'admin' AND u.status = 'active';
+
+
+-- name: admin_audit_recent
+-- Org-wide, unlike audit_recent_for_partner. Reading it is itself an admin act.
+SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
+       a.partner_id, COALESCE(u.name, a.user_id) AS actor
+FROM audit_log a
+LEFT JOIN users u ON u.id = a.user_id
+ORDER BY a.at DESC
+LIMIT :limit;
+
+
+-- ============================================================================
 -- DIRECTORY (per person) and RESOURCES (shared, with levels)
 -- ============================================================================
 

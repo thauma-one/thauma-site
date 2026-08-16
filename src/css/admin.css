@@ -1,0 +1,103 @@
+/* ============================================================
+   admin.css — the administration area
+   ============================================================
+   Loaded AFTER staff.css and only on /admin/. Everything here
+   either overrides the staff console's identity or adds
+   something the staff console has no equivalent of.
+
+   The two areas must be distinguishable at a glance, and the
+   difference is carried three ways so it survives being seen in
+   a hurry, in greyscale, or by someone who does not perceive
+   colour the way the designer does:
+
+     the wordmark says ADMINISTRATION
+     the accent is amber rather than blue
+     a stripe runs the full width above the header
+
+   Any one of those alone would be missable. Together they are
+   not.
+   ============================================================ */
+
+/* Amber where the staff console is blue. Scoped to .is-admin so the shared
+   stylesheet needs no branching — the tokens change, the components do not. */
+.is-admin{
+  --voice-tech:      #F5B845;
+  --voice-tech-hi:   #FFD584;
+  --voice-tech-dim:  rgba(245,184,69,.14);
+  --voice-tech-glow: 0 0 26px rgba(245,184,69,.3);
+}
+
+/* The stripe. Above the header, full width, on every admin page and no
+   staff one. */
+.admin-stripe{position:fixed;top:0;left:0;right:0;height:3px;z-index:50;
+  background:linear-gradient(90deg,#F5B845,#FFD584 45%,#F5B845)}
+.is-admin .top{top:3px}
+.is-admin body{padding-top:3px}
+
+.mark em{color:var(--voice-tech)}
+
+/* The way back to the staff console. Present in the header of every admin
+   page: an area you can enter and not obviously leave is how people end up
+   working in the wrong one. */
+.area-switch{font-size:var(--fs-tiny);color:var(--dim);text-decoration:none;
+  border:1px solid var(--line-hard);border-radius:var(--radius);
+  padding:6px 12px;white-space:nowrap;transition:.2s}
+@media(hover:hover){
+  .area-switch:hover{color:var(--text);border-color:var(--voice-tech)}
+}
+
+/* ---- people ---- */
+.adm-people{display:flex;flex-direction:column;gap:1px;background:var(--line);
+  border:1px solid var(--line)}
+.adm-person{background:var(--panel);padding:22px 24px}
+/* Someone who cannot sign in should look like it, not merely say so in a
+   dropdown further down the row. */
+.adm-person.is-inactive{opacity:.62}
+.adm-person-head{display:flex;justify-content:space-between;align-items:flex-start;
+  gap:20px;flex-wrap:wrap}
+.adm-name{display:block;color:var(--text);font-size:var(--fs-md)}
+.adm-email{display:block;color:var(--dim);font-size:var(--fs-tiny);margin-top:3px}
+.adm-person-actions{display:flex;gap:10px;align-items:center}
+
+.adm-section{margin-top:20px;padding-top:16px;border-top:1px solid var(--line)}
+.adm-label{display:block;font-size:10px;letter-spacing:var(--ls-label);
+  text-transform:uppercase;font-weight:var(--w-bold);color:var(--voice-tech);
+  margin-bottom:12px}
+.adm-roles{display:flex;gap:26px;flex-wrap:wrap}
+/* Smaller switches: three per person, and the full-size control would make a
+   list of people unreadably tall. */
+.switch.small .switch-track{width:50px;height:24px}
+.switch.small .switch-knob{width:18px;height:18px}
+.switch.small[aria-checked="true"] .switch-knob{left:calc(100% - 21px)}
+.switch.small .switch-state{font-size:8px}
+
+.adm-chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip-toggle{background:none;border:1px solid var(--line-hard);color:var(--dim);
+  font-family:var(--font-body);font-size:var(--fs-tiny);padding:7px 13px;
+  border-radius:var(--radius);cursor:pointer;transition:.2s}
+.chip-toggle.on{border-color:var(--voice-human);color:var(--voice-human);
+  background:var(--voice-human-dim)}
+@media(hover:hover){ .chip-toggle:hover{border-color:var(--text);color:var(--text)} }
+.adm-chips + .switch-note{margin-top:10px}
+
+.status-pick,.adm-person-actions .del{background:var(--bg2,#0b1119);
+  border:1px solid rgba(255,255,255,.14);color:var(--text);
+  font-family:var(--font-body);font-size:var(--fs-tiny);padding:7px 10px;
+  border-radius:var(--radius);cursor:pointer}
+@media(hover:hover){
+  .adm-person-actions .del:hover{border-color:var(--crit,#FF6B6B);color:var(--crit,#FF6B6B)}
+}
+
+/* ---- partners ---- */
+.adm-partners{display:flex;flex-direction:column;gap:1px;background:var(--line);
+  border:1px solid var(--line)}
+.adm-partner{background:var(--panel);padding:22px 24px;display:grid;
+  grid-template-columns:1fr minmax(0,300px);gap:28px;align-items:center}
+.adm-partner .fld span{color:var(--voice-tech)}
+
+.adm-form{margin-bottom:24px}
+
+@media (max-width:760px){
+  .adm-partner{grid-template-columns:1fr;gap:14px}
+  .adm-roles{gap:16px}
+}

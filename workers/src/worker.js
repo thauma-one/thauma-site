@@ -36,6 +36,7 @@ import contactForm from "./contact-form.js";
 import partnerApi from "./partner-api.js";
 import staffMilestones from "./staff-milestones.js";
 import staffSettings from "./staff-settings.js";
+import adminApi from "./admin.js";
 import { createDb, partnerSnapshot, assertPublicSafe } from "./lib/db.js";
 import { requireAccess } from "./lib/access.js";
 import { json } from "./lib/store.js";
@@ -90,6 +91,10 @@ const ROUTES = {
   "/api/staff-milestones": staffMilestones,
   "/api/staff-settings": staffSettings,
 
+  // ORG-WIDE, and the only endpoint that is not partner-scoped. Its role
+  // check is done once at the top of the handler and fails closed.
+  "/api/admin": adminApi,
+
   // THE ONLY ROUTE A CREDENTIAL OUTSIDE THAUMA CAN REACH. Key-authenticated,
   // public-safe by construction, versioned in the path so a breaking change
   // becomes /v2 rather than a broken partner site. See partner-api.js.
@@ -125,10 +130,16 @@ export default {
     // beneath them must fall through, or the site would redirect forever.
     if (url.pathname === "/") return langRedirect.fetch(request, env, ctx);
 
-    // Everything under /staff — pages, CSS, and crucially the snapshot JSON —
-    // requires a valid Access token. Fails closed: no token, no config, or a
-    // token for a different application all mean 401.
-    if (url.pathname === "/staff" || url.pathname.startsWith("/staff/")) {
+    // Everything under /staff and /admin requires a valid Access token. Fails
+    // closed: no token, no config, or a token for a different application all
+    // mean 401.
+    //
+    // Access authenticates; it does not authorise. /admin's pages are gated
+    // here so a stranger cannot read them, and its ENDPOINT separately refuses
+    // anyone without the admin role — the pages are just markup, and the data
+    // is what matters.
+    if (url.pathname === "/staff" || url.pathname.startsWith("/staff/") ||
+        url.pathname === "/admin" || url.pathname.startsWith("/admin/")) {
       const { denied } = await requireAccess(request, env);
       if (denied) return denied;
     }
