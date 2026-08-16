@@ -124,6 +124,16 @@ ACCESS_AUD = "da1b6265b663e9152e863952d84ead73be8f8f8aa9b2ac90f50404ba707219f8,0
 CONTACT_TO = "admin@thauma.one"
 CONTACT_FROM = "Thauma <noreply@thauma.one>"
 
+# The content editor commits to this repository. The TOKEN is a secret and goes
+# in with `wrangler secret put GITHUB_TOKEN`; these two are not — they name a
+# repository and a branch, and neither authorises anything on its own.
+#
+# CONTENT_BRANCH IS THE SAFETY CATCH. Staging and local dev write to `dev`, so
+# an edit made while trying the editor out cannot reach the live site. Only
+# [env.production] writes to `main`, where the Action publishes it.
+GITHUB_REPO = "thauma-one/thauma-site"
+CONTENT_BRANCH = "dev"
+
 # ---------------------------------------------------------------------------
 # Scheduled work — replaces Netlify's schedule() wrapper.
 # Nothing is scheduled for Thauma yet; the CR migration will need these.
@@ -228,6 +238,12 @@ ACCESS_AUD = "04468ad531e25f3c53af5d0b4ed0bdd3073241f76a070c741efe40f58019fdfb,d
 CONTACT_TO = "admin@thauma.one"
 CONTACT_FROM = "Thauma <noreply@thauma.one>"
 
+# Local dev commits to `dev`, and only if a GITHUB_TOKEN is present in .dev.vars
+# — which it should not normally be. Without one the editor loads and says it is
+# not connected, which is the right state for a machine under a desk.
+GITHUB_REPO = "thauma-one/thauma-site"
+CONTENT_BRANCH = "dev"
+
 
 # ---------------------------------------------------------------------------
 # PRODUCTION
@@ -297,3 +313,13 @@ ACCESS_AUD = "b0c56c5b0e4009cd1d5e47025966abb413ff1dabe5244e5480a18170ba6b6602"
 
 CONTACT_TO = "admin@thauma.one"
 CONTACT_FROM = "Thauma <noreply@thauma.one>"
+
+# THE ONLY ENVIRONMENT THAT COMMITS TO `main`. A save in the production console
+# is a commit on the branch the deploy Action watches, so saving publishes —
+# which is the point, and the reason every other environment writes to `dev`.
+#
+# CONSEQUENCE FOR DEVELOPMENT: copy edited here lands on `main`, not on `dev`.
+# Pull `main` into `dev` before working on the site's words, or the next merge
+# presents somebody's content edit as a conflict.
+GITHUB_REPO = "thauma-one/thauma-site"
+CONTENT_BRANCH = "main"

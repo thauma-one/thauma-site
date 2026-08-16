@@ -1,0 +1,63 @@
+---
+layout: layouts/admin.njk
+adminPage: content
+adminNum: "04"
+adminTitle: Content
+adminHeading: The site's <b>words</b>
+adminHint: every string on the public site, in every language
+adminScript: /js/admin-content.js?v=1
+permalink: /admin/content/index.html
+---
+{#- The editor that replaced Decap. Decap died with Netlify Identity at the
+   2026-08-15 cutover, and this is the piece that had been missing since.
+
+   ONE LANGUAGE AT A TIME, with English beside it for reference. Copy is
+   written by a person working in one language; three editable columns is a
+   spreadsheet, and a spreadsheet is not how anybody writes a sentence.
+   English shows because a translator needs the source, and it is read-only
+   here for the same reason the columns are not all editable — you are working
+   on one language, and the other is context. -#}
+
+<div class="ms-bar c-bar">
+  <label class="c-pick">
+    <span data-i18n="con.editing">Editing</span>
+    <select id="cLang" disabled></select>
+  </label>
+  <label class="c-pick" id="cRefWrap" hidden>
+    <span data-i18n="con.reference">Reference</span>
+    <select id="cRef" disabled></select>
+  </label>
+  <span class="hint" id="cWhere"></span>
+</div>
+
+<p class="note" id="cNote">
+  <b>Saving here makes a commit.</b> The site's words live in the repository,
+  not the database — Eleventy reads them when it builds. A save writes the file,
+  the deploy runs, and the change is live a minute or two later. There is no
+  separate publish step.
+</p>
+
+{#- Shown instead of the editor when GITHUB_TOKEN is absent. A page that says
+   what is missing is worth more than one that fails to load, especially since
+   the missing thing is a deliberate act somebody has to perform. -#}
+<p class="rolegate" id="cNotConfigured" hidden></p>
+
+<div class="adm-content" id="cRoot" hidden>
+  <nav class="c-sections" id="cSections" aria-label="Sections"></nav>
+  <div class="c-panel">
+    <div class="c-search">
+      <input type="search" id="cFind" autocomplete="off"
+             placeholder="Find a word or phrase…" data-i18n-attr="placeholder:con.find">
+      <span class="c-count" id="cCount"></span>
+    </div>
+    <div class="c-rows" id="cRows"></div>
+  </div>
+</div>
+
+<div class="ms-savebar" id="cSaveBar" role="status" aria-live="polite" hidden>
+  <span class="ms-dirty-dot" aria-hidden="true"></span>
+  <span id="cDirtyCount">0 unsaved changes</span>
+  <span class="ms-savebar-note" id="cSaveNote"></span>
+  <button type="button" class="ghost-btn" id="cDiscard" data-i18n="ms.discard">Discard</button>
+  <button type="button" class="solid-btn" id="cSave" data-i18n="con.commit">Save &amp; publish</button>
+</div>

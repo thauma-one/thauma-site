@@ -62,7 +62,8 @@
       // NOT an error. This account simply is not an administrator, and the
       // page says so plainly rather than shouting about a failure.
       if ($('notAdmin')) $('notAdmin').hidden = false;
-      document.querySelectorAll('.adm-people, .adm-partners, .audit, .tiles, .quick, .ms-bar')
+      document.querySelectorAll('.adm-people, .adm-partners, .adm-content, .adm-site, ' +
+                                '.audit, .tiles, .quick, .ms-bar, .ms-savebar, .note')
         .forEach(function (el) { el.hidden = true; });
       if (window.StaffProblemClear) window.StaffProblemClear();
       return;

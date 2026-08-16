@@ -168,3 +168,128 @@
 }
 .adm-partner{grid-template-columns:1fr minmax(0,260px) auto}
 @media (max-width:760px){ .adm-partner{grid-template-columns:1fr} }
+
+
+/* ============================================================
+   CONTENT — the site's words
+   ============================================================
+   A two-column working surface: sections down the left, the
+   strings in the chosen one on the right.
+
+   THE LEFT RAIL IS NOT DECORATION. There are 210 strings in
+   each language file. A flat list of 210 text boxes is not
+   editable by a person — you cannot find the sentence you came
+   for, and you cannot tell how much of the file you have been
+   through. Sections carry both: they are the pages of the site,
+   in the order the site has them, and each says how many
+   strings it holds and how many are still empty.
+   ============================================================ */
+
+.c-bar{display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+.c-pick{display:flex;align-items:center;gap:10px;font-size:var(--fs-tiny);
+  color:var(--dim);text-transform:uppercase;letter-spacing:var(--ls-caps);
+  font-family:var(--font-display);font-weight:var(--w-bold)}
+.c-pick select{min-width:150px}
+.c-bar .hint{margin-left:auto;font-family:var(--font-mono);font-size:var(--fs-micro);
+  color:var(--dim);opacity:.7}
+
+.adm-content{display:grid;grid-template-columns:minmax(180px,220px) minmax(0,1fr);
+  gap:24px;align-items:start;margin-top:24px}
+
+.c-sections{display:flex;flex-direction:column;gap:2px;position:sticky;top:88px}
+.c-sec{display:flex;align-items:center;gap:8px;width:100%;text-align:left;
+  background:none;border:1px solid transparent;border-radius:var(--radius);
+  padding:9px 12px;cursor:pointer;color:var(--dim);font-family:var(--font-body);
+  font-size:var(--fs-sm);font-weight:var(--w-body);transition:.18s var(--ease-main)}
+.c-sec-n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.c-sec-c{font-size:var(--fs-micro);opacity:.5;font-variant-numeric:tabular-nums}
+/* Empty strings are the thing you are looking for when translating, so the
+   count of them is on the section rather than only inside it. */
+.c-sec-empty{font-size:var(--fs-micro);color:var(--warn,#F5B845);
+  background:var(--warn-dim,rgba(245,184,69,.14));border-radius:999px;
+  padding:1px 7px;font-variant-numeric:tabular-nums}
+@media(hover:hover){ .c-sec:hover{color:var(--text);border-color:var(--line-hard)} }
+.c-sec.is-on{color:var(--text);background:var(--panel);border-color:var(--line-hard)}
+.c-sec.is-dirty{box-shadow:inset 3px 0 0 var(--warn,#F5B845)}
+
+.c-panel{min-width:0}
+.c-search{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.c-search input{flex:1;min-width:0}
+.c-count{font-size:var(--fs-tiny);color:var(--dim);white-space:nowrap}
+
+.c-rows{display:flex;flex-direction:column;gap:2px;background:var(--line);
+  border:1px solid var(--line)}
+.c-row{background:var(--panel);padding:16px 18px;display:grid;gap:6px 20px;
+  grid-template-columns:minmax(140px,190px) minmax(0,1fr)}
+/* With a reference language showing, the source and the translation sit side
+   by side under one key. Without one, the box takes the whole width. */
+.c-row:has(.c-ref){grid-template-columns:minmax(140px,190px) minmax(0,1fr) minmax(0,1fr)}
+.c-row.is-dirty{box-shadow:inset 3px 0 0 var(--warn,#F5B845)}
+
+.c-key{display:flex;flex-direction:column;align-items:flex-start;gap:6px;
+  padding-top:6px}
+.c-key code{font-family:var(--font-mono);font-size:var(--fs-micro);
+  color:var(--dim);word-break:break-word;line-height:1.5}
+
+.c-lang{display:block;font-family:var(--font-display);font-size:9px;
+  letter-spacing:var(--ls-caps);text-transform:uppercase;
+  font-weight:var(--w-bold);color:var(--dim);opacity:.6;margin-bottom:5px}
+
+/* Read-only, and looks it. A reference column that looked editable would be
+   typed into, and the typing would be silently discarded on save. */
+.c-ref-val{font-size:var(--fs-tiny);color:var(--dim);line-height:var(--lh-body);
+  white-space:pre-wrap;padding:8px 0;border-left:1px solid var(--line-hard);
+  padding-left:14px}
+.c-ref-val.is-empty{font-style:italic;opacity:.5}
+
+.c-edit textarea{width:100%;display:block;resize:vertical;min-height:38px;
+  line-height:var(--lh-body);font-family:var(--font-body);font-size:var(--fs-tiny)}
+
+.c-rows .empty{background:var(--panel);padding:28px;text-align:center;
+  color:var(--dim);font-size:var(--fs-tiny)}
+
+@media (max-width:900px){
+  .adm-content{grid-template-columns:1fr}
+  .c-sections{position:static;flex-direction:row;flex-wrap:wrap}
+  .c-sec{width:auto}
+  .c-row,.c-row:has(.c-ref){grid-template-columns:1fr}
+  .c-ref-val{border-left:0;padding-left:0}
+}
+
+
+/* ============================================================
+   SITE — site.json as a form
+   ============================================================ */
+
+.adm-site{display:flex;flex-direction:column;gap:28px;margin-top:24px}
+.s-group{background:var(--panel);border:1px solid var(--line);
+  border-radius:var(--radius);padding:6px 24px 20px}
+.s-group h3{font-family:var(--font-display);font-size:var(--fs-micro);
+  letter-spacing:var(--ls-caps);text-transform:uppercase;
+  font-weight:var(--w-bold);color:var(--voice-tech);margin:20px 0 6px}
+
+.s-field{display:grid;grid-template-columns:minmax(200px,1fr) minmax(0,320px);
+  gap:12px 24px;align-items:center;padding:14px 0;
+  border-top:1px solid var(--line)}
+.s-group h3 + .s-field{border-top:0}
+.s-field.is-dirty{box-shadow:inset 3px 0 0 var(--warn,#F5B845)}
+.s-field.is-frozen{opacity:.62}
+
+.s-label{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px}
+.s-label code{font-family:var(--font-mono);font-size:var(--fs-tiny);color:var(--text)}
+.s-hint{flex-basis:100%;font-size:var(--fs-micro);color:var(--dim);
+  line-height:var(--lh-body)}
+
+.s-control{justify-self:end;width:100%;max-width:320px}
+.s-control input,.s-control select{width:100%}
+.s-control .switch{justify-self:end;margin-left:auto}
+/* A value that is shown but cannot be changed here. Monospace and boxed so it
+   reads as a fact about the file rather than as a control that is broken. */
+.s-frozen{display:inline-block;font-family:var(--font-mono);
+  font-size:var(--fs-micro);color:var(--dim);background:var(--bg2);
+  border:1px solid var(--line);border-radius:var(--radius);padding:7px 11px}
+
+@media (max-width:760px){
+  .s-field{grid-template-columns:1fr}
+  .s-control{justify-self:start}
+}

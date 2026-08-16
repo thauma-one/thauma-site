@@ -1,0 +1,40 @@
+---
+layout: layouts/admin.njk
+adminPage: site
+adminNum: "05"
+adminTitle: Site
+adminHeading: Site <b>settings</b>
+adminHint: the switches the public site is built from
+adminScript: /js/admin-site.js?v=1
+permalink: /admin/site/index.html
+---
+{#- site.json, as a form.
+
+   Rendered from the FILE rather than from a hand-written list of fields, so a
+   key added to site.json appears here without anyone remembering to add it.
+   The control follows the type: a boolean gets the same switch the console
+   uses everywhere, a number gets a number box, a string gets a text box. The
+   endpoint refuses a type change, so those three cases are the whole space.
+
+   THE SAVE MODEL IS THE SAME AS THE CONTENT EDITOR'S, and different from
+   Settings in the staff console. Settings saves immediately because each
+   control is one decision against a database row. Every control here is a
+   commit, and a commit is a deploy — so the changes gather and go together. -#}
+
+<p class="note" id="sNote">
+  <b>These are the site's build settings.</b> Saving commits the file and the
+  deploy publishes it, so a change here reaches the public site a minute or two
+  later. Nothing takes effect until you save.
+</p>
+
+<p class="rolegate" id="sNotConfigured" hidden></p>
+
+<div class="adm-site" id="sRoot" hidden></div>
+
+<div class="ms-savebar" id="sSaveBar" role="status" aria-live="polite" hidden>
+  <span class="ms-dirty-dot" aria-hidden="true"></span>
+  <span id="sDirtyCount">0 unsaved changes</span>
+  <span class="ms-savebar-note" id="sSaveNote"></span>
+  <button type="button" class="ghost-btn" id="sDiscard" data-i18n="ms.discard">Discard</button>
+  <button type="button" class="solid-btn" id="sSave" data-i18n="con.commit">Save &amp; publish</button>
+</div>

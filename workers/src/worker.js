@@ -37,6 +37,7 @@ import partnerApi from "./partner-api.js";
 import staffMilestones from "./staff-milestones.js";
 import staffSettings from "./staff-settings.js";
 import adminApi from "./admin.js";
+import adminContent from "./admin-content.js";
 import { createDb, partnerSnapshot, assertPublicSafe } from "./lib/db.js";
 import { requireAccess } from "./lib/access.js";
 import { json } from "./lib/store.js";
@@ -94,6 +95,12 @@ const ROUTES = {
   // ORG-WIDE, and the only endpoint that is not partner-scoped. Its role
   // check is done once at the top of the handler and fails closed.
   "/api/admin": adminApi,
+
+  // THE ONLY ENDPOINT THAT CAN WRITE TO THE REPOSITORY. It holds a GitHub
+  // token, so a save here becomes a commit and the Action deploys it. Admin
+  // role, a derived path that no request can influence, and leaf-level edits
+  // only — see admin-content.js.
+  "/api/admin/content": adminContent,
 
   // THE ONLY ROUTE A CREDENTIAL OUTSIDE THAUMA CAN REACH. Key-authenticated,
   // public-safe by construction, versioned in the path so a breaking change

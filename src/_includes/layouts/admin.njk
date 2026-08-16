@@ -19,6 +19,8 @@
   { slug: "index",     url: "/admin/",          label: "Overview" },
   { slug: "users",     url: "/admin/users/",    label: "People" },
   { slug: "partners",  url: "/admin/partners/", label: "Partners" },
+  { slug: "content",   url: "/admin/content/",  label: "Content" },
+  { slug: "site",      url: "/admin/site/",     label: "Site" },
   { slug: "activity",  url: "/admin/activity/", label: "Activity" }
 ] -%}
 <!DOCTYPE html>
@@ -30,7 +32,7 @@
 <title>{{ adminTitle }} · Thauma Administration</title>
 <link rel="stylesheet" href="/css/tokens.css">
 <link rel="stylesheet" href="/css/staff.css?v=22">
-<link rel="stylesheet" href="/css/admin.css?v=5">
+<link rel="stylesheet" href="/css/admin.css?v=6">
 <link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
 </head>
 <body class="is-admin" data-admin-page="{{ adminPage }}">
@@ -78,8 +80,13 @@
   {{ content | safe }}
 </main>
 
-<script src="/js/staff-i18n.js?v=13"></script>
+<script src="/js/staff-i18n.js?v=14"></script>
 <script src="/js/staff.js?v=17"></script>
-<script src="/js/admin.js?v=5"></script>
+<script src="/js/admin.js?v=6"></script>
+{#- Page-specific behaviour, loaded only where it is used. admin.js is the
+   shared shell — identity, the role gate, the pages that read /api/admin.
+   Content and Site talk to a different endpoint and have nothing in common
+   with it beyond the layout. -#}
+{%- if adminScript %}<script src="{{ adminScript }}"></script>{% endif %}
 </body>
 </html>
