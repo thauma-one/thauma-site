@@ -123,6 +123,7 @@ export default {
           name: partner.user_name || null,
           roles: String(partner.roles || "staff").split(","),
         },
+        partner: { id: partner.id, display_name: partner.display_name },
         // Named so the screen can say whose these are, rather than implying
         // they are everyone's.
         owner: { email: user.email },

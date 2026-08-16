@@ -279,7 +279,7 @@
         if ($('resourceList')) $('resourceList').innerHTML = '<p class="empty">' + esc(why) + '</p>';
         return;
       }
-      if (body.you) rememberIdentity(body.you);
+      if (body.you) rememberIdentity(body.you, body.partner);
       state.contacts = body.contacts || [];
       state.resources = body.resources || [];
       state.canSetVisibility = !!(body.can && body.can.set_visibility);
@@ -460,22 +460,31 @@
                       and present on others. */
   var IDENT = 'thauma.staff.who';
 
+  /* THE HEADER SAYS WHO YOU ARE, ONCE.
+
+     The pill carries the signed-in person's NAME; the block beside it carries
+     their role. Both used to show the name, which is a thing said twice, and
+     the pill previously showed the PARTNER — so on one screen it read
+     "Chase Roush" while the block read "Org Admin" and the two looked like a
+     contradiction rather than two different facts.
+
+     Which partner's records are on screen is a real thing to know, but it
+     belongs where it has room to be labelled: Settings says "Working with X".
+     It matters more once an admin can view several, and a bare name in a
+     corner is the wrong place to learn that. */
+  var ROLE_LABEL = { admin: 'Administration', staff: 'Staff', board: 'Board' };
+
   function paintIdentity(who) {
     if (!who) return;
-    if (who.name) $('userName').textContent = who.name;
-    // The role sits under the name. The email is on Settings, where there is
-    // room for it; up here it would be the longest thing in the header.
-    var LABEL = { admin: 'Administration', staff: 'Staff', board: 'Board' };
-    var roles = (who.roles || []).map(function (r) { return LABEL[r] || r; });
-    if (roles.length) $('userRole').textContent = roles.join(' · ');
-    $('userName').title = who.email || '';
 
-    // The partner pill, on every page rather than only the ones that load a
-    // snapshot — it is a fact about the session, not about the screen.
-    if (who.partner_name && $('partnerPill')) {
-      $('partnerPill').textContent = who.partner_name;
+    if (who.name && $('partnerPill')) {
+      $('partnerPill').textContent = who.name;
       $('partnerPill').hidden = false;
+      $('partnerPill').title = who.email || '';
     }
+
+    var roles = (who.roles || []).map(function (r) { return ROLE_LABEL[r] || r; });
+    if (roles.length && $('userRole')) $('userRole').textContent = roles.join(' · ');
   }
 
   /* Called by any page whose data included an identity block. */
@@ -498,20 +507,25 @@
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (id) {
         if (!id) throw new Error('no identity');
-        // Only fills gaps — a name from our own records outranks whatever the
-        // identity provider happens to carry.
-        if (!$('userName').textContent || $('userName').textContent === '—') {
-          $('userName').textContent = id.name || id.email || tr('common.signedIn');
+        // Only fills a gap. A name from our own records outranks whatever the
+        // identity provider happens to carry, which is often an email and
+        // nothing else — that difference is why the header used to show a
+        // name on some pages and not others.
+        var pill = $('partnerPill');
+        if (pill && pill.hidden) {
+          pill.textContent = id.name || id.email || tr('common.signedIn');
+          pill.title = id.email || '';
+          pill.hidden = false;
         }
-        if (!$('userRole').textContent || $('userRole').textContent === '—') {
-          $('userRole').textContent = id.email && id.name ? id.email : 'Cloudflare Access';
+        if ($('userRole') && !$('userRole').textContent) {
+          $('userRole').textContent = 'Cloudflare Access';
         }
-        $('userName').title = id.email || '';
       })
       .catch(function () {
-        if (!$('userName').textContent || $('userName').textContent === '—') {
-          $('userName').textContent = tr('common.signedIn');
-          $('userRole').textContent = 'Cloudflare Access';
+        var pill = $('partnerPill');
+        if (pill && pill.hidden) {
+          pill.textContent = tr('common.signedIn');
+          pill.hidden = false;
         }
       });
   }

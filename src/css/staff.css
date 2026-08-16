@@ -696,3 +696,15 @@ body.has-savebar .toasts{--toast-lift:var(--ms-savebar-h,72px)}
 .role-tag.board{color:var(--voice-human);border-color:rgba(92,242,196,.35);
   background:var(--voice-human-dim)}
 .role-tag.staff{color:var(--dim)}
+
+/* The pill is who is signed in. Sized so a long name shortens rather than
+   pushing the navigation, with the full value in its title attribute. */
+.pill{color:var(--text);border-color:var(--line-hard);max-width:220px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  text-transform:none;letter-spacing:.02em;font-size:var(--fs-sm);
+  font-weight:var(--w-body);padding:6px 12px}
+.pill[hidden]{display:none}
+/* The role sits beside it, quieter — it qualifies the name rather than
+   competing with it. */
+.who{max-width:180px}
+.who span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
