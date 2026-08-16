@@ -708,3 +708,4 @@ body.has-savebar .toasts{--toast-lift:var(--ms-savebar-h,72px)}
    competing with it. */
 .who{max-width:180px}
 .who span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.who-for{color:var(--text)}

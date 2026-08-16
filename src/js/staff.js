@@ -98,9 +98,18 @@
   // Each block is guarded: a page only has the elements it needs, and a
   // missing one means "not on this page", not "something broke".
   function renderSnapshot(d) {
-    if ($('partnerPill')) {
-      $('partnerPill').textContent = d.partner.display_name;
-      $('partnerPill').hidden = false;
+    /* The pill is NOT written here any more. It carries the signed-in
+       person, and this line — left over from when it carried the partner —
+       overwrote that a moment after the page loaded. It only ran on the four
+       pages that fetch a snapshot, which is exactly why the name reverted on
+       those and held everywhere else.
+
+       Only one place may write to the pill: paintIdentity(). */
+    // Whose records these are — labelled, on the page, where there is room
+    // for the word "for". The pill in the header is who YOU are.
+    if ($('snapshotPartner')) {
+      $('snapshotPartner').textContent = tr('dash.showingFor') + ' ' + d.partner.display_name + '.';
+      $('snapshotPartner').hidden = false;
     }
     if ($('genStamp')) {
       var when = new Date(d.generated_at);

@@ -138,6 +138,7 @@
       'nav.directory': 'Directory', 'nav.resources': 'Resources',
       'nav.activity': 'Activity', 'nav.settings': 'Settings',
       'nav.signout': 'Sign out',
+      "dash.showingFor": "Showing records for",
 
       'ms.add': 'Add milestone', 'ms.apply': 'Apply', 'ms.cancel': 'Cancel',
       'ms.save': 'Save changes', 'ms.discard': 'Discard',
@@ -279,6 +280,7 @@
       'nav.directory': 'Imenik', 'nav.resources': 'Resursi',
       'nav.activity': 'Aktivnost', 'nav.settings': 'Postavke',
       'nav.signout': 'Odjava',
+      "dash.showingFor": "Prikazuju se zapisi za",
 
       'ms.add': 'Dodaj prekretnicu', 'ms.apply': 'Primijeni', 'ms.cancel': 'Odustani',
       'ms.save': 'Spremi promjene', 'ms.discard': 'Odbaci',
@@ -420,6 +422,7 @@
       'nav.directory': 'Именик', 'nav.resources': 'Ресурси',
       'nav.activity': 'Активност', 'nav.settings': 'Подешавања',
       'nav.signout': 'Одјава',
+      "dash.showingFor": "Приказују се записи за",
 
       'ms.add': 'Додај прекретницу', 'ms.apply': 'Примени', 'ms.cancel': 'Откажи',
       'ms.save': 'Сачувај измене', 'ms.discard': 'Одбаци',
