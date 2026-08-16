@@ -12,6 +12,7 @@
 import { memoryStore } from "../src/lib/store.js";
 import * as game from "../src/game-scores.js";
 import * as staff from "../src/staff-data.js";
+import worker from "../src/worker.js";
 
 let pass = 0, fail = 0;
 async function check(name, fn) {
@@ -201,6 +202,51 @@ await check("photo sources go through the same allow-list as links", async () =>
   eq(staff.safeLink("/img/x.jpg"), "/img/x.jpg", "root-relative photo");
   eq(staff.safeLink("https://cdn.example.com/x.jpg"), "https://cdn.example.com/x.jpg", "https photo");
 });
+
+
+/* ---------------------------------------------------------------------------
+   The sign-in page
+
+   Added after /admin/ returned the bare string {"error":"Not authorized"} in a
+   browser window — no explanation and nothing to click, reported as "not
+   authorized with no way to authorize". The cause was a path-scoped Access
+   application; the lesson is that this Worker must not assume the dashboard is
+   configured correctly.
+   --------------------------------------------------------------------------- */
+
+await check("a refused PAGE gets HTML with a way in", async () => {
+  const res = await worker.fetch(
+    new Request("https://dev.thauma.one/admin/", { headers: { Accept: "text/html" } }),
+    { ACCESS_TEAM_DOMAIN: "t.cloudflareaccess.com", ACCESS_AUD: "aud" });
+  eq(res.status, 401, "status");
+  assert((res.headers.get("content-type") || "").includes("text/html"), "must be a page");
+  const body = await res.text();
+  assert(/Sign in/.test(body), "must offer a way in");
+  assert(/href="\/staff\/"/.test(body), "the link must be relative — a built hostname is wrong under wrangler dev");
+});
+
+await check("a refused API CALL still gets JSON", async () => {
+  // A redirect or an HTML body here would break every fetch() in the console
+  // silently. Those callers handle 401 correctly already.
+  for (const path of ["/api/admin", "/api/staff-snapshot", "/api/admin/content"]) {
+    const res = await worker.fetch(
+      new Request("https://dev.thauma.one" + path, { headers: { Accept: "application/json" } }),
+      { ACCESS_TEAM_DOMAIN: "t.cloudflareaccess.com", ACCESS_AUD: "aud" });
+    eq(res.status, 401, path + " status");
+    assert(!(res.headers.get("content-type") || "").includes("text/html"),
+           path + " must not answer a program with a web page");
+  }
+});
+
+await check("a page request from a script is not given HTML", async () => {
+  // fetch() without an Accept header must get JSON, not the sign-in page.
+  const res = await worker.fetch(
+    new Request("https://dev.thauma.one/admin/"),
+    { ACCESS_TEAM_DOMAIN: "t.cloudflareaccess.com", ACCESS_AUD: "aud" });
+  eq(res.status, 401, "status");
+  assert(!(res.headers.get("content-type") || "").includes("text/html"), "should be JSON");
+});
+
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

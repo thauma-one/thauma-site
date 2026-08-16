@@ -91,6 +91,91 @@ async function staffSnapshot(request, env) {
     { ...snap, partner: partners[0], generated_at: new Date().toISOString() }, actor));
 }
 
+
+/**
+ * A refused PAGE gets a sign-in page. A refused API call still gets JSON.
+ *
+ * THE BUG THIS FIXES, found 2026-08-16: visiting /admin/ returned the bare
+ * string {"error":"Not authorized"} in the browser window. No explanation, no
+ * link, nothing to click — "not authorized with no way to authorize", which is
+ * exactly how it was reported.
+ *
+ * The cause is that Cloudflare Access applications are PATH-SCOPED and the
+ * application covers `staff`. So /staff/ is intercepted at the edge and gets a
+ * real login, while /admin/ is not intercepted at all — the request arrives
+ * here with no token, and this Worker's own gate refuses it. The runbook warned
+ * about exactly this and it happened anyway, which is a good argument for the
+ * Worker not depending on the dashboard being right.
+ *
+ * The correct fix is to widen the Access application. This exists so that when
+ * it is wrong — or a session simply expires — somebody gets a door instead of a
+ * error message in JSON.
+ *
+ * ONLY FOR PAGES. An API route returning a redirect or an HTML body would break
+ * every fetch() in the console silently, and those callers handle 401 properly
+ * already.
+ */
+function signInPage(request, env, url) {
+  const wantsHtml = (request.headers.get("accept") || "").includes("text/html");
+  if (!wantsHtml) return null;
+
+  /* THE BUTTON GOES TO /staff/, NOT TO A CONSTRUCTED LOGIN URL.
+     
+     The obvious implementation is a link to
+     /cdn-cgi/access/login/<hostname>?redirect_url=… — and building it needs a
+     hostname this code cannot reliably know. Measured 2026-08-16: under
+     `wrangler dev` BOTH url.hostname and the Host header come back as the
+     route in wrangler.toml (next.thauma.one) whatever the browser asked for,
+     so the link would send somebody to a different site's sign-in page.
+
+     /staff/ is covered by an Access application, so visiting it triggers a
+     real login. Access then sets CF_Authorization across the parent domain,
+     and this Worker verifies that token itself on every path — so once signed
+     in, /admin/ works too. A relative link cannot point at the wrong host.
+
+     One extra click, and it is correct on every hostname without knowing which
+     one it is on. */
+
+  const body = `<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sign in &middot; Thauma</title>
+<style>
+  body{margin:0;min-height:100vh;display:flex;align-items:center;
+       justify-content:center;background:#0B0F15;color:#EDF2F8;
+       font-family:system-ui,-apple-system,'Segoe UI',sans-serif;padding:24px}
+  .card{max-width:440px;width:100%}
+  .mark{font-size:13px;letter-spacing:3px;color:#8A96A6;margin-bottom:20px}
+  h1{font-size:24px;font-weight:300;margin:0 0 12px;line-height:1.3}
+  p{color:#8A96A6;font-size:14px;line-height:1.7;margin:0 0 20px}
+  a.btn{display:inline-block;background:#2FD8FF;color:#06110c;padding:13px 26px;
+        border-radius:8px;text-decoration:none;font-weight:600;font-size:15px}
+  a.alt{color:#2FD8FF;font-size:13px;text-decoration:none}
+  .note{margin-top:28px;padding-top:20px;border-top:1px solid rgba(255,255,255,.08);
+        font-size:12px;color:#6b7785;line-height:1.7}
+</style></head>
+<body><div class="card">
+  <div class="mark">THAUMA</div>
+  <h1>You need to sign in</h1>
+  <p>This part of the site is for staff. Signing in sends a one-time code to
+     your email address &mdash; there is no password.</p>
+  <p><a class="btn" href="/staff/">Sign in</a></p>
+  <div class="note">
+    <b>Administrators:</b> if you were sent here from <code>/admin/</code>, the
+    Cloudflare Access application is scoped to <code>staff</code> and does not
+    cover <code>admin</code>. Sign in above, then return &mdash; or clear the
+    path on the Access application so it covers the whole site and this stops
+    happening.
+  </div>
+</div></body></html>`;
+
+  return new Response(body, {
+    status: 401,
+    headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
+  });
+}
+
 /** Exact-path routes. Checked before static assets. */
 const ROUTES = {
   "/api/contact": contactForm,
@@ -166,7 +251,7 @@ export default {
     if (url.pathname === "/staff" || url.pathname.startsWith("/staff/") ||
         url.pathname === "/admin" || url.pathname.startsWith("/admin/")) {
       const { denied } = await requireAccess(request, env);
-      if (denied) return denied;
+      if (denied) return signInPage(request, env, url) || denied;
     }
 
     return env.ASSETS.fetch(request);

@@ -435,8 +435,19 @@ open that should not be.** That is the check worth wiring into a cron.
 - **Secrets in systemd `Environment=`** are expanded into the command line and
   visible in `ps`. Use `EnvironmentFile=` *and* have the program read the
   variable itself.
-- **Access applications are path-scoped.** `/staff*` does not cover
-  `/.netlify/functions/*`. Verify with curl rather than assuming.
+- **Access applications are path-scoped, and this bit twice.** `/staff*` does
+  not cover `/.netlify/functions/*` — and it does not cover `/admin*` either.
+  On 2026-08-16 `/admin/` returned a bare `{"error":"Not authorized"}` in the
+  browser: Access never intercepted the path, so no login was ever offered.
+  **Clear the path on the Access application so it covers the whole hostname**,
+  or add a second application for `admin`. The Worker now serves a sign-in page
+  rather than JSON when a PAGE is refused, so the failure is at least legible —
+  but the application still has to be right.
+- **`wrangler dev` rewrites the hostname.** Both `url.hostname` and the `Host`
+  header come back as the route in wrangler.toml, whatever the browser asked
+  for. Anything built from them — a login URL, a callback, an absolute link —
+  is wrong locally and right in production, which is the worst combination.
+  Prefer relative URLs.
 
 ---
 
