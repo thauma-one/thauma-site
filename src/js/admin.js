@@ -292,6 +292,13 @@
            without asking for their password. It is audited on the way in, on
            the way out, and on every change made in between, and the console
            says whose account it is on every screen while it lasts. */
+        /* Only while they are still invited. Once somebody is active they
+           have signed in, and offering to re-send an invite would just be a
+           button that confuses them. */
+        (u.status === 'invited'
+          ? '<button type="button" class="ghost-btn" data-reinvite="' + esc(u.id) + '">' +
+              esc(tr('adm.resendInvite')) + '</button>'
+          : '') +
         (u.status === 'active' && u.id !== (state.you && state.you.id)
           ? '<button type="button" class="ghost-btn view-as" data-view-as="' + esc(u.id) +
             '" data-name="' + esc(u.name || u.email) + '">' +
@@ -447,6 +454,12 @@
     }
     var dp = e.target.closest('[data-del-partner]');
     if (dp) return deletePartner(dp.dataset.delPartner, dp);
+
+    var ri = e.target.closest('[data-reinvite]');
+    if (ri) {
+      return change({ user_id: ri.dataset.reinvite, resend_invite: true }, ri)
+        .then(function (body) { if (body) toast(tr('toast.inviteSent'), 'ok'); });
+    }
 
     var va = e.target.closest('[data-view-as]');
     if (va) return viewAs(va.dataset.viewAs, va.dataset.name, va);

@@ -144,7 +144,7 @@ local            the Pi       .wrangler/state, reseeded from seed.dev.sql
 
 ### The Worker
 
-One entry point, `workers/src/worker.js`. **270 tests** (`cd workers && npm test`).
+One entry point, `workers/src/worker.js`. **286 tests** (`cd workers && npm test`).
 
 | file | what |
 |---|---|
@@ -153,6 +153,7 @@ One entry point, `workers/src/worker.js`. **270 tests** (`cd workers && npm test
 | `lib/db.js` | named queries, tenant scoping, the public allow-list |
 | `lib/apikey.js` | partner API keys, SHA-256 |
 | `lib/nopii.js` | the content gate on the public boundary |
+| `lib/mail.js` | transactional email through Resend, and the invite |
 | `staff-snapshot` (in worker.js) | dashboard/support/stewardship/activity |
 | `staff-milestones.js` | the roadmap editor |
 | `staff-settings.js` | account, languages, API keys |
@@ -442,10 +443,26 @@ Not built, deliberately deferred. Recorded because it constrains decisions
 being made now.
 
 The intent is embeddable **timeline** and **goal card** widgets a partner can
-drop onto their own site, configured per-milestone in the console: background
-on/off, colours, milestone line colour, shimmer, default currency, colour
-scheme, start date — with a visualiser showing the result. Essentially CR's
-admin timeline plus presentation controls, served over the API.
+drop onto their own site. Essentially CR's admin timeline plus presentation
+controls, served over the API, with a visualiser in the console showing the
+result before it is published.
+
+**IT MUST LOOK LIKE THE SITE IT IS EMBEDDED IN.** This is a requirement, not a
+nicety, and it is the reason the widget cannot simply be an iframe of a Thauma
+page. A partner's site is warm where Thauma is cool; a widget carrying Thauma's
+palette onto chaseroush.com would read as a foreign object. Chase has raised it
+twice — it is recorded here so it survives whoever picks the work up.
+
+Configured per-milestone in the console:
+
+| control | why |
+|---|---|
+| **colour scheme** | the whole point — it has to match the host site |
+| background on/off | some hosts have their own section background |
+| milestone line colour | the strongest single accent in the timeline |
+| shimmer on/off | motion is a taste decision, and a `prefers-reduced-motion` one |
+| default currency | a goal card reads differently in $ and € |
+| start date | which part of a long roadmap the widget opens on |
 
 **This changes the threat model, so build it deliberately.** Today's partner
 API is consumed by a *build*, server-side, with a key that never reaches a
@@ -463,6 +480,12 @@ Consequences to design for when the time comes:
 - **Presentation config belongs on the milestone**, which is why `milestones`
   has room for it — add a `display_config` JSON column in a later migration
   rather than a parallel table.
+- **Store the config SERVER-side, do not read it from the script tag.** Passing
+  colours as `data-` attributes on the embed snippet looks simpler and means
+  the visualiser and the live widget are two implementations of the same
+  styling that will drift. It also means changing a colour is an edit to
+  somebody else's website rather than a save in the console. The snippet should
+  carry an id and nothing else.
 - The `nopii` gate applies to embed responses too. It is not optional there;
   it is more important.
 
@@ -588,6 +611,86 @@ not evidence it read the file.
 Separately: Eleventy never deletes a page it has stopped generating, so the
 Pi's `_site` keeps stale HTML after a page is switched off.
 `deploy/git-sync.sh` clears it when `site.json` changes.
+
+---
+
+## 4b. Email
+
+Two kinds, and they must never share a sending domain.
+
+| | transactional | bulk |
+|---|---|---|
+| what | invites, confirmations, alerts | newsletters |
+| sender | `mail.thauma.one` | `news.thauma.one` (not built) |
+| if it fails | somebody cannot sign in | somebody misses an update |
+
+**One person marking a newsletter as junk must not degrade the reputation that
+delivers an account invite.** That is the whole reason for the split, and it is
+why `MAIL_FROM` is a separate variable from any future bulk sender rather than
+a convenient shared one.
+
+### `lib/mail.js` — and why it looks like 2004
+
+Outlook on Windows renders mail with **Microsoft Word's** layout engine. No
+flexbox, no grid, no CSS variables, no external stylesheet — and Gmail strips a
+`<style>` block in `<head>`, so anything defined there is simply gone. So:
+tables for layout, inline styles on every element, 600px maximum, websafe fonts
+only, no background images.
+
+Modern markup renders beautifully in whichever client the developer happens to
+use and breaks for a large minority of everyone else. `mail.test.mjs` asserts
+these properties structurally, because email is the one thing here that cannot
+be checked by looking at it.
+
+**Every send carries a plain-text part.** HTML-only is a real spam signal, and
+some people genuinely read mail as text.
+
+### The invite is honest about the two doors
+
+A row in `users` is not an account: Cloudflare Access must also allow the
+address, which is a separate act in a separate dashboard. So the invite says
+what to do if they are turned away, and names who to ask — an invite that says
+"you're all set" and then bounces somebody generates a support message every
+single time.
+
+The link is built from the **request's own origin**, so an invite sent from
+staging points at staging. A hard-coded site URL is how a test invite tells
+somebody to sign in to the live site.
+
+A failed send does not fail the account creation that triggered it. The account
+is the real thing; the email is a convenience, and "created, but the invite
+could not be sent" is a state an administrator can act on — hence
+`resend_invite`.
+
+### Not built, and what it will need
+
+Newsletters. When they come:
+
+- **Resend Broadcasts may remove most of the work** for Thauma's own list —
+  a no-code editor, audiences, automatic unsubscribe flows, scheduling. Checked
+  2026-08-16.
+- **It cannot express this system's multi-tenancy.** Resend API keys are
+  `full_access` or `sending_access` and scope only by DOMAIN — not by audience,
+  segment or topic. A key that can manage contacts manages *every* partner's.
+  And `unsubscribed` is documented as global to the contact, so one partner's
+  unsubscribe could silently remove somebody from another partner's list.
+- **Therefore D1 stays the source of truth** and Resend is delivery. Consent
+  evidence (`newsletter_consent`, with source and timestamp) has to live where
+  partner scoping is already enforced in SQL.
+- **Topics** are Resend's mechanism for letting a recipient choose which sender
+  they hear from — the right fit for Thauma vs each partner.
+- **Double opt-in is not something Resend does.** It needs a `pending` state and
+  a confirm token: one migration.
+- Gmail and Yahoo require `List-Unsubscribe`, one-click unsubscribe, and DMARC
+  for bulk senders. **thauma.one has no DMARC record at all** as of 2026-08-16,
+  and its SPF authorises only Cloudflare's forwarder.
+
+### thauma.one cannot receive mail into a mailbox
+
+MX points at Cloudflare Email Routing, which **forwards only** — there is no
+IMAP or SMTP behind `admin@thauma.one`. A guide to setting up Outlook or Mail
+cannot be written until real mailboxes exist somewhere (Google Workspace,
+Microsoft 365, Fastmail). That is a purchasing decision, not a code one.
 
 ---
 

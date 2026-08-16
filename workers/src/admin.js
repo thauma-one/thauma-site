@@ -27,6 +27,7 @@
 import { createDb } from "./lib/db.js";
 import { requireAccess } from "./lib/access.js";
 import { json, readJson } from "./lib/store.js";
+import { sendMail, inviteEmail } from "./lib/mail.js";
 
 const ROLES = new Set(["admin", "partner", "staff", "board"]);
 const STATUSES = new Set(["invited", "active", "suspended"]);
@@ -87,6 +88,28 @@ async function audit(db, { user, action, entity, entity_id = null, detail = null
   } catch (err) {
     console.error("audit_write failed:", err.message);
   }
+}
+
+/**
+ * Send somebody their invite.
+ *
+ * The link is built from the REQUEST's own origin, not from a configured URL,
+ * so an invite sent from the staging console points at staging and one sent
+ * from production points at production. A hard-coded site URL is how a test
+ * invite ends up telling somebody to sign in to the live site.
+ */
+async function sendInvite(request, env, { to, name, byName, byEmail }) {
+  const origin = new URL(request.url).origin;
+  const mail = inviteEmail({ name, origin, invitedBy: byName, invitedByEmail: byEmail });
+  return await sendMail(env, {
+    to,
+    subject: mail.subject,
+    html: mail.html,
+    text: mail.text,
+    // Replies go to the administrator who added them, not into a noreply void.
+    // "I cannot get in" is the most likely reply and it needs to reach a human.
+    replyTo: byEmail,
+  });
 }
 
 /** Would this change leave the organisation with no administrator? */
@@ -239,11 +262,23 @@ export default {
       await db.query("admin_role_grant", {
         user_id: id, role: "staff", granted_by: me.user_id, now,
       });
+      /* The invite is sent AFTER the account exists and its failure does not
+         undo anything. The account is the real thing; the email is a
+         convenience, and "created, but the invite could not be sent" is a
+         state an administrator can act on. Rolling back a person's account
+         because Resend was briefly unhappy would be worse. */
+      const invite = await sendInvite(request, env, {
+        to: email, name, byName: me.user_name || user.email, byEmail: user.email,
+      });
+
       await audit(db, { user, action: "create", entity: "user", entity_id: id,
-                        detail: { email, name } });
+                        detail: { email, name, invited: invite.ok,
+                                  invite_error: invite.ok ? undefined : invite.error } });
 
       return json({
         created: id,
+        invited: invite.ok,
+        invite_error: invite.ok ? undefined : invite.error,
         // Said here because it is the thing people get wrong: a row in this
         // table is not an account. Access decides who can sign in.
         note: "Invited. They also need adding to Cloudflare Access, and their " +
@@ -257,6 +292,28 @@ export default {
       const body = await readJson(request);
       if (!body) return json({ error: "Invalid JSON" }, 400);
       const userId = str(body.user_id, 64);
+
+      /* ---- send the invite again ----
+         Needed more often than it sounds: the first one fails while Resend is
+         being set up, or lands in somebody's junk, or the address was wrong
+         and has since been corrected. Without this the only remedy is deleting
+         the person and creating them again, which loses their roles and their
+         history. */
+      if (body.resend_invite) {
+        if (!userId) return json({ error: "user_id is required" }, 400);
+        const target = (await db.query("admin_users", {})).find((u) => u.id === userId);
+        if (!target) return json({ error: "No such account." }, 404);
+
+        const invite = await sendInvite(request, env, {
+          to: target.email, name: target.name,
+          byName: me.user_name || user.email, byEmail: user.email,
+        });
+        await audit(db, { user, action: "invite", entity: "user", entity_id: userId,
+                          detail: { email: target.email, sent: invite.ok,
+                                    error: invite.ok ? undefined : invite.error } });
+        if (!invite.ok) return json({ error: invite.error }, 502);
+        return json({ ok: true, invited: target.email, users: await listUsers(db) });
+      }
 
       // ---- grant or revoke an org role ----
       if (body.role) {
