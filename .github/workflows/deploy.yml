@@ -63,7 +63,7 @@ jobs:
       # and cannot be taken back once it is crawled.
       - name: Verify the build matches the comingSoon setting
         run: |
-          coming=$(node -p "require('./src/_data/site.json').comingSoon")
+          coming=$(node -p "require('./src/_data/site.json').visibility.comingSoon.live")
           pages=$(find _site_prod -name '*.html' | wc -l)
           echo "comingSoon=$coming, $pages pages built"
           if [ "$coming" = "true" ]; then
@@ -83,6 +83,7 @@ jobs:
       # Fast, and they need no credentials or network services.
       - name: Test
         run: |
+          node test/visibility.test.mjs
           python3 db/test_schema.py
           cd workers && npm test
 

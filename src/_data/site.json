@@ -7,8 +7,56 @@
     "sr"
   ],
   "defaultLang": "en",
-  "showEvents": false,
-  "resourcesReady": false,
+  "visibility": {
+    "comingSoon": {
+      "live": true,
+      "dev": false
+    },
+    "pages": {
+      "about": {
+        "live": true,
+        "dev": true
+      },
+      "mission": {
+        "live": true,
+        "dev": true
+      },
+      "values": {
+        "live": true,
+        "dev": true
+      },
+      "team": {
+        "live": true,
+        "dev": true
+      },
+      "resources": {
+        "live": true,
+        "dev": true
+      },
+      "events": {
+        "live": false,
+        "dev": true
+      },
+      "contact": {
+        "live": true,
+        "dev": true
+      },
+      "give": {
+        "live": true,
+        "dev": true
+      }
+    },
+    "sections": {
+      "resourcesLibrary": {
+        "live": false,
+        "dev": true
+      },
+      "socialLinks": {
+        "live": false,
+        "dev": true
+      }
+    }
+  },
   "donorbox": {
     "en": "",
     "hr": "",
@@ -40,7 +88,6 @@
       "zoom": 110
     }
   },
-  "comingSoon": true,
   "socials": {
     "youtube": "",
     "instagram": "",

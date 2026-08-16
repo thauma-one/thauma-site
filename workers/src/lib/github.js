@@ -279,7 +279,7 @@ export async function getFile(env, path, fetchImpl = fetch) {
  * there" — the precise accident this whole mechanism is meant to prevent. A
  * caller that has genuinely lost the SHA should re-read the file, not omit it.
  */
-export async function putFile(env, { path, text, sha, message, authorName, authorEmail }, fetchImpl = fetch) {
+export async function putFile(env, { path, text, sha, message, authorName, authorEmail, quiet }, fetchImpl = fetch) {
   const cfg = githubConfig(env);
   if (cfg.error) return { error: cfg.error, status: 500 };
   if (!sha) return { error: "Refusing to write without the SHA of the file being replaced.", status: 400 };
@@ -292,7 +292,16 @@ export async function putFile(env, { path, text, sha, message, authorName, autho
     method: "PUT",
     headers: { ...h.headers, "Content-Type": "application/json" },
     body: JSON.stringify({
-      message,
+      /* `[skip ci]` is what makes Save quiet. GitHub Actions reads it off the
+         head commit of a push and runs NO workflow for it, so the words land
+         safely in git and the site does not move. Preview and Publish then ask
+         for a build explicitly — workflow_dispatch is not a push and is not
+         affected by this marker.
+
+         It is a convention rather than a feature, which is worth knowing: it
+         works because GitHub honours the string, not because the API has a
+         "do not deploy" flag. The Chase Roush site has relied on it for a year. */
+      message: quiet ? `${message.split("\n")[0]} [skip ci]${message.slice(message.split("\n")[0].length)}` : message,
       content: toBase64(text),
       sha,
       branch: cfg.branch,
@@ -372,47 +381,108 @@ export async function compareBranches(env, base, head, fetchImpl = fetch) {
 }
 
 /**
- * Merge `head` into `base`. This is the publish.
+ * The commit a ref currently points at.
  *
- * POST /merges rather than a fast-forward ref update, deliberately. A ref
- * update is tidier while the branches are strictly ahead — but production's
- * own content editor commits to `main`, so `main` WILL eventually hold commits
- * `dev` does not, and a fast-forward would simply start failing on the day
- * somebody fixed a typo on the live site. /merges handles both, and its merge
- * commits double as a record of when each release went out.
+ * Needed to answer "is the preview showing what I would publish?", which is a
+ * comparison between two SHAs and not something the compare endpoint reports.
  */
-export async function mergeBranches(env, { base, head, message }, fetchImpl = fetch) {
+export async function refSha(env, ref, fetchImpl = fetch) {
   const cfg = githubConfig(env);
   if (cfg.error) return { error: cfg.error, status: 500 };
 
   const h = await headers(env, fetchImpl);
   if (h.error) return { error: h.error, status: 500 };
 
-  const res = await fetchImpl(`${API}/repos/${cfg.repo}/merges`, {
-    method: "POST",
-    headers: { ...h.headers, "Content-Type": "application/json" },
-    body: JSON.stringify({ base, head, commit_message: message }),
-  });
+  const res = await fetchImpl(
+    `${API}/repos/${cfg.repo}/commits/${encodeURIComponent(ref)}`,
+    { headers: { ...h.headers, Accept: "application/vnd.github.sha" } }
+  );
+  if (!res.ok) return { error: await githubError(res), status: 502 };
+  return { sha: (await res.text()).trim() };
+}
 
-  // 204: nothing to do. Not an error, and saying "failed" here would send
-  // somebody looking for a problem that is actually the desired end state.
-  if (res.status === 204) return { alreadyUpToDate: true };
+/**
+ * The last successful run of a workflow, and which commit it built.
+ *
+ * This is how "what is saved but not published" is answered. Nothing else
+ * knows it: the branch does not record which of its commits is live, and a
+ * deploy is not a commit. Asking the deploy itself is the only honest source.
+ */
+export async function lastSuccessfulRun(env, workflowFile, fetchImpl = fetch) {
+  const cfg = githubConfig(env);
+  if (cfg.error) return { error: cfg.error, status: 500 };
 
-  if (res.status === 409) {
-    return {
-      error: `${head} and ${base} have both changed and git cannot reconcile them ` +
-             `automatically. This needs a person with a terminal: merge the two ` +
-             `branches locally, resolve the conflict, and push. Nothing was changed.`,
-      status: 409,
-    };
-  }
-  if (res.status === 404) {
-    return { error: `${base} or ${head} does not exist in ${cfg.repo}.`, status: 404 };
-  }
+  const h = await headers(env, fetchImpl);
+  if (h.error) return { error: h.error, status: 500 };
+
+  const url = `${API}/repos/${cfg.repo}/actions/workflows/` +
+              `${encodeURIComponent(workflowFile)}/runs?status=success&per_page=1`;
+  const res = await fetchImpl(url, { headers: h.headers });
+
+  // A workflow that has never run successfully is a real state, not an error:
+  // it is what a brand new site looks like, and the page has to say something
+  // sensible rather than break.
+  if (res.status === 404) return { never: true };
   if (!res.ok) return { error: await githubError(res), status: 502 };
 
   const body = await res.json();
-  return { commit: body.sha, url: body.html_url };
+  const run = (body.workflow_runs || [])[0];
+  if (!run) return { never: true };
+
+  return {
+    sha: run.head_sha,
+    at: run.updated_at || run.created_at,
+    url: run.html_url,
+    number: run.run_number,
+  };
+}
+
+/**
+ * Start a deploy without pushing anything.
+ *
+ * Content saves carry `[skip ci]`, which stops GitHub running ANY workflow for
+ * that push — that is what makes Save quiet. So both Preview and Publish have
+ * to ask for a build explicitly, and `workflow_dispatch` is that ask. It is
+ * unaffected by `[skip ci]`, because it is not a push event.
+ *
+ * Needs the App's **Actions: read and write** permission. Contents alone is
+ * not enough, and the failure is a 403 that says nothing useful — hence the
+ * message below.
+ */
+export async function dispatchWorkflow(env, workflowFile, ref, fetchImpl = fetch) {
+  const cfg = githubConfig(env);
+  if (cfg.error) return { error: cfg.error, status: 500 };
+
+  const h = await headers(env, fetchImpl);
+  if (h.error) return { error: h.error, status: 500 };
+
+  const url = `${API}/repos/${cfg.repo}/actions/workflows/` +
+              `${encodeURIComponent(workflowFile)}/dispatches`;
+  const res = await fetchImpl(url, {
+    method: "POST",
+    headers: { ...h.headers, "Content-Type": "application/json" },
+    body: JSON.stringify({ ref }),
+  });
+
+  if (res.status === 204) return { started: true };
+
+  if (res.status === 403) {
+    return {
+      error: "GitHub refused to start the build. The app is missing the " +
+             "\"Actions: read and write\" permission — add it in the app's settings, " +
+             "then accept the new permission on the installation.",
+      status: 403,
+    };
+  }
+  if (res.status === 404) {
+    return {
+      error: `No workflow called ${workflowFile} on ${ref}, or it has no ` +
+             `workflow_dispatch trigger.`,
+      status: 404,
+    };
+  }
+  if (!res.ok) return { error: await githubError(res), status: 502 };
+  return { started: true };
 }
 
 /** GitHub's own message if it sent one — it is usually the useful part. */

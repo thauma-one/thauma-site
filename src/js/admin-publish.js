@@ -1,21 +1,25 @@
 /* ============================================================
-   admin-publish.js — moving the working branch onto the live one
+   admin-publish.js — Preview and Publish
    ============================================================
    Talks to /api/admin/publish.
 
-   NO WORKING COPY HERE, AND NO SAVE BAR IN THE USUAL SENSE.
-   The other two admin screens hold a draft because they are
-   editing something. This one has nothing to edit: it reads a
-   state that lives in GitHub and performs one act against it.
+   NO WORKING COPY AND NO SAVE BAR IN THE USUAL SENSE. The other
+   admin screens hold a draft because they are editing
+   something. This one has nothing to edit: it reads a state
+   that lives in GitHub and performs one of two acts against it.
    Everything on screen is the server's answer, re-read after
    every action — the whole value of the page is that the list
    is true.
 
-   THE LIST IS THE FEATURE. A publish carries every commit on
-   the working branch, not only the words somebody typed. So
-   the commits, the files, and above all any MIGRATIONS are
-   shown before the button, and the button says what it will
-   ship rather than just "Publish".
+   THE LIST IS THE FEATURE. Publishing sends everything that has
+   been saved since the last time, not only the change you made
+   five minutes ago. So the changes, the files, and above all
+   any DATABASE MIGRATIONS are shown before the button.
+
+   THE WORD "BRANCH" DOES NOT APPEAR ON THIS PAGE. It is in the
+   payload, because the server has to name what it is building,
+   and it is deliberately not rendered. Branches are how code
+   gets shipped; this page is for words.
    ============================================================ */
 (function () {
   'use strict';
@@ -35,6 +39,19 @@
   function tr(key) { return window.StaffI18n ? window.StaffI18n.t(key) : key; }
   function toast(msg, kind) { if (window.StaffToast) window.StaffToast(msg, kind); }
 
+  /* "2 hours ago" rather than a timestamp. The only question anyone asks of
+     these dates is how stale the thing is. */
+  function ago(iso) {
+    if (!iso) return '';
+    var s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+    if (s < 90) return tr('pub.justNow');
+    var m = Math.round(s / 60);
+    if (m < 60) return tr('pub.minutesAgo').replace('{n}', m);
+    var h = Math.round(m / 60);
+    if (h < 36) return tr('pub.hoursAgo').replace('{n}', h);
+    return tr('pub.daysAgo').replace('{n}', Math.round(h / 24));
+  }
+
   /* ---- loading -------------------------------------------------------- */
 
   async function load() {
@@ -53,8 +70,7 @@
 
     if (res.status === 403) {
       if ($('notAdmin')) $('notAdmin').hidden = false;
-      $('pRoot').hidden = true;
-      $('pBar').hidden = true;
+      $('pRoot').hidden = true; $('pBar').hidden = true;
       if (window.StaffProblemClear) window.StaffProblemClear();
       return;
     }
@@ -73,8 +89,7 @@
       var el = $('pNotConfigured');
       el.innerHTML = '<b>' + esc(tr('con.notConnected')) + '</b> ' + esc(body.reason || '');
       el.hidden = false;
-      $('pRoot').hidden = true;
-      $('pBar').hidden = true;
+      $('pRoot').hidden = true; $('pBar').hidden = true;
       return;
     }
 
@@ -94,28 +109,46 @@
     renderMigrations();
     renderCommits();
     renderFiles();
-    renderDrift();
     renderBar();
   }
 
   function renderState() {
     var n = state.waiting;
-    var cls = n ? 'is-waiting' : 'is-clean';
-    var headline = n
-      ? (n === 1 ? tr('pub.oneWaiting') : tr('pub.nWaiting').replace('{n}', n))
-      : tr('pub.upToDate');
+    var headline, cls;
+
+    if (state.neverPublished) {
+      headline = tr('pub.neverPublished');
+      cls = 'is-waiting';
+    } else if (n) {
+      headline = n === 1 ? tr('pub.oneWaiting') : tr('pub.nWaiting').replace('{n}', n);
+      cls = 'is-waiting';
+    } else {
+      headline = tr('pub.upToDate');
+      cls = 'is-clean';
+    }
+
+    var lines = [];
+    if (state.published) {
+      lines.push(tr('pub.liveSince')
+        .replace('{when}', ago(state.published.at))
+        .replace('{sha}', state.published.sha));
+    }
+    if (state.preview) {
+      /* Whether next.thauma.one is showing what you would be publishing. A
+         preview quietly out of date is worse than no preview, because it is
+         believed. */
+      lines.push((state.preview.current ? tr('pub.previewCurrent') : tr('pub.previewStale'))
+        .replace('{when}', ago(state.preview.at)));
+    } else {
+      lines.push(tr('pub.previewNever'));
+    }
 
     $('pState').className = 'p-state ' + cls;
     $('pState').innerHTML =
-      '<div class="p-branches">' +
-        '<span class="p-branch">' + esc(state.staging) + '</span>' +
-        '<span class="p-arrow" aria-hidden="true">&rarr;</span>' +
-        '<span class="p-branch is-live">' + esc(state.live) + '</span>' +
-      '</div>' +
       '<div class="p-headline">' + esc(headline) + '</div>' +
-      '<div class="p-sub">' + esc(state.repo) +
+      '<div class="p-sub">' + lines.map(esc).join(' &middot; ') +
         (state.compare_url
-          ? ' · <a href="' + esc(state.compare_url) + '" target="_blank" rel="noopener">' +
+          ? ' &middot; <a href="' + esc(state.compare_url) + '" target="_blank" rel="noopener">' +
             esc(tr('pub.viewOnGithub')) + '</a>'
           : '') +
       '</div>';
@@ -126,28 +159,27 @@
     var el = $('pMigrations');
     el.hidden = !m.length;
     if (!m.length) return;
-
-    /* The one warning on this page that is about something OUTSIDE the deploy.
-       Everything else here fixes itself when the Action runs; this does not. */
     el.innerHTML =
       '<b>' + esc(tr('pub.migrationsTitle')) + '</b> ' +
       esc(tr('pub.migrationsBody').replace('{n}', m.length)) +
       '<ul>' + m.map(function (f) {
         return '<li><code>' + esc(f) + '</code></li>';
-      }).join('') + '</ul>' +
-      '<code class="p-cmd">npx wrangler d1 migrations apply thauma-ops --remote</code>';
+      }).join('') + '</ul>';
   }
 
   function renderCommits() {
     var c = state.commits || [];
     if (!c.length) {
-      $('pCommits').innerHTML = '<p class="empty">' + esc(tr('pub.noCommits')) + '</p>';
+      $('pCommits').innerHTML = '<p class="empty">' + esc(tr('pub.noChanges')) + '</p>';
       return;
     }
     $('pCommits').innerHTML = c.map(function (x) {
+      /* The save marker is machinery, not information — every content save
+         carries it. Showing it would put "[skip ci]" on every line of a list
+         meant to be readable. */
+      var msg = String(x.message || '').replace(/\s*\[skip ci\]\s*/g, ' ').trim();
       return '<div class="p-commit">' +
-        '<code class="p-sha">' + esc(x.sha) + '</code>' +
-        '<span class="p-msg">' + esc(x.message) + '</span>' +
+        '<span class="p-msg">' + esc(msg) + '</span>' +
         '<span class="p-who">' + esc(x.author) + '</span>' +
       '</div>';
     }).join('');
@@ -159,8 +191,6 @@
       $('pFiles').innerHTML = '<p class="empty">' + esc(tr('pub.noFiles')) + '</p>';
       return;
     }
-    /* Grouped by top directory. A flat list of 58 paths is not something a
-       person reads; "workers/ 14, src/ 31" is something they can judge. */
     var groups = {};
     f.forEach(function (path) {
       var top = path.indexOf('/') === -1 ? '/' : path.slice(0, path.indexOf('/'));
@@ -177,51 +207,38 @@
     }).join('');
   }
 
-  function renderDrift() {
-    var el = $('pDrift');
-    el.hidden = !state.drifted;
-    if (!state.drifted) return;
-    el.innerHTML =
-      '<div class="p-drift-text">' +
-        '<b>' + esc(tr('pub.driftTitle')) + '</b> ' +
-        esc(tr('pub.driftBody')
-          .replace('{n}', state.drifted)
-          .replace('{live}', state.live)
-          .replace('{staging}', state.staging)) +
-      '</div>' +
-      '<button type="button" class="ghost-btn" id="pSync">' +
-        esc(tr('pub.sync').replace('{live}', state.live).replace('{staging}', state.staging)) +
-      '</button>';
-  }
-
   function renderBar() {
     var n = state.waiting;
-    $('pBar').hidden = !n;
-    document.body.classList.toggle('has-savebar', !!n);
-    if (!n) return;
-    $('pBarCount').textContent = n === 1
-      ? tr('pub.oneWaiting') : tr('pub.nWaiting').replace('{n}', n);
-    $('pBarNote').textContent = tr('pub.barNote').replace('{live}', state.live);
+    // Preview is useful even with nothing waiting — it rebuilds the preview
+    // site. Publish is not, so only that one goes away.
+    $('pBar').hidden = false;
+    document.body.classList.toggle('has-savebar', true);
+    $('pPublish').disabled = !n && !state.neverPublished;
+
+    $('pBarCount').textContent = n
+      ? (n === 1 ? tr('pub.oneWaiting') : tr('pub.nWaiting').replace('{n}', n))
+      : tr('pub.upToDate');
+    $('pBarNote').textContent = n ? tr('pub.barNote') : '';
   }
 
-  /* ---- publishing ----------------------------------------------------- */
+  /* ---- the two actions ------------------------------------------------ */
+
+  $('pRefresh').addEventListener('click', function () { if (!busy) load(); });
+
+  $('pPreview').addEventListener('click', function () {
+    // No confirmation. Preview changes nothing anybody outside can see, and a
+    // dialog on a harmless action trains people to dismiss dialogs.
+    if (!busy) act({ action: 'preview' }, this);
+  });
 
   $('pPublish').addEventListener('click', async function () {
-    if (busy || !state || !state.waiting) return;
+    if (busy || !state) return;
 
     var m = (state.migrations || []).length;
     var ok = await window.StaffConfirm({
       title: tr('pub.confirmTitle'),
-      body: tr('pub.confirmBody')
-        .replace('{n}', state.waiting)
-        .replace('{staging}', state.staging)
-        .replace('{live}', state.live),
-      /* The migration warning is repeated INSIDE the dialog. Somebody who
-         scrolled past it on the page is exactly the person about to press the
-         button, and the dialog is the last place it can still be read. */
-      note: m
-        ? tr('pub.confirmMigrations').replace('{n}', m)
-        : tr('pub.confirmNote'),
+      body: tr('pub.confirmBody').replace('{n}', state.waiting),
+      note: m ? tr('pub.confirmMigrations').replace('{n}', m) : tr('pub.confirmNote'),
       type: state.confirm_word,
       typeLabel: tr('pub.typeLabel'),
       confirm: tr('pub.publish'),
@@ -229,25 +246,7 @@
     });
     if (!ok) return;
 
-    await act({ direction: 'publish', confirm: state.confirm_word }, this);
-  });
-
-  $('pRefresh').addEventListener('click', function () { if (!busy) load(); });
-
-  /* Delegated: the sync button only exists when the branches have drifted. */
-  $('pRoot').addEventListener('click', async function (e) {
-    if (!e.target.closest('#pSync') || busy) return;
-    var ok = await window.StaffConfirm({
-      title: tr('pub.syncTitle'),
-      body: tr('pub.syncBody')
-        .replace('{n}', state.drifted)
-        .replace('{live}', state.live)
-        .replace('{staging}', state.staging),
-      confirm: tr('pub.syncDo'),
-      cancel: tr('ms.cancel')
-    });
-    if (!ok) return;
-    await act({ direction: 'sync' }, e.target.closest('#pSync'));
+    await act({ action: 'publish', confirm: state.confirm_word }, this);
   });
 
   async function act(payload, btn) {
@@ -277,24 +276,23 @@
     $('pRefresh').disabled = false;
 
     if (!res.ok) {
-      /* A merge conflict is a condition, not an event — it persists until
-         somebody goes and resolves it, and it needs a terminal. So it is
-         pinned rather than raised as a toast that scrolls away. */
-      if (res.status === 409 && window.StaffProblem) window.StaffProblem(body.error, load);
+      /* A missing permission is a CONDITION — it will fail identically every
+         time until somebody changes the app's settings — so it is pinned
+         rather than raised as a toast that scrolls away. */
+      if (res.status === 403 && window.StaffProblem) window.StaffProblem(body.error, load);
       else toast((body && body.error) || (tr('err.refused') + ' (' + res.status + ')'), 'bad');
       return;
     }
 
-    if (body.alreadyUpToDate) toast(body.message || tr('pub.nothingToDo'), 'ok');
-    else if (payload.direction === 'sync') {
-      toast(tr('pub.synced').replace('{n}', body.merged), 'ok');
-    } else {
-      toast(tr('pub.published').replace('{n}', body.merged), 'ok');
-    }
+    toast(payload.action === 'publish'
+      ? tr('pub.publishStarted')
+      : tr('pub.previewStarted'), 'ok');
 
-    // Re-read rather than assume. What is live is the one thing on this page
-    // that must never be a guess.
-    await load();
+    /* The build takes a minute or two and nothing here waits for it. Re-read
+       shortly, so "live since" catches up without anyone pressing Refresh —
+       once, not on a loop, because a page that polls forever is a page that
+       keeps a laptop awake. */
+    setTimeout(load, 20000);
   }
 
   load();

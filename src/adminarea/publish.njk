@@ -4,17 +4,19 @@ adminPage: publish
 adminNum: "06"
 adminTitle: Publish
 adminHeading: What is <b>waiting to go live</b>
-adminHint: everything on the working branch, not only the words
-adminScript: /js/admin-publish.js?v=1
+adminHint: saved, but not on the public site yet
+adminScript: /js/admin-publish.js?v=2
 permalink: /admin/publish/index.html
 ---
-{#- The promote step, which used to be a terminal command — so the review it
-   was supposed to provide only existed for whoever had the Pi in front of them.
+{#- Three words, and no branch named anywhere a person can see:
 
-   THIS PAGE IS MOSTLY A LIST, AND THAT IS THE POINT. Publishing carries every
-   code change on the working branch, not just the sentence somebody edited.
-   A button labelled "Publish" with no list behind it is a button that ships
-   two consoles and seven migrations because somebody fixed a typo. -#}
+     Save      already happened, on the page you were editing
+     Preview   build next.thauma.one so you can look at it
+     Publish   build thauma.one — the site changes
+
+   The page is mostly a LIST because publishing carries every change that has
+   been saved, not only the last one you made. A button with nothing behind it
+   is a button you press without knowing what it does. -#}
 
 <p class="rolegate" id="pNotConfigured" hidden></p>
 
@@ -22,15 +24,15 @@ permalink: /admin/publish/index.html
 
   <div class="p-state" id="pState"></div>
 
-  {#- Named separately from the file list, and above the button. A migration in
-     a release is not one more changed file — it is something that must be run
-     against the production database BEFORE this deploys, or the live site
-     starts throwing on a table that is not there. -#}
+  {#- Above the button, and repeated inside the dialog. A migration is the one
+     thing here that is not fixed by the deploy itself: the code goes out
+     expecting a table the live database has not got, and the site breaks
+     after publishing rather than before. -#}
   <div class="p-migrations" id="pMigrations" hidden></div>
 
   <div class="p-cols">
     <section class="p-col">
-      <h3 data-i18n="pub.commits">Commits</h3>
+      <h3 data-i18n="pub.changes">Changes</h3>
       <div class="p-commits" id="pCommits"></div>
     </section>
     <section class="p-col">
@@ -39,12 +41,6 @@ permalink: /admin/publish/index.html
     </section>
   </div>
 
-  {#- Shown only when the live branch holds commits the working branch has not
-     got. That happens because the production console's own content editor
-     commits straight to the live branch — so a typo fixed on the live site is
-     a change `dev` does not know about until this is pressed. -#}
-  <div class="p-drift" id="pDrift" hidden></div>
-
 </div>
 
 <div class="ms-savebar" id="pBar" role="status" hidden>
@@ -52,5 +48,6 @@ permalink: /admin/publish/index.html
   <span id="pBarCount"></span>
   <span class="ms-savebar-note" id="pBarNote"></span>
   <button type="button" class="ghost-btn" id="pRefresh" data-i18n="pub.refresh">Refresh</button>
-  <button type="button" class="solid-btn" id="pPublish" data-i18n="pub.publish">Publish to live</button>
+  <button type="button" class="ghost-btn" id="pPreview" data-i18n="pub.preview">Preview</button>
+  <button type="button" class="solid-btn" id="pPublish" data-i18n="pub.publish">Publish</button>
 </div>

@@ -1,0 +1,189 @@
+#!/usr/bin/env node
+/**
+ * Tests for the page/section visibility switches
+ *   node test/visibility.test.mjs
+ *
+ * These decide WHAT GETS BUILT, so their failure mode is a page that is either
+ * public when it should not be, or missing when it should not be. Neither is
+ * visible in the console output of a successful build — the build succeeds
+ * either way. That is why they are tested rather than eyeballed.
+ *
+ * The require-cache test at the bottom is a regression test for a bug that
+ * shipped silently: flipping a switch rebuilt the whole site and changed
+ * nothing, because the data files read site.json with `require`, which caches.
+ */
+import { createRequire } from "node:module";
+import { readFileSync, writeFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
+const require = createRequire(import.meta.url);
+const SITE = fileURLToPath(new URL("../src/_data/site.json", import.meta.url));
+const ORIGINAL = readFileSync(SITE, "utf8");
+
+let pass = 0, fail = 0;
+function check(name, fn) {
+  try { fn(); console.log(`  PASS  ${name}`); pass++; }
+  catch (e) { console.log(`  FAIL  ${name}\n          ${e.message}`); fail++; }
+}
+const assert = (c, m) => { if (!c) throw new Error(m); };
+const eq = (a, b, m) => assert(JSON.stringify(a) === JSON.stringify(b),
+  `${m} — got ${JSON.stringify(a)}, want ${JSON.stringify(b)}`);
+
+/**
+ * Load the data files fresh, under a chosen run mode.
+ *
+ * The modules are re-required each time with their cache cleared, because the
+ * `isDevServer` constant is evaluated once at module load — which is fine in a
+ * real build (one process, one mode) and would silently break these tests.
+ */
+function load(mode) {
+  process.env.ELEVENTY_RUN_MODE = mode;
+  delete require.cache[require.resolve("../src/_data/visible.js")];
+  delete require.cache[require.resolve("../src/_data/navPages.js")];
+  return {
+    visible: require("../src/_data/visible.js")(),
+    navPages: require("../src/_data/navPages.js")(),
+  };
+}
+
+const writeSite = (obj) => writeFileSync(SITE, JSON.stringify(obj, null, 2) + "\n");
+const readSite = () => JSON.parse(readFileSync(SITE, "utf8"));
+
+console.log("visibility — which pages get built\n");
+
+try {
+
+/* --------------------------- the two columns --------------------------- */
+
+check("a real build uses the LIVE column", () => {
+  const { visible } = load("build");
+  eq(visible.column, "live", "column");
+  const site = readSite();
+  eq(visible.comingSoon, site.visibility.comingSoon.live, "comingSoon");
+  eq(visible.pages.events, site.visibility.pages.events.live, "events");
+});
+
+check("the watch server uses the DEV column", () => {
+  for (const mode of ["watch", "serve"]) {
+    const { visible } = load(mode);
+    eq(visible.column, "dev", `column under ${mode}`);
+  }
+});
+
+check("the two columns are genuinely independent", () => {
+  // The whole point. If these ever resolve the same way regardless of column,
+  // the dev site has stopped being able to simulate the live one.
+  const site = readSite();
+  site.visibility.pages.about = { live: false, dev: true };
+  site.visibility.pages.mission = { live: true, dev: false };
+  writeSite(site);
+
+  const live = load("build").visible;
+  const dev = load("watch").visible;
+
+  eq(live.pages.about, false, "about is off for visitors");
+  eq(dev.pages.about, true, "and still visible while working on it");
+  eq(live.pages.mission, true, "mission is on for visitors");
+  eq(dev.pages.mission, false, "and simulated as off on dev");
+});
+
+check("SWITCHES ARE RE-READ, not cached from the first build", () => {
+  /* THE REGRESSION TEST. `require` caches JSON by path, so a switch read that
+     way is frozen for the life of the process — and `eleventy --watch` never
+     restarts. Measured on 2026-08-16: flipping a toggle rebuilt every page and
+     changed nothing at all. A build succeeding is not evidence it read the
+     file. */
+  const site = readSite();
+  site.visibility.pages.give = { live: true, dev: true };
+  writeSite(site);
+  const before = require("../src/_data/visible.js")();
+  eq(before.pages.give, true, "starting state");
+
+  // Change the file WITHOUT clearing any cache — exactly what happens when
+  // somebody saves site.json while the watch server is running.
+  site.visibility.pages.give = { live: false, dev: false };
+  writeSite(site);
+  const after = require("../src/_data/visible.js")();
+  eq(after.pages.give, false, "the switch was not re-read — require() is caching again");
+});
+
+/* ---------------------------- what cannot be off ----------------------- */
+
+check("the home page cannot be switched off", () => {
+  // A site whose home page can be turned off is not a site.
+  const { visible } = load("build");
+  eq(visible.page(""), true, "home");
+  eq(visible.page(undefined), true, "no slug");
+});
+
+check("a page with no switch defaults to visible", () => {
+  // Adding a page and forgetting to give it a switch must not make it vanish.
+  const { visible } = load("build");
+  eq(visible.page("some-new-page"), true, "unknown slug");
+});
+
+check("a hand-edited plain boolean still works", () => {
+  const site = readSite();
+  site.visibility.pages.contact = true;
+  site.visibility.comingSoon = false;
+  writeSite(site);
+  const { visible } = load("build");
+  eq(visible.pages.contact, true, "boolean true");
+  eq(visible.comingSoon, false, "boolean false");
+});
+
+/* ----------------------- the nav agrees with the build ----------------- */
+
+check("the mobile page strip lists exactly the pages that are built", () => {
+  // A number in the strip for a page that was not built is a link to a 404.
+  writeFileSync(SITE, ORIGINAL);
+  for (const mode of ["build", "watch"]) {
+    const { visible, navPages } = load(mode);
+    for (const slug of Object.keys(visible.pages)) {
+      eq(navPages.includes(slug), visible.pages[slug],
+         `${mode}: ${slug} — strip and build disagree`);
+    }
+  }
+});
+
+/* -------------------------- against the real site ---------------------- */
+
+check("every page in the site has a switch", () => {
+  /* Catches the thing nobody remembers: adding a page and never giving it a
+     toggle, so it silently cannot be turned off. Home, 404 and the landing
+     page are exempt by design and named here so the exemption is deliberate. */
+  writeFileSync(SITE, ORIGINAL);
+  const EXEMPT = new Set(["", "404", "coming-soon"]);
+  const site = readSite();
+  const switched = new Set(Object.keys(site.visibility.pages));
+
+  const dir = fileURLToPath(new URL("../src", import.meta.url));
+  const files = require("node:fs").readdirSync(dir).filter((f) => f.endsWith(".njk"));
+  const missing = [];
+  for (const f of files) {
+    const src = readFileSync(`${dir}/${f}`, "utf8");
+    const m = /^pageSlug:\s*"([^"]*)"/m.exec(src);
+    if (!m) continue;
+    if (EXEMPT.has(m[1])) continue;
+    if (!switched.has(m[1])) missing.push(`${f} (pageSlug "${m[1]}")`);
+  }
+  eq(missing, [], "pages with no switch in site.json");
+});
+
+check("site.json still round-trips byte for byte", () => {
+  // The content editor writes it back with JSON.stringify(…, null, 2). If the
+  // file drifts from that shape, every save becomes a whole-file diff.
+  writeFileSync(SITE, ORIGINAL);
+  const raw = readFileSync(SITE, "utf8");
+  const trailing = raw.endsWith("\n") ? "\n" : "";
+  eq(JSON.stringify(JSON.parse(raw), null, 2) + trailing, raw, "would be reformatted on save");
+});
+
+} finally {
+  // Always. A test run that leaves the site's own settings modified would be
+  // worse than a failing test.
+  writeFileSync(SITE, ORIGINAL);
+}
+
+console.log(`\n  ${pass} passed, ${fail} failed`);
+process.exit(fail ? 1 : 0);

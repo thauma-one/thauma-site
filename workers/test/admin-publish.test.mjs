@@ -3,13 +3,13 @@
  * Tests for workers/src/admin-publish.js
  *   node workers/test/admin-publish.test.mjs
  *
- * This endpoint takes everything on the working branch and makes it live. Its
+ * This endpoint takes everything that has been saved and makes it public. Its
  * blast radius is the whole site, so the tests are about the things standing
  * between a click and a release:
  *
  *   · the admin role
- *   · the confirmation word, checked on the SERVER
- *   · the gap being re-read at merge time rather than trusted from the browser
+ *   · the confirmation word, checked on the SERVER, on the right action only
+ *   · "what is live" coming from the DEPLOY rather than from the branch
  *   · migrations being named rather than buried in a file list
  */
 import handler from "../src/admin-publish.js";
@@ -76,30 +76,48 @@ globalThis.fetch = async (url, init = {}) => {
   return github.handle(u, init);
 };
 
-function stubGitHub({ ahead = 2, behind = 0, status_ = "ahead", files = [],
-                      mergeStatus = 201 } = {}) {
+function stubGitHub({ ahead = 2, files = [], lastProdSha = "live000",
+                      prodNever = false, previewSha = "live000",
+                      dispatchStatus = 204 } = {}) {
   const seen = [];
   seen.handle = async (u, init) => {
     seen.push({ url: u, method: init.method || "GET",
                 body: init.body ? JSON.parse(init.body) : null });
+
+    if (u.includes("/actions/workflows/") && u.includes("/runs")) {
+      const isProd = u.includes("deploy.yml");
+      if (isProd && prodNever) {
+        return new Response(JSON.stringify({ workflow_runs: [] }), { status: 200 });
+      }
+      return new Response(JSON.stringify({ workflow_runs: [{
+        head_sha: isProd ? lastProdSha : previewSha,
+        updated_at: "2026-08-16T10:00:00Z",
+        html_url: "https://gh/run", run_number: 7,
+      }] }), { status: 200 });
+    }
+
+    if (u.includes("/actions/workflows/") && u.endsWith("/dispatches")) {
+      if (dispatchStatus === 403) {
+        return new Response(JSON.stringify({ message: "Resource not accessible" }), { status: 403 });
+      }
+      return new Response(null, { status: 204 });
+    }
+
     if (u.includes("/compare/")) {
       return new Response(JSON.stringify({
-        status: status_, ahead_by: ahead, behind_by: behind,
+        status: ahead ? "ahead" : "identical", ahead_by: ahead, behind_by: 0,
         commits: Array.from({ length: ahead }, (_, i) => ({
           sha: `sha${i}0000`,
-          commit: { message: `commit ${i}`, author: { name: "Chase", date: "2026-08-15T10:00:00Z" } },
+          commit: { message: `Update hr content: 1 value [skip ci]`,
+                    author: { name: "Chase", date: "2026-08-16T10:00:00Z" } },
         })),
         files: files.map((f) => ({ filename: f })),
         permalink_url: "https://gh/compare",
       }), { status: 200 });
     }
-    if (u.endsWith("/merges")) {
-      if (mergeStatus === 204) return new Response(null, { status: 204 });
-      if (mergeStatus === 409) {
-        return new Response(JSON.stringify({ message: "Merge conflict" }), { status: 409 });
-      }
-      return new Response(JSON.stringify({ sha: "merge1", html_url: "https://gh/m1" }), { status: 201 });
-    }
+
+    if (u.includes("/commits/")) return new Response("head000", { status: 200 });
+
     throw new Error("unexpected GitHub call: " + u);
   };
   seen.restore = () => { github = null; };
@@ -114,7 +132,7 @@ const req = (method, body) =>
     body: body ? JSON.stringify(body) : undefined,
   });
 
-console.log("admin-publish — the button that ships everything\n");
+console.log("admin-publish — Preview and Publish\n");
 
 /* -------------------------------- the gate ----------------------------- */
 
@@ -128,7 +146,7 @@ await check("a signed-in NON-admin cannot publish", async () => {
   try {
     const res = await handler.fetch(req("POST", { confirm: "PUBLISH" }), envWith("partner,staff"));
     eq(res.status, 403, "status");
-    assert(!g.some((c) => c.url.endsWith("/merges")), "it merged anyway");
+    assert(!g.some((c) => c.url.endsWith("/dispatches")), "it built anyway");
   } finally { g.restore(); }
 });
 
@@ -150,51 +168,54 @@ await check("no handler method throws", async () => {
 
 /* -------------------------------- status ------------------------------- */
 
-await check("GET reports the gap and lists what is in it", async () => {
-  const g = stubGitHub({ ahead: 3, files: ["src/_data/i18n/hr.json", "workers/src/worker.js"] });
+await check("GET asks the DEPLOY what is live, not the branch", async () => {
+  /* A branch does not record which of its commits is deployed. Comparing
+     against the branch tip would always say "nothing waiting", which is the
+     one answer that is never useful. */
+  const g = stubGitHub({ ahead: 3, files: ["src/_data/i18n/hr.json"] });
   try {
     const res = await handler.fetch(req("GET"), envWith("admin"));
     const b = await res.json();
     eq(b.waiting, 3, "waiting");
-    eq(b.live, "main", "live branch");
-    eq(b.staging, "dev", "staging branch");
-    eq(b.commits.length, 3, "commit list");
-    assert(b.files.includes("workers/src/worker.js"), "file list");
-    eq(b.confirm_word, "PUBLISH", "the word the browser must collect");
+    eq(b.published.sha, "live000", "published sha");
+    assert(g.some((c) => c.url.includes("deploy.yml/runs")), "never asked the production workflow");
+    assert(g.some((c) => c.url.includes("status=success")),
+           "must ignore failed runs — a failed deploy published nothing");
   } finally { g.restore(); }
 });
 
-await check("MIGRATIONS in a release are named, not buried in the file list", async () => {
-  /* Code that expects a table the production database has not got fails after
-     deploying, on a live site. This is the warning that has to arrive before
-     the button, not after the outage. */
-  const g = stubGitHub({
-    ahead: 4,
-    files: ["src/_data/site.json", "db/migrations/0009_thing.sql", "db/migrations/0010_other.sql"],
-  });
-  try {
-    const res = await handler.fetch(req("GET"), envWith("admin"));
-    const b = await res.json();
-    eq(b.migrations, ["db/migrations/0009_thing.sql", "db/migrations/0010_other.sql"], "migrations");
-  } finally { g.restore(); }
-});
-
-await check("a release with no migrations says so with an empty list", async () => {
-  const g = stubGitHub({ files: ["src/_data/i18n/hr.json"] });
+await check("a site that has never published says so instead of comparing", async () => {
+  const g = stubGitHub({ prodNever: true });
   try {
     const b = await (await handler.fetch(req("GET"), envWith("admin"))).json();
-    eq(b.migrations, [], "migrations");
+    eq(b.neverPublished, true, "neverPublished");
+    assert(!g.some((c) => c.url.includes("/compare/")),
+           "compared against a commit that does not exist");
   } finally { g.restore(); }
 });
 
-await check("drift — live commits staging has not got — is reported", async () => {
-  // Production's own content editor commits to main, so this WILL happen.
-  const g = stubGitHub({ ahead: 2, behind: 1, status_: "diverged" });
+await check("MIGRATIONS are named, not buried in the file list", async () => {
+  const g = stubGitHub({ ahead: 4,
+    files: ["src/_data/site.json", "db/migrations/0009_a.sql", "db/migrations/0010_b.sql"] });
   try {
     const b = await (await handler.fetch(req("GET"), envWith("admin"))).json();
-    eq(b.drifted, 1, "drifted");
-    eq(b.relationship, "diverged", "relationship");
+    eq(b.migrations, ["db/migrations/0009_a.sql", "db/migrations/0010_b.sql"], "migrations");
   } finally { g.restore(); }
+});
+
+await check("the page can tell whether the preview is current", async () => {
+  // A preview quietly out of date is worse than none, because it is believed.
+  const fresh = stubGitHub({ previewSha: "head000" });
+  try {
+    const b = await (await handler.fetch(req("GET"), envWith("admin"))).json();
+    eq(b.preview.current, true, "preview matches the branch head");
+  } finally { fresh.restore(); }
+
+  const stale = stubGitHub({ previewSha: "older00" });
+  try {
+    const b = await (await handler.fetch(req("GET"), envWith("admin"))).json();
+    eq(b.preview.current, false, "preview is behind and must say so");
+  } finally { stale.restore(); }
 });
 
 /* ------------------------------- publishing ---------------------------- */
@@ -202,107 +223,68 @@ await check("drift — live commits staging has not got — is reported", async 
 await check("publishing WITHOUT the confirmation word is refused", async () => {
   const g = stubGitHub();
   try {
-    const res = await handler.fetch(req("POST", { direction: "publish" }), envWith("admin"));
+    const res = await handler.fetch(req("POST", { action: "publish" }), envWith("admin"));
     eq(res.status, 400, "status");
-    assert(!g.some((c) => c.url.endsWith("/merges")), "it merged without the word");
+    assert(!g.some((c) => c.url.endsWith("/dispatches")), "it built anyway");
   } finally { g.restore(); }
 });
 
 await check("the wrong word is refused too", async () => {
   const g = stubGitHub();
   try {
-    const res = await handler.fetch(req("POST", { direction: "publish", confirm: "publish" }),
+    const res = await handler.fetch(req("POST", { action: "publish", confirm: "publish" }),
                                     envWith("admin"));
     eq(res.status, 400, "lowercase must not pass");
-    assert(!g.some((c) => c.url.endsWith("/merges")), "it merged anyway");
+    assert(!g.some((c) => c.url.endsWith("/dispatches")), "it built anyway");
   } finally { g.restore(); }
 });
 
-await check("publishing merges staging INTO live, not the other way round", async () => {
-  const g = stubGitHub({ ahead: 2 });
+await check("publish builds PRODUCTION from the site branch", async () => {
+  const g = stubGitHub();
   try {
-    const res = await handler.fetch(req("POST", { direction: "publish", confirm: "PUBLISH" }),
+    const res = await handler.fetch(req("POST", { action: "publish", confirm: "PUBLISH" }),
                                     envWith("admin"));
     const b = await res.json();
     eq(res.status, 200, "status");
-    const merge = g.find((c) => c.url.endsWith("/merges"));
-    eq(merge.body.base, "main", "base must be the live branch");
-    eq(merge.body.head, "dev", "head must be the staging branch");
-    eq(b.deploying, true, "publishing triggers the deploy");
-    eq(b.merged, 2, "count");
+    const d = g.find((c) => c.url.endsWith("/dispatches"));
+    assert(d.url.includes("deploy.yml"), "wrong workflow: " + d.url);
+    eq(d.body.ref, "main", "must build the site branch");
+    eq(b.where, "thauma.one", "where");
   } finally { g.restore(); }
 });
 
-await check("the commit message lists what shipped", async () => {
-  const g = stubGitHub({ ahead: 3 });
+await check("preview builds STAGING, and needs no confirmation", async () => {
+  /* Preview changes nothing anybody outside can see. A dialog on a harmless
+     action trains people to dismiss dialogs, which costs you the one on the
+     action that matters. */
+  const g = stubGitHub();
   try {
-    await handler.fetch(req("POST", { direction: "publish", confirm: "PUBLISH" }), envWith("admin"));
-    const merge = g.find((c) => c.url.endsWith("/merges"));
-    assert(/commit 0/.test(merge.body.commit_message), "should list the subjects");
-    assert(/Chase Roush/.test(merge.body.commit_message), "should name who published");
-  } finally { g.restore(); }
-});
-
-await check("the gap is re-read at merge time, not trusted from the browser", async () => {
-  // What the page showed may be minutes old, and it is what gets audited.
-  const g = stubGitHub({ ahead: 2 });
-  try {
-    await handler.fetch(req("POST", { direction: "publish", confirm: "PUBLISH" }), envWith("admin"));
-    const compares = g.filter((c) => c.url.includes("/compare/"));
-    eq(compares.length, 1, "should compare again during the POST");
-    assert(g.findIndex((c) => c.url.includes("/compare/")) <
-           g.findIndex((c) => c.url.endsWith("/merges")), "compared after merging");
-  } finally { g.restore(); }
-});
-
-await check("publishing when there is nothing to publish is not an error", async () => {
-  const g = stubGitHub({ ahead: 0 });
-  try {
-    const res = await handler.fetch(req("POST", { direction: "publish", confirm: "PUBLISH" }),
-                                    envWith("admin"));
-    const b = await res.json();
+    const res = await handler.fetch(req("POST", { action: "preview" }), envWith("admin"));
     eq(res.status, 200, "status");
-    eq(b.alreadyUpToDate, true, "should say so plainly");
-    assert(!g.some((c) => c.url.endsWith("/merges")), "merged nothing into nothing");
-  } finally { g.restore(); }
-});
-
-await check("a merge conflict says a person with a terminal is needed", async () => {
-  const g = stubGitHub({ ahead: 2, mergeStatus: 409 });
-  try {
-    const res = await handler.fetch(req("POST", { direction: "publish", confirm: "PUBLISH" }),
-                                    envWith("admin"));
-    eq(res.status, 409, "status");
+    const d = g.find((c) => c.url.endsWith("/dispatches"));
+    assert(d.url.includes("deploy-staging.yml"), "wrong workflow: " + d.url);
     const b = await res.json();
-    assert(/terminal/.test(b.error), "should say what it actually takes");
+    eq(b.where, "next.thauma.one", "where");
   } finally { g.restore(); }
 });
 
-/* --------------------------------- sync -------------------------------- */
-
-await check("sync merges live INTO staging, and needs no confirmation word", async () => {
-  /* Pulling commits into the working branch changes nothing anybody can see.
-     Ceremony people perform by reflex stops being a check, so it is spent only
-     on the direction that reaches the public. */
-  const g = stubGitHub({ ahead: 1 });
-  try {
-    const res = await handler.fetch(req("POST", { direction: "sync" }), envWith("admin"));
-    eq(res.status, 200, "status");
-    const merge = g.find((c) => c.url.endsWith("/merges"));
-    eq(merge.body.base, "dev", "base must be the staging branch");
-    eq(merge.body.head, "main", "head must be the live branch");
-    const b = await res.json();
-    eq(b.deploying, false, "a sync must not claim a deploy is running");
-  } finally { g.restore(); }
-});
-
-await check("an unknown direction is treated as publish, so it still needs the word", async () => {
+await check("an unknown action is treated as publish, so it still needs the word", async () => {
   // Fail toward the guarded path, never away from it.
   const g = stubGitHub();
   try {
-    const res = await handler.fetch(req("POST", { direction: "wat" }), envWith("admin"));
+    const res = await handler.fetch(req("POST", { action: "wat" }), envWith("admin"));
     eq(res.status, 400, "status");
-    assert(!g.some((c) => c.url.endsWith("/merges")), "it merged anyway");
+    assert(!g.some((c) => c.url.endsWith("/dispatches")), "it built anyway");
+  } finally { g.restore(); }
+});
+
+await check("a missing Actions permission is reported, not swallowed", async () => {
+  const g = stubGitHub({ dispatchStatus: 403 });
+  try {
+    const res = await handler.fetch(req("POST", { action: "preview" }), envWith("admin"));
+    eq(res.status, 403, "status");
+    const b = await res.json();
+    assert(/Actions: read and write/.test(b.error), "must name the permission");
   } finally { g.restore(); }
 });
 

@@ -128,11 +128,16 @@ CONTACT_FROM = "Thauma <noreply@thauma.one>"
 # in with `wrangler secret put GITHUB_TOKEN`; these two are not — they name a
 # repository and a branch, and neither authorises anything on its own.
 #
-# CONTENT_BRANCH IS THE SAFETY CATCH. Staging and local dev write to `dev`, so
-# an edit made while trying the editor out cannot reach the live site. Only
-# [env.production] writes to `main`, where the Action publishes it.
+# CONTENT_BRANCH IS THE SITE'S BRANCH, IN EVERY ENVIRONMENT. Words are edited
+# in one place and there is only one copy of them; an editor that wrote
+# somewhere else would need a merge to publish, and a merge is the thing this
+# design exists to remove.
+#
+# Saving does not deploy — the commit carries `[skip ci]`. Publish asks for the
+# build. So writing to the live branch is not the same as writing to the live
+# site, which is what makes this safe.
 GITHUB_REPO = "thauma-one/thauma-site"
-CONTENT_BRANCH = "dev"
+CONTENT_BRANCH = "main"
 
 # The two branches the Publish page moves between. Same everywhere: which
 # branch is live is a fact about the repository, not about the environment
@@ -244,11 +249,12 @@ ACCESS_AUD = "04468ad531e25f3c53af5d0b4ed0bdd3073241f76a070c741efe40f58019fdfb,d
 CONTACT_TO = "admin@thauma.one"
 CONTACT_FROM = "Thauma <noreply@thauma.one>"
 
-# Local dev commits to `dev`, and only if a GITHUB_TOKEN is present in .dev.vars
-# — which it should not normally be. Without one the editor loads and says it is
-# not connected, which is the right state for a machine under a desk.
+# The Pi edits the same branch as everywhere else, and only if a credential is
+# present in .dev.vars — which it should not normally be. Without one the editor
+# loads and says it is not connected, which is the right state for a machine
+# under a desk.
 GITHUB_REPO = "thauma-one/thauma-site"
-CONTENT_BRANCH = "dev"
+CONTENT_BRANCH = "main"
 LIVE_BRANCH = "main"
 STAGING_BRANCH = "dev"
 
@@ -322,13 +328,6 @@ ACCESS_AUD = "b0c56c5b0e4009cd1d5e47025966abb413ff1dabe5244e5480a18170ba6b6602"
 CONTACT_TO = "admin@thauma.one"
 CONTACT_FROM = "Thauma <noreply@thauma.one>"
 
-# THE ONLY ENVIRONMENT THAT COMMITS TO `main`. A save in the production console
-# is a commit on the branch the deploy Action watches, so saving publishes —
-# which is the point, and the reason every other environment writes to `dev`.
-#
-# CONSEQUENCE FOR DEVELOPMENT: copy edited here lands on `main`, not on `dev`.
-# Pull `main` into `dev` before working on the site's words, or the next merge
-# presents somebody's content edit as a conflict.
 GITHUB_REPO = "thauma-one/thauma-site"
 CONTENT_BRANCH = "main"
 LIVE_BRANCH = "main"

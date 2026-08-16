@@ -14,8 +14,8 @@
  *      unconditional overwrite, which is the exact accident the SHA exists to
  *      prevent.
  */
-import { toBase64, fromBase64, getFile, putFile, githubConfig,
-         compareBranches, mergeBranches, __resetTokenCache } from "../src/lib/github.js";
+import { toBase64, fromBase64, getFile, putFile, githubConfig, compareBranches,
+         lastSuccessfulRun, dispatchWorkflow, __resetTokenCache } from "../src/lib/github.js";
 
 let pass = 0, fail = 0;
 async function check(name, fn) {
@@ -261,6 +261,35 @@ await check("putFile sends branch, sha and UTF-8 content", async () => {
   eq(r.commit, "c1", "returned the commit");
 });
 
+await check("a quiet save carries [skip ci] on the SUBJECT line", async () => {
+  /* GitHub reads the marker off the whole message, but a human reads the
+     subject — and `git log --oneline` shows only that. Burying it in the body
+     would work and would make the log lie about which commits deployed. */
+  let body = null;
+  const fake = async (_u, init) => {
+    body = JSON.parse(init.body);
+    return new Response(JSON.stringify({ content: { sha: "s" }, commit: { sha: "c" } }), { status: 200 });
+  };
+  await putFile(ENV, {
+    path: "p", text: "{}", sha: "old", quiet: true,
+    message: "Update hr content: 2 values\n\n  nav.home\n  nav.give",
+  }, fake);
+
+  const subject = body.message.split("\n")[0];
+  assert(/\[skip ci\]$/.test(subject), `marker must end the subject, got: ${subject}`);
+  assert(/nav\.home/.test(body.message), "the body must survive");
+});
+
+await check("a normal save does NOT carry the marker", async () => {
+  let body = null;
+  const fake = async (_u, init) => {
+    body = JSON.parse(init.body);
+    return new Response(JSON.stringify({ content: { sha: "s" }, commit: { sha: "c" } }), { status: 200 });
+  };
+  await putFile(ENV, { path: "p", text: "{}", sha: "old", message: "Ordinary commit" }, fake);
+  assert(!/skip ci/.test(body.message), "quiet was not asked for");
+});
+
 await check("a stale SHA is a clear conflict, not a server error", async () => {
   const fake = async () => new Response(JSON.stringify({ message: "is at abc but expected def" }), { status: 409 });
   const r = await putFile(ENV, { path: "p", text: "{}", sha: "stale", message: "m" }, fake);
@@ -300,31 +329,53 @@ await check("compare passes GitHub's 'diverged' through rather than flattening i
   eq(r.behind_by, 1, "behind count");
 });
 
-await check("merge sends base, head and a message", async () => {
-  let body = null;
-  const fake = async (_u, init) => {
-    body = JSON.parse(init.body);
-    return new Response(JSON.stringify({ sha: "merge1", html_url: "https://gh/m1" }), { status: 201 });
+await check("the last successful run tells us what is actually live", () => {
+  // Nothing else knows this. A branch does not record which of its commits is
+  // deployed, and a deploy is not a commit — asking the deploy is the only
+  // honest source.
+  return (async () => {
+    const fake = async (u) => {
+      assert(u.includes("/actions/workflows/deploy.yml/runs"), "wrong endpoint: " + u);
+      assert(u.includes("status=success"), "must ignore failed runs — a failed deploy published nothing");
+      return new Response(JSON.stringify({ workflow_runs: [
+        { head_sha: "abc123", updated_at: "2026-08-16T10:00:00Z", html_url: "https://gh/run", run_number: 12 },
+      ] }), { status: 200 });
+    };
+    const r = await lastSuccessfulRun(ENV, "deploy.yml", fake);
+    eq(r.sha, "abc123", "sha");
+    eq(r.number, 12, "run number");
+  })();
+});
+
+await check("a site that has never deployed is a state, not a failure", async () => {
+  const fake = async () => new Response(JSON.stringify({ workflow_runs: [] }), { status: 200 });
+  const r = await lastSuccessfulRun(ENV, "deploy.yml", fake);
+  eq(r.never, true, "should say so plainly");
+  assert(!r.error, "reported an error for a brand new site");
+});
+
+await check("dispatch starts a build without pushing anything", async () => {
+  let seen = null;
+  const fake = async (u, init) => {
+    seen = { u, body: JSON.parse(init.body), method: init.method };
+    return new Response(null, { status: 204 });
   };
-  const r = await mergeBranches(ENV, { base: "main", head: "dev", message: "Publish" }, fake);
-  eq(body.base, "main", "base");
-  eq(body.head, "dev", "head");
-  eq(r.commit, "merge1", "commit");
+  const r = await dispatchWorkflow(ENV, "deploy.yml", "main", fake);
+  eq(r.started, true, "started");
+  eq(seen.method, "POST", "method");
+  eq(seen.body.ref, "main", "ref");
+  assert(seen.u.includes("/actions/workflows/deploy.yml/dispatches"), "endpoint");
 });
 
-await check("nothing to merge is a fact, not a failure", async () => {
-  const fake = async () => new Response(null, { status: 204 });
-  const r = await mergeBranches(ENV, { base: "main", head: "dev", message: "m" }, fake);
-  eq(r.alreadyUpToDate, true, "should report the desired end state plainly");
-  assert(!r.error, "reported an error for the state we wanted");
-});
-
-await check("a conflict says a person with a terminal is needed", async () => {
-  const fake = async () => new Response(JSON.stringify({ message: "Merge conflict" }), { status: 409 });
-  const r = await mergeBranches(ENV, { base: "main", head: "dev", message: "m" }, fake);
-  eq(r.status, 409, "status");
-  assert(/Nothing was changed/.test(r.error), "must say the merge did not happen");
-  assert(/terminal/.test(r.error), "must say what it actually takes to fix");
+await check("a missing Actions permission says exactly which one", async () => {
+  /* The 403 GitHub returns here says nothing useful, and the cause is always
+     the same: the app was created with Contents but not Actions. Guessing that
+     from "Resource not accessible by integration" costs an afternoon. */
+  const fake = async () => new Response(JSON.stringify({
+    message: "Resource not accessible by integration" }), { status: 403 });
+  const r = await dispatchWorkflow(ENV, "deploy.yml", "main", fake);
+  eq(r.status, 403, "status");
+  assert(/Actions: read and write/.test(r.error), "must name the permission");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

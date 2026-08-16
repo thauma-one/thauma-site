@@ -49,18 +49,21 @@
 
 <nav><div class="wrap nav-in">
   <a class="logo" href="/{{ lang }}/"><!-- <img src="/img/logo.svg" alt=""> -->THAUMA</a>
+  {#- Every link follows its own switch in Site settings. A link to a page
+     that was not built is a 404 with the site's own navigation pointing at
+     it, which is worse than the page simply not being offered. -#}
   <div class="links">
-    <a href="/{{ lang }}/about/">{{ t.nav.about }}</a>
-    <a href="/{{ lang }}/mission/">{{ t.nav.mission }}</a>
-    <a href="/{{ lang }}/values/">{{ t.nav.values }}</a>
-    <a href="/{{ lang }}/team/">{{ t.nav.team }}</a>
-    <a href="/{{ lang }}/resources/">{{ t.nav.resources }}</a>
-    <a href="/{{ lang }}/contact/">{{ t.nav.contact }}</a>
-    {% if site.showEvents %}<a href="/{{ lang }}/events/">{{ t.nav.events }}</a>{% endif %}
+    {% if visible.pages.about %}<a href="/{{ lang }}/about/">{{ t.nav.about }}</a>{% endif %}
+    {% if visible.pages.mission %}<a href="/{{ lang }}/mission/">{{ t.nav.mission }}</a>{% endif %}
+    {% if visible.pages.values %}<a href="/{{ lang }}/values/">{{ t.nav.values }}</a>{% endif %}
+    {% if visible.pages.team %}<a href="/{{ lang }}/team/">{{ t.nav.team }}</a>{% endif %}
+    {% if visible.pages.resources %}<a href="/{{ lang }}/resources/">{{ t.nav.resources }}</a>{% endif %}
+    {% if visible.pages.contact %}<a href="/{{ lang }}/contact/">{{ t.nav.contact }}</a>{% endif %}
+    {% if visible.pages.events %}<a href="/{{ lang }}/events/">{{ t.nav.events }}</a>{% endif %}
   </div>
   <div class="nav-actions">
     {{ langDropdown() }}
-    <a class="give-btn" href="/{{ lang }}/give/">{{ t.nav.give }}</a>
+    {% if visible.pages.give %}<a class="give-btn" href="/{{ lang }}/give/">{{ t.nav.give }}</a>{% endif %}
   </div>
   <button class="menu-btn" aria-label="Menu"><span></span><span></span></button>
 </div></nav>

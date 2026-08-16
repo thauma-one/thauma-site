@@ -1,0 +1,26 @@
+# GitHub webhook receiver — makes a website edit appear on the Pi immediately.
+#
+# Install:
+#   sudo cp /DATA/AppData/thauma/deploy/thauma-sync-hook.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now thauma-sync-hook
+#
+# The secret lives in /home/chaseroushtech/.config/thauma-sync.env, mode 0600:
+#   GITHUB_WEBHOOK_SECRET=...
+#
+# EnvironmentFile rather than Environment=, and the program reads the variable
+# itself, because anything passed on a command line is visible in `ps` to every
+# user on the machine. Same rule as the Cloudflare token in thauma-dev.service.
+[Unit]
+Description=Thauma git sync webhook receiver
+After=network-online.target
+
+[Service]
+User=chaseroushtech
+WorkingDirectory=/DATA/AppData/thauma
+EnvironmentFile=/home/chaseroushtech/.config/thauma-sync.env
+ExecStart=/usr/bin/node /DATA/AppData/thauma/deploy/git-sync-hook.js
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

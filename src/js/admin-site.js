@@ -65,9 +65,6 @@
      `comingSoon` tells you its name; it does not tell you that it is the
      difference between a holding page and a website. */
   var EXPLAIN = {
-    comingSoon: 'con.f.comingSoon',
-    showEvents: 'con.f.showEvents',
-    resourcesReady: 'con.f.resourcesReady',
     defaultLang: 'con.f.defaultLang',
     languages: 'con.f.languages',
     url: 'con.f.url'
@@ -144,21 +141,119 @@
             .replace(/^./, function (c) { return c.toUpperCase(); }).trim();
   }
 
+  /* `resourcesLibrary` -> "Resources library". The ids are the words already,
+     just packed together. Not translated, for the same reason the content
+     editor does not translate its section names: they identify a page or a
+     block, and they are things you match against the site rather than read. */
+  function humanise(id) {
+    return id.replace(/([A-Z])/g, ' $1').toLowerCase()
+             .replace(/^./, function (c) { return c.toUpperCase(); }).trim();
+  }
+
+  var isVisibility = function (p) { return p.indexOf('visibility.') === 0; };
+
   function render() {
     var groups = [];
     var seen = {};
     state.order.forEach(function (p) {
+      if (isVisibility(p)) return;      // rendered as its own two-column block
       var g = groupOf(p);
       if (!seen[g]) { seen[g] = true; groups.push(g); }
     });
 
-    $('sRoot').innerHTML = groups.map(function (g) {
-      var rows = state.order.filter(function (p) { return groupOf(p) === g; });
-      return '<section class="s-group">' +
-        '<h3>' + esc(groupLabel(g)) + '</h3>' +
-        rows.map(field).join('') +
-        '</section>';
-    }).join('');
+    $('sRoot').innerHTML =
+      renderVisibility() +
+      groups.map(function (g) {
+        var rows = state.order.filter(function (p) {
+          return !isVisibility(p) && groupOf(p) === g;
+        });
+        return '<section class="s-group">' +
+          '<h3>' + esc(groupLabel(g)) + '</h3>' +
+          rows.map(field).join('') +
+          '</section>';
+      }).join('');
+  }
+
+  /* ---- the two columns ------------------------------------------------
+     Every switch here exists twice: once for the dev site and once for the
+     live one. Rendering them as sixteen separate rows called
+     "visibility.pages.events.dev" would be technically the same information
+     and useless — the whole point is that you can see, on one line, that
+     Events is on for you and off for visitors.
+
+     DEV IS A SIMULATOR, NOT A SECOND SITE. It defaults to showing everything,
+     because that is what a dev site is for. Turning one off there answers
+     "what does this look like without it?" without touching the public. */
+
+  function switchCell(path, extraClass) {
+    var v = state.draft[path];
+    var dirty = state.draft[path] !== state.saved[path];
+    return '<span class="v-cell ' + (extraClass || '') + (dirty ? ' is-dirty' : '') +
+             '" data-field="' + esc(path) + '">' +
+      '<button type="button" class="switch small" role="switch" data-path="' + esc(path) + '"' +
+      ' aria-checked="' + (v ? 'true' : 'false') + '"' + (v ? ' data-on="1"' : '') + '>' +
+        '<span class="switch-track"><span class="switch-state">' +
+          (v ? 'On' : 'Off') + '</span><span class="switch-knob"></span></span>' +
+      '</button></span>';
+  }
+
+  function visRow(label, base, hint) {
+    return '<div class="v-row">' +
+      '<div class="v-label"><code>' + esc(label) + '</code>' +
+        (hint ? '<span class="s-hint">' + esc(hint) + '</span>' : '') + '</div>' +
+      switchCell(base + '.dev', 'is-dev') +
+      switchCell(base + '.live', 'is-live') +
+    '</div>';
+  }
+
+  function renderVisibility() {
+    // Derived from whatever is in the file, so adding a page to site.json puts
+    // a row here without anyone remembering to come and add one.
+    var pages = [], sections = [], hasComingSoon = false;
+    state.order.forEach(function (p) {
+      if (!isVisibility(p)) return;
+      var parts = p.split('.');          // visibility.pages.events.dev
+      if (parts[1] === 'comingSoon') { hasComingSoon = true; return; }
+      if (parts.length !== 4) return;
+      var bucket = parts[1] === 'pages' ? pages : parts[1] === 'sections' ? sections : null;
+      if (!bucket) return;
+      if (bucket.indexOf(parts[2]) === -1) bucket.push(parts[2]);
+    });
+
+    if (!pages.length && !sections.length && !hasComingSoon) return '';
+
+    var head =
+      '<div class="v-head">' +
+        '<div class="v-label"></div>' +
+        '<span class="v-cell is-dev"><b>' + esc(tr('vis.devCol')) + '</b>' +
+          '<span>' + esc(tr('vis.devColNote')) + '</span></span>' +
+        '<span class="v-cell is-live"><b>' + esc(tr('vis.liveCol')) + '</b>' +
+          '<span>' + esc(tr('vis.liveColNote')) + '</span></span>' +
+      '</div>';
+
+    var body = '';
+    if (hasComingSoon) {
+      body += '<div class="v-sub">' + esc(tr('vis.wholeSite')) + '</div>' +
+        visRow(tr('vis.comingSoon'), 'visibility.comingSoon', tr('con.f.comingSoon'));
+    }
+    if (pages.length) {
+      body += '<div class="v-sub">' + esc(tr('vis.pages')) + '</div>' +
+        pages.map(function (slug) {
+          return visRow(humanise(slug), 'visibility.pages.' + slug, '');
+        }).join('');
+    }
+    if (sections.length) {
+      body += '<div class="v-sub">' + esc(tr('vis.sections')) + '</div>' +
+        sections.map(function (id) {
+          return visRow(humanise(id), 'visibility.sections.' + id, '');
+        }).join('');
+    }
+
+    return '<section class="s-group v-group">' +
+      '<h3>' + esc(tr('vis.title')) + '</h3>' +
+      '<p class="v-note">' + esc(tr('vis.explain')) + '</p>' +
+      head + body +
+    '</section>';
   }
 
   function field(p) {
@@ -212,7 +307,12 @@
     if (!el) return;
     var dirty = state.draft[p] !== state.saved[p];
     el.classList.toggle('is-dirty', dirty);
+
+    // A visibility cell is a bare switch with no label beside it — the label
+    // belongs to the ROW and is shared by both columns. The coloured edge is
+    // the whole unsaved marker there.
     var label = el.querySelector('.s-label');
+    if (!label) return;
     var badge = label.querySelector('.badge.unsaved');
     if (dirty && !badge) {
       badge = document.createElement('span');
@@ -269,11 +369,16 @@
     var p = sw.getAttribute('data-path');
     var next = !state.draft[p];
 
-    /* THE LAUNCH SWITCH. Turning comingSoon off replaces the holding page
-       with the whole site, for everybody, and it is the only control on this
-       page whose consequence is not recoverable by simply setting it back —
-       by then it has been seen. So it asks, and only in that direction. */
-    if (p === 'comingSoon' && next === false) {
+    /* THE LAUNCH SWITCH. Turning it off replaces the holding page with the
+       whole site, for everybody, and it is the only control here whose
+       consequence is not recoverable by setting it back — by then it has been
+       seen. So it asks, and only in that direction.
+
+       ONLY THE LIVE COLUMN. The dev column's copy of the same switch changes
+       what dev.thauma.one simulates and nothing else; asking for confirmation
+       there would be ceremony, and ceremony performed by reflex stops working
+       as a check on the column where it matters. */
+    if (p === 'visibility.comingSoon.live' && next === false) {
       var ok = await window.StaffConfirm({
         title: tr('con.launchTitle'),
         body: tr('con.launchBody'),

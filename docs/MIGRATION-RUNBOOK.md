@@ -171,9 +171,14 @@ also no expiry date on which the editor quietly stops working.
       - **Uncheck "Webhook → Active"** — nothing here listens for webhooks, and
         an App with one configured and no listener produces failed deliveries
         forever.
-      - Permissions → **Repository permissions → Contents: Read and write**.
-        Nothing else. Contents covers reading files, committing them, and the
-        merge the Publish page performs.
+      - Permissions → Repository permissions, exactly two:
+        **Contents: Read and write** (reading and committing the files) and
+        **Actions: Read and write** (Preview and Publish, which start a build
+        with `workflow_dispatch`). Nothing else.
+
+        Missing the second is the likeliest setup mistake, and GitHub's 403 for
+        it says nothing useful — `dispatchWorkflow()` catches that case and
+        names the permission rather than passing the shrug through.
       - "Where can this GitHub App be installed": **Only on this account**
       - Create, then note the **App ID** shown at the top.
 - [ ] **Generate a private key** on the same page. It downloads a `.pem`.
@@ -222,49 +227,37 @@ both are set. A machine account (`thauma-bot`, on `admin@thauma.one`) holding a
 fine-grained token is a legitimate simpler answer — org-controlled, no code
 path to learn. It costs an account to look after and a token that expires.
 
-### CONTENT_BRANCH is the safety catch
+### The flow, after the 2026-08-16 rework
 
-| environment | commits to |
+```
+Save      commits to `main` with [skip ci] — saved, not deployed
+Preview   dispatches deploy-staging.yml against `main`
+Publish   dispatches deploy.yml against `main` — the site changes
+```
+
+No branches appear in the interface and no merge is involved. `dev` is for
+code; `sync-dev.yml` keeps it current with `main` on a ten-minute schedule so
+website edits cannot be lost under a later code merge.
+
+**deploy-staging.yml is dispatch-only, deliberately.** It had a push trigger on
+`dev`; leaving it would have meant `sync-dev` rebuilding staging behind
+somebody's back, so "Preview" would quietly have started meaning "whatever was
+pushed most recently". To try code on staging, dispatch it manually with ref
+`dev`.
+
+### Keeping the Pi in sync
+
+Three pieces, because the website can now change the repository without anyone
+touching the Pi:
+
+| piece | what |
 |---|---|
-| staging (`next.thauma.one`), local dev | `dev` |
-| **production (`thauma.one`)** | **`main` — which publishes** |
+| `deploy/git-sync.sh` | `git merge --ff-only`. Refuses on uncommitted work or divergence and changes nothing. |
+| `deploy/git-sync-hook.js` | GitHub webhook receiver on 127.0.0.1:8994, HMAC-verified, exposed at `dev.thauma.one/_sync` through the tunnel. Instant. |
+| `thauma-sync.timer` | The same script every five minutes. The backup for when a delivery fails. |
 
-Trying the editor out cannot reach the live site. **The consequence for
-development:** copy edited in production lands on `main` and not on `dev`, so
-pull `main` into `dev` before working on the site's words, or the next merge
-presents somebody's content edit as a conflict.
-
-### Publishing — moving `dev` onto `main`
-
-`/admin/publish/` — added because the promote used to be a terminal command,
-so the review step it was meant to provide only existed for whoever had the Pi
-in front of them.
-
-The page shows the commits, the changed files grouped by directory, and — named
-separately and above the button — **any database migrations in the release**.
-That last one is the warning that has to arrive before publishing rather than
-after: code expecting a table `thauma-ops` has not got fails on the live site,
-and the fix is a migration somebody runs by hand.
-
-Publishing takes the word `PUBLISH` typed out, checked on the server as well as
-in the browser. The gap is re-read at merge time rather than trusted from the
-browser, because what the page showed may be minutes old and it is what gets
-audited.
-
-**The reverse merge is on the same page.** Production's content editor commits
-to `main`, so `main` accumulates commits `dev` has not got. When it does, the
-page says so and offers to bring them back. A drift nobody can fix from the
-console is a drift that grows until it is a conflict.
-
-### Staging now deploys itself
-
-`.github/workflows/deploy-staging.yml` — push to `dev`, and `next.thauma.one`
-rebuilds with the same build and the same tests as production.
-
-This was missing and it made the whole review flow imaginary: an edit made on
-staging committed to `dev`, and with nothing watching `dev`, staging never
-rebuilt. You could not see your own change. "Edit on dev, review, then publish"
-had no review step in it.
+Tested 2026-08-16: unsigned, wrongly-signed and malformed-signature deliveries
+all refused; a good signature accepted; a bad repository path fails safely.
 
 ### What it cannot do, deliberately
 

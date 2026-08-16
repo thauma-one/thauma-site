@@ -144,7 +144,7 @@ local            the Pi       .wrangler/state, reseeded from seed.dev.sql
 
 ### The Worker
 
-One entry point, `workers/src/worker.js`. **254 tests** (`cd workers && npm test`).
+One entry point, `workers/src/worker.js`. **255 tests** (`cd workers && npm test`).
 
 | file | what |
 |---|---|
@@ -159,7 +159,7 @@ One entry point, `workers/src/worker.js`. **254 tests** (`cd workers && npm test
 | `staff-data.js` | directory (per person) + resources (per partner) |
 | `admin.js` | organisation administration — the only UNSCOPED endpoint |
 | `admin-content.js` | the site's own words and settings — the only endpoint that COMMITS |
-| `admin-publish.js` | promoting the working branch to live — the only endpoint that DEPLOYS |
+| `admin-publish.js` | Preview and Publish — the only endpoint that DEPLOYS |
 | `lib/github.js` | the Contents API, App authentication, UTF-8-safe base64 |
 | `partner-api.js` | `/api/partner/v1/site` — the only public-facing key route |
 | `contact-form.js`, `game-scores.js` | ported from Netlify |
@@ -464,26 +464,43 @@ Four things follow, and each has a test:
    Structural change stays a git operation, because a CMS that can restructure
    the data its own build depends on can break the build. It also keeps the
    diff to one line per edited string.
-4. **`CONTENT_BRANCH` decides where it lands.** Staging and local dev write to
-   `dev`; only production writes to `main`. Trying the editor out cannot reach
-   the live site.
+4. **Saving is not publishing.** Every content commit carries `[skip ci]`, so
+   it lands on the site's branch and no workflow runs. Preview and Publish then
+   ask for a build explicitly, through `workflow_dispatch`, which is not a push
+   and is unaffected by the marker. Writing to the live branch is therefore not
+   the same as writing to the live site, and that is what makes one branch
+   safe.
 
-### Publishing is a separate act from editing
+### Save, Preview, Publish — and no branch a person can see
 
-`/admin/publish/` merges the working branch onto the live one. It is not a
-content operation and the page does not pretend it is: a promote carries every
-commit on the branch — code, migrations, half-finished experiments — not only
-the words somebody edited. So it lists the commits and the changed files, names
-any **database migrations** separately and above the button, and takes the word
-`PUBLISH` typed out and checked on the server.
+The console shows three words and never the word "branch":
 
-`dev` was 35 commits and 58 files ahead of `main` the day this was built. A
-button with no list behind it would have shipped two consoles and seven
-migrations because somebody wanted to fix a typo.
+```
+Save      commits to the site's branch with [skip ci]. Nothing deploys.
+Preview   dispatches the staging workflow against that branch.
+Publish   dispatches the production workflow. The site changes.
+```
 
-The reverse merge lives on the same page. Production's own content editor
-commits to `main`, so `main` accumulates commits `dev` has not got; a drift
-nobody can fix from the console is one that grows until it is a conflict.
+**This replaced a two-branch promote model on 2026-08-16, one day after it was
+built.** Branches and merges are how teams ship CODE; what is being shipped
+here is sentences, and the machinery cost more than it protected for a
+single-operator org. The design it moved to is a git-backed CMS — git as the
+database, one branch, publish means "run the build" — which is what Decap,
+Tina and most of the static-site world do.
+
+`dev` still exists, for code. It is nobody's business but the developer's, and
+`.github/workflows/sync-dev.yml` keeps it current with `main` so content edits
+made on the website cannot be lost under a later code merge.
+
+**"What is not yet published" comes from the DEPLOY, not the branch.** A branch
+does not record which of its commits is live, so the only honest answer is "the
+last successful production run built commit X". A failed deploy therefore
+correctly leaves the work still showing as unpublished.
+
+The page lists the changes and the files, and names any **database migrations**
+separately and above the button — that is the one warning about something the
+deploy will not fix by itself. Publishing takes the word `PUBLISH` typed out
+and checked on the server.
 
 ⚠ **`btoa` is wrong for these files.** It throws above U+00FF and `atob`
 returns one byte per character — and every file this endpoint moves is Croatian
@@ -501,6 +518,44 @@ but a payload is what ends up in a log, an extension or a screenshot, and
 "we sent it but drew it invisibly" is not minimisation. Both columns removed;
 a test asserts they stay gone. If a screen needs to contact someone, add a
 `contact_detail` query returning **one** person by id.
+
+---
+
+### Which pages the public can see — two columns, not one
+
+`site.json`'s `visibility` block gives every page and section **two** values:
+
+```
+live   what visitors get
+dev    what dev.thauma.one shows
+```
+
+`src/_data/visible.js` picks the column from `ELEVENTY_RUN_MODE` — the Pi's
+watch output uses `dev`, both real builds use `live`. **next.thauma.one uses
+the LIVE column deliberately**: it exists to show what is about to be
+published, and a preview built from the dev column would show something no
+visitor will ever see.
+
+**One flag could not do this job.** Turning Events off has to hide it from
+visitors and NOT hide it from whoever is building the Events page. That was
+handled by scattering `or not env.isProduction` through the templates, which
+meant the dev site could never be made to *look* like the live one — you could
+hide a page and then had no way to check the result. The dev column defaults to
+showing everything and can be flipped per switch to simulate.
+
+Turning a page off means **not building it** (`permalink: false`), not hiding
+it with CSS. An unlinked page is still reachable, still crawlable and still in
+the sitemap.
+
+⚠ **`require()` caches JSON, and `eleventy --watch` never restarts.** Measured
+2026-08-16: flipping a switch rebuilt every page and changed nothing, because
+the data files read `site.json` with `require`. They use `fs.readFileSync` now,
+and `test/visibility.test.mjs` has a regression test — a build succeeding is
+not evidence it read the file.
+
+Separately: Eleventy never deletes a page it has stopped generating, so the
+Pi's `_site` keeps stale HTML after a page is switched off.
+`deploy/git-sync.sh` clears it when `site.json` changes.
 
 ---
 
@@ -554,7 +609,7 @@ thauma.one runs on Cloudflare Workers. What is left is listed in
 | Netlify Blobs | D1 | done — see §4 |
 | Netlify Forms | `contact-form.js` + Resend | done |
 | Edge function (geo language) | `lang-redirect.js` | done |
-| build on push | GitHub Actions — `main` AND `dev` | done |
+| build on push | GitHub Actions — `main` deploys; staging and sync are their own workflows | done |
 | **Git Gateway (Decap CMS)** | **custom editor** | **built 2026-08-15 — needs its token** |
 
 Site copy is editable through `/admin/content/` and `/admin/site/`, which

@@ -307,6 +307,21 @@ await check("PUT commits one changed value and nothing else", async () => {
   } finally { g.restore(); }
 });
 
+await check("SAVING DOES NOT DEPLOY", async () => {
+  /* The promise the word "Save" makes. Without the marker every keystroke
+     batch would rebuild and republish the public site, which is the behaviour
+     this whole design exists to avoid. */
+  const g = stubGitHub();
+  try {
+    await handler.fetch(req("PUT", { body: {
+      file: "hr", sha: "sha1", changes: { "nav.home": "Po\u010detna" },
+    } }), envWith("admin"));
+    const put = g.find((r) => r.method === "PUT");
+    assert(/\[skip ci\]/.test(put.body.message.split("\n")[0]),
+           `save must be quiet, subject was: ${put.body.message.split("\n")[0]}`);
+  } finally { g.restore(); }
+});
+
 await check("the commit is attributed to the person, not the Worker", async () => {
   const g = stubGitHub();
   try {

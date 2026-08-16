@@ -213,7 +213,7 @@ permalink: /404.html
     <a href="/{{ lang }}/team/">{{ t.nav.team }}</a>
     <a href="/{{ lang }}/resources/">{{ t.nav.resources }}</a>
     <a href="/{{ lang }}/contact/">{{ t.nav.contact }}</a>
-    {% if site.showEvents %}<a href="/{{ lang }}/events/">{{ t.nav.events }}</a>{% endif %}
+    {% if visible.pages.events %}<a href="/{{ lang }}/events/">{{ t.nav.events }}</a>{% endif %}
   </div>
   <div class="nav-actions">
     {%- for l in site.languages %}{% if l != lang %}

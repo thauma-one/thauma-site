@@ -2,26 +2,30 @@
 #
 # WHY THIS EXISTS
 #
-# `dev` had no deploy at all. next.thauma.one was updated by somebody running
-# `wrangler deploy` on a Raspberry Pi, which was survivable while staging was
-# only ever looked at by the person who had just deployed it.
+# This is the PREVIEW. The Preview button in /admin/publish/ dispatches it
+# against `main`, so next.thauma.one shows exactly what pressing Publish would
+# send to the live site — words included, since content saves commit to `main`
+# and simply do not deploy.
 #
-# It stopped being survivable when the content editor shipped. Editing copy on
-# staging commits to `dev` — and with nothing watching `dev`, the staging site
-# never rebuilt, so you could not see your own edit. "Edit on dev, review it,
-# then move it live" was a workflow with no review step in it.
+# ⚠ DISPATCH ONLY. There is deliberately no push trigger.
 #
-# So: push to `dev` -> staging rebuilds -> look at it -> publish from /admin/.
+# It had one, on `dev`, back when content was edited there. Leaving it would
+# now break the one promise this workflow makes: `sync-dev.yml` pushes to `dev`
+# every time content changes, so staging would rebuild from `dev` behind
+# somebody's back and "Preview" would quietly start meaning "whatever was
+# pushed most recently". A preview that is not what you would publish is worse
+# than no preview, because it gets believed.
+#
+# To try code out on staging before merging it, dispatch this manually with
+# ref `dev` — an explicit act, which is the point.
 #
 # THE SAME BUILD AND THE SAME TESTS AS PRODUCTION, deliberately. A staging
-# deploy that skipped the checks would be a staging deploy that could pass
-# while production failed, which is the one thing staging must never do. The
-# only differences are the output directory and the wrangler environment.
+# deploy that skipped the checks could pass while production failed, which is
+# the one thing staging must never do. The only differences are the output
+# directory and the wrangler environment.
 name: Deploy staging
 
 on:
-  push:
-    branches: [dev]
   workflow_dispatch:
 
 concurrency:
@@ -53,6 +57,7 @@ jobs:
 
       - name: Test
         run: |
+          node test/visibility.test.mjs
           python3 db/test_schema.py
           cd workers && npm test
 

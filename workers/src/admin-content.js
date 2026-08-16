@@ -305,6 +305,10 @@ async function write(request, env, db, user, me, cfg) {
 
   const res = await putFile(env, {
     path, text, sha: current.sha, message,
+    /* QUIET. Saving is not publishing — the commit lands and nothing deploys
+       until somebody presses Publish. This one word is the difference between
+       an editor you can think in and one where every keystroke batch is live. */
+    quiet: true,
     authorName: who,
     // The commit is attributed to the person, but the address is the one Access
     // authenticated — not a name typed into a field.
