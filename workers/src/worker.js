@@ -176,6 +176,30 @@ function signInPage(request, env, url) {
   });
 }
 
+/**
+ * Paths that require a signed-in person. THE ONLY DEFINITION.
+ *
+ * Both areas are gated identically, deliberately and testably. They were
+ * already two clauses of one `if`, which is the same thing until somebody
+ * edits one clause; a named list with a test that compares the two is the
+ * version that stays true.
+ *
+ * Access authenticates; it does not authorise. Being let through here means
+ * "we know who you are", nothing more — /api/admin* separately refuses anyone
+ * without the admin role. The pages are markup; the data is what matters.
+ *
+ * ⚠ THIS IS NOT A SUBSTITUTE FOR THE ACCESS APPLICATION, and it is not
+ * redundant with it either. Access gives a real login page; this gives a
+ * guarantee. On 2026-08-16 the Access application covered `staff` and not
+ * `admin`, so /admin/ was never intercepted — this check is why it was refused
+ * anyway instead of being served to anyone who asked.
+ */
+export function isProtected(pathname) {
+  return AREAS.some((a) => pathname === a || pathname.startsWith(a + "/"));
+}
+
+const AREAS = ["/staff", "/admin"];
+
 /** Exact-path routes. Checked before static assets. */
 const ROUTES = {
   "/api/contact": contactForm,
@@ -240,16 +264,9 @@ export default {
     // beneath them must fall through, or the site would redirect forever.
     if (url.pathname === "/") return langRedirect.fetch(request, env, ctx);
 
-    // Everything under /staff and /admin requires a valid Access token. Fails
-    // closed: no token, no config, or a token for a different application all
-    // mean 401.
-    //
-    // Access authenticates; it does not authorise. /admin's pages are gated
-    // here so a stranger cannot read them, and its ENDPOINT separately refuses
-    // anyone without the admin role — the pages are just markup, and the data
-    // is what matters.
-    if (url.pathname === "/staff" || url.pathname.startsWith("/staff/") ||
-        url.pathname === "/admin" || url.pathname.startsWith("/admin/")) {
+    // ONE gate, ONE list. /staff and /admin are protected identically and by
+    // the same code — see isProtected().
+    if (isProtected(url.pathname)) {
       const { denied } = await requireAccess(request, env);
       if (denied) return signInPage(request, env, url) || denied;
     }

@@ -281,6 +281,86 @@ for.
 
 ---
 
+## Access — one login for both consoles
+
+### ⚠ Do NOT clear the path on the production application
+
+The tempting fix for "/admin isn't covered" is to remove the path so the
+application covers the whole hostname. On `dev.thauma.one` that is merely
+inconvenient. **On `thauma.one` it puts the entire public website behind a
+login** — every visitor to `/en/`, every page, bounced to a sign-in screen.
+
+Add the path. Do not remove it.
+
+### The shape to aim for
+
+One application per hostname, each covering BOTH paths. Cloudflare Access
+applications accept several domain entries, so this is one app, one policy, one
+audience tag — which is what "a single login" means in practice.
+
+```
+Thauma console (production)   thauma.one/staff        thauma.one/admin
+Thauma console (staging)      next.thauma.one/staff   next.thauma.one/admin
+Thauma console (dev)          dev.thauma.one/staff    dev.thauma.one/admin
+```
+
+Three applications rather than one covering everything, deliberately:
+production keeps its own policy so a change made while testing cannot loosen
+the live site. `ACCESS_AUD` is already a comma-separated list, so each keeps
+its own tag and the code needs no change.
+
+### Steps
+
+Zero Trust → Access → Applications → the application → **Edit**
+
+1. Under **Application domain**, there is an existing entry with path `staff`.
+2. **Add a domain** — same hostname, path `admin`.
+3. Save. Repeat per hostname.
+
+**Verify in a browser**, signed out (a private window):
+
+| | expected |
+|---|---|
+| `/staff/` | Cloudflare login page |
+| `/admin/` | the same Cloudflare login page |
+| `/en/` | the public site, no login — **production especially** |
+
+If `/admin/` shows Thauma's own dark "You need to sign in" page rather than
+Cloudflare's, the path is still not covered: that page is the Worker's own
+fallback, not Access.
+
+### Why the Worker checks anyway
+
+`isProtected()` in `worker.js` refuses `/staff*` and `/admin*` regardless of
+what the dashboard says. That is not redundant — it is the reason the
+misconfiguration on 2026-08-16 was a locked door rather than an open one. Two
+tests assert the two areas behave identically, because "they are both in the
+same `if`" stays true only until somebody edits one clause.
+
+### MFA — the real answer is an identity provider
+
+Access currently uses **one-time PIN**: a code sent to the email address. That
+is a single factor — whoever can read the mailbox can sign in.
+
+Real MFA comes from federating Access to an identity provider that enforces it,
+then requiring it in the policy:
+
+1. Zero Trust → Settings → **Authentication** → add a login method
+   (Google Workspace, Microsoft Entra, GitHub, Okta…)
+2. Enforce 2-step verification in that provider
+3. In the Access policy, **Require → Login Method**, and remove one-time PIN so
+   it cannot be used as a way around the requirement
+
+**This is the same decision as the mailbox one.** thauma.one has no mailboxes —
+MX points at Cloudflare Email Routing, which only forwards. Buying Google
+Workspace or Microsoft 365 solves mailboxes, identity and MFA together, and
+turns "who works here" into one list instead of three. Worth deciding once.
+
+SPEC §5 records the longer-term intent: Access federating to SAML/OIDC, with
+UniFi Identity Enterprise as a candidate IdP.
+
+---
+
 ## Phase 4 — KV — SUPERSEDED
 
 This planned to move Netlify Blobs into KV. It happened, and then 0005 moved

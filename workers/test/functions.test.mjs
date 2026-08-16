@@ -12,7 +12,7 @@
 import { memoryStore } from "../src/lib/store.js";
 import * as game from "../src/game-scores.js";
 import * as staff from "../src/staff-data.js";
-import worker from "../src/worker.js";
+import worker, { isProtected } from "../src/worker.js";
 
 let pass = 0, fail = 0;
 async function check(name, fn) {
@@ -213,6 +213,45 @@ await check("photo sources go through the same allow-list as links", async () =>
    application; the lesson is that this Worker must not assume the dashboard is
    configured correctly.
    --------------------------------------------------------------------------- */
+
+await check("/staff and /admin are gated IDENTICALLY", async () => {
+  /* Chase asked for these to work the same way, and "they're both in the same
+     if statement" is true until somebody edits one clause. This compares the
+     actual behaviour of the two areas rather than trusting the source to stay
+     symmetrical.
+
+     It is also the property the Cloudflare Access application got wrong: it
+     covered `staff` and not `admin`, so one area had a login page and the
+     other had a JSON error. The dashboard is not something this test can
+     check — this is the half that can be. */
+  const env = { ACCESS_TEAM_DOMAIN: "t.cloudflareaccess.com", ACCESS_AUD: "aud" };
+
+  const staffPaths = ["/staff", "/staff/", "/staff/settings/", "/staff/data/snapshot.json"];
+  const adminPaths = ["/admin", "/admin/", "/admin/users/", "/admin/publish/"];
+
+  for (const [a, b] of staffPaths.map((p, i) => [p, adminPaths[i]])) {
+    for (const accept of ["text/html", "application/json"]) {
+      const ra = await worker.fetch(new Request("https://x" + a, { headers: { Accept: accept } }), env);
+      const rb = await worker.fetch(new Request("https://x" + b, { headers: { Accept: accept } }), env);
+      eq(ra.status, rb.status, `${a} and ${b} disagree on status (${accept})`);
+      eq(ra.headers.get("content-type"), rb.headers.get("content-type"),
+         `${a} and ${b} disagree on content type (${accept})`);
+    }
+  }
+});
+
+await check("isProtected covers both areas and nothing else", () => {
+  for (const p of ["/staff", "/staff/", "/staff/settings/", "/admin", "/admin/", "/admin/users/"]) {
+    assert(isProtected(p), `${p} must be protected`);
+  }
+  /* The near-misses matter more than the hits. A prefix check written as
+     startsWith("/admin") alone would swallow /administration, and one written
+     too loosely would leave /staffing gated for no reason. */
+  for (const p of ["/", "/en/", "/en/give/", "/staffing", "/administration", "/admin-x",
+                   "/api/admin", "/api/staff-data", "/img/logo.svg"]) {
+    assert(!isProtected(p), `${p} must NOT be protected`);
+  }
+});
 
 await check("a refused PAGE gets HTML with a way in", async () => {
   const res = await worker.fetch(

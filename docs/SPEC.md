@@ -716,6 +716,21 @@ application in any org would be accepted.
 
 `requireAccess` fails closed: missing config returns 500, never open.
 
+**Both consoles are gated identically, by one list.** `isProtected()` in
+`worker.js` is the only definition of which paths need a person, and two tests
+compare the two areas' actual behaviour rather than trusting the source to stay
+symmetrical. This is not redundant with the Access application — on 2026-08-16
+that application covered `staff` and not `admin`, and this check is why
+`/admin/` was refused rather than served to anyone who asked.
+
+⚠ **Never widen an Access application to a bare hostname on production.** It
+would gate the entire public site. Add the path; do not remove it.
+
+**MFA is not in place.** One-time PIN sends a code to an email address, which
+is a single factor. Real MFA means federating Access to an identity provider
+that enforces it and requiring that login method in the policy — the same
+decision as buying mailboxes, since thauma.one currently has none (§4b).
+
 **Roles live in the database, not in Access.** Access answers *who is this*;
 `partners_for_user` answers *what may they touch*, and `user_roles` answers
 *what authority do they hold*. Every handler resolves all three before doing
