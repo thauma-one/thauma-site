@@ -144,6 +144,123 @@ def t_a_person_can_be_removed_even_with_history():
         "the entry no longer names who did it — which is the entire job"
 
 
+def t_removing_a_person_is_never_blocked_by_a_reference():
+    """NOTHING may refuse to let a user be deleted.
+
+    0009 removed the foreign key on audit_log and removing a person STILL
+    failed, because five other columns referenced users(id) with no ON DELETE
+    rule — partner_users.granted_by, user_roles.granted_by, api_keys.created_by,
+    resources.created_by, interactions.logged_by. The error is identical
+    whichever one holds the id, which is why fixing one looked like it should
+    have been enough. Twice.
+
+    So this does not name columns. It asks the schema which references exist
+    and asserts that none of them can block, which stays true for columns added
+    after it was written.
+    """
+    db = fresh()
+    blocking = []
+    tables = [r[0] for r in db.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")]
+    for t in tables:
+        for fk in db.execute(f"PRAGMA foreign_key_list({t})").fetchall():
+            # (id, seq, table, from, to, on_update, on_delete, match)
+            if fk[2] == "users" and fk[6] in ("NO ACTION", "RESTRICT"):
+                blocking.append(f"{t}.{fk[3]}")
+    assert not blocking, (
+        "these references would refuse to let a user be deleted: "
+        + ", ".join(sorted(blocking))
+        + " — use ON DELETE SET NULL for attribution, CASCADE for things that "
+          "ARE the person")
+
+
+def t_removing_a_person_keeps_their_work():
+    """The rows they authored stay; only the authorship goes.
+
+    A conversation logged by somebody who has since left is still a
+    conversation that happened. CASCADE here would delete a partner's
+    stewardship history because an administrator was removed.
+    """
+    db = fresh()
+    db.execute("INSERT INTO users (id,email,name,global_role,created_at) VALUES (?,?,?,?,?)",
+               ("u_leaver", "leaver@thauma.one", "Leaver", "staff", NOW))
+    db.execute("""INSERT INTO contacts (id,partner_id,first_name,last_name,status,created_at,updated_at)
+                  VALUES ('c_x','p_chase','Sam','Reyes','active',?,?)""", (NOW, NOW))
+    db.execute("""INSERT INTO interactions
+                  (id,contact_id,partner_id,type,is_personal,channel,occurred_on,logged_by,created_at)
+                  VALUES ('i_x','c_x','p_chase','call',1,'digital','2026-08-01','u_leaver',?)""", (NOW,))
+    db.execute("""INSERT INTO resources (id,partner_id,title,visibility,created_by,created_at,updated_at)
+                  VALUES ('r_x','p_chase','A document','staff','u_leaver',?,?)""", (NOW, NOW))
+
+    db.execute("DELETE FROM users WHERE id = 'u_leaver'")
+
+    row = db.execute("SELECT logged_by FROM interactions WHERE id='i_x'").fetchone()
+    assert row is not None, "the conversation was deleted along with whoever logged it"
+    assert row[0] is None, "authorship should be NULL, not a dangling id"
+
+    row = db.execute("SELECT created_by FROM resources WHERE id='r_x'").fetchone()
+    assert row is not None, "the document was deleted along with whoever added it"
+    assert row[0] is None, "authorship should be NULL, not a dangling id"
+
+
+def t_removing_a_person_takes_what_IS_them():
+    """Their roles, access and address book go with them.
+
+    The other half of the previous test. SET NULL everywhere would leave a
+    deleted person still holding partner access.
+    """
+    db = fresh()
+    db.execute("INSERT INTO users (id,email,name,global_role,created_at) VALUES (?,?,?,?,?)",
+               ("u_leaver", "leaver@thauma.one", "Leaver", "staff", NOW))
+    db.execute("""INSERT INTO partner_users (partner_id,user_id,role,granted_at)
+                  VALUES ('p_chase','u_leaver','view',?)""", (NOW,))
+    db.execute("""INSERT INTO user_roles (user_id,role,granted_at) VALUES ('u_leaver','staff',?)""",
+               (NOW,))
+    db.execute("""INSERT INTO directory_contacts (id,user_id,partner_id,name,created_at,updated_at)
+                  VALUES ('dc_x','u_leaver','p_chase','Someone',?,?)""", (NOW, NOW))
+
+    db.execute("DELETE FROM users WHERE id = 'u_leaver'")
+
+    for table, where in [("partner_users", "user_id='u_leaver'"),
+                         ("user_roles", "user_id='u_leaver'"),
+                         ("directory_contacts", "user_id='u_leaver'")]:
+        n = db.execute(f"SELECT COUNT(*) FROM {table} WHERE {where}").fetchone()[0]
+        assert n == 0, f"{table} still holds rows for a deleted person"
+
+
+def t_the_interaction_triggers_survived_the_rebuild():
+    """0010 dropped and recreated `interactions`. The triggers came back.
+
+    These are what make "personally contacted" mean anything — the single most
+    important behaviour in this schema. A rebuild silently losing them would
+    not fail any other test, because nothing else asserts a refusal.
+    """
+    db = fresh()
+    db.execute("""INSERT INTO contacts (id,partner_id,first_name,last_name,status,created_at,updated_at)
+                  VALUES ('c_t','p_chase','Sam','Reyes','active',?,?)""", (NOW, NOW))
+    try:
+        db.execute("""INSERT INTO interactions
+                      (id,contact_id,partner_id,type,is_personal,channel,occurred_on,created_at)
+                      VALUES ('i_t','c_t','p_chase','newsletter',1,'digital','2026-08-01',?)""",
+                   (NOW,))
+        raise AssertionError("a newsletter was accepted as personal contact — "
+                             "the trigger did not survive the 0010 rebuild")
+    except sqlite3.IntegrityError:
+        pass
+
+    db.execute("""INSERT INTO contacts (id,partner_id,first_name,last_name,status,created_at,updated_at)
+                  VALUES ('c_u','p_sara','Other','Person','active',?,?)""", (NOW, NOW))
+    try:
+        db.execute("""INSERT INTO interactions
+                      (id,contact_id,partner_id,type,is_personal,channel,occurred_on,created_at)
+                      VALUES ('i_u','c_u','p_chase','call',1,'digital','2026-08-01',?)""",
+                   (NOW,))
+        raise AssertionError("an interaction crossed partners — "
+                             "the trigger did not survive the 0010 rebuild")
+    except sqlite3.IntegrityError:
+        pass
+
+
 def t_audit_log_has_no_foreign_keys():
     """Neither column may reference anything.
 
@@ -687,6 +804,10 @@ if __name__ == "__main__":
         ("seed files insert every row they claim",      t_seed_files_insert_every_row_they_claim),
         ("a person can be removed, history survives",   t_a_person_can_be_removed_even_with_history),
         ("audit_log references nothing",                t_audit_log_has_no_foreign_keys),
+        ("nothing blocks removing a person",            t_removing_a_person_is_never_blocked_by_a_reference),
+        ("removing a person keeps their work",          t_removing_a_person_keeps_their_work),
+        ("removing a person takes what IS them",        t_removing_a_person_takes_what_IS_them),
+        ("interaction triggers survived the rebuild",   t_the_interaction_triggers_survived_the_rebuild),
     ]:
         check(name, fn)
     print(f"\n{passed} passed, {failed} failed")

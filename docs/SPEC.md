@@ -121,7 +121,7 @@ working branch.
 
 ### The database
 
-Nine migrations, applied to all three databases in order. **33 schema tests**
+Ten migrations, applied to all three databases in order. **37 schema tests**
 (`python3 db/test_schema.py`), which run every migration against a clean
 SQLite and assert the guarantees below.
 
@@ -136,6 +136,7 @@ SQLite and assert the guarantees below.
 | `0007_partner_role` | the fourth role: **partner** |
 | `0008_audit_survives_deletion` | audit entries outlive what they describe |
 | `0009_audit_actor_is_an_address` | ...including the person, not just the partner |
+| `0010_attribution_survives_a_leaver` | the other five references that blocked deleting anyone |
 
 ```
 thauma-ops       production   schema only, no real data yet
@@ -367,6 +368,31 @@ migration — while `chase@thauma.one` still says who it was. It is also the onl
 identifier the identity provider ever supplies. The readers join on email and
 `COALESCE` to the stored value, so a deleted person still shows as somebody
 rather than as a blank.
+
+### Removing a person: three kinds of reference, three answers
+
+Deleting a user failed twice in a row, and the second time was because I fixed
+one reference and declared it done. **Grep for every reference to a table
+before claiming its deletions work.**
+
+| | rule | why |
+|---|---|---|
+| `audit_log.user_id`, `.partner_id` | **no foreign key at all** | the record must go on naming what it describes after that thing is gone |
+| `*.granted_by`, `*.created_by`, `*.logged_by` | **ON DELETE SET NULL** | attribution on a row whose real content is something else. Losing "who logged it" is a shame; losing the conversation is data loss |
+| `partner_users.user_id`, `user_roles.user_id`, `directory_contacts.user_id` | **ON DELETE CASCADE** | these ARE the person — their access, roles and address book. None of it should outlive the account |
+
+A schema test asks the schema which references exist and asserts none of them
+can block, so a column added later is covered without anybody remembering.
+
+⚠ **A rebuild must drop dependent views and triggers first.** SQLite validates
+every trigger AND view during `ALTER TABLE … RENAME`, so an object that merely
+READS the table being swapped makes the rename fail — after the DROP has
+already happened, leaving no table at all. 0010 hit this twice: the
+`directory_owner_has_partner` trigger reads `partner_users`, and the
+`contact_touch` view reads `interactions`. 0003 recorded the same trap.
+
+Before any future rebuild, list every view and trigger whose SQL mentions the
+table and is not ON it. That query is in 0010's comments.
 
 ### Access control
 

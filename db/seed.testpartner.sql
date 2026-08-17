@@ -64,8 +64,25 @@ VALUES
    '2026-03-02T09:00:00Z','2026-08-16T09:00:00Z');
 
 -- ---------- the person, and their access ------------------------------------
+-- preferred_lang 'sr' IS THE POINT, not a detail.
+--
+-- It was 'en' in the first version, and acting as her looked identical to
+-- being yourself — same English console, same layout — so the only difference
+-- was numbers you had to already know to check. Reported as "you said Mira's
+-- account was in Serbian, but it's showing as English".
+--
+-- With 'sr' the whole interface changes the moment you open her console. That
+-- is a test you cannot pass by accident, and it exercises the thing this data
+-- exists to prove: that every screen resolves to the PERSON being viewed, not
+-- to the person signed in.
+--
+-- The PARTNER's default_lang stays 'en' above — deliberately different. One is
+-- what a visitor to her public site gets before choosing; the other is what
+-- she reads the console in. Untangling those two took a round of its own once
+-- already (see the 'Untie the site default language' commit), and this data
+-- keeps them visibly separate.
 INSERT INTO users (id, email, name, global_role, status, preferred_lang, created_at, last_login_at) VALUES
-  ('u_mira','mira@thauma.one','Mira Petrović','staff','active','en',
+  ('u_mira','mira@thauma.one','Mira Petrović','staff','active','sr',
    '2026-03-02T09:00:00Z','2026-08-15T16:20:00Z');
 
 INSERT INTO user_roles (user_id, role, granted_by, granted_at) VALUES
