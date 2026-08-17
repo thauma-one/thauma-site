@@ -29,6 +29,30 @@ webhook, and within five minutes anyway if that fails.
 
 ---
 
+## 0. Test acting-as — works now, no setup
+
+There is a second test partner in the local database. **Mira Petrović** is
+deliberately unlike Chase: euros not dollars, Serbian not Croatian, one goal
+not two, six supporters not four. If the numbers do not change when you open
+her console, acting-as is not working.
+
+1. `dev.thauma.one/staff/` — sign in here FIRST. The Access application covers
+   `staff` and not `admin`, so this is what gets you a login. (Fix that in the
+   dashboard: add `admin` as a second path on the application.)
+2. `dev.thauma.one/admin/users/` → open **Mira Petrović** → **View their console**
+3. You should land on `/staff/` with a purple band, a purple border, and a
+   watermark bottom-right that stays put while scrolling.
+4. Check the numbers actually changed:
+   - Support → **€1,800/month**, not $4,500
+   - Stewardship → **6 supporters**, and **Nikola Jovanović** should stand out:
+     newslettered two weeks ago, last actually spoken to in July 2025
+   - Milestones → **3**, with **Serbian** columns, and one missing translation
+5. Go to `/admin/` while still viewing — **the banner must still be there.**
+6. Press **Stop** → you should land back on **the People page**, no purple,
+   and the "Admin area" link back in the staff nav.
+
+---
+
 ## 1. Push what's built (2 minutes)
 
 Nothing deploys from this — staging is now dispatch-only.

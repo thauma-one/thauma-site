@@ -77,9 +77,13 @@
       btn.disabled = false;
       return;
     }
-    // Straight into the console being supported. Staying on the admin page
-    // after starting would show the acting banner over a page the banner does
-    // not apply to, which reads as a bug.
+    /* The cached identity is the ADMINISTRATOR's. Carrying it into somebody
+       else's console would paint their name and their roles over the wrong
+       account until the first fetch returned. Clear it and let the target's
+       console fill it in. */
+    try { sessionStorage.removeItem('thauma.staff.who'); } catch (e) {}
+
+    // Straight into the console being supported.
     location.href = '/staff/';
   }
 
@@ -123,6 +127,9 @@
     if (window.StaffProblemClear) window.StaffProblemClear();
     state = body;
     if (body.you && window.StaffIdentity) window.StaffIdentity(body.you);
+    // Still viewing somebody? Say so here as well — the cookie does not
+    // stop applying just because this page ignores it.
+    if (window.StaffActing) window.StaffActing(body);
 
     try { render(); }
     catch (e) {

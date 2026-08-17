@@ -48,6 +48,67 @@ def check(name, fn):
         failed += 1
 
 
+
+def t_seed_files_insert_every_row_they_claim():
+    """Every INSERT in a seed file must actually land.
+
+    seed.testpartner.sql originally used INSERT OR IGNORE, which is a fine
+    idiom for idempotency and a terrible one for a seed: it silently discarded
+    four rows that violated CHECK constraints — a contact status of 'lapsed',
+    an interaction channel of 'email', a type of 'meeting', a source of
+    'system' — and reported success. The result was five contacts instead of
+    six and NO interactions at all, feeding a screen that looked empty for
+    reasons nobody could see.
+
+    This applies each seed to a clean schema and compares the number of rows
+    that arrive against the number of value tuples in the file. A dropped row
+    fails here rather than in somebody's browser.
+    """
+    import re
+
+    # CUMULATIVE, in order, against ONE database — which is how they are
+    # actually applied. seed.testpartner.sql grants roles `granted_by` u_admin,
+    # a user seed.dev.sql creates; run alone it fails on a foreign key, which
+    # says nothing about whether its own rows are sound.
+    db = sqlite3.connect(":memory:")
+    db.executescript(SQL)
+    db.execute("PRAGMA foreign_keys = ON")
+
+    for name in ("seed.dev.sql", "seed.testpartner.sql"):
+        path = HERE / name
+        if not path.exists():
+            continue
+        sql = path.read_text()
+
+        # COMMENTS STRIPPED FIRST. The initial version of this check matched
+        # the comment in seed.testpartner.sql explaining why INSERT OR IGNORE
+        # was removed — a test failing on the prose that documents the fix it
+        # is testing. That has happened before in this repo; grep the code, not
+        # the explanation.
+        code = re.sub(r"--[^\n]*", "", sql)
+
+        assert "INSERT OR IGNORE" not in code, (
+            f"{name} uses INSERT OR IGNORE, which hides constraint violations. "
+            "Delete first and insert plainly.")
+
+        # Fails loudly on a bad row, which is the entire point.
+        db.executescript(sql)
+
+        # Count the value tuples the file claims to insert, per table, and
+        # compare against what is actually there.
+        for m in re.finditer(r"INSERT INTO\s+(\w+)\s*\([^)]*\)\s*VALUES(.*?);",
+                             code, re.S | re.I):
+            table = m.group(1)
+            # Tuples start at a "(" that follows VALUES or a comma-newline.
+            claimed = len(re.findall(r"(?:VALUES|,)\s*\n?\s*\(", "VALUES" + m.group(2)))
+            got = db.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+            assert got >= claimed, (
+                f"{name}: {table} claims {claimed} rows, {got} arrived — "
+                "rows are being dropped")
+
+    db.close()
+
+
 def fresh():
     db = sqlite3.connect(":memory:")
     db.executescript(SQL)
@@ -575,6 +636,7 @@ if __name__ == "__main__":
         ("last_personal_contact ignores newsletters",   t_last_personal_ignores_newsletters),
         ("untouched contact yields NULLs, count 0",     t_touch_null_when_never_contacted),
         ("goal progress uses latest snapshot, clamps",  t_goal_progress_computed_and_clamped),
+        ("seed files insert every row they claim",      t_seed_files_insert_every_row_they_claim),
     ]:
         check(name, fn)
     print(f"\n{passed} passed, {failed} failed")

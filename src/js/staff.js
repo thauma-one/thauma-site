@@ -557,11 +557,30 @@
      be a lie about who you are.
      ===================================================================== */
 
+  var ACTING = 'thauma.staff.acting';
   var actingNow = null;
+
+  /* CACHED, AND PAINTED BEFORE ANY REQUEST.
+     Two bugs, one cause. The banner used to be painted only from a successful
+     API response, so (a) it flashed absent on every page load until the fetch
+     came back, and (b) if the fetch FAILED it never appeared at all — leaving
+     somebody inside another person's account with no indication of it, at the
+     exact moment the screen is confusing for other reasons.
+
+     sessionStorage, not localStorage: it exists to survive navigation within
+     one session, and on a shared machine localStorage would tell the next
+     person they are inside somebody's account. */
+  function cacheActing(acting) {
+    try {
+      if (acting) sessionStorage.setItem(ACTING, JSON.stringify(acting));
+      else sessionStorage.removeItem(ACTING);
+    } catch (e) {}
+  }
 
   function paintActing(acting) {
     var had = !!actingNow;
     actingNow = acting || null;
+    cacheActing(actingNow);
 
     if (!actingNow) {
       if (had) {
@@ -610,23 +629,44 @@
     btn.disabled = true;
     fetch('/api/admin/act-as', { method: 'DELETE', credentials: 'same-origin' })
       .then(function () {
-        // A full reload, deliberately. Every panel on the page was rendered
-        // from somebody else's data; re-fetching piecemeal would leave the
-        // screen a mixture of two people's records.
-        location.reload();
+        /* BOTH CACHES GO. The identity cache holds the TARGET's name and
+           roles while acting; leaving it means the admin link stays hidden
+           after stopping, because the cached roles are still theirs. That is
+           the "my admin nav did not come back" bug. */
+        try { sessionStorage.removeItem(IDENT); } catch (e) {}
+        cacheActing(null);
+
+        /* Back to where you started, not a reload of their page. You came
+           from the People list to do a support job; finishing it should
+           return you there rather than leaving you on a stranger's dashboard
+           wondering whether it worked. */
+        location.href = '/admin/users/';
       })
       .catch(function () { btn.disabled = false; });
   });
 
-  /* Called by every loader with whatever the server said. Passing undefined
-     means "this response carried no opinion", which must NOT clear a banner
-     another response has already justified. */
+  /* Called by every loader with whatever the server said.
+
+     A response with no `acting` property carries NO OPINION and must not clear
+     a banner — that is what a failed request looks like, and a failed request
+     is the worst possible moment to stop telling somebody whose account they
+     are in. Only an explicit `acting: null` from a request the server actually
+     answered takes the banner down. */
   function noteActing(body) {
     if (!body || typeof body !== 'object') return;
     if (!Object.prototype.hasOwnProperty.call(body, 'acting')) return;
     paintActing(body.acting);
   }
   window.StaffActing = noteActing;
+
+  /* Paint from cache at once, before anything is fetched. The server corrects
+     it a moment later if it disagrees. */
+  (function () {
+    try {
+      var cached = JSON.parse(sessionStorage.getItem(ACTING) || 'null');
+      if (cached) paintActing(cached);
+    } catch (e) {}
+  })();
 
 
   function loadIdentity() {

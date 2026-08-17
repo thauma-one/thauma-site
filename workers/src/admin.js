@@ -28,6 +28,7 @@ import { createDb } from "./lib/db.js";
 import { requireAccess } from "./lib/access.js";
 import { json, readJson } from "./lib/store.js";
 import { sendMail, inviteEmail } from "./lib/mail.js";
+import { requestedTarget } from "./lib/actas.js";
 
 const ROLES = new Set(["admin", "partner", "staff", "board"]);
 const STATUSES = new Set(["invited", "active", "suspended"]);
@@ -110,6 +111,21 @@ async function sendInvite(request, env, { to, name, byName, byEmail }) {
     // "I cannot get in" is the most likely reply and it needs to reach a human.
     replyTo: byEmail,
   });
+}
+
+/**
+ * Who this administrator is currently viewing, for the banner only.
+ *
+ * Display, never authority. `requireAdmin` above resolves the REAL caller and
+ * pays no attention to the cookie, which is what makes administration
+ * unaffected by acting-as.
+ */
+async function actingInfo(db, request) {
+  const id = requestedTarget(request);
+  if (!id) return null;
+  const row = await db.queryOne("user_by_id", { id });
+  if (!row) return null;
+  return { id: row.user_id, name: row.user_name || row.email };
 }
 
 /** Would this change leave the organisation with no administrator? */
@@ -203,6 +219,14 @@ export default {
         // id included so the People list can tell which row is YOU and
         // not offer "view as" on your own account.
         you: { id: me.user_id, email: user.email, name: me.user_name || null, roles: ["admin"] },
+
+        /* The banner belongs on THESE pages too. Administration is always
+           performed as yourself — requireAdmin deliberately ignores the
+           acting cookie — but the cookie is still set, and every staff screen
+           is still showing somebody else's data. An admin page that quietly
+           dropped the banner would read as "I have stopped viewing them",
+           which is the one thing it must not say while the cookie lives. */
+        acting: await actingInfo(db, request),
         partner_stats: stats,
         users: users.map((u) => ({
           ...u,
