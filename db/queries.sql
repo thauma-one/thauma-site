@@ -456,10 +456,20 @@ WHERE r.role = 'admin' AND u.status = 'active';
 
 -- name: admin_audit_recent
 -- Org-wide, unlike audit_recent_for_partner. Reading it is itself an admin act.
+--
+-- JOINED ON EMAIL, not on id — audit_log.user_id holds an address since 0009,
+-- because a record has to keep naming somebody after their account is gone.
+-- COALESCE is what makes that work: no user row means no name, and the address
+-- itself is shown instead. That is the deleted-person case, and it is the one
+-- this log exists for.
+--
+-- The two seed rows predate 0009 and hold internal ids. They fall through to
+-- COALESCE and display as ids, which is the honest history of a system that
+-- changed its mind rather than a past invented to look consistent.
 SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
        a.partner_id, COALESCE(u.name, a.user_id) AS actor
 FROM audit_log a
-LEFT JOIN users u ON u.id = a.user_id
+LEFT JOIN users u ON u.email = a.user_id
 ORDER BY a.at DESC
 LIMIT :limit;
 
@@ -701,9 +711,13 @@ UPDATE api_keys SET last_used_at = :now WHERE id = :key_id;
 -- name: audit_recent_for_partner
 -- Shown to the PARTNER, not just to admins. If someone read their data, they
 -- should be able to see that it happened.
-SELECT a.at, a.action, a.entity, a.entity_id, u.name AS actor
+-- COALESCE, not a bare u.name: an administrator who has since been removed
+-- must still show as somebody. A blank in this column would read as "nobody
+-- did this", which is the opposite of the truth.
+SELECT a.at, a.action, a.entity, a.entity_id,
+       COALESCE(u.name, a.user_id) AS actor
 FROM audit_log a
-LEFT JOIN users u ON u.id = a.user_id
+LEFT JOIN users u ON u.email = a.user_id
 WHERE a.partner_id = :partner_id
 ORDER BY a.at DESC
 LIMIT :limit;

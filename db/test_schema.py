@@ -109,6 +109,54 @@ def t_seed_files_insert_every_row_they_claim():
     db.close()
 
 
+
+def t_a_person_can_be_removed_even_with_history():
+    """Deleting a user must work, and their audit entries must survive it.
+
+    Both halves failed on 2026-08-16, from one foreign key:
+
+      · audit_log.user_id referenced users(id) with no ON DELETE rule, so
+        removing anybody who had ever done anything was refused outright. The
+        console returned 500 and the person stayed.
+      · every handler passes the EMAIL Access supplies as user_id, which is not
+        a users.id, so each insert violated the same key. audit() catches and
+        logs rather than failing the action it describes — correctly — so the
+        audit log had been recording nothing at all, silently.
+
+    0009 removed the key. This is the pair of assertions that says so.
+    """
+    db = fresh()
+    db.execute(
+        "INSERT INTO users (id,email,name,global_role,created_at) VALUES (?,?,?,?,?)",
+        ("u_tmp", "tmp@thauma.one", "Temp", "staff", NOW))
+    # Written the way the handlers write it: an address, not an id.
+    db.execute(
+        "INSERT INTO audit_log (id,at,user_id,action,entity,entity_id) VALUES (?,?,?,?,?,?)",
+        ("a_tmp", NOW, "tmp@thauma.one", "create", "user", "u_tmp"))
+
+    db.execute("DELETE FROM users WHERE id = 'u_tmp'")
+
+    assert db.execute("SELECT COUNT(*) FROM users WHERE id='u_tmp'").fetchone()[0] == 0, \
+        "the user was not removed"
+    row = db.execute("SELECT user_id FROM audit_log WHERE id='a_tmp'").fetchone()
+    assert row is not None, "the audit entry was cascaded away with the person"
+    assert row[0] == "tmp@thauma.one", \
+        "the entry no longer names who did it — which is the entire job"
+
+
+def t_audit_log_has_no_foreign_keys():
+    """Neither column may reference anything.
+
+    A foreign key enforces that a reference points at something CURRENT, which
+    is the opposite of what a historical record needs: the thing it describes is
+    often gone by definition. 0008 established this for partner_id and predicted
+    user_id would need it too. It did.
+    """
+    db = fresh()
+    fks = db.execute("PRAGMA foreign_key_list(audit_log)").fetchall()
+    assert fks == [], f"audit_log still references something: {fks}"
+
+
 def fresh():
     db = sqlite3.connect(":memory:")
     db.executescript(SQL)
@@ -637,6 +685,8 @@ if __name__ == "__main__":
         ("untouched contact yields NULLs, count 0",     t_touch_null_when_never_contacted),
         ("goal progress uses latest snapshot, clamps",  t_goal_progress_computed_and_clamped),
         ("seed files insert every row they claim",      t_seed_files_insert_every_row_they_claim),
+        ("a person can be removed, history survives",   t_a_person_can_be_removed_even_with_history),
+        ("audit_log references nothing",                t_audit_log_has_no_foreign_keys),
     ]:
         check(name, fn)
     print(f"\n{passed} passed, {failed} failed")

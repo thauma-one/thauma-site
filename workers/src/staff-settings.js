@@ -74,7 +74,7 @@ async function context(request, env) {
   // 0006 moved roles to user_roles; a person may hold more than one.
   const roles = String(me.roles || "staff").split(",");
   return {
-    db, user, me, partner,
+    db, user, me, partner, actor,
     // Org authority. NOT partner access — that is what partners_for_user
     // just established. See docs/SPEC.md §4.
     roles, isAdmin: roles.includes("admin"),

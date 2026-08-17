@@ -121,7 +121,7 @@ working branch.
 
 ### The database
 
-Eight migrations, applied to all three databases in order. **30 schema tests**
+Nine migrations, applied to all three databases in order. **33 schema tests**
 (`python3 db/test_schema.py`), which run every migration against a clean
 SQLite and assert the guarantees below.
 
@@ -135,6 +135,7 @@ SQLite and assert the guarantees below.
 | `0006_roles` | `user_roles` — replaced the single-value `global_role` |
 | `0007_partner_role` | the fourth role: **partner** |
 | `0008_audit_survives_deletion` | audit entries outlive what they describe |
+| `0009_audit_actor_is_an_address` | ...including the person, not just the partner |
 
 ```
 thauma-ops       production   schema only, no real data yet
@@ -341,6 +342,31 @@ request: a page load is a dozen of them, and a log that records every one hides
 the writes that matter. The audit row names the ADMINISTRATOR, never the person
 being acted as; a row naming the target would say a partner did something they
 did not do.
+
+### The audit log references nothing, and that took two migrations
+
+`audit_log.partner_id` lost its foreign key in 0008. `user_id` lost its in
+0009, and the note in 0008 predicted exactly that: *"if that ever becomes a
+problem, it wants the same treatment and the same reasoning."*
+
+It became a problem twice on 2026-08-16, and the symptoms looked unrelated:
+
+- **Removing a person failed.** Deleting a user whose id appeared in the log
+  was refused by the key, so the endpoint 500'd and the person stayed.
+- **Every audit write had been failing, silently.** Handlers pass the address
+  Access supplies; an email is not a `users.id`, so each insert violated the
+  same key. `audit()` catches and logs rather than failing the action it
+  describes — right, and the reason this only ever appeared in `wrangler tail`.
+
+So the log had been recording nothing at all while acting-as, the feature it
+exists to make accountable, was built on top of it.
+
+**The column now holds an email address on purpose.** `u_a7f31c` means nothing
+once that row is deleted — which is the precise case that produced the
+migration — while `chase@thauma.one` still says who it was. It is also the only
+identifier the identity provider ever supplies. The readers join on email and
+`COALESCE` to the stored value, so a deleted person still shows as somebody
+rather than as a blank.
 
 ### Access control
 

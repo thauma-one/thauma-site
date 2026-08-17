@@ -65,7 +65,7 @@ async function partnerFor(request, env) {
     }, 403) };
   }
   const partner = partners[0];
-  return { db, partner, user, me };
+  return { db, partner, user, me, actor };
 }
 
 /**

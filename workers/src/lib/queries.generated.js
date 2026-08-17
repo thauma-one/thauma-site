@@ -8,13 +8,13 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "e10770569811dcce";
+export const SOURCE_DIGEST = "98798d080f3e222e";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
        a.partner_id, COALESCE(u.name, a.user_id) AS actor
 FROM audit_log a
-LEFT JOIN users u ON u.id = a.user_id
+LEFT JOIN users u ON u.email = a.user_id
 ORDER BY a.at DESC
 LIMIT :limit;`,
   admin_count_admins: `SELECT COUNT(*) AS n
@@ -76,9 +76,10 @@ WHERE id = :id AND partner_id = :partner_id AND revoked_at IS NULL;`,
 FROM api_keys
 WHERE partner_id = :partner_id
 ORDER BY revoked_at IS NOT NULL, created_at DESC;`,
-  audit_recent_for_partner: `SELECT a.at, a.action, a.entity, a.entity_id, u.name AS actor
+  audit_recent_for_partner: `SELECT a.at, a.action, a.entity, a.entity_id,
+       COALESCE(u.name, a.user_id) AS actor
 FROM audit_log a
-LEFT JOIN users u ON u.id = a.user_id
+LEFT JOIN users u ON u.email = a.user_id
 WHERE a.partner_id = :partner_id
 ORDER BY a.at DESC
 LIMIT :limit;`,
