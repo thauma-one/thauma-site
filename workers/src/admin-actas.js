@@ -43,6 +43,23 @@ async function requireAdmin(request, env) {
   return { db, user, me };
 }
 
+/**
+ * One shape for the acting banner, used by every response here.
+ *
+ * `lang` matters as much as the name: the browser applies it before the target's
+ * console has painted, so their screen appears in their language immediately
+ * rather than switching a moment later. It also has to match what withActing()
+ * sends, or the banner would change language on the second request.
+ */
+function actingShape(row) {
+  return {
+    id: row.user_id,
+    name: row.user_name || row.email,
+    email: row.email,
+    lang: row.preferred_lang || "en",
+  };
+}
+
 async function audit(db, { actorEmail, action, targetId, detail }) {
   try {
     await db.query("audit_write", {
@@ -71,7 +88,7 @@ export default {
       if (!id) return json({ acting: null });
       const row = await db.queryOne("user_by_id", { id });
       return json({
-        acting: row ? { id: row.user_id, name: row.user_name || row.email, email: row.email } : null,
+        acting: row ? actingShape(row) : null,
       });
     }
 
@@ -97,8 +114,7 @@ export default {
       });
 
       return json({
-        ok: true,
-        acting: { id: row.user_id, name: row.user_name || row.email, email: row.email },
+        ok: true, acting: actingShape(row),
       }, 200, { "Set-Cookie": setCookie(row.user_id) });
     }
 

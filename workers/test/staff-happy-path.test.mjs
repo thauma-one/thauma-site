@@ -85,7 +85,7 @@ const NAME_OF = new Map(
 const USER = {
   "mira@thauma.one": { user_id: "u_mira", email: "mira@thauma.one",
                        user_name: "Mira Petrović", status: "active",
-                       preferred_lang: "en", roles: "partner,staff" },
+                       preferred_lang: "sr", roles: "partner,staff" },
   "admin@thauma.one": { user_id: "u_admin", email: "admin@thauma.one",
                         user_name: "Chase Roush", status: "active",
                         preferred_lang: "en", roles: "admin" },
@@ -217,6 +217,14 @@ for (const [path, handler] of ENDPOINTS) {
     assert(body.acting, `${path} lost the acting banner — the page would show no purple`);
     eq(body.acting.name, "Mira Petrović", "banner names the wrong person");
     eq(body.acting.by, "Chase Roush", "banner does not say who is looking");
+
+    /* THE LANGUAGE TRAVELS WITH THE BANNER. Seeing what somebody sees means
+       reading what they read, and the browser applies this before the target's
+       console has painted — so their screen is in their language immediately
+       rather than switching a moment later. Without it, viewing a Serbian
+       account showed an English console until some later request happened to
+       correct it. */
+    eq(body.acting.lang, "sr", `${path} did not carry the viewed person's language`);
   });
 }
 

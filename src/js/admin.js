@@ -83,6 +83,18 @@
        console fill it in. */
     try { sessionStorage.removeItem('thauma.staff.who'); } catch (e) {}
 
+    /* Cache the acting state BEFORE navigating, so the target's console knows
+       whose it is — and in which language — on its very first paint. Without
+       this the first page loads in English with no banner, and both appear a
+       moment later when the API answers, which reads as a glitch at exactly
+       the moment somebody needs to trust what they are looking at. */
+    try {
+      sessionStorage.setItem('thauma.staff.acting', JSON.stringify(body.acting));
+    } catch (e) {}
+    if (body.acting && body.acting.lang && window.StaffI18n) {
+      window.StaffI18n.setLang(body.acting.lang, { transient: true });
+    }
+
     // Straight into the console being supported.
     location.href = '/staff/';
   }

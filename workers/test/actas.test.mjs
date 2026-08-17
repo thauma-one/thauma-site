@@ -254,10 +254,22 @@ await check("withActing adds the banner data, and only when acting", () => {
   eq(withActing({ a: 1 }, notActing), { a: 1 }, "untouched when not acting");
 
   const acting = { acting: { id: "u_ana", name: "Ana Marić" },
+                   me: { preferred_lang: "hr" },
                    real: { user_name: "Chase Roush", email: "admin@thauma.one" } };
   const out = withActing({ a: 1 }, acting);
   eq(out.acting.name, "Ana Marić", "whose account");
   eq(out.acting.by, "Chase Roush", "who is looking");
+  eq(out.acting.lang, "hr", "the language they read the console in");
+});
+
+await check("the banner carries a language even when the person has none set", () => {
+  // preferred_lang is nullable. A null here would leave the console in
+  // whatever language the previous account was using, which is the exact bug
+  // this field exists to prevent.
+  const out = withActing({}, {
+    acting: { id: "u_x", name: "Someone" }, me: {}, real: { user_name: "A" },
+  });
+  eq(out.acting.lang, "en", "should fall back rather than send nothing");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

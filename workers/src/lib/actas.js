@@ -157,6 +157,15 @@ export function withActing(body, actor) {
       id: actor.acting.id,
       name: actor.acting.name,
       by: actor.real ? (actor.real.user_name || actor.real.email) : null,
+      /* THE LANGUAGE THEY READ THE CONSOLE IN, carried on the banner rather
+         than dug out of whichever payload happens to include it.
+
+         Seeing what somebody sees means seeing it in their language — a
+         support call about a screen they cannot read is not helped by an
+         English copy of it. And putting it here means every endpoint that
+         reports acting also reports the language, so the browser never has to
+         guess which response to trust. */
+      lang: (actor.me && actor.me.preferred_lang) || "en",
     },
   };
 }

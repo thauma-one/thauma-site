@@ -125,7 +125,13 @@ async function actingInfo(db, request) {
   if (!id) return null;
   const row = await db.queryOne("user_by_id", { id });
   if (!row) return null;
-  return { id: row.user_id, name: row.user_name || row.email };
+  // Same shape as withActing() and admin-actas — including the language, or
+  // the admin area would render in a different language from the console.
+  return {
+    id: row.user_id,
+    name: row.user_name || row.email,
+    lang: row.preferred_lang || "en",
+  };
 }
 
 /** Would this change leave the organisation with no administrator? */

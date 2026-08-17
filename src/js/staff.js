@@ -582,6 +582,24 @@
     actingNow = acting || null;
     cacheActing(actingNow);
 
+    /* THE LANGUAGE FOLLOWS THE ACCOUNT, IN BOTH DIRECTIONS.
+
+       Seeing what somebody sees means reading what they read, so their
+       language goes on screen — transiently, so it never becomes your own
+       stored preference. Stopping puts yours back.
+
+       Both halves were missing. Opening a Serbian account left the console in
+       English until some later request happened to set it, and stopping left
+       it in Serbian permanently, because the language cache is localStorage
+       and nothing ever put it back. */
+    if (window.StaffI18n) {
+      if (actingNow && actingNow.lang) {
+        window.StaffI18n.setLang(actingNow.lang, { transient: true });
+      } else if (had && !actingNow) {
+        window.StaffI18n.setLang(window.StaffI18n.ownLang(), { transient: true });
+      }
+    }
+
     if (!actingNow) {
       if (had) {
         document.body.classList.remove('is-acting');
@@ -635,6 +653,11 @@
            the "my admin nav did not come back" bug. */
         try { sessionStorage.removeItem(IDENT); } catch (e) {}
         cacheActing(null);
+        // Back to your own language before the next page even loads, so the
+        // admin area never appears in somebody else's.
+        if (window.StaffI18n) {
+          window.StaffI18n.setLang(window.StaffI18n.ownLang(), { transient: true });
+        }
 
         /* Back to where you started, not a reload of their page. You came
            from the People list to do a support job; finishing it should

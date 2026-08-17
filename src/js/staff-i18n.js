@@ -1080,14 +1080,30 @@
     document.documentElement.setAttribute('lang', current);
   }
 
-  function setLang(code) {
+  /**
+   * Switch language.
+   *
+   * `transient: true` changes the screen WITHOUT storing the choice. That is
+   * for viewing somebody else's console: their language should be on screen —
+   * seeing what they see means reading what they read — but it must never
+   * become YOUR saved preference. Without this, opening a Serbian account left
+   * the whole console in Serbian afterwards, with nothing to explain why.
+   */
+  function setLang(code, opts) {
     if (!code || !STRINGS[code]) return;
     current = code;
-    try { localStorage.setItem(CACHE, code); } catch (e) {}
+    if (!(opts && opts.transient)) {
+      try { localStorage.setItem(CACHE, code); } catch (e) {}
+    }
     apply();
   }
 
-  window.StaffI18n = { t: tOr, apply: apply, setLang: setLang,
+  /** The language stored as this person's own. What to go back to. */
+  function ownLang() {
+    try { return localStorage.getItem(CACHE) || 'en'; } catch (e) { return 'en'; }
+  }
+
+  window.StaffI18n = { t: tOr, apply: apply, setLang: setLang, ownLang: ownLang,
                        get lang() { return current; },
                        available: Object.keys(STRINGS) };
 

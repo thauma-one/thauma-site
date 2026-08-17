@@ -329,6 +329,15 @@ admin, no such person, suspended. Failing back to yourself is the only safe
 direction; the opposite failure is an administrator silently editing the wrong
 person's ministry.
 
+**The language follows the account, in both directions.** Seeing what somebody
+sees means reading what they read, so the banner carries their `preferred_lang`
+and the browser applies it before the target's console has painted. It is
+applied **transiently** — it never overwrites the viewer's own stored
+preference. Both halves were missing at first: opening a Serbian account showed
+an English console until some later request happened to correct it, and
+stopping left the console in Serbian permanently, because the language cache is
+`localStorage` and nothing put it back.
+
 **Three signals at once**, for the same reason the admin area has three: a band
 across the top naming whose account it is, a border round the whole viewport,
 and a fixed watermark. Chase's first instinct was a flashing banner — that is a
