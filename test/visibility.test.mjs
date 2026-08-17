@@ -170,6 +170,30 @@ check("every page in the site has a switch", () => {
   eq(missing, [], "pages with no switch in site.json");
 });
 
+check("secrets cannot be committed", () => {
+  /* .dev.vars holds the GitHub App private key on a development machine — a
+     credential that can commit to this repository and deploy the live site.
+
+     It was NOT gitignored, and was about to be created. A key in git history
+     is permanent: deleting the file later does not remove it from the objects,
+     and any clone taken in between still has it. Rotating is the only remedy.
+
+     Checked here rather than trusted, because .gitignore is a file anybody can
+     tidy up without knowing what a line was for. */
+  const { execFileSync } = require("node:child_process");
+  const root = fileURLToPath(new URL("..", import.meta.url));
+  for (const path of [".dev.vars", ".dev.vars.production", "key.pem",
+                      "some/nested/key-pkcs8.pem"]) {
+    let ignored = true;
+    try {
+      execFileSync("git", ["check-ignore", "-q", path], { cwd: root });
+    } catch {
+      ignored = false;   // non-zero exit means NOT ignored
+    }
+    assert(ignored, `${path} would be committed — add it to .gitignore`);
+  }
+});
+
 check("no asset is served with a hand-written cache version", () => {
   /* Every ?v= must come from the content hash filter, never a number.
 

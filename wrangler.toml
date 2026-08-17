@@ -269,10 +269,22 @@ CONTACT_FROM = "Thauma <noreply@thauma.one>"
 # domain, so a bad month for one cannot touch the other.
 MAIL_FROM = "Thauma <noreply@mail.thauma.one>"
 
-# The Pi edits the same branch as everywhere else, and only if a credential is
-# present in .dev.vars — which it should not normally be. Without one the editor
-# loads and says it is not connected, which is the right state for a machine
-# under a desk.
+# The Pi edits the same branch as everywhere else. Whether it has a credential
+# at all is a choice, made in `.dev.vars` (gitignored, mode 600):
+#
+#   NO CREDENTIAL   the editor loads and says it is not connected. Nothing on
+#                   dev can touch content. Fine if you only use dev to look at
+#                   the site.
+#
+#   CREDENTIAL      dev behaves exactly like production. Chase asked for this
+#                   on 2026-08-17, and it does not create a new class of risk:
+#                   Save carries [skip ci] everywhere, so editing never deploys
+#                   from any host.
+#
+# ⚠ WHAT IT DOES MEAN: content is NOT sandboxed the way data is. The Pi has its
+# own database, so invented supporters stay here — but there is one content
+# branch, so a word changed on dev is THE word. And Publish on dev deploys the
+# real site, not a copy.
 GITHUB_REPO = "thauma-one/thauma-site"
 CONTENT_BRANCH = "main"
 LIVE_BRANCH = "main"

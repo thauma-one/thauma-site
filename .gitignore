@@ -21,3 +21,16 @@ __pycache__/
 # Reproducible from db/seed.dev.sql; never a source of truth.
 .wrangler/
 _site_prod/
+
+# LOCAL SECRETS. `wrangler dev` reads these; they must never be committed.
+#
+# .dev.vars can hold the GitHub App private key, which can commit to this
+# repository and deploy the live site. A key in git history is permanent — a
+# later delete does not remove it from the objects, and any clone taken in the
+# meantime still has it. Rotating is the only real remedy.
+#
+# Added 2026-08-17, before the file existed, because noticing this afterwards
+# would have meant generating a new key rather than editing a line.
+.dev.vars
+.dev.vars.*
+*.pem
