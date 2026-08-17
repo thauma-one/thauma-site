@@ -1010,6 +1010,35 @@ browser rather than the application.
 - `type: 'DELETE'` adds a type-to-confirm field and keeps the button disabled
   until it matches — and the server checks the same word.
 
+### Assets are versioned by content hash, never by hand
+
+`{{ "/js/staff.js" | v }}` hashes the file at build time. Same file, same URL,
+cached forever; changed file, new URL, fetched at once.
+
+**This replaced hand-written `?v=N` after one was not bumped.** A browser kept
+an older `staff-i18n.js`, a function added that day was missing from it, and
+the Stop button in the acting banner silently did nothing — a TypeError in a
+callback, no visible error. The way out of somebody else's account was
+unusable because of a digit in a template. A test now fails on any `?v=`
+followed by a number.
+
+### The escape hatch cannot depend on anything optional
+
+The same incident taught this twice over. `if (window.StaffI18n)` did not guard
+the call, because the object existed and only the function was missing.
+
+Every step of stopping is individually wrapped, and the navigation happens
+whatever any of them does. Being unable to leave somebody else's account is the
+worst state this feature has, so nothing decorative may stand in front of it.
+
+### The acting banner speaks the VIEWER's language
+
+The console renders in the language of the person being viewed — seeing what
+they see means reading what they read. The banner does not: it is a message to
+the administrator about whose account this is and how to leave, and the partner
+never sees it. `StaffI18n.tIn(lang, key)` translates in a named language for
+exactly this.
+
 ### `hidden` loses to `display`
 
 Any element that sets `display` needs an explicit `[hidden]{display:none}`.

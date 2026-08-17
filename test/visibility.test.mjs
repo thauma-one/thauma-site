@@ -170,6 +170,26 @@ check("every page in the site has a switch", () => {
   eq(missing, [], "pages with no switch in site.json");
 });
 
+check("no asset is served with a hand-written cache version", () => {
+  /* Every ?v= must come from the content hash filter, never a number.
+
+     A hand-written version is a number somebody has to remember to increase,
+     and on 2026-08-16 one was not: a browser kept an older staff-i18n.js, a
+     function added that day was missing from it, and the Stop button in the
+     acting banner silently did nothing. The way out of somebody else's account
+     was unusable because of a digit in a template. */
+  const dir = fileURLToPath(new URL("../src/_includes/layouts/", import.meta.url));
+  const { readdirSync } = require("node:fs");
+  const offenders = [];
+  for (const f of readdirSync(dir).filter((x) => x.endsWith(".njk"))) {
+    const src = readFileSync(dir + f, "utf8");
+    for (const m of src.matchAll(/(\S+)\?v=(\d+)/g)) {
+      offenders.push(`${f}: ${m[0]}`);
+    }
+  }
+  eq(offenders, [], "use ?v={{ \"/path\" | v }} — a content hash cannot be forgotten");
+});
+
 check("site.json still round-trips byte for byte", () => {
   // The content editor writes it back with JSON.stringify(…, null, 2). If the
   // file drifts from that shape, every save becomes a whole-file diff.

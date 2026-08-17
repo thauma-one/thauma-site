@@ -613,6 +613,20 @@
 
     document.body.classList.add('is-acting');
 
+    /* THE BANNER IS IN YOUR LANGUAGE, not theirs.
+
+       It is a message to the administrator — whose account this is, and how to
+       leave — and the person being viewed never sees it. The console around it
+       is deliberately in their language; the controls for getting out of it
+       are yours. `mine` falls back to plain tr() if an older cached copy of
+       staff-i18n.js is in the browser, so a stale asset degrades to the wrong
+       language rather than to a crash. */
+    var myLang = (window.StaffI18n && window.StaffI18n.ownLang)
+      ? window.StaffI18n.ownLang() : 'en';
+    var mine = (window.StaffI18n && window.StaffI18n.tIn)
+      ? function (k) { return window.StaffI18n.tIn(myLang, k); }
+      : tr;
+
     var bar = document.getElementById('actingBar');
     if (!bar) {
       bar = document.createElement('div');
@@ -625,10 +639,10 @@
       '<span class="acting-eye" aria-hidden="true">\u25C9</span>' +
       '<span class="acting-text">' +
         '<b>' + esc(actingNow.name) + '</b>' +
-        '<span>' + esc(tr('act.youAreViewing')) + '</span>' +
+        '<span>' + esc(mine('act.youAreViewing')) + '</span>' +
       '</span>' +
       '<button type="button" class="acting-stop" id="actingStop">' +
-        esc(tr('act.stop')) + '</button>';
+        esc(mine('act.stop')) + '</button>';
 
     var mark = document.getElementById('actingMark');
     if (!mark) {
@@ -638,34 +652,52 @@
       mark.setAttribute('aria-hidden', 'true');
       document.body.appendChild(mark);
     }
-    mark.textContent = tr('act.watermark').replace('{name}', actingNow.name);
+    mark.textContent = mine('act.watermark').replace('{name}', actingNow.name);
   }
 
+  /* THE WAY OUT MUST NEVER DEPEND ON ANYTHING OPTIONAL.
+
+     This broke once, and the failure was total: the handler called
+     StaffI18n.ownLang(), a browser holding an older cached copy of
+     staff-i18n.js did not have that function, the TypeError killed the
+     callback, and the navigation never ran. Pressing Stop did nothing at all,
+     with no error anybody could see.
+
+     A guard of `if (window.StaffI18n)` did not help, because the object
+     existed — only the function was missing. So every piece of cleanup below
+     is individually isolated, and the navigation happens whatever any of them
+     does. Being unable to leave somebody else's account is the worst state
+     this feature has. */
   document.addEventListener('click', function (e) {
-    if (!e.target.closest('#actingStop')) return;
     var btn = e.target.closest('#actingStop');
+    if (!btn) return;
     btn.disabled = true;
-    fetch('/api/admin/act-as', { method: 'DELETE', credentials: 'same-origin' })
-      .then(function () {
-        /* BOTH CACHES GO. The identity cache holds the TARGET's name and
-           roles while acting; leaving it means the admin link stays hidden
-           after stopping, because the cached roles are still theirs. That is
-           the "my admin nav did not come back" bug. */
-        try { sessionStorage.removeItem(IDENT); } catch (e) {}
-        cacheActing(null);
-        // Back to your own language before the next page even loads, so the
-        // admin area never appears in somebody else's.
-        if (window.StaffI18n) {
+
+    var leave = function () {
+      try { sessionStorage.removeItem(IDENT); } catch (err) {}
+      try { cacheActing(null); } catch (err) {}
+      try {
+        if (window.StaffI18n && window.StaffI18n.ownLang) {
           window.StaffI18n.setLang(window.StaffI18n.ownLang(), { transient: true });
         }
+      } catch (err) {}
+      // Back to where the support job started.
+      location.href = '/admin/users/';
+    };
 
-        /* Back to where you started, not a reload of their page. You came
-           from the People list to do a support job; finishing it should
-           return you there rather than leaving you on a stranger's dashboard
-           wondering whether it worked. */
-        location.href = '/admin/users/';
+    fetch('/api/admin/act-as', { method: 'DELETE', credentials: 'same-origin' })
+      .then(function (res) {
+        if (res.ok) return leave();
+        /* The server refused. The cookie is still set, so leaving now would
+           land on the admin page still acting — confusing, but visible and
+           recoverable. Staying put with a dead button is neither. */
+        btn.disabled = false;
+        if (window.StaffToast) window.StaffToast(tr('err.refused') + ' (' + res.status + ')', 'bad');
       })
-      .catch(function () { btn.disabled = false; });
+      .catch(function () {
+        btn.disabled = false;
+        if (window.StaffToast) window.StaffToast(tr('err.unreachable'), 'bad');
+      });
   });
 
   /* Called by every loader with whatever the server said.

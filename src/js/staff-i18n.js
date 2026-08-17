@@ -1103,7 +1103,27 @@
     try { return localStorage.getItem(CACHE) || 'en'; } catch (e) { return 'en'; }
   }
 
+  /**
+   * Translate in a SPECIFIC language, whatever the screen is currently in.
+   *
+   * For the acting banner. That banner is a message to the ADMINISTRATOR —
+   * "you are viewing this account, here is how to stop" — and the person whose
+   * account it is never sees it. So it belongs in the reader's language even
+   * while every other word on the page is in somebody else's.
+   *
+   * Reported as "the stop button is not in my default language", which is
+   * exactly right: the console should be theirs, the controls for leaving it
+   * should be yours.
+   */
+  function tIn(lang, key) {
+    var table = STRINGS[lang];
+    if (table && table[key] != null) return table[key];
+    if (STRINGS.en && STRINGS.en[key] != null) return STRINGS.en[key];
+    return key;
+  }
+
   window.StaffI18n = { t: tOr, apply: apply, setLang: setLang, ownLang: ownLang,
+                       tIn: tIn,
                        get lang() { return current; },
                        available: Object.keys(STRINGS) };
 
