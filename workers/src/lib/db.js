@@ -60,10 +60,26 @@ export const PUBLIC_QUERIES = new Set([
   "public_milestones_for_partner",
   "public_milestone_translations",
   "public_languages_for_partner",
+  /* Reached with NO credential at all, by code running in a stranger's
+     browser — the only query in this set with that property. It carries its
+     own authorisation (embed_enabled = 1) instead of relying on a caller to
+     have checked one first. */
+  "public_partner_for_embed",
 ]);
 
 /** Tables a query in PUBLIC_QUERIES must never mention. */
 const PRIVATE_TABLES = ["contacts", "interactions", "users", "audit_log", "api_keys"];
+
+/**
+ * Public queries that turn an identifier into a partner, rather than reading
+ * one partner's rows.
+ *
+ * They cannot be scoped by :partner_id — producing it is their whole job — so
+ * assertPublicSafe holds them to a UNIQUE column instead. Deliberately a list
+ * of specific names: this is the one place the partner-scoping rule bends, and
+ * it should require an edit here to bend it again.
+ */
+const PARTNER_RESOLVERS = new Set(["public_partner_for_embed"]);
 
 /**
  * Static check that the public query set cannot reach private data.
@@ -99,7 +115,23 @@ export function assertPublicSafe(queries = QUERIES) {
         `public query "${name}" filters neither is_public = 1 nor ` +
         `is_enabled = 1 — it would publish rows nobody chose to publish.`);
     }
-    if (!/:partner_id\b/.test(sql)) {
+    /* Every public query must be scoped to ONE partner, or it publishes the
+       whole table. Almost always that means :partner_id.
+
+       A RESOLVER is the exception, and there is exactly one: the query that
+       turns a slug into a partner_id cannot be scoped by the value it exists
+       to produce. It is still held to the same standard, expressed
+       differently — a UNIQUE column in the WHERE clause, so it can return at
+       most one row, plus the publication flags checked above. The exemption
+       is a named list rather than a looser regex, because a rule that admits
+       "any unique-looking column" would eventually admit one that is not. */
+    if (PARTNER_RESOLVERS.has(name)) {
+      if (!/\bslug\s*=\s*:slug\b/i.test(sql)) {
+        throw new Error(
+          `public resolver "${name}" must select on the UNIQUE slug column — ` +
+          `without it, it can return more than one partner.`);
+      }
+    } else if (!/:partner_id\b/.test(sql)) {
       throw new Error(`public query "${name}" is not scoped by :partner_id`);
     }
   }

@@ -75,6 +75,12 @@ await check("PUBLIC_QUERIES is an allow-list of exactly the intended queries", a
     "public_languages_for_partner",
     "public_milestone_translations",
     "public_milestones_for_partner",
+    /* Added 2026-08-18 for the embed widgets. The only query here reached
+       with no credential at all — the partner API needs a key and an embed
+       cannot hold one. It carries its own authorisation (embed_enabled = 1),
+       which is what makes an unauthenticated endpoint acceptable. See
+       workers/src/embed.js. */
+    "public_partner_for_embed",
   ], "public set");
 });
 

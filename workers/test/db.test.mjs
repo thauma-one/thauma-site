@@ -268,6 +268,8 @@ await check("every real query converts with its documented params", async () => 
     // administration
     user_id: "u_1", role: "admin", granted_by: "u_1", status: "active",
     slug: "a-partner", display_name: "A Partner",
+    // embeds
+    embed_enabled: 0, embed_accent: "#6D4AFF", embed_theme: "auto",
   };
   // The ONE query with no parameters: the language catalogue belongs to the
   // organisation, not to a partner, so there is nothing to scope it by. Named

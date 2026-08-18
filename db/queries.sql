@@ -554,8 +554,26 @@ UPDATE users SET preferred_lang = :lang WHERE email = :email AND status = 'activ
 -- The partner-level settings screen. default_lang is admin-only to CHANGE;
 -- everyone who can see the partner can see what it is.
 SELECT p.id, p.slug, p.display_name, p.status,
-       COALESCE(p.default_lang, 'en') AS default_lang
+       COALESCE(p.default_lang, 'en') AS default_lang,
+       p.embed_enabled, p.embed_accent, p.embed_theme
 FROM partners p WHERE p.id = :partner_id;
+
+
+-- name: partner_set_embed
+-- The embed settings, written together because they are edited together on
+-- one panel and a half-applied change would leave a widget live in colours
+-- nobody chose.
+--
+-- The accent is validated in the Worker, not here: SQLite has no regular
+-- expressions, and a CHECK that only tested the length would pass '#zzzzzz'
+-- while looking as though it had done something. This value ends up inside a
+-- stylesheet in a stranger's browser.
+UPDATE partners
+   SET embed_enabled = :embed_enabled,
+       embed_accent  = :embed_accent,
+       embed_theme   = :embed_theme,
+       updated_at    = :now
+ WHERE id = :partner_id;
 
 
 -- name: partner_set_default_lang
@@ -680,6 +698,24 @@ WHERE pl.partner_id = :partner_id
   AND pl.is_enabled = 1
   AND l.is_active = 1
 ORDER BY pl.sort_order, l.name;
+
+
+-- name: public_partner_for_embed
+-- Resolve a slug to a partner, for the UNAUTHENTICATED embed endpoint.
+--
+-- `embed_enabled = 1` is not a filter here, it is the authorisation. This
+-- query runs for anybody on the internet who can type a URL, so a partner who
+-- has not opted in must not be findable through it — the endpoint returns 404
+-- on no rows, which does not confirm whether the slug exists.
+--
+-- is_public is checked as well. A partner can be public without embedding,
+-- but embedding one who is NOT public would put them on somebody else's
+-- website while their own listing is still hidden.
+SELECT id, slug, display_name, embed_accent, embed_theme
+FROM partners
+WHERE slug = :slug
+  AND embed_enabled = 1
+  AND is_public = 1;
 
 
 -- name: api_key_lookup

@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "98798d080f3e222e";
+export const SOURCE_DIGEST = "ac80a68429137a72";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -228,8 +228,15 @@ LEFT JOIN partner_languages pl
 WHERE l.is_active = 1
 ORDER BY sort_order, l.name;`,
   partner_set_default_lang: `UPDATE partners SET default_lang = :lang, updated_at = :now WHERE id = :partner_id;`,
+  partner_set_embed: `UPDATE partners
+   SET embed_enabled = :embed_enabled,
+       embed_accent  = :embed_accent,
+       embed_theme   = :embed_theme,
+       updated_at    = :now
+ WHERE id = :partner_id;`,
   partner_settings: `SELECT p.id, p.slug, p.display_name, p.status,
-       COALESCE(p.default_lang, 'en') AS default_lang
+       COALESCE(p.default_lang, 'en') AS default_lang,
+       p.embed_enabled, p.embed_accent, p.embed_theme
 FROM partners p WHERE p.id = :partner_id;`,
   partners_for_user: `SELECT p.id, p.slug, p.display_name, p.status, pu.role AS access_role,
        u.id AS user_id, u.name AS user_name,
@@ -272,6 +279,11 @@ FROM milestones
 WHERE partner_id = :partner_id
   AND is_public = 1
 ORDER BY sort_order ASC, (actual_date IS NULL), actual_date ASC;`,
+  public_partner_for_embed: `SELECT id, slug, display_name, embed_accent, embed_theme
+FROM partners
+WHERE slug = :slug
+  AND embed_enabled = 1
+  AND is_public = 1;`,
   resource_delete: `DELETE FROM resources WHERE id = :id AND partner_id IS :partner_id;`,
   resource_upsert: `INSERT INTO resources
   (id, partner_id, title, description, link, photo, visibility,
