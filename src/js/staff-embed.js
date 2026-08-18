@@ -195,9 +195,22 @@
     ]);
 
     if (results[0].status !== 'fulfilled') {
-      /* Quiet. This is secondary to the page it sits on, and a goals page that
-         shouts about an embed panel it could not draw is worse than one that
-         simply does not offer it. */
+      /* SAY SO, in the page.
+
+         This used to fail silently — log to the console and leave the bar
+         hidden — on the reasoning that a goals page should not shout about a
+         secondary panel. That was wrong, and it cost an afternoon on
+         2026-08-18: "there is still no visualiser anywhere" is what a silent
+         failure looks like from the outside, and it is indistinguishable from
+         the feature never having been built.
+
+         A thing that is supposed to be on the page should either be on the
+         page or explain itself. */
+      bar.hidden = false;
+      p.viewEdit.hidden = true;
+      p.viewEmbed.hidden = true;
+      p.state.className = 'emb-state';
+      p.state.textContent = tr('emb.unavailable') + ' ' + String(results[0].reason.message || '');
       console.error('embed panel could not load settings:', results[0].reason);
       return;
     }

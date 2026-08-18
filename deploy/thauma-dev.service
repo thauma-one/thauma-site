@@ -23,6 +23,24 @@
 # the two remote-binding approaches that were tried on 2026-08-15 and why both
 # failed on this machine.
 #
+# --live-reload IS LOad-BEARING, and not for the reload.
+#
+# Without it, wrangler reads the asset directory ONCE at startup and serves
+# that snapshot for the life of the process. Since Eleventy rebuilds _site
+# continuously alongside it, any page created or changed after wrangler booted
+# is served from the old manifest — or not served at all.
+#
+# That cost most of 2026-08-18. Twice: once as a white screen on every page
+# after a rebuild replaced _site, and again as a new panel that was in the
+# built HTML on disk and simply absent from the page the browser received.
+# Both looked like the change not working. --live-reload makes wrangler pick
+# up files written after it started; verified by creating a file and fetching
+# it without a restart.
+#
+# ExecStartPre builds ONCE before wrangler binds, so the first request after a
+# restart is served from a complete directory rather than whatever Eleventy has
+# managed to write in the first second.
+#
 # Cloudflare Access still gates this hostname at the edge, in front of the
 # tunnel. The Worker also verifies the JWT itself — dev.thauma.one's audience
 # tag is first in [env.dev.vars] ACCESS_AUD.
@@ -36,9 +54,18 @@ WorkingDirectory=/DATA/AppData/thauma
 # 0600, and wrangler reads CLOUDFLARE_API_TOKEN from the environment rather
 # than taking it as an argument — an argument would be visible in `ps`.
 EnvironmentFile=/home/chaseroushtech/.config/cloudflare-thauma.env
-ExecStart=/bin/bash -lc 'socat TCP-LISTEN:8992,fork,reuseaddr TCP:127.0.0.1:8991 & npx @11ty/eleventy --watch --output=_site & exec ./node_modules/.bin/wrangler dev --env dev --port 8991 --ip 127.0.0.1 --show-interactive-dev-session false'
+# Build once, in dev mode, BEFORE anything starts serving. ELEVENTY_RUN_MODE is
+# set explicitly: a bare build defaults to "build", which resolves the LIVE
+# visibility column and would write the gated coming-soon site into _site.
+ExecStartPre=/bin/bash -lc 'ELEVENTY_RUN_MODE=watch npx @11ty/eleventy --output=_site --quiet'
+ExecStart=/bin/bash -lc 'socat TCP-LISTEN:8992,fork,reuseaddr TCP:127.0.0.1:8991 & npx @11ty/eleventy --watch --output=_site & exec ./node_modules/.bin/wrangler dev --env dev --port 8991 --ip 127.0.0.1 --live-reload --show-interactive-dev-session false'
 Restart=on-failure
 RestartSec=10
+# Kill the whole group on stop. Eleventy and socat are backgrounded children of
+# the shell, so a plain stop left them running — two orphaned --watch processes
+# survived from 2026-08-16 to 2026-08-18, all writing to the same _site.
+KillMode=control-group
+TimeoutStopSec=20
 
 [Install]
 WantedBy=multi-user.target
