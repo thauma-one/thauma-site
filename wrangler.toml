@@ -63,7 +63,11 @@ run_worker_first = [
   "/staff",                     # auth gate
   "/staff/*",                   # ...including the snapshot JSON
   "/admin",                     # administration — same gate
-  "/admin/*"
+  "/admin/*",
+  # The embed widgets. Unauthenticated and cross-origin by design — see
+  # workers/src/embed.js. Must reach the router: served asset-first it would
+  # 404, because nothing under this path exists on disk.
+  "/embed/v1/*"
 ]
 
 [[routes]]
@@ -209,7 +213,7 @@ directory = "_site"
 binding = "ASSETS"
 html_handling = "auto-trailing-slash"
 not_found_handling = "404-page"
-run_worker_first = ["/", "/api/*", "/.netlify/functions/*", "/staff", "/staff/*", "/admin", "/admin/*"]
+run_worker_first = ["/", "/api/*", "/.netlify/functions/*", "/staff", "/staff/*", "/admin", "/admin/*", "/embed/v1/*"]
 
 # LOCAL SIMULATION, INCLUDING THE DATABASE. `wrangler dev` runs D1 and KV in
 # miniflare against state under .wrangler/state — NOT against thauma-ops-dev.
@@ -322,7 +326,7 @@ directory = "_site_prod"
 binding = "ASSETS"
 html_handling = "auto-trailing-slash"
 not_found_handling = "404-page"
-run_worker_first = ["/", "/api/*", "/.netlify/functions/*", "/staff", "/staff/*", "/admin", "/admin/*"]
+run_worker_first = ["/", "/api/*", "/.netlify/functions/*", "/staff", "/staff/*", "/admin", "/admin/*", "/embed/v1/*"]
 
 [[env.production.routes]]
 pattern = "thauma.one/*"

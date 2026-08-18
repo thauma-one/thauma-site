@@ -40,6 +40,7 @@ import adminApi from "./admin.js";
 import adminContent from "./admin-content.js";
 import adminPublish from "./admin-publish.js";
 import adminMigrate from "./admin-migrate.js";
+import embed from "./embed.js";
 import adminActAs from "./admin-actas.js";
 import { createDb, partnerSnapshot, assertPublicSafe } from "./lib/db.js";
 import { requireAccess } from "./lib/access.js";
@@ -267,6 +268,14 @@ export default {
 
     const route = ROUTES[url.pathname];
     if (route) return route.fetch(request, env, ctx);
+
+    /* THE ONLY UNAUTHENTICATED, CROSS-ORIGIN ROUTE, and a prefix rather than
+       an exact path because the slug is in it. Before the auth gate below,
+       and it must stay there: an embed runs in a stranger's browser on a site
+       we do not control, so there is no session to check and nothing to sign
+       in to. What makes that safe is per-partner opt-in, not a gate — see
+       embed.js. */
+    if (url.pathname.startsWith("/embed/v1/")) return embed.fetch(request, env, ctx);
 
     // Only the bare root redirects by language. /en/, /hr/ and every asset
     // beneath them must fall through, or the site would redirect forever.
