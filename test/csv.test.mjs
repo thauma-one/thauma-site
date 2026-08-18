@@ -226,6 +226,25 @@ check("the key column is never wrapped", () => {
          "the export should push the key unwrapped, then wrapped columns");
 });
 
+check("the file carries the language's own name, in a row", () => {
+  /* Every language file has a `name` row — "English", "Hrvatski", "Српски" —
+     so an uploaded file already says what the language is called, in the words
+     of whoever translated it. The import reads that row rather than computing
+     a name, and the dialogs then say "Add Slovenščina (sl)" instead of
+     "Add sl".
+
+     This asserts the row exists and is filled in every language, because the
+     moment one is blank the dialogs quietly fall back to a browser guess. */
+  for (const code of ["en", "hr", "sr"]) {
+    const doc = JSON.parse(readFileSync(
+      fileURLToPath(new URL(`../src/_data/i18n/${code}.json`, import.meta.url)), "utf8"));
+    assert(typeof doc.name === "string" && doc.name.trim() !== "",
+           `${code}.json has no name — the dialogs would show a bare code`);
+    assert(doc.code === code,
+           `${code}.json says its code is "${doc.code}"`);
+  }
+});
+
 /* ------------------------- the column layout --------------------------- */
 
 check("the header carries the language CODE in brackets", () => {

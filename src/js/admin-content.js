@@ -213,12 +213,33 @@
   /* Language names, from the browser rather than a table we would have to
      maintain. Intl knows the endonym; falling back to the code is fine —
      it is what the file is called. */
+  /**
+   * What a language is called, in its own words where we have them.
+   *
+   * Every language file carries a `name` row — "English", "Hrvatski",
+   * "Српски" — written by whoever translated it. That beats anything computed:
+   * Intl gives a serviceable endonym, but the person who speaks the language
+   * decided what to call it, and the site already stores their answer.
+   *
+   * So: the loaded file first, then the browser, then the bare code. The code
+   * stays in brackets throughout, because it is what the upload reads back and
+   * what a person needs when two languages share a name.
+   */
   function langLabel(code) {
+    var own = null;
+    if (code === state.file && state.draft && state.draft.name) {
+      own = state.draft.name;
+    } else if (state.ref && state.ref.code === code && state.ref.leaves &&
+               state.ref.leaves.name) {
+      own = state.ref.leaves.name;
+    }
+    if (own) return own + ' (' + code + ')';
+
     try {
       var dn = new Intl.DisplayNames([code], { type: 'language' });
       var name = dn.of(code);
       if (name && name !== code) return name.charAt(0).toUpperCase() + name.slice(1) + ' (' + code + ')';
-    } catch (e) { /* older browser, or an unknown code */ }
+    } catch (e) { /* older browser, or a code Intl does not know */ }
     return code;
   }
 
@@ -454,9 +475,7 @@
     this.disabled = false;
     if (!body) return;
 
-    toast(tr('con.addLangDone')
-      .replace('{code}', body.code)
-      .replace('{n}', body.strings), 'ok');
+    toast(fill('con.addLangDone', { code: langLabel(body.code), n: body.strings }), 'ok');
 
     await boot();
     $('cLang').value = body.code;
@@ -725,6 +744,27 @@
     var rawHeader = String(header[valueCol] || '').trim();
     var bracketed = rawHeader.match(/\(([a-z]{2}(?:-[a-z]{2})?)\)/i);
     var fileLang = (bracketed ? bracketed[1] : rawHeader).trim().toLowerCase();
+
+    /* WHAT THE LANGUAGE IS CALLED, TAKEN FROM THE FILE ITSELF.
+
+       Every language file has a `name` row — "English", "Hrvatski", "Српски" —
+       and a translator filling one in writes their own word for their own
+       language. That is better than anything this code could work out: Intl
+       gives a serviceable endonym, but the person handing the file back knows.
+
+       Falls back to the browser's name, then to the bare code. The dialogs use
+       whichever is best, so they say "Add Slovenščina (sl)" rather than
+       "Add sl". */
+    var namedInFile = '';
+    for (var nr = 1; nr < rows.length; nr++) {
+      if ((rows[nr][0] || '').trim() === 'name') {
+        namedInFile = unwrapCell(rows[nr][valueCol]);
+        break;
+      }
+    }
+    var fileLabel = namedInFile
+      ? namedInFile + ' (' + fileLang + ')'
+      : langLabel(fileLang);
     var target = state.file;
     var justCreated = false;
 
@@ -746,9 +786,9 @@
            chain was on the body and forgetting it above looked like nothing.
            fill() takes them together so that cannot happen quietly. */
         title: fill(known ? 'con.importSwitchTitle' : 'con.importCreateTitle',
-                    { file: fileLang, open: state.file, n: filled }),
+                    { file: fileLabel, open: langLabel(state.file), n: filled }),
         body: fill(known ? 'con.importSwitchBody' : 'con.importCreateBody',
-                   { file: fileLang, open: state.file, n: filled }),
+                   { file: fileLabel, open: langLabel(state.file), n: filled }),
         note: known ? tr('con.importSwitchNote') : tr('con.importCreateNote'),
         confirm: known ? tr('con.importSwitchDo') : tr('con.importCreateDo'),
         cancel: tr('ms.cancel')
@@ -760,7 +800,7 @@
            what a save IS here, so switching would strand it. */
         var leave = await window.StaffConfirm({
           title: tr('con.leaveTitle'),
-          body: fill('con.leaveBody', { n: dirtyPaths().length, lang: state.file }),
+          body: fill('con.leaveBody', { n: dirtyPaths().length, lang: langLabel(state.file) }),
           confirm: tr('con.leaveDiscard'), cancel: tr('ms.cancel'), danger: true
         });
         if (!leave) return;
@@ -770,8 +810,7 @@
         var made = await createLanguage(fileLang);
         if (!made) return;              // createLanguage has already explained
         justCreated = true;
-        toast(tr('con.addLangDone').replace('{code}', made.code)
-                                   .replace('{n}', made.strings), 'ok');
+        toast(fill('con.addLangDone', { code: fileLabel, n: made.strings }), 'ok');
         await boot();                   // the pickers need the new language in them
       }
 
@@ -817,7 +856,7 @@
     if (!justCreated) {
       var apply = await window.StaffConfirm({
         title: tr('con.importTitle'),
-        body: fill('con.importBody', { n: n, lang: target }),
+        body: fill('con.importBody', { n: n, lang: langLabel(target) }),
         note: (unknown.length ? fill('con.importUnknown', { n: unknown.length }) + ' ' : '') +
               (blank ? fill('con.importBlank', { n: blank }) + ' ' : '') +
               tr('con.importNote'),
@@ -879,7 +918,7 @@
     if (dirtyPaths().length) {
       var ok = await window.StaffConfirm({
         title: tr('con.leaveTitle'),
-        body: fill('con.leaveBody', { n: dirtyPaths().length, lang: state.file }),
+        body: fill('con.leaveBody', { n: dirtyPaths().length, lang: langLabel(state.file) }),
         confirm: tr('con.leaveDiscard'),
         cancel: tr('ms.cancel'),
         danger: true

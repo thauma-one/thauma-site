@@ -152,7 +152,11 @@
      editor does not translate its section names: they identify a page or a
      block, and they are things you match against the site rather than read. */
   /* The endonym, from the browser, rather than a table to maintain. A person
-     picking languages recognises "Srpski" faster than "sr". */
+     picking languages recognises "Srpski" faster than "sr".
+     
+     The content editor prefers each file's own `name` row where it has one
+     loaded; this page does not read those files, so Intl is the best available
+     and gives the same answer for every language the site has today. */
   function langName(code) {
     try {
       var dn = new Intl.DisplayNames([code], { type: 'language' });
