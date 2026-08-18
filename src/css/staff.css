@@ -925,3 +925,49 @@ body.has-savebar .acting-mark{bottom:calc(var(--ms-savebar-h,72px) + 12px)}
 .dlg-err{margin:10px 0 0;font-size:var(--fs-tiny);color:var(--crit,#FF6B6B);
   line-height:var(--lh-body)}
 .dlg-err[hidden]{display:none}
+
+
+/* ============================================================
+   EMBEDS — the settings panel that builds the snippet
+   ============================================================
+   The preview is a sandboxed iframe rather than a rendering in this page.
+   The widget carries its own stylesheet inside a shadow root, and showing it
+   here would show it wearing the console's fonts and colours — which is
+   exactly what a visitor never sees. */
+
+.emb-look,.emb-opts{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-end}
+.emb-opts{margin-bottom:18px}
+
+.emb-field{display:flex;flex-direction:column;gap:6px;font-size:var(--fs-micro);
+  color:var(--dim)}
+.emb-field > span{letter-spacing:var(--ls-caps);text-transform:uppercase;
+  font-weight:600}
+.emb-field select,.emb-field input[type=number]{min-width:11ch}
+
+.emb-colour{display:flex;align-items:center;gap:8px}
+.emb-colour input[type=color]{inline-size:44px;block-size:34px;padding:2px;
+  border:1px solid var(--line);border-radius:var(--radius);background:var(--bg2);
+  cursor:pointer}
+.emb-hex{inline-size:10ch;font-family:var(--font-mono);text-transform:uppercase}
+
+/* Code and preview side by side while there is room, stacked when there is
+   not — the snippet is the thing being copied, so it keeps the wider column. */
+.emb-split{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);
+  gap:18px;align-items:start}
+@media(max-width:900px){ .emb-split{grid-template-columns:1fr} }
+
+.emb-codewrap{position:relative}
+.emb-code{margin:0;background:var(--bg);border:1px solid var(--line-hard);
+  border-radius:var(--radius);padding:14px 16px;padding-right:84px;
+  font-family:var(--font-mono);font-size:var(--fs-micro);
+  color:var(--voice-tech-hi);line-height:1.7;overflow-x:auto;
+  white-space:pre;-moz-tab-size:2;tab-size:2}
+.emb-codewrap .ghost-btn{position:absolute;top:10px;right:10px}
+
+.emb-preview{border:1px solid var(--line);border-radius:var(--radius);
+  background:var(--bg2);overflow:hidden}
+.emb-preview-label{padding:9px 14px;border-bottom:1px solid var(--line);
+  font-size:var(--fs-micro);letter-spacing:var(--ls-caps);text-transform:uppercase;
+  color:var(--dim);font-weight:600}
+.emb-preview iframe{display:block;inline-size:100%;block-size:290px;border:0;
+  background:transparent}

@@ -111,6 +111,7 @@
     }).join('');
 
     renderKeys();
+    renderEmbeds();
   }
 
   /* Reads state.api_keys, which is what the endpoint actually returns. It
@@ -307,6 +308,154 @@
       // Older Safari over http has no clipboard API; select it so Ctrl-C works.
       var r = document.createRange();
       r.selectNode($('setKeyValue'));
+      window.getSelection().removeAllRanges();
+      window.getSelection().addRange(r);
+      setStatus('Selected — press Ctrl/Cmd C', 'ok');
+    }
+  });
+
+  /* ---- embeds ---------------------------------------------------------
+     The only panel here that publishes to people who have not signed in to
+     anything, so the switch governs everything below it and the rest of the
+     panel is ABSENT rather than merely disabled until it is on. A colour
+     picker for a widget nobody can fetch invites you to think you have
+     shipped something.
+
+     Appearance saves to the server; what the widget SHOWS does not. Colours
+     belong to the ministry and should follow a rebrand everywhere at once;
+     which widget goes on which page belongs to the page, and lives in the
+     snippet. That split is why some controls here save and others only
+     rewrite the code box. */
+
+  var HEX = /^#[0-9a-fA-F]{6}$/;
+
+  /* Whatever host this console is on. On dev.thauma.one the copied snippet
+     points at dev, which is what makes it testable before it is real. */
+  function embedOrigin() { return location.origin; }
+
+  function embedAttrs() {
+    var a = ['data-thauma="' + ((state.partner && state.partner.slug) || '') + '"'];
+
+    var w = $('setEmbedWidget').value;
+    if (w !== 'goal') a.push('data-widget="' + w + '"');
+
+    var lang = $('setEmbedLang').value;
+    if (lang && lang !== 'en') a.push('data-lang="' + lang + '"');
+
+    var limit = parseInt($('setEmbedLimit').value, 10);
+    if (limit > 0) a.push('data-limit="' + limit + '"');
+
+    return a.join(' ');
+  }
+
+  function renderEmbedCode() {
+    if (!state.partner || !state.partner.slug) return;
+    $('setEmbedCode').textContent =
+      '<div ' + embedAttrs() + '></div>\n' +
+      '<script src="' + embedOrigin() + '/embed/v1/widget.js" async></' + 'script>';
+    renderEmbedPreview();
+  }
+
+  var previewTimer = null;
+  function renderEmbedPreview() {
+    /* Debounced: a colour input fires continuously while the picker is
+       dragged, and every rebuild is a fresh document and a fetch. */
+    clearTimeout(previewTimer);
+    previewTimer = setTimeout(function () {
+      var frame = $('setEmbedFrame');
+      if (!frame) return;
+
+      /* srcdoc in a sandboxed iframe. The widget is a guest on pages we do
+         not control, and previewing it inside THIS document — with its own
+         stylesheet and fonts — would show something no visitor ever sees. */
+      frame.srcdoc =
+        '<!doctype html><meta charset="utf-8">' +
+        '<body style="margin:0;padding:16px;background:transparent">' +
+        '<div ' + embedAttrs() + '></div>' +
+        '<script src="' + embedOrigin() + '/embed/v1/widget.js"></' + 'script>';
+    }, 180);
+  }
+
+  function renderEmbeds() {
+    var e = state.embed || {};
+    var admin = state.you.is_admin;
+
+    $('setEmbedOn').checked = !!e.enabled;
+    $('setEmbedOn').disabled = !admin;
+    $('setEmbedNotAdmin').hidden = admin;
+    $('setEmbedRest').hidden = !e.enabled;
+
+    var accent = HEX.test(e.accent || '') ? e.accent : '#6D4AFF';
+    $('setEmbedAccent').value = accent;
+    $('setEmbedAccentHex').value = accent;
+    $('setEmbedAccent').disabled = !admin;
+    $('setEmbedAccentHex').disabled = !admin;
+
+    $('setEmbedTheme').value = e.theme || 'auto';
+    $('setEmbedTheme').disabled = !admin;
+
+    /* Only the languages this partner actually publishes. Offering one that
+       is switched off would build a snippet whose widget silently falls back
+       to English. */
+    var langs = (state.languages || []).filter(function (l) { return l.is_enabled; });
+    if (!langs.length) langs = state.languages || [];
+    var current = $('setEmbedLang').value;
+    $('setEmbedLang').innerHTML = langs.map(function (l) {
+      return '<option value="' + esc(l.code) + '">' + esc(langLabel(l)) + '</option>';
+    }).join('');
+    if (current) $('setEmbedLang').value = current;
+
+    renderEmbedCode();
+  }
+
+  $('setEmbedOn').addEventListener('change', function () {
+    change({ embed: {
+      enabled: this.checked,
+      accent: $('setEmbedAccentHex').value,
+      theme: $('setEmbedTheme').value
+    } }, this, 'toast.saved');
+  });
+
+  function saveLook(control) {
+    var hex = $('setEmbedAccentHex').value.trim();
+    if (!HEX.test(hex)) { setStatus(tr('set.embedBadHex'), 'err'); return; }
+    change({ embed: {
+      enabled: $('setEmbedOn').checked,
+      accent: hex,
+      theme: $('setEmbedTheme').value
+    } }, control, 'toast.saved');
+  }
+
+  /* The picker mirrors into the hex box live and saves once, on change. The
+     hex box saves on change rather than on input, or typing "#6D" would be
+     four rejected requests. */
+  $('setEmbedAccent').addEventListener('input', function () {
+    $('setEmbedAccentHex').value = this.value.toUpperCase();
+    renderEmbedPreview();
+  });
+  $('setEmbedAccent').addEventListener('change', function () {
+    $('setEmbedAccentHex').value = this.value.toUpperCase();
+    saveLook(this);
+  });
+  $('setEmbedAccentHex').addEventListener('change', function () {
+    var hex = this.value.trim();
+    if (HEX.test(hex)) $('setEmbedAccent').value = hex;
+    saveLook(this);
+  });
+  $('setEmbedTheme').addEventListener('change', function () { saveLook(this); });
+
+  /* Snippet-only. Nothing to save — these live in the code you paste. */
+  ['setEmbedWidget', 'setEmbedLang', 'setEmbedLimit'].forEach(function (id) {
+    $(id).addEventListener('change', renderEmbedCode);
+  });
+
+  $('setEmbedCopy').addEventListener('click', function () {
+    var v = $('setEmbedCode').textContent;
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(v).then(function () { toastKey('toast.copied', 'ok'); });
+    } else {
+      var r = document.createRange();
+      r.selectNode($('setEmbedCode'));
       window.getSelection().removeAllRanges();
       window.getSelection().addRange(r);
       setStatus('Selected — press Ctrl/Cmd C', 'ok');

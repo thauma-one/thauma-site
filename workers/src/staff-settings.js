@@ -136,6 +136,15 @@ export default {
           id: partner.id,
           display_name: partner.display_name,
           default_lang: settings ? settings.default_lang : "en",
+          /* The slug is in the embed snippet, so the panel cannot build the
+             code to copy without it. Not sensitive — it is already in every
+             public URL this partner has. */
+          slug: settings ? settings.slug : null,
+        },
+        embed: {
+          enabled: settings ? !!settings.embed_enabled : false,
+          accent: (settings && settings.embed_accent) || null,
+          theme: (settings && settings.embed_theme) || "auto",
         },
         languages: languages.map((l) => ({ ...l, is_enabled: !!l.is_enabled })),
         api_keys: keys.map((k) => ({ ...k, revoked: !!k.revoked_at })),
@@ -220,6 +229,46 @@ export default {
         await audit(db, { user, partner, action: "update", entity: "partner.default_lang",
                           detail: { lang: body.default_lang } });
         return json({ default_lang: body.default_lang });
+      }
+
+      /* --- the embed panel, ADMIN ONLY ---
+         Turning embeds on makes this partner readable by anyone on the
+         internet with no credential at all. That is a publication decision
+         about the whole ministry, not a preference, and it is the same
+         reasoning that keeps the site's default language admin-only. */
+      if (body.embed !== undefined) {
+        if (!isAdmin) {
+          return json({ error: "Only an administrator can change embed settings." }, 403);
+        }
+        const e = body.embed || {};
+
+        /* Validated HERE because SQLite cannot: a CHECK constraint testing
+           only the length would pass '#zzzzzz'. This value is written into a
+           stylesheet in a stranger's browser. */
+        let accent = null;
+        if (e.accent !== null && e.accent !== undefined && e.accent !== "") {
+          if (!/^#[0-9a-fA-F]{6}$/.test(String(e.accent))) {
+            return json({ error: "A colour must be a six-digit hex code, like #6D4AFF." }, 400);
+          }
+          accent = String(e.accent).toUpperCase();
+        }
+
+        const theme = String(e.theme || "auto");
+        if (!["auto", "light", "dark"].includes(theme)) {
+          return json({ error: "Theme must be auto, light or dark." }, 400);
+        }
+
+        const enabled = e.enabled ? 1 : 0;
+
+        await db.query("partner_set_embed", {
+          partner_id, embed_enabled: enabled, embed_accent: accent, embed_theme: theme, now,
+        });
+        /* Audited as a publication decision, with the state it moved TO —
+           "who made this readable by the world, and when" is the first
+           question anybody asks about an unauthenticated endpoint. */
+        await audit(db, { user, partner, action: "update", entity: "partner.embed",
+                          detail: { enabled: !!enabled, accent, theme } });
+        return json({ embed: { enabled: !!enabled, accent, theme } });
       }
 
       // --- revoke a key ---
