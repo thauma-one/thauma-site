@@ -950,6 +950,42 @@
     renderSaveBar();
   });
 
+  /* Re-read this file from GitHub, SHA and all.
+
+     Available even when nothing looks like it needs doing, which is the point.
+     Save is hidden when the draft matches what was loaded, and that is right —
+     a commit whose content is identical to the file already there is not a
+     thing git can record. But "nothing has changed" describes the copy this
+     page pulled down, and that copy can be stale: somebody edited the same
+     language in another tab, an import half-landed, a save was refused on a
+     SHA conflict and the page kept showing the older text.
+
+     So the remedy for "I am sure this is out of step" is to go and look again,
+     not to force an empty commit. */
+  $('cReload').addEventListener('click', async function () {
+    if (!state.file) return;
+    var n = dirtyPaths().length;
+
+    if (n) {
+      var ok = await window.StaffConfirm({
+        title: tr('con.reloadTitle'),
+        body: fill('con.reloadBody', { n: n }),
+        confirm: tr('con.reload'),
+        cancel: tr('ms.cancel'),
+        danger: true
+      });
+      if (!ok) return;
+    }
+
+    this.disabled = true;
+    try {
+      await openFile(state.file);
+      toast(tr('con.reloaded'), 'ok');
+    } finally {
+      this.disabled = false;
+    }
+  });
+
   /* ---- saving --------------------------------------------------------- */
 
   $('cSave').addEventListener('click', async function () {

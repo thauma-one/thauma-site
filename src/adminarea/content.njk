@@ -37,6 +37,17 @@ permalink: /admin/content/index.html
   <button type="button" class="ghost-btn" id="cImport" disabled
           data-i18n="con.import">Upload</button>
   <input type="file" id="cImportFile" accept=".csv,text/csv" hidden>
+
+  {#- ALWAYS ENABLED, including when the page thinks nothing has changed.
+
+     Save is hidden when nothing is dirty, and that is correct — there is no
+     such thing as committing a file that is identical to the one already
+     there; git has nothing to record. But "nothing has changed" is a claim
+     about the copy this page loaded, and if somebody edited the same file
+     elsewhere, or a save half-failed, the honest remedy is to go and look
+     again rather than to force a commit that would be empty. -#}
+  <button type="button" class="ghost-btn" id="cReload"
+          data-i18n="con.reload">Reload from GitHub</button>
   <span class="hint" id="cWhere"></span>
 </div>
 
