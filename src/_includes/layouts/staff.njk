@@ -93,5 +93,9 @@
    different job from the read-only console and will keep growing. -#}
 {% if staffPage == "milestones" %}<script src="/js/staff-milestones.js?v={{ "/js/staff-milestones.js" | v }}"></script>{% endif %}
 {% if staffPage == "settings" %}<script src="/js/staff-settings.js?v={{ "/js/staff-settings.js" | v }}"></script>{% endif %}
+{#- The embed panel loads on the two pages that AUTHOR what it publishes —
+   the roadmap under the milestone editor, the giving progress under the
+   goals — rather than on a settings tab away from both. -#}
+{% if staffPage == "milestones" or staffPage == "support" %}<script src="/js/staff-embed.js?v={{ "/js/staff-embed.js" | v }}"></script>{% endif %}
 </body>
 </html>

@@ -926,18 +926,27 @@ body.has-savebar .acting-mark{bottom:calc(var(--ms-savebar-h,72px) + 12px)}
   line-height:var(--lh-body)}
 .dlg-err[hidden]{display:none}
 
-
 /* ============================================================
-   EMBEDS — the settings panel that builds the snippet
+   EMBEDS — "put this on another website"
    ============================================================
-   The preview is a sandboxed iframe rather than a rendering in this page.
-   The widget carries its own stylesheet inside a shadow root, and showing it
-   here would show it wearing the console's fonts and colours — which is
-   exactly what a visitor never sees. */
+   Sits at the bottom of Milestones and Support, under the thing it publishes.
+   Separated by a rule and set slightly back, because it is a secondary job on
+   a page whose main job is editing: it should be findable when you want it
+   and quiet when you do not. */
 
-.emb-look,.emb-opts{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-end}
-.emb-opts{margin-bottom:18px}
+.emb-panel{margin-top:44px;padding-top:28px;border-top:1px solid var(--line)}
+.emb-head h3{font-family:var(--font-display);font-size:var(--fs-md);
+  font-weight:var(--w-hair);color:var(--text)}
+.emb-lede{margin-top:6px;font-size:var(--fs-tiny);color:var(--dim);
+  line-height:var(--lh-body);max-width:62ch}
 
+.emb-switch{margin-top:18px}
+.emb-off-note,.emb-shared{margin-top:8px;font-size:var(--fs-micro);
+  color:var(--dim);max-width:62ch;line-height:var(--lh-body)}
+.emb-shared{margin-top:14px;opacity:.8}
+
+.emb-controls{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-end;
+  margin-top:22px}
 .emb-field{display:flex;flex-direction:column;gap:6px;font-size:var(--fs-micro);
   color:var(--dim)}
 .emb-field > span{letter-spacing:var(--ls-caps);text-transform:uppercase;
@@ -951,9 +960,9 @@ body.has-savebar .acting-mark{bottom:calc(var(--ms-savebar-h,72px) + 12px)}
 .emb-hex{inline-size:10ch;font-family:var(--font-mono);text-transform:uppercase}
 
 /* Code and preview side by side while there is room, stacked when there is
-   not — the snippet is the thing being copied, so it keeps the wider column. */
+   not — the snippet is what gets copied, so it keeps the wider column. */
 .emb-split{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);
-  gap:18px;align-items:start}
+  gap:18px;align-items:start;margin-top:20px}
 @media(max-width:900px){ .emb-split{grid-template-columns:1fr} }
 
 .emb-codewrap{position:relative}

@@ -11,3 +11,7 @@ staffHint: aggregates only — no donor records held
 <p class="note" data-i18n-html="sup.note"><b>This holds no donor records.</b> Only four numbers per goal — raised, donor count,
   source and captured-at — pulled from the giving platform. Donor detail lives there, and
   a partner reads their own by logging into it directly.</p>
+
+{#- Beside the numbers it renders. -#}
+{% set embedWidget = "goal" %}
+{% include "embed-panel.njk" %}

@@ -1,0 +1,98 @@
+{#- embed-panel.njk — "put this on another website", beside the thing it shows
+
+   Included by the pages that AUTHOR the data each widget renders: the roadmap
+   panel sits under the milestone editor, the giving panel under the goals.
+   It lived on the Settings page first, and that was wrong — you had to leave
+   the roadmap, find a tab, and configure a preview of a thing you could no
+   longer see. Configuring something belongs next to the something.
+
+   The caller sets `embedWidget` to "roadmap" or "goal". There is no widget
+   picker here for that reason: the page you are on has already chosen.
+
+   COLOURS ARE SHARED AND THE PANEL SAYS SO. Accent and light/dark belong to
+   the ministry, not to one widget, so editing them here changes both. The
+   alternative — a colour per widget — means a supporter embedding two of them
+   gets two different brands on one page.  -#}
+
+<section class="emb-panel" data-embed-panel data-widget="{{ embedWidget }}" hidden>
+
+  <div class="emb-head">
+    <h3 data-i18n="emb.title">Put this on another website</h3>
+    <p class="emb-lede" data-i18n="{{ 'emb.ledeRoadmap' if embedWidget == 'roadmap' else 'emb.ledeGoal' }}">
+      {% if embedWidget == "roadmap" %}
+        A sending church or a supporter can show this roadmap on their own site.
+        It updates when you publish — they paste the code once.
+      {% else %}
+        A sending church or a supporter can show this progress on their own site.
+        It updates as the numbers do — they paste the code once.
+      {% endif %}
+    </p>
+  </div>
+
+  {#- The switch governs everything below it, and the rest is ABSENT rather
+     than disabled until it is on. A colour picker for a widget nobody can
+     fetch invites you to think you have shipped something. -#}
+  <label class="switch emb-switch">
+    <input type="checkbox" data-emb="on">
+    <span data-i18n="emb.on">Allow anyone to embed this</span>
+  </label>
+  <p class="emb-off-note" data-emb="offNote" data-i18n="emb.offNote">
+    While this is off, the address returns nothing at all — not an error saying you exist.
+  </p>
+  <p class="rolegate" data-emb="notAdmin" hidden data-i18n="emb.adminOnly">
+    An administrator changes this.
+  </p>
+
+  <div data-emb="rest" hidden>
+
+    <div class="emb-controls">
+      <label class="emb-field">
+        <span data-i18n="emb.accent">Accent</span>
+        <span class="emb-colour">
+          <input type="color" data-emb="accent" value="#6D4AFF">
+          <input type="text" data-emb="accentHex" class="emb-hex" maxlength="7"
+                 spellcheck="false" aria-label="Accent colour hex">
+        </span>
+      </label>
+
+      <label class="emb-field">
+        <span data-i18n="emb.theme">Background</span>
+        <select data-emb="theme">
+          <option value="auto" data-i18n="emb.auto">Match the page</option>
+          <option value="light" data-i18n="emb.light">Always light</option>
+          <option value="dark" data-i18n="emb.dark">Always dark</option>
+        </select>
+      </label>
+
+      <label class="emb-field">
+        <span data-i18n="emb.lang">Language</span>
+        <select data-emb="lang"></select>
+      </label>
+
+      <label class="emb-field">
+        <span data-i18n="emb.limit">Rows</span>
+        <input type="number" data-emb="limit" min="0" max="20" step="1" value="0">
+      </label>
+    </div>
+
+    <p class="emb-shared" data-i18n="emb.sharedNote">
+      Colours are shared by every widget this ministry publishes. Language and
+      rows belong to this snippet only.
+    </p>
+
+    <div class="emb-split">
+      <div class="emb-codewrap">
+        <pre class="emb-code" data-emb="code"></pre>
+        <button type="button" class="ghost-btn" data-emb="copy" data-i18n="common.copy">Copy</button>
+      </div>
+      {#- A real iframe, not a mock. The widget carries its own stylesheet
+         inside a shadow root, so rendering it in THIS document would show it
+         wearing the console's fonts — which is what no visitor ever sees. -#}
+      <div class="emb-preview">
+        <div class="emb-preview-label" data-i18n="emb.preview">Preview</div>
+        <iframe data-emb="frame" title="Embed preview" sandbox="allow-scripts"></iframe>
+      </div>
+    </div>
+
+  </div>
+</section>

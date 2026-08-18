@@ -130,6 +130,11 @@ staffHint: what partner sites show — published entries are visible to anyone
 
    role=status so the change in count is announced without stealing focus
    from whatever is being edited. -#}
+{#- Under the editor, not on a settings tab: this shows what the roadmap you
+   just edited looks like on somebody else's website. -#}
+{% set embedWidget = "roadmap" %}
+{% include "embed-panel.njk" %}
+
 <div class="ms-savebar" id="msSaveBar" role="status" aria-live="polite" hidden>
   <span class="ms-dirty-dot" aria-hidden="true"></span>
   <span id="msDirtyCount">0 unsaved changes</span>

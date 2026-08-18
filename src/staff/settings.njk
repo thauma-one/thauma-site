@@ -17,8 +17,6 @@ staffHint: some of these change what the public sees
           aria-selected="false" data-i18n="set.languages">Languages</button>
   <button type="button" class="tab" role="tab" data-tab="keys"
           aria-selected="false" data-i18n="set.keys">API keys</button>
-  <button type="button" class="tab" role="tab" data-tab="embeds"
-          aria-selected="false" data-i18n="set.embeds">Embeds</button>
 </div>
 
 <!-- ============================================================= ACCOUNT -->
@@ -102,99 +100,4 @@ staffHint: some of these change what the public sees
   </div>
 
   <div class="key-list" id="setKeyList"></div>
-</section>
-
-<!-- ============================================================== EMBEDS -->
-{#- The one thing in this console that publishes to people who have not signed
-   in to anything. An API key is a credential you hand to one build; an embed
-   is a URL anybody can fetch. So the switch comes FIRST, says exactly what it
-   does, and everything below it only matters once it is on. -#}
-<section class="tab-panel" data-panel="embeds" role="tabpanel" hidden>
-  <p class="note" data-i18n-html="set.embedNote">A widget shows your <b>published</b> goals or roadmap on somebody else's
-    website — a sending church, a supporter's blog. It reads the same public
-    data as the API and needs no key, because a key in a web page is not a
-    secret. Nothing private can appear in one.</p>
-
-  <div class="set-row">
-    <div class="set-label">
-      <h3 data-i18n="set.embedOn">Allow embedding</h3>
-      <p data-i18n="set.embedOnDesc">Off until you turn it on. While it is off, the widget address returns nothing at all — not an error saying you exist.</p>
-    </div>
-    <div class="set-control">
-      <label class="switch">
-        <input type="checkbox" id="setEmbedOn">
-        <span data-i18n="set.embedOnLabel">Anyone may embed my progress</span>
-      </label>
-      <p class="rolegate" id="setEmbedNotAdmin" hidden
-         data-i18n="set.embedAdminOnly">An administrator changes this.</p>
-    </div>
-  </div>
-
-  <div id="setEmbedRest" hidden>
-    <div class="set-row">
-      <div class="set-label">
-        <h3 data-i18n="set.embedLook">Colours</h3>
-        <p data-i18n="set.embedLookDesc">Saved here, so a page that embedded you last year picks up a change without anyone editing it.</p>
-      </div>
-      <div class="set-control emb-look">
-        <label class="emb-field">
-          <span data-i18n="set.embedAccent">Accent</span>
-          <span class="emb-colour">
-            <input type="color" id="setEmbedAccent" value="#6D4AFF">
-            <input type="text" id="setEmbedAccentHex" class="emb-hex"
-                   maxlength="7" spellcheck="false" aria-label="Accent colour hex">
-          </span>
-        </label>
-        <label class="emb-field">
-          <span data-i18n="set.embedTheme">Background</span>
-          <select id="setEmbedTheme">
-            <option value="auto" data-i18n="set.embedAuto">Match the page</option>
-            <option value="light" data-i18n="set.embedLight">Always light</option>
-            <option value="dark" data-i18n="set.embedDark">Always dark</option>
-          </select>
-        </label>
-      </div>
-    </div>
-
-    <div class="set-row set-row-block">
-      <div class="set-label">
-        <h3 data-i18n="set.embedBuild">The code to paste</h3>
-        <p data-i18n="set.embedBuildDesc">Choose what it shows, then copy. The preview is the real widget reading your real numbers.</p>
-      </div>
-      <div class="set-control">
-        <div class="emb-opts">
-          <label class="emb-field">
-            <span data-i18n="set.embedWidget">Show</span>
-            <select id="setEmbedWidget">
-              <option value="goal" data-i18n="set.embedGoal">Giving progress</option>
-              <option value="roadmap" data-i18n="set.embedRoadmap">Roadmap</option>
-            </select>
-          </label>
-          <label class="emb-field">
-            <span data-i18n="set.embedLang">Language</span>
-            <select id="setEmbedLang"></select>
-          </label>
-          <label class="emb-field">
-            <span data-i18n="set.embedLimit">Rows</span>
-            <input type="number" id="setEmbedLimit" min="0" max="20" step="1" value="0">
-          </label>
-        </div>
-
-        <div class="emb-split">
-          <div class="emb-codewrap">
-            <pre class="emb-code" id="setEmbedCode"></pre>
-            <button type="button" class="ghost-btn" id="setEmbedCopy"
-                    data-i18n="common.copy">Copy</button>
-          </div>
-          {#- A real iframe, not a mock. The widget has a shadow root and its
-             own stylesheet, and rendering it directly in this page would
-             prove nothing about how it behaves as a guest somewhere else. -#}
-          <div class="emb-preview">
-            <div class="emb-preview-label" data-i18n="set.embedPreview">Preview</div>
-            <iframe id="setEmbedFrame" title="Embed preview" sandbox="allow-scripts"></iframe>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
 </section>
