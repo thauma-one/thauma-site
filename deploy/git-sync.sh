@@ -22,7 +22,19 @@
 # A `git pull` that merges, or worse rebases, on a timer would eventually eat
 # somebody's afternoon.
 #
-# Exit codes: 0 nothing to do or updated cleanly; 1 refused (needs a human).
+# IT PUSHES TOO, AND ONLY COMMITS
+# -----------------------------------------------------------------------------
+# The pull half was built first and the push half was not, so work committed on
+# this machine sat here until somebody remembered to push it. On 2026-08-17
+# nineteen commits had been waiting long enough that the live branch had the
+# site's WORDS and none of the code that rendered them.
+#
+# What it pushes is COMMITS, never edits. Auto-pushing every file change would
+# publish half-written code, break the build for everyone else, and fill the
+# history with commits nobody wrote a message for. Committing stays a decision;
+# getting the commit to GitHub does not have to be.
+#
+# Exit codes: 0 nothing to do or synced cleanly; 1 refused (needs a human).
 set -uo pipefail
 
 REPO="${THAUMA_REPO:-/DATA/AppData/thauma}"
@@ -38,12 +50,33 @@ if ! git fetch --quiet origin 2>/dev/null; then
   exit 1
 fi
 
-# Nothing waiting for us. The common case, and it should be silent-ish.
 UPSTREAM="origin/$BRANCH"
 if ! git rev-parse --verify --quiet "$UPSTREAM" >/dev/null; then
   log "no $UPSTREAM — branch is local only, nothing to sync"
   exit 0
 fi
+
+# ---- push: commits made here that GitHub has not got -----------------------
+#
+# Before the pull, deliberately. If both sides have moved the merge below
+# refuses and stops — and it is better to have sent our work first than to have
+# it sitting here while somebody works out the divergence.
+AHEAD="$(git rev-list --count "$UPSTREAM..$BRANCH" 2>/dev/null || echo 0)"
+BEHIND="$(git rev-list --count "$BRANCH..$UPSTREAM" 2>/dev/null || echo 0)"
+
+if [ "$AHEAD" -gt 0 ] && [ "$BEHIND" -gt 0 ]; then
+  log "REFUSED to push: $BRANCH and $UPSTREAM have both moved ($AHEAD here, $BEHIND there). This needs a person."
+elif [ "$AHEAD" -gt 0 ]; then
+  # --no-force, and no --set-upstream: this may only fast-forward the remote.
+  # An unattended script must never be able to overwrite what is on GitHub.
+  if git push --quiet origin "$BRANCH" 2>/dev/null; then
+    log "pushed $AHEAD commit(s) to $UPSTREAM"
+  else
+    log "push failed — network or credentials. Nothing was lost; it is still committed here."
+  fi
+fi
+
+# Nothing waiting for us. The common case, and it should be silent-ish.
 if [ "$(git rev-parse "$UPSTREAM")" = "$BEFORE" ]; then
   exit 0
 fi
@@ -55,7 +88,7 @@ if ! git diff --quiet || ! git diff --cached --quiet; then
   exit 1
 fi
 
-if ! git merge --ff-only "$UPSTREAM" --quiet; then
+if ! git -c advice.diverging=false merge --ff-only "$UPSTREAM" --quiet 2>/dev/null; then
   log "REFUSED: $BRANCH and $UPSTREAM have diverged. This needs a person."
   exit 1
 fi
