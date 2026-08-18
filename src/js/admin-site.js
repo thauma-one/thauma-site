@@ -145,6 +145,19 @@
      just packed together. Not translated, for the same reason the content
      editor does not translate its section names: they identify a page or a
      block, and they are things you match against the site rather than read. */
+  /* The endonym, from the browser, rather than a table to maintain. A person
+     picking languages recognises "Srpski" faster than "sr". */
+  function langName(code) {
+    try {
+      var dn = new Intl.DisplayNames([code], { type: 'language' });
+      var n = dn.of(code);
+      if (n && n !== code) {
+        return n.charAt(0).toUpperCase() + n.slice(1) + ' (' + code + ')';
+      }
+    } catch (e) { /* older browser, or a code Intl does not know */ }
+    return code;
+  }
+
   function humanise(id) {
     return id.replace(/([A-Z])/g, ' $1').toLowerCase()
              .replace(/^./, function (c) { return c.toUpperCase(); }).trim();
@@ -282,18 +295,20 @@
   function renderVisibility() {
     // Derived from whatever is in the file, so adding a page to site.json puts
     // a row here without anyone remembering to come and add one.
-    var pages = [], sections = [], hasComingSoon = false;
+    var pages = [], sections = [], langs = [], hasComingSoon = false;
     state.order.forEach(function (p) {
       if (!isVisibility(p)) return;
       var parts = p.split('.');          // visibility.pages.events.dev
       if (parts[1] === 'comingSoon') { hasComingSoon = true; return; }
       if (parts.length !== 4) return;
-      var bucket = parts[1] === 'pages' ? pages : parts[1] === 'sections' ? sections : null;
+      var bucket = parts[1] === 'pages' ? pages
+                 : parts[1] === 'sections' ? sections
+                 : parts[1] === 'languages' ? langs : null;
       if (!bucket) return;
       if (bucket.indexOf(parts[2]) === -1) bucket.push(parts[2]);
     });
 
-    if (!pages.length && !sections.length && !hasComingSoon) return '';
+    if (!pages.length && !sections.length && !langs.length && !hasComingSoon) return '';
 
     var head =
       '<div class="v-head">' +
@@ -308,6 +323,22 @@
     if (hasComingSoon) {
       body += '<div class="v-sub">' + esc(tr('vis.wholeSite')) + '</div>' +
         visRow(tr('vis.comingSoon'), 'visibility.comingSoon', tr('con.f.comingSoon'));
+    }
+    if (langs.length) {
+      /* A language switched off produces no pages at all — not hidden ones.
+         So this is the control that decides whether /sr/ exists, and the dev
+         column is what lets somebody translate and see it in place for a
+         fortnight before any visitor can reach it. */
+      body += '<div class="v-sub">' + esc(tr('vis.languages')) + '</div>' +
+        langs.map(function (code) {
+          return visRow(langName(code), 'visibility.languages.' + code, '');
+        }).join('') +
+        /* English is deliberately absent above and named here instead. It is
+           the fallback every missing translation resolves to; a site with no
+           fallback has nothing to serve when a string is missing. Showing a
+           switch that refuses to move would be worse than explaining why
+           there isn't one. */
+        '<div class="v-fixed">' + esc(tr('vis.langFallback')) + '</div>';
     }
     if (pages.length) {
       body += '<div class="v-sub">' + esc(tr('vis.pages')) + '</div>' +

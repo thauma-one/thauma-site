@@ -40,9 +40,11 @@ function load(mode) {
   process.env.ELEVENTY_RUN_MODE = mode;
   delete require.cache[require.resolve("../src/_data/visible.js")];
   delete require.cache[require.resolve("../src/_data/navPages.js")];
+  delete require.cache[require.resolve("../src/_data/activeLangs.js")];
   return {
     visible: require("../src/_data/visible.js")(),
     navPages: require("../src/_data/navPages.js")(),
+    activeLangs: require("../src/_data/activeLangs.js")(),
   };
 }
 
@@ -154,6 +156,83 @@ check("a section listed but not decided stays HIDDEN", () => {
      which is the point — they are about a file that does NOT have the block.
      Put the real one back, or every test after this one is reading a stub. */
   writeFileSync(SITE, ORIGINAL);
+});
+
+/* ------------------------------ languages ------------------------------ */
+
+check("a language switched off is not built at all", () => {
+  /* Not hidden — absent. An unlinked page is still reachable, still crawlable
+     and still in the sitemap; a page that was never built is a 404. Every page
+     template paginates over activeLangs for exactly this reason. */
+  const site = readSite();
+  site.visibility.languages = { hr: { live: true, dev: true },
+                                sr: { live: false, dev: true } };
+  writeSite(site);
+
+  eq(load("build").activeLangs, ["en", "hr"], "live: Serbian must not be built");
+  eq(load("watch").activeLangs, ["en", "hr", "sr"], "dev: it must still be there to translate in");
+});
+
+check("ENGLISH CANNOT BE SWITCHED OFF", () => {
+  /* It is the fallback every missing translation resolves to. A site with no
+     fallback has nothing to serve when a string is absent — not an empty
+     string, nothing. */
+  /* ⚠ ANOTHER LANGUAGE STAYS ON, and that is the whole point of the setup.
+
+     The first version of this test switched everything off, and it passed with
+     the English rule DELETED — because the empty-list guard at the end of
+     activeLangs.js returned ["en"] anyway. It was testing the wrong mechanism
+     and would have gone on passing through the exact regression it names.
+
+     Leaving Croatian on means the list is non-empty, so the guard never fires
+     and only the English rule can keep English in it. */
+  const site = readSite();
+  site.visibility.languages = { en: { live: false, dev: false },
+                                hr: { live: true,  dev: true  },
+                                sr: { live: false, dev: false } };
+  writeSite(site);
+  eq(load("build").activeLangs, ["en", "hr"], "English must survive being switched off");
+});
+
+check("switching everything off still builds one language", () => {
+  // A site that builds zero pages is not a site. Belt and braces on the rule
+  // above, in case `languages` itself is emptied.
+  writeSite({ name: "Thauma", languages: [], visibility: {} });
+  eq(load("build").activeLangs, ["en"], "must never return an empty list");
+  writeFileSync(SITE, ORIGINAL);
+});
+
+check("a language with no switch is still built", () => {
+  /* Somebody adds a file by hand and forgets the switch. Dropping it silently
+     would delete a third of the site with no error anywhere — the opposite
+     default from `comingSoon`, and for the opposite reason: here the damage is
+     losing something that exists, not exposing something that should not. */
+  const site = readSite();
+  site.languages = ["en", "hr", "sr", "sl"];
+  site.visibility.languages = { hr: { live: true, dev: true } };
+  writeSite(site);
+  const langs = load("build").activeLangs;
+  assert(langs.includes("sl"), "an unswitched language vanished");
+  assert(langs.includes("sr"), "an unswitched language vanished");
+  writeFileSync(SITE, ORIGINAL);
+});
+
+check("the language list and the switches agree about what exists", () => {
+  // A switch for a language with no file builds pages with no strings in them.
+  writeFileSync(SITE, ORIGINAL);
+  const site = readSite();
+  const { readdirSync } = require("node:fs");
+  const dir = fileURLToPath(new URL("../src/_data/i18n/", import.meta.url));
+  const files = readdirSync(dir).filter((f) => f.endsWith(".json"))
+    .map((f) => f.replace(/\.json$/, "")).sort();
+
+  eq([...site.languages].sort(), files,
+     "site.json's language list does not match the files in src/_data/i18n");
+
+  for (const code of Object.keys(site.visibility.languages || {})) {
+    assert(files.includes(code),
+           `there is a switch for "${code}" but no src/_data/i18n/${code}.json`);
+  }
 });
 
 check("the home page cannot be switched off", () => {

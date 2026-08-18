@@ -1010,6 +1010,38 @@ browser rather than the application.
 - `type: 'DELETE'` adds a type-to-confirm field and keeps the button disabled
   until it matches — and the server checks the same word.
 
+### Languages: what EXISTS and what is PUBLISHED are two lists
+
+```
+site.languages                 every language with a file in src/_data/i18n
+visibility.languages.<code>    which of those are built, per column
+activeLangs                    the resolved list every template paginates over
+```
+
+A language is written before it is published. Somebody adds Slovenian, the
+file appears with 210 empty rows, and they work through it over a fortnight —
+during which `/sl/` must not exist for visitors and MUST exist on
+dev.thauma.one so the work can be seen in place. One list cannot express that.
+
+**A language switched off is not built at all**, which is why every page
+template paginates over `activeLangs` rather than `site.languages`. Not hidden
+— absent. The `hreflang` links, the language menu and the 404's own picker all
+follow the same list, so nothing advertises a page that was never made.
+
+**English cannot be switched off.** It is the fallback every missing
+translation resolves to, and a site with no fallback has nothing to serve when
+a string is absent. The Site page says so rather than showing a switch that
+refuses to move.
+
+The defaults go in opposite directions on purpose, and each is tested:
+
+| | absent means | because |
+|---|---|---|
+| `comingSoon` | **gated** | exposing an unreleased site cannot be undone |
+| a page | **visible** | forgetting a switch must not silently delete a page |
+| a section | **hidden** | sections gate content being prepared |
+| a language | **built** | dropping one silently deletes a third of the site |
+
 ### Assets are versioned by content hash, never by hand
 
 `{{ "/js/staff.js" | v }}` hashes the file at build time. Same file, same URL,

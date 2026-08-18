@@ -12,6 +12,16 @@
       "live": true,
       "dev": false
     },
+    "languages": {
+      "hr": {
+        "live": true,
+        "dev": true
+      },
+      "sr": {
+        "live": true,
+        "dev": true
+      }
+    },
     "pages": {
       "about": {
         "live": true,

@@ -26,7 +26,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{{ fullTitle }}</title>
 <meta name="description" content="{{ t.home.sub }}">
-{%- for l in site.languages %}{% if l != lang %}
+{#- activeLangs, not site.languages: an hreflang pointing at a language
+   that was not built is a link to a 404, published in the page head where
+   search engines will follow it. -#}
+{%- for l in activeLangs %}{% if l != lang %}
 <link rel="alternate" hreflang="{{ l }}" href="{{ site.url }}{{ page.url | langSwap(l) }}">{% endif %}{% endfor %}
 <link rel="preload" as="font" type="font/woff2" href="/fonts/Sora-latin-v2.woff2" crossorigin>
 <link rel="preload" as="font" type="font/woff2" href="/fonts/Inter-latin-v2.woff2" crossorigin>

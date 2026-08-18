@@ -481,3 +481,9 @@
 .c-name{display:block;font-size:var(--fs-tiny);color:var(--text);
   line-height:1.4;margin-bottom:3px}
 .c-key code{opacity:.55;font-size:9px}
+
+/* A fact rather than a control. English has no switch because it is the
+   fallback; a row that refused to move would be worse than a sentence saying
+   why there isn't one. */
+.v-fixed{grid-column:1/-1;font-size:var(--fs-micro);color:var(--dim);
+  line-height:var(--lh-body);padding:8px 0 2px;opacity:.75}

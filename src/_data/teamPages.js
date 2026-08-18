@@ -7,7 +7,7 @@
 module.exports = () => {
   const team = require("./team.js")();
   const site = require("./site.json");
-  return site.languages.flatMap((lang) =>
+  return require("./activeLangs.js")().flatMap((lang) =>
     team.map((person) => ({ lang, ...person }))
   );
 };
