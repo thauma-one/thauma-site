@@ -39,6 +39,7 @@ import staffSettings from "./staff-settings.js";
 import adminApi from "./admin.js";
 import adminContent from "./admin-content.js";
 import adminPublish from "./admin-publish.js";
+import adminMigrate from "./admin-migrate.js";
 import adminActAs from "./admin-actas.js";
 import { createDb, partnerSnapshot, assertPublicSafe } from "./lib/db.js";
 import { requireAccess } from "./lib/access.js";
@@ -219,10 +220,17 @@ const ROUTES = {
   // only — see admin-content.js.
   "/api/admin/content": adminContent,
 
-  // Moves the working branch onto the live one, which deploys it. Carries
-  // every code change on that branch, not only the words — so it lists what
-  // it is about to ship, and takes a typed confirmation. See admin-publish.js.
+  // Asks GitHub to build the live branch — for staging (Preview) or for the
+  // real site (Publish). Saving already committed the words with [skip ci], so
+  // this is the only thing that moves the site, and it lists what it is about
+  // to ship and takes a typed confirmation. See admin-publish.js.
   "/api/admin/publish": adminPublish,
+
+  // Applies database migrations from the repository to the bound D1. The only
+  // part of running this site that still needed a terminal. Reads the SQL from
+  // the live branch, so everything it can execute has been through a diff —
+  // there is no arbitrary SQL box. See admin-migrate.js.
+  "/api/admin/migrate": adminMigrate,
 
   // Start and stop viewing somebody else's console. Sets a cookie that names
   // a user id and grants nothing — authority is re-derived from the Access
