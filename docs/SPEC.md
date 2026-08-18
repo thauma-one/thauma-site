@@ -1039,10 +1039,28 @@ usable rather than two dangling fragments. Strings holding a placeholder like
 month is covered without anybody remembering — and tests assert every `_thin`
 has its `_bold`, in all three languages.
 
-**The upload checks which language the file is for.** The last column's header
-names it. Until that check existed, uploading a Croatian export while Serbian
-was open imported Croatian text into Serbian silently, and the only sign would
-have been somebody eventually reading the site.
+**The upload reads which language the file is for**, from the last column's
+header, and there are three answers — all three useful:
+
+| the file names | what happens |
+|---|---|
+| the open language | import it |
+| another language the site has | offer to switch, then import |
+| a language the site does NOT have | offer to **create it**, then import |
+
+That third case is the point of uploading for most people: a translator hands
+back a file for a language nobody has set up, and making them add it by hand
+first is a step that exists only because the software could not be bothered to
+read its own header. It reuses the add-a-language path rather than a second
+copy — two entry points, one operation.
+
+A header that is not a language code at all — a hand-made file, or one somebody
+renamed — falls through to the open language, which is the only guess available
+and the one they were looking at.
+
+Until any of this existed, uploading a Croatian export while Serbian was open
+imported Croatian text into Serbian silently, and the only sign would have been
+somebody eventually reading the site.
 
 **Uploading does not save.** It fills the working copy, so the changes appear
 as ordinary unsaved edits with their coloured edges and the count in the bar.

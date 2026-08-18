@@ -383,6 +383,38 @@
      The only action on this page that creates a file rather than editing one,
      so it asks first and says exactly what it will do. */
 
+  /* Creating a language, factored out: the button asks for a code, and the
+     UPLOAD calls the same thing when it is handed a file for a language the
+     site does not have yet. Two entry points, one operation — a second copy
+     would be a second set of failure handling to keep in step. */
+  async function createLanguage(code) {
+    var res, body;
+    try {
+      res = await fetch(API, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: String(code).trim().toLowerCase() })
+      });
+      body = await res.json();
+    } catch (e) {
+      toast(tr('err.unreachable') + ' ' + e.message, 'bad');
+      return null;
+    }
+    if (!res.ok) {
+      /* A partial failure left a file behind and said so. That is a condition
+         somebody has to act on, not an event that scrolls away. */
+      if (body && body.partial && window.StaffProblem) window.StaffProblem(body.error, null);
+      else toast((body && body.error) || tr('err.refused'), 'bad');
+      return null;
+    }
+    return body;
+  }
+
+  var codeLooksValid = function (v) {
+    return /^[a-z]{2}(-[a-z]{2})?$/.test(String(v || '').trim().toLowerCase());
+  };
+
   $('cAddLang').addEventListener('click', async function () {
     var code = await window.StaffPrompt({
       title: tr('con.addLangTitle'),
@@ -396,45 +428,22 @@
       // the one that counts.
       validate: function (v) {
         v = String(v || '').trim().toLowerCase();
-        if (!/^[a-z]{2}(-[a-z]{2})?$/.test(v)) return tr('con.addLangBadCode');
+        if (!codeLooksValid(v)) return tr('con.addLangBadCode');
         if (state.langs.indexOf(v) !== -1) return tr('con.addLangExists');
         return null;
       }
     });
     if (!code) return;
 
-    var btn = this;
-    btn.disabled = true;
-    var res, body;
-    try {
-      res = await fetch(API, {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: String(code).trim().toLowerCase() })
-      });
-      body = await res.json();
-    } catch (e) {
-      toast(tr('err.unreachable') + ' ' + e.message, 'bad');
-      btn.disabled = false;
-      return;
-    }
-    btn.disabled = false;
-
-    if (!res.ok) {
-      /* A partial failure left a file behind and said so. That is a condition
-         somebody has to act on, not an event that scrolls away. */
-      if (body && body.partial && window.StaffProblem) window.StaffProblem(body.error, null);
-      else toast((body && body.error) || tr('err.refused'), 'bad');
-      return;
-    }
+    this.disabled = true;
+    var body = await createLanguage(code);
+    this.disabled = false;
+    if (!body) return;
 
     toast(tr('con.addLangDone')
       .replace('{code}', body.code)
       .replace('{n}', body.strings), 'ok');
 
-    // Reload so the new language is in both pickers, then open it — you added
-    // it because you intend to translate it.
     await boot();
     $('cLang').value = body.code;
     await openFile(body.code);
@@ -575,20 +584,65 @@
     var header = rows[0];
     var valueCol = header.length - 1;
 
-    /* THE FILE SAYS WHICH LANGUAGE IT IS, and until now nothing looked.
-       Uploading a Croatian export while Serbian was open imported Croatian
-       text into Serbian, silently, and the only sign would have been somebody
-       eventually reading the site. */
+    /* WHICH LANGUAGE IS THIS FILE FOR? The last column's header says. There
+       are three answers and all three are useful:
+
+         the open one    import it
+         another we have switch to it, then import
+         one we do not   CREATE it, then import
+
+       That last case is the point of uploading at all for most people: a
+       translator hands back a file for a language nobody has set up yet, and
+       making them add it by hand first is a step that exists only because the
+       software could not be bothered to read its own header.
+
+       A header that is not a language code at all — a hand-made file, or one
+       somebody renamed — falls through to the open language, which is the
+       only guess available and the one they were already looking at. */
     var fileLang = String(header[valueCol] || '').trim().toLowerCase();
-    if (fileLang && fileLang !== state.file) {
+    var target = state.file;
+
+    if (codeLooksValid(fileLang) && fileLang !== state.file) {
       var known = state.langs.indexOf(fileLang) !== -1;
-      return window.StaffProblem(
-        (known ? tr('con.importWrongLang') : tr('con.importUnknownLang'))
-          .replace('{file}', fileLang)
-          .replace('{open}', state.file),
-        null);
+
+      var ok = await window.StaffConfirm({
+        title: known ? tr('con.importSwitchTitle') : tr('con.importCreateTitle'),
+        body: (known ? tr('con.importSwitchBody') : tr('con.importCreateBody'))
+          .replace('{file}', fileLang).replace('{open}', state.file),
+        note: known ? tr('con.importSwitchNote') : tr('con.importCreateNote'),
+        confirm: known ? tr('con.importSwitchDo') : tr('con.importCreateDo'),
+        cancel: tr('ms.cancel')
+      });
+      if (!ok) return;
+
+      if (dirtyPaths().length) {
+        /* Unsaved work in the language being left behind. Saving one file is
+           what a save IS here, so switching would strand it. */
+        var leave = await window.StaffConfirm({
+          title: tr('con.leaveTitle'),
+          body: tr('con.leaveBody').replace('{n}', dirtyPaths().length).replace('{lang}', state.file),
+          confirm: tr('con.leaveDiscard'), cancel: tr('ms.cancel'), danger: true
+        });
+        if (!leave) return;
+      }
+
+      if (!known) {
+        var made = await createLanguage(fileLang);
+        if (!made) return;              // createLanguage has already explained
+        toast(tr('con.addLangDone').replace('{code}', made.code)
+                                   .replace('{n}', made.strings), 'ok');
+        await boot();                   // the pickers need the new language in them
+      }
+
+      $('cLang').value = fileLang;
+      await openFile(fileLang);
+      target = fileLang;
+      if (state.file !== fileLang) return;   // opening failed and said so
     }
 
+    /* Applied AFTER any switch, against the draft that is now loaded — doing
+       it before would fill the old language's working copy and then throw it
+       away. */
     var changes = {}, unknown = [], blank = 0;
     for (var r = 1; r < rows.length; r++) {
       var key = (rows[r][0] || '').trim();
@@ -605,16 +659,16 @@
       return toast(unknown.length ? tr('con.importNoneMatched') : tr('con.importNoChanges'), 'bad');
     }
 
-    var ok = await window.StaffConfirm({
+    var apply = await window.StaffConfirm({
       title: tr('con.importTitle'),
-      body: tr('con.importBody').replace('{n}', n).replace('{lang}', state.file),
+      body: tr('con.importBody').replace('{n}', n).replace('{lang}', target),
       note: (unknown.length ? tr('con.importUnknown').replace('{n}', unknown.length) + ' ' : '') +
             (blank ? tr('con.importBlank').replace('{n}', blank) + ' ' : '') +
             tr('con.importNote'),
       confirm: tr('con.importDo'),
       cancel: tr('ms.cancel')
     });
-    if (!ok) return;
+    if (!apply) return;
 
     Object.keys(changes).forEach(function (k) { state.draft[k] = changes[k]; });
     renderSections();
