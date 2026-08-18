@@ -311,6 +311,19 @@ export const WIDGET_JS = String.raw`
   }
 
   function load(slug) {
+    /* PREVIEW. The console injects the payload rather than letting this fetch,
+       for one reason: the public endpoint returns 404 until a partner switches
+       embedding on, so a preview that fetched could only ever show you what
+       you had already published. Look, then decide.
+
+       Only ever set by the console, in a sandboxed iframe it built itself. A
+       page that sets this is feeding the widget its own data, which is a thing
+       anyone could do by writing their own HTML anyway. */
+    if (window.__thaumaPreview && window.__thaumaPreview.partner &&
+        window.__thaumaPreview.partner.slug === slug) {
+      return Promise.resolve(window.__thaumaPreview);
+    }
+
     if (!cache[slug]) {
       cache[slug] = fetch(ORIGIN + '/embed/v1/' + encodeURIComponent(slug) + '.json', {
         /* No credentials, ever. Saying so explicitly is what keeps the

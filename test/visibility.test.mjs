@@ -523,6 +523,32 @@ check("secrets cannot be committed", () => {
   }
 });
 
+check("no dictionary key is defined twice", () => {
+  /* A duplicate key in an object literal is not an error — the LAST one wins,
+     silently. Found 2026-08-18: "adm.role.staff" was defined twice in each of
+     the three languages with different wording, so the console had been
+     showing the second one and the first was dead text nobody could find by
+     reading the file top to bottom.
+
+     Per language block, because the same key SHOULD appear once in each. */
+  const src = readFileSync(
+    fileURLToPath(new URL("../src/js/staff-i18n.js", import.meta.url)), "utf8");
+
+  const blocks = src.split(/\n\s{4}[a-z]{2}:\s*\{/).slice(1);
+  assert(blocks.length >= 3, `found ${blocks.length} language blocks — did the file change shape?`);
+
+  const dupes = [];
+  blocks.forEach((b, i) => {
+    const keys = [...b.matchAll(/"([a-zA-Z0-9_.]+)":/g)].map((m) => m[1]);
+    const seen = new Set();
+    for (const k of keys) {
+      if (seen.has(k)) dupes.push(`block ${i}: ${k}`);
+      seen.add(k);
+    }
+  });
+  eq(dupes, [], "a later definition silently overrides an earlier one");
+});
+
 check("no asset is served with a hand-written cache version", () => {
   /* Every ?v= must come from the content hash filter, never a number.
 

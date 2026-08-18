@@ -292,5 +292,59 @@ await check("two placements for one partner share a single fetch", async () => {
   eq(calls.length, 1, "one fetch for two placements");
 });
 
+await check("injected preview data is used INSTEAD of fetching", async () => {
+  /* How the console previews a widget that is not published yet. The public
+     endpoint 404s until embedding is switched on, so a preview that fetched
+     could only ever show what had already been published. */
+  const node = new Node("div");
+  node.attributes = { "data-thauma": "chase-roush" };
+  const doc = makeDocument([node]);
+  let fetched = false;
+
+  const sandbox = {
+    document: doc, URL, Intl, console, setTimeout, clearTimeout,
+    requestAnimationFrame: (fn) => fn(),
+    MutationObserver: class { observe() {} },
+    fetch: async () => { fetched = true; throw new Error("must not fetch"); },
+    __thaumaPreview: GOALS,
+  };
+  sandbox.window = sandbox;
+
+  new Function("window", "document", "fetch", "URL", "Intl", "requestAnimationFrame",
+               "MutationObserver", "setTimeout", "clearTimeout", "console", WIDGET_JS)(
+    sandbox, doc, sandbox.fetch, URL, Intl, sandbox.requestAnimationFrame,
+    sandbox.MutationObserver, setTimeout, clearTimeout, console);
+  await new Promise((r) => setTimeout(r, 0));
+
+  assert(!fetched, "it fetched even though preview data was injected");
+  assert(/Monthly support/.test(node.shadowRoot.allText), "did not render the injected data");
+});
+
+await check("injected data for a DIFFERENT partner is ignored", async () => {
+  /* The guard that keeps the injection from being a way to put one partner's
+     numbers under another partner's name. */
+  const node = new Node("div");
+  node.attributes = { "data-thauma": "someone-else" };
+  const doc = makeDocument([node]);
+  let fetched = false;
+
+  const sandbox = {
+    document: doc, URL, Intl, console, setTimeout, clearTimeout,
+    requestAnimationFrame: (fn) => fn(),
+    MutationObserver: class { observe() {} },
+    fetch: async () => { fetched = true; return { ok: false, status: 404, json: async () => ({}) }; },
+    __thaumaPreview: GOALS,          // says chase-roush
+  };
+  sandbox.window = sandbox;
+
+  new Function("window", "document", "fetch", "URL", "Intl", "requestAnimationFrame",
+               "MutationObserver", "setTimeout", "clearTimeout", "console", WIDGET_JS)(
+    sandbox, doc, sandbox.fetch, URL, Intl, sandbox.requestAnimationFrame,
+    sandbox.MutationObserver, setTimeout, clearTimeout, console);
+  await new Promise((r) => setTimeout(r, 0));
+
+  assert(fetched, "it used another partner's injected data instead of fetching");
+});
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -41,6 +41,7 @@ import adminContent from "./admin-content.js";
 import adminPublish from "./admin-publish.js";
 import adminMigrate from "./admin-migrate.js";
 import embed from "./embed.js";
+import staffEmbed from "./staff-embed.js";
 import adminActAs from "./admin-actas.js";
 import { createDb, partnerSnapshot, assertPublicSafe } from "./lib/db.js";
 import { requireAccess } from "./lib/access.js";
@@ -226,6 +227,11 @@ const ROUTES = {
   // this is the only thing that moves the site, and it lists what it is about
   // to ship and takes a typed confirmation. See admin-publish.js.
   "/api/admin/publish": adminPublish,
+
+  // The embed payload for the console's own preview. Same builder as the
+  // public route, but for the caller's OWN partner and whether or not
+  // embedding is switched on — so you can look before you decide to publish.
+  "/api/staff-embed": staffEmbed,
 
   // Applies database migrations from the repository to the bound D1. The only
   // part of running this site that still needed a terminal. Reads the SQL from

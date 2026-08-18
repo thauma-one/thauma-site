@@ -1,98 +1,136 @@
-{#- embed-panel.njk — "put this on another website", beside the thing it shows
+{#- embed-panel.njk — the view switch, and everything the embed needs
 
-   Included by the pages that AUTHOR the data each widget renders: the roadmap
-   panel sits under the milestone editor, the giving panel under the goals.
-   It lived on the Settings page first, and that was wrong — you had to leave
-   the roadmap, find a tab, and configure a preview of a thing you could no
-   longer see. Configuring something belongs next to the something.
+   AT THE TOP, and it REPLACES the page's own rendering rather than sitting
+   beside it. On Support the console already draws goal cards; showing the
+   widget underneath would put two of nearly the same thing on one screen and
+   leave you comparing them. So this is a view switch: Edit, or As embedded.
+
+   That also answers "a toggle to hide the visualiser and just edit the data" —
+   it is the same control, read the other way round.
 
    The caller sets `embedWidget` to "roadmap" or "goal". There is no widget
-   picker here for that reason: the page you are on has already chosen.
+   picker: the page has already chosen.  -#}
 
-   COLOURS ARE SHARED AND THE PANEL SAYS SO. Accent and light/dark belong to
-   the ministry, not to one widget, so editing them here changes both. The
-   alternative — a colour per widget — means a supporter embedding two of them
-   gets two different brands on one page.  -#}
+<div class="emb-bar" data-embed-panel data-widget="{{ embedWidget }}" hidden>
 
-<section class="emb-panel" data-embed-panel data-widget="{{ embedWidget }}" hidden>
-
-  <div class="emb-head">
-    <h3 data-i18n="emb.title">Put this on another website</h3>
-    <p class="emb-lede" data-i18n="{{ 'emb.ledeRoadmap' if embedWidget == 'roadmap' else 'emb.ledeGoal' }}">
-      {% if embedWidget == "roadmap" %}
-        A sending church or a supporter can show this roadmap on their own site.
-        It updates when you publish — they paste the code once.
-      {% else %}
-        A sending church or a supporter can show this progress on their own site.
-        It updates as the numbers do — they paste the code once.
-      {% endif %}
-    </p>
+  {#- Two buttons, not a checkbox: this chooses between two views, and a tick
+     box would imply the second is an addition to the first. -#}
+  <div class="emb-views" role="tablist" aria-label="View">
+    <button type="button" class="emb-view is-on" role="tab" aria-selected="true"
+            data-emb="viewEdit" data-i18n="emb.viewEdit">Edit</button>
+    <button type="button" class="emb-view" role="tab" aria-selected="false"
+            data-emb="viewEmbed" data-i18n="emb.viewEmbed">As embedded</button>
   </div>
 
-  {#- The switch governs everything below it, and the rest is ABSENT rather
-     than disabled until it is on. A colour picker for a widget nobody can
-     fetch invites you to think you have shipped something. -#}
-  <label class="switch emb-switch">
-    <input type="checkbox" data-emb="on">
-    <span data-i18n="emb.on">Allow anyone to embed this</span>
-  </label>
-  <p class="emb-off-note" data-emb="offNote" data-i18n="emb.offNote">
-    While this is off, the address returns nothing at all — not an error saying you exist.
+  {#- The live state, always visible, because "is this on someone else's site
+     right now" is the question you actually have while looking at either
+     view. -#}
+  <span class="emb-state" data-emb="state"></span>
+</div>
+
+<section class="emb-panel" data-emb="panel" hidden>
+
+  <p class="emb-lede" data-i18n="{{ 'emb.ledeRoadmap' if embedWidget == 'roadmap' else 'emb.ledeGoal' }}">
+    {% if embedWidget == "roadmap" %}
+      This is exactly what a sending church or a supporter sees when they put
+      your roadmap on their own site.
+    {% else %}
+      This is exactly what a sending church or a supporter sees when they put
+      your giving progress on their own site.
+    {% endif %}
   </p>
-  <p class="rolegate" data-emb="notAdmin" hidden data-i18n="emb.adminOnly">
-    An administrator changes this.
+
+  {#- The widget itself, first and large. Everything under it is about it. -#}
+  <div class="emb-stage">
+    <iframe data-emb="frame" title="Embed preview" sandbox="allow-scripts"></iframe>
+  </div>
+
+  <div class="emb-controls">
+    <label class="emb-field">
+      <span data-i18n="emb.accent">Accent</span>
+      <span class="emb-colour">
+        <input type="color" data-emb="accent" value="#6D4AFF">
+        <input type="text" data-emb="accentHex" class="emb-hex" maxlength="7"
+               spellcheck="false" aria-label="Accent colour hex">
+      </span>
+    </label>
+
+    <label class="emb-field">
+      <span data-i18n="emb.theme">Background</span>
+      <select data-emb="theme">
+        <option value="auto" data-i18n="emb.auto">Match their page</option>
+        <option value="light" data-i18n="emb.light">Always light</option>
+        <option value="dark" data-i18n="emb.dark">Always dark</option>
+      </select>
+    </label>
+
+    <label class="emb-field">
+      <span data-i18n="emb.lang">Language</span>
+      <select data-emb="lang"></select>
+    </label>
+
+    <label class="emb-field">
+      <span data-i18n="emb.limit">Rows shown</span>
+      <input type="number" data-emb="limit" min="0" max="20" step="1" value="0">
+    </label>
+  </div>
+
+  <p class="emb-shared" data-i18n="emb.sharedNote">
+    Colours are shared by every widget this ministry publishes. Language and
+    rows belong to this snippet only.
   </p>
 
-  <div data-emb="rest" hidden>
-
-    <div class="emb-controls">
-      <label class="emb-field">
-        <span data-i18n="emb.accent">Accent</span>
-        <span class="emb-colour">
-          <input type="color" data-emb="accent" value="#6D4AFF">
-          <input type="text" data-emb="accentHex" class="emb-hex" maxlength="7"
-                 spellcheck="false" aria-label="Accent colour hex">
-        </span>
-      </label>
-
-      <label class="emb-field">
-        <span data-i18n="emb.theme">Background</span>
-        <select data-emb="theme">
-          <option value="auto" data-i18n="emb.auto">Match the page</option>
-          <option value="light" data-i18n="emb.light">Always light</option>
-          <option value="dark" data-i18n="emb.dark">Always dark</option>
-        </select>
-      </label>
-
-      <label class="emb-field">
-        <span data-i18n="emb.lang">Language</span>
-        <select data-emb="lang"></select>
-      </label>
-
-      <label class="emb-field">
-        <span data-i18n="emb.limit">Rows</span>
-        <input type="number" data-emb="limit" min="0" max="20" step="1" value="0">
-      </label>
+  {#- THE PUBLICATION DECISION, on its own and worded as what it does rather
+     than as a setting name. Everything above works whether this is on or off,
+     because you should be able to look before you decide. -#}
+  <div class="emb-publish">
+    <div class="emb-publish-text">
+      <h4 data-i18n="emb.shareTitle">Let other websites show this</h4>
+      <p data-emb="shareDesc" data-i18n="emb.shareOff">
+        Nobody can use the code below yet. Turn this on and the address starts
+        answering — until then it returns nothing at all, not even an error
+        saying you exist.
+      </p>
     </div>
+    <div class="emb-publish-ctl">
+      <button type="button" class="switch" role="switch" aria-checked="false" data-emb="on">
+        <span class="switch-track"><span class="switch-state" data-emb="onState">Off</span><span class="switch-knob"></span></span>
+      </button>
+      <p class="rolegate" data-emb="notAdmin" hidden data-i18n="emb.adminOnly">
+        An administrator changes this.
+      </p>
+    </div>
+  </div>
 
-    <p class="emb-shared" data-i18n="emb.sharedNote">
-      Colours are shared by every widget this ministry publishes. Language and
-      rows belong to this snippet only.
-    </p>
+  {#- TWO THINGS TO COPY, and they are for different people.
 
-    <div class="emb-split">
+     The snippet is for whoever runs a website and wants the picture. The data
+     address is for whoever is building something of their own and wants the
+     numbers — a designer with their own layout, a church intranet, a spread-
+     sheet. Offering only the snippet sends the second group looking for an
+     API that is already there.  -#}
+  <div class="emb-copies">
+    <div class="emb-copy">
+      <div class="emb-copy-head">
+        <h4 data-i18n="emb.snippetTitle">The code to paste</h4>
+        <p data-i18n="emb.snippetDesc">For anyone who just wants the picture on their page.</p>
+      </div>
       <div class="emb-codewrap">
         <pre class="emb-code" data-emb="code"></pre>
-        <button type="button" class="ghost-btn" data-emb="copy" data-i18n="common.copy">Copy</button>
-      </div>
-      {#- A real iframe, not a mock. The widget carries its own stylesheet
-         inside a shadow root, so rendering it in THIS document would show it
-         wearing the console's fonts — which is what no visitor ever sees. -#}
-      <div class="emb-preview">
-        <div class="emb-preview-label" data-i18n="emb.preview">Preview</div>
-        <iframe data-emb="frame" title="Embed preview" sandbox="allow-scripts"></iframe>
+        <button type="button" class="ghost-btn" data-emb="copyCode" data-i18n="common.copy">Copy</button>
       </div>
     </div>
 
+    <div class="emb-copy">
+      <div class="emb-copy-head">
+        <h4 data-i18n="emb.apiTitle">The data behind it</h4>
+        <p data-i18n="emb.apiDesc">For anyone building their own design. Plain JSON, same numbers, no key needed.</p>
+      </div>
+      <div class="emb-codewrap">
+        <pre class="emb-code" data-emb="api"></pre>
+        <button type="button" class="ghost-btn" data-emb="copyApi" data-i18n="common.copy">Copy</button>
+      </div>
+    </div>
   </div>
+
 </section>

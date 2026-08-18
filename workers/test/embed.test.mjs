@@ -70,10 +70,20 @@ await check("the widget script is served as JavaScript", async () => {
   assert(body.includes("attachShadow"), "must use a shadow root");
 });
 
-await check("the widget script is cacheable — it is on every page view", async () => {
+await check("the widget script is cacheable on the live host", async () => {
   const res = await handler.fetch(req("/embed/v1/widget.js"), env({}));
   assert(/max-age=\d{3,}/.test(res.headers.get("Cache-Control") || ""),
          `not cacheable: ${res.headers.get("Cache-Control")}`);
+});
+
+await check("the widget script is NOT cached on dev or next", async () => {
+  /* A cached widget on a preview host reads exactly like a change that did
+     not work — measured, after an edit stayed invisible for the max-age. */
+  for (const host of ["dev.thauma.one", "next.thauma.one"]) {
+    const res = await handler.fetch(
+      new Request(`https://${host}/embed/v1/widget.js`), env({}));
+    eq(res.headers.get("Cache-Control"), "no-store", `${host} cache header`);
+  }
 });
 
 await check("the widget script is valid JavaScript", async () => {

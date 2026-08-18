@@ -927,56 +927,88 @@ body.has-savebar .acting-mark{bottom:calc(var(--ms-savebar-h,72px) + 12px)}
 .dlg-err[hidden]{display:none}
 
 /* ============================================================
-   EMBEDS — "put this on another website"
+   EMBEDS — the view switch, and the panel it reveals
    ============================================================
-   Sits at the bottom of Milestones and Support, under the thing it publishes.
-   Separated by a rule and set slightly back, because it is a secondary job on
-   a page whose main job is editing: it should be findable when you want it
-   and quiet when you do not. */
+   The bar sits at the top of Milestones and Support. Choosing "As embedded"
+   hides the page's own content and shows the real widget in its place, so
+   there is never a screen with two renderings of the same numbers on it. */
 
-.emb-panel{margin-top:44px;padding-top:28px;border-top:1px solid var(--line)}
-.emb-head h3{font-family:var(--font-display);font-size:var(--fs-md);
-  font-weight:var(--w-hair);color:var(--text)}
-.emb-lede{margin-top:6px;font-size:var(--fs-tiny);color:var(--dim);
-  line-height:var(--lh-body);max-width:62ch}
+.emb-bar{display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+  margin:0 0 26px}
 
-.emb-switch{margin-top:18px}
-.emb-off-note,.emb-shared{margin-top:8px;font-size:var(--fs-micro);
-  color:var(--dim);max-width:62ch;line-height:var(--lh-body)}
-.emb-shared{margin-top:14px;opacity:.8}
+.emb-views{display:inline-flex;background:var(--bg2);border:1px solid var(--line);
+  border-radius:var(--radius);padding:3px;gap:2px}
+.emb-view{appearance:none;border:0;background:transparent;cursor:pointer;
+  font:inherit;font-size:var(--fs-micro);letter-spacing:var(--ls-caps);
+  text-transform:uppercase;font-weight:600;color:var(--dim);
+  padding:8px 16px;border-radius:calc(var(--radius) - 2px);
+  transition:background .12s ease,color .12s ease}
+@media(hover:hover){ .emb-view:hover{color:var(--text)} }
+.emb-view.is-on{background:var(--panel);color:var(--text);
+  box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.emb-view:focus-visible{outline:2px solid var(--voice-tech);outline-offset:1px}
 
-.emb-controls{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-end;
-  margin-top:22px}
+/* Whether this is on somebody else's site RIGHT NOW — the question you have
+   while looking at either view, so it is readable from both. */
+.emb-state{font-size:var(--fs-micro);color:var(--dim);
+  display:inline-flex;align-items:center;gap:7px}
+.emb-state:before{content:"";inline-size:7px;block-size:7px;border-radius:50%;
+  background:var(--dim);opacity:.5}
+.emb-state.is-on{color:var(--ok,#5CF2C4)}
+.emb-state.is-on:before{background:var(--ok,#5CF2C4);opacity:1}
+
+.emb-panel{display:flex;flex-direction:column;gap:26px}
+.emb-lede{font-size:var(--fs-tiny);color:var(--dim);line-height:var(--lh-body);
+  max-width:64ch;margin:0}
+
+/* The widget itself, first and large. Everything under it is about it. */
+.emb-stage{border:1px solid var(--line);border-radius:var(--radius);
+  background:var(--bg2);overflow:hidden;
+  background-image:linear-gradient(45deg,rgba(255,255,255,.02) 25%,transparent 25%,
+    transparent 75%,rgba(255,255,255,.02) 75%),
+    linear-gradient(45deg,rgba(255,255,255,.02) 25%,transparent 25%,
+    transparent 75%,rgba(255,255,255,.02) 75%);
+  background-size:18px 18px;background-position:0 0,9px 9px}
+.emb-stage iframe{display:block;inline-size:100%;block-size:340px;border:0;
+  background:transparent}
+
+.emb-controls{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-end}
 .emb-field{display:flex;flex-direction:column;gap:6px;font-size:var(--fs-micro);
   color:var(--dim)}
 .emb-field > span{letter-spacing:var(--ls-caps);text-transform:uppercase;
   font-weight:600}
 .emb-field select,.emb-field input[type=number]{min-width:11ch}
-
 .emb-colour{display:flex;align-items:center;gap:8px}
 .emb-colour input[type=color]{inline-size:44px;block-size:34px;padding:2px;
   border:1px solid var(--line);border-radius:var(--radius);background:var(--bg2);
   cursor:pointer}
 .emb-hex{inline-size:10ch;font-family:var(--font-mono);text-transform:uppercase}
+.emb-shared{margin:-12px 0 0;font-size:var(--fs-micro);color:var(--dim);
+  opacity:.8;max-width:64ch;line-height:var(--lh-body)}
 
-/* Code and preview side by side while there is room, stacked when there is
-   not — the snippet is what gets copied, so it keeps the wider column. */
-.emb-split{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);
-  gap:18px;align-items:start;margin-top:20px}
-@media(max-width:900px){ .emb-split{grid-template-columns:1fr} }
+/* The publication decision, set apart because it is the only control here
+   that changes what strangers can reach. */
+.emb-publish{display:flex;align-items:flex-start;gap:24px;flex-wrap:wrap;
+  justify-content:space-between;background:var(--panel);
+  border:1px solid var(--line);border-radius:var(--radius);padding:20px 24px}
+.emb-publish-text{flex:1 1 34ch;min-inline-size:0}
+.emb-publish-text h4{font-family:var(--font-display);font-size:var(--fs-sm);
+  font-weight:var(--w-hair);color:var(--text)}
+.emb-publish-text p{margin-top:6px;font-size:var(--fs-micro);color:var(--dim);
+  line-height:var(--lh-body)}
+.emb-publish-ctl{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
 
+/* Snippet and data address side by side while there is room. */
+.emb-copies{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));
+  gap:22px}
+.emb-copy-head h4{font-family:var(--font-display);font-size:var(--fs-sm);
+  font-weight:var(--w-hair);color:var(--text)}
+.emb-copy-head p{margin:5px 0 10px;font-size:var(--fs-micro);color:var(--dim);
+  line-height:var(--lh-body)}
 .emb-codewrap{position:relative}
 .emb-code{margin:0;background:var(--bg);border:1px solid var(--line-hard);
   border-radius:var(--radius);padding:14px 16px;padding-right:84px;
   font-family:var(--font-mono);font-size:var(--fs-micro);
   color:var(--voice-tech-hi);line-height:1.7;overflow-x:auto;
-  white-space:pre;-moz-tab-size:2;tab-size:2}
+  white-space:pre-wrap;word-break:break-all}
 .emb-codewrap .ghost-btn{position:absolute;top:10px;right:10px}
-
-.emb-preview{border:1px solid var(--line);border-radius:var(--radius);
-  background:var(--bg2);overflow:hidden}
-.emb-preview-label{padding:9px 14px;border-bottom:1px solid var(--line);
-  font-size:var(--fs-micro);letter-spacing:var(--ls-caps);text-transform:uppercase;
-  color:var(--dim);font-weight:600}
-.emb-preview iframe{display:block;inline-size:100%;block-size:290px;border:0;
-  background:transparent}

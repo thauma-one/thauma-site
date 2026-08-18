@@ -78,7 +78,7 @@ export default {
 
     const path = url.pathname.replace(/^\/embed\/v1\/?/, "");
 
-    if (path === "widget.js") return widgetScript();
+    if (path === "widget.js") return widgetScript(url.hostname);
 
     const m = path.match(/^([^/]+)\.json$/);
     if (!m) return json({ error: "Not found" }, 404, CORS);
@@ -87,19 +87,57 @@ export default {
   },
 };
 
-function widgetScript() {
+function widgetScript(hostname) {
+  /* NOT CACHED ON THE PREVIEW HOSTS.
+     Measured 2026-08-18: a change to the widget was invisible on dev for the
+     length of the max-age, because the edge was still serving the previous
+     copy — which reads exactly like the change not working. On dev and next
+     the script is being iterated on; on the live site it is being served to
+     strangers, and the two want opposite headers. */
+  const ephemeral = /^(dev|next)\./.test(String(hostname || ""));
+
   return new Response(WIDGET_JS, {
     status: 200,
     headers: {
       ...CORS,
       "Content-Type": "application/javascript; charset=utf-8",
-      /* An hour at the edge, a day in browsers that cannot revalidate.
-         Short enough that a fix reaches every embedding site the same day,
-         long enough that a popular partner's page is not fetching this on
-         every view. */
-      "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
+      /* An hour at the edge, a day in browsers that cannot revalidate. Short
+         enough that a fix reaches every embedding site the same day, long
+         enough that a popular partner's page is not fetching this on every
+         view. */
+      "Cache-Control": ephemeral
+        ? "no-store"
+        : "public, max-age=3600, stale-while-revalidate=86400",
     },
   });
+}
+
+/**
+ * The embed payload for one partner.
+ *
+ * Exported because the console previews widgets through /api/staff-embed, and
+ * a preview assembled from a DIFFERENT builder is not a preview — it is a
+ * second implementation that drifts, and the drift only shows up on somebody
+ * else's website. One builder, two callers, no way for them to disagree.
+ *
+ * The `partner` row is passed in rather than looked up, because the two
+ * callers find it differently: the public route by slug among partners who
+ * have opted in, the console by who is signed in.
+ */
+export async function embedPayload(db, partner) {
+  const site = await partnerPublicSite(db, partner.id);
+  return {
+    version: 1,
+    partner: { slug: partner.slug, display_name: partner.display_name },
+    /* The partner's stored appearance, so a page embedded years ago picks up
+       a rebrand without being edited. The snippet can still override it. */
+    theme: {
+      accent: HEX_RE.test(partner.embed_accent || "") ? partner.embed_accent : DEFAULT_ACCENT,
+      mode: ["auto", "light", "dark"].includes(partner.embed_theme) ? partner.embed_theme : "auto",
+    },
+    generated_at: new Date().toISOString(),
+    ...site,
+  };
 }
 
 async function partnerJson(slug, env) {
@@ -114,20 +152,7 @@ async function partnerJson(slug, env) {
      would turn this into a directory of who is in the system. */
   if (!partner) return json({ error: "Not found" }, 404, CORS);
 
-  const site = await partnerPublicSite(db, partner.id);
-
-  const body = {
-    version: 1,
-    partner: { slug: partner.slug, display_name: partner.display_name },
-    /* The partner's stored appearance, so a page embedded years ago picks up
-       a rebrand without being edited. The snippet can still override it. */
-    theme: {
-      accent: HEX_RE.test(partner.embed_accent || "") ? partner.embed_accent : DEFAULT_ACCENT,
-      mode: ["auto", "light", "dark"].includes(partner.embed_theme) ? partner.embed_theme : "auto",
-    },
-    generated_at: new Date().toISOString(),
-    ...site,
-  };
+  const body = await embedPayload(db, partner);
 
   // LAST GATE, same as the partner API. Milestone text is free text.
   try {
