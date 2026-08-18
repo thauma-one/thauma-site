@@ -63,6 +63,12 @@
     });
   }
   function tr(key) { return window.StaffI18n ? window.StaffI18n.t(key) : key; }
+  /* Translate and substitute together — see StaffI18n.fill. Every value named
+     in one place, so a missing one is visible rather than invisible. */
+  function fill(key, vars) {
+    return window.StaffI18n && window.StaffI18n.fill
+      ? window.StaffI18n.fill(key, vars) : tr(key);
+  }
   function toast(msg, kind) { if (window.StaffToast) window.StaffToast(msg, kind); }
 
   /* ---- flattening ----------------------------------------------------
@@ -571,7 +577,7 @@
     a.download = 'thauma-' + state.file + '.csv';
     a.click();
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
-    toast(tr('con.exported').replace('{n}', state.order.length), 'ok');
+    toast(fill('con.exported', { n: state.order.length }), 'ok');
   });
 
   /* A CSV parser, because the format has exactly one hard part and it is not
@@ -657,10 +663,14 @@
       var known = state.langs.indexOf(fileLang) !== -1;
 
       var ok = await window.StaffConfirm({
-        title: known ? tr('con.importSwitchTitle') : tr('con.importCreateTitle'),
-        body: (known ? tr('con.importSwitchBody') : tr('con.importCreateBody'))
-          .replace('{file}', fileLang).replace('{open}', state.file)
-          .replace('{n}', filled),
+        /* BOTH the title and the body take the values. The title did not,
+           and read literally "Add {file} and bring this in?" on screen — the
+           chain was on the body and forgetting it above looked like nothing.
+           fill() takes them together so that cannot happen quietly. */
+        title: fill(known ? 'con.importSwitchTitle' : 'con.importCreateTitle',
+                    { file: fileLang, open: state.file, n: filled }),
+        body: fill(known ? 'con.importSwitchBody' : 'con.importCreateBody',
+                   { file: fileLang, open: state.file, n: filled }),
         note: known ? tr('con.importSwitchNote') : tr('con.importCreateNote'),
         confirm: known ? tr('con.importSwitchDo') : tr('con.importCreateDo'),
         cancel: tr('ms.cancel')
@@ -672,7 +682,7 @@
            what a save IS here, so switching would strand it. */
         var leave = await window.StaffConfirm({
           title: tr('con.leaveTitle'),
-          body: tr('con.leaveBody').replace('{n}', dirtyPaths().length).replace('{lang}', state.file),
+          body: fill('con.leaveBody', { n: dirtyPaths().length, lang: state.file }),
           confirm: tr('con.leaveDiscard'), cancel: tr('ms.cancel'), danger: true
         });
         if (!leave) return;
@@ -726,9 +736,9 @@
     if (!justCreated) {
       var apply = await window.StaffConfirm({
         title: tr('con.importTitle'),
-        body: tr('con.importBody').replace('{n}', n).replace('{lang}', target),
-        note: (unknown.length ? tr('con.importUnknown').replace('{n}', unknown.length) + ' ' : '') +
-              (blank ? tr('con.importBlank').replace('{n}', blank) + ' ' : '') +
+        body: fill('con.importBody', { n: n, lang: target }),
+        note: (unknown.length ? fill('con.importUnknown', { n: unknown.length }) + ' ' : '') +
+              (blank ? fill('con.importBlank', { n: blank }) + ' ' : '') +
               tr('con.importNote'),
         confirm: tr('con.importDo'),
         cancel: tr('ms.cancel')
@@ -740,7 +750,7 @@
     renderSections();
     renderRows();
     renderSaveBar();
-    toast(tr('con.imported').replace('{n}', n), 'ok');
+    toast(fill('con.imported', { n: n }), 'ok');
   });
 
   /* ---- editing -------------------------------------------------------- */
@@ -788,7 +798,7 @@
     if (dirtyPaths().length) {
       var ok = await window.StaffConfirm({
         title: tr('con.leaveTitle'),
-        body: tr('con.leaveBody').replace('{n}', dirtyPaths().length).replace('{lang}', state.file),
+        body: fill('con.leaveBody', { n: dirtyPaths().length, lang: state.file }),
         confirm: tr('con.leaveDiscard'),
         cancel: tr('ms.cancel'),
         danger: true
@@ -889,7 +899,7 @@
     state.saved = JSON.parse(JSON.stringify(state.draft));
     state.sha = body.sha;
 
-    toast(tr('con.saved').replace('{n}', body.changed.length), 'ok');
+    toast(fill('con.saved', { n: body.changed.length }), 'ok');
     renderSections();
     renderRows();
     renderSaveBar();

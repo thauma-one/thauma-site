@@ -37,6 +37,12 @@
     });
   }
   function tr(key) { return window.StaffI18n ? window.StaffI18n.t(key) : key; }
+  /* Translate and substitute together — see StaffI18n.fill. Every value named
+     in one place, so a missing one is visible rather than invisible. */
+  function fill(key, vars) {
+    return window.StaffI18n && window.StaffI18n.fill
+      ? window.StaffI18n.fill(key, vars) : tr(key);
+  }
   function toast(msg, kind) { if (window.StaffToast) window.StaffToast(msg, kind); }
 
   function isLeaf(v) { return v === null || typeof v !== 'object'; }
@@ -510,7 +516,7 @@
       return;
     }
 
-    toast(tr('vis.removed').replace('{lang}', langName(code)), 'ok');
+    toast(fill('vis.removed', { lang: langName(code) }), 'ok');
     await boot();          // site.json changed under us; re-read rather than guess
   });
 
@@ -640,7 +646,7 @@
     state.saved = JSON.parse(JSON.stringify(state.draft));
     state.sha = body.sha;
     toast(body.unchanged ? tr('con.nothingChanged')
-                         : tr('con.saved').replace('{n}', body.changed.length), 'ok');
+                         : fill('con.saved', { n: body.changed.length }), 'ok');
     render();
     renderSaveBar();
   });

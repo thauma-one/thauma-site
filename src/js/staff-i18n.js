@@ -1269,8 +1269,39 @@
     return key;
   }
 
+  /**
+   * Translate AND substitute, in one call.
+   *
+   *   fill('con.importCreateTitle', { file: 'sl' })
+   *
+   * The chained alternative — tr(k).replace('{a}',x).replace('{b}',y) — puts
+   * the placeholders and their values in different places, so forgetting one
+   * looks like nothing. That shipped: a dialog title read literally
+   *   "Add {file} and bring this in?"
+   * because the body below it had the .replace chain and the title did not.
+   *
+   * Taking every value at once means the call site names them together, and a
+   * missing one is visible in the same glance. Anything left over is reported
+   * rather than shown to somebody — a placeholder on screen is always a bug,
+   * and it should be loud in the console rather than quietly odd on the page.
+   */
+  function fill(key, vars) {
+    var out = tOr(key);
+    for (var k in vars) {
+      if (Object.prototype.hasOwnProperty.call(vars, k)) {
+        out = out.split('{' + k + '}').join(String(vars[k]));
+      }
+    }
+    var left = out.match(/\{[a-z_]+\}/i);
+    if (left) {
+      console.warn('i18n: ' + key + ' still contains ' + left[0] +
+                   ' — the call site did not supply it');
+    }
+    return out;
+  }
+
   window.StaffI18n = { t: tOr, apply: apply, setLang: setLang, ownLang: ownLang,
-                       tIn: tIn,
+                       tIn: tIn, fill: fill,
                        get lang() { return current; },
                        available: Object.keys(STRINGS) };
 

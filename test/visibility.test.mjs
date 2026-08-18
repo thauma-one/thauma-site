@@ -296,6 +296,54 @@ check("every page in the site has a switch", () => {
   eq(missing, [], "pages with no switch in site.json");
 });
 
+check("no placeholder reaches the screen unfilled", () => {
+  /* A dialog title read literally "Add {file} and bring this in?" — the body
+     below it had the .replace chain and the title did not, and forgetting one
+     looks like nothing when the placeholders and their values live in
+     different places.
+
+     The rule this checks: a string containing {something} must be reached
+     through fill(), which takes every value at once, or through an explicit
+     .replace. A bare tr() on such a key is the bug. */
+  const root = fileURLToPath(new URL("../src/js/", import.meta.url));
+  const i18n = readFileSync(root + "staff-i18n.js", "utf8");
+
+  const start = i18n.search(/\n    en: \{/);
+  const end = i18n.indexOf("\n    },", start);
+  const en = {};
+  for (const m of i18n.slice(start, end)
+        .matchAll(/['"]([a-zA-Z][\w.]*)['"]\s*:\s*['"]((?:[^'"\\]|\\.)*)['"]/g)) {
+    en[m[1]] = m[2];
+  }
+  const placeholders = Object.entries(en).filter(([, v]) => /\{[a-z]+\}/i.test(v));
+  assert(placeholders.length > 20,
+         `only found ${placeholders.length} keys with placeholders — the parse is broken`);
+
+  const { readdirSync } = require("node:fs");
+  const offenders = [];
+  let scanned = 0;
+  for (const f of readdirSync(root).filter((x) => x.endsWith(".js"))) {
+    const src = readFileSync(root + f, "utf8");
+    // tr('key') NOT followed by .replace — fine unless the key has a placeholder.
+    /* [\w.] and not [a-z.] — every key here is camelCase. The first version
+       used a lowercase-only class, matched NOTHING, and reported success while
+       the bug it was written for sat in the file three lines away. The floor
+       below exists because of that: a regex check that stops matching looks
+       exactly like a passing one. */
+    for (const m of src.matchAll(/tr\('([\w.]+)'\)(?!\s*\.replace)/g)) {
+      scanned++;
+      if (en[m[1]] && /\{[a-z]+\}/i.test(en[m[1]])) {
+        offenders.push(`${f}: tr('${m[1]}') — "${en[m[1]].slice(0, 45)}"`);
+      }
+    }
+  }
+  /* A FLOOR, because the first version of this scan matched nothing and
+     reported success. A regex-driven check that silently stops matching is
+     indistinguishable from a passing one. */
+  assert(scanned > 100, `only saw ${scanned} tr() calls — the scan regex is broken again`);
+  eq(offenders, [], "use fill(key, {…}) — these would print a placeholder on screen");
+});
+
 check("the hidden attribute always wins", () => {
   /* `hidden` is display:none from the browser's stylesheet, and ANY rule
      setting `display` overrides it. So an element marked hidden stays visible,

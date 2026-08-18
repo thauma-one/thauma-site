@@ -37,6 +37,12 @@
     });
   }
   function tr(key) { return window.StaffI18n ? window.StaffI18n.t(key) : key; }
+  /* Translate and substitute together — see StaffI18n.fill. Every value named
+     in one place, so a missing one is visible rather than invisible. */
+  function fill(key, vars) {
+    return window.StaffI18n && window.StaffI18n.fill
+      ? window.StaffI18n.fill(key, vars) : tr(key);
+  }
   function toast(msg, kind) { if (window.StaffToast) window.StaffToast(msg, kind); }
 
   /* "2 hours ago" rather than a timestamp. The only question anyone asks of
@@ -129,16 +135,15 @@
 
     var lines = [];
     if (state.published) {
-      lines.push(tr('pub.liveSince')
-        .replace('{when}', ago(state.published.at))
-        .replace('{sha}', state.published.sha));
+      lines.push(fill('pub.liveSince',
+                      { when: ago(state.published.at), sha: state.published.sha }));
     }
     if (state.preview) {
       /* Whether next.thauma.one is showing what you would be publishing. A
          preview quietly out of date is worse than no preview, because it is
          believed. */
-      lines.push((state.preview.current ? tr('pub.previewCurrent') : tr('pub.previewStale'))
-        .replace('{when}', ago(state.preview.at)));
+      lines.push(fill(state.preview.current ? 'pub.previewCurrent' : 'pub.previewStale',
+                      { when: ago(state.preview.at) }));
     } else {
       lines.push(tr('pub.previewNever'));
     }
