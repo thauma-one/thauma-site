@@ -899,3 +899,10 @@ body.has-savebar .acting-mark{bottom:calc(var(--ms-savebar-h,72px) + 12px)}
 }
 
 /* Reduced motion changes nothing here — there is no motion, on purpose. */
+
+/* The prompt's validation message. Red, but not shouting — it appears while
+   somebody is mid-word, and a mistake that is still being typed is not an
+   error yet. */
+.dlg-err{margin:10px 0 0;font-size:var(--fs-tiny);color:var(--crit,#FF6B6B);
+  line-height:var(--lh-body)}
+.dlg-err[hidden]{display:none}

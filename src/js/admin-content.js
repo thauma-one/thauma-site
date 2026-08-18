@@ -187,6 +187,8 @@
       }).join('');
     ref.disabled = false;
 
+    $('cAddLang').disabled = false;
+
     // Default to the first language the site builds, which is also the one
     // every other language is translated FROM.
     await openFile(state.langs[0]);
@@ -374,6 +376,67 @@
     $('cSaveNote').textContent =
       tr('con.willCommit').replace('{lang}', state.file).replace('{branch}', state.branch);
   }
+
+  /* ---- adding a language ----------------------------------------------
+     The only action on this page that creates a file rather than editing one,
+     so it asks first and says exactly what it will do. */
+
+  $('cAddLang').addEventListener('click', async function () {
+    var code = await window.StaffPrompt({
+      title: tr('con.addLangTitle'),
+      body: tr('con.addLangBody'),
+      note: tr('con.addLangNote'),
+      label: tr('con.addLangLabel'),
+      placeholder: 'sl',
+      confirm: tr('con.addLangDo'),
+      cancel: tr('ms.cancel'),
+      // Validated here for a quick answer and again on the server, which is
+      // the one that counts.
+      validate: function (v) {
+        v = String(v || '').trim().toLowerCase();
+        if (!/^[a-z]{2}(-[a-z]{2})?$/.test(v)) return tr('con.addLangBadCode');
+        if (state.langs.indexOf(v) !== -1) return tr('con.addLangExists');
+        return null;
+      }
+    });
+    if (!code) return;
+
+    var btn = this;
+    btn.disabled = true;
+    var res, body;
+    try {
+      res = await fetch(API, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: String(code).trim().toLowerCase() })
+      });
+      body = await res.json();
+    } catch (e) {
+      toast(tr('err.unreachable') + ' ' + e.message, 'bad');
+      btn.disabled = false;
+      return;
+    }
+    btn.disabled = false;
+
+    if (!res.ok) {
+      /* A partial failure left a file behind and said so. That is a condition
+         somebody has to act on, not an event that scrolls away. */
+      if (body && body.partial && window.StaffProblem) window.StaffProblem(body.error, null);
+      else toast((body && body.error) || tr('err.refused'), 'bad');
+      return;
+    }
+
+    toast(tr('con.addLangDone')
+      .replace('{code}', body.code)
+      .replace('{n}', body.strings), 'ok');
+
+    // Reload so the new language is in both pickers, then open it — you added
+    // it because you intend to translate it.
+    await boot();
+    $('cLang').value = body.code;
+    await openFile(body.code);
+  });
 
   /* ---- editing -------------------------------------------------------- */
 

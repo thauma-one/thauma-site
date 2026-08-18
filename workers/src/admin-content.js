@@ -165,6 +165,162 @@ async function audit(db, { user, action, entity_id, detail }) {
   }
 }
 
+
+/* ---------------------------------------------------------------------------
+   Adding a language
+
+   THE ONLY OPERATION HERE THAT CREATES A FILE, and the only one allowed to
+   touch `languages` — which the leaf editor refuses on principle, because
+   renaming an entry through a text box orphans a translation file. Adding one
+   is the opposite: the file is created first, so the list never names something
+   that is not there.
+
+   ENGLISH IS THE TEMPLATE, not a separate template file. A fourth copy of the
+   key list is a fourth thing that drifts; en.json is guaranteed complete
+   because the site is built from it, and it is what a translator reads anyway.
+
+   VALUES ARE BLANK, NOT COPIED. An untranslated string that says the English
+   is indistinguishable from a finished one, so it ships as English and nobody
+   ever finds it. An empty one is visibly not done, and the Content page
+   already counts empties per section, so the work has a progress bar for free.
+
+   TWO COMMITS, IN THIS ORDER, deliberately:
+
+     1. create src/_data/i18n/<code>.json
+     2. register it in site.json
+
+   The Contents API writes one file per commit. If the second fails you have an
+   unused file — harmless, and retrying fixes it. Reversed, site.json would
+   name a file that does not exist and the next build would break. One of those
+   is recoverable by pressing the button again.
+   --------------------------------------------------------------------------- */
+
+/** Every key of `doc`, with string values emptied. Structure and order kept. */
+export function blankLike(doc, code) {
+  if (Array.isArray(doc)) return doc.map((v) => blankLike(v, code));
+  if (doc && typeof doc === "object") {
+    const out = {};
+    for (const [k, v] of Object.entries(doc)) out[k] = blankLike(v, code);
+    return out;
+  }
+  // Non-strings are structural (a count, a flag) and are carried across as-is:
+  // blanking one would change a type the build depends on.
+  return typeof doc === "string" ? "" : doc;
+}
+
+async function addLanguage(request, env, db, user, me, cfg) {
+  const body = await readJson(request);
+  if (!body) return json({ error: "The request body was not valid JSON." }, 400);
+
+  const code = String(body.code || "").trim().toLowerCase();
+  if (!/^[a-z]{2}(-[a-z]{2})?$/.test(code)) {
+    return json({
+      error: `"${body.code}" is not a language code. Use two letters — sl, de, it — ` +
+             `or a regional code like pt-br.`,
+    }, 400);
+  }
+
+  // Read the site file and English together: one round trip's worth of waiting
+  // for two things we need before deciding anything.
+  const [siteFile, enFile] = await Promise.all([
+    getFile(env, pathFor("site")),
+    getFile(env, pathFor("en")),
+  ]);
+  if (siteFile.error) return json({ error: siteFile.error }, siteFile.status || 502);
+  if (enFile.error) {
+    return json({ error: `Cannot read the English file to copy from: ${enFile.error}` }, 502);
+  }
+
+  let site, en;
+  try {
+    site = JSON.parse(siteFile.text);
+    en = JSON.parse(enFile.text);
+  } catch (e) {
+    return json({ error: `A content file is not valid JSON: ${e.message}` }, 502);
+  }
+
+  const existing = Array.isArray(site.languages) ? site.languages : [];
+  if (existing.includes(code)) {
+    return json({ error: `The site already has ${code}.` }, 409);
+  }
+
+  // And check the FILE, not just the list — a language can exist as a file
+  // that nobody registered, and overwriting it would destroy real work.
+  const already = await getFile(env, pathFor(code));
+  if (!already.error) {
+    return json({
+      error: `src/_data/i18n/${code}.json already exists. It is not in the ` +
+             `site's language list, so somebody added it by hand — add "${code}" ` +
+             `to that list rather than creating the file again.`,
+    }, 409);
+  }
+
+  const who = (me && me.user_name) || user.email;
+
+  /* ---- 1. the language file ---- */
+  const blank = blankLike(en, code);
+  if (typeof blank.code === "string") blank.code = code;   // the one value we know
+  const trailing = enFile.text.endsWith("\n") ? "\n" : "";
+
+  const made = await putFile(env, {
+    path: pathFor(code),
+    text: JSON.stringify(blank, null, 2) + trailing,
+    // No SHA: this file does not exist yet, and the Contents API treats an
+    // absent SHA as "create". The check above is what makes that safe — it is
+    // the one place in this endpoint where omitting it is correct.
+    sha: undefined,
+    create: true,
+    message: `Add ${code}: ${Object.keys(en).length} sections, ready to translate`,
+    authorName: who,
+    authorEmail: user.email,
+    quiet: true,
+  });
+  if (made.error) return json({ error: made.error }, made.status || 502);
+
+  /* ---- 2. register it ---- */
+  site.languages = [...existing, code];
+  site.visibility = site.visibility || {};
+  site.visibility.languages = site.visibility.languages || {};
+  /* ON for dev, OFF for live. The whole point: translate it and see it in
+     place on dev.thauma.one for as long as it takes, while no visitor can
+     reach a page of empty strings. */
+  site.visibility.languages[code] = { live: false, dev: true };
+
+  const siteTrailing = siteFile.text.endsWith("\n") ? "\n" : "";
+  const registered = await putFile(env, {
+    path: pathFor("site"),
+    text: JSON.stringify(site, null, 2) + siteTrailing,
+    sha: siteFile.sha,
+    message: `Add ${code} to the site's languages, switched off for visitors`,
+    authorName: who,
+    authorEmail: user.email,
+    quiet: true,
+  });
+  if (registered.error) {
+    // The file exists and is not registered. Say exactly that — the state is
+    // recoverable and the next attempt will find the file and explain itself.
+    return json({
+      error: `Created src/_data/i18n/${code}.json, but could not add it to the ` +
+             `site's language list: ${registered.error}`,
+      partial: true,
+    }, registered.status || 502);
+  }
+
+  await audit(db, {
+    user,
+    action: "content.add_language",
+    entity_id: code,
+    detail: { code, strings: Object.keys(leafPaths(en)).length, by: who },
+  });
+
+  return json({
+    ok: true,
+    code,
+    strings: Object.keys(leafPaths(en)).length,
+    commit: registered.commit,
+  });
+}
+
 export default {
   async fetch(request, env) {
     const gate = await requireAdmin(request, env);
@@ -184,6 +340,7 @@ export default {
 
     if (request.method === "GET") return read(env, url);
     if (request.method === "PUT") return write(request, env, db, user, me, cfg);
+    if (request.method === "POST") return addLanguage(request, env, db, user, me, cfg);
 
     return json({ error: `${request.method} is not supported here.` }, 405);
   },

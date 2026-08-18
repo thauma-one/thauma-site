@@ -1010,6 +1010,42 @@ browser rather than the application.
 - `type: 'DELETE'` adds a type-to-confirm field and keeps the button disabled
   until it matches — and the server checks the same word.
 
+### Adding a language
+
+`/admin/content/` → **Add a language**. Two commits, in this order:
+
+```
+1. create src/_data/i18n/<code>.json   every key from English, values empty
+2. register it in site.json            languages[] + visibility off for live
+```
+
+**The order is the safety property.** If the second fails you have an unused
+file — harmless, and pressing the button again finds it and says so. Reversed,
+`site.json` would name a file that does not exist and the next build would
+break. The Contents API writes one file per commit, so atomicity was never
+available; picking the recoverable failure was.
+
+**English is the template, not a separate template file.** A fourth copy of the
+key list is a fourth thing that drifts. `en.json` is guaranteed complete
+because the site is built from it, and it is what a translator reads anyway.
+
+**Values start empty, not copied.** An untranslated string that says the
+English is indistinguishable from a finished one, so it ships as English and
+nobody finds it. An empty one is visibly not done, and the Content page already
+counts empties per section — the work gets a progress bar for free.
+
+**Created switched OFF for visitors and ON for dev.** Translate it over a
+fortnight, see it in place on dev.thauma.one the whole time, and publish when
+it is ready.
+
+Two guards worth naming. A code is **normalised before it is judged** — `HR`,
+` hr ` and `Hr` are the same request, and somebody typing capitals means the
+language rather than a typo. And an **unregistered file is refused, never
+overwritten**: a language can exist as a file nobody listed, and since a create
+carries no SHA, GitHub would not object to destroying it. `putFile` now
+requires `create: true` in so many words, and refuses a create that also
+carries a SHA.
+
 ### Languages: what EXISTS and what is PUBLISHED are two lists
 
 ```

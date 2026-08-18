@@ -994,6 +994,100 @@
   }
   window.StaffConfirm = confirmDialog;
 
+  /* =====================================================================
+     PROMPT — a dialog that asks for one value
+     =====================================================================
+     Built on the same shell as StaffConfirm rather than beside it, so the two
+     cannot drift apart in looks or behaviour: Escape and the backdrop cancel,
+     focus lands where typing goes, and the button that does the thing is on
+     the right.
+
+     window.prompt was the alternative. It cannot validate, cannot explain,
+     looks like the browser rather than the application, and on some browsers
+     is blocked entirely.
+
+     VALIDATION IS LIVE AND THE MESSAGE IS SPECIFIC. "sl_SI is not a language
+     code — use two letters" is actionable; a disabled button with no
+     explanation is a puzzle. The same rule is enforced on the server, which
+     is the one that counts.
+
+     Resolves to the trimmed value, or null if cancelled.
+     ===================================================================== */
+  function promptDialog(opts) {
+    return new Promise(function (resolve) {
+      var wrap = document.createElement('div');
+      wrap.className = 'dlg-back';
+      wrap.innerHTML =
+        '<div class="dlg" role="dialog" aria-modal="true">' +
+          '<h3></h3><p class="dlg-body"></p>' +
+          '<p class="dlg-note" hidden></p>' +
+          '<label class="dlg-type"><span></span>' +
+            '<input type="text" autocomplete="off" spellcheck="false" autocapitalize="off"></label>' +
+          '<p class="dlg-err" hidden></p>' +
+          '<div class="dlg-actions">' +
+            '<button type="button" class="ghost-btn dlg-no"></button>' +
+            '<button type="button" class="solid-btn dlg-yes"></button>' +
+          '</div>' +
+        '</div>';
+      wrap.querySelector('h3').textContent = opts.title || '';
+      wrap.querySelector('.dlg-body').textContent = opts.body || '';
+      if (opts.note) {
+        var n = wrap.querySelector('.dlg-note');
+        n.textContent = opts.note;
+        n.hidden = false;
+      }
+      var box = wrap.querySelector('.dlg-type');
+      box.querySelector('span').textContent = opts.label || '';
+      var input = box.querySelector('input');
+      if (opts.placeholder) input.placeholder = opts.placeholder;
+
+      var err = wrap.querySelector('.dlg-err');
+      var yes = wrap.querySelector('.dlg-yes');
+      var no = wrap.querySelector('.dlg-no');
+      yes.textContent = opts.confirm || 'OK';
+      no.textContent = opts.cancel || 'Cancel';
+      yes.disabled = true;
+
+      function validate() {
+        var v = input.value.trim();
+        var problem = v && opts.validate ? opts.validate(v) : (v ? null : '');
+        yes.disabled = !!problem || !v;
+        // Nothing typed yet is not a mistake, so it gets no error message.
+        err.hidden = !problem || !v;
+        if (problem && v) err.textContent = problem;
+      }
+      input.addEventListener('input', validate);
+
+      function close(answer) {
+        document.removeEventListener('keydown', onKey);
+        wrap.classList.remove('in');
+        setTimeout(function () { wrap.remove(); }, 200);
+        resolve(answer);
+      }
+      function onKey(e) {
+        if (e.key === 'Escape') close(null);
+        // Enter submits, but only when the value is actually acceptable.
+        if (e.key === 'Enter' && !yes.disabled && document.activeElement === input) {
+          e.preventDefault();
+          close(input.value.trim());
+        }
+      }
+      yes.addEventListener('click', function () {
+        if (!yes.disabled) close(input.value.trim());
+      });
+      no.addEventListener('click', function () { close(null); });
+      wrap.addEventListener('click', function (e) { if (e.target === wrap) close(null); });
+      document.addEventListener('keydown', onKey);
+
+      document.body.appendChild(wrap);
+      void wrap.offsetHeight;
+      wrap.classList.add('in');
+      // Focus the field, not a button: you opened this to type.
+      input.focus();
+    });
+  }
+  window.StaffPrompt = promptDialog;
+
   window.StaffProblem = problem;
   window.StaffProblemClear = problemClear;
 

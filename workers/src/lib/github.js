@@ -279,10 +279,27 @@ export async function getFile(env, path, fetchImpl = fetch) {
  * there" — the precise accident this whole mechanism is meant to prevent. A
  * caller that has genuinely lost the SHA should re-read the file, not omit it.
  */
-export async function putFile(env, { path, text, sha, message, authorName, authorEmail, quiet }, fetchImpl = fetch) {
+export async function putFile(env, { path, text, sha, message, authorName, authorEmail, quiet, create }, fetchImpl = fetch) {
   const cfg = githubConfig(env);
   if (cfg.error) return { error: cfg.error, status: 500 };
-  if (!sha) return { error: "Refusing to write without the SHA of the file being replaced.", status: 400 };
+
+  /* A SHA IS REQUIRED UNLESS THE CALLER SAYS "create", IN SO MANY WORDS.
+     
+     The Contents API treats an absent SHA as "create this file", which for an
+     existing path means "overwrite whatever is there" — the precise accident
+     the SHA exists to prevent. So omitting it cannot be something that just
+     happens; it has to be asked for.
+     
+     `create: true` is only used by the add-a-language flow, which checks the
+     file does not exist first. If that check is ever removed, this becomes an
+     unconditional overwrite of a translation file and nothing here would
+     notice. */
+  if (!sha && !create) {
+    return { error: "Refusing to write without the SHA of the file being replaced.", status: 400 };
+  }
+  if (sha && create) {
+    return { error: "A create must not carry a SHA — that is an overwrite.", status: 400 };
+  }
 
   const h = await headers(env, fetchImpl);
   if (h.error) return { error: h.error, status: 500 };
@@ -303,7 +320,8 @@ export async function putFile(env, { path, text, sha, message, authorName, autho
          "do not deploy" flag. The Chase Roush site has relied on it for a year. */
       message: quiet ? `${message.split("\n")[0]} [skip ci]${message.slice(message.split("\n")[0].length)}` : message,
       content: toBase64(text),
-      sha,
+      // Omitted entirely on a create; GitHub rejects an explicit null.
+      ...(sha ? { sha } : {}),
       branch: cfg.branch,
       // Attribution is the point of an audit trail somebody else can read.
       // `git log` should name the person who typed the words, not the Worker.

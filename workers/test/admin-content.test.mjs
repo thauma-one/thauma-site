@@ -15,7 +15,7 @@
  *   · a save changing the SHAPE of the document rather than a value in it
  *   · a save landing on top of somebody else's edit
  */
-import handler, { pathFor, setLeaf, leafPaths } from "../src/admin-content.js";
+import handler, { pathFor, setLeaf, leafPaths, blankLike } from "../src/admin-content.js";
 
 let pass = 0, fail = 0;
 async function check(name, fn) {
@@ -434,6 +434,137 @@ await check("an empty change set is refused", async () => {
     const res = await handler.fetch(req("PUT", { body: { file: "hr", sha: "sha1", changes: {} } }),
                                     envWith("admin"));
     eq(res.status, 400, "status");
+  } finally { g.restore(); }
+});
+
+/* --------------------------- adding a language --------------------------- */
+
+await check("blankLike keeps every key and empties every string", () => {
+  const src = { code: "en", nav: { home: "Home", give: "Give" },
+                notFound: { taunts: ["a", "b"] }, count: 7, flag: true };
+  const out = blankLike(src, "sl");
+  eq(Object.keys(out), Object.keys(src), "top-level keys");
+  eq(out.nav, { home: "", give: "" }, "strings emptied");
+  eq(out.notFound.taunts, ["", ""], "array strings emptied, length kept");
+  /* Non-strings are STRUCTURAL — a count or a flag the build reads. Blanking
+     one would change a type the site depends on. */
+  eq(out.count, 7, "a number must survive");
+  eq(out.flag, true, "a boolean must survive");
+});
+
+await check("the new file has exactly English's key set", () => {
+  // The reference column matches rows by path. A key set that differs by one
+  // means a row with no English beside it and no way to see why.
+  const en = { a: "x", b: { c: "y", d: ["z"] } };
+  eq(Object.keys(leafPaths(blankLike(en, "sl"))), Object.keys(leafPaths(en)), "paths");
+});
+
+await check("a bad language code is refused before anything is read", async () => {
+  const g = stubGitHub();
+  try {
+    /* "EN" is deliberately absent: it normalises to "en" and is then refused
+       as a duplicate, which is the more useful answer than calling it
+       malformed. Somebody typing capitals means the language, not a typo. */
+    for (const code of ["english", "s", "sl_SI", "../etc", "", "sl.json", "12", "s l"]) {
+      const res = await handler.fetch(req("POST", { body: { code } }), envWith("admin"));
+      eq(res.status, 400, `${JSON.stringify(code)} should be refused`);
+    }
+    eq(g.length, 0, "it read files before validating the code");
+  } finally { g.restore(); }
+});
+
+await check("a code is normalised before it is judged", async () => {
+  // "SL", " sl " and "sl" are the same request. Case and stray spaces are
+  // typing, not intent.
+  const g = stubGitHub({ file: SITE });
+  try {
+    for (const code of ["HR", " hr ", "Hr"]) {
+      const res = await handler.fetch(req("POST", { body: { code } }), envWith("admin"));
+      eq(res.status, 409, `${JSON.stringify(code)} should resolve to hr and be a duplicate`);
+    }
+  } finally { g.restore(); }
+});
+
+await check("adding a language creates the FILE FIRST, then registers it", async () => {
+  /* The order is the whole safety property. If registration fails you have an
+     unused file — harmless, and pressing the button again fixes it. Reversed,
+     site.json would name a file that does not exist and the next build breaks. */
+  const g = stubGitHub({ file: EN });
+  // site.json and a 404 for the not-yet-existing sl.json
+  g.handle = async (u, init) => {
+    g.push({ url: u, method: init.method || "GET",
+             body: init.body ? JSON.parse(init.body) : null });
+    if ((init.method || "GET") === "GET") {
+      if (u.includes("/sl.json")) return new Response("{}", { status: 404 });
+      const doc = u.includes("site.json") ? SITE : EN;
+      const bytes = new TextEncoder().encode(asText(doc));
+      let bin = ""; for (const b of bytes) bin += String.fromCharCode(b);
+      return new Response(JSON.stringify({ type: "file", sha: "sha1", content: btoa(bin) }),
+                          { status: 200 });
+    }
+    return new Response(JSON.stringify({ content: { sha: "s2" }, commit: { sha: "c1" } }),
+                        { status: 201 });
+  };
+  try {
+    const res = await handler.fetch(req("POST", { body: { code: "sl" } }), envWith("admin"));
+    const b = await res.json();
+    eq(res.status, 200, `failed: ${JSON.stringify(b)}`);
+
+    const writes = g.filter((c) => c.method === "PUT");
+    eq(writes.length, 2, "should be exactly two commits");
+    assert(writes[0].url.includes("/sl.json"), "the language file must be written FIRST");
+    assert(writes[1].url.includes("site.json"), "site.json must be written second");
+
+    const created = JSON.parse(Buffer.from(writes[0].body.content, "base64").toString("utf8"));
+    eq(created.code, "sl", "the code is the one value we can fill in");
+    eq(created.nav, { home: "", give: "" }, "everything else starts empty");
+
+    const site = JSON.parse(Buffer.from(writes[1].body.content, "base64").toString("utf8"));
+    assert(site.languages.includes("sl"), "not added to the language list");
+    eq(site.visibility.languages.sl, { live: false, dev: true },
+       "must be ON for dev and OFF for visitors");
+  } finally { g.restore(); }
+});
+
+await check("a language that already exists is refused", async () => {
+  const g = stubGitHub({ file: SITE });
+  try {
+    // SITE's languages are ["en","hr"]
+    const res = await handler.fetch(req("POST", { body: { code: "hr" } }), envWith("admin"));
+    eq(res.status, 409, "status");
+    assert(!g.some((c) => c.method === "PUT"), "it wrote anyway");
+  } finally { g.restore(); }
+});
+
+await check("an UNREGISTERED file is refused rather than overwritten", async () => {
+  /* Somebody added src/_data/i18n/sl.json by hand and never listed it.
+     Creating it again would destroy their work with no warning and no undo —
+     the file write carries no SHA, so GitHub would not object either. */
+  const g = stubGitHub();
+  g.handle = async (u, init) => {
+    g.push({ url: u, method: init.method || "GET" });
+    // every GET succeeds, including sl.json — the file is already there
+    const doc = u.includes("site.json") ? SITE : EN;
+    const bytes = new TextEncoder().encode(asText(doc));
+    let bin = ""; for (const b of bytes) bin += String.fromCharCode(b);
+    return new Response(JSON.stringify({ type: "file", sha: "sha1", content: btoa(bin) }),
+                        { status: 200 });
+  };
+  try {
+    const res = await handler.fetch(req("POST", { body: { code: "sl" } }), envWith("admin"));
+    eq(res.status, 409, "status");
+    const b = await res.json();
+    assert(/already exists/.test(b.error), `unclear: ${b.error}`);
+    assert(!g.some((c) => c.method === "PUT"), "IT OVERWROTE AN EXISTING TRANSLATION");
+  } finally { g.restore(); }
+});
+
+await check("a non-admin cannot add a language", async () => {
+  const g = stubGitHub();
+  try {
+    const res = await handler.fetch(req("POST", { body: { code: "sl" } }), envWith("partner,staff"));
+    eq(res.status, 403, "status");
+    eq(g.length, 0, "it touched GitHub before checking the role");
   } finally { g.restore(); }
 });
 

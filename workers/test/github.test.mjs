@@ -241,6 +241,26 @@ await check("putFile REFUSES without a SHA", async () => {
   assert(!called, "it sent the request anyway");
 });
 
+await check("create omits the SHA, and cannot be combined with one", async () => {
+  /* The one place omitting a SHA is correct: a file that does not exist yet.
+     It has to be asked for explicitly, because an absent SHA on an EXISTING
+     path is an unconditional overwrite — the accident the SHA prevents. */
+  let body = null;
+  const fake = async (_u, init) => {
+    body = JSON.parse(init.body);
+    return new Response(JSON.stringify({ content: { sha: "new" }, commit: { sha: "c" } }), { status: 201 });
+  };
+  const r = await putFile(ENV, { path: "src/_data/i18n/sl.json", text: "{}",
+                                 create: true, message: "Add sl" }, fake);
+  assert(!r.error, `create was refused: ${r.error}`);
+  assert(!("sha" in body), "a create must not send a sha key at all — GitHub rejects null");
+
+  // Belt and braces: asking for both is a contradiction and is refused.
+  const both = await putFile(ENV, { path: "p", text: "{}", sha: "abc",
+                                    create: true, message: "m" }, fake);
+  eq(both.status, 400, "create + sha must be refused");
+});
+
 await check("putFile sends branch, sha and UTF-8 content", async () => {
   let body = null;
   const fake = async (_url, init) => {
