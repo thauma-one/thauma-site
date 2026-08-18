@@ -1,119 +1,271 @@
 /**
- * staff-data — network directory and internal resources for the staff console
+ * staff-data.js — the directory and the resource library
  *
- * Port of netlify/functions/staff-data.js. All sanitisation is carried over
- * UNCHANGED; a port is the wrong moment to redesign input validation.
+ *   GET    /api/staff-data                      both lists, scoped to you
+ *   POST   /api/staff-data                      create or update one item
+ *   DELETE /api/staff-data?kind=…&id=…          remove one item
  *
- * Changed from the original:
- *   - Netlify Blobs        -> KV binding (see lib/store.js)
- *   - exports.handler      -> export default { fetch }
- *   - node:crypto Access   -> WebCrypto Access (see lib/access.js)
+ * WHAT CHANGED, AND WHY IT MATTERED
+ * ---------------------------------------------------------------------------
+ * This read and wrote a single KV entry under the key "data" — one document
+ * for the entire installation. Every staff member of every partner shared it.
+ * Two problems, both structural:
  *
- * AUTH is Cloudflare Access, verified HERE rather than relying on an Access
- * application being in front of this route. Measured on Netlify 2026-08-14:
- * /staff/ was gated while /.netlify/functions/staff-data was not, because the
- * application was scoped to /staff*. The same mistake is available on Workers.
+ *   NO OWNERSHIP   a directory is somebody's own address book, and everyone
+ *                  was looking at the same one.
  *
- * ROLES: Access has no equivalent of the old Netlify Identity staff/admin
- * roles, so for now the Access policy IS the gate. When users / partner_users
- * go live (db/README.md), look the email up there. Do NOT reintroduce a role
- * list in an env var — the schema already models that properly.
+ *   LOST WRITES    the editor saved the WHOLE document, so two people editing
+ *                  on the same afternoon meant the second silently erased the
+ *                  first. Nothing warned anyone; the data was simply gone.
  *
- * GET  -> { contacts, resources, updatedAt, updatedBy }
- * POST -> body { contacts, resources } replaces the stored document
+ * Both are fixed by the storage rather than by care. Contacts belong to a
+ * user, resources belong to a partner or the organisation, and every operation
+ * touches ONE row — so concurrent editing costs you a conflict at worst
+ * instead of somebody else's afternoon.
  */
-import { kvStore, json, readJson } from "./lib/store.js";
+import { createDb } from "./lib/db.js";
 import { requireAccess } from "./lib/access.js";
+import { resolveActor, auditActingWrite, withActing } from "./lib/actas.js";
+import { json, readJson } from "./lib/store.js";
 
-const KEY = "data";
+const VISIBILITY = new Set(["staff", "admin", "board"]);
 
-const SEED = {
-  contacts: [
-    { name: "Thauma General", role: "General inquiries", emails: ["hello@thauma.one"], phones: [] },
-  ],
-  resources: [
-    { title: "Password Vault (Bitwarden)", description: "Shared credentials for every Thauma account.", link: "", photo: "" },
-    { title: "GitHub — thauma-site", description: "The site's source code and content history.", link: "https://github.com/thauma-one/thauma-site", photo: "" },
-    { title: "Netlify Dashboard", description: "Deploys, forms, and environment settings.", link: "", photo: "" },
-    { title: "Cloudflare Dashboard", description: "DNS, email routing, Access, and the dev tunnel.", link: "", photo: "" },
-  ],
+/** Resolve the caller to a user, a partner, and what they may see. */
+async function context(request, env) {
+  const { user, denied } = await requireAccess(request, env);
+  if (denied) return { denied };
+  if (!env.DB) return { denied: json({ error: "No database bound to this deploy" }, 500) };
+
+  const db = createDb(env.DB);
+
+  /* Two questions, asked separately.
+
+     WHO: an account can exist with no partner — an administrator, a board
+     member, somebody invited and not yet placed. Resolving identity through
+     partner access meant none of them had a name.
+
+     WHICH PARTNER: these screens are partner-scoped, so they do still need
+     one. The difference is that the refusal can now say which of the two is
+     missing instead of "no access". */
+  /* WHO THIS REQUEST COUNTS AS. Normally the signed-in person; when an
+     administrator is viewing somebody else's console, that person instead.
+     resolveActor re-checks the admin role on the REAL caller every time and
+     falls back to the caller's own identity if anything is off — see
+     lib/actas.js. Everything downstream uses actor.email, so no query in this
+     file needs to know acting-as exists. */
+  const actor = await resolveActor(request, env, db, user);
+  const me = actor.me;
+  if (!me) {
+    return { denied: json({
+      error: "This address is not an active account.", email: user.email }, 403) };
+  }
+
+  const partners = await db.query("partners_for_user", { email: actor.email });
+  if (!partners.length) {
+    return { denied: json({
+      error: "This account is not attached to a partner yet, so there is " +
+             "nothing here to show. An administrator can grant access.",
+      email: user.email,
+      you: { email: user.email, name: me.user_name,
+             roles: String(me.roles || "").split(",").filter(Boolean) },
+    }, 403) };
+  }
+  const partner = partners[0];
+
+  const roles = String(me.roles || "staff").split(",");
+  const isAdmin = roles.includes("admin");
+
+  // Which resource levels this person may read. Everyone sees staff material;
+  // admins also see admin material. 'board' has no role behind it yet, so
+  // nobody gets it — deliberately, rather than falling open to admins on the
+  // assumption that admin implies everything.
+  const levels = isAdmin ? "staff,admin" : "staff";
+
+  return { db, user, me, partner, isAdmin, levels, actor };
+}
+
+/** JSON array of trimmed strings, capped. Never trusts what the form sent. */
+function stringList(v, max = 20, keep = null) {
+  if (!Array.isArray(v)) return [];
+  return v.map((s) => String(s == null ? "" : s).trim())
+          .filter(Boolean)
+          .filter((s) => (keep ? keep(s) : true))
+          .slice(0, max)
+          .map((s) => s.slice(0, 200));
+}
+
+/**
+ * A link that is safe to put in an href.
+ *
+ * RESTORED after being dropped in the 0005 rewrite — the previous KV version
+ * had it and the old tests caught its absence. Resources render as clickable
+ * anchors, so `javascript:alert(1)` in a link field is stored XSS against
+ * every colleague who opens the page. Escaping the text does not help: the
+ * browser executes the scheme, not the markup.
+ *
+ * An ALLOW-LIST of schemes, not a block-list of bad ones. Blocking
+ * "javascript:" invites `java\nscript:`, `JaVaScRiPt:` and data: URLs;
+ * allowing http, https and mailto cannot be talked around.
+ */
+export function safeLink(v) {
+  const s = str(v, 500);
+  if (!s) return null;
+  // Relative paths stay — /img/... and /staff/... are ours.
+  if (s.startsWith("/")) return s;
+  let url;
+  try { url = new URL(s); } catch { return null; }
+  return ["http:", "https:", "mailto:"].includes(url.protocol) ? s : null;
+}
+
+/** Shape only — the real check is that mail to it bounces, not a regex. */
+export function isEmail(v) {
+  return typeof v === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim());
+}
+
+const str = (v, max) => {
+  if (v === undefined || v === null) return null;
+  const s = String(v).trim();
+  return s === "" ? null : s.slice(0, max);
 };
 
-function sanitizeString(v, maxLen) {
-  if (typeof v !== "string") return "";
-  return v.trim().slice(0, maxLen);
-}
-function sanitizeLink(v) {
-  const s = sanitizeString(v, 300);
-  // Allow-list the scheme: this value ends up in an href, so javascript: and
-  // data: must never survive.
-  return s && /^(https?:|mailto:|tel:)/i.test(s) ? s : "";
-}
-function sanitizeImageSrc(v) {
-  const s = sanitizeString(v, 300);
-  return s && (/^https?:\/\//i.test(s) || s.startsWith("/")) ? s : "";
-}
-function sanitizeEmail(v) {
-  const s = sanitizeString(v, 200);
-  return s && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s) ? s : "";
-}
-function sanitizePhone(v) {
-  const s = sanitizeString(v, 40);
-  return s ? s.replace(/[^0-9+\-() ]/g, "") : "";
-}
-function sanitizeStringArray(arr, fn, maxItems) {
-  return Array.isArray(arr) ? arr.slice(0, maxItems).map(fn).filter(Boolean) : [];
-}
-
-export function sanitizeContacts(arr) {
-  if (!Array.isArray(arr)) return [];
-  return arr.slice(0, 50).map((c) => ({
-    name: sanitizeString(c && c.name, 100),
-    role: sanitizeString(c && c.role, 100),
-    emails: sanitizeStringArray((c && c.emails) || [], sanitizeEmail, 5),
-    phones: sanitizeStringArray((c && c.phones) || [], sanitizePhone, 5),
-  })).filter((c) => c.name);
-}
-
-export function sanitizeResources(arr) {
-  if (!Array.isArray(arr)) return [];
-  return arr.slice(0, 50).map((r) => ({
-    title: sanitizeString(r && r.title, 100),
-    description: sanitizeString(r && r.description, 300),
-    link: sanitizeLink(r && r.link),
-    photo: sanitizeImageSrc(r && r.photo),
-  })).filter((r) => r.title);
-}
-
-/** Exported for tests: the handler with its store injected. */
-export async function handle(request, env, store) {
-  const { user, denied } = await requireAccess(request, env);
-  if (denied) return denied;
-
-  if (request.method === "POST") {
-    const body = await readJson(request);
-    if (body === null) return json({ error: "Invalid JSON" }, 400);
-
-    const record = {
-      contacts: sanitizeContacts(body.contacts),
-      resources: sanitizeResources(body.resources),
-      updatedAt: new Date().toISOString(),
-      updatedBy: user.email || "unknown",
-    };
-    await store.put(KEY, record);
-    return json(record);
-  }
-
-  if (request.method !== "GET") {
-    return json({ error: "Method not allowed" }, 405, { Allow: "GET, POST" });
-  }
-
-  const existing = await store.get(KEY);
-  return json(existing || { ...SEED, updatedAt: null, updatedBy: null });
-}
+const newId = (p) => p + "_" + crypto.randomUUID().replace(/-/g, "").slice(0, 16);
 
 export default {
   async fetch(request, env) {
-    return handle(request, env, kvStore(env.STAFF_DATA));
+    const { db, user, me, partner, isAdmin, levels, actor, denied } = await context(request, env);
+    if (denied) return denied;
+
+    /* Recorded before the handler runs, so a change is logged even if the
+       handler then fails. One call, at the one place every method passes
+       through — a per-write approach has to be remembered by whoever adds the
+       next write, and eventually is not. */
+    await auditActingWrite(request, db, actor);
+
+    const partner_id = partner.id;
+    const user_id = me.user_id;
+    const now = new Date().toISOString();
+    const url = new URL(request.url);
+
+    /* ---------------------------------------------------------------- GET */
+    if (request.method === "GET") {
+      const [contacts, resources] = await Promise.all([
+        db.query("directory_for_user", { user_id, partner_id }),
+        db.query("resources_visible", { partner_id, levels }),
+      ]);
+      return json(withActing({
+        // The same identity block every staff endpoint returns, so the header
+        // can be filled from whatever request a page was already making.
+        you: {
+          email: user.email,
+          name: me.user_name || null,
+          roles: String(me.roles || "staff").split(","),
+        },
+        partner: { id: partner.id, display_name: partner.display_name },
+        // Named so the screen can say whose these are, rather than implying
+        // they are everyone's.
+        owner: { email: user.email },
+        contacts: contacts.map((c) => ({
+          ...c,
+          // Stored as JSON text; a malformed row must not take the page down.
+          emails: safeList(c.emails),
+          phones: safeList(c.phones),
+        })),
+        resources,
+        can: { set_visibility: isAdmin },
+        levels: levels.split(","),
+      }, actor));
+    }
+
+    /* --------------------------------------------------------------- POST */
+    if (request.method === "POST") {
+      const body = await readJson(request);
+      if (!body) return json({ error: "Invalid JSON" }, 400);
+
+      // ---- a directory contact ----
+      if (body.kind === "contact") {
+        const name = str(body.name, 200);
+        if (!name) return json({ error: "A name is required" }, 400);
+
+        const id = body.id || newId("dc");
+        await db.query("directory_upsert", {
+          id, user_id, partner_id, name,
+          role: str(body.role, 120),
+          // Anything that is not an address is dropped rather than stored:
+          // a directory full of typos is a directory nobody trusts.
+          emails: JSON.stringify(stringList(body.emails, 20, isEmail)),
+          phones: JSON.stringify(stringList(body.phones)),
+          now,
+        });
+        const contacts = await db.query("directory_for_user", { user_id, partner_id });
+        return json({ contacts: contacts.map((c) => ({
+          ...c, emails: safeList(c.emails), phones: safeList(c.phones) })) });
+      }
+
+      // ---- a resource ----
+      if (body.kind === "resource") {
+        const title = str(body.title, 200);
+        if (!title) return json({ error: "A title is required" }, 400);
+
+        // Only an admin may narrow visibility. Staff can add material, but
+        // deciding who else may see it is not theirs to make — and a client
+        // that sends 'admin' anyway is refused rather than obeyed.
+        let visibility = String(body.visibility || "staff");
+        if (!VISIBILITY.has(visibility)) visibility = "staff";
+        if (!isAdmin && visibility !== "staff") {
+          return json({
+            error: "Only an administrator can restrict who sees a resource.",
+          }, 403);
+        }
+
+        const id = body.id || newId("rs");
+        await db.query("resource_upsert", {
+          id, partner_id, title,
+          description: str(body.description, 4000),
+          link: safeLink(body.link),
+          photo: safeLink(body.photo),
+          visibility,
+          created_by: user_id,
+          now,
+        });
+        const resources = await db.query("resources_visible", { partner_id, levels });
+        return json({ resources });
+      }
+
+      return json({ error: 'kind must be "contact" or "resource"' }, 400);
+    }
+
+    /* ------------------------------------------------------------- DELETE */
+    if (request.method === "DELETE") {
+      const kind = url.searchParams.get("kind");
+      const id = url.searchParams.get("id");
+      if (!id) return json({ error: "id is required" }, 400);
+
+      if (kind === "contact") {
+        // Scoped by owner as well as id: your id cannot delete my contact.
+        await db.query("directory_delete", { id, user_id, partner_id });
+        const contacts = await db.query("directory_for_user", { user_id, partner_id });
+        return json({ contacts: contacts.map((c) => ({
+          ...c, emails: safeList(c.emails), phones: safeList(c.phones) })) });
+      }
+      if (kind === "resource") {
+        await db.query("resource_delete", { id, partner_id });
+        const resources = await db.query("resources_visible", { partner_id, levels });
+        return json({ resources });
+      }
+      return json({ error: 'kind must be "contact" or "resource"' }, 400);
+    }
+
+    return json({ error: "Method not allowed" }, 405, { Allow: "GET, POST, DELETE" });
   },
 };
+
+/** Stored JSON, decoded defensively — one bad row must not blank the page. */
+function safeList(v) {
+  if (Array.isArray(v)) return v;
+  try {
+    const parsed = JSON.parse(v || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}

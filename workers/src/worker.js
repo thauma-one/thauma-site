@@ -34,8 +34,17 @@ import gameScores from "./game-scores.js";
 import staffData from "./staff-data.js";
 import contactForm from "./contact-form.js";
 import partnerApi from "./partner-api.js";
+import staffMilestones from "./staff-milestones.js";
+import staffSettings from "./staff-settings.js";
+import adminApi from "./admin.js";
+import adminContent from "./admin-content.js";
+import adminPublish from "./admin-publish.js";
+import adminMigrate from "./admin-migrate.js";
+import embed from "./embed.js";
+import adminActAs from "./admin-actas.js";
 import { createDb, partnerSnapshot, assertPublicSafe } from "./lib/db.js";
 import { requireAccess } from "./lib/access.js";
+import { resolveActor, withActing } from "./lib/actas.js";
 import { json } from "./lib/store.js";
 
 // Runs once per isolate, at module load. If a public query has grown a join
@@ -65,19 +74,133 @@ async function staffSnapshot(request, env) {
   //
   // Looked up by EMAIL: Access knows email addresses, not our internal user
   // ids. See partners_for_user in db/queries.sql.
-  const partners = await db.query("partners_for_user", { email: user.email });
+  // Who this counts as: normally the signed-in person, or the person an
+  // administrator is currently viewing. See lib/actas.js.
+  const actor = await resolveActor(request, env, db, user);
+
+  const partners = await db.query("partners_for_user", { email: actor.email });
   if (!partners.length) {
-    return json({
+    return json(withActing({
       error: "No partner access for this account",
-      email: user.email,
+      email: actor.email,
       hint: "This account authenticated, but no active user row grants it a " +
             "partner. Add the address to `users` and grant it in `partner_users`.",
-    }, 403);
+    }, actor), 403);
   }
 
   const snap = await partnerSnapshot(db, partners[0].id);
-  return json({ ...snap, partner: partners[0], generated_at: new Date().toISOString() });
+  return json(withActing(
+    { ...snap, partner: partners[0], generated_at: new Date().toISOString() }, actor));
 }
+
+
+/**
+ * A refused PAGE gets a sign-in page. A refused API call still gets JSON.
+ *
+ * THE BUG THIS FIXES, found 2026-08-16: visiting /admin/ returned the bare
+ * string {"error":"Not authorized"} in the browser window. No explanation, no
+ * link, nothing to click — "not authorized with no way to authorize", which is
+ * exactly how it was reported.
+ *
+ * The cause is that Cloudflare Access applications are PATH-SCOPED and the
+ * application covers `staff`. So /staff/ is intercepted at the edge and gets a
+ * real login, while /admin/ is not intercepted at all — the request arrives
+ * here with no token, and this Worker's own gate refuses it. The runbook warned
+ * about exactly this and it happened anyway, which is a good argument for the
+ * Worker not depending on the dashboard being right.
+ *
+ * The correct fix is to widen the Access application. This exists so that when
+ * it is wrong — or a session simply expires — somebody gets a door instead of a
+ * error message in JSON.
+ *
+ * ONLY FOR PAGES. An API route returning a redirect or an HTML body would break
+ * every fetch() in the console silently, and those callers handle 401 properly
+ * already.
+ */
+function signInPage(request, env, url) {
+  const wantsHtml = (request.headers.get("accept") || "").includes("text/html");
+  if (!wantsHtml) return null;
+
+  /* THE BUTTON GOES TO /staff/, NOT TO A CONSTRUCTED LOGIN URL.
+     
+     The obvious implementation is a link to
+     /cdn-cgi/access/login/<hostname>?redirect_url=… — and building it needs a
+     hostname this code cannot reliably know. Measured 2026-08-16: under
+     `wrangler dev` BOTH url.hostname and the Host header come back as the
+     route in wrangler.toml (next.thauma.one) whatever the browser asked for,
+     so the link would send somebody to a different site's sign-in page.
+
+     /staff/ is covered by an Access application, so visiting it triggers a
+     real login. Access then sets CF_Authorization across the parent domain,
+     and this Worker verifies that token itself on every path — so once signed
+     in, /admin/ works too. A relative link cannot point at the wrong host.
+
+     One extra click, and it is correct on every hostname without knowing which
+     one it is on. */
+
+  const body = `<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sign in &middot; Thauma</title>
+<style>
+  body{margin:0;min-height:100vh;display:flex;align-items:center;
+       justify-content:center;background:#0B0F15;color:#EDF2F8;
+       font-family:system-ui,-apple-system,'Segoe UI',sans-serif;padding:24px}
+  .card{max-width:440px;width:100%}
+  .mark{font-size:13px;letter-spacing:3px;color:#8A96A6;margin-bottom:20px}
+  h1{font-size:24px;font-weight:300;margin:0 0 12px;line-height:1.3}
+  p{color:#8A96A6;font-size:14px;line-height:1.7;margin:0 0 20px}
+  a.btn{display:inline-block;background:#2FD8FF;color:#06110c;padding:13px 26px;
+        border-radius:8px;text-decoration:none;font-weight:600;font-size:15px}
+  a.alt{color:#2FD8FF;font-size:13px;text-decoration:none}
+  .note{margin-top:28px;padding-top:20px;border-top:1px solid rgba(255,255,255,.08);
+        font-size:12px;color:#6b7785;line-height:1.7}
+</style></head>
+<body><div class="card">
+  <div class="mark">THAUMA</div>
+  <h1>You need to sign in</h1>
+  <p>This part of the site is for staff. Signing in sends a one-time code to
+     your email address &mdash; there is no password.</p>
+  <p><a class="btn" href="/staff/">Sign in</a></p>
+  <div class="note">
+    <b>Administrators:</b> if you were sent here from <code>/admin/</code>, the
+    Cloudflare Access application is scoped to <code>staff</code> and does not
+    cover <code>admin</code>. Sign in above, then return &mdash; or clear the
+    path on the Access application so it covers the whole site and this stops
+    happening.
+  </div>
+</div></body></html>`;
+
+  return new Response(body, {
+    status: 401,
+    headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
+  });
+}
+
+/**
+ * Paths that require a signed-in person. THE ONLY DEFINITION.
+ *
+ * Both areas are gated identically, deliberately and testably. They were
+ * already two clauses of one `if`, which is the same thing until somebody
+ * edits one clause; a named list with a test that compares the two is the
+ * version that stays true.
+ *
+ * Access authenticates; it does not authorise. Being let through here means
+ * "we know who you are", nothing more — /api/admin* separately refuses anyone
+ * without the admin role. The pages are markup; the data is what matters.
+ *
+ * ⚠ THIS IS NOT A SUBSTITUTE FOR THE ACCESS APPLICATION, and it is not
+ * redundant with it either. Access gives a real login page; this gives a
+ * guarantee. On 2026-08-16 the Access application covered `staff` and not
+ * `admin`, so /admin/ was never intercepted — this check is why it was refused
+ * anyway instead of being served to anyone who asked.
+ */
+export function isProtected(pathname) {
+  return AREAS.some((a) => pathname === a || pathname.startsWith(a + "/"));
+}
+
+const AREAS = ["/staff", "/admin"];
 
 /** Exact-path routes. Checked before static assets. */
 const ROUTES = {
@@ -85,6 +208,35 @@ const ROUTES = {
   "/api/game-scores": gameScores,
   "/api/staff-data": staffData,
   "/api/staff-snapshot": { fetch: staffSnapshot },
+  "/api/staff-milestones": staffMilestones,
+  "/api/staff-settings": staffSettings,
+
+  // ORG-WIDE, and the only endpoint that is not partner-scoped. Its role
+  // check is done once at the top of the handler and fails closed.
+  "/api/admin": adminApi,
+
+  // THE ONLY ENDPOINT THAT CAN WRITE TO THE REPOSITORY. It holds a GitHub
+  // token, so a save here becomes a commit and the Action deploys it. Admin
+  // role, a derived path that no request can influence, and leaf-level edits
+  // only — see admin-content.js.
+  "/api/admin/content": adminContent,
+
+  // Asks GitHub to build the live branch — for staging (Preview) or for the
+  // real site (Publish). Saving already committed the words with [skip ci], so
+  // this is the only thing that moves the site, and it lists what it is about
+  // to ship and takes a typed confirmation. See admin-publish.js.
+  "/api/admin/publish": adminPublish,
+
+  // Applies database migrations from the repository to the bound D1. The only
+  // part of running this site that still needed a terminal. Reads the SQL from
+  // the live branch, so everything it can execute has been through a diff —
+  // there is no arbitrary SQL box. See admin-migrate.js.
+  "/api/admin/migrate": adminMigrate,
+
+  // Start and stop viewing somebody else's console. Sets a cookie that names
+  // a user id and grants nothing — authority is re-derived from the Access
+  // token on every request. See lib/actas.js.
+  "/api/admin/act-as": adminActAs,
 
   // THE ONLY ROUTE A CREDENTIAL OUTSIDE THAUMA CAN REACH. Key-authenticated,
   // public-safe by construction, versioned in the path so a breaking change
@@ -117,16 +269,23 @@ export default {
     const route = ROUTES[url.pathname];
     if (route) return route.fetch(request, env, ctx);
 
+    /* THE ONLY UNAUTHENTICATED, CROSS-ORIGIN ROUTE, and a prefix rather than
+       an exact path because the slug is in it. Before the auth gate below,
+       and it must stay there: an embed runs in a stranger's browser on a site
+       we do not control, so there is no session to check and nothing to sign
+       in to. What makes that safe is per-partner opt-in, not a gate — see
+       embed.js. */
+    if (url.pathname.startsWith("/embed/v1/")) return embed.fetch(request, env, ctx);
+
     // Only the bare root redirects by language. /en/, /hr/ and every asset
     // beneath them must fall through, or the site would redirect forever.
     if (url.pathname === "/") return langRedirect.fetch(request, env, ctx);
 
-    // Everything under /staff — pages, CSS, and crucially the snapshot JSON —
-    // requires a valid Access token. Fails closed: no token, no config, or a
-    // token for a different application all mean 401.
-    if (url.pathname === "/staff" || url.pathname.startsWith("/staff/")) {
+    // ONE gate, ONE list. /staff and /admin are protected identically and by
+    // the same code — see isProtected().
+    if (isProtected(url.pathname)) {
       const { denied } = await requireAccess(request, env);
-      if (denied) return denied;
+      if (denied) return signInPage(request, env, url) || denied;
     }
 
     return env.ASSETS.fetch(request);

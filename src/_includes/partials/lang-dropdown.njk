@@ -25,7 +25,9 @@
 <div class="lang-dropdown{% if modifier %} {{ modifier }}{% endif %}">
   <button type="button" class="lang-dropdown-trigger" aria-haspopup="listbox" aria-expanded="false">{{ lang | upper }}</button>
   <ul class="lang-dropdown-list" role="listbox">
-    {%- for l in site.languages %}
+    {#- activeLangs: offering a language that was not built is a menu item
+       that 404s. -#}
+    {%- for l in activeLangs %}
     <li role="option" aria-selected="{{ 'true' if l == lang else 'false' }}">
       {%- if l == lang %}
       <span class="lang-dropdown-current">{{ l | upper }}</span>

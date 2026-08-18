@@ -1,23 +1,17 @@
 # Thauma → Cloudflare Workers: runbook
 
-> ## ⚠️ BLOCKING — read before merging `dev` into `main`
+> ## Cutover complete — 2026-08-15
 >
-> **The Access application covers `dev.thauma.one/staff*` only. Production
-> `thauma.one/staff/` is NOT gated** — verified 2026-08-15, it returns 200 to
-> anyone.
+> thauma.one is served by the Worker. Netlify's builds are stopped and its
+> last deploy is the rollback. `main` is production and deploys itself.
 >
-> Today that is harmless: `main` is 90+ commits behind and serves the old
-> Identity page whose backing function 404s, so there is no data behind it.
+> The warning that stood here — do not merge `dev` to `main`, because the
+> staff console would land on an ungated host — is resolved. Access gates
+> `/staff*` on thauma.one, and the Worker verifies the token itself regardless.
 >
-> **The moment `dev` merges to `main`, that changes.** The staff console —
-> including the stewardship table with supporter names, emails and contact
-> history — deploys to a public URL with no gate in front of it.
->
-> **Before merging:** add a second Access application for `thauma.one/staff*`
-> with the same policy, and confirm:
-> ```
-> curl -s -o /dev/null -w '%{http_code}' https://thauma.one/staff/    # must be 302
-> ```
+> **Still open:** archive the Netlify site once the rollback window closes.
+> `unrivaled-snickerdoodle-1134e3.netlify.app/staff/` answers 200 with a stale
+> page.
 
 Ordered, checkable steps. Every phase ends with something verifiable and
 something you can roll back to.
@@ -42,25 +36,17 @@ which one broke.
 
 ---
 
-## Phase 1 — finish Access (blocked on you)
+## Phase 1 — Access — done
 
-- [ ] Netlify → Site configuration → Environment variables:
-      ```
-      ACCESS_TEAM_DOMAIN = thaumaone.cloudflareaccess.com
-      ACCESS_AUD         = 04468ad531e25f3c53af5d0b4ed0bdd3073241f76a070c741efe40f58019fdfb
-      ```
-- [ ] `sudo systemctl restart thauma-dev` — `netlify dev` reads env at startup
-- [ ] **Verify:** `curl -s -o /dev/null -w '%{http_code}' https://dev.thauma.one/.netlify/functions/staff-data`
-      → **401**, not 500. 500 means the variables did not take.
-- [ ] **Verify in a browser:** load `/staff/`, confirm Directory and Resources
-      list, add a contact, reload, confirm it persisted.
-- [ ] Optionally add a second Access application covering
-      `/.netlify/functions/staff-data` so unauthenticated requests never reach
-      the function. Do this **after** the above works, not before — otherwise a
-      failure is ambiguous.
+- [x] Access gates `/staff*` on dev, staging and production, each with its own
+      application and audience tag
+- [x] The Worker verifies the JWT itself, so an endpoint outside `/staff*` is
+      not protected only by a routing rule
+- [x] `ACCESS_AUD` is a comma-separated list — one Worker serves several
+      hostnames, each with its own tag
 
-**Rollback:** revert `677677e`. Netlify Identity is still configured on the
-site, so the old page works again immediately.
+The Netlify environment variables this phase once described are moot: Netlify
+no longer serves Thauma.
 
 ---
 
@@ -110,33 +96,284 @@ served. One line.
 
 ---
 
-## Phase 3 — replace Decap
+## Phase 2.5 — main is production — done 2026-08-15
 
-Git Gateway is a Netlify Identity service, so it dies with Identity. `/admin`
-must be replaced before hosting moves.
+Not in the original plan. It became necessary the moment hosting moved: for
+two weeks the only way to update thauma.one was someone running
+`wrangler deploy` by hand on a Raspberry Pi, and there was no branch that
+meant "what is live" — the live site was a snapshot of a working directory.
+An editor needs somewhere real to commit to, so this had to come first.
 
-- [ ] Build the content editor into `/staff/` (CR's admin is the pattern)
-- [ ] Writes go to GitHub via the API, as CR's page editor already does
-- [ ] **Verify:** edit a string, confirm the commit lands and the site rebuilds
-- [ ] Delete `src/admin/`, drop `decap-server` from `package.json`
+- [x] Netlify builds **stopped**. It still serves its last deploy as the
+      rollback, and no longer picks up commits. This mattered more than it
+      looks: `unrivaled-snickerdoodle-1134e3.netlify.app/staff/` returns 200,
+      and had Netlify rebuilt from the merge it would have published the
+      current staff console to a public address with no Access in front of it.
+- [x] `main` fast-forwarded to `dev` — 118 commits, no conflicts possible
+- [x] `.github/workflows/deploy.yml`: push to `main` → build → test → deploy →
+      verify
+- [x] First automated deploy confirmed: a new Worker version landed without
+      anyone touching a terminal
+- [x] Netlify byte-for-byte unchanged afterwards, proving builds really are off
 
-**Rollback:** keep Decap installed until the replacement has been used in
-anger for a week.
+**`main` now means production. Anything merged there goes live.** `dev` stays
+the working branch.
+
+### Still to do here
+
+- [ ] After the rollback week, archive the Netlify site. Until then
+      `…netlify.app/staff/` serves a stale, harmless build — its backing
+      function 404s — but it is a public URL with a staff page on it, and it
+      should not outlive its usefulness.
 
 ---
 
-## Phase 4 — KV for the blob stores
+## Phase 3 — the content editor — BUILT 2026-08-15, awaiting its token
 
-- [ ] `wrangler kv namespace create STAFF_DATA`
-- [ ] `wrangler kv namespace create GAME_SCORES`
-- [ ] Export the current Netlify Blobs contents (via the live function: `GET
-      /.netlify/functions/staff-data`, save the JSON)
-- [ ] `wrangler kv key put --binding=STAFF_DATA data '<the json>'`
-- [ ] **Verify:** `wrangler kv key get --binding=STAFF_DATA data`
+The last piece of the original plan. Decap died with Netlify Identity at the
+cutover and `src/admin/` was deleted; this is its replacement.
+
+```
+/admin/content/   the words     src/_data/i18n/*.json    210 strings each
+/admin/site/      the settings  src/_data/site.json
+```
+
+### Built
+
+- [x] An editor under `/admin/`, not `/staff/` — copy and settings are
+      org-level, not partner-scoped.
+- [x] `workers/src/lib/github.js` — the Contents API, with UTF-8-safe base64.
+      `btoa` throws above U+00FF and `atob` returns one byte per character,
+      and every file this moves is Croatian or Serbian. It mangles rather than
+      throwing, so an English test cannot catch it. There are round-trip tests
+      for Cyrillic and for an emoji.
+- [x] `workers/src/admin-content.js` — admin role, a derived path, leaf edits
+      only, audited.
+- [x] SHA-based conflict detection. An edit here and an edit in VS Code cannot
+      silently overwrite each other; the second gets a 409 saying to reload.
+- [x] `decap-server` dropped from `package.json`. **`@netlify/blobs` stays** —
+      `netlify/functions/*`, kept as the rollback, still requires it. Remove it
+      when the Netlify site is archived, not before.
+- [x] 32 tests for the endpoint, 14 for the client. Four run against the real
+      content files.
+
+### Left to do — needs a person
+
+**Create a GitHub App owned by the `thauma-one` organisation.** Not a personal
+access token: a fine-grained PAT is owned by a HUMAN and acts as them, so the
+site's content pipeline would stop working the day that person left the org —
+which SPEC §2 rules out in as many words. An App belongs to the organisation,
+and its installation tokens are minted on demand and last an hour, so there is
+also no expiry date on which the editor quietly stops working.
+
+- [ ] **github.com/organizations/thauma-one/settings/apps → New GitHub App**
+      - Name: `Thauma Content`, Homepage: `https://thauma.one`
+      - **Uncheck "Webhook → Active"** — nothing here listens for webhooks, and
+        an App with one configured and no listener produces failed deliveries
+        forever.
+      - Permissions → Repository permissions, exactly two:
+        **Contents: Read and write** (reading and committing the files) and
+        **Actions: Read and write** (Preview and Publish, which start a build
+        with `workflow_dispatch`). Nothing else.
+
+        Missing the second is the likeliest setup mistake, and GitHub's 403 for
+        it says nothing useful — `dispatchWorkflow()` catches that case and
+        names the permission rather than passing the shrug through.
+      - "Where can this GitHub App be installed": **Only on this account**
+      - Create, then note the **App ID** shown at the top.
+- [ ] **Generate a private key** on the same page. It downloads a `.pem`.
+- [ ] **Install it**: left sidebar → Install App → `thauma-one` → **Only select
+      repositories** → `thauma-site`. After installing, the URL ends in
+      `/settings/installations/<NUMBER>` — that number is the **installation ID**.
+- [ ] **Convert the key.** GitHub gives you PKCS#1; WebCrypto imports PKCS#8
+      and nothing else, and its failure for the wrong one names neither format:
+      ```
+      openssl pkcs8 -topk8 -inform PEM -outform PEM -nocrypt \
+        -in ~/Downloads/thauma-content.*.private-key.pem \
+        -out ~/key-pkcs8.pem
+      ```
+      (`github.js` checks for this and says so, but converting first is quicker
+      than reading the error.)
+- [ ] **Set all three as secrets** — no file editing, and the App ID and
+      installation ID authorise nothing without the key, so keeping them
+      together is simpler than splitting them across `wrangler.toml`:
+      ```
+      npx wrangler secret put GITHUB_APP_ID --env production
+      npx wrangler secret put GITHUB_INSTALLATION_ID --env production
+      npx wrangler secret put GITHUB_APP_PRIVATE_KEY --env production   # paste the whole PKCS#8 file
+      ```
+      Repeat without `--env production` to give staging the same credential.
+- [ ] **Delete the downloaded `.pem` files** once the secret is set. They are
+      the credential.
+
+### Verifying — three things, and the third is the one that surprises people
+
+- [ ] **Read:** open `/admin/content/`. It should list the sections rather than
+      saying it is not connected.
+- [ ] **Write:** change one string, save, and confirm the commit appears in
+      `git log` attributed to the person who typed it.
+- [ ] **⚠ Confirm the commit TRIGGERS THE DEPLOY.** Commits made with a GitHub
+      App installation token do fire `push` events and do start workflows —
+      unlike the `GITHUB_TOKEN` handed to a running Action, which deliberately
+      does not, to stop loops. These are different credentials and the rule is
+      different, but they are confusable enough to check rather than assume. If
+      the Action does not start, the editor will appear to work while nothing
+      ever reaches the site.
+
+### A PAT still works, if you would rather
+
+`githubConfig()` accepts `GITHUB_TOKEN` as an alternative and the App wins when
+both are set. A machine account (`thauma-bot`, on `admin@thauma.one`) holding a
+fine-grained token is a legitimate simpler answer — org-controlled, no code
+path to learn. It costs an account to look after and a token that expires.
+
+### The flow, after the 2026-08-16 rework
+
+```
+Save      commits to `main` with [skip ci] — saved, not deployed
+Preview   dispatches deploy-staging.yml against `main`
+Publish   dispatches deploy.yml against `main` — the site changes
+```
+
+No branches appear in the interface and no merge is involved. `dev` is for
+code; `sync-dev.yml` keeps it current with `main` on a ten-minute schedule so
+website edits cannot be lost under a later code merge.
+
+**deploy-staging.yml is dispatch-only, deliberately.** It had a push trigger on
+`dev`; leaving it would have meant `sync-dev` rebuilding staging behind
+somebody's back, so "Preview" would quietly have started meaning "whatever was
+pushed most recently". To try code on staging, dispatch it manually with ref
+`dev`.
+
+### Keeping the Pi in sync
+
+Three pieces, because the website can now change the repository without anyone
+touching the Pi:
+
+| piece | what |
+|---|---|
+| `deploy/git-sync.sh` | `git merge --ff-only`. Refuses on uncommitted work or divergence and changes nothing. |
+| `deploy/git-sync-hook.js` | GitHub webhook receiver on 127.0.0.1:8994, HMAC-verified, exposed at `dev.thauma.one/_sync` through the tunnel. Instant. |
+| `thauma-sync.timer` | The same script every five minutes. The backup for when a delivery fails. |
+
+Tested 2026-08-16: unsigned, wrongly-signed and malformed-signature deliveries
+all refused; a good signature accepted; a bad repository path fails safely.
+
+### What it cannot do, deliberately
+
+Add a key, remove one, reorder them, or change a value's type. The browser
+sends leaf edits — `home.title` → new value — and the server re-reads the file
+and applies each one in place. Structural change is a git operation, because a
+CMS that can restructure the data its own build depends on can break the build.
+That also keeps the diff to one line per edited string, so `git log` stays
+usable for reviewing what somebody actually changed.
+
+`site.json`'s `languages` list is refused on the server as well as in the
+browser: renaming an entry orphans a translation file and breaks the build.
+
+### Known gap
+
+**Adding an array item** — a new `notFound.taunts` line — is structural, so it
+is a git edit. Doing it in the console would mean writing all three language
+files in one commit, which the Contents API cannot do; that needs the Git Data
+API (blob → tree → commit → ref). Worth it only if it turns out to be asked
+for.
 
 ---
 
-## Phase 5 — hosting — PREPARED 2026-08-15, awaiting two dashboard actions
+## Access — one login for both consoles
+
+### ⚠ Do NOT clear the path on the production application
+
+The tempting fix for "/admin isn't covered" is to remove the path so the
+application covers the whole hostname. On `dev.thauma.one` that is merely
+inconvenient. **On `thauma.one` it puts the entire public website behind a
+login** — every visitor to `/en/`, every page, bounced to a sign-in screen.
+
+Add the path. Do not remove it.
+
+### The shape to aim for
+
+One application per hostname, each covering BOTH paths. Cloudflare Access
+applications accept several domain entries, so this is one app, one policy, one
+audience tag — which is what "a single login" means in practice.
+
+```
+Thauma console (production)   thauma.one/staff        thauma.one/admin
+Thauma console (staging)      next.thauma.one/staff   next.thauma.one/admin
+Thauma console (dev)          dev.thauma.one/staff    dev.thauma.one/admin
+```
+
+Three applications rather than one covering everything, deliberately:
+production keeps its own policy so a change made while testing cannot loosen
+the live site. `ACCESS_AUD` is already a comma-separated list, so each keeps
+its own tag and the code needs no change.
+
+### Steps
+
+Zero Trust → Access → Applications → the application → **Edit**
+
+1. Under **Application domain**, there is an existing entry with path `staff`.
+2. **Add a domain** — same hostname, path `admin`.
+3. Save. Repeat per hostname.
+
+**Verify in a browser**, signed out (a private window):
+
+| | expected |
+|---|---|
+| `/staff/` | Cloudflare login page |
+| `/admin/` | the same Cloudflare login page |
+| `/en/` | the public site, no login — **production especially** |
+
+If `/admin/` shows Thauma's own dark "You need to sign in" page rather than
+Cloudflare's, the path is still not covered: that page is the Worker's own
+fallback, not Access.
+
+### Why the Worker checks anyway
+
+`isProtected()` in `worker.js` refuses `/staff*` and `/admin*` regardless of
+what the dashboard says. That is not redundant — it is the reason the
+misconfiguration on 2026-08-16 was a locked door rather than an open one. Two
+tests assert the two areas behave identically, because "they are both in the
+same `if`" stays true only until somebody edits one clause.
+
+### MFA — the real answer is an identity provider
+
+Access currently uses **one-time PIN**: a code sent to the email address. That
+is a single factor — whoever can read the mailbox can sign in.
+
+Real MFA comes from federating Access to an identity provider that enforces it,
+then requiring it in the policy:
+
+1. Zero Trust → Settings → **Authentication** → add a login method
+   (Google Workspace, Microsoft Entra, GitHub, Okta…)
+2. Enforce 2-step verification in that provider
+3. In the Access policy, **Require → Login Method**, and remove one-time PIN so
+   it cannot be used as a way around the requirement
+
+**This is the same decision as the mailbox one.** thauma.one has no mailboxes —
+MX points at Cloudflare Email Routing, which only forwards. Buying Google
+Workspace or Microsoft 365 solves mailboxes, identity and MFA together, and
+turns "who works here" into one list instead of three. Worth deciding once.
+
+SPEC §5 records the longer-term intent: Access federating to SAML/OIDC, with
+UniFi Identity Enterprise as a candidate IdP.
+
+---
+
+## Phase 4 — KV — SUPERSEDED
+
+This planned to move Netlify Blobs into KV. It happened, and then 0005 moved
+the same data out of KV and into D1, because a single KV document could not
+express ownership: directory and resources shared one entry for the whole
+installation, and saving it whole meant concurrent edits destroyed each other.
+
+KV still holds `GAME_SCORES`, which is genuinely a document read and written
+whole. `STAFF_DATA` is unused and can be deleted.
+
+---
+
+## Phase 5 — hosting — DONE 2026-08-15
 
 Reordered ahead of Phase 3 deliberately. The runbook claimed Decap had to go
 first because Git Gateway dies with Identity — but that is a *consequence* of
@@ -222,32 +459,14 @@ accepted — the exact cross-application hole the `aud` check exists to close.
 
 ---
 
-## Phase 5 (original notes)
-
-Only now, and by this point it really is just hosting.
-
-- [ ] `wrangler.toml` with static assets, D1 + KV bindings, and Cron Triggers
-- [ ] Route `/` through `lang-redirect`, `/api/contact` through `contact-form`
-- [ ] Set every env var: `ACCESS_*`, `RESEND_API_KEY`, `CONTACT_TO`,
-      `CONTACT_FROM`, `GAME_ADMIN_TOKEN`
-- [ ] Deploy to a workers.dev subdomain **first** and test everything there
-- [ ] **Verify on workers.dev:** `/` redirects by language, `/en/` renders,
-      `/staff/` challenges, the contact form sends, the 404 game saves a score
-- [ ] Point `thauma.one` at the Worker
-- [ ] Update the contact form's `action` to `/api/contact` and remove
-      `data-netlify="true"`
-- [ ] Keep the Netlify site alive but undeployed for a week
-
-**Rollback:** point DNS back at Netlify. Keep it deployable until you are sure.
-
----
-
 ## Phase 6 — cleanup
 
 - [ ] Delete `netlify/functions/*`, `netlify/edge-functions/*`, `netlify.toml`
+      — nothing serves them, but they still look like live code
 - [ ] Remove `@netlify/blobs` from `package.json`
-- [ ] Update `CLAUDE.md` and `docs/SPEC.md`
-- [ ] Archive the Netlify site
+- [ ] Delete the unused `STAFF_DATA` KV namespace (see Phase 4)
+- [ ] Archive the Netlify site once the rollback window closes
+- [x] `docs/SPEC.md` rewritten 2026-08-15
 
 ---
 
@@ -267,12 +486,11 @@ curl -s -o /dev/null -w 'staffdata %{http_code}\n' https://thauma.one/.netlify/f
 dig +short MX thauma.one
 ```
 
-Expected **once Phase 1 is complete and production is gated**: `302/301`,
-`200`, `302`, `401`, three `route*.mx.cloudflare.net`.
+Expected, and true as of the cutover: `302`, `200`, `302`, `401`, three
+`route*.mx.cloudflare.net`.
 
-Actual on production today: `302`, `200`, **`200`**, `404`, 3 MX. The third
-value is the one that must change before `dev` merges — see the warning at the
-top.
+**`staff` returning 200 means something is open that should not be.** That is
+the check worth wiring into a cron.
 
 **`staff` returning 200, or `staffdata` returning 200, means something is
 open that should not be.** That is the check worth wiring into a cron.
@@ -297,17 +515,28 @@ open that should not be.** That is the check worth wiring into a cron.
 - **Secrets in systemd `Environment=`** are expanded into the command line and
   visible in `ps`. Use `EnvironmentFile=` *and* have the program read the
   variable itself.
-- **Access applications are path-scoped.** `/staff*` does not cover
-  `/.netlify/functions/*`. Verify with curl rather than assuming.
+- **Access applications are path-scoped, and this bit twice.** `/staff*` does
+  not cover `/.netlify/functions/*` — and it does not cover `/admin*` either.
+  On 2026-08-16 `/admin/` returned a bare `{"error":"Not authorized"}` in the
+  browser: Access never intercepted the path, so no login was ever offered.
+  **Clear the path on the Access application so it covers the whole hostname**,
+  or add a second application for `admin`. The Worker now serves a sign-in page
+  rather than JSON when a PAGE is refused, so the failure is at least legible —
+  but the application still has to be right.
+- **`wrangler dev` rewrites the hostname.** Both `url.hostname` and the `Host`
+  header come back as the route in wrangler.toml, whatever the browser asked
+  for. Anything built from them — a login URL, a callback, an absolute link —
+  is wrong locally and right in production, which is the worst combination.
+  Prefer relative URLs.
 
 ---
 
 ## Test suites
 
 ```bash
-python3 db/test_schema.py          # 14 — schema guarantees
+python3 db/test_schema.py          # 30 — every migration, in order
 python3 db/build_snapshot.py       # regenerates the offline console dataset
-cd workers && npm test             # 100 — Access, lang, functions, contact, db
+cd workers && npm test             # 180 — Access, boundary, editors, admin, db
 node netlify/functions/_shared/access.test.js   # 15 — the Netlify-side Access check
 ```
 

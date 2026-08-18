@@ -1,0 +1,93 @@
+# Deploy next.thauma.one
+#
+# WHY THIS EXISTS
+#
+# This is the PREVIEW. The Preview button in /admin/publish/ dispatches it
+# against `main`, so next.thauma.one shows exactly what pressing Publish would
+# send to the live site — words included, since content saves commit to `main`
+# and simply do not deploy.
+#
+# ⚠ DISPATCH ONLY. There is deliberately no push trigger.
+#
+# It had one, on `dev`, back when content was edited there. Leaving it would
+# now break the one promise this workflow makes: `sync-dev.yml` pushes to `dev`
+# every time content changes, so staging would rebuild from `dev` behind
+# somebody's back and "Preview" would quietly start meaning "whatever was
+# pushed most recently". A preview that is not what you would publish is worse
+# than no preview, because it gets believed.
+#
+# To try code out on staging before merging it, dispatch this manually with
+# ref `dev` — an explicit act, which is the point.
+#
+# THE SAME BUILD AND THE SAME TESTS AS PRODUCTION, deliberately. A staging
+# deploy that skipped the checks could pass while production failed, which is
+# the one thing staging must never do. The only differences are the output
+# directory and the wrangler environment.
+name: Deploy staging
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Node 20 to match the Pi and the production workflow. wrangler is pinned
+      # to exactly 4.86.0 — 4.123+ needs Node 22. See docs/SPEC.md §8.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - run: npm ci
+
+      # _site_next, which is what [assets] points at in the top-level config.
+      # NOT _site — that is the local dev server's ungated watch output, and
+      # pointing a deploy at it once would have published every unreleased page.
+      - name: Build
+        run: npx @11ty/eleventy --output=_site_next
+
+      - name: Test
+        run: |
+          node test/visibility.test.mjs
+          node test/csv.test.mjs
+          python3 db/test_schema.py
+          cd workers && npm test
+
+      - name: Deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: 57c887d9191048d984a7607c9e9334b7
+        # No --env: the top-level config IS staging. Production has to be named
+        # out loud, which is why the dangerous one is the one that needs a flag.
+        run: npx wrangler deploy
+
+      # Staging carries the dev database and the same Access gate, so the codes
+      # that would reveal a problem are the same ones production checks.
+      - name: Verify staging
+        run: |
+          sleep 5
+          fail=0
+          check() {
+            got=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$1")
+            if [ "$got" = "$2" ]; then
+              echo "ok   $1 -> $got"
+            else
+              echo "::error::$1 returned $got, expected $2"
+              fail=1
+            fi
+          }
+          check https://next.thauma.one/en/ 200
+          check https://next.thauma.one/ 302
+          check https://next.thauma.one/staff/ 302
+          check https://next.thauma.one/api/staff-snapshot 401
+          check https://next.thauma.one/api/admin/publish 401
+          exit $fail

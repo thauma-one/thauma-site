@@ -12,6 +12,7 @@
 import { memoryStore } from "../src/lib/store.js";
 import * as game from "../src/game-scores.js";
 import * as staff from "../src/staff-data.js";
+import worker, { isProtected } from "../src/worker.js";
 
 let pass = 0, fail = 0;
 async function check(name, fn) {
@@ -139,65 +140,152 @@ console.log("\nstaff-data\n");
 const OPEN = { ACCESS_TEAM_DOMAIN: "t.cloudflareaccess.com", ACCESS_AUD: "aud" };
 
 await check("unauthenticated GET is refused", async () => {
-  const r = await staff.handle(get(), OPEN, memoryStore());
+  const r = await staff.default.fetch(get(), OPEN);
   eq(r.status, 401, "status");
 });
 
 await check("unauthenticated POST cannot write", async () => {
-  const s = memoryStore();
-  const r = await staff.handle(post({ contacts: [{ name: "Injected" }] }), OPEN, s);
+  const r = await staff.default.fetch(post({ kind: "contact", name: "Injected" }), OPEN);
   eq(r.status, 401, "status");
-  eq(s._dump().data, undefined, "an unauthenticated write reached the store");
 });
 
 await check("a misconfigured deploy FAILS CLOSED with 500", async () => {
-  const r = await staff.handle(get(), {}, memoryStore());
+  const r = await staff.default.fetch(get(), { DB: {} });
   eq(r.status, 500, "status");
 });
 
-await check("contacts are sanitised: bad emails and phones dropped", async () => {
-  const out = staff.sanitizeContacts([
-    { name: "Real", emails: ["ok@x.com", "not-an-email"], phones: ["+1 (816) 555-0100", "<script>"] },
-    { name: "", emails: ["x@y.z"] },
-  ]);
-  eq(out.length, 1, "nameless contact kept");
-  eq(out[0].emails, ["ok@x.com"], "emails");
-  eq(out[0].phones, ["+1 (816) 555-0100", ""].filter(Boolean), "phones");
+await check("javascript: and data: links are refused", async () => {
+  // Resources render as clickable anchors, so a link field is a place to put
+  // stored XSS. Escaping the text does not help — the browser executes the
+  // scheme, not the markup. This was dropped in the 0005 rewrite and these
+  // tests are what caught it.
+  eq(staff.safeLink("javascript:alert(1)"), null, "javascript:");
+  eq(staff.safeLink("data:text/html,<script>"), null, "data:");
+  eq(staff.safeLink("JaVaScRiPt:alert(1)"), null, "mixed case");
+  eq(staff.safeLink("vbscript:msgbox"), null, "vbscript:");
 });
 
-await check("javascript: and data: links are stripped from resources", async () => {
-  const out = staff.sanitizeResources([
-    { title: "Bad", link: "javascript:alert(1)" },
-    { title: "Bad2", link: "data:text/html,<script>" },
-    { title: "Good", link: "https://example.com" },
-  ]);
-  eq(out.map((r) => r.link), ["", "", "https://example.com"], "links");
+await check("ordinary links and paths survive", async () => {
+  eq(staff.safeLink("https://example.com"), "https://example.com", "https");
+  eq(staff.safeLink("mailto:a@b.co"), "mailto:a@b.co", "mailto");
+  eq(staff.safeLink("/img/photo.jpg"), "/img/photo.jpg", "relative path");
+  eq(staff.safeLink(""), null, "empty");
 });
 
-await check("photo sources must be http(s) or root-relative", async () => {
-  const out = staff.sanitizeResources([
-    { title: "a", photo: "javascript:x" },
-    { title: "b", photo: "/img/ok.webp" },
-    { title: "c", photo: "https://cdn.example/x.png" },
-  ]);
-  eq(out.map((r) => r.photo), ["", "/img/ok.webp", "https://cdn.example/x.png"], "photos");
-});
-
-await check("list and field lengths are capped", async () => {
-  const many = Array.from({ length: 80 }, (_, i) => ({ name: "n" + i }));
-  eq(staff.sanitizeContacts(many).length, 50, "contacts cap");
-  const c = staff.sanitizeContacts([{ name: "x".repeat(400) }])[0];
-  assert(c.name.length === 100, "name not clamped");
-  const emails = Array.from({ length: 20 }, (_, i) => `a${i}@b.co`);
-  eq(staff.sanitizeContacts([{ name: "n", emails }])[0].emails.length, 5, "emails cap");
-});
-
-await check("non-array input yields an empty list, not a crash", async () => {
-  for (const bad of [null, undefined, "nope", 42, {}]) {
-    eq(staff.sanitizeContacts(bad), [], `contacts ${JSON.stringify(bad)}`);
-    eq(staff.sanitizeResources(bad), [], `resources ${JSON.stringify(bad)}`);
+await check("an allow-list, not a block-list", async () => {
+  // Blocking known-bad schemes invites the next one. Only http, https and
+  // mailto pass, so a scheme nobody has thought of is refused by default.
+  for (const s of ["ftp://x/y", "file:///etc/passwd", "chrome://settings",
+                   "blob:https://x/1", "intent://scan/#Intent;end"]) {
+    eq(staff.safeLink(s), null, s);
   }
 });
+
+await check("addresses that are not addresses are dropped", async () => {
+  eq(staff.isEmail("ok@x.com"), true, "valid");
+  eq(staff.isEmail("not-an-email"), false, "no @");
+  eq(staff.isEmail("a@b"), false, "no tld");
+  eq(staff.isEmail("a b@c.com"), false, "space");
+});
+
+
+
+
+
+
+
+
+await check("photo sources go through the same allow-list as links", async () => {
+  // A photo URL ends up in an <img src>, which is another place a scheme is
+  // executed rather than displayed.
+  eq(staff.safeLink("javascript:alert(1)"), null, "javascript photo");
+  eq(staff.safeLink("/img/x.jpg"), "/img/x.jpg", "root-relative photo");
+  eq(staff.safeLink("https://cdn.example.com/x.jpg"), "https://cdn.example.com/x.jpg", "https photo");
+});
+
+
+/* ---------------------------------------------------------------------------
+   The sign-in page
+
+   Added after /admin/ returned the bare string {"error":"Not authorized"} in a
+   browser window — no explanation and nothing to click, reported as "not
+   authorized with no way to authorize". The cause was a path-scoped Access
+   application; the lesson is that this Worker must not assume the dashboard is
+   configured correctly.
+   --------------------------------------------------------------------------- */
+
+await check("/staff and /admin are gated IDENTICALLY", async () => {
+  /* Chase asked for these to work the same way, and "they're both in the same
+     if statement" is true until somebody edits one clause. This compares the
+     actual behaviour of the two areas rather than trusting the source to stay
+     symmetrical.
+
+     It is also the property the Cloudflare Access application got wrong: it
+     covered `staff` and not `admin`, so one area had a login page and the
+     other had a JSON error. The dashboard is not something this test can
+     check — this is the half that can be. */
+  const env = { ACCESS_TEAM_DOMAIN: "t.cloudflareaccess.com", ACCESS_AUD: "aud" };
+
+  const staffPaths = ["/staff", "/staff/", "/staff/settings/", "/staff/data/snapshot.json"];
+  const adminPaths = ["/admin", "/admin/", "/admin/users/", "/admin/publish/"];
+
+  for (const [a, b] of staffPaths.map((p, i) => [p, adminPaths[i]])) {
+    for (const accept of ["text/html", "application/json"]) {
+      const ra = await worker.fetch(new Request("https://x" + a, { headers: { Accept: accept } }), env);
+      const rb = await worker.fetch(new Request("https://x" + b, { headers: { Accept: accept } }), env);
+      eq(ra.status, rb.status, `${a} and ${b} disagree on status (${accept})`);
+      eq(ra.headers.get("content-type"), rb.headers.get("content-type"),
+         `${a} and ${b} disagree on content type (${accept})`);
+    }
+  }
+});
+
+await check("isProtected covers both areas and nothing else", () => {
+  for (const p of ["/staff", "/staff/", "/staff/settings/", "/admin", "/admin/", "/admin/users/"]) {
+    assert(isProtected(p), `${p} must be protected`);
+  }
+  /* The near-misses matter more than the hits. A prefix check written as
+     startsWith("/admin") alone would swallow /administration, and one written
+     too loosely would leave /staffing gated for no reason. */
+  for (const p of ["/", "/en/", "/en/give/", "/staffing", "/administration", "/admin-x",
+                   "/api/admin", "/api/staff-data", "/img/logo.svg"]) {
+    assert(!isProtected(p), `${p} must NOT be protected`);
+  }
+});
+
+await check("a refused PAGE gets HTML with a way in", async () => {
+  const res = await worker.fetch(
+    new Request("https://dev.thauma.one/admin/", { headers: { Accept: "text/html" } }),
+    { ACCESS_TEAM_DOMAIN: "t.cloudflareaccess.com", ACCESS_AUD: "aud" });
+  eq(res.status, 401, "status");
+  assert((res.headers.get("content-type") || "").includes("text/html"), "must be a page");
+  const body = await res.text();
+  assert(/Sign in/.test(body), "must offer a way in");
+  assert(/href="\/staff\/"/.test(body), "the link must be relative — a built hostname is wrong under wrangler dev");
+});
+
+await check("a refused API CALL still gets JSON", async () => {
+  // A redirect or an HTML body here would break every fetch() in the console
+  // silently. Those callers handle 401 correctly already.
+  for (const path of ["/api/admin", "/api/staff-snapshot", "/api/admin/content"]) {
+    const res = await worker.fetch(
+      new Request("https://dev.thauma.one" + path, { headers: { Accept: "application/json" } }),
+      { ACCESS_TEAM_DOMAIN: "t.cloudflareaccess.com", ACCESS_AUD: "aud" });
+    eq(res.status, 401, path + " status");
+    assert(!(res.headers.get("content-type") || "").includes("text/html"),
+           path + " must not answer a program with a web page");
+  }
+});
+
+await check("a page request from a script is not given HTML", async () => {
+  // fetch() without an Accept header must get JSON, not the sign-in page.
+  const res = await worker.fetch(
+    new Request("https://dev.thauma.one/admin/"),
+    { ACCESS_TEAM_DOMAIN: "t.cloudflareaccess.com", ACCESS_AUD: "aud" });
+  eq(res.status, 401, "status");
+  assert(!(res.headers.get("content-type") || "").includes("text/html"), "should be JSON");
+});
+
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

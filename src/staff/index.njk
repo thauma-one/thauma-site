@@ -3,31 +3,28 @@ layout: layouts/staff.njk
 staffPage: index
 staffNum: "01"
 staffTitle: Dashboard
-staffLive: true
 staffHeading: Where things <b>stand</b>
 ---
 <div class="tiles" id="tiles"></div>
 
 <div class="quick">
   <a class="quick-card" href="/staff/stewardship/">
-    <span class="qk">Stewardship</span>
+    <span class="qk" data-i18n="dash.stewardship">Stewardship</span>
     <span class="qv tnum" id="qStale">—</span>
-    <span class="qs">people overdue a personal contact</span>
+    <span class="qs" data-i18n="dash.staleNote">people overdue a personal contact</span>
   </a>
   <a class="quick-card" href="/staff/support/">
-    <span class="qk">Support</span>
+    <span class="qk" data-i18n="dash.support">Support</span>
     <span class="qv tnum" id="qGoal">—</span>
-    <span class="qs">of the monthly goal</span>
+    <span class="qs" data-i18n="dash.goalNote">of the monthly goal</span>
   </a>
   <a class="quick-card" href="/staff/directory/">
-    <span class="qk">Directory</span>
+    <span class="qk" data-i18n="dash.directory">Directory</span>
     <span class="qv tnum" id="qContacts">—</span>
-    <span class="qs">network contacts</span>
+    <span class="qs" data-i18n="dash.contactsNote">network contacts</span>
   </a>
 </div>
 
-<p class="note foot-note">
-  Dashboard, Support, Stewardship and Activity read <code>/api/staff-snapshot</code>, which runs
+<p class="note foot-note"><span data-i18n-html="dash.foot">Dashboard, Support, Stewardship and Activity read <code>/api/staff-snapshot</code>, which runs
   the named queries in <code>db/queries.sql</code> against the operations database and returns
-  only the rows your account has been granted. <span id="genStamp"></span>
-</p>
+  only the rows your account has been granted.</span> <span id="snapshotPartner" class="who-for" hidden></span> <span id="genStamp"></span></p>

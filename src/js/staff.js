@@ -47,12 +47,20 @@
   // db/build_snapshot.py and still served at /staff/data/snapshot.json —
   // point this back at it to work on the console without a database.
   var SNAPSHOT_URL = '/api/staff-snapshot';
-  var STAFF_API = '/.netlify/functions/staff-data';
+  var STAFF_API = '/api/staff-data';
 
   var CRIT_DAYS = 120;
   var WARN_DAYS = 60;
 
   var $ = function (id) { return document.getElementById(id); };
+
+  /* Strings built here rather than sitting in the markup cannot be reached by
+     a data-i18n sweep, so they go through the dictionary by hand. Falls back
+     to the key's English if i18n has not loaded, which is better than a blank
+     tile. */
+  function tr(key) {
+    return window.StaffI18n ? window.StaffI18n.t(key) : key;
+  }
   var state = { contacts: [], resources: [] };
 
   function esc(s) {
@@ -90,9 +98,18 @@
   // Each block is guarded: a page only has the elements it needs, and a
   // missing one means "not on this page", not "something broke".
   function renderSnapshot(d) {
-    if ($('partnerPill')) {
-      $('partnerPill').textContent = d.partner.display_name;
-      $('partnerPill').hidden = false;
+    /* The pill is NOT written here any more. It carries the signed-in
+       person, and this line — left over from when it carried the partner —
+       overwrote that a moment after the page loaded. It only ran on the four
+       pages that fetch a snapshot, which is exactly why the name reverted on
+       those and held everywhere else.
+
+       Only one place may write to the pill: paintIdentity(). */
+    // Whose records these are — labelled, on the page, where there is room
+    // for the word "for". The pill in the header is who YOU are.
+    if ($('snapshotPartner')) {
+      $('snapshotPartner').textContent = tr('dash.showingFor') + ' ' + d.partner.display_name + '.';
+      $('snapshotPartner').hidden = false;
     }
     if ($('genStamp')) {
       var when = new Date(d.generated_at);
@@ -115,13 +132,13 @@
 
     // --- tiles ---
     if ($('tiles')) $('tiles').innerHTML = [
-      { k: 'Needs attention', v: stale,
+      { k: tr('dash.needsAttention'), v: stale,
         s: 'no personal contact in ' + d.stale_days + '+ days',
         cls: stale > 0 ? 'alert' : 'calm' },
-      { k: 'Supporters', v: s.contacts_total, s: 'active records' },
-      { k: 'Newsletter opt-in', v: s.newsletter_optin,
+      { k: tr('dash.supporters'), v: s.contacts_total, s: 'active records' },
+      { k: tr('dash.newsletterOptin'), v: s.newsletter_optin,
         s: 'of ' + s.contacts_total + ' — consent recorded separately' },
-      { k: 'Personal touches', v: s.personal_last_30, s: 'in the last 30 days' }
+      { k: tr('dash.personalTouches'), v: s.personal_last_30, s: 'in the last 30 days' }
     ].map(function (t) {
       return '<div class="tile ' + (t.cls || '') + '">' +
         '<span class="k">' + esc(t.k) + '</span>' +
@@ -236,7 +253,7 @@
           return '<a class="lnk" href="tel:' + esc(String(p).replace(/[^0-9+]/g, '')) + '">' +
                  esc(p) + '</a>'; }).join('') +
       '</div>';
-    }).join('') || '<p class="empty">No contacts yet.</p>';
+    }).join('') || '<p class="empty">' + tr('dir.empty') + '</p>';
 
     if ($('resourceList')) $('resourceList').innerHTML = state.resources.map(function (r, i) {
       return '<div class="card">' +
@@ -248,7 +265,7 @@
         (r.description ? '<p>' + esc(r.description) + '</p>' : '') +
         (r.link ? '<a class="lnk" href="' + esc(r.link) + '" target="_blank" rel="noopener">Open →</a>' : '') +
       '</div>';
-    }).join('') || '<p class="empty">No resources yet.</p>';
+    }).join('') || '<p class="empty">' + tr('res.empty') + '</p>';
   }
 
   function showUpdated(data) {
@@ -261,53 +278,77 @@
   async function loadStaffData() {
     try {
       var res = await fetch(STAFF_API, { credentials: 'same-origin' });
-      if (res.status === 401 || res.status === 500) {
-        if ($('roleNote')) $('roleNote').hidden = false;
-        var why = res.status === 500 ? 'Access is not configured on this deploy.'
-                                     : 'The token was refused.';
-        if ($('contacts')) $('contacts').innerHTML = '<p class="empty">' + why + '</p>';
-        if ($('resourceList')) $('resourceList').innerHTML = '<p class="empty">' + why + '</p>';
+      var body = await res.json().catch(function () { return {}; });
+
+      if (!res.ok) {
+        // A 403 here usually means "no partner", which is a normal state for
+        // an administrator or a board member — not a fault. The endpoint says
+        // which, and its wording is used rather than a generic message.
+        if (body.you && window.StaffIdentity) window.StaffIdentity(body.you);
+        noteActing(body);
+        var why = res.status === 500 ? tr('err.unreachable')
+                : res.status === 403 ? (body.error || tr('err.noPartner'))
+                : tr('err.expired');
+        if ($('contacts')) $('contacts').innerHTML = '<p class="empty">' + esc(why) + '</p>';
+        if ($('resourceList')) $('resourceList').innerHTML = '<p class="empty">' + esc(why) + '</p>';
         return;
       }
-      var data = await res.json();
-      state.contacts = data.contacts || [];
-      state.resources = data.resources || [];
+      if (body.you) rememberIdentity(body.you, body.partner);
+      noteActing(body);
+      state.contacts = body.contacts || [];
+      state.resources = body.resources || [];
+      state.canSetVisibility = !!(body.can && body.can.set_visibility);
       renderCards();
-      showUpdated(data);
     } catch (e) {
       if ($('contacts')) {
-        $('contacts').innerHTML = '<p class="empty">Could not load — ' + esc(e.message) + '</p>';
+        $('contacts').innerHTML = '<p class="empty">' + esc(tr('err.unreachable')) + '</p>';
       }
     }
   }
 
-  // Render the optimistic local state immediately, then persist. On any
-  // failure, reload real server state so the UI never shows something that
-  // did not actually save.
-  async function saveData() {
-    renderCards();
-    setStatus('Saving…', false);
+  /* ONE ITEM AT A TIME.
+
+     This used to POST the entire document — every contact and every resource
+     — on any change. With a single shared store that quietly meant last write
+     wins: two people editing the same afternoon and the second erased the
+     first. Now each save touches one row, and the server returns the fresh
+     list rather than this page assuming its own copy is right. */
+  async function saveItem(kind, item) {
+    setStatus(tr('common.saving'), false);
     try {
       var res = await fetch(STAFF_API, {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contacts: state.contacts, resources: state.resources })
+        body: JSON.stringify(Object.assign({ kind: kind }, item))
       });
-      if (!res.ok) {
-        var msg = 'Save failed (' + res.status + ')';
-        try { var err = await res.json(); if (err && err.error) msg += ': ' + err.error; } catch (e) {}
-        setStatus(msg, true);
-        await loadStaffData();
-        return;
-      }
-      var data = await res.json();
-      state.contacts = data.contacts || [];
-      state.resources = data.resources || [];
+      var body = await res.json().catch(function () { return {}; });
+      if (!res.ok) throw new Error(body.error || ('save failed (' + res.status + ')'));
+
+      if (body.contacts) state.contacts = body.contacts;
+      if (body.resources) state.resources = body.resources;
       renderCards();
-      showUpdated(data);
+      setStatus('');
+      if (window.StaffToast) window.StaffToast(tr('toast.saved'), 'ok');
     } catch (e) {
-      setStatus('Save failed: ' + e.message, true);
+      setStatus(e.message, true);
+      await loadStaffData();
+    }
+  }
+
+  async function deleteItem(kind, id) {
+    try {
+      var res = await fetch(STAFF_API + '?kind=' + kind + '&id=' + encodeURIComponent(id), {
+        method: 'DELETE', credentials: 'same-origin'
+      });
+      var body = await res.json().catch(function () { return {}; });
+      if (!res.ok) throw new Error(body.error || ('delete failed (' + res.status + ')'));
+      if (body.contacts) state.contacts = body.contacts;
+      if (body.resources) state.resources = body.resources;
+      renderCards();
+      if (window.StaffToast) window.StaffToast(tr('toast.deleted'), 'ok');
+    } catch (e) {
+      setStatus(e.message, true);
       await loadStaffData();
     }
   }
@@ -358,17 +399,18 @@
         phones: Array.from(document.querySelectorAll('.c-phone'))
                   .map(function (i) { return i.value.trim(); }).filter(Boolean)
       };
-      if (idx === '') state.contacts.push(entry); else state.contacts[idx] = entry;
+      if (idx !== '') entry.id = state.contacts[idx] && state.contacts[idx].id;
       cForm.classList.remove('open'); cForm.reset();
       emails.innerHTML = ''; phones.innerHTML = '';
-      saveData();
+      saveItem('contact', entry);
     });
 
     // event delegation — cards re-render on every save
     $('contacts').addEventListener('click', function (e) {
       if (e.target.dataset.editContact !== undefined) open(e.target.dataset.editContact);
       if (e.target.dataset.deleteContact !== undefined) {
-        state.contacts.splice(Number(e.target.dataset.deleteContact), 1); saveData();
+        var c = state.contacts[Number(e.target.dataset.deleteContact)];
+        if (c && confirm('Delete "' + c.name + '"?')) deleteItem('contact', c.id);
       }
     });
   }
@@ -398,15 +440,16 @@
         link: $('resourceLink').value,
         photo: $('resourcePhoto').value
       };
-      if (idx === '') state.resources.push(entry); else state.resources[idx] = entry;
+      if (idx !== '') entry.id = state.resources[idx] && state.resources[idx].id;
       rForm.classList.remove('open'); rForm.reset();
-      saveData();
+      saveItem('resource', entry);
     });
 
     $('resourceList').addEventListener('click', function (e) {
       if (e.target.dataset.editResource !== undefined) open(e.target.dataset.editResource);
       if (e.target.dataset.deleteResource !== undefined) {
-        state.resources.splice(Number(e.target.dataset.deleteResource), 1); saveData();
+        var r = state.resources[Number(e.target.dataset.deleteResource)];
+        if (r && confirm('Delete "' + r.title + '"?')) deleteItem('resource', r.id);
       }
     });
   }
@@ -418,45 +461,299 @@
   // Access exposes the signed-in user at this endpoint on any gated hostname.
   // Cosmetic only: authorisation already happened at the edge and is
   // re-verified server-side by the function.
+  /* WHO IS SIGNED IN.
+
+     Two sources, in order of authority:
+
+       our database   the name we hold for this account. Cached, because not
+                      every page makes a request that returns it, and a header
+                      that fills in a second late reads as a glitch.
+
+       Access         the fallback. It carries whatever the identity provider
+                      chose to share, which is frequently an email and nothing
+                      else — which is why the name was missing on some pages
+                      and present on others. */
+  /* sessionStorage, NOT localStorage.
+
+     The cache exists to stop the header flashing blank while navigating
+     between pages — which is a within-one-session problem, and sessionStorage
+     is scoped to exactly that: one tab, cleared when it closes.
+
+     localStorage would outlive the session, so on a shared machine the next
+     person to sign in would briefly see the PREVIOUS person's name before
+     their own arrived. Small, and wrong in the one direction that matters —
+     showing nothing is never incorrect, showing somebody else always is. */
+  var IDENT = 'thauma.staff.who';
+
+  /* THE HEADER SAYS WHO YOU ARE, ONCE.
+
+     The pill carries the signed-in person's NAME; the block beside it carries
+     their role. Both used to show the name, which is a thing said twice, and
+     the pill previously showed the PARTNER — so on one screen it read
+     "Chase Roush" while the block read "Org Admin" and the two looked like a
+     contradiction rather than two different facts.
+
+     Which partner's records are on screen is a real thing to know, but it
+     belongs where it has room to be labelled: Settings says "Working with X".
+     It matters more once an admin can view several, and a bare name in a
+     corner is the wrong place to learn that. */
+  var ROLE_LABEL = { admin: 'Administration', staff: 'Staff', board: 'Board' };
+
+  function paintIdentity(who) {
+    if (!who) return;
+
+    var raw = who.roles || [];
+    var roles = raw.map(function (r) { return ROLE_LABEL[r] || r; });
+
+    // Name and role in ONE chip. They were two elements side by side, which
+    // made the right of the header four items wide and wrapped the lot onto a
+    // second line inside a header that could not grow.
+    if (who.name && $('partnerPill')) {
+      $('partnerPill').innerHTML = esc(who.name) +
+        (roles.length ? '<span class="role">' + esc(roles.join(' · ')) + '</span>' : '');
+      $('partnerPill').hidden = false;
+      $('partnerPill').title = who.email || '';
+    }
+
+    // The door to administration, shown only to people who can open it. The
+    // endpoint refuses everyone else regardless — this is about not offering.
+    if ($('toAdmin')) $('toAdmin').hidden = raw.indexOf('admin') < 0;
+  }
+
+  /* Called by any page whose data included an identity block. */
+  function rememberIdentity(who, partner) {
+    if (partner && partner.display_name) who = Object.assign({}, who, {
+      partner_name: partner.display_name });
+    if (!who || !who.email) return;
+    try { sessionStorage.setItem(IDENT, JSON.stringify(who)); } catch (e) {}
+    paintIdentity(who);
+  }
+  window.StaffIdentity = rememberIdentity;
+
+  /* =====================================================================
+     ACTING AS SOMEBODY ELSE — unmissable, permanent, not flashing
+     =====================================================================
+     An administrator can open a partner's console to see what they see.
+     Every screen then shows one person's data while a different person is
+     signed in, and the failure mode is somebody editing the wrong ministry
+     believing it was their own.
+
+     So the state is carried THREE ways at once, for the same reason the
+     admin area is: it has to survive being seen in a hurry, in greyscale,
+     or by somebody who does not perceive colour the way the designer does.
+
+       a band across the top naming whose account it is
+       a border round the entire viewport
+       a watermark fixed in the corner, visible while scrolling
+
+     A FLASHING banner was the first instinct and is a photosensitivity
+     hazard. A permanent one is both safer and harder to ignore — a thing
+     that blinks becomes background, a thing that is always there is a
+     thing you are looking at.
+
+     THE SERVER DECIDES. This is painted only from `acting` in an API
+     response, never from the cookie: a person could set the cookie by hand
+     and the server would ignore it, and a banner claiming otherwise would
+     be a lie about who you are.
+     ===================================================================== */
+
+  var ACTING = 'thauma.staff.acting';
+  var actingNow = null;
+
+  /* CACHED, AND PAINTED BEFORE ANY REQUEST.
+     Two bugs, one cause. The banner used to be painted only from a successful
+     API response, so (a) it flashed absent on every page load until the fetch
+     came back, and (b) if the fetch FAILED it never appeared at all — leaving
+     somebody inside another person's account with no indication of it, at the
+     exact moment the screen is confusing for other reasons.
+
+     sessionStorage, not localStorage: it exists to survive navigation within
+     one session, and on a shared machine localStorage would tell the next
+     person they are inside somebody's account. */
+  function cacheActing(acting) {
+    try {
+      if (acting) sessionStorage.setItem(ACTING, JSON.stringify(acting));
+      else sessionStorage.removeItem(ACTING);
+    } catch (e) {}
+  }
+
+  function paintActing(acting) {
+    var had = !!actingNow;
+    actingNow = acting || null;
+    cacheActing(actingNow);
+
+    /* THE LANGUAGE FOLLOWS THE ACCOUNT, IN BOTH DIRECTIONS.
+
+       Seeing what somebody sees means reading what they read, so their
+       language goes on screen — transiently, so it never becomes your own
+       stored preference. Stopping puts yours back.
+
+       Both halves were missing. Opening a Serbian account left the console in
+       English until some later request happened to set it, and stopping left
+       it in Serbian permanently, because the language cache is localStorage
+       and nothing ever put it back. */
+    if (window.StaffI18n) {
+      if (actingNow && actingNow.lang) {
+        window.StaffI18n.setLang(actingNow.lang, { transient: true });
+      } else if (had && !actingNow) {
+        window.StaffI18n.setLang(window.StaffI18n.ownLang(), { transient: true });
+      }
+    }
+
+    if (!actingNow) {
+      if (had) {
+        document.body.classList.remove('is-acting');
+        var old = document.getElementById('actingBar');
+        if (old) old.remove();
+        var mark = document.getElementById('actingMark');
+        if (mark) mark.remove();
+      }
+      return;
+    }
+
+    document.body.classList.add('is-acting');
+
+    /* THE BANNER IS IN YOUR LANGUAGE, not theirs.
+
+       It is a message to the administrator — whose account this is, and how to
+       leave — and the person being viewed never sees it. The console around it
+       is deliberately in their language; the controls for getting out of it
+       are yours. `mine` falls back to plain tr() if an older cached copy of
+       staff-i18n.js is in the browser, so a stale asset degrades to the wrong
+       language rather than to a crash. */
+    var myLang = (window.StaffI18n && window.StaffI18n.ownLang)
+      ? window.StaffI18n.ownLang() : 'en';
+    var mine = (window.StaffI18n && window.StaffI18n.tIn)
+      ? function (k) { return window.StaffI18n.tIn(myLang, k); }
+      : tr;
+
+    var bar = document.getElementById('actingBar');
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.id = 'actingBar';
+      bar.className = 'acting-bar';
+      bar.setAttribute('role', 'status');
+      document.body.appendChild(bar);
+    }
+    bar.innerHTML =
+      '<span class="acting-eye" aria-hidden="true">\u25C9</span>' +
+      '<span class="acting-text">' +
+        '<b>' + esc(actingNow.name) + '</b>' +
+        '<span>' + esc(mine('act.youAreViewing')) + '</span>' +
+      '</span>' +
+      '<button type="button" class="acting-stop" id="actingStop">' +
+        esc(mine('act.stop')) + '</button>';
+
+    var mark = document.getElementById('actingMark');
+    if (!mark) {
+      mark = document.createElement('div');
+      mark.id = 'actingMark';
+      mark.className = 'acting-mark';
+      mark.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(mark);
+    }
+    mark.textContent = mine('act.watermark').replace('{name}', actingNow.name);
+  }
+
+  /* THE WAY OUT MUST NEVER DEPEND ON ANYTHING OPTIONAL.
+
+     This broke once, and the failure was total: the handler called
+     StaffI18n.ownLang(), a browser holding an older cached copy of
+     staff-i18n.js did not have that function, the TypeError killed the
+     callback, and the navigation never ran. Pressing Stop did nothing at all,
+     with no error anybody could see.
+
+     A guard of `if (window.StaffI18n)` did not help, because the object
+     existed — only the function was missing. So every piece of cleanup below
+     is individually isolated, and the navigation happens whatever any of them
+     does. Being unable to leave somebody else's account is the worst state
+     this feature has. */
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('#actingStop');
+    if (!btn) return;
+    btn.disabled = true;
+
+    var leave = function () {
+      try { sessionStorage.removeItem(IDENT); } catch (err) {}
+      try { cacheActing(null); } catch (err) {}
+      try {
+        if (window.StaffI18n && window.StaffI18n.ownLang) {
+          window.StaffI18n.setLang(window.StaffI18n.ownLang(), { transient: true });
+        }
+      } catch (err) {}
+      // Back to where the support job started.
+      location.href = '/admin/users/';
+    };
+
+    fetch('/api/admin/act-as', { method: 'DELETE', credentials: 'same-origin' })
+      .then(function (res) {
+        if (res.ok) return leave();
+        /* The server refused. The cookie is still set, so leaving now would
+           land on the admin page still acting — confusing, but visible and
+           recoverable. Staying put with a dead button is neither. */
+        btn.disabled = false;
+        if (window.StaffToast) window.StaffToast(tr('err.refused') + ' (' + res.status + ')', 'bad');
+      })
+      .catch(function () {
+        btn.disabled = false;
+        if (window.StaffToast) window.StaffToast(tr('err.unreachable'), 'bad');
+      });
+  });
+
+  /* Called by every loader with whatever the server said.
+
+     A response with no `acting` property carries NO OPINION and must not clear
+     a banner — that is what a failed request looks like, and a failed request
+     is the worst possible moment to stop telling somebody whose account they
+     are in. Only an explicit `acting: null` from a request the server actually
+     answered takes the banner down. */
+  function noteActing(body) {
+    if (!body || typeof body !== 'object') return;
+    if (!Object.prototype.hasOwnProperty.call(body, 'acting')) return;
+    paintActing(body.acting);
+  }
+  window.StaffActing = noteActing;
+
+  /* Paint from cache at once, before anything is fetched. The server corrects
+     it a moment later if it disagrees. */
+  (function () {
+    try {
+      var cached = JSON.parse(sessionStorage.getItem(ACTING) || 'null');
+      if (cached) paintActing(cached);
+    } catch (e) {}
+  })();
+
+
   function loadIdentity() {
+    try {
+      var cached = JSON.parse(sessionStorage.getItem(IDENT) || 'null');
+      if (cached) paintIdentity(cached);
+    } catch (e) {}
+
     return fetch('/cdn-cgi/access/get-identity', { credentials: 'same-origin' })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (id) {
         if (!id) throw new Error('no identity');
-        $('userName').textContent = id.name || id.email || 'Signed in';
-        $('userRole').textContent = id.email && id.name ? id.email : 'Cloudflare Access';
+        // Only fills a gap. A name from our own records outranks whatever the
+        // identity provider happens to carry, which is often an email and
+        // nothing else — that difference is why the header used to show a
+        // name on some pages and not others.
+        var pill = $('partnerPill');
+        if (pill && pill.hidden) {
+          pill.textContent = id.name || id.email || tr('common.signedIn');
+          pill.title = id.email || '';
+          pill.hidden = false;
+        }
       })
       .catch(function () {
-        $('userName').textContent = 'Signed in';
-        $('userRole').textContent = 'Cloudflare Access';
+        var pill = $('partnerPill');
+        if (pill && pill.hidden) {
+          pill.textContent = tr('common.signedIn');
+          pill.hidden = false;
+        }
       });
   }
 
-  // Every element a snapshot-backed page might render into. Used to place an
-  // error where the reader is actually looking, whichever page they are on.
-  function snapshotHosts() {
-    return ['tiles', 'goalGrid', 'rows', 'auditList'].map($).filter(Boolean);
-  }
-
-  function snapshotError(html) {
-    var hosts = snapshotHosts();
-    if (!hosts.length) return;
-    // A table body needs a cell; a div does not.
-    hosts.forEach(function (h) {
-      h.innerHTML = h.tagName === 'TBODY'
-        ? '<tr><td colspan="5"><p class="empty">' + html + '</p></td></tr>'
-        : '<p class="empty">' + html + '</p>';
-    });
-  }
-
-  /* The static file only ever failed one way: missing. A live endpoint has
-     distinct failures that call for distinct answers, and "check the console"
-     is not one of them:
-
-       401  the Access token was refused — signing in again is the fix
-       403  authenticated, but this address is not granted a partner. The
-            body carries the email, which is the one fact needed to fix it.
-       500  no database bound, or Access unconfigured on this deploy */
   function loadSnapshot() {
     return fetch(SNAPSHOT_URL, { cache: 'no-store', credentials: 'same-origin' })
       .then(function (r) {
@@ -464,6 +761,10 @@
           .then(function (body) { return { status: r.status, ok: r.ok, body: body }; });
       })
       .then(function (res) {
+        // Before the branches: a 403 carries the banner too, and somebody
+        // standing in an account with no partner still needs to be told whose
+        // account they are standing in.
+        noteActing(res.body);
         if (res.ok) { renderSnapshot(res.body); wireStewardshipRows(); return; }
 
         if (res.status === 404) {
@@ -490,6 +791,307 @@
       });
   }
 
+
+  /* =====================================================================
+     TOASTS — transient messages, bottom of the screen
+     =====================================================================
+     Replaces the inline status text each screen used to keep beside its
+     controls. That text competed with the labels around it, moved the
+     layout when it appeared, and was easy to miss when it sat next to a
+     button you had already looked away from.
+
+     One live region for the whole console, so a screen reader announces
+     these the same way everywhere. aria-live="polite" rather than
+     "assertive": a confirmation should not interrupt someone mid-sentence.
+
+     Errors do NOT auto-dismiss. A success message is worth showing and not
+     worth keeping; a failure is the one thing you may need to still be
+     there when you look back.
+     ===================================================================== */
+  var toastHost = null;
+
+  function toastRoot() {
+    if (toastHost) return toastHost;
+    toastHost = document.createElement('div');
+    toastHost.className = 'toasts';
+    toastHost.setAttribute('role', 'status');
+    toastHost.setAttribute('aria-live', 'polite');
+    document.body.appendChild(toastHost);
+    return toastHost;
+  }
+
+  function toast(message, kind) {
+    if (!message) return;
+    var el = document.createElement('div');
+    el.className = 'toast' + (kind ? ' ' + kind : '');
+    el.textContent = message;
+
+    if (kind === 'err') {
+      var close = document.createElement('button');
+      close.type = 'button';
+      close.className = 'toast-x';
+      close.setAttribute('aria-label', 'Dismiss');
+      close.textContent = '\u00d7';
+      close.addEventListener('click', function () { dismiss(el); });
+      el.appendChild(close);
+    }
+
+    toastRoot().appendChild(el);
+    // Force the browser to lay the element out in its starting state before
+    // changing it. requestAnimationFrame alone can still coalesce with the
+    // insert, and then there is nothing to transition FROM — the toast simply
+    // appears. Reading offsetHeight makes the start state real.
+    void el.offsetHeight;
+    requestAnimationFrame(function () { el.classList.add('in'); });
+
+    if (kind !== 'err') setTimeout(function () { dismiss(el); }, 3200);
+    return el;
+  }
+
+  function dismiss(el) {
+    if (!el || el.dataset.going) return;
+    el.dataset.going = '1';
+    el.classList.remove('in');
+    setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 260);
+  }
+
+  // Shared with the per-page scripts, which load after this one.
+  window.StaffToast = toast;
+
+  /* =====================================================================
+     PROBLEM BANNER — a condition, not an event
+     =====================================================================
+     Toasts are for things that HAPPENED. "The server cannot be reached" is
+     a state that persists until something changes, and repeating it as a
+     toast every time a request fails stacks identical messages that each
+     have to be dismissed.
+
+     This is one message that shows while the condition holds and goes away
+     when it clears. Same toast styling, but pinned to the TOP so it is not
+     mistaken for the transient ones stacking at the bottom, and overlaid
+     rather than inserted into the flow — a banner that pushes the page down
+     moves whatever someone is reading, then moves it back when the problem
+     resolves.
+     ===================================================================== */
+  var problemEl = null;
+
+  function problem(message, retry) {
+    if (!problemEl) {
+      problemEl = document.createElement('div');
+      problemEl.className = 'toast warn problem-toast';
+      problemEl.setAttribute('role', 'alert');
+      problemEl.innerHTML =
+        '<span class="problem-msg"></span>' +
+        '<button type="button" class="toast-act" data-i18n="err.tryAgain">Try again</button>';
+
+      var host = document.createElement('div');
+      host.className = 'toasts toasts-top';
+      host.appendChild(problemEl);
+      document.body.appendChild(host);
+      // Created after the initial sweep, so it needs translating on the spot.
+      if (window.StaffI18n) window.StaffI18n.apply(host);
+    }
+    problemEl.querySelector('.problem-msg').textContent = message;
+
+    var btn = problemEl.querySelector('.toast-act');
+    btn.hidden = !retry;
+    btn.onclick = retry || null;
+
+    problemEl.parentNode.hidden = false;
+    void problemEl.offsetHeight;
+    problemEl.classList.add('in');
+  }
+
+  function problemClear() {
+    if (!problemEl) return;
+    problemEl.classList.remove('in');
+    var host = problemEl.parentNode;
+    setTimeout(function () { if (host) host.hidden = true; }, 260);
+  }
+
+
+  /* =====================================================================
+     CONFIRM — a real dialog, not window.confirm
+     =====================================================================
+     window.confirm cannot say more than one sentence, cannot mark which
+     button is the dangerous one, and looks like the browser rather than
+     like this application. Granting somebody administration deserves a
+     sentence about what that means before it happens.
+
+     Returns a promise. Escape and the backdrop both cancel, because the
+     safe answer should be the easy one to reach.
+     ===================================================================== */
+  function confirmDialog(opts) {
+    return new Promise(function (resolve) {
+      var wrap = document.createElement('div');
+      wrap.className = 'dlg-back';
+      wrap.innerHTML =
+        '<div class="dlg" role="dialog" aria-modal="true">' +
+          '<h3></h3><p class="dlg-body"></p>' +
+          '<p class="dlg-note" hidden></p>' +
+          '<label class="dlg-type" hidden><span></span>' +
+            '<input type="text" autocomplete="off" spellcheck="false"></label>' +
+          '<div class="dlg-actions">' +
+            '<button type="button" class="ghost-btn dlg-no"></button>' +
+            '<button type="button" class="solid-btn dlg-yes"></button>' +
+          '</div>' +
+        '</div>';
+      wrap.querySelector('h3').textContent = opts.title || '';
+      wrap.querySelector('.dlg-body').textContent = opts.body || '';
+      if (opts.note) {
+        var n = wrap.querySelector('.dlg-note');
+        n.textContent = opts.note;
+        n.hidden = false;
+      }
+      var yes = wrap.querySelector('.dlg-yes');
+      var no = wrap.querySelector('.dlg-no');
+
+      /* TYPE-TO-CONFIRM. For anything that destroys data somebody cannot get
+         back. The button stays disabled until the word matches exactly, so
+         the pause is real rather than decorative — and the word is checked
+         again on the server, because a dialog is only a suggestion. */
+      var typeField = null;
+      if (opts.type) {
+        var box = wrap.querySelector('.dlg-type');
+        box.hidden = false;
+        box.querySelector('span').textContent =
+          (opts.typeLabel || 'Type') + ' ' + opts.type + ' to confirm';
+        typeField = box.querySelector('input');
+        typeField.placeholder = opts.type;
+        yes.disabled = true;
+        typeField.addEventListener('input', function () {
+          yes.disabled = typeField.value.trim() !== opts.type;
+        });
+      }
+      yes.textContent = opts.confirm || 'Confirm';
+      no.textContent = opts.cancel || 'Cancel';
+      if (opts.danger) yes.classList.add('is-danger');
+
+      function close(answer) {
+        document.removeEventListener('keydown', onKey);
+        wrap.classList.remove('in');
+        setTimeout(function () { wrap.remove(); }, 200);
+        resolve(answer);
+      }
+      function onKey(e) { if (e.key === 'Escape') close(false); }
+
+      yes.addEventListener('click', function () {
+        if (typeField && typeField.value.trim() !== opts.type) return;
+        close(true);
+      });
+      no.addEventListener('click', function () { close(false); });
+      wrap.addEventListener('click', function (e) { if (e.target === wrap) close(false); });
+      document.addEventListener('keydown', onKey);
+
+      document.body.appendChild(wrap);
+      void wrap.offsetHeight;
+      wrap.classList.add('in');
+      // Focus lands on CANCEL, or on the field when one has to be filled. A
+      // dialog that opens with the destructive button focused turns a stray
+      // Enter into the thing it was asking about.
+      (typeField || no).focus();
+    });
+  }
+  window.StaffConfirm = confirmDialog;
+
+  /* =====================================================================
+     PROMPT — a dialog that asks for one value
+     =====================================================================
+     Built on the same shell as StaffConfirm rather than beside it, so the two
+     cannot drift apart in looks or behaviour: Escape and the backdrop cancel,
+     focus lands where typing goes, and the button that does the thing is on
+     the right.
+
+     window.prompt was the alternative. It cannot validate, cannot explain,
+     looks like the browser rather than the application, and on some browsers
+     is blocked entirely.
+
+     VALIDATION IS LIVE AND THE MESSAGE IS SPECIFIC. "sl_SI is not a language
+     code — use two letters" is actionable; a disabled button with no
+     explanation is a puzzle. The same rule is enforced on the server, which
+     is the one that counts.
+
+     Resolves to the trimmed value, or null if cancelled.
+     ===================================================================== */
+  function promptDialog(opts) {
+    return new Promise(function (resolve) {
+      var wrap = document.createElement('div');
+      wrap.className = 'dlg-back';
+      wrap.innerHTML =
+        '<div class="dlg" role="dialog" aria-modal="true">' +
+          '<h3></h3><p class="dlg-body"></p>' +
+          '<p class="dlg-note" hidden></p>' +
+          '<label class="dlg-type"><span></span>' +
+            '<input type="text" autocomplete="off" spellcheck="false" autocapitalize="off"></label>' +
+          '<p class="dlg-err" hidden></p>' +
+          '<div class="dlg-actions">' +
+            '<button type="button" class="ghost-btn dlg-no"></button>' +
+            '<button type="button" class="solid-btn dlg-yes"></button>' +
+          '</div>' +
+        '</div>';
+      wrap.querySelector('h3').textContent = opts.title || '';
+      wrap.querySelector('.dlg-body').textContent = opts.body || '';
+      if (opts.note) {
+        var n = wrap.querySelector('.dlg-note');
+        n.textContent = opts.note;
+        n.hidden = false;
+      }
+      var box = wrap.querySelector('.dlg-type');
+      box.querySelector('span').textContent = opts.label || '';
+      var input = box.querySelector('input');
+      if (opts.placeholder) input.placeholder = opts.placeholder;
+
+      var err = wrap.querySelector('.dlg-err');
+      var yes = wrap.querySelector('.dlg-yes');
+      var no = wrap.querySelector('.dlg-no');
+      yes.textContent = opts.confirm || 'OK';
+      no.textContent = opts.cancel || 'Cancel';
+      yes.disabled = true;
+
+      function validate() {
+        var v = input.value.trim();
+        var problem = v && opts.validate ? opts.validate(v) : (v ? null : '');
+        yes.disabled = !!problem || !v;
+        // Nothing typed yet is not a mistake, so it gets no error message.
+        err.hidden = !problem || !v;
+        if (problem && v) err.textContent = problem;
+      }
+      input.addEventListener('input', validate);
+
+      function close(answer) {
+        document.removeEventListener('keydown', onKey);
+        wrap.classList.remove('in');
+        setTimeout(function () { wrap.remove(); }, 200);
+        resolve(answer);
+      }
+      function onKey(e) {
+        if (e.key === 'Escape') close(null);
+        // Enter submits, but only when the value is actually acceptable.
+        if (e.key === 'Enter' && !yes.disabled && document.activeElement === input) {
+          e.preventDefault();
+          close(input.value.trim());
+        }
+      }
+      yes.addEventListener('click', function () {
+        if (!yes.disabled) close(input.value.trim());
+      });
+      no.addEventListener('click', function () { close(null); });
+      wrap.addEventListener('click', function (e) { if (e.target === wrap) close(null); });
+      document.addEventListener('keydown', onKey);
+
+      document.body.appendChild(wrap);
+      void wrap.offsetHeight;
+      wrap.classList.add('in');
+      // Focus the field, not a button: you opened this to type.
+      input.focus();
+    });
+  }
+  window.StaffPrompt = promptDialog;
+
+  window.StaffProblem = problem;
+  window.StaffProblemClear = problemClear;
+
+
   /* =====================================================================
      BOOT — each page loads only what it needs
      ===================================================================== */
@@ -501,6 +1103,15 @@
   var NEEDS_STAFF_API = ['index', 'directory', 'resources'];
 
   var page = document.body.getAttribute('data-staff-page') || 'index';
+
+  // Clear the cached identity on the way out, so the next person to use this
+  // browser starts from nothing rather than from whoever was here last.
+  var signOut = document.querySelector('a[href*="access/logout"]');
+  if (signOut) {
+    signOut.addEventListener('click', function () {
+      try { sessionStorage.removeItem(IDENT); } catch (e) {}
+    });
+  }
 
   loadIdentity();
   if (NEEDS_SNAPSHOT.indexOf(page) !== -1) loadSnapshot();

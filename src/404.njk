@@ -11,7 +11,7 @@ permalink: /404.html
 <link rel="preload" as="font" type="font/woff2" href="/fonts/Sora-latin-v2.woff2" crossorigin>
 <link rel="preload" as="font" type="font/woff2" href="/fonts/Inter-latin-v2.woff2" crossorigin>
 <link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/css/main.css?v=44">
+<link rel="stylesheet" href="/css/main.css?v={{ "/css/main.css" | v }}">
 <style>
   /* This single file serves every broken URL regardless of language
      prefix, so — unlike every other page — language here is a runtime
@@ -202,7 +202,7 @@ permalink: /404.html
 </head>
 <body>
 
-{% for lang in site.languages %}
+{% for lang in activeLangs %}
 {% set t = i18n[lang] %}
 <nav data-lang-block="{{ lang }}"{% if not loop.first %} hidden{% endif %}><div class="wrap nav-in">
   <a class="logo" href="/{{ lang }}/">THAUMA</a>
@@ -213,10 +213,10 @@ permalink: /404.html
     <a href="/{{ lang }}/team/">{{ t.nav.team }}</a>
     <a href="/{{ lang }}/resources/">{{ t.nav.resources }}</a>
     <a href="/{{ lang }}/contact/">{{ t.nav.contact }}</a>
-    {% if site.showEvents %}<a href="/{{ lang }}/events/">{{ t.nav.events }}</a>{% endif %}
+    {% if visible.pages.events %}<a href="/{{ lang }}/events/">{{ t.nav.events }}</a>{% endif %}
   </div>
   <div class="nav-actions">
-    {%- for l in site.languages %}{% if l != lang %}
+    {%- for l in activeLangs %}{% if l != lang %}
     <button class="lang-toggle" data-lang="{{ l }}" aria-label="Switch language to {{ l }}">{{ l | upper }}</button>{% endif %}{% endfor %}
     <a class="give-btn" href="/{{ lang }}/give/">{{ t.nav.give }}</a>
   </div>
@@ -224,7 +224,7 @@ permalink: /404.html
 {% endfor %}
 
 <main>
-{% for lang in site.languages %}
+{% for lang in activeLangs %}
 {% set t = i18n[lang] %}
 <div data-lang-block="{{ lang }}"{% if not loop.first %} hidden{% endif %}>
   <div class="dict"><div class="wrap">
@@ -239,7 +239,7 @@ permalink: /404.html
 {% endfor %}
 </main>
 
-{% for lang in site.languages %}
+{% for lang in activeLangs %}
 {% set t = i18n[lang] %}
 <footer data-lang-block="{{ lang }}"{% if not loop.first %} hidden{% endif %}><div class="wrap foot-in">
   <div class="foot-col">
@@ -314,7 +314,7 @@ permalink: /404.html
 
   var initial = 'en';
   var cookieMatch = document.cookie.match(/thauma_lang=([a-z]{2})/);
-  if (cookieMatch && {{ site.languages | dump | safe }}.indexOf(cookieMatch[1]) !== -1) {
+  if (cookieMatch && {{ activeLangs | dump | safe }}.indexOf(cookieMatch[1]) !== -1) {
     initial = cookieMatch[1];
   } else if (location.pathname.indexOf('/hr/') === 0) {
     initial = 'hr';

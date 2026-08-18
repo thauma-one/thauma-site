@@ -14,11 +14,49 @@ module.exports = function (eleventyConfig) {
   eleventyConfig.addPassthroughCopy({ "src/js": "js" });
   eleventyConfig.addPassthroughCopy({ "src/img": "img" });
   eleventyConfig.addPassthroughCopy({ "src/fonts": "fonts" });
-  eleventyConfig.addPassthroughCopy({ "src/admin": "admin" });
+  // src/admin was Decap CMS. Git Gateway is a Netlify Identity service, so it
+  // stopped working at the cutover and the directory only served to occupy the
+  // /admin path that the administration area now uses. Removed 2026-08-15;
+  // Phase 3 of the runbook replaces what it did.
   // /staff/ pages are Eleventy templates now (they share layouts/staff.njk),
   // so only their DATA is copied verbatim. Their CSS and JS live in src/css
   // and src/js, which are already passed through above.
   eleventyConfig.addPassthroughCopy({ "src/staff/data": "staff/data" });
+
+  /* CACHE BUSTING FROM THE FILE'S CONTENT, not from a number somebody
+     remembers to increase.
+
+     Every script and stylesheet carried a hand-written ?v=N. On 2026-08-16 one
+     of them was not bumped, a browser kept an older staff-i18n.js, a function
+     added that day was missing from it, and the Stop button in the acting
+     banner silently did nothing — a TypeError in a callback with no visible
+     error. The way out of somebody else's account was unusable because of a
+     number in a template.
+
+     A content hash cannot be forgotten. Same file, same URL, cached forever;
+     changed file, new URL, fetched immediately. It also stops the opposite
+     waste, where bumping one version re-downloads assets that did not change.
+
+     Cached per build: these files are read once each rather than once per page,
+     and `eleventy --watch` restarts the filter's module scope on change. */
+  const { createHash } = require("node:crypto");
+  const { readFileSync } = require("node:fs");
+  const hashes = new Map();
+  eleventyConfig.addFilter("v", function (assetPath) {
+    if (hashes.has(assetPath)) return hashes.get(assetPath);
+    let h = "0";
+    try {
+      // "/js/staff.js" lives at "src/js/staff.js" — the passthrough mapping.
+      const file = "src" + assetPath;
+      h = createHash("sha1").update(readFileSync(file)).digest("hex").slice(0, 8);
+    } catch (e) {
+      // A missing file is a broken link, not a broken build. It will 404
+      // loudly in the browser, which is the right place to notice it.
+      console.warn(`[v] could not hash ${assetPath}: ${e.message}`);
+    }
+    hashes.set(assetPath, h);
+    return h;
+  });
 
   // Swap the language segment of a URL: /en/about/ -> /hr/about/
   // (Pages skipped by the comingSoon flag have no URL; return a safe value.)

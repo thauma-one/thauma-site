@@ -61,7 +61,13 @@ run_worker_first = [
   "/api/*",                     # contact, game-scores, staff-data, snapshot
   "/.netlify/functions/*",      # legacy paths, kept alive during the cutover
   "/staff",                     # auth gate
-  "/staff/*"                    # ...including the snapshot JSON
+  "/staff/*",                   # ...including the snapshot JSON
+  "/admin",                     # administration — same gate
+  "/admin/*",
+  # The embed widgets. Unauthenticated and cross-origin by design — see
+  # workers/src/embed.js. Must reach the router: served asset-first it would
+  # 404, because nothing under this path exists on disk.
+  "/embed/v1/*"
 ]
 
 [[routes]]
@@ -122,6 +128,37 @@ ACCESS_AUD = "da1b6265b663e9152e863952d84ead73be8f8f8aa9b2ac90f50404ba707219f8,0
 CONTACT_TO = "admin@thauma.one"
 CONTACT_FROM = "Thauma <noreply@thauma.one>"
 
+# TRANSACTIONAL SENDER — invites, confirmations, alerts. Mail somebody is
+# expecting because of something that just happened.
+#
+# ⚠ NEWSLETTERS MUST NOT USE THIS ADDRESS OR THIS SUBDOMAIN. Bulk mail collects
+# spam complaints; transactional mail must arrive. Sharing a sending domain
+# means one person marking a newsletter as junk degrades the reputation that
+# delivers account invites. Give bulk its own subdomain and its own Resend
+# domain, so a bad month for one cannot touch the other.
+MAIL_FROM = "Thauma <noreply@mail.thauma.one>"
+
+# The content editor commits to this repository. The TOKEN is a secret and goes
+# in with `wrangler secret put GITHUB_TOKEN`; these two are not — they name a
+# repository and a branch, and neither authorises anything on its own.
+#
+# CONTENT_BRANCH IS THE SITE'S BRANCH, IN EVERY ENVIRONMENT. Words are edited
+# in one place and there is only one copy of them; an editor that wrote
+# somewhere else would need a merge to publish, and a merge is the thing this
+# design exists to remove.
+#
+# Saving does not deploy — the commit carries `[skip ci]`. Publish asks for the
+# build. So writing to the live branch is not the same as writing to the live
+# site, which is what makes this safe.
+GITHUB_REPO = "thauma-one/thauma-site"
+CONTENT_BRANCH = "main"
+
+# The two branches the Publish page moves between. Same everywhere: which
+# branch is live is a fact about the repository, not about the environment
+# looking at it, so staging can publish and production can pull edits back.
+LIVE_BRANCH = "main"
+STAGING_BRANCH = "dev"
+
 # ---------------------------------------------------------------------------
 # Scheduled work — replaces Netlify's schedule() wrapper.
 # Nothing is scheduled for Thauma yet; the CR migration will need these.
@@ -176,7 +213,7 @@ directory = "_site"
 binding = "ASSETS"
 html_handling = "auto-trailing-slash"
 not_found_handling = "404-page"
-run_worker_first = ["/", "/api/*", "/.netlify/functions/*", "/staff", "/staff/*"]
+run_worker_first = ["/", "/api/*", "/.netlify/functions/*", "/staff", "/staff/*", "/admin", "/admin/*", "/embed/v1/*"]
 
 # LOCAL SIMULATION, INCLUDING THE DATABASE. `wrangler dev` runs D1 and KV in
 # miniflare against state under .wrangler/state — NOT against thauma-ops-dev.
@@ -226,6 +263,37 @@ ACCESS_AUD = "04468ad531e25f3c53af5d0b4ed0bdd3073241f76a070c741efe40f58019fdfb,d
 CONTACT_TO = "admin@thauma.one"
 CONTACT_FROM = "Thauma <noreply@thauma.one>"
 
+# TRANSACTIONAL SENDER — invites, confirmations, alerts. Mail somebody is
+# expecting because of something that just happened.
+#
+# ⚠ NEWSLETTERS MUST NOT USE THIS ADDRESS OR THIS SUBDOMAIN. Bulk mail collects
+# spam complaints; transactional mail must arrive. Sharing a sending domain
+# means one person marking a newsletter as junk degrades the reputation that
+# delivers account invites. Give bulk its own subdomain and its own Resend
+# domain, so a bad month for one cannot touch the other.
+MAIL_FROM = "Thauma <noreply@mail.thauma.one>"
+
+# The Pi edits the same branch as everywhere else. Whether it has a credential
+# at all is a choice, made in `.dev.vars` (gitignored, mode 600):
+#
+#   NO CREDENTIAL   the editor loads and says it is not connected. Nothing on
+#                   dev can touch content. Fine if you only use dev to look at
+#                   the site.
+#
+#   CREDENTIAL      dev behaves exactly like production. Chase asked for this
+#                   on 2026-08-17, and it does not create a new class of risk:
+#                   Save carries [skip ci] everywhere, so editing never deploys
+#                   from any host.
+#
+# ⚠ WHAT IT DOES MEAN: content is NOT sandboxed the way data is. The Pi has its
+# own database, so invented supporters stay here — but there is one content
+# branch, so a word changed on dev is THE word. And Publish on dev deploys the
+# real site, not a copy.
+GITHUB_REPO = "thauma-one/thauma-site"
+CONTENT_BRANCH = "main"
+LIVE_BRANCH = "main"
+STAGING_BRANCH = "dev"
+
 
 # ---------------------------------------------------------------------------
 # PRODUCTION
@@ -258,7 +326,7 @@ directory = "_site_prod"
 binding = "ASSETS"
 html_handling = "auto-trailing-slash"
 not_found_handling = "404-page"
-run_worker_first = ["/", "/api/*", "/.netlify/functions/*", "/staff", "/staff/*"]
+run_worker_first = ["/", "/api/*", "/.netlify/functions/*", "/staff", "/staff/*", "/admin", "/admin/*", "/embed/v1/*"]
 
 [[env.production.routes]]
 pattern = "thauma.one/*"
@@ -295,3 +363,18 @@ ACCESS_AUD = "b0c56c5b0e4009cd1d5e47025966abb413ff1dabe5244e5480a18170ba6b6602"
 
 CONTACT_TO = "admin@thauma.one"
 CONTACT_FROM = "Thauma <noreply@thauma.one>"
+
+# TRANSACTIONAL SENDER — invites, confirmations, alerts. Mail somebody is
+# expecting because of something that just happened.
+#
+# ⚠ NEWSLETTERS MUST NOT USE THIS ADDRESS OR THIS SUBDOMAIN. Bulk mail collects
+# spam complaints; transactional mail must arrive. Sharing a sending domain
+# means one person marking a newsletter as junk degrades the reputation that
+# delivers account invites. Give bulk its own subdomain and its own Resend
+# domain, so a bad month for one cannot touch the other.
+MAIL_FROM = "Thauma <noreply@mail.thauma.one>"
+
+GITHUB_REPO = "thauma-one/thauma-site"
+CONTENT_BRANCH = "main"
+LIVE_BRANCH = "main"
+STAGING_BRANCH = "dev"

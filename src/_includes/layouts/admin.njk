@@ -1,0 +1,96 @@
+{#- Shared shell for every /admin/ page.
+
+    DELIBERATELY DOES NOT LOOK LIKE /staff/. The two areas answer different
+    questions — "my work" versus "everyone's accounts" — and a person who
+    cannot tell at a glance which one they are in will eventually do something
+    org-wide while believing it was local to them.
+
+    The difference is carried by three things at once, so it survives being
+    seen in a hurry, in greyscale, or by someone who does not notice colour:
+    the wordmark says ADMINISTRATION, the accent is amber rather than blue,
+    and a stripe runs the full width above the header.
+
+    AUTH: Access gates /admin* at the edge exactly as it gates /staff*, so the
+    visitor is authenticated by the time this renders. That is NOT the same as
+    being permitted: /api/admin refuses anyone without the admin role, and
+    these pages show an explanation rather than data when it does. Markup is
+    not a permission. -#}
+{%- set pages = [
+  { slug: "index",     url: "/admin/",          label: "Overview" },
+  { slug: "users",     url: "/admin/users/",    label: "People" },
+  { slug: "partners",  url: "/admin/partners/", label: "Partners" },
+  { slug: "content",   url: "/admin/content/",  label: "Content" },
+  { slug: "site",      url: "/admin/site/",     label: "Site" },
+  { slug: "publish",   url: "/admin/publish/",  label: "Publish" },
+  { slug: "activity",  url: "/admin/activity/", label: "Activity" }
+] -%}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>{{ adminTitle }} · Thauma Administration</title>
+<link rel="stylesheet" href="/css/tokens.css?v={{ "/css/tokens.css" | v }}">
+<link rel="stylesheet" href="/css/staff.css?v={{ "/css/staff.css" | v }}">
+<link rel="stylesheet" href="/css/admin.css?v={{ "/css/admin.css" | v }}">
+<link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
+</head>
+<body class="is-admin" data-admin-page="{{ adminPage }}">
+
+{#- The stripe. Full width, above everything, present on every admin page and
+   on none of the staff ones. -#}
+<div class="admin-stripe" aria-hidden="true"></div>
+
+<header class="top"><div class="top-in">
+  <a class="mark" href="/admin/">THAUMA<em data-i18n="mark.admin">ADMINISTRATION</em></a>
+  <nav>
+    {%- for p in pages %}
+    <a href="{{ p.url }}"{% if p.slug == adminPage %} aria-current="page"{% endif %}
+       data-i18n="adm.nav.{{ p.slug }}">{{ p.label }}</a>
+    {%- endfor %}
+  </nav>
+  <div class="top-r">
+    {#- The way back. An admin area you can enter and not obviously leave is
+       how people end up working in the wrong one. -#}
+    <a class="area-switch" href="/staff/">
+      <span class="area-arrow" aria-hidden="true">&larr;</span>
+      <span data-i18n="adm.toStaff">Staff console</span>
+    </a>
+    <span class="pill" id="partnerPill" hidden></span>
+    <a class="ghost-btn" href="/cdn-cgi/access/logout" data-i18n="nav.signout">Sign out</a>
+  </div>
+</div></header>
+
+<main>
+  <div class="page-head">
+    <div class="cue">{{ adminNum }} &mdash; <span data-i18n="adm.page.{{ adminPage }}.title">{{ adminTitle }}</span></div>
+    <div class="sec-h">
+      <h2 data-i18n-html="adm.page.{{ adminPage }}.heading">{{ adminHeading | safe }}</h2>
+      {%- if adminHint %}<span class="hint" data-i18n="adm.page.{{ adminPage }}.hint">{{ adminHint }}</span>{% endif %}
+    </div>
+  </div>
+
+  {#- Shown when the endpoint refuses. The pages are reachable by anyone Access
+     lets through; the DATA is not, and this is what that looks like. -#}
+  <p class="rolegate" id="notAdmin" hidden>
+    <b>You are signed in, but this area is limited to administrators.</b>
+    Your account can use the <a href="/staff/">staff console</a>.
+  </p>
+
+  {{ content | safe }}
+</main>
+
+<script src="/js/staff-i18n.js?v={{ "/js/staff-i18n.js" | v }}"></script>
+<script src="/js/staff.js?v={{ "/js/staff.js" | v }}"></script>
+<script src="/js/admin.js?v={{ "/js/admin.js" | v }}"></script>
+{#- Page-specific behaviour, loaded only where it is used. admin.js is the
+   shared shell — identity, the role gate, the pages that read /api/admin.
+   Content and Site talk to a different endpoint and have nothing in common
+   with it beyond the layout. -#}
+{#- Hashed here, not in the page's front matter: front matter cannot run a
+   filter, so a version written there is a hand-maintained number — the exact
+   thing the content hash exists to remove. -#}
+{%- if adminScript %}<script src="{{ adminScript }}?v={{ adminScript | v }}"></script>{% endif %}
+</body>
+</html>

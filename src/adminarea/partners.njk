@@ -1,0 +1,57 @@
+---
+layout: layouts/admin.njk
+adminPage: partners
+adminNum: "03"
+adminTitle: Partners
+adminHeading: Sending <b>relationships</b>
+adminHint: the site language a visitor gets before choosing
+permalink: /admin/partners/index.html
+---
+<div class="ms-bar">
+  <button type="button" class="solid-btn" id="admAddPartner" data-i18n="adm.addPartner">Add partner</button>
+</div>
+
+{#- The thing that was missing, and the reason granting somebody a role did
+   not make one appear: a role says what a person may DO, a partner is the
+   ministry whose supporters and goals they manage. Sending a new person is
+   two acts, and this is the second. -#}
+<p class="note">
+  <b>A partner is a ministry, not a login.</b> It holds one sent person's
+  supporters, goals, milestones and website content. Giving somebody the staff
+  role does not create one — you create the partner here and grant them access
+  to it.
+</p>
+
+<form class="ms-form adm-form" id="admPartnerForm" hidden>
+  <div class="ms-grid">
+    <label class="fld">
+      <span data-i18n="adm.partnerName">Name</span>
+      <input type="text" id="admPartnerName" maxlength="200" required
+             placeholder="e.g. Chase Roush">
+    </label>
+    <label class="fld">
+      <span data-i18n="adm.partnerFor">Who is it for</span>
+      <select id="admPartnerUser"></select>
+    </label>
+  </div>
+  <p class="note-inline" data-i18n="adm.partnerNote">
+    Starts as prospective, publishing English only. Add languages and switch it
+    to active once there is something to show.
+  </p>
+  <div class="ms-actions">
+    <button type="submit" class="solid-btn" data-i18n="adm.create">Create</button>
+    <button type="button" class="ghost-btn" id="admPartnerCancel" data-i18n="ms.cancel">Cancel</button>
+  </div>
+</form>
+
+<p class="note">
+  A partner's <b>default language</b> is what a visitor to their site sees
+  before choosing, and what a translation falls back to when one is missing.
+  It is set here rather than in the staff console: there can be several
+  administrators, and no public setting should move because somebody changed
+  the language of their own screen.
+</p>
+
+<div class="adm-partners" id="admPartners">
+  <p class="empty" data-i18n="common.loading">Loading…</p>
+</div>

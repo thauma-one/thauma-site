@@ -1,0 +1,78 @@
+# Keep `dev` up to date with `main`
+#
+# WHY
+# -----------------------------------------------------------------------------
+# The content editor commits to `main`. Code is written on `dev`. Without this,
+# `dev` falls further behind every time somebody edits a word on the website,
+# and the next code merge arrives carrying a pile of content changes it has to
+# reconcile — or worse, quietly reverts them.
+#
+# A system where one surface can write somewhere another surface cannot read is
+# broken. This is the other half of that: GitHub keeps `dev` current, and the
+# Pi's own sync (deploy/git-sync.sh) pulls `dev`.
+#
+# ⚠ WHY THIS IS SCHEDULED AND NOT ONLY push-TRIGGERED
+# -----------------------------------------------------------------------------
+# Content saves carry `[skip ci]` in the commit message, which is what stops
+# them deploying — and GitHub applies that to EVERY workflow for that push,
+# including this one. So a push trigger alone would run for code merges and
+# never for the exact case this exists to handle.
+#
+# The schedule is therefore the primary path and the push trigger is the bonus.
+# Ten minutes is the worst case for a content edit reaching the Pi; pushes of
+# code reach it immediately.
+name: Sync dev with main
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: sync-dev
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dev
+          # The whole history: a merge needs the commits on both sides, and the
+          # default shallow clone has neither.
+          fetch-depth: 0
+
+      - name: Merge main into dev
+        run: |
+          set -euo pipefail
+          git config user.name  "Thauma sync"
+          git config user.email "admin@thauma.one"
+
+          git fetch origin main:refs/remotes/origin/main
+
+          if git merge-base --is-ancestor origin/main dev; then
+            echo "dev already contains main — nothing to do."
+            exit 0
+          fi
+
+          # --no-edit so an unattended merge does not sit waiting for an editor.
+          # If it conflicts, the job fails and NOTHING is pushed: the branches
+          # stay as they were and a person sorts it out. That is the right
+          # outcome — an automated conflict resolution is a guess about
+          # somebody's intent.
+          if ! git merge origin/main --no-edit -m "Bring content edits from main into dev"; then
+            echo "::error::main and dev have conflicting changes. Merge them by hand."
+            git merge --abort || true
+            exit 1
+          fi
+
+          git push origin dev
+          echo "dev updated from main."

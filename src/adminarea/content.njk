@@ -1,0 +1,88 @@
+---
+layout: layouts/admin.njk
+adminPage: content
+adminNum: "04"
+adminTitle: Content
+adminHeading: The site's <b>words</b>
+adminHint: every string on the public site, in every language
+adminScript: /js/admin-content.js
+permalink: /admin/content/index.html
+---
+{#- The editor that replaced Decap. Decap died with Netlify Identity at the
+   2026-08-15 cutover, and this is the piece that had been missing since.
+
+   ONE LANGUAGE AT A TIME, with English beside it for reference. Copy is
+   written by a person working in one language; three editable columns is a
+   spreadsheet, and a spreadsheet is not how anybody writes a sentence.
+   English shows because a translator needs the source, and it is read-only
+   here for the same reason the columns are not all editable — you are working
+   on one language, and the other is context. -#}
+
+<div class="ms-bar c-bar">
+  <label class="c-pick">
+    <span data-i18n="con.editing">Editing</span>
+    <select id="cLang" disabled></select>
+  </label>
+  <label class="c-pick" id="cRefWrap" hidden>
+    <span data-i18n="con.reference">Reference</span>
+    <select id="cRef" disabled></select>
+  </label>
+  <button type="button" class="ghost-btn" id="cAddLang" disabled
+          data-i18n="con.addLang">Add a language</button>
+
+  {#- Taking the work offline. A translator usually has no console login and no
+     reason to want one — they want the words in something they can open. -#}
+  <button type="button" class="ghost-btn" id="cExport" disabled
+          data-i18n="con.export">Download</button>
+  <button type="button" class="ghost-btn" id="cImport" disabled
+          data-i18n="con.import">Upload</button>
+  <input type="file" id="cImportFile" accept=".csv,text/csv" hidden>
+
+  {#- ALWAYS ENABLED, including when the page thinks nothing has changed.
+
+     Save is hidden when nothing is dirty, and that is correct — there is no
+     such thing as committing a file that is identical to the one already
+     there; git has nothing to record. But "nothing has changed" is a claim
+     about the copy this page loaded, and if somebody edited the same file
+     elsewhere, or a save half-failed, the honest remedy is to go and look
+     again rather than to force a commit that would be empty. -#}
+  <button type="button" class="ghost-btn" id="cReload"
+          data-i18n="con.reload">Reload from GitHub</button>
+  <span class="hint" id="cWhere"></span>
+</div>
+
+{#- This note used to say "the deploy runs, and the change is live a minute or
+   two later. There is no separate publish step." That was true when it was
+   written and stopped being true the day Save/Preview/Publish shipped. Copy
+   that describes old behaviour is worse than no copy: it is confidently
+   wrong, and somebody acts on it. -#}
+<p class="note" id="cNote">
+  <b>Saving does not change the website.</b> Your words are stored safely and
+  nothing else happens. Use <b>Publish</b> when you want them to go live —
+  it's on the Publish page, and it tells you exactly what is about to go out.
+</p>
+
+{#- Shown instead of the editor when GITHUB_TOKEN is absent. A page that says
+   what is missing is worth more than one that fails to load, especially since
+   the missing thing is a deliberate act somebody has to perform. -#}
+<p class="rolegate" id="cNotConfigured" hidden></p>
+
+<div class="adm-content" id="cRoot" hidden>
+  <nav class="c-sections" id="cSections" aria-label="Sections"></nav>
+  <div class="c-panel">
+    <div class="c-search">
+      <input type="search" id="cFind" autocomplete="off"
+             placeholder="Find a word or phrase…" data-i18n-attr="placeholder:con.find">
+      <span class="c-count" id="cCount"></span>
+    </div>
+    <div class="c-rows" id="cRows"></div>
+  </div>
+</div>
+
+<div class="ms-savebar" id="cSaveBar" role="status" aria-live="polite" hidden>
+  <span class="ms-dirty-dot" aria-hidden="true"></span>
+  <span id="cDirtyCount">0 unsaved changes</span>
+  <span class="ms-savebar-note" id="cSaveNote"></span>
+  <button type="button" class="ghost-btn" id="cDiscard" data-i18n="ms.discard">Discard</button>
+  <button type="button" class="solid-btn" id="cSave" data-i18n="con.save">Save</button>
+</div>

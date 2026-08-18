@@ -44,15 +44,154 @@ await check("queries.generated.js is in sync with db/queries.sql", async () => {
     `stale generated file — run: python3 db/generate_queries_module.py`);
 });
 
-await check("all thirteen named queries are present", async () => {
-  const expected = [
-    "api_key_lookup", "api_key_touch",
-    "audit_recent_for_partner", "contact_timeline", "contacts_stewardship",
-    "dashboard_needs_attention", "dashboard_partner_summary", "goal_history",
-    "goals_for_partner", "interactions_for_partner", "partners_for_user",
-    "public_goals_for_partner", "public_milestones_for_partner",
-  ];
-  eq(Object.keys(QUERIES).sort(), expected, "query names");
+await check("every query the Worker calls actually exists", async () => {
+  /* Replaced a hand-written list of fifty-two names, which had to be edited
+     every time a query was added and said nothing about whether the code and
+     the SQL agreed. This asks the real question in both directions:
+
+       · a name the code calls that is not in queries.sql is a runtime crash
+       · a query nobody calls is either dead or a caller that was never wired
+
+     Both are found by reading the source rather than by remembering. */
+  const { readdirSync, readFileSync } = await import("node:fs");
+  const { fileURLToPath } = await import("node:url");
+
+  const srcDir = fileURLToPath(new URL("../src/", import.meta.url));
+  const files = [];
+  (function walk(dir) {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      if (e.isDirectory()) walk(`${dir}${e.name}/`);
+      else if (e.name.endsWith(".js") && e.name !== "queries.generated.js") files.push(dir + e.name);
+    }
+  })(srcDir);
+
+  /* TWO extractors, because the two directions need different precision.
+
+     `called` is strict — only `db.query("name")` literals. A name here that
+     does not exist is definitely a crash, so false positives would be bad.
+
+     `mentioned` is loose — every string in the source that LOOKS like a query
+     name. Used only for the orphan check, where over-collecting can only
+     cause a missed orphan, never a false alarm. It has to be loose: real call
+     sites include `db.query(grant ? "a" : "b")` and the public allow-list,
+     which is a bare array of names. */
+  const called = new Set();
+  const mentioned = new Set();
+  for (const f of files) {
+    const src = readFileSync(f, "utf8");
+    for (const m of src.matchAll(/\bquery(?:One)?\(\s*"([a-z0-9_]+)"/g)) called.add(m[1]);
+    for (const m of src.matchAll(/"([a-z][a-z0-9_]{3,})"/g)) mentioned.add(m[1]);
+  }
+
+  /* A regex-driven test can break silently: if the extractor stops matching,
+     both lists come back empty and everything "passes". These two floors mean
+     that failure shows up as a failure. */
+  assert(files.length > 8, `only found ${files.length} source files — the walk is broken`);
+  assert(called.size > 20, `only extracted ${called.size} query calls — the regex is broken`);
+
+  const defined = new Set(Object.keys(QUERIES));
+
+  const missing = [...called].filter((n) => !defined.has(n)).sort();
+  eq(missing, [], "queries the code calls but queries.sql does not define");
+
+  /* Queries with no caller in this Worker, each with a reason. A name landing
+     here by accident means somebody added SQL and forgot to wire it up. */
+  const DELIBERATELY_UNUSED = new Set([
+    // Read by db/build_snapshot.py and db/refresh_dev.py, not by the Worker.
+    "audit_recent_for_partner",
+    "contact_timeline",
+    "goal_history",
+  ]);
+
+  const orphans = [...defined]
+    .filter((n) => !mentioned.has(n) && !DELIBERATELY_UNUSED.has(n))
+    .sort();
+  eq(orphans, [], "queries nothing calls — dead SQL, or a caller never wired up");
+});
+
+await check("NO query names a language column — languages are data now", async () => {
+  // 0002's title_hr made a fourth language a migration. If a _hr, _sr or _en
+  // suffixed column reappears in a query, that constraint is back.
+  for (const [name, sql] of Object.entries(QUERIES)) {
+    assert(!/\b\w+_(hr|sr|en|de|es)\b/i.test(sql),
+      `${name} names a language-suffixed column — text belongs in milestone_translations`);
+  }
+});
+
+await check("a directory contact is scoped by its OWNER, not just the partner", async () => {
+  // The whole point of 0005. A colleague sharing the partner must not be able
+  // to read, rewrite or delete somebody else's address book.
+  for (const q of ["directory_for_user", "directory_upsert", "directory_delete"]) {
+    assert(/user_id\s*=\s*:user_id/.test(QUERIES[q]),
+      `${q} is not scoped by the contact's owner`);
+    assert(/partner_id\s*=\s*:partner_id/.test(QUERIES[q]),
+      `${q} is not tenant-scoped`);
+  }
+});
+
+await check("the upsert cannot be used to take over another person's contact", async () => {
+  // The UPDATE half needs the ownership check too, or an id from elsewhere
+  // rewrites their row rather than being refused.
+  const update = QUERIES.directory_upsert.slice(QUERIES.directory_upsert.indexOf("DO UPDATE"));
+  assert(/directory_contacts\.user_id\s*=\s*:user_id/.test(update),
+    "ON CONFLICT DO UPDATE is not scoped by owner");
+});
+
+await check("resource visibility is matched exactly, not by prefix", async () => {
+  // instr() on a padded list: ',staff,' inside ',staff,admin,'. Without the
+  // commas, a level named 'staffing' would match a reader allowed 'staff'.
+  const sql = QUERIES.resources_visible;
+  assert(/instr\(\s*','/.test(sql) && /','\s*\|\|\s*visibility/.test(sql),
+    "visibility matching is not delimited — a prefix could match");
+});
+
+await check("the API key list NEVER selects key_hash", async () => {
+  // The screen needs to know a key exists and when it was last used. The hash
+  // is useless to a human and a payload that carries it is one that can leak
+  // it — a stored hash is only safe while it stays stored.
+  assert(!/key_hash/i.test(QUERIES.api_keys_for_partner),
+    "api_keys_for_partner selects key_hash");
+});
+
+await check("revoking a key keeps the row", async () => {
+  // A key that was once live is part of the record of who could read what,
+  // and last_used_at is evidence worth keeping after it stops working.
+  assert(/^\s*UPDATE/i.test(QUERIES.api_key_revoke.trim()),
+    "api_key_revoke deletes rather than revokes");
+  assert(/revoked_at IS NULL/i.test(QUERIES.api_key_revoke),
+    "re-revoking would overwrite the original timestamp");
+});
+
+await check("identity does NOT require a partner", async () => {
+  // The bug: partners_for_user was doing two jobs, so a person with no partner
+  // had no identity at all — an administrator whose grant was removed could
+  // not open the administration area, because the query meant to supply their
+  // name and roles returned nothing.
+  const sql = QUERIES.user_by_email;
+  assert(!/partner_users/.test(sql), "user_by_email joins partner_users");
+  assert(!/:partner_id/.test(sql), "user_by_email is partner-scoped");
+  assert(/status\s*=\s*'active'/.test(sql), "a suspended account still resolves");
+});
+
+await check("the admin endpoint identifies by ROLE, not by partner", async () => {
+  const src = await import("node:fs").then((fs) =>
+    fs.readFileSync(new URL("../src/admin.js", import.meta.url), "utf8"));
+  assert(/user_by_email/.test(src), "admin.js still resolves identity via partners");
+  // Looks for a CALL, not the string — the explanation of why this changed
+  // mentions partners_for_user by name, and a test that cannot tell code from
+  // a comment fails on its own documentation.
+  const i = src.indexOf("async function requireAdmin");
+  const seg = src.slice(i, src.indexOf("\n}", i));
+  assert(!/query\w*\(\s*"partners_for_user"/.test(seg),
+    "requireAdmin still queries for a partner — an admin without one would be locked out");
+});
+
+await check("a person can only set THEIR OWN language preference", async () => {
+  // Keyed on the email Access supplies, so one staff member cannot change
+  // another's preference by guessing an id.
+  const sql = QUERIES.user_set_preferred_lang;
+  assert(/email\s*=\s*:email/i.test(sql), "not scoped to the caller's own email");
+  assert(!/:user_id|:id\b/.test(sql), "takes an id, which the caller could choose");
 });
 
 await check("the stewardship query does NOT select email or phone", async () => {
@@ -114,11 +253,40 @@ await check("every real query converts with its documented params", async () => 
     partner_id: "p_chase", today: "2026-08-15", stale_days: 120,
     contact_id: "c_1", goal_id: "g_1", email: "chase@thauma.one", limit: 10,
     key_hash: "0".repeat(64), key_id: "k_1", now: "2026-08-15T00:00:00Z",
+    // milestone columns
+    parent_id: null, title: "t", description: null, target_label: null,
+    actual_date: null, status: "upcoming", completion: 0,
+    is_public: 0, is_featured: 0, sort_order: 0, id: "m_1",
+    milestone_id: "m_1", lang: "en", is_enabled: 1,
+    // settings
+    name: "a key", scopes: "read:public", created_by: null,
+    user_id: "u_chase", action: "update", entity: "x", entity_id: null,
+    detail: null,
+    // directory + resources
+    emails: "[]", phones: "[]", role: null, link: null, photo: null,
+    visibility: "staff", created_by: "u_chase", levels: "staff",
+    // administration
+    user_id: "u_1", role: "admin", granted_by: "u_1", status: "active",
+    slug: "a-partner", display_name: "A Partner",
+    // embeds
+    embed_enabled: 0, embed_accent: "#6D4AFF", embed_theme: "auto",
   };
+  // The ONE query with no parameters: the language catalogue belongs to the
+  // organisation, not to a partner, so there is nothing to scope it by. Named
+  // rather than skipped by a rule, so a second parameterless query has to be
+  // justified here rather than quietly slipping past.
+  // Queries with nothing to scope by. languages_all is the organisation's
+  // catalogue; the admin ones are unscoped BY DESIGN — see admin.test.mjs.
+  const NO_PARAMS = new Set(["languages_all", "admin_users", "admin_partners",
+                             "admin_count_admins"]);
+
   for (const [name, sql] of Object.entries(QUERIES)) {
     const r = toPositional(sql, params);
     assert(!r.sql.includes(":"), `${name} left a named placeholder behind`);
-    assert(r.args.length > 0, `${name} bound no arguments`);
+    if (!NO_PARAMS.has(name)) {
+      assert(r.args.length > 0,
+        `${name} bound no arguments — if that is deliberate, add it to NO_PARAMS`);
+    }
   }
 });
 

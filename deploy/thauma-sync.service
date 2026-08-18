@@ -1,0 +1,16 @@
+# One-shot pull, run by thauma-sync.timer. The BACKUP path — the webhook in
+# thauma-sync-hook.service is what makes a change appear immediately, and this
+# is what makes it appear at all when a delivery fails.
+#
+# Install:
+#   sudo cp /DATA/AppData/thauma/deploy/thauma-sync.{service,timer} /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now thauma-sync.timer
+[Unit]
+Description=Pull thauma from GitHub (backup for the webhook)
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=chaseroushtech
+WorkingDirectory=/DATA/AppData/thauma
+ExecStart=/bin/bash /DATA/AppData/thauma/deploy/git-sync.sh

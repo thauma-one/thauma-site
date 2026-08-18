@@ -33,6 +33,15 @@ const TENANT_SCOPED = new Set([
   "audit_recent_for_partner",
   "public_goals_for_partner",
   "public_milestones_for_partner",
+  "public_milestone_translations",
+  "public_languages_for_partner",
+  "milestones_for_staff",
+  "milestone_translations_for_staff",
+  "partner_languages_for_partner",
+  "partner_settings",
+  "api_keys_for_partner",
+  "directory_for_user",
+  "resources_visible",
 ]);
 
 /**
@@ -49,10 +58,28 @@ const TENANT_SCOPED = new Set([
 export const PUBLIC_QUERIES = new Set([
   "public_goals_for_partner",
   "public_milestones_for_partner",
+  "public_milestone_translations",
+  "public_languages_for_partner",
+  /* Reached with NO credential at all, by code running in a stranger's
+     browser — the only query in this set with that property. It carries its
+     own authorisation (embed_enabled = 1) instead of relying on a caller to
+     have checked one first. */
+  "public_partner_for_embed",
 ]);
 
 /** Tables a query in PUBLIC_QUERIES must never mention. */
 const PRIVATE_TABLES = ["contacts", "interactions", "users", "audit_log", "api_keys"];
+
+/**
+ * Public queries that turn an identifier into a partner, rather than reading
+ * one partner's rows.
+ *
+ * They cannot be scoped by :partner_id — producing it is their whole job — so
+ * assertPublicSafe holds them to a UNIQUE column instead. Deliberately a list
+ * of specific names: this is the one place the partner-scoping rule bends, and
+ * it should require an edit here to bend it again.
+ */
+const PARTNER_RESOLVERS = new Set(["public_partner_for_embed"]);
 
 /**
  * Static check that the public query set cannot reach private data.
@@ -75,12 +102,36 @@ export function assertPublicSafe(queries = QUERIES) {
           `it would publish it. See the PARTNER API section of db/queries.sql.`);
       }
     }
-    if (!/\bis_public\s*=\s*1\b/i.test(sql)) {
+    // EVERY public query must filter on an explicit publication decision.
+    // Which flag depends on what is being published: content is gated by
+    // is_public, and a partner's language list by is_enabled. Both mean the
+    // same thing — somebody chose this — and neither defaults to on.
+    //
+    // Checked as "at least one of them", not "is_public specifically",
+    // because a rule that only fits today's queries gets deleted by the first
+    // person it inconveniences.
+    if (!/\bis_public\s*=\s*1\b/i.test(sql) && !/\bis_enabled\s*=\s*1\b/i.test(sql)) {
       throw new Error(
-        `public query "${name}" does not filter is_public = 1 — ` +
-        `it would publish unpublished rows.`);
+        `public query "${name}" filters neither is_public = 1 nor ` +
+        `is_enabled = 1 — it would publish rows nobody chose to publish.`);
     }
-    if (!/:partner_id\b/.test(sql)) {
+    /* Every public query must be scoped to ONE partner, or it publishes the
+       whole table. Almost always that means :partner_id.
+
+       A RESOLVER is the exception, and there is exactly one: the query that
+       turns a slug into a partner_id cannot be scoped by the value it exists
+       to produce. It is still held to the same standard, expressed
+       differently — a UNIQUE column in the WHERE clause, so it can return at
+       most one row, plus the publication flags checked above. The exemption
+       is a named list rather than a looser regex, because a rule that admits
+       "any unique-looking column" would eventually admit one that is not. */
+    if (PARTNER_RESOLVERS.has(name)) {
+      if (!/\bslug\s*=\s*:slug\b/i.test(sql)) {
+        throw new Error(
+          `public resolver "${name}" must select on the UNIQUE slug column — ` +
+          `without it, it can return more than one partner.`);
+      }
+    } else if (!/:partner_id\b/.test(sql)) {
       throw new Error(`public query "${name}" is not scoped by :partner_id`);
     }
   }
@@ -181,12 +232,31 @@ export function createDb(binding, exec) {
 export async function partnerPublicSite(db, partnerId) {
   if (!partnerId) throw new Error("partnerPublicSite requires a partnerId");
 
-  const [goals, milestones] = await Promise.all([
+  const [goals, milestones, translations, languages] = await Promise.all([
     db.publicQuery("public_goals_for_partner", { partner_id: partnerId }),
     db.publicQuery("public_milestones_for_partner", { partner_id: partnerId }),
+    db.publicQuery("public_milestone_translations", { partner_id: partnerId }),
+    db.publicQuery("public_languages_for_partner", { partner_id: partnerId }),
   ]);
 
+  // Group text by milestone, then by language code. Nothing here names a
+  // language: adding one is a row in `languages` and a switch on
+  // partner_languages, and this code does not change.
+  const byMilestone = {};
+  for (const tx of translations) {
+    (byMilestone[tx.milestone_id] ||= {})[tx.lang] = {
+      title: tx.title,
+      description: tx.description,
+      target_label: tx.target_label,
+    };
+  }
+
   return {
+    // What a consumer should offer in its own language switcher, rather than
+    // inferring it from whichever translations happen to exist.
+    languages: languages.map((l) => ({
+      code: l.code, name: l.name, native_name: l.native_name,
+    })),
     goals: goals.map((g) => ({
       id: g.goal_id,
       label: g.label,
@@ -200,20 +270,20 @@ export async function partnerPublicSite(db, partnerId) {
     })),
     // The PUBLIC ROADMAP. Not stewardship history — see
     // db/migrations/0002_milestones.sql before adding anything here.
-    milestones: milestones.map((m) => ({
-      id: m.id,
-      parent_id: m.parent_id,
-      title: m.title,
-      title_hr: m.title_hr,
-      description: m.description,
-      description_hr: m.description_hr,
-      target_label: m.target_label,
-      target_label_hr: m.target_label_hr,
-      actual_date: m.actual_date,
-      status: m.status,
-      completion: m.completion,
-      is_featured: !!m.is_featured,
-    })),
+    milestones: milestones
+      // A milestone with no publishable translation is not renderable, and
+      // shipping an entry with no text at all would leave a partner site
+      // drawing an empty row.
+      .filter((m) => byMilestone[m.id])
+      .map((m) => ({
+        id: m.id,
+        parent_id: m.parent_id,
+        actual_date: m.actual_date,
+        status: m.status,
+        completion: m.completion,
+        is_featured: !!m.is_featured,
+        text: byMilestone[m.id],
+      })),
   };
 }
 

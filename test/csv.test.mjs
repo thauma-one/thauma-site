@@ -1,0 +1,382 @@
+#!/usr/bin/env node
+/**
+ * The CSV a translator takes away and brings back
+ *   node test/csv.test.mjs
+ *
+ * Splitting on commas works until the first translator writes a sentence with
+ * a comma in it. Then it works until one writes a quotation. Then it works
+ * until one presses Enter inside a cell. Each of those silently shifts every
+ * column after it, so the import writes the wrong text into the wrong keys and
+ * nothing errors.
+ *
+ * The functions are lifted from src/js/admin-content.js rather than imported —
+ * that file is a browser IIFE with no exports. The copies are kept identical
+ * on purpose and this file asserts they still are, so the test cannot drift
+ * away from the code it is testing.
+ */
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
+let pass = 0, fail = 0;
+function check(name, fn) {
+  try { fn(); console.log(`  PASS  ${name}`); pass++; }
+  catch (e) { console.log(`  FAIL  ${name}\n          ${e.message}`); fail++; }
+}
+const assert = (c, m) => { if (!c) throw new Error(m); };
+const eq = (a, b, m) => assert(JSON.stringify(a) === JSON.stringify(b),
+  `${m} — got ${JSON.stringify(a)}, want ${JSON.stringify(b)}`);
+
+/* ---- the implementations, copied verbatim from admin-content.js ---- */
+
+function csvCell(v) {
+  v = String(v == null ? '' : v);
+  return /[",\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+}
+
+function parseCsv(text) {
+  if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
+  var rows = [], row = [], field = '', inQuotes = false, i = 0;
+  while (i < text.length) {
+    var c = text[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { field += '"'; i += 2; continue; }
+        inQuotes = false; i++; continue;
+      }
+      field += c; i++; continue;
+    }
+    if (c === '"') { inQuotes = true; i++; continue; }
+    if (c === ',') { row.push(field); field = ''; i++; continue; }
+    if (c === '\r') { i++; continue; }
+    if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; i++; continue; }
+    field += c; i++;
+  }
+  if (field.length || row.length) { row.push(field); rows.push(row); }
+  return rows.filter(function (r) { return r.length > 1 || (r[0] && r[0].length); });
+}
+
+const WRAP_AT = 60;
+
+function wrapCell(text) {
+  var s = String(text == null ? '' : text);
+  if (s.length <= WRAP_AT) return s;
+  var out = [], line = '';
+  s.split(' ').forEach(function (word) {
+    if (line && (line + ' ' + word).length > WRAP_AT) { out.push(line); line = word; }
+    else { line = line ? line + ' ' + word : word; }
+  });
+  if (line) out.push(line);
+  return out.join('\n');
+}
+
+function unwrapCell(text) {
+  return String(text == null ? '' : text).replace(/\s*\r?\n\s*/g, ' ').trim();
+}
+
+const roundTrip = (rows) =>
+  parseCsv(rows.map((r) => r.map(csvCell).join(",")).join("\r\n"));
+
+console.log("csv — what a translator hands back\n");
+
+/* ---------------------------- the hard parts --------------------------- */
+
+check("a comma inside a sentence does not become a new column", () => {
+  // The first thing that breaks a naive split, and the most likely.
+  const rows = [["home.lede", "Sent, and staying", "Poslani, i ostajemo"]];
+  eq(roundTrip(rows), rows, "round trip");
+});
+
+check("quotation marks survive, doubled and back again", () => {
+  const rows = [["home.quote", 'He said "go"', 'Rekao je "idi"']];
+  eq(roundTrip(rows), rows, "round trip");
+});
+
+check("a newline inside a cell does not become a new row", () => {
+  /* A translator pressing Enter mid-cell is normal in a spreadsheet, and it is
+     the failure that shifts every subsequent row by one — so the import writes
+     each translation into the key ABOVE the one it belongs to. Silently. */
+  const rows = [["about.body", "One line\nTwo lines", "Jedan red\nDva reda"]];
+  eq(roundTrip(rows), rows, "round trip");
+});
+
+check("all three at once", () => {
+  const nasty = 'He said "go", then\nleft';
+  eq(roundTrip([["k", nasty, nasty]]), [["k", nasty, nasty]], "round trip");
+});
+
+check("Croatian and Serbian survive unchanged", () => {
+  const rows = [
+    ["nav.about", "About", "O nama"],
+    ["nav.give", "Give", "Дарујте"],
+    ["home.h", "Wonder", "Čuđenje — Ђорђе, njegov"],
+  ];
+  eq(roundTrip(rows), rows, "round trip");
+});
+
+check("empty cells stay empty rather than vanishing", () => {
+  // An untranslated row is the normal state of a new language file.
+  const rows = [["a", "Text", ""], ["b", "", ""], ["c", "More", "Više"]];
+  eq(roundTrip(rows), rows, "round trip");
+});
+
+/* ------------------------------ real files ----------------------------- */
+
+check("every real English string round-trips", () => {
+  /* Against the actual content, not invented examples. 210 strings including
+     em dashes, apostrophes and whatever else has accumulated. */
+  const en = JSON.parse(readFileSync(
+    fileURLToPath(new URL("../src/_data/i18n/en.json", import.meta.url)), "utf8"));
+
+  const leaves = [];
+  (function walk(o, p) {
+    if (o && typeof o === "object") {
+      for (const k of Object.keys(o)) walk(o[k], p ? `${p}.${k}` : k);
+    } else leaves.push([p, String(o)]);
+  })(en, "");
+
+  const rows = leaves.map(([k, v]) => [k, v, v]);
+  eq(roundTrip(rows), rows, `${rows.length} strings did not survive`);
+});
+
+/* --------------------------- Excel's BOM habit ------------------------- */
+
+check("the BOM Excel needs is stripped on the way back in", () => {
+  /* Excel opens a UTF-8 CSV as the local codepage without a BOM, so Croatian
+     arrives as mojibake — and a translator would then "fix" it and hand back
+     the damage. So the export writes one, and the import has to remove it or
+     the first key becomes "\\ufeffhome.lede" and matches nothing. */
+  const parsed = parseCsv("﻿key,en,hr\r\nnav.about,About,O nama");
+  eq(parsed[0][0], "key", "the BOM is still stuck to the first cell");
+  eq(parsed[1], ["nav.about", "About", "O nama"], "row");
+});
+
+check("a file saved with CRLF or LF both parse", () => {
+  // Windows and Mac spreadsheets disagree, and both hand back valid files.
+  for (const nl of ["\r\n", "\n"]) {
+    const parsed = parseCsv(`key,en,hr${nl}a,One,Jedan${nl}b,Two,Dva`);
+    eq(parsed.length, 3, `${JSON.stringify(nl)}: row count`);
+    eq(parsed[2], ["b", "Two", "Dva"], `${JSON.stringify(nl)}: last row`);
+  }
+});
+
+check("a trailing newline does not add an empty row", () => {
+  const parsed = parseCsv("key,en,hr\r\na,One,Jedan\r\n");
+  eq(parsed.length, 2, "row count");
+});
+
+/* ----------------------------- wrapping -------------------------------- */
+
+check("wrapping and unwrapping is lossless for every real string", () => {
+  /* A CSV cannot carry column widths or styles — the only formatting a
+     spreadsheet honours is a newline inside a quoted cell. So the text columns
+     are soft-wrapped, and the import must undo it EXACTLY. The longest string
+     on the site is 388 characters; as one line it makes the column wider than
+     the screen. */
+  const en = JSON.parse(readFileSync(
+    fileURLToPath(new URL("../src/_data/i18n/en.json", import.meta.url)), "utf8"));
+  const leaves = [];
+  (function walk(o, p) {
+    if (o && typeof o === "object") {
+      for (const k of Object.keys(o)) walk(o[k], p ? `${p}.${k}` : k);
+    } else leaves.push([p, String(o)]);
+  })(en, "");
+
+  const lossy = leaves.filter(([, v]) => unwrapCell(wrapCell(v)) !== v).map(([k]) => k);
+  eq(lossy, [], "these strings do not survive the wrap");
+});
+
+check("NO SOURCE STRING CONTAINS A NEWLINE — the wrap depends on it", () => {
+  /* The whole scheme rests on this. Unwrapping collapses every newline back to
+     a space, so a string that legitimately contained one would come back
+     changed. It is true of all three languages today; if it ever stops being
+     true, wrapping has to go rather than quietly eating a line break in
+     somebody's copy. */
+  for (const code of ["en", "hr", "sr"]) {
+    const doc = JSON.parse(readFileSync(
+      fileURLToPath(new URL(`../src/_data/i18n/${code}.json`, import.meta.url)), "utf8"));
+    const offenders = [];
+    (function walk(o, p) {
+      if (o && typeof o === "object") {
+        for (const k of Object.keys(o)) walk(o[k], p ? `${p}.${k}` : k);
+      } else if (typeof o === "string" && /[\r\n]/.test(o)) offenders.push(p);
+    })(doc, "");
+    eq(offenders, [], `${code}.json has strings with newlines — the CSV wrap would eat them`);
+  }
+});
+
+check("a wrapped cell survives the CSV itself", () => {
+  // Wrapping puts newlines inside cells, which is the case the parser has to
+  // get right — and the one that shifts every following row if it does not.
+  const long = "A well-run sound system says nothing about whether the people " +
+               "running it know each other, or anyone else doing the same work.";
+  const rows = [["values.items.2.text", wrapCell(long), "", wrapCell(long)]];
+  const back = roundTrip(rows);
+  eq(back, rows, "the wrapped cells did not survive");
+  eq(unwrapCell(back[0][3]), long, "and unwrapping returns the original");
+});
+
+check("the key column is never wrapped", () => {
+  // A line break in an identifier makes the row unmatchable on the way back.
+  const key = "notFound.taunts.30";
+  eq(wrapCell(key), key, "short keys are untouched anyway");
+  // And the export passes the key through directly — asserted against source.
+  const src = readFileSync(
+    fileURLToPath(new URL("../src/js/admin-content.js", import.meta.url)), "utf8");
+  assert(/rows\.push\(\[p,\s*\n\s*wrapCell\(/.test(src),
+         "the export should push the key unwrapped, then wrapped columns");
+});
+
+check("the file carries the language's own name, in a row", () => {
+  /* Every language file has a `name` row — "English", "Hrvatski", "Српски" —
+     so an uploaded file already says what the language is called, in the words
+     of whoever translated it. The import reads that row rather than computing
+     a name, and the dialogs then say "Add Slovenščina (sl)" instead of
+     "Add sl".
+
+     This asserts the row exists and is filled in every language, because the
+     moment one is blank the dialogs quietly fall back to a browser guess. */
+  for (const code of ["en", "hr", "sr"]) {
+    const doc = JSON.parse(readFileSync(
+      fileURLToPath(new URL(`../src/_data/i18n/${code}.json`, import.meta.url)), "utf8"));
+    assert(typeof doc.name === "string" && doc.name.trim() !== "",
+           `${code}.json has no name — the dialogs would show a bare code`);
+    assert(doc.code === code,
+           `${code}.json says its code is "${doc.code}"`);
+  }
+});
+
+/* ------------------------- the column layout --------------------------- */
+
+check("the header carries the language CODE in brackets", () => {
+  /* The header is written for the person who receives the file — "Slovenščina
+     (sl) — PUT YOUR TRANSLATION HERE" rather than "sl". The upload still has
+     to know which language it is, so the code lives in brackets: long name for
+     the human, code for the machine, one string. */
+  const extract = (h) => {
+    const m = String(h).trim().match(/\(([a-z]{2}(?:-[a-z]{2})?)\)/i);
+    return (m ? m[1] : String(h).trim()).toLowerCase();
+  };
+  eq(extract("Slovenščina (sl) — PUT YOUR TRANSLATION HERE"), "sl", "long header");
+  eq(extract("English (en) — EDIT HERE, or change the code in brackets"), "en", "template header");
+  eq(extract("Português (pt-br) — PUT YOUR TRANSLATION HERE"), "pt-br", "regional code");
+  // A hand-made file with a bare code still works — refusing it would be pedantry.
+  eq(extract("hr"), "hr", "bare code");
+  eq(extract(" SL "), "sl", "bare code, sloppily typed");
+});
+
+check("the translation is the LAST column in ONE shape", () => {
+  /* The import reads header.length - 1. Two shapes exist — translating a
+     language carries an English source column, editing English itself has
+     nothing to put in one — and the rule has to hold for both, or the import
+     silently reads the context column as the translation. */
+  /* ONE shape now, not two. The reference column used to be dropped when the
+     language being downloaded WAS the reference — which produced a file with
+     no source text, useful only to somebody who already knows the site, which
+     is exactly not who receives it. Four columns always; English simply
+     appears twice when English is what you asked for. */
+  const translating = ["key (do not change)", "English (en) — the original, for reference",
+                       "notes — …", "Slovenščina (sl) — PUT YOUR TRANSLATION HERE"];
+  const template = ["key (do not change)", "English (en) — the original, for reference",
+                    "notes — …", "English (en) — EDIT HERE, or change the code"];
+
+  for (const header of [translating, template]) {
+    eq(header.length, 4, "always four columns");
+    const m = header[header.length - 1].match(/\(([a-z]{2}(?:-[a-z]{2})?)\)/i);
+    assert(m, `the last header must carry a language code: "${header[3]}"`);
+  }
+});
+
+check("an inserted column does not move the translation", () => {
+  /* A spreadsheet invites this: somebody adds a "notes" or "done?" column.
+     Reading a fixed index would then import notes as translations. */
+  const header = ["key", "en", "context", "notes", "hr"];
+  eq(header[header.length - 1], "hr", "the translation must still be last");
+});
+
+/* --------------------- context for a split phrase ---------------------- */
+
+check("every split heading is paired, both ways", () => {
+  /* Fifteen headings are ONE phrase stored as TWO strings, split for
+     typography. The export flags them so a translator sees the whole sentence
+     — but only if the pairing is real. A `_thin` with no `_bold`, or the other
+     way round, means a fragment goes out with no context and comes back
+     translated as if it were a sentence. */
+  const en = JSON.parse(readFileSync(
+    fileURLToPath(new URL("../src/_data/i18n/en.json", import.meta.url)), "utf8"));
+  const leaves = {};
+  (function walk(o, p) {
+    if (o && typeof o === "object") {
+      for (const k of Object.keys(o)) walk(o[k], p ? `${p}.${k}` : k);
+    } else leaves[p] = o;
+  })(en, "");
+
+  const orphans = [];
+  for (const key of Object.keys(leaves)) {
+    const m = key.match(/^(.*)_(thin|bold)$/);
+    if (!m) continue;
+    const other = `${m[1]}_${m[2] === "thin" ? "bold" : "thin"}`;
+    if (leaves[other] === undefined) orphans.push(key);
+  }
+  eq(orphans, [], "half a split heading — its partner is missing");
+});
+
+check("the three languages agree about which headings are split", () => {
+  /* If Croatian has a `_thin` where English does not, the export gives one
+     language context the others lack — and the pair that is missing gets
+     translated blind. */
+  const read = (code) => {
+    const doc = JSON.parse(readFileSync(
+      fileURLToPath(new URL(`../src/_data/i18n/${code}.json`, import.meta.url)), "utf8"));
+    const out = [];
+    (function walk(o, p) {
+      if (o && typeof o === "object") {
+        for (const k of Object.keys(o)) walk(o[k], p ? `${p}.${k}` : k);
+      } else if (/_(thin|bold)$/.test(p)) out.push(p);
+    })(doc, "");
+    return out.sort();
+  };
+  const en = read("en");
+  for (const code of ["hr", "sr"]) {
+    eq(read(code), en, `${code}.json splits different headings from en.json`);
+  }
+});
+
+/* ----------------------- the copies have not drifted ------------------- */
+
+check("these functions still match the ones in admin-content.js", () => {
+  /* A copied implementation is a test that slowly stops testing anything.
+     Comparing the source text is crude and it is enough: if somebody fixes a
+     parser bug in one place, this fails until they fix it in both. */
+  const src = readFileSync(
+    fileURLToPath(new URL("../src/js/admin-content.js", import.meta.url)), "utf8");
+
+  /* Comments stripped before comparing: the copies above are deliberately
+     bare while the originals carry their reasoning, and a test that failed
+     over a comment would be a test people delete. Logic is what must match. */
+  const strip = (s) => s
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .replace(/\/\/[^\n]*/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  /* All FOUR copies, not the two that existed when this was written. wrapCell
+     and unwrapCell are exact inverses of each other, and a fix to one of them
+     that missed the copy here would leave the test proving a round trip the
+     product does not perform. */
+  for (const [name, fn] of [["csvCell", csvCell], ["parseCsv", parseCsv],
+                            ["wrapCell", wrapCell], ["unwrapCell", unwrapCell]]) {
+    const mine = strip(fn.toString());
+    // Pull the same function out of the browser file.
+    const start = src.indexOf(`function ${name}(`);
+    assert(start !== -1, `${name} is no longer in admin-content.js`);
+    let depth = 0, i = src.indexOf("{", start), end = i;
+    for (; i < src.length; i++) {
+      if (src[i] === "{") depth++;
+      else if (src[i] === "}") { depth--; if (!depth) { end = i + 1; break; } }
+    }
+    const theirs = strip(src.slice(start, end));
+    eq(mine, theirs, `${name} has drifted from the copy in admin-content.js`);
+  }
+});
+
+console.log(`\n  ${pass} passed, ${fail} failed`);
+process.exit(fail ? 1 : 0);

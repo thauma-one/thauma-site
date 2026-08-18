@@ -1,0 +1,200 @@
+---
+layout: layouts/staff.njk
+staffPage: settings
+staffNum: "07"
+staffTitle: Settings
+staffHeading: How this <b>works</b>
+staffHint: some of these change what the public sees
+---
+{#- Tabs rather than one long page: these groups have different audiences and
+   different blast radii. Account is about you. Languages and API keys change
+   what a public website serves. Keeping them apart makes that difference
+   visible before you touch anything, instead of after. -#}
+<div class="tabs" role="tablist">
+  <button type="button" class="tab" role="tab" data-tab="account"
+          aria-selected="true" data-i18n="set.account">Account</button>
+  <button type="button" class="tab" role="tab" data-tab="languages"
+          aria-selected="false" data-i18n="set.languages">Languages</button>
+  <button type="button" class="tab" role="tab" data-tab="keys"
+          aria-selected="false" data-i18n="set.keys">API keys</button>
+  <button type="button" class="tab" role="tab" data-tab="embeds"
+          aria-selected="false" data-i18n="set.embeds">Embeds</button>
+</div>
+
+<!-- ============================================================= ACCOUNT -->
+<section class="tab-panel" data-panel="account" role="tabpanel">
+  <div class="set-row">
+    <div class="set-label">
+      <h3 data-i18n="set.signedInAs">Signed in as</h3>
+      <p id="setEmail">—</p>
+    </div>
+    <div class="set-control">
+      {#- Access owns the identity, so there is no password here to change and
+         pretending otherwise would send people looking for a control that
+         does not exist. -#}
+      <p class="note-inline" data-i18n="set.identityNote">Your sign-in is managed by Cloudflare Access. Changing your email address or password is done there, not here.</p>
+    </div>
+  </div>
+
+  <div class="set-row">
+    <div class="set-label">
+      <h3 data-i18n="set.yourAccess">Your access</h3>
+      <p data-i18n="set.accessNote">What this account is allowed to do. Changed by an administrator.</p>
+    </div>
+    <div class="set-control">
+      <div class="role-tags" id="setRoles"></div>
+    </div>
+  </div>
+</section>
+
+<!-- =========================================================== LANGUAGES -->
+<section class="tab-panel" data-panel="languages" role="tabpanel" hidden>
+  {#- YOUR language first, and marked as personal, because everything below it
+     changes what strangers see. Reading order is blast radius: smallest
+     first. -#}
+  <div class="set-row">
+    <div class="set-label">
+      <h3 data-i18n="set.yourLanguage">Your language</h3>
+      <p data-i18n="set.yourLanguageDesc">Translates this console and opens the milestone editor in the same language.</p>
+      <p class="note-inline" data-i18n="set.yourLanguageNote">Affects only you.
+        It changes nothing a visitor sees, whatever your role.</p>
+    </div>
+    <div class="set-control">
+      <select id="setPrefLang" class="lang-pick"></select>
+    </div>
+  </div>
+
+  <p class="note" data-i18n-html="set.publicWarn"><b>Everything below changes what partner websites serve.</b> A language
+    switched on here is offered to visitors; one switched off disappears from
+    the public API. Translations you have already written are kept either way.</p>
+
+  <div class="set-row set-row-block">
+    <div class="set-label">
+      <h3 data-i18n="set.publishedLanguages">Published languages</h3>
+      <p data-i18n="set.publishedDesc">Switch a language on to translate into it and serve it on partner sites. The site's default language cannot be switched off.</p>
+    </div>
+    <div class="set-control" id="setLangList"></div>
+  </div>
+</section>
+
+<!-- ================================================================ KEYS -->
+<section class="tab-panel" data-panel="keys" role="tabpanel" hidden>
+  <p class="note" data-i18n-html="set.keysNote">An API key lets a partner website read your <b>published</b> milestones and
+    goal totals at build time. It can read nothing else — no contacts, no
+    interactions, no drafts.</p>
+
+  <div class="ms-bar key-create">
+    <input type="text" id="setKeyName" class="key-name" maxlength="80" data-i18n-attr="placeholder:set.keyPlaceholder"
+           placeholder="What is this key for? e.g. chaseroush.com build">
+    <button type="button" class="solid-btn" id="setKeyAdd"
+            data-i18n="set.createKey">Create key</button>
+  </div>
+
+  {#- Shown once, on creation, and never again — the database stores only a
+     hash. Deliberately loud, because there is no second chance to copy it. -#}
+  <div class="key-reveal" id="setKeyReveal" hidden>
+    <h4 data-i18n="set.keyRevealTitle">Copy this now — it cannot be shown again</h4>
+    <code id="setKeyValue"></code>
+    <button type="button" class="ghost-btn" id="setKeyCopy" data-i18n="common.copy">Copy</button>
+    <p data-i18n-html="set.keyRevealNote">Store it in the partner site's build environment as
+       <code>THAUMA_API_KEY</code>. Never in a repository, and never in
+       client-side JavaScript.</p>
+  </div>
+
+  <div class="key-list" id="setKeyList"></div>
+</section>
+
+<!-- ============================================================== EMBEDS -->
+{#- The one thing in this console that publishes to people who have not signed
+   in to anything. An API key is a credential you hand to one build; an embed
+   is a URL anybody can fetch. So the switch comes FIRST, says exactly what it
+   does, and everything below it only matters once it is on. -#}
+<section class="tab-panel" data-panel="embeds" role="tabpanel" hidden>
+  <p class="note" data-i18n-html="set.embedNote">A widget shows your <b>published</b> goals or roadmap on somebody else's
+    website — a sending church, a supporter's blog. It reads the same public
+    data as the API and needs no key, because a key in a web page is not a
+    secret. Nothing private can appear in one.</p>
+
+  <div class="set-row">
+    <div class="set-label">
+      <h3 data-i18n="set.embedOn">Allow embedding</h3>
+      <p data-i18n="set.embedOnDesc">Off until you turn it on. While it is off, the widget address returns nothing at all — not an error saying you exist.</p>
+    </div>
+    <div class="set-control">
+      <label class="switch">
+        <input type="checkbox" id="setEmbedOn">
+        <span data-i18n="set.embedOnLabel">Anyone may embed my progress</span>
+      </label>
+      <p class="rolegate" id="setEmbedNotAdmin" hidden
+         data-i18n="set.embedAdminOnly">An administrator changes this.</p>
+    </div>
+  </div>
+
+  <div id="setEmbedRest" hidden>
+    <div class="set-row">
+      <div class="set-label">
+        <h3 data-i18n="set.embedLook">Colours</h3>
+        <p data-i18n="set.embedLookDesc">Saved here, so a page that embedded you last year picks up a change without anyone editing it.</p>
+      </div>
+      <div class="set-control emb-look">
+        <label class="emb-field">
+          <span data-i18n="set.embedAccent">Accent</span>
+          <span class="emb-colour">
+            <input type="color" id="setEmbedAccent" value="#6D4AFF">
+            <input type="text" id="setEmbedAccentHex" class="emb-hex"
+                   maxlength="7" spellcheck="false" aria-label="Accent colour hex">
+          </span>
+        </label>
+        <label class="emb-field">
+          <span data-i18n="set.embedTheme">Background</span>
+          <select id="setEmbedTheme">
+            <option value="auto" data-i18n="set.embedAuto">Match the page</option>
+            <option value="light" data-i18n="set.embedLight">Always light</option>
+            <option value="dark" data-i18n="set.embedDark">Always dark</option>
+          </select>
+        </label>
+      </div>
+    </div>
+
+    <div class="set-row set-row-block">
+      <div class="set-label">
+        <h3 data-i18n="set.embedBuild">The code to paste</h3>
+        <p data-i18n="set.embedBuildDesc">Choose what it shows, then copy. The preview is the real widget reading your real numbers.</p>
+      </div>
+      <div class="set-control">
+        <div class="emb-opts">
+          <label class="emb-field">
+            <span data-i18n="set.embedWidget">Show</span>
+            <select id="setEmbedWidget">
+              <option value="goal" data-i18n="set.embedGoal">Giving progress</option>
+              <option value="roadmap" data-i18n="set.embedRoadmap">Roadmap</option>
+            </select>
+          </label>
+          <label class="emb-field">
+            <span data-i18n="set.embedLang">Language</span>
+            <select id="setEmbedLang"></select>
+          </label>
+          <label class="emb-field">
+            <span data-i18n="set.embedLimit">Rows</span>
+            <input type="number" id="setEmbedLimit" min="0" max="20" step="1" value="0">
+          </label>
+        </div>
+
+        <div class="emb-split">
+          <div class="emb-codewrap">
+            <pre class="emb-code" id="setEmbedCode"></pre>
+            <button type="button" class="ghost-btn" id="setEmbedCopy"
+                    data-i18n="common.copy">Copy</button>
+          </div>
+          {#- A real iframe, not a mock. The widget has a shadow root and its
+             own stylesheet, and rendering it directly in this page would
+             prove nothing about how it behaves as a guest somewhere else. -#}
+          <div class="emb-preview">
+            <div class="emb-preview-label" data-i18n="set.embedPreview">Preview</div>
+            <iframe id="setEmbedFrame" title="Embed preview" sandbox="allow-scripts"></iframe>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

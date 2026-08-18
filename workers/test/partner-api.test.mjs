@@ -67,11 +67,21 @@ await check("assertPublicSafe CATCHES an unscoped query", async () => {
   assert(threw && /partner_id/.test(threw), `expected a throw naming partner_id, got ${threw}`);
 });
 
-await check("PUBLIC_QUERIES is an allow-list of exactly the two intended queries", async () => {
+await check("PUBLIC_QUERIES is an allow-list of exactly the intended queries", async () => {
   // If this fails because someone added a query, that is the test working:
   // adding to this set is a decision to publish, and should be deliberate.
-  eq([...PUBLIC_QUERIES].sort(),
-     ["public_goals_for_partner", "public_milestones_for_partner"], "public set");
+  eq([...PUBLIC_QUERIES].sort(), [
+    "public_goals_for_partner",
+    "public_languages_for_partner",
+    "public_milestone_translations",
+    "public_milestones_for_partner",
+    /* Added 2026-08-18 for the embed widgets. The only query here reached
+       with no credential at all — the partner API needs a key and an embed
+       cannot hold one. It carries its own authorisation (embed_enabled = 1),
+       which is what makes an unauthenticated endpoint acceptable. See
+       workers/src/embed.js. */
+    "public_partner_for_embed",
+  ], "public set");
 });
 
 await check("publicQuery REFUSES a private query even when asked directly", async () => {
@@ -99,23 +109,56 @@ function fakePublicDb(overrides = {}) {
         donor_count: 31, percent: 68, captured_at: "2026-08-14T06:00:00Z",
       }];
     }
-    if (sql.includes("milestones")) {
+    if (sql.includes("FROM milestone_translations")) {
+      return overrides.translations ?? [
+        { milestone_id: "m_1", lang: "en", title: "Proclaim! 1st Missions Trip",
+          description: "A missions trip.", target_label: "End of September 2026" },
+        { milestone_id: "m_1", lang: "hr", title: "Proclaim! 1. misijsko putovanje",
+          description: "Misionarsko putovanje.", target_label: "Kraj rujna 2026." },
+      ];
+    }
+    if (sql.includes("FROM partner_languages")) {
+      return overrides.languages ?? [
+        { code: "en", name: "English", native_name: "English", sort_order: 0 },
+        { code: "hr", name: "Croatian", native_name: "Hrvatski", sort_order: 1 },
+      ];
+    }
+    if (sql.includes("FROM milestones")) {
       return overrides.milestones ?? [{
-        id: "m_1", parent_id: null, title: "Proclaim! 1st Missions Trip",
-        title_hr: "Proclaim! 1. misijsko putovanje",
-        description: "A missions trip.", description_hr: "Misionarsko putovanje.",
-        target_label: "End of September 2026", target_label_hr: "Kraj rujna 2026.",
-        actual_date: null, status: "upcoming", completion: 0,
-        is_featured: 1, sort_order: 1,
+        id: "m_1", parent_id: null, actual_date: null, status: "upcoming",
+        completion: 0, is_featured: 1, sort_order: 1,
       }];
     }
     return [];
   });
 }
 
-await check("the payload carries goals and milestones and nothing else", async () => {
+await check("the payload carries languages, goals and milestones and nothing else", async () => {
   const site = await partnerPublicSite(fakePublicDb(), "p_chase");
-  eq(Object.keys(site).sort(), ["goals", "milestones"], "top-level keys");
+  eq(Object.keys(site).sort(), ["goals", "languages", "milestones"], "top-level keys");
+});
+
+await check("milestone text is keyed BY LANGUAGE, with no language named in code", async () => {
+  const site = await partnerPublicSite(fakePublicDb(), "p_chase");
+  eq(Object.keys(site.milestones[0].text).sort(), ["en", "hr"], "language keys");
+  eq(site.milestones[0].text.hr.title, "Proclaim! 1. misijsko putovanje", "Croatian title");
+});
+
+await check("a language the partner has switched OFF never reaches the payload", async () => {
+  // public_milestone_translations joins partner_languages and filters
+  // is_enabled = 1, so a prepared-but-unpublished translation stays in the
+  // database. Here the fake returns only English, standing in for Croatian
+  // being switched off.
+  const site = await partnerPublicSite(fakePublicDb({
+    translations: [{ milestone_id: "m_1", lang: "en", title: "Only English" }],
+  }), "p_chase");
+  eq(Object.keys(site.milestones[0].text), ["en"], "languages present");
+});
+
+await check("a milestone with NO publishable text is dropped, not shipped empty", async () => {
+  // Otherwise a partner site draws a row with no words in it.
+  const site = await partnerPublicSite(fakePublicDb({ translations: [] }), "p_chase");
+  eq(site.milestones.length, 0, "an untranslated milestone was published");
 });
 
 await check("NO SENSITIVE FIELD APPEARS ANYWHERE IN THE PAYLOAD", async () => {
@@ -130,7 +173,7 @@ await check("a column added to the query does NOT reach the payload", async () =
   // This simulates somebody adding a private column to `milestones` later.
   const db = fakePublicDb({
     milestones: [{
-      id: "m_1", title: "Trip", status: "upcoming", completion: 0,
+      id: "m_1", status: "upcoming", completion: 0,
       internal_note: "donor Jane paid for this",
       contact_email: "jane@example.com",
     }],

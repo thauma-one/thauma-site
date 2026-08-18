@@ -1,23 +1,22 @@
 ---
 layout: layouts/base.njk
 pagination:
-  data: site.languages
+  data: activeLangs
   size: 1
   alias: lang
 pageSlug: "resources"
 pageTitle: resources
 ---
 {% set t = i18n[lang] %}
-{#- Reveal flag (requested directly): the real resources grid only shows
-   once site.resourcesReady is flipped true in Site Settings — but the
-   dev server always sees behind it (matches the comingSoon flag's own
-   "dev server builds everything" convention), so real entries can be
-   previewed and iterated on before launch. Today the resources
-   collection is empty, so BOTH branches below currently render nothing
-   real and this falls through to the coming-soon block regardless of
-   env — dev and production look identical to today until content
-   actually gets added. #}
-{% set resourcesRevealed = site.resourcesReady or not env.isProduction %}
+{#- The library, as its own switch. `resourcesLibrary` decides whether the
+   real grid shows or the "coming soon" block does — separately from whether
+   the Resources PAGE exists at all, which is `visible.pages.resources`.
+
+   It no longer says "or not env.isProduction". That escape hatch meant the
+   dev site could never show the unrevealed state, so there was no way to
+   check what a visitor saw before launch. The dev column does that job now,
+   and it defaults to revealed. #}
+{% set resourcesRevealed = visible.sections.resourcesLibrary %}
 <header class="page"><div class="wrap">
   <div class="cue rise">{{ t.resources.cue }}</div>
   <h2 class="rise-2">{{ t.resources.h2_thin }} <b>{{ t.resources.h2_bold }}</b></h2>
