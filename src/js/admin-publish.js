@@ -27,8 +27,10 @@
   if (document.body.getAttribute('data-admin-page') !== 'publish') return;
 
   var API = '/api/admin/publish';
+  var MIG = '/api/admin/migrate';
   var $ = function (id) { return document.getElementById(id); };
   var state = null;
+  var mig = null;      // what the DATABASE says, which is a different question
   var busy = false;
 
   function esc(s) {
@@ -106,6 +108,25 @@
       if (window.StaffProblem) window.StaffProblem(tr('err.renderFailed') + ': ' + e.message, null);
       console.error('publish render failed:', e);
     }
+
+    /* Separate request, and deliberately not awaited above. The database's
+       migration state is not part of "what is waiting to go live" — it is a
+       property of the live database, true whether or not anything is waiting.
+       A slow or failing answer here must not stop the rest of the page
+       rendering. */
+    loadMigrations();
+  }
+
+  async function loadMigrations() {
+    try {
+      var res = await fetch(MIG, { credentials: 'same-origin', cache: 'no-store' });
+      var body = await res.json();
+      mig = res.ok ? body : { error: (body && body.error) || ('HTTP ' + res.status) };
+    } catch (e) {
+      mig = { error: e.message };
+    }
+    try { renderMigrations(); }
+    catch (e) { console.error('migration render failed:', e); }
   }
 
   /* ---- rendering ------------------------------------------------------ */
@@ -159,17 +180,163 @@
       '</div>';
   }
 
+  /**
+   * The database panel.
+   *
+   * Two sources, and the difference between them is the point:
+   *
+   *   state.migrations  migration FILES in the release about to be published
+   *   mig.pending       migrations the LIVE DATABASE has not run
+   *
+   * A file can be in the release and already applied. A migration can be
+   * pending with no file in the release, because it was merged weeks ago and
+   * nobody ran it — which is the case that went unnoticed for weeks and broke
+   * removing a person. So `mig` is the authority, and the release list is
+   * shown only as a heads-up when it is not already covered.
+   */
   function renderMigrations() {
-    var m = state.migrations || [];
     var el = $('pMigrations');
-    el.hidden = !m.length;
-    if (!m.length) return;
-    el.innerHTML =
-      '<b>' + esc(tr('pub.migrationsTitle')) + '</b> ' +
-      esc(tr('pub.migrationsBody').replace('{n}', m.length)) +
-      '<ul>' + m.map(function (f) {
-        return '<li><code>' + esc(f) + '</code></li>';
-      }).join('') + '</ul>';
+    if (!mig) { el.hidden = true; return; }
+
+    if (mig.error) {
+      el.hidden = false;
+      el.className = 'p-migrations is-unknown';
+      el.innerHTML = '<b>' + esc(tr('pub.migUnknown')) + '</b> ' + esc(mig.error);
+      return;
+    }
+
+    var pending = mig.pending || [];
+    var inRelease = state && state.migrations ? state.migrations.length : 0;
+
+    /* Applied, nothing pending, and nothing in the release: say so quietly
+       and stop. A green box on every visit trains people to stop reading it. */
+    if (!pending.length && !inRelease) {
+      el.hidden = false;
+      el.className = 'p-migrations is-clean';
+      el.innerHTML = '<b>' + esc(tr('pub.migClean')) + '</b> ' +
+        esc(fill('pub.migAppliedCount', { n: (mig.applied || []).length }));
+      return;
+    }
+
+    el.hidden = false;
+    el.className = 'p-migrations' + (pending.length ? ' is-pending' : '');
+
+    var html = '';
+
+    if (pending.length) {
+      html += '<b>' + esc(tr('pub.migPendingTitle')) + '</b> ' +
+        esc(fill(mig.needsBaseline ? 'pub.migNeedsBaseline' : 'pub.migPendingBody',
+                 { n: pending.length })) +
+        '<ul>' + pending.map(function (f) {
+          return '<li><code>' + esc(f) + '</code></li>';
+        }).join('') + '</ul>' +
+        '<div class="p-mig-acts">' +
+          (mig.needsBaseline
+            ? '<button type="button" class="ghost-btn" id="pBaseline">' +
+                esc(tr('pub.migBaseline')) + '</button>'
+            : '<button type="button" class="solid-btn" id="pApplyMig">' +
+                esc(tr('pub.migApply')) + '</button>') +
+        '</div>';
+    } else {
+      /* Nothing pending, but the release carries migration files. Almost
+         always means they are already applied — worth confirming rather than
+         leaving the person to wonder. */
+      html += '<b>' + esc(tr('pub.migInReleaseTitle')) + '</b> ' +
+        esc(fill('pub.migInReleaseBody', { n: inRelease }));
+    }
+
+    el.innerHTML = html;
+
+    if ($('pApplyMig')) $('pApplyMig').addEventListener('click', applyMigrations);
+    if ($('pBaseline')) $('pBaseline').addEventListener('click', baselineMigrations);
+  }
+
+  async function applyMigrations() {
+    if (busy || !mig) return;
+    var pending = mig.pending || [];
+
+    var ok = await window.StaffConfirm({
+      title: tr('pub.migConfirmTitle'),
+      body: fill('pub.migConfirmBody', { n: pending.length }),
+      note: tr('pub.migConfirmNote'),
+      type: mig.apply_word,
+      typeLabel: tr('pub.typeLabel'),
+      confirm: tr('pub.migApply'),
+      cancel: tr('ms.cancel')
+    });
+    if (!ok) return;
+
+    await migAct({ action: 'apply', confirm: mig.apply_word });
+  }
+
+  async function baselineMigrations() {
+    if (busy || !mig) return;
+    var pending = mig.pending || [];
+    var last = pending[pending.length - 1];
+
+    /* Baseline claims work was done that this page did not do. It is the one
+       action here that can make the database LIE about itself, so the dialog
+       names the exact migration it will mark and asks for a different word. */
+    var ok = await window.StaffConfirm({
+      title: tr('pub.migBaselineTitle'),
+      body: fill('pub.migBaselineBody', { n: pending.length, file: last }),
+      note: tr('pub.migBaselineNote'),
+      type: mig.baseline_word,
+      typeLabel: tr('pub.typeLabel'),
+      confirm: tr('pub.migBaseline'),
+      cancel: tr('ms.cancel')
+    });
+    if (!ok) return;
+
+    await migAct({ action: 'baseline', confirm: mig.baseline_word, through: last });
+  }
+
+  async function migAct(payload) {
+    busy = true;
+    var btn = $('pApplyMig') || $('pBaseline');
+    if (btn) btn.disabled = true;
+
+    var res, body;
+    try {
+      res = await fetch(MIG, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      body = await res.json();
+    } catch (e) {
+      toast(tr('err.unreachable') + ' ' + e.message, 'bad');
+      busy = false;
+      if (btn) btn.disabled = false;
+      return;
+    }
+
+    busy = false;
+    if (btn) btn.disabled = false;
+
+    if (!res.ok) {
+      /* A half-applied migration is not a toast. It is a condition somebody
+         has to look at the database about, and it must not scroll away. */
+      var msg = (body && body.error) || (tr('err.refused') + ' (' + res.status + ')');
+      if (body && body.partial && window.StaffProblem) {
+        window.StaffProblem(tr('pub.migPartial') + ' ' + msg, null);
+      } else if (window.StaffProblem) {
+        window.StaffProblem(msg, loadMigrations);
+      } else {
+        toast(msg, 'bad');
+      }
+      loadMigrations();
+      return;
+    }
+
+    if (window.StaffProblemClear) window.StaffProblemClear();
+    var n = payload.action === 'baseline'
+      ? (body.marked || []).length
+      : (body.ran || []).length;
+    toast(fill(payload.action === 'baseline' ? 'pub.migBaselined' : 'pub.migApplied',
+               { n: n }), 'ok');
+    loadMigrations();
   }
 
   function renderCommits() {
@@ -224,11 +391,57 @@
       ? (n === 1 ? tr('pub.oneWaiting') : tr('pub.nWaiting').replace('{n}', n))
       : tr('pub.upToDate');
     $('pBarNote').textContent = n ? tr('pub.barNote') : '';
+
+    /* The two SHAs, in the manual panel. When somebody is convinced the page
+       is lying to them, this is the line that settles it — the live branch's
+       current commit against the one the last successful deploy built. Equal
+       means up to date is true; different means it is not. */
+    if ($('pManualNote')) {
+      $('pManualNote').textContent = (state.head && state.published)
+        ? fill('pub.manualShas', { head: state.head, live: state.published.sha })
+        : '';
+    }
   }
 
   /* ---- the two actions ------------------------------------------------ */
 
   $('pRefresh').addEventListener('click', function () { if (!busy) load(); });
+
+  /* ---- manual actions -------------------------------------------------
+     The same two dispatches as the bar, minus the "is this needed?" check.
+
+     Nothing here is a different operation — Rebuild the live site IS Publish.
+     What differs is that these do not consult `state.waiting` first, because
+     the whole reason to reach for them is that `state.waiting` is wrong. The
+     typed confirmation stays on the one that changes the public site; taking
+     it away because "there is nothing to publish anyway" would remove the
+     guard precisely when the page's idea of what is waiting is not to be
+     trusted. */
+
+  $('pForcePreview').addEventListener('click', function () {
+    if (!busy) act({ action: 'preview' }, this);
+  });
+
+  $('pForcePublish').addEventListener('click', async function () {
+    if (busy || !state) return;
+    var n = state.waiting;
+
+    var ok = await window.StaffConfirm({
+      title: tr('pub.confirmTitle'),
+      /* Different sentence when nothing is waiting, because "this sends 0
+         saved changes" reads like a no-op and this is not one — it rebuilds
+         and redeploys the site from the live branch. */
+      body: n ? fill('pub.confirmBody', { n: n }) : tr('pub.forceBody'),
+      note: tr('pub.forceNote'),
+      type: state.confirm_word,
+      typeLabel: tr('pub.typeLabel'),
+      confirm: tr('pub.publish'),
+      cancel: tr('ms.cancel')
+    });
+    if (!ok) return;
+
+    await act({ action: 'publish', confirm: state.confirm_word }, this);
+  });
 
   $('pPreview').addEventListener('click', function () {
     // No confirmation. Preview changes nothing anybody outside can see, and a

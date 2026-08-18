@@ -338,6 +338,37 @@
 .p-migrations b{color:var(--warn,#F5B845)}
 .p-migrations ul{margin:12px 0;padding-left:20px;color:var(--dim)}
 .p-migrations code{font-family:var(--font-mono);font-size:var(--fs-micro)}
+
+/* Three states, and the amber default above is the WRONG one for two of them.
+   A settled database drawn in warning colours is a page that cries wolf; an
+   unreadable one drawn in green is worse. */
+.p-migrations.is-clean{background:rgba(92,242,196,.06);
+  border-color:rgba(92,242,196,.28)}
+.p-migrations.is-clean b{color:var(--ok,#5CF2C4)}
+.p-migrations.is-unknown{background:var(--panel);border-color:var(--line)}
+.p-migrations.is-unknown b{color:var(--dim)}
+
+.p-mig-acts{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+
+/* MANUAL ACTIONS — findable, not adjacent to the ordinary buttons. Closed by
+   default: someone who does not already suspect a problem has no business
+   redeploying the live site from here. */
+.p-manual{background:var(--panel);border:1px solid var(--line);
+  border-radius:var(--radius);padding:0}
+.p-manual > summary{cursor:pointer;padding:16px 24px;font-size:var(--fs-tiny);
+  color:var(--dim);list-style:none;display:flex;align-items:center;gap:10px}
+.p-manual > summary::-webkit-details-marker{display:none}
+.p-manual > summary::before{content:"▸";color:var(--dim);opacity:.6;
+  transition:transform .15s ease}
+.p-manual[open] > summary::before{transform:rotate(90deg)}
+@media(hover:hover){ .p-manual > summary:hover{color:var(--text)} }
+.p-manual > summary:focus-visible{outline:2px solid var(--voice-tech);
+  outline-offset:-2px}
+.p-manual-why{margin:0 24px;font-size:var(--fs-micro);color:var(--dim);
+  line-height:var(--lh-body);max-width:62ch}
+.p-manual-acts{display:flex;gap:10px;flex-wrap:wrap;padding:16px 24px 4px}
+.p-manual-note{margin:0 24px 20px;font-family:var(--font-mono);
+  font-size:var(--fs-micro);color:var(--dim);opacity:.75}
 .p-cmd{display:block;margin-top:12px;background:var(--bg);
   border:1px solid var(--line-hard);border-radius:var(--radius);
   padding:11px 14px;color:var(--voice-tech-hi);overflow-x:auto;

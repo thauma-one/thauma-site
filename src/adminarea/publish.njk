@@ -27,7 +27,13 @@ permalink: /admin/publish/index.html
   {#- Above the button, and repeated inside the dialog. A migration is the one
      thing here that is not fixed by the deploy itself: the code goes out
      expecting a table the live database has not got, and the site breaks
-     after publishing rather than before. -#}
+     after publishing rather than before.
+
+     This panel asks the DATABASE what it has, rather than inferring it from
+     the files in the release. Those are different questions, and the gap
+     between them is exactly the bug this page is meant to catch: on
+     2026-08-17 the live database was two migrations behind and nothing said
+     so, because no migration file had changed recently. -#}
   <div class="p-migrations" id="pMigrations" hidden></div>
 
   <div class="p-cols">
@@ -40,6 +46,33 @@ permalink: /admin/publish/index.html
       <div class="p-files" id="pFiles"></div>
     </section>
   </div>
+
+  {#- MANUAL ACTIONS, deliberately behind a disclosure.
+
+     The buttons in the bar do the normal thing and are disabled when the
+     normal thing is not needed. These do it ANYWAY. That matters because
+     "nothing is waiting" is a claim assembled from GitHub's answer about the
+     last successful run, and if that claim is ever wrong the page would
+     otherwise offer no way to act on it — which is precisely the state this
+     site was in when the live branch had code that had never been deployed.
+
+     Folded away rather than hidden: findable when something is wrong,
+     not sitting next to the ordinary buttons inviting a misclick. -#}
+  <details class="p-manual" id="pManual">
+    <summary data-i18n="pub.manualTitle">Something looks out of step</summary>
+    <p class="p-manual-why" data-i18n="pub.manualWhy">
+      Use these when the page says everything is up to date but the site
+      disagrees. They do the same work as the buttons above, without waiting
+      to be told it is needed.
+    </p>
+    <div class="p-manual-acts">
+      <button type="button" class="ghost-btn" id="pForcePreview"
+              data-i18n="pub.forcePreview">Rebuild the preview site</button>
+      <button type="button" class="ghost-btn" id="pForcePublish"
+              data-i18n="pub.forcePublish">Rebuild the live site</button>
+    </div>
+    <p class="p-manual-note" id="pManualNote"></p>
+  </details>
 
 </div>
 

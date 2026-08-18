@@ -143,6 +143,11 @@ async function status(env) {
     branch,
     neverPublished: false,
     published: { sha: live.sha.slice(0, 7), at: live.at, url: live.url, run: live.number },
+    /* What the live branch points at RIGHT NOW. The page can derive "waiting"
+       from the comparison, but when somebody believes the page is wrong the
+       two SHAs side by side are the fastest way to find out who is — so they
+       are shown rather than left to be inferred. */
+    head: head.error ? null : head.sha.slice(0, 7),
     preview: preview.never ? null : {
       sha: preview.sha.slice(0, 7), at: preview.at, url: preview.url,
       // Whether what is on next.thauma.one is what you would be publishing.
