@@ -76,6 +76,14 @@
     url: 'con.f.url'
   };
 
+  /* A whole GROUP can carry an explanation, not just a field. `donorbox` is
+     four blank boxes labelled en / hr / sr with nothing saying what belongs in
+     them — which is how a setting ends up permanently empty. */
+  var GROUP_EXPLAIN = {
+    donorbox: 'con.g.donorbox',
+    socials: 'con.g.socials'
+  };
+
   /* ---- loading -------------------------------------------------------- */
 
   async function get() {
@@ -246,12 +254,39 @@
     '</label>';
   }
 
+  /* A FROZEN LIST IS ONE FACT, NOT FOUR.
+
+     `languages` is an array, and rendering it a leaf at a time gave four rows
+     labelled 0, 1, 2, 3 — each with its own disabled box holding two letters,
+     filling half a screen to say something a single line says better. It is
+     also the one setting on this page nobody can edit here, so it had the most
+     space and the least purpose.
+
+     Collapsed to a single row, with a note pointing at the buttons that DO
+     change it. */
+  function isFrozenList(p) {
+    return state.frozen.some(function (f) { return p.indexOf(f + '.') === 0; });
+  }
+
+  function frozenListRow(name) {
+    var values = state.order
+      .filter(function (p) { return p.indexOf(name + '.') === 0; })
+      .map(function (p) { return state.draft[p]; });
+    if (!values.length) return '';
+    return '<div class="s-field is-frozen">' +
+      '<div class="s-label"><code>' + esc(name) + '</code>' +
+        '<span class="s-hint">' + esc(tr('con.f.languages')) + '</span></div>' +
+      '<div class="s-control"><span class="s-frozen">' +
+        esc(values.join(' · ')) + '</span></div>' +
+    '</div>';
+  }
+
   function render() {
     var groups = [];
     var seen = {};
     state.order.forEach(function (p) {
       // Visibility and images each get their own block below.
-      if (isVisibility(p) || isImage(p)) return;
+      if (isVisibility(p) || isImage(p) || isFrozenList(p)) return;
       var g = groupOf(p);
       if (!seen[g]) { seen[g] = true; groups.push(g); }
     });
@@ -260,11 +295,13 @@
       renderVisibility() +
       groups.map(function (g) {
         var rows = state.order.filter(function (p) {
-          return !isVisibility(p) && !isImage(p) && groupOf(p) === g;
+          return !isVisibility(p) && !isImage(p) && !isFrozenList(p) && groupOf(p) === g;
         });
         return '<section class="s-group">' +
           '<h3>' + esc(groupLabel(g)) + '</h3>' +
+          (GROUP_EXPLAIN[g] ? '<p class="v-note">' + esc(tr(GROUP_EXPLAIN[g])) + '</p>' : '') +
           rows.map(field).join('') +
+          (g === '_general' ? frozenListRow('languages') : '') +
           '</section>';
       }).join('') +
       renderImages();

@@ -217,6 +217,38 @@ check("a language with no switch is still built", () => {
   writeFileSync(SITE, ORIGINAL);
 });
 
+check("every per-language setting has a slot for every language", () => {
+  /* site.json holds objects keyed by language code — `donorbox` today. Adding
+     a language has to give each of them a slot, and it did not: a new language
+     was registered with no donation form, so its Give page quietly showed the
+     "coming soon" placeholder and no setting existed anywhere to explain why.
+
+     This finds those objects by shape rather than by name, so a second one
+     added later is covered without anybody remembering this happened. */
+  writeFileSync(SITE, ORIGINAL);
+  const site = readSite();
+  const langs = site.languages;
+
+  const perLanguage = Object.entries(site).filter(([key, v]) => {
+    if (!v || typeof v !== "object" || Array.isArray(v)) return false;
+    if (key === "visibility") return false;          // its own shape, checked elsewhere
+    const keys = Object.keys(v);
+    // Looks per-language if it is keyed ONLY by codes the site has.
+    return keys.length > 0 && keys.every((k) => langs.includes(k));
+  });
+
+  assert(perLanguage.length > 0,
+         "found no per-language settings — donorbox should be one, so this check is broken");
+
+  const gaps = [];
+  for (const [key, obj] of perLanguage) {
+    for (const code of langs) {
+      if (obj[code] === undefined) gaps.push(`${key}.${code}`);
+    }
+  }
+  eq(gaps, [], "these languages have no slot in a per-language setting");
+});
+
 check("the language list and the switches agree about what exists", () => {
   // A switch for a language with no file builds pages with no strings in them.
   writeFileSync(SITE, ORIGINAL);

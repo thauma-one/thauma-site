@@ -1128,6 +1128,22 @@ The parser is duplicated there because `admin-content.js` is a browser IIFE
 with no exports. A test asserts the two copies still match after comments are
 stripped, so a fix in one place fails until it is made in both.
 
+### Per-language settings follow the language
+
+`site.json` holds objects keyed by language code — `donorbox` today, which is
+the donation form's web address for each one. **Adding a language has to give
+each of them a slot**, and removing one has to take it away.
+
+It did not, at first. A new language was registered, switched on for dev, and
+had no donation form — so its Give page quietly showed the "coming soon"
+placeholder and no setting existed anywhere to explain why.
+
+`PER_LANGUAGE_SETTINGS` names them rather than detecting them, because a rule
+like "any object whose keys look like language codes" eventually catches
+something that merely resembles one. A test finds them by shape instead and
+asserts every language has a slot, so a second one added later is covered
+without anybody remembering this.
+
 ### Removing a language
 
 `/admin/site/` → **Remove**, beside each language's switches. English has none —

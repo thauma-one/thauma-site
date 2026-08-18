@@ -71,6 +71,19 @@ export function pathFor(fileKey) {
  */
 const FROZEN = ["languages"];
 
+/**
+ * Objects in site.json keyed by language code.
+ *
+ * Adding a language has to give each of these a slot, and removing one has to
+ * take it away — otherwise a new language is registered with no donation form
+ * and the Give page quietly shows its placeholder instead, with no setting
+ * anywhere to explain why.
+ *
+ * Named rather than detected. A rule like "any object whose keys look like
+ * language codes" would eventually catch something that merely resembles one.
+ */
+const PER_LANGUAGE_SETTINGS = ["donorbox"];
+
 /** One string is capped so a paste accident cannot commit a novel. */
 const MAX_VALUE = 5000;
 const MAX_CHANGES = 300;
@@ -286,6 +299,20 @@ async function addLanguage(request, env, db, user, me, cfg) {
      reach a page of empty strings. */
   site.visibility.languages[code] = { live: false, dev: true };
 
+  /* PER-LANGUAGE SETTINGS GET A SLOT TOO, or the new language is registered
+     and then silently has no donation form — the Give page falls back to its
+     placeholder and nobody can see why, because the setting it is looking for
+     does not exist to be filled in.
+     
+     `donorbox` is the only one today. If another per-language object is ever
+     added to site.json it needs adding here, and a test asserts that every one
+     of them has a key for every language so the omission fails loudly. */
+  for (const key of PER_LANGUAGE_SETTINGS) {
+    if (site[key] && typeof site[key] === "object" && !Array.isArray(site[key])) {
+      if (site[key][code] === undefined) site[key][code] = "";
+    }
+  }
+
   const siteTrailing = siteFile.text.endsWith("\n") ? "\n" : "";
   const registered = await putFile(env, {
     path: pathFor("site"),
@@ -402,6 +429,11 @@ async function removeLanguage(request, env, db, user, me, cfg) {
   /* ---- 1. deregister ---- */
   site.languages = (site.languages || []).filter((c) => c !== code);
   if (site.visibility && site.visibility.languages) delete site.visibility.languages[code];
+
+  // The mirror of adding: leave no orphaned per-language settings behind.
+  for (const key of PER_LANGUAGE_SETTINGS) {
+    if (site[key] && typeof site[key] === "object") delete site[key][code];
+  }
 
   const trailing = siteFile.text.endsWith("\n") ? "\n" : "";
   const dereg = await putFile(env, {

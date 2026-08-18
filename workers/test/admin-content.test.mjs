@@ -32,6 +32,9 @@ const eq = (a, b, m) => assert(JSON.stringify(a) === JSON.stringify(b),
 const EN = { code: "en", nav: { home: "Home", give: "Give" }, notFound: { taunts: ["a", "b"] } };
 const SITE = { name: "Thauma", comingSoon: true, languages: ["en", "hr"],
                images: { home_who: { src: "/img/x.webp", zoom: 110 } },
+               // Keyed by language, like the real file — adding or removing a
+               // language has to keep this in step.
+               donorbox: { en: "", hr: "" },
                socials: { youtube: "" } };
 
 const asText = (o) => JSON.stringify(o, null, 2);
@@ -523,6 +526,10 @@ await check("adding a language creates the FILE FIRST, then registers it", async
     assert(site.languages.includes("sl"), "not added to the language list");
     eq(site.visibility.languages.sl, { live: false, dev: true },
        "must be ON for dev and OFF for visitors");
+    /* And its per-language settings. Without this the language exists, is
+       switched on for dev, and has no donation form — the Give page shows its
+       placeholder and no setting exists anywhere to explain why. */
+    eq(site.donorbox.sl, "", "donorbox got no slot for the new language");
   } finally { g.restore(); }
 });
 
@@ -648,6 +655,9 @@ await check("removing DEREGISTERS first, then deletes — the mirror of adding",
     const site = JSON.parse(Buffer.from(writes[0].body.content, "base64").toString("utf8"));
     eq(site.languages, ["en"], "removed from the list");
     eq(site.visibility.languages.hr, undefined, "and its switch removed too");
+    // The mirror: no orphaned per-language settings left behind.
+    assert(!site.donorbox || site.donorbox.hr === undefined,
+           "donorbox still holds a slot for a removed language");
   } finally { g.restore(); }
 });
 
