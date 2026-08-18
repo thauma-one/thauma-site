@@ -14,8 +14,9 @@
  *      unconditional overwrite, which is the exact accident the SHA exists to
  *      prevent.
  */
-import { toBase64, fromBase64, getFile, putFile, githubConfig, compareBranches,
-         lastSuccessfulRun, dispatchWorkflow, __resetTokenCache } from "../src/lib/github.js";
+import { toBase64, fromBase64, getFile, putFile, deleteFile, skipCi, githubConfig,
+         compareBranches, lastSuccessfulRun, dispatchWorkflow, __resetTokenCache }
+  from "../src/lib/github.js";
 
 let pass = 0, fail = 0;
 async function check(name, fn) {
@@ -412,6 +413,76 @@ await check("a missing Actions permission says exactly which one", async () => {
   const r = await dispatchWorkflow(ENV, "deploy.yml", "main", fake);
   eq(r.status, 403, "status");
   assert(/Actions: read and write/.test(r.error), "must name the permission");
+});
+
+/* ---------------------------------------------------------------------------
+   [skip ci] — the marker that decides whether the live site moves
+
+   On 2026-08-17 a language was deleted from the console and production
+   deployed. `putFile` carried the marker inline and `deleteFile` had never
+   been given it, so "Delete sl: 0 translated strings" landed on the live
+   branch as an ordinary push and deploy.yml ran. Nobody asked for a deploy;
+   the site changed.
+   --------------------------------------------------------------------------- */
+
+await check("skipCi marks the subject line, not the end of the message", () => {
+  /* Appending to the end of a multi-line message is the plausible-looking
+     version that does nothing: GitHub reads the marker off the first line, so
+     it would be present, invisible to Actions, and the site would deploy. */
+  eq(skipCi("Delete sl"), "Delete sl [skip ci]", "single line");
+  eq(skipCi("Delete sl\n\nRemoved by Chase."),
+     "Delete sl [skip ci]\n\nRemoved by Chase.", "subject only");
+  assert(skipCi("a\nb").split("\n")[0].endsWith("[skip ci]"),
+         "the marker must be on line one");
+});
+
+await check("deleteFile is quiet when asked", async () => {
+  let seen = null;
+  const fake = async (u, init) => {
+    seen = JSON.parse(init.body);
+    return new Response(JSON.stringify({ commit: { sha: "c1" } }), { status: 200 });
+  };
+  await deleteFile(ENV, { path: "src/_data/i18n/sl.json", sha: "s1",
+                          message: "Delete sl: 0 translated strings", quiet: true }, fake);
+  assert(/\[skip ci\]/.test(seen.message), `no marker in: ${seen.message}`);
+});
+
+await check("deleteFile without quiet does NOT mark — the flag is the switch", async () => {
+  let seen = null;
+  const fake = async (u, init) => {
+    seen = JSON.parse(init.body);
+    return new Response(JSON.stringify({ commit: { sha: "c1" } }), { status: 200 });
+  };
+  await deleteFile(ENV, { path: "x.json", sha: "s1", message: "Delete x" }, fake);
+  assert(!/\[skip ci\]/.test(seen.message), "quiet must be opt-in, or the flag means nothing");
+});
+
+/* The structural one. The three above prove the mechanism works; this proves
+   it is USED. A future write added without `quiet: true` deploys production on
+   somebody's ordinary edit, and no unit test of github.js would catch it —
+   the bug is not in github.js, it is in the caller. */
+await check("every content write in the workers is quiet", async () => {
+  const { readFileSync, readdirSync } = await import("node:fs");
+  const dir = new URL("../src/", import.meta.url);
+  const files = readdirSync(dir).filter((f) => f.endsWith(".js"));
+  assert(files.length > 3, `only ${files.length} source files — is the path right?`);
+
+  const offenders = [];
+  let calls = 0;
+  for (const f of files) {
+    const src = readFileSync(new URL(f, dir), "utf8");
+    /* Each call up to its closing "});" — every write in this codebase is
+       written as an object literal spanning several lines. */
+    for (const m of src.matchAll(/\b(putFile|deleteFile)\(env,\s*\{([\s\S]*?)\n\s*\}\)/g)) {
+      calls++;
+      if (!/quiet:\s*true/.test(m[2])) {
+        offenders.push(`${f}: ${m[1]} — ${m[2].trim().split("\n")[0]}`);
+      }
+    }
+  }
+  assert(calls >= 4, `matched only ${calls} writes — the pattern has stopped finding them`);
+  assert(offenders.length === 0,
+    `these writes would deploy the live site:\n          ${offenders.join("\n          ")}`);
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

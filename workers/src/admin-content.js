@@ -467,7 +467,7 @@ async function removeLanguage(request, env, db, user, me, cfg) {
     path: pathFor(code),
     sha: langFile.sha,
     message: `Delete ${code}: ${translated} translated strings`,
-    authorName: who, authorEmail: user.email,
+    authorName: who, authorEmail: user.email, quiet: true,
   });
   if (gone.error) {
     // Deregistered but the file survives. Harmless to the build, and worth

@@ -272,6 +272,42 @@ export async function getFile(env, path, fetchImpl = fetch) {
 }
 
 /**
+ * List one directory at the configured branch.
+ *
+ * The migration runner needs to know which migrations EXIST before it can work
+ * out which ones have not been applied, and the answer has to come from the
+ * repository rather than a hardcoded list — a list in the code would go stale
+ * the moment somebody adds 0011, which is exactly when it matters.
+ *
+ * Returns `{ files: [{ name, path, sha, size }] }`, directories omitted.
+ */
+export async function listDir(env, path, fetchImpl = fetch) {
+  const cfg = githubConfig(env);
+  if (cfg.error) return { error: cfg.error, status: 500 };
+
+  const h = await headers(env, fetchImpl);
+  if (h.error) return { error: h.error, status: 500 };
+
+  const url = `${API}/repos/${cfg.repo}/contents/${encodeURI(path)}` +
+              `?ref=${encodeURIComponent(cfg.branch)}`;
+  const res = await fetchImpl(url, { headers: h.headers });
+
+  if (res.status === 404) {
+    return { error: `${path} is not in ${cfg.repo} on ${cfg.branch}.`, status: 404 };
+  }
+  if (!res.ok) return { error: await githubError(res), status: 502 };
+
+  const body = await res.json();
+  if (!Array.isArray(body)) return { error: `${path} is a file, not a directory.`, status: 502 };
+
+  return {
+    files: body
+      .filter((e) => e.type === "file")
+      .map((e) => ({ name: e.name, path: e.path, sha: e.sha, size: e.size })),
+  };
+}
+
+/**
  * Replace one file, refusing if it moved underneath us.
  *
  * `sha` is required, deliberately. The Contents API treats an ABSENT sha as
@@ -318,7 +354,7 @@ export async function putFile(env, { path, text, sha, message, authorName, autho
          It is a convention rather than a feature, which is worth knowing: it
          works because GitHub honours the string, not because the API has a
          "do not deploy" flag. The Chase Roush site has relied on it for a year. */
-      message: quiet ? `${message.split("\n")[0]} [skip ci]${message.slice(message.split("\n")[0].length)}` : message,
+      message: quiet ? skipCi(message) : message,
       content: toBase64(text),
       // Omitted entirely on a create; GitHub rejects an explicit null.
       ...(sha ? { sha } : {}),
@@ -399,6 +435,27 @@ export async function compareBranches(env, base, head, fetchImpl = fetch) {
 }
 
 /**
+ * Put `[skip ci]` on the SUBJECT LINE of a commit message, leaving any body
+ * intact.
+ *
+ * Position matters. GitHub reads the marker from the head commit of a push and
+ * skips every workflow for it — but it looks at the first line, so appending
+ * to the end of a multi-line message does nothing at all, silently, and the
+ * site deploys anyway.
+ *
+ * This lives in one place because it did not, once: `putFile` had it inline
+ * and `deleteFile` never had it, so removing a language pushed a bare commit
+ * to the live branch and deployed production without anybody asking. Every
+ * writer in this file now goes through this function.
+ */
+export function skipCi(message) {
+  const nl = String(message).indexOf("\n");
+  return nl === -1
+    ? `${message} [skip ci]`
+    : `${message.slice(0, nl)} [skip ci]${message.slice(nl)}`;
+}
+
+/**
  * Delete a file. The SHA is required, and for a different reason than usual.
  *
  * On a write, the SHA prevents overwriting somebody's edit. Here it prevents
@@ -406,7 +463,7 @@ export async function compareBranches(env, base, head, fetchImpl = fetch) {
  * strings while the confirmation dialog was open, the SHA no longer matches
  * and the delete is refused rather than quietly destroying their afternoon.
  */
-export async function deleteFile(env, { path, sha, message, authorName, authorEmail }, fetchImpl = fetch) {
+export async function deleteFile(env, { path, sha, message, authorName, authorEmail, quiet }, fetchImpl = fetch) {
   const cfg = githubConfig(env);
   if (cfg.error) return { error: cfg.error, status: 500 };
   if (!sha) return { error: "Refusing to delete without the SHA of the file being removed.", status: 400 };
@@ -418,7 +475,7 @@ export async function deleteFile(env, { path, sha, message, authorName, authorEm
     method: "DELETE",
     headers: { ...h.headers, "Content-Type": "application/json" },
     body: JSON.stringify({
-      message,
+      message: quiet ? skipCi(message) : message,
       sha,
       branch: cfg.branch,
       committer: { name: authorName || "Thauma console", email: authorEmail || "admin@thauma.one" },
