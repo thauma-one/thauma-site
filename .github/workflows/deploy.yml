@@ -1,25 +1,38 @@
 # Deploy thauma.one
 #
-# main IS production. A push here builds the site and deploys the Worker —
-# there is no separate publish step and no manual deploy to remember.
+# THE PUBLISH BUTTON IS THE ONLY THING THAT DEPLOYS. Not a push, not a merge —
+# the button on /admin/publish/, which asks for the word PUBLISH to be typed.
+#
+# This used to run on every push to main, and that turned out to be the wrong
+# shape for this project. It meant merging code was itself an act of
+# publishing, so a branch could not be brought up to date without also putting
+# it in front of the public — and the person who owns the decision to publish
+# had to schedule it around somebody else's merge. Changed 2026-08-18, after
+# that coupling had confused things one time too many.
+#
+# Now the two are independent:
+#
+#   merging to main   puts the code where the site is BUILT FROM. Nothing
+#                     visible happens. Safe at any hour, by anyone.
+#   saving content    commits words to main, with [skip ci]. Also invisible.
+#   pressing Publish  builds main and deploys it. The site changes here, and
+#                     only here.
+#
+# The Publish page already lists everything waiting, so "nothing deployed on
+# its own" is a promise it can keep rather than a race it has to survive.
 #
 # Replaces Netlify's build-on-push, which stopped applying when hosting moved
-# to Cloudflare Workers on 2026-08-15. For two weeks after the cutover the only
-# way to update the live site was someone running `wrangler deploy` by hand on
-# a Raspberry Pi, which is not a deployment strategy.
-#
-# `dev` remains the working branch. Nothing here runs until it reaches main.
+# to Cloudflare Workers on 2026-08-15.
 name: Deploy production
 
 on:
-  push:
-    branches: [main]
-  # Deploy the current main without pushing anything — for re-running a failed
-  # deploy, or shipping a config change made in the Cloudflare dashboard.
+  # workflow_dispatch ONLY. See above — a push trigger here would make merging
+  # and publishing the same act again, which is the thing this removed.
   workflow_dispatch:
 
-# One deploy at a time. Two pushes in quick succession would otherwise race,
-# and the loser could finish LAST and overwrite the newer build.
+# One deploy at a time. Two people pressing Publish within a minute of each
+# other would otherwise race, and the loser could finish LAST and overwrite
+# the newer build.
 concurrency:
   group: deploy-production
   cancel-in-progress: false
