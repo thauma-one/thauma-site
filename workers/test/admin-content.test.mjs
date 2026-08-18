@@ -568,6 +568,123 @@ await check("a non-admin cannot add a language", async () => {
   } finally { g.restore(); }
 });
 
+/* -------------------------- removing a language -------------------------- */
+
+await check("removing asks for the word, and counts what is lost first", async () => {
+  /* The first request carries no confirmation and must DO NOTHING — it exists
+     to answer "how much work is about to be destroyed?", so the dialog can say
+     "47 translated strings" rather than "are you sure". */
+  const g = stubGitHub();
+  g.handle = async (u, init) => {
+    g.push({ url: u, method: init.method || "GET" });
+    const doc = u.includes("site.json")
+      ? { ...SITE, languages: ["en", "hr"] }
+      : { code: "hr", nav: { home: "Početna", give: "" } };
+    const bytes = new TextEncoder().encode(asText(doc));
+    let bin = ""; for (const b of bytes) bin += String.fromCharCode(b);
+    return new Response(JSON.stringify({ type: "file", sha: "sha1", content: btoa(bin) }),
+                        { status: 200 });
+  };
+  try {
+    const res = await handler.fetch(req("DELETE", { query: "?code=hr" }), envWith("admin"));
+    eq(res.status, 400, "status");
+    const b = await res.json();
+    /* One: "Početna". NOT the empty `give`, and NOT `code` — that holds the
+       language code, which the create endpoint fills in itself, so counting it
+       would report a string of work nobody did. */
+    eq(b.translated, 1, "only text a person typed counts as work");
+    eq(b.total, 3, "the total counts every key, including the empty one");
+    assert(!g.some((c) => c.method === "PUT" || c.method === "DELETE"),
+           "it changed something before being confirmed");
+  } finally { g.restore(); }
+});
+
+await check("ENGLISH CANNOT BE REMOVED, even with the word", async () => {
+  const g = stubGitHub();
+  try {
+    const res = await handler.fetch(req("DELETE", { query: "?code=en&confirm=DELETE" }),
+                                    envWith("admin"));
+    eq(res.status, 400, "status");
+    const b = await res.json();
+    assert(/falls back/.test(b.error), `should say why: ${b.error}`);
+    eq(g.length, 0, "it read files before refusing something structural");
+  } finally { g.restore(); }
+});
+
+await check("removing DEREGISTERS first, then deletes — the mirror of adding", async () => {
+  /* Adding creates the file first so the list never names something absent.
+     Removing must go the other way: deregister, THEN delete. Backwards, a
+     failed second step leaves site.json naming a file that is gone and the
+     next build fails. This way the bad case is an unreferenced file, which
+     breaks nothing. */
+  const g = stubGitHub();
+  g.handle = async (u, init) => {
+    const method = init.method || "GET";
+    g.push({ url: u, method, body: init.body ? JSON.parse(init.body) : null });
+    if (method === "GET") {
+      const doc = u.includes("site.json")
+        ? { ...SITE, languages: ["en", "hr"],
+            visibility: { languages: { hr: { live: true, dev: true } } } }
+        : { code: "hr", nav: { home: "Početna" } };
+      const bytes = new TextEncoder().encode(asText(doc));
+      let bin = ""; for (const b of bytes) bin += String.fromCharCode(b);
+      return new Response(JSON.stringify({ type: "file", sha: "sha1", content: btoa(bin) }),
+                          { status: 200 });
+    }
+    return new Response(JSON.stringify({ commit: { sha: "c1" } }), { status: 200 });
+  };
+  try {
+    const res = await handler.fetch(req("DELETE", { query: "?code=hr&confirm=DELETE" }),
+                                    envWith("admin"));
+    eq(res.status, 200, "status");
+
+    const writes = g.filter((c) => c.method === "PUT" || c.method === "DELETE");
+    eq(writes.length, 2, "two commits");
+    eq(writes[0].method, "PUT", "the FIRST must be the deregistration");
+    assert(writes[0].url.includes("site.json"), "first write should be site.json");
+    eq(writes[1].method, "DELETE", "the SECOND must delete the file");
+    assert(writes[1].url.includes("hr.json"), "second should remove the language file");
+
+    const site = JSON.parse(Buffer.from(writes[0].body.content, "base64").toString("utf8"));
+    eq(site.languages, ["en"], "removed from the list");
+    eq(site.visibility.languages.hr, undefined, "and its switch removed too");
+  } finally { g.restore(); }
+});
+
+await check("the delete carries the SHA it read", async () => {
+  // Not to prevent an overwrite — to prevent deleting a version nobody has
+  // seen. If a translator committed forty strings while the dialog was open,
+  // the SHA no longer matches and GitHub refuses.
+  const g = stubGitHub();
+  g.handle = async (u, init) => {
+    const method = init.method || "GET";
+    g.push({ url: u, method, body: init.body ? JSON.parse(init.body) : null });
+    if (method === "GET") {
+      const doc = u.includes("site.json") ? { ...SITE, languages: ["en", "hr"] } : { code: "hr" };
+      const bytes = new TextEncoder().encode(asText(doc));
+      let bin = ""; for (const b of bytes) bin += String.fromCharCode(b);
+      return new Response(JSON.stringify({ type: "file", sha: "theSha", content: btoa(bin) }),
+                          { status: 200 });
+    }
+    return new Response(JSON.stringify({ commit: { sha: "c" } }), { status: 200 });
+  };
+  try {
+    await handler.fetch(req("DELETE", { query: "?code=hr&confirm=DELETE" }), envWith("admin"));
+    const del = g.find((c) => c.method === "DELETE");
+    eq(del.body.sha, "theSha", "the delete must be conditional on what was read");
+  } finally { g.restore(); }
+});
+
+await check("a non-admin cannot remove a language", async () => {
+  const g = stubGitHub();
+  try {
+    const res = await handler.fetch(req("DELETE", { query: "?code=hr&confirm=DELETE" }),
+                                    envWith("partner,staff"));
+    eq(res.status, 403, "status");
+    eq(g.length, 0, "it touched GitHub before checking the role");
+  } finally { g.restore(); }
+});
+
 /* ------------------------- against the real files ------------------------
    Everything above uses a fixture. These use the files this endpoint will
    actually be pointed at, because the failure that matters is not "the logic

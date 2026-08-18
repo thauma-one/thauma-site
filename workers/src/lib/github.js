@@ -399,6 +399,48 @@ export async function compareBranches(env, base, head, fetchImpl = fetch) {
 }
 
 /**
+ * Delete a file. The SHA is required, and for a different reason than usual.
+ *
+ * On a write, the SHA prevents overwriting somebody's edit. Here it prevents
+ * deleting a version you have not seen — if a translator committed forty
+ * strings while the confirmation dialog was open, the SHA no longer matches
+ * and the delete is refused rather than quietly destroying their afternoon.
+ */
+export async function deleteFile(env, { path, sha, message, authorName, authorEmail }, fetchImpl = fetch) {
+  const cfg = githubConfig(env);
+  if (cfg.error) return { error: cfg.error, status: 500 };
+  if (!sha) return { error: "Refusing to delete without the SHA of the file being removed.", status: 400 };
+
+  const h = await headers(env, fetchImpl);
+  if (h.error) return { error: h.error, status: 500 };
+
+  const res = await fetchImpl(`${API}/repos/${cfg.repo}/contents/${encodeURI(path)}`, {
+    method: "DELETE",
+    headers: { ...h.headers, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      message,
+      sha,
+      branch: cfg.branch,
+      committer: { name: authorName || "Thauma console", email: authorEmail || "admin@thauma.one" },
+      author: { name: authorName || "Thauma console", email: authorEmail || "admin@thauma.one" },
+    }),
+  });
+
+  if (res.status === 409 || res.status === 422) {
+    return {
+      error: "That file changed after this page loaded, so it was not deleted. " +
+             "Reload and look at it again before removing it.",
+      status: 409,
+    };
+  }
+  if (res.status === 404) return { error: `${path} is already gone.`, status: 404 };
+  if (!res.ok) return { error: await githubError(res), status: 502 };
+
+  const body = await res.json();
+  return { commit: body.commit && body.commit.sha };
+}
+
+/**
  * The commit a ref currently points at.
  *
  * Needed to answer "is the preview showing what I would publish?", which is a

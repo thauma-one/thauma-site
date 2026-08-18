@@ -803,6 +803,25 @@ body.has-savebar .toasts{--toast-lift:var(--ms-savebar-h,72px)}
 /* Type-to-confirm. The word is monospaced and the field is plain, so what has
    to be typed is unambiguous — a proportional font makes DELETE and DELETE
    with a trailing space look identical. */
+/* ⚠ THE HIDDEN ATTRIBUTE WINS, EVERYWHERE. NOT NEGOTIABLE.
+
+   `hidden` is display:none from the browser's own stylesheet, which any rule
+   setting `display` overrides — and every element below sets one. So an
+   element marked hidden stayed visible.
+
+   That shipped: `.dlg-type` is the type-to-confirm box, hidden unless a
+   dialog asks for it, and it appeared in EVERY confirmation dialog from the
+   day the partner-delete flow was built. Chase found it weeks later.
+
+   SPEC §8a already carried this warning, written after the same bug hid a
+   `display:flex` column badly. Knowing about a trap is not the same as being
+   protected from it, so this is the protection: one rule, scoped to the two
+   consoles, that no later `display` can win against.
+
+   `!important` is right here and almost nowhere else. `hidden` means "not
+   relevant right now" — there is no layout that should outrank it. */
+.is-staff [hidden], .is-admin [hidden]{display:none !important}
+
 .dlg-type{display:block;margin-top:18px}
 .dlg-type span{display:block;font-size:var(--fs-tiny);color:var(--dim);
   margin-bottom:8px}

@@ -1090,6 +1090,31 @@ The parser is duplicated there because `admin-content.js` is a browser IIFE
 with no exports. A test asserts the two copies still match after comments are
 stripped, so a fix in one place fails until it is made in both.
 
+### Removing a language
+
+`/admin/site/` → **Remove**, beside each language's switches. English has none —
+it is the fallback, and that is structural rather than a permission.
+
+**The same shape as deleting a partner**, because it is the same kind of act:
+something that exists nowhere else stops existing. Typed `DELETE`, checked on
+the server.
+
+**The count comes first.** The browser asks with no confirmation, the server
+answers with "47 translated strings" and does nothing, and only then is the
+word requested. A number somebody can weigh beats "this cannot be undone".
+`code` is excluded from it — the create endpoint fills that in, so counting it
+would report a string of work nobody did.
+
+**The order is the mirror of adding.** Adding creates the file first so the
+list never names something absent; removing DEREGISTERS first so the list stops
+naming it before it disappears. Backwards, a failed second step leaves
+`site.json` pointing at a file that is gone and the next build fails. This way
+the bad case is an unreferenced file, which breaks nothing.
+
+The delete carries the file's SHA — not to prevent an overwrite, but to prevent
+deleting a version nobody has seen. If a translator committed forty strings
+while the dialog was open, it is refused.
+
 ### Adding a language
 
 `/admin/content/` → **Add a language**. Two commits, in this order:
@@ -1187,10 +1212,24 @@ the administrator about whose account this is and how to leave, and the partner
 never sees it. `StaffI18n.tIn(lang, key)` translates in a named language for
 exactly this.
 
-### `hidden` loses to `display`
+### `hidden` loses to `display` — solved globally, after it happened twice
 
-Any element that sets `display` needs an explicit `[hidden]{display:none}`.
-Hiding a `display:flex` column left its fields on screen.
+`.is-staff [hidden], .is-admin [hidden] { display: none !important }`
+
+`hidden` is `display:none` from the browser's own stylesheet, so any rule
+setting `display` overrides it. This section used to say "any element that sets
+`display` needs an explicit `[hidden]{display:none}`" — a warning, which is not
+protection.
+
+It happened again anyway: `.dlg-type` sets `display:block`, so the
+type-to-confirm box appeared in **every** confirmation dialog from the day the
+partner-delete flow shipped. Four more elements had it too — the page roots
+that are hidden until their data loads, and the reference picker. All five were
+fixed by one rule.
+
+`!important` is right here and almost nowhere else. `hidden` means "not
+relevant right now"; there is no layout that should outrank it. A test asserts
+the rule is still there.
 
 ---
 

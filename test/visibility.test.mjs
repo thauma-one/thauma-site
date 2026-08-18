@@ -296,6 +296,26 @@ check("every page in the site has a switch", () => {
   eq(missing, [], "pages with no switch in site.json");
 });
 
+check("the hidden attribute always wins", () => {
+  /* `hidden` is display:none from the browser's stylesheet, and ANY rule
+     setting `display` overrides it. So an element marked hidden stays visible,
+     silently, and only in the states nobody looks at twice.
+
+     It shipped: the type-to-confirm box appeared in EVERY confirmation dialog
+     from the day the partner-delete flow was built, because `.dlg-type` sets
+     display:block and nothing said otherwise. Chase found it weeks later. Four
+     more elements had the same problem — the page roots that are hidden until
+     their data loads, and the reference picker.
+
+     SPEC §8a already warned about this. Knowing about a trap is not protection
+     from it; the global rule is. */
+  const css = readFileSync(fileURLToPath(new URL("../src/css/staff.css", import.meta.url)), "utf8");
+  const rule = /\.is-staff \[hidden\][^{]*\{[^}]*display\s*:\s*none\s*!important/;
+  assert(rule.test(css),
+    "the global [hidden] rule is gone — every element that sets display can " +
+    "now ignore the hidden attribute, and will, silently");
+});
+
 check("nothing in the SAVE flow claims to publish", () => {
   /* THE THIRD TIME. When Save/Preview/Publish shipped, saving stopped
      publishing — and the copy did not follow:

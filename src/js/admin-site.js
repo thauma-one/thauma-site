@@ -283,12 +283,20 @@
       '</button></span>';
   }
 
-  function visRow(label, base, hint) {
-    return '<div class="v-row">' +
+  function visRow(label, base, hint, removableCode) {
+    return '<div class="v-row' + (removableCode ? ' has-remove' : '') + '">' +
       '<div class="v-label"><code>' + esc(label) + '</code>' +
         (hint ? '<span class="s-hint">' + esc(hint) + '</span>' : '') + '</div>' +
       switchCell(base + '.dev', 'is-dev') +
       switchCell(base + '.live', 'is-live') +
+      /* Only languages can be removed. A page or a section is part of the
+         site's structure and switching it off is the whole answer; a language
+         is a FILE, and leaving a dead one around is how the list and the
+         folder drift apart. */
+      (removableCode
+        ? '<button type="button" class="del danger" data-del-lang="' + esc(removableCode) +
+          '" title="' + esc(tr('vis.removeLang')) + '">' + esc(tr('vis.remove')) + '</button>'
+        : '<span></span>') +
     '</div>';
   }
 
@@ -331,7 +339,7 @@
          fortnight before any visitor can reach it. */
       body += '<div class="v-sub">' + esc(tr('vis.languages')) + '</div>' +
         langs.map(function (code) {
-          return visRow(langName(code), 'visibility.languages.' + code, '');
+          return visRow(langName(code), 'visibility.languages.' + code, '', code);
         }).join('') +
         /* English is deliberately absent above and named here instead. It is
            the fallback every missing translation resolves to; a site with no
@@ -437,6 +445,74 @@
       ? tr('con.oneChange') : d.length + ' ' + tr('con.nChanges');
     $('sSaveNote').textContent = tr('con.saveBarNoteSite').replace('{branch}', state.branch);
   }
+
+  /* ---- removing a language --------------------------------------------
+     Same shape as deleting a partner, because it is the same kind of act:
+     something that exists nowhere else stops existing. Typed confirmation,
+     checked on the server, and the count of what is being destroyed shown
+     BEFORE the word is asked for — "47 translated strings" is a sentence
+     somebody can weigh, "are you sure" is not. */
+
+  $('sRoot').addEventListener('click', async function (e) {
+    var btn = e.target.closest('[data-del-lang]');
+    if (!btn) return;
+    var code = btn.dataset.delLang;
+
+    // First request with no confirmation: the server answers with the count
+    // rather than doing anything.
+    var probe, info;
+    try {
+      probe = await fetch(API + '?code=' + encodeURIComponent(code), {
+        method: 'DELETE', credentials: 'same-origin'
+      });
+      info = await probe.json();
+    } catch (err) {
+      return toast(tr('err.unreachable') + ' ' + err.message, 'bad');
+    }
+    // Anything other than the expected "needs confirmation" is a real refusal
+    // — English, or a language with no file — and it explains itself.
+    if (probe.ok || info.translated === undefined) {
+      return toast(info.error || tr('err.refused'), 'bad');
+    }
+
+    var ok = await window.StaffConfirm({
+      title: tr('vis.removeTitle').replace('{lang}', langName(code)),
+      body: info.translated
+        ? tr('vis.removeBody').replace('{n}', info.translated).replace('{lang}', langName(code))
+        : tr('vis.removeEmpty').replace('{lang}', langName(code)),
+      note: tr('vis.removeNote'),
+      type: 'DELETE',
+      /* The same key the Publish page uses. Inventing a second one for the
+         same word is how two dialogs end up saying it differently. */
+      typeLabel: tr('pub.typeLabel'),
+      confirm: tr('vis.removeDo'),
+      cancel: tr('ms.cancel'),
+      danger: true
+    });
+    if (!ok) return;
+
+    btn.disabled = true;
+    var res, body;
+    try {
+      res = await fetch(API + '?code=' + encodeURIComponent(code) + '&confirm=DELETE', {
+        method: 'DELETE', credentials: 'same-origin'
+      });
+      body = await res.json();
+    } catch (err) {
+      toast(tr('err.unreachable') + ' ' + err.message, 'bad');
+      btn.disabled = false;
+      return;
+    }
+    if (!res.ok) {
+      if (body && body.partial && window.StaffProblem) window.StaffProblem(body.error, null);
+      else toast((body && body.error) || tr('err.refused'), 'bad');
+      btn.disabled = false;
+      return;
+    }
+
+    toast(tr('vis.removed').replace('{lang}', langName(code)), 'ok');
+    await boot();          // site.json changed under us; re-read rather than guess
+  });
 
   /* ---- editing -------------------------------------------------------- */
 

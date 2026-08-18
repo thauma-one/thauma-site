@@ -487,3 +487,22 @@
    why there isn't one. */
 .v-fixed{grid-column:1/-1;font-size:var(--fs-micro);color:var(--dim);
   line-height:var(--lh-body);padding:8px 0 2px;opacity:.75}
+
+/* A language can be removed; a page or section cannot — switching those off is
+   the whole answer, while a language is a FILE and a dead one makes the list
+   and the folder drift apart. The column exists on every row so the switches
+   stay aligned. */
+.v-head,.v-row{grid-template-columns:minmax(0,1fr) 96px 96px 80px}
+.v-row .del.danger{justify-self:end;background:none;
+  border:1px solid rgba(255,107,107,.3);color:var(--crit,#FF6B6B);
+  font-family:var(--font-display);font-size:9px;letter-spacing:var(--ls-caps);
+  text-transform:uppercase;font-weight:var(--w-bold);padding:6px 10px;
+  border-radius:var(--radius);cursor:pointer;transition:.2s;white-space:nowrap}
+@media(hover:hover){
+  .v-row .del.danger:hover{background:var(--crit,#FF6B6B);color:#150607;
+    border-color:var(--crit,#FF6B6B)}
+}
+.v-row .del.danger:disabled{opacity:.4;cursor:default}
+@media (max-width:620px){
+  .v-head,.v-row{grid-template-columns:minmax(0,1fr) 76px 76px 64px}
+}

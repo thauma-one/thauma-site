@@ -44,7 +44,7 @@
 import { createDb } from "./lib/db.js";
 import { requireAccess } from "./lib/access.js";
 import { json, readJson } from "./lib/store.js";
-import { getFile, putFile, githubConfig } from "./lib/github.js";
+import { getFile, putFile, deleteFile, githubConfig } from "./lib/github.js";
 
 /**
  * Which files this endpoint may touch, as a derivation rather than a list.
@@ -321,6 +321,125 @@ async function addLanguage(request, env, db, user, me, cfg) {
   });
 }
 
+
+/* ---------------------------------------------------------------------------
+   Removing a language
+
+   THE MIRROR OF ADDING, INCLUDING THE ORDER — which runs the other way round
+   and for the same reason. Adding creates the file first so the list never
+   names something absent. Removing DEREGISTERS first, so the list stops naming
+   it before it disappears.
+
+   Get that backwards and a failed second step leaves site.json pointing at a
+   file that is gone, and the next build fails. This way round the bad case is
+   an unreferenced file sitting in the repository, which breaks nothing.
+
+   TYPED CONFIRMATION, CHECKED HERE. Same as deleting a partner: a dialog is a
+   suggestion, and this destroys work that exists nowhere else. The count of
+   what is being destroyed is computed and returned first, so the person
+   confirming is told "47 translated strings" rather than "this cannot be
+   undone".
+   --------------------------------------------------------------------------- */
+
+const DELETE_WORD = "DELETE";
+
+async function removeLanguage(request, env, db, user, me, cfg) {
+  const url = new URL(request.url);
+  const code = String(url.searchParams.get("code") || "").trim().toLowerCase();
+
+  if (!/^[a-z]{2}(-[a-z]{2})?$/.test(code)) {
+    return json({ error: `"${code}" is not a language code.` }, 400);
+  }
+  if (code === "en") {
+    /* Not a permission problem — a structural one. Every missing translation
+       resolves to English; a site without it has nothing to fall back to. */
+    return json({
+      error: "English cannot be removed. Every missing translation falls back " +
+             "to it, so the site needs it to have something to show.",
+    }, 400);
+  }
+
+  const [siteFile, langFile] = await Promise.all([
+    getFile(env, pathFor("site")),
+    getFile(env, pathFor(code)),
+  ]);
+  if (siteFile.error) return json({ error: siteFile.error }, siteFile.status || 502);
+  if (langFile.error) {
+    return json({ error: `The site has no ${code} file to remove.` }, langFile.status || 404);
+  }
+
+  let site, doc;
+  try {
+    site = JSON.parse(siteFile.text);
+    doc = JSON.parse(langFile.text);
+  } catch (e) {
+    return json({ error: `A content file is not valid JSON: ${e.message}` }, 502);
+  }
+
+  /* `code` is excluded: it holds the language code, which this endpoint fills
+     in when the file is created. Counting it would report one string of work
+     that nobody did. The number exists to answer "how much am I destroying?",
+     so it should only count things a person typed. */
+  const translated = Object.entries(leafPaths(doc))
+    .filter(([path, v]) => path !== "code" && typeof v === "string" && v.trim() !== "")
+    .length;
+
+  /* WHAT IS ABOUT TO BE LOST, before it is lost. The browser asks for this
+     first, shows the number in the confirmation, and only then sends the word.
+     "47 translated strings" is a sentence somebody can weigh; "are you sure"
+     is not. */
+  if (url.searchParams.get("confirm") !== DELETE_WORD) {
+    return json({
+      error: `Removing a language needs the word ${DELETE_WORD} typed to confirm.`,
+      code,
+      translated,
+      total: Object.keys(leafPaths(doc)).length,
+    }, 400);
+  }
+
+  const who = (me && me.user_name) || user.email;
+
+  /* ---- 1. deregister ---- */
+  site.languages = (site.languages || []).filter((c) => c !== code);
+  if (site.visibility && site.visibility.languages) delete site.visibility.languages[code];
+
+  const trailing = siteFile.text.endsWith("\n") ? "\n" : "";
+  const dereg = await putFile(env, {
+    path: pathFor("site"),
+    text: JSON.stringify(site, null, 2) + trailing,
+    sha: siteFile.sha,
+    message: `Remove ${code} from the site's languages`,
+    authorName: who, authorEmail: user.email, quiet: true,
+  });
+  if (dereg.error) return json({ error: dereg.error }, dereg.status || 502);
+
+  /* ---- 2. delete the file ---- */
+  const gone = await deleteFile(env, {
+    path: pathFor(code),
+    sha: langFile.sha,
+    message: `Delete ${code}: ${translated} translated strings`,
+    authorName: who, authorEmail: user.email,
+  });
+  if (gone.error) {
+    // Deregistered but the file survives. Harmless to the build, and worth
+    // saying precisely, because the next attempt will find no registration.
+    return json({
+      error: `Removed ${code} from the site, but its file could not be ` +
+             `deleted: ${gone.error} The site will not build it either way.`,
+      partial: true,
+    }, gone.status || 502);
+  }
+
+  await audit(db, {
+    user,
+    action: "content.remove_language",
+    entity_id: code,
+    detail: { code, translated, by: who },
+  });
+
+  return json({ ok: true, code, translated, commit: gone.commit });
+}
+
 export default {
   async fetch(request, env) {
     const gate = await requireAdmin(request, env);
@@ -341,6 +460,7 @@ export default {
     if (request.method === "GET") return read(env, url);
     if (request.method === "PUT") return write(request, env, db, user, me, cfg);
     if (request.method === "POST") return addLanguage(request, env, db, user, me, cfg);
+    if (request.method === "DELETE") return removeLanguage(request, env, db, user, me, cfg);
 
     return json({ error: `${request.method} is not supported here.` }, 405);
   },
