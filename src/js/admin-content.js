@@ -93,6 +93,21 @@
     return i === -1 ? path : path.slice(i + 1);
   }
 
+  /* `home.who_h2_bold` -> "Who h2 bold".
+
+     Mechanical, and the raw path stays visible underneath. Writing a proper
+     label for all 210 of these would mean deciding what each one renders as,
+     which is a guess I would get wrong somewhere — and a confidently wrong
+     label on an editing screen is worse than a plain one, because you act on
+     it. This makes the common case scannable without claiming to know more
+     than it does. */
+  function readable(path) {
+    return shortPath(path)
+      .replace(/[._]/g, ' ')
+      .replace(/\b\d+\b/g, function (n) { return '#' + n; })
+      .replace(/^./, function (c) { return c.toUpperCase(); });
+  }
+
   function dirtyPaths() {
     return state.order.filter(function (p) { return state.draft[p] !== state.saved[p]; });
   }
@@ -322,6 +337,7 @@
 
       return '<div class="c-row' + (isDirty ? ' is-dirty' : '') + '" data-path="' + esc(p) + '">' +
         '<div class="c-key">' +
+          '<span class="c-name">' + esc(readable(p)) + '</span>' +
           '<code>' + esc(state.find ? p : shortPath(p)) + '</code>' +
           (isEmpty ? '<span class="badge warn">' + esc(tr('con.empty')) + '</span>' : '') +
           (isDirty ? '<span class="badge unsaved">' + esc(tr('ms.unsaved')) + '</span>' : '') +

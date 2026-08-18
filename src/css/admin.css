@@ -446,3 +446,38 @@
   .adm-person .view-as:hover{background:var(--acting,#C77DFF);color:#1A0A22;
     border-color:var(--acting,#C77DFF)}
 }
+
+/* ---- pictures ----
+   Four fields per image, as one card. Rendered as flat rows they were sixteen
+   consecutive lines called things like `about_posture.focal_y`: complete, and
+   unusable, because nothing said which four belonged together. */
+.s-img{background:var(--bg2);border:1px solid var(--line);
+  border-radius:var(--radius);padding:16px 18px;margin-bottom:12px}
+.s-img-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;
+  margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.s-img-head b{font-family:var(--font-display);font-size:var(--fs-sm);
+  font-weight:var(--w-bold);color:var(--text);letter-spacing:.02em}
+.s-img-head code{font-family:var(--font-mono);font-size:var(--fs-micro);
+  color:var(--dim);opacity:.7;word-break:break-all}
+
+/* The file path is wide; the three numbers are not. Giving them equal columns
+   would leave a long filename truncated beside three mostly-empty boxes. */
+.s-img-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.s-imgf{display:flex;flex-direction:column;gap:6px;min-width:0}
+.s-imgf:first-child{grid-column:1/-1}
+.s-imgf > span{font-size:var(--fs-micro);color:var(--dim);
+  letter-spacing:.03em}
+.s-imgf input{width:100%}
+.s-imgf.is-dirty > span{color:var(--warn,#F5B845)}
+.s-imgf.is-dirty input{border-color:var(--warn,#F5B845)}
+
+@media (max-width:620px){
+  .s-img-fields{grid-template-columns:1fr 1fr}
+}
+
+/* The row's own name, with the raw path kept underneath. The path is what you
+   search for and what appears in a commit message; the name is what you read
+   while scanning for the sentence you came to change. */
+.c-name{display:block;font-size:var(--fs-tiny);color:var(--text);
+  line-height:1.4;margin-bottom:3px}
+.c-key code{opacity:.55;font-size:9px}

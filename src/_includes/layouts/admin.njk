@@ -88,6 +88,9 @@
    shared shell — identity, the role gate, the pages that read /api/admin.
    Content and Site talk to a different endpoint and have nothing in common
    with it beyond the layout. -#}
-{%- if adminScript %}<script src="{{ adminScript }}"></script>{% endif %}
+{#- Hashed here, not in the page's front matter: front matter cannot run a
+   filter, so a version written there is a hand-maintained number — the exact
+   thing the content hash exists to remove. -#}
+{%- if adminScript %}<script src="{{ adminScript }}?v={{ adminScript | v }}"></script>{% endif %}
 </body>
 </html>

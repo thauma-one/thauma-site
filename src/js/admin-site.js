@@ -152,11 +152,83 @@
 
   var isVisibility = function (p) { return p.indexOf('visibility.') === 0; };
 
+  var isImage = function (p) { return p.indexOf('images.') === 0; };
+
+  /* ---- images ---------------------------------------------------------
+     Four fields per picture — src, focal_x, focal_y, zoom — rendered as
+     sixteen consecutive rows called things like `about_posture.focal_y`.
+     Technically complete and unusable: nothing on screen says these four
+     belong together, and nothing says what a focal point is.
+
+     One card per image, human labels, and a sentence explaining the idea
+     once rather than implying it four times. */
+
+  var IMAGE_FIELD = {
+    src:     'set.img.file',
+    focal_x: 'set.img.focalX',
+    focal_y: 'set.img.focalY',
+    zoom:    'set.img.zoom'
+  };
+
+  /* `home_who` -> "Home · who". Mechanical on purpose: inventing "Who we are"
+     would be guessing at what the section renders, and a confidently wrong
+     label is worse than a plain one. */
+  function imageLabel(id) {
+    return id.split('_').map(function (w, i) {
+      return i === 0 ? w.charAt(0).toUpperCase() + w.slice(1) : w;
+    }).join(' \u00b7 ');
+  }
+
+  function renderImages() {
+    var ids = [];
+    state.order.forEach(function (p) {
+      if (!isImage(p)) return;
+      var id = p.split('.')[1];
+      if (id && ids.indexOf(id) === -1) ids.push(id);
+    });
+    if (!ids.length) return '';
+
+    return '<section class="s-group">' +
+      '<h3>' + esc(tr('set.img.title')) + '</h3>' +
+      '<p class="v-note">' + esc(tr('set.img.explain')) + '</p>' +
+      ids.map(function (id) {
+        var src = state.draft['images.' + id + '.src'] || '';
+        return '<div class="s-img">' +
+          '<div class="s-img-head">' +
+            '<b>' + esc(imageLabel(id)) + '</b>' +
+            '<code>' + esc(src) + '</code>' +
+          '</div>' +
+          '<div class="s-img-fields">' +
+            ['src', 'focal_x', 'focal_y', 'zoom'].map(function (f) {
+              var path = 'images.' + id + '.' + f;
+              if (state.draft[path] === undefined) return '';
+              return imgField(path, tr(IMAGE_FIELD[f] || f));
+            }).join('') +
+          '</div>' +
+        '</div>';
+      }).join('') +
+    '</section>';
+  }
+
+  function imgField(path, label) {
+    var v = state.draft[path];
+    var dirty = state.draft[path] !== state.saved[path];
+    var isNum = typeof v === 'number';
+    return '<label class="s-imgf' + (dirty ? ' is-dirty' : '') +
+             '" data-field="' + esc(path) + '">' +
+      '<span>' + esc(label) + '</span>' +
+      '<input type="' + (isNum ? 'number' : 'text') + '" data-path="' + esc(path) + '"' +
+        (isNum ? ' min="0" max="300"' : '') +
+        ' value="' + esc(v) + '">' +
+    '</label>';
+  }
+
   function render() {
     var groups = [];
     var seen = {};
     state.order.forEach(function (p) {
-      if (isVisibility(p)) return;      // rendered as its own two-column block
+      // Visibility and images each get their own block below.
+      if (isVisibility(p) || isImage(p)) return;
       var g = groupOf(p);
       if (!seen[g]) { seen[g] = true; groups.push(g); }
     });
@@ -165,13 +237,14 @@
       renderVisibility() +
       groups.map(function (g) {
         var rows = state.order.filter(function (p) {
-          return !isVisibility(p) && groupOf(p) === g;
+          return !isVisibility(p) && !isImage(p) && groupOf(p) === g;
         });
         return '<section class="s-group">' +
           '<h3>' + esc(groupLabel(g)) + '</h3>' +
           rows.map(field).join('') +
           '</section>';
-      }).join('');
+      }).join('') +
+      renderImages();
   }
 
   /* ---- the two columns ------------------------------------------------

@@ -373,6 +373,45 @@ tr.tl-row td{padding:0;border-bottom:1px solid var(--line-soft)}
    field name, so EN and HR pairs scan as one thing with two halves. */
 .fld > span em{font-style:normal;color:var(--dim);font-weight:var(--w-light);
   letter-spacing:.04em;text-transform:none;margin-left:6px}
+/* ============================================================
+   FORM CONTROLS — the BASE, applying everywhere in the console
+   ============================================================
+   This used to exist only as `.fld input` and `.form input`. Any page whose
+   markup used different class names got the BROWSER'S defaults instead: white
+   background, black text, system border — on a near-black page. The content
+   and site editors shipped looking like that, and the styling was not missing
+   so much as never able to reach them.
+
+   So the base is now the ELEMENT, and the class-scoped rules below only add.
+   A new screen is themed because it uses an input, not because somebody
+   remembered to add its class here.
+
+   `color-scheme: dark` is what stops the browser painting its own chrome —
+   the dropdown arrow, the number spinners, the autofill background — in light
+   colours over the top.
+   ============================================================ */
+.is-staff input, .is-staff textarea, .is-staff select,
+.is-admin input, .is-admin textarea, .is-admin select{
+  background:var(--bg2,#0b1119);
+  border:1px solid rgba(255,255,255,.14);
+  color:var(--text);
+  font-family:var(--font-body);
+  font-size:var(--fs-sm);
+  padding:10px 12px;
+  border-radius:var(--radius);
+  color-scheme:dark;
+  transition:border-color .16s var(--ease-main), box-shadow .16s var(--ease-main);
+}
+.is-staff textarea, .is-admin textarea{resize:vertical;line-height:1.55}
+.is-staff input:focus, .is-staff textarea:focus, .is-staff select:focus,
+.is-admin input:focus, .is-admin textarea:focus, .is-admin select:focus{
+  outline:none;border-color:var(--voice-tech);box-shadow:var(--voice-tech-glow)}
+.is-staff input::placeholder, .is-admin input::placeholder,
+.is-staff textarea::placeholder, .is-admin textarea::placeholder{
+  color:var(--dim);opacity:.55}
+/* A switch is a <button>, not a field — it must not inherit any of this. */
+.is-staff .switch, .is-admin .switch{background:none;border:0;padding:0}
+
 .fld input,.fld textarea,.fld select{background:var(--bg2,#0b1119);
   border:1px solid rgba(255,255,255,.14);color:var(--text);
   font-family:var(--font-body);font-size:var(--fs-sm);padding:10px 12px;

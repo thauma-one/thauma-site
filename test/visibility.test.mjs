@@ -202,15 +202,23 @@ check("no asset is served with a hand-written cache version", () => {
      function added that day was missing from it, and the Stop button in the
      acting banner silently did nothing. The way out of somebody else's account
      was unusable because of a digit in a template. */
-  const dir = fileURLToPath(new URL("../src/_includes/layouts/", import.meta.url));
+  /* EVERY .njk, not just the layouts. The first version of this check looked
+     only at src/_includes/layouts/ and passed while three page templates still
+     carried `adminScript: /js/admin-site.js?v=2` in their front matter — a
+     hand-written number in exactly the place the hash was meant to remove. */
+  const root = fileURLToPath(new URL("../src/", import.meta.url));
   const { readdirSync } = require("node:fs");
   const offenders = [];
-  for (const f of readdirSync(dir).filter((x) => x.endsWith(".njk"))) {
-    const src = readFileSync(dir + f, "utf8");
-    for (const m of src.matchAll(/(\S+)\?v=(\d+)/g)) {
-      offenders.push(`${f}: ${m[0]}`);
+  (function walk(dir) {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      if (e.isDirectory()) { walk(`${dir}${e.name}/`); continue; }
+      if (!e.name.endsWith(".njk")) continue;
+      const src = readFileSync(dir + e.name, "utf8");
+      for (const m of src.matchAll(/(\S*\.(?:js|css))\?v=(\d+)/g)) {
+        offenders.push(`${dir.replace(root, "")}${e.name}: ${m[0]}`);
+      }
     }
-  }
+  })(root);
   eq(offenders, [], "use ?v={{ \"/path\" | v }} — a content hash cannot be forgotten");
 });
 
