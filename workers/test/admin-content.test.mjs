@@ -575,6 +575,50 @@ await check("a non-admin cannot add a language", async () => {
   } finally { g.restore(); }
 });
 
+await check("a missing per-language slot CAN be filled in", async () => {
+  /* A language added before `donorbox` had a slot for it has no key, so the
+     field could not appear and — if it did — the save would be refused, since
+     this endpoint does not add keys. That left the setting permanently
+     unreachable for that language.
+
+     The allowance is narrow: only `<per-language setting>.<a language the file
+     already lists>`. */
+  const g = stubGitHub({
+    file: { ...SITE, languages: ["en", "hr", "sl"], donorbox: { en: "", hr: "" } },
+  });
+  try {
+    const res = await handler.fetch(req("PUT", { body: {
+      file: "site", sha: "sha1", changes: { "donorbox.sl": "https://donorbox.org/x" },
+    } }), envWith("admin"));
+    eq(res.status, 200, `refused: ${JSON.stringify(await res.json())}`);
+
+    const put = g.find((r) => r.method === "PUT");
+    const site = JSON.parse(Buffer.from(put.body.content, "base64").toString("utf8"));
+    eq(site.donorbox.sl, "https://donorbox.org/x", "the slot was not created");
+    eq(site.donorbox.en, "", "the existing slots survived");
+  } finally { g.restore(); }
+});
+
+await check("the allowance does NOT let anything else be invented", async () => {
+  const g = stubGitHub({
+    file: { ...SITE, languages: ["en", "hr"], donorbox: { en: "", hr: "" } },
+  });
+  try {
+    for (const path of [
+      "donorbox.de",        // a language the site does not have
+      "socials.tiktok",     // a group that is not per-language
+      "newSetting",         // a top-level key
+      "images.new_one.src", // a section that does not exist
+    ]) {
+      const res = await handler.fetch(req("PUT", { body: {
+        file: "site", sha: "sha1", changes: { [path]: "x" },
+      } }), envWith("admin"));
+      eq(res.status, 400, `${path} should have been refused`);
+    }
+    assert(!g.some((r) => r.method === "PUT"), "it wrote one of them anyway");
+  } finally { g.restore(); }
+});
+
 /* -------------------------- removing a language -------------------------- */
 
 await check("removing asks for the word, and counts what is lost first", async () => {

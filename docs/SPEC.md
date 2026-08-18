@@ -1144,6 +1144,18 @@ something that merely resembles one. A test finds them by shape instead and
 asserts every language has a slot, so a second one added later is covered
 without anybody remembering this.
 
+**A gap that already exists heals itself.** Fixing the add path only helps
+languages added afterwards — one added before was left with no key, no field on
+the page, and no way to give it one. So the Site page renders a row per
+LANGUAGE rather than per existing key, and the endpoint permits creating
+exactly `<per-language setting>.<a language the file already lists>`.
+
+That is the only case in which this endpoint adds a key, and the set is
+computed from the file's own language list rather than from the request — so it
+can fill a gap the file already implies and nothing else. `donorbox.de` for a
+language the site does not have is still refused, as is any other invented
+path.
+
 ### Removing a language
 
 `/admin/site/` → **Remove**, beside each language's switches. English has none —

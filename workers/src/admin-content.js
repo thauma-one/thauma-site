@@ -105,7 +105,7 @@ export function leafPaths(obj, prefix = "", out = {}) {
  * matter more than the write: this is the only thing standing between a text
  * box and the data structure the site is built from.
  */
-export function setLeaf(doc, path, value) {
+export function setLeaf(doc, path, value, creatable) {
   const parts = String(path).split(".");
   let node = doc;
 
@@ -118,7 +118,24 @@ export function setLeaf(doc, path, value) {
 
   const last = parts[parts.length - 1];
   if (node === null || typeof node !== "object") return `${path} is not a path in this file.`;
-  if (!Object.prototype.hasOwnProperty.call(node, last)) return `${path} is not a path in this file.`;
+
+  if (!Object.prototype.hasOwnProperty.call(node, last)) {
+    /* THE ONE ALLOWANCE, and it is narrow on purpose.
+
+       This endpoint refuses to add keys — that is what stops a text box
+       restructuring the data the build depends on. But a language added before
+       a per-language setting existed has no slot in it, and without this there
+       is no way to give it one: the field cannot appear, and if it did the
+       save would be refused.
+
+       `creatable` is computed by the caller from the file's OWN language list,
+       so the only keys this can invent are `donorbox.<a language the site
+       already has>`. Everything else is still refused. */
+    if (!creatable || !creatable.has(path)) {
+      return `${path} is not a path in this file.`;
+    }
+    node[last] = typeof value === "string" ? "" : value;   // create it, then set below
+  }
 
   const before = node[last];
   if (!isLeaf(before)) return `${path} is a section, not a value.`;
@@ -584,10 +601,24 @@ async function write(request, env, db, user, me, cfg) {
     return json({ error: `${path} is not valid JSON in the repository: ${e.message}` }, 502);
   }
 
+  /* Slots a per-language setting is missing for a language the site HAS.
+     Computed from the file itself, not from the request — so this can only
+     ever fill a gap the file already implies, never invent a language. */
+  const creatable = new Set();
+  if (body.file === "site" && Array.isArray(doc.languages)) {
+    for (const key of PER_LANGUAGE_SETTINGS) {
+      const obj = doc[key];
+      if (!obj || typeof obj !== "object" || Array.isArray(obj)) continue;
+      for (const code of doc.languages) {
+        if (obj[code] === undefined) creatable.add(`${key}.${code}`);
+      }
+    }
+  }
+
   const applied = [];
   for (const p of paths) {
     const before = leafPaths(doc)[p];
-    const problem = setLeaf(doc, p, changes[p]);
+    const problem = setLeaf(doc, p, changes[p], creatable);
     if (problem) return json({ error: problem, path: p }, 400);
     if (before !== changes[p]) applied.push(p);
   }

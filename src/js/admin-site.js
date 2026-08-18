@@ -281,6 +281,25 @@
     '</div>';
   }
 
+  /* ---- per-language groups, filled in from the language list ------------
+
+     `donorbox` is keyed by language, and a language added before this setting
+     existed simply has no key — so the field never appeared, and there was no
+     way to give it one. The page renders a row per LANGUAGE instead of per
+     existing key, so a missing slot shows as an empty box that can be filled
+     in and saved.
+
+     Self-healing rather than a repair button: the gap is visible, and using it
+     closes it. A repair action would need somebody to know it was there. */
+  var PER_LANGUAGE = ['donorbox'];
+
+  function missingLangKeys(group) {
+    if (PER_LANGUAGE.indexOf(group) === -1) return [];
+    return state.langs.filter(function (code) {
+      return state.draft[group + '.' + code] === undefined;
+    });
+  }
+
   function render() {
     var groups = [];
     var seen = {};
@@ -300,8 +319,16 @@
         return '<section class="s-group">' +
           '<h3>' + esc(groupLabel(g)) + '</h3>' +
           (GROUP_EXPLAIN[g] ? '<p class="v-note">' + esc(tr(GROUP_EXPLAIN[g])) + '</p>' : '') +
-          rows.map(field).join('') +
-          (g === '_general' ? frozenListRow('languages') : '') +
+          rows.map(function (p) {
+            /* The language list goes immediately under `defaultLang`, because
+               that is the setting it explains: one says which language a
+               visitor gets, the other says which languages there are to
+               choose from. At the bottom of the group they read as unrelated. */
+            return field(p) + (p === 'defaultLang' ? frozenListRow('languages') : '');
+          }).join('') +
+          missingLangKeys(g).map(function (code) {
+            return field(g + '.' + code, true);
+          }).join('') +
           '</section>';
       }).join('') +
       renderImages();
@@ -415,7 +442,16 @@
     '</section>';
   }
 
-  function field(p) {
+  function field(p, isNew) {
+    /* `isNew` means the key does not exist in the file yet — a language added
+       before this setting did. It renders as an ordinary empty text box, and
+       saving it creates the key. Treating it as a normal field is the point:
+       nothing about the screen should say "this one is special". */
+    if (isNew && state.draft[p] === undefined) {
+      state.draft[p] = '';
+      state.saved[p] = undefined;      // undefined !== '' so it counts as a change
+      if (state.order.indexOf(p) === -1) state.order.push(p);
+    }
     var v = state.draft[p];
     var frozen = isFrozen(p);
     var dirty = !frozen && state.draft[p] !== state.saved[p];
