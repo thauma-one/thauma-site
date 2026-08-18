@@ -29,6 +29,14 @@ permalink: /admin/content/index.html
   </label>
   <button type="button" class="ghost-btn" id="cAddLang" disabled
           data-i18n="con.addLang">Add a language</button>
+
+  {#- Taking the work offline. A translator usually has no console login and no
+     reason to want one — they want the words in something they can open. -#}
+  <button type="button" class="ghost-btn" id="cExport" disabled
+          data-i18n="con.export">Download</button>
+  <button type="button" class="ghost-btn" id="cImport" disabled
+          data-i18n="con.import">Upload</button>
+  <input type="file" id="cImportFile" accept=".csv,text/csv" hidden>
   <span class="hint" id="cWhere"></span>
 </div>
 

@@ -92,6 +92,7 @@ jobs:
       - name: Test
         run: |
           node test/visibility.test.mjs
+          node test/csv.test.mjs
           python3 db/test_schema.py
           cd workers && npm test
 

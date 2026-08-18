@@ -188,6 +188,8 @@
     ref.disabled = false;
 
     $('cAddLang').disabled = false;
+    $('cExport').disabled = false;
+    $('cImport').disabled = false;
 
     // Default to the first language the site builds, which is also the one
     // every other language is translated FROM.
@@ -436,6 +438,135 @@
     await boot();
     $('cLang').value = body.code;
     await openFile(body.code);
+  });
+
+  /* ---- taking the work offline and bringing it back --------------------
+     A translator usually has no console login and no reason to want one. They
+     want the words in something they can open, and to hand them back.
+
+     CSV, NOT JSON. A spreadsheet is what a translator already has; JSON is a
+     format you have to be careful in, and a stray comma or a smart quote
+     breaks the whole file rather than one cell.
+
+     IMPORT DOES NOT SAVE. It fills the working copy, so the changes arrive as
+     unsaved edits with the coloured edges and the count in the bar, and you
+     look at them before anything is committed. That reuses the model the whole
+     page already runs on rather than inventing a second path to the file — and
+     it means an import can be discarded like any other mistake. */
+
+  function csvCell(v) {
+    v = String(v == null ? '' : v);
+    // Quote if it could otherwise break the row. Doubling is how CSV escapes
+    // a quote — backslashes are not a thing here.
+    return /[",\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+  }
+
+  $('cExport').addEventListener('click', function () {
+    var ref = state.ref ? state.ref.leaves : null;
+    var refCode = state.ref ? state.ref.code : 'en';
+
+    var rows = [['key', refCode, state.file]];
+    state.order.forEach(function (p) {
+      rows.push([p, ref ? (ref[p] == null ? '' : ref[p]) : '', state.draft[p]]);
+    });
+
+    var csv = rows.map(function (r) { return r.map(csvCell).join(','); }).join('\r\n');
+
+    /* THE BOM IS NOT OPTIONAL. Excel opens a UTF-8 CSV as the local codepage
+       without one, so Croatian and Serbian arrive as mojibake — and a
+       translator would then "fix" it and hand back the damage. */
+    var blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'thauma-' + state.file + '.csv';
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+    toast(tr('con.exported').replace('{n}', state.order.length), 'ok');
+  });
+
+  /* A CSV parser, because the format has exactly one hard part and it is not
+     splitting on commas: a quoted field can contain commas, newlines and
+     doubled quotes. Splitting on /,/ works until the first translator writes a
+     sentence with a comma in it. */
+  function parseCsv(text) {
+    if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);   // strip the BOM back off
+    var rows = [], row = [], field = '', inQuotes = false, i = 0;
+    while (i < text.length) {
+      var c = text[i];
+      if (inQuotes) {
+        if (c === '"') {
+          if (text[i + 1] === '"') { field += '"'; i += 2; continue; }
+          inQuotes = false; i++; continue;
+        }
+        field += c; i++; continue;
+      }
+      if (c === '"') { inQuotes = true; i++; continue; }
+      if (c === ',') { row.push(field); field = ''; i++; continue; }
+      if (c === '\r') { i++; continue; }
+      if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; i++; continue; }
+      field += c; i++;
+    }
+    if (field.length || row.length) { row.push(field); rows.push(row); }
+    return rows.filter(function (r) { return r.length > 1 || (r[0] && r[0].length); });
+  }
+
+  // The real control is the button; the file input is hidden because browsers
+  // style it in ways no theme can reach.
+  $('cImport').addEventListener('click', function () { $('cImportFile').click(); });
+
+  $('cImportFile').addEventListener('change', async function (e) {
+    var file = e.target.files && e.target.files[0];
+    e.target.value = '';                 // so re-picking the same file fires again
+    if (!file) return;
+
+    var text;
+    try { text = await file.text(); }
+    catch (err) { return toast(tr('con.importUnreadable'), 'bad'); }
+
+    var rows;
+    try { rows = parseCsv(text); }
+    catch (err) { return toast(tr('con.importUnreadable'), 'bad'); }
+
+    if (rows.length < 2) return toast(tr('con.importEmpty'), 'bad');
+
+    /* The LAST column is the translation — that is where the export puts it,
+       and it survives somebody adding a notes column in the middle, which is
+       exactly the sort of thing a spreadsheet invites. */
+    var header = rows[0];
+    var valueCol = header.length - 1;
+
+    var changes = {}, unknown = [], blank = 0;
+    for (var r = 1; r < rows.length; r++) {
+      var key = (rows[r][0] || '').trim();
+      if (!key) continue;
+      if (!Object.prototype.hasOwnProperty.call(state.draft, key)) { unknown.push(key); continue; }
+      var v = rows[r][valueCol];
+      if (v === undefined) continue;
+      if (v === '') { blank++; continue; }   // an untouched row is not an instruction to erase
+      if (v !== state.draft[key]) changes[key] = v;
+    }
+
+    var n = Object.keys(changes).length;
+    if (!n) {
+      return toast(unknown.length ? tr('con.importNoneMatched') : tr('con.importNoChanges'), 'bad');
+    }
+
+    var ok = await window.StaffConfirm({
+      title: tr('con.importTitle'),
+      body: tr('con.importBody').replace('{n}', n).replace('{lang}', state.file),
+      note: (unknown.length ? tr('con.importUnknown').replace('{n}', unknown.length) + ' ' : '') +
+            (blank ? tr('con.importBlank').replace('{n}', blank) + ' ' : '') +
+            tr('con.importNote'),
+      confirm: tr('con.importDo'),
+      cancel: tr('ms.cancel')
+    });
+    if (!ok) return;
+
+    Object.keys(changes).forEach(function (k) { state.draft[k] = changes[k]; });
+    renderSections();
+    renderRows();
+    renderSaveBar();
+    toast(tr('con.imported').replace('{n}', n), 'ok');
   });
 
   /* ---- editing -------------------------------------------------------- */

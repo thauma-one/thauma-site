@@ -6,7 +6,7 @@
     "build": "node -e \"require('fs').rmSync('_site',{recursive:true,force:true})\" && eleventy",
     "dev": "eleventy --serve --port 8123",
     "collage-debug": "node scripts/render-collage-debug.js",
-    "test": "node test/visibility.test.mjs"
+    "test": "node test/visibility.test.mjs && node test/csv.test.mjs"
   },
   "devDependencies": {
     "@11ty/eleventy": "^3.0.0",

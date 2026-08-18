@@ -1010,6 +1010,40 @@ browser rather than the application.
 - `type: 'DELETE'` adds a type-to-confirm field and keeps the button disabled
   until it matches — and the server checks the same word.
 
+### Taking a language away and bringing it back
+
+`/admin/content/` → **Download** and **Upload**. A translator usually has no
+console login and no reason to want one: they want the words in something they
+can open, and to hand them back.
+
+**CSV, not JSON.** A spreadsheet is what a translator already has. JSON is a
+format you have to be careful in, where a stray comma breaks the whole file
+rather than one cell.
+
+**The download carries a BOM.** Excel opens a UTF-8 CSV as the local codepage
+without one, so Croatian and Serbian arrive as mojibake — and a translator
+would then "fix" it and hand back the damage.
+
+**Uploading does not save.** It fills the working copy, so the changes appear
+as ordinary unsaved edits with their coloured edges and the count in the bar.
+You look through them and then Save, or discard the lot. That reuses the model
+the page already runs on rather than inventing a second route to the file.
+
+Empty rows are left alone rather than treated as an instruction to erase, and
+rows naming keys the site does not have are skipped and counted rather than
+silently ignored.
+
+⚠ **The parser is hand-written and that is where this breaks.** Splitting on
+commas works until the first translator writes a sentence with a comma in it.
+Then until one writes a quotation. Then until one presses Enter inside a cell —
+which shifts every subsequent row by one, so each translation lands on the key
+ABOVE the one it belongs to, silently. `test/csv.test.mjs` covers all three,
+plus every real English string round-tripping.
+
+The parser is duplicated there because `admin-content.js` is a browser IIFE
+with no exports. A test asserts the two copies still match after comments are
+stripped, so a fix in one place fails until it is made in both.
+
 ### Adding a language
 
 `/admin/content/` → **Add a language**. Two commits, in this order:
