@@ -510,5 +510,24 @@ async function githubError(res) {
     const body = await res.json();
     detail = body && body.message ? ` — ${body.message}` : "";
   } catch { /* not JSON; the status is all we have */ }
+
+  /* THE ONE FAILURE WORTH TRANSLATING.
+     
+     "Resource not accessible by integration" is GitHub's way of saying the App
+     lacks a permission, and it names neither the permission nor the App. On
+     2026-08-17 an App was created with NO repository permissions at all:
+     reading a public repository needs none, so every page loaded and looked
+     correct, and the first write failed with that sentence.
+     
+     The second sentence below is the part that actually unblocks somebody.
+     Setting the permission is not enough — GitHub does not apply a permissions
+     change to an existing installation until it is approved there, so the
+     settings page shows the right thing while the token still has nothing. */
+  if (res.status === 403 && /not accessible by integration/i.test(detail)) {
+    return "GitHub refused: the app does not have permission. Give it " +
+           "Contents: read and write (and Actions: read and write, for Publish) " +
+           "in the app's settings — then APPROVE the new permissions on the " +
+           "installation, which is a separate step GitHub does not do for you.";
+  }
   return `GitHub returned ${res.status}${detail}`;
 }

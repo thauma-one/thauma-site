@@ -125,6 +125,30 @@ too.
 
 ---
 
+## 4b. CHECK THE CREDENTIAL ACTUALLY WORKS
+
+```
+cd /DATA/AppData/thauma
+node deploy/check-github-app.mjs
+```
+
+It asks GitHub what the app can do and prints the answer. Run it before
+believing the setup is finished.
+
+**Why it exists:** thauma-site is a PUBLIC repository, and reading a public
+repository needs no permissions at all. So an app with none reads every file
+perfectly, the Content page lists every section, and everything looks right —
+until the first save, which fails. That happened on 2026-08-17 and the
+symptom was a 502 with no useful message.
+
+If it reports MISSING, the fix is two steps and the second is the one people
+miss: set the permissions in the app's settings, **then approve the change on
+the installation.** GitHub does not apply a permissions change to an existing
+install by itself. Until you approve it, the settings page shows the right
+thing and the token still has nothing.
+
+---
+
 ## 5. Turn on instant sync for the Pi (needs one sudo edit)
 
 Skip this if you like — the five-minute timer covers it. This just makes it

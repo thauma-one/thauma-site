@@ -310,6 +310,22 @@ await check("a normal save does NOT carry the marker", async () => {
   assert(!/skip ci/.test(body.message), "quiet was not asked for");
 });
 
+await check("a missing permission says so, and says what else to do", async () => {
+  /* GitHub's own words are "Resource not accessible by integration", which
+     names neither the permission nor the app. Happened for real: an app
+     created with NO repository permissions read a PUBLIC repo perfectly — so
+     every page loaded — and failed on the first write with that sentence.
+     
+     The second half of the message is the part that unblocks anybody: setting
+     the permission does nothing until it is approved on the installation. */
+  const fake = async () => new Response(
+    JSON.stringify({ message: "Resource not accessible by integration" }), { status: 403 });
+  const r = await putFile(ENV, { path: "p", text: "{}", sha: "s", message: "m" }, fake);
+  assert(/permission/i.test(r.error), `should name the cause: ${r.error}`);
+  assert(/Contents: read and write/i.test(r.error), "should name the permission");
+  assert(/APPROVE|approve/.test(r.error), "must say approval is a separate step");
+});
+
 await check("a stale SHA is a clear conflict, not a server error", async () => {
   const fake = async () => new Response(JSON.stringify({ message: "is at abc but expected def" }), { status: 409 });
   const r = await putFile(ENV, { path: "p", text: "{}", sha: "stale", message: "m" }, fake);
