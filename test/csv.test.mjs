@@ -148,22 +148,42 @@ check("a trailing newline does not add an empty row", () => {
 
 /* ------------------------- the column layout --------------------------- */
 
-check("the translation is the LAST column in both shapes", () => {
+check("the header carries the language CODE in brackets", () => {
+  /* The header is written for the person who receives the file — "Slovenščina
+     (sl) — PUT YOUR TRANSLATION HERE" rather than "sl". The upload still has
+     to know which language it is, so the code lives in brackets: long name for
+     the human, code for the machine, one string. */
+  const extract = (h) => {
+    const m = String(h).trim().match(/\(([a-z]{2}(?:-[a-z]{2})?)\)/i);
+    return (m ? m[1] : String(h).trim()).toLowerCase();
+  };
+  eq(extract("Slovenščina (sl) — PUT YOUR TRANSLATION HERE"), "sl", "long header");
+  eq(extract("English (en) — EDIT HERE, or change the code in brackets"), "en", "template header");
+  eq(extract("Português (pt-br) — PUT YOUR TRANSLATION HERE"), "pt-br", "regional code");
+  // A hand-made file with a bare code still works — refusing it would be pedantry.
+  eq(extract("hr"), "hr", "bare code");
+  eq(extract(" SL "), "sl", "bare code, sloppily typed");
+});
+
+check("the translation is the LAST column in ONE shape", () => {
   /* The import reads header.length - 1. Two shapes exist — translating a
      language carries an English source column, editing English itself has
      nothing to put in one — and the rule has to hold for both, or the import
      silently reads the context column as the translation. */
-  const translating = ["key", "en", "context", "hr"];
-  const editingEnglish = ["key", "context", "en"];
+  /* ONE shape now, not two. The reference column used to be dropped when the
+     language being downloaded WAS the reference — which produced a file with
+     no source text, useful only to somebody who already knows the site, which
+     is exactly not who receives it. Four columns always; English simply
+     appears twice when English is what you asked for. */
+  const translating = ["key (do not change)", "English (en) — the original, for reference",
+                       "notes — …", "Slovenščina (sl) — PUT YOUR TRANSLATION HERE"];
+  const template = ["key (do not change)", "English (en) — the original, for reference",
+                    "notes — …", "English (en) — EDIT HERE, or change the code"];
 
-  eq(translating[translating.length - 1], "hr", "translating: last column is the translation");
-  eq(editingEnglish[editingEnglish.length - 1], "en", "editing English: last column is the text");
-
-  // And the language the import detects is that same header cell.
-  for (const header of [translating, editingEnglish]) {
-    const code = header[header.length - 1];
-    assert(/^[a-z]{2}(-[a-z]{2})?$/.test(code),
-           `the last header must be a language code, got "${code}"`);
+  for (const header of [translating, template]) {
+    eq(header.length, 4, "always four columns");
+    const m = header[header.length - 1].match(/\(([a-z]{2}(?:-[a-z]{2})?)\)/i);
+    assert(m, `the last header must carry a language code: "${header[3]}"`);
   }
 });
 

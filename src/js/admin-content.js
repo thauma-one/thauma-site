@@ -508,15 +508,24 @@
         var whole = m[2] === 'thin'
           ? state.draft[path] + ' ' + state.draft[other]
           : state.draft[other] + ' ' + state.draft[path];
-        return tr('con.ctxSplit')
-          .replace('{part}', m[2] === 'thin' ? '1' : '2')
-          .replace('{whole}', whole);
+        /* SHORT, and on two lines.
+
+           This repeated a forty-word paragraph on all thirty split rows, which
+           made the column wider than the screen and pushed the actual text off
+           it. The explanation only ever needed saying once, so it moved to the
+           column HEADER, and each row carries the two facts that differ: which
+           part, and what the whole phrase is.
+
+           The newline is real wrapping — a spreadsheet renders it as a second
+           line inside the cell, and it is the only formatting a CSV can carry. */
+        return fill('con.ctxSplit', { part: m[2] === 'thin' ? '1' : '2' }) +
+               '\n"' + whole + '"';
       }
     }
     // A placeholder must survive translation or the sentence breaks at runtime.
     if (/\{[a-z_]+\}/i.test(String(state.draft[path]))) {
       var found = String(state.draft[path]).match(/\{[a-z_]+\}/ig).join(' ');
-      return tr('con.ctxPlaceholder').replace('{tokens}', found);
+      return fill('con.ctxPlaceholder', { tokens: found });
     }
     return '';
   }
@@ -534,36 +543,57 @@
        site. The download goes to a person who does not, and it has to stand on
        its own. So it fetches English if it is not already loaded rather than
        exporting whatever is to hand. */
+    /* THE REFERENCE COLUMN IS ALWAYS THERE, even when the language being
+       downloaded IS the reference.
+
+       The file's job is to be a template somebody can work from — that was the
+       point of having it at all. A version of it without the source text is
+       only useful to a person who already knows the site, which is precisely
+       not who receives it. So: four columns, always, and English appears twice
+       when English is what you asked for. That looks redundant and is not — one
+       column is what the words currently say, the other is where the new ones
+       go. */
     var btn = this;
-    var ref = null;
-    if (state.file !== 'en') {
-      if (state.ref && state.ref.code === 'en') {
-        ref = state.ref.leaves;
-      } else {
-        btn.disabled = true;
-        var enFile = await get('en');
-        btn.disabled = false;
-        if (!enFile) return;            // get() has already explained
-        ref = leaves(enFile.data);
-      }
+    var ref;
+    if (state.ref && state.ref.code === 'en') {
+      ref = state.ref.leaves;
+    } else if (state.file === 'en') {
+      ref = state.draft;                 // downloading English: it is its own source
+    } else {
+      btn.disabled = true;
+      var enFile = await get('en');
+      btn.disabled = false;
+      if (!enFile) return;               // get() has already explained
+      ref = leaves(enFile.data);
     }
 
-    /* Column order matters twice over. The translation is LAST because that is
-       what the import reads, and it survives somebody inserting a column.
-       Context sits beside the English because that is where it is read.
+    /* HEADERS THAT EXPLAIN THEMSELVES.
 
-       Exporting English itself has no source column — there is nothing to put
-       in it, and an empty one is what caused the bug above. The import reads
-       the last column either way, so both shapes work. */
-    var rows = ref
-      ? [['key', 'en', 'context', state.file]]
-      : [['key', 'context', state.file]];
+       They read `key, en, context, sl` — accurate, and no help to the person
+       the file is FOR, who has never seen this system and has to work out
+       which column to type in. A translator opening a spreadsheet should not
+       have to guess, and neither should a machine asked to fill one in.
+
+       The language code stays in the header inside brackets, because the
+       upload reads it back to learn which language the file is for. Long name
+       for the person, code for the machine, one string.
+
+       Downloading English gets an extra sentence: changing the code in that
+       header is what turns the file into a new language. It is the template
+       flow, and it needs saying exactly where somebody would look for it. */
+    var editHeader = state.file === 'en'
+      ? fill('con.csvEditTemplate', { lang: langLabel('en') })
+      : fill('con.csvEdit', { lang: langLabel(state.file) });
+
+    var rows = [[
+      tr('con.csvKey'),
+      fill('con.csvRef', { lang: langLabel('en') }),
+      tr('con.csvNotes'),
+      editHeader,
+    ]];
 
     state.order.forEach(function (p) {
-      var row = [p];
-      if (ref) row.push(ref[p] == null ? '' : ref[p]);
-      row.push(contextFor(p), state.draft[p]);
-      rows.push(row);
+      rows.push([p, ref[p] == null ? '' : ref[p], contextFor(p), state.draft[p]]);
     });
 
     var csv = rows.map(function (r) { return r.map(csvCell).join(','); }).join('\r\n');
@@ -646,7 +676,12 @@
        A header that is not a language code at all — a hand-made file, or one
        somebody renamed — falls through to the open language, which is the
        only guess available and the one they were already looking at. */
-    var fileLang = String(header[valueCol] || '').trim().toLowerCase();
+    /* The header now reads "Slovenian (sl) — put your translation here", so the
+       code comes out of the brackets. A bare code is still accepted: a
+       hand-made file will have one, and refusing it would be pedantry. */
+    var rawHeader = String(header[valueCol] || '').trim();
+    var bracketed = rawHeader.match(/\(([a-z]{2}(?:-[a-z]{2})?)\)/i);
+    var fileLang = (bracketed ? bracketed[1] : rawHeader).trim().toLowerCase();
     var target = state.file;
     var justCreated = false;
 

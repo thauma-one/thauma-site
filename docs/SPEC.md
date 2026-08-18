@@ -1024,6 +1024,25 @@ rather than one cell.
 without one, so Croatian and Serbian arrive as mojibake — and a translator
 would then "fix" it and hand back the damage.
 
+**Four columns, always:**
+
+```
+key (do not change) | English (en) — the original, for reference | notes | Slovenščina (sl) — PUT YOUR TRANSLATION HERE
+```
+
+The reference column is never dropped, including when the language being
+downloaded IS English. A file without the source text is useful only to
+somebody who already knows the site, which is exactly not who receives it —
+English simply appears twice, once as what the words say and once as where the
+new ones go. Downloading English also gets an extra sentence in the last
+header: changing the code in brackets is what turns the file into a new
+language, and that is the template flow.
+
+**The headers are written for the person the file is for**, who has never seen
+this system. `key, en, context, sl` was accurate and no help. The language code
+lives in brackets so the upload can still read it — long name for the human,
+code for the machine, one string.
+
 **The export carries CONTEXT, because fifteen headings are one phrase stored
 as two strings.** `h2_thin` holds "On-site," and `h2_bold` holds "behind the
 scenes." — split for typography. Handed over as two rows they read as two
@@ -1031,8 +1050,12 @@ things, and translated independently they come back as nonsense in any
 language that inflects: the split that works in English falls in the wrong
 place in Croatian, and neither half can be fixed without seeing the other.
 
-So both rows carry the whole phrase, say which part they are, and say
-explicitly that the split may land somewhere else. That is the instruction a
+So both rows carry the whole phrase and say which part they are — briefly.
+The full explanation is in the notes COLUMN HEADER, said once, because
+repeating a forty-word paragraph on thirty rows made that column wider than
+the screen and pushed the actual text off it. The per-row note carries a
+newline, which a spreadsheet renders as a second line inside the cell and is
+the only formatting a CSV can carry. That is the instruction a
 human needs and the context a machine translator needs to return something
 usable rather than two dangling fragments. Strings holding a placeholder like
 `{n}` say to keep it. Detected by naming convention, so a heading added next
