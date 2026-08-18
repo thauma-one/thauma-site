@@ -164,13 +164,24 @@ check("a language switched off is not built at all", () => {
   /* Not hidden — absent. An unlinked page is still reachable, still crawlable
      and still in the sitemap; a page that was never built is a 404. Every page
      template paginates over activeLangs for exactly this reason. */
+  /* Switch off EVERY language except Croatian, derived from the file rather
+     than named here. An earlier version listed hr and sr literally, and when
+     Slovenian was added to the site it fell through the "no switch means on"
+     rule and appeared in a list this test asserted did not contain it. The
+     test was wrong, not the rule — but it went stale silently, which is the
+     part worth fixing. */
   const site = readSite();
-  site.visibility.languages = { hr: { live: true, dev: true },
-                                sr: { live: false, dev: true } };
+  site.visibility.languages = Object.fromEntries(
+    site.languages.filter((c) => c !== "en").map((c) => [
+      c, c === "hr" ? { live: true, dev: true } : { live: false, dev: true },
+    ]));
   writeSite(site);
 
-  eq(load("build").activeLangs, ["en", "hr"], "live: Serbian must not be built");
-  eq(load("watch").activeLangs, ["en", "hr", "sr"], "dev: it must still be there to translate in");
+  const others = site.languages.filter((c) => c !== "en" && c !== "hr");
+  eq(load("build").activeLangs, ["en", "hr"],
+     `live: ${others.join(", ")} must not be built`);
+  eq(load("watch").activeLangs, ["en", "hr", ...others],
+     "dev: they must still be there to translate in");
 });
 
 check("ENGLISH CANNOT BE SWITCHED OFF", () => {
@@ -187,9 +198,10 @@ check("ENGLISH CANNOT BE SWITCHED OFF", () => {
      Leaving Croatian on means the list is non-empty, so the guard never fires
      and only the English rule can keep English in it. */
   const site = readSite();
-  site.visibility.languages = { en: { live: false, dev: false },
-                                hr: { live: true,  dev: true  },
-                                sr: { live: false, dev: false } };
+  site.visibility.languages = Object.fromEntries(
+    site.languages.map((c) => [
+      c, c === "hr" ? { live: true, dev: true } : { live: false, dev: false },
+    ]));
   writeSite(site);
   eq(load("build").activeLangs, ["en", "hr"], "English must survive being switched off");
 });
