@@ -2,9 +2,17 @@
    admin-content.js — editing the site's own words
    ============================================================
    Talks to /api/admin/content, which commits to the repository.
-   That is the one fact this whole screen is arranged around:
-   a save is a commit, a commit is a deploy, and a deploy is the
-   public site changing.
+
+   A SAVE IS A COMMIT AND NOTHING ELSE. It carries [skip ci],
+   so no build runs and the public site does not move. Publish
+   is a separate act on a separate page.
+
+   This header used to end "a commit is a deploy, and a deploy
+   is the public site changing", which was true when it was
+   written and stopped being true the day Save/Preview/Publish
+   shipped. The button still said "Save & publish" three weeks
+   later — copy describing old behaviour is worse than none,
+   because somebody reads it and believes it.
 
    SO IT USES THE WORKING-COPY MODEL, not immediate saves.
    Settings saves immediately because each control there is one
@@ -376,7 +384,7 @@
       ? tr('con.oneChange')
       : d.length + ' ' + tr('con.nChanges');
     $('cSaveNote').textContent =
-      tr('con.willCommit').replace('{lang}', state.file).replace('{branch}', state.branch);
+      tr('con.saveBarNote').replace('{lang}', state.file).replace('{branch}', state.branch);
   }
 
   /* ---- adding a language ----------------------------------------------
@@ -796,13 +804,13 @@
     /* A sentence about what happens, because what happens is a commit on the
        branch that deploys. "Are you sure" would not have said that. */
     var ok = await window.StaffConfirm({
-      title: tr('con.publishTitle'),
-      body: tr('con.publishBody')
+      title: tr('con.saveTitle'),
+      body: tr('con.saveBody')
         .replace('{n}', d.length)
         .replace('{lang}', state.file)
         .replace('{branch}', state.branch),
-      note: tr('con.publishNote'),
-      confirm: tr('con.commit'),
+      note: tr('con.saveNote'),
+      confirm: tr('con.save'),
       cancel: tr('ms.cancel')
     });
     if (!ok) return;
@@ -856,7 +864,7 @@
     state.saved = JSON.parse(JSON.stringify(state.draft));
     state.sha = body.sha;
 
-    toast(tr('con.committed').replace('{n}', body.changed.length), 'ok');
+    toast(tr('con.saved').replace('{n}', body.changed.length), 'ok');
     renderSections();
     renderRows();
     renderSaveBar();

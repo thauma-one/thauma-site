@@ -296,6 +296,97 @@ check("every page in the site has a switch", () => {
   eq(missing, [], "pages with no switch in site.json");
 });
 
+check("nothing in the SAVE flow claims to publish", () => {
+  /* THE THIRD TIME. When Save/Preview/Publish shipped, saving stopped
+     publishing — and the copy did not follow:
+
+       · the note on both pages said "there is no separate publish step"
+       · the button said "Save & publish" for three weeks after that
+       · the toast said "the deploy is running" when no deploy runs
+       · two source comments still said a commit is a deploy
+
+     Each was found by Chase using the page, which is the expensive way. Copy
+     describing old behaviour is worse than no copy: somebody reads it and
+     believes it.
+
+     So: every string the save flow reaches, and the markup fallbacks that
+     show before translation runs, are checked for the words that would only
+     be true under the old model. */
+  const root = fileURLToPath(new URL("../src/", import.meta.url));
+
+  const i18n = readFileSync(root + "js/staff-i18n.js", "utf8");
+  const SAVE_KEYS = ["con.save", "con.saveTitle", "con.saveBody", "con.saveSiteBody",
+                     "con.saveNote", "con.saved", "con.saveBarNote", "con.saveBarNoteSite"];
+  /* SPECIFIC FALSE CLAIMS, not the word "publish".
+
+     The first version of this banned the word outright and flagged three
+     CORRECT strings — "Nothing is live yet", "it does not go live until you
+     publish" — because a regex cannot see a negation. Detecting a lie in
+     general is not something this test can do.
+
+     What it CAN do is refuse the exact claims that have actually shipped.
+     Each of these was live in the product and wrong:  */
+  const LIES = [
+    [/no separate publish/i,        'said publishing was not a separate step'],
+    [/save\s*(&(amp;)?|and)\s*publish/i, 'said saving publishes'],
+    [/the deploy/i,                 'mentioned a deploy — saving starts none'],
+    [/deploy (is |will )?run/i,     'said a deploy runs'],
+    [/live (in )?a minute/i,        'said it goes live shortly'],
+  ];
+  const lies = (text) => LIES.filter(([re]) => re.test(text)).map(([, why]) => why);
+
+  const offenders = [];
+  for (const key of SAVE_KEYS) {
+    // Every language's copy of the key, not just English.
+    const re = new RegExp(`"${key.replace(".", "\\.")}":\\s*"((?:[^"\\\\]|\\\\.)*)"`, "g");
+    let m, seen = 0;
+    while ((m = re.exec(i18n))) {
+      seen++;
+      /* "Use Publish when you want this to go live" is the one correct use of
+         the word: it points AT the other action rather than claiming to be it.
+         Capitalised, because it names the button. */
+      const found = lies(m[1]);
+      if (found.length) offenders.push(`${key} ${found[0]}: "${m[1].slice(0, 60)}"`);
+    }
+    assert(seen >= 3, `${key} is missing from at least one language (found ${seen})`);
+  }
+
+  /* The markup fallback is real copy: it is what shows before the translation
+     sweep runs, and what shows for good if a key ever goes missing. The button
+     said "Save & publish" in the HTML long after the key was corrected. */
+  for (const f of ["adminarea/content.njk", "adminarea/site.njk"]) {
+    const src = readFileSync(root + f, "utf8");
+    for (const m of src.matchAll(/data-i18n="(con\.save[A-Za-z]*)">([^<]*)</g)) {
+      const found = lies(m[2]);
+      if (found.length) offenders.push(`${f} fallback for ${m[1]} ${found[0]}: "${m[2]}"`);
+    }
+  }
+
+  eq(offenders, [], "saving does not publish — this copy says it does");
+
+  /* And the source comments, which is where two of them survived longest.
+     A comment nobody has to look at is a comment nobody corrects. */
+  for (const f of ["js/admin-content.js", "js/admin-site.js",
+                   "adminarea/content.njk", "adminarea/site.njk"]) {
+    const src = readFileSync(root + f, "utf8");
+    /* Only lines that ASSERT it, not lines RECORDING that it used to be said.
+
+       The first version excluded "used to say" and then failed on a comment
+       beginning "This header used to end ..." — a test tripping over the prose
+       that documents the fix it is checking. That has now happened twice in
+       this repo (see the seed-file test in db/test_schema.py), so the
+       exclusion is deliberately broad: any line that is clearly talking about
+       the past is not making a claim about the present. */
+    for (const line of src.split("\n")) {
+      if (/used to|no longer|stopped being|was true when|previously|since corrected/i.test(line)) continue;
+      if (/a commit is a deploy|commit, and a commit is a deploy/i.test(line)) {
+        offenders.push(`${f}: a comment still says a commit is a deploy`);
+      }
+    }
+  }
+  eq(offenders, [], "a source comment still describes the old model");
+});
+
 check("secrets cannot be committed", () => {
   /* .dev.vars holds the GitHub App private key on a development machine — a
      credential that can commit to this repository and deploy the live site.

@@ -18,8 +18,10 @@ permalink: /admin/site/index.html
 
    THE SAVE MODEL IS THE SAME AS THE CONTENT EDITOR'S, and different from
    Settings in the staff console. Settings saves immediately because each
-   control is one decision against a database row. Every control here is a
-   commit, and a commit is a deploy — so the changes gather and go together. -#}
+   control is one decision against a database row, and the result is visible
+   at once. Nothing here is: every control changes what the site will be the
+   NEXT time it is built, so the changes gather and go out together when
+   somebody publishes. -#}
 
 <p class="note" id="sNote">
   <b>Saving does not change the website.</b> These settings are stored and
@@ -35,5 +37,5 @@ permalink: /admin/site/index.html
   <span id="sDirtyCount">0 unsaved changes</span>
   <span class="ms-savebar-note" id="sSaveNote"></span>
   <button type="button" class="ghost-btn" id="sDiscard" data-i18n="ms.discard">Discard</button>
-  <button type="button" class="solid-btn" id="sSave" data-i18n="con.commit">Save &amp; publish</button>
+  <button type="button" class="solid-btn" id="sSave" data-i18n="con.save">Save</button>
 </div>

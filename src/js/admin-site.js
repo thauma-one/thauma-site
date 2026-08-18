@@ -435,7 +435,7 @@
     if (!d.length) return;
     $('sDirtyCount').textContent = d.length === 1
       ? tr('con.oneChange') : d.length + ' ' + tr('con.nChanges');
-    $('sSaveNote').textContent = tr('con.willCommitSite').replace('{branch}', state.branch);
+    $('sSaveNote').textContent = tr('con.saveBarNoteSite').replace('{branch}', state.branch);
   }
 
   /* ---- editing -------------------------------------------------------- */
@@ -522,10 +522,10 @@
     if (!d.length) return;
 
     var ok = await window.StaffConfirm({
-      title: tr('con.publishTitle'),
-      body: tr('con.publishSiteBody').replace('{n}', d.length).replace('{branch}', state.branch),
-      note: tr('con.publishNote'),
-      confirm: tr('con.commit'), cancel: tr('ms.cancel')
+      title: tr('con.saveTitle'),
+      body: tr('con.saveSiteBody').replace('{n}', d.length).replace('{branch}', state.branch),
+      note: tr('con.saveNote'),
+      confirm: tr('con.save'), cancel: tr('ms.cancel')
     });
     if (!ok) return;
 
@@ -564,7 +564,7 @@
     state.saved = JSON.parse(JSON.stringify(state.draft));
     state.sha = body.sha;
     toast(body.unchanged ? tr('con.nothingChanged')
-                         : tr('con.committed').replace('{n}', body.changed.length), 'ok');
+                         : tr('con.saved').replace('{n}', body.changed.length), 'ok');
     render();
     renderSaveBar();
   });
