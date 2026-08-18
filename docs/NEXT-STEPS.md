@@ -3,8 +3,12 @@
 Written 2026-08-16. In order. Stop wherever you like — each step leaves things
 in a working state.
 
-**Where things stand:** everything is committed on `dev` and nothing has been
-pushed. The live site is unchanged. Nothing is broken and nothing is on a timer.
+**Where things stand** (updated 2026-08-18): `dev` is pushed. Both databases
+are migrated and up to date. The live site is still unchanged — **the merge to
+`main` is the one thing left, and it is deliberately waiting for you**, because
+it ships 66 commits and deploys production in one go.
+
+Nothing is broken and nothing is on a timer.
 
 ---
 
@@ -205,22 +209,84 @@ new permission on the installation.
 
 ---
 
-## 7. Before the first Publish — check the database
+## 7. The database — done, and now it runs itself
 
-The live site is a long way behind and the new code expects database tables
-that may not exist there yet.
+**This is finished. Nothing for you to do here.** Written down because the
+answer changed on 2026-08-18.
 
-**dash.cloudflare.com** → Storage & Databases → **D1** → `thauma-ops` → Console,
-and run:
+Both databases were two migrations behind. That is what made "remove a person"
+return a 500: the code had been rewritten to let somebody leave without
+erasing who logged what, and the live tables still had the old rules. Applied
+to both, and every row in dev survived the rebuild (4 users, 8 interactions,
+8 milestones, 5 resources — same before and after).
 
-```sql
-SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;
-```
+**From now on you never do this by hand.** The Publish page has a database
+panel:
 
-You should see `partners`, `users`, `contacts`, `milestones`, `user_roles`,
-`resources`, `directory_contacts`, `audit_log` among others. **If that list is
-short or empty, stop and tell me** — the migrations need applying first, and
-publishing without them breaks the live site.
+- **Green** — the database is up to date. Nothing to do.
+- **Amber, with an Apply button** — the database is behind the code. Press it.
+  Type `MIGRATE`. It runs each change in order and records it, so nothing runs
+  twice.
+- If one fails, it stops there and tells you which file and which line. It
+  will not carry on and it will not pretend it worked.
+
+**Apply the database changes BEFORE you publish**, not after. The order is:
+merge → apply → publish. New code that expects a table which isn't there yet
+breaks the moment it deploys; a database slightly ahead of the code breaks
+nothing.
+
+---
+
+## 8. When the page and reality disagree
+
+On the Publish page there's a fold-out: **"Something looks out of step"**.
+
+Open it and you get two things the ordinary buttons won't give you:
+
+- **Rebuild the preview site** and **Rebuild the live site** — the same actions
+  as the buttons above, but they don't first check whether it's needed.
+- A line at the bottom reading `Live branch is at abc1234 · last deployed
+  def5678`. **If those two match, "up to date" is true.** If they differ, the
+  site is genuinely behind whatever the page says.
+
+This exists because "nothing is waiting" is assembled from GitHub's answer
+about the last successful deploy, and if that answer is ever wrong there was
+previously no way to act on it. Rebuilding the live site still asks you to
+type `PUBLISH` — the guard matters most exactly when the page's idea of what
+is waiting is not to be trusted.
+
+---
+
+## What Save actually pushes — a correction worth having
+
+**Save does push to origin.** Your Slovenian import, all 209 values, went to
+`main` through it. So did adding the language, and removing it.
+
+What Save *cannot* push is **code**. The console writes files under
+`src/_data/` and nothing else, deliberately — a content editor that could
+rewrite the Worker would be a much larger thing to trust. So while your words
+were on `main`, the code that renders them was sitting on this Pi, which is
+why the Site page looked older than the content it was showing.
+
+That gap is now closed, and the Publish page's SHA line above is what makes it
+visible next time.
+
+---
+
+## Verified: the toggles do not publish anything
+
+You asked. The answer was *nearly* yes.
+
+Every page and language toggle saves with `[skip ci]`, which tells GitHub to
+run no workflow — so flipping a switch commits and stops. Confirmed against
+the actual commits on `main`.
+
+**One path did not.** Deleting a language called a function that had never
+been given the `[skip ci]` flag, so `Delete sl: 0 translated strings` landed
+as an ordinary push and deployed production. Nobody asked for it. Fixed, and
+there is now a test that walks every write in the Worker and fails if one of
+them is missing the flag — the mechanism working was never the problem, one
+caller not using it was.
 
 ---
 
