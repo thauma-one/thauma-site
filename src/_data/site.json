@@ -4,8 +4,7 @@
   "languages": [
     "en",
     "hr",
-    "sr",
-    "sl"
+    "sr"
   ],
   "defaultLang": "en",
   "showEvents": false,
@@ -49,11 +48,6 @@
     "x": ""
   },
   "visibility": {
-    "languages": {
-      "sl": {
-        "live": false,
-        "dev": true
-      }
-    }
+    "languages": {}
   }
 }
