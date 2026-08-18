@@ -534,6 +534,16 @@ check("no asset is served with a hand-written cache version", () => {
       for (const m of src.matchAll(/(\S*\.(?:js|css))\?v=(\d+)/g)) {
         offenders.push(`${dir.replace(root, "")}${e.name}: ${m[0]}`);
       }
+
+      /* NO version at all is the same bug wearing different clothes, and the
+         check above cannot see it — it only matches a ?v= that is already
+         there. tokens.css was served unversioned underneath a passing test:
+         it holds the colour variables the whole console is drawn from, so a
+         cached copy repaints every page from an old palette, with nothing to
+         clear it but a hard refresh nobody thinks to do. */
+      for (const m of src.matchAll(/(?:src|href)="(\/(?:js|css)\/[^"?]+\.(?:js|css))"/g)) {
+        offenders.push(`${dir.replace(root, "")}${e.name}: ${m[1]} has no ?v= at all`);
+      }
     }
   })(root);
   eq(offenders, [], "use ?v={{ \"/path\" | v }} — a content hash cannot be forgotten");
