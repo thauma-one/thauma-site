@@ -47,11 +47,25 @@ const SITE_PATH = path.join(__dirname, "site.json");
 const isDevServer =
   process.env.ELEVENTY_RUN_MODE && process.env.ELEVENTY_RUN_MODE !== "build";
 
-/** Read one switch. Tolerates a plain boolean so a hand-edit cannot break the build. */
-function resolve(entry, column) {
-  if (entry === null || entry === undefined) return false;
+/**
+ * Read one switch. Tolerates a plain boolean so a hand-edit cannot break the
+ * build, and takes an explicit fallback for when the setting is absent
+ * entirely.
+ *
+ * ⚠ THE FALLBACK IS NOT A DETAIL. Measured 2026-08-16: with this code and a
+ * site.json predating the `visibility` block — which is exactly the pair you
+ * get mid-migration, since content lives on `main` and code arrives from
+ * `dev` — `comingSoon` resolved to FALSE and the whole unreleased site would
+ * have been built and published.
+ *
+ * An absent setting means "we do not know", and the answer to "should the
+ * public see this?" when we do not know is NO.
+ */
+function resolve(entry, column, fallback) {
+  if (entry === null || entry === undefined) return fallback;
   if (typeof entry === "boolean") return entry;
-  return !!entry[column];
+  if (typeof entry !== "object") return fallback;
+  return entry[column] === undefined ? fallback : !!entry[column];
 }
 
 // readFileSync, NOT require. `require` caches by path, so a JSON file read
@@ -65,20 +79,28 @@ module.exports = () => {
   const v = site.visibility || {};
   const column = isDevServer ? "dev" : "live";
 
+  // A page listed but not decided: show it. Forgetting to fill one in must
+  // not silently delete a page from the site.
   const pages = {};
   for (const [slug, entry] of Object.entries(v.pages || {})) {
-    pages[slug] = resolve(entry, column);
+    pages[slug] = resolve(entry, column, true);
   }
 
+  // A section listed but not decided: HIDE it. Sections gate content that is
+  // being prepared — a half-finished library appearing because nobody chose
+  // is the wrong way to be wrong.
   const sections = {};
   for (const [id, entry] of Object.entries(v.sections || {})) {
-    sections[id] = resolve(entry, column);
+    sections[id] = resolve(entry, column, false);
   }
 
   return {
     column,
     isDev: !!isDevServer,
-    comingSoon: resolve(v.comingSoon, column),
+    /* GATED unless the file says otherwise, in so many words. This is the
+       one switch whose failure is unrecoverable — an unreleased site that has
+       been crawled and cached cannot be un-published. */
+    comingSoon: resolve(v.comingSoon, column, true),
     pages,
     sections,
 

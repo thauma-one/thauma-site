@@ -63,7 +63,15 @@ jobs:
       # and cannot be taken back once it is crawled.
       - name: Verify the build matches the comingSoon setting
         run: |
-          coming=$(node -p "require('./src/_data/site.json').visibility.comingSoon.live")
+          # Defaults to "true" if the visibility block is absent, matching
+          # src/_data/visible.js. Reading the path directly would throw on a
+          # site.json predating the block — a crash instead of a verdict, at
+          # the one step whose job is to give a verdict.
+          coming=$(node -p "
+            const s=require('./src/_data/site.json');
+            const c=(s.visibility||{}).comingSoon;
+            c===undefined ? 'true' : (typeof c==='boolean' ? String(c) : String(c.live!==false));
+          ")
           pages=$(find _site_prod -name '*.html' | wc -l)
           echo "comingSoon=$coming, $pages pages built"
           if [ "$coming" = "true" ]; then

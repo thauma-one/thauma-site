@@ -109,6 +109,53 @@ check("SWITCHES ARE RE-READ, not cached from the first build", () => {
 
 /* ---------------------------- what cannot be off ----------------------- */
 
+check("A MISSING visibility block means GATED, not open", () => {
+  /* The pairing you get mid-migration: this code, and a site.json from before
+     the visibility block existed. Content lives on the live branch and code
+     arrives from the working branch, so the two genuinely can be out of step.
+
+     Measured 2026-08-16 with the real file from `main`: comingSoon resolved to
+     FALSE and the entire unreleased site would have been built and published.
+     An unreleased site that has been crawled cannot be un-published. */
+  writeSite({ name: "Thauma", languages: ["en"], defaultLang: "en" });
+  for (const mode of ["build", "watch"]) {
+    const { visible } = load(mode);
+    eq(visible.comingSoon, true, `${mode}: an unknown gate must mean GATED`);
+  }
+
+  // Present but empty, which is the other way to say nothing.
+  writeSite({ name: "Thauma", languages: ["en"], visibility: {} });
+  eq(load("build").visible.comingSoon, true, "an empty block must mean GATED");
+
+  // Present but only half-filled: no `live` value at all.
+  writeSite({ name: "Thauma", languages: ["en"], visibility: { comingSoon: { dev: false } } });
+  eq(load("build").visible.comingSoon, true, "a missing live value must mean GATED");
+});
+
+check("a page listed but not decided stays VISIBLE", () => {
+  // The opposite default, deliberately: forgetting to fill one in must not
+  // silently delete a page from the site.
+  writeSite({ name: "Thauma", languages: ["en"],
+              visibility: { comingSoon: { live: false, dev: false },
+                            pages: { about: {} } } });
+  eq(load("build").visible.pages.about, true, "an undecided page should show");
+});
+
+check("a section listed but not decided stays HIDDEN", () => {
+  // And this way round for sections: they gate content being prepared, and a
+  // half-finished library appearing because nobody chose is the wrong way to
+  // be wrong.
+  writeSite({ name: "Thauma", languages: ["en"],
+              visibility: { comingSoon: { live: false, dev: false },
+                            sections: { resourcesLibrary: {} } } });
+  eq(load("build").visible.sections.resourcesLibrary, false, "an undecided section should hide");
+
+  /* The three checks above replace site.json wholesale rather than editing it,
+     which is the point — they are about a file that does NOT have the block.
+     Put the real one back, or every test after this one is reading a stub. */
+  writeFileSync(SITE, ORIGINAL);
+});
+
 check("the home page cannot be switched off", () => {
   // A site whose home page can be turned off is not a site.
   const { visible } = load("build");
