@@ -146,6 +146,34 @@ check("a trailing newline does not add an empty row", () => {
   eq(parsed.length, 2, "row count");
 });
 
+/* ------------------------- the column layout --------------------------- */
+
+check("the translation is the LAST column in both shapes", () => {
+  /* The import reads header.length - 1. Two shapes exist — translating a
+     language carries an English source column, editing English itself has
+     nothing to put in one — and the rule has to hold for both, or the import
+     silently reads the context column as the translation. */
+  const translating = ["key", "en", "context", "hr"];
+  const editingEnglish = ["key", "context", "en"];
+
+  eq(translating[translating.length - 1], "hr", "translating: last column is the translation");
+  eq(editingEnglish[editingEnglish.length - 1], "en", "editing English: last column is the text");
+
+  // And the language the import detects is that same header cell.
+  for (const header of [translating, editingEnglish]) {
+    const code = header[header.length - 1];
+    assert(/^[a-z]{2}(-[a-z]{2})?$/.test(code),
+           `the last header must be a language code, got "${code}"`);
+  }
+});
+
+check("an inserted column does not move the translation", () => {
+  /* A spreadsheet invites this: somebody adds a "notes" or "done?" column.
+     Reading a fixed index would then import notes as translations. */
+  const header = ["key", "en", "context", "notes", "hr"];
+  eq(header[header.length - 1], "hr", "the translation must still be last");
+});
+
 /* --------------------- context for a split phrase ---------------------- */
 
 check("every split heading is paired, both ways", () => {

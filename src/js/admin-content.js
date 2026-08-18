@@ -507,16 +507,49 @@
     return '';
   }
 
-  $('cExport').addEventListener('click', function () {
-    var ref = state.ref ? state.ref.leaves : null;
-    var refCode = state.ref ? state.ref.code : 'en';
+  $('cExport').addEventListener('click', async function () {
+    /* THE SOURCE COLUMN IS ALWAYS ENGLISH, not whatever the Reference dropdown
+       happens to be set to.
+
+       Those are two different things and conflating them produced a real bug:
+       with the dropdown on "No reference" the export wrote a column HEADED
+       `en` and left every cell in it empty — a translation file with nothing
+       to translate from, which is the one thing it exists to carry.
+
+       The dropdown is a viewing preference for somebody who already knows the
+       site. The download goes to a person who does not, and it has to stand on
+       its own. So it fetches English if it is not already loaded rather than
+       exporting whatever is to hand. */
+    var btn = this;
+    var ref = null;
+    if (state.file !== 'en') {
+      if (state.ref && state.ref.code === 'en') {
+        ref = state.ref.leaves;
+      } else {
+        btn.disabled = true;
+        var enFile = await get('en');
+        btn.disabled = false;
+        if (!enFile) return;            // get() has already explained
+        ref = leaves(enFile.data);
+      }
+    }
 
     /* Column order matters twice over. The translation is LAST because that is
        what the import reads, and it survives somebody inserting a column.
-       Context sits beside the English because that is where it is read. */
-    var rows = [['key', refCode, 'context', state.file]];
+       Context sits beside the English because that is where it is read.
+
+       Exporting English itself has no source column — there is nothing to put
+       in it, and an empty one is what caused the bug above. The import reads
+       the last column either way, so both shapes work. */
+    var rows = ref
+      ? [['key', 'en', 'context', state.file]]
+      : [['key', 'context', state.file]];
+
     state.order.forEach(function (p) {
-      rows.push([p, ref ? (ref[p] == null ? '' : ref[p]) : '', contextFor(p), state.draft[p]]);
+      var row = [p];
+      if (ref) row.push(ref[p] == null ? '' : ref[p]);
+      row.push(contextFor(p), state.draft[p]);
+      rows.push(row);
     });
 
     var csv = rows.map(function (r) { return r.map(csvCell).join(','); }).join('\r\n');
