@@ -146,6 +146,54 @@ check("a trailing newline does not add an empty row", () => {
   eq(parsed.length, 2, "row count");
 });
 
+/* --------------------- context for a split phrase ---------------------- */
+
+check("every split heading is paired, both ways", () => {
+  /* Fifteen headings are ONE phrase stored as TWO strings, split for
+     typography. The export flags them so a translator sees the whole sentence
+     — but only if the pairing is real. A `_thin` with no `_bold`, or the other
+     way round, means a fragment goes out with no context and comes back
+     translated as if it were a sentence. */
+  const en = JSON.parse(readFileSync(
+    fileURLToPath(new URL("../src/_data/i18n/en.json", import.meta.url)), "utf8"));
+  const leaves = {};
+  (function walk(o, p) {
+    if (o && typeof o === "object") {
+      for (const k of Object.keys(o)) walk(o[k], p ? `${p}.${k}` : k);
+    } else leaves[p] = o;
+  })(en, "");
+
+  const orphans = [];
+  for (const key of Object.keys(leaves)) {
+    const m = key.match(/^(.*)_(thin|bold)$/);
+    if (!m) continue;
+    const other = `${m[1]}_${m[2] === "thin" ? "bold" : "thin"}`;
+    if (leaves[other] === undefined) orphans.push(key);
+  }
+  eq(orphans, [], "half a split heading — its partner is missing");
+});
+
+check("the three languages agree about which headings are split", () => {
+  /* If Croatian has a `_thin` where English does not, the export gives one
+     language context the others lack — and the pair that is missing gets
+     translated blind. */
+  const read = (code) => {
+    const doc = JSON.parse(readFileSync(
+      fileURLToPath(new URL(`../src/_data/i18n/${code}.json`, import.meta.url)), "utf8"));
+    const out = [];
+    (function walk(o, p) {
+      if (o && typeof o === "object") {
+        for (const k of Object.keys(o)) walk(o[k], p ? `${p}.${k}` : k);
+      } else if (/_(thin|bold)$/.test(p)) out.push(p);
+    })(doc, "");
+    return out.sort();
+  };
+  const en = read("en");
+  for (const code of ["hr", "sr"]) {
+    eq(read(code), en, `${code}.json splits different headings from en.json`);
+  }
+});
+
 /* ----------------------- the copies have not drifted ------------------- */
 
 check("these functions still match the ones in admin-content.js", () => {

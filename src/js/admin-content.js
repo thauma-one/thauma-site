@@ -461,13 +461,53 @@
     return /[",\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
   }
 
+  /* ---- context, so a fragment is not translated as if it were a sentence ----
+
+     Fifteen headings on this site are ONE phrase stored as TWO strings, split
+     for typography — `h2_thin` holds "On-site," and `h2_bold` holds "behind
+     the scenes." Handed to a translator as two rows they read as two things,
+     and translated independently they come back as nonsense in any language
+     that inflects: the split that works in English falls in the wrong place
+     in Croatian, and neither half can be fixed without seeing the other.
+
+     So the export carries the whole phrase on both rows, says which part this
+     is, and says explicitly that the split may land somewhere else. That is
+     the instruction a human needs and the context a machine translator needs
+     to produce something usable rather than two dangling fragments.
+
+     Detected by the naming convention rather than a list, so a heading added
+     next month is covered without anybody remembering this. */
+  function contextFor(path) {
+    var m = path.match(/^(.*)_(thin|bold)$/);
+    if (m) {
+      var other = m[1] + '_' + (m[2] === 'thin' ? 'bold' : 'thin');
+      if (state.draft[other] !== undefined) {
+        var whole = m[2] === 'thin'
+          ? state.draft[path] + ' ' + state.draft[other]
+          : state.draft[other] + ' ' + state.draft[path];
+        return tr('con.ctxSplit')
+          .replace('{part}', m[2] === 'thin' ? '1' : '2')
+          .replace('{whole}', whole);
+      }
+    }
+    // A placeholder must survive translation or the sentence breaks at runtime.
+    if (/\{[a-z_]+\}/i.test(String(state.draft[path]))) {
+      var found = String(state.draft[path]).match(/\{[a-z_]+\}/ig).join(' ');
+      return tr('con.ctxPlaceholder').replace('{tokens}', found);
+    }
+    return '';
+  }
+
   $('cExport').addEventListener('click', function () {
     var ref = state.ref ? state.ref.leaves : null;
     var refCode = state.ref ? state.ref.code : 'en';
 
-    var rows = [['key', refCode, state.file]];
+    /* Column order matters twice over. The translation is LAST because that is
+       what the import reads, and it survives somebody inserting a column.
+       Context sits beside the English because that is where it is read. */
+    var rows = [['key', refCode, 'context', state.file]];
     state.order.forEach(function (p) {
-      rows.push([p, ref ? (ref[p] == null ? '' : ref[p]) : '', state.draft[p]]);
+      rows.push([p, ref ? (ref[p] == null ? '' : ref[p]) : '', contextFor(p), state.draft[p]]);
     });
 
     var csv = rows.map(function (r) { return r.map(csvCell).join(','); }).join('\r\n');
@@ -534,6 +574,20 @@
        exactly the sort of thing a spreadsheet invites. */
     var header = rows[0];
     var valueCol = header.length - 1;
+
+    /* THE FILE SAYS WHICH LANGUAGE IT IS, and until now nothing looked.
+       Uploading a Croatian export while Serbian was open imported Croatian
+       text into Serbian, silently, and the only sign would have been somebody
+       eventually reading the site. */
+    var fileLang = String(header[valueCol] || '').trim().toLowerCase();
+    if (fileLang && fileLang !== state.file) {
+      var known = state.langs.indexOf(fileLang) !== -1;
+      return window.StaffProblem(
+        (known ? tr('con.importWrongLang') : tr('con.importUnknownLang'))
+          .replace('{file}', fileLang)
+          .replace('{open}', state.file),
+        null);
+    }
 
     var changes = {}, unknown = [], blank = 0;
     for (var r = 1; r < rows.length; r++) {

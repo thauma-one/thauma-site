@@ -1024,6 +1024,26 @@ rather than one cell.
 without one, so Croatian and Serbian arrive as mojibake — and a translator
 would then "fix" it and hand back the damage.
 
+**The export carries CONTEXT, because fifteen headings are one phrase stored
+as two strings.** `h2_thin` holds "On-site," and `h2_bold` holds "behind the
+scenes." — split for typography. Handed over as two rows they read as two
+things, and translated independently they come back as nonsense in any
+language that inflects: the split that works in English falls in the wrong
+place in Croatian, and neither half can be fixed without seeing the other.
+
+So both rows carry the whole phrase, say which part they are, and say
+explicitly that the split may land somewhere else. That is the instruction a
+human needs and the context a machine translator needs to return something
+usable rather than two dangling fragments. Strings holding a placeholder like
+`{n}` say to keep it. Detected by naming convention, so a heading added next
+month is covered without anybody remembering — and tests assert every `_thin`
+has its `_bold`, in all three languages.
+
+**The upload checks which language the file is for.** The last column's header
+names it. Until that check existed, uploading a Croatian export while Serbian
+was open imported Croatian text into Serbian silently, and the only sign would
+have been somebody eventually reading the site.
+
 **Uploading does not save.** It fills the working copy, so the changes appear
 as ordinary unsaved edits with their coloured edges and the count in the bar.
 You look through them and then Save, or discard the lot. That reuses the model
