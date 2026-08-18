@@ -1054,6 +1054,14 @@ first is a step that exists only because the software could not be bothered to
 read its own header. It reuses the add-a-language path rather than a second
 copy — two entry points, one operation.
 
+**Creating asks ONCE, not twice.** The create dialog already says "add
+Slovenian and bring in its 187 translations" and gets an answer; asking again
+afterwards reviews a file that was empty ten seconds ago. A second confirmation
+that guards nothing is worse than none — it is where people learn to click
+through dialogs without reading, and that habit gets spent on the ones that
+matter. Switching to an EXISTING language still asks, because there the file
+being overwritten holds somebody's work.
+
 A header that is not a language code at all — a hand-made file, or one somebody
 renamed — falls through to the open language, which is the only guess available
 and the one they were looking at.

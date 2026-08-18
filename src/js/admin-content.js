@@ -642,6 +642,16 @@
        only guess available and the one they were already looking at. */
     var fileLang = String(header[valueCol] || '').trim().toLowerCase();
     var target = state.file;
+    var justCreated = false;
+
+    /* How many rows actually carry a translation. For a language that is about
+       to be CREATED this is exactly the number of changes, because the new
+       file starts empty — so the count can be shown before anything happens
+       rather than in a second dialog afterwards. */
+    var filled = 0;
+    for (var q = 1; q < rows.length; q++) {
+      if ((rows[q][0] || '').trim() && rows[q][valueCol]) filled++;
+    }
 
     if (codeLooksValid(fileLang) && fileLang !== state.file) {
       var known = state.langs.indexOf(fileLang) !== -1;
@@ -649,7 +659,8 @@
       var ok = await window.StaffConfirm({
         title: known ? tr('con.importSwitchTitle') : tr('con.importCreateTitle'),
         body: (known ? tr('con.importSwitchBody') : tr('con.importCreateBody'))
-          .replace('{file}', fileLang).replace('{open}', state.file),
+          .replace('{file}', fileLang).replace('{open}', state.file)
+          .replace('{n}', filled),
         note: known ? tr('con.importSwitchNote') : tr('con.importCreateNote'),
         confirm: known ? tr('con.importSwitchDo') : tr('con.importCreateDo'),
         cancel: tr('ms.cancel')
@@ -670,6 +681,7 @@
       if (!known) {
         var made = await createLanguage(fileLang);
         if (!made) return;              // createLanguage has already explained
+        justCreated = true;
         toast(tr('con.addLangDone').replace('{code}', made.code)
                                    .replace('{n}', made.strings), 'ok');
         await boot();                   // the pickers need the new language in them
@@ -700,16 +712,29 @@
       return toast(unknown.length ? tr('con.importNoneMatched') : tr('con.importNoChanges'), 'bad');
     }
 
-    var apply = await window.StaffConfirm({
-      title: tr('con.importTitle'),
-      body: tr('con.importBody').replace('{n}', n).replace('{lang}', target),
-      note: (unknown.length ? tr('con.importUnknown').replace('{n}', unknown.length) + ' ' : '') +
-            (blank ? tr('con.importBlank').replace('{n}', blank) + ' ' : '') +
-            tr('con.importNote'),
-      confirm: tr('con.importDo'),
-      cancel: tr('ms.cancel')
-    });
-    if (!apply) return;
+    /* ONE DIALOG, NOT TWO, WHEN THE LANGUAGE WAS JUST CREATED.
+
+       The create dialog already said "add Slovenian and bring in 187
+       translations", and it was answered. Asking again reviews a file that was
+       empty ten seconds ago — there is nothing to compare against and nothing
+       to decide. A second confirmation that guards nothing is worse than none:
+       it is where people learn to click through dialogs without reading, and
+       that habit is spent on the ones that matter.
+
+       The switch and same-language paths DO ask, because there the file being
+       overwritten has somebody's existing work in it. */
+    if (!justCreated) {
+      var apply = await window.StaffConfirm({
+        title: tr('con.importTitle'),
+        body: tr('con.importBody').replace('{n}', n).replace('{lang}', target),
+        note: (unknown.length ? tr('con.importUnknown').replace('{n}', unknown.length) + ' ' : '') +
+              (blank ? tr('con.importBlank').replace('{n}', blank) + ' ' : '') +
+              tr('con.importNote'),
+        confirm: tr('con.importDo'),
+        cancel: tr('ms.cancel')
+      });
+      if (!apply) return;
+    }
 
     Object.keys(changes).forEach(function (k) { state.draft[k] = changes[k]; });
     renderSections();
