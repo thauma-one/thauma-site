@@ -477,6 +477,44 @@
      page already runs on rather than inventing a second path to the file — and
      it means an import can be discarded like any other mistake. */
 
+  /* ---- wrapping, which a CSV can only do one way -------------------------
+
+     A spreadsheet decides column widths itself, and there is nothing in a CSV
+     file that can tell it otherwise — no widths, no styles, no formatting of
+     any kind. The ONE thing it honours is a newline inside a quoted cell,
+     which it renders as a second line within that cell.
+
+     So: soft-wrap the text columns at a readable width. The longest string on
+     the site is 388 characters, which as a single line makes the column wider
+     than most screens and pushes everything after it out of view.
+
+     THIS IS SAFE ONLY BECAUSE THE IMPORT UNDOES IT, and only because no string
+     in the site contains a newline of its own — checked across all three
+     languages, and asserted by a test so it stays true. If that ever changes,
+     wrapping has to go, or a real line break would be eaten on the way back
+     in. Column 4 is the one that matters: whatever is in it gets written to
+     the site. */
+  var WRAP_AT = 60;
+
+  function wrapCell(text) {
+    var s = String(text == null ? '' : text);
+    if (s.length <= WRAP_AT) return s;
+    var out = [], line = '';
+    s.split(' ').forEach(function (word) {
+      if (line && (line + ' ' + word).length > WRAP_AT) { out.push(line); line = word; }
+      else { line = line ? line + ' ' + word : word; }
+    });
+    if (line) out.push(line);
+    return out.join('\n');
+  }
+
+  /* The exact inverse, applied to everything coming back. A cell the
+     translator wrapped by hand is undone the same way, which is right — the
+     site stores one line and lays it out itself. */
+  function unwrapCell(text) {
+    return String(text == null ? '' : text).replace(/\s*\r?\n\s*/g, ' ').trim();
+  }
+
   function csvCell(v) {
     v = String(v == null ? '' : v);
     // Quote if it could otherwise break the row. Doubling is how CSV escapes
@@ -593,7 +631,12 @@
     ]];
 
     state.order.forEach(function (p) {
-      rows.push([p, ref[p] == null ? '' : ref[p], contextFor(p), state.draft[p]]);
+      // The key is never wrapped: it is an identifier, and a line break in it
+      // would make the row unmatchable on the way back.
+      rows.push([p,
+                 wrapCell(ref[p] == null ? '' : ref[p]),
+                 contextFor(p),
+                 wrapCell(state.draft[p])]);
     });
 
     var csv = rows.map(function (r) { return r.map(csvCell).join(','); }).join('\r\n');
@@ -691,7 +734,7 @@
        rather than in a second dialog afterwards. */
     var filled = 0;
     for (var q = 1; q < rows.length; q++) {
-      if ((rows[q][0] || '').trim() && rows[q][valueCol]) filled++;
+      if ((rows[q][0] || '').trim() && unwrapCell(rows[q][valueCol])) filled++;
     }
 
     if (codeLooksValid(fileLang) && fileLang !== state.file) {
@@ -748,6 +791,9 @@
       if (!Object.prototype.hasOwnProperty.call(state.draft, key)) { unknown.push(key); continue; }
       var v = rows[r][valueCol];
       if (v === undefined) continue;
+      // Undo the soft wrap. A translator's own line breaks go too — the site
+      // stores one line per string and lays it out itself.
+      v = unwrapCell(v);
       if (v === '') { blank++; continue; }   // an untouched row is not an instruction to erase
       if (v !== state.draft[key]) changes[key] = v;
     }

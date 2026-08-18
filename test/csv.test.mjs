@@ -55,6 +55,24 @@ function parseCsv(text) {
   return rows.filter(function (r) { return r.length > 1 || (r[0] && r[0].length); });
 }
 
+const WRAP_AT = 60;
+
+function wrapCell(text) {
+  var s = String(text == null ? '' : text);
+  if (s.length <= WRAP_AT) return s;
+  var out = [], line = '';
+  s.split(' ').forEach(function (word) {
+    if (line && (line + ' ' + word).length > WRAP_AT) { out.push(line); line = word; }
+    else { line = line ? line + ' ' + word : word; }
+  });
+  if (line) out.push(line);
+  return out.join('\n');
+}
+
+function unwrapCell(text) {
+  return String(text == null ? '' : text).replace(/\s*\r?\n\s*/g, ' ').trim();
+}
+
 const roundTrip = (rows) =>
   parseCsv(rows.map((r) => r.map(csvCell).join(",")).join("\r\n"));
 
@@ -144,6 +162,68 @@ check("a file saved with CRLF or LF both parse", () => {
 check("a trailing newline does not add an empty row", () => {
   const parsed = parseCsv("key,en,hr\r\na,One,Jedan\r\n");
   eq(parsed.length, 2, "row count");
+});
+
+/* ----------------------------- wrapping -------------------------------- */
+
+check("wrapping and unwrapping is lossless for every real string", () => {
+  /* A CSV cannot carry column widths or styles — the only formatting a
+     spreadsheet honours is a newline inside a quoted cell. So the text columns
+     are soft-wrapped, and the import must undo it EXACTLY. The longest string
+     on the site is 388 characters; as one line it makes the column wider than
+     the screen. */
+  const en = JSON.parse(readFileSync(
+    fileURLToPath(new URL("../src/_data/i18n/en.json", import.meta.url)), "utf8"));
+  const leaves = [];
+  (function walk(o, p) {
+    if (o && typeof o === "object") {
+      for (const k of Object.keys(o)) walk(o[k], p ? `${p}.${k}` : k);
+    } else leaves.push([p, String(o)]);
+  })(en, "");
+
+  const lossy = leaves.filter(([, v]) => unwrapCell(wrapCell(v)) !== v).map(([k]) => k);
+  eq(lossy, [], "these strings do not survive the wrap");
+});
+
+check("NO SOURCE STRING CONTAINS A NEWLINE — the wrap depends on it", () => {
+  /* The whole scheme rests on this. Unwrapping collapses every newline back to
+     a space, so a string that legitimately contained one would come back
+     changed. It is true of all three languages today; if it ever stops being
+     true, wrapping has to go rather than quietly eating a line break in
+     somebody's copy. */
+  for (const code of ["en", "hr", "sr"]) {
+    const doc = JSON.parse(readFileSync(
+      fileURLToPath(new URL(`../src/_data/i18n/${code}.json`, import.meta.url)), "utf8"));
+    const offenders = [];
+    (function walk(o, p) {
+      if (o && typeof o === "object") {
+        for (const k of Object.keys(o)) walk(o[k], p ? `${p}.${k}` : k);
+      } else if (typeof o === "string" && /[\r\n]/.test(o)) offenders.push(p);
+    })(doc, "");
+    eq(offenders, [], `${code}.json has strings with newlines — the CSV wrap would eat them`);
+  }
+});
+
+check("a wrapped cell survives the CSV itself", () => {
+  // Wrapping puts newlines inside cells, which is the case the parser has to
+  // get right — and the one that shifts every following row if it does not.
+  const long = "A well-run sound system says nothing about whether the people " +
+               "running it know each other, or anyone else doing the same work.";
+  const rows = [["values.items.2.text", wrapCell(long), "", wrapCell(long)]];
+  const back = roundTrip(rows);
+  eq(back, rows, "the wrapped cells did not survive");
+  eq(unwrapCell(back[0][3]), long, "and unwrapping returns the original");
+});
+
+check("the key column is never wrapped", () => {
+  // A line break in an identifier makes the row unmatchable on the way back.
+  const key = "notFound.taunts.30";
+  eq(wrapCell(key), key, "short keys are untouched anyway");
+  // And the export passes the key through directly — asserted against source.
+  const src = readFileSync(
+    fileURLToPath(new URL("../src/js/admin-content.js", import.meta.url)), "utf8");
+  assert(/rows\.push\(\[p,\s*\n\s*wrapCell\(/.test(src),
+         "the export should push the key unwrapped, then wrapped columns");
 });
 
 /* ------------------------- the column layout --------------------------- */
@@ -259,7 +339,12 @@ check("these functions still match the ones in admin-content.js", () => {
     .replace(/\/\/[^\n]*/g, " ")
     .replace(/\s+/g, " ")
     .trim();
-  for (const [name, fn] of [["csvCell", csvCell], ["parseCsv", parseCsv]]) {
+  /* All FOUR copies, not the two that existed when this was written. wrapCell
+     and unwrapCell are exact inverses of each other, and a fix to one of them
+     that missed the copy here would leave the test proving a round trip the
+     product does not perform. */
+  for (const [name, fn] of [["csvCell", csvCell], ["parseCsv", parseCsv],
+                            ["wrapCell", wrapCell], ["unwrapCell", unwrapCell]]) {
     const mine = strip(fn.toString());
     // Pull the same function out of the browser file.
     const start = src.indexOf(`function ${name}(`);

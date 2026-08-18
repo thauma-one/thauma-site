@@ -1020,6 +1020,21 @@ can open, and to hand them back.
 format you have to be careful in, where a stray comma breaks the whole file
 rather than one cell.
 
+**Long text is soft-wrapped at 60 characters, and the upload undoes it.**
+
+A CSV carries no column widths and no styles. The one piece of formatting a
+spreadsheet honours is a newline inside a quoted cell, which it renders as a
+second line — so that is the only lever there is. The longest string on the
+site is 388 characters and as a single line it makes the column wider than the
+screen, pushing everything after it out of view.
+
+⚠ **This is safe only because no string on the site contains a newline of its
+own.** Unwrapping collapses every newline back to a space, so a string that
+legitimately held one would come back changed. True across all three languages
+today, and asserted by a test — if it ever stops being true, wrapping has to go
+rather than quietly eat a line break in somebody's copy. The key column is
+never wrapped: a line break in an identifier makes the row unmatchable.
+
 **The download carries a BOM.** Excel opens a UTF-8 CSV as the local codepage
 without one, so Croatian and Serbian arrive as mojibake — and a translator
 would then "fix" it and hand back the damage.
