@@ -98,7 +98,8 @@
 {#- Only the Milestones page needs this; the script no-ops elsewhere. Kept
    separate from staff.js rather than folded in, because the editor is a
    different job from the read-only console and will keep growing. -#}
-{% if staffPage == "ministry" %}<script src="/js/staff-milestones.js?v={{ "/js/staff-milestones.js" | v }}"></script>
+{% if staffPage == "ministry" %}<script src="/js/staff-rowpanel.js?v={{ "/js/staff-rowpanel.js" | v }}"></script>
+<script src="/js/staff-milestones.js?v={{ "/js/staff-milestones.js" | v }}"></script>
 <script src="/js/staff-goals.js?v={{ "/js/staff-goals.js" | v }}"></script>
 <script src="/js/staff-prayer.js?v={{ "/js/staff-prayer.js" | v }}"></script>{% endif %}
 {% if staffPage == "settings" %}<script src="/js/staff-settings.js?v={{ "/js/staff-settings.js" | v }}"></script>{% endif %}

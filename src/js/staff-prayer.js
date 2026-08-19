@@ -17,7 +17,8 @@
 (function () {
   'use strict';
 
-  if (document.body.getAttribute('data-staff-page') !== 'ministry') return;
+  /* The list, not the page name — see the note in staff-milestones.js. */
+  if (!document.getElementById('prList')) return;
   if (!document.getElementById('prList')) return;
 
   var API = '/api/staff-prayer';
@@ -27,6 +28,11 @@
     editing: null, isPublic: false, isAnswered: false,
     text: {},           // lang -> { title, description, answer_text }
   };
+
+  /* Shared with milestones and goals — see staff-rowpanel.js. */
+  var panel = window.StaffRowPanel({
+    listId: 'prList', formId: 'prForm', holderId: 'prFormHolder',
+  });
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -61,30 +67,43 @@
 
   /* ---- the list ---- */
 
+  /* THE SAME ROW THE MILESTONE EDITOR DRAWS. See the note in staff-goals.js:
+     ms-row-main / ms-row-sub / ms-row-acts are not classes staff.css has ever
+     had, so this list was unstyled inside a styled shell. */
   function render() {
+    panel.detach();
+
     var rows = state.prayer;
     if (!rows.length) {
       $('prList').innerHTML = '<p class="empty">' + esc(tr('pr.empty')) + '</p>';
       return;
     }
+
     $('prList').innerHTML = rows.map(function (p) {
       var langs = Object.keys(p.text || {}).filter(function (c) { return p.text[c].title; });
-      return '<div class="ms-row" data-id="' + esc(p.id) + '">' +
-        '<div class="ms-row-main">' +
-          '<span class="ms-row-title">' + esc(anyTitle(p)) + '</span>' +
-          (p.is_answered ? '<span class="badge live">' + esc(tr('pr.answered')) + '</span>' : '') +
-          (p.is_public ? '' : '<span class="badge proto">' + esc(tr('ms.draft')) + '</span>') +
-          '<span class="ms-row-sub">' + esc(langs.join(', ').toUpperCase()) +
-            (p.answered_on ? ' · ' + esc(p.answered_on) : '') + '</span>' +
+      return '<div class="ms-row" data-id="' + esc(p.id) + '"' +
+        ' role="button" tabindex="0" aria-expanded="false">' +
+        '<div class="ms-main">' +
+          '<div class="ms-t">' +
+            '<span class="ms-title">' + esc(anyTitle(p)) + '</span>' +
+            (p.is_answered
+              ? '<span class="badge live">' + esc(tr('pr.answered')) + '</span>' : '') +
+            (p.is_public ? '' : '<span class="badge proto">' + esc(tr('ms.draft')) + '</span>') +
+          '</div>' +
+          '<div class="ms-meta">' +
+            '<span>' + esc(langs.join(', ').toUpperCase()) + '</span>' +
+            (p.answered_on ? '<span>' + esc(p.answered_on) + '</span>' : '') +
+          '</div>' +
         '</div>' +
-        '<div class="ms-row-acts">' +
-          '<button type="button" class="ghost-btn" data-edit="' + esc(p.id) + '">' +
-            esc(tr('ms.edit')) + '</button>' +
-          '<button type="button" class="del" data-del="' + esc(p.id) + '">' +
-            esc(tr('ms.delete')) + '</button>' +
+        '<div class="ms-row-actions">' +
+          '<span class="ms-chev" aria-hidden="true"></span>' +
+          '<button type="button" data-edit="' + esc(p.id) + '">Edit</button>' +
+          '<button type="button" class="del" data-del="' + esc(p.id) + '">Delete</button>' +
         '</div>' +
       '</div>';
     }).join('');
+
+    panel.reattach(state.editing);
   }
 
   /* ---- the two language columns ---- */
@@ -134,7 +153,13 @@
     b.querySelector('.switch-state').textContent = on ? 'On' : 'Off';
   }
 
-  function openForm(p) {
+  async function openForm(p) {
+    var id = p ? p.id : null;
+
+    /* Pressing the open row again closes it — see staff-milestones.js. */
+    if (panel.isOpen() && state.editing === id) { await closeForm(); return; }
+    if (panel.isOpen()) await panel.close();
+
     state.editing = p ? p.id : null;
     state.text = p ? JSON.parse(JSON.stringify(p.text || {})) : {};
     state.isPublic = p ? !!p.is_public : false;
@@ -147,21 +172,22 @@
     setSwitch('prAnswered', state.isAnswered);
     writeCols();
 
-    var form = $('prForm');
-    form.hidden = false;
-    if (p) {
-      var row = $('prList').querySelector('[data-id="' + p.id + '"]');
-      if (row) row.insertAdjacentElement('afterend', form);
-    } else {
-      $('prFormHolder').appendChild(form);
-    }
-    document.querySelector('[data-ptx="title"][data-col="a"]').focus();
+    panel.moveTo(state.editing);
+    panel.markOpen(state.editing);
+    await panel.open();
+
+    var row = panel.rowFor(state.editing);
+    if (row) panel.scrollRowToTop(row);
+
+    var first = $('prForm').querySelector('[data-ptx="title"][data-col="a"]');
+    if (first) first.focus();
   }
 
-  function closeForm() {
+  async function closeForm() {
+    await panel.close();
     state.editing = null;
-    $('prForm').hidden = true;
-    $('prFormHolder').appendChild($('prForm'));
+    panel.markOpen(null);
+    panel.detach();
   }
 
   /* ---- server ---- */
@@ -230,6 +256,17 @@
     $(id).addEventListener('change', writeCols);
   });
 
+  /* Keyboard parity: the row is focusable and announces itself as a button. */
+  $('prList').addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    if (e.target.closest('button') || e.target.closest('#prForm')) return;
+    var row = e.target.closest('.ms-row');
+    if (!row) return;
+    e.preventDefault();
+    var p = state.prayer.find(function (x) { return x.id === row.dataset.id; });
+    if (p) openForm(p);
+  });
+
   $('prList').addEventListener('click', async function (e) {
     var edit = e.target.closest('[data-edit]');
     if (edit) {
@@ -238,7 +275,16 @@
       return;
     }
     var del = e.target.closest('[data-del]');
-    if (!del) return;
+    if (!del) {
+      /* THE WHOLE BAR IS THE TARGET, matching the milestone rows. */
+      if (e.target.closest('#prForm')) return;
+      var row = e.target.closest('.ms-row');
+      if (row) {
+        var rp = state.prayer.find(function (x) { return x.id === row.dataset.id; });
+        if (rp) openForm(rp);
+      }
+      return;
+    }
 
     var p = state.prayer.find(function (x) { return x.id === del.dataset.del; });
     if (!p) return;

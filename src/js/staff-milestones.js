@@ -172,36 +172,23 @@
      its row afterwards. This is the whole fix for "changing the language
      closed the editor and it would not reopen": render() rebuilt the list the
      panel was sitting inside, and took the element with it. */
-  function detachForm() {
-    var form = $('msForm');
-    if (form && form.parentNode !== $('msFormHolder')) $('msFormHolder').appendChild(form);
-    return form;
-  }
+  /* All three ministry editors share one implementation of "a row that opens
+     into a form" — where it lives, how it animates, which row is marked open.
+     See staff-rowpanel.js; this file used to carry its own copy. */
+  var panel = window.StaffRowPanel({
+    listId: 'msList', formId: 'msForm', holderId: 'msFormHolder',
+    saveBarId: 'msSaveBar',
+  });
 
-  function reattachForm() {
-    var form = $('msForm');
-    if (!form || form.hidden || !state.editing) return;
-    var row = $('msList').querySelector('[data-id="' + cssEscape(state.editing) + '"]');
-    if (row) row.after(form);
-    markOpenRow();
-  }
-
-  /* The row knows it is the open one, so the chevron, highlight and sticky
-     position survive a re-render rather than resetting every refresh.
-
-     KEYED ON state.editing, NOT on the form's hidden attribute. It used to ask
-     whether the panel was visible, but this runs BEFORE openPanel() unhides
-     it — so the answer was always "no" and the class was never applied at all.
-     The sticky row looked like a CSS problem and was a sequencing one.
-     state.editing is set before this runs and cleared before it runs again on
-     close, so it is correct in both directions. */
-  function markOpenRow() {
-    Array.prototype.forEach.call($('msList').querySelectorAll('.ms-row'), function (r) {
-      var isOpen = !!(state.editing && r.dataset.id === state.editing);
-      r.classList.toggle('is-open', isOpen);
-      r.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-    });
-  }
+  function detachForm() { return panel.detach(); }
+  function reattachForm() { panel.reattach(state.editing); }
+  function markOpenRow() { panel.markOpen(state.editing); }
+  function cssEscape(v) { return panel.cssEscape(v); }
+  function reducedMotion() { return panel.reducedMotion(); }
+  function updateStickyOffsets() { panel.updateStickyOffsets(); }
+  function scrollRowToTop(row) { panel.scrollRowToTop(row); }
+  function openPanel() { return panel.open(); }
+  function closePanel() { return panel.close(); }
 
   function render() {
     var host = $('msList');
@@ -415,109 +402,6 @@
      The unsaved bar moved to the bottom of the viewport, which removed a
      three-way contest for the same edge — and with it the need to publish a
      measured offset for the row, which is a plain constant again. */
-  function stickyTop() {
-    var header = document.querySelector('.top');
-    return header ? header.offsetHeight : 0;
-  }
-
-  /* The bar is fixed to the bottom, so the page needs matching padding or the
-     last row sits permanently underneath it. Measured rather than guessed:
-     the buttons wrap onto a second line on narrow screens. */
-  function updateStickyOffsets() {
-    var bar = $('msSaveBar');
-    var showing = bar && !bar.hidden;
-    document.body.classList.toggle('has-savebar', !!showing);
-    if (showing) {
-      document.documentElement.style.setProperty(
-        '--ms-savebar-h', bar.offsetHeight + 'px');
-    }
-  }
-
-  /* Put a row's top edge just under the sticky stack.
-
-     scrollIntoView cannot do this: it knows nothing about sticky elements, so
-     `block:"start"` parks the row underneath the header where it cannot be
-     seen, and `block:"nearest"` often does not move at all. */
-  function scrollRowToTop(row) {
-    if (!row) return;
-    var y = window.scrollY + row.getBoundingClientRect().top - stickyTop() - 10;
-    window.scrollTo({
-      top: Math.max(0, y),
-      behavior: reducedMotion() ? 'auto' : 'smooth'
-    });
-  }
-
-  /* ---- opening and closing the panel ----------------------------------- */
-
-  /* Height cannot be transitioned to or from `auto`, so each direction
-     measures the real height and animates between that and zero, then hands
-     control back to the layout. Doing it in JS rather than with a max-height
-     guess means the timing is the same for a one-line milestone and a long
-     one — a max-height large enough for the longest makes short panels appear
-     to snap open early and hang. */
-  /* 600ms, up from 420. The first pass was measured to be "not instant" and
-     it cleared that bar without clearing the real one: a panel that carries a
-     whole form needs long enough that the eye follows the edge down rather
-     than noticing the result. Matches the duration in staff.css. */
-  var PANEL_MS = 600;
-
-  function reducedMotion() {
-    return window.matchMedia &&
-           window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  }
-
-  function openPanel(el) {
-    return new Promise(function (resolve) {
-      el.hidden = false;
-      if (reducedMotion()) { el.style.height = ''; el.style.opacity = ''; return resolve(); }
-
-      el.classList.add('is-animating');
-      el.style.height = '0px';
-      el.style.opacity = '0';
-      // Force the browser to accept 0 as a starting point before changing it,
-      // or both assignments collapse into one frame and nothing animates.
-      void el.offsetHeight;
-      el.style.height = el.scrollHeight + 'px';
-      el.style.opacity = '1';
-
-      setTimeout(function () {
-        // Back to auto so the panel can grow as its content does — a fixed
-        // height would clip a description someone keeps typing into.
-        el.style.height = '';
-        el.style.opacity = '';
-        el.classList.remove('is-animating');
-        resolve();
-      }, PANEL_MS);
-    });
-  }
-
-  function closePanel(el) {
-    return new Promise(function (resolve) {
-      if (el.hidden) return resolve();
-      if (reducedMotion()) { el.hidden = true; el.style.height = ''; return resolve(); }
-
-      el.classList.add('is-animating');
-      el.style.height = el.scrollHeight + 'px';
-      el.style.opacity = '1';
-      void el.offsetHeight;
-      el.style.height = '0px';
-      // Fades faster than it collapses (see the CSS), so the text stops being
-      // legible early rather than shrinking while still readable — that is
-      // what makes a collapsing panel feel like a flicker.
-      el.style.opacity = '0';
-
-      setTimeout(function () {
-        el.hidden = true;
-        el.style.height = '';
-        el.style.opacity = '';
-        el.classList.remove('is-animating');
-        resolve();
-      }, PANEL_MS);
-    });
-  }
-
-
-
   function fillParents() {
     var sel = $('msParent');
     if (!sel) return;
@@ -532,9 +416,16 @@
         }).join('');
   }
 
+  /* SCOPED TO THIS FORM, NOT THE DOCUMENT. Milestones and prayer now sit on
+     one page and both label their language columns with data-col, so a
+     document-wide lookup returned the prayer form's inputs as well: filling a
+     milestone blanked them (their data-tx is undefined, so the lookup missed
+     and wrote ''), and saving read them back under an undefined key. */
   function colFields(col) {
+    var form = $('msForm');
+    if (!form) return [];
     return Array.prototype.slice.call(
-      document.querySelectorAll('[data-col="' + col + '"]'));
+      form.querySelectorAll('[data-col="' + col + '"]'));
   }
 
   function fillColumn(col, m) {
@@ -547,12 +438,6 @@
     var out = {};
     colFields(col).forEach(function (el) { out[el.dataset.tx] = el.value; });
     return out;
-  }
-
-  /* Ids are generated by us, but a milestone id still ends up inside an
-     attribute selector, and CSS.escape is not in older Safari. */
-  function cssEscape(s) {
-    return window.CSS && CSS.escape ? CSS.escape(s) : String(s).replace(/["\\]/g, '\\$&');
   }
 
   async function openForm(id) {
@@ -687,7 +572,14 @@
 
   /* ---- boot ------------------------------------------------------------ */
 
-  if (document.body.getAttribute('data-staff-page') !== 'milestones') return;
+  /* GUARDED ON THE LIST, NOT ON THE PAGE NAME. This used to read
+     data-staff-page !== 'milestones', and renaming the page to "ministry"
+     silently disabled the whole editor — every handler below went unwired and
+     load() never ran, so the list sat on "Loading…" forever with nothing in
+     the console to say why. The element this script needs is the honest
+     condition; a page can be renamed or merged into another without it
+     becoming a no-op again. */
+  if (!document.getElementById('msList')) return;
 
   wireLocalSwitch($('msPublic'));
   wireLocalSwitch($('msFeatured'));

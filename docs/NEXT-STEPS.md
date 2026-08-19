@@ -3,12 +3,18 @@
 Written 2026-08-16. In order. Stop wherever you like — each step leaves things
 in a working state.
 
-**Where things stand** (updated 2026-08-18): `dev` is pushed. Both databases
+**Where things stand** (updated 2026-08-19): `dev` is pushed. Both databases
 are migrated and up to date. The live site is still unchanged — **the merge to
 `main` is the one thing left, and it is deliberately waiting for you**, because
 it ships 66 commits and deploys production in one go.
 
 Nothing is broken and nothing is on a timer.
+
+One thing to do when you get a moment: **rotate the GitHub App private key.**
+It was printed into a chat transcript on 2026-08-19 by a command of mine that
+did not redact it properly. It is not in git and never has been. Generate a new
+key on the App, delete the old one, redo the `openssl` step in section 3, and
+update `.dev.vars` plus the two Cloudflare secrets.
 
 ---
 
@@ -287,6 +293,40 @@ as an ordinary push and deployed production. Nobody asked for it. Fixed, and
 there is now a test that walks every write in the Worker and fails if one of
 them is missing the flag — the mechanism working was never the problem, one
 caller not using it was.
+
+---
+
+## Fixed on 2026-08-19 — nothing for you to do, but worth knowing
+
+**The milestone list was never loading.** Not slow, not empty — the editor was
+switched off entirely. It checked the page's name before wiring itself up, and
+when Milestones and Support became one page called Ministry, that check stopped
+matching. Every button on it went unwired and the list sat on "Loading…"
+forever. Goals and prayer had been updated to the new name; milestones was
+missed. All three now check for the list they need instead of the page's name,
+so renaming a page cannot do this again.
+
+**Goals and prayer looked nothing like milestones** because they were drawing
+row markup whose class names have never existed in the stylesheet. They now
+draw the same row, and all three share one implementation of "a row that opens
+into a form" (`src/js/staff-rowpanel.js`) rather than three copies that drift.
+The Edit and Delete buttons on the goals list were also printing the literal
+text `ms.edit` and `ms.delete` — those keys do not exist.
+
+**The roadmap showed the marker past a date that had not happened.** The pins
+get spread apart when they crowd, and the marker was placed by raw arithmetic
+instead — two different rulers on one rail. In the vertical layout it was worse:
+that column is laid out by how tall each entry's text is, so a percentage of
+elapsed time meant nothing at all. It is measured against the real dots now.
+There is a test that fails if it ever drifts back.
+
+**The detail panel opens under the milestone you pressed**, instead of at the
+bottom of the whole timeline. It is re-measured whenever it opens or closes,
+because inserting it moves everything below it — that coupling is why this
+looked unfixable the first time.
+
+**Three prayer requests are seeded** on dev so the section has something real
+in it. English only, deliberately: see the note below about translations.
 
 ---
 

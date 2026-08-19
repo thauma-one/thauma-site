@@ -438,8 +438,12 @@ export const WIDGET_JS = String.raw`
         'line-height:1;display:flex;align-items:center;justify-content:center;' +
         'transition:background .2s ease,color .2s ease}' +
       '.dclose:hover{background:var(--line);color:var(--fg)}' +
+      /* 44px, not 34: the close button is 30px wide and sits 14px from the
+         edge, so it occupies the first 44px of that gutter. Reserving less
+         put the × on top of the percentage — visible in the real console as
+         a "0%" with a cross through it. */
       '.dhead{display:flex;justify-content:space-between;align-items:flex-start;' +
-        'gap:28px;padding-right:34px}' +
+        'gap:28px;padding-right:44px}' +
       '.dtitle{font-size:26px;font-weight:700;line-height:1.2;letter-spacing:-.01em;' +
         'font-family:Georgia,Cambria,"Times New Roman",serif}' +
       '.ddate{margin-top:7px;font-size:14px;font-weight:700;color:var(--prog)}' +
@@ -505,8 +509,40 @@ export const WIDGET_JS = String.raw`
         'border-left:3px solid var(--done);padding-left:12px}' +
       '.pwhen{display:block;margin-top:8px;font-size:11.5px;color:var(--dim);' +
         'letter-spacing:.03em;text-transform:uppercase;font-weight:600}' +
-      '@media(max-width:560px){.ptitle{padding-right:0;font-size:19px}' +
-        '.pbadge{position:static;display:inline-block;margin-bottom:10px}}' +
+      /* ---- narrow ----
+         The widget picks its layout from the width it is GIVEN, so this is
+         what a phone gets and also what the console's Mobile preview shows.
+
+         Everything here is the same correction: type set for a 900px card
+         does not fit 380px, and a row of two things side by side becomes two
+         rows. The title was the worst of it — 26px serif in a flex row beside
+         the percentage left it about 150px to work with, so "Proclaim! 1st
+         Missions Trip" came out five lines tall. */
+      '@media(max-width:560px){' +
+        '.ptitle{padding-right:0;font-size:19px}' +
+        '.pbadge{position:static;display:inline-block;margin-bottom:10px}' +
+
+        '.detail{padding:20px 18px}' +
+        '.dclose{top:10px;right:10px;width:28px;height:28px;font-size:16px}' +
+        /* Stacked, so the title has the full width instead of a column beside
+           the percentage. */
+        '.dhead{flex-direction:column;gap:10px;padding-right:38px}' +
+        '.dtitle{font-size:20px;line-height:1.25}' +
+        /* Laid out along the line rather than stacked — "0%" over "Complete"
+           costs two rows for two words. */
+        '.dpct{text-align:left;display:flex;align-items:baseline;gap:7px}' +
+        '.dpct b{display:inline;font-size:23px}' +
+        '.dpct i{display:inline;margin-top:0}' +
+
+        '.gcard{padding:18px 16px}' +
+        '.gtop{flex-direction:column;align-items:flex-start;gap:8px}' +
+        '.gname{font-size:18px}' +
+        '.gpct{font-size:25px}' +
+        '.gright{text-align:left}' +
+
+        '.stitle{font-size:15px}' +
+        '.sdate{font-size:11.5px}' +
+      '}' +
 
       '.is-wide .rail{display:block}' +
       '.is-wide .col{display:none}' +
@@ -601,6 +637,29 @@ export const WIDGET_JS = String.raw`
 
   /* ---------- roadmap ---------- */
 
+  /* Maps a moment onto a set of anchors — [{t, v}] sorted by t — by linear
+     interpolation between the two it falls between.
+
+     Both layouts need this and neither can use a plain percentage of the
+     period. The rail SPREADS crowded pins away from their true dates, and the
+     column lays its steps out by content height, so in both the geometry stops
+     matching the arithmetic. Interpolating through the anchors themselves is
+     what keeps the NOW marker on the correct side of every milestone. */
+  function interp(t, anchors) {
+    if (!anchors.length) return null;
+    if (t <= anchors[0].t) return anchors[0].v;
+    var last = anchors[anchors.length - 1];
+    if (t >= last.t) return last.v;
+    for (var i = 1; i < anchors.length; i++) {
+      var a = anchors[i - 1], b = anchors[i];
+      if (t <= b.t) {
+        var span = b.t - a.t;
+        return span > 0 ? a.v + ((t - a.t) / span) * (b.v - a.v) : a.v;
+      }
+    }
+    return last.v;
+  }
+
   function positions(rows, bounds) {
     var n = rows.length;
     var evenly = rows.map(function (_, i) { return n <= 1 ? 50 : (i / (n - 1)) * 100; });
@@ -619,7 +678,9 @@ export const WIDGET_JS = String.raw`
     var max = (be !== undefined && !isNaN(be)) ? be
             : valid.length ? Math.max.apply(null, valid) : NaN;
 
-    if (isNaN(min) || isNaN(max) || !(max > min)) return { pos: evenly, now: null };
+    if (isNaN(min) || isNaN(max) || !(max > min)) {
+      return { pos: evenly, now: null, times: times, min: NaN, max: NaN };
+    }
 
     var pos = times.map(function (t) {
       if (isNaN(t)) return 100;
@@ -642,9 +703,18 @@ export const WIDGET_JS = String.raw`
       if (!moved) break;
     }
 
+    /* ANCHORED TO THE PINS IT SITS AMONG, not to the raw arithmetic. The
+       de-crowding loop above moves pins off their true dates, so a marker
+       placed at the period's true percentage could show up PAST a milestone
+       that has not happened yet. */
     var nowT = Date.now();
-    var now = (nowT >= min && nowT <= max) ? ((nowT - min) / (max - min)) * 100 : null;
-    return { pos: pos, now: now };
+    var anchors = [{ t: min, v: 0 }];
+    times.forEach(function (t, i) { if (!isNaN(t)) anchors.push({ t: t, v: pos[i] }); });
+    anchors.push({ t: max, v: 100 });
+    anchors.sort(function (a, b) { return a.t - b.t; });
+
+    var now = (nowT >= min && nowT <= max) ? interp(nowT, anchors) : null;
+    return { pos: pos, now: now, times: times, min: min, max: max };
   }
 
   function detailPanel(m, kids, lang, onClose) {
@@ -790,13 +860,20 @@ export const WIDGET_JS = String.raw`
       var panel = slot.firstChild;
       if (!panel) return;
 
-      if (immediate || reduced) { slot.textContent = ''; return; }
+      if (immediate || reduced) {
+        slot.textContent = '';
+        if (typeof placeNow === 'function') placeNow();
+        return;
+      }
 
       panel.classList.add('leaving');
       setTimeout(function () {
         /* Only if nothing has opened in the meantime — a fast second click
            must not have its new panel removed by the old one's timer. */
-        if (slot.firstChild === panel) slot.textContent = '';
+        if (slot.firstChild === panel) {
+          slot.textContent = '';
+          if (typeof placeNow === 'function') placeNow();
+        }
       }, 400);
     }
 
@@ -815,7 +892,40 @@ export const WIDGET_JS = String.raw`
         p.setAttribute('aria-expanded', j === i ? 'true' : 'false');
       });
       slot.textContent = '';
+      placeSlot(i);
       slot.appendChild(detailPanel(rows[i], kids, lang, closeDetail));
+      if (typeof placeNow === 'function') placeNow();
+    }
+
+    /* THE PANEL OPENS WHERE IT WAS ASKED FOR.
+
+       In the column the steps ARE the list, so a panel parked permanently at
+       the bottom made you look away from the thing you just pressed — on a
+       phone the milestone you tapped could be scrolled off the top by the
+       time its own details appeared. It belongs directly under that step.
+
+       The rail is a different shape and keeps the old behaviour: its pins sit
+       along a single line, so beneath the rail IS beneath the pin.
+
+       Moving the slot changes every step height below it, which is why the
+       NOW marker is re-measured immediately after — that coupling is what
+       makes this look broken when it is done without measuring. */
+    function isColumn() {
+      /* Ask the element which layout is showing rather than repeating the
+         breakpoint here. Undefined in a non-visual environment, which has no
+         layout to have an opinion about, so that falls to the rail. */
+      return typeof col.offsetParent !== 'undefined' && col.offsetParent !== null;
+    }
+
+    function placeSlot(i) {
+      var st = steps[i];
+      if (isColumn() && st && typeof st.after === 'function') { st.after(slot); return; }
+      /* Already parked at the end of the rail. Re-appending would be a no-op
+         in a browser, but only because a browser reparents — asking for a move
+         that is not needed is how the same node ends up counted twice. */
+      var kids = road.children;
+      if (kids && kids.length && kids[kids.length - 1] === slot) return;
+      road.appendChild(slot);
     }
 
     /* ---- horizontal ---- */
@@ -905,15 +1015,66 @@ export const WIDGET_JS = String.raw`
     road.appendChild(col);
     road.appendChild(slot);
 
-    later(function () {
+    /* THE COLUMN IS LAID OUT BY CONTENT, NOT BY DATE. Each step is as tall as
+       its own text, so a percentage of elapsed time means nothing in this
+       geometry — 40% of the period is not 40% of the pixels. Placing the
+       marker at progress% is what put it PAST milestones that have not
+       happened yet: on an eight-item roadmap the arithmetic said 37% and 37%
+       of the pixels landed below the second dot, which was a year out.
+
+       So it is measured against the real dots, and RE-measured whenever the
+       layout moves — opening a detail panel pushes every step below it down,
+       which is exactly when a marker frozen at build time starts lying. */
+    var vn = el('div', 'vnow');
+    col.appendChild(vn);
+
+    function placeNow() {
       rfill.style.width = progress + '%';
-      cfill.style.height = progress + '%';
-      if (progress > 3 && progress < 97) {
-        var vn = el('div', 'vnow');
+
+      var h = col.offsetHeight;
+      var measurable = typeof h === 'number' && isFinite(h) && h > 0;
+
+      /* Nothing to measure — no layout yet, or a non-visual environment. The
+         percentage is wrong in the ways described above but it is the only
+         thing available, and a marker roughly placed beats none at all. */
+      if (!measurable) {
+        cfill.style.height = progress + '%';
+        vn.hidden = !(progress > 3 && progress < 97);
         vn.style.top = progress + '%';
-        col.appendChild(vn);
+        return;
       }
-    });
+
+      var anchors = [];
+      steps.forEach(function (st, i) {
+        var t = P.times && P.times[i];
+        if (t === undefined || isNaN(t)) return;
+        var dot = st.querySelector ? st.querySelector('.sdot') : null;
+        var y = st.offsetTop + (dot ? dot.offsetTop + dot.offsetHeight / 2 : 0);
+        if (isFinite(y)) anchors.push({ t: t, v: y });
+      });
+      /* The period's own ends, so the fill starts at the top on the first day
+         and reaches the bottom on the last, rather than at whichever milestone
+         happens to be first or last. */
+      if (P.min !== undefined && !isNaN(P.min)) anchors.push({ t: P.min, v: 0 });
+      if (P.max !== undefined && !isNaN(P.max)) anchors.push({ t: P.max, v: h });
+      anchors.sort(function (a, b) { return a.t - b.t; });
+
+      if (!anchors.length) {
+        cfill.style.height = progress + '%';
+        vn.hidden = !(progress > 3 && progress < 97);
+        vn.style.top = progress + '%';
+        return;
+      }
+
+      var nowT = Date.now();
+      var y = interp(nowT, anchors);
+      cfill.style.height = Math.max(0, y) + 'px';
+      vn.style.top = y + 'px';
+      vn.hidden = !(nowT > anchors[0].t && nowT < anchors[anchors.length - 1].t);
+    }
+
+    later(placeNow);
+    window.addEventListener('resize', placeNow);
 
     return road;
   }

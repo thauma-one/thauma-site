@@ -531,6 +531,56 @@ await check("a parent's children appear as a breakdown inside its panel", async 
   assert(d.allText.includes("Waiting on dates."), "child description missing");
 });
 
+/* THE NOW MARKER MUST NOT CONTRADICT THE DOTS IT SITS AMONG.
+
+   Reported from the real console: the roadmap showed the marker past a date
+   that had not happened yet. The cause is that crowded pins get SPREAD away
+   from their true dates by the de-crowding loop, while the marker was placed
+   at the period's raw percentage — two different coordinate systems on one
+   rail, so the marker drifts to the wrong side of a pin as soon as the spread
+   is large.
+
+   Dates are relative to now rather than literal, so this keeps testing the
+   same geometry as the calendar moves rather than quietly passing in 2028. */
+await check("the NOW marker never sits before a milestone already past", async () => {
+  const DAY = 86400000;
+  const now = Date.now();
+  const iso = (ms) => new Date(ms).toISOString().slice(0, 10);
+
+  /* Four milestones bunched into one month, a year back, inside a six-year
+     period. They are far tighter than the 11% gap, so the loop pushes them
+     apart hard — and all four are in the past. */
+  const clustered = {
+    ...ROADMAP,
+    timeline: { start: iso(now - 365 * DAY), end: iso(now + 5 * 365 * DAY) },
+    milestones: [200, 190, 180, 170].map((back, i) => ({
+      id: "x" + i, parent_id: null, status: "complete",
+      actual_date: iso(now - back * DAY), completion: 100, is_featured: false,
+      text: { en: { title: "Step " + i } },
+    })),
+  };
+
+  const { root } = await run(clustered, {
+    "data-thauma": "mira-petrovic", "data-widget": "roadmap",
+  });
+
+  const pct = (el) => parseFloat(String(el.style.left).replace("%", ""));
+  const marker = root.byClass("now")[0];
+  assert(marker, "a NOW marker should be on the rail — the period surrounds today");
+
+  const pins = root.byClass("pin");
+  eq(pins.length, 4, "four pins");
+
+  const spread = Math.max(...pins.map(pct)) - Math.min(...pins.map(pct));
+  assert(spread > 20, `the pins should be spread apart, got ${spread.toFixed(1)}%`);
+
+  pins.forEach((pin, i) => {
+    assert(pct(pin) <= pct(marker) + 0.01,
+      `milestone ${i} is in the past but sits at ${pct(pin).toFixed(1)}%, ` +
+      `after the NOW marker at ${pct(marker).toFixed(1)}%`);
+  });
+});
+
 await check("a milestone with no children has no breakdown", async () => {
   const { root } = await run(ROADMAP, { "data-thauma": "mira-petrovic", "data-widget": "roadmap" });
   root.byClass("pin")[1].click();

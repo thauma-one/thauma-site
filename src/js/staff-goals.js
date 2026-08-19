@@ -19,12 +19,19 @@
 (function () {
   'use strict';
 
-  if (document.body.getAttribute('data-staff-page') !== 'ministry') return;
+  /* The list, not the page name — see the note in staff-milestones.js. */
+  if (!document.getElementById('glList')) return;
   if (!document.getElementById('glList')) return;
 
   var API = '/api/staff-goals';
   var $ = function (id) { return document.getElementById(id); };
   var state = { goals: [], editing: null, isPublic: false };
+
+  /* The row-with-a-panel behaviour is shared with milestones and prayer —
+     see staff-rowpanel.js for why there is one copy of it and not three. */
+  var panel = window.StaffRowPanel({
+    listId: 'glList', formId: 'glForm', holderId: 'glFormHolder',
+  });
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -68,32 +75,50 @@
 
   /* ---- the list ---- */
 
+  var KIND_KEY = { monthly: 'gl.monthly', one_time: 'gl.oneTime', project: 'gl.project' };
+
+  /* THE SAME ROW THE MILESTONE EDITOR DRAWS, down to the class names. This
+     used to emit ms-row-main / ms-row-title / ms-row-sub / ms-row-acts, none
+     of which exist in staff.css — so the markup was styled only by the outer
+     .ms-row and the list looked nothing like the one above it. The row IS the
+     control: role and aria-expanded so it reads as an expander rather than as
+     decoration with a button in it. */
   function render() {
+    panel.detach();
+
     var rows = state.goals;
     if (!rows.length) {
       $('glList').innerHTML = '<p class="empty">' + esc(tr('gl.empty')) + '</p>';
       return;
     }
+
     $('glList').innerHTML = rows.map(function (g) {
       var pct = g.percent == null ? 0 : g.percent;
-      return '<div class="ms-row" data-id="' + esc(g.goal_id) + '">' +
-        '<div class="ms-row-main">' +
-          '<span class="ms-row-title">' + esc(g.label) + '</span>' +
-          (g.is_public ? '' : '<span class="badge proto">' + esc(tr('ms.draft')) + '</span>') +
-          '<span class="ms-row-sub">' +
-            esc(money(g.raised_cents || 0, g.currency)) + ' / ' +
-            esc(money(g.target_cents, g.currency)) + ' · ' + pct + '%' +
-            (g.donor_count ? ' · ' + g.donor_count : '') +
-          '</span>' +
+      return '<div class="ms-row" data-id="' + esc(g.goal_id) + '"' +
+        ' role="button" tabindex="0" aria-expanded="false">' +
+        '<div class="ms-main">' +
+          '<div class="ms-t">' +
+            '<span class="ms-title">' + esc(g.label) + '</span>' +
+            (g.is_public ? '' : '<span class="badge proto">' + esc(tr('ms.draft')) + '</span>') +
+          '</div>' +
+          '<div class="ms-meta">' +
+            '<span>' + esc(tr(KIND_KEY[g.kind] || 'gl.kind')) + '</span>' +
+            '<span>' + esc(money(g.raised_cents || 0, g.currency)) +
+              ' / ' + esc(money(g.target_cents, g.currency)) + '</span>' +
+            '<span class="tnum">' + pct + '%</span>' +
+            (g.donor_count
+              ? '<span>' + g.donor_count + ' · ' + esc(tr('gl.donors')) + '</span>' : '') +
+          '</div>' +
         '</div>' +
-        '<div class="ms-row-acts">' +
-          '<button type="button" class="ghost-btn" data-edit="' + esc(g.goal_id) + '">' +
-            esc(tr('ms.edit')) + '</button>' +
-          '<button type="button" class="del" data-del="' + esc(g.goal_id) + '">' +
-            esc(tr('ms.delete')) + '</button>' +
+        '<div class="ms-row-actions">' +
+          '<span class="ms-chev" aria-hidden="true"></span>' +
+          '<button type="button" data-edit="' + esc(g.goal_id) + '">Edit</button>' +
+          '<button type="button" class="del" data-del="' + esc(g.goal_id) + '">Delete</button>' +
         '</div>' +
       '</div>';
     }).join('');
+
+    panel.reattach(state.editing);
   }
 
   /* ---- the form ---- */
@@ -105,8 +130,19 @@
     b.querySelector('.switch-state').textContent = on ? 'On' : 'Off';
   }
 
-  function openForm(goal) {
-    state.editing = goal ? goal.goal_id : null;
+  async function openForm(goal) {
+    var id = goal ? goal.goal_id : null;
+
+    /* ALREADY OPEN ON THIS ROW -> close it. Pressing Edit again to put the
+       panel away is what everyone reaches for first, and having it do nothing
+       reads as a broken button. */
+    if (panel.isOpen() && state.editing === id) { await closeForm(); return; }
+    /* Open on a DIFFERENT row: close where it is before moving it, or the
+       panel jumps to its new position at full height and animates from there,
+       which looks like two unrelated things happening. */
+    if (panel.isOpen()) await panel.close();
+
+    state.editing = id;
 
     $('glId').value = goal ? goal.goal_id : '';
     $('glLabel').value = goal ? goal.label : '';
@@ -127,21 +163,22 @@
     $('glDonors').placeholder = goal && goal.donor_count != null
       ? String(goal.donor_count) : '';
 
-    var form = $('glForm');
-    form.hidden = false;
-    if (goal) {
-      var row = $('glList').querySelector('[data-id="' + goal.goal_id + '"]');
-      if (row) row.insertAdjacentElement('afterend', form);
-    } else {
-      $('glFormHolder').appendChild(form);
-    }
+    /* Beneath its own row, and animated open — the same movement the
+       milestone editor makes, because these are the same kind of screen. */
+    panel.moveTo(state.editing);
+    panel.markOpen(state.editing);
+    await panel.open();
+
+    var row = panel.rowFor(state.editing);
+    if (row) panel.scrollRowToTop(row);
     $('glLabel').focus();
   }
 
-  function closeForm() {
+  async function closeForm() {
+    await panel.close();
     state.editing = null;
-    $('glForm').hidden = true;
-    $('glFormHolder').appendChild($('glForm'));
+    panel.markOpen(null);
+    panel.detach();
   }
 
   /* ---- talking to the server ---- */
@@ -192,15 +229,39 @@
   $('glCancel').addEventListener('click', closeForm);
   $('glPublic').addEventListener('click', function () { setPublic(!state.isPublic); });
 
+  function goalById(id) {
+    return state.goals.find(function (x) { return x.goal_id === id; });
+  }
+
+  /* Keyboard parity: the row is focusable and announces itself as a button. */
+  $('glList').addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    if (e.target.closest('button') || e.target.closest('#glForm')) return;
+    var row = e.target.closest('.ms-row');
+    if (!row) return;
+    e.preventDefault();
+    var g = goalById(row.dataset.id);
+    if (g) openForm(g);
+  });
+
   $('glList').addEventListener('click', async function (e) {
     var edit = e.target.closest('[data-edit]');
     if (edit) {
-      var g = state.goals.find(function (x) { return x.goal_id === edit.dataset.edit; });
+      var g = goalById(edit.dataset.edit);
       if (g) openForm(g);
       return;
     }
     var del = e.target.closest('[data-del]');
-    if (!del) return;
+    if (!del) {
+      /* THE WHOLE BAR IS THE TARGET, the way the milestone rows work — the
+         Edit button stays because it is the discoverable affordance, but
+         nobody should have to find it. Clicks inside the open panel are not
+         the row's business. */
+      if (e.target.closest('.gl-form') || e.target.closest('#glForm')) return;
+      var row = e.target.closest('.ms-row');
+      if (row) { var rg = goalById(row.dataset.id); if (rg) openForm(rg); }
+      return;
+    }
 
     var g = state.goals.find(function (x) { return x.goal_id === del.dataset.del; });
     if (!g) return;
