@@ -51,7 +51,7 @@ export const WIDGET_JS = String.raw`
      <script src="https://thauma.one/embed/v1/widget.js" async></script>
 
    Attributes, all optional:
-     data-widget   goal | roadmap        (default goal)
+     data-widget   goal | roadmap | prayer (default goal)
      data-lang     en | hr | sr | ...    (default: the host page's own language)
      data-accent   #6D4AFF               overrides the ministry's colour
      data-theme    auto | light | dark
@@ -138,17 +138,20 @@ export const WIDGET_JS = String.raw`
           upcoming: 'Upcoming', cancelled: 'Cancelled', completeWord: 'Complete',
           remaining: 'remaining', funded: 'Funded',
           partners: 'partners', partner: 'partner', breakdown: 'Breakdown',
-          empty: 'Nothing to show yet.', focus: 'Focus', close: 'Close' },
+          empty: 'Nothing to show yet.', close: 'Close',
+          answered: 'Answered', praying: 'Still praying' },
     hr: { now: 'SADA', complete: 'Završeno', in_progress: 'U tijeku',
           upcoming: 'Nadolazeće', cancelled: 'Otkazano', completeWord: 'Završeno',
           remaining: 'preostalo', funded: 'Financirano',
           partners: 'podupiratelja', partner: 'podupiratelj', breakdown: 'Raščlamba',
-          empty: 'Još nema ničega za prikazati.', focus: 'Fokus', close: 'Zatvori' },
+          empty: 'Još nema ničega za prikazati.', close: 'Zatvori',
+          answered: 'Uslišano', praying: 'Još molimo' },
     sr: { now: 'САДА', complete: 'Завршено', in_progress: 'У току',
           upcoming: 'Предстоји', cancelled: 'Отказано', completeWord: 'Завршено',
           remaining: 'преостало', funded: 'Финансирано',
           partners: 'подржавалаца', partner: 'подржавалац', breakdown: 'Рашчламба',
-          empty: 'Још нема ничега за приказ.', focus: 'Фокус', close: 'Затвори' }
+          empty: 'Још нема ничега за приказ.', close: 'Затвори',
+          answered: 'Услишено', praying: 'Још молимо' }
   };
   function w(lang, key) { return (WORDS[lang] || WORDS.en)[key] || WORDS.en[key]; }
 
@@ -477,6 +480,33 @@ export const WIDGET_JS = String.raw`
         'transition:width 1.2s cubic-bezier(.4,0,.2,1)}' +
       '.kpct em{display:block;margin-top:4px;font-size:11.5px;color:var(--dim);' +
         'font-style:normal;font-variant-numeric:tabular-nums}' +
+
+      /* ============ PRAYER ============ */
+      '.prayers{display:flex;flex-direction:column;gap:22px}' +
+      '.pcard{background:var(--bg);border:1.5px solid var(--line);border-radius:10px;' +
+        'padding:22px 26px;position:relative;' +
+        'transition:border-color .3s ease,box-shadow .3s ease,transform .3s ease}' +
+      '.pcard:hover{border-color:var(--faint-p);transform:translateY(-4px);' +
+        'box-shadow:0 4px 16px rgba(0,0,0,.18)}' +
+      /* Answered prayer is the OTHER colour of the pair — the same distinction
+         the roadmap draws between finished and in flight. */
+      '.pcard.answered{border-color:var(--faint-d)}' +
+      '.pcard.answered:hover{border-color:var(--done)}' +
+      '.pbadge{position:absolute;top:18px;right:18px;border-radius:20px;' +
+        'padding:3px 12px;font-size:11.5px;font-weight:700;letter-spacing:.05em;' +
+        'color:var(--done);border:1px solid var(--done);background:var(--faint-d)}' +
+      '.ptitle{font-size:22px;font-weight:700;line-height:1.25;padding-right:96px;' +
+        'letter-spacing:-.01em;font-family:Georgia,Cambria,"Times New Roman",serif}' +
+      '.pbody{margin-top:9px;color:var(--dim);font-size:14.5px;line-height:1.6;' +
+        'border-left:3px solid var(--prog);padding-left:12px}' +
+      /* The answer gets the second colour, so a card carrying both reads as
+         request then outcome without a heading for either. */
+      '.panswer{margin-top:14px;color:var(--dim);font-size:14.5px;line-height:1.6;' +
+        'border-left:3px solid var(--done);padding-left:12px}' +
+      '.pwhen{display:block;margin-top:8px;font-size:11.5px;color:var(--dim);' +
+        'letter-spacing:.03em;text-transform:uppercase;font-weight:600}' +
+      '@media(max-width:560px){.ptitle{padding-right:0;font-size:19px}' +
+        '.pbadge{position:static;display:inline-block;margin-bottom:10px}}' +
 
       '.is-wide .rail{display:block}' +
       '.is-wide .col{display:none}' +
@@ -812,9 +842,11 @@ export const WIDGET_JS = String.raw`
       pin.setAttribute('aria-expanded', 'false');
 
       var lab = el('span', 'plab');
-      var name = el('b', null, t.title);
-      if (m.is_featured) name.appendChild(el('span', 'feat', w(lang, 'focus')));
-      lab.appendChild(name);
+      /* No FOCUS badge. is_featured is still in the payload for anyone
+         building their own design, but chaseroush.com's timeline does not
+         mark it and the pin is already carrying a title, a date and a
+         percentage — a fourth thing on one line is clutter. */
+      lab.appendChild(el('b', null, t.title));
 
       var dt = dateText(m, lang);
       if (dt) lab.appendChild(el('span', 'pd', dt));
@@ -854,9 +886,7 @@ export const WIDGET_JS = String.raw`
       var dt = dateText(m, lang);
       if (dt) step.appendChild(el('span', 'sdate', dt));
 
-      var title = el('span', 'stitle', t.title);
-      if (m.is_featured) title.appendChild(el('span', 'feat', w(lang, 'focus')));
-      step.appendChild(title);
+      step.appendChild(el('span', 'stitle', t.title));
 
       var pc = pctOf(m);
       var kc2 = kids[m.id];
@@ -888,17 +918,56 @@ export const WIDGET_JS = String.raw`
     return road;
   }
 
+  /* ---------- prayer ---------- */
+
+  function prayerCards(rows, lang) {
+    var usable = (rows || []).filter(function (r) {
+      var t = pick(r.text, lang);
+      return t && t.title;
+    });
+    if (!usable.length) return null;
+
+    var wrap = el('div', 'prayers');
+    usable.forEach(function (r) {
+      var t = pick(r.text, lang) || {};
+      var card = el('div', 'pcard' + (r.is_answered ? ' answered' : ''));
+
+      if (r.is_answered) card.appendChild(el('span', 'pbadge', '✓ ' + w(lang, 'answered')));
+      card.appendChild(el('div', 'ptitle', t.title));
+      if (t.description) card.appendChild(el('div', 'pbody', t.description));
+
+      /* The account of what happened, when there is one. "Answered" with no
+         account of how is a badge rather than a testimony. */
+      if (r.is_answered && t.answer_text) {
+        var a = el('div', 'panswer', t.answer_text);
+        if (r.answered_on) a.appendChild(el('span', 'pwhen', monthYear(r.answered_on, lang)));
+        card.appendChild(a);
+      }
+      wrap.appendChild(card);
+    });
+    return wrap;
+  }
+
   /* ---------- placement ---------- */
 
   function applyWidth(host) {
     host.classList.toggle('is-wide', host.getBoundingClientRect().width >= 680);
   }
 
+  /* MEASURE THE CONTENT, NOT THE DOCUMENT.
+     documentElement.scrollHeight is never smaller than the frame it is in, so
+     reporting it to a parent that then SETS the frame to that value is a
+     ratchet: every measurement returns the height the last one produced, plus
+     whatever margin the parent adds. Changing a colour rebuilt the preview and
+     the box grew a few pixels, permanently, every time.
+     The body's own rect is the content plus its padding and does not know how
+     tall the frame is, so it settles instead of climbing. */
   function reportHeight() {
     if (window.parent === window) return;
     try {
-      window.parent.postMessage(
-        { __thaumaHeight: Math.ceil(document.documentElement.scrollHeight) }, '*');
+      var b = document.body;
+      var h = b ? Math.ceil(b.getBoundingClientRect().height) : 0;
+      if (h > 0) window.parent.postMessage({ __thaumaHeight: h }, '*');
     } catch (e) {}
   }
 
@@ -959,6 +1028,8 @@ export const WIDGET_JS = String.raw`
 
     if (kind === 'roadmap') {
       body = roadmap(data.milestones || [], lang, data.timeline);
+    } else if (kind === 'prayer') {
+      body = prayerCards(data.prayer || [], lang);
     } else {
       var goals = data.goals || [];
       if (goals.length) {

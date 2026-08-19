@@ -12,11 +12,18 @@
     AUTH: Cloudflare Access gates /staff* at the edge, so by the time any of
     this renders the visitor is authenticated. There is no sign-in state to
     manage here. -#}
+{#- ONE ENTRY FOR THREE SECTIONS. Milestones, giving goals and prayer are the
+   same job — the things a ministry publishes about itself — and each is small.
+   Three nav entries for three short pages crowded the bar and made them look
+   unrelated; one page with tabs keeps them together.
+
+   The comment lives OUT here rather than inside the array: nunjucks parses a
+   `set` as one expression, and a comment inside it is a syntax error rather
+   than a comment. -#}
 {%- set pages = [
   { slug: "index",       url: "/staff/",             label: "Dashboard" },
-  { slug: "support",     url: "/staff/support/",     label: "Support" },
+  { slug: "ministry",    url: "/staff/ministry/",    label: "Ministry" },
   { slug: "stewardship", url: "/staff/stewardship/", label: "Stewardship" },
-  { slug: "milestones",  url: "/staff/milestones/",  label: "Milestones" },
   { slug: "directory",   url: "/staff/directory/",   label: "Directory" },
   { slug: "resources",   url: "/staff/resources/",   label: "Resources" },
   { slug: "activity",    url: "/staff/activity/",    label: "Activity" },
@@ -91,11 +98,13 @@
 {#- Only the Milestones page needs this; the script no-ops elsewhere. Kept
    separate from staff.js rather than folded in, because the editor is a
    different job from the read-only console and will keep growing. -#}
-{% if staffPage == "milestones" %}<script src="/js/staff-milestones.js?v={{ "/js/staff-milestones.js" | v }}"></script>{% endif %}
+{% if staffPage == "ministry" %}<script src="/js/staff-milestones.js?v={{ "/js/staff-milestones.js" | v }}"></script>
+<script src="/js/staff-goals.js?v={{ "/js/staff-goals.js" | v }}"></script>
+<script src="/js/staff-prayer.js?v={{ "/js/staff-prayer.js" | v }}"></script>{% endif %}
 {% if staffPage == "settings" %}<script src="/js/staff-settings.js?v={{ "/js/staff-settings.js" | v }}"></script>{% endif %}
 {#- The embed panel loads on the two pages that AUTHOR what it publishes —
    the roadmap under the milestone editor, the giving progress under the
    goals — rather than on a settings tab away from both. -#}
-{% if staffPage == "milestones" or staffPage == "support" %}<script src="/js/staff-embed.js?v={{ "/js/staff-embed.js" | v }}"></script>{% endif %}
+{% if staffPage == "ministry" %}<script src="/js/staff-embed.js?v={{ "/js/staff-embed.js" | v }}"></script>{% endif %}
 </body>
 </html>

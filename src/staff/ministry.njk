@@ -1,0 +1,364 @@
+---
+layout: layouts/staff.njk
+staffPage: ministry
+staffNum: "04"
+staffTitle: Ministry
+staffHeading: What this ministry <b>publishes</b>
+staffHint: three lists, all of them visible to anyone once published
+---
+{#- THREE SECTIONS, ONE PAGE.
+
+   Milestones, giving goals and prayer are the same job — the things a ministry
+   says about itself in public — and each is small. Three nav entries for three
+   short pages crowded the bar and made them look unrelated.
+
+   Every section is built the same way, deliberately: a view switch at the top,
+   an EDIT half that is a list of rows opening into a form, and an AS EMBEDDED
+   half that is the real widget plus the code to paste. Learning one teaches
+   all three. -#}
+
+<div class="tabs" role="tablist">
+  <button type="button" class="tab" role="tab" data-tab="milestones"
+          aria-selected="true" data-i18n="min.milestones">Milestones</button>
+  <button type="button" class="tab" role="tab" data-tab="goals"
+          aria-selected="false" data-i18n="min.goals">Goals</button>
+  <button type="button" class="tab" role="tab" data-tab="prayer"
+          aria-selected="false" data-i18n="min.prayer">Prayer</button>
+</div>
+
+<!-- ========================================================== MILESTONES -->
+<section class="tab-panel" data-panel="milestones" role="tabpanel">
+  {% set embedWidget = "roadmap" %}
+  {% include "embed-panel.njk" %}
+
+  <div data-emb-content>
+<div class="ms-bar">
+  <button type="button" class="solid-btn" id="msAdd" data-i18n="ms.add">Add milestone</button>
+  <span class="hint" id="msStatus"></span>
+</div>
+
+
+{#- Said plainly and near the toggles, because this is the one screen in the
+   console where a mistake is visible to strangers rather than to staff. -#}
+<p class="note ms-note" data-i18n-html="ms.publishedLeave"><b>Published entries leave this building.</b> Anything switched to Published is
+  served to partner websites through the public API and can be read by anyone.
+  New milestones start unpublished.</p>
+
+<div class="ms-list" id="msList">
+  <p class="empty" data-i18n="common.loading">Loading…</p>
+</div>
+
+{#- Where the editor panel lives when it is not attached under a row.
+
+   It has to live OUTSIDE #msList: render() rebuilds that list with innerHTML,
+   which destroyed the form element whenever the list refreshed while the panel
+   was open — after which Edit could never reopen it, because the element it
+   looked for no longer existed. -#}
+<div id="msFormHolder"></div>
+
+{#- One form, reused for create and edit. Hidden until opened. -#}
+<form class="ms-form" id="msForm" hidden>
+  <input type="hidden" id="msId">
+
+  {#- TWO LANGUAGE COLUMNS, EITHER OF WHICH CAN BE ANY LANGUAGE.
+
+     Not "English and Croatian": the columns are built from whatever the
+     organisation offers, so adding Portuguese needs no change here. The left
+     column opens on the staff member's own language and the right on the next
+     one they publish, but both are free to change.
+
+     Side by side because a missing or stale translation is invisible when you
+     edit one language at a time — which is how a trilingual site ends up with
+     three versions that disagree. -#}
+  <div class="ms-langs">
+    <div class="ms-col">
+      <div class="ms-col-head">
+        <select id="msLangA" class="lang-pick" aria-label="Language, left column"></select>
+        <span class="ms-col-tag" id="msTagA"></span>
+      </div>
+      <label class="fld"><span data-i18n="ms.title">Title</span>
+        <input type="text" data-tx="title" data-col="a" maxlength="200"></label>
+      <label class="fld"><span data-i18n="ms.description">Description</span>
+        <textarea data-tx="description" data-col="a" rows="5"></textarea></label>
+      <label class="fld"><span data-i18n="ms.when">When</span> <em data-i18n="ms.freeText">free text</em>
+        <input type="text" data-tx="target_label" data-col="a" maxlength="120"
+               placeholder="End of September 2027"></label>
+    </div>
+
+    <div class="ms-col">
+      <div class="ms-col-head">
+        <select id="msLangB" class="lang-pick" aria-label="Language, right column"></select>
+        <span class="ms-col-tag" id="msTagB"></span>
+      </div>
+      <label class="fld"><span data-i18n="ms.title">Title</span>
+        <input type="text" data-tx="title" data-col="b" maxlength="200"></label>
+      <label class="fld"><span data-i18n="ms.description">Description</span>
+        <textarea data-tx="description" data-col="b" rows="5"></textarea></label>
+      <label class="fld"><span data-i18n="ms.when">When</span> <em data-i18n="ms.freeText">free text</em>
+        <input type="text" data-tx="target_label" data-col="b" maxlength="120"></label>
+    </div>
+  </div>
+
+  {#- Language-neutral: true regardless of which language you are reading. -#}
+  <div class="ms-grid ms-neutral">
+    <label class="fld">
+      <span data-i18n="ms.sortDate">Sort date</span> <em data-i18n="ms.orderingOnly">for ordering only</em>
+      <input type="date" id="msDate">
+    </label>
+    <label class="fld">
+      <span data-i18n="ms.status">Status</span>
+      <select id="msStatusSel">
+        <option value="upcoming" data-i18n="ms.upcoming">Upcoming</option>
+        <option value="in_progress" data-i18n="ms.inProgress">In progress</option>
+        <option value="complete" data-i18n="ms.complete">Complete</option>
+        <option value="cancelled" data-i18n="ms.cancelled">Cancelled</option>
+      </select>
+    </label>
+    <label class="fld">
+      <span data-i18n="ms.completion">Completion</span> <em data-i18n="ms.percent">percent</em>
+      <input type="number" id="msCompletion" min="0" max="100" step="1" value="0">
+    </label>
+    <label class="fld">
+      <span data-i18n="ms.partOf">Part of</span> <em data-i18n="ms.optional">optional</em>
+      <select id="msParent"><option value="" data-i18n="ms.topLevel">— top level —</option></select>
+    </label>
+  </div>
+
+  <div class="ms-switches">
+    <button type="button" class="switch" id="msPublic" role="switch" aria-checked="false">
+      <span class="switch-track"><span class="switch-state">Off</span><span class="switch-knob"></span></span>
+      <span class="switch-label"><span data-i18n="ms.published">Published</span>
+        <span class="switch-note" data-i18n="ms.publishedNote">Visible on partner websites</span>
+      </span>
+    </button>
+    <button type="button" class="switch" id="msFeatured" role="switch" aria-checked="false">
+      <span class="switch-track"><span class="switch-state">Off</span><span class="switch-knob"></span></span>
+      <span class="switch-label"><span data-i18n="ms.featured">Featured</span>
+        <span class="switch-note" data-i18n="ms.featuredNote">Highlighted on their home page</span>
+      </span>
+    </button>
+  </div>
+
+  <div class="ms-actions">
+    <button type="submit" class="solid-btn" data-i18n="ms.apply">Apply</button>
+    <button type="button" class="ghost-btn" id="msCancel" data-i18n="ms.cancel">Cancel</button>
+    {#- "Apply" not "Save": this closes the form and updates the list, but
+       nothing reaches the database until Save changes is pressed. Calling
+       both of them Save is how people end up believing work is safe. -#}
+    <span class="hint" id="msFormStatus" data-i18n="ms.applyNote">Applies to the list — save to publish</span>
+  </div>
+</form>
+
+{#- Only appears when something is actually unsaved, so its presence is the
+   signal. Fixed to the bottom of the viewport and LAST in the document, so
+   reading order matches what you see — a bar announced before the content
+   it refers to reads oddly to a screen reader.
+
+   role=status so the change in count is announced without stealing focus
+   from whatever is being edited. -#}
+  </div>
+</section>
+
+<!-- =============================================================== GOALS -->
+<section class="tab-panel" data-panel="goals" role="tabpanel" hidden>
+  {% set embedWidget = "goal" %}
+  {% include "embed-panel.njk" %}
+
+  <div data-emb-content>
+    <div class="ms-bar">
+      <button type="button" class="solid-btn" id="glAdd" data-i18n="gl.add">Add goal</button>
+      <span class="hint" id="glStatus"></span>
+    </div>
+
+    <p class="note ms-note" data-i18n-html="gl.publishedNote"><b>Published goals leave this building.</b> A goal switched to Published is
+      served to partner websites and can be read by anyone. It carries no donor
+      records — only the target, the amount raised and a count.</p>
+
+    <div class="ms-list" id="glList">
+      <p class="empty" data-i18n="common.loading">Loading…</p>
+    </div>
+
+    <div id="glFormHolder"></div>
+
+    {#- One form for create and edit, like the milestone editor. Goals are NOT
+       translated — `label` has always been a plain column — so there are no
+       language columns here. Giving them a translations table is its own
+       migration and its own editing surface. -#}
+    <form class="ms-form" id="glForm" hidden>
+      <input type="hidden" id="glId">
+
+      <div class="ms-grid ms-neutral">
+        <label class="fld gl-wide">
+          <span data-i18n="gl.name">Name</span>
+          <input type="text" id="glLabel" maxlength="120" placeholder="Monthly support">
+        </label>
+        <label class="fld gl-wide">
+          <span data-i18n="gl.description">Description</span>
+          <textarea id="glDescription" rows="3" maxlength="600"
+                    placeholder="What this is for."></textarea>
+        </label>
+        <label class="fld">
+          <span data-i18n="gl.kind">Kind</span>
+          <select id="glKind">
+            <option value="monthly" data-i18n="gl.monthly">Monthly</option>
+            <option value="one_time" data-i18n="gl.oneTime">One time</option>
+            <option value="project" data-i18n="gl.project">Project</option>
+          </select>
+        </label>
+        <label class="fld">
+          <span data-i18n="gl.target">Target</span>
+          <input type="number" id="glTarget" min="1" step="1" placeholder="4500">
+        </label>
+        <label class="fld">
+          <span data-i18n="gl.currency">Currency</span>
+          <input type="text" id="glCurrency" maxlength="3" value="USD"
+                 spellcheck="false" placeholder="USD">
+        </label>
+      </div>
+
+      {#- PROGRESS IS A SEPARATE ACT. It is a reading taken at a moment, not a
+         property of the goal, so it is appended as a snapshot and the newest
+         one wins. That is why a mistyped figure is corrected by entering the
+         right one rather than by editing the past — and why an importer
+         hooked up tomorrow needs no migration. -#}
+      <div class="gl-progress">
+        <h4 data-i18n="gl.progressTitle">Where it stands</h4>
+        <p data-i18n="gl.progressNote">Entered by hand until a giving platform is connected. Each entry is kept, and the most recent is the one shown.</p>
+        <div class="ms-grid">
+          <label class="fld">
+            <span data-i18n="gl.raised">Raised</span>
+            <input type="number" id="glRaised" min="0" step="1" placeholder="3060">
+          </label>
+          <label class="fld">
+            <span data-i18n="gl.donors">Partners giving</span>
+            <em data-i18n="ms.optional">optional</em>
+            <input type="number" id="glDonors" min="0" step="1" placeholder="14">
+          </label>
+        </div>
+      </div>
+
+      <div class="ms-switches">
+        <button type="button" class="switch" id="glPublic" role="switch" aria-checked="false">
+          <span class="switch-track"><span class="switch-state">Off</span><span class="switch-knob"></span></span>
+          <span class="switch-label"><span data-i18n="ms.published">Published</span>
+            <span class="switch-note" data-i18n="ms.publishedNote">Visible on partner websites</span>
+          </span>
+        </button>
+      </div>
+
+      <div class="ms-actions">
+        <button type="submit" class="solid-btn" data-i18n="gl.save">Save goal</button>
+        <button type="button" class="ghost-btn" id="glCancel" data-i18n="ms.cancel">Cancel</button>
+        {#- Unlike milestones, a goal saves STRAIGHT AWAY. There is no working
+           copy to reconcile: one goal is one row, and a save bar for a single
+           small form is ceremony. -#}
+        <span class="hint" id="glFormStatus" data-i18n="gl.savesNow">Saves immediately</span>
+      </div>
+    </form>
+  </div>
+</section>
+
+<!-- ============================================================== PRAYER -->
+<section class="tab-panel" data-panel="prayer" role="tabpanel" hidden>
+  {% set embedWidget = "prayer" %}
+  {% include "embed-panel.njk" %}
+
+  <div data-emb-content>
+    <div class="ms-bar">
+      <button type="button" class="solid-btn" id="prAdd" data-i18n="pr.add">Add request</button>
+      <span class="hint" id="prStatus"></span>
+    </div>
+
+    <p class="note ms-note" data-i18n-html="pr.publishedNote"><b>Published requests leave this building.</b> Write them as you would want
+      them read by a stranger — anything switched to Published is served to
+      partner websites. New requests start unpublished.</p>
+
+    <div class="ms-list" id="prList">
+      <p class="empty" data-i18n="common.loading">Loading…</p>
+    </div>
+
+    <div id="prFormHolder"></div>
+
+    <form class="ms-form" id="prForm" hidden>
+      <input type="hidden" id="prId">
+
+      {#- Two language columns, same as the milestone editor and for the same
+         reason: a missing or stale translation is invisible when you edit one
+         language at a time. -#}
+      <div class="ms-langs">
+        <div class="ms-col">
+          <div class="ms-col-head">
+            <select id="prLangA" class="lang-pick" aria-label="Language, left column"></select>
+            <span class="ms-col-tag" id="prTagA"></span>
+          </div>
+          <label class="fld"><span data-i18n="pr.title">Request</span>
+            <input type="text" data-ptx="title" data-col="a" maxlength="160"></label>
+          <label class="fld"><span data-i18n="pr.detail">Detail</span>
+            <textarea data-ptx="description" data-col="a" rows="4"></textarea></label>
+          <label class="fld"><span data-i18n="pr.answerText">What happened</span>
+            <em data-i18n="pr.whenAnswered">once answered</em>
+            <textarea data-ptx="answer_text" data-col="a" rows="3"></textarea></label>
+        </div>
+
+        <div class="ms-col">
+          <div class="ms-col-head">
+            <select id="prLangB" class="lang-pick" aria-label="Language, right column"></select>
+            <span class="ms-col-tag" id="prTagB"></span>
+          </div>
+          <label class="fld"><span data-i18n="pr.title">Request</span>
+            <input type="text" data-ptx="title" data-col="b" maxlength="160"></label>
+          <label class="fld"><span data-i18n="pr.detail">Detail</span>
+            <textarea data-ptx="description" data-col="b" rows="4"></textarea></label>
+          <label class="fld"><span data-i18n="pr.answerText">What happened</span>
+            <em data-i18n="pr.whenAnswered">once answered</em>
+            <textarea data-ptx="answer_text" data-col="b" rows="3"></textarea></label>
+        </div>
+      </div>
+
+      <div class="ms-grid ms-neutral">
+        <label class="fld">
+          <span data-i18n="pr.answeredOn">Date answered</span>
+          <em data-i18n="ms.optional">optional</em>
+          <input type="date" id="prAnsweredOn">
+        </label>
+        <label class="fld">
+          <span data-i18n="ms.sortDate">Order</span>
+          <em data-i18n="ms.orderingOnly">for ordering only</em>
+          <input type="number" id="prSort" step="1" value="0">
+        </label>
+      </div>
+
+      <div class="ms-switches">
+        <button type="button" class="switch" id="prPublic" role="switch" aria-checked="false">
+          <span class="switch-track"><span class="switch-state">Off</span><span class="switch-knob"></span></span>
+          <span class="switch-label"><span data-i18n="ms.published">Published</span>
+            <span class="switch-note" data-i18n="ms.publishedNote">Visible on partner websites</span>
+          </span>
+        </button>
+        {#- A boolean, not a status. A prayer is being asked or it has been
+           answered; an enum here would invite "in progress", which is not a
+           thing anybody means. -#}
+        <button type="button" class="switch" id="prAnswered" role="switch" aria-checked="false">
+          <span class="switch-track"><span class="switch-state">Off</span><span class="switch-knob"></span></span>
+          <span class="switch-label"><span data-i18n="pr.answered">Answered</span>
+            <span class="switch-note" data-i18n="pr.answeredNote">Shown with the account of what happened</span>
+          </span>
+        </button>
+      </div>
+
+      <div class="ms-actions">
+        <button type="submit" class="solid-btn" data-i18n="pr.save">Save request</button>
+        <button type="button" class="ghost-btn" id="prCancel" data-i18n="ms.cancel">Cancel</button>
+        <span class="hint" id="prFormStatus" data-i18n="gl.savesNow">Saves immediately</span>
+      </div>
+    </form>
+  </div>
+</section>
+
+<div class="ms-savebar" id="msSaveBar" role="status" aria-live="polite" hidden>
+  <span class="ms-dirty-dot" aria-hidden="true"></span>
+  <span id="msDirtyCount">0 unsaved changes</span>
+  <span class="ms-savebar-note" data-i18n="ms.notLive">Nothing is live until you save.</span>
+  <button type="button" class="ghost-btn" id="msDiscard" data-i18n="ms.discard">Discard</button>
+  <button type="button" class="solid-btn" id="msSaveAll" data-i18n="ms.save">Save changes</button>
+</div>

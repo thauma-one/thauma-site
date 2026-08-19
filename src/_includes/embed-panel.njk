@@ -1,15 +1,14 @@
-{#- embed-panel.njk — the view switch, and everything the embed needs
+{#- embed-panel.njk — the "As embedded" half of one section
 
-   AT THE TOP, and it REPLACES the page's own rendering rather than sitting
-   beside it. On Support the console already draws goal cards; showing the
-   widget underneath would put two of nearly the same thing on one screen and
-   leave you comparing them. So this is a view switch: Edit, or As embedded.
+   Included THREE TIMES on the ministry page, once per section, so everything
+   inside is addressed by data-emb WITHIN the panel rather than by id. Ids
+   would collide the moment the second one rendered.
 
-   That also answers "a toggle to hide the visualiser and just edit the data" —
-   it is the same control, read the other way round.
+   Read one way it is a preview; read the other it is the "hide the visualiser
+   and just edit the data" control. Same switch, one job.
 
-   The caller sets `embedWidget` to "roadmap" or "goal". There is no widget
-   picker: the page has already chosen.  -#}
+   The caller sets `embedWidget` to roadmap | goal | prayer. There is no widget
+   picker: the section has already chosen.  -#}
 
 <div class="emb-bar" data-embed-panel data-widget="{{ embedWidget }}" hidden>
 
@@ -22,26 +21,32 @@
             data-emb="viewEmbed" data-i18n="emb.viewEmbed">As embedded</button>
   </div>
 
-  {#- The live state, always visible, because "is this on someone else's site
-     right now" is the question you actually have while looking at either
-     view. -#}
+  {#- Whether this is on somebody else's site RIGHT NOW — the question you
+     actually have while looking at either view. -#}
   <span class="emb-state" data-emb="state"></span>
 </div>
 
 <section class="emb-panel" data-emb="panel" hidden>
 
-  <p class="emb-lede" data-i18n="{{ 'emb.ledeRoadmap' if embedWidget == 'roadmap' else 'emb.ledeGoal' }}">
-    {% if embedWidget == "roadmap" %}
-      This is exactly what a sending church or a supporter sees when they put
-      your roadmap on their own site.
-    {% else %}
-      This is exactly what a sending church or a supporter sees when they put
-      your giving progress on their own site.
-    {% endif %}
-  </p>
+  <div class="emb-stagebar">
+    <p class="emb-lede" data-i18n="{{ 'emb.ledeRoadmap' if embedWidget == 'roadmap' else ('emb.ledePrayer' if embedWidget == 'prayer' else 'emb.ledeGoal') }}">
+      This is exactly what somebody sees when they put it on their own site.
+    </p>
 
-  {#- The widget itself, first and large. Everything under it is about it. -#}
-  <div class="emb-stage">
+    {#- DESKTOP OR MOBILE. The widget chooses its layout from the width it is
+       actually given, not from a media query — so narrowing the frame is not
+       a simulation of a phone, it is the same decision a phone would cause.
+       The roadmap is a different thing at each width: a horizontal rail or a
+       vertical column. -#}
+    <div class="emb-devices" role="tablist" aria-label="Width">
+      <button type="button" class="emb-device is-on" role="tab" aria-selected="true"
+              data-emb="devWide" data-i18n="emb.desktop">Desktop</button>
+      <button type="button" class="emb-device" role="tab" aria-selected="false"
+              data-emb="devNarrow" data-i18n="emb.mobile">Mobile</button>
+    </div>
+  </div>
+
+  <div class="emb-stage" data-emb="stage">
     <iframe data-emb="frame" title="Embed preview" sandbox="allow-scripts"></iframe>
   </div>
 
@@ -55,9 +60,9 @@
       </span>
     </label>
 
-    {#- THE SECOND COLOUR. Left on "match automatically" it is derived from the
-       first by rotating the hue — the relationship cyan and seafoam have on
-       chaseroush.com. Turning the switch off hands the pair over entirely. -#}
+    {#- Left on "match automatically" it is derived from the first by rotating
+       the hue — the relationship cyan and seafoam have on chaseroush.com.
+       Turning it off hands the pair over entirely. -#}
     <label class="emb-field">
       <span data-i18n="emb.accent2">Second colour</span>
       <span class="emb-colour">
@@ -88,14 +93,11 @@
       <span data-i18n="emb.lang">Language</span>
       <select data-emb="lang"></select>
     </label>
-
   </div>
 
-  {#- THE PERIOD THE ROADMAP IS DRAWN AGAINST. Without it the rail spans only
-     the milestones themselves, so the last dated one always sits at the end
-     and the whole arc reads as finished the moment it passes. With it, the
-     fill is elapsed time — which is what chaseroush.com shows. -#}
-  <div class="emb-period" data-emb="period">
+  {#- Only the roadmap is drawn against a period. -#}
+  {% if embedWidget == "roadmap" %}
+  <div class="emb-period">
     <div class="emb-period-text">
       <h4 data-i18n="emb.periodTitle">The period this covers</h4>
       <p data-i18n="emb.periodDesc">Set both and the roadmap is drawn against these dates, with the line filling as time passes. Leave them empty and it spans your milestones instead — which means the last one always sits at the end.</p>
@@ -112,22 +114,21 @@
       <button type="button" class="ghost-btn" data-emb="tlSave" data-i18n="emb.periodSave">Save period</button>
     </div>
   </div>
+  {% endif %}
 
   <p class="emb-shared" data-i18n="emb.sharedNote">
     Colours are shared by every widget this ministry publishes. The language
     belongs to this snippet only.
   </p>
 
-  {#- THE PUBLICATION DECISION, on its own and worded as what it does rather
-     than as a setting name. Everything above works whether this is on or off,
-     because you should be able to look before you decide. -#}
+  {#- THE PUBLICATION DECISION, worded as what it does rather than as a setting
+     name. Everything above works whether this is on or off, because you should
+     be able to look before you decide. -#}
   <div class="emb-publish">
     <div class="emb-publish-text">
       <h4 data-i18n="emb.shareTitle">Let other websites show this</h4>
       <p data-emb="shareDesc" data-i18n="emb.shareOff">
-        Nobody can use the code below yet. Turn this on and the address starts
-        answering — until then it returns nothing at all, not even an error
-        saying you exist.
+        Nobody can use the code below yet.
       </p>
     </div>
     <div class="emb-publish-ctl">
@@ -140,13 +141,8 @@
     </div>
   </div>
 
-  {#- TWO THINGS TO COPY, and they are for different people.
-
-     The snippet is for whoever runs a website and wants the picture. The data
-     address is for whoever is building something of their own and wants the
-     numbers — a designer with their own layout, a church intranet, a spread-
-     sheet. Offering only the snippet sends the second group looking for an
-     API that is already there.  -#}
+  {#- TWO THINGS TO COPY, for different people: the snippet for whoever wants
+     the picture, the data address for whoever is building their own. -#}
   <div class="emb-copies">
     <div class="emb-copy">
       <div class="emb-copy-head">
@@ -168,10 +164,6 @@
         <pre class="emb-code" data-emb="api"></pre>
         <button type="button" class="ghost-btn" data-emb="copyApi" data-i18n="common.copy">Copy</button>
       </div>
-      {#- The written guide. Increasingly the person building against this will
-         hand both to an assistant, and the payload alone cannot say which
-         fields grow, that money is in minor units, or that a null date is
-         normal. -#}
       <a class="emb-guide" data-emb="guide" download>
         <span data-i18n="emb.guide">Download the developer guide</span>
         <span class="emb-guide-sub" data-i18n="emb.guideSub">Markdown — how to read the data, and how to keep working when goals or milestones are added.</span>

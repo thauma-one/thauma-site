@@ -1099,7 +1099,7 @@
   // Pages that render snapshot-backed sections. /staff/directory/ and
   // /staff/resources/ are live-only, so they never fetch the snapshot; the
   // dashboard needs both.
-  var NEEDS_SNAPSHOT = ['index', 'support', 'stewardship', 'activity'];
+  var NEEDS_SNAPSHOT = ['index', 'stewardship', 'activity'];
   var NEEDS_STAFF_API = ['index', 'directory', 'resources'];
 
   var page = document.body.getAttribute('data-staff-page') || 'index';
@@ -1112,6 +1112,37 @@
       try { sessionStorage.removeItem(IDENT); } catch (e) {}
     });
   }
+
+  /* TABS, for any page that has them. Ministry carries three sections and
+     Settings carries three panels; both use the same markup, so the behaviour
+     belongs here rather than being written twice.
+
+     Settings runs its own copy — it also rewrites the hash and is wired to its
+     own load — so this bails out there rather than two handlers fighting over
+     the same buttons. */
+  (function wireTabs() {
+    var tabs = document.querySelectorAll('.tabs .tab');
+    if (!tabs.length || page === 'settings') return;
+
+    function show(name) {
+      Array.prototype.forEach.call(tabs, function (b) {
+        b.setAttribute('aria-selected', b.dataset.tab === name ? 'true' : 'false');
+      });
+      Array.prototype.forEach.call(document.querySelectorAll('.tab-panel'), function (p) {
+        p.hidden = p.dataset.panel !== name;
+      });
+      // Survives a reload, so returning to a section does not mean finding it.
+      try { history.replaceState(null, '', '#' + name); } catch (e) {}
+    }
+
+    Array.prototype.forEach.call(tabs, function (b) {
+      b.addEventListener('click', function () { show(b.dataset.tab); });
+    });
+
+    var wanted = (location.hash || '').slice(1);
+    var known = Array.prototype.some.call(tabs, function (b) { return b.dataset.tab === wanted; });
+    show(known ? wanted : tabs[0].dataset.tab);
+  })();
 
   loadIdentity();
   if (NEEDS_SNAPSHOT.indexOf(page) !== -1) loadSnapshot();

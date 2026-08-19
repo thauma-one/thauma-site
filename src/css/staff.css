@@ -1018,6 +1018,33 @@ body.has-savebar .acting-mark{bottom:calc(var(--ms-savebar-h,72px) + 12px)}
   line-height:var(--lh-body)}
 .emb-period-fields{display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap}
 
+/* The stage bar: what this is, and how wide to show it. */
+.emb-stagebar{display:flex;justify-content:space-between;align-items:flex-end;
+  gap:20px;flex-wrap:wrap}
+.emb-devices{display:inline-flex;background:var(--bg2);border:1px solid var(--line);
+  border-radius:var(--radius);padding:3px;gap:2px;flex:0 0 auto}
+.emb-device{appearance:none;border:0;background:transparent;cursor:pointer;
+  font:inherit;font-size:var(--fs-micro);letter-spacing:var(--ls-caps);
+  text-transform:uppercase;font-weight:600;color:var(--dim);padding:7px 14px;
+  border-radius:calc(var(--radius) - 2px);transition:background .12s ease,color .12s ease}
+@media(hover:hover){ .emb-device:hover{color:var(--text)} }
+.emb-device.is-on{background:var(--panel);color:var(--text);
+  box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.emb-device:focus-visible{outline:2px solid var(--voice-tech);outline-offset:1px}
+
+/* NARROW is a real constraint, not a picture of one. The widget chooses its
+   layout from the width it is given, so 380px produces exactly what a phone
+   would — the roadmap becomes a vertical column. */
+.emb-stage.is-narrow{max-inline-size:380px;margin-inline:auto}
+
+/* ---- goals editor ---- */
+.gl-wide{grid-column:1 / -1}
+.gl-progress{margin-top:22px;padding-top:20px;border-top:1px solid var(--line)}
+.gl-progress h4{font-family:var(--font-display);font-size:var(--fs-sm);
+  font-weight:var(--w-hair);color:var(--text)}
+.gl-progress > p{margin:6px 0 14px;font-size:var(--fs-micro);color:var(--dim);
+  line-height:var(--lh-body);max-width:64ch}
+
 /* The publication decision, set apart because it is the only control here
    that changes what strangers can reach. */
 .emb-publish{display:flex;align-items:flex-start;gap:24px;flex-wrap:wrap;

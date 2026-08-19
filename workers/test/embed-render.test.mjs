@@ -202,7 +202,23 @@ const ROADMAP = {
       text: { en: { title: "Book the flights", description: "Waiting on dates." } } },
   ],
   languages: [{ code: "en" }, { code: "sr" }],
+  prayer: [
+    { id: "p1", is_answered: false,
+      text: { en: { title: "A place to live in Zagreb",
+                    description: "Somewhere within reach of the church." } } },
+    { id: "p2", is_answered: true, answered_on: "2026-05-01",
+      text: { en: { title: "Language school funding",
+                    description: "The course starts in autumn.",
+                    answer_text: "Covered in full by two churches." } } },
+  ],
 };
+
+/** Rendered text only — the stylesheet is a child of the shadow root, so
+    root.allText includes every CSS keyword in it. A test looking for a word
+    that is also a CSS one (":focus-visible") matches the styles and reports a
+    badge that is not being drawn. */
+const shown = (root) =>
+  root.children.filter((c) => c.tagName !== "STYLE").map((c) => c.allText).join("");
 
 /* --------------------------------- tests -------------------------------- */
 
@@ -327,6 +343,13 @@ await check("a milestone with no label falls back to a formatted date", async ()
      breakdown once the parent is opened, so check the parent's own fallback
      path instead — m2 has neither, and must simply not print a date. */
   assert(root.byClass("pin").length === 2, "two pins");
+});
+
+await check("there is no FOCUS badge — CR's timeline does not mark one", async () => {
+  /* is_featured still reaches the payload for anyone building their own
+     design; the pin already carries a title, a date and a percentage. */
+  const { root } = await run(ROADMAP, { "data-thauma": "mira-petrovic", "data-widget": "roadmap" });
+  assert(!/Focus/i.test(shown(root)), `a Focus badge is being drawn: ${shown(root).slice(0, 160)}`);
 });
 
 await check("the legend names all three states", async () => {
@@ -513,6 +536,41 @@ await check("a milestone with no children has no breakdown", async () => {
   root.byClass("pin")[1].click();
   assert(!root.byClass("detail")[0].allText.includes("Breakdown"),
     "should not offer a breakdown of nothing");
+});
+
+/* ---- prayer ---- */
+
+await check("prayer renders as cards, request and answer distinguished", async () => {
+  const { root } = await run(ROADMAP, { "data-thauma": "mira-petrovic", "data-widget": "prayer" });
+  eq(root.byClass("pcard").length, 2, "two cards");
+  assert(/A place to live in Zagreb/.test(root.allText), "first request missing");
+  assert(/Somewhere within reach/.test(root.allText), "description missing");
+});
+
+await check("an answered prayer is marked, and carries the account", async () => {
+  /* "Answered" with no account of how is a badge rather than a testimony. */
+  const { root } = await run(ROADMAP, { "data-thauma": "mira-petrovic", "data-widget": "prayer" });
+  const answered = root.byClass("pcard").filter((c) => c.classList.contains("answered"));
+  eq(answered.length, 1, "one answered");
+  assert(/Answered/.test(answered[0].allText), "no badge");
+  assert(/Covered in full by two churches/.test(answered[0].allText), "the answer is missing");
+  eq(root.byClass("panswer").length, 1, "the answer should have its own block");
+});
+
+await check("an unanswered prayer shows no badge and no answer block", async () => {
+  const { root } = await run(ROADMAP, { "data-thauma": "mira-petrovic", "data-widget": "prayer" });
+  const open = root.byClass("pcard").filter((c) => !c.classList.contains("answered"))[0];
+  assert(!/Answered/.test(open.allText), "should not be marked answered");
+  assert(open.find((n) => (n.className || "") === "panswer").length === 0,
+    "should have no answer block");
+});
+
+await check("a prayer with no usable title is dropped, not drawn empty", async () => {
+  const bare = JSON.parse(JSON.stringify(ROADMAP));
+  bare.prayer = [{ id: "p9", is_answered: false, text: {} }];
+  const { root } = await run(bare, { "data-thauma": "mira-petrovic", "data-widget": "prayer" });
+  eq(root.byClass("pcard").length, 0, "an empty card was drawn");
+  assert(/Nothing to show/.test(root.allText), "should say there is nothing");
 });
 
 /* ---- language ---- */
