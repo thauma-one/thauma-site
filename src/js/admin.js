@@ -344,31 +344,57 @@
     }
 
     $('admPartners').innerHTML = state.partners.map(function (p) {
-      var langs = state.languages.filter(function (l) { return l.is_active; });
+      var active = state.languages.filter(function (l) { return l.is_active; });
+
+      /* THE PARTNER'S OWN LANGUAGE IS ALWAYS AN OPTION, even if it has since
+         been switched off site-wide. The list used to be the active languages
+         only, so a partner set to a retired language showed the FIRST option
+         instead — the page quietly reported the wrong answer, and saving
+         anything else on the row would have written that wrong answer back. */
+      var langs = active.slice();
+      if (p.default_lang && !langs.some(function (l) { return l.code === p.default_lang; })) {
+        langs.push({ code: p.default_lang, name: p.default_lang, retired: true });
+      }
+
       return '<div class="adm-partner">' +
-        '<div><span class="adm-name">' + esc(p.display_name) +
-          '<span class="adm-status s-' + esc(p.status) + '">' +
-            esc(tr('adm.pstatus.' + p.status)) + '</span></span>' +
+        '<div class="adm-who">' +
+          '<span class="adm-name">' + esc(p.display_name) +
+            '<span class="adm-status s-' + esc(p.status) + '">' +
+              esc(tr('adm.pstatus.' + p.status)) + '</span></span>' +
           '<span class="adm-email">' + esc(p.slug) + ' · ' +
           p.member_count + ' ' + esc(tr('adm.members')) +
-          (p.member_count ? '' : ' — ' + esc(tr('adm.nobodyAttached'))) + '</span></div>' +
-        '<label class="fld"><span>' + esc(tr('adm.pstatusLabel')) + '</span>' +
-          '<select class="status-pick" data-partner-status="' + esc(p.id) + '">' +
-            PARTNER_STATUS.map(function (s) {
-              return '<option value="' + s + '"' + (p.status === s ? ' selected' : '') + '>' +
-                esc(tr('adm.pstatus.' + s)) + '</option>';
-            }).join('') +
-          '</select></label>' +
-        '<button type="button" class="del danger" data-del-partner="' + esc(p.id) + '">' +
-          esc(tr('adm.deletePartner')) + '</button>' +
-        '<label class="fld"><span>' + esc(tr('adm.defaultLang')) + '</span>' +
-          '<select class="lang-pick" data-partner="' + esc(p.id) + '">' +
-            langs.map(function (l) {
-              return '<option value="' + esc(l.code) + '"' +
-                (l.code === p.default_lang ? ' selected' : '') + '>' +
-                esc((l.native_name || l.name) + ' (' + l.code + ')') + '</option>';
-            }).join('') +
-          '</select></label>' +
+          (p.member_count ? '' : ' — ' + esc(tr('adm.nobodyAttached'))) + '</span>' +
+        '</div>' +
+
+        /* Both pickers in one column. They were separate grid children, so a
+           three-column row wrapped and left the delete button stranded in the
+           middle of the second line looking like it belonged to the language. */
+        '<div class="adm-partner-set">' +
+          '<label class="fld"><span>' + esc(tr('adm.pstatusLabel')) + '</span>' +
+            '<select class="status-pick" data-partner-status="' + esc(p.id) + '">' +
+              PARTNER_STATUS.map(function (s) {
+                return '<option value="' + s + '"' + (p.status === s ? ' selected' : '') + '>' +
+                  esc(tr('adm.pstatus.' + s)) + '</option>';
+              }).join('') +
+            '</select></label>' +
+          '<label class="fld"><span>' + esc(tr('adm.defaultLang')) + '</span>' +
+            '<select class="lang-pick" data-partner="' + esc(p.id) + '">' +
+              langs.map(function (l) {
+                return '<option value="' + esc(l.code) + '"' +
+                  (l.code === p.default_lang ? ' selected' : '') + '>' +
+                  esc((l.native_name || l.name) + ' (' + l.code + ')') +
+                  (l.retired ? ' — ' + esc(tr('adm.langRetired')) : '') + '</option>';
+              }).join('') +
+            '</select>' +
+            /* Named and explained, because there are TWO language settings in
+               this console and they were indistinguishable here. This one is
+               the partner's public site; the other is the person's own console
+               language, on their People row. Reading one as the other is what
+               makes a correct value look wrong. */
+            '<span class="fld-hint">' + esc(tr('adm.defaultLangHint')) + '</span>' +
+          '</label>' +
+        '</div>' +
+
         '<button type="button" class="del danger" data-del-partner="' + esc(p.id) + '">' +
           esc(tr('adm.deletePartner')) + '</button>' +
       '</div>';

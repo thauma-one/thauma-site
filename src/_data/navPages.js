@@ -26,6 +26,6 @@ module.exports = () => {
     return typeof e === "boolean" ? e : !!e[column];
   };
 
-  return ["about", "mission", "values", "team", "resources", "contact", "events", "give"]
+  return ["about", "mission", "values", "team", "resources", "events", "contact", "give"]
     .filter(on);
 };
