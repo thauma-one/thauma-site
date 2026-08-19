@@ -367,6 +367,56 @@ in it. English only, deliberately: see the note below about translations.
 
 ---
 
+## The staff pages are edited from the People page now
+
+Open a person on `/admin/users/` and there is a **Staff page** section in their
+panel. Switch **Shown on the staff pages** on and you get their title, bio (two
+languages side by side), region, public email, order and web address. Board
+members leave it off; that is what it is for.
+
+Saving writes it immediately and **does not change the live site** — same as
+every other edit. The site catches up when you press Publish.
+
+The list sorts by name, region, partner, role or status. Anyone without the
+sorted-on value goes to the bottom rather than the top.
+
+**Photos are not in there yet**, and the panel says so. They need somewhere to
+live, which is the next item.
+
+---
+
+## Two things for you, when you are at a computer
+
+### 1. Apply migrations 0013 and 0014 before you next publish
+
+Publish page → database panel → **Apply**, type `MIGRATE`. Order is always
+merge → apply → publish.
+
+- `0013` puts Slovenian in the language catalogue. Until it runs, Slovenian is
+  live on the public site and no partner can write content in it — which is
+  the state it has been in for days.
+- `0014` adds the staff profile tables. The Staff page section cannot save
+  without it.
+
+### 2. Make an R2 bucket, so photos have somewhere to go
+
+Photos are the one part of the staff page still missing, and the only reason is
+that there is nowhere to put them. Not git: a phone photo committed to a
+repository is there permanently, in every clone, forever.
+
+**dash.cloudflare.com → R2 → Create bucket**, name it `thauma-media`. Tell me
+when it exists and I will wire the uploader — it resizes and converts to WebP
+in the browser before anything is sent, so a 12MP photo does not become a 12MP
+upload.
+
+**⚠ Worth knowing before you press create:** this lands in your PERSONAL
+Cloudflare account, like everything else Cloudflare-side. R2 does not transfer
+between accounts, so when Thauma gets its own account this bucket has to be
+recreated and the files copied across. Photos are the least painful thing to
+move — far easier than a database — so this is a note, not a reason to wait.
+
+---
+
 ## Left over from before
 
 - [ ] **Archive the Netlify site.** The rollback week is up around the 22nd.
