@@ -38,6 +38,7 @@ import { createDb, partnerPublicSite } from "./lib/db.js";
 import { assertNoPersonalData } from "./lib/nopii.js";
 import { json } from "./lib/store.js";
 import { WIDGET_JS } from "./embed-widget.js";
+import { embedGuide } from "./embed-guide.js";
 
 /** A slug is lowercase letters, digits and hyphens. Nothing else reaches SQL. */
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,62}$/;
@@ -79,6 +80,12 @@ export default {
     const path = url.pathname.replace(/^\/embed\/v1\/?/, "");
 
     if (path === "widget.js") return widgetScript(url.hostname);
+
+    /* The guide, for whoever is building their own design against the JSON —
+       increasingly somebody who will hand the URL to an assistant. Same
+       opt-in gate as the data: a partner who is not sharing has no guide. */
+    const g = path.match(/^([^/]+)-guide\.md$/);
+    if (g) return guideFor(decodeURIComponent(g[1]), env);
 
     const m = path.match(/^([^/]+)\.json$/);
     if (!m) return json({ error: "Not found" }, 404, CORS);
@@ -168,5 +175,43 @@ async function partnerJson(slug, env) {
        at most, and a widget on a busy page must not become a query per view.
        stale-while-revalidate means the visitor never waits for the refresh. */
     "Cache-Control": "public, max-age=300, stale-while-revalidate=3600",
+  });
+}
+
+/**
+ * The origin the GUIDE should name.
+ *
+ * NOT the request's. Under `wrangler dev` both url.hostname and the Host
+ * header come back as whatever route is in wrangler.toml, so a guide
+ * downloaded from dev told the reader to call next.thauma.one — an address
+ * their code must never point at.
+ *
+ * More importantly it would be wrong even if that worked: this document is
+ * handed to somebody building against the LIVE API. Where it happened to be
+ * downloaded from is not where their code should call.
+ */
+function publicOrigin(env) {
+  return env.PUBLIC_ORIGIN || "https://thauma.one";
+}
+
+async function guideFor(slug, env) {
+  if (!env.DB) return json({ error: "No database bound to this deploy" }, 500, CORS);
+  if (!SLUG_RE.test(slug)) return json({ error: "Not found" }, 404, CORS);
+
+  const db = createDb(env.DB);
+  const partner = await db.queryOne("public_partner_for_embed", { slug });
+  if (!partner) return json({ error: "Not found" }, 404, CORS);
+
+  return new Response(embedGuide(publicOrigin(env), partner.slug, partner.display_name), {
+    status: 200,
+    headers: {
+      ...CORS,
+      "Content-Type": "text/markdown; charset=utf-8",
+      /* Offered as a download, because it is a document to keep beside the
+         code being written rather than a page to read once and lose. */
+      "Content-Disposition":
+        'attachment; filename="' + partner.slug + '-thauma-api.md"',
+      "Cache-Control": "public, max-age=300",
+    },
   });
 }

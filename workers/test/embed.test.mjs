@@ -114,6 +114,35 @@ await check("the widget sends nothing back and sets no cookie", async () => {
          "the fetch must explicitly omit credentials");
 });
 
+await check("the developer guide is served for an opted-in partner", async () => {
+  const res = await handler.fetch(req("/embed/v1/chase-roush-guide.md"), env({ partner: ENABLED }));
+  eq(res.status, 200, "status");
+  assert(/markdown/.test(res.headers.get("Content-Type")), "content type");
+  assert(/attachment/.test(res.headers.get("Content-Disposition") || ""), "should download");
+  const body = await res.text();
+  /* The four things the payload cannot say for itself, and the reason the
+     document exists at all. */
+  assert(/never index into it|Loop over the array/i.test(body), "must warn about indexing arrays");
+  assert(/minor units/i.test(body), "must explain cents");
+  assert(/exceed 100|more than 100/i.test(body), "must warn that percent can exceed 100");
+  assert(/1970/.test(body), "must warn about new Date(null)");
+  assert(body.includes("chase-roush"), "should name the real slug");
+  /* The LIVE address, whatever host served the document. wrangler dev reports
+     the wrangler.toml route as the hostname, so a request-derived origin sent
+     readers to next.thauma.one — and a guide handed to a developer should name
+     production regardless of where it was downloaded. */
+  assert(body.includes("https://thauma.one/embed/v1/chase-roush.json"),
+    "must name the live API address");
+  assert(!body.includes("next.thauma.one"), "must not name a preview host");
+});
+
+await check("a partner who is not sharing has no guide either", async () => {
+  /* Same gate as the data. A guide naming a partner would otherwise confirm
+     they exist when the JSON endpoint deliberately does not. */
+  const res = await handler.fetch(req("/embed/v1/chase-roush-guide.md"), env({ partner: null }));
+  eq(res.status, 404, "status");
+});
+
 /* -------------------------------- refusals ------------------------------ */
 
 await check("a partner who has NOT opted in is 404", async () => {

@@ -69,15 +69,11 @@
       <select data-emb="lang"></select>
     </label>
 
-    <label class="emb-field">
-      <span data-i18n="emb.limit">Rows shown</span>
-      <input type="number" data-emb="limit" min="0" max="20" step="1" value="0">
-    </label>
   </div>
 
   <p class="emb-shared" data-i18n="emb.sharedNote">
-    Colours are shared by every widget this ministry publishes. Language and
-    rows belong to this snippet only.
+    Colours are shared by every widget this ministry publishes. The language
+    belongs to this snippet only.
   </p>
 
   {#- THE PUBLICATION DECISION, on its own and worded as what it does rather
@@ -130,6 +126,14 @@
         <pre class="emb-code" data-emb="api"></pre>
         <button type="button" class="ghost-btn" data-emb="copyApi" data-i18n="common.copy">Copy</button>
       </div>
+      {#- The written guide. Increasingly the person building against this will
+         hand both to an assistant, and the payload alone cannot say which
+         fields grow, that money is in minor units, or that a null date is
+         normal. -#}
+      <a class="emb-guide" data-emb="guide" download>
+        <span data-i18n="emb.guide">Download the developer guide</span>
+        <span class="emb-guide-sub" data-i18n="emb.guideSub">Markdown — how to read the data, and how to keep working when goals or milestones are added.</span>
+      </a>
     </div>
   </div>
 

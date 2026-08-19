@@ -22,7 +22,7 @@
 
    WHAT SAVES AND WHAT DOES NOT:
      accent, theme, on   SAVED, per partner, shared by every widget
-     language, rows      NOT saved — they belong to the snippet you paste
+     language            NOT saved — it belongs to the snippet you paste
    ============================================================ */
 (function () {
   'use strict';
@@ -69,8 +69,6 @@
     if (kind !== 'goal') a.push('data-widget="' + esc(kind) + '"');
     var lang = p.lang.value;
     if (lang && lang !== 'en') a.push('data-lang="' + esc(lang) + '"');
-    var limit = parseInt(p.limit.value, 10);
-    if (limit > 0) a.push('data-limit="' + limit + '"');
     return a.join(' ');
   }
 
@@ -80,6 +78,7 @@
       '<div ' + attrs() + '></div>\n' +
       '<script src="' + origin() + '/embed/v1/widget.js" async></' + 'script>';
     p.api.textContent = origin() + '/embed/v1/' + slug() + '.json';
+    if (p.guide) p.guide.href = origin() + '/embed/v1/' + slug() + '-guide.md';
     renderPreview();
   }
 
@@ -279,7 +278,17 @@
 
   // Snippet-only — nothing to save.
   p.lang.addEventListener('change', renderCode);
-  p.limit.addEventListener('change', renderCode);
+
+  /* THE PREVIEW GROWS, IT DOES NOT SCROLL. The widget measures itself and
+     posts its height out; a fixed frame with a scrollbar inside it is not what
+     the thing looks like on a real page, and a roadmap is exactly the shape
+     that overflows one. Clamped at the top end so a partner with forty
+     milestones cannot produce a frame nobody can scroll past. */
+  window.addEventListener('message', function (e) {
+    var h = e.data && e.data.__thaumaHeight;
+    if (!h || !p.frame) return;
+    p.frame.style.height = Math.max(180, Math.min(2400, h + 8)) + 'px';
+  });
 
   function copier(sourceEl) {
     return function () {

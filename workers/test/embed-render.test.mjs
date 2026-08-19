@@ -49,6 +49,26 @@ class Node {
   getAttribute(k) { return k in this.attributes ? this.attributes[k] : null; }
   attachShadow() { this.shadowRoot = new Node("#shadow"); return this.shadowRoot; }
 
+  /* Enough of classList for toggle(), which is how the widget chooses between
+     the horizontal and vertical layouts. */
+  get classList() {
+    const self = this;
+    return {
+      toggle(cls, on) {
+        const set = new Set((self.className || "").split(" ").filter(Boolean));
+        if (on) set.add(cls); else set.delete(cls);
+        self.className = [...set].join(" ");
+      },
+      add(cls) { this.toggle(cls, true); },
+      contains(cls) { return (self.className || "").split(" ").includes(cls); },
+    };
+  }
+
+  /* WIDE by default, so the shim exercises the horizontal rail. The vertical
+     column is built in the same pass regardless — only CSS hides one — so
+     both layouts are asserted against whichever width is set here. */
+  getBoundingClientRect() { return { width: this._width ?? 900, height: 0, top: 0, left: 0 }; }
+
   set textContent(v) { this._text = String(v); this.children = []; }
   get textContent() {
     return this.children.length
@@ -58,7 +78,7 @@ class Node {
 
   /* Everything the widget renders, flattened — what a reader would see. */
   get allText() {
-    return (this._text || "") + this.children.map((c) => c.allText).join(" ");
+    return (this._text || "") + this.children.map((c) => c.allText).join("");
   }
   find(pred, out = []) {
     for (const c of this.children) { if (pred(c)) out.push(c); c.find(pred, out); }
@@ -75,6 +95,7 @@ function makeDocument(placements) {
   doc.addEventListener = () => {};
   doc.querySelectorAll = () => placements;
   doc.documentElement = new Node("html");
+  doc.documentElement.scrollHeight = 600;
   doc.currentScript = { src: "https://thauma.one/embed/v1/widget.js" };
   return doc;
 }
@@ -98,6 +119,9 @@ async function run(payload, attrs, { status = 200 } = {}) {
     setTimeout, clearTimeout,
     requestAnimationFrame: (fn) => fn(),
     MutationObserver: class { observe() {} },
+    ResizeObserver: class { observe() {} },
+    matchMedia: () => ({ matches: true }),   // reduced motion: no animation to race
+    addEventListener: () => {},
     fetch: async (url, init) => {
       calls.push({ url, init });
       return {
@@ -108,6 +132,7 @@ async function run(payload, attrs, { status = 200 } = {}) {
     },
   };
   sandbox.window = sandbox;
+  sandbox.parent = sandbox;          // not framed: reportHeight returns early
 
   const fn = new Function("window", "document", "fetch", "URL", "Intl",
                           "requestAnimationFrame", "MutationObserver",
@@ -205,7 +230,7 @@ await check("a junk data-accent cannot reach the stylesheet", async () => {
     "data-thauma": "chase-roush", "data-accent": "red;}body{display:none}",
   });
   const style = root.children.find((c) => c.tagName === "STYLE");
-  assert(!style.textContent.includes("display:none"), "CSS injection got through");
+  assert(!style.textContent.includes("red;}body"), "CSS injection got through");
   assert(style.textContent.includes("#6D4AFF"), "should fall back to the house colour");
 });
 
@@ -215,9 +240,21 @@ await check("the roadmap renders milestones in order with their status", async (
   });
   const steps = root.byClass("step");
   eq(steps.length, 2, "milestone count");
-  assert(steps[0].className.includes("is-complete"), `first status: ${steps[0].className}`);
-  assert(steps[1].className.includes("is-in_progress"), `second status: ${steps[1].className}`);
+  assert(steps[0].className.includes("complete"), `first status: ${steps[0].className}`);
+  assert(steps[1].className.includes("in_progress"), `second status: ${steps[1].className}`);
   assert(/Commissioned in Beograd/.test(root.allText), "first title missing");
+});
+
+await check("an undated milestone sorts LAST, not to 1970", async () => {
+  /* new Date(null) is the epoch, not an invalid date. Without an explicit
+     null guard, a milestone with no actual_date sorts before every real one
+     and the roadmap opens with the thing that has not been scheduled yet. */
+  const { root } = await run(ROADMAP, {
+    "data-thauma": "mira-petrovic", "data-widget": "roadmap",
+  });
+  const steps = root.byClass("step");
+  assert(steps[0].allText.includes("Commissioned"),
+    `the dated milestone must come first, got: ${steps[0].allText.slice(0, 40)}`);
 });
 
 await check("data-lang picks that language's text", async () => {
@@ -235,13 +272,6 @@ await check("a milestone with no translation in that language falls back to Engl
     "data-thauma": "mira-petrovic", "data-widget": "roadmap", "data-lang": "sr",
   });
   assert(/Monthly support/.test(root.allText), "the English-only milestone vanished");
-});
-
-await check("data-limit trims the list", async () => {
-  const { root } = await run(ROADMAP, {
-    "data-thauma": "mira-petrovic", "data-widget": "roadmap", "data-limit": "1",
-  });
-  eq(root.byClass("step").length, 1, "limit ignored");
 });
 
 await check("a partner with nothing to show says so rather than drawing an empty box", async () => {
@@ -278,12 +308,16 @@ await check("two placements for one partner share a single fetch", async () => {
     document: doc, URL, Intl, console, setTimeout, clearTimeout,
     requestAnimationFrame: (fn) => fn(),
     MutationObserver: class { observe() {} },
+    ResizeObserver: class { observe() {} },
+    matchMedia: () => ({ matches: true }),
+    addEventListener: () => {},
     fetch: async (url, init) => {
       calls.push(url);
       return { ok: true, status: 200, json: async () => GOALS };
     },
   };
   sandbox.window = sandbox;
+  sandbox.parent = sandbox;
   new Function("window", "document", "fetch", "URL", "Intl", "requestAnimationFrame",
                "MutationObserver", "setTimeout", "clearTimeout", "console", WIDGET_JS)(
     sandbox, doc, sandbox.fetch, URL, Intl, sandbox.requestAnimationFrame,
@@ -305,10 +339,14 @@ await check("injected preview data is used INSTEAD of fetching", async () => {
     document: doc, URL, Intl, console, setTimeout, clearTimeout,
     requestAnimationFrame: (fn) => fn(),
     MutationObserver: class { observe() {} },
+    ResizeObserver: class { observe() {} },
+    matchMedia: () => ({ matches: true }),
+    addEventListener: () => {},
     fetch: async () => { fetched = true; throw new Error("must not fetch"); },
     __thaumaPreview: GOALS,
   };
   sandbox.window = sandbox;
+  sandbox.parent = sandbox;
 
   new Function("window", "document", "fetch", "URL", "Intl", "requestAnimationFrame",
                "MutationObserver", "setTimeout", "clearTimeout", "console", WIDGET_JS)(
@@ -332,10 +370,14 @@ await check("injected data for a DIFFERENT partner is ignored", async () => {
     document: doc, URL, Intl, console, setTimeout, clearTimeout,
     requestAnimationFrame: (fn) => fn(),
     MutationObserver: class { observe() {} },
+    ResizeObserver: class { observe() {} },
+    matchMedia: () => ({ matches: true }),
+    addEventListener: () => {},
     fetch: async () => { fetched = true; return { ok: false, status: 404, json: async () => ({}) }; },
     __thaumaPreview: GOALS,          // says chase-roush
   };
   sandbox.window = sandbox;
+  sandbox.parent = sandbox;
 
   new Function("window", "document", "fetch", "URL", "Intl", "requestAnimationFrame",
                "MutationObserver", "setTimeout", "clearTimeout", "console", WIDGET_JS)(

@@ -81,7 +81,7 @@
 /* touch-action:manipulation kills double-tap-to-zoom sitewide (and the
    ~300ms tap delay on buttons/links as a bonus) without touching
    pinch-zoom or text selection — neither is affected by this value. */
-html{scroll-behavior:smooth;scrollbar-width:thin;scrollbar-color:var(--blue) var(--bg2);touch-action:manipulation}
+html{scroll-behavior:smooth;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.14) transparent;touch-action:manipulation}
 
 /* ---------- Cross-page transitions (2026-07-20, re-added 2026-07-21) ----
    MPA View Transitions: the outgoing page holds and the incoming one fades
@@ -151,13 +151,23 @@ html.vt-leaving .mobile-menu a.active::after{animation:none!important;transform:
 html.vt-leaving.give-pressed .give-btn{color:#06110c!important}
 html.vt-leaving.give-pressed .give-btn::before{transition:none!important;transform:scaleX(1)!important}
 
-/* ---------- Scrollbar (WebKit/Blink) ---------- */
+/* ---------- Scrollbar (WebKit/Blink) ----------
+   A NEUTRAL that sits back, not the brand gradient.
+
+   It used to be the blue-to-seafoam gradient, which put the site's loudest
+   colour down the full height of every page — a permanent vertical stripe
+   competing with whatever the page was actually about. The accent should be
+   spent on one thing at a time, and a scrollbar is not that thing.
+
+   Built from the same hairline greys as the dividers, so it reads as part of
+   the frame. It lightens on hover, which is the only moment it is being
+   aimed at. */
 ::-webkit-scrollbar{width:11px;height:11px}
-::-webkit-scrollbar-track{background:var(--bg2)}
-::-webkit-scrollbar-thumb{background:linear-gradient(180deg,var(--blue),var(--foam));
-  border-radius:7px;border:2px solid var(--bg2);background-clip:padding-box}
-::-webkit-scrollbar-thumb:hover{background:linear-gradient(180deg,var(--blue-hi),var(--foam-hi));background-clip:padding-box}
-::-webkit-scrollbar-corner{background:var(--bg2)}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.10);
+  border-radius:7px;border:2px solid transparent;background-clip:padding-box}
+::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.20);background-clip:padding-box}
+::-webkit-scrollbar-corner{background:transparent}
 body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-weight:300;
   min-height:100vh;display:flex;flex-direction:column;
   background-image:

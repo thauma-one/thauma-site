@@ -22,6 +22,17 @@
 }
 
 *{margin:0;padding:0;box-sizing:border-box}
+/* ---------- Scrollbar ----------
+   Same neutral as the public site. The console did not set one at all, so it
+   inherited the browser default and did not match the site it administers. */
+html{scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.14) transparent}
+::-webkit-scrollbar{width:11px;height:11px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.10);
+  border-radius:7px;border:2px solid transparent;background-clip:padding-box}
+::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.20);background-clip:padding-box}
+::-webkit-scrollbar-corner{background:transparent}
+
 body{background:var(--bg);color:var(--text);
   font-family:var(--font-body);font-weight:var(--w-body);line-height:1.6;
   -webkit-font-smoothing:antialiased;min-height:100vh}
@@ -969,8 +980,13 @@ body.has-savebar .acting-mark{bottom:calc(var(--ms-savebar-h,72px) + 12px)}
     linear-gradient(45deg,rgba(255,255,255,.02) 25%,transparent 25%,
     transparent 75%,rgba(255,255,255,.02) 75%);
   background-size:18px 18px;background-position:0 0,9px 9px}
-.emb-stage iframe{display:block;inline-size:100%;block-size:340px;border:0;
-  background:transparent}
+.emb-stage iframe{display:block;inline-size:100%;block-size:300px;border:0;
+  background:transparent;
+  /* The widget measures itself and posts its height; this is only the size
+     before that arrives. It grows rather than scrolling — a frame with its own
+     scrollbar is not what the thing looks like on a real page. */
+  transition:block-size .35s cubic-bezier(.16,1,.3,1)}
+@media(prefers-reduced-motion:reduce){ .emb-stage iframe{transition:none} }
 
 .emb-controls{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-end}
 .emb-field{display:flex;flex-direction:column;gap:6px;font-size:var(--fs-micro);
@@ -1012,3 +1028,14 @@ body.has-savebar .acting-mark{bottom:calc(var(--ms-savebar-h,72px) + 12px)}
   color:var(--voice-tech-hi);line-height:1.7;overflow-x:auto;
   white-space:pre-wrap;word-break:break-all}
 .emb-codewrap .ghost-btn{position:absolute;top:10px;right:10px}
+
+/* The written guide, offered under the data address it explains. */
+.emb-guide{display:block;margin-top:12px;padding:12px 14px;
+  border:1px dashed var(--line-hard);border-radius:var(--radius);
+  text-decoration:none;color:var(--voice-tech);font-size:var(--fs-micro);
+  font-weight:600;transition:border-color .15s ease,color .15s ease}
+@media(hover:hover){ .emb-guide:hover{border-color:var(--voice-tech);
+  color:var(--voice-tech-hi)} }
+.emb-guide:focus-visible{outline:2px solid var(--voice-tech);outline-offset:2px}
+.emb-guide-sub{display:block;margin-top:4px;color:var(--dim);font-weight:400;
+  line-height:var(--lh-body)}
