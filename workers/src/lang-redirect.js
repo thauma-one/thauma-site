@@ -24,8 +24,13 @@ export const LANG_MAP = {
 
 export const DEFAULT_LANG = "en";
 
-// Keep in sync with site.json's languages toggle.
-export const SUPPORTED = ["en", "hr", "sr"];
+/* THE ONE LIST. contact-form.js used to keep a second copy of this and it had
+   already drifted — Slovenian went live on the site and that copy still said
+   three languages, so a Slovenian visitor's contact form fell back to English.
+   "Keep in sync" was the instruction here and it was not followed, so
+   lang-redirect.test.mjs now asserts this matches site.json's languages
+   instead of asking. */
+export const SUPPORTED = ["en", "hr", "sr", "sl"];
 
 const COOKIE_RE = /(?:^|;\s*)thauma_lang=([a-z]{2})(?:;|$)/;
 

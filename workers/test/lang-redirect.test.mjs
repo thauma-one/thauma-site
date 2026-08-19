@@ -8,6 +8,8 @@
  *
  *   node workers/test/lang-redirect.test.mjs
  */
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import {
   chooseLang, savedLang, redirectFor, LANG_MAP, SUPPORTED, DEFAULT_LANG,
 } from "../src/lang-redirect.js";
@@ -108,6 +110,29 @@ check("every language in LANG_MAP is actually supported", () => {
     assert(SUPPORTED.includes(lang), `${lang} in LANG_MAP but not SUPPORTED`);
   }
   assert(SUPPORTED.includes(DEFAULT_LANG), "DEFAULT_LANG not in SUPPORTED");
+});
+
+/* THE COMMENT SAID "keep in sync with site.json" AND IT WAS NOT KEPT.
+   Slovenian was added to the site and this list still named three languages,
+   so /sl/ visitors were redirected out of their own language and the contact
+   form fell back to English for them. A list that must match another list is
+   not a thing to remember. */
+check("SUPPORTED matches the languages the site actually builds", () => {
+  const site = JSON.parse(readFileSync(
+    fileURLToPath(new URL("../../src/_data/site.json", import.meta.url)), "utf8"));
+
+  const onSite = [...(site.languages || [])].sort();
+  const inCode = [...SUPPORTED].sort();
+
+  const missing = onSite.filter((l) => !inCode.includes(l));
+  const extra = inCode.filter((l) => !onSite.includes(l));
+
+  assert(!missing.length,
+    `the site builds ${missing.join(", ")} but SUPPORTED does not list ${missing.length > 1 ? "them" : "it"} — ` +
+    `visitors in that language get redirected away from it`);
+  assert(!extra.length,
+    `SUPPORTED lists ${extra.join(", ")}, which the site does not build — ` +
+    `a redirect there is a 404`);
 });
 
 check("no country is claimed by two languages", () => {
