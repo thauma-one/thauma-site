@@ -186,7 +186,7 @@ the ingress section read:
 ingress:
   - hostname: dev.thauma.one
     path: ^/_sync
-    service: http://localhost:8994
+    service: http://localhost:8995
   - hostname: dev.thauma.one
     service: http://localhost:8991
   - service: http_status:404
@@ -296,7 +296,44 @@ caller not using it was.
 
 ---
 
-## Fixed on 2026-08-19 — nothing for you to do, but worth knowing
+## Save now reaches the dev site — fixed 2026-08-19
+
+**The complaint was right every time.** You pressed Save, the words went to
+GitHub, and dev.thauma.one did not change. Nothing was ever broken and nothing
+was ever lost — the edit was safely on `main` within a second. The gap was
+that the Pi's copy of the site sits on the `dev` branch, content is always
+written to `main` (deliberately — one copy of the words, so publishing never
+needs a merge), and the sync only ever compared `dev` against `dev`. It ran
+every five minutes, correctly found nothing, and reported success.
+
+`deploy/git-sync.sh` now also brings `main`'s content across. So:
+
+**Press Save, and within five minutes dev.thauma.one shows it. No terminal.**
+
+It is deliberately narrow. It merges `main` only when everything `main` has
+that `dev` does not is confined to `src/_data/` — the files nothing but the
+content editor writes. If `main` carries code as well, it refuses and says so,
+because that is a publish in flight and not a script's decision. It also
+refuses to touch a working tree with uncommitted changes. `npm test` runs
+`deploy/test-git-sync.sh`, which builds real repositories and checks that each
+of those refusals actually refuses.
+
+### To make it instant instead of five minutes
+
+Two things are still undone from section 5, and until both are done the timer
+is what is covering you.
+
+1. **The tunnel is not routing the webhook.** `POST dev.thauma.one/_sync`
+   currently reaches the website instead of the sync listener. Fix the ingress
+   in `sudo nano /etc/cloudflared/config.yml` exactly as section 5(d) shows —
+   **note the port is 8995**, not 8994. The listener is running and works; I
+   sent it a signed delivery and it accepted it.
+2. **GitHub is not sending anything yet.** Section 5(e). The receiver has had
+   no delivery from GitHub since it started.
+
+---
+
+## Also fixed on 2026-08-19 — nothing for you to do, but worth knowing
 
 **The milestone list was never loading.** Not slow, not empty — the editor was
 switched off entirely. It checked the page's name before wiring itself up, and
