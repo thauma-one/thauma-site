@@ -11,7 +11,7 @@ that are expensive to discover later:
   * the audit log cannot be edited or deleted
   * deleting a partner takes their data with it
   * last_personal_contact ignores bulk sends
-  * goal progress is derived, and clamps at 100%
+  * goal progress is derived, and reports over-funding honestly
   * a milestone cannot be nested under another partner's milestone
   * nothing publishes unless somebody set is_public
 
@@ -448,7 +448,7 @@ def t_touch_null_when_never_contacted():
     assert row[2] == 0, f"interaction_count should be 0, got {row[2]}"
 
 
-def t_goal_progress_computed_and_clamped():
+def t_goal_progress_computed_and_honest():
     db = fresh()
     db.execute("INSERT INTO goals (id,partner_id,label,kind,target_cents,created_at,updated_at)"
                " VALUES (?,?,?,?,?,?,?)",
@@ -465,12 +465,18 @@ def t_goal_progress_computed_and_clamped():
     assert row[0] == 68000, f"should use the LATEST snapshot, got {row[0]}"
     assert row[1] == 14, f"donor_count wrong: {row[1]}"
     assert row[2] == 68, f"percent should be 68, got {row[2]}"
-    # overfunded clamps
+    # OVER-FUNDED REPORTS THE TRUTH.
+    #
+    # This used to clamp at 100, so a goal that raised more than it asked for
+    # reported exactly its target and the good news was the one thing the
+    # number could not express. 0012 removed the MIN(100, ...) — a progress BAR
+    # should clamp, and both the widget and the published developer guide say
+    # so, but the FIGURE should not.
     db.execute("INSERT INTO goal_snapshots (id,goal_id,partner_id,raised_cents,source,captured_at)"
                " VALUES (?,?,?,?,?,?)", ("s_3", "g_1", "p_chase", 150000, "donorbox", "2026-08-20T00:00:00Z"))
     db.commit()
     pct = db.execute("SELECT percent FROM goal_progress WHERE goal_id='g_1'").fetchone()[0]
-    assert pct == 100, f"overfunded goal should clamp to 100, got {pct}"
+    assert pct == 150, f"an over-funded goal should say 150, got {pct}"
 
 
 def t_milestones_default_to_private():
@@ -800,7 +806,7 @@ if __name__ == "__main__":
         ("deleting a partner cascades, others intact",  t_partner_delete_cascades),
         ("last_personal_contact ignores newsletters",   t_last_personal_ignores_newsletters),
         ("untouched contact yields NULLs, count 0",     t_touch_null_when_never_contacted),
-        ("goal progress uses latest snapshot, clamps",  t_goal_progress_computed_and_clamped),
+        ("goal progress uses latest snapshot, reports over-funding",  t_goal_progress_computed_and_honest),
         ("seed files insert every row they claim",      t_seed_files_insert_every_row_they_claim),
         ("a person can be removed, history survives",   t_a_person_can_be_removed_even_with_history),
         ("audit_log references nothing",                t_audit_log_has_no_foreign_keys),

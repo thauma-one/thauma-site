@@ -36,6 +36,8 @@ import contactForm from "./contact-form.js";
 import partnerApi from "./partner-api.js";
 import staffMilestones from "./staff-milestones.js";
 import staffSettings from "./staff-settings.js";
+import staffGoals from "./staff-goals.js";
+import staffPrayer from "./staff-prayer.js";
 import adminApi from "./admin.js";
 import adminContent from "./admin-content.js";
 import adminPublish from "./admin-publish.js";
@@ -215,6 +217,14 @@ const ROUTES = {
   // ORG-WIDE, and the only endpoint that is not partner-scoped. Its role
   // check is done once at the top of the handler and fails closed.
   "/api/admin": adminApi,
+
+  // Giving goals: their definition, and progress entered by hand for a
+  // partner whose platform has no integration. See staff-goals.js.
+  "/api/staff-goals": staffGoals,
+
+  // Prayer requests and their answers. Same shape as milestones — a state row
+  // and one translation per language. See staff-prayer.js.
+  "/api/staff-prayer": staffPrayer,
 
   // THE ONLY ENDPOINT THAT CAN WRITE TO THE REPOSITORY. It holds a GitHub
   // token, so a save here becomes a commit and the Action deploys it. Admin

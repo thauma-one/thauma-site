@@ -269,7 +269,16 @@ await check("every real query converts with its documented params", async () => 
     user_id: "u_1", role: "admin", granted_by: "u_1", status: "active",
     slug: "a-partner", display_name: "A Partner",
     // embeds
-    embed_enabled: 0, embed_accent: "#6D4AFF", embed_theme: "auto",
+    embed_enabled: 0, embed_accent: "#6D4AFF", embed_accent2: null,
+    embed_theme: "auto",
+    // timeline bounds
+    timeline_start: null, timeline_end: null,
+    // goals
+    label: "Monthly support", kind: "monthly", target_cents: 450000,
+    currency: "USD", description: null,
+    raised_cents: 0, donor_count: null, goal_id: "g_1",
+    // prayer
+    prayer_id: "pr_1", is_answered: 0, answered_on: null, answer_text: null,
   };
   // The ONE query with no parameters: the language catalogue belongs to the
   // organisation, not to a partner, so there is nothing to scope it by. Named

@@ -351,6 +351,77 @@ await check("an undated milestone sorts LAST, not to 1970", async () => {
     `the dated milestone must come first, got: ${steps[0].allText.slice(0, 40)}`);
 });
 
+/* ---- timeline bounds ---- */
+
+await check("timeline bounds decide where a milestone SITS", async () => {
+  /* Unbounded, the earliest milestone defines the start and is pinned at 0 —
+     the rail can say nothing about a period nobody named. Given 2020 to 2030,
+     a 2026 milestone belongs in the middle, with room either side for work
+     already done and work not yet scheduled. */
+  const bounded = JSON.parse(JSON.stringify(ROADMAP));
+  bounded.timeline = { start: "2020-01-01", end: "2030-01-01" };
+
+  const plain = await run(ROADMAP, { "data-thauma": "mira-petrovic", "data-widget": "roadmap" });
+  const withB = await run(bounded, { "data-thauma": "mira-petrovic", "data-widget": "roadmap" });
+
+  const a = parseFloat(plain.root.byClass("pin")[0].style.left);
+  const b = parseFloat(withB.root.byClass("pin")[0].style.left);
+
+  assert(a < 12, `unbounded, the earliest milestone anchors the start: ${a}%`);
+  assert(b > 45 && b < 75,
+    `bounded 2020-2030, a 2026-03 milestone belongs mid-rail: ${b}%`);
+});
+
+await check("the rail fill is ELAPSED TIME when bounds are set", async () => {
+  /* Not a tally of completed milestones. A ministry a year into a three-year
+     arc with nothing finished should not see an empty rail. */
+  const bounded = JSON.parse(JSON.stringify(ROADMAP));
+  bounded.milestones.forEach((m) => { m.status = "upcoming"; });
+  /* A window this run sits squarely inside: started well before now, ends
+     well after. */
+  const now = Date.now();
+  bounded.timeline = {
+    start: new Date(now - 300 * 864e5).toISOString().slice(0, 10),
+    end: new Date(now + 100 * 864e5).toISOString().slice(0, 10),
+  };
+
+  const { root } = await run(bounded, { "data-thauma": "mira-petrovic", "data-widget": "roadmap" });
+  const fill = parseFloat(root.byClass("rfill")[0].style.width);
+  assert(fill > 60 && fill < 90,
+    `should be about three quarters elapsed, got ${fill}% — is it counting statuses?`);
+});
+
+await check("with no bounds the fill falls back to completed milestones", async () => {
+  /* One of two parents is complete. */
+  const { root } = await run(ROADMAP, { "data-thauma": "mira-petrovic", "data-widget": "roadmap" });
+  eq(root.byClass("rfill")[0].style.width, "50%", "fill");
+});
+
+/* ---- the chosen pair ---- */
+
+await check("a ministry's SECOND colour is used when it has chosen one", async () => {
+  const chosen = JSON.parse(JSON.stringify(ROADMAP));
+  chosen.theme = { accent: "#00D4FF", accent2: "#FF8800", mode: "auto" };
+  const { root } = await run(chosen, { "data-thauma": "mira-petrovic", "data-widget": "roadmap" });
+  const css = root.children.find((c) => c.tagName === "STYLE").textContent;
+  eq(/--done:(#[0-9a-fA-F]{6})/.exec(css)[1].toLowerCase(), "#ff8800", "chosen second colour");
+  eq(/--prog:(#[0-9a-fA-F]{6})/.exec(css)[1].toLowerCase(), "#00d4ff", "first colour");
+});
+
+await check("overriding only the FIRST colour re-derives the second", async () => {
+  /* Otherwise a partner's stored second colour would be paired with somebody
+     else's first, leaving the relationship half-applied. */
+  const chosen = JSON.parse(JSON.stringify(ROADMAP));
+  chosen.theme = { accent: "#00D4FF", accent2: "#FF8800", mode: "auto" };
+  const { root } = await run(chosen, {
+    "data-thauma": "mira-petrovic", "data-widget": "roadmap", "data-accent": "#E4572E",
+  });
+  const css = root.children.find((c) => c.tagName === "STYLE").textContent;
+  const { companion } = await import("../src/embed-colour.js");
+  eq(/--done:(#[0-9a-fA-F]{6})/.exec(css)[1].toLowerCase(), companion("#E4572E").toLowerCase(),
+     "second colour should follow the override");
+});
+
 /* ---- interaction ---- */
 
 await check("clicking a milestone opens a details panel", async () => {

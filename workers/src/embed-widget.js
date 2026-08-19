@@ -252,8 +252,7 @@ export const WIDGET_JS = String.raw`
 
   /* ---------- styles ---------- */
 
-  function styles(accent, mode) {
-    var done = companion(accent);
+  function styles(accent, done, mode) {
 
     var light = ':host{--bg:#fff;--fg:#12121a;--dim:#5c5c6b;--line:#e6e6ee;' +
                 '--track:#eef0f6;--panel:#f7f8fb}';
@@ -565,16 +564,25 @@ export const WIDGET_JS = String.raw`
 
   /* ---------- roadmap ---------- */
 
-  function positions(rows) {
+  function positions(rows, bounds) {
     var n = rows.length;
     var evenly = rows.map(function (_, i) { return n <= 1 ? 50 : (i / (n - 1)) * 100; });
 
     var times = rows.map(function (m) { return toTime(m.actual_date); });
     var valid = times.filter(function (t) { return !isNaN(t); });
-    if (valid.length < 2) return { pos: evenly, now: null };
 
-    var min = Math.min.apply(null, valid), max = Math.max.apply(null, valid);
-    if (!(max > min)) return { pos: evenly, now: null };
+    /* THE BOUNDS WIN WHERE THEY EXIST. Without them a roadmap spans only its
+       own milestones, so the last dated entry always sits at 100% and the
+       whole arc reads as finished the moment it passes. With them the rail is
+       the period the ministry actually named, and a milestone three years out
+       sits three years out. */
+    var bs = bounds && toTime(bounds.start), be = bounds && toTime(bounds.end);
+    var min = (bs !== undefined && !isNaN(bs)) ? bs
+            : valid.length ? Math.min.apply(null, valid) : NaN;
+    var max = (be !== undefined && !isNaN(be)) ? be
+            : valid.length ? Math.max.apply(null, valid) : NaN;
+
+    if (isNaN(min) || isNaN(max) || !(max > min)) return { pos: evenly, now: null };
 
     var pos = times.map(function (t) {
       if (isNaN(t)) return 100;
@@ -691,7 +699,7 @@ export const WIDGET_JS = String.raw`
     return d;
   }
 
-  function roadmap(milestones, lang) {
+  function roadmap(milestones, lang, bounds) {
     var parsed = parse(milestones, lang);
     var rows = parsed.parents, kids = parsed.kids;
     if (!rows.length) return null;
@@ -707,9 +715,22 @@ export const WIDGET_JS = String.raw`
     });
     road.appendChild(legend);
 
-    var P = positions(rows);
-    var done = rows.filter(function (m) { return m.status === 'complete'; }).length;
-    var progress = rows.length ? (done / rows.length) * 100 : 0;
+    var P = positions(rows, bounds);
+
+    /* THE RAIL SHOWS ELAPSED TIME, not a tally of finished milestones — the
+       same thing chaseroush.com does. A count would jump in steps and would
+       sit at 0% for a ministry a year into a three-year arc with nothing
+       marked complete yet. Where no bounds are set there is no period to
+       measure, so it falls back to the tally. */
+    var progress;
+    var bs2 = bounds && toTime(bounds.start), be2 = bounds && toTime(bounds.end);
+    if (!isNaN(bs2) && !isNaN(be2) && be2 > bs2) {
+      var t = Date.now();
+      progress = t <= bs2 ? 0 : t >= be2 ? 100 : ((t - bs2) / (be2 - bs2)) * 100;
+    } else {
+      var fin = rows.filter(function (m) { return m.status === 'complete'; }).length;
+      progress = rows.length ? (fin / rows.length) * 100 : 0;
+    }
 
     var slot = el('div');
     var open = -1;
@@ -887,18 +908,29 @@ export const WIDGET_JS = String.raw`
     if (!/^#[0-9a-fA-F]{6}$/.test(accent)) accent = '#6D4AFF';
     if (['auto', 'light', 'dark'].indexOf(mode) === -1) mode = 'auto';
 
+    /* The pair: chosen if the ministry chose one, derived if not. An override
+       on the div wins for both, and overriding only the first re-derives the
+       second so the relationship is never left half-applied. */
+    var second = node.getAttribute('data-accent2');
+    if (!second || !/^#[0-9a-fA-F]{6}$/.test(second)) {
+      second = node.getAttribute('data-accent')
+        ? companion(accent)
+        : ((data.theme && data.theme.accent2) || companion(accent));
+    }
+    if (!/^#[0-9a-fA-F]{6}$/.test(second)) second = companion(accent);
+
     var root = node.shadowRoot || node.attachShadow({ mode: 'open' });
     root.textContent = '';
 
     var style = document.createElement('style');
-    style.textContent = styles(accent, mode);
+    style.textContent = styles(accent, second, mode);
     root.appendChild(style);
 
     var host = el('div', 'host');
     var body;
 
     if (kind === 'roadmap') {
-      body = roadmap(data.milestones || [], lang);
+      body = roadmap(data.milestones || [], lang, data.timeline);
     } else {
       var goals = data.goals || [];
       if (goals.length) {
@@ -940,7 +972,8 @@ export const WIDGET_JS = String.raw`
     var root = node.shadowRoot || node.attachShadow({ mode: 'open' });
     root.textContent = '';
     var style = document.createElement('style');
-    style.textContent = styles('#6D4AFF', node.getAttribute('data-theme') || 'auto');
+    style.textContent = styles('#6D4AFF', companion('#6D4AFF'),
+                                node.getAttribute('data-theme') || 'auto');
     root.appendChild(style);
     var box = el('div');
     box.appendChild(el('div', 'msg', message));

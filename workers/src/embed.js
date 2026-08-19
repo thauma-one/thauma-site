@@ -39,6 +39,7 @@ import { assertNoPersonalData } from "./lib/nopii.js";
 import { json } from "./lib/store.js";
 import { WIDGET_JS } from "./embed-widget.js";
 import { embedGuide } from "./embed-guide.js";
+import { companion } from "./embed-colour.js";
 
 /** A slug is lowercase letters, digits and hyphens. Nothing else reaches SQL. */
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,62}$/;
@@ -133,14 +134,30 @@ function widgetScript(hostname) {
  */
 export async function embedPayload(db, partner) {
   const site = await partnerPublicSite(db, partner.id);
+  const accent = HEX_RE.test(partner.embed_accent || "")
+    ? partner.embed_accent : DEFAULT_ACCENT;
   return {
     version: 1,
     partner: { slug: partner.slug, display_name: partner.display_name },
     /* The partner's stored appearance, so a page embedded years ago picks up
        a rebrand without being edited. The snippet can still override it. */
     theme: {
-      accent: HEX_RE.test(partner.embed_accent || "") ? partner.embed_accent : DEFAULT_ACCENT,
+      accent: accent,
+      /* THE SECOND COLOUR, resolved here rather than in the browser. NULL in
+         the database means "derive it", so a partner who has never chosen a
+         pair still gets one — and a partner who has chosen gets theirs. Doing
+         it server-side means every consumer of this payload, including
+         somebody building their own design from the JSON, sees the same two
+         colours the widget draws. */
+      accent2: HEX_RE.test(partner.embed_accent2 || "")
+        ? partner.embed_accent2 : companion(accent),
       mode: ["auto", "light", "dark"].includes(partner.embed_theme) ? partner.embed_theme : "auto",
+    },
+    /* The arc the roadmap is drawn against. Null when unset, which the widget
+       reads as "span the milestones themselves". */
+    timeline: {
+      start: partner.timeline_start || null,
+      end: partner.timeline_end || null,
     },
     generated_at: new Date().toISOString(),
     ...site,

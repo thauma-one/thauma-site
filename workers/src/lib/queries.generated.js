@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "ac80a68429137a72";
+export const SOURCE_DIGEST = "43da8e79569b05ec";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -151,12 +151,30 @@ ON CONFLICT(id) DO UPDATE SET
   updated_at = :now
 WHERE directory_contacts.user_id = :user_id
   AND directory_contacts.partner_id = :partner_id;`,
+  goal_delete: `DELETE FROM goals WHERE id = :id AND partner_id = :partner_id;`,
   goal_history: `SELECT raised_cents, donor_count, captured_at
 FROM goal_snapshots
 WHERE goal_id = :goal_id AND partner_id = :partner_id
 ORDER BY captured_at ASC;`,
+  goal_snapshot_insert: `INSERT INTO goal_snapshots (
+  id, goal_id, partner_id, raised_cents, donor_count, source, captured_at
+) VALUES (
+  :id, :goal_id, :partner_id, :raised_cents, :donor_count, 'manual', :now
+);`,
+  goal_upsert: `INSERT INTO goals (
+  id, partner_id, label, description, kind, target_cents, currency,
+  is_public, created_at, updated_at
+) VALUES (
+  :id, :partner_id, :label, :description, :kind, :target_cents, :currency,
+  :is_public, :now, :now
+)
+ON CONFLICT(id) DO UPDATE SET
+  label = :label, description = :description, kind = :kind,
+  target_cents = :target_cents, currency = :currency, is_public = :is_public,
+  updated_at = :now
+WHERE goals.partner_id = :partner_id;`,
   goals_for_partner: `SELECT
-  goal_id, label, kind, target_cents, currency,
+  goal_id, label, description, kind, target_cents, currency,
   raised_cents, donor_count, percent, captured_at, is_public
 FROM goal_progress
 WHERE partner_id = :partner_id
@@ -231,12 +249,19 @@ ORDER BY sort_order, l.name;`,
   partner_set_embed: `UPDATE partners
    SET embed_enabled = :embed_enabled,
        embed_accent  = :embed_accent,
+       embed_accent2 = :embed_accent2,
        embed_theme   = :embed_theme,
        updated_at    = :now
  WHERE id = :partner_id;`,
+  partner_set_timeline: `UPDATE partners
+   SET timeline_start = :timeline_start,
+       timeline_end   = :timeline_end,
+       updated_at     = :now
+ WHERE id = :partner_id;`,
   partner_settings: `SELECT p.id, p.slug, p.display_name, p.status,
        COALESCE(p.default_lang, 'en') AS default_lang,
-       p.embed_enabled, p.embed_accent, p.embed_theme
+       p.embed_enabled, p.embed_accent, p.embed_accent2, p.embed_theme,
+       p.timeline_start, p.timeline_end
 FROM partners p WHERE p.id = :partner_id;`,
   partners_for_user: `SELECT p.id, p.slug, p.display_name, p.status, pu.role AS access_role,
        u.id AS user_id, u.name AS user_name,
@@ -249,8 +274,39 @@ JOIN partners p ON p.id = pu.partner_id
 WHERE u.email = :email
   AND u.status = 'active'
 ORDER BY p.display_name;`,
+  prayer_delete: `DELETE FROM prayer WHERE id = :id AND partner_id = :partner_id;`,
+  prayer_for_staff: `SELECT p.id, p.is_public, p.is_answered, p.answered_on, p.sort_order,
+       p.created_at, p.updated_at
+FROM prayer p
+WHERE p.partner_id = :partner_id
+ORDER BY p.sort_order ASC, p.created_at DESC;`,
+  prayer_translation_delete: `DELETE FROM prayer_translations
+WHERE prayer_id = :prayer_id AND lang = :lang AND partner_id = :partner_id;`,
+  prayer_translation_upsert: `INSERT INTO prayer_translations (
+  prayer_id, lang, partner_id, title, description, answer_text, updated_at
+) VALUES (
+  :prayer_id, :lang, :partner_id, :title, :description, :answer_text, :now
+)
+ON CONFLICT(prayer_id, lang) DO UPDATE SET
+  title = :title, description = :description, answer_text = :answer_text,
+  updated_at = :now
+WHERE prayer_translations.partner_id = :partner_id;`,
+  prayer_translations_for_staff: `SELECT t.prayer_id, t.lang, t.title, t.description, t.answer_text
+FROM prayer_translations t
+WHERE t.partner_id = :partner_id;`,
+  prayer_upsert: `INSERT INTO prayer (
+  id, partner_id, is_public, is_answered, answered_on, sort_order,
+  created_at, updated_at
+) VALUES (
+  :id, :partner_id, :is_public, :is_answered, :answered_on, :sort_order,
+  :now, :now
+)
+ON CONFLICT(id) DO UPDATE SET
+  is_public = :is_public, is_answered = :is_answered,
+  answered_on = :answered_on, sort_order = :sort_order, updated_at = :now
+WHERE prayer.partner_id = :partner_id;`,
   public_goals_for_partner: `SELECT
-  goal_id, label, kind, target_cents, currency,
+  goal_id, label, description, kind, target_cents, currency,
   raised_cents, donor_count, percent, captured_at
 FROM goal_progress
 WHERE partner_id = :partner_id
@@ -279,11 +335,22 @@ FROM milestones
 WHERE partner_id = :partner_id
   AND is_public = 1
 ORDER BY sort_order ASC, (actual_date IS NULL), actual_date ASC;`,
-  public_partner_for_embed: `SELECT id, slug, display_name, embed_accent, embed_theme
+  public_partner_for_embed: `SELECT id, slug, display_name, embed_accent, embed_accent2, embed_theme,
+       timeline_start, timeline_end
 FROM partners
 WHERE slug = :slug
   AND embed_enabled = 1
   AND is_public = 1;`,
+  public_prayer_for_partner: `SELECT id, is_answered, answered_on, sort_order
+FROM prayer
+WHERE partner_id = :partner_id
+  AND is_public = 1
+ORDER BY is_answered ASC, sort_order ASC;`,
+  public_prayer_translations: `SELECT t.prayer_id, t.lang, t.title, t.description, t.answer_text
+FROM prayer_translations t
+JOIN prayer p ON p.id = t.prayer_id
+WHERE t.partner_id = :partner_id
+  AND p.is_public = 1;`,
   resource_delete: `DELETE FROM resources WHERE id = :id AND partner_id IS :partner_id;`,
   resource_upsert: `INSERT INTO resources
   (id, partner_id, title, description, link, photo, visibility,

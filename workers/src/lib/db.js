@@ -65,6 +65,11 @@ export const PUBLIC_QUERIES = new Set([
      own authorisation (embed_enabled = 1) instead of relying on a caller to
      have checked one first. */
   "public_partner_for_embed",
+  /* Published prayer. The translations query JOINs prayer and filters on
+     is_public there, which is what keeps an unpublished request's words out
+     of a public response. */
+  "public_prayer_for_partner",
+  "public_prayer_translations",
 ]);
 
 /** Tables a query in PUBLIC_QUERIES must never mention. */
@@ -232,16 +237,27 @@ export function createDb(binding, exec) {
 export async function partnerPublicSite(db, partnerId) {
   if (!partnerId) throw new Error("partnerPublicSite requires a partnerId");
 
-  const [goals, milestones, translations, languages] = await Promise.all([
+  const [goals, milestones, translations, languages, prayer, prayerTx] = await Promise.all([
     db.publicQuery("public_goals_for_partner", { partner_id: partnerId }),
     db.publicQuery("public_milestones_for_partner", { partner_id: partnerId }),
     db.publicQuery("public_milestone_translations", { partner_id: partnerId }),
     db.publicQuery("public_languages_for_partner", { partner_id: partnerId }),
+    db.publicQuery("public_prayer_for_partner", { partner_id: partnerId }),
+    db.publicQuery("public_prayer_translations", { partner_id: partnerId }),
   ]);
 
   // Group text by milestone, then by language code. Nothing here names a
   // language: adding one is a row in `languages` and a switch on
   // partner_languages, and this code does not change.
+  const byPrayer = {};
+  for (const tx of prayerTx) {
+    (byPrayer[tx.prayer_id] ||= {})[tx.lang] = {
+      title: tx.title,
+      description: tx.description,
+      answer_text: tx.answer_text,
+    };
+  }
+
   const byMilestone = {};
   for (const tx of translations) {
     (byMilestone[tx.milestone_id] ||= {})[tx.lang] = {
@@ -260,6 +276,7 @@ export async function partnerPublicSite(db, partnerId) {
     goals: goals.map((g) => ({
       id: g.goal_id,
       label: g.label,
+      description: g.description || null,
       kind: g.kind,
       target_cents: g.target_cents,
       currency: g.currency,
@@ -283,6 +300,18 @@ export async function partnerPublicSite(db, partnerId) {
         completion: m.completion,
         is_featured: !!m.is_featured,
         text: byMilestone[m.id],
+      })),
+    /* Published prayer, same shape as milestones: a state row plus text keyed
+       by language. A request with no publishable translation is dropped for
+       the same reason a milestone is — an entry with no words renders as an
+       empty card on somebody else's website. */
+    prayer: prayer
+      .filter((p) => byPrayer[p.id])
+      .map((p) => ({
+        id: p.id,
+        is_answered: !!p.is_answered,
+        answered_on: p.answered_on,
+        text: byPrayer[p.id],
       })),
   };
 }

@@ -81,6 +81,11 @@ await check("PUBLIC_QUERIES is an allow-list of exactly the intended queries", a
        which is what makes an unauthenticated endpoint acceptable. See
        workers/src/embed.js. */
     "public_partner_for_embed",
+    /* Added 2026-08-18. Published prayer requests. The translations query
+       JOINs prayer and filters is_public there, which is what keeps an
+       unpublished request's words out of a public response. */
+    "public_prayer_for_partner",
+    "public_prayer_translations",
   ], "public set");
 });
 
@@ -133,9 +138,13 @@ function fakePublicDb(overrides = {}) {
   });
 }
 
-await check("the payload carries languages, goals and milestones and nothing else", async () => {
+await check("the payload carries languages, goals, milestones and prayer — and nothing else", async () => {
   const site = await partnerPublicSite(fakePublicDb(), "p_chase");
-  eq(Object.keys(site).sort(), ["goals", "languages", "milestones"], "top-level keys");
+  /* `prayer` joined the payload on 2026-08-18. It is public content in the
+     same sense the roadmap is, and it goes through the same publication gate
+     and the same no-personal-data check. */
+  eq(Object.keys(site).sort(), ["goals", "languages", "milestones", "prayer"],
+     "top-level keys");
 });
 
 await check("milestone text is keyed BY LANGUAGE, with no language named in code", async () => {

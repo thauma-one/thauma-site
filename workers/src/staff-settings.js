@@ -144,7 +144,14 @@ export default {
         embed: {
           enabled: settings ? !!settings.embed_enabled : false,
           accent: (settings && settings.embed_accent) || null,
+          /* NULL means "derive it from the first". The panel shows the derived
+             value so the pair is never displayed half-chosen. */
+          accent2: (settings && settings.embed_accent2) || null,
           theme: (settings && settings.embed_theme) || "auto",
+        },
+        timeline: {
+          start: (settings && settings.timeline_start) || null,
+          end: (settings && settings.timeline_end) || null,
         },
         languages: languages.map((l) => ({ ...l, is_enabled: !!l.is_enabled })),
         api_keys: keys.map((k) => ({ ...k, revoked: !!k.revoked_at })),
@@ -231,6 +238,42 @@ export default {
         return json({ default_lang: body.default_lang });
       }
 
+      /* --- the roadmap's period, ADMIN ONLY ---
+         What the timeline is drawn against. Without it a roadmap spans only
+         its own milestones, so the last dated entry always sits at the end and
+         the whole arc reads as finished the moment it passes. Public-facing,
+         so the same gate as everything else that changes what visitors see. */
+      if (body.timeline !== undefined) {
+        if (!isAdmin) {
+          return json({ error: "Only an administrator can change the roadmap's period." }, 403);
+        }
+        const t = body.timeline || {};
+        const day = /^\d{4}-\d{2}-\d{2}$/;
+
+        const start = t.start ? String(t.start).trim() : null;
+        const end = t.end ? String(t.end).trim() : null;
+        for (const [name, v] of [["start", start], ["end", end]]) {
+          if (v && !day.test(v)) {
+            return json({ error: `The ${name} date must look like 2026-08-18.` }, 400);
+          }
+        }
+        /* Both or neither, and in order. One bound alone cannot describe a
+           period, and a backwards pair would divide by a negative. */
+        if ((start && !end) || (end && !start)) {
+          return json({ error: "A period needs both a start and an end." }, 400);
+        }
+        if (start && end && !(start < end)) {
+          return json({ error: "The end must come after the start." }, 400);
+        }
+
+        await db.query("partner_set_timeline", {
+          partner_id, timeline_start: start, timeline_end: end, now,
+        });
+        await audit(db, { user, partner, action: "update", entity: "partner.timeline",
+                          detail: { start, end } });
+        return json({ timeline: { start, end } });
+      }
+
       /* --- the embed panel, ADMIN ONLY ---
          Turning embeds on makes this partner readable by anyone on the
          internet with no credential at all. That is a publication decision
@@ -245,13 +288,18 @@ export default {
         /* Validated HERE because SQLite cannot: a CHECK constraint testing
            only the length would pass '#zzzzzz'. This value is written into a
            stylesheet in a stranger's browser. */
-        let accent = null;
-        if (e.accent !== null && e.accent !== undefined && e.accent !== "") {
-          if (!/^#[0-9a-fA-F]{6}$/.test(String(e.accent))) {
-            return json({ error: "A colour must be a six-digit hex code, like #6D4AFF." }, 400);
-          }
-          accent = String(e.accent).toUpperCase();
+        const hex = (v) => {
+          if (v === null || v === undefined || v === "") return { ok: true, value: null };
+          if (!/^#[0-9a-fA-F]{6}$/.test(String(v))) return { ok: false };
+          return { ok: true, value: String(v).toUpperCase() };
+        };
+
+        const a1 = hex(e.accent), a2 = hex(e.accent2);
+        if (!a1.ok || !a2.ok) {
+          return json({ error: "A colour must be a six-digit hex code, like #6D4AFF." }, 400);
         }
+        const accent = a1.value;
+        const accent2 = a2.value;
 
         const theme = String(e.theme || "auto");
         if (!["auto", "light", "dark"].includes(theme)) {
@@ -261,14 +309,15 @@ export default {
         const enabled = e.enabled ? 1 : 0;
 
         await db.query("partner_set_embed", {
-          partner_id, embed_enabled: enabled, embed_accent: accent, embed_theme: theme, now,
+          partner_id, embed_enabled: enabled, embed_accent: accent,
+          embed_accent2: accent2, embed_theme: theme, now,
         });
         /* Audited as a publication decision, with the state it moved TO —
            "who made this readable by the world, and when" is the first
            question anybody asks about an unauthenticated endpoint. */
         await audit(db, { user, partner, action: "update", entity: "partner.embed",
-                          detail: { enabled: !!enabled, accent, theme } });
-        return json({ embed: { enabled: !!enabled, accent, theme } });
+                          detail: { enabled: !!enabled, accent, accent2, theme } });
+        return json({ embed: { enabled: !!enabled, accent, accent2, theme } });
       }
 
       // --- revoke a key ---
