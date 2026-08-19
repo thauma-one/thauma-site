@@ -418,11 +418,18 @@ export const WIDGET_JS = String.raw`
         'vertical-align:2px;font-weight:700;letter-spacing:.04em}' +
 
       /* ---- the details panel ---- */
+      /* The entrance and the exit are chaseroush.com's, to the frame: half a
+         second in from thirty pixels above, four tenths out to twenty. The
+         first version had a shorter, softer entrance and NO exit at all — the
+         panel simply vanished, which is the half that was noticed. */
       '.detail{margin-top:16px;background:var(--panel);border:1px solid var(--line);' +
         'border-radius:12px;padding:26px 28px;position:relative;' +
-        'animation:slideIn .35s cubic-bezier(.16,1,.3,1) both}' +
-      '@keyframes slideIn{from{opacity:0;transform:translateY(-8px)}' +
+        'animation:slideIn .5s ease}' +
+      '.detail.leaving{animation:slideOut .4s ease forwards;pointer-events:none}' +
+      '@keyframes slideIn{from{opacity:0;transform:translateY(-30px)}' +
         'to{opacity:1;transform:translateY(0)}}' +
+      '@keyframes slideOut{from{opacity:1;transform:translateY(0)}' +
+        'to{opacity:0;transform:translateY(-20px)}}' +
       '.dclose{position:absolute;top:14px;right:14px;width:30px;height:30px;' +
         'border-radius:50%;background:var(--track);color:var(--dim);font-size:17px;' +
         'line-height:1;display:flex;align-items:center;justify-content:center;' +
@@ -736,18 +743,39 @@ export const WIDGET_JS = String.raw`
     var open = -1;
     var pins = [], steps = [];
 
-    function closeDetail() {
-      open = -1;
-      slot.textContent = '';
+    function deselect() {
       pins.concat(steps).forEach(function (p) {
         p.classList.remove('sel');
         p.setAttribute('aria-expanded', 'false');
       });
     }
 
+    /* Play the exit, THEN remove. The dots deselect immediately so the rail
+       responds to the click at once while the panel is still leaving —
+       waiting for both would feel like a delay rather than an animation. */
+    function closeDetail(immediate) {
+      open = -1;
+      deselect();
+
+      var panel = slot.firstChild;
+      if (!panel) return;
+
+      if (immediate || reduced) { slot.textContent = ''; return; }
+
+      panel.classList.add('leaving');
+      setTimeout(function () {
+        /* Only if nothing has opened in the meantime — a fast second click
+           must not have its new panel removed by the old one's timer. */
+        if (slot.firstChild === panel) slot.textContent = '';
+      }, 400);
+    }
+
     function openDetail(i) {
       if (open === i) { closeDetail(); return; }
       open = i;
+      /* Replacing one panel with another swaps immediately: animating the old
+         one out while the new one comes in puts two overlapping panels in the
+         same place. */
       pins.forEach(function (p, j) {
         p.classList.toggle('sel', j === i);
         p.setAttribute('aria-expanded', j === i ? 'true' : 'false');

@@ -55,6 +55,26 @@
       </span>
     </label>
 
+    {#- THE SECOND COLOUR. Left on "match automatically" it is derived from the
+       first by rotating the hue — the relationship cyan and seafoam have on
+       chaseroush.com. Turning the switch off hands the pair over entirely. -#}
+    <label class="emb-field">
+      <span data-i18n="emb.accent2">Second colour</span>
+      <span class="emb-colour">
+        <input type="color" data-emb="accent2" value="#0AFFA2">
+        <input type="text" data-emb="accent2Hex" class="emb-hex" maxlength="7"
+               spellcheck="false" aria-label="Second colour hex">
+      </span>
+    </label>
+
+    <label class="emb-field emb-auto">
+      <span data-i18n="emb.pairAuto">Match it</span>
+      <span class="emb-checkline">
+        <input type="checkbox" data-emb="pairAuto" checked>
+        <span data-i18n="emb.pairAutoNote">automatically</span>
+      </span>
+    </label>
+
     <label class="emb-field">
       <span data-i18n="emb.theme">Background</span>
       <select data-emb="theme">
@@ -69,6 +89,28 @@
       <select data-emb="lang"></select>
     </label>
 
+  </div>
+
+  {#- THE PERIOD THE ROADMAP IS DRAWN AGAINST. Without it the rail spans only
+     the milestones themselves, so the last dated one always sits at the end
+     and the whole arc reads as finished the moment it passes. With it, the
+     fill is elapsed time — which is what chaseroush.com shows. -#}
+  <div class="emb-period" data-emb="period">
+    <div class="emb-period-text">
+      <h4 data-i18n="emb.periodTitle">The period this covers</h4>
+      <p data-i18n="emb.periodDesc">Set both and the roadmap is drawn against these dates, with the line filling as time passes. Leave them empty and it spans your milestones instead — which means the last one always sits at the end.</p>
+    </div>
+    <div class="emb-period-fields">
+      <label class="emb-field">
+        <span data-i18n="emb.periodStart">Starts</span>
+        <input type="date" data-emb="tlStart">
+      </label>
+      <label class="emb-field">
+        <span data-i18n="emb.periodEnd">Ends</span>
+        <input type="date" data-emb="tlEnd">
+      </label>
+      <button type="button" class="ghost-btn" data-emb="tlSave" data-i18n="emb.periodSave">Save period</button>
+    </div>
   </div>
 
   <p class="emb-shared" data-i18n="emb.sharedNote">

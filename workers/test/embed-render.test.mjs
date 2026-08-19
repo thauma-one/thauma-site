@@ -48,6 +48,7 @@ class Node {
   setAttribute(k, v) { this.attributes[k] = String(v); }
   getAttribute(k) { return k in this.attributes ? this.attributes[k] : null; }
   attachShadow() { this.shadowRoot = new Node("#shadow"); return this.shadowRoot; }
+  get firstChild() { return this.children[0] || null; }
 
   /* Enough of classList for toggle(), which is how the widget chooses between
      the horizontal and vertical layouts. */
@@ -113,7 +114,7 @@ function makeDocument(placements) {
  * Run the widget against one payload and return the placements it filled.
  * Each returned node exposes .shadowRoot, which is where everything lands.
  */
-async function run(payload, attrs, { status = 200, pageLang = null, preview = null } = {}) {
+async function run(payload, attrs, { status = 200, pageLang = null, preview = null, motion = false } = {}) {
   const node = new Node("div");
   node.attributes = attrs;
 
@@ -130,7 +131,9 @@ async function run(payload, attrs, { status = 200, pageLang = null, preview = nu
     requestAnimationFrame: (fn) => fn(),
     MutationObserver: class { observe() {} },
     ResizeObserver: class { observe() {} },
-    matchMedia: () => ({ matches: true }),   // reduced motion: no animation to race
+    /* Reduced motion by default so assertions do not race an animation.
+       `motion: true` opts one test back in, to check the exit actually plays. */
+    matchMedia: () => ({ matches: !motion }),
     addEventListener: () => {},
     navigator: { language: "en" },
     fetch: async (url, init) => {
@@ -450,6 +453,39 @@ await check("the close button closes it", async () => {
   root.byClass("pin")[0].click();
   root.byClass("dclose")[0].click();
   eq(root.byClass("detail").length, 0, "should have closed");
+});
+
+await check("the panel has BOTH an entrance and an exit", async () => {
+  /* The first version animated in and then simply vanished. Half an
+     animation reads as a glitch, not as motion. */
+  const { root } = await run(ROADMAP, { "data-thauma": "mira-petrovic", "data-widget": "roadmap" });
+  const css = root.children.find((c) => c.tagName === "STYLE").textContent;
+  assert(/@keyframes slideIn\{/.test(css), "no entrance keyframes");
+  assert(/@keyframes slideOut\{/.test(css), "no EXIT keyframes");
+  /* chaseroush.com's timings and distances, not approximations of them. */
+  assert(/animation:slideIn \.5s ease/.test(css), `entrance timing: ${/animation:slideIn[^}]*/.exec(css)}`);
+  assert(/animation:slideOut \.4s ease/.test(css), "exit timing");
+  assert(/translateY\(-30px\)/.test(css), "entrance should come from -30px");
+  assert(/translateY\(-20px\)/.test(css), "exit should leave to -20px");
+});
+
+await check("closing MARKS the panel as leaving before removing it", async () => {
+  /* With motion allowed the panel plays its exit; the dots deselect at once
+     so the rail answers the click immediately. */
+  const { root } = await run(ROADMAP, { "data-thauma": "mira-petrovic", "data-widget": "roadmap" },
+    { motion: true });
+  const pin = root.byClass("pin")[0];
+  pin.click();
+  eq(root.byClass("detail").length, 1, "open");
+
+  pin.click();
+  assert(!pin.classList.contains("sel"), "the dot should deselect immediately");
+  const leaving = root.byClass("detail")[0];
+  assert(leaving && leaving.classList.contains("leaving"),
+    "the panel should be marked leaving rather than removed on the spot");
+
+  await new Promise((r) => setTimeout(r, 450));
+  eq(root.byClass("detail").length, 0, "and gone once the exit has played");
 });
 
 await check("only one milestone is selected at a time", async () => {

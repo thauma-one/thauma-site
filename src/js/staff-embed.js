@@ -35,6 +35,58 @@
   var HEX = /^#[0-9a-fA-F]{6}$/;
   var DEFAULT_ACCENT = '#6D4AFF';
 
+  /* The same -33 degree rotation the Worker and the widget use, so the panel
+     can show what "match automatically" will produce without asking the
+     server. Three copies of this exist and a test asserts they agree — see
+     workers/src/embed-colour.js. */
+  function hexToHsl(hex) {
+    var m = /^#?([0-9a-f]{6})$/i.exec(String(hex).trim());
+    if (!m) return null;
+    var n = parseInt(m[1], 16);
+    var r = ((n >> 16) & 255) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
+    var max = Math.max(r, g, b), min = Math.min(r, g, b);
+    var l = (max + min) / 2, d = max - min;
+    if (d === 0) return { h: 0, s: 0, l: l };
+    var sat = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    var h;
+    if (max === r) h = ((g - b) / d + (g < b ? 6 : 0));
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    return { h: h * 60, s: sat, l: l };
+  }
+  function hslToHex(o) {
+    var h = ((o.h % 360) + 360) % 360, sat = o.s, l = o.l;
+    var c = (1 - Math.abs(2 * l - 1)) * sat;
+    var x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+    var m = l - c / 2, r = 0, g = 0, b = 0;
+    if (h < 60) { r = c; g = x; }
+    else if (h < 120) { r = x; g = c; }
+    else if (h < 180) { g = c; b = x; }
+    else if (h < 240) { g = x; b = c; }
+    else if (h < 300) { r = x; b = c; }
+    else { r = c; b = x; }
+    function to(v) { var q = Math.round((v + m) * 255).toString(16); return q.length < 2 ? '0' + q : q; }
+    return '#' + to(r) + to(g) + to(b);
+  }
+  function companion(hex) {
+    var o = hexToHsl(hex);
+    if (!o) return hex;
+    if (o.s < 0.12) {
+      var l = o.l > 0.5 ? Math.max(0.28, o.l - 0.3) : Math.min(0.82, o.l + 0.3);
+      return hslToHex({ h: o.h, s: o.s, l: l });
+    }
+    return hslToHex({ h: o.h - 33, s: Math.min(1, o.s * 1.05), l: Math.min(0.72, o.l * 1.04) });
+  }
+
+  /* What the second field should show right now: the chosen colour, or the
+     derived one when the pair is on automatic. */
+  function secondColour() {
+    if (p.pairAuto && p.pairAuto.checked) {
+      return companion(HEX.test(p.accentHex.value.trim()) ? p.accentHex.value.trim() : DEFAULT_ACCENT);
+    }
+    return HEX.test(p.accent2Hex.value.trim()) ? p.accent2Hex.value.trim() : DEFAULT_ACCENT;
+  }
+
   var kind = bar.getAttribute('data-widget') || 'goal';
   var panel = document.querySelector('[data-emb="panel"]');
   var pageContent = document.querySelectorAll('[data-emb-content]');
@@ -94,10 +146,15 @@
          applied, so dragging the colour picker updates the widget without a
          round trip and without saving first. */
       var live = JSON.parse(JSON.stringify(payload));
-      live.theme = {
+      /* MERGED, not replaced. Assigning a fresh object here dropped accent2
+         entirely, so a chosen second colour could never appear in the preview
+         — it silently fell back to the derived one, which looks identical
+         until somebody picks a colour that is not. */
+      live.theme = Object.assign({}, live.theme, {
         accent: HEX.test(p.accentHex.value.trim()) ? p.accentHex.value.trim() : DEFAULT_ACCENT,
+        accent2: secondColour(),
         mode: p.theme.value || 'auto',
-      };
+      });
 
       p.frame.srcdoc =
         '<!doctype html><meta charset="utf-8">' +
@@ -142,6 +199,25 @@
 
     p.theme.value = e.theme || 'auto';
     p.theme.disabled = !admin;
+
+    /* NULL in the database means "derive it", which is exactly what the
+       automatic switch means — so the stored value IS the state of the
+       switch, and there is no separate flag to fall out of step with it. */
+    var auto = !e.accent2;
+    p.pairAuto.checked = auto;
+    p.pairAuto.disabled = !admin;
+    var second = auto ? companion(accent) : e.accent2;
+    p.accent2.value = second;
+    p.accent2Hex.value = second;
+    p.accent2.disabled = !admin || auto;
+    p.accent2Hex.disabled = !admin || auto;
+
+    var tl = (settings && settings.timeline) || {};
+    p.tlStart.value = tl.start || '';
+    p.tlEnd.value = tl.end || '';
+    p.tlStart.disabled = !admin;
+    p.tlEnd.disabled = !admin;
+    p.tlSave.disabled = !admin;
 
     /* Only the languages this partner actually publishes. Offering one that is
        switched off would build a snippet whose widget silently falls back to
@@ -236,6 +312,9 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ embed: {
           enabled: want, accent: hex, theme: p.theme.value,
+          /* null means "derive it" — the automatic switch and the stored
+             value are the same fact. */
+          accent2: p.pairAuto.checked ? null : p.accent2Hex.value.trim(),
         } })
       });
       body = await res.json().catch(function () { return {}; });
@@ -274,6 +353,59 @@
   p.accentHex.addEventListener('change', function () {
     if (HEX.test(this.value.trim())) p.accent.value = this.value.trim();
     save(this);
+  });
+
+  p.pairAuto.addEventListener('change', function () {
+    var derived = companion(HEX.test(p.accentHex.value.trim()) ? p.accentHex.value.trim() : DEFAULT_ACCENT);
+    if (this.checked) { p.accent2.value = derived; p.accent2Hex.value = derived; }
+    p.accent2.disabled = this.checked;
+    p.accent2Hex.disabled = this.checked;
+    save(this);
+  });
+  p.accent2.addEventListener('input', function () {
+    p.accent2Hex.value = this.value.toUpperCase();
+    renderPreview();
+  });
+  p.accent2.addEventListener('change', function () {
+    p.accent2Hex.value = this.value.toUpperCase();
+    save(this);
+  });
+  p.accent2Hex.addEventListener('change', function () {
+    if (HEX.test(this.value.trim())) p.accent2.value = this.value.trim();
+    save(this);
+  });
+
+  /* The first colour moving drags the derived one with it, so the pair never
+     shows a stale companion while automatic. */
+  p.accent.addEventListener('input', function () {
+    if (p.pairAuto.checked) {
+      var d = companion(HEX.test(p.accentHex.value.trim()) ? p.accentHex.value.trim() : DEFAULT_ACCENT);
+      p.accent2.value = d;
+      p.accent2Hex.value = d;
+    }
+  });
+
+  p.tlSave.addEventListener('click', async function () {
+    var start = p.tlStart.value || null, end = p.tlEnd.value || null;
+    this.disabled = true;
+    try {
+      var res = await fetch(SETTINGS, {
+        method: 'PATCH', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ timeline: { start: start, end: end } })
+      });
+      var body = await res.json().catch(function () { return {}; });
+      if (!res.ok) throw new Error(body.error || ('failed (' + res.status + ')'));
+      toast(tr('toast.saved'), 'ok');
+      /* Re-read the PREVIEW too: the bounds change where every milestone sits
+         and how far the line has filled, so the panel has to fetch again
+         rather than redraw the payload it already had. */
+      await load();
+    } catch (err) {
+      toast(err.message, 'bad');
+    } finally {
+      this.disabled = false;
+    }
   });
 
   // Snippet-only — nothing to save.

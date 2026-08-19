@@ -1002,6 +1002,22 @@ body.has-savebar .acting-mark{bottom:calc(var(--ms-savebar-h,72px) + 12px)}
 .emb-shared{margin:-12px 0 0;font-size:var(--fs-micro);color:var(--dim);
   opacity:.8;max-width:64ch;line-height:var(--lh-body)}
 
+.emb-checkline{display:flex;align-items:center;gap:8px;font-size:var(--fs-micro);
+  color:var(--dim);block-size:34px}
+.emb-auto{max-inline-size:16ch}
+
+/* The period, set apart because it changes the SHAPE of the roadmap rather
+   than its colours. */
+.emb-period{display:flex;gap:24px;flex-wrap:wrap;justify-content:space-between;
+  align-items:flex-end;background:var(--panel);border:1px solid var(--line);
+  border-radius:var(--radius);padding:20px 24px}
+.emb-period-text{flex:1 1 34ch;min-inline-size:0}
+.emb-period-text h4{font-family:var(--font-display);font-size:var(--fs-sm);
+  font-weight:var(--w-hair);color:var(--text)}
+.emb-period-text p{margin-top:6px;font-size:var(--fs-micro);color:var(--dim);
+  line-height:var(--lh-body)}
+.emb-period-fields{display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap}
+
 /* The publication decision, set apart because it is the only control here
    that changes what strangers can reach. */
 .emb-publish{display:flex;align-items:flex-start;gap:24px;flex-wrap:wrap;
