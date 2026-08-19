@@ -57,6 +57,15 @@
       <span class="area-arrow" aria-hidden="true">&larr;</span>
       <span data-i18n="adm.toStaff">Staff console</span>
     </a>
+    {#- THE WAY OUT OF THE CONSOLE ENTIRELY. Both areas could reach each other
+       and neither could reach the site they exist to edit, so the only way to
+       look at your own work was to type the address. Opens in its own tab: you
+       come here to CHECK the site, not to leave the console, and a plain link
+       would throw away an unsaved form to do it. -#}
+    <a class="area-switch" href="/" target="_blank" rel="noopener">
+      <span data-i18n="nav.viewSite">Public site</span>
+      <span class="area-arrow" aria-hidden="true">&#8599;</span>
+    </a>
     <span class="pill" id="partnerPill" hidden></span>
     <a class="ghost-btn" href="/cdn-cgi/access/logout" data-i18n="nav.signout">Sign out</a>
   </div>
