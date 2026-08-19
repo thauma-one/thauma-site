@@ -754,6 +754,28 @@
       });
   }
 
+  /* THE FUNCTION EVERY SNAPSHOT ERROR PATH CALLED, AND WHICH DID NOT EXIST.
+
+     All five branches below called snapshotError() and nothing anywhere
+     declared it. So the dashboard, Stewardship and Activity — the three pages
+     that load a snapshot — answered an expired session, a 403, a 500 or a
+     dropped connection with a ReferenceError and an empty screen, instead of
+     the message that had been carefully written for each case. The worst of
+     them is the 401: the text says "Your session has expired, sign in again"
+     and what you actually got was a page that looked broken.
+
+     It renders MARKUP, which is why it is not just problem(). Those messages
+     carry a sign-in link and a command to run, and problem() sets textContent
+     on purpose so that nothing a server says can become HTML. Everything
+     interpolated into the five callers goes through esc() first, so the markup
+     here is ours rather than the server's — this is the one caller allowed to
+     pass it. */
+  function snapshotError(html) {
+    problem('', loadSnapshot);
+    if (!problemEl) return;
+    problemEl.querySelector('.problem-msg').innerHTML = html;
+  }
+
   function loadSnapshot() {
     return fetch(SNAPSHOT_URL, { cache: 'no-store', credentials: 'same-origin' })
       .then(function (r) {

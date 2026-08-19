@@ -40,6 +40,19 @@ permalink: /admin/users/index.html
   </div>
 </form>
 
+{#- SORTING, because this list holds everyone — staff, board, and people whose
+   partner role has nothing to do with Thauma — and it is meant to grow. The
+   buttons are a toolbar rather than a select: there are five, they are short,
+   and a dropdown hides which one is active. -#}
+<div class="adm-sortbar" role="toolbar" aria-label="Sort people">
+  <span class="adm-sortlabel" data-i18n="adm.sortBy">Sort by</span>
+  <button type="button" class="sort-btn is-on" data-sort="name" data-i18n="adm.sort.name">Name</button>
+  <button type="button" class="sort-btn" data-sort="region" data-i18n="adm.sort.region">Region</button>
+  <button type="button" class="sort-btn" data-sort="partner" data-i18n="adm.sort.partner">Partner</button>
+  <button type="button" class="sort-btn" data-sort="role" data-i18n="adm.sort.role">Role</button>
+  <button type="button" class="sort-btn" data-sort="status" data-i18n="adm.sort.status">Status</button>
+</div>
+
 <div class="adm-people" id="admPeople">
   <p class="empty" data-i18n="common.loading">Loading…</p>
 </div>

@@ -45,6 +45,7 @@ import adminMigrate from "./admin-migrate.js";
 import embed from "./embed.js";
 import staffEmbed from "./staff-embed.js";
 import adminActAs from "./admin-actas.js";
+import adminProfile from "./admin-profile.js";
 import { createDb, partnerSnapshot, assertPublicSafe } from "./lib/db.js";
 import { requireAccess } from "./lib/access.js";
 import { resolveActor, withActing } from "./lib/actas.js";
@@ -253,6 +254,10 @@ const ROUTES = {
   // a user id and grants nothing — authority is re-derived from the Access
   // token on every request. See lib/actas.js.
   "/api/admin/act-as": adminActAs,
+
+  // The public half of a person, edited from the People page. Writes the
+  // database AND src/content/team/<slug>.md — see admin-profile.js.
+  "/api/admin/profile": adminProfile,
 
   // THE ONLY ROUTE A CREDENTIAL OUTSIDE THAUMA CAN REACH. Key-authenticated,
   // public-safe by construction, versioned in the path so a breaking change

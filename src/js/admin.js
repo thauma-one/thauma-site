@@ -221,12 +221,19 @@
      Same pattern as the milestone editor, for the same reason: a row you can
      read, and a panel that belongs to it. */
   function renderPeople() {
+    /* The active sort has to be re-marked on every render: the buttons live
+       outside #admPeople, so nothing else would ever update them. */
+    Array.prototype.forEach.call(document.querySelectorAll('[data-sort]'), function (b) {
+      b.classList.toggle('is-on', b.dataset.sort === ui.sort);
+      b.setAttribute('aria-pressed', b.dataset.sort === ui.sort ? 'true' : 'false');
+    });
+
     if (!state.users.length) {
       $('admPeople').innerHTML = '<p class="empty">' + esc(tr('adm.noPeople')) + '</p>';
       return;
     }
 
-    $('admPeople').innerHTML = state.users.map(function (u) {
+    $('admPeople').innerHTML = sortedPeople().map(function (u) {
       var open = state.editing === u.id;
       var roleTags = u.roles.length
         ? u.roles.map(function (r) {
@@ -245,7 +252,10 @@
             '<span class="adm-name">' + esc(u.name) + '</span>' +
             '<span class="adm-email">' + esc(u.email) + '</span>' +
           '</div>' +
-          '<div class="adm-tags">' + roleTags + '</div>' +
+          '<div class="adm-tags">' + roleTags +
+            (profileFor(u.id) && profileFor(u.id).is_public
+              ? '<span class="role-tag on-site">' + esc(tr('adm.onSite')) + '</span>' : '') +
+          '</div>' +
           '<div class="adm-access">' +
             (u.partner_names.length
               ? esc(u.partner_names.join(', '))
@@ -258,6 +268,114 @@
         personPanel(u, open) +
       '</div>';
     }).join('');
+  }
+
+  /* THE PUBLIC HALF OF A PERSON.
+
+     The People page holds everyone — staff, board, and people whose partner
+     role has nothing to do with Thauma — so most rows will never have this
+     switched on, and that is the ordinary case rather than an omission. The
+     toggle is the whole decision; everything under it is only reachable once
+     it is on, because a bio nobody will read is not worth the screen space.
+
+     Two language columns, the same shape as the milestone and prayer editors.
+     Learning one teaches all three, and a role title is exactly the kind of
+     thing that gets translated late. */
+  function profileLangs() {
+    var on = (state.languages || []).filter(function (l) { return l.is_active; });
+    if (!ui.profileLangA) ui.profileLangA = (on[0] || {}).code || null;
+    if (!ui.profileLangB) {
+      var other = on.filter(function (l) { return l.code !== ui.profileLangA; });
+      ui.profileLangB = (other[0] || {}).code || null;
+    }
+    return on;
+  }
+
+  function langPicker(which, selected) {
+    return '<select class="lang-pick" data-plang="' + which + '">' +
+      profileLangs().map(function (l) {
+        return '<option value="' + esc(l.code) + '"' +
+          (l.code === selected ? ' selected' : '') + '>' +
+          esc((l.native_name || l.name) + ' (' + l.code + ')') + '</option>';
+      }).join('') + '</select>';
+  }
+
+  function profileColumn(u, which, code, text) {
+    var t = (code && text[code]) || { role_title: '', bio: '' };
+    return '<div class="pf-col">' +
+      langPicker(which, code) +
+      '<label class="fld"><span>' + esc(tr('adm.pf.roleTitle')) + '</span>' +
+        '<input type="text" data-pf="role_title" data-col="' + which + '"' +
+        ' value="' + esc(t.role_title || '') + '" maxlength="120"></label>' +
+      '<label class="fld"><span>' + esc(tr('adm.pf.bio')) + '</span>' +
+        '<textarea data-pf="bio" data-col="' + which + '" rows="6"' +
+        ' maxlength="4000">' + esc(t.bio || '') + '</textarea></label>' +
+    '</div>';
+  }
+
+  function profileSection(u) {
+    var p = profileFor(u.id);
+    var on = !!(p && p.is_public);
+    var text = profileText(p);
+    profileLangs();
+
+    return '<div class="adm-section adm-profile" data-profile="' + esc(u.id) + '">' +
+      '<span class="adm-label">' + esc(tr('adm.pf.heading')) + '</span>' +
+
+      '<button type="button" class="switch small" role="switch" data-pf-public="' + esc(u.id) + '"' +
+        ' aria-checked="' + (on ? 'true' : 'false') + '">' +
+        '<span class="switch-track"><span class="switch-state">' + (on ? 'On' : 'Off') +
+          '</span><span class="switch-knob"></span></span>' +
+        '<span class="switch-label">' + esc(tr('adm.pf.shown')) +
+          '<span class="switch-note">' + esc(tr('adm.pf.shownNote')) + '</span>' +
+        '</span></button>' +
+
+      '<div class="pf-body"' + (on ? '' : ' hidden') + '>' +
+        '<div class="pf-grid">' +
+          '<label class="fld"><span>' + esc(tr('adm.pf.region')) + '</span>' +
+            '<input type="text" data-pf="region" maxlength="120"' +
+            ' value="' + esc((p && p.region) || '') + '"' +
+            ' placeholder="Kansas City, USA &rarr; Croatia"></label>' +
+          '<label class="fld"><span>' + esc(tr('adm.pf.email')) + '</span>' +
+            '<input type="email" data-pf="public_email" maxlength="200"' +
+            ' value="' + esc((p && p.public_email) || '') + '">' +
+            '<span class="fld-hint">' + esc(tr('adm.pf.emailHint')) + '</span></label>' +
+          '<label class="fld"><span>' + esc(tr('adm.pf.order')) + '</span>' +
+            '<input type="number" data-pf="sort_order" step="1"' +
+            ' value="' + ((p && p.sort_order) || 0) + '"></label>' +
+          '<label class="fld"><span>' + esc(tr('adm.pf.address')) + '</span>' +
+            '<input type="text" data-pf="slug" maxlength="80"' +
+            ' value="' + esc((p && p.slug) || '') + '"' +
+            ' placeholder="' + esc(slugHint(u.name)) + '">' +
+            '<span class="fld-hint">' + esc(tr('adm.pf.addressHint')) + '</span></label>' +
+        '</div>' +
+
+        '<div class="pf-langs">' +
+          profileColumn(u, 'a', ui.profileLangA, text) +
+          profileColumn(u, 'b', ui.profileLangB, text) +
+        '</div>' +
+
+        /* Photos are the one thing not editable here yet — they need an object
+           store to live in. Said plainly rather than left as a missing field
+           somebody hunts for. */
+        '<p class="hint pf-photos">' + esc(tr('adm.pf.photosSoon')) + '</p>' +
+
+        '<div class="pf-actions">' +
+          '<button type="button" class="solid-btn" data-pf-save="' + esc(u.id) + '">' +
+            esc(tr('adm.pf.save')) + '</button>' +
+          '<span class="hint" data-pf-status="' + esc(u.id) + '">' +
+            esc(tr('adm.pf.saveNote')) + '</span>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  /* Mirrors the server's slugify closely enough to show what the address will
+     be. The server decides; this only fills the placeholder. */
+  function slugHint(name) {
+    return String(name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[\u0111\u0110]/g, 'd').toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
   }
 
   /* Everything you can change about one person, in one place, with what each
@@ -295,6 +413,8 @@
         '<span class="switch-note">' + esc(tr('adm.partnerAccessNote')) + '</span>' +
       '</div>' +
 
+      profileSection(u) +
+
       '<div class="adm-section adm-danger">' +
         '<div class="fld">' +
           '<span>' + esc(tr('adm.signInStatus')) + '</span>' +
@@ -327,6 +447,53 @@
           esc(tr('adm.removePerson')) + '</button>' +
       '</div>' +
     '</div>';
+  }
+
+  /* SORT LIVES OUTSIDE `state`, which is replaced wholesale by every load.
+     Keeping it in there meant re-sorting to name after each save, which is the
+     one moment you are most likely to still be looking for the row you just
+     changed. */
+  var ui = { sort: 'name', profileLangA: null, profileLangB: null };
+
+  var SORTS = ['name', 'region', 'partner', 'role', 'status'];
+
+  function profileFor(id) {
+    return (state.profiles || []).filter(function (p) { return p.user_id === id; })[0] || null;
+  }
+
+  /* Unpacks what staff_profiles_all packed — unit separator between fields,
+     record separator between languages. See the query for why. */
+  function profileText(p) {
+    var out = {};
+    if (!p || !p.translations) return out;
+    String(p.translations).split('\u001e').forEach(function (rec) {
+      var bits = rec.split('\u001f');
+      if (bits[0]) out[bits[0]] = { role_title: bits[1] || '', bio: bits[2] || '' };
+    });
+    return out;
+  }
+
+  function sortedPeople() {
+    var rows = (state.users || []).slice();
+    var key = ui.sort;
+    return rows.sort(function (a, b) {
+      var pa = profileFor(a.id), pb = profileFor(b.id);
+      var av = '', bv = '';
+      if (key === 'region') { av = (pa && pa.region) || ''; bv = (pb && pb.region) || ''; }
+      else if (key === 'partner') {
+        av = (a.partner_names || []).join(', '); bv = (b.partner_names || []).join(', ');
+      } else if (key === 'role') {
+        av = (a.roles || []).slice().sort().join(','); bv = (b.roles || []).slice().sort().join(',');
+      } else if (key === 'status') { av = a.status || ''; bv = b.status || ''; }
+
+      /* EMPTY SORTS LAST, whichever direction. A blank region floating to the
+         top of a list you sorted BY region is the opposite of what you asked
+         for — you sorted to find the ones that have one. */
+      if (av && !bv) return -1;
+      if (!av && bv) return 1;
+      if (av !== bv) return av.localeCompare(bv);
+      return String(a.name || '').localeCompare(String(b.name || ''));
+    });
   }
 
   var PARTNER_STATUS = ['prospective', 'active', 'on_leave', 'alumni'];
@@ -483,7 +650,107 @@
                       behavior: reducedMotion() ? 'auto' : 'smooth' });
   }
 
+  /* The toggle only reveals the form. NOTHING is written until Save — turning
+     somebody's page off is a publication decision and should not happen
+     because a finger landed on a switch while scrolling. */
+  function toggleProfilePublic(btn) {
+    var on = btn.getAttribute('aria-checked') !== 'true';
+    btn.setAttribute('aria-checked', on ? 'true' : 'false');
+    btn.querySelector('.switch-state').textContent = on ? 'On' : 'Off';
+    var body = btn.parentNode.querySelector('.pf-body');
+    if (body) body.hidden = !on;
+  }
+
+  async function saveProfile(userId, btn) {
+    var sect = document.querySelector('[data-profile="' + userId + '"]');
+    if (!sect) return;
+    var status = sect.querySelector('[data-pf-status]');
+    var val = function (name) {
+      var el = sect.querySelector('.pf-grid [data-pf="' + name + '"]');
+      return el ? el.value.trim() : '';
+    };
+
+    /* Both columns, keyed by whichever language each is showing. Reading the
+       pickers rather than assuming a and b are the first two languages — they
+       are whatever the person editing chose. */
+    var text = {};
+    ['a', 'b'].forEach(function (which) {
+      var pick = sect.querySelector('[data-plang="' + which + '"]');
+      if (!pick || !pick.value) return;
+      var role = sect.querySelector('[data-pf="role_title"][data-col="' + which + '"]');
+      var bio = sect.querySelector('[data-pf="bio"][data-col="' + which + '"]');
+      text[pick.value] = {
+        role_title: role ? role.value.trim() : '',
+        bio: bio ? bio.value.trim() : ''
+      };
+    });
+
+    var payload = {
+      user_id: userId,
+      is_public: sect.querySelector('[data-pf-public]').getAttribute('aria-checked') === 'true',
+      slug: val('slug'),
+      region: val('region'),
+      public_email: val('public_email'),
+      sort_order: parseInt(val('sort_order'), 10) || 0,
+      text: text
+    };
+
+    btn.disabled = true;
+    if (status) status.textContent = tr('adm.pf.saving');
+    try {
+      var res = await fetch('/api/admin/profile', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      var body = await res.json();
+      if (!res.ok) {
+        if (status) status.textContent = body.error || tr('err.refused');
+        return;
+      }
+      /* The database write and the repository write are separate, and the
+         second can fail alone. Saying which happened beats a tick that means
+         "half of it". */
+      if (status) {
+        status.textContent = body.file
+          ? tr('adm.pf.saved')
+          : tr('adm.pf.savedNoFile') + (body.fileError ? ' — ' + body.fileError : '');
+      }
+      await load();
+    } catch (e) {
+      if (status) status.textContent = tr('err.unreachable') + ' ' + e.message;
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  /* Re-reads the columns when a picker changes, so switching language shows
+     that language's text rather than leaving the previous one in the box. */
+  document.addEventListener('change', function (e) {
+    var pick = e.target.closest('[data-plang]');
+    if (!pick) return;
+    if (pick.dataset.plang === 'a') ui.profileLangA = pick.value;
+    else ui.profileLangB = pick.value;
+    render();
+  });
+
   document.addEventListener('click', function (e) {
+    /* Checked BEFORE the row, because every one of these lives inside the
+       expanded panel and the panel is inside the person — letting the row
+       handler see them first would collapse the row you are editing. */
+    var sortBtn = e.target.closest('[data-sort]');
+    if (sortBtn) {
+      ui.sort = sortBtn.dataset.sort;
+      return render();
+    }
+
+    var pub = e.target.closest('[data-pf-public]');
+    if (pub) return toggleProfilePublic(pub);
+
+    var save = e.target.closest('[data-pf-save]');
+    if (save) return saveProfile(save.dataset.pfSave, save);
+
     var row = e.target.closest('.adm-row');
     if (row) {
       return togglePerson(row.closest('[data-person]').dataset.person);

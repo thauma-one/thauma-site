@@ -207,11 +207,14 @@ export default {
 
     /* ---------------------------------------------------------------- GET */
     if (request.method === "GET") {
-      const [users, partners, languages, recent] = await Promise.all([
+      const [users, partners, languages, recent, profiles] = await Promise.all([
         db.query("admin_users", {}),
         db.query("admin_partners", {}),
         db.query("languages_all", {}),
         db.query("admin_audit_recent", { limit: 40 }),
+        // Fetched WITH the people rather than per row: the People page sorts
+        // by region and role title, and a sort cannot wait on 40 requests.
+        db.query("staff_profiles_all", {}),
       ]);
       // What each partner would take with it. Fetched with the list rather
       // than on click, so the confirmation can show real numbers the moment

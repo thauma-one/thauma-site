@@ -273,6 +273,9 @@ await check("every real query converts with its documented params", async () => 
     embed_theme: "auto",
     // the language catalogue
     code: "sl", native_name: "slovenščina",
+    // staff profiles
+    bio: null, role_title: null, region: null, public_email: null,
+    bio_photo: null,
     // timeline bounds
     timeline_start: null, timeline_end: null,
     // goals
@@ -289,7 +292,8 @@ await check("every real query converts with its documented params", async () => 
   // Queries with nothing to scope by. languages_all is the organisation's
   // catalogue; the admin ones are unscoped BY DESIGN — see admin.test.mjs.
   const NO_PARAMS = new Set(["languages_all", "admin_users", "admin_partners",
-                             "admin_count_admins", "language_next_sort_order"]);
+                             "admin_count_admins", "language_next_sort_order",
+                             "staff_profiles_all", "staff_profiles_public"]);
 
   for (const [name, sql] of Object.entries(QUERIES)) {
     const r = toPositional(sql, params);

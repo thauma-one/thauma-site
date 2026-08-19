@@ -396,6 +396,85 @@ INSERT INTO users (id, email, name, global_role, status, created_at)
 VALUES (:id, :email, :name, 'staff', 'invited', :now);
 
 
+-- name: staff_profiles_all
+-- Every profile, joined to the person. LEFT JOIN FROM users, so somebody with
+-- no profile still appears — the People page holds everyone, and "no public
+-- profile" is the ordinary state for a board member rather than a gap.
+--
+-- The translations arrive as one packed string per person and are split by the
+-- console, the same trick admin_users uses for roles: a second round trip per
+-- person to fetch two short strings is not worth the latency.
+SELECT
+  u.id AS user_id, u.name, u.email, u.status,
+  sp.is_public, sp.slug, sp.region, sp.public_email,
+  sp.photo, sp.bio_photo, sp.sort_order, sp.updated_at,
+  (SELECT GROUP_CONCAT(t.lang || CHAR(31) || COALESCE(t.role_title, '') ||
+                       CHAR(31) || COALESCE(t.bio, ''), CHAR(30))
+     FROM staff_profile_translations t WHERE t.user_id = u.id) AS translations
+FROM users u
+LEFT JOIN staff_profiles sp ON sp.user_id = u.id
+ORDER BY u.name COLLATE NOCASE;
+
+
+-- name: staff_profile_upsert
+-- Idempotent so the console can save the same form twice without minting a
+-- second row. created_at is preserved on update: it records when this person
+-- was first given a profile, which is not the same as the last edit.
+INSERT INTO staff_profiles
+  (user_id, is_public, slug, region, public_email, photo, bio_photo,
+   sort_order, created_at, updated_at)
+VALUES
+  (:user_id, :is_public, :slug, :region, :public_email, :photo, :bio_photo,
+   :sort_order, :now, :now)
+ON CONFLICT(user_id) DO UPDATE SET
+  is_public    = excluded.is_public,
+  slug         = excluded.slug,
+  region       = excluded.region,
+  public_email = excluded.public_email,
+  photo        = excluded.photo,
+  bio_photo    = excluded.bio_photo,
+  sort_order   = excluded.sort_order,
+  updated_at   = excluded.updated_at;
+
+
+-- name: staff_profile_translation_upsert
+INSERT INTO staff_profile_translations (user_id, lang, role_title, bio, updated_at)
+VALUES (:user_id, :lang, :role_title, :bio, :now)
+ON CONFLICT(user_id, lang) DO UPDATE SET
+  role_title = excluded.role_title,
+  bio        = excluded.bio,
+  updated_at = excluded.updated_at;
+
+
+-- name: staff_profile_translation_delete
+-- Emptying both fields for a language removes the row rather than storing two
+-- empty strings, so "has this been translated" stays a question about rows.
+DELETE FROM staff_profile_translations WHERE user_id = :user_id AND lang = :lang;
+
+
+-- name: staff_profile_delete
+DELETE FROM staff_profiles WHERE user_id = :user_id;
+
+
+-- name: staff_profile_slug_taken
+-- The slug is a public URL and must be unique across people, not merely across
+-- published ones — an unpublished profile still owns its address, or turning
+-- two toggles on in the wrong order would collide.
+SELECT user_id FROM staff_profiles WHERE slug = :slug AND user_id <> :user_id;
+
+
+-- name: staff_profiles_public
+-- What the export writes to the repository: published profiles only, in the
+-- order they should appear.
+SELECT
+  u.id AS user_id, u.name, u.email,
+  sp.slug, sp.region, sp.public_email, sp.photo, sp.bio_photo, sp.sort_order
+FROM staff_profiles sp
+JOIN users u ON u.id = sp.user_id
+WHERE sp.is_public = 1
+ORDER BY sp.sort_order, u.name COLLATE NOCASE;
+
+
 -- name: admin_user_set
 -- Name and status. Email is NOT editable: it is the join to Cloudflare Access,
 -- and changing it here would silently detach the account from the identity

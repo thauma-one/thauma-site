@@ -552,3 +552,47 @@
 @media (max-width:620px){
   .v-head,.v-row{grid-template-columns:minmax(0,1fr) 76px 76px 64px}
 }
+
+
+/* ============================================================
+   PEOPLE — sorting, and the public half of a person
+   ============================================================ */
+
+/* A toolbar, not a dropdown: five short options, and which one is active is
+   the thing you most want to see without opening anything. */
+.adm-sortbar{display:flex;align-items:center;flex-wrap:wrap;gap:8px;
+  margin-bottom:14px}
+.adm-sortlabel{color:var(--voice-tech);font-family:var(--font-display);
+  font-size:10px;letter-spacing:var(--ls-caps);text-transform:uppercase;
+  font-weight:var(--w-bold);margin-right:2px}
+.sort-btn{background:none;border:1px solid var(--line);color:var(--dim,#8a93a3);
+  border-radius:99px;padding:6px 14px;font-size:12px;cursor:pointer;
+  transition:border-color var(--dur-3) var(--ease-main),
+             color var(--dur-3) var(--ease-main)}
+@media(hover:hover){ .sort-btn:hover{color:var(--text);border-color:var(--voice-tech)} }
+.sort-btn.is-on{color:var(--bg,#0b1119);background:var(--voice-tech);
+  border-color:var(--voice-tech);font-weight:var(--w-bold)}
+
+/* The row tag that says this person reaches the public site. Deliberately the
+   same shape as a role tag — it is another fact about them, not a warning. */
+.role-tag.on-site{border-color:rgba(93,214,168,.4);color:#5DD6A8}
+
+.adm-profile .switch.small{margin-top:4px}
+.pf-body{margin-top:18px;padding-top:18px;border-top:1px solid var(--line)}
+.pf-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:16px;margin-bottom:20px}
+
+/* TWO COLUMNS, the milestone editor's shape. Side by side is the point: a
+   translation is written while looking at what it translates. */
+.pf-langs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+.pf-col{min-width:0;display:flex;flex-direction:column;gap:12px}
+.pf-col .lang-pick{width:100%}
+.pf-col textarea{width:100%;resize:vertical;min-height:120px;
+  font-family:inherit;font-size:13px;line-height:1.5}
+@media (max-width:760px){ .pf-langs{grid-template-columns:1fr} }
+
+.pf-photos{margin:18px 0 0}
+.pf-actions{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:18px}
+.adm-profile .fld-hint{display:block;margin-top:6px;color:var(--dim,#8a93a3);
+  font-family:inherit;font-size:11px;letter-spacing:0;text-transform:none;
+  font-weight:400;line-height:1.4}

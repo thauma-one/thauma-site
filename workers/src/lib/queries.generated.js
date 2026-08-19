@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "5673819927a2bacc";
+export const SOURCE_DIGEST = "324ae3e6d680e936";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -376,6 +376,47 @@ FROM resources
 WHERE (partner_id = :partner_id OR partner_id IS NULL)
   AND instr(',' || :levels || ',', ',' || visibility || ',') > 0
 ORDER BY title COLLATE NOCASE;`,
+  staff_profile_delete: `DELETE FROM staff_profiles WHERE user_id = :user_id;`,
+  staff_profile_slug_taken: `SELECT user_id FROM staff_profiles WHERE slug = :slug AND user_id <> :user_id;`,
+  staff_profile_translation_delete: `DELETE FROM staff_profile_translations WHERE user_id = :user_id AND lang = :lang;`,
+  staff_profile_translation_upsert: `INSERT INTO staff_profile_translations (user_id, lang, role_title, bio, updated_at)
+VALUES (:user_id, :lang, :role_title, :bio, :now)
+ON CONFLICT(user_id, lang) DO UPDATE SET
+  role_title = excluded.role_title,
+  bio        = excluded.bio,
+  updated_at = excluded.updated_at;`,
+  staff_profile_upsert: `INSERT INTO staff_profiles
+  (user_id, is_public, slug, region, public_email, photo, bio_photo,
+   sort_order, created_at, updated_at)
+VALUES
+  (:user_id, :is_public, :slug, :region, :public_email, :photo, :bio_photo,
+   :sort_order, :now, :now)
+ON CONFLICT(user_id) DO UPDATE SET
+  is_public    = excluded.is_public,
+  slug         = excluded.slug,
+  region       = excluded.region,
+  public_email = excluded.public_email,
+  photo        = excluded.photo,
+  bio_photo    = excluded.bio_photo,
+  sort_order   = excluded.sort_order,
+  updated_at   = excluded.updated_at;`,
+  staff_profiles_all: `SELECT
+  u.id AS user_id, u.name, u.email, u.status,
+  sp.is_public, sp.slug, sp.region, sp.public_email,
+  sp.photo, sp.bio_photo, sp.sort_order, sp.updated_at,
+  (SELECT GROUP_CONCAT(t.lang || CHAR(31) || COALESCE(t.role_title, '') ||
+                       CHAR(31) || COALESCE(t.bio, ''), CHAR(30))
+     FROM staff_profile_translations t WHERE t.user_id = u.id) AS translations
+FROM users u
+LEFT JOIN staff_profiles sp ON sp.user_id = u.id
+ORDER BY u.name COLLATE NOCASE;`,
+  staff_profiles_public: `SELECT
+  u.id AS user_id, u.name, u.email,
+  sp.slug, sp.region, sp.public_email, sp.photo, sp.bio_photo, sp.sort_order
+FROM staff_profiles sp
+JOIN users u ON u.id = sp.user_id
+WHERE sp.is_public = 1
+ORDER BY sp.sort_order, u.name COLLATE NOCASE;`,
   user_by_email: `SELECT u.id AS user_id, u.email, u.name AS user_name, u.status,
        COALESCE(u.preferred_lang, 'en') AS preferred_lang,
        COALESCE((SELECT GROUP_CONCAT(r.role) FROM user_roles r WHERE r.user_id = u.id),
