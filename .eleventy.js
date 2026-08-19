@@ -37,11 +37,24 @@ module.exports = function (eleventyConfig) {
      changed file, new URL, fetched immediately. It also stops the opposite
      waste, where bumping one version re-downloads assets that did not change.
 
-     Cached per build: these files are read once each rather than once per page,
-     and `eleventy --watch` restarts the filter's module scope on change. */
+     CACHED PER BUILD, AND CLEARED BETWEEN BUILDS.
+
+     Read once per file per build rather than once per page. Cleared on
+     eleventy.before so the cache can never outlive the build it belongs to —
+     correctness by construction rather than by trusting when eleventy chooses
+     to re-run this config in watch mode.
+
+     Whether a stale hash can actually reach the output is checked, not
+     assumed: test/asset-hashes.test.mjs walks the built HTML and fails if any
+     ?v= does not match the file it points at. That check exists because on
+     2026-08-19 three edited scripts were measured being served with the
+     previous build's hashes, so browsers went on running code that had been
+     replaced hours earlier — and the mechanism was never identified. An
+     invariant that is asserted does not need to be explained. */
   const { createHash } = require("node:crypto");
   const { readFileSync } = require("node:fs");
   const hashes = new Map();
+  eleventyConfig.on("eleventy.before", () => hashes.clear());
   eleventyConfig.addFilter("v", function (assetPath) {
     if (hashes.has(assetPath)) return hashes.get(assetPath);
     let h = "0";
