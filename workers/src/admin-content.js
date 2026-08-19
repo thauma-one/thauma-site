@@ -238,6 +238,46 @@ export function blankLike(doc, code) {
   return typeof doc === "string" ? "" : doc;
 }
 
+/* The catalogue row wants a name and a native name; the request only carries a
+   code, because that is genuinely all the person adding it knows. Intl has the
+   answer for every code anyone will type — "sl" gives "Slovenian" and
+   "slovenščina" — and falls back to the code rather than throwing on something
+   exotic, which keeps a valid-but-unusual code addable. */
+function languageNames(code) {
+  const nameIn = (locale) => {
+    try {
+      const n = new Intl.DisplayNames([locale], { type: "language" }).of(code);
+      return n && n !== code ? n : null;
+    } catch { return null; }
+  };
+  return { name: nameIn("en") || code, native_name: nameIn(code) || nameIn("en") || code };
+}
+
+/* THE CATALOGUE IS THE OTHER HALF OF ADDING A LANGUAGE, and for a long time it
+   was simply missing. See the note on language_upsert in db/queries.sql: a
+   language could be live on the public site and invisible to every screen that
+   reads the database, which is the state Slovenian was found in.
+
+   Deliberately NOT fatal. The two git commits are what put the language on the
+   site; this is what lets partners publish content in it. If the database is
+   unreachable the language is still really added, and reporting failure would
+   invite somebody to press the button again — which now fails on "the site
+   already has sl". Re-adding repairs it, because the upsert is idempotent. */
+async function registerLanguage(db, code) {
+  try {
+    const next = await db.queryOne("language_next_sort_order", {});
+    const { name, native_name } = languageNames(code);
+    await db.query("language_upsert", {
+      code, name, native_name,
+      sort_order: (next && next.sort_order) || 0,
+      now: new Date().toISOString(),
+    });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
 async function addLanguage(request, env, db, user, me, cfg) {
   const body = await readJson(request);
   if (!body) return json({ error: "The request body was not valid JSON." }, 400);
@@ -350,11 +390,16 @@ async function addLanguage(request, env, db, user, me, cfg) {
     }, registered.status || 502);
   }
 
+  const catalogue = await registerLanguage(db, code);
+
   await audit(db, {
     user,
     action: "content.add_language",
     entity_id: code,
-    detail: { code, strings: Object.keys(leafPaths(en)).length, by: who },
+    detail: {
+      code, strings: Object.keys(leafPaths(en)).length, by: who,
+      catalogue: catalogue.ok ? "registered" : `failed: ${catalogue.error}`,
+    },
   });
 
   return json({
@@ -362,6 +407,10 @@ async function addLanguage(request, env, db, user, me, cfg) {
     code,
     strings: Object.keys(leafPaths(en)).length,
     commit: registered.commit,
+    /* Said out loud rather than swallowed: the language IS on the site, but
+       until this succeeds no partner can write content in it. */
+    catalogue: catalogue.ok ? true : false,
+    catalogueError: catalogue.ok ? undefined : catalogue.error,
   });
 }
 
@@ -479,11 +528,22 @@ async function removeLanguage(request, env, db, user, me, cfg) {
     }, gone.status || 502);
   }
 
+  /* SWITCHED OFF IN THE CATALOGUE, NOT DELETED FROM IT — see
+     language_deactivate. Translations already written stay attached, so a
+     language that comes back finds its work rather than a blank slate. Like
+     the registration on the way in, a database failure here does not fail the
+     removal: the language is off the site either way. */
+  let deactivated = false;
+  try {
+    await db.query("language_deactivate", { code });
+    deactivated = true;
+  } catch (e) { /* reported in the audit detail below */ }
+
   await audit(db, {
     user,
     action: "content.remove_language",
     entity_id: code,
-    detail: { code, translated, by: who },
+    detail: { code, translated, by: who, catalogue: deactivated ? "deactivated" : "unchanged" },
   });
 
   return json({ ok: true, code, translated, commit: gone.commit });

@@ -305,6 +305,42 @@ SELECT code, name, native_name, is_active, sort_order
 FROM languages ORDER BY sort_order, name;
 
 
+-- name: language_upsert
+-- THE CATALOGUE MUST LEARN ABOUT A LANGUAGE SOMEBODY ADDED.
+-- Adding a language writes two git files — the strings and the site's list —
+-- and for a long time that was all it did. So a language could be live on the
+-- public site while every screen that reads this table went on as though it
+-- did not exist: no partner could publish content in it (this table is the
+-- LEFT side of partner_languages_for_partner, so an absent row means the
+-- language is not offered at all), and the admin Overview counted one fewer
+-- language than the site was serving. Slovenian was in exactly that state.
+--
+-- Idempotent, and re-activating rather than duplicating: removing a language
+-- only switches it off (see language_deactivate), so adding it back must be
+-- able to find the row already there and turn it on with its translations
+-- still attached.
+INSERT INTO languages (code, name, native_name, sort_order, is_active, created_at)
+VALUES (:code, :name, :native_name, :sort_order, 1, :now)
+ON CONFLICT(code) DO UPDATE SET
+  is_active   = 1,
+  name        = excluded.name,
+  native_name = excluded.native_name;
+
+
+-- name: language_deactivate
+-- SWITCHED OFF, NOT DELETED. partner_languages and every *_translations table
+-- reference this row; deleting it would either fail on the foreign key or take
+-- real translated text with it. A language that comes back should find its
+-- work still there.
+UPDATE languages SET is_active = 0 WHERE code = :code;
+
+
+-- name: language_next_sort_order
+-- Appended to the end of the catalogue rather than inserted into it: the order
+-- is somebody's decision, and a new arrival has no claim on a position.
+SELECT COALESCE(MAX(sort_order), -1) + 1 AS sort_order FROM languages;
+
+
 -- name: partner_languages_for_partner
 -- Which of the catalogue this partner publishes, and in what order. LEFT JOIN
 -- from languages so a newly added language appears immediately, switched off,

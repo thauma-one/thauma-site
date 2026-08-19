@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "43da8e79569b05ec";
+export const SOURCE_DIGEST = "5673819927a2bacc";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -195,6 +195,14 @@ LEFT JOIN users u ON u.id = i.logged_by
 WHERE i.partner_id = :partner_id
   AND c.status = 'active'
 ORDER BY i.occurred_on DESC, i.created_at DESC;`,
+  language_deactivate: `UPDATE languages SET is_active = 0 WHERE code = :code;`,
+  language_next_sort_order: `SELECT COALESCE(MAX(sort_order), -1) + 1 AS sort_order FROM languages;`,
+  language_upsert: `INSERT INTO languages (code, name, native_name, sort_order, is_active, created_at)
+VALUES (:code, :name, :native_name, :sort_order, 1, :now)
+ON CONFLICT(code) DO UPDATE SET
+  is_active   = 1,
+  name        = excluded.name,
+  native_name = excluded.native_name;`,
   languages_all: `SELECT code, name, native_name, is_active, sort_order
 FROM languages ORDER BY sort_order, name;`,
   milestone_delete: `DELETE FROM milestones WHERE id = :id AND partner_id = :partner_id;`,

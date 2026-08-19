@@ -1,0 +1,36 @@
+-- 0013_language_catalogue_backfill.sql — put Slovenian in the catalogue it was
+-- never added to
+--
+-- WHAT WENT WRONG
+-- ============================================================================
+-- Adding a language through the admin console wrote two git files — the strings
+-- in src/_data/i18n/<code>.json, and the code in site.json's language list —
+-- and nothing else. Those two files are what the public site builds from, so
+-- the language really was live: /sl/about/ has been served for days.
+--
+-- The `languages` table is a different thing: the ORGANISATION's catalogue,
+-- which every partner chooses from. It was seeded once in 0003 with en, hr and
+-- sr, and until now nothing ever wrote to it again. So a language could be
+-- published to the world and simultaneously not exist as far as the database
+-- was concerned:
+--
+--   · partner_languages_for_partner LEFT JOINs FROM this table, so a missing
+--     row means the language is not offered to any partner at all — no
+--     milestone, goal or prayer could be written in it
+--   · the admin Overview counts rows here, so it reported three languages
+--     while the site served four
+--
+-- The console now registers a language here as it adds it, and deactivates it
+-- here when it removes it (see language_upsert / language_deactivate in
+-- db/queries.sql). This backfills the one that was added before that existed.
+--
+-- IDEMPOTENT, and safe on a database that already has the row: ON CONFLICT
+-- reactivates rather than duplicating, which is the same behaviour the console
+-- relies on when a removed language is added back with its translations still
+-- attached.
+--
+-- sort_order 3 continues 0/1/2 from 0003. is_active 1 because it IS active —
+-- the site is serving it.
+INSERT INTO languages (code, name, native_name, sort_order, is_active, created_at)
+VALUES ('sl', 'Slovenian', 'slovenščina', 3, 1, '2026-08-19T00:00:00Z')
+ON CONFLICT(code) DO UPDATE SET is_active = 1;
