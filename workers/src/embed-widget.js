@@ -3,95 +3,80 @@
  *
  * Exported as a STRING because it is served to browsers rather than run in the
  * Worker. Keeping it here means it ships and versions with the endpoint that
- * serves it, instead of being a static asset pinned by a caching rule nobody
- * remembers writing.
+ * serves it.
  *
- * ONE CONSTRAINT WHILE EDITING: the widget source below contains no backticks
- * and no dollar-brace, because it lives inside a template literal. String
- * concatenation throughout — slightly uglier, and it removes a whole class of
- * escaping mistake that would only show up in a stranger's browser.
+ * ONE CONSTRAINT WHILE EDITING: no backticks and no dollar-brace anywhere in
+ * the widget source, because it lives inside a template literal.
  *
- * THE DESIGN IS PORTED FROM chaseroush.com's TIMELINE
+ * PORTED FROM chaseroush.com's TIMELINE — THE WHOLE THING, NOT THE SKIN
  * ---------------------------------------------------------------------------
- * Not reinvented. That timeline was designed and refined over months and Chase
- * asked for this to match it, so the pieces are carried across deliberately:
+ * The first attempt took the colours and the animations and stopped, which
+ * missed what that page actually is. Rebuilt on the second pass:
  *
- *   · a two-colour gradient rather than a flat fill, with a soft outer glow
- *   · a shimmer sweeping the filled portion every three seconds
- *   · a NOW marker on the roadmap — pulsing line, label, entrance animation
- *   · status dots: complete is solid and glowing, in-progress glows on a
- *     two-second cycle, upcoming is a hollow ring
- *   · percentages that count up from zero on a cubic ease-out
- *   · horizontal on a wide screen, vertical on a narrow one — genuinely
- *     different layouts, not one squashed
- *   · a legend, because three dot styles need naming once
- *   · 1.6s cubic-bezier(.16,1,.3,1) on every bar fill, which is the easing
- *     that makes the whole thing feel like one object
+ *   · TWO COLOURS, not one. Completed and in-progress are visibly different
+ *     hues — that is the first thing the legend tells you. The second is
+ *     derived from a partner's chosen accent; see embed-colour.js.
+ *   · IT IS INTERACTIVE. Clicking a milestone opens a details panel beneath
+ *     the rail: title, date, big percentage, progress bar, description, close
+ *     button. Clicking the open one closes it. Keyboard reaches it.
+ *   · PARENTS AND CHILDREN. Only top-level milestones sit on the rail; a
+ *     parent's percentage is the AVERAGE of its children, and the children
+ *     appear as a breakdown inside the parent's panel. Without this a roadmap
+ *     of any depth flattens into an unreadable row of dots.
+ *   · THE DATE IS A WRITTEN LABEL. `target_label` is what a person typed —
+ *     "End of September - Start of October 2026". `actual_date` is the machine
+ *     date used only for POSITION. Formatting actual_date and showing that,
+ *     which the first version did, throws away the sentence somebody wrote and
+ *     replaces it with "Oct 2026".
+ *   · THE ROADMAP IS NOT IN A CARD. It is the thing itself. Only goals are
+ *     cards, because a goal is a discrete object and a roadmap is a continuum.
+ *   · LABELS DO NOT COLLIDE. Alternating above and below, never wrapping, with
+ *     the spacing relaxation from CR's position maths.
  *
- * The one thing that could NOT be carried across is the palette. CR's timeline
- * burns amber against a cool site; here the accent is chosen per partner, so
- * the second colour is derived from the first with color-mix rather than
- * named. Same structure, their colour.
+ * GOAL CARDS follow the giving page: name, description behind a coloured rule,
+ * the percentage large on the right with raised / target beneath it, a full
+ * width bar, and either what remains or a funded badge.
  *
- * EVERY ANIMATION IS BEHIND prefers-reduced-motion. The shimmer, the pulse,
- * the glow and the count-up all stop — the widget still says the same thing,
- * it simply stops moving.
- *
- * WHAT THE WIDGET GUARANTEES TO THE PAGE IT LANDS ON
- * ---------------------------------------------------------------------------
- * A widget is a guest. It runs on sites Thauma does not control, cannot test,
- * and will never see. So:
- *
- *   · IT CANNOT BREAK THE HOST PAGE. Everything is inside a shadow root, so
- *     the host's CSS cannot reach in and this cannot leak out. Every failure
- *     path ends in a quiet message in its own box, never a thrown error.
- *   · IT TOUCHES NO GLOBALS but one namespaced object, and defines no styles
- *     outside its own root.
- *   · IT SENDS NOTHING BACK. No analytics, no cookies, no beacons. A partner
- *     embedding this is not handing us their visitors.
- *   · IT GROWS TO ITS CONTENT and never scrolls. Where it is framed — only
- *     the console preview does that — it posts its height out so the frame
- *     can follow.
+ * THE COLOUR MATHS IS DUPLICATED HERE, deliberately and unavoidably: this file
+ * is a string shipped to browsers and cannot import anything. embed-colour.js
+ * holds the same functions for the Worker and the tests, and a test asserts
+ * the two agree on a spread of inputs — which is the only thing that keeps a
+ * necessary duplication honest.
  */
 
 export const WIDGET_JS = String.raw`
 /* Thauma embed widget. https://thauma.one
-   Put this on a page:
 
      <div data-thauma="chase-roush" data-widget="goal"></div>
      <script src="https://thauma.one/embed/v1/widget.js" async></script>
 
-   Options, all optional, as attributes on the div:
-
-     data-widget   goal | roadmap        which visualiser        (default goal)
-     data-lang     en | hr | sr | ...    which language          (default en)
-     data-accent   #6D4AFF               overrides the partner's colour
-     data-theme    auto | light | dark   overrides the partner's setting
+   Attributes, all optional:
+     data-widget   goal | roadmap        (default goal)
+     data-lang     en | hr | sr | ...    (default: the host page's own language)
+     data-accent   #6D4AFF               overrides the ministry's colour
+     data-theme    auto | light | dark
 */
 (function () {
   'use strict';
 
-  if (window.__thaumaEmbed) return;          /* the script included twice */
+  if (window.__thaumaEmbed) return;
   window.__thaumaEmbed = true;
 
-  /* Where this script came from IS where the data comes from. Deriving it
-     means a partner copying the snippet cannot point the markup at one host
-     and the data at another, and staging embeds staging without an edit. */
   var ORIGIN = (function () {
     try {
       var s = document.currentScript && document.currentScript.src;
       if (s) return new URL(s).origin;
-    } catch (e) { /* fall through */ }
+    } catch (e) {}
     return 'https://thauma.one';
   })();
 
   var SEL = '[data-thauma]';
-  var cache = {};        /* slug -> Promise, so two widgets are one fetch */
+  var cache = {};
 
   var reduced = !!(window.matchMedia &&
                    window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
-  /* ---- tiny helpers ------------------------------------------------- */
+  /* ---------- helpers ---------- */
 
   function el(tag, cls, text) {
     var n = document.createElement(tag);
@@ -100,17 +85,14 @@ export const WIDGET_JS = String.raw`
     return n;
   }
 
-  /* NaN when there is no usable date — and the null guard is the point.
-     new Date(null) is the epoch, not an invalid date, so a milestone with no
-     actual_date would sort to 1970 and appear FIRST. That is the exact bug the
-     sort below claims to prevent, and it survives in this helper's ancestor on
-     chaseroush.com because that data never carries a null. */
+  /* NaN when there is no usable date. new Date(null) is the epoch, not an
+     invalid date, so without this an undated milestone sorts to 1970 and
+     appears first — the exact bug the sort exists to prevent. */
   function toTime(d) {
     if (d === null || d === undefined || d === '') return NaN;
     return new Date(d).getTime();
   }
 
-  /* Sort that pushes undated items to the END rather than to 1970. */
   function byDate(a, b) {
     var ta = toTime(a.actual_date), tb = toTime(b.actual_date);
     if (isNaN(ta) && isNaN(tb)) return 0;
@@ -119,9 +101,6 @@ export const WIDGET_JS = String.raw`
     return ta - tb;
   }
 
-  /* Currency from minor units. Intl knows that yen has no decimal places and
-     that a Croatian reader expects 1.234,56 — hardcoding two decimals and a
-     comma would be wrong in both directions. */
   function money(cents, currency, lang) {
     var amount = (cents || 0) / 100;
     try {
@@ -129,304 +108,463 @@ export const WIDGET_JS = String.raw`
         style: 'currency', currency: currency || 'USD',
         maximumFractionDigits: amount % 1 === 0 ? 0 : 2
       }).format(amount);
-    } catch (e) {
-      return (currency || '') + ' ' + Math.round(amount);
-    }
+    } catch (e) { return (currency || '') + ' ' + Math.round(amount); }
   }
 
-  function whenDate(iso, lang) {
+  function monthYear(iso, lang) {
     if (!iso) return '';
     try {
-      return new Intl.DateTimeFormat(lang || 'en', {
-        year: 'numeric', month: 'short'
-      }).format(new Date(iso));
+      return new Intl.DateTimeFormat(lang || 'en',
+        { year: 'numeric', month: 'short' }).format(new Date(iso));
     } catch (e) { return String(iso).slice(0, 7); }
   }
 
-  /* The text for one milestone in the requested language, falling back to
-     English and then to whatever exists. A roadmap with a blank row because
-     one translation is missing looks broken; showing the English is honest
-     and useful. */
   function pick(text, lang) {
     if (!text) return null;
     return text[lang] || text.en || text[Object.keys(text)[0]] || null;
   }
 
+  /* The date a READER sees. target_label is a sentence somebody wrote and is
+     always preferred; the formatted date is only a fallback for a milestone
+     nobody has labelled. */
+  function dateText(m, lang) {
+    var t = pick(m.text, lang);
+    if (t && t.target_label) return t.target_label;
+    return monthYear(m.actual_date, lang);
+  }
+
   var WORDS = {
     en: { now: 'NOW', complete: 'Completed', in_progress: 'In progress',
-          upcoming: 'Upcoming', cancelled: 'Cancelled',
-          of: 'of', partners: 'partners', partner: 'partner',
-          empty: 'Nothing to show yet.', focus: 'Focus' },
+          upcoming: 'Upcoming', cancelled: 'Cancelled', completeWord: 'Complete',
+          remaining: 'remaining', funded: 'Funded',
+          partners: 'partners', partner: 'partner', breakdown: 'Breakdown',
+          empty: 'Nothing to show yet.', focus: 'Focus', close: 'Close' },
     hr: { now: 'SADA', complete: 'Završeno', in_progress: 'U tijeku',
-          upcoming: 'Nadolazeće', cancelled: 'Otkazano',
-          of: 'od', partners: 'podupiratelja', partner: 'podupiratelj',
-          empty: 'Još nema ničega za prikazati.', focus: 'Fokus' },
+          upcoming: 'Nadolazeće', cancelled: 'Otkazano', completeWord: 'Završeno',
+          remaining: 'preostalo', funded: 'Financirano',
+          partners: 'podupiratelja', partner: 'podupiratelj', breakdown: 'Raščlamba',
+          empty: 'Još nema ničega za prikazati.', focus: 'Fokus', close: 'Zatvori' },
     sr: { now: 'САДА', complete: 'Завршено', in_progress: 'У току',
-          upcoming: 'Предстоји', cancelled: 'Отказано',
-          of: 'од', partners: 'подржавалаца', partner: 'подржавалац',
-          empty: 'Још нема ничега за приказ.', focus: 'Фокус' }
+          upcoming: 'Предстоји', cancelled: 'Отказано', completeWord: 'Завршено',
+          remaining: 'преостало', funded: 'Финансирано',
+          partners: 'подржавалаца', partner: 'подржавалац', breakdown: 'Рашчламба',
+          empty: 'Још нема ничега за приказ.', focus: 'Фокус', close: 'Затвори' }
   };
   function w(lang, key) { return (WORDS[lang] || WORDS.en)[key] || WORDS.en[key]; }
 
-  /* ---- styles -------------------------------------------------------- */
+  /* ---------- the COLOUR PAIR ----------
+     Completed and in-progress are different hues, which is what the legend is
+     for. The second is rotated -33 degrees from the first, the same distance
+     that separates cyan from green on chaseroush.com. A grey accent has no hue
+     to rotate, so it separates by lightness instead. */
+
+  function hexToHsl(hex) {
+    var m = /^#?([0-9a-f]{6})$/i.exec(String(hex).trim());
+    if (!m) return null;
+    var n = parseInt(m[1], 16);
+    var r = ((n >> 16) & 255) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
+    var max = Math.max(r, g, b), min = Math.min(r, g, b);
+    var l = (max + min) / 2, d = max - min;
+    if (d === 0) return { h: 0, s: 0, l: l };
+    var s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    var h;
+    if (max === r) h = ((g - b) / d + (g < b ? 6 : 0));
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    return { h: h * 60, s: s, l: l };
+  }
+
+  function hslToHex(o) {
+    var h = ((o.h % 360) + 360) % 360, s = o.s, l = o.l;
+    var c = (1 - Math.abs(2 * l - 1)) * s;
+    var x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+    var m = l - c / 2, r = 0, g = 0, b = 0;
+    if (h < 60) { r = c; g = x; }
+    else if (h < 120) { r = x; g = c; }
+    else if (h < 180) { g = c; b = x; }
+    else if (h < 240) { g = x; b = c; }
+    else if (h < 300) { r = x; b = c; }
+    else { r = c; b = x; }
+    function to(v) { var q = Math.round((v + m) * 255).toString(16); return q.length < 2 ? '0' + q : q; }
+    return '#' + to(r) + to(g) + to(b);
+  }
+
+  function companion(hex) {
+    var o = hexToHsl(hex);
+    if (!o) return hex;
+    if (o.s < 0.12) {
+      var l = o.l > 0.5 ? Math.max(0.28, o.l - 0.3) : Math.min(0.82, o.l + 0.3);
+      return hslToHex({ h: o.h, s: o.s, l: l });
+    }
+    return hslToHex({ h: o.h - 33, s: Math.min(1, o.s * 1.05), l: Math.min(0.72, o.l * 1.04) });
+  }
+
+  function rgba(hex, a) {
+    var m = /^#?([0-9a-f]{6})$/i.exec(String(hex).trim());
+    if (!m) return 'rgba(109,74,255,' + a + ')';
+    var n = parseInt(m[1], 16);
+    return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
+  }
+
+  /* ---------- parsing: parents, children, aggregate ---------- */
+
+  function parse(milestones, lang) {
+    var usable = (milestones || []).filter(function (m) {
+      var t = pick(m.text, lang);
+      return t && t.title;
+    });
+
+    var byId = {};
+    usable.forEach(function (m) { byId[m.id] = m; });
+
+    var kids = {};
+    usable.forEach(function (m) {
+      if (m.parent_id && byId[m.parent_id]) {
+        (kids[m.parent_id] = kids[m.parent_id] || []).push(m);
+      }
+    });
+    Object.keys(kids).forEach(function (k) { kids[k].sort(byDate); });
+
+    /* A milestone whose parent is not in this payload is promoted to the rail
+       rather than dropped — otherwise an unpublished parent silently hides
+       every child underneath it. */
+    var parents = usable.filter(function (m) {
+      return !m.parent_id || !byId[m.parent_id];
+    }).slice().sort(byDate);
+
+    /* A PARENT'S PERCENTAGE IS ITS CHILDREN'S. Where a milestone has been
+       broken down, the breakdown is the truth — a parent carrying its own
+       hand-typed number would disagree with the rows underneath it. */
+    parents.forEach(function (p) {
+      var c = kids[p.id];
+      if (c && c.length) {
+        var sum = c.reduce(function (s, x) { return s + (Number(x.completion) || 0); }, 0);
+        p._rolled = Math.round(sum / c.length);
+      }
+    });
+
+    return { parents: parents, kids: kids };
+  }
+
+  function pctOf(m) {
+    return typeof m._rolled === 'number' ? m._rolled : (Number(m.completion) || 0);
+  }
+
+  /* ---------- styles ---------- */
 
   function styles(accent, mode) {
-    /* Light and dark are both written out. The accent is the ONE colour that
-       varies per partner; everything else is a derived neutral, so a partner
-       choosing an unfortunate colour cannot make the text unreadable. */
-    var light =
-      ':host{--bg:#fff;--fg:#12121a;--dim:#5c5c6b;--line:#e6e6ee;--track:#eef0f6}';
-    var dark =
-      ':host{--bg:#15151c;--fg:#f2f2f7;--dim:#9a9aad;--line:#2a2a36;--track:#22222e}';
+    var done = companion(accent);
 
-    var scheme;
-    if (mode === 'light') scheme = light;
-    else if (mode === 'dark') scheme = dark;
-    else scheme = light + '@media(prefers-color-scheme:dark){' + dark + '}';
+    var light = ':host{--bg:#fff;--fg:#12121a;--dim:#5c5c6b;--line:#e6e6ee;' +
+                '--track:#eef0f6;--panel:#f7f8fb}';
+    var dark  = ':host{--bg:#15151c;--fg:#f2f2f7;--dim:#9a9aad;--line:#2a2a36;' +
+                '--track:#22222e;--panel:#1c1c25}';
+
+    var scheme = mode === 'light' ? light
+               : mode === 'dark'  ? dark
+               : light + '@media(prefers-color-scheme:dark){' + dark + '}';
 
     return scheme +
-
-      /* THE DUAL COLOUR. On chaseroush.com this is two named tokens; here the
-         accent is per-partner, so the second is mixed from the first. The
-         fallback keeps a single flat colour on browsers without color-mix
-         rather than losing the fill entirely. */
-      ':host{--accent:' + accent + ';--accent-hi:' + accent + ';' +
-        '--glow:' + accent + '55}' +
-      '@supports (color:color-mix(in srgb,red,blue)){' +
-        ':host{--accent-hi:color-mix(in srgb,var(--accent) 55%,#fff);' +
-          '--glow:color-mix(in srgb,var(--accent) 45%,transparent)}}' +
-
-      ':host{all:initial;display:block;' +
+      ':host{--prog:' + accent + ';--done:' + done + ';' +
+        '--glow-p:' + rgba(accent, 0.45) + ';--glow-d:' + rgba(done, 0.45) + ';' +
+        '--faint-p:' + rgba(accent, 0.16) + ';--faint-d:' + rgba(done, 0.16) + ';' +
+        'all:initial;display:block;color:var(--fg);line-height:1.5;' +
         'font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,' +
-        'Helvetica,Arial,sans-serif;color:var(--fg);line-height:1.5;' +
-        '-webkit-font-smoothing:antialiased}' +
+          'Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}' +
       '*{box-sizing:border-box;margin:0;padding:0}' +
+      'button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}' +
 
-      '.card{background:var(--bg);border:1px solid var(--line);' +
-        'border-radius:14px;padding:20px 22px}' +
-      '.stack{display:flex;flex-direction:column;gap:14px}' +
+      /* ============ GOAL CARDS ============ */
+      '.goals{display:flex;flex-direction:column;gap:22px}' +
+      '.gcard{background:var(--bg);border:1.5px solid var(--line);border-radius:10px;' +
+        'padding:22px 26px;transition:border-color .3s ease,box-shadow .3s ease,' +
+        'transform .3s ease}' +
+      '.gcard:hover{border-color:var(--faint-p);transform:translateY(-4px);' +
+        'box-shadow:0 4px 16px rgba(0,0,0,.18)}' +
+      '.gtop{display:flex;justify-content:space-between;align-items:center;gap:20px;' +
+        'margin-bottom:4px}' +
+      '.gleft{flex:1;min-width:0}' +
+      '.gname{font-size:22px;font-weight:700;letter-spacing:-.01em;line-height:1.25;' +
+        'font-family:Georgia,Cambria,"Times New Roman",serif}' +
+      '.gdesc{margin-top:8px;color:var(--dim);font-size:14.5px;line-height:1.55;' +
+        'border-left:3px solid var(--prog);padding-left:12px}' +
+      '.gright{text-align:right;flex-shrink:0}' +
+      '.gpct{font-size:30px;font-weight:700;line-height:1;color:var(--done);' +
+        'font-variant-numeric:tabular-nums}' +
+      '.gmoney{margin-top:5px;font-size:13.5px;font-weight:600;color:var(--prog);' +
+        'font-variant-numeric:tabular-nums;white-space:nowrap}' +
+      '.gbar{height:10px;border-radius:5px;margin-top:16px;overflow:hidden;' +
+        'position:relative;border:1px solid var(--faint-p);' +
+        'background:linear-gradient(90deg,var(--faint-p),var(--faint-d))}' +
+      '.gfill{height:100%;width:0;border-radius:5px;position:relative;overflow:hidden;' +
+        'background:linear-gradient(90deg,var(--prog),var(--done));' +
+        'box-shadow:0 0 12px var(--glow-p);' +
+        'transition:width 1.5s cubic-bezier(.4,0,.2,1)}' +
+      '.gfoot{margin-top:10px;display:flex;justify-content:space-between;' +
+        'align-items:center;gap:12px;font-size:13px;color:var(--dim);font-weight:500;' +
+        'min-height:20px}' +
+      '.gfoot .sp{margin-left:auto}' +
+      '.gbadge{display:inline-block;border-radius:20px;padding:3px 12px;font-size:12.5px;' +
+        'font-weight:700;color:var(--done);border:1px solid var(--done);' +
+        'background:var(--faint-d)}' +
 
-      /* ---------- goal ---------- */
-      '.label{font-size:13px;letter-spacing:.04em;text-transform:uppercase;' +
-        'color:var(--dim);font-weight:600}' +
-      '.amount{font-size:30px;font-weight:700;letter-spacing:-.02em;' +
-        'font-variant-numeric:tabular-nums;margin-top:6px}' +
-      '.amount .of{font-size:15px;font-weight:500;color:var(--dim);' +
-        'letter-spacing:0}' +
-
-      /* The track, the gradient fill, the glow and the shimmer — the four
-         layers that make the bar read as lit rather than painted. */
-      '.track{height:10px;background:var(--track);border-radius:99px;' +
-        'margin:14px 0 10px;overflow:hidden;position:relative}' +
-      '.fill{height:100%;width:0;border-radius:99px;position:relative;' +
-        'overflow:hidden;background:linear-gradient(90deg,var(--accent),var(--accent-hi));' +
-        'box-shadow:0 0 12px var(--glow);' +
-        'transition:width 1.6s cubic-bezier(.16,1,.3,1)}' +
-      '.fill:after{content:"";position:absolute;top:0;left:-100%;' +
-        'width:100%;height:100%;' +
-        'background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);' +
+      '.gfill:after,.rfill:after,.dfill:after{content:"";position:absolute;top:0;' +
+        'left:-100%;width:100%;height:100%;' +
+        'background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);' +
         'animation:sweep 3s infinite}' +
       '@keyframes sweep{0%{left:-100%}100%{left:200%}}' +
 
-      '.meta{display:flex;justify-content:space-between;gap:12px;' +
-        'font-size:13px;color:var(--dim);font-variant-numeric:tabular-nums}' +
-      '.pct{color:var(--accent);font-weight:700}' +
+      /* ============ ROADMAP: not a card ============ */
+      '.legend{display:flex;justify-content:center;flex-wrap:wrap;gap:12px 28px;' +
+        'font-size:13px;color:var(--dim);margin-bottom:6px}' +
+      '.lg{display:inline-flex;align-items:center;gap:9px}' +
+      '.lgd{width:13px;height:13px;border-radius:50%;flex:0 0 auto}' +
+      '.lgd.complete{background:var(--done);box-shadow:0 0 9px var(--glow-d)}' +
+      '.lgd.in_progress{background:var(--prog);box-shadow:0 0 9px var(--glow-p)}' +
+      '.lgd.upcoming{background:transparent;box-shadow:inset 0 0 0 2px var(--faint-p)}' +
 
-      /* ---------- roadmap, shared ---------- */
-      '.legend{display:flex;flex-wrap:wrap;gap:10px 18px;margin-bottom:22px;' +
-        'font-size:12px;color:var(--dim)}' +
-      '.lg{display:inline-flex;align-items:center;gap:7px}' +
-      '.lgd{width:11px;height:11px;border-radius:50%;flex:0 0 auto}' +
-      '.lgd.complete{background:var(--accent);box-shadow:0 0 7px var(--glow)}' +
-      '.lgd.in_progress{background:var(--accent-hi);box-shadow:0 0 7px var(--glow)}' +
-      '.lgd.upcoming{background:transparent;box-shadow:inset 0 0 0 2px var(--line)}' +
-
-      /* ---------- roadmap, horizontal (wide) ---------- */
-      '.rail{display:none;position:relative;padding:78px 8px 96px}' +
-      '.railtrack{height:4px;border-radius:99px;position:relative;' +
-        'background:var(--track)}' +
-      '.railfill{position:absolute;left:0;top:0;height:100%;width:0;' +
-        'border-radius:99px;overflow:hidden;' +
-        'background:linear-gradient(90deg,var(--accent),var(--accent-hi));' +
-        'box-shadow:0 0 14px var(--glow);' +
+      /* ---- horizontal rail ---- */
+      '.rail{display:none;position:relative;padding:112px 12px 124px}' +
+      '.rtrack{height:4px;border-radius:99px;position:relative;' +
+        'background:linear-gradient(90deg,var(--faint-p),var(--faint-d))}' +
+      '.rfill{position:absolute;left:0;top:0;height:100%;width:0;border-radius:99px;' +
+        'overflow:hidden;background:linear-gradient(90deg,var(--prog),var(--done));' +
+        'box-shadow:0 0 16px var(--glow-p);' +
         'transition:width 1.6s cubic-bezier(.16,1,.3,1)}' +
-      '.railfill:after{content:"";position:absolute;top:0;left:-100%;' +
-        'width:100%;height:100%;' +
-        'background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);' +
-        'animation:sweep 3s infinite}' +
 
-      /* NOW: a pulsing line with a label, entering once on load. */
-      '.now{position:absolute;top:0;transform:translateX(-50%);z-index:6;' +
+      '.now{position:absolute;top:0;transform:translateX(-50%);z-index:7;' +
         'animation:nowIn .9s cubic-bezier(.16,1,.3,1) .45s both}' +
       '@keyframes nowIn{from{opacity:0;transform:translateX(-50%) scaleY(.3)}' +
         'to{opacity:1;transform:translateX(-50%) scaleY(1)}}' +
-      '.nowline{width:2px;height:46px;background:var(--accent-hi);' +
-        'position:absolute;top:-21px;left:50%;transform:translateX(-50%);' +
-        'box-shadow:0 0 9px var(--glow);animation:pulse 2s ease-in-out infinite}' +
+      '.nline{width:2px;height:44px;background:var(--prog);position:absolute;top:-20px;' +
+        'left:50%;transform:translateX(-50%);box-shadow:0 0 10px var(--glow-p);' +
+        'animation:pulse 2s ease-in-out infinite}' +
       '@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}' +
-      '.nowlabel{position:absolute;bottom:28px;left:50%;' +
-        'transform:translateX(-50%);white-space:nowrap;font-size:11px;' +
-        'font-weight:700;letter-spacing:.1em;color:var(--accent-hi)}' +
+      '.nlabel{position:absolute;bottom:26px;left:50%;transform:translateX(-50%);' +
+        'white-space:nowrap;font-size:11px;font-weight:700;letter-spacing:.11em;' +
+        'color:var(--prog)}' +
 
-      '.pin{position:absolute;top:-30px;transform:translateX(-50%);' +
-        'width:132px;margin-left:0;text-align:center;cursor:default}' +
-      '.dot{width:18px;height:18px;border-radius:50%;border:3px solid;' +
-        'display:block;margin:0 auto 9px;' +
-        'transition:transform .2s cubic-bezier(.16,1,.3,1)}' +
-      '.dot.complete{background:var(--accent);border-color:var(--accent);' +
-        'box-shadow:0 0 14px var(--glow)}' +
-      '.dot.in_progress{background:var(--accent-hi);border-color:var(--accent-hi);' +
+      /* A pin is a button. Absolutely placed, never wrapping, alternating
+         above and below so long titles cannot collide. */
+      '.pin{position:absolute;transform:translateX(-50%);text-align:center;' +
+        'display:block;padding:0;white-space:nowrap;z-index:3}' +
+      '.pin.up{bottom:14px}' +
+      '.pin.down{top:14px}' +
+      '.dot{width:19px;height:19px;border-radius:50%;border:3px solid;display:block;' +
+        'margin:0 auto;transition:transform .2s cubic-bezier(.16,1,.3,1),' +
+        'box-shadow .2s ease}' +
+      '.pin.up .dot{margin-top:10px}' +
+      '.pin.down .dot{margin-bottom:10px}' +
+      '.dot.complete{background:var(--done);border-color:var(--done);' +
+        'box-shadow:0 0 15px var(--glow-d)}' +
+      '.dot.in_progress{background:var(--prog);border-color:var(--prog);' +
         'animation:glow 2s ease-in-out infinite}' +
-      '@keyframes glow{0%,100%{box-shadow:0 0 13px var(--glow)}' +
-        '50%{box-shadow:0 0 24px var(--glow),0 0 34px var(--glow)}}' +
-      '.dot.upcoming{background:var(--bg);border-color:var(--line)}' +
-      '.dot.cancelled{background:var(--bg);border-color:var(--line);opacity:.5}' +
+      '@keyframes glow{0%,100%{box-shadow:0 0 14px var(--glow-p)}' +
+        '50%{box-shadow:0 0 26px var(--glow-p),0 0 38px var(--glow-p)}}' +
+      '.dot.upcoming{background:var(--bg);border-color:var(--faint-p)}' +
+      '.dot.cancelled{background:var(--bg);border-color:var(--line);opacity:.45}' +
       '.pin:hover .dot{transform:scale(1.22)}' +
-      '.up .lab{margin-top:0}' +
-      '.lab{font-size:13px;line-height:1.4}' +
-      '.lab b{display:block;font-weight:650;margin-bottom:3px}' +
-      '.lab .d{font-size:11.5px;color:var(--dim)}' +
-      '.lab .p{display:block;margin-top:3px;color:var(--accent);font-weight:700;' +
-        'font-variant-numeric:tabular-nums}' +
-      /* Alternate above and below the rail so long titles never collide. */
-      '.pin.down{top:22px}' +
-      '.pin.down .dot{margin:0 auto}' +
-      '.pin.down .lab{margin-top:9px}' +
+      '.pin.sel .dot{transform:scale(1.3)}' +
+      '.pin:focus-visible{outline:2px solid var(--prog);outline-offset:4px;' +
+        'border-radius:6px}' +
 
-      /* ---------- roadmap, vertical (narrow) ---------- */
-      '.col{position:relative;padding-left:34px}' +
-      '.col:before{content:"";position:absolute;left:8px;top:6px;bottom:6px;' +
-        'width:2px;background:var(--track);border-radius:2px}' +
-      '.colfill{position:absolute;left:8px;top:6px;width:2px;border-radius:2px;' +
-        'height:0;background:linear-gradient(180deg,var(--accent),var(--accent-hi));' +
-        'box-shadow:0 0 8px var(--glow);' +
-        'transition:height 1.6s cubic-bezier(.16,1,.3,1);overflow:hidden}' +
-      '.colfill:after{content:"";position:absolute;left:0;top:-100%;' +
-        'width:100%;height:56px;' +
-        'background:linear-gradient(180deg,transparent,rgba(255,255,255,.75),transparent);' +
-        'animation:vsweep 3s ease-in-out infinite}' +
-      '@keyframes vsweep{0%{top:-100%}100%{top:200%}}' +
-      '.step{position:relative;padding-bottom:22px}' +
-      '.step:last-child{padding-bottom:0}' +
-      '.sdot{position:absolute;left:-34px;top:2px;width:18px;height:18px;' +
-        'border-radius:50%;border:3px solid;box-sizing:border-box}' +
-      '.sdot.complete{background:var(--accent);border-color:var(--accent);' +
-        'box-shadow:0 0 12px var(--glow)}' +
-      '.sdot.in_progress{background:var(--accent-hi);border-color:var(--accent-hi);' +
-        'animation:glow 2s ease-in-out infinite}' +
-      '.sdot.upcoming{background:var(--bg);border-color:var(--line)}' +
-      '.sdot.cancelled{background:var(--bg);border-color:var(--line);opacity:.5}' +
-      '.when{font-size:11.5px;color:var(--dim);letter-spacing:.03em;' +
-        'text-transform:uppercase;font-weight:600}' +
-      '.title{font-size:15px;font-weight:650;margin-top:2px}' +
-      '.step.cancelled .title{text-decoration:line-through;opacity:.6}' +
-      '.desc{font-size:14px;color:var(--dim);margin-top:3px}' +
-      '.spc{margin-top:4px;color:var(--accent);font-weight:700;font-size:13px;' +
+      '.plab{font-size:13.5px;line-height:1.45;display:block}' +
+      '.plab b{display:block;font-weight:700;margin-bottom:2px}' +
+      '.plab .pd{display:block;font-size:12px;color:var(--dim)}' +
+      '.plab .pp{display:block;margin-top:2px;font-weight:700;color:var(--done);' +
         'font-variant-numeric:tabular-nums}' +
-      '.feat{display:inline-block;margin-left:7px;font-size:10.5px;' +
-        'color:var(--accent);border:1px solid var(--accent);border-radius:99px;' +
-        'padding:1px 7px;vertical-align:1px;font-weight:700;letter-spacing:.04em}' +
+      '.kidcount{display:block;font-size:11px;color:var(--dim);margin-top:1px;' +
+        'opacity:.85;font-weight:500}' +
 
-      /* The vertical NOW dot rides the filled line. */
-      '.vnow{position:absolute;left:9px;width:9px;height:9px;border-radius:50%;' +
+      /* ---- vertical column ---- */
+      '.col{position:relative;padding-left:36px}' +
+      '.col:before{content:"";position:absolute;left:9px;top:8px;bottom:8px;width:2px;' +
+        'border-radius:2px;background:linear-gradient(180deg,var(--faint-p),var(--faint-d))}' +
+      '.cfill{position:absolute;left:9px;top:8px;width:2px;border-radius:2px;height:0;' +
+        'background:linear-gradient(180deg,var(--prog),var(--done));' +
+        'box-shadow:0 0 9px var(--glow-p);' +
+        'transition:height 1.6s cubic-bezier(.16,1,.3,1)}' +
+      '.vnow{position:absolute;left:10px;width:9px;height:9px;border-radius:50%;' +
         'background:#fff;transform:translate(-50%,-50%);z-index:4;' +
-        'box-shadow:0 0 6px rgba(255,255,255,.9),0 0 13px var(--glow);' +
-        'animation:vnowIn .8s cubic-bezier(.16,1,.3,1) .55s both,' +
-          'ndot 2s ease-in-out infinite}' +
+        'box-shadow:0 0 7px rgba(255,255,255,.9),0 0 14px var(--glow-p);' +
+        'animation:vnowIn .8s cubic-bezier(.16,1,.3,1) .55s both,ndot 2s ease-in-out infinite}' +
       '@keyframes vnowIn{from{opacity:0}to{opacity:1}}' +
       '@keyframes ndot{0%,100%{transform:translate(-50%,-50%) scale(1)}' +
         '50%{transform:translate(-50%,-50%) scale(1.35)}}' +
 
-      /* Which layout you get. Deliberately a container-independent width
-         query on the HOST, because the widget does not know how wide the
-         column it was dropped into is until it is measured. */
+      '.step{position:relative;display:block;width:100%;text-align:left;' +
+        'padding:0 0 26px}' +
+      '.step:last-child{padding-bottom:2px}' +
+      '.sdot{position:absolute;left:-36px;top:2px;width:19px;height:19px;' +
+        'border-radius:50%;border:3px solid;transition:transform .2s ease}' +
+      '.sdot.complete{background:var(--done);border-color:var(--done);' +
+        'box-shadow:0 0 13px var(--glow-d)}' +
+      '.sdot.in_progress{background:var(--prog);border-color:var(--prog);' +
+        'animation:glow 2s ease-in-out infinite}' +
+      '.sdot.upcoming{background:var(--bg);border-color:var(--faint-p)}' +
+      '.sdot.cancelled{background:var(--bg);border-color:var(--line);opacity:.45}' +
+      '.step:hover .sdot{transform:scale(1.15)}' +
+      '.step.sel .sdot{transform:scale(1.25)}' +
+      '.step:focus-visible{outline:2px solid var(--prog);outline-offset:3px;' +
+        'border-radius:6px}' +
+      '.sdate{display:block;font-size:12px;color:var(--dim);font-weight:600;' +
+        'letter-spacing:.03em}' +
+      '.stitle{display:block;font-size:15.5px;font-weight:700;margin-top:2px}' +
+      '.step.cancelled .stitle{text-decoration:line-through;opacity:.6}' +
+      '.spct{display:block;margin-top:3px;font-size:13px;font-weight:700;' +
+        'color:var(--done);font-variant-numeric:tabular-nums}' +
+
+      '.feat{display:inline-block;margin-left:8px;font-size:10.5px;color:var(--prog);' +
+        'border:1px solid var(--prog);border-radius:99px;padding:1px 8px;' +
+        'vertical-align:2px;font-weight:700;letter-spacing:.04em}' +
+
+      /* ---- the details panel ---- */
+      '.detail{margin-top:16px;background:var(--panel);border:1px solid var(--line);' +
+        'border-radius:12px;padding:26px 28px;position:relative;' +
+        'animation:slideIn .35s cubic-bezier(.16,1,.3,1) both}' +
+      '@keyframes slideIn{from{opacity:0;transform:translateY(-8px)}' +
+        'to{opacity:1;transform:translateY(0)}}' +
+      '.dclose{position:absolute;top:14px;right:14px;width:30px;height:30px;' +
+        'border-radius:50%;background:var(--track);color:var(--dim);font-size:17px;' +
+        'line-height:1;display:flex;align-items:center;justify-content:center;' +
+        'transition:background .2s ease,color .2s ease}' +
+      '.dclose:hover{background:var(--line);color:var(--fg)}' +
+      '.dhead{display:flex;justify-content:space-between;align-items:flex-start;' +
+        'gap:28px;padding-right:34px}' +
+      '.dtitle{font-size:26px;font-weight:700;line-height:1.2;letter-spacing:-.01em;' +
+        'font-family:Georgia,Cambria,"Times New Roman",serif}' +
+      '.ddate{margin-top:7px;font-size:14px;font-weight:700;color:var(--prog)}' +
+      '.dpct{text-align:right;flex-shrink:0}' +
+      '.dpct b{display:block;font-size:30px;line-height:1;color:var(--done);' +
+        'font-variant-numeric:tabular-nums}' +
+      '.dpct i{display:block;margin-top:4px;font-size:12px;color:var(--dim);' +
+        'font-style:normal}' +
+      '.dbar{height:9px;border-radius:5px;margin:20px 0 18px;overflow:hidden;' +
+        'position:relative;background:linear-gradient(90deg,var(--faint-p),var(--faint-d))}' +
+      '.dfill{height:100%;width:0;border-radius:5px;position:relative;overflow:hidden;' +
+        'background:linear-gradient(90deg,var(--prog),var(--done));' +
+        'transition:width 1.5s cubic-bezier(.4,0,.2,1)}' +
+      '.ddesc{background:var(--bg);border-left:3px solid var(--prog);border-radius:6px;' +
+        'padding:16px 18px;color:var(--dim);font-size:15px;line-height:1.75}' +
+
+      /* ---- children, inside the parent's detail ---- */
+      '.kids{margin-top:24px}' +
+      '.kids h4{font-size:12px;letter-spacing:.09em;text-transform:uppercase;' +
+        'color:var(--dim);font-weight:700;margin-bottom:10px}' +
+      '.kid{display:flex;align-items:flex-start;gap:14px;padding:13px 0;' +
+        'border-top:1px solid var(--line)}' +
+      '.kmark{flex:0 0 auto;width:20px;height:20px;border-radius:50%;font-size:11px;' +
+        'display:flex;align-items:center;justify-content:center;font-weight:700;' +
+        'margin-top:2px}' +
+      '.kmark.complete{background:var(--done);color:var(--bg)}' +
+      '.kmark.in_progress{background:var(--prog);color:var(--bg)}' +
+      '.kmark.upcoming{box-shadow:inset 0 0 0 2px var(--faint-p);color:var(--dim)}' +
+      '.kmark.cancelled{box-shadow:inset 0 0 0 2px var(--line);color:var(--dim);opacity:.6}' +
+      '.kbody{flex:1;min-width:0}' +
+      '.kbody h5{font-size:14.5px;font-weight:700}' +
+      '.kdate{font-size:11.5px;color:var(--dim);margin-top:1px}' +
+      '.kdesc{font-size:13.5px;color:var(--dim);margin-top:5px;line-height:1.6}' +
+      '.kpct{flex:0 0 76px;text-align:right}' +
+      '.kbar{height:5px;border-radius:3px;background:var(--track);overflow:hidden}' +
+      '.kbarf{height:100%;width:0;border-radius:3px;' +
+        'background:linear-gradient(90deg,var(--prog),var(--done));' +
+        'transition:width 1.2s cubic-bezier(.4,0,.2,1)}' +
+      '.kpct em{display:block;margin-top:4px;font-size:11.5px;color:var(--dim);' +
+        'font-style:normal;font-variant-numeric:tabular-nums}' +
+
       '.is-wide .rail{display:block}' +
       '.is-wide .col{display:none}' +
 
-      '.foot{margin-top:18px;padding-top:12px;border-top:1px solid var(--line);' +
+      '.foot{margin-top:20px;padding-top:12px;border-top:1px solid var(--line);' +
         'font-size:12px;color:var(--dim)}' +
-      '.foot a{color:inherit;text-decoration:none;' +
-        'border-bottom:1px solid var(--line)}' +
+      '.foot a{color:inherit;text-decoration:none;border-bottom:1px solid var(--line)}' +
       '.foot a:hover{color:var(--fg)}' +
-      '.msg{font-size:14px;color:var(--dim);padding:16px 0;text-align:center}' +
+      '.msg{font-size:14px;color:var(--dim);padding:18px 0;text-align:center}' +
 
-      /* EVERY moving part stops. The widget still says the same thing. */
       '@media(prefers-reduced-motion:reduce){' +
-        '.fill,.railfill,.colfill{transition:none}' +
-        '.fill:after,.railfill:after,.colfill:after{animation:none;display:none}' +
-        '.dot.in_progress,.sdot.in_progress,.nowline,.vnow,.now{animation:none}' +
-      '}';
+        '.gfill,.rfill,.cfill,.dfill,.kbarf{transition:none}' +
+        '.gfill:after,.rfill:after,.dfill:after{animation:none;display:none}' +
+        '.dot.in_progress,.sdot.in_progress,.nline,.vnow,.now,.detail{animation:none}' +
+        '.gcard:hover{transform:none}}';
   }
 
-  /* ---- count-up ------------------------------------------------------- */
+  /* ---------- count-up ---------- */
 
   function countUp(node, target) {
     target = Math.round(target || 0);
     if (reduced) { node.textContent = String(target); return; }
-    var dur = 1500, start = null;
+    var dur = 1400, start = null;
     function frame(t) {
       if (start === null) start = t;
       var p = Math.min(1, (t - start) / dur);
-      var eased = 1 - Math.pow(1 - p, 3);
-      node.textContent = String(Math.round(target * eased));
+      node.textContent = String(Math.round(target * (1 - Math.pow(1 - p, 3))));
       if (p < 1) requestAnimationFrame(frame);
     }
     requestAnimationFrame(frame);
   }
 
-  /* ---- the visualisers ----------------------------------------------- */
+  /* Two frames, so the CSS transition actually runs — setting a width in the
+     same frame the node is created skips the animation entirely. */
+  function later(fn) {
+    requestAnimationFrame(function () { requestAnimationFrame(fn); });
+  }
 
-  function goalCard(goal, lang) {
-    var card = el('div', 'card');
+  /* ---------- goal cards ---------- */
 
-    card.appendChild(el('div', 'label', goal.label));
+  function goalCard(g, lang) {
+    var card = el('div', 'gcard');
+    var top = el('div', 'gtop');
 
-    var amt = el('div', 'amount');
-    amt.appendChild(document.createTextNode(money(goal.raised_cents, goal.currency, lang)));
-    if (goal.target_cents) {
-      amt.appendChild(el('span', 'of',
-        ' ' + w(lang, 'of') + ' ' + money(goal.target_cents, goal.currency, lang)));
-    }
-    card.appendChild(amt);
+    var left = el('div', 'gleft');
+    left.appendChild(el('div', 'gname', g.label));
+    top.appendChild(left);
 
-    /* percent can exceed 100, and over-funded is worth showing rather than
-       clamping into a bar that looks merely finished. The BAR clamps; the
-       number does not. */
-    var pct = typeof goal.percent === 'number' ? goal.percent : 0;
+    var pct = typeof g.percent === 'number' ? g.percent : 0;
 
-    var track = el('div', 'track');
-    var fill = el('div', 'fill');
-    track.appendChild(fill);
-    card.appendChild(track);
-
-    var meta = el('div', 'meta');
-    var pctEl = el('span', 'pct');
+    var right = el('div', 'gright');
+    var pctEl = el('div', 'gpct');
     var num = el('span', null, '0');
     pctEl.appendChild(num);
     pctEl.appendChild(document.createTextNode('%'));
-    meta.appendChild(pctEl);
-    if (goal.donor_count) {
-      meta.appendChild(el('span', null, goal.donor_count + ' ' +
-        w(lang, goal.donor_count === 1 ? 'partner' : 'partners')));
-    }
-    card.appendChild(meta);
+    right.appendChild(pctEl);
 
-    /* Painted after layout so the transition actually runs — setting the
-       width in the same frame the element is created skips the animation. */
-    requestAnimationFrame(function () {
-      requestAnimationFrame(function () {
-        fill.style.width = Math.max(0, Math.min(100, pct)) + '%';
-        countUp(num, pct);
-      });
+    right.appendChild(el('div', 'gmoney', g.target_cents
+      ? money(g.raised_cents, g.currency, lang) + ' / ' + money(g.target_cents, g.currency, lang)
+      : money(g.raised_cents, g.currency, lang)));
+    top.appendChild(right);
+    card.appendChild(top);
+
+    if (g.description) left.appendChild(el('div', 'gdesc', g.description));
+
+    var bar = el('div', 'gbar');
+    var fill = el('div', 'gfill');
+    bar.appendChild(fill);
+    card.appendChild(bar);
+
+    var foot = el('div', 'gfoot');
+    if (g.donor_count) {
+      foot.appendChild(el('span', null, g.donor_count + ' ' +
+        w(lang, g.donor_count === 1 ? 'partner' : 'partners')));
+    }
+    var short = (g.target_cents || 0) - (g.raised_cents || 0);
+    if (g.target_cents && short <= 0) {
+      foot.appendChild(el('span', 'gbadge sp', '✓ ' + w(lang, 'funded')));
+    } else if (g.target_cents) {
+      foot.appendChild(el('span', 'sp',
+        money(short, g.currency, lang) + ' ' + w(lang, 'remaining')));
+    }
+    card.appendChild(foot);
+
+    later(function () {
+      fill.style.width = Math.max(0, Math.min(100, pct)) + '%';
+      countUp(num, pct);
     });
 
     return card;
   }
 
-  /* Spread milestones along the rail by DATE, then push apart anything that
-     would overlap. Undated entries fall back to even spacing. Ported from
-     chaseroush.com — the ten-pass relaxation is what stops two milestones a
-     week apart printing on top of each other. */
+  /* ---------- roadmap ---------- */
+
   function positions(rows) {
     var n = rows.length;
     var evenly = rows.map(function (_, i) { return n <= 1 ? 50 : (i / (n - 1)) * 100; });
@@ -435,8 +573,7 @@ export const WIDGET_JS = String.raw`
     var valid = times.filter(function (t) { return !isNaN(t); });
     if (valid.length < 2) return { pos: evenly, now: null };
 
-    var min = Math.min.apply(null, valid);
-    var max = Math.max.apply(null, valid);
+    var min = Math.min.apply(null, valid), max = Math.max.apply(null, valid);
     if (!(max > min)) return { pos: evenly, now: null };
 
     var pos = times.map(function (t) {
@@ -444,8 +581,10 @@ export const WIDGET_JS = String.raw`
       return Math.min(100, Math.max(0, ((t - min) / (max - min)) * 100));
     });
 
-    var gap = 13;
-    for (var pass = 0; pass < 10; pass++) {
+    /* Alternating above and below halves the crowding, so a pin only has to
+       clear its SECOND neighbour rather than its first. */
+    var gap = 11;
+    for (var pass = 0; pass < 12; pass++) {
       var moved = false;
       for (var i = 1; i < pos.length; i++) {
         if (pos[i] - pos[i - 1] < gap) {
@@ -463,8 +602,101 @@ export const WIDGET_JS = String.raw`
     return { pos: pos, now: now };
   }
 
-  function roadmap(rows, lang) {
-    var card = el('div', 'card');
+  function detailPanel(m, kids, lang, onClose) {
+    var d = el('div', 'detail');
+    d.setAttribute('role', 'region');
+
+    var close = el('button', 'dclose', '×');
+    close.type = 'button';
+    close.setAttribute('aria-label', w(lang, 'close'));
+    close.addEventListener('click', onClose);
+    d.appendChild(close);
+
+    var t = pick(m.text, lang) || {};
+    var head = el('div', 'dhead');
+    var ttl = el('div');
+    ttl.appendChild(el('div', 'dtitle', t.title));
+    var dt = dateText(m, lang);
+    if (dt) ttl.appendChild(el('div', 'ddate', dt));
+    head.appendChild(ttl);
+
+    var pct = pctOf(m);
+    var pw = el('div', 'dpct');
+    var b = el('b');
+    var num = el('span', null, '0');
+    b.appendChild(num);
+    b.appendChild(document.createTextNode('%'));
+    pw.appendChild(b);
+    pw.appendChild(el('i', null, w(lang, 'completeWord')));
+    head.appendChild(pw);
+    d.appendChild(head);
+
+    var bar = el('div', 'dbar');
+    var fill = el('div', 'dfill');
+    bar.appendChild(fill);
+    d.appendChild(bar);
+
+    if (t.description) d.appendChild(el('div', 'ddesc', t.description));
+
+    /* THE BREAKDOWN. Children live here rather than on the rail — putting
+       every child on one line is what turns a roadmap into a row of
+       unreadable dots. */
+    var subs = kids[m.id];
+    if (subs && subs.length) {
+      var wrap = el('div', 'kids');
+      wrap.appendChild(el('h4', null, w(lang, 'breakdown')));
+      subs.forEach(function (s) {
+        var st = pick(s.text, lang) || {};
+        var status = s.status || 'upcoming';
+        var row = el('div', 'kid');
+
+        row.appendChild(el('div', 'kmark ' + status,
+          status === 'complete' ? '✓' : status === 'in_progress' ? '◐' : '○'));
+
+        var body = el('div', 'kbody');
+        body.appendChild(el('h5', null, st.title));
+        var sd = dateText(s, lang);
+        if (sd) body.appendChild(el('div', 'kdate', sd));
+        if (st.description) body.appendChild(el('div', 'kdesc', st.description));
+        row.appendChild(body);
+
+        var kp = el('div', 'kpct');
+        var kb = el('div', 'kbar');
+        var kf = el('div', 'kbarf');
+        kb.appendChild(kf);
+        kp.appendChild(kb);
+        var kn = el('em');
+        var knum = el('span', null, '0');
+        kn.appendChild(knum);
+        kn.appendChild(document.createTextNode('%'));
+        kp.appendChild(kn);
+        row.appendChild(kp);
+
+        var spct = Number(s.completion) || 0;
+        later(function () {
+          kf.style.width = Math.max(0, Math.min(100, spct)) + '%';
+          countUp(knum, spct);
+        });
+
+        wrap.appendChild(row);
+      });
+      d.appendChild(wrap);
+    }
+
+    later(function () {
+      fill.style.width = Math.max(0, Math.min(100, pct)) + '%';
+      countUp(num, pct);
+    });
+
+    return d;
+  }
+
+  function roadmap(milestones, lang) {
+    var parsed = parse(milestones, lang);
+    var rows = parsed.parents, kids = parsed.kids;
+    if (!rows.length) return null;
+
+    var road = el('div', 'road');
 
     var legend = el('div', 'legend');
     ['complete', 'in_progress', 'upcoming'].forEach(function (s) {
@@ -473,138 +705,185 @@ export const WIDGET_JS = String.raw`
       item.appendChild(el('span', null, w(lang, s)));
       legend.appendChild(item);
     });
-    card.appendChild(legend);
+    road.appendChild(legend);
 
-    var usable = rows.filter(function (m) {
-      var t = pick(m.text, lang);
-      return t && t.title;
-    }).slice().sort(byDate);
+    var P = positions(rows);
+    var done = rows.filter(function (m) { return m.status === 'complete'; }).length;
+    var progress = rows.length ? (done / rows.length) * 100 : 0;
 
-    if (!usable.length) return null;
+    var slot = el('div');
+    var open = -1;
+    var pins = [], steps = [];
 
-    var P = positions(usable);
-    var done = usable.filter(function (m) { return m.status === 'complete'; }).length;
-    var progress = usable.length ? (done / usable.length) * 100 : 0;
+    function closeDetail() {
+      open = -1;
+      slot.textContent = '';
+      pins.concat(steps).forEach(function (p) {
+        p.classList.remove('sel');
+        p.setAttribute('aria-expanded', 'false');
+      });
+    }
+
+    function openDetail(i) {
+      if (open === i) { closeDetail(); return; }
+      open = i;
+      pins.forEach(function (p, j) {
+        p.classList.toggle('sel', j === i);
+        p.setAttribute('aria-expanded', j === i ? 'true' : 'false');
+      });
+      steps.forEach(function (p, j) {
+        p.classList.toggle('sel', j === i);
+        p.setAttribute('aria-expanded', j === i ? 'true' : 'false');
+      });
+      slot.textContent = '';
+      slot.appendChild(detailPanel(rows[i], kids, lang, closeDetail));
+    }
 
     /* ---- horizontal ---- */
     var rail = el('div', 'rail');
-    var rt = el('div', 'railtrack');
-    var rf = el('div', 'railfill');
-    rt.appendChild(rf);
+    var track = el('div', 'rtrack');
+    var rfill = el('div', 'rfill');
+    track.appendChild(rfill);
 
     if (P.now !== null) {
-      var near = P.pos.some(function (x) { return Math.abs(x - P.now) < 6; });
-      var now = el('div', 'now');
-      now.style.left = P.now + '%';
-      if (!near) now.appendChild(el('div', 'nowlabel', w(lang, 'now')));
-      now.appendChild(el('div', 'nowline'));
-      rt.appendChild(now);
+      var near = P.pos.some(function (x) { return Math.abs(x - P.now) < 7; });
+      var nowEl = el('div', 'now');
+      nowEl.style.left = P.now + '%';
+      if (!near) nowEl.appendChild(el('div', 'nlabel', w(lang, 'now')));
+      nowEl.appendChild(el('div', 'nline'));
+      track.appendChild(nowEl);
     }
 
-    usable.forEach(function (m, i) {
-      var t = pick(m.text, lang);
-      var pin = el('div', 'pin' + (i % 2 ? ' down' : ''));
+    rows.forEach(function (m, i) {
+      var t = pick(m.text, lang) || {};
+      var up = i % 2 === 0;
+      var pin = el('button', 'pin ' + (up ? 'up' : 'down'));
+      pin.type = 'button';
       pin.style.left = P.pos[i] + '%';
-      pin.appendChild(el('span', 'dot ' + (m.status || 'upcoming')));
+      pin.setAttribute('aria-expanded', 'false');
 
-      var lab = el('div', 'lab');
-      var b = el('b', null, t.title);
-      if (m.is_featured) b.appendChild(el('span', 'feat', w(lang, 'focus')));
-      lab.appendChild(b);
-      var d = whenDate(m.actual_date, lang);
-      if (d) lab.appendChild(el('span', 'd', d));
-      if (typeof m.completion === 'number' && m.completion > 0) {
-        var p = el('span', 'p');
-        var pn = el('span', null, '0');
-        p.appendChild(pn);
-        p.appendChild(document.createTextNode('%'));
-        lab.appendChild(p);
-        requestAnimationFrame(function () { countUp(pn, m.completion); });
+      var lab = el('span', 'plab');
+      var name = el('b', null, t.title);
+      if (m.is_featured) name.appendChild(el('span', 'feat', w(lang, 'focus')));
+      lab.appendChild(name);
+
+      var dt = dateText(m, lang);
+      if (dt) lab.appendChild(el('span', 'pd', dt));
+
+      var pc = pctOf(m);
+      if (pc > 0) lab.appendChild(el('span', 'pp', pc + '%'));
+
+      var kc = kids[m.id];
+      if (kc && kc.length) {
+        lab.appendChild(el('span', 'kidcount', kc.length + ' · ' + w(lang, 'breakdown')));
       }
-      pin.appendChild(lab);
-      rail.appendChild(pin);
+
+      var dot = el('span', 'dot ' + (m.status || 'upcoming'));
+      /* Label away from the rail, dot against it. */
+      if (up) { pin.appendChild(lab); pin.appendChild(dot); }
+      else { pin.appendChild(dot); pin.appendChild(lab); }
+
+      pin.addEventListener('click', function () { openDetail(i); });
+      pins.push(pin);
+      track.appendChild(pin);
     });
-    rail.appendChild(rt);
-    card.appendChild(rail);
+    rail.appendChild(track);
+    road.appendChild(rail);
 
     /* ---- vertical ---- */
     var col = el('div', 'col');
-    var cf = el('div', 'colfill');
-    col.appendChild(cf);
+    var cfill = el('div', 'cfill');
+    col.appendChild(cfill);
 
-    usable.forEach(function (m) {
-      var t = pick(m.text, lang);
-      var step = el('div', 'step ' + (m.status || 'upcoming'));
+    rows.forEach(function (m, i) {
+      var t = pick(m.text, lang) || {};
+      var step = el('button', 'step ' + (m.status || 'upcoming'));
+      step.type = 'button';
+      step.setAttribute('aria-expanded', 'false');
       step.appendChild(el('span', 'sdot ' + (m.status || 'upcoming')));
 
-      var d = whenDate(m.actual_date, lang);
-      if (d) step.appendChild(el('div', 'when', d));
+      var dt = dateText(m, lang);
+      if (dt) step.appendChild(el('span', 'sdate', dt));
 
-      var title = el('div', 'title', t.title);
+      var title = el('span', 'stitle', t.title);
       if (m.is_featured) title.appendChild(el('span', 'feat', w(lang, 'focus')));
       step.appendChild(title);
 
-      if (t.description) step.appendChild(el('div', 'desc', t.description));
-      if (typeof m.completion === 'number' && m.completion > 0) {
-        var sp = el('div', 'spc');
-        var sn = el('span', null, '0');
-        sp.appendChild(sn);
-        sp.appendChild(document.createTextNode('%'));
-        step.appendChild(sp);
-        requestAnimationFrame(function () { countUp(sn, m.completion); });
+      var pc = pctOf(m);
+      var kc2 = kids[m.id];
+      if (pc > 0 || (kc2 && kc2.length)) {
+        var line = el('span', 'spct', pc > 0 ? pc + '%' : '');
+        if (kc2 && kc2.length) {
+          line.appendChild(el('span', 'kidcount', kc2.length + ' · ' + w(lang, 'breakdown')));
+        }
+        step.appendChild(line);
       }
+
+      step.addEventListener('click', function () { openDetail(i); });
+      steps.push(step);
       col.appendChild(step);
     });
-    card.appendChild(col);
+    road.appendChild(col);
+    road.appendChild(slot);
 
-    requestAnimationFrame(function () {
-      requestAnimationFrame(function () {
-        rf.style.width = progress + '%';
-        cf.style.height = progress + '%';
-
-        /* The white dot that marks today on the vertical line. Only while it
-           is genuinely between the ends — at 0 or 100 it would sit on top of
-           a milestone dot and read as a second status. */
-        if (progress > 3 && progress < 97) {
-          var vn = el('div', 'vnow');
-          vn.style.top = progress + '%';
-          col.appendChild(vn);
-        }
-      });
+    later(function () {
+      rfill.style.width = progress + '%';
+      cfill.style.height = progress + '%';
+      if (progress > 3 && progress < 97) {
+        var vn = el('div', 'vnow');
+        vn.style.top = progress + '%';
+        col.appendChild(vn);
+      }
     });
 
-    return card;
+    return road;
   }
 
-  /* ---- rendering one placement --------------------------------------- */
+  /* ---------- placement ---------- */
 
-  /* Which layout, decided by MEASURED width rather than the viewport. A
-     widget dropped into a 320px sidebar on a desktop needs the vertical
-     layout, and a media query would give it the horizontal one. */
   function applyWidth(host) {
-    var wide = host.getBoundingClientRect().width >= 620;
-    host.classList.toggle('is-wide', wide);
+    host.classList.toggle('is-wide', host.getBoundingClientRect().width >= 680);
   }
 
-  /* Tell a framing page how tall this is, so the frame can grow instead of
-     scrolling. Only the console preview frames a widget; on a real site the
-     div simply takes its natural height and this posts into the void. */
-  function reportHeight(root) {
+  function reportHeight() {
     if (window.parent === window) return;
     try {
-      var h = Math.ceil(document.documentElement.scrollHeight);
-      window.parent.postMessage({ __thaumaHeight: h }, '*');
-    } catch (e) { /* cross-origin parent: nothing to do */ }
+      window.parent.postMessage(
+        { __thaumaHeight: Math.ceil(document.documentElement.scrollHeight) }, '*');
+    } catch (e) {}
+  }
+
+  /* THE HOST PAGE'S OWN LANGUAGE, when the snippet does not name one. A
+     Croatian church embedding this should get Croatian without being told to
+     add an attribute — and the widget knows which languages this ministry
+     publishes, so it can only ever choose one that exists. */
+  function chooseLang(node, data) {
+    var asked = node.getAttribute('data-lang');
+    if (asked) return asked;
+
+    var have = (data.languages || []).map(function (l) { return l.code; });
+    if (!have.length) return 'en';
+
+    var tags = [];
+    var pageLang = document.documentElement && document.documentElement.getAttribute('lang');
+    if (pageLang) tags.push(String(pageLang).toLowerCase());
+    var nav = window.navigator;
+    if (nav && nav.language) tags.push(String(nav.language).toLowerCase());
+
+    for (var i = 0; i < tags.length; i++) {
+      if (have.indexOf(tags[i]) !== -1) return tags[i];
+      var base = tags[i].split('-')[0];        /* hr-HR -> hr */
+      if (have.indexOf(base) !== -1) return base;
+    }
+    return have.indexOf('en') !== -1 ? 'en' : have[0];
   }
 
   function render(node, data) {
-    var lang   = node.getAttribute('data-lang') || 'en';
     var kind   = node.getAttribute('data-widget') || 'goal';
+    var lang   = chooseLang(node, data);
     var accent = node.getAttribute('data-accent') || (data.theme && data.theme.accent) || '#6D4AFF';
     var mode   = node.getAttribute('data-theme')  || (data.theme && data.theme.mode)   || 'auto';
 
-    /* Anything not a six-digit hex is dropped rather than passed into CSS.
-       It is the one attribute value that reaches a stylesheet. */
     if (!/^#[0-9a-fA-F]{6}$/.test(accent)) accent = '#6D4AFF';
     if (['auto', 'light', 'dark'].indexOf(mode) === -1) mode = 'auto';
 
@@ -623,43 +902,38 @@ export const WIDGET_JS = String.raw`
     } else {
       var goals = data.goals || [];
       if (goals.length) {
-        body = el('div', 'stack');
+        body = el('div', 'goals');
         goals.forEach(function (g) { body.appendChild(goalCard(g, lang)); });
       }
     }
 
     if (!body) {
-      body = el('div', 'card');
+      body = el('div');
       body.appendChild(el('div', 'msg', w(lang, 'empty')));
     }
     host.appendChild(body);
 
-    /* Attribution, and a way back. Not a tracking link — a plain anchor. */
     var foot = el('div', 'foot');
     var a = el('a', null, data.partner ? data.partner.display_name : 'Thauma');
     a.href = ORIGIN + '/partners/' + (data.partner ? data.partner.slug : '');
     a.rel = 'noopener';
     a.target = '_blank';
     foot.appendChild(a);
-    body.appendChild(foot);
+    host.appendChild(foot);
 
     root.appendChild(host);
 
     applyWidth(host);
     if (window.ResizeObserver) {
-      /* window.X, not the bare global. The guard already names it that way,
-         and matching it means the widget runs anywhere the window object is
-         modelled, rather than only where these are true globals. */
-      new window.ResizeObserver(function () { applyWidth(host); reportHeight(root); })
-        .observe(node);
-    } else {
+      new window.ResizeObserver(function () { applyWidth(host); reportHeight(); }).observe(node);
+    } else if (window.addEventListener) {
       window.addEventListener('resize', function () { applyWidth(host); });
     }
 
-    /* After the entrance animations have settled, and once more shortly
-       after, because fonts land late and change the height. */
-    setTimeout(function () { reportHeight(root); }, 60);
-    setTimeout(function () { reportHeight(root); }, 900);
+    /* Posted repeatedly: opening a detail changes the height, fonts land late,
+       and the fills animate. Cheap, and the frame follows. */
+    [60, 500, 1000, 1800].forEach(function (ms) { setTimeout(reportHeight, ms); });
+    root.addEventListener('click', function () { setTimeout(reportHeight, 80); });
   }
 
   function fail(node, message) {
@@ -668,21 +942,16 @@ export const WIDGET_JS = String.raw`
     var style = document.createElement('style');
     style.textContent = styles('#6D4AFF', node.getAttribute('data-theme') || 'auto');
     root.appendChild(style);
-    var card = el('div', 'card');
-    card.appendChild(el('div', 'msg', message));
-    root.appendChild(card);
-    setTimeout(function () { reportHeight(root); }, 40);
+    var box = el('div');
+    box.appendChild(el('div', 'msg', message));
+    root.appendChild(box);
+    setTimeout(reportHeight, 40);
   }
 
   function load(slug) {
-    /* PREVIEW. The console injects the payload rather than letting this fetch,
-       for one reason: the public endpoint returns 404 until a partner switches
-       embedding on, so a preview that fetched could only ever show you what
-       you had already published. Look, then decide.
-
-       Only ever set by the console, in a sandboxed iframe it built itself. A
-       page that sets this is feeding the widget its own data, which is a thing
-       anyone could do by writing their own HTML anyway. */
+    /* The console injects the payload rather than letting this fetch: the
+       public endpoint 404s until embedding is switched on, so a preview that
+       fetched could only ever show what had already been published. */
     if (window.__thaumaPreview && window.__thaumaPreview.partner &&
         window.__thaumaPreview.partner.slug === slug) {
       return Promise.resolve(window.__thaumaPreview);
@@ -690,14 +959,10 @@ export const WIDGET_JS = String.raw`
 
     if (!cache[slug]) {
       cache[slug] = fetch(ORIGIN + '/embed/v1/' + encodeURIComponent(slug) + '.json', {
-        /* No credentials, ever. Saying so explicitly is what keeps the
-           wildcard CORS on the other end safe. */
-        credentials: 'omit',
-        mode: 'cors'
+        credentials: 'omit', mode: 'cors'
       }).then(function (r) {
         if (!r.ok) throw new Error(r.status === 404
-          ? 'This ministry is not sharing a widget.'
-          : 'Could not load.');
+          ? 'This ministry is not sharing a widget.' : 'Could not load.');
         return r.json();
       });
     }
@@ -730,9 +995,6 @@ export const WIDGET_JS = String.raw`
     scan();
   }
 
-  /* Placements added later — a tab that renders on click, a CMS that injects
-     after load. Cheap, and without it the widget silently does not appear on
-     exactly the sites most likely to be built that way. */
   if (window.MutationObserver) {
     new window.MutationObserver(function (muts) {
       for (var i = 0; i < muts.length; i++) {
@@ -741,7 +1003,6 @@ export const WIDGET_JS = String.raw`
     }).observe(document.documentElement, { childList: true, subtree: true });
   }
 
-  /* One escape hatch, for pages that build their DOM entirely in script. */
   window.Thauma = { render: scan };
 })();
 `;

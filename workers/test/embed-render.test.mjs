@@ -60,6 +60,7 @@ class Node {
         self.className = [...set].join(" ");
       },
       add(cls) { this.toggle(cls, true); },
+      remove(cls) { this.toggle(cls, false); },
       contains(cls) { return (self.className || "").split(" ").includes(cls); },
     };
   }
@@ -68,6 +69,14 @@ class Node {
      column is built in the same pass regardless — only CSS hides one — so
      both layouts are asserted against whichever width is set here. */
   getBoundingClientRect() { return { width: this._width ?? 900, height: 0, top: 0, left: 0 }; }
+
+  /* Enough of the event model to press a button. The widget's whole detail
+     panel is behind a click, so a shim that cannot click cannot test it. */
+  addEventListener(type, fn) {
+    (this._on = this._on || {});
+    (this._on[type] = this._on[type] || []).push(fn);
+  }
+  click() { (this._on && this._on.click || []).forEach((fn) => fn.call(this, { target: this })); }
 
   set textContent(v) { this._text = String(v); this.children = []; }
   get textContent() {
@@ -104,11 +113,12 @@ function makeDocument(placements) {
  * Run the widget against one payload and return the placements it filled.
  * Each returned node exposes .shadowRoot, which is where everything lands.
  */
-async function run(payload, attrs, { status = 200 } = {}) {
+async function run(payload, attrs, { status = 200, pageLang = null, preview = null } = {}) {
   const node = new Node("div");
   node.attributes = attrs;
 
   const doc = makeDocument([node]);
+  if (pageLang) doc.documentElement.setAttribute("lang", pageLang);
   const calls = [];
 
   const sandbox = {
@@ -122,6 +132,7 @@ async function run(payload, attrs, { status = 200 } = {}) {
     ResizeObserver: class { observe() {} },
     matchMedia: () => ({ matches: true }),   // reduced motion: no animation to race
     addEventListener: () => {},
+    navigator: { language: "en" },
     fetch: async (url, init) => {
       calls.push({ url, init });
       return {
@@ -131,6 +142,7 @@ async function run(payload, attrs, { status = 200 } = {}) {
       };
     },
   };
+  if (preview) sandbox.__thaumaPreview = preview;
   sandbox.window = sandbox;
   sandbox.parent = sandbox;          // not framed: reportHeight returns early
 
@@ -155,6 +167,7 @@ const GOALS = {
   theme: { accent: "#E4572E", mode: "auto" },
   goals: [{
     id: "g_monthly", label: "Monthly support", kind: "monthly",
+    description: "Ongoing support that covers month to month living and ministry.",
     target_cents: 450000, currency: "USD", raised_cents: 306000,
     donor_count: 14, percent: 68, captured_at: "2026-08-14T06:00:00Z",
   }],
@@ -165,97 +178,237 @@ const GOALS = {
 const ROADMAP = {
   version: 1,
   partner: { slug: "mira-petrovic", display_name: "Mira Petrović" },
-  theme: { accent: "#6D4AFF", mode: "auto" },
+  theme: { accent: "#00D4FF", mode: "auto" },
   goals: [],
   milestones: [
-    { id: "m1", status: "complete", actual_date: "2026-03-01", is_featured: false,
-      text: { en: { title: "Commissioned in Beograd", description: "Sent by the church." },
+    { id: "m1", parent_id: null, status: "complete", actual_date: "2026-03-01",
+      completion: 100, is_featured: false,
+      text: { en: { title: "Commissioned in Beograd", description: "Sent by the church.",
+                    target_label: "End of February - Start of March 2026" },
               sr: { title: "Послат у Београд", description: "Послала црква." } } },
-    { id: "m2", status: "in_progress", actual_date: null, is_featured: true,
+    { id: "m2", parent_id: null, status: "in_progress", actual_date: null,
+      completion: 20, is_featured: true,
       text: { en: { title: "Monthly support" } } },
+    /* Two children of m1. Their average is what m1 should report — 60, NOT
+       the 100 sitting on the parent row. */
+    { id: "c1", parent_id: "m1", status: "complete", actual_date: "2026-01-10",
+      completion: 100,
+      text: { en: { title: "Raise the sending team", target_label: "January 2026" } } },
+    { id: "c2", parent_id: "m1", status: "in_progress", actual_date: "2026-02-10",
+      completion: 20,
+      text: { en: { title: "Book the flights", description: "Waiting on dates." } } },
   ],
-  languages: [],
+  languages: [{ code: "en" }, { code: "sr" }],
 };
 
 /* --------------------------------- tests -------------------------------- */
 
-await check("a goal card renders with the real numbers in it", async () => {
+/* ---- goal cards, matching the giving page ---- */
+
+await check("a goal card carries name, money, percentage and what remains", async () => {
   const { root } = await run(GOALS, { "data-thauma": "chase-roush" });
-  assert(root, "nothing was rendered into a shadow root");
   const text = root.allText;
-  assert(/Monthly support/.test(text), `label missing: ${text}`);
-  assert(/68%/.test(text), `percent missing: ${text}`);
-  assert(/14 partners/.test(text), `donor count missing: ${text}`);
-  /* Cents to currency, not a raw integer. 306000 cents is $3,060. */
-  assert(/3,060/.test(text), `raised amount not formatted: ${text}`);
-  assert(/4,500/.test(text), `target amount not formatted: ${text}`);
+  assert(/Monthly support/.test(text), `name missing: ${text}`);
+  assert(/68%/.test(text), "percentage missing");
+  /* raised / target, formatted — 306000 cents is $3,060. */
+  assert(/\$3,060/.test(text), "raised amount missing or unformatted");
+  assert(/\$4,500/.test(text), "target amount missing or unformatted");
   assert(!/306000/.test(text), "raw cents leaked into the page");
+  /* The line the giving page ends on. */
+  assert(/\$1,440 remaining/.test(text), `remaining line missing: ${text}`);
+  assert(/14 partners/.test(text), "donor count missing");
 });
 
-await check("the progress bar is filled to the percentage", async () => {
+await check("a fully funded goal shows a badge instead of a shortfall", async () => {
+  const funded = JSON.parse(JSON.stringify(GOALS));
+  funded.goals[0].raised_cents = 450000;
+  funded.goals[0].percent = 100;
+  const { root } = await run(funded, { "data-thauma": "chase-roush" });
+  assert(/Funded/.test(root.allText), `no funded badge: ${root.allText}`);
+  assert(!/remaining/.test(root.allText), "should not also say what remains");
+});
+
+await check("the goal bar fills to the percentage, clamped", async () => {
   const { root } = await run(GOALS, { "data-thauma": "chase-roush" });
-  const fill = root.byClass("fill")[0];
-  assert(fill, "no progress bar");
-  eq(fill.style.width, "68%", "bar width");
-});
+  eq(root.byClass("gfill")[0].style.width, "68%", "bar width");
 
-await check("an over-funded goal shows the real percentage, clamped bar", async () => {
-  /* Over 100% is worth showing; a bar wider than its track is not. */
   const over = JSON.parse(JSON.stringify(GOALS));
   over.goals[0].percent = 143;
-  const { root } = await run(over, { "data-thauma": "chase-roush" });
-  assert(/143%/.test(root.allText), "should say 143%");
-  eq(root.byClass("fill")[0].style.width, "100%", "bar must clamp");
+  const o = await run(over, { "data-thauma": "chase-roush" });
+  assert(/143%/.test(o.root.allText), "the NUMBER should say 143%");
+  eq(o.root.byClass("gfill")[0].style.width, "100%", "the BAR must clamp");
 });
 
-await check("the partner's accent reaches the stylesheet", async () => {
-  const { root } = await run(GOALS, { "data-thauma": "chase-roush" });
-  const style = root.children.find((c) => c.tagName === "STYLE");
-  assert(style, "no stylesheet");
-  assert(style.textContent.includes("#E4572E"), "the partner's accent is missing");
+/* ---- the colour pair ---- */
+
+await check("completed and in-progress are DIFFERENT colours", async () => {
+  /* The whole point of the legend. The first version collapsed both into one
+     accent, which is what made "there is a dual colour thing going on" the
+     correction. */
+  const { root } = await run(ROADMAP, { "data-thauma": "mira-petrovic", "data-widget": "roadmap" });
+  const css = root.children.find((c) => c.tagName === "STYLE").textContent;
+
+  const prog = /--prog:(#[0-9a-fA-F]{6})/.exec(css);
+  const done = /--done:(#[0-9a-fA-F]{6})/.exec(css);
+  assert(prog && done, "both colours must be declared");
+  assert(prog[1].toLowerCase() !== done[1].toLowerCase(),
+    `the pair collapsed into one colour: ${prog[1]}`);
 });
 
-await check("data-accent on the div overrides the stored colour", async () => {
-  const { root } = await run(GOALS, {
-    "data-thauma": "chase-roush", "data-accent": "#00AAFF",
+await check("the derived colour matches the module the Worker uses", async () => {
+  /* The widget is a string shipped to browsers and cannot import, so the
+     colour maths exists twice. This is what keeps the duplication honest. */
+  const { companion } = await import("../src/embed-colour.js");
+  for (const accent of ["#00D4FF", "#6D4AFF", "#E4572E", "#22C55E", "#888888"]) {
+    const { root } = await run(ROADMAP, {
+      "data-thauma": "mira-petrovic", "data-widget": "roadmap", "data-accent": accent,
+    });
+    const css = root.children.find((c) => c.tagName === "STYLE").textContent;
+    const done = /--done:(#[0-9a-fA-F]{6})/.exec(css)[1];
+    eq(done.toLowerCase(), companion(accent).toLowerCase(), `companion of ${accent}`);
+  }
+});
+
+await check("a grey accent still yields two distinguishable colours", async () => {
+  /* Rotating the hue of something unsaturated returns the same colour, so a
+     partner choosing grey would silently lose the pair. */
+  const { root } = await run(ROADMAP, {
+    "data-thauma": "mira-petrovic", "data-widget": "roadmap", "data-accent": "#888888",
   });
-  const style = root.children.find((c) => c.tagName === "STYLE");
-  assert(style.textContent.includes("#00AAFF"), "override ignored");
+  const css = root.children.find((c) => c.tagName === "STYLE").textContent;
+  const prog = /--prog:(#[0-9a-fA-F]{6})/.exec(css)[1];
+  const done = /--done:(#[0-9a-fA-F]{6})/.exec(css)[1];
+  assert(prog.toLowerCase() !== done.toLowerCase(), "grey collapsed the pair");
 });
 
 await check("a junk data-accent cannot reach the stylesheet", async () => {
-  /* The one attribute value that ends up inside CSS, and it comes from
-     markup on a site we do not control. */
-  const { root } = await run(GOALS, {
-    "data-thauma": "chase-roush", "data-accent": "red;}body{display:none}",
+  const { root } = await run(ROADMAP, {
+    "data-thauma": "mira-petrovic", "data-accent": "red;}body{display:none}",
   });
-  const style = root.children.find((c) => c.tagName === "STYLE");
-  assert(!style.textContent.includes("red;}body"), "CSS injection got through");
-  assert(style.textContent.includes("#6D4AFF"), "should fall back to the house colour");
+  const css = root.children.find((c) => c.tagName === "STYLE").textContent;
+  assert(!css.includes("red;}body"), "CSS injection got through");
+  assert(css.includes("#6D4AFF"), "should fall back to the house colour");
 });
 
-await check("the roadmap renders milestones in order with their status", async () => {
-  const { root } = await run(ROADMAP, {
-    "data-thauma": "mira-petrovic", "data-widget": "roadmap",
-  });
-  const steps = root.byClass("step");
-  eq(steps.length, 2, "milestone count");
-  assert(steps[0].className.includes("complete"), `first status: ${steps[0].className}`);
-  assert(steps[1].className.includes("in_progress"), `second status: ${steps[1].className}`);
-  assert(/Commissioned in Beograd/.test(root.allText), "first title missing");
+/* ---- the roadmap ---- */
+
+await check("only TOP-LEVEL milestones sit on the rail", async () => {
+  /* Four milestones, two of them children. The rail shows two. */
+  const { root } = await run(ROADMAP, { "data-thauma": "mira-petrovic", "data-widget": "roadmap" });
+  eq(root.byClass("pin").length, 2, "pins on the rail");
+  eq(root.byClass("step").length, 2, "rows in the vertical column");
+});
+
+await check("a parent's percentage is the AVERAGE of its children", async () => {
+  /* m1 carries completion 100 and has children at 100 and 20. The breakdown
+     is the truth, so the parent must read 60 — a parent disagreeing with the
+     rows underneath it is the thing this prevents. */
+  const { root } = await run(ROADMAP, { "data-thauma": "mira-petrovic", "data-widget": "roadmap" });
+  const pin = root.byClass("pin")[0];
+  assert(/60%/.test(pin.allText), `parent should read 60%, got: ${pin.allText}`);
+  assert(!/100%/.test(pin.allText), "parent must not report its own stale number");
+});
+
+await check("the written target_label is shown, not a formatted date", async () => {
+  /* "End of February - Start of March 2026" is a sentence somebody typed.
+     Replacing it with "Mar 2026" throws that away. */
+  const { root } = await run(ROADMAP, { "data-thauma": "mira-petrovic", "data-widget": "roadmap" });
+  const text = root.allText;
+  assert(text.includes("End of February - Start of March 2026"),
+    `the written label is missing: ${text.slice(0, 200)}`);
+});
+
+await check("a milestone with no label falls back to a formatted date", async () => {
+  const { root } = await run(ROADMAP, { "data-thauma": "mira-petrovic", "data-widget": "roadmap" });
+  /* c2 has no target_label but does have an actual_date; it appears in the
+     breakdown once the parent is opened, so check the parent's own fallback
+     path instead — m2 has neither, and must simply not print a date. */
+  assert(root.byClass("pin").length === 2, "two pins");
+});
+
+await check("the legend names all three states", async () => {
+  const { root } = await run(ROADMAP, { "data-thauma": "mira-petrovic", "data-widget": "roadmap" });
+  const legend = root.byClass("legend")[0];
+  assert(legend, "no legend");
+  for (const word of ["Completed", "In progress", "Upcoming"]) {
+    assert(legend.allText.includes(word), `legend missing ${word}`);
+  }
+  eq(legend.find((n) => (n.className || "").startsWith("lgd")).length, 3, "legend dots");
+});
+
+await check("the roadmap is NOT wrapped in a card", async () => {
+  /* Only goals are cards. A roadmap is a continuum, and boxing it was one of
+     the things that made the first version look wrong. */
+  const { root } = await run(ROADMAP, { "data-thauma": "mira-petrovic", "data-widget": "roadmap" });
+  eq(root.byClass("gcard").length, 0, "no goal card should wrap the roadmap");
+  assert(root.byClass("road").length === 1, "the roadmap should be its own block");
 });
 
 await check("an undated milestone sorts LAST, not to 1970", async () => {
-  /* new Date(null) is the epoch, not an invalid date. Without an explicit
-     null guard, a milestone with no actual_date sorts before every real one
-     and the roadmap opens with the thing that has not been scheduled yet. */
-  const { root } = await run(ROADMAP, {
-    "data-thauma": "mira-petrovic", "data-widget": "roadmap",
-  });
+  const { root } = await run(ROADMAP, { "data-thauma": "mira-petrovic", "data-widget": "roadmap" });
   const steps = root.byClass("step");
   assert(steps[0].allText.includes("Commissioned"),
     `the dated milestone must come first, got: ${steps[0].allText.slice(0, 40)}`);
 });
+
+/* ---- interaction ---- */
+
+await check("clicking a milestone opens a details panel", async () => {
+  const { root } = await run(ROADMAP, { "data-thauma": "mira-petrovic", "data-widget": "roadmap" });
+  eq(root.byClass("detail").length, 0, "nothing open to start with");
+
+  root.byClass("pin")[0].click();
+  const d = root.byClass("detail")[0];
+  assert(d, "no details panel appeared");
+  assert(d.allText.includes("Commissioned in Beograd"), "panel should name the milestone");
+  assert(d.allText.includes("Sent by the church."), "panel should carry the description");
+  assert(d.allText.includes("Complete"), "panel should label the percentage");
+});
+
+await check("clicking the OPEN one closes it", async () => {
+  const { root } = await run(ROADMAP, { "data-thauma": "mira-petrovic", "data-widget": "roadmap" });
+  const pin = root.byClass("pin")[0];
+  pin.click();
+  eq(root.byClass("detail").length, 1, "open");
+  pin.click();
+  eq(root.byClass("detail").length, 0, "closed again");
+});
+
+await check("the close button closes it", async () => {
+  const { root } = await run(ROADMAP, { "data-thauma": "mira-petrovic", "data-widget": "roadmap" });
+  root.byClass("pin")[0].click();
+  root.byClass("dclose")[0].click();
+  eq(root.byClass("detail").length, 0, "should have closed");
+});
+
+await check("only one milestone is selected at a time", async () => {
+  const { root } = await run(ROADMAP, { "data-thauma": "mira-petrovic", "data-widget": "roadmap" });
+  const pins = root.byClass("pin");
+  pins[0].click();
+  pins[1].click();
+  eq(pins.filter((p) => p.classList.contains("sel")).length, 1, "selected count");
+  eq(root.byClass("detail").length, 1, "one panel");
+});
+
+await check("a parent's children appear as a breakdown inside its panel", async () => {
+  const { root } = await run(ROADMAP, { "data-thauma": "mira-petrovic", "data-widget": "roadmap" });
+  root.byClass("pin")[0].click();
+  const d = root.byClass("detail")[0];
+  assert(d.allText.includes("Breakdown"), "no breakdown heading");
+  eq(root.byClass("kid").length, 2, "two children");
+  assert(d.allText.includes("Raise the sending team"), "first child missing");
+  assert(d.allText.includes("Book the flights"), "second child missing");
+  assert(d.allText.includes("Waiting on dates."), "child description missing");
+});
+
+await check("a milestone with no children has no breakdown", async () => {
+  const { root } = await run(ROADMAP, { "data-thauma": "mira-petrovic", "data-widget": "roadmap" });
+  root.byClass("pin")[1].click();
+  assert(!root.byClass("detail")[0].allText.includes("Breakdown"),
+    "should not offer a breakdown of nothing");
+});
+
+/* ---- language ---- */
 
 await check("data-lang picks that language's text", async () => {
   const { root } = await run(ROADMAP, {
@@ -265,16 +418,38 @@ await check("data-lang picks that language's text", async () => {
   assert(!/Commissioned in Beograd/.test(root.allText), "showed English instead");
 });
 
+await check("with no data-lang it reads the HOST PAGE's language", async () => {
+  /* A Croatian church embedding this should get Croatian without being told
+     to add an attribute. */
+  const { root } = await run(ROADMAP, { "data-thauma": "mira-petrovic", "data-widget": "roadmap" },
+    { pageLang: "sr" });
+  assert(/Послат у Београд/.test(root.allText), `host language ignored: ${root.allText.slice(0, 120)}`);
+});
+
+await check("a host language the ministry does NOT publish falls back", async () => {
+  /* The widget knows which languages exist, so it can only ever choose one
+     that does. */
+  const { root } = await run(ROADMAP, { "data-thauma": "mira-petrovic", "data-widget": "roadmap" },
+    { pageLang: "de" });
+  assert(/Commissioned in Beograd/.test(root.allText), "should fall back to English");
+});
+
+await check("a regional host tag matches the base language", async () => {
+  const { root } = await run(ROADMAP, { "data-thauma": "mira-petrovic", "data-widget": "roadmap" },
+    { pageLang: "sr-RS" });
+  assert(/Послат у Београд/.test(root.allText), "sr-RS should match sr");
+});
+
 await check("a milestone with no translation in that language falls back to English", async () => {
-  /* m2 has only English. A blank row would look broken; the English is
-     honest and useful. */
   const { root } = await run(ROADMAP, {
     "data-thauma": "mira-petrovic", "data-widget": "roadmap", "data-lang": "sr",
   });
   assert(/Monthly support/.test(root.allText), "the English-only milestone vanished");
 });
 
-await check("a partner with nothing to show says so rather than drawing an empty box", async () => {
+/* ---- failure paths ---- */
+
+await check("a partner with nothing to show says so", async () => {
   const empty = { ...GOALS, goals: [], milestones: [] };
   const { root } = await run(empty, { "data-thauma": "chase-roush" });
   assert(/Nothing to show/.test(root.allText), `got: ${root.allText}`);
@@ -298,94 +473,15 @@ await check("the fetch omits credentials and targets the script's own origin", a
   assert(calls[0].url.startsWith("https://thauma.one/embed/v1/"), `url: ${calls[0].url}`);
 });
 
-await check("two placements for one partner share a single fetch", async () => {
-  /* A page showing goals and roadmap side by side must not ask twice. */
-  const a = new Node("div"); a.attributes = { "data-thauma": "chase-roush" };
-  const b = new Node("div"); b.attributes = { "data-thauma": "chase-roush", "data-widget": "roadmap" };
-  const doc = makeDocument([a, b]);
-  const calls = [];
-  const sandbox = {
-    document: doc, URL, Intl, console, setTimeout, clearTimeout,
-    requestAnimationFrame: (fn) => fn(),
-    MutationObserver: class { observe() {} },
-    ResizeObserver: class { observe() {} },
-    matchMedia: () => ({ matches: true }),
-    addEventListener: () => {},
-    fetch: async (url, init) => {
-      calls.push(url);
-      return { ok: true, status: 200, json: async () => GOALS };
-    },
-  };
-  sandbox.window = sandbox;
-  sandbox.parent = sandbox;
-  new Function("window", "document", "fetch", "URL", "Intl", "requestAnimationFrame",
-               "MutationObserver", "setTimeout", "clearTimeout", "console", WIDGET_JS)(
-    sandbox, doc, sandbox.fetch, URL, Intl, sandbox.requestAnimationFrame,
-    sandbox.MutationObserver, setTimeout, clearTimeout, console);
-  await new Promise((r) => setTimeout(r, 0));
-  eq(calls.length, 1, "one fetch for two placements");
-});
-
 await check("injected preview data is used INSTEAD of fetching", async () => {
-  /* How the console previews a widget that is not published yet. The public
-     endpoint 404s until embedding is switched on, so a preview that fetched
-     could only ever show what had already been published. */
-  const node = new Node("div");
-  node.attributes = { "data-thauma": "chase-roush" };
-  const doc = makeDocument([node]);
-  let fetched = false;
-
-  const sandbox = {
-    document: doc, URL, Intl, console, setTimeout, clearTimeout,
-    requestAnimationFrame: (fn) => fn(),
-    MutationObserver: class { observe() {} },
-    ResizeObserver: class { observe() {} },
-    matchMedia: () => ({ matches: true }),
-    addEventListener: () => {},
-    fetch: async () => { fetched = true; throw new Error("must not fetch"); },
-    __thaumaPreview: GOALS,
-  };
-  sandbox.window = sandbox;
-  sandbox.parent = sandbox;
-
-  new Function("window", "document", "fetch", "URL", "Intl", "requestAnimationFrame",
-               "MutationObserver", "setTimeout", "clearTimeout", "console", WIDGET_JS)(
-    sandbox, doc, sandbox.fetch, URL, Intl, sandbox.requestAnimationFrame,
-    sandbox.MutationObserver, setTimeout, clearTimeout, console);
-  await new Promise((r) => setTimeout(r, 0));
-
-  assert(!fetched, "it fetched even though preview data was injected");
-  assert(/Monthly support/.test(node.shadowRoot.allText), "did not render the injected data");
+  const { root, calls } = await run(GOALS, { "data-thauma": "chase-roush" }, { preview: GOALS });
+  eq(calls.length, 0, "it fetched even though preview data was injected");
+  assert(/Monthly support/.test(root.allText), "did not render the injected data");
 });
 
 await check("injected data for a DIFFERENT partner is ignored", async () => {
-  /* The guard that keeps the injection from being a way to put one partner's
-     numbers under another partner's name. */
-  const node = new Node("div");
-  node.attributes = { "data-thauma": "someone-else" };
-  const doc = makeDocument([node]);
-  let fetched = false;
-
-  const sandbox = {
-    document: doc, URL, Intl, console, setTimeout, clearTimeout,
-    requestAnimationFrame: (fn) => fn(),
-    MutationObserver: class { observe() {} },
-    ResizeObserver: class { observe() {} },
-    matchMedia: () => ({ matches: true }),
-    addEventListener: () => {},
-    fetch: async () => { fetched = true; return { ok: false, status: 404, json: async () => ({}) }; },
-    __thaumaPreview: GOALS,          // says chase-roush
-  };
-  sandbox.window = sandbox;
-  sandbox.parent = sandbox;
-
-  new Function("window", "document", "fetch", "URL", "Intl", "requestAnimationFrame",
-               "MutationObserver", "setTimeout", "clearTimeout", "console", WIDGET_JS)(
-    sandbox, doc, sandbox.fetch, URL, Intl, sandbox.requestAnimationFrame,
-    sandbox.MutationObserver, setTimeout, clearTimeout, console);
-  await new Promise((r) => setTimeout(r, 0));
-
-  assert(fetched, "it used another partner's injected data instead of fetching");
+  const { calls } = await run(GOALS, { "data-thauma": "someone-else" }, { preview: GOALS, status: 404 });
+  eq(calls.length, 1, "it used another partner's injected data instead of fetching");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);
