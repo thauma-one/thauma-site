@@ -380,6 +380,42 @@ live, which is the next item.
 
 ## Two things for you, when you are at a computer
 
+### 0. FIRST: give the deploy token permission to see R2
+
+**Preview failed, and Publish will fail the same way until this is done.**
+
+Adding the photo bucket to `wrangler.toml` means every deploy now asks the
+Cloudflare API about `thauma-media`. The token GitHub Actions uses cannot:
+
+```
+A request to the Cloudflare API (/accounts/…/r2/buckets/thauma-media) failed.
+Authentication error [code: 10000]
+```
+
+The bucket is fine and in the right account — the same command from the Pi
+lists it. It is only the CI token that is short a permission.
+
+1. **dash.cloudflare.com → My Profile → API Tokens**
+2. Edit the token used by GitHub Actions (it is the value of the repository
+   secret `CLOUDFLARE_API_TOKEN`)
+3. Add permission: **Account → Workers R2 Storage → Edit**
+4. Save
+
+If you cannot tell which token it is, make a new one with Workers Scripts:Edit,
+Workers R2 Storage:Edit, D1:Edit and Workers KV Storage:Edit, then replace the
+repository secret at **github.com/thauma-one/thauma-site → Settings → Secrets
+and variables → Actions → `CLOUDFLARE_API_TOKEN`**.
+
+Then press **Preview** again.
+
+**How long it takes:** the failed run reached the deploy step in 39 seconds,
+having done checkout, install, build and the whole test suite. A successful one
+is about a minute. If nothing has changed after three, something is wrong —
+look at **github.com/thauma-one/thauma-site/actions**, which is where the
+reason always is.
+
+---
+
 ### 1. Merge, THEN apply, THEN publish — in that order
 
 **Correcting what this file said before.** It told you to apply the migrations
