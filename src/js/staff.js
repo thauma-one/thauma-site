@@ -1110,6 +1110,61 @@
   }
   window.StaffPrompt = promptDialog;
 
+  /* =====================================================================
+     WHICH ONE AM I LOOKING AT
+     =====================================================================
+     Three consoles exist, they are pixel-identical, and each one reads a
+     DIFFERENT database. On 2026-08-20 that cost an evening: the dev console
+     was asked whether the database was up to date, answered "yes" — correctly,
+     about its own database — and production was published past three unapplied
+     migrations on the strength of it. Later the same night, production's admin
+     pages were reported empty while every request in the log had gone to the
+     Pi. Neither was a misreading of anything on screen, because there was
+     nothing on screen to read.
+
+     FROM THE HOSTNAME, NOT FROM THE API. This has to be right exactly when
+     everything else is broken — an environment label that disappears when the
+     server errors is missing at the only moment it matters. The hostname is
+     already in the address bar and cannot fail to load.
+
+     The mapping is checked against wrangler.toml by
+     test/console-environment.test.mjs, so it cannot quietly drift from the
+     bindings it claims to describe. */
+  var ENVIRONMENTS = {
+    'thauma.one':      { key: 'production', label: 'PRODUCTION', db: 'thauma-ops',
+                         note: 'the live site' },
+    'next.thauma.one': { key: 'staging',    label: 'STAGING',    db: 'thauma-ops-dev',
+                         note: 'preview only — nobody outside sees this' },
+    'dev.thauma.one':  { key: 'dev',        label: 'DEV',        db: 'thauma-ops-dev',
+                         note: 'this Pi — not the live site' },
+  };
+
+  function showEnvironment() {
+    var env = ENVIRONMENTS[location.hostname];
+    /* An unknown host is worth saying out loud rather than staying silent:
+       localhost, a tunnel, somebody's fork. "I do not know" is information. */
+    if (!env) {
+      env = { key: 'unknown', label: location.hostname.toUpperCase(),
+              db: 'unknown', note: 'not a known Thauma address' };
+    }
+
+    var band = document.createElement('div');
+    band.className = 'env-band env-' + env.key;
+    band.setAttribute('role', 'note');
+    band.innerHTML =
+      '<b>' + esc(env.label) + '</b>' +
+      '<span class="env-note">' + esc(env.note) + '</span>' +
+      '<span class="env-db">database: <code>' + esc(env.db) + '</code></span>';
+
+    var top = document.querySelector('.top');
+    if (top && top.parentNode) top.parentNode.insertBefore(band, top);
+    else document.body.insertBefore(band, document.body.firstChild);
+
+    document.documentElement.classList.add('has-env-band');
+  }
+
+  showEnvironment();
+
   window.StaffProblem = problem;
   window.StaffProblemClear = problemClear;
 

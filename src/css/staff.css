@@ -1082,3 +1082,36 @@ body.has-savebar .acting-mark{bottom:calc(var(--ms-savebar-h,72px) + 12px)}
 .emb-guide:focus-visible{outline:2px solid var(--voice-tech);outline-offset:2px}
 .emb-guide-sub{display:block;margin-top:4px;color:var(--dim);font-weight:400;
   line-height:var(--lh-body)}
+
+
+/* ============================================================
+   WHICH CONSOLE AM I IN
+   ============================================================
+   Three consoles, identical, three different databases. This is the only
+   thing on the page that distinguishes them, so it sits above everything,
+   spans the full width, and does not scroll away with the content.
+
+   PRODUCTION IS THE QUIET ONE. The instinct is to shout on the live site, but
+   the dangerous mistake runs the other way: believing you are on production
+   while you edit the Pi. A calm band that is always present is read; a red
+   warning on every production page is dismissed by the second day, and then
+   the loud ones stop meaning anything either. */
+.env-band{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;
+  padding:7px 22px;font-size:12px;line-height:1.4;
+  border-bottom:1px solid var(--line);
+  font-family:var(--font-display, inherit)}
+.env-band b{font-size:10.5px;letter-spacing:var(--ls-caps,.12em);
+  text-transform:uppercase;font-weight:700}
+.env-note{opacity:.75}
+.env-db{margin-left:auto;opacity:.6;font-size:11px}
+.env-db code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px}
+
+.env-production{background:#0e1a14;color:#7fe3b0;border-bottom-color:rgba(127,227,176,.22)}
+.env-staging{background:#101a2b;color:#8ab4ff;border-bottom-color:rgba(138,180,255,.22)}
+.env-dev{background:#241a08;color:#f5b845;border-bottom-color:rgba(245,184,69,.3)}
+.env-unknown{background:#241010;color:#ff8f8f;border-bottom-color:rgba(255,143,143,.3)}
+
+@media (max-width:640px){
+  .env-band{padding:6px 14px;gap:8px}
+  .env-db{margin-left:0;width:100%}
+}
