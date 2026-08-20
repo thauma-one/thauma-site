@@ -313,6 +313,96 @@
     '</div>';
   }
 
+  /* One photo, with what it is FOR written on it. "Photo" and "second photo"
+     told you nothing about which appears where, and the two are cropped
+     differently by the page that shows them. */
+  function photoSlot(u, kind, url) {
+    return '<div class="pf-photo" data-slot="' + esc(kind) + '">' +
+      '<span class="adm-label">' + esc(tr('adm.pf.' + kind)) + '</span>' +
+      '<div class="pf-shot">' +
+        (url
+          ? '<img src="' + esc(url) + '" alt="">'
+          : '<span class="pf-empty">' + esc(tr('adm.pf.noPhoto')) + '</span>') +
+      '</div>' +
+      '<input type="hidden" data-pf="' + esc(kind) + '" value="' + esc(url) + '">' +
+      '<input type="file" accept="image/*" hidden' +
+        ' data-pf-file="' + esc(kind) + '" data-user="' + esc(u.id) + '">' +
+      '<div class="pf-photo-acts">' +
+        '<button type="button" class="ghost-btn" data-pf-pick="' + esc(kind) + '">' +
+          esc(tr(url ? 'adm.pf.replace' : 'adm.pf.choose')) + '</button>' +
+        (url ? '<button type="button" class="del" data-pf-clear="' + esc(kind) + '">' +
+          esc(tr('adm.pf.remove')) + '</button>' : '') +
+      '</div>' +
+      '<span class="hint" data-pf-shot-status="' + esc(kind) + '"></span>' +
+    '</div>';
+  }
+
+  /* SHRUNK AND CONVERTED IN THE BROWSER, before a byte is sent.
+
+     A Worker cannot decode a JPEG without a library and has a CPU budget
+     measured in milliseconds, so a 12MP upload would spend all of it. The
+     browser is already holding the file decoded, has a canvas, and is doing
+     nothing. 1600px is larger than any frame the site renders, so this is not
+     a quality decision — it is the difference between a 6MB upload over the
+     tunnel and a 200KB one.
+
+     WebP where the browser will encode it, JPEG where it will not: toBlob
+     hands back a PNG when asked for a type it does not support, which would
+     be several times larger than the JPEG it replaced. Checking the type we
+     actually got is the only way to notice. */
+  async function shrinkImage(file, maxPx) {
+    var bitmap = await createImageBitmap(file);
+    var scale = Math.min(1, maxPx / Math.max(bitmap.width, bitmap.height));
+    var w = Math.max(1, Math.round(bitmap.width * scale));
+    var h = Math.max(1, Math.round(bitmap.height * scale));
+
+    var canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    var ctx = canvas.getContext('2d');
+    ctx.drawImage(bitmap, 0, 0, w, h);
+    if (bitmap.close) bitmap.close();
+
+    var blob = await new Promise(function (res) { canvas.toBlob(res, 'image/webp', 0.85); });
+    if (!blob || blob.type !== 'image/webp') {
+      blob = await new Promise(function (res) { canvas.toBlob(res, 'image/jpeg', 0.85); });
+    }
+    return blob;
+  }
+
+  async function uploadPhoto(userId, kind, file, slot) {
+    var status = slot.querySelector('[data-pf-shot-status]');
+    var say = function (k) { if (status) status.textContent = tr(k); };
+
+    try {
+      say('adm.pf.shrinking');
+      var blob = await shrinkImage(file, 1600);
+      if (!blob) throw new Error('this browser could not convert that image');
+
+      say('adm.pf.uploading');
+      var res = await fetch('/api/admin/media?for=' + encodeURIComponent(userId) +
+                            '&kind=' + encodeURIComponent(kind), {
+        method: 'PUT',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': blob.type },
+        body: blob
+      });
+      var body = await res.json();
+      if (!res.ok) { if (status) status.textContent = body.error || tr('err.refused'); return; }
+
+      /* Shown immediately and held in the hidden field — but NOT saved. The
+         profile still saves on Save, so uploading a photo and changing your
+         mind costs nothing. */
+      slot.querySelector('[data-pf="' + kind + '"]').value = body.url;
+      slot.querySelector('.pf-shot').innerHTML =
+        '<img src="' + esc(body.url) + '" alt="">';
+      if (status) {
+        status.textContent = fill('adm.pf.shotReady', { kb: Math.round(body.bytes / 1024) });
+      }
+    } catch (e) {
+      if (status) status.textContent = tr('adm.pf.shotFailed') + ' ' + e.message;
+    }
+  }
+
   function profileSection(u) {
     var p = profileFor(u.id);
     var on = !!(p && p.is_public);
@@ -355,10 +445,10 @@
           profileColumn(u, 'b', ui.profileLangB, text) +
         '</div>' +
 
-        /* Photos are the one thing not editable here yet — they need an object
-           store to live in. Said plainly rather than left as a missing field
-           somebody hunts for. */
-        '<p class="hint pf-photos">' + esc(tr('adm.pf.photosSoon')) + '</p>' +
+        '<div class="pf-photos">' +
+          photoSlot(u, 'photo', (p && p.photo) || '') +
+          photoSlot(u, 'bio_photo', (p && p.bio_photo) || '') +
+        '</div>' +
 
         '<div class="pf-actions">' +
           '<button type="button" class="solid-btn" data-pf-save="' + esc(u.id) + '">' +
@@ -669,6 +759,10 @@
       var el = sect.querySelector('.pf-grid [data-pf="' + name + '"]');
       return el ? el.value.trim() : '';
     };
+    var shot = function (kind) {
+      var el = sect.querySelector('[data-slot="' + kind + '"] [data-pf="' + kind + '"]');
+      return el ? el.value.trim() : '';
+    };
 
     /* Both columns, keyed by whichever language each is showing. Reading the
        pickers rather than assuming a and b are the first two languages — they
@@ -692,6 +786,10 @@
       region: val('region'),
       public_email: val('public_email'),
       sort_order: parseInt(val('sort_order'), 10) || 0,
+      /* Read from the slots, not the grid — the hidden field each one carries
+         already holds the URL the upload returned. */
+      photo: shot('photo'),
+      bio_photo: shot('bio_photo'),
       text: text
     };
 
@@ -728,6 +826,14 @@
   /* Re-reads the columns when a picker changes, so switching language shows
      that language's text rather than leaving the previous one in the box. */
   document.addEventListener('change', function (e) {
+    var file = e.target.closest('[data-pf-file]');
+    if (file) {
+      var f = file.files && file.files[0];
+      if (f) uploadPhoto(file.dataset.user, file.dataset.pfFile, f, file.closest('[data-slot]'));
+      file.value = '';   // so choosing the same file twice fires again
+      return;
+    }
+
     var pick = e.target.closest('[data-plang]');
     if (!pick) return;
     if (pick.dataset.plang === 'a') ui.profileLangA = pick.value;
@@ -750,6 +856,27 @@
 
     var save = e.target.closest('[data-pf-save]');
     if (save) return saveProfile(save.dataset.pfSave, save);
+
+    /* The visible button opens the real file input, which is hidden because
+       browsers will not let it be styled and it reads as a foreign control. */
+    var pick = e.target.closest('[data-pf-pick]');
+    if (pick) {
+      var slotEl = pick.closest('[data-slot]');
+      return slotEl.querySelector('[data-pf-file]').click();
+    }
+
+    var clear = e.target.closest('[data-pf-clear]');
+    if (clear) {
+      var cs = clear.closest('[data-slot]');
+      cs.querySelector('[data-pf="' + clear.dataset.pfClear + '"]').value = '';
+      cs.querySelector('.pf-shot').innerHTML =
+        '<span class="pf-empty">' + esc(tr('adm.pf.noPhoto')) + '</span>';
+      clear.remove();
+      /* Removed from the FORM, not from the bucket. Save is what makes it
+         true, and the object stays reachable until nothing points at it —
+         deleting on click would break the live page before Publish ran. */
+      return;
+    }
 
     var row = e.target.closest('.adm-row');
     if (row) {

@@ -46,6 +46,7 @@ import embed from "./embed.js";
 import staffEmbed from "./staff-embed.js";
 import adminActAs from "./admin-actas.js";
 import adminProfile from "./admin-profile.js";
+import media, { serve as serveMedia } from "./media.js";
 import { createDb, partnerSnapshot, assertPublicSafe } from "./lib/db.js";
 import { requireAccess } from "./lib/access.js";
 import { resolveActor, withActing } from "./lib/actas.js";
@@ -259,6 +260,9 @@ const ROUTES = {
   // database AND src/content/team/<slug>.md — see admin-profile.js.
   "/api/admin/profile": adminProfile,
 
+  // Uploads. GET /media/* is handled by prefix below, not here.
+  "/api/admin/media": media,
+
   // THE ONLY ROUTE A CREDENTIAL OUTSIDE THAUMA CAN REACH. Key-authenticated,
   // public-safe by construction, versioned in the path so a breaking change
   // becomes /v2 rather than a broken partner site. See partner-api.js.
@@ -297,6 +301,14 @@ export default {
        in to. What makes that safe is per-partner opt-in, not a gate — see
        embed.js. */
     if (url.pathname.startsWith("/embed/v1/")) return embed.fetch(request, env, ctx);
+
+    /* Uploaded files. A prefix rather than a table entry because the rest of
+       the path IS the object key. Public and unauthenticated on purpose — a
+       staff photo is printed on the public team page, so requiring a session
+       to fetch it would break the page it exists for. */
+    if (url.pathname.startsWith("/media/")) {
+      return serveMedia(request, env, url.pathname.slice("/media/".length));
+    }
 
     // Only the bare root redirects by language. /en/, /hr/ and every asset
     // beneath them must fall through, or the site would redirect forever.

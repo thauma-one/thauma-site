@@ -67,7 +67,9 @@ run_worker_first = [
   # The embed widgets. Unauthenticated and cross-origin by design — see
   # workers/src/embed.js. Must reach the router: served asset-first it would
   # 404, because nothing under this path exists on disk.
-  "/embed/v1/*"
+  "/embed/v1/*",
+  # Uploaded files live in R2, not on disk. Served asset-first this would 404.
+  "/media/*"
 ]
 
 [[routes]]
@@ -109,6 +111,26 @@ id = "f23971d5b4aa460daba43e97b9d84273"
 #           with db/refresh_dev.py — which SCRUBS names and emails on the way
 #           in. Keeping a full copy of supporter PII in a poked-at dev
 #           database would undo much of why this schema holds so little.
+
+# ---------------------------------------------------------------------------
+# MEDIA — staff photos, and anything else a person uploads
+#
+# NOT GIT. A phone photo committed to a repository is in every clone forever,
+# and rewriting history to remove one is not a thing to ask of somebody who is
+# not a full-time engineer. Object storage is where files that are DATA belong;
+# the repository holds the text that references them.
+#
+# ⚠ THIS LIVES IN THE PERSONAL CLOUDFLARE ACCOUNT, like every other Cloudflare
+# resource here. R2 buckets do not transfer between accounts, so when Thauma
+# owns its own account this bucket is recreated and the objects copied across.
+# That is a copy, not a migration — far cheaper than moving a database, which
+# is why building here now is acceptable and building the DATABASE here was
+# the thing worth arguing about.
+# ---------------------------------------------------------------------------
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "thauma-media"
+
 [[d1_databases]]
 binding = "DB"
 database_name = "thauma-ops-dev"
@@ -213,7 +235,7 @@ directory = "_site"
 binding = "ASSETS"
 html_handling = "auto-trailing-slash"
 not_found_handling = "404-page"
-run_worker_first = ["/", "/api/*", "/.netlify/functions/*", "/staff", "/staff/*", "/admin", "/admin/*", "/embed/v1/*"]
+run_worker_first = ["/", "/api/*", "/.netlify/functions/*", "/staff", "/staff/*", "/admin", "/admin/*", "/embed/v1/*", "/media/*"]
 
 # LOCAL SIMULATION, INCLUDING THE DATABASE. `wrangler dev` runs D1 and KV in
 # miniflare against state under .wrangler/state — NOT against thauma-ops-dev.
@@ -242,6 +264,26 @@ run_worker_first = ["/", "/api/*", "/.netlify/functions/*", "/staff", "/staff/*"
 # from seed.dev.sql, it is safe to break, and it needs no network. The upgrade
 # path that collapses it back to two is Node 22 + wrangler >= 4.123, which
 # makes experimental_remote work.
+
+# ---------------------------------------------------------------------------
+# MEDIA — staff photos, and anything else a person uploads
+#
+# NOT GIT. A phone photo committed to a repository is in every clone forever,
+# and rewriting history to remove one is not a thing to ask of somebody who is
+# not a full-time engineer. Object storage is where files that are DATA belong;
+# the repository holds the text that references them.
+#
+# ⚠ THIS LIVES IN THE PERSONAL CLOUDFLARE ACCOUNT, like every other Cloudflare
+# resource here. R2 buckets do not transfer between accounts, so when Thauma
+# owns its own account this bucket is recreated and the objects copied across.
+# That is a copy, not a migration — far cheaper than moving a database, which
+# is why building here now is acceptable and building the DATABASE here was
+# the thing worth arguing about.
+# ---------------------------------------------------------------------------
+[[env.dev.r2_buckets]]
+binding = "MEDIA"
+bucket_name = "thauma-media"
+
 [[env.dev.d1_databases]]
 binding = "DB"
 database_name = "thauma-ops-dev"
@@ -326,7 +368,7 @@ directory = "_site_prod"
 binding = "ASSETS"
 html_handling = "auto-trailing-slash"
 not_found_handling = "404-page"
-run_worker_first = ["/", "/api/*", "/.netlify/functions/*", "/staff", "/staff/*", "/admin", "/admin/*", "/embed/v1/*"]
+run_worker_first = ["/", "/api/*", "/.netlify/functions/*", "/staff", "/staff/*", "/admin", "/admin/*", "/embed/v1/*", "/media/*"]
 
 [[env.production.routes]]
 pattern = "thauma.one/*"
@@ -347,6 +389,26 @@ id = "f79f07b51f3a493a9f2bb3714115d037"
 [[env.production.kv_namespaces]]
 binding = "GAME_SCORES"
 id = "f23971d5b4aa460daba43e97b9d84273"
+
+
+# ---------------------------------------------------------------------------
+# MEDIA — staff photos, and anything else a person uploads
+#
+# NOT GIT. A phone photo committed to a repository is in every clone forever,
+# and rewriting history to remove one is not a thing to ask of somebody who is
+# not a full-time engineer. Object storage is where files that are DATA belong;
+# the repository holds the text that references them.
+#
+# ⚠ THIS LIVES IN THE PERSONAL CLOUDFLARE ACCOUNT, like every other Cloudflare
+# resource here. R2 buckets do not transfer between accounts, so when Thauma
+# owns its own account this bucket is recreated and the objects copied across.
+# That is a copy, not a migration — far cheaper than moving a database, which
+# is why building here now is acceptable and building the DATABASE here was
+# the thing worth arguing about.
+# ---------------------------------------------------------------------------
+[[env.production.r2_buckets]]
+binding = "MEDIA"
+bucket_name = "thauma-media"
 
 [[env.production.d1_databases]]
 binding = "DB"
