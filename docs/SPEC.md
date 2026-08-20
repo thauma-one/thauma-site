@@ -690,6 +690,62 @@ delivers an account invite.** That is the whole reason for the split, and it is
 why `MAIL_FROM` is a separate variable from any future bulk sender rather than
 a convenient shared one.
 
+### The mailing system — requirements, 2026-08-20
+
+Not built. Chase specified it after a pass over chaseroush.com's existing
+newsletter, which is the model to follow — **the shape, not the mechanism.**
+
+**THE GOAL, in his words: customisation and isolation.** Everything below is a
+consequence of those two.
+
+| requirement | consequence |
+|---|---|
+| One Resend account for the whole organisation | Sender identity is per list, not per account |
+| A partner must not see another partner's list | Subscribers carry `partner_id`; every query scopes to it |
+| Chase cannot see Mira's subscribers, or the reverse | Isolation is enforced in SQL, not in the UI |
+| Only admin/communications may send AS Thauma | A new `communications` role; `user_roles` already takes one |
+| A partner chooses their own lists | Lists are ROWS a partner creates, not a constant in source |
+| One partner wants prayer + newsletter, another only newsletter | No list is assumed to exist |
+| Sign-up forms embeddable on partner sites | A POST-capable embed — see below |
+
+**WHAT CR ALREADY GETS RIGHT, and this should copy:**
+
+- Double opt-in. A token is issued on subscribe and verified on confirm, so
+  consent is proven rather than assumed. This is the legally fraught part and
+  it is already solved once.
+- Per-list sender identity — CR sends newsletter from `connect@` and prayer
+  from `prayer@`, which is per-partner-per-list here.
+- A per-recipient unsubscribe token in every send.
+- Tags, with cascading rename and delete, so tags do not drift into free text.
+- An archive of what was sent.
+
+**WHAT MUST NOT COME ACROSS:**
+
+1. **Subscribers as a JSON file.** CR reads the whole list, modifies it, writes
+   the whole list. Two subscriptions in the same second and one is silently
+   lost — that is a correctness bug at any size, not merely a scaling one, and
+   it gets likelier with every partner running a form. Subscribers are D1 rows,
+   unique on `(partner_id, list_id, email)`.
+2. **Fan-out sending.** CR does `Promise.allSettled(recipients.map(send))` —
+   one request per recipient, all at once. Fine at fifty; at two thousand it is
+   a rate limit and a function timeout, with no record of who actually received
+   it. Batched, with per-recipient state recorded, so a failed run can resume
+   and "did they get it" is answerable.
+3. **One shared admin session.** CR's auth is binary — admin or nobody — with
+   no notion of WHICH admin. That is exactly what isolation forbids.
+
+**THE SIGN-UP FORM EMBED IS A NEW KIND OF SURFACE.** Everything under
+`/embed/v1/` today is read-only, unauthenticated and cacheable. A form must
+POST, from a page Thauma does not control, with no credential. That is the
+first write endpoint open to the public internet, so it is where spam
+protection, rate limiting and abuse handling have to live — and §4a applies
+with more force than anywhere else in this document.
+
+**WHO OWNS IT.** Thauma. Chase was explicit: the data and the decision to send
+live here, and partner sites are surfaces that display and collect. CR is being
+stripped back so that new staff join by using Thauma rather than by having a
+site built for them.
+
 ### `lib/mail.js` — and why it looks like 2004
 
 Outlook on Windows renders mail with **Microsoft Word's** layout engine. No
