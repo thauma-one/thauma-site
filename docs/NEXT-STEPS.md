@@ -290,6 +290,54 @@ caller not using it was.
 
 ---
 
+## Where production actually stands — 2026-08-20
+
+**The production console had never worked, and it was not anything we shipped.**
+`GITHUB_APP_PRIVATE_KEY` is a 28-line PEM, and pasting one into the Cloudflare
+dashboard's secret box loses the newlines. The secret still stores, still lists,
+and never works. Everything backed by GitHub — Content, Site, Publish — rendered
+empty; everything backed only by the database worked. That pattern is what gave
+it away. Fixed by piping the value instead of pasting it:
+`node deploy/set-production-github-secrets.mjs`.
+
+Production now has: all 14 migrations, your admin account, the Chase Roush
+partner, English enabled. The public site is healthy and the embed endpoint
+returns a clean 404 rather than a 500.
+
+**Still to finish:** `db/seed.production-content.sql` did not land — the
+milestone, goal and prayer tables are still empty on production and the run
+reported nothing here. The file's columns match production's schema exactly, so
+the cause is not a schema mismatch. Pick this up before doing anything else with
+production content.
+
+---
+
+## THE BIG ONE, for a fresh day
+
+You said it plainly:
+
+> "I want the dev site and live sites to match content once the dev site
+> publishes. It's meant to be a full testing site."
+
+**That is not how it works, and it is a design gap rather than a bug.** Two
+kinds of content travel differently:
+
+- **Words** (`src/_data/`) live in git. Publish carries them. This works.
+- **Records** (milestones, goals, prayer, partners, staff profiles) live in the
+  database. `dev` and `next` read `thauma-ops-dev`; the live site reads
+  `thauma-ops`. **Publish has never moved a database row and cannot today.**
+
+That is why production's roadmap was empty while dev's was full. Nothing was
+broken; the two halves were never connected.
+
+Making publishing carry records is real work and needs decisions first — which
+side authors, what happens when both change, and how the test fixtures (Mira)
+and supporter PII are kept out of the trip. `db/refresh_dev.py` already scrubs
+names and emails when copying production DOWN to dev; anything going UP must not
+run that pipe backwards.
+
+---
+
 ## Save now reaches the dev site — fixed 2026-08-19
 
 **The complaint was right every time.** You pressed Save, the words went to
