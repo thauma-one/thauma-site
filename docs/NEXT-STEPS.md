@@ -387,27 +387,92 @@ live, which is the next item.
 
 ## Two things for you, when you are at a computer
 
-### 1. Apply migrations 0013 and 0014 before you next publish
+### 1. Merge, THEN apply, THEN publish — in that order
 
-Publish page → database panel → **Apply**, type `MIGRATE`. Order is always
-merge → apply → publish.
+**Correcting what this file said before.** It told you to apply the migrations
+before publishing, which skipped a step: the Apply button reads the migration
+files from `main`, and everything built recently is on `dev`. Until `dev` is
+merged, the Publish page has nothing to offer you and correctly says there is
+nothing to do — which is what you were looking at.
 
-- `0013` puts Slovenian in the language catalogue. Until it runs, Slovenian is
-  live on the public site and no partner can write content in it — which is
-  the state it has been in for days.
-- `0014` adds the staff profile tables. The Staff page section cannot save
-  without it.
+**The database panel is not a separate thing to find.** It is the amber box on
+the Publish page, the one that currently reads *"This release touches the
+database… the live database has already run everything it needs."* That is
+true right now, and will change to an **Apply** button once step (a) is done.
 
-### 2. Make an R2 bucket, so photos have somewhere to go
+```
+cd /DATA/AppData/thauma
+git checkout main && git pull
+git merge dev --no-edit
+git push origin main
+git checkout dev
+```
 
-Photos are the one part of the staff page still missing, and the only reason is
-that there is nowhere to put them. Not git: a phone photo committed to a
-repository is there permanently, in every clone, forever.
+**Merging deploys nothing.** The production workflow only runs when the Publish
+button asks it to — the comment at the top of `.github/workflows/deploy.yml`
+says so. Safe at any hour.
 
-**dash.cloudflare.com → R2 → Create bucket**, name it `thauma-media`. Tell me
-when it exists and I will wire the uploader — it resizes and converts to WebP
-in the browser before anything is sent, so a 12MP photo does not become a 12MP
-upload.
+Then, on the Publish page:
+
+- **b.** The amber box now offers **Apply**. Press it, type `MIGRATE`.
+  - `0013` puts Slovenian in the language catalogue. Until it runs, Slovenian
+    is live on the public site and no partner can write content in it.
+  - `0014` adds the staff profile tables. The Staff page section cannot save
+    without it.
+- **c.** Press **Preview**, look at `next.thauma.one`.
+- **d.** Press **Publish**.
+
+Schema first, code second. New code that expects a table which is not there
+breaks the moment it deploys; a database slightly ahead of the code breaks
+nothing.
+
+### 2. Two edits on the Pi, to make Save instant
+
+Both need `sudo`, which is why they waited for you to be home.
+
+**a. Point the tunnel at the sync listener.** `sudo nano /etc/cloudflared/config.yml`
+
+```yaml
+ingress:
+  - hostname: dev.thauma.one
+    path: ^/_sync
+    service: http://localhost:8995
+  - hostname: dev.thauma.one
+    service: http://localhost:8991
+  - service: http_status:404
+```
+
+**Port 8995, not 8994** — the old instructions in this file were wrong, which
+is why this never worked. Then:
+
+```
+sudo systemctl restart cloudflared-thauma-dev
+curl https://dev.thauma.one/_sync/health
+```
+
+That must print exactly `ok`. It currently returns a chunk of 404 HTML. Do not
+go on until it says `ok`.
+
+**b. Tell GitHub to call it.** Get the secret:
+
+```
+grep GITHUB_WEBHOOK_SECRET ~/.config/thauma-sync.env
+```
+
+Then **github.com/thauma-one/thauma-site/settings/hooks** → Add webhook →
+payload URL `https://dev.thauma.one/_sync`, content type `application/json`,
+that secret, **just the push event**. Recent Deliveries should show `202`.
+
+Until both are done the five-minute timer covers you, so nothing is at risk.
+
+---
+
+### 3. The R2 bucket — done, and wired
+
+`thauma-media` exists and is bound in all three environments. The uploader is
+built: choose a photo on a person's Staff page section and the browser resizes
+it to 1600px and converts it to WebP before anything is sent, so a 12MP photo
+does not become a 12MP upload. Replacing is just choosing another one.
 
 **⚠ Worth knowing before you press create:** this lands in your PERSONAL
 Cloudflare account, like everything else Cloudflare-side. R2 does not transfer
