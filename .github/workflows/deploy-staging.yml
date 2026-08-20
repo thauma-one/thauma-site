@@ -74,16 +74,33 @@ jobs:
       # that would reveal a problem are the same ones production checks.
       - name: Verify staging
         run: |
-          sleep 5
           fail=0
+          # RETRIED, NOT SLEPT AT.
+          #
+          # A Worker deploy is not visible from everywhere the instant the API
+          # returns, and a flat `sleep 5` was sometimes short by a second or
+          # two. On 2026-08-20 a staging deploy that had genuinely WORKED
+          # reported failure — /api/admin/publish answered 404 during the
+          # check and 401 a moment later, from the asset layer serving the
+          # 404 page before the route existed.
+          #
+          # A false failure here is worse than a slow check, because the
+          # Publish page decides what is live by asking which run last
+          # SUCCEEDED. So a deploy that worked but was checked too early
+          # leaves the console saying nothing has been previewed, and the
+          # person pressing the button has no way to tell the difference.
           check() {
-            got=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$1")
-            if [ "$got" = "$2" ]; then
-              echo "ok   $1 -> $got"
-            else
-              echo "::error::$1 returned $got, expected $2"
-              fail=1
-            fi
+            url="$1"; want="$2"; got=""
+            for i in $(seq 1 20); do
+              got=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$url" || echo 000)
+              if [ "$got" = "$want" ]; then
+                echo "ok   $url -> $got (attempt $i)"
+                return
+              fi
+              sleep 5
+            done
+            echo "::error::$url returned $got, expected $want — still wrong after 100s"
+            fail=1
           }
           check https://next.thauma.one/en/ 200
           check https://next.thauma.one/ 302
