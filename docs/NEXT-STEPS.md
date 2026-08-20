@@ -180,21 +180,15 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now thauma-sync.timer thauma-sync-hook
 ```
 
-**d. Let the tunnel reach it.** `sudo nano /etc/cloudflared/config.yml` and make
-the ingress section read:
-```yaml
-ingress:
-  - hostname: dev.thauma.one
-    path: ^/_sync
-    service: http://localhost:8995
-  - hostname: dev.thauma.one
-    service: http://localhost:8991
-  - service: http_status:404
-```
-Then `sudo systemctl restart cloudflared-thauma-dev`.
+**d. Let the tunnel reach it. ALREADY DONE — nothing to do here.**
+
+The tunnel config is `~/.cloudflared/config.yml` (your home directory, no
+`sudo`), not `/etc/cloudflared/config.yml`, and it has routed this correctly
+since 2026-08-18. Verified 2026-08-19 by sending a signed delivery through the
+public hostname: it returned `202 syncing` and the sync ran.
 
 **e. Tell GitHub** — repo → Settings → Webhooks → Add webhook:
-- Payload URL: `https://dev.thauma.one/_sync`
+- Payload URL: `https://dev.thauma.one/__github-sync`
 - Content type: `application/json`
 - Secret: the password from step (a)
 - Events: **Just the push event**
@@ -323,11 +317,10 @@ of those refusals actually refuses.
 Two things are still undone from section 5, and until both are done the timer
 is what is covering you.
 
-1. **The tunnel is not routing the webhook.** `POST dev.thauma.one/_sync`
-   currently reaches the website instead of the sync listener. Fix the ingress
-   in `sudo nano /etc/cloudflared/config.yml` exactly as section 5(d) shows —
-   **note the port is 8995**, not 8994. The listener is running and works; I
-   sent it a signed delivery and it accepted it.
+1. ~~The tunnel is not routing the webhook.~~ **It is.** I tested the wrong
+   address. The path is `/__github-sync`, not `/_sync`, and the config lives in
+   `~/.cloudflared/config.yml`, not `/etc/cloudflared/`. A signed delivery to
+   `https://dev.thauma.one/__github-sync` returns `202 syncing`.
 2. **GitHub is not sending anything yet.** Section 5(e). The receiver has had
    no delivery from GitHub since it started.
 
@@ -426,44 +419,41 @@ Schema first, code second. New code that expects a table which is not there
 breaks the moment it deploys; a database slightly ahead of the code breaks
 nothing.
 
-### 2. Two edits on the Pi, to make Save instant
+### 2. One webhook, and Save becomes instant
 
-Both need `sudo`, which is why they waited for you to be home.
+**No `sudo`, and no file to edit.** I had this wrong twice: the tunnel config is
+`~/.cloudflared/config.yml` in your home directory — not `/etc/cloudflared/` —
+and it has been routing the webhook correctly since 18 August. The path is
+`/__github-sync`, not `/_sync`. I tested the wrong address and reported it
+broken. It is not.
 
-**a. Point the tunnel at the sync listener.** `sudo nano /etc/cloudflared/config.yml`
+Verified 2026-08-19: a signed delivery to `https://dev.thauma.one/__github-sync`
+returns `202 syncing`, and the Pi ran the sync.
 
-```yaml
-ingress:
-  - hostname: dev.thauma.one
-    path: ^/_sync
-    service: http://localhost:8995
-  - hostname: dev.thauma.one
-    service: http://localhost:8991
-  - service: http_status:404
-```
+**So the only thing missing is telling GitHub to call it.**
 
-**Port 8995, not 8994** — the old instructions in this file were wrong, which
-is why this never worked. Then:
-
-```
-sudo systemctl restart cloudflared-thauma-dev
-curl https://dev.thauma.one/_sync/health
-```
-
-That must print exactly `ok`. It currently returns a chunk of 404 HTML. Do not
-go on until it says `ok`.
-
-**b. Tell GitHub to call it.** Get the secret:
+Get the secret:
 
 ```
 grep GITHUB_WEBHOOK_SECRET ~/.config/thauma-sync.env
 ```
 
-Then **github.com/thauma-one/thauma-site/settings/hooks** → Add webhook →
-payload URL `https://dev.thauma.one/_sync`, content type `application/json`,
-that secret, **just the push event**. Recent Deliveries should show `202`.
+Then **github.com/thauma-one/thauma-site → Settings → Webhooks → Add webhook**:
 
-Until both are done the five-minute timer covers you, so nothing is at risk.
+| Field | Value |
+|---|---|
+| Payload URL | `https://dev.thauma.one/__github-sync` |
+| Content type | `application/json` |
+| Secret | the value you just copied |
+| Events | **Just the push event** |
+| Active | ✅ |
+
+GitHub sends a test delivery the moment you save it. Open the webhook →
+**Recent Deliveries** and you want a green tick with `202 syncing`.
+
+If it shows `401 bad signature`, the secret does not match — re-copy it and
+watch for a trailing space. That is the only failure mode left; the path and
+the listener are both confirmed working.
 
 ---
 
