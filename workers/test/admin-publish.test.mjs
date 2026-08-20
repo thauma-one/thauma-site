@@ -49,14 +49,28 @@ const p = enc({ iss: `https://${TEAM}`, aud: AUD, email: "admin@thauma.one", sub
 const TOKEN = `${h}.${p}.${b64url(await crypto.subtle.sign("RSASSA-PKCS1-v1_5",
   pair.privateKey, new TextEncoder().encode(`${h}.${p}`)))}`;
 
-function envWith(roles, extra = {}) {
+/* `applied` is the list of migrations the database says it has run. Publish
+   now refuses while any file on the branch is missing from it, so every test
+   that expects a publish to GO THROUGH has to say the database is current. */
+function envWith(roles, extra = {}, applied = ALL_MIGRATIONS) {
   return {
     ACCESS_TEAM_DOMAIN: TEAM, ACCESS_AUD: AUD,
     GITHUB_TOKEN: "t", GITHUB_REPO: "thauma-one/thauma-site",
     CONTENT_BRANCH: "main", LIVE_BRANCH: "main", STAGING_BRANCH: "dev",
     ...extra,
     DB: {
-      prepare() {
+      prepare(sql) {
+        if (/schema_migrations/i.test(sql)) {
+          return { bind() { return { async all() {
+            return { results: applied.map((name) => ({
+              name, applied_at: "2026-08-16T10:00:00Z", applied_by: "test", baselined: 0 })) };
+          } }; },
+          async all() {
+            return { results: applied.map((name) => ({
+              name, applied_at: "2026-08-16T10:00:00Z", applied_by: "test", baselined: 0 })) };
+          },
+          async run() { return { success: true }; } };
+        }
         return { bind() { return { async all() {
           /* The REAL column names user_by_email returns. A stub that invents
              `id` and `name` will pass while the code reads undefined — which
@@ -81,9 +95,11 @@ globalThis.fetch = async (url, init = {}) => {
   return github.handle(u, init);
 };
 
+const ALL_MIGRATIONS = ["0001_init.sql", "0002_milestones.sql"];
+
 function stubGitHub({ ahead = 2, files = [], lastProdSha = "live000",
                       prodNever = false, previewSha = "live000",
-                      dispatchStatus = 204 } = {}) {
+                      dispatchStatus = 204, migrations = ALL_MIGRATIONS } = {}) {
   const seen = [];
   seen.handle = async (u, init) => {
     seen.push({ url: u, method: init.method || "GET",
@@ -119,6 +135,15 @@ function stubGitHub({ ahead = 2, files = [], lastProdSha = "live000",
         files: files.map((f) => ({ filename: f })),
         permalink_url: "https://gh/compare",
       }), { status: 200 });
+    }
+
+    /* The migration files on the branch. Publish asks for these now, so a
+       stub that cannot answer makes every publish test fail on the guard
+       rather than on what it is actually testing. */
+    if (u.includes("contents/db") && u.includes("migrations")) {
+      return new Response(JSON.stringify(
+        migrations.map((name) => ({ name, path: `db/migrations/${name}`, type: "file",
+                                    sha: "s", size: 10 }))), { status: 200 });
     }
 
     if (u.includes("/commits/")) return new Response("head000", { status: 200 });
@@ -291,6 +316,77 @@ await check("a missing Actions permission is reported, not swallowed", async () 
     const b = await res.json();
     assert(/Actions: read and write/.test(b.error), "must name the permission");
   } finally { g.restore(); }
+});
+
+
+/* ---------------------------------------------------------------------------
+   SCHEMA FIRST, CODE SECOND — enforced, not documented
+
+   On 2026-08-20 production ended up running new code against a database three
+   migrations behind. Nothing malfunctioned: the Publish page reads the pending
+   list once when it loads, `dev` was merged to `main` a few minutes later, and
+   Publish was pressed on the still-open page. The panel was showing its
+   pre-merge snapshot — "nothing to do" — and the button obeyed it. The embed
+   endpoint began returning 500 immediately, because the tables it reads had
+   not been created.
+
+   The rule had been written down four times in the runbook. Writing it down
+   again would not have helped.
+   --------------------------------------------------------------------------- */
+
+await check("publish is REFUSED while a migration has not been applied", async () => {
+  const gh = stubGitHub({ migrations: ["0001_init.sql", "0002_milestones.sql", "0003_new.sql"] });
+  // The database has only the first two.
+  const res = await handler.fetch(req("POST", { action: "publish", confirm: "PUBLISH" }),
+    envWith("admin", {}, ["0001_init.sql", "0002_milestones.sql"]));
+  const body = await res.json();
+  gh.restore();
+
+  eq(res.status, 409, "status");
+  assert(/not been applied/i.test(body.error), `error should say why — got ${body.error}`);
+  eq(body.pendingMigrations, ["0003_new.sql"], "names the migration");
+  assert(body.refreshMigrations, "tells the page to re-read the panel it is showing");
+  assert(!gh.some((c) => String(c.url).endsWith("/dispatches")),
+    "NOTHING may be dispatched — the deploy must not start");
+});
+
+await check("the refusal names every outstanding migration, not just the first", async () => {
+  const gh = stubGitHub({ migrations: ["0001_init.sql", "0002_a.sql", "0003_b.sql", "0004_c.sql"] });
+  const res = await handler.fetch(req("POST", { action: "publish", confirm: "PUBLISH" }),
+    envWith("admin", {}, ["0001_init.sql"]));
+  const body = await res.json();
+  gh.restore();
+  eq(body.pendingMigrations, ["0002_a.sql", "0003_b.sql", "0004_c.sql"], "all three");
+});
+
+/* PREVIEW IS NOT BLOCKED. Looking at a release whose migrations are not yet
+   applied is exactly how you check what you are about to ship. */
+await check("preview still works with migrations outstanding", async () => {
+  const gh = stubGitHub({ migrations: ["0001_init.sql", "0002_new.sql"] });
+  const res = await handler.fetch(req("POST", { action: "preview" }),
+    envWith("admin", {}, ["0001_init.sql"]));
+  gh.restore();
+  eq(res.status, 200, "status");
+  assert(gh.some((c) => String(c.url).endsWith("/dispatches")), "staging should be dispatched");
+});
+
+/* A guard that cannot answer must not wave the deploy through. */
+await check("publish is refused if the migration check itself fails", async () => {
+  const gh = stubGitHub();
+  gh.handle = async (u, init) => {
+    if (u.includes("contents/db")) {
+      return new Response(JSON.stringify({ message: "Bad credentials" }), { status: 401 });
+    }
+    gh.push({ url: u, method: init.method || "GET" });
+    return new Response(null, { status: 204 });
+  };
+  const res = await handler.fetch(req("POST", { action: "publish", confirm: "PUBLISH" }),
+    envWith("admin"));
+  const body = await res.json();
+  gh.restore();
+  eq(res.status, 502, "status");
+  assert(/could not check/i.test(body.error), `should say the check failed — got ${body.error}`);
+  assert(!gh.some((c) => String(c.url).endsWith("/dispatches")), "nothing dispatched");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

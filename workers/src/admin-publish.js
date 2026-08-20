@@ -34,6 +34,7 @@
  * does nothing visible, which is the entire promise of the word.
  */
 import { createDb } from "./lib/db.js";
+import { pendingMigrations } from "./admin-migrate.js";
 import { requireAccess } from "./lib/access.js";
 import { json, readJson } from "./lib/store.js";
 import { compareBranches, dispatchWorkflow, lastSuccessfulRun, refSha, githubConfig }
@@ -175,6 +176,48 @@ async function act(request, env, db, user, me) {
 
   if (action === "publish" && body.confirm !== CONFIRM_WORD) {
     return json({ error: `Publishing needs the word ${CONFIRM_WORD} typed to confirm.` }, 400);
+  }
+
+  /* SCHEMA FIRST, CODE SECOND — CHECKED HERE, NOT ON THE PAGE.
+
+     The Publish page shows what is pending, but it learns that once when it
+     loads and never asks again. On 2026-08-20 that gap did exactly what it
+     looks like it would: the page was opened, `dev` was merged to `main` in a
+     terminal a few minutes later, and Publish was pressed on the still-open
+     page. The panel was showing its pre-merge snapshot — "nothing to do" —
+     while three migrations sat waiting, so production ended up running new
+     code against a database three versions behind. The embed endpoint started
+     returning 500 immediately, because the tables it reads did not exist yet.
+
+     A warning that can go stale is not a guard. This asks at the moment the
+     button is pressed, on the server, against the database the deploy is
+     about to put code in front of.
+
+     PUBLISH ONLY. Preview exists to look at things, including a release whose
+     migrations have not been applied — refusing there would remove the one
+     safe way to see what you are about to ship.
+
+     If the check itself cannot run, publishing is refused. A deploy that might
+     break the site is not the thing to wave through on a failed lookup. */
+  if (action === "publish") {
+    const mig = await pendingMigrations(env);
+    if (mig.error) {
+      return json({
+        error: `Could not check whether the database is up to date: ${mig.error}. ` +
+               `Publishing is blocked until that question can be answered.`,
+      }, 502);
+    }
+    if (mig.pending.length) {
+      return json({
+        error: `${mig.pending.length} database change${mig.pending.length > 1 ? "s have" : " has"} ` +
+               `not been applied yet. Apply ${mig.pending.length > 1 ? "them" : "it"} first, then publish — ` +
+               `new code that expects a table which is not there breaks the moment it deploys.`,
+        pendingMigrations: mig.pending,
+        /* The page reads this to reopen the database panel with the real
+           answer, rather than the one it cached when it loaded. */
+        refreshMigrations: true,
+      }, 409);
+    }
   }
 
   const workflow = action === "publish" ? PROD_WORKFLOW : STAGING_WORKFLOW;

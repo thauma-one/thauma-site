@@ -494,6 +494,17 @@
     $('pRefresh').disabled = false;
 
     if (!res.ok) {
+      /* REFUSED BECAUSE THE DATABASE IS BEHIND. Pinned, not toasted, and the
+         migration panel is re-read immediately — it is showing what it learned
+         when the page loaded, and that staleness is the whole reason the
+         server had to refuse. Re-reading makes the Apply button appear with
+         the real answer instead of the one from before somebody merged. */
+      if (body && body.refreshMigrations) {
+        if (window.StaffProblem) window.StaffProblem(body.error, loadMigrations);
+        else toast(body.error, 'bad');
+        loadMigrations();
+        return;
+      }
       /* A missing permission is a CONDITION — it will fail identically every
          time until somebody changes the app's settings — so it is pinned
          rather than raised as a toast that scrolls away. */

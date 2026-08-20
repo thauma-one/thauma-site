@@ -125,6 +125,14 @@ async function appliedRows(binding) {
  * Sorted by the four-digit prefix rather than by string, so a hypothetical
  * 0100 lands after 0099 instead of between 0009 and 0010.
  */
+export async function pendingMigrations(env) {
+  const repo = await repoMigrations(env);
+  if (repo.error) return { error: repo.error };
+  await ensureTable(env.DB);
+  const applied = new Set((await appliedRows(env.DB)).map((r) => r.name));
+  return { pending: repo.files.filter((f) => !applied.has(f.name)).map((f) => f.name) };
+}
+
 async function repoMigrations(env) {
   const listed = await listDir(env, DIR);
   if (listed.error) return listed;
