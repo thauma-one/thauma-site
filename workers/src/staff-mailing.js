@@ -257,6 +257,48 @@ export default {
         });
       }
 
+      /* RESEND A CONFIRMATION. Asked for because the first one can fail in
+         ways nobody can see from here — spam, a full mailbox, a typo in a
+         domain that still resolves. A fresh token each time, so the newest
+         email is always the working one and somebody holding two cannot pick
+         the dead link and be told it is invalid. */
+      if (body.action === "resend-confirmation") {
+        const sub = await db.queryOne("subscriber_one", {
+          id: String(body.id || ""), partner_id: partnerId,
+        });
+        if (!sub) return json({ error: "No such subscriber." }, 404);
+        if (sub.status !== "pending") {
+          return json({
+            error: sub.status === "subscribed"
+              ? `${sub.email} has already confirmed — there is nothing to resend.`
+              : `${sub.email} is ${sub.status}. Only somebody waiting to confirm can be sent a link.`,
+          }, 409);
+        }
+
+        const token = [...crypto.getRandomValues(new Uint8Array(32))]
+          .map((b) => b.toString(16).padStart(2, "0")).join("");
+        await db.query("subscriber_resend_confirm", {
+          id: sub.id, partner_id: partnerId, token, now,
+        });
+
+        const origin = new URL(request.url).origin;
+        const mail = listConfirmEmail({
+          name: sub.name, listName: sub.list_name, fromName: sub.from_name,
+          confirmUrl: `${origin}/confirm?t=${token}`,
+        });
+        const sent = await sendMail(env, {
+          to: sub.email, subject: mail.subject, html: mail.html, text: mail.text,
+          from: `${sub.from_name} <${sub.from_email}>`,
+          replyTo: sub.reply_to || undefined,
+        });
+
+        return json({
+          ok: sent.ok === true, email: sub.email,
+          sent: sent.ok === true,
+          sendError: sent.ok ? undefined : sent.error,
+        }, sent.ok ? 200 : 502);
+      }
+
       if (body.action === "subscriber") {
         const status = String(body.status || "");
         /* `pending` is deliberately absent. Moving somebody BACK to unconfirmed

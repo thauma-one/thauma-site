@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "03a5a069d26812e3";
+export const SOURCE_DIGEST = "47bcaa4adbb9d601";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -502,6 +502,11 @@ WHERE confirm_token = :token AND status = 'pending';`,
 WHERE id = :id
   AND list_id IN (SELECT id FROM mailing_lists WHERE partner_id IS :partner_id);`,
   subscriber_existing_for_signup: `SELECT id, status FROM subscribers WHERE list_id = :list_id AND email = :email;`,
+  subscriber_one: `SELECT s.id, s.email, s.name, s.status, s.confirm_token, s.list_id,
+       l.name AS list_name, l.from_name, l.from_email, l.reply_to
+  FROM subscribers s
+  JOIN mailing_lists l ON l.id = s.list_id
+ WHERE s.id = :id AND l.partner_id IS :partner_id;`,
   subscriber_reopen_pending: `UPDATE subscribers
 SET status = 'pending',
     confirm_token = :token,
@@ -512,6 +517,10 @@ SET status = 'pending',
     updated_at = :now
 WHERE list_id = :list_id AND email = :email
   AND status IN ('unsubscribed', 'bounced');`,
+  subscriber_resend_confirm: `UPDATE subscribers
+SET confirm_token = :token, subscribed_at = :now, updated_at = :now
+WHERE id = :id AND status = 'pending'
+  AND list_id IN (SELECT id FROM mailing_lists WHERE partner_id IS :partner_id);`,
   subscriber_resend_token: `UPDATE subscribers
 SET confirm_token = :token, subscribed_at = :now, updated_at = :now, name = COALESCE(:name, name)
 WHERE list_id = :list_id AND email = :email AND status = 'pending';`,

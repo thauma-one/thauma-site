@@ -327,6 +327,13 @@
                   esc(tr('ml.status.pending')) + '</option>'
               : '') +
           '</select>' +
+          /* Only for somebody still waiting. There is nothing to resend to a
+             confirmed subscriber, and sending a way back in to somebody who
+             unsubscribed is not staff's to do. */
+          (s.status === 'pending'
+            ? '<button type="button" data-resend="' + esc(s.id) + '">' +
+                esc(tr('ml.resend')) + '</button>'
+            : '') +
           '<button type="button" class="del" data-delsub="' + esc(s.id) + '">' +
             esc(tr('ms.delete')) + '</button>' +
         '</div>' +
@@ -505,6 +512,28 @@
   });
 
   $('mlSubscribers').addEventListener('click', async function (e) {
+    var resend = e.target.closest('[data-resend]');
+    if (resend) {
+      resend.disabled = true;
+      var r, b;
+      try {
+        r = await fetch(url(), {
+          method: 'POST', credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'resend-confirmation', id: resend.dataset.resend }),
+        });
+        b = await r.json();
+      } catch (err) {
+        resend.disabled = false;
+        toast(tr('err.unreachable') + ' ' + err.message, 'bad');
+        return;
+      }
+      resend.disabled = false;
+      if (b && b.sent) toast(fill('ml.resent', { email: b.email }), 'ok');
+      else toast((b && (b.error || b.sendError)) || tr('err.refused'), 'bad');
+      return;
+    }
+
     var del = e.target.closest('[data-delsub]');
     if (!del) return;
 

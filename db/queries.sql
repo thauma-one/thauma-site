@@ -585,6 +585,32 @@ WHERE list_id = :list_id AND email = :email
   AND status IN ('unsubscribed', 'bounced');
 
 
+-- name: subscriber_resend_confirm
+-- A NEW TOKEN, not the old one resent.
+--
+-- The first message may have gone to spam, been deleted, or never arrived at
+-- all — and the person asking for it again has no way to tell which. Issuing a
+-- fresh token means the newest email is always the working one, so somebody
+-- who finds both in their inbox cannot pick the wrong link and be told it is
+-- invalid. The old one stops working the moment this runs.
+--
+-- Only for `pending`. Somebody already subscribed has nothing to confirm, and
+-- somebody who unsubscribed must not be sent a link back in by staff — that is
+-- what the sign-up form is for, at their own request.
+UPDATE subscribers
+SET confirm_token = :token, subscribed_at = :now, updated_at = :now
+WHERE id = :id AND status = 'pending'
+  AND list_id IN (SELECT id FROM mailing_lists WHERE partner_id IS :partner_id);
+
+
+-- name: subscriber_one
+SELECT s.id, s.email, s.name, s.status, s.confirm_token, s.list_id,
+       l.name AS list_name, l.from_name, l.from_email, l.reply_to
+  FROM subscribers s
+  JOIN mailing_lists l ON l.id = s.list_id
+ WHERE s.id = :id AND l.partner_id IS :partner_id;
+
+
 -- name: subscriber_by_token
 -- The confirmation link. NOT partner-scoped, deliberately and uniquely: the
 -- person clicking it is a member of the public with no account, and the token
