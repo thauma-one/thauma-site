@@ -276,6 +276,9 @@ await check("every real query converts with its documented params", async () => 
     // staff profiles
     bio: null, role_title: null, region: null, public_email: null,
     bio_photo: null,
+    // mailing
+    from_name: "Thauma", from_email: "news@thauma.one", reply_to: null,
+    is_open: 0, list_id: "ml_1", offset: 0,
     // timeline bounds
     timeline_start: null, timeline_end: null,
     // goals

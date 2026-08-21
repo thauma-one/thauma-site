@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "324ae3e6d680e936";
+export const SOURCE_DIGEST = "1cc3749d31ca8301";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -205,6 +205,54 @@ ON CONFLICT(code) DO UPDATE SET
   native_name = excluded.native_name;`,
   languages_all: `SELECT code, name, native_name, is_active, sort_order
 FROM languages ORDER BY sort_order, name;`,
+  mailing_list_archive: `UPDATE mailing_lists
+SET archived_at = :now, updated_at = :now
+WHERE id = :id AND partner_id IS :partner_id;`,
+  mailing_list_one: `SELECT id, partner_id, slug, name, description, from_name, from_email,
+       reply_to, is_open, archived_at, created_at, updated_at
+FROM mailing_lists
+WHERE id = :id AND partner_id IS :partner_id;`,
+  mailing_list_slug_taken: `SELECT id FROM mailing_lists
+WHERE partner_id IS :partner_id AND slug = :slug AND id <> :id;`,
+  mailing_list_upsert: `INSERT INTO mailing_lists
+  (id, partner_id, slug, name, description, from_name, from_email, reply_to,
+   is_open, created_at, updated_at)
+VALUES
+  (:id, :partner_id, :slug, :name, :description, :from_name, :from_email,
+   :reply_to, :is_open, :now, :now)
+ON CONFLICT(id) DO UPDATE SET
+  slug        = excluded.slug,
+  name        = excluded.name,
+  description = excluded.description,
+  from_name   = excluded.from_name,
+  from_email  = excluded.from_email,
+  reply_to    = excluded.reply_to,
+  is_open     = excluded.is_open,
+  updated_at  = excluded.updated_at
+WHERE mailing_lists.partner_id IS :partner_id;`,
+  mailing_lists_for_partner: `SELECT
+  l.id, l.partner_id, l.slug, l.name, l.description,
+  l.from_name, l.from_email, l.reply_to, l.is_open,
+  l.created_at, l.updated_at,
+  (SELECT COUNT(*) FROM subscribers s
+    WHERE s.list_id = l.id AND s.status = 'subscribed')  AS subscribed,
+  (SELECT COUNT(*) FROM subscribers s
+    WHERE s.list_id = l.id AND s.status = 'pending')     AS pending,
+  (SELECT COUNT(*) FROM subscribers s
+    WHERE s.list_id = l.id AND s.status = 'unsubscribed') AS unsubscribed
+FROM mailing_lists l
+WHERE l.partner_id IS :partner_id AND l.archived_at IS NULL
+ORDER BY l.name COLLATE NOCASE;`,
+  mailing_tag_create: `INSERT INTO mailing_tags (id, partner_id, name, sort_order, created_at)
+VALUES (:id, :partner_id, :name, :sort_order, :now);`,
+  mailing_tag_delete: `DELETE FROM mailing_tags WHERE id = :id AND partner_id IS :partner_id;`,
+  mailing_tag_rename: `UPDATE mailing_tags SET name = :name
+WHERE id = :id AND partner_id IS :partner_id;`,
+  mailing_tags_for_partner: `SELECT t.id, t.name, t.sort_order,
+       (SELECT COUNT(*) FROM subscriber_tags st WHERE st.tag_id = t.id) AS used
+FROM mailing_tags t
+WHERE t.partner_id IS :partner_id
+ORDER BY t.sort_order, t.name COLLATE NOCASE;`,
   milestone_delete: `DELETE FROM milestones WHERE id = :id AND partner_id = :partner_id;`,
   milestone_reorder: `UPDATE milestones SET sort_order = :sort_order, updated_at = :now
 WHERE id = :id AND partner_id = :partner_id;`,
@@ -417,6 +465,26 @@ FROM staff_profiles sp
 JOIN users u ON u.id = sp.user_id
 WHERE sp.is_public = 1
 ORDER BY sp.sort_order, u.name COLLATE NOCASE;`,
+  subscriber_delete: `DELETE FROM subscribers
+WHERE id = :id
+  AND list_id IN (SELECT id FROM mailing_lists WHERE partner_id IS :partner_id);`,
+  subscriber_set_status: `UPDATE subscribers
+SET status = :status,
+    unsubscribed_at = CASE WHEN :status = 'unsubscribed' THEN :now ELSE unsubscribed_at END,
+    updated_at = :now
+WHERE id = :id
+  AND list_id IN (SELECT id FROM mailing_lists WHERE partner_id IS :partner_id);`,
+  subscribers_for_list: `SELECT
+  s.id, s.email, s.name, s.status, s.source,
+  s.subscribed_at, s.confirmed_at, s.unsubscribed_at,
+  (SELECT GROUP_CONCAT(t.name, ', ')
+     FROM subscriber_tags st JOIN mailing_tags t ON t.id = st.tag_id
+    WHERE st.subscriber_id = s.id) AS tags
+FROM subscribers s
+JOIN mailing_lists l ON l.id = s.list_id
+WHERE s.list_id = :list_id AND l.partner_id IS :partner_id
+ORDER BY s.subscribed_at DESC
+LIMIT :limit OFFSET :offset;`,
   user_by_email: `SELECT u.id AS user_id, u.email, u.name AS user_name, u.status,
        COALESCE(u.preferred_lang, 'en') AS preferred_lang,
        COALESCE((SELECT GROUP_CONCAT(r.role) FROM user_roles r WHERE r.user_id = u.id),

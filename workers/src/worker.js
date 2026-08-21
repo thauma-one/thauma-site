@@ -38,6 +38,7 @@ import staffMilestones from "./staff-milestones.js";
 import staffSettings from "./staff-settings.js";
 import staffGoals from "./staff-goals.js";
 import staffPrayer from "./staff-prayer.js";
+import staffMailing from "./staff-mailing.js";
 import adminApi from "./admin.js";
 import adminContent from "./admin-content.js";
 import adminPublish from "./admin-publish.js";
@@ -227,6 +228,9 @@ const ROUTES = {
   // Prayer requests and their answers. Same shape as milestones — a state row
   // and one translation per language. See staff-prayer.js.
   "/api/staff-prayer": staffPrayer,
+
+  // A partner's own mailing lists. Scoped to them; see staff-mailing.js.
+  "/api/staff-mailing": staffMailing,
 
   // THE ONLY ENDPOINT THAT CAN WRITE TO THE REPOSITORY. It holds a GitHub
   // token, so a save here becomes a commit and the Action deploys it. Admin

@@ -396,6 +396,143 @@ INSERT INTO users (id, email, name, global_role, status, created_at)
 VALUES (:id, :email, :name, 'staff', 'invited', :now);
 
 
+-- ============================================================================
+-- MAILING
+--
+-- EVERY QUERY HERE IS SCOPED BY partner_id, WITHOUT EXCEPTION. That is the
+-- product requirement — a partner must never see another partner's
+-- subscribers — and it is why these take :partner_id even where a list id
+-- alone would be enough to find the row. A query that can be called with only
+-- an id is a query that can be called with somebody else's id.
+--
+-- The organisation's own lists have partner_id NULL. `IS NOT DISTINCT FROM`
+-- is spelled `IS` in SQLite, which matches NULL to NULL — so one query serves
+-- both a partner asking for theirs and an administrator asking for Thauma's.
+-- ============================================================================
+
+-- name: mailing_lists_for_partner
+-- Live lists, with what is actually on them. The counts are subqueries rather
+-- than a GROUP BY join so that a list with no subscribers still appears —
+-- which is exactly the list somebody has just created and wants to see.
+SELECT
+  l.id, l.partner_id, l.slug, l.name, l.description,
+  l.from_name, l.from_email, l.reply_to, l.is_open,
+  l.created_at, l.updated_at,
+  (SELECT COUNT(*) FROM subscribers s
+    WHERE s.list_id = l.id AND s.status = 'subscribed')  AS subscribed,
+  (SELECT COUNT(*) FROM subscribers s
+    WHERE s.list_id = l.id AND s.status = 'pending')     AS pending,
+  (SELECT COUNT(*) FROM subscribers s
+    WHERE s.list_id = l.id AND s.status = 'unsubscribed') AS unsubscribed
+FROM mailing_lists l
+WHERE l.partner_id IS :partner_id AND l.archived_at IS NULL
+ORDER BY l.name COLLATE NOCASE;
+
+
+-- name: mailing_list_upsert
+INSERT INTO mailing_lists
+  (id, partner_id, slug, name, description, from_name, from_email, reply_to,
+   is_open, created_at, updated_at)
+VALUES
+  (:id, :partner_id, :slug, :name, :description, :from_name, :from_email,
+   :reply_to, :is_open, :now, :now)
+ON CONFLICT(id) DO UPDATE SET
+  slug        = excluded.slug,
+  name        = excluded.name,
+  description = excluded.description,
+  from_name   = excluded.from_name,
+  from_email  = excluded.from_email,
+  reply_to    = excluded.reply_to,
+  is_open     = excluded.is_open,
+  updated_at  = excluded.updated_at
+-- The partner scope is re-checked on UPDATE. Without it, knowing an id would
+-- be enough to rewrite somebody else's list.
+WHERE mailing_lists.partner_id IS :partner_id;
+
+
+-- name: mailing_list_one
+SELECT id, partner_id, slug, name, description, from_name, from_email,
+       reply_to, is_open, archived_at, created_at, updated_at
+FROM mailing_lists
+WHERE id = :id AND partner_id IS :partner_id;
+
+
+-- name: mailing_list_archive
+-- SOFT. A list with history is not a row to discard: the sends reference it,
+-- and "who did we mail in March" has to stay answerable. Subscribers stay
+-- attached, so un-archiving restores the list rather than an empty shell.
+UPDATE mailing_lists
+SET archived_at = :now, updated_at = :now
+WHERE id = :id AND partner_id IS :partner_id;
+
+
+-- name: mailing_list_slug_taken
+-- Across archived lists too: an archived list still owns its address, or
+-- un-archiving would collide with whatever took the slug meanwhile.
+SELECT id FROM mailing_lists
+WHERE partner_id IS :partner_id AND slug = :slug AND id <> :id;
+
+
+-- name: subscribers_for_list
+-- Paged, because a list is the one table here that grows without limit. The
+-- partner check is on the LIST, so a subscriber cannot be read by knowing a
+-- list id alone.
+SELECT
+  s.id, s.email, s.name, s.status, s.source,
+  s.subscribed_at, s.confirmed_at, s.unsubscribed_at,
+  (SELECT GROUP_CONCAT(t.name, ', ')
+     FROM subscriber_tags st JOIN mailing_tags t ON t.id = st.tag_id
+    WHERE st.subscriber_id = s.id) AS tags
+FROM subscribers s
+JOIN mailing_lists l ON l.id = s.list_id
+WHERE s.list_id = :list_id AND l.partner_id IS :partner_id
+ORDER BY s.subscribed_at DESC
+LIMIT :limit OFFSET :offset;
+
+
+-- name: subscriber_delete
+-- Removing somebody is removing them. There is no soft delete here on purpose:
+-- an address kept after a request to be forgotten is the thing the request was
+-- about. Unsubscribing (status change) is the other action, and is separate.
+DELETE FROM subscribers
+WHERE id = :id
+  AND list_id IN (SELECT id FROM mailing_lists WHERE partner_id IS :partner_id);
+
+
+-- name: subscriber_set_status
+UPDATE subscribers
+SET status = :status,
+    unsubscribed_at = CASE WHEN :status = 'unsubscribed' THEN :now ELSE unsubscribed_at END,
+    updated_at = :now
+WHERE id = :id
+  AND list_id IN (SELECT id FROM mailing_lists WHERE partner_id IS :partner_id);
+
+
+-- name: mailing_tags_for_partner
+SELECT t.id, t.name, t.sort_order,
+       (SELECT COUNT(*) FROM subscriber_tags st WHERE st.tag_id = t.id) AS used
+FROM mailing_tags t
+WHERE t.partner_id IS :partner_id
+ORDER BY t.sort_order, t.name COLLATE NOCASE;
+
+
+-- name: mailing_tag_create
+INSERT INTO mailing_tags (id, partner_id, name, sort_order, created_at)
+VALUES (:id, :partner_id, :name, :sort_order, :now);
+
+
+-- name: mailing_tag_rename
+-- ONE UPDATE. chaseroush.com renames a tag by rewriting every subscriber file
+-- it appears in; a join table makes the same operation a single row change,
+-- and makes it impossible for a rename to half-succeed.
+UPDATE mailing_tags SET name = :name
+WHERE id = :id AND partner_id IS :partner_id;
+
+
+-- name: mailing_tag_delete
+DELETE FROM mailing_tags WHERE id = :id AND partner_id IS :partner_id;
+
+
 -- name: staff_profiles_all
 -- Every profile, joined to the person. LEFT JOIN FROM users, so somebody with
 -- no profile still appears — the People page holds everyone, and "no public
