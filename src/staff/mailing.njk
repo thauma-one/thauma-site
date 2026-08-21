@@ -6,155 +6,153 @@ staffTitle: Mailing
 staffHeading: Who hears from <b>you</b>
 staffHint: your lists and the people on them — nobody else's
 ---
-{#- ITS OWN PAGE, not a section of another one.
+{#- ONE TAB PER LIST, then the tools that work across all of them.
 
-   Milestones, goals and prayer share the Ministry page because each is small
-   and they are the same job. This is not that: a list has subscribers, a
-   composer, a send history and an archive, and every one of those grows. It
-   needs somewhere it can grow into.
+   The first version put every list in one column and buried the sign-up form
+   inside each list's edit panel. That made the page a list OF lists, when what
+   somebody actually does here is work ON one — read who is on it, change its
+   settings, write to it. A tab per list makes the thing being worked on the
+   thing on screen.
+
+   New list sits WITH the lists, because it makes one. Sign-up forms and
+   Composer are pushed to the far end and visually separated, because they are
+   not lists and must not read as one more of them.
 
    THE HEADING SAYS "nobody else's" ON PURPOSE. Isolation is the feature, and
-   the person reading this screen should be able to see that it applies to
-   them rather than take it on faith. -#}
+   the person reading this should see that it applies to them rather than take
+   it on faith. -#}
 
-{#- Only for accounts that may send as the organisation. Revealed by
-   staff-mailing.js from the API's own answer, never guessed from a role read
-   in the browser — a control that appears and then 403s teaches people that
-   the console lies. -#}
+<div class="ml-tabs" role="tablist" aria-label="Mailing">
+  <div class="ml-tabs-lists" id="mlTabs"></div>
+
+  <button type="button" class="ml-tab ml-tab-new" id="mlNewList">
+    <span aria-hidden="true">+</span>&nbsp;<span data-i18n="ml.add">New list</span>
+  </button>
+
+  <span class="ml-tabs-gap"></span>
+
+  <button type="button" class="ml-tab ml-tab-tool" role="tab" data-view="embed"
+          data-i18n="ml.tabEmbed">Sign-up forms</button>
+  <button type="button" class="ml-tab ml-tab-tool" role="tab" data-view="composer"
+          data-i18n="ml.tabComposer">Composer</button>
+</div>
+
+{#- The organisation's own lists. Shown only when the API says this account may
+   reach them — never guessed from a role read in the browser. -#}
 <div class="ml-scope" id="mlScope" hidden>
   <span class="ml-scope-label" data-i18n="ml.scope">Managing</span>
   <button type="button" class="sort-btn is-on" data-scope="partner" id="mlScopeMine"></button>
   <button type="button" class="sort-btn" data-scope="organisation" data-i18n="ml.scopeOrg">Thauma</button>
 </div>
 
-<div class="ms-bar">
-  <button type="button" class="solid-btn" id="mlAdd" data-i18n="ml.add">New list</button>
-  <span class="hint" id="mlStatus"></span>
-</div>
+<p class="empty" id="mlNoLists" hidden data-i18n="ml.empty">No mailing lists yet.</p>
 
-<p class="note ms-note" data-i18n-html="ml.privacyNote"><b>These are real people's addresses.</b>
-They are visible to you and to administrators, and to nobody else — not other
-partners, and not other staff. Removing somebody removes them; it is not a
-flag, and it cannot be undone from here.</p>
-
-<div class="ms-list" id="mlList">
-  <p class="empty" data-i18n="common.loading">Loading…</p>
-</div>
-
-<div id="mlFormHolder"></div>
-
-{#- The form lives here until a row is opened, then moves under that row —
-   the same shared behaviour milestones, goals and prayer use. -#}
-<form class="ms-form" id="mlForm" hidden>
-  <input type="hidden" id="mlId">
-
-  <div class="ms-grid">
-    <label class="fld"><span data-i18n="ml.name">Name</span>
-      <input type="text" id="mlName" maxlength="120" required>
-      <span class="fld-hint" data-i18n="ml.nameHint">What you call it. Subscribers never see this.</span>
-    </label>
-
-    <label class="fld"><span data-i18n="ml.address">Web address</span>
-      <input type="text" id="mlSlug" maxlength="60">
-      <span class="fld-hint" data-i18n="ml.addressHint">Used in sign-up and unsubscribe links. Leave blank to build it from the name.</span>
-    </label>
+<!-- ============================================================== A LIST -->
+<section class="ml-view" id="mlListView" hidden>
+  <div class="ml-subtabs" role="tablist">
+    <button type="button" class="ml-subtab is-on" data-sub="people"
+            data-i18n="ml.subPeople">Subscribers</button>
+    <button type="button" class="ml-subtab" data-sub="settings"
+            data-i18n="ml.subSettings">Settings</button>
   </div>
 
-  <label class="fld"><span data-i18n="ml.description">Description</span>
-    <textarea id="mlDescription" rows="2" maxlength="400"></textarea>
-  </label>
-
-  <div class="ms-grid">
-    <label class="fld"><span data-i18n="ml.fromName">From name</span>
-      <input type="text" id="mlFromName" maxlength="80" required>
-      <span class="fld-hint" data-i18n="ml.fromNameHint">Who the email appears to be from.</span>
-    </label>
-
-    <label class="fld"><span data-i18n="ml.fromEmail">From address</span>
-      <input type="email" id="mlFromEmail" maxlength="200" required>
-    </label>
-
-    <label class="fld"><span data-i18n="ml.replyTo">Reply-to</span>
-      <input type="email" id="mlReplyTo" maxlength="200">
-      <span class="fld-hint" data-i18n="ml.replyToHint">Optional. Where replies go, if not the from address.</span>
-    </label>
-  </div>
-
-  <div class="ms-switches">
-    <button type="button" class="switch" id="mlOpen" role="switch" aria-checked="false">
-      <span class="switch-track"><span class="switch-state">Off</span><span class="switch-knob"></span></span>
-      <span class="switch-label"><span data-i18n="ml.open">Open for sign-ups</span>
-        <span class="switch-note" data-i18n="ml.openNote">Lets a sign-up form on a website add to this list. Off means only you can add people.</span>
-      </span>
-    </button>
-  </div>
-
-  {#- THE SIGN-UP FORM, configured on the list it feeds. A list has at most one
-     public way in — giving it two would make "who is on this list" depend on
-     which door somebody used. Hidden while the list is closed, because there
-     is nothing to configure until there is a form. -#}
-  <div class="ml-form-config" id="mlFormConfig" hidden>
-    <span class="adm-label" data-i18n="ml.formHeading2">The sign-up form</span>
-
-    <div class="ms-grid">
-      <label class="fld"><span data-i18n="ml.formHeading">Heading</span>
-        <input type="text" id="mlFormHeading" maxlength="120">
-        <span class="fld-hint" data-i18n="ml.formHeadingHint">Leave blank to use the list's name.</span>
+  <!-- ---------- subscribers ---------- -->
+  <div class="ml-sub" data-subpanel="people">
+    <form class="ml-add" id="mlAddPerson">
+      <label class="fld"><span data-i18n="ml.addEmail">Email address</span>
+        <input type="email" id="mlNewEmail" maxlength="200" required>
       </label>
-      <label class="fld"><span data-i18n="ml.formButton">Button</span>
-        <input type="text" id="mlFormButton" maxlength="40" placeholder="Subscribe">
+      <label class="fld"><span data-i18n="ml.addName">Name</span>
+        <input type="text" id="mlNewName" maxlength="120">
       </label>
-    </div>
+      <button type="submit" class="solid-btn" data-i18n="ml.addPerson">Add</button>
+      <span class="hint" id="mlAddStatus" data-i18n="ml.addNote">Adds them as unconfirmed and
+        emails them to confirm. That link is also how you find out the address works.</span>
+    </form>
 
-    <label class="fld"><span data-i18n="ml.formBlurb">A line above the fields</span>
-      <input type="text" id="mlFormBlurb" maxlength="240">
-    </label>
-
-    {#- WHAT IT WILL LOOK LIKE, drawn from the same values the real widget
-       uses. A preview built separately from the thing it previews drifts, and
-       then lies. -#}
-    <div class="ml-preview" id="mlPreview" aria-hidden="true"></div>
-
-    <label class="fld"><span data-i18n="ml.snippet">Paste this into a website</span>
-      <textarea id="mlSnippet" rows="3" readonly spellcheck="false"></textarea>
-      <span class="fld-hint" data-i18n="ml.snippetHint">Works on any site. Nothing else is needed — no account, no script tag anywhere else.</span>
-    </label>
-    <button type="button" class="ghost-btn" id="mlCopy" data-i18n="ml.copy">Copy</button>
+    <div class="ml-counts" id="mlCounts"></div>
+    <div class="ms-list" id="mlSubscribers"></div>
   </div>
 
-  <div class="ms-actions">
-    <button type="submit" class="solid-btn" data-i18n="ml.save">Save list</button>
-    <button type="button" class="ghost-btn" id="mlCancel" data-i18n="ms.cancel">Cancel</button>
-    <button type="button" class="del" id="mlArchive" data-i18n="ml.archive">Archive</button>
-    <span class="hint" id="mlFormStatus"></span>
-  </div>
-</form>
+  <!-- ---------- settings ---------- -->
+  <div class="ml-sub" data-subpanel="settings" hidden>
+    <form id="mlForm">
+      <input type="hidden" id="mlId">
 
-{#- Opened from a list row. Separate from the list itself because a list with
-   four thousand people on it is not something to render inside a row. -#}
-<section class="ml-people" id="mlPeople" hidden>
-  <div class="ms-bar">
-    <button type="button" class="ghost-btn" id="mlBack" data-i18n="ml.back">← All lists</button>
-    <span class="ml-people-title" id="mlPeopleTitle"></span>
-    <span class="hint" id="mlPeopleCount"></span>
-  </div>
-  {#- ADDING BY HAND is for somebody who asked in person. It lands as
-     subscribed rather than pending, because the confirmation email exists to
-     prove consent that came from a stranger over the internet — and this
-     did not. The note says so, so nobody thinks the double opt-in was
-     skipped by accident. -#}
-  <form class="ml-add" id="mlAddPerson">
-    <label class="fld"><span data-i18n="ml.addEmail">Email address</span>
-      <input type="email" id="mlNewEmail" maxlength="200" required>
-    </label>
-    <label class="fld"><span data-i18n="ml.addName">Name</span>
-      <input type="text" id="mlNewName" maxlength="120">
-    </label>
-    <button type="submit" class="solid-btn" data-i18n="ml.addPerson">Add</button>
-    <span class="hint" id="mlAddStatus" data-i18n="ml.addNote">Only for people who have
-      already told you they want this — they are added as subscribed, with no
-      confirmation email.</span>
-  </form>
+      <div class="ms-grid">
+        <label class="fld"><span data-i18n="ml.name">Name</span>
+          <input type="text" id="mlName" maxlength="120" required>
+          <span class="fld-hint" data-i18n="ml.nameHint">What you call it. Subscribers never see this.</span>
+        </label>
 
-  <div class="ms-list" id="mlSubscribers"></div>
+        {#- LOCKED ONCE THE LIST IS IN USE. The address is baked into every
+           snippet pasted onto a website and every unsubscribe link in every
+           email already sent. Changing it breaks both, and the person who
+           notices is a subscriber who can no longer unsubscribe. Free to set
+           until the first person joins; after that it is an admin's to move. -#}
+        <label class="fld"><span data-i18n="ml.address">Web address</span>
+          <input type="text" id="mlSlug" maxlength="60">
+          <span class="fld-hint" id="mlSlugHint" data-i18n="ml.addressHint">Used in sign-up and
+            unsubscribe links. Leave blank to build it from the name.</span>
+        </label>
+      </div>
+
+      <label class="fld"><span data-i18n="ml.description">Description</span>
+        <textarea id="mlDescription" rows="2" maxlength="400"></textarea>
+      </label>
+
+      <div class="ms-grid">
+        <label class="fld"><span data-i18n="ml.fromName">From name</span>
+          <input type="text" id="mlFromName" maxlength="80" required>
+        </label>
+        <label class="fld"><span data-i18n="ml.fromEmail">From address</span>
+          <input type="email" id="mlFromEmail" maxlength="200" required>
+        </label>
+        <label class="fld"><span data-i18n="ml.replyTo">Reply-to</span>
+          <input type="email" id="mlReplyTo" maxlength="200">
+          <span class="fld-hint" data-i18n="ml.replyToHint">Optional. Where replies go.</span>
+        </label>
+      </div>
+
+      <div class="ms-switches">
+        <button type="button" class="switch" id="mlOpen" role="switch" aria-checked="false">
+          <span class="switch-track"><span class="switch-state">Off</span><span class="switch-knob"></span></span>
+          <span class="switch-label"><span data-i18n="ml.open">Open for sign-ups</span>
+            <span class="switch-note" data-i18n="ml.openNote">Lets a sign-up form add to this list.
+              Off means only you can add people, and any form already on a website stops working.</span>
+          </span>
+        </button>
+      </div>
+
+      <div class="ms-actions">
+        <button type="submit" class="solid-btn" data-i18n="ml.save">Save list</button>
+        <button type="button" class="del" id="mlArchive" data-i18n="ml.archive">Archive</button>
+        <span class="hint" id="mlFormStatus"></span>
+      </div>
+    </form>
+  </div>
+</section>
+
+<!-- ======================================================= SIGN-UP FORMS -->
+{#- EVERY LIST IN ONE PLACE, which is how somebody building a website wants
+   them: they are pasting several into one page, not visiting each list in turn
+   to collect snippets. -#}
+<section class="ml-view" id="mlEmbedView" hidden>
+  <p class="note ms-note" data-i18n-html="ml.embedNote"><b>One snippet per list.</b>
+  Paste both lines wherever the form should appear. Nothing else is needed — no
+  account on that website, no key. A list that is not open for sign-ups has no
+  form, and a snippet already pasted stops working the moment you close it.</p>
+  <div id="mlEmbedList"></div>
+</section>
+
+<!-- ============================================================ COMPOSER -->
+<section class="ml-view" id="mlComposerView" hidden>
+  <div class="ml-soon">
+    <h3 data-i18n="ml.composerSoon">Not built yet</h3>
+    <p data-i18n="ml.composerSoonBody">Writing and sending is the next piece. It will live
+      here: formatting, images, a look that matches the ministry sending it, a test send to
+      yourself, and an archive of everything sent with a link for the footer.</p>
+    <p class="hint" data-i18n="ml.composerSoonWhy">Listed now rather than hidden, so the
+      shape of this page is the shape it will keep.</p>
+  </div>
 </section>

@@ -1167,3 +1167,78 @@ body.has-savebar .acting-mark{bottom:calc(var(--ms-savebar-h,72px) + 12px)}
   background:var(--line);color:var(--text);opacity:.7}
 #mlSnippet{width:100%;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
   font-size:11.5px;line-height:1.5;resize:vertical}
+
+
+/* ============================================================
+   MAILING — tabs
+   ============================================================ */
+
+/* THE LISTS AND THE TOOLS ARE NOT THE SAME KIND OF THING, so the bar says so
+   with a gap rather than only with words. Wrapping is allowed because a
+   partner with eight lists should get two rows, not a horizontal scrollbar. */
+.ml-tabs{display:flex;align-items:flex-end;gap:6px;flex-wrap:wrap;
+  border-bottom:1px solid var(--line);padding-bottom:0;margin-bottom:18px}
+.ml-tabs-lists{display:contents}
+.ml-tabs-gap{flex:1 1 auto;min-width:12px}
+
+.ml-tab{background:none;border:1px solid transparent;border-bottom:none;
+  color:var(--dim,#8a93a3);padding:9px 15px;font-size:13px;cursor:pointer;
+  border-radius:var(--radius) var(--radius) 0 0;position:relative;top:1px;
+  display:inline-flex;align-items:center;gap:8px;
+  transition:color var(--dur-3) var(--ease-main)}
+@media(hover:hover){ .ml-tab:hover{color:var(--text)} }
+.ml-tab.is-on{color:var(--text);border-color:var(--line);
+  background:var(--panel);font-weight:var(--w-bold)}
+.ml-tab:focus-visible{outline:2px solid var(--voice-tech);outline-offset:-2px}
+
+/* The count is a fact about the tab, not a badge shouting for attention. */
+.ml-tab-count{font-size:11px;opacity:.65;font-variant-numeric:tabular-nums}
+.ml-tab.is-on .ml-tab-count{opacity:.8}
+
+.ml-tab-new{color:var(--voice-tech);border:1px dashed var(--line);
+  border-bottom:1px dashed var(--line);border-radius:var(--radius);
+  top:-2px;padding:7px 13px}
+@media(hover:hover){ .ml-tab-new:hover{border-color:var(--voice-tech)} }
+
+.ml-tab-tool{color:var(--dim,#8a93a3)}
+.ml-tab-tool.is-on{color:var(--text)}
+
+/* ---- inside a list ---- */
+.ml-subtabs{display:flex;gap:4px;margin-bottom:18px}
+.ml-subtab{background:none;border:none;border-bottom:2px solid transparent;
+  color:var(--dim,#8a93a3);padding:6px 2px;margin-right:18px;font-size:12.5px;
+  cursor:pointer;letter-spacing:.02em}
+.ml-subtab.is-on{color:var(--text);border-bottom-color:var(--voice-tech);
+  font-weight:var(--w-bold)}
+@media(hover:hover){ .ml-subtab:hover{color:var(--text)} }
+
+.ml-counts{display:flex;gap:18px;flex-wrap:wrap;margin:0 0 14px}
+.ml-count{font-size:12px;color:var(--dim,#8a93a3)}
+.ml-count b{color:var(--text);font-size:15px;margin-right:5px;
+  font-variant-numeric:tabular-nums}
+.ml-count.ok b{color:#7fe3b0}
+.ml-count.warn b{color:var(--voice-tech)}
+
+/* A locked field must look locked. Read-only inputs that look editable are how
+   somebody types into one and wonders why nothing saved. */
+input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
+
+/* ---- the sign-up forms tab ---- */
+.ml-embed-card{border:1px solid var(--line);border-radius:var(--radius);
+  padding:18px 20px;margin-bottom:14px;background:var(--panel)}
+.ml-embed-card h4{margin:0 0 12px;font-size:1rem}
+.ml-embed-card.is-closed{opacity:.72}
+.ml-embed-split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);
+  gap:20px;align-items:start}
+.ml-embed-code{display:flex;flex-direction:column;gap:8px;min-width:0}
+.ml-embed-code textarea{width:100%;box-sizing:border-box;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;
+  line-height:1.5;resize:vertical;background:var(--bg2,#0b1119);
+  border:1px solid var(--line);border-radius:4px;color:var(--text);padding:8px}
+.ml-embed-code .ghost-btn{align-self:flex-start}
+@media (max-width:820px){ .ml-embed-split{grid-template-columns:1fr} }
+
+.ml-soon{border:1px dashed var(--line);border-radius:var(--radius);
+  padding:28px;max-width:36rem}
+.ml-soon h3{margin:0 0 .5rem;font-size:1.1rem}
+.ml-soon p{margin:0 0 .6rem;color:var(--dim,#8a93a3);line-height:1.6}
