@@ -285,6 +285,8 @@ await check("every real query converts with its documented params", async () => 
     partner_slug: "chase-roush", ip_hash: "0".repeat(32),
     at: "2026-08-21T00:00:00Z", since: "2026-08-21T00:00:00Z",
     before: "2026-08-21T00:00:00Z", outcome: "accepted",
+    form_heading: null, form_blurb: null, form_button: null,
+    form_thanks_url: null,
     // timeline bounds
     timeline_start: null, timeline_end: null,
     // goals

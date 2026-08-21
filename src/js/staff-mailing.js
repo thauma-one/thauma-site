@@ -128,9 +128,14 @@
     $('mlReplyTo').value = (l && l.reply_to) || '';
     setSwitch($('mlOpen'), !!(l && l.is_open));
 
+    $('mlFormHeading').value = (l && l.form_heading) || '';
+    $('mlFormBlurb').value = (l && l.form_blurb) || '';
+    $('mlFormButton').value = (l && l.form_button) || '';
+
     /* A list that does not exist yet cannot be archived. */
     $('mlArchive').hidden = !l;
     setStatus($('mlFormStatus'), '');
+    refreshFormConfig();
 
     panel.moveTo(state.editing);
     panel.markOpen(state.editing);
@@ -139,6 +144,46 @@
     var row = panel.rowFor(state.editing);
     if (row) panel.scrollRowToTop(row);
     $('mlName').focus();
+  }
+
+  /* THE PREVIEW AND THE SNIPPET, redrawn from whatever is in the fields right
+     now rather than from what was last saved. Somebody typing a heading should
+     see it, and a snippet that describes the saved state while the form shows
+     something else is the kind of small lie that costs an afternoon.
+
+     Hidden entirely while the list is closed: there is no form to configure
+     until there is a form, and showing the controls anyway invites somebody to
+     fill them in and wonder why nothing appears on their site. */
+  function refreshFormConfig() {
+    var open = $('mlOpen').getAttribute('aria-checked') === 'true';
+    $('mlFormConfig').hidden = !open;
+    if (!open) return;
+
+    var l = listById(state.editing);
+    var slug = ($('mlSlug').value.trim() || (l && l.slug) || '').trim();
+    var partner = (state.partnerSlug || '').trim();
+    var heading = $('mlFormHeading').value.trim() ||
+                  ($('mlName').value.trim() || tr('ml.formPreviewFallback'));
+    var blurb = $('mlFormBlurb').value.trim();
+    var button = $('mlFormButton').value.trim() || tr('ml.addPersonDefault');
+
+    $('mlPreview').innerHTML =
+      '<div class="ml-preview-inner">' +
+        '<h4>' + esc(heading) + '</h4>' +
+        (blurb ? '<p>' + esc(blurb) + '</p>' : '') +
+        '<label><span>' + esc(tr('ml.previewName')) + '</span><input disabled></label>' +
+        '<label><span>' + esc(tr('ml.previewEmail')) + '</span><input disabled></label>' +
+        '<button type="button" disabled>' + esc(button) + '</button>' +
+      '</div>';
+
+    /* Two lines: where to put the form, and the script that fills it. A
+       partner pastes both and is finished — no account, no key, nothing to
+       configure on their end. */
+    $('mlSnippet').value = !slug || !partner
+      ? tr('ml.snippetPending')
+      : '<div data-thauma-form></div>\n' +
+        '<script src="' + location.origin + '/embed/v1/' +
+        partner + '/' + slug + '/form.js" defer></' + 'script>';
   }
 
   async function closeForm() {
@@ -159,6 +204,9 @@
       from_email: $('mlFromEmail').value.trim(),
       reply_to: $('mlReplyTo').value.trim(),
       is_open: $('mlOpen').getAttribute('aria-checked') === 'true',
+      form_heading: $('mlFormHeading').value.trim(),
+      form_blurb: $('mlFormBlurb').value.trim(),
+      form_button: $('mlFormButton').value.trim(),
     };
 
     setStatus($('mlFormStatus'), tr('ml.saving'));
@@ -324,6 +372,8 @@
 
     state.lists = body.lists || [];
     state.tags = body.tags || [];
+    /* The snippet URL needs the partner's slug, not their display name. */
+    state.partnerSlug = (body.partner && body.partner.slug) || '';
 
     /* The scope switch exists only if the SERVER says this account may use it. */
     if (body.may_send_as_organisation) {
@@ -347,6 +397,26 @@
   $('mlBack').addEventListener('click', backToLists);
   $('mlOpen').addEventListener('click', function () {
     setSwitch(this, this.getAttribute('aria-checked') !== 'true');
+    refreshFormConfig();
+  });
+
+  ['mlName', 'mlSlug', 'mlFormHeading', 'mlFormBlurb', 'mlFormButton']
+    .forEach(function (id) {
+      $(id).addEventListener('input', refreshFormConfig);
+    });
+
+  $('mlCopy').addEventListener('click', async function () {
+    var text = $('mlSnippet').value;
+    try {
+      await navigator.clipboard.writeText(text);
+      toast(tr('ml.copied'), 'ok');
+    } catch (e) {
+      /* Clipboard access is refused in plenty of ordinary situations — an
+         insecure origin, a browser setting. Selecting the text is something
+         the person can then finish themselves, which beats a silent failure. */
+      $('mlSnippet').select();
+      toast(tr('ml.copyManual'), 'bad');
+    }
   });
 
   document.addEventListener('click', function (e) {

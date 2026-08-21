@@ -417,6 +417,7 @@ VALUES (:id, :email, :name, 'staff', 'invited', :now);
 SELECT
   l.id, l.partner_id, l.slug, l.name, l.description,
   l.from_name, l.from_email, l.reply_to, l.is_open,
+  l.form_heading, l.form_blurb, l.form_button, l.form_thanks_url,
   l.created_at, l.updated_at,
   (SELECT COUNT(*) FROM subscribers s
     WHERE s.list_id = l.id AND s.status = 'subscribed')  AS subscribed,
@@ -432,19 +433,25 @@ ORDER BY l.name COLLATE NOCASE;
 -- name: mailing_list_upsert
 INSERT INTO mailing_lists
   (id, partner_id, slug, name, description, from_name, from_email, reply_to,
-   is_open, created_at, updated_at)
+   is_open, form_heading, form_blurb, form_button, form_thanks_url,
+   created_at, updated_at)
 VALUES
   (:id, :partner_id, :slug, :name, :description, :from_name, :from_email,
-   :reply_to, :is_open, :now, :now)
+   :reply_to, :is_open, :form_heading, :form_blurb, :form_button,
+   :form_thanks_url, :now, :now)
 ON CONFLICT(id) DO UPDATE SET
-  slug        = excluded.slug,
-  name        = excluded.name,
-  description = excluded.description,
-  from_name   = excluded.from_name,
-  from_email  = excluded.from_email,
-  reply_to    = excluded.reply_to,
-  is_open     = excluded.is_open,
-  updated_at  = excluded.updated_at
+  slug            = excluded.slug,
+  name            = excluded.name,
+  description     = excluded.description,
+  from_name       = excluded.from_name,
+  from_email      = excluded.from_email,
+  reply_to        = excluded.reply_to,
+  is_open         = excluded.is_open,
+  form_heading    = excluded.form_heading,
+  form_blurb      = excluded.form_blurb,
+  form_button     = excluded.form_button,
+  form_thanks_url = excluded.form_thanks_url,
+  updated_at      = excluded.updated_at
 -- The partner scope is re-checked on UPDATE. Without it, knowing an id would
 -- be enough to rewrite somebody else's list.
 WHERE mailing_lists.partner_id IS :partner_id;
@@ -452,7 +459,8 @@ WHERE mailing_lists.partner_id IS :partner_id;
 
 -- name: mailing_list_one
 SELECT id, partner_id, slug, name, description, from_name, from_email,
-       reply_to, is_open, archived_at, created_at, updated_at
+       reply_to, is_open, form_heading, form_blurb, form_button,
+       form_thanks_url, archived_at, created_at, updated_at
 FROM mailing_lists
 WHERE id = :id AND partner_id IS :partner_id;
 

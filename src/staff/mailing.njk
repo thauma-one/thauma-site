@@ -89,6 +89,39 @@ flag, and it cannot be undone from here.</p>
     </button>
   </div>
 
+  {#- THE SIGN-UP FORM, configured on the list it feeds. A list has at most one
+     public way in — giving it two would make "who is on this list" depend on
+     which door somebody used. Hidden while the list is closed, because there
+     is nothing to configure until there is a form. -#}
+  <div class="ml-form-config" id="mlFormConfig" hidden>
+    <span class="adm-label" data-i18n="ml.formHeading2">The sign-up form</span>
+
+    <div class="ms-grid">
+      <label class="fld"><span data-i18n="ml.formHeading">Heading</span>
+        <input type="text" id="mlFormHeading" maxlength="120">
+        <span class="fld-hint" data-i18n="ml.formHeadingHint">Leave blank to use the list's name.</span>
+      </label>
+      <label class="fld"><span data-i18n="ml.formButton">Button</span>
+        <input type="text" id="mlFormButton" maxlength="40" placeholder="Subscribe">
+      </label>
+    </div>
+
+    <label class="fld"><span data-i18n="ml.formBlurb">A line above the fields</span>
+      <input type="text" id="mlFormBlurb" maxlength="240">
+    </label>
+
+    {#- WHAT IT WILL LOOK LIKE, drawn from the same values the real widget
+       uses. A preview built separately from the thing it previews drifts, and
+       then lies. -#}
+    <div class="ml-preview" id="mlPreview" aria-hidden="true"></div>
+
+    <label class="fld"><span data-i18n="ml.snippet">Paste this into a website</span>
+      <textarea id="mlSnippet" rows="3" readonly spellcheck="false"></textarea>
+      <span class="fld-hint" data-i18n="ml.snippetHint">Works on any site. Nothing else is needed — no account, no script tag anywhere else.</span>
+    </label>
+    <button type="button" class="ghost-btn" id="mlCopy" data-i18n="ml.copy">Copy</button>
+  </div>
+
   <div class="ms-actions">
     <button type="submit" class="solid-btn" data-i18n="ml.save">Save list</button>
     <button type="button" class="ghost-btn" id="mlCancel" data-i18n="ms.cancel">Cancel</button>

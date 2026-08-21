@@ -111,6 +111,10 @@ export function cleanList(body) {
     name, slug, from_name, from_email, reply_to,
     description: clean(body.description, MAX.desc),
     is_open: body.is_open ? 1 : 0,
+    form_heading: clean(body.form_heading, 120),
+    form_blurb: clean(body.form_blurb, 240),
+    form_button: clean(body.form_button, 40),
+    form_thanks_url: clean(body.form_thanks_url, 300),
   } };
 }
 
@@ -156,7 +160,11 @@ export default {
         /* So the console can offer the switch only to people who have it,
            rather than showing a control that answers 403. */
         may_send_as_organisation: s.maySendAsOrg,
-        partner: s.partner ? { id: s.partner.id, display_name: s.partner.display_name } : null,
+        /* The SLUG as well as the name: the sign-up snippet's URL is built
+           from the slug, and the display name is not it. */
+        partner: s.partner
+          ? { id: s.partner.id, slug: s.partner.slug, display_name: s.partner.display_name }
+          : null,
         lists, tags,
       }, actor));
     }
