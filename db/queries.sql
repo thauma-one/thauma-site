@@ -491,22 +491,44 @@ LIMIT :limit OFFSET :offset;
 
 
 -- name: subscriber_add
--- ADDED BY HAND, by somebody who already has the person's permission — which
--- is why it lands as `subscribed` rather than `pending`. The double opt-in
--- exists to prove consent that arrived over the internet from a stranger; a
--- staff member typing in the address of somebody who asked them face to face
--- has that proof already, and making them wait for a confirmation email would
--- be ceremony rather than protection. `source` records which of the two
--- happened, so the difference stays visible afterwards.
+-- ADDED BY HAND, AND STILL `pending`.
+--
+-- The first version made these `subscribed` immediately, reasoning that
+-- somebody who asked a staff member in person has already consented and a
+-- confirmation email would be ceremony. That missed the second thing a
+-- confirmation does: it is the only proof the ADDRESS WORKS. Skipping it means
+-- discovering a typo weeks later, when a send bounces and nobody remembers
+-- what was typed in. So everybody confirms, however they arrived, and `source`
+-- records which way that was.
 --
 -- The partner check is on the LIST, so this cannot add to somebody else's.
 INSERT INTO subscribers
-  (id, list_id, partner_id, email, name, status, source,
-   subscribed_at, confirmed_at, updated_at)
-SELECT :id, l.id, l.partner_id, :email, :name, 'subscribed', :source,
-       :now, :now, :now
+  (id, list_id, partner_id, email, name, status, confirm_token, source,
+   subscribed_at, updated_at)
+SELECT :id, l.id, l.partner_id, :email, :name, 'pending', :token, :source,
+       :now, :now
   FROM mailing_lists l
  WHERE l.id = :list_id AND l.partner_id IS :partner_id;
+
+
+-- name: subscriber_by_token
+-- The confirmation link. NOT partner-scoped, deliberately and uniquely: the
+-- person clicking it is a member of the public with no account, and the token
+-- is the only thing identifying them. It is 32 random bytes and single-use.
+SELECT s.id, s.email, s.name, s.status, s.list_id,
+       l.name AS list_name, l.slug AS list_slug
+  FROM subscribers s
+  JOIN mailing_lists l ON l.id = s.list_id
+ WHERE s.confirm_token = :token AND s.status = 'pending';
+
+
+-- name: subscriber_confirm
+-- Clears the token as it confirms, so the link works once. A confirmation link
+-- that stays live is a way to re-subscribe somebody who later unsubscribed,
+-- from an email still sitting in their inbox.
+UPDATE subscribers
+SET status = 'subscribed', confirmed_at = :now, confirm_token = NULL, updated_at = :now
+WHERE confirm_token = :token AND status = 'pending';
 
 
 -- name: subscriber_delete

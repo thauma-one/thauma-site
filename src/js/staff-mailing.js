@@ -420,7 +420,17 @@
 
     $('mlNewEmail').value = ''; $('mlNewName').value = '';
     setStatus($('mlAddStatus'), tr('ml.addNote'));
-    toast(fill('ml.added', { email: body.email }), 'ok');
+
+    /* SAY WHICH HAPPENED. The row exists either way and they are pending
+       either way, but "added" and "added and emailed" are different facts, and
+       somebody waiting on a confirmation that never left deserves to know
+       now rather than next week. */
+    if (body.sent) {
+      toast(fill('ml.addedPending', { email: body.email }), 'ok');
+    } else {
+      toast(fill('ml.addedNoEmail', { email: body.email }) +
+            (body.sendError ? ' — ' + body.sendError : ''), 'bad');
+    }
     showPeople(state.viewing);
   });
 

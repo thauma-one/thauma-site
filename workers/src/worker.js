@@ -39,6 +39,7 @@ import staffSettings from "./staff-settings.js";
 import staffGoals from "./staff-goals.js";
 import staffPrayer from "./staff-prayer.js";
 import staffMailing from "./staff-mailing.js";
+import confirmSubscription from "./confirm.js";
 import adminApi from "./admin.js";
 import adminContent from "./admin-content.js";
 import adminPublish from "./admin-publish.js";
@@ -231,6 +232,9 @@ const ROUTES = {
 
   // A partner's own mailing lists. Scoped to them; see staff-mailing.js.
   "/api/staff-mailing": staffMailing,
+
+  // Public, no account. The link in a mailing list confirmation email.
+  "/confirm": confirmSubscription,
 
   // THE ONLY ENDPOINT THAT CAN WRITE TO THE REPOSITORY. It holds a GitHub
   // token, so a save here becomes a commit and the Action deploys it. Admin

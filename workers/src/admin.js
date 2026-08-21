@@ -245,6 +245,14 @@ export default {
         })),
         partners,
         languages,
+        /* FETCHED AND THEN NOT RETURNED, until 2026-08-21. The query ran on
+           every request, the rows came back, and the destructuring named
+           them — and the response never carried them. So the console's
+           state.profiles was permanently undefined and every Staff page field
+           rendered blank, on top of real data sitting in the table.
+           A value that is computed and dropped costs the same as one that is
+           used and looks identical in every log. */
+        profiles,
         audit: recent,
       });
     }

@@ -22,6 +22,7 @@ import { createDb } from "./lib/db.js";
 import { requireAccess } from "./lib/access.js";
 import { resolveActor, withActing } from "./lib/actas.js";
 import { json, readJson } from "./lib/store.js";
+import { sendMail, listConfirmEmail } from "./lib/mail.js";
 
 const MAX = { name: 120, slug: 60, desc: 400, from_name: 80, email: 200 };
 const PAGE = 100;
@@ -179,12 +180,12 @@ export default {
         return json({ ok: true, id, name });
       }
 
-      /* ADDING SOMEBODY BY HAND lands as `subscribed`, not `pending`.
-         Double opt-in exists to prove consent that arrived over the internet
-         from a stranger. A staff member typing in the address of somebody who
-         asked them in person already has that proof, and a confirmation email
-         they never expected is ceremony rather than protection. `source`
-         records which of the two happened so the difference stays visible. */
+      /* ADDING SOMEBODY BY HAND STILL CONFIRMS.
+         The first version skipped it, reasoning that somebody who asked in
+         person has already consented. That missed the second job a
+         confirmation does: it is the only proof the ADDRESS WORKS. Skipping it
+         means finding the typo weeks later when a send bounces and nobody
+         remembers what was typed. `source` records how they arrived. */
       if (body.action === "add-subscriber") {
         const email = clean(body.email, MAX.email);
         if (!email || !EMAIL_RE.test(email)) {
@@ -196,10 +197,16 @@ export default {
         const list = await db.queryOne("mailing_list_one", { id: listId, partner_id: partnerId });
         if (!list) return json({ error: "No such list." }, 404);
 
+        /* 32 random bytes. It is the ONLY thing identifying the person who
+           clicks the link, so it has to be unguessable rather than merely
+           unique. */
+        const token = [...crypto.getRandomValues(new Uint8Array(32))]
+          .map((b) => b.toString(16).padStart(2, "0")).join("");
+
         try {
           await db.query("subscriber_add", {
             id: newId("sub"), list_id: listId, partner_id: partnerId,
-            email, name: clean(body.name, MAX.name),
+            email, name: clean(body.name, MAX.name), token,
             source: clean(body.source, 60) || "added by hand", now,
           });
         } catch (e) {
@@ -210,7 +217,36 @@ export default {
           }
           throw e;
         }
-        return json({ ok: true, email });
+
+        const origin = new URL(request.url).origin;
+        const mail = listConfirmEmail({
+          name: clean(body.name, MAX.name),
+          listName: list.name,
+          fromName: list.from_name,
+          confirmUrl: `${origin}/confirm?t=${token}`,
+        });
+        const sent = await sendMail(env, {
+          to: email,
+          subject: mail.subject,
+          html: mail.html,
+          text: mail.text,
+          /* From the LIST's address, not the system's. A confirmation arriving
+             from somewhere the person has never heard of is the one most
+             likely to be ignored. */
+          from: `${list.from_name} <${list.from_email}>`,
+          replyTo: list.reply_to || undefined,
+        });
+
+        /* THE ROW STAYS EITHER WAY, and the answer says which happened. They
+           are `pending`, which is true whether or not the email left — and a
+           silent failure here would leave somebody waiting for a message
+           nobody knows was never sent. Re-adding is refused as a duplicate, so
+           the way to retry is to delete and add again; the message says so. */
+        return json({
+          ok: true, email, status: "pending",
+          sent: sent.ok === true,
+          sendError: sent.ok ? undefined : sent.error,
+        });
       }
 
       if (body.action === "subscriber") {

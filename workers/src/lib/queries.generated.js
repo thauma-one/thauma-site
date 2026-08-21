@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "36080ee83fa3073e";
+export const SOURCE_DIGEST = "d9e7a975b00b3252";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -466,12 +466,20 @@ JOIN users u ON u.id = sp.user_id
 WHERE sp.is_public = 1
 ORDER BY sp.sort_order, u.name COLLATE NOCASE;`,
   subscriber_add: `INSERT INTO subscribers
-  (id, list_id, partner_id, email, name, status, source,
-   subscribed_at, confirmed_at, updated_at)
-SELECT :id, l.id, l.partner_id, :email, :name, 'subscribed', :source,
-       :now, :now, :now
+  (id, list_id, partner_id, email, name, status, confirm_token, source,
+   subscribed_at, updated_at)
+SELECT :id, l.id, l.partner_id, :email, :name, 'pending', :token, :source,
+       :now, :now
   FROM mailing_lists l
  WHERE l.id = :list_id AND l.partner_id IS :partner_id;`,
+  subscriber_by_token: `SELECT s.id, s.email, s.name, s.status, s.list_id,
+       l.name AS list_name, l.slug AS list_slug
+  FROM subscribers s
+  JOIN mailing_lists l ON l.id = s.list_id
+ WHERE s.confirm_token = :token AND s.status = 'pending';`,
+  subscriber_confirm: `UPDATE subscribers
+SET status = 'subscribed', confirmed_at = :now, confirm_token = NULL, updated_at = :now
+WHERE confirm_token = :token AND status = 'pending';`,
   subscriber_delete: `DELETE FROM subscribers
 WHERE id = :id
   AND list_id IN (SELECT id FROM mailing_lists WHERE partner_id IS :partner_id);`,

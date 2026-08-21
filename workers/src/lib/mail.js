@@ -107,9 +107,18 @@ export const h1 = (text) =>
  * who sees "created, but the invite could not be sent" can resend it. Rolling
  * the account back because an API was briefly unhappy would be worse.
  */
-export async function sendMail(env, { to, subject, html, text, replyTo }, fetchImpl = fetch) {
+export async function sendMail(env, { to, subject, html, text, replyTo, from: fromOverride }, fetchImpl = fetch) {
   if (!env.RESEND_API_KEY) return { ok: false, error: "RESEND_API_KEY is not set on this deploy." };
-  const from = env.MAIL_FROM || env.CONTACT_FROM;
+  /* `from` MAY BE OVERRIDDEN, and there is exactly one caller that should:
+     a mailing list's confirmation, which has to arrive from the address the
+     list itself sends from. A confirmation that comes from somewhere the
+     person has never heard of is the one most likely to be ignored, and the
+     whole point of it is that they act on it.
+
+     STILL TRANSACTIONAL. This is mail somebody triggered seconds ago and is
+     waiting for — see the note at the top of this file. The bulk sender stays
+     a different domain, and nothing here may be used to send a newsletter. */
+  const from = fromOverride || env.MAIL_FROM || env.CONTACT_FROM;
   if (!from) return { ok: false, error: "No sender configured (MAIL_FROM)." };
 
   const payload = { from, to: [to], subject, html, text };
@@ -200,5 +209,43 @@ export function inviteEmail({ name, origin, invitedBy, invitedByEmail }) {
     subject: "You have been added to the Thauma console",
     html: shell({ heading: "You have been added to the Thauma console", rows, footer }),
     text,
+  };
+}
+
+
+/**
+ * "Did you mean to sign up?" — the confirmation for a mailing list.
+ *
+ * SENT EVEN WHEN A STAFF MEMBER ADDS SOMEBODY BY HAND. The first instinct was
+ * to skip it, on the grounds that a person who asked in front of you has
+ * already consented. Chase's argument is better: the confirmation is also the
+ * only proof the address WORKS. Adding somebody straight to `subscribed` means
+ * discovering a typo weeks later, when a send bounces and nobody remembers
+ * what was typed.
+ */
+export function listConfirmEmail({ name, listName, confirmUrl, fromName }) {
+  const hello = name ? `Hi ${name},` : "Hello,";
+  return {
+    subject: `Confirm your ${listName} subscription`,
+    text: [
+      hello, "",
+      `Please confirm you would like to receive ${listName} from ${fromName}.`,
+      "", confirmUrl, "",
+      "If you did not ask for this, ignore this message — nothing will be sent",
+      "to you unless you confirm.",
+    ].join("\n"),
+    html: shell({
+      heading: `Confirm your ${listName} subscription`,
+      rows: [
+        `<p>${hello}</p>`,
+        `<p>Please confirm you would like to receive <b>${listName}</b> from ${fromName}.</p>`,
+        button(confirmUrl, "Yes, subscribe me"),
+        /* The refusal path stated plainly. Somebody who did not ask for this
+           should not have to do anything, and should be told so — an email
+           that only offers a "yes" reads as a trick. */
+        `<p style="color:#666;font-size:14px;">If you did not ask for this, ignore
+         this message. Nothing will be sent to you unless you confirm.</p>`,
+      ],
+    }),
   };
 }

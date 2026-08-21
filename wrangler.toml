@@ -69,7 +69,9 @@ run_worker_first = [
   # 404, because nothing under this path exists on disk.
   "/embed/v1/*",
   # Uploaded files live in R2, not on disk. Served asset-first this would 404.
-  "/media/*"
+  "/media/*",
+  # The mailing-list confirmation link. Public, and nothing exists on disk.
+  "/confirm"
 ]
 
 [[routes]]
@@ -235,7 +237,7 @@ directory = "_site"
 binding = "ASSETS"
 html_handling = "auto-trailing-slash"
 not_found_handling = "404-page"
-run_worker_first = ["/", "/api/*", "/.netlify/functions/*", "/staff", "/staff/*", "/admin", "/admin/*", "/embed/v1/*", "/media/*"]
+run_worker_first = ["/", "/api/*", "/.netlify/functions/*", "/staff", "/staff/*", "/admin", "/admin/*", "/embed/v1/*", "/media/*", "/confirm"]
 
 # LOCAL SIMULATION, INCLUDING THE DATABASE. `wrangler dev` runs D1 and KV in
 # miniflare against state under .wrangler/state — NOT against thauma-ops-dev.
@@ -368,7 +370,7 @@ directory = "_site_prod"
 binding = "ASSETS"
 html_handling = "auto-trailing-slash"
 not_found_handling = "404-page"
-run_worker_first = ["/", "/api/*", "/.netlify/functions/*", "/staff", "/staff/*", "/admin", "/admin/*", "/embed/v1/*", "/media/*"]
+run_worker_first = ["/", "/api/*", "/.netlify/functions/*", "/staff", "/staff/*", "/admin", "/admin/*", "/embed/v1/*", "/media/*", "/confirm"]
 
 [[env.production.routes]]
 pattern = "thauma.one/*"
