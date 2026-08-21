@@ -274,6 +274,130 @@ def t_audit_log_has_no_foreign_keys():
     assert fks == [], f"audit_log still references something: {fks}"
 
 
+# ---------------------------------------------------------------------------
+# Mailing — isolation is the product, so it is tested rather than assumed
+# ---------------------------------------------------------------------------
+# Chase's requirement, in his words: "Mira can't see Chase's lists and vice
+# versa." That is a promise about data, and a promise about data belongs in the
+# schema where a mistaken query cannot break it — not in a WHERE clause
+# somebody has to remember.
+
+def _list(db, lid, partner, slug="newsletter"):
+    db.execute(
+        "INSERT INTO mailing_lists (id,partner_id,slug,name,from_name,from_email,"
+        "created_at,updated_at) VALUES (?,?,?,?,?,?,?,?)",
+        (lid, partner, slug, "A list", "Sender", "from@thauma.one", NOW, NOW))
+
+
+def _sub(db, sid, lid, partner, email):
+    db.execute(
+        "INSERT INTO subscribers (id,list_id,partner_id,email,subscribed_at,updated_at)"
+        " VALUES (?,?,?,?,?,?)", (sid, lid, partner, email, NOW, NOW))
+
+
+def t_a_subscriber_cannot_belong_to_another_partner():
+    db = fresh()
+    _list(db, "l_chase", "p_chase")
+    _sub(db, "s1", "l_chase", "p_chase", "someone@example.com")
+    try:
+        _sub(db, "s2", "l_chase", "p_sara", "other@example.com")
+        raise AssertionError("Sara's partner_id was accepted on Chase's list")
+    except sqlite3.IntegrityError:
+        pass
+
+
+def t_the_organisation_list_belongs_to_no_partner():
+    db = fresh()
+    _list(db, "l_org", None)
+    _sub(db, "s_org", "l_org", None, "supporter@example.com")
+    try:
+        _sub(db, "s_bad", "l_org", "p_chase", "someone@example.com")
+        raise AssertionError("a partner claimed a subscriber on the organisation list")
+    except sqlite3.IntegrityError:
+        pass
+
+
+def t_the_same_address_cannot_be_added_to_one_list_twice():
+    """The bug chaseroush.com's JSON files cannot prevent.
+
+    There, two people subscribing in the same second both read the old file and
+    one write wins — the other subscription is gone, with nothing to show it
+    ever happened. A unique index makes the second write fail loudly instead."""
+    db = fresh()
+    _list(db, "l_chase", "p_chase")
+    _sub(db, "s1", "l_chase", "p_chase", "same@example.com")
+    try:
+        _sub(db, "s2", "l_chase", "p_chase", "same@example.com")
+        raise AssertionError("the same address was added to one list twice")
+    except sqlite3.IntegrityError:
+        pass
+
+
+def t_one_person_may_be_on_two_different_lists():
+    db = fresh()
+    _list(db, "l_chase", "p_chase")
+    _list(db, "l_sara", "p_sara")
+    _sub(db, "s1", "l_chase", "p_chase", "same@example.com")
+    _sub(db, "s2", "l_sara", "p_sara", "same@example.com")
+    n = db.execute("SELECT COUNT(*) FROM subscribers WHERE email='same@example.com'").fetchone()[0]
+    assert n == 2, f"expected the address on both lists, got {n}"
+
+
+def t_two_organisation_lists_cannot_share_a_slug():
+    """SQLite treats NULLs as distinct in a UNIQUE constraint, so the index
+    coalesces partner_id. Without that, the organisation could have two lists
+    both called `newsletter` and no way to tell them apart in a URL."""
+    db = fresh()
+    _list(db, "l_org", None)
+    try:
+        _list(db, "l_org2", None)
+        raise AssertionError("two organisation lists share a slug")
+    except sqlite3.IntegrityError:
+        pass
+
+
+def t_partners_may_each_have_a_list_of_the_same_name():
+    db = fresh()
+    _list(db, "l_chase", "p_chase")
+    _list(db, "l_sara", "p_sara")   # both "newsletter", different partners
+
+
+def t_deleting_a_list_takes_its_subscribers():
+    """A subscription is to a LIST. If the list is gone the consent it was
+    given under is gone with it, and keeping the address would be keeping
+    something nobody agreed to."""
+    db = fresh()
+    _list(db, "l_chase", "p_chase")
+    _sub(db, "s1", "l_chase", "p_chase", "someone@example.com")
+    db.execute("DELETE FROM mailing_lists WHERE id='l_chase'")
+    n = db.execute("SELECT COUNT(*) FROM subscribers").fetchone()[0]
+    assert n == 0, f"{n} subscriber(s) outlived their list"
+
+
+def t_communications_is_a_role_and_nonsense_is_not():
+    db = fresh()
+    db.execute("INSERT INTO user_roles (user_id,role,granted_at) VALUES (?,?,?)",
+               ("u_chase", "communications", NOW))
+    try:
+        db.execute("INSERT INTO user_roles (user_id,role,granted_at) VALUES (?,?,?)",
+                   ("u_chase", "wizard", NOW))
+        raise AssertionError("an invented role was accepted")
+    except sqlite3.IntegrityError:
+        pass
+
+
+def t_the_existing_roles_survived_the_rebuild():
+    """0015 rebuilds user_roles to widen its CHECK, the same dance 0007 did.
+    A rebuild that quietly dropped rows would be silent until somebody lost
+    access."""
+    db = fresh()
+    for role in ("admin", "partner", "staff", "board"):
+        db.execute("INSERT INTO user_roles (user_id,role,granted_at) VALUES (?,?,?)",
+                   ("u_chase", role, NOW))
+    n = db.execute("SELECT COUNT(*) FROM user_roles WHERE user_id='u_chase'").fetchone()[0]
+    assert n == 4, f"expected all four legacy roles to still be grantable, got {n}"
+
+
 def fresh():
     db = sqlite3.connect(":memory:")
     db.executescript(SQL)
@@ -814,6 +938,15 @@ if __name__ == "__main__":
         ("removing a person keeps their work",          t_removing_a_person_keeps_their_work),
         ("removing a person takes what IS them",        t_removing_a_person_takes_what_IS_them),
         ("interaction triggers survived the rebuild",   t_the_interaction_triggers_survived_the_rebuild),
+        ("a subscriber cannot belong to another partner", t_a_subscriber_cannot_belong_to_another_partner),
+        ("the organisation list belongs to no partner",  t_the_organisation_list_belongs_to_no_partner),
+        ("one address cannot join a list twice",         t_the_same_address_cannot_be_added_to_one_list_twice),
+        ("one person may be on two lists",               t_one_person_may_be_on_two_different_lists),
+        ("two organisation lists cannot share a slug",   t_two_organisation_lists_cannot_share_a_slug),
+        ("partners may reuse each other's list names",   t_partners_may_each_have_a_list_of_the_same_name),
+        ("deleting a list takes its subscribers",        t_deleting_a_list_takes_its_subscribers),
+        ("communications is a role, nonsense is not",    t_communications_is_a_role_and_nonsense_is_not),
+        ("the existing roles survived the rebuild",      t_the_existing_roles_survived_the_rebuild),
     ]:
         check(name, fn)
     print(f"\n{passed} passed, {failed} failed")

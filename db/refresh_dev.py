@@ -46,6 +46,21 @@ SCRUB = {
                  "address_1", "address_2", "city", "postal_code", "notes"],
     "interactions": ["note"],
     "audit_log": ["detail"],
+
+    # MAILING LISTS ARE THE LARGEST STORE OF OTHER PEOPLE'S ADDRESSES IN THIS
+    # SYSTEM. Everything else here is the ministry's own words or aggregates;
+    # these are real people who gave an address on the understanding it would
+    # be written to. A copy of them on a development machine is a second place
+    # they can leak from, and nobody consented to that one.
+    #
+    # `confirm_token` is scrubbed too. It is a live credential: whoever holds
+    # it can confirm a subscription that was never confirmed.
+    "subscribers": ["email", "name", "confirm_token"],
+
+    # Where a message actually WENT. Snapshotted at send time precisely so it
+    # survives the subscriber changing, which also means it survives the
+    # subscriber being scrubbed unless it is scrubbed as well.
+    "mailing_recipients": ["email"],
 }
 
 
@@ -77,6 +92,7 @@ def fake(table, col, i):
     if col == "notes":       return "[scrubbed] stewardship note"
     if col == "note":        return "[scrubbed] interaction note"
     if col == "detail":      return None
+    if col == "confirm_token": return None   # a live credential, not a value to fake
     return None
 
 
