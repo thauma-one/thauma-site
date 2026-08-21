@@ -34,7 +34,7 @@ function envWith({ list = LIST, existing = null, attempts = 0 } = {}) {
       prepare(sql) {
         const run = async () => {
           calls.push({ sql, params: env._p });
-          if (/FROM mailing_lists/i.test(sql)) return { results: list ? [list] : [] };
+          if (/FROM mailing_lists/i.test(sql)) return { results: list ? (Array.isArray(list) ? list : [list]) : [] };
           if (/COUNT\(\*\) AS n FROM signup_attempts/i.test(sql)) {
             return { results: [{ n: attempts }] };
           }
@@ -50,12 +50,14 @@ function envWith({ list = LIST, existing = null, attempts = 0 } = {}) {
   return env;
 }
 
+/* Every post asks for the newsletter unless it says otherwise, so the tests
+   read as being about the thing they are testing rather than about lists. */
 const post = (body, env, headers = {}) => handler.fetch(
-  new Request("https://thauma.one/embed/v1/chase-roush/newsletter/signup", {
+  new Request("https://thauma.one/embed/v1/chase-roush/signup", {
     method: "POST",
     headers: { "Content-Type": "application/json", "CF-Connecting-IP": "203.0.113.7", ...headers },
-    body: JSON.stringify(body),
-  }), env, "chase-roush", "newsletter", "signup");
+    body: JSON.stringify({ lists: ["newsletter"], ...body }),
+  }), env, "chase-roush", "signup");
 
 const ranQuery = (env, needle) => env.calls.some((c) => new RegExp(needle, "i").test(c.sql));
 
@@ -164,8 +166,8 @@ await check("an address already subscribed is left completely alone", async () =
 await check("a closed or unknown list has no form at all", async () => {
   const env = envWith({ list: null });
   const res = await handler.fetch(
-    new Request("https://thauma.one/embed/v1/chase-roush/newsletter/form.js"),
-    env, "chase-roush", "newsletter", "form.js");
+    new Request("https://thauma.one/embed/v1/chase-roush/form.js"),
+    env, "chase-roush", "form.js");
   eq(res.status, 404, "status");
 });
 
@@ -176,15 +178,15 @@ await check("a partner's own words cannot inject script into the form", async ()
   const nasty = { ...LIST,
     form_heading: '</script><img src=x onerror=alert(1)>',
     form_blurb: '"><script>alert(2)</script>' };
-  const js = formScript(nasty, "chase-roush", "https://thauma.one");
+  const js = formScript([nasty], "chase-roush", "https://thauma.one");
   assert(!/<img src=x onerror/.test(js), "raw HTML survived into the script");
   assert(!/<script>alert\(2\)/.test(js), "a script tag survived into the script");
   assert(/&lt;/.test(js) || /\\u003c/.test(js), "expected the markup to be escaped");
 });
 
 await check("the form posts to its own list, and carries a honeypot", async () => {
-  const js = formScript(LIST, "chase-roush", "https://thauma.one");
-  assert(js.includes("/embed/v1/chase-roush/newsletter/signup"), "wrong action");
+  const js = formScript([LIST], "chase-roush", "https://thauma.one");
+  assert(js.includes("/embed/v1/chase-roush/signup"), "wrong action");
   assert(js.includes("website"), "no honeypot field");
   assert(js.includes("aria-hidden"), "the honeypot must be hidden from assistive tech");
   assert(js.includes('tabindex="-1"'), "the honeypot must not be reachable by keyboard");
@@ -197,6 +199,66 @@ await check("escapeHtml covers the characters that matter", () => {
   eq(escapeHtml('"'), "&quot;", "double quote");
   eq(escapeHtml("'"), "&#39;", "single quote");
   eq(escapeHtml("plain text"), "plain text", "ordinary text is untouched");
+});
+
+/* ---------------------- one form, several lists --------------------------- */
+
+const PRAYER = { ...LIST, id: "ml_2", slug: "prayer", name: "Prayer Partners" };
+
+/* The markup is emitted INSIDE a JavaScript string, so its quotes arrive
+   backslash-escaped. Unescaping before asserting keeps these tests about the
+   form rather than about how the script was serialised. */
+const asMarkup = (js) => js.replace(/\\"/g, '"');
+
+await check("the form offers a checkbox per open list", async () => {
+  const m = asMarkup(formScript([LIST, PRAYER], "chase-roush", "https://thauma.one"));
+  assert(m.includes('name="list" value="newsletter"'), "no newsletter box");
+  assert(m.includes('name="list" value="prayer"'), "no prayer box");
+  assert(m.includes("I want to receive"), "no heading over the boxes");
+  eq(m.split('type="checkbox"').length - 1, 2, "expected exactly two boxes");
+});
+
+/* One list needs no "I want to receive" — there is nothing to choose between,
+   and a legend over a single box is a question nobody asked. */
+await check("a single list gets a box but no chooser", async () => {
+  const m = asMarkup(formScript([LIST], "chase-roush", "https://thauma.one"));
+  assert(m.includes('value="newsletter"'), "the one list should still be named");
+  assert(!m.includes("I want to receive"), "no chooser for a single option");
+});
+
+await check("ticking two boxes writes two rows sharing ONE token", async () => {
+  const env = envWith({ list: [LIST, PRAYER] });
+  await post({ email: "a@b.invalid", lists: ["newsletter", "prayer"] }, env);
+
+  const inserts = env.calls.filter((c) => /INSERT INTO subscribers/i.test(c.sql));
+  eq(inserts.length, 2, "one row per list");
+
+  const tokens = new Set(inserts.map((c) =>
+    (c.params || []).find((v) => typeof v === "string" && /^[0-9a-f]{64}$/.test(v))));
+  eq(tokens.size, 1, "both rows must share one token, so one email confirms both");
+});
+
+await check("a list this partner does not have is ignored, not an error", async () => {
+  const env = envWith({ list: [LIST] });
+  const res = await post({ email: "a@b.invalid", lists: ["newsletter", "someone-elses"] }, env);
+  eq(res.status, 200, "status");
+  const inserts = env.calls.filter((c) => /INSERT INTO subscribers/i.test(c.sql));
+  eq(inserts.length, 1, "only the list they actually have");
+});
+
+await check("asking for nothing writes nothing, and still answers the same", async () => {
+  const env = envWith({ list: [LIST] });
+  const res = await post({ email: "a@b.invalid", lists: [] }, env);
+  eq(res.status, 200, "status");
+  assert(!env.calls.some((c) => /INSERT INTO subscribers/i.test(c.sql)), "nothing written");
+});
+
+await check("a partner with no open lists has no form at all", async () => {
+  const env = envWith({ list: [] });
+  const res = await handler.fetch(
+    new Request("https://thauma.one/embed/v1/chase-roush/form.js"),
+    env, "chase-roush", "form.js");
+  eq(res.status, 404, "status");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

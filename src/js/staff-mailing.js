@@ -302,86 +302,106 @@
 
   /* ---- sign-up forms --------------------------------------------------- */
 
-  function snippetFor(l) {
+  /* ONE SNIPPET FOR THE WHOLE PARTNER, not one per list. The form asks which
+     of the open lists somebody wants; pasting a form per list would make a
+     visitor type their address once for each. */
+  function snippet() {
     return '<div data-thauma-form></div>\n' +
       '<script src="' + location.origin + '/embed/v1/' +
-      state.partnerSlug + '/' + l.slug + '/form.js" defer></' + 'script>';
+      state.partnerSlug + '/form.js" defer></' + 'script>';
   }
 
   function renderEmbeds() {
+    var open = state.lists.filter(function (l) { return l.is_open; });
+    var closed = state.lists.filter(function (l) { return !l.is_open; });
+
     if (!state.lists.length) {
       $('mlEmbedList').innerHTML = '<p class="empty">' + esc(tr('ml.empty')) + '</p>';
       return;
     }
 
-    $('mlEmbedList').innerHTML = state.lists.map(function (l) {
-      if (!l.is_open) {
-        /* Said rather than omitted. A list missing from this page looks like a
-           bug; a list saying why it has no form is an instruction. */
-        /* A TOGGLE, IN PLACE. "Open it" sent somebody to Settings to find a
-           switch, which is two screens for one decision that belongs here. */
-        return '<div class="ml-embed-card is-closed">' +
-          '<h4>' + esc(l.name) + '</h4>' +
-          '<p class="hint">' + esc(tr('ml.embedClosed')) + '</p>' +
-          '<button type="button" class="switch small" role="switch" aria-checked="false"' +
-            ' data-toggle-open="' + esc(l.id) + '">' +
-            '<span class="switch-track"><span class="switch-state">Off</span>' +
-              '<span class="switch-knob"></span></span>' +
-            '<span class="switch-label">' + esc(tr('ml.onTheForm')) + '</span>' +
-          '</button>' +
-        '</div>';
-      }
+    var first = open[0] || {};
+    var heading = first.form_heading || tr('ml.formHeadingFallback');
+    var button = first.form_button || tr('ml.formPreviewFallback');
 
-      var heading = l.form_heading || l.name;
-      var button = l.form_button || tr('ml.formPreviewFallback');
-      return '<div class="ml-embed-card">' +
-        '<h4>' + esc(l.name) + '</h4>' +
+    /* THE PREVIEW IS THE WHOLE FORM, boxes and all, because that is what a
+       visitor sees. Showing a card per list previewed something that does not
+       exist. */
+    var preview = !open.length
+      ? '<p class="hint">' + esc(tr('ml.embedNoneOpen')) + '</p>'
+      : '<div class="ml-preview" aria-hidden="true"><div class="ml-preview-inner">' +
+          '<h4 data-pv="heading">' + esc(heading) + '</h4>' +
+          (first.form_blurb
+            ? '<p data-pv="blurb">' + esc(first.form_blurb) + '</p>'
+            : '<p data-pv="blurb" hidden></p>') +
+          '<label><span>' + esc(tr('ml.previewName')) + '</span><input disabled></label>' +
+          '<label><span>' + esc(tr('ml.previewEmail')) + '</span><input disabled></label>' +
+          (open.length > 1
+            ? '<div class="ml-preview-boxes"><span>' + esc(tr('ml.iWantToReceive')) + '</span>' +
+                open.map(function (l) {
+                  return '<label class="ml-preview-box"><input type="checkbox" checked disabled>' +
+                    '<span>' + esc(l.name) +
+                    (l.description ? '<em>' + esc(l.description) + '</em>' : '') +
+                    '</span></label>';
+                }).join('') +
+              '</div>'
+            : open.map(function (l) {
+                return '<label class="ml-preview-box"><input type="checkbox" checked disabled>' +
+                  '<span>' + esc(l.name) + '</span></label>';
+              }).join('')) +
+          '<button type="button" data-pv="button" disabled>' + esc(button) + '</button>' +
+        '</div></div>';
+
+    /* WHICH LISTS APPEAR, and a switch for each, because "why is prayer not on
+       my form" is answered here or nowhere. */
+    var switches = state.lists.map(function (l) {
+      return '<button type="button" class="switch small" role="switch"' +
+        ' aria-checked="' + (l.is_open ? 'true' : 'false') + '"' +
+        ' data-toggle-open="' + esc(l.id) + '">' +
+        '<span class="switch-track"><span class="switch-state">' +
+          (l.is_open ? 'On' : 'Off') + '</span><span class="switch-knob"></span></span>' +
+        '<span class="switch-label">' + esc(l.name) + '</span>' +
+      '</button>';
+    }).join('');
+
+    var wordingOf = first.id ? first : null;
+
+    $('mlEmbedList').innerHTML =
+      '<div class="ml-embed-card">' +
         '<div class="ml-embed-split">' +
-          '<div class="ml-preview" aria-hidden="true">' +
-            '<div class="ml-preview-inner">' +
-              '<h4>' + esc(heading) + '</h4>' +
-              (l.form_blurb ? '<p>' + esc(l.form_blurb) + '</p>' : '') +
-              '<label><span>' + esc(tr('ml.previewName')) + '</span><input disabled></label>' +
-              '<label><span>' + esc(tr('ml.previewEmail')) + '</span><input disabled></label>' +
-              '<button type="button" disabled>' + esc(button) + '</button>' +
-            '</div>' +
-          '</div>' +
+          preview +
           '<div class="ml-embed-code">' +
-            '<button type="button" class="switch small" role="switch" aria-checked="true"' +
-              ' data-toggle-open="' + esc(l.id) + '">' +
-              '<span class="switch-track"><span class="switch-state">On</span>' +
-                '<span class="switch-knob"></span></span>' +
-              '<span class="switch-label">' + esc(tr('ml.onTheForm')) + '</span>' +
-            '</button>' +
+            '<span class="adm-label">' + esc(tr('ml.whichLists')) + '</span>' +
+            '<div class="ml-embed-switches">' + switches + '</div>' +
 
-            /* THE WORDING IS EDITED BESIDE THE PREVIEW OF IT. The restructure
-               moved these into Settings and then out again, leaving an "Edit
-               the wording" button that led to a panel with no wording in it.
-               They belong here: this is the only screen that shows what they
-               do. */
-            '<div class="ml-wording">' +
-              '<label class="fld"><span>' + esc(tr('ml.formHeading')) + '</span>' +
-                '<input type="text" maxlength="120" data-word="form_heading"' +
-                ' data-list="' + esc(l.id) + '" value="' + esc(l.form_heading || '') + '"' +
-                ' placeholder="' + esc(l.name) + '"></label>' +
-              '<label class="fld"><span>' + esc(tr('ml.formBlurb')) + '</span>' +
-                '<input type="text" maxlength="240" data-word="form_blurb"' +
-                ' data-list="' + esc(l.id) + '" value="' + esc(l.form_blurb || '') + '"></label>' +
-              '<label class="fld"><span>' + esc(tr('ml.formButton')) + '</span>' +
-                '<input type="text" maxlength="40" data-word="form_button"' +
-                ' data-list="' + esc(l.id) + '" value="' + esc(l.form_button || '') + '"' +
-                ' placeholder="' + esc(tr('ml.formPreviewFallback')) + '"></label>' +
-              '<button type="button" class="ghost-btn" data-save-words="' + esc(l.id) + '">' +
-                esc(tr('ml.saveWording')) + '</button>' +
-            '</div>' +
+            (wordingOf
+              ? '<div class="ml-wording">' +
+                  '<span class="adm-label">' + esc(tr('ml.wording')) + '</span>' +
+                  '<label class="fld"><span>' + esc(tr('ml.formHeading')) + '</span>' +
+                    '<input type="text" maxlength="120" data-word="form_heading"' +
+                    ' data-list="' + esc(wordingOf.id) + '"' +
+                    ' value="' + esc(wordingOf.form_heading || '') + '"' +
+                    ' placeholder="' + esc(tr('ml.formHeadingFallback')) + '"></label>' +
+                  '<label class="fld"><span>' + esc(tr('ml.formBlurb')) + '</span>' +
+                    '<input type="text" maxlength="240" data-word="form_blurb"' +
+                    ' data-list="' + esc(wordingOf.id) + '"' +
+                    ' value="' + esc(wordingOf.form_blurb || '') + '"></label>' +
+                  '<label class="fld"><span>' + esc(tr('ml.formButton')) + '</span>' +
+                    '<input type="text" maxlength="40" data-word="form_button"' +
+                    ' data-list="' + esc(wordingOf.id) + '"' +
+                    ' value="' + esc(wordingOf.form_button || '') + '"' +
+                    ' placeholder="' + esc(tr('ml.formPreviewFallback')) + '"></label>' +
+                  '<button type="button" class="ghost-btn" data-save-words="' +
+                    esc(wordingOf.id) + '">' + esc(tr('ml.saveWording')) + '</button>' +
+                '</div>'
+              : '') +
 
-            '<textarea readonly rows="4" spellcheck="false">' + esc(snippetFor(l)) + '</textarea>' +
-            '<button type="button" class="ghost-btn" data-copy="' + esc(l.id) + '">' +
+            '<textarea readonly rows="4" spellcheck="false">' + esc(snippet()) + '</textarea>' +
+            '<button type="button" class="ghost-btn" data-copy="1">' +
               esc(tr('ml.copy')) + '</button>' +
           '</div>' +
         '</div>' +
       '</div>';
-    }).join('');
   }
 
   /* ---- loading --------------------------------------------------------- */
@@ -517,10 +537,8 @@
 
     var copy = e.target.closest('[data-copy]');
     if (copy) {
-      var cl = listById(copy.dataset.copy);
-      if (!cl) return;
       var ta = copy.parentNode.querySelector('textarea');
-      navigator.clipboard.writeText(snippetFor(cl)).then(function () {
+      navigator.clipboard.writeText(snippet()).then(function () {
         toast(tr('ml.copied'), 'ok');
       }).catch(function () {
         /* Clipboard access is refused in plenty of ordinary situations — an
@@ -546,15 +564,13 @@
     };
     var inner = card.querySelector('.ml-preview-inner');
     if (!inner) return;
-    inner.querySelector('h4').textContent = val('form_heading') || l.name;
-    var blurb = inner.querySelector('p');
+    inner.querySelector('[data-pv="heading"]').textContent =
+      val('form_heading') || tr('ml.formHeadingFallback');
+    var blurb = inner.querySelector('[data-pv="blurb"]');
     var text = val('form_blurb');
-    if (text && !blurb) {
-      blurb = document.createElement('p');
-      inner.insertBefore(blurb, inner.querySelector('label'));
-    }
     if (blurb) { blurb.textContent = text; blurb.hidden = !text; }
-    inner.querySelector('button').textContent = val('form_button') || tr('ml.formPreviewFallback');
+    inner.querySelector('[data-pv="button"]').textContent =
+      val('form_button') || tr('ml.formPreviewFallback');
   });
 
   $('mlAddPerson').addEventListener('submit', async function (e) {

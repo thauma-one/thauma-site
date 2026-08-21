@@ -1,41 +1,42 @@
 /**
- * signup — the public sign-up form endpoint
+ * signup — one public sign-up form per partner
  *
- *   GET  /embed/v1/<partner>/<list>/form.js   the widget that draws the form
- *   POST /embed/v1/<partner>/<list>/signup    what it submits to
+ *   GET  /embed/v1/<partner>/form.js   the widget that draws the form
+ *   POST /embed/v1/<partner>/signup    what it submits to
  *
- * THIS IS THE FIRST PLACE A STRANGER CAN WRITE TO THIS DATABASE. Everything
- * else public is read-only. So the rules are stricter than anywhere else in
- * the system, and each one is here for a stated reason rather than by habit.
+ * ONE FORM, A CHECKBOX PER LIST. The first version served a form per list,
+ * which meant a partner running a newsletter and a prayer list pasted two
+ * forms onto one page and a visitor typed their address twice. chaseroush.com
+ * already had this right — one form, "I want to receive", a box each — and
+ * this now matches it.
  *
- * 1. THE ANSWER IS ALWAYS THE SAME.
- *    Accepted, already subscribed, already pending, or refused as a duplicate —
- *    all return the identical body. Any difference turns this into a way to ask
- *    "is this person on your list", which is a question about somebody else's
- *    religious affiliation and not one this should answer to anyone who can
- *    type an address. The console shows the truth; the internet does not get it.
+ * ONE CONFIRMATION EMAIL COVERS EVERY BOX TICKED. All the rows a submission
+ * creates share one token, so somebody who asked for two lists gets one
+ * message and confirms both with one click. Two emails for one form is a way
+ * to be ignored twice.
  *
- * 2. A HONEYPOT, not a CAPTCHA.
- *    A field a person cannot see and a bot fills in anyway. It costs a real
- *    visitor nothing — no puzzle, no third-party script, no tracking — and
- *    stops the automated submissions that make up nearly all of this traffic.
+ * THIS IS THE ONLY PLACE A STRANGER CAN WRITE TO THIS DATABASE. Everything
+ * else public is read-only, so the rules are stricter here than anywhere else
+ * and each is stated where it is enforced.
  *
- * 3. PER-IP RATE LIMITING, AND DELIBERATELY NOT PER LIST.
- *    Capping a list per hour would make a genuine surge — a service where the
- *    ministry is spoken about — look exactly like an attack, and turn away the
- *    people it worked on. The abuse worth stopping is one machine submitting
- *    over and over, which is an IP-shaped problem. Counted across all lists, so
- *    rotating between a partner's forms does not reset the allowance.
+ * 1. THE ANSWER IS ALWAYS THE SAME. Accepted, already subscribed, refused as a
+ *    duplicate, rate limited — identical body. Any difference turns this into a
+ *    way to ask "is this person on your list", which is a question about
+ *    somebody's religious affiliation, answerable by anyone who can type an
+ *    address. The console shows the truth; the internet does not get it.
  *
- * 4. THE IP IS HASHED AND KEPT FOR MINUTES.
- *    It is personal data with no purpose past the rate window. Hashed with a
- *    per-deploy secret so a copy of the database does not become a record of
- *    who visited which page.
+ * 2. A HONEYPOT, NOT A CAPTCHA. A field a person cannot see and a bot fills in
+ *    anyway. No puzzle, no third-party script, no tracking.
  *
- * NOTHING IS EVER SUBSCRIBED FROM HERE. A form can only ever create a `pending`
- * row and send a confirmation. That is what makes it safe to have open: the
- * worst a flood achieves is unconfirmed rows and email nobody asked for going
- * to addresses their owners can ignore.
+ * 3. PER-IP RATE LIMITING, AND NOT PER LIST. Capping a list per hour would make
+ *    a genuine surge look exactly like an attack and turn away the people it
+ *    worked on. The abuse worth stopping is one machine submitting repeatedly.
+ *
+ * 4. THE IP IS HASHED AND KEPT FOR MINUTES. It is a record of who visited a
+ *    page, with no purpose past the rate window.
+ *
+ * NOTHING IS EVER SUBSCRIBED FROM HERE. A form can only create `pending` rows
+ * and send a confirmation. That is what makes it safe to leave open.
  */
 import { createDb } from "./lib/db.js";
 import { json } from "./lib/store.js";
@@ -68,8 +69,8 @@ function clean(v, max) {
   return out === "" ? null : out;
 }
 
-/* Hashed with a deploy secret so the stored value cannot be reversed by
-   hashing every address in a range — which is trivial for IPv4 without one. */
+/* Salted, so the stored value cannot be reversed by hashing every address in a
+   range — which is trivial for IPv4 without one. */
 async function hashIp(ip, env) {
   const salt = env.SIGNUP_SALT || env.ACCESS_AUD || "thauma";
   const bytes = new TextEncoder().encode(salt + "|" + ip);
@@ -84,15 +85,34 @@ export function escapeHtml(s) {
 }
 
 /**
- * The form widget. Plain HTML and inline styles injected into the host page —
- * no framework, no stylesheet to load, nothing that can be blocked separately
- * from the script itself.
+ * The widget. Plain HTML and inline styles injected into the host page — no
+ * framework, no stylesheet to load, nothing that can be blocked separately.
+ *
+ * The heading and button come from the FIRST list's wording, since one form
+ * covers them all; a partner who wants different words sets them on whichever
+ * list they think of as the main one.
  */
-export function formScript(list, partnerSlug, origin) {
-  const heading = list.form_heading || `Subscribe to ${list.name}`;
-  const blurb = list.form_blurb || "";
-  const button = list.form_button || "Subscribe";
-  const action = `${origin}/embed/v1/${partnerSlug}/${list.slug}/signup`;
+export function formScript(lists, partnerSlug, origin) {
+  const first = lists[0] || {};
+  const heading = first.form_heading || "Stay in touch";
+  const blurb = first.form_blurb || "";
+  const button = first.form_button || "Subscribe";
+  const action = `${origin}/embed/v1/${partnerSlug}/signup`;
+
+  /* One checkbox per open list, ticked by default — somebody who opened the
+     form generally wants what it offers, and unticking is easier than hunting
+     for what to tick. The description, where there is one, says what each is. */
+  const boxes = lists.map((l) => (
+    '<label style="display:flex;align-items:flex-start;gap:.6rem;margin-bottom:.55rem;cursor:pointer">' +
+      `<input type="checkbox" name="list" value="${escapeHtml(l.slug)}" checked style="margin-top:.25rem">` +
+      '<span>' +
+        `<span style="display:block">${escapeHtml(l.name)}</span>` +
+        (l.description
+          ? `<span style="display:block;font-size:.85em;opacity:.7">${escapeHtml(l.description)}</span>`
+          : "") +
+      '</span>' +
+    '</label>'
+  )).join("");
 
   return `/* Thauma sign-up form. ${origin} */
 (function () {
@@ -103,6 +123,7 @@ export function formScript(list, partnerSlug, origin) {
     if (node.getAttribute('data-ready')) return;
     node.setAttribute('data-ready', '1');
 
+    var started = Date.now();
     var wrap = document.createElement('form');
     wrap.style.cssText = 'max-width:26rem;font:inherit';
     wrap.innerHTML =
@@ -112,15 +133,19 @@ export function formScript(list, partnerSlug, origin) {
         '<span style="display:block;font-size:.85rem;margin-bottom:.2rem">Your name</span>' +
         '<input name="name" autocomplete="name" style="width:100%;padding:.5rem;box-sizing:border-box">' +
       '</label>' +
-      '<label style="display:block;margin-bottom:.6rem">' +
+      '<label style="display:block;margin-bottom:.7rem">' +
         '<span style="display:block;font-size:.85rem;margin-bottom:.2rem">Email address</span>' +
         '<input name="email" type="email" required autocomplete="email" style="width:100%;padding:.5rem;box-sizing:border-box">' +
       '</label>' +
+      ${JSON.stringify(
+        lists.length > 1
+          ? '<fieldset style="border:0;padding:0;margin:0 0 .8rem"><legend style="padding:0;font-size:.85rem;margin-bottom:.35rem">I want to receive</legend>' + boxes + '</fieldset>'
+          : boxes.replace('margin-bottom:.55rem', 'margin-bottom:.8rem'))} +
       /* THE HONEYPOT. Hidden from people three ways — off-screen, zero opacity
-         and aria-hidden — because a bot that reads only one of the three still
-         fills it in. tabindex -1 and autocomplete off keep it away from
-         keyboard users and password managers, which would otherwise fill it
-         and lock a real person out. */
+         and aria-hidden — because a bot reading only one of them still fills it
+         in. tabindex -1 and autocomplete off keep it away from keyboard users
+         and password managers, which would otherwise fill it and lock a real
+         person out. */
       '<div aria-hidden="true" style="position:absolute;left:-9999px;opacity:0;height:0;overflow:hidden">' +
         '<label>Leave this field empty' +
           '<input name="website" tabindex="-1" autocomplete="off">' +
@@ -136,6 +161,14 @@ export function formScript(list, partnerSlug, origin) {
 
     wrap.addEventListener('submit', function (e) {
       e.preventDefault();
+
+      var picked = [].slice.call(wrap.querySelectorAll('input[name=list]:checked'))
+        .map(function (i) { return i.value; });
+      if (!picked.length) {
+        msg.textContent = 'Choose at least one thing to receive.';
+        return;
+      }
+
       btn.disabled = true;
       msg.textContent = 'Sending…';
 
@@ -145,10 +178,8 @@ export function formScript(list, partnerSlug, origin) {
         body: JSON.stringify({
           email: wrap.email.value,
           name: wrap.name.value,
+          lists: picked,
           website: wrap.website.value,
-          /* How long the form was on screen. A person takes seconds; a script
-             posts immediately. Advisory only — a slow bot is not stopped by
-             it, and a fast human is not refused. */
           elapsed: Date.now() - started
         })
       }).then(function (r) { return r.json(); }).then(function (b) {
@@ -158,34 +189,25 @@ export function formScript(list, partnerSlug, origin) {
         msg.textContent = 'Something went wrong. Please try again.';
       }).then(function () { btn.disabled = false; });
     });
-
-    var started = Date.now();
   });
 })();`;
 }
 
 export default {
-  async fetch(request, env, partnerSlug, listSlug, action) {
+  async fetch(request, env, partnerSlug, action) {
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
     if (!env.DB) return json({ error: "No database bound to this deploy" }, 500, CORS);
-
-    if (!SLUG_RE.test(partnerSlug || "") || !SLUG_RE.test(listSlug || "")) {
-      return json({ error: "Not found" }, 404, CORS);
-    }
+    if (!SLUG_RE.test(partnerSlug || "")) return json({ error: "Not found" }, 404, CORS);
 
     const db = createDb(env.DB);
-    const list = await db.queryOne("public_list_for_signup", {
-      slug: listSlug, partner_slug: partnerSlug,
-    });
-    /* 404 for a list that is closed, archived or absent — all three are "there
-       is no form here", and distinguishing them tells a stranger about the
-       ministry's internal state. */
-    if (!list) return json({ error: "Not found" }, 404, CORS);
+    const lists = await db.query("public_lists_for_signup", { partner_slug: partnerSlug });
+    /* No open lists is the same as no such partner: both mean "there is no form
+       here", and telling them apart reports the ministry's internal state. */
+    if (!lists.length) return json({ error: "Not found" }, 404, CORS);
 
-    /* ---- the widget ---- */
     if (action === "form.js") {
       const origin = new URL(request.url).origin;
-      return new Response(formScript(list, partnerSlug, origin), {
+      return new Response(formScript(lists, partnerSlug, origin), {
         headers: {
           ...CORS,
           "Content-Type": "application/javascript; charset=utf-8",
@@ -205,20 +227,17 @@ export default {
     const now = new Date().toISOString();
     const ip = request.headers.get("CF-Connecting-IP") || "0.0.0.0";
     const ipHash = await hashIp(ip, env);
-
-    const record = (outcome) => db.query("signup_attempt_record", {
-      ip_hash: ipHash, list_id: list.id, at: now, outcome,
+    const record = (outcome, listId) => db.query("signup_attempt_record", {
+      ip_hash: ipHash, list_id: listId || lists[0].id, at: now, outcome,
     });
 
-    /* ---- the honeypot ---- */
     if (clean(body.website, 200)) {
       await record("honeypot");
-      /* The same answer a real signup gets. A bot told it failed will adapt;
-         one told it succeeded goes away. */
+      /* The same answer a real signup gets. A bot told it failed adapts; one
+         told it succeeded goes away. */
       return json(SAME_ANSWER, 200, CORS);
     }
 
-    /* ---- rate limit ---- */
     const since = new Date(Date.now() - WINDOW_MINUTES * 60_000).toISOString();
     const recent = await db.queryOne("signup_attempts_recent", { ip_hash: ipHash, since });
     if (recent && recent.n >= MAX_ATTEMPTS) {
@@ -239,56 +258,74 @@ export default {
     }
     const name = clean(body.name, 120);
 
-    const token = [...crypto.getRandomValues(new Uint8Array(32))]
-      .map((b) => b.toString(16).padStart(2, "0")).join("");
-
-    const existing = await db.queryOne("subscriber_existing_for_signup", {
-      list_id: list.id, email,
-    });
-
-    if (existing && existing.status === "subscribed") {
-      /* Already on the list. Nothing to do, nothing to send, and the answer is
-         identical — otherwise this endpoint reports who is a subscriber. */
-      await record("duplicate");
+    /* Only lists this partner actually has open. A submission naming something
+       else is not an error to report — it is a request that mentions a list
+       that does not exist, and the honest response is to ignore that part. */
+    const asked = Array.isArray(body.lists) ? body.lists.map(String) : [];
+    const chosen = lists.filter((l) => asked.includes(l.slug));
+    if (!chosen.length) {
+      await record("rejected");
       return json(SAME_ANSWER, 200, CORS);
     }
 
-    if (existing && existing.status === "pending") {
-      /* Signed up before and never confirmed. A new token, so the newest email
-         is the working one and old links stop. */
-      await db.query("subscriber_resend_token", {
-        list_id: list.id, email, token, name, now,
+    /* ONE TOKEN ACROSS EVERY ROW THIS CREATES. Ticking two boxes is one
+       decision and deserves one email; the confirm page then subscribes both. */
+    const token = [...crypto.getRandomValues(new Uint8Array(32))]
+      .map((b) => b.toString(16).padStart(2, "0")).join("");
+
+    const joined = [];
+    for (const list of chosen) {
+      const existing = await db.queryOne("subscriber_existing_for_signup", {
+        list_id: list.id, email,
       });
-    } else if (existing) {
-      /* Unsubscribed or bounced, and now asking again. Back to `pending` and
-         never straight to `subscribed`: they previously said stop, or the
-         address stopped working, and a form post is not enough to overturn
-         either — anybody who knows the address could send one. The
-         confirmation link is what lets them return, because only they can
-         click it. */
-      await db.query("subscriber_reopen_pending", {
-        list_id: list.id, email, token, name, now,
-      });
-    } else {
-      await db.query("subscriber_add", {
-        id: "sub_" + crypto.randomUUID().replace(/-/g, "").slice(0, 20),
-        list_id: list.id, partner_id: list.partner_id,
-        email, name, token, source: "sign-up form", now,
-      });
+
+      if (existing && existing.status === "subscribed") {
+        /* Already on it. Nothing to do and nothing to send — and crucially, no
+           different answer, or this endpoint reports who is a subscriber. */
+        await record("duplicate", list.id);
+        continue;
+      }
+
+      if (existing) {
+        /* Pending again, or previously unsubscribed or bounced. Back to pending
+           with the new token, never straight to subscribed: they said stop, or
+           the address failed, and a form post is not enough to overturn either
+           since anybody who knows the address could send one. */
+        await db.query(
+          existing.status === "pending" ? "subscriber_resend_token" : "subscriber_reopen_pending",
+          { list_id: list.id, email, token, name, now });
+      } else {
+        await db.query("subscriber_add", {
+          id: "sub_" + crypto.randomUUID().replace(/-/g, "").slice(0, 20),
+          list_id: list.id, partner_id: list.partner_id,
+          email, name, token, source: "sign-up form", now,
+        });
+      }
+      joined.push(list);
+      await record("accepted", list.id);
     }
+
+    /* Everything they asked for, they already had. No email — there is nothing
+       to confirm — and the same answer as always. */
+    if (!joined.length) return json(SAME_ANSWER, 200, CORS);
 
     const origin = new URL(request.url).origin;
     const mail = listConfirmEmail({
-      name, listName: list.name, fromName: list.from_name,
+      name,
+      listName: joined.length === 1
+        ? joined[0].name
+        /* "the Newsletter and Prayer Partners" reads as one thing being
+           confirmed, which is what one click is about to do. */
+        : joined.slice(0, -1).map((l) => l.name).join(", ") + " and " + joined[joined.length - 1].name,
+      fromName: joined[0].from_name,
       confirmUrl: `${origin}/confirm?t=${token}`,
     });
     await sendMail(env, {
       to: email, subject: mail.subject, html: mail.html, text: mail.text,
-      from: `${list.from_name} <${list.from_email}>`,
-      replyTo: list.reply_to || undefined,
+      from: `${joined[0].from_name} <${joined[0].from_email}>`,
+      replyTo: joined[0].reply_to || undefined,
     });
 
-    await record("accepted");
     return json(SAME_ANSWER, 200, CORS);
   },
 };

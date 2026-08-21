@@ -1285,3 +1285,12 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
 .ml-wording .fld span{font-size:10px}
 .ml-wording input{width:100%;box-sizing:border-box;padding:.4rem .5rem}
 .ml-wording .ghost-btn{align-self:flex-start}
+
+/* The checkboxes, in the preview. Shown disabled because this is a picture of
+   the form, not the form. */
+.ml-preview-boxes > span{display:block;font-size:.8rem;margin:.2rem 0 .4rem;opacity:.85}
+.ml-preview-box{display:flex;align-items:flex-start;gap:.55rem;margin-bottom:.45rem}
+.ml-preview-box span{font-size:.9rem}
+.ml-preview-box em{display:block;font-style:normal;font-size:.8rem;opacity:.65}
+.ml-embed-switches{display:flex;flex-direction:column;gap:6px;margin-bottom:6px}
+.ml-embed-code .adm-label{margin-top:4px}

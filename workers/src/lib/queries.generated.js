@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "47bcaa4adbb9d601";
+export const SOURCE_DIGEST = "db95b3fbdef25bcc";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -383,11 +383,12 @@ WHERE pl.partner_id = :partner_id
   AND pl.is_enabled = 1
   AND l.is_active = 1
 ORDER BY pl.sort_order, l.name;`,
-  public_list_for_signup: `SELECT id, partner_id, name, slug, from_name, from_email, reply_to,
+  public_lists_for_signup: `SELECT id, partner_id, name, slug, description, from_name, from_email, reply_to,
        form_heading, form_blurb, form_button, form_thanks_url
   FROM mailing_lists
- WHERE slug = :slug AND partner_id IS (SELECT id FROM partners WHERE slug = :partner_slug)
-   AND is_open = 1 AND archived_at IS NULL;`,
+ WHERE partner_id IS (SELECT id FROM partners WHERE slug = :partner_slug)
+   AND is_open = 1 AND archived_at IS NULL
+ ORDER BY name COLLATE NOCASE;`,
   public_milestone_translations: `SELECT t.milestone_id, t.lang, t.title, t.description, t.target_label
 FROM milestone_translations t
 JOIN milestones m ON m.id = t.milestone_id
@@ -494,7 +495,8 @@ SELECT :id, l.id, l.partner_id, :email, :name, 'pending', :token, :source,
        l.name AS list_name, l.slug AS list_slug
   FROM subscribers s
   JOIN mailing_lists l ON l.id = s.list_id
- WHERE s.confirm_token = :token AND s.status = 'pending';`,
+ WHERE s.confirm_token = :token AND s.status = 'pending'
+ ORDER BY l.name COLLATE NOCASE;`,
   subscriber_confirm: `UPDATE subscribers
 SET status = 'subscribed', confirmed_at = :now, confirm_token = NULL, updated_at = :now
 WHERE confirm_token = :token AND status = 'pending';`,

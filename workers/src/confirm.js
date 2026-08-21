@@ -74,17 +74,25 @@ export default {
     if (!/^[0-9a-f]{64}$/.test(token)) return notValid();
 
     const db = createDb(env.DB);
-    const sub = await db.queryOne("subscriber_by_token", { token });
-    if (!sub) return notValid();
+    /* SEVERAL ROWS WHEN SEVERAL BOXES WERE TICKED. One submission shares one
+       token across every list chosen, so one click confirms all of them —
+       which is what somebody thought they were doing when they ticked two. */
+    const subs = await db.query("subscriber_by_token", { token });
+    if (!subs.length) return notValid();
 
     await db.query("subscriber_confirm", { token, now: new Date().toISOString() });
 
-    const listName = String(sub.list_name || "")
+    const esc = (v) => String(v == null ? "" : v)
       .replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;",
                                      '"': "&quot;", "'": "&#39;" }[c]));
+    const names = subs.map((s) => esc(s.list_name));
+    const listed = names.length === 1
+      ? names[0]
+      : names.slice(0, -1).join(", ") + " and " + names[names.length - 1];
+
     return page("Subscribed",
       `<h1>You are subscribed</h1>
-       <p>You will now receive <b>${listName}</b>.</p>
+       <p>You will now receive <b>${listed}</b>.</p>
        <p>Every message includes a link to stop, and it works without signing
           in to anything.</p>`);
   },

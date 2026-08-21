@@ -519,15 +519,22 @@ SELECT :id, l.id, l.partner_id, :email, :name, 'pending', :token, :source,
  WHERE l.id = :list_id AND l.partner_id IS :partner_id;
 
 
--- name: public_list_for_signup
--- The one list a public form may add to. `is_open` is the switch a partner
--- controls; archived lists are excluded so turning a list off closes its form
--- without needing to remember the form exists.
-SELECT id, partner_id, name, slug, from_name, from_email, reply_to,
+-- name: public_lists_for_signup
+-- EVERY list a partner has opened, for ONE form with a checkbox each.
+--
+-- The first version served a form per list, which meant a partner running a
+-- newsletter and a prayer list pasted two forms onto a page and a visitor
+-- typed their address twice. chaseroush.com already had this right: one form,
+-- "I want to receive", a box per list.
+--
+-- `is_open` is the switch a partner controls, so closing a list removes its
+-- checkbox from every page the form is on without anybody editing those pages.
+SELECT id, partner_id, name, slug, description, from_name, from_email, reply_to,
        form_heading, form_blurb, form_button, form_thanks_url
   FROM mailing_lists
- WHERE slug = :slug AND partner_id IS (SELECT id FROM partners WHERE slug = :partner_slug)
-   AND is_open = 1 AND archived_at IS NULL;
+ WHERE partner_id IS (SELECT id FROM partners WHERE slug = :partner_slug)
+   AND is_open = 1 AND archived_at IS NULL
+ ORDER BY name COLLATE NOCASE;
 
 
 -- name: signup_attempt_record
@@ -615,11 +622,18 @@ SELECT s.id, s.email, s.name, s.status, s.confirm_token, s.list_id,
 -- The confirmation link. NOT partner-scoped, deliberately and uniquely: the
 -- person clicking it is a member of the public with no account, and the token
 -- is the only thing identifying them. It is 32 random bytes and single-use.
+--
+-- RETURNS SEVERAL ROWS WHEN SOMEBODY TICKED SEVERAL BOXES. One submission
+-- writes one row per list and shares one token across them, so a person who
+-- asked for a newsletter and a prayer list gets ONE email rather than two —
+-- and confirms both with one click, which is what they thought they were
+-- doing when they ticked two boxes.
 SELECT s.id, s.email, s.name, s.status, s.list_id,
        l.name AS list_name, l.slug AS list_slug
   FROM subscribers s
   JOIN mailing_lists l ON l.id = s.list_id
- WHERE s.confirm_token = :token AND s.status = 'pending';
+ WHERE s.confirm_token = :token AND s.status = 'pending'
+ ORDER BY l.name COLLATE NOCASE;
 
 
 -- name: subscriber_confirm

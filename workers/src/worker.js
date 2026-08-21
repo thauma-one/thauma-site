@@ -313,9 +313,9 @@ export default {
        partner's page loads it the same way it loads the widgets. Matched
        BEFORE the embed router, which owns everything else under this path. */
     const signupPath = url.pathname.match(
-      /^\/embed\/v1\/([a-z0-9-]+)\/([a-z0-9-]+)\/(form\.js|signup)$/);
+      /^\/embed\/v1\/([a-z0-9-]+)\/(form\.js|signup)$/);
     if (signupPath) {
-      return signup.fetch(request, env, signupPath[1], signupPath[2], signupPath[3]);
+      return signup.fetch(request, env, signupPath[1], signupPath[2]);
     }
 
     if (url.pathname.startsWith("/embed/v1/")) return embed.fetch(request, env, ctx);
