@@ -105,5 +105,23 @@ flag, and it cannot be undone from here.</p>
     <span class="ml-people-title" id="mlPeopleTitle"></span>
     <span class="hint" id="mlPeopleCount"></span>
   </div>
+  {#- ADDING BY HAND is for somebody who asked in person. It lands as
+     subscribed rather than pending, because the confirmation email exists to
+     prove consent that came from a stranger over the internet — and this
+     did not. The note says so, so nobody thinks the double opt-in was
+     skipped by accident. -#}
+  <form class="ml-add" id="mlAddPerson">
+    <label class="fld"><span data-i18n="ml.addEmail">Email address</span>
+      <input type="email" id="mlNewEmail" maxlength="200" required>
+    </label>
+    <label class="fld"><span data-i18n="ml.addName">Name</span>
+      <input type="text" id="mlNewName" maxlength="120">
+    </label>
+    <button type="submit" class="solid-btn" data-i18n="ml.addPerson">Add</button>
+    <span class="hint" id="mlAddStatus" data-i18n="ml.addNote">Only for people who have
+      already told you they want this — they are added as subscribed, with no
+      confirmation email.</span>
+  </form>
+
   <div class="ms-list" id="mlSubscribers"></div>
 </section>

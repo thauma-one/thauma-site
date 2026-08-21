@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "1cc3749d31ca8301";
+export const SOURCE_DIGEST = "36080ee83fa3073e";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -465,6 +465,13 @@ FROM staff_profiles sp
 JOIN users u ON u.id = sp.user_id
 WHERE sp.is_public = 1
 ORDER BY sp.sort_order, u.name COLLATE NOCASE;`,
+  subscriber_add: `INSERT INTO subscribers
+  (id, list_id, partner_id, email, name, status, source,
+   subscribed_at, confirmed_at, updated_at)
+SELECT :id, l.id, l.partner_id, :email, :name, 'subscribed', :source,
+       :now, :now, :now
+  FROM mailing_lists l
+ WHERE l.id = :list_id AND l.partner_id IS :partner_id;`,
   subscriber_delete: `DELETE FROM subscribers
 WHERE id = :id
   AND list_id IN (SELECT id FROM mailing_lists WHERE partner_id IS :partner_id);`,

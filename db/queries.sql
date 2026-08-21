@@ -490,6 +490,25 @@ ORDER BY s.subscribed_at DESC
 LIMIT :limit OFFSET :offset;
 
 
+-- name: subscriber_add
+-- ADDED BY HAND, by somebody who already has the person's permission — which
+-- is why it lands as `subscribed` rather than `pending`. The double opt-in
+-- exists to prove consent that arrived over the internet from a stranger; a
+-- staff member typing in the address of somebody who asked them face to face
+-- has that proof already, and making them wait for a confirmation email would
+-- be ceremony rather than protection. `source` records which of the two
+-- happened, so the difference stays visible afterwards.
+--
+-- The partner check is on the LIST, so this cannot add to somebody else's.
+INSERT INTO subscribers
+  (id, list_id, partner_id, email, name, status, source,
+   subscribed_at, confirmed_at, updated_at)
+SELECT :id, l.id, l.partner_id, :email, :name, 'subscribed', :source,
+       :now, :now, :now
+  FROM mailing_lists l
+ WHERE l.id = :list_id AND l.partner_id IS :partner_id;
+
+
 -- name: subscriber_delete
 -- Removing somebody is removing them. There is no soft delete here on purpose:
 -- an address kept after a request to be forgotten is the thing the request was

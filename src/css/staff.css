@@ -1136,3 +1136,14 @@ body.has-savebar .acting-mark{bottom:calc(var(--ms-savebar-h,72px) + 12px)}
    so it must not adopt the pointer and hover the editable rows use. */
 .ml-people .ms-row{cursor:default}
 @media(hover:hover){ .ml-people .ms-row:hover{background:transparent} }
+
+/* Adding somebody by hand. A row rather than a panel: two fields and a button
+   is not a form worth opening, and it sits above the list so the person you
+   just added appears directly beneath it. */
+.ml-add{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;
+  padding:14px 16px;margin-bottom:14px;border:1px solid var(--line);
+  border-radius:var(--radius);background:var(--bg2,#0b1119)}
+.ml-add .fld{flex:1 1 200px;min-width:0;margin:0}
+.ml-add .hint{flex:1 1 100%;margin:0;font-size:11px;line-height:1.4}
+.ml-people .status-pick{font-size:12px;padding:5px 8px}
+@media (max-width:560px){ .ml-add .solid-btn{width:100%} }

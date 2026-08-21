@@ -252,8 +252,8 @@
         '<div class="ms-main">' +
           '<div class="ms-t">' +
             '<span class="ms-title">' + esc(s.email) + '</span>' +
-            (s.status === 'subscribed' ? '' :
-              '<span class="badge proto">' + esc(tr('ml.status.' + s.status)) + '</span>') +
+            (s.status === 'pending'
+              ? '<span class="badge proto">' + esc(tr('ml.status.pending')) + '</span>' : '') +
           '</div>' +
           '<div class="ms-meta">' +
             (s.name ? '<span>' + esc(s.name) + '</span>' : '') +
@@ -262,10 +262,23 @@
           '</div>' +
         '</div>' +
         '<div class="ms-row-actions">' +
-          (s.status === 'subscribed'
-            ? '<button type="button" data-unsub="' + esc(s.id) + '">' +
-                esc(tr('ml.unsubscribe')) + '</button>'
-            : '') +
+          /* A PICKER, NOT AN UNSUBSCRIBE BUTTON. A bounced address that starts
+             working again, or somebody who asks to come back, both need a way
+             forward — a one-way button only handled the commonest case and
+             left the others needing a database. `pending` is deliberately not
+             offered: moving somebody back to unconfirmed would assert they
+             never agreed, which is not this console's claim to make. */
+          '<select class="status-pick" data-status="' + esc(s.id) + '"' +
+            ' aria-label="' + esc(tr('ml.statusLabel')) + '">' +
+            ['subscribed', 'unsubscribed', 'bounced'].map(function (v) {
+              return '<option value="' + v + '"' + (s.status === v ? ' selected' : '') + '>' +
+                esc(tr('ml.status.' + v)) + '</option>';
+            }).join('') +
+            (s.status === 'pending'
+              ? '<option value="pending" selected disabled>' +
+                  esc(tr('ml.status.pending')) + '</option>'
+              : '') +
+          '</select>' +
           '<button type="button" class="del" data-delsub="' + esc(s.id) + '">' +
             esc(tr('ms.delete')) + '</button>' +
         '</div>' +
@@ -368,18 +381,50 @@
     if (row) { e.preventDefault(); openForm(row.dataset.id); }
   });
 
-  $('mlSubscribers').addEventListener('click', async function (e) {
-    var unsub = e.target.closest('[data-unsub]');
-    if (unsub) {
-      await fetch(url(), {
+  $('mlSubscribers').addEventListener('change', async function (e) {
+    var pick = e.target.closest('[data-status]');
+    if (!pick) return;
+    pick.disabled = true;
+    var res = await fetch(url(), {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'subscriber', id: pick.dataset.status,
+                             status: pick.value }),
+    });
+    pick.disabled = false;
+    if (!res.ok) { toast(tr('err.refused'), 'bad'); return; }
+    toast(tr('ml.statusChanged'), 'ok');
+    showPeople(state.viewing);
+  });
+
+  $('mlAddPerson').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var email = $('mlNewEmail').value.trim();
+    if (!email) return;
+
+    setStatus($('mlAddStatus'), tr('ml.adding'));
+    var res, body;
+    try {
+      res = await fetch(url(), {
         method: 'POST', credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'subscriber', id: unsub.dataset.unsub,
-                               status: 'unsubscribed' }),
+        body: JSON.stringify({ action: 'add-subscriber', list_id: state.viewing,
+                               email: email, name: $('mlNewName').value.trim() }),
       });
-      return showPeople(state.viewing);
+      body = await res.json();
+    } catch (err) {
+      setStatus($('mlAddStatus'), tr('err.unreachable') + ' ' + err.message);
+      return;
     }
+    if (!res.ok) { setStatus($('mlAddStatus'), body.error || tr('err.refused')); return; }
 
+    $('mlNewEmail').value = ''; $('mlNewName').value = '';
+    setStatus($('mlAddStatus'), tr('ml.addNote'));
+    toast(fill('ml.added', { email: body.email }), 'ok');
+    showPeople(state.viewing);
+  });
+
+  $('mlSubscribers').addEventListener('click', async function (e) {
     var del = e.target.closest('[data-delsub]');
     if (!del) return;
 

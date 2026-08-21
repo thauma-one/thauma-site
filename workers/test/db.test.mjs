@@ -279,6 +279,7 @@ await check("every real query converts with its documented params", async () => 
     // mailing
     from_name: "Thauma", from_email: "news@thauma.one", reply_to: null,
     is_open: 0, list_id: "ml_1", offset: 0,
+    source: "added by hand",
     // timeline bounds
     timeline_start: null, timeline_end: null,
     // goals

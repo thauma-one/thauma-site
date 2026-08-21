@@ -222,6 +222,51 @@ await check("a status the console does not offer is refused", async () => {
   eq(res.status, 400, "status");
 });
 
+await check("adding by hand is refused an address that cannot be one", async () => {
+  const env = envWith("staff");
+  const res = await handler.fetch(req("POST", {
+    body: { action: "add-subscriber", list_id: "ml_1", email: "not-an-address" },
+  }), env);
+  eq(res.status, 400, "status");
+});
+
+await check("adding by hand needs a list that is yours", async () => {
+  /* mailing_list_one returns nothing for a list belonging to somebody else,
+     which is how this becomes 404 rather than a write into their list. */
+  const env = envWith("staff");
+  const orig = env.DB.prepare;
+  env.DB.prepare = (sql) => {
+    if (/FROM mailing_lists/i.test(sql)) {
+      const run = async () => ({ results: [] });
+      return { bind() { return { all: run, run }; }, all: run, run };
+    }
+    return orig(sql);
+  };
+  const res = await handler.fetch(req("POST", {
+    body: { action: "add-subscriber", list_id: "ml_not_mine", email: "a@b.one" },
+  }), env);
+  eq(res.status, 404, "status");
+});
+
+/* `pending` means "asked and has not confirmed". Setting it BY HAND would be
+   the console asserting somebody never agreed, which is not its claim to
+   make — so it is absent from the statuses a picker may send. */
+await check("the console cannot mark somebody back to unconfirmed", async () => {
+  const env = envWith("staff");
+  const res = await handler.fetch(req("POST", {
+    body: { action: "subscriber", id: "s_1", status: "pending" },
+  }), env);
+  eq(res.status, 400, "status");
+});
+
+await check("a bounced address can be set back to subscribed", async () => {
+  const env = envWith("staff");
+  const res = await handler.fetch(req("POST", {
+    body: { action: "subscriber", id: "s_1", status: "subscribed" },
+  }), env);
+  eq(res.status, 200, "an address that starts working again must have a way back");
+});
+
 await check("only GET, POST and DELETE are allowed", async () => {
   for (const m of ["PUT", "PATCH"]) {
     const res = await handler.fetch(req(m, { body: {} }), envWith("staff"));

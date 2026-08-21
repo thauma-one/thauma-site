@@ -179,8 +179,45 @@ export default {
         return json({ ok: true, id, name });
       }
 
+      /* ADDING SOMEBODY BY HAND lands as `subscribed`, not `pending`.
+         Double opt-in exists to prove consent that arrived over the internet
+         from a stranger. A staff member typing in the address of somebody who
+         asked them in person already has that proof, and a confirmation email
+         they never expected is ceremony rather than protection. `source`
+         records which of the two happened so the difference stays visible. */
+      if (body.action === "add-subscriber") {
+        const email = clean(body.email, MAX.email);
+        if (!email || !EMAIL_RE.test(email)) {
+          return json({ error: "That does not look like an email address." }, 400);
+        }
+        const listId = String(body.list_id || "");
+        if (!listId) return json({ error: "list_id is required" }, 400);
+
+        const list = await db.queryOne("mailing_list_one", { id: listId, partner_id: partnerId });
+        if (!list) return json({ error: "No such list." }, 404);
+
+        try {
+          await db.query("subscriber_add", {
+            id: newId("sub"), list_id: listId, partner_id: partnerId,
+            email, name: clean(body.name, MAX.name),
+            source: clean(body.source, 60) || "added by hand", now,
+          });
+        } catch (e) {
+          /* The unique index doing its job. Said plainly rather than as a
+             constraint name, because "already on this list" is the answer. */
+          if (/UNIQUE/i.test(e.message || "")) {
+            return json({ error: `${email} is already on this list.` }, 409);
+          }
+          throw e;
+        }
+        return json({ ok: true, email });
+      }
+
       if (body.action === "subscriber") {
         const status = String(body.status || "");
+        /* `pending` is deliberately absent. Moving somebody BACK to unconfirmed
+           would claim they never agreed, which is not a thing a console should
+           be able to assert on their behalf. */
         if (!["subscribed", "unsubscribed", "bounced"].includes(status)) {
           return json({ error: `${status || "That"} is not a status this can set.` }, 400);
         }
