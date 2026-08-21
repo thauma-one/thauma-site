@@ -43,8 +43,18 @@ const page = (title, body, status = 200) =>
 
 /* One message for every failure. A token that never existed, one already spent
    and one belonging to somebody unsubscribed must be indistinguishable — the
-   difference is only useful to somebody guessing. */
-const NOT_VALID = page("Link not valid",
+   difference is only useful to somebody guessing.
+
+   A FUNCTION, NOT A CONSTANT, for two reasons and both of them bit:
+
+   1. Workers refuse asynchronous I/O, timers and random values in global
+      scope, and constructing a Response there tripped that rule. The whole
+      Worker failed to start — every route on dev.thauma.one answered 502, from
+      one eagerly-built error page.
+   2. A Response body can be read ONCE. Even had it started, the first visitor
+      would have consumed it and the second would have received an empty page —
+      a bug that only appears with two people, which is the worst kind. */
+const notValid = () => page("Link not valid",
   `<h1>That link is not valid</h1>
    <p>It may already have been used, or it may have been mistyped.</p>
    <p>If you are waiting to confirm a subscription, ask whoever added you to
@@ -61,11 +71,11 @@ export default {
     /* Shape-checked before it reaches the database. The token this issues is
        64 hex characters and nothing else can be valid, so anything else is
        refused without a query. */
-    if (!/^[0-9a-f]{64}$/.test(token)) return NOT_VALID;
+    if (!/^[0-9a-f]{64}$/.test(token)) return notValid();
 
     const db = createDb(env.DB);
     const sub = await db.queryOne("subscriber_by_token", { token });
-    if (!sub) return NOT_VALID;
+    if (!sub) return notValid();
 
     await db.query("subscriber_confirm", { token, now: new Date().toISOString() });
 
