@@ -1115,3 +1115,24 @@ body.has-savebar .acting-mark{bottom:calc(var(--ms-savebar-h,72px) + 12px)}
   .env-band{padding:6px 14px;gap:8px}
   .env-db{margin-left:0;width:100%}
 }
+
+
+/* ============================================================
+   MAILING
+   ============================================================ */
+
+/* The scope switch. Only rendered for accounts the API says may use it, so
+   its presence is itself information: if you can see it, you can send as the
+   organisation. */
+.ml-scope{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.ml-scope-label{color:var(--voice-tech);font-family:var(--font-display);
+  font-size:10px;letter-spacing:var(--ls-caps);text-transform:uppercase;
+  font-weight:var(--w-bold);margin-right:2px}
+
+.ml-people{margin-top:8px}
+.ml-people-title{font-size:var(--fs-sm);color:var(--text);font-weight:600}
+
+/* A subscriber row is not an expander — there is nothing behind it to open —
+   so it must not adopt the pointer and hover the editable rows use. */
+.ml-people .ms-row{cursor:default}
+@media(hover:hover){ .ml-people .ms-row:hover{background:transparent} }

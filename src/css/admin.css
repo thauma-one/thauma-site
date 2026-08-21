@@ -614,3 +614,13 @@
 .pf-empty{color:var(--dim,#8a93a3);font-size:12px;text-align:center;padding:10px}
 .pf-photo-acts{display:flex;gap:8px;flex-wrap:wrap}
 .pf-photo .hint{font-size:11px;line-height:1.4;min-height:1.2em}
+
+
+/* A profile that exists but is not published. Dimmed, not hidden: the work is
+   real and editable, it simply is not on the site yet — which is the same
+   distinction Save and Publish make everywhere else in this console. */
+.pf-body.is-unpublished{opacity:.72}
+.pf-body.is-unpublished:focus-within{opacity:1}
+.pf-draft{margin:0 0 16px;padding:8px 12px;border-radius:var(--radius);
+  background:rgba(245,184,69,.08);border:1px solid rgba(245,184,69,.22);
+  color:var(--voice-tech)}

@@ -23,6 +23,7 @@
 {%- set pages = [
   { slug: "index",       url: "/staff/",             label: "Dashboard" },
   { slug: "ministry",    url: "/staff/ministry/",    label: "Ministry" },
+  { slug: "mailing",     url: "/staff/mailing/",     label: "Mailing" },
   { slug: "stewardship", url: "/staff/stewardship/", label: "Stewardship" },
   { slug: "directory",   url: "/staff/directory/",   label: "Directory" },
   { slug: "resources",   url: "/staff/resources/",   label: "Resources" },
@@ -111,6 +112,8 @@
 <script src="/js/staff-milestones.js?v={{ "/js/staff-milestones.js" | v }}"></script>
 <script src="/js/staff-goals.js?v={{ "/js/staff-goals.js" | v }}"></script>
 <script src="/js/staff-prayer.js?v={{ "/js/staff-prayer.js" | v }}"></script>{% endif %}
+{% if staffPage == "mailing" %}<script src="/js/staff-rowpanel.js?v={{ "/js/staff-rowpanel.js" | v }}"></script>
+<script src="/js/staff-mailing.js?v={{ "/js/staff-mailing.js" | v }}"></script>{% endif %}
 {% if staffPage == "settings" %}<script src="/js/staff-settings.js?v={{ "/js/staff-settings.js" | v }}"></script>{% endif %}
 {#- The embed panel loads on the two pages that AUTHOR what it publishes —
    the roadmap under the milestone editor, the giving progress under the

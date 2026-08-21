@@ -420,7 +420,21 @@
           '<span class="switch-note">' + esc(tr('adm.pf.shownNote')) + '</span>' +
         '</span></button>' +
 
-      '<div class="pf-body"' + (on ? '' : ' hidden') + '>' +
+      /* ALWAYS VISIBLE, whatever the toggle says.
+
+         These were hidden until the switch was on, with a comment about not
+         spending screen space on a bio nobody will read. That was wrong twice
+         over: it made the fields undiscoverable — the section looked like a
+         lone switch and nothing else — and it inverted what the toggle means.
+         The toggle is PUBLICATION. Writing a bio and publishing it are two
+         decisions, in that order, and the schema already agrees: switching it
+         off deletes the public file and keeps the row and the work in it.
+
+         Dimmed rather than hidden when off, so "this exists but nobody outside
+         can see it" is legible at a glance. */
+      '<div class="pf-body' + (on ? '' : ' is-unpublished') + '">' +
+        '<p class="hint pf-draft"' + (on ? ' hidden' : '') + '>' +
+          esc(tr('adm.pf.draftNote')) + '</p>' +
         '<div class="pf-grid">' +
           '<label class="fld"><span>' + esc(tr('adm.pf.region')) + '</span>' +
             '<input type="text" data-pf="region" maxlength="120"' +
@@ -747,8 +761,13 @@
     var on = btn.getAttribute('aria-checked') !== 'true';
     btn.setAttribute('aria-checked', on ? 'true' : 'false');
     btn.querySelector('.switch-state').textContent = on ? 'On' : 'Off';
+    /* The panel stays; only its published-ness changes. */
     var body = btn.parentNode.querySelector('.pf-body');
-    if (body) body.hidden = !on;
+    if (body) {
+      body.classList.toggle('is-unpublished', !on);
+      var note = body.querySelector('.pf-draft');
+      if (note) note.hidden = on;
+    }
   }
 
   async function saveProfile(userId, btn) {
