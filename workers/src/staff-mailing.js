@@ -84,14 +84,30 @@ async function scopeFor(request, env) {
            isOrg: false, maySendAsOrg };
 }
 
-/** Validate a list definition. Returns `{ value }` or `{ error }`. */
-export function cleanList(body) {
+/**
+ * Validate a list definition. Returns `{ value }` or `{ error }`.
+ *
+ * `existingSlug` is the slug the list already has. THE SLUG IS NEVER EDITED
+ * AND IS NOT SHOWN. It appears in exactly one place — the sign-up form's URL —
+ * and is derived from the name the first time only. Renaming a list therefore
+ * does NOT move its form, which is the behaviour that matters: the snippet is
+ * pasted onto somebody else's website and nobody rebuilds that page because a
+ * list got a better name.
+ *
+ * An earlier version put this on screen as "Web address" and locked it once a
+ * list had subscribers, on the stated grounds that changing it would break
+ * unsubscribe links. That was wrong — unsubscribing is token-based and does not
+ * involve the slug at all — and the field confused everybody who saw it,
+ * including me. Plumbing that only one URL depends on does not belong in a
+ * form somebody has to understand.
+ */
+export function cleanList(body, existingSlug) {
   const name = clean(body.name, MAX.name);
   if (!name) return { error: "A list needs a name." };
 
-  const slug = clean(body.slug, MAX.slug) || slugify(name);
+  const slug = existingSlug || slugify(name);
   if (!slug || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug)) {
-    return { error: `"${body.slug || name}" does not make a usable web address.` };
+    return { error: `"${name}" has no letters or numbers in it, so there is no address to build.` };
   }
 
   const from_name = clean(body.from_name, MAX.from_name);
@@ -313,10 +329,14 @@ export default {
         return json({ ok: true });
       }
 
-      const { value, error } = cleanList(body);
-      if (error) return json({ error }, 400);
-
       const id = clean(body.id, 60) || newId("ml");
+      /* The slug the list already has, so a rename never moves its form. */
+      const prior = body.id
+        ? await db.queryOne("mailing_list_one", { id, partner_id: partnerId })
+        : null;
+
+      const { value, error } = cleanList(body, prior && prior.slug);
+      if (error) return json({ error }, 400);
       const taken = await db.queryOne("mailing_list_slug_taken", {
         partner_id: partnerId, slug: value.slug, id,
       });

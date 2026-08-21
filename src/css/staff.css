@@ -1242,3 +1242,46 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
   padding:28px;max-width:36rem}
 .ml-soon h3{margin:0 0 .5rem;font-size:1.1rem}
 .ml-soon p{margin:0 0 .6rem;color:var(--dim,#8a93a3);line-height:1.6}
+
+/* THE TOOLS MUST NOT LOOK LIKE LISTS. They were the same grey as an unselected
+   list tab and sat at the other end of the same bar, which made them findable
+   only by somebody who already knew they were there. Given a border, a tint and
+   the accent colour they read as controls rather than as two more lists. */
+.ml-tab-tool{border:1px solid var(--line);border-bottom:1px solid var(--line);
+  border-radius:var(--radius);top:-2px;margin-left:6px;
+  color:var(--voice-tech);background:rgba(245,184,69,.06)}
+@media(hover:hover){
+  .ml-tab-tool:hover{border-color:var(--voice-tech);background:rgba(245,184,69,.12)}
+}
+.ml-tab-tool.is-on{background:var(--voice-tech);border-color:var(--voice-tech);
+  color:var(--bg,#0b1119);font-weight:var(--w-bold)}
+.ml-tab-tool.is-on .ml-tab-count{opacity:.85}
+
+/* WHOSE LISTS. Full width above the tabs, because it changes what every tab
+   below it means. The previous version was two small pills beside the tab bar
+   and was missed entirely. */
+.ml-whose{display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  padding:10px 14px;margin-bottom:14px;border:1px solid var(--line);
+  border-radius:var(--radius);background:var(--bg2,#0b1119)}
+.ml-whose-label{color:var(--voice-tech);font-family:var(--font-display);
+  font-size:10px;letter-spacing:var(--ls-caps);text-transform:uppercase;
+  font-weight:var(--w-bold)}
+.ml-whose-opts{display:flex;gap:4px}
+.ml-whose-opt{background:none;border:1px solid var(--line);border-radius:99px;
+  color:var(--dim,#8a93a3);padding:5px 15px;font-size:12.5px;cursor:pointer}
+@media(hover:hover){ .ml-whose-opt:hover{color:var(--text)} }
+.ml-whose-opt.is-on{background:var(--voice-tech);border-color:var(--voice-tech);
+  color:var(--bg,#0b1119);font-weight:var(--w-bold)}
+
+.ml-embed-card .switch.small{margin-bottom:10px}
+.ml-embed-card.is-closed .switch.small{margin-bottom:0}
+
+/* The wording, beside the preview of it. Compact because these are three short
+   fields, not a form somebody fills in from scratch. */
+.ml-wording{display:flex;flex-direction:column;gap:10px;padding:14px;
+  border:1px solid var(--line);border-radius:var(--radius);
+  background:var(--bg2,#0b1119)}
+.ml-wording .fld{margin:0}
+.ml-wording .fld span{font-size:10px}
+.ml-wording input{width:100%;box-sizing:border-box;padding:.4rem .5rem}
+.ml-wording .ghost-btn{align-self:flex-start}

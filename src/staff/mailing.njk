@@ -22,6 +22,18 @@ staffHint: your lists and the people on them — nobody else's
    the person reading this should see that it applies to them rather than take
    it on faith. -#}
 
+{#- WHOSE LISTS. Above the tabs and full width, because it changes what every
+   tab below it means — a switch that quiet, tucked in beside them, was missed
+   entirely by the person it was built for. Rendered only when the API says
+   this account may reach the organisation's lists. -#}
+<div class="ml-whose" id="mlScope" hidden>
+  <span class="ml-whose-label" data-i18n="ml.scope">Whose lists</span>
+  <div class="ml-whose-opts">
+    <button type="button" class="ml-whose-opt is-on" data-scope="partner" id="mlScopeMine"></button>
+    <button type="button" class="ml-whose-opt" data-scope="organisation" data-i18n="ml.scopeOrg">Thauma</button>
+  </div>
+</div>
+
 <div class="ml-tabs" role="tablist" aria-label="Mailing">
   <div class="ml-tabs-lists" id="mlTabs"></div>
 
@@ -37,13 +49,7 @@ staffHint: your lists and the people on them — nobody else's
           data-i18n="ml.tabComposer">Composer</button>
 </div>
 
-{#- The organisation's own lists. Shown only when the API says this account may
-   reach them — never guessed from a role read in the browser. -#}
-<div class="ml-scope" id="mlScope" hidden>
-  <span class="ml-scope-label" data-i18n="ml.scope">Managing</span>
-  <button type="button" class="sort-btn is-on" data-scope="partner" id="mlScopeMine"></button>
-  <button type="button" class="sort-btn" data-scope="organisation" data-i18n="ml.scopeOrg">Thauma</button>
-</div>
+
 
 <p class="empty" id="mlNoLists" hidden data-i18n="ml.empty">No mailing lists yet.</p>
 
@@ -84,17 +90,6 @@ staffHint: your lists and the people on them — nobody else's
           <input type="text" id="mlName" maxlength="120" required>
           <span class="fld-hint" data-i18n="ml.nameHint">What you call it. Subscribers never see this.</span>
         </label>
-
-        {#- LOCKED ONCE THE LIST IS IN USE. The address is baked into every
-           snippet pasted onto a website and every unsubscribe link in every
-           email already sent. Changing it breaks both, and the person who
-           notices is a subscriber who can no longer unsubscribe. Free to set
-           until the first person joins; after that it is an admin's to move. -#}
-        <label class="fld"><span data-i18n="ml.address">Web address</span>
-          <input type="text" id="mlSlug" maxlength="60">
-          <span class="fld-hint" id="mlSlugHint" data-i18n="ml.addressHint">Used in sign-up and
-            unsubscribe links. Leave blank to build it from the name.</span>
-        </label>
       </div>
 
       <label class="fld"><span data-i18n="ml.description">Description</span>
@@ -104,9 +99,16 @@ staffHint: your lists and the people on them — nobody else's
       <div class="ms-grid">
         <label class="fld"><span data-i18n="ml.fromName">From name</span>
           <input type="text" id="mlFromName" maxlength="80" required>
+          <span class="fld-hint" data-i18n="ml.fromNameHint">Who the email appears to be from.</span>
         </label>
+        {#- TYPED, NEVER DERIVED. It has to be an address that really exists and
+           is verified with the mail provider, and guessing one from the list's
+           name would produce a plausible address that silently fails to send. -#}
         <label class="fld"><span data-i18n="ml.fromEmail">From address</span>
-          <input type="email" id="mlFromEmail" maxlength="200" required>
+          <input type="email" id="mlFromEmail" maxlength="200" required
+                 placeholder="newsletter.yourname@thauma.one">
+          <span class="fld-hint" data-i18n="ml.fromEmailHint">A real address, set up with the
+            mail provider first. Nothing sends from an address that is not verified.</span>
         </label>
         <label class="fld"><span data-i18n="ml.replyTo">Reply-to</span>
           <input type="email" id="mlReplyTo" maxlength="200">
@@ -126,6 +128,7 @@ staffHint: your lists and the people on them — nobody else's
 
       <div class="ms-actions">
         <button type="submit" class="solid-btn" data-i18n="ml.save">Save list</button>
+        <button type="button" class="ghost-btn" id="mlCancel" data-i18n="ms.cancel">Cancel</button>
         <button type="button" class="del" id="mlArchive" data-i18n="ml.archive">Archive</button>
         <span class="hint" id="mlFormStatus"></span>
       </div>

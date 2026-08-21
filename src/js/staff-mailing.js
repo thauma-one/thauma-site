@@ -95,7 +95,11 @@
     if (view === 'embed') renderEmbeds();
     else if (view !== 'composer') {
       var l = listById(view);
-      if (l) { fillSettings(l); showSub(state.sub); }
+      /* ALWAYS SUBSCRIBERS FIRST. Opening a list to see who is on it is the
+         common act; changing the sender address is the rare one. Carrying the
+         previous sub-tab across meant somebody who once opened Settings landed
+         there on every list afterwards. */
+      if (l) { fillSettings(l); showSub('people'); }
     }
 
     /* Survives a reload, so coming back to a list is not a hunt. */
@@ -123,23 +127,12 @@
   function fillSettings(l) {
     $('mlId').value = l.id || '';
     $('mlName').value = l.name || '';
-    $('mlSlug').value = l.slug || '';
     $('mlDescription').value = l.description || '';
     $('mlFromName').value = l.from_name || '';
     $('mlFromEmail').value = l.from_email || '';
     $('mlReplyTo').value = l.reply_to || '';
     setSwitch($('mlOpen'), !!l.is_open);
     setStatus($('mlFormStatus'), '');
-
-    /* THE ADDRESS LOCKS ONCE SOMEBODY IS ON THE LIST. It is in every snippet
-       pasted onto a website and every unsubscribe link already sent; changing
-       it breaks both, and the person who finds out is a subscriber who can no
-       longer unsubscribe. Before the first person joins, nothing points at it
-       and it is free to change. */
-    var inUse = (l.subscribed || 0) + (l.pending || 0) + (l.unsubscribed || 0) > 0;
-    $('mlSlug').readOnly = inUse;
-    $('mlSlug').classList.toggle('is-locked', inUse);
-    $('mlSlugHint').textContent = inUse ? tr('ml.addressLocked') : tr('ml.addressHint');
 
     $('mlArchive').hidden = !l.id;
   }
@@ -151,12 +144,9 @@
     $('mlListView').hidden = false;
     renderTabs();
 
-    ['mlId', 'mlName', 'mlSlug', 'mlDescription', 'mlFromName', 'mlFromEmail', 'mlReplyTo']
+    ['mlId', 'mlName', 'mlDescription', 'mlFromName', 'mlFromEmail', 'mlReplyTo']
       .forEach(function (id) { $(id).value = ''; });
     setSwitch($('mlOpen'), false);
-    $('mlSlug').readOnly = false;
-    $('mlSlug').classList.remove('is-locked');
-    $('mlSlugHint').textContent = tr('ml.addressHint');
     $('mlArchive').hidden = true;
     setStatus($('mlFormStatus'), '');
 
@@ -169,7 +159,6 @@
     var payload = {
       id: $('mlId').value || undefined,
       name: $('mlName').value.trim(),
-      slug: $('mlSlug').value.trim(),
       description: $('mlDescription').value.trim(),
       from_name: $('mlFromName').value.trim(),
       from_email: $('mlFromEmail').value.trim(),
@@ -329,11 +318,17 @@
       if (!l.is_open) {
         /* Said rather than omitted. A list missing from this page looks like a
            bug; a list saying why it has no form is an instruction. */
+        /* A TOGGLE, IN PLACE. "Open it" sent somebody to Settings to find a
+           switch, which is two screens for one decision that belongs here. */
         return '<div class="ml-embed-card is-closed">' +
           '<h4>' + esc(l.name) + '</h4>' +
           '<p class="hint">' + esc(tr('ml.embedClosed')) + '</p>' +
-          '<button type="button" class="ghost-btn" data-open-settings="' + esc(l.id) + '">' +
-            esc(tr('ml.embedOpenIt')) + '</button>' +
+          '<button type="button" class="switch small" role="switch" aria-checked="false"' +
+            ' data-toggle-open="' + esc(l.id) + '">' +
+            '<span class="switch-track"><span class="switch-state">Off</span>' +
+              '<span class="switch-knob"></span></span>' +
+            '<span class="switch-label">' + esc(tr('ml.onTheForm')) + '</span>' +
+          '</button>' +
         '</div>';
       }
 
@@ -352,11 +347,37 @@
             '</div>' +
           '</div>' +
           '<div class="ml-embed-code">' +
+            '<button type="button" class="switch small" role="switch" aria-checked="true"' +
+              ' data-toggle-open="' + esc(l.id) + '">' +
+              '<span class="switch-track"><span class="switch-state">On</span>' +
+                '<span class="switch-knob"></span></span>' +
+              '<span class="switch-label">' + esc(tr('ml.onTheForm')) + '</span>' +
+            '</button>' +
+
+            /* THE WORDING IS EDITED BESIDE THE PREVIEW OF IT. The restructure
+               moved these into Settings and then out again, leaving an "Edit
+               the wording" button that led to a panel with no wording in it.
+               They belong here: this is the only screen that shows what they
+               do. */
+            '<div class="ml-wording">' +
+              '<label class="fld"><span>' + esc(tr('ml.formHeading')) + '</span>' +
+                '<input type="text" maxlength="120" data-word="form_heading"' +
+                ' data-list="' + esc(l.id) + '" value="' + esc(l.form_heading || '') + '"' +
+                ' placeholder="' + esc(l.name) + '"></label>' +
+              '<label class="fld"><span>' + esc(tr('ml.formBlurb')) + '</span>' +
+                '<input type="text" maxlength="240" data-word="form_blurb"' +
+                ' data-list="' + esc(l.id) + '" value="' + esc(l.form_blurb || '') + '"></label>' +
+              '<label class="fld"><span>' + esc(tr('ml.formButton')) + '</span>' +
+                '<input type="text" maxlength="40" data-word="form_button"' +
+                ' data-list="' + esc(l.id) + '" value="' + esc(l.form_button || '') + '"' +
+                ' placeholder="' + esc(tr('ml.formPreviewFallback')) + '"></label>' +
+              '<button type="button" class="ghost-btn" data-save-words="' + esc(l.id) + '">' +
+                esc(tr('ml.saveWording')) + '</button>' +
+            '</div>' +
+
             '<textarea readonly rows="4" spellcheck="false">' + esc(snippetFor(l)) + '</textarea>' +
             '<button type="button" class="ghost-btn" data-copy="' + esc(l.id) + '">' +
               esc(tr('ml.copy')) + '</button>' +
-            '<button type="button" class="ghost-btn" data-open-settings="' + esc(l.id) + '">' +
-              esc(tr('ml.embedEdit')) + '</button>' +
           '</div>' +
         '</div>' +
       '</div>';
@@ -410,6 +431,16 @@
 
   $('mlNewList').addEventListener('click', newList);
   $('mlForm').addEventListener('submit', submitSettings);
+
+  /* CANCEL PUTS IT BACK. On an existing list, the saved values return; on one
+     being created, there is nothing to return to, so it leaves — a form with
+     no list behind it is a dead end, and the way out was previously to click
+     another tab and hope. */
+  $('mlCancel').addEventListener('click', function () {
+    var l = currentList();
+    if (l) { fillSettings(l); showSub('people'); return; }
+    show(state.lists[0] ? state.lists[0].id : 'embed');
+  });
   $('mlArchive').addEventListener('click', archive);
   $('mlOpen').addEventListener('click', function () {
     setSwitch(this, this.getAttribute('aria-checked') !== 'true');
@@ -431,10 +462,57 @@
       return load('');
     }
 
-    var goSettings = e.target.closest('[data-open-settings]');
-    if (goSettings) {
-      state.sub = 'settings';
-      return show(goSettings.dataset.openSettings);
+    var flip = e.target.closest('[data-toggle-open]');
+    if (flip) {
+      var fl = listById(flip.dataset.toggleOpen);
+      if (!fl) return;
+      flip.disabled = true;
+      return (async function () {
+        var r = await fetch(url(), {
+          method: 'POST', credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: fl.id, name: fl.name, description: fl.description || '',
+            from_name: fl.from_name, from_email: fl.from_email,
+            reply_to: fl.reply_to || '', is_open: !fl.is_open,
+            form_heading: fl.form_heading || '', form_blurb: fl.form_blurb || '',
+            form_button: fl.form_button || '',
+          }),
+        });
+        if (!r.ok) { flip.disabled = false; toast(tr('err.refused'), 'bad'); return; }
+        toast(tr(fl.is_open ? 'ml.formOff' : 'ml.formOn'), 'ok');
+        await load('embed');
+      })();
+    }
+
+    var saveWords = e.target.closest('[data-save-words]');
+    if (saveWords) {
+      var wl = listById(saveWords.dataset.saveWords);
+      if (!wl) return;
+      var card = saveWords.closest('.ml-embed-card');
+      var read = function (n) {
+        var el = card.querySelector('[data-word="' + n + '"]');
+        return el ? el.value.trim() : '';
+      };
+      saveWords.disabled = true;
+      return (async function () {
+        var r = await fetch(url(), {
+          method: 'POST', credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: wl.id, name: wl.name, description: wl.description || '',
+            from_name: wl.from_name, from_email: wl.from_email,
+            reply_to: wl.reply_to || '', is_open: !!wl.is_open,
+            form_heading: read('form_heading'),
+            form_blurb: read('form_blurb'),
+            form_button: read('form_button'),
+          }),
+        });
+        saveWords.disabled = false;
+        if (!r.ok) { toast(tr('err.refused'), 'bad'); return; }
+        toast(tr('ml.saved'), 'ok');
+        await load('embed');
+      })();
     }
 
     var copy = e.target.closest('[data-copy]');
@@ -452,6 +530,31 @@
         toast(tr('ml.copyManual'), 'bad');
       });
     }
+  });
+
+  /* The preview redraws as the wording is typed. A preview that only updates
+     on save is a preview of the past. */
+  document.addEventListener('input', function (e) {
+    var w = e.target.closest('[data-word]');
+    if (!w) return;
+    var card = w.closest('.ml-embed-card');
+    var l = listById(w.dataset.list);
+    if (!card || !l) return;
+    var val = function (n) {
+      var el = card.querySelector('[data-word="' + n + '"]');
+      return el ? el.value.trim() : '';
+    };
+    var inner = card.querySelector('.ml-preview-inner');
+    if (!inner) return;
+    inner.querySelector('h4').textContent = val('form_heading') || l.name;
+    var blurb = inner.querySelector('p');
+    var text = val('form_blurb');
+    if (text && !blurb) {
+      blurb = document.createElement('p');
+      inner.insertBefore(blurb, inner.querySelector('label'));
+    }
+    if (blurb) { blurb.textContent = text; blurb.hidden = !text; }
+    inner.querySelector('button').textContent = val('form_button') || tr('ml.formPreviewFallback');
   });
 
   $('mlAddPerson').addEventListener('submit', async function (e) {
