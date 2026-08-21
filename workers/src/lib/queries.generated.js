@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "d9e7a975b00b3252";
+export const SOURCE_DIGEST = "5605c842d6ed039e";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -375,6 +375,11 @@ WHERE pl.partner_id = :partner_id
   AND pl.is_enabled = 1
   AND l.is_active = 1
 ORDER BY pl.sort_order, l.name;`,
+  public_list_for_signup: `SELECT id, partner_id, name, slug, from_name, from_email, reply_to,
+       form_heading, form_blurb, form_button, form_thanks_url
+  FROM mailing_lists
+ WHERE slug = :slug AND partner_id IS (SELECT id FROM partners WHERE slug = :partner_slug)
+   AND is_open = 1 AND archived_at IS NULL;`,
   public_milestone_translations: `SELECT t.milestone_id, t.lang, t.title, t.description, t.target_label
 FROM milestone_translations t
 JOIN milestones m ON m.id = t.milestone_id
@@ -424,6 +429,11 @@ FROM resources
 WHERE (partner_id = :partner_id OR partner_id IS NULL)
   AND instr(',' || :levels || ',', ',' || visibility || ',') > 0
 ORDER BY title COLLATE NOCASE;`,
+  signup_attempt_record: `INSERT OR REPLACE INTO signup_attempts (ip_hash, list_id, at, outcome)
+VALUES (:ip_hash, :list_id, :at, :outcome);`,
+  signup_attempts_prune: `DELETE FROM signup_attempts WHERE at < :before;`,
+  signup_attempts_recent: `SELECT COUNT(*) AS n FROM signup_attempts
+ WHERE ip_hash = :ip_hash AND at > :since;`,
   staff_profile_delete: `DELETE FROM staff_profiles WHERE user_id = :user_id;`,
   staff_profile_slug_taken: `SELECT user_id FROM staff_profiles WHERE slug = :slug AND user_id <> :user_id;`,
   staff_profile_translation_delete: `DELETE FROM staff_profile_translations WHERE user_id = :user_id AND lang = :lang;`,
@@ -483,6 +493,20 @@ WHERE confirm_token = :token AND status = 'pending';`,
   subscriber_delete: `DELETE FROM subscribers
 WHERE id = :id
   AND list_id IN (SELECT id FROM mailing_lists WHERE partner_id IS :partner_id);`,
+  subscriber_existing_for_signup: `SELECT id, status FROM subscribers WHERE list_id = :list_id AND email = :email;`,
+  subscriber_reopen_pending: `UPDATE subscribers
+SET status = 'pending',
+    confirm_token = :token,
+    name = COALESCE(:name, name),
+    subscribed_at = :now,
+    unsubscribed_at = NULL,
+    confirmed_at = NULL,
+    updated_at = :now
+WHERE list_id = :list_id AND email = :email
+  AND status IN ('unsubscribed', 'bounced');`,
+  subscriber_resend_token: `UPDATE subscribers
+SET confirm_token = :token, subscribed_at = :now, updated_at = :now, name = COALESCE(:name, name)
+WHERE list_id = :list_id AND email = :email AND status = 'pending';`,
   subscriber_set_status: `UPDATE subscribers
 SET status = :status,
     unsubscribed_at = CASE WHEN :status = 'unsubscribed' THEN :now ELSE unsubscribed_at END,

@@ -40,6 +40,7 @@ import staffGoals from "./staff-goals.js";
 import staffPrayer from "./staff-prayer.js";
 import staffMailing from "./staff-mailing.js";
 import confirmSubscription from "./confirm.js";
+import signup from "./signup.js";
 import adminApi from "./admin.js";
 import adminContent from "./admin-content.js";
 import adminPublish from "./admin-publish.js";
@@ -308,6 +309,15 @@ export default {
        we do not control, so there is no session to check and nothing to sign
        in to. What makes that safe is per-partner opt-in, not a gate — see
        embed.js. */
+    /* The sign-up form and what it posts to, under the embed origin so a
+       partner's page loads it the same way it loads the widgets. Matched
+       BEFORE the embed router, which owns everything else under this path. */
+    const signupPath = url.pathname.match(
+      /^\/embed\/v1\/([a-z0-9-]+)\/([a-z0-9-]+)\/(form\.js|signup)$/);
+    if (signupPath) {
+      return signup.fetch(request, env, signupPath[1], signupPath[2], signupPath[3]);
+    }
+
     if (url.pathname.startsWith("/embed/v1/")) return embed.fetch(request, env, ctx);
 
     /* Uploaded files. A prefix rather than a table entry because the rest of

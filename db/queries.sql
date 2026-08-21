@@ -511,6 +511,72 @@ SELECT :id, l.id, l.partner_id, :email, :name, 'pending', :token, :source,
  WHERE l.id = :list_id AND l.partner_id IS :partner_id;
 
 
+-- name: public_list_for_signup
+-- The one list a public form may add to. `is_open` is the switch a partner
+-- controls; archived lists are excluded so turning a list off closes its form
+-- without needing to remember the form exists.
+SELECT id, partner_id, name, slug, from_name, from_email, reply_to,
+       form_heading, form_blurb, form_button, form_thanks_url
+  FROM mailing_lists
+ WHERE slug = :slug AND partner_id IS (SELECT id FROM partners WHERE slug = :partner_slug)
+   AND is_open = 1 AND archived_at IS NULL;
+
+
+-- name: signup_attempt_record
+INSERT OR REPLACE INTO signup_attempts (ip_hash, list_id, at, outcome)
+VALUES (:ip_hash, :list_id, :at, :outcome);
+
+
+-- name: signup_attempts_recent
+-- How many times this machine has tried, across ALL lists rather than one.
+-- Somebody hammering a partner's forms would otherwise get a fresh allowance
+-- per list simply by rotating between them.
+SELECT COUNT(*) AS n FROM signup_attempts
+ WHERE ip_hash = :ip_hash AND at > :since;
+
+
+-- name: signup_attempts_prune
+-- Kept for minutes, not for records. This is a log of who visited a page, with
+-- no purpose past the rate window, and the cheapest way to not hold personal
+-- data is to not hold it.
+DELETE FROM signup_attempts WHERE at < :before;
+
+
+-- name: subscriber_existing_for_signup
+-- Whether this address is already known to this list, and in what state. Used
+-- to decide what to DO, never to decide what to SAY — the public answer is the
+-- same either way.
+SELECT id, status FROM subscribers WHERE list_id = :list_id AND email = :email;
+
+
+-- name: subscriber_resend_token
+-- Somebody who signed up, never confirmed, and signed up again. Replacing the
+-- token rather than adding a row keeps one pending record per address and
+-- makes the newest email the only working one.
+UPDATE subscribers
+SET confirm_token = :token, subscribed_at = :now, updated_at = :now, name = COALESCE(:name, name)
+WHERE list_id = :list_id AND email = :email AND status = 'pending';
+
+
+-- name: subscriber_reopen_pending
+-- Somebody who unsubscribed or bounced, asking again through a form.
+--
+-- BACK TO `pending`, NEVER STRAIGHT TO `subscribed`. They previously said stop,
+-- or their address stopped working, and a form post is not enough to overturn
+-- either — anybody who knows the address could send it. The confirmation link
+-- is what lets them return, because only they can click it.
+UPDATE subscribers
+SET status = 'pending',
+    confirm_token = :token,
+    name = COALESCE(:name, name),
+    subscribed_at = :now,
+    unsubscribed_at = NULL,
+    confirmed_at = NULL,
+    updated_at = :now
+WHERE list_id = :list_id AND email = :email
+  AND status IN ('unsubscribed', 'bounced');
+
+
 -- name: subscriber_by_token
 -- The confirmation link. NOT partner-scoped, deliberately and uniquely: the
 -- person clicking it is a member of the public with no account, and the token

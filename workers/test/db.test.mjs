@@ -281,6 +281,10 @@ await check("every real query converts with its documented params", async () => 
     is_open: 0, list_id: "ml_1", offset: 0,
     source: "added by hand",
     token: "0".repeat(64),
+    // signup
+    partner_slug: "chase-roush", ip_hash: "0".repeat(32),
+    at: "2026-08-21T00:00:00Z", since: "2026-08-21T00:00:00Z",
+    before: "2026-08-21T00:00:00Z", outcome: "accepted",
     // timeline bounds
     timeline_start: null, timeline_end: null,
     // goals
