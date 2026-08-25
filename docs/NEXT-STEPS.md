@@ -214,6 +214,12 @@ database of that name. The two can be twenty-two migrations apart while the
 console says the same word. The environment band now says *"a local copy on
 this Pi"* rather than naming a binding it is not actually using.
 
+**Neither workflow has a push trigger.** Both are `workflow_dispatch` only —
+pushing `dev` deploys nothing at all. **Preview** dispatches staging against
+`main`, so next.thauma.one shows what pressing Publish would send. To try
+branch code on staging, dispatch *Deploy staging* manually with ref `dev` — an
+explicit act, which is the point.
+
 **Now enforced in CI**, by `deploy/migration-state.mjs`:
 
 | | behaviour |

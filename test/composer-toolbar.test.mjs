@@ -35,7 +35,14 @@ import { JSDOM } from "jsdom";
 import { readFileSync, existsSync } from "node:fs";
 
 const BUNDLE = "src/js/composer.bundle.js";
-const PAGE = "_site/staff/mailing/index.html";
+/* CI DOES NOT BUILD INTO _site. Staging builds to _site_next and production to
+   _site_prod, so looking only in _site meant both of these printed SKIP and
+   exited 0 in the one place they most needed to run — silently no coverage,
+   which is the exact failure this file was written to stop happening to
+   somebody else. */
+const PAGE = ["_site", "_site_next", "_site_prod"]
+  .map((d) => `${d}/staff/mailing/index.html`)
+  .find((p) => existsSync(p)) || "_site/staff/mailing/index.html";
 
 let pass = 0, fail = 0;
 const check = async (name, fn) => {
