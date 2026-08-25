@@ -49,6 +49,138 @@ def check(name, fn):
 
 
 
+# ---------------------------------------------------------------------------
+# THE QUERIES THEMSELVES, RUN AGAINST REAL ROWS.
+#
+# Everything else here tests the SCHEMA. These test db/queries.sql, and they
+# exist because of a bug nothing else could see: the subscriber list came back
+# empty while the counts above it were correct.
+#
+# The cause was a parameter bound as NULL instead of "". The SQL asks
+# `:status = ''` to mean "no filter", and in SQLite `NULL = ''` is not FALSE —
+# it is NULL, so the whole OR collapses and every row fails the test. Reading
+# the SQL, it looks right. Substituting values into it by hand, it works.
+# Only binding the values the Worker actually binds shows it.
+# ---------------------------------------------------------------------------
+
+def _query(name):
+    """One named query out of db/queries.sql, comments stripped, ready to bind."""
+    import re
+    text = (HERE / "queries.sql").read_text()
+    m = re.search(r"-- name: %s\n((?:(?!-- name:)[\s\S])*)" % re.escape(name), text)
+    assert m, f"no query named {name}"
+    sql = re.sub(r"^\s*--.*$", "", m.group(1), flags=re.M).strip().rstrip(";")
+    names = re.findall(r":(\w+)", sql)
+    return re.sub(r":(\w+)", "?", sql), names
+
+
+def _run(db, name, **args):
+    sql, names = _query(name)
+    missing = [n for n in names if n not in args]
+    assert not missing, f"{name} needs {sorted(set(missing))}"
+    return db.execute(sql, [args[n] for n in names]).fetchall()
+
+
+def _people(db):
+    """A list with five people on it, in three states."""
+    _list(db, "l1", "p_chase")
+    rows = [("s1", "zoe@x.invalid", "Zoe", "subscribed", "2026-01-01"),
+            ("s2", "adam@x.invalid", "Adam", "pending", "2026-06-01"),
+            ("s3", "mia@x.invalid", None, "bounced", "2026-03-01"),
+            ("s4", "bob@x.invalid", "Bob 50%off", "subscribed", "2026-09-01"),
+            ("s5", "u@x.invalid", "A_B", "unsubscribed", "2026-02-01")]
+    for sid, email, name, status, at in rows:
+        db.execute(
+            "INSERT INTO subscribers (id,list_id,partner_id,email,name,status,"
+            "subscribed_at,updated_at) VALUES (?,?,?,?,?,?,?,?)",
+            (sid, "l1", "p_chase", email, name, status, at, at))
+    return db
+
+
+def t_an_absent_filter_must_be_an_empty_string_not_null():
+    db = _people(fresh())
+    base = dict(list_id="l1", partner_id="p_chase", limit=50, offset=0)
+
+    empty = _run(db, "subscribers_for_list", status="", q="", like="", sort="", **base)
+    assert len(empty) == 5, f"an unfiltered list should show everyone, got {len(empty)}"
+
+    # What a NULL does, so nobody restores it thinking it is equivalent.
+    nulls = _run(db, "subscribers_for_list",
+                 status=None, q=None, like=None, sort=None, **base)
+    assert len(nulls) == 0, (
+        "NULL happens to return rows here, which means this test would no longer "
+        "catch the bug it was written for")
+
+
+def t_the_count_agrees_with_the_list_it_counts():
+    db = _people(fresh())
+    for status, q, like in [("", "", ""), ("subscribed", "", ""), ("", "o", "%o%")]:
+        rows = _run(db, "subscribers_for_list", status=status, q=q, like=like,
+                    sort="", list_id="l1", partner_id="p_chase", limit=50, offset=0)
+        n = _run(db, "subscribers_for_list_count", status=status, q=q, like=like,
+                 list_id="l1", partner_id="p_chase")[0][0]
+        assert n == len(rows), (
+            f"status={status!r} q={q!r}: the count says {n}, the list has {len(rows)}")
+
+
+def t_every_sort_orders_by_what_it_says():
+    db = _people(fresh())
+    def emails(sort):
+        return [r[1] for r in _run(db, "subscribers_for_list", sort=sort, status="",
+                                   q="", like="", list_id="l1", partner_id="p_chase",
+                                   limit=50, offset=0)]
+    assert emails("")[0] == "bob@x.invalid", "the default is newest first"
+    assert emails("oldest")[0] == "zoe@x.invalid", "oldest first"
+    assert emails("email") == sorted(emails("email")), "by address"
+    # A missing name falls back to the ADDRESS, so nobody sorts to the top as a
+    # blank. mia has no name and lands under "mia@x.invalid", between Bob and
+    # Zoe, exactly where a reader would look for her.
+    by_name = emails("name")
+    assert by_name == ["u@x.invalid",     # A_B
+                       "adam@x.invalid",  # Adam
+                       "bob@x.invalid",   # Bob 50%off
+                       "mia@x.invalid",   # no name — sorted by address
+                       "zoe@x.invalid"], f"by name: {by_name}"
+    # An unrecognised sort must not be an error, and must not be a hole.
+    assert emails("; DROP TABLE subscribers --") == emails(""), \
+        "an unknown sort should fall through to the default"
+
+
+def t_a_literal_percent_in_a_name_is_not_a_wildcard():
+    # The Worker escapes % and _ ; the query needs ESCAPE for that to mean
+    # anything. Without it the escaping stops the wildcard AND the match.
+    db = _people(fresh())
+    def search(q):
+        like = "%" + q.replace("%", "\\%").replace("_", "\\_") + "%"
+        return [r[1] for r in _run(db, "subscribers_for_list", q=q, like=like,
+                                   status="", sort="", list_id="l1",
+                                   partner_id="p_chase", limit=50, offset=0)]
+    assert search("50%") == ["bob@x.invalid"], f"literal per cent: {search('50%')}"
+    assert search("A_B") == ["u@x.invalid"], f"literal underscore: {search('A_B')}"
+    assert search("A%B") == [], "a wildcard typed by a person must stay literal"
+
+
+def t_paging_never_shows_or_skips_a_person():
+    db = _people(fresh())
+    seen = []
+    for page in range(3):
+        seen += [r[1] for r in _run(db, "subscribers_for_list", status="", q="",
+                                    like="", sort="", list_id="l1",
+                                    partner_id="p_chase", limit=2, offset=page * 2)]
+    assert len(seen) == 5, f"paging returned {len(seen)} of 5"
+    assert len(set(seen)) == 5, f"somebody appeared on two pages: {seen}"
+
+
+def t_a_subscriber_list_cannot_be_read_by_id_alone():
+    # Knowing a list id must not be enough; the partner is checked on the LIST.
+    db = _people(fresh())
+    db.execute("INSERT INTO partners (id,slug,display_name,status,created_at,updated_at)"
+               " VALUES ('p_other','other','Other','active',?,?)", (NOW, NOW))
+    rows = _run(db, "subscribers_for_list", status="", q="", like="", sort="",
+                list_id="l1", partner_id="p_other", limit=50, offset=0)
+    assert rows == [], "another partner could read this list's subscribers"
+
+
 def t_seed_files_insert_every_row_they_claim():
     """Every INSERT in a seed file must actually land.
 
@@ -947,6 +1079,12 @@ if __name__ == "__main__":
         ("deleting a list takes its subscribers",        t_deleting_a_list_takes_its_subscribers),
         ("communications is a role, nonsense is not",    t_communications_is_a_role_and_nonsense_is_not),
         ("the existing roles survived the rebuild",      t_the_existing_roles_survived_the_rebuild),
+        ("an absent filter is '' and never NULL",        t_an_absent_filter_must_be_an_empty_string_not_null),
+        ("the count agrees with the list it counts",     t_the_count_agrees_with_the_list_it_counts),
+        ("every sort orders by what it says",            t_every_sort_orders_by_what_it_says),
+        ("a literal % in a name is not a wildcard",      t_a_literal_percent_in_a_name_is_not_a_wildcard),
+        ("paging never shows or skips a person",         t_paging_never_shows_or_skips_a_person),
+        ("a list cannot be read by id alone",            t_a_subscriber_list_cannot_be_read_by_id_alone),
     ]:
         check(name, fn)
     print(f"\n{passed} passed, {failed} failed")

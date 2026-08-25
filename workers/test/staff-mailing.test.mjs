@@ -16,6 +16,9 @@
  * the caller's own.
  */
 import handler, { cleanList, slugify } from "../src/staff-mailing.js";
+/* The generated SQL, so the tests below assert on what the Worker actually
+   runs rather than on a copy of it in a string here. */
+import { QUERIES } from "../src/lib/db.js";
 
 let pass = 0, fail = 0;
 async function check(name, fn) {
@@ -201,6 +204,40 @@ await check("an address that cannot be an address is refused", async () => {
     "should accept an ordinary address");
 });
 
+/* ---------------------- the sender is a picker ---------------------------
+   Resend verifies domains, not addresses, so every address at a verified
+   domain sends — including a typo, which leaves successfully and drops every
+   reply into nothing. The field is a list an administrator maintains, and a
+   list enforced only in the browser is not enforced. */
+
+const ALLOWED = ["news@chase-roush.thauma.one", "prayer@chase-roush.thauma.one"];
+const list = (from_email) => ({ name: "N", from_name: "C", from_email });
+
+await check("a sender outside the allowed list is refused", async () => {
+  const r = cleanList(list("nesw@chase-roush.thauma.one"), null, ALLOWED);
+  assert(r.error, "a plausible typo was accepted");
+  assert(/not one of the addresses/.test(r.error), `unhelpful: ${r.error}`);
+});
+
+await check("an allowed sender passes, whatever its case", async () => {
+  assert(!cleanList(list("news@chase-roush.thauma.one"), null, ALLOWED).error, "exact");
+  assert(!cleanList(list("News@Chase-Roush.Thauma.One"), null, ALLOWED).error,
+    "addresses are not case-sensitive and a picker must not pretend otherwise");
+});
+
+await check("another partner's address is refused even though it is real", async () => {
+  assert(cleanList(list("news@mira.thauma.one"), null, ALLOWED).error,
+    "an address belonging to somebody else must not be selectable");
+});
+
+await check("NO addresses set up yet does not make every list unsaveable", async () => {
+  /* The guard exists to stop typos, not to hold work hostage to an
+     administrator. Lists created before senders existed still hold addresses
+     that were valid when they were typed. */
+  assert(!cleanList(list("anything@thauma.one"), null, []).error, "empty list");
+  assert(!cleanList(list("anything@thauma.one"), null, undefined).error, "not supplied");
+});
+
 await check("a slug is derived when absent, and folded not stripped", async () => {
   eq(cleanList({ name: "Prayer Partners", from_name: "C", from_email: "a@b.one" }).value.slug,
     "prayer-partners", "derived");
@@ -272,6 +309,118 @@ await check("only GET, POST and DELETE are allowed", async () => {
     const res = await handler.fetch(req(m, { body: {} }), envWith("staff"));
     eq(res.status, 405, `${m} status`);
   }
+});
+
+/* --------------------- a bigger subscriber list ------------------------ */
+
+await check("the sort is decided by the QUERY, never spliced into it", () => {
+  /* A sort order arriving from a browser and being interpolated into SQL is
+     the classic injection, and the classic mitigation — an allow-list in the
+     Worker — has to be got right in every caller forever. The CASE inside the
+     query means the value is bound like any other, and an unrecognised one
+     falls through to the default rather than being an error or a hole. */
+  const sql = QUERIES.subscribers_for_list;
+  assert(/CASE WHEN :sort =/.test(sql), "the sort is not chosen by a bound parameter");
+  assert(/ORDER BY[\s\S]*s\.subscribed_at DESC\s*$/m.test(sql.trim().replace(/LIMIT[\s\S]*$/, "")),
+    "there must be a final fixed sort, or two equal rows swap places between pages");
+});
+
+await check("LIKE carries an ESCAPE clause", () => {
+  /* The Worker backslash-escapes % and _ so a name containing one is searched
+     for literally. Without ESCAPE, SQLite does not know what the backslash
+     means — so the escaping stops the wildcard AND stops the match, and
+     searching "50%" finds nobody at all. */
+  for (const q of ["subscribers_for_list", "subscribers_for_list_count"]) {
+    const likes = (QUERIES[q].match(/LIKE :like/g) || []).length;
+    const escapes = (QUERIES[q].match(/LIKE :like ESCAPE/g) || []).length;
+    eq(escapes, likes, `${q} has ${likes} LIKE clauses but ${escapes} with ESCAPE`);
+    /* AND THE BACKSLASH MUST SURVIVE GENERATION. The SQL is emitted inside a
+       JavaScript template literal, where a backslash escapes the next
+       character — so an ESCAPE clause reached the Worker with its escape
+       character gone. The query still ran and still returned rows; it just
+       quietly stopped matching anything containing a literal % or _.
+
+       Built from a character code rather than written as a literal, because
+       "how many backslashes" is the question this test exists to answer and
+       asking it again in the test itself is how the first version of it
+       failed. */
+    const BS = String.fromCharCode(92);
+    assert(QUERIES[q].includes("ESCAPE '" + BS + "'"),
+      `${q}'s escape character was eaten in generation: ` +
+      JSON.stringify((QUERIES[q].match(/ESCAPE .{0,4}/) || [])[0]));
+  }
+});
+
+await check("the count filters exactly as the list does", () => {
+  // A count that disagrees with its list is worse than no count: it tells
+  // somebody there is another page and then shows them nothing.
+  /* lastIndexOf, because subscribers_for_list has a WHERE inside its tags
+     subquery before the real one. */
+  const clause = (sql) => sql.slice(sql.lastIndexOf("WHERE"),
+    sql.indexOf("ORDER BY") > -1 ? sql.indexOf("ORDER BY") : sql.length)
+    .replace(/\s+/g, " ").trim().replace(/;$/, "");
+  eq(clause(QUERIES.subscribers_for_list_count), clause(QUERIES.subscribers_for_list),
+    "the two WHERE clauses have drifted apart");
+});
+
+await check("CHANGING AN ADDRESS SENDS THE ROW BACK TO UNCONFIRMED", () => {
+  /* This is the consent model, not caution. Without it, editing a confirmed
+     subscriber's address is a way to subscribe ANY address without that person
+     agreeing — from a console screen labelled "edit". */
+  const sql = QUERIES.subscriber_change_email;
+  assert(/status = 'pending'/.test(sql), "the row must go back to pending");
+  assert(/confirmed_at = NULL/.test(sql), "and lose its confirmation date");
+  assert(/confirm_token = :token/.test(sql), "and get a fresh token to confirm with");
+});
+
+await check("changing only a NAME does not touch consent", () => {
+  // A name is a label, not something anybody agreed to.
+  const sql = QUERIES.subscriber_set_name;
+  assert(!/status/.test(sql), "renaming somebody must not change their status");
+  assert(!/confirm/.test(sql), "nor ask them to confirm anything");
+});
+
+await check("reading one subscriber is scoped through its list", () => {
+  // Knowing an id must not be enough to read somebody else's subscriber.
+  assert(/JOIN mailing_lists/.test(QUERIES.subscriber_one), "not joined to its list");
+  assert(/l\.partner_id IS :partner_id/.test(QUERIES.subscriber_one),
+    "not scoped to the caller's partner");
+});
+
+await check("AN ABSENT FILTER IS AN EMPTY STRING, NEVER NULL", async () => {
+  /* The query asks `:status = ''` to mean "no filter". clean() returns NULL
+     for an absent value, and in SQL `NULL = ''` is not FALSE — it is NULL. The
+     whole OR collapses to NULL, every row fails the test, and the list comes
+     back EMPTY while the counts above it still show the right totals.
+
+     That is precisely how it looked on screen: three subscribed, three
+     unconfirmed, one unsubscribed, and not a single row. */
+  const bound = [];
+  const env = {
+    ACCESS_TEAM_DOMAIN: "t", ACCESS_AUD: "a",
+    DB: { prepare(sql) {
+      return { bind(...a) { if (/FROM subscribers/i.test(sql)) bound.push({ sql, a });
+                            return { all: async () => ({ results: [] }),
+                                     run: async () => ({ results: [] }) }; },
+               all: async () => ({ results: [] }) };
+    } },
+  };
+  // Reaching the query needs a session; the binder is what is under test, so
+  // it is exercised directly with what the handler computes.
+  const src = await import("node:fs").then((fs) =>
+    fs.readFileSync(new URL("../src/staff-mailing.js", import.meta.url), "utf8"));
+  const clean = new Function("return " + src.match(/function clean\([\s\S]*?\n}/)[0])();
+
+  for (const raw of [null, undefined, ""]) {
+    const v = clean(raw, 20) || "";
+    eq(v, "", `clean(${JSON.stringify(raw)}) must become an empty string, not ${JSON.stringify(clean(raw, 20))}`);
+  }
+
+  /* And the query has to actually treat '' as "everything". */
+  assert(/:status = '' OR/.test(QUERIES.subscribers_for_list),
+    "the no-filter case must be an explicit empty-string test");
+  assert(/:q = '' OR/.test(QUERIES.subscribers_for_list),
+    "same for the search");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

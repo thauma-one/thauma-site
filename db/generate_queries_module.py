@@ -29,6 +29,12 @@ def parse(text):
         if m:
             if name:
                 out[name] = "\n".join(buf).strip()
+            # A REPEATED NAME IS A MISTAKE, NOT A REDEFINITION. Writing one that
+            # already existed silently replaced it, and two callers then got
+            # different columns from what they believed was one query. Nothing
+            # failed — one of them just stopped returning a field it needed.
+            if m.group(1) in out:
+                sys.exit(f"db/queries.sql defines {m.group(1)!r} twice")
             name, buf = m.group(1), []
             continue
         if name is not None:
@@ -49,8 +55,33 @@ def main():
 
     digest = hashlib.sha256(text.encode()).hexdigest()[:16]
 
+    def as_template(sql: str) -> str:
+        """Make SQL safe inside a JavaScript template literal.
+
+        THE SQL IS EMITTED BETWEEN BACKTICKS, which means three characters have
+        a meaning there that they do not have in SQL:
+
+          \\   escapes the next character, so `ESCAPE '\\'` — a perfectly ordinary
+               LIKE escape clause — arrived at the Worker as `ESCAPE ''`. The
+               query still ran, still returned rows, and silently stopped
+               matching anything containing a literal % or _.
+
+          `    ends the literal outright.
+
+          ${   starts an interpolation, and would either throw at load time or
+               splice a variable into a query, which is the worst of the three.
+
+        None had ever appeared in this file, so the omission cost nothing until
+        it did. Escaped rather than forbidden: a query has every right to
+        contain a backslash.
+        """
+        return (sql.replace("\\", "\\\\")
+                   .replace("`", "\\`")
+                   .replace("${", "\\${"))
+
     body = ",\n".join(
-        f"  {name.replace('-', '_')}: `{sql}`" for name, sql in sorted(queries.items())
+        f"  {name.replace('-', '_')}: `{as_template(sql)}`"
+        for name, sql in sorted(queries.items())
     )
 
     OUT.parent.mkdir(parents=True, exist_ok=True)

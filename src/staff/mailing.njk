@@ -47,6 +47,8 @@ staffHint: your lists and the people on them — nobody else's
           data-i18n="ml.tabEmbed">Sign-up forms</button>
   <button type="button" class="ml-tab ml-tab-tool" role="tab" data-view="composer"
           data-i18n="ml.tabComposer">Composer</button>
+  <button type="button" class="ml-tab ml-tab-tool" role="tab" data-view="contact"
+          data-i18n="ml.tabContact">Contact form</button>
 </div>
 
 
@@ -77,7 +79,45 @@ staffHint: your lists and the people on them — nobody else's
     </form>
 
     <div class="ml-counts" id="mlCounts"></div>
-    <div class="ms-list" id="mlSubscribers"></div>
+
+    {#- FINDING SOMEBODY, rather than scrolling for them. At a hundred people
+       the old card list was fine; at a thousand it is a filing cabinet with no
+       drawers. Search, a status filter and a sort — the three questions
+       actually asked of a subscriber list. -#}
+    <div class="subs-bar">
+      <input type="search" id="subsQ" class="subs-q"
+             data-i18n-attr="placeholder:ml.subsSearch"
+             placeholder="Search a name or address">
+      <select id="subsStatus" aria-label="Status">
+        <option value="" data-i18n="ml.subsAll">Everyone</option>
+        <option value="subscribed" data-i18n="ml.status.subscribed">Subscribed</option>
+        <option value="pending" data-i18n="ml.status.pending">Unconfirmed</option>
+        <option value="unsubscribed" data-i18n="ml.status.unsubscribed">Unsubscribed</option>
+        <option value="bounced" data-i18n="ml.status.bounced">Bounced</option>
+      </select>
+      <select id="subsSort" aria-label="Sort">
+        <option value="" data-i18n="ml.sortNewest">Newest first</option>
+        <option value="oldest" data-i18n="ml.sortOldest">Oldest first</option>
+        <option value="name" data-i18n="ml.sortName">By name</option>
+        <option value="email" data-i18n="ml.sortEmail">By address</option>
+        <option value="status" data-i18n="ml.sortStatus">By status</option>
+      </select>
+      <span class="subs-range" id="subsRange"></span>
+    </div>
+
+    {#- A TABLE, not cards. A card per person is readable at ten and unusable
+       at three hundred — the eye cannot compare down a column that keeps
+       moving. Rows are one line each, so a screen holds about twenty-five
+       instead of six. -#}
+    <div class="subs-wrap">
+      <table class="subs" id="mlSubscribers"></table>
+    </div>
+
+    <div class="subs-pager" id="subsPager" hidden>
+      <button type="button" class="ghost-btn" id="subsPrev" data-i18n="ml.prev">Previous</button>
+      <span class="subs-page" id="subsPageLabel"></span>
+      <button type="button" class="ghost-btn" id="subsNext" data-i18n="ml.next">Next</button>
+    </div>
   </div>
 
   <!-- ---------- settings ---------- -->
@@ -101,18 +141,33 @@ staffHint: your lists and the people on them — nobody else's
           <input type="text" id="mlFromName" maxlength="80" required>
           <span class="fld-hint" data-i18n="ml.fromNameHint">Who the email appears to be from.</span>
         </label>
-        {#- TYPED, NEVER DERIVED. It has to be an address that really exists and
-           is verified with the mail provider, and guessing one from the list's
-           name would produce a plausible address that silently fails to send. -#}
+        {#- CHOSEN, NEVER TYPED. This was a text box, and that is unsafe in a
+           way that stays invisible until it matters: the mail provider
+           verifies DOMAINS, not addresses, so every address at a verified
+           domain sends — including one with a typo in it. It leaves
+           successfully, reads as correct in the log, and drops every reply
+           into nothing. Nobody finds out until somebody says "I wrote back and
+           never heard". A chosen address cannot be mistyped.
+
+           The options are maintained by an administrator on the Partners
+           screen, because adding one carries obligations OUTSIDE this system:
+           the domain has to be verified with the provider, and anything
+           expected to receive has to exist as a mailbox. -#}
         <label class="fld"><span data-i18n="ml.fromEmail">From address</span>
-          <input type="email" id="mlFromEmail" maxlength="200" required
-                 placeholder="newsletter.yourname@thauma.one">
-          <span class="fld-hint" data-i18n="ml.fromEmailHint">A real address, set up with the
-            mail provider first. Nothing sends from an address that is not verified.</span>
+          <select id="mlFromEmail" required></select>
+          <span class="fld-hint" data-i18n="ml.fromEmailHintPick">Set up by an administrator,
+            because a mistyped sender sends successfully and loses every reply.</span>
         </label>
+        {#- STILL TYPED, deliberately. Replies can go anywhere somebody reads —
+           a personal address, a shared inbox, a team alias — and none of those
+           need to be a sending address, so restricting this to the list above
+           would forbid the ordinary case. -#}
         <label class="fld"><span data-i18n="ml.replyTo">Reply-to</span>
-          <input type="email" id="mlReplyTo" maxlength="200">
-          <span class="fld-hint" data-i18n="ml.replyToHint">Optional. Where replies go.</span>
+          <input type="email" id="mlReplyTo" maxlength="200"
+                 placeholder="you@example.org">
+          <span class="fld-hint" data-i18n="ml.replyToHintFull">Optional. Where replies go —
+            leave it empty and they go to the sender above. It has to be an address somebody
+            actually reads.</span>
         </label>
       </div>
 
@@ -149,13 +204,300 @@ staffHint: your lists and the people on them — nobody else's
 </section>
 
 <!-- ============================================================ COMPOSER -->
+{#- WRITING ON THE LEFT, WHAT ARRIVES ON THE RIGHT.
+
+   The preview is a frame running the real renderer, not an impression of one.
+   Email is the medium where what you wrote and what people see diverge most —
+   Gmail deletes stylesheets, Outlook renders through Word — so a preview built
+   from the editor's own DOM would show a version of the message that exists
+   nowhere.
+
+   The toolbar is deliberately short. Every button here is a tag that survives
+   in every mail client; the ones missing are missing because they do not.
+   Text colour, font family and font size are absent for that reason — they
+   render three different ways and the third is unreadable. -#}
 <section class="ml-view" id="mlComposerView" hidden>
-  <div class="ml-soon">
-    <h3 data-i18n="ml.composerSoon">Not built yet</h3>
-    <p data-i18n="ml.composerSoonBody">Writing and sending is the next piece. It will live
-      here: formatting, images, a look that matches the ministry sending it, a test send to
-      yourself, and an archive of everything sent with a link for the footer.</p>
-    <p class="hint" data-i18n="ml.composerSoonWhy">Listed now rather than hidden, so the
-      shape of this page is the shape it will keep.</p>
+
+  {#- NO "To" FIELD, AND THAT IS THE DESIGN.
+
+     A composer with To / Cc / Bcc is a personal mail client. This one sends to
+     a LIST: every confirmed subscriber gets their own separate message with
+     their own unsubscribe link and List-Unsubscribe header. One message to
+     many could only carry one unsubscribe link — removing whoever pressed it
+     from somebody else's row, or nobody's — a typed address would bypass the
+     double opt-in the whole system rests on, and bulk Bcc is a well-known spam
+     signal that would damage the sending domain for every list on it.
+
+     So the recipient row is a picker, and the count beside it is real. -#}
+  <div class="cp-bar">
+    <label class="cp-pick"><span data-i18n="ml.cpWriting">Sending to</span>
+      <select id="cpList"></select>
+    </label>
+    <span class="cp-count" id="cpCount"></span>
+
+    <label class="cp-pick cp-pick-draft"><span data-i18n="ml.cpDraftLabel">Draft</span>
+      <select id="cpDraft" aria-label="Draft"></select>
+    </label>
+    <button type="button" class="ghost-btn" id="cpNew" data-i18n="ml.cpNew">New</button>
+    {#- THE ONE THING WORTH KEEPING from the preview panel. Gmail cuts a
+       message off at about 102KB and shows "Message clipped" — and because the
+       cut can land mid-tag, everything after it can fail to render. Learning
+       that at the moment of sending would be learning it too late. -#}
+    <span class="cp-size" id="cpSize"></span>
+    <span class="cp-state" id="cpState"></span>
+  </div>
+
+  <p class="empty" id="cpNoLists" hidden data-i18n="ml.empty">No mailing lists yet.</p>
+
+  {#- ONE COLUMN. There was a live preview beside this, showing the real
+     rendered email in a frame. It is gone, and its own warning label is the
+     reason: a browser is not a mail client, so the preview could only ever be
+     a layout check — while the test send shows the actual thing in the actual
+     inbox. Two answers to one question, one of which could mislead, and the
+     honest one already existed.
+
+     What it took with it was the excuse for a white card. The writing surface
+     now uses the console's own colours, because it is part of the console. -#}
+  <div class="cp-split" id="cpSplit" hidden>
+    <div class="cp-write">
+      <div class="cp-card">
+        <div class="cp-fields">
+          <label class="cp-field">
+            <span data-i18n="ml.cpSubject">Subject</span>
+            <input type="text" id="cpSubject" maxlength="200"
+                   data-i18n-attr="placeholder:ml.cpSubjectHint"
+                   placeholder="What this update is about">
+          </label>
+          {#- The line an inbox shows beside the subject. Left empty, mail
+             clients scrape the first words of the body — which is why so much
+             mail previews as "View this in your browser". -#}
+          <label class="cp-field">
+            <span data-i18n="ml.cpPreheader">Preview line</span>
+            <input type="text" id="cpPreheader" maxlength="160"
+                   data-i18n-attr="placeholder:ml.cpPreheaderHint2"
+                   placeholder="The line shown next to the subject in an inbox">
+          </label>
+        </div>
+
+        {#- EVERY BUTTON HERE IS REAL and shows whether it is currently on.
+           `aria-pressed` is maintained from the editor's own state on both
+           content changes AND cursor movement — clicking into bold text with
+           no typing lights the Bold button. That is the acceptance test for
+           this toolbar, and the bug that sank the two editors before it.
+
+           Constrained to what email actually renders. No font family, no
+           arbitrary colour, no columns: offering a control the output cannot
+           honour is worse than not offering it. -#}
+        <div class="cp-tools" role="toolbar" aria-label="Formatting">
+          <button type="button" data-tool="bold" aria-pressed="false" title="Bold"><b>B</b></button>
+          <button type="button" data-tool="italic" aria-pressed="false" title="Italic"><i>I</i></button>
+          <button type="button" data-tool="underline" aria-pressed="false" title="Underline"><u>U</u></button>
+          <button type="button" data-tool="strike" aria-pressed="false" title="Strikethrough"><s>S</s></button>
+
+          <span class="cp-tools-sep"></span>
+          <button type="button" data-tool="larger" aria-pressed="false" title="Larger">A&#8593;</button>
+          <button type="button" data-tool="smaller" aria-pressed="false" title="Smaller">A&#8595;</button>
+          {#- The ministry's own accent, stored as intent rather than as a
+             colour value — so it stays right after a rebrand, and a draft
+             copied between ministries is not wearing the wrong one. -#}
+          <button type="button" data-tool="accent" aria-pressed="false"
+                  title="Brand colour" class="cp-swatch"><span></span></button>
+
+          <span class="cp-tools-sep"></span>
+          <button type="button" data-tool="h2" aria-pressed="false" title="Heading">H1</button>
+          <button type="button" data-tool="h3" aria-pressed="false" title="Sub-heading">H2</button>
+          <button type="button" data-tool="bullet" aria-pressed="false" title="Bullets">&bull;</button>
+          <button type="button" data-tool="ordered" aria-pressed="false" title="Numbers">1.</button>
+          <button type="button" data-tool="quote" aria-pressed="false" title="Quote">&rdquo;</button>
+
+          <span class="cp-tools-sep"></span>
+          <button type="button" data-cmd="link" aria-pressed="false" title="Link">&#128279;</button>
+          <button type="button" data-cmd="image" title="Picture in the message">&#128247;</button>
+          <button type="button" data-tool="rule" title="Divider">&mdash;</button>
+        </div>
+
+        <div id="cpBody" class="cp-body"></div>
+      </div>
+
+      {#- A DIFFERENT MECHANISM FROM AN INLINE PICTURE, and conflating the two
+         is the usual mistake. A picture is fetched by the reader's mail client
+         from a URL in the body. An attachment travels WITH the message, never
+         appears in the HTML, and is handed to the mail provider separately —
+         so it costs its full weight in every copy sent. Shown only when there
+         is something to show. -#}
+      <div class="cp-files" id="cpFiles" hidden>
+        <span class="adm-label" data-i18n="ml.cpAttached">Attached files</span>
+        <ul id="cpFileList"></ul>
+      </div>
+
+      <div class="cp-actions">
+        <button type="button" class="solid-btn cp-send" id="cpSend" data-i18n="ml.cpSend">Send</button>
+        <button type="button" class="ghost-btn" id="cpSave" data-i18n="ml.cpSave">Save draft</button>
+        <button type="button" class="ghost-btn" id="cpTest" data-i18n="ml.cpTest">Send me a test</button>
+        <span class="cp-actions-gap"></span>
+        <button type="button" class="cp-icon" id="cpAttach"
+                data-i18n-attr="title:ml.cpAttach" title="Attach a file">&#128206;</button>
+        <button type="button" class="cp-icon cp-icon-del" id="cpDelete"
+                data-i18n-attr="title:ml.cpDelete" title="Delete draft">&#128465;</button>
+      </div>
+    </div>
+
+  </div>
+
+  {#- Read-only on purpose: a sent mailing is a record, and editing one would
+     rewrite what people were told they received. -#}
+  <div class="cp-sent" id="cpSent" hidden>
+    <span class="adm-label" data-i18n="ml.cpHistory">Already sent</span>
+    <div id="cpSentList"></div>
+  </div>
+</section>
+
+<!-- ======================================================== CONTACT FORM -->
+{#- BESIDE THE SIGN-UP FORM, not on a page of its own. They are the same kind
+   of thing — a form on somebody else's website that reaches this ministry —
+   and they share a look, a honeypot, a rate limit and a sending address. Two
+   screens would have meant discovering that twice.
+
+   ONE PER MINISTRY. Not several: there is one place people write to you, and a
+   screen for managing forms nobody has more than one of is a screen that
+   explains itself badly. -#}
+<section class="ml-view" id="mlContactView" hidden>
+
+  <p class="note ms-note" data-i18n-html="ml.ctNote"><b>Messages are emailed to
+  you and stored nowhere.</b> Not a limitation — a contact form is the easiest
+  way to end up holding people's personal messages without meaning to, and your
+  mailbox is a better place for them than a database. Nothing here keeps a copy.</p>
+
+  {#- THE VISUALISER, ABOVE THE SETTINGS, matching the roadmap and goal embeds
+     on the Ministry page. Same position, same classes, same Desktop/Mobile
+     control — a third layout for the same idea would be a third thing to
+     learn.
+
+     It sits above rather than beside because of the narrow view: 380px in a
+     half-width column is not a phone, it is a squeeze. Full width above gives
+     the frame room to actually be 380px with the page around it.
+
+     And here a browser preview is HONEST, unlike the email composer's — which
+     was removed for exactly that reason. This form ends up on a web page, so a
+     browser is what will draw it.
+
+     Sandboxed to scripts only: no same-origin, so the preview cannot reach
+     this console's session even though it loads code from our own domain. -#}
+  <div class="emb-stagebar">
+    <p class="emb-lede" data-i18n="ml.ctLede">Exactly what somebody sees when
+      this is on their website.</p>
+    <div class="emb-devices" role="tablist" aria-label="Width">
+      <button type="button" class="emb-device is-on" role="tab" aria-selected="true"
+              data-ct-width="wide" data-i18n="emb.desktop">Desktop</button>
+      <button type="button" class="emb-device" role="tab" aria-selected="false"
+              data-ct-width="narrow" data-i18n="emb.mobile">Mobile</button>
+    </div>
+    <span class="emb-scale-note" data-ct="scaleNote"></span>
+  </div>
+
+  {#- THE FRAME IS SCALED DOWN, and the wrapper is what does it. The form is
+     genuinely 700-odd pixels tall — that is not a fault, it is a form with six
+     fields — so at 1:1 the console had to be scrolled to see the end of a
+     preview, which defeats the point of having one.
+
+     The percentage is shown beside it rather than left implicit, so nobody
+     reads the smaller type as the type a visitor gets. -#}
+  <div class="emb-stage ct-stage" data-ct="stage">
+    <div class="emb-scale" data-ct="scale">
+      <iframe data-ct="frame" title="Contact form preview" sandbox="allow-scripts"></iframe>
+    </div>
+  </div>
+
+  <p class="hint ct-colours" data-i18n="ml.ctColours">Colours come from the
+    ministry's palette, set once on the Sign-up forms tab and shared by every
+    widget — this form, the goals, the roadmap.</p>
+
+  <form id="mlContactForm" class="ct-form">
+    <div class="ms-grid">
+      <label class="fld"><span data-i18n="ml.ctTo">Send messages to</span>
+        <input type="email" id="ctTo" maxlength="200" required
+               placeholder="you@example.org">
+        <span class="fld-hint" data-i18n="ml.ctToHint">A mailbox you actually read.
+          Usually your own address, not one of the sending addresses below.</span>
+      </label>
+
+      {#- CHOSEN, NEVER TYPED, for the same reason the newsletter's sender is:
+         the mail provider verifies DOMAINS, so an address with a typo in it
+         sends successfully and drops every reply into nothing. -#}
+      <label class="fld"><span data-i18n="ml.ctFrom">Sent from</span>
+        <select id="ctFrom" required></select>
+        <span class="fld-hint" data-i18n="ml.ctFromHint">Whose address the message
+          appears to come from. The visitor's own address goes in Reply-to, so
+          pressing reply reaches them.</span>
+      </label>
+    </div>
+
+    <div class="ms-grid">
+      <label class="fld"><span data-i18n="ml.ctHeading">Heading</span>
+        <input type="text" id="ctHeading" maxlength="120" placeholder="Get in touch">
+      </label>
+      <label class="fld"><span data-i18n="ml.ctButton">Button</span>
+        <input type="text" id="ctButton" maxlength="40" placeholder="Send">
+      </label>
+    </div>
+
+    <label class="fld"><span data-i18n="ml.ctBlurb">Line under the heading</span>
+      <input type="text" id="ctBlurb" maxlength="240">
+    </label>
+
+    <label class="fld"><span data-i18n="ml.ctThanks">What they see after sending</span>
+      <input type="text" id="ctThanks" maxlength="240"
+             placeholder="Thank you — your message is on its way.">
+    </label>
+
+    {#- WHAT IS THIS ABOUT. The dropdown a visitor picks from before writing.
+       It does more work than its size suggests: somebody deciding whether to
+       write at all is helped by seeing that their kind of message is expected,
+       and the person reading knows what they are opening before they open it.
+
+       Each reason can go somewhere different. That is the whole point of
+       having them as rows rather than a list of words — prayer requests to
+       one inbox, partnership enquiries to another, everything else to the
+       address above. -#}
+    <div class="ct-topics">
+      <span class="adm-label" data-i18n="ml.ctTopics">What is this about</span>
+      <p class="hint" data-i18n="ml.ctTopicsHint">The reasons somebody can pick
+        from before writing. Leave it empty and the form has no dropdown at all.
+        A reason with its own address goes there instead of the one above —
+        useful for prayer requests.</p>
+      <div id="ctTopicList"></div>
+      <button type="button" class="ghost-btn" id="ctAddTopic"
+              data-i18n="ml.ctAddTopic">Add a reason</button>
+    </div>
+
+    <div class="ms-switches">
+      <button type="button" class="switch" id="ctOpen" role="switch" aria-checked="false">
+        <span class="switch-track"><span class="switch-state">Off</span><span class="switch-knob"></span></span>
+        <span class="switch-label"><span data-i18n="ml.ctOpen">Form is live</span>
+          <span class="switch-note" data-i18n="ml.ctOpenNote">Off means the form
+            disappears from every website it is on. Start off until you have sent
+            yourself a test.</span>
+        </span>
+      </button>
+    </div>
+
+    <div class="ms-actions">
+      <button type="submit" class="solid-btn" data-i18n="ml.ctSave">Save form</button>
+      <span class="hint" id="ctStatus"></span>
+    </div>
+  </form>
+
+  {#- ALWAYS VISIBLE, even before the form is switched on. It was hidden until
+     then, on the reasoning that handing somebody two lines for a form that is
+     off is handing them a blank space — which is true and was still the wrong
+     call: it made the embed code look like it did not exist. Shown, with the
+     reason it will not work yet said out loud instead. -#}
+  <div class="ct-embed">
+    <span class="adm-label" data-i18n="ml.ctCode">The code to paste</span>
+    <p class="hint" id="ctEmbedOff" hidden data-i18n="ml.ctCodeOff">This works the
+      moment you switch the form on above. Until then the two lines are harmless
+      and draw nothing.</p>
+    <textarea readonly rows="3" spellcheck="false" id="ctSnippet"></textarea>
+    <button type="button" class="ghost-btn" id="ctCopy" data-i18n="ml.copy">Copy</button>
   </div>
 </section>

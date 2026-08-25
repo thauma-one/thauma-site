@@ -113,7 +113,16 @@
 <script src="/js/staff-goals.js?v={{ "/js/staff-goals.js" | v }}"></script>
 <script src="/js/staff-prayer.js?v={{ "/js/staff-prayer.js" | v }}"></script>{% endif %}
 {% if staffPage == "mailing" %}<script src="/js/staff-rowpanel.js?v={{ "/js/staff-rowpanel.js" | v }}"></script>
-<script src="/js/staff-mailing.js?v={{ "/js/staff-mailing.js" | v }}"></script>{% endif %}
+<script src="/js/staff-mailing.js?v={{ "/js/staff-mailing.js" | v }}"></script>
+{#- AFTER staff-mailing.js: the composer reads window.StaffMailing for whose
+   lists the page is showing, and that is defined by the file above.
+
+   THE ONE BUNDLED SCRIPT in the console, because it carries TipTap. Built by
+   the Eleventy build itself (see .eleventy.js), so CI and the Pi's watcher
+   both produce it without being told. `defer` rather than `type="module"`:
+   esbuild emits an IIFE, and defer keeps it in the same execution order as
+   every plain script above it. -#}
+<script defer src="/js/composer.bundle.js?v={{ "/js/composer.bundle.js" | v }}"></script>{% endif %}
 {% if staffPage == "settings" %}<script src="/js/staff-settings.js?v={{ "/js/staff-settings.js" | v }}"></script>{% endif %}
 {#- The embed panel loads on the two pages that AUTHOR what it publishes —
    the roadmap under the milestone editor, the giving progress under the

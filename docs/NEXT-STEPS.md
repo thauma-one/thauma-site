@@ -18,6 +18,348 @@ update `.dev.vars` plus the two Cloudflare secrets.
 
 ---
 
+## Set up the mail domains in Resend  (2026-08-21 — do this before sending anything)
+
+The free tier allows **three domains**. Two are spent, one is held back
+deliberately: the moment a second partner is real they need one, and having it
+free means not choosing between them.
+
+| # | domain | carries |
+|---|---|---|
+| 1 | `chaseroush.thauma.one` | your newsletter, prayer list, confirmations |
+| 2 | `thauma.one` | org identity, contact forms, account invites — low volume |
+| 3 | *held* | the next partner |
+
+**Never send a newsletter from bare `thauma.one`.** Subdomains carry largely
+independent reputation, but receivers also read the organisational domain as a
+signal — so complaints at the parent bleed downward into every subdomain.
+Keeping `thauma.one` low-volume is what protects the rest of them.
+
+In order:
+
+1. **Resend → Domains → Add Domain**, twice: `chaseroush.thauma.one` and
+   `thauma.one`.
+2. For each, Resend shows DNS records — an **MX** and **TXT** for the return
+   path, a **DKIM** TXT, and an **SPF** TXT. Add every one in Cloudflare DNS,
+   **DNS-only (grey cloud), not proxied.** A proxied record breaks
+   verification. Then press Verify.
+3. Add a **DMARC** record on `thauma.one`, which Resend does not give you:
+
+   ```
+   Name:  _dmarc
+   Type:  TXT
+   Value: v=DMARC1; p=none; rua=mailto:dmarc@thauma.one; fo=1
+   ```
+
+   `p=none` reports without rejecting anything — start there. Subdomains
+   inherit this unless they publish their own, so one record covers all of
+   them. Create `dmarc@thauma.one` as a Workspace alias so the reports arrive;
+   they are how you find out if somebody is spoofing you.
+
+4. In the console: **Admin → Partners → Chase Roush**, type
+   `chaseroush.thauma.one` into **Sending domain**, Save, then press
+   **Add the standard four**. That creates `news@`, `prayer@`, `contact@` and
+   `connect@`.
+5. Create Workspace aliases for **`contact@`** and **`connect@`** only — the
+   two anybody is meant to write back to, plus whatever you put in a list's
+   Reply-to. **Sending needs no mailbox; receiving does.** `news@` and
+   `prayer@` never need one, because nothing is supposed to arrive there. A
+   reply to an address with no mailbox is lost in silence, which is the only
+   reason this step exists.
+6. **Staff → Mailing → each list → Settings**: pick the From address from the
+   dropdown. It is a list now, not a text box — see below for why.
+
+**Why the sender became a picker.** Resend verifies *domains*, not addresses.
+Once a domain is verified, **every** address at it sends — including one with a
+typo. `nesw@…` leaves successfully, reads as correct in the log, and drops
+every reply into nothing. Nobody finds out until somebody says "I wrote back
+and never heard". A chosen address cannot be mistyped.
+
+**Reply-to is still free text**, on purpose. Replies can go anywhere somebody
+reads — a personal address, a shared inbox, a team alias — and none of those
+need to be sending addresses. Leave it empty and replies go to the From
+address.
+
+**Renaming a sending domain moves everything at it.** Type the new domain,
+press Save, and the dialog names every address that moves and every mailing
+list that follows before anything happens. Deleting an address does the same:
+lists that SEND from it are archived (hidden and stopped — subscribers kept,
+reversible); lists that only REPLY to it carry on with their reply-to cleared.
+
+This replaced a version that refused all three operations, which sounded
+careful and was unusable: the only way to fix a mistyped domain was to delete
+addresses that could not be deleted while a list used them, and the lists could
+only be repointed at addresses that could not exist until the rename went
+through. A guard that only says no is an obstruction.
+
+**What SPF/DKIM/DMARC actually buy you.** They prove a message really came from
+you. They do not guarantee the inbox. Without them you are junked almost
+automatically; with them you are *eligible*, and after that it is complaint
+rate, bounce rate and whether people open things. Double opt-in matters more
+than any DNS record — a list of people who asked for it is the real
+deliverability strategy, and that is already how sign-up works.
+
+**One secret production needs before a newsletter can go out:**
+
+```
+npx wrangler secret put SIGNUP_SALT --env production
+```
+
+Any long random string — `openssl rand -hex 32` gives one. Unsubscribe links
+are signed with it, and the send **refuses** without it rather than posting a
+thousand emails whose only way out does not work. (It briefly fell back to
+`MAIL_FROM`, which lives in `wrangler.toml` in the repo — a signing key anybody
+can read is not one, so the fallback is gone.) A local one is already in
+`.dev.vars`; it is gitignored and does not travel.
+
+**Still to apply to production:** migrations `0015` through `0018`. None of the
+mailing work is on `main` yet.
+
+---
+
+## How the embeds size themselves
+
+**A Thauma embed is not an iframe.** The two lines you paste are a `<div>` and
+a `<script>`; the script draws the form directly into your page inside a shadow
+root. So:
+
+- **Width** — it takes whatever the container you put it in gives it, up to a
+  readable cap (about 480px for a form), and centres in anything wider. Put it
+  in a narrow sidebar and it is narrow; put it in a full-width section and it
+  centres.
+- **Height** — there is no fixed height. It is exactly as tall as its content,
+  and it grows as somebody types into the message box. **Nothing ever scrolls
+  inside it on a real page.**
+- **Narrow layout** — the widget measures its own *container*, not the window,
+  and tightens the type and padding below about 420px. A 380px sidebar on a
+  desktop monitor gets the compact layout too, which a CSS media query could
+  never do because it only knows the window's width.
+
+**The console's preview is the one place an iframe is involved**, for
+isolation — and an iframe does have a fixed height it cannot learn from its
+contents. That is why the preview used to scroll while a real page never
+would. The widget now measures itself and posts its height to the frame
+(`__thaumaHeight`, the same protocol the Ministry page's embeds use).
+
+**And the preview is scaled to fit its box**, capped at 480px tall, with the
+percentage shown beside the Desktop/Mobile toggle. A contact form is genuinely
+around 700px tall, so at 1:1 you had to scroll the console to see the end of
+its own preview — which defeats what a preview is for.
+
+The FRAME stays full size and the WRAPPER is what scales. That distinction is
+load-bearing: scaling the iframe would shrink the drawing surface with it, and
+the widget would then be answering a different question about how wide its
+container is. A 480px card in a 640px frame shown at 63% is honest; a card
+asked to draw itself at 448px is a different card.
+
+## The subscriber list  (2026-08-24)
+
+⚠ **A sticky table header must be opaque.** `thead th` had
+`background: rgba(255,255,255,.025)` — a tint, not a background — so rows
+scrolled straight through it and column labels sat legibly on top of people's
+names. It looked like a layout bug and was a transparency one, and because the
+rule is global it did this to **every table in the console**, including
+Stewardship. Now `var(--bg2)`, with an upward shadow that fills the strip left
+when the page's own bar wraps to two lines and is taller than `--header-h`.
+
+Built for hundreds rather than dozens.
+
+- **One line per person, in a real table.** A card each is readable at ten and
+  unusable at three hundred — the eye cannot compare down a column that keeps
+  moving. A screen now holds about twenty-five rows instead of six.
+- **Search** by name or address, **filter** by status, **sort** by newest,
+  oldest, name, address or status. Every control resets to page one, because
+  staying on page four of a search that now matches three people is a blank
+  screen with no explanation.
+- **Paging with a real total** — "Showing 101–200 of 340". The server always
+  paged at 100; there was simply no way to reach page two, and no way to know
+  there was one.
+- **Edit in place.** Click the pencil and the row becomes two fields.
+
+**Changing somebody's address sends them back to unconfirmed and emails a
+fresh confirmation.** That is the consent model, not caution: without it,
+"edit" is a way to subscribe any address in the world without its owner ever
+agreeing. It is also right for the innocent case — correcting a typo is a guess
+about a *different* mailbox, and that one has never said yes. Changing a name
+does none of this; a name is a label, not consent.
+
+⚠ **An absent filter must be `""`, never `NULL`.** The query asks
+`:status = ''` to mean "no filter", and `clean()` returns `NULL` for a missing
+parameter. In SQLite `NULL = ''` is not FALSE — it is NULL, so the whole `OR`
+collapses and every row fails the test. The list came back **completely empty
+while the counts above it stayed correct**, which is a hard symptom to read
+backwards. Guarded now in `db/test_schema.py`, which runs the real queries
+against real rows.
+
+**The sort is chosen by a `CASE` inside the query**, never spliced into it. A
+sort order arriving from a browser and being interpolated into SQL is the
+classic injection, and the classic mitigation — an allow-list in the Worker —
+has to be got right in every caller forever. Bound like any other value, an
+unrecognised sort simply falls through to newest-first.
+
+## Contact forms  (2026-08-22)
+
+> ⚠ **Dev seed data uses `.invalid` addresses only.** `db/seed.dev.contact.sql`
+> once delivered the organisation's form to `admin@thauma.one`, and a routine
+> `curl` against the local endpoint on 2026-08-22 put a test message into a
+> real inbox. Running the Worker locally does not stop it calling Resend for
+> real — the only reliable guard is a destination that cannot receive, and
+> `.invalid` is reserved by RFC 2606 so it never can.
+
+**Staff → Mailing → Contact form.** One per ministry, sitting beside the
+sign-up form because they are the same kind of thing: a form on somebody else's
+website that reaches you.
+
+Two lines to paste, same as the sign-up snippet:
+
+```html
+<div data-thauma-contact></div>
+<script src="https://thauma.one/embed/v1/<your-slug>/contact.js" defer></script>
+```
+
+- **Where messages go** is a mailbox you type. **What they come from** is
+  chosen from your verified sending addresses — the same picker as a
+  newsletter's sender, for the same reason: the mail provider verifies domains
+  rather than addresses, so a typo sends successfully and loses every reply.
+- **The visitor's address goes in Reply-to, never in From.** Sending as them
+  fails SPF and DKIM and lands the message in junk.
+- **Nothing is stored.** Messages are emailed and kept nowhere. That was the
+  original contact form's decision and it is the right one: a contact form is
+  the easiest way to end up holding people's personal messages without meaning
+  to, and under GDPR that is a record somebody is responsible for. Your mailbox
+  is the system of record.
+- **"What is this about" is a dropdown you define** — General, Prayer request,
+  Partnership, whatever fits. Empty means no dropdown at all. Modelled on
+  chaseroush.com's, which also has a free-text **Subject** underneath it, so
+  this does too: the reason tells you the category, the subject tells you
+  whether to open it now.
+- **A reason can route the message somewhere else.** Prayer requests to
+  `prayer@`, partnership enquiries to whoever handles support, everything else
+  to the form's own address. That is the difference between a form that sorts
+  itself and an inbox somebody sorts by hand every morning.
+- The reason and its address are **looked up on the server** from the id the
+  form posts. Trusting a submitted label would let anybody choose the words in
+  your subject line; trusting a submitted address would make this an open relay.
+- **Off by default.** Switching it off removes the form from every website it
+  is on, without anybody editing those pages. It refuses to go live without a
+  sending address, because a live form with nowhere to send from collects
+  messages and loses them.
+- **A visualiser above the settings**, with a **Desktop / Mobile** toggle —
+  the same position, the same classes and the same control as the roadmap and
+  goal embeds on the Ministry page. The sign-up form's preview moved up to
+  match, so all three embed screens now read the same way.
+
+  Narrow is a real constraint rather than a picture of one: the widget picks
+  its layout from the width it is given, so 380px produces exactly what a phone
+  would. That is also why the preview sits above rather than beside — 380px
+  inside a half-width column is not a phone, it is a squeeze.
+
+  Unlike the email composer's preview — removed because a browser is not a mail
+  client — this one is honest: a contact form ends up on a web page, so a
+  browser is exactly what will draw it. It follows the heading, blurb, button
+  and thank-you text as you type them.
+- **Colours are not set here.** They come from the ministry's palette on the
+  Sign-up forms tab and are shared by every widget, so there is one control
+  rather than two that disagree.
+- **Thauma's own form embeds too**, at `/embed/v1/thauma/contact.js`. `thauma`
+  is a reserved word rather than a partner row — Thauma is the thing partners
+  belong to, so a slug join could never find it, and a real row would need
+  excluding from every partner list and count in the system.
+- Honeypot, per-IP rate limit and a hashed IP, shared with the sign-up form's
+  counter so switching between the two does not reset the allowance.
+
+**Thauma's own contact page now reads the same configuration.** `CONTACT_TO`
+and `CONTACT_FROM` in `wrangler.toml` still work as a fallback, but the
+organisation has a row like everybody else — so changing where site messages go
+is no longer a deploy.
+
+**Both public forms share one stylesheet** (`workers/src/lib/embed-form.js`).
+They must look like the same ministry sent them, and two files that started
+identical do not stay that way.
+
+## The composer  (2026-08-21)
+
+**Staff → Mailing → Composer.** One column, in the console's own colours,
+running TipTap.
+
+**The toolbar tells the truth.** A button is lit when the cursor is inside that
+formatting, and it updates on cursor movement alone — click into bold text
+without typing and Bold lights up. That is `test/composer-toolbar.test.mjs`,
+which runs in `npm test` and both deploy workflows against the **built bundle**,
+so a build that stopped shipping the editor fails before it ships.
+
+Bold, italic, underline, strikethrough, two sizes, your brand colour, headings,
+lists, quotes, links, pictures, dividers. Nothing else — everything offered has
+to be something email actually renders.
+
+**There is no live preview, on purpose.** There was one, and its own warning
+label was the argument against it: a browser is not a mail client, so it could
+only ever check layout, while **Send me a test** shows the real message in a
+real inbox. Two answers to one question, and the misleading one was the one
+always on screen.
+
+What survived it is the **size readout** in the top bar, because nothing else
+warns: Gmail cuts a message off at about 102KB and shows "Message clipped", and
+because the cut can land mid-tag, everything after it can fail to render. It
+measures the full rendered email — shell, inline styles and Outlook block — not
+just what you typed.
+
+**No To field, and no Cc or Bcc.** This sends to a list, and every subscriber
+gets their own separate message with their own unsubscribe link. One message to
+many could carry only one such link; a typed address would bypass double
+opt-in; bulk Bcc is a spam signal that would damage the sending domain for
+every list on it.
+
+**Pictures and attachments are different things**, and the UI keeps them apart.
+A picture goes *in* the message and is fetched by the reader's mail client from
+a URL — cheap, any size, shrunk to 1200px and stored as JPEG because Outlook
+2016 cannot display WebP. An attachment travels *with* the message in every
+copy sent, so it is capped at 2MB, handed to Resend separately, and never
+touches the HTML.
+
+**Why it changed three times.** The first version ran on
+`document.execCommand`; the second on Markdown in a textarea. The first one's
+real failure was not its bugs but that nothing could see them — `execCommand`
+does not exist outside a real browser and the code caught the error, so every
+passing test proved a button called a function and never that pressing Bold
+made anything bold. The second was testable and reliable but felt like writing
+in syntax and reading the result somewhere else. TipTap is the version where
+both are true.
+
+**One build step**, and only one. `src/editor/` is bundled to
+`src/js/composer.bundle.js` by the Eleventy build itself, so CI and the Pi's
+watcher both produce it without being told. Every other script in the console
+is still a plain file. 125KB over the wire, on one screen, staff only.
+
+⚠ **The bundle's output path is excluded from watching, and it is only written
+when its bytes change.** Both guards matter: `src/js` is passthrough-copied and
+therefore watched, so writing the bundle there looked to the watcher like an
+edit — which started another build, which wrote it again, about once a second.
+On 2026-08-22 that took the dev site down completely, and from the outside it
+just looked like pages never finished loading. `test/composer-toolbar.test.mjs`
+asserts both guards are still in place.
+
+**Past updates** are at `/archive/<partner>/<list>/<slug>`, linked from the
+footer of every mailing. A list only appears there if **Archive publicly** is on
+in its Settings — newsletters are meant to be read, prayer updates name people
+and are not. That is a property of the list rather than a decision to remake
+every week.
+
+**The unsubscribe link** is at the bottom of every mailing and in the
+`List-Unsubscribe` header, which is what puts Gmail's and Outlook's one-click
+button beside your name. It needs no sign-in and asks no questions: somebody
+who cannot find the exit presses "report spam" instead, and that damages the
+sending domain for everybody else the ministry writes to.
+
+**One local gotcha, unrelated to mail:** the pinned wrangler (4.86.0) only
+supports compatibility dates up to 2026-05-03, and `wrangler.toml` asks for
+2026-08-04. So `npx wrangler dev --local` refuses to start until you add
+`--compatibility-date=2026-05-03`. Worth knowing, because starting the Worker
+is the *only* check that catches a Worker which fails to boot — the kind that
+502s every route at once. `node --check` and the unit tests cannot see it.
+
+---
+
 ## How it works now, in one picture
 
 ```

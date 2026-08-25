@@ -113,10 +113,30 @@ main{max-width:1240px;margin:0 auto;padding:32px var(--gutter) 80px;
 /* ---------- contacts table ---------- */
 .tw{overflow-x:auto;border:1px solid var(--line)}
 table{border-collapse:collapse;width:100%;min-width:760px;font-size:var(--fs-sm)}
+/* ⚠ top:0, NOT top:var(--header-h). THIS IS THE ONE THAT MATTERED.
+   The offset was the page header's height, on the reasonable-sounding theory
+   that the column labels should park just below the page's own bar. They
+   never did. Both tables live inside a wrapper with `overflow-x:auto`, and
+   when one overflow axis is not `visible` the other computes to `auto` — so
+   that wrapper is a SCROLL CONTAINER on both axes.
+
+   `position:sticky` resolves against the nearest scrolling ancestor, which is
+   that wrapper rather than the page. So the header parked 62px down from the
+   top of the TABLE — permanently, at any scroll position — sitting squarely on
+   top of the first row. That is what "the header overlaps the first name" was,
+   on every table in the console.
+
+   At 0 it sits where a table header belongs, and still sticks if the wrapper
+   is ever given a height and scrolls.
+
+   AND IT MUST BE OPAQUE. This was `rgba(255,255,255,.025)` — a tint, not a
+   background — so whatever it covered stayed legible underneath. That made a
+   positioning bug look like a rendering one. var(--bg2) is what the tint was
+   approximating over the page ground, so nothing else changes. */
 thead th{text-align:left;padding:11px 16px;font-size:10px;letter-spacing:var(--ls-label);
   text-transform:uppercase;font-weight:var(--w-bold);color:var(--dim);
-  background:rgba(255,255,255,.025);border-bottom:1px solid var(--line);
-  position:sticky;top:var(--header-h);z-index:5}
+  background:var(--bg2);border-bottom:1px solid var(--line);
+  position:sticky;top:0;z-index:5}
 tbody td{padding:13px 16px;border-bottom:1px solid var(--line-soft);vertical-align:middle}
 tbody tr:last-child td{border-bottom:0}
 tbody tr{cursor:pointer;transition:background var(--dur-3) var(--ease-main)}
@@ -1148,23 +1168,33 @@ body.has-savebar .acting-mark{bottom:calc(var(--ms-savebar-h,72px) + 12px)}
 .ml-people .status-pick{font-size:12px;padding:5px 8px}
 @media (max-width:560px){ .ml-add .solid-btn{width:100%} }
 
-/* The sign-up form's configuration, and what it will look like. The preview is
-   deliberately inert — disabled inputs, no submit — so nobody mistakes it for
-   the real form and wonders why subscribing here does nothing. */
+/* The sign-up form's configuration, and what it will look like.
+
+   THE PREVIEW IS THE REAL WIDGET, in a frame, drawn by the same form.js a
+   visitor's browser fetches. It was hand-built markup imitating the form,
+   which is fine until the two disagree — and they did, the moment the real one
+   became a bordered card in the ministry's accent while the imitation stayed a
+   stack of grey inputs. A picture of a form nobody would ever see is worse
+   than no picture.
+
+   The frame is NOT given a background: the widget paints its own, and the
+   checkerboard behind it is how you see that it does. */
 .ml-form-config{margin:22px 0;padding:20px;border:1px solid var(--line);
   border-radius:var(--radius);background:var(--bg2,#0b1119)}
-.ml-preview{margin:16px 0;padding:18px;border:1px dashed var(--line);
-  border-radius:var(--radius);background:var(--panel)}
-.ml-preview-inner{max-width:24rem}
-.ml-preview h4{margin:0 0 .3rem;font-size:1.05rem}
-.ml-preview p{margin:0 0 .7rem;opacity:.75;font-size:.9rem}
-.ml-preview label{display:block;margin-bottom:.5rem}
-.ml-preview label span{display:block;font-size:.8rem;margin-bottom:.15rem;opacity:.8}
-.ml-preview input{width:100%;padding:.45rem;box-sizing:border-box;
-  background:var(--bg2,#0b1119);border:1px solid var(--line);
-  border-radius:4px;color:var(--dim,#8a93a3)}
-.ml-preview button{padding:.5rem 1rem;border-radius:4px;border:1px solid var(--line);
-  background:var(--line);color:var(--text);opacity:.7}
+.ml-preview{margin:16px 0;padding:10px;border:1px dashed var(--line);
+  border-radius:var(--radius);min-height:430px;
+  background:
+    linear-gradient(45deg,rgba(127,127,127,.07) 25%,transparent 25%,transparent 75%,rgba(127,127,127,.07) 75%),
+    linear-gradient(45deg,rgba(127,127,127,.07) 25%,transparent 25%,transparent 75%,rgba(127,127,127,.07) 75%);
+  background-size:18px 18px;background-position:0 0,9px 9px}
+.ml-preview iframe{display:block;width:100%;height:430px;border:0;
+  background:transparent;color-scheme:light dark}
+
+/* The colour controls, reusing the ministry page's .emb-* fields so the two
+   screens are visibly the same control rather than two takes on it. */
+.ml-colours{margin:14px 0 6px;padding-top:14px;border-top:1px solid var(--line)}
+.ml-colours .emb-controls{margin:10px 0 12px}
+.ml-colours .hint{display:block;margin-top:8px;line-height:1.45}
 #mlSnippet{width:100%;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
   font-size:11.5px;line-height:1.5;resize:vertical}
 
@@ -1228,6 +1258,9 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
   padding:18px 20px;margin-bottom:14px;background:var(--panel)}
 .ml-embed-card h4{margin:0 0 12px;font-size:1rem}
 .ml-embed-card.is-closed{opacity:.72}
+/* Kept for the shape of the block below the preview. The preview itself moved
+   above, full width, so the narrow view has room to actually be narrow. */
+.ml-embed-below{margin-top:22px}
 .ml-embed-split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);
   gap:20px;align-items:start}
 .ml-embed-code{display:flex;flex-direction:column;gap:8px;min-width:0}
@@ -1286,11 +1319,290 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
 .ml-wording input{width:100%;box-sizing:border-box;padding:.4rem .5rem}
 .ml-wording .ghost-btn{align-self:flex-start}
 
-/* The checkboxes, in the preview. Shown disabled because this is a picture of
-   the form, not the form. */
-.ml-preview-boxes > span{display:block;font-size:.8rem;margin:.2rem 0 .4rem;opacity:.85}
-.ml-preview-box{display:flex;align-items:flex-start;gap:.55rem;margin-bottom:.45rem}
-.ml-preview-box span{font-size:.9rem}
-.ml-preview-box em{display:block;font-style:normal;font-size:.8rem;opacity:.65}
 .ml-embed-switches{display:flex;flex-direction:column;gap:6px;margin-bottom:6px}
 .ml-embed-code .adm-label{margin-top:4px}
+
+/* ============================================================
+   THE COMPOSER
+   ============================================================
+   One column, in the console's own colours.
+
+   It briefly had a white writing card and a live preview beside it. The
+   preview is gone — its own warning label was the argument against it: a
+   browser is not a mail client, so it could only ever check layout, while the
+   test send shows the real message in a real inbox. And the white card existed
+   to make writing feel like the email you were previewing, so when the preview
+   went, the reason went with it. This is part of the console, and now it looks
+   like it.
+   ============================================================ */
+
+.cp-bar{display:flex;align-items:end;gap:14px;flex-wrap:wrap;margin-bottom:18px}
+.cp-pick{display:flex;flex-direction:column;gap:6px;font-size:var(--fs-tiny);
+  color:var(--voice-tech);text-transform:uppercase;letter-spacing:var(--ls-caps);
+  font-family:var(--font-display);font-weight:var(--w-bold)}
+.cp-bar select{min-width:170px}
+/* The real number, beside the picker rather than buried in a dialog. It is the
+   one fact that makes Send feel like what it is. */
+.cp-count{font-size:12px;color:var(--dim,#8a93a3);padding-bottom:9px;
+  font-variant-numeric:tabular-nums}
+.cp-state{font-size:11.5px;color:var(--dim,#8a93a3);padding-bottom:9px;
+  font-variant-numeric:tabular-nums;min-width:6em;text-align:right}
+/* Gmail cuts a message off at about 102KB and shows "Message clipped", so this
+   is the only warning there is. Pushed to the right of the bar, quiet until it
+   matters. */
+.cp-size{margin-left:auto;font-size:11px;color:var(--dim,#8a93a3);
+  padding-bottom:9px;font-variant-numeric:tabular-nums;cursor:help}
+.cp-size.is-over{color:var(--crit,#FF6B6B);font-weight:600}
+
+.cp-split{display:block}
+.cp-write{min-width:0;max-width:820px}
+
+/* ---- the card ---- */
+.cp-card{background:var(--panel);border:1px solid var(--line);
+  border-radius:var(--radius);overflow:hidden}
+
+.cp-fields{padding:4px 20px 0}
+.cp-field{display:flex;align-items:baseline;gap:12px;
+  border-bottom:1px solid var(--line);padding:12px 0}
+.cp-field>span{flex:0 0 92px;font-size:11px;font-weight:600;color:var(--dim,#8a93a3);
+  text-transform:uppercase;letter-spacing:.05em}
+.cp-field input{flex:1;min-width:0;border:0;background:none;padding:2px 0;
+  font:inherit;font-size:15px;color:var(--text)}
+.cp-field input:focus{outline:0}
+.cp-field input::placeholder{color:var(--dim,#8a93a3);opacity:.5}
+
+/* ---- the toolbar ----
+   Every button is real and shows whether it is on. `.is-on` comes from the
+   editor's own state on both content changes and cursor movement — clicking
+   into bold text with no typing lights the Bold button. */
+.cp-tools{display:flex;align-items:center;gap:2px;flex-wrap:wrap;
+  padding:8px 16px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+  background:var(--bg2,#0b1119)}
+.cp-tools button{min-width:30px;height:29px;padding:0 8px;background:none;border:0;
+  border-radius:6px;color:var(--dim,#8a93a3);font-size:13px;font-family:inherit;
+  cursor:pointer;transition:background .12s ease,color .12s ease}
+@media(hover:hover){ .cp-tools button:hover{background:var(--line);color:var(--text)} }
+.cp-tools button:active{transform:translateY(1px)}
+.cp-tools button.is-on{background:var(--voice-tech);color:#0b1119}
+.cp-tools button:focus-visible{outline:2px solid var(--voice-tech);outline-offset:1px}
+.cp-tools-sep{width:1px;height:17px;background:var(--line);margin:0 5px}
+.cp-swatch span{display:block;width:13px;height:13px;border-radius:50%;
+  background:var(--voice-tech);margin:0 auto;border:1px solid rgba(255,255,255,.15)}
+.cp-tools button.is-on .cp-swatch span,.cp-swatch.is-on span{background:#0b1119}
+
+/* ---- the writing surface ---- */
+.cp-body{min-height:400px;max-height:64vh;overflow-y:auto;padding:24px 28px;
+  color:var(--text);font-size:15.5px;line-height:1.7}
+.cp-body .ProseMirror{outline:0;min-height:352px}
+.cp-body .ProseMirror>*:first-child{margin-top:0}
+.cp-body p{margin:0 0 14px}
+.cp-body h2{font-family:Georgia,Cambria,'Times New Roman',serif;font-size:22px;
+  line-height:1.3;margin:24px 0 10px;color:var(--text)}
+.cp-body h3{font-family:Georgia,Cambria,'Times New Roman',serif;font-size:18px;
+  line-height:1.35;margin:20px 0 8px;color:var(--text)}
+.cp-body ul,.cp-body ol{margin:0 0 14px;padding-left:24px}
+.cp-body li{margin-bottom:5px}
+.cp-body li p{margin:0}
+.cp-body blockquote{margin:0 0 14px;padding-left:14px;
+  border-left:3px solid var(--voice-tech);color:var(--dim,#8a93a3)}
+.cp-body a{color:var(--voice-tech);text-decoration:underline}
+.cp-body img{max-width:100%;height:auto;border-radius:6px;margin:8px 0;display:block}
+.cp-body hr{border:0;border-top:1px solid var(--line);margin:22px 0}
+/* The two sizes and the brand colour, shown as they will render. `accent` is
+   the ministry's own, from the same token the widgets use. */
+.cp-body [data-sz="lg"]{font-size:19px}
+.cp-body [data-sz="sm"]{font-size:13.5px}
+.cp-body [data-c="accent"]{color:var(--voice-tech)}
+.cp-body .ProseMirror.is-editor-empty:first-child::before{content:attr(data-placeholder);
+  float:left;height:0;pointer-events:none;color:var(--dim,#8a93a3);opacity:.5}
+
+/* ---- attachments ----
+   A different mechanism from an inline picture, so a different place on the
+   screen. Hidden until there is something to show. */
+.cp-files{margin-top:14px;padding:12px 14px;border:1px solid var(--line);
+  border-radius:var(--radius);background:var(--bg2,#0b1119)}
+.cp-files ul{list-style:none;margin:8px 0 0;padding:0;display:flex;
+  flex-direction:column;gap:5px}
+.cp-file{display:flex;align-items:center;gap:12px;font-size:12.5px}
+.cp-file-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;color:var(--text)}
+.cp-file-size{color:var(--dim,#8a93a3);font-variant-numeric:tabular-nums;
+  white-space:nowrap;font-size:11px}
+.cp-file .del{background:none;border:0;color:var(--dim,#8a93a3);font-size:17px;
+  line-height:1;padding:0 4px;cursor:pointer;border-radius:5px}
+@media(hover:hover){ .cp-file .del:hover{color:var(--crit,#FF6B6B)} }
+
+/* ---- the bottom bar ---- */
+.cp-actions{display:flex;align-items:center;gap:10px;margin-top:16px;flex-wrap:wrap}
+.cp-actions-gap{flex:1}
+.cp-icon{width:34px;height:34px;background:none;border:1px solid var(--line);
+  border-radius:8px;color:var(--dim,#8a93a3);font-size:15px;cursor:pointer;
+  transition:.15s}
+@media(hover:hover){
+  .cp-icon:hover{border-color:var(--voice-tech);color:var(--text)}
+  .cp-icon-del:hover{border-color:var(--crit,#FF6B6B);color:var(--crit,#FF6B6B)}
+}
+
+.cp-sent{margin-top:34px;padding-top:22px;border-top:1px solid var(--line);
+  max-width:820px}
+.cp-sent-row{display:flex;justify-content:space-between;align-items:baseline;gap:16px;
+  padding:11px 14px;border:1px solid var(--line);border-radius:var(--radius);
+  margin-top:8px;background:var(--bg,rgba(0,0,0,.15))}
+.cp-sent-subject{font-size:14px;color:var(--text);min-width:0;overflow-wrap:anywhere}
+.cp-sent-meta{font-size:11px;color:var(--dim,#8a93a3);white-space:nowrap;
+  font-variant-numeric:tabular-nums}
+
+@media (max-width:560px){
+  .cp-field{flex-direction:column;align-items:stretch;gap:3px}
+  .cp-field>span{flex:none}
+  .cp-size{margin-left:0}
+}
+
+/* ---- the contact form's settings ----
+   Beside the sign-up form because they are the same kind of thing: a form on
+   somebody else's website that reaches this ministry. One per ministry, so
+   this is a form rather than a list of forms. */
+.ct-form{max-width:760px}
+.ct-embed{margin-top:26px;padding-top:20px;border-top:1px solid var(--line);
+  max-width:760px}
+.ct-embed textarea{width:100%;margin-top:8px;
+  font-family:var(--font-mono,ui-monospace,SFMono-Regular,Menlo,monospace);
+  font-size:11.5px;line-height:1.5;resize:vertical}
+.ct-embed .ghost-btn{margin-top:8px}
+
+/* Each reason is a row: what it says, and optionally where it goes. The second
+   box is what makes a reason more than a label — prayer requests to one inbox,
+   partnership enquiries to another. */
+.ct-topics{margin:24px 0 20px;padding-top:20px;border-top:1px solid var(--line)}
+.ct-topics .hint{display:block;margin:6px 0 12px;line-height:1.5;max-width:64ch}
+.ct-topic{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr) auto;
+  gap:10px;align-items:center;margin-bottom:8px}
+.ct-topic input{font-size:13px;padding:8px 10px;min-width:0}
+.ct-topic .del{background:none;border:0;color:var(--dim,#8a93a3);font-size:18px;
+  line-height:1;padding:2px 6px;cursor:pointer;border-radius:6px;transition:.15s}
+@media(hover:hover){
+  .ct-topic .del:hover{color:var(--crit,#FF6B6B);background:rgba(255,107,107,.1)}
+}
+@media (max-width:620px){ .ct-topic{grid-template-columns:1fr auto} }
+
+/* ---- the contact form's visualiser ----
+   Settings on the left, the real widget on the right. A browser preview is
+   honest here, unlike the email composer's: this form ends up on a web page,
+   so a browser IS what will draw it. */
+/* ---- both form visualisers ----
+   The same stage the Ministry page uses for the roadmap and goal embeds, so
+   the Desktop/Mobile control is one control rather than three lookalikes.
+   `.emb-stage` and `.emb-stage.is-narrow` come from there; only the height
+   differs, because a form is taller than a progress bar. */
+/* A STARTING SIZE ONLY. The widget measures itself and posts its real height
+   the moment it draws — see the message listener in staff-mailing.js — which
+   then sets both the frame's height and the wrapper's scale. This is what
+   shows for one frame, not what the box stays at. */
+.ct-stage{margin:14px 0 0;block-size:420px;overflow:hidden;
+  transition:block-size .3s cubic-bezier(.16,1,.3,1)}
+@media(prefers-reduced-motion:reduce){ .ct-stage{transition:none} }
+
+/* THE WRAPPER IS WHAT SHRINKS, not the frame. Scaling the iframe would shrink
+   the drawing surface with it, and the widget would then answer a different
+   question about how wide its container is — a 480px card in a 640px frame
+   shown at 70% is honest; a card asked to draw itself at 448px is not.
+
+   top left origin, because the wrapper is made wider by exactly the amount the
+   scale takes back; centring the origin would leave it offset by half. */
+.emb-scale{transform-origin:top left;inline-size:100%}
+.ct-stage iframe{display:block;inline-size:100%;block-size:420px;border:0;
+  background:transparent;color-scheme:light dark}
+
+/* Said out loud, so the smaller type does not read as the type a visitor gets
+   — otherwise somebody enlarges their heading to fix a problem that is not
+   there. */
+.emb-scale-note{font-size:11px;color:var(--dim,#8a93a3);
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+.ct-colours{display:block;margin:10px 2px 26px;line-height:1.5;max-width:70ch}
+.emb-lede{margin:0;font-size:12.5px;color:var(--dim,#8a93a3);line-height:1.5;
+  max-width:56ch}
+
+/* ============================================================
+   THE SUBSCRIBER LIST
+   ============================================================
+   A table, not cards. A card each is readable at ten people and unusable at
+   three hundred: the eye cannot compare down a column that keeps moving, and a
+   screen holds six rows instead of twenty-five.
+   ============================================================ */
+
+.subs-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:16px 0 10px}
+.subs-q{flex:1 1 220px;min-width:0;font-size:13px;padding:8px 11px}
+.subs-bar select{font-size:12.5px;padding:7px 9px}
+.subs-range{margin-left:auto;font-size:11.5px;color:var(--dim,#8a93a3);
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* Horizontal scroll belongs to the TABLE, never to the page — a console that
+   slides sideways because one address is long is a console that feels broken. */
+.subs-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius)}
+.subs{width:100%;border-collapse:collapse;font-size:13px}
+/* Only what differs from the shared `thead th` above — tighter padding and no
+   wrapping. Restating the background and the sticky position here is how the
+   two drift apart, and the transparency bug would then have needed fixing
+   twice. */
+.subs th{padding:9px 12px;white-space:nowrap}
+/* The global `tbody tr` sets cursor:pointer, because the contacts table opens
+   a history panel when a row is clicked. A subscriber row does nothing when
+   clicked — the controls are in the last cell — so a hand cursor over it is a
+   promise the table does not keep. That promise is exactly what made clicking
+   one feel like it should do something. */
+.subs tbody tr{cursor:default}
+.subs td{padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+.subs tr:last-child td{border-bottom:0}
+@media(hover:hover){ .subs tbody tr:hover{background:var(--bg2,#0b1119)} }
+
+/* The address leads and the name follows it. Two columns would spend a third
+   of the width on the many people who have no name recorded. */
+.subs-who{min-width:0}
+.subs-email{display:block;color:var(--text);overflow-wrap:anywhere}
+.subs-name{display:block;color:var(--dim,#8a93a3);font-size:11.5px;margin-top:1px}
+.subs-when{color:var(--dim,#8a93a3);font-variant-numeric:tabular-nums;white-space:nowrap}
+.subs-tags{color:var(--dim,#8a93a3);font-size:12px}
+.subs-empty{padding:26px 12px;text-align:center;color:var(--dim,#8a93a3)}
+
+/* A dot rather than a coloured word: at twenty-five rows the eye finds a
+   colour down a column far faster than it reads a label on each line. */
+.subs-dot{display:inline-block;width:7px;height:7px;border-radius:50%;
+  margin-right:7px;background:var(--dim,#8a93a3);vertical-align:middle}
+.subs-dot.s-subscribed{background:var(--ok,#3ECF8E)}
+.subs-dot.s-pending{background:var(--warn,#F5B845)}
+.subs-dot.s-bounced{background:var(--crit,#FF6B6B)}
+.subs-dot.s-unsubscribed{background:var(--line)}
+
+.subs-acts{display:flex;gap:4px;align-items:center;justify-content:flex-end;
+  white-space:nowrap}
+.subs-status{font-size:11.5px;padding:4px 6px;max-width:9rem}
+.subs-ico{width:26px;height:26px;background:none;border:0;border-radius:6px;
+  color:var(--dim,#8a93a3);font-size:13px;line-height:1;cursor:pointer;transition:.15s}
+@media(hover:hover){
+  .subs-ico:hover{background:var(--line);color:var(--text)}
+  .subs-ico.del:hover{background:rgba(255,107,107,.12);color:var(--crit,#FF6B6B)}
+}
+
+/* Edited in place: two fields and the row they belong to is right there, where
+   a modal would cover the list somebody is using to decide what to change. */
+.subs-edit{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;padding:4px 0}
+.subs-edit label{display:flex;flex-direction:column;gap:5px;flex:1 1 190px;min-width:0;
+  font-size:10px;font-family:var(--font-display);font-weight:var(--w-bold);
+  letter-spacing:var(--ls-caps);text-transform:uppercase;color:var(--dim,#8a93a3)}
+.subs-edit input{font-size:13px;padding:7px 10px}
+.subs-edit-note{flex:1 1 100%;font-size:11px;color:var(--dim,#8a93a3);line-height:1.5}
+.subs tr.is-editing{background:var(--bg2,#0b1119)}
+
+.subs-pager{display:flex;align-items:center;gap:14px;margin-top:12px}
+.subs-page{font-size:11.5px;color:var(--dim,#8a93a3);font-variant-numeric:tabular-nums}
+.subs-pager button[disabled]{opacity:.4;cursor:default}
+
+/* Visually hidden, but read aloud — the actions column has no visible heading
+   and a screen reader should still be told what it is. */
+.vh{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+  clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+@media (max-width:760px){
+  .subs-tags,.subs th:nth-child(4){display:none}
+  .subs-range{margin-left:0;width:100%}
+}

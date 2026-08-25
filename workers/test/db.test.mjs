@@ -295,6 +295,27 @@ await check("every real query converts with its documented params", async () => 
     raised_cents: 0, donor_count: null, goal_id: "g_1",
     // prayer
     prayer_id: "pr_1", is_answered: 0, answered_on: null, answer_text: null,
+    // sending addresses — one domain per partner, so reputation damage from
+    // one ministry's mail cannot reach anybody else's
+    // searching and sorting a big subscriber list
+    q: "ann", like: "%ann%", sort: "name",
+    sending_domain: "chaseroush.thauma.one", address: "news@chaseroush.thauma.one",
+    can_receive: 1,
+    // the composer
+    // body_md is the SOURCE now; body_html is derived from it and stored.
+    subject: "June update", preheader: null, body_md: "# x",
+    body_html: "<p>x</p>", body_text: "x",
+    sent_count: 0, mailing_id: "mg_1", subscriber_id: "sub_1",
+    // attachments: the pointer lives in D1, the bytes live in R2
+    filename: "report.pdf", content_type: "application/pdf", bytes: 81920,
+    object_key: "attachments/chase-roush/abc123",
+    // the contact form's configuration — the messages themselves are never stored
+    deliver_to: "chase@example.org", from_address: "contact@chaseroush.thauma.one",
+    heading: "Get in touch", blurb: null, button: "Send", thanks: null,
+    label: "Prayer request",
+    provider_id: null, error: null, list_slug: "newsletter", archive_public: 0,
+    // the rename cascade: an address moving from one domain to another
+    old: "news@old.thauma.one", new: "news@chaseroush.thauma.one",
   };
   // The ONE query with no parameters: the language catalogue belongs to the
   // organisation, not to a partner, so there is nothing to scope it by. Named
@@ -304,7 +325,23 @@ await check("every real query converts with its documented params", async () => 
   // catalogue; the admin ones are unscoped BY DESIGN — see admin.test.mjs.
   const NO_PARAMS = new Set(["languages_all", "admin_users", "admin_partners",
                              "admin_count_admins", "language_next_sort_order",
-                             "staff_profiles_all", "staff_profiles_public"]);
+                             "staff_profiles_all", "staff_profiles_public",
+                             // Org-wide by design: maintaining the addresses
+                             // every partner may send from IS the admin act,
+                             // and it is guarded by the role check rather than
+                             // by a WHERE clause. The partner-scoped view of
+                             // the same table is sender_addresses_for_partner.
+                             "admin_sender_addresses",
+                             /* The organisation's own contact form. It has no
+                                slug to be found by and exactly one row, which
+                                is what the partial unique index in 0021
+                                guarantees — so there is nothing to scope it
+                                by, and a parameter would be a lie. */
+                             "public_contact_form_org",
+                             /* The organisation's contact reasons. Same reason
+                                as the form above: no slug to be found by, and
+                                exactly one owner. */
+                             "public_contact_topics_org"]);
 
   for (const [name, sql] of Object.entries(QUERIES)) {
     const r = toPositional(sql, params);
@@ -313,6 +350,34 @@ await check("every real query converts with its documented params", async () => 
       assert(r.args.length > 0,
         `${name} bound no arguments — if that is deliberate, add it to NO_PARAMS`);
     }
+  }
+});
+
+await check("generation does not eat characters out of the SQL", async () => {
+  /* The queries are emitted inside JavaScript template literals, where a
+     backslash escapes the next character, a backtick ends the literal and
+     ${ starts an interpolation. None had ever appeared in db/queries.sql, so
+     the generator did not escape them — until a LIKE ... ESCAPE clause did,
+     and reached the Worker with its escape character silently removed.
+
+     Compared against the source file rather than trusted, because a generated
+     file that differs from its source is exactly what nobody looks at. */
+  const src = readFileSync(new URL("../../db/queries.sql", import.meta.url), "utf8");
+  const named = [...src.matchAll(/^-- name: (\w+)\n([\s\S]*?)(?=^-- name: |\Z)/gm)];
+  assert(named.length > 40, `only found ${named.length} queries in the source`);
+
+  for (const [, name, body] of named) {
+    /* ^\s*-- , not ^-- : a comment indented inside a WHERE clause is still a
+       comment, and the generator strips those too. Anchoring at column zero
+       compared a stripped module against an unstripped source and reported a
+       difference that was entirely this test's own. */
+    const strip = (t) => t.replace(/^\s*--.*$/gm, "").trim().replace(/\s+/g, " ");
+    const want = strip(body);
+    const got = strip(String(QUERIES[name] || ""));
+    assert(got === want,
+      `${name} differs between db/queries.sql and the generated module:\n` +
+      `            source: ${want.slice(0, 160)}\n` +
+      `            module: ${got.slice(0, 160)}`);
   }
 });
 

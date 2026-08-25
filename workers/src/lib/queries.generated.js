@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "db95b3fbdef25bcc";
+export const SOURCE_DIGEST = "f0348666ee390112";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -20,6 +20,14 @@ LIMIT :limit;`,
   admin_count_admins: `SELECT COUNT(*) AS n
 FROM user_roles r JOIN users u ON u.id = r.user_id
 WHERE r.role = 'admin' AND u.status = 'active';`,
+  admin_lists_archive_by_sender: `UPDATE mailing_lists SET archived_at = :now, updated_at = :now
+WHERE from_email = :address AND archived_at IS NULL;`,
+  admin_lists_drop_reply_to: `UPDATE mailing_lists SET reply_to = NULL, updated_at = :now WHERE reply_to = :address;`,
+  admin_lists_repoint: `UPDATE mailing_lists
+SET from_email = CASE WHEN from_email = :old THEN :new ELSE from_email END,
+    reply_to   = CASE WHEN reply_to   = :old THEN :new ELSE reply_to   END,
+    updated_at = :now
+WHERE from_email = :old OR reply_to = :old;`,
   admin_partner_create: `INSERT INTO partners (id, slug, display_name, status, is_public, default_lang,
                       created_at, updated_at)
 VALUES (:id, :slug, :display_name, 'prospective', 0, 'en', :now, :now);`,
@@ -28,6 +36,8 @@ VALUES (:id, :slug, :display_name, 'prospective', 0, 'en', :now, :now);`,
 VALUES (:partner_id, :user_id, :role, :granted_by, :now);`,
   admin_partner_revoke: `DELETE FROM partner_users WHERE partner_id = :partner_id AND user_id = :user_id;`,
   admin_partner_set: `UPDATE partners SET display_name = :display_name, status = :status, updated_at = :now
+WHERE id = :id;`,
+  admin_partner_set_domain: `UPDATE partners SET sending_domain = :sending_domain, updated_at = :now
 WHERE id = :id;`,
   admin_partner_stats: `SELECT
   (SELECT COUNT(*) FROM contacts      WHERE partner_id = :partner_id) AS contacts,
@@ -41,12 +51,34 @@ WHERE id = :id;`,
   (SELECT COUNT(*) FROM directory_contacts WHERE partner_id = :partner_id) AS directory;`,
   admin_partners: `SELECT p.id, p.slug, p.display_name, p.status,
        COALESCE(p.default_lang, 'en') AS default_lang,
-       (SELECT COUNT(*) FROM partner_users pu WHERE pu.partner_id = p.id) AS member_count
+       p.sending_domain,
+       (SELECT COUNT(*) FROM partner_users pu WHERE pu.partner_id = p.id) AS member_count,
+       (SELECT COUNT(*) FROM sender_addresses sa WHERE sa.partner_id = p.id) AS sender_count
 FROM partners p
 ORDER BY p.display_name COLLATE NOCASE;`,
   admin_role_grant: `INSERT OR IGNORE INTO user_roles (user_id, role, granted_by, granted_at)
 VALUES (:user_id, :role, :granted_by, :now);`,
   admin_role_revoke: `DELETE FROM user_roles WHERE user_id = :user_id AND role = :role;`,
+  admin_sender_address_add: `INSERT INTO sender_addresses (id, partner_id, address, label, can_receive, created_at)
+VALUES (:id, :partner_id, :address, :label, :can_receive, :now);`,
+  admin_sender_address_delete: `DELETE FROM sender_addresses WHERE id = :id;`,
+  admin_sender_addresses: `SELECT sa.id, sa.partner_id, sa.address, sa.label, sa.can_receive, sa.created_at,
+       p.display_name AS partner_name,
+       (SELECT COUNT(*) FROM mailing_lists l
+         WHERE l.archived_at IS NULL
+           AND (l.from_email = sa.address OR l.reply_to = sa.address)) AS used_by,
+       (SELECT GROUP_CONCAT(l.name, ' | ') FROM mailing_lists l
+         WHERE l.archived_at IS NULL AND l.from_email = sa.address) AS sends_for,
+       (SELECT GROUP_CONCAT(l.name, ' | ') FROM mailing_lists l
+         WHERE l.archived_at IS NULL AND l.reply_to = sa.address) AS replies_for,
+       (SELECT COALESCE(SUM((SELECT COUNT(*) FROM subscribers s
+                              WHERE s.list_id = l.id AND s.status = 'subscribed')), 0)
+          FROM mailing_lists l
+         WHERE l.archived_at IS NULL AND l.from_email = sa.address) AS sends_subscribers
+FROM sender_addresses sa
+LEFT JOIN partners p ON p.id = sa.partner_id
+ORDER BY p.display_name COLLATE NOCASE, sa.address COLLATE NOCASE;`,
+  admin_sender_readdress: `UPDATE sender_addresses SET address = :address WHERE id = :id;`,
   admin_user_create: `INSERT INTO users (id, email, name, global_role, status, created_at)
 VALUES (:id, :email, :name, 'staff', 'invited', :now);`,
   admin_user_delete: `DELETE FROM users WHERE id = :id;`,
@@ -85,6 +117,25 @@ ORDER BY a.at DESC
 LIMIT :limit;`,
   audit_write: `INSERT INTO audit_log (id, at, user_id, partner_id, action, entity, entity_id, detail)
 VALUES (:id, :now, :user_id, :partner_id, :action, :entity, :entity_id, :detail);`,
+  contact_form_for_partner: `SELECT partner_id, deliver_to, from_address, heading, blurb, button, thanks,
+       is_open, updated_at
+FROM contact_forms
+WHERE partner_id IS :partner_id;`,
+  contact_form_save: `INSERT INTO contact_forms
+  (partner_id, deliver_to, from_address, heading, blurb, button, thanks,
+   is_open, updated_at)
+VALUES
+  (:partner_id, :deliver_to, :from_address, :heading, :blurb, :button, :thanks,
+   :is_open, :now)
+ON CONFLICT(partner_id) DO UPDATE SET
+  deliver_to   = excluded.deliver_to,
+  from_address = excluded.from_address,
+  heading      = excluded.heading,
+  blurb        = excluded.blurb,
+  button       = excluded.button,
+  thanks       = excluded.thanks,
+  is_open      = excluded.is_open,
+  updated_at   = excluded.updated_at;`,
   contact_timeline: `SELECT
   i.id,
   i.type,
@@ -99,6 +150,13 @@ LEFT JOIN users u ON u.id = i.logged_by
 WHERE i.contact_id = :contact_id
   AND i.partner_id = :partner_id
 ORDER BY i.occurred_on DESC, i.created_at DESC;`,
+  contact_topic_add: `INSERT INTO contact_topics (id, partner_id, label, deliver_to, sort_order, created_at)
+VALUES (:id, :partner_id, :label, :deliver_to, :sort_order, :now);`,
+  contact_topics_clear: `DELETE FROM contact_topics WHERE partner_id IS :partner_id;`,
+  contact_topics_for_partner: `SELECT id, label, deliver_to, sort_order
+FROM contact_topics
+WHERE partner_id IS :partner_id
+ORDER BY sort_order, label COLLATE NOCASE;`,
   contacts_stewardship: `SELECT
   c.id,
   c.first_name,
@@ -205,11 +263,24 @@ ON CONFLICT(code) DO UPDATE SET
   native_name = excluded.native_name;`,
   languages_all: `SELECT code, name, native_name, is_active, sort_order
 FROM languages ORDER BY sort_order, name;`,
+  mailing_attachment_add: `INSERT INTO mailing_attachments
+  (id, mailing_id, filename, content_type, bytes, object_key, sort_order, created_at)
+VALUES (:id, :mailing_id, :filename, :content_type, :bytes, :object_key, :sort_order, :now);`,
+  mailing_attachment_clear: `DELETE FROM mailing_attachments WHERE mailing_id = :mailing_id;`,
+  mailing_attachments_for: `SELECT id, filename, content_type, bytes, object_key, sort_order
+FROM mailing_attachments
+WHERE mailing_id = :mailing_id
+ORDER BY sort_order, filename COLLATE NOCASE;`,
+  mailing_delete: `DELETE FROM mailings
+WHERE id = :id AND partner_id IS :partner_id AND status = 'draft';`,
+  mailing_finish: `UPDATE mailings
+SET status = :status, finished_at = :now, sent_count = :sent_count
+WHERE id = :id AND partner_id IS :partner_id;`,
   mailing_list_archive: `UPDATE mailing_lists
 SET archived_at = :now, updated_at = :now
 WHERE id = :id AND partner_id IS :partner_id;`,
   mailing_list_one: `SELECT id, partner_id, slug, name, description, from_name, from_email,
-       reply_to, is_open, form_heading, form_blurb, form_button,
+       reply_to, is_open, archive_public, form_heading, form_blurb, form_button,
        form_thanks_url, archived_at, created_at, updated_at
 FROM mailing_lists
 WHERE id = :id AND partner_id IS :partner_id;`,
@@ -217,11 +288,11 @@ WHERE id = :id AND partner_id IS :partner_id;`,
 WHERE partner_id IS :partner_id AND slug = :slug AND id <> :id;`,
   mailing_list_upsert: `INSERT INTO mailing_lists
   (id, partner_id, slug, name, description, from_name, from_email, reply_to,
-   is_open, form_heading, form_blurb, form_button, form_thanks_url,
+   is_open, archive_public, form_heading, form_blurb, form_button, form_thanks_url,
    created_at, updated_at)
 VALUES
   (:id, :partner_id, :slug, :name, :description, :from_name, :from_email,
-   :reply_to, :is_open, :form_heading, :form_blurb, :form_button,
+   :reply_to, :is_open, :archive_public, :form_heading, :form_blurb, :form_button,
    :form_thanks_url, :now, :now)
 ON CONFLICT(id) DO UPDATE SET
   slug            = excluded.slug,
@@ -231,6 +302,7 @@ ON CONFLICT(id) DO UPDATE SET
   from_email      = excluded.from_email,
   reply_to        = excluded.reply_to,
   is_open         = excluded.is_open,
+  archive_public  = excluded.archive_public,
   form_heading    = excluded.form_heading,
   form_blurb      = excluded.form_blurb,
   form_button     = excluded.form_button,
@@ -239,7 +311,7 @@ ON CONFLICT(id) DO UPDATE SET
 WHERE mailing_lists.partner_id IS :partner_id;`,
   mailing_lists_for_partner: `SELECT
   l.id, l.partner_id, l.slug, l.name, l.description,
-  l.from_name, l.from_email, l.reply_to, l.is_open,
+  l.from_name, l.from_email, l.reply_to, l.is_open, l.archive_public,
   l.form_heading, l.form_blurb, l.form_button, l.form_thanks_url,
   l.created_at, l.updated_at,
   (SELECT COUNT(*) FROM subscribers s
@@ -251,6 +323,20 @@ WHERE mailing_lists.partner_id IS :partner_id;`,
 FROM mailing_lists l
 WHERE l.partner_id IS :partner_id AND l.archived_at IS NULL
 ORDER BY l.name COLLATE NOCASE;`,
+  mailing_one: `SELECT id, list_id, partner_id, subject, preheader, body_md, body_html, body_text,
+       status, slug, sent_count, created_at, started_at, finished_at
+FROM mailings
+WHERE id = :id AND partner_id IS :partner_id;`,
+  mailing_recipient_add: `INSERT INTO mailing_recipients (mailing_id, subscriber_id, email, status, updated_at)
+VALUES (:mailing_id, :subscriber_id, :email, :status, :now)
+ON CONFLICT(mailing_id, subscriber_id) DO UPDATE SET
+  status = excluded.status, updated_at = excluded.updated_at;`,
+  mailing_recipient_result: `UPDATE mailing_recipients
+SET status = :status, provider_id = :provider_id, error = :error, updated_at = :now
+WHERE mailing_id = :mailing_id AND subscriber_id = :subscriber_id;`,
+  mailing_start: `UPDATE mailings
+SET status = 'sending', started_at = :now, slug = :slug
+WHERE id = :id AND partner_id IS :partner_id AND status = 'draft';`,
   mailing_tag_create: `INSERT INTO mailing_tags (id, partner_id, name, sort_order, created_at)
 VALUES (:id, :partner_id, :name, :sort_order, :now);`,
   mailing_tag_delete: `DELETE FROM mailing_tags WHERE id = :id AND partner_id IS :partner_id;`,
@@ -261,6 +347,26 @@ WHERE id = :id AND partner_id IS :partner_id;`,
 FROM mailing_tags t
 WHERE t.partner_id IS :partner_id
 ORDER BY t.sort_order, t.name COLLATE NOCASE;`,
+  mailing_upsert: `INSERT INTO mailings (id, list_id, partner_id, subject, preheader,
+                      body_md, body_html, body_text, status, created_by, created_at)
+VALUES (:id, :list_id, :partner_id, :subject, :preheader,
+        :body_md, :body_html, :body_text, 'draft', :created_by, :now)
+ON CONFLICT(id) DO UPDATE SET
+  subject = excluded.subject,
+  preheader = excluded.preheader,
+  body_md = excluded.body_md,
+  body_html = excluded.body_html,
+  body_text = excluded.body_text
+WHERE mailings.status = 'draft';`,
+  mailings_for_list: `SELECT m.id, m.list_id, m.subject, m.preheader, m.status, m.slug,
+       m.sent_count, m.created_at, m.started_at, m.finished_at,
+       CASE WHEN m.status = 'draft' THEN m.body_html END AS body_html,
+       (SELECT COUNT(*) FROM mailing_recipients r
+         WHERE r.mailing_id = m.id AND r.status = 'failed') AS failed
+FROM mailings m
+WHERE m.list_id = :list_id AND m.partner_id IS :partner_id
+ORDER BY CASE m.status WHEN 'draft' THEN 0 ELSE 1 END,
+         COALESCE(m.finished_at, m.created_at) DESC;`,
   milestone_delete: `DELETE FROM milestones WHERE id = :id AND partner_id = :partner_id;`,
   milestone_reorder: `UPDATE milestones SET sort_order = :sort_order, updated_at = :now
 WHERE id = :id AND partner_id = :partner_id;`,
@@ -369,6 +475,38 @@ ON CONFLICT(id) DO UPDATE SET
   is_public = :is_public, is_answered = :is_answered,
   answered_on = :answered_on, sort_order = :sort_order, updated_at = :now
 WHERE prayer.partner_id = :partner_id;`,
+  public_archive_for_list: `SELECT m.slug, m.subject, m.preheader, m.finished_at
+FROM mailings m
+JOIN mailing_lists l ON l.id = m.list_id
+JOIN partners p ON p.slug = :partner_slug AND l.partner_id IS p.id
+WHERE l.slug = :list_slug AND l.archive_public = 1 AND l.archived_at IS NULL
+  AND m.status = 'sent' AND m.slug IS NOT NULL
+ORDER BY m.finished_at DESC
+LIMIT 50;`,
+  public_archive_one: `SELECT m.subject, m.preheader, m.body_html, m.finished_at,
+       l.name AS list_name, l.from_name,
+       p.display_name, p.embed_accent, p.embed_theme
+FROM mailings m
+JOIN mailing_lists l ON l.id = m.list_id
+JOIN partners p ON p.slug = :partner_slug AND l.partner_id IS p.id
+WHERE l.slug = :list_slug AND l.archive_public = 1 AND l.archived_at IS NULL
+  AND m.status = 'sent' AND m.slug = :slug;`,
+  public_contact_form: `SELECT c.deliver_to, c.from_address, c.heading, c.blurb, c.button, c.thanks,
+       p.display_name, p.embed_accent, p.embed_accent2, p.embed_theme
+FROM contact_forms c
+JOIN partners p ON p.slug = :partner_slug AND c.partner_id IS p.id
+WHERE c.is_open = 1;`,
+  public_contact_form_org: `SELECT deliver_to, from_address, heading, blurb, button, thanks
+FROM contact_forms
+WHERE partner_id IS NULL AND is_open = 1;`,
+  public_contact_topics: `SELECT t.id, t.label, t.deliver_to, t.sort_order
+FROM contact_topics t
+JOIN partners p ON p.slug = :partner_slug AND t.partner_id IS p.id
+ORDER BY t.sort_order, t.label COLLATE NOCASE;`,
+  public_contact_topics_org: `SELECT id, label, deliver_to, sort_order
+FROM contact_topics
+WHERE partner_id IS NULL
+ORDER BY sort_order, label COLLATE NOCASE;`,
   public_goals_for_partner: `SELECT
   goal_id, label, description, kind, target_cents, currency,
   raised_cents, donor_count, percent, captured_at
@@ -383,12 +521,14 @@ WHERE pl.partner_id = :partner_id
   AND pl.is_enabled = 1
   AND l.is_active = 1
 ORDER BY pl.sort_order, l.name;`,
-  public_lists_for_signup: `SELECT id, partner_id, name, slug, description, from_name, from_email, reply_to,
-       form_heading, form_blurb, form_button, form_thanks_url
-  FROM mailing_lists
- WHERE partner_id IS (SELECT id FROM partners WHERE slug = :partner_slug)
-   AND is_open = 1 AND archived_at IS NULL
- ORDER BY name COLLATE NOCASE;`,
+  public_lists_for_signup: `SELECT l.id, l.partner_id, l.name, l.slug, l.description,
+       l.from_name, l.from_email, l.reply_to,
+       l.form_heading, l.form_blurb, l.form_button, l.form_thanks_url,
+       p.embed_accent, p.embed_accent2, p.embed_theme
+  FROM mailing_lists l
+  JOIN partners p ON p.slug = :partner_slug AND l.partner_id IS p.id
+ WHERE l.is_open = 1 AND l.archived_at IS NULL
+ ORDER BY l.name COLLATE NOCASE;`,
   public_milestone_translations: `SELECT t.milestone_id, t.lang, t.title, t.description, t.target_label
 FROM milestone_translations t
 JOIN milestones m ON m.id = t.milestone_id
@@ -438,6 +578,10 @@ FROM resources
 WHERE (partner_id = :partner_id OR partner_id IS NULL)
   AND instr(',' || :levels || ',', ',' || visibility || ',') > 0
 ORDER BY title COLLATE NOCASE;`,
+  sender_addresses_for_partner: `SELECT id, partner_id, address, label, can_receive, created_at
+FROM sender_addresses
+WHERE partner_id IS :partner_id
+ORDER BY label COLLATE NOCASE, address COLLATE NOCASE;`,
   signup_attempt_record: `INSERT OR REPLACE INTO signup_attempts (ip_hash, list_id, at, outcome)
 VALUES (:ip_hash, :list_id, :at, :outcome);`,
   signup_attempts_prune: `DELETE FROM signup_attempts WHERE at < :before;`,
@@ -491,12 +635,20 @@ SELECT :id, l.id, l.partner_id, :email, :name, 'pending', :token, :source,
        :now, :now
   FROM mailing_lists l
  WHERE l.id = :list_id AND l.partner_id IS :partner_id;`,
+  subscriber_by_id_public: `SELECT id, list_id, partner_id, email, status FROM subscribers WHERE id = :id;`,
   subscriber_by_token: `SELECT s.id, s.email, s.name, s.status, s.list_id,
        l.name AS list_name, l.slug AS list_slug
   FROM subscribers s
   JOIN mailing_lists l ON l.id = s.list_id
  WHERE s.confirm_token = :token AND s.status = 'pending'
  ORDER BY l.name COLLATE NOCASE;`,
+  subscriber_change_email: `UPDATE subscribers
+SET email = :email,
+    status = 'pending',
+    confirm_token = :token,
+    confirmed_at = NULL,
+    updated_at = :now
+WHERE id = :id;`,
   subscriber_confirm: `UPDATE subscribers
 SET status = 'subscribed', confirmed_at = :now, confirm_token = NULL, updated_at = :now
 WHERE confirm_token = :token AND status = 'pending';`,
@@ -526,12 +678,16 @@ WHERE id = :id AND status = 'pending'
   subscriber_resend_token: `UPDATE subscribers
 SET confirm_token = :token, subscribed_at = :now, updated_at = :now, name = COALESCE(:name, name)
 WHERE list_id = :list_id AND email = :email AND status = 'pending';`,
+  subscriber_set_name: `UPDATE subscribers SET name = :name, updated_at = :now WHERE id = :id;`,
   subscriber_set_status: `UPDATE subscribers
 SET status = :status,
     unsubscribed_at = CASE WHEN :status = 'unsubscribed' THEN :now ELSE unsubscribed_at END,
     updated_at = :now
 WHERE id = :id
   AND list_id IN (SELECT id FROM mailing_lists WHERE partner_id IS :partner_id);`,
+  subscriber_unsubscribe_by_id: `UPDATE subscribers
+SET status = 'unsubscribed', unsubscribed_at = :now, updated_at = :now
+WHERE id = :id;`,
   subscribers_for_list: `SELECT
   s.id, s.email, s.name, s.status, s.source,
   s.subscribed_at, s.confirmed_at, s.unsubscribed_at,
@@ -541,8 +697,31 @@ WHERE id = :id
 FROM subscribers s
 JOIN mailing_lists l ON l.id = s.list_id
 WHERE s.list_id = :list_id AND l.partner_id IS :partner_id
-ORDER BY s.subscribed_at DESC
+  AND (:status = '' OR s.status = :status)
+  AND (:q = '' OR s.email LIKE :like ESCAPE '\\'
+               OR COALESCE(s.name, '') LIKE :like ESCAPE '\\')
+ORDER BY
+  CASE WHEN :sort = 'email'  THEN s.email END COLLATE NOCASE ASC,
+  CASE WHEN :sort = 'name'   THEN COALESCE(NULLIF(s.name, ''), s.email) END COLLATE NOCASE ASC,
+  CASE WHEN :sort = 'oldest' THEN s.subscribed_at END ASC,
+  CASE WHEN :sort = 'status' THEN s.status END ASC,
+  s.subscribed_at DESC
 LIMIT :limit OFFSET :offset;`,
+  subscribers_for_list_count: `SELECT COUNT(*) AS n
+FROM subscribers s
+JOIN mailing_lists l ON l.id = s.list_id
+WHERE s.list_id = :list_id AND l.partner_id IS :partner_id
+  AND (:status = '' OR s.status = :status)
+  AND (:q = '' OR s.email LIKE :like ESCAPE '\\'
+               OR COALESCE(s.name, '') LIKE :like ESCAPE '\\');`,
+  subscribers_to_send: `SELECT s.id, s.email, s.name
+FROM subscribers s
+WHERE s.list_id = :list_id AND s.partner_id IS :partner_id
+  AND s.status = 'subscribed'
+ORDER BY s.subscribed_at
+LIMIT :limit OFFSET :offset;`,
+  subscribers_to_send_count: `SELECT COUNT(*) AS n FROM subscribers
+WHERE list_id = :list_id AND partner_id IS :partner_id AND status = 'subscribed';`,
   user_by_email: `SELECT u.id AS user_id, u.email, u.name AS user_name, u.status,
        COALESCE(u.preferred_lang, 'en') AS preferred_lang,
        COALESCE((SELECT GROUP_CONCAT(r.role) FROM user_roles r WHERE r.user_id = u.id),

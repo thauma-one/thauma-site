@@ -416,7 +416,7 @@ VALUES (:id, :email, :name, 'staff', 'invited', :now);
 -- which is exactly the list somebody has just created and wants to see.
 SELECT
   l.id, l.partner_id, l.slug, l.name, l.description,
-  l.from_name, l.from_email, l.reply_to, l.is_open,
+  l.from_name, l.from_email, l.reply_to, l.is_open, l.archive_public,
   l.form_heading, l.form_blurb, l.form_button, l.form_thanks_url,
   l.created_at, l.updated_at,
   (SELECT COUNT(*) FROM subscribers s
@@ -433,11 +433,11 @@ ORDER BY l.name COLLATE NOCASE;
 -- name: mailing_list_upsert
 INSERT INTO mailing_lists
   (id, partner_id, slug, name, description, from_name, from_email, reply_to,
-   is_open, form_heading, form_blurb, form_button, form_thanks_url,
+   is_open, archive_public, form_heading, form_blurb, form_button, form_thanks_url,
    created_at, updated_at)
 VALUES
   (:id, :partner_id, :slug, :name, :description, :from_name, :from_email,
-   :reply_to, :is_open, :form_heading, :form_blurb, :form_button,
+   :reply_to, :is_open, :archive_public, :form_heading, :form_blurb, :form_button,
    :form_thanks_url, :now, :now)
 ON CONFLICT(id) DO UPDATE SET
   slug            = excluded.slug,
@@ -447,6 +447,7 @@ ON CONFLICT(id) DO UPDATE SET
   from_email      = excluded.from_email,
   reply_to        = excluded.reply_to,
   is_open         = excluded.is_open,
+  archive_public  = excluded.archive_public,
   form_heading    = excluded.form_heading,
   form_blurb      = excluded.form_blurb,
   form_button     = excluded.form_button,
@@ -459,7 +460,7 @@ WHERE mailing_lists.partner_id IS :partner_id;
 
 -- name: mailing_list_one
 SELECT id, partner_id, slug, name, description, from_name, from_email,
-       reply_to, is_open, form_heading, form_blurb, form_button,
+       reply_to, is_open, archive_public, form_heading, form_blurb, form_button,
        form_thanks_url, archived_at, created_at, updated_at
 FROM mailing_lists
 WHERE id = :id AND partner_id IS :partner_id;
@@ -482,9 +483,22 @@ WHERE partner_id IS :partner_id AND slug = :slug AND id <> :id;
 
 
 -- name: subscribers_for_list
--- Paged, because a list is the one table here that grows without limit. The
--- partner check is on the LIST, so a subscriber cannot be read by knowing a
--- list id alone.
+-- Paged, searched and sorted, because a list is the one table here that grows
+-- without limit. At a hundred people a fixed newest-first list is fine; at a
+-- thousand it is a filing cabinet with no drawers.
+--
+-- The partner check is on the LIST, so a subscriber cannot be read by knowing
+-- a list id alone.
+--
+-- SORTING BY CASE, not by interpolating a column name. A sort order arriving
+-- from a browser and being spliced into SQL is the classic injection, and the
+-- classic mitigation — an allow-list in the Worker — has to be got right in
+-- every caller forever. This way the database decides, the parameter is bound
+-- like any other value, and an unrecognised sort simply falls through to the
+-- default rather than being an error or a hole.
+--
+-- The trailing subscribed_at DESC is both the default and the tiebreaker, so
+-- two people who sorted equal never swap places between pages.
 SELECT
   s.id, s.email, s.name, s.status, s.source,
   s.subscribed_at, s.confirmed_at, s.unsubscribed_at,
@@ -494,8 +508,62 @@ SELECT
 FROM subscribers s
 JOIN mailing_lists l ON l.id = s.list_id
 WHERE s.list_id = :list_id AND l.partner_id IS :partner_id
-ORDER BY s.subscribed_at DESC
+  AND (:status = '' OR s.status = :status)
+  -- Matched against the name as well as the address: somebody looking for
+  -- "Ann" has no reason to know which of three addresses she used.
+  -- ESCAPE IS NOT OPTIONAL. The Worker backslash-escapes % and _ so a name
+  -- containing one is searched for literally rather than matching half the
+  -- list. Without this clause SQLite does not know what the backslash means
+  -- and treats it as an ordinary character — so the escaping stops the
+  -- wildcard AND stops the match, and searching "50%" finds nobody at all.
+  AND (:q = '' OR s.email LIKE :like ESCAPE '\'
+               OR COALESCE(s.name, '') LIKE :like ESCAPE '\')
+ORDER BY
+  CASE WHEN :sort = 'email'  THEN s.email END COLLATE NOCASE ASC,
+  CASE WHEN :sort = 'name'   THEN COALESCE(NULLIF(s.name, ''), s.email) END COLLATE NOCASE ASC,
+  CASE WHEN :sort = 'oldest' THEN s.subscribed_at END ASC,
+  CASE WHEN :sort = 'status' THEN s.status END ASC,
+  s.subscribed_at DESC
 LIMIT :limit OFFSET :offset;
+
+
+-- name: subscribers_for_list_count
+-- How many the current search matches, so the console can say "showing 1–100
+-- of 340" rather than leaving somebody to guess whether there is more. The
+-- WHERE clause is a copy of the one above and has to stay one — a count that
+-- disagrees with its list is worse than no count.
+SELECT COUNT(*) AS n
+FROM subscribers s
+JOIN mailing_lists l ON l.id = s.list_id
+WHERE s.list_id = :list_id AND l.partner_id IS :partner_id
+  AND (:status = '' OR s.status = :status)
+  AND (:q = '' OR s.email LIKE :like ESCAPE '\'
+               OR COALESCE(s.name, '') LIKE :like ESCAPE '\');
+
+
+-- name: subscriber_set_name
+-- A name is not consent, so it can be corrected freely.
+UPDATE subscribers SET name = :name, updated_at = :now WHERE id = :id;
+
+
+-- name: subscriber_change_email
+-- CHANGING AN ADDRESS SENDS THE ROW BACK TO 'pending'.
+--
+-- This is not caution, it is the whole consent model. Without it, editing a
+-- confirmed subscriber's address is a way to subscribe ANY address without
+-- that person ever agreeing — which is exactly what double opt-in exists to
+-- prevent, and it would be doable from a console screen labelled "edit".
+--
+-- It also happens to be right for the innocent case. Correcting
+-- "ann@gmial.com" to "ann@gmail.com" is a guess about a different mailbox, and
+-- the new one has never said yes.
+UPDATE subscribers
+SET email = :email,
+    status = 'pending',
+    confirm_token = :token,
+    confirmed_at = NULL,
+    updated_at = :now
+WHERE id = :id;
 
 
 -- name: subscriber_add
@@ -529,12 +597,32 @@ SELECT :id, l.id, l.partner_id, :email, :name, 'pending', :token, :source,
 --
 -- `is_open` is the switch a partner controls, so closing a list removes its
 -- checkbox from every page the form is on without anybody editing those pages.
-SELECT id, partner_id, name, slug, description, from_name, from_email, reply_to,
-       form_heading, form_blurb, form_button, form_thanks_url
-  FROM mailing_lists
- WHERE partner_id IS (SELECT id FROM partners WHERE slug = :partner_slug)
-   AND is_open = 1 AND archived_at IS NULL
- ORDER BY name COLLATE NOCASE;
+--
+-- THE EXISTS CLAUSE IS NOT BELT AND BRACES, it is the fix for a real leak.
+-- `partner_id IS (SELECT id FROM partners WHERE slug = :partner_slug)` reads as
+-- "belonging to this partner", and it is — right up until the slug matches
+-- nobody. Then the subquery is NULL, `partner_id IS NULL` is TRUE, and the
+-- query returns the ORGANISATION's lists, because NULL partner_id is how the
+-- organisation is spelled throughout this schema. So any invented slug served
+-- Thauma's own sign-up form, and anybody submitting it joined Thauma's lists.
+--
+-- The pattern is worth remembering: a NULL-matching comparison and a NULL
+-- meaning "the organisation" are safe apart and dangerous together, because a
+-- lookup that finds nothing produces the same NULL as a row that means
+-- something.
+--
+-- The colours come along so the form can be drawn in the ministry's accent
+-- like every other embed. NOT gated on embed_enabled: that switch governs
+-- publishing the ministry's DATA, and a colour is not data — a list's own
+-- is_open is what decides whether this form exists at all.
+SELECT l.id, l.partner_id, l.name, l.slug, l.description,
+       l.from_name, l.from_email, l.reply_to,
+       l.form_heading, l.form_blurb, l.form_button, l.form_thanks_url,
+       p.embed_accent, p.embed_accent2, p.embed_theme
+  FROM mailing_lists l
+  JOIN partners p ON p.slug = :partner_slug AND l.partner_id IS p.id
+ WHERE l.is_open = 1 AND l.archived_at IS NULL
+ ORDER BY l.name COLLATE NOCASE;
 
 
 -- name: signup_attempt_record
@@ -847,7 +935,9 @@ DELETE FROM partners WHERE id = :partner_id;
 -- name: admin_partners
 SELECT p.id, p.slug, p.display_name, p.status,
        COALESCE(p.default_lang, 'en') AS default_lang,
-       (SELECT COUNT(*) FROM partner_users pu WHERE pu.partner_id = p.id) AS member_count
+       p.sending_domain,
+       (SELECT COUNT(*) FROM partner_users pu WHERE pu.partner_id = p.id) AS member_count,
+       (SELECT COUNT(*) FROM sender_addresses sa WHERE sa.partner_id = p.id) AS sender_count
 FROM partners p
 ORDER BY p.display_name COLLATE NOCASE;
 
@@ -1294,3 +1384,406 @@ UPDATE partners
        timeline_end   = :timeline_end,
        updated_at     = :now
  WHERE id = :partner_id;
+
+
+-- ============================================================================
+-- WHERE MAIL COMES FROM
+--
+-- Resend verifies DOMAINS, not addresses. Once a domain is verified every
+-- address at it sends, including one with a typo in it — which leaves
+-- successfully, looks correct in the log, and drops every reply into nothing.
+-- So the addresses are a list an administrator maintains, and the person
+-- writing a newsletter chooses from it. A chosen address cannot be mistyped.
+--
+-- ONE DOMAIN PER PARTNER. Sending reputation is tracked per domain, so a
+-- partner's junk reports stay with that partner instead of degrading
+-- everybody. The organisation's own domain is kept out of bulk entirely: an
+-- account invite must never be delayed because somebody else's newsletter was
+-- reported.
+-- ============================================================================
+
+-- name: admin_partner_set_domain
+-- Typed by an administrator, never derived. It has to match a domain somebody
+-- actually verified with the mail provider, and only they know which — a
+-- domain guessed from the slug would look right and send nothing.
+UPDATE partners SET sending_domain = :sending_domain, updated_at = :now
+WHERE id = :id;
+
+
+-- name: sender_addresses_for_partner
+-- What this owner may send as. `IS` rather than `=` so NULL matches NULL and
+-- the same query serves a partner asking for theirs and an administrator
+-- asking for the organisation's.
+SELECT id, partner_id, address, label, can_receive, created_at
+FROM sender_addresses
+WHERE partner_id IS :partner_id
+ORDER BY label COLLATE NOCASE, address COLLATE NOCASE;
+
+
+-- name: admin_sender_addresses
+-- Every address in the system, for the Partners screen. Org-wide by design —
+-- reading it is an administrative act, the same as admin_partners.
+--
+-- IT NAMES THE LISTS, not just a count. A count can only produce "2 lists use
+-- this, you cannot delete it", which is a wall: it says no without saying what
+-- to do about it. Names let the console say what WILL happen and let somebody
+-- agree to it — which is the difference between a guard and an obstruction.
+--
+-- Sending and replying are counted apart because the consequences differ. A
+-- list that loses its SENDER cannot send at all. A list that loses its
+-- REPLY-TO carries on, with replies falling back to the sender. Treating
+-- those the same would archive a list over a setting that has a sane default.
+SELECT sa.id, sa.partner_id, sa.address, sa.label, sa.can_receive, sa.created_at,
+       p.display_name AS partner_name,
+       (SELECT COUNT(*) FROM mailing_lists l
+         WHERE l.archived_at IS NULL
+           AND (l.from_email = sa.address OR l.reply_to = sa.address)) AS used_by,
+       (SELECT GROUP_CONCAT(l.name, ' | ') FROM mailing_lists l
+         WHERE l.archived_at IS NULL AND l.from_email = sa.address) AS sends_for,
+       (SELECT GROUP_CONCAT(l.name, ' | ') FROM mailing_lists l
+         WHERE l.archived_at IS NULL AND l.reply_to = sa.address) AS replies_for,
+       -- What archiving those lists would take out of reach. Named in the
+       -- dialog, because "2 lists" and "2 lists and 128 subscribers" are
+       -- different decisions.
+       (SELECT COALESCE(SUM((SELECT COUNT(*) FROM subscribers s
+                              WHERE s.list_id = l.id AND s.status = 'subscribed')), 0)
+          FROM mailing_lists l
+         WHERE l.archived_at IS NULL AND l.from_email = sa.address) AS sends_subscribers
+FROM sender_addresses sa
+LEFT JOIN partners p ON p.id = sa.partner_id
+ORDER BY p.display_name COLLATE NOCASE, sa.address COLLATE NOCASE;
+
+
+-- name: admin_sender_address_add
+INSERT INTO sender_addresses (id, partner_id, address, label, can_receive, created_at)
+VALUES (:id, :partner_id, :address, :label, :can_receive, :now);
+
+
+-- name: admin_sender_address_delete
+-- Refused in admin.js while a live list still sends from it, because removing
+-- it would leave that list pointing at an address no longer offered — and the
+-- next person to open its settings would find the field empty with no way to
+-- know what it held.
+DELETE FROM sender_addresses WHERE id = :id;
+
+
+-- name: admin_sender_readdress
+-- Moves ONE address to a new domain, keeping its id. Keeping the id matters:
+-- the row is the same address doing the same job at a new domain, and a
+-- delete-and-recreate would lose that continuity in the audit log.
+UPDATE sender_addresses SET address = :address WHERE id = :id;
+
+
+-- name: admin_lists_repoint
+-- Follows an address when it moves. Both columns in one statement, each
+-- guarded by its own CASE, so a list that used the old address for BOTH
+-- sending and replies is corrected once rather than in two passes that could
+-- half-succeed.
+--
+-- Archived lists are included ON PURPOSE, unlike everywhere else. An archived
+-- list can be brought back, and one restored with a from_email at a domain
+-- that no longer exists would look fine and send nothing.
+UPDATE mailing_lists
+SET from_email = CASE WHEN from_email = :old THEN :new ELSE from_email END,
+    reply_to   = CASE WHEN reply_to   = :old THEN :new ELSE reply_to   END,
+    updated_at = :now
+WHERE from_email = :old OR reply_to = :old;
+
+
+-- name: admin_lists_drop_reply_to
+-- A list whose REPLY-TO address is being deleted keeps working: replies fall
+-- back to the sender, which is what an empty reply_to already means. Clearing
+-- it is the whole repair, and archiving over it would be destroying a list to
+-- fix a setting that has a default.
+UPDATE mailing_lists SET reply_to = NULL, updated_at = :now WHERE reply_to = :address;
+
+
+-- name: admin_lists_archive_by_sender
+-- A list whose SENDER is being deleted cannot send at all, so it is archived
+-- rather than left looking operational.
+--
+-- ARCHIVED, NEVER DELETED. Subscribers are the one thing here that cannot be
+-- recreated — every one of them is a person who agreed to be written to, and
+-- a double opt-in cannot be replayed. Archiving hides the list and stops it
+-- sending; the people on it stay, and restoring it is a column away.
+UPDATE mailing_lists SET archived_at = :now, updated_at = :now
+WHERE from_email = :address AND archived_at IS NULL;
+
+-- ============================================================================
+-- THE COMPOSER — writing, sending, and what was sent
+--
+-- A mailing is scoped by BOTH list_id and partner_id on every read. The list
+-- already belongs to one partner, so partner_id is redundant — and it is the
+-- redundancy that matters: a bug in how the list id is chosen cannot then
+-- reach another ministry's drafts.
+-- ============================================================================
+
+-- name: mailings_for_list
+-- Drafts first, then what was sent, newest first within each. Somebody opening
+-- this screen is usually continuing a draft, not admiring history.
+--
+-- THE BODY COMES ALONG, BUT ONLY FOR DRAFTS. The composer opens a draft
+-- straight from this list, and without it the editor comes up empty on a
+-- message somebody has already written — there is no worse bug on this screen.
+--
+-- A sent mailing's body is deliberately left out. It can never be opened for
+-- editing, and a year of newsletters would put every word ever written into a
+-- request that needed nothing but their subjects.
+--
+-- Written as `--` rather than a /* */ block on purpose: only line comments are
+-- stripped when these become JavaScript, so a block comment travels to D1 with
+-- every call — and a colon inside one reads as a stray bind parameter.
+SELECT m.id, m.list_id, m.subject, m.preheader, m.status, m.slug,
+       m.sent_count, m.created_at, m.started_at, m.finished_at,
+       CASE WHEN m.status = 'draft' THEN m.body_html END AS body_html,
+       (SELECT COUNT(*) FROM mailing_recipients r
+         WHERE r.mailing_id = m.id AND r.status = 'failed') AS failed
+FROM mailings m
+WHERE m.list_id = :list_id AND m.partner_id IS :partner_id
+ORDER BY CASE m.status WHEN 'draft' THEN 0 ELSE 1 END,
+         COALESCE(m.finished_at, m.created_at) DESC;
+
+
+-- name: mailing_one
+SELECT id, list_id, partner_id, subject, preheader, body_md, body_html, body_text,
+       status, slug, sent_count, created_at, started_at, finished_at
+FROM mailings
+WHERE id = :id AND partner_id IS :partner_id;
+
+
+-- name: mailing_upsert
+-- body_md IS THE SOURCE. It is what somebody typed, kept character for
+-- character, and reopening a draft reads it back rather than reading back
+-- markup a browser happened to generate.
+--
+-- body_html is DERIVED from it and stored anyway, already sanitised, because
+-- it is what the archive renders and what a sent mailing is a record of — and
+-- a sent mailing must not change because the converter improved later.
+INSERT INTO mailings (id, list_id, partner_id, subject, preheader,
+                      body_md, body_html, body_text, status, created_by, created_at)
+VALUES (:id, :list_id, :partner_id, :subject, :preheader,
+        :body_md, :body_html, :body_text, 'draft', :created_by, :now)
+ON CONFLICT(id) DO UPDATE SET
+  subject = excluded.subject,
+  preheader = excluded.preheader,
+  body_md = excluded.body_md,
+  body_html = excluded.body_html,
+  body_text = excluded.body_text
+-- A sent mailing is a RECORD. Editing one would rewrite what people were told
+-- they received, and the archive would stop matching the inbox.
+WHERE mailings.status = 'draft';
+
+
+-- name: mailing_delete
+-- Drafts only, for the same reason.
+DELETE FROM mailings
+WHERE id = :id AND partner_id IS :partner_id AND status = 'draft';
+
+
+-- name: mailing_start
+-- The guard against sending twice, and it is a WHERE clause rather than a
+-- check in the Worker on purpose: two requests arriving together both pass an
+-- if-statement, and only one can win an UPDATE that names the old status.
+UPDATE mailings
+SET status = 'sending', started_at = :now, slug = :slug
+WHERE id = :id AND partner_id IS :partner_id AND status = 'draft';
+
+
+-- name: mailing_finish
+UPDATE mailings
+SET status = :status, finished_at = :now, sent_count = :sent_count
+WHERE id = :id AND partner_id IS :partner_id;
+
+
+-- name: mailing_recipient_add
+-- The address AS IT IS NOW. A subscriber may change theirs, and the record of
+-- where a message actually went must not change with them.
+INSERT INTO mailing_recipients (mailing_id, subscriber_id, email, status, updated_at)
+VALUES (:mailing_id, :subscriber_id, :email, :status, :now)
+ON CONFLICT(mailing_id, subscriber_id) DO UPDATE SET
+  status = excluded.status, updated_at = excluded.updated_at;
+
+
+-- name: mailing_recipient_result
+UPDATE mailing_recipients
+SET status = :status, provider_id = :provider_id, error = :error, updated_at = :now
+WHERE mailing_id = :mailing_id AND subscriber_id = :subscriber_id;
+
+
+-- name: subscribers_to_send
+-- ONLY 'subscribed'. Not pending — they have not agreed yet, and sending to
+-- them is the exact thing double opt-in exists to prevent. Not bounced, whose
+-- address is already refusing mail, and not unsubscribed, which needs no
+-- explanation.
+SELECT s.id, s.email, s.name
+FROM subscribers s
+WHERE s.list_id = :list_id AND s.partner_id IS :partner_id
+  AND s.status = 'subscribed'
+ORDER BY s.subscribed_at
+LIMIT :limit OFFSET :offset;
+
+
+-- name: subscribers_to_send_count
+SELECT COUNT(*) AS n FROM subscribers
+WHERE list_id = :list_id AND partner_id IS :partner_id AND status = 'subscribed';
+
+
+-- name: subscriber_by_id_public
+-- For the unsubscribe link, which arrives with no session. The token is
+-- verified in the Worker before this runs — it is an HMAC of the id, so the id
+-- alone is not enough to reach anybody.
+SELECT id, list_id, partner_id, email, status FROM subscribers WHERE id = :id;
+
+
+-- name: subscriber_unsubscribe_by_id
+UPDATE subscribers
+SET status = 'unsubscribed', unsubscribed_at = :now, updated_at = :now
+WHERE id = :id;
+
+
+-- ---- the public archive ----------------------------------------------------
+-- archive_public lives on the LIST, not on each mailing: newsletters are
+-- public and prayer updates are not, and that is a property of the list rather
+-- than a decision to remake every time somebody writes. Per-mailing would mean
+-- one forgetful moment publishes a prayer request naming somebody.
+
+-- name: public_archive_for_list
+SELECT m.slug, m.subject, m.preheader, m.finished_at
+FROM mailings m
+JOIN mailing_lists l ON l.id = m.list_id
+JOIN partners p ON p.slug = :partner_slug AND l.partner_id IS p.id
+WHERE l.slug = :list_slug AND l.archive_public = 1 AND l.archived_at IS NULL
+  AND m.status = 'sent' AND m.slug IS NOT NULL
+ORDER BY m.finished_at DESC
+LIMIT 50;
+
+
+-- name: public_archive_one
+SELECT m.subject, m.preheader, m.body_html, m.finished_at,
+       l.name AS list_name, l.from_name,
+       p.display_name, p.embed_accent, p.embed_theme
+FROM mailings m
+JOIN mailing_lists l ON l.id = m.list_id
+JOIN partners p ON p.slug = :partner_slug AND l.partner_id IS p.id
+WHERE l.slug = :list_slug AND l.archive_public = 1 AND l.archived_at IS NULL
+  AND m.status = 'sent' AND m.slug = :slug;
+
+-- name: mailing_attachments_for
+SELECT id, filename, content_type, bytes, object_key, sort_order
+FROM mailing_attachments
+WHERE mailing_id = :mailing_id
+ORDER BY sort_order, filename COLLATE NOCASE;
+
+
+-- name: mailing_attachment_add
+INSERT INTO mailing_attachments
+  (id, mailing_id, filename, content_type, bytes, object_key, sort_order, created_at)
+VALUES (:id, :mailing_id, :filename, :content_type, :bytes, :object_key, :sort_order, :now);
+
+
+-- name: mailing_attachment_clear
+-- The console sends the whole list on every save, so the set is replaced
+-- rather than diffed. Cheap at this size, and it makes removing one a matter
+-- of not sending it — which is exactly what the delete button does.
+DELETE FROM mailing_attachments WHERE mailing_id = :mailing_id;
+
+-- ============================================================================
+-- CONTACT FORMS
+--
+-- One per partner, and one for the organisation with partner_id NULL. The
+-- messages themselves are emailed and stored nowhere — see 0021 for why — so
+-- everything here is configuration.
+-- ============================================================================
+
+-- name: contact_form_for_partner
+-- `IS` rather than `=`, so NULL matches NULL and one query serves a partner
+-- asking for theirs and an administrator asking for Thauma's.
+SELECT partner_id, deliver_to, from_address, heading, blurb, button, thanks,
+       is_open, updated_at
+FROM contact_forms
+WHERE partner_id IS :partner_id;
+
+
+-- name: contact_form_save
+INSERT INTO contact_forms
+  (partner_id, deliver_to, from_address, heading, blurb, button, thanks,
+   is_open, updated_at)
+VALUES
+  (:partner_id, :deliver_to, :from_address, :heading, :blurb, :button, :thanks,
+   :is_open, :now)
+ON CONFLICT(partner_id) DO UPDATE SET
+  deliver_to   = excluded.deliver_to,
+  from_address = excluded.from_address,
+  heading      = excluded.heading,
+  blurb        = excluded.blurb,
+  button       = excluded.button,
+  thanks       = excluded.thanks,
+  is_open      = excluded.is_open,
+  updated_at   = excluded.updated_at;
+
+
+-- name: public_contact_form
+-- Resolve a slug to a partner's form, for the UNAUTHENTICATED endpoint.
+--
+-- THE JOIN IS THE SCOPE CHECK, and it is written this way for a reason that
+-- cost a real leak once. `partner_id IS (SELECT id FROM partners WHERE slug =
+-- :slug)` reads as "belonging to this partner" — until the slug matches
+-- nobody, when the subquery is NULL, `partner_id IS NULL` is TRUE, and the
+-- query hands back the ORGANISATION's row. The sign-up form had exactly that
+-- bug: any invented slug served Thauma's own form.
+--
+-- `is_open` is the switch, so closing the form takes it off every page it is
+-- embedded on without anybody editing those pages.
+SELECT c.deliver_to, c.from_address, c.heading, c.blurb, c.button, c.thanks,
+       p.display_name, p.embed_accent, p.embed_accent2, p.embed_theme
+FROM contact_forms c
+JOIN partners p ON p.slug = :partner_slug AND c.partner_id IS p.id
+WHERE c.is_open = 1;
+
+
+-- name: public_contact_form_org
+-- Thauma's own, for the site's contact page. A separate query rather than the
+-- one above with a NULL parameter: the organisation has no slug to join on,
+-- and inventing one would be the same trap in a new place.
+SELECT deliver_to, from_address, heading, blurb, button, thanks
+FROM contact_forms
+WHERE partner_id IS NULL AND is_open = 1;
+
+-- name: contact_topics_for_partner
+SELECT id, label, deliver_to, sort_order
+FROM contact_topics
+WHERE partner_id IS :partner_id
+ORDER BY sort_order, label COLLATE NOCASE;
+
+
+-- name: contact_topics_clear
+-- The console sends the whole dropdown on every save, so the set is replaced
+-- rather than diffed. Removing an option is a matter of not sending it, which
+-- is exactly what the delete button does — and there is no second code path
+-- that could disagree with the first about ordering.
+DELETE FROM contact_topics WHERE partner_id IS :partner_id;
+
+
+-- name: contact_topic_add
+INSERT INTO contact_topics (id, partner_id, label, deliver_to, sort_order, created_at)
+VALUES (:id, :partner_id, :label, :deliver_to, :sort_order, :now);
+
+
+-- name: public_contact_topics
+-- The dropdown, for the UNAUTHENTICATED endpoint. Joined through partners the
+-- same way public_contact_form is, and for the same reason: a NULL-matching
+-- comparison against a slug nobody has would hand back the ORGANISATION's
+-- topics. See public_contact_form for the leak that taught this.
+SELECT t.id, t.label, t.deliver_to, t.sort_order
+FROM contact_topics t
+JOIN partners p ON p.slug = :partner_slug AND t.partner_id IS p.id
+ORDER BY t.sort_order, t.label COLLATE NOCASE;
+
+
+-- name: public_contact_topics_org
+-- Thauma's own. A separate query because the organisation has no slug to join
+-- on, and inventing one would be the same trap in a new place.
+SELECT id, label, deliver_to, sort_order
+FROM contact_topics
+WHERE partner_id IS NULL
+ORDER BY sort_order, label COLLATE NOCASE;

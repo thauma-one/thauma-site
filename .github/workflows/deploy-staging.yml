@@ -60,6 +60,9 @@ jobs:
           node test/visibility.test.mjs
           node test/csv.test.mjs
           python3 db/test_schema.py
+          node test/composer-toolbar.test.mjs
+          node test/mailing-preview.test.mjs
+          node test/admin-console.test.mjs
           cd workers && npm test
 
       - name: Deploy
