@@ -47,6 +47,9 @@ const TENANT_SCOPED = new Set([
      `partner_id IS NULL` and returning the ORGANISATION's videos — the exact
      shape of the slug leak fixed in the embed router. */
   "public_videos_for_partner",
+  /* The buttons under the shelf. Gated on the CHANNEL's publication
+     switch, which is why the join is in the SQL and not in a caller. */
+  "public_video_links_for_partner",
 ]);
 
 /**
@@ -80,6 +83,7 @@ export const PUBLIC_QUERIES = new Set([
      through video_channels IS its scoping, which is why it must stay in the
      query rather than being applied by a caller. */
   "public_videos_for_partner",
+  "public_video_links_for_partner",
 ]);
 
 /** Tables a query in PUBLIC_QUERIES must never mention. */
@@ -280,8 +284,8 @@ export function createDb(binding, exec) {
 export async function partnerPublicSite(db, partnerId) {
   if (!partnerId) throw new Error("partnerPublicSite requires a partnerId");
 
-  const [goals, milestones, translations, languages, prayer, prayerTx, videos] =
-    await Promise.all([
+  const [goals, milestones, translations, languages, prayer, prayerTx, videos,
+         videoLinks] = await Promise.all([
       db.publicQuery("public_goals_for_partner", { partner_id: partnerId }),
       db.publicQuery("public_milestones_for_partner", { partner_id: partnerId }),
       db.publicQuery("public_milestone_translations", { partner_id: partnerId }),
@@ -289,6 +293,7 @@ export async function partnerPublicSite(db, partnerId) {
       db.publicQuery("public_prayer_for_partner", { partner_id: partnerId }),
       db.publicQuery("public_prayer_translations", { partner_id: partnerId }),
       db.publicQuery("public_videos_for_partner", { partner_id: partnerId }),
+      db.publicQuery("public_video_links_for_partner", { partner_id: partnerId }),
     ]);
 
   // Group text by milestone, then by language code. Nothing here names a
@@ -373,6 +378,10 @@ export async function partnerPublicSite(db, partnerId) {
       embed_url: `https://www.youtube-nocookie.com/embed/${v.video_id}`,
       thumbnail_url: `https://i.ytimg.com/vi/${v.video_id}/hqdefault.jpg`,
     })),
+    /* Optional buttons under the shelf — the channel, a newsletter, a giving
+       page. Usually none. Named field by field like everything else here, so
+       a column added to video_links does not publish itself. */
+    video_links: videoLinks.map((l) => ({ label: l.label, url: l.url })),
   };
 }
 

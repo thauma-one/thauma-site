@@ -369,7 +369,10 @@ staffHint: four sections, all of them visible to anyone once published
    So no row panel, no save bar, no language columns. A field, a switch, and a
    list you can look at to confirm the right channel is attached. -#}
 <section class="tab-panel" data-panel="videos" role="tabpanel" hidden>
+  {% set embedWidget = "videos" %}
+  {% include "embed-panel.njk" %}
 
+  <div data-emb-content>
   <div class="ms-bar">
     <span class="hint" id="vidStatus"></span>
   </div>
@@ -409,6 +412,20 @@ staffHint: four sections, all of them visible to anyone once published
       </button>
     </div>
 
+    {#- OPTIONAL, and empty by default. chaseroush.com has had one of these
+       under its player for a year ("View All Updates on YouTube") and it is
+       the most-used thing in that section: somebody who watched one video
+       wants somewhere to go next. Most partners will have none, one or two —
+       which is why there is no "add a rail" switch to forget to turn on. An
+       empty row is simply not a button. -#}
+    <div class="vid-links-head">
+      <span data-i18n="vid.buttons">Buttons under the videos</span>
+      <em data-i18n="vid.buttonsHint">optional — where somebody goes next</em>
+    </div>
+
+    <div id="vidLinks"></div>
+    <button type="button" class="ghost-btn" id="vidLinkAdd" data-i18n="vid.addButton">Add a button</button>
+
     <div class="ms-actions">
       <button type="submit" class="solid-btn" data-i18n="vid.save">Save channel</button>
       <button type="button" class="ghost-btn" id="vidCheck" data-i18n="vid.check">Check now</button>
@@ -424,6 +441,7 @@ staffHint: four sections, all of them visible to anyone once published
   <p class="vid-sync" id="vidSync" hidden></p>
 
   <div class="vid-list" id="vidList"></div>
+  </div>
 </section>
 
 <div class="ms-savebar" id="msSaveBar" role="status" aria-live="polite" hidden>

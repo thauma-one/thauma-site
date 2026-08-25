@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "7b3f8a63d35c6b09";
+export const SOURCE_DIGEST = "8620ed35a28a960b";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -566,6 +566,11 @@ FROM prayer_translations t
 JOIN prayer p ON p.id = t.prayer_id
 WHERE t.partner_id = :partner_id
   AND p.is_public = 1;`,
+  public_video_links_for_partner: `SELECT l.label, l.url
+  FROM video_links l
+  JOIN video_channels c ON c.partner_id IS l.partner_id
+ WHERE l.partner_id IS :partner_id AND c.is_public = 1
+ ORDER BY l.sort_order, l.label COLLATE NOCASE;`,
   public_videos_for_partner: `SELECT v.video_id, v.title, v.published_at
   FROM videos v
   JOIN video_channels c ON c.channel_id = v.channel_id
@@ -817,6 +822,13 @@ ON CONFLICT(partner_id) DO UPDATE SET
   FROM video_channels
  WHERE is_public = 1 AND channel_id <> ''
  ORDER BY partner_id;`,
+  video_link_add: `INSERT INTO video_links (id, partner_id, label, url, sort_order, created_at)
+VALUES (:id, :partner_id, :label, :url, :sort_order, :now);`,
+  video_links_clear: `DELETE FROM video_links WHERE partner_id IS :partner_id;`,
+  video_links_for_partner: `SELECT id, label, url, sort_order
+  FROM video_links
+ WHERE partner_id IS :partner_id
+ ORDER BY sort_order, label COLLATE NOCASE;`,
   video_upsert: `INSERT INTO videos (channel_id, video_id, title, published_at, fetched_at)
 VALUES (:channel_id, :video_id, :title, :published_at, :now)
 ON CONFLICT(channel_id, video_id) DO UPDATE SET

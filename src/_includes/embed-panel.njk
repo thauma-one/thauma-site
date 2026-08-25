@@ -7,8 +7,8 @@
    Read one way it is a preview; read the other it is the "hide the visualiser
    and just edit the data" control. Same switch, one job.
 
-   The caller sets `embedWidget` to roadmap | goal | prayer. There is no widget
-   picker: the section has already chosen.  -#}
+   The caller sets `embedWidget` to roadmap | goal | prayer | videos. There is
+   no widget picker: the section has already chosen.  -#}
 
 <div class="emb-bar" data-embed-panel data-widget="{{ embedWidget }}" hidden>
 
@@ -29,7 +29,7 @@
 <section class="emb-panel" data-emb="panel" hidden>
 
   <div class="emb-stagebar">
-    <p class="emb-lede" data-i18n="{{ 'emb.ledeRoadmap' if embedWidget == 'roadmap' else ('emb.ledePrayer' if embedWidget == 'prayer' else 'emb.ledeGoal') }}">
+    <p class="emb-lede" data-i18n="{{ 'emb.ledeRoadmap' if embedWidget == 'roadmap' else ('emb.ledePrayer' if embedWidget == 'prayer' else ('emb.ledeVideos' if embedWidget == 'videos' else 'emb.ledeGoal')) }}">
       This is exactly what somebody sees when they put it on their own site.
     </p>
 

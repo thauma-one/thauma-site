@@ -1700,3 +1700,23 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
 @media (max-width:600px){
   .vid-list{grid-template-columns:1fr}
 }
+
+/* The optional button rail. Two fields and a delete, repeated — deliberately
+   plainer than the rest of this form, because most partners will have none. */
+.vid-links-head{display:flex;align-items:baseline;gap:8px;margin:18px 0 8px;
+  font-size:13px;font-weight:600}
+.vid-links-head em{font-weight:400;font-style:normal;color:var(--dim)}
+
+/* The label is narrower than the address on purpose: a button says two or
+   three words and a URL is long, and equal columns waste the room where it
+   matters. */
+.vid-link-row{display:grid;gap:8px;align-items:center;margin-bottom:8px;
+  grid-template-columns:minmax(0,1fr) minmax(0,2fr) auto}
+.vid-link-row input{min-width:0}
+.vid-link-row .ghost-btn{padding:6px 11px;line-height:1}
+
+@media (max-width:600px){
+  .vid-link-row{grid-template-columns:minmax(0,1fr) auto}
+  .vid-link-row input[data-vl="url"]{grid-column:1 / -1;order:2}
+  .vid-link-row .ghost-btn{order:1}
+}

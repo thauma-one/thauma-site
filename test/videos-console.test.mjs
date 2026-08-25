@@ -30,6 +30,10 @@ const check = async (name, fn) => {
 const assert = (c, m) => { if (!c) throw new Error(m); };
 const eq = (a, b, m) => assert(a === b,
   `${m} — got ${JSON.stringify(a)}, want ${JSON.stringify(b)}`);
+/* Strict equality is right for the scalar assertions above and useless for
+   the rail, which is an array. Kept separate so nobody loosens `eq`. */
+const deq = (a, b, m) => assert(JSON.stringify(a) === JSON.stringify(b),
+  `${m} — got ${JSON.stringify(a)}, want ${JSON.stringify(b)}`);
 
 console.log("the Videos tab, driven for real\n");
 
@@ -58,6 +62,7 @@ function payload(over = {}) {
       url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
       thumbnail_url: "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
     }],
+    links: [],
     ...over,
   };
 }
@@ -235,6 +240,69 @@ await check("removing the channel asks first, and does nothing if refused", asyn
   press(w, w.document.getElementById("vidClear"));
   await new Promise((r) => setTimeout(r, 120));
   eq(sent.filter((s) => s.method === "DELETE").length, 1, "confirmed, so sent");
+});
+
+/* ---------------------------- the button rail ---------------------------- */
+
+await check("saved buttons come back into the editor", async () => {
+  const { w } = await boot(payload({ links: [
+    { label: "All updates on YouTube", url: "https://www.youtube.com/@thauma" },
+    { label: "Give", url: "https://thauma.one/give" },
+  ] }));
+  await openTab(w);
+  const rows = w.document.querySelectorAll("#vidLinks .vid-link-row");
+  eq(rows.length, 2, "rows");
+  eq(rows[0].querySelector('[data-vl="label"]').value, "All updates on YouTube", "label");
+  eq(rows[1].querySelector('[data-vl="url"]').value, "https://thauma.one/give", "url");
+});
+
+await check("the whole rail is sent on save, so removing one removes it", async () => {
+  /* Replaced wholesale rather than diffed. Deleting a row and saving must be
+     the thing that removes it — if the browser sent only what it had ADDED,
+     a deleted button would live on in the database and keep appearing. */
+  const { w, sent } = await boot(payload({ links: [
+    { label: "Keep", url: "https://a.example" },
+    { label: "Drop", url: "https://b.example" },
+  ] }));
+  await openTab(w);
+  w.document.querySelectorAll("#vidLinks .vid-link-row")[1]
+    .querySelector('[data-vl="del"]')
+    .dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+
+  w.document.getElementById("vidForm")
+    .dispatchEvent(new w.Event("submit", { bubbles: true, cancelable: true }));
+  await new Promise((r) => setTimeout(r, 120));
+
+  const post = sent.find((s) => s.method === "POST");
+  deq(post.body.links, [{ label: "Keep", url: "https://a.example" }], "the rail as it now stands");
+});
+
+await check("a typed button reaches the request exactly as typed", async () => {
+  const { w, sent } = await boot();
+  await openTab(w);
+  press(w, w.document.getElementById("vidLinkAdd"));
+  const row = w.document.querySelector("#vidLinks .vid-link-row");
+  row.querySelector('[data-vl="label"]').value = "  Newsletter  ";
+  row.querySelector('[data-vl="url"]').value = "https://thauma.one/news";
+  w.document.getElementById("vidForm")
+    .dispatchEvent(new w.Event("submit", { bubbles: true, cancelable: true }));
+  await new Promise((r) => setTimeout(r, 120));
+
+  const post = sent.find((s) => s.method === "POST");
+  deq(post.body.links, [{ label: "Newsletter", url: "https://thauma.one/news" }],
+      "trimmed, and nothing else changed");
+});
+
+await check("the Add control stops at four", async () => {
+  const { w } = await boot();
+  await openTab(w);
+  for (let i = 0; i < 6; i++) {
+    if (!w.document.getElementById("vidLinkAdd").hidden) {
+      press(w, w.document.getElementById("vidLinkAdd"));
+    }
+  }
+  eq(w.document.querySelectorAll("#vidLinks .vid-link-row").length, 4, "rows");
+  eq(w.document.getElementById("vidLinkAdd").hidden, true, "Add should be gone");
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);

@@ -1995,3 +1995,36 @@ SELECT v.video_id, v.title, v.published_at
  -- rather than reading it.
  LIMIT COALESCE(
    (SELECT max_items FROM video_channels WHERE partner_id IS :partner_id), 0);
+
+
+-- name: video_links_for_partner
+SELECT id, label, url, sort_order
+  FROM video_links
+ WHERE partner_id IS :partner_id
+ ORDER BY sort_order, label COLLATE NOCASE;
+
+
+-- name: video_links_clear
+-- The console sends the whole rail on every save, so the set is replaced
+-- rather than diffed. Removing a button is a matter of not sending it, which
+-- is exactly what the delete control does — and there is no second code path
+-- that can disagree about what "removed" means.
+DELETE FROM video_links WHERE partner_id IS :partner_id;
+
+
+-- name: video_link_add
+INSERT INTO video_links (id, partner_id, label, url, sort_order, created_at)
+VALUES (:id, :partner_id, :label, :url, :sort_order, :now);
+
+
+-- name: public_video_links_for_partner
+-- The buttons under the shelf, for the partner API and the embed. Gated on
+-- the CHANNEL's publication switch, not on their own: these belong to the
+-- video section, and a partner who has switched videos off has switched the
+-- whole section off. Without the join they would keep appearing under
+-- nothing.
+SELECT l.label, l.url
+  FROM video_links l
+  JOIN video_channels c ON c.partner_id IS l.partner_id
+ WHERE l.partner_id IS :partner_id AND c.is_public = 1
+ ORDER BY l.sort_order, l.label COLLATE NOCASE;

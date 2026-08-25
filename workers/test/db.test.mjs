@@ -311,6 +311,8 @@ await check("every real query converts with its documented params", async () => 
     channel_id: "UCnp-pBzHdpTwMonf7xuN1Ug", channel_title: "Thauma",
     video_id: "dQw4w9WgXcQ", published_at: "2026-08-01T10:00:00+00:00",
     max_items: 3, error: null,
+    // the optional buttons under the shelf
+    url: "https://www.youtube.com/@thauma",
     // attachments: the pointer lives in D1, the bytes live in R2
     filename: "report.pdf", content_type: "application/pdf", bytes: 81920,
     object_key: "attachments/chase-roush/abc123",

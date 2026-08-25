@@ -20,7 +20,12 @@
 
   var API = '/api/staff-videos';
   var $ = function (id) { return document.getElementById(id); };
-  var state = { channel: null, videos: [], busy: false };
+  var state = { channel: null, videos: [], links: [], busy: false };
+
+  /* Four is not a technical limit. A rail of eight pill buttons under three
+     videos is not navigation, it is a sitemap — and the endpoint enforces the
+     same number, because a limit only the browser knows is not a limit. */
+  var MAX_LINKS = 4;
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -85,6 +90,7 @@
     $('vidCheck').hidden = !c;
 
     renderSync();
+    renderLinks();
     renderList();
   }
 
@@ -104,6 +110,52 @@
       el.className = 'vid-sync';
       el.textContent = tr('vid.neverChecked');
     }
+  }
+
+  /* ------------------------------ the rail ------------------------------ */
+
+  /* Rows are rebuilt from the DOM on every read rather than mirrored into
+     state as you type. Two copies of a form's contents is how a field ends up
+     saving what it held one keystroke ago. */
+  function readLinks() {
+    return Array.prototype.map.call(
+      document.querySelectorAll('#vidLinks .vid-link-row'),
+      function (row) {
+        return {
+          label: row.querySelector('[data-vl="label"]').value.trim(),
+          url: row.querySelector('[data-vl="url"]').value.trim(),
+        };
+      });
+  }
+
+  function linkRow(link) {
+    var row = document.createElement('div');
+    row.className = 'vid-link-row';
+    row.innerHTML =
+      '<input type="text" data-vl="label" maxlength="40"' +
+      ' placeholder="' + esc(tr('vid.buttonLabel')) + '" value="' +
+        esc(link && link.label || '') + '">' +
+      '<input type="url" data-vl="url" maxlength="400" spellcheck="false"' +
+      ' placeholder="https://" value="' + esc(link && link.url || '') + '">' +
+      '<button type="button" class="ghost-btn danger" data-vl="del"' +
+      ' aria-label="' + esc(tr('vid.removeButton')) + '">&times;</button>';
+    row.querySelector('[data-vl="del"]').addEventListener('click', function () {
+      row.remove();
+      refreshAddButton();
+    });
+    return row;
+  }
+
+  function refreshAddButton() {
+    var n = document.querySelectorAll('#vidLinks .vid-link-row').length;
+    $('vidLinkAdd').hidden = n >= MAX_LINKS;
+  }
+
+  function renderLinks() {
+    var box = $('vidLinks');
+    box.innerHTML = '';
+    state.links.forEach(function (l) { box.appendChild(linkRow(l)); });
+    refreshAddButton();
   }
 
   function renderList() {
@@ -135,6 +187,7 @@
   function apply(data) {
     state.channel = data.channel || null;
     state.videos = data.videos || [];
+    state.links = data.links || [];
     render();
   }
 
@@ -195,7 +248,15 @@
       channel: raw,
       max_items: Number($('vidCount').value) || 3,
       is_public: isOn($('vidPublic')),
+      links: readLinks(),
     }, 'vid.checking'));
+  });
+
+  $('vidLinkAdd').addEventListener('click', function () {
+    $('vidLinks').appendChild(linkRow(null));
+    refreshAddButton();
+    var rows = document.querySelectorAll('#vidLinks .vid-link-row');
+    rows[rows.length - 1].querySelector('[data-vl="label"]').focus();
   });
 
   $('vidCheck').addEventListener('click', async function () {

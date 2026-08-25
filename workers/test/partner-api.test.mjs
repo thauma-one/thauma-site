@@ -90,6 +90,11 @@ await check("PUBLIC_QUERIES is an allow-list of exactly the intended queries", a
        public on YouTube, but the `videos` table has NO partner column — the
        join through video_channels is what scopes it, which is why that join
        has to live in the SQL and not in a caller. */
+    /* The list is compared SORTED, and "_" sorts before "s" — so the buttons
+       come before the videos here even though they were added after. */
+    /* The optional buttons under the shelf. Gated on the CHANNEL's switch,
+       not their own — see the query. */
+    "public_video_links_for_partner",
     "public_videos_for_partner",
   ], "public set");
 });
@@ -133,6 +138,11 @@ function fakePublicDb(overrides = {}) {
         { code: "hr", name: "Croatian", native_name: "Hrvatski", sort_order: 1 },
       ];
     }
+    if (sql.includes("FROM video_links")) {
+      return overrides.video_links ?? [
+        { label: "All updates on YouTube", url: "https://www.youtube.com/@thauma" },
+      ];
+    }
     if (sql.includes("FROM videos")) {
       return overrides.videos ?? [
         { video_id: "dQw4w9WgXcQ", title: "Faith & Works",
@@ -155,7 +165,8 @@ await check("the payload carries languages, goals, milestones and prayer — and
      same sense the roadmap is, and it goes through the same publication gate
      and the same no-personal-data check. */
   eq(Object.keys(site).sort(),
-     ["goals", "languages", "milestones", "prayer", "videos"], "top-level keys");
+     ["goals", "languages", "milestones", "prayer", "video_links", "videos"],
+     "top-level keys");
 });
 
 await check("a video arrives with its URLs built, and its title undoubled", async () => {
@@ -169,6 +180,12 @@ await check("a video arrives with its URLs built, and its title undoubled", asyn
   eq(v.url, "https://www.youtube.com/watch?v=dQw4w9WgXcQ", "watch url");
   eq(v.embed_url, "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ", "embed url");
   eq(v.thumbnail_url, "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg", "thumbnail");
+});
+
+await check("a button reaches a partner site as a label and a URL, nothing else", async () => {
+  const site = await partnerPublicSite(fakePublicDb(), "p_chase");
+  eq(site.video_links, [{ label: "All updates on YouTube",
+                          url: "https://www.youtube.com/@thauma" }], "the rail");
 });
 
 await check("the videos query cannot be run without a partner", async () => {

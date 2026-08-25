@@ -699,5 +699,142 @@ await check("injected data for a DIFFERENT partner is ignored", async () => {
   eq(calls.length, 1, "it used another partner's injected data instead of fetching");
 });
 
+/* ------------------------------- videos --------------------------------- */
+
+const VIDEOS = {
+  version: 1,
+  partner: { slug: "chase-roush", display_name: "Chase Roush" },
+  theme: { accent: "#00D4FF", mode: "auto" },
+  goals: [], milestones: [], prayer: [],
+  videos: [
+    { id: "dQw4w9WgXcQ", title: "This is Amazing!!!",
+      published_at: "2026-02-15T18:30:00+00:00",
+      url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      embed_url: "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ",
+      thumbnail_url: "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg" },
+    { id: "aBcDeFgHiJk", title: "Faith & Works",
+      published_at: "2026-01-04T09:00:00+00:00",
+      url: "https://www.youtube.com/watch?v=aBcDeFgHiJk",
+      embed_url: "https://www.youtube-nocookie.com/embed/aBcDeFgHiJk",
+      thumbnail_url: "https://i.ytimg.com/vi/aBcDeFgHiJk/hqdefault.jpg" },
+  ],
+};
+
+const asVideos = { "data-thauma": "chase-roush", "data-widget": "videos" };
+
+await check("the videos widget draws a card per video", async () => {
+  const { root } = await run(VIDEOS, asVideos);
+  eq(root.byClass("vcard").length, 2, "cards");
+  eq(root.byClass("vthumb").length, 2, "thumbnails");
+  eq(root.byClass("vplay").length, 2, "play controls");
+});
+
+await check("each card carries the title and the DAY it went up", async () => {
+  /* A day, not a month: "Feb 2026" about something posted last Tuesday reads
+     as older than it is. Milestones are the opposite and keep monthYear. */
+  const { root } = await run(VIDEOS, asVideos);
+  const titles = root.byClass("vtitle").map((n) => n.textContent);
+  eq(titles, ["This is Amazing!!!", "Faith & Works"], "titles");
+
+  const dates = root.byClass("vdate").map((n) => n.textContent);
+  assert(/15/.test(dates[0]) && /2026/.test(dates[0]),
+    `the date should name the day, got "${dates[0]}"`);
+});
+
+await check("a card links to YouTube and opens away from the host's page", async () => {
+  /* It links out rather than embedding a player: three third-party frames on
+     somebody's page before a visitor has asked for any of them is slow, and
+     hands YouTube a record of the visit whether or not anybody watches. */
+  const { root } = await run(VIDEOS, asVideos);
+  const card = root.byClass("vcard")[0];
+  eq(card.tagName, "A", "the card should be a link");
+  eq(card.href, "https://www.youtube.com/watch?v=dQw4w9WgXcQ", "href");
+  eq(card.target, "_blank", "target");
+  assert(/noopener/.test(card.rel), `rel should carry noopener, got "${card.rel}"`);
+  assert(!root.find((n) => n.tagName === "IFRAME").length,
+    "no player should be loaded before anybody asks for one");
+});
+
+await check("the CARDS are neutral and the BUTTONS are not", async () => {
+  /* The line this widget draws. A video is somebody else's artwork with
+     somebody else's title on it, and an accent gradient over a YouTube still
+     makes it look like neither — so the cards take no colour at all. A button
+     underneath is the ministry speaking in its own voice ("watch more of
+     ours"), so the rail does. */
+  const { root } = await run(VIDEOS, { ...asVideos, "data-accent": "#E4572E" });
+  const css = root.children.find((n) => n.tagName === "STYLE").textContent;
+
+  const cards = css.slice(css.indexOf(".vids{"), css.indexOf(".vlinks{"));
+  assert(!/var\(--prog\)|var\(--done\)|var\(--faint/i.test(cards),
+    "the video CARDS reach for the ministry's colour");
+
+  const rail = css.slice(css.indexOf(".vlinks{"), css.indexOf(".foot{"));
+  assert(/var\(--prog\)|var\(--faint-p\)/.test(rail),
+    "the button rail should carry the ministry's colour");
+});
+
+await check("a channel with no videos says so instead of drawing nothing", async () => {
+  const { root } = await run({ ...VIDEOS, videos: [] }, asVideos);
+  eq(root.byClass("vcard").length, 0, "no cards");
+  assert(root.byClass("msg").length, "no empty-state message");
+});
+
+await check("a video with no title is skipped, not drawn blank", async () => {
+  const { root } = await run(
+    { ...VIDEOS, videos: [...VIDEOS.videos, { id: "zzzzzzzzzzz", title: "" }] }, asVideos);
+  eq(root.byClass("vcard").length, 2, "the untitled one should be dropped");
+});
+
+await check("asking for videos does NOT draw goals", async () => {
+  /* The dispatcher falls through to goals for any unknown kind, so a typo in
+     the branch would silently render the wrong widget. */
+  const { root } = await run({ ...VIDEOS, goals: GOALS.goals }, asVideos);
+  eq(root.byClass("gcard").length, 0, "a goal card was drawn on the videos widget");
+  eq(root.byClass("vcard").length, 2, "cards");
+});
+
+/* --------------------------- the button rail ----------------------------- */
+
+const RAIL = [
+  { label: "All updates on YouTube", url: "https://www.youtube.com/@thauma" },
+  { label: "Give", url: "https://thauma.one/give" },
+];
+
+await check("the buttons under the shelf are drawn, in order", async () => {
+  const { root } = await run({ ...VIDEOS, video_links: RAIL }, asVideos);
+  const links = root.byClass("vlink");
+  eq(links.map((a) => a.textContent), RAIL.map((l) => l.label), "labels");
+  eq(links[0].href, RAIL[0].url, "href");
+  eq(links[0].target, "_blank", "target");
+});
+
+await check("A BUTTON URL THAT IS NOT http(s) IS NEVER MADE INTO A LINK", async () => {
+  /* The console refuses these before storing them. This is the second check,
+     because a row could predate that one — and a javascript: URL in an href
+     on somebody else's website is script execution on their page. */
+  const { root } = await run({ ...VIDEOS, video_links: [
+    { label: "Bad", url: "javascript:alert(1)" },
+    { label: "Also bad", url: "data:text/html,<script>alert(1)</script>" },
+    { label: "Relative", url: "/give" },
+    { label: "Fine", url: "https://thauma.one/give" },
+  ] }, asVideos);
+  const links = root.byClass("vlink");
+  eq(links.map((a) => a.textContent), ["Fine"], "only the safe one survives");
+});
+
+await check("no buttons means no rail, not an empty one", async () => {
+  for (const links of [undefined, [], [{ label: "", url: "https://x.org" }]]) {
+    const { root } = await run({ ...VIDEOS, video_links: links }, asVideos);
+    eq(root.byClass("vlinks").length, 0, `drew a rail for ${JSON.stringify(links)}`);
+  }
+});
+
+await check("the rail shows even when the channel has posted nothing yet", async () => {
+  /* A channel with no videos is exactly when "subscribe" is worth offering. */
+  const { root } = await run({ ...VIDEOS, videos: [], video_links: RAIL }, asVideos);
+  eq(root.byClass("vlink").length, 2, "buttons");
+  assert(root.byClass("msg").length, "and it should still say there are no videos");
+});
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

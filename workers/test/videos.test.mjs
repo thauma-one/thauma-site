@@ -12,6 +12,7 @@
 import { parseFeed, parseChannelTitle, decodeEntities, resolveChannelId, feedUrl }
   from "../src/lib/youtube.js";
 import { syncChannel, syncAll } from "../src/lib/video-sync.js";
+import { safeUrl, cleanLinks } from "../src/staff-videos.js";
 
 let pass = 0, fail = 0;
 async function check(name, fn) {
@@ -226,6 +227,64 @@ await check("one bad channel does not stop the scheduled run", async () => {
   eq(results.length, 3, "every channel was attempted");
   eq(results.map((r) => r.ok), [false, true, true], "the failure is isolated");
   eq(results[2].partner_id, null, "the organisation is a channel like any other");
+});
+
+/* ------------------------ the optional button rail ----------------------- */
+
+await check("ONLY http AND https EVER BECOME A BUTTON", async () => {
+  /* This value becomes an href in a widget on a stranger's website. A
+     javascript: URL there is script execution on THEIR page, and data: is a
+     whole document of the author's choosing. Refused before it is stored, and
+     again in the widget before it is used. */
+  for (const good of ["https://www.youtube.com/@thauma", "http://example.org/give",
+                      "https://thauma.one/news?utm=1#top"]) {
+    assert(safeUrl(good), `refused a real address: ${good}`);
+  }
+  for (const bad of ["javascript:alert(1)", "JavaScript:alert(1)",
+                     "data:text/html,<script>alert(1)</script>",
+                     "vbscript:msgbox", "file:///etc/passwd", "ftp://x.org",
+                     /* Relative, and it would point at the HOST's giving page
+                        rather than the ministry's — the button renders on
+                        somebody else's domain. */
+                     "/give", "give", "//evil.example", ""]) {
+    eq(safeUrl(bad), null, `accepted ${JSON.stringify(bad)}`);
+  }
+});
+
+await check("a button needs both a label and an address", async () => {
+  eq(cleanLinks([{ label: "", url: "https://x.org" }]).error !== undefined, true,
+     "a nameless button");
+  assert(/https/.test(cleanLinks([{ label: "Give", url: "x.org" }]).error || ""),
+     "the error should tell them what a full address looks like");
+  /* The empty row at the bottom of the editor is not an error — deleting it
+     for them is friendlier than refusing the save. */
+  eq(cleanLinks([{ label: "", url: "" }]).value.length, 0, "a blank row");
+});
+
+await check("two buttons cannot carry the same words", async () => {
+  const r = cleanLinks([{ label: "Give", url: "https://a.org" },
+                        { label: "give", url: "https://b.org" }]);
+  assert(/two buttons/i.test(r.error || ""), `expected a refusal, got ${JSON.stringify(r)}`);
+});
+
+await check("the rail is capped server-side, not only in the browser", async () => {
+  /* A limit only the browser knows is not a limit. */
+  const many = Array.from({ length: 9 }, (_, i) => ({ label: "L" + i, url: "https://x.org/" + i }));
+  assert(cleanLinks(many).error, "nine buttons were accepted");
+});
+
+await check("order is taken from the rows, not from what was typed in them", async () => {
+  const { value } = cleanLinks([{ label: "B", url: "https://b.org" },
+                                { label: "A", url: "https://a.org" }]);
+  eq(value.map((l) => [l.label, l.sort_order]), [["B", 0], ["A", 1]], "as arranged");
+});
+
+await check("links absent from the request leave the stored rail alone", async () => {
+  /* Only "Check now" and older clients omit it. Treating a missing field as
+     "delete everything" would wipe the rail on every check. */
+  eq(cleanLinks(undefined).value, null, "undefined means: not sent");
+  eq(cleanLinks(null).value, null, "null means: not sent");
+  eq(cleanLinks([]).value.length, 0, "an empty LIST does mean: remove them all");
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);

@@ -33,7 +33,8 @@ export function embedGuide(origin, slug, displayName) {
 
   return `# ${displayName} — public data
 
-A single JSON document with this ministry's published goals and roadmap.
+A single JSON document with this ministry's published goals, roadmap, prayer
+and videos.
 No key, no sign-up, no rate limit worth worrying about.
 
     ${url}
@@ -111,6 +112,8 @@ Guard the null explicitly before comparing dates.
 | \`languages\` | array | Which languages they publish. Build a switcher from THIS, not from the keys you happen to find. |
 | \`goals\` | array | May be empty. |
 | \`milestones\` | array | May be empty. |
+| \`videos\` | array | Their latest YouTube videos, newest first. May be empty. |
+| \`video_links\` | array | Optional buttons to show under the videos. Usually empty. |
 
 ### A goal
 
@@ -137,6 +140,35 @@ Guard the null explicitly before comparing dates.
 | \`completion\` | number \\| null | 0–100, if they track it. |
 | \`is_featured\` | boolean | The ministry marked this as the current focus. |
 | \`text\` | object | **Keyed by language code.** See below. |
+
+### A video
+
+Read from the channel's public feed and refreshed every fifteen minutes, so
+what you get here is at most that far behind YouTube. **Not translated** — the
+title is whatever the person who uploaded it typed, in whatever language they
+typed it. Do not try to key it by language; there is only one.
+
+| field | type | notes |
+|---|---|---|
+| \`id\` | string | The YouTube video id. |
+| \`title\` | string | Already decoded. \`&amp;\` has become \`&\` — escape it yourself when you put it into HTML. |
+| \`published_at\` | string | ISO 8601. A real day, not a month. |
+| \`url\` | string | The watch page. |
+| \`embed_url\` | string | \`youtube-nocookie.com\` — use this if you embed a player, not the plain one. |
+| \`thumbnail_url\` | string | 480×360 still, letterboxed. Crop with \`object-fit: cover\` if you want the 16:9 frame. |
+
+The list is capped at what the ministry chose to show — usually three. Loop
+over it; do not assume a length.
+
+### A button under the videos
+
+| field | type | notes |
+|---|---|---|
+| \`label\` | string | What the button says. Their words. |
+| \`url\` | string | Always absolute, always \`http\` or \`https\`. |
+
+Usually empty. When it is not, these belong **under** the videos — they are
+where a viewer goes next, not navigation for your whole page.
 
 ### \`text\` is keyed by language
 

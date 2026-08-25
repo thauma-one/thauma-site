@@ -302,6 +302,75 @@ def t_repointing_a_channel_forgets_when_the_old_one_was_checked():
     assert got is None, f"a new channel kept the old channel's timestamp: {got}"
 
 
+def t_buttons_follow_the_channels_publication_switch():
+    """The rail belongs to the video section. A partner who switched videos off
+    switched the whole section off — without the join, the buttons would keep
+    appearing under nothing."""
+    db = fresh()
+    db.execute("INSERT INTO partners (id,slug,display_name,status,created_at,updated_at)"
+               " VALUES ('p_a','a','A','active',?,?)", (NOW, NOW))
+    db.execute("INSERT INTO video_channels (partner_id,channel_id,is_public,max_items,"
+               "updated_at) VALUES ('p_a','UC0000000000000000000000',0,3,?)", (NOW,))
+    db.execute("INSERT INTO video_links (id,partner_id,label,url,sort_order,created_at)"
+               " VALUES ('vl_1','p_a','Give','https://x.org',0,?)", (NOW,))
+
+    sql, names = _query("public_video_links_for_partner")
+    assert db.execute(sql, ["p_a"] * len(names)).fetchall() == [], \
+        "buttons published while the channel was switched off"
+
+    db.execute("UPDATE video_channels SET is_public = 1")
+    assert len(db.execute(sql, ["p_a"] * len(names)).fetchall()) == 1, \
+        "buttons vanished with the channel switched on"
+
+
+def t_a_partner_with_no_channel_publishes_no_buttons():
+    """Same trap as the LIMIT NULL one above: this runs for EVERY partner on
+    every partner-API call, so it has to be correct for the common case of a
+    partner who has never touched the video section."""
+    db = fresh()
+    db.execute("INSERT INTO partners (id,slug,display_name,status,created_at,updated_at)"
+               " VALUES ('p_a','a','A','active',?,?)", (NOW, NOW))
+    db.execute("INSERT INTO video_links (id,partner_id,label,url,sort_order,created_at)"
+               " VALUES ('vl_1','p_a','Give','https://x.org',0,?)", (NOW,))
+    sql, names = _query("public_video_links_for_partner")
+    assert db.execute(sql, ["p_a"] * len(names)).fetchall() == [], \
+        "buttons published with no channel row at all"
+
+
+def t_one_partners_buttons_are_not_anothers():
+    db = fresh()
+    for pid in ("p_a", "p_b"):
+        db.execute("INSERT INTO partners (id,slug,display_name,status,created_at,updated_at)"
+                   " VALUES (?,?,?,'active',?,?)", (pid, pid, pid, NOW, NOW))
+        db.execute("INSERT INTO video_channels (partner_id,channel_id,is_public,"
+                   "max_items,updated_at) VALUES (?,'UC0000000000000000000000',1,3,?)",
+                   (pid, NOW))
+        db.execute("INSERT INTO video_links (id,partner_id,label,url,sort_order,created_at)"
+                   " VALUES (?,?,?,'https://x.org',0,?)",
+                   ("vl_" + pid, pid, "Give " + pid, NOW))
+
+    sql, names = _query("public_video_links_for_partner")
+    got = [r[0] for r in db.execute(sql, ["p_a"] * len(names))]
+    assert got == ["Give p_a"], f"partner A saw {got}"
+
+
+def t_two_buttons_cannot_share_a_label():
+    """SQLite treats NULLs as distinct in a UNIQUE index, so the organisation
+    would be exempt without the COALESCE — which is exactly the owner most
+    likely to accumulate duplicates."""
+    db = fresh()
+    def add(partner, label):
+        db.execute("INSERT INTO video_links (id,partner_id,label,url,sort_order,created_at)"
+                   " VALUES (?,?,?,'https://x.org',0,?)",
+                   (f"vl_{partner}_{label}", partner, label, NOW))
+    add(None, "Give")
+    try:
+        add(None, "Give")
+        raise AssertionError("the organisation was allowed two buttons called Give")
+    except sqlite3.IntegrityError:
+        pass
+
+
 def t_seed_files_insert_every_row_they_claim():
     """Every INSERT in a seed file must actually land.
 
@@ -1210,6 +1279,10 @@ if __name__ == "__main__":
         ("no channel does not break the partner API",    t_a_partner_with_no_channel_does_not_break_the_partner_api),
         ("videos need the channel switched on",          t_videos_are_returned_only_for_a_channel_that_is_switched_on),
         ("repointing a channel forgets the old check",   t_repointing_a_channel_forgets_when_the_old_one_was_checked),
+        ("buttons follow the channel's switch",          t_buttons_follow_the_channels_publication_switch),
+        ("no channel publishes no buttons",              t_a_partner_with_no_channel_publishes_no_buttons),
+        ("one partner's buttons are not another's",      t_one_partners_buttons_are_not_anothers),
+        ("two buttons cannot share a label",             t_two_buttons_cannot_share_a_label),
         ("bulk status cannot mark anybody subscribed",   t_bulk_status_cannot_mark_anybody_subscribed),
         ("bulk tagging cannot borrow another's tag",     t_bulk_tagging_cannot_borrow_another_partners_tag),
     ]:

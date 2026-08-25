@@ -51,7 +51,7 @@ export const WIDGET_JS = String.raw`
      <script src="https://thauma.one/embed/v1/widget.js" async></script>
 
    Attributes, all optional:
-     data-widget   goal | roadmap | prayer (default goal)
+     data-widget   goal | roadmap | prayer | videos (default goal)
      data-lang     en | hr | sr | ...    (default: the host page's own language)
      data-accent   #6D4AFF               overrides the ministry's colour
      data-theme    auto | light | dark
@@ -119,6 +119,17 @@ export const WIDGET_JS = String.raw`
     } catch (e) { return String(iso).slice(0, 7); }
   }
 
+  /* A video went up on a DAY, and saying "Aug 2026" about something posted
+     last Tuesday reads as older than it is. Milestones are the opposite — they
+     land in a month — which is why monthYear stays and this sits beside it. */
+  function fullDate(iso, lang) {
+    if (!iso) return '';
+    try {
+      return new Intl.DateTimeFormat(lang || 'en',
+        { year: 'numeric', month: 'short', day: 'numeric' }).format(new Date(iso));
+    } catch (e) { return String(iso).slice(0, 10); }
+  }
+
   function pick(text, lang) {
     if (!text) return null;
     return text[lang] || text.en || text[Object.keys(text)[0]] || null;
@@ -139,19 +150,22 @@ export const WIDGET_JS = String.raw`
           remaining: 'remaining', funded: 'Funded',
           partners: 'partners', partner: 'partner', breakdown: 'Breakdown',
           empty: 'Nothing to show yet.', close: 'Close',
-          answered: 'Answered', praying: 'Still praying' },
+          answered: 'Answered', praying: 'Still praying',
+          watch: 'Watch on YouTube' },
     hr: { now: 'SADA', complete: 'Završeno', in_progress: 'U tijeku',
           upcoming: 'Nadolazeće', cancelled: 'Otkazano', completeWord: 'Završeno',
           remaining: 'preostalo', funded: 'Financirano',
           partners: 'podupiratelja', partner: 'podupiratelj', breakdown: 'Raščlamba',
           empty: 'Još nema ničega za prikazati.', close: 'Zatvori',
-          answered: 'Uslišano', praying: 'Još molimo' },
+          answered: 'Uslišano', praying: 'Još molimo',
+          watch: 'Pogledaj na YouTubeu' },
     sr: { now: 'САДА', complete: 'Завршено', in_progress: 'У току',
           upcoming: 'Предстоји', cancelled: 'Отказано', completeWord: 'Завршено',
           remaining: 'преостало', funded: 'Финансирано',
           partners: 'подржавалаца', partner: 'подржавалац', breakdown: 'Рашчламба',
           empty: 'Још нема ничега за приказ.', close: 'Затвори',
-          answered: 'Услишено', praying: 'Још молимо' }
+          answered: 'Услишено', praying: 'Још молимо',
+          watch: 'Погледај на Јутјубу' }
   };
   function w(lang, key) { return (WORDS[lang] || WORDS.en)[key] || WORDS.en[key]; }
 
@@ -547,6 +561,50 @@ export const WIDGET_JS = String.raw`
       '.is-wide .rail{display:block}' +
       '.is-wide .col{display:none}' +
 
+      /* ============ VIDEOS ============
+         No accent, no gradient, no hover lift. See videoCards() for why. */
+      /* auto-fill, NOT auto-fit: with one video auto-fit stretches the single
+         card the whole width and a 16:9 still becomes a banner. */
+      '.vids{display:grid;gap:18px;' +
+        'grid-template-columns:repeat(auto-fill,minmax(210px,1fr))}' +
+      '.vcard{display:block;color:inherit;text-decoration:none}' +
+
+      /* The box is declared rather than left to the image, so the grid does
+         not reflow as each still arrives from YouTube's CDN. */
+      '.vshot{position:relative;aspect-ratio:16/9;overflow:hidden;' +
+        'border-radius:8px;background:var(--track)}' +
+      /* hqdefault is 4:3 with letterboxing baked in; cover crops it back to
+         the frame the video was actually shot in. */
+      '.vthumb{display:block;width:100%;height:100%;object-fit:cover}' +
+
+      /* YouTube's own shape, in neutral grey rather than its red — this is a
+         play control, not a YouTube badge, and the widget does not claim to
+         be them. */
+      '.vplay{position:absolute;left:50%;top:50%;width:48px;height:34px;' +
+        'margin:-17px 0 0 -24px;border-radius:8px;background:rgba(0,0,0,.62);' +
+        'transition:background .2s ease}' +
+      '.vplay:after{content:"";position:absolute;left:19px;top:10px;' +
+        'border-style:solid;border-width:7px 0 7px 11px;' +
+        'border-color:transparent transparent transparent #fff}' +
+      '.vcard:hover .vplay{background:rgba(0,0,0,.82)}' +
+
+      '.vtitle{margin-top:9px;font-size:15px;font-weight:600;line-height:1.35;' +
+        /* Two lines then ellipsis. Video titles run long, and a card that
+           grows to fit one drags its whole grid row with it. */
+        'display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;' +
+        'overflow:hidden}' +
+      '.vdate{margin-top:4px;font-size:12.5px;color:var(--dim)}' +
+
+      /* The optional rail. Outlined rather than filled, and in the ministry's
+         colour — unlike the cards above it. A button IS the ministry speaking
+         ("watch more of ours"), where a thumbnail is somebody's video. */
+      '.vlinks{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}' +
+      '.vlink{display:inline-block;padding:9px 16px;border-radius:999px;' +
+        'border:1.5px solid var(--faint-p);color:var(--fg);font-size:13.5px;' +
+        'font-weight:600;text-decoration:none;line-height:1.2;' +
+        'transition:border-color .2s ease,background .2s ease}' +
+      '.vlink:hover{border-color:var(--prog);background:var(--faint-p)}' +
+
       '.foot{margin-top:20px;padding-top:12px;border-top:1px solid var(--line);' +
         'font-size:12px;color:var(--dim)}' +
       '.foot a{color:inherit;text-decoration:none;border-bottom:1px solid var(--line)}' +
@@ -557,7 +615,8 @@ export const WIDGET_JS = String.raw`
         '.gfill,.rfill,.cfill,.dfill,.kbarf{transition:none}' +
         '.gfill:after,.rfill:after,.dfill:after{animation:none;display:none}' +
         '.dot.in_progress,.sdot.in_progress,.nline,.vnow,.now,.detail{animation:none}' +
-        '.gcard:hover{transform:none}}';
+        '.gcard:hover{transform:none}' +
+        '.vplay,.vlink{transition:none}}';
   }
 
   /* ---------- count-up ---------- */
@@ -1109,6 +1168,88 @@ export const WIDGET_JS = String.raw`
     return wrap;
   }
 
+  /* ---------- videos ----------
+
+     THE ONE WIDGET THAT IS NOT DRESSED IN THE MINISTRY'S COLOURS, on purpose.
+     Everything else here is Thauma's design applied to Thauma's data. A video
+     is somebody else's artwork with somebody else's title on it, and painting
+     an accent gradient over a YouTube thumbnail makes it look like neither.
+     So: the picture, the title, the date, and nothing else. It reads as a
+     video shelf on the host's own site, which is what it is.
+
+     IT LINKS OUT RATHER THAN PLAYING IN PLACE. Three players is three
+     third-party frames loading on somebody's page before a visitor has asked
+     for any of them — slow, and it hands YouTube a record of the visit whether
+     or not anybody watches. A thumbnail costs one image. Playing inline is a
+     small change if it is wanted; this is the default that does not surprise
+     anyone. */
+  function videoCards(rows, lang) {
+    var usable = (rows || []).filter(function (v) { return v && v.id && v.title; });
+    if (!usable.length) return null;
+
+    var wrap = el('div', 'vids');
+    usable.forEach(function (v) {
+      var card = el('a', 'vcard');
+      card.href = v.url || ('https://www.youtube.com/watch?v=' + v.id);
+      card.target = '_blank';
+      card.rel = 'noopener noreferrer';
+      /* The title is already the visible text, so the label adds only what a
+         screen reader cannot see: that this leaves the page. */
+      card.setAttribute('aria-label', v.title + ' — ' + w(lang, 'watch'));
+
+      var shot = el('div', 'vshot');
+      var img = document.createElement('img');
+      img.className = 'vthumb';
+      img.src = v.thumbnail_url || ('https://i.ytimg.com/vi/' + v.id + '/hqdefault.jpg');
+      /* Empty, not the title: the title is read out immediately below, and a
+         screen reader announcing it twice is worse than not describing a
+         decorative still. */
+      img.alt = '';
+      img.loading = 'lazy';
+      img.width = 480; img.height = 360;
+      shot.appendChild(img);
+      shot.appendChild(el('span', 'vplay'));
+      card.appendChild(shot);
+
+      card.appendChild(el('div', 'vtitle', v.title));
+      if (v.published_at) {
+        card.appendChild(el('div', 'vdate', fullDate(v.published_at, lang)));
+      }
+      wrap.appendChild(card);
+    });
+    return wrap;
+  }
+
+  /* The optional rail underneath — the channel, a newsletter, a giving page.
+     chaseroush.com has had one of these under its player for a year ("View
+     All Updates on YouTube"), and it is the most-used thing in that section:
+     somebody who watched one video wants somewhere to go next.
+
+     THE SCHEME IS CHECKED AGAIN HERE. The console refuses anything but http
+     and https before storing it, and this refuses it again before it becomes
+     an href — because a row could predate that check, and a javascript: URL
+     in a link on somebody else's website is script execution on their page.
+     Two cheap checks for something that only has to be missed once.
+
+     (No backticks in this file below WIDGET_JS: the whole script is a raw
+     template literal, and one would end it here.) */
+  function linkRail(links) {
+    var usable = (links || []).filter(function (l) {
+      return l && l.label && /^https?:\/\//i.test(String(l.url || ''));
+    });
+    if (!usable.length) return null;
+
+    var rail = el('div', 'vlinks');
+    usable.forEach(function (l) {
+      var a = el('a', 'vlink', l.label);
+      a.href = l.url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      rail.appendChild(a);
+    });
+    return rail;
+  }
+
   /* ---------- placement ---------- */
 
   function applyWidth(host) {
@@ -1191,6 +1332,18 @@ export const WIDGET_JS = String.raw`
       body = roadmap(data.milestones || [], lang, data.timeline);
     } else if (kind === 'prayer') {
       body = prayerCards(data.prayer || [], lang);
+    } else if (kind === 'videos') {
+      body = videoCards(data.videos || [], lang);
+      var rail = linkRail(data.video_links);
+      /* The rail shows even with no videos: a channel that has not posted yet
+         is exactly when "subscribe" is worth offering. */
+      if (rail) {
+        var box = el('div');
+        if (body) box.appendChild(body);
+        else box.appendChild(el('div', 'msg', w(lang, 'empty')));
+        box.appendChild(rail);
+        body = box;
+      }
     } else {
       var goals = data.goals || [];
       if (goals.length) {

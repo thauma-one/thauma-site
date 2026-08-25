@@ -25,6 +25,63 @@ import { json, readJson } from "./lib/store.js";
 import { resolveChannelId, watchUrl, thumbUrl } from "./lib/youtube.js";
 import { syncChannel } from "./lib/video-sync.js";
 
+const MAX = { label: 40, url: 400, links: 4 };
+
+/**
+ * A URL somebody typed, about to become an href in a widget on a stranger's
+ * website.
+ *
+ * ONLY http AND https. `javascript:` in an href is script execution on the
+ * host's page, and `data:` is a whole document of the author's choosing — both
+ * would turn "add a button" into "run anything on every site that embeds us".
+ * Checked here so it cannot be stored, and AGAIN in the widget before it is
+ * used, because a row could predate this function.
+ *
+ * Relative addresses are refused too: the button renders on somebody else's
+ * domain, so "/give" would point at THEIR giving page, not the ministry's.
+ */
+export function safeUrl(raw) {
+  const v = String(raw || "").trim();
+  if (!v) return null;
+  if (v.length > MAX.url) return null;
+  let u;
+  try { u = new URL(v); } catch { return null; }
+  if (u.protocol !== "http:" && u.protocol !== "https:") return null;
+  return u.toString();
+}
+
+/** The rail, cleaned. Returns `{ value }` or `{ error }`. */
+export function cleanLinks(raw) {
+  if (raw == null) return { value: null };          // not sent: leave as-is
+  if (!Array.isArray(raw)) return { error: "The buttons must be a list." };
+  if (raw.length > MAX.links) {
+    return { error: `That is more than ${MAX.links} buttons.` };
+  }
+
+  const out = [];
+  const seen = new Set();
+  for (const row of raw) {
+    const label = String(row && row.label || "")
+      .replace(/[\x00-\x1f\x7f]/g, " ").trim().slice(0, MAX.label);
+    const url = safeUrl(row && row.url);
+
+    /* A row with neither is the empty one at the bottom of the editor, and
+       deleting it for them is friendlier than refusing the save. */
+    if (!label && !url) continue;
+    if (!label) return { error: "Every button needs something written on it." };
+    if (!url) {
+      return { error: `"${label}" needs a full web address starting with https://` };
+    }
+
+    const key = label.toLowerCase();
+    if (seen.has(key)) return { error: `There are two buttons called "${label}".` };
+    seen.add(key);
+
+    out.push({ label, url, sort_order: out.length });
+  }
+  return { value: out };
+}
+
 /** Same rule as the mailing console: the organisation is a scope you ask for
     and a role you must hold, never the default. */
 async function scopeFor(request, env) {
@@ -61,9 +118,16 @@ async function scopeFor(request, env) {
 
 /** Config plus the cached videos, which is everything the screen draws. */
 async function state(db, partnerId) {
-  const channel = await db.queryOne("video_channel_get", { partner_id: partnerId });
+  const [channel, links] = await Promise.all([
+    db.queryOne("video_channel_get", { partner_id: partnerId }),
+    db.query("video_links_for_partner", { partner_id: partnerId }),
+  ]);
+  /* The rail is returned even with no channel set. Somebody may well add the
+     buttons first, and losing what they typed because the channel had not
+     resolved yet would be its own small betrayal. */
+  const rail = links.map((l) => ({ label: l.label, url: l.url }));
   if (!channel) {
-    return { channel: null, videos: [] };
+    return { channel: null, videos: [], links: rail };
   }
 
   const rows = await db.query("videos_for_channel", {
@@ -82,6 +146,7 @@ async function state(db, partnerId) {
          rather than asking them to trust that the id resolved. */
       channel_url: `https://www.youtube.com/channel/${channel.channel_id}`,
     },
+    links: rail,
     videos: rows.map((v) => ({
       id: v.video_id,
       title: v.title,
@@ -129,6 +194,11 @@ export default {
         return json(shell({ ...(await state(db, partnerId)), checked: result }));
       }
 
+      /* Validated BEFORE the channel is resolved, so a mistyped button URL
+         does not cost a network round trip and does not half-save. */
+      const { value: links, error: linkError } = cleanLinks(body.links);
+      if (linkError) return json({ error: linkError }, 400);
+
       const raw = String(body.channel || "").trim();
       if (!raw) return json({ error: "Enter a channel address or id." }, 400);
 
@@ -156,6 +226,21 @@ export default {
         now,
       });
 
+      /* Replaced wholesale rather than diffed: the console sends the whole
+         rail every time, so removing a button is a matter of not sending it
+         and there is no second code path that can disagree about what
+         "removed" means. */
+      if (links) {
+        await db.query("video_links_clear", { partner_id: partnerId });
+        for (const l of links) {
+          await db.query("video_link_add", {
+            id: "vl_" + crypto.randomUUID().replace(/-/g, "").slice(0, 20),
+            partner_id: partnerId, label: l.label, url: l.url,
+            sort_order: l.sort_order, now,
+          });
+        }
+      }
+
       const result = await syncChannel(db, { partner_id: partnerId, channel_id }, { now });
       if (result.ok && result.title) {
         await db.query("video_channel_save", {
@@ -168,7 +253,8 @@ export default {
         id: crypto.randomUUID(), now,
         user_id: actor.user_id || null, partner_id: partnerId,
         action: "videos.channel", entity: "video_channels", entity_id: channel_id,
-        detail: JSON.stringify({ is_public: !!is_public, max_items }),
+        detail: JSON.stringify({ is_public: !!is_public, max_items,
+                                 links: links ? links.length : null }),
       }).catch(() => {});
 
       return json(shell({ ...(await state(db, partnerId)), checked: result }));
@@ -180,6 +266,10 @@ export default {
          to delete. The scheduled run stops touching them, and they cost a few
          hundred bytes. */
       await db.query("video_channel_clear", { partner_id: partnerId });
+      /* The buttons belong to the video section. Leaving them behind would
+         mean they reappeared, silently, the day somebody set a channel again
+         — pointing wherever they pointed a year ago. */
+      await db.query("video_links_clear", { partner_id: partnerId });
       await db.query("audit_write", {
         id: crypto.randomUUID(), now,
         user_id: actor.user_id || null, partner_id: partnerId,
