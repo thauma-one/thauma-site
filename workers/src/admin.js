@@ -197,6 +197,68 @@ async function makePartner(db, { displayName, forUser, grantedBy, now, user }) {
   return { id: pid, display_name: name };
 }
 
+/* ---------------------------------------------------------------- SENDERS
+ * Which addresses a partner may send from.
+ *
+ * A typed sender is unsafe in a way that stays invisible until it matters.
+ * Resend verifies DOMAINS, not addresses: once a domain is verified, EVERY
+ * address at it sends — including one with a typo. `nesw@chase-roush…` leaves
+ * successfully, appears correct in the log, and every reply to it falls into
+ * nothing. Nobody finds out until somebody says "I wrote back and never heard".
+ *
+ * So the addresses become a list, maintained here, and chosen from elsewhere.
+ * A chosen address cannot be mistyped.
+ */
+
+/* What every new partner gets, so nobody has to invent a scheme per ministry.
+   The local parts are generic and the DOMAIN carries the identity — that is
+   what makes reputation isolation work, and it means `news@` reads the same
+   for everybody.
+
+   `can_receive` is what an alias would have to be created for. Left off where
+   nobody should be replying, and ON where a reply is the whole point: the
+   difference is not cosmetic, because a list pointing its replies at an
+   address with no mailbox loses them silently. */
+export const STANDARD_SENDERS = [
+  { local: "news",    label: "Newsletter",     can_receive: 0 },
+  { local: "prayer",  label: "Prayer updates", can_receive: 0 },
+  { local: "contact", label: "Contact form",   can_receive: 1 },
+  { local: "connect", label: "Connect",        can_receive: 1 },
+];
+
+/* The organisation's own domain, read from the address the Worker already
+   sends as rather than configured twice. Two places to state it is one place
+   to forget when it moves — which it just did, from mail.thauma.one. */
+export function orgDomain(env) {
+  const m = /@([^\s>]+)/.exec(String(env.MAIL_FROM || ""));
+  return m ? m[1].toLowerCase() : "thauma.one";
+}
+
+/* NULL partner_id is the organisation, the same convention the mailing tables
+   use. Returns null when a partner has no domain yet, which is honest: until
+   somebody verifies one, there is no address that could work. */
+function domainFor(partner, env) {
+  return partner ? (partner.sending_domain || null) : orgDomain(env);
+}
+
+/* An address at a domain nobody verified is refused HERE rather than on the
+   first send, because the first send is a newsletter going to real people and
+   the failure would be discovered by its absence. */
+export function senderProblem(address, domain) {
+  if (!domain) {
+    return "Set this partner's sending domain first — an address at an " +
+           "unverified domain looks fine and sends nothing.";
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(address)) {
+    return "That is not a valid email address.";
+  }
+  if (address.split("@")[1].toLowerCase() !== domain.toLowerCase()) {
+    return `Addresses have to be at ${domain}. Anything else is not verified ` +
+           `with the mail provider and would not send.`;
+  }
+  return null;
+}
+
 export default {
   async fetch(request, env) {
     const { db, user, me, denied } = await requireAdmin(request, env);
@@ -216,6 +278,9 @@ export default {
         // by region and role title, and a sort cannot wait on 40 requests.
         db.query("staff_profiles_all", {}),
       ]);
+      // Every sender in the system. Org-wide by design, like the partner list
+      // itself — maintaining them IS the administrative act.
+      const senders = await db.query("admin_sender_addresses", {});
       // What each partner would take with it. Fetched with the list rather
       // than on click, so the confirmation can show real numbers the moment
       // it opens.
@@ -244,6 +309,12 @@ export default {
           partner_names: String(u.partner_names || "").split(" | ").filter(Boolean),
         })),
         partners,
+        senders,
+        /* Stated by the server rather than hard-coded in the console, so the
+           two cannot disagree about what an address is allowed to look like
+           after a domain moves. */
+        org_domain: orgDomain(env),
+        standard_senders: STANDARD_SENDERS,
         languages,
         /* FETCHED AND THEN NOT RETURNED, until 2026-08-21. The query ran on
            every request, the rows came back, and the destructuring named
@@ -284,6 +355,72 @@ export default {
           partners: await db.query("admin_partners", {}),
           users: await listUsers(db),
         });
+      }
+
+      /* ---- an address a partner may send from ---- */
+      if (body.kind === "sender") {
+        const pid = str(body.partner_id, 64) || null;
+        const partners = await db.query("admin_partners", {});
+        const partner = pid ? partners.find((x) => x.id === pid) : null;
+        if (pid && !partner) return json({ error: "No such partner" }, 404);
+
+        const domain = domainFor(partner, env);
+        const address = str(body.address, 200).toLowerCase();
+        const problem = senderProblem(address, domain);
+        if (problem) return json({ error: problem }, 400);
+
+        try {
+          await db.query("admin_sender_address_add", {
+            id: "sa_" + crypto.randomUUID().replace(/-/g, "").slice(0, 16),
+            partner_id: pid, address,
+            label: str(body.label, 80) || null,
+            can_receive: body.can_receive ? 1 : 0, now,
+          });
+        } catch (e) {
+          return json({ error: "That address is already on the list." }, 409);
+        }
+        await audit(db, { user, action: "create", entity: "sender_address",
+                          entity_id: address, partner_id: pid,
+                          detail: { label: str(body.label, 80) || null } });
+        return json({ senders: await db.query("admin_sender_addresses", {}),
+                      partners: await db.query("admin_partners", {}) });
+      }
+
+      /* ---- the standard set, in one go ----
+         Four addresses typed by hand is four chances to typo the domain, and
+         the scheme is the same for everybody by design. Existing ones are
+         skipped rather than refused, so this is safe to press twice and can
+         also be used to fill a gap after one was deleted. */
+      if (body.kind === "sender_defaults") {
+        const pid = str(body.partner_id, 64) || null;
+        const partners = await db.query("admin_partners", {});
+        const partner = pid ? partners.find((x) => x.id === pid) : null;
+        if (pid && !partner) return json({ error: "No such partner" }, 404);
+
+        const domain = domainFor(partner, env);
+        if (!domain) {
+          return json({ error: senderProblem("x@y.invalid", null) }, 400);
+        }
+
+        const added = [];
+        for (const d of STANDARD_SENDERS) {
+          const address = `${d.local}@${domain}`.toLowerCase();
+          try {
+            await db.query("admin_sender_address_add", {
+              id: "sa_" + crypto.randomUUID().replace(/-/g, "").slice(0, 16),
+              partner_id: pid, address, label: d.label,
+              can_receive: d.can_receive, now,
+            });
+            added.push(address);
+          } catch (e) { /* already there — the point of pressing this again */ }
+        }
+        if (added.length) {
+          await audit(db, { user, action: "create", entity: "sender_address",
+                            entity_id: domain, partner_id: pid,
+                            detail: { added } });
+        }
+        return json({ added, senders: await db.query("admin_sender_addresses", {}),
+                      partners: await db.query("admin_partners", {}) });
       }
 
       const email = str(body.email, 200);
@@ -340,6 +477,69 @@ export default {
          and has since been corrected. Without this the only remedy is deleting
          the person and creating them again, which loses their roles and their
          history. */
+      /* ---- where this partner's mail comes from ----
+         Typed, never derived. The domain has to be one somebody actually
+         verified with the mail provider, and only they know which — a domain
+         guessed from the slug would look entirely right and send nothing. */
+      if (body.sending_domain !== undefined) {
+        const pid = str(body.partner_id, 64);
+        if (!pid) return json({ error: "partner_id is required" }, 400);
+        const partners = await db.query("admin_partners", {});
+        const partner = partners.find((x) => x.id === pid);
+        if (!partner) return json({ error: "No such partner" }, 404);
+
+        const domain = str(body.sending_domain, 200).toLowerCase()
+          .replace(/^https?:\/\//, "").replace(/\/.*$/, "").trim() || null;
+        if (domain && !/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/.test(domain)) {
+          return json({ error: "That is not a domain name." }, 400);
+        }
+
+        /* THE ADDRESSES FOLLOW THE DOMAIN.
+           This used to refuse the rename while any address existed, on the
+           reasoning that moving somebody's from-address without telling them
+           was worse than making them clear it out first. That was wrong in
+           practice, and the way it was wrong is instructive: the only route
+           through was to delete the addresses, which was ITSELF refused while
+           a mailing list used them, and repointing the lists needed addresses
+           at the new domain that could not be created until the rename went
+           through. Three guards, each defensible alone, formed a loop with no
+           exit. A correct typo — one dash — could not be corrected.
+
+           So it cascades, and the CONSOLE says what will move before asking.
+           A guard that only says no is an obstruction; the useful version says
+           what will happen and lets somebody agree to it. */
+        const moving = (await db.query("admin_sender_addresses", {}))
+          .filter((a) => a.partner_id === pid);
+        const renaming = partner.sending_domain && domain &&
+                         domain !== partner.sending_domain && moving.length > 0;
+
+        await db.query("admin_partner_set_domain", { id: pid, sending_domain: domain, now });
+
+        const moved = [];
+        if (renaming) {
+          for (const a of moving) {
+            const next = a.address.split("@")[0] + "@" + domain;
+            if (next === a.address) continue;
+            /* The list is repointed BEFORE the address row moves. If the two
+               are done the other way round and the second fails, the lists are
+               left pointing at an address that no longer exists — which sends
+               nothing and shows nothing wrong. This order fails safe: the
+               worst case is a list pointing at the new address slightly early,
+               and the address arrives a moment later. */
+            await db.query("admin_lists_repoint", { old: a.address, new: next, now });
+            await db.query("admin_sender_readdress", { id: a.id, address: next });
+            moved.push({ from: a.address, to: next });
+          }
+        }
+
+        await audit(db, { user, action: "update", entity: "partner", entity_id: pid,
+                          partner_id: pid,
+                          detail: { sending_domain: domain, moved: moved.length || undefined } });
+        return json({ moved,
+                      partners: await db.query("admin_partners", {}),
+                      senders: await db.query("admin_sender_addresses", {}) });
+      }
+
       if (body.resend_invite) {
         if (!userId) return json({ error: "user_id is required" }, 400);
         const target = (await db.query("admin_users", {})).find((u) => u.id === userId);
@@ -509,6 +709,57 @@ export default {
     if (request.method === "DELETE") {
       const id = url.searchParams.get("id");
       if (!id) return json({ error: "id is required" }, 400);
+
+      /* ---- an address, and what depended on it ----
+         This used to refuse while any live list touched the address, which
+         made it impossible to correct a mistyped domain: the lists could only
+         be repointed at addresses that could not be created yet. Now it takes
+         the dependents with it, and the console names them first.
+
+         THE TWO DEPENDENCIES ARE NOT THE SAME and are not treated the same.
+         A list that loses its SENDER cannot send at all, so it is archived —
+         hidden and stopped, with its subscribers kept, because a person who
+         agreed to be written to cannot be recreated and a double opt-in cannot
+         be replayed. A list that loses its REPLY-TO carries on: an empty
+         reply_to already means "replies go to the sender", so clearing it is
+         the entire repair. Archiving a list over that would be destroying
+         something to fix a setting that has a default. */
+      if (url.searchParams.get("kind") === "sender") {
+        const all = await db.query("admin_sender_addresses", {});
+        const target = all.find((a) => a.id === id);
+        if (!target) return json({ error: "No such address" }, 404);
+
+        /* Checked on the SERVER, because a dialog is a suggestion — anything
+           that can send a DELETE can skip the browser entirely. The console
+           passes this only after showing what the cascade will do. */
+        if (target.used_by > 0 && url.searchParams.get("cascade") !== "yes") {
+          return json({
+            error: `${target.address} is still used by ${target.used_by} ` +
+                   `mailing list${target.used_by === 1 ? "" : "s"}. Deleting it ` +
+                   `has to be confirmed from the Partners screen, which says ` +
+                   `what happens to them.`,
+          }, 409);
+        }
+
+        // Archive first: once the address row is gone there is no way to find
+        // the lists that pointed at it.
+        await db.query("admin_lists_archive_by_sender", { address: target.address, now });
+        await db.query("admin_lists_drop_reply_to", { address: target.address, now });
+        await db.query("admin_sender_address_delete", { id });
+
+        // Carrying what it took with it, because those rows are the only
+        // remaining record that the dependency existed.
+        await audit(db, {
+          user, action: "delete", entity: "sender_address",
+          entity_id: target.address, partner_id: target.partner_id,
+          detail: { archived: target.sends_for || undefined,
+                    reply_to_cleared: target.replies_for || undefined },
+        });
+        return json({ deleted: id,
+                      archived: target.sends_for || null,
+                      senders: await db.query("admin_sender_addresses", {}),
+                      partners: await db.query("admin_partners", {}) });
+      }
 
       // ---- a partner, and everything it holds ----
       if (url.searchParams.get("kind") === "partner") {

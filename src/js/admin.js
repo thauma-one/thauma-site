@@ -21,7 +21,8 @@
 
   var API = '/api/admin';
   var $ = function (id) { return document.getElementById(id); };
-  var state = { users: [], partners: [], languages: [], audit: [], editing: null };
+  var state = { users: [], partners: [], languages: [], audit: [],
+                editing: null, editingPartner: null };
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -29,6 +30,14 @@
     });
   }
   function tr(key) { return window.StaffI18n ? window.StaffI18n.t(key) : key; }
+  /* Substitutes into a translated sentence. The placeholders have to travel
+     INSIDE the string rather than being concatenated around it, or every
+     language is forced into English word order. */
+  function fill(key, vars) {
+    return String(tr(key) || '').replace(/\{(\w+)\}/g, function (m, k) {
+      return vars[k] == null ? m : vars[k];
+    });
+  }
   function toast(msg, kind) { if (window.StaffToast) window.StaffToast(msg, kind); }
 
   var ROLE_LABEL = { admin: 'Administration', partner: 'Partner',
@@ -164,10 +173,14 @@
       var body = await res.json().catch(function () { return {}; });
       if (!res.ok) throw new Error(body.error || ('failed (' + res.status + ')'));
       var keep = state.editing;
+      var keepPartner = state.editingPartner;
       await load();
       // The panel stays open: you are usually making several changes to
-      // one person, and closing it after each would be its own chore.
+      // one person, and closing it after each would be its own chore. The
+      // same is true of a partner — adding four addresses would otherwise
+      // mean reopening the card four times.
       if (keep) { state.editing = keep; renderPeople(); }
+      if (keepPartner != null) { state.editingPartner = keepPartner; renderPartners(); }
       toast(tr('toast.saved'), 'ok');
       return body;
     } catch (e) {
@@ -602,6 +615,13 @@
 
   var PARTNER_STATUS = ['prospective', 'active', 'on_leave', 'alumni'];
 
+  /* "1 addresses" is the kind of thing that makes a screen look unfinished
+     even when everything behind it is right. The number and the word sit
+     together, so the word has to agree with it. */
+  function countAddresses(n) {
+    return n + ' ' + tr(n === 1 ? 'adm.mailAddress' : 'adm.mailAddresses');
+  }
+
   function renderPartners() {
     // Anyone who could own a partner. Board members are not offered: the role
     // is about oversight, not about being sent.
@@ -612,6 +632,44 @@
           .map(function (u) {
             return '<option value="' + esc(u.id) + '">' + esc(u.name) + '</option>';
           }).join('');
+    }
+
+    /* THE ORGANISATION HAS ADDRESSES TOO, and nowhere to manage them until
+       now. Its sending domain is not a setting — it is wherever MAIL_FROM
+       already points, stated by the server rather than repeated here, because
+       two places to write it down is one place to forget when it moves.
+
+       Rendered ABOVE the partners rather than as one of them: nothing else on
+       a partner card applies to Thauma itself, and a card with one working
+       control and four dead ones invites somebody to try them. */
+    var org = $('admOrgMail');
+    if (org) {
+      var orgOpen = state.editingPartner === '';
+      var orgCount = (state.senders || []).filter(function (a) {
+        return !a.partner_id;
+      }).length;
+      org.className = 'adm-partner adm-partner-org' + (orgOpen ? ' is-open' : '');
+      /* An EMPTY id, which is what "no partner" means everywhere else here —
+         the same convention the mailing tables use for the organisation's own
+         rows. It is why the row handler reads the attribute rather than
+         dataset, which cannot tell empty from absent. */
+      org.setAttribute('data-partner-card', '');
+      org.innerHTML =
+        '<div class="adm-row" role="button" tabindex="0" aria-expanded="' +
+          (orgOpen ? 'true' : 'false') + '">' +
+          '<span class="ms-chev" aria-hidden="true"></span>' +
+          '<div class="adm-who">' +
+            '<span class="adm-name">Thauma</span>' +
+            '<span class="adm-email">' + esc(tr('adm.orgMailNote')) + '</span>' +
+          '</div>' +
+          '<div class="adm-access">' + esc(state.org_domain || '') + ' · ' +
+            esc(countAddresses(orgCount)) + '</div>' +
+          '<span class="adm-status s-active">' + esc(tr('adm.orgLabel')) + '</span>' +
+        '</div>' +
+        '<div class="adm-panel"' + (orgOpen ? '' : ' hidden') + '>' +
+          mailBlock({ id: null, slug: 'thauma', display_name: 'Thauma',
+                      sending_domain: state.org_domain || null, fixedDomain: true }) +
+        '</div>';
     }
 
     $('admPartners').innerHTML = state.partners.map(function (p) {
@@ -627,15 +685,40 @@
         langs.push({ code: p.default_lang, name: p.default_lang, retired: true });
       }
 
-      return '<div class="adm-partner">' +
-        '<div class="adm-who">' +
-          '<span class="adm-name">' + esc(p.display_name) +
-            '<span class="adm-status s-' + esc(p.status) + '">' +
-              esc(tr('adm.pstatus.' + p.status)) + '</span></span>' +
-          '<span class="adm-email">' + esc(p.slug) + ' · ' +
-          p.member_count + ' ' + esc(tr('adm.members')) +
-          (p.member_count ? '' : ' — ' + esc(tr('adm.nobodyAttached'))) + '</span>' +
+      /* CLOSED BY DEFAULT, opened one at a time.
+         The card used to be flat, and that was fine while it held two
+         pickers. With a sending domain, an address list and two buttons on
+         top, four ministries of it is a page nobody can see the shape of —
+         you cannot find the one you came for, and you cannot tell how many
+         there are. The summary row carries the three things worth scanning:
+         who, what state they are in, and whether their mail is set up. */
+      var open = state.editingPartner === p.id;
+
+      return '<div class="adm-partner' + (open ? ' is-open' : '') +
+             '" data-partner-card="' + esc(p.id) + '">' +
+
+        '<div class="adm-row" role="button" tabindex="0" aria-expanded="' +
+          (open ? 'true' : 'false') + '">' +
+          '<span class="ms-chev" aria-hidden="true"></span>' +
+          '<div class="adm-who">' +
+            '<span class="adm-name">' + esc(p.display_name) + '</span>' +
+            '<span class="adm-email">' + esc(p.slug) + ' · ' +
+            p.member_count + ' ' + esc(tr('adm.members')) +
+            (p.member_count ? '' : ' — ' + esc(tr('adm.nobodyAttached'))) + '</span>' +
+          '</div>' +
+          /* Whether their mail works, ON THE CLOSED ROW. It is the thing most
+             likely to be wrong and the reason somebody opens the card, so
+             hiding it behind the click it is meant to prompt would be
+             backwards. */
+          '<div class="adm-access">' + (p.sending_domain
+            ? esc(p.sending_domain) + ' · ' + countAddresses(p.sender_count || 0)
+            : '<span class="adm-none">' + esc(tr('adm.mailNoDomain')) + '</span>') +
+          '</div>' +
+          '<span class="adm-status s-' + esc(p.status) + '">' +
+            esc(tr('adm.pstatus.' + p.status)) + '</span>' +
         '</div>' +
+
+        '<div class="adm-panel"' + (open ? '' : ' hidden') + '>' +
 
         /* Both pickers in one column. They were separate grid children, so a
            three-column row wrapped and left the delete button stranded in the
@@ -666,10 +749,127 @@
           '</label>' +
         '</div>' +
 
+        mailBlock(p) +
+
         '<button type="button" class="del danger" data-del-partner="' + esc(p.id) + '">' +
           esc(tr('adm.deletePartner')) + '</button>' +
+        '</div>' +
       '</div>';
     }).join('') || '<p class="empty">—</p>';
+  }
+
+  /* ---- where a partner's mail comes from -------------------------------
+     Spans the whole card, below the row, because it is a different KIND of
+     setting from the two pickers above it: those change how a ministry
+     appears, this decides whether its mail arrives at all.
+
+     WHY THE ADDRESSES ARE A LIST AND NOT A TEXT BOX ON THE MAILING PAGE.
+     Resend verifies DOMAINS, not addresses. Once a domain is verified every
+     address at it sends — including one with a typo in it, which leaves
+     successfully, reads as correct in the log, and drops every reply into
+     nothing. Nobody discovers it until somebody says "I wrote back and never
+     heard". A chosen address cannot be mistyped, so the choosing happens
+     there and the list is maintained here.
+
+     ONE DOMAIN PER PARTNER. Sending reputation is tracked per domain, so a
+     ministry's junk reports stay with that ministry rather than degrading
+     everybody's mail. That is the whole reason for the split, and it is why
+     the domain sits on the partner rather than on each address. */
+  function mailBlock(p) {
+    /* `p.id` is null for the organisation, which is the same convention the
+       mailing tables use — and it matches the null partner_id on its rows
+       without a special case. */
+    var mine = (state.senders || []).filter(function (a) {
+      return (a.partner_id || null) === (p.id || null);
+    });
+    var d = p.sending_domain || '';
+
+    var head = '<div class="adm-mail-head">' +
+      '<span class="adm-mail-t">' + esc(tr('adm.mailTitle')) + '</span>' +
+      '<span class="adm-mail-n">' + (d
+        ? esc(d) + ' · ' + esc(countAddresses(mine.length))
+        : esc(tr('adm.mailNoDomain'))) + '</span></div>';
+
+    /* The organisation's domain is READ-ONLY here. It is wherever MAIL_FROM
+       already points — the address account invites and confirmations come
+       from — and letting somebody retype it in this box would put the console
+       and the deployment quietly out of step, which shows up as mail that
+       stops arriving rather than as an error. It moves in wrangler.toml. */
+    var domainRow = p.fixedDomain
+      ? '<div class="adm-mail-domain">' +
+          '<label class="fld"><span>' + esc(tr('adm.mailDomain')) + '</span>' +
+            '<input type="text" class="adm-domain" value="' + esc(d) + '" readonly>' +
+            '<span class="fld-hint">' + esc(tr('adm.mailOrgHint')) + '</span>' +
+          '</label></div>'
+      : '<div class="adm-mail-domain">' +
+          '<label class="fld"><span>' + esc(tr('adm.mailDomain')) + '</span>' +
+            '<input type="text" class="adm-domain" data-domain="' + esc(p.id) + '" ' +
+              'value="' + esc(d) + '" spellcheck="false" autocapitalize="off" ' +
+              'autocomplete="off" placeholder="' + esc(p.slug) + '.thauma.one">' +
+            '<span class="fld-hint">' + esc(tr('adm.mailDomainHint')) + '</span>' +
+          '</label>' +
+          '<button type="button" class="ghost-btn" data-domain-save="' + esc(p.id) + '">' +
+            esc(tr('common.save')) + '</button>' +
+        '</div>';
+
+    /* Nothing below the domain until there is one. An "add an address" form
+       under a blank domain field can only produce addresses that do not
+       send, and offering it invites exactly that. */
+    if (!d) {
+      return '<div class="adm-mail">' + head + domainRow +
+        '<p class="adm-mail-first">' + esc(tr('adm.mailFirst')) + '</p></div>';
+    }
+
+    /* THE ROW IS THE ADDRESS AND WHAT DEPENDS ON IT. Nothing else.
+
+       It briefly also held a label box and a "replies arrive" tick, and both
+       were rightly asked about: the label box looked like it edited the
+       address and did not, and the tick recorded something the console never
+       acted on. A text box that changes nothing visible and a switch with no
+       consequence are worse than absent — somebody has to work out that they
+       do not matter, and they will assume they do.
+
+       What replaced them is derived, not typed: which lists send from this
+       address, and which reply to it. That is the one thing worth knowing
+       here, because it is exactly what deleting the address would disturb. */
+    var rows = mine.map(function (a) {
+      var uses = [];
+      if (a.sends_for) {
+        uses.push(tr('adm.mailSends').replace('{lists}', a.sends_for.split(' | ').join(', ')));
+      }
+      if (a.replies_for) {
+        uses.push(tr('adm.mailReplies').replace('{lists}', a.replies_for.split(' | ').join(', ')));
+      }
+      return '<div class="adm-sender" data-sender="' + esc(a.id) + '">' +
+        '<code class="adm-sender-a">' + esc(a.address) + '</code>' +
+        '<span class="adm-sender-used">' +
+          (uses.length ? esc(uses.join(' · ')) : '<i>' + esc(tr('adm.mailUnused')) + '</i>') +
+        '</span>' +
+        '<button type="button" class="del" data-del-sender="' + esc(a.id) + '" ' +
+          'aria-label="' + esc(tr('common.delete') + ' ' + a.address) + '">×</button>' +
+      '</div>';
+    }).join('');
+
+    return '<div class="adm-mail">' + head + domainRow +
+      (mine.length
+        ? '<div class="adm-senders">' + rows + '</div>'
+        : '<p class="adm-mail-first">' + esc(tr('adm.mailNone')) + '</p>') +
+      '<div class="adm-mail-add">' +
+        '<input type="text" class="adm-new-local" data-new-local="' + esc(p.id || '') + '" ' +
+          'maxlength="64" spellcheck="false" autocapitalize="off" ' +
+          'placeholder="' + esc(tr('adm.mailLocal')) + '">' +
+        '<span class="adm-at">@' + esc(d) + '</span>' +
+        '<button type="button" class="ghost-btn" data-add-sender="' + esc(p.id || '') + '">' +
+          esc(tr('adm.mailAdd')) + '</button>' +
+        /* Four addresses typed by hand is four chances to mistype the domain,
+           and the scheme is deliberately the same for everybody — the local
+           parts are generic and the DOMAIN carries the identity. Existing
+           ones are skipped, so this is safe to press twice and also fills a
+           gap after one was deleted. */
+        '<button type="button" class="ghost-btn" data-standard="' + esc(p.id || '') + '">' +
+          esc(tr('adm.mailStandard')) + '</button>' +
+      '</div>' +
+    '</div>';
   }
 
   function renderAudit() {
@@ -723,28 +923,37 @@
     });
   }
 
-  async function togglePerson(id) {
-    var wasOpen = state.editing;
+  /* ONE PANEL BEHAVIOUR, used by People and by Partners.
+     Partners became collapsible when the mail section landed and every card
+     grew a domain field, an address list and two buttons — four ministries of
+     that is a page nobody can see the shape of. Written as one function taking
+     the attribute and the state key rather than copied, because two copies of
+     an animation drift and then behave differently on two screens that are
+     meant to feel the same. */
+  async function togglePanel(attr, id, key) {
+    var sel = function (v) { return '[' + attr + '="' + v + '"]'; };
+    var wasOpen = state[key];
+
     // Close whatever is open first, so two panels are never moving at once.
-    if (wasOpen && wasOpen !== id) {
-      var prev = document.querySelector('[data-person="' + wasOpen + '"] .adm-panel');
+    if (wasOpen != null && wasOpen !== id) {
+      var prevCard = document.querySelector(sel(wasOpen));
+      var prev = prevCard && prevCard.querySelector('.adm-panel');
       if (prev && !prev.hidden) await slide(prev, false);
-      document.querySelector('[data-person="' + wasOpen + '"]')
-        .classList.remove('is-open');
+      if (prevCard) prevCard.classList.remove('is-open');
     }
 
-    var card = document.querySelector('[data-person="' + id + '"]');
+    var card = document.querySelector(sel(id));
     var panel = card && card.querySelector('.adm-panel');
     if (!panel) return;
 
     if (wasOpen === id) {
-      state.editing = null;
+      state[key] = null;
       card.classList.remove('is-open');
       card.querySelector('.adm-row').setAttribute('aria-expanded', 'false');
       return slide(panel, false);
     }
 
-    state.editing = id;
+    state[key] = id;
     card.classList.add('is-open');
     card.querySelector('.adm-row').setAttribute('aria-expanded', 'true');
     await slide(panel, true);
@@ -753,6 +962,9 @@
     window.scrollTo({ top: Math.max(0, top),
                       behavior: reducedMotion() ? 'auto' : 'smooth' });
   }
+
+  function togglePerson(id) { return togglePanel('data-person', id, 'editing'); }
+  function togglePartner(id) { return togglePanel('data-partner-card', id, 'editingPartner'); }
 
   /* The toggle only reveals the form. NOTHING is written until Save — turning
      somebody's page off is a publication decision and should not happen
@@ -899,7 +1111,16 @@
 
     var row = e.target.closest('.adm-row');
     if (row) {
-      return togglePerson(row.closest('[data-person]').dataset.person);
+      /* Two kinds of card share the row markup, so the card decides which
+         toggle runs. `getAttribute` rather than `dataset`, because the
+         organisation's card carries an EMPTY id on purpose — that is what
+         "no partner" means everywhere else here, and dataset would report it
+         as an empty string indistinguishable from a missing attribute. */
+      var pc = row.closest('[data-partner-card]');
+      if (pc) return togglePartner(pc.getAttribute('data-partner-card'));
+      var pr = row.closest('[data-person]');
+      if (pr) return togglePerson(pr.dataset.person);
+      return;
     }
 
     var sw = e.target.closest('[data-role]');
@@ -912,6 +1133,15 @@
     }
     var dp = e.target.closest('[data-del-partner]');
     if (dp) return deletePartner(dp.dataset.delPartner, dp);
+
+    var ds = e.target.closest('[data-domain-save]');
+    if (ds) return saveDomain(ds.dataset.domainSave, ds);
+    var as = e.target.closest('[data-add-sender]');
+    if (as) return addSender(as.dataset.addSender, as);
+    var st = e.target.closest('[data-standard]');
+    if (st) return addStandard(st.dataset.standard, st);
+    var xs = e.target.closest('[data-del-sender]');
+    if (xs) return deleteSender(xs.dataset.delSender, xs);
 
     var ri = e.target.closest('[data-reinvite]');
     if (ri) {
@@ -1037,21 +1267,204 @@
     } finally { btn.disabled = false; }
   }
 
+  /* ---- sending addresses ----------------------------------------------
+     Every one of these ends in change(), which reloads and re-renders, so the
+     cards always show what the server actually holds rather than what the
+     browser hoped it would. */
+
+  /* THE PART THAT IS NOT IN THIS SYSTEM. Verifying a domain and creating a
+     mailbox both happen somewhere else, and neither can be detected from
+     here — a domain nobody verified accepts the address, stores it, and fails
+     on the first real send. Said as a dialog rather than a hint because it is
+     work to go and do, not information to notice. */
+  function remindResend(domain, addresses, receiving) {
+    var lines = [tr('adm.remindDomain').replace('{domain}', domain)];
+    if (receiving.length) {
+      lines.push(tr('adm.remindAliases').replace('{list}', receiving.join(', ')));
+    }
+    return window.StaffConfirm({
+      title: tr('adm.remindTitle'),
+      body: lines.join('\n\n'),
+      note: addresses.length
+        ? tr('adm.remindAdded').replace('{list}', addresses.join(', ')) : '',
+      confirm: tr('adm.remindOk'),
+      only: true
+    });
+  }
+
+  /* Renaming a domain MOVES everything at it. The dialog names what moves
+     before it happens, because the alternative — the version that shipped
+     first — refused the rename while any address existed, and the only way
+     out was to delete addresses that could not be deleted while a list used
+     them, and the lists could only be repointed at addresses that did not
+     exist yet. Three guards that each read as prudent, forming a loop with no
+     exit. Correcting one wrong character was impossible. */
+  async function saveDomain(pid, btn) {
+    var input = document.querySelector('[data-domain="' + pid + '"]');
+    if (!input) return;
+    var p = state.partners.filter(function (x) { return x.id === pid; })[0] || {};
+    var before = p.sending_domain || '';
+    var value = input.value.trim();
+    if (value === before) { toast(tr('adm.mailSameDomain'), 'ok'); return; }
+
+    var at = (state.senders || []).filter(function (a) { return a.partner_id === pid; });
+    if (before && value && at.length) {
+      // Every list that follows, named once even if two addresses feed it.
+      var touched = {};
+      at.forEach(function (a) {
+        (a.sends_for || '').split(' | ').concat((a.replies_for || '').split(' | '))
+          .forEach(function (n) { if (n) touched[n] = true; });
+      });
+      var lists = Object.keys(touched);
+
+      var lines = [fill('adm.renameBody', { n: at.length, from: before, to: value })];
+      if (lists.length) lines.push(fill('adm.renameLists', { lists: lists.join(', ') }));
+
+      var ok = await window.StaffConfirm({
+        title: tr('adm.renameTitle'),
+        body: lines.join('\n\n'),
+        // The first two are enough to recognise the shape; all of them would
+        // be a wall of text nobody reads at the moment it matters.
+        note: at.slice(0, 2).map(function (a) {
+          return a.address + '  →  ' + a.address.split('@')[0] + '@' + value;
+        }).join('\n') + (at.length > 2 ? '\n…' : ''),
+        confirm: tr('adm.renameDo'),
+        cancel: tr('ms.cancel')
+      });
+      if (!ok) { input.value = before; return; }
+    }
+
+    var body = await change({ partner_id: pid, sending_domain: value }, btn);
+    if (!body) return;
+    // A domain nobody has verified is the same problem whether it is the
+    // first one or a corrected one — so the reminder fires on both.
+    if (value) await remindResend(value, [], []);
+  }
+
+  /* An empty id is the ORGANISATION, matching the null partner_id its rows
+     carry. Resolved in one place so the three actions cannot disagree about
+     what "no partner" means. */
+  function ownerOf(pid) {
+    if (!pid) return { id: null, sending_domain: state.org_domain || '' };
+    return state.partners.filter(function (x) { return x.id === pid; })[0] || null;
+  }
+
+  async function addSender(pid, btn) {
+    var p = ownerOf(pid);
+    var field = document.querySelector('[data-new-local="' + pid + '"]');
+    if (!p || !field) return;
+    /* Typed as a local part only — the domain is fixed and shown beside the
+       box, so it cannot be mistyped and cannot be somebody else's. */
+    var local = field.value.trim().replace(/@.*$/, '');
+    if (!local) { toast(tr('adm.mailNeedLocal'), 'err'); field.focus(); return; }
+    var address = local + '@' + p.sending_domain;
+    /* Whether anything is owed OUTSIDE this system is decided BEFORE the add,
+       because after it there is always at least one address at the domain.
+
+       Only the first one is worth a dialog. Once the domain is verified, every
+       further address at it sends with no further work — and a reminder that
+       fires on every add is a reminder nobody reads by the third time, which
+       is exactly when it would have mattered. */
+    var first = !(state.senders || []).some(function (a) {
+      return (a.partner_id || null) === (p.id || null);
+    });
+    var body = await change({ kind: 'sender', partner_id: p.id, address: address,
+                              label: '', can_receive: false }, btn, 'POST');
+    if (!body) return;
+    if (first) await remindResend(p.sending_domain, [address], []);
+    else toast(tr('adm.mailAdded').replace('{address}', address), 'ok');
+  }
+
+  async function addStandard(pid, btn) {
+    var p = ownerOf(pid);
+    if (!p) return;
+    var body = await change({ kind: 'sender_defaults', partner_id: p.id }, btn, 'POST');
+    if (!body) return;
+    if (!body.added.length) { toast(tr('adm.mailAllThere'), 'ok'); return; }
+    // Only the ones that must RECEIVE need an alias — that is the whole point
+    // of naming them separately rather than listing all four again.
+    var receiving = (state.senders || []).filter(function (a) {
+      return (a.partner_id || null) === (p.id || null) && a.can_receive &&
+             body.added.indexOf(a.address) >= 0;
+    }).map(function (a) { return a.address; });
+    await remindResend(p.sending_domain, body.added, receiving);
+  }
+
+  async function deleteSender(id, btn) {
+    var a = (state.senders || []).filter(function (x) { return x.id === id; })[0];
+    if (!a) return;
+
+    /* THE TWO DEPENDENCIES HAVE DIFFERENT CONSEQUENCES, so they are described
+       separately rather than rolled into one count. A list that loses its
+       SENDER cannot send and is archived. A list that loses its REPLY-TO
+       carries on — an empty reply-to already means "replies go to the sender",
+       so it is simply cleared. Saying "3 lists affected" would hide that one
+       of those outcomes is serious and the other is not. */
+    var lines = [fill('adm.mailRemoveBody', { address: a.address })];
+    if (a.sends_for) {
+      lines.push(fill('adm.mailRemoveSends', {
+        lists: a.sends_for.split(' | ').join(', '),
+        n: a.sends_subscribers || 0
+      }));
+    }
+    if (a.replies_for) {
+      lines.push(fill('adm.mailRemoveReplies', {
+        lists: a.replies_for.split(' | ').join(', ')
+      }));
+    }
+
+    var ok = await window.StaffConfirm({
+      title: tr('adm.mailRemove'),
+      body: lines.join('\n\n'),
+      note: a.sends_for ? tr('adm.mailRemoveKept') : '',
+      confirm: tr('adm.mailRemoveDo'),
+      cancel: tr('ms.cancel'),
+      danger: true
+    });
+    if (!ok) return;
+    btn.disabled = true;
+    try {
+      // `cascade=yes` is the browser saying the dialog above was shown and
+      // agreed to. The server refuses without it, because a dialog is a
+      // suggestion to anything that can send a DELETE of its own.
+      var res = await fetch(API + '?kind=sender&cascade=yes&id=' + encodeURIComponent(id),
+                            { method: 'DELETE', credentials: 'same-origin' });
+      var body = await res.json().catch(function () { return {}; });
+      if (!res.ok) throw new Error(body.error || ('failed (' + res.status + ')'));
+      await load();
+      toast(tr('toast.deleted'), 'ok');
+    } catch (e) {
+      await load();
+      toast(e.message, 'err');
+    } finally { btn.disabled = false; }
+  }
+
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'Enter' && e.key !== ' ') return;
     var row = e.target.closest('.adm-row');
     if (!row) return;
     e.preventDefault();
-    togglePerson(row.closest('[data-person]').dataset.person);
+    var pc = row.closest('[data-partner-card]');
+    if (pc) return togglePartner(pc.getAttribute('data-partner-card'));
+    var pr = row.closest('[data-person]');
+    if (pr) togglePerson(pr.dataset.person);
   });
 
   document.addEventListener('change', function (e) {
-    if (e.target.classList.contains('status-pick')) {
-      return change({ user_id: e.target.dataset.user, status: e.target.value }, e.target);
-    }
+    /* THE PARTNER TEST COMES FIRST, and the order is the whole fix.
+       Both pickers carry class="status-pick" — one for a person's account
+       status, one for a ministry's. The person branch was tested first and
+       matched BOTH, so changing a partner's status sent `user_id: undefined`
+       with a status the server could not attach to anybody. It failed
+       silently, and the picker went on showing the value nobody had saved.
+       Two controls sharing a class is fine; deciding between them by the one
+       they share is not. */
     if (e.target.dataset.partnerStatus) {
       return change({ for_partner: e.target.dataset.partnerStatus,
                       partner_status: e.target.value }, e.target);
+    }
+    if (e.target.classList.contains('status-pick')) {
+      return change({ user_id: e.target.dataset.user, status: e.target.value }, e.target);
     }
     if (e.target.classList.contains('lang-pick') && e.target.dataset.partner) {
       return change({ for_partner: e.target.dataset.partner, default_lang: e.target.value }, e.target);

@@ -679,11 +679,37 @@ Pi's `_site` keeps stale HTML after a page is switched off.
 
 Two kinds, and they must never share a sending domain.
 
-| | transactional | bulk |
+**ONE DOMAIN PER PARTNER, and the organisation's own kept out of it.**
+
+| | organisation | a partner |
 |---|---|---|
-| what | invites, confirmations, alerts | newsletters |
-| sender | `mail.thauma.one` | `news.thauma.one` (not built) |
-| if it fails | somebody cannot sign in | somebody misses an update |
+| domain | `thauma.one` | `<partner>.thauma.one` |
+| carries | account invites, contact forms, org mail | that partner's newsletter, prayer list, confirmations |
+| volume | low, never complained about | bulk, opt-in |
+| if it is flagged | nobody can sign in | ONE partner's mail suffers |
+
+Reputation is tracked per domain, so a partner's junk reports stay with that
+partner instead of degrading everybody. That is the whole reason for the split
+and it is why `news.thauma.one` was NOT built: a shared bulk domain couples
+people who have nothing to do with each other, and the coupling gets worse with
+every partner added.
+
+The cost is real and worth knowing: a new domain starts with NO reputation, so
+a new partner's first sends land in spam more often than they would from an
+established shared domain. Isolation is bought with slower warming. That is the
+better trade, because one partner poisoning everyone is unrecoverable and this
+one only takes time.
+
+**`thauma.one` IS the transactional domain.** It was `mail.thauma.one` until
+2026-08-21; the separate subdomain bought separation from bulk traffic that
+never existed there, and Resend's free tier allows three domains, which is not
+enough to spend one on that. Organisation mail is low-volume and never
+complained about, which is exactly what keeps a domain clean.
+
+**Never send bulk from bare `thauma.one`.** Subdomains build their own
+reputation but receivers also read the organisational domain as a signal, so
+complaints at the parent bleed downward. Low-volume org mail helps the
+subdomains; a junked org newsletter would hurt all of them.
 
 **One person marking a newsletter as junk must not degrade the reputation that
 delivers an account invite.** That is the whole reason for the split, and it is

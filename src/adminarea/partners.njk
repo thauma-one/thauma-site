@@ -52,6 +52,20 @@ permalink: /admin/partners/index.html
   the language of their own screen.
 </p>
 
+{#- THE ORGANISATION'S OWN MAIL, above the ministries rather than as one of
+   them. Nothing else on a partner card applies to Thauma itself, and a card
+   with one working control and four dead ones invites somebody to try them.
+
+   It is here because there was nowhere else. thauma.one sends the account
+   invites and the sign-up confirmations everybody depends on, and its
+   addresses have to be maintained by the same person maintaining everybody
+   else's — on the same screen, so the whole picture is in one place. -#}
+{#- The whole card is rendered by the console, because its summary row has to
+   count addresses that only arrive with the data. Left empty here rather than
+   half-built in markup and half in script, which is the arrangement that
+   guarantees the two drift. -#}
+<div id="admOrgMail"></div>
+
 <div class="adm-partners" id="admPartners">
   <p class="empty" data-i18n="common.loading">Loading…</p>
 </div>

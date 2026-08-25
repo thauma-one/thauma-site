@@ -988,6 +988,12 @@
       yes.textContent = opts.confirm || 'Confirm';
       no.textContent = opts.cancel || 'Cancel';
       if (opts.danger) yes.classList.add('is-danger');
+      /* `only` makes it a NOTICE rather than a question: something has already
+         happened and this says what to go and do about it. A Cancel button
+         beside that reads as "undo", which it cannot do — so it is removed
+         rather than relabelled. Escape and the backdrop still close it,
+         because a dialog you cannot dismiss is a trap. */
+      if (opts.only) no.remove();
 
       function close(answer) {
         document.removeEventListener('keydown', onKey);

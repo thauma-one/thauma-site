@@ -9,7 +9,8 @@
  * log by design. The role check is the only thing in the way, so it is what
  * these tests are about.
  */
-import handler from "../src/admin.js";
+import handler, { STANDARD_SENDERS, orgDomain, senderProblem } from "../src/admin.js";
+import { readFileSync } from "node:fs";
 import { QUERIES } from "../src/lib/db.js";
 
 let pass = 0, fail = 0;
@@ -63,6 +64,123 @@ await check("no handler method throws", async () => {
     assert(res && typeof res.status === "number", `${m} returned no Response`);
     await res.json().catch(() => ({}));
   }
+});
+
+/* -------------------------- sending addresses -------------------------
+   Resend verifies DOMAINS, not addresses. Once a domain is verified EVERY
+   address at it sends, including one with a typo — which leaves successfully,
+   reads as correct in the log, and drops every reply into nothing. These rules
+   are the only thing standing between an administrator and that outcome, so
+   they are tested as logic rather than through the gate. */
+
+await check("an address at an unverified domain is refused, and told why", () => {
+  const p = senderProblem("news@somewhere-else.org", "chase-roush.thauma.one");
+  assert(p, "an address at another domain was accepted");
+  assert(/chase-roush\.thauma\.one/.test(p),
+    `the message must name the domain that IS allowed — got: ${p}`);
+});
+
+await check("no domain yet refuses everything, rather than accepting anything", () => {
+  assert(senderProblem("news@chase-roush.thauma.one", null),
+    "with no verified domain, no address can work — accepting one only " +
+    "defers the failure to a newsletter going to real people");
+});
+
+await check("the domain comparison is case-insensitive", () => {
+  eq(senderProblem("News@Chase-Roush.Thauma.One", "chase-roush.thauma.one"), null,
+    "domains are not case-sensitive and a guard must not invent a rule");
+});
+
+await check("something that is not an address is refused", () => {
+  assert(senderProblem("news", "chase-roush.thauma.one"), "bare word");
+  assert(senderProblem("news@", "chase-roush.thauma.one"), "no domain");
+  eq(senderProblem("news@chase-roush.thauma.one", "chase-roush.thauma.one"), null, "valid");
+});
+
+await check("the org domain is read from MAIL_FROM, not stated twice", () => {
+  // Two places to state it is one place to forget when it moves — which it
+  // just did, from mail.thauma.one to thauma.one.
+  eq(orgDomain({ MAIL_FROM: "Thauma <noreply@thauma.one>" }), "thauma.one", "angle form");
+  eq(orgDomain({ MAIL_FROM: "noreply@example.org" }), "example.org", "bare form");
+  eq(orgDomain({}), "thauma.one", "a missing MAIL_FROM must not yield undefined@");
+});
+
+await check("the standard set is generic locals, so the DOMAIN carries identity", () => {
+  // If a local part named the ministry there would be a second naming scheme
+  // to keep in step with the domain, and reputation isolation comes from the
+  // domain alone.
+  for (const d of STANDARD_SENDERS) {
+    assert(/^[a-z]+$/.test(d.local), `"${d.local}" is not a plain local part`);
+    assert(d.label, `${d.local} has no label — the picker would show a bare address`);
+  }
+  const receiving = STANDARD_SENDERS.filter((d) => d.can_receive).map((d) => d.local);
+  assert(receiving.length, "at least one address must be able to receive replies");
+  assert(STANDARD_SENDERS.some((d) => !d.can_receive),
+    "bulk senders should default to not receiving — an alias nobody made loses replies");
+});
+
+/* ------------------------- the cascade ---------------------------------
+   The first version of this screen refused a rename while any address existed,
+   refused an address delete while any list used it, and offered no way to
+   repoint a list at an address that could not be created yet. Each guard read
+   as prudent; together they formed a loop with no exit, and one wrong
+   character in a domain could not be corrected. These tests are about the
+   shape that replaced it. */
+
+await check("the two dependencies are NOT treated the same", () => {
+  /* A list that loses its SENDER cannot send and is archived. A list that
+     loses its REPLY-TO carries on, because an empty reply_to already means
+     "replies go to the sender". Conflating them would archive a list over a
+     setting that has a working default — and archiving is the one action here
+     that puts subscribers out of reach. */
+  const archive = QUERIES.admin_lists_archive_by_sender;
+  assert(/from_email\s*=\s*:address/.test(archive), "archive must key on from_email");
+  assert(!/reply_to/.test(archive),
+    "archiving must NOT consider reply_to — that would destroy a list to fix a default");
+
+  const drop = QUERIES.admin_lists_drop_reply_to;
+  assert(/reply_to\s*=\s*NULL/i.test(drop), "should clear reply_to");
+  assert(!/archived_at/.test(drop), "clearing a reply-to must not archive anything");
+});
+
+await check("archiving never deletes a list or its subscribers", () => {
+  // Subscribers are the one thing here that cannot be recreated: each is a
+  // person who agreed to be written to, and a double opt-in cannot be
+  // replayed. Archiving must stay reversible.
+  const q = QUERIES.admin_lists_archive_by_sender;
+  assert(/^\s*UPDATE/im.test(q.trim()), "must be an UPDATE, never a DELETE");
+  assert(!/DELETE/i.test(q), "a sender going away must not delete a list");
+  assert(!/subscribers/i.test(q), "must not touch the subscriber table at all");
+});
+
+await check("a rename moves BOTH columns, in one statement", () => {
+  // Two passes could half-succeed and leave a list sending from a domain that
+  // no longer exists — which looks correct and sends nothing.
+  const q = QUERIES.admin_lists_repoint;
+  assert(/from_email\s*=\s*CASE/i.test(q), "from_email must be guarded by its own CASE");
+  assert(/reply_to\s*=\s*CASE/i.test(q), "reply_to must be guarded by its own CASE");
+  assert(!/archived_at IS NULL/.test(q),
+    "archived lists must move too — one restored later would otherwise point nowhere");
+});
+
+await check("the address keeps its id when it moves", () => {
+  // Same address, same job, new domain. Delete-and-recreate would break the
+  // audit trail across exactly the change somebody most wants to trace.
+  assert(/^\s*UPDATE sender_addresses SET address/im.test(
+    QUERIES.admin_sender_readdress.trim()),
+    "a move must be an UPDATE of the address, not a new row");
+});
+
+await check("deleting a used address needs cascade=yes, checked on the SERVER", async () => {
+  // A dialog is a suggestion — anything that can send a DELETE can skip the
+  // browser entirely, which is where the explanation lives.
+  const src = readFileSync(new URL("../src/admin.js", import.meta.url), "utf8");
+  assert(/cascade"\)\s*!==\s*"yes"/.test(src),
+    "the handler must refuse a used address unless the console confirms the cascade");
+  assert(src.indexOf("admin_lists_archive_by_sender") <
+         src.indexOf("admin_sender_address_delete"),
+    "lists must be archived BEFORE the address row goes — afterwards there is " +
+    "no way to find which lists pointed at it");
 });
 
 /* --------------------------- the queries ------------------------------ */
