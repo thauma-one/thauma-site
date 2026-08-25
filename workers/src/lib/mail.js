@@ -107,7 +107,7 @@ export const h1 = (text) =>
  * who sees "created, but the invite could not be sent" can resend it. Rolling
  * the account back because an API was briefly unhappy would be worse.
  */
-export async function sendMail(env, { to, subject, html, text, replyTo, from: fromOverride }, fetchImpl = fetch) {
+export async function sendMail(env, { to, subject, html, text, replyTo, from: fromOverride, headers, attachments }, fetchImpl = fetch) {
   if (!env.RESEND_API_KEY) return { ok: false, error: "RESEND_API_KEY is not set on this deploy." };
   /* `from` MAY BE OVERRIDDEN, and there is exactly one caller that should:
      a mailing list's confirmation, which has to arrive from the address the
@@ -123,6 +123,18 @@ export async function sendMail(env, { to, subject, html, text, replyTo, from: fr
 
   const payload = { from, to: [to], subject, html, text };
   if (replyTo) payload.reply_to = replyTo;
+  /* EXTRA HEADERS, for exactly one caller: a newsletter's List-Unsubscribe.
+     Gmail and Outlook put a one-click unsubscribe button beside the sender
+     when they see it, and a reader who presses that is a reader who did NOT
+     press "report spam" — which is the outcome that damages the sending
+     domain for everybody else on it. */
+  if (headers && Object.keys(headers).length) payload.headers = headers;
+
+  /* ATTACHMENTS ARE NOT PART OF THE HTML, and that is the whole distinction
+     from an inline picture. A picture is a URL the reader's mail client
+     fetches; an attachment travels inside the message. Resend takes them as a
+     separate parameter, base64-encoded, and they never touch the body. */
+  if (attachments && attachments.length) payload.attachments = attachments;
 
   let res;
   try {

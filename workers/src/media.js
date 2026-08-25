@@ -49,7 +49,11 @@ const TYPES = {
     b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47 },
 };
 
-const KINDS = new Set(["photo", "bio_photo"]);
+/* `newsletter` is not a staff photo and does not behave like one: it belongs
+   to a PARTNER rather than to a person, and the people who write newsletters
+   are staff rather than administrators. Both differences are handled below
+   rather than by pretending it is a third kind of portrait. */
+const KINDS = new Set(["photo", "bio_photo", "newsletter"]);
 
 export async function serve(request, env, key) {
   if (!env.MEDIA) return new Response("No media store on this deploy", { status: 500 });
@@ -92,19 +96,42 @@ export default {
     const db = createDb(env.DB);
     const me = await db.queryOne("user_by_email", { email: gate.user.email });
     if (!me) return json({ error: "No account for that address" }, 403);
-    if (!String(me.roles || "").split(",").includes("admin")) {
-      return json({ error: "Administrator access is required" }, 403);
-    }
+    const roles = String(me.roles || "").split(",");
 
     const url = new URL(request.url);
-    const forUser = String(url.searchParams.get("for") || "").trim();
     const kind = String(url.searchParams.get("kind") || "photo").trim();
-    if (!forUser) return json({ error: "for=<user_id> is required" }, 400);
     if (!KINDS.has(kind)) {
       return json({ error: `kind must be one of ${[...KINDS].join(", ")}` }, 400);
     }
-    const person = await db.queryOne("user_by_id", { id: forUser });
-    if (!person) return json({ error: "No such person" }, 404);
+
+    /* WHO MAY UPLOAD, AND WHERE IT LANDS, both depend on the kind.
+
+       A staff photo is published on the public team page under somebody's
+       name, so it stays an administrative act. A newsletter image is a
+       partner illustrating their own message, and requiring an administrator
+       for it would mean nobody could write a newsletter unaided — so it is
+       allowed to staff and SCOPED TO THEIR OWN PARTNER, which is what stops
+       one ministry writing into another's folder. */
+    let owner, prefix;
+    if (kind === "newsletter") {
+      const partners = await db.query("partners_for_user", { email: gate.user.email });
+      if (!partners.length && !roles.includes("admin")) {
+        return json({ error: "This account is not attached to a partner." }, 403);
+      }
+      /* The slug comes from the DATABASE, never from the request. A caller
+         naming their own folder is a caller who can name somebody else's. */
+      owner = partners.length ? partners[0].slug : "thauma";
+      prefix = `newsletter/${owner}`;
+    } else {
+      if (!roles.includes("admin")) {
+        return json({ error: "Administrator access is required" }, 403);
+      }
+      owner = String(url.searchParams.get("for") || "").trim();
+      if (!owner) return json({ error: "for=<user_id> is required" }, 400);
+      const person = await db.queryOne("user_by_id", { id: owner });
+      if (!person) return json({ error: "No such person" }, 404);
+      prefix = "team";
+    }
 
     const declared = (request.headers.get("Content-Type") || "").split(";")[0].trim();
     const spec = TYPES[declared];
@@ -135,7 +162,9 @@ export default {
     const digest = await crypto.subtle.digest("SHA-256", bytes);
     const hash = [...new Uint8Array(digest)].slice(0, 8)
       .map((b) => b.toString(16).padStart(2, "0")).join("");
-    const key = `team/${forUser}-${kind}-${hash}.${spec.ext}`;
+    const key = kind === "newsletter"
+      ? `${prefix}/${hash}.${spec.ext}`
+      : `${prefix}/${owner}-${kind}-${hash}.${spec.ext}`;
 
     await env.MEDIA.put(key, bytes, {
       httpMetadata: { contentType: declared, cacheControl: "public, max-age=31536000, immutable" },
@@ -148,8 +177,8 @@ export default {
       user_id: me.user_id,
       partner_id: null,
       action: "media.upload",
-      entity: "staff_profile",
-      entity_id: forUser,
+      entity: kind === "newsletter" ? "mailing" : "staff_profile",
+      entity_id: owner,
       detail: JSON.stringify({ key, kind, bytes: bytes.length, type: declared }),
     });
 
