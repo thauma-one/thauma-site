@@ -1656,3 +1656,47 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
 .subs-pick{width:1%;padding-right:0!important}
 .subs-pick input{width:15px;height:15px;accent-color:var(--voice-tech);cursor:pointer;
   display:block}
+
+/* ============================================================ VIDEOS
+   The Ministry page's fourth section. A cache of somebody else's public feed,
+   so the styling stays close to the console's own — this is not a media
+   player and should not look like one.
+   ============================================================ */
+.vid-form{display:block;margin:0 0 18px}
+
+/* The confirmation that what was typed found what was meant. Quiet, because
+   it is only interesting on the day it says the wrong name. */
+.vid-found{margin:-6px 0 16px;font-size:14px;color:var(--dim)}
+.vid-found a{color:inherit}
+
+/* What the scheduled run has to say for itself. A cron cannot report to a
+   person, so it reports here. */
+.vid-sync{margin:0 0 14px;font-size:13px;color:var(--dim)}
+.vid-sync.is-bad{color:var(--crit,#FF6B6B)}
+
+/* auto-fill, not auto-fit: with one video, auto-fit stretches the single card
+   across the whole width and a 16:9 thumbnail becomes a banner. */
+.vid-list{display:grid;gap:14px;
+  grid-template-columns:repeat(auto-fill,minmax(210px,1fr))}
+
+.vid-card{display:block;border:1px solid var(--line);text-decoration:none;
+  color:inherit;background:var(--bg2);overflow:hidden}
+.vid-card:hover{border-color:var(--line-hard)}
+
+/* The 16:9 box is declared rather than left to the image, so the grid does
+   not reflow as each thumbnail arrives from YouTube's CDN. hqdefault is 4:3
+   with letterboxing baked in, which `cover` crops back to the real frame. */
+.vid-thumb{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;
+  background:var(--line)}
+
+.vid-meta{display:block;padding:10px 12px 12px}
+.vid-title{display:block;font-size:14px;font-weight:600;line-height:1.35;
+  /* Two lines, then ellipsis. Video titles run long and a card that grows to
+     fit one of them drags the whole grid row with it. */
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+  overflow:hidden}
+.vid-date{display:block;margin-top:6px;font-size:12px;color:var(--dim)}
+
+@media (max-width:600px){
+  .vid-list{grid-template-columns:1fr}
+}

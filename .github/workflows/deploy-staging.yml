@@ -62,6 +62,7 @@ jobs:
           python3 db/test_schema.py
           node test/composer-toolbar.test.mjs
           node test/mailing-preview.test.mjs
+          node test/videos-console.test.mjs
           node test/admin-console.test.mjs
           cd workers && npm test
 

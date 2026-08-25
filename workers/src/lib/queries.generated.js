@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "e70c1dee88e5d9ba";
+export const SOURCE_DIGEST = "7b3f8a63d35c6b09";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -566,6 +566,13 @@ FROM prayer_translations t
 JOIN prayer p ON p.id = t.prayer_id
 WHERE t.partner_id = :partner_id
   AND p.is_public = 1;`,
+  public_videos_for_partner: `SELECT v.video_id, v.title, v.published_at
+  FROM videos v
+  JOIN video_channels c ON c.channel_id = v.channel_id
+ WHERE c.partner_id IS :partner_id AND c.is_public = 1
+ ORDER BY v.published_at DESC
+ LIMIT COALESCE(
+   (SELECT max_items FROM video_channels WHERE partner_id IS :partner_id), 0);`,
   resource_delete: `DELETE FROM resources WHERE id = :id AND partner_id IS :partner_id;`,
   resource_upsert: `INSERT INTO resources
   (id, partner_id, title, description, link, photo, visibility,
@@ -780,5 +787,46 @@ WHERE u.email = :email AND u.status = 'active';`,
                 u.global_role) AS roles
 FROM users u
 WHERE u.id = :id AND u.status = 'active';`,
-  user_set_preferred_lang: `UPDATE users SET preferred_lang = :lang WHERE email = :email AND status = 'active';`
+  user_set_preferred_lang: `UPDATE users SET preferred_lang = :lang WHERE email = :email AND status = 'active';`,
+  video_channel_clear: `DELETE FROM video_channels WHERE partner_id IS :partner_id;`,
+  video_channel_failed: `UPDATE video_channels
+   SET synced_at = :now, sync_error = :error
+ WHERE partner_id IS :partner_id;`,
+  video_channel_get: `SELECT partner_id, channel_id, channel_title, is_public, max_items,
+       synced_at, sync_error, updated_at
+  FROM video_channels
+ WHERE partner_id IS :partner_id;`,
+  video_channel_save: `INSERT INTO video_channels
+  (partner_id, channel_id, channel_title, is_public, max_items, updated_at)
+VALUES
+  (:partner_id, :channel_id, :channel_title, :is_public, :max_items, :now)
+ON CONFLICT(partner_id) DO UPDATE SET
+  channel_id    = excluded.channel_id,
+  channel_title = excluded.channel_title,
+  is_public     = excluded.is_public,
+  max_items     = excluded.max_items,
+  synced_at     = CASE WHEN video_channels.channel_id = excluded.channel_id
+                       THEN video_channels.synced_at ELSE NULL END,
+  sync_error    = CASE WHEN video_channels.channel_id = excluded.channel_id
+                       THEN video_channels.sync_error ELSE NULL END,
+  updated_at    = excluded.updated_at;`,
+  video_channel_synced: `UPDATE video_channels
+   SET synced_at = :now, sync_error = NULL
+ WHERE partner_id IS :partner_id;`,
+  video_channels_all: `SELECT partner_id, channel_id
+  FROM video_channels
+ WHERE is_public = 1 AND channel_id <> ''
+ ORDER BY partner_id;`,
+  video_upsert: `INSERT INTO videos (channel_id, video_id, title, published_at, fetched_at)
+VALUES (:channel_id, :video_id, :title, :published_at, :now)
+ON CONFLICT(channel_id, video_id) DO UPDATE SET
+  title        = excluded.title,
+  published_at = excluded.published_at,
+  fetched_at   = excluded.fetched_at;`,
+  videos_for_channel: `SELECT video_id, title, published_at
+  FROM videos
+ WHERE channel_id = :channel_id
+ ORDER BY published_at DESC
+ LIMIT :limit;`,
+  videos_prune: `DELETE FROM videos WHERE channel_id = :channel_id AND fetched_at < :now;`
 };

@@ -86,6 +86,11 @@ await check("PUBLIC_QUERIES is an allow-list of exactly the intended queries", a
        unpublished request's words out of a public response. */
     "public_prayer_for_partner",
     "public_prayer_translations",
+    /* Added 2026-08-25. A channel's latest videos. Every column is already
+       public on YouTube, but the `videos` table has NO partner column — the
+       join through video_channels is what scopes it, which is why that join
+       has to live in the SQL and not in a caller. */
+    "public_videos_for_partner",
   ], "public set");
 });
 
@@ -128,6 +133,12 @@ function fakePublicDb(overrides = {}) {
         { code: "hr", name: "Croatian", native_name: "Hrvatski", sort_order: 1 },
       ];
     }
+    if (sql.includes("FROM videos")) {
+      return overrides.videos ?? [
+        { video_id: "dQw4w9WgXcQ", title: "Faith & Works",
+          published_at: "2026-08-01T10:00:00+00:00" },
+      ];
+    }
     if (sql.includes("FROM milestones")) {
       return overrides.milestones ?? [{
         id: "m_1", parent_id: null, actual_date: null, status: "upcoming",
@@ -143,8 +154,33 @@ await check("the payload carries languages, goals, milestones and prayer — and
   /* `prayer` joined the payload on 2026-08-18. It is public content in the
      same sense the roadmap is, and it goes through the same publication gate
      and the same no-personal-data check. */
-  eq(Object.keys(site).sort(), ["goals", "languages", "milestones", "prayer"],
-     "top-level keys");
+  eq(Object.keys(site).sort(),
+     ["goals", "languages", "milestones", "prayer", "videos"], "top-level keys");
+});
+
+await check("a video arrives with its URLs built, and its title undoubled", async () => {
+  /* The three URLs are DERIVED here rather than stored, so a partner site
+     never has to know how to assemble one. The title check guards the entity
+     decoding in lib/youtube.js: a channel called "Faith &amp; Works" must
+     reach a partner site as "Faith & Works" and not as the escaped form. */
+  const site = await partnerPublicSite(fakePublicDb(), "p_chase");
+  const v = site.videos[0];
+  eq(v.title, "Faith & Works", "title");
+  eq(v.url, "https://www.youtube.com/watch?v=dQw4w9WgXcQ", "watch url");
+  eq(v.embed_url, "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ", "embed url");
+  eq(v.thumbnail_url, "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg", "thumbnail");
+});
+
+await check("the videos query cannot be run without a partner", async () => {
+  /* The `videos` table has no partner column, so an undefined partner_id
+     would become `partner_id IS NULL` and return the ORGANISATION's videos to
+     whichever partner asked — the same shape as the slug leak fixed in the
+     embed router. TENANT_SCOPED is what stops it. */
+  let threw = null;
+  try {
+    await fakePublicDb().publicQuery("public_videos_for_partner", {});
+  } catch (e) { threw = e.message; }
+  assert(threw && /tenant-scoped/.test(threw), `expected a refusal, got ${threw}`);
 });
 
 await check("milestone text is keyed BY LANGUAGE, with no language named in code", async () => {

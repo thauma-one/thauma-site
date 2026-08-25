@@ -110,6 +110,7 @@ jobs:
           # shipping it fails here rather than in somebody's browser.
           node test/composer-toolbar.test.mjs
           node test/mailing-preview.test.mjs
+          node test/videos-console.test.mjs
           node test/admin-console.test.mjs
           python3 db/test_schema.py
           cd workers && npm test

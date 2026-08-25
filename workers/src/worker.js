@@ -52,8 +52,10 @@ import embed from "./embed.js";
 import staffEmbed from "./staff-embed.js";
 import adminActAs from "./admin-actas.js";
 import adminProfile from "./admin-profile.js";
+import staffVideos from "./staff-videos.js";
 import media, { serve as serveMedia } from "./media.js";
 import { createDb, partnerSnapshot, assertPublicSafe } from "./lib/db.js";
+import { syncAll } from "./lib/video-sync.js";
 import { requireAccess } from "./lib/access.js";
 import { resolveActor, withActing } from "./lib/actas.js";
 import { json } from "./lib/store.js";
@@ -237,6 +239,11 @@ const ROUTES = {
   // A partner's own mailing lists. Scoped to them; see staff-mailing.js.
   "/api/staff-mailing": staffMailing,
 
+  // Which YouTube channel a partner's site shows videos from. The videos
+  // themselves are fetched by the scheduled handler below, from a public feed
+  // that needs no key. See staff-videos.js.
+  "/api/staff-videos": staffVideos,
+
   // Public, no account. The link in a mailing list confirmation email.
   "/confirm": confirmSubscription,
 
@@ -365,5 +372,33 @@ export default {
     }
 
     return env.ASSETS.fetch(request);
+  },
+
+  /**
+   * THE ONLY SCHEDULED WORK IN THIS WORKER, and the replacement for Netlify's
+   * schedule() wrapper that chaseroush.com used for the same job.
+   *
+   * Every quarter hour it re-reads the public Atom feed of each switched-on
+   * channel. That is ninety-six invocations a day for the whole site — far
+   * inside the free allowance, and there is no API key or quota behind it
+   * because the feed is public. Deliberately kept that cheap: a scheduled job
+   * is the easiest thing in a system to leave running and forget the price of.
+   *
+   * A cron cannot report to anybody, so it reports to the DATABASE: every
+   * channel records its own synced_at and sync_error, and the console shows
+   * them. `waitUntil` is not used — the run IS the invocation, and returning
+   * before the writes land would lose them.
+   */
+  async scheduled(event, env, ctx) {
+    if (!env.DB) {
+      console.error("scheduled run skipped: no database bound");
+      return;
+    }
+    const db = createDb(env.DB);
+    const results = await syncAll(db);
+    const failed = results.filter((r) => !r.ok);
+    console.log(
+      `video sync: ${results.length} channel(s), ${failed.length} failed`,
+      failed.map((f) => `${f.partner_id || "organisation"}: ${f.error}`).join("; "));
   },
 };

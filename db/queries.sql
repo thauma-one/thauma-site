@@ -1886,3 +1886,112 @@ DELETE FROM subscribers
 WHERE id IN (SELECT s.id FROM subscribers s
                JOIN mailing_lists l ON l.id = s.list_id
               WHERE l.partner_id IS :partner_id AND s.id IN (IDS));
+
+
+-- ===========================================================================
+-- VIDEOS — a channel's latest, cached from its public Atom feed
+--
+-- The only tables here whose every column is already public. That is what
+-- lets public_videos_for_partner sit in PUBLIC_QUERIES; it is not a licence
+-- to join anything else to them.
+-- ===========================================================================
+
+-- name: video_channel_get
+SELECT partner_id, channel_id, channel_title, is_public, max_items,
+       synced_at, sync_error, updated_at
+  FROM video_channels
+ WHERE partner_id IS :partner_id;
+
+
+-- name: video_channel_save
+INSERT INTO video_channels
+  (partner_id, channel_id, channel_title, is_public, max_items, updated_at)
+VALUES
+  (:partner_id, :channel_id, :channel_title, :is_public, :max_items, :now)
+ON CONFLICT(partner_id) DO UPDATE SET
+  channel_id    = excluded.channel_id,
+  channel_title = excluded.channel_title,
+  is_public     = excluded.is_public,
+  max_items     = excluded.max_items,
+  -- Pointing at a DIFFERENT channel invalidates what was synced from the old
+  -- one. Clearing these makes the console say "never checked" rather than
+  -- showing a timestamp that belongs to somebody else's videos.
+  synced_at     = CASE WHEN video_channels.channel_id = excluded.channel_id
+                       THEN video_channels.synced_at ELSE NULL END,
+  sync_error    = CASE WHEN video_channels.channel_id = excluded.channel_id
+                       THEN video_channels.sync_error ELSE NULL END,
+  updated_at    = excluded.updated_at;
+
+
+-- name: video_channel_clear
+DELETE FROM video_channels WHERE partner_id IS :partner_id;
+
+
+-- name: video_channel_synced
+UPDATE video_channels
+   SET synced_at = :now, sync_error = NULL
+ WHERE partner_id IS :partner_id;
+
+
+-- name: video_channel_failed
+-- Keeps the videos already stored. A feed that fails to load is a reason to
+-- show yesterday's videos with a warning in the console, not a reason for a
+-- partner site to lose its video shelf.
+UPDATE video_channels
+   SET synced_at = :now, sync_error = :error
+ WHERE partner_id IS :partner_id;
+
+
+-- name: video_channels_all
+-- Every channel worth syncing, for the scheduled run. Unconfigured and
+-- switched-off channels are skipped: syncing a channel nobody displays is an
+-- outbound request per quarter hour in exchange for nothing.
+SELECT partner_id, channel_id
+  FROM video_channels
+ WHERE is_public = 1 AND channel_id <> ''
+ ORDER BY partner_id;
+
+
+-- name: videos_for_channel
+SELECT video_id, title, published_at
+  FROM videos
+ WHERE channel_id = :channel_id
+ ORDER BY published_at DESC
+ LIMIT :limit;
+
+
+-- name: video_upsert
+INSERT INTO videos (channel_id, video_id, title, published_at, fetched_at)
+VALUES (:channel_id, :video_id, :title, :published_at, :now)
+ON CONFLICT(channel_id, video_id) DO UPDATE SET
+  -- A title can be edited after publishing, and the published date corrected.
+  title        = excluded.title,
+  published_at = excluded.published_at,
+  fetched_at   = excluded.fetched_at;
+
+
+-- name: videos_prune
+-- Anything not seen in the run that just finished. A video deleted or made
+-- private on YouTube must stop being shown here, and this is what notices —
+-- the upsert above can only ever add.
+DELETE FROM videos WHERE channel_id = :channel_id AND fetched_at < :now;
+
+
+-- name: public_videos_for_partner
+-- The partner API's read. Scoped through video_channels so it returns rows
+-- only for a channel that partner configured AND switched on — the videos
+-- table itself has no partner column and must never be read without this
+-- join standing in for one.
+SELECT v.video_id, v.title, v.published_at
+  FROM videos v
+  JOIN video_channels c ON c.channel_id = v.channel_id
+ WHERE c.partner_id IS :partner_id AND c.is_public = 1
+ ORDER BY v.published_at DESC
+ -- COALESCE, and it is load-bearing. A partner with no channel row makes the
+ -- subquery NULL, and SQLite rejects `LIMIT NULL` with "datatype mismatch" —
+ -- which would throw inside partnerPublicSite and take down the WHOLE partner
+ -- API response, videos or not, for every partner who never set a channel.
+ -- That is most of them. Found by running this against the real database
+ -- rather than reading it.
+ LIMIT COALESCE(
+   (SELECT max_items FROM video_channels WHERE partner_id IS :partner_id), 0);

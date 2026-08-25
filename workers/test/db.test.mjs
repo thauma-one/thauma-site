@@ -307,6 +307,10 @@ await check("every real query converts with its documented params", async () => 
     subject: "June update", preheader: null, body_md: "# x",
     body_html: "<p>x</p>", body_text: "x",
     sent_count: 0, mailing_id: "mg_1", subscriber_id: "sub_1",
+    // videos, cached from a channel's public Atom feed
+    channel_id: "UCnp-pBzHdpTwMonf7xuN1Ug", channel_title: "Thauma",
+    video_id: "dQw4w9WgXcQ", published_at: "2026-08-01T10:00:00+00:00",
+    max_items: 3, error: null,
     // attachments: the pointer lives in D1, the bytes live in R2
     filename: "report.pdf", content_type: "application/pdf", bytes: 81920,
     object_key: "attachments/chase-roush/abc123",
@@ -342,7 +346,16 @@ await check("every real query converts with its documented params", async () => 
                              /* The organisation's contact reasons. Same reason
                                 as the form above: no slug to be found by, and
                                 exactly one owner. */
-                             "public_contact_topics_org"]);
+                             "public_contact_topics_org",
+                             /* THE SCHEDULED RUN'S WORKLIST. It is meant to
+                                cross every partner — finding all the channels
+                                is its whole job, and a partner_id would make
+                                it useless. Safe because it selects nothing but
+                                a partner id and a channel id, both of which
+                                the cron already has authority over, and
+                                because everything downstream of it is scoped
+                                by the channel it returns. */
+                             "video_channels_all"]);
 
   for (const [name, sql] of Object.entries(QUERIES)) {
     const r = toPositional(sql, params);

@@ -199,10 +199,24 @@ STAGING_BRANCH = "dev"
 
 # ---------------------------------------------------------------------------
 # Scheduled work — replaces Netlify's schedule() wrapper.
-# Nothing is scheduled for Thauma yet; the CR migration will need these.
+#
+# ONE JOB: re-read the YouTube feed of every channel a partner has switched on,
+# so a new video appears on their site without anybody publishing anything.
+# chaseroush.com did this with a Netlify scheduled function; this is where that
+# moved, and it is the last piece of that site's data Thauma was not the record
+# for.
+#
+# WHAT IT COSTS. Ninety-six invocations a day, total, for every partner at
+# once — well inside the free allowance, and the feed it reads is public, so
+# there is no API key, no quota and no billing relationship behind it. Fifteen
+# minutes is chosen against that: a new video shows up within the quarter hour,
+# and nothing here scales with the number of videos or the number of viewers.
+#
+# The handler is `scheduled()` in workers/src/worker.js. It is deliberately the
+# only one — see the comment there before adding a second.
 # ---------------------------------------------------------------------------
-# [triggers]
-# crons = []
+[triggers]
+crons = ["*/15 * * * *"]
 
 
 # ---------------------------------------------------------------------------

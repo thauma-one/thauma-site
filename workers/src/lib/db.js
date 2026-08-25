@@ -42,6 +42,11 @@ const TENANT_SCOPED = new Set([
   "api_keys_for_partner",
   "directory_for_user",
   "resources_visible",
+  /* Called with a real partner id by the partner API. Listed here so that a
+     call with an undefined one throws instead of falling through to
+     `partner_id IS NULL` and returning the ORGANISATION's videos — the exact
+     shape of the slug leak fixed in the embed router. */
+  "public_videos_for_partner",
 ]);
 
 /**
@@ -70,6 +75,11 @@ export const PUBLIC_QUERIES = new Set([
      of a public response. */
   "public_prayer_for_partner",
   "public_prayer_translations",
+  /* A channel's latest videos. Every column of the `videos` table is already
+     public on YouTube, but the table has no partner column at all — the join
+     through video_channels IS its scoping, which is why it must stay in the
+     query rather than being applied by a caller. */
+  "public_videos_for_partner",
 ]);
 
 /** Tables a query in PUBLIC_QUERIES must never mention. */
@@ -270,14 +280,16 @@ export function createDb(binding, exec) {
 export async function partnerPublicSite(db, partnerId) {
   if (!partnerId) throw new Error("partnerPublicSite requires a partnerId");
 
-  const [goals, milestones, translations, languages, prayer, prayerTx] = await Promise.all([
-    db.publicQuery("public_goals_for_partner", { partner_id: partnerId }),
-    db.publicQuery("public_milestones_for_partner", { partner_id: partnerId }),
-    db.publicQuery("public_milestone_translations", { partner_id: partnerId }),
-    db.publicQuery("public_languages_for_partner", { partner_id: partnerId }),
-    db.publicQuery("public_prayer_for_partner", { partner_id: partnerId }),
-    db.publicQuery("public_prayer_translations", { partner_id: partnerId }),
-  ]);
+  const [goals, milestones, translations, languages, prayer, prayerTx, videos] =
+    await Promise.all([
+      db.publicQuery("public_goals_for_partner", { partner_id: partnerId }),
+      db.publicQuery("public_milestones_for_partner", { partner_id: partnerId }),
+      db.publicQuery("public_milestone_translations", { partner_id: partnerId }),
+      db.publicQuery("public_languages_for_partner", { partner_id: partnerId }),
+      db.publicQuery("public_prayer_for_partner", { partner_id: partnerId }),
+      db.publicQuery("public_prayer_translations", { partner_id: partnerId }),
+      db.publicQuery("public_videos_for_partner", { partner_id: partnerId }),
+    ]);
 
   // Group text by milestone, then by language code. Nothing here names a
   // language: adding one is a row in `languages` and a switch on
@@ -346,6 +358,21 @@ export async function partnerPublicSite(db, partnerId) {
         answered_on: p.answered_on,
         text: byPrayer[p.id],
       })),
+    /* The channel's latest videos, newest first — usually one or three.
+       Untranslated, because a video is not text we hold in three languages;
+       the title is whatever the person who uploaded it typed.
+
+       URLs ARE BUILT HERE rather than stored, so a consumer never has to
+       know how to assemble one and a change to YouTube's URL shape is one
+       edit rather than a migration. */
+    videos: videos.map((v) => ({
+      id: v.video_id,
+      title: v.title,
+      published_at: v.published_at,
+      url: `https://www.youtube.com/watch?v=${v.video_id}`,
+      embed_url: `https://www.youtube-nocookie.com/embed/${v.video_id}`,
+      thumbnail_url: `https://i.ytimg.com/vi/${v.video_id}/hqdefault.jpg`,
+    })),
   };
 }
 

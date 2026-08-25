@@ -241,6 +241,67 @@ def t_bulk_tagging_cannot_borrow_another_partners_tag():
     assert n == 0, "a tag belonging to another partner was applied"
 
 
+def t_a_partner_with_no_channel_does_not_break_the_partner_api():
+    """`LIMIT (SELECT ...)` is NULL when the partner has no channel row, and
+    SQLite rejects LIMIT NULL with "datatype mismatch". That does not fail
+    quietly on the videos section — it throws inside partnerPublicSite and
+    takes down the WHOLE partner API response for that partner, videos or
+    not. Most partners will never set a channel, so this is the common path.
+
+    Found by running the query against the real database rather than reading
+    it, which is why it is pinned here."""
+    db = fresh()
+    db.execute("INSERT INTO partners (id,slug,display_name,status,created_at,updated_at)"
+               " VALUES ('p_a','a','A','active',?,?)", (NOW, NOW))
+    sql, names = _query("public_videos_for_partner")
+    rows = db.execute(sql, ["p_a"] * len(names)).fetchall()
+    assert rows == [], f"expected no videos, got {rows}"
+
+
+def t_videos_are_returned_only_for_a_channel_that_is_switched_on():
+    db = fresh()
+    db.execute("INSERT INTO partners (id,slug,display_name,status,created_at,updated_at)"
+               " VALUES ('p_a','a','A','active',?,?)", (NOW, NOW))
+    db.execute("INSERT INTO video_channels (partner_id,channel_id,is_public,max_items,"
+               "updated_at) VALUES ('p_a','UC0000000000000000000000',0,3,?)", (NOW,))
+    db.execute("INSERT INTO videos (channel_id,video_id,title,published_at,fetched_at)"
+               " VALUES ('UC0000000000000000000000','vvvvvvvvvvv','V',?,?)", (NOW, NOW))
+
+    sql, names = _query("public_videos_for_partner")
+    got = db.execute(sql, ["p_a"] * len(names)).fetchall()
+    assert got == [], "an unpublished channel's videos reached the public query"
+
+    db.execute("UPDATE video_channels SET is_public = 1")
+    got = db.execute(sql, ["p_a"] * len(names)).fetchall()
+    assert len(got) == 1, f"a published channel returned {got}"
+
+
+def t_repointing_a_channel_forgets_when_the_old_one_was_checked():
+    """synced_at describes a CHANNEL, not a row. Carrying it across a change of
+    channel would show a timestamp belonging to somebody else's videos, and the
+    console would say "checked two minutes ago" about a feed never read."""
+    db = fresh()
+    db.execute("INSERT INTO partners (id,slug,display_name,status,created_at,updated_at)"
+               " VALUES ('p_a','a','A','active',?,?)", (NOW, NOW))
+    sql, names = _query("video_channel_save")
+
+    def save(channel):
+        args = {"partner_id": "p_a", "channel_id": channel, "channel_title": None,
+                "is_public": 1, "max_items": 3, "now": NOW}
+        db.execute(sql, [args[n] for n in names])
+
+    save("UC0000000000000000000000")
+    db.execute("UPDATE video_channels SET synced_at = 'yesterday'")
+
+    save("UC0000000000000000000000")          # same channel
+    got = db.execute("SELECT synced_at FROM video_channels").fetchone()[0]
+    assert got == "yesterday", f"re-saving the same channel lost synced_at: {got}"
+
+    save("UC1111111111111111111111")          # a different one
+    got = db.execute("SELECT synced_at FROM video_channels").fetchone()[0]
+    assert got is None, f"a new channel kept the old channel's timestamp: {got}"
+
+
 def t_seed_files_insert_every_row_they_claim():
     """Every INSERT in a seed file must actually land.
 
@@ -1146,6 +1207,9 @@ if __name__ == "__main__":
         ("paging never shows or skips a person",         t_paging_never_shows_or_skips_a_person),
         ("a list cannot be read by id alone",            t_a_subscriber_list_cannot_be_read_by_id_alone),
         ("a bulk action cannot reach another partner",   t_a_bulk_action_cannot_reach_another_partner),
+        ("no channel does not break the partner API",    t_a_partner_with_no_channel_does_not_break_the_partner_api),
+        ("videos need the channel switched on",          t_videos_are_returned_only_for_a_channel_that_is_switched_on),
+        ("repointing a channel forgets the old check",   t_repointing_a_channel_forgets_when_the_old_one_was_checked),
         ("bulk status cannot mark anybody subscribed",   t_bulk_status_cannot_mark_anybody_subscribed),
         ("bulk tagging cannot borrow another's tag",     t_bulk_tagging_cannot_borrow_another_partners_tag),
     ]:

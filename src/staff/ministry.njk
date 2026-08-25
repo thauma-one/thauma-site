@@ -4,13 +4,13 @@ staffPage: ministry
 staffNum: "04"
 staffTitle: Ministry
 staffHeading: What this ministry <b>publishes</b>
-staffHint: three lists, all of them visible to anyone once published
+staffHint: four sections, all of them visible to anyone once published
 ---
-{#- THREE SECTIONS, ONE PAGE.
+{#- FOUR SECTIONS, ONE PAGE.
 
-   Milestones, giving goals and prayer are the same job — the things a ministry
-   says about itself in public — and each is small. Three nav entries for three
-   short pages crowded the bar and made them look unrelated.
+   Milestones, giving goals, prayer and videos are the same job — the things a
+   ministry says about itself in public — and each is small. Four nav entries
+   for four short pages crowded the bar and made them look unrelated.
 
    Every section is built the same way, deliberately: a view switch at the top,
    an EDIT half that is a list of rows opening into a form, and an AS EMBEDDED
@@ -24,6 +24,8 @@ staffHint: three lists, all of them visible to anyone once published
           aria-selected="false" data-i18n="min.goals">Goals</button>
   <button type="button" class="tab" role="tab" data-tab="prayer"
           aria-selected="false" data-i18n="min.prayer">Prayer</button>
+  <button type="button" class="tab" role="tab" data-tab="videos"
+          aria-selected="false" data-i18n="min.videos">Videos</button>
 </div>
 
 <!-- ========================================================== MILESTONES -->
@@ -353,6 +355,75 @@ staffHint: three lists, all of them visible to anyone once published
       </div>
     </form>
   </div>
+</section>
+
+<!-- ============================================================== VIDEOS -->
+{#- THE ODD ONE OUT, and worth saying why.
+
+   The other three sections edit words somebody typed here. This one edits ONE
+   field — which channel — and everything shown below it was written on
+   YouTube by whoever uploaded the video. There is no editor because there is
+   nothing here to edit: correcting a title means correcting it on YouTube,
+   and within the quarter hour this follows.
+
+   So no row panel, no save bar, no language columns. A field, a switch, and a
+   list you can look at to confirm the right channel is attached. -#}
+<section class="tab-panel" data-panel="videos" role="tabpanel" hidden>
+
+  <div class="ms-bar">
+    <span class="hint" id="vidStatus"></span>
+  </div>
+
+  <p class="note ms-note" data-i18n-html="vid.lede"><b>Videos are pulled from YouTube, not uploaded here.</b> Point this at a
+    channel and the newest videos are read from its public feed every fifteen
+    minutes, then served to partner websites through the same API as everything
+    else on this page.</p>
+
+  <form class="ms-form vid-form" id="vidForm">
+    <label class="fld">
+      <span data-i18n="vid.channel">YouTube channel</span>
+      <em data-i18n="vid.channelHint">its web address, its @handle, or its id</em>
+      <input type="text" id="vidChannel" autocomplete="off" spellcheck="false"
+             placeholder="https://www.youtube.com/@yourchannel">
+    </label>
+
+    {#- Shown only once a channel has resolved, because before then there is
+       nothing truthful to put in it. It is the confirmation that the thing
+       the person typed found the thing they meant. -#}
+    <p class="vid-found" id="vidFound" hidden></p>
+
+    <div class="ms-grid ms-neutral">
+      <label class="fld">
+        <span data-i18n="vid.count">How many to show</span>
+        <em data-i18n="vid.countHint">newest first</em>
+        <input type="number" id="vidCount" min="1" max="15" step="1" value="3">
+      </label>
+    </div>
+
+    <div class="ms-switches">
+      <button type="button" class="switch" id="vidPublic" role="switch" aria-checked="false">
+        <span class="switch-track"><span class="switch-state">Off</span><span class="switch-knob"></span></span>
+        <span class="switch-label"><span data-i18n="ms.published">Published</span>
+          <span class="switch-note" data-i18n="vid.publishedNote">Sent to partner websites, and checked every fifteen minutes</span>
+        </span>
+      </button>
+    </div>
+
+    <div class="ms-actions">
+      <button type="submit" class="solid-btn" data-i18n="vid.save">Save channel</button>
+      <button type="button" class="ghost-btn" id="vidCheck" data-i18n="vid.check">Check now</button>
+      <button type="button" class="ghost-btn danger" id="vidClear" data-i18n="vid.clear">Remove channel</button>
+      <span class="hint" id="vidFormStatus" data-i18n="gl.savesNow">Saves immediately</span>
+    </div>
+  </form>
+
+  {#- WHY THE SYNC REPORTS ITSELF ON SCREEN. A scheduled job has nobody to tell
+     when it fails, so it writes the reason onto the channel and this is where
+     that surfaces. Without it, "the videos stopped updating" is a question
+     only answerable by reading Cloudflare's logs. -#}
+  <p class="vid-sync" id="vidSync" hidden></p>
+
+  <div class="vid-list" id="vidList"></div>
 </section>
 
 <div class="ms-savebar" id="msSaveBar" role="status" aria-live="polite" hidden>
