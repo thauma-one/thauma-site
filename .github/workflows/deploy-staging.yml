@@ -65,6 +65,20 @@ jobs:
           node test/admin-console.test.mjs
           cd workers && npm test
 
+      # STAGING APPLIES ITS OWN MIGRATIONS, BEFORE the code that needs them.
+      # Its whole job is to be what production is about to become, so being
+      # behind is never useful — and a migration that fails belongs here, which
+      # is the point of having a staging environment at all.
+      #
+      # Before the deploy, not after: a Worker that goes live against a schema
+      # it does not match returns 500s from whichever screen touches the new
+      # tables, and the deploy that caused it reports success.
+      - name: Migrate staging
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: 57c887d9191048d984a7607c9e9334b7
+        run: node deploy/migration-state.mjs --database thauma-ops-dev --apply
+
       - name: Deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

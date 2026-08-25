@@ -197,6 +197,40 @@ classic injection, and the classic mitigation — an allow-list in the Worker �
 has to be got right in every caller forever. Bound like any other value, an
 unrecognised sort simply falls through to newest-first.
 
+## Why staging kept falling behind, and what stops it now  (2026-08-25)
+
+**The trap:** migrations are applied per database, deploys ship per branch, and
+nothing connected the two. A deploy would happily push code whose queries name
+columns the target has never heard of — and the result is not a failed deploy,
+it is a *successful* one followed by 500s on whichever screen touches the new
+tables. Production once ran for weeks with `0009` and `0010` unapplied for
+exactly this reason.
+
+**And "the dev site says 22 migrations" is not reassuring**, which is the part
+that makes this genuinely confusing. `dev` and `staging` bind the same name —
+`thauma-ops-dev` — but the Pi runs `wrangler dev --local`, so dev.thauma.one
+reads a **SQLite file on that machine** and never touches the Cloudflare
+database of that name. The two can be twenty-two migrations apart while the
+console says the same word. The environment band now says *"a local copy on
+this Pi"* rather than naming a binding it is not actually using.
+
+**Now enforced in CI**, by `deploy/migration-state.mjs`:
+
+| | behaviour |
+|---|---|
+| **staging** | **applies** pending migrations, then deploys |
+| **production** | **refuses to deploy**, names what is pending, points at Admin → Publish → Migrations |
+
+Staging applies because its whole job is to be what production is about to
+become, and a migration that fails belongs there. Production refuses because
+changing the schema of real data as a side effect of merging a branch is not a
+decision a merge should be able to make — a person does it from the console,
+where it is deliberate and where the audit log records who.
+
+Migrations applied by CI write the same `schema_migrations` row the console
+writes, so the two are indistinguishable afterwards and the console never
+offers to re-run what CI already did.
+
 ## Tags  (2026-08-25)
 
 **Staff → Mailing → Subscribers → Tags.** They belong to the ministry, not to a

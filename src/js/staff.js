@@ -1139,9 +1139,19 @@
   var ENVIRONMENTS = {
     'thauma.one':      { key: 'production', label: 'PRODUCTION', db: 'thauma-ops',
                          note: 'the live site' },
-    'next.thauma.one': { key: 'staging',    label: 'STAGING',    db: 'thauma-ops-dev',
+    'next.thauma.one': { key: 'staging',    label: 'STAGING',
+                         db: 'thauma-ops-dev (in Cloudflare)',
                          note: 'preview only — nobody outside sees this' },
-    'dev.thauma.one':  { key: 'dev',        label: 'DEV',        db: 'thauma-ops-dev',
+    /* ⚠ THE SAME NAME, A DIFFERENT DATABASE.
+       dev and staging both bind `thauma-ops-dev` in wrangler.toml, but the Pi
+       runs `wrangler dev --local`, so this one reads a SQLite FILE on that
+       machine and never touches the Cloudflare database of that name. They can
+       be twenty-two migrations apart while the console says the same word.
+
+       Saying "thauma-ops-dev" here would be true and useless, so the label
+       says where the data actually lives. */
+    'dev.thauma.one':  { key: 'dev',        label: 'DEV',
+                         db: 'a local copy on this Pi — not thauma-ops-dev in Cloudflare',
                          note: 'this Pi — not the live site' },
   };
 

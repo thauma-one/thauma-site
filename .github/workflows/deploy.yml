@@ -114,6 +114,23 @@ jobs:
           python3 db/test_schema.py
           cd workers && npm test
 
+      # PRODUCTION REFUSES; IT DOES NOT APPLY.
+      # Changing the schema of real data as a side effect of merging a branch
+      # is not a decision a merge should be able to make. If anything is
+      # pending this stops here and names it, and a person applies it from
+      # Admin → Publish → Migrations — where it is deliberate, and where the
+      # audit log records who did it.
+      #
+      # The check is what makes the ordering the docs already describe —
+      # schema first, code second — impossible to get wrong rather than merely
+      # written down. Production once ran for weeks with 0009 and 0010
+      # unapplied because nothing was looking.
+      - name: Check production schema is ready
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: 57c887d9191048d984a7607c9e9334b7
+        run: node deploy/migration-state.mjs --database thauma-ops
+
       - name: Deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

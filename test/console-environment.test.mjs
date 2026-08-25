@@ -80,21 +80,46 @@ check("production points at the production database", () => {
 });
 
 check("staging and dev point at the DEV database, not production", () => {
-  eq(MAP["next.thauma.one"].db, "thauma-ops-dev", "staging database");
-  eq(MAP["dev.thauma.one"].db, "thauma-ops-dev", "dev database");
-  assert(MAP["next.thauma.one"].db !== MAP["thauma.one"].db,
-    "staging must not claim the production database");
-  assert(MAP["dev.thauma.one"].db !== MAP["thauma.one"].db,
-    "dev must not claim the production database");
+  /* The one thing that must never be true: a non-production console reading
+     production data. The labels are prose now — they say WHERE the data lives
+     rather than only naming a binding — so this checks the substance. */
+  for (const host of ["next.thauma.one", "dev.thauma.one"]) {
+    assert(MAP[host].db.includes(DBS.dev || "thauma-ops-dev"),
+      `${host} should name the dev database, got ${JSON.stringify(MAP[host].db)}`);
+    /* The dev name is removed before looking for the production one, because
+       "thauma-ops" is a prefix of "thauma-ops-dev" and a word boundary does
+       not separate them — `-` is not a word character, so \bthauma-ops\b
+       matches inside the longer name and every dev label looked like
+       production. */
+    const withoutDev = MAP[host].db.split(DBS.dev || "thauma-ops-dev").join("");
+    assert(!withoutDev.includes(DBS.production),
+      `${host} must not point at production: ${MAP[host].db}`);
+  }
 });
 
 check("the labels match what wrangler.toml actually binds", () => {
   assert(DBS.production, "no production database found in wrangler.toml");
   eq(MAP["thauma.one"].db, DBS.production,
     "thauma.one's label vs [env.production] binding");
-  if (DBS.dev) {
-    eq(MAP["dev.thauma.one"].db, DBS.dev, "dev.thauma.one's label vs [env.dev] binding");
-  }
+});
+
+check("DEV DOES NOT CLAIM TO BE THE DATABASE IT BINDS", () => {
+  /* dev and staging bind the SAME name in wrangler.toml, but the Pi runs
+     `wrangler dev --local` — so dev reads a SQLite file on that machine and
+     never touches the Cloudflare database of that name. They can be twenty-two
+     migrations apart while the console says the same word, which is exactly
+     the confusion this label has to prevent.
+
+     So dev must say it is local, and must not read as the remote one. */
+  const dev = MAP["dev.thauma.one"].db;
+  assert(/local/i.test(dev),
+    `dev must say its data is local, got ${JSON.stringify(dev)}`);
+  assert(dev !== (DBS.dev || "thauma-ops-dev"),
+    "dev naming the binding alone is true and misleading — it is not that database");
+
+  const staging = MAP["next.thauma.one"].db;
+  assert(/cloudflare/i.test(staging),
+    `staging should say its data is the real one, got ${JSON.stringify(staging)}`);
 });
 
 check("the band is rendered from the hostname, not fetched", () => {
