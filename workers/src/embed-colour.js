@@ -105,3 +105,68 @@ export function alpha(hex, a) {
   const n = parseInt(m[1], 16);
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
 }
+
+
+/* ===========================================================================
+   THE SAME MATHS, AS SOURCE A BROWSER CAN RUN
+
+   The widgets are shipped to other people's websites as strings, so they
+   cannot import this module — the maths has to travel with them. Rather than
+   let each widget carry its own transcription, they share this one, and
+   workers/test/embed-colour.test.mjs evaluates it and compares every result
+   against the functions above. A copy that is checked against its original on
+   every run is a copy that cannot quietly drift.
+
+   TWO CONSTRAINTS while editing: no backticks and no dollar-brace, because
+   this is inlined into template literals that build widget source.
+
+   embed-widget.js still carries its own transcription. It predates this and
+   is covered by its own comparison test, so it is left alone rather than
+   changed to prove a point about tidiness — but it is the next thing to fold
+   in here if either is touched again.
+   =========================================================================== */
+export const COLOUR_JS = [
+  "function hexToHsl(hex) {",
+  "  var m = /^#?([0-9a-f]{6})$/i.exec(String(hex).trim());",
+  "  if (!m) return null;",
+  "  var n = parseInt(m[1], 16);",
+  "  var r = ((n >> 16) & 255) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;",
+  "  var mx = Math.max(r, g, b), mn = Math.min(r, g, b);",
+  "  var l = (mx + mn) / 2, d = mx - mn;",
+  "  if (d === 0) return { h: 0, s: 0, l: l };",
+  "  var s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn), h;",
+  "  if (mx === r) h = ((g - b) / d + (g < b ? 6 : 0));",
+  "  else if (mx === g) h = (b - r) / d + 2;",
+  "  else h = (r - g) / d + 4;",
+  "  return { h: h * 60, s: s, l: l };",
+  "}",
+  "function hslToHex(o) {",
+  "  var h = ((o.h % 360) + 360) % 360, s = o.s, l = o.l;",
+  "  var c = (1 - Math.abs(2 * l - 1)) * s;",
+  "  var x = c * (1 - Math.abs(((h / 60) % 2) - 1));",
+  "  var m = l - c / 2, r = 0, g = 0, b = 0;",
+  "  if (h < 60) { r = c; g = x; }",
+  "  else if (h < 120) { r = x; g = c; }",
+  "  else if (h < 180) { g = c; b = x; }",
+  "  else if (h < 240) { g = x; b = c; }",
+  "  else if (h < 300) { r = x; b = c; }",
+  "  else { r = c; b = x; }",
+  "  function to(v) { var q = Math.round((v + m) * 255).toString(16); return q.length < 2 ? '0' + q : q; }",
+  "  return '#' + to(r) + to(g) + to(b);",
+  "}",
+  "function companion(hex) {",
+  "  var o = hexToHsl(hex);",
+  "  if (!o) return hex;",
+  "  if (o.s < 0.12) {",
+  "    var l = o.l > 0.5 ? Math.max(0.28, o.l - 0.3) : Math.min(0.82, o.l + 0.3);",
+  "    return hslToHex({ h: o.h, s: o.s, l: l });",
+  "  }",
+  "  return hslToHex({ h: o.h - 33, s: Math.min(1, o.s * 1.05), l: Math.min(0.72, o.l * 1.04) });",
+  "}",
+  "function alpha(hex, a) {",
+  "  var m = /^#?([0-9a-f]{6})$/i.exec(String(hex).trim());",
+  "  if (!m) return 'rgba(109,74,255,' + a + ')';",
+  "  var n = parseInt(m[1], 16);",
+  "  return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';",
+  "}",
+].join("\n");

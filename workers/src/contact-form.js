@@ -141,7 +141,32 @@ export async function handle(request, env, send) {
     return seeOther(back.toString());
   }
 
-  if (!env?.RESEND_API_KEY || !env?.CONTACT_TO || !env?.CONTACT_FROM) {
+  /* THE DATABASE FIRST, THE DEPLOY VARIABLES SECOND.
+     CONTACT_TO and CONTACT_FROM live in wrangler.toml, which means changing
+     where Thauma's own messages go is a deploy — and it means this form and a
+     partner's form had two unrelated ways of being configured. The
+     organisation now has a row in contact_forms like everybody else, and the
+     variables are what answers before anybody has filled that row in.
+
+     Falling back rather than requiring the row matters: this endpoint is
+     already live on the public site, and a migration that had not been run
+     yet must not start losing mail. */
+  let to = env?.CONTACT_TO;
+  let from = env?.CONTACT_FROM;
+  if (env?.DB) {
+    try {
+      const { createDb } = await import("./lib/db.js");
+      const row = await createDb(env.DB).queryOne("public_contact_form_org", {});
+      if (row && row.deliver_to) to = row.deliver_to;
+      if (row && row.from_address) from = row.from_address;
+    } catch {
+      /* A database that is unreachable must not take the contact form with
+         it. The variables still work, and a message getting through on the
+         old settings beats a 500. */
+    }
+  }
+
+  if (!env?.RESEND_API_KEY || !to || !from) {
     // Fail loudly. Silently discarding somebody's message is the worst
     // possible outcome for a contact form.
     return new Response(JSON.stringify({ error: "Contact form is not configured" }), {
@@ -149,7 +174,7 @@ export async function handle(request, env, send) {
     });
   }
 
-  const payload = buildEmail(result.fields, env, {
+  const payload = buildEmail(result.fields, { ...env, CONTACT_TO: to, CONTACT_FROM: from }, {
     country: request.cf?.country,
     lang,
   });

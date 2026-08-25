@@ -19,6 +19,11 @@ const assert = (c, m) => { if (!c) throw new Error(m); };
 const eq = (a, b, m) => assert(JSON.stringify(a) === JSON.stringify(b),
   `${m} — got ${JSON.stringify(a)}, want ${JSON.stringify(b)}`);
 
+/* The markup is emitted INSIDE a JavaScript string, so its quotes arrive
+   backslash-escaped. Unescaping before asserting keeps these tests about the
+   form rather than about how the script was serialised. */
+const asMarkup = (js) => js.replace(/\\"/g, '"');
+
 const LIST = {
   id: "ml_1", partner_id: "p_chase", name: "Newsletter", slug: "newsletter",
   from_name: "Chase Roush", from_email: "connect@thauma.one", reply_to: null,
@@ -186,10 +191,53 @@ await check("a partner's own words cannot inject script into the form", async ()
 
 await check("the form posts to its own list, and carries a honeypot", async () => {
   const js = formScript([LIST], "chase-roush", "https://thauma.one");
+  const m = asMarkup(js);
   assert(js.includes("/embed/v1/chase-roush/signup"), "wrong action");
-  assert(js.includes("website"), "no honeypot field");
-  assert(js.includes("aria-hidden"), "the honeypot must be hidden from assistive tech");
-  assert(js.includes('tabindex="-1"'), "the honeypot must not be reachable by keyboard");
+  assert(m.includes("website"), "no honeypot field");
+  assert(m.includes("aria-hidden"), "the honeypot must be hidden from assistive tech");
+  assert(m.includes('tabindex="-1"'), "the honeypot must not be reachable by keyboard");
+  assert(m.includes('autocomplete="off"'),
+    "a password manager filling the honeypot would lock a real person out");
+});
+
+/* ------------------------- it looks like the others ----------------------- */
+
+await check("the form is a card in a shadow root, not loose inputs", async () => {
+  /* It used to be four bare fields with a little inline styling, inheriting
+     whatever the host page did to them — dark-on-dark on a dark site, and
+     unfinished-looking next to the goal and prayer widgets, which have been
+     bordered cards in the ministry's colours from the beginning. */
+  const js = formScript([LIST], "chase-roush", "https://thauma.one",
+                        { accent: "#E4572E", mode: "auto" });
+  assert(js.includes("attachShadow"),
+    "a host page's own input rule must not be able to reshape these controls");
+  assert(asMarkup(js).includes('class="card"'), "no surrounding box");
+  assert(js.includes("#E4572E"), "the ministry's accent never reached the form");
+});
+
+await check("the second colour is derived when only an accent is given", async () => {
+  const js = formScript([LIST], "chase-roush", "https://thauma.one", { accent: "#00D4FF" });
+  const { companion } = await import("../src/embed-colour.js");
+  assert(js.toLowerCase().includes(companion("#00D4FF").toLowerCase()),
+    "an accent with no companion should derive one, not fall back to the default pair");
+});
+
+await check("a nonsense accent falls back rather than emitting broken CSS", async () => {
+  const js = formScript([LIST], "chase-roush", "https://thauma.one",
+                        { accent: "red; } :host { display:none", mode: "sideways" });
+  assert(!js.includes("display:none"),
+    "a colour that is not a hex value must never reach the stylesheet");
+  assert(js.includes("#6D4AFF"), "expected the default accent");
+});
+
+await check("a checkbox shows its list's NAME and nothing else", async () => {
+  // The description used to sit under each one, turning four words of choice
+  // into a paragraph of reading after somebody had already decided.
+  const m = asMarkup(formScript(
+    [{ ...LIST, description: "A long explanation nobody asked for." }],
+    "chase-roush", "https://thauma.one"));
+  assert(m.includes("Newsletter"), "the name should be there");
+  assert(!m.includes("A long explanation"), "the description must not be rendered");
 });
 
 await check("escapeHtml covers the characters that matter", () => {
@@ -204,11 +252,6 @@ await check("escapeHtml covers the characters that matter", () => {
 /* ---------------------- one form, several lists --------------------------- */
 
 const PRAYER = { ...LIST, id: "ml_2", slug: "prayer", name: "Prayer Partners" };
-
-/* The markup is emitted INSIDE a JavaScript string, so its quotes arrive
-   backslash-escaped. Unescaping before asserting keeps these tests about the
-   form rather than about how the script was serialised. */
-const asMarkup = (js) => js.replace(/\\"/g, '"');
 
 await check("the form offers a checkbox per open list", async () => {
   const m = asMarkup(formScript([LIST, PRAYER], "chase-roush", "https://thauma.one"));

@@ -40,7 +40,10 @@ import staffGoals from "./staff-goals.js";
 import staffPrayer from "./staff-prayer.js";
 import staffMailing from "./staff-mailing.js";
 import confirmSubscription from "./confirm.js";
+import unsubscribe from "./unsubscribe.js";
+import archive from "./archive.js";
 import signup from "./signup.js";
+import contact from "./contact.js";
 import adminApi from "./admin.js";
 import adminContent from "./admin-content.js";
 import adminPublish from "./admin-publish.js";
@@ -237,6 +240,11 @@ const ROUTES = {
   // Public, no account. The link in a mailing list confirmation email.
   "/confirm": confirmSubscription,
 
+  /* Public, no account, and it must stay that way: a reader who cannot find
+     the way out presses "report spam" instead, and that damages the sending
+     domain for everybody else the ministry writes to. */
+  "/unsubscribe": unsubscribe,
+
   // THE ONLY ENDPOINT THAT CAN WRITE TO THE REPOSITORY. It holds a GitHub
   // token, so a save here becomes a commit and the Action deploys it. Admin
   // role, a derived path that no request can influence, and leaf-level edits
@@ -318,7 +326,24 @@ export default {
       return signup.fetch(request, env, signupPath[1], signupPath[2]);
     }
 
+    /* The contact form, alongside the sign-up form and matched the same way.
+       Two public forms, one look — see lib/embed-form.js. */
+    const contactPath = url.pathname.match(
+      /^\/embed\/v1\/([a-z0-9-]+)\/(contact\.js|contact)$/);
+    if (contactPath) {
+      return contact.fetch(request, env, contactPath[1], contactPath[2]);
+    }
+
     if (url.pathname.startsWith("/embed/v1/")) return embed.fetch(request, env, ctx);
+
+    /* Past newsletters, linked from the footer of every mailing. Only lists
+       marked public appear — newsletters are meant to be read, prayer updates
+       name people and are not. */
+    const archivePath = url.pathname.match(
+      /^\/archive\/([a-z0-9-]+)\/([a-z0-9-]+)(?:\/([a-z0-9-]+))?\/?$/);
+    if (archivePath) {
+      return archive.fetch(request, env, archivePath[1], archivePath[2], archivePath[3]);
+    }
 
     /* Uploaded files. A prefix rather than a table entry because the rest of
        the path IS the object key. Public and unauthenticated on purpose — a

@@ -41,6 +41,8 @@
 import { createDb } from "./lib/db.js";
 import { json } from "./lib/store.js";
 import { sendMail, listConfirmEmail } from "./lib/mail.js";
+import { COLOUR_JS } from "./embed-colour.js";
+import { escapeHtml, palette, formStyles, LIGHT, DARK, BEHAVIOUR_JS } from "./lib/embed-form.js";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -79,10 +81,12 @@ async function hashIp(ip, env) {
     .map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-export function escapeHtml(s) {
-  return String(s == null ? "" : s).replace(/[&<>"']/g, (c) =>
-    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-}
+/* IMPORTED for use here and RE-EXPORTED for the tests, which is two separate
+   things: `export ... from` alone re-exports without creating a local binding,
+   so every call inside this file threw "escapeHtml is not defined" — caught
+   immediately by the tests, which is the whole reason they assert on the
+   emitted markup rather than on the source. */
+export { escapeHtml };
 
 /**
  * The widget. Plain HTML and inline styles injected into the host page — no
@@ -92,100 +96,212 @@ export function escapeHtml(s) {
  * covers them all; a partner who wants different words sets them on whichever
  * list they think of as the main one.
  */
-export function formScript(lists, partnerSlug, origin) {
+/* ---------------------------------------------------------------- THE FORM
+ * A CARD, not four naked inputs.
+ *
+ * The first version emitted bare fields with a little inline styling and
+ * inherited whatever the host page did to them. On a dark site the inputs came
+ * out dark-on-dark; on a page with no form styling at all it read as a
+ * fragment somebody forgot to finish. The other embeds — goals, the roadmap,
+ * prayer — have all been a bordered card with the ministry's colours since the
+ * beginning, and a sign-up form sitting beside one looked like it belonged to
+ * a different website.
+ *
+ * So it is built the same way they are: a shadow root, `all:initial`, its own
+ * light and dark palettes, and the partner's accent. Shadow DOM matters more
+ * here than anywhere else — this is a FORM, and a host page's `input {}` rule
+ * would otherwise reach in and reshape controls somebody has to type into.
+ *
+ * The shape is chaseroush.com's, which had it right: uppercase field labels,
+ * generous padding, a full-width accent button, "I want to receive" over a
+ * checkbox per list, and a confirmation panel that replaces the form rather
+ * than appearing under it.
+ *
+ * A CHECKBOX SHOWS ITS LIST'S NAME AND NOTHING ELSE. It used to carry the
+ * list's description underneath, which turned four words of choice into a
+ * paragraph of reading at the moment somebody had already decided. The names
+ * are the choice.
+ */
+
+export function formScript(lists, partnerSlug, origin, theme) {
   const first = lists[0] || {};
   const heading = first.form_heading || "Stay in touch";
   const blurb = first.form_blurb || "";
   const button = first.form_button || "Subscribe";
   const action = `${origin}/embed/v1/${partnerSlug}/signup`;
 
+  const { a: accent, b: accent2 } = palette(
+    theme && theme.accent, theme && theme.accent2);
+  const mode = ["light", "dark"].includes(String(theme && theme.mode))
+    ? theme.mode : "auto";
+
   /* One checkbox per open list, ticked by default — somebody who opened the
      form generally wants what it offers, and unticking is easier than hunting
-     for what to tick. The description, where there is one, says what each is. */
+     for what to tick. The NAME only: see the note above formStyles. */
   const boxes = lists.map((l) => (
-    '<label style="display:flex;align-items:flex-start;gap:.6rem;margin-bottom:.55rem;cursor:pointer">' +
-      `<input type="checkbox" name="list" value="${escapeHtml(l.slug)}" checked style="margin-top:.25rem">` +
-      '<span>' +
-        `<span style="display:block">${escapeHtml(l.name)}</span>` +
-        (l.description
-          ? `<span style="display:block;font-size:.85em;opacity:.7">${escapeHtml(l.description)}</span>`
-          : "") +
-      '</span>' +
+    '<label class="pick">' +
+      `<input type="checkbox" name="list" value="${escapeHtml(l.slug)}" checked>` +
+      `<span>${escapeHtml(l.name)}</span>` +
     '</label>'
   )).join("");
+
+  /* A legend over ONE box is a question nobody asked — there is nothing to
+     choose between, and the box is really "yes, the thing you just read". */
+  const picks = lists.length > 1
+    ? '<fieldset class="picks"><legend>I want to receive</legend>' + boxes + '</fieldset>'
+    : '<fieldset class="picks">' + boxes + '</fieldset>';
+
+  const inner =
+    '<div class="card">' +
+      `<h3 class="ttl">${escapeHtml(heading)}</h3>` +
+      `<p class="blurb"${blurb ? "" : " hidden"}>${escapeHtml(blurb)}</p>` +
+      '<form class="form">' +
+        '<label class="fld"><span>Your name</span>' +
+          '<input name="name" autocomplete="name" placeholder="Your name"></label>' +
+        '<label class="fld"><span>Email address</span>' +
+          '<input name="email" type="email" required autocomplete="email" ' +
+            'placeholder="you@example.com"></label>' +
+        picks +
+        /* THE HONEYPOT. Hidden from people three ways — off-screen, zero
+           opacity and aria-hidden — because a bot reading only one of them
+           still fills it in. tabindex -1 and autocomplete off keep it away
+           from keyboard users and password managers, which would otherwise
+           fill it and lock a real person out. */
+        '<div aria-hidden="true" style="position:absolute;left:-9999px;opacity:0;' +
+          'height:0;overflow:hidden">' +
+          '<label>Leave this field empty' +
+            '<input name="website" tabindex="-1" autocomplete="off">' +
+          '</label>' +
+        '</div>' +
+        `<button type="submit" class="go">${escapeHtml(button)}</button>` +
+        '<p class="fine">You can unsubscribe at any time.</p>' +
+        '<p class="msg"></p>' +
+      '</form>' +
+      '<div class="done" hidden>' +
+        '<p class="mark">✉</p>' +
+        '<p class="big">Check your email</p>' +
+        '<p class="sub">We sent you a confirmation link. Click it and you are on the list.</p>' +
+      '</div>' +
+    '</div>';
 
   return `/* Thauma sign-up form. ${origin} */
 (function () {
   var nodes = document.querySelectorAll('[data-thauma-form]');
   if (!nodes.length) return;
 
+${COLOUR_JS}
+${BEHAVIOUR_JS}
+
+  var STYLES = ${JSON.stringify(formStyles())};
+  var LIGHT = ${JSON.stringify(LIGHT)};
+  var DARK  = ${JSON.stringify(DARK)};
+
   nodes.forEach(function (node) {
     if (node.getAttribute('data-ready')) return;
     node.setAttribute('data-ready', '1');
 
+    /* The host page may override the ministry's colours, the same way every
+       other Thauma widget allows. Given an accent and no second colour, the
+       second is DERIVED rather than left at the ministry's — a chosen accent
+       beside somebody else's companion is the one pairing nobody wants. */
+    var accent = node.getAttribute('data-accent') || ${JSON.stringify(accent)};
+    if (!/^#[0-9a-fA-F]{6}$/.test(accent)) accent = ${JSON.stringify(accent)};
+    var second = node.getAttribute('data-accent2') ||
+      (node.getAttribute('data-accent') ? companion(accent) : ${JSON.stringify(accent2)});
+    if (!/^#[0-9a-fA-F]{6}$/.test(second)) second = companion(accent);
+
+    var mode = node.getAttribute('data-theme') || ${JSON.stringify(mode)};
+    var scheme = mode === 'light' ? LIGHT
+               : mode === 'dark'  ? DARK
+               : LIGHT + '@media(prefers-color-scheme:dark){' + DARK + '}';
+
+    /* SHADOW DOM, and here it earns its keep more than on any other widget:
+       this is a form, and a host page's own rule for input elements would
+       otherwise reach in and reshape controls somebody has to type into. */
+    var root = node.attachShadow ? node.attachShadow({ mode: 'open' }) : node;
+    var style = document.createElement('style');
+    style.textContent = STYLES.replace('SCHEME', scheme) +
+      ':host{--acc:' + accent + ';--acc2:' + second + ';' +
+      '--faint:' + alpha(accent, 0.22) + '}';
+    root.appendChild(style);
+
+    var host = document.createElement('div');
+    host.innerHTML = ${JSON.stringify(inner)};
+    root.appendChild(host);
+
+    /* WATCHES ITS OWN CONTAINER. The width decides whether the card tightens,
+       the message box grows with what is typed, and the height is reported to
+       a parent frame if there is one — which there only is in the console's
+       preview. On a real page this widget is a div in the host's document,
+       flowing at whatever width their column gives it and exactly as tall as
+       its content, with nothing to scroll. */
+    watch(node, host.querySelector('.card'));
+
+    /* THE THREE WORDS, overridable by attribute.
+       They exist for the console's preview, which has to show what somebody
+       is typing before they save it — the alternative was the preview poking
+       at the form's internals, which stopped working the moment the form
+       moved into a shadow root, and would have gone on "working" silently
+       against a stale copy of the markup.
+
+       Set with textContent, never innerHTML: these come from a host page's
+       own attributes, and the one thing a widget must never do is turn a
+       host's string into markup. */
+    var words = { heading: '.ttl', blurb: '.blurb', button: '.go' };
+    Object.keys(words).forEach(function (k) {
+      var v = node.getAttribute('data-' + k);
+      if (v === null) return;
+      var el = host.querySelector(words[k]);
+      if (!el) return;
+      el.textContent = v;
+      if (k === 'blurb') el.hidden = !v;
+    });
+
     var started = Date.now();
-    var wrap = document.createElement('form');
-    wrap.style.cssText = 'max-width:26rem;font:inherit';
-    wrap.innerHTML =
-      ${JSON.stringify(`<h3 style="margin:0 0 .4rem;font-size:1.15rem">${escapeHtml(heading)}</h3>`)} +
-      ${JSON.stringify(blurb ? `<p style="margin:0 0 .8rem;opacity:.8">${escapeHtml(blurb)}</p>` : "")} +
-      '<label style="display:block;margin-bottom:.5rem">' +
-        '<span style="display:block;font-size:.85rem;margin-bottom:.2rem">Your name</span>' +
-        '<input name="name" autocomplete="name" style="width:100%;padding:.5rem;box-sizing:border-box">' +
-      '</label>' +
-      '<label style="display:block;margin-bottom:.7rem">' +
-        '<span style="display:block;font-size:.85rem;margin-bottom:.2rem">Email address</span>' +
-        '<input name="email" type="email" required autocomplete="email" style="width:100%;padding:.5rem;box-sizing:border-box">' +
-      '</label>' +
-      ${JSON.stringify(
-        lists.length > 1
-          ? '<fieldset style="border:0;padding:0;margin:0 0 .8rem"><legend style="padding:0;font-size:.85rem;margin-bottom:.35rem">I want to receive</legend>' + boxes + '</fieldset>'
-          : boxes.replace('margin-bottom:.55rem', 'margin-bottom:.8rem'))} +
-      /* THE HONEYPOT. Hidden from people three ways — off-screen, zero opacity
-         and aria-hidden — because a bot reading only one of them still fills it
-         in. tabindex -1 and autocomplete off keep it away from keyboard users
-         and password managers, which would otherwise fill it and lock a real
-         person out. */
-      '<div aria-hidden="true" style="position:absolute;left:-9999px;opacity:0;height:0;overflow:hidden">' +
-        '<label>Leave this field empty' +
-          '<input name="website" tabindex="-1" autocomplete="off">' +
-        '</label>' +
-      '</div>' +
-      '<button type="submit" style="padding:.55rem 1.1rem;cursor:pointer">' +
-        ${JSON.stringify(escapeHtml(button))} + '</button>' +
-      '<p data-msg style="margin:.6rem 0 0;font-size:.9rem"></p>';
+    var form = host.querySelector('form');
+    var msg  = host.querySelector('.msg');
+    var btn  = host.querySelector('.go');
+    var done = host.querySelector('.done');
 
-    node.appendChild(wrap);
-    var msg = wrap.querySelector('[data-msg]');
-    var btn = wrap.querySelector('button');
-
-    wrap.addEventListener('submit', function (e) {
+    form.addEventListener('submit', function (e) {
       e.preventDefault();
 
-      var picked = [].slice.call(wrap.querySelectorAll('input[name=list]:checked'))
+      var picked = [].slice.call(form.querySelectorAll('input[name=list]:checked'))
         .map(function (i) { return i.value; });
       if (!picked.length) {
+        msg.className = 'msg bad';
         msg.textContent = 'Choose at least one thing to receive.';
         return;
       }
 
       btn.disabled = true;
+      msg.className = 'msg';
       msg.textContent = 'Sending…';
 
       fetch(${JSON.stringify(action)}, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: wrap.email.value,
-          name: wrap.name.value,
+          email: form.email.value,
+          name: form.name.value,
           lists: picked,
-          website: wrap.website.value,
+          website: form.website.value,
           elapsed: Date.now() - started
         })
-      }).then(function (r) { return r.json(); }).then(function (b) {
-        msg.textContent = b.message || 'Thank you.';
-        if (b.ok) wrap.reset();
+      }).then(function (r) {
+        return r.json().catch(function () { return {}; });
+      }).then(function (b) {
+        if (b && b.ok) {
+          /* REPLACED, not appended. A filled-in form still on screen under a
+             success message is an invitation to submit it again. */
+          form.hidden = true;
+          done.hidden = false;
+          return;
+        }
+        msg.className = 'msg bad';
+        msg.textContent = (b && b.error) || 'Something went wrong. Please try again.';
       }).catch(function () {
+        msg.className = 'msg bad';
         msg.textContent = 'Something went wrong. Please try again.';
       }).then(function () { btn.disabled = false; });
     });
@@ -207,7 +323,11 @@ export default {
 
     if (action === "form.js") {
       const origin = new URL(request.url).origin;
-      return new Response(formScript(lists, partnerSlug, origin), {
+      // The ministry's colours, carried on every row by the join.
+      const theme = { accent: lists[0].embed_accent,
+                      accent2: lists[0].embed_accent2,
+                      mode: lists[0].embed_theme };
+      return new Response(formScript(lists, partnerSlug, origin, theme), {
         headers: {
           ...CORS,
           "Content-Type": "application/javascript; charset=utf-8",
