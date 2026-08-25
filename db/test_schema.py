@@ -101,12 +101,12 @@ def t_an_absent_filter_must_be_an_empty_string_not_null():
     db = _people(fresh())
     base = dict(list_id="l1", partner_id="p_chase", limit=50, offset=0)
 
-    empty = _run(db, "subscribers_for_list", status="", q="", like="", sort="", **base)
+    empty = _run(db, "subscribers_for_list", status="", q="", like="", sort="", tag="", **base)
     assert len(empty) == 5, f"an unfiltered list should show everyone, got {len(empty)}"
 
     # What a NULL does, so nobody restores it thinking it is equivalent.
     nulls = _run(db, "subscribers_for_list",
-                 status=None, q=None, like=None, sort=None, **base)
+                 status=None, q=None, like=None, sort=None, tag="", **base)
     assert len(nulls) == 0, (
         "NULL happens to return rows here, which means this test would no longer "
         "catch the bug it was written for")
@@ -116,9 +116,9 @@ def t_the_count_agrees_with_the_list_it_counts():
     db = _people(fresh())
     for status, q, like in [("", "", ""), ("subscribed", "", ""), ("", "o", "%o%")]:
         rows = _run(db, "subscribers_for_list", status=status, q=q, like=like,
-                    sort="", list_id="l1", partner_id="p_chase", limit=50, offset=0)
+                    sort="", tag="", list_id="l1", partner_id="p_chase", limit=50, offset=0)
         n = _run(db, "subscribers_for_list_count", status=status, q=q, like=like,
-                 list_id="l1", partner_id="p_chase")[0][0]
+                 tag="", list_id="l1", partner_id="p_chase")[0][0]
         assert n == len(rows), (
             f"status={status!r} q={q!r}: the count says {n}, the list has {len(rows)}")
 
@@ -127,7 +127,7 @@ def t_every_sort_orders_by_what_it_says():
     db = _people(fresh())
     def emails(sort):
         return [r[1] for r in _run(db, "subscribers_for_list", sort=sort, status="",
-                                   q="", like="", list_id="l1", partner_id="p_chase",
+                                   q="", like="", tag="", list_id="l1", partner_id="p_chase",
                                    limit=50, offset=0)]
     assert emails("")[0] == "bob@x.invalid", "the default is newest first"
     assert emails("oldest")[0] == "zoe@x.invalid", "oldest first"
@@ -153,7 +153,7 @@ def t_a_literal_percent_in_a_name_is_not_a_wildcard():
     def search(q):
         like = "%" + q.replace("%", "\\%").replace("_", "\\_") + "%"
         return [r[1] for r in _run(db, "subscribers_for_list", q=q, like=like,
-                                   status="", sort="", list_id="l1",
+                                   status="", sort="", tag="", list_id="l1",
                                    partner_id="p_chase", limit=50, offset=0)]
     assert search("50%") == ["bob@x.invalid"], f"literal per cent: {search('50%')}"
     assert search("A_B") == ["u@x.invalid"], f"literal underscore: {search('A_B')}"
@@ -165,7 +165,7 @@ def t_paging_never_shows_or_skips_a_person():
     seen = []
     for page in range(3):
         seen += [r[1] for r in _run(db, "subscribers_for_list", status="", q="",
-                                    like="", sort="", list_id="l1",
+                                    like="", sort="", tag="", list_id="l1",
                                     partner_id="p_chase", limit=2, offset=page * 2)]
     assert len(seen) == 5, f"paging returned {len(seen)} of 5"
     assert len(set(seen)) == 5, f"somebody appeared on two pages: {seen}"
@@ -176,7 +176,7 @@ def t_a_subscriber_list_cannot_be_read_by_id_alone():
     db = _people(fresh())
     db.execute("INSERT INTO partners (id,slug,display_name,status,created_at,updated_at)"
                " VALUES ('p_other','other','Other','active',?,?)", (NOW, NOW))
-    rows = _run(db, "subscribers_for_list", status="", q="", like="", sort="",
+    rows = _run(db, "subscribers_for_list", status="", q="", like="", sort="", tag="",
                 list_id="l1", partner_id="p_other", limit=50, offset=0)
     assert rows == [], "another partner could read this list's subscribers"
 

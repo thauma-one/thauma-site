@@ -21,6 +21,19 @@ pageTitle: contact
     <p hidden><label>Do not fill: <input name="bot-field"></label></p>
     <input type="text" name="name" placeholder="{{ t.contact.form_name }}" required>
     <input type="email" name="email" placeholder="{{ t.contact.form_email }}" required>
+    {#- THE REASONS COME FROM THE DATABASE, so they cannot be rendered here:
+       this page is built by CI, which has no database. The select is filled by
+       the script below from /api/contact, and stays hidden if that returns
+       nothing — a page with no dropdown still works, a dropdown that leads
+       nowhere does not.
+
+       Deliberately the API and not the embed widget: this form already has the
+       site's own markup and styling, and the widget would replace something
+       that fits with something that only resembles it. The API is the shared
+       part; the appearance stays the page's own. -#}
+    <select name="topic" id="contact-reason" hidden></select>
+    <input type="text" name="subject" maxlength="160"
+           placeholder="{{ t.contact.form_subject }}">
     <textarea name="message" placeholder="{{ t.contact.form_message }}" required></textarea>
     <div class="btn-row" style="margin-top:10px">
       <button class="btn solid" type="submit">{{ t.contact.form_send }}</button>
@@ -31,5 +44,29 @@ pageTitle: contact
     if (new URLSearchParams(location.search).get('sent')) {
       document.getElementById('sent-note').style.display = 'block';
     }
+
+    /* The reasons, fetched rather than built in. A failure here leaves the
+       form exactly as it was — the dropdown is an improvement to it, never a
+       dependency of it. */
+    (function () {
+      var sel = document.getElementById('contact-reason');
+      if (!sel) return;
+      fetch('/api/contact', { headers: { Accept: 'application/json' } })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (body) {
+          var topics = (body && body.topics) || [];
+          if (!topics.length) return;
+          sel.innerHTML =
+            '<option value="">{{ t.contact.form_reason | escape }}</option>' +
+            topics.map(function (t) {
+              var o = document.createElement('option');
+              o.value = t.id;
+              o.textContent = t.label;
+              return o.outerHTML;
+            }).join('');
+          sel.hidden = false;
+        })
+        .catch(function () {});
+    })();
   </script>
 </div></section>

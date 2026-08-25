@@ -314,12 +314,13 @@ export default {
         const sort = clean(url.searchParams.get("sort"), 20) || "";
         const status = clean(url.searchParams.get("status"), 20) || "";
         const q = clean(url.searchParams.get("q"), 120) || "";
+        const tag = clean(url.searchParams.get("tag"), 60) || "";
         /* The wildcards belong to the SEARCH, not to the person typing. Left
            to them, a name containing % or _ would quietly match half the list
            — so those two characters are escaped and the wildcards are added
            here, where they are meant. */
         const like = q ? "%" + q.replace(/[%_]/g, "\\$&") + "%" : "";
-        const args = { list_id: listId, partner_id: partnerId, sort, status, q, like };
+        const args = { list_id: listId, partner_id: partnerId, sort, status, q, like, tag };
 
         const [subscribers, total] = await Promise.all([
           db.query("subscribers_for_list", { ...args, limit: PAGE, offset: page * PAGE }),
@@ -332,7 +333,7 @@ export default {
           /* So the console can say "1–100 of 340" rather than leaving somebody
              to work out whether there is another page by trying. */
           total: total ? total.n : subscribers.length,
-          sort, status, q,
+          sort, status, q, tag,
         }, actor));
       }
 
@@ -381,9 +382,10 @@ export default {
         }, actor));
       }
 
-      const [lists, tags, senders, look] = await Promise.all([
+      const [lists, tags, tagUse, senders, look] = await Promise.all([
         db.query("mailing_lists_for_partner", { partner_id: partnerId }),
         db.query("mailing_tags_for_partner", { partner_id: partnerId }),
+        db.query("mailing_tag_usage", { partner_id: partnerId }),
         /* Scoped the same way everything else here is. Somebody choosing a
            sender must not be shown another partner's addresses, which would
            leak both the domain and what it is used for. */
@@ -406,7 +408,12 @@ export default {
         partner: s.partner
           ? { id: s.partner.id, slug: s.partner.slug, display_name: s.partner.display_name }
           : null,
-        lists, tags,
+        lists,
+        /* Each tag carries how many people wear it, so deleting one can say
+           what it takes off rather than asking for confidence in the abstract. */
+        tags: tags.map((t) => ({
+          ...t, used: (tagUse.find((u) => u.id === t.id) || {}).n || 0,
+        })),
         /* The From field is a picker, not a text box: Resend verifies domains
            rather than addresses, so a typo leaves successfully, looks right in
            the log, and drops every reply into nothing. An administrator adds
@@ -455,15 +462,57 @@ export default {
       if (body.action === "tag") {
         const name = clean(body.name, 60);
         if (!name) return json({ error: "A tag needs a name." }, 400);
+
+        /* Refused rather than allowed to happen. Two tags with one name is a
+           list where nobody can tell which they are applying, and the pair
+           cannot be told apart afterwards either. */
+        const existing = await db.query("mailing_tags_for_partner", { partner_id: partnerId });
+        const clash = existing.find((t) =>
+          t.name.toLowerCase() === name.toLowerCase() && t.id !== body.id);
+        if (clash) return json({ error: `There is already a tag called "${clash.name}".` }, 409);
+
         if (body.id) {
           await db.query("mailing_tag_rename", { id: body.id, partner_id: partnerId, name });
-          return json({ ok: true, id: body.id, name });
+          return json({ ok: true, id: body.id, name,
+                        tags: await db.query("mailing_tags_for_partner", { partner_id: partnerId }) });
         }
         const id = newId("tag");
         await db.query("mailing_tag_create", {
-          id, partner_id: partnerId, name, sort_order: 0, now,
+          id, partner_id: partnerId, name, sort_order: existing.length, now,
         });
-        return json({ ok: true, id, name });
+        return json({ ok: true, id, name,
+                      tags: await db.query("mailing_tags_for_partner", { partner_id: partnerId }) });
+      }
+
+      if (body.action === "tag-delete") {
+        const id = clean(body.id, 60);
+        await db.query("mailing_tag_delete", { id, partner_id: partnerId });
+        return json({ ok: true,
+                      tags: await db.query("mailing_tags_for_partner", { partner_id: partnerId }) });
+      }
+
+      /* ---- what one person is tagged with ----
+         REPLACED, not added to. The console sends the whole set, so removing a
+         tag is a matter of not sending it — which is what unticking does. One
+         code path, and no second one that could disagree about the result. */
+      if (body.action === "subscriber-tags") {
+        const id = clean(body.id, 60);
+        const sub = await db.queryOne("subscriber_one", { id, partner_id: partnerId });
+        if (!sub) return json({ error: "No such subscriber." }, 404);
+
+        await db.query("subscriber_tags_clear", { subscriber_id: id });
+        const wanted = Array.isArray(body.tags) ? body.tags.slice(0, 30) : [];
+        for (const tagId of wanted) {
+          /* The query itself refuses a tag belonging to another ministry — it
+             inserts by SELECT with the partner check in the WHERE, so a
+             borrowed id simply inserts nothing rather than relying on this
+             loop to have checked. */
+          await db.query("subscriber_tag_add",
+                         { subscriber_id: id, tag_id: clean(tagId, 60) });
+        }
+        return json({ ok: true,
+                      tags: await db.query("subscriber_tags_for",
+                                           { subscriber_id: id, partner_id: partnerId }) });
       }
 
       /* ADDING SOMEBODY BY HAND STILL CONFIRMS.

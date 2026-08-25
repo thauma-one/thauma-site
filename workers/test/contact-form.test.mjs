@@ -130,9 +130,24 @@ await check("validation failure redirects with ?error", async () => {
   eq(loc(res).searchParams.get("error"), "1", "error flag");
 });
 
-await check("non-POST is 405", async () => {
+await check("GET offers the reasons, and never fails the page", async () => {
+  /* The site's contact page is static and the reasons live in D1, so the
+     dropdown cannot be rendered at build time — CI has no database. It asks
+     for them here.
+
+     With no database bound it answers with an empty list rather than an error:
+     no dropdown is a far smaller loss than no contact page. */
   const res = await handle(new Request("https://thauma.one/api/contact"), ENV, spy());
+  eq(res.status, 200, "status");
+  const body = await res.json();
+  assert(Array.isArray(body.topics), `expected a topics array, got ${JSON.stringify(body)}`);
+});
+
+await check("anything other than GET or POST is 405", async () => {
+  const res = await handle(
+    new Request("https://thauma.one/api/contact", { method: "DELETE" }), ENV, spy());
   eq(res.status, 405, "status");
+  assert(/GET/.test(res.headers.get("Allow") || ""), "Allow should list GET now");
 });
 
 await check("a non-form body is a 400, not a crash", async () => {

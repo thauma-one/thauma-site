@@ -297,8 +297,9 @@ await check("every real query converts with its documented params", async () => 
     prayer_id: "pr_1", is_answered: 0, answered_on: null, answer_text: null,
     // sending addresses — one domain per partner, so reputation damage from
     // one ministry's mail cannot reach anybody else's
-    // searching and sorting a big subscriber list
-    q: "ann", like: "%ann%", sort: "name",
+    // searching, sorting and tagging a big subscriber list
+    q: "ann", like: "%ann%", sort: "name", tag: "tag_1", tag_id: "tag_1",
+    subscriber_id: "sub_1",
     sending_domain: "chaseroush.thauma.one", address: "news@chaseroush.thauma.one",
     can_receive: 1,
     // the composer

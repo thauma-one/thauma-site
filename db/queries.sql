@@ -518,6 +518,11 @@ WHERE s.list_id = :list_id AND l.partner_id IS :partner_id
   -- wildcard AND stops the match, and searching "50%" finds nobody at all.
   AND (:q = '' OR s.email LIKE :like ESCAPE '\'
                OR COALESCE(s.name, '') LIKE :like ESCAPE '\')
+  -- Tags exist to group people, so they have to be a way of finding them.
+  -- EXISTS rather than a join: a join would return one row per matching tag
+  -- and quietly duplicate anybody carrying two.
+  AND (:tag = '' OR EXISTS (SELECT 1 FROM subscriber_tags st2
+                             WHERE st2.subscriber_id = s.id AND st2.tag_id = :tag))
 ORDER BY
   CASE WHEN :sort = 'email'  THEN s.email END COLLATE NOCASE ASC,
   CASE WHEN :sort = 'name'   THEN COALESCE(NULLIF(s.name, ''), s.email) END COLLATE NOCASE ASC,
@@ -538,7 +543,9 @@ JOIN mailing_lists l ON l.id = s.list_id
 WHERE s.list_id = :list_id AND l.partner_id IS :partner_id
   AND (:status = '' OR s.status = :status)
   AND (:q = '' OR s.email LIKE :like ESCAPE '\'
-               OR COALESCE(s.name, '') LIKE :like ESCAPE '\');
+               OR COALESCE(s.name, '') LIKE :like ESCAPE '\')
+  AND (:tag = '' OR EXISTS (SELECT 1 FROM subscriber_tags st2
+                             WHERE st2.subscriber_id = s.id AND st2.tag_id = :tag));
 
 
 -- name: subscriber_set_name
@@ -1787,3 +1794,41 @@ SELECT id, label, deliver_to, sort_order
 FROM contact_topics
 WHERE partner_id IS NULL
 ORDER BY sort_order, label COLLATE NOCASE;
+
+-- name: subscriber_tags_for
+-- Which tags one person carries. Scoped through the LIST, so knowing a
+-- subscriber id is not enough to read somebody else's.
+SELECT t.id, t.name
+FROM subscriber_tags st
+JOIN mailing_tags t ON t.id = st.tag_id
+JOIN subscribers s ON s.id = st.subscriber_id
+JOIN mailing_lists l ON l.id = s.list_id
+WHERE st.subscriber_id = :subscriber_id AND l.partner_id IS :partner_id
+ORDER BY t.sort_order, t.name COLLATE NOCASE;
+
+
+-- name: subscriber_tags_clear
+DELETE FROM subscriber_tags WHERE subscriber_id = :subscriber_id;
+
+
+-- name: subscriber_tag_add
+-- The tag must belong to the same partner as the subscriber. Written as a
+-- SELECT rather than a VALUES so the check cannot be skipped by a caller that
+-- forgets it: a tag id from another ministry simply inserts nothing.
+INSERT OR IGNORE INTO subscriber_tags (subscriber_id, tag_id)
+SELECT :subscriber_id, t.id
+  FROM mailing_tags t
+  JOIN subscribers s ON s.id = :subscriber_id
+  JOIN mailing_lists l ON l.id = s.list_id
+ WHERE t.id = :tag_id
+   AND t.partner_id IS l.partner_id;
+
+
+-- name: mailing_tag_usage
+-- How many people carry each tag, so deleting one can say what it will take
+-- off rather than asking for confidence in the abstract.
+SELECT t.id, COUNT(st.subscriber_id) AS n
+FROM mailing_tags t
+LEFT JOIN subscriber_tags st ON st.tag_id = t.id
+WHERE t.partner_id IS :partner_id
+GROUP BY t.id;

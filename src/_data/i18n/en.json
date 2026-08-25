@@ -155,7 +155,9 @@
     "form_email": "Email address",
     "form_message": "Your message",
     "form_send": "Send Message",
-    "form_success": "Thank you — we'll get back to you soon."
+    "form_success": "Thank you — we'll get back to you soon.",
+    "form_subject": "What it's about (optional)",
+    "form_reason": "Choose a reason…"
   },
   "events": {
     "title": "Events",

@@ -71,7 +71,7 @@
 
   var state = {
     lists: [], tags: [], senders: [], contact: null, topics: [],
-    subsQ: '', subsStatus: '', subsSort: '', subsPage: 0,
+    subsQ: '', subsStatus: '', subsSort: '', subsTag: '', subsPage: 0,
     subsTotal: 0, subsPageSize: 100,
     scope: 'partner', partnerSlug: '',
     embed: null, mayTheme: false,
@@ -159,8 +159,12 @@
          sitting in a box somebody has already stopped looking at. */
       if (l && l.id !== state.subsFor) {
         state.subsFor = l.id;
-        state.subsQ = ''; state.subsStatus = ''; state.subsSort = ''; state.subsPage = 0;
-        if ($('subsQ')) { $('subsQ').value = ''; $('subsStatus').value = ''; $('subsSort').value = ''; }
+        state.subsQ = ''; state.subsStatus = ''; state.subsSort = '';
+        state.subsTag = ''; state.subsPage = 0;
+        if ($('subsQ')) {
+          $('subsQ').value = ''; $('subsStatus').value = '';
+          $('subsSort').value = ''; $('subsTag').value = '';
+        }
       }
       /* ALWAYS SUBSCRIBERS FIRST. Opening a list to see who is on it is the
          common act; changing the sender address is the rare one. Carrying the
@@ -339,7 +343,8 @@
       '&page=' + (state.subsPage || 0) +
       (state.subsQ ? '&q=' + encodeURIComponent(state.subsQ) : '') +
       (state.subsStatus ? '&status=' + encodeURIComponent(state.subsStatus) : '') +
-      (state.subsSort ? '&sort=' + encodeURIComponent(state.subsSort) : '');
+      (state.subsSort ? '&sort=' + encodeURIComponent(state.subsSort) : '') +
+      (state.subsTag ? '&tag=' + encodeURIComponent(state.subsTag) : '');
 
     var res, body;
     try {
@@ -449,6 +454,72 @@
     if (window.StaffI18n) window.StaffI18n.apply($('mlSubscribers'));
   }
 
+  /* ---- tags -----------------------------------------------------------
+     THE MINISTRY'S OWN, shared by every list. Managed from the subscriber
+     screen because that is where they are used, and deliberately not inside a
+     list's Settings tab, where they would read as belonging to that one list. */
+
+  function renderTags() {
+    var tags = state.tags || [];
+
+    /* The filter. Rebuilt from the same data as the manager, so a tag renamed
+       in one is renamed in the other without a reload. */
+    var sel = $('subsTag');
+    sel.innerHTML = '<option value="">' + esc(tr('ml.tagAny')) + '</option>' +
+      tags.map(function (t) {
+        return '<option value="' + esc(t.id) + '"' +
+          (t.id === state.subsTag ? ' selected' : '') + '>' + esc(t.name) +
+          (t.used ? ' (' + t.used + ')' : '') + '</option>';
+      }).join('');
+    sel.value = state.subsTag || '';
+
+    $('subsTagList').innerHTML = tags.length
+      ? tags.map(function (t) {
+          return '<div class="subs-tag" data-tag="' + esc(t.id) + '">' +
+            '<input type="text" class="subs-tag-name" maxlength="60" ' +
+              'value="' + esc(t.name) + '" data-tag-name="' + esc(t.id) + '">' +
+            '<span class="subs-tag-n">' +
+              (t.used ? fill('ml.tagUsed', { n: t.used }) : esc(tr('ml.tagUnused'))) +
+            '</span>' +
+            '<button type="button" class="del" data-tag-del="' + esc(t.id) + '" ' +
+              'aria-label="' + esc(tr('common.delete') + ' ' + t.name) + '">×</button>' +
+          '</div>';
+        }).join('')
+      : '<p class="hint">' + esc(tr('ml.noTags')) + '</p>';
+  }
+
+  async function saveTag(id, name) {
+    var body = await postJson({ action: 'tag', id: id || undefined, name: name });
+    if (body.error) { toast(body.error, 'bad'); return false; }
+    state.tags = body.tags || state.tags;
+    renderTags();
+    return true;
+  }
+
+  async function deleteTag(id) {
+    var t = (state.tags || []).filter(function (x) { return x.id === id; })[0];
+    if (!t) return;
+    var ok = await window.StaffConfirm({
+      title: tr('ml.tagDelete'),
+      /* Named, not counted in the abstract. "Removes it from 12 people" is a
+         different decision from "are you sure". */
+      body: t.used
+        ? fill('ml.tagDeleteUsed', { name: t.name, n: t.used })
+        : fill('ml.tagDeleteUnused', { name: t.name }),
+      confirm: tr('ml.tagDeleteDo'), cancel: tr('ms.cancel'), danger: true,
+    });
+    if (!ok) return;
+    var body = await postJson({ action: 'tag-delete', id: id });
+    if (body.error) { toast(body.error, 'bad'); return; }
+    state.tags = body.tags || [];
+    /* A tag being filtered by has just stopped existing, so the filter has to
+       let go of it or the list comes back empty for no visible reason. */
+    if (state.subsTag === id) { state.subsTag = ''; state.subsPage = 0; }
+    renderTags();
+    loadPeople();
+    toast(tr('toast.deleted'), 'ok');
+  }
+
   /* ---- correcting somebody's details ----
      EDITED IN PLACE, not in a dialog. There are two fields and the row they
      belong to is right there; a modal would cover the list somebody is using
@@ -467,6 +538,17 @@
         '<label><span data-i18n="ml.editEmail">Email address</span>' +
           '<input type="email" data-edit="email" maxlength="200" required value="' +
             esc(sub.email) + '"></label>' +
+        ((state.tags || []).length
+          ? '<div class="subs-edit-tags"><span data-i18n="ml.editTags">Tags</span>' +
+              state.tags.map(function (t) {
+                var on = (sub.tags || '').split(', ').indexOf(t.name) >= 0;
+                return '<label class="subs-edit-tag">' +
+                  '<input type="checkbox" data-edit-tag="' + esc(t.id) + '"' +
+                    (on ? ' checked' : '') + '>' +
+                  '<span>' + esc(t.name) + '</span></label>';
+              }).join('') +
+            '</div>'
+          : '') +
         '<button type="submit" class="solid-btn" data-i18n="ml.editSave">Save</button>' +
         '<button type="button" class="ghost-btn" data-edit-cancel="1" ' +
           'data-i18n="ms.cancel">Cancel</button>' +
@@ -492,6 +574,15 @@
 
     var body = await postJson({ action: 'subscriber-edit', id: id, name: name, email: email });
     if (body.error) { toast(body.error, 'bad'); return; }
+
+    /* Sent separately because they are a different kind of change: a tag is
+       something the ministry records ABOUT somebody, not something the person
+       agreed to — so it never touches their confirmation the way an address
+       change does. */
+    var picked = [].slice.call(row.querySelectorAll('[data-edit-tag]:checked'))
+      .map(function (i) { return i.dataset.editTag; });
+    var tagged = await postJson({ action: 'subscriber-tags', id: id, tags: picked });
+    if (tagged.error) toast(tagged.error, 'bad');
 
     if (body.reconfirm) {
       toast(body.sent
@@ -1098,6 +1189,7 @@
 
     state.lists = body.lists || [];
     state.tags = body.tags || [];
+    renderTags();
     state.senders = body.senders || [];
     state.contact = body.contact || null;
     state.topics = body.topics || [];
@@ -1347,6 +1439,45 @@
   });
   $('subsSort').addEventListener('change', function () {
     state.subsSort = this.value; state.subsPage = 0; reloadPeople();
+  });
+  $('subsTag').addEventListener('change', function () {
+    state.subsTag = this.value; state.subsPage = 0; reloadPeople();
+  });
+
+  $('subsManageTags').addEventListener('click', function () {
+    var panel = $('subsTagPanel');
+    panel.hidden = !panel.hidden;
+    this.classList.toggle('is-on', !panel.hidden);
+    if (!panel.hidden) $('subsTagName').focus();
+  });
+
+  $('subsTagAdd').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var box = $('subsTagName');
+    var name = box.value.trim();
+    if (!name) return;
+    if (await saveTag(null, name)) { box.value = ''; box.focus(); }
+  });
+
+  $('subsTagList').addEventListener('click', function (e) {
+    var d = e.target.closest('[data-tag-del]');
+    if (d) deleteTag(d.dataset.tagDel);
+  });
+
+  /* Renamed on blur rather than on every keystroke — one request per tag
+     rather than one per character, and Enter is the same act. */
+  $('subsTagList').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && e.target.dataset.tagName) { e.preventDefault(); e.target.blur(); }
+  });
+  $('subsTagList').addEventListener('focusout', function (e) {
+    var box = e.target;
+    if (!box.dataset || !box.dataset.tagName) return;
+    var t = (state.tags || []).filter(function (x) { return x.id === box.dataset.tagName; })[0];
+    var name = box.value.trim();
+    if (!t || !name || name === t.name) { if (t) box.value = t.name; return; }
+    saveTag(t.id, name).then(function (ok) {
+      if (ok) { loadPeople(); toast(tr('toast.saved'), 'ok'); }
+    });
   });
   $('subsPrev').addEventListener('click', function () {
     if (state.subsPage > 0) { state.subsPage--; reloadPeople(); }

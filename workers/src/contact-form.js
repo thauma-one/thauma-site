@@ -30,6 +30,12 @@ const MAX = { name: 100, email: 200, message: 5000 };
    had drifted: Slovenian was live on the site, absent here, so a visitor on
    /sl/contact/ was redirected back to the English page after sending. */
 
+function json(body, headers = {}) {
+  return new Response(JSON.stringify(body), {
+    headers: { "Content-Type": "application/json", ...headers },
+  });
+}
+
 /** Trim, clamp, and strip control characters (including header-injection newlines). */
 function clean(v, max) {
   return typeof v === "string"
@@ -66,6 +72,12 @@ export function validate(raw) {
   const fields = {
     name: clean(raw.name, MAX.name),
     email: clean(raw.email, MAX.email),
+    subject: clean(raw.subject, 160),
+    /* The ID ONLY. The label and the delivery address are looked up from the
+       database at send time — trusting a submitted label would let anybody
+       choose the words in the subject line of a message the ministry receives,
+       and trusting a submitted address would make this an open relay. */
+    topicId: clean(raw.topic, 60),
     message: clean(raw.message, MAX.message),
   };
 
@@ -80,9 +92,12 @@ export function validate(raw) {
 
 /** Build the Resend payload. Kept separate so it can be asserted in tests. */
 export function buildEmail(fields, env, meta = {}) {
+  const topic = meta.topic || null;
   const lines = [
     `Name:    ${fields.name}`,
     `Email:   ${fields.email}`,
+    topic ? `About:   ${topic.label}` : null,
+    fields.subject ? `Subject: ${fields.subject}` : null,
     meta.country ? `Country: ${meta.country}` : null,
     meta.lang ? `Language: ${meta.lang}` : null,
     "",
@@ -91,11 +106,17 @@ export function buildEmail(fields, env, meta = {}) {
 
   return {
     from: env.CONTACT_FROM,
-    to: [env.CONTACT_TO],
+    /* A reason can send the message somewhere else — prayer requests to one
+       inbox, partnership enquiries to another. Falling back to the form's own
+       address is the normal case, not a mistake. */
+    to: [(topic && topic.deliver_to) || env.CONTACT_TO],
     // reply_to, not from: sending AS the visitor would fail SPF/DKIM and land
     // the whole domain in spam. Hitting reply still reaches them.
     reply_to: fields.email,
-    subject: `Contact form — ${fields.name}`,
+    /* What somebody sees in a list of fifty: the reason first, because it is
+       how they decide what to open. */
+    subject: [topic ? topic.label : "Contact form",
+              fields.subject || fields.name].filter(Boolean).join(" — "),
     text: lines.join("\n"),
   };
 }
@@ -108,10 +129,41 @@ function seeOther(url) {
 
 /** Exported for tests: the handler with its mailer injected. */
 export async function handle(request, env, send) {
+  /* ---- what the form should offer ----
+     The site's contact page is a static Eleventy page and the reasons live in
+     D1, so the dropdown cannot be rendered at build time — CI has no database.
+     It asks for them here instead.
+
+     A GET rather than the embed widget, because this page already has its own
+     markup and styling: the widget would replace a form that fits the site
+     with one that only resembles it. The API is the shared part; the
+     appearance is the page's own. */
+  if (request.method === "GET") {
+    const empty = { topics: [] };
+    if (!env?.DB) return json(empty);
+    try {
+      const { createDb } = await import("./lib/db.js");
+      const db = createDb(env.DB);
+      const [form, topics] = await Promise.all([
+        db.queryOne("public_contact_form_org", {}),
+        db.query("public_contact_topics_org", {}),
+      ]);
+      /* A closed form offers nothing, the same as a partner's. The page keeps
+         working without a dropdown rather than showing one that leads nowhere. */
+      if (!form) return json(empty);
+      return json({ topics: topics.map((t) => ({ id: t.id, label: t.label })) },
+                  { "Cache-Control": "public, max-age=300" });
+    } catch {
+      /* The form must not depend on this. No dropdown is a smaller loss than
+         no contact page. */
+      return json(empty);
+    }
+  }
+
   if (request.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), {
       status: 405,
-      headers: { "Content-Type": "application/json", Allow: "POST" },
+      headers: { "Content-Type": "application/json", Allow: "GET, POST" },
     });
   }
 
@@ -174,9 +226,20 @@ export async function handle(request, env, send) {
     });
   }
 
+  /* Looked up, never taken from the request. See validate(). */
+  let topic = null;
+  if (result.fields.topicId && env?.DB) {
+    try {
+      const { createDb } = await import("./lib/db.js");
+      const all = await createDb(env.DB).query("public_contact_topics_org", {});
+      topic = all.find((t) => t.id === result.fields.topicId) || null;
+    } catch { /* a message with no reason still has to arrive */ }
+  }
+
   const payload = buildEmail(result.fields, { ...env, CONTACT_TO: to, CONTACT_FROM: from }, {
     country: request.cf?.country,
     lang,
+    topic,
   });
 
   try {

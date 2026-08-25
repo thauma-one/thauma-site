@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "f0348666ee390112";
+export const SOURCE_DIGEST = "eedb53af35dfbe6e";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -342,6 +342,11 @@ VALUES (:id, :partner_id, :name, :sort_order, :now);`,
   mailing_tag_delete: `DELETE FROM mailing_tags WHERE id = :id AND partner_id IS :partner_id;`,
   mailing_tag_rename: `UPDATE mailing_tags SET name = :name
 WHERE id = :id AND partner_id IS :partner_id;`,
+  mailing_tag_usage: `SELECT t.id, COUNT(st.subscriber_id) AS n
+FROM mailing_tags t
+LEFT JOIN subscriber_tags st ON st.tag_id = t.id
+WHERE t.partner_id IS :partner_id
+GROUP BY t.id;`,
   mailing_tags_for_partner: `SELECT t.id, t.name, t.sort_order,
        (SELECT COUNT(*) FROM subscriber_tags st WHERE st.tag_id = t.id) AS used
 FROM mailing_tags t
@@ -685,6 +690,21 @@ SET status = :status,
     updated_at = :now
 WHERE id = :id
   AND list_id IN (SELECT id FROM mailing_lists WHERE partner_id IS :partner_id);`,
+  subscriber_tag_add: `INSERT OR IGNORE INTO subscriber_tags (subscriber_id, tag_id)
+SELECT :subscriber_id, t.id
+  FROM mailing_tags t
+  JOIN subscribers s ON s.id = :subscriber_id
+  JOIN mailing_lists l ON l.id = s.list_id
+ WHERE t.id = :tag_id
+   AND t.partner_id IS l.partner_id;`,
+  subscriber_tags_clear: `DELETE FROM subscriber_tags WHERE subscriber_id = :subscriber_id;`,
+  subscriber_tags_for: `SELECT t.id, t.name
+FROM subscriber_tags st
+JOIN mailing_tags t ON t.id = st.tag_id
+JOIN subscribers s ON s.id = st.subscriber_id
+JOIN mailing_lists l ON l.id = s.list_id
+WHERE st.subscriber_id = :subscriber_id AND l.partner_id IS :partner_id
+ORDER BY t.sort_order, t.name COLLATE NOCASE;`,
   subscriber_unsubscribe_by_id: `UPDATE subscribers
 SET status = 'unsubscribed', unsubscribed_at = :now, updated_at = :now
 WHERE id = :id;`,
@@ -700,6 +720,8 @@ WHERE s.list_id = :list_id AND l.partner_id IS :partner_id
   AND (:status = '' OR s.status = :status)
   AND (:q = '' OR s.email LIKE :like ESCAPE '\\'
                OR COALESCE(s.name, '') LIKE :like ESCAPE '\\')
+  AND (:tag = '' OR EXISTS (SELECT 1 FROM subscriber_tags st2
+                             WHERE st2.subscriber_id = s.id AND st2.tag_id = :tag))
 ORDER BY
   CASE WHEN :sort = 'email'  THEN s.email END COLLATE NOCASE ASC,
   CASE WHEN :sort = 'name'   THEN COALESCE(NULLIF(s.name, ''), s.email) END COLLATE NOCASE ASC,
@@ -713,7 +735,9 @@ JOIN mailing_lists l ON l.id = s.list_id
 WHERE s.list_id = :list_id AND l.partner_id IS :partner_id
   AND (:status = '' OR s.status = :status)
   AND (:q = '' OR s.email LIKE :like ESCAPE '\\'
-               OR COALESCE(s.name, '') LIKE :like ESCAPE '\\');`,
+               OR COALESCE(s.name, '') LIKE :like ESCAPE '\\')
+  AND (:tag = '' OR EXISTS (SELECT 1 FROM subscriber_tags st2
+                             WHERE st2.subscriber_id = s.id AND st2.tag_id = :tag));`,
   subscribers_to_send: `SELECT s.id, s.email, s.name
 FROM subscribers s
 WHERE s.list_id = :list_id AND s.partner_id IS :partner_id

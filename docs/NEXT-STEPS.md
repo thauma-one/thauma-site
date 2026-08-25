@@ -197,6 +197,45 @@ classic injection, and the classic mitigation — an allow-list in the Worker �
 has to be got right in every caller forever. Bound like any other value, an
 unrecognised sort simply falls through to newest-first.
 
+## Tags  (2026-08-25)
+
+**Staff → Mailing → Subscribers → Tags.** They belong to the ministry, not to a
+list — the same set applies everywhere, which is why the manager sits beside
+the subscriber table rather than inside one list's Settings, where it would
+read as belonging to that list.
+
+- Add, rename (blur or Enter) and delete. A delete says what it takes off:
+  *"Home church comes off 12 people"*, not *"are you sure"*.
+- **Filter the list by tag.** A column you can read but not filter by is
+  decoration, and that is what the Tags column was until now.
+- Tick them on a person in the edit row. Tags are sent separately from the
+  name and address because they are a different kind of change: something the
+  ministry records *about* somebody, not something they agreed to — so unlike
+  an address change they never touch a confirmation.
+- Two tags cannot share a name. A list where you cannot tell which one you are
+  applying is one you cannot untangle afterwards either.
+
+The tag filter uses `EXISTS`, not a join — a join returns one row per matching
+tag and quietly duplicates anybody carrying two.
+
+## Thauma's own contact page  (2026-08-25)
+
+`/contact/` now has the **reason dropdown and subject** the partner forms got,
+and posts to `/api/contact` as before.
+
+**The API, not the embed widget** — the page already has the site's own markup
+and styling, and dropping the widget in would replace something that fits with
+something that only resembles it. The API is the shared part; the appearance
+stays the page's own.
+
+The reasons are **fetched at runtime**, because the page is built by CI and CI
+has no database. If that fetch fails the select stays hidden and the form works
+exactly as it did: the dropdown is an improvement to the page, never a
+dependency of it.
+
+As with the partner forms, the reason's label and delivery address are looked
+up on the server from the posted id.
+
 ## Contact forms  (2026-08-22)
 
 > ⚠ **Dev seed data uses `.invalid` addresses only.** `db/seed.dev.contact.sql`

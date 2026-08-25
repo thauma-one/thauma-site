@@ -102,7 +102,28 @@ staffHint: your lists and the people on them — nobody else's
         <option value="email" data-i18n="ml.sortEmail">By address</option>
         <option value="status" data-i18n="ml.sortStatus">By status</option>
       </select>
+      {#- Tags exist to group people, so they have to be a way of finding
+         them — a column you can read but not filter by is decoration. -#}
+      <select id="subsTag" aria-label="Tag"></select>
+      <button type="button" class="ghost-btn subs-tagbtn" id="subsManageTags"
+              data-i18n="ml.manageTags">Tags</button>
       <span class="subs-range" id="subsRange"></span>
+    </div>
+
+    {#- THE TAGS BELONG TO THE MINISTRY, not to this list. They are managed
+       from here because here is where they are used, but the same set applies
+       to every list — which is why this panel is not inside a list's Settings
+       tab, where it would read as belonging to one. -#}
+    <div class="subs-tags" id="subsTagPanel" hidden>
+      <p class="hint" data-i18n="ml.tagsHint">Tags are the ministry's own, shared
+        by every list. Use them to group people — a home church, a supporter
+        level, wherever somebody was met.</p>
+      <div id="subsTagList"></div>
+      <form class="subs-tag-add" id="subsTagAdd">
+        <input type="text" id="subsTagName" maxlength="60"
+               data-i18n-attr="placeholder:ml.tagName" placeholder="Home church">
+        <button type="submit" class="ghost-btn" data-i18n="ml.tagAdd">Add tag</button>
+      </form>
     </div>
 
     {#- A TABLE, not cards. A card per person is readable at ten and unusable

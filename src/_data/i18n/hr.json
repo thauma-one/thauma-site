@@ -155,7 +155,9 @@
     "form_email": "E-mail adresa",
     "form_message": "Vaša poruka",
     "form_send": "Pošalji poruku",
-    "form_success": "Hvala — javit ćemo vam se uskoro."
+    "form_success": "Hvala — javit ćemo vam se uskoro.",
+    "form_subject": "O čemu se radi (neobavezno)",
+    "form_reason": "Odaberite razlog…"
   },
   "events": {
     "title": "Događaji",

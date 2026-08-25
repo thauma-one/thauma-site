@@ -1606,3 +1606,34 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
   .subs-tags,.subs th:nth-child(4){display:none}
   .subs-range{margin-left:0;width:100%}
 }
+
+/* ---- tags ----
+   The ministry's own, shared by every list. Managed from the subscriber screen
+   because that is where they are used. */
+.subs-tagbtn{font-size:12px;padding:7px 11px;white-space:nowrap}
+.subs-tagbtn.is-on{border-color:var(--voice-tech);color:var(--text)}
+.subs-tags{margin:0 0 12px;padding:14px 16px;border:1px solid var(--line);
+  border-radius:var(--radius);background:var(--bg2)}
+.subs-tags .hint{display:block;margin-bottom:12px;line-height:1.5;max-width:66ch}
+.subs-tag{display:flex;align-items:center;gap:12px;margin-bottom:7px}
+.subs-tag-name{flex:0 1 240px;min-width:0;font-size:13px;padding:6px 9px}
+.subs-tag-n{flex:1;font-size:11px;color:var(--dim);font-variant-numeric:tabular-nums}
+.subs-tag .del{background:none;border:0;color:var(--dim);font-size:17px;line-height:1;
+  padding:2px 7px;cursor:pointer;border-radius:6px;transition:.15s}
+@media(hover:hover){
+  .subs-tag .del:hover{color:var(--crit,#FF6B6B);background:rgba(255,107,107,.12)}
+}
+.subs-tag-add{display:flex;gap:8px;margin-top:12px;padding-top:12px;
+  border-top:1px solid var(--line)}
+.subs-tag-add input{flex:0 1 240px;font-size:13px;padding:7px 9px}
+
+/* In the edit row, as ticks rather than a second screen — the person is right
+   there and tagging them is one of the two things this row is for. */
+.subs-edit-tags{flex:1 1 100%;display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  padding-top:4px}
+.subs-edit-tags>span{font-size:10px;font-family:var(--font-display);
+  font-weight:var(--w-bold);letter-spacing:var(--ls-caps);text-transform:uppercase;
+  color:var(--dim)}
+.subs-edit-tag{display:flex;align-items:center;gap:6px;font-size:12.5px;
+  color:var(--text);cursor:pointer}
+.subs-edit-tag input{width:14px;height:14px;accent-color:var(--voice-tech);cursor:pointer}
