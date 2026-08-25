@@ -181,6 +181,66 @@ def t_a_subscriber_list_cannot_be_read_by_id_alone():
     assert rows == [], "another partner could read this list's subscribers"
 
 
+def _two_partners(db):
+    for pid in ("p_a", "p_b"):
+        db.execute("INSERT INTO partners (id,slug,display_name,status,created_at,updated_at)"
+                   " VALUES (?,?,?,'active',?,?)", (pid, pid, pid, NOW, NOW))
+        _list(db, "l_" + pid, pid)
+        db.execute("INSERT INTO subscribers (id,list_id,partner_id,email,status,"
+                   "subscribed_at,updated_at) VALUES (?,?,?,?,'subscribed',?,?)",
+                   ("s_" + pid, "l_" + pid, pid, pid + "@x.invalid", NOW, NOW))
+    return db
+
+
+def _bulk(db, name, partner, ids, **extra):
+    """A bulk query with its IDS placeholder expanded, exactly as db.js does."""
+    sql, names = _query(name)
+    sql = sql.replace("IDS", ", ".join("?" for _ in ids))
+    args = {"partner_id": partner, "now": NOW, **extra}
+    return db.execute(sql, [args[n] for n in names] + list(ids))
+
+
+def t_a_bulk_action_cannot_reach_another_partner():
+    # A bulk endpoint is precisely where one borrowed id would do the most
+    # damage, so the partner check is inside every one of these statements.
+    db = _two_partners(fresh())
+    _bulk(db, "subscribers_bulk_delete", "p_a", ["s_p_b"])
+    left = [r[0] for r in db.execute("SELECT id FROM subscribers ORDER BY id")]
+    assert left == ["s_p_a", "s_p_b"], f"partner A reached B's row: {left}"
+
+    _bulk(db, "subscribers_bulk_delete", "p_a", ["s_p_a"])
+    left = [r[0] for r in db.execute("SELECT id FROM subscribers ORDER BY id")]
+    assert left == ["s_p_b"], f"partner A could not delete their own: {left}"
+
+
+def t_bulk_status_cannot_mark_anybody_subscribed():
+    """Marking somebody confirmed is a claim they agreed. Made two hundred at a
+    time, that is how a list stops being one people opted into — so the bulk
+    path only ever REDUCES what may be sent."""
+    db = _two_partners(fresh())
+    db.execute("UPDATE subscribers SET status='pending' WHERE id='s_p_a'")
+
+    _bulk(db, "subscribers_bulk_status", "p_a", ["s_p_a"], status="unsubscribed")
+    got = db.execute("SELECT status, unsubscribed_at FROM subscribers WHERE id='s_p_a'").fetchone()
+    assert got[0] == "unsubscribed", f"unsubscribe did not apply: {got}"
+    assert got[1] == NOW, "unsubscribing should record when"
+
+    # The statement would technically write it, which is why the WORKER refuses
+    # the value — asserted in workers/test/staff-mailing.test.mjs. What this
+    # checks is that nothing else in the statement quietly does it.
+    assert "'subscribed'" not in _query("subscribers_bulk_status")[0], \
+        "the bulk status statement must not name 'subscribed' at all"
+
+
+def t_bulk_tagging_cannot_borrow_another_partners_tag():
+    db = _two_partners(fresh())
+    db.execute("INSERT INTO mailing_tags (id,partner_id,name,sort_order,created_at)"
+               " VALUES ('t_b','p_b','B tag',0,?)", (NOW,))
+    _bulk(db, "subscribers_bulk_tag_add", "p_a", ["s_p_a"], tag_id="t_b")
+    n = db.execute("SELECT COUNT(*) FROM subscriber_tags").fetchone()[0]
+    assert n == 0, "a tag belonging to another partner was applied"
+
+
 def t_seed_files_insert_every_row_they_claim():
     """Every INSERT in a seed file must actually land.
 
@@ -1085,6 +1145,9 @@ if __name__ == "__main__":
         ("a literal % in a name is not a wildcard",      t_a_literal_percent_in_a_name_is_not_a_wildcard),
         ("paging never shows or skips a person",         t_paging_never_shows_or_skips_a_person),
         ("a list cannot be read by id alone",            t_a_subscriber_list_cannot_be_read_by_id_alone),
+        ("a bulk action cannot reach another partner",   t_a_bulk_action_cannot_reach_another_partner),
+        ("bulk status cannot mark anybody subscribed",   t_bulk_status_cannot_mark_anybody_subscribed),
+        ("bulk tagging cannot borrow another's tag",     t_bulk_tagging_cannot_borrow_another_partners_tag),
     ]:
         check(name, fn)
     print(f"\n{passed} passed, {failed} failed")

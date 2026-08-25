@@ -1832,3 +1832,57 @@ FROM mailing_tags t
 LEFT JOIN subscriber_tags st ON st.tag_id = t.id
 WHERE t.partner_id IS :partner_id
 GROUP BY t.id;
+
+-- ============================================================================
+-- ACTING ON MANY PEOPLE AT ONCE
+--
+-- Every one of these takes an explicit list of ids AND the partner, and joins
+-- through mailing_lists to check it. An id arriving from a browser is a claim,
+-- not a credential — and a bulk endpoint is exactly where one borrowed id
+-- would do the most damage.
+--
+-- The id list is spliced as a placeholder run built by the Worker, because a
+-- bound parameter cannot be a list in SQLite. The Worker generates the ?s from
+-- the COUNT of ids and binds every value, so nothing from the request is ever
+-- concatenated into the SQL itself.
+-- ============================================================================
+
+-- name: subscribers_bulk_status
+-- Only statuses that REDUCE what may be sent. 'subscribed' is deliberately not
+-- reachable here: marking somebody confirmed is a claim that they agreed, and
+-- a claim like that made two hundred at a time is how a list stops being one
+-- people opted into. One at a time, deliberately, or not at all.
+UPDATE subscribers
+SET status = :status,
+    unsubscribed_at = CASE WHEN :status = 'unsubscribed' THEN :now ELSE unsubscribed_at END,
+    updated_at = :now
+WHERE id IN (SELECT s.id FROM subscribers s
+               JOIN mailing_lists l ON l.id = s.list_id
+              WHERE l.partner_id IS :partner_id AND s.id IN (IDS));
+
+
+-- name: subscribers_bulk_tag_add
+INSERT OR IGNORE INTO subscriber_tags (subscriber_id, tag_id)
+SELECT s.id, t.id
+  FROM subscribers s
+  JOIN mailing_lists l ON l.id = s.list_id
+  JOIN mailing_tags t ON t.id = :tag_id AND t.partner_id IS l.partner_id
+ WHERE l.partner_id IS :partner_id AND s.id IN (IDS);
+
+
+-- name: subscribers_bulk_tag_remove
+DELETE FROM subscriber_tags
+WHERE tag_id = :tag_id
+  AND subscriber_id IN (SELECT s.id FROM subscribers s
+                          JOIN mailing_lists l ON l.id = s.list_id
+                         WHERE l.partner_id IS :partner_id AND s.id IN (IDS));
+
+
+-- name: subscribers_bulk_delete
+-- Removes the row entirely. Different from unsubscribing: unsubscribing is a
+-- record that somebody asked to stop, which is worth keeping. Deleting is for
+-- data that should never have been held.
+DELETE FROM subscribers
+WHERE id IN (SELECT s.id FROM subscribers s
+               JOIN mailing_lists l ON l.id = s.list_id
+              WHERE l.partner_id IS :partner_id AND s.id IN (IDS));

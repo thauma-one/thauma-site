@@ -200,8 +200,41 @@ export function createDb(binding, exec) {
     return await run(positional, args);
   }
 
+  /**
+   * A query whose WHERE names a LIST of ids.
+   *
+   * SQLite cannot bind a list to one placeholder, so `IN (IDS)` in
+   * db/queries.sql is expanded here into a run of `?` sized from the COUNT of
+   * the values — and every value is then bound like any other. Nothing from a
+   * request is ever concatenated into SQL.
+   *
+   * It lives in this layer rather than in the caller for the same reason the
+   * tenant check does: a caller doing it by hand is correct on the day it is
+   * written, and a bulk endpoint is precisely where one borrowed id would do
+   * the most damage.
+   */
+  async function queryIn(name, params = {}, ids = []) {
+    const sql = QUERIES[name];
+    if (!sql) throw new Error(`unknown query: ${name}`);
+    if (!sql.includes("IDS")) {
+      throw new Error(`query "${name}" has no IDS placeholder to expand`);
+    }
+    if (TENANT_SCOPED.has(name) && !params.partner_id) {
+      throw new Error(`query "${name}" is tenant-scoped and requires partner_id`);
+    }
+    const list = ids.filter((v) => typeof v === "string" && v);
+    if (!list.length) throw new Error(`query "${name}" was given no ids`);
+
+    const expanded = sql.replace("IDS", list.map(() => "?").join(", "));
+    const { sql: positional, args } = toPositional(expanded, params);
+    /* The named parameters come first because they appear first in the SQL;
+       the id placeholders were already `?` and toPositional left them alone. */
+    return await run(positional, [...args, ...list]);
+  }
+
   return {
     query,
+    queryIn,
     /** Restricted view of the same layer, for the partner API. */
     publicQuery(name, params) {
       return query(name, params, { publicOnly: true });

@@ -491,6 +491,53 @@ export default {
                       tags: await db.query("mailing_tags_for_partner", { partner_id: partnerId }) });
       }
 
+      /* ---- acting on many people at once ----
+         Selecting twenty people and changing them one request at a time is
+         twenty chances for half of it to happen, and no way to say afterwards
+         which half. One request, one statement per action, one answer.
+
+         WHAT IS DELIBERATELY NOT HERE: marking people 'subscribed'. That is a
+         claim they agreed, and a claim like that made two hundred at a time is
+         how a list stops being one people opted into. The single-row picker
+         still allows it, one deliberate act at a time. */
+      if (body.action === "subscribers-bulk") {
+        const ids = (Array.isArray(body.ids) ? body.ids : [])
+          .map((x) => clean(x, 60)).filter(Boolean).slice(0, 500);
+        if (!ids.length) return json({ error: "Nobody was selected." }, 400);
+
+        const what = String(body.what || "");
+        /* db.queryIn expands the id list into placeholders and binds every
+           value — see lib/db.js. Nothing from the request reaches the SQL. */
+        const run = (name, params) => db.queryIn(name, params, ids);
+
+        if (what === "unsubscribed" || what === "bounced") {
+          await run("subscribers_bulk_status",
+                    { status: what, partner_id: partnerId, now });
+        } else if (what === "tag-add" || what === "tag-remove") {
+          const tagId = clean(body.tag, 60);
+          if (!tagId) return json({ error: "Choose a tag first." }, 400);
+          await run(what === "tag-add" ? "subscribers_bulk_tag_add"
+                                       : "subscribers_bulk_tag_remove",
+                    { tag_id: tagId, partner_id: partnerId });
+        } else if (what === "delete") {
+          await run("subscribers_bulk_delete", { partner_id: partnerId });
+        } else {
+          return json({ error: `${what || "That"} is not something this can do.` }, 400);
+        }
+
+        /* Written because this is the one screen where one click changes many
+           rows, and "what happened to those forty people" has to be
+           answerable afterwards. */
+        await db.query("audit_write", {
+          id: crypto.randomUUID(), now,
+          user_id: actor.user_id || null, partner_id: partnerId,
+          action: "subscribers." + what, entity: "subscribers",
+          entity_id: String(ids.length), detail: JSON.stringify({ count: ids.length }),
+        }).catch(() => {});
+
+        return json({ ok: true, count: ids.length });
+      }
+
       /* ---- what one person is tagged with ----
          REPLACED, not added to. The console sends the whole set, so removing a
          tag is a matter of not sending it — which is what unticking does. One

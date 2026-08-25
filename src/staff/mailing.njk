@@ -130,6 +130,31 @@ staffHint: your lists and the people on them — nobody else's
        at three hundred — the eye cannot compare down a column that keeps
        moving. Rows are one line each, so a screen holds about twenty-five
        instead of six. -#}
+    {#- ONLY WHEN SOMETHING IS SELECTED. A row of destructive buttons sitting
+       there permanently is a row somebody eventually presses without a
+       selection in mind. -#}
+    <div class="subs-bulk" id="subsBulk" hidden>
+      <span class="subs-bulk-n" id="subsBulkCount"></span>
+      <span class="subs-bulk-tagwrap" id="subsBulkTagWrap">
+        <select id="subsBulkTag" aria-label="Tag"></select>
+        <button type="button" class="ghost-btn" data-bulk="tag-add"
+                data-i18n="ml.bulkAddTag">Add tag</button>
+        <button type="button" class="ghost-btn" data-bulk="tag-remove"
+                data-i18n="ml.bulkRemoveTag">Remove tag</button>
+      </span>
+      <span class="subs-bulk-gap"></span>
+      {#- NO "mark subscribed". Marking somebody confirmed is a claim that they
+         agreed, and a claim like that made two hundred at a time is how a list
+         stops being one people opted into. The single-row picker still allows
+         it, one deliberate act at a time. -#}
+      <button type="button" class="ghost-btn" data-bulk="unsubscribed"
+              data-i18n="ml.bulkUnsubBtn">Unsubscribe</button>
+      <button type="button" class="ghost-btn" data-bulk="bounced"
+              data-i18n="ml.bulkBounceBtn">Mark bounced</button>
+      <button type="button" class="ghost-btn del" data-bulk="delete"
+              data-i18n="ms.delete">Delete</button>
+    </div>
+
     <div class="subs-wrap">
       <table class="subs" id="mlSubscribers"></table>
     </div>

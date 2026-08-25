@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "eedb53af35dfbe6e";
+export const SOURCE_DIGEST = "e70c1dee88e5d9ba";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -708,6 +708,28 @@ ORDER BY t.sort_order, t.name COLLATE NOCASE;`,
   subscriber_unsubscribe_by_id: `UPDATE subscribers
 SET status = 'unsubscribed', unsubscribed_at = :now, updated_at = :now
 WHERE id = :id;`,
+  subscribers_bulk_delete: `DELETE FROM subscribers
+WHERE id IN (SELECT s.id FROM subscribers s
+               JOIN mailing_lists l ON l.id = s.list_id
+              WHERE l.partner_id IS :partner_id AND s.id IN (IDS));`,
+  subscribers_bulk_status: `UPDATE subscribers
+SET status = :status,
+    unsubscribed_at = CASE WHEN :status = 'unsubscribed' THEN :now ELSE unsubscribed_at END,
+    updated_at = :now
+WHERE id IN (SELECT s.id FROM subscribers s
+               JOIN mailing_lists l ON l.id = s.list_id
+              WHERE l.partner_id IS :partner_id AND s.id IN (IDS));`,
+  subscribers_bulk_tag_add: `INSERT OR IGNORE INTO subscriber_tags (subscriber_id, tag_id)
+SELECT s.id, t.id
+  FROM subscribers s
+  JOIN mailing_lists l ON l.id = s.list_id
+  JOIN mailing_tags t ON t.id = :tag_id AND t.partner_id IS l.partner_id
+ WHERE l.partner_id IS :partner_id AND s.id IN (IDS);`,
+  subscribers_bulk_tag_remove: `DELETE FROM subscriber_tags
+WHERE tag_id = :tag_id
+  AND subscriber_id IN (SELECT s.id FROM subscribers s
+                          JOIN mailing_lists l ON l.id = s.list_id
+                         WHERE l.partner_id IS :partner_id AND s.id IN (IDS));`,
   subscribers_for_list: `SELECT
   s.id, s.email, s.name, s.status, s.source,
   s.subscribed_at, s.confirmed_at, s.unsubscribed_at,

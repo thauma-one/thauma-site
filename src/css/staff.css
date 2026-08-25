@@ -1637,3 +1637,22 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
 .subs-edit-tag{display:flex;align-items:center;gap:6px;font-size:12.5px;
   color:var(--text);cursor:pointer}
 .subs-edit-tag input{width:14px;height:14px;accent-color:var(--voice-tech);cursor:pointer}
+
+/* ---- acting on many at once ----
+   The bar appears only when something is selected, so a row of destructive
+   buttons is never just sitting there. */
+.subs-bulk{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  margin:0 0 10px;padding:10px 14px;border:1px solid var(--voice-tech);
+  border-radius:var(--radius);background:var(--bg2)}
+.subs-bulk-n{font-size:12.5px;color:var(--text);font-weight:600;white-space:nowrap}
+.subs-bulk-gap{flex:1}
+.subs-bulk-tagwrap{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.subs-bulk select{font-size:12px;padding:6px 8px;max-width:11rem}
+.subs-bulk .ghost-btn{font-size:12px;padding:6px 10px;white-space:nowrap}
+.subs-bulk .ghost-btn.del{border-color:rgba(255,107,107,.35);color:var(--crit,#FF6B6B)}
+@media(hover:hover){
+  .subs-bulk .ghost-btn.del:hover{background:var(--crit,#FF6B6B);color:#150607}
+}
+.subs-pick{width:1%;padding-right:0!important}
+.subs-pick input{width:15px;height:15px;accent-color:var(--voice-tech);cursor:pointer;
+  display:block}

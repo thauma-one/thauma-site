@@ -71,7 +71,7 @@
 
   var state = {
     lists: [], tags: [], senders: [], contact: null, topics: [],
-    subsQ: '', subsStatus: '', subsSort: '', subsTag: '', subsPage: 0,
+    subsQ: '', subsStatus: '', subsSort: '', subsTag: '', subsPage: 0, picked: [],
     subsTotal: 0, subsPageSize: 100,
     scope: 'partner', partnerSlug: '',
     embed: null, mayTheme: false,
@@ -394,6 +394,11 @@
   function renderPeople() {
     var head =
       '<thead><tr>' +
+        /* One box to take the whole page. Not the whole LIST — a control that
+           silently selects three hundred people you cannot see is one that
+           gets pressed by accident exactly once. */
+        '<th class="subs-pick"><input type="checkbox" id="subsAll" ' +
+          'aria-label="' + esc(tr('ml.selectPage')) + '"></th>' +
         '<th data-i18n="ml.colWho">Who</th>' +
         '<th data-i18n="ml.colStatus">Status</th>' +
         '<th data-i18n="ml.colJoined">Joined</th>' +
@@ -404,13 +409,17 @@
     if (!state.subscribers.length) {
       var why = (state.subsQ || state.subsStatus) ? 'ml.noMatches' : 'ml.noPeople';
       $('mlSubscribers').innerHTML = head +
-        '<tbody><tr><td colspan="5" class="subs-empty">' +
+        '<tbody><tr><td colspan="6" class="subs-empty">' +
         esc(tr(why)) + '</td></tr></tbody>';
+      renderBulk();
       return;
     }
 
     $('mlSubscribers').innerHTML = head + '<tbody>' + state.subscribers.map(function (s) {
       return '<tr data-subrow="' + esc(s.id) + '">' +
+        '<td class="subs-pick"><input type="checkbox" data-pick="' + esc(s.id) + '"' +
+          (state.picked.indexOf(s.id) >= 0 ? ' checked' : '') +
+          ' aria-label="' + esc(tr('ml.select') + ' ' + s.email) + '"></td>' +
         /* The address is the identity and the name is the label, so they share
            a cell with the address leading. Two columns would waste a third of
            the width on the many people who have no name recorded. */
@@ -452,6 +461,87 @@
     }).join('') + '</tbody>';
 
     if (window.StaffI18n) window.StaffI18n.apply($('mlSubscribers'));
+    renderBulk();
+  }
+
+  /* ---- acting on many at once ----------------------------------------
+     The bar appears only when something is selected. A row of destructive
+     buttons sitting there permanently is a row somebody eventually presses
+     without a selection in mind. */
+  function renderBulk() {
+    var bar = $('subsBulk');
+    if (!bar) return;
+    var n = state.picked.length;
+    bar.hidden = !n;
+    if (!n) return;
+    $('subsBulkCount').textContent = fill('ml.nSelected', { n: n });
+
+    /* The tag pickers are filled from the same list as everything else, and
+       hidden entirely when there are no tags — offering "add tag" with nothing
+       to add is a dead end. */
+    var opts = '<option value="">' + esc(tr('ml.chooseTag')) + '</option>' +
+      (state.tags || []).map(function (t) {
+        return '<option value="' + esc(t.id) + '">' + esc(t.name) + '</option>';
+      }).join('');
+    $('subsBulkTag').innerHTML = opts;
+    $('subsBulkTagWrap').hidden = !(state.tags || []).length;
+
+    var all = $('subsAll');
+    if (all) {
+      var onPage = state.subscribers.map(function (x) { return x.id; });
+      var picked = onPage.filter(function (id) { return state.picked.indexOf(id) >= 0; });
+      all.checked = onPage.length > 0 && picked.length === onPage.length;
+      /* Neither on nor off when some of the page is chosen — the box has to be
+         able to say "partly", or it lies on every mixed selection. */
+      all.indeterminate = picked.length > 0 && picked.length < onPage.length;
+    }
+  }
+
+  function pick(id, on) {
+    var at = state.picked.indexOf(id);
+    if (on && at < 0) state.picked.push(id);
+    if (!on && at >= 0) state.picked.splice(at, 1);
+  }
+
+  async function runBulk(what) {
+    var n = state.picked.length;
+    if (!n) return;
+
+    var tagId = $('subsBulkTag').value;
+    if ((what === 'tag-add' || what === 'tag-remove') && !tagId) {
+      toast(tr('ml.chooseTagFirst'), 'bad');
+      return;
+    }
+    var tag = (state.tags || []).filter(function (t) { return t.id === tagId; })[0];
+
+    var ask = {
+      'unsubscribed': { body: fill('ml.bulkUnsub', { n: n }), danger: true },
+      'bounced':      { body: fill('ml.bulkBounce', { n: n }), danger: true },
+      'delete':       { body: fill('ml.bulkDelete', { n: n }), danger: true,
+                        note: tr('ml.bulkDeleteNote'), type: 'DELETE' },
+      'tag-add':      { body: fill('ml.bulkTagAdd', { n: n, tag: tag && tag.name }) },
+      'tag-remove':   { body: fill('ml.bulkTagRemove', { n: n, tag: tag && tag.name }) },
+    }[what];
+    if (!ask) return;
+
+    var ok = await window.StaffConfirm({
+      title: fill('ml.bulkTitle', { n: n }), body: ask.body, note: ask.note || '',
+      type: ask.type, typeLabel: ask.type ? fill('ml.nSelected', { n: n }) + ' —' : undefined,
+      confirm: tr('ml.bulkDo'), cancel: tr('ms.cancel'), danger: !!ask.danger,
+    });
+    if (!ok) return;
+
+    var body = await postJson({
+      action: 'subscribers-bulk', what: what, ids: state.picked, tag: tagId || undefined,
+    });
+    if (body.error) { toast(body.error, 'bad'); return; }
+
+    /* The selection is dropped afterwards. Leaving forty people ticked after
+       acting on them invites the next action to land on the same forty by
+       accident. */
+    state.picked = [];
+    await loadPeople();
+    toast(fill('ml.bulkDone', { n: body.count }), 'ok');
   }
 
   /* ---- tags -----------------------------------------------------------
@@ -1423,7 +1513,10 @@
      Every control resets to page one, because staying on page four of a
      search that now matches three people is a blank screen with no
      explanation. */
-  function reloadPeople() { loadPeople(); }
+  /* THE SELECTION DOES NOT SURVIVE A CHANGE OF WHAT IS ON SCREEN. Carrying it
+     across a search means acting on people the current list does not show, and
+     the count in the bar would be the only clue. */
+  function reloadPeople() { state.picked = []; loadPeople(); }
 
   var subsTimer = null;
   $('subsQ').addEventListener('input', function () {
@@ -1484,6 +1577,29 @@
   });
   $('subsNext').addEventListener('click', function () {
     state.subsPage++; reloadPeople();
+  });
+
+  $('mlSubscribers').addEventListener('change', function (e) {
+    if (e.target.id === 'subsAll') {
+      /* The page, not the list. Selecting people you cannot see is how a bulk
+         delete becomes a surprise. */
+      var on = e.target.checked;
+      state.subscribers.forEach(function (s) { pick(s.id, on); });
+      [].forEach.call(document.querySelectorAll('[data-pick]'), function (b) {
+        b.checked = on;
+      });
+      renderBulk();
+      return;
+    }
+    if (e.target.dataset && e.target.dataset.pick) {
+      pick(e.target.dataset.pick, e.target.checked);
+      renderBulk();
+    }
+  }, true);
+
+  $('subsBulk').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-bulk]');
+    if (b) runBulk(b.dataset.bulk);
   });
 
   $('mlSubscribers').addEventListener('change', async function (e) {
