@@ -80,8 +80,27 @@ async function audit(db, { user, action, entity_id, detail }) {
   }
 }
 
-/** The branch everything lives on. `dev` is a development detail, not this. */
-const siteBranch = (env) => env.LIVE_BRANCH || "main";
+/**
+ * WHICH BRANCH EACH BUTTON BUILDS, and they are NOT the same one.
+ *
+ * They used to be. `siteBranch()` returned LIVE_BRANCH for both, so Preview
+ * and Publish built `main` and Preview could never show anything Publish
+ * would not — which made staging useless for reviewing work before it went
+ * live, and made STAGING_BRANCH in wrangler.toml a variable nothing read.
+ *
+ * PUBLISH BUILDS THE LIVE BRANCH. That is the definition of publishing.
+ *
+ * PREVIEW BUILDS THE STAGING BRANCH, because the question staging answers is
+ * "is this ready to be live yet", and the only honest answer is the branch
+ * that is not live yet. Content edits are committed to CONTENT_BRANCH and
+ * merged forward, so the staging branch contains the words as well as the
+ * code — if it ever does not, that is a merge that has not happened, and a
+ * preview showing stale words is the correct way to find that out.
+ */
+const liveBranch = (env) => env.LIVE_BRANCH || "main";
+const stagingBranch = (env) => env.STAGING_BRANCH || env.LIVE_BRANCH || "main";
+const branchFor = (env, action) =>
+  action === "preview" ? stagingBranch(env) : liveBranch(env);
 
 /** Changed files that need something done to the database before deploying. */
 const migrationsIn = (files) =>
@@ -108,7 +127,7 @@ export default {
 /* -------------------------------- status -------------------------------- */
 
 async function status(env) {
-  const branch = siteBranch(env);
+  const branch = liveBranch(env);
   const cfg = githubConfig(env);
 
   const live = await lastSuccessfulRun(env, PROD_WORKFLOW);
@@ -169,10 +188,11 @@ async function act(request, env, db, user, me) {
   const body = await readJson(request);
   if (!body) return json({ error: "The request body was not valid JSON." }, 400);
 
-  const branch = siteBranch(env);
   // Anything that is not exactly "preview" is treated as the guarded action.
   // Fail toward the confirmation, never away from it.
   const action = body.action === "preview" ? "preview" : "publish";
+  // AFTER the action is known, because the two build different branches now.
+  const branch = branchFor(env, action);
 
   if (action === "publish" && body.confirm !== CONFIRM_WORD) {
     return json({ error: `Publishing needs the word ${CONFIRM_WORD} typed to confirm.` }, 400);

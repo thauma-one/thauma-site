@@ -293,8 +293,40 @@ await check("preview builds STAGING, and needs no confirmation", async () => {
     eq(res.status, 200, "status");
     const d = g.find((c) => c.url.endsWith("/dispatches"));
     assert(d.url.includes("deploy-staging.yml"), "wrong workflow: " + d.url);
+    /* THE REF, NOT JUST THE WORKFLOW. This assertion is the whole point of the
+       test and it was missing, which is how Preview spent weeks dispatching
+       the LIVE branch: it ran the right workflow against the wrong code, so
+       staging mirrored production and could never show anything Publish would
+       not. STAGING_BRANCH sat in wrangler.toml with nothing reading it. */
+    eq(d.body.ref, "dev", "preview must build the STAGING branch, not the live one");
     const b = await res.json();
     eq(b.where, "next.thauma.one", "where");
+  } finally { g.restore(); }
+});
+
+await check("the two buttons build DIFFERENT branches", async () => {
+  /* Stated as its own test because the failure mode is silent: both buttons
+     work, both report success, and the only symptom is that staging never
+     shows you anything new. */
+  const g = stubGitHub();
+  try {
+    await handler.fetch(req("POST", { action: "preview" }), envWith("admin"));
+    await handler.fetch(req("POST", { action: "publish", confirm: "PUBLISH" }),
+                        envWith("admin"));
+    const refs = g.filter((c) => c.url.endsWith("/dispatches")).map((c) => c.body.ref);
+    eq(refs, ["dev", "main"], "preview then publish");
+  } finally { g.restore(); }
+});
+
+await check("with no STAGING_BRANCH set, preview falls back to the live branch", async () => {
+  /* A deploy that has not been told about a staging branch should preview
+     something real rather than dispatch a ref that does not exist. */
+  const g = stubGitHub();
+  try {
+    await handler.fetch(req("POST", { action: "preview" }),
+                        envWith("admin", { STAGING_BRANCH: undefined }));
+    const d = g.find((c) => c.url.endsWith("/dispatches"));
+    eq(d.body.ref, "main", "fallback");
   } finally { g.restore(); }
 });
 
