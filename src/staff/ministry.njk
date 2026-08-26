@@ -384,10 +384,14 @@ staffHint: four sections, all of them visible to anyone once published
 
   <form class="ms-form vid-form" id="vidForm">
     <label class="fld">
-      <span data-i18n="vid.channel">YouTube channel</span>
-      <em data-i18n="vid.channelHint">its web address, its @handle, or its id</em>
+      <span data-i18n="vid.channel">YouTube channel or playlist</span>
+      <em data-i18n="vid.channelHint">paste the web address of whichever one you want</em>
+      {#- ONE FIELD, NO PICKER. Nobody thinks "I am supplying a playlist
+         identifier" — they copy what is in the address bar, and the string
+         already says which kind it is. A playlist address carries list=; a
+         channel address does not. See resolveSource(). -#}
       <input type="text" id="vidChannel" autocomplete="off" spellcheck="false"
-             placeholder="https://www.youtube.com/@yourchannel">
+             placeholder="https://www.youtube.com/playlist?list=…">
     </label>
 
     {#- Shown only once a channel has resolved, because before then there is

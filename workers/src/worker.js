@@ -239,9 +239,9 @@ const ROUTES = {
   // A partner's own mailing lists. Scoped to them; see staff-mailing.js.
   "/api/staff-mailing": staffMailing,
 
-  // Which YouTube channel a partner's site shows videos from. The videos
-  // themselves are fetched by the scheduled handler below, from a public feed
-  // that needs no key. See staff-videos.js.
+  // Which YouTube channel or playlist a partner's site shows videos from. The
+  // videos themselves are fetched by the scheduled handler below, from a
+  // public feed that needs no key. See staff-videos.js.
   "/api/staff-videos": staffVideos,
 
   // Public, no account. The link in a mailing list confirmation email.
@@ -379,7 +379,7 @@ export default {
    * schedule() wrapper that chaseroush.com used for the same job.
    *
    * Every quarter hour it re-reads the public Atom feed of each switched-on
-   * channel. That is ninety-six invocations a day for the whole site — far
+   * source — a channel, or a playlist. That is ninety-six invocations a day for the whole site — far
    * inside the free allowance, and there is no API key or quota behind it
    * because the feed is public. Deliberately kept that cheap: a scheduled job
    * is the easiest thing in a system to leave running and forget the price of.
@@ -398,7 +398,7 @@ export default {
     const results = await syncAll(db);
     const failed = results.filter((r) => !r.ok);
     console.log(
-      `video sync: ${results.length} channel(s), ${failed.length} failed`,
+      `video sync: ${results.length} source(s), ${failed.length} failed`,
       failed.map((f) => `${f.partner_id || "organisation"}: ${f.error}`).join("; "));
   },
 };

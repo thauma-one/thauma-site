@@ -88,7 +88,7 @@ await check("PUBLIC_QUERIES is an allow-list of exactly the intended queries", a
     "public_prayer_translations",
     /* Added 2026-08-25. A channel's latest videos. Every column is already
        public on YouTube, but the `videos` table has NO partner column — the
-       join through video_channels is what scopes it, which is why that join
+       join through video_sources is what scopes it, which is why that join
        has to live in the SQL and not in a caller. */
     /* The list is compared SORTED, and "_" sorts before "s" — so the buttons
        come before the videos here even though they were added after. */

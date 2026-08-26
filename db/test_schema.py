@@ -262,16 +262,16 @@ def t_videos_are_returned_only_for_a_channel_that_is_switched_on():
     db = fresh()
     db.execute("INSERT INTO partners (id,slug,display_name,status,created_at,updated_at)"
                " VALUES ('p_a','a','A','active',?,?)", (NOW, NOW))
-    db.execute("INSERT INTO video_channels (partner_id,channel_id,is_public,max_items,"
+    db.execute("INSERT INTO video_sources (partner_id,source_id,is_public,max_items,"
                "updated_at) VALUES ('p_a','UC0000000000000000000000',0,3,?)", (NOW,))
-    db.execute("INSERT INTO videos (channel_id,video_id,title,published_at,fetched_at)"
+    db.execute("INSERT INTO videos (source_id,video_id,title,published_at,fetched_at)"
                " VALUES ('UC0000000000000000000000','vvvvvvvvvvv','V',?,?)", (NOW, NOW))
 
     sql, names = _query("public_videos_for_partner")
     got = db.execute(sql, ["p_a"] * len(names)).fetchall()
     assert got == [], "an unpublished channel's videos reached the public query"
 
-    db.execute("UPDATE video_channels SET is_public = 1")
+    db.execute("UPDATE video_sources SET is_public = 1")
     got = db.execute(sql, ["p_a"] * len(names)).fetchall()
     assert len(got) == 1, f"a published channel returned {got}"
 
@@ -283,22 +283,22 @@ def t_repointing_a_channel_forgets_when_the_old_one_was_checked():
     db = fresh()
     db.execute("INSERT INTO partners (id,slug,display_name,status,created_at,updated_at)"
                " VALUES ('p_a','a','A','active',?,?)", (NOW, NOW))
-    sql, names = _query("video_channel_save")
+    sql, names = _query("video_source_save")
 
     def save(channel):
-        args = {"partner_id": "p_a", "channel_id": channel, "channel_title": None,
-                "is_public": 1, "max_items": 3, "now": NOW}
+        args = {"partner_id": "p_a", "source_id": channel, "source_kind": "channel",
+                "source_title": None, "is_public": 1, "max_items": 3, "now": NOW}
         db.execute(sql, [args[n] for n in names])
 
     save("UC0000000000000000000000")
-    db.execute("UPDATE video_channels SET synced_at = 'yesterday'")
+    db.execute("UPDATE video_sources SET synced_at = 'yesterday'")
 
     save("UC0000000000000000000000")          # same channel
-    got = db.execute("SELECT synced_at FROM video_channels").fetchone()[0]
+    got = db.execute("SELECT synced_at FROM video_sources").fetchone()[0]
     assert got == "yesterday", f"re-saving the same channel lost synced_at: {got}"
 
     save("UC1111111111111111111111")          # a different one
-    got = db.execute("SELECT synced_at FROM video_channels").fetchone()[0]
+    got = db.execute("SELECT synced_at FROM video_sources").fetchone()[0]
     assert got is None, f"a new channel kept the old channel's timestamp: {got}"
 
 
@@ -309,7 +309,7 @@ def t_buttons_follow_the_channels_publication_switch():
     db = fresh()
     db.execute("INSERT INTO partners (id,slug,display_name,status,created_at,updated_at)"
                " VALUES ('p_a','a','A','active',?,?)", (NOW, NOW))
-    db.execute("INSERT INTO video_channels (partner_id,channel_id,is_public,max_items,"
+    db.execute("INSERT INTO video_sources (partner_id,source_id,is_public,max_items,"
                "updated_at) VALUES ('p_a','UC0000000000000000000000',0,3,?)", (NOW,))
     db.execute("INSERT INTO video_links (id,partner_id,label,url,sort_order,created_at)"
                " VALUES ('vl_1','p_a','Give','https://x.org',0,?)", (NOW,))
@@ -318,7 +318,7 @@ def t_buttons_follow_the_channels_publication_switch():
     assert db.execute(sql, ["p_a"] * len(names)).fetchall() == [], \
         "buttons published while the channel was switched off"
 
-    db.execute("UPDATE video_channels SET is_public = 1")
+    db.execute("UPDATE video_sources SET is_public = 1")
     assert len(db.execute(sql, ["p_a"] * len(names)).fetchall()) == 1, \
         "buttons vanished with the channel switched on"
 
@@ -342,7 +342,7 @@ def t_one_partners_buttons_are_not_anothers():
     for pid in ("p_a", "p_b"):
         db.execute("INSERT INTO partners (id,slug,display_name,status,created_at,updated_at)"
                    " VALUES (?,?,?,'active',?,?)", (pid, pid, pid, NOW, NOW))
-        db.execute("INSERT INTO video_channels (partner_id,channel_id,is_public,"
+        db.execute("INSERT INTO video_sources (partner_id,source_id,is_public,"
                    "max_items,updated_at) VALUES (?,'UC0000000000000000000000',1,3,?)",
                    (pid, NOW))
         db.execute("INSERT INTO video_links (id,partner_id,label,url,sort_order,created_at)"
@@ -369,6 +369,53 @@ def t_two_buttons_cannot_share_a_label():
         raise AssertionError("the organisation was allowed two buttons called Give")
     except sqlite3.IntegrityError:
         pass
+
+
+def t_a_playlist_is_stored_as_one_and_a_channel_stays_a_channel():
+    """The two ids live in DIFFERENT namespaces and the feed takes a different
+    query parameter for each, so which kind this is has to be stored rather
+    than guessed from the string later."""
+    db = fresh()
+    db.execute("INSERT INTO partners (id,slug,display_name,status,created_at,updated_at)"
+               " VALUES ('p_a','a','A','active',?,?)", (NOW, NOW))
+    sql, names = _query("video_source_save")
+
+    def save(kind, sid):
+        args = {"partner_id": "p_a", "source_id": sid, "source_kind": kind,
+                "source_title": None, "is_public": 1, "max_items": 3, "now": NOW}
+        db.execute(sql, [args[n] for n in names])
+
+    save("playlist", "PLryve-LPyY0x5F6-uVcT0K3giNi9dXvaW")
+    got = db.execute("SELECT source_kind, source_id FROM video_sources").fetchone()
+    assert got == ("playlist", "PLryve-LPyY0x5F6-uVcT0K3giNi9dXvaW"), got
+
+    # Switching a partner from a playlist to a channel must carry the kind
+    # across too, or the sync would ask for a playlist that does not exist.
+    save("channel", "UCnp-pBzHdpTwMonf7xuN1Ug")
+    got = db.execute("SELECT source_kind, source_id, synced_at FROM video_sources").fetchone()
+    assert got[:2] == ("channel", "UCnp-pBzHdpTwMonf7xuN1Ug"), got
+    assert got[2] is None, "changing source kept the old source's timestamp"
+
+
+def t_two_partners_may_read_two_playlists_from_one_channel():
+    """The shape Thauma is actually built for: one channel, a playlist per
+    partner. Videos are keyed by SOURCE, so the two shelves cannot bleed into
+    each other even though both playlists live on the same channel."""
+    db = fresh()
+    for pid, pl in [("p_a", "PLaaaaaaaaaaaaaaaaaaaa"), ("p_b", "PLbbbbbbbbbbbbbbbbbbbb")]:
+        db.execute("INSERT INTO partners (id,slug,display_name,status,created_at,"
+                   "updated_at) VALUES (?,?,?,'active',?,?)", (pid, pid, pid, NOW, NOW))
+        db.execute("INSERT INTO video_sources (partner_id,source_id,source_kind,"
+                   "is_public,max_items,updated_at) VALUES (?,?,'playlist',1,3,?)",
+                   (pid, pl, NOW))
+        db.execute("INSERT INTO videos (source_id,video_id,title,published_at,"
+                   "fetched_at) VALUES (?,?,?,?,?)",
+                   (pl, "v" + pid, "Video for " + pid, NOW, NOW))
+
+    sql, names = _query("public_videos_for_partner")
+    for pid in ("p_a", "p_b"):
+        got = [r[1] for r in db.execute(sql, [pid] * len(names))]
+        assert got == ["Video for " + pid], f"{pid} saw {got}"
 
 
 def t_seed_files_insert_every_row_they_claim():
@@ -1279,6 +1326,8 @@ if __name__ == "__main__":
         ("no channel does not break the partner API",    t_a_partner_with_no_channel_does_not_break_the_partner_api),
         ("videos need the channel switched on",          t_videos_are_returned_only_for_a_channel_that_is_switched_on),
         ("repointing a channel forgets the old check",   t_repointing_a_channel_forgets_when_the_old_one_was_checked),
+        ("a playlist is stored as a playlist",            t_a_playlist_is_stored_as_one_and_a_channel_stays_a_channel),
+        ("one channel, a playlist per partner",           t_two_partners_may_read_two_playlists_from_one_channel),
         ("buttons follow the channel's switch",          t_buttons_follow_the_channels_publication_switch),
         ("no channel publishes no buttons",              t_a_partner_with_no_channel_publishes_no_buttons),
         ("one partner's buttons are not another's",      t_one_partners_buttons_are_not_anothers),

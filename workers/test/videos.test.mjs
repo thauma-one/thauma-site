@@ -9,9 +9,9 @@
  * two pull in opposite directions and most of this file is about the line
  * between them.
  */
-import { parseFeed, parseChannelTitle, decodeEntities, resolveChannelId, feedUrl }
-  from "../src/lib/youtube.js";
-import { syncChannel, syncAll } from "../src/lib/video-sync.js";
+import { parseFeed, parseChannelTitle, decodeEntities, resolveSource, feedUrl,
+         sourceUrl } from "../src/lib/youtube.js";
+import { syncSource, syncAll } from "../src/lib/video-sync.js";
 import { safeUrl, cleanLinks } from "../src/staff-videos.js";
 
 let pass = 0, fail = 0;
@@ -49,7 +49,7 @@ function fakeDb(rows = {}) {
     calls,
     async query(name, params = {}) {
       calls.push({ name, params });
-      if (name === "video_channels_all") return rows.channels || [];
+      if (name === "video_sources_all") return rows.channels || [];
       return [];
     },
     async queryOne(name, params) {
@@ -106,12 +106,54 @@ await check("garbage parses to nothing rather than throwing", async () => {
 
 /* --------------------------- resolving a channel ------------------------- */
 
+const PLAYLIST = "PLryve-LPyY0x5F6-uVcT0K3giNi9dXvaW";
+
 await check("an id, a channel URL and a handle all resolve", async () => {
-  eq(await resolveChannelId(CHANNEL), CHANNEL, "bare id");
-  eq(await resolveChannelId(`https://www.youtube.com/channel/${CHANNEL}/videos`),
-     CHANNEL, "channel URL");
+  eq(await resolveSource(CHANNEL), { kind: "channel", id: CHANNEL }, "bare id");
+  eq(await resolveSource(`https://www.youtube.com/channel/${CHANNEL}/videos`),
+     { kind: "channel", id: CHANNEL }, "channel URL");
   const scraped = okFetch(`<html><meta><script>{"channelId":"${CHANNEL}"}</script>`);
-  eq(await resolveChannelId("@thauma", scraped), CHANNEL, "handle");
+  eq(await resolveSource("@thauma", scraped), { kind: "channel", id: CHANNEL }, "handle");
+});
+
+await check("a playlist is recognised from every address it appears in", async () => {
+  const want = { kind: "playlist", id: PLAYLIST };
+  eq(await resolveSource(PLAYLIST), want, "bare id");
+  eq(await resolveSource(`https://www.youtube.com/playlist?list=${PLAYLIST}`), want, "playlist page");
+  /* THE ONE THAT MATTERS. Somebody watching a playlist copies the address bar,
+     and it names a video AND a channel AND the playlist. They meant the
+     playlist — so `list=` is checked before anything else. */
+  eq(await resolveSource(
+    `https://www.youtube.com/watch?v=RXtiA_2rXok&list=${PLAYLIST}&index=2`),
+    want, "watching inside a playlist");
+});
+
+await check("resolving a playlist NEVER costs a network request", async () => {
+  /* Only a handle needs the page fetched. A playlist id is in the string. */
+  let touched = false;
+  await resolveSource(`https://www.youtube.com/playlist?list=${PLAYLIST}`,
+    async () => { touched = true; return okFetch("")(); });
+  eq(touched, false, "a request was made for something already in the URL");
+});
+
+await check("the two feed URLs differ only in the parameter", async () => {
+  eq(feedUrl("channel", CHANNEL),
+     `https://www.youtube.com/feeds/videos.xml?channel_id=${CHANNEL}`, "channel");
+  eq(feedUrl("playlist", PLAYLIST),
+     `https://www.youtube.com/feeds/videos.xml?playlist_id=${PLAYLIST}`, "playlist");
+  eq(sourceUrl("playlist", PLAYLIST),
+     `https://www.youtube.com/playlist?list=${PLAYLIST}`, "where a person looks");
+});
+
+await check("a playlist id is not accepted where a channel id belongs", async () => {
+  /* The ids live in different namespaces and the feed takes a different
+     parameter for each. Crossing them would ask YouTube for a channel that
+     cannot exist and record a 404 against a perfectly good playlist. */
+  for (const [kind, id] of [["channel", PLAYLIST], ["playlist", CHANNEL]]) {
+    let threw = null;
+    try { feedUrl(kind, id); } catch (e) { threw = e.message; }
+    assert(threw, `feedUrl built a ${kind} URL from ${id}`);
+  }
 });
 
 await check("resolving NEVER fetches a host other than youtube.com", async () => {
@@ -125,13 +167,13 @@ await check("resolving NEVER fetches a host other than youtube.com", async () =>
                      "javascript:alert(1)",
                      "//evil.example"]) {
     let threw = null;
-    try { await resolveChannelId(bad, spy); } catch (e) { threw = e.message; }
+    try { await resolveSource(bad, spy); } catch (e) { threw = e.message; }
     assert(threw, `accepted ${bad}`);
   }
   eq(seen, [], "no request should have been made at all");
 
   const spy2 = [];
-  await resolveChannelId("@thauma", async (u) => {
+  await resolveSource("@thauma", async (u) => {
     spy2.push(u);
     return okFetch(`<script>{"channelId":"${CHANNEL}"}</script>`)();
   });
@@ -140,22 +182,22 @@ await check("resolving NEVER fetches a host other than youtube.com", async () =>
 
 await check("feedUrl refuses anything that is not a channel id", async () => {
   let threw = null;
-  try { feedUrl("../../../evil"); } catch (e) { threw = e.message; }
+  try { feedUrl("channel", "../../../evil"); } catch (e) { threw = e.message; }
   assert(threw, "built a feed URL from junk");
 });
 
 /* ------------------------------- syncing --------------------------------- */
 
-const CH = { partner_id: "p_chase", channel_id: CHANNEL };
+const CH = { partner_id: "p_chase", source_id: CHANNEL, source_kind: "channel" };
 
 await check("a good sync stores the videos and clears the error", async () => {
   const db = fakeDb();
-  const r = await syncChannel(db, CH, { fetchImpl: okFetch(feed([A, B])), now: "T2" });
+  const r = await syncSource(db, CH, { fetchImpl: okFetch(feed([A, B])), now: "T2" });
   eq(r.ok, true, "ok");
   eq(r.count, 2, "count");
   eq(db.named("video_upsert").map((c) => c.params.video_id), [A.id, B.id], "stored");
-  eq(db.named("video_channel_synced").length, 1, "marked synced");
-  eq(db.named("video_channel_failed").length, 0, "no failure recorded");
+  eq(db.named("video_source_synced").length, 1, "marked synced");
+  eq(db.named("video_source_failed").length, 0, "no failure recorded");
 });
 
 await check("a failed fetch KEEPS the videos it already had", async () => {
@@ -168,11 +210,11 @@ await check("a failed fetch KEEPS the videos it already had", async () => {
     ["not a feed", okFetch("<html>are you a robot?</html>")],
   ]) {
     const db = fakeDb();
-    const r = await syncChannel(db, CH, { fetchImpl: impl, now: "T2" });
+    const r = await syncSource(db, CH, { fetchImpl: impl, now: "T2" });
     eq(r.ok, false, `${label}: reported failure`);
     eq(db.named("videos_prune").length, 0, `${label}: MUST NOT prune`);
     eq(db.named("video_upsert").length, 0, `${label}: wrote nothing`);
-    eq(db.named("video_channel_failed").length, 1, `${label}: recorded why`);
+    eq(db.named("video_source_failed").length, 1, `${label}: recorded why`);
   }
 });
 
@@ -182,28 +224,55 @@ await check("an EMPTY but valid feed does prune, because that is a real answer",
      somebody's decision about their own work. What separates this from the
      failures above is that the response is recognisably a feed. */
   const db = fakeDb();
-  const r = await syncChannel(db, CH, { fetchImpl: okFetch(feed([])), now: "T2" });
+  const r = await syncSource(db, CH, { fetchImpl: okFetch(feed([])), now: "T2" });
   eq(r.ok, true, "a feed with no entries is a success");
   eq(db.named("videos_prune").length, 1, "pruned");
 });
 
 await check("pruning removes only what this run did not touch", async () => {
   const db = fakeDb();
-  await syncChannel(db, CH, { fetchImpl: okFetch(feed([A])), now: "T2" });
+  await syncSource(db, CH, { fetchImpl: okFetch(feed([A])), now: "T2" });
   eq(db.named("video_upsert")[0].params.now, "T2", "the survivor is stamped now");
   eq(db.named("videos_prune")[0].params.now, "T2", "and the prune cuts below it");
 });
 
 await check("a 404 says the channel is missing, not 'HTTP 404'", async () => {
   const db = fakeDb();
-  const r = await syncChannel(db, CH, { fetchImpl: okFetch("", 404), now: "T2" });
+  const r = await syncSource(db, CH, { fetchImpl: okFetch("", 404), now: "T2" });
   assert(/no channel with that id/i.test(r.error), `unhelpful: ${r.error}`);
+});
+
+await check("a 404 on a PLAYLIST names the one cause somebody will hit", async () => {
+  /* Unlisted playlists are readable — unlisted means anyone with the link, and
+     the feed is a link. PRIVATE ones answer 404, and that is the distinction
+     worth spelling out at the moment it happens rather than leaving somebody
+     to work out which of their settings is wrong. */
+  const db = fakeDb();
+  const r = await syncSource(db,
+    { partner_id: "p", source_id: PLAYLIST, source_kind: "playlist" },
+    { fetchImpl: okFetch("", 404), now: "T2" });
+  assert(/private/i.test(r.error), `should mention Private: ${r.error}`);
+  assert(/unlisted/i.test(r.error), `should say unlisted is fine: ${r.error}`);
+});
+
+await check("a playlist syncs through the same path as a channel", async () => {
+  const db = fakeDb();
+  const r = await syncSource(db,
+    { partner_id: "p", source_id: PLAYLIST, source_kind: "playlist" },
+    { fetchImpl: okFetch(feed([A, B], "Mission Updates")), now: "T2" });
+  eq(r.ok, true, "ok");
+  eq(r.kind, "playlist", "kind is reported back");
+  /* The PLAYLIST's name, not the channel's — the feed puts it in the same
+     place, which is what makes one parser enough for both. */
+  eq(r.title, "Mission Updates", "title");
+  eq(db.named("video_upsert").map((c) => c.params.source_id), [PLAYLIST, PLAYLIST],
+     "videos are keyed by the source they came from");
 });
 
 await check("a malformed channel id never reaches the network", async () => {
   let touched = false;
   const db = fakeDb();
-  const r = await syncChannel(db, { partner_id: "p", channel_id: "'; DROP TABLE videos--" },
+  const r = await syncSource(db, { partner_id: "p", source_id: "'; DROP TABLE videos--" },
     { fetchImpl: async () => { touched = true; return okFetch("")(); }, now: "T2" });
   eq(r.ok, false, "refused");
   eq(touched, false, "no request made");
@@ -213,9 +282,9 @@ await check("one bad channel does not stop the scheduled run", async () => {
   /* A cron has nobody to tell. If the first channel throwing ended the pass,
      every partner after it would silently stop updating. */
   const db = fakeDb({ channels: [
-    { partner_id: "p_a", channel_id: CHANNEL },
-    { partner_id: "p_b", channel_id: CHANNEL },
-    { partner_id: null,  channel_id: CHANNEL },
+    { partner_id: "p_a", source_id: CHANNEL },
+    { partner_id: "p_b", source_id: CHANNEL },
+    { partner_id: null,  source_id: CHANNEL },
   ] });
   let n = 0;
   const flaky = async () => {

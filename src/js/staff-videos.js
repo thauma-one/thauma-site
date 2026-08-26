@@ -67,7 +67,7 @@
   function render() {
     var c = state.channel;
 
-    $('vidChannel').value = c ? c.channel_id : '';
+    $('vidChannel').value = c ? c.source_id : '';
     $('vidCount').value = c ? c.max_items : 3;
     setSwitch($('vidPublic'), !!(c && c.is_public));
 
@@ -77,10 +77,12 @@
          typed found what was meant. Falls back to the id rather than showing
          an empty line, because a channel that has never synced has no name
          here yet. */
-      found.innerHTML = fill('vid.foundHtml', {
-        name: esc(c.channel_title || c.channel_id),
-        url: esc(c.channel_url),
-      });
+      /* Which KIND it resolved to, said out loud. One field takes both, so
+         the only way somebody learns that the address they pasted was read as
+         a playlist rather than its channel is if this says so. */
+      found.innerHTML = fill(
+        c.source_kind === 'playlist' ? 'vid.foundPlaylistHtml' : 'vid.foundHtml',
+        { name: esc(c.source_title || c.source_id), url: esc(c.source_url) });
       found.hidden = false;
     } else {
       found.hidden = true;

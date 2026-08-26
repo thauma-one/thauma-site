@@ -80,7 +80,7 @@ export const PUBLIC_QUERIES = new Set([
   "public_prayer_translations",
   /* A channel's latest videos. Every column of the `videos` table is already
      public on YouTube, but the table has no partner column at all — the join
-     through video_channels IS its scoping, which is why it must stay in the
+     through video_sources IS its scoping, which is why it must stay in the
      query rather than being applied by a caller. */
   "public_videos_for_partner",
   "public_video_links_for_partner",

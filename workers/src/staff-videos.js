@@ -22,8 +22,8 @@ import { createDb } from "./lib/db.js";
 import { requireAccess } from "./lib/access.js";
 import { resolveActor, auditActingWrite, withActing } from "./lib/actas.js";
 import { json, readJson } from "./lib/store.js";
-import { resolveChannelId, watchUrl, thumbUrl } from "./lib/youtube.js";
-import { syncChannel } from "./lib/video-sync.js";
+import { resolveSource, sourceUrl, watchUrl, thumbUrl } from "./lib/youtube.js";
+import { syncSource } from "./lib/video-sync.js";
 
 const MAX = { label: 40, url: 400, links: 4 };
 
@@ -119,7 +119,7 @@ async function scopeFor(request, env) {
 /** Config plus the cached videos, which is everything the screen draws. */
 async function state(db, partnerId) {
   const [channel, links] = await Promise.all([
-    db.queryOne("video_channel_get", { partner_id: partnerId }),
+    db.queryOne("video_source_get", { partner_id: partnerId }),
     db.query("video_links_for_partner", { partner_id: partnerId }),
   ]);
   /* The rail is returned even with no channel set. Somebody may well add the
@@ -130,21 +130,22 @@ async function state(db, partnerId) {
     return { channel: null, videos: [], links: rail };
   }
 
-  const rows = await db.query("videos_for_channel", {
-    channel_id: channel.channel_id, limit: channel.max_items,
+  const rows = await db.query("videos_for_source", {
+    source_id: channel.source_id, limit: channel.max_items,
   });
 
   return {
     channel: {
-      channel_id: channel.channel_id,
-      channel_title: channel.channel_title || null,
+      source_id: channel.source_id,
+      source_kind: channel.source_kind || "channel",
+      source_title: channel.source_title || null,
       is_public: !!channel.is_public,
       max_items: channel.max_items,
       synced_at: channel.synced_at || null,
       sync_error: channel.sync_error || null,
       /* So the console can show the person what it is actually reading,
-         rather than asking them to trust that the id resolved. */
-      channel_url: `https://www.youtube.com/channel/${channel.channel_id}`,
+         rather than asking them to trust that what they pasted resolved. */
+      source_url: sourceUrl(channel.source_kind, channel.source_id),
     },
     links: rail,
     videos: rows.map((v) => ({
@@ -187,10 +188,10 @@ export default {
          in the request, so this button can never be used to make the Worker
          fetch a URL of the caller's choosing. */
       if (body.action === "check") {
-        const channel = await db.queryOne("video_channel_get", { partner_id: partnerId });
-        if (!channel) return json({ error: "No channel is set yet." }, 400);
+        const channel = await db.queryOne("video_source_get", { partner_id: partnerId });
+        if (!channel) return json({ error: "Nothing is set yet." }, 400);
 
-        const result = await syncChannel(db, channel, { now });
+        const result = await syncSource(db, channel, { now });
         return json(shell({ ...(await state(db, partnerId)), checked: result }));
       }
 
@@ -200,27 +201,30 @@ export default {
       if (linkError) return json({ error: linkError }, 400);
 
       const raw = String(body.channel || "").trim();
-      if (!raw) return json({ error: "Enter a channel address or id." }, 400);
+      if (!raw) {
+        return json({ error: "Enter a YouTube address, or a channel or playlist id." }, 400);
+      }
 
-      let channel_id;
+      let source;
       try {
-        channel_id = await resolveChannelId(raw);
+        source = await resolveSource(raw);
       } catch (err) {
-        /* The messages from resolveChannelId are written for the person at
-           the field, so they are passed through rather than replaced. */
+        /* The messages from resolveSource are written for the person at the
+           field, so they are passed through rather than replaced. */
         return json({ error: err.message }, 400);
       }
 
       const max_items = Math.min(15, Math.max(1, Math.round(Number(body.max_items) || 3)));
       const is_public = body.is_public ? 1 : 0;
 
-      await db.query("video_channel_save", {
+      await db.query("video_source_save", {
         partner_id: partnerId,
-        channel_id,
+        source_id: source.id,
+        source_kind: source.kind,
         /* Left as-is until the sync reports what the feed calls it. Writing
            the raw input here would put "@somebody" on the screen as though it
-           were the channel's name. */
-        channel_title: null,
+           were the name of the thing. */
+        source_title: null,
         is_public,
         max_items,
         now,
@@ -241,20 +245,22 @@ export default {
         }
       }
 
-      const result = await syncChannel(db, { partner_id: partnerId, channel_id }, { now });
+      const result = await syncSource(db, {
+        partner_id: partnerId, source_id: source.id, source_kind: source.kind,
+      }, { now });
       if (result.ok && result.title) {
-        await db.query("video_channel_save", {
-          partner_id: partnerId, channel_id, channel_title: result.title,
-          is_public, max_items, now,
+        await db.query("video_source_save", {
+          partner_id: partnerId, source_id: source.id, source_kind: source.kind,
+          source_title: result.title, is_public, max_items, now,
         });
       }
 
       await db.query("audit_write", {
         id: crypto.randomUUID(), now,
         user_id: actor.user_id || null, partner_id: partnerId,
-        action: "videos.channel", entity: "video_channels", entity_id: channel_id,
-        detail: JSON.stringify({ is_public: !!is_public, max_items,
-                                 links: links ? links.length : null }),
+        action: "videos.source", entity: "video_sources", entity_id: source.id,
+        detail: JSON.stringify({ kind: source.kind, is_public: !!is_public,
+                                 max_items, links: links ? links.length : null }),
       }).catch(() => {});
 
       return json(shell({ ...(await state(db, partnerId)), checked: result }));
@@ -262,10 +268,10 @@ export default {
 
     if (request.method === "DELETE") {
       /* Clears the CONFIG. The cached videos stay: another partner may point
-         at the same channel, and rows keyed by channel are not this partner's
+         at the same source, and rows keyed by source are not this partner's
          to delete. The scheduled run stops touching them, and they cost a few
          hundred bytes. */
-      await db.query("video_channel_clear", { partner_id: partnerId });
+      await db.query("video_source_clear", { partner_id: partnerId });
       /* The buttons belong to the video section. Leaving them behind would
          mean they reappeared, silently, the day somebody set a channel again
          — pointing wherever they pointed a year ago. */
@@ -273,7 +279,7 @@ export default {
       await db.query("audit_write", {
         id: crypto.randomUUID(), now,
         user_id: actor.user_id || null, partner_id: partnerId,
-        action: "videos.clear", entity: "video_channels", entity_id: "-",
+        action: "videos.clear", entity: "video_sources", entity_id: "-",
         detail: "{}",
       }).catch(() => {});
       return json(shell(await state(db, partnerId)));

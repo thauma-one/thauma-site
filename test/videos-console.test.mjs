@@ -49,9 +49,10 @@ function payload(over = {}) {
     scope: "partner", may_use_organisation: true,
     partner: { id: "p_c", display_name: "Chase Roush" },
     channel: {
-      channel_id: CHANNEL, channel_title: "Thauma", is_public: true,
-      max_items: 3, synced_at: "2026-08-25T09:00:00Z", sync_error: null,
-      channel_url: `https://www.youtube.com/channel/${CHANNEL}`,
+      source_id: CHANNEL, source_kind: "channel", source_title: "Thauma",
+      is_public: true, max_items: 3,
+      synced_at: "2026-08-25T09:00:00Z", sync_error: null,
+      source_url: `https://www.youtube.com/channel/${CHANNEL}`,
     },
     videos: [{
       id: "dQw4w9WgXcQ",
@@ -130,6 +131,28 @@ await check("opening it loads the channel into the form", async () => {
      "the published switch");
   assert(/Thauma/.test(w.document.getElementById("vidFound").innerHTML),
          "the channel's own name should confirm what was found");
+});
+
+await check("a PLAYLIST says so, rather than looking like a channel", async () => {
+  /* One field takes both, so the only way somebody learns that the address
+     they pasted was read as a playlist rather than as its channel is if this
+     line says it. Getting that wrong silently is how a partner ends up
+     publishing the whole channel thinking they published one playlist. */
+  const { w } = await boot(payload({
+    channel: {
+      source_id: "PLryve-LPyY0x5F6-uVcT0K3giNi9dXvaW", source_kind: "playlist",
+      source_title: "Mission Updates", is_public: true, max_items: 3,
+      synced_at: "2026-08-25T09:00:00Z", sync_error: null,
+      source_url: "https://www.youtube.com/playlist?list=PLryve-LPyY0x5F6-uVcT0K3giNi9dXvaW",
+    },
+  }));
+  await openTab(w);
+  const found = w.document.getElementById("vidFound");
+  assert(/playlist/i.test(found.textContent),
+    `it should say this is a playlist, got "${found.textContent}"`);
+  assert(/Mission Updates/.test(found.textContent), "and name it");
+  eq(w.document.getElementById("vidChannel").value,
+     "PLryve-LPyY0x5F6-uVcT0K3giNi9dXvaW", "the id in the field");
 });
 
 await check("A VIDEO TITLE IS TEXT, NEVER MARKUP", async () => {

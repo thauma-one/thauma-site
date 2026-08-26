@@ -308,7 +308,8 @@ await check("every real query converts with its documented params", async () => 
     body_html: "<p>x</p>", body_text: "x",
     sent_count: 0, mailing_id: "mg_1", subscriber_id: "sub_1",
     // videos, cached from a channel's public Atom feed
-    channel_id: "UCnp-pBzHdpTwMonf7xuN1Ug", channel_title: "Thauma",
+    source_id: "UCnp-pBzHdpTwMonf7xuN1Ug", source_title: "Thauma",
+    source_kind: "channel",
     video_id: "dQw4w9WgXcQ", published_at: "2026-08-01T10:00:00+00:00",
     max_items: 3, error: null,
     // the optional buttons under the shelf
@@ -353,11 +354,11 @@ await check("every real query converts with its documented params", async () => 
                                 cross every partner — finding all the channels
                                 is its whole job, and a partner_id would make
                                 it useless. Safe because it selects nothing but
-                                a partner id and a channel id, both of which
+                                a partner id and a source id, both of which
                                 the cron already has authority over, and
                                 because everything downstream of it is scoped
                                 by the channel it returns. */
-                             "video_channels_all"]);
+                             "video_sources_all"]);
 
   for (const [name, sql] of Object.entries(QUERIES)) {
     const r = toPositional(sql, params);
