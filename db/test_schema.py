@@ -418,6 +418,85 @@ def t_two_partners_may_read_two_playlists_from_one_channel():
         assert got == ["Video for " + pid], f"{pid} saw {got}"
 
 
+def t_pull_staging_loads_parents_before_children():
+    """load_order() decides what pull_staging.py inserts first, and it had two
+    bugs that only appear against real data:
+
+      * Alphabetically `milestone_translations` sorts BEFORE `milestones`, and
+        mtx_partner_match reads the milestone — so the obvious order fails.
+      * `directory_contacts` has no foreign key to `partner_users`, but
+        directory_owner_has_partner checks the owner's access through it — so
+        foreign keys alone are not enough.
+
+    Both are derived from the schema rather than written down, which means a
+    table added later is ordered without anybody remembering to. This asserts
+    the property, not the list."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "pull", str(pathlib.Path(__file__).resolve().parent / "pull_staging.py"))
+    pull = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(pull)
+
+    db = fresh()
+    tables = [r[0] for r in db.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' "
+        "AND name NOT LIKE 'sqlite_%' ORDER BY name")
+        if r[0] not in pull.SKIP_TABLES]
+
+    order = pull.load_order(db, tables)
+    at = {t: i for i, t in enumerate(order)}
+
+    assert set(order) == set(tables), "load_order dropped or invented a table"
+
+    # THE PROPERTY, DERIVED — not a hand-written list of pairs. Two earlier
+    # versions of this test asserted relationships that do not exist
+    # (`contacts` -> partner_users, `videos` -> video_sources) and failed
+    # against correct code. What actually has to hold is: every constraint the
+    # SCHEMA expresses is satisfied by the order.
+    import re as _re
+    for t in tables:
+        need = {r[2] for r in db.execute(f"PRAGMA foreign_key_list({t})")}
+        for (sql,) in db.execute(
+                "SELECT sql FROM sqlite_master WHERE type='trigger' AND tbl_name = ?", (t,)):
+            need |= {o for o in tables
+                     if o != t and _re.search(rf"\b{o}\b", sql or "")}
+        for parent in need:
+            if parent in at and parent != t:
+                assert at[parent] < at[t], (
+                    f"{parent} must load before {t} — got {at[parent]} vs {at[t]}")
+
+    # And the two that actually bit, named so a regression says which is which.
+    for child, parent in [
+            ("milestone_translations", "milestones"),   # trigger, and sorts wrongly
+            ("directory_contacts", "partner_users"),    # trigger, NOT a foreign key
+    ]:
+        assert at[parent] < at[child], (
+            f"{parent} must load before {child} — got {parent} at "
+            f"{at[parent]}, {child} at {at[child]}")
+
+
+def t_pull_staging_never_copies_the_audit_log_or_sessions():
+    """An audit log is the record of what happened ON THAT DEPLOYMENT, and
+    trg_audit_no_delete refuses the DELETE a refresh would need anyway.
+    Sessions are live credentials for a browser that is not on this machine."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "pull", str(pathlib.Path(__file__).resolve().parent / "pull_staging.py"))
+    pull = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(pull)
+
+    for t in ("audit_log", "sessions"):
+        assert t in pull.SKIP_TABLES, f"{t} would be copied to a development machine"
+
+    # And the scrub list must still cover every table that holds somebody's
+    # address, because those ARE copied.
+    for t in ("subscribers", "mailing_recipients", "contacts"):
+        assert t in pull.SCRUB, f"{t} is copied unscrubbed"
+    assert "email" in pull.SCRUB["subscribers"]
+    assert "confirm_token" in pull.SCRUB["subscribers"], \
+        "confirm_token is a live credential, not a value to leave alone"
+
+
 def t_seed_files_insert_every_row_they_claim():
     """Every INSERT in a seed file must actually land.
 
@@ -1328,6 +1407,8 @@ if __name__ == "__main__":
         ("repointing a channel forgets the old check",   t_repointing_a_channel_forgets_when_the_old_one_was_checked),
         ("a playlist is stored as a playlist",            t_a_playlist_is_stored_as_one_and_a_channel_stays_a_channel),
         ("one channel, a playlist per partner",           t_two_partners_may_read_two_playlists_from_one_channel),
+        ("pull loads parents before children",           t_pull_staging_loads_parents_before_children),
+        ("pull never copies audit log or sessions",      t_pull_staging_never_copies_the_audit_log_or_sessions),
         ("buttons follow the channel's switch",          t_buttons_follow_the_channels_publication_switch),
         ("no channel publishes no buttons",              t_a_partner_with_no_channel_publishes_no_buttons),
         ("one partner's buttons are not another's",      t_one_partners_buttons_are_not_anothers),
