@@ -101,5 +101,9 @@
    filter, so a version written there is a hand-maintained number — the exact
    thing the content hash exists to remove. -#}
 {%- if adminScript %}<script src="{{ adminScript }}?v={{ adminScript | v }}"></script>{% endif %}
+{#- The data-mover, on the Publish page only. It no-ops elsewhere by looking
+   for its own panel first, but loading it everywhere would still be a request
+   nobody needs. -#}
+{% if adminPage == "publish" %}<script src="/js/admin-dbsync.js?v={{ "/js/admin-dbsync.js" | v }}"></script>{% endif %}
 </body>
 </html>

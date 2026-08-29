@@ -74,6 +74,43 @@ permalink: /admin/publish/index.html
     <p class="p-manual-note" id="pManualNote"></p>
   </details>
 
+  {#- MOVING DATA, which a deploy has never done.
+     Publish and Preview carry code and schema. Rows have always had to be
+     moved by hand, which meant a terminal, which meant they were not moved.
+     This is the same job with a button on it.
+
+     Hidden entirely where it is not offered — staging and production hold no
+     credential for reaching another database, so the section simply is not
+     there rather than being present and refusing. -#}
+  <section class="p-sync" id="pSync" hidden>
+    <h2 data-i18n="sync.title">Move data between sites</h2>
+    <p class="p-sync-why" data-i18n="sync.why">
+      Publishing carries the words and the code. It has never carried the
+      records — accounts, mailing lists, subscribers, videos. This does.
+    </p>
+
+    <div class="p-sync-counts" id="pSyncCounts"></div>
+
+    {#- SAID BEFORE THE BUTTONS, not in the dialog after them. Whichever way
+       this runs, the other side's rows are gone — there is no merge, because
+       there is no honest answer to "edited in both places". -#}
+    <p class="p-sync-warn" data-i18n="sync.replaces">
+      <b>Each direction replaces the other side.</b> Whatever is on the
+      receiving end is gone, not merged. Decide where the work happened and
+      send it that way, once.
+    </p>
+
+    <div class="p-sync-acts">
+      <button type="button" class="ghost-btn" id="pSyncPush" data-i18n="sync.push">
+        Send this site's data to staging</button>
+      <button type="button" class="ghost-btn" id="pSyncPull" data-i18n="sync.pull">
+        Bring staging's data here</button>
+    </div>
+    <p class="p-sync-note" id="pSyncNote"></p>
+  </section>
+
+  <p class="p-sync-off" id="pSyncOff" hidden></p>
+
 </div>
 
 <div class="ms-savebar" id="pBar" role="status" hidden>

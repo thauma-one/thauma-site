@@ -53,6 +53,7 @@ import staffEmbed from "./staff-embed.js";
 import adminActAs from "./admin-actas.js";
 import adminProfile from "./admin-profile.js";
 import staffVideos from "./staff-videos.js";
+import adminDbSync from "./admin-dbsync.js";
 import media, { serve as serveMedia } from "./media.js";
 import { createDb, partnerSnapshot, assertPublicSafe } from "./lib/db.js";
 import { syncAll } from "./lib/video-sync.js";
@@ -283,6 +284,11 @@ const ROUTES = {
   // The public half of a person, edited from the People page. Writes the
   // database AND src/content/team/<slug>.md — see admin-profile.js.
   "/api/admin/profile": adminProfile,
+
+  // Moves ROWS between this deployment and staging, from a button rather than
+  // a terminal. Offered only where a D1 credential is configured, which is the
+  // development site and nowhere else. See admin-dbsync.js.
+  "/api/admin/db-sync": adminDbSync,
 
   // Uploads. GET /media/* is handled by prefix below, not here.
   "/api/admin/media": media,
