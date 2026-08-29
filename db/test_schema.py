@@ -497,6 +497,87 @@ def t_pull_staging_never_copies_the_audit_log_or_sessions():
         "confirm_token is a live credential, not a value to leave alone"
 
 
+def _push_module():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "push_dev", str(pathlib.Path(__file__).resolve().parent / "push_dev.py"))
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    return m
+
+
+def t_push_can_never_be_pointed_at_production():
+    """push_dev.py replaces everything in its target. Production holds the only
+    records that are real, so it must not be reachable — not by a flag, not by
+    a typo. The database name is a constant with no argument to override it."""
+    push = _push_module()
+    assert push.STAGING == "thauma-ops-dev", push.STAGING
+
+    src = (pathlib.Path(__file__).resolve().parent / "push_dev.py").read_text()
+    assert "thauma-ops\"" not in src and "'thauma-ops'" not in src, \
+        "production is named somewhere in push_dev.py"
+    # And no CLI OPTION that could redirect it. Checked as an argparse
+    # declaration rather than by searching for the text: the string
+    # "--database" also appears in a help message telling you how to run
+    # migration-state, and grepping for it failed on that.
+    assert 'add_argument("--database' not in src and "add_argument('--database" not in src, \
+        "push_dev.py accepts a target argument"
+
+
+def t_push_tells_seed_addresses_from_real_ones():
+    """The guard stops the push if the dev database holds somebody else's
+    address, because staging is on the public internet and the Pi is not.
+
+    The first version was a regex allowing example.com/org/net and refusing
+    example.hr — which is this repo's own Croatian fixture. A guard that cries
+    wolf on its own seed data gets switched off, so the reserved domains are
+    matched by rule rather than by list."""
+    invented = _push_module().invented
+    for ok in ["a@example.com", "b@example.hr", "c@example.invalid",
+               "d@sub.example.org", "e@anything.test", "f@localhost"]:
+        assert invented(ok), f"refused its own seed data: {ok}"
+    for real in ["someone@gmail.com", "pastor@church.hr", "chase@thauma.one",
+                 "a@example.com.evil.net"]:
+        assert not invented(real), f"treated a real address as fake: {real}"
+
+
+def t_push_sql_replays_into_a_fresh_database():
+    """The generated statements have to survive foreign keys AND the triggers,
+    which is what the load order is for. Built from a synthetic source so this
+    runs anywhere, with no local D1 file needed."""
+    push = _push_module()
+
+    src = fresh()
+    src.row_factory = sqlite3.Row
+    src.execute("INSERT INTO partners (id,slug,display_name,status,created_at,updated_at)"
+                " VALUES ('p_a','a','A','active',?,?)", (NOW, NOW))
+    src.execute("INSERT INTO users (id,email,name,global_role,status,created_at)"
+                " VALUES ('u_a','a@example.invalid','A','admin','active',?)", (NOW,))
+    _list(src, "ml_1", "p_a")
+    src.execute("INSERT INTO subscribers (id,list_id,partner_id,email,status,"
+                "subscribed_at,updated_at) VALUES ('s_1','ml_1','p_a',"
+                "'x@example.invalid','subscribed',?,?)", (NOW, NOW))
+    src.execute("INSERT INTO milestones (id,partner_id,status,completion,is_public,"
+                "sort_order,created_at,updated_at) VALUES ('m_1','p_a','upcoming',0,1,0,?,?)",
+                (NOW, NOW))
+    src.execute("INSERT INTO milestone_translations (milestone_id,partner_id,lang,title,"
+                "updated_at) VALUES ('m_1','p_a','en','T',?)", (NOW,))
+
+    order = push.load_order(src, push.copyable_tables(src))
+    sql, total = push.build_sql(src, order)
+    assert total >= 6, f"only {total} rows generated"
+
+    tgt = fresh()
+    tgt.execute("PRAGMA foreign_keys = ON")
+    tgt.executescript("\n".join(sql))          # raises if the order is wrong
+
+    assert not tgt.execute("PRAGMA foreign_key_check").fetchall(), "foreign keys broken"
+    for t in ("partners", "users", "subscribers", "milestones", "milestone_translations"):
+        a = src.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
+        b = tgt.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
+        assert a == b, f"{t}: {a} rows became {b}"
+
+
 def t_seed_files_insert_every_row_they_claim():
     """Every INSERT in a seed file must actually land.
 
@@ -1409,6 +1490,9 @@ if __name__ == "__main__":
         ("one channel, a playlist per partner",           t_two_partners_may_read_two_playlists_from_one_channel),
         ("pull loads parents before children",           t_pull_staging_loads_parents_before_children),
         ("pull never copies audit log or sessions",      t_pull_staging_never_copies_the_audit_log_or_sessions),
+        ("push can never target production",             t_push_can_never_be_pointed_at_production),
+        ("push tells seed addresses from real ones",     t_push_tells_seed_addresses_from_real_ones),
+        ("push SQL replays into a fresh database",       t_push_sql_replays_into_a_fresh_database),
         ("buttons follow the channel's switch",          t_buttons_follow_the_channels_publication_switch),
         ("no channel publishes no buttons",              t_a_partner_with_no_channel_publishes_no_buttons),
         ("one partner's buttons are not another's",      t_one_partners_buttons_are_not_anothers),

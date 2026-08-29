@@ -89,6 +89,21 @@ SKIP_TABLES = {
 }
 
 
+def copyable_tables(con):
+    """Tables whose ROWS are ours to move.
+
+    Excludes anything starting with an underscore as well as the named skips:
+    `_cf_METADATA` is Cloudflare's own bookkeeping inside the local D1 file,
+    and copying it in either direction means writing one deployment's internal
+    state into another. It is also absent on the far side, which is how it was
+    found — a COUNT against it came back with no rows at all.
+    """
+    return [r[0] for r in con.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' "
+        "AND name NOT LIKE 'sqlite_%' ORDER BY name")
+        if r[0] not in SKIP_TABLES and not r[0].startswith("_")]
+
+
 def load_order(con, tables):
     """Tables ordered so a row's parents exist before it does.
 
@@ -195,10 +210,7 @@ def main():
             + "\n  ".join(sorted(there - here))
             + "\n\nApply them locally first, then re-run.")
 
-    tables = [r[0] for r in con.execute(
-        "SELECT name FROM sqlite_master WHERE type='table' "
-        "AND name NOT LIKE 'sqlite_%' ORDER BY name")
-        if r[0] not in SKIP_TABLES]
+    tables = copyable_tables(con)
 
     print(f"  local file : {path}")
     print(f"  staging    : {STAGING}\n")
