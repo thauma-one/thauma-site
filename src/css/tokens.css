@@ -64,6 +64,14 @@
   --voice-human-glow: 0 0 26px rgba(92,242,196,.35);
   --voice-human-on:   #06110c;
 
+  /* THE TWO CONSOLES, NAMED ONCE AND FIXED. Deliberately NOT the voice pair:
+     .is-admin redefines --voice-tech to amber, so a badge built on it was blue
+     on staff pages and amber on admin ones — the same label, two colours,
+     depending which page you happened to be looking at. These are what the
+     console header means by "staff" and "administration", everywhere. */
+  --console-staff:    #2FD8FF;
+  --console-admin:    #F5B845;
+
   /* Site-native aliases. main.css has said --blue/--foam since
      V4 and they read better in context than the generic role
      names; both spellings are live so nothing has to be

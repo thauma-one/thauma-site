@@ -31,8 +31,6 @@
    staff one. */
 .admin-stripe{position:fixed;top:0;left:0;right:0;height:3px;z-index:50;
   background:linear-gradient(90deg,#F5B845,#FFD584 45%,#F5B845)}
-.is-admin .top{top:3px}
-.is-admin body{padding-top:3px}
 
 .mark em{color:var(--voice-tech)}
 

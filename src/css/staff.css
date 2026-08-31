@@ -1784,16 +1784,19 @@ html:not(.roles-known)[data-area="admin"] .console-row[data-row="admin"]{display
 html:not(.roles-known)[data-area="staff"] .console-row[data-row="staff"] nav a,
 html:not(.roles-known)[data-area="admin"] .console-row[data-row="admin"] nav a{display:block}
 
-/* FIXED WIDTH, so the two navs start at the same x. Left to size themselves,
-   "Staff" and "Administration" are different widths and the two rows stagger
-   by forty pixels, which reads as a mistake. */
-.console-badge{flex:none;width:92px;text-align:center;
-  font-size:9.5px;font-weight:var(--w-bold);letter-spacing:var(--ls-label);
-  text-transform:uppercase;padding:4px 0;border-radius:3px}
-/* The two consoles are the two house voices — the ministry's own work, and the
-   organisation's. Reusing them keeps the header inside the palette. */
-.console-badge.is-staff{color:var(--voice-tech);background:var(--voice-tech-dim)}
-.console-badge.is-admin{color:var(--voice-human);background:var(--voice-human-dim)}
+/* PLAIN COLOURED TEXT, not a filled pill. The mockup drew these as chips and
+   they were built that way; on the real page two filled blocks stacked down
+   the left read as buttons and pulled more weight than the navigation beside
+   them. This is the treatment the wordmark's STAFF label already used.
+
+   FIXED WIDTH, so the two navs start at the same x. Left to size themselves,
+   "Staff" and "Administration" differ by about forty pixels and the rows
+   stagger, which reads as a bug. */
+.console-badge{flex:none;width:92px;
+  font-size:11px;font-weight:var(--w-bold);letter-spacing:var(--ls-caps);
+  text-transform:uppercase;white-space:nowrap}
+.console-badge.is-staff{color:var(--console-staff)}
+.console-badge.is-admin{color:var(--console-admin)}
 
 /* nowrap AND scrollable. Wrapping is what broke this; hiding the overflow
    would silently cut a page off the end. A scroll is visible and recoverable,
@@ -1807,8 +1810,8 @@ html:not(.roles-known)[data-area="admin"] .console-row[data-row="admin"] nav a{d
   flex:none}
 .console-row nav a:hover{color:var(--text)}
 .console-row nav a[aria-current]{color:var(--text)}
-.console-row[data-row="staff"] nav a[aria-current]{border-bottom-color:var(--voice-tech)}
-.console-row[data-row="admin"] nav a[aria-current]{border-bottom-color:var(--voice-human)}
+.console-row[data-row="staff"] nav a[aria-current]{border-bottom-color:var(--console-staff)}
+.console-row[data-row="admin"] nav a[aria-current]{border-bottom-color:var(--console-admin)}
 
 .console-actions{flex:none;display:flex;align-items:center;gap:12px}
 /* The name is the least important thing in the header and was the widest.
