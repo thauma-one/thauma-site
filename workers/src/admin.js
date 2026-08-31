@@ -292,7 +292,17 @@ export default {
       return json({
         // id included so the People list can tell which row is YOU and
         // not offer "view as" on your own account.
-        you: { id: me.user_id, email: user.email, name: me.user_name || null, roles: ["admin"] },
+        /* EVERY role this account holds, not the one that got it in here.
+           This said `roles: ["admin"]` — true as far as authorisation goes,
+           since requireAdmin has already established it, but this is an
+           IDENTITY payload and other things read it. The console header uses
+           it to decide which navigation rows you get, so an administrator who
+           is also a partner saw the staff row painted from cache, then removed
+           the moment this landed: it flashed on every admin page they opened.
+           Same expression as staff-data.js, so both consoles agree about who
+           somebody is. */
+        you: { id: me.user_id, email: user.email, name: me.user_name || null,
+               roles: String(me.roles || "").split(",").filter(Boolean) },
 
         /* The banner belongs on THESE pages too. Administration is always
            performed as yourself — requireAdmin deliberately ignores the

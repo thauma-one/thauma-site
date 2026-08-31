@@ -51,13 +51,19 @@
        living inside the first one. Putting it in a row meant the actions moved
        down the header when a second row appeared, and moved back when it did
        not. -#}
+    {#- The buttons on one line, the name UNDER them. Side by side, the name
+       was the widest thing in the header and the row it competed with was the
+       navigation — which is the part people came for. Stacked, it costs
+       nothing horizontally and the header keeps its width for links. -#}
     <div class="console-actions">
+      <div class="console-actions-row">
+        <a class="area-switch" href="/" target="_blank" rel="noopener">
+          <span data-i18n="nav.viewSite">Public site</span>
+          <span class="area-arrow" aria-hidden="true">&#8599;</span>
+        </a>
+        <a class="ghost-btn" href="/cdn-cgi/access/logout" data-i18n="nav.signout">Sign out</a>
+      </div>
       <span class="pill" id="partnerPill" hidden></span>
-      <a class="area-switch" href="/" target="_blank" rel="noopener">
-        <span data-i18n="nav.viewSite">Public site</span>
-        <span class="area-arrow" aria-hidden="true">&#8599;</span>
-      </a>
-      <a class="ghost-btn" href="/cdn-cgi/access/logout" data-i18n="nav.signout">Sign out</a>
     </div>
 
   </div>

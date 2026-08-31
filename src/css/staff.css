@@ -1792,9 +1792,12 @@ html:not(.roles-known)[data-area="admin"] .console-row[data-row="admin"] nav a{d
    FIXED WIDTH, so the two navs start at the same x. Left to size themselves,
    "Staff" and "Administration" differ by about forty pixels and the rows
    stagger, which reads as a bug. */
-.console-badge{flex:none;width:92px;
-  font-size:11px;font-weight:var(--w-bold);letter-spacing:var(--ls-caps);
-  text-transform:uppercase;white-space:nowrap}
+/* 9px with a tight track. At 11px on --ls-caps, "ADMINISTRATION" is fourteen
+   characters of about 8px each — some 112px in a 92px box, so it ran straight
+   under the navigation beside it. Measured rather than nudged. */
+.console-badge{flex:none;width:96px;
+  font-size:9px;font-weight:var(--w-bold);letter-spacing:.11em;
+  text-transform:uppercase;white-space:nowrap;overflow:hidden}
 .console-badge.is-staff{color:var(--console-staff)}
 .console-badge.is-admin{color:var(--console-admin)}
 
@@ -1813,13 +1816,16 @@ html:not(.roles-known)[data-area="admin"] .console-row[data-row="admin"] nav a{d
 .console-row[data-row="staff"] nav a[aria-current]{border-bottom-color:var(--console-staff)}
 .console-row[data-row="admin"] nav a[aria-current]{border-bottom-color:var(--console-admin)}
 
-.console-actions{flex:none;display:flex;align-items:center;gap:12px}
+/* A column: buttons, then the name beneath them. */
+.console-actions{flex:none;display:flex;flex-direction:column;
+  align-items:flex-end;justify-content:center;gap:5px;padding:6px 0}
+.console-actions-row{display:flex;align-items:center;gap:12px}
 /* The name is the least important thing in the header and was the widest.
    Capped so it gives way to the navigation rather than the other way round —
    measured, because eight staff links at the old sizes needed ~742px of the
    ~692px this layout has at its maximum width, which is why Settings was
    being pushed onto a second line. */
-.console-actions .pill{max-width:150px;overflow:hidden;text-overflow:ellipsis;
+.console-actions .pill{max-width:190px;overflow:hidden;text-overflow:ellipsis;
   white-space:nowrap}
 
 @media (max-width:1100px){

@@ -9,6 +9,7 @@
  * log by design. The role check is the only thing in the way, so it is what
  * these tests are about.
  */
+import fs from "node:fs";
 import handler, { STANDARD_SENDERS, orgDomain, senderProblem } from "../src/admin.js";
 import { readFileSync } from "node:fs";
 import { QUERIES } from "../src/lib/db.js";
@@ -217,6 +218,37 @@ await check("the last-administrator check counts only ACTIVE admins", async () =
   const sql = QUERIES.admin_count_admins;
   assert(/role\s*=\s*'admin'/.test(sql), "does not filter on the admin role");
   assert(/status\s*=\s*'active'/.test(sql), "counts inactive administrators");
+});
+
+await check("BOTH CONSOLES DESCRIBE A PERSON THE SAME WAY", async () => {
+  /* admin.js returned a literal `roles: ["admin"]`. True for authorisation —
+     requireAdmin has already established it — but this is an IDENTITY payload
+     and the console header reads it to decide which navigation rows you get.
+     So an administrator who is also a partner had the staff row painted from
+     cache and then removed the moment this landed: it flashed on every admin
+     page they opened, and stayed only on the pages that never called it.
+
+     Asserted across the two files rather than through a request, because this
+     endpoint has no signed-token harness and the bug is not in either file
+     alone — it is the two of them disagreeing. */
+  const read = (f) => fs.readFileSync(new URL(f, import.meta.url), "utf8");
+  const identityRoles = (src, where) => {
+    const at = src.indexOf("you: {");
+    assert(at !== -1, `${where}: no identity payload found`);
+    const block = src.slice(at, at + 400);
+    const m = block.match(/roles:\s*([^,\n]+(?:\n[^,\n]+)?)/);
+    assert(m, `${where}: identity payload has no roles`);
+    return m[1].replace(/\s+/g, " ").trim();
+  };
+
+  const mine = identityRoles(read("../src/admin.js"), "admin.js");
+  const theirs = identityRoles(read("../src/staff-data.js"), "staff-data.js");
+
+  assert(!/^\[/.test(mine),
+    `admin.js hardcodes its identity roles as ${mine} — the console header ` +
+    `reads this and will drop every other row the account has`);
+  assert(mine.includes("me.roles") && theirs.includes("me.roles"),
+    `both should derive roles from me.roles — admin.js: ${mine}, staff-data.js: ${theirs}`);
 });
 
 await check("removing a user takes their roles and access with them", async () => {
