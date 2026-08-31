@@ -515,10 +515,80 @@
       $('partnerPill').title = who.email || '';
     }
 
-    // The door to administration, shown only to people who can open it. The
-    // endpoint refuses everyone else regardless — this is about not offering.
-    if ($('toAdmin')) $('toAdmin').hidden = raw.indexOf('admin') < 0;
+    /* The door to administration used to be a single link revealed here. The
+       header now carries both consoles and shows the rows this account has, so
+       somebody who is both does not travel between two places — they are in
+       one. applyNav is what replaced it. */
+    applyNav(raw);
   }
+
+  /* =====================================================================
+     THE NAV THIS ACCOUNT ACTUALLY HAS
+     =====================================================================
+     Both consoles are rendered into every page — Eleventy cannot know who is
+     asking, and building a variant per role would ship the whole console
+     several times over. So each row and each link carries the roles it is for
+     and the wrong ones are removed here.
+
+     PRESENTATION ONLY. Every endpoint checks the role itself and must: a
+     hidden link is a tidier console, not a closed door.
+
+     WHAT HAPPENS BEFORE THE IDENTITY ARRIVES is the part worth getting right.
+     Rows are rendered hidden, so doing nothing would leave a bare header until
+     the first fetch came back — the "titles pop in late" problem this project
+     already set out to remove. So: a cached identity is applied before first
+     paint, and failing that the row for the page you are ON is shown whole
+     until the real answer lands. Nobody sees an empty header, and nobody sees
+     a link appear that they cannot use for longer than one request. */
+  function matches(el, roles) {
+    var want = (el.getAttribute('data-roles') || '').split(/\s+/).filter(Boolean);
+    if (!want.length) return true;          // unrestricted
+    for (var i = 0; i < want.length; i++) {
+      if (roles.indexOf(want[i]) !== -1) return true;
+    }
+    return false;
+  }
+
+  function applyNav(roles) {
+    var rows = document.querySelectorAll('.console-row');
+    if (!rows.length) return;
+    var firstVisible = null;
+
+    Array.prototype.forEach.call(rows, function (row) {
+      var links = row.querySelectorAll('nav a');
+      var kept = 0;
+      Array.prototype.forEach.call(links, function (a) {
+        var ok = matches(a, roles);
+        a.hidden = !ok;
+        if (ok) kept++;
+      });
+      /* A row with nothing left in it is not a row. This is why the two-row
+         header needs no special case: it is simply what happens when both
+         rows keep something. */
+      row.hidden = kept === 0;
+      if (!row.hidden && !firstVisible) firstVisible = row;
+    });
+
+    /* The wordmark goes to a console this account actually has. It used to be
+       hardcoded to /staff/, which sent a board member to a page that refused
+       them the moment they clicked their own logo. */
+    var home = $('consoleHome');
+    if (home && firstVisible) {
+      home.href = firstVisible.getAttribute('data-row') === 'admin' ? '/admin/' : '/staff/';
+    }
+  }
+
+  /* Before anything is fetched: the cached identity if there is one, otherwise
+     show the area this page belongs to and let the real roles narrow it. */
+  (function primeNav() {
+    var cached = null;
+    try { cached = JSON.parse(sessionStorage.getItem(IDENT) || 'null'); } catch (e) {}
+    if (cached && cached.roles) { applyNav(cached.roles); return; }
+
+    var here = document.body.classList.contains('is-admin') ? 'admin' : 'staff';
+    var row = document.querySelector('.console-row[data-row="' + here + '"]');
+    if (row) row.hidden = false;
+  })();
 
   /* Called by any page whose data included an identity block. */
   function rememberIdentity(who, partner) {

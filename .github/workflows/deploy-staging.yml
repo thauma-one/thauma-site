@@ -63,6 +63,7 @@ jobs:
           node test/composer-toolbar.test.mjs
           node test/mailing-preview.test.mjs
           node test/videos-console.test.mjs
+          node test/console-nav.test.mjs
           node test/admin-console.test.mjs
           cd workers && npm test
 

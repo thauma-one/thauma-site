@@ -1720,3 +1720,51 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
   .vid-link-row input[data-vl="url"]{grid-column:1 / -1;order:2}
   .vid-link-row .ghost-btn{order:1}
 }
+
+/* ================================================== THE CONSOLE HEADER
+   One header, one or two rows, decided by the account. See
+   src/_data/consoleNav.js for who gets which line.
+   ==================================================================== */
+.console{position:sticky;top:0;z-index:20;background:var(--bg);
+  border-bottom:1px solid var(--line)}
+.console-in{max-width:1240px;margin:0 auto;padding:0 var(--gutter);
+  display:flex;align-items:stretch;gap:24px}
+
+/* Its own column so it sits beside BOTH rows rather than inside the first. */
+.console-mark{display:flex;align-items:center;flex:none;
+  letter-spacing:var(--ls-mark)}
+
+.console-rows{flex:1;min-width:0;display:flex;flex-direction:column}
+/* The separator only exists when there are two rows to separate, which is why
+   it is on the row rather than between them. */
+.console-row + .console-row{border-top:1px solid var(--line)}
+.console-row{display:flex;align-items:center;gap:18px;min-height:54px;
+  padding:6px 0}
+.console-row[hidden]{display:none}
+
+.console-badge{flex:none;font-size:10px;font-weight:var(--w-bold);
+  letter-spacing:var(--ls-label);text-transform:uppercase;
+  padding:4px 9px;border-radius:3px}
+/* The two consoles are the two house voices — the ministry's own work and the
+   organisation's. Reusing them rather than inventing a second pair keeps the
+   header inside the palette. */
+.console-badge.is-staff{color:var(--voice-tech);background:var(--voice-tech-dim)}
+.console-badge.is-admin{color:var(--voice-human);background:var(--voice-human-dim)}
+
+.console-row nav{display:flex;gap:22px;flex-wrap:wrap;min-width:0}
+.console-row nav a{font-size:var(--fs-sm);color:var(--dim);padding:4px 0;
+  text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap}
+.console-row nav a:hover{color:var(--text)}
+.console-row nav a[aria-current]{color:var(--text)}
+.console-row[data-row="staff"] nav a[aria-current]{border-bottom-color:var(--voice-tech)}
+.console-row[data-row="admin"] nav a[aria-current]{border-bottom-color:var(--voice-human)}
+.console-row nav a[hidden]{display:none}
+
+.console-actions{flex:none;display:flex;align-items:center;gap:14px}
+
+@media (max-width:900px){
+  .console-in{flex-wrap:wrap;gap:12px;padding-top:8px;padding-bottom:8px}
+  .console-rows{order:3;flex-basis:100%}
+  .console-actions{margin-left:auto}
+  .console-row{min-height:auto;gap:12px}
+}

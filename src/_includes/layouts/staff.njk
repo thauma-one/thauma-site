@@ -20,16 +20,6 @@
    The comment lives OUT here rather than inside the array: nunjucks parses a
    `set` as one expression, and a comment inside it is a syntax error rather
    than a comment. -#}
-{%- set pages = [
-  { slug: "index",       url: "/staff/",             label: "Dashboard" },
-  { slug: "ministry",    url: "/staff/ministry/",    label: "Ministry" },
-  { slug: "mailing",     url: "/staff/mailing/",     label: "Mailing" },
-  { slug: "stewardship", url: "/staff/stewardship/", label: "Stewardship" },
-  { slug: "directory",   url: "/staff/directory/",   label: "Directory" },
-  { slug: "resources",   url: "/staff/resources/",   label: "Resources" },
-  { slug: "activity",    url: "/staff/activity/",    label: "Activity" },
-  { slug: "settings",    url: "/staff/settings/",    label: "Settings" }
-] -%}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -43,40 +33,7 @@
 </head>
 <body class="is-staff" data-staff-page="{{ staffPage }}">
 
-<header class="top"><div class="top-in">
-  <a class="mark" href="/staff/">THAUMA<em data-i18n="mark.staff">STAFF</em></a>
-  <nav>
-    {%- for p in pages %}
-    <a href="{{ p.url }}"{% if p.slug == staffPage %} aria-current="page"{% endif %}
-       data-i18n="nav.{{ p.slug if p.slug != 'index' else 'dashboard' }}">{{ p.label }}</a>
-    {%- endfor %}
-  </nav>
-  <div class="top-r">
-    {#- WHO IS SIGNED IN. Hidden until known, rather than sitting there reading
-       "—" as though a value failed to arrive. -#}
-    {#- Revealed by staff.js only when the account holds the admin role. A
-       console that shows everyone a link to a place most of them are refused
-       teaches people to ignore refusals. -#}
-    {#- Reads as a DESTINATION, not a role. It said "Administration" while the
-       role beside it also said "Administration", so the header showed the same
-       word twice and neither looked like a link. -#}
-    <a class="area-switch" id="toAdmin" href="/admin/" hidden>
-      <span data-i18n="adm.toAdmin">Admin area</span>
-      <span class="area-arrow" aria-hidden="true">&rarr;</span>
-    </a>
-    {#- THE WAY OUT OF THE CONSOLE ENTIRELY. Both areas could reach each other
-       and neither could reach the site they exist to edit, so the only way to
-       look at your own work was to type the address. Opens in its own tab: you
-       come here to CHECK the site, not to leave the console, and a plain link
-       would throw away an unsaved form to do it. -#}
-    <a class="area-switch" href="/" target="_blank" rel="noopener">
-      <span data-i18n="nav.viewSite">Public site</span>
-      <span class="area-arrow" aria-hidden="true">&#8599;</span>
-    </a>
-    <span class="pill" id="partnerPill" hidden></span>
-    <a class="ghost-btn" href="/cdn-cgi/access/logout" data-i18n="nav.signout">Sign out</a>
-  </div>
-</div></header>
+{% include "console-header.njk" %}
 
 <main>
   <div class="page-head">

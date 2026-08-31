@@ -1,0 +1,59 @@
+{#- console-header.njk — ONE header for both consoles
+
+   There were two, and they drifted: the staff one grew a link to the admin
+   area, the admin one grew a way back, and neither could describe somebody who
+   belonged in both. This renders BOTH rows and lets the account decide which
+   it gets — one row for most people, two for somebody who is genuinely both.
+
+   EVERY LINK IS RENDERED AND THEN HIDDEN, rather than rendered conditionally.
+   The pages are static: Eleventy does not know who is asking, and building a
+   variant per role would mean shipping the whole console several times over.
+   So the roles ride along in `data-roles` and staff.js removes what does not
+   apply, from an identity it already has cached before first paint.
+
+   WHICH MEANS THIS IS NOT A SECURITY BOUNDARY, and nothing here should ever be
+   mistaken for one. Every endpoint checks the role itself. A hidden link is a
+   tidier console, not a closed door. -#}
+
+<header class="console">
+  <div class="console-in">
+
+    {#- The wordmark is a link to whichever console the person actually has.
+       It used to be hardcoded to /staff/, which sent a board member to a page
+       that refused them the moment they clicked their own logo. -#}
+    <a class="mark console-mark" id="consoleHome" href="/staff/">THAUMA</a>
+
+    <div class="console-rows">
+      {%- for area in ["staff", "admin"] %}
+      {%- set list = consoleNav.staff if area == "staff" else consoleNav.admin %}
+      {%- set current = staffPage if area == "staff" else adminPage %}
+      <div class="console-row" data-row="{{ area }}"
+           data-roles="{{ consoleNav.rows[area] | join(' ') }}" hidden>
+        <span class="console-badge is-{{ area }}"
+              data-i18n="nav.badge.{{ area }}">{{ "Staff" if area == "staff" else "Administration" }}</span>
+        <nav>
+          {%- for p in list %}
+          <a href="{{ p.url }}" data-roles="{{ p.roles | join(' ') }}"
+             {% if p.slug == current %}aria-current="page"{% endif %}
+             data-i18n="{{ ('nav.' + ('dashboard' if p.slug == 'index' else p.slug)) if area == 'staff' else ('adm.nav.' + p.slug) }}">{{ p.label }}</a>
+          {%- endfor %}
+        </nav>
+      </div>
+      {%- endfor %}
+    </div>
+
+    {#- Vertically centred beside however many rows there are, rather than
+       living inside the first one. Putting it in a row meant the actions moved
+       down the header when a second row appeared, and moved back when it did
+       not. -#}
+    <div class="console-actions">
+      <span class="pill" id="partnerPill" hidden></span>
+      <a class="area-switch" href="/" target="_blank" rel="noopener">
+        <span data-i18n="nav.viewSite">Public site</span>
+        <span class="area-arrow" aria-hidden="true">&#8599;</span>
+      </a>
+      <a class="ghost-btn" href="/cdn-cgi/access/logout" data-i18n="nav.signout">Sign out</a>
+    </div>
+
+  </div>
+</header>
