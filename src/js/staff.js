@@ -508,9 +508,14 @@
     // Name and role in ONE chip. They were two elements side by side, which
     // made the right of the header four items wide and wrapped the lot onto a
     // second line inside a header that could not grow.
+    /* THE NAME ONLY. This used to append the role list, which was useful when
+       the header had no other way to say which console you were in. The two
+       badges say it now, so the chip was repeating them — and reading
+       "Administration · partner" beside a row labelled ADMINISTRATION was
+       both redundant and the widest thing in the header, which is part of why
+       the nav had no room and wrapped. */
     if (who.name && $('partnerPill')) {
-      $('partnerPill').innerHTML = esc(who.name) +
-        (roles.length ? '<span class="role">' + esc(roles.join(' · ')) + '</span>' : '');
+      $('partnerPill').textContent = who.name;
       $('partnerPill').hidden = false;
       $('partnerPill').title = who.email || '';
     }

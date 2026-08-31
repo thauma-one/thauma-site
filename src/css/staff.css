@@ -1724,47 +1724,73 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
 /* ================================================== THE CONSOLE HEADER
    One header, one or two rows, decided by the account. See
    src/_data/consoleNav.js for who gets which line.
+
+   THE FIRST VERSION LET THE NAV WRAP, which was wrong in a way that only
+   showed on a real screen: eight links wrapped to a second line, the badge
+   centred itself against the taller block and floated into the middle of it,
+   and each row grew to about a hundred pixels. A header is a single line of
+   navigation or it is a mess — so nothing in here wraps, and the escape valve
+   when it genuinely does not fit is a scroll, not a second line.
    ==================================================================== */
 .console{position:sticky;top:0;z-index:20;background:var(--bg);
   border-bottom:1px solid var(--line)}
 .console-in{max-width:1240px;margin:0 auto;padding:0 var(--gutter);
-  display:flex;align-items:stretch;gap:24px}
+  display:flex;align-items:stretch;gap:20px}
 
 /* Its own column so it sits beside BOTH rows rather than inside the first. */
 .console-mark{display:flex;align-items:center;flex:none;
   letter-spacing:var(--ls-mark)}
 
 .console-rows{flex:1;min-width:0;display:flex;flex-direction:column}
-/* The separator only exists when there are two rows to separate, which is why
+/* The separator exists only when there are two rows to separate, which is why
    it is on the row rather than between them. */
 .console-row + .console-row{border-top:1px solid var(--line)}
-.console-row{display:flex;align-items:center;gap:18px;min-height:54px;
-  padding:6px 0}
+.console-row{display:flex;align-items:center;gap:14px;min-height:46px;
+  min-width:0}
 .console-row[hidden]{display:none}
 
-.console-badge{flex:none;font-size:10px;font-weight:var(--w-bold);
-  letter-spacing:var(--ls-label);text-transform:uppercase;
-  padding:4px 9px;border-radius:3px}
-/* The two consoles are the two house voices — the ministry's own work and the
-   organisation's. Reusing them rather than inventing a second pair keeps the
-   header inside the palette. */
+/* FIXED WIDTH, so the two navs start at the same x. Left to size themselves,
+   "Staff" and "Administration" are different widths and the two rows stagger
+   by forty pixels, which reads as a mistake. */
+.console-badge{flex:none;width:92px;text-align:center;
+  font-size:9.5px;font-weight:var(--w-bold);letter-spacing:var(--ls-label);
+  text-transform:uppercase;padding:4px 0;border-radius:3px}
+/* The two consoles are the two house voices — the ministry's own work, and the
+   organisation's. Reusing them keeps the header inside the palette. */
 .console-badge.is-staff{color:var(--voice-tech);background:var(--voice-tech-dim)}
 .console-badge.is-admin{color:var(--voice-human);background:var(--voice-human-dim)}
 
-.console-row nav{display:flex;gap:22px;flex-wrap:wrap;min-width:0}
-.console-row nav a{font-size:var(--fs-sm);color:var(--dim);padding:4px 0;
-  text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap}
+/* nowrap AND scrollable. Wrapping is what broke this; hiding the overflow
+   would silently cut a page off the end. A scroll is visible and recoverable,
+   and on a wide screen it never engages. */
+.console-row nav{display:flex;gap:16px;flex-wrap:nowrap;min-width:0;
+  overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none}
+.console-row nav::-webkit-scrollbar{display:none}
+.console-row nav a{font-size:13px;color:var(--dim);padding:3px 0;
+  text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap;
+  flex:none}
 .console-row nav a:hover{color:var(--text)}
 .console-row nav a[aria-current]{color:var(--text)}
 .console-row[data-row="staff"] nav a[aria-current]{border-bottom-color:var(--voice-tech)}
 .console-row[data-row="admin"] nav a[aria-current]{border-bottom-color:var(--voice-human)}
 .console-row nav a[hidden]{display:none}
 
-.console-actions{flex:none;display:flex;align-items:center;gap:14px}
+.console-actions{flex:none;display:flex;align-items:center;gap:12px}
+/* The name is the least important thing in the header and was the widest.
+   Capped so it gives way to the navigation rather than the other way round —
+   measured, because eight staff links at the old sizes needed ~742px of the
+   ~692px this layout has at its maximum width, which is why Settings was
+   being pushed onto a second line. */
+.console-actions .pill{max-width:150px;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap}
 
-@media (max-width:900px){
-  .console-in{flex-wrap:wrap;gap:12px;padding-top:8px;padding-bottom:8px}
+@media (max-width:1100px){
+  .console-mark{display:none}
+  .console-badge{width:80px}
+}
+@media (max-width:820px){
+  .console-in{flex-wrap:wrap;gap:8px;padding-top:8px;padding-bottom:8px}
+  .console-mark{display:flex}
   .console-rows{order:3;flex-basis:100%}
   .console-actions{margin-left:auto}
-  .console-row{min-height:auto;gap:12px}
 }
