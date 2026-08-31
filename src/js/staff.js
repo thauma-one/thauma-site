@@ -559,6 +559,17 @@
     if (!rows.length) return;
     var firstVisible = null;
 
+    /* THE SAME CLASSES console-roles-head.njk SET, now from the real identity
+       rather than a cache. Setting them again is what makes a stale cache
+       correct itself within one request — and when the cache was right, this
+       changes nothing, which is why the nav no longer moves after it paints. */
+    var el = document.documentElement;
+    el.className = el.className.replace(/\brole-[a-z]+\b/g, '').trim();
+    roles.forEach(function (r) {
+      el.classList.add('role-' + String(r).replace(/[^a-z]/gi, ''));
+    });
+    el.classList.add('roles-known');
+
     Array.prototype.forEach.call(rows, function (row) {
       var links = row.querySelectorAll('nav a');
       var kept = 0;
@@ -583,16 +594,17 @@
     }
   }
 
-  /* Before anything is fetched: the cached identity if there is one, otherwise
-     show the area this page belongs to and let the real roles narrow it. */
+  /* The cached identity, applied before the first fetch so the per-link state
+     matches what the head script already painted.
+
+     NO FALLBACK BRANCH HERE any more. When there is nothing cached, CSS shows
+     the console this page belongs to (see the [data-area] rules) — doing it
+     here as well meant JavaScript and stylesheet both deciding, and they
+     disagreed for one frame on every page. */
   (function primeNav() {
     var cached = null;
     try { cached = JSON.parse(sessionStorage.getItem(IDENT) || 'null'); } catch (e) {}
-    if (cached && cached.roles) { applyNav(cached.roles); return; }
-
-    var here = document.body.classList.contains('is-admin') ? 'admin' : 'staff';
-    var row = document.querySelector('.console-row[data-row="' + here + '"]');
-    if (row) row.hidden = false;
+    if (cached && cached.roles && cached.roles.length) applyNav(cached.roles);
   })();
 
   /* Called by any page whose data included an identity block. */

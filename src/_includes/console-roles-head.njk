@@ -1,0 +1,35 @@
+{#- console-roles-head.njk — decide the nav BEFORE the header paints
+
+   Goes in <head>, deliberately, and is inline rather than a file: it has to
+   run before the browser reaches the header, and a <script src> can be
+   delayed long enough to lose that race.
+
+   THE PROBLEM IT SOLVES. Rows used to be revealed by staff.js after the page
+   had painted, and again when the identity fetch returned — so a two-row
+   account watched the nav appear, then grow, on every single page. This
+   settles it from a cached identity before anything is drawn, which is the
+   same trick staff-i18n.js already uses to stop the console rendering in
+   English and correcting itself.
+
+   IT SETS CLASSES, NOT STYLES. CSS decides what a role can see; this only says
+   which roles are in play. staff.js sets the same classes again when the real
+   identity arrives, so a stale cache self-corrects within one request — and a
+   correct one changes nothing, which is the point.
+
+   `data-area` is the fallback for a first-ever visit with nothing cached:
+   show the console this page belongs to rather than an empty header. -#}
+<script>
+(function () {
+  var el = document.documentElement;
+  el.setAttribute('data-area', '{{ "admin" if adminPage else "staff" }}');
+  try {
+    var who = JSON.parse(sessionStorage.getItem('thauma.staff.who') || 'null');
+    if (who && who.roles && who.roles.length) {
+      for (var i = 0; i < who.roles.length; i++) {
+        el.classList.add('role-' + String(who.roles[i]).replace(/[^a-z]/gi, ''));
+      }
+      el.classList.add('roles-known');
+    }
+  } catch (e) { /* no storage, or nothing cached: data-area carries it */ }
+})();
+</script>

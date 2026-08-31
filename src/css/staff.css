@@ -1745,9 +1745,44 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
 /* The separator exists only when there are two rows to separate, which is why
    it is on the row rather than between them. */
 .console-row + .console-row{border-top:1px solid var(--line)}
-.console-row{display:flex;align-items:center;gap:14px;min-height:46px;
+.console-row{display:flex;align-items:center;gap:26px;min-height:46px;
   min-width:0}
 .console-row[hidden]{display:none}
+
+/* ---- WHO SEES WHICH LINE, decided by CSS so it is true in the first paint.
+   The alternative was staff.js revealing rows after the page had drawn, which
+   meant a two-row account watched the nav appear and then grow on every page.
+   console-roles-head.njk puts the roles on <html> before the header is
+   reached; these rules do the rest, and staff.js only has to agree.
+
+   Everything is hidden by default. A role that does not exist therefore sees
+   nothing rather than everything, which is the safer way round for a rule
+   nobody will read again. */
+.console-row, .console-row nav a{display:none}
+.console-row{align-items:center}
+
+/* Shown when the account holds the role, and not when the element has been
+   hidden outright — staff.js still sets [hidden] once it knows for certain,
+   and that has to win over anything here. */
+html.role-admin .console-row.r-admin:not([hidden]),
+html.role-staff .console-row.r-staff:not([hidden]),
+html.role-partner .console-row.r-partner:not([hidden]),
+html.role-board .console-row.r-board:not([hidden]),
+html.role-communications .console-row.r-communications:not([hidden]){display:flex}
+
+html.role-admin .console-row nav a.r-admin:not([hidden]),
+html.role-staff .console-row nav a.r-staff:not([hidden]),
+html.role-partner .console-row nav a.r-partner:not([hidden]),
+html.role-board .console-row nav a.r-board:not([hidden]),
+html.role-communications .console-row nav a.r-communications:not([hidden]){display:block}
+
+/* NOTHING CACHED — a first visit. Show the console this page belongs to,
+   whole, rather than an empty header. One request later the real roles arrive
+   and narrow it. */
+html:not(.roles-known)[data-area="staff"] .console-row[data-row="staff"],
+html:not(.roles-known)[data-area="admin"] .console-row[data-row="admin"]{display:flex}
+html:not(.roles-known)[data-area="staff"] .console-row[data-row="staff"] nav a,
+html:not(.roles-known)[data-area="admin"] .console-row[data-row="admin"] nav a{display:block}
 
 /* FIXED WIDTH, so the two navs start at the same x. Left to size themselves,
    "Staff" and "Administration" are different widths and the two rows stagger
@@ -1766,6 +1801,7 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
 .console-row nav{display:flex;gap:16px;flex-wrap:nowrap;min-width:0;
   overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none}
 .console-row nav::-webkit-scrollbar{display:none}
+/* display is governed by the role rules above; everything else is here. */
 .console-row nav a{font-size:13px;color:var(--dim);padding:3px 0;
   text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap;
   flex:none}
@@ -1773,7 +1809,6 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
 .console-row nav a[aria-current]{color:var(--text)}
 .console-row[data-row="staff"] nav a[aria-current]{border-bottom-color:var(--voice-tech)}
 .console-row[data-row="admin"] nav a[aria-current]{border-bottom-color:var(--voice-human)}
-.console-row nav a[hidden]{display:none}
 
 .console-actions{flex:none;display:flex;align-items:center;gap:12px}
 /* The name is the least important thing in the header and was the widest.

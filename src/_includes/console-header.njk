@@ -27,13 +27,18 @@
       {%- for area in ["staff", "admin"] %}
       {%- set list = consoleNav.staff if area == "staff" else consoleNav.admin %}
       {%- set current = staffPage if area == "staff" else adminPage %}
-      <div class="console-row" data-row="{{ area }}"
-           data-roles="{{ consoleNav.rows[area] | join(' ') }}" hidden>
+      {#- The roles are BOTH a class and an attribute. The class is what CSS
+         matches, so the right rows are there in the first paint; the attribute
+         is what staff.js reads afterwards. Same list, two readers. -#}
+      <div class="console-row r-{{ consoleNav.rows[area] | join(' r-') }}"
+           data-row="{{ area }}"
+           data-roles="{{ consoleNav.rows[area] | join(' ') }}">
         <span class="console-badge is-{{ area }}"
               data-i18n="nav.badge.{{ area }}">{{ "Staff" if area == "staff" else "Administration" }}</span>
         <nav>
           {%- for p in list %}
-          <a href="{{ p.url }}" data-roles="{{ p.roles | join(' ') }}"
+          <a href="{{ p.url }}" class="r-{{ p.roles | join(' r-') }}"
+             data-roles="{{ p.roles | join(' ') }}"
              {% if p.slug == current %}aria-current="page"{% endif %}
              data-i18n="{{ ('nav.' + ('dashboard' if p.slug == 'index' else p.slug)) if area == 'staff' else ('adm.nav.' + p.slug) }}">{{ p.label }}</a>
           {%- endfor %}
