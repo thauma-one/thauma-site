@@ -560,8 +560,15 @@
             '" data-name="' + esc(u.name || u.email) + '">' +
               esc(tr('act.viewAs')) + '</button>'
           : '') +
-        '<button type="button" class="del" data-remove="' + esc(u.id) + '">' +
-          esc(tr('adm.removePerson')) + '</button>' +
+        /* THE PROTECTED ACCOUNT GETS NO REMOVE BUTTON. The database refuses
+           the delete outright and the endpoint refuses before that — but a
+           button whose only outcome is a refusal is a button that teaches
+           people to distrust refusals. It says why instead. */
+        (u.protected
+          ? '<span class="adm-protected" title="' + esc(tr('adm.protectedWhy')) + '">' +
+              esc(tr('adm.protected')) + '</span>'
+          : '<button type="button" class="del" data-remove="' + esc(u.id) + '">' +
+              esc(tr('adm.removePerson')) + '</button>') +
       '</div>' +
     '</div>';
   }

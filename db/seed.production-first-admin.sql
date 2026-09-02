@@ -20,11 +20,17 @@
 -- ---------- the person ------------------------------------------------------
 -- global_role is the legacy single-role column kept in step with user_roles
 -- below; the roles table is what the Worker actually reads.
+-- `protected` is what makes this the account that cannot be removed — see
+-- db/migrations/0026_protected_account.sql. Set here as well as in the
+-- migration, because a database seeded AFTER that migration would otherwise
+-- get the account without the protection: the migration marks rows that
+-- already exist, and this one does not exist yet when it runs.
 INSERT OR IGNORE INTO users
-  (id, email, name, global_role, status, created_at, last_login_at, preferred_lang)
+  (id, email, name, global_role, status, created_at, last_login_at, preferred_lang,
+   protected)
 VALUES
   ('u_admin', 'admin@thauma.one', 'Chase Roush', 'admin', 'active',
-   datetime('now'), NULL, 'en');
+   datetime('now'), NULL, 'en', 1);
 
 -- ---------- what they may do ------------------------------------------------
 -- granted_by is themselves: there was nobody else to do it, and recording a

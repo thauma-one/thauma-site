@@ -377,6 +377,9 @@ ON CONFLICT(partner_id, lang) DO UPDATE SET
 -- GROUP_CONCATs rather than two round trips; the console splits them.
 SELECT
   u.id, u.email, u.name, u.status, u.created_at, u.last_login_at,
+  -- So the screen can say why the controls are missing, rather than offering
+  -- buttons the database will refuse. See 0026_protected_account.sql.
+  u.protected,
   COALESCE(u.preferred_lang, 'en') AS preferred_lang,
   (SELECT GROUP_CONCAT(r.role) FROM user_roles r WHERE r.user_id = u.id) AS roles,
   (SELECT GROUP_CONCAT(p.display_name, ' | ')

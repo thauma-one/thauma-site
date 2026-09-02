@@ -578,6 +578,82 @@ def t_push_sql_replays_into_a_fresh_database():
         assert a == b, f"{t}: {a} rows became {b}"
 
 
+def _protected_pair(db):
+    """The protected account, and an ordinary administrator beside it — so
+    every assertion can show the rule applies to ONE row rather than to
+    administrators in general."""
+    db.execute("INSERT INTO users (id,email,name,global_role,status,created_at,protected)"
+               " VALUES ('u_keep','admin@thauma.one','Keep','admin','active',?,1)", (NOW,))
+    db.execute("INSERT INTO users (id,email,name,global_role,status,created_at)"
+               " VALUES ('u_other','x@example.invalid','Other','admin','active',?)", (NOW,))
+    for uid in ("u_keep", "u_other"):
+        db.execute("INSERT INTO user_roles (user_id,role,granted_by,granted_at)"
+                   " VALUES (?,'admin','u_keep',?)", (uid, NOW))
+    return db
+
+
+def _refused(db, sql):
+    try:
+        db.execute(sql)
+        return None
+    except sqlite3.IntegrityError as e:
+        return str(e)
+
+
+def t_the_protected_account_cannot_be_removed_or_disabled():
+    """wouldStrandOrg() in admin.js already refuses to remove the LAST active
+    administrator, but that is dynamic: with two administrators either may go.
+    This is the other guarantee — one named account that survives regardless,
+    enforced where every code path has to pass rather than in one endpoint."""
+    db = _protected_pair(fresh())
+
+    for what, sql in [
+        ("delete", "DELETE FROM users WHERE id='u_keep'"),
+        ("suspend", "UPDATE users SET status='suspended' WHERE id='u_keep'"),
+        ("un-invite", "UPDATE users SET status='invited' WHERE id='u_keep'"),
+        # Clearing the flag is deletion in two steps.
+        ("un-protect", "UPDATE users SET protected=0 WHERE id='u_keep'"),
+        # An administrator with no admin role is locked out of the thing this
+        # account exists to guarantee.
+        ("drop admin role", "DELETE FROM user_roles WHERE user_id='u_keep' AND role='admin'"),
+    ]:
+        assert _refused(db, sql), f"{what} was ALLOWED on the protected account"
+
+    assert db.execute("SELECT status, protected FROM users WHERE id='u_keep'"
+                      ).fetchone() == ("active", 1)
+
+
+def t_protection_applies_to_that_account_only():
+    """A rule that quietly protected every administrator would be discovered
+    the first time somebody genuinely had to remove one."""
+    db = _protected_pair(fresh())
+    db.execute("DELETE FROM user_roles WHERE user_id='u_other' AND role='admin'")
+    db.execute("UPDATE users SET status='suspended' WHERE id='u_other'")
+    db.execute("DELETE FROM users WHERE id='u_other'")
+    # fresh() seeds other accounts, so this asks about these two rather than
+    # about the whole table.
+    left = {r[0] for r in db.execute("SELECT id FROM users")}
+    assert "u_other" not in left, "the ordinary administrator survived a delete"
+    assert "u_keep" in left, "the protected account went with it"
+
+
+def t_the_protected_account_may_still_be_renamed_and_readdressed():
+    """The address is the one field somebody may genuinely need to correct, and
+    locking it would mean a typo at setup time is permanent. Deletion is the
+    thing being prevented, not maintenance."""
+    db = _protected_pair(fresh())
+    db.execute("UPDATE users SET email='ops@thauma.one', name='Ops' WHERE id='u_keep'")
+    got = db.execute("SELECT email, name FROM users WHERE id='u_keep'").fetchone()
+    assert got == ("ops@thauma.one", "Ops"), got
+
+
+def t_the_console_can_tell_which_account_is_protected():
+    """Otherwise the screen offers a Remove button whose only outcome is a
+    refusal, which teaches people that refusals are noise."""
+    sql, _ = _query("admin_users")
+    assert "protected" in sql, "admin_users does not expose the flag"
+
+
 def t_seed_files_insert_every_row_they_claim():
     """Every INSERT in a seed file must actually land.
 
@@ -1488,6 +1564,10 @@ if __name__ == "__main__":
         ("repointing a channel forgets the old check",   t_repointing_a_channel_forgets_when_the_old_one_was_checked),
         ("a playlist is stored as a playlist",            t_a_playlist_is_stored_as_one_and_a_channel_stays_a_channel),
         ("one channel, a playlist per partner",           t_two_partners_may_read_two_playlists_from_one_channel),
+        ("the protected account cannot be removed",      t_the_protected_account_cannot_be_removed_or_disabled),
+        ("protection applies to that account only",      t_protection_applies_to_that_account_only),
+        ("the protected account can still be renamed",   t_the_protected_account_may_still_be_renamed_and_readdressed),
+        ("the console can see which is protected",       t_the_console_can_tell_which_account_is_protected),
         ("pull loads parents before children",           t_pull_staging_loads_parents_before_children),
         ("pull never copies audit log or sessions",      t_pull_staging_never_copies_the_audit_log_or_sessions),
         ("push can never target production",             t_push_can_never_be_pointed_at_production),

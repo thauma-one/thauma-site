@@ -134,6 +134,24 @@ async function actingInfo(db, request) {
   };
 }
 
+/**
+ * Is this the account that cannot be removed?
+ *
+ * The DATABASE refuses this too — see 0026_protected_account.sql — and that is
+ * the guarantee. This exists so the refusal reads as a sentence rather than
+ * arriving as "SQLITE_CONSTRAINT" through an error path written for something
+ * else. Two layers, and only the lower one is load-bearing.
+ */
+async function isProtected(db, userId) {
+  const users = await db.query("admin_users", {});
+  const u = users.find((x) => x.id === userId);
+  return !!(u && u.protected);
+}
+
+const PROTECTED_MSG =
+  "That account is protected: it is the one that can always get back in. " +
+  "Removing or suspending it would need a database migration, on purpose.";
+
 /** Would this change leave the organisation with no administrator? */
 async function wouldStrandOrg(db, { userId, removingRole, removingUser }) {
   if (removingRole && removingRole !== "admin" && !removingUser) return false;
@@ -571,6 +589,9 @@ export default {
         if (!ROLES.has(body.role)) return json({ error: "Unknown role" }, 400);
         if (!userId) return json({ error: "user_id is required" }, 400);
 
+        if (!body.grant && body.role === "admin" && await isProtected(db, userId)) {
+          return json({ error: PROTECTED_MSG }, 409);
+        }
         if (!body.grant && await wouldStrandOrg(db, { userId, removingRole: body.role })) {
           return json({
             error: "That is the last active administrator. Appoint another " +
@@ -649,6 +670,13 @@ export default {
         const users = await db.query("admin_users", {});
         const target = users.find((u) => u.id === userId);
         if (!target) return json({ error: "No such user" }, 404);
+
+        /* Renaming it is fine; deactivating it is not. Checked here as well as
+           in the trigger so the answer is a sentence rather than a constraint
+           error surfacing through a path written for something else. */
+        if (status && status !== "active" && target.protected) {
+          return json({ error: PROTECTED_MSG }, 409);
+        }
 
         if (status && status !== "active" &&
             await wouldStrandOrg(db, { userId, removingUser: true })) {
@@ -815,6 +843,8 @@ export default {
       if (id === me.user_id) {
         return json({ error: "You cannot remove your own account." }, 409);
       }
+      if (await isProtected(db, id)) return json({ error: PROTECTED_MSG }, 409);
+
       if (await wouldStrandOrg(db, { userId: id, removingUser: true })) {
         return json({
           error: "That is the last active administrator. Appoint another first.",
@@ -839,6 +869,9 @@ async function listUsers(db) {
   return users.map((u) => ({
     ...u,
     roles: String(u.roles || "").split(",").filter(Boolean),
+    /* SQLite's 1/0 becomes a boolean here, as is_featured does in the partner
+       API — the screen asks "is this protected", not "is this one". */
+    protected: !!u.protected,
     partner_ids: String(u.partner_ids || "").split(",").filter(Boolean),
     partner_names: String(u.partner_names || "").split(" | ").filter(Boolean),
   }));

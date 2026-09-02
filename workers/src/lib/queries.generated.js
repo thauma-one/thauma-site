@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "9bfb7faa5f20f382";
+export const SOURCE_DIGEST = "5a1b2793bf9fa8e4";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -85,6 +85,7 @@ VALUES (:id, :email, :name, 'staff', 'invited', :now);`,
   admin_user_set: `UPDATE users SET name = :name, status = :status WHERE id = :id;`,
   admin_users: `SELECT
   u.id, u.email, u.name, u.status, u.created_at, u.last_login_at,
+  u.protected,
   COALESCE(u.preferred_lang, 'en') AS preferred_lang,
   (SELECT GROUP_CONCAT(r.role) FROM user_roles r WHERE r.user_id = u.id) AS roles,
   (SELECT GROUP_CONCAT(p.display_name, ' | ')

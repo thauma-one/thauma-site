@@ -729,3 +729,9 @@
 @media (max-width:600px){
   .p-sync-row{grid-template-columns:1fr auto auto;gap:10px}
 }
+
+/* The account that cannot be removed, where its Remove button would be. Quiet
+   and non-interactive: it is a statement of fact, not a control. */
+.adm-protected{font-size:11px;letter-spacing:var(--ls-label);text-transform:uppercase;
+  color:var(--dim);border:1px solid var(--line);border-radius:3px;padding:5px 9px;
+  white-space:nowrap;cursor:help}
