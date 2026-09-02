@@ -27,6 +27,7 @@
 import { createDb } from "./lib/db.js";
 import { requireAccess } from "./lib/access.js";
 import { json, readJson } from "./lib/store.js";
+import { addEmail, removeEmail } from "./lib/access-group.js";
 import { sendMail, inviteEmail } from "./lib/mail.js";
 import { requestedTarget } from "./lib/actas.js";
 
@@ -477,18 +478,38 @@ export default {
         to: email, name, byName: me.user_name || user.email, byEmail: user.email,
       });
 
+      /* THE OTHER DOOR. A row here has never let anybody in — Cloudflare
+         Access decides who reaches the site at all, and until now that list
+         was maintained by hand in a second dashboard.
+
+         AFTER the account exists, and its failure does not undo anything, for
+         the same reason the invite works that way: the account is the real
+         thing, and "created, but could not be added to Access" is a state an
+         administrator can act on. Rolling back somebody's account because
+         Cloudflare was briefly unhappy would be worse. */
+      const access = await addEmail(env, email).catch((e) => ({ ok: false, reason: e.message }));
+
       await audit(db, { user, action: "create", entity: "user", entity_id: id,
                         detail: { email, name, invited: invite.ok,
-                                  invite_error: invite.ok ? undefined : invite.error } });
+                                  invite_error: invite.ok ? undefined : invite.error,
+                                  access: access.ok ? (access.already ? "already" : "added")
+                                                    : access.reason } });
 
       return json({
         created: id,
         invited: invite.ok,
         invite_error: invite.ok ? undefined : invite.error,
-        // Said here because it is the thing people get wrong: a row in this
-        // table is not an account. Access decides who can sign in.
-        note: "Invited. They also need adding to Cloudflare Access, and their " +
-              "status set to active, before they can sign in.",
+        access: access.ok
+          ? { done: true, already: !!access.already, group: access.group }
+          : { done: false, reason: access.reason },
+
+        /* The note now depends on what actually happened, rather than always
+           telling somebody to do a job that may already be done. */
+        note: access.ok
+          ? "Invited, and added to Cloudflare Access. Set their status to " +
+            "active when they have confirmed, and they can sign in."
+          : "Invited. They must ALSO be added to Cloudflare Access by hand, " +
+            "and their status set to active, before they can sign in.",
         users: await listUsers(db),
       });
     }
@@ -851,11 +872,38 @@ export default {
         }, 409);
       }
 
+      /* ACCESS FIRST ON THE WAY OUT, and that asymmetry with adding is
+         deliberate. Adding somebody is a record with two follow-ups, so the
+         record goes first and a failed follow-up is reported. Removing
+         somebody has one urgent half — that they can no longer get in — and
+         if this fails the database row is still here to retry from. Deleting
+         the row first would leave an address in Access with nothing left in
+         the console pointing at it. */
+      const everyone = await db.query("admin_users", {});
+      const target = everyone.find((u) => u.id === id);
+      const keep = everyone.filter((u) => u.protected).map((u) => u.email);
+      const revoked = target
+        ? await removeEmail(env, target.email, { keep })
+            .catch((e) => ({ ok: false, reason: e.message }))
+        : { ok: false, reason: "no such user" };
+
+      if (!revoked.ok && !revoked.reason.includes("not wired up")) {
+        /* Refused rather than half-done. An account removed here but still in
+           Access is somebody who can still reach the sign-in page — and the
+           administrator would have no reason to think so. */
+        return json({
+          error: "Removed nothing: that address could not be taken out of " +
+                 "Cloudflare Access, so they would still be able to sign in. " +
+                 revoked.reason,
+        }, 502);
+      }
+
       await db.query("admin_user_delete", { id });
       // Recorded BEFORE the row is gone would be better, but audit_log keeps
       // the email rather than a foreign key, so the record survives the delete.
-      await audit(db, { user, action: "delete", entity: "user", entity_id: id });
-      return json({ deleted: id, users: await listUsers(db) });
+      await audit(db, { user, action: "delete", entity: "user", entity_id: id,
+                        detail: { access: revoked.ok ? "revoked" : revoked.reason } });
+      return json({ deleted: id, access: revoked.ok, users: await listUsers(db) });
     }
 
     return json({ error: "Method not allowed" }, 405, {

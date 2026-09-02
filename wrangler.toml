@@ -151,6 +151,23 @@ database_id = "db7fcd6a-56e2-4a67-98da-3da87e95dc86"
 # authorise anything on its own. Real secrets (RESEND_API_KEY,
 # GAME_ADMIN_TOKEN) go in via `wrangler secret put` and never live here.
 [vars]
+# CLOUDFLARE ACCESS — the other door.
+#
+# A row in `users` has never let anybody in; Access decides who reaches the
+# site at all. These let the People page keep the two lists in step, so adding
+# somebody is one action in one place instead of two dashboards.
+#
+# NEITHER IS A SECRET. The account id is in every dashboard URL and in the
+# deploy workflows already; the group name is a label somebody typed. The
+# credential is ACCESS_API_TOKEN, set with `wrangler secret put`.
+#
+# ONE ZERO TRUST ORGANISATION SITS BEHIND ALL THREE ENVIRONMENTS — Access is
+# account-wide, not per-deployment — so dev writes to the same group
+# production reads. Deliberate while nothing is live; the accounts invented
+# while testing have to be cleared out before launch, and removing somebody in
+# the console takes them out of Access too, so that is one screen.
+ACCESS_ACCOUNT_ID = "57c887d9191048d984a7607c9e9334b7"
+ACCESS_GROUP_NAME = "Thauma console"
 ACCESS_TEAM_DOMAIN = "thaumaone.cloudflareaccess.com"
 # Comma-separated: one tag per Access application. dev.thauma.one and
 # next.thauma.one are separate applications with separate tags.
@@ -328,6 +345,10 @@ binding = "GAME_SCORES"
 id = "f23971d5b4aa460daba43e97b9d84273"
 
 [env.dev.vars]
+# See the note on ACCESS_ACCOUNT_ID in the top-level [vars]. Repeated because
+# a named environment does not inherit vars from it.
+ACCESS_ACCOUNT_ID = "57c887d9191048d984a7607c9e9334b7"
+ACCESS_GROUP_NAME = "Thauma console"
 ACCESS_TEAM_DOMAIN = "thaumaone.cloudflareaccess.com"
 # dev.thauma.one's own Access application tag first; next's is kept so the
 # same config can be pointed at either hostname without an edit.
@@ -454,6 +475,10 @@ database_name = "thauma-ops"
 database_id = "1a30f6c9-1dc7-42b0-abaa-fab3da334c9e"
 
 [env.production.vars]
+# See the note on ACCESS_ACCOUNT_ID in the top-level [vars]. Repeated because
+# a named environment does not inherit vars from it.
+ACCESS_ACCOUNT_ID = "57c887d9191048d984a7607c9e9334b7"
+ACCESS_GROUP_NAME = "Thauma console"
 ACCESS_TEAM_DOMAIN = "thaumaone.cloudflareaccess.com"
 # thauma.one's OWN Access application tag. Not dev's, not staging's:
 # Access sets CF_Authorization across the parent domain, so another
