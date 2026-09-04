@@ -173,8 +173,14 @@ export async function sendMail(env, { to, subject, html, text, replyTo, from: fr
    So it says what to do if that happens, and names who to ask.
    --------------------------------------------------------------------------- */
 
-export function inviteEmail({ name, origin, invitedBy, invitedByEmail }) {
-  const url = `${origin}/staff/`;
+export function inviteEmail({ name, origin, invitedBy, invitedByEmail, confirmUrl }) {
+  /* THE CONFIRMATION LINK IS THE BUTTON when there is one. It used to open the
+     console directly, which asked somebody to sign in before anything had
+     established that the address reaches them — and left an administrator to
+     remember to switch the account on afterwards. Clicking the link does both.
+     Falls back to the console if a deploy cannot sign links, because an
+     invitation with no way in at all is worse than one that needs a hand. */
+  const url = confirmUrl || `${origin}/staff/`;
   const greeting = name ? `Hi ${esc(name)},` : "Hello,";
 
   const rows =
@@ -183,13 +189,14 @@ export function inviteEmail({ name, origin, invitedBy, invitedByEmail }) {
     p(`${esc(invitedBy)} has set up an account for you. The console is where ` +
       `you manage your supporters, your goals and the milestones that appear ` +
       `on your website.`) +
-    button(url, "Open the console") +
+    button(url, confirmUrl ? "Confirm your account" : "Open the console") +
     p(`<strong style="color:#0f1720;">If you are turned away at the sign-in ` +
       `page</strong>, your address has not been added to the sign-in system ` +
       `yet — that is a separate step. Reply to this message and ${esc(invitedBy)} ` +
       `can finish it.`) +
     p(`<span style="color:#6b7785;font-size:14px;">There is no password to ` +
-      `set. Signing in sends a one-time code to this address.</span>`);
+      `set. Signing in sends a one-time code to this address.` +
+      (confirmUrl ? ` This link is good for seven days.` : ``) + `</span>`);
 
   const footer =
     `You are receiving this because an administrator added ` +
@@ -204,7 +211,7 @@ export function inviteEmail({ name, origin, invitedBy, invitedByEmail }) {
     `${invitedBy} has set up an account for you. The console is where you manage`,
     "your supporters, your goals and the milestones that appear on your website.",
     "",
-    `Open the console: ${url}`,
+    confirmUrl ? `Confirm your account: ${url}` : `Open the console: ${url}`,
     "",
     "If you are turned away at the sign-in page, your address has not been added",
     "to the sign-in system yet — that is a separate step. Reply to this message",

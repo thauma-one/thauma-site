@@ -116,19 +116,35 @@ check("every route the Worker claims is in run_worker_first, in all 3 environmen
   });
 });
 
-check("a route added to the Worker was added to the allow-list too", () => {
-  // Catches the next one rather than only the last two.
+check("a route added to the Worker was added to EVERY environment's allow-list", () => {
+  /* Derived from the ROUTES table, so it catches the next one rather than only
+     the last two.
+
+     ALL THREE ENVIRONMENTS, which it did not do before: it searched the file
+     from the first `run_worker_first` onwards and any single match satisfied
+     it. /confirm-account was added to the top-level list, this passed, and dev
+     and production would both have 404'd the confirmation link — the exact
+     failure this test exists to prevent, hidden by the test itself. The two
+     one-line lists further down the file are easy to miss by hand, which is
+     the whole reason for checking them here. */
   const declared = [...WORKER.matchAll(/^\s*"(\/[a-z0-9/.-]*)":\s*\w/gim)].map((m) => m[1]);
   assert(declared.length > 3, `only found ${declared.length} routes — did ROUTES move?`);
-  const list = TOML.slice(TOML.indexOf("run_worker_first"));
-  for (const path of declared) {
-    // A prefix entry like "/api/*" covers everything beneath it.
-    const PREFIXES = ["/api", "/staff", "/admin", "/media", "/embed/v1",
-                      "/archive", "/.netlify/functions"];
-    const covered = list.includes(`"${path}"`) ||
-      PREFIXES.some((pre) => path.startsWith(pre + "/") && list.includes(`"${pre}/*"`));
-    assert(covered, `${path} is routed in worker.js but not in run_worker_first`);
-  }
+
+  const blocks = TOML.split(/run_worker_first\s*=\s*\[/).slice(1)
+    .map((b) => b.slice(0, b.indexOf("]")));
+  assert(blocks.length === 3, `expected 3 environments, found ${blocks.length}`);
+
+  const PREFIXES = ["/api", "/staff", "/admin", "/media", "/embed/v1",
+                    "/archive", "/.netlify/functions"];
+  blocks.forEach((list, i) => {
+    for (const path of declared) {
+      const covered = list.includes(`"${path}"`) ||
+        PREFIXES.some((pre) => path.startsWith(pre + "/") && list.includes(`"${pre}/*"`));
+      assert(covered,
+        `environment ${i + 1} routes ${path} in worker.js but does not list it in ` +
+        `run_worker_first — it will 404 there while the code behind it is correct`);
+    }
+  });
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

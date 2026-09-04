@@ -28,6 +28,7 @@ import { createDb } from "./lib/db.js";
 import { requireAccess } from "./lib/access.js";
 import { json, readJson } from "./lib/store.js";
 import { addEmail, removeEmail } from "./lib/access-group.js";
+import { linkParams } from "./lib/signed-link.js";
 import { sendMail, inviteEmail } from "./lib/mail.js";
 import { requestedTarget } from "./lib/actas.js";
 
@@ -100,9 +101,26 @@ async function audit(db, { user, action, entity, entity_id = null, detail = null
  * from production points at production. A hard-coded site URL is how a test
  * invite ends up telling somebody to sign in to the live site.
  */
-async function sendInvite(request, env, { to, name, byName, byEmail }) {
+async function sendInvite(request, env, { to, name, byName, byEmail, userId }) {
   const origin = new URL(request.url).origin;
-  const mail = inviteEmail({ name, origin, invitedBy: byName, invitedByEmail: byEmail });
+
+  /* A link that turns their account on, signed so it needs no session — they
+     cannot have one yet. If this deploy cannot sign (no SIGNUP_SALT) the
+     invitation still goes, pointing at the console: an administrator then
+     switches them on by hand, which is exactly what happened before. Worse,
+     not broken. */
+  let confirmUrl = null;
+  if (userId) {
+    try {
+      confirmUrl = `${origin}/confirm-account?` +
+                   await linkParams(env, "confirm", userId);
+    } catch (err) {
+      console.error("invite: could not sign a confirmation link:", err.message);
+    }
+  }
+
+  const mail = inviteEmail({ name, origin, invitedBy: byName,
+                             invitedByEmail: byEmail, confirmUrl });
   return await sendMail(env, {
     to,
     subject: mail.subject,
@@ -475,7 +493,8 @@ export default {
          state an administrator can act on. Rolling back a person's account
          because Resend was briefly unhappy would be worse. */
       const invite = await sendInvite(request, env, {
-        to: email, name, byName: me.user_name || user.email, byEmail: user.email,
+        to: email, name, userId: id,
+        byName: me.user_name || user.email, byEmail: user.email,
       });
 
       /* THE OTHER DOOR. A row here has never let anybody in — Cloudflare
@@ -594,8 +613,10 @@ export default {
         const target = (await db.query("admin_users", {})).find((u) => u.id === userId);
         if (!target) return json({ error: "No such account." }, 404);
 
+        /* A FRESH link, not the original. The one being replaced has almost
+           certainly expired — that is usually why somebody is resending. */
         const invite = await sendInvite(request, env, {
-          to: target.email, name: target.name,
+          to: target.email, name: target.name, userId: target.id,
           byName: me.user_name || user.email, byEmail: user.email,
         });
         await audit(db, { user, action: "invite", entity: "user", entity_id: userId,

@@ -72,6 +72,10 @@ run_worker_first = [
   "/media/*",
   # The mailing-list confirmation link. Public, and nothing exists on disk.
   "/confirm",
+  # An invited person turning their own account on. Public for the same reason
+  # as the two below: it is the page somebody visits BEFORE they can sign in,
+  # so it cannot be behind the sign-in.
+  "/confirm-account",
   # THE WAY OUT OF A MAILING LIST, and it must never be the thing that 404s.
   # A reader who cannot unsubscribe presses "report spam" instead, and that
   # damages the sending domain for everybody else the ministry writes to.
@@ -282,7 +286,7 @@ directory = "_site"
 binding = "ASSETS"
 html_handling = "auto-trailing-slash"
 not_found_handling = "404-page"
-run_worker_first = ["/", "/api/*", "/.netlify/functions/*", "/staff", "/staff/*", "/admin", "/admin/*", "/embed/v1/*", "/media/*", "/confirm", "/unsubscribe", "/archive/*"]
+run_worker_first = ["/", "/api/*", "/.netlify/functions/*", "/staff", "/staff/*", "/admin", "/admin/*", "/embed/v1/*", "/media/*", "/confirm", "/confirm-account", "/unsubscribe", "/archive/*"]
 
 # LOCAL SIMULATION, INCLUDING THE DATABASE. `wrangler dev` runs D1 and KV in
 # miniflare against state under .wrangler/state — NOT against thauma-ops-dev.
@@ -427,7 +431,7 @@ directory = "_site_prod"
 binding = "ASSETS"
 html_handling = "auto-trailing-slash"
 not_found_handling = "404-page"
-run_worker_first = ["/", "/api/*", "/.netlify/functions/*", "/staff", "/staff/*", "/admin", "/admin/*", "/embed/v1/*", "/media/*", "/confirm", "/unsubscribe", "/archive/*"]
+run_worker_first = ["/", "/api/*", "/.netlify/functions/*", "/staff", "/staff/*", "/admin", "/admin/*", "/embed/v1/*", "/media/*", "/confirm", "/confirm-account", "/unsubscribe", "/archive/*"]
 
 [[env.production.routes]]
 pattern = "thauma.one/*"

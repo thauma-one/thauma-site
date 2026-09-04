@@ -2032,3 +2032,25 @@ SELECT l.label, l.url
   JOIN video_sources c ON c.partner_id IS l.partner_id
  WHERE l.partner_id IS :partner_id AND c.is_public = 1
  ORDER BY l.sort_order, l.label COLLATE NOCASE;
+
+
+-- ===========================================================================
+-- ACCOUNT CONFIRMATION — an invited person proving they hold the address
+-- ===========================================================================
+
+-- name: user_for_confirm
+-- By id, because that is what the signed link carries. No status filter: the
+-- page needs to tell somebody WHY nothing happened, and "already confirmed"
+-- and "no such account" are different sentences.
+SELECT id, email, name, status FROM users WHERE id = :id;
+
+
+-- name: user_confirm
+-- INVITED ONLY, and that is the whole guard. A suspended account must not be
+-- reactivated by an old invitation somebody still has in their inbox — the
+-- administrator who suspended them did so deliberately, and a link cannot
+-- overrule that. Re-running it on an already-active account changes nothing,
+-- which is what makes the link safe to click twice.
+UPDATE users
+   SET status = 'active'
+ WHERE id = :id AND status = 'invited';

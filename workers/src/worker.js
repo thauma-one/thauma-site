@@ -54,6 +54,7 @@ import adminActAs from "./admin-actas.js";
 import adminProfile from "./admin-profile.js";
 import staffVideos from "./staff-videos.js";
 import adminDbSync from "./admin-dbsync.js";
+import confirmAccount from "./confirm-account.js";
 import media, { serve as serveMedia } from "./media.js";
 import { createDb, partnerSnapshot, assertPublicSafe } from "./lib/db.js";
 import { syncAll } from "./lib/video-sync.js";
@@ -247,6 +248,12 @@ const ROUTES = {
 
   // Public, no account. The link in a mailing list confirmation email.
   "/confirm": confirmSubscription,
+
+  /* An invited person turning their own account on. PUBLIC, and it must stay
+     that way: this is the page somebody visits before they can sign in, so
+     gating it would mean needing an account to confirm your account. The
+     signature in the link is the credential. See confirm-account.js. */
+  "/confirm-account": confirmAccount,
 
   /* Public, no account, and it must stay that way: a reader who cannot find
      the way out presses "report spam" instead, and that damages the sending

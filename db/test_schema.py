@@ -654,6 +654,28 @@ def t_the_console_can_tell_which_account_is_protected():
     assert "protected" in sql, "admin_users does not expose the flag"
 
 
+def t_confirming_only_ever_promotes_an_invited_account():
+    """The confirmation link is public and turns an account on, so the one
+    thing it must never do is revive an account somebody switched off. The
+    guard is in the statement rather than the endpoint, so no future caller
+    can forget it."""
+    db = fresh()
+    for uid, status in [("u_inv", "invited"), ("u_sus", "suspended"), ("u_act", "active")]:
+        db.execute("INSERT INTO users (id,email,name,global_role,status,created_at)"
+                   " VALUES (?,?,?,'staff',?,?)",
+                   (uid, uid + "@example.invalid", uid, status, NOW))
+
+    sql, names = _query("user_confirm")
+    for uid in ("u_inv", "u_sus", "u_act"):
+        db.execute(sql, [uid] * len(names))
+
+    got = dict(db.execute("SELECT id, status FROM users WHERE id LIKE 'u_%'"
+                          " AND id IN ('u_inv','u_sus','u_act')"))
+    assert got["u_inv"] == "active", f"an invited account was not confirmed: {got}"
+    assert got["u_sus"] == "suspended", f"A SUSPENDED ACCOUNT WAS REVIVED: {got}"
+    assert got["u_act"] == "active", f"an active account changed: {got}"
+
+
 def t_seed_files_insert_every_row_they_claim():
     """Every INSERT in a seed file must actually land.
 
@@ -1564,6 +1586,7 @@ if __name__ == "__main__":
         ("repointing a channel forgets the old check",   t_repointing_a_channel_forgets_when_the_old_one_was_checked),
         ("a playlist is stored as a playlist",            t_a_playlist_is_stored_as_one_and_a_channel_stays_a_channel),
         ("one channel, a playlist per partner",           t_two_partners_may_read_two_playlists_from_one_channel),
+        ("confirming only promotes an invited account", t_confirming_only_ever_promotes_an_invited_account),
         ("the protected account cannot be removed",      t_the_protected_account_cannot_be_removed_or_disabled),
         ("protection applies to that account only",      t_protection_applies_to_that_account_only),
         ("the protected account can still be renamed",   t_the_protected_account_may_still_be_renamed_and_readdressed),
