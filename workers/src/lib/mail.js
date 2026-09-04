@@ -173,6 +173,63 @@ export async function sendMail(env, { to, subject, html, text, replyTo, from: fr
    So it says what to do if that happens, and names who to ask.
    --------------------------------------------------------------------------- */
 
+/**
+ * Confirming a NEW address, sent to the new address and nowhere else.
+ *
+ * That is the whole design: the only proof that somebody can read an inbox is
+ * that they received something in it. Sending this to the old address would
+ * confirm nothing about the new one.
+ */
+export function emailChangeEmail({ name, origin, oldEmail, newEmail, confirmUrl }) {
+  const greeting = name ? `Hi ${esc(name)},` : "Hello,";
+
+  const rows =
+    h1("Confirm your new address") +
+    p(greeting) +
+    p(`Somebody asked to change the address on your Thauma account from ` +
+      `<strong style="color:#0f1720;">${esc(oldEmail)}</strong> to this one. ` +
+      `Confirming finishes the change; until then nothing has moved.`) +
+    button(confirmUrl, "Confirm this address") +
+    p(`<span style="color:#6b7785;font-size:14px;">This link is good for ` +
+      `seven days. After it is confirmed you will sign in with this address ` +
+      `instead, and the one-time code comes here.</span>`) +
+    p(`<strong style="color:#0f1720;">If this was not you</strong>, do nothing ` +
+      `— the change does not happen on its own — and tell an administrator, ` +
+      `because it means somebody was signed in as you.`);
+
+  const footer =
+    `You are receiving this because this address was entered as the new ` +
+    `sign-in address for a Thauma account. If that was not you, no action is ` +
+    `needed: unconfirmed changes expire.`;
+
+  const text = [
+    "Confirm your new address",
+    "",
+    name ? `Hi ${name},` : "Hello,",
+    "",
+    `Somebody asked to change the address on your Thauma account from`,
+    `${oldEmail} to this one. Confirming finishes the change; until then`,
+    "nothing has moved.",
+    "",
+    `Confirm this address: ${confirmUrl}`,
+    "",
+    "This link is good for seven days. After it is confirmed you will sign in",
+    "with this address instead, and the one-time code comes here.",
+    "",
+    "If this was not you, do nothing — the change does not happen on its own —",
+    "and tell an administrator, because it means somebody was signed in as you.",
+    "",
+    "--",
+    footer,
+  ].join("\n");
+
+  return {
+    subject: "Confirm your new Thauma address",
+    html: shell({ heading: "Confirm your new address", rows, footer }),
+    text,
+  };
+}
+
 export function inviteEmail({ name, origin, invitedBy, invitedByEmail, confirmUrl }) {
   /* THE CONFIRMATION LINK IS THE BUTTON when there is one. It used to open the
      console directly, which asked somebody to sign in before anything had

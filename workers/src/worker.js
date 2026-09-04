@@ -55,6 +55,8 @@ import adminProfile from "./admin-profile.js";
 import staffVideos from "./staff-videos.js";
 import adminDbSync from "./admin-dbsync.js";
 import confirmAccount from "./confirm-account.js";
+import confirmEmail from "./confirm-email.js";
+import staffAccount from "./staff-account.js";
 import media, { serve as serveMedia } from "./media.js";
 import { createDb, partnerSnapshot, assertPublicSafe } from "./lib/db.js";
 import { syncAll } from "./lib/video-sync.js";
@@ -254,6 +256,16 @@ const ROUTES = {
      gating it would mean needing an account to confirm your account. The
      signature in the link is the credential. See confirm-account.js. */
   "/confirm-account": confirmAccount,
+
+  /* Finishing a change of sign-in address. Public for the same reason as the
+     line above, and one sharper: the person is proving they can read the NEW
+     inbox, possibly on a device that has never signed in. See
+     confirm-email.js. */
+  "/confirm-email": confirmEmail,
+
+  /* Starting one. Authenticated, and it deliberately ignores "acting as" —
+     changing who you are is not something done on somebody's behalf. */
+  "/api/staff-account": staffAccount,
 
   /* Public, no account, and it must stay that way: a reader who cannot find
      the way out presses "report spam" instead, and that damages the sending

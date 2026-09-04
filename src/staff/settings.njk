@@ -27,10 +27,23 @@ staffHint: some of these change what the public sees
       <p id="setEmail">—</p>
     </div>
     <div class="set-control">
-      {#- Access owns the identity, so there is no password here to change and
-         pretending otherwise would send people looking for a control that
-         does not exist. -#}
-      <p class="note-inline" data-i18n="set.identityNote">Your sign-in is managed by Cloudflare Access. Changing your email address or password is done there, not here.</p>
+      {#- THERE IS STILL NO PASSWORD. Access owns sign-in and sends a one-time
+         code, so pretending otherwise would send people hunting for a control
+         that does not exist. The ADDRESS is different: it is the identity
+         here, so a typo in it needs an administrator and a Cloudflare
+         dashboard to fix unless this exists. -#}
+      <p class="note-inline" data-i18n="set.identityNote">There is no password. Signing in sends a one-time code to your address, so changing that address is the one thing worth doing here.</p>
+
+      <form class="set-email" id="setEmailForm">
+        <label class="fld">
+          <span data-i18n="set.newEmail">New email address</span>
+          <em data-i18n="set.newEmailHint">nothing changes until you open the link we send there</em>
+          <input type="email" id="setNewEmail" autocomplete="email" spellcheck="false"
+                 placeholder="you@example.org">
+        </label>
+        <button type="submit" class="ghost-btn" data-i18n="set.sendEmailLink">Send confirmation</button>
+        <p class="set-email-note" id="setEmailNote"></p>
+      </form>
     </div>
   </div>
 

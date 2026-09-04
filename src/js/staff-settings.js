@@ -316,3 +316,56 @@
   showTab((location.hash || '#account').slice(1));
   load();
 })();
+
+/* ============================================================
+   CHANGING YOUR OWN SIGN-IN ADDRESS
+   ============================================================
+   Email is the identity here — there is no password, and Access sends the
+   one-time code to whatever address it holds. So this is the only piece of
+   self-service account management that means anything.
+
+   IT SENDS, IT DOES NOT CHANGE. The request goes to the NEW address and the
+   account moves only when somebody opens the link in it. The wording below
+   says so twice, because "we've sent you something" and "your address has
+   changed" are very different things to be wrong about.
+   ============================================================ */
+(function () {
+  'use strict';
+
+  var form = document.getElementById('setEmailForm');
+  if (!form) return;
+
+  function tr(k) { return window.StaffI18n ? window.StaffI18n.t(k) : k; }
+  function note(msg, bad) {
+    var el = document.getElementById('setEmailNote');
+    el.textContent = msg || '';
+    el.className = 'set-email-note' + (bad ? ' is-bad' : '');
+  }
+
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var field = document.getElementById('setNewEmail');
+    var email = field.value.trim();
+    if (!email) { note(tr('set.emailNeeded'), true); return; }
+
+    var btn = form.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    note(tr('set.emailSending'));
+    try {
+      var res = await fetch('/api/staff-account', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email }),
+      });
+      var data = await res.json();
+      if (!res.ok) { note(data.error || tr('common.saveFailed'), true); return; }
+      note(data.note || tr('set.emailSent'));
+      field.value = '';
+    } catch (err) {
+      note(tr('common.saveFailed'), true);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+})();

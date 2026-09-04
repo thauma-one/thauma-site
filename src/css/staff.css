@@ -1838,3 +1838,9 @@ html:not(.roles-known)[data-area="admin"] .console-row[data-row="admin"] nav a{d
   .console-rows{order:3;flex-basis:100%}
   .console-actions{margin-left:auto}
 }
+
+/* Changing your own sign-in address, on Settings. */
+.set-email{margin-top:14px;max-width:420px}
+.set-email .fld{display:block;margin-bottom:10px}
+.set-email-note{margin-top:10px;font-size:13px;color:var(--dim);min-height:1.2em}
+.set-email-note.is-bad{color:var(--crit,#FF6B6B)}

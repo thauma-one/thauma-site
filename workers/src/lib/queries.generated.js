@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "8b84e080f18adcb4";
+export const SOURCE_DIGEST = "c7a624b75da3f5d1";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -796,7 +796,9 @@ WHERE u.id = :id AND u.status = 'active';`,
   user_confirm: `UPDATE users
    SET status = 'active'
  WHERE id = :id AND status = 'invited';`,
+  user_email_taken: `SELECT id FROM users WHERE email = :email AND id <> :id;`,
   user_for_confirm: `SELECT id, email, name, status FROM users WHERE id = :id;`,
+  user_set_email: `UPDATE users SET email = :email WHERE id = :id;`,
   user_set_preferred_lang: `UPDATE users SET preferred_lang = :lang WHERE email = :email AND status = 'active';`,
   video_link_add: `INSERT INTO video_links (id, partner_id, label, url, sort_order, created_at)
 VALUES (:id, :partner_id, :label, :url, :sort_order, :now);`,

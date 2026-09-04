@@ -2054,3 +2054,17 @@ SELECT id, email, name, status FROM users WHERE id = :id;
 UPDATE users
    SET status = 'active'
  WHERE id = :id AND status = 'invited';
+
+
+-- name: user_email_taken
+-- Somebody ELSE already using this address. users.email is UNIQUE COLLATE
+-- NOCASE, so the database would refuse anyway — this exists to say so in a
+-- sentence, before an email is sent to an address that can never be adopted.
+SELECT id FROM users WHERE email = :email AND id <> :id;
+
+
+-- name: user_set_email
+-- The person's own address, changed after they proved they can read the new
+-- one. Not restricted by status: an invited account correcting a typo in its
+-- own address is exactly when this matters most.
+UPDATE users SET email = :email WHERE id = :id;
