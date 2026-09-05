@@ -58,7 +58,10 @@ async function partnerFor(request, env) {
   if (!partners.length) {
     return { denied: json({
       error: "This account is not attached to a partner yet, so there is " +
-             "nothing here to show. An administrator can grant access.",
+             "nothing here to show. An administrator can grant access." +
+             " Roles on the People page are org-wide and grant nothing " +
+             "here; the partner itself is granted separately, on that " +
+             "person's row.",
       email: user.email,
       you: { email: user.email, name: me.user_name,
              roles: String(me.roles || "").split(",").filter(Boolean) },

@@ -1053,8 +1053,16 @@
           snapshotError('Your session has expired. ' +
             '<a href="/cdn-cgi/access/logout">Sign in again</a>.');
         } else if (res.status === 403) {
+          /* THE SERVER'S OWN SENTENCE, not a guess made here.
+             There are two different 403s — "not an active account" and "no
+             partner yet" — and this branch used to print the second one for
+             both, so an unconfirmed account was reported as a missing partner
+             grant and the reader went looking in the wrong place. The server
+             distinguishes them and says what to do about each; all this has
+             to do is not throw that away. */
           snapshotError('Signed in as <b>' + esc(res.body.email || 'unknown') +
-            '</b>, but that address has no partner access yet.');
+            '</b>. ' + esc(res.body.error ||
+              'That address has no partner access yet.'));
         } else {
           snapshotError('The operations database did not answer (' + res.status + ')' +
             (res.body.error ? ' — ' + esc(res.body.error) : '') + '.');

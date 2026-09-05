@@ -109,7 +109,10 @@ async function scopeFor(request, env) {
   const partners = await db.query("partners_for_user", { email: actor.email });
   if (!partners.length) {
     return { denied: json({
-      error: "This account is not attached to a partner yet.",
+      error: "This account is not attached to a partner yet." +
+             " Roles on the People page are org-wide and grant nothing " +
+             "here; the partner itself is granted separately, on that " +
+             "person's row.",
     }, 403) };
   }
   return { db, user, me, actor, partnerId: partners[0].id, partner: partners[0],

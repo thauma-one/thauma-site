@@ -272,8 +272,10 @@
           res.status === 401
             ? tr('err.expired')
           : res.status === 403
-            ? 'Signed in as ' + (body.email || 'unknown') +
-              ', but that address has no partner access yet.'
+            // The server's own sentence — see the note in staff.js. Two
+            // different 403s were being reported as the same one.
+            ? 'Signed in as ' + (body.email || 'unknown') + '. ' +
+              (body.error || 'That address has no partner access yet.')
             : tr('err.refused') + ' (' + res.status + ')' +
               (body.error ? ' — ' + body.error : '') + '.',
           res.status === 401 ? null : load);
