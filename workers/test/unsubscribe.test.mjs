@@ -88,6 +88,34 @@ await check("a real link unsubscribes", async () => {
   assert(wrote(env), "nobody was unsubscribed");
 });
 
+await check("ONE CLICK BACK ON, from the same link that took them off", async () => {
+  /* An unsubscribe that can only be undone by finding the ministry's website
+     and signing up again means confirming by email a second time to fix a
+     mis-click. The way out and the way back are the same link. */
+  const env = envWith({ id: "sub_1", status: "unsubscribed" });
+  const res = await get(env, `?s=sub_1&t=${await sign(SALT, "sub_1")}&undo=1`);
+  const html = await res.text();
+  eq(res.status, 200, "status");
+  assert(/back on the list/i.test(html), "it does not say they are back");
+  assert(env.calls.some((c) => /SET status = 'subscribed'/i.test(c.sql)),
+    `no resubscribe was written: ${env.calls.map((c) => c.sql.slice(0, 40))}`);
+});
+
+await check("the undo is offered even for a link that was never valid", async () => {
+  /* Offered only after a REAL unsubscribe, it would answer the exact question
+     the identical pages exist to refuse: is this address on the list. */
+  const env = envWith(null);
+  const html = await (await get(env, "?s=sub_9&t=" + "f".repeat(32))).text();
+  assert(/undo=1/.test(html), "a forged link is not offered the undo");
+});
+
+await check("an id with markup in it cannot inject into the undo link", async () => {
+  const env = envWith(null);
+  const html = await (await get(env,
+    "?s=" + encodeURIComponent('"><script>alert(1)</script>') + "&t=b")).text();
+  assert(!/<script>alert/.test(html), "the id reached the page as markup");
+});
+
 await check("a forged link changes nothing, and says the same thing", async () => {
   /* IDENTICAL PAGES. A different answer for "not found" turns this into a way
      to ask whether somebody subscribes to a ministry — a question about their
@@ -103,8 +131,17 @@ await check("a forged link changes nothing, and says the same thing", async () =
 
   assert(!wrote(bad), "a forged token unsubscribed somebody");
   const bodies = await Promise.all([goodRes.text(), badRes.text(), missingRes.text()]);
-  eq(new Set(bodies).size, 1,
+
+  /* The undo link echoes back the id and token that were supplied, so the
+     pages are no longer byte-identical — they differ exactly where the visitor
+     already knew the value, which reveals nothing about who is on a list.
+     Compared with those stripped, and the strip is deliberately narrow: if
+     ANYTHING else came to differ between these three, this still fails. */
+  const strip = (h) => h.replace(/s=[^&"]*&t=[^&"]*/g, "PARAMS");
+  eq(new Set(bodies.map(strip)).size, 1,
     "three different pages — this reports who is on a list");
+  eq(new Set([goodRes.status, badRes.status, missingRes.status]).size, 1,
+    "different status codes answer the same question");
 });
 
 await check("pressing it twice is not an error", async () => {

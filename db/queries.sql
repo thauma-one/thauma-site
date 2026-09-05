@@ -2068,3 +2068,16 @@ SELECT id FROM users WHERE email = :email AND id <> :id;
 -- one. Not restricted by status: an invited account correcting a typo in its
 -- own address is exactly when this matters most.
 UPDATE users SET email = :email WHERE id = :id;
+
+
+-- name: subscriber_resubscribe_by_id
+-- Undoing an unsubscribe, from the same signed link that performed it.
+--
+-- ONLY FROM 'unsubscribed'. Anyone holding a valid unsubscribe link was sent a
+-- mailing, and mailings only go to confirmed subscribers — so restoring them is
+-- returning a state they had, not manufacturing consent. Restricting it to that
+-- one status is what stops an old link reviving somebody who has since bounced,
+-- or promoting a pending sign-up that was never confirmed.
+UPDATE subscribers
+   SET status = 'subscribed', unsubscribed_at = NULL
+ WHERE id = :id AND status = 'unsubscribed';

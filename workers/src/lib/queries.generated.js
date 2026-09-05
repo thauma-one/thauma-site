@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "c7a624b75da3f5d1";
+export const SOURCE_DIGEST = "c61095410a5350d7";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -696,6 +696,9 @@ WHERE id = :id AND status = 'pending'
   subscriber_resend_token: `UPDATE subscribers
 SET confirm_token = :token, subscribed_at = :now, updated_at = :now, name = COALESCE(:name, name)
 WHERE list_id = :list_id AND email = :email AND status = 'pending';`,
+  subscriber_resubscribe_by_id: `UPDATE subscribers
+   SET status = 'subscribed', unsubscribed_at = NULL
+ WHERE id = :id AND status = 'unsubscribed';`,
   subscriber_set_name: `UPDATE subscribers SET name = :name, updated_at = :now WHERE id = :id;`,
   subscriber_set_status: `UPDATE subscribers
 SET status = :status,

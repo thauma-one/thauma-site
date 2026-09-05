@@ -61,10 +61,32 @@ function page(title, body, accent = "#6D4AFF") {
    once, so a shared one serves the first visitor and an empty page to everyone
    after — and constructing a Response at module scope stops the Worker
    starting at all, which takes every route down with it. */
-const DONE = () => new Response(page("Unsubscribed",
+/* THE UNDO IS ALWAYS OFFERED, on every version of this page, including the one
+   shown for a link that was never valid.
+
+   That is deliberate. This page is identical whatever happened precisely so it
+   cannot be used to ask whether an address is on a list — and an undo shown
+   only after a real unsubscribe would answer exactly that question. Clicking
+   it with a bad token does nothing and returns the same page again.
+
+   One click out, one click back. A person who unsubscribed by accident should
+   not have to find the ministry's website and sign up again — which also means
+   confirming by email a second time to fix a mis-click. */
+const DONE = (id = "", token = "") => new Response(page("Unsubscribed",
   "<h1>You are unsubscribed</h1>" +
-  "<p>You will not receive any more of these. If it was a mistake, you can " +
-  "sign up again from the ministry's website.</p>"), { headers: HEADERS });
+  "<p>You will not receive any more of these.</p>" +
+  `<p><a class="undo" href="/unsubscribe?s=${encodeURIComponent(id)}` +
+  `&t=${encodeURIComponent(token)}&undo=1">That was a mistake — put me back on</a></p>`),
+  { headers: HEADERS });
+
+/* After an undo. It offers the way out again, because somebody who has just
+   pressed two buttons in a row may well have meant the first one. */
+const BACK = (id = "", token = "") => new Response(page("Subscribed again",
+  "<h1>You are back on the list</h1>" +
+  "<p>Nothing was lost — you will receive the next one as usual.</p>" +
+  `<p><a class="undo" href="/unsubscribe?s=${encodeURIComponent(id)}` +
+  `&t=${encodeURIComponent(token)}">Actually, unsubscribe me</a></p>`),
+  { headers: HEADERS });
 
 export default {
   async fetch(request, env) {
@@ -86,11 +108,23 @@ export default {
        answer differently for a real id than an invented one purely by timing,
        and that difference is the leak the identical page above exists to
        avoid. */
-    if (!id || !token || !(await verify(env, id, token))) return DONE();
+    const undo = url.searchParams.get("undo") === "1";
+
+    if (!id || !token || !(await verify(env, id, token))) {
+      return undo ? BACK(id, token) : DONE(id, token);
+    }
 
     const db = createDb(env.DB);
     const sub = await db.queryOne("subscriber_by_id_public", { id });
-    if (!sub) return DONE();
+    if (!sub) return undo ? BACK(id, token) : DONE(id, token);
+
+    if (undo) {
+      /* The statement itself only matches 'unsubscribed', so an old link
+         cannot revive somebody who has since bounced or promote a sign-up
+         that was never confirmed. */
+      await db.query("subscriber_resubscribe_by_id", { id });
+      return BACK(id, token);
+    }
 
     // Already gone is a success. Saying "you were not subscribed" would be
     // both unhelpful and an answer to a question nobody should be able to ask.
@@ -98,6 +132,6 @@ export default {
       await db.query("subscriber_unsubscribe_by_id",
         { id, now: new Date().toISOString() });
     }
-    return DONE();
+    return DONE(id, token);
   },
 };
