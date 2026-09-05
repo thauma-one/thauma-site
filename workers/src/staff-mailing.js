@@ -604,7 +604,7 @@ export default {
         const mail = listConfirmEmail({
           name: clean(body.name, MAX.name),
           listName: list.name,
-          fromName: list.from_name,
+          fromName: list.from_name, origin,
           confirmUrl: `${origin}/confirm?t=${token}`,
         });
         const sent = await sendMail(env, {
@@ -657,7 +657,7 @@ export default {
 
         const origin = new URL(request.url).origin;
         const mail = listConfirmEmail({
-          name: sub.name, listName: sub.list_name, fromName: sub.from_name,
+          name: sub.name, listName: sub.list_name, fromName: sub.from_name, origin,
           confirmUrl: `${origin}/confirm?t=${token}`,
         });
         const sent = await sendMail(env, {

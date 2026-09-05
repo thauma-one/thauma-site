@@ -437,7 +437,7 @@ export default {
         /* "the Newsletter and Prayer Partners" reads as one thing being
            confirmed, which is what one click is about to do. */
         : joined.slice(0, -1).map((l) => l.name).join(", ") + " and " + joined[joined.length - 1].name,
-      fromName: joined[0].from_name,
+      fromName: joined[0].from_name, origin,
       confirmUrl: `${origin}/confirm?t=${token}`,
     });
     await sendMail(env, {

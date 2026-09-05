@@ -123,9 +123,28 @@ await check("a missing name does not produce 'Hi undefined'", () => {
 });
 
 await check("a name with markup in it cannot inject", () => {
-  const m = inviteEmail({ name: '<img src=x onerror=alert(1)>', origin: "https://thauma.one",
+  /* This asserted that NO <img> appeared anywhere, which worked only while the
+     template contained none. The branded header is a real image, so that check
+     started failing on correct output — a test measuring the wrong thing, not
+     a regression.
+
+     What it should ask is narrower and stronger: the name must not become
+     markup, and every image in the message must be one we put there. An
+     injected <img> now fails on the second clause rather than on a blanket
+     ban that the design outgrew. */
+  const payload = '<img src=x onerror=alert(1)>';
+  const m = inviteEmail({ name: payload, origin: "https://thauma.one",
                           invitedBy: "Chase", invitedByEmail: "a@b.c" });
-  assert(!/<img/.test(m.html), "unescaped name reached the HTML");
+
+  assert(!m.html.includes(payload), "the name reached the HTML unescaped");
+  assert(/&lt;img/.test(m.html), "the name should appear escaped, as text");
+
+  const srcs = [...m.html.matchAll(/<img[^>]*\ssrc="([^"]*)"/g)].map((x) => x[1]);
+  assert(srcs.length >= 1, "the branded header image is missing");
+  for (const src of srcs) {
+    assert(/^https?:\/\/[^/]+\/img\//.test(src),
+      `an image points somewhere unexpected: ${src}`);
+  }
 });
 
 /* ---------------------------- sending ---------------------------------- */

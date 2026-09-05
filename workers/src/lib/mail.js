@@ -44,73 +44,75 @@ const esc = (s) =>
 /**
  * The frame every Thauma message shares.
  *
- * WHY THE COMMENTS ARE OUT HERE. They used to sit inside the markup as HTML
- * comments and were therefore SENT — about a kilobyte of notes about Outlook,
- * in every message, to every recipient. Gmail clips a message at 102KB and
- * these are small, so it was not breaking anything; it was just posting our
- * working notes to supporters.
+ * DARK, LIKE THE SITE. The earlier version was a white card on grey because
+ * that is the safe default — and it looked like every other service. This is
+ * the site's own palette: the near-black ground, the two washes, the wordmark
+ * in real Sora.
  *
- * THE BRAND BAND USES bgcolor AS AN ATTRIBUTE, not only in CSS. Outlook
- * renders through Word, which drops background declarations on divs and keeps
- * them on table cells. It is the one piece of Thauma's identity a mail client
- * will reliably show, which is why it carries the wordmark.
+ * THE HEADER IS AN IMAGE, and it has to be. Gmail strips @font-face, so Sora
+ * cannot be set as live text in an email by any means. A PNG is the only way
+ * the actual wordmark appears — and because images are blocked by default in
+ * a good share of inboxes, the cell behind it is the same near-black and the
+ * alt text is styled to read as the wordmark when the picture never arrives.
+ * Blocked, it degrades to THAUMA in wide letters on the right colour.
  *
- * THE ACCENT IS A ROW, NOT A BORDER, for the same reason: the same renderer
- * drops borders and never drops a filled cell.
+ * THE WASHES ARE IN THE IMAGE rather than in CSS. Outlook renders through
+ * Word, which ignores gradients entirely, and Gmail strips most of them. Baked
+ * into the PNG they either arrive or they do not, and what is behind them is
+ * the flat colour they fade into.
  *
- * LIGHT IS DECLARED TWICE. Without color-scheme, Gmail and Apple Mail in dark
- * mode invert the palette themselves and do it badly — the white card goes
- * grey, the dark band stays dark, and the accent between them disappears.
+ * bgcolor IS AN ATTRIBUTE EVERYWHERE below, not only a style. Word drops
+ * background declarations on divs and honours them on table cells; on a dark
+ * design that is the difference between white-on-dark and white-on-white.
  *
- * NO WEBFONT, and there is no way around it: Gmail strips @font-face, so
- * Thauma's display face cannot appear here. Helvetica is what everybody has.
- * The identity has to come from colour and layout instead.
+ * BOTH SCHEMES ARE DECLARED. Saying "light" on a dark email invites clients to
+ * invert it; saying "dark light" tells them it is deliberate and to leave it
+ * be. Every text colour is set explicitly for the ones that ignore that.
  */
-export function shell({ heading, rows, footer }) {
+export function shell({ heading, rows, footer, origin }) {
+  /* WHERE THE BAND IMAGE IS FETCHED FROM. The sending deployment's own origin,
+     so a message from staging shows staging's copy and one from production
+     shows production's. Falling back to the live site means an environment
+     that has not deployed the asset yet still renders something rather than
+     alt text — and /img is a static asset, not behind Access, on all three. */
+  const base = String(origin || "https://thauma.one").replace(/\/+$/, "");
   return `<!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="color-scheme" content="light">
-<meta name="supported-color-schemes" content="light">
+<meta name="color-scheme" content="dark light">
+<meta name="supported-color-schemes" content="dark light">
 <title>${esc(heading)}</title>
 </head>
-<body style="margin:0;padding:0;background:#eef1f5;">
+<body style="margin:0;padding:0;background:#070A10;">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${esc(heading)}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
-       style="background:#eef1f5;padding:32px 12px;">
+       bgcolor="#070A10" style="background:#070A10;padding:32px 12px;">
   <tr><td align="center">
     <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"
            style="width:100%;max-width:600px;">
 
-            <tr><td bgcolor="#0B0F15" align="left"
-              style="background:#0B0F15;padding:22px 32px 20px 32px;
-                     border-radius:8px 8px 0 0;
-                     font-family:Helvetica,Arial,sans-serif;">
-        <span style="font-size:15px;letter-spacing:6px;text-transform:uppercase;
-                     color:#ffffff;font-weight:normal;">THAUMA</span>
+      <tr><td bgcolor="#070A10" align="left"
+              style="background:#070A10;font-size:0;line-height:0;">
+        <img src="${base}/img/email-band.png" width="600" alt="THAUMA"
+             style="display:block;width:100%;max-width:600px;height:auto;border:0;
+                    font-family:Helvetica,Arial,sans-serif;font-size:22px;
+                    letter-spacing:10px;color:#EDF2F8;">
       </td></tr>
 
-            <tr><td bgcolor="#2FD8FF" height="3"
-              style="background:#2FD8FF;height:3px;line-height:3px;font-size:0;">&nbsp;</td></tr>
-
-      <tr><td bgcolor="#ffffff"
-              style="background:#ffffff;padding:30px 32px 30px 32px;
-                     font-family:Helvetica,Arial,sans-serif;color:#1a2028;
-                     border-left:1px solid #dfe4ea;border-right:1px solid #dfe4ea;
-                     border-bottom:1px solid #dfe4ea;border-radius:0 0 8px 8px;">
-        ${rows}
+      <tr><td bgcolor="#10161F"
+              style="background:#10161F;padding:30px 32px;
+                     font-family:Helvetica,Arial,sans-serif;color:#DCE3EC;
+                     border-left:1px solid #1c2531;border-right:1px solid #1c2531;
+                     border-bottom:1px solid #1c2531;">
+        ${Array.isArray(rows) ? rows.join("") : rows}
       </td></tr>
     </table>
 
     <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"
            style="width:100%;max-width:600px;">
-      <tr><td align="left"
-              style="padding:18px 32px 6px 32px;font-family:Helvetica,Arial,sans-serif;
-                     font-size:11px;letter-spacing:3px;text-transform:uppercase;
-                     color:#9aa6b6;">THAUMA</td></tr>
-      <tr><td style="padding:0 32px 18px 32px;font-family:Helvetica,Arial,sans-serif;
-                     font-size:12px;line-height:1.6;color:#8a96a6;">
+      <tr><td style="padding:20px 32px 18px 32px;font-family:Helvetica,Arial,sans-serif;
+                     font-size:12px;line-height:1.6;color:#6f7c8c;">
         ${footer}
       </td></tr>
     </table>
@@ -123,18 +125,18 @@ export function shell({ heading, rows, footer }) {
 export function button(href, label) {
   return `<table role="presentation" cellpadding="0" cellspacing="0" border="0"
                  style="margin:22px 0;"><tr>
-    <td align="center" bgcolor="#0B6E8C" style="background:#0B6E8C;border-radius:6px;">
+    <td align="center" bgcolor="#2FD8FF" style="background:#2FD8FF;border-radius:6px;">
       <a href="${esc(href)}" style="display:inline-block;padding:14px 28px;
          font-family:Helvetica,Arial,sans-serif;font-size:15px;font-weight:bold;
-         color:#ffffff;text-decoration:none;border-radius:6px;">${esc(label)}</a>
+         color:#06110c;text-decoration:none;border-radius:6px;">${esc(label)}</a>
     </td></tr></table>`;
 }
 
 export const p = (text) =>
-  `<p style="margin:0 0 16px 0;font-size:15px;line-height:1.65;color:#1a2028;">${text}</p>`;
+  `<p style="margin:0 0 16px 0;font-size:15px;line-height:1.65;color:#DCE3EC;">${text}</p>`;
 
 export const h1 = (text) =>
-  `<h1 style="margin:0 0 18px 0;font-size:22px;line-height:1.3;color:#0f1720;
+  `<h1 style="margin:0 0 18px 0;font-size:22px;line-height:1.3;color:#FFFFFF;
               font-weight:normal;">${esc(text)}</h1>`;
 
 /**
@@ -225,13 +227,13 @@ export function emailChangeEmail({ name, origin, oldEmail, newEmail, confirmUrl 
     h1("Confirm your new address") +
     p(greeting) +
     p(`Somebody asked to change the address on your Thauma account from ` +
-      `<strong style="color:#0f1720;">${esc(oldEmail)}</strong> to this one. ` +
+      `<strong style="color:#FFFFFF;">${esc(oldEmail)}</strong> to this one. ` +
       `Confirming finishes the change; until then nothing has moved.`) +
     button(confirmUrl, "Confirm this address") +
-    p(`<span style="color:#6b7785;font-size:14px;">This link is good for ` +
+    p(`<span style="color:#93a1b2;font-size:14px;">This link is good for ` +
       `seven days. After it is confirmed you will sign in with this address ` +
       `instead, and the one-time code comes here.</span>`) +
-    p(`<strong style="color:#0f1720;">If this was not you</strong>, do nothing ` +
+    p(`<strong style="color:#FFFFFF;">If this was not you</strong>, do nothing ` +
       `— the change does not happen on its own — and tell an administrator, ` +
       `because it means somebody was signed in as you.`);
 
@@ -263,7 +265,7 @@ export function emailChangeEmail({ name, origin, oldEmail, newEmail, confirmUrl 
 
   return {
     subject: "Confirm your new Thauma address",
-    html: shell({ heading: "Confirm your new address", rows, footer }),
+    html: shell({ heading: "Confirm your new address", rows, footer, origin }),
     text,
   };
 }
@@ -285,11 +287,11 @@ export function inviteEmail({ name, origin, invitedBy, invitedByEmail, confirmUr
       `you manage your supporters, your goals and the milestones that appear ` +
       `on your website.`) +
     button(url, confirmUrl ? "Confirm your account" : "Open the console") +
-    p(`<strong style="color:#0f1720;">If you are turned away at the sign-in ` +
+    p(`<strong style="color:#FFFFFF;">If you are turned away at the sign-in ` +
       `page</strong>, your address has not been added to the sign-in system ` +
       `yet — that is a separate step. Reply to this message and ${esc(invitedBy)} ` +
       `can finish it.`) +
-    p(`<span style="color:#6b7785;font-size:14px;">There is no password to ` +
+    p(`<span style="color:#93a1b2;font-size:14px;">There is no password to ` +
       `set. Signing in sends a one-time code to this address.` +
       (confirmUrl ? ` This link is good for seven days.` : ``) + `</span>`);
 
@@ -321,7 +323,7 @@ export function inviteEmail({ name, origin, invitedBy, invitedByEmail, confirmUr
 
   return {
     subject: "You have been added to the Thauma console",
-    html: shell({ heading: "You have been added to the Thauma console", rows, footer }),
+    html: shell({ heading: "You have been added to the Thauma console", rows, footer, origin }),
     text,
   };
 }
@@ -337,7 +339,7 @@ export function inviteEmail({ name, origin, invitedBy, invitedByEmail, confirmUr
  * discovering a typo weeks later, when a send bounces and nobody remembers
  * what was typed.
  */
-export function listConfirmEmail({ name, listName, confirmUrl, fromName }) {
+export function listConfirmEmail({ name, listName, confirmUrl, fromName, origin }) {
   const hello = name ? `Hi ${name},` : "Hello,";
   return {
     subject: `Confirm your ${listName} subscription`,
@@ -350,15 +352,21 @@ export function listConfirmEmail({ name, listName, confirmUrl, fromName }) {
     ].join("\n"),
     html: shell({
       heading: `Confirm your ${listName} subscription`,
+      origin,
+      /* p() rather than a bare <p>, so the colour is stated. On a dark ground
+         an inherited colour is one client's reset away from black on black,
+         and #666 — which the refusal line used to set — is unreadable on it. */
       rows: [
-        `<p>${hello}</p>`,
-        `<p>Please confirm you would like to receive <b>${listName}</b> from ${fromName}.</p>`,
+        p(esc(hello)),
+        p(`Please confirm you would like to receive <b style="color:#FFFFFF;">` +
+          `${esc(listName)}</b> from ${esc(fromName)}.`),
         button(confirmUrl, "Yes, subscribe me"),
         /* The refusal path stated plainly. Somebody who did not ask for this
            should not have to do anything, and should be told so — an email
            that only offers a "yes" reads as a trick. */
-        `<p style="color:#666;font-size:14px;">If you did not ask for this, ignore
-         this message. Nothing will be sent to you unless you confirm.</p>`,
+        `<p style="margin:0;font-size:14px;line-height:1.6;color:#93a1b2;">If you ` +
+        `did not ask for this, ignore this message. Nothing will be sent to you ` +
+        `unless you confirm.</p>`,
       ],
     }),
   };
