@@ -36,15 +36,22 @@ const HEADERS = {
   "X-Robots-Tag": "noindex, nofollow",
 };
 
-function page(title, body, accent = "#6D4AFF") {
+/* THE ACCENT WAS #6D4AFF — a purple that belongs to nothing here. It is the
+   fallback an EMBED uses when a partner has never chosen a colour (see
+   DEFAULT_ACCENT in embed.js), and it arrived here as a default nobody
+   revisited. This page is Thauma's own, not a partner's, so it wears Thauma's
+   cyan and Thauma's near-black rather than a stranger's placeholder. */
+function page(title, body, accent = "#2FD8FF") {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex">
 <title>${title}</title>
 <style>
-  :root{color-scheme:light dark;--bg:#f4f5f8;--card:#fff;--ink:#1a1a22;--dim:#5c5c6b;--line:#e6e6ee}
+  /* The site's own ground, not a generic dark. Light mode stays light — this
+     page is often opened from a mail client on a phone in either. */
+  :root{color-scheme:light dark;--bg:#f4f5f8;--card:#fff;--ink:#12121a;--dim:#5c5c6b;--line:#e6e6ee}
   @media(prefers-color-scheme:dark){
-    :root{--bg:#15151c;--card:#1c1c25;--ink:#f2f2f7;--dim:#9a9aad;--line:#2a2a36}}
+    :root{--bg:#070A10;--card:#10161F;--ink:#EDF2F8;--dim:#9AA6B6;--line:#1c2531}}
   body{margin:0;min-height:100vh;display:grid;place-items:center;background:var(--bg);
     color:var(--ink);font:16px/1.6 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,
     Helvetica,Arial,sans-serif;padding:24px}
@@ -52,7 +59,10 @@ function page(title, body, accent = "#6D4AFF") {
     padding:34px 38px;max-width:30rem;text-align:center}
   .bar{height:4px;background:${accent};border-radius:2px;margin:-34px -38px 26px}
   h1{margin:0 0 12px;font:700 23px/1.3 Georgia,Cambria,'Times New Roman',serif}
-  p{margin:0;color:var(--dim);font-size:15px}
+  p{margin:0 0 10px;color:var(--dim);font-size:15px}
+  p:last-child{margin-bottom:0}
+  .undo{display:inline-block;margin-top:6px;color:var(--ink);font-size:14px;
+    text-decoration:none;border-bottom:1px solid ${accent};padding-bottom:1px}
 </style></head>
 <body><div class="card"><div class="bar"></div>${body}</div></body></html>`;
 }

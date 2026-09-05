@@ -88,8 +88,30 @@ await check("a real message is delivered, once", async () => {
   const env = envWith();
   const res = await post(GOOD, env);
   eq(res.status, 200, "status");
-  eq(env.sent.length, 1, "exactly one email");
-  eq(env.sent[0].to, ["chase@example.org"], "to the address the partner set");
+  /* TWO now, and which is which matters more than the count: the ministry's
+     copy, and a receipt to whoever wrote in. */
+  eq(env.sent.length, 2, "the ministry's copy and the sender's receipt");
+
+  /* These are RESEND payloads, not sendMail arguments — `to` is an ARRAY and
+     the field is reply_to. Reading them as the wrong shape is how the first
+     version of this reported "nothing went to the ministry" about a message
+     that plainly had. */
+  const addr = (m) => (Array.isArray(m.to) ? m.to[0] : m.to);
+  const toMinistry = env.sent.find((m) => addr(m) === FORM.deliver_to);
+  const toSender = env.sent.find((m) => addr(m) !== FORM.deliver_to);
+  assert(toMinistry, `nothing went to the ministry: ${env.sent.map(addr)}`);
+  assert(toSender, `nothing went to the sender: ${env.sent.map(addr)}`);
+
+  /* THE RECEIPT MUST NOT CARRY THE MINISTRY'S INBOX. Putting it in Reply-To
+     would publish the address this form exists to keep unpublished, to
+     everybody who ever writes in — including the ones writing in bad faith. */
+  assert(!toSender.reply_to, `the receipt has a Reply-To: ${toSender.reply_to}`);
+  assert(!JSON.stringify(toSender).includes(FORM.deliver_to),
+    "the ministry's delivery address is in the receipt");
+
+  /* And the ministry's copy still answers to the visitor. */
+  eq(toMinistry.reply_to, addr(toSender), "the ministry cannot reply to the sender");
+  eq(toMinistry.to, ["chase@example.org"], "to the address the partner set");
 });
 
 await check("THE VISITOR'S ADDRESS IS Reply-To, NEVER From", async () => {
@@ -179,7 +201,7 @@ await check("too many attempts stops sending, without saying so", async () => {
 await check("an ordinary number of attempts is not stopped", async () => {
   const env = envWith({ attempts: 2 });
   await post(GOOD, env);
-  eq(env.sent.length, 1, "a real person was refused");
+  eq(env.sent.length, 2, "a real person was refused");
 });
 
 await check("the raw IP never reaches the database", async () => {

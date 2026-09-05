@@ -42,7 +42,7 @@
  */
 import { createDb } from "./lib/db.js";
 import { json } from "./lib/store.js";
-import { sendMail } from "./lib/mail.js";
+import { sendMail, contactReceiptEmail } from "./lib/mail.js";
 import { COLOUR_JS } from "./embed-colour.js";
 import { escapeHtml, palette, formStyles, LIGHT, DARK, BEHAVIOUR_JS } from "./lib/embed-form.js";
 
@@ -500,6 +500,39 @@ export default {
                "a few minutes.",
       }, 502, CORS);
     }
+
+    /* A RECEIPT TO THE SENDER, after the ministry's copy has gone and never
+       instead of it. Without one a message goes into the dark: no record in
+       their sent items, no way to tell a form that silently failed from a
+       ministry that has not replied yet — and the usual response to that is
+       sending the same message again.
+
+       ITS FAILURE IS NOT THEIR PROBLEM. The message reached the ministry,
+       which is what they asked for; answering "your message could not be
+       sent" because a courtesy copy bounced would be a lie, and would invite
+       them to send it twice. Logged, not surfaced.
+
+       NO Reply-To, DELIBERATELY. The obvious thing is to point it at the
+       ministry's delivery address so a reply reaches them — and that would
+       publish the address this whole form exists to keep unpublished, to
+       everybody who ever writes in, including the ones writing in bad faith.
+       The ministry's own reply will disclose it soon enough if they choose to
+       send one; that is their decision to make, not this receipt's. So the
+       message tells people to use the form again instead. */
+    try {
+      const receipt = contactReceiptEmail({
+        name: fields.name, ministry: form.display_name,
+        topic: topic ? topic.label : null, subject: fields.subject,
+        message: fields.message, origin: new URL(request.url).origin,
+      });
+      await sendMail(env, {
+        to: fields.email, subject: receipt.subject,
+        html: receipt.html, text: receipt.text,
+      });
+    } catch (err) {
+      console.error("contact receipt failed:", err && err.message);
+    }
+
     return json(THANKS, 200, CORS);
   },
 };

@@ -339,6 +339,80 @@ export function inviteEmail({ name, origin, invitedBy, invitedByEmail, confirmUr
  * discovering a typo weeks later, when a send bounces and nobody remembers
  * what was typed.
  */
+/**
+ * "We have it" — to the person who used the contact form.
+ *
+ * WHY SEND ANYTHING. Without it a message goes into the dark: no record in
+ * their sent items, no way to tell a form that silently failed from a ministry
+ * that has not replied yet. The commonest outcome of that is sending the same
+ * message again, which is worse for both sides.
+ *
+ * IT QUOTES WHAT THEY WROTE, and that is most of the point — it is the only
+ * copy they have, since the form kept none and neither did we.
+ *
+ * IT IS NOT A REPLY, and says so. It also carries NO Reply-To: pointing one at
+ * the ministry's delivery address would publish the address this form exists to
+ * keep unpublished, to everybody who writes in — including the ones writing in
+ * bad faith. Their own reply discloses it if they choose to send one, which is
+ * their decision rather than this receipt's.
+ *
+ * And it promises nothing about when. A ministry of two people should not have
+ * an autoresponder implying a service desk.
+ */
+export function contactReceiptEmail({ name, ministry, topic, subject, message, origin }) {
+  const hello = name ? `Hi ${esc(name)},` : "Hello,";
+
+  const rows =
+    h1("We have your message") +
+    p(hello) +
+    p(`Thank you for writing to ${esc(ministry)}. This is just to say it ` +
+      `arrived — somebody will read it and reply to this address.`) +
+    /* Their own words back. A blockquote rather than a paragraph so it reads
+       as a copy of something rather than as more of our text. */
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+            style="margin:6px 0 20px 0;"><tr>
+       <td style="border-left:3px solid #2FD8FF;padding:2px 0 2px 14px;
+                  font-family:Helvetica,Arial,sans-serif;font-size:14.5px;
+                  line-height:1.6;color:#93a1b2;">` +
+      (topic ? `<div style="color:#DCE3EC;"><b>${esc(topic)}</b></div>` : "") +
+      (subject ? `<div style="color:#DCE3EC;">${esc(subject)}</div>` : "") +
+      `<div style="margin-top:${topic || subject ? "8px" : "0"};white-space:pre-wrap;">` +
+        `${esc(message)}</div>` +
+    `</td></tr></table>` +
+    p(`<span style="color:#93a1b2;font-size:14px;">You do not need to do ` +
+      `anything. If you think of something to add, send it through the form ` +
+      `again — this address does not receive replies.</span>`);
+
+  const footer =
+    `You are receiving this because this address was used to write to ` +
+    `${esc(ministry)} through their website. No account was created and you ` +
+    `have not been added to any mailing list.`;
+
+  const text = [
+    "We have your message", "",
+    name ? `Hi ${name},` : "Hello,", "",
+    `Thank you for writing to ${ministry}. This is just to say it arrived —`,
+    "somebody will read it and reply to this address.", "",
+    "----- what you sent -----",
+    topic ? topic : null,
+    subject ? subject : null,
+    "", message, "",
+    "-------------------------", "",
+    "You do not need to do anything. If you think of something to add, send it",
+    "through the form again — this address does not receive replies.", "",
+    "--",
+    `You are receiving this because this address was used to write to ${ministry}`,
+    "through their website. No account was created and you have not been added",
+    "to any mailing list.",
+  ].filter((l) => l !== null).join("\n");
+
+  return {
+    subject: `We have your message${subject ? ` — ${subject}` : ""}`,
+    html: shell({ heading: "We have your message", rows, footer, origin }),
+    text,
+  };
+}
+
 export function listConfirmEmail({ name, listName, confirmUrl, fromName, origin }) {
   const hello = name ? `Hi ${name},` : "Hello,";
   return {
