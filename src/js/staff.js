@@ -282,7 +282,14 @@
 
     var shelves = [
       { key: 'institutional', title: tr('res.shelfOrg'), note: tr('res.shelfOrgNote') },
-      { key: 'mine', title: tr('res.shelfMine'), note: tr('res.shelfMineNote') },
+      /* NAMED, not "Mine". Three headings where one says a person's name reads
+         as a place rather than a filter — and the same page is read by
+         somebody an administrator is viewing as, where "Mine" would be a lie
+         about whose shelf it is. Falls back when the name is not known yet. */
+      { key: 'mine',
+        title: state.whoName ? fill('res.shelfNamed', { who: state.whoName })
+                             : tr('res.shelfMine'),
+        note: tr('res.shelfMineNote') },
       { key: 'shared', title: tr('res.shelfShared'), note: tr('res.shelfSharedNote') },
     ];
 
@@ -304,6 +311,25 @@
           (rows.length
             ? rows.map(function (r) {
                 var i = state.resources.indexOf(r);
+                /* THE ORGANISATION'S SHELF CARRIES A STATE WORTH SEEING: is
+                   this actually out to all staff, or is it an administrator's
+                   draft? It is the existing `visibility` column — 'staff'
+                   means everyone, 'admin' means administrators only — shown as
+                   a switch rather than left as a field nobody looks at.
+
+                   Offered only to whoever may edit, and only on this shelf: a
+                   personal resource is governed by sharing, not by this. */
+                var shareAll = sh.key === 'institutional' && r.can_edit
+                  ? '<button type="button" class="res-toggle' +
+                      (r.visibility === 'staff' ? ' is-on' : '') + '"' +
+                      ' role="switch" aria-checked="' + (r.visibility === 'staff') + '"' +
+                      ' data-toggle-resource="' + i + '">' +
+                      '<span class="res-toggle-dot" aria-hidden="true"></span>' +
+                      esc(r.visibility === 'staff'
+                            ? tr('res.sharedAll') : tr('res.adminsOnly')) +
+                    '</button>'
+                  : '';
+
                 return '<div class="card">' +
                   '<div class="card-actions">' +
                     (r.can_edit
@@ -328,6 +354,7 @@
                   (r.link ? '<a class="lnk" href="' + esc(r.link) +
                             '" target="_blank" rel="noopener">' +
                             esc(tr('res.open')) + '</a>' : '') +
+                  shareAll +
                 '</div>';
               }).join('')
             : '<p class="empty">' + esc(tr('res.emptyMine')) + '</p>') +
@@ -455,6 +482,31 @@
     }
   }
 
+  /* Flip an organisation resource between "all staff" and "administrators
+     only". It saves through the ordinary resource write, so the endpoint's own
+     rule — only an administrator may narrow visibility — applies without a
+     second code path deciding it. */
+  async function toggleShareAll(r) {
+    if (!r) return;
+    try {
+      var res = await fetch(STAFF_API, {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          kind: 'resource', id: r.id, shelf: 'institutional',
+          title: r.title, description: r.description, link: r.link, photo: r.photo,
+          visibility: r.visibility === 'staff' ? 'admin' : 'staff',
+        }),
+      });
+      var body = await res.json().catch(function () { return {}; });
+      if (!res.ok) throw new Error(body.error || tr('common.saveFailed'));
+      if (body.resources) state.resources = body.resources;
+      renderCards();
+    } catch (e) {
+      setStatus(e.message, true);
+    }
+  }
+
   // ---- repeatable email/phone rows ----
   function addRow(container, type, cls, value) {
     var row = document.createElement('div');
@@ -558,6 +610,10 @@
       if (e.target.dataset.shareResource !== undefined) {
         shareResource(state.resources[Number(e.target.dataset.shareResource)]);
       }
+      /* closest(), because the switch has a dot inside it and a click can land
+         on the child. */
+      var toggle = e.target.closest && e.target.closest('[data-toggle-resource]');
+      if (toggle) toggleShareAll(state.resources[Number(toggle.dataset.toggleResource)]);
     });
   }
 
@@ -716,6 +772,8 @@
 
   /* Called by any page whose data included an identity block. */
   function rememberIdentity(who, partner) {
+    /* Kept for the resource shelf heading, which says whose shelf it is. */
+    if (who && who.name) state.whoName = who.name;
     if (partner && partner.display_name) who = Object.assign({}, who, {
       partner_name: partner.display_name });
     if (!who || !who.email) return;
