@@ -44,6 +44,7 @@ import { sendMail, listConfirmEmail } from "./lib/mail.js";
 import { detectLang } from "./contact-form.js";
 import { COLOUR_JS } from "./embed-colour.js";
 import { escapeHtml, palette, formStyles, LIGHT, DARK, BEHAVIOUR_JS } from "./lib/embed-form.js";
+import { siteOrigin } from "./lib/origin.js";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -323,7 +324,7 @@ export default {
     if (!lists.length) return json({ error: "Not found" }, 404, CORS);
 
     if (action === "form.js") {
-      const origin = new URL(request.url).origin;
+      const origin = siteOrigin(env, request);
       // The ministry's colours, carried on every row by the join.
       const theme = { accent: lists[0].embed_accent,
                       accent2: lists[0].embed_accent2,
@@ -440,7 +441,7 @@ export default {
        to confirm — and the same answer as always. */
     if (!joined.length) return json(SAME_ANSWER, 200, CORS);
 
-    const origin = new URL(request.url).origin;
+    const origin = siteOrigin(env, request);
     const mail = listConfirmEmail({
       name,
       listName: joined.length === 1

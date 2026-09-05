@@ -25,6 +25,7 @@ import { json, readJson } from "./lib/store.js";
 import { sanitise, render, toText, plainLine, tooBig, sizeOf } from "./lib/newsletter.js";
 import { unsubscribeUrl } from "./lib/unsub.js";
 import { sendMail, listConfirmEmail } from "./lib/mail.js";
+import { siteOrigin } from "./lib/origin.js";
 
 const MAX = { name: 120, slug: 60, desc: 400, from_name: 80, email: 200 };
 const PAGE = 100;
@@ -609,7 +610,7 @@ export default {
           throw e;
         }
 
-        const origin = new URL(request.url).origin;
+        const origin = siteOrigin(env, request);
         const mail = listConfirmEmail({
           name: clean(body.name, MAX.name),
           listName: list.name,
@@ -664,7 +665,7 @@ export default {
           id: sub.id, partner_id: partnerId, token, now,
         });
 
-        const origin = new URL(request.url).origin;
+        const origin = siteOrigin(env, request);
         const mail = listConfirmEmail({
           name: sub.name, listName: sub.list_name, fromName: sub.from_name, origin,
           confirmUrl: `${origin}/confirm?t=${token}`,
@@ -756,7 +757,7 @@ export default {
           { id: m.list_id, partner_id: partnerId });
         if (!list) return json({ error: "No such list." }, 404);
 
-        const origin = new URL(request.url).origin;
+        const origin = siteOrigin(env, request);
         const built = await buildMailing(db, env, { mailing: m, list, origin });
         if (built.error) return json({ error: built.error }, 400);
 
@@ -797,7 +798,7 @@ export default {
           { id: m.list_id, partner_id: partnerId });
         if (!list) return json({ error: "No such list." }, 404);
 
-        const origin = new URL(request.url).origin;
+        const origin = siteOrigin(env, request);
         const built = await buildMailing(db, env, { mailing: m, list, origin });
         if (built.error) return json({ error: built.error }, 400);
 
@@ -1000,7 +1001,7 @@ export default {
           return json({ error: `${email} is already on this list.` }, 409);
         }
 
-        const origin = new URL(request.url).origin;
+        const origin = siteOrigin(env, request);
         const sent = await sendMail(env, {
           to: email,
           ...listConfirmEmail({ list, token, origin, name: name || null }),

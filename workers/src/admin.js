@@ -31,6 +31,7 @@ import { addEmail, removeEmail } from "./lib/access-group.js";
 import { linkParams } from "./lib/signed-link.js";
 import { sendMail, inviteEmail } from "./lib/mail.js";
 import { requestedTarget } from "./lib/actas.js";
+import { siteOrigin } from "./lib/origin.js";
 
 const ROLES = new Set(["admin", "partner", "staff", "board"]);
 const STATUSES = new Set(["invited", "active", "suspended"]);
@@ -96,13 +97,18 @@ async function audit(db, { user, action, entity, entity_id = null, detail = null
 /**
  * Send somebody their invite.
  *
- * The link is built from the REQUEST's own origin, not from a configured URL,
- * so an invite sent from the staging console points at staging and one sent
- * from production points at production. A hard-coded site URL is how a test
- * invite ends up telling somebody to sign in to the live site.
+ * The link is built from THIS DEPLOYMENT'S configured origin, so an invite
+ * sent from the dev console points at dev and one sent from production points
+ * at production.
+ *
+ * It used to read the request's own origin, which sounds more honest and is
+ * not: under `wrangler dev` that returns the route in wrangler.toml whatever
+ * the browser asked for, so invites sent from dev told people to confirm their
+ * account on STAGING — another database, another signing salt. See
+ * lib/origin.js.
  */
 async function sendInvite(request, env, { to, name, byName, byEmail, userId }) {
-  const origin = new URL(request.url).origin;
+  const origin = siteOrigin(env, request);
 
   /* A link that turns their account on, signed so it needs no session — they
      cannot have one yet. If this deploy cannot sign (no SIGNUP_SALT) the

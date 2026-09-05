@@ -46,6 +46,7 @@ import { sendMail, contactReceiptEmail } from "./lib/mail.js";
 import { detectLang } from "./contact-form.js";
 import { COLOUR_JS } from "./embed-colour.js";
 import { escapeHtml, palette, formStyles, LIGHT, DARK, BEHAVIOUR_JS } from "./lib/embed-form.js";
+import { siteOrigin } from "./lib/origin.js";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -400,7 +401,7 @@ export default {
     if (!form) return json({ error: "Not found" }, 404, CORS);
 
     if (action === "contact.js") {
-      const origin = new URL(request.url).origin;
+      const origin = siteOrigin(env, request);
       /* The organisation's row carries no palette — there is no partner to
          read one from — so the widget's own default stands, which is Thauma's
          purple. */
@@ -524,7 +525,7 @@ export default {
       const receipt = contactReceiptEmail({
         name: fields.name, ministry: form.display_name,
         topic: topic ? topic.label : null, subject: fields.subject,
-        message: fields.message, origin: new URL(request.url).origin,
+        message: fields.message, origin: siteOrigin(env, request),
         /* The page they wrote from. The widget posts its own language, and the
            Referer covers the case where it did not. */
         lang: detectLang(fields, request.headers.get("referer")),

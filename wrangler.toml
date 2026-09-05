@@ -156,6 +156,16 @@ database_id = "db7fcd6a-56e2-4a67-98da-3da87e95dc86"
 # authorise anything on its own. Real secrets (RESEND_API_KEY,
 # GAME_ADMIN_TOKEN) go in via `wrangler secret put` and never live here.
 [vars]
+
+# WHERE THIS DEPLOYMENT LIVES, stated rather than detected.
+#
+# Under `wrangler dev` a Worker cannot learn its own hostname: url.hostname and
+# the Host header both come back as the route below, whatever address the
+# browser asked for. Every emailed link was built from that, so invitations
+# sent from dev pointed at staging — a different database and a different
+# signing salt, so they could not have worked. See workers/src/lib/origin.js.
+SITE_ORIGIN = "https://next.thauma.one"
+
 # CLOUDFLARE ACCESS — the other door.
 #
 # A row in `users` has never let anybody in; Access decides who reaches the
@@ -350,6 +360,16 @@ binding = "GAME_SCORES"
 id = "f23971d5b4aa460daba43e97b9d84273"
 
 [env.dev.vars]
+
+# WHERE THIS DEPLOYMENT LIVES, stated rather than detected.
+#
+# Under `wrangler dev` a Worker cannot learn its own hostname: url.hostname and
+# the Host header both come back as the route below, whatever address the
+# browser asked for. Every emailed link was built from that, so invitations
+# sent from dev pointed at staging — a different database and a different
+# signing salt, so they could not have worked. See workers/src/lib/origin.js.
+SITE_ORIGIN = "https://dev.thauma.one"
+
 # See the note on ACCESS_ACCOUNT_ID in the top-level [vars]. Repeated because
 # a named environment does not inherit vars from it.
 ACCESS_ACCOUNT_ID = "57c887d9191048d984a7607c9e9334b7"
@@ -480,6 +500,16 @@ database_name = "thauma-ops"
 database_id = "1a30f6c9-1dc7-42b0-abaa-fab3da334c9e"
 
 [env.production.vars]
+
+# WHERE THIS DEPLOYMENT LIVES, stated rather than detected.
+#
+# Under `wrangler dev` a Worker cannot learn its own hostname: url.hostname and
+# the Host header both come back as the route below, whatever address the
+# browser asked for. Every emailed link was built from that, so invitations
+# sent from dev pointed at staging — a different database and a different
+# signing salt, so they could not have worked. See workers/src/lib/origin.js.
+SITE_ORIGIN = "https://thauma.one"
+
 # See the note on ACCESS_ACCOUNT_ID in the top-level [vars]. Repeated because
 # a named environment does not inherit vars from it.
 ACCESS_ACCOUNT_ID = "57c887d9191048d984a7607c9e9334b7"

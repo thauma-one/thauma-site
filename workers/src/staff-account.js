@@ -26,6 +26,7 @@ import { requireAccess } from "./lib/access.js";
 import { json, readJson } from "./lib/store.js";
 import { linkParams } from "./lib/signed-link.js";
 import { sendMail, emailChangeEmail } from "./lib/mail.js";
+import { siteOrigin } from "./lib/origin.js";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -68,7 +69,7 @@ export default {
        swapped in the URL afterwards. */
     let url;
     try {
-      url = `${new URL(request.url).origin}/confirm-email?` +
+      url = `${siteOrigin(env, request)}/confirm-email?` +
             await linkParams(env, "email-change", `${me.user_id}|${email}`);
     } catch (err) {
       return json({
@@ -78,7 +79,7 @@ export default {
     }
 
     const mail = emailChangeEmail({
-      name: me.user_name, origin: new URL(request.url).origin,
+      name: me.user_name, origin: siteOrigin(env, request),
       oldEmail: user.email, newEmail: email, confirmUrl: url,
     });
     /* TO THE NEW ADDRESS ONLY. Sending to the old one would confirm nothing
