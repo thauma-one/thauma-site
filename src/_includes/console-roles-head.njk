@@ -33,3 +33,45 @@
   } catch (e) { /* no storage, or nothing cached: data-area carries it */ }
 })();
 </script>
+
+{#- ---------------------------------------------------------------------
+   AND THE HEIGHT IT ENDED UP BEING.
+
+   `--header-h` was a hard-coded 62px describing `.top`, the header this
+   redesign replaced. `.top` is no longer rendered anywhere, so the number
+   has been describing nothing since — and three live rules still read it:
+   the persistent problem toast, the sticky position of an open editor row,
+   and the sign-in gate's height.
+
+   For a one-row account 62px was close enough to hide the error. For an
+   admin+staff account the real header is about 94px, so all three sat
+   roughly fifty pixels too high: the problem toast covered the second nav
+   row completely, and with no way to dismiss it the account that hit it
+   could not navigate at all.
+
+   IT IS MEASURED, NOT CALCULATED. Which rows appear depends on five roles
+   in combination — communications alone shows both — and a CSS selector
+   for that would be nine rules that drift the first time the matrix
+   changes. The element knows its own height; asking it cannot be wrong.
+
+   A ResizeObserver rather than a one-off read, because the header changes
+   height after the fact: staff.js re-sets the role classes when the real
+   identity arrives, which is exactly the case that was broken. -#}
+<script>
+(function () {
+  function measure(el) {
+    var h = el.getBoundingClientRect().height;
+    if (h > 0) document.documentElement.style.setProperty('--header-h', Math.round(h) + 'px');
+  }
+  function start() {
+    var el = document.querySelector('.console');
+    if (!el) return;
+    measure(el);
+    if (window.ResizeObserver) new ResizeObserver(function () { measure(el); }).observe(el);
+    else window.addEventListener('resize', function () { measure(el); });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start);
+  } else { start(); }
+})();
+</script>

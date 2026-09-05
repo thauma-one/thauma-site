@@ -1162,9 +1162,17 @@
       problemEl = document.createElement('div');
       problemEl.className = 'toast warn problem-toast';
       problemEl.setAttribute('role', 'alert');
+      /* A DISMISS BUTTON, because this toast does not go away on its own.
+         It is pinned over the header, and "Try again" on a condition that
+         needs an administrator just fails again — so an account with no
+         partner grant got a banner it could not clear, covering the very
+         navigation it needed to go and fix the problem. A persistent message
+         with no way out is a trap, however accurate it is. */
       problemEl.innerHTML =
         '<span class="problem-msg"></span>' +
-        '<button type="button" class="toast-act" data-i18n="err.tryAgain">Try again</button>';
+        '<button type="button" class="toast-act" data-i18n="err.tryAgain">Try again</button>' +
+        '<button type="button" class="toast-close" aria-label="Dismiss">&times;</button>';
+      problemEl.querySelector('.toast-close').onclick = problemClear;
 
       var host = document.createElement('div');
       host.className = 'toasts toasts-top';
