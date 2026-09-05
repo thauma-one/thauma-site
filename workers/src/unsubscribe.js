@@ -28,6 +28,7 @@
  */
 import { createDb } from "./lib/db.js";
 import { verify } from "./lib/unsub.js";
+import { t } from "./lib/mail-i18n.js";
 
 const HEADERS = {
   "Content-Type": "text/html; charset=utf-8",
@@ -41,8 +42,11 @@ const HEADERS = {
    DEFAULT_ACCENT in embed.js), and it arrived here as a default nobody
    revisited. This page is Thauma's own, not a partner's, so it wears Thauma's
    cyan and Thauma's near-black rather than a stranger's placeholder. */
-function page(title, body, accent = "#2FD8FF") {
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8">
+function page(title, body, accent = "#2FD8FF", lang = null) {
+  /* The lang attribute matters here beyond politeness: it is what tells a
+     screen reader which voice to use, and a browser whether to offer a
+     translation it does not need. */
+  return `<!doctype html><html lang="${lang || "en"}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex">
 <title>${title}</title>
@@ -82,20 +86,20 @@ function page(title, body, accent = "#2FD8FF") {
    One click out, one click back. A person who unsubscribed by accident should
    not have to find the ministry's website and sign up again — which also means
    confirming by email a second time to fix a mis-click. */
-const DONE = (id = "", token = "") => new Response(page("Unsubscribed",
-  "<h1>You are unsubscribed</h1>" +
-  "<p>You will not receive any more of these.</p>" +
+const DONE = (id = "", token = "", lang = null) => new Response(page(t(lang, "unsub.title"),
+  `<h1>${t(lang, "unsub.heading")}</h1>` +
+  `<p>${t(lang, "unsub.body")}</p>` +
   `<p><a class="undo" href="/unsubscribe?s=${encodeURIComponent(id)}` +
-  `&t=${encodeURIComponent(token)}&undo=1">That was a mistake — put me back on</a></p>`),
+  `&t=${encodeURIComponent(token)}&undo=1">${t(lang, "unsub.undo")}</a></p>`, undefined, lang),
   { headers: HEADERS });
 
 /* After an undo. It offers the way out again, because somebody who has just
    pressed two buttons in a row may well have meant the first one. */
-const BACK = (id = "", token = "") => new Response(page("Subscribed again",
-  "<h1>You are back on the list</h1>" +
-  "<p>Nothing was lost — you will receive the next one as usual.</p>" +
+const BACK = (id = "", token = "", lang = null) => new Response(page(t(lang, "back.title"),
+  `<h1>${t(lang, "back.heading")}</h1>` +
+  `<p>${t(lang, "back.body")}</p>` +
   `<p><a class="undo" href="/unsubscribe?s=${encodeURIComponent(id)}` +
-  `&t=${encodeURIComponent(token)}">Actually, unsubscribe me</a></p>`),
+  `&t=${encodeURIComponent(token)}">${t(lang, "back.undo")}</a></p>`, undefined, lang),
   { headers: HEADERS });
 
 export default {
@@ -128,12 +132,17 @@ export default {
     const sub = await db.queryOne("subscriber_by_id_public", { id });
     if (!sub) return undo ? BACK(id, token) : DONE(id, token);
 
+    /* THE LANGUAGE THEY SIGNED UP IN. Null for anybody who joined before it
+       was recorded, and for them t() answers in English — which is what this
+       page did for everybody until now. */
+    const lang = sub.lang || null;
+
     if (undo) {
       /* The statement itself only matches 'unsubscribed', so an old link
          cannot revive somebody who has since bounced or promote a sign-up
          that was never confirmed. */
       await db.query("subscriber_resubscribe_by_id", { id });
-      return BACK(id, token);
+      return BACK(id, token, lang);
     }
 
     // Already gone is a success. Saying "you were not subscribed" would be
@@ -142,6 +151,6 @@ export default {
       await db.query("subscriber_unsubscribe_by_id",
         { id, now: new Date().toISOString() });
     }
-    return DONE(id, token);
+    return DONE(id, token, lang);
   },
 };

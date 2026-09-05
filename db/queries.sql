@@ -589,9 +589,9 @@ WHERE id = :id;
 --
 -- The partner check is on the LIST, so this cannot add to somebody else's.
 INSERT INTO subscribers
-  (id, list_id, partner_id, email, name, status, confirm_token, source,
+  (id, list_id, partner_id, email, name, status, confirm_token, source, lang,
    subscribed_at, updated_at)
-SELECT :id, l.id, l.partner_id, :email, :name, 'pending', :token, :source,
+SELECT :id, l.id, l.partner_id, :email, :name, 'pending', :token, :source, :lang,
        :now, :now
   FROM mailing_lists l
  WHERE l.id = :list_id AND l.partner_id IS :partner_id;
@@ -1642,7 +1642,11 @@ WHERE list_id = :list_id AND partner_id IS :partner_id AND status = 'subscribed'
 -- For the unsubscribe link, which arrives with no session. The token is
 -- verified in the Worker before this runs — it is an HMAC of the id, so the id
 -- alone is not enough to reach anybody.
-SELECT id, list_id, partner_id, email, status FROM subscribers WHERE id = :id;
+-- `lang` so the page can answer in the language they signed up in. Nothing
+-- else is added: this runs for anybody holding a link, so it selects the least
+-- it can and the address only because the caller already proved it holds a
+-- signature over this exact id.
+SELECT id, list_id, partner_id, email, status, lang FROM subscribers WHERE id = :id;
 
 
 -- name: subscriber_unsubscribe_by_id

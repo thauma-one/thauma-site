@@ -31,6 +31,8 @@
 
 const RESEND = "https://api.resend.com/emails";
 
+import { t } from "./mail-i18n.js";
+
 const esc = (s) =>
   String(s == null ? "" : s).replace(/[&<>"']/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -359,14 +361,15 @@ export function inviteEmail({ name, origin, invitedBy, invitedByEmail, confirmUr
  * And it promises nothing about when. A ministry of two people should not have
  * an autoresponder implying a service desk.
  */
-export function contactReceiptEmail({ name, ministry, topic, subject, message, origin }) {
-  const hello = name ? `Hi ${esc(name)},` : "Hello,";
+export function contactReceiptEmail({ name, ministry, topic, subject, message,
+                                      origin, lang }) {
+  const T = (k, v) => t(lang, k, v);
+  const hello = name ? T("confirm.hello", { name: esc(name) }) : T("confirm.helloAnon");
 
   const rows =
-    h1("We have your message") +
+    h1(T("receipt.heading")) +
     p(hello) +
-    p(`Thank you for writing to ${esc(ministry)}. This is just to say it ` +
-      `arrived — somebody will read it and reply to this address.`) +
+    p(T("receipt.body", { ministry: esc(ministry) })) +
     /* Their own words back. A blockquote rather than a paragraph so it reads
        as a copy of something rather than as more of our text. */
     `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
@@ -379,68 +382,64 @@ export function contactReceiptEmail({ name, ministry, topic, subject, message, o
       `<div style="margin-top:${topic || subject ? "8px" : "0"};white-space:pre-wrap;">` +
         `${esc(message)}</div>` +
     `</td></tr></table>` +
-    p(`<span style="color:#93a1b2;font-size:14px;">You do not need to do ` +
-      `anything. If you think of something to add, send it through the form ` +
-      `again — this address does not receive replies.</span>`);
+    p(`<span style="color:#93a1b2;font-size:14px;">${T("receipt.noReply")}</span>`);
 
-  const footer =
-    `You are receiving this because this address was used to write to ` +
-    `${esc(ministry)} through their website. No account was created and you ` +
-    `have not been added to any mailing list.`;
+  const footer = T("receipt.footer", { ministry: esc(ministry) });
 
   const text = [
-    "We have your message", "",
-    name ? `Hi ${name},` : "Hello,", "",
-    `Thank you for writing to ${ministry}. This is just to say it arrived —`,
-    "somebody will read it and reply to this address.", "",
-    "----- what you sent -----",
+    T("receipt.heading"), "",
+    name ? T("confirm.hello", { name }) : T("confirm.helloAnon"), "",
+    T("receipt.body", { ministry }), "",
+    "-------------------------",
     topic ? topic : null,
     subject ? subject : null,
     "", message, "",
     "-------------------------", "",
-    "You do not need to do anything. If you think of something to add, send it",
-    "through the form again — this address does not receive replies.", "",
+    T("receipt.noReply"), "",
     "--",
-    `You are receiving this because this address was used to write to ${ministry}`,
-    "through their website. No account was created and you have not been added",
-    "to any mailing list.",
+    T("receipt.footer", { ministry }),
   ].filter((l) => l !== null).join("\n");
 
   return {
-    subject: `We have your message${subject ? ` — ${subject}` : ""}`,
-    html: shell({ heading: "We have your message", rows, footer, origin }),
+    subject: T("receipt.subject") + (subject ? ` — ${subject}` : ""),
+    html: shell({ heading: T("receipt.heading"), rows, footer, origin }),
     text,
   };
 }
 
-export function listConfirmEmail({ name, listName, confirmUrl, fromName, origin }) {
-  const hello = name ? `Hi ${name},` : "Hello,";
+export function listConfirmEmail({ name, listName, confirmUrl, fromName, origin, lang }) {
+  /* THE SUBSCRIBER'S OWN LANGUAGE, from the page they signed up on. Null when
+     nothing said — t() falls back to English one key at a time, so a
+     half-finished translation degrades to a mixed message rather than a
+     blank. */
+  const T = (k, v) => t(lang, k, v);
+  const hello = name ? T("confirm.hello", { name }) : T("confirm.helloAnon");
   return {
-    subject: `Confirm your ${listName} subscription`,
+    subject: T("confirm.subject", { list: listName }),
     text: [
       hello, "",
-      `Please confirm you would like to receive ${listName} from ${fromName}.`,
+      T("confirm.body", { list: listName, from: fromName }).replace(/<\/?b>/g, ""),
       "", confirmUrl, "",
-      "If you did not ask for this, ignore this message — nothing will be sent",
-      "to you unless you confirm.",
+      T("confirm.ignore"),
     ].join("\n"),
     html: shell({
-      heading: `Confirm your ${listName} subscription`,
+      heading: T("confirm.heading"),
       origin,
       /* p() rather than a bare <p>, so the colour is stated. On a dark ground
          an inherited colour is one client's reset away from black on black,
          and #666 — which the refusal line used to set — is unreadable on it. */
       rows: [
         p(esc(hello)),
-        p(`Please confirm you would like to receive <b style="color:#FFFFFF;">` +
-          `${esc(listName)}</b> from ${esc(fromName)}.`),
-        button(confirmUrl, "Yes, subscribe me"),
+        /* The string carries <b> deliberately; the VALUES going into it are
+           escaped first, which is the only part a person supplied. */
+        p(T("confirm.body", { list: esc(listName), from: esc(fromName) })
+            .replace("<b>", '<b style="color:#FFFFFF;">')),
+        button(confirmUrl, T("confirm.button")),
         /* The refusal path stated plainly. Somebody who did not ask for this
            should not have to do anything, and should be told so — an email
            that only offers a "yes" reads as a trick. */
-        `<p style="margin:0;font-size:14px;line-height:1.6;color:#93a1b2;">If you ` +
-        `did not ask for this, ignore this message. Nothing will be sent to you ` +
-        `unless you confirm.</p>`,
+        `<p style="margin:0;font-size:14px;line-height:1.6;color:#93a1b2;">` +
+        `${T("confirm.ignore")}</p>`,
       ],
     }),
   };

@@ -676,6 +676,33 @@ def t_confirming_only_ever_promotes_an_invited_account():
     assert got["u_act"] == "active", f"an active account changed: {got}"
 
 
+def t_a_subscribers_language_must_be_one_the_site_publishes():
+    """NULL means "we never knew", not English. A default that pretends to be a
+    choice is how a Croatian supporter ends up on the English list forever with
+    nobody able to tell whether that was decided or assumed."""
+    db = fresh()
+    db.execute("PRAGMA foreign_keys = ON")
+    db.execute("INSERT INTO partners (id,slug,display_name,status,created_at,updated_at)"
+               " VALUES ('p_a','a','A','active',?,?)", (NOW, NOW))
+    _list(db, "ml_1", "p_a")
+
+    def add(sid, lang):
+        db.execute("INSERT INTO subscribers (id,list_id,partner_id,email,status,lang,"
+                   "subscribed_at,updated_at) VALUES (?,?,?,?,'pending',?,?,?)",
+                   (sid, "ml_1", "p_a", sid + "@example.invalid", lang, NOW, NOW))
+
+    add("s_hr", "hr")
+    add("s_none", None)
+    assert db.execute("SELECT lang FROM subscribers WHERE id='s_hr'").fetchone()[0] == "hr"
+    assert db.execute("SELECT lang FROM subscribers WHERE id='s_none'").fetchone()[0] is None
+
+    try:
+        add("s_bad", "xx")
+        raise AssertionError("a language the site does not publish was accepted")
+    except sqlite3.IntegrityError:
+        pass
+
+
 def t_seed_files_insert_every_row_they_claim():
     """Every INSERT in a seed file must actually land.
 
@@ -1586,6 +1613,7 @@ if __name__ == "__main__":
         ("repointing a channel forgets the old check",   t_repointing_a_channel_forgets_when_the_old_one_was_checked),
         ("a playlist is stored as a playlist",            t_a_playlist_is_stored_as_one_and_a_channel_stays_a_channel),
         ("one channel, a playlist per partner",           t_two_partners_may_read_two_playlists_from_one_channel),
+        ("a subscriber language must be real",          t_a_subscribers_language_must_be_one_the_site_publishes),
         ("confirming only promotes an invited account", t_confirming_only_ever_promotes_an_invited_account),
         ("the protected account cannot be removed",      t_the_protected_account_cannot_be_removed_or_disabled),
         ("protection applies to that account only",      t_protection_applies_to_that_account_only),

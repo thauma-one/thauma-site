@@ -43,6 +43,7 @@
 import { createDb } from "./lib/db.js";
 import { json } from "./lib/store.js";
 import { sendMail, contactReceiptEmail } from "./lib/mail.js";
+import { detectLang } from "./contact-form.js";
 import { COLOUR_JS } from "./embed-colour.js";
 import { escapeHtml, palette, formStyles, LIGHT, DARK, BEHAVIOUR_JS } from "./lib/embed-form.js";
 
@@ -524,6 +525,9 @@ export default {
         name: fields.name, ministry: form.display_name,
         topic: topic ? topic.label : null, subject: fields.subject,
         message: fields.message, origin: new URL(request.url).origin,
+        /* The page they wrote from. The widget posts its own language, and the
+           Referer covers the case where it did not. */
+        lang: detectLang(fields, request.headers.get("referer")),
       });
       await sendMail(env, {
         to: fields.email, subject: receipt.subject,

@@ -41,6 +41,7 @@
 import { createDb } from "./lib/db.js";
 import { json } from "./lib/store.js";
 import { sendMail, listConfirmEmail } from "./lib/mail.js";
+import { detectLang } from "./contact-form.js";
 import { COLOUR_JS } from "./embed-colour.js";
 import { escapeHtml, palette, formStyles, LIGHT, DARK, BEHAVIOUR_JS } from "./lib/embed-form.js";
 
@@ -371,6 +372,16 @@ export default {
       before: new Date(Date.now() - 60 * 60_000).toISOString(),
     });
 
+    /* WHICH LANGUAGE THEY WERE READING. Taken from the form's own hidden field
+       first, then the Referer path — the same order contact-form.js uses to
+       decide where to send somebody back to, and the same helper, so the two
+       cannot drift apart. Never asked for: the page they are on already said
+       it, and a picker would be a question with an obvious answer.
+
+       null when it cannot be told, deliberately. Defaulting to English would
+       record a guess as a decision. */
+    const lang = detectLang(body, request.headers.get("referer"));
+
     const email = clean(body.email, 200);
     if (!email || !EMAIL_RE.test(email)) {
       await record("rejected");
@@ -418,7 +429,7 @@ export default {
         await db.query("subscriber_add", {
           id: "sub_" + crypto.randomUUID().replace(/-/g, "").slice(0, 20),
           list_id: list.id, partner_id: list.partner_id,
-          email, name, token, source: "sign-up form", now,
+          email, name, token, source: "sign-up form", lang, now,
         });
       }
       joined.push(list);
@@ -437,7 +448,7 @@ export default {
         /* "the Newsletter and Prayer Partners" reads as one thing being
            confirmed, which is what one click is about to do. */
         : joined.slice(0, -1).map((l) => l.name).join(", ") + " and " + joined[joined.length - 1].name,
-      fromName: joined[0].from_name, origin,
+      fromName: joined[0].from_name, origin, lang,
       confirmUrl: `${origin}/confirm?t=${token}`,
     });
     await sendMail(env, {

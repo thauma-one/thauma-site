@@ -48,17 +48,30 @@ function validEmail(s) {
 }
 
 /**
- * Which language to send the visitor back to. Taken from the form's own
- * hidden field, then the Referer path, then English.
+ * Which language the visitor was reading, or NULL when it cannot be told.
+ *
+ * Split from langFrom() because two callers want different things from the
+ * same detection. A redirect must go SOMEWHERE, so it falls back to English.
+ * Recording a subscriber's language must not: writing "en" when nothing said
+ * so stores a guess as though it were a decision, and later nobody can tell
+ * which rows were chosen and which were assumed.
  */
-export function langFrom(fields, referer) {
-  const f = String(fields.lang || "").toLowerCase();
+export function detectLang(fields, referer) {
+  const f = String((fields && fields.lang) || "").toLowerCase();
   if (SUPPORTED_LANGS.includes(f)) return f;
   try {
     const m = /^\/([a-z]{2})\//.exec(new URL(referer).pathname);
     if (m && SUPPORTED_LANGS.includes(m[1])) return m[1];
   } catch { /* no or malformed referer */ }
-  return "en";
+  return null;
+}
+
+/**
+ * Which language to send the visitor back to. The detection above, with the
+ * fallback a redirect cannot do without.
+ */
+export function langFrom(fields, referer) {
+  return detectLang(fields, referer) || "en";
 }
 
 /**
