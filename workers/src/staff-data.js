@@ -150,7 +150,7 @@ export default {
     if (request.method === "GET") {
       const [contacts, resources] = await Promise.all([
         db.query("directory_for_user", { user_id, partner_id }),
-        db.query("resources_visible", { partner_id, levels }),
+        db.query("resources_visible", { partner_id, levels, user_id, is_admin: isAdmin ? 1 : 0 }),
       ]);
       return json(withActing({
         // The same identity block every staff endpoint returns, so the header
@@ -217,9 +217,47 @@ export default {
           }, 403);
         }
 
+        /* WHOSE SHELF THIS GOES ON. Staff make their OWN resources; only an
+           administrator makes the organisation's. Chase's rule, and the right
+           one — staff creating institutional material would be making
+           something they immediately cannot edit, which reads as a bug rather
+           than as a rule.
+
+           `shared` is not a shelf anybody writes to: it is the view from the
+           other end of somebody else's share. */
+        const wantsInstitutional = body.shelf === "institutional";
+        if (wantsInstitutional && !isAdmin) {
+          return json({
+            error: "Only an administrator can add a resource for everyone. " +
+                   "Anything you add here is yours, and you can share it.",
+          }, 403);
+        }
+        const owner_user_id = wantsInstitutional ? null : user_id;
+
+        /* EDITING IS CHECKED AGAINST THE STORED ROW, never against what the
+           browser said the resource was. An id that already exists must
+           belong to whoever is editing it — or to the organisation, with an
+           administrator asking. */
+        if (body.id) {
+          const existing = await db.queryOne("resource_owner", { id: body.id });
+          if (!existing) return json({ error: "No such resource." }, 404);
+          const mine = existing.owner_user_id === user_id;
+          const institutional = existing.owner_user_id === null;
+          if (!(mine || (institutional && isAdmin))) {
+            return json({
+              error: institutional
+                ? "That resource belongs to the organisation. Only an " +
+                  "administrator can change it."
+                : "That resource belongs to somebody else. You can only change " +
+                  "your own.",
+            }, 403);
+          }
+        }
+
         const id = body.id || newId("rs");
         await db.query("resource_upsert", {
-          id, partner_id, title,
+          id, partner_id: owner_user_id ? null : partner_id,
+          owner_user_id, title,
           description: str(body.description, 4000),
           link: safeLink(body.link),
           photo: safeLink(body.photo),
@@ -227,11 +265,70 @@ export default {
           created_by: user_id,
           now,
         });
-        const resources = await db.query("resources_visible", { partner_id, levels });
+        const resources = await db.query("resources_visible", { partner_id, levels, user_id, is_admin: isAdmin ? 1 : 0 });
         return json({ resources });
       }
 
-      return json({ error: 'kind must be "contact" or "resource"' }, 400);
+      /* ---- passing a resource to a colleague ---- */
+      if (body.kind === "share") {
+        const rid = str(body.resource_id, 60);
+        if (!rid) return json({ error: "A resource is required" }, 400);
+
+        /* BY ADDRESS, resolved here. The page asks for an email because that
+           is what somebody knows about a colleague; the database wants an id.
+           user_by_email only matches ACTIVE accounts, so an invited person who
+           has not confirmed cannot be shared with — they would see nothing
+           anyway, and the refusal says so rather than silently doing nothing. */
+        let who = str(body.user_id, 60);
+        if (!who) {
+          const email = str(body.email, 200).toLowerCase();
+          if (!email) return json({ error: "A person is required" }, 400);
+          const found = await db.queryOne("user_by_email", { email });
+          if (!found) {
+            return json({
+              error: "No active account has that address. They need to be added " +
+                     "and to have confirmed before you can share with them.",
+            }, 404);
+          }
+          who = found.user_id;
+        }
+        if (who === user_id) {
+          return json({ error: "That is you — it is already on your shelf." }, 400);
+        }
+
+        /* RESHARING IS ALLOWED — Chase's call, and these are internal Thauma
+           documents among colleagues rather than material where onward
+           sharing betrays the owner. So the test is "can you see it", not "do
+           you own it". It is still a test: a resource nobody showed you is
+           not yours to forward. */
+        const seen = await db.queryOne("resource_can_see", { id: rid, user_id });
+        if (!seen) {
+          return json({ error: "You cannot share a resource you cannot see." }, 403);
+        }
+
+        if (body.remove) {
+          await db.query("resource_share_remove", { resource_id: rid, user_id: who });
+        } else {
+          /* The trigger refuses sharing with the owner, so a slip there is a
+             500 rather than a silent duplicate. Checked here so it is a
+             sentence instead. */
+          const owner = await db.queryOne("resource_owner", { id: rid });
+          if (owner && owner.owner_user_id === who) {
+            return json({ error: "That is already their own resource." }, 400);
+          }
+          await db.query("resource_share_add", {
+            resource_id: rid, user_id: who, shared_by: user_id, now,
+          });
+        }
+
+        return json({
+          shared_with: await db.query("resource_shared_with", { resource_id: rid }),
+          resources: await db.query("resources_visible",
+            { partner_id, levels, user_id, is_admin: isAdmin ? 1 : 0 }),
+        });
+      }
+
+      return json({ error: 'kind must be "contact", "resource" or "share"' }, 400);
     }
 
     /* ------------------------------------------------------------- DELETE */
@@ -248,8 +345,21 @@ export default {
           ...c, emails: safeList(c.emails), phones: safeList(c.phones) })) });
       }
       if (kind === "resource") {
+        /* Same rule as editing, and checked the same way. */
+        const existing = await db.queryOne("resource_owner", { id });
+        if (!existing) return json({ error: "No such resource." }, 404);
+        const mine = existing.owner_user_id === user_id;
+        const institutional = existing.owner_user_id === null;
+        if (!(mine || (institutional && isAdmin))) {
+          return json({
+            error: institutional
+              ? "That resource belongs to the organisation. Only an " +
+                "administrator can remove it."
+              : "That resource belongs to somebody else.",
+          }, 403);
+        }
         await db.query("resource_delete", { id, partner_id });
-        const resources = await db.query("resources_visible", { partner_id, levels });
+        const resources = await db.query("resources_visible", { partner_id, levels, user_id, is_admin: isAdmin ? 1 : 0 });
         return json({ resources });
       }
       return json({ error: 'kind must be "contact" or "resource"' }, 400);

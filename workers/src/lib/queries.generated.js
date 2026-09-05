@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "e5d19ed091760310";
+export const SOURCE_DIGEST = "fe9395580d83c38d";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -579,23 +579,64 @@ WHERE t.partner_id = :partner_id
  ORDER BY v.published_at DESC
  LIMIT COALESCE(
    (SELECT max_items FROM video_sources WHERE partner_id IS :partner_id), 0);`,
+  resource_can_see: `SELECT 1 AS ok
+  FROM resources r
+ WHERE r.id = :id
+   AND (r.owner_user_id = :user_id
+        OR r.owner_user_id IS NULL
+        OR EXISTS (SELECT 1 FROM resource_shares sh
+                    WHERE sh.resource_id = r.id AND sh.user_id = :user_id));`,
   resource_delete: `DELETE FROM resources WHERE id = :id AND partner_id IS :partner_id;`,
+  resource_owner: `SELECT id, owner_user_id, partner_id FROM resources WHERE id = :id;`,
+  resource_share_add: `INSERT OR IGNORE INTO resource_shares (resource_id, user_id, shared_by, shared_at)
+VALUES (:resource_id, :user_id, :shared_by, :now);`,
+  resource_share_remove: `DELETE FROM resource_shares WHERE resource_id = :resource_id AND user_id = :user_id;`,
+  resource_shared_with: `SELECT sh.user_id, u.name, u.email, sh.shared_at,
+       (SELECT b.name FROM users b WHERE b.id = sh.shared_by) AS shared_by_name
+  FROM resource_shares sh
+  JOIN users u ON u.id = sh.user_id
+ WHERE sh.resource_id = :resource_id
+ ORDER BY u.name COLLATE NOCASE;`,
   resource_upsert: `INSERT INTO resources
-  (id, partner_id, title, description, link, photo, visibility,
+  (id, partner_id, owner_user_id, title, description, link, photo, visibility,
    created_by, created_at, updated_at)
 VALUES
-  (:id, :partner_id, :title, :description, :link, :photo, :visibility,
+  (:id, :partner_id, :owner_user_id, :title, :description, :link, :photo, :visibility,
    :created_by, :now, :now)
 ON CONFLICT(id) DO UPDATE SET
   title = :title, description = :description, link = :link, photo = :photo,
   visibility = :visibility, updated_at = :now
-WHERE resources.partner_id IS :partner_id;`,
-  resources_visible: `SELECT id, partner_id, title, description, link, photo, visibility,
-       created_at, updated_at
-FROM resources
-WHERE (partner_id = :partner_id OR partner_id IS NULL)
-  AND instr(',' || :levels || ',', ',' || visibility || ',') > 0
-ORDER BY title COLLATE NOCASE;`,
+WHERE resources.owner_user_id IS :owner_user_id
+  AND resources.partner_id IS :partner_id;`,
+  resources_visible: `SELECT r.id, r.partner_id, r.title, r.description, r.link, r.photo, r.visibility,
+       r.owner_user_id, r.created_at, r.updated_at,
+       'institutional' AS shelf,
+       CASE WHEN :is_admin = 1 THEN 1 ELSE 0 END AS can_edit,
+       NULL AS shared_by_name
+  FROM resources r
+ WHERE r.owner_user_id IS NULL
+   AND (r.partner_id = :partner_id OR r.partner_id IS NULL)
+   AND instr(',' || :levels || ',', ',' || r.visibility || ',') > 0
+
+UNION ALL
+
+SELECT r.id, r.partner_id, r.title, r.description, r.link, r.photo, r.visibility,
+       r.owner_user_id, r.created_at, r.updated_at,
+       'mine' AS shelf, 1 AS can_edit, NULL AS shared_by_name
+  FROM resources r
+ WHERE r.owner_user_id = :user_id
+
+UNION ALL
+
+SELECT r.id, r.partner_id, r.title, r.description, r.link, r.photo, r.visibility,
+       r.owner_user_id, r.created_at, r.updated_at,
+       'shared' AS shelf, 0 AS can_edit,
+       (SELECT u.name FROM users u WHERE u.id = sh.shared_by) AS shared_by_name
+  FROM resource_shares sh
+  JOIN resources r ON r.id = sh.resource_id
+ WHERE sh.user_id = :user_id
+
+ORDER BY shelf, title COLLATE NOCASE;`,
   sender_addresses_for_partner: `SELECT id, partner_id, address, label, can_receive, created_at
 FROM sender_addresses
 WHERE partner_id IS :partner_id

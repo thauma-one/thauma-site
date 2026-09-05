@@ -141,7 +141,10 @@ await check("resource visibility is matched exactly, not by prefix", async () =>
   // instr() on a padded list: ',staff,' inside ',staff,admin,'. Without the
   // commas, a level named 'staffing' would match a reader allowed 'staff'.
   const sql = QUERIES.resources_visible;
-  assert(/instr\(\s*','/.test(sql) && /','\s*\|\|\s*visibility/.test(sql),
+  /* The optional `r.` allows a table alias, which resources_visible gained
+     when it grew from one SELECT into a UNION of three shelves. The property
+     being asserted is the DELIMITING, and an alias does not change it. */
+  assert(/instr\(\s*','/.test(sql) && /','\s*\|\|\s*(?:\w+\.)?visibility/.test(sql),
     "visibility matching is not delimited — a prefix could match");
 });
 
@@ -307,6 +310,8 @@ await check("every real query converts with its documented params", async () => 
     subject: "June update", preheader: null, body_md: "# x",
     body_html: "<p>x</p>", body_text: "x",
     sent_count: 0, mailing_id: "mg_1", subscriber_id: "sub_1",
+    // resources: ownership and sharing
+    resource_id: "rs_1", shared_by: "u_1", owner_user_id: null, is_admin: 0,
     // videos, cached from a channel's public Atom feed
     source_id: "UCnp-pBzHdpTwMonf7xuN1Ug", source_title: "Thauma",
     source_kind: "channel",

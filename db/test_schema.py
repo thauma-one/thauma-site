@@ -703,6 +703,120 @@ def t_a_subscribers_language_must_be_one_the_site_publishes():
         pass
 
 
+def _resource_world(db):
+    """An administrator, two staff, and one resource of each kind."""
+    for uid in ("u_admin", "u_a", "u_b"):
+        db.execute("INSERT INTO users (id,email,name,global_role,status,created_at)"
+                   " VALUES (?,?,?,'staff','active',?)",
+                   (uid, uid + "@example.invalid", uid, NOW))
+    sql, names = _query("resource_upsert")
+
+    def upsert(rid, owner, partner, title):
+        a = {"id": rid, "partner_id": partner, "owner_user_id": owner, "title": title,
+             "description": None, "link": None, "photo": None, "visibility": "staff",
+             "created_by": owner or "u_admin", "now": NOW}
+        db.execute(sql, [a[n] for n in names])
+
+    upsert("r_org", None, None, "Handbook")
+    upsert("r_a", "u_a", None, "A's notes")
+    upsert("r_b", "u_b", None, "B's notes")
+    return db, upsert
+
+
+def _shelves(db, user_id, is_admin=0, partner="p_chase"):
+    sql, names = _query("resources_visible")
+    args = {"partner_id": partner, "levels": "staff,admin" if is_admin else "staff",
+            "user_id": user_id, "is_admin": is_admin}
+    out = {}
+    for row in db.execute(sql, [args[n] for n in names]):
+        title, shelf, can_edit = row[2], row[10], row[11]
+        out[title] = (shelf, can_edit)
+    return out
+
+
+def t_a_persons_own_resources_are_not_visible_to_a_colleague():
+    """The whole point of a personal shelf. A colleague seeing it by default
+    would make it a second institutional library rather than somebody's own."""
+    db, _ = _resource_world(fresh())
+    seen = _shelves(db, "u_a")
+    assert "A's notes" in seen, seen
+    assert "B's notes" not in seen, f"a colleague's private shelf was visible: {seen}"
+
+
+def t_staff_may_not_edit_the_organisations_resources():
+    """The thing Chase asked for. Institutional material is readable by
+    everyone and editable by an administrator."""
+    db, _ = _resource_world(fresh())
+    assert _shelves(db, "u_a")["Handbook"] == ("institutional", 0), _shelves(db, "u_a")
+    assert _shelves(db, "u_admin", is_admin=1)["Handbook"] == ("institutional", 1)
+
+
+def t_editability_is_ownership_and_cannot_be_claimed():
+    """The upsert's conflict guard names the owner, so a staff member claiming
+    a resource is theirs cannot overwrite an institutional one — NULL is not
+    their id. The endpoint checks first; this is the second line."""
+    db, upsert = _resource_world(fresh())
+    upsert("r_org", "u_a", None, "HIJACKED")
+    got = db.execute("SELECT title FROM resources WHERE id='r_org'").fetchone()[0]
+    assert got == "Handbook", f"a staff member overwrote the organisation's: {got}"
+
+
+def t_a_shared_resource_is_readable_but_never_editable():
+    db, _ = _resource_world(fresh())
+    sql, names = _query("resource_share_add")
+    a = {"resource_id": "r_a", "user_id": "u_b", "shared_by": "u_a", "now": NOW}
+    db.execute(sql, [a[n] for n in names])
+
+    seen = _shelves(db, "u_b")
+    assert seen.get("A's notes") == ("shared", 0), f"B should read but not edit: {seen}"
+    assert seen.get("B's notes") == ("mine", 1), f"B still owns their own: {seen}"
+
+
+def t_resharing_is_allowed_and_records_who_passed_it_on():
+    """Chase's call: these are internal documents among colleagues. So the test
+    is 'can you see it', and shared_by keeps the trail for 'how did I get
+    this'."""
+    db, _ = _resource_world(fresh())
+    db.execute("INSERT INTO users (id,email,name,global_role,status,created_at)"
+               " VALUES ('u_c','c@example.invalid','C','staff','active',?)", (NOW,))
+    add, names = _query("resource_share_add")
+    for user, by in [("u_b", "u_a"), ("u_c", "u_b")]:      # A -> B, then B -> C
+        a = {"resource_id": "r_a", "user_id": user, "shared_by": by, "now": NOW}
+        db.execute(add, [a[n] for n in names])
+
+    seen = _shelves(db, "u_c")
+    assert seen.get("A's notes") == ("shared", 0), f"the reshare did not arrive: {seen}"
+
+    sql, names = _query("resource_shared_with")
+    trail = {r[0]: r[4] for r in db.execute(sql, ["r_a"] * len(names))}
+    assert trail == {"u_b": "u_a", "u_c": "u_b"}, f"the trail is wrong: {trail}"
+
+
+def t_a_resource_cannot_be_shared_with_its_own_owner():
+    """It would appear twice in a list built from a UNION. Refused at the door
+    rather than de-duplicated at every read."""
+    db, _ = _resource_world(fresh())
+    add, names = _query("resource_share_add")
+    a = {"resource_id": "r_a", "user_id": "u_a", "shared_by": "u_a", "now": NOW}
+    try:
+        db.execute(add, [a[n] for n in names])
+        raise AssertionError("a resource was shared with its own owner")
+    except sqlite3.IntegrityError:
+        pass
+
+
+def t_deleting_a_person_takes_their_private_shelf_with_them():
+    """Attribution survives somebody leaving — created_by is SET NULL in 0010.
+    A PRIVATE shelf must not: material nobody can see or delete is worse than
+    no material."""
+    db, _ = _resource_world(fresh())
+    db.execute("PRAGMA foreign_keys = ON")
+    db.execute("DELETE FROM users WHERE id='u_a'")
+    left = {r[0] for r in db.execute("SELECT title FROM resources")}
+    assert "A's notes" not in left, f"a departed person's shelf survived: {left}"
+    assert "Handbook" in left, "the organisation's material went with them"
+
+
 def t_seed_files_insert_every_row_they_claim():
     """Every INSERT in a seed file must actually land.
 
@@ -1614,6 +1728,13 @@ if __name__ == "__main__":
         ("a playlist is stored as a playlist",            t_a_playlist_is_stored_as_one_and_a_channel_stays_a_channel),
         ("one channel, a playlist per partner",           t_two_partners_may_read_two_playlists_from_one_channel),
         ("a subscriber language must be real",          t_a_subscribers_language_must_be_one_the_site_publishes),
+        ("a private shelf is private",                   t_a_persons_own_resources_are_not_visible_to_a_colleague),
+        ("staff cannot edit the org's resources",        t_staff_may_not_edit_the_organisations_resources),
+        ("editability is ownership, not a claim",        t_editability_is_ownership_and_cannot_be_claimed),
+        ("shared is readable, never editable",           t_a_shared_resource_is_readable_but_never_editable),
+        ("resharing works and records who",              t_resharing_is_allowed_and_records_who_passed_it_on),
+        ("cannot share with the owner",                  t_a_resource_cannot_be_shared_with_its_own_owner),
+        ("a leaver takes their shelf",                   t_deleting_a_person_takes_their_private_shelf_with_them),
         ("confirming only promotes an invited account", t_confirming_only_ever_promotes_an_invited_account),
         ("the protected account cannot be removed",      t_the_protected_account_cannot_be_removed_or_disabled),
         ("protection applies to that account only",      t_protection_applies_to_that_account_only),

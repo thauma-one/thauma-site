@@ -1021,25 +1021,68 @@ WHERE id = :id AND user_id = :user_id AND partner_id = :partner_id;
 -- matched with instr() against a padded string so 'staff' cannot match
 -- 'staffing'. Roles are not in the database yet; when they are, this query
 -- does not change — only the list handed to it.
-SELECT id, partner_id, title, description, link, photo, visibility,
-       created_at, updated_at
-FROM resources
-WHERE (partner_id = :partner_id OR partner_id IS NULL)
-  AND instr(',' || :levels || ',', ',' || visibility || ',') > 0
-ORDER BY title COLLATE NOCASE;
+--
+-- THREE SHELVES IN ONE READ, each with its own reason for being visible:
+--   institutional  the organisation's or this partner's, filtered by role
+--   mine           whatever this person owns
+--   shared         whatever somebody passed to them
+--
+-- `shelf` is what the page groups by, and `can_edit` is DERIVED here rather
+-- than stored — a stored flag is a second copy of a fact that can drift from
+-- ownership, and ownership cannot drift from itself.
+--
+-- The role list only gates the institutional shelf. A person's own material is
+-- theirs whatever their role, and something shared with them was an explicit
+-- act by somebody who could already see it.
+SELECT r.id, r.partner_id, r.title, r.description, r.link, r.photo, r.visibility,
+       r.owner_user_id, r.created_at, r.updated_at,
+       'institutional' AS shelf,
+       CASE WHEN :is_admin = 1 THEN 1 ELSE 0 END AS can_edit,
+       NULL AS shared_by_name
+  FROM resources r
+ WHERE r.owner_user_id IS NULL
+   AND (r.partner_id = :partner_id OR r.partner_id IS NULL)
+   AND instr(',' || :levels || ',', ',' || r.visibility || ',') > 0
+
+UNION ALL
+
+SELECT r.id, r.partner_id, r.title, r.description, r.link, r.photo, r.visibility,
+       r.owner_user_id, r.created_at, r.updated_at,
+       'mine' AS shelf, 1 AS can_edit, NULL AS shared_by_name
+  FROM resources r
+ WHERE r.owner_user_id = :user_id
+
+UNION ALL
+
+SELECT r.id, r.partner_id, r.title, r.description, r.link, r.photo, r.visibility,
+       r.owner_user_id, r.created_at, r.updated_at,
+       'shared' AS shelf, 0 AS can_edit,
+       (SELECT u.name FROM users u WHERE u.id = sh.shared_by) AS shared_by_name
+  FROM resource_shares sh
+  JOIN resources r ON r.id = sh.resource_id
+ WHERE sh.user_id = :user_id
+
+ORDER BY shelf, title COLLATE NOCASE;
 
 
 -- name: resource_upsert
+--
+-- THE CONFLICT GUARD NAMES THE OWNER as well as the partner. The endpoint
+-- checks who may edit what before calling this, and this is the second line:
+-- the update only lands on a row whose ownership already matches what the
+-- caller claims. A staff member claiming a resource is theirs cannot update
+-- an institutional row that way, because NULL is not their id.
 INSERT INTO resources
-  (id, partner_id, title, description, link, photo, visibility,
+  (id, partner_id, owner_user_id, title, description, link, photo, visibility,
    created_by, created_at, updated_at)
 VALUES
-  (:id, :partner_id, :title, :description, :link, :photo, :visibility,
+  (:id, :partner_id, :owner_user_id, :title, :description, :link, :photo, :visibility,
    :created_by, :now, :now)
 ON CONFLICT(id) DO UPDATE SET
   title = :title, description = :description, link = :link, photo = :photo,
   visibility = :visibility, updated_at = :now
-WHERE resources.partner_id IS :partner_id;
+WHERE resources.owner_user_id IS :owner_user_id
+  AND resources.partner_id IS :partner_id;
 
 
 -- name: resource_delete
@@ -2085,3 +2128,48 @@ UPDATE users SET email = :email WHERE id = :id;
 UPDATE subscribers
    SET status = 'subscribed', unsubscribed_at = NULL
  WHERE id = :id AND status = 'unsubscribed';
+
+
+-- ===========================================================================
+-- RESOURCES — ownership and sharing
+-- ===========================================================================
+
+-- name: resource_owner
+-- Who may change this, in one row. The endpoint compares rather than trusting
+-- anything the browser sent about which shelf a resource came from.
+SELECT id, owner_user_id, partner_id FROM resources WHERE id = :id;
+
+
+-- name: resource_share_add
+-- INSERT OR IGNORE: sharing twice is the same as sharing once, and a second
+-- attempt is somebody being helpful rather than an error worth reporting.
+-- A trigger refuses sharing with the owner.
+INSERT OR IGNORE INTO resource_shares (resource_id, user_id, shared_by, shared_at)
+VALUES (:resource_id, :user_id, :shared_by, :now);
+
+
+-- name: resource_share_remove
+DELETE FROM resource_shares WHERE resource_id = :resource_id AND user_id = :user_id;
+
+
+-- name: resource_shared_with
+-- Who can currently see this, for the owner to look at before adding another.
+SELECT sh.user_id, u.name, u.email, sh.shared_at,
+       (SELECT b.name FROM users b WHERE b.id = sh.shared_by) AS shared_by_name
+  FROM resource_shares sh
+  JOIN users u ON u.id = sh.user_id
+ WHERE sh.resource_id = :resource_id
+ ORDER BY u.name COLLATE NOCASE;
+
+
+-- name: resource_can_see
+-- Whether this person may pass a resource on. Resharing is allowed, so the
+-- test is "can you see it" rather than "do you own it" — but it is still a
+-- test, because a resource nobody showed you is not yours to forward.
+SELECT 1 AS ok
+  FROM resources r
+ WHERE r.id = :id
+   AND (r.owner_user_id = :user_id
+        OR r.owner_user_id IS NULL
+        OR EXISTS (SELECT 1 FROM resource_shares sh
+                    WHERE sh.resource_id = r.id AND sh.user_id = :user_id));

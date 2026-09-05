@@ -61,7 +61,18 @@
   function tr(key) {
     return window.StaffI18n ? window.StaffI18n.t(key) : key;
   }
-  var state = { contacts: [], resources: [] };
+  /* Translate AND substitute. Never falls back to the raw string: a key with
+     {who} in it printed as "{who}" on screen once already, elsewhere in this
+     console, which is why every file that needs one has this. */
+  function fill(key, vars) {
+    if (window.StaffI18n && window.StaffI18n.fill) return window.StaffI18n.fill(key, vars);
+    var s = tr(key);
+    Object.keys(vars || {}).forEach(function (k) {
+      s = s.split('{' + k + '}').join(String(vars[k]));
+    });
+    return s;
+  }
+  var state = { contacts: [], resources: [], people: [] };
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -255,17 +266,75 @@
       '</div>';
     }).join('') || '<p class="empty">' + tr('dir.empty') + '</p>';
 
-    if ($('resourceList')) $('resourceList').innerHTML = state.resources.map(function (r, i) {
-      return '<div class="card">' +
-        '<div class="card-actions">' +
-          '<button type="button" data-edit-resource="' + i + '">Edit</button>' +
-          '<button type="button" class="del" data-delete-resource="' + i + '">Delete</button></div>' +
-        (r.photo ? '<div class="photo"><img src="' + esc(r.photo) + '" alt="" loading="lazy"></div>' : '') +
-        '<h4>' + esc(r.title) + '</h4>' +
-        (r.description ? '<p>' + esc(r.description) + '</p>' : '') +
-        (r.link ? '<a class="lnk" href="' + esc(r.link) + '" target="_blank" rel="noopener">Open →</a>' : '') +
-      '</div>';
-    }).join('') || '<p class="empty">' + tr('res.empty') + '</p>';
+    renderResources();
+  }
+
+  /* THREE SHELVES, and the controls follow what the SERVER said rather than
+     what the browser can work out. `can_edit` and `shelf` come back on every
+     row; deriving them again here would be a second implementation of the
+     ownership rule, and the two would eventually disagree — with the browser's
+     version being the one people see.
+
+     A card with no Edit button is not a permission check. The endpoint refuses
+     the write regardless; this is about not offering. */
+  function renderResources() {
+    if (!$('resourceList')) return;
+
+    var shelves = [
+      { key: 'institutional', title: tr('res.shelfOrg'), note: tr('res.shelfOrgNote') },
+      { key: 'mine', title: tr('res.shelfMine'), note: tr('res.shelfMineNote') },
+      { key: 'shared', title: tr('res.shelfShared'), note: tr('res.shelfSharedNote') },
+    ];
+
+    var html = shelves.map(function (sh) {
+      var rows = (state.resources || []).filter(function (r) {
+        /* Rows from before this shelf existed have no `shelf` at all. They are
+           the organisation's, which is where they were. */
+        return (r.shelf || 'institutional') === sh.key;
+      });
+      /* An empty shelf is omitted rather than shown empty — three headings
+         with nothing under two of them reads as broken on a first visit. The
+         exception is `mine`, which is where the Add button lives. */
+      if (!rows.length && sh.key !== 'mine') return '';
+
+      return '<section class="res-shelf" data-shelf="' + sh.key + '">' +
+        '<h3>' + esc(sh.title) + '</h3>' +
+        '<p class="res-shelf-note">' + esc(sh.note) + '</p>' +
+        '<div class="cards">' +
+          (rows.length
+            ? rows.map(function (r) {
+                var i = state.resources.indexOf(r);
+                return '<div class="card">' +
+                  '<div class="card-actions">' +
+                    (r.can_edit
+                      ? '<button type="button" data-edit-resource="' + i + '">' +
+                          esc(tr('common.edit')) + '</button>' +
+                        '<button type="button" class="del" data-delete-resource="' + i + '">' +
+                          esc(tr('common.delete')) + '</button>'
+                      : '') +
+                    /* Sharing needs only that you can SEE it — resharing is
+                       allowed, so this is offered on every card. */
+                    '<button type="button" data-share-resource="' + i + '">' +
+                      esc(tr('res.share')) + '</button>' +
+                  '</div>' +
+                  (r.photo ? '<div class="photo"><img src="' + esc(r.photo) +
+                             '" alt="" loading="lazy"></div>' : '') +
+                  '<h4>' + esc(r.title) + '</h4>' +
+                  (r.description ? '<p>' + esc(r.description) + '</p>' : '') +
+                  (r.shared_by_name
+                    ? '<p class="res-from">' +
+                        esc(fill('res.sharedBy', { who: r.shared_by_name })) + '</p>'
+                    : '') +
+                  (r.link ? '<a class="lnk" href="' + esc(r.link) +
+                            '" target="_blank" rel="noopener">' +
+                            esc(tr('res.open')) + '</a>' : '') +
+                '</div>';
+              }).join('')
+            : '<p class="empty">' + esc(tr('res.emptyMine')) + '</p>') +
+        '</div></section>';
+    }).join('');
+
+    $('resourceList').innerHTML = html || '<p class="empty">' + esc(tr('res.empty')) + '</p>';
   }
 
   function showUpdated(data) {
@@ -350,6 +419,39 @@
     } catch (e) {
       setStatus(e.message, true);
       await loadStaffData();
+    }
+  }
+
+  /* PASSING A RESOURCE TO A COLLEAGUE.
+
+     Offered on every card, because resharing is allowed — these are internal
+     Thauma documents among colleagues rather than material where onward
+     sharing betrays whoever wrote it. The endpoint still checks that you can
+     SEE the thing you are passing on.
+
+     A prompt rather than a picker, for now. The list of colleagues is not on
+     this page and fetching one to fill a dropdown is a second endpoint for a
+     feature nobody has used yet; the address is what somebody knows anyway. */
+  async function shareResource(r) {
+    if (!r) return;
+    var who = window.prompt(fill('res.sharePrompt', { title: r.title }), '');
+    if (!who) return;
+
+    try {
+      var res = await fetch(STAFF_API, {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kind: 'share', resource_id: r.id, email: who.trim() }),
+      });
+      var body = await res.json().catch(function () { return {}; });
+      if (!res.ok) throw new Error(body.error || tr('common.saveFailed'));
+      if (body.resources) state.resources = body.resources;
+      renderCards();
+      if (window.StaffToast) {
+        window.StaffToast(fill('res.sharedWith', { who: who.trim() }), 'ok');
+      }
+    } catch (e) {
+      setStatus(e.message, true);
     }
   }
 
@@ -449,7 +551,12 @@
       if (e.target.dataset.editResource !== undefined) open(e.target.dataset.editResource);
       if (e.target.dataset.deleteResource !== undefined) {
         var r = state.resources[Number(e.target.dataset.deleteResource)];
-        if (r && confirm('Delete "' + r.title + '"?')) deleteItem('resource', r.id);
+        if (r && confirm(fill('res.confirmDelete', { title: r.title }))) {
+          deleteItem('resource', r.id);
+        }
+      }
+      if (e.target.dataset.shareResource !== undefined) {
+        shareResource(state.resources[Number(e.target.dataset.shareResource)]);
       }
     });
   }

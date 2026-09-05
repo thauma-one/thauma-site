@@ -1844,3 +1844,15 @@ html:not(.roles-known)[data-area="admin"] .console-row[data-row="admin"] nav a{d
 .set-email .fld{display:block;margin-bottom:10px}
 .set-email-note{margin-top:10px;font-size:13px;color:var(--dim);min-height:1.2em}
 .set-email-note.is-bad{color:var(--crit,#FF6B6B)}
+
+/* ============================================ THE THREE RESOURCE SHELVES
+   Institutional, mine, shared with me. Headings rather than tabs: the whole
+   point is seeing at a glance that a document is the organisation's rather
+   than yours, and a tab hides two thirds of that.
+   ======================================================================= */
+.res-shelf{margin:0 0 34px}
+.res-shelf h3{font-size:16px;margin:0 0 4px}
+.res-shelf-note{margin:0 0 14px;font-size:13px;color:var(--dim);max-width:60ch}
+/* Where a shared card says who passed it on — the answer to "how did I get
+   this", which is the question somebody asks about an unexpected document. */
+.res-from{margin:6px 0 0;font-size:12.5px;color:var(--dim);font-style:italic}
