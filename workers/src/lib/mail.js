@@ -41,37 +41,75 @@ const esc = (s) =>
  * `rows` is already-escaped HTML for the inside of the white card — table rows
  * or block elements, each carrying its own inline styles.
  */
+/**
+ * The frame every Thauma message shares.
+ *
+ * WHY THE COMMENTS ARE OUT HERE. They used to sit inside the markup as HTML
+ * comments and were therefore SENT — about a kilobyte of notes about Outlook,
+ * in every message, to every recipient. Gmail clips a message at 102KB and
+ * these are small, so it was not breaking anything; it was just posting our
+ * working notes to supporters.
+ *
+ * THE BRAND BAND USES bgcolor AS AN ATTRIBUTE, not only in CSS. Outlook
+ * renders through Word, which drops background declarations on divs and keeps
+ * them on table cells. It is the one piece of Thauma's identity a mail client
+ * will reliably show, which is why it carries the wordmark.
+ *
+ * THE ACCENT IS A ROW, NOT A BORDER, for the same reason: the same renderer
+ * drops borders and never drops a filled cell.
+ *
+ * LIGHT IS DECLARED TWICE. Without color-scheme, Gmail and Apple Mail in dark
+ * mode invert the palette themselves and do it badly — the white card goes
+ * grey, the dark band stays dark, and the accent between them disappears.
+ *
+ * NO WEBFONT, and there is no way around it: Gmail strips @font-face, so
+ * Thauma's display face cannot appear here. Helvetica is what everybody has.
+ * The identity has to come from colour and layout instead.
+ */
 export function shell({ heading, rows, footer }) {
   return `<!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
 <title>${esc(heading)}</title>
 </head>
-<body style="margin:0;padding:0;background:#f4f6f8;">
-<!-- Preheader: the grey line clients show beside the subject. Hidden in the
-     body, because otherwise the first thing shown is whatever text happens to
-     come first, which is usually "View in browser". -->
+<body style="margin:0;padding:0;background:#eef1f5;">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${esc(heading)}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
-       style="background:#f4f6f8;padding:32px 12px;">
+       style="background:#eef1f5;padding:32px 12px;">
   <tr><td align="center">
     <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"
-           style="width:100%;max-width:600px;background:#ffffff;border-radius:8px;
-                  border:1px solid #e3e8ee;">
-      <tr><td style="padding:28px 32px 8px 32px;
+           style="width:100%;max-width:600px;">
+
+            <tr><td bgcolor="#0B0F15" align="left"
+              style="background:#0B0F15;padding:22px 32px 20px 32px;
+                     border-radius:8px 8px 0 0;
                      font-family:Helvetica,Arial,sans-serif;">
-        <div style="font-size:13px;letter-spacing:2px;text-transform:uppercase;
-                    color:#6b7785;font-weight:bold;">THAUMA</div>
+        <span style="font-size:15px;letter-spacing:6px;text-transform:uppercase;
+                     color:#ffffff;font-weight:normal;">THAUMA</span>
       </td></tr>
-      <tr><td style="padding:0 32px 28px 32px;
-                     font-family:Helvetica,Arial,sans-serif;color:#1a2028;">
+
+            <tr><td bgcolor="#2FD8FF" height="3"
+              style="background:#2FD8FF;height:3px;line-height:3px;font-size:0;">&nbsp;</td></tr>
+
+      <tr><td bgcolor="#ffffff"
+              style="background:#ffffff;padding:30px 32px 30px 32px;
+                     font-family:Helvetica,Arial,sans-serif;color:#1a2028;
+                     border-left:1px solid #dfe4ea;border-right:1px solid #dfe4ea;
+                     border-bottom:1px solid #dfe4ea;border-radius:0 0 8px 8px;">
         ${rows}
       </td></tr>
     </table>
+
     <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"
            style="width:100%;max-width:600px;">
-      <tr><td style="padding:18px 32px;font-family:Helvetica,Arial,sans-serif;
+      <tr><td align="left"
+              style="padding:18px 32px 6px 32px;font-family:Helvetica,Arial,sans-serif;
+                     font-size:11px;letter-spacing:3px;text-transform:uppercase;
+                     color:#9aa6b6;">THAUMA</td></tr>
+      <tr><td style="padding:0 32px 18px 32px;font-family:Helvetica,Arial,sans-serif;
                      font-size:12px;line-height:1.6;color:#8a96a6;">
         ${footer}
       </td></tr>
@@ -85,7 +123,7 @@ export function shell({ heading, rows, footer }) {
 export function button(href, label) {
   return `<table role="presentation" cellpadding="0" cellspacing="0" border="0"
                  style="margin:22px 0;"><tr>
-    <td align="center" bgcolor="#0B6E8C" style="border-radius:6px;">
+    <td align="center" bgcolor="#0B6E8C" style="background:#0B6E8C;border-radius:6px;">
       <a href="${esc(href)}" style="display:inline-block;padding:14px 28px;
          font-family:Helvetica,Arial,sans-serif;font-size:15px;font-weight:bold;
          color:#ffffff;text-decoration:none;border-radius:6px;">${esc(label)}</a>
