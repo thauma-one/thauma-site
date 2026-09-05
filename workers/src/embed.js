@@ -133,7 +133,7 @@ function widgetScript(hostname) {
  * have opted in, the console by who is signed in.
  */
 export async function embedPayload(db, partner) {
-  const site = await partnerPublicSite(db, partner.id);
+  const site = await partnerPublicSite(db, partner.id, partner.slug);
   const accent = HEX_RE.test(partner.embed_accent || "")
     ? partner.embed_accent : DEFAULT_ACCENT;
   return {

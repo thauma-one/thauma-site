@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "fe9395580d83c38d";
+export const SOURCE_DIGEST = "9ddec5abfaad803d";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -373,6 +373,13 @@ FROM mailings m
 WHERE m.list_id = :list_id AND m.partner_id IS :partner_id
 ORDER BY CASE m.status WHEN 'draft' THEN 0 ELSE 1 END,
          COALESCE(m.finished_at, m.created_at) DESC;`,
+  mailings_sent_for_list: `SELECT m.id, m.slug, m.subject, m.status, m.finished_at, m.sent_count
+  FROM mailings m
+  JOIN mailing_lists l ON l.id = m.list_id
+ WHERE m.list_id = :list_id AND l.partner_id IS :partner_id
+   AND m.status = 'sent'
+ ORDER BY m.finished_at DESC
+ LIMIT 100;`,
   milestone_delete: `DELETE FROM milestones WHERE id = :id AND partner_id = :partner_id;`,
   milestone_reorder: `UPDATE milestones SET sort_order = :sort_order, updated_at = :now
 WHERE id = :id AND partner_id = :partner_id;`,
@@ -535,6 +542,16 @@ ORDER BY pl.sort_order, l.name;`,
   JOIN partners p ON p.slug = :partner_slug AND l.partner_id IS p.id
  WHERE l.is_open = 1 AND l.archived_at IS NULL
  ORDER BY l.name COLLATE NOCASE;`,
+  public_mailings_for_partner: `SELECT m.slug, m.subject, m.preheader, m.finished_at AS sent_at,
+       l.slug AS list_slug, l.name AS list_name
+  FROM mailings m
+  JOIN mailing_lists l ON l.id = m.list_id
+ WHERE l.partner_id IS :partner_id
+   AND l.archive_public = 1
+   AND m.status = 'sent'
+   AND m.slug IS NOT NULL
+ ORDER BY m.finished_at DESC
+ LIMIT 50;`,
   public_milestone_translations: `SELECT t.milestone_id, t.lang, t.title, t.description, t.target_label
 FROM milestone_translations t
 JOIN milestones m ON m.id = t.milestone_id

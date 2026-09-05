@@ -2173,3 +2173,43 @@ SELECT 1 AS ok
         OR r.owner_user_id IS NULL
         OR EXISTS (SELECT 1 FROM resource_shares sh
                     WHERE sh.resource_id = r.id AND sh.user_id = :user_id));
+
+
+-- name: public_mailings_for_partner
+-- Past newsletters, for a partner's own website to render.
+--
+-- THE SAME GATE THE ARCHIVE PAGE USES, and it has to be: mailing_lists
+-- .archive_public is a decision made once, calmly, about a whole list —
+-- newsletters are meant to be read, prayer updates name people and are not.
+-- A second rule here could disagree with the page, and the way that failure
+-- shows up is a prayer request on somebody's public site.
+--
+-- 'sent' only. A draft is not a thing anybody has agreed to publish.
+--
+-- NO BODY. This is a list of what exists with the address of each; the archive
+-- page renders the words. Shipping bodies through here would put a newsletter
+-- into any build that holds a key, and make the response grow without bound.
+SELECT m.slug, m.subject, m.preheader, m.finished_at AS sent_at,
+       l.slug AS list_slug, l.name AS list_name
+  FROM mailings m
+  JOIN mailing_lists l ON l.id = m.list_id
+ WHERE l.partner_id IS :partner_id
+   AND l.archive_public = 1
+   AND m.status = 'sent'
+   AND m.slug IS NOT NULL
+ ORDER BY m.finished_at DESC
+ LIMIT 50;
+
+
+-- name: mailings_sent_for_list
+-- What the console shows a partner about their own list: everything sent, with
+-- what it needs to build the public address of each. Not gated on
+-- archive_public — a partner may look at their own history whether or not it
+-- is published, and the screen says which state it is in.
+SELECT m.id, m.slug, m.subject, m.status, m.finished_at, m.sent_count
+  FROM mailings m
+  JOIN mailing_lists l ON l.id = m.list_id
+ WHERE m.list_id = :list_id AND l.partner_id IS :partner_id
+   AND m.status = 'sent'
+ ORDER BY m.finished_at DESC
+ LIMIT 100;

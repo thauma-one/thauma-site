@@ -246,6 +246,8 @@
     fillSenders(l.from_email || '');
     $('mlReplyTo').value = l.reply_to || '';
     setSwitch($('mlOpen'), !!l.is_open);
+    setSwitch($('mlArchivePublic'), !!l.archive_public);
+    renderSent(l);
     setStatus($('mlFormStatus'), '');
 
     $('mlArchive').hidden = !l.id;
@@ -262,6 +264,8 @@
       .forEach(function (id) { $(id).value = ''; });
     fillSenders('');
     setSwitch($('mlOpen'), false);
+    setSwitch($('mlArchivePublic'), false);
+    if ($('mlSent')) $('mlSent').hidden = true;
     $('mlArchive').hidden = true;
     setStatus($('mlFormStatus'), '');
 
@@ -279,6 +283,7 @@
       from_email: $('mlFromEmail').value,
       reply_to: $('mlReplyTo').value.trim(),
       is_open: $('mlOpen').getAttribute('aria-checked') === 'true',
+      archive_public: $('mlArchivePublic').getAttribute('aria-checked') === 'true',
     };
 
     setStatus($('mlFormStatus'), tr('ml.saving'));
@@ -1354,6 +1359,43 @@
     navigator.clipboard.writeText(box.value).then(function () {
       toast(tr('toast.copied'), 'ok');
     }, function () { /* the text is selected either way */ });
+  });
+
+  /* WHAT HAS ALREADY GONE OUT, with the address each one lives at.
+
+     Shown whether or not the archive is switched on, and the line under each
+     says which — a partner should be able to look at their own history
+     regardless, and seeing "not published yet" beside a mailing is how
+     somebody discovers the switch above exists. */
+  function renderSent(l) {
+    var box = $('mlSent');
+    if (!box) return;
+    var rows = (l && l.sent) || [];
+    if (!rows.length) { box.hidden = true; return; }
+    box.hidden = false;
+
+    var origin = window.location.origin;
+    $('mlSentList').innerHTML = rows.map(function (m) {
+      var url = origin + '/archive/' + encodeURIComponent(state.partnerSlug || '') +
+                '/' + encodeURIComponent(l.slug) + '/' + encodeURIComponent(m.slug || '') + '/';
+      return '<div class="ml-sent-row">' +
+        '<div class="ml-sent-main">' +
+          '<b>' + esc(m.subject) + '</b>' +
+          '<span class="ml-sent-when">' +
+            esc(m.finished_at ? new Date(m.finished_at).toLocaleDateString() : '') +
+            (m.sent_count ? ' · ' + fill('ml.sentTo', { n: m.sent_count }) : '') +
+          '</span>' +
+        '</div>' +
+        (l.archive_public && m.slug
+          ? '<a class="ml-sent-link" href="' + esc(url) + '" target="_blank" ' +
+            'rel="noopener">' + esc(tr('ml.readIt')) + '</a>'
+          : '<span class="ml-sent-off">' + esc(tr('ml.notPublished')) + '</span>') +
+      '</div>';
+    }).join('');
+  }
+
+  $('mlArchivePublic').addEventListener('click', function () {
+    setSwitch(this, this.getAttribute('aria-checked') !== 'true');
   });
 
   $('mlOpen').addEventListener('click', function () {

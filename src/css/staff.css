@@ -1868,3 +1868,16 @@ html:not(.roles-known)[data-area="admin"] .console-row[data-row="admin"] nav a{d
   flex:none;transition:background .2s ease}
 .res-toggle.is-on{color:var(--text);border-color:var(--voice-tech-dim)}
 .res-toggle.is-on .res-toggle-dot{background:var(--voice-tech)}
+
+/* What has already gone out, on the list settings screen. */
+.ml-sent{margin:24px 0 4px}
+.ml-sent h4{font-size:14px;margin:0 0 10px}
+.ml-sent-row{display:flex;align-items:center;gap:16px;padding:9px 0;
+  border-bottom:1px solid var(--line-soft)}
+.ml-sent-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.ml-sent-main b{font-size:14px;font-weight:600}
+.ml-sent-when{font-size:12px;color:var(--dim)}
+.ml-sent-link{flex:none;font-size:13px;color:var(--voice-tech);text-decoration:none}
+.ml-sent-link:hover{text-decoration:underline}
+/* Not an error — a state. The switch above is how it changes. */
+.ml-sent-off{flex:none;font-size:12px;color:var(--dim);font-style:italic}

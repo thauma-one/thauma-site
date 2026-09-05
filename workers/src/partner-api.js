@@ -45,7 +45,7 @@ export default {
     const { partner, denied } = await requirePartnerKey(request, db);
     if (denied) return denied;
 
-    const site = await partnerPublicSite(db, partner.id);
+    const site = await partnerPublicSite(db, partner.id, partner.slug);
 
     // Best-effort usage record. A failure here must not fail the request —
     // the build asked a legitimate question and deserves its answer.

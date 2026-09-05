@@ -96,7 +96,13 @@ await check("PUBLIC_QUERIES is an allow-list of exactly the intended queries", a
        not their own — see the query. */
     "public_video_links_for_partner",
     "public_videos_for_partner",
-  ], "public set");
+    /* Added 2026-09-04. Past newsletters, so a partner site can list what has
+       been sent. Gated on mailing_lists.archive_public — the SAME flag the
+       /archive page uses, because a second rule here could disagree with the
+       page and the way that failure shows up is a prayer request on somebody's
+       public website. */
+    "public_mailings_for_partner",
+  ].sort(), "public set");
 });
 
 await check("publicQuery REFUSES a private query even when asked directly", async () => {
@@ -138,6 +144,13 @@ function fakePublicDb(overrides = {}) {
         { code: "hr", name: "Croatian", native_name: "Hrvatski", sort_order: 1 },
       ];
     }
+    if (sql.includes("FROM mailings")) {
+      return overrides.mailings ?? [{
+        slug: "three-weeks-in-zagreb", subject: "Three weeks in Zagreb",
+        preheader: "The radiators work.", sent_at: "2026-02-20T09:00:00Z",
+        list_slug: "mission-updates", list_name: "Mission Updates",
+      }];
+    }
     if (sql.includes("FROM video_links")) {
       return overrides.video_links ?? [
         { label: "All updates on YouTube", url: "https://www.youtube.com/@thauma" },
@@ -165,7 +178,8 @@ await check("the payload carries languages, goals, milestones and prayer — and
      same sense the roadmap is, and it goes through the same publication gate
      and the same no-personal-data check. */
   eq(Object.keys(site).sort(),
-     ["goals", "languages", "milestones", "prayer", "video_links", "videos"],
+     ["goals", "languages", "mailings", "milestones", "prayer", "video_links",
+      "videos"],
      "top-level keys");
 });
 
@@ -186,6 +200,30 @@ await check("a button reaches a partner site as a label and a URL, nothing else"
   const site = await partnerPublicSite(fakePublicDb(), "p_chase");
   eq(site.video_links, [{ label: "All updates on YouTube",
                           url: "https://www.youtube.com/@thauma" }], "the rail");
+});
+
+await check("a past newsletter arrives with its address, and no body", async () => {
+  /* No body: the archive page renders the words. Shipping them here would put
+     a whole newsletter into any build holding a key, and grow the response
+     without bound. */
+  const site = await partnerPublicSite(fakePublicDb(), "p_chase", "chase-roush");
+  const m = site.mailings[0];
+  eq(m.subject, "Three weeks in Zagreb", "subject");
+  eq(m.url, "https://thauma.one/archive/chase-roush/mission-updates/three-weeks-in-zagreb/",
+     "url");
+  assert(!("body_html" in m) && !("body_text" in m), `a body was shipped: ${Object.keys(m)}`);
+});
+
+await check("the archive URL is absolute and points at the LIVE site", async () => {
+  /* A partner site renders this into a page that outlives the build. A staging
+     address baked into it would rot, and is Access-gated besides. */
+  const site = await partnerPublicSite(fakePublicDb(), "p_chase", "chase-roush");
+  assert(site.mailings[0].url.startsWith("https://thauma.one/"),
+    `not the live site: ${site.mailings[0].url}`);
+  /* Without a slug there is no honest URL to build, and a wrong one is worse
+     than none. */
+  const noSlug = await partnerPublicSite(fakePublicDb(), "p_chase");
+  eq(noSlug.mailings[0].url, null, "it invented a URL with no slug");
 });
 
 await check("the videos query cannot be run without a partner", async () => {

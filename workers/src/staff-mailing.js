@@ -408,7 +408,16 @@ export default {
         partner: s.partner
           ? { id: s.partner.id, slug: s.partner.slug, display_name: s.partner.display_name }
           : null,
-        lists,
+        /* Each list carries what has already gone out on it, so the settings
+           screen can show a history and the address each mailing lives at.
+           One query per list rather than one for everything, because a
+           partner has a handful of lists and the alternative is a join whose
+           result has to be regrouped in JavaScript. */
+        lists: await Promise.all(lists.map(async (l) => ({
+          ...l,
+          sent: await db.query("mailings_sent_for_list",
+            { list_id: l.id, partner_id: partnerId }),
+        }))),
         /* Each tag carries how many people wear it, so deleting one can say
            what it takes off rather than asking for confidence in the abstract. */
         tags: tags.map((t) => ({

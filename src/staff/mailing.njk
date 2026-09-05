@@ -225,6 +225,32 @@ staffHint: your lists and the people on them — nobody else's
               Off means only you can add people, and any form already on a website stops working.</span>
           </span>
         </button>
+
+        {#- THE ARCHIVE HAS EXISTED AND BEEN UNREACHABLE. mailing_lists
+           .archive_public was in the schema, the endpoint accepted it, and
+           /archive/… served it — but nothing in the console could switch it
+           on, so no partner could ever have used it.
+
+           A LIST-WIDE DECISION, deliberately, not a per-mailing one. A
+           newsletter is meant to be read; a prayer update names people and is
+           not. Made once and calmly it is safe; made again in a hurry every
+           week, one forgetful moment publishes somebody's prayer request. -#}
+        <button type="button" class="switch" id="mlArchivePublic" role="switch" aria-checked="false">
+          <span class="switch-track"><span class="switch-state">Off</span><span class="switch-knob"></span></span>
+          <span class="switch-label"><span data-i18n="ml.archivePublic">Past issues readable on the web</span>
+            <span class="switch-note" data-i18n="ml.archivePublicNote">Anyone with the link can read what
+              you have sent on this list, and every mailing carries a link to it. Leave this off for
+              anything naming people — prayer updates especially.</span>
+          </span>
+        </button>
+      </div>
+
+      {#- What has actually gone out, with the public address of each. Shown
+         whether or not the archive is on: a partner may look at their own
+         history regardless, and the line beneath each says which it is. -#}
+      <div class="ml-sent" id="mlSent" hidden>
+        <h4 data-i18n="ml.sentTitle">Already sent</h4>
+        <div class="ml-sent-list" id="mlSentList"></div>
       </div>
 
       <div class="ms-actions">

@@ -50,6 +50,7 @@ const TENANT_SCOPED = new Set([
   /* The buttons under the shelf. Gated on the CHANNEL's publication
      switch, which is why the join is in the SQL and not in a caller. */
   "public_video_links_for_partner",
+  "public_mailings_for_partner",
 ]);
 
 /**
@@ -84,6 +85,7 @@ export const PUBLIC_QUERIES = new Set([
      query rather than being applied by a caller. */
   "public_videos_for_partner",
   "public_video_links_for_partner",
+  "public_mailings_for_partner",
 ]);
 
 /** Tables a query in PUBLIC_QUERIES must never mention. */
@@ -129,10 +131,22 @@ export function assertPublicSafe(queries = QUERIES) {
     // Checked as "at least one of them", not "is_public specifically",
     // because a rule that only fits today's queries gets deleted by the first
     // person it inconveniences.
-    if (!/\bis_public\s*=\s*1\b/i.test(sql) && !/\bis_enabled\s*=\s*1\b/i.test(sql)) {
+    /* THE FLAG DEPENDS ON WHAT IS BEING PUBLISHED, and the list is checked as
+       "at least one of these" rather than a single name — a rule that only
+       fits today's queries is one the next person deletes.
+
+       archive_public joined it when past newsletters did. It is the same kind
+       of decision as the other two: a deliberate, per-list opt-in, made once
+       and calmly, that a mailing must clear before anybody outside can read
+       it. What would NOT belong here is a flag meaning "not deleted" or "is
+       finished" — those are states, not consent. */
+    const PUBLICATION_FLAGS = ["is_public", "is_enabled", "archive_public"];
+    const gated = PUBLICATION_FLAGS.some(
+      (flag) => new RegExp(`\\b${flag}\\s*=\\s*1\\b`, "i").test(sql));
+    if (!gated) {
       throw new Error(
-        `public query "${name}" filters neither is_public = 1 nor ` +
-        `is_enabled = 1 — it would publish rows nobody chose to publish.`);
+        `public query "${name}" filters none of ${PUBLICATION_FLAGS.join(", ")} ` +
+        `— it would publish rows nobody chose to publish.`);
     }
     /* Every public query must be scoped to ONE partner, or it publishes the
        whole table. Almost always that means :partner_id.
@@ -281,11 +295,11 @@ export function createDb(binding, exec) {
  * Uses publicQuery(), so the layer refuses anything outside PUBLIC_QUERIES
  * even if this function asks for it.
  */
-export async function partnerPublicSite(db, partnerId) {
+export async function partnerPublicSite(db, partnerId, partnerSlug = null) {
   if (!partnerId) throw new Error("partnerPublicSite requires a partnerId");
 
   const [goals, milestones, translations, languages, prayer, prayerTx, videos,
-         videoLinks] = await Promise.all([
+         videoLinks, mailings] = await Promise.all([
       db.publicQuery("public_goals_for_partner", { partner_id: partnerId }),
       db.publicQuery("public_milestones_for_partner", { partner_id: partnerId }),
       db.publicQuery("public_milestone_translations", { partner_id: partnerId }),
@@ -294,6 +308,7 @@ export async function partnerPublicSite(db, partnerId) {
       db.publicQuery("public_prayer_translations", { partner_id: partnerId }),
       db.publicQuery("public_videos_for_partner", { partner_id: partnerId }),
       db.publicQuery("public_video_links_for_partner", { partner_id: partnerId }),
+      db.publicQuery("public_mailings_for_partner", { partner_id: partnerId }),
     ]);
 
   // Group text by milestone, then by language code. Nothing here names a
@@ -382,6 +397,25 @@ export async function partnerPublicSite(db, partnerId) {
        page. Usually none. Named field by field like everything else here, so
        a column added to video_links does not publish itself. */
     video_links: videoLinks.map((l) => ({ label: l.label, url: l.url })),
+    /* PAST NEWSLETTERS — what was sent, and where to read it. No bodies: the
+       archive page renders those, and shipping them here would put a whole
+       newsletter into any build holding a key and grow this response without
+       bound. The URL is built here for the same reason the video ones are —
+       a consumer should not have to know how to assemble it. */
+    mailings: mailings.map((m) => ({
+      slug: m.slug,
+      subject: m.subject,
+      preheader: m.preheader || null,
+      sent_at: m.sent_at,
+      list: { slug: m.list_slug, name: m.list_name },
+      /* Absolute, and pinned to the live site rather than to whichever
+         deployment answered. A partner site renders this into a page that
+         outlives the build; a staging address baked into it would rot, and
+         is Access-gated besides. */
+      url: partnerSlug
+        ? `https://thauma.one/archive/${partnerSlug}/${m.list_slug}/${m.slug}/`
+        : null,
+    })),
   };
 }
 
