@@ -103,7 +103,7 @@ await check("a partner query can never fall through to the organization", async 
 });
 
 await check("the partner payload refuses to be built for 'no partner'", async () => {
-  /* The last line of defence. Everything partnerPublicSite runs is scoped by
+  /* The last line of defense. Everything partnerPublicSite runs is scoped by
      `partner_id IS :partner_id`, so a null partner would return the whole of
      Thauma's own content under a partner's API key. */
   let threw = null;
