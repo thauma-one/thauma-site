@@ -302,13 +302,41 @@ export default {
   },
 };
 
-async function writeFile(env, profile, translations, user, me) {
+/* `io` is injectable so a test can drive the create-versus-replace decision
+   directly. It is the decision that was wrong, and it cannot be reached
+   from the outside any other way without a live GitHub. */
+export async function writeFile(env, profile, translations, user, me,
+                                io = { getFile, putFile }) {
   const path = pathFor(profile.slug);
-  const existing = await getFile(env, path);
-  const res = await putFile(env, {
+  const existing = await io.getFile(env, path);
+
+  /* CREATING AND REPLACING ARE DIFFERENT ACTS, and this asked for neither.
+   *
+   * putFile refuses to write without a SHA unless the caller says `create` in
+   * so many words — because the Contents API reads an absent SHA as "create",
+   * which on an existing path silently overwrites whatever is there. Good
+   * guard. But this passed `sha: undefined` on a missing file and never said
+   * `create`, so the FIRST publish of any profile was refused, every time.
+   *
+   * It hid because unpublishing worked: removeFile has a SHA to hand. So the
+   * sequence was publish (refused, error shown in a status line nobody was
+   * watching), unpublish (worked), publish again (refused again). The audit log
+   * recorded five of these before anyone noticed the team page was empty.
+   *
+   * A 404 IS THE ONLY THING THAT MEANS "NOT THERE". Any other error — a bad
+   * token, a rate limit, GitHub being down — must NOT become a create, or the
+   * one accident the SHA exists to prevent happens on the day GitHub is
+   * flaky. */
+  const missing = !!existing.error && existing.status === 404;
+  if (existing.error && !missing) {
+    return { ok: false, error: existing.error };
+  }
+
+  const res = await io.putFile(env, {
     path,
     text: toMarkdown(profile, translations),
-    sha: existing.error ? undefined : existing.sha,
+    sha: missing ? undefined : existing.sha,
+    create: missing,
     message: `Update ${profile.name}'s team profile`,
     // Saving must not deploy. The tripwire in workers/test/github.test.mjs
     // fails the build if any write here forgets this.

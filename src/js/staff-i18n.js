@@ -702,7 +702,7 @@
       "adm.pstatus.on_leave": "On leave",
       "adm.pstatus.alumni": "Alumni",
       "adm.noRoles": "no role",
-      "adm.masterAccount": "Thauma master account",
+      "adm.masterAccount": "Thauma Master Account",
       "adm.masterNote": "always full access; not a person",
       "adm.noPartners": "no partner access",
       "adm.signInStatus": "Sign-in status",

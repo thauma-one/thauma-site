@@ -799,6 +799,16 @@
     var rows = (state.users || []).slice();
     var key = ui.sort;
     return rows.sort(function (a, b) {
+      /* THE MASTER ACCOUNT IS ALWAYS FIRST, whatever the list is sorted by.
+
+         It is not a person and it never changes, so it has no meaningful place
+         in an alphabet of names, a list of regions or a ranking by status —
+         sorting it among people means hunting for the one row whose position
+         carries no information. Pinned before every other comparison rather
+         than given a clever sort value, because the sort keys change and this
+         must not depend on any of them. */
+      if (a.protected !== b.protected) return a.protected ? -1 : 1;
+
       var pa = profileFor(a.id), pb = profileFor(b.id);
       var av = '', bv = '';
       if (key === 'region') { av = (pa && pa.region) || ''; bv = (pb && pb.region) || ''; }
