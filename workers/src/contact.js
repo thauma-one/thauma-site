@@ -47,6 +47,7 @@ import { detectLang } from "./contact-form.js";
 import { COLOUR_JS } from "./embed-colour.js";
 import { escapeHtml, palette, formStyles, LIGHT, DARK, BEHAVIOUR_JS } from "./lib/embed-form.js";
 import { siteOrigin } from "./lib/origin.js";
+import { isOrgSlug } from "./lib/org.js";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -405,7 +406,7 @@ export default {
        show up in every partner list, every scope check and every count, and
        each of those would then need a special case to exclude it. One special
        case here is cheaper than a dozen everywhere else. */
-    const isOrg = partnerSlug === "thauma";
+    const isOrg = isOrgSlug(partnerSlug);
     const [form, topics] = await Promise.all([
       isOrg
         ? db.queryOne("public_contact_form_org", {})

@@ -32,6 +32,7 @@ import { linkParams } from "./lib/signed-link.js";
 import { sendMail, inviteEmail } from "./lib/mail.js";
 import { requestedTarget } from "./lib/actas.js";
 import { siteOrigin } from "./lib/origin.js";
+import { isReservedSlug } from "./lib/org.js";
 
 const ROLES = new Set(["admin", "partner", "staff", "board"]);
 const STATUSES = new Set(["invited", "active", "suspended"]);
@@ -214,6 +215,14 @@ async function makePartner(db, { displayName, forUser, grantedBy, now, user }) {
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60);
   if (!slug) return null;
+
+  /* THE ORGANIZATION'S SLUG IS NOT AVAILABLE. `thauma` addresses Thauma itself
+     in every public embed URL, so a partner holding it would have its own
+     contact form permanently shadowed by the organization's — and every page
+     embedding what it believed was that ministry would serve Thauma's instead.
+     Two ministries behind one address is what partner scoping exists to
+     prevent, and it would have been created by typing a name. */
+  if (isReservedSlug(slug)) return { reserved: slug };
 
   const pid = "p_" + slug.replace(/-/g, "_").slice(0, 40);
   try {
@@ -403,6 +412,16 @@ export default {
           forUser: str(body.user_id, 64),
           grantedBy: me.user_id, now, user,
         });
+        /* Named, not lumped in with "could not create". Somebody typing
+           "Thauma" and being told the name may already be in use would go
+           looking for a partner that does not exist. */
+        if (made && made.reserved) {
+          return json({
+            error: `"${made.reserved}" is how the organization itself is ` +
+                   `addressed in every embed URL, so a partner cannot have it. ` +
+                   `Give this ministry a name of its own.`,
+          }, 409);
+        }
         if (!made) {
           return json({
             error: "Could not create that partner — the name may already be in " +
@@ -687,6 +706,10 @@ export default {
             createdPartner = await makePartner(db, {
               displayName: target.name, forUser: userId, grantedBy: me.user_id, now, user,
             });
+            /* A refusal is not a partner. Granting the Partner role to somebody
+               named "Thauma" makes no ministry, and reporting one would leave
+               the console showing a partner that was never created. */
+            if (createdPartner && createdPartner.reserved) createdPartner = null;
           }
         }
 
