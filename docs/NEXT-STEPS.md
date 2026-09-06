@@ -31,7 +31,7 @@ free means not choosing between them.
 | 3 | *held* | the next partner |
 
 **Never send a newsletter from bare `thauma.one`.** Subdomains carry largely
-independent reputation, but receivers also read the organisational domain as a
+independent reputation, but receivers also read the organizational domain as a
 signal — so complaints at the parent bleed downward into every subdomain.
 Keeping `thauma.one` low-volume is what protects the rest of them.
 
@@ -41,7 +41,7 @@ In order:
    `thauma.one`.
 2. For each, Resend shows DNS records — an **MX** and **TXT** for the return
    path, a **DKIM** TXT, and an **SPF** TXT. Add every one in Cloudflare DNS,
-   **DNS-only (grey cloud), not proxied.** A proxied record breaks
+   **DNS-only (gray cloud), not proxied.** A proxied record breaks
    verification. Then press Verify.
 3. Add a **DMARC** record on `thauma.one`, which Resend does not give you:
 
@@ -124,9 +124,9 @@ a `<script>`; the script draws the form directly into your page inside a shadow
 root. So:
 
 - **Width** — it takes whatever the container you put it in gives it, up to a
-  readable cap (about 480px for a form), and centres in anything wider. Put it
+  readable cap (about 480px for a form), and centers in anything wider. Put it
   in a narrow sidebar and it is narrow; put it in a full-width section and it
-  centres.
+  centers.
 - **Height** — there is no fixed height. It is exactly as tall as its content,
   and it grows as somebody types into the message box. **Nothing ever scrolls
   inside it on a real page.**
@@ -195,7 +195,7 @@ against real rows.
 sort order arriving from a browser and being interpolated into SQL is the
 classic injection, and the classic mitigation — an allow-list in the Worker —
 has to be got right in every caller forever. Bound like any other value, an
-unrecognised sort simply falls through to newest-first.
+unrecognized sort simply falls through to newest-first.
 
 ## Why staging kept falling behind, and what stops it now  (2026-08-25)
 
@@ -222,7 +222,7 @@ explicit act, which is the point.
 
 **Now enforced in CI**, by `deploy/migration-state.mjs`:
 
-| | behaviour |
+| | behavior |
 |---|---|
 | **staging** | **applies** pending migrations, then deploys |
 | **production** | **refuses to deploy**, names what is pending, points at Admin → Publish → Migrations |
@@ -279,7 +279,7 @@ up on the server from the posted id.
 ## Contact forms  (2026-08-22)
 
 > ⚠ **Dev seed data uses `.invalid` addresses only.** `db/seed.dev.contact.sql`
-> once delivered the organisation's form to `admin@thauma.one`, and a routine
+> once delivered the organization's form to `admin@thauma.one`, and a routine
 > `curl` against the local endpoint on 2026-08-22 put a test message into a
 > real inbox. Running the Worker locally does not stop it calling Resend for
 > real — the only reliable guard is a destination that cannot receive, and
@@ -308,12 +308,12 @@ Two lines to paste, same as the sign-up snippet:
   to, and under GDPR that is a record somebody is responsible for. Your mailbox
   is the system of record.
 - **"What is this about" is a dropdown you define** — General, Prayer request,
-  Partnership, whatever fits. Empty means no dropdown at all. Modelled on
+  Partnership, whatever fits. Empty means no dropdown at all. Modeled on
   chaseroush.com's, which also has a free-text **Subject** underneath it, so
   this does too: the reason tells you the category, the subject tells you
   whether to open it now.
 - **A reason can route the message somewhere else.** Prayer requests to
-  `prayer@`, partnership enquiries to whoever handles support, everything else
+  `prayer@`, partnership inquiries to whoever handles support, everything else
   to the form's own address. That is the difference between a form that sorts
   itself and an inbox somebody sorts by hand every morning.
 - The reason and its address are **looked up on the server** from the id the
@@ -337,7 +337,7 @@ Two lines to paste, same as the sign-up snippet:
   client — this one is honest: a contact form ends up on a web page, so a
   browser is exactly what will draw it. It follows the heading, blurb, button
   and thank-you text as you type them.
-- **Colours are not set here.** They come from the ministry's palette on the
+- **Colors are not set here.** They come from the ministry's palette on the
   Sign-up forms tab and are shared by every widget, so there is one control
   rather than two that disagree.
 - **Thauma's own form embeds too**, at `/embed/v1/thauma/contact.js`. `thauma`
@@ -349,7 +349,7 @@ Two lines to paste, same as the sign-up snippet:
 
 **Thauma's own contact page now reads the same configuration.** `CONTACT_TO`
 and `CONTACT_FROM` in `wrangler.toml` still work as a fallback, but the
-organisation has a row like everybody else — so changing where site messages go
+organization has a row like everybody else — so changing where site messages go
 is no longer a deploy.
 
 **Both public forms share one stylesheet** (`workers/src/lib/embed-form.js`).
@@ -358,7 +358,7 @@ identical do not stay that way.
 
 ## The composer  (2026-08-21)
 
-**Staff → Mailing → Composer.** One column, in the console's own colours,
+**Staff → Mailing → Composer.** One column, in the console's own colors,
 running TipTap.
 
 **The toolbar tells the truth.** A button is lit when the cursor is inside that
@@ -367,7 +367,7 @@ without typing and Bold lights up. That is `test/composer-toolbar.test.mjs`,
 which runs in `npm test` and both deploy workflows against the **built bundle**,
 so a build that stopped shipping the editor fails before it ships.
 
-Bold, italic, underline, strikethrough, two sizes, your brand colour, headings,
+Bold, italic, underline, strikethrough, two sizes, your brand color, headings,
 lists, quotes, links, pictures, dividers. Nothing else — everything offered has
 to be something email actually renders.
 
@@ -498,7 +498,7 @@ git push origin dev
 ## 2. Create the GitHub App (~15 minutes of clicking, no terminal)
 
 This is the credential the website uses to save and publish. It belongs to the
-Thauma organisation, not to you personally, so it keeps working if you ever
+Thauma organization, not to you personally, so it keeps working if you ever
 step away from it.
 
 1. Go to **github.com/organizations/thauma-one/settings/apps** → **New GitHub App**
@@ -913,7 +913,7 @@ says so. Safe at any hour.
 Then, on the Publish page:
 
 - **b.** The amber box now offers **Apply**. Press it, type `MIGRATE`.
-  - `0013` puts Slovenian in the language catalogue. Until it runs, Slovenian
+  - `0013` puts Slovenian in the language catalog. Until it runs, Slovenian
     is live on the public site and no partner can write content in it.
   - `0014` adds the staff profile tables. The Staff page section cannot save
     without it.

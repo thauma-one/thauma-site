@@ -168,7 +168,7 @@ check("a trailing newline does not add an empty row", () => {
 
 check("wrapping and unwrapping is lossless for every real string", () => {
   /* A CSV cannot carry column widths or styles — the only formatting a
-     spreadsheet honours is a newline inside a quoted cell. So the text columns
+     spreadsheet honors is a newline inside a quoted cell. So the text columns
      are soft-wrapped, and the import must undo it EXACTLY. The longest string
      on the site is 388 characters; as one line it makes the column wider than
      the screen. */

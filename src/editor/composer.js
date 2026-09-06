@@ -46,7 +46,7 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
   function url(extra) {
     const qs = [];
     const scope = window.StaffMailing && window.StaffMailing.scope();
-    if (scope === "organisation") qs.push("scope=organisation");
+    if (scope === "organization") qs.push("scope=organization");
     if (extra) qs.push(extra);
     return API + (qs.length ? "?" + qs.join("&") : "");
   }
@@ -441,7 +441,7 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
   });
 
   /* The editor handle is exposed on purpose. It is what lets a test drive a
-     real selection change and read the toolbar back — the exact behaviour that
+     real selection change and read the toolbar back — the exact behavior that
      two previous editors got wrong and no test ever caught, because neither
      could be reached from outside. A debugging surface that makes the hard
      thing checkable is worth more than the tidiness of hiding it. */

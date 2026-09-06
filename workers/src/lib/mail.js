@@ -46,7 +46,7 @@ const esc = (s) =>
 /**
  * The frame every Thauma message shares.
  *
- * DARK, LIKE THE SITE. The earlier version was a white card on grey because
+ * DARK, LIKE THE SITE. The earlier version was a white card on gray because
  * that is the safe default — and it looked like every other service. This is
  * the site's own palette: the near-black ground, the two washes, the wordmark
  * in real Sora.
@@ -56,20 +56,20 @@ const esc = (s) =>
  * the actual wordmark appears — and because images are blocked by default in
  * a good share of inboxes, the cell behind it is the same near-black and the
  * alt text is styled to read as the wordmark when the picture never arrives.
- * Blocked, it degrades to THAUMA in wide letters on the right colour.
+ * Blocked, it degrades to THAUMA in wide letters on the right color.
  *
  * THE WASHES ARE IN THE IMAGE rather than in CSS. Outlook renders through
  * Word, which ignores gradients entirely, and Gmail strips most of them. Baked
  * into the PNG they either arrive or they do not, and what is behind them is
- * the flat colour they fade into.
+ * the flat color they fade into.
  *
  * bgcolor IS AN ATTRIBUTE EVERYWHERE below, not only a style. Word drops
- * background declarations on divs and honours them on table cells; on a dark
+ * background declarations on divs and honors them on table cells; on a dark
  * design that is the difference between white-on-dark and white-on-white.
  *
  * BOTH SCHEMES ARE DECLARED. Saying "light" on a dark email invites clients to
  * invert it; saying "dark light" tells them it is deliberate and to leave it
- * be. Every text colour is set explicitly for the ones that ignore that.
+ * be. Every text color is set explicitly for the ones that ignore that.
  */
 export function shell({ heading, rows, footer, origin }) {
   /* WHERE THE BAND IMAGE IS FETCHED FROM. The sending deployment's own origin,
@@ -425,8 +425,8 @@ export function listConfirmEmail({ name, listName, confirmUrl, fromName, origin,
     html: shell({
       heading: T("confirm.heading"),
       origin,
-      /* p() rather than a bare <p>, so the colour is stated. On a dark ground
-         an inherited colour is one client's reset away from black on black,
+      /* p() rather than a bare <p>, so the color is stated. On a dark ground
+         an inherited color is one client's reset away from black on black,
          and #666 — which the refusal line used to set — is unreadable on it. */
       rows: [
         p(esc(hello)),

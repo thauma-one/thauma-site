@@ -23,7 +23,7 @@
 CREATE TABLE video_links (
   id          TEXT PRIMARY KEY,
 
-  -- NULL is the ORGANISATION, as everywhere else in this schema.
+  -- NULL is the ORGANIZATION, as everywhere else in this schema.
   partner_id  TEXT REFERENCES partners(id) ON DELETE CASCADE,
 
   -- What the button says. Their words, in their language.
@@ -40,6 +40,6 @@ CREATE INDEX idx_video_links ON video_links (partner_id, sort_order);
 
 -- One label once per owner. Two buttons reading "YouTube" is a rail that looks
 -- broken, and COALESCE is needed because SQLite treats NULLs as distinct in a
--- UNIQUE index — without it the organisation could have both.
+-- UNIQUE index — without it the organization could have both.
 CREATE UNIQUE INDEX idx_video_links_unique
   ON video_links (COALESCE(partner_id, '~organisation'), label);

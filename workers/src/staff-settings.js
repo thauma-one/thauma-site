@@ -299,7 +299,7 @@ export default {
 
         const a1 = hex(e.accent), a2 = hex(e.accent2);
         if (!a1.ok || !a2.ok) {
-          return json({ error: "A colour must be a six-digit hex code, like #6D4AFF." }, 400);
+          return json({ error: "A color must be a six-digit hex code, like #6D4AFF." }, 400);
         }
         const accent = a1.value;
         const accent2 = a2.value;
@@ -341,7 +341,7 @@ export default {
     if (request.method === "POST") {
       const body = await readJson(request);
       const name = String((body && body.name) || "").trim().slice(0, 80);
-      if (!name) return json({ error: "Give the key a name so it can be recognised later" }, 400);
+      if (!name) return json({ error: "Give the key a name so it can be recognized later" }, 400);
 
       const raw = [...crypto.getRandomValues(new Uint8Array(32))]
         .map((b) => b.toString(16).padStart(2, "0")).join("");

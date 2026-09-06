@@ -105,7 +105,7 @@ export { escapeHtml };
  * inherited whatever the host page did to them. On a dark site the inputs came
  * out dark-on-dark; on a page with no form styling at all it read as a
  * fragment somebody forgot to finish. The other embeds — goals, the roadmap,
- * prayer — have all been a bordered card with the ministry's colours since the
+ * prayer — have all been a bordered card with the ministry's colors since the
  * beginning, and a sign-up form sitting beside one looked like it belonged to
  * a different website.
  *
@@ -202,8 +202,8 @@ ${BEHAVIOUR_JS}
     if (node.getAttribute('data-ready')) return;
     node.setAttribute('data-ready', '1');
 
-    /* The host page may override the ministry's colours, the same way every
-       other Thauma widget allows. Given an accent and no second colour, the
+    /* The host page may override the ministry's colors, the same way every
+       other Thauma widget allows. Given an accent and no second color, the
        second is DERIVED rather than left at the ministry's — a chosen accent
        beside somebody else's companion is the one pairing nobody wants. */
     var accent = node.getAttribute('data-accent') || ${JSON.stringify(accent)};
@@ -325,7 +325,7 @@ export default {
 
     if (action === "form.js") {
       const origin = siteOrigin(env, request);
-      // The ministry's colours, carried on every row by the join.
+      // The ministry's colors, carried on every row by the join.
       const theme = { accent: lists[0].embed_accent,
                       accent2: lists[0].embed_accent2,
                       mode: lists[0].embed_theme };

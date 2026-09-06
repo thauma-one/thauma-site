@@ -2,7 +2,7 @@
 --
 -- ONE DOMAIN PER PARTNER, which is the whole point: sending reputation is
 -- tracked per domain, so one ministry's junk reports stay with that ministry
--- instead of degrading everybody's mail. The organisation's own domain is kept
+-- instead of degrading everybody's mail. The organization's own domain is kept
 -- out of bulk entirely — an account invite must never be delayed because
 -- somebody else's newsletter was reported.
 --
@@ -34,7 +34,7 @@ INSERT INTO sender_addresses (id, partner_id, address, label, can_receive, creat
   ('sa_mi_contact', 'p_mira',  'contact@mira.thauma.one',        'Contact form',   1, datetime('now')),
   ('sa_mi_connect', 'p_mira',  'connect@mira.thauma.one',        'Connect',        1, datetime('now')),
 
-  -- The organisation, partner_id NULL. Low volume and never complained about,
+  -- The organization, partner_id NULL. Low volume and never complained about,
   -- which is exactly what keeps thauma.one clean enough to also carry the
   -- transactional mail everybody depends on to sign in.
   ('sa_org_news',    NULL, 'news@thauma.one',    'Newsletter',   0, datetime('now')),

@@ -13,7 +13,7 @@
 --
 -- THE OPTIONAL DELIVERY ADDRESS IS THE POINT OF A TABLE.
 -- A JSON column would have held labels perfectly well. What it could not hold
--- is this: a prayer request going to prayer@, a partnership enquiry going to
+-- is this: a prayer request going to prayer@, a partnership inquiry going to
 -- somebody who handles support, and everything else going to the form's own
 -- address. That is the difference between a form that sorts itself and an
 -- inbox somebody has to sort by hand every morning.
@@ -21,7 +21,7 @@
 CREATE TABLE contact_topics (
   id          TEXT PRIMARY KEY,
 
-  -- NULL is the ORGANISATION, matching contact_forms and everything else here.
+  -- NULL is the ORGANIZATION, matching contact_forms and everything else here.
   partner_id  TEXT REFERENCES partners(id) ON DELETE CASCADE,
 
   -- What the visitor picks. Their words, in their language.
@@ -40,6 +40,6 @@ CREATE INDEX idx_contact_topics ON contact_topics (partner_id, sort_order);
 
 -- One label once per owner. Two "Prayer" options in a dropdown is a form that
 -- looks broken, and COALESCE is needed because SQLite treats NULLs as distinct
--- in a UNIQUE constraint — without it the organisation could have both.
+-- in a UNIQUE constraint — without it the organization could have both.
 CREATE UNIQUE INDEX idx_contact_topics_unique
   ON contact_topics (COALESCE(partner_id, '~organisation'), label);

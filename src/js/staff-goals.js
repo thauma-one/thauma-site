@@ -27,7 +27,7 @@
   var $ = function (id) { return document.getElementById(id); };
   var state = { goals: [], editing: null, isPublic: false };
 
-  /* The row-with-a-panel behaviour is shared with milestones and prayer —
+  /* The row-with-a-panel behavior is shared with milestones and prayer —
      see staff-rowpanel.js for why there is one copy of it and not three. */
   var panel = window.StaffRowPanel({
     listId: 'glList', formId: 'glForm', holderId: 'glFormHolder',

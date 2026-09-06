@@ -233,7 +233,7 @@ export default {
       /* The shape the cropper produced. Clamped to the same 0.4–2.5 the build
          applies when it measures a file itself — a 20:1 panorama breaks the
          bio page layout however it arrived. Null when absent, which means
-         "measure it if you can", the behaviour every profile had before. */
+         "measure it if you can", the behavior every profile had before. */
       bio_photo_aspect: aspect(body.bio_photo_aspect),
       /* The uncropped originals. Never written into the markdown — the public
          site renders the framed version, and the master exists so the console

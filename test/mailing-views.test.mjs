@@ -80,7 +80,7 @@ check("onlyView hides every view except the one asked for", () => {
 
 /* ------------------------------------------------------- the resource dialog */
 
-check("the resource form is a centred dialog, not a panel below the cards", () => {
+check("the resource form is a centered dialog, not a panel below the cards", () => {
   const res = readFileSync(`${build}/staff/resources/index.html`, "utf8");
   const d = new JSDOM(res).window.document;
   const form = d.querySelector("#resourceForm");

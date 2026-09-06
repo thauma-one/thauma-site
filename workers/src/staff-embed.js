@@ -45,7 +45,7 @@ export default {
 
     const db = createDb(env.DB);
 
-    /* Acting-as is honoured, so an administrator looking at somebody's console
+    /* Acting-as is honored, so an administrator looking at somebody's console
        previews THAT partner's widget rather than their own — the whole point
        of standing in the account. Authority is re-derived from the Access
        token; the cookie is a request, not a credential. See lib/actas.js. */

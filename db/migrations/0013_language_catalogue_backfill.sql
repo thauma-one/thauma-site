@@ -1,4 +1,4 @@
--- 0013_language_catalogue_backfill.sql — put Slovenian in the catalogue it was
+-- 0013_language_catalogue_backfill.sql — put Slovenian in the catalog it was
 -- never added to
 --
 -- WHAT WENT WRONG
@@ -8,7 +8,7 @@
 -- and nothing else. Those two files are what the public site builds from, so
 -- the language really was live: /sl/about/ has been served for days.
 --
--- The `languages` table is a different thing: the ORGANISATION's catalogue,
+-- The `languages` table is a different thing: the ORGANIZATION's catalog,
 -- which every partner chooses from. It was seeded once in 0003 with en, hr and
 -- sr, and until now nothing ever wrote to it again. So a language could be
 -- published to the world and simultaneously not exist as far as the database
@@ -25,7 +25,7 @@
 -- db/queries.sql). This backfills the one that was added before that existed.
 --
 -- IDEMPOTENT, and safe on a database that already has the row: ON CONFLICT
--- reactivates rather than duplicating, which is the same behaviour the console
+-- reactivates rather than duplicating, which is the same behavior the console
 -- relies on when a removed language is added back with its translations still
 -- attached.
 --

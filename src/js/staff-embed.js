@@ -5,7 +5,7 @@
    copy, so nothing here may address an element by id — every control is found
    by data-emb WITHIN its own panel.
 
-   What they SHARE is the partner's settings: the colour pair, the background
+   What they SHARE is the partner's settings: the color pair, the background
    and the publication switch belong to the ministry, not to one widget. A
    change made in any panel redraws all of them, and one fetch feeds the lot.
    What they do NOT share is the language and the width being previewed, which
@@ -48,7 +48,7 @@
   }
   function langLabel(l) { return (l.native_name || l.name) + ' (' + l.code + ')'; }
 
-  /* ---- the colour pair -------------------------------------------------
+  /* ---- the color pair -------------------------------------------------
      The same -33 degree rotation the Worker and the widget use, so the panel
      can show what "match automatically" produces without a round trip. Three
      copies exist and a test asserts they agree — see embed-colour.js. */
@@ -138,14 +138,14 @@
     };
 
     panel.renderPreview = function () {
-      /* Debounced: a colour input fires continuously while the picker is
+      /* Debounced: a color input fires continuously while the picker is
          dragged, and every rebuild is a fresh document. */
       clearTimeout(panel.timer);
       panel.timer = setTimeout(function () {
         if (!p.frame || !payload) return;
 
         /* MERGED, not replaced. Assigning a fresh theme object dropped
-           accent2 entirely, so a chosen second colour could never appear. */
+           accent2 entirely, so a chosen second color could never appear. */
         var live = JSON.parse(JSON.stringify(payload));
         live.theme = Object.assign({}, live.theme, {
           accent: HEX.test(p.accentHex.value.trim()) ? p.accentHex.value.trim() : DEFAULT_ACCENT,
@@ -416,7 +416,7 @@
     if (control) control.disabled = false;
 
     settings.embed = body.embed || settings.embed;
-    /* EVERY panel, not just this one — the colours are shared, so a second
+    /* EVERY panel, not just this one — the colors are shared, so a second
        panel still showing the old pair would be lying. */
     panels.forEach(function (x) { x.render(); });
     toast(tr(toggling ? (want ? 'emb.nowShared' : 'emb.nowPrivate') : 'toast.saved'), 'ok');

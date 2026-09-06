@@ -2,7 +2,7 @@
  * access.js — verify a Cloudflare Access JWT, Workers-native
  *
  * Port of netlify/functions/_shared/access.js. Same checks, same fail-closed
- * behaviour, but built on **WebCrypto** rather than node:crypto.
+ * behavior, but built on **WebCrypto** rather than node:crypto.
  *
  * Why not just run the Node version under nodejs_compat: it would work, but
  * WebCrypto is native to the runtime, needs no compatibility flag, and is the
@@ -29,7 +29,7 @@
  *
  * The aud check itself stays strict: the token's audience must appear in this
  * list. Widening it to "any audience" would accept a token minted for an
- * unrelated Access application in any organisation.
+ * unrelated Access application in any organization.
  */
 
 const JWKS_TTL_MS = 60 * 60 * 1000;

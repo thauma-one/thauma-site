@@ -1,7 +1,7 @@
 /**
- * embed-colour.js — deriving the SECOND colour of the pair
+ * embed-colour.js — deriving the SECOND color of the pair
  *
- * chaseroush.com's timeline runs on two clearly different colours, and the
+ * chaseroush.com's timeline runs on two clearly different colors, and the
  * legend is where you see it plainly: completed is green, in progress is cyan,
  * upcoming is a hollow ring. The rail's gradient runs between the two. That
  * pair is the identity of the thing — collapsing it into one accent, as the
@@ -9,7 +9,7 @@
  * from work in flight at a glance.
  *
  * Thauma cannot ship a fixed pair, because the accent is chosen per partner.
- * So the second colour is DERIVED from the first, keeping the same
+ * So the second color is DERIVED from the first, keeping the same
  * relationship CR's pair has: cyan (#00D4FF, hue 190°) to green (#00FF9F, hue
  * 157°) is a rotation of about -33° with the saturation and lightness left
  * alone. Applied to any accent, that produces a companion which is recognisably
@@ -19,7 +19,7 @@
  * ---------------------------------------------------------------------------
  * color-mix cannot rotate a hue — mixing toward white only lightens, which is
  * what the earlier version did and why both ends of the gradient read as the
- * same colour. Doing it here also means the two colours are real hex values
+ * same color. Doing it here also means the two colors are real hex values
  * the widget can use anywhere, including in a glow's alpha, with no dependency
  * on how new the visitor's browser is.
  */
@@ -69,16 +69,16 @@ export function hslToHex({ h, s, l }) {
 }
 
 /**
- * The companion colour: what "completed" is drawn in when the accent means
+ * The companion color: what "completed" is drawn in when the accent means
  * "in progress".
  *
  * -33°, the same rotation that separates CR's cyan from its green.
  *
- * A GREY ACCENT IS THE ONE CASE THAT HAS TO BE HANDLED, and it is not
+ * A GRAY ACCENT IS THE ONE CASE THAT HAS TO BE HANDLED, and it is not
  * theoretical — a partner choosing black, white or a neutral is entirely
  * plausible. Rotating the hue of something with no saturation returns the same
- * colour, so the pair would silently collapse back into one. There, the second
- * colour is separated by LIGHTNESS instead, which is the only axis a grey has.
+ * color, so the pair would silently collapse back into one. There, the second
+ * color is separated by LIGHTNESS instead, which is the only axis a gray has.
  */
 export function companion(hex) {
   const hsl = hexToHsl(hex);
@@ -91,7 +91,7 @@ export function companion(hex) {
 
   return hslToHex({
     h: hsl.h - 33,
-    /* Nudged up a little, because the eye reads the completed colour as the
+    /* Nudged up a little, because the eye reads the completed color as the
        "arrived" one and a flatter version of the accent reads as faded. */
     s: Math.min(1, hsl.s * 1.05),
     l: Math.min(0.72, hsl.l * 1.04),

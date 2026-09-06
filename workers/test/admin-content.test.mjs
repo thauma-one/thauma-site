@@ -282,7 +282,7 @@ await check("GET returns the document and its SHA", async () => {
   } finally { g.restore(); }
 });
 
-await check("GET refuses a file key it does not recognise", async () => {
+await check("GET refuses a file key it does not recognize", async () => {
   const g = stubGitHub();
   try {
     const res = await handler.fetch(req("GET", { query: "?file=../package.json" }), envWith("admin"));
@@ -317,7 +317,7 @@ await check("PUT commits one changed value and nothing else", async () => {
 
 await check("SAVING DOES NOT DEPLOY", async () => {
   /* The promise the word "Save" makes. Without the marker every keystroke
-     batch would rebuild and republish the public site, which is the behaviour
+     batch would rebuild and republish the public site, which is the behavior
      this whole design exists to avoid. */
   const g = stubGitHub();
   try {
@@ -476,7 +476,7 @@ await check("a bad language code is refused before anything is read", async () =
   } finally { g.restore(); }
 });
 
-await check("a code is normalised before it is judged", async () => {
+await check("a code is normalized before it is judged", async () => {
   // "SL", " sl " and "sl" are the same request. Case and stray spaces are
   // typing, not intent.
   const g = stubGitHub({ file: SITE });

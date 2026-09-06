@@ -49,10 +49,10 @@ import Image from "@tiptap/extension-image";
 /**
  * The ministry's own accent, as a mark.
  *
- * NOT A COLOUR VALUE. Storing `color:#E4572E` would freeze one partner's
+ * NOT A COLOR VALUE. Storing `color:#E4572E` would freeze one partner's
  * palette into another's message the moment a draft is copied, and would
- * survive a rebrand as a stale colour nobody can find. The mark records the
- * INTENT — "this is the brand colour" — and the server resolves it at render
+ * survive a rebrand as a stale color nobody can find. The mark records the
+ * INTENT — "this is the brand color" — and the server resolves it at render
  * time against whatever that ministry currently uses.
  *
  * It also matches what the sanitiser already keeps: `<span data-c="accent">`
@@ -73,7 +73,7 @@ const Accent = Mark.create({
  * Two sizes, and only two.
  *
  * A size picker in email invites 11px body text that nobody over fifty can
- * read, and font-size is one of the few properties every client honours — so a
+ * read, and font-size is one of the few properties every client honors — so a
  * bad choice is faithfully reproduced everywhere. Larger and smaller, relative
  * to a body size chosen once in the renderer.
  */

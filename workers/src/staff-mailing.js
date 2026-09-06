@@ -8,14 +8,14 @@
  * request shape that reaches another partner's subscribers, because the id is
  * not an input.
  *
- * THE ORGANISATION'S OWN LISTS have partner_id NULL and belong to nobody's
+ * THE ORGANIZATION'S OWN LISTS have partner_id NULL and belong to nobody's
  * partner account. Reaching them needs `admin` or `communications`, and that is
- * asked for explicitly with ?scope=organisation rather than inferred — a
+ * asked for explicitly with ?scope=organization rather than inferred — a
  * request that does not say so gets the caller's own lists, which is the safe
  * reading of an ambiguous one.
  *
  * WHY communications EXISTS SEPARATELY FROM admin: mailing everyone the
- * organisation has ever collected is a different act from managing accounts,
+ * organization has ever collected is a different act from managing accounts,
  * and one person may reasonably be trusted with either alone.
  */
 import { createDb } from "./lib/db.js";
@@ -67,13 +67,13 @@ async function scopeFor(request, env) {
   const maySendAsOrg = roles.includes("admin") || roles.includes("communications");
 
   const url = new URL(request.url);
-  if (url.searchParams.get("scope") === "organisation") {
+  if (url.searchParams.get("scope") === "organization") {
     if (!maySendAsOrg) {
       return { denied: json({
         error: "Thauma's own lists need the administrator or communications role.",
       }, 403) };
     }
-    /* NULL, which is what the schema means by "the organisation". */
+    /* NULL, which is what the schema means by "the organization". */
     return { db, user, me, actor, partnerId: null, isOrg: true, maySendAsOrg };
   }
 
@@ -96,7 +96,7 @@ async function scopeFor(request, env) {
  * `existingSlug` is the slug the list already has. THE SLUG IS NEVER EDITED
  * AND IS NOT SHOWN. It appears in exactly one place — the sign-up form's URL —
  * and is derived from the name the first time only. Renaming a list therefore
- * does NOT move its form, which is the behaviour that matters: the snippet is
+ * does NOT move its form, which is the behavior that matters: the snippet is
  * pasted onto somebody else's website and nobody rebuilds that page because a
  * list got a better name.
  *
@@ -119,7 +119,7 @@ async function scopeFor(request, env) {
  * Writing, a test send, and the real one.
  *
  * THE ORDER OF OPERATIONS IS THE WHOLE DESIGN. A send is the one thing in this
- * system that cannot be undone, corrected, or apologised for quietly — once a
+ * system that cannot be undone, corrected, or apologized for quietly — once a
  * message is with Resend it is on its way to real people. So:
  *
  *   1. Everything that can be refused is refused BEFORE anything is sent:
@@ -306,7 +306,7 @@ export default {
 
         /* Passed straight through as BOUND VALUES. The sort is decided by a
            CASE inside the query rather than by splicing a column name, so an
-           unrecognised one falls through to newest-first instead of being an
+           unrecognized one falls through to newest-first instead of being an
            error — or a hole.
 
            ⚠ `|| ""` IS LOAD-BEARING. clean() returns NULL for an absent value,
@@ -332,7 +332,7 @@ export default {
         ]);
         return json(withActing({
           you: { email: actor.email, roles: myRoles },
-          scope: s.isOrg ? "organisation" : "partner",
+          scope: s.isOrg ? "organization" : "partner",
           list, subscribers, page, page_size: PAGE,
           /* So the console can say "1–100 of 340" rather than leaving somebody
              to work out whether there is another page by trying. */
@@ -394,16 +394,16 @@ export default {
            sender must not be shown another partner's addresses, which would
            leak both the domain and what it is used for. */
         db.query("sender_addresses_for_partner", { partner_id: partnerId }),
-        /* The ministry's colours. partners_for_user answers "what may this
+        /* The ministry's colors. partners_for_user answers "what may this
            account reach", which is a different question and deliberately
            carries no presentation columns — so the palette is read from the
-           partner row itself. Null for the organisation, which has no row. */
+           partner row itself. Null for the organization, which has no row. */
         partnerId ? db.queryOne("partner_settings", { partner_id: partnerId }) : null,
       ]);
 
       return json(withActing({
         you: { email: actor.email, roles: myRoles },
-        scope: s.isOrg ? "organisation" : "partner",
+        scope: s.isOrg ? "organization" : "partner",
         /* So the console can offer the switch only to people who have it,
            rather than showing a control that answers 403. */
         may_send_as_organisation: s.maySendAsOrg,
@@ -434,12 +434,12 @@ export default {
         senders,
         mailings: forList ? await withAttachments(db, forList, partnerId) : [],
 
-        /* THE SAME COLOURS EVERY OTHER WIDGET USES. Sent with the lists rather
+        /* THE SAME COLORS EVERY OTHER WIDGET USES. Sent with the lists rather
            than fetched separately, because the sign-up preview draws on first
-           paint and a second round trip would show it in the wrong colours
+           paint and a second round trip would show it in the wrong colors
            first — which reads as the setting not having applied.
 
-           The organisation has no partner row and therefore no palette, so the
+           The organization has no partner row and therefore no palette, so the
            widget's own default stands. */
         /* Sent with everything else so the Contact tab paints on first open
            rather than after a second request — the tab is one click away and
@@ -452,10 +452,10 @@ export default {
               theme: look.embed_theme || "auto",
               /* CARRIED EVEN THOUGH THIS SCREEN NEVER CHANGES IT. The settings
                  endpoint takes the embed block whole, so the console has to
-                 send `enabled` back unchanged when it saves a colour. Leaving
+                 send `enabled` back unchanged when it saves a color. Leaving
                  it out of this payload made the console send `false`, which
                  would have switched a ministry's published widgets off because
-                 somebody picked a colour on the mailing page. */
+                 somebody picked a color on the mailing page. */
               enabled: !!look.embed_enabled }
           : null,
         /* Changing them is admin-only, the same rule staff-settings enforces —
@@ -886,7 +886,7 @@ export default {
       }
 
       /* ---- the contact form ----
-         One per ministry, so a save rather than a create. The organisation's
+         One per ministry, so a save rather than a create. The organization's
          own is the same row shape with a NULL partner, which is why the site's
          contact page could stop being a special case in code. */
       if (body.action === "contact-form") {

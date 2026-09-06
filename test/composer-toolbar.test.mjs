@@ -13,7 +13,7 @@
  * function and never once that pressing Bold made anything bold. Long runs of
  * green results describing nothing.
  *
- * TipTap can be driven from a test, so the behaviour that sank the previous
+ * TipTap can be driven from a test, so the behavior that sank the previous
  * two is now checked here on every run rather than discovered in use.
  *
  * THE TEST THAT DEFINES DONE
@@ -151,7 +151,7 @@ await check("the browser preview is gone, and its size warning is not", () => {
   assert(ctx.D.getElementById("cpTest"), "the test send is now the only real check and must exist");
 });
 
-await check("the composer uses the console's colours, not its own", () => {
+await check("the composer uses the console's colors, not its own", () => {
   /* It had a white card, to make writing feel like the email being previewed
      beside it. The preview went, so the reason went. A white panel in a dark
      console reads as a different application. */
@@ -160,7 +160,7 @@ await check("the composer uses the console's colours, not its own", () => {
   const card = /\.cp-card\{([^}]*)\}/.exec(block);
   assert(card, "no .cp-card rule found");
   assert(/var\(--panel\)/.test(card[1]),
-    `the writing card is not using the console's panel colour: ${card[1]}`);
+    `the writing card is not using the console's panel color: ${card[1]}`);
   assert(!/#fff\b|#ffffff/i.test(card[1]), `a hard-coded white survived: ${card[1]}`);
 });
 
@@ -237,10 +237,10 @@ await check("block buttons report the block the cursor is in", async () => {
 
 /* --------------------- the marks the renderer expects ------------------- */
 
-await check("the brand colour is stored as INTENT, not as a colour value", async () => {
+await check("the brand color is stored as INTENT, not as a color value", async () => {
   /* A literal #E4572E would freeze one ministry's palette into another's
      message the moment a draft was copied, and would survive a rebrand as a
-     stale colour nobody can find. The server resolves the mark at render time
+     stale color nobody can find. The server resolves the mark at render time
      against whatever that ministry currently uses. */
   const { editor, D } = ctx;
   editor.chain().focus().clearContent().insertContent("Zagreb").run();
@@ -249,7 +249,7 @@ await check("the brand colour is stored as INTENT, not as a colour value", async
   eq(lit(D, "accent"), "true", "the accent button should be lit");
   const html = editor.getHTML();
   assert(/data-c="accent"/.test(html), `expected a data-c mark: ${html}`);
-  assert(!/#[0-9a-fA-F]{6}/.test(html), `a literal colour leaked in: ${html}`);
+  assert(!/#[0-9a-fA-F]{6}/.test(html), `a literal color leaked in: ${html}`);
 });
 
 await check("the two sizes round-trip as data-sz", async () => {

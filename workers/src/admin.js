@@ -1,5 +1,5 @@
 /**
- * admin.js — organisation administration
+ * admin.js — organization administration
  *
  *   GET    /api/admin                 users, partners, languages, recent audit
  *   POST   /api/admin                 create a user
@@ -55,7 +55,7 @@ async function requireAdmin(request, env) {
      a partner_users row — so an administrator with no partner grant was locked
      out of administration entirely. Deleting a partner could do it, and did.
 
-     Administering the organisation has nothing to do with belonging to one of
+     Administering the organization has nothing to do with belonging to one of
      its ministries. */
   const me = await db.queryOne("user_by_email", { email: user.email });
   if (!me) {
@@ -183,7 +183,7 @@ const PROTECTED_MSG =
   "That account is protected: it is the one that can always get back in. " +
   "Removing or suspending it would need a database migration, on purpose.";
 
-/** Would this change leave the organisation with no administrator? */
+/** Would this change leave the organization with no administrator? */
 async function wouldStrandOrg(db, { userId, removingRole, removingUser }) {
   if (removingRole && removingRole !== "admin" && !removingUser) return false;
   const row = await db.queryOne("admin_count_admins", {});
@@ -222,7 +222,7 @@ async function makePartner(db, { displayName, forUser, grantedBy, now, user }) {
     return null; // already exists — the caller decides whether that matters
   }
 
-  // Every language the organisation offers, switched OFF except English. A new
+  // Every language the organization offers, switched OFF except English. A new
   // partner publishing three languages on day one promises translations nobody
   // has written.
   const langs = await db.query("languages_all", {});
@@ -275,7 +275,7 @@ export const STANDARD_SENDERS = [
   { local: "connect", label: "Connect",        can_receive: 1 },
 ];
 
-/* The organisation's own domain, read from the address the Worker already
+/* The organization's own domain, read from the address the Worker already
    sends as rather than configured twice. Two places to state it is one place
    to forget when it moves — which it just did, from mail.thauma.one. */
 export function orgDomain(env) {
@@ -283,7 +283,7 @@ export function orgDomain(env) {
   return m ? m[1].toLowerCase() : "thauma.one";
 }
 
-/* NULL partner_id is the organisation, the same convention the mailing tables
+/* NULL partner_id is the organization, the same convention the mailing tables
    use. Returns null when a partner has no domain yet, which is honest: until
    somebody verifies one, there is no address that could work. */
 function domainFor(partner, env) {
@@ -867,7 +867,7 @@ export default {
         const target = partners.find((p) => p.id === id);
         if (!target) return json({ error: "No such partner" }, 404);
 
-        /* DELETE has to be typed. Not theatre: this destroys supporters and
+        /* DELETE has to be typed. Not theater: this destroys supporters and
            their contact history, and a confirm button sitting next to a delete
            button is one slip away from doing it.
 

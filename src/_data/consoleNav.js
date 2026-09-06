@@ -18,7 +18,7 @@
  * ROLES, as the schema allows them (see the CHECK on user_roles in
  * db/migrations/0015_mailing.sql):
  *
- *   admin           runs the organisation: accounts, partners, publishing
+ *   admin           runs the organization: accounts, partners, publishing
  *   staff           works inside a ministry's own console
  *   partner         the ministry themselves
  *   board           oversight — sees what is happening, changes nothing
@@ -51,7 +51,7 @@ const staff = [
     roles: ["staff", "partner"] },
 ];
 
-/** The organisation's console. */
+/** The organization's console. */
 const admin = [
   { slug: "index", url: "/admin/", label: "Overview",
     roles: ["admin", "board", "communications"] },

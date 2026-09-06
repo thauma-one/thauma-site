@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * The colour maths, and the copy of it that ships to browsers
+ * The color maths, and the copy of it that ships to browsers
  *   node workers/test/embed-colour.test.mjs
  *
  * The widgets are strings served to other people's websites, so they cannot
@@ -23,12 +23,12 @@ const browser = new Function(COLOUR_JS +
   "; return { hexToHsl: hexToHsl, hslToHex: hslToHex, companion: companion, alpha: alpha };")();
 
 /* Real accents somebody might choose, plus the awkward ones: pure black and
-   white have no hue, grey has no saturation to rotate, and nonsense must not
+   white have no hue, gray has no saturation to rotate, and nonsense must not
    throw in the middle of drawing somebody's page. */
 const CASES = ["#00D4FF", "#6D4AFF", "#E4572E", "#22C55E", "#888888",
                "#000000", "#FFFFFF", "#FF0000", "#0A0A0A", "nonsense", ""];
 
-console.log("embed colour — one set of maths, two runtimes\n");
+console.log("embed color — one set of maths, two runtimes\n");
 
 check("companion agrees, character for character", () => {
   for (const c of CASES) {
@@ -59,9 +59,9 @@ check("the travelling copy is valid on its own", () => {
   assert(typeof browser.alpha === "function", "alpha did not survive");
 });
 
-check("a colour and its companion are always distinguishable", () => {
-  // Rotating the hue of something unsaturated returns the same colour, which
-  // is why grey is handled by lightness instead. A partner choosing grey must
+check("a color and its companion are always distinguishable", () => {
+  // Rotating the hue of something unsaturated returns the same color, which
+  // is why gray is handled by lightness instead. A partner choosing gray must
   // not silently lose the pair.
   for (const c of ["#00D4FF", "#6D4AFF", "#888888", "#333333", "#EEEEEE"]) {
     assert(companion(c).toLowerCase() !== c.toLowerCase(),

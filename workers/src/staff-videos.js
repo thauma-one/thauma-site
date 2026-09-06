@@ -1,7 +1,7 @@
 /**
  * staff-videos.js — point a partner at a YouTube channel
  *
- *   GET    /api/staff-videos[?scope=organisation]   config + what is cached
+ *   GET    /api/staff-videos[?scope=organization]   config + what is cached
  *   POST   /api/staff-videos                        save a channel, then sync
  *   POST   … { "action": "check" }                  sync now
  *   DELETE /api/staff-videos                        forget the channel
@@ -82,7 +82,7 @@ export function cleanLinks(raw) {
   return { value: out };
 }
 
-/** Same rule as the mailing console: the organisation is a scope you ask for
+/** Same rule as the mailing console: the organization is a scope you ask for
     and a role you must hold, never the default. */
 async function scopeFor(request, env) {
   const { user, denied } = await requireAccess(request, env);
@@ -97,7 +97,7 @@ async function scopeFor(request, env) {
   const roles = String(me.roles || "").split(",").filter(Boolean);
   const mayOrg = roles.includes("admin") || roles.includes("communications");
 
-  if (new URL(request.url).searchParams.get("scope") === "organisation") {
+  if (new URL(request.url).searchParams.get("scope") === "organization") {
     if (!mayOrg) {
       return { denied: json({
         error: "Thauma's own channel needs the administrator or communications role.",
@@ -171,7 +171,7 @@ export default {
     const now = new Date().toISOString();
 
     const shell = (extra = {}) => withActing({
-      scope: s.isOrg ? "organisation" : "partner",
+      scope: s.isOrg ? "organization" : "partner",
       may_use_organisation: s.mayOrg,
       partner: s.partner
         ? { id: s.partner.id, display_name: s.partner.display_name }

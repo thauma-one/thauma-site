@@ -102,7 +102,7 @@ async function hashIp(ip, env) {
 
 /** The widget, as a script the host page loads. */
 export function contactScript(form, partnerSlug, origin, theme, topics) {
-  /* The row already carries the ministry's colours, so an omitted `theme` reads
+  /* The row already carries the ministry's colors, so an omitted `theme` reads
      them rather than falling back to the default purple. A second source of the
      same fact is a second thing to forget to pass. */
   theme = theme || {
@@ -331,7 +331,7 @@ ${BEHAVIOUR_JS}
  * The email a partner receives. Exported so a test can assert its shape.
  *
  * THE TOPIC CAN REDIRECT IT. A prayer request going to prayer@ and a
- * partnership enquiry going to whoever handles support is the difference
+ * partnership inquiry going to whoever handles support is the difference
  * between a form that sorts itself and an inbox somebody sorts by hand every
  * morning. A topic with no address of its own falls back to the form's.
  */
@@ -395,13 +395,13 @@ export default {
 
     const db = createDb(env.DB);
 
-    /* "thauma" IS THE ORGANISATION, and it is a reserved word rather than a
+    /* "thauma" IS THE ORGANIZATION, and it is a reserved word rather than a
        row. Thauma has no entry in `partners` — it is the thing partners belong
        to — so a slug join can never find it, and without this its own contact
        form would be the one form in the system that could not be embedded
        anywhere.
 
-       Reserved rather than created: a partner row for the organisation would
+       Reserved rather than created: a partner row for the organization would
        show up in every partner list, every scope check and every count, and
        each of those would then need a special case to exclude it. One special
        case here is cheaper than a dozen everywhere else. */
@@ -421,7 +421,7 @@ export default {
 
     if (action === "contact.js") {
       const origin = siteOrigin(env, request);
-      /* The organisation's row carries no palette — there is no partner to
+      /* The organization's row carries no palette — there is no partner to
          read one from — so the widget's own default stands, which is Thauma's
          purple. */
       return new Response(contactScript(form, partnerSlug, origin, {
@@ -479,7 +479,7 @@ export default {
        sign-up hides its outcome because the outcome is somebody's private
        business; a mistyped address here is the sender's own problem and they
        can fix it. Silently thanking somebody for a message that went nowhere
-       is the worst possible behaviour. */
+       is the worst possible behavior. */
     if (!fields.name) return json({ error: "Please add your name." }, 400, CORS);
     if (!EMAIL_RE.test(fields.email)) {
       return json({ error: "That does not look like an email address." }, 400, CORS);

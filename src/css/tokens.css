@@ -29,7 +29,7 @@
 :root{
 
   /* ---------- SURFACES ------------------------------------
-     Not neutral grey. Every surface is tinted TOWARD the accent
+     Not neutral gray. Every surface is tinted TOWARD the accent
      family (here: blue), which is what makes the black read as
      "rich" rather than flat. The CR file mirrors these channels
      (0B0F15 -> 150F0B) to land the same depth in warm.        */
@@ -42,7 +42,7 @@
 
   /* ---------- INK ----------------------------------------- */
   --text: #EDF2F8;        /* cool white                         */
-  --dim:  #8A96A6;        /* cool grey — body copy, ledes       */
+  --dim:  #8A96A6;        /* cool gray — body copy, ledes       */
 
   /* ---------- THE TWO VOICES ------------------------------
      BLUE  = the technical voice (cues, frames, structure)
@@ -66,7 +66,7 @@
 
   /* THE TWO CONSOLES, NAMED ONCE AND FIXED. Deliberately NOT the voice pair:
      .is-admin redefines --voice-tech to amber, so a badge built on it was blue
-     on staff pages and amber on admin ones — the same label, two colours,
+     on staff pages and amber on admin ones — the same label, two colors,
      depending which page you happened to be looking at. These are what the
      console header means by "staff" and "administration", everywhere. */
   --console-staff:    #2FD8FF;

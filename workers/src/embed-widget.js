@@ -10,10 +10,10 @@
  *
  * PORTED FROM chaseroush.com's TIMELINE — THE WHOLE THING, NOT THE SKIN
  * ---------------------------------------------------------------------------
- * The first attempt took the colours and the animations and stopped, which
+ * The first attempt took the colors and the animations and stopped, which
  * missed what that page actually is. Rebuilt on the second pass:
  *
- *   · TWO COLOURS, not one. Completed and in-progress are visibly different
+ *   · TWO COLORS, not one. Completed and in-progress are visibly different
  *     hues — that is the first thing the legend tells you. The second is
  *     derived from a partner's chosen accent; see embed-colour.js.
  *   · IT IS INTERACTIVE. Clicking a milestone opens a details panel beneath
@@ -33,11 +33,11 @@
  *   · LABELS DO NOT COLLIDE. Alternating above and below, never wrapping, with
  *     the spacing relaxation from CR's position maths.
  *
- * GOAL CARDS follow the giving page: name, description behind a coloured rule,
+ * GOAL CARDS follow the giving page: name, description behind a colored rule,
  * the percentage large on the right with raised / target beneath it, a full
  * width bar, and either what remains or a funded badge.
  *
- * THE COLOUR MATHS IS DUPLICATED HERE, deliberately and unavoidably: this file
+ * THE COLOR MATHS IS DUPLICATED HERE, deliberately and unavoidably: this file
  * is a string shipped to browsers and cannot import anything. embed-colour.js
  * holds the same functions for the Worker and the tests, and a test asserts
  * the two agree on a spread of inputs — which is the only thing that keeps a
@@ -53,7 +53,7 @@ export const WIDGET_JS = String.raw`
    Attributes, all optional:
      data-widget   goal | roadmap | prayer | videos (default goal)
      data-lang     en | hr | sr | ...    (default: the host page's own language)
-     data-accent   #6D4AFF               overrides the ministry's colour
+     data-accent   #6D4AFF               overrides the ministry's color
      data-theme    auto | light | dark
 */
 (function () {
@@ -137,7 +137,7 @@ export const WIDGET_JS = String.raw`
 
   /* The date a READER sees. target_label is a sentence somebody wrote and is
      always preferred; the formatted date is only a fallback for a milestone
-     nobody has labelled. */
+     nobody has labeled. */
   function dateText(m, lang) {
     var t = pick(m.text, lang);
     if (t && t.target_label) return t.target_label;
@@ -146,21 +146,21 @@ export const WIDGET_JS = String.raw`
 
   var WORDS = {
     en: { now: 'NOW', complete: 'Completed', in_progress: 'In progress',
-          upcoming: 'Upcoming', cancelled: 'Cancelled', completeWord: 'Complete',
+          upcoming: 'Upcoming', canceled: 'Canceled', completeWord: 'Complete',
           remaining: 'remaining', funded: 'Funded',
           partners: 'partners', partner: 'partner', breakdown: 'Breakdown',
           empty: 'Nothing to show yet.', close: 'Close',
           answered: 'Answered', praying: 'Still praying',
           watch: 'Watch on YouTube' },
     hr: { now: 'SADA', complete: 'Završeno', in_progress: 'U tijeku',
-          upcoming: 'Nadolazeće', cancelled: 'Otkazano', completeWord: 'Završeno',
+          upcoming: 'Nadolazeće', canceled: 'Otkazano', completeWord: 'Završeno',
           remaining: 'preostalo', funded: 'Financirano',
           partners: 'podupiratelja', partner: 'podupiratelj', breakdown: 'Raščlamba',
           empty: 'Još nema ničega za prikazati.', close: 'Zatvori',
           answered: 'Uslišano', praying: 'Još molimo',
           watch: 'Pogledaj na YouTubeu' },
     sr: { now: 'САДА', complete: 'Завршено', in_progress: 'У току',
-          upcoming: 'Предстоји', cancelled: 'Отказано', completeWord: 'Завршено',
+          upcoming: 'Предстоји', canceled: 'Отказано', completeWord: 'Завршено',
           remaining: 'преостало', funded: 'Финансирано',
           partners: 'подржавалаца', partner: 'подржавалац', breakdown: 'Рашчламба',
           empty: 'Још нема ничега за приказ.', close: 'Затвори',
@@ -169,10 +169,10 @@ export const WIDGET_JS = String.raw`
   };
   function w(lang, key) { return (WORDS[lang] || WORDS.en)[key] || WORDS.en[key]; }
 
-  /* ---------- the COLOUR PAIR ----------
+  /* ---------- the COLOR PAIR ----------
      Completed and in-progress are different hues, which is what the legend is
      for. The second is rotated -33 degrees from the first, the same distance
-     that separates cyan from green on chaseroush.com. A grey accent has no hue
+     that separates cyan from green on chaseroush.com. A gray accent has no hue
      to rotate, so it separates by lightness instead. */
 
   function hexToHsl(hex) {
@@ -378,7 +378,7 @@ export const WIDGET_JS = String.raw`
       '@keyframes glow{0%,100%{box-shadow:0 0 14px var(--glow-p)}' +
         '50%{box-shadow:0 0 26px var(--glow-p),0 0 38px var(--glow-p)}}' +
       '.dot.upcoming{background:var(--bg);border-color:var(--faint-p)}' +
-      '.dot.cancelled{background:var(--bg);border-color:var(--line);opacity:.45}' +
+      '.dot.canceled{background:var(--bg);border-color:var(--line);opacity:.45}' +
       '.pin:hover .dot{transform:scale(1.22)}' +
       '.pin.sel .dot{transform:scale(1.3)}' +
       '.pin:focus-visible{outline:2px solid var(--prog);outline-offset:4px;' +
@@ -418,7 +418,7 @@ export const WIDGET_JS = String.raw`
       '.sdot.in_progress{background:var(--prog);border-color:var(--prog);' +
         'animation:glow 2s ease-in-out infinite}' +
       '.sdot.upcoming{background:var(--bg);border-color:var(--faint-p)}' +
-      '.sdot.cancelled{background:var(--bg);border-color:var(--line);opacity:.45}' +
+      '.sdot.canceled{background:var(--bg);border-color:var(--line);opacity:.45}' +
       '.step:hover .sdot{transform:scale(1.15)}' +
       '.step.sel .sdot{transform:scale(1.25)}' +
       '.step:focus-visible{outline:2px solid var(--prog);outline-offset:3px;' +
@@ -426,7 +426,7 @@ export const WIDGET_JS = String.raw`
       '.sdate{display:block;font-size:12px;color:var(--dim);font-weight:600;' +
         'letter-spacing:.03em}' +
       '.stitle{display:block;font-size:15.5px;font-weight:700;margin-top:2px}' +
-      '.step.cancelled .stitle{text-decoration:line-through;opacity:.6}' +
+      '.step.canceled .stitle{text-decoration:line-through;opacity:.6}' +
       '.spct{display:block;margin-top:3px;font-size:13px;font-weight:700;' +
         'color:var(--done);font-variant-numeric:tabular-nums}' +
 
@@ -486,7 +486,7 @@ export const WIDGET_JS = String.raw`
       '.kmark.complete{background:var(--done);color:var(--bg)}' +
       '.kmark.in_progress{background:var(--prog);color:var(--bg)}' +
       '.kmark.upcoming{box-shadow:inset 0 0 0 2px var(--faint-p);color:var(--dim)}' +
-      '.kmark.cancelled{box-shadow:inset 0 0 0 2px var(--line);color:var(--dim);opacity:.6}' +
+      '.kmark.canceled{box-shadow:inset 0 0 0 2px var(--line);color:var(--dim);opacity:.6}' +
       '.kbody{flex:1;min-width:0}' +
       '.kbody h5{font-size:14.5px;font-weight:700}' +
       '.kdate{font-size:11.5px;color:var(--dim);margin-top:1px}' +
@@ -506,7 +506,7 @@ export const WIDGET_JS = String.raw`
         'transition:border-color .3s ease,box-shadow .3s ease,transform .3s ease}' +
       '.pcard:hover{border-color:var(--faint-p);transform:translateY(-4px);' +
         'box-shadow:0 4px 16px rgba(0,0,0,.18)}' +
-      /* Answered prayer is the OTHER colour of the pair — the same distinction
+      /* Answered prayer is the OTHER color of the pair — the same distinction
          the roadmap draws between finished and in flight. */
       '.pcard.answered{border-color:var(--faint-d)}' +
       '.pcard.answered:hover{border-color:var(--done)}' +
@@ -517,7 +517,7 @@ export const WIDGET_JS = String.raw`
         'letter-spacing:-.01em;font-family:Georgia,Cambria,"Times New Roman",serif}' +
       '.pbody{margin-top:9px;color:var(--dim);font-size:14.5px;line-height:1.6;' +
         'border-left:3px solid var(--prog);padding-left:12px}' +
-      /* The answer gets the second colour, so a card carrying both reads as
+      /* The answer gets the second color, so a card carrying both reads as
          request then outcome without a heading for either. */
       '.panswer{margin-top:14px;color:var(--dim);font-size:14.5px;line-height:1.6;' +
         'border-left:3px solid var(--done);padding-left:12px}' +
@@ -577,7 +577,7 @@ export const WIDGET_JS = String.raw`
          the frame the video was actually shot in. */
       '.vthumb{display:block;width:100%;height:100%;object-fit:cover}' +
 
-      /* YouTube's own shape, in neutral grey rather than its red — this is a
+      /* YouTube's own shape, in neutral gray rather than its red — this is a
          play control, not a YouTube badge, and the widget does not claim to
          be them. */
       '.vplay{position:absolute;left:50%;top:50%;width:48px;height:34px;' +
@@ -596,7 +596,7 @@ export const WIDGET_JS = String.raw`
       '.vdate{margin-top:4px;font-size:12.5px;color:var(--dim)}' +
 
       /* The optional rail. Outlined rather than filled, and in the ministry's
-         colour — unlike the cards above it. A button IS the ministry speaking
+         color — unlike the cards above it. A button IS the ministry speaking
          ("watch more of ours"), where a thumbnail is somebody's video. */
       '.vlinks{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}' +
       '.vlink{display:inline-block;padding:9px 16px;border-radius:999px;' +
@@ -747,7 +747,7 @@ export const WIDGET_JS = String.raw`
     });
 
     /* Alternating above and below halves the crowding, so a pin only has to
-       clear its SECOND neighbour rather than its first. */
+       clear its SECOND neighbor rather than its first. */
     var gap = 11;
     for (var pass = 0; pass < 12; pass++) {
       var moved = false;
@@ -963,7 +963,7 @@ export const WIDGET_JS = String.raw`
        phone the milestone you tapped could be scrolled off the top by the
        time its own details appeared. It belongs directly under that step.
 
-       The rail is a different shape and keeps the old behaviour: its pins sit
+       The rail is a different shape and keeps the old behavior: its pins sit
        along a single line, so beneath the rail IS beneath the pin.
 
        Moving the slot changes every step height below it, which is why the
@@ -1170,7 +1170,7 @@ export const WIDGET_JS = String.raw`
 
   /* ---------- videos ----------
 
-     THE ONE WIDGET THAT IS NOT DRESSED IN THE MINISTRY'S COLOURS, on purpose.
+     THE ONE WIDGET THAT IS NOT DRESSED IN THE MINISTRY'S COLORS, on purpose.
      Everything else here is Thauma's design applied to Thauma's data. A video
      is somebody else's artwork with somebody else's title on it, and painting
      an accent gradient over a YouTube thumbnail makes it look like neither.
@@ -1260,7 +1260,7 @@ export const WIDGET_JS = String.raw`
      documentElement.scrollHeight is never smaller than the frame it is in, so
      reporting it to a parent that then SETS the frame to that value is a
      ratchet: every measurement returns the height the last one produced, plus
-     whatever margin the parent adds. Changing a colour rebuilt the preview and
+     whatever margin the parent adds. Changing a color rebuilt the preview and
      the box grew a few pixels, permanently, every time.
      The body's own rect is the content plus its padding and does not know how
      tall the frame is, so it settles instead of climbing. */

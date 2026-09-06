@@ -7,7 +7,7 @@
  * ---------------------------------------------------------------------------
  * src/js/admin.js runs in a browser and talks to workers/src/admin.js. Nothing
  * in the worker tests can see it, and a mismatch between the two is silent by
- * construction: the console sends a payload the server does not recognise, the
+ * construction: the console sends a payload the server does not recognize, the
  * server answers "nothing to change", and the control goes on displaying a
  * value nobody saved.
  *
@@ -53,14 +53,14 @@ check("every payload the console sends is one the worker looks for", () => {
   }
 });
 
-check("the organisation is an EMPTY id, read with getAttribute", () => {
-  /* Null partner_id is the organisation everywhere in this schema. In the DOM
+check("the organization is an EMPTY id, read with getAttribute", () => {
+  /* Null partner_id is the organization everywhere in this schema. In the DOM
      that is an empty attribute value, and `dataset` cannot tell an empty
      string from a missing attribute — so the row handler must not use it. */
   assert(/getAttribute\('data-partner-card'\)/.test(SRC),
     "the card id must be read with getAttribute, not dataset");
   assert(!/dataset\.partnerCard/.test(SRC),
-    "dataset reports the organisation's empty id the same as no card at all");
+    "dataset reports the organization's empty id the same as no card at all");
 });
 
 check("both collapsing lists share ONE panel implementation", () => {
@@ -70,7 +70,7 @@ check("both collapsing lists share ONE panel implementation", () => {
   const bodies = SRC.match(/await slide\(/g) || [];
   assert(bodies.length <= 4,
     `slide() is called ${bodies.length} times — a second copy of the panel ` +
-    `behaviour has probably appeared`);
+    `behavior has probably appeared`);
 });
 
 check("a used sending address cannot be deleted without the cascade flag", () => {

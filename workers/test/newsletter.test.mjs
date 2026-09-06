@@ -104,22 +104,22 @@ check("an already-escaped ampersand is not double-escaped", () => {
   assert(sanitise("<p>a & b</p>").includes("a &amp; b"), "a bare ampersand must be escaped");
 });
 
-/* --------------------- size and colour, as MEANING --------------------- */
+/* --------------------- size and color, as MEANING --------------------- */
 
-check("a span may carry a size or a brand colour, and nothing else", () => {
+check("a span may carry a size or a brand color, and nothing else", () => {
   /* Storing CSS would mean parsing CSS to decide what is safe, which is the
      job nobody gets right. A span carries a NAME instead, and the renderer
      turns it into a style — the same split the whole file runs on. */
   assert(sanitise('<p><span data-sz="lg">big</span></p>').includes('data-sz="lg"'),
     "a known size should survive");
   assert(sanitise('<p><span data-c="accent">brand</span></p>').includes('data-c="accent"'),
-    "a known colour should survive");
+    "a known color should survive");
 });
 
-check("an invented size or colour is dropped, keeping the words", () => {
+check("an invented size or color is dropped, keeping the words", () => {
   for (const [html, what] of [
     ['<p><span data-sz="huge">x</span></p>', "an invented size"],
-    ['<p><span data-c="#ff0000">x</span></p>', "an arbitrary colour"],
+    ['<p><span data-c="#ff0000">x</span></p>', "an arbitrary color"],
     ['<p><span style="color:red">x</span></p>', "a pasted style attribute"],
   ]) {
     const out = sanitise(html);
@@ -131,8 +131,8 @@ check("a span doing nothing is not kept — a paste is full of them", () => {
   eq(sanitise("<p><span>x</span></p>"), "<p>x</p>", "bare span");
 });
 
-check("the brand colour resolves to the ministry's own accent", () => {
-  // Free colour choice produces text that vanishes under a dark-mode
+check("the brand color resolves to the ministry's own accent", () => {
+  // Free color choice produces text that vanishes under a dark-mode
   // inversion, and an accent fighting the one on their website. This is right
   // by construction instead.
   const out = render(sanitise('<p><span data-c="accent">brand</span></p>'),
@@ -273,7 +273,7 @@ check("no webfont is requested", () => {
 });
 
 check("the accent reaches the email, and nonsense does not", () => {
-  assert(render(BODY, OPTS).includes("#E4572E"), "the ministry's colour is missing");
+  assert(render(BODY, OPTS).includes("#E4572E"), "the ministry's color is missing");
   const bad = render(BODY, { ...OPTS, accent: "red;}</style><script>" });
   assert(!/<script/i.test(bad), "an accent must never become markup");
   assert(bad.includes("#6D4AFF"), "expected the default accent");
@@ -304,7 +304,7 @@ check("the subject is escaped everywhere it appears", () => {
   assert(html.includes("&lt;img"), "expected it escaped and still readable");
 });
 
-check("dark mode states every colour", () => {
+check("dark mode states every color", () => {
   // A client that inverts a half-stated palette produces something unreadable.
   const html = render(BODY, { ...OPTS, mode: "dark" });
   assert(/#15151c/.test(html), "no dark background");

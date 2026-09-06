@@ -7,8 +7,8 @@
 
    The two areas must be distinguishable at a glance, and the
    difference is carried three ways so it survives being seen in
-   a hurry, in greyscale, or by someone who does not perceive
-   colour the way the designer does:
+   a hurry, in grayscale, or by someone who does not perceive
+   color the way the designer does:
 
      the wordmark says ADMINISTRATION
      the accent is amber rather than blue
@@ -99,7 +99,7 @@
 .adm-label{display:block;font-size:10px;letter-spacing:var(--ls-label);
   text-transform:uppercase;font-weight:var(--w-bold);color:var(--voice-tech);
   margin-bottom:14px}
-/* Each role says what it grants. A switch labelled only "Board" asks somebody
+/* Each role says what it grants. A switch labeled only "Board" asks somebody
    to guess, and guessing about permissions is how they get given wrongly. */
 .adm-roles{display:flex;gap:34px;flex-wrap:wrap}
 .adm-roles .switch{align-items:flex-start}
@@ -193,7 +193,7 @@
 }
 @media (max-width:520px){ .adm-partner-set{grid-template-columns:1fr} }
 
-/* The organisation's card carries only mail, so it has one column rather than
+/* The organization's card carries only mail, so it has one column rather than
    the partner grid's three — and no delete button, because Thauma is not a row
    somebody can remove. */
 /* Thauma's own row, set apart from the ministries below it by a rule rather
@@ -463,7 +463,7 @@
 .p-migrations code{font-family:var(--font-mono);font-size:var(--fs-micro)}
 
 /* Three states, and the amber default above is the WRONG one for two of them.
-   A settled database drawn in warning colours is a page that cries wolf; an
+   A settled database drawn in warning colors is a page that cries wolf; an
    unreadable one drawn in green is worse. */
 .p-migrations.is-clean{background:rgba(92,242,196,.06);
   border-color:rgba(92,242,196,.28)}

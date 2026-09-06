@@ -144,7 +144,7 @@ await check("NOTHING IS STORED", async () => {
 
 await check("a delivery failure is reported, never thanked", async () => {
   // Silently thanking somebody for a message that went nowhere is the worst
-  // possible behaviour for a contact form.
+  // possible behavior for a contact form.
   const env = envWith({ sendOk: false });
   const res = await post(GOOD, env);
   eq(res.status, 502, "status");
@@ -232,7 +232,7 @@ await check("a partner's own words cannot inject script into the form", async ()
   assert(!/<script>alert\(2\)/.test(js), "a script tag survived into the script");
 });
 
-await check("the form is a card in a shadow root, with the ministry's colour", async () => {
+await check("the form is a card in a shadow root, with the ministry's color", async () => {
   const js = contactScript(FORM, "chase-roush", "https://thauma.one");
   assert(js.includes("attachShadow"),
     "a host page's own input rule must not reshape controls somebody types into");
@@ -362,7 +362,7 @@ await check("a subject cannot inject a header either", async () => {
   assert(!/evil@example/.test(JSON.stringify(mail.to)), "an address was injected");
 });
 
-await check('"thauma" is the organisation, and it can embed its own form', async () => {
+await check('"thauma" is the organization, and it can embed its own form', async () => {
   /* Thauma has no row in `partners` — it is the thing partners belong to — so
      a slug join could never find it, and without a reserved word its own
      contact form would be the one form that could not be embedded anywhere. */
@@ -373,7 +373,7 @@ await check('"thauma" is the organisation, and it can embed its own form', async
   eq(res.status, 200, "status");
   const ran = env.calls.map((c) => c.sql).join(" ");
   assert(/partner_id IS NULL/i.test(ran),
-    "the organisation's form must be found by its NULL partner, not by a slug");
+    "the organization's form must be found by its NULL partner, not by a slug");
   assert(!/p\.slug = /i.test(ran),
     "it must not try to join `partners` — there is no row to join to");
 });

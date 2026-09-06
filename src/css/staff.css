@@ -2,10 +2,10 @@
    staff.css — Thauma staff console
    ============================================================
    Everything resolves through src/css/tokens.css. No hardcoded
-   brand colour lives in this file; if the palette changes, this
+   brand color lives in this file; if the palette changes, this
    follows automatically.
 
-   SEMANTIC COLOUR IS SEPARATE FROM BRAND COLOUR. --ok/--warn/
+   SEMANTIC COLOR IS SEPARATE FROM BRAND COLOR. --ok/--warn/
    --crit below are status, not accent — a red row means "overdue",
    never "important". Mixing the two is how dashboards stop being
    scannable.
@@ -153,7 +153,7 @@ tbody tr[aria-expanded="true"]{background:rgba(255,255,255,.045)}
 .right{text-align:right}
 
 /* severity is carried by BOTH a stripe and a number, so it survives
-   greyscale and colour-blindness */
+   grayscale and color-blindness */
 .sev{display:inline-flex;align-items:center;gap:9px;font-weight:var(--w-bold)}
 .sev::before{content:"";width:3px;height:16px;border-radius:1px;background:currentColor;flex:none}
 .sev.crit{color:var(--crit)}
@@ -320,11 +320,11 @@ tr.tl-row td{padding:0;border-bottom:1px solid var(--line-soft)}
    ============================================================
    Oval track, circular knob, and the word ON or OFF inside it.
 
-   The word is the point. A coloured pill alone asks the reader to
+   The word is the point. A colored pill alone asks the reader to
    remember which side means enabled, and gets that wrong under
-   every kind of colour blindness — the two states would differ
+   every kind of color blindness — the two states would differ
    only by hue and knob position. Redundant encoding: position,
-   colour AND text, so it reads correctly in greyscale.
+   color AND text, so it reads correctly in grayscale.
 
    Built on a real <button role="switch"> rather than a styled
    checkbox: aria-checked is what screen readers announce, and it
@@ -332,7 +332,7 @@ tr.tl-row td{padding:0;border-bottom:1px solid var(--line-soft)}
    the same attribute.
 
    ON uses --voice-human (seafoam) rather than a generic green,
-   because that is this site's affirmative colour — the same one
+   because that is this site's affirmative color — the same one
    the "live" badge and healthy meters use. */
 .switch{display:inline-flex;align-items:center;gap:10px;background:none;
   border:0;padding:0;cursor:pointer;font-family:var(--font-display)}
@@ -433,7 +433,7 @@ tr.tl-row td{padding:0;border-bottom:1px solid var(--line-soft)}
 
    `color-scheme: dark` is what stops the browser painting its own chrome —
    the dropdown arrow, the number spinners, the autofill background — in light
-   colours over the top.
+   colors over the top.
    ============================================================ */
 .is-staff input, .is-staff textarea, .is-staff select,
 .is-admin input, .is-admin textarea, .is-admin select{
@@ -522,7 +522,7 @@ body.has-savebar{padding-bottom:var(--ms-savebar-h,72px)}
 .ms-dirty-dot{width:8px;height:8px;border-radius:50%;background:var(--warn,#F5B845);
   flex:0 0 auto}
 
-/* A row with unsaved work carries the same colour as the bar, so the two read
+/* A row with unsaved work carries the same color as the bar, so the two read
    as one state rather than two unrelated warnings. */
 .ms-row.is-dirty{box-shadow:inset 3px 0 0 var(--warn,#F5B845)}
 .badge.unsaved{color:var(--warn,#F5B845);background:var(--warn-dim,rgba(245,184,69,.14));
@@ -657,7 +657,7 @@ body.has-savebar{padding-bottom:var(--ms-savebar-h,72px)}
 /* ============================================================
    TOASTS
    ============================================================ */
-/* Bottom centre, above the unsaved bar when that is showing — the bar owns
+/* Bottom center, above the unsaved bar when that is showing — the bar owns
    the very bottom edge, and a toast covering the Save button would be a
    notification getting in the way of the thing it is telling you about. */
 .toasts{position:fixed;left:50%;transform:translateX(-50%);
@@ -716,7 +716,7 @@ body.has-savebar .toasts{--toast-lift:var(--ms-savebar-h,72px)}
 /* ---- toasts, louder ---- */
 /* The first pass was a thin left border on a dark panel, which on a dark page
    read as another block of text. These are a full outline in the accent
-   colour with a tinted ground, so a message registers without being read. */
+   color with a tinted ground, so a message registers without being read. */
 .toast{border:1px solid var(--voice-tech);
   background:#0d1a22;
   box-shadow:0 0 0 1px rgba(47,216,255,.18), 0 16px 40px rgba(0,0,0,.6);
@@ -725,8 +725,8 @@ body.has-savebar .toasts{--toast-lift:var(--ms-savebar-h,72px)}
   box-shadow:0 0 0 1px rgba(92,242,196,.22), 0 16px 40px rgba(0,0,0,.6)}
 .toast.err{border-color:var(--warn,#F5B845);background:#1d1608;
   box-shadow:0 0 0 1px rgba(245,184,69,.25), 0 16px 40px rgba(0,0,0,.6)}
-/* A dot in the same colour, so the kind of message is legible before the words
-   are — and in greyscale, where the border colour alone would not be. */
+/* A dot in the same color, so the kind of message is legible before the words
+   are — and in grayscale, where the border color alone would not be. */
 .toast::before{content:"";width:8px;height:8px;border-radius:50%;flex:0 0 auto;
   background:var(--voice-tech)}
 .toast.ok::before{background:var(--voice-human)}
@@ -893,15 +893,15 @@ body.has-savebar .toasts{--toast-lift:var(--ms-savebar-h,72px)}
    person's data while a different person is signed in. The
    failure mode is editing the wrong ministry believing it was
    your own, so the state is carried three ways at once — it has
-   to survive being seen in a hurry, in greyscale, or by someone
-   who does not perceive colour as the designer does.
+   to survive being seen in a hurry, in grayscale, or by someone
+   who does not perceive color as the designer does.
 
    NOT FLASHING. A blinking banner was the first instinct and is
    a photosensitivity hazard; it is also self-defeating, because
    a thing that blinks becomes background and a thing that is
    always there is a thing you are looking at.
 
-   The colour is deliberately NOT the console blue or the admin
+   The color is deliberately NOT the console blue or the admin
    amber. It is a third state and reads as one.
    ============================================================ */
 
@@ -1045,7 +1045,7 @@ body.has-savebar .acting-mark{bottom:calc(var(--ms-savebar-h,72px) + 12px)}
 .emb-auto{max-inline-size:16ch}
 
 /* The period, set apart because it changes the SHAPE of the roadmap rather
-   than its colours. */
+   than its colors. */
 .emb-period{display:flex;gap:24px;flex-wrap:wrap;justify-content:space-between;
   align-items:flex-end;background:var(--panel);border:1px solid var(--line);
   border-radius:var(--radius);padding:20px 24px}
@@ -1161,7 +1161,7 @@ body.has-savebar .acting-mark{bottom:calc(var(--ms-savebar-h,72px) + 12px)}
 
 /* The scope switch. Only rendered for accounts the API says may use it, so
    its presence is itself information: if you can see it, you can send as the
-   organisation. */
+   organization. */
 .ml-scope{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:16px}
 .ml-scope-label{color:var(--voice-tech);font-family:var(--font-display);
   font-size:10px;letter-spacing:var(--ls-caps);text-transform:uppercase;
@@ -1192,7 +1192,7 @@ body.has-savebar .acting-mark{bottom:calc(var(--ms-savebar-h,72px) + 12px)}
    visitor's browser fetches. It was hand-built markup imitating the form,
    which is fine until the two disagree — and they did, the moment the real one
    became a bordered card in the ministry's accent while the imitation stayed a
-   stack of grey inputs. A picture of a form nobody would ever see is worse
+   stack of gray inputs. A picture of a form nobody would ever see is worse
    than no picture.
 
    The frame is NOT given a background: the widget paints its own, and the
@@ -1208,7 +1208,7 @@ body.has-savebar .acting-mark{bottom:calc(var(--ms-savebar-h,72px) + 12px)}
 .ml-preview iframe{display:block;width:100%;height:430px;border:0;
   background:transparent;color-scheme:light dark}
 
-/* The colour controls, reusing the ministry page's .emb-* fields so the two
+/* The color controls, reusing the ministry page's .emb-* fields so the two
    screens are visibly the same control rather than two takes on it. */
 .ml-colours{margin:14px 0 6px;padding-top:14px;border-top:1px solid var(--line)}
 .ml-colours .emb-controls{margin:10px 0 12px}
@@ -1294,10 +1294,10 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
 .ml-soon h3{margin:0 0 .5rem;font-size:1.1rem}
 .ml-soon p{margin:0 0 .6rem;color:var(--dim,#8a93a3);line-height:1.6}
 
-/* THE TOOLS MUST NOT LOOK LIKE LISTS. They were the same grey as an unselected
+/* THE TOOLS MUST NOT LOOK LIKE LISTS. They were the same gray as an unselected
    list tab and sat at the other end of the same bar, which made them findable
    only by somebody who already knew they were there. Given a border, a tint and
-   the accent colour they read as controls rather than as two more lists. */
+   the accent color they read as controls rather than as two more lists. */
 .ml-tab-tool{border:1px solid var(--line);border-bottom:1px solid var(--line);
   border-radius:var(--radius);top:-2px;margin-left:6px;
   color:var(--voice-tech);background:rgba(245,184,69,.06)}
@@ -1343,7 +1343,7 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
 /* ============================================================
    THE COMPOSER
    ============================================================
-   One column, in the console's own colours.
+   One column, in the console's own colors.
 
    It briefly had a white writing card and a live preview beside it. The
    preview is gone — its own warning label was the argument against it: a
@@ -1426,7 +1426,7 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
 .cp-body a{color:var(--voice-tech);text-decoration:underline}
 .cp-body img{max-width:100%;height:auto;border-radius:6px;margin:8px 0;display:block}
 .cp-body hr{border:0;border-top:1px solid var(--line);margin:22px 0}
-/* The two sizes and the brand colour, shown as they will render. `accent` is
+/* The two sizes and the brand color, shown as they will render. `accent` is
    the ministry's own, from the same token the widgets use. */
 .cp-body [data-sz="lg"]{font-size:19px}
 .cp-body [data-sz="sm"]{font-size:13.5px}
@@ -1498,7 +1498,7 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
 
 /* Each reason is a row: what it says, and optionally where it goes. The second
    box is what makes a reason more than a label — prayer requests to one inbox,
-   partnership enquiries to another. */
+   partnership inquiries to another. */
 .ct-topics{margin:24px 0 20px;padding-top:20px;border-top:1px solid var(--line)}
 .ct-topics .hint{display:block;margin:6px 0 12px;line-height:1.5;max-width:64ch}
 .ct-topic{display:grid;
@@ -1603,8 +1603,8 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
 .subs-tags{color:var(--dim,#8a93a3);font-size:12px}
 .subs-empty{padding:26px 12px;text-align:center;color:var(--dim,#8a93a3)}
 
-/* A dot rather than a coloured word: at twenty-five rows the eye finds a
-   colour down a column far faster than it reads a label on each line. */
+/* A dot rather than a colored word: at twenty-five rows the eye finds a
+   color down a column far faster than it reads a label on each line. */
 .subs-dot{display:inline-block;width:7px;height:7px;border-radius:50%;
   margin-right:7px;background:var(--dim,#8a93a3);vertical-align:middle}
 .subs-dot.s-subscribed{background:var(--ok,#3ECF8E)}
@@ -1766,7 +1766,7 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
 
    THE FIRST VERSION LET THE NAV WRAP, which was wrong in a way that only
    showed on a real screen: eight links wrapped to a second line, the badge
-   centred itself against the taller block and floated into the middle of it,
+   centered itself against the taller block and floated into the middle of it,
    and each row grew to about a hundred pixels. A header is a single line of
    navigation or it is a mess — so nothing in here wraps, and the escape valve
    when it genuinely does not fit is a scroll, not a second line.
@@ -1823,7 +1823,7 @@ html:not(.roles-known)[data-area="admin"] .console-row[data-row="admin"]{display
 html:not(.roles-known)[data-area="staff"] .console-row[data-row="staff"] nav a,
 html:not(.roles-known)[data-area="admin"] .console-row[data-row="admin"] nav a{display:block}
 
-/* PLAIN COLOURED TEXT, not a filled pill. The mockup drew these as chips and
+/* PLAIN COLORED TEXT, not a filled pill. The mockup drew these as chips and
    they were built that way; on the real page two filled blocks stacked down
    the left read as buttons and pulled more weight than the navigation beside
    them. This is the treatment the wordmark's STAFF label already used.
@@ -1886,7 +1886,7 @@ html:not(.roles-known)[data-area="admin"] .console-row[data-row="admin"] nav a{d
 
 /* ============================================ THE THREE RESOURCE SHELVES
    Institutional, mine, shared with me. Headings rather than tabs: the whole
-   point is seeing at a glance that a document is the organisation's rather
+   point is seeing at a glance that a document is the organization's rather
    than yours, and a tab hides two thirds of that.
    ======================================================================= */
 .res-shelf{margin:0 0 34px}
@@ -1912,7 +1912,7 @@ html:not(.roles-known)[data-area="admin"] .console-row[data-row="admin"] nav a{d
    this", which is the question somebody asks about an unexpected document. */
 .res-from{margin:6px 0 0;font-size:12.5px;color:var(--dim);font-style:italic}
 
-/* The organisation shelf's "is this actually out to everyone" switch. Small
+/* The organization shelf's "is this actually out to everyone" switch. Small
    and inside the card, because it is a property of that resource rather than
    an action on the page. */
 .res-toggle{display:inline-flex;align-items:center;gap:8px;margin-top:12px;

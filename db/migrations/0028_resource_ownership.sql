@@ -1,19 +1,19 @@
 -- 0028_resource_ownership.sql — whose a resource is, and who may change it
 --
 -- WHAT WAS MISSING. `resources` had two axes: WHOSE it is (partner_id, NULL
--- for the organisation) and WHO MAY SEE it (visibility). Nothing said who may
--- CHANGE it — so anybody who could open the page could edit the organisation's
+-- for the organization) and WHO MAY SEE it (visibility). Nothing said who may
+-- CHANGE it — so anybody who could open the page could edit the organization's
 -- own material, and there was nowhere for a person's own notes to live.
 --
 -- THE THIRD AXIS IS OWNERSHIP, and editability is DERIVED from it rather than
 -- stored. A stored `is_editable` is a second copy of a fact that can drift
 -- from the first; ownership cannot drift from itself.
 --
---   owner_user_id NULL, partner_id NULL   the organisation's — admin edits
+--   owner_user_id NULL, partner_id NULL   the organization's — admin edits
 --   owner_user_id NULL, partner_id set    that ministry's — its own people edit
 --   owner_user_id set                     a person's own — only they edit
 --
--- Staff may not create organisation-wide material at all. Chase's call, and
+-- Staff may not create organization-wide material at all. Chase's call, and
 -- the right one: they would be making something they then cannot edit, which
 -- reads as a bug rather than a rule.
 --

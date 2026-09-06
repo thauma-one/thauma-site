@@ -75,7 +75,7 @@
       { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
   }
   /* severity carries a class AND a label, so the table never relies on
-     colour alone to communicate state */
+     color alone to communicate state */
   function severity(days) {
     if (days === null || days === undefined) return { cls: 'none', label: 'never contacted' };
     if (days >= CRIT_DAYS) return { cls: 'crit', label: days + ' days' };

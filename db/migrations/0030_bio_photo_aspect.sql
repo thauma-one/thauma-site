@@ -10,7 +10,7 @@
 -- shape on the way to the page, and a portrait was silently squared.
 --
 -- Now the cropper knows the answer at the moment somebody chooses it, so it is
--- recorded rather than re-derived. NULL keeps the old behaviour — measure the
+-- recorded rather than re-derived. NULL keeps the old behavior — measure the
 -- file if it can be measured, square if it cannot — which is what every row
 -- written before this migration wants.
 ALTER TABLE staff_profiles ADD COLUMN bio_photo_aspect REAL;

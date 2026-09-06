@@ -9,7 +9,7 @@
  * message arrives, and it looks wrong to somebody you will never hear from.
  *
  * So these assert the structural properties that survive that — tables not
- * divs, inline styles, a plain-text part — plus the one behaviour that matters
+ * divs, inline styles, a plain-text part — plus the one behavior that matters
  * operationally: a failed send must report rather than throw, because the
  * account it belongs to has already been created.
  */

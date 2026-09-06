@@ -258,25 +258,25 @@ await check("the goal bar fills to the percentage, clamped", async () => {
   eq(o.root.byClass("gfill")[0].style.width, "100%", "the BAR must clamp");
 });
 
-/* ---- the colour pair ---- */
+/* ---- the color pair ---- */
 
-await check("completed and in-progress are DIFFERENT colours", async () => {
+await check("completed and in-progress are DIFFERENT colors", async () => {
   /* The whole point of the legend. The first version collapsed both into one
-     accent, which is what made "there is a dual colour thing going on" the
+     accent, which is what made "there is a dual color thing going on" the
      correction. */
   const { root } = await run(ROADMAP, { "data-thauma": "mira-petrovic", "data-widget": "roadmap" });
   const css = root.children.find((c) => c.tagName === "STYLE").textContent;
 
   const prog = /--prog:(#[0-9a-fA-F]{6})/.exec(css);
   const done = /--done:(#[0-9a-fA-F]{6})/.exec(css);
-  assert(prog && done, "both colours must be declared");
+  assert(prog && done, "both colors must be declared");
   assert(prog[1].toLowerCase() !== done[1].toLowerCase(),
-    `the pair collapsed into one colour: ${prog[1]}`);
+    `the pair collapsed into one color: ${prog[1]}`);
 });
 
-await check("the derived colour matches the module the Worker uses", async () => {
+await check("the derived color matches the module the Worker uses", async () => {
   /* The widget is a string shipped to browsers and cannot import, so the
-     colour maths exists twice. This is what keeps the duplication honest. */
+     color maths exists twice. This is what keeps the duplication honest. */
   const { companion } = await import("../src/embed-colour.js");
   for (const accent of ["#00D4FF", "#6D4AFF", "#E4572E", "#22C55E", "#888888"]) {
     const { root } = await run(ROADMAP, {
@@ -288,16 +288,16 @@ await check("the derived colour matches the module the Worker uses", async () =>
   }
 });
 
-await check("a grey accent still yields two distinguishable colours", async () => {
-  /* Rotating the hue of something unsaturated returns the same colour, so a
-     partner choosing grey would silently lose the pair. */
+await check("a gray accent still yields two distinguishable colors", async () => {
+  /* Rotating the hue of something unsaturated returns the same color, so a
+     partner choosing gray would silently lose the pair. */
   const { root } = await run(ROADMAP, {
     "data-thauma": "mira-petrovic", "data-widget": "roadmap", "data-accent": "#888888",
   });
   const css = root.children.find((c) => c.tagName === "STYLE").textContent;
   const prog = /--prog:(#[0-9a-fA-F]{6})/.exec(css)[1];
   const done = /--done:(#[0-9a-fA-F]{6})/.exec(css)[1];
-  assert(prog.toLowerCase() !== done.toLowerCase(), "grey collapsed the pair");
+  assert(prog.toLowerCase() !== done.toLowerCase(), "gray collapsed the pair");
 });
 
 await check("a junk data-accent cannot reach the stylesheet", async () => {
@@ -306,7 +306,7 @@ await check("a junk data-accent cannot reach the stylesheet", async () => {
   });
   const css = root.children.find((c) => c.tagName === "STYLE").textContent;
   assert(!css.includes("red;}body"), "CSS injection got through");
-  assert(css.includes("#6D4AFF"), "should fall back to the house colour");
+  assert(css.includes("#6D4AFF"), "should fall back to the house color");
 });
 
 /* ---- the roadmap ---- */
@@ -425,17 +425,17 @@ await check("with no bounds the fill falls back to completed milestones", async 
 
 /* ---- the chosen pair ---- */
 
-await check("a ministry's SECOND colour is used when it has chosen one", async () => {
+await check("a ministry's SECOND color is used when it has chosen one", async () => {
   const chosen = JSON.parse(JSON.stringify(ROADMAP));
   chosen.theme = { accent: "#00D4FF", accent2: "#FF8800", mode: "auto" };
   const { root } = await run(chosen, { "data-thauma": "mira-petrovic", "data-widget": "roadmap" });
   const css = root.children.find((c) => c.tagName === "STYLE").textContent;
-  eq(/--done:(#[0-9a-fA-F]{6})/.exec(css)[1].toLowerCase(), "#ff8800", "chosen second colour");
-  eq(/--prog:(#[0-9a-fA-F]{6})/.exec(css)[1].toLowerCase(), "#00d4ff", "first colour");
+  eq(/--done:(#[0-9a-fA-F]{6})/.exec(css)[1].toLowerCase(), "#ff8800", "chosen second color");
+  eq(/--prog:(#[0-9a-fA-F]{6})/.exec(css)[1].toLowerCase(), "#00d4ff", "first color");
 });
 
-await check("overriding only the FIRST colour re-derives the second", async () => {
-  /* Otherwise a partner's stored second colour would be paired with somebody
+await check("overriding only the FIRST color re-derives the second", async () => {
+  /* Otherwise a partner's stored second color would be paired with somebody
      else's first, leaving the relationship half-applied. */
   const chosen = JSON.parse(JSON.stringify(ROADMAP));
   chosen.theme = { accent: "#00D4FF", accent2: "#FF8800", mode: "auto" };
@@ -445,7 +445,7 @@ await check("overriding only the FIRST colour re-derives the second", async () =
   const css = root.children.find((c) => c.tagName === "STYLE").textContent;
   const { companion } = await import("../src/embed-colour.js");
   eq(/--done:(#[0-9a-fA-F]{6})/.exec(css)[1].toLowerCase(), companion("#E4572E").toLowerCase(),
-     "second colour should follow the override");
+     "second color should follow the override");
 });
 
 /* ---- interaction ---- */
@@ -758,7 +758,7 @@ await check("a card links to YouTube and opens away from the host's page", async
 await check("the CARDS are neutral and the BUTTONS are not", async () => {
   /* The line this widget draws. A video is somebody else's artwork with
      somebody else's title on it, and an accent gradient over a YouTube still
-     makes it look like neither — so the cards take no colour at all. A button
+     makes it look like neither — so the cards take no color at all. A button
      underneath is the ministry speaking in its own voice ("watch more of
      ours"), so the rail does. */
   const { root } = await run(VIDEOS, { ...asVideos, "data-accent": "#E4572E" });
@@ -766,11 +766,11 @@ await check("the CARDS are neutral and the BUTTONS are not", async () => {
 
   const cards = css.slice(css.indexOf(".vids{"), css.indexOf(".vlinks{"));
   assert(!/var\(--prog\)|var\(--done\)|var\(--faint/i.test(cards),
-    "the video CARDS reach for the ministry's colour");
+    "the video CARDS reach for the ministry's color");
 
   const rail = css.slice(css.indexOf(".vlinks{"), css.indexOf(".foot{"));
   assert(/var\(--prog\)|var\(--faint-p\)/.test(rail),
-    "the button rail should carry the ministry's colour");
+    "the button rail should carry the ministry's color");
 });
 
 await check("a channel with no videos says so instead of drawing nothing", async () => {

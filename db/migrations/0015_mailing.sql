@@ -34,7 +34,7 @@
 CREATE TABLE mailing_lists (
   id           TEXT PRIMARY KEY,
 
-  -- NULL MEANS THE ORGANISATION. Thauma's own newsletter belongs to nobody's
+  -- NULL MEANS THE ORGANIZATION. Thauma's own newsletter belongs to nobody's
   -- partner account, and only admin or communications may send to it. Modelling
   -- it as a partner row would make Thauma a partner, which it is not.
   partner_id   TEXT REFERENCES partners(id) ON DELETE CASCADE,
@@ -64,7 +64,7 @@ CREATE TABLE mailing_lists (
 );
 
 -- COALESCE, because SQLite treats NULLs as distinct in a UNIQUE constraint —
--- without it, two organisation lists could both be called `newsletter`.
+-- without it, two organization lists could both be called `newsletter`.
 CREATE UNIQUE INDEX idx_mailing_lists_slug
   ON mailing_lists (COALESCE(partner_id, '~organisation'), slug);
 CREATE INDEX idx_mailing_lists_partner ON mailing_lists (partner_id, archived_at);
@@ -77,7 +77,7 @@ CREATE TABLE subscribers (
   id            TEXT PRIMARY KEY,
   list_id       TEXT NOT NULL REFERENCES mailing_lists(id) ON DELETE CASCADE,
 
-  -- Denormalised from the list so that isolation is one indexed column rather
+  -- Denormalized from the list so that isolation is one indexed column rather
   -- than a join every partner-scoped query must remember. Kept honest by the
   -- triggers below; it is not free to have two sources of truth, so they pay
   -- for it.
@@ -110,7 +110,7 @@ CREATE INDEX idx_subscribers_partner ON subscribers (partner_id, status);
 CREATE INDEX idx_subscribers_email ON subscribers (email);
 
 -- A subscriber's partner must be the partner that owns the list. IS NOT
--- DISTINCT FROM rather than =, so an organisation list (partner_id NULL) and
+-- DISTINCT FROM rather than =, so an organization list (partner_id NULL) and
 -- its subscribers match rather than failing the comparison.
 CREATE TRIGGER subscriber_same_partner
 BEFORE INSERT ON subscribers
@@ -168,7 +168,7 @@ CREATE TABLE mailings (
   body_text    TEXT,
 
   status       TEXT NOT NULL DEFAULT 'draft'
-               CHECK (status IN ('draft', 'sending', 'sent', 'failed', 'cancelled')),
+               CHECK (status IN ('draft', 'sending', 'sent', 'failed', 'canceled')),
 
   -- ATTRIBUTION, so SET NULL rather than the default refusal. Who sent a
   -- mailing is worth recording, and it must not become a reason somebody
@@ -215,7 +215,7 @@ CREATE INDEX idx_mailing_recipients_status ON mailing_recipients (mailing_id, st
 -- SQLite cannot alter a CHECK constraint, so the table is rebuilt — the same
 -- dance 0007 did when `partner` was added, and for the same reason.
 --
--- WHAT IT MEANS: may send as the ORGANISATION, to organisation lists. It is
+-- WHAT IT MEANS: may send as the ORGANIZATION, to organization lists. It is
 -- deliberately separate from `admin`: sending to everyone Thauma has ever
 -- collected is a different act from managing accounts, and one person may
 -- reasonably have either without the other.

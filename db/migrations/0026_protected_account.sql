@@ -2,7 +2,7 @@
 --
 -- WHAT THIS IS NOT. wouldStrandOrg() in workers/src/admin.js already refuses
 -- to remove the LAST active administrator. That is a dynamic rule about the
--- organisation as a whole, and with two administrators either of them may
+-- organization as a whole, and with two administrators either of them may
 -- still be deleted. This is a different guarantee: a NAMED account that
 -- survives regardless of how many others exist.
 --
@@ -12,7 +12,7 @@
 -- A trigger is consulted by all of them, because it is the last thing between
 -- an intention and the disk.
 --
--- WHY admin@thauma.one. It is the organisation's address rather than a
+-- WHY admin@thauma.one. It is the organization's address rather than a
 -- person's, so the account that can always get in does not depend on any
 -- individual still being here — the same reasoning db/seed.production-first-
 -- admin.sql already gives for creating it.

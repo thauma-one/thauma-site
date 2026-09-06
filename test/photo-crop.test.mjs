@@ -6,13 +6,13 @@
  * WHY THIS EXISTS. Every photo on the site lands in a frame with a shape of
  * its own: the team card is square, the home band is 21:9, a bio photo is
  * whatever the picture wants to be. Before the cropper an upload was scaled
- * whole and `object-fit: cover` cropped to the centre — so a portrait taken
+ * whole and `object-fit: cover` cropped to the center — so a portrait taken
  * with headroom lost the top of the head and nobody was asked.
  *
  * jsdom has no canvas and no layout, so this cannot check what an image looks
  * like. What it CAN check is the arithmetic that decides which pixels survive,
  * and the wiring that carries the chosen shape all the way to the page — which
- * is where the old behaviour silently squared everything.
+ * is where the old behavior silently squared everything.
  */
 import { JSDOM } from "jsdom";
 import { readFileSync, existsSync } from "node:fs";
@@ -142,10 +142,10 @@ check("the cropper is loaded before the code that calls it", () => {
   assert(pc < adm, "photo-crop.js loads after admin.js, which calls it");
 });
 
-check("cancelling the crop uploads nothing", () => {
+check("canceling the crop uploads nothing", () => {
   const admin = readFileSync("src/js/admin.js", "utf8");
   assert(/if \(window\.PhotoCrop && !shot\) \{[^}]*return;/.test(admin),
-    "a cancelled crop falls through and uploads something anyway");
+    "a canceled crop falls through and uploads something anyway");
 });
 
 check("a browser without the cropper still gets a photo", () => {

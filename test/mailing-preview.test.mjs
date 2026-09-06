@@ -153,7 +153,7 @@ await check("a nonsense height cannot blow the box open", () => {
 });
 
 await check("the sign-up preview fits the same way", () => {
-  /* Two screens, one behaviour. A second copy of this logic is a second thing
+  /* Two screens, one behavior. A second copy of this logic is a second thing
      to fix when the number changes. */
   press(w.document.querySelector('[data-view="embed"]'));
   const { frame, wrap, stage } = reportHeight(w, "pv", 900);
@@ -172,7 +172,7 @@ await check("the stage clips what the scaled frame overhangs", () => {
   assert(/overflow:\s*hidden/.test(rule[1]), `the stage does not clip: ${rule[1]}`);
   assert(/transform-origin:\s*top left/.test(css),
     "the scale origin must be top left — the wrapper's extra width is added on " +
-    "the right, and a centred origin would offset it by half");
+    "the right, and a centered origin would offset it by half");
 });
 
 /* ------------------- clicking a person is not a tab ------------------- */

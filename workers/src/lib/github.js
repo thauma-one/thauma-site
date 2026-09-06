@@ -34,16 +34,16 @@
  *
  * WHO THIS AUTHENTICATES AS — and why it is not a person
  * ---------------------------------------------------------------------------
- * Preferred: a GITHUB APP owned by the `thauma-one` organisation.
+ * Preferred: a GITHUB APP owned by the `thauma-one` organization.
  *
  * A fine-grained personal access token is always owned by a HUMAN and acts as
- * them. If that person is removed from the organisation the editor stops
+ * them. If that person is removed from the organization the editor stops
  * working; if they leave and keep the account, it goes on working, which is
  * worse. Either way the site's content pipeline hangs off one individual —
  * which SPEC §2 rules out in as many words: "Thauma resources belong to Thauma
  * accounts. This is a hard requirement, not tidiness."
  *
- * An App belongs to the organisation. Nobody's departure touches it, and its
+ * An App belongs to the organization. Nobody's departure touches it, and its
  * installation tokens last an hour and are minted on demand, so there is no
  * expiry date on which the editor quietly stops working.
  *
@@ -101,7 +101,7 @@ export function githubConfig(env) {
   if (!branch) return { error: "CONTENT_BRANCH is not set on this deploy." };
 
   // The App wins. A PAT left behind from an earlier setup must not quietly
-  // take precedence over the credential the organisation actually owns.
+  // take precedence over the credential the organization actually owns.
   return { repo, branch, auth: hasApp ? "app" : "pat" };
 }
 
@@ -352,7 +352,7 @@ export async function putFile(env, { path, text, sha, message, authorName, autho
          affected by this marker.
 
          It is a convention rather than a feature, which is worth knowing: it
-         works because GitHub honours the string, not because the API has a
+         works because GitHub honors the string, not because the API has a
          "do not deploy" flag. The Chase Roush site has relied on it for a year. */
       message: quiet ? skipCi(message) : message,
       content: toBase64(text),

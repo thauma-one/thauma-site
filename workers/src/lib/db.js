@@ -44,7 +44,7 @@ const TENANT_SCOPED = new Set([
   "resources_visible",
   /* Called with a real partner id by the partner API. Listed here so that a
      call with an undefined one throws instead of falling through to
-     `partner_id IS NULL` and returning the ORGANISATION's videos — the exact
+     `partner_id IS NULL` and returning the ORGANIZATION's videos — the exact
      shape of the slug leak fixed in the embed router. */
   "public_videos_for_partner",
   /* The buttons under the shelf. Gated on the CHANNEL's publication

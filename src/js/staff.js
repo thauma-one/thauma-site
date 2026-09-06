@@ -94,7 +94,7 @@
       { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
   }
   /* severity carries a class AND a label, so the table never relies on
-     colour alone to communicate state */
+     color alone to communicate state */
   function severity(days) {
     if (days === null || days === undefined) return { cls: 'none', label: 'never contacted' };
     if (days >= CRIT_DAYS) return { cls: 'crit', label: days + ' days' };
@@ -116,7 +116,7 @@
        those and held everywhere else.
 
        Only one place may write to the pill: paintIdentity(). */
-    // Whose records these are — labelled, on the page, where there is room
+    // Whose records these are — labeled, on the page, where there is room
     // for the word "for". The pill in the header is who YOU are.
     if ($('snapshotPartner')) {
       $('snapshotPartner').textContent = tr('dash.showingFor') + ' ' + d.partner.display_name + '.';
@@ -296,7 +296,7 @@
     var html = shelves.map(function (sh) {
       var rows = (state.resources || []).filter(function (r) {
         /* Rows from before this shelf existed have no `shelf` at all. They are
-           the organisation's, which is where they were. */
+           the organization's, which is where they were. */
         return (r.shelf || 'institutional') === sh.key;
       });
       /* An empty shelf is omitted rather than shown empty — three headings
@@ -311,7 +311,7 @@
           (rows.length
             ? rows.map(function (r) {
                 var i = state.resources.indexOf(r);
-                /* THE ORGANISATION'S SHELF CARRIES A STATE WORTH SEEING: is
+                /* THE ORGANIZATION'S SHELF CARRIES A STATE WORTH SEEING: is
                    this actually out to all staff, or is it an administrator's
                    draft? It is the existing `visibility` column — 'staff'
                    means everyone, 'admin' means administrators only — shown as
@@ -482,7 +482,7 @@
     }
   }
 
-  /* Flip an organisation resource between "all staff" and "administrators
+  /* Flip an organization resource between "all staff" and "administrators
      only". It saves through the ordinary resource write, so the endpoint's own
      rule — only an administrator may narrow visibility — applies without a
      second code path deciding it. */
@@ -574,7 +574,7 @@
     var back = $('resourceBack');
     if (!rForm || !back) return;
 
-    /* Whether this account may put something on the organisation's shelf.
+    /* Whether this account may put something on the organization's shelf.
        THE SERVER'S OWN ANSWER, carried in `can.set_visibility`, rather than
        anything worked out here from roles: staff-data.js decides it and will
        refuse the write on the same test, so a second opinion in the browser
@@ -702,7 +702,7 @@
      contradiction rather than two different facts.
 
      Which partner's records are on screen is a real thing to know, but it
-     belongs where it has room to be labelled: Settings says "Working with X".
+     belongs where it has room to be labeled: Settings says "Working with X".
      It matters more once an admin can view several, and a bare name in a
      corner is the wrong place to learn that. */
   var ROLE_LABEL = { admin: 'Administration', staff: 'Staff', board: 'Board' };
@@ -719,7 +719,7 @@
     /* THE NAME ONLY. This used to append the role list, which was useful when
        the header had no other way to say which console you were in. The two
        badges say it now, so the chip was repeating them — and reading
-       "Administration · partner" beside a row labelled ADMINISTRATION was
+       "Administration · partner" beside a row labeled ADMINISTRATION was
        both redundant and the widest thing in the header, which is part of why
        the nav had no room and wrapped. */
     if (who.name && $('partnerPill')) {
@@ -836,8 +836,8 @@
      believing it was their own.
 
      So the state is carried THREE ways at once, for the same reason the
-     admin area is: it has to survive being seen in a hurry, in greyscale,
-     or by somebody who does not perceive colour the way the designer does.
+     admin area is: it has to survive being seen in a hurry, in grayscale,
+     or by somebody who does not perceive color the way the designer does.
 
        a band across the top naming whose account it is
        a border round the entire viewport
@@ -1310,7 +1310,7 @@
       /* `only` makes it a NOTICE rather than a question: something has already
          happened and this says what to go and do about it. A Cancel button
          beside that reads as "undo", which it cannot do — so it is removed
-         rather than relabelled. Escape and the backdrop still close it,
+         rather than relabeled. Escape and the backdrop still close it,
          because a dialog you cannot dismiss is a trap. */
       if (opts.only) no.remove();
 
@@ -1345,7 +1345,7 @@
      PROMPT — a dialog that asks for one value
      =====================================================================
      Built on the same shell as StaffConfirm rather than beside it, so the two
-     cannot drift apart in looks or behaviour: Escape and the backdrop cancel,
+     cannot drift apart in looks or behavior: Escape and the backdrop cancel,
      focus lands where typing goes, and the button that does the thing is on
      the right.
 
@@ -1358,7 +1358,7 @@
      explanation is a puzzle. The same rule is enforced on the server, which
      is the one that counts.
 
-     Resolves to the trimmed value, or null if cancelled.
+     Resolves to the trimmed value, or null if canceled.
      ===================================================================== */
   function promptDialog(opts) {
     return new Promise(function (resolve) {
@@ -1526,7 +1526,7 @@
   }
 
   /* TABS, for any page that has them. Ministry carries three sections and
-     Settings carries three panels; both use the same markup, so the behaviour
+     Settings carries three panels; both use the same markup, so the behavior
      belongs here rather than being written twice.
 
      Settings runs its own copy — it also rewrites the hash and is wired to its

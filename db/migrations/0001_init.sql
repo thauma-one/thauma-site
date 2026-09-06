@@ -192,7 +192,7 @@ CREATE INDEX idx_contacts_newsletter    ON contacts(partner_id, newsletter_conse
 CREATE TABLE interactions (
   id            TEXT PRIMARY KEY,
   contact_id    TEXT NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
-  -- Denormalised so every tenant-owned table can be scoped without a join.
+  -- Denormalized so every tenant-owned table can be scoped without a join.
   -- Kept honest by trg_interactions_partner_match below.
   partner_id    TEXT NOT NULL REFERENCES partners(id) ON DELETE CASCADE,
 

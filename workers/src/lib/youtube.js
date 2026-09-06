@@ -12,7 +12,7 @@
  * bundle for very little. The extraction below is per-ENTRY rather than
  * per-document, which is the part that actually matters: chaseroush.com's
  * version takes "the second <title> in the file" and is one feed-format tweak
- * away from labelling every video with the channel's name.
+ * away from labeling every video with the channel's name.
  *
  * ENTITIES ARE DECODED. A video called "Faith & Works" arrives as
  * "Faith &amp; Works", and a title is written into HTML and into emails

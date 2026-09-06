@@ -28,12 +28,12 @@
   var HEX = /^#[0-9a-fA-F]{6}$/;
   var DEFAULT_ACCENT = '#6D4AFF';
 
-  /* The second colour, derived the way every widget derives it: a -33 degree
+  /* The second color, derived the way every widget derives it: a -33 degree
      hue rotation, the distance between cyan and green on chaseroush.com. Here
      it is only needed to SHOW the pair in the two swatches — the widget does
      its own, from the same maths, so nothing depends on these agreeing to the
-     last digit. Grey has no hue to rotate and separates by lightness instead,
-     or a partner choosing grey would see one colour twice. */
+     last digit. Gray has no hue to rotate and separates by lightness instead,
+     or a partner choosing gray would see one color twice. */
   function companion(hex) {
     var m = /^#?([0-9a-f]{6})$/i.exec(String(hex).trim());
     if (!m) return hex;
@@ -95,7 +95,7 @@
   function setStatus(el, text) { if (el) el.textContent = text || ''; }
 
   function url(extra) {
-    var q = state.scope === 'organisation' ? '?scope=organisation' : '';
+    var q = state.scope === 'organization' ? '?scope=organization' : '';
     if (!extra) return API + q;
     return API + (q ? q + '&' : '?') + extra;
   }
@@ -751,7 +751,7 @@
        It used to be hand-built markup that imitated the form. That is fine
        until the two disagree, and they did the moment the real one became a
        bordered card in the ministry's accent while the imitation stayed a
-       stack of grey inputs — the page was showing a picture of a form nobody
+       stack of gray inputs — the page was showing a picture of a form nobody
        would ever see. Rendering the real thing costs a frame and cannot drift.
 
        SANDBOXED TO SCRIPTS ONLY: no same-origin, so the preview cannot reach
@@ -806,7 +806,7 @@
             '<span class="adm-label">' + esc(tr('ml.whichLists')) + '</span>' +
             '<div class="ml-embed-switches">' + switches + '</div>' +
 
-            /* THE SAME COLOURS AS EVERY OTHER WIDGET, and the same controls
+            /* THE SAME COLORS AS EVERY OTHER WIDGET, and the same controls
                that set them on the ministry page — one accent, an optional
                second, and whether to follow the host page's light or dark.
                Deliberately NOT a separate palette for mail: a sign-up form
@@ -820,7 +820,7 @@
                     '<input type="color" data-clr="accent" value="' + esc(theme.accent) + '">' +
                     '<input type="text" class="emb-hex" maxlength="7" spellcheck="false" ' +
                       'data-clr="accentHex" value="' + esc(theme.accent) + '" ' +
-                      'aria-label="Accent colour hex">' +
+                      'aria-label="Accent color hex">' +
                   '</span></label>' +
                 '<label class="emb-field"><span>' + esc(tr('emb.accent2')) + '</span>' +
                   '<span class="emb-colour">' +
@@ -828,7 +828,7 @@
                       (theme.auto ? ' disabled' : '') + '>' +
                     '<input type="text" class="emb-hex" maxlength="7" spellcheck="false" ' +
                       'data-clr="accent2Hex" value="' + esc(theme.accent2) + '"' +
-                      (theme.auto ? ' disabled' : '') + ' aria-label="Second colour hex">' +
+                      (theme.auto ? ' disabled' : '') + ' aria-label="Second color hex">' +
                   '</span></label>' +
                 '<label class="emb-field emb-auto"><span>' + esc(tr('emb.pairAuto')) + '</span>' +
                   '<span class="emb-checkline">' +
@@ -946,7 +946,7 @@
         '/form.js?t=' + Date.now() + '"></scr' + 'ipt>';
   }
 
-  /* Typing a colour redraws the frame and writes NOTHING. Colours are shared
+  /* Typing a color redraws the frame and writes NOTHING. Colors are shared
      by every widget this ministry publishes, so saving on each keystroke would
      repaint other people's pages while somebody was still deciding. */
   function colourInput(el) {
@@ -961,7 +961,7 @@
     if (k === 'accent2Hex' && HEX.test(el.value.trim())) pick('accent2').value = el.value.trim();
 
     /* With "match it automatically" on, the second swatch SHOWS the derived
-       colour rather than going blank — the pair is the thing being chosen, and
+       color rather than going blank — the pair is the thing being chosen, and
        hiding half of it makes the accent look like the only decision. */
     var auto = pick('pairAuto').checked;
     if (k === 'pairAuto' || k === 'accent' || k === 'accentHex') {
@@ -981,7 +981,7 @@
     if (!HEX.test(t.accent)) { toast(tr('emb.badHex'), 'bad'); return; }
     /* REFUSED rather than guessed. Sending the block without knowing the
        current `enabled` would switch a ministry's published widgets off as a
-       side effect of picking a colour — silent, and visible only to the
+       side effect of picking a color — silent, and visible only to the
        websites showing them. */
     if (!state.embed) { toast(tr('emb.noSettings'), 'bad'); return; }
     btn.disabled = true;
@@ -991,7 +991,7 @@
         headers: { 'Content-Type': 'application/json' },
         /* `enabled` is sent unchanged. The server takes the embed block whole,
            so omitting it would read as "switch embedding off" — turning a
-           ministry's published widgets dark because somebody picked a colour
+           ministry's published widgets dark because somebody picked a color
            on a different screen. */
         body: JSON.stringify({ embed: {
           enabled: !!state.embed.enabled,
@@ -1053,7 +1053,7 @@
        that made the embed code look like it did not exist. The reason it will
        not work yet is said instead of the code being taken away. */
     $('ctEmbedOff').hidden = !!c.is_open;
-    var who = state.scope === 'organisation' ? 'thauma' : state.partnerSlug;
+    var who = state.scope === 'organization' ? 'thauma' : state.partnerSlug;
     $('ctSnippet').value = who
       ? '<div data-thauma-contact></div>\n' +
         '<script src="' + location.origin + '/embed/v1/' +
@@ -1157,9 +1157,9 @@
     var frame = document.querySelector('[data-ct="frame"]');
     if (!frame) return;
 
-    /* "thauma" is the reserved word for the organisation, which has no partner
+    /* "thauma" is the reserved word for the organization, which has no partner
        slug — the same convention the endpoint uses. */
-    var who = state.scope === 'organisation' ? 'thauma' : state.partnerSlug;
+    var who = state.scope === 'organization' ? 'thauma' : state.partnerSlug;
     if (!who) { frame.removeAttribute('srcdoc'); return; }
 
     var saved = state.embed || {};
@@ -1193,7 +1193,7 @@
 
   /* The dropdown, as editable rows. Each carries an optional address of its
      own, which is what makes a reason more than a label: prayer requests to
-     one inbox, partnership enquiries to another. */
+     one inbox, partnership inquiries to another. */
   function renderTopics() {
     var rows = (state.topics || []).map(function (t, i) {
       return '<div class="ct-topic" data-topic="' + i + '">' +
@@ -1227,7 +1227,7 @@
   /* Read back out of the boxes rather than tracked on every keystroke. One
      source of truth, and no way for the two to disagree.
 
-     EVERY ROW, INCLUDING THE EMPTY ONE. This used to drop unlabelled rows
+     EVERY ROW, INCLUDING THE EMPTY ONE. This used to drop unlabeled rows
      here, which was right for saving and wrong for redrawing: pressing "Add a
      reason" and then deleting a different row made the new empty box vanish
      before it could be typed into. Filtering belongs at the point of saving,
@@ -1746,7 +1746,7 @@
 
     /* REMOVING SOMEBODY IS REMOVING THEM. No undo, and the dialog says so —
        this is the action taken when a person asks to be forgotten, and a soft
-       delete would not honour that. */
+       delete would not honor that. */
     var ok = await window.StaffConfirm({
       title: tr('ml.removeTitle'),
       body: tr('ml.removeBody'),

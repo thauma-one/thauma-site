@@ -10,7 +10,7 @@
 -- training, support-raising steps. It lives today as a hand-edited JSON file
 -- in R2 (assets.chaseroush.com/JSON/milestones.json, 8 entries), which means
 -- there is no editor, no history, no review, and the partner site owns content
--- the ORGANISATION should be the system of record for.
+-- the ORGANIZATION should be the system of record for.
 --
 -- Moving it here is what lets Thauma manage it and publish it to any partner
 -- site through the partner API.
@@ -54,7 +54,7 @@ CREATE TABLE milestones (
   actual_date   TEXT,
 
   status        TEXT NOT NULL DEFAULT 'upcoming'
-                  CHECK (status IN ('upcoming','in_progress','complete','cancelled')),
+                  CHECK (status IN ('upcoming','in_progress','complete','canceled')),
   completion    INTEGER NOT NULL DEFAULT 0
                   CHECK (completion BETWEEN 0 AND 100),
 

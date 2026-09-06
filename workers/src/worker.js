@@ -27,7 +27,7 @@
  * dashboard edit away from being public. A new hostname is a dashboard edit.
  *
  * So the Worker refuses /staff* itself. Add an Access application in front for
- * defence in depth and a real login page — but the Worker is safe without it.
+ * defense in depth and a real login page — but the Worker is safe without it.
  */
 import langRedirect from "./lang-redirect.js";
 import gameScores from "./game-scores.js";
@@ -203,7 +203,7 @@ function signInPage(request, env, url) {
  * edits one clause; a named list with a test that compares the two is the
  * version that stays true.
  *
- * Access authenticates; it does not authorise. Being let through here means
+ * Access authenticates; it does not authorize. Being let through here means
  * "we know who you are", nothing more — /api/admin* separately refuses anyone
  * without the admin role. The pages are markup; the data is what matters.
  *
@@ -424,6 +424,6 @@ export default {
     const failed = results.filter((r) => !r.ok);
     console.log(
       `video sync: ${results.length} source(s), ${failed.length} failed`,
-      failed.map((f) => `${f.partner_id || "organisation"}: ${f.error}`).join("; "));
+      failed.map((f) => `${f.partner_id || "organization"}: ${f.error}`).join("; "));
   },
 };

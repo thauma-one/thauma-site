@@ -41,7 +41,7 @@ exactly one partner."
 
 When the site grows, the shape has to change. Adding embeds meant partners
 needed three new pieces of information: whether embedding is allowed, what
-colour, and light or dark.
+color, and light or dark.
 
 You can't just decide that and have it be true — the existing database
 doesn't have those columns yet. So the change is written as a small file of
@@ -92,7 +92,7 @@ Nothing to do. This is the normal state.
 It lists what's waiting and gives you an **Apply changes** button. Press it,
 type `MIGRATE`, and it runs them in order and records each one.
 
-**Grey — "Could not read the database's migration state."**
+**Gray — "Could not read the database's migration state."**
 Something's wrong with the connection, not with your data. Tell me.
 
 ### The order matters

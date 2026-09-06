@@ -120,7 +120,7 @@ export function buildEmail(fields, env, meta = {}) {
   return {
     from: env.CONTACT_FROM,
     /* A reason can send the message somewhere else — prayer requests to one
-       inbox, partnership enquiries to another. Falling back to the form's own
+       inbox, partnership inquiries to another. Falling back to the form's own
        address is the normal case, not a mistake. */
     to: [(topic && topic.deliver_to) || env.CONTACT_TO],
     // reply_to, not from: sending AS the visitor would fail SPF/DKIM and land
@@ -210,7 +210,7 @@ export async function handle(request, env, send) {
      CONTACT_TO and CONTACT_FROM live in wrangler.toml, which means changing
      where Thauma's own messages go is a deploy — and it means this form and a
      partner's form had two unrelated ways of being configured. The
-     organisation now has a row in contact_forms like everybody else, and the
+     organization now has a row in contact_forms like everybody else, and the
      variables are what answers before anybody has filled that row in.
 
      Falling back rather than requiring the row matters: this endpoint is

@@ -129,7 +129,7 @@ fi
 # It merges main only when everything main has that we do not is confined to
 # CONTENT_PATHS. Code on main is somebody's publish in flight, and an
 # unattended script has no business merging that into a working branch. That
-# judgement is exactly what --ff-only protects everywhere else, and it still
+# judgment is exactly what --ff-only protects everywhere else, and it still
 # does: this is a deliberate, bounded exception for files nobody writes by hand.
 CONTENT_BRANCH="${THAUMA_CONTENT_BRANCH:-main}"
 CONTENT_PATHS='^src/_data/'

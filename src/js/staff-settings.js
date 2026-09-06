@@ -85,7 +85,7 @@
       return '<span class="role-tag ' + r.cls + '">' + esc(r.label) + '</span>';
     }).join('');
 
-    // Your own working language: every language the organisation offers, not
+    // Your own working language: every language the organization offers, not
     // just the ones this partner publishes — you might work in a language the
     // site does not serve.
     $('setPrefLang').innerHTML = state.languages.map(function (l) {

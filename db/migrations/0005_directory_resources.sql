@@ -23,7 +23,7 @@
 --                        shared asset, and treating it as shared was the
 --                        clearest thing wrong with the old arrangement.
 --
---   resources            PER PARTNER, or organisation-wide when partner_id is
+--   resources            PER PARTNER, or organization-wide when partner_id is
 --                        NULL. Shared on purpose — it is a library. What is
 --                        NOT shared is visibility: a resource can be limited
 --                        to admins or the board while staff-level material
@@ -49,7 +49,7 @@ CREATE TABLE directory_contacts (
 
   -- JSON arrays. A directory card is read and written whole, never queried by
   -- individual address, so two more tables would buy nothing and cost a join
-  -- on every read. If we ever need "who else knows this person", normalise
+  -- on every read. If we ever need "who else knows this person", normalize
   -- then — not in advance.
   emails      TEXT NOT NULL DEFAULT '[]',
   phones      TEXT NOT NULL DEFAULT '[]',
@@ -80,7 +80,7 @@ END;
 -- ---------------------------------------------------------------------------
 CREATE TABLE resources (
   id          TEXT PRIMARY KEY,
-  -- NULL means organisation-wide: material every partner should see. A
+  -- NULL means organization-wide: material every partner should see. A
   -- partner id means it belongs to that partner alone.
   partner_id  TEXT REFERENCES partners(id) ON DELETE CASCADE,
 

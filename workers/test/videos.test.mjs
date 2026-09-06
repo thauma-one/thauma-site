@@ -3,7 +3,7 @@
  * Videos — reading a channel's feed, and the two ways it can go wrong
  *   node workers/test/videos.test.mjs
  *
- * The interesting behaviour here is not "does it parse XML". It is what
+ * The interesting behavior here is not "does it parse XML". It is what
  * happens when it CANNOT: a partner site's video shelf must survive YouTube
  * having a bad afternoon, and must not survive a video being deleted. Those
  * two pull in opposite directions and most of this file is about the line
@@ -116,7 +116,7 @@ await check("an id, a channel URL and a handle all resolve", async () => {
   eq(await resolveSource("@thauma", scraped), { kind: "channel", id: CHANNEL }, "handle");
 });
 
-await check("a playlist is recognised from every address it appears in", async () => {
+await check("a playlist is recognized from every address it appears in", async () => {
   const want = { kind: "playlist", id: PLAYLIST };
   eq(await resolveSource(PLAYLIST), want, "bare id");
   eq(await resolveSource(`https://www.youtube.com/playlist?list=${PLAYLIST}`), want, "playlist page");
@@ -295,7 +295,7 @@ await check("one bad channel does not stop the scheduled run", async () => {
   const results = await syncAll(db, { fetchImpl: flaky, now: "T2" });
   eq(results.length, 3, "every channel was attempted");
   eq(results.map((r) => r.ok), [false, true, true], "the failure is isolated");
-  eq(results[2].partner_id, null, "the organisation is a channel like any other");
+  eq(results[2].partner_id, null, "the organization is a channel like any other");
 });
 
 /* ------------------------ the optional button rail ----------------------- */

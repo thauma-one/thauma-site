@@ -214,7 +214,7 @@ await check("a new account is created INVITED, never active", async () => {
 
 await check("the last-administrator check counts only ACTIVE admins", async () => {
   // A suspended admin cannot appoint anyone, so counting them would let the
-  // organisation lock itself out while believing it had not.
+  // organization lock itself out while believing it had not.
   const sql = QUERIES.admin_count_admins;
   assert(/role\s*=\s*'admin'/.test(sql), "does not filter on the admin role");
   assert(/status\s*=\s*'active'/.test(sql), "counts inactive administrators");
@@ -271,7 +271,7 @@ await check("a partner's slug is derived, never taken from the client", async ()
   // spaces and capitals that then have to be lived with forever.
   const src = await import("node:fs").then((fs) =>
     fs.readFileSync(new URL("../src/admin.js", import.meta.url), "utf8"));
-  // Asserted by behaviour, not by variable name — the derivation moved into
+  // Asserted by behavior, not by variable name — the derivation moved into
   // makePartner() and a test pinned to `const slug = displayName` broke on a
   // rename that changed nothing about what the code does.
   assert(/slug\s*=\s*name\s*\.toLowerCase\(\)/.test(src.replace(/\s+/g, " ")) ||
@@ -330,7 +330,7 @@ function recordingEnv(roles = "admin", extra = {}) {
 }
 
 // requireAccess blocks a real end-to-end call, so these assert the SQL each
-// branch is built to run. Weak on auth, exact on behaviour.
+// branch is built to run. Weak on auth, exact on behavior.
 await check("every action maps to a statement that exists", async () => {
   const needed = {
     "grant a role": "admin_role_grant",

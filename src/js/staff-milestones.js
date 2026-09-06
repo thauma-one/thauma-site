@@ -135,7 +135,7 @@
 
   var STATUS_LABEL = {
     upcoming: 'Upcoming', in_progress: 'In progress',
-    complete: 'Complete', cancelled: 'Cancelled'
+    complete: 'Complete', canceled: 'Canceled'
   };
 
   /* The list shows the left column's language, falling back to any other so a
@@ -546,7 +546,7 @@
     // A milestone that has never been saved exists only in this tab. Asking
     // the server to delete it would 404 on an id it has never seen, and
     // confirming a "permanent" delete for something that was never stored
-    // would be theatre.
+    // would be theater.
     if (!state.saved[id]) {
       delete state.draft[id];
       state.order = state.order.filter(function (x) { return x !== id; });

@@ -14,7 +14,7 @@
 --
 -- TWO LAYERS, AND THE DISTINCTION IS THE POINT
 -- ---------------------------------------------------------------------------
---   languages          the ORGANISATION's catalogue. Only an admin adds to it.
+--   languages          the ORGANIZATION's catalog. Only an admin adds to it.
 --                      Adding Spanish is one row, not a migration.
 --
 --   partner_languages  each PARTNER decides which of those their own API
@@ -28,7 +28,7 @@
 
 
 -- ---------------------------------------------------------------------------
--- The catalogue
+-- The catalog
 -- ---------------------------------------------------------------------------
 CREATE TABLE languages (
   code        TEXT PRIMARY KEY,        -- BCP-47-ish: 'en', 'hr', 'sr', 'pt-BR'
@@ -84,7 +84,7 @@ CREATE TABLE milestones_new (
   parent_id     TEXT REFERENCES milestones_new(id) ON DELETE SET NULL,
   actual_date   TEXT,
   status        TEXT NOT NULL DEFAULT 'upcoming'
-                  CHECK (status IN ('upcoming','in_progress','complete','cancelled')),
+                  CHECK (status IN ('upcoming','in_progress','complete','canceled')),
   completion    INTEGER NOT NULL DEFAULT 0 CHECK (completion BETWEEN 0 AND 100),
   sort_order    INTEGER NOT NULL DEFAULT 0,
   is_public     INTEGER NOT NULL DEFAULT 0 CHECK (is_public IN (0,1)),
@@ -134,7 +134,7 @@ END;
 -- trigger below name `milestones`; defining them before the rebuild meant
 -- SQLite validated the trigger while that table was mid-swap and refused
 -- the whole migration with "no such table: main.milestones".
--- partner_id is carried here as well as on the milestone. Denormalised on
+-- partner_id is carried here as well as on the milestone. Denormalized on
 -- purpose: every tenant-owned row in this schema can be scoped without a join,
 -- so a query that forgets to scope is a bug you can grep for rather than a
 -- silent cross-tenant read. A trigger keeps it honest.

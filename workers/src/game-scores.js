@@ -30,7 +30,7 @@ const MAX_SCORE_VALUE = 999999;
 const MAX_NAME_LEN = 20;
 const FALLBACK_NAME = "Anonymous";
 
-// Deliberately non-exhaustive. Normalised matching (below) catches the common
+// Deliberately non-exhaustive. Normalized matching (below) catches the common
 // leetspeak dodges without needing a huge word list for a low-stakes hidden
 // leaderboard. A match replaces the name ENTIRELY rather than masking part of
 // it — safer than trying to censor in place.

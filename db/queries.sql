@@ -300,13 +300,13 @@ WHERE id = :id AND partner_id = :partner_id;
 -- ============================================================================
 
 -- name: languages_all
--- The organisation's catalogue. Admin-managed; every partner chooses from it.
+-- The organization's catalog. Admin-managed; every partner chooses from it.
 SELECT code, name, native_name, is_active, sort_order
 FROM languages ORDER BY sort_order, name;
 
 
 -- name: language_upsert
--- THE CATALOGUE MUST LEARN ABOUT A LANGUAGE SOMEBODY ADDED.
+-- THE CATALOG MUST LEARN ABOUT A LANGUAGE SOMEBODY ADDED.
 -- Adding a language writes two git files — the strings and the site's list —
 -- and for a long time that was all it did. So a language could be live on the
 -- public site while every screen that reads this table went on as though it
@@ -336,13 +336,13 @@ UPDATE languages SET is_active = 0 WHERE code = :code;
 
 
 -- name: language_next_sort_order
--- Appended to the end of the catalogue rather than inserted into it: the order
+-- Appended to the end of the catalog rather than inserted into it: the order
 -- is somebody's decision, and a new arrival has no claim on a position.
 SELECT COALESCE(MAX(sort_order), -1) + 1 AS sort_order FROM languages;
 
 
 -- name: partner_languages_for_partner
--- Which of the catalogue this partner publishes, and in what order. LEFT JOIN
+-- Which of the catalog this partner publishes, and in what order. LEFT JOIN
 -- from languages so a newly added language appears immediately, switched off,
 -- rather than being invisible until somebody inserts a row for every partner.
 SELECT l.code, l.name, l.native_name, l.sort_order AS catalogue_order,
@@ -370,7 +370,7 @@ ON CONFLICT(partner_id, lang) DO UPDATE SET
 -- workers/src/admin.js before any of it runs. These queries are NOT
 -- partner-scoped — that is the whole point of them — which makes the role
 -- check the only thing standing between a staff account and the whole
--- organisation. It is done once, at the top, and every branch runs after it.
+-- organization. It is done once, at the top, and every branch runs after it.
 
 -- name: admin_users
 -- Everyone, with their roles and which partners they can reach. Two
@@ -408,7 +408,7 @@ VALUES (:id, :email, :name, 'staff', 'invited', :now);
 -- alone would be enough to find the row. A query that can be called with only
 -- an id is a query that can be called with somebody else's id.
 --
--- The organisation's own lists have partner_id NULL. `IS NOT DISTINCT FROM`
+-- The organization's own lists have partner_id NULL. `IS NOT DISTINCT FROM`
 -- is spelled `IS` in SQLite, which matches NULL to NULL — so one query serves
 -- both a partner asking for theirs and an administrator asking for Thauma's.
 -- ============================================================================
@@ -497,7 +497,7 @@ WHERE partner_id IS :partner_id AND slug = :slug AND id <> :id;
 -- from a browser and being spliced into SQL is the classic injection, and the
 -- classic mitigation — an allow-list in the Worker — has to be got right in
 -- every caller forever. This way the database decides, the parameter is bound
--- like any other value, and an unrecognised sort simply falls through to the
+-- like any other value, and an unrecognized sort simply falls through to the
 -- default rather than being an error or a hole.
 --
 -- The trailing subscribed_at DESC is both the default and the tiebreaker, so
@@ -562,7 +562,7 @@ UPDATE subscribers SET name = :name, updated_at = :now WHERE id = :id;
 -- This is not caution, it is the whole consent model. Without it, editing a
 -- confirmed subscriber's address is a way to subscribe ANY address without
 -- that person ever agreeing — which is exactly what double opt-in exists to
--- prevent, and it would be doable from a console screen labelled "edit".
+-- prevent, and it would be doable from a console screen labeled "edit".
 --
 -- It also happens to be right for the innocent case. Correcting
 -- "ann@gmial.com" to "ann@gmail.com" is a guess about a different mailbox, and
@@ -612,18 +612,18 @@ SELECT :id, l.id, l.partner_id, :email, :name, 'pending', :token, :source, :lang
 -- `partner_id IS (SELECT id FROM partners WHERE slug = :partner_slug)` reads as
 -- "belonging to this partner", and it is — right up until the slug matches
 -- nobody. Then the subquery is NULL, `partner_id IS NULL` is TRUE, and the
--- query returns the ORGANISATION's lists, because NULL partner_id is how the
--- organisation is spelled throughout this schema. So any invented slug served
+-- query returns the ORGANIZATION's lists, because NULL partner_id is how the
+-- organization is spelled throughout this schema. So any invented slug served
 -- Thauma's own sign-up form, and anybody submitting it joined Thauma's lists.
 --
 -- The pattern is worth remembering: a NULL-matching comparison and a NULL
--- meaning "the organisation" are safe apart and dangerous together, because a
+-- meaning "the organization" are safe apart and dangerous together, because a
 -- lookup that finds nothing produces the same NULL as a row that means
 -- something.
 --
--- The colours come along so the form can be drawn in the ministry's accent
+-- The colors come along so the form can be drawn in the ministry's accent
 -- like every other embed. NOT gated on embed_enabled: that switch governs
--- publishing the ministry's DATA, and a colour is not data — a list's own
+-- publishing the ministry's DATA, and a color is not data — a list's own
 -- is_open is what decides whether this form exists at all.
 SELECT l.id, l.partner_id, l.name, l.slug, l.description,
        l.from_name, l.from_email, l.reply_to,
@@ -988,7 +988,7 @@ ORDER BY p.display_name COLLATE NOCASE;
 
 
 -- name: admin_count_admins
--- Used before removing the admin role or an account. An organisation with no
+-- Used before removing the admin role or an account. An organization with no
 -- administrator cannot appoint one — the screen that grants roles is itself
 -- admin-only — so the last one is refused rather than left to be discovered.
 SELECT COUNT(*) AS n
@@ -1058,7 +1058,7 @@ WHERE id = :id AND user_id = :user_id AND partner_id = :partner_id;
 -- does not change — only the list handed to it.
 --
 -- THREE SHELVES IN ONE READ, each with its own reason for being visible:
---   institutional  the organisation's or this partner's, filtered by role
+--   institutional  the organization's or this partner's, filtered by role
 --   mine           whatever this person owns
 --   shared         whatever somebody passed to them
 --
@@ -1147,7 +1147,7 @@ FROM partners p WHERE p.id = :partner_id;
 
 -- name: partner_set_embed
 -- The embed settings, written together because they are edited together on
--- one panel and a half-applied change would leave a widget live in colours
+-- one panel and a half-applied change would leave a widget live in colors
 -- nobody chose.
 --
 -- The accent is validated in the Worker, not here: SQLite has no regular
@@ -1258,7 +1258,7 @@ ORDER BY sort_order ASC, (actual_date IS NULL), actual_date ASC;
 --
 --   m.is_public = 1     the milestone is published at all
 --   pl.is_enabled = 1   the partner publishes that language
---   l.is_active = 1     the organisation still offers it
+--   l.is_active = 1     the organization still offers it
 --
 -- A translation prepared in a language the partner has not enabled stays in
 -- the database and out of the API — that is the whole point of being able to
@@ -1466,7 +1466,7 @@ WHERE t.partner_id = :partner_id
 -- name: partner_set_timeline
 -- The bounds the roadmap is drawn against. Both nullable: a partner who has
 -- not set them gets a timeline that spans their own milestones, which is the
--- behaviour that existed before this.
+-- behavior that existed before this.
 UPDATE partners
    SET timeline_start = :timeline_start,
        timeline_end   = :timeline_end,
@@ -1485,7 +1485,7 @@ UPDATE partners
 --
 -- ONE DOMAIN PER PARTNER. Sending reputation is tracked per domain, so a
 -- partner's junk reports stay with that partner instead of degrading
--- everybody. The organisation's own domain is kept out of bulk entirely: an
+-- everybody. The organization's own domain is kept out of bulk entirely: an
 -- account invite must never be delayed because somebody else's newsletter was
 -- reported.
 -- ============================================================================
@@ -1501,7 +1501,7 @@ WHERE id = :id;
 -- name: sender_addresses_for_partner
 -- What this owner may send as. `IS` rather than `=` so NULL matches NULL and
 -- the same query serves a partner asking for theirs and an administrator
--- asking for the organisation's.
+-- asking for the organization's.
 SELECT id, partner_id, address, label, can_receive, created_at
 FROM sender_addresses
 WHERE partner_id IS :partner_id
@@ -1782,7 +1782,7 @@ DELETE FROM mailing_attachments WHERE mailing_id = :mailing_id;
 -- ============================================================================
 -- CONTACT FORMS
 --
--- One per partner, and one for the organisation with partner_id NULL. The
+-- One per partner, and one for the organization with partner_id NULL. The
 -- messages themselves are emailed and stored nowhere — see 0021 for why — so
 -- everything here is configuration.
 -- ============================================================================
@@ -1821,7 +1821,7 @@ ON CONFLICT(partner_id) DO UPDATE SET
 -- cost a real leak once. `partner_id IS (SELECT id FROM partners WHERE slug =
 -- :slug)` reads as "belonging to this partner" — until the slug matches
 -- nobody, when the subquery is NULL, `partner_id IS NULL` is TRUE, and the
--- query hands back the ORGANISATION's row. The sign-up form had exactly that
+-- query hands back the ORGANIZATION's row. The sign-up form had exactly that
 -- bug: any invented slug served Thauma's own form.
 --
 -- `is_open` is the switch, so closing the form takes it off every page it is
@@ -1835,7 +1835,7 @@ WHERE c.is_open = 1;
 
 -- name: public_contact_form_org
 -- Thauma's own, for the site's contact page. A separate query rather than the
--- one above with a NULL parameter: the organisation has no slug to join on,
+-- one above with a NULL parameter: the organization has no slug to join on,
 -- and inventing one would be the same trap in a new place.
 SELECT deliver_to, from_address, heading, blurb, button, thanks
 FROM contact_forms
@@ -1864,7 +1864,7 @@ VALUES (:id, :partner_id, :label, :deliver_to, :sort_order, :now);
 -- name: public_contact_topics
 -- The dropdown, for the UNAUTHENTICATED endpoint. Joined through partners the
 -- same way public_contact_form is, and for the same reason: a NULL-matching
--- comparison against a slug nobody has would hand back the ORGANISATION's
+-- comparison against a slug nobody has would hand back the ORGANIZATION's
 -- topics. See public_contact_form for the leak that taught this.
 SELECT t.id, t.label, t.deliver_to, t.sort_order
 FROM contact_topics t
@@ -1873,7 +1873,7 @@ ORDER BY t.sort_order, t.label COLLATE NOCASE;
 
 
 -- name: public_contact_topics_org
--- Thauma's own. A separate query because the organisation has no slug to join
+-- Thauma's own. A separate query because the organization has no slug to join
 -- on, and inventing one would be the same trap in a new place.
 SELECT id, label, deliver_to, sort_order
 FROM contact_topics
@@ -1977,7 +1977,7 @@ WHERE id IN (SELECT s.id FROM subscribers s
 -- VIDEOS — a channel's latest, cached from its public Atom feed
 --
 -- The only tables here whose every column is already public. That is what
--- lets public_videos_for_partner sit in PUBLIC_QUERIES; it is not a licence
+-- lets public_videos_for_partner sit in PUBLIC_QUERIES; it is not a license
 -- to join anything else to them.
 -- ===========================================================================
 

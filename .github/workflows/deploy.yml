@@ -115,6 +115,7 @@ jobs:
           node test/console-banner.test.mjs
           node test/mailing-views.test.mjs
           node test/photo-crop.test.mjs
+          node test/us-english.test.mjs
           node test/admin-console.test.mjs
           python3 db/test_schema.py
           cd workers && npm test

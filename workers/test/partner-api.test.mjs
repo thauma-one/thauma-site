@@ -228,7 +228,7 @@ await check("the archive URL is absolute and points at the LIVE site", async () 
 
 await check("the videos query cannot be run without a partner", async () => {
   /* The `videos` table has no partner column, so an undefined partner_id
-     would become `partner_id IS NULL` and return the ORGANISATION's videos to
+     would become `partner_id IS NULL` and return the ORGANIZATION's videos to
      whichever partner asked — the same shape as the slug leak fixed in the
      embed router. TENANT_SCOPED is what stops it. */
   let threw = null;

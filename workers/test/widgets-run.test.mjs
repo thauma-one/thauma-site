@@ -178,14 +178,14 @@ check("the ministry's accent reaches the drawn form", () => {
     "the saved accent did not reach the stylesheet");
 });
 
-check("a host page may override the colours", () => {
+check("a host page may override the colors", () => {
   const { root } = draw(contactScript(FORM, "chase-roush", "https://thauma.one", null, TOPICS),
     "data-thauma-contact", 'data-accent="#E4572E"');
   const css = root.querySelector("style").textContent;
   assert(/--acc:\s*#E4572E/i.test(css), "the override was ignored");
   assert(!/--acc2:\s*#72A8F8/i.test(css),
-    "given a new accent, the second colour must be derived from it rather than " +
-    "left as the ministry's — a chosen colour beside somebody else's companion " +
+    "given a new accent, the second color must be derived from it rather than " +
+    "left as the ministry's — a chosen color beside somebody else's companion " +
     "is the one pairing nobody wants");
 });
 
@@ -227,7 +227,7 @@ check("the tightened layout actually makes the type smaller", () => {
     "the fields should shrink");
 });
 
-check("the card centres in whatever space it is given", () => {
+check("the card centers in whatever space it is given", () => {
   /* A form is capped at a readable width, but the host decides how wide the
      column is — and a 480px card hugging the left of a 900px container reads
      as a mistake rather than a decision. */
@@ -235,7 +235,7 @@ check("the card centres in whatever space it is given", () => {
     "data-thauma-contact").root.querySelector("style").textContent;
   const card = /\.card\{([^}]*)\}/.exec(css);
   assert(card, "no .card rule");
-  assert(/margin-inline:\s*auto/.test(card[1]), `the card does not centre: ${card[1]}`);
+  assert(/margin-inline:\s*auto/.test(card[1]), `the card does not center: ${card[1]}`);
   assert(/max-width/.test(card[1]), "and it should still cap its width for readability");
 });
 

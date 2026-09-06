@@ -12,10 +12,10 @@
 -- RUN ONCE. Every statement is INSERT OR IGNORE, so running it twice changes
 -- nothing rather than failing halfway through and leaving a partial account.
 --
--- ADMIN IS admin@thauma.one AND THAT IS DELIBERATE. It is the organisation's
+-- ADMIN IS admin@thauma.one AND THAT IS DELIBERATE. It is the organization's
 -- address, not a person's, so the account that can always get in does not
 -- depend on any individual still being here. It is the same principle the
--- GitHub organisation and the Netlify account already follow.
+-- GitHub organization and the Netlify account already follow.
 
 -- ---------- the person ------------------------------------------------------
 -- global_role is the legacy single-role column kept in step with user_roles
@@ -55,7 +55,7 @@ VALUES ('p_chase', 'u_admin', 'owner', 'u_admin', datetime('now'));
 
 -- ---------- languages this partner publishes -------------------------------
 -- English on, the rest off. partner_languages_for_partner LEFT JOINs from the
--- catalogue, so an absent row already means "not enabled" — English is stated
+-- catalog, so an absent row already means "not enabled" — English is stated
 -- explicitly so the console opens with one column filled rather than none.
 INSERT OR IGNORE INTO partner_languages (partner_id, lang, is_enabled, sort_order)
 VALUES ('p_chase', 'en', 1, 0);

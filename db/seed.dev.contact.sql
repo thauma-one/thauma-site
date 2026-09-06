@@ -5,7 +5,7 @@
 -- .invalid is reserved by RFC 2606 and can never be registered, so nothing
 -- sent to one of these can reach a person. That is not caution for its own
 -- sake: this seed was first written with `admin@thauma.one` as the
--- organisation's delivery address, and a routine `curl` against the local
+-- organization's delivery address, and a routine `curl` against the local
 -- endpoint on 2026-08-22 put a test message from "Ann" into a real inbox.
 --
 -- The endpoint being exercised locally still calls Resend for real. Local
@@ -25,7 +25,7 @@ VALUES
   ('p_mira', 'mira-dev@example.invalid', 'contact@mira.thauma.one',
    NULL, NULL, NULL, NULL, 0, datetime('now')),
 
-  -- The organisation. partner_id NULL, reached at /embed/v1/thauma/contact.js.
+  -- The organization. partner_id NULL, reached at /embed/v1/thauma/contact.js.
   (NULL, 'dev-inbox@example.invalid', 'contact@thauma.one',
    'Contact Thauma', NULL, 'Send', NULL, 1, datetime('now'));
 
@@ -34,7 +34,7 @@ INSERT INTO contact_topics (id, partner_id, label, deliver_to, sort_order, creat
   -- The one reason with an address of its own, so the routing is exercised.
   ('ct_pray',   'p_chase', 'Prayer request',        'prayer-dev@example.invalid',  1, datetime('now')),
   ('ct_part',   'p_chase', 'Partnership / support', NULL,                          2, datetime('now')),
-  ('ct_church', 'p_chase', 'Church enquiry',        NULL,                          3, datetime('now')),
+  ('ct_church', 'p_chase', 'Church inquiry',        NULL,                          3, datetime('now')),
   ('ct_other',  'p_chase', 'Something else',        NULL,                          4, datetime('now')),
 
   ('ct_org1',   NULL,      'General',               NULL,                          0, datetime('now')),

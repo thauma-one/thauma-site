@@ -19,8 +19,8 @@
 --
 -- THE OTHER TWO ARE APPEARANCE, AND THEY ARE STORED RATHER THAN PASSED
 -- ============================================================================
--- The embed code can override colours per-placement, but the DEFAULT lives
--- here. A partner sets their colours once, and every page that embeds them
+-- The embed code can override colors per-placement, but the DEFAULT lives
+-- here. A partner sets their colors once, and every page that embeds them
 -- picks it up — including pages they have already published and will never
 -- edit again. Sending appearance only through the snippet would mean a
 -- rebrand is a hunt through other people's websites.
@@ -33,7 +33,7 @@ ALTER TABLE partners ADD COLUMN embed_enabled INTEGER NOT NULL DEFAULT 0
   CHECK (embed_enabled IN (0, 1));
 
 -- NULL means "use the Thauma default". Not a hardcoded hex here, so changing
--- the house colour does not require rewriting every row that never chose one.
+-- the house color does not require rewriting every row that never chose one.
 ALTER TABLE partners ADD COLUMN embed_accent TEXT;
 
 ALTER TABLE partners ADD COLUMN embed_theme TEXT NOT NULL DEFAULT 'auto'

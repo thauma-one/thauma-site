@@ -25,7 +25,7 @@
  *     said "Gmail strips it", which is wrong and worth correcting: Gmail
  *     webmail supports a reasonable CSS subset in <head>, and its mobile apps
  *     have historically been weaker. Several OTHER clients do strip it. So the
- *     rule is not "no style block" — it is that every colour, every dimension
+ *     rule is not "no style block" — it is that every color, every dimension
  *     and every piece of structure must survive with the block deleted. One is
  *     included below carrying ONLY @media rules, which cannot be expressed
  *     inline and are pure refinement.
@@ -35,7 +35,7 @@
  *     on table cells is the only spacing that lands everywhere.
  *   - WEB-SAFE FONTS ONLY. A webfont means a network request an inbox will not
  *     make, and the fallback is what everybody actually sees.
- *   - EVERY COLOUR STATED. Dark-mode clients invert what they can and a
+ *   - EVERY COLOR STATED. Dark-mode clients invert what they can and a
  *     half-stated palette comes out unreadable.
  *   - MSO CONDITIONAL COMMENTS. Outlook desktop is a Word rendering engine
  *     wearing a mail client, and it is disproportionately common among the
@@ -60,11 +60,11 @@ const KEEP = new Set([
   "h2", "h3",
   "ul", "ol", "li",
   "a", "img", "blockquote", "hr",
-  // Carries size and colour, and ONLY through the two attributes below.
+  // Carries size and color, and ONLY through the two attributes below.
   "span",
 ]);
 
-/* SIZE AND COLOUR ARE STORED AS MEANING, NOT AS CSS.
+/* SIZE AND COLOR ARE STORED AS MEANING, NOT AS CSS.
  *
  * A style attribute survives the sanitiser nowhere, including here: allowing
  * one would mean parsing CSS to decide what is safe, which is the job nobody
@@ -76,13 +76,13 @@ const KEEP = new Set([
  * It also means restyling every newsletter ever sent is a change to the table
  * below, and that an archived mailing re-renders in the new palette.
  *
- * COLOUR IS LIMITED TO THE BRAND, deliberately. Free colour choice in email
+ * COLOR IS LIMITED TO THE BRAND, deliberately. Free color choice in email
  * produces unreadable text against a dark-mode inversion sooner or later, and
  * an accent that fights the ministry's own. `accent` resolves to whatever the
  * partner chose, so it is right by construction.
  */
 const SIZES = { sm: "13.5px", lg: "19px" };
-const COLOURS = new Set(["accent", "dim"]);
+const COLORS = new Set(["accent", "dim"]);
 
 /* Tags whose CONTENT goes too. Script and style carry no prose, and keeping
    the text inside a <style> would paste CSS into the middle of a sentence. */
@@ -175,7 +175,7 @@ export function sanitise(html) {
       if (!m) continue;
       let value = m[1];
       if (key === "data-sz" && !SIZES[value]) continue;
-      if (key === "data-c" && !COLOURS.has(value)) continue;
+      if (key === "data-c" && !COLORS.has(value)) continue;
       if (key === "href" || key === "src") {
         value = safeUrl(value);
         if (!value) continue;
@@ -189,7 +189,7 @@ export function sanitise(html) {
     }
     /* A link with no usable href becomes plain text rather than a dead <a>,
        which looks clickable and is not. A span carrying neither a size nor a
-       colour is doing nothing at all — and pastes are full of them. */
+       color is doing nothing at all — and pastes are full of them. */
     if (name === "a" && !attrs) continue;
     if (name === "span" && !attrs) continue;
 
@@ -267,7 +267,7 @@ function inlineStyles(html, accent, ink, dim, line) {
     const name = tag.toLowerCase();
 
     /* A span's appearance comes from what it MEANS, resolved here. `accent` is
-       the ministry's own colour, so a coloured word is right by construction
+       the ministry's own color, so a colored word is right by construction
        rather than by whoever was typing having picked well. */
     if (name === "span") {
       const sz = /data-sz="([^"]*)"/.exec(rest);

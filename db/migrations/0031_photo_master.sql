@@ -17,7 +17,7 @@
 -- the crop by anybody, at any time — the pixels are gone.
 --
 -- WHY NOT REPLACE `photo` WITH THE MASTER AND CROP AT DISPLAY TIME. Because
--- the public site is static files and a CSS crop is the centre crop this
+-- the public site is static files and a CSS crop is the center crop this
 -- feature exists to stop being stuck with.
 --
 -- NULL is the ordinary value for every photo uploaded before this. The console

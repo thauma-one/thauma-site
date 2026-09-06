@@ -144,20 +144,20 @@ await check("reading a list belonging to somebody else is 404, not 403", async (
   eq(res.status, 404, "status");
 });
 
-/* --------------------------- the organisation ---------------------------- */
+/* --------------------------- the organization ---------------------------- */
 
-await check("staff cannot reach the organisation's lists", async () => {
+await check("staff cannot reach the organization's lists", async () => {
   const env = envWith("staff");
-  const res = await handler.fetch(req("GET", { query: "?scope=organisation" }), env);
+  const res = await handler.fetch(req("GET", { query: "?scope=organization" }), env);
   eq(res.status, 403, "status");
   assert(/communications/i.test((await res.json()).error), "should name the role needed");
 });
 
-await check("communications CAN reach the organisation's lists", async () => {
+await check("communications CAN reach the organization's lists", async () => {
   const env = envWith("staff,communications");
-  const res = await handler.fetch(req("GET", { query: "?scope=organisation" }), env);
+  const res = await handler.fetch(req("GET", { query: "?scope=organization" }), env);
   eq(res.status, 200, "status");
-  eq((await res.json()).scope, "organisation", "scope");
+  eq((await res.json()).scope, "organization", "scope");
 });
 
 await check("admin can too, and the console is told so", async () => {
@@ -167,17 +167,17 @@ await check("admin can too, and the console is told so", async () => {
   eq(body.may_send_as_organisation, true, "flag");
 });
 
-await check("a partner is NOT told they may send as the organisation", async () => {
+await check("a partner is NOT told they may send as the organization", async () => {
   const env = envWith("staff");
   const body = await (await handler.fetch(req("GET"), env)).json();
   eq(body.may_send_as_organisation, false, "flag");
 });
 
 /* An ambiguous request must resolve to the smaller scope, never the larger. */
-await check("no scope means the caller's own lists, not the organisation's", async () => {
+await check("no scope means the caller's own lists, not the organization's", async () => {
   const env = envWith("admin,staff");
   const body = await (await handler.fetch(req("GET"), env)).json();
-  eq(body.scope, "partner", "an unspecified scope must not widen to the organisation");
+  eq(body.scope, "partner", "an unspecified scope must not widen to the organization");
 });
 
 await check("an account with no partner is refused, and told why", async () => {
@@ -317,7 +317,7 @@ await check("the sort is decided by the QUERY, never spliced into it", () => {
   /* A sort order arriving from a browser and being interpolated into SQL is
      the classic injection, and the classic mitigation — an allow-list in the
      Worker — has to be got right in every caller forever. The CASE inside the
-     query means the value is bound like any other, and an unrecognised one
+     query means the value is bound like any other, and an unrecognized one
      falls through to the default rather than being an error or a hole. */
   const sql = QUERIES.subscribers_for_list;
   assert(/CASE WHEN :sort =/.test(sql), "the sort is not chosen by a bound parameter");
@@ -366,7 +366,7 @@ await check("the count filters exactly as the list does", () => {
 await check("CHANGING AN ADDRESS SENDS THE ROW BACK TO UNCONFIRMED", () => {
   /* This is the consent model, not caution. Without it, editing a confirmed
      subscriber's address is a way to subscribe ANY address without that person
-     agreeing — from a console screen labelled "edit". */
+     agreeing — from a console screen labeled "edit". */
   const sql = QUERIES.subscriber_change_email;
   assert(/status = 'pending'/.test(sql), "the row must go back to pending");
   assert(/confirmed_at = NULL/.test(sql), "and lose its confirmation date");

@@ -63,7 +63,7 @@ function boot(page, cached, headerHeight) {
         return { x: 0, y: 0, top: 0, left: 0, right: 0, bottom: h, width: 1200, height: h };
       };
       /* jsdom has no ResizeObserver. The stub fires once on observe, which is
-         the behaviour the measurer depends on for the late role change. */
+         the behavior the measurer depends on for the late role change. */
       w.ResizeObserver = class {
         constructor(cb) { this.cb = cb; }
         observe() { this.cb([], this); }

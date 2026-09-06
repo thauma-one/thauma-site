@@ -238,7 +238,7 @@ export function blankLike(doc, code) {
   return typeof doc === "string" ? "" : doc;
 }
 
-/* The catalogue row wants a name and a native name; the request only carries a
+/* The catalog row wants a name and a native name; the request only carries a
    code, because that is genuinely all the person adding it knows. Intl has the
    answer for every code anyone will type — "sl" gives "Slovenian" and
    "slovenščina" — and falls back to the code rather than throwing on something
@@ -253,7 +253,7 @@ function languageNames(code) {
   return { name: nameIn("en") || code, native_name: nameIn(code) || nameIn("en") || code };
 }
 
-/* THE CATALOGUE IS THE OTHER HALF OF ADDING A LANGUAGE, and for a long time it
+/* THE CATALOG IS THE OTHER HALF OF ADDING A LANGUAGE, and for a long time it
    was simply missing. See the note on language_upsert in db/queries.sql: a
    language could be live on the public site and invisible to every screen that
    reads the database, which is the state Slovenian was found in.
@@ -390,7 +390,7 @@ async function addLanguage(request, env, db, user, me, cfg) {
     }, registered.status || 502);
   }
 
-  const catalogue = await registerLanguage(db, code);
+  const catalog = await registerLanguage(db, code);
 
   await audit(db, {
     user,
@@ -398,7 +398,7 @@ async function addLanguage(request, env, db, user, me, cfg) {
     entity_id: code,
     detail: {
       code, strings: Object.keys(leafPaths(en)).length, by: who,
-      catalogue: catalogue.ok ? "registered" : `failed: ${catalogue.error}`,
+      catalog: catalog.ok ? "registered" : `failed: ${catalog.error}`,
     },
   });
 
@@ -409,8 +409,8 @@ async function addLanguage(request, env, db, user, me, cfg) {
     commit: registered.commit,
     /* Said out loud rather than swallowed: the language IS on the site, but
        until this succeeds no partner can write content in it. */
-    catalogue: catalogue.ok ? true : false,
-    catalogueError: catalogue.ok ? undefined : catalogue.error,
+    catalog: catalog.ok ? true : false,
+    catalogueError: catalog.ok ? undefined : catalog.error,
   });
 }
 
@@ -528,7 +528,7 @@ async function removeLanguage(request, env, db, user, me, cfg) {
     }, gone.status || 502);
   }
 
-  /* SWITCHED OFF IN THE CATALOGUE, NOT DELETED FROM IT — see
+  /* SWITCHED OFF IN THE CATALOG, NOT DELETED FROM IT — see
      language_deactivate. Translations already written stay attached, so a
      language that comes back finds its work rather than a blank slate. Like
      the registration on the way in, a database failure here does not fail the
@@ -543,7 +543,7 @@ async function removeLanguage(request, env, db, user, me, cfg) {
     user,
     action: "content.remove_language",
     entity_id: code,
-    detail: { code, translated, by: who, catalogue: deactivated ? "deactivated" : "unchanged" },
+    detail: { code, translated, by: who, catalog: deactivated ? "deactivated" : "unchanged" },
   });
 
   return json({ ok: true, code, translated, commit: gone.commit });

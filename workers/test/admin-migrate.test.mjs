@@ -247,7 +247,7 @@ await check("apply refuses without the typed word", async () => {
   eq(b.state.ran, [], "it ran SQL anyway");
 });
 
-await check("an unrecognised action is treated as apply, not waved through", async () => {
+await check("an unrecognized action is treated as apply, not waved through", async () => {
   /* Fail toward the confirmation. A typo in the action must not become an
      unguarded execution path. */
   const b = fakeBinding();

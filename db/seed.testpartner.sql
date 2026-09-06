@@ -160,7 +160,7 @@ VALUES
    'Long call about the Beograd team. Asked to be phoned rather than emailed.',
    'u_mira','manual','2025-07-14T16:00:00Z'),
   ('i_m3','c_m2','p_mira','visit',1,'in_person','2026-08-10',
-   'Coffee after the service. She is organising the autumn prayer week.',
+   'Coffee after the service. She is organizing the autumn prayer week.',
    'u_mira','manual','2026-08-10T14:00:00Z'),
   ('i_m4','c_m2','p_mira','newsletter',0,'digital','2026-08-01',
    'August update',NULL,'newsletter','2026-08-01T09:00:00Z'),
@@ -211,8 +211,8 @@ VALUES
   -- DELIBERATELY MISSING its Serbian translation. The editor should show this
   -- as an untranslated string rather than pretending it is done.
 
-  ('ms_m3','en','p_mira','Youth programme',
-   'Starting a weekly programme for the teenagers already coming on Sundays.',
+  ('ms_m3','en','p_mira','Youth program',
+   'Starting a weekly program for the teenagers already coming on Sundays.',
    NULL,'2026-03-02T09:00:00Z');
 
 -- ---------- her own resources and address book ------------------------------

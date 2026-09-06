@@ -7,7 +7,7 @@
 
    THE PANEL IS ABSENT, NOT DISABLED, where it is not offered. Staging and
    production hold no credential for reaching another database, so the endpoint
-   answers "not available" and the section never appears. A greyed-out control
+   answers "not available" and the section never appears. A grayed-out control
    invites people to ask why; a missing one matches the truth, which is that
    this is a development-site tool.
    ============================================================ */

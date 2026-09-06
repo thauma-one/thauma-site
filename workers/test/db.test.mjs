@@ -278,7 +278,7 @@ await check("every real query converts with its documented params", async () => 
     // embeds
     embed_enabled: 0, embed_accent: "#6D4AFF", embed_accent2: null,
     embed_theme: "auto",
-    // the language catalogue
+    // the language catalog
     code: "sl", native_name: "slovenščina",
     // staff profiles
     bio: null, role_title: null, region: null, public_email: null,
@@ -334,12 +334,12 @@ await check("every real query converts with its documented params", async () => 
     // the rename cascade: an address moving from one domain to another
     old: "news@old.thauma.one", new: "news@chaseroush.thauma.one",
   };
-  // The ONE query with no parameters: the language catalogue belongs to the
-  // organisation, not to a partner, so there is nothing to scope it by. Named
+  // The ONE query with no parameters: the language catalog belongs to the
+  // organization, not to a partner, so there is nothing to scope it by. Named
   // rather than skipped by a rule, so a second parameterless query has to be
   // justified here rather than quietly slipping past.
-  // Queries with nothing to scope by. languages_all is the organisation's
-  // catalogue; the admin ones are unscoped BY DESIGN — see admin.test.mjs.
+  // Queries with nothing to scope by. languages_all is the organization's
+  // catalog; the admin ones are unscoped BY DESIGN — see admin.test.mjs.
   const NO_PARAMS = new Set(["languages_all", "admin_users", "admin_partners",
                              "admin_count_admins", "language_next_sort_order",
                              "staff_profiles_all", "staff_profiles_public",
@@ -349,7 +349,7 @@ await check("every real query converts with its documented params", async () => 
                              // by a WHERE clause. The partner-scoped view of
                              // the same table is sender_addresses_for_partner.
                              "admin_sender_addresses",
-                             /* The organisation's own contact form. It has no
+                             /* The organization's own contact form. It has no
                                 slug to be found by and exactly one row, which
                                 is what the partial unique index in 0021
                                 guarantees — so there is nothing to scope it
@@ -363,7 +363,7 @@ await check("every real query converts with its documented params", async () => 
                                 asks about all of them. Admin-only, guarded by
                                 the role check like admin_partners beside it. */
                              "admin_partner_members",
-                             /* The organisation's contact reasons. Same reason
+                             /* The organization's contact reasons. Same reason
                                 as the form above: no slug to be found by, and
                                 exactly one owner. */
                              "public_contact_topics_org",
@@ -397,7 +397,19 @@ await check("generation does not eat characters out of the SQL", async () => {
      Compared against the source file rather than trusted, because a generated
      file that differs from its source is exactly what nobody looks at. */
   const src = readFileSync(new URL("../../db/queries.sql", import.meta.url), "utf8");
-  const named = [...src.matchAll(/^-- name: (\w+)\n([\s\S]*?)(?=^-- name: |\Z)/gm)];
+  /* SPLIT, NOT A LOOKAHEAD WITH `\Z` IN IT.
+     
+     This read `(?=^-- name: |\Z)`. JavaScript has no \Z anchor — it matches a
+     literal capital Z — so every query body silently ended at the first "Z" it
+     contained. Nothing contained one, so the test passed for months. The
+     instant a comment said ORGANIZATION the body truncated to nothing and this
+     reported a difference that was entirely its own.
+     
+     Splitting has no anchor subtleties to be wrong about. */
+  const named = src.split(/^-- name: /m).slice(1).map((chunk) => {
+    const nl = chunk.indexOf("\n");
+    return [null, chunk.slice(0, nl).trim(), chunk.slice(nl + 1)];
+  });
   assert(named.length > 40, `only found ${named.length} queries in the source`);
 
   for (const [, name, body] of named) {

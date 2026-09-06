@@ -59,7 +59,7 @@ function boot(page, cached) {
   const w = dom.window;
   /* ALL THREE STYLESHEETS. Measuring an admin page with only staff.css was how
      the badge bug survived: .is-admin in admin.css redefines --voice-tech, and
-     a harness that never loaded it could not see the label change colour. */
+     a harness that never loaded it could not see the label change color. */
   for (const f of ["tokens.css", "staff.css", "admin.css"]) {
     const st = w.document.createElement("style");
     st.textContent = readFileSync("src/css/" + f, "utf8");
@@ -201,14 +201,14 @@ await check("NO console page moves after it paints", async () => {
   eq(moved, [], "pages whose nav changed after the first paint");
 });
 
-await check("the badge colours do not change between the two areas", async () => {
+await check("the badge colors do not change between the two areas", async () => {
   /* .is-admin redefines --voice-tech to amber for the admin console, so a
      badge built on the voice pair was blue on staff pages and amber on admin
-     ones — the same label, two colours, depending where you were. */
+     ones — the same label, two colors, depending where you were. */
   const css = readFileSync("src/css/admin.css", "utf8") +
               readFileSync("src/css/staff.css", "utf8");
   const areaScoped = css.match(/\.is-(admin|staff)[^{]*\{[^}]*--console-(staff|admin)\s*:/);
-  assert(!areaScoped, `an area override redefines a console colour: ${areaScoped}`);
+  assert(!areaScoped, `an area override redefines a console color: ${areaScoped}`);
 
   const tokens = readFileSync("src/css/tokens.css", "utf8");
   for (const v of ["--console-staff", "--console-admin"]) {

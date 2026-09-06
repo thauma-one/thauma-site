@@ -19,7 +19,7 @@
 -- table were partner-scoped that would mean two copies fetched twice and
 -- capable of disagreeing. A video belongs to a channel; the partner link
 -- lives in video_channels, one hop away. It also sidesteps the NULL-partner
--- primary key problem: the organisation is a row in video_channels like
+-- primary key problem: the organization is a row in video_channels like
 -- everyone else, and no row here has to represent "no partner".
 --
 -- PUBLIC DATA, and worth saying out loud because most tables here are not.
@@ -28,7 +28,7 @@
 -- this file may ever grow a column about a VIEWER.
 
 CREATE TABLE video_channels (
-  -- NULL is the ORGANISATION, the convention used throughout this schema —
+  -- NULL is the ORGANIZATION, the convention used throughout this schema —
   -- so thauma.one's own channel is a row here rather than a deploy variable.
   partner_id    TEXT PRIMARY KEY REFERENCES partners(id) ON DELETE CASCADE,
 
@@ -60,7 +60,7 @@ CREATE TABLE video_channels (
   updated_at    TEXT NOT NULL
 );
 
--- SQLite allows a NULL primary key, which is what lets the organisation have
+-- SQLite allows a NULL primary key, which is what lets the organization have
 -- a row here at all. This index keeps that to ONE row; without it two
 -- "no partner" rows could exist and the sync would pick one at random.
 CREATE UNIQUE INDEX idx_video_channels_org

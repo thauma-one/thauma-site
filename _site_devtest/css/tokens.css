@@ -29,7 +29,7 @@
 :root{
 
   /* ---------- SURFACES ------------------------------------
-     Not neutral grey. Every surface is tinted TOWARD the accent
+     Not neutral gray. Every surface is tinted TOWARD the accent
      family (here: blue), which is what makes the black read as
      "rich" rather than flat. The CR file mirrors these channels
      (0B0F15 -> 150F0B) to land the same depth in warm.        */
@@ -42,7 +42,7 @@
 
   /* ---------- INK ----------------------------------------- */
   --text: #EDF2F8;        /* cool white                         */
-  --dim:  #8A96A6;        /* cool grey — body copy, ledes       */
+  --dim:  #8A96A6;        /* cool gray — body copy, ledes       */
 
   /* ---------- THE TWO VOICES ------------------------------
      BLUE  = the technical voice (cues, frames, structure)

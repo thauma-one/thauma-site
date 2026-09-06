@@ -5,7 +5,7 @@
  * exists to establish. So the link itself has to carry the proof, which means
  * a signature over the account it names.
  *
- * MODELLED ON lib/unsub.js, which does the same job for unsubscribe links, and
+ * MODELED ON lib/unsub.js, which does the same job for unsubscribe links, and
  * sharing its secret deliberately. The PURPOSE is mixed into the key, so a
  * token minted to confirm an account cannot be replayed to change an address —
  * the two produce different digests from the same secret, which is what makes

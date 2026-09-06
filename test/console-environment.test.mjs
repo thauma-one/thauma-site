@@ -129,9 +129,9 @@ check("the band is rendered from the hostname, not fetched", () => {
   assert(/showEnvironment\(\);/.test(staffJs), "showEnvironment must actually be called");
 });
 
-check("an unrecognised host says so rather than staying silent", () => {
+check("an unrecognized host says so rather than staying silent", () => {
   assert(/env-unknown|key: 'unknown'/.test(staffJs),
-    "an unknown hostname must be labelled, not left blank");
+    "an unknown hostname must be labeled, not left blank");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

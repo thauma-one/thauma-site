@@ -14,19 +14,19 @@
 --
 -- Dates, not labels: these are only ever compared, never shown.
 --
--- 2. A SECOND COLOUR
+-- 2. A SECOND COLOR
 -- ============================================================================
 -- The widget derived one by rotating the accent's hue, which reproduces the
 -- cyan/green relationship but gives a partner no say in the result. Storing
 -- both means the pair can be chosen — and the derived value stays as the
--- DEFAULT, so nobody has to pick two colours to get a sensible one.
+-- DEFAULT, so nobody has to pick two colors to get a sensible one.
 --
--- NULL means "derive it", which is different from any particular colour and is
+-- NULL means "derive it", which is different from any particular color and is
 -- why this is nullable rather than defaulted to a hex.
 --
 -- 3. PRAYER
 -- ============================================================================
--- Requests a ministry publishes, and the answers when they come. Modelled on
+-- Requests a ministry publishes, and the answers when they come. Modeled on
 -- milestones because it is the same shape: a language-neutral row carrying the
 -- state, and one translation row per language.
 --
@@ -43,7 +43,7 @@ ALTER TABLE partners ADD COLUMN embed_accent2 TEXT;
 
 -- 4. A SENTENCE UNDER EACH GOAL
 -- ============================================================================
--- The giving page this is modelled on puts a line of explanation under every
+-- The giving page this is modeled on puts a line of explanation under every
 -- goal name — what the money is actually for. The table had a label and
 -- nothing else, so the widget had a rule drawn for a description that could
 -- never arrive.
@@ -94,7 +94,7 @@ CREATE INDEX idx_ptx_partner ON prayer_translations (partner_id, lang);
 
 -- A translation cannot be filed under a different partner from its prayer.
 -- The same guarantee milestone_translations has, and for the same reason: the
--- partner_id is denormalised onto this table so a public query can filter on
+-- partner_id is denormalized onto this table so a public query can filter on
 -- it in one place, which only holds if the two can never disagree.
 CREATE TRIGGER prayer_tx_same_partner
 BEFORE INSERT ON prayer_translations

@@ -47,7 +47,7 @@ const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,62}$/;
 /** Six-digit hex, with the hash. Validated here because SQLite cannot. */
 const HEX_RE = /^#[0-9a-fA-F]{6}$/;
 
-/** The house colour, used when a partner has not chosen one. */
+/** The house color, used when a partner has not chosen one. */
 const DEFAULT_ACCENT = "#6D4AFF";
 
 /**
@@ -143,12 +143,12 @@ export async function embedPayload(db, partner) {
        a rebrand without being edited. The snippet can still override it. */
     theme: {
       accent: accent,
-      /* THE SECOND COLOUR, resolved here rather than in the browser. NULL in
+      /* THE SECOND COLOR, resolved here rather than in the browser. NULL in
          the database means "derive it", so a partner who has never chosen a
          pair still gets one — and a partner who has chosen gets theirs. Doing
          it server-side means every consumer of this payload, including
          somebody building their own design from the JSON, sees the same two
-         colours the widget draws. */
+         colors the widget draws. */
       accent2: HEX_RE.test(partner.embed_accent2 || "")
         ? partner.embed_accent2 : companion(accent),
       mode: ["auto", "light", "dark"].includes(partner.embed_theme) ? partner.embed_theme : "auto",

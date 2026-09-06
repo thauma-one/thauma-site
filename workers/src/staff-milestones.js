@@ -22,7 +22,7 @@ import { requireAccess } from "./lib/access.js";
 import { resolveActor, auditActingWrite, withActing } from "./lib/actas.js";
 import { json, readJson } from "./lib/store.js";
 
-const STATUSES = new Set(["upcoming", "in_progress", "complete", "cancelled"]);
+const STATUSES = new Set(["upcoming", "in_progress", "complete", "canceled"]);
 
 /** Resolve the caller to exactly one partner, or a denial. */
 async function partnerFor(request, env) {
@@ -132,7 +132,7 @@ function clean(body, existingIds) {
  * Validate the per-language text.
  *
  * `text` arrives as { en: {title, description, target_label}, hr: {...} }.
- * Language codes are checked against the catalogue rather than a list in this
+ * Language codes are checked against the catalog rather than a list in this
  * file — adding Portuguese is a row in `languages`, and this keeps working.
  *
  * At least one language must have a title. A milestone with no text in any
@@ -147,7 +147,7 @@ function cleanText(text, validCodes) {
   const out = {};
   for (const [lang, fields] of Object.entries(text)) {
     if (!validCodes.has(lang)) {
-      return { error: `"${lang}" is not a language this organisation offers` };
+      return { error: `"${lang}" is not a language this organization offers` };
     }
     if (!fields || typeof fields !== "object") {
       return { error: `text.${lang} must be an object` };
@@ -320,7 +320,7 @@ export default {
         const known = langs.find((l) => l.code === body.language);
         if (!known) return json({ error: "Unknown language" }, 400);
         // A partner switching THEIR OWN publishing on or off. Adding a
-        // language to the catalogue is an admin action and not this endpoint.
+        // language to the catalog is an admin action and not this endpoint.
         await db.query("partner_language_set", {
           partner_id,
           lang: body.language,

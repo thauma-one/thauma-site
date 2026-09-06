@@ -19,7 +19,7 @@
  * in exactly this one case: the worst outcome is that somebody stops receiving
  * mail they can sign up for again in ten seconds.
  *
- * POST is honoured too, because List-Unsubscribe-Post sends one.
+ * POST is honored too, because List-Unsubscribe-Post sends one.
  *
  * THE ANSWER IS THE SAME WHETHER OR NOT THE ADDRESS WAS ON THE LIST. A
  * different page for "not found" would turn this into a way to ask whether
@@ -38,7 +38,7 @@ const HEADERS = {
 };
 
 /* THE ACCENT WAS #6D4AFF — a purple that belongs to nothing here. It is the
-   fallback an EMBED uses when a partner has never chosen a colour (see
+   fallback an EMBED uses when a partner has never chosen a color (see
    DEFAULT_ACCENT in embed.js), and it arrived here as a default nobody
    revisited. This page is Thauma's own, not a partner's, so it wears Thauma's
    cyan and Thauma's near-black rather than a stranger's placeholder. */

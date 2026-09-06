@@ -2,10 +2,10 @@
    staff.css — Thauma staff console
    ============================================================
    Everything resolves through src/css/tokens.css. No hardcoded
-   brand colour lives in this file; if the palette changes, this
+   brand color lives in this file; if the palette changes, this
    follows automatically.
 
-   SEMANTIC COLOUR IS SEPARATE FROM BRAND COLOUR. --ok/--warn/
+   SEMANTIC COLOR IS SEPARATE FROM BRAND COLOR. --ok/--warn/
    --crit below are status, not accent — a red row means "overdue",
    never "important". Mixing the two is how dashboards stop being
    scannable.
@@ -112,7 +112,7 @@ tbody tr[aria-expanded="true"]{background:rgba(255,255,255,.045)}
 .right{text-align:right}
 
 /* severity is carried by BOTH a stripe and a number, so it survives
-   greyscale and colour-blindness */
+   grayscale and color-blindness */
 .sev{display:inline-flex;align-items:center;gap:9px;font-weight:var(--w-bold)}
 .sev::before{content:"";width:3px;height:16px;border-radius:1px;background:currentColor;flex:none}
 .sev.crit{color:var(--crit)}

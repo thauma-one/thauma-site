@@ -11,7 +11,7 @@
 -- partner has one place people write to them, and the alternative is a screen
 -- for managing forms nobody has more than one of.
 --
--- partner_id NULL is the ORGANISATION, the convention used throughout this
+-- partner_id NULL is the ORGANIZATION, the convention used throughout this
 -- schema — so thauma.one's own contact page is a row here rather than a
 -- special case in code.
 --
@@ -48,7 +48,7 @@ CREATE TABLE contact_forms (
 );
 
 -- SQLite makes a NULL primary key possible, which is what lets the
--- organisation have a row here at all. The index keeps that single row unique;
+-- organization have a row here at all. The index keeps that single row unique;
 -- without it two "no partner" rows could exist and the endpoint would pick one
 -- at random.
 CREATE UNIQUE INDEX idx_contact_forms_org

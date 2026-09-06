@@ -7,7 +7,7 @@ import_milestones.py — bring a partner's milestones in from the old R2 JSON
 
 Source: https://assets.chaseroush.com/JSON/milestones.json — hand-edited, no
 history, no review, owned by the partner site. This moves it to the
-organisation, which is the point of Thauma being the system of record.
+organization, which is the point of Thauma being the system of record.
 
 WHAT THE REAL DATA TAUGHT US
 ----------------------------------------------------------------------------
@@ -42,7 +42,7 @@ import argparse, datetime, json, pathlib, re, subprocess, sys, urllib.request
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SOURCE = "https://assets.chaseroush.com/JSON/milestones.json"
-VALID_STATUS = {"upcoming", "in_progress", "complete", "cancelled"}
+VALID_STATUS = {"upcoming", "in_progress", "complete", "canceled"}
 
 
 def q(v):

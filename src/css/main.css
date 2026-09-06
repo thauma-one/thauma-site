@@ -155,11 +155,11 @@ html.vt-leaving.give-pressed .give-btn::before{transition:none!important;transfo
    A NEUTRAL that sits back, not the brand gradient.
 
    It used to be the blue-to-seafoam gradient, which put the site's loudest
-   colour down the full height of every page — a permanent vertical stripe
+   color down the full height of every page — a permanent vertical stripe
    competing with whatever the page was actually about. The accent should be
    spent on one thing at a time, and a scrollbar is not that thing.
 
-   Built from the same hairline greys as the dividers, so it reads as part of
+   Built from the same hairline grays as the dividers, so it reads as part of
    the frame. It lightens on hover, which is the only moment it is being
    aimed at. */
 ::-webkit-scrollbar{width:11px;height:11px}
@@ -247,7 +247,7 @@ nav{position:fixed;inset:0 0 auto;z-index:20;backdrop-filter:blur(12px);
    downward list would unfurl off-screen and be clipped away entirely.
    transform-origin flips too, or it would still grow from its top edge and
    read as sliding up into place rather than unfurling from the trigger.
-   Centred rather than right-aligned, because there the trigger is centred
+   Centered rather than right-aligned, because there the trigger is centered
    in the viewport instead of sitting at the end of a nav bar. */
 .lang-dropdown.up .lang-dropdown-list{top:auto;bottom:calc(100% + 8px);
   right:50%;transform:translateX(50%) scaleY(0);transform-origin:bottom}

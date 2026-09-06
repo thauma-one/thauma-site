@@ -1,6 +1,6 @@
 -- 0025_video_playlists.sql — a partner's videos may come from a PLAYLIST
 --
--- WHY. A channel is the wrong unit for a sending organisation. Thauma has one
+-- WHY. A channel is the wrong unit for a sending organization. Thauma has one
 -- channel; the partners on it will each want their own shelf, and asking every
 -- partner to run a separate YouTube channel to get one is backwards. A
 -- playlist per partner is the natural shape: one channel, curated per
@@ -40,7 +40,7 @@ ALTER TABLE videos RENAME COLUMN channel_id TO source_id;
 DROP INDEX IF EXISTS idx_videos_channel;
 CREATE INDEX idx_videos_source ON videos (source_id, published_at DESC);
 
--- SQLite allows a NULL primary key, which is what lets the organisation have
+-- SQLite allows a NULL primary key, which is what lets the organization have
 -- a row here. This keeps that to ONE row; without it two "no partner" rows
 -- could exist and the sync would pick one at random.
 DROP INDEX IF EXISTS idx_video_channels_org;

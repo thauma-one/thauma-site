@@ -19,7 +19,7 @@
  *                  first. Nothing warned anyone; the data was simply gone.
  *
  * Both are fixed by the storage rather than by care. Contacts belong to a
- * user, resources belong to a partner or the organisation, and every operation
+ * user, resources belong to a partner or the organization, and every operation
  * touches ONE row — so concurrent editing costs you a conflict at worst
  * instead of somebody else's afternoon.
  */
@@ -221,7 +221,7 @@ export default {
         }
 
         /* WHOSE SHELF THIS GOES ON. Staff make their OWN resources; only an
-           administrator makes the organisation's. Chase's rule, and the right
+           administrator makes the organization's. Chase's rule, and the right
            one — staff creating institutional material would be making
            something they immediately cannot edit, which reads as a bug rather
            than as a rule.
@@ -239,7 +239,7 @@ export default {
 
         /* EDITING IS CHECKED AGAINST THE STORED ROW, never against what the
            browser said the resource was. An id that already exists must
-           belong to whoever is editing it — or to the organisation, with an
+           belong to whoever is editing it — or to the organization, with an
            administrator asking. */
         if (body.id) {
           const existing = await db.queryOne("resource_owner", { id: body.id });
@@ -249,7 +249,7 @@ export default {
           if (!(mine || (institutional && isAdmin))) {
             return json({
               error: institutional
-                ? "That resource belongs to the organisation. Only an " +
+                ? "That resource belongs to the organization. Only an " +
                   "administrator can change it."
                 : "That resource belongs to somebody else. You can only change " +
                   "your own.",
@@ -356,7 +356,7 @@ export default {
         if (!(mine || (institutional && isAdmin))) {
           return json({
             error: institutional
-              ? "That resource belongs to the organisation. Only an " +
+              ? "That resource belongs to the organization. Only an " +
                 "administrator can remove it."
               : "That resource belongs to somebody else.",
           }, 403);

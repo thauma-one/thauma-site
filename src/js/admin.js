@@ -1,5 +1,5 @@
 /* ============================================================
-   admin.js — organisation administration
+   admin.js — organization administration
    ============================================================
    Talks to /api/admin, which refuses anyone without the admin
    role. These pages are reachable by anyone Access lets through,
@@ -424,12 +424,12 @@
       /* THE PERSON DECIDES WHAT THE FRAME GETS.
 
          Before this, the whole photo was scaled to 1600px and `object-fit:
-         cover` cropped it to the centre at display time — so a portrait taken
+         cover` cropped it to the center at display time — so a portrait taken
          with headroom lost the top of the head on the team page and there was
          nothing to be done about it from here. The cropper returns bytes that
          are already the right shape.
 
-         Cancelling is a real answer and leaves everything untouched, which is
+         Canceling is a real answer and leaves everything untouched, which is
          why this returns rather than throwing. */
       var shot = window.PhotoCrop ? await window.PhotoCrop.open(file, kind) : null;
       if (window.PhotoCrop && !shot) { say('adm.pf.cropCancelled'); return; }
@@ -852,7 +852,7 @@
           }).join('');
     }
 
-    /* THE ORGANISATION HAS ADDRESSES TOO, and nowhere to manage them until
+    /* THE ORGANIZATION HAS ADDRESSES TOO, and nowhere to manage them until
        now. Its sending domain is not a setting — it is wherever MAIL_FROM
        already points, stated by the server rather than repeated here, because
        two places to write it down is one place to forget when it moves.
@@ -868,7 +868,7 @@
       }).length;
       org.className = 'adm-partner adm-partner-org' + (orgOpen ? ' is-open' : '');
       /* An EMPTY id, which is what "no partner" means everywhere else here —
-         the same convention the mailing tables use for the organisation's own
+         the same convention the mailing tables use for the organization's own
          rows. It is why the row handler reads the attribute rather than
          dataset, which cannot tell empty from absent. */
       org.setAttribute('data-partner-card', '');
@@ -982,7 +982,7 @@
      THE CARD USED TO SAY "1 members" AND STOP THERE. No names, nothing to
      click. So a ministry attached to the wrong account looked exactly like one
      attached to the right account, and the only place to change it was a row
-     of unlabelled chips on the People page that always granted 'view'.
+     of unlabeled chips on the People page that always granted 'view'.
 
      Here instead, on the partner, because that is the thing being reassigned.
      People has it too — the same grant from the other end — but somebody
@@ -1058,7 +1058,7 @@
      everybody's mail. That is the whole reason for the split, and it is why
      the domain sits on the partner rather than on each address. */
   function mailBlock(p) {
-    /* `p.id` is null for the organisation, which is the same convention the
+    /* `p.id` is null for the organization, which is the same convention the
        mailing tables use — and it matches the null partner_id on its rows
        without a special case. */
     var mine = (state.senders || []).filter(function (a) {
@@ -1072,7 +1072,7 @@
         ? esc(d) + ' · ' + esc(countAddresses(mine.length))
         : esc(tr('adm.mailNoDomain'))) + '</span></div>';
 
-    /* The organisation's domain is READ-ONLY here. It is wherever MAIL_FROM
+    /* The organization's domain is READ-ONLY here. It is wherever MAIL_FROM
        already points — the address account invites and confirmations come
        from — and letting somebody retype it in this box would put the console
        and the deployment quietly out of step, which shows up as mail that
@@ -1205,7 +1205,7 @@
     });
   }
 
-  /* ONE PANEL BEHAVIOUR, used by People and by Partners.
+  /* ONE PANEL BEHAVIOR, used by People and by Partners.
      Partners became collapsible when the mail section landed and every card
      grew a domain field, an address list and two buttons — four ministries of
      that is a page nobody can see the shape of. Written as one function taking
@@ -1430,7 +1430,7 @@
     if (row) {
       /* Two kinds of card share the row markup, so the card decides which
          toggle runs. `getAttribute` rather than `dataset`, because the
-         organisation's card carries an EMPTY id on purpose — that is what
+         organization's card carries an EMPTY id on purpose — that is what
          "no partner" means everywhere else here, and dataset would report it
          as an empty string indistinguishable from a missing attribute. */
       var pc = row.closest('[data-partner-card]');
@@ -1651,7 +1651,7 @@
       var ok = await window.StaffConfirm({
         title: tr('adm.renameTitle'),
         body: lines.join('\n\n'),
-        // The first two are enough to recognise the shape; all of them would
+        // The first two are enough to recognize the shape; all of them would
         // be a wall of text nobody reads at the moment it matters.
         note: at.slice(0, 2).map(function (a) {
           return a.address + '  →  ' + a.address.split('@')[0] + '@' + value;
@@ -1669,7 +1669,7 @@
     if (value) await remindResend(value, [], []);
   }
 
-  /* An empty id is the ORGANISATION, matching the null partner_id its rows
+  /* An empty id is the ORGANIZATION, matching the null partner_id its rows
      carry. Resolved in one place so the three actions cannot disagree about
      what "no partner" means. */
   function ownerOf(pid) {

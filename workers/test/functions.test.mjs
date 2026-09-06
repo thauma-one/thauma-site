@@ -6,7 +6,7 @@
  *
  * The sanitisation tests matter most: that logic was carried over verbatim
  * from the Netlify versions, and these assert the port did not quietly change
- * behaviour. The auth tests assert staff-data cannot be read or written
+ * behavior. The auth tests assert staff-data cannot be read or written
  * without a valid Access token — including when the deploy is misconfigured.
  */
 import { memoryStore } from "../src/lib/store.js";
@@ -64,7 +64,7 @@ await check("KNOWN LIMITATION: substring matching over-blocks (Scunthorpe)", asy
   // Documented, not fixed. Substring matching means an innocent name
   // containing a blocked word is renamed. True of the original too; for a
   // hidden leaderboard, over-blocking is the cheaper mistake. This test
-  // exists so the behaviour is a known decision rather than a surprise.
+  // exists so the behavior is a known decision rather than a surprise.
   eq(game.sanitizeName("Scunthorpe"), "Anonymous", "Scunthorpe now passes — did the policy change?");
 });
 
@@ -217,7 +217,7 @@ await check("photo sources go through the same allow-list as links", async () =>
 await check("/staff and /admin are gated IDENTICALLY", async () => {
   /* Chase asked for these to work the same way, and "they're both in the same
      if statement" is true until somebody edits one clause. This compares the
-     actual behaviour of the two areas rather than trusting the source to stay
+     actual behavior of the two areas rather than trusting the source to stay
      symmetrical.
 
      It is also the property the Cloudflare Access application got wrong: it

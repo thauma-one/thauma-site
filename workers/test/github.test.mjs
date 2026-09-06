@@ -128,7 +128,7 @@ await check("a malformed repo is refused before any request", () => {
 
 await check("the App is preferred over a leftover PAT", () => {
   // A token from an earlier setup must not quietly outrank the credential the
-  // organisation actually owns.
+  // organization actually owns.
   const r = githubConfig({ ...APP_ENV, GITHUB_TOKEN: "leftover-pat" });
   eq(r.auth, "app", "which credential");
 });

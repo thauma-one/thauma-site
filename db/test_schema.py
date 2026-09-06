@@ -141,7 +141,7 @@ def t_every_sort_orders_by_what_it_says():
                        "bob@x.invalid",   # Bob 50%off
                        "mia@x.invalid",   # no name — sorted by address
                        "zoe@x.invalid"], f"by name: {by_name}"
-    # An unrecognised sort must not be an error, and must not be a hole.
+    # An unrecognized sort must not be an error, and must not be a hole.
     assert emails("; DROP TABLE subscribers --") == emails(""), \
         "an unknown sort should fall through to the default"
 
@@ -355,7 +355,7 @@ def t_one_partners_buttons_are_not_anothers():
 
 
 def t_two_buttons_cannot_share_a_label():
-    """SQLite treats NULLs as distinct in a UNIQUE index, so the organisation
+    """SQLite treats NULLs as distinct in a UNIQUE index, so the organization
     would be exempt without the COALESCE — which is exactly the owner most
     likely to accumulate duplicates."""
     db = fresh()
@@ -366,7 +366,7 @@ def t_two_buttons_cannot_share_a_label():
     add(None, "Give")
     try:
         add(None, "Give")
-        raise AssertionError("the organisation was allowed two buttons called Give")
+        raise AssertionError("the organization was allowed two buttons called Give")
     except sqlite3.IntegrityError:
         pass
 
@@ -758,7 +758,7 @@ def t_editability_is_ownership_and_cannot_be_claimed():
     db, upsert = _resource_world(fresh())
     upsert("r_org", "u_a", None, "HIJACKED")
     got = db.execute("SELECT title FROM resources WHERE id='r_org'").fetchone()[0]
-    assert got == "Handbook", f"a staff member overwrote the organisation's: {got}"
+    assert got == "Handbook", f"a staff member overwrote the organization's: {got}"
 
 
 def t_a_shared_resource_is_readable_but_never_editable():
@@ -814,7 +814,7 @@ def t_deleting_a_person_takes_their_private_shelf_with_them():
     db.execute("DELETE FROM users WHERE id='u_a'")
     left = {r[0] for r in db.execute("SELECT title FROM resources")}
     assert "A's notes" not in left, f"a departed person's shelf survived: {left}"
-    assert "Handbook" in left, "the organisation's material went with them"
+    assert "Handbook" in left, "the organization's material went with them"
 
 
 def t_seed_files_insert_every_row_they_claim():
@@ -1000,7 +1000,7 @@ def t_the_interaction_triggers_survived_the_rebuild():
     """0010 dropped and recreated `interactions`. The triggers came back.
 
     These are what make "personally contacted" mean anything — the single most
-    important behaviour in this schema. A rebuild silently losing them would
+    important behavior in this schema. A rebuild silently losing them would
     not fail any other test, because nothing else asserts a refusal.
     """
     db = fresh()
@@ -1080,7 +1080,7 @@ def t_the_organisation_list_belongs_to_no_partner():
     _sub(db, "s_org", "l_org", None, "supporter@example.com")
     try:
         _sub(db, "s_bad", "l_org", "p_chase", "someone@example.com")
-        raise AssertionError("a partner claimed a subscriber on the organisation list")
+        raise AssertionError("a partner claimed a subscriber on the organization list")
     except sqlite3.IntegrityError:
         pass
 
@@ -1113,13 +1113,13 @@ def t_one_person_may_be_on_two_different_lists():
 
 def t_two_organisation_lists_cannot_share_a_slug():
     """SQLite treats NULLs as distinct in a UNIQUE constraint, so the index
-    coalesces partner_id. Without that, the organisation could have two lists
+    coalesces partner_id. Without that, the organization could have two lists
     both called `newsletter` and no way to tell them apart in a URL."""
     db = fresh()
     _list(db, "l_org", None)
     try:
         _list(db, "l_org2", None)
-        raise AssertionError("two organisation lists share a slug")
+        raise AssertionError("two organization lists share a slug")
     except sqlite3.IntegrityError:
         pass
 
@@ -1707,10 +1707,10 @@ if __name__ == "__main__":
         ("removing a person takes what IS them",        t_removing_a_person_takes_what_IS_them),
         ("interaction triggers survived the rebuild",   t_the_interaction_triggers_survived_the_rebuild),
         ("a subscriber cannot belong to another partner", t_a_subscriber_cannot_belong_to_another_partner),
-        ("the organisation list belongs to no partner",  t_the_organisation_list_belongs_to_no_partner),
+        ("the organization list belongs to no partner",  t_the_organisation_list_belongs_to_no_partner),
         ("one address cannot join a list twice",         t_the_same_address_cannot_be_added_to_one_list_twice),
         ("one person may be on two lists",               t_one_person_may_be_on_two_different_lists),
-        ("two organisation lists cannot share a slug",   t_two_organisation_lists_cannot_share_a_slug),
+        ("two organization lists cannot share a slug",   t_two_organisation_lists_cannot_share_a_slug),
         ("partners may reuse each other's list names",   t_partners_may_each_have_a_list_of_the_same_name),
         ("deleting a list takes its subscribers",        t_deleting_a_list_takes_its_subscribers),
         ("communications is a role, nonsense is not",    t_communications_is_a_role_and_nonsense_is_not),

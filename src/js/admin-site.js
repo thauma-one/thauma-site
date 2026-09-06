@@ -67,7 +67,7 @@
     });
   }
 
-  /* Sentences for the settings that decide something big. A switch labelled
+  /* Sentences for the settings that decide something big. A switch labeled
      `comingSoon` tells you its name; it does not tell you that it is the
      difference between a holding page and a website. */
   var EXPLAIN = {
@@ -77,7 +77,7 @@
   };
 
   /* A whole GROUP can carry an explanation, not just a field. `donorbox` is
-     four blank boxes labelled en / hr / sr with nothing saying what belongs in
+     four blank boxes labeled en / hr / sr with nothing saying what belongs in
      them — which is how a setting ends up permanently empty. */
   var GROUP_EXPLAIN = {
     donorbox: 'con.g.donorbox',
@@ -257,7 +257,7 @@
   /* A FROZEN LIST IS ONE FACT, NOT FOUR.
 
      `languages` is an array, and rendering it a leaf at a time gave four rows
-     labelled 0, 1, 2, 3 — each with its own disabled box holding two letters,
+     labeled 0, 1, 2, 3 — each with its own disabled box holding two letters,
      filling half a screen to say something a single line says better. It is
      also the one setting on this page nobody can edit here, so it had the most
      space and the least purpose.
@@ -504,7 +504,7 @@
     el.classList.toggle('is-dirty', dirty);
 
     // A visibility cell is a bare switch with no label beside it — the label
-    // belongs to the ROW and is shared by both columns. The coloured edge is
+    // belongs to the ROW and is shared by both columns. The colored edge is
     // the whole unsaved marker there.
     var label = el.querySelector('.s-label');
     if (!label) return;

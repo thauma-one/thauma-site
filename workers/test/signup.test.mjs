@@ -206,7 +206,7 @@ await check("the form is a card in a shadow root, not loose inputs", async () =>
   /* It used to be four bare fields with a little inline styling, inheriting
      whatever the host page did to them — dark-on-dark on a dark site, and
      unfinished-looking next to the goal and prayer widgets, which have been
-     bordered cards in the ministry's colours from the beginning. */
+     bordered cards in the ministry's colors from the beginning. */
   const js = formScript([LIST], "chase-roush", "https://thauma.one",
                         { accent: "#E4572E", mode: "auto" });
   assert(js.includes("attachShadow"),
@@ -215,7 +215,7 @@ await check("the form is a card in a shadow root, not loose inputs", async () =>
   assert(js.includes("#E4572E"), "the ministry's accent never reached the form");
 });
 
-await check("the second colour is derived when only an accent is given", async () => {
+await check("the second color is derived when only an accent is given", async () => {
   const js = formScript([LIST], "chase-roush", "https://thauma.one", { accent: "#00D4FF" });
   const { companion } = await import("../src/embed-colour.js");
   assert(js.toLowerCase().includes(companion("#00D4FF").toLowerCase()),
@@ -226,7 +226,7 @@ await check("a nonsense accent falls back rather than emitting broken CSS", asyn
   const js = formScript([LIST], "chase-roush", "https://thauma.one",
                         { accent: "red; } :host { display:none", mode: "sideways" });
   assert(!js.includes("display:none"),
-    "a colour that is not a hex value must never reach the stylesheet");
+    "a color that is not a hex value must never reach the stylesheet");
   assert(js.includes("#6D4AFF"), "expected the default accent");
 });
 

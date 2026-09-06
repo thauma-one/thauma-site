@@ -17,7 +17,7 @@
  * The first version emitted bare fields and inherited whatever the host page
  * did to them: dark-on-dark on a dark site, and unfinished-looking beside the
  * goal and roadmap widgets, which have been bordered cards in the ministry's
- * colours from the beginning.
+ * colors from the beginning.
  *
  * Shadow DOM matters more on a FORM than anywhere else. A host page's own rule
  * for input elements would otherwise reach in and reshape controls somebody
@@ -63,7 +63,7 @@ export function formStyles() {
     "*{box-sizing:border-box;margin:0;padding:0}",
 
     /* THE BOX. Same border weight and radius as a goal card. */
-    /* CENTRED IN WHATEVER SPACE IT IS GIVEN. A form is capped at a readable
+    /* CENTERED IN WHATEVER SPACE IT IS GIVEN. A form is capped at a readable
        width — a 900px-wide row of fields is unpleasant to fill in — but the
        host decides how wide the column is, and a 480px card hugging the left
        of a 900px container looks like a mistake rather than a decision. */

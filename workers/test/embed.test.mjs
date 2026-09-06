@@ -217,7 +217,7 @@ await check("a preflight is answered without touching the database", async () =>
 
 /* -------------------------------- payload ------------------------------- */
 
-await check("an opted-in partner gets their numbers and their colours", async () => {
+await check("an opted-in partner gets their numbers and their colors", async () => {
   const res = await handler.fetch(req("/embed/v1/chase-roush.json"), env({
     partner: ENABLED,
     goals: [{ goal_id: "g1", label: "Monthly support", kind: "monthly",
@@ -240,7 +240,7 @@ await check("a junk accent in the database falls back rather than reaching CSS",
     partner: { ...ENABLED, embed_accent: "red;}body{display:none}" },
   }));
   const body = await res.json();
-  eq(body.theme.accent, "#6D4AFF", "must fall back to the house colour");
+  eq(body.theme.accent, "#6D4AFF", "must fall back to the house color");
 });
 
 await check("a junk theme mode falls back too", async () => {

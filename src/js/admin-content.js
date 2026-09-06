@@ -11,7 +11,7 @@
    is the public site changing", which was true when it was
    written and stopped being true the day Save/Preview/Publish
    shipped. The button still said "Save & publish" three weeks
-   later — copy describing old behaviour is worse than none,
+   later — copy describing old behavior is worse than none,
    because somebody reads it and believes it.
 
    SO IT USES THE WORKING-COPY MODEL, not immediate saves.
@@ -491,7 +491,7 @@
      breaks the whole file rather than one cell.
 
      IMPORT DOES NOT SAVE. It fills the working copy, so the changes arrive as
-     unsaved edits with the coloured edges and the count in the bar, and you
+     unsaved edits with the colored edges and the count in the bar, and you
      look at them before anything is committed. That reuses the model the whole
      page already runs on rather than inventing a second path to the file — and
      it means an import can be discarded like any other mistake. */
@@ -500,7 +500,7 @@
 
      A spreadsheet decides column widths itself, and there is nothing in a CSV
      file that can tell it otherwise — no widths, no styles, no formatting of
-     any kind. The ONE thing it honours is a newline inside a quoted cell,
+     any kind. The ONE thing it honors is a newline inside a quoted cell,
      which it renders as a second line within that cell.
 
      So: soft-wrap the text columns at a readable width. The longest string on

@@ -139,7 +139,7 @@ Requires Part 2 to show Active.
    www if you want it).
 6. Cloudflare → thauma.one → DNS → Records → add exactly what Netlify
    asked for. **IMPORTANT: click the orange cloud on those records so
-   it turns GREY ("DNS only").** Netlify runs its own CDN and SSL;
+   it turns GRAY ("DNS only").** Netlify runs its own CDN and SSL;
    proxying through Cloudflare's orange cloud on top of it causes
    redirect loops and certificate errors.
 7. Back in Netlify: wait for domain verification, then for the free

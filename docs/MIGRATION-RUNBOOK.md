@@ -159,10 +159,10 @@ cutover and `src/admin/` was deleted; this is its replacement.
 
 ### Left to do — needs a person
 
-**Create a GitHub App owned by the `thauma-one` organisation.** Not a personal
+**Create a GitHub App owned by the `thauma-one` organization.** Not a personal
 access token: a fine-grained PAT is owned by a HUMAN and acts as them, so the
 site's content pipeline would stop working the day that person left the org —
-which SPEC §2 rules out in as many words. An App belongs to the organisation,
+which SPEC §2 rules out in as many words. An App belongs to the organization,
 and its installation tokens are minted on demand and last an hour, so there is
 also no expiry date on which the editor quietly stops working.
 
@@ -195,7 +195,7 @@ also no expiry date on which the editor quietly stops working.
       (`github.js` checks for this and says so, but converting first is quicker
       than reading the error.)
 - [ ] **Set all three as secrets** — no file editing, and the App ID and
-      installation ID authorise nothing without the key, so keeping them
+      installation ID authorize nothing without the key, so keeping them
       together is simpler than splitting them across `wrangler.toml`:
       ```
       npx wrangler secret put GITHUB_APP_ID --env production

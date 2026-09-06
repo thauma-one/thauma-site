@@ -4,7 +4,7 @@
    own: the team card is a square, the home page band is 21:9, a bio page
    photo is whatever the picture wants to be. Until now an upload was scaled to
    fit 1600px and handed over whole, and CSS `object-fit: cover` decided what
-   survived — which means the browser cropped to the centre and nobody was
+   survived — which means the browser cropped to the center and nobody was
    asked. A portrait photographed with headroom lost the top of the head on the
    team page, and the only fix was to re-crop the file somewhere else and
    upload it again.
@@ -82,7 +82,7 @@
   /**
    * @param {File}   file   what the person chose
    * @param {string} kind   a key in FRAMES
-   * @returns {Promise<{blob, width, height, aspect} | null>}  null = cancelled
+   * @returns {Promise<{blob, width, height, aspect} | null>}  null = canceled
    */
   function open(file, kind) {
     var frame = FRAMES[kind] || FRAMES.photo;

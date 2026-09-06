@@ -16,14 +16,14 @@ and the migration in progress.
 
 | | Thauma | Chase Roush |
 |---|---|---|
-| what | the **organisation** — a US entity, 501(c)(3) in progress | a **ministry partner** of Thauma |
+| what | the **organization** — a US entity, 501(c)(3) in progress | a **ministry partner** of Thauma |
 | repo | `thauma-one/thauma-site` | `chaseroushtech/chaseroush_missions` |
 | stack | Eleventy 3, **Cloudflare Workers + D1**, multilingual | static HTML, Netlify, 30 functions, EN/HR |
 | live | thauma.one (coming-soon gated, on Workers) | chaseroush.com (still Netlify) |
 | dev | dev.thauma.one | dev.chaseroush.com |
 
 **They are siblings, not one system.** Thauma will eventually operate as its
-own entity with its own accounts, owned by the organisation rather than by
+own entity with its own accounts, owned by the organization rather than by
 Chase personally. Changing Thauma must never change Chase Roush.
 
 ### The contract between them
@@ -66,7 +66,7 @@ personal site.
 ## 2. Ownership model — read this before creating anything
 
 **Thauma resources belong to Thauma accounts. This is a hard requirement,
-not tidiness.** The organisation must be able to own its infrastructure
+not tidiness.** The organization must be able to own its infrastructure
 independently of Chase.
 
 | | Thauma-owned? |
@@ -80,7 +80,7 @@ The Cloudflare split was done on 2026-08-14. Before that, `thauma.one` lived
 in Chase's personal account alongside his house, NAS and Plex.
 
 **Why it mattered:** Cloudflare account-level resources — D1, R2, Workers,
-Zero Trust organisations — **do not transfer between accounts**. Anything
+Zero Trust organizations — **do not transfer between accounts**. Anything
 built in the wrong account has to be rebuilt, not migrated. Doing the split
 before building meant one migration instead of two.
 
@@ -129,7 +129,7 @@ SQLite and assert the guarantees below.
 |---|---|
 | `0001_init` | partners, users, contacts, interactions, goals, audit |
 | `0002_milestones` | the public roadmap |
-| `0003_languages` | language catalogue + per-partner publishing + translations |
+| `0003_languages` | language catalog + per-partner publishing + translations |
 | `0004_settings` | `partners.default_lang` |
 | `0005_directory_resources` | per-person address book, shared library with levels |
 | `0006_roles` | `user_roles` — replaced the single-value `global_role` |
@@ -160,7 +160,7 @@ One entry point, `workers/src/worker.js`. **286 tests** (`cd workers && npm test
 | `staff-milestones.js` | the roadmap editor |
 | `staff-settings.js` | account, languages, API keys |
 | `staff-data.js` | directory (per person) + resources (per partner) |
-| `admin.js` | organisation administration — the only UNSCOPED endpoint |
+| `admin.js` | organization administration — the only UNSCOPED endpoint |
 | `admin-content.js` | the site's own words and settings — the only endpoint that COMMITS |
 | `admin-publish.js` | Preview and Publish — the only endpoint that DEPLOYS |
 | `admin-actas.js` | start/stop viewing another person's console |
@@ -221,7 +221,7 @@ are evidence.
 computes `last_contact_any` and `last_personal_contact` **separately**, and a
 trigger makes it impossible to log a newsletter as personal contact.
 
-This is the single most important behaviour in the system. The seed data
+This is the single most important behavior in the system. The seed data
 demonstrates why: Jordan Reyes was newslettered 13 days ago but has not been
 personally contacted in 165. One `last_contacted` column would have shown 13
 and hidden the problem entirely.
@@ -247,7 +247,7 @@ and every write touches one of them.
 site. Thauma already had three languages and Serbian had nowhere to go.
 
 ```
-languages           the ORGANISATION's catalogue. Admin-managed.
+languages           the ORGANIZATION's catalog. Admin-managed.
 partner_languages   which of those a partner publishes.
 milestone_translations   one row per milestone per language.
 ```
@@ -260,7 +260,7 @@ it goes live, and switching one off is never destructive. A test asserts that.
 
 | role | what it means |
 |---|---|
-| **admin** | administers the organisation: accounts, roles, partner settings |
+| **admin** | administers the organization: accounts, roles, partner settings |
 | **partner** | somebody Thauma SENDS. Granting it CREATES their ministry record |
 | **staff** | helps with somebody else's ministry. No record of their own |
 | **board** | board-level resources only. No supporter data, no administration |
@@ -518,9 +518,9 @@ Configured per-milestone in the console:
 
 | control | why |
 |---|---|
-| **colour scheme** | the whole point — it has to match the host site |
+| **color scheme** | the whole point — it has to match the host site |
 | background on/off | some hosts have their own section background |
-| milestone line colour | the strongest single accent in the timeline |
+| milestone line color | the strongest single accent in the timeline |
 | shimmer on/off | motion is a taste decision, and a `prefers-reduced-motion` one |
 | default currency | a goal card reads differently in $ and € |
 | start date | which part of a long roadmap the widget opens on |
@@ -542,9 +542,9 @@ Consequences to design for when the time comes:
   has room for it — add a `display_config` JSON column in a later migration
   rather than a parallel table.
 - **Store the config SERVER-side, do not read it from the script tag.** Passing
-  colours as `data-` attributes on the embed snippet looks simpler and means
+  colors as `data-` attributes on the embed snippet looks simpler and means
   the visualiser and the live widget are two implementations of the same
-  styling that will drift. It also means changing a colour is an edit to
+  styling that will drift. It also means changing a color is an edit to
   somebody else's website rather than a save in the console. The snippet should
   carry an id and nothing else.
 - The `nopii` gate applies to embed responses too. It is not optional there;
@@ -557,7 +557,7 @@ a **GitHub credential**. A save is a commit; a publish moves the live branch
 and the Action deploys it. Every other handler's worst case is showing the
 wrong data to somebody already signed in; these two can change the site.
 
-**The credential is a GitHub App owned by the organisation, not a personal
+**The credential is a GitHub App owned by the organization, not a personal
 access token.** A fine-grained PAT is owned by a human and acts as them, so the
 content pipeline would hang off one individual — which §2 rules out. An App
 belongs to `thauma-one`; nobody's departure touches it, and its installation
@@ -679,9 +679,9 @@ Pi's `_site` keeps stale HTML after a page is switched off.
 
 Two kinds, and they must never share a sending domain.
 
-**ONE DOMAIN PER PARTNER, and the organisation's own kept out of it.**
+**ONE DOMAIN PER PARTNER, and the organization's own kept out of it.**
 
-| | organisation | a partner |
+| | organization | a partner |
 |---|---|---|
 | domain | `thauma.one` | `<partner>.thauma.one` |
 | carries | account invites, contact forms, org mail | that partner's newsletter, prayer list, confirmations |
@@ -703,11 +703,11 @@ one only takes time.
 **`thauma.one` IS the transactional domain.** It was `mail.thauma.one` until
 2026-08-21; the separate subdomain bought separation from bulk traffic that
 never existed there, and Resend's free tier allows three domains, which is not
-enough to spend one on that. Organisation mail is low-volume and never
+enough to spend one on that. Organization mail is low-volume and never
 complained about, which is exactly what keeps a domain clean.
 
 **Never send bulk from bare `thauma.one`.** Subdomains build their own
-reputation but receivers also read the organisational domain as a signal, so
+reputation but receivers also read the organizational domain as a signal, so
 complaints at the parent bleed downward. Low-volume org mail helps the
 subdomains; a junked org newsletter would hurt all of them.
 
@@ -726,7 +726,7 @@ consequence of those two.
 
 | requirement | consequence |
 |---|---|
-| One Resend account for the whole organisation | Sender identity is per list, not per account |
+| One Resend account for the whole organization | Sender identity is per list, not per account |
 | A partner must not see another partner's list | Subscribers carry `partner_id`; every query scopes to it |
 | Chase cannot see Mira's subscribers, or the reverse | Isolation is enforced in SQL, not in the UI |
 | Only admin/communications may send AS Thauma | A new `communications` role; `user_roles` already takes one |
@@ -861,7 +861,7 @@ application in any org would be accepted.
 
 **Both consoles are gated identically, by one list.** `isProtected()` in
 `worker.js` is the only definition of which paths need a person, and two tests
-compare the two areas' actual behaviour rather than trusting the source to stay
+compare the two areas' actual behavior rather than trusting the source to stay
 symmetrical. This is not redundant with the Access application — on 2026-08-16
 that application covered `staff` and not `admin`, and this check is why
 `/admin/` was refused rather than served to anyone who asked.
@@ -1016,7 +1016,7 @@ preferences; each was arrived at by getting it wrong first.
 **Milestones holds a working copy.** `saved` is the last server response,
 `draft` is what the screen shows, and a row is unsaved when they differ.
 Nothing reaches the database until Save. A sticky bar appears only when
-something is unsaved, unsaved rows carry a coloured edge, and leaving the page
+something is unsaved, unsaved rows carry a colored edge, and leaving the page
 warns. Publishing is a decision somebody should be able to change their mind
 about before it is live.
 
@@ -1045,12 +1045,12 @@ problem, so it does not send anyone looking in the wrong place.
 
 ### Toasts for events, a pinned message for conditions
 
-Bottom-centre toasts announce outcomes. Progress messages are not announced —
+Bottom-center toasts announce outcomes. Progress messages are not announced —
 a "Saving…" toast is replaced by its own result and carries nothing the
 disabled control did not. Errors do not auto-dismiss.
 
 "Cannot reach the server" is a **condition**, so it is one message pinned top
-centre that clears when a request succeeds, not a toast stacking copies of
+center that clears when a request succeeds, not a toast stacking copies of
 itself.
 
 ### Translation
@@ -1105,7 +1105,7 @@ rather than one cell.
 **Long text is soft-wrapped at 60 characters, and the upload undoes it.**
 
 A CSV carries no column widths and no styles. The one piece of formatting a
-spreadsheet honours is a newline inside a quoted cell, which it renders as a
+spreadsheet honors is a newline inside a quoted cell, which it renders as a
 second line — so that is the only lever there is. The longest string on the
 site is 388 characters and as a single line it makes the column wider than the
 screen, pushing everything after it out of view.
@@ -1191,7 +1191,7 @@ imported Croatian text into Serbian silently, and the only sign would have been
 somebody eventually reading the site.
 
 **Uploading does not save.** It fills the working copy, so the changes appear
-as ordinary unsaved edits with their coloured edges and the count in the bar.
+as ordinary unsaved edits with their colored edges and the count in the bar.
 You look through them and then Save, or discard the lot. That reuses the model
 the page already runs on rather than inventing a second route to the file.
 
@@ -1291,7 +1291,7 @@ counts empties per section — the work gets a progress bar for free.
 fortnight, see it in place on dev.thauma.one the whole time, and publish when
 it is ready.
 
-Two guards worth naming. A code is **normalised before it is judged** — `HR`,
+Two guards worth naming. A code is **normalized before it is judged** — `HR`,
 ` hr ` and `Hr` are the same request, and somebody typing capitals means the
 language rather than a typo. And an **unregistered file is refused, never
 overwritten**: a language can exist as a file nobody listed, and since a create

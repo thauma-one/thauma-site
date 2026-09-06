@@ -16,7 +16,7 @@
 --
 -- ONE SENDING DOMAIN PER PARTNER, which is why the domain is on `partners`.
 -- Reputation is tracked per domain, so one partner's junk reports stay with
--- that partner rather than degrading everybody's mail. The organisation's own
+-- that partner rather than degrading everybody's mail. The organization's own
 -- domain stays out of it entirely: an account invite must never be delayed
 -- because somebody else's newsletter was reported.
 
@@ -29,7 +29,7 @@ ALTER TABLE partners ADD COLUMN sending_domain TEXT;
 CREATE TABLE sender_addresses (
   id          TEXT PRIMARY KEY,
 
-  -- NULL is the ORGANISATION, the same convention mailing_lists uses.
+  -- NULL is the ORGANIZATION, the same convention mailing_lists uses.
   partner_id  TEXT REFERENCES partners(id) ON DELETE CASCADE,
 
   address     TEXT NOT NULL,
@@ -49,7 +49,7 @@ CREATE TABLE sender_addresses (
 );
 
 -- COALESCE for the same reason as mailing_lists: SQLite treats NULLs as
--- distinct in a UNIQUE constraint, so without it the organisation could hold
+-- distinct in a UNIQUE constraint, so without it the organization could hold
 -- the same address twice.
 CREATE UNIQUE INDEX idx_sender_addresses_unique
   ON sender_addresses (COALESCE(partner_id, '~organisation'), address);

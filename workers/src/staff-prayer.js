@@ -5,7 +5,7 @@
  *   POST   /api/staff-prayer          create or update one
  *   DELETE /api/staff-prayer?id=…     remove one
  *
- * Modelled on the milestone editor because it is the same shape: a
+ * Modeled on the milestone editor because it is the same shape: a
  * language-neutral row carrying the state, and one translation row per
  * language. Nothing here is novel except what a prayer IS.
  *

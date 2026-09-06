@@ -113,7 +113,7 @@ async function verifyAccessJwt(token, { teamDomain, aud }) {
   return payload;
 }
 
-// Guard for handlers. Returns { user } when authorised, or { denied } — a
+// Guard for handlers. Returns { user } when authorized, or { denied } — a
 // ready-to-return 401/500 response.
 async function requireAccess(event) {
   const teamDomain = process.env.ACCESS_TEAM_DOMAIN;

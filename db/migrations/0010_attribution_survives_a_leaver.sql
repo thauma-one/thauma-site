@@ -130,7 +130,7 @@ CREATE INDEX idx_api_keys_partner ON api_keys(partner_id);
 -- ---------- resources -------------------------------------------------------
 CREATE TABLE resources_new (
   id          TEXT PRIMARY KEY,
-  -- NULL means organisation-wide: material every partner should see.
+  -- NULL means organization-wide: material every partner should see.
   partner_id  TEXT REFERENCES partners(id) ON DELETE CASCADE,
   title       TEXT NOT NULL,
   description TEXT,
