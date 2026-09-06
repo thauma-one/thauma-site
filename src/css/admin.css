@@ -203,6 +203,38 @@
 .adm-partner-org .adm-mail{margin-top:0;padding-top:0;border-top:0}
 .adm-domain[readonly]{opacity:.65;cursor:default}
 
+/* ---- who is attached to this ministry ----
+   Same shape as the mail block below: a rule across the card rather than a
+   nested box, because a box inside a card makes the card read as a page.
+
+   THE CARD USED TO SAY "1 members" AND STOP. No names, nothing to click — so a
+   ministry attached to the wrong account looked identical to one attached to
+   the right account, and the only control was a row of chips on the People
+   page that always granted 'view'. */
+.adm-members{border-top:1px solid var(--line);
+  margin-top:4px;padding-top:18px;display:flex;flex-direction:column;gap:10px}
+
+/* Name and address on the left taking the slack, then the capacity, then the
+   way out. The two controls are fixed width so a long name cannot push the
+   Detach button off the end of a narrow card. */
+.adm-member{display:grid;grid-template-columns:1fr auto auto;gap:12px;
+  align-items:center;padding:10px 12px;border:1px solid var(--line);
+  border-radius:var(--radius);background:rgba(255,255,255,.02)}
+.adm-member .adm-who{min-width:0}
+.adm-member .adm-name{display:block;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap}
+.member-role{min-width:110px}
+
+.adm-member-add{display:flex;gap:10px;align-items:center}
+.adm-member-add select{flex:1 1 auto;min-width:0}
+
+@media (max-width: 560px){
+  /* Three columns will not fit a phone; the controls drop under the name
+     rather than each shrinking to something unreadable. */
+  .adm-member{grid-template-columns:1fr auto}
+  .adm-member .adm-who{grid-column:1 / -1}
+}
+
 /* ---- where a partner's mail comes from ----
    Spans the card, below the row, because it is a different KIND of setting
    from the two pickers above: those change how a ministry appears, this

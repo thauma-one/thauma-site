@@ -621,6 +621,9 @@
   }
 
   var PARTNER_STATUS = ['prospective', 'active', 'on_leave', 'alumni'];
+  /* The capacity somebody is attached in. Ordered most to least, so the list
+     reads as a ladder rather than an alphabet. */
+  var PARTNER_ROLES = ['owner', 'assist', 'view'];
 
   /* "1 addresses" is the kind of thing that makes a screen look unfinished
      even when everything behind it is right. The number and the word sit
@@ -758,11 +761,75 @@
 
         mailBlock(p) +
 
+        memberBlock(p) +
+
         '<button type="button" class="del danger" data-del-partner="' + esc(p.id) + '">' +
           esc(tr('adm.deletePartner')) + '</button>' +
         '</div>' +
       '</div>';
     }).join('') || '<p class="empty">—</p>';
+  }
+
+  /* ---- who is attached to this ministry --------------------------------
+     THE CARD USED TO SAY "1 members" AND STOP THERE. No names, nothing to
+     click. So a ministry attached to the wrong account looked exactly like one
+     attached to the right account, and the only place to change it was a row
+     of unlabelled chips on the People page that always granted 'view'.
+
+     Here instead, on the partner, because that is the thing being reassigned.
+     People has it too — the same grant from the other end — but somebody
+     asking "who runs this ministry" is looking at the ministry. */
+  function memberBlock(p) {
+    var members = p.members || [];
+    var mine = {};
+    members.forEach(function (m) { mine[m.user_id] = m; });
+
+    var rows = members.map(function (m) {
+      return '<div class="adm-member" data-member="' + esc(m.user_id) + '">' +
+        '<div class="adm-who">' +
+          '<span class="adm-name">' + esc(m.user_name || m.email) + '</span>' +
+          '<span class="adm-email">' + esc(m.email) +
+            (m.status === 'active' ? '' :
+              ' · ' + esc(tr('adm.status.' + m.status))) + '</span>' +
+        '</div>' +
+        '<select class="member-role" data-member-role="' + esc(m.user_id) + '"' +
+                ' data-partner="' + esc(p.id) + '">' +
+          PARTNER_ROLES.map(function (r) {
+            return '<option value="' + r + '"' + (m.role === r ? ' selected' : '') + '>' +
+              esc(tr('adm.prole.' + r)) + '</option>';
+          }).join('') +
+        '</select>' +
+        '<button type="button" class="ghost-btn" data-member-off="' + esc(m.user_id) + '"' +
+          ' data-partner="' + esc(p.id) + '">' + esc(tr('adm.detach')) + '</button>' +
+      '</div>';
+    }).join('');
+
+    /* Everybody NOT already attached. An empty picker means everybody is,
+       which is worth saying rather than showing an empty control. */
+    var free = (state.users || []).filter(function (u) { return !mine[u.id]; });
+    var add = free.length
+      ? '<div class="adm-member-add">' +
+          '<select data-member-add="' + esc(p.id) + '">' +
+            '<option value="">' + esc(tr('adm.attachWho')) + '</option>' +
+            free.map(function (u) {
+              return '<option value="' + esc(u.id) + '">' +
+                esc((u.name || u.email) + ' · ' + u.email) + '</option>';
+            }).join('') +
+          '</select>' +
+        '</div>'
+      : '<p class="fld-hint">' + esc(tr('adm.everyoneAttached')) + '</p>';
+
+    return '<div class="adm-members">' +
+      '<div class="adm-mail-head">' +
+        '<span class="adm-mail-t">' + esc(tr('adm.membersTitle')) + '</span>' +
+        '<span class="adm-mail-n">' + (members.length
+          ? esc(members.length + ' ' + tr('adm.members'))
+          : esc(tr('adm.nobodyAttached'))) + '</span>' +
+      '</div>' +
+      (rows || '<p class="empty">' + esc(tr('adm.nobodyAttached')) + '</p>') +
+      add +
+      '<p class="fld-hint">' + esc(tr('adm.membersHint')) + '</p>' +
+    '</div>';
   }
 
   /* ---- where a partner's mail comes from -------------------------------
@@ -1135,8 +1202,19 @@
     var chip = e.target.closest('[data-partner][data-user]');
     if (chip) {
       var give = !chip.classList.contains('on');
+      /* 'view' only when ATTACHING. Detaching does not read the role, and
+         re-granting an existing member with a hard-coded 'view' is how every
+         row in the table came to say 'view' regardless of what the person
+         actually does. The capacity is chosen on the partner's own card. */
       return change({ user_id: chip.dataset.user, partner_id: chip.dataset.partner,
                       partner_role: 'view', grant: give }, chip);
+    }
+
+    // ---- detach somebody from a partner, from the partner's own card ----
+    var off = e.target.closest('[data-member-off]');
+    if (off) {
+      return change({ user_id: off.dataset.memberOff, partner_id: off.dataset.partner,
+                      grant: false }, off);
     }
     var dp = e.target.closest('[data-del-partner]');
     if (dp) return deletePartner(dp.dataset.delPartner, dp);
@@ -1475,6 +1553,28 @@
     }
     if (e.target.classList.contains('lang-pick') && e.target.dataset.partner) {
       return change({ for_partner: e.target.dataset.partner, default_lang: e.target.value }, e.target);
+    }
+
+    /* ---- the capacity somebody is attached in ----
+       Same endpoint as attaching them: admin_partner_grant now updates the
+       role on conflict instead of ignoring it, so "add" and "change" are one
+       operation rather than a revoke-and-re-grant that loses the audit trail
+       of who decided the current arrangement. */
+    if (e.target.dataset.memberRole) {
+      return change({ user_id: e.target.dataset.memberRole,
+                      partner_id: e.target.dataset.partner,
+                      partner_role: e.target.value, grant: true }, e.target);
+    }
+
+    /* ---- attach somebody new, from the partner's own card ----
+       Defaults to 'owner'. The picker on this card exists to say who RUNS the
+       ministry, and somebody being added to their own partner is the common
+       case; 'view' is a deliberate demotion, one control away. */
+    if (e.target.dataset.memberAdd && e.target.value) {
+      var who = e.target.value;
+      e.target.value = '';
+      return change({ user_id: who, partner_id: e.target.dataset.memberAdd,
+                      partner_role: 'owner', grant: true }, e.target);
     }
   });
 

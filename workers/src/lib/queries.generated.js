@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "9ddec5abfaad803d";
+export const SOURCE_DIGEST = "cf0eeb40f1835888";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -32,8 +32,17 @@ WHERE from_email = :old OR reply_to = :old;`,
                       created_at, updated_at)
 VALUES (:id, :slug, :display_name, 'prospective', 0, 'en', :now, :now);`,
   admin_partner_delete: `DELETE FROM partners WHERE id = :partner_id;`,
-  admin_partner_grant: `INSERT OR IGNORE INTO partner_users (partner_id, user_id, role, granted_by, granted_at)
-VALUES (:partner_id, :user_id, :role, :granted_by, :now);`,
+  admin_partner_grant: `INSERT INTO partner_users (partner_id, user_id, role, granted_by, granted_at)
+VALUES (:partner_id, :user_id, :role, :granted_by, :now)
+ON CONFLICT (partner_id, user_id) DO UPDATE
+   SET role = excluded.role,
+       granted_by = excluded.granted_by,
+       granted_at = excluded.granted_at;`,
+  admin_partner_members: `SELECT pu.partner_id, pu.user_id, pu.role, pu.granted_at,
+       u.name AS user_name, u.email, u.status
+FROM partner_users pu
+JOIN users u ON u.id = pu.user_id
+ORDER BY u.name COLLATE NOCASE;`,
   admin_partner_revoke: `DELETE FROM partner_users WHERE partner_id = :partner_id AND user_id = :user_id;`,
   admin_partner_set: `UPDATE partners SET display_name = :display_name, status = :status, updated_at = :now
 WHERE id = :id;`,

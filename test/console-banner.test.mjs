@@ -120,22 +120,54 @@ await check("the stylesheet default assumes ONE row, never two", async () => {
     `would start below the top of the nav on every account until JS runs`);
 });
 
-/* --------------------------------------------------- it paints under the header */
+/* ------------------------------------ it lives in the one stack, at the bottom */
 
-await check("the pinned banner sits UNDER the header, not over it", async () => {
+await check("the banner joins the normal toast stack, not a host of its own", async () => {
   const w = boot(STAFF, { roles: ["admin", "staff"] }, 94);
-  const d = w.document;
+  w.StaffProblem("This account is not attached to a partner yet.", null);
+  /* A transient one too, or the banner's own host would be the ONLY host and
+     the count below would pass against exactly the arrangement it forbids. */
+  w.StaffToast("Saved", "ok");
 
-  const host = d.createElement("div");
-  host.className = "toasts toasts-top";
-  d.body.appendChild(host);
-  const header = d.querySelector(".console");
-  assert(header, "no .console header in the built page");
+  const hosts = w.document.querySelectorAll(".toasts");
+  assert(hosts.length === 1,
+    `${hosts.length} toast hosts — the banner used to make a second one pinned ` +
+    `under the header, which is what covered the nav`);
+  const toast = w.document.querySelector(".problem-toast");
+  assert(toast && toast.parentNode === hosts[0], "the banner is not in the toast host");
+});
 
-  const z = (el) => Number(w.getComputedStyle(el).zIndex);
-  assert(z(host) < z(header),
-    `banner z-index ${z(host)} is not below the header's ${z(header)} — ` +
-    `it will paint across the navigation`);
+await check("the banner is pinned to the BOTTOM of the stack, under later toasts", async () => {
+  /* It does not time out. Appended last it would sit below — and therefore on
+     top of — every transient toast that arrives after it. */
+  const w = boot(STAFF, { roles: ["admin", "staff"] }, 94);
+  w.StaffProblem("This account is not attached to a partner yet.", null);
+  w.StaffToast("Saved", "ok");
+
+  const host = w.document.querySelector(".toasts");
+  const order = (el) => Number(w.getComputedStyle(el).order || 0);
+  const banner = host.querySelector(".problem-toast");
+  const transient = [...host.querySelectorAll(".toast:not(.problem-toast)")];
+
+  assert(transient.length === 1, "the transient toast was not added");
+  assert(order(banner) > order(transient[0]),
+    `banner order ${order(banner)} is not after the transient toast's ` +
+    `${order(transient[0])} — a later toast would be hidden behind it`);
+});
+
+await check("dismissing the banner leaves the other toasts alone", async () => {
+  /* The host is shared now. The first version of problemClear hid the HOST,
+     which would have taken every transient toast down with it. */
+  const w = boot(STAFF, { roles: ["staff"] }, 47);
+  w.StaffProblem("No partner yet.", null);
+  w.StaffToast("Saved", "ok");
+  const host = w.document.querySelector(".toasts");
+
+  w.document.querySelector(".problem-toast .toast-x").click();
+  assert(host.hidden !== true, "dismissing the banner hid the whole toast host");
+  const still = host.querySelector(".toast:not(.problem-toast)");
+  assert(still && w.getComputedStyle(still).display !== "none",
+    "the transient toast disappeared with the banner");
 });
 
 /* ------------------------------------------------------- and it can be dismissed */
@@ -147,11 +179,11 @@ await check("the banner can be dismissed", async () => {
 
   const toast = w.document.querySelector(".problem-toast");
   assert(toast, "no problem toast was created");
-  const close = toast.querySelector(".toast-close");
+  const close = toast.querySelector(".toast-x");
   assert(close, "the banner has no dismiss button — 'Try again' is not a way out " +
                 "of a condition that needs an administrator");
 
-  assert(toast.parentNode.hidden === false, "banner should be showing first");
+  assert(toast.hidden === false, "banner should be showing first");
   close.click();
   assert(!toast.classList.contains("in"), "dismiss did not start hiding the banner");
 });

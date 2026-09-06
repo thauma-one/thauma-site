@@ -1163,23 +1163,28 @@
       problemEl.className = 'toast warn problem-toast';
       problemEl.setAttribute('role', 'alert');
       /* A DISMISS BUTTON, because this toast does not go away on its own.
-         It is pinned over the header, and "Try again" on a condition that
-         needs an administrator just fails again — so an account with no
-         partner grant got a banner it could not clear, covering the very
-         navigation it needed to go and fix the problem. A persistent message
-         with no way out is a trap, however accurate it is. */
+         "Try again" on a condition that needs an administrator just fails
+         again, so an account with no partner grant got a banner it could not
+         clear. A persistent message with no way out is a trap, however
+         accurate it is. Same `.toast-x` the error toasts already use. */
       problemEl.innerHTML =
         '<span class="problem-msg"></span>' +
         '<button type="button" class="toast-act" data-i18n="err.tryAgain">Try again</button>' +
-        '<button type="button" class="toast-close" aria-label="Dismiss">&times;</button>';
-      problemEl.querySelector('.toast-close').onclick = problemClear;
+        '<button type="button" class="toast-x" aria-label="Dismiss">&times;</button>';
+      problemEl.querySelector('.toast-x').onclick = problemClear;
 
-      var host = document.createElement('div');
-      host.className = 'toasts toasts-top';
-      host.appendChild(problemEl);
-      document.body.appendChild(host);
-      // Created after the initial sweep, so it needs translating on the spot.
-      if (window.StaffI18n) window.StaffI18n.apply(host);
+      /* THE SAME STACK AS EVERY OTHER TOAST, at the bottom of the page.
+         It used to have its own host pinned under the header, which put it
+         across the navigation for a two-row account and left no way past it.
+         Sharing the stack means one place for messages and no chance of one
+         covering something.
+
+         `order` rather than DOM position keeps it at the BOTTOM of that
+         stack whatever arrives later: transient toasts are appended after it
+         and would otherwise stack below, where this one — which does not time
+         out — would sit on top of them. */
+      toastRoot().appendChild(problemEl);
+      if (window.StaffI18n) window.StaffI18n.apply(problemEl);
     }
     problemEl.querySelector('.problem-msg').textContent = message;
 
@@ -1187,16 +1192,17 @@
     btn.hidden = !retry;
     btn.onclick = retry || null;
 
-    problemEl.parentNode.hidden = false;
+    problemEl.hidden = false;
     void problemEl.offsetHeight;
     problemEl.classList.add('in');
   }
 
   function problemClear() {
     if (!problemEl) return;
+    /* Hides THIS element, not the host — the host is now shared with every
+       transient toast, and hiding it would take them all with it. */
     problemEl.classList.remove('in');
-    var host = problemEl.parentNode;
-    setTimeout(function () { if (host) host.hidden = true; }, 260);
+    setTimeout(function () { if (problemEl) problemEl.hidden = true; }, 260);
   }
 
 

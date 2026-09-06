@@ -725,31 +725,20 @@ body.has-savebar .toasts{--toast-lift:var(--ms-savebar-h,72px)}
 .toast.err::before{background:var(--warn,#F5B845)}
 
 /* ---- the persistent problem toast ---- */
-/* Same visual language as the transient toasts, pinned to the TOP so it is not
-   mistaken for one of them — and so a condition that persists does not sit in
-   the queue where messages are expected to come and go. */
-.toasts-top{top:calc(var(--header-h) + 16px);bottom:auto;
-  /* UNDER the header, not over it. `.toasts` sets z-index:60 so a
-     transient toast floats above the page; the header is z-index:20.
-     For the pinned problem toast that ordering was actively harmful
-     — it painted across the navigation. Below the header it can
-     still be read, and scrolls out of the way behind it. */
-  z-index:19}
-.toasts-top .toast{transform:translateY(-10px)}
-.toasts-top .toast.in{transform:translateY(0)}
+/* IN THE SAME STACK AS EVERYTHING ELSE, at the bottom of the page. It used to
+   have its own host pinned below the header, which for a two-row account put
+   it straight across the navigation — and since it carried no dismiss button,
+   the account it was reporting on could not navigate past it.
+
+   `order:1` keeps it at the BOTTOM of that stack. Transient toasts are
+   appended to the same host after it and would otherwise stack below, where
+   this one — which does not time out — would cover them. */
+.problem-toast{order:1}
+.problem-toast[hidden]{display:none}
 .toast.warn{border-color:var(--warn,#F5B845);background:#1d1608;
   box-shadow:0 0 0 1px rgba(245,184,69,.3), 0 16px 40px rgba(0,0,0,.6)}
 .toast.warn::before{background:var(--warn,#F5B845)}
 .problem-msg{flex:1;min-width:0}
-/* Dismiss. Sized and coloured down from "Try again": leaving is always
-   available but is not the action being suggested. */
-.toast-close{flex:0 0 auto;background:none;border:0;color:var(--dim);
-  font-size:20px;line-height:1;padding:2px 4px;cursor:pointer;
-  border-radius:var(--radius)}
-@media(hover:hover){
-  .toast-close:hover{color:var(--text)}
-}
-.toast-close:focus-visible{outline:2px solid var(--warn,#F5B845);outline-offset:2px}
 .toast-act{flex:0 0 auto;background:none;border:1px solid var(--warn,#F5B845);
   color:var(--warn,#F5B845);font-family:var(--font-display);font-size:10px;
   letter-spacing:var(--ls-caps);text-transform:uppercase;font-weight:var(--w-bold);

@@ -888,8 +888,36 @@ DELETE FROM user_roles WHERE user_id = :user_id AND role = :role;
 
 
 -- name: admin_partner_grant
-INSERT OR IGNORE INTO partner_users (partner_id, user_id, role, granted_by, granted_at)
-VALUES (:partner_id, :user_id, :role, :granted_by, :now);
+-- Attach somebody to a partner, or CHANGE the capacity they are attached in.
+--
+-- It was INSERT OR IGNORE, which silently did nothing when the person was
+-- already on the partner — so the only way to correct a role was to revoke and
+-- re-grant, and the console offered no way to pick one anyway. Every existing
+-- row therefore says 'view', including people who own the ministry outright.
+--
+-- granted_by/granted_at are refreshed on a change: the interesting fact is who
+-- decided the CURRENT arrangement, not who first attached them.
+INSERT INTO partner_users (partner_id, user_id, role, granted_by, granted_at)
+VALUES (:partner_id, :user_id, :role, :granted_by, :now)
+ON CONFLICT (partner_id, user_id) DO UPDATE
+   SET role = excluded.role,
+       granted_by = excluded.granted_by,
+       granted_at = excluded.granted_at;
+
+
+-- name: admin_partner_members
+-- WHO IS ON EACH PARTNER, by name. Every partner in one query rather than one
+-- query per card: there are a handful of partners and the console draws them
+-- all at once.
+--
+-- The card used to show a COUNT and nothing else — "1 members" — with no way
+-- to see who, and no way to change it. Somebody looking at their own ministry
+-- could not tell that the person attached to it was the wrong account.
+SELECT pu.partner_id, pu.user_id, pu.role, pu.granted_at,
+       u.name AS user_name, u.email, u.status
+FROM partner_users pu
+JOIN users u ON u.id = pu.user_id
+ORDER BY u.name COLLATE NOCASE;
 
 
 -- name: admin_partner_revoke

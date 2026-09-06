@@ -360,6 +360,64 @@ await check("the handler references every one of them", async () => {
   }
 });
 
+/* ---------------------------------------------------------------------------
+   REASSIGNING A MINISTRY TO A DIFFERENT PERSON
+
+   The partner card showed `member_count` and nothing else — "1 members", no
+   names, nothing to click. So a ministry attached to the wrong account looked
+   exactly like one attached to the right account, and the only control was a
+   row of chips on the People page that always sent partner_role: 'view'.
+   Changing somebody's capacity was therefore impossible: admin_partner_grant
+   was INSERT OR IGNORE, so re-granting did nothing at all.
+--------------------------------------------------------------------------- */
+
+await check("granting an EXISTING member changes their role rather than doing nothing", async () => {
+  /* INSERT OR IGNORE is what made "change who runs this ministry" unreachable:
+     the row already existed, so every attempt was silently a no-op. */
+  const sql = QUERIES.admin_partner_grant;
+  assert(!/INSERT\s+OR\s+IGNORE/i.test(sql),
+    "admin_partner_grant still ignores conflicts — changing a role is a no-op");
+  assert(/ON CONFLICT\s*\(\s*partner_id\s*,\s*user_id\s*\)\s*DO UPDATE/i.test(sql),
+    "no upsert on (partner_id, user_id) — re-granting cannot change the role");
+  assert(/SET[\s\S]*role\s*=\s*excluded\.role/i.test(sql),
+    "the upsert does not actually update the role");
+});
+
+await check("the member list carries names, not just a count", async () => {
+  const sql = QUERIES.admin_partner_members;
+  assert(sql, "admin_partner_members does not exist");
+  assert(/JOIN\s+users\b/i.test(sql), "no join to users — the card cannot show a name");
+  for (const col of ["partner_id", "user_id", "role"]) {
+    assert(new RegExp(`\\b${col}\\b`).test(sql), `the list omits ${col}`);
+  }
+  assert(/u\.name/.test(sql) && /u\.email/.test(sql),
+    "a member has to be recognisable by name and address, not by id");
+});
+
+await check("the partner card is fed members, not just a member_count", async () => {
+  const src = await import("node:fs").then((fs) =>
+    fs.readFileSync(new URL("../src/admin.js", import.meta.url), "utf8"));
+  assert(/function listPartners/.test(src), "no listPartners helper");
+  assert(src.includes("admin_partner_members"),
+    "admin.js never runs the member query — the card would still show a bare count");
+  /* Every place that returns partners must go through the helper. One raw
+     `admin_partners` left behind is a screen whose cards silently lose their
+     members after whichever action returns it. */
+  const raw = src.split("\n").filter((l) =>
+    l.includes('db.query("admin_partners"') && !l.includes("// "));
+  assert(raw.length === 1,
+    `${raw.length} places still query admin_partners directly — only listPartners should`);
+});
+
+await check("the console can pick a capacity, not just hardcode 'view'", async () => {
+  const ui = await import("node:fs").then((fs) =>
+    fs.readFileSync(new URL("../../src/js/admin.js", import.meta.url), "utf8"));
+  assert(/PARTNER_ROLES\s*=\s*\[/.test(ui), "the console offers no list of capacities");
+  assert(/data-member-role/.test(ui), "no role picker on the partner card");
+  assert(/data-member-add/.test(ui), "no way to attach somebody from the partner card");
+  assert(/data-member-off/.test(ui), "no way to detach somebody from the partner card");
+});
+
 await check("granting PARTNER creates a ministry; granting staff does not", async () => {
   const src = await import("node:fs").then((fs) =>
     fs.readFileSync(new URL("../src/admin.js", import.meta.url), "utf8"));

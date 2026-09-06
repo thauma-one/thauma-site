@@ -351,6 +351,14 @@ await check("every real query converts with its documented params", async () => 
                                 guarantees — so there is nothing to scope it
                                 by, and a parameter would be a lie. */
                              "public_contact_form_org",
+                             /* Every partner's members in one query, because
+                                the console draws every partner card at once
+                                and there are a handful of them. Scoping it
+                                per partner would be one round trip per card
+                                to answer a question the admin screen always
+                                asks about all of them. Admin-only, guarded by
+                                the role check like admin_partners beside it. */
+                             "admin_partner_members",
                              /* The organisation's contact reasons. Same reason
                                 as the form above: no slug to be found by, and
                                 exactly one owner. */

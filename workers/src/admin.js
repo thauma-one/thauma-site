@@ -314,7 +314,7 @@ export default {
     if (request.method === "GET") {
       const [users, partners, languages, recent, profiles] = await Promise.all([
         db.query("admin_users", {}),
-        db.query("admin_partners", {}),
+        listPartners(db),
         db.query("languages_all", {}),
         db.query("admin_audit_recent", { limit: 40 }),
         // Fetched WITH the people rather than per row: the People page sorts
@@ -405,7 +405,7 @@ export default {
         }
         return json({
           created: made.id,
-          partners: await db.query("admin_partners", {}),
+          partners: await listPartners(db),
           users: await listUsers(db),
         });
       }
@@ -413,7 +413,7 @@ export default {
       /* ---- an address a partner may send from ---- */
       if (body.kind === "sender") {
         const pid = str(body.partner_id, 64) || null;
-        const partners = await db.query("admin_partners", {});
+        const partners = await listPartners(db);
         const partner = pid ? partners.find((x) => x.id === pid) : null;
         if (pid && !partner) return json({ error: "No such partner" }, 404);
 
@@ -436,7 +436,7 @@ export default {
                           entity_id: address, partner_id: pid,
                           detail: { label: str(body.label, 80) || null } });
         return json({ senders: await db.query("admin_sender_addresses", {}),
-                      partners: await db.query("admin_partners", {}) });
+                      partners: await listPartners(db) });
       }
 
       /* ---- the standard set, in one go ----
@@ -446,7 +446,7 @@ export default {
          also be used to fill a gap after one was deleted. */
       if (body.kind === "sender_defaults") {
         const pid = str(body.partner_id, 64) || null;
-        const partners = await db.query("admin_partners", {});
+        const partners = await listPartners(db);
         const partner = pid ? partners.find((x) => x.id === pid) : null;
         if (pid && !partner) return json({ error: "No such partner" }, 404);
 
@@ -473,7 +473,7 @@ export default {
                             detail: { added } });
         }
         return json({ added, senders: await db.query("admin_sender_addresses", {}),
-                      partners: await db.query("admin_partners", {}) });
+                      partners: await listPartners(db) });
       }
 
       const email = str(body.email, 200);
@@ -558,7 +558,7 @@ export default {
       if (body.sending_domain !== undefined) {
         const pid = str(body.partner_id, 64);
         if (!pid) return json({ error: "partner_id is required" }, 400);
-        const partners = await db.query("admin_partners", {});
+        const partners = await listPartners(db);
         const partner = partners.find((x) => x.id === pid);
         if (!partner) return json({ error: "No such partner" }, 404);
 
@@ -610,7 +610,7 @@ export default {
                           partner_id: pid,
                           detail: { sending_domain: domain, moved: moved.length || undefined } });
         return json({ moved,
-                      partners: await db.query("admin_partners", {}),
+                      partners: await listPartners(db),
                       senders: await db.query("admin_sender_addresses", {}) });
       }
 
@@ -665,7 +665,7 @@ export default {
         if (body.grant && body.role === "partner") {
           const target = (await db.query("admin_users", {}))
             .find((u) => u.id === userId);
-          const existing = await db.query("admin_partners", {});
+          const existing = await listPartners(db);
           const already = String(target && target.partner_ids || "")
             .split(",").filter(Boolean);
 
@@ -684,7 +684,7 @@ export default {
         // them — removing a ministry is a separate, deliberate act.
         return json({
           users: await listUsers(db),
-          partners: await db.query("admin_partners", {}),
+          partners: await listPartners(db),
           created_partner: createdPartner,
         });
       }
@@ -705,7 +705,10 @@ export default {
                           entity: "partner_access", entity_id: userId,
                           partner_id: body.partner_id,
                           detail: { role: partnerRole } });
-        return json({ users: await listUsers(db) });
+        /* Partners as well as users. The grant is now made from the PARTNER's
+           own card, so the list that has to redraw is the one holding the
+           member it just changed. */
+        return json({ users: await listUsers(db), partners: await listPartners(db) });
       }
 
       // ---- name or status ----
@@ -745,7 +748,7 @@ export default {
 
       // ---- a partner's own details ----
       if (body.for_partner && (body.partner_status || body.partner_name)) {
-        const partners = await db.query("admin_partners", {});
+        const partners = await listPartners(db);
         const target = partners.find((p) => p.id === body.for_partner);
         if (!target) return json({ error: "No such partner" }, 404);
         // The values the schema actually allows — checked rather than assumed.
@@ -759,7 +762,7 @@ export default {
         await audit(db, { user, action: "update", entity: "partner",
                           entity_id: body.for_partner, partner_id: body.for_partner,
                           detail: { status } });
-        return json({ partners: await db.query("admin_partners", {}) });
+        return json({ partners: await listPartners(db) });
       }
 
       // ---- a partner's default language ----
@@ -785,7 +788,7 @@ export default {
         await audit(db, { user, action: "update", entity: "partner.default_lang",
                           entity_id: body.for_partner, partner_id: body.for_partner,
                           detail: { lang: body.default_lang } });
-        return json({ partners: await db.query("admin_partners", {}) });
+        return json({ partners: await listPartners(db) });
       }
 
       return json({ error: "Nothing to change" }, 400);
@@ -844,12 +847,12 @@ export default {
         return json({ deleted: id,
                       archived: target.sends_for || null,
                       senders: await db.query("admin_sender_addresses", {}),
-                      partners: await db.query("admin_partners", {}) });
+                      partners: await listPartners(db) });
       }
 
       // ---- a partner, and everything it holds ----
       if (url.searchParams.get("kind") === "partner") {
-        const partners = await db.query("admin_partners", {});
+        const partners = await listPartners(db);
         const target = partners.find((p) => p.id === id);
         if (!target) return json({ error: "No such partner" }, 404);
 
@@ -883,7 +886,7 @@ export default {
         return json({
           deleted: id,
           destroyed: stats,
-          partners: await db.query("admin_partners", {}),
+          partners: await listPartners(db),
           users: await listUsers(db),
         });
       }
@@ -938,6 +941,28 @@ export default {
     });
   },
 };
+
+/**
+ * Every partner, each carrying the people attached to it BY NAME.
+ *
+ * The card showed `member_count` and nothing else, so "1 members" was the
+ * whole story: no way to see who, and no way to change it. That is how a
+ * ministry ends up attached to the wrong account without anybody being able to
+ * tell — the count is right either way.
+ *
+ * One query for all the members rather than one per partner. There are a
+ * handful of partners and the console draws them together.
+ */
+async function listPartners(db) {
+  const [partners, members] = await Promise.all([
+    db.query("admin_partners", {}),
+    db.query("admin_partner_members", {}),
+  ]);
+  return partners.map((p) => ({
+    ...p,
+    members: members.filter((m) => m.partner_id === p.id),
+  }));
+}
 
 async function listUsers(db) {
   const users = await db.query("admin_users", {});
