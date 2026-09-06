@@ -8,15 +8,43 @@ staffHeading: Internal <b>resources</b>
 <div class="cards" id="resourceList"><p class="empty" data-i18n="common.loading">Loading&hellip;</p></div>
 <p class="row-actions"><button class="ghost-btn" id="addResourceBtn" type="button" data-i18n="res.add">+ Add resource</button></p>
 
-<form class="form" id="resourceForm">
-  <input type="hidden" id="resourceIndex" value="">
-  <input type="text" id="resourceTitle" placeholder="Title" data-i18n-attr="placeholder:res.title" required>
-  <textarea id="resourceDescription" placeholder="Description (optional)" data-i18n-attr="placeholder:res.description"></textarea>
-  <input type="text" id="resourceLink" placeholder="Link — https://… (optional)" data-i18n-attr="placeholder:res.link">
-  <input type="text" id="resourcePhoto" placeholder="Photo URL or /img/… path (optional)" data-i18n-attr="placeholder:res.photo">
-  <div class="frow">
-    <button class="solid-btn" type="submit" data-i18n="res.save">Save resource</button>
-    <button class="ghost-btn" type="button" id="resourceCancel" data-i18n="common.cancel">Cancel</button>
-  </div>
-</form>
+{#- A DIALOG, NOT A PANEL AT THE BOTTOM OF THE PAGE.
+
+   It used to be a form below the cards, revealed in place. On a shelf with a
+   dozen resources that meant pressing "Add" and having nothing visibly happen
+   — the form appeared off-screen, below everything, and the page did not
+   move. Editing was worse: the row being edited and the boxes editing it were
+   far enough apart to lose track of which resource was open.
+
+   Same `.dlg` shell the confirm dialog uses, so there is one thing on this
+   console that means "this is the only thing you are doing right now". -#}
+<div class="dlg-back" id="resourceBack" hidden>
+  <form class="form dlg" id="resourceForm">
+    <h3 id="resourceFormTitle" data-i18n="res.add">Add resource</h3>
+    <input type="hidden" id="resourceIndex" value="">
+    <input type="text" id="resourceTitle" placeholder="Title" data-i18n-attr="placeholder:res.title" required>
+    <textarea id="resourceDescription" placeholder="Description (optional)" data-i18n-attr="placeholder:res.description"></textarea>
+    <input type="text" id="resourceLink" placeholder="Link — https://… (optional)" data-i18n-attr="placeholder:res.link">
+    <input type="text" id="resourcePhoto" placeholder="Photo URL or /img/… path (optional)" data-i18n-attr="placeholder:res.photo">
+
+    {#- WHO IT IS FOR, and only for somebody who may put something on the
+       organisation's shelf. A staff member's own resource is governed by
+       sharing, so offering them a choice here would be offering a decision
+       they are not allowed to make. Hidden rather than disabled: a control
+       that cannot be used is noise on the common path. -#}
+    <label class="fld" id="resourceWhereRow" hidden>
+      <span data-i18n="res.whereLabel">Where it goes</span>
+      <select id="resourceWhere">
+        <option value="mine" data-i18n="res.whereMine">My resources — private unless I share it</option>
+        <option value="staff" data-i18n="res.whereStaff">Thauma resources — every staff member</option>
+        <option value="admin" data-i18n="res.whereAdmin">Thauma resources — administrators only</option>
+      </select>
+    </label>
+
+    <div class="dlg-actions">
+      <button class="ghost-btn" type="button" id="resourceCancel" data-i18n="common.cancel">Cancel</button>
+      <button class="solid-btn" type="submit" data-i18n="res.save">Save resource</button>
+    </div>
+  </form>
+</div>
 <p class="hint" id="saveStatus"></p>

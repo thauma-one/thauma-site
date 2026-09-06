@@ -56,7 +56,7 @@ staffHint: your lists and the people on them — nobody else's
 <p class="empty" id="mlNoLists" hidden data-i18n="ml.empty">No mailing lists yet.</p>
 
 <!-- ============================================================== A LIST -->
-<section class="ml-view" id="mlListView" hidden>
+<section class="ml-view" data-view="list" id="mlListView" hidden>
   <div class="ml-subtabs" role="tablist">
     <button type="button" class="ml-subtab is-on" data-sub="people"
             data-i18n="ml.subPeople">Subscribers</button>
@@ -267,7 +267,7 @@ staffHint: your lists and the people on them — nobody else's
 {#- EVERY LIST IN ONE PLACE, which is how somebody building a website wants
    them: they are pasting several into one page, not visiting each list in turn
    to collect snippets. -#}
-<section class="ml-view" id="mlEmbedView" hidden>
+<section class="ml-view" data-view="embed" id="mlEmbedView" hidden>
   <p class="note ms-note" data-i18n-html="ml.embedNote"><b>One snippet per list.</b>
   Paste both lines wherever the form should appear. Nothing else is needed — no
   account on that website, no key. A list that is not open for sign-ups has no
@@ -288,7 +288,7 @@ staffHint: your lists and the people on them — nobody else's
    in every mail client; the ones missing are missing because they do not.
    Text colour, font family and font size are absent for that reason — they
    render three different ways and the third is unreadable. -#}
-<section class="ml-view" id="mlComposerView" hidden>
+<section class="ml-view" data-view="composer" id="mlComposerView" hidden>
 
   {#- NO "To" FIELD, AND THAT IS THE DESIGN.
 
@@ -433,7 +433,7 @@ staffHint: your lists and the people on them — nobody else's
    ONE PER MINISTRY. Not several: there is one place people write to you, and a
    screen for managing forms nobody has more than one of is a screen that
    explains itself badly. -#}
-<section class="ml-view" id="mlContactView" hidden>
+<section class="ml-view" data-view="contact" id="mlContactView" hidden>
 
   <p class="note ms-note" data-i18n-html="ml.ctNote"><b>Messages are emailed to
   you and stored nowhere.</b> Not a limitation — a contact form is the easiest

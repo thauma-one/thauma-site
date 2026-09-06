@@ -571,7 +571,21 @@
 
   function wireResourceForm() {
     var rForm = $('resourceForm');
-    if (!rForm) return;
+    var back = $('resourceBack');
+    if (!rForm || !back) return;
+
+    /* Whether this account may put something on the organisation's shelf.
+       THE SERVER'S OWN ANSWER, carried in `can.set_visibility`, rather than
+       anything worked out here from roles: staff-data.js decides it and will
+       refuse the write on the same test, so a second opinion in the browser
+       could only ever disagree with the one that counts. */
+    function mayPublishOrg() { return !!state.canSetVisibility; }
+
+    function close() {
+      back.hidden = true;
+      back.classList.remove('in');
+      rForm.reset();
+    }
 
     function open(index) {
       var r = (index === '' || index === undefined) ? {} : state.resources[index];
@@ -580,10 +594,34 @@
       $('resourceDescription').value = r.description || '';
       $('resourceLink').value = r.link || '';
       $('resourcePhoto').value = r.photo || '';
-      rForm.classList.add('open');
+
+      var where = $('resourceWhereRow');
+      where.hidden = !mayPublishOrg();
+      /* An existing resource opens on the shelf it is actually on, so saving
+         without touching this cannot move it. */
+      $('resourceWhere').value = r.id
+        ? ((r.shelf || 'institutional') === 'institutional'
+             ? (r.visibility === 'admin' ? 'admin' : 'staff')
+             : 'mine')
+        : 'mine';
+
+      var h = $('resourceFormTitle');
+      if (h) h.textContent = tr(r.id ? 'res.edit' : 'res.add');
+
+      back.hidden = false;
+      void back.offsetHeight;
+      back.classList.add('in');
+      $('resourceTitle').focus();
     }
+
     $('addResourceBtn').addEventListener('click', function () { open(''); });
-    $('resourceCancel').addEventListener('click', function () { rForm.classList.remove('open'); });
+    $('resourceCancel').addEventListener('click', close);
+    /* The backdrop and Escape both cancel — the safe answer should be the easy
+       one to reach, the same way the confirm dialog works. */
+    back.addEventListener('mousedown', function (e) { if (e.target === back) close(); });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !back.hidden) close();
+    });
 
     rForm.addEventListener('submit', function (e) {
       e.preventDefault();
@@ -594,8 +632,15 @@
         link: $('resourceLink').value,
         photo: $('resourcePhoto').value
       };
+      /* Only when the control was actually offered. Sending a shelf this
+         account may not set would be asking the server to refuse. */
+      if (!$('resourceWhereRow').hidden) {
+        var w = $('resourceWhere').value;
+        entry.shelf = w === 'mine' ? 'mine' : 'institutional';
+        if (w !== 'mine') entry.visibility = w;
+      }
       if (idx !== '') entry.id = state.resources[idx] && state.resources[idx].id;
-      rForm.classList.remove('open'); rForm.reset();
+      close();
       saveItem('resource', entry);
     });
 

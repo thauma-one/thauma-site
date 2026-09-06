@@ -113,6 +113,7 @@ jobs:
           node test/videos-console.test.mjs
           node test/console-nav.test.mjs
           node test/console-banner.test.mjs
+          node test/mailing-views.test.mjs
           node test/admin-console.test.mjs
           python3 db/test_schema.py
           cd workers && npm test

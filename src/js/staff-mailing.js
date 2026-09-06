@@ -141,13 +141,27 @@
      leaves a tab that highlights and shows nothing. */
   var TOOLS = ['embed', 'composer', 'contact'];
 
+  /* ONE VIEW AT A TIME, found by what the markup says it is rather than by a
+     list of ids kept here.
+
+     mlContactView was added months after this list and never joined it, so
+     opening the contact form and then pressing New list left the contact form
+     on screen underneath the new list's fields — two forms, one page, and no
+     way to tell which one a Save belonged to. newList() had its own copy of
+     the same list, with the same omission.
+
+     Every section carries data-view. A view that exists is a view that hides,
+     and the next tool cannot be forgotten because there is nothing to add. */
+  function onlyView(which) {
+    Array.prototype.forEach.call(document.querySelectorAll('.ml-view'), function (v) {
+      v.hidden = v.dataset.view !== which;
+    });
+  }
+
   function show(view) {
     state.view = view;
     var isTool = TOOLS.indexOf(view) >= 0;
-    $('mlListView').hidden = isTool || !listById(view);
-    $('mlEmbedView').hidden = view !== 'embed';
-    $('mlComposerView').hidden = view !== 'composer';
-    $('mlContactView').hidden = view !== 'contact';
+    onlyView(isTool ? view : (listById(view) ? 'list' : null));
 
     renderTabs();
     if (view === 'embed') renderEmbeds();
@@ -255,9 +269,7 @@
 
   function newList() {
     state.view = null;
-    $('mlEmbedView').hidden = true;
-    $('mlComposerView').hidden = true;
-    $('mlListView').hidden = false;
+    onlyView('list');
     renderTabs();
 
     ['mlId', 'mlName', 'mlDescription', 'mlFromName', 'mlReplyTo']
@@ -1191,6 +1203,19 @@
         '<input type="email" class="ct-topic-to" maxlength="200" ' +
           'value="' + esc(t.deliver_to || '') + '" ' +
           'placeholder="' + esc(tr('ml.ctTopicTo')) + '">' +
+        /* MOVE, because the order here is the order a visitor reads on the
+           form, and the first option is the one most people take. Buttons
+           rather than drag: this list is three or four rows on a settings
+           screen, and a drag target that small is harder to hit than an
+           arrow — on a phone it is a scroll gesture fighting a drag. */
+        '<span class="ct-topic-move">' +
+          '<button type="button" data-move-topic="' + i + '" data-dir="-1"' +
+            (i === 0 ? ' disabled' : '') +
+            ' aria-label="' + esc(tr('ml.ctMoveUp')) + '">&#9650;</button>' +
+          '<button type="button" data-move-topic="' + i + '" data-dir="1"' +
+            (i === (state.topics || []).length - 1 ? ' disabled' : '') +
+            ' aria-label="' + esc(tr('ml.ctMoveDown')) + '">&#9660;</button>' +
+        '</span>' +
         '<button type="button" class="del" data-drop-topic="' + i + '" ' +
           'aria-label="' + esc(tr('common.delete')) + '">×</button>' +
       '</div>';
@@ -1345,6 +1370,29 @@
     if (boxes.length) boxes[boxes.length - 1].focus();
   });
   $('ctTopicList').addEventListener('click', function (e) {
+    /* MOVE FIRST. Both buttons live in the same row and the delete test is
+       broad enough to be worth ordering deliberately rather than relying on
+       which closest() happens to match. */
+    var mv = e.target.closest('[data-move-topic]');
+    if (mv) {
+      /* Read from the boxes, like everything else here, so a half-typed row
+         moves with what is in it rather than with what was last saved. */
+      var rows = readTopics();
+      var from = Number(mv.dataset.moveTopic);
+      var to = from + Number(mv.dataset.dir);
+      if (to < 0 || to >= rows.length) return;
+      var moved = rows.splice(from, 1)[0];
+      rows.splice(to, 0, moved);
+      state.topics = rows;
+      renderTopics();
+      /* Keep the same row under the pointer: the button that was just pressed
+         has moved, and without this the next press acts on a different row. */
+      var again = $('ctTopicList').querySelector(
+        '[data-topic="' + to + '"] [data-move-topic][data-dir="' + mv.dataset.dir + '"]');
+      if (again && !again.disabled) again.focus();
+      return;
+    }
+
     var b = e.target.closest('[data-drop-topic]');
     if (!b) return;
     var keep = readTopics();
