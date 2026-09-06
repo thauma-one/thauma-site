@@ -1267,7 +1267,15 @@
   async function saveProfile(userId, btn) {
     var sect = document.querySelector('[data-profile="' + userId + '"]');
     if (!sect) return;
-    var status = sect.querySelector('[data-pf-status]');
+    /* THE PANEL, NOT THE SECTION. The status line moved out of the profile
+       section and into the commit row beside Remove person when Save moved
+       there — and this went on looking for it inside the section, found
+       nothing, and dropped every message on the floor. Saving still worked;
+       it just stopped saying anything, including when it FAILED. "I pressed
+       Save and nothing happened" was exactly right. */
+    var panel = sect.closest('.adm-panel') || sect;
+    var status = panel.querySelector('[data-pf-status]') ||
+                 sect.querySelector('[data-pf-status]');
     var val = function (name) {
       var el = sect.querySelector('.pf-grid [data-pf="' + name + '"]');
       return el ? el.value.trim() : '';
