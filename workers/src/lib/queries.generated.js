@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "8957d47d16bc7fa4";
+export const SOURCE_DIGEST = "a03f78729663e6bf";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -683,10 +683,12 @@ ON CONFLICT(user_id, lang) DO UPDATE SET
   updated_at = excluded.updated_at;`,
   staff_profile_upsert: `INSERT INTO staff_profiles
   (user_id, is_public, slug, region, public_email, photo, bio_photo,
-   bio_photo_aspect, sort_order, created_at, updated_at)
+   photo_master, bio_photo_master, bio_photo_aspect,
+   sort_order, created_at, updated_at)
 VALUES
   (:user_id, :is_public, :slug, :region, :public_email, :photo, :bio_photo,
-   :bio_photo_aspect, :sort_order, :now, :now)
+   :photo_master, :bio_photo_master, :bio_photo_aspect,
+   :sort_order, :now, :now)
 ON CONFLICT(user_id) DO UPDATE SET
   is_public    = excluded.is_public,
   slug         = excluded.slug,
@@ -694,13 +696,16 @@ ON CONFLICT(user_id) DO UPDATE SET
   public_email = excluded.public_email,
   photo        = excluded.photo,
   bio_photo    = excluded.bio_photo,
+  photo_master = excluded.photo_master,
+  bio_photo_master = excluded.bio_photo_master,
   bio_photo_aspect = excluded.bio_photo_aspect,
   sort_order   = excluded.sort_order,
   updated_at   = excluded.updated_at;`,
   staff_profiles_all: `SELECT
   u.id AS user_id, u.name, u.email, u.status,
   sp.is_public, sp.slug, sp.region, sp.public_email,
-  sp.photo, sp.bio_photo, sp.bio_photo_aspect, sp.sort_order, sp.updated_at,
+  sp.photo, sp.bio_photo, sp.photo_master, sp.bio_photo_master,
+  sp.bio_photo_aspect, sp.sort_order, sp.updated_at,
   (SELECT GROUP_CONCAT(t.lang || CHAR(31) || COALESCE(t.role_title, '') ||
                        CHAR(31) || COALESCE(t.bio, ''), CHAR(30))
      FROM staff_profile_translations t WHERE t.user_id = u.id) AS translations

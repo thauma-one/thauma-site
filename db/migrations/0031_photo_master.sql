@@ -1,0 +1,27 @@
+-- 0031 — keep the uncropped photo, so a crop can be changed its mind about
+--
+-- 0030 gave the console a cropper: the person chooses what the frame gets and
+-- the browser uploads bytes that are already the right shape. Good, and
+-- one-way. The cropped result is all that was kept, so "edit this crop" could
+-- only ever crop further INWARD — a square taken too tight could never be
+-- widened again, and switching a bio photo from Square to Wide would cut the
+-- top and bottom off what was left rather than revealing what was there.
+--
+-- The fix is to keep the photo as well as the crop of it. The master is the
+-- whole picture, scaled to a generous 2400px and never cropped; the existing
+-- column keeps the framed version the site actually renders.
+--
+-- WHY NOT DERIVE ONE FROM THE OTHER. A Worker cannot decode a JPEG without a
+-- library and has a CPU budget in milliseconds, which is the same reason the
+-- cropping happens in the browser. And the master cannot be reconstructed from
+-- the crop by anybody, at any time — the pixels are gone.
+--
+-- WHY NOT REPLACE `photo` WITH THE MASTER AND CROP AT DISPLAY TIME. Because
+-- the public site is static files and a CSS crop is the centre crop this
+-- feature exists to stop being stuck with.
+--
+-- NULL is the ordinary value for every photo uploaded before this. The console
+-- falls back to re-cropping the framed image and says so, which is worse than
+-- having the master and better than refusing to edit at all.
+ALTER TABLE staff_profiles ADD COLUMN photo_master TEXT;
+ALTER TABLE staff_profiles ADD COLUMN bio_photo_master TEXT;

@@ -823,3 +823,38 @@
   .pc-stage{padding:8px}
   .pc-zoom{flex-wrap:wrap}
 }
+
+/* ---- the profile's commit ----
+   Save sits in the panel's action row now, beside Remove person. It was at the
+   foot of the profile section, which made it read as belonging to the photos
+   directly above it and left the destructive button as the last thing on the
+   screen.
+
+   Pushed to the far end so the two are not adjacent: they are the two ends of
+   "I am finished here", and a Save that shares an edge with Remove is a Save
+   that gets misclicked. */
+.pf-commit{margin-left:auto;display:flex;align-items:center;gap:14px}
+.pf-commit .hint{margin:0;text-align:right;max-width:34ch;line-height:1.45}
+
+/* UNSAVED WORK HAS TO LOOK DIFFERENT FROM SAVED WORK.
+   Everything else in this panel writes the moment it is touched; the profile
+   waits. That difference was invisible, so a cropped photo looked right on
+   screen and was lost on the next click. The button stops being quiet. */
+.pf-save.is-dirty{box-shadow:0 0 0 2px var(--warn,#F5B845), 0 0 22px rgba(245,184,69,.35);
+  animation:pf-nudge 2.4s ease-in-out infinite}
+.pf-save.is-dirty::after{content:" •";color:var(--warn,#F5B845)}
+.adm-profile.is-dirty [data-pf-status]{color:var(--warn,#F5B845)}
+
+@keyframes pf-nudge{
+  0%,100%{box-shadow:0 0 0 2px var(--warn,#F5B845), 0 0 22px rgba(245,184,69,.35)}
+  50%    {box-shadow:0 0 0 2px var(--warn,#F5B845), 0 0 30px rgba(245,184,69,.6)}
+}
+/* A pulse is a way of saying "look here" that becomes a way of saying "stop
+   looking here" if you cannot turn it off. */
+@media (prefers-reduced-motion: reduce){
+  .pf-save.is-dirty{animation:none}
+}
+
+/* Three actions now — Choose/Replace, Edit, Remove — so they wrap rather than
+   squeezing on a narrow panel. */
+.pf-photo-acts{flex-wrap:wrap}

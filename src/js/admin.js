@@ -344,11 +344,23 @@
          exists on both so the slot has one markup rather than two. */
       '<input type="hidden" data-pf-aspect="' + esc(kind) + '" value="' +
         esc(aspectFor(profileFor(u.id), kind)) + '">' +
+      /* THE UNCROPPED ORIGINAL, so Edit can widen a crop rather than only
+         tighten it. Null for anything uploaded before 0031, which Edit
+         handles by re-cropping the framed image and saying so. */
+      '<input type="hidden" data-pf-master="' + esc(kind) + '" value="' +
+        esc(masterFor(profileFor(u.id), kind)) + '">' +
       '<input type="file" accept="image/*" hidden' +
         ' data-pf-file="' + esc(kind) + '" data-user="' + esc(u.id) + '">' +
       '<div class="pf-photo-acts">' +
         '<button type="button" class="ghost-btn" data-pf-pick="' + esc(kind) + '">' +
           esc(tr(url ? 'adm.pf.replace' : 'adm.pf.choose')) + '</button>' +
+        /* EDIT REOPENS THE CROPPER on the photo already there. Replace asks
+           for a different photograph; Edit asks a different question of the
+           same one, and having only Replace meant going and finding the
+           original file again to move a face two centimetres. */
+        (url ? '<button type="button" class="ghost-btn" data-pf-edit="' + esc(kind) +
+          '" data-user="' + esc(u.id) + '">' +
+          esc(tr('adm.pf.edit')) + '</button>' : '') +
         (url ? '<button type="button" class="del" data-pf-clear="' + esc(kind) + '">' +
           esc(tr('adm.pf.remove')) + '</button>' : '') +
       '</div>' +
@@ -388,6 +400,22 @@
     return blob;
   }
 
+  /* One PUT. Separated out because the master and the framed version are the
+     same request with a different body, and two copies of it drifted the first
+     time one of them needed a better error. */
+  async function putMedia(userId, kind, blob) {
+    var res = await fetch('/api/admin/media?for=' + encodeURIComponent(userId) +
+                          '&kind=' + encodeURIComponent(kind), {
+      method: 'PUT',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': blob.type },
+      body: blob
+    });
+    var body = await res.json();
+    if (!res.ok) throw new Error(body.error || tr('err.refused'));
+    return body;
+  }
+
   async function uploadPhoto(userId, kind, file, slot) {
     var status = slot.querySelector('[data-pf-shot-status]');
     var say = function (k) { if (status) status.textContent = tr(k); };
@@ -412,16 +440,33 @@
       var blob = shot ? shot.blob : await shrinkImage(file, 1600);
       if (!blob) throw new Error('this browser could not convert that image');
 
+      /* THE WHOLE PICTURE AS WELL AS THE CROP OF IT, uploaded first so that a
+         failure here happens before anything has changed on screen. It is what
+         makes Edit able to widen a crop instead of only tightening one — the
+         pixels outside the frame are gone the moment they are not kept, and
+         nobody can get them back afterwards. Uncropped and generous; the
+         framed version is what the site renders. See 0031.
+
+         Non-fatal on purpose. A photo without its master is the state every
+         photo was in before this existed, and it is a better outcome than
+         refusing the upload somebody is in the middle of. */
+      var masterUrl = '';
+      if (shot) {
+        try {
+          say('adm.pf.keepingOriginal');
+          var full = await shrinkImage(file, 2400);
+          if (full) masterUrl = (await putMedia(userId, kind + '_master', full)).url;
+        } catch (e) { masterUrl = ''; }
+      }
+
       say('adm.pf.uploading');
-      var res = await fetch('/api/admin/media?for=' + encodeURIComponent(userId) +
-                            '&kind=' + encodeURIComponent(kind), {
-        method: 'PUT',
-        credentials: 'same-origin',
-        headers: { 'Content-Type': blob.type },
-        body: blob
-      });
-      var body = await res.json();
-      if (!res.ok) { if (status) status.textContent = body.error || tr('err.refused'); return; }
+      var body;
+      try {
+        body = await putMedia(userId, kind, blob);
+      } catch (e) {
+        if (status) status.textContent = e.message || tr('err.refused');
+        return;
+      }
 
       /* Shown immediately and held in the hidden field — but NOT saved. The
          profile still saves on Save, so uploading a photo and changing your
@@ -434,8 +479,90 @@
          before it tries to measure. */
       var aspectField = slot.querySelector('[data-pf-aspect="' + kind + '"]');
       if (aspectField) aspectField.value = shot ? shot.aspect.toFixed(4) : '';
+      var masterField = slot.querySelector('[data-pf-master="' + kind + '"]');
+      if (masterField && masterUrl) masterField.value = masterUrl;
+      markProfileDirty(slot);
       slot.querySelector('.pf-shot').innerHTML =
         '<img src="' + esc(body.url) + '" alt="">';
+      if (status) {
+        status.textContent = fill('adm.pf.shotReady', { kb: Math.round(body.bytes / 1024) });
+      }
+    } catch (e) {
+      if (status) status.textContent = tr('adm.pf.shotFailed') + ' ' + e.message;
+    }
+  }
+
+  /* UNSAVED WORK, SAID OUT LOUD.
+
+     The panel is a mix: roles and status write immediately, the profile waits
+     for Save. Somebody who has just cropped a photo has no way to tell which
+     kind of change they made, and the answer arrives as a lost edit. Marking
+     the section makes the Save button change appearance the instant there is
+     something to save.
+
+     Scoped to the PERSON, not the page: two panels can be open, and dirtying
+     one must not light up the other's button. */
+  function markProfileDirty(node) {
+    var sect = node && node.closest ? node.closest('[data-profile]') : null;
+    if (!sect) return;
+    sect.classList.add('is-dirty');
+    var panel = sect.closest('.adm-panel');
+    var btn = panel && panel.querySelector('[data-pf-save]');
+    if (btn) btn.classList.add('is-dirty');
+    var note = panel && panel.querySelector('[data-pf-status]');
+    if (note) note.textContent = tr('adm.pf.unsaved');
+  }
+
+  function markProfileClean(userId) {
+    var sect = document.querySelector('[data-profile="' + userId + '"]');
+    if (sect) sect.classList.remove('is-dirty');
+    var panel = sect && sect.closest('.adm-panel');
+    var btn = panel && panel.querySelector('[data-pf-save]');
+    if (btn) btn.classList.remove('is-dirty');
+  }
+
+  /* EDIT — the same cropper, on the photo already chosen.
+     
+     It fetches the master where there is one and the framed version where
+     there is not, which is every photo uploaded before 0031. That difference
+     is said out loud rather than hidden: cropping a crop can only ever take
+     more away, and somebody widening a portrait deserves to know why it will
+     not widen. */
+  async function editPhoto(userId, kind, slot) {
+    var status = slot.querySelector('[data-pf-shot-status]');
+    var say = function (k) { if (status) status.textContent = tr(k); };
+
+    var master = (slot.querySelector('[data-pf-master="' + kind + '"]') || {}).value || '';
+    var framed = (slot.querySelector('[data-pf="' + kind + '"]') || {}).value || '';
+    var from = master || framed;
+    if (!from) return;
+
+    if (!window.PhotoCrop) { say('adm.pf.noCropper'); return; }
+
+    try {
+      say(master ? 'adm.pf.loading' : 'adm.pf.loadingCropped');
+      /* same-origin, and /media/ is public — no credentials needed and none
+         sent, so this cannot become a way to pull a cookie into a canvas. */
+      var res = await fetch(from, { cache: 'force-cache' });
+      if (!res.ok) throw new Error(tr('adm.pf.gone'));
+      var blob = await res.blob();
+
+      var shot = await window.PhotoCrop.open(
+        new File([blob], 'photo', { type: blob.type || 'image/webp' }), kind);
+      if (!shot) { say('adm.pf.cropCancelled'); return; }
+
+      say('adm.pf.uploading');
+      var body = await putMedia(userId, kind, shot.blob);
+
+      slot.querySelector('[data-pf="' + kind + '"]').value = body.url;
+      var af = slot.querySelector('[data-pf-aspect="' + kind + '"]');
+      if (af) af.value = shot.aspect.toFixed(4);
+      /* THE MASTER IS NOT TOUCHED. Re-cropping does not produce a new original,
+         and overwriting it with the crop would quietly make the next edit
+         one-way again — which is the whole thing 0031 exists to prevent. */
+      slot.querySelector('.pf-shot').innerHTML =
+        '<img src="' + esc(body.url) + '" alt="">';
+      markProfileDirty(slot);
       if (status) {
         status.textContent = fill('adm.pf.shotReady', { kb: Math.round(body.bytes / 1024) });
       }
@@ -505,12 +632,12 @@
           photoSlot(u, 'bio_photo', (p && p.bio_photo) || '') +
         '</div>' +
 
-        '<div class="pf-actions">' +
-          '<button type="button" class="solid-btn" data-pf-save="' + esc(u.id) + '">' +
-            esc(tr('adm.pf.save')) + '</button>' +
-          '<span class="hint" data-pf-status="' + esc(u.id) + '">' +
-            esc(tr('adm.pf.saveNote')) + '</span>' +
-        '</div>' +
+        /* SAVE IS NOT HERE ANY MORE. It sat at the foot of this section, which
+           made it look like it belonged to the photos above it — and left the
+           bottom of the panel showing only Remove person, so the last thing on
+           screen was the destructive one. It is now in the panel's own action
+           row, beside Remove, where the two ends of "I am finished with this
+           person" sit together. */
       '</div>' +
     '</div>';
   }
@@ -607,6 +734,25 @@
               esc(tr('adm.protected')) + '</span>'
           : '<button type="button" class="del" data-remove="' + esc(u.id) + '">' +
               esc(tr('adm.removePerson')) + '</button>') +
+
+        /* THE ONE BUTTON THAT MAKES ANY OF THIS REAL.
+
+           Everything else in this panel saves the moment it is touched — a
+           role, a status, a partner grant. The profile does not: the bio, the
+           photos and the slug are one edit, saved together. That difference
+           was invisible, so a photo was cropped, looked right on screen, and
+           was lost on the next click.
+
+           `is-dirty` is added the moment anything in the section changes and
+           removed when the save lands, so the button ANNOUNCES the pending
+           work rather than sitting there looking the same either way. */
+        (u.protected ? '' :
+          '<div class="pf-commit">' +
+            '<span class="hint" data-pf-status="' + esc(u.id) + '">' +
+              esc(tr('adm.pf.saveNote')) + '</span>' +
+            '<button type="button" class="solid-btn pf-save" data-pf-save="' +
+              esc(u.id) + '">' + esc(tr('adm.pf.save')) + '</button>' +
+          '</div>') +
       '</div>' +
     '</div>';
   }
@@ -625,6 +771,12 @@
     if (!p || kind !== 'bio_photo') return '';
     var v = parseFloat(p.bio_photo_aspect);
     return isFinite(v) && v > 0 ? String(v) : '';
+  }
+
+  /* The uncropped original recorded for a slot, if there is one. */
+  function masterFor(p, kind) {
+    if (!p) return '';
+    return (kind === 'bio_photo' ? p.bio_photo_master : p.photo_master) || '';
   }
 
   function profileFor(id) {
@@ -1114,6 +1266,10 @@
       var el = sect.querySelector('[data-slot="' + kind + '"] [data-pf="' + kind + '"]');
       return el ? el.value.trim() : '';
     };
+    var shotMaster = function (kind) {
+      var el = sect.querySelector('[data-slot="' + kind + '"] [data-pf-master="' + kind + '"]');
+      return el ? el.value.trim() : '';
+    };
     var shotAspect = function (kind) {
       var el = sect.querySelector('[data-slot="' + kind + '"] [data-pf-aspect="' + kind + '"]');
       var v = el ? parseFloat(el.value) : NaN;
@@ -1147,6 +1303,8 @@
       photo: shot('photo'),
       bio_photo: shot('bio_photo'),
       bio_photo_aspect: shotAspect('bio_photo'),
+      photo_master: shotMaster('photo'),
+      bio_photo_master: shotMaster('bio_photo'),
       text: text
     };
 
@@ -1172,6 +1330,10 @@
           ? tr('adm.pf.saved')
           : tr('adm.pf.savedNoFile') + (body.fileError ? ' — ' + body.fileError : '');
       }
+      /* Before the reload, so the button stops announcing work that is done
+         even if load() is slow — and load() re-renders from fresh state, which
+         cannot be dirty. */
+      markProfileClean(userId);
       await load();
     } catch (e) {
       if (status) status.textContent = tr('err.unreachable') + ' ' + e.message;
@@ -1182,6 +1344,13 @@
 
   /* Re-reads the columns when a picker changes, so switching language shows
      that language's text rather than leaving the previous one in the box. */
+  /* ANY edit inside a profile section, however it was made. `input` covers
+     typing and the language pickers; the photo paths call markProfileDirty
+     themselves because they change a hidden field, which fires nothing. */
+  document.addEventListener('input', function (e) {
+    if (e.target.closest && e.target.closest('[data-profile]')) markProfileDirty(e.target);
+  });
+
   document.addEventListener('change', function (e) {
     var file = e.target.closest('[data-pf-file]');
     if (file) {
@@ -1222,12 +1391,24 @@
       return slotEl.querySelector('[data-pf-file]').click();
     }
 
+    var edit = e.target.closest('[data-pf-edit]');
+    if (edit) {
+      return editPhoto(edit.dataset.user, edit.dataset.pfEdit, edit.closest('[data-slot]'));
+    }
+
     var clear = e.target.closest('[data-pf-clear]');
     if (clear) {
       var cs = clear.closest('[data-slot]');
       cs.querySelector('[data-pf="' + clear.dataset.pfClear + '"]').value = '';
+      /* The master goes with it. Keeping it would leave Edit offering to crop
+         a photograph the person has just removed. */
+      var cm = cs.querySelector('[data-pf-master="' + clear.dataset.pfClear + '"]');
+      if (cm) cm.value = '';
       cs.querySelector('.pf-shot').innerHTML =
         '<span class="pf-empty">' + esc(tr('adm.pf.noPhoto')) + '</span>';
+      var ce = cs.querySelector('[data-pf-edit="' + clear.dataset.pfClear + '"]');
+      if (ce) ce.remove();
+      markProfileDirty(cs);
       clear.remove();
       /* Removed from the FORM, not from the bucket. Save is what makes it
          true, and the object stays reachable until nothing points at it —

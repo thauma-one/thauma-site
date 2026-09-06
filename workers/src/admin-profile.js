@@ -235,6 +235,11 @@ export default {
          bio page layout however it arrived. Null when absent, which means
          "measure it if you can", the behaviour every profile had before. */
       bio_photo_aspect: aspect(body.bio_photo_aspect),
+      /* The uncropped originals. Never written into the markdown — the public
+         site renders the framed version, and the master exists so the console
+         can offer the crop back for editing. See 0031. */
+      photo_master: clean(body.photo_master, 300),
+      bio_photo_master: clean(body.bio_photo_master, 300),
       sort_order: Number.isFinite(+body.sort_order) ? Math.trunc(+body.sort_order) : 0,
       now,
     };
