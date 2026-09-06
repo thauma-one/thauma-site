@@ -119,5 +119,29 @@ check("the browser asks the SERVER who may publish org-wide", () => {
     "roles are being re-derived in the browser; staff-data.js already decided");
 });
 
+/* --------------------------------------------------- the resources shelves */
+
+check("the shelves stack; they are not grid items themselves", () => {
+  /* THE BUG IN THE SCREENSHOT. #resourceList kept `class="cards"` from before
+     shelves existed — a grid of 260px columns — so the three <section>s became
+     the grid items and sat side by side in narrow strips. */
+  const res = readFileSync(`${build}/staff/resources/index.html`, "utf8");
+  const d = new JSDOM(res).window.document;
+  const list = d.querySelector("#resourceList");
+  assert(list, "no #resourceList");
+  assert(!list.classList.contains("cards"),
+    "#resourceList is still .cards — the shelves will lay out as grid columns");
+});
+
+check("a resource card leaves room for THREE actions", () => {
+  /* .card h4 reserves 76px for the two a directory card has. A resource card
+     also has Share, so the row printed over the title. */
+  const css = readFileSync("src/css/staff.css", "utf8");
+  const scoped = css.match(/\.res-shelf \.card-actions\{([^}]*)\}/);
+  assert(scoped, "nothing repositions the actions on a resource card");
+  assert(/position:\s*static/.test(scoped[1]),
+    "resource actions are still absolutely positioned over the title");
+});
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -1890,6 +1890,22 @@ html:not(.roles-known)[data-area="admin"] .console-row[data-row="admin"] nav a{d
    than yours, and a tab hides two thirds of that.
    ======================================================================= */
 .res-shelf{margin:0 0 34px}
+
+/* THREE ACTIONS, NOT TWO. `.card h4` reserves 76px on the right for the
+   absolutely-positioned Edit/Delete of a directory card. A resource card also
+   has Share, which does not fit — the row printed straight across the title,
+   worst on a two-line one like "Safeguarding Policy (draft)".
+
+   So on these cards the actions come out of the corner and sit at the end, in
+   flow. It survives a fourth button, and it survives a long title, neither of
+   which reserving a fixed inset does. */
+.res-shelf .card{display:flex;flex-direction:column}
+.res-shelf .card h4{padding-right:0}
+.res-shelf .card-actions{position:static;order:99;margin-top:14px;
+  padding-top:12px;border-top:1px solid var(--line);gap:14px}
+/* The share switch is the card's own state, so it stays above the actions
+   that act on it. */
+.res-shelf .res-toggle{order:98;margin-top:12px;align-self:flex-start}
 .res-shelf h3{font-size:16px;margin:0 0 4px}
 .res-shelf-note{margin:0 0 14px;font-size:13px;color:var(--dim);max-width:60ch}
 /* Where a shared card says who passed it on — the answer to "how did I get

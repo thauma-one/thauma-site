@@ -5,7 +5,12 @@ staffNum: "05"
 staffTitle: Resources
 staffHeading: Internal <b>resources</b>
 ---
-<div class="cards" id="resourceList"><p class="empty" data-i18n="common.loading">Loading&hellip;</p></div>
+{#- NOT `.cards`. That class is a grid of 260px columns, and once the
+   shelves went inside it the three SECTIONS became the grid items — so
+   Thauma, personal and shared sat side by side in three narrow columns
+   instead of stacking, with the cards crushed inside them. Each shelf
+   brings its own `.cards` grid; this is just the thing they stack in. -#}
+<div id="resourceList"><p class="empty" data-i18n="common.loading">Loading&hellip;</p></div>
 <p class="row-actions"><button class="ghost-btn" id="addResourceBtn" type="button" data-i18n="res.add">+ Add resource</button></p>
 
 {#- A DIALOG, NOT A PANEL AT THE BOTTOM OF THE PAGE.
