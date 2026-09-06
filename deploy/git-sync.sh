@@ -132,7 +132,23 @@ fi
 # judgment is exactly what --ff-only protects everywhere else, and it still
 # does: this is a deliberate, bounded exception for files nobody writes by hand.
 CONTENT_BRANCH="${THAUMA_CONTENT_BRANCH:-main}"
-CONTENT_PATHS='^src/_data/'
+#
+# src/_data/       the words on the public pages, written by Admin -> Content
+# src/content/     team profiles, written by Admin -> People -> a person's
+#                  profile. Nothing else lives there and nobody edits it by
+#                  hand; admin-profile.js is the only writer.
+#
+# src/content/ WAS MISSING, and that was the whole of "I published my profile
+# and the dev site still shows nothing". A profile publish writes
+# src/content/team/<slug>.md to main. This merge then looked at what main
+# carried, found a path outside the list, decided it was somebody's code in
+# flight, and correctly refused — so the fast path declined every time a
+# profile was published. It still arrived eventually, because sync-dev.yml
+# merges main into dev on GitHub every ten minutes without any path rule, so
+# the symptom was a ten-minute wait rather than a total failure. That is worse
+# than a clean break: it looks like nothing happened, and then it works later
+# for no visible reason.
+CONTENT_PATHS='^src/(_data|content)/'
 
 if [ "$BRANCH" != "$CONTENT_BRANCH" ] \
    && git rev-parse --verify --quiet "origin/$CONTENT_BRANCH" >/dev/null; then

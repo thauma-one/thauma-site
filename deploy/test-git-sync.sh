@@ -49,6 +49,41 @@ ok "the merge was pushed" "$(git -C "$ROOT/pi" rev-parse dev)" "$(git -C "$ROOT/
 echo "$OUT" | grep -q "merged content from main" && echo "  PASS  it said so" && pass=$((pass+1)) || { echo "  FAIL  no log line"; echo "$OUT"; fail=$((fail+1)); }
 
 echo
+echo "1b. A PUBLISHED PROFILE reaches the Pi too"
+# THE ONE THAT WAS MISSING. CONTENT_PATHS covered src/_data/ only, and a
+# profile publish writes src/content/team/<slug>.md — so this merge saw a path
+# outside the list, decided it was somebody's code in flight, and refused.
+# Correctly, by its own rule; the rule was just wrong. The symptom was "I
+# published my profile and the dev site still shows nothing", and then it
+# appeared ten minutes later when sync-dev.yml did the same merge on GitHub
+# without a path rule. Slow and mysterious is worse than broken and obvious.
+setup
+mkdir -p "$ROOT/editor/src/content/team"
+printf -- '---\nname: Chase Roush\nslug: chase-roush\n---\nBio.\n' \
+  > "$ROOT/editor/src/content/team/chase-roush.md"
+q "$ROOT/editor" add -A; q "$ROOT/editor" commit -m "Update Chase Roush's team profile [skip ci]"; q "$ROOT/editor" push origin main
+OUT=$(THAUMA_REPO="$ROOT/pi" bash "$SCRIPT" 2>&1); RC=$?
+ok "exit code" "$RC" "0"
+ok "the profile is on dev's working tree" \
+   "$(head -2 "$ROOT/pi/src/content/team/chase-roush.md" 2>/dev/null | tail -1)" "name: Chase Roush"
+echo "$OUT" | grep -q "merged content from main" && echo "  PASS  it said so" && pass=$((pass+1)) || { echo "  FAIL  no log line"; echo "$OUT"; fail=$((fail+1)); }
+
+echo
+echo "1c. a profile AND code together is STILL refused"
+# Widening the rule must not widen it to code. A publish in flight on main is
+# still a person's decision, profile or no profile.
+setup
+mkdir -p "$ROOT/editor/src/content/team"
+printf -- '---\nname: X\n---\n' > "$ROOT/editor/src/content/team/x.md"
+echo 'code v2' > "$ROOT/editor/worker.js"
+q "$ROOT/editor" add -A; q "$ROOT/editor" commit -m "profile and code"; q "$ROOT/editor" push origin main
+OUT=$(THAUMA_REPO="$ROOT/pi" bash "$SCRIPT" 2>&1); RC=$?
+ok "exit code" "$RC" "0"
+ok "dev's code is untouched" "$(cat "$ROOT/pi/worker.js")" "code v1"
+ok "and the profile did NOT sneak in" "$(test -e "$ROOT/pi/src/content/team/x.md" && echo yes || echo no)" "no"
+echo "$OUT" | grep -q "not merging main: it carries more than content" && echo "  PASS  it refused, out loud" && pass=$((pass+1)) || { echo "  FAIL  no refusal"; echo "$OUT"; fail=$((fail+1)); }
+
+echo
 echo "2. CODE on main is NOT merged — that is a person's decision"
 setup
 echo 'code v2' > "$ROOT/editor/worker.js"
