@@ -226,7 +226,26 @@ ${BEHAVIOUR_JS}
           '%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%278%27%3E' +
           '%3Cpath d=%27M1 1l5 5 5-5%27 stroke=%27%23888%27 stroke-width=%272%27 fill=%27none%27/%3E%3C/svg%3E%22);' +
         'background-repeat:no-repeat;background-position:right 14px center}' +
-      '.fld select:focus{outline:0;border-color:var(--acc);box-shadow:0 0 0 3px var(--faint)}';
+      '.fld select:focus{outline:0;border-color:var(--acc);box-shadow:0 0 0 3px var(--faint)}' +
+
+      /* WIDER WHERE THERE IS ROOM, and only this widget. The shared shell caps
+         a card at 30rem because a 900px row of fields is unpleasant to fill
+         in — true of the sign-up form, which is three short inputs. This one
+         has a message box, and 480px of it means writing a paragraph through
+         a letterbox and scrolling to read back what you wrote.
+
+         So the extra width goes where it helps. Name and email pair up,
+         because they are short and adjacent and always the first two; message
+         and everything else take the full span. Not a media query: the class is
+         set from the CONTAINER's measured width, so a narrow column on a big
+         monitor still gets the single-column form. */
+      '.card.wide{max-width:44rem}' +
+      '.card.wide .form{display:grid;grid-template-columns:1fr 1fr;column-gap:18px}' +
+      '.card.wide .form>*{grid-column:1/-1}' +
+      '.card.wide .form>.fld:nth-child(1),' +
+      '.card.wide .form>.fld:nth-child(2){grid-column:auto}' +
+      /* The box gets the height the width bought it. */
+      '.card.wide .fld textarea{min-height:150px}';
     root.appendChild(style);
 
     var host = document.createElement('div');

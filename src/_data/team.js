@@ -17,6 +17,15 @@ const IMG_DIR = path.join(__dirname, "..", "img");
 // untouched. Returns null (template falls back to a plain square frame)
 // if the file is missing or unreadable, so a bad reference never fails
 // the build.
+/* A shape written into the front matter, held to the same 0.4–2.5 bounds the
+   measured path uses. Returns null rather than a default so `??` can fall
+   through to measuring — 0 and NaN both mean "nothing useful was written". */
+function clampAspect(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return Math.max(0.4, Math.min(2.5, n));
+}
+
 function resolvePhotoAspect(publicPath) {
   if (!publicPath || !publicPath.startsWith("/img/")) return null;
   const filePath = path.join(IMG_DIR, publicPath.slice("/img/".length));
@@ -41,9 +50,14 @@ module.exports = () => {
         slug: f.replace(/\.md$/, ""),
         ...data,
         bioPhoto,
-        bioPhotoAspect: resolvePhotoAspect(bioPhoto),
+        /* STATED BEATS MEASURED. A photo cropped in the console records the
+           shape it was cropped to, and that is the answer — the file is in R2
+           where resolvePhotoAspect cannot reach it and would return null,
+           squaring a portrait. Falling back to measuring keeps every photo
+           committed under src/img/ working exactly as before. */
+        bioPhotoAspect: clampAspect(data.bio_photo_aspect) ?? resolvePhotoAspect(bioPhoto),
         bioPhoto2,
-        bioPhoto2Aspect: resolvePhotoAspect(bioPhoto2),
+        bioPhoto2Aspect: clampAspect(data.bio_photo_2_aspect) ?? resolvePhotoAspect(bioPhoto2),
       };
     })
     .sort((a, b) => (a.order || 99) - (b.order || 99));

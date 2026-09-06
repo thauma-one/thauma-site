@@ -173,6 +173,12 @@ async function isProtected(db, userId) {
   return !!(u && u.protected);
 }
 
+const PROTECTED_ROLES_MSG =
+  "That is the master account. It holds every role permanently so that there " +
+  "is always a way back in — a failsafe that can reach administration but not " +
+  "the staff console has a gap in it, and the gap only shows up on the day it " +
+  "is needed.";
+
 const PROTECTED_MSG =
   "That account is protected: it is the one that can always get back in. " +
   "Removing or suspending it would need a database migration, on purpose.";
@@ -637,8 +643,13 @@ export default {
         if (!ROLES.has(body.role)) return json({ error: "Unknown role" }, 400);
         if (!userId) return json({ error: "user_id is required" }, 400);
 
-        if (!body.grant && body.role === "admin" && await isProtected(db, userId)) {
-          return json({ error: PROTECTED_MSG }, 409);
+        /* EVERY ROLE, not just admin. 0029 grants the protected account all
+           four permanently and a trigger refuses to remove any of them — this
+           says so in a sentence instead of letting the constraint surface
+           through a path written for something else. It read `role === "admin"`
+           when admin was the only one guarded. */
+        if (!body.grant && await isProtected(db, userId)) {
+          return json({ error: PROTECTED_ROLES_MSG }, 409);
         }
         if (!body.grant && await wouldStrandOrg(db, { userId, removingRole: body.role })) {
           return json({

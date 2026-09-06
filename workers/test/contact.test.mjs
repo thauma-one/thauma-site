@@ -12,6 +12,7 @@
  * What it shares: a honeypot, a per-IP rate limit, a hashed IP, and the rule
  * that a partner's own words cannot become markup on somebody else's website.
  */
+import { readFileSync } from "node:fs";
 import handler, { contactScript, messageFor } from "../src/contact.js";
 
 let pass = 0, fail = 0;
@@ -375,6 +376,45 @@ await check('"thauma" is the organisation, and it can embed its own form', async
     "the organisation's form must be found by its NULL partner, not by a slug");
   assert(!/p\.slug = /i.test(ran),
     "it must not try to join `partners` — there is no row to join to");
+});
+
+/* --------------------------------------------------------------- WIDE HOSTS
+
+   The shared shell caps a card at 30rem. Right for the sign-up form's three
+   short inputs; wrong here, because this one has a message box and writing a
+   paragraph through a 480px letterbox means scrolling to read back what you
+   wrote. Reported twice from real use before it was believed.
+--------------------------------------------------------------------------- */
+
+await check("a wide container gets a wider card", async () => {
+  const js = contactScript(FORM, "chase-roush", "https://thauma.one");
+  assert(/\.card\.wide\{[^}]*max-width:44rem/.test(js),
+    "no wider cap for a wide container — the card stays at 30rem");
+});
+
+await check("the width becomes a layout, not just a longer row of inputs", async () => {
+  /* Stretching single fields to 700px is exactly what the 30rem cap exists to
+     prevent. The extra room has to go somewhere useful or the cap was right. */
+  const js = contactScript(FORM, "chase-roush", "https://thauma.one");
+  assert(/\.card\.wide \.form\{[^}]*grid-template-columns:1fr 1fr/.test(js),
+    "the wide card does not lay its fields out in two columns");
+  assert(/\.card\.wide \.form>\*\{grid-column:1\/-1\}/.test(js),
+    "fields do not default to the full span — the message box would be half width");
+  assert(/nth-child\(1\)[\s\S]{0,90}nth-child\(2\)\{grid-column:auto\}/.test(js),
+    "name and email are not paired; they are the only two short enough to be");
+  assert(/\.card\.wide \.fld textarea\{min-height:150px\}/.test(js),
+    "the message box did not grow with the card");
+});
+
+await check("wide is decided by the CONTAINER, never by the viewport", async () => {
+  /* A 380px column on a large monitor must still get the single-column form,
+     and a media query would never fire there. */
+  const shell = readFileSync(new URL("../src/lib/embed-form.js", import.meta.url), "utf8");
+  assert(/classList\.toggle\('wide', w >= \d+\)/.test(shell),
+    "nothing sets .wide from the measured container width");
+  const js = contactScript(FORM, "chase-roush", "https://thauma.one");
+  assert(!/@media[^{]*width[^{]*\{[^}]*\.card\b/.test(js),
+    "the card's width is being decided by the viewport rather than its container");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

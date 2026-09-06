@@ -797,7 +797,7 @@ DELETE FROM mailing_tags WHERE id = :id AND partner_id IS :partner_id;
 SELECT
   u.id AS user_id, u.name, u.email, u.status,
   sp.is_public, sp.slug, sp.region, sp.public_email,
-  sp.photo, sp.bio_photo, sp.sort_order, sp.updated_at,
+  sp.photo, sp.bio_photo, sp.bio_photo_aspect, sp.sort_order, sp.updated_at,
   (SELECT GROUP_CONCAT(t.lang || CHAR(31) || COALESCE(t.role_title, '') ||
                        CHAR(31) || COALESCE(t.bio, ''), CHAR(30))
      FROM staff_profile_translations t WHERE t.user_id = u.id) AS translations
@@ -812,10 +812,10 @@ ORDER BY u.name COLLATE NOCASE;
 -- was first given a profile, which is not the same as the last edit.
 INSERT INTO staff_profiles
   (user_id, is_public, slug, region, public_email, photo, bio_photo,
-   sort_order, created_at, updated_at)
+   bio_photo_aspect, sort_order, created_at, updated_at)
 VALUES
   (:user_id, :is_public, :slug, :region, :public_email, :photo, :bio_photo,
-   :sort_order, :now, :now)
+   :bio_photo_aspect, :sort_order, :now, :now)
 ON CONFLICT(user_id) DO UPDATE SET
   is_public    = excluded.is_public,
   slug         = excluded.slug,
@@ -823,6 +823,7 @@ ON CONFLICT(user_id) DO UPDATE SET
   public_email = excluded.public_email,
   photo        = excluded.photo,
   bio_photo    = excluded.bio_photo,
+  bio_photo_aspect = excluded.bio_photo_aspect,
   sort_order   = excluded.sort_order,
   updated_at   = excluded.updated_at;
 
@@ -858,7 +859,8 @@ SELECT user_id FROM staff_profiles WHERE slug = :slug AND user_id <> :user_id;
 -- order they should appear.
 SELECT
   u.id AS user_id, u.name, u.email,
-  sp.slug, sp.region, sp.public_email, sp.photo, sp.bio_photo, sp.sort_order
+  sp.slug, sp.region, sp.public_email, sp.photo, sp.bio_photo,
+  sp.bio_photo_aspect, sp.sort_order
 FROM staff_profiles sp
 JOIN users u ON u.id = sp.user_id
 WHERE sp.is_public = 1

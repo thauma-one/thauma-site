@@ -1,0 +1,16 @@
+-- 0030 — remember the shape a bio photo was cropped to
+--
+-- A bio page photo is deliberately variable: the frame is whatever the picture
+-- wants to be, and src/_data/team.js works that out by READING the file and
+-- dividing width by height.
+--
+-- That works for a file in src/img/ and cannot work for an object in R2 — the
+-- Eleventy build has no access to the bucket, gets null, and the template
+-- falls back to a square. So every photo uploaded through the console lost its
+-- shape on the way to the page, and a portrait was silently squared.
+--
+-- Now the cropper knows the answer at the moment somebody chooses it, so it is
+-- recorded rather than re-derived. NULL keeps the old behaviour — measure the
+-- file if it can be measured, square if it cannot — which is what every row
+-- written before this migration wants.
+ALTER TABLE staff_profiles ADD COLUMN bio_photo_aspect REAL;

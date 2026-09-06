@@ -767,3 +767,59 @@
 .adm-protected{font-size:11px;letter-spacing:var(--ls-label);text-transform:uppercase;
   color:var(--dim);border:1px solid var(--line);border-radius:3px;padding:5px 9px;
   white-space:nowrap;cursor:help}
+
+
+/* ---- the master account ----
+   Its role switches are on and cannot be turned off: 0029 grants every role to
+   a protected account and a trigger refuses to remove one. Shown as settled
+   fact rather than as a control that would be refused — the cursor is the
+   honest part, since a switch that looks pressable and is not is worse than
+   one that plainly is not. */
+.switch.small.is-fixed{cursor:default;opacity:.85}
+.switch.small.is-fixed .switch-track{filter:saturate(.55)}
+
+/* ================================================== THE PHOTO CROPPER
+   Borrows the confirm dialog's shell so there is one thing on this console
+   that means "this is the only thing you are doing right now".
+
+   THE FRAME IS THE FIXED PART and the picture moves behind it, which is the
+   model every photo tool a person has already used works on. The checkerboard
+   is deliberate: it marks the edge of the frame without a border, so what is
+   judged is the photograph rather than a line drawn near it.
+   ==================================================================== */
+.pc{max-width:600px;width:100%}
+.pc-hint{color:var(--dim,#8a93a3);font-size:13px;line-height:1.55;margin:0 0 16px;
+  max-width:56ch}
+
+.pc-stage{display:flex;justify-content:center;padding:14px;border-radius:8px;
+  background:
+    repeating-conic-gradient(rgba(255,255,255,.045) 0% 25%, transparent 0% 50%)
+    50%/18px 18px}
+/* grab/grabbing, because the only way to know a thing can be dragged before
+   dragging it is the cursor. */
+.pc-canvas{display:block;cursor:grab;touch-action:none;border-radius:4px;
+  box-shadow:0 8px 30px rgba(0,0,0,.5)}
+.pc-canvas:active{cursor:grabbing}
+
+.pc-shapes{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.pc-shape{background:none;border:1px solid var(--line);color:var(--dim,#8a93a3);
+  font:inherit;font-size:12px;padding:7px 12px;border-radius:999px;cursor:pointer;
+  transition:.15s}
+.pc-shape.is-on{border-color:var(--voice-tech);color:var(--voice-tech);
+  background:rgba(47,216,255,.1)}
+@media(hover:hover){ .pc-shape:hover{color:var(--text)} }
+
+.pc-zoom{display:flex;align-items:center;gap:14px;margin-top:16px}
+.pc-zoom input[type="range"]{flex:1;accent-color:var(--voice-tech);cursor:pointer}
+.pc-reset{flex:0 0 auto}
+
+/* The output size, which is the one number that explains "why did this come
+   out soft" — and the only place it is ever shown. */
+.pc-out{margin:12px 0 0;font-size:12px;color:var(--dim,#8a93a3);
+  font-variant-numeric:tabular-nums}
+.pc-out.is-warn{color:var(--warn,#F5B845)}
+
+@media (max-width: 640px){
+  .pc-stage{padding:8px}
+  .pc-zoom{flex-wrap:wrap}
+}

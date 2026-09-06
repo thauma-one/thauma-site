@@ -262,8 +262,10 @@
           (open ? 'true' : 'false') + '">' +
           '<span class="ms-chev" aria-hidden="true"></span>' +
           '<div class="adm-who">' +
-            '<span class="adm-name">' + esc(u.name) + '</span>' +
-            '<span class="adm-email">' + esc(u.email) + '</span>' +
+            '<span class="adm-name">' +
+              esc(u.protected ? tr('adm.masterAccount') : u.name) + '</span>' +
+            '<span class="adm-email">' + esc(u.email) +
+              (u.protected ? ' · ' + esc(tr('adm.masterNote')) : '') + '</span>' +
           '</div>' +
           '<div class="adm-tags">' + roleTags +
             (profileFor(u.id) && profileFor(u.id).is_public
@@ -338,6 +340,10 @@
           : '<span class="pf-empty">' + esc(tr('adm.pf.noPhoto')) + '</span>') +
       '</div>' +
       '<input type="hidden" data-pf="' + esc(kind) + '" value="' + esc(url) + '">' +
+      /* The shape the crop produced. Only the bio frame varies, but the field
+         exists on both so the slot has one markup rather than two. */
+      '<input type="hidden" data-pf-aspect="' + esc(kind) + '" value="' +
+        esc(aspectFor(profileFor(u.id), kind)) + '">' +
       '<input type="file" accept="image/*" hidden' +
         ' data-pf-file="' + esc(kind) + '" data-user="' + esc(u.id) + '">' +
       '<div class="pf-photo-acts">' +
@@ -387,8 +393,23 @@
     var say = function (k) { if (status) status.textContent = tr(k); };
 
     try {
+      /* THE PERSON DECIDES WHAT THE FRAME GETS.
+
+         Before this, the whole photo was scaled to 1600px and `object-fit:
+         cover` cropped it to the centre at display time — so a portrait taken
+         with headroom lost the top of the head on the team page and there was
+         nothing to be done about it from here. The cropper returns bytes that
+         are already the right shape.
+
+         Cancelling is a real answer and leaves everything untouched, which is
+         why this returns rather than throwing. */
+      var shot = window.PhotoCrop ? await window.PhotoCrop.open(file, kind) : null;
+      if (window.PhotoCrop && !shot) { say('adm.pf.cropCancelled'); return; }
+
       say('adm.pf.shrinking');
-      var blob = await shrinkImage(file, 1600);
+      /* The fallback is the old path, for a browser with no canvas cropper —
+         a whole photo in the frame beats no photo at all. */
+      var blob = shot ? shot.blob : await shrinkImage(file, 1600);
       if (!blob) throw new Error('this browser could not convert that image');
 
       say('adm.pf.uploading');
@@ -406,6 +427,13 @@
          profile still saves on Save, so uploading a photo and changing your
          mind costs nothing. */
       slot.querySelector('[data-pf="' + kind + '"]').value = body.url;
+      /* THE SHAPE TRAVELS WITH THE URL. A bio photo's frame is whatever the
+         picture is, and the build works that out by reading the file — which
+         it can do for something in /img/ and cannot for an object in R2. So
+         the crop states it, and src/_data/team.js believes the statement
+         before it tries to measure. */
+      var aspectField = slot.querySelector('[data-pf-aspect="' + kind + '"]');
+      if (aspectField) aspectField.value = shot ? shot.aspect.toFixed(4) : '';
       slot.querySelector('.pf-shot').innerHTML =
         '<img src="' + esc(body.url) + '" alt="">';
       if (status) {
@@ -498,9 +526,16 @@
   /* Everything you can change about one person, in one place, with what each
      control actually does written next to it. */
   function personPanel(u, open) {
+    /* THE MASTER ACCOUNT IS NOT A PERSON. It exists so there is always a way
+       back in, so it holds every role permanently and the database enforces
+       that with a trigger — see 0029. Showing operable switches would be
+       offering a change the write is going to refuse. */
+    var system = !!u.protected;
+
     var roles = ALL_ROLES.map(function (r) {
-      var on = u.roles.indexOf(r) >= 0;
-      return '<button type="button" class="switch small" role="switch"' +
+      var on = system || u.roles.indexOf(r) >= 0;
+      return '<button type="button" class="switch small' + (system ? ' is-fixed' : '') +
+        '" role="switch"' + (system ? ' disabled aria-disabled="true"' : '') +
         ' data-user="' + esc(u.id) + '" data-role="' + esc(r) + '"' +
         ' aria-checked="' + (on ? 'true' : 'false') + '">' +
         '<span class="switch-track"><span class="switch-state">' +
@@ -530,7 +565,10 @@
         '<span class="switch-note">' + esc(tr('adm.partnerAccessNote')) + '</span>' +
       '</div>' +
 
-      profileSection(u) +
+      /* No public profile: it is not a person, and 0029 refuses to create one.
+         The section offers a photo, a region and a contact address — three
+         things a system account has nothing true to say about. */
+      (system ? '' : profileSection(u)) +
 
       '<div class="adm-section adm-danger">' +
         '<div class="fld">' +
@@ -580,6 +618,14 @@
   var ui = { sort: 'name', profileLangA: null, profileLangB: null };
 
   var SORTS = ['name', 'region', 'partner', 'role', 'status'];
+
+  /* The shape already recorded for a slot, so re-opening a profile does not
+     forget it and a Save that changed only the bio text does not blank it. */
+  function aspectFor(p, kind) {
+    if (!p || kind !== 'bio_photo') return '';
+    var v = parseFloat(p.bio_photo_aspect);
+    return isFinite(v) && v > 0 ? String(v) : '';
+  }
 
   function profileFor(id) {
     return (state.profiles || []).filter(function (p) { return p.user_id === id; })[0] || null;
@@ -1068,6 +1114,11 @@
       var el = sect.querySelector('[data-slot="' + kind + '"] [data-pf="' + kind + '"]');
       return el ? el.value.trim() : '';
     };
+    var shotAspect = function (kind) {
+      var el = sect.querySelector('[data-slot="' + kind + '"] [data-pf-aspect="' + kind + '"]');
+      var v = el ? parseFloat(el.value) : NaN;
+      return isFinite(v) && v > 0 ? v : null;
+    };
 
     /* Both columns, keyed by whichever language each is showing. Reading the
        pickers rather than assuming a and b are the first two languages — they
@@ -1095,6 +1146,7 @@
          already holds the URL the upload returned. */
       photo: shot('photo'),
       bio_photo: shot('bio_photo'),
+      bio_photo_aspect: shotAspect('bio_photo'),
       text: text
     };
 

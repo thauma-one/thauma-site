@@ -267,6 +267,9 @@ await check("every real query converts with its documented params", async () => 
     detail: null,
     // directory + resources
     emails: "[]", phones: "[]", role: null, link: null, photo: null,
+    // a staff profile's photos. bio_photo_aspect is null here on purpose:
+    // null is the ordinary value and means "measure the file if you can".
+    bio_photo: null, bio_photo_aspect: null,
     visibility: "staff", created_by: "u_chase", levels: "staff",
     // administration
     user_id: "u_1", role: "admin", granted_by: "u_1", status: "active",

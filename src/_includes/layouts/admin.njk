@@ -57,6 +57,8 @@
 
 <script src="/js/staff-i18n.js?v={{ "/js/staff-i18n.js" | v }}"></script>
 <script src="/js/staff.js?v={{ "/js/staff.js" | v }}"></script>
+{#- Before admin.js, which calls it the moment somebody picks a file. -#}
+<script src="/js/photo-crop.js?v={{ "/js/photo-crop.js" | v }}"></script>
 <script src="/js/admin.js?v={{ "/js/admin.js" | v }}"></script>
 {#- Page-specific behaviour, loaded only where it is used. admin.js is the
    shared shell — identity, the role gate, the pages that read /api/admin.

@@ -37,6 +37,21 @@ const MAX = { region: 120, email: 200, role_title: 120, bio: 4000, slug: 80 };
 
 /** Trim, clamp, and strip control characters. Empty string becomes null so
     "not set" is one value in the database rather than two. */
+/* Width ÷ height, or null.
+ *
+ * Held to the same 0.4–2.5 bounds src/_data/team.js applies when it measures a
+ * file itself, so a shape cannot reach the page through this door that would
+ * be refused coming through the other one. A 20:1 panorama in a bio frame
+ * breaks the layout however it arrived.
+ *
+ * Null rather than a default: the build reads null as "measure it if you can",
+ * which is what every profile written before the cropper wants. */
+function aspect(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return Math.max(0.4, Math.min(2.5, n));
+}
+
 function clean(v, max) {
   if (typeof v !== "string") return null;
   const out = v.replace(/[\x00-\x1f\x7f]/g, " ").trim().slice(0, max);
@@ -72,6 +87,14 @@ export function toMarkdown(profile, translations) {
   lines.push(`order: ${Number(profile.sort_order) || 0}`);
   if (profile.photo) lines.push(`photo: ${yamlString(profile.photo)}`);
   if (profile.bio_photo) lines.push(`bio_photo: ${yamlString(profile.bio_photo)}`);
+  /* WRITTEN OUT, because the build cannot measure it. src/_data/team.js gets
+     a bio photo's shape by reading the file's own dimensions — fine for
+     something in src/img/, impossible for an object in R2, where it returns
+     null and the template falls back to a square. Stating it here is what
+     stops every console upload being silently squared. */
+  if (profile.bio_photo && profile.bio_photo_aspect) {
+    lines.push(`bio_photo_aspect: ${Number(profile.bio_photo_aspect).toFixed(4)}`);
+  }
   if (profile.region) lines.push(`base: ${yamlString(profile.region)}`);
   if (profile.public_email) lines.push(`email: ${yamlString(profile.public_email)}`);
 
@@ -207,6 +230,11 @@ export default {
       public_email: clean(body.public_email, MAX.email),
       photo: clean(body.photo, 300),
       bio_photo: clean(body.bio_photo, 300),
+      /* The shape the cropper produced. Clamped to the same 0.4–2.5 the build
+         applies when it measures a file itself — a 20:1 panorama breaks the
+         bio page layout however it arrived. Null when absent, which means
+         "measure it if you can", the behaviour every profile had before. */
+      bio_photo_aspect: aspect(body.bio_photo_aspect),
       sort_order: Number.isFinite(+body.sort_order) ? Math.trunc(+body.sort_order) : 0,
       now,
     };
