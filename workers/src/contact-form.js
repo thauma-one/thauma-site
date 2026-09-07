@@ -26,6 +26,7 @@
 
 import { SUPPORTED as SUPPORTED_LANGS } from "./lang-redirect.js";
 import { siteOrigin } from "./lib/origin.js";
+import { contactNotificationEmail, contactReceiptEmail, sendMail } from "./lib/mail.js";
 const MAX = { name: 100, email: 200, message: 5000 };
 /* Imported, not repeated. This was a second copy of lang-redirect's list and it
    had drifted: Slovenian was live on the site, absent here, so a visitor on
@@ -107,16 +108,21 @@ export function validate(raw) {
 /** Build the Resend payload. Kept separate so it can be asserted in tests. */
 export function buildEmail(fields, env, meta = {}) {
   const topic = meta.topic || null;
-  const lines = [
-    `Name:    ${fields.name}`,
-    `Email:   ${fields.email}`,
-    topic ? `About:   ${topic.label}` : null,
-    fields.subject ? `Subject: ${fields.subject}` : null,
-    meta.country ? `Country: ${meta.country}` : null,
-    meta.lang ? `Language: ${meta.lang}` : null,
-    "",
-    fields.message,
-  ].filter((l) => l !== null);
+  /* THE LETTER, not a field dump. This built "Name:", "Email:", "Subject:"
+     aligned with spaces — every fact and nothing that reads like something a
+     person sent you. contactNotificationEmail gives the message the room and
+     puts the facts underneath it, with a Reply button, and still carries the
+     plain-text part for anyone reading mail in a terminal. */
+  const letter = contactNotificationEmail({
+    name: fields.name,
+    email: fields.email,
+    topic: topic ? topic.label : null,
+    subject: fields.subject || null,
+    message: fields.message,
+    country: meta.country || null,
+    lang: meta.lang || null,
+    origin: meta.origin || null,
+  });
 
   return {
     from: env.CONTACT_FROM,
@@ -129,10 +135,32 @@ export function buildEmail(fields, env, meta = {}) {
     reply_to: fields.email,
     /* What somebody sees in a list of fifty: the reason first, because it is
        how they decide what to open. */
-    subject: [topic ? topic.label : "Contact form",
-              fields.subject || fields.name].filter(Boolean).join(" — "),
-    text: lines.join("\n"),
+    subject: letter.subject,
+    html: letter.html,
+    text: letter.text,
   };
+}
+
+/**
+ * How to reply: a redirect, or JSON.
+ *
+ * The form works without JavaScript — it posts, this redirects back with
+ * ?sent=true, and the page says so. That path must keep working, so it stays
+ * the default and the JSON is opt-in.
+ *
+ * The page asks for JSON when it submits with fetch, which is what lets it
+ * stay exactly where it was instead of reloading and throwing away the
+ * scroll position and everything else on screen.
+ */
+function answer(request, back, outcome) {
+  const wantsJson = (request.headers.get("accept") || "").includes("application/json");
+  if (wantsJson) {
+    return new Response(JSON.stringify({ ok: outcome === "sent", outcome }), {
+      status: 200, headers: { "Content-Type": "application/json" },
+    });
+  }
+  back.searchParams.set(outcome === "sent" ? "sent" : "error", outcome === "sent" ? "true" : "1");
+  return seeOther(back.toString());
 }
 
 function seeOther(url) {
@@ -207,12 +235,8 @@ export async function handle(request, env, send) {
   if (!result.ok) {
     // A bot gets the same success page as a human — telling it that the
     // honeypot caught it just teaches it to fill the field next time.
-    if (result.reason === "bot") {
-      back.searchParams.set("sent", "true");
-      return seeOther(back.toString());
-    }
-    back.searchParams.set("error", "1");
-    return seeOther(back.toString());
+    if (result.reason === "bot") return answer(request, back, "sent");
+    return answer(request, back, "error");
   }
 
   /* THE DATABASE FIRST, THE DEPLOY VARIABLES SECOND.
@@ -262,17 +286,45 @@ export async function handle(request, env, send) {
     country: request.cf?.country,
     lang,
     topic,
+    origin: siteOrigin(env, request),
   });
 
   try {
     const ok = await send(payload, env);
     if (!ok) throw new Error("send failed");
   } catch {
-    back.searchParams.set("error", "1");
-    return seeOther(back.toString());
+    return answer(request, back, "error");
   }
 
-  back.searchParams.set("sent", "true");
+  /* AND ONE BACK TO THEM. The embed widget has sent a receipt since it was
+     built; this page never did, so somebody writing to Thauma's own contact
+     form got silence and somebody writing to a partner's got an
+     acknowledgement. Same message, same design.
+     
+     AFTER the real one, and its failure changes nothing: the ministry has the
+     message, which is the thing that had to happen. A receipt that fails is a
+     courtesy missed, not a message lost. */
+  try {
+    const receipt = contactReceiptEmail({
+      name: result.fields.name,
+      ministry: "Thauma",
+      topic: topic ? topic.label : null,
+      subject: result.fields.subject || null,
+      message: result.fields.message,
+      origin: siteOrigin(env, request),
+      lang,
+    });
+    await sendMail(env, {
+      to: result.fields.email,
+      subject: receipt.subject,
+      html: receipt.html,
+      text: receipt.text,
+    });
+  } catch (err) {
+    console.error("contact receipt failed:", err && err.message);
+  }
+
+  return answer(request, back, "sent");
   return seeOther(back.toString());
 }
 

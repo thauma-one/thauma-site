@@ -4,6 +4,7 @@
  *   node workers/test/contact-form.test.mjs
  */
 import { handle, validate, buildEmail, langFrom } from "../src/contact-form.js";
+import { readFileSync } from "node:fs";
 
 let pass = 0, fail = 0;
 async function check(name, fn) {
@@ -20,11 +21,16 @@ const ENV = {
   CONTACT_FROM: "Thauma <noreply@thauma.one>",
 };
 
-function post(fields, { referer = "https://thauma.one/en/contact/" } = {}) {
+function post(fields, { referer = "https://thauma.one/en/contact/", accept } = {}) {
   const fd = new FormData();
   for (const [k, v] of Object.entries(fields)) fd.append(k, v);
+  const headers = {};
+  if (referer) headers.referer = referer;
+  /* Opt in to the JSON answer, the way the page does when it submits with
+     fetch instead of letting the browser navigate. */
+  if (accept) headers.accept = accept;
   return new Request("https://thauma.one/api/contact", {
-    method: "POST", body: fd, headers: referer ? { referer } : {},
+    method: "POST", body: fd, headers,
   });
 }
 const GOOD = { name: "Jordan Reyes", email: "jordan@example.com", message: "Hello, I'd like to help." };
@@ -155,6 +161,86 @@ await check("a non-form body is a 400, not a crash", async () => {
     method: "POST", body: "%%%", headers: { "Content-Type": "application/json" },
   });
   eq((await handle(bad, ENV, spy())).status, 400, "status");
+});
+
+/* ------------------------------------------------- the message, as a letter */
+
+const LETTER = () => buildEmail(
+  { name: "Jordan Reyes", email: "jordan@example.org", subject: "Volunteering",
+    message: "Hello,\n\nI would love to help." },
+  { CONTACT_TO: "admin@thauma.one", CONTACT_FROM: "Thauma <noreply@thauma.one>" },
+  { country: "US", lang: "en", topic: { label: "Partnership", deliver_to: null },
+    origin: "https://thauma.one" });
+
+await check("the notification is a letter, not a field dump", async () => {
+  /* It built "Name:", "Email:", "Subject:" aligned with spaces — every fact
+     and nothing that reads like something a person sent you. */
+  const m = LETTER();
+  assert(m.html, "there is no HTML part at all");
+  assert(!/^Name: /m.test(m.html), "the aligned field dump is still in the HTML");
+  assert(/border-left:3px solid #2FD8FF/.test(m.html),
+    "the message is not set apart — it should read as their words, not ours");
+  assert(/email-band\.png/.test(m.html), "not using the branded shell");
+});
+
+await check("replying is one tap", async () => {
+  const m = LETTER();
+  assert(/mailto:jordan@example\.org/.test(m.html),
+    "no reply button — the reply-to header exists but the common act should " +
+    "not need a menu on a phone");
+  assert(m.reply_to === "jordan@example.org", "reply-to no longer reaches the sender");
+});
+
+await check("and it still has a plain-text part", async () => {
+  /* Some people read mail in a terminal. A message from a stranger should not
+     require HTML to be legible. */
+  const m = LETTER();
+  assert(m.text && m.text.includes("I would love to help."),
+    "the text part lost the message");
+  assert(m.text.includes("jordan@example.org"), "the text part lost the sender");
+});
+
+await check("the subject still leads with the reason", async () => {
+  /* How somebody with fifty of these decides what to open. */
+  assert(LETTER().subject === "Partnership — Volunteering",
+    `subject is "${LETTER().subject}"`);
+});
+
+await check("HTML in a message cannot become markup", async () => {
+  /* The one thing that must survive prettifying: this text came from a
+     stranger on the internet. */
+  const m = buildEmail(
+    { name: "<script>x</script>", email: "a@b.invalid", subject: "<b>hi</b>",
+      message: "<img src=x onerror=alert(1)>" },
+    { CONTACT_TO: "t@thauma.one", CONTACT_FROM: "T <n@thauma.one>" }, {});
+  assert(!/<script>x<\/script>/.test(m.html), "a script tag survived into the HTML");
+  assert(!/<img src=x/.test(m.html), "an img tag survived into the HTML");
+  assert(/&lt;img/.test(m.html), "the message was not escaped at all");
+});
+
+/* --------------------------------------------- answering without a reload */
+
+await check("it answers with JSON when the page asks for it", async () => {
+  const res = await handle(post(GOOD, { accept: "application/json" }), ENV, spy());
+  assert(res.status === 200, `expected 200, got ${res.status}`);
+  const body = await res.json();
+  assert(body.ok === true, `expected ok:true, got ${JSON.stringify(body)}`);
+});
+
+await check("and still redirects when it does not", async () => {
+  /* The form works with no JavaScript at all. That path stays the default; the
+     JSON is opt-in, so turning JavaScript off cannot break sending a message. */
+  const res = await handle(post(GOOD), ENV, spy());
+  assert(res.status === 303, `expected 303, got ${res.status}`);
+  assert(/\?sent=true/.test(res.headers.get("location") || ""),
+    `redirected to ${res.headers.get("location")}`);
+});
+
+await check("a refusal is JSON too, not a redirect the page cannot read", async () => {
+  const res = await handle(post({ ...GOOD, message: "" }, { accept: "application/json" }),
+                           ENV, spy());
+  const body = await res.json();
+  assert(body.ok === false, "a refused submission reported success");
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);

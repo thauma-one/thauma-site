@@ -57,12 +57,60 @@ pageTitle: contact
   <p class="legal-note contact-error" id="error-note" style="display:none">{{ t.contact.form_error }}</p>
   <script>
     var q = new URLSearchParams(location.search);
-    if (q.get('sent')) {
-      document.getElementById('sent-note').style.display = 'block';
-    }
+    if (q.get('sent')) { showSent(); }
     if (q.get('error')) {
       document.getElementById('error-note').style.display = 'block';
     }
+
+    /* SENT, WITHOUT GOING ANYWHERE.
+
+       The form posts and the Worker redirects back with ?sent=true, which
+       works with no JavaScript at all and is why it stays the fallback. But a
+       reload throws away where somebody was on the page and answers a message
+       they just wrote with a flicker and a line of small print.
+
+       So when fetch is available the submit is intercepted: the form is taken
+       away — it has done its job and leaving it invites a second copy of the
+       same message — and something unmissable takes its place, in the space
+       the form was occupying. */
+    function showSent() {
+      var form = document.querySelector('form.contact');
+      var note = document.getElementById('sent-note');
+      if (form) form.hidden = true;
+      document.getElementById('error-note').style.display = 'none';
+      note.className = 'contact-sent';
+      note.style.display = 'block';
+      /* Moved to, not scrolled past. The form was tall; the confirmation
+         replacing it can otherwise appear above the fold you are looking at. */
+      note.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      note.setAttribute('tabindex', '-1');
+      note.focus({ preventScroll: true });
+    }
+
+    (function () {
+      var form = document.querySelector('form.contact');
+      if (!form || !window.fetch) return;      // the redirect still works
+      form.addEventListener('submit', function (e) {
+        if (!form.reportValidity()) return;    // let the browser complain first
+        e.preventDefault();
+        var btn = form.querySelector('button[type=submit]');
+        if (btn) { btn.disabled = true; }
+        fetch(form.action, {
+          method: 'POST',
+          body: new FormData(form),
+          headers: { Accept: 'application/json' },
+        })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (body) {
+            if (body && body.ok) return showSent();
+            throw new Error('refused');
+          })
+          .catch(function () {
+            if (btn) btn.disabled = false;
+            document.getElementById('error-note').style.display = 'block';
+          });
+      });
+    })();
 
     /* The reasons, fetched rather than built in. A failure here leaves the
        form exactly as it was — the dropdown is an improvement to it, never a

@@ -734,3 +734,33 @@ section .cue::before{content:counter(cue,decimal-leading-zero);width:auto;height
    something that went right; this one has to be noticed, because the visitor's
    message is still sitting in a form they may be about to navigate away from. */
 .contact-error{color:#FF8A8A;border-left:2px solid #FF6B6B;padding-left:12px}
+
+/* ---- the message went ----
+   This replaces the form rather than appearing under it, in the space the form
+   was occupying, because somebody who has just written a paragraph and pressed
+   send deserves an answer they cannot miss — and a form still sitting there
+   invites a second copy of the same message.
+
+   Sized like a statement rather than a footnote: the old success line was
+   `.legal-note`, the same small gray type as the privacy wording beneath it,
+   which is the wrong weight for the one thing you are waiting to read. */
+.contact-sent{
+  display:block;margin-top:56px;max-width:560px;
+  padding:34px 32px;border-radius:4px;
+  background:linear-gradient(180deg,rgba(26,228,159,.10),rgba(26,228,159,.03));
+  border:1px solid rgba(26,228,159,.40);
+  color:var(--text);font-size:19px;line-height:1.55;font-weight:300;
+  outline:none;
+}
+/* A tick drawn in the accent, so the outcome registers before the words are
+   read — and in grayscale, where the green alone would not carry it. */
+.contact-sent::before{
+  content:"";display:block;inline-size:34px;block-size:34px;margin-bottom:16px;
+  border-radius:50%;background:var(--green,#1AE49F);
+  -webkit-mask:no-repeat center/18px url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 12'%3E%3Cpath d='M1 6l4.5 4.5L15 1' stroke='%23000' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  mask:no-repeat center/18px url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 12'%3E%3Cpath d='M1 6l4.5 4.5L15 1' stroke='%23000' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+@media (prefers-reduced-motion: no-preference){
+  .contact-sent{animation:contact-sent-in .45s cubic-bezier(.16,1,.3,1) both}
+}
+@keyframes contact-sent-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}

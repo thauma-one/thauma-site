@@ -361,6 +361,90 @@ export function inviteEmail({ name, origin, invitedBy, invitedByEmail, confirmUr
  * And it promises nothing about when. A ministry of two people should not have
  * an autoresponder implying a service desk.
  */
+/**
+ * The message itself, to whoever the ministry has it delivered to.
+ *
+ * IT WAS A PLAIN-TEXT DUMP — "Name:", "Email:", "Subject:", then the message,
+ * aligned with spaces. Everything you need and nothing that reads like a
+ * letter somebody sent you. This is the one message a ministry gets from a
+ * stranger, and it is worth opening properly.
+ *
+ * THE MESSAGE IS THE CONTENT, so it is what the eye lands on: the sender's own
+ * words in a quote block, big enough to read, with the facts about them as a
+ * small table beneath rather than a header block above. The reason comes first
+ * because it is how somebody with fifty of these decides what to open.
+ *
+ * REPLY IS A BUTTON. The reply-to header already points at the sender, but the
+ * common act deserves to be one tap on a phone rather than a menu.
+ *
+ * A TEXT PART TOO, always. Some people read mail in a terminal, and a message
+ * from a stranger should not require HTML to be legible.
+ */
+export function contactNotificationEmail({ name, email, topic, subject, message,
+                                           country, lang, origin }) {
+  const detail = (label, value) => value
+    ? `<tr>
+         <td style="padding:4px 14px 4px 0;font-family:Helvetica,Arial,sans-serif;
+                    font-size:13px;color:#7f8c9b;white-space:nowrap;
+                    vertical-align:top;">${esc(label)}</td>
+         <td style="padding:4px 0;font-family:Helvetica,Arial,sans-serif;
+                    font-size:13px;color:#DCE3EC;">${value}</td>
+       </tr>`
+    : "";
+
+  const rows =
+    h1(topic || "A message from the website") +
+    p(`<b style="color:#FFFFFF;">${esc(name)}</b> wrote to you` +
+      (subject ? ` about <b style="color:#FFFFFF;">${esc(subject)}</b>` : "") + ".") +
+
+    /* Their words, given the room. Same treatment the receipt uses, so the
+       sender and the ministry are looking at the same thing. */
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+            style="margin:18px 0 22px 0;"><tr>
+       <td style="border-left:3px solid #2FD8FF;padding:4px 0 4px 16px;
+                  font-family:Helvetica,Arial,sans-serif;font-size:15.5px;
+                  line-height:1.7;color:#DCE3EC;white-space:pre-wrap;">${esc(message)}</td>
+     </tr></table>` +
+
+    button(`mailto:${email}` +
+           (subject ? `?subject=${encodeURIComponent("Re: " + subject)}` : ""),
+           `Reply to ${name}`) +
+
+    `<table role="presentation" cellpadding="0" cellspacing="0" border="0"
+            style="margin:20px 0 0 0;border-top:1px solid #1e2a38;
+                   padding-top:14px;width:100%;">
+       ${detail("From", `<a href="mailto:${esc(email)}" style="color:#2FD8FF;text-decoration:none;">${esc(email)}</a>`)}
+       ${detail("About", topic ? esc(topic) : "")}
+       ${detail("Subject", subject ? esc(subject) : "")}
+       ${detail("Country", country ? esc(country) : "")}
+       ${detail("Language", lang ? esc(lang) : "")}
+     </table>`;
+
+  const text = [
+    topic ? topic : "A message from the website",
+    "",
+    `${name} <${email}>`,
+    subject ? `Subject: ${subject}` : null,
+    country ? `Country: ${country}` : null,
+    lang ? `Language: ${lang}` : null,
+    "",
+    message,
+    "",
+    "— Reply to this email and it goes straight back to them.",
+  ].filter((l) => l !== null).join("\n");
+
+  return {
+    subject: [topic || "Contact form", subject || name].filter(Boolean).join(" — "),
+    html: shell({
+      heading: topic || "A message from the website",
+      rows,
+      footer: "Sent from the contact form on thauma.one. Replying reaches the sender.",
+      origin,
+    }),
+    text,
+  };
+}
+
 export function contactReceiptEmail({ name, ministry, topic, subject, message,
                                       origin, lang }) {
   const T = (k, v) => t(lang, k, v);
