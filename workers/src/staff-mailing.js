@@ -939,8 +939,15 @@ export default {
           cleaned.push({ label, deliver_to: to || null });
         }
 
-        await db.query("contact_form_save", {
-          partner_id: partnerId,
+        /* TWO STATEMENTS, because one cannot carry two conflict targets.
+           A partner conflicts on the primary key; the organization's row has
+           partner_id NULL, which no primary-key conflict ever matches — SQL
+           treats NULLs as distinct — so it conflicts on the partial index
+           instead, which has to be named separately. Saving Thauma's form was
+           a 500 every time after the row first existed. */
+        const saveQuery = partnerId ? "contact_form_save" : "contact_form_save_org";
+        await db.query(saveQuery, {
+          ...(partnerId ? { partner_id: partnerId } : {}),
           deliver_to: deliverTo,
           from_address: fromAddress || null,
           heading: clean(body.heading, 120) || null,

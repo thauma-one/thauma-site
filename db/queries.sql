@@ -1811,6 +1811,19 @@ WHERE partner_id IS :partner_id;
 
 
 -- name: contact_form_save
+-- A PARTNER's form. The organization has its own statement below, and the
+-- reason is not tidiness.
+--
+-- partner_id is the primary key, so ON CONFLICT(partner_id) fires for a
+-- partner and updates. For the organization partner_id is NULL, and SQL treats
+-- NULLs as distinct — so the conflict never matches, the INSERT proceeds, and
+-- it lands on idx_contact_forms_org instead. That index is a PARTIAL one and
+-- is not the conflict target named here, so DO UPDATE does not apply to it and
+-- the write fails outright.
+--
+-- The effect: Thauma's contact form could be saved exactly once, when the row
+-- did not exist, and every save after that was a 500. A partner's worked
+-- perfectly, which is why it went unnoticed.
 INSERT INTO contact_forms
   (partner_id, deliver_to, from_address, heading, blurb, button, thanks,
    is_open, updated_at)
@@ -1818,6 +1831,32 @@ VALUES
   (:partner_id, :deliver_to, :from_address, :heading, :blurb, :button, :thanks,
    :is_open, :now)
 ON CONFLICT(partner_id) DO UPDATE SET
+  deliver_to   = excluded.deliver_to,
+  from_address = excluded.from_address,
+  heading      = excluded.heading,
+  blurb        = excluded.blurb,
+  button       = excluded.button,
+  thanks       = excluded.thanks,
+  is_open      = excluded.is_open,
+  updated_at   = excluded.updated_at;
+
+
+-- name: contact_form_save_org
+-- THE ORGANIZATION's form. Identical but for the conflict target.
+--
+-- A partial index can be named as a conflict target only by repeating both the
+-- indexed expression and its WHERE clause, which is what this does. One
+-- statement cannot carry two ON CONFLICT clauses, so the organization and a
+-- partner cannot share this — and the split matches how the rest of the
+-- contact code already separates them: public_contact_form_org,
+-- public_contact_topics_org.
+INSERT INTO contact_forms
+  (partner_id, deliver_to, from_address, heading, blurb, button, thanks,
+   is_open, updated_at)
+VALUES
+  (NULL, :deliver_to, :from_address, :heading, :blurb, :button, :thanks,
+   :is_open, :now)
+ON CONFLICT ((partner_id IS NULL)) WHERE partner_id IS NULL DO UPDATE SET
   deliver_to   = excluded.deliver_to,
   from_address = excluded.from_address,
   heading      = excluded.heading,

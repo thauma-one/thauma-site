@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "d91c258ead2d100a";
+export const SOURCE_DIGEST = "e2300921f9f53311";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -138,6 +138,21 @@ VALUES
   (:partner_id, :deliver_to, :from_address, :heading, :blurb, :button, :thanks,
    :is_open, :now)
 ON CONFLICT(partner_id) DO UPDATE SET
+  deliver_to   = excluded.deliver_to,
+  from_address = excluded.from_address,
+  heading      = excluded.heading,
+  blurb        = excluded.blurb,
+  button       = excluded.button,
+  thanks       = excluded.thanks,
+  is_open      = excluded.is_open,
+  updated_at   = excluded.updated_at;`,
+  contact_form_save_org: `INSERT INTO contact_forms
+  (partner_id, deliver_to, from_address, heading, blurb, button, thanks,
+   is_open, updated_at)
+VALUES
+  (NULL, :deliver_to, :from_address, :heading, :blurb, :button, :thanks,
+   :is_open, :now)
+ON CONFLICT ((partner_id IS NULL)) WHERE partner_id IS NULL DO UPDATE SET
   deliver_to   = excluded.deliver_to,
   from_address = excluded.from_address,
   heading      = excluded.heading,
