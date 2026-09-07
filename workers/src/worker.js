@@ -46,6 +46,7 @@ import signup from "./signup.js";
 import contact from "./contact.js";
 import adminApi from "./admin.js";
 import adminContent from "./admin-content.js";
+import adminLibrary from "./admin-library.js";
 import adminPublish from "./admin-publish.js";
 import adminMigrate from "./admin-migrate.js";
 import embed from "./embed.js";
@@ -277,6 +278,10 @@ const ROUTES = {
   // role, a derived path that no request can influence, and leaf-level edits
   // only — see admin-content.js.
   "/api/admin/content": adminContent,
+  /* The site's collections — resources and gatherings. Content next door
+     is the site's WORDS, one language at a time; this is its items, one
+     file each, and the two are different enough to be different screens. */
+  "/api/admin/library": adminLibrary,
 
   // Asks GitHub to build the live branch — for staging (Preview) or for the
   // real site (Publish). Saving already committed the words with [skip ci], so

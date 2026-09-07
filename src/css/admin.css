@@ -869,3 +869,66 @@
 .pf-outofsync b{color:var(--crit,#FF6B6B)}
 .pf-outofsync-err{color:var(--dim,#8a93a3);font-family:var(--font-mono,ui-monospace,monospace);
   font-size:12px}
+
+/* ================================================== THE LIBRARY
+   Resources and gatherings. Borrows the People page's row/panel shape, which
+   already handles "a list you scan, and one item you open" — a second visual
+   idea for the same interaction would be a second thing to learn.
+   ==================================================================== */
+
+/* WHICH LANGUAGES EXIST, on the closed row. It is the thing somebody scanning
+   the list actually wants — what still needs translating — and it is invisible
+   if you have to open every item to find out. */
+.lib-langs{display:flex;gap:6px;align-items:center}
+.lib-lang{font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  font-weight:var(--w-bold);padding:3px 7px;border-radius:3px;
+  color:var(--dim,#8a93a3);border:1px solid rgba(255,255,255,.14)}
+.lib-lang.is-on{color:var(--voice-human);border-color:rgba(92,242,196,.4);
+  background:var(--voice-human-dim)}
+
+.lib-tags{display:flex;gap:8px;flex-wrap:wrap}
+
+/* One block per language, side by side where there is room. An empty one is
+   dimmed rather than hidden: "not written yet" is a legitimate state and has
+   to be as visible as a filled one, or nobody knows what is missing. */
+.lib-langs-grid{display:grid;gap:14px;
+  grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.lib-lang-block{display:flex;flex-direction:column;gap:8px;padding:14px;
+  border:1px solid var(--line);border-radius:var(--radius);
+  background:rgba(255,255,255,.02)}
+.lib-lang-block.is-empty{opacity:.72}
+.lib-lang-head{display:flex;align-items:baseline;gap:10px;
+  font-family:var(--font-display);font-size:11px;letter-spacing:var(--ls-caps)}
+.lib-lang-none{font-size:11px;color:var(--dim,#8a93a3);
+  font-family:var(--font-body);letter-spacing:0}
+.lib-lang-block input,.lib-lang-block textarea{width:100%;
+  background:var(--bg2,#0b1119);border:1px solid var(--line-hard);
+  color:var(--text);border-radius:var(--radius);padding:9px 11px;font:inherit;
+  font-size:13px;resize:vertical}
+
+.lib-flag{flex-direction:row;align-items:center;gap:10px;flex-wrap:wrap}
+.lib-flag input{inline-size:17px;block-size:17px;accent-color:var(--voice-tech)}
+.lib-flag .fld-hint{flex:1 1 100%}
+
+/* A session is a date and a topic. Two columns, because that is what it is —
+   and the date is its own field so moving one is an edit rather than a
+   rewrite of a sentence that mentions it. */
+.lib-sessions{display:flex;flex-direction:column;gap:8px}
+.lib-session{display:grid;grid-template-columns:minmax(0,150px) minmax(0,1fr);gap:10px}
+.lib-session input{background:var(--bg2,#0b1119);border:1px solid var(--line-hard);
+  color:var(--text);border-radius:var(--radius);padding:8px 10px;font:inherit;font-size:13px}
+
+.lib-body{width:100%;background:var(--bg2,#0b1119);border:1px solid var(--line-hard);
+  color:var(--text);border-radius:var(--radius);padding:12px 14px;
+  font-family:var(--font-mono,ui-monospace,SFMono-Regular,Menlo,monospace);
+  font-size:13px;line-height:1.6;resize:vertical}
+
+/* Status, at a glance. Canceled has to read as different from past — both are
+   "not upcoming" and only one of them is a disappointment. */
+.role-tag.st-upcoming{color:var(--voice-tech);border-color:rgba(47,216,255,.4);
+  background:var(--voice-tech-dim)}
+.role-tag.st-canceled{color:var(--crit,#FF6B6B);border-color:rgba(255,107,107,.35)}
+
+@media (max-width: 640px){
+  .lib-session{grid-template-columns:1fr}
+}

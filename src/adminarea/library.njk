@@ -1,0 +1,61 @@
+---
+layout: layouts/admin.njk
+adminPage: library
+adminNum: "05"
+adminTitle: Library
+adminHeading: The site's <b>collections</b>
+adminHint: resources and gatherings — one item, one file
+adminScript: /js/admin-library.js
+permalink: /admin/library/index.html
+---
+{#- TWO TABS, ONE HEADER. The console's navigation is full, and these are two
+   halves of the same job: things published to the public site, as opposed to
+   Content next door, which is the site's WORDS one language at a time. The
+   Ministry page already holds four tools under one entry this way, and
+   staff.js wires `.tabs` / `.tab-panel` generically, hash included.
+
+   A third collection later is a third tab, not a ninth header. -#}
+
+<div class="tabs" role="tablist">
+  <button type="button" class="tab" role="tab" data-tab="resources"
+          aria-selected="true" data-i18n="lib.resources">Resources</button>
+  <button type="button" class="tab" role="tab" data-tab="gatherings"
+          aria-selected="false" data-i18n="lib.gatherings">Gatherings</button>
+</div>
+
+{#- LANGUAGES ARE OPTIONAL PER ITEM, and the note says so where somebody is
+   about to hit it. The site's chrome carries every language always because it
+   is written once at a desk; these are written in the field, in a hurry, in
+   whichever language the person has. A save is never refused for a missing
+   translation, and the public page shows the item with a marker rather than
+   hiding it. -#}
+<p class="note">
+  <b>Publish in whatever language you have.</b> A translation can follow later
+  and nothing here waits for it — an item with only Croatian appears to English
+  readers with a small note, rather than disappearing.
+</p>
+
+<section class="tab-panel" data-panel="resources" role="tabpanel">
+  <div class="ms-bar">
+    <button type="button" class="solid-btn" data-lib-add="resources"
+            data-i18n="lib.addResource">+ Add resource</button>
+  </div>
+  <div class="adm-people" data-lib-list="resources">
+    <p class="empty" data-i18n="common.loading">Loading&hellip;</p>
+  </div>
+</section>
+
+<section class="tab-panel" data-panel="gatherings" role="tabpanel" hidden>
+  <div class="ms-bar">
+    <button type="button" class="solid-btn" data-lib-add="gatherings"
+            data-i18n="lib.addGathering">+ Add gathering</button>
+  </div>
+  <div class="adm-people" data-lib-list="gatherings">
+    <p class="empty" data-i18n="common.loading">Loading&hellip;</p>
+  </div>
+</section>
+
+{#- The languages this build publishes, handed to the script rather than
+   fetched: it is the same list Eleventy paginated the public pages over, so
+   the editor cannot offer a language the site does not render. -#}
+<script id="libLangs" type="application/json">{{ activeLangs | dump | safe }}</script>

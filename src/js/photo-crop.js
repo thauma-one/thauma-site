@@ -73,8 +73,11 @@
     return n;
   }
 
+  /* StaffI18n.t returns the KEY when it has no entry, so `||` never reaches
+     the fallback and a missing string renders as "pc.zoom". */
   var t = function (key, fallback) {
-    return (window.StaffI18n && window.StaffI18n.t && window.StaffI18n.t(key)) || fallback;
+    var got = window.StaffI18n && window.StaffI18n.t && window.StaffI18n.t(key);
+    return (got && got !== key) ? got : fallback;
   };
 
   /* ----------------------------------------------------------------- open */

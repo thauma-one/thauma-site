@@ -17,6 +17,15 @@
  * is an untidy header, not an open door.
  */
 import { JSDOM } from "jsdom";
+import { createRequire } from "node:module";
+
+/* THE COUNTS COME FROM consoleNav.js, not from numbers written here. They were
+   restated as 7 and 8, so adding a page to the console failed this test for
+   the wrong reason — it reported a nav bug where there was a nav change. What
+   is worth asserting is that every page an ADMIN may see is rendered, which is
+   a question only the matrix can answer. */
+const NAV = createRequire(import.meta.url)("../src/_data/consoleNav.js");
+const forRole = (list, role) => list.filter((p) => p.roles.includes(role)).length;
 import { readFileSync, existsSync, readdirSync } from "node:fs";
 
 const build = ["_site", "_site_next", "_site_prod"].find((d) =>
@@ -88,14 +97,14 @@ await check("a ministry account gets ONE row, the staff one", async () => {
 await check("an administrator gets ONE row, the admin one", async () => {
   const w = boot(STAFF_PAGE, { roles: ["admin"] });
   eq(rows(w), ["admin"], "rows");
-  eq(links(w, "admin").length, 7, "every admin page");
+  eq(links(w, "admin").length, forRole(NAV.admin, "admin"), "every admin page");
 });
 
 await check("being BOTH is what produces two rows — not a special case", async () => {
   const w = boot(STAFF_PAGE, { roles: ["admin", "partner"] });
   eq(rows(w), ["staff", "admin"], "rows");
-  eq(links(w, "staff").length, 8, "staff pages");
-  eq(links(w, "admin").length, 7, "admin pages");
+  eq(links(w, "staff").length, forRole(NAV.staff, "staff"), "staff pages");
+  eq(links(w, "admin").length, forRole(NAV.admin, "admin"), "admin pages");
 });
 
 /* --------------------------- narrower roles ----------------------------- */

@@ -6,14 +6,65 @@ const fs = require("fs");
 const path = require("path");
 const matter = require("gray-matter");
 
+/* THE FOUR DOORS. A visitor with a broken mixer does not know which CATEGORY
+   their problem is in — they know what just happened. So a resource is filed
+   by the moment somebody is in when they need it, not by subject:
+
+     crisis    something is broken now, and there is no patience for a tutorial
+     growth    handed the booth with no training, and calm enough to learn
+     planning  deciding what to buy, with real money and a real ceiling
+     lookup    what does this word mean — the glossary and reference
+
+   Unknown values fall to `lookup` rather than disappearing: a resource with a
+   typo in its front matter should be findable and wrong, not absent. */
+const MOMENTS = ["crisis", "growth", "planning", "lookup"];
+
+/* Deliberately short and deliberately closed. A tag vocabulary that grows
+   whenever somebody wants a new word becomes a maintenance chore run from a
+   phone in another country. */
+const FORMATS = ["guide", "diagram", "checklist", "glossary-entry", "video"];
+
 module.exports = () => {
   const dir = path.join(__dirname, "..", "content", "resources");
   if (!fs.existsSync(dir)) return [];
   return fs.readdirSync(dir)
     .filter((f) => f.endsWith(".md"))
     .map((f) => {
-      const { data } = matter(fs.readFileSync(path.join(dir, f), "utf8"));
-      return { slug: f.replace(/\.md$/, ""), ...data };
+      const { data, content } = matter(fs.readFileSync(path.join(dir, f), "utf8"));
+      const summary = data.summary || data.description || {};
+      return {
+        slug: f.replace(/\.md$/, ""),
+        ...data,
+        moment: MOMENTS.includes(data.moment) ? data.moment : "lookup",
+        format: FORMATS.includes(data.format) ? data.format : "guide",
+        /* Free-form, and only meaningful on the crisis door — the one place an
+           open vocabulary earns its flexibility, because a symptom is whatever
+           the person in the room would say out loud. */
+        symptoms: Array.isArray(data.symptoms) ? data.symptoms : [],
+        pinned: !!data.pinned,
+        summary,
+        /* AN ALIAS, so the page that already renders `description` keeps
+           working untouched while the front matter moves to `summary`. The
+           visual pass will read `summary` directly and this can go. */
+        description: summary,
+        /* THE BODY, kept out of the front matter where prose belongs. This is
+           also the corpus a retrieval assistant would search one day — a
+           resource that is one clean topic with a title, a summary and a body
+           is a deposit into that whether or not it is ever built. */
+        body: (content || "").trim(),
+        langs: Object.keys(data.title || {}).filter((k) => (data.title || {})[k]),
+      };
     })
-    .sort((a, b) => (a.order || 99) - (b.order || 99));
+    /* PINNED FIRST, then newest. The glossary is the thing everything else
+       refers to; sorting purely by date would bury it under whatever was
+       written last week. `order` still wins where somebody has set it. */
+    .sort((a, b) => {
+      if (!!a.pinned !== !!b.pinned) return a.pinned ? -1 : 1;
+      const ao = a.order ?? 99, bo = b.order ?? 99;
+      if (ao !== bo) return ao - bo;
+      return String(b.created || "").localeCompare(String(a.created || ""));
+    });
 };
+
+module.exports.MOMENTS = MOMENTS;
+module.exports.FORMATS = FORMATS;

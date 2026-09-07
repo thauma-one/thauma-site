@@ -65,6 +65,13 @@ const admin = [
      and none of the account management above. */
   { slug: "content", url: "/admin/content/", label: "Content",
     roles: ["admin", "communications"] },
+  /* THE SITE'S COLLECTIONS. Content is the words and Site is the settings
+     around them; this is the things — resources and gatherings, one file each.
+     Two tabs on one page rather than two headers, the way the Ministry page
+     already holds four tools under one entry. A third collection later is a
+     third tab. */
+  { slug: "library", url: "/admin/library/", label: "Library",
+    roles: ["admin", "communications"] },
   { slug: "site", url: "/admin/site/", label: "Site",
     roles: ["admin", "communications"] },
   { slug: "publish", url: "/admin/publish/", label: "Publish",
