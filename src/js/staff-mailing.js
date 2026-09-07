@@ -1481,7 +1481,26 @@
   });
 
   document.addEventListener('click', function (e) {
-    var tab = e.target.closest('[data-view]');
+    /* SCOPED TO THE TAB STRIP, for exactly the reason the sub-tabs below are.
+
+       This read `closest('[data-view]')` anywhere on the page. That was fine
+       while only the tab buttons carried the attribute — and then the view
+       SECTIONS were given data-view too, so that one view could be shown and
+       the rest hidden by what the markup says they are rather than by a list
+       of ids kept in two places.
+
+       Which meant every field in a view had an ancestor carrying data-view.
+       Clicking any box in the contact editor matched the section, called
+       show('contact'), and re-rendered the whole form: the caret was thrown
+       out, typed characters were replaced by the saved values, and pressing
+       Save re-rendered the fields BEFORE the submit handler read them, so an
+       edited address was saved back exactly as it had been. Three symptoms,
+       one selector.
+
+       The fix is the same one already written a few lines down for data-sub,
+       where subscriber rows collided with the sub-tabs. An attribute that
+       means "this is a tab" cannot also mean "this is what a tab shows". */
+    var tab = e.target.closest('.ml-tabs [data-view]');
     if (tab) return show(tab.dataset.view);
 
     /* SCOPED TO THE SUB-TABS, not to anything carrying data-sub.

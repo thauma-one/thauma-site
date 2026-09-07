@@ -202,5 +202,104 @@ await check("a partner's mailing is unaffected", async () => {
     `a partner's address grew a scope it does not need: ${w.location.href}`);
 });
 
+/* ------------------------------------ clicking a field must not redraw the view */
+
+const CT_PAY = { lists: [], tags: [], senders: [{ address: "noreply@thauma.one" }],
+  topics: [{ id: "t1", label: "Prayer request", deliver_to: "" }],
+  contact: { partner_id: null, deliver_to: "OLD@thauma.one", heading: "Contact Thauma",
+             blurb: "", button: "Send", thanks: "", is_open: 1,
+             from_address: "noreply@thauma.one" },
+  may_send_as_organisation: true, partners: [],
+  you: { email: "me@thauma.one", name: "Me", roles: ["admin", "staff"] },
+  partner: { id: "p_1", display_name: "Chase Roush", slug: "chase-roush" } };
+
+async function bootContact() {
+  const posts = [];
+  const dom = new JSDOM(readFileSync(`${build}/staff/mailing/index.html`, "utf8"), {
+    runScripts: "dangerously", pretendToBeVisual: true,
+    url: "https://dev.thauma.one/staff/mailing/?scope=organization#contact",
+    beforeParse(w) {
+      Object.defineProperty(w, "sessionStorage", { value: {
+        getItem: () => JSON.stringify({ roles: ["admin", "staff"] }), setItem: () => {} } });
+      w.fetch = async (u, o) => {
+        if (o && o.method === "POST") posts.push(JSON.parse(o.body));
+        return { ok: true, status: 200, json: async () => CT_PAY };
+      };
+      w.scrollTo = () => {};
+    } });
+  const w = dom.window;
+  w.eval(readFileSync("src/js/staff-i18n.js", "utf8"));
+  w.eval(readFileSync("src/js/staff-mailing.js", "utf8"));
+  await new Promise((r) => setTimeout(r, 240));
+  return { w, d: w.document, posts };
+}
+
+await check("clicking inside a view does not re-render it", async () => {
+  /* THE BUG, AND IT WAS MINE. The tab handler read closest('[data-view]')
+     anywhere on the page. Fine while only the tab buttons carried it — then
+     the view SECTIONS were given data-view so one view could be shown and the
+     rest hidden by what the markup says they are. After that every field had
+     an ancestor carrying data-view, so clicking any box called show() and
+     redrew the form underneath the caret. */
+  const { w, d } = await bootContact();
+  const label = d.querySelector(".ct-topic-label");
+  assert(label, "no topic row rendered");
+  label.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 60));
+  assert(d.querySelector(".ct-topic-label") === label,
+    "the input was replaced by a click on itself — anything typed into it is " +
+    "gone and the caret with it");
+});
+
+await check("an edited field survives being clicked away from", async () => {
+  const { w, d } = await bootContact();
+  const to = d.getElementById("ctTo");
+  to.value = "NEW@thauma.one";
+  to.dispatchEvent(new w.Event("input", { bubbles: true }));
+  /* Click anything else inside the view — a label, the heading box, whatever. */
+  d.getElementById("ctHeading").dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 80));
+  assert(d.getElementById("ctTo").value === "NEW@thauma.one",
+    `the edit was reverted to "${d.getElementById("ctTo").value}" by clicking elsewhere`);
+});
+
+await check("Save posts what is on screen, not what was there before", async () => {
+  /* The worst of the three symptoms: pressing Save is itself a click inside
+     the view, so the form was redrawn from the saved values BEFORE the submit
+     handler read them. An edited address was saved back exactly as it had
+     been, and the toast said it saved — which it truthfully had. */
+  const { w, d, posts } = await bootContact();
+  const to = d.getElementById("ctTo");
+  to.value = "NEW@thauma.one";
+  to.dispatchEvent(new w.Event("input", { bubbles: true }));
+
+  /* The CLICK, and only the click. Pressing the button is what a person does,
+     and jsdom submits the form from it — dispatching a submit as well ran the
+     handler twice and the test failed for its own reason. The click is also
+     the whole point: it is the event that used to redraw the form. */
+  const form = d.getElementById("mlContactForm");
+  const save = form.querySelector('[type="submit"]');
+  assert(save, "the contact form has no submit button");
+  save.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 200));
+
+  const sent = posts.filter((p) => p.action === "contact-form");
+  assert(sent.length === 1, `${sent.length} contact saves posted`);
+  assert(sent[0].deliver_to === "NEW@thauma.one",
+    `Save posted "${sent[0].deliver_to}" — the field was redrawn from the ` +
+    `saved value before the handler read it`);
+});
+
+await check("the tabs themselves still switch views", async () => {
+  /* Scoping the selector must not break what it was for. */
+  const { w, d } = await bootContact();
+  const tab = d.querySelector('.ml-tabs [data-view="embed"]');
+  assert(tab, "no embed tab");
+  tab.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 80));
+  assert(!d.getElementById("mlEmbedView").hidden, "the tab no longer switches view");
+  assert(d.getElementById("mlContactView").hidden, "the old view stayed on screen");
+});
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
