@@ -531,10 +531,38 @@ section:last-of-type{border-bottom:none}
 
 /* ---------- Contact form ---------- */
 form.contact{margin-top:56px;max-width:560px;display:flex;flex-direction:column;gap:18px}
-form.contact input,form.contact textarea{background:var(--panel);border:1px solid rgba(255,255,255,.1);
+form.contact input,form.contact textarea,form.contact select{background:var(--panel);border:1px solid rgba(255,255,255,.1);
   color:var(--text);font-family:'Inter',sans-serif;font-weight:300;font-size:15px;padding:16px 18px;border-radius:2px;transition:.2s}
-form.contact input:focus,form.contact textarea:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-dim)}
+form.contact input:focus,form.contact textarea:focus,form.contact select:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-dim)}
 form.contact textarea{min-height:160px;resize:vertical}
+
+/* THE REASON DROPDOWN. It was the one field nothing styled — it arrived after
+   the rest and the rule named only input and textarea — so it drew the
+   platform's own control: white on a dark form, in the system font, at a
+   different height to everything above it.
+
+   appearance:none is what surrenders the chrome, and it takes the arrow with
+   it, so the arrow is drawn here. Inline SVG rather than a character: a glyph
+   picks up the font and the text colour and shifts by a pixel or two between
+   platforms, which on a control this wide is visible.
+
+   THE OPTIONS THEMSELVES cannot be styled — the open list is drawn by the
+   operating system, not the page. `color-scheme: dark` is the one lever that
+   works: it tells the platform to draw its own menu dark, so the list matches
+   the field it came out of instead of flashing white over the form. */
+form.contact select{
+  appearance:none;-webkit-appearance:none;
+  color-scheme:dark;
+  cursor:pointer;
+  /* Room for the arrow, so a long reason cannot run underneath it. */
+  padding-right:46px;
+  background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238A96A6' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;
+  background-position:right 18px center;
+}
+/* The placeholder option reads as placeholder text until a real one is picked;
+   :has is how the FIELD knows what its own value is. */
+form.contact select:has(option[value=""]:checked){color:var(--dim)}
 form.contact ::placeholder{color:var(--dim)}
 
 /* ---------- Footer ---------- */

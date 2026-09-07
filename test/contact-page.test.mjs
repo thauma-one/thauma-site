@@ -117,5 +117,57 @@ check("the redirect is built from the configured origin", () => {
     "the redirect is still built from request.url");
 });
 
+/* ------------------------------------------------- the reason dropdown looks right */
+
+check("the reason dropdown is styled like the fields around it", () => {
+  /* It was the one field nothing styled. The rule named input and textarea,
+     the select arrived later, and it drew the platform's own control: white on
+     a dark form, in the system font, at a different height to everything above
+     it. A single light box in the middle of the form. */
+  const css = readFileSync("src/css/main.css", "utf8");
+  const rule = css.match(/form\.contact input,\s*form\.contact textarea,\s*form\.contact select\{/);
+  assert(rule,
+    "select is not in the shared field rule, so it keeps the browser's own " +
+    "background, font and padding");
+});
+
+check("and it surrenders the platform chrome, arrow included", () => {
+  const css = readFileSync("src/css/main.css", "utf8");
+  /* The STANDALONE rule. `css.indexOf("form.contact select{")` also matches
+     the tail of the shared "input, textarea, select{" rule, which has none of
+     these declarations in it — so the first version of this assertion read the
+     wrong block and failed against correct CSS. Anchored on the line start. */
+  const at = css.indexOf("\nform.contact select{");
+  assert(at !== -1, "there is no rule targeting the select on its own");
+  const decl = css.slice(at, css.indexOf("}", at));
+  assert(/appearance:\s*none/.test(decl), "the native dropdown chrome is still drawn");
+  assert(/background-image:url\("data:image\/svg/.test(decl),
+    "appearance:none removes the arrow too — nothing draws a replacement");
+  assert(/color-scheme:\s*dark/.test(decl),
+    "the OPEN list is drawn by the platform and cannot be styled; color-scheme " +
+    "is the one lever that stops it flashing white over a dark form");
+  assert(/padding-right:\s*\d+px/.test(decl),
+    "no room reserved for the arrow, so a long reason runs underneath it");
+});
+
+check("the styled select matches the inputs property for property", () => {
+  /* Asserted by computing both, not by reading the rule — the point is that
+     they LOOK the same, and a later override anywhere could break that while
+     the rule above still reads correctly. */
+  const d = doc("en");
+  const w = d.defaultView;
+  const st = d.createElement("style");
+  st.textContent = readFileSync("src/css/main.css", "utf8");
+  d.head.appendChild(st);
+  const input = w.getComputedStyle(d.querySelector('form.contact input[name="email"]'));
+  const select = w.getComputedStyle(d.querySelector("form.contact select"));
+  for (const prop of ["color", "font-family", "font-size", "padding-top",
+                      "padding-bottom", "border-radius"]) {
+    assert(input.getPropertyValue(prop) === select.getPropertyValue(prop),
+      `${prop}: the input says "${input.getPropertyValue(prop)}" and the ` +
+      `dropdown says "${select.getPropertyValue(prop)}"`);
+  }
+});
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
