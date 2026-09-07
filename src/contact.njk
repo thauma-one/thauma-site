@@ -15,9 +15,18 @@ pageTitle: contact
 </div></header>
 
 <section><div class="wrap">
-  <!-- Netlify Forms: works automatically once deployed to Netlify -->
-  <form class="contact" name="contact" method="POST" data-netlify="true" netlify-honeypot="bot-field" action="/{{ lang }}/contact/?sent=true">
-    <input type="hidden" name="form-name" value="contact">
+  {#- POSTS TO THE WORKER, not to Netlify.
+
+     This carried data-netlify="true" and posted back to its own page path,
+     which is how Netlify Forms worked on the old host. Netlify intercepted
+     that POST; Cloudflare does not, so it reached the static asset handler and
+     came back 405. The form looked complete and every submission was lost.
+
+     workers/src/contact-form.js was written to replace it — same field names,
+     same bot-field honeypot, and it redirects back with ?sent=true so the
+     success message below keeps working unchanged. It was finished and the
+     form was never pointed at it. -#}
+  <form class="contact" name="contact" method="POST" action="/api/contact">
     <p hidden><label>Do not fill: <input name="bot-field"></label></p>
     <input type="text" name="name" placeholder="{{ t.contact.form_name }}" required>
     <input type="email" name="email" placeholder="{{ t.contact.form_email }}" required>
@@ -40,9 +49,19 @@ pageTitle: contact
     </div>
   </form>
   <p class="legal-note" id="sent-note" style="display:none">{{ t.contact.form_success }}</p>
+  {#- A REFUSED SUBMISSION HAS TO SAY SO. The handler redirects back with
+     ?error=1 when a field does not pass, and nothing here read it — so a
+     visitor who mistyped their address landed on an ordinary-looking contact
+     page with their message gone and no idea it had not been sent. The one
+     failure mode a contact form must never have. -#}
+  <p class="legal-note contact-error" id="error-note" style="display:none">{{ t.contact.form_error }}</p>
   <script>
-    if (new URLSearchParams(location.search).get('sent')) {
+    var q = new URLSearchParams(location.search);
+    if (q.get('sent')) {
       document.getElementById('sent-note').style.display = 'block';
+    }
+    if (q.get('error')) {
+      document.getElementById('error-note').style.display = 'block';
     }
 
     /* The reasons, fetched rather than built in. A failure here leaves the

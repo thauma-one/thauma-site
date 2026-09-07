@@ -156,6 +156,7 @@
     "form_message": "Vaše sporočilo",
     "form_send": "Pošlji sporočilo",
     "form_success": "Hvala — kmalu se vam oglasimo.",
+    "form_error": "Sporočilo ni bilo poslano — preverite ime, e-poštni naslov in sporočilo ter poskusite znova.",
     "form_subject": "O čem gre (neobvezno)",
     "form_reason": "Izberite razlog…"
   },

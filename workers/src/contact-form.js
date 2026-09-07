@@ -25,6 +25,7 @@
  */
 
 import { SUPPORTED as SUPPORTED_LANGS } from "./lang-redirect.js";
+import { siteOrigin } from "./lib/origin.js";
 const MAX = { name: 100, email: 200, message: 5000 };
 /* Imported, not repeated. This was a second copy of lang-redirect's list and it
    had drifted: Slovenian was live on the site, absent here, so a visitor on
@@ -191,7 +192,15 @@ export async function handle(request, env, send) {
   }
 
   const lang = langFrom(raw, request.headers.get("referer"));
-  const back = new URL(`/${lang}/contact/`, request.url);
+  /* THE DEPLOYMENT'S OWN ORIGIN, not the request's.
+   *
+   * `new URL(path, request.url)` inherits the scheme and host of the incoming
+   * request, and under `wrangler dev` that is http:// and whatever route is in
+   * wrangler.toml — so a visitor who submitted over https was redirected to
+   * http, and dev sent people to staging. The same lie that sent every
+   * emailed link to the wrong site; siteOrigin exists so it is answered once.
+   */
+  const back = new URL(`/${lang}/contact/`, siteOrigin(env, request));
 
   const result = validate(raw);
 

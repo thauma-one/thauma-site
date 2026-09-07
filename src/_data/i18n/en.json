@@ -156,6 +156,7 @@
     "form_message": "Your message",
     "form_send": "Send Message",
     "form_success": "Thank you — we'll get back to you soon.",
+    "form_error": "That did not send — please check your name, email address and message, and try again.",
     "form_subject": "What it's about (optional)",
     "form_reason": "Choose a reason…"
   },

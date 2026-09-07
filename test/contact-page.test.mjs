@@ -1,0 +1,121 @@
+#!/usr/bin/env node
+/**
+ * The public contact page actually submits somewhere
+ *   node test/contact-page.test.mjs
+ *
+ * WHAT WAS WRONG. The form carried `data-netlify="true"` and posted back to
+ * its own page path, which is how Netlify Forms worked on the old host —
+ * Netlify intercepted that POST before it reached the site. Cloudflare does
+ * not, so it reached the static asset handler and came back 405. The form
+ * looked complete, and every submission was lost.
+ *
+ * workers/src/contact-form.js was written to replace it — same field names,
+ * same honeypot, redirecting back with ?sent=true so the success message kept
+ * working. It was finished and the form was never pointed at it. Two halves of
+ * one feature, each correct, never connected.
+ *
+ * That is the failure a contact form must never have, so it is asserted here
+ * rather than left to somebody noticing the silence.
+ */
+import { JSDOM } from "jsdom";
+import { readFileSync, existsSync, readdirSync } from "node:fs";
+
+const build = ["_site", "_site_next", "_site_prod"].find((d) =>
+  existsSync(`${d}/en/contact/index.html`));
+
+let pass = 0, fail = 0;
+const check = (name, fn) => {
+  try { fn(); console.log(`  PASS  ${name}`); pass++; }
+  catch (e) { console.log(`  FAIL  ${name}\n          ${e.message}`); fail++; }
+};
+const assert = (c, m) => { if (!c) throw new Error(m); };
+
+console.log("the contact page submits somewhere\n");
+if (!build) { console.log("  SKIP  no build with /en/contact/ — run eleventy first."); process.exit(1); }
+
+const doc = (lang) =>
+  new JSDOM(readFileSync(`${build}/${lang}/contact/index.html`, "utf8")).window.document;
+
+check("the form posts to the Worker, not to its own page", () => {
+  const form = doc("en").querySelector("form.contact");
+  assert(form, "no contact form on the page");
+  assert(form.getAttribute("action") === "/api/contact",
+    `the form posts to "${form.getAttribute("action")}" — anything but ` +
+    `/api/contact reaches the asset handler and 405s, losing the message`);
+  assert((form.getAttribute("method") || "").toUpperCase() === "POST", "not a POST");
+});
+
+check("nothing still expects Netlify to be listening", () => {
+  const html = readFileSync(`${build}/en/contact/index.html`, "utf8");
+  assert(!/data-netlify/.test(html),
+    "data-netlify is still on the form — it does nothing here and reads as " +
+    "though submissions are handled when they are not");
+  assert(!/name="form-name"/.test(html), "the Netlify form-name field is still present");
+});
+
+check("the honeypot the handler checks is the one the page renders", () => {
+  /* The handler reads `bot-field`. A page rendering a differently named
+     honeypot would let every bot through while looking protected. */
+  const form = doc("en").querySelector("form.contact");
+  assert(form.querySelector('[name="bot-field"]'), "no bot-field honeypot");
+  const handler = readFileSync("workers/src/contact-form.js", "utf8");
+  assert(/raw\["bot-field"\]/.test(handler),
+    "the handler no longer checks bot-field; the page and the handler disagree");
+});
+
+check("every field the page sends is one the handler reads", () => {
+  const form = doc("en").querySelector("form.contact");
+  const sent = [...form.querySelectorAll("[name]")].map((el) => el.getAttribute("name"));
+  const handler = readFileSync("workers/src/contact-form.js", "utf8");
+  for (const f of sent) {
+    if (f === "bot-field") continue;
+    assert(new RegExp(`raw\\.${f}\\b`).test(handler),
+      `the form sends "${f}" and the handler never reads it`);
+  }
+});
+
+check("BOTH outcomes are shown to the visitor", () => {
+  /* ?sent=true was handled and ?error=1 was not, so a refused submission
+     landed on an ordinary-looking page with the message gone. */
+  const d = doc("en");
+  assert(d.querySelector("#sent-note"), "no success note");
+  assert(d.querySelector("#error-note"),
+    "nothing shows when a submission is refused — the visitor's message is " +
+    "gone and the page looks normal");
+  const html = readFileSync(`${build}/en/contact/index.html`, "utf8");
+  assert(/get\('error'\)|get\("error"\)/.test(html), "the error note is never revealed");
+});
+
+check("the refusal message exists in every language the site builds", () => {
+  const langs = readdirSync("src/_data/i18n").filter((f) => f.endsWith(".json"));
+  for (const f of langs) {
+    const d = JSON.parse(readFileSync(`src/_data/i18n/${f}`, "utf8"));
+    assert(d.contact && d.contact.form_error,
+      `${f} has no contact.form_error, so that language shows an empty error`);
+    assert(d.contact.form_error !== d.contact.form_success,
+      `${f} shows the SUCCESS text after a failure`);
+  }
+});
+
+check("the topics still come from the API, not baked in", () => {
+  /* The half that already worked, and must keep working: the page keeps its
+     own design and takes only the data. */
+  const html = readFileSync(`${build}/en/contact/index.html`, "utf8");
+  assert(/fetch\('\/api\/contact'|fetch\("\/api\/contact"/.test(html),
+    "the reasons are no longer fetched from the API");
+  const sel = doc("en").querySelector("#contact-reason");
+  assert(sel && sel.hasAttribute("hidden"),
+    "the dropdown is not hidden by default — a page whose API call fails " +
+    "would show an empty select");
+});
+
+check("the redirect is built from the configured origin", () => {
+  /* new URL(path, request.url) inherits whatever wrangler claims the host is,
+     which sent a visitor who submitted over https back over http. */
+  const handler = readFileSync("workers/src/contact-form.js", "utf8");
+  assert(/siteOrigin\(env, request\)/.test(handler),
+    "the redirect is still built from request.url");
+});
+
+console.log(`\n  ${pass} passed, ${fail} failed`);
+process.exit(fail ? 1 : 0);

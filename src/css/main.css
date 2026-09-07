@@ -701,3 +701,8 @@ section .cue::before{content:counter(cue,decimal-leading-zero);width:auto;height
   .menu-open .mobile-menu a.active::after{animation:navping 3.318s cubic-bezier(.55,.05,.45,.95) infinite;
     animation-delay:.5s;animation-fill-mode:backwards}
 }
+
+/* A refused contact submission. The success note is quiet because it confirms
+   something that went right; this one has to be noticed, because the visitor's
+   message is still sitting in a form they may be about to navigate away from. */
+.contact-error{color:#FF8A8A;border-left:2px solid #FF6B6B;padding-left:12px}
