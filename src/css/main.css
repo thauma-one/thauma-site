@@ -543,7 +543,7 @@ form.contact textarea{min-height:160px;resize:vertical}
 
    appearance:none is what surrenders the chrome, and it takes the arrow with
    it, so the arrow is drawn here. Inline SVG rather than a character: a glyph
-   picks up the font and the text colour and shifts by a pixel or two between
+   picks up the font and the text color and shifts by a pixel or two between
    platforms, which on a control this wide is visible.
 
    THE OPTIONS THEMSELVES cannot be styled — the open list is drawn by the
