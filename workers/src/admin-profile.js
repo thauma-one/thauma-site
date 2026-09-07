@@ -276,6 +276,17 @@ export default {
       file = { ok: false, error: e.message };
     }
 
+    /* REMEMBERED, not just reported. The response says what happened and the
+       status line shows it — and then somebody reloads and the console is back
+       to "Shown on the staff pages: On" with an empty team page and nothing
+       anywhere admitting the two disagree. The audit log had it, but nobody
+       reads an audit log until they already suspect something. */
+    await db.query("staff_profile_file_state", {
+      user_id: userId,
+      file_synced_at: file && file.ok ? now : null,
+      file_error: file && file.ok ? null : String((file && file.error) || "unknown"),
+    });
+
     await db.query("audit_write", {
       id: crypto.randomUUID(),
       now,

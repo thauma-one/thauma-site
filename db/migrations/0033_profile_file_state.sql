@@ -1,0 +1,23 @@
+-- 0033 — did the page actually get written?
+--
+-- A staff profile lives in two places: this table, and a markdown file in the
+-- repository that the public site builds from. Saving writes both. The write
+-- to the repository can fail — a bad token, GitHub down, or the create bug
+-- that 0032's era finally fixed — and when it did, the response said so in a
+-- status line and nothing remembered.
+--
+-- So after a reload the console showed "Shown on the staff pages: On", the
+-- database agreed, and the team page was empty. Three surfaces, two of them
+-- confident and wrong, and no way to tell from the screen which one to
+-- believe. The only record was the audit log, which nobody reads until
+-- somebody already suspects a problem.
+--
+-- Now the outcome is kept. file_synced_at is when the file was last written
+-- successfully; file_error is what went wrong if it did not. A profile with
+-- is_public = 1 and a file_error is a profile that believes it is on the site
+-- and is not — which the console can finally say out loud.
+--
+-- NULL in both means "never attempted", which is every row written before
+-- this and the honest answer for them.
+ALTER TABLE staff_profiles ADD COLUMN file_synced_at TEXT;
+ALTER TABLE staff_profiles ADD COLUMN file_error TEXT;

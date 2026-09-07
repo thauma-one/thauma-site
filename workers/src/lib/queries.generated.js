@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "8e4d24fcbd8710c0";
+export const SOURCE_DIGEST = "d91c258ead2d100a";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -673,6 +673,10 @@ VALUES (:ip_hash, :list_id, :at, :outcome);`,
   signup_attempts_recent: `SELECT COUNT(*) AS n FROM signup_attempts
  WHERE ip_hash = :ip_hash AND at > :since;`,
   staff_profile_delete: `DELETE FROM staff_profiles WHERE user_id = :user_id;`,
+  staff_profile_file_state: `UPDATE staff_profiles
+   SET file_synced_at = :file_synced_at,
+       file_error     = :file_error
+ WHERE user_id = :user_id;`,
   staff_profile_slug_taken: `SELECT user_id FROM staff_profiles WHERE slug = :slug AND user_id <> :user_id;`,
   staff_profile_translation_delete: `DELETE FROM staff_profile_translations WHERE user_id = :user_id AND lang = :lang;`,
   staff_profile_translation_upsert: `INSERT INTO staff_profile_translations (user_id, lang, role_title, bio, updated_at)
@@ -706,6 +710,7 @@ ON CONFLICT(user_id) DO UPDATE SET
   sp.is_public, sp.slug, sp.region, sp.public_email,
   sp.photo, sp.bio_photo, sp.photo_master, sp.bio_photo_master,
   sp.bio_photo_aspect, sp.sort_order, sp.updated_at,
+  sp.file_synced_at, sp.file_error,
   (SELECT GROUP_CONCAT(t.lang || CHAR(31) || COALESCE(t.role_title, '') ||
                        CHAR(31) || COALESCE(t.bio, ''), CHAR(30))
      FROM staff_profile_translations t WHERE t.user_id = u.id) AS translations

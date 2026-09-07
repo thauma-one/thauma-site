@@ -799,12 +799,26 @@ SELECT
   sp.is_public, sp.slug, sp.region, sp.public_email,
   sp.photo, sp.bio_photo, sp.photo_master, sp.bio_photo_master,
   sp.bio_photo_aspect, sp.sort_order, sp.updated_at,
+  sp.file_synced_at, sp.file_error,
   (SELECT GROUP_CONCAT(t.lang || CHAR(31) || COALESCE(t.role_title, '') ||
                        CHAR(31) || COALESCE(t.bio, ''), CHAR(30))
      FROM staff_profile_translations t WHERE t.user_id = u.id) AS translations
 FROM users u
 LEFT JOIN staff_profiles sp ON sp.user_id = u.id
 ORDER BY u.name COLLATE NOCASE;
+
+
+-- name: staff_profile_file_state
+-- What happened when the site's copy was last written.
+--
+-- Its own statement rather than more columns on the upsert: the outcome is not
+-- known until AFTER the row is saved and the repository has answered, and
+-- folding it in would mean either saving twice or holding the row open across
+-- a network call to GitHub.
+UPDATE staff_profiles
+   SET file_synced_at = :file_synced_at,
+       file_error     = :file_error
+ WHERE user_id = :user_id;
 
 
 -- name: staff_profile_upsert

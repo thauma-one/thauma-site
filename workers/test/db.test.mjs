@@ -271,6 +271,7 @@ await check("every real query converts with its documented params", async () => 
     // null is the ordinary value and means "measure the file if you can".
     bio_photo: null, bio_photo_aspect: null,
     photo_master: null, bio_photo_master: null,
+    file_synced_at: null, file_error: null,
     visibility: "staff", created_by: "u_chase", levels: "staff",
     // administration
     user_id: "u_1", role: "admin", granted_by: "u_1", status: "active",

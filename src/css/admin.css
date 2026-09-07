@@ -858,3 +858,14 @@
 /* Three actions now — Choose/Replace, Edit, Remove — so they wrap rather than
    squeezing on a narrow panel. */
 .pf-photo-acts{flex-wrap:wrap}
+
+/* ---- published here, absent from the site ----
+   The one state where the console and the website disagree, and the only one
+   that used to be invisible: switched on, file never written, team page empty.
+   Critical rather than warning, because nothing is pending — something has already failed. */
+.pf-outofsync{margin:0 0 14px;padding:12px 14px;border-radius:var(--radius);
+  background:rgba(255,107,107,.09);border:1px solid rgba(255,107,107,.32);
+  color:var(--text);font-size:13px;line-height:1.55}
+.pf-outofsync b{color:var(--crit,#FF6B6B)}
+.pf-outofsync-err{color:var(--dim,#8a93a3);font-family:var(--font-mono,ui-monospace,monospace);
+  font-size:12px}

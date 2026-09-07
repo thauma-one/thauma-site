@@ -600,6 +600,24 @@
 
          Dimmed rather than hidden when off, so "this exists but nobody outside
          can see it" is legible at a glance. */
+      /* THE TWO SURFACES DISAGREEING, SAID OUT LOUD.
+
+         A profile lives here and in a markdown file the site builds from.
+         When the file write failed, the switch still read On, the database
+         still said published, and the team page was empty — three surfaces,
+         two of them confident and wrong. The only record was the audit log,
+         which nobody reads until they already suspect something.
+
+         Shown only when it is actually contradictory: published, and the last
+         write did not land. An unpublished profile with no file is correct. */
+      (on && p && p.file_error
+        ? '<p class="pf-outofsync">' +
+            '<b>' + esc(tr('adm.pf.notOnSite')) + '</b> ' +
+            esc(tr('adm.pf.notOnSiteWhy')) + ' ' +
+            '<span class="pf-outofsync-err">' + esc(p.file_error) + '</span>' +
+          '</p>'
+        : '') +
+
       '<div class="pf-body' + (on ? '' : ' is-unpublished') + '">' +
         '<p class="hint pf-draft"' + (on ? ' hidden' : '') + '>' +
           esc(tr('adm.pf.draftNote')) + '</p>' +
@@ -1262,6 +1280,11 @@
       var note = body.querySelector('.pf-draft');
       if (note) note.hidden = on;
     }
+    /* AND IT NEEDS SAVING. This flipped the switch and told nobody, so the one
+       control most likely to be pressed was the one that did not light the
+       Save button — you turned a profile on, the screen agreed with you, and
+       nothing said the site had not been told. */
+    markProfileDirty(btn);
   }
 
   async function saveProfile(userId, btn) {

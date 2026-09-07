@@ -40,6 +40,7 @@ const PROFILE = { user_id: "u_1", name: "Chase Roush", email: "chase@thauma.one"
   status: "active", is_public: 1, slug: "chase-roush", region: "KC",
   public_email: "", photo: "/media/a.webp", bio_photo: "/media/b.webp",
   bio_photo_aspect: 0.75, photo_master: "", bio_photo_master: "", sort_order: 0,
+  file_synced_at: null, file_error: null,
   translations: "en" + US + "Founder" + US + "Bio text" };
 
 function payload(extra) {
@@ -55,8 +56,9 @@ function payload(extra) {
 }
 
 /** The console, rendered, with one person's panel open. */
-async function boot({ postResponse } = {}) {
+async function boot({ postResponse, profiles } = {}) {
   const posts = [];
+  const over = profiles ? { profiles } : null;
   const dom = new JSDOM(readFileSync(`${build}/admin/users/index.html`, "utf8"), {
     runScripts: "dangerously", pretendToBeVisual: true,
     url: "https://dev.thauma.one/admin/users/",
@@ -66,9 +68,9 @@ async function boot({ postResponse } = {}) {
       w.fetch = async (url, opts) => {
         if (opts && opts.method === "POST") {
           posts.push({ url: String(url), body: opts.body });
-          return postResponse || { ok: true, status: 200, json: async () => payload() };
+          return postResponse || { ok: true, status: 200, json: async () => payload(over) };
         }
-        return { ok: true, status: 200, json: async () => payload() };
+        return { ok: true, status: 200, json: async () => payload(over) };
       };
       w.scrollTo = () => {};
     },
@@ -135,6 +137,62 @@ await check("a successful save reports back too", async () => {
   const line = w.document.querySelector("[data-pf-status]");
   assert(line && line.textContent.trim().length > 0,
     "the status line is empty after a save — no way to tell it worked");
+});
+
+/* ------------------------------------------- the switch that needed a Save */
+
+await check("turning the profile on marks it as needing a Save", async () => {
+  /* THE ONE THAT COST A DAY. toggleProfilePublic flipped the switch in the DOM
+     and did nothing else — no post, and no dirty mark. So the control most
+     likely to be pressed was the only one that did not light the Save button.
+     You turned a profile on, the screen agreed with you, and nothing said the
+     website had not been told. */
+  const { w } = await boot();
+  const sw = w.document.querySelector("[data-pf-public]");
+  assert(sw, "no publish switch");
+  const save = w.document.querySelector("[data-pf-save]");
+  assert(!save.classList.contains("is-dirty"), "it started dirty; nothing to prove");
+
+  sw.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 80));
+  assert(save.classList.contains("is-dirty"),
+    "flipping the publish switch does not light the Save button — the change " +
+    "looks done and is not saved");
+});
+
+/* ------------------------------ when the console and the website disagree */
+
+await check("a profile switched on but never written SAYS SO", async () => {
+  /* Three surfaces: the switch said On, the database said published, the team
+     page was empty. Two of them confident and wrong, and the only record was
+     the audit log, which nobody reads until they already suspect something. */
+  const broken = JSON.parse(JSON.stringify(PROFILE));
+  broken.file_error = "Refusing to write without the SHA of the file being replaced.";
+  const { w } = await boot({ profiles: [broken] });
+  const note = w.document.querySelector(".pf-outofsync");
+  assert(note, "nothing warns that the profile is not actually on the site");
+  assert(/not on the site/i.test(note.textContent),
+    `the warning does not say what is wrong: ${note.textContent.trim().slice(0, 80)}`);
+  assert(/Refusing to write/.test(note.textContent),
+    "the actual reason is hidden, so there is nothing to act on or report");
+});
+
+await check("a healthy profile is NOT nagged", async () => {
+  const ok = JSON.parse(JSON.stringify(PROFILE));
+  ok.file_synced_at = "2026-09-06T00:00:00Z"; ok.file_error = null;
+  const { w } = await boot({ profiles: [ok] });
+  assert(!w.document.querySelector(".pf-outofsync"),
+    "a profile that published cleanly is being told it did not");
+});
+
+await check("an UNPUBLISHED profile with no file is not a problem", async () => {
+  /* Switched off and absent from the site is agreement, not disagreement. */
+  const off = JSON.parse(JSON.stringify(PROFILE));
+  off.is_public = 0; off.file_error = "never written";
+  const { w } = await boot({ profiles: [off] });
+  assert(!w.document.querySelector(".pf-outofsync"),
+    "an unpublished profile is being warned about not being on the site, " +
+    "which is exactly where it should be");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);
