@@ -21,8 +21,10 @@ const build = ["_site", "_site_next", "_site_prod"].find((d) =>
   existsSync(`${d}/staff/mailing/index.html`));
 
 let pass = 0, fail = 0;
-const check = (name, fn) => {
-  try { fn(); console.log(`  PASS  ${name}`); pass++; }
+/* Awaits — half these tests boot a page and the rest do not, and a check that
+   drops the promise reports PASS before an async one can fail. */
+const check = async (name, fn) => {
+  try { await fn(); console.log(`  PASS  ${name}`); pass++; }
   catch (e) { console.log(`  FAIL  ${name}\n          ${e.message}`); fail++; }
 };
 const assert = (c, m) => { if (!c) throw new Error(m); };
@@ -34,7 +36,7 @@ if (!build) { console.log("  SKIP  no build — run eleventy first."); process.e
 const page = readFileSync(`${build}/staff/mailing/index.html`, "utf8");
 const js = readFileSync("src/js/staff-mailing.js", "utf8");
 
-check("every view section declares what it is", () => {
+await check("every view section declares what it is", () => {
   const dom = new JSDOM(page);
   const views = [...dom.window.document.querySelectorAll(".ml-view")];
   assert(views.length >= 4, `only ${views.length} .ml-view sections found`);
@@ -46,7 +48,7 @@ check("every view section declares what it is", () => {
   assert(new Set(names).size === names.length, `two views share a name: ${names}`);
 });
 
-check("nothing hides views by naming them one at a time", () => {
+await check("nothing hides views by naming them one at a time", () => {
   /* THE ACTUAL BUG. Two hand-kept lists, each missing the same entry. A view
      hidden by id somewhere is a view that will be forgotten somewhere else. */
   const named = js.match(/\$\('ml\w+View'\)\.hidden\s*=/g) || [];
@@ -55,7 +57,7 @@ check("nothing hides views by naming them one at a time", () => {
     `use onlyView() so a new view cannot be missed`);
 });
 
-check("onlyView hides every view except the one asked for", () => {
+await check("onlyView hides every view except the one asked for", () => {
   const dom = new JSDOM(page, { url: "https://dev.thauma.one/staff/mailing/" });
   const d = dom.window.document;
   /* The real function, lifted out of the module rather than reimplemented —
@@ -80,7 +82,7 @@ check("onlyView hides every view except the one asked for", () => {
 
 /* ------------------------------------------------------- the resource dialog */
 
-check("the resource form is a centered dialog, not a panel below the cards", () => {
+await check("the resource form is a centered dialog, not a panel below the cards", () => {
   const res = readFileSync(`${build}/staff/resources/index.html`, "utf8");
   const d = new JSDOM(res).window.document;
   const form = d.querySelector("#resourceForm");
@@ -91,7 +93,7 @@ check("the resource form is a centered dialog, not a panel below the cards", () 
     "the dialog starts open");
 });
 
-check("a dialog form is actually laid out — .form alone is display:none", () => {
+await check("a dialog form is actually laid out — .form alone is display:none", () => {
   /* The trap: `.form{display:none}` with `.form.open{display:flex}`. Moving it
      into a dialog and dropping `.open` opens a visible backdrop over an
      invisible form. */
@@ -100,7 +102,7 @@ check("a dialog form is actually laid out — .form alone is display:none", () =
     "nothing gives .form a display inside .dlg-back");
 });
 
-check("the where-it-goes control exists and starts hidden", () => {
+await check("the where-it-goes control exists and starts hidden", () => {
   const res = readFileSync(`${build}/staff/resources/index.html`, "utf8");
   const d = new JSDOM(res).window.document;
   const row = d.querySelector("#resourceWhereRow");
@@ -111,7 +113,7 @@ check("the where-it-goes control exists and starts hidden", () => {
   assert(opts.join(",") === "mine,staff,admin", `unexpected options: ${opts}`);
 });
 
-check("the browser asks the SERVER who may publish org-wide", () => {
+await check("the browser asks the SERVER who may publish org-wide", () => {
   const staff = readFileSync("src/js/staff.js", "utf8");
   assert(/state\.canSetVisibility/.test(staff),
     "the shelf control is gated on something other than the server's answer");
@@ -121,7 +123,7 @@ check("the browser asks the SERVER who may publish org-wide", () => {
 
 /* --------------------------------------------------- the resources shelves */
 
-check("the shelves stack; they are not grid items themselves", () => {
+await check("the shelves stack; they are not grid items themselves", () => {
   /* THE BUG IN THE SCREENSHOT. #resourceList kept `class="cards"` from before
      shelves existed — a grid of 260px columns — so the three <section>s became
      the grid items and sat side by side in narrow strips. */
@@ -133,7 +135,7 @@ check("the shelves stack; they are not grid items themselves", () => {
     "#resourceList is still .cards — the shelves will lay out as grid columns");
 });
 
-check("a resource card leaves room for THREE actions", () => {
+await check("a resource card leaves room for THREE actions", () => {
   /* .card h4 reserves 76px for the two a directory card has. A resource card
      also has Share, so the row printed over the title. */
   const css = readFileSync("src/css/staff.css", "utf8");
@@ -141,6 +143,63 @@ check("a resource card leaves room for THREE actions", () => {
   assert(scoped, "nothing repositions the actions on a resource card");
   assert(/position:\s*static/.test(scoped[1]),
     "resource actions are still absolutely positioned over the title");
+});
+
+/* ------------------------------------------- which ministry you come back to */
+
+const SCOPE_PAY = { lists: [], tags: [], senders: [], topics: [],
+  contact: { partner_id: null, deliver_to: "a@b.invalid", heading: "H", is_open: 1 },
+  may_send_as_organisation: true, partners: [],
+  you: { email: "me@thauma.one", name: "Me", roles: ["admin", "staff"] },
+  partner: { id: "p_1", display_name: "Chase Roush", slug: "chase-roush" } };
+
+async function bootMailing(url) {
+  const asked = [];
+  const dom = new JSDOM(readFileSync(`${build}/staff/mailing/index.html`, "utf8"), {
+    runScripts: "dangerously", pretendToBeVisual: true, url,
+    beforeParse(w) {
+      Object.defineProperty(w, "sessionStorage", { value: {
+        getItem: () => JSON.stringify({ roles: ["admin", "staff"] }), setItem: () => {} } });
+      w.fetch = async (u) => { asked.push(String(u)); return { ok: true, status: 200, json: async () => SCOPE_PAY }; };
+      w.scrollTo = () => {};
+    } });
+  const w = dom.window;
+  w.eval(readFileSync("src/js/staff-i18n.js", "utf8"));
+  w.eval(readFileSync("src/js/staff-mailing.js", "utf8"));
+  await new Promise((r) => setTimeout(r, 220));
+  return { w, d: w.document, asked };
+}
+
+await check("reloading the organization's mailing comes back to the organization", async () => {
+  /* THE BUG. show() wrote '#' + view, which is a whole new URL — the query
+     string went with it. The scope was dropped on the first navigation and a
+     reload came back as the partner, whatever you had been editing. Landing in
+     a ministry's editor when you left Thauma's is an invitation to change the
+     wrong thing without noticing. */
+  const { w, d, asked } = await bootMailing(
+    "https://dev.thauma.one/staff/mailing/?scope=organization#contact");
+  assert(/scope=organization/.test(asked[0]),
+    `the first request asked for the wrong scope: ${asked[0]}`);
+  assert(/scope=organization/.test(w.location.href),
+    `the address lost the scope while rendering: ${w.location.href}`);
+  const lit = [...d.querySelectorAll("[data-scope]")]
+    .filter((b) => b.classList.contains("is-on")).map((b) => b.dataset.scope);
+  assert(lit.join(",") === "organization",
+    `the switcher shows "${lit.join(",") || "nothing"}" while editing the organization`);
+});
+
+await check("and the view comes back with it", async () => {
+  const { d } = await bootMailing(
+    "https://dev.thauma.one/staff/mailing/?scope=organization#contact");
+  assert(!d.getElementById("mlContactView").hidden,
+    "the scope was restored but the view was not");
+});
+
+await check("a partner's mailing is unaffected", async () => {
+  const { w, asked } = await bootMailing("https://dev.thauma.one/staff/mailing/");
+  assert(!/scope=organization/.test(asked[0]), "a plain URL asked for the organization");
+  assert(!/scope=/.test(w.location.href),
+    `a partner's address grew a scope it does not need: ${w.location.href}`);
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

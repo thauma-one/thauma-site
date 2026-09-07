@@ -69,11 +69,17 @@
   }
   var $ = function (id) { return document.getElementById(id); };
 
+  /* WHOSE MAILING, taken from the address bar before anything is fetched — the
+     first load asks the server for one scope or the other, so this has to be
+     decided before it, not after. */
+  var startScope = /(\?|&)scope=organization\b/.test(location.search)
+    ? 'organization' : 'partner';
+
   var state = {
     lists: [], tags: [], senders: [], contact: null, topics: [],
     subsQ: '', subsStatus: '', subsSort: '', subsTag: '', subsPage: 0, picked: [],
     subsTotal: 0, subsPageSize: 100,
-    scope: 'partner', partnerSlug: '',
+    scope: startScope, partnerSlug: '',
     embed: null, mayTheme: false,
     view: null,        // a list id, or 'embed' / 'composer'
     sub: 'people',     // which half of a list view
@@ -187,8 +193,26 @@
       if (l) { fillSettings(l); showSub('people'); }
     }
 
-    /* Survives a reload, so coming back to a list is not a hunt. */
-    try { history.replaceState(null, '', '#' + view); } catch (e) {}
+    /* SURVIVES A RELOAD — the view AND whose mailing it is.
+
+       The view always did: '#' + view is a fragment-only URL, which resolves
+       against the current one and keeps the path and query. The SCOPE did not,
+       because nothing ever put it in the address to begin with and startup
+       hardcoded 'partner'. So you could be editing Thauma's mailing, reload,
+       and land in a ministry's — not an inconvenience, an invitation to change
+       the wrong thing without noticing.
+
+       Built here rather than appended to a fragment, so the two halves of the
+       address are decided in one place instead of one of them being implied. */
+    try { history.replaceState(null, '', addressFor(view)); } catch (e) {}
+  }
+
+  /* The address for a view in the current scope. Same word the API uses for
+     the same idea, so there is one spelling of "the organization" on this
+     page rather than two. */
+  function addressFor(view) {
+    return (state.scope === 'organization' ? '?scope=organization' : location.pathname)
+           + '#' + view;
   }
 
   function showSub(which) {
@@ -1320,6 +1344,12 @@
     if (body.may_send_as_organisation) {
       $('mlScope').hidden = false;
       $('mlScopeMine').textContent = (body.partner && body.partner.display_name) || tr('ml.scopeMine');
+      /* The switcher is only revealed here, so a scope restored from the
+         address bar has had nothing to mark until now — without this the page
+         loads Thauma's mailing with the ministry's button lit. */
+      Array.prototype.forEach.call(document.querySelectorAll('[data-scope]'), function (b) {
+        b.classList.toggle('is-on', b.dataset.scope === state.scope);
+      });
     }
 
     /* Where to land: what the caller asked for, then the address bar, then the
@@ -1469,6 +1499,10 @@
       Array.prototype.forEach.call(document.querySelectorAll('[data-scope]'), function (b) {
         b.classList.toggle('is-on', b.dataset.scope === state.scope);
       });
+      /* Immediately, not when a view is next shown: somebody who switches to
+         Thauma and reloads before clicking anything else should still be in
+         Thauma. */
+      try { history.replaceState(null, '', addressFor(state.view || '')); } catch (e) {}
       return load('');
     }
 
