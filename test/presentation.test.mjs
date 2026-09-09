@@ -387,6 +387,27 @@ await check("the figures, the open count and the sentence tell one story", async
     `the chart shows one open A2 seat and the sentence says "${askLine(d)}"`);
 });
 
+await check("the ask's words come from the config, not from the animation code", async () => {
+  /* The spec's rule for the whole deck: the founder edits copy and figures
+     without opening a file that knows about timing curves. This sentence is
+     the one that matters most, so it is the one worth holding — including its
+     grammar, which travels with the words rather than being welded into
+     ask.js. Rewriting the template has to change what is on screen. */
+  const { w, d } = await onAsk();
+  assert(w.Deck.config.ask.askLine?.open, "the ask sentence is not in the config");
+
+  w.Deck.config.ask.askLine.open = "{n} {tier} {spot/spots}, and nothing else";
+  clickTier(w, d, "a2");
+  await new Promise((r) => setTimeout(r, 100));
+  assert(askLine(d) === "8 A2 spots, and nothing else",
+    `rewording the config did not reword the deck: "${askLine(d)}"`);
+
+  clickTier(w, d, "pm");
+  await new Promise((r) => setTimeout(r, 100));
+  assert(askLine(d) === "1 Production Manager spot, and nothing else",
+    `the singular did not follow the words: "${askLine(d)}"`);
+});
+
 await check("the budget explains WHY, not just what", async () => {
   /* "$X for housing" without the philosophy reads as either padding or
      austerity. Bylaws Article VII §5 explains why it is neither. */

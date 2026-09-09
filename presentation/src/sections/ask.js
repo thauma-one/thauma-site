@@ -85,7 +85,25 @@ async function fillSeats(root, config, counts) {
    you be one?"), generated from the live counts so it can never contradict the
    figures drawn right above it. When a tier is full it says so plainly instead
    of asking for a seat that does not exist — being asked to join something
-   already complete is worse than being told it filled up. */
+   already complete is worse than being told it filled up.
+
+   The WORDS are in config.js with the rest of the copy. Only the filling-in
+   happens here. */
+
+/** One ask line, filled in from config.ask.askLine.
+
+    The singular/plural choice travels with the words rather than living here,
+    because a sentence rewritten in config.js would otherwise need this file
+    edited to stay grammatical — which is the exact coupling the spec's
+    "copy apart from animation code" rule exists to prevent. */
+function phrase(template, { n, tier, amount }) {
+  return template
+    .replace(/\{(\w+)\/(\w+)\}/g, (_, one, many) => (n === 1 ? one : many))
+    .replace(/\{n\}/g, n)
+    .replace(/\{tier\}/g, tier)
+    .replace(/\{amount\}/g, amount)
+    .replace(/\*([^*]+)\*/g, "<b>$1</b>");
+}
 function selectTier(root, config, state, key) {
   const tier = config.ask.tiers.find((t) => t.key === key);
   if (!tier) return;
@@ -100,11 +118,9 @@ function selectTier(root, config, state, key) {
   const line = root.querySelector("[data-tier-ask]");
   if (!line) return;
 
-  line.innerHTML = open > 0
-    ? `There ${open === 1 ? "is" : "are"} <b>${open}</b> ${tier.name} ` +
-      `${open === 1 ? "spot" : "spots"} left at <b>${money(tier.amount)}/month</b> — ` +
-      `would you be one?`
-    : `The <b>${tier.name}</b> tier is full. The nearest open seat is a good place to look.`;
+  const words = config.ask.askLine;
+  line.innerHTML = phrase(open > 0 ? words.open : words.full,
+    { n: open, tier: tier.name, amount: money(tier.amount) });
   line.classList.add("is-in");
 }
 

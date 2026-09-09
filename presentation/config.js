@@ -224,6 +224,21 @@ export const config = {
        Every count is 0 until real commitments exist; the spec is explicit that
        offline is a first-class path, not a degraded one. */
     offlineCounts: { pm: 0, lead: 0, sys: 0, tech: 0, a2: 0, stage: 0 },
+
+    /* THE ASK ITSELF, as words. This is the most important sentence in the
+       whole deck, so it lives here with the other copy rather than inside the
+       animation code — it can be reworded without opening a file that knows
+       about timing curves.
+
+       Fill-ins: {n} how many seats are open, {tier} the tier's name, {amount}
+       its monthly figure. {is/are} and {spot/spots} pick the word on the LEFT
+       when exactly one seat is open and the one on the right otherwise, so the
+       sentence stays grammatical whichever way it is rewritten. Anything
+       between *asterisks* is emphasized. */
+    askLine: {
+      open: "There {is/are} *{n}* {tier} {spot/spots} left at *{amount}/month* — would you be one?",
+      full: "The *{tier}* tier is full. The nearest open seat is a good place to look.",
+    },
   },
 
   /* ---------------------------------------------------------------- SECTION 7 */
