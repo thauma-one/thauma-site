@@ -765,31 +765,119 @@ section .cue::before{content:counter(cue,decimal-leading-zero);width:auto;height
 }
 @keyframes contact-sent-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 
-/* ---- gatherings, and resources in full ----
-   BONES, NOT THE DESIGN. The spec keeps the invitation anatomy, the one
-   interactive moment and the alternating record for a later pass. This is
-   enough structure to read what has been written and to check it renders in
-   every language — replacing it later changes nothing behind it. */
-.gathering{display:grid;gap:22px;margin-top:44px;
-  grid-template-columns:minmax(0,1fr)}
-@media (min-width: 780px){
-  /* Photo beside the words where there is room. The alternating zigzag the
-     spec asks for belongs to the visual pass; this is the plain version. */
-  .gathering:has(.gathering-photo){grid-template-columns:minmax(0,4fr) minmax(0,5fr)}
+/* ================================================== THE INVITATION
+   Anatomy borrowed from a wedding invitation, deliberately: an announcement
+   line, who and what stated plainly, the date and place set apart
+   typographically but QUIET, and the action small and bounded at the end. An
+   invitation does not shout its RSVP; it tells you something is happening.
+
+   So nothing here is a call-to-action button. The card is the star.
+   ==================================================================== */
+.invite{margin-top:52px;display:grid;gap:0;grid-template-columns:minmax(0,1fr)}
+@media (min-width: 900px){
+  /* The photograph and the card share an edge rather than sitting in
+     separate boxes — one object, two halves. */
+  .invite:has(.invite-photo){grid-template-columns:minmax(0,5fr) minmax(0,6fr)}
 }
-.gathering + .gathering{border-top:1px solid rgba(47,216,255,.14);padding-top:44px}
-.gathering-photo{aspect-ratio:16/9;overflow:hidden;
-  border:1px solid rgba(47,216,255,.2)}
-.gathering-photo img{width:100%;height:100%;object-fit:cover;display:block}
-.gathering-body h3{margin-bottom:10px}
-.gathering-when{font-variant-numeric:tabular-nums}
-.gathering-where a{color:var(--blue)}
-.gathering-sessions{margin:14px 0 0;padding-left:18px;line-height:1.9}
-.gathering-sessions b{font-variant-numeric:tabular-nums;margin-right:8px}
-/* Written in another language, said rather than hidden — a gathering only in
-   Croatian is proof of real work, not a gap to apologize for. */
-.gathering-lang,.resource-lang{font-size:13px;color:var(--dim);font-style:italic}
-.gathering.is-past{opacity:.86}
+.invite-photo{overflow:hidden;border:1px solid rgba(47,216,255,.18);border-right:0;
+  min-height:280px}
+.invite-photo img{width:100%;height:100%;object-fit:cover;display:block}
+@media (max-width: 899px){
+  .invite-photo{border-right:1px solid rgba(47,216,255,.18);aspect-ratio:16/9;min-height:0}
+}
+
+.invite-card{background:var(--panel);border:1px solid rgba(47,216,255,.18);
+  padding:44px 46px 40px;position:relative}
+@media (max-width: 560px){ .invite-card{padding:34px 26px 30px} }
+
+/* The announcement. Quieter than a page heading — it introduces, it does not
+   compete with the name of the thing. */
+.invite-cue{font-size:11px;letter-spacing:.34em;text-transform:uppercase;
+  font-weight:600;color:var(--foam);margin:0 0 22px}
+.invite-title{font-family:'Sora',sans-serif;font-weight:100;font-size:clamp(30px,4.6vw,44px);
+  line-height:1.12;letter-spacing:.01em;margin:0;text-wrap:balance}
+.invite-lang{font-size:13px;color:var(--dim);font-style:italic;margin:12px 0 0}
+.invite-blurb{margin-top:18px;color:var(--dim);line-height:1.75;max-width:46ch}
+.invite-blurb p{margin:0}
+
+/* THE ONE MOMENT. A light crosses the rule as the card arrives — the same
+   gradient and glow the workline uses to mean "something is in motion", so
+   this reuses the site's own signal instead of inventing a gimmick. It runs
+   ONCE, not on a loop: a loop is decoration, and the brief asked for restraint.
+   Nothing happens at all under prefers-reduced-motion. */
+.invite-rule{position:relative;height:1px;margin:30px 0 26px;
+  background:rgba(255,255,255,.10);overflow:hidden}
+.invite-rule i{position:absolute;top:-1px;height:3px;width:26%;left:-30%;display:block;
+  background:linear-gradient(90deg,rgba(92,242,196,0),#5CF2C4 45%,#B2FFE6 55%,rgba(92,242,196,0));
+  box-shadow:0 0 18px rgba(92,242,196,.55)}
+@media(prefers-reduced-motion:no-preference){
+  .invite.sr-in .invite-rule i{animation:invite-pass 1.5s cubic-bezier(.5,.05,.5,.95) .25s both}
+  @keyframes invite-pass{0%{left:-30%}100%{left:104%}}
+}
+
+/* THE FACTS, SET APART AND QUIET. Small uppercase labels above the answers is
+   how an invitation prints them — you find the date without reading a
+   sentence, and none of it shouts. */
+.invite-facts{display:grid;gap:22px 40px;margin:0;
+  grid-template-columns:repeat(auto-fit,minmax(150px,auto));justify-content:start}
+.invite-facts dt{font-size:10px;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--dim);margin-bottom:7px}
+.invite-facts dd{margin:0;font-size:16px;line-height:1.45;color:var(--text)}
+.invite-facts a{color:var(--blue);text-decoration:none;
+  border-bottom:1px solid rgba(47,216,255,.3);padding-bottom:1px}
+.invite-facts a:hover{border-bottom-color:var(--blue)}
+.invite-time{display:block;font-size:13px;color:var(--dim);margin-top:3px}
+
+.invite-sessions{margin:26px 0 0;padding:0;list-style:none;
+  border-top:1px solid rgba(255,255,255,.07)}
+.invite-sessions li{display:flex;gap:16px;padding:11px 0;
+  border-bottom:1px solid rgba(255,255,255,.05);font-size:14.5px;color:var(--dim)}
+.invite-session-date{color:var(--text);min-width:9.5em;font-variant-numeric:tabular-nums}
+
+/* SMALL AND BOUNDED. A link with a rule under it, not a filled button — the
+   point of an invitation is the thing offered, never the RSVP. */
+.invite-act{margin:30px 0 0;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.invite-act a{font-size:12px;letter-spacing:.18em;text-transform:uppercase;
+  font-weight:600;color:var(--foam);text-decoration:none;
+  border-bottom:1px solid rgba(92,242,196,.4);padding-bottom:5px;transition:.2s}
+.invite-act a:hover{border-bottom-color:var(--foam);letter-spacing:.21em}
+.invite-note{font-size:12px;color:var(--dim)}
+
+/* The wait, which is the expected condition for years — stated, not
+   apologized for. */
+.invite-waiting .workline{margin:28px 0}
+
+/* ================================================== THE RECORD
+   Alternating sides down the page, so it reads as a story being told rather
+   than a spreadsheet with pictures. It also gives the page something to show
+   a supporter long before there is anything to invite anybody to.
+   ==================================================================== */
+.record{margin-top:80px}
+.record-cue{color:var(--dim);margin-bottom:0}
+.record-band{display:grid;gap:0;grid-template-columns:minmax(0,1fr);
+  margin-top:38px;align-items:stretch}
+@media (min-width: 820px){
+  .record-band{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  /* The zigzag: the photo swaps sides on every other one. */
+  .record-band.is-flipped .record-photo{order:2}
+}
+.record-photo{overflow:hidden;background:var(--bg2,#0b1119);
+  border:1px solid rgba(255,255,255,.07);min-height:230px}
+.record-photo img{width:100%;height:100%;object-fit:cover;display:block}
+.record-noshot{display:block;width:100%;height:100%;
+  background:repeating-linear-gradient(45deg,rgba(255,255,255,.02) 0 10px,transparent 10px 20px)}
+.record-body{padding:34px 38px;background:var(--panel);
+  border:1px solid rgba(255,255,255,.07);border-left:0;
+  display:flex;flex-direction:column;justify-content:center}
+@media (min-width: 820px){
+  .record-band.is-flipped .record-body{border-left:1px solid rgba(255,255,255,.07);border-right:0}
+}
+@media (max-width: 819px){ .record-body{border-left:1px solid rgba(255,255,255,.07)} }
+.record-when{font-size:11px;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--dim);margin:0 0 12px}
+.record-body h3{margin:0 0 12px}
+.record-body div{color:var(--dim);line-height:1.7}
+.record-body div p{margin:0}
 
 .resource-card h3 a{color:inherit;text-decoration:none}
 .resource-card h3 a:hover{color:var(--blue)}
@@ -801,3 +889,15 @@ section .cue::before{content:counter(cue,decimal-leading-zero);width:auto;height
   padding:0;margin:0 0 22px}
 .resource-symptoms li{font-size:12px;padding:5px 11px;border-radius:2px;
   color:var(--dim);border:1px solid rgba(255,255,255,.14)}
+
+/* Also ahead — quieter than the invitation by design. Same panel, no
+   announcement, no moment: the featured gathering has to stay the featured
+   one, and a second "You are invited" would spend the first one's meaning. */
+.also{margin-top:56px}
+.also-cue{color:var(--dim);margin-bottom:6px}
+.also-item{padding:26px 0;border-top:1px solid rgba(255,255,255,.07)}
+.also-item h3{margin:0 0 8px;font-size:22px}
+.also-item p{color:var(--dim);margin:0}
+.also-when{font-size:11px;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--dim);margin-bottom:10px}
+.also-item .invite-act{margin-top:16px}

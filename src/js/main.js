@@ -311,7 +311,7 @@ document.querySelectorAll('.give-btn').forEach(function (btn) {
 // (.work > div:not(.label), .conviction > div:not(.num), .val h3/p);
 // only the label/number itself rolls.
 if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'IntersectionObserver' in window) {
-  var targets = Array.prototype.slice.call(document.querySelectorAll('section h2, section .lede, section .body-text, .val h3, .val p, .conviction > div:not(.num), .work > div:not(.label), .person, .give-card, .frame, .empty, .resource-card, .bio-photo'));
+  var targets = Array.prototype.slice.call(document.querySelectorAll('section h2, section .lede, section .body-text, .val h3, .val p, .conviction > div:not(.num), .work > div:not(.label), .person, .give-card, .frame, .empty, .resource-card, .bio-photo, .invite, .record-band'));
   // Hide (.sr) immediately — pre-paint — then split by arrival type at
   // pagereveal: on a TRANSITIONED arrival, anything already inside the
   // viewport is un-hidden again (still pre-paint, so it never flashes) and
@@ -347,6 +347,11 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'Intersect
       io.unobserve(el);
       el.style.transitionDelay = (i * 90) + 'ms';
       el.classList.add('in');
+      /* THE INVITATION'S ONE MOMENT, hung on the reveal that already exists
+         rather than a second observer watching the same element. The light
+         crosses the rule as the card arrives and never again — a loop would be
+         decoration, and the brief asked for one moment, not several. */
+      if (el.classList.contains('invite')) el.classList.add('sr-in');
       setTimeout(function () { el.style.transitionDelay = ''; }, 800 + i * 90);
     });
   }, { threshold: 0.12 });

@@ -166,7 +166,22 @@
     "h2_thin": "Produkcijski ljudi,",
     "h2_bold": "u jednoj prostoriji.",
     "empty_title": "Još nema zakazanih događaja.",
-    "empty_text": "Regionalna okupljanja dio su dugoročne vizije — produkcijski ljudi iz mnogih zajednica, zajedno. Kad prvo bude isplanirano, prijave će se otvoriti ovdje."
+    "empty_text": "Regionalna okupljanja dio su dugoročne vizije — produkcijski ljudi iz mnogih zajednica, zajedno. Kad prvo bude isplanirano, prijave će se otvoriti ovdje.",
+    "invited": "Pozvani ste",
+    "register": "Prijavite se",
+    "application": "uz prijavu",
+    "when_label": "Kada",
+    "where_label": "Gdje",
+    "often_label": "Koliko često",
+    "places_label": "Mjesta",
+    "past_cue": "Što se već dogodilo",
+    "other_lang": "Napisano na drugom jeziku — prijevod možda slijedi.",
+    "empty_cta": "Javite nam da biste došli",
+    "cadence_weekly": "Svaki tjedan",
+    "cadence_fortnightly": "Svaka dva tjedna",
+    "cadence_monthly": "Svaki mjesec",
+    "cadence_custom": "Vidi datume ispod",
+    "also_cue": "Također dolazi"
   },
   "staff": {
     "title": "Tim",

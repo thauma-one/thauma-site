@@ -9,6 +9,41 @@ module.exports = function (eleventyConfig) {
   const md = require("markdown-it")({ html: false, linkify: true });
   eleventyConfig.addFilter("md", (s) => (s ? md.render(String(s)) : ""));
 
+  /* A DATE, OR A SPAN OF THEM, IN THE READER'S LANGUAGE.
+   *
+   * "2027-03-14 – 2027-03-15" is a database value shown to a person. On an
+   * invitation the date is one of three things somebody is actually looking
+   * for, and it has to read like one: "14–15 March 2027".
+   *
+   * Intl does the language, so Croatian gets "ožujka" without a month table
+   * living here. A same-month span says the month once — "14–15 March" — the
+   * way an invitation would; a span across months spells both ends out.
+   *
+   * Anything unparseable is handed back exactly as written. A gathering whose
+   * date is "spring 2027" is a real thing somebody may type before a date is
+   * fixed, and turning that into "Invalid Date" would be worse than leaving
+   * their words alone.
+   */
+  eleventyConfig.addFilter("when", function (start, end, lang) {
+    const locale = { en: "en-GB", hr: "hr-HR", sr: "sr-RS", sl: "sl-SI" }[lang] || "en-GB";
+    const parse = (v) => {
+      if (!v) return null;
+      const d = new Date(String(v) + "T00:00:00");
+      return Number.isNaN(d.getTime()) ? null : d;
+    };
+    const a = parse(start), b = parse(end);
+    if (!a) return start || "";
+
+    const fmt = (d, opts) => new Intl.DateTimeFormat(locale, opts).format(d);
+    const full = { day: "numeric", month: "long", year: "numeric" };
+
+    if (!b || b.getTime() === a.getTime()) return fmt(a, full);
+    if (a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth()) {
+      return `${fmt(a, { day: "numeric" })}–${fmt(b, full)}`;
+    }
+    return `${fmt(a, { day: "numeric", month: "long" })} – ${fmt(b, full)}`;
+  });
+
   // Static passthroughs
   eleventyConfig.addPassthroughCopy({ "src/css": "css" });
   eleventyConfig.addPassthroughCopy({ "src/js": "js" });

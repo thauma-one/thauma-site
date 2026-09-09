@@ -102,9 +102,33 @@ module.exports = () => {
     .sort((a, b) => {
       const s = (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9);
       if (s !== 0) return s;
+
+      /* SOMETHING WITH NO USABLE DATE IS NEVER "NEXT".
+       *
+       * The events page features the first upcoming gathering as THE
+       * invitation, so whatever sorts first is what a visitor is invited to.
+       * An entry with no date, or with a date somebody typed as prose —
+       * "13 March - 27 March 2027" is a real thing to write before a date is
+       * fixed — cannot be compared to anything, and string comparison put it
+       * first purely because "1" sorts before "2". A half-finished draft was
+       * being presented as the next gathering.
+       *
+       * So: datable things sort by their date, and everything else falls to
+       * the end of its own group. It is still listed; it is just not held up
+       * as the thing coming next, which is a claim only a date can support. */
+      /* ISO ONLY, on purpose. Date.parse is lenient enough to make a number
+         out of "13 March - 27 March 2027" — it reads the front of it and
+         ignores the rest — so asking whether it parsed is not the same as
+         asking whether it is a date. The console writes YYYY-MM-DD from a real
+         date control; anything else is prose and is treated as prose. */
+      const iso = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || "")) ? Date.parse(v) : NaN);
+      const at = iso(a.date), bt = iso(b.date);
+      const aOk = !Number.isNaN(at), bOk = !Number.isNaN(bt);
+      if (aOk !== bOk) return aOk ? -1 : 1;
+      if (!aOk) return 0;
+
       /* Upcoming reads soonest-first; everything else newest-first. A past
          gathering from last month is more interesting than one from 2027. */
-      const da = String(a.date || ""), db = String(b.date || "");
-      return a.status === "upcoming" ? da.localeCompare(db) : db.localeCompare(da);
+      return a.status === "upcoming" ? at - bt : bt - at;
     });
 };

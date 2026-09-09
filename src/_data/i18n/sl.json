@@ -166,7 +166,22 @@
     "h2_thin": "Ljudje iz produkcije,",
     "h2_bold": "v istem prostoru.",
     "empty_title": "Zaenkrat ni napovedanih dogodkov.",
-    "empty_text": "Regijska srečanja so del dolgoročne vizije — ljudje iz produkcije iz številnih občin, skupaj. Ko bo prvo načrtovano, se bodo tukaj odprle prijave."
+    "empty_text": "Regijska srečanja so del dolgoročne vizije — ljudje iz produkcije iz številnih občin, skupaj. Ko bo prvo načrtovano, se bodo tukaj odprle prijave.",
+    "invited": "Vabljeni ste",
+    "register": "Prijavite se",
+    "application": "s prijavo",
+    "when_label": "Kdaj",
+    "where_label": "Kje",
+    "often_label": "Kako pogosto",
+    "places_label": "Mesta",
+    "past_cue": "Kaj se je že zgodilo",
+    "other_lang": "Napisano v drugem jeziku — prevod morda sledi.",
+    "empty_cta": "Sporočite nam, da bi prišli",
+    "cadence_weekly": "Vsak teden",
+    "cadence_fortnightly": "Vsaka dva tedna",
+    "cadence_monthly": "Vsak mesec",
+    "cadence_custom": "Glej datume spodaj",
+    "also_cue": "Prav tako prihaja"
   },
   "staff": {
     "title": "Osebje",

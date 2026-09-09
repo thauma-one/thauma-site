@@ -18,10 +18,21 @@
  * rather than left to somebody noticing the silence.
  */
 import { JSDOM } from "jsdom";
-import { readFileSync, existsSync, readdirSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
+import { buildDevSite } from "./lib/dev-build.mjs";
 
-const build = ["_site", "_site_next", "_site_prod"].find((d) =>
-  existsSync(`${d}/en/contact/index.html`));
+/* AN UNGATED BUILD OF ITS OWN, not whatever happens to be lying in _site.
+ *
+ * This looked in _site, _site_next and _site_prod and exited 1 when it found
+ * none of them carrying /en/contact/. On this machine _site is kept current by
+ * the Pi's dev service and the test passed; in CI the build goes to _site_prod
+ * with comingSoon TRUE, which produces twenty files and no interior pages at
+ * all — so it would have failed there, on a page that was perfectly fine.
+ *
+ * Green where it does not matter and red where it does is the worst shape a
+ * test can have. See test/lib/dev-build.mjs. */
+const built = await buildDevSite("/tmp/contact-page-test", "en/contact/index.html");
+const build = built.ok ? "/tmp/contact-page-test" : null;
 
 let pass = 0, fail = 0;
 /* AWAITS. It did not, and the moment an async test was added to this file it
@@ -37,7 +48,7 @@ const check = async (name, fn) => {
 const assert = (c, m) => { if (!c) throw new Error(m); };
 
 console.log("the contact page submits somewhere\n");
-if (!build) { console.log("  SKIP  no build with /en/contact/ — run eleventy first."); process.exit(1); }
+if (!build) { console.log("  FAIL  could not build the site:", built.error); process.exit(1); }
 
 const doc = (lang) =>
   new JSDOM(readFileSync(`${build}/${lang}/contact/index.html`, "utf8")).window.document;

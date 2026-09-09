@@ -166,7 +166,22 @@
     "h2_thin": "Production people,",
     "h2_bold": "in one room.",
     "empty_title": "No events scheduled yet.",
-    "empty_text": "Regional gatherings are part of the long-term vision — production people from many congregations, together. When the first one is planned, registration will open here."
+    "empty_text": "Regional gatherings are part of the long-term vision — production people from many congregations, together. When the first one is planned, registration will open here.",
+    "invited": "You are invited",
+    "register": "Register",
+    "application": "by application",
+    "when_label": "When",
+    "where_label": "Where",
+    "often_label": "How often",
+    "places_label": "Places",
+    "past_cue": "What has already happened",
+    "other_lang": "Written in another language — a translation may follow.",
+    "empty_cta": "Tell us you would come",
+    "cadence_weekly": "Every week",
+    "cadence_fortnightly": "Every two weeks",
+    "cadence_monthly": "Every month",
+    "cadence_custom": "See the dates below",
+    "also_cue": "Also ahead"
   },
   "staff": {
     "title": "Staff",

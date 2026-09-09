@@ -84,10 +84,9 @@
       { name: 'status', kind: 'choice', label: 'Status', vocab: 'status',
         hint: 'Set deliberately, never worked out from the date — a canceled ' +
               'gathering is not "upcoming" because its date has not passed yet.' },
-      { name: 'date', kind: 'text', label: 'First day', placeholder: '2027-03-14',
+      { name: 'date', kind: 'date', label: 'First day',
         when: function (it) { return it.type !== 'cohort'; } },
-      { name: 'end_date', kind: 'text', label: 'Last day (if more than one)',
-        placeholder: '2027-03-16',
+      { name: 'end_date', kind: 'date', label: 'Last day (if more than one)',
         when: function (it) { return it.type !== 'cohort'; },
         hint: 'Leave empty for a single day. A weekend is two dates, not a ' +
               'sentence somebody has to read to work it out.' },
@@ -267,6 +266,29 @@
           ' value="' + esc((v || []).join(', ')) + '"' +
           ' placeholder="no sound, one channel dead">' + hint + '</label>';
     }
+    if (spec.kind === 'date') {
+      /* A REAL DATE CONTROL, not a text box with a hopeful placeholder. Left
+         as text, somebody types "13 March - 27 March 2027" — perfectly clear
+         to a person, and not a date to anything that has to sort, compare or
+         translate it into Croatian.
+
+         UNLESS WHAT IS ALREADY THERE IS NOT A DATE. A date input silently
+         shows nothing for a value it cannot parse, and saving would then wipe
+         words somebody deliberately wrote. So free text keeps a text box and
+         says why, rather than being quietly discarded. */
+      var iso = /^\d{4}-\d{2}-\d{2}$/.test(v || '');
+      if (v && !iso) {
+        return '<label class="fld"><span>' + esc(spec.label) + '</span>' +
+          '<input type="text" data-lib-field="' + esc(spec.name) + '"' +
+            ' value="' + esc(v) + '">' +
+          '<span class="fld-hint">' + esc(tr('lib.freeDate',
+            'This is not a date the site can read — it will be shown exactly as ' +
+            'written. Clear it to pick a real one.')) + '</span></label>';
+      }
+      return '<label class="fld"><span>' + esc(spec.label) + '</span>' +
+        '<input type="date" data-lib-field="' + esc(spec.name) + '"' +
+          ' value="' + esc(v || '') + '">' + hint + '</label>';
+    }
     if (spec.kind === 'photo') {
       /* A REAL UPLOAD, not a path. "Photo path (optional)" was a text box
          asking somebody to know where a file lives on a server, which is not
@@ -297,8 +319,8 @@
     if (spec.kind === 'sessions') {
       var rows = (v || []).concat([{ date: '', topic: '' }]).map(function (s, i) {
         return '<div class="lib-session" data-session="' + i + '">' +
-          '<input type="text" data-session-field="date" value="' + esc(s.date || '') +
-            '" placeholder="2027-03-14">' +
+          '<input type="' + (/^\d{4}-\d{2}-\d{2}$/.test(s.date || '') || !s.date ? 'date' : 'text') +
+            '" data-session-field="date" value="' + esc(s.date || '') + '">' +
           '<input type="text" data-session-field="topic" value="' + esc(s.topic || '') +
             '" placeholder="Signal flow">' +
         '</div>';
