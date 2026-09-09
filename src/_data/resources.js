@@ -36,12 +36,26 @@ function webUrl(raw) {
   return v;
 }
 
-/* A place, as a link that opens the reader's own map. A Google Maps search URL
-   is the one form every platform recognises — iOS offers Apple Maps, Android
-   opens Google Maps, a desktop opens the web. */
+/* A PLACE, WITHOUT PICKING SOMEBODY'S MAPS APP FOR THEM.
+ *
+ * This was a Google Maps search URL, chosen because every platform recognizes
+ * it. It also opens Google Maps whatever the reader actually uses, which is
+ * exactly the thing that makes map links irritating.
+ *
+ * THERE IS NO SINGLE URL THAT MEANS "THE MAPS APP YOU USE". `geo:` is the real
+ * standard for a place and Android honors it with the default handler; iOS
+ * has no geo: handler at all; a desktop browser has no maps app to open. So
+ * the honest arrangement is a neutral web map in the markup — which works
+ * everywhere, with no JavaScript, and forces nothing — upgraded per platform
+ * at load. See enhanceMapLinks in src/js/main.js.
+ *
+ * OpenStreetMap for the base because it is a map rather than a product: no
+ * account, no app prompt, and a nonprofit pointing at open data is the right
+ * default when it has to pick one.
+ */
 function mapUrl(place) {
   const v = String(place == null ? "" : place).trim();
-  return v ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(v)}` : "";
+  return v ? `https://www.openstreetmap.org/search?query=${encodeURIComponent(v)}` : "";
 }
 
 

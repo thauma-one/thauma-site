@@ -178,9 +178,15 @@ await check("plain words stay plain", async () => {
   eq(normalizeUrl("ask Chase in person"), "ask Chase in person", "a note");
 });
 
-await check("a place becomes a link that opens the reader's own map", async () => {
+await check("a place becomes a link that forces nobody's maps app", async () => {
+  /* It was a Google Maps URL — universally recognized, and it opens Google
+     Maps whatever somebody actually uses. The stored value is a neutral web
+     map that works with no JavaScript anywhere; the page upgrades it to the
+     platform's own scheme at load. */
   const u = mapUrl("Kuća molitve, Zagreb");
-  assert(/^https:\/\/www\.google\.com\/maps\/search\/\?api=1&query=/.test(u), u);
+  assert(!/google\.com\/maps/.test(u), `still a Google link: ${u}`);
+  assert(/^https:/.test(u),
+    "a scheme a desktop browser cannot open would leave the link dead without JS");
   assert(u.includes(encodeURIComponent("Kuća molitve, Zagreb")),
     "the place did not survive encoding");
   eq(mapUrl(""), "", "nowhere is not a link");

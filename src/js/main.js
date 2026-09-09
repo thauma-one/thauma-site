@@ -310,6 +310,54 @@ document.querySelectorAll('.give-btn').forEach(function (btn) {
 // below instead — here their parents' TEXT parts still fade normally
 // (.work > div:not(.label), .conviction > div:not(.num), .val h3/p);
 // only the label/number itself rolls.
+/* OPEN A PLACE IN THE MAPS APP SOMEBODY ACTUALLY USES.
+ *
+ * The markup carries a neutral web map, so the link works with no JavaScript,
+ * on any platform, and forces nothing. This upgrades it where the operating
+ * system genuinely has a default worth honoring:
+ *
+ *   Apple      maps://  — the Maps app, which IS the default on iOS and macOS
+ *   Android    geo:     — the real standard for a place; Android hands it to
+ *                         whatever the person chose, Google Maps or not
+ *   elsewhere  left alone; a desktop has no maps app to open, and geo: there
+ *              is a dead link
+ *
+ * DELIBERATELY NOT GOOGLE. A Google Maps URL is the one every platform
+ * recognizes, which is why it is the usual answer and why every map link opens
+ * Google whatever you use. Recognized by everything is not the same as right
+ * for anybody.
+ *
+ * Sniffing the platform is normally a mistake — but "which app should open
+ * this" is a question about the device, not about the browser's capabilities,
+ * and there is no feature to test for. Anything unrecognised keeps the web
+ * map, so being wrong costs nothing.
+ */
+(function enhanceMapLinks() {
+  var links = document.querySelectorAll('a[data-map]');
+  if (!links.length) return;
+
+  var ua = navigator.userAgent || '';
+  var isApple = /iPad|iPhone|iPod/.test(ua) ||
+                (/Macintosh/.test(ua) && 'ontouchend' in document) ||
+                /Mac OS X/.test(ua);
+  var isAndroid = /Android/.test(ua);
+  if (!isApple && !isAndroid) return;          // the web map is the right answer
+
+  Array.prototype.forEach.call(links, function (a) {
+    var place = a.getAttribute('data-map');
+    if (!place) return;
+    var q = encodeURIComponent(place);
+    /* `?q=` is a SEARCH in both schemes, which is what a written address is —
+       geocoding it here would mean holding coordinates for a venue that has
+       not been confirmed yet. */
+    a.setAttribute('href', isApple ? 'maps://?q=' + q : 'geo:0,0?q=' + q);
+    /* A native app is not a new browser tab. Leaving target=_blank on it opens
+       an empty tab behind the map on iOS. */
+    a.removeAttribute('target');
+    a.removeAttribute('rel');
+  });
+})();
+
 if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'IntersectionObserver' in window) {
   var targets = Array.prototype.slice.call(document.querySelectorAll('section h2, section .lede, section .body-text, .val h3, .val p, .conviction > div:not(.num), .work > div:not(.label), .person, .give-card, .frame, .empty, .resource-card, .bio-photo, .invite, .record-band'));
   // Hide (.sr) immediately — pre-paint — then split by arrival type at

@@ -122,11 +122,53 @@ await check("the date reads like a date, not like a database value", async () =>
   assert(!/2027-03-14/.test(when), "an ISO date reached the page");
 });
 
-await check("the place opens the reader's own map", async () => {
-  const a = [...d.querySelectorAll(".invite-facts a")]
-    .find((x) => /maps/.test(x.getAttribute("href") || ""));
-  assert(a, "the location is not a link");
-  assert(/Zagreb/.test(decodeURIComponent(a.getAttribute("href"))), "the place did not survive");
+await check("the place is a link, and it forces nobody's maps app", async () => {
+  /* This shipped a Google Maps URL, which every platform recognizes and which
+     opens Google Maps whatever the reader actually uses. Recognized by
+     everything is not the same as right for anybody. */
+  const a = d.querySelector(".invite-facts a[data-map]");
+  assert(a, "the location is not a link, or does not carry the place");
+  const href = a.getAttribute("href");
+  assert(!/google\.com\/maps/.test(href), `it still forces Google Maps: ${href}`);
+  assert(/^https:/.test(href),
+    "the markup ships a scheme no desktop browser can open — it has to work " +
+    "with no JavaScript, on any platform");
+  assert(/Zagreb/.test(decodeURIComponent(href)), "the place did not survive");
+});
+
+await check("and on a phone it opens the app that phone actually uses", async () => {
+  /* There is no single URL meaning "your maps app": geo: is the standard and
+     Android honors it, iOS has no geo: handler, a desktop has no maps app at
+     all. So the markup is neutral and the page upgrades it per platform. */
+  const cases = {
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15": /^maps:/,
+    "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 Chrome/120": /^geo:/,
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120": /^https:/,
+  };
+  const main = readFileSync("src/js/main.js", "utf8");
+  for (const [ua, want] of Object.entries(cases)) {
+    const dom = new JSDOM(html, {
+      runScripts: "dangerously", pretendToBeVisual: true,
+      url: "https://thauma.one/en/events/",
+      beforeParse(w) {
+        Object.defineProperty(w.navigator, "userAgent", { value: ua, configurable: true });
+        w.matchMedia = () => ({ matches: false, addListener() {}, removeListener() {} });
+      },
+    });
+    const doc = dom.window.document;
+    const tag = doc.createElement("script");
+    tag.textContent = main;
+    doc.body.appendChild(tag);
+    const href = doc.querySelector("a[data-map]").getAttribute("href");
+    assert(want.test(href),
+      `${ua.slice(0, 28)}… got "${href.slice(0, 40)}", wanted ${want}`);
+    /* A native app is not a new tab; target=_blank leaves an empty one behind
+       it on iOS. */
+    if (!/^https:/.test(href)) {
+      assert(!doc.querySelector("a[data-map]").getAttribute("target"),
+        "a native scheme kept target=_blank");
+    }
+  }
 });
 
 await check("a typed address is repaired on the way out", async () => {

@@ -88,7 +88,8 @@ pageTitle: events
           {% endif %}
           {% if g.location %}
           <div><dt>{{ t.events.where_label }}</dt>
-            <dd><a href="{{ g.map_url }}" target="_blank" rel="noopener">{{ g.location }}</a></dd></div>
+            <dd><a href="{{ g.map_url }}" data-map="{{ g.location }}"
+                   target="_blank" rel="noopener">{{ g.location }}</a></dd></div>
           {% endif %}
           {% if g.type == "cohort" and g.capacity %}
           <div><dt>{{ t.events.places_label }}</dt><dd>{{ g.capacity }}</dd></div>
