@@ -173,6 +173,51 @@
     }).join('');
   }
 
+  /* WHEN SOMETHING HAPPENS DECIDES WHERE IT SITS.
+   *
+   * The list arrived alphabetical by filename, which tells an editor nothing:
+   * a gathering from last year sat above the one three weeks away because "f"
+   * precedes "p". What somebody opening this page wants is the next thing
+   * first and the finished things out of the way.
+   *
+   * SAME RULES AS THE PUBLIC PAGE, deliberately — see src/_data/gatherings.js.
+   * Upcoming reads soonest-first, because that is the order they will happen;
+   * past reads newest-first, because last month matters more than 2019. The
+   * two surfaces disagreeing about what "next" means would be its own small
+   * confusion.
+   *
+   * AND ANYTHING WITHOUT A REAL DATE FALLS TO THE END of its own group rather
+   * than to the top. A date typed as prose — "13 March - 27 March 2027" is a
+   * real thing to write before one is fixed — cannot be compared to anything,
+   * and string comparison put it first purely because "1" precedes "2". A
+   * half-finished draft was outranking a confirmed gathering. */
+  var ISO = /^\d{4}-\d{2}-\d{2}$/;
+  function at(item) {
+    return ISO.test(String(item.date || '')) ? Date.parse(item.date) : NaN;
+  }
+  function byDate(dir) {
+    return function (a, b) {
+      var x = at(a), y = at(b);
+      var xo = !isNaN(x), yo = !isNaN(y);
+      if (xo !== yo) return xo ? -1 : 1;      // undated last, either way
+      if (!xo) return 0;
+      return dir === 'asc' ? x - y : y - x;
+    };
+  }
+
+  /* Three groups, and only the ones that exist get a heading. Canceled is
+     neither coming up nor finished — it stays near the top where an editor can
+     see it and change their mind, rather than being filed with the past. */
+  function groupsFor(collection, items) {
+    if (collection !== 'gatherings') return [{ items: items }];
+    var by = function (status) { return items.filter(function (i) { return i.status === status; }); };
+    return [
+      { label: tr('lib.comingUp', 'Coming up'), items: by('upcoming').sort(byDate('asc')) },
+      { label: tr('lib.canceled', 'Canceled'), items: by('canceled').sort(byDate('asc')) },
+      { label: tr('lib.past', 'Already happened'), items: by('past').sort(byDate('desc')) },
+    ].filter(function (g) { return g.items.length; });
+  }
+
   function render() {
     ['resources', 'gatherings'].forEach(function (collection) {
       var host = document.querySelector('[data-lib-list="' + collection + '"]');
@@ -196,7 +241,10 @@
               'reading every file on each visit — worth an index before adding more.')) +
             '</p>'
           : '') +
-        items.map(function (item) {
+        groupsFor(collection, items).map(function (group) {
+        return (group.label
+          ? '<p class="cue bare lib-group">' + esc(group.label) + '</p>' : '') +
+        group.items.map(function (item) {
           var open = state.open === collection + '/' + item.slug;
           return '<div class="adm-person' + (open ? ' is-open' : '') + '"' +
                  ' data-lib-item="' + esc(collection + '/' + item.slug) + '">' +
@@ -212,6 +260,7 @@
             '</div>' +
             (open ? editor(collection, item) : '') +
           '</div>';
+        }).join('');
         }).join('');
     });
   }

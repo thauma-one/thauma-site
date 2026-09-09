@@ -948,3 +948,8 @@
   letter-spacing:var(--ls-caps);text-transform:uppercase;color:var(--dim,#8a93a3);
   margin-bottom:2px}
 .lib-session-head span{padding-left:2px}
+
+/* The heading over each group of items. Quiet — it is a divider, not a
+   section title competing with the item names underneath it. */
+.lib-group{color:var(--dim,#8a93a3);margin:26px 0 8px}
+.lib-group:first-child{margin-top:4px}

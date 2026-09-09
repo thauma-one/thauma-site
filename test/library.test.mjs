@@ -304,5 +304,94 @@ await check("a picture is chosen, not typed as a path", async () => {
   assert(text.length === 0, "the old 'photo path' text box is still there");
 });
 
+/* ------------------------------------------- when something happens decides where it sits */
+
+const WHEN = [
+  { slug: "cohort", title: { hr: "Prva grupa" }, summary: {}, type: "cohort",
+    status: "upcoming", date: "2027-06-01", sessions: [] },
+  { slug: "prose-date", title: { en: "Typed as words" }, summary: {}, type: "gathering",
+    status: "upcoming", date: "13 March - 27 March 2027", sessions: [] },
+  { slug: "recent-past", title: { en: "Osijek" }, summary: {}, type: "gathering",
+    status: "past", date: "2026-05-29", sessions: [] },
+  { slug: "soonest", title: { en: "Zagreb" }, summary: {}, type: "gathering",
+    status: "upcoming", date: "2027-03-14", sessions: [] },
+  { slug: "undated", title: { en: "No date yet" }, summary: {}, type: "cohort",
+    status: "upcoming", date: "", sessions: [] },
+  { slug: "older-past", title: { en: "An older visit" }, summary: {}, type: "gathering",
+    status: "past", date: "2025-11-02", sessions: [] },
+];
+
+/** The rows in order, with the group heading each one sits under. */
+function listing(d) {
+  const host = d.querySelector('[data-lib-list="gatherings"]');
+  const out = [];
+  let group = null;
+  for (const el of host.children) {
+    if (el.classList.contains("lib-group")) { group = el.textContent.trim(); continue; }
+    if (el.dataset.libItem) out.push({ group, slug: el.dataset.libItem.split("/")[1] });
+  }
+  return out;
+}
+
+await check("upcoming gatherings are ordered soonest first", async () => {
+  /* The list arrived alphabetical by filename, so a gathering from last year
+     sat above one three weeks away because "f" precedes "p". */
+  const { d } = await boot({ gatherings: WHEN });
+  const upcoming = listing(d).filter((r) => /coming up/i.test(r.group || ""));
+  assert(upcoming.length, "nothing is grouped as coming up");
+  assert(upcoming[0].slug === "soonest",
+    `the first one is "${upcoming[0].slug}", not the soonest`);
+  assert(upcoming[1].slug === "cohort",
+    `second is "${upcoming[1].slug}" — June should follow March`);
+});
+
+await check("anything without a real date falls to the END of its group", async () => {
+  /* Not the top. String comparison put "13 March…" first because "1" precedes
+     "2", so a half-finished draft outranked a confirmed gathering. */
+  const { d } = await boot({ gatherings: WHEN });
+  const upcoming = listing(d).filter((r) => /coming up/i.test(r.group || ""))
+    .map((r) => r.slug);
+  const dated = upcoming.indexOf("cohort");
+  for (const undated of ["prose-date", "undated"]) {
+    assert(upcoming.indexOf(undated) > dated,
+      `"${undated}" outranks a dated gathering: ${upcoming.join(" > ")}`);
+  }
+});
+
+await check("past gatherings sit under their own heading, at the bottom", async () => {
+  const { d } = await boot({ gatherings: WHEN });
+  const rows = listing(d);
+  const firstPast = rows.findIndex((r) => /already happened/i.test(r.group || ""));
+  assert(firstPast !== -1, "there is no separate heading for past gatherings");
+  assert(rows.slice(firstPast).every((r) => /already happened/i.test(r.group || "")),
+    "an upcoming gathering appears after the past ones");
+  assert(rows.slice(0, firstPast).every((r) => !/already happened/i.test(r.group || "")),
+    "a past gathering appears above the heading");
+});
+
+await check("and past reads newest first — last month beats 2019", async () => {
+  const { d } = await boot({ gatherings: WHEN });
+  const past = listing(d).filter((r) => /already happened/i.test(r.group || ""))
+    .map((r) => r.slug);
+  assert(past.join(",") === "recent-past,older-past", `past order: ${past.join(" > ")}`);
+});
+
+await check("a heading appears only for a group that has something in it", async () => {
+  /* Nothing is canceled here, and an empty "Canceled" heading would be a
+     section that says nothing. */
+  const { d } = await boot({ gatherings: WHEN });
+  const heads = [...d.querySelectorAll('[data-lib-list="gatherings"] .lib-group')]
+    .map((h) => h.textContent.trim());
+  assert(!heads.some((h) => /cancel/i.test(h)),
+    `an empty group was given a heading: ${heads.join(", ")}`);
+});
+
+await check("resources are not forced into gathering groups", async () => {
+  /* They have no status to group by; a heading over them would be noise. */
+  const { d } = await boot({ resources: [GLOSSARY] });
+  assert(!d.querySelector('[data-lib-list="resources"] .lib-group'),
+    "the resources list grew a group heading it has no basis for");
+});
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
