@@ -932,3 +932,19 @@
 @media (max-width: 640px){
   .lib-session{grid-template-columns:1fr}
 }
+
+/* A picture on a resource or a gathering. Same control as a staff photo —
+   pick, crop, replace, remove — because it is the same act and a second design
+   for it would be a second thing to learn. */
+.lib-photo{gap:10px}
+.lib-shot{aspect-ratio:16/9;max-inline-size:340px;overflow:hidden;
+  border:1px solid var(--line);border-radius:var(--radius);
+  background:var(--bg2,#0b1119);display:grid;place-items:center}
+.lib-shot img{inline-size:100%;block-size:100%;object-fit:cover;display:block}
+
+/* The session table's header row. Two unlabelled boxes were the whole reason
+   "I don't understand what sessions means" was a fair question. */
+.lib-session-head{font-family:var(--font-display);font-size:10px;
+  letter-spacing:var(--ls-caps);text-transform:uppercase;color:var(--dim,#8a93a3);
+  margin-bottom:2px}
+.lib-session-head span{padding-left:2px}

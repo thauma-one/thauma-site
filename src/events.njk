@@ -16,9 +16,75 @@ pageTitle: events
   <h2 class="rise-2">{{ t.events.h2_thin }} <b>{{ t.events.h2_bold }}</b></h2>
 </div></header>
 
+{#- BONES, NOT THE DESIGN. The spec keeps the visual pass for later — the
+   invitation anatomy, the one interactive moment, the alternating record. This
+   renders the collection honestly in the site's existing classes so the data
+   can be seen and edited long before any of that is decided. Replacing this
+   markup later changes nothing behind it. -#}
 <section><div class="wrap">
+  {%- set upcoming = [] %}{% set past = [] %}
+  {%- for g in gatherings %}
+    {%- if g.status == "upcoming" %}{% set _ = upcoming.push(g) %}
+    {%- elif g.status != "canceled" %}{% set _ = past.push(g) %}{% endif %}
+  {%- endfor %}
+
+  {% if upcoming.length or past.length %}
+    {% for g in upcoming %}
+    <article class="gathering is-next">
+      {% if g.photo %}<div class="gathering-photo"><img src="{{ g.photo }}" alt="" loading="lazy" decoding="async"></div>{% endif %}
+      <div class="gathering-body">
+        <div class="cue">{{ t.events.next_cue if t.events.next_cue else "Next" }}</div>
+        <h3>{{ g.title[lang] or g.title.en or g.title[g.langs[0]] }}</h3>
+
+        {#- SAID PLAINLY WHERE IT IS NOT IN YOUR LANGUAGE. Hiding the item
+           would be dishonest — a Croatian-only gathering is proof of real work,
+           not a gap — and showing it silently in another language is worse. -#}
+        {% if not g.title[lang] %}<p class="gathering-lang">{{ t.events.other_lang if t.events.other_lang else "Written in another language" }}</p>{% endif %}
+
+        <p class="gathering-when">
+          <b>{{ g.date }}{% if g.end_date and g.end_date != g.date %} – {{ g.end_date }}{% endif %}</b>
+          {% if g.time %} · {{ g.time }}{% endif %}
+          {% if g.cadence and g.type == "cohort" %} · {{ g.cadence }}{% endif %}
+        </p>
+        {% if g.location %}
+        <p class="gathering-where">
+          <a href="{{ g.map_url }}" target="_blank" rel="noopener">{{ g.location }}</a>
+        </p>
+        {% endif %}
+        {% if g.summary[lang] or g.summary.en %}<p>{{ (g.summary[lang] or g.summary.en) | md | safe }}</p>{% endif %}
+
+        {% if g.sessions.length %}
+        <ul class="gathering-sessions">
+          {% for s in g.sessions %}<li><b>{{ s.date }}</b> {{ s.topic }}</li>{% endfor %}
+        </ul>
+        {% endif %}
+
+        {% if g.registration %}
+        <a class="btn ghost" href="{{ g.registration }}" target="_blank" rel="noopener">
+          {{ t.events.register if t.events.register else "Register" }}</a>
+        {% endif %}
+      </div>
+    </article>
+    {% endfor %}
+
+    {% if past.length %}
+    <div class="workline"><i></i></div>
+    {% for g in past %}
+    <article class="gathering is-past">
+      {% if g.photo %}<div class="gathering-photo"><img src="{{ g.photo }}" alt="" loading="lazy" decoding="async"></div>{% endif %}
+      <div class="gathering-body">
+        <h3>{{ g.title[lang] or g.title.en or g.title[g.langs[0]] }}</h3>
+        <p class="gathering-when">{{ g.date }}{% if g.end_date and g.end_date != g.date %} – {{ g.end_date }}{% endif %}
+          {% if g.location %} · {{ g.location }}{% endif %}</p>
+        {% if g.summary[lang] or g.summary.en %}<p>{{ (g.summary[lang] or g.summary.en) | md | safe }}</p>{% endif %}
+      </div>
+    </article>
+    {% endfor %}
+    {% endif %}
+  {% else %}
   <div class="empty">
     <h3>{{ t.events.empty_title }}</h3>
     <p>{{ t.events.empty_text }}</p>
   </div>
+  {% endif %}
 </div></section>

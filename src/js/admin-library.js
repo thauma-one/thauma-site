@@ -36,6 +36,15 @@
   };
   var toast = function (m, kind) { if (window.StaffToast) window.StaffToast(m, kind); };
 
+  /* VOCABULARY VALUES ARE SLUGS; PEOPLE READ WORDS. "glossary-entry" is what
+     the file stores and "Glossary entry" is what a person scanning a list
+     should see. Done here rather than by writing every label out twice, so a
+     new value in the vocabulary is readable the moment it exists. */
+  var label = function (v) {
+    return String(v || '').replace(/[-_]/g, ' ')
+      .replace(/^./, function (c) { return c.toUpperCase(); });
+  };
+
   var LANGS = (function () {
     try { return JSON.parse(($('libLangs') || {}).textContent || '[]'); }
     catch (e) { return ['en']; }
@@ -63,8 +72,11 @@
       { name: 'pinned', kind: 'flag', label: 'Keep at the top',
         hint: 'For material everything else refers to — the glossary — so newer ' +
               'items do not bury it.' },
-      { name: 'link', kind: 'text', label: 'Link (optional)' },
-      { name: 'photo', kind: 'text', label: 'Photo path (optional)' }
+      { name: 'link', kind: 'text', label: 'Link (optional)',
+        placeholder: 'thauma.one/guide',
+        hint: 'Somewhere this points to — a download, a video, a page. ' +
+              'https:// is added if you leave it off.' },
+      { name: 'photo', kind: 'photo', label: 'Picture (optional)' }
     ],
     gatherings: [
       { name: 'type', kind: 'choice', label: 'Kind', vocab: 'type',
@@ -72,12 +84,20 @@
       { name: 'status', kind: 'choice', label: 'Status', vocab: 'status',
         hint: 'Set deliberately, never worked out from the date — a canceled ' +
               'gathering is not "upcoming" because its date has not passed yet.' },
-      { name: 'date', kind: 'text', label: 'Date', placeholder: '2027-03-14',
+      { name: 'date', kind: 'text', label: 'First day', placeholder: '2027-03-14',
         when: function (it) { return it.type !== 'cohort'; } },
+      { name: 'end_date', kind: 'text', label: 'Last day (if more than one)',
+        placeholder: '2027-03-16',
+        when: function (it) { return it.type !== 'cohort'; },
+        hint: 'Leave empty for a single day. A weekend is two dates, not a ' +
+              'sentence somebody has to read to work it out.' },
       { name: 'time', kind: 'text', label: 'Time', placeholder: '10:00',
         when: function (it) { return it.type !== 'cohort'; } },
       { name: 'location', kind: 'text', label: 'Where',
-        when: function (it) { return it.type !== 'cohort'; } },
+        placeholder: 'Kuća molitve, Zagreb',
+        when: function (it) { return it.type !== 'cohort'; },
+        hint: 'Written as you would say it. The page turns it into a link that ' +
+              'opens the reader\'s own maps app.' },
       { name: 'cohort_name', kind: 'text', label: 'Cohort name',
         placeholder: 'Cohort 1', when: function (it) { return it.type === 'cohort'; } },
       { name: 'capacity', kind: 'text', label: 'Places',
@@ -85,11 +105,23 @@
       { name: 'application_required', kind: 'flag', label: 'Application needed',
         when: function (it) { return it.type === 'cohort'; },
         hint: 'Off means anybody can register. On means you decide who joins.' },
-      { name: 'sessions', kind: 'sessions', label: 'Sessions',
+      { name: 'cadence', kind: 'choice', label: 'How often they meet', vocab: 'cadence',
+        when: function (it) { return it.type === 'cohort'; },
+        hint: 'Said once here instead of being implied by a list of dates. ' +
+              'Choose Custom for anything that does not follow a rule — first ' +
+              'Monday of the month, or nothing regular at all.' },
+      { name: 'location', kind: 'text', label: 'Where they meet',
+        placeholder: 'Kuća molitve, Zagreb',
+        when: function (it) { return it.type === 'cohort'; },
+        hint: 'The page turns this into a link that opens the reader\'s own maps app.' },
+      { name: 'sessions', kind: 'sessions', label: 'The meetings themselves',
         when: function (it) { return it.type === 'cohort'; } },
       { name: 'registration', kind: 'text', label: 'How to register',
-        hint: 'A link or an email address. Not tied to any one tool — whatever ' +
-              'is being used at the time.' }
+        placeholder: 'thauma.one/register  ·  hello@thauma.one',
+        hint: 'A link or an email address — https:// or mailto: is added for ' +
+              'you. Plain words are left alone, so "ask Chase" stays a note ' +
+              'rather than becoming a broken link.' },
+      { name: 'photo', kind: 'photo', label: 'Picture (optional)' }
     ]
   };
 
@@ -185,18 +217,24 @@
     });
   }
 
+  /* WHAT THE ROW SAYS WITHOUT BEING OPENED. The kind of thing it is comes
+     first, because that is what somebody is scanning for — "where is the
+     checklist" — and it was missing entirely from the closed row. */
   function badges(collection, item) {
     var out = [];
     if (collection === 'resources') {
       if (item.pinned) out.push('<span class="role-tag on-site">' +
         esc(tr('lib.pinned', 'Pinned')) + '</span>');
-      if (item.moment) out.push('<span class="role-tag">' + esc(item.moment) + '</span>');
-      if (item.format) out.push('<span class="role-tag none">' + esc(item.format) + '</span>');
+      if (item.format) out.push('<span class="role-tag partner">' + esc(label(item.format)) + '</span>');
+      if (item.moment) out.push('<span class="role-tag">' + esc(label(item.moment)) + '</span>');
     } else {
       if (item.status) out.push('<span class="role-tag st-' + esc(item.status) + '">' +
-        esc(item.status) + '</span>');
-      if (item.type) out.push('<span class="role-tag none">' + esc(item.type) + '</span>');
-      if (item.date) out.push('<span class="role-tag">' + esc(item.date) + '</span>');
+        esc(label(item.status)) + '</span>');
+      if (item.type) out.push('<span class="role-tag partner">' + esc(label(item.type)) + '</span>');
+      var when = item.date || '';
+      /* A gathering can run over a weekend, and one date cannot say so. */
+      if (item.end_date && item.end_date !== item.date) when += ' – ' + item.end_date;
+      if (when) out.push('<span class="role-tag">' + esc(when) + '</span>');
     }
     return out.join('');
   }
@@ -212,7 +250,7 @@
     if (spec.kind === 'choice') {
       var options = (state.vocabulary[spec.vocab] || []).map(function (o) {
         return '<option value="' + esc(o) + '"' + (v === o ? ' selected' : '') + '>' +
-          esc(o) + '</option>';
+          esc(label(o)) + '</option>';
       }).join('');
       return '<label class="fld"><span>' + esc(spec.label) + '</span>' +
         '<select data-lib-field="' + esc(spec.name) + '">' + options + '</select>' +
@@ -229,6 +267,33 @@
           ' value="' + esc((v || []).join(', ')) + '"' +
           ' placeholder="no sound, one channel dead">' + hint + '</label>';
     }
+    if (spec.kind === 'photo') {
+      /* A REAL UPLOAD, not a path. "Photo path (optional)" was a text box
+         asking somebody to know where a file lives on a server, which is not
+         a thing anybody knows — and it was the only place in this console that
+         asked. Same control as a staff photo: pick, crop, replace, remove. */
+      return '<div class="fld lib-photo" data-lib-photo="' + esc(spec.name) + '">' +
+        '<span>' + esc(spec.label) + '</span>' +
+        '<div class="lib-shot">' +
+          (v ? '<img src="' + esc(v) + '" alt="">'
+             : '<span class="pf-empty">' + esc(tr('lib.noPhoto', 'No picture yet')) + '</span>') +
+        '</div>' +
+        '<input type="hidden" data-lib-field="' + esc(spec.name) + '" value="' + esc(v || '') + '">' +
+        '<input type="hidden" data-lib-field="' + esc(spec.name) + '_master" value="' +
+          esc(item[spec.name + '_master'] || '') + '">' +
+        '<input type="file" accept="image/*" hidden data-lib-file>' +
+        '<div class="pf-photo-acts">' +
+          '<button type="button" class="ghost-btn" data-lib-pick>' +
+            esc(tr(v ? 'lib.replacePhoto' : 'lib.choosePhoto', v ? 'Replace' : 'Choose a picture')) +
+          '</button>' +
+          (v ? '<button type="button" class="ghost-btn" data-lib-crop>' +
+                 esc(tr('lib.editPhoto', 'Edit')) + '</button>' +
+               '<button type="button" class="del" data-lib-unphoto>' +
+                 esc(tr('lib.removePhoto', 'Remove')) + '</button>' : '') +
+        '</div>' +
+        '<span class="hint" data-lib-shot-status></span>' + hint +
+      '</div>';
+    }
     if (spec.kind === 'sessions') {
       var rows = (v || []).concat([{ date: '', topic: '' }]).map(function (s, i) {
         return '<div class="lib-session" data-session="' + i + '">' +
@@ -239,10 +304,15 @@
         '</div>';
       }).join('');
       return '<div class="fld lib-sessions"><span>' + esc(spec.label) + '</span>' +
-        rows + '<span class="fld-hint">' +
-        esc(tr('lib.sessionsHint', 'Leave the last row blank. Dates are their own ' +
-               'field so moving one is an edit, not a rewrite.')) +
-        '</span></div>';
+        '<span class="fld-hint">' + esc(tr('lib.sessionsWhat',
+          'One row per time the group gets together — the date it happens and ' +
+          'what that meeting covers. A cohort that runs six evenings has six ' +
+          'rows. Leave the last one blank; a new one appears as you fill it.')) +
+        '</span>' +
+        '<div class="lib-session lib-session-head"><span>' +
+          esc(tr('lib.sessionDate', 'Date')) + '</span><span>' +
+          esc(tr('lib.sessionTopic', 'What it covers')) + '</span></div>' +
+        rows + '</div>';
     }
     return '<label class="fld"><span>' + esc(spec.label) + '</span>' +
       '<input type="text" data-lib-field="' + esc(spec.name) + '"' +
@@ -303,6 +373,92 @@
         '</div>' +
       '</div>' +
     '</div>';
+  }
+
+  /* ------------------------------------------------------------- pictures */
+
+  async function putMedia(blob) {
+    var res = await fetch('/api/admin/media?kind=library', {
+      method: 'PUT', credentials: 'same-origin',
+      headers: { 'Content-Type': blob.type }, body: blob
+    });
+    var body = await res.json();
+    if (!res.ok) throw new Error(body.error || tr('err.refused', 'Refused.'));
+    return body;
+  }
+
+  /* Scaled without cropping, so Edit can widen a crop later rather than only
+     tighten it — the pixels outside the frame are gone the moment they are not
+     kept. Same reasoning as a staff photo's master. */
+  async function shrink(file, maxPx) {
+    var bitmap = await createImageBitmap(file);
+    var scale = Math.min(1, maxPx / Math.max(bitmap.width, bitmap.height));
+    var c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(bitmap.width * scale));
+    c.height = Math.max(1, Math.round(bitmap.height * scale));
+    c.getContext('2d').drawImage(bitmap, 0, 0, c.width, c.height);
+    if (bitmap.close) bitmap.close();
+    return await new Promise(function (r) { c.toBlob(r, 'image/webp', 0.85); });
+  }
+
+  async function uploadPhoto(slot, file) {
+    var status = slot.querySelector('[data-lib-shot-status]');
+    var say = function (k, f) { if (status) status.textContent = tr(k, f); };
+    try {
+      var shot = window.PhotoCrop ? await window.PhotoCrop.open(file, 'wide') : null;
+      if (window.PhotoCrop && !shot) return say('lib.cropCancelled', 'Nothing changed.');
+
+      say('lib.keepingOriginal', 'Keeping the original…');
+      var masterUrl = '';
+      try {
+        var full = await shrink(file, 2400);
+        if (full) masterUrl = (await putMedia(full)).url;
+      } catch (e) { masterUrl = ''; }
+
+      say('lib.uploading', 'Uploading…');
+      var body = await putMedia(shot ? shot.blob : await shrink(file, 1600));
+      setPhoto(slot, body.url, masterUrl);
+      say('lib.photoReady', 'Picture added — press Save to keep it.');
+    } catch (e) {
+      if (status) status.textContent = e.message;
+    }
+  }
+
+  /* Re-crop what is already there. From the master where one exists, so the
+     frame can be widened; from the cropped copy otherwise, which can only be
+     tightened and says so. */
+  async function recropPhoto(slot) {
+    var status = slot.querySelector('[data-lib-shot-status]');
+    var fields = slot.querySelectorAll('[data-lib-field]');
+    var current = fields[0].value, master = fields[1].value;
+    var from = master || current;
+    if (!from || !window.PhotoCrop) return;
+    try {
+      if (status) status.textContent = tr(master ? 'lib.loading' : 'lib.loadingCropped',
+        master ? 'Opening the original…' : 'Opening the cropped copy — this one can only be cropped further in.');
+      var res = await fetch(from, { cache: 'force-cache' });
+      if (!res.ok) throw new Error(tr('lib.gone', 'That picture could not be loaded'));
+      var blob = await res.blob();
+      var shot = await window.PhotoCrop.open(
+        new File([blob], 'photo', { type: blob.type || 'image/webp' }), 'wide');
+      if (!shot) { if (status) status.textContent = ''; return; }
+      var body = await putMedia(shot.blob);
+      /* The master is NOT replaced — writing the new crop over it would make
+         the next edit one-way again. */
+      setPhoto(slot, body.url, master);
+      if (status) status.textContent = tr('lib.photoReady', 'Picture updated — press Save to keep it.');
+    } catch (e) {
+      if (status) status.textContent = e.message;
+    }
+  }
+
+  function setPhoto(slot, url, master) {
+    var fields = slot.querySelectorAll('[data-lib-field]');
+    fields[0].value = url || '';
+    if (master !== undefined) fields[1].value = master || '';
+    slot.querySelector('.lib-shot').innerHTML = url
+      ? '<img src="' + esc(url) + '" alt="">'
+      : '<span class="pf-empty">' + esc(tr('lib.noPhoto', 'No picture yet')) + '</span>';
   }
 
   /* -------------------------------------------------------------- saving */
@@ -429,6 +585,22 @@
       return;
     }
 
+    var pick = e.target.closest('[data-lib-pick]');
+    if (pick) return pick.closest('[data-lib-photo]').querySelector('[data-lib-file]').click();
+
+    var crop = e.target.closest('[data-lib-crop]');
+    if (crop) return recropPhoto(crop.closest('[data-lib-photo]'));
+
+    var unphoto = e.target.closest('[data-lib-unphoto]');
+    if (unphoto) {
+      var slot = unphoto.closest('[data-lib-photo]');
+      setPhoto(slot, '', '');
+      unphoto.remove();
+      var cropBtn = slot.querySelector('[data-lib-crop]');
+      if (cropBtn) cropBtn.remove();
+      return;
+    }
+
     var save0 = e.target.closest('[data-lib-save]');
     if (save0) {
       var node0 = save0.closest('[data-lib-item]');
@@ -458,6 +630,14 @@
   /* A choice can change which fields apply — a cohort has sessions and no
      single date — so the panel redraws when one changes, and only then. */
   document.addEventListener('change', function (e) {
+    var file = e.target.closest('[data-lib-file]');
+    if (file) {
+      var f = file.files && file.files[0];
+      if (f) uploadPhoto(file.closest('[data-lib-photo]'), f);
+      file.value = '';                 // so choosing the same file twice fires
+      return;
+    }
+
     var sel = e.target.closest('[data-lib-field]');
     if (!sel || sel.tagName !== 'SELECT') return;
     var host = sel.closest('[data-lib-item]');

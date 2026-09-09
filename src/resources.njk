@@ -28,7 +28,8 @@ pageTitle: resources
     {% for r in resources %}
     <div class="resource-card">
       {% if r.photo %}<div class="resource-photo"><img src="{{ r.photo }}" alt="{{ r.title[lang] }}" loading="lazy" decoding="async"></div>{% endif %}
-      <h3>{{ r.title[lang] }}</h3>
+      <h3><a href="/{{ lang }}/resources/{{ r.slug }}/">{{ r.title[lang] or r.title.en or r.title[r.langs[0]] }}</a></h3>
+      <p class="resource-kind">{{ r.format | replace("-", " ") }}</p>
       {% if r.description[lang] %}<p>{{ r.description[lang] | md | safe }}</p>{% endif %}
       {% if r.link %}<a class="btn ghost" href="{{ r.link }}" target="_blank" rel="noopener">{{ t.resources.link_label }}</a>{% endif %}
     </div>

@@ -53,7 +53,7 @@ const TYPES = {
    to a PARTNER rather than to a person, and the people who write newsletters
    are staff rather than administrators. Both differences are handled below
    rather than by pretending it is a third kind of portrait. */
-const KINDS = new Set(["photo", "bio_photo", "newsletter"]);
+const KINDS = new Set(["photo", "bio_photo", "newsletter", "library"]);
 
 export async function serve(request, env, key) {
   if (!env.MEDIA) return new Response("No media store on this deploy", { status: 500 });
@@ -122,6 +122,21 @@ export default {
          naming their own folder is a caller who can name somebody else's. */
       owner = partners.length ? partners[0].slug : "thauma";
       prefix = `newsletter/${owner}`;
+    } else if (kind === "library") {
+      /* A picture on a resource or a gathering. It belongs to the SITE, not to
+         a person and not to a partner, so there is no owner to scope it by —
+         which is why it cannot reuse the team branch below, whose whole shape
+         is "which person is this a photo of".
+
+         Same role as editing the collections themselves: somebody who writes
+         for the site needs to put a picture in what they write, and requiring
+         an administrator for the image but not the words would be a strange
+         place to draw the line. */
+      if (!roles.some((r) => r === "admin" || r === "communications")) {
+        return json({ error: "Administrator or communications access is required" }, 403);
+      }
+      owner = "site";
+      prefix = "library";
     } else {
       if (!roles.includes("admin")) {
         return json({ error: "Administrator access is required" }, 403);

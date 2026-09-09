@@ -14,7 +14,7 @@
  */
 import { readFileSync } from "node:fs";
 import matter from "../../node_modules/gray-matter/index.js";
-import { toMarkdown, parseMarkdown } from "../src/admin-library.js";
+import { toMarkdown, parseMarkdown, normalizeUrl, mapUrl } from "../src/admin-library.js";
 
 let pass = 0, fail = 0;
 const check = async (name, fn) => {
@@ -141,6 +141,103 @@ await check("communications may edit, and an ordinary staff account may not", as
     "the role gate does not match what the navigation promises");
   assert(!/roles\.includes\("staff"\)/.test(src),
     "plain staff can edit the public site's collections");
+});
+
+/* ------------------------------------------------------- addresses people type */
+
+await check("a bare hostname becomes a real link", async () => {
+  /* "chaseroush.com" is what a person writes; a browser reads it as a
+     RELATIVE path and sends the visitor to /en/events/chaseroush.com. It looks
+     right in the box and goes nowhere, and nobody clicks their own link. */
+  eq(normalizeUrl("chaseroush.com"), "https://chaseroush.com", "bare host");
+  eq(normalizeUrl("www.thauma.one"), "https://www.thauma.one", "with www");
+});
+
+await check("but www is never ADDED", async () => {
+  /* Plenty of sites do not answer on www at all, so adding it would turn a
+     working address into a dead one. The scheme is the missing piece; the
+     subdomain is a guess. */
+  assert(!/www\./.test(normalizeUrl("thauma.one")),
+    "www was invented — that address may not exist");
+});
+
+await check("anything with a scheme is left exactly alone", async () => {
+  for (const u of ["https://x.org", "http://x.org", "mailto:a@b.org", "tel:+385"]) {
+    eq(normalizeUrl(u), u, u);
+  }
+  eq(normalizeUrl("/en/contact/"), "/en/contact/", "a path on this site");
+});
+
+await check("an email address becomes mailto:, not https://", async () => {
+  eq(normalizeUrl("hello@thauma.one"), "mailto:hello@thauma.one", "email");
+});
+
+await check("plain words stay plain", async () => {
+  /* "ask Chase" is a legitimate answer to how somebody registers. Turning it
+     into a link would be a lie, and a broken one. */
+  eq(normalizeUrl("ask Chase in person"), "ask Chase in person", "a note");
+});
+
+await check("a place becomes a link that opens the reader's own map", async () => {
+  const u = mapUrl("Kuća molitve, Zagreb");
+  assert(/^https:\/\/www\.google\.com\/maps\/search\/\?api=1&query=/.test(u), u);
+  assert(u.includes(encodeURIComponent("Kuća molitve, Zagreb")),
+    "the place did not survive encoding");
+  eq(mapUrl(""), "", "nowhere is not a link");
+});
+
+/* ---------------------------------------------- multi-day and how often */
+
+await check("a gathering can run over more than one day", async () => {
+  const md = toMarkdown("gatherings", {
+    type: "gathering", status: "upcoming", title: { en: "Weekend" },
+    date: "2027-03-14", end_date: "2027-03-15",
+  });
+  const data = matter(md).data;
+  eq(data.date, "2027-03-14", "first day");
+  eq(data.end_date, "2027-03-15", "last day");
+});
+
+await check("a cohort says how often it meets, once", async () => {
+  /* "Every week" is a fact about the cohort; the dates are what follows from
+     it. Saying it on every session row would be restating one decision. */
+  const md = toMarkdown("gatherings", {
+    type: "cohort", status: "upcoming", title: { en: "Cohort 1" },
+    cadence: "weekly",
+    sessions: [{ date: "2027-03-14", topic: "Signal flow" }],
+  });
+  eq(matter(md).data.cadence, "weekly", "cadence");
+});
+
+await check("the build and the endpoint agree about the cadences", async () => {
+  const src = readFileSync(new URL("../src/admin-library.js", import.meta.url), "utf8");
+  for (const c of ["weekly", "fortnightly", "monthly", "custom"]) {
+    assert(src.includes(`"${c}"`), `the endpoint does not know "${c}"`);
+  }
+  assert(/custom/.test(src),
+    "there is no escape hatch — a cohort meeting on the first Monday of the " +
+    "month fits none of the fixed cadences and still has to be describable");
+});
+
+/* --------------------------------------------------------------- pictures */
+
+await check("a picture is uploaded, not typed as a path", async () => {
+  const media = readFileSync(new URL("../src/media.js", import.meta.url), "utf8");
+  assert(/"library"/.test(media), "the media endpoint has no kind for these");
+  assert(/r === "admin" \|\| r === "communications"/.test(media),
+    "library uploads are not open to the same people who may edit the words — " +
+    "requiring an administrator for the picture but not the text is a strange " +
+    "place to draw the line");
+  const ui = readFileSync(new URL("../../src/js/admin-library.js", import.meta.url), "utf8");
+  assert(/kind=library/.test(ui), "the editor never uploads anything");
+  assert(/PhotoCrop\.open/.test(ui), "a picture is stored without being cropped");
+});
+
+await check("the uncropped original is kept, so a crop can be widened", async () => {
+  const ui = readFileSync(new URL("../../src/js/admin-library.js", import.meta.url), "utf8");
+  assert(/shrink\(file, 2400\)/.test(ui), "no master is uploaded");
+  const src = readFileSync(new URL("../src/admin-library.js", import.meta.url), "utf8");
+  assert(/photo_master/.test(src), "the master URL is never stored");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

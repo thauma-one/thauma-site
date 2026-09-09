@@ -6,6 +6,45 @@ const fs = require("fs");
 const path = require("path");
 const matter = require("gray-matter");
 
+/* A WEB ADDRESS AS SOMEBODY TYPED IT.
+ *
+ * "chaseroush.com" is what a person writes; a browser reads it as a RELATIVE
+ * path and sends the visitor to /en/events/chaseroush.com. The link looks
+ * right in the box and goes nowhere — the worst kind of broken, because
+ * nobody clicks their own link to check it.
+ *
+ * ALSO DONE ON SAVE, in workers/src/admin-library.js, so the stored file is
+ * clean. This is the second half of the same rule and not a duplicate of it:
+ * content written before that existed, or by hand in an editor, has never been
+ * through it. Normalising on the way OUT means the page cannot render a broken
+ * link whatever is in the file.
+ *
+ * NOT www. A bare hostname gets https:// and nothing else — plenty of sites do
+ * not answer on www at all, so adding it would turn a working address into a
+ * dead one.
+ *
+ * Plain words are left exactly alone. "ask Chase" is a legitimate answer to
+ * how to register, and turning it into a link would be a lie.
+ */
+function webUrl(raw) {
+  const v = String(raw == null ? "" : raw).trim();
+  if (!v) return "";
+  if (/^[a-z][a-z0-9+.-]*:/i.test(v)) return v;
+  if (/^\//.test(v)) return v;
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)) return `mailto:${v}`;
+  if (/^[^\s/]+\.[^\s/]{2,}/.test(v)) return `https://${v}`;
+  return v;
+}
+
+/* A place, as a link that opens the reader's own map. A Google Maps search URL
+   is the one form every platform recognises — iOS offers Apple Maps, Android
+   opens Google Maps, a desktop opens the web. */
+function mapUrl(place) {
+  const v = String(place == null ? "" : place).trim();
+  return v ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(v)}` : "";
+}
+
+
 /* THE FOUR DOORS. A visitor with a broken mixer does not know which CATEGORY
    their problem is in — they know what just happened. So a resource is filed
    by the moment somebody is in when they need it, not by subject:
@@ -53,6 +92,7 @@ module.exports = () => {
            is a deposit into that whether or not it is ever built. */
         body: (content || "").trim(),
         langs: Object.keys(data.title || {}).filter((k) => (data.title || {})[k]),
+        link: webUrl(data.link),
       };
     })
     /* PINNED FIRST, then newest. The glossary is the thing everything else

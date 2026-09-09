@@ -764,3 +764,40 @@ section .cue::before{content:counter(cue,decimal-leading-zero);width:auto;height
   .contact-sent{animation:contact-sent-in .45s cubic-bezier(.16,1,.3,1) both}
 }
 @keyframes contact-sent-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* ---- gatherings, and resources in full ----
+   BONES, NOT THE DESIGN. The spec keeps the invitation anatomy, the one
+   interactive moment and the alternating record for a later pass. This is
+   enough structure to read what has been written and to check it renders in
+   every language — replacing it later changes nothing behind it. */
+.gathering{display:grid;gap:22px;margin-top:44px;
+  grid-template-columns:minmax(0,1fr)}
+@media (min-width: 780px){
+  /* Photo beside the words where there is room. The alternating zigzag the
+     spec asks for belongs to the visual pass; this is the plain version. */
+  .gathering:has(.gathering-photo){grid-template-columns:minmax(0,4fr) minmax(0,5fr)}
+}
+.gathering + .gathering{border-top:1px solid rgba(47,216,255,.14);padding-top:44px}
+.gathering-photo{aspect-ratio:16/9;overflow:hidden;
+  border:1px solid rgba(47,216,255,.2)}
+.gathering-photo img{width:100%;height:100%;object-fit:cover;display:block}
+.gathering-body h3{margin-bottom:10px}
+.gathering-when{font-variant-numeric:tabular-nums}
+.gathering-where a{color:var(--blue)}
+.gathering-sessions{margin:14px 0 0;padding-left:18px;line-height:1.9}
+.gathering-sessions b{font-variant-numeric:tabular-nums;margin-right:8px}
+/* Written in another language, said rather than hidden — a gathering only in
+   Croatian is proof of real work, not a gap to apologize for. */
+.gathering-lang,.resource-lang{font-size:13px;color:var(--dim);font-style:italic}
+.gathering.is-past{opacity:.86}
+
+.resource-card h3 a{color:inherit;text-decoration:none}
+.resource-card h3 a:hover{color:var(--blue)}
+/* What KIND of thing it is, on the card. It was not said anywhere, so a
+   checklist and a video looked identical until you opened them. */
+.resource-kind{font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--blue);margin-top:6px}
+.resource-symptoms{display:flex;flex-wrap:wrap;gap:8px;list-style:none;
+  padding:0;margin:0 0 22px}
+.resource-symptoms li{font-size:12px;padding:5px 11px;border-radius:2px;
+  color:var(--dim);border:1px solid rgba(255,255,255,.14)}

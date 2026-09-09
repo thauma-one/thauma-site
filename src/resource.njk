@@ -1,0 +1,51 @@
+---
+layout: layouts/base.njk
+pagination:
+  data: resourcePages
+  size: 1
+  alias: resource
+---
+{#- ONE RESOURCE, IN FULL. The listing page shows a title and a summary; this
+   is where the body lives, and until it existed the full text could be written
+   in the console and read by nobody.
+
+   BONES, NOT THE DESIGN. The four-door navigation and whatever the crisis
+   entry point becomes are a later pass. This renders honestly in the site's
+   own classes so the words can be read and checked while that is decided. -#}
+{% set t = i18n[lang] %}
+{% set title = resource.title[lang] or resource.title.en or resource.title[resource.langs[0]] %}
+{% set summary = resource.summary[lang] or resource.summary.en %}
+
+<header class="page"><div class="wrap">
+  <div class="cue foam rise">{{ resource.moment }} · {{ resource.format | replace("-", " ") }}</div>
+  <h2 class="rise-2">{{ title }}</h2>
+  {% if summary %}<p class="lede rise-3">{{ summary | md | safe }}</p>{% endif %}
+
+  {#- Said where somebody is about to read words that are not in their
+     language, rather than hiding the resource from them. -#}
+  {% if not resource.title[lang] %}
+  <p class="legal-note">{{ t.resources.other_lang if t.resources.other_lang
+     else "This one has not been translated yet." }}</p>
+  {% endif %}
+</div></header>
+
+<section><div class="wrap">
+  {% if resource.photo %}
+  <div class="resource-photo"><img src="{{ resource.photo }}" alt="" loading="lazy" decoding="async"></div>
+  {% endif %}
+
+  {% if resource.symptoms.length %}
+  <ul class="resource-symptoms">
+    {% for s in resource.symptoms %}<li>{{ s }}</li>{% endfor %}
+  </ul>
+  {% endif %}
+
+  {% if resource.body %}<div class="prose">{{ resource.body | md | safe }}</div>{% endif %}
+
+  {% if resource.link %}
+  <p><a class="btn ghost" href="{{ resource.link }}" target="_blank" rel="noopener">
+    {{ t.resources.link_label }}</a></p>
+  {% endif %}
+
+  <p class="row-actions"><a class="lnk" href="/{{ lang }}/resources/">&larr; {{ t.resources.title }}</a></p>
+</div></section>

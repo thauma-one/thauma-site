@@ -29,6 +29,7 @@ const VOCAB = {
   moment: ["crisis", "growth", "planning", "lookup"],
   format: ["guide", "diagram", "checklist", "glossary-entry", "video"],
   type: ["gathering", "cohort"], status: ["upcoming", "past", "canceled"],
+  cadence: ["weekly", "fortnightly", "monthly", "custom"],
 };
 
 async function boot({ resources = [], gatherings = [], truncated = false } = {}) {
@@ -211,6 +212,96 @@ await check("a full collection says so instead of quietly showing part of it", a
   const { d } = await boot({ resources: many, truncated: true });
   assert(/outgrown|first 40/i.test(d.querySelector('[data-lib-list="resources"]').textContent),
     "a truncated list looks identical to a complete one");
+});
+
+/* --------------------------------------------- what the closed row says */
+
+await check("the row says what KIND of thing it is, in words", async () => {
+  /* A checklist and a video looked identical until you opened them. And the
+     vocabulary is slugs — "glossary-entry" is what the file stores; "Glossary
+     entry" is what a person reads. */
+  const { d } = await boot({ resources: [GLOSSARY] });
+  const tags = [...d.querySelectorAll(".lib-tags .role-tag")].map((t) => t.textContent);
+  assert(tags.some((t) => t === "Glossary entry"),
+    `the format is missing or unformatted: ${tags.join(" | ")}`);
+  assert(!tags.some((t) => /-/.test(t)), `a raw slug reached the screen: ${tags.join(" | ")}`);
+});
+
+await check("a gathering's row shows the whole span, not just the first day", async () => {
+  const { d } = await boot({ gatherings: [{
+    slug: "weekend", title: { en: "Weekend" }, summary: {}, type: "gathering",
+    status: "upcoming", date: "2027-03-14", end_date: "2027-03-15", sessions: [] }] });
+  const tags = [...d.querySelectorAll(".lib-tags .role-tag")].map((t) => t.textContent);
+  assert(tags.some((t) => t.includes("2027-03-14") && t.includes("2027-03-15")),
+    `the row shows ${tags.join(" | ")} — a weekend reads as a single day`);
+});
+
+/* ----------------------------------------------------- multi-day and cadence */
+
+await check("a one-off gathering can be given a last day", async () => {
+  const { w, d } = await boot({ gatherings: [] });
+  d.querySelector('[data-lib-add="gatherings"]').dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 60));
+  const panel = d.querySelector('[data-lib-item="gatherings/"]');
+  assert(panel.querySelector('[data-lib-field="end_date"]'),
+    "there is no way to say a gathering runs over a weekend");
+});
+
+await check("a cohort is asked how often it meets, and a one-off is not", async () => {
+  const { w, d } = await boot({ gatherings: [] });
+  d.querySelector('[data-lib-add="gatherings"]').dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 60));
+  let panel = d.querySelector('[data-lib-item="gatherings/"]');
+  assert(!panel.querySelector('[data-lib-field="cadence"]'),
+    "a one-off gathering is asked how often it repeats");
+
+  const type = panel.querySelector('[data-lib-field="type"]');
+  type.value = "cohort";
+  type.dispatchEvent(new w.Event("change", { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 80));
+  panel = d.querySelector('[data-lib-item="gatherings/"]');
+  const cadence = panel.querySelector('[data-lib-field="cadence"]');
+  assert(cadence, "a cohort cannot say how often it meets");
+  const options = [...cadence.options].map((o) => o.textContent);
+  assert(options.includes("Weekly"), `cadences read as ${options.join(", ")}`);
+  assert(options.includes("Custom"),
+    "no escape hatch — first Monday of the month fits none of the fixed ones");
+});
+
+await check("the session table says what a session IS", async () => {
+  /* "I don't understand what sessions means" was a fair question about two
+     unlabelled boxes under a bare heading. */
+  const { w, d } = await boot({ gatherings: [] });
+  d.querySelector('[data-lib-add="gatherings"]').dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 60));
+  const type = d.querySelector('[data-lib-field="type"]');
+  type.value = "cohort";
+  type.dispatchEvent(new w.Event("change", { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 80));
+  const panel = d.querySelector('[data-lib-item="gatherings/"]');
+  const head = panel.querySelector(".lib-session-head");
+  assert(head, "the date and topic boxes are still unlabelled");
+  assert(/Date/i.test(head.textContent) && /covers/i.test(head.textContent),
+    `the columns say: ${head.textContent}`);
+  const block = panel.querySelector(".lib-sessions");
+  assert(/each time the group|time the group gets together/i.test(block.textContent),
+    "nothing explains what a session is");
+});
+
+/* ----------------------------------------------------------------- pictures */
+
+await check("a picture is chosen, not typed as a path", async () => {
+  const { d } = await boot({ resources: [GLOSSARY] });
+  const d2 = d;
+  d2.querySelector('[data-lib-item] .adm-row').dispatchEvent(
+    new d2.defaultView.MouseEvent("click", { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 80));
+  const slot = d2.querySelector('[data-lib-photo="photo"]');
+  assert(slot, "there is no picture control at all");
+  assert(slot.querySelector("[data-lib-file]"), "no file input — a path must be typed");
+  assert(slot.querySelector("[data-lib-pick]"), "nothing opens the file picker");
+  const text = [...d2.querySelectorAll('input[type="text"][data-lib-field="photo"]')];
+  assert(text.length === 0, "the old 'photo path' text box is still there");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

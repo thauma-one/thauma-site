@@ -52,6 +52,10 @@ const COLLECTIONS = {
     flags: ["pinned"],
     lists: ["symptoms"],
     plain: ["link", "photo", "created"],
+    /* Where an uploaded picture is kept, so the editor can offer it back for
+       re-cropping rather than only ever replacing it. Same idea as a staff
+       photo's master. */
+    hidden: ["photo_master"],
   },
   gatherings: {
     dir: "src/content/gatherings",
@@ -61,10 +65,21 @@ const COLLECTIONS = {
          "upcoming" because its date has not arrived, and a postponed one must
          not become "past" because nobody edited it. */
       status: ["upcoming", "past", "canceled"],
+      /* HOW OFTEN A COHORT MEETS, said once instead of restated on every
+         session. "Every week" is a fact about the cohort; the dates are what
+         follows from it. `custom` is the escape hatch for the ones that do not
+         fit a rule — first Monday of the month, or nothing regular at all —
+         and it is why the session list still exists. */
+      cadence: ["weekly", "fortnightly", "monthly", "custom"],
     },
     flags: ["application_required"],
     lists: ["photos", "sessions"],
-    plain: ["date", "time", "location", "registration", "cohort_name", "capacity"],
+    /* end_date IS OPTIONAL AND MEANS MULTI-DAY. A gathering is often a
+       weekend, and one date with a start time cannot say so — leaving people
+       to work it out from a sentence somebody wrote in prose. */
+    plain: ["date", "end_date", "time", "location", "map_url", "registration",
+            "cohort_name", "capacity", "photo"],
+    hidden: ["photo_master"],
   },
 };
 
@@ -73,6 +88,48 @@ const COLLECTIONS = {
 const LANG_RE = /^[a-z]{2}(-[a-z]{2})?$/;
 
 const str = (v, max = 300) => String(v == null ? "" : v).trim().slice(0, max);
+
+/**
+ * A web address as somebody actually types it.
+ *
+ * "thauma.one" and "www.thauma.one" are what a person writes; a browser treats
+ * both as a RELATIVE path and sends them to /admin/library/thauma.one. The
+ * link looks right in the box and goes nowhere, which is the worst kind of
+ * broken because nobody checks their own link.
+ *
+ * WHAT IT DOES NOT TOUCH: anything that already carries a scheme, and anything
+ * that is plainly not a web address. `mailto:` and `tel:` are ordinary answers
+ * to "how do I register", and prefixing those would break the one case they
+ * exist for. A bare email address gets mailto: for the same reason — it is
+ * unambiguous, and https://chase@thauma.one is not a thing.
+ */
+export function normalizeUrl(raw) {
+  const v = str(raw, 300);
+  if (!v) return "";
+  if (/^[a-z][a-z0-9+.-]*:/i.test(v)) return v;      // already has a scheme
+  if (/^\//.test(v)) return v;                        // a path on this site
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)) return `mailto:${v}`;
+  /* Something with a dot and no space is a hostname somebody typed. Anything
+     else is left exactly as written — a note like "ask Chase" is a legitimate
+     answer to how to register, and turning it into a link would be a lie. */
+  if (/^[^\s/]+\.[^\s/]{2,}/.test(v)) return `https://${v}`;
+  return v;
+}
+
+/**
+ * A place, as a link that opens the reader's own map.
+ *
+ * geo: and maps: schemes each work on one platform and fail on the others. A
+ * Google Maps SEARCH url is the one thing every platform recognises: iOS
+ * offers to open Apple Maps, Android opens Google Maps, a desktop opens the
+ * web. Built from the text rather than asked for separately, because nobody
+ * wants to paste a map link as well as type where they are meeting.
+ */
+export function mapUrl(location) {
+  const v = str(location, 200);
+  if (!v) return "";
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(v)}`;
+}
 
 /** Derived from the English title, or whatever title exists. Never typed: it
     lands in a URL and a filename, and a hand-entered one has to be lived
@@ -125,7 +182,7 @@ export function toMarkdown(collection, item) {
   yamlLangMap("summary", item.summary || {}, lines);
   yamlLangMap("description", item.description || {}, lines);
 
-  for (const field of spec.plain || []) {
+  for (const field of (spec.plain || []).concat(spec.hidden || [])) {
     if (item[field]) lines.push(`${field}: ${yamlString(item[field])}`);
   }
   for (const field of spec.flags || []) {
@@ -379,7 +436,18 @@ export default {
       }
       item[field] = v || allowed[0];
     }
-    for (const field of spec.plain) item[field] = str(body[field], 300);
+    for (const field of spec.plain.concat(spec.hidden || [])) item[field] = str(body[field], 300);
+    /* Addresses, tidied once on the way in rather than at every place that
+       renders one. A stored value that is already correct cannot be rendered
+       wrongly later by something that forgot to call a helper. */
+    if (item.link) item.link = normalizeUrl(item.link);
+    if (item.registration) item.registration = normalizeUrl(item.registration);
+    /* The map link follows the place, so moving the venue moves the link and
+       nobody has to remember to update two fields. An explicitly supplied one
+       wins — some venues are worth pointing somewhere better than a search. */
+    if (collection === "gatherings") {
+      item.map_url = item.map_url ? normalizeUrl(item.map_url) : mapUrl(item.location);
+    }
     for (const field of spec.flags) item[field] = !!body[field];
     for (const field of spec.lists) {
       item[field] = Array.isArray(body[field])

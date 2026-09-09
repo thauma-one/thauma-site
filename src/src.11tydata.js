@@ -25,7 +25,8 @@ const isDevServer =
 
 module.exports = {
   eleventyComputed: {
-    lang: (data) => (data.member ? data.member.lang : data.lang),
+    lang: (data) => (data.member ? data.member.lang
+                   : data.resource ? data.resource.lang : data.lang),
     title: (data) => (data.member ? data.member.name : undefined),
     permalink: (data) => {
       const v = data.visible;
@@ -36,6 +37,16 @@ module.exports = {
         if (v.comingSoon) return false;
         if (!v.page("team")) return false;
         return `/${data.member.lang}/team/${data.member.slug}/index.html`;
+      }
+
+      /* Resource detail pages (paginated over resourcePages; alias "resource").
+         They belong to the Resources page and follow its switch, the same way
+         a bio follows the Team page's — a resource reachable while the section
+         that lists it is off would be a page nothing links to. */
+      if (data.resource && data.resource.slug) {
+        if (v.comingSoon) return false;
+        if (!v.page("resources")) return false;
+        return `/${data.resource.lang}/resources/${data.resource.slug}/index.html`;
       }
 
       if (data.pageSlug === undefined && !data.isComingSoonPage) return data.permalink;
