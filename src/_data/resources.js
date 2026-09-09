@@ -6,6 +6,22 @@ const fs = require("fs");
 const path = require("path");
 const matter = require("gray-matter");
 
+/* WHERE THE CONTENT LIVES, overridable for tests.
+ *
+ * This read src/content/<collection> and nothing else, so a test that needed
+ * an item to assert against had to WRITE ONE INTO THE REAL FOLDER and delete
+ * it afterwards. That is a bad bargain twice over: the live site briefly grows
+ * content nobody wrote, and anything that inspects the site mid-run — a person
+ * looking at dev, another test, the watcher — sees invented gatherings appear
+ * and vanish. It cost hours of "where did those events go".
+ *
+ * Tests point this at test/fixtures/, which is committed and permanent. The
+ * real content directory is never written to by anything except the console.
+ */
+const CONTENT_ROOT = process.env.THAUMA_CONTENT_DIR ||
+  path.join(__dirname, "..", "content");
+
+
 /* A WEB ADDRESS AS SOMEBODY TYPED IT.
  *
  * "chaseroush.com" is what a person writes; a browser reads it as a RELATIVE
@@ -78,7 +94,7 @@ const MOMENTS = ["crisis", "growth", "planning", "lookup"];
 const FORMATS = ["guide", "diagram", "checklist", "glossary-entry", "video"];
 
 module.exports = () => {
-  const dir = path.join(__dirname, "..", "content", "resources");
+  const dir = path.join(CONTENT_ROOT, "resources");
   if (!fs.existsSync(dir)) return [];
   return fs.readdirSync(dir)
     .filter((f) => f.endsWith(".md"))

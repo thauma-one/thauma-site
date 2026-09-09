@@ -25,7 +25,7 @@
 import { spawn } from "node:child_process";
 import { existsSync, rmSync } from "node:fs";
 
-export async function buildDevSite(outDir, waitFor, { timeoutMs = 60000 } = {}) {
+export async function buildDevSite(outDir, waitFor, { timeoutMs = 60000, contentDir } = {}) {
   rmSync(outDir, { recursive: true, force: true });
 
   /* THE BINARY DIRECTLY, NOT THROUGH npx.
@@ -39,8 +39,13 @@ export async function buildDevSite(outDir, waitFor, { timeoutMs = 60000 } = {}) 
    * detached puts it in its own process group so the kill below reaches the
    * whole tree even if it ever grows one. */
   const bin = new URL("../../node_modules/.bin/eleventy", import.meta.url).pathname;
-  const child = spawn(bin, ["--watch", `--output=${outDir}`, "--quiet"],
-                      { stdio: ["ignore", "pipe", "pipe"], detached: true });
+  /* `contentDir` points the collections somewhere other than src/content, so
+     a test can assert against committed fixtures without writing a single
+     file into the real site. See test/fixtures/README.md. */
+  const child = spawn(bin, ["--watch", `--output=${outDir}`, "--quiet"], {
+    stdio: ["ignore", "pipe", "pipe"], detached: true,
+    env: contentDir ? { ...process.env, THAUMA_CONTENT_DIR: contentDir } : process.env,
+  });
   let stderr = "";
   child.stderr.on("data", (b) => { stderr += String(b); });
 

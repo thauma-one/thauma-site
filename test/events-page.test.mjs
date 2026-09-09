@@ -14,7 +14,7 @@
  * they survive any amount of later visual work.
  */
 import { JSDOM } from "jsdom";
-import { readFileSync, writeFileSync, unlinkSync, mkdirSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { buildDevSite } from "./lib/dev-build.mjs";
 
 let pass = 0, fail = 0;
@@ -26,61 +26,24 @@ const assert = (c, m) => { if (!c) throw new Error(m); };
 
 console.log("the Events page\n");
 
-/* BUILT FROM FIXTURES, into a throwaway directory. Reading whatever happens to
-   be in src/content/gatherings would make this test pass or fail on somebody's
-   half-written draft. */
-const DIR = "src/content/gatherings";
-mkdirSync(DIR, { recursive: true });
-const written = [];
-const put = (name, body) => { const p = `${DIR}/${name}.md`; writeFileSync(p, body); written.push(p); };
-
-put("zz-test-next", `---
-type: "gathering"
-status: "upcoming"
-title:
-  en: "Production people, in one room"
-summary:
-  en: "Two days of hands on desks."
-date: "2027-03-14"
-end_date: "2027-03-15"
-time: "10:00"
-location: "Kuća molitve, Zagreb"
-registration: "thauma.one/register"
----
-`);
-put("zz-test-later", `---
-type: "cohort"
-status: "upcoming"
-title:
-  hr: "Prva grupa"
-cadence: "weekly"
-date: "2027-06-01"
----
-`);
-put("zz-test-past", `---
-type: "gathering"
-status: "past"
-title:
-  en: "First visit to Osijek"
-summary:
-  en: "Three services and a failing desk."
-date: "2026-05-29"
-location: "Osijek"
----
-`);
-
-/* THE UNGATED BUILD. A plain `eleventy` run uses the live column, where
-   comingSoon is true, and produces twenty files with no interior pages in them
-   at all — so this would have passed on a machine with a dev server running
-   and failed in CI, which is the worst way for a test to be wrong. */
-let html;
-const built = await buildDevSite("/tmp/events-test", "en/events/index.html");
-written.forEach((p) => { try { unlinkSync(p); } catch {} });
-if (!built.ok) {
-  console.log("  FAIL  could not build the site:", built.error);
-  process.exit(1);
-}
-html = readFileSync("/tmp/events-test/en/events/index.html", "utf8");
+/* BUILT FROM COMMITTED FIXTURES, in test/fixtures/gatherings.
+ *
+ * This used to write gatherings into src/content/gatherings, build, assert and
+ * delete them. The live dev site grew events nobody wrote and then lost them
+ * again, and the rendered output got quoted in conversation as though it were
+ * the real page — which cost hours of hunting for content that had deleted
+ * itself. The fixtures are permanent files now and the real content folder is
+ * never touched.
+ */
+const html = await (async () => {
+  const built = await buildDevSite("/tmp/events-test", "en/events/index.html",
+    { contentDir: new URL("./fixtures/", import.meta.url).pathname });
+  if (!built.ok) {
+    console.log("  FAIL  could not build the site:", built.error);
+    process.exit(1);
+  }
+  return readFileSync("/tmp/events-test/en/events/index.html", "utf8");
+})();
 const d = new JSDOM(html).window.document;
 
 /* ------------------------------------------------------ the invitation */
