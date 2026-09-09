@@ -29,7 +29,7 @@ const observer = new MutationObserver(() => {
   const section = currentSection();
   if (!section || !section.wire || deckRoot.dataset.wired === section.key) return;
   deckRoot.dataset.wired = section.key;
-  section.wire(deckRoot, state, { onBegin: () => goTo(1) });
+  section.wire(deckRoot, state, { config, onBegin: () => goTo(1) });
 });
 observer.observe(deckRoot, { childList: true });
 

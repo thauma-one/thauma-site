@@ -28,7 +28,10 @@ export const state = {
   },
   nav: { section: 0, step: 0, playing: false },
   live: { counts: null, fetchedAt: null, error: null },
-  view: { budgetOpen: false, annualOpen: false },
+  /* `tier` is which row the ask is currently pointed at. It lives in view
+     state, not presenter state: the prep screen chooses where it STARTS, and
+     the presenter moves it during the conversation. */
+  view: { budgetOpen: false, annualOpen: false, tier: null },
   /* A shared link is watched by somebody on their own. They get the deck and
      none of the presenter's controls. */
   mode: "present",
@@ -131,7 +134,20 @@ export async function goTo(index) {
 
 function wire() {
   document.addEventListener("keydown", (e) => {
-    if (e.target.matches("input, textarea, select")) return;
+    /* e.target is not always an element — a keypress with nothing focused
+       targets the document, which has no matches(). Left unguarded this throws
+       inside the handler and every arrow key stops working for the rest of the
+       presentation, which is not a failure anybody could recover from in a
+       living room. */
+    const t = e.target;
+    if (t instanceof Element && t.matches("input, textarea, select")) return;
+
+    /* A section may own keys of its own — the ask moves its tier on up/down.
+       It gets first refusal, and the deck keeps left/right regardless, so a
+       section can never take navigation away from the presenter. */
+    const section = sections[state.nav.section];
+    if (section?.onKey && section.onKey(e, { root, state, config })) return;
+
     if ([" ", "ArrowRight", "PageDown", "Enter"].includes(e.key)) { e.preventDefault(); next(); }
     else if (["ArrowLeft", "PageUp", "Backspace"].includes(e.key)) { e.preventDefault(); prev(); }
     else if (e.key === "Home") goTo(0);
@@ -140,7 +156,8 @@ function wire() {
   /* Tap to advance, but never when the tap was meant for something — a corner
      toggle, the ask-amount box, a link. */
   document.addEventListener("click", (e) => {
-    if (e.target.closest("button, a, input, select, textarea, [data-no-advance]")) return;
+    if (e.target instanceof Element &&
+        e.target.closest("button, a, input, select, textarea, [data-no-advance]")) return;
     next();
   });
 }

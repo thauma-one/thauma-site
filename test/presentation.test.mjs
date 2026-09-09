@@ -271,6 +271,122 @@ await check("the corner toggles do not move the deck", async () => {
   assert(!d.querySelector('[data-panel="budget"]').hidden, "the budget did not open");
 });
 
+/* ------------------------------------------- the ask as a live control
+
+   Section 6 is the one section the spec refuses to call a slide: "a live tool
+   operated in real time, shaped by however the actual conversation unfolds."
+   Everything below is that claim, held as behavior. */
+
+/** The ask, advanced to the point where the tiers are up and one is chosen —
+    which is step 1, not the section's first step. */
+async function onAsk(opts) {
+  const ctx = await boot(opts);
+  await ctx.w.Deck.goTo(7);
+  await new Promise((r) => setTimeout(r, 300));
+  await ctx.w.Deck.next();
+  await new Promise((r) => setTimeout(r, 400));
+  return ctx;
+}
+const currentTier = (d) => d.querySelector(".tier.is-current")?.dataset.tier;
+const askLine = (d) => d.querySelector("[data-tier-ask]").textContent.trim();
+const press = (w, d, key) =>
+  d.dispatchEvent(new w.KeyboardEvent("keydown", { key, bubbles: true }));
+const clickTier = (w, d, key) =>
+  d.querySelector(`.tier[data-tier="${key}"]`)
+    .dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+const serving = (counts) => async () =>
+  ({ ok: true, status: 200, json: async () => ({ counts }) });
+
+await check("the ask opens on the tier chosen before the meeting", async () => {
+  /* The prep screen picks a starting point for this particular family. Opening
+     on the same figure for everyone is the thing that setting exists to stop. */
+  const { w, d } = await onAsk();
+  assert(w.Deck.state.presenter.defaultTier === "sys",
+    "this test assumes the configured default is sys");
+  assert(currentTier(d) === "sys", `the ask opened on "${currentTier(d)}"`);
+  assert(/System Tech/.test(askLine(d)), `the sentence reads "${askLine(d)}"`);
+});
+
+await check("the presenter moves the ask without moving the deck", async () => {
+  /* If pointing at a row also advanced a step, using the tool would cost the
+     presenter their place in it. */
+  const { w, d } = await onAsk();
+  const at = { ...w.Deck.state.nav };
+
+  press(w, d, "ArrowDown");
+  await new Promise((r) => setTimeout(r, 60));
+  assert(currentTier(d) === "tech", `ArrowDown landed on "${currentTier(d)}"`);
+
+  clickTier(w, d, "a2");
+  await new Promise((r) => setTimeout(r, 100));
+  assert(currentTier(d) === "a2", `clicking a row landed on "${currentTier(d)}"`);
+  assert(/A2/.test(askLine(d)), `the sentence did not follow the row: "${askLine(d)}"`);
+
+  assert(w.Deck.state.nav.section === at.section && w.Deck.state.nav.step === at.step,
+    "moving the ask moved the deck underneath the presenter");
+});
+
+await check("the ask stops at both ends of the table", async () => {
+  const { w, d } = await onAsk();
+  for (let i = 0; i < 10; i++) press(w, d, "ArrowUp");
+  await new Promise((r) => setTimeout(r, 60));
+  assert(currentTier(d) === "pm", `pushed off the top onto "${currentTier(d)}"`);
+  for (let i = 0; i < 10; i++) press(w, d, "ArrowDown");
+  await new Promise((r) => setTimeout(r, 60));
+  assert(currentTier(d) === "stage", `pushed off the bottom onto "${currentTier(d)}"`);
+});
+
+await check("the ask never takes navigation away from the presenter", async () => {
+  /* The section borrows the axis the deck is not using. Left and right have to
+     keep working, or the presenter is stranded in the section that matters
+     most and cannot get out of it in front of somebody. */
+  const { w, d } = await onAsk();
+  const before = { ...w.Deck.state.nav };
+  press(w, d, "ArrowRight");
+  await new Promise((r) => setTimeout(r, 350));
+  assert(w.Deck.state.nav.step !== before.step || w.Deck.state.nav.section !== before.section,
+    "ArrowRight stopped advancing the deck once the ask was on screen");
+});
+
+await check("a tier with no seats left is not offered as one", async () => {
+  /* Being asked to join something already complete is worse than being told it
+     filled up. */
+  const { w, d } = await onAsk({
+    online: true, fetchImpl: serving({ pm: 1, lead: 0, sys: 1, tech: 0, a2: 7, stage: 0 }),
+  });
+  clickTier(w, d, "pm");
+  await new Promise((r) => setTimeout(r, 100));
+  assert(/full/i.test(askLine(d)), `a full tier still reads "${askLine(d)}"`);
+  assert(!/would you be one/i.test(askLine(d)),
+    "a seat that does not exist is still being offered");
+});
+
+await check("the figures, the open count and the sentence tell one story", async () => {
+  /* THE GAP THIS EXISTS FOR. render() draws the rows from whatever counts exist
+     when the section mounts, and the live fetch only answers a step later — so
+     the chart sat at zero filled while the sentence under it said "1 A2 spot
+     left". Both were reading real data; one of them was reading it too early,
+     and the section's whole job is that those two never disagree. */
+  const counts = { pm: 1, lead: 0, sys: 1, tech: 0, a2: 7, stage: 0 };
+  const { w, d } = await onAsk({ online: true, fetchImpl: serving(counts) });
+
+  for (const tier of w.Deck.config.ask.tiers) {
+    const row = d.querySelector(`.tier[data-tier="${tier.key}"]`);
+    const filled = row.querySelectorAll(".crew.is-filled").length;
+    const open = Number(row.querySelector("[data-open-count]").textContent);
+    assert(filled === counts[tier.key],
+      `${tier.key}: ${filled} figures are filled, live data says ${counts[tier.key]}`);
+    assert(open === tier.target - counts[tier.key],
+      `${tier.key}: the open column says ${open}, live data leaves ` +
+      `${tier.target - counts[tier.key]}`);
+  }
+
+  clickTier(w, d, "a2");
+  await new Promise((r) => setTimeout(r, 100));
+  assert(/\b1 A2 spot\b/.test(askLine(d)),
+    `the chart shows one open A2 seat and the sentence says "${askLine(d)}"`);
+});
+
 await check("the budget explains WHY, not just what", async () => {
   /* "$X for housing" without the philosophy reads as either padding or
      austerity. Bylaws Article VII §5 explains why it is neither. */

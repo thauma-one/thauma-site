@@ -258,7 +258,10 @@ p.lead { color: var(--text); font-size: clamp(18px, 2vw, 24px); }
 
 /* An open seat is drawn, not absent — the gap has to be visible to be an ask. */
 .crew { display: inline-block; width: clamp(11px, 1.3vw, 15px); margin-right: 5px;
-  color: var(--line); }
+  color: var(--line);
+  /* A seat is taken, not switched on. The color moves so the eye catches WHICH
+     figure just filled when the live counts land. */
+  transition: color .45s var(--ease, cubic-bezier(.16,1,.3,1)); }
 .crew svg { display: block; width: 100%; height: auto; }
 .crew.is-filled { color: var(--blue); }
 
@@ -402,3 +405,17 @@ p.lead { color: var(--text); font-size: clamp(18px, 2vw, 24px); }
    argument — it is highlighted, never enlarged. */
 .slice.is-tiny { fill: var(--blue); }
 .is-out { opacity: 0; transition: opacity .5s ease; }
+
+/* The live ask. One row is the one being talked about, and the sentence below
+   the table says it in words — the same fact twice, because a person looks at
+   the row and hears the sentence, and those must never disagree. */
+.tier.is-current > td { border-bottom-color: var(--blue); }
+.tier.is-current .tier-name b { color: var(--blue); }
+.tier.is-current .tier-amount { color: var(--text); }
+.tier { cursor: pointer; }
+.tier > td { transition: border-color .35s ease, color .35s ease; }
+
+.tier-ask { font-family: 'Sora', sans-serif; font-weight: 100;
+  font-size: clamp(19px, 2.2vw, 27px); line-height: 1.35; color: var(--text);
+  min-height: 1.35em; }
+.tier-ask b { font-weight: 400; color: var(--blue); }

@@ -48,6 +48,66 @@ function crew(count, filled) {
     }</span>`).join("");
 }
 
+/* THE SEATS ALREADY TAKEN, paid into the chart once the rows are up.
+
+   render() draws every row from whatever counts existed when the section
+   mounted, and the live fetch only resolves a step later — so without this the
+   figures sit at zero while the sentence underneath them says "1 A2 spot left".
+   The same fact twice, disagreeing, which is the one thing this section must
+   never do. The spec makes these figures the live-data centerpiece: they fill
+   one at a time as the real numbers arrive, so the count reads as current and
+   actually moving rather than decorative. */
+async function fillSeats(root, config, counts) {
+  if (!counts) return;
+  for (const tier of config.ask.tiers) {
+    const row = root.querySelector(`.tier[data-tier="${tier.key}"]`);
+    if (!row) continue;
+    const filled = Math.max(0, Math.min(tier.target, counts[tier.key] || 0));
+    const seats = [...row.querySelectorAll(".crew")];
+
+    /* A count that went DOWN is a correction, not a moment. It is emptied
+       without ceremony — only a seat being taken is worth animating. */
+    for (const seat of seats.slice(filled)) seat.classList.remove("is-filled");
+
+    const open = row.querySelector("[data-open-count]");
+    if (open) open.textContent = tier.target - filled;
+
+    await cascade(seats.slice(0, filled).filter((s) => !s.classList.contains("is-filled")),
+      { gap: Math.round(T.quick / 3), cls: "is-filled" });
+  }
+}
+
+/* THE LIVE CONTROL. The spec calls this section a tool operated in real time,
+   not a fixed display: the presenter walks in with a tier chosen for this
+   family and moves it as the conversation actually goes.
+
+   The sentence it writes is the spec's own ("There are 2 A2 spots left — would
+   you be one?"), generated from the live counts so it can never contradict the
+   figures drawn right above it. When a tier is full it says so plainly instead
+   of asking for a seat that does not exist — being asked to join something
+   already complete is worse than being told it filled up. */
+function selectTier(root, config, state, key) {
+  const tier = config.ask.tiers.find((t) => t.key === key);
+  if (!tier) return;
+  state.view.tier = key;
+
+  for (const row of root.querySelectorAll(".tier")) {
+    row.classList.toggle("is-current", row.dataset.tier === key);
+  }
+
+  const counts = state.live.counts || config.ask.offlineCounts;
+  const open = tier.target - (counts[tier.key] || 0);
+  const line = root.querySelector("[data-tier-ask]");
+  if (!line) return;
+
+  line.innerHTML = open > 0
+    ? `There ${open === 1 ? "is" : "are"} <b>${open}</b> ${tier.name} ` +
+      `${open === 1 ? "spot" : "spots"} left at <b>${money(tier.amount)}/month</b> — ` +
+      `would you be one?`
+    : `The <b>${tier.name}</b> tier is full. The nearest open seat is a good place to look.`;
+  line.classList.add("is-in");
+}
+
 export const ask = {
   key: "ask",
   title: "The ask",
@@ -71,7 +131,7 @@ export const ask = {
             ${a.tiers.map((t, i) => {
               const filled = counts[t.key] || 0;
               return `
-              <tr class="tier in" data-tier="${t.key}" data-i="${i}">
+              <tr class="tier in" data-tier="${t.key}" data-i="${i}" data-no-advance>
                 <td class="tier-name"><b>${t.name}</b><span class="tier-role">${t.role}</span></td>
                 <td class="tier-amount">${money(t.amount)}</td>
                 <td class="tier-crew">${crew(t.target, filled)}</td>
@@ -80,6 +140,13 @@ export const ask = {
             }).join("")}
           </tbody>
         </table>
+
+        <!-- THE ASK ITSELF, as a sentence about one tier. The spec is explicit
+             that this section is a live tool rather than a slide: the presenter
+             arrives with a starting tier chosen on the prep screen and moves it
+             during the conversation. So the sentence is generated, never
+             hardcoded, and moving it must not advance the deck. -->
+        <p class="tier-ask in" data-tier-ask data-no-advance></p>
 
         <p class="seed in" data-open>${a.seedRound}</p>
 
@@ -135,27 +202,62 @@ export const ask = {
     /* Tiers arrive one at a time, top of the pyramid down. Not all at once:
        the shape is the argument — each step down has more people in it, and
        the smallest step is the one with the most room. */
-    async ({ root }) => {
+    async ({ root, config, state }) => {
       const rows = [...root.querySelectorAll(".tier")];
       for (const row of rows) {
         row.classList.add("is-in");
         await motion.wait(T.quick);
       }
+
+      /* Now the seats that are already taken. This happens here, not in the
+         step that fetched them, because the rows are still invisible until the
+         loop above runs — a chart filling itself behind an opacity of 0 is a
+         moment nobody sees. */
+      await fillSeats(root, config, state.live.counts);
+
+      /* The starting point chosen on the prep screen. It is a starting point
+         and nothing more — the next thing that happens is usually the
+         presenter moving it. */
+      selectTier(root, config, state, state.view.tier || state.presenter.defaultTier);
     },
   ],
 
-  /* Corner toggles, wired once when the section mounts. These are the reason
-     the section exists as a tool rather than a slide. */
-  wire(root, state) {
+  /* Up and down move the ask a tier at a time, so the presenter never has to
+     look away from the person they are talking to in order to find a row.
+     Left and right are untouched: this borrows the axis the deck is not using
+     rather than overriding navigation. Returning true means "handled". */
+  onKey(e, { root, state, config }) {
+    if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return false;
+    const tiers = config.ask.tiers;
+    const at = tiers.findIndex((t) => t.key === state.view.tier);
+    const to = e.key === "ArrowDown"
+      ? Math.min(tiers.length - 1, at + 1)
+      : Math.max(0, at - 1);
+    e.preventDefault();
+    if (to !== at) selectTier(root, config, state, tiers[to].key);
+    return true;
+  },
+
+  /* Corner toggles and row selection, wired when the section mounts. These are
+     the reason the section exists as a tool rather than a slide. */
+  wire(root, state, { config }) {
     root.addEventListener("click", (e) => {
       const btn = e.target.closest("[data-toggle]");
-      if (!btn) return;
-      const which = btn.dataset.toggle;
-      const panel = root.querySelector(`[data-panel="${which}"]`);
-      const open = panel.hidden;
-      panel.hidden = !open;
-      state.view[which === "budget" ? "budgetOpen" : "annualOpen"] = open;
-      btn.classList.toggle("is-on", open);
+      if (btn) {
+        const which = btn.dataset.toggle;
+        const panel = root.querySelector(`[data-panel="${which}"]`);
+        const open = panel.hidden;
+        panel.hidden = !open;
+        state.view[which === "budget" ? "budgetOpen" : "annualOpen"] = open;
+        btn.classList.toggle("is-on", open);
+        return;
+      }
+
+      /* Moving the ask by pointing at the row being talked about. */
+      const row = e.target.closest(".tier");
+      if (row) selectTier(root, config, state, row.dataset.tier);
     });
+
   },
+
 };
