@@ -1,7 +1,7 @@
 {
   "name": "thauma-site",
   "version": "1.0.0",
-  "description": "Thauma ministry website \u2014 Eleventy on Cloudflare Workers, with D1",
+  "description": "Thauma ministry website — Eleventy on Cloudflare Workers, with D1",
   "scripts": {
     "build": "node -e \"require('fs').rmSync('_site',{recursive:true,force:true})\" && eleventy",
     "dev": "eleventy --serve --port 8123",
@@ -20,6 +20,7 @@
     "@tiptap/starter-kit": "^3.30.2",
     "esbuild": "^0.28.2",
     "jsdom": "^29.1.1",
+    "qrcode": "^1.5.4",
     "sharp": "^0.35.3",
     "wrangler": "4.86.0"
   },

@@ -15,20 +15,37 @@
  * recorded per tier, "two A2 spots left" has no source. The wiring is here and
  * reads from one place, so the day that data exists this changes in one file.
  */
-import { el, cascade, motion, T } from "../motifs.js";
+import { el, pixel, cascade, motion, T } from "../motifs.js";
 import { loadLive } from "../deck.js";
 
 const money = (n) => "$" + Number(n).toLocaleString("en-US");
 
-/* Small figures, one per person in the tier — the reference model's language.
-   A filled figure is somebody who has said yes; an open one is a seat, and the
-   whole ask is that somebody takes one. */
+/* One figure per person in the tier — the reference model's language. A filled
+   figure is somebody who has said yes; an open one is a seat, and the whole ask
+   is that somebody takes one. Pixel art, matching the promise icons; the shape
+   is deliberately the same for both states so the only difference the eye
+   catches is fill, not form. */
+const FIGURE = [
+  "..###..",
+  "..###..",
+  "..###..",
+  ".#####.",
+  "#######",
+  "#######",
+  "#.###.#",
+  "..###..",
+  "..###..",
+  "..###..",
+  "..#.#..",
+  "..#.#..",
+  "..#.#..",
+];
+
 function crew(count, filled) {
   return Array.from({ length: count }, (_, i) =>
-    `<span class="crew${i < filled ? " is-filled" : ""}" aria-hidden="true">
-       <svg viewBox="0 0 12 26"><circle cx="6" cy="4" r="3.4"/>
-         <path d="M6 8.5c-2.6 0-4 1.7-4 4v5h1.5l.6 8h3.8l.6-8H10v-5c0-2.3-1.4-4-4-4z"/>
-       </svg></span>`).join("");
+    `<span class="crew${i < filled ? " is-filled" : ""}">${
+      pixel(FIGURE)
+    }</span>`).join("");
 }
 
 export const ask = {

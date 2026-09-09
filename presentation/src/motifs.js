@@ -285,6 +285,45 @@ export async function cascade(els, { gap = 140, cls = "is-in" } = {}) {
  * collision check caught the first time it ran — seven identical helpers in
  * one scope, where the last one silently wins. One copy, exported.
  */
+/* PIXEL ART, drawn as a grid of unit squares.
+
+   The illustrations are pixel art by request. Writing them as bitmaps rather
+   than as <path> data means an icon can be read and edited as the picture it
+   is — you can see the horn in the source — and it keeps every icon on one
+   consistent grid instead of drifting between hand-tuned curves.
+
+   `rows` is an array of equal-length strings. "." is empty, any other
+   character is a filled pixel, and the character selects the shade so a
+   single bitmap can carry two tones:
+     "#" the icon's own color   "+" the same color at half weight
+
+   shape-rendering:crispEdges is what keeps the squares square; without it the
+   renderer antialiases each rect and the art turns to mush at small sizes. */
+export function pixel(rows, opts = {}) {
+  const h = rows.length;
+  const w = rows[0].length;
+  if (rows.some((r) => r.length !== w)) {
+    /* A ragged bitmap silently shifts every pixel after the short row, which
+       reads as a badly drawn icon rather than as the typo it is. */
+    throw new Error("pixel(): all rows must be the same length");
+  }
+  const rects = [];
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const c = rows[y][x];
+      if (c === ".") continue;
+      const dim = c === "+" ? ' opacity=".45"' : "";
+      rects.push(`<rect x="${x}" y="${y}" width="1" height="1"${dim}/>`);
+    }
+  }
+  const cls = opts.class ? ` class="${opts.class}"` : "";
+  const label = opts.label
+    ? ` role="img" aria-label="${opts.label}"`
+    : ' aria-hidden="true"';
+  return `<svg viewBox="0 0 ${w} ${h}"${cls}${label} fill="currentColor" ` +
+         `shape-rendering="crispEdges">${rects.join("")}</svg>`;
+}
+
 export function el(html) {
   const t = document.createElement("template");
   t.innerHTML = String(html).trim();

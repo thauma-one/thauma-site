@@ -22,6 +22,8 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import QRCode from "qrcode";
+import { config } from "./config.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, "..");
@@ -111,12 +113,35 @@ bundle("presentation/src/sections/schedule.js");
 bundle("presentation/src/sections/ask.js");
 bundle("presentation/src/main.js");
 
-const js = chunks.join("\n\n");
+/* ------------------------------------------------------------------ QR
+
+   Generated here, not at runtime: the deck ships with no libraries, and a
+   placeholder that looks like a code is the worst outcome available — somebody
+   points a phone at it in a living room and it fails in front of everyone.
+
+   Error correction is M and the quiet zone is drawn by the stylesheet rather
+   than the encoder, so the code stays crisp when projected. The URLs come from
+   config so this cannot drift from what the closing slide says. */
+const qrUrls = [config.closing?.qr].filter(Boolean);
+const qrCodes = {};
+for (const url of qrUrls) {
+  qrCodes[url] = await QRCode.toString(url, {
+    type: "svg", margin: 0, errorCorrectionLevel: "M",
+    color: { dark: "#000000", light: "#00000000" },
+  });
+}
+
+const chunksWithQr = [
+  `/* qr (generated) */\nconst QR_CODES = ${JSON.stringify(qrCodes)};`,
+  ...chunks,
+];
+
+const js = chunksWithQr.join("\n\n");
 
 /* A name defined twice would silently shadow rather than fail, and the symptom
    would be a section quietly using another's helper. Checked, not trusted. */
 const names = {};
-for (const chunk of chunks) {
+for (const chunk of chunksWithQr) {
   const file = chunk.match(/^\/\* (.+?) \*\//)[1];
   for (const m of chunk.matchAll(/^(?:const|let|function|async function|class)\s+([A-Za-z_$][\w$]*)/gm)) {
     if (names[m[1]] && names[m[1]] !== file) {

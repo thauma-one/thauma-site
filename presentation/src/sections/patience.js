@@ -12,24 +12,53 @@
  * The two completed timelines end in handwriting because those stories are
  * finished. Thauma's does not, and the visual has to say so on its own.
  */
-import { el, rushThenArrive, cascade, motion, T } from "../motifs.js";
+import { el, pixel, rushThenArrive, cascade, motion, T } from "../motifs.js";
 
-/* Symbolic, not illustrated. The spec asks for single small icons rather than
-   detailed scenes, and simple geometry sits better beside Sora than drawn art
-   pretending to be hand-made would. */
+/* Symbolic, not illustrated — the spec asks for one small icon per promise,
+   not a scene. Drawn as pixel art on a 16x16 grid, which is legible beside
+   Sora in a way drawn art pretending to be hand-made would not be, and which
+   can be edited by looking at it. "#" is a filled pixel, "+" a half-weight
+   one, "." empty. See pixel() in motifs.js. */
 const ICONS = {
-  stars: `<svg viewBox="0 0 40 40" class="icon" aria-hidden="true">
-    <g fill="currentColor">
-      <circle cx="9" cy="12" r="1.6"/><circle cx="20" cy="7" r="2.1"/>
-      <circle cx="31" cy="13" r="1.5"/><circle cx="14" cy="24" r="1.3"/>
-      <circle cx="26" cy="27" r="1.8"/><circle cx="33" cy="31" r="1.2"/>
-      <circle cx="7" cy="31" r="1.4"/>
-    </g></svg>`,
-  horn: `<svg viewBox="0 0 40 40" class="icon" aria-hidden="true">
-    <path d="M8 26c0-7 5-13 12-14 5-1 9 1 11 4-3 1-5 3-6 6-1 4-4 7-8 8-4 1-8-1-9-4z"
-          fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
-    <path d="M20 12c1-3 3-5 6-6" fill="none" stroke="currentColor" stroke-width="1.4"
-          stroke-linecap="round"/></svg>`,
+  /* Genesis 15: count the stars, if you are able to count them. */
+  stars: pixel([
+    "................",
+    "......+.....#...",
+    ".....+#+........",
+    "......+.........",
+    "...#............",
+    "..........+.....",
+    ".........+#+..#.",
+    "..........+.....",
+    "....+...........",
+    "...+#+..........",
+    "....+.......#...",
+    "................",
+    "............+...",
+    ".#.........+#+..",
+    "............+...",
+    "................",
+  ], { class: "icon" }),
+
+  /* 1 Samuel 16: the horn of oil, tipped and pouring. */
+  horn: pixel([
+    "................",
+    ".............##.",
+    "............###.",
+    "...........####.",
+    ".........#####..",
+    "........#####...",
+    "......######....",
+    ".....#####......",
+    "...######.......",
+    "..#####.........",
+    ".#####..........",
+    ".####...........",
+    "..##............",
+    "...#............",
+    "................",
+    "....+...........",
+  ], { class: "icon" }),
 };
 
 function promiseBlock(id, data) {

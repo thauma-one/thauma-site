@@ -140,12 +140,15 @@ export const closing = {
   steps: [async ({ root }) => cascade([...root.querySelectorAll("[data-c]")], { gap: 320 })],
 };
 
-/* A placeholder frame rather than a fake code. A QR that does not scan is
-   worse than an obvious gap — somebody would point a phone at it in a living
-   room and it would fail in front of everyone. The real code is generated at
-   build time; see build.mjs. */
+/* The code itself is generated at build time into QR_CODES — see build.mjs.
+   A drawn-on placeholder would be worse than an obvious gap: somebody would
+   point a phone at it in a living room and it would fail in front of everyone.
+   So when a code is genuinely missing, the URL stands alone and is readable,
+   which is a thing a person can actually act on. */
 function qr(url) {
-  return `<div class="qr-frame" data-qr="${url}">
+  const code = (typeof QR_CODES !== "undefined" && QR_CODES[url]) || "";
+  return `<div class="qr-frame${code ? "" : " is-bare"}">
+            ${code}
             <span class="qr-url">${url.replace(/^https?:\/\//, "")}</span>
           </div>`;
 }

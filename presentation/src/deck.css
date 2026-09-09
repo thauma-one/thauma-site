@@ -207,7 +207,8 @@ p.lead { color: var(--text); font-size: clamp(18px, 2vw, 24px); }
 
 /* Presenter chrome — deliberately faint. It exists for one person and must
    never compete with what a room is looking at. */
-.deck-hint { position: fixed; bottom: 18px; right: 22px; font-size: 11px;
+.deck-hint { position: fixed; bottom: 18px; left: 50%; translate: -50% 0;
+  font-size: 11px;
   letter-spacing: .16em; text-transform: uppercase; color: var(--dim);
   opacity: .32; pointer-events: none; }
 
@@ -231,3 +232,173 @@ p.lead { color: var(--text); font-size: clamp(18px, 2vw, 24px); }
   margin-top: 20px; letter-spacing: .02em; }
 .line-unresolved { margin: 26px 0 0; }
 .stack { display: flex; flex-direction: column; gap: 14px; }
+
+/* ---- Section 7: the ask ----------------------------------------------
+   A tier table, and the whole slide's job is that a person can find the row
+   they belong on without being sold to. So: no emphasis colors on amounts,
+   no button styling on the corners. The only thing that carries color is a
+   filled figure — somebody who has already said yes. */
+.ask-head { display: flex; align-items: baseline; gap: clamp(16px, 3vw, 32px);
+  flex-wrap: wrap; }
+.ask-head .figure-label { max-width: 46ch; margin-top: 0; }
+.per { font-size: .3em; color: var(--dim); letter-spacing: .04em; margin-left: .1em; }
+
+.tiers { width: 100%; border-collapse: collapse; }
+.tier > td { padding: clamp(10px, 1.6vh, 16px) 0; vertical-align: middle;
+  border-bottom: 1px solid var(--line); }
+.tier > td:first-child { padding-right: 24px; }
+.tier-name b { font-weight: 600; display: block; }
+.tier-role { color: var(--dim); font-size: 13px; }
+.tier-amount { font-family: 'Sora', sans-serif; font-weight: 100;
+  font-size: clamp(20px, 2.4vw, 30px); font-variant-numeric: tabular-nums;
+  white-space: nowrap; padding-right: clamp(16px, 3vw, 40px); }
+.tier-crew { width: 99%; line-height: 0; }   /* eats the slack so the count sits right */
+.tier-open { color: var(--dim); font-size: 14px; white-space: nowrap;
+  text-align: right; font-variant-numeric: tabular-nums; }
+
+/* An open seat is drawn, not absent — the gap has to be visible to be an ask. */
+.crew { display: inline-block; width: clamp(11px, 1.3vw, 15px); margin-right: 5px;
+  color: var(--line); }
+.crew svg { display: block; width: 100%; height: auto; }
+.crew.is-filled { color: var(--blue); }
+
+.seed { color: var(--dim); font-style: italic; }
+
+/* The corners. Text, not buttons — pressing one opens a panel, and a panel is
+   an aside the presenter chooses, never a step in the argument. */
+.corner { position: fixed; bottom: clamp(18px, 3vh, 30px); z-index: 3;
+  background: none; border: 0; padding: 6px 2px; cursor: pointer;
+  font: inherit; font-size: 12px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--dim); opacity: .6; transition: opacity .3s ease, color .3s ease; }
+.corner:hover, .corner:focus-visible { opacity: 1; color: var(--foam); }
+.corner-left { left: clamp(20px, 4vw, 44px); }
+.corner-right { right: clamp(20px, 4vw, 44px); }
+
+.panel { border: 1px solid var(--line); border-radius: 4px;
+  padding: clamp(18px, 3vw, 30px); display: flex; flex-direction: column; gap: 14px; }
+.panel[hidden] { display: none; }
+.philosophy { color: var(--text); }
+.budget-lines { list-style: none; margin: 0; padding: 0; display: grid;
+  gap: 8px; color: var(--dim); font-size: 15px; }
+.budget-lines li { display: flex; justify-content: space-between; gap: 20px;
+  border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+
+/* Annual gifts as stacked bricks: same crew idea, different unit, so the two
+   panels do not look like two different decks. */
+.pyramid { display: flex; flex-direction: column; gap: 10px; }
+.pyramid-row { display: flex; align-items: center; gap: 6px; }
+.pyramid-amount { font-variant-numeric: tabular-nums; color: var(--dim);
+  font-size: 14px; width: 6ch; flex: none; }
+.brick { width: 22px; height: 10px; border: 1px solid var(--line); border-radius: 1px; }
+
+.live-note { font-size: 13px; color: var(--dim); min-height: 1.4em; }
+.live-note.is-on { color: var(--foam); }
+
+/* ---- Bookends: prep, title, closing ----------------------------------
+   The prep slide is the only screen in the deck a room never sees, so it is
+   the only one allowed to look like a form. */
+.prep { gap: clamp(14px, 2vh, 22px); }
+.prep-row { display: grid; grid-template-columns: 14ch auto; gap: 8px 16px;
+  align-items: center; cursor: pointer; }
+.prep-row > span:first-child { color: var(--dim); font-size: 14px;
+  letter-spacing: .04em; }
+.prep-note { grid-column: 2; color: var(--dim); font-size: 12.5px;
+  line-height: 1.5; opacity: .8; max-width: 52ch; cursor: default; }
+.prep-row input[type="text"], .prep-row select {
+  font: inherit; font-size: 15px; color: var(--text); background: transparent;
+  border: 1px solid var(--line); border-radius: 3px; padding: 7px 10px;
+  min-width: 26ch; }
+.prep-row input[type="text"]:focus, .prep-row select:focus {
+  outline: none; border-color: var(--blue); }
+.prep-row input[type="checkbox"] { justify-self: start; width: 17px; height: 17px;
+  accent-color: var(--blue); cursor: pointer; }
+
+/* The unverified list is a warning to one person, so it is marked in foam and
+   not in anything alarming — these are figures to check, not errors. */
+.prep-soft { border-left: 2px solid var(--foam); padding: 4px 0 4px 16px;
+  display: flex; flex-direction: column; gap: 10px; }
+.prep-soft ul { list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column; gap: 7px;
+  font-size: 13.5px; color: var(--dim); }
+.prep-soft b { color: var(--text); font-weight: 600; }
+
+.begin { align-self: flex-start; margin-top: 8px; font: inherit; font-size: 14px;
+  letter-spacing: .16em; text-transform: uppercase; cursor: pointer;
+  color: var(--bg); background: var(--blue); border: 0; border-radius: 3px;
+  padding: 13px 30px; transition: filter .2s ease; }
+.begin:hover, .begin:focus-visible { filter: brightness(1.12); }
+
+/* Title. The spark is the site's own sweep-line gesture, held to one beat. */
+.title-slide { align-items: center; text-align: center; }
+.wordmark { position: relative; display: inline-block; }
+.spark { position: absolute; top: 50%; left: -6%; width: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--blue), transparent);
+  box-shadow: 0 0 12px var(--blue-glow, rgba(47,216,255,.5)); opacity: 0; }
+.spark.is-lit { animation: spark-sweep 1500ms cubic-bezier(.16,1,.3,1) forwards; }
+@keyframes spark-sweep {
+  0%   { width: 0;    opacity: 0; }
+  22%  { opacity: 1; }
+  70%  { width: 112%; opacity: 1; }
+  100% { width: 112%; opacity: 0; }
+}
+.wordmark-note { color: var(--dim); }
+.presenter { color: var(--text); letter-spacing: .04em; }
+
+/* Closing. The code is the one deliberately light object in the whole deck —
+   a QR needs dark modules on a light ground to scan reliably, and a code that
+   does not scan is worse than no code. The white card IS the quiet zone. */
+.close-slide { align-items: center; text-align: center; }
+.qr { display: flex; justify-content: center; }
+.qr-frame { background: #fff; padding: 16px; border-radius: 4px;
+  display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.qr-frame svg { width: clamp(150px, 20vw, 210px); height: auto; display: block; }
+.qr-url { font-size: 12px; letter-spacing: .08em; color: #111;
+  font-family: 'Inter', system-ui, sans-serif; }
+/* No code generated: the URL has to carry the slide by itself, so it is set
+   large enough to read from a sofa rather than left as a caption. */
+.qr-frame.is-bare { background: none; padding: 0; }
+.qr-frame.is-bare .qr-url { font-size: clamp(18px, 2.4vw, 26px); color: var(--text);
+  font-family: 'Sora', sans-serif; font-weight: 100; letter-spacing: .02em; }
+
+/* ---- Section 3: the three methods converge --------------------------- */
+.converge { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+  gap: clamp(20px, 4vw, 54px); align-items: center; }
+.converge-svg { width: 100%; height: auto; }
+.flow { fill: none; stroke: var(--line); stroke-width: 2; stroke-linecap: round;
+  stroke-dasharray: var(--len, 600); stroke-dashoffset: var(--len, 600); }
+.flow.is-drawn { stroke: var(--blue);
+  transition: stroke-dashoffset 900ms cubic-bezier(.4,0,.2,1), stroke 900ms ease;
+  stroke-dashoffset: 0; }
+.node { fill: var(--blue); opacity: 0; transition: opacity .6s ease; }
+.node.is-drawn { opacity: 1; filter: drop-shadow(0 0 10px var(--blue-glow, rgba(47,216,255,.5))); }
+
+.method-list { list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column; gap: clamp(14px, 2.4vh, 26px);
+  counter-reset: method; }
+.method { padding-left: 40px; position: relative; counter-increment: method; }
+.method::before { content: counter(method); position: absolute; left: 0; top: 2px;
+  font-family: 'Sora', sans-serif; font-weight: 100; font-size: 22px;
+  color: var(--blue); font-variant-numeric: tabular-nums; }
+.method h3 { margin-bottom: 6px; }
+
+.destination { border-top: 1px solid var(--line); padding-top: clamp(16px, 3vh, 28px);
+  display: flex; flex-direction: column; gap: 10px; }
+.dest-note { font-style: italic; opacity: .8; }
+
+/* ---- Section 1: the maps and the pie --------------------------------- */
+.figure-row { display: flex; flex-wrap: wrap; gap: clamp(24px, 5vw, 64px);
+  margin: clamp(10px, 2vh, 20px) 0; }
+.map { width: 100%; height: auto; display: block; }
+.land { fill: none; stroke: var(--line); stroke-width: 1.4; stroke-linejoin: round; }
+/* Pins are the population, so they read as a field of light rather than as
+   markers to be counted one by one. */
+.pins circle { fill: var(--blue); opacity: .72; }
+.pin { transform-box: fill-box; transform-origin: center; }
+.quiet { opacity: .38; }
+
+.pie { width: clamp(180px, 26vw, 260px); height: auto; display: block; margin: 0 auto; }
+.slice { fill: var(--line); stroke: var(--bg); stroke-width: 1.5; }
+/* The Protestant share is small enough that the honest drawing of it IS the
+   argument — it is highlighted, never enlarged. */
+.slice.is-tiny { fill: var(--blue); }
+.is-out { opacity: 0; transition: opacity .5s ease; }

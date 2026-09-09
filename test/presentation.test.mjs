@@ -282,5 +282,54 @@ await check("the budget explains WHY, not just what", async () => {
     "the stewardship philosophy is missing from the budget breakdown");
 });
 
+await check("every class the sections render is actually styled", async () => {
+  /* THE GAP THIS EXISTS FOR. The deck built, every structural test here passed,
+     and five of the nine sections still rendered as unstyled markup — because a
+     missing class fails only visibly, and nothing in this file can see. So the
+     styling contract is checked as data: if a section names a class, deck.css
+     has to define it.
+
+     Deliberately about class NAMES, not about whether the rules are any good.
+     It catches the failure that actually happened — markup written, stylesheet
+     never followed up — and nothing subtler. */
+  const css = readFileSync("presentation/src/deck.css", "utf8");
+  const styled = new Set([...css.matchAll(/\.([a-zA-Z][\w-]*)/g)].map((m) => m[1]));
+
+  const dir = "presentation/src/sections";
+  const files = [...readdirSync(dir).map((f) => `${dir}/${f}`), "presentation/src/motifs.js"];
+  const missing = [];
+  for (const f of files) {
+    const src = readFileSync(f, "utf8");
+    const used = new Set();
+    /* Only literal class lists — a template expression is not a name. */
+    for (const m of src.matchAll(/class="([^"$]*)"/g)) {
+      for (const w of m[1].split(/\s+/)) if (w) used.add(w);
+    }
+    for (const m of src.matchAll(/classList\.(?:add|toggle)\("([\w-]+)"/g)) used.add(m[1]);
+    for (const c of used) if (!styled.has(c)) missing.push(`${f.split("/").pop()}:.${c}`);
+  }
+  assert(missing.length === 0,
+    `${missing.length} class(es) rendered but never styled: ${missing.join(", ")}`);
+});
+
+await check("the closing QR code is a real scannable code", async () => {
+  /* A placeholder that LOOKS like a code is the worst outcome available: a
+     phone gets pointed at it in a living room and it fails in front of
+     everyone. So the built file has to carry encoded modules, not a frame. */
+  const m = html.match(/const QR_CODES = (\{.*?\});/s);
+  assert(m, "QR_CODES is not in the built deck at all");
+  const codes = JSON.parse(m[1]);
+  const urls = Object.keys(codes);
+  assert(urls.length > 0, "no QR code was generated for any URL");
+  for (const url of urls) {
+    const svg = codes[url];
+    assert(/^<svg/.test(svg), `the code for ${url} is not an svg`);
+    /* A real code is a dense grid of drawn runs. A frame would have almost none. */
+    const runs = (svg.match(/[Mm]\d/g) || []).length;
+    assert(runs > 20,
+      `the code for ${url} has only ${runs} drawn runs — that is a placeholder, not a code`);
+  }
+});
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
