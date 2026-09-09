@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<!-- Shareable, but never indexed: the spec asks for a link that can be sent
+     to somebody directly and does not turn up in a search for Thauma. -->
+<meta name="robots" content="noindex, nofollow">
+<title>Thauma</title>
+<style>/*__CSS__*/</style>
+</head>
+<body>
+<div id="deck"></div>
+<!-- A CLASSIC SCRIPT, not a module. The build flattens every file into one
+     scope and strips the import statements, so there is nothing left for a
+     module to do — and a module script cannot be executed by jsdom, which
+     would leave the whole deck untestable to buy a keyword nothing uses. -->
+<script>(function(){"use strict";
+/*__JS__*/
+})();</script>
+</body>
+</html>

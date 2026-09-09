@@ -69,6 +69,10 @@ const PROTECTED = [
 
 const SKIP_DIRS = new Set([
   ".git", "node_modules", "_site", "_site_next", "_site_prod", ".wrangler", "coverage",
+  /* Build output. Scanning it reports every finding twice — once in the source
+     that can be fixed and once in the artifact that cannot — and a generated
+     file is never the thing to edit. */
+  "dist",
 ]);
 const EXTS = new Set([".js", ".mjs", ".njk", ".css", ".md", ".json", ".sql", ".py",
                       ".html", ".yml", ".yaml", ".toml", ".sh"]);

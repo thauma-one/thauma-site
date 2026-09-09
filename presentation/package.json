@@ -1,0 +1,6 @@
+{
+  "name": "thauma-presentation",
+  "private": true,
+  "type": "module",
+  "description": "The support-raising presentation. Built to one self-contained file by build.mjs."
+}

@@ -72,6 +72,7 @@ jobs:
           node test/contact-page.test.mjs
           node test/library.test.mjs
           node test/events-page.test.mjs
+          node test/presentation.test.mjs
           node test/admin-console.test.mjs
           cd workers && npm test
 

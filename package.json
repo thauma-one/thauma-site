@@ -1,12 +1,13 @@
 {
   "name": "thauma-site",
   "version": "1.0.0",
-  "description": "Thauma ministry website — Eleventy on Cloudflare Workers, with D1",
+  "description": "Thauma ministry website \u2014 Eleventy on Cloudflare Workers, with D1",
   "scripts": {
     "build": "node -e \"require('fs').rmSync('_site',{recursive:true,force:true})\" && eleventy",
     "dev": "eleventy --serve --port 8123",
     "collage-debug": "node scripts/render-collage-debug.js",
-    "test": "node test/visibility.test.mjs && node test/csv.test.mjs && node test/asset-hashes.test.mjs && node test/console-environment.test.mjs && node test/admin-console.test.mjs && node test/composer-toolbar.test.mjs && node test/mailing-preview.test.mjs && node test/videos-console.test.mjs && node test/console-nav.test.mjs && node test/console-banner.test.mjs && node test/mailing-views.test.mjs && node test/photo-crop.test.mjs && node test/us-english.test.mjs && node test/profile-save.test.mjs && node test/contact-page.test.mjs && node test/library.test.mjs && node test/events-page.test.mjs && bash deploy/test-git-sync.sh"
+    "test": "node test/visibility.test.mjs && node test/csv.test.mjs && node test/asset-hashes.test.mjs && node test/console-environment.test.mjs && node test/admin-console.test.mjs && node test/composer-toolbar.test.mjs && node test/mailing-preview.test.mjs && node test/videos-console.test.mjs && node test/console-nav.test.mjs && node test/console-banner.test.mjs && node test/mailing-views.test.mjs && node test/photo-crop.test.mjs && node test/us-english.test.mjs && node test/profile-save.test.mjs && node test/contact-page.test.mjs && node test/library.test.mjs && node test/events-page.test.mjs && node test/presentation.test.mjs && bash deploy/test-git-sync.sh",
+    "present": "node presentation/build.mjs"
   },
   "devDependencies": {
     "@11ty/eleventy": "^3.0.0",

@@ -167,6 +167,40 @@ module.exports = function (eleventyConfig) {
   const { readFileSync } = require("node:fs");
   const hashes = new Map();
   eleventyConfig.on("eleventy.before", () => hashes.clear());
+
+  /* THE PRESENTATION, built into the site as one self-contained file.
+   *
+   * It is not an Eleventy template and deliberately not one: the spec requires
+   * a single artifact that works from a memory stick with no network, and
+   * Eleventy links its CSS, JS and fonts as separate requests. So it is built
+   * by its own script and dropped into the output, which also means the same
+   * file that gets emailed to somebody is the file the site serves.
+   *
+   * Non-indexed by its own meta tag — shareable by link, absent from search.
+   */
+  eleventyConfig.on("eleventy.after", async ({ dir }) => {
+    const { execFileSync } = await import("node:child_process");
+    /* THE DIRECTORY THIS RUN IS ACTUALLY WRITING TO. `dir.output` is the
+       CONFIGURED value and does not follow a --output flag, so a build aimed
+       at a temporary directory still dropped the deck into _site — surprising,
+       and the sort of thing that has a test asserting against a file the build
+       never touched. The flag wins where it was given. */
+    const argv = process.argv;
+    const flag = argv.indexOf("--output");
+    const inline = argv.find((a) => a.startsWith("--output="));
+    const root = flag !== -1 ? argv[flag + 1]
+               : inline ? inline.slice("--output=".length)
+               : dir.output;
+    const out = require("path").join(root, "present", "index.html");
+    try {
+      execFileSync("node", ["presentation/build.mjs", "--out", out],
+                   { stdio: ["ignore", "pipe", "pipe"] });
+    } catch (err) {
+      /* A broken deck must not fail the website's build. It is one page, and
+         the failure is loud here rather than silent in the output. */
+      console.warn("[present] build failed:", String(err.stdout || err.message).slice(-300));
+    }
+  });
   eleventyConfig.addFilter("v", function (assetPath) {
     if (hashes.has(assetPath)) return hashes.get(assetPath);
     let h = "0";

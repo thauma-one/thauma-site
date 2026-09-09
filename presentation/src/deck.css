@@ -1,0 +1,233 @@
+/* deck.css — the presentation's own layer, on top of Thauma's brand
+   =========================================================================
+   THE ESTABLISHED THEME WINS. The spec says so outright, and this file holds
+   to it: every color here is a brand token, not a value invented for the
+   deck. tokens.css is inlined ahead of this at build time, so --bg, --text,
+   --blue and --foam mean exactly what they mean on the website.
+
+   What this file adds is spatial: a deck is a room, not a page. Content is
+   centered, generously spaced, and the frame is deliberately under-filled —
+   empty space is doing real work in something this restrained.
+   ========================================================================= */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0; height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-weight: 300;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;                 /* a deck does not scroll */
+}
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* THE STAGE. One section at a time, centered, with a hard cap on measure — a
+   line of text that runs the width of a projector is a line nobody reads. */
+#deck {
+  height: 100%; display: grid; place-items: center;
+  padding: clamp(28px, 5vw, 76px);
+}
+.slide {
+  width: 100%; max-width: 1080px;
+  display: flex; flex-direction: column; gap: clamp(18px, 3vh, 34px);
+}
+.slide.is-narrow { max-width: 760px; }
+
+/* Type. Sora for anything that carries weight, exactly as on the site. */
+.cue {
+  font-size: 11px; letter-spacing: .34em; text-transform: uppercase;
+  font-weight: 600; color: var(--blue); margin: 0;
+}
+.cue.foam { color: var(--foam); }
+h1, h2, h3 {
+  font-family: 'Sora', sans-serif; font-weight: 100;
+  letter-spacing: .01em; margin: 0; text-wrap: balance;
+}
+h1 { font-size: clamp(38px, 7vw, 82px); line-height: 1.04; }
+h2 { font-size: clamp(28px, 4.6vw, 52px); line-height: 1.12; }
+h3 { font-size: clamp(20px, 2.6vw, 30px); line-height: 1.2; }
+b, strong { font-weight: 600; }
+p { margin: 0; line-height: 1.65; color: var(--dim); font-size: clamp(15px, 1.5vw, 19px); }
+p.lead { color: var(--text); font-size: clamp(18px, 2vw, 24px); }
+
+/* Anything that animates in starts hidden. Static does not mean motionless —
+   the spec is explicit that nearly everything is hardcoded and nearly
+   everything still moves. */
+.in { opacity: 0; transform: translateY(10px);
+      transition: opacity .6s var(--ease, cubic-bezier(.16,1,.3,1)),
+                  transform .6s var(--ease, cubic-bezier(.16,1,.3,1)); }
+.in.is-in { opacity: 1; transform: none; }
+
+/* Numbers. Tabular so a counting figure does not jitter its own width. */
+.figure { font-family: 'Sora', sans-serif; font-weight: 100;
+  font-size: clamp(40px, 8vw, 96px); line-height: 1; color: var(--text);
+  font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.figure-label { color: var(--dim); font-size: clamp(13px, 1.4vw, 17px); margin-top: 10px; }
+
+/* ============================================================ MOTIF 1
+   THE HANDWRITTEN CORRECTION
+
+   A paper-like ground appears exactly where handwriting appears — the spec
+   welcomes a texture shift beneath this motif, and putting it only here means
+   the surface change reinforces the motif's logic instead of decorating the
+   deck. Same palette, different surface: the same world, not a second design
+   system briefly taking over.
+   ============================================================ */
+.hand-ground {
+  position: relative; padding: clamp(22px, 4vw, 46px); border-radius: 3px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.028), rgba(255,255,255,.012)),
+    var(--bg2);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+/* The faintest rule, like paper. Not a notebook pastiche — just enough that
+   the surface reads as something written on. */
+.hand-ground::before {
+  content: ""; position: absolute; inset: 0; border-radius: 3px; pointer-events: none;
+  background: repeating-linear-gradient(
+    180deg, transparent 0 33px, rgba(255,255,255,.022) 33px 34px);
+  opacity: .8;
+}
+.hand-ground > * { position: relative; }
+
+.hw { display: inline-block; }
+.hw-svg { display: block; overflow: visible; width: 100%; height: auto; }
+
+/* Written, then inked. The stroke draws first; the fill arrives behind it. */
+.hw-text, .hw-stroke {
+  fill: none;
+  stroke: var(--foam);
+  stroke-width: 1.6;
+  stroke-linecap: round; stroke-linejoin: round;
+  font-family: 'DeckHand', 'Segoe Script', 'Bradley Hand', cursive;
+  stroke-dasharray: var(--hw-len, 1200);
+  stroke-dashoffset: var(--hw-len, 1200);
+}
+.hw.is-writing .hw-text, .hw.is-writing .hw-stroke {
+  transition: stroke-dashoffset var(--hw-dur, 980ms) cubic-bezier(.35,.1,.25,1);
+  stroke-dashoffset: 0;
+}
+.hw.is-written .hw-text { fill: var(--foam); transition: fill .5s ease .1s; }
+.hw.is-written .hw-stroke { fill: none; }
+.hw.is-instant .hw-text { fill: var(--foam); stroke-dashoffset: 0; }
+
+/* The strikethrough is drawn, not applied — a line-through property appears
+   instantly and reads as formatting. This reads as somebody crossing a word
+   out, which is the entire point of the moment. */
+[data-strike] { position: relative; display: inline-block; }
+[data-strike]::after {
+  content: ""; position: absolute; left: -.06em; right: -.06em; top: 52%;
+  height: 2px; background: var(--foam); transform-origin: left center;
+  transform: scaleX(0) rotate(-1.4deg); border-radius: 2px;
+}
+[data-strike].is-struck::after {
+  transform: scaleX(1) rotate(-1.4deg);
+  transition: transform 420ms cubic-bezier(.35,.1,.25,1);
+}
+.correction { font-family: 'Sora', sans-serif; font-weight: 100;
+  font-size: clamp(30px, 5vw, 60px); line-height: 1.5; }
+.correction [data-written] { display: inline-block; min-width: 3.2em;
+  vertical-align: baseline; }
+
+/* ============================================================ MOTIF 2
+   Two zooms, deliberately unalike.
+   ============================================================ */
+
+/* GEOGRAPHIC — a match cut. The outgoing frame contracts through the same
+   center the incoming one expands from, so the scale collapse reads without
+   pretending it is one unbroken camera move across a hemisphere. */
+.zoom-frame { position: absolute; inset: 0; display: grid; place-items: center; }
+.zoom-stage { position: relative; width: 100%; aspect-ratio: 16 / 9; }
+.zoom-frame.is-collapsing {
+  animation: zoom-out var(--zoom-dur, 980ms) cubic-bezier(.16,1,.3,1) both;
+}
+.zoom-frame.is-arriving {
+  animation: zoom-in var(--zoom-dur, 980ms) cubic-bezier(.16,1,.3,1) both;
+}
+@keyframes zoom-out { to { transform: scale(.06); opacity: 0; filter: blur(2px); } }
+@keyframes zoom-in { from { transform: scale(14); opacity: 0; filter: blur(3px); } }
+
+/* TEMPORAL — travel along a line, with a pull-back before the move so the
+   point being left is seen as one of many. */
+.track-window { position: relative; overflow: hidden; padding: 40px 0; }
+.track { display: flex; align-items: center; gap: clamp(80px, 14vw, 200px);
+  transition: transform var(--focus-dur, 620ms) cubic-bezier(.16,1,.3,1),
+              scale var(--focus-dur, 620ms) cubic-bezier(.16,1,.3,1);
+  scale: 1; will-change: transform; }
+.track.is-wide { scale: .78; }
+[data-point] { flex: none; text-align: center; opacity: .34;
+  transition: opacity .5s ease, scale .5s cubic-bezier(.16,1,.3,1); scale: .94; }
+[data-point].is-focus { opacity: 1; scale: 1; }
+.point-date { font-family: 'Sora', sans-serif; font-weight: 100;
+  font-size: clamp(22px, 3vw, 38px); font-variant-numeric: tabular-nums; }
+.point-label { color: var(--dim); margin-top: 8px; font-size: 15px; }
+.point-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--dim);
+  margin: 0 auto 18px; transition: background .4s ease, box-shadow .4s ease; }
+[data-point].is-focus .point-dot { background: var(--blue);
+  box-shadow: 0 0 0 5px var(--blue-dim); }
+
+/* ============================================================ MOTIF 3
+   Fast, then arriving. The rush is short and the arrival is not.
+   ============================================================ */
+.rush { position: relative; }
+[data-line] { height: 1px; background: var(--line); position: relative; overflow: hidden; }
+[data-line]::after {
+  content: ""; position: absolute; inset: 0 100% 0 0; background: var(--blue);
+  box-shadow: 0 0 14px var(--blue-glow, rgba(47,216,255,.5));
+}
+[data-line].is-rushing::after {
+  animation: rush-fill var(--rush-dur, 1200ms) cubic-bezier(.4,0,.2,1) forwards;
+}
+[data-line].is-slowing::after { inset: 0 6% 0 0; transition: inset 900ms cubic-bezier(.16,1,.3,1); }
+@keyframes rush-fill { to { inset: 0 12% 0 0; } }
+
+[data-beat] { opacity: 0; transform: translateY(6px);
+  transition: opacity .3s ease, transform .3s ease; }
+[data-beat].is-passing { opacity: .55; transform: none; }
+[data-beat] .beat-note { color: var(--dim); font-size: 13px; font-style: italic; }
+
+[data-arrival] { opacity: 0; transform: translateY(12px);
+  transition: opacity .7s cubic-bezier(.16,1,.3,1), transform .7s cubic-bezier(.16,1,.3,1); }
+[data-arrival].is-arriving { opacity: 1; transform: none; }
+
+/* Thauma's own line does NOT resolve. Dashed, fading, no endpoint — the
+   visual says "a hope I am holding" without the sentence being spoken. */
+.line-unresolved {
+  height: 1px; border-top: 1px dashed var(--line);
+  background: none;
+  mask-image: linear-gradient(90deg, #000 40%, transparent 100%);
+  -webkit-mask-image: linear-gradient(90deg, #000 40%, transparent 100%);
+}
+
+/* Presenter chrome — deliberately faint. It exists for one person and must
+   never compete with what a room is looking at. */
+.deck-hint { position: fixed; bottom: 18px; right: 22px; font-size: 11px;
+  letter-spacing: .16em; text-transform: uppercase; color: var(--dim);
+  opacity: .32; pointer-events: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .in, .track, [data-point], [data-beat], [data-arrival] { transition: none !important; }
+  .zoom-frame.is-collapsing, .zoom-frame.is-arriving, [data-line].is-rushing::after {
+    animation: none !important; }
+}
+
+/* ---- Section 4: promises, and the one that has not arrived ---- */
+.promise { margin-top: clamp(20px, 4vh, 44px); }
+.promise-head { display: flex; align-items: center; gap: 16px; margin-bottom: 18px; }
+.promise-icon { color: var(--foam); display: block; }
+.promise-icon .icon { width: 34px; height: 34px; display: block; }
+.promise-line { margin: 4px 0 18px; }
+.beats { list-style: none; margin: 0; padding: 0; display: flex;
+  flex-wrap: wrap; gap: 10px 26px; color: var(--dim); font-size: 15px; }
+.arrival { margin-top: 22px; min-height: 60px; }
+.hope { font-family: 'Sora', sans-serif; font-weight: 100;
+  font-size: clamp(24px, 3.4vw, 40px); color: var(--dim); opacity: .74;
+  margin-top: 20px; letter-spacing: .02em; }
+.line-unresolved { margin: 26px 0 0; }
+.stack { display: flex; flex-direction: column; gap: 14px; }
