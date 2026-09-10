@@ -18,6 +18,7 @@
  * opening one must never move the deck.
  */
 import { config } from "../config.js";
+import { setBeatGate } from "./motifs.js";
 
 export const state = {
   presenter: {
@@ -25,6 +26,10 @@ export const state = {
     defaultTier: "sys",
     note: "",
     started: false,
+    /* Whether the deck waits for the presenter between beats. True whenever a
+       person is driving it; turned off for shared links, which have nobody to
+       press the bar, and by the tests, which drive the beats themselves. */
+    gated: true,
   },
   nav: { section: 0, step: 0, playing: false },
   live: { counts: null, fetchedAt: null, error: null },
@@ -70,7 +75,46 @@ async function render() {
   root.appendChild(node);
   root.dataset.section = section.key;
   announce(section);
-  await play();
+  /* NOT AWAITED. A section's first step now suspends on a gate until the
+     presenter presses the bar, so awaiting it here would mean goTo() never
+     resolves — the deck would render and then hang on its own caller. The DOM
+     is in place by this line; the beats after it belong to the presenter. */
+  play();
+}
+
+/* ONE PRESS, ONE THING.
+
+   A step describes a whole passage — the tiers arriving, a figure counting up,
+   a line being written. Left to itself a step runs its beats on timers, which
+   means one press fires a long sequence the presenter cannot talk over. A gate
+   hands control back mid-step: the step suspends until the next press, so the
+   pace belongs to the person in the room rather than to a number in this file.
+
+   Shared links resolve gates immediately — nobody is there to press. */
+let pendingGate = null;
+
+function gate() {
+  if (!state.presenter.gated || state.mode === "view") return Promise.resolve();
+  /* Suspended is not playing. The flag exists to swallow presses that would
+     stack up mid-animation; while a beat waits for the bar the presenter has
+     the floor, and leaving it set would lock them out of going back. */
+  state.nav.playing = false;
+  return new Promise((resolve) => {
+    pendingGate = () => { state.nav.playing = true; resolve(); };
+  });
+}
+
+/** Let a suspended step continue. Returns true if a press was spent doing it. */
+/* Every reveal in every section runs through cascade(), so handing it the gate
+   here makes the whole deck press-driven in one place. */
+setBeatGate(() => gate());
+
+function releaseGate() {
+  if (!pendingGate) return false;
+  const resume = pendingGate;
+  pendingGate = null;
+  resume();
+  return true;
 }
 
 /** Run the current step's animation. Steps are indexes into section.steps. */
@@ -80,7 +124,7 @@ async function play() {
   const step = section.steps[state.nav.step];
   if (!step) return;
   state.nav.playing = true;
-  try { await step({ root, config, state }); }
+  try { await step({ root, config, state, gate }); }
   catch (err) { console.error("step failed:", err); }
   state.nav.playing = false;
 }
@@ -92,6 +136,8 @@ async function play() {
  * beats ahead of what they are saying.
  */
 export async function next() {
+  /* A suspended beat has first claim on the press — that IS the advance. */
+  if (releaseGate()) return;
   const section = currentSection();
   if (!section) return;
   if (state.nav.playing) return;
@@ -117,6 +163,9 @@ export async function next() {
  * me to the beginning of what I was just saying" rather than "undo one beat".
  */
 export async function prev() {
+  /* Going back abandons a suspended beat. The orphaned step finishes into
+     nodes that render() has already discarded, which is harmless. */
+  pendingGate = null;
   if (state.nav.playing) return;
   if (state.nav.step > 0) { state.nav.step = 0; await render(); return; }
   if (state.nav.section > 0) {
@@ -130,6 +179,18 @@ export async function goTo(index) {
   state.nav.section = Math.max(0, Math.min(sections.length - 1, index));
   state.nav.step = 0;
   await render();
+}
+
+/* FULL SCREEN. A support-raising conversation happens on a laptop on somebody's
+   coffee table, and a browser's tab strip and bookmarks bar sitting above the
+   deck are the difference between a presentation and a web page. Bound to F,
+   and offered on the prep screen so it does not have to be remembered. */
+export async function toggleFullscreen() {
+  const el = document.documentElement;
+  try {
+    if (document.fullscreenElement) await document.exitFullscreen();
+    else if (el.requestFullscreen) await el.requestFullscreen({ navigationUI: "hide" });
+  } catch { /* refused by the browser, which is its right — nothing breaks */ }
 }
 
 function wire() {
@@ -151,6 +212,7 @@ function wire() {
     if ([" ", "ArrowRight", "PageDown", "Enter"].includes(e.key)) { e.preventDefault(); next(); }
     else if (["ArrowLeft", "PageUp", "Backspace"].includes(e.key)) { e.preventDefault(); prev(); }
     else if (e.key === "Home") goTo(0);
+    else if (e.key === "f" || e.key === "F") { e.preventDefault(); toggleFullscreen(); }
   });
 
   /* Tap to advance, but never when the tap was meant for something — a corner

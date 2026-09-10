@@ -33,6 +33,16 @@ html, body {
   height: 100%; display: grid; place-items: center;
   padding: clamp(28px, 5vw, 76px);
 }
+
+/* PAGE 0 IS A CHECKLIST, NOT A SLIDE. Every other section is composed to fit
+   the frame and is clipped on purpose. The prep screen is a list that grows
+   with the number of things worth confirming before walking into somebody's
+   front room, and a presenter who cannot reach the bottom of it cannot start.
+   It is the one screen allowed to scroll. */
+#deck[data-section="prep"] {
+  overflow-y: auto; place-items: start center;
+  padding-block: clamp(28px, 5vh, 64px);
+}
 .slide {
   width: 100%; max-width: 1080px;
   display: flex; flex-direction: column; gap: clamp(18px, 3vh, 34px);
@@ -96,8 +106,23 @@ p.lead { color: var(--text); font-size: clamp(18px, 2vw, 24px); }
 }
 .hand-ground > * { position: relative; }
 
-.hw { display: inline-block; }
+/* The handwriting fills the width it is given. It used to be inline-block
+   around a fixed 1000-unit box, so short phrases rendered at a fraction of the
+   space and read as an afterthought. The box now fits the words, so the words
+   now fit the slide. */
+.hw { display: block; width: 100%; }
 .hw-svg { display: block; overflow: visible; width: 100%; height: auto; }
+
+/* THE HAND MOVING. A rectangle sweeps left to right and the glyphs appear
+   behind it, which is the only part of this that actually reads as writing —
+   a dash animation on <text> draws every letter at the same instant, because
+   each glyph is its own subpath. */
+.hw-wipe { transform: scaleX(0); transform-origin: left center; }
+.hw.is-writing .hw-wipe {
+  transition: transform var(--hw-dur, 1900ms) cubic-bezier(.35,.1,.25,1);
+  transform: scaleX(1);
+}
+.hw.is-written .hw-wipe, .hw.is-instant .hw-wipe { transform: scaleX(1); }
 
 /* Written, then inked. The stroke draws first; the fill arrives behind it. */
 .hw-text, .hw-stroke {
@@ -277,8 +302,22 @@ p.lead { color: var(--text); font-size: clamp(18px, 2vw, 24px); }
 .corner-left { left: clamp(20px, 4vw, 44px); }
 .corner-right { right: clamp(20px, 4vw, 44px); }
 
-.panel { border: 1px solid var(--line); border-radius: 4px;
-  padding: clamp(18px, 3vw, 30px); display: flex; flex-direction: column; gap: 14px; }
+/* The marks themselves: small enough to be furniture, not a label. */
+.corner-mark { display: block; width: clamp(13px, 1.5vw, 17px); height: auto; }
+
+/* THE PANELS FLOAT. They used to be laid out inline inside the slide, which on
+   the deck's fullest screen pushed them straight past the bottom edge — and
+   because the deck deliberately does not scroll, "open the budget" looked like
+   a button that did nothing. It was opening the whole time, just somewhere
+   nobody could reach. An aside the presenter chooses belongs OVER the argument
+   rather than inside it, so it is now a card that floats and scrolls itself. */
+.panel { position: fixed; z-index: 6;
+  left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: min(720px, calc(100vw - 64px)); max-height: 76vh; overflow-y: auto;
+  background: var(--bg);
+  border: 1px solid var(--line); border-radius: 4px;
+  padding: clamp(18px, 3vw, 30px); display: flex; flex-direction: column; gap: 14px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .5); }
 .panel[hidden] { display: none; }
 .philosophy { color: var(--text); }
 .budget-lines { list-style: none; margin: 0; padding: 0; display: grid;

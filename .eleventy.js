@@ -191,7 +191,14 @@ module.exports = function (eleventyConfig) {
     const root = flag !== -1 ? argv[flag + 1]
                : inline ? inline.slice("--output=".length)
                : dir.output;
-    const out = require("path").join(root, "present", "index.html");
+    /* PER PARTNER, not per site. The deck is one partner's support-raising
+       presentation that Thauma happens to host, so it publishes under that
+       partner's own segment. The slug comes from the deck's own config, which
+       is what a second partner's deck would change. */
+    const { config: deckConfig } = await import("./presentation/config.js");
+    const slug = deckConfig.meta.partnerSlug;
+    if (!slug) { console.warn("[present] no partnerSlug in presentation config; skipped"); return; }
+    const out = require("path").join(root, slug, "present", "index.html");
     try {
       execFileSync("node", ["presentation/build.mjs", "--out", out],
                    { stdio: ["ignore", "pipe", "pipe"] });

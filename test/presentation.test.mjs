@@ -63,6 +63,10 @@ async function boot({ online = false, reduced = true, fetchImpl } = {}) {
   const w = dom.window;
   await new Promise((r) => setTimeout(r, 200));
   if (online && w.Deck) w.Deck.state.presenter.online = true;
+  /* The deck waits for the presenter between beats. Nothing here is pressing a
+     bar, so these runs play straight through — the gating itself is covered by
+     its own test rather than being paid for by every other one. */
+  if (w.Deck) w.Deck.state.presenter.gated = false;
   return { w, d: w.document, errors };
 }
 
@@ -406,6 +410,49 @@ await check("the ask's words come from the config, not from the animation code",
   await new Promise((r) => setTimeout(r, 100));
   assert(askLine(d) === "1 Production Manager spot, and nothing else",
     `the singular did not follow the words: "${askLine(d)}"`);
+});
+
+await check("one press is one thing happening", async () => {
+  /* The change the founder asked for after the first run-through: the deck was
+     firing a whole passage per press, so a section played itself out while he
+     was still on the first sentence. Every reveal now waits for the bar. */
+  const { w, d } = await boot();
+  w.Deck.state.presenter.gated = true;          // presenting, not sharing
+  w.Deck.goTo(7);
+  await new Promise((r) => setTimeout(r, 400));
+
+  const shown = () => d.querySelectorAll(".tier.is-in").length;
+  let guard = 0;
+  while (shown() === 0 && guard++ < 6) {        // press into the tier step
+    w.Deck.next();
+    await new Promise((r) => setTimeout(r, 200));
+  }
+  assert(shown() === 1, `the first press revealed ${shown()} tiers, not 1`);
+
+  w.Deck.next();
+  await new Promise((r) => setTimeout(r, 150));
+  assert(shown() === 2, `the second press revealed ${shown()} tiers, not 2`);
+});
+
+await check("a shared link plays through, because nobody is there to press", async () => {
+  /* The gate is the presenter's. A link sent to a supporter has no presenter,
+     and a deck that waits forever for a bar nobody presses is a broken page. */
+  const dom = new JSDOM(html, {
+    runScripts: "dangerously", pretendToBeVisual: true,
+    url: "https://thauma.one/chaseroush/present/?view=1",
+    beforeParse(w) {
+      w.matchMedia = () => ({ matches: true, addListener() {}, removeListener() {} });
+      w.fetch = async () => { throw new Error("no network"); };
+    },
+  });
+  const w = dom.window;
+  await new Promise((r) => setTimeout(r, 250));
+  w.Deck.goTo(7);
+  await new Promise((r) => setTimeout(r, 400));
+  w.Deck.next();
+  await new Promise((r) => setTimeout(r, 900));
+  const shown = w.document.querySelectorAll(".tier.is-in").length;
+  assert(shown === 6, `a shared link stalled at ${shown} of 6 tiers`);
 });
 
 await check("the budget explains WHY, not just what", async () => {

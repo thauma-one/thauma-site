@@ -25,13 +25,17 @@ export const T = {
   /* A hand moving. Deliberately not linear — nobody writes at constant speed. */
   hand: "cubic-bezier(.35,.1,.25,1)",
 
-  quick: 380,
-  normal: 620,
-  slow: 980,
+  /* SLOWER THAN FEELS RIGHT WHILE BUILDING. These are read at arm's length by
+     somebody who is also listening to a person talk, not scanned by whoever
+     wrote them. Every one of these was roughly doubled after the first real
+     run-through, because the deck moved faster than the conversation did. */
+  quick: 760,
+  normal: 1240,
+  slow: 1900,
   /* The pause before a correction, or before a fulfillment lands. It is doing
      real work: the audience has to finish reading the ordinary version before
      it is changed. */
-  beat: 700,
+  beat: 1400,
 };
 
 const reduced = () =>
@@ -77,11 +81,29 @@ export function handwrite(o = {}) {
          <path class="hw-stroke" d="${o.path}" />
        </svg>`;
   } else {
-    /* WRITTEN, NOT FADED. The fill arrives a moment after the stroke starts,
-       so the letters look drawn and then inked rather than simply appearing. */
+    /* WRITTEN, NOT FADED, and left to right like a hand actually moves.
+
+       Two bugs lived here. The viewBox was a fixed 1000 units wide whatever the
+       text said, so a short phrase drew at a third of the width it was given and
+       read as tiny. And the reveal was a stroke-dasharray on the <text>, which
+       applies PER SUBPATH — every glyph is its own subpath, so all the letters
+       drew at once. It looked like the words simply appeared, because in every
+       way that mattered they did.
+
+       The box is now measured from the text, and the reveal is a clip rectangle
+       that sweeps across it, which is the one thing that reads as writing. */
+    const chars = Math.max(1, (o.text || "").length);
+    const w = Math.round(chars * size * 0.58);
+    const h = Math.round(size * 1.7);
     el.innerHTML =
-      `<svg class="hw-svg" viewBox="0 0 1000 ${size * 1.7}" preserveAspectRatio="xMinYMid meet">
-         <text class="hw-text" x="4" y="${size * 1.15}" font-size="${size}">${esc(o.text || "")}</text>
+      `<svg class="hw-svg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMinYMid meet">
+         <defs>
+           <clipPath id="${id}-wipe" clipPathUnits="userSpaceOnUse">
+             <rect class="hw-wipe" x="0" y="0" width="${w}" height="${h}" />
+           </clipPath>
+         </defs>
+         <text class="hw-text" clip-path="url(#${id}-wipe)"
+               x="4" y="${size * 1.15}" font-size="${size}">${esc(o.text || "")}</text>
        </svg>`;
   }
   el.dataset.hw = id;
@@ -106,6 +128,24 @@ export async function playHandwrite(el, { delay = 0, duration = T.slow } = {}) {
   }
   target.style.setProperty("--hw-len", len);
   target.style.setProperty("--hw-dur", `${duration}ms`);
+
+  /* The character-count guess above is close, never right. Once the face has
+     loaded the browser can say exactly how wide the words are, so the box is
+     retaken from the glyphs themselves — the difference between the estimate
+     and the truth is the difference between filling the space and floating in
+     it. Where getBBox does not exist the estimate stands. */
+  const svg = el.querySelector("svg");
+  if (svg && typeof target.getBBox === "function") {
+    try {
+      const bb = target.getBBox();
+      if (bb.width > 1 && bb.height > 1) {
+        svg.setAttribute("viewBox", `0 0 ${Math.ceil(bb.width + 8)} ${Math.ceil(bb.height * 1.45)}`);
+        const wipe = el.querySelector(".hw-wipe");
+        if (wipe) { wipe.setAttribute("width", Math.ceil(bb.width + 8));
+                    wipe.setAttribute("height", Math.ceil(bb.height * 1.45)); }
+      }
+    } catch { /* unmeasurable here; the estimate is what we have */ }
+  }
   el.classList.add("is-writing");
   await wait(duration);
   el.classList.add("is-written");
@@ -270,11 +310,31 @@ export async function countTo(el, value, { duration = T.slow, format } = {}) {
   });
 }
 
-/** Reveal a group in sequence, top to bottom. Never all at once. */
-export async function cascade(els, { gap = 140, cls = "is-in" } = {}) {
-  for (const el of els) {
-    el.classList.add(cls);
-    await wait(gap);
+/* THE BEAT GATE. The deck installs a function here that suspends until the
+   presenter presses the bar. Without one — a shared link, a test, this module
+   used on its own — cascade falls back to its timer and plays through.
+
+   It lives at module scope rather than being threaded through every call site
+   because EVERY narrative reveal in the deck should wait for the person
+   talking. Making that the default is the point; the exceptions opt out. */
+let beatGate = null;
+export function setBeatGate(fn) { beatGate = fn; }
+
+/**
+ * Reveal a group in sequence, top to bottom. Never all at once.
+ *
+ * One press, one item. The first arrives with the press that started the step;
+ * each one after it waits for its own. Pass `gated: false` for a group that is
+ * a single picture assembling rather than a list being read out — filling in
+ * seats already on screen is one thought, not eight.
+ */
+export async function cascade(els, { gap = 140, cls = "is-in", gated = true } = {}) {
+  for (let i = 0; i < els.length; i++) {
+    if (i) {
+      if (gated && beatGate) await beatGate();
+      else await wait(gap);
+    }
+    els[i].classList.add(cls);
   }
 }
 

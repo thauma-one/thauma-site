@@ -19,6 +19,13 @@
 
 export const config = {
   meta: {
+    /* WHOSE DECK THIS IS. The presentation belongs to a partner, not to the
+       org — Thauma hosts it, Chase presents it. The slug is the URL segment it
+       is published under (/<slug>/present/), so giving another partner their
+       own deck later is a new config and a new slug, not a rebuild. */
+    partnerSlug: "chaseroush",
+    partnerName: "Chase Roush",
+
     title: "Thauma",
     presenter: "Chase Roush — Ministry Partner",
     /* The smallest nod to the word's meaning, per the Title Page brief. */

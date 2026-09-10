@@ -41,6 +41,33 @@ const FIGURE = [
   "..#.#..",
 ];
 
+/* THE TWO QUIET CORNERS, as marks rather than sentences.
+
+   "What the number is made of" and "Can't do monthly?" were written out in the
+   corners of the most sensitive slide in the deck — a person being asked for
+   money could read both and know there was a cheaper option before it was
+   offered. They are now symbols: a ledger and a coin, in the same pixel hand as
+   the crew figures, so they look like part of the drawing. The presenter knows
+   what they are. Nobody else needs to. */
+const LEDGER = [
+  "#######",
+  "#.....#",
+  "#.###.#",
+  "#.....#",
+  "#.####.",
+  "#.....#",
+  "#######",
+];
+const COIN = [
+  "..###..",
+  ".#...#.",
+  "#..#..#",
+  "#.###.#",
+  "#..#..#",
+  ".#...#.",
+  "..###..",
+];
+
 function crew(count, filled) {
   return Array.from({ length: count }, (_, i) =>
     `<span class="crew${i < filled ? " is-filled" : ""}">${
@@ -73,7 +100,7 @@ async function fillSeats(root, config, counts) {
     if (open) open.textContent = tier.target - filled;
 
     await cascade(seats.slice(0, filled).filter((s) => !s.classList.contains("is-filled")),
-      { gap: Math.round(T.quick / 3), cls: "is-filled" });
+      { gap: Math.round(T.quick / 3), cls: "is-filled", gated: false });
   }
 }
 
@@ -169,9 +196,11 @@ export const ask = {
         <!-- Two quiet corners. Present, never competing with the chart, and
              opening either is view state — it must not move the deck. -->
         <button type="button" class="corner corner-left" data-no-advance
-                data-toggle="budget">What the number is made of</button>
+                data-toggle="budget" aria-label="What the number is made of"
+                >${pixel(LEDGER, { class: "corner-mark" })}</button>
         <button type="button" class="corner corner-right" data-no-advance
-                data-toggle="annual">Can't do monthly?</button>
+                data-toggle="annual" aria-label="Annual giving instead of monthly"
+                >${pixel(COIN, { class: "corner-mark" })}</button>
 
         <div class="panel" data-panel="budget" hidden data-no-advance>
           <h3>What the number is made of</h3>
@@ -219,11 +248,10 @@ export const ask = {
        the shape is the argument — each step down has more people in it, and
        the smallest step is the one with the most room. */
     async ({ root, config, state }) => {
-      const rows = [...root.querySelectorAll(".tier")];
-      for (const row of rows) {
-        row.classList.add("is-in");
-        await motion.wait(T.quick);
-      }
+      /* One tier per press. The shape is the argument — each step down has
+         more people in it — and the presenter is saying that out loud as each
+         row lands, so the rows arrive at the speed of the sentence. */
+      await cascade([...root.querySelectorAll(".tier")], { gap: T.quick });
 
       /* Now the seats that are already taken. This happens here, not in the
          step that fetched them, because the rows are still invisible until the
