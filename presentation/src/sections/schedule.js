@@ -47,6 +47,43 @@ function when(iso, until) {
   return `${f(a, full)} – ${f(b, full)}`;
 }
 
+/* WHERE TODAY SITS ON THE LINE.
+
+   Anchored to the points as they are actually laid out, not to arithmetic on
+   the dates — the track spaces milestones evenly rather than by elapsed time,
+   so a marker placed at the true percentage of the period would drift away
+   from the milestones it is meant to sit between. Same reasoning the partner
+   widget records for its own NOW marker. */
+function placeNow(root, milestones) {
+  const marker = root.querySelector("[data-now]");
+  const points = [...root.querySelectorAll("[data-point]")];
+  if (!marker || !points.length) return;
+
+  const times = milestones.map((m) => new Date(m.date + "T00:00:00").getTime());
+  const mid = (p) => p.offsetLeft + p.offsetWidth / 2;
+  const now = Date.now();
+  let x;
+
+  if (now <= times[0]) {
+    /* Before anything has happened, which is where today is. Half a gap ahead
+       of the first milestone, so the line reads as running toward it. */
+    const gap = points.length > 1 ? mid(points[1]) - mid(points[0]) : 220;
+    x = mid(points[0]) - gap * 0.55;
+  } else if (now >= times[times.length - 1]) {
+    x = mid(points[points.length - 1]);
+  } else {
+    let i = 0;
+    while (i < times.length - 1 && now > times[i + 1]) i++;
+    const span = times[i + 1] - times[i] || 1;
+    x = mid(points[i]) + (mid(points[i + 1]) - mid(points[i])) * ((now - times[i]) / span);
+  }
+
+  marker.style.left = `${Math.round(x)}px`;
+  marker.hidden = false;
+  /* Next frame, or the browser folds the unhide and the fade into one paint. */
+  requestAnimationFrame(() => marker.classList.add("is-in"));
+}
+
 export const schedule = {
   key: "schedule",
   title: "The timeline",
@@ -62,6 +99,11 @@ export const schedule = {
                  dots floating unconnected read as five separate cards rather
                  than one journey, which is the whole argument of the section. -->
             <div class="track-rule"></div>
+            <!-- Where today actually is, in the partner roadmap's language. -->
+            <div class="track-now" data-now hidden>
+              <span class="now-line"></span>
+              <span class="now-label">NOW</span>
+            </div>
             ${ms.map((m, i) => `
               <div data-point data-i="${i}">
                 <div class="point-dot"></div>
@@ -78,10 +120,47 @@ export const schedule = {
      presenter controls how long each is held. */
   steps: (() => {
     const beats = [];
-    beats.push(async ({ root }) => {
+    /* THE SECTION BUILDS ITSELF. It used to open with the whole timeline
+       already standing there, spending the moment with the most attention on
+       it doing nothing. The line draws outward, the milestones arrive along it
+       in the order they happen, today's marker rises — and only then does the
+       camera move to the first one. Seeing the whole eight months before being
+       walked through them is the argument the section is making.
+
+       This is one beat, not several: it is an entrance, and a presenter should
+       not have to press four times to finish arriving. */
+    beats.push(async ({ root, config }) => {
       await cascade([...root.querySelectorAll("[data-open]")], { gap: 0 });
-      await motion.wait(T.quick);
-      await focusPoint(root.querySelector(".track"), 0);
+
+      /* LEAD-IN ROOM. The track is laid out from x=0, so building it where it
+         sits puts the first milestone hard against the left edge and pushes
+         today's marker — which belongs BEFORE the first milestone — clean off
+         the screen. Park the line so the first date sits at about two fifths
+         across, leaving the run-up visible. Set without a transition, because
+         this is where the section begins rather than somewhere it travels. */
+      const track = root.querySelector(".track");
+      const first = root.querySelector("[data-point]");
+      if (track && first) {
+        const win = track.parentElement.clientWidth;
+        const lead = win * 0.42 - (first.offsetLeft + first.offsetWidth / 2);
+        track.style.transition = "none";
+        track.style.transform = `translateX(${Math.round(lead)}px)`;
+        void track.offsetWidth;            // commit it before motion resumes
+        track.style.transition = "";
+      }
+
+      root.querySelector(".track-rule").classList.add("is-drawn");
+      await motion.wait(T.normal);
+
+      for (const point of root.querySelectorAll("[data-point]")) {
+        point.classList.add("is-built");
+        await motion.wait(T.quick * 0.45);
+      }
+
+      placeNow(root, config.timeline.milestones);
+      await motion.wait(T.normal);
+
+      await focusPoint(track, 0);
     });
     for (let i = 1; i < 5; i++) {
       beats.push(async ({ root }) => {

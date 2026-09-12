@@ -149,9 +149,11 @@ async function renderNow() {
 
    Shared links resolve gates immediately — nobody is there to press. */
 let pendingGate = null;
+let replaying = false;
 
 function gate() {
-  if (isInstant()) return Promise.resolve();
+  /* A replay is not a performance. Nobody is pressing the bar through it. */
+  if (isInstant() || replaying) return Promise.resolve();
   if (!state.presenter.gated || state.mode === "view") return Promise.resolve();
   /* Suspended is not playing. The flag exists to swallow presses that would
      stack up mid-animation; while a beat waits for the bar the presenter has
@@ -251,17 +253,32 @@ export async function prev() {
 async function rewindTo(sectionIndex, step) {
   state.nav.section = sectionIndex;
   state.nav.step = 0;
+  replaying = true;
   setInstant(true);
   try {
     await renderNow();
     const steps = currentSection()?.steps || [];
-    for (let i = 1; i <= step && i < steps.length; i++) {
+
+    /* Everything BEFORE the destination is scaffolding — it only has to leave
+       the DOM in the right state, and watching it rebuild would be nonsense. */
+    for (let i = 1; i < step && i < steps.length; i++) {
       state.nav.step = i;
       try { await steps[i]({ root, config, state, gate }); }
       catch (err) { console.error("replay step failed:", err); }
     }
+
+    /* THE DESTINATION IS WATCHED. Landing on a beat should look like arriving
+       at it — the camera pans, the row appears — or going back reads as a jump
+       cut, which is exactly what it looked like before this. */
+    if (step > 0 && step < steps.length) {
+      setInstant(false);
+      state.nav.step = step;
+      try { await steps[step]({ root, config, state, gate }); }
+      catch (err) { console.error("replay step failed:", err); }
+    }
   } finally {
     setInstant(false);
+    replaying = false;
   }
 }
 

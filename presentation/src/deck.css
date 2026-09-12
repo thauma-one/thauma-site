@@ -209,13 +209,42 @@ p.lead { color: var(--text); font-size: clamp(18px, 2vw, 24px); }
 /* The line the points stand on, behind the dots and running the whole track. */
 /* It runs off both edges. Bounded to the track it began and ended in mid-air
    either side of the dates, which reads as a drawn object rather than as time
-   continuing past the part being talked about. */
-.track-rule { position: absolute; left: -100vw; right: -100vw; top: 4px;
-  height: 1px; background: var(--line); pointer-events: none; }
+   continuing past the part being talked about.
 
-[data-point] { flex: none; text-align: center; opacity: .34; position: relative;
-  transition: opacity .6s ease, scale .6s cubic-bezier(.42, 0, .28, 1); scale: .96; }
-[data-point].is-focus { opacity: 1; scale: 1; }
+   It also DRAWS ITSELF, outward from the middle, before anything stands on it.
+   The section used to open fully built, which is the one moment in a deck with
+   the most attention on it and it was spending that moment on nothing. */
+.track-rule { position: absolute; left: -100vw; right: -100vw; top: 8px;
+  height: 1px; background: var(--line); pointer-events: none;
+  transform: scaleX(0); transform-origin: center;
+  transition: transform 1100ms cubic-bezier(.42, 0, .28, 1); }
+.track-rule.is-drawn { transform: scaleX(1); }
+
+/* Milestones arrive along the line, in the order they happen. */
+[data-point] { flex: none; text-align: center; position: relative;
+  opacity: 0; translate: 0 10px;
+  transition: opacity .6s ease, translate .6s cubic-bezier(.42, 0, .28, 1),
+              scale .6s cubic-bezier(.42, 0, .28, 1);
+  scale: .96; }
+[data-point].is-built { opacity: .34; translate: 0 0; }
+[data-point].is-built.is-focus { opacity: 1; scale: 1; }
+
+/* THE NOW MARKER, borrowed from the partner roadmap widget so a supporter who
+   has seen one recognises the other: a short pulsing upright on the line with
+   a small label. Today is months BEFORE the first milestone, so it sits ahead
+   of the line rather than being hidden — "we are here, none of this has
+   happened yet" is the honest thing for the room to see. */
+.track-now { position: absolute; top: 8px; transform: translateX(-50%);
+  z-index: 4; pointer-events: none; opacity: 0;
+  transition: opacity .7s ease; }
+.track-now.is-in { opacity: 1; }
+.now-line { position: absolute; left: 50%; top: -21px; width: 2px; height: 42px;
+  transform: translateX(-50%); background: var(--foam);
+  box-shadow: 0 0 10px var(--foam); animation: now-pulse 2.4s ease-in-out infinite; }
+.now-label { position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%);
+  white-space: nowrap; font-size: 11px; font-weight: 600; letter-spacing: .14em;
+  color: var(--foam); }
+@keyframes now-pulse { 0%, 100% { opacity: 1 } 50% { opacity: .42 } }
 
 /* BOTH HALVES LEGIBLE. It is a timeline, so the date keeps its weight — but
    the event is what the founder is talking about, and it was set at 15px and
@@ -227,10 +256,16 @@ p.lead { color: var(--text); font-size: clamp(18px, 2vw, 24px); }
 .point-label { color: var(--text); margin-top: 10px;
   font-size: clamp(16px, 1.6vw, 21px); font-weight: 300; }
 [data-point]:not(.is-focus) .point-label { color: var(--dim); }
-.point-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--dim);
-  margin: 0 auto 18px; transition: background .4s ease, box-shadow .4s ease; }
-[data-point].is-focus .point-dot { background: var(--blue);
-  box-shadow: 0 0 0 5px var(--blue-dim); }
+/* A RING, not a speck. Nine solid pixels read as a bullet point; the partner
+   roadmap draws these at nineteen with a real border, and at that size a
+   milestone looks like a station on a line rather than punctuation. */
+.point-dot { width: 17px; height: 17px; border-radius: 50%;
+  border: 2px solid var(--dim); background: var(--bg);
+  margin: 0 auto 20px;
+  transition: border-color .45s ease, background .45s ease,
+              box-shadow .45s ease, scale .45s cubic-bezier(.42, 0, .28, 1); }
+[data-point].is-focus .point-dot { border-color: var(--blue); background: var(--blue);
+  scale: 1.12; box-shadow: 0 0 0 6px var(--blue-dim), 0 0 20px var(--blue-glow, rgba(47,216,255,.45)); }
 
 /* ============================================================ MOTIF 3
    Fast, then arriving. The rush is short and the arrival is not.
