@@ -47,6 +47,11 @@ function when(iso, until) {
   return `${f(a, full)} – ${f(b, full)}`;
 }
 
+/* Kept in step with the transitions in deck.css — the browser cannot be asked
+   when a CSS transition has finished, so these two numbers are the contract. */
+const FILL_MS = 1400;
+const NOW_MS = 950;
+
 /* WHERE TODAY SITS ON THE LINE.
 
    Anchored to the points as they are actually laid out, not to arithmetic on
@@ -54,7 +59,7 @@ function when(iso, until) {
    so a marker placed at the true percentage of the period would drift away
    from the milestones it is meant to sit between. Same reasoning the partner
    widget records for its own NOW marker. */
-function placeNow(root, milestones) {
+async function placeNow(root, milestones) {
   const marker = root.querySelector("[data-now]");
   const points = [...root.querySelectorAll("[data-point]")];
   if (!marker || !points.length) return;
@@ -79,16 +84,27 @@ function placeNow(root, milestones) {
   }
 
   marker.style.left = `${Math.round(x)}px`;
-  marker.hidden = false;
 
-  /* The fill runs from off the left edge up to today and stops. It starts at
-     -100vw with the rule, so its width is the viewport plus however far along
-     the track today sits. */
+  /* TIME ARRIVES, THEN ANNOUNCES ITSELF. The fill runs from off the left edge
+     up to today and stops; only once it has got there does the marker grow out
+     of the end of it. Both at once read as two unrelated things happening in
+     the same place — in sequence it reads as one: the months run out, and this
+     is where they run out to.
+
+     It starts at -100vw with the rule, so its width is the viewport plus
+     however far along the track today sits. FILL_MS must match the transition
+     on .track-fill, since nothing here can ask the browser when it finished. */
   const fill = root.querySelector("[data-fill]");
-  requestAnimationFrame(() => {
-    marker.classList.add("is-in");
-    if (fill) fill.style.width = `calc(100vw + ${Math.round(x)}px)`;
-  });
+  if (fill) {
+    await new Promise((r) => requestAnimationFrame(r));
+    fill.style.width = `calc(100vw + ${Math.round(x)}px)`;
+    await motion.wait(FILL_MS);
+  }
+
+  marker.hidden = false;
+  await new Promise((r) => requestAnimationFrame(r));
+  marker.classList.add("is-in");
+  await motion.wait(NOW_MS);
 }
 
 export const schedule = {
@@ -179,11 +195,8 @@ export const schedule = {
         })(),
 
         (async () => {
-          await motion.wait(1750);
-          placeNow(root, config.timeline.milestones);
-          /* Let the marker finish growing and the fill finish running before
-             the section is handed to the presenter. */
-          await motion.wait(1500);
+          await motion.wait(1200);
+          await placeNow(root, config.timeline.milestones);
         })(),
       ]);
 

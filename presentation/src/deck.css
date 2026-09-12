@@ -278,7 +278,9 @@ p.lead { color: var(--text); font-size: clamp(18px, 2vw, 24px); }
 .track-fill { position: absolute; left: -100vw; top: 8px; height: 1px;
   width: 0; background: var(--foam); opacity: .55;
   box-shadow: 0 0 8px var(--foam); pointer-events: none;
-  transition: width 1600ms cubic-bezier(.42, 0, .28, 1); }
+  /* 1400ms — schedule.js holds the same number as FILL_MS, because it has to
+     know when this has arrived in order to bring the marker up after it. */
+  transition: width 1400ms cubic-bezier(.42, 0, .28, 1); }
 .now-label { position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%);
   white-space: nowrap; font-size: 11px; font-weight: 600; letter-spacing: .14em;
   color: var(--foam); }
