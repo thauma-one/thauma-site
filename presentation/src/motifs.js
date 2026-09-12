@@ -17,6 +17,8 @@
    One easing vocabulary for the whole deck. Motifs 2 and 3 must feel RELATED
    without being identical, which the spec is explicit about — so they share
    these curves and differ in framing and duration, not in character. */
+let instant = false;
+
 export const T = {
   /* Everything settling into place. Slow out, no overshoot — restraint. */
   settle: "cubic-bezier(.16,1,.3,1)",
@@ -38,15 +40,20 @@ export const T = {
   beat: 1400,
 };
 
+/* A replay is, for every motif's purposes, the same request the operating
+   system makes when it asks for less motion: put it in its finished state and
+   do not perform it. Folding the two together here means countTo, focusPoint,
+   scaleCollapse, playHandwrite and the rest became replay-safe at once, rather
+   than each growing its own check and one of them being forgotten. */
 const reduced = () =>
-  typeof matchMedia === "function" &&
-  matchMedia("(prefers-reduced-motion: reduce)").matches;
+  instant ||
+  (typeof matchMedia === "function" &&
+   matchMedia("(prefers-reduced-motion: reduce)").matches);
 
 /* INSTANT MODE. Stepping backwards rebuilds the section and replays it up to
    the beat before the one just left — the only honest way to land on a beat
    whose state was built by the beats in front of it. That replay must not be
    watched, so every wait in it collapses to nothing. */
-let instant = false;
 export function setInstant(v) { instant = v; }
 export function isInstant() { return instant; }
 
@@ -366,6 +373,41 @@ export async function charCascade(host, { stagger = 40, duration = 1300 } = {}) 
   await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
   for (const c of chars) c.classList.add("is-in");
   await wait(duration + stagger * chars.length);
+}
+
+/**
+ * ONE MOVEMENT ON SCREEN AT A TIME.
+ *
+ * The deck's most common real fault, and the one the founder kept finding by
+ * hand: a section reveals a part, then reveals the next, and never retires the
+ * first. Five movements later the slide is twice the height of the screen, and
+ * because a deck deliberately does not scroll, everything under the fold is
+ * not merely ugly — it is unreachable. Opening measured 1975px against a
+ * 1080px screen for exactly this reason.
+ *
+ * A movement that has been made is over. It withdraws upward, the way a line
+ * of thought gives way to the next one, and the incoming part takes the frame.
+ * Anything named in `keep` stays put, for the cases where the previous picture
+ * is still the point — a map that the numbers landing on it refer to.
+ */
+export async function showOnly(root, name, { keep = [], out = 340 } = {}) {
+  const parts = [...root.querySelectorAll("[data-part]")];
+  const next = parts.find((p) => p.dataset.part === name);
+  const staying = new Set([name, ...keep]);
+
+  const leaving = parts.filter((p) => !p.hidden && !staying.has(p.dataset.part));
+  if (leaving.length) {
+    for (const p of leaving) p.classList.add("is-retiring");
+    await wait(out);
+    for (const p of leaving) { p.hidden = true; p.classList.remove("is-retiring"); }
+  }
+
+  if (next && next.hidden) {
+    next.hidden = false;
+    /* Two frames, or the un-hiding and the arrival collapse into one paint. */
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  }
+  return next;
 }
 
 let beatGate = null;

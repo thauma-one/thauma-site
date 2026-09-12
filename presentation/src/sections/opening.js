@@ -12,7 +12,8 @@
  * from, and it quietly establishes that real relationships already exist on
  * the ground.
  */
-import { el, countTo, cascade, scaleCollapse, motion, T } from "../motifs.js";
+import { el, countTo, cascade, charCascade, showOnly, scaleCollapse,
+         setInstant, motion, T } from "../motifs.js";
 
 /* Deliberately not cartographic. A recognizable silhouette carries "United
    States" and "Croatia" at a glance; accurate topology would cost hundreds of
@@ -54,9 +55,9 @@ export const opening = {
 
     return el(`
       <div class="slide">
-        <p class="cue in" data-v>The work nobody names</p>
+        <p class="cue" data-cue>The work nobody names</p>
 
-        <div class="stack" data-part="vocation">
+        <div class="stack" data-part="vocation" hidden>
           ${o.vocation.map((v) => `<p class="lead in" data-v>${v.text}</p>`).join("")}
           <div class="quiet in" data-v>
             ${o.invisibility.map((line) => `<p>${line}</p>`).join("")}
@@ -117,13 +118,30 @@ export const opening = {
   },
 
   steps: [
-    async ({ root }) => cascade([...root.querySelectorAll("[data-v]")], { gap: 300 }),
+    /* THE ARRIVAL. Heading rolls in on the site's character cascade, the claim
+       lands under it, and the two quiet lines follow — about three seconds,
+       unattended, the way the timeline opens. An entrance is not something a
+       presenter should have to press through. */
+    async ({ root }) => {
+      const part = await showOnly(root, "vocation");
+      await Promise.all([
+        charCascade(root.querySelector("[data-cue]"), { stagger: 55, duration: 1300 }),
+        (async () => {
+          await motion.wait(500);
+          for (const line of part.querySelectorAll(".lead")) {
+            line.classList.add("is-in");
+            await motion.wait(520);
+          }
+          await motion.wait(260);
+          part.querySelector(".quiet").classList.add("is-in");
+        })(),
+      ]);
+    },
 
-    /* Familiar ground first. The counts are eased rather than linear so they
-       feel like they are building toward something, not being read out. */
+    /* Familiar ground. The counts are eased rather than linear so they feel
+       like they are building toward something, not being read out. */
     async ({ root, config }) => {
-      const part = root.querySelector('[data-part="usa"]');
-      part.hidden = false;
+      const part = await showOnly(root, "usa");
       const o = config.opening.usa;
       await Promise.all([
         countTo(part.querySelector('[data-count="churches"]'), o.churches.value, { duration: T.slow }),
@@ -134,17 +152,19 @@ export const opening = {
 
     /* The collapse. A match cut, not a camera flight — see motifs.js. */
     async ({ root }) => {
-      const maps = root.querySelector('[data-part="maps"]');
-      maps.hidden = false;
+      const maps = await showOnly(root, "maps");
+      maps.classList.remove("is-behind");
       await motion.wait(T.beat);
       await scaleCollapse(root.querySelector('[data-frame="us"]'),
                           root.querySelector('[data-frame="hr"]'));
     },
 
-    /* The personal numbers land while the mismatch is still visually fresh. */
+    /* The personal numbers land while the mismatch is still visually fresh, so
+       the map it refers to stays on screen under them. */
     async ({ root, config }) => {
-      const part = root.querySelector('[data-part="croatia"]');
-      part.hidden = false;
+      const part = await showOnly(root, "croatia", { keep: ["maps"] });
+      /* The map is context for these numbers now, so it gives them the room. */
+      root.querySelector('[data-part="maps"]')?.classList.add("is-behind");
       const c = config.opening.croatia;
       await cascade([part.querySelector("[data-c]")], { gap: 0 });
       await Promise.all([
@@ -157,8 +177,7 @@ export const opening = {
     /* The slice pops outward. The motion itself communicates smallness —
        something you would miss if it were not pointed at. */
     async ({ root }) => {
-      const part = root.querySelector('[data-part="pie"]');
-      part.hidden = false;
+      const part = await showOnly(root, "pie");
       await motion.wait(T.quick);
       part.querySelector(".pie").classList.add("is-drawn");
       await motion.wait(T.slow);
@@ -166,6 +185,17 @@ export const opening = {
       await cascade([...part.querySelectorAll("[data-c]")], { gap: 200 });
     },
   ],
+
+  /* Going back re-runs the beat with motion switched off, which lands exactly
+     the state that beat produces without performing it again. Re-running the
+     real step rather than describing its finished state somewhere else means
+     the two can never drift — the description would be a second copy of the
+     section, and it is the copy that rots. */
+  async rewind({ root, config, state, step }) {
+    setInstant(true);
+    try { await opening.steps[step]({ root, config, state, gate: () => Promise.resolve() }); }
+    finally { setInstant(false); }
+  },
 };
 
 /** One pie slice as a path. Radius fixed; the viewBox is centered on zero. */
