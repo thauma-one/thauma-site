@@ -32,77 +32,87 @@ export const config = {
     wordmarkNote: "θαῦμα · wonder",
   },
 
-  /* ---------------------------------------------------------------- SECTION 1 */
   /* ---------------------------------------------------------------- SECTION 1
-     NUMBERS, ALONE.
+     THE OPENING HOOK.
 
-     The section's job, in the founder's words, is that the room leaves it
-     thinking "that gap is much bigger than I realised". So it is one device
-     the whole way through — a single board, one figure at a time, filling the
-     frame — and the gap is made VISIBLE rather than remembered: the number
-     just left stays on screen above the new one, small and dimmed, so
-     300,000 and 7,000 are looked at together rather than one after the other.
+     The spec's goal, in its own words: "ground the audience in a need they've
+     never considered, then collapse the scale from familiar (USA) to specific
+     and personal (Croatia) — before the founder ever appears on screen as a
+     subject." The cue is taken from that sentence rather than invented.
 
-     The nouns carry the rest. "Churches in the United States" against
-     "Protestants in all of Croatia" is the whole argument, and it is the one
-     thing that must not be softened into matching units.
+     LIKE FOR LIKE. An earlier pass put 300,000 American CHURCHES against 7,000
+     Croatian PEOPLE, which compares nothing — the units do not meet. The spec's
+     own corroboration supplies the honest comparison: 13 Lutheran congregations
+     and 21-23 Reformed ones, so roughly 36 Protestant congregations in the
+     whole country. Churches against churches, and the percentage of the
+     population to close it.
 
-     Everything the founder would otherwise read aloud is gone. */
+     One figure at a time, and everything the founder says out loud is in
+     `support` rather than printed on the screen for him to read against. */
   opening: {
-    heart: { text: "I have done this work. I know what it costs to be the person nobody names.",
-             verified: false,
-             source: "PLACEHOLDER written by Claude. The founder's own sentence goes here." },
+    cue: "A need nobody has considered",
+
+    /* The section's one line, and it is the spec's own wording rather than a
+       sentence written for him. The spec is explicit that this section is about
+       the field and not yet about him, so the line is about the work. */
+    line: { text: "Nobody's testimony starts with the sound guy.", verified: true,
+            source: "The spec's own suggested phrasing, to be said plainly rather than quoted." },
 
     beats: [
-      { value: 2000, label: "years of the church", verified: true,
+      { value: 2000, unit: "years", label: "of the church", verified: true,
         source: "Rounded on purpose — the point is the order of magnitude." },
-      { value: 25, label: "years of church production as a role", verified: true,
+      { value: 25, unit: "years", label: "of church production as a role", verified: true,
         source: "Church Production Magazine has served the industry since 1999." },
-      { value: 10, label: "years of it being normal", verified: true,
+      { value: 10, unit: "years", label: "of it being normal", verified: true,
         source: "2025 church-staffing commentary: the technical director role was uncommon on staff org charts a decade ago." },
 
-      { heart: true },
+      { line: true },
 
-      /* A new movement, so the board is cleared before it. */
+      /* Familiar ground first, and a fresh board — nothing to compare against yet. */
       { value: 300000, label: "churches in the United States", clear: true, verified: true,
         source: "Derived from Worship Leader Magazine's size-tier breakdown — 177,000 small churches at 59% implies ~300,000 total; cross-checked against Hartford Institute megachurch counts." },
-      /* THE GAP. Churches there, people here — and 300,000 is still on screen. */
-      { value: 7000, label: "Protestants in all of Croatia", verified: false,
-        source: "Estimate from a local ministry leader in personal relationship with the founder. Corroborated: Evangelical (Lutheran) Church reports 3,600 across 13 congregations; Reformed Christian Church 3,000-4,000 across 21-23. Combined 6,600-7,600." },
-      { value: 35, label: "in a typical congregation there", verified: false,
-        source: "The founder's own relationships among Baptist congregations — not a national survey. Say so if asked." },
-      { value: 2, label: "per thousand Croatians", verified: false,
-        source: "0.18 per cent, rounded to something a room can hold." },
+
+      /* THE GAP, and it is churches against churches. 300,000 stays on screen. */
+      { value: 36, label: "Protestant congregations in all of Croatia", verified: false,
+        source: "Derived from the spec's own corroboration: Evangelical (Lutheran) Church, 13 congregations; Reformed Christian Church, 21-23. A floor rather than a census — Baptist congregations the founder knows are not counted in it. CONFIRM BEFORE PRESENTING." },
+
+      { value: 7000, label: "Protestants, country-wide", verified: false,
+        source: "Estimate from a local ministry leader in personal relationship with the founder. Corroborated: Lutheran 3,600 and Reformed 3,000-4,000 gives 6,600-7,600." },
+
+      { value: 0.18, unit: "%", label: "of the country", verified: false,
+        source: "7,000 against a population of ~3.9 million." },
     ],
 
-    /* KEPT FOR THE PREP SCREEN, not drawn. These are the things the founder
-       says out loud, and their sourcing still has to be somewhere he can check
-       it before walking in. */
+    /* SAID, NOT SHOWN. These are the founder's lines and the figures behind
+       them. They stay here so the prep screen can put their sourcing in front
+       of him before he walks in, without any of it being printed on a slide
+       for him to read aloud against himself. */
     support: {
-      typicalUS: { value: 60, label: "people in a typical American church", verified: true,
-        source: "Same size-tier breakdown — the most common church size." },
-      oneInThree: { text: "One in three American Protestants attend a church of 1,000 or more.",
-        verified: true, source: "Christianity Today, July 2026, citing Hartford Institute / Scott Thumma." },
-      topTenth: { text: "The largest 10% of churches hold 70-75% of all churchgoers.",
-        verified: true, source: "Same." },
-      largestKnown: { value: 120, label: "in one of the larger Croatian churches he knows",
-        verified: false, source: "The founder's own relationships." },
       invisibility: { text: "Nobody puts the tech booth on the church website. Nobody's testimony starts with the sound guy.",
+        verified: true, source: "The spec's own wording for the invisibility point." },
+      noPipeline: { text: "No seminary track, no training pipeline — the role appeared faster than any structure built to support it.",
         verified: true, source: "Stated plainly, in the founder's own words." },
+      typicalUS: { value: 60, label: "people in a typical American church", verified: true,
+        source: "Worship Leader Magazine size-tier breakdown — the most common church size." },
+      oneInThree: { text: "One in three American Protestants attend a church of 1,000 or more, and the largest 10% hold 70-75% of all churchgoers.",
+        verified: true, source: "Christianity Today, July 2026, citing Hartford Institute / Scott Thumma." },
+      attribution: { text: "A ministry leader I'm in relationship with there puts the whole country's Protestant community at around seven thousand people.",
+        verified: true, source: "The spec's framing note: personal knowledge, not a database statistic." },
+      typicalHR: { value: 35, label: "people in a typical Croatian congregation", verified: false,
+        source: "The founder's own relationships among Baptist congregations — not a national survey. Say so if asked." },
+      largestHR: { value: 120, label: "in one of the larger Croatian churches he knows", verified: false,
+        source: "Same — the founder's own relationships. Modest by American standards, notably large by Croatian ones." },
 
-      /* Croatia's religious makeup. No longer drawn — a pie cannot render the
-         0.18% it existed to show — but the figures are real and one of them is
-         explicitly unsourced, so the record stays where the prep screen can
-         still put it in front of the founder before he walks in. Deleting the
-         chart must not quietly delete what was known about its numbers. */
+      /* Croatia's religious makeup. Not drawn — a pie cannot render 0.18% —
+         but the figures are real and one is explicitly unsourced, so the record
+         stays where the prep screen can still surface it. */
       religion: [
         { name: "Catholic", share: 82, verified: true,
           source: "Catholic Church in Croatia reports 3,215,177 members (2021) against ~3.9M population." },
         { name: "Orthodox", share: 4.4, verified: false,
           source: "NOT YET SOURCED. The spec flags this as needing verification before use." },
         { name: "Other / none", share: 13.42, verified: false, source: "Remainder." },
-        { name: "Protestant", share: 0.18, verified: false,
-          source: "See beats — seven thousand people, country-wide." },
+        { name: "Protestant", share: 0.18, verified: false, source: "See beats." },
       ],
     },
   },

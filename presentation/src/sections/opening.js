@@ -20,7 +20,7 @@
  * in all of Croatia" is the argument, and the mismatch in units is the point:
  * it must never be softened into comparing like with like.
  */
-import { charCascade, swapFigure, motion, setInstant, T } from "../motifs.js";
+import { charCascade, flipTo, motion, setInstant, T } from "../motifs.js";
 
 /**
  * FILL THE FRAME. A figure that is the only thing on screen should occupy the
@@ -47,42 +47,54 @@ function fitFigure(figure, frame) {
   }
 }
 
-const num = (n) => n.toLocaleString("en-US");
+const num = (n) => n.toLocaleString("en-US", { maximumFractionDigits: 2 });
 
-/** One beat: either a figure taking the board, or the single line about him. */
+/** What the board reads, figure and unit together, for the line above. */
+const said = (b) => `${num(b.value)}${b.unit ? (b.unit === "%" ? "%" : " " + b.unit) : ""}`;
+
+/** One beat: either a figure taking the board, or the section's single line. */
 const beat = (i) => async ({ root, config }) => {
   const b = config.opening.beats[i];
   const frame = root.querySelector("[data-board]");
   const prior = root.querySelector("[data-prior]");
   const figure = root.querySelector("[data-figure]");
+  const unit = root.querySelector("[data-unit]");
   const label = root.querySelector("[data-label]");
-  const heart = root.querySelector("[data-heart]");
+  const line = root.querySelector("[data-line-text]");
 
-  if (b.heart) {
-    heart.hidden = false;
+  if (b.line) {
+    line.hidden = false;
     await new Promise((r) => requestAnimationFrame(r));
-    heart.classList.add("is-in");
+    line.classList.add("is-in");
     return;
   }
 
-  heart.classList.remove("is-in");
-  heart.hidden = true;
+  line.classList.remove("is-in");
+  line.hidden = true;
 
   /* THE GAP, held on screen. The figure being replaced does not vanish — it
      goes up, small and quiet, so the new one is read against it. `clear`
      starts a fresh movement, where there is nothing to compare against yet. */
-  if (b.clear || !figure.textContent.trim()) {
-    prior.textContent = "";
+  const previous = config.opening.beats[i - 1];
+  if (b.clear || !figure.textContent.trim() || !previous || previous.line) {
+    prior.innerHTML = "";
     prior.classList.remove("is-in");
   } else {
-    prior.innerHTML = `<b>${figure.textContent}</b> ${label.textContent}`;
+    prior.innerHTML = `<b>${said(previous)}</b> ${previous.label}`;
     prior.classList.add("is-in");
   }
 
   label.classList.remove("is-in");
-  await swapFigure(figure, num(b.value), {
-    stagger: 60, duration: 900, before: (el) => fitFigure(el, frame),
-  });
+  unit.textContent = "";
+
+  /* The figure is measured and sized BEFORE the board starts spinning, or it
+     resizes itself underneath a running animation. */
+  figure.classList.remove("flip");
+  figure.textContent = num(b.value);
+  fitFigure(figure, frame);
+  await flipTo(figure, num(b.value));
+
+  unit.textContent = b.unit || "";
   label.textContent = b.label;
   label.classList.add("is-in");
 };
@@ -96,16 +108,19 @@ export const opening = {
     const node = document.createElement("div");
     node.className = "slide is-board";
     node.innerHTML = `
-      <p class="cue" data-cue>The work nobody names</p>
+      <p class="cue" data-cue>${o.cue}</p>
 
       <div class="board" data-board>
         <!-- The number just left, kept so the next one is read against it. -->
         <div class="board-prior in" data-prior aria-hidden="true"></div>
-        <div class="figure board-figure" data-figure></div>
+        <div class="board-row">
+          <div class="figure board-figure" data-figure></div>
+          <span class="board-unit" data-unit></span>
+        </div>
         <div class="figure-label board-label in" data-label></div>
       </div>
 
-      <p class="lead in" data-heart hidden>${o.heart.text}</p>
+      <p class="lead in" data-line-text hidden>${o.line.text}</p>
     `;
     return node;
   },

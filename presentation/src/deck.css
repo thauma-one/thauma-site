@@ -97,7 +97,26 @@ html, body {
 
 /* Sized in JS so seven digits and one digit carry the same weight. */
 .board-figure { line-height: .94; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.board-label { font-size: clamp(16px, 1.8vw, 24px); color: var(--dim); }
+
+/* The label sits well clear of the figure. It was tucked under it at the type's
+   own line-height, which on a number this size reads as cramped rather than
+   as one thing labelling another. */
+.board-label { font-size: clamp(16px, 1.9vw, 25px); color: var(--dim);
+  margin-top: clamp(18px, 3.2vh, 42px); }
+.board-row { display: flex; align-items: baseline; gap: .18em; }
+.board-unit { color: var(--dim); margin-left: .1em;
+  font-size: clamp(20px, 2.6vw, 38px); font-family: 'Sora', sans-serif;
+  font-weight: 200; letter-spacing: .02em; }
+
+/* THE FLIP BOARD. Each digit is its own cell; a spinning one is lifted very
+   slightly, which is what makes a run of changing numbers read as a mechanism
+   rather than as text being rewritten. */
+.flip { display: inline-flex; align-items: baseline; }
+.flip-d { display: inline-block; position: relative; }
+.flip-d b { display: block; font-weight: inherit;
+  transition: transform .09s ease-out, opacity .09s ease-out; }
+.flip-d.is-spinning b { transform: translateY(-.045em) scaleY(.94); opacity: .78; }
+.flip-d.is-set b { transform: none; opacity: 1; }
 
 /* A movement that has been made withdraws upward, the way one line of thought
    gives way to the next, rather than staying on screen forever underneath the

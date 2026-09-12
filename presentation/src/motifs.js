@@ -411,27 +411,44 @@ export async function showOnly(root, name, { keep = [], out = 340 } = {}) {
 }
 
 /**
- * ONE FIGURE, REPLACED. The old number withdraws and the new one rolls in on
- * the character cascade, so a sequence of figures reads as one board changing
- * rather than as three separate slides. Counting up was the alternative and it
- * reads as a slot machine — it draws attention to the counting rather than to
- * the number it lands on, and it is slow in a place where a presenter is
- * already talking.
+ * THE FLIP BOARD. Digits run like a departure board and settle left to right.
+ *
+ * The founder asked for a flip clock and got a character cascade, which rolls
+ * each character in once and stops — it reads as type arriving, not as a
+ * mechanism counting. A board that spins and lands says the number was ARRIVED
+ * AT, which is the right feeling for a figure somebody is about to hear the
+ * weight of.
+ *
+ * Only digits spin. A comma or a percent sign has nothing to count through, so
+ * it is simply placed — a separator flickering through random glyphs would be
+ * noise pretending to be information.
  */
-export async function swapFigure(host, text, { stagger = 55, duration = 900, before } = {}) {
+export async function flipTo(host, text, { stagger = 150, tick = 58, spins = 8 } = {}) {
   if (!host) return;
-  if (host.textContent.trim()) {
-    host.classList.add("is-swapping");
-    await wait(300);
-    host.classList.remove("is-swapping");
-  }
-  host.classList.remove("cc");
-  host.textContent = text;
-  /* A hook between the text landing and the roll starting, for anything that
-     has to measure the new text — a figure that resizes itself to fill the
-     frame cannot wait until it is already rolling in. */
-  if (before) before(host);
-  await charCascade(host, { stagger, duration });
+  const chars = [...String(text)];
+  host.classList.add("flip");
+  host.innerHTML = chars
+    .map((c) => `<span class="flip-d${/\d/.test(c) ? "" : " is-fixed"}"><b>${c}</b></span>`)
+    .join("");
+
+  const cells = [...host.querySelectorAll(".flip-d")];
+  if (reduced()) return;                       // already showing the final text
+
+  await Promise.all(cells.map(async (cell, i) => {
+    if (cell.classList.contains("is-fixed")) return;
+    const digit = cell.querySelector("b");
+    await wait(i * stagger);
+    cell.classList.add("is-spinning");
+    for (let k = 0; k < spins; k++) {
+      digit.textContent = String(Math.floor(Math.random() * 10));
+      await wait(tick);
+    }
+    digit.textContent = chars[i];
+    cell.classList.remove("is-spinning");
+    cell.classList.add("is-set");
+    await wait(120);
+    cell.classList.remove("is-set");
+  }));
 }
 
 let beatGate = null;
