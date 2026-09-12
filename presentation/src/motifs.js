@@ -42,7 +42,15 @@ const reduced = () =>
   typeof matchMedia === "function" &&
   matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-const wait = (ms) => new Promise((r) => setTimeout(r, reduced() ? 0 : ms));
+/* INSTANT MODE. Stepping backwards rebuilds the section and replays it up to
+   the beat before the one just left — the only honest way to land on a beat
+   whose state was built by the beats in front of it. That replay must not be
+   watched, so every wait in it collapses to nothing. */
+let instant = false;
+export function setInstant(v) { instant = v; }
+export function isInstant() { return instant; }
+
+const wait = (ms) => new Promise((r) => setTimeout(r, (instant || reduced()) ? 0 : ms));
 
 /* ============================================================== MOTIF 1
    THE HANDWRITTEN CORRECTION

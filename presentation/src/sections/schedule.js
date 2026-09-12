@@ -19,8 +19,14 @@
  */
 import { el, focusPoint, cascade, motion, T } from "../motifs.js";
 
-/* Same formatting rule as the site's `when` filter — a date on a slide should
-   read the way a date reads, not the way a database stores one. */
+/* MONTHS, NOT DAYS. None of these dates are actually nailed down — the first
+   one is still marked unverified in the config — and a slide that says
+   "28 February 2027" claims a precision the plan does not have. A month reads
+   as a plan; a date reads as a promise, and this is a room where the founder
+   should not be making promises he has not made yet.
+
+   The ISO dates stay in the config, because they are real data the milestone
+   records hold and the site formats properly. Only the deck rounds them off. */
 function when(iso, until) {
   const parse = (v) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(String(v || ""))) return null;
@@ -30,11 +36,15 @@ function when(iso, until) {
   const a = parse(iso), b = parse(until);
   if (!a) return iso || "";
   const f = (d, o) => new Intl.DateTimeFormat("en-GB", o).format(d);
-  if (!b) return f(a, { day: "numeric", month: "long", year: "numeric" });
-  if (a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth()) {
-    return `${f(a, { day: "numeric" })}–${f(b, { day: "numeric", month: "long", year: "numeric" })}`;
+  const full = { month: "long", year: "numeric" };
+
+  if (!b) return f(a, full);
+  if (a.getFullYear() === b.getFullYear()) {
+    if (a.getMonth() === b.getMonth()) return f(a, full);
+    /* "March – September 2027" — the year said once, at the end. */
+    return `${f(a, { month: "long" })} – ${f(b, full)}`;
   }
-  return `${f(a, { day: "numeric", month: "short" })} – ${f(b, { day: "numeric", month: "short", year: "numeric" })}`;
+  return `${f(a, full)} – ${f(b, full)}`;
 }
 
 export const schedule = {
@@ -48,6 +58,10 @@ export const schedule = {
         <p class="cue in" data-open>What happens next</p>
         <div class="track-window">
           <div class="track">
+            <!-- The line. It is called a timeline and there was not one: five
+                 dots floating unconnected read as five separate cards rather
+                 than one journey, which is the whole argument of the section. -->
+            <div class="track-rule"></div>
             ${ms.map((m, i) => `
               <div data-point data-i="${i}">
                 <div class="point-dot"></div>

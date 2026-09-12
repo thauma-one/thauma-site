@@ -486,6 +486,48 @@ await check("a link can open one section directly", async () => {
     "an unknown section key did not fall back to the start");
 });
 
+await check("back goes back one beat, not to the top of the section", async () => {
+  /* It used to reset the whole section: one press of the left arrow threw away
+     everything built up and started again, in front of somebody. A beat cannot
+     be undone — each leaves the DOM changed and later ones depend on earlier
+     ones — so going back replays the section instantly to the beat wanted. */
+  const { w, d } = await boot();
+  w.Deck.goTo(7);
+  await new Promise((r) => setTimeout(r, 350));
+  /* The ask has two beats, so exactly one press lands on its last one. A
+     second would leave the section, which is a different test. */
+  await w.Deck.next();
+  await new Promise((r) => setTimeout(r, 350));
+
+  const step = w.Deck.state.nav.step;
+  assert(step > 0 && w.Deck.state.nav.section === 7,
+    `the fixture sat on section ${w.Deck.state.nav.section} beat ${step}`);
+  const tiers = d.querySelectorAll(".tier.is-in").length;
+  assert(tiers === 6, `expected the tiers up before rewinding, saw ${tiers}`);
+
+  await w.Deck.prev();
+  await new Promise((r) => setTimeout(r, 350));
+  assert(w.Deck.state.nav.step === step - 1,
+    `back landed on step ${w.Deck.state.nav.step}, not ${step - 1}`);
+  assert(w.Deck.state.nav.section === 7, "back left the section entirely");
+});
+
+await check("back from a section's first beat lands on the end of the one before", async () => {
+  /* What "back" means to anybody who has ever used slides. */
+  const { w } = await boot();
+  w.Deck.goTo(7);
+  await new Promise((r) => setTimeout(r, 350));
+  assert(w.Deck.state.nav.step === 0, "the fixture did not start at the first beat");
+
+  await w.Deck.prev();
+  await new Promise((r) => setTimeout(r, 400));
+  assert(w.Deck.state.nav.section === 6,
+    `back from the ask landed on section ${w.Deck.state.nav.section}`);
+  const steps = 5;                                  // the schedule's five milestones
+  assert(w.Deck.state.nav.step === steps - 1,
+    `landed on beat ${w.Deck.state.nav.step} of the schedule, not its last`);
+});
+
 await check("the budget explains WHY, not just what", async () => {
   /* "$X for housing" without the philosophy reads as either padding or
      austerity. Bylaws Article VII §5 explains why it is neither. */

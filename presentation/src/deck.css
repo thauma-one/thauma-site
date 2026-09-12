@@ -32,7 +32,14 @@ html, body {
 #deck {
   height: 100%; display: grid; place-items: center;
   padding: clamp(28px, 5vw, 76px);
+  /* The whole-screen change is the deck's biggest move and used to be its only
+     unanimated one. Slow, and with almost no travel — a section leaving should
+     read as withdrawing, not as sliding away. */
+  transition: opacity 480ms cubic-bezier(.16,1,.3,1),
+              transform 480ms cubic-bezier(.16,1,.3,1);
 }
+#deck.is-leaving  { opacity: 0; transform: translateY(-10px); }
+#deck.is-arriving { opacity: 0; transform: translateY(10px); transition: none; }
 
 /* PAGE 0 IS A CHECKLIST, NOT A SLIDE. Every other section is composed to fit
    the frame and is clipped on purpose. The prep screen is a list that grows
@@ -180,18 +187,46 @@ p.lead { color: var(--text); font-size: clamp(18px, 2vw, 24px); }
 
 /* TEMPORAL — travel along a line, with a pull-back before the move so the
    point being left is seen as one of many. */
-.track-window { position: relative; overflow: hidden; padding: 40px 0; }
-.track { display: flex; align-items: center; gap: clamp(80px, 14vw, 200px);
-  transition: transform var(--focus-dur, 620ms) cubic-bezier(.16,1,.3,1),
-              scale var(--focus-dur, 620ms) cubic-bezier(.16,1,.3,1);
+/* FULL BLEED. The window was bounded by the slide's 1080px column, so the line
+   stopped short of the screen on both sides and only two milestones could ever
+   be on screen at once — a timeline you cannot see the shape of. It now breaks
+   out of the column to the full viewport, which is also where the extra room
+   for a third and fourth milestone came from. */
+.track-window { position: relative; overflow: hidden; padding: 40px 0;
+  width: 100vw; margin-left: calc(50% - 50vw); }
+
+/* A CAMERA PAN, not a cut. The travel used to ease out hard — fast away, sharp
+   into place — which on a line of dates reads as snapping between them. An
+   in-and-out curve over a longer beat is what a camera actually does, and the
+   pull-back is gentler now so the line does not lurch away before it moves. */
+.track { display: flex; align-items: flex-start; gap: clamp(80px, 14vw, 200px);
+  position: relative;
+  transition: transform var(--focus-dur, 1240ms) cubic-bezier(.42, 0, .28, 1),
+              scale var(--focus-dur, 1240ms) cubic-bezier(.42, 0, .28, 1);
   scale: 1; will-change: transform; }
-.track.is-wide { scale: .78; }
-[data-point] { flex: none; text-align: center; opacity: .34;
-  transition: opacity .5s ease, scale .5s cubic-bezier(.16,1,.3,1); scale: .94; }
+.track.is-wide { scale: .9; }
+
+/* The line the points stand on, behind the dots and running the whole track. */
+/* It runs off both edges. Bounded to the track it began and ended in mid-air
+   either side of the dates, which reads as a drawn object rather than as time
+   continuing past the part being talked about. */
+.track-rule { position: absolute; left: -100vw; right: -100vw; top: 4px;
+  height: 1px; background: var(--line); pointer-events: none; }
+
+[data-point] { flex: none; text-align: center; opacity: .34; position: relative;
+  transition: opacity .6s ease, scale .6s cubic-bezier(.42, 0, .28, 1); scale: .96; }
 [data-point].is-focus { opacity: 1; scale: 1; }
+
+/* BOTH HALVES LEGIBLE. It is a timeline, so the date keeps its weight — but
+   the event is what the founder is talking about, and it was set at 15px and
+   dimmed underneath a figure three times its size. They now read as one
+   statement rather than a headline and a footnote. */
 .point-date { font-family: 'Sora', sans-serif; font-weight: 100;
-  font-size: clamp(22px, 3vw, 38px); font-variant-numeric: tabular-nums; }
-.point-label { color: var(--dim); margin-top: 8px; font-size: 15px; }
+  font-size: clamp(20px, 2.5vw, 32px); font-variant-numeric: tabular-nums;
+  white-space: nowrap; }
+.point-label { color: var(--text); margin-top: 10px;
+  font-size: clamp(16px, 1.6vw, 21px); font-weight: 300; }
+[data-point]:not(.is-focus) .point-label { color: var(--dim); }
 .point-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--dim);
   margin: 0 auto 18px; transition: background .4s ease, box-shadow .4s ease; }
 [data-point].is-focus .point-dot { background: var(--blue);

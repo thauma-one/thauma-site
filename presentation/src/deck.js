@@ -18,7 +18,7 @@
  * opening one must never move the deck.
  */
 import { config } from "../config.js";
-import { setBeatGate } from "./motifs.js";
+import { setBeatGate, setInstant, isInstant, motion, T } from "./motifs.js";
 
 export const state = {
   presenter: {
@@ -88,19 +88,55 @@ export function mount(el) {
   wire();
 }
 
-async function render() {
+/** The DOM swap on its own. No beats. */
+async function paint() {
   const section = currentSection();
-  if (!section) return;
+  if (!section) return null;
+
+  /* SECTIONS ARRIVE AND LEAVE, they do not cut. Wiping innerHTML and painting
+     the next one put the deck's hardest transition — a whole screen changing —
+     on the only moment with no motion at all: text simply appeared. The old
+     screen now withdraws and the new one settles in behind it, which is the
+     same restraint every beat inside a section already has.
+
+     Skipped while replaying, where nothing is meant to be watched. */
+  const outgoing = root.firstChild && !isInstant();
+  if (outgoing) {
+    root.classList.add("is-leaving");
+    await motion.wait(T.quick * 0.55);
+  }
+
   root.innerHTML = "";
   const node = section.render({ config, state });
   root.appendChild(node);
   root.dataset.section = section.key;
   announce(section);
-  /* NOT AWAITED. A section's first step now suspends on a gate until the
-     presenter presses the bar, so awaiting it here would mean goTo() never
-     resolves — the deck would render and then hang on its own caller. The DOM
-     is in place by this line; the beats after it belong to the presenter. */
+
+  if (outgoing) {
+    root.classList.remove("is-leaving");
+    root.classList.add("is-arriving");
+    /* Two frames, not one: the class has to be painted before it is taken away
+       or the browser collapses both states into no transition at all. */
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => root.classList.remove("is-arriving")));
+  }
+  return section;
+}
+
+async function render() {
+  if (!(await paint())) return;
+  /* NOT AWAITED. A section's first step suspends on a gate until the presenter
+     presses the bar, so awaiting it here would mean goTo() never resolves —
+     the deck would render and then hang on its own caller. The DOM is in place
+     by this line; the beats after it belong to the presenter. */
   play();
+}
+
+/** Paint and run the first beat to completion. Only safe while replaying,
+    where gates resolve immediately and nothing waits. */
+async function renderNow() {
+  if (!(await paint())) return;
+  await play();
 }
 
 /* ONE PRESS, ONE THING.
@@ -115,6 +151,7 @@ async function render() {
 let pendingGate = null;
 
 function gate() {
+  if (isInstant()) return Promise.resolve();
   if (!state.presenter.gated || state.mode === "view") return Promise.resolve();
   /* Suspended is not playing. The flag exists to swallow presses that would
      stack up mid-animation; while a beat waits for the bar the presenter has
@@ -183,16 +220,48 @@ export async function next() {
  * half-finished, and a presenter reaching for "back" almost always means "take
  * me to the beginning of what I was just saying" rather than "undo one beat".
  */
+/**
+ * BACK ONE BEAT, the way every presentation tool has worked for thirty years.
+ *
+ * This used to reset the whole section — one press of the left arrow threw away
+ * everything the presenter had built up and started the section again, which in
+ * front of somebody is worse than not being able to go back at all.
+ *
+ * A beat cannot simply be undone: each one is an animation that leaves the DOM
+ * changed, and step four exists only because steps one to three ran. So going
+ * back rebuilds the section and replays it instantly up to the beat wanted.
+ * From the first beat of a section, it lands on the LAST beat of the one
+ * before, which is what "back" means to anybody who has used slides.
+ */
 export async function prev() {
   /* Going back abandons a suspended beat. The orphaned step finishes into
      nodes that render() has already discarded, which is harmless. */
   pendingGate = null;
   if (state.nav.playing) return;
-  if (state.nav.step > 0) { state.nav.step = 0; await render(); return; }
+
+  if (state.nav.step > 0) { await rewindTo(state.nav.section, state.nav.step - 1); return; }
   if (state.nav.section > 0) {
-    state.nav.section -= 1;
-    state.nav.step = 0;
-    await render();
+    const i = state.nav.section - 1;
+    const steps = sections[i].steps || [];
+    await rewindTo(i, Math.max(0, steps.length - 1));
+  }
+}
+
+/** Rebuild a section and replay it, unwatched, up to one beat. */
+async function rewindTo(sectionIndex, step) {
+  state.nav.section = sectionIndex;
+  state.nav.step = 0;
+  setInstant(true);
+  try {
+    await renderNow();
+    const steps = currentSection()?.steps || [];
+    for (let i = 1; i <= step && i < steps.length; i++) {
+      state.nav.step = i;
+      try { await steps[i]({ root, config, state, gate }); }
+      catch (err) { console.error("replay step failed:", err); }
+    }
+  } finally {
+    setInstant(false);
   }
 }
 
