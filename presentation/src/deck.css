@@ -100,7 +100,7 @@ html, body {
 
 /* The label sits well clear of the figure. It was tucked under it at the type's
    own line-height, which on a number this size reads as cramped rather than
-   as one thing labelling another. */
+   as one thing labeling another. */
 .board-label { font-size: clamp(16px, 1.9vw, 25px); color: var(--dim);
   margin-top: clamp(18px, 3.2vh, 42px); }
 .board-row { display: flex; align-items: baseline; gap: .18em; }

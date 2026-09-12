@@ -2,7 +2,7 @@
  * Section 1 — Numbers, alone
  *
  * WHAT THIS SECTION IS FOR, in the founder's words: the room should leave it
- * thinking "that gap is much bigger than I realised". Everything here serves
+ * thinking "that gap is much bigger than I realized". Everything here serves
  * that and nothing else.
  *
  * It used to be a different visual idea every ninety seconds — a text stack,
