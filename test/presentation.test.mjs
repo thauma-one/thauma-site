@@ -455,6 +455,37 @@ await check("a shared link plays through, because nobody is there to press", asy
   assert(shown === 6, `a shared link stalled at ${shown} of 6 tiers`);
 });
 
+await check("a link can open one section directly", async () => {
+  /* Reviewing a section otherwise costs pressing through everything in front
+     of it. ?s= names the section; an explicit one beats the shared-link
+     default, which would otherwise drag a deliberate link back to the title. */
+  const at = async (q) => {
+    const dom = new JSDOM(html, {
+      runScripts: "dangerously", pretendToBeVisual: true,
+      url: "https://thauma.one/chaseroush/present/" + q,
+      beforeParse(w) {
+        w.matchMedia = () => ({ matches: true, addListener() {}, removeListener() {} });
+        w.fetch = async () => { throw new Error("no network"); };
+      },
+    });
+    await new Promise((r) => setTimeout(r, 300));
+    return dom.window;
+  };
+
+  assert((await at("?s=schedule")).document.getElementById("deck").dataset.section === "schedule",
+    "?s=schedule did not open the schedule");
+  assert((await at("?s=6")).document.getElementById("deck").dataset.section === "schedule",
+    "?s=6 did not open the sixth section");
+  assert((await at("?s=schedule&view=1")).document.getElementById("deck").dataset.section === "schedule",
+    "a shared link with an explicit section was dragged back to the title");
+  assert((await at("?s=ask&play=1")).Deck.state.presenter.gated === false,
+    "&play=1 did not release the gates");
+
+  /* A key that does not exist must not strand the presenter on a blank deck. */
+  assert((await at("?s=nonsense")).document.getElementById("deck").dataset.section === "prep",
+    "an unknown section key did not fall back to the start");
+});
+
 await check("the budget explains WHY, not just what", async () => {
   /* "$X for housing" without the philosophy reads as either padding or
      austerity. Bylaws Article VII §5 explains why it is neither. */

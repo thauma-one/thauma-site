@@ -55,13 +55,34 @@ export function mount(el) {
      screen is a checklist for one person, and a viewer landing on somebody
      else's configuration would be confusing and slightly odd. */
   const params = new URLSearchParams(location.search);
+
+  /* STRAIGHT TO ONE SECTION. Reviewing the deck a section at a time otherwise
+     means pressing through everything in front of it, which costs more than
+     the change being reviewed. ?s=schedule opens there; ?s=6 does the same by
+     index. Add &play=1 to skip the gates and watch it run, which is the only
+     way to see the pacing of one section without driving it. */
+  const jump = params.get("s");
+  if (jump !== null) {
+    const byIndex = Number(jump);
+    const i = Number.isInteger(byIndex) && String(byIndex) === jump.trim()
+      ? byIndex
+      : sections.findIndex((x) => x.key === jump);
+    if (i >= 0 && i < sections.length) {
+      state.nav.section = i;
+      state.presenter.started = true;
+    }
+  }
+  if (params.get("play") === "1") state.presenter.gated = false;
+
   if (params.get("view") === "1" || params.has("shared")) {
     state.mode = "view";
     state.presenter.started = true;
     /* AND START PAST IT. Setting the flag was not enough — the deck still
        rendered section 0, so a shared link opened on somebody else's
-       pre-meeting checklist. Index 1 is the title. */
-    state.nav.section = 1;
+       pre-meeting checklist. Index 1 is the title. An explicit ?s= wins:
+       a link sent to one person, opened at one section, is a deliberate
+       thing and this must not quietly drag it back to the front. */
+    if (jump === null) state.nav.section = 1;
   }
   render();
   wire();
