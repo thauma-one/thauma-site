@@ -21,6 +21,10 @@
  * it must never be softened into comparing like with like.
  */
 import { charCascade, flipTo, motion, setInstant, T } from "../motifs.js";
+/* NOT ALIASED. The build inlines each module and strips its import lines,
+   so an alias names something the bundle never declares — `config as x` became
+   a ReferenceError at module load and took the whole deck down with it. */
+import { config } from "../../config.js";
 
 /**
  * FILL THE FRAME, measured from the BOARD rather than from the text.
@@ -61,11 +65,15 @@ function scatter(count, seed) {
   let n = seed;
   const rnd = () => ((n = (n * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
   const out = [];
+  /* Each pin carries its own delay, so the whole field is started by one class
+     rather than by hundreds of timers — 220 of them for America. */
+  const spread = 2600;
   while (out.length < count) {
     const x = rnd() * 2 - 1, y = rnd() * 2 - 1;
     if (x * x + y * y > 0.82) continue;              // keep them inside the disc
     out.push(`<circle cx="${(50 + x * 46).toFixed(1)}" cy="${(50 + y * 46).toFixed(1)}"
-                      r="${(0.7 + rnd() * 1.5).toFixed(2)}"/>`);
+                      r="${(0.7 + rnd() * 1.5).toFixed(2)}"
+                      style="--d:${Math.round((out.length / count) * spread)}ms"/>`);
   }
   return out.join("");
 }
@@ -77,7 +85,7 @@ function countryCard(c) {
       <svg class="country-disc" viewBox="0 0 100 100" aria-label="${c.name}">
         <circle class="disc-edge" cx="50" cy="50" r="47"/>
         <g data-outline></g>
-        <g class="disc-pins">${scatter(c.dots, c.seed)}</g>
+        <g class="disc-pins" data-pins>${scatter(c.dots, c.seed)}</g>
       </svg>
       <figcaption class="country-name">${c.name}</figcaption>
       <div class="country-stats">
@@ -115,7 +123,14 @@ function setStats(root, c) {
 async function tellCountry(root, c, gate) {
   const card = root.querySelector(`[data-country="${c.key}"]`);
   if (!card) return;
+
+  /* The disc arrives first and settles, and only then does the country fill in
+     — a few seconds of it, so the density is watched accumulating rather than
+     found already there. */
   card.classList.add("is-in");
+  await motion.wait(T.normal);
+  card.querySelector("[data-pins]").classList.add("is-in");
+  await motion.wait(3000);
 
   const stats = [
     ["population", num(c.population.value)],
@@ -123,14 +138,37 @@ async function tellCountry(root, c, gate) {
     ["share", `${c.share.value}%`],
   ];
 
-  for (let i = 0; i < stats.length; i++) {
-    if (i) await gate();
-    const cell = card.querySelector(`[data-stat="${stats[i][0]}"]`);
+  /* Then one figure per press. */
+  for (const [name, text] of stats) {
+    await gate();
+    const cell = card.querySelector(`[data-stat="${name}"]`);
     cell.className = "";
-    cell.textContent = stats[i][1];
+    cell.textContent = text;
     cell.closest("[data-figure-group]").classList.add("is-in");
     await charCascade(cell, { stagger: 45, duration: 760 });
   }
+}
+
+/**
+ * MOVE, DO NOT REDRAW. Croatia's figures are already on screen and already
+ * read; the comparison should carry them to their new place rather than throw
+ * them away and write them again somewhere else. Measured before and after the
+ * layout changes, put back where they were, and released.
+ */
+function slideIntoPlace(nodes, rearrange, ms = 760) {
+  const before = nodes.map((n) => n.getBoundingClientRect());
+  rearrange();
+  nodes.forEach((n, i) => {
+    const after = n.getBoundingClientRect();
+    const dx = before[i].left - after.left;
+    const dy = before[i].top - after.top;
+    if (!dx && !dy) return;
+    n.style.transition = "none";
+    n.style.transform = `translate(${dx}px, ${dy}px)`;
+    void n.offsetWidth;
+    n.style.transition = `transform ${ms}ms cubic-bezier(.42, 0, .28, 1)`;
+    n.style.transform = "";
+  });
 }
 
 /** What the board reads, figure and unit together, for the line above. */
@@ -219,26 +257,43 @@ export const opening = {
       await beat(0)(ctx);
     });
 
-    for (let i = 1; i < 4; i++) beats.push(beat(i));
+    /* One beat per figure the config actually holds. This was hard-coded to
+       four and the closing statement was later taken out of the sequence,
+       which left a beat pointing at nothing — it threw, the step runner
+       swallowed it, and the section simply lost a press. */
+    for (let i = 1; i < config.opening.beats.length; i++) beats.push(beat(i));
 
     /* America, then Croatia, then the two of them together. */
     const stage = (keys, { maps = true } = {}) => async ({ root, config, gate }) => {
       root.querySelector("[data-board]").hidden = true;
       const box = root.querySelector("[data-countries]");
       box.hidden = false;
-      box.classList.toggle("is-pair", keys.length > 1);
-      box.classList.toggle("no-maps", !maps);
-      for (const c of config.opening.countries) {
-        root.querySelector(`[data-country="${c.key}"]`).hidden = !keys.includes(c.key);
+      if (keys.length === 1) {
+        box.classList.remove("is-pair", "no-maps");
+        for (const c of config.opening.countries) {
+          root.querySelector(`[data-country="${c.key}"]`).hidden = !keys.includes(c.key);
+        }
       }
       await new Promise((r) => requestAnimationFrame(r));
 
       if (keys.length > 1) {
-        /* THE COMPARISON. Both sets of figures are already known by this point,
-           so nothing is re-performed — the two move into their new places and
-           that movement is the whole beat. The discs go: side by side they were
-           the picture, stacked they would only be in the way of the numbers. */
-        for (const c of config.opening.countries) setStats(root, c);
+        /* THE COMPARISON. Croatia is already up and already read, so it travels
+           to its new place rather than being redrawn there. America arrives
+           while that is happening — the two movements are one beat. */
+        const staying = root.querySelector('[data-country="hr"]');
+        const arriving = root.querySelector('[data-country="us"]');
+        arriving.classList.remove("is-in");
+
+        slideIntoPlace([staying], () => {
+          box.classList.add("is-pair", "no-maps");
+          arriving.hidden = false;
+        });
+
+        setStats(root, config.opening.countries.find((c) => c.key === "us"));
+        arriving.classList.remove("is-in");
+        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+        arriving.classList.add("is-in");
+        await motion.wait(760);
         return;
       }
 

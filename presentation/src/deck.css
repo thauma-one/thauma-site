@@ -125,15 +125,19 @@ html, body {
    it, and the same three figures beneath every one. */
 .countries { display: flex; gap: clamp(28px, 7vw, 110px); align-items: flex-start;
   width: 100%; }
-.country { margin: 0; flex: 1 1 0; min-width: 0; opacity: 0; translate: 0 14px;
-  transition: opacity .55s ease, translate .55s cubic-bezier(.42, 0, .28, 1); }
+.country { margin: 0; flex: 1 1 0; min-width: 0; opacity: 0; translate: 0 22px;
+  transition: opacity .6s ease, translate .6s cubic-bezier(.42, 0, .28, 1); }
 .country.is-in { opacity: 1; translate: 0 0; }
 
 /* Bigger, and using the width it has. A single country has the whole screen. */
 .country-disc { display: block; width: 100%; height: auto;
   max-height: clamp(200px, 40vh, 420px); margin: 0 auto; }
 .disc-edge { fill: none; stroke: var(--line); stroke-width: .5; }
-.disc-pins circle { fill: var(--blue); opacity: .8; }
+/* The country fills in rather than arriving full. Each pin carries its own
+   delay, so the field accumulates over a few seconds from one class. */
+.disc-pins circle { fill: var(--blue); opacity: 0;
+  transition: opacity .5s ease var(--d, 0ms); }
+.disc-pins.is-in circle { opacity: .8; }
 [data-outline] path { fill: none; stroke: var(--dim); stroke-width: .6; }
 
 .country-name { font-size: clamp(14px, 1.5vw, 20px); color: var(--dim);
@@ -185,17 +189,26 @@ html, body {
 .flap-half i, .flap-leaf i { position: absolute; left: 0; width: 100%;
   height: .92em; line-height: .92em; font-style: normal;
   text-align: center; display: block; }
-.flap-top i, .flap-leaf i { top: 0; }
+.flap-top i { top: 0; }
 .flap-bottom i { top: -.46em; }
 
 /* The seam is always there, so the digit reads as two halves even at rest. */
 .flap-seam { position: absolute; left: 4%; right: 4%; top: calc(50% - .5px);
   height: 1px; background: rgba(0, 0, 0, .6); z-index: 5; }
 
-/* The one moving piece. Same rectangle as the top half, hinged at the seam. */
-.flap-leaf { position: absolute; left: 0; right: 0; top: 0; height: 50%;
+/* THE TWO LEAVES. Each stays inside its own half — the upper turns away from
+   the seam, the lower turns down onto it — so neither can reach the other's
+   rectangle. Hidden except during its own phase, or a leaf left lying flat
+   covers the very half it just uncovered. */
+.flap-leaf { position: absolute; left: 0; right: 0; height: 50%;
   overflow: hidden; background: var(--bg);
-  transform-origin: bottom center; backface-visibility: hidden; z-index: 10; }
+  backface-visibility: hidden; z-index: 10; visibility: hidden; }
+.flap-leaf-top { top: 0; transform-origin: bottom center; }
+.flap-leaf-bottom { bottom: 0; transform-origin: top center; transform: rotateX(90deg); }
+.flap-leaf i { top: 0; }
+.flap-leaf-bottom i { top: -.46em; }
+.flap.is-upper .flap-leaf-top { visibility: visible; }
+.flap.is-lower .flap-leaf-bottom { visibility: visible; }
 .flap.is-folding .flap-fold-down {
   transform: rotateX(0deg);
   transition: transform 78ms cubic-bezier(0, .3, .6, 1) 78ms; }

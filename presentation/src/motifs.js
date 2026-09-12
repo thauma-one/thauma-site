@@ -426,19 +426,24 @@ export async function showOnly(root, name, { keep = [], out = 340 } = {}) {
  * It starts empty, not at zero. A row of noughts is a reading, and the board
  * has not read anything yet.
  */
-const FOLD = 215;   /* one flap falling; sharp ease-in */
+const HALF = 115;   /* each leaf's fall; a whole tick is twice this */
 
 /**
- * A SPLIT FLAP, built the safe way.
+ * A SPLIT FLAP, in two phases, with the next value already underneath.
  *
- * ONE moving piece, not two. The earlier version swung a second half up from
- * below, which is the technique that carries a flap into the bottom half's own
- * rectangle and collides with it. This caps the rotation at 90 degrees: the
- * flap vanishes edge-on at the seam and never reaches the bottom half at all.
+ * TWO THINGS WERE WRONG. The static top was corrected at the END of the fall,
+ * so for a frame the top read the old digit against a new bottom — half right,
+ * half wrong. It is set at the START now, hidden behind the leaf that is
+ * falling over it, which is the layering a real board has: the next value is
+ * already printed on the card behind the one coming down.
  *
- * The bottom half swaps to the new value immediately — the flap never touches
- * that rectangle, so there is no moment where a mismatch can be seen. The
- * static top half is updated underneath at the instant the flap disappears.
+ * And the tick was only half a movement. A flap falls twice — the upper leaf
+ * away, then the lower leaf down into place. One phase looked like a fold that
+ * stopped short, because it was.
+ *
+ * Neither leaf leaves its own half. The upper turns 0 to -90 inside the top
+ * rectangle; the lower turns 90 to 0 inside the bottom one. That is what keeps
+ * this clear of the collision a single 180-degree flap walks into.
  */
 function flapCell() {
   const cell = document.createElement("span");
@@ -447,29 +452,46 @@ function flapCell() {
     '<span class="flap-half flap-top" data-top><i></i></span>' +
     '<span class="flap-half flap-bottom" data-bottom><i></i></span>' +
     '<span class="flap-seam"></span>' +
-    '<span class="flap-leaf" data-leaf><i></i></span>';
+    '<span class="flap-leaf flap-leaf-top" data-leaf-top><i></i></span>' +
+    '<span class="flap-leaf flap-leaf-bottom" data-leaf-bottom><i></i></span>';
   return cell;
+}
+
+function turn(leaf, to) {
+  leaf.style.transition = "none";
+  leaf.style.transform = `rotateX(${to === "start" ? 0 : 90}deg)`;
+  void leaf.offsetHeight;
 }
 
 async function tick(cell, to) {
   const put = (sel, ch) => { cell.querySelector(sel + " i").textContent = ch; };
   const from = cell.dataset.value || "";
-  const leaf = cell.querySelector("[data-leaf]");
+  const upper = cell.querySelector("[data-leaf-top]");
+  const lower = cell.querySelector("[data-leaf-bottom]");
 
-  put("[data-bottom]", to);          // safe at any moment: the leaf never goes there
-  put("[data-leaf]", from);          // the old top, falling away
+  /* The new value is printed underneath BEFORE anything moves. */
+  put("[data-top]", to);
+  put("[data-bottom]", from);
+  put("[data-leaf-top]", from);
+  put("[data-leaf-bottom]", to);
 
-  leaf.style.transition = "none";
-  leaf.style.transform = "rotateX(0deg)";
-  void leaf.offsetHeight;
-  leaf.style.transition = `transform ${FOLD}ms cubic-bezier(.5, 0, .75, 0)`;
-  leaf.style.transform = "rotateX(-90deg)";
+  /* Phase one: the old top falls away, uncovering the new top already there. */
+  turn(upper, "start");
+  cell.classList.add("is-upper");
+  upper.style.transition = `transform ${HALF}ms cubic-bezier(.5, 0, .9, .5)`;
+  upper.style.transform = "rotateX(-90deg)";
+  await wait(HALF);
+  cell.classList.remove("is-upper");
 
-  await wait(FOLD);
+  /* Phase two: the new bottom swings down over the old one. */
+  turn(lower, "up");
+  cell.classList.add("is-lower");
+  lower.style.transition = `transform ${HALF}ms cubic-bezier(.15, .6, .4, 1)`;
+  lower.style.transform = "rotateX(0deg)";
+  await wait(HALF);
+  cell.classList.remove("is-lower");
 
-  put("[data-top]", to);             // already correct as the leaf vanishes
-  leaf.style.transition = "none";
-  leaf.style.transform = "rotateX(0deg)";
+  put("[data-bottom]", to);
   cell.dataset.value = to;
 }
 
