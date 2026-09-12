@@ -74,20 +74,35 @@ export const config = {
         source: "Years of it being normal. 2025 church-staffing commentary: the technical director role was uncommon on staff org charts a decade ago." },
 
       { line: true },
+    ],
 
-      /* Familiar ground first, and a fresh board — nothing to compare against yet. */
-      { value: 300000, label: "churches in the United States", clear: true, verified: true,
-        source: "Derived from Worship Leader Magazine's size-tier breakdown — 177,000 small churches at 59% implies ~300,000 total; cross-checked against Hartford Institute megachurch counts." },
+    /* THE TWO COUNTRIES, three screens: America, Croatia, then both together.
+       Population, Protestants, and the share — the same three figures each
+       time, in the same three places, so the third screen is a comparison
+       rather than a new picture.
 
-      /* THE GAP, and it is churches against churches. 300,000 stays on screen. */
-      { value: 36, label: "Protestant congregations in all of Croatia", verified: false,
-        source: "Derived from the spec's own corroboration: Evangelical (Lutheran) Church, 13 congregations; Reformed Christian Church, 21-23. A floor rather than a census — Baptist congregations the founder knows are not counted in it. CONFIRM BEFORE PRESENTING." },
+       PROTESTANTS, NOT CHRISTIANS. Croatia is around 86% Christian and almost
+       all of it Catholic, so a Christian count would make the country look
+       well churched and delete the argument. The founder's work is with the
+       Protestant church, and that is the number the gap lives in.
 
-      { value: 7000, label: "Protestants, country-wide", verified: false,
-        source: "Estimate from a local ministry leader in personal relationship with the founder. Corroborated: Lutheran 3,600 and Reformed 3,000-4,000 gives 6,600-7,600." },
+       The American figures are PLACEHOLDERS the founder asked for so the
+       screens could be built; they are flagged and must be replaced. */
+    countries: [
+      { key: "us", name: "United States", dots: 220, seed: 7,
+        population: { value: 350000000, verified: false,
+          source: "PLACEHOLDER at the founder's request. Replace before presenting." },
+        protestants: { value: 87500000, verified: false,
+          source: "PLACEHOLDER — 25% of the placeholder population. Replace before presenting." },
+        share: { value: 25, verified: false, source: "PLACEHOLDER." } },
 
-      { value: 0.18, unit: "%", label: "of the country", verified: false,
-        source: "7,000 against a population of ~3.9 million." },
+      { key: "hr", name: "Croatia", dots: 14, seed: 31,
+        population: { value: 3900000, verified: true,
+          source: "Croatian Bureau of Statistics, ~3.9 million." },
+        protestants: { value: 7000, verified: false,
+          source: "Estimate from a local ministry leader in personal relationship with the founder. Corroborated: Lutheran 3,600 and Reformed 3,000-4,000 gives 6,600-7,600." },
+        share: { value: 0.18, verified: false,
+          source: "7,000 against ~3.9 million." } },
     ],
 
     /* SAID, NOT SHOWN. These are the founder's lines and the figures behind

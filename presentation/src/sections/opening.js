@@ -51,6 +51,57 @@ function fitBoard(figure, unit, frame, cells) {
 const num = (n, cells) =>
   cells ? String(n) : n.toLocaleString("en-US", { maximumFractionDigits: 2 });
 
+
+/* A CIRCLE OF DOTS, standing in for the country until its outline arrives.
+
+   Placed by a fixed pseudo-random walk rather than at random, so the same
+   slide looks the same in two different meetings. The outline goes in behind
+   these — the hook is `[data-outline]`, and nothing else has to change. */
+function scatter(count, seed) {
+  let n = seed;
+  const rnd = () => ((n = (n * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+  const out = [];
+  while (out.length < count) {
+    const x = rnd() * 2 - 1, y = rnd() * 2 - 1;
+    if (x * x + y * y > 0.82) continue;              // keep them inside the disc
+    out.push(`<circle cx="${(50 + x * 46).toFixed(1)}" cy="${(50 + y * 46).toFixed(1)}"
+                      r="${(0.7 + rnd() * 1.5).toFixed(2)}"/>`);
+  }
+  return out.join("");
+}
+
+/** One country: the disc, then population / Protestants / share beneath it. */
+function countryCard(c) {
+  return `
+    <figure class="country" data-country="${c.key}">
+      <svg class="country-disc" viewBox="0 0 100 100" aria-label="${c.name}">
+        <circle class="disc-edge" cx="50" cy="50" r="47"/>
+        <g data-outline></g>
+        <g class="disc-pins">${scatter(c.dots, c.seed)}</g>
+      </svg>
+      <figcaption class="country-name">${c.name}</figcaption>
+      <div class="country-stats">
+        <div><b data-stat="population"></b><span>Population</span></div>
+        <div><b data-stat="protestants"></b><span>Protestants</span></div>
+        <div><b data-stat="share"></b><span>of the country</span></div>
+      </div>
+    </figure>`;
+}
+
+/** Fill one card's three figures, flipping each board. */
+async function fillCountry(root, c) {
+  const card = root.querySelector(`[data-country="${c.key}"]`);
+  if (!card) return;
+  card.classList.add("is-in");
+  const put = (name, text, cells) =>
+    flipTo(card.querySelector(`[data-stat="${name}"]`), text, { cells });
+  await Promise.all([
+    put("population", num(c.population.value)),
+    put("protestants", num(c.protestants.value)),
+    put("share", `${c.share.value}%`),
+  ]);
+}
+
 /** What the board reads, figure and unit together, for the line above. */
 const said = (b) => `${num(b.value, b.cells)}${b.unit ? (b.unit === "%" ? "%" : " " + b.unit) : ""}`;
 
@@ -65,6 +116,8 @@ const beat = (i) => async ({ root, config }) => {
   const line = root.querySelector("[data-line-text]");
 
   if (b.line) {
+    root.querySelector("[data-countries]").hidden = true;
+    root.querySelector("[data-board]").hidden = false;
     line.hidden = false;
     await new Promise((r) => requestAnimationFrame(r));
     line.classList.add("is-in");
@@ -73,6 +126,8 @@ const beat = (i) => async ({ root, config }) => {
 
   line.classList.remove("is-in");
   line.hidden = true;
+  root.querySelector("[data-board]").hidden = false;
+  root.querySelector("[data-countries]").hidden = true;
 
   /* THE GAP, held on screen. The figure being replaced does not vanish — it
      goes up, small and quiet, so the new one is read against it. `clear`
@@ -119,6 +174,12 @@ export const opening = {
       </div>
 
       <p class="lead in" data-line-text hidden>${o.line.text}</p>
+
+      <!-- THE TWO COUNTRIES. Same three figures, same three places, so the
+           screen that shows both is a comparison rather than a new picture. -->
+      <div class="countries" data-countries hidden>
+        ${o.countries.map(countryCard).join("")}
+      </div>
     `;
     return node;
   },
@@ -131,7 +192,21 @@ export const opening = {
        and nothing has been read yet. */
     beats.push(async ({ root }) => {
       const cue = root.querySelector("[data-cue]");
+
+      /* Put it at full size and in the middle of the SCREEN before anything is
+         watched. Measured rather than guessed: the slide's own flow would
+         center it against whatever else happens to be in the slide, which at
+         this moment is an empty board and nothing else. */
+      cue.style.transition = "none";
       cue.classList.add("is-big");
+      await new Promise((r) => requestAnimationFrame(r));
+      const here = cue.getBoundingClientRect();
+      const screen = root.getBoundingClientRect();
+      const dy = (screen.top + screen.height / 2) - (here.top + here.height / 2);
+      cue.style.transform = `translateY(${Math.round(dy)}px)`;
+      void cue.offsetWidth;
+      cue.style.transition = "";
+
       await charCascade(cue, { stagger: 90, duration: 1200 });
     });
 
@@ -139,12 +214,39 @@ export const opening = {
        for both: the heading moving and the first figure arriving are one
        gesture, not two. */
     beats.push(async (ctx) => {
-      ctx.root.querySelector("[data-cue]").classList.remove("is-big");
+      const cue = ctx.root.querySelector("[data-cue]");
+      cue.classList.remove("is-big");
+      cue.style.transform = "";          // back to where it belongs
       await motion.wait(880);
       await beat(0)(ctx);
     });
 
-    for (let i = 1; i < 8; i++) beats.push(beat(i));
+    for (let i = 1; i < 4; i++) beats.push(beat(i));
+
+    /* America, then Croatia, then both. The board and its prior line step
+       aside; the countries take the screen. */
+    const stage = (keys) => async ({ root, config }) => {
+      /* The clock and its line have said what they had to say. */
+      root.querySelector("[data-board]").hidden = true;
+      root.querySelector("[data-prior]").classList.remove("is-in");
+      const line = root.querySelector("[data-line-text]");
+      line.classList.remove("is-in");
+      line.hidden = true;
+      const box = root.querySelector("[data-countries]");
+      box.hidden = false;
+      box.classList.toggle("is-pair", keys.length > 1);
+      for (const c of config.opening.countries) {
+        const card = root.querySelector(`[data-country="${c.key}"]`);
+        card.hidden = !keys.includes(c.key);
+      }
+      await new Promise((r) => requestAnimationFrame(r));
+      for (const key of keys) {
+        await fillCountry(root, config.opening.countries.find((c) => c.key === key));
+      }
+    };
+    beats.push(stage(["us"]));
+    beats.push(stage(["hr"]));
+    beats.push(stage(["us", "hr"]));
     return beats;
   })(),
 

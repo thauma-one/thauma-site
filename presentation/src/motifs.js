@@ -426,7 +426,7 @@ export async function showOnly(root, name, { keep = [], out = 340 } = {}) {
  * It starts empty, not at zero. A row of noughts is a reading, and the board
  * has not read anything yet.
  */
-const FOLD = 78;   /* one half-turn; a full tick is twice this */
+const FOLD = 88;   /* one half-turn; a full tick is twice this */
 
 function flapCell() {
   const cell = document.createElement("span");
@@ -458,13 +458,41 @@ async function tick(cell, to) {
 }
 
 /**
+ * THE DIGITS IT PASSES THROUGH ON THE WAY.
+ *
+ * A flip clock does not jump and it does not pick at random — it advances, one
+ * flap at a time, until the value it wants comes up. Landing on the digit it
+ * already shows therefore means going all the way round, which is exactly what
+ * the founder asked for: the cell turns over ten times and arrives back where
+ * it started, and that is the most satisfying thing the board does.
+ */
+function route(from, to) {
+  if (!/\d/.test(to)) return [to];                 // turning over to a blank
+
+  if (!/\d/.test(from)) {
+    /* Coming up from an empty board there is nothing to count from, so the
+       drum takes a full revolution and lands on the value — which is the most
+       a flip clock ever does and the right thing for the first number of the
+       section to do. */
+    const steps = [];
+    let cur = (Number(to) + 1) % 10;
+    for (let k = 0; k < 10; k++) { steps.push(String(cur)); cur = (cur + 1) % 10; }
+    return steps;
+  }
+
+  const steps = [];
+  let cur = Number(from);
+  do { cur = (cur + 1) % 10; steps.push(String(cur)); } while (String(cur) !== to);
+  return steps;
+}
+
+/**
  * @param {Element} host
  * @param {string}  text    what the board should read
  * @param {object}  o
  * @param {number} [o.cells] board width; defaults to the text's own length
- * @param {number} [o.spins] how many values a digit runs through before landing
  */
-export async function flipTo(host, text, { cells, spins = 4, stagger = 130 } = {}) {
+export async function flipTo(host, text, { cells, stagger = 105 } = {}) {
   if (!host) return;
   const chars = [...String(text)];
   const width = cells || chars.length;
@@ -491,15 +519,10 @@ export async function flipTo(host, text, { cells, spins = 4, stagger = 130 } = {
   }
 
   await Promise.all(board.map(async (cell, i) => {
-    if ((cell.dataset.value || "") === want[i]) return;
+    const from = cell.dataset.value || "";
+    if (from === "" && want[i] === "") return;          // a blank staying blank
     await wait(i * stagger);
-    /* A digit runs through a few values before it lands; a comma or a blank
-       has nothing to count through and simply turns over once. */
-    const runs = /\d/.test(want[i]) ? spins : 0;
-    for (let k = 0; k < runs; k++) {
-      await tick(cell, String(Math.floor(Math.random() * 10)));
-    }
-    await tick(cell, want[i]);
+    for (const step of route(from, want[i])) await tick(cell, step);
   }));
 }
 
