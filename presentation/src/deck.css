@@ -86,6 +86,19 @@ html, body {
    One figure at a time, filling the frame, with the one it replaced kept
    above it so the gap between them is looked at rather than remembered. */
 .slide.is-board { gap: clamp(14px, 2.4vh, 26px); }
+
+/* THE SECTION'S NAME ARRIVES FULL SIZE and then takes its place. It opens as
+   the only thing on screen, cascading in a character at a time, and on the
+   next press it shrinks into the corner and becomes the running heading —
+   so the deck is never watched assembling itself around a title that was
+   already sitting there. */
+.cue { transition: font-size .85s cubic-bezier(.42, 0, .28, 1),
+                   letter-spacing .85s cubic-bezier(.42, 0, .28, 1),
+                   color .85s ease,
+                   transform .85s cubic-bezier(.42, 0, .28, 1); }
+.cue.is-big { font-size: clamp(44px, 8.5vw, 116px); letter-spacing: .04em;
+  color: var(--text); transform: translateY(24vh); text-transform: none;
+  font-family: 'Sora', sans-serif; font-weight: 200; }
 .board { display: flex; flex-direction: column; align-items: flex-start;
   width: 100%; }
 
@@ -108,15 +121,42 @@ html, body {
   font-size: clamp(20px, 2.6vw, 38px); font-family: 'Sora', sans-serif;
   font-weight: 200; letter-spacing: .02em; }
 
-/* THE FLIP BOARD. Each digit is its own cell; a spinning one is lifted very
-   slightly, which is what makes a run of changing numbers read as a mechanism
-   rather than as text being rewritten. */
-.flip { display: inline-flex; align-items: baseline; }
-.flip-d { display: inline-block; position: relative; }
-.flip-d b { display: block; font-weight: inherit;
-  transition: transform .09s ease-out, opacity .09s ease-out; }
-.flip-d.is-spinning b { transform: translateY(-.045em) scaleY(.94); opacity: .78; }
-.flip-d.is-set b { transform: none; opacity: 1; }
+/* THE FLIP CLOCK. Each cell is a split flap: the top half of the old glyph
+   falls forward on a hinge in the middle, and the bottom half of the new one
+   swings up under it. Two rotations, one tick.
+
+   Cell width is fixed in em so a board of four never reflows between values,
+   which is what keeps the unit beside it from sliding about. */
+.flip { display: inline-flex; align-items: baseline; gap: .035em; }
+.flap { position: relative; display: inline-block;
+  width: .60em; height: .82em; perspective: 640px;
+  font-variant-numeric: tabular-nums; }
+
+.flap-half { position: absolute; left: 0; right: 0; height: 50%;
+  overflow: hidden; backface-visibility: hidden; }
+.flap-upper { top: 0; }
+.flap-lower { bottom: 0; }
+.flap-half i { position: absolute; left: 0; width: 100%; height: 2em;
+  font-style: normal; line-height: .82em; text-align: center; display: block; }
+.flap-upper i { top: 0; }
+.flap-lower i { top: -.41em; }
+
+/* The two moving halves sit above the resting ones — but ONLY while turning.
+   Left visible at rest, the upper one lies flat over the top half of the glyph
+   with whatever it last held, which on a board that never turned meant every
+   digit was wearing someone else's head. */
+.flap-fold-up, .flap-fold-down { visibility: hidden; z-index: 3; }
+.flap.is-folding .flap-fold-up,
+.flap.is-folding .flap-fold-down { visibility: visible; }
+.flap-fold-up { transform-origin: bottom center; }
+.flap-fold-down { transform-origin: top center; transform: rotateX(90deg); }
+
+.flap.is-folding .flap-fold-up {
+  transform: rotateX(-90deg);
+  transition: transform 78ms cubic-bezier(.4, 0, 1, .7); }
+.flap.is-folding .flap-fold-down {
+  transform: rotateX(0deg);
+  transition: transform 78ms cubic-bezier(0, .3, .6, 1) 78ms; }
 
 /* A movement that has been made withdraws upward, the way one line of thought
    gives way to the next, rather than staying on screen forever underneath the

@@ -411,43 +411,95 @@ export async function showOnly(root, name, { keep = [], out = 340 } = {}) {
 }
 
 /**
- * THE FLIP BOARD. Digits run like a departure board and settle left to right.
+ * A FLIP CLOCK, folding.
  *
- * The founder asked for a flip clock and got a character cascade, which rolls
- * each character in once and stops — it reads as type arriving, not as a
- * mechanism counting. A board that spins and lands says the number was ARRIVED
- * AT, which is the right feeling for a figure somebody is about to hear the
- * weight of.
+ * The first attempt swapped digits and nudged them, which churns but does not
+ * fold — and the founder asked for a flip clock, which is a specific physical
+ * thing: the top half of the old glyph falls forward onto the bottom half of
+ * the new one. Two rotations per tick, hinged in the middle.
  *
- * Only digits spin. A comma or a percent sign has nothing to count through, so
- * it is simply placed — a separator flickering through random glyphs would be
- * noise pretending to be information.
+ * The board is a FIXED NUMBER OF CELLS for a whole movement, so the digits
+ * never shuffle sideways between values and anything set beside the board — a
+ * unit, a label — stays exactly where it was. A value shorter than the board
+ * flips its spare cells to blank rather than shrinking the board.
+ *
+ * It starts empty, not at zero. A row of noughts is a reading, and the board
+ * has not read anything yet.
  */
-export async function flipTo(host, text, { stagger = 150, tick = 58, spins = 8 } = {}) {
+const FOLD = 78;   /* one half-turn; a full tick is twice this */
+
+function flapCell() {
+  const cell = document.createElement("span");
+  cell.className = "flap";
+  cell.innerHTML =
+    '<span class="flap-half flap-upper" data-static-up><i></i></span>' +
+    '<span class="flap-half flap-lower" data-static-down><i></i></span>' +
+    '<span class="flap-half flap-upper flap-fold-up" data-fold-up><i></i></span>' +
+    '<span class="flap-half flap-lower flap-fold-down" data-fold-down><i></i></span>';
+  return cell;
+}
+
+/** One physical tick: the old top falls, the new bottom swings up under it. */
+async function tick(cell, to) {
+  const set = (sel, ch) => { cell.querySelector(sel + " i").textContent = ch; };
+  const from = cell.dataset.value || "";
+
+  set("[data-static-up]", from);      // still showing the old, about to be covered
+  set("[data-fold-up]", from);        // the half that falls
+  set("[data-static-down]", to);      // revealed as the fall uncovers it
+  set("[data-fold-down]", to);        // swings up over the old bottom
+
+  cell.classList.add("is-folding");
+  await wait(FOLD * 2);
+  cell.classList.remove("is-folding");
+
+  set("[data-static-up]", to);
+  cell.dataset.value = to;
+}
+
+/**
+ * @param {Element} host
+ * @param {string}  text    what the board should read
+ * @param {object}  o
+ * @param {number} [o.cells] board width; defaults to the text's own length
+ * @param {number} [o.spins] how many values a digit runs through before landing
+ */
+export async function flipTo(host, text, { cells, spins = 4, stagger = 130 } = {}) {
   if (!host) return;
   const chars = [...String(text)];
-  host.classList.add("flip");
-  host.innerHTML = chars
-    .map((c) => `<span class="flip-d${/\d/.test(c) ? "" : " is-fixed"}"><b>${c}</b></span>`)
-    .join("");
+  const width = cells || chars.length;
 
-  const cells = [...host.querySelectorAll(".flip-d")];
-  if (reduced()) return;                       // already showing the final text
+  /* Built once and reused, so the cells keep their current faces between
+     values — that is what makes the next value flip FROM this one. */
+  if (host.dataset.width !== String(width)) {
+    host.dataset.width = String(width);
+    host.className = (host.className.replace(/\bflip\b/, "").trim() + " flip").trim();
+    host.innerHTML = "";
+    for (let i = 0; i < width; i++) host.appendChild(flapCell());
+  }
 
-  await Promise.all(cells.map(async (cell, i) => {
-    if (cell.classList.contains("is-fixed")) return;
-    const digit = cell.querySelector("b");
+  const board = [...host.children];
+  const want = Array.from({ length: width }, (_, i) => chars[i] ?? "");
+
+  if (reduced()) {
+    board.forEach((cell, i) => {
+      cell.dataset.value = want[i];
+      cell.querySelector("[data-static-up] i").textContent = want[i];
+      cell.querySelector("[data-static-down] i").textContent = want[i];
+    });
+    return;
+  }
+
+  await Promise.all(board.map(async (cell, i) => {
+    if ((cell.dataset.value || "") === want[i]) return;
     await wait(i * stagger);
-    cell.classList.add("is-spinning");
-    for (let k = 0; k < spins; k++) {
-      digit.textContent = String(Math.floor(Math.random() * 10));
-      await wait(tick);
+    /* A digit runs through a few values before it lands; a comma or a blank
+       has nothing to count through and simply turns over once. */
+    const runs = /\d/.test(want[i]) ? spins : 0;
+    for (let k = 0; k < runs; k++) {
+      await tick(cell, String(Math.floor(Math.random() * 10)));
     }
-    digit.textContent = chars[i];
-    cell.classList.remove("is-spinning");
-    cell.classList.add("is-set");
-    await wait(120);
-    cell.classList.remove("is-set");
+    await tick(cell, want[i]);
   }));
 }
 

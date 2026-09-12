@@ -23,36 +23,38 @@
 import { charCascade, flipTo, motion, setInstant, T } from "../motifs.js";
 
 /**
- * FILL THE FRAME. A figure that is the only thing on screen should occupy the
- * screen, and "300,000" and "2" cannot do that at the same font size — seven
- * characters against one. The size is measured rather than guessed, so every
- * number lands at the same visual weight however many digits it has.
+ * FILL THE FRAME, measured from the BOARD rather than from the text.
+ *
+ * A flip board is a fixed number of cells, so its width is known before any
+ * value is in it — four cells at 0.6em each, plus the unit beside them. Sizing
+ * from the rendered characters instead would resize the board every time a
+ * value with fewer digits arrived, which is the one thing a clock must not do.
  */
-function fitFigure(figure, frame) {
+function fitBoard(figure, unit, frame, cells) {
   if (!figure || !frame) return;
-  const room = frame.clientWidth * 0.88;
-  const ceiling = Math.min(380, (frame.ownerDocument.defaultView?.innerHeight || 800) * 0.44);
+  const room = frame.clientWidth * 0.9;
+  const ceiling = Math.min(300, (frame.ownerDocument.defaultView?.innerHeight || 800) * 0.4);
   if (!room) return;
 
-  figure.style.fontSize = `${ceiling}px`;
-  const measured = figure.scrollWidth;
-  if (!measured) return;
-  let size = Math.max(56, Math.min(ceiling, Math.floor((ceiling * room) / measured)));
+  /* Cells are .60em wide with .035em between them, and the unit runs about
+     3.4 characters of its own much smaller size — call it 1.5em of the
+     figure's. Generous rather than exact: too small merely leaves air. */
+  const emWide = cells * 0.635 + (unit && unit.textContent ? 1.5 : 0);
+  const size = Math.max(48, Math.min(ceiling, Math.floor(room / emWide)));
   figure.style.fontSize = `${size}px`;
-
-  /* One correction, because the glyphs are not perfectly proportional. */
-  if (figure.scrollWidth > room) {
-    size = Math.max(56, Math.floor((size * room) / figure.scrollWidth));
-    figure.style.fontSize = `${size}px`;
-  }
 }
 
-const num = (n) => n.toLocaleString("en-US", { maximumFractionDigits: 2 });
+/* A flip clock has no thousands separator — it has cells. Where a beat fixes
+   the board width, the value is written plainly so that "2000" is four cells
+   and not five; everywhere else the separator stays, because a number being
+   read rather than clocked still wants it. */
+const num = (n, cells) =>
+  cells ? String(n) : n.toLocaleString("en-US", { maximumFractionDigits: 2 });
 
 /** What the board reads, figure and unit together, for the line above. */
-const said = (b) => `${num(b.value)}${b.unit ? (b.unit === "%" ? "%" : " " + b.unit) : ""}`;
+const said = (b) => `${num(b.value, b.cells)}${b.unit ? (b.unit === "%" ? "%" : " " + b.unit) : ""}`;
 
-/** One beat: either a figure taking the board, or the section's single line. */
+/** One beat: a figure taking the board, or the section's single line. */
 const beat = (i) => async ({ root, config }) => {
   const b = config.opening.beats[i];
   const frame = root.querySelector("[data-board]");
@@ -76,27 +78,23 @@ const beat = (i) => async ({ root, config }) => {
      goes up, small and quiet, so the new one is read against it. `clear`
      starts a fresh movement, where there is nothing to compare against yet. */
   const previous = config.opening.beats[i - 1];
-  if (b.clear || !figure.textContent.trim() || !previous || previous.line) {
+  if (b.clear || !previous || previous.line || !previous.value) {
     prior.innerHTML = "";
     prior.classList.remove("is-in");
   } else {
-    prior.innerHTML = `<b>${said(previous)}</b> ${previous.label}`;
+    prior.innerHTML = `<b>${said(previous)}</b> ${previous.label || ""}`;
     prior.classList.add("is-in");
   }
 
-  label.classList.remove("is-in");
-  unit.textContent = "";
-
-  /* The figure is measured and sized BEFORE the board starts spinning, or it
-     resizes itself underneath a running animation. */
-  figure.classList.remove("flip");
-  figure.textContent = num(b.value);
-  fitFigure(figure, frame);
-  await flipTo(figure, num(b.value));
-
+  /* The unit and the board are sized before anything turns over, so nothing
+     moves sideways once the clock is running. */
   unit.textContent = b.unit || "";
-  label.textContent = b.label;
-  label.classList.add("is-in");
+  fitBoard(figure, unit, frame, b.cells || num(b.value).length);
+
+  await flipTo(figure, num(b.value, b.cells), { cells: b.cells });
+
+  label.textContent = b.label || "";
+  label.classList.toggle("is-in", Boolean(b.label));
 };
 
 export const opening = {
@@ -127,13 +125,25 @@ export const opening = {
 
   steps: (() => {
     const beats = [];
-    /* The first beat carries the section's arrival with it. */
-    beats.push(async (ctx) => {
-      await Promise.all([
-        charCascade(ctx.root.querySelector("[data-cue]"), { stagger: 55, duration: 1300 }),
-        (async () => { await motion.wait(380); await beat(0)(ctx); })(),
-      ]);
+
+    /* THE NAME, full size and alone. Nothing else is on screen — the board is
+       empty rather than sitting at zero, because a row of noughts is a reading
+       and nothing has been read yet. */
+    beats.push(async ({ root }) => {
+      const cue = root.querySelector("[data-cue]");
+      cue.classList.add("is-big");
+      await charCascade(cue, { stagger: 90, duration: 1200 });
     });
+
+    /* It takes its place, and the clock starts of its own accord. One press
+       for both: the heading moving and the first figure arriving are one
+       gesture, not two. */
+    beats.push(async (ctx) => {
+      ctx.root.querySelector("[data-cue]").classList.remove("is-big");
+      await motion.wait(880);
+      await beat(0)(ctx);
+    });
+
     for (let i = 1; i < 8; i++) beats.push(beat(i));
     return beats;
   })(),

@@ -50,7 +50,10 @@ export const config = {
      One figure at a time, and everything the founder says out loud is in
      `support` rather than printed on the screen for him to read against. */
   opening: {
-    cue: "A need nobody has considered",
+    /* The section opens on this, large, and it shrinks into the corner to
+       become the running heading. Taken from the spec's goal — grounding the
+       room in a need it has never considered. */
+    cue: "The Need",
 
     /* The section's one line, and it is the spec's own wording rather than a
        sentence written for him. The spec is explicit that this section is about
@@ -59,12 +62,16 @@ export const config = {
             source: "The spec's own suggested phrasing, to be said plainly rather than quoted." },
 
     beats: [
-      { value: 2000, unit: "years", label: "of the church", verified: true,
-        source: "Rounded on purpose — the point is the order of magnitude." },
-      { value: 25, unit: "years", label: "of church production as a role", verified: true,
-        source: "Church Production Magazine has served the industry since 1999." },
-      { value: 10, unit: "years", label: "of it being normal", verified: true,
-        source: "2025 church-staffing commentary: the technical director role was uncommon on staff org charts a decade ago." },
+      /* THE YEARS. One board, four cells wide, "years" fixed beside it. No
+         subtext — the founder says what each number is. The board is sized for
+         the longest value in the movement so the digits never shuffle sideways
+         and the unit never moves; 25 and 10 flip their spare cells to blank. */
+      { value: 2000, unit: "years", cells: 4, verified: true,
+        source: "Rounded on purpose — the point is the order of magnitude. Two thousand years of the church." },
+      { value: 25, unit: "years", cells: 4, verified: true,
+        source: "Church production as a role. Church Production Magazine has served the industry since 1999." },
+      { value: 10, unit: "years", cells: 4, verified: true,
+        source: "Years of it being normal. 2025 church-staffing commentary: the technical director role was uncommon on staff org charts a decade ago." },
 
       { line: true },
 
