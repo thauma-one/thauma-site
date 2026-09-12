@@ -410,6 +410,26 @@ export async function showOnly(root, name, { keep = [], out = 340 } = {}) {
   return next;
 }
 
+/**
+ * ONE FIGURE, REPLACED. The old number withdraws and the new one rolls in on
+ * the character cascade, so a sequence of figures reads as one board changing
+ * rather than as three separate slides. Counting up was the alternative and it
+ * reads as a slot machine — it draws attention to the counting rather than to
+ * the number it lands on, and it is slow in a place where a presenter is
+ * already talking.
+ */
+export async function swapFigure(host, text, { stagger = 55, duration = 900 } = {}) {
+  if (!host) return;
+  if (host.textContent.trim()) {
+    host.classList.add("is-swapping");
+    await wait(300);
+    host.classList.remove("is-swapping");
+  }
+  host.classList.remove("cc");
+  host.textContent = text;
+  await charCascade(host, { stagger, duration });
+}
+
 let beatGate = null;
 export function setBeatGate(fn) { beatGate = fn; }
 

@@ -78,6 +78,21 @@ html, body {
   transition-timing-function: cubic-bezier(.55, .05, .45, .95); }
 .cc-char.is-in { transform: none; }
 
+/* A figure leaving before the next one takes its place. */
+.is-swapping { opacity: 0; transform: translateY(-18px);
+  transition: opacity .28s ease, transform .28s cubic-bezier(.42, 0, .28, 1); }
+
+/* THE FIELD. A thousand dots, and however few are lit. The unlit ones are the
+   argument, exactly as the open seats are in the ask — so it is drawn in the
+   same language rather than as a chart. */
+.field { display: grid; grid-template-columns: repeat(40, 1fr);
+  gap: clamp(2px, .38vw, 5px); width: 100%; max-width: 900px; }
+.field i { display: block; aspect-ratio: 1; border-radius: 50%;
+  background: var(--line); opacity: .5;
+  transition: background .5s ease, opacity .5s ease, box-shadow .5s ease; }
+.field.is-lit i.on { background: var(--blue); opacity: 1;
+  box-shadow: 0 0 0 2px var(--blue-dim), 0 0 14px var(--blue-glow, rgba(47,216,255,.55)); }
+
 /* A movement that has been made withdraws upward, the way one line of thought
    gives way to the next, rather than staying on screen forever underneath the
    one that replaced it. */

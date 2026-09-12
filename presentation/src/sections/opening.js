@@ -12,7 +12,7 @@
  * from, and it quietly establishes that real relationships already exist on
  * the ground.
  */
-import { el, countTo, cascade, charCascade, showOnly, scaleCollapse,
+import { el, cascade, charCascade, swapFigure, showOnly, scaleCollapse,
          setInstant, motion, T } from "../motifs.js";
 
 /* Deliberately not cartographic. A recognizable silhouette carries "United
@@ -38,41 +38,45 @@ function pins(count, seed, spread) {
   }).join("");
 }
 
+/* Which dots are lit, chosen once rather than at random — the same slide has
+   to look the same in two different meetings. Spread apart so they do not read
+   as one smudge. */
+const LIT = new Set([383, 712]);
+
+/* The second and third figures are the same beat with a different index. */
+const ageBeat = (i) => async ({ root, config }) => {
+  const part = await showOnly(root, "age");
+  const a = config.opening.age[i];
+  await swapFigure(part.querySelector("[data-age-value]"), a.value.toLocaleString("en-US"));
+  part.querySelector("[data-age-label]").textContent = a.label;
+};
+
 export const opening = {
   key: "opening",
   title: "Opening",
 
   render({ config }) {
     const o = config.opening;
-    const total = o.religion.reduce((n, r) => n + r.share, 0);
-    let angle = -90;
-    const slices = o.religion.map((r) => {
-      const sweep = (r.share / total) * 360;
-      const s = { ...r, from: angle, to: angle + sweep };
-      angle += sweep;
-      return s;
-    });
-
     return el(`
       <div class="slide">
         <p class="cue" data-cue>The work nobody names</p>
 
-        <div class="stack" data-part="vocation" hidden>
-          ${o.vocation.map((v) => `<p class="lead in" data-v>${v.text}</p>`).join("")}
-          <div class="quiet in" data-v>
-            ${o.invisibility.map((line) => `<p>${line}</p>`).join("")}
-          </div>
+        <!-- ONE BOARD, three numbers. The proportion between two thousand and
+             twenty-five is the entire argument, and a proportion is something a
+             room should see rather than hear read out. -->
+        <div data-part="age" hidden>
+          <div class="figure" data-age-value></div>
+          <div class="figure-label" data-age-label></div>
+          <p class="lead in" data-heart>${o.heart.text}</p>
         </div>
 
         <div data-part="usa" hidden>
           <div class="figure-row">
-            <div><div class="figure" data-count="churches">0</div>
+            <div><div class="figure" data-count="churches"></div>
                  <div class="figure-label">${o.usa.churches.label}</div></div>
-            <div><div class="figure" data-count="typical">0</div>
+            <div><div class="figure" data-count="typical"></div>
                  <div class="figure-label">${o.usa.typical.label}</div></div>
           </div>
-          <p class="in" data-u>${o.usa.tension.oneInThree}</p>
-          <p class="in" data-u>${o.usa.tension.topTenth}</p>
           <p class="lead in" data-u>${o.usa.tension.point}</p>
         </div>
 
@@ -92,60 +96,64 @@ export const opening = {
         </div>
 
         <div data-part="croatia" hidden>
-          <p class="lead in" data-c>${o.croatia.attribution}</p>
           <div class="figure-row">
-            <div><div class="figure" data-count="protestants">0</div>
+            <div><div class="figure" data-count="protestants"></div>
                  <div class="figure-label">${o.croatia.protestants.label}</div></div>
-            <div><div class="figure" data-count="average">0</div>
+            <div><div class="figure" data-count="average"></div>
                  <div class="figure-label">${o.croatia.averageCongregation.label}</div></div>
-            <div><div class="figure" data-count="largest">0</div>
+            <div><div class="figure" data-count="largest"></div>
                  <div class="figure-label">${o.croatia.largestKnown.label}</div></div>
           </div>
+          <p class="lead in" data-c>${o.croatia.anchor}</p>
         </div>
 
-        <div data-part="pie" hidden>
-          <svg viewBox="-110 -110 220 220" class="pie" aria-label="Croatia's religious makeup">
-            ${slices.map((s) => `
-              <path class="slice${s.emphasis ? " is-tiny" : ""}" data-slice="${s.name}"
-                    d="${arc(s.from, s.to)}"/>`).join("")}
-          </svg>
-          <p class="figure-label in" data-c>
-            Protestant: ${o.croatia.share.value} per cent of the country.
-          </p>
+        <!-- A pie cannot draw 0.18%. A thousand dots can. -->
+        <div data-part="field" hidden>
+          <div class="field" data-field>
+            ${Array.from({ length: o.field.of }, (_, i) =>
+              `<i${LIT.has(i) ? ' class="on"' : ""}></i>`).join("")}
+          </div>
+          <p class="figure-label in" data-f>${o.field.label}</p>
         </div>
       </div>
     `);
   },
 
   steps: [
-    /* THE ARRIVAL. Heading rolls in on the site's character cascade, the claim
-       lands under it, and the two quiet lines follow — about three seconds,
-       unattended, the way the timeline opens. An entrance is not something a
-       presenter should have to press through. */
-    async ({ root }) => {
-      const part = await showOnly(root, "vocation");
+    /* THE ARRIVAL, and the first of the three figures. */
+    async ({ root, config }) => {
+      const part = await showOnly(root, "age");
+      part.querySelector("[data-heart]").classList.remove("is-in");
+      const a = config.opening.age[0];
       await Promise.all([
         charCascade(root.querySelector("[data-cue]"), { stagger: 55, duration: 1300 }),
         (async () => {
-          await motion.wait(500);
-          for (const line of part.querySelectorAll(".lead")) {
-            line.classList.add("is-in");
-            await motion.wait(520);
-          }
-          await motion.wait(260);
-          part.querySelector(".quiet").classList.add("is-in");
+          await motion.wait(420);
+          await swapFigure(part.querySelector("[data-age-value]"), a.value.toLocaleString("en-US"));
+          part.querySelector("[data-age-label]").textContent = a.label;
         })(),
       ]);
     },
 
-    /* Familiar ground. The counts are eased rather than linear so they feel
-       like they are building toward something, not being read out. */
+    /* Twenty-five, against two thousand. */
+    ageBeat(1),
+    /* And ten, against twenty-five. */
+    ageBeat(2),
+
+    /* The one moment in the section that is about him rather than the field. */
+    async ({ root }) => {
+      await showOnly(root, "age");
+      root.querySelector("[data-heart]").classList.add("is-in");
+    },
+
+    /* Familiar ground. The figures roll in rather than counting up — a count
+       draws attention to the counting instead of to what it lands on. */
     async ({ root, config }) => {
       const part = await showOnly(root, "usa");
       const o = config.opening.usa;
       await Promise.all([
-        countTo(part.querySelector('[data-count="churches"]'), o.churches.value, { duration: T.slow }),
-        countTo(part.querySelector('[data-count="typical"]'), o.typical.value, { duration: T.slow }),
+        swapFigure(part.querySelector('[data-count="churches"]'), o.churches.value.toLocaleString("en-US")),
+        swapFigure(part.querySelector('[data-count="typical"]'), String(o.typical.value)),
       ]);
       await cascade([...part.querySelectorAll("[data-u]")], { gap: 260 });
     },
@@ -160,29 +168,26 @@ export const opening = {
     },
 
     /* The personal numbers land while the mismatch is still visually fresh, so
-       the map it refers to stays on screen under them. */
+       the map they refer to stays on screen under them. */
     async ({ root, config }) => {
       const part = await showOnly(root, "croatia", { keep: ["maps"] });
-      /* The map is context for these numbers now, so it gives them the room. */
       root.querySelector('[data-part="maps"]')?.classList.add("is-behind");
       const c = config.opening.croatia;
-      await cascade([part.querySelector("[data-c]")], { gap: 0 });
       await Promise.all([
-        countTo(part.querySelector('[data-count="protestants"]'), c.protestants.value),
-        countTo(part.querySelector('[data-count="average"]'), c.averageCongregation.value),
-        countTo(part.querySelector('[data-count="largest"]'), c.largestKnown.value),
+        swapFigure(part.querySelector('[data-count="protestants"]'), c.protestants.value.toLocaleString("en-US")),
+        swapFigure(part.querySelector('[data-count="average"]'), String(c.averageCongregation.value)),
+        swapFigure(part.querySelector('[data-count="largest"]'), String(c.largestKnown.value)),
       ]);
+      await cascade([...part.querySelectorAll("[data-c]")], { gap: 0 });
     },
 
-    /* The slice pops outward. The motion itself communicates smallness —
-       something you would miss if it were not pointed at. */
+    /* A thousand dots, and two of them. Nothing else on the screen. */
     async ({ root }) => {
-      const part = await showOnly(root, "pie");
+      const part = await showOnly(root, "field");
       await motion.wait(T.quick);
-      part.querySelector(".pie").classList.add("is-drawn");
+      part.querySelector("[data-field]").classList.add("is-lit");
       await motion.wait(T.slow);
-      part.querySelector(".slice.is-tiny")?.classList.add("is-out");
-      await cascade([...part.querySelectorAll("[data-c]")], { gap: 200 });
+      await cascade([...part.querySelectorAll("[data-f]")], { gap: 0 });
     },
   ],
 
@@ -197,14 +202,3 @@ export const opening = {
     finally { setInstant(false); }
   },
 };
-
-/** One pie slice as a path. Radius fixed; the viewBox is centered on zero. */
-function arc(from, to) {
-  const r = 96;
-  const p = (deg) => {
-    const rad = (deg * Math.PI) / 180;
-    return `${(Math.cos(rad) * r).toFixed(2)} ${(Math.sin(rad) * r).toFixed(2)}`;
-  };
-  const large = to - from > 180 ? 1 : 0;
-  return `M 0 0 L ${p(from)} A ${r} ${r} 0 ${large} 1 ${p(to)} Z`;
-}
