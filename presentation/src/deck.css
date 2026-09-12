@@ -89,8 +89,37 @@ html, body {
    is centered in the deck, so a slide holding only a title is short and centers
    the title low — then the board fills and everything jumps upward. Reserving
    the room means the title shrinks to the place it will actually stay in. */
-.slide.is-board { gap: clamp(14px, 2.4vh, 26px); min-height: 66vh;
-  justify-content: flex-start; }
+.slide.is-board { gap: 0; min-height: 74vh; justify-content: flex-start; }
+
+/* ROOM, AND THE NUMBER IN THE MIDDLE OF IT. The clock sat directly under the
+   heading against the top of the screen, which reads as a caption with a big
+   figure attached rather than as a board somebody is being shown. It takes the
+   space below the heading and centers itself in it. */
+.board { flex: 1 1 auto; display: flex; flex-direction: column;
+  justify-content: center; align-items: center;
+  margin-top: clamp(26px, 7vh, 96px); width: 100%; }
+
+/* Both stages arrive from below and leave upward, the same grammar the deck
+   uses between sections — nothing in this section cuts now. */
+.board, .countries { transition: opacity .36s ease,
+                                 translate .36s cubic-bezier(.42, 0, .28, 1); }
+.board.is-out, .countries.is-out { opacity: 0; translate: 0 -18px; }
+.board.is-pre, .countries.is-pre { opacity: 0; translate: 0 20px; transition: none; }
+
+/* THE HORIZON. The seam that splits every digit, carried the full width of the
+   screen so the board stands on a line rather than floating in the middle of
+   an empty page. It is the schedule's rule, reused — the deck should not have
+   two different ideas about what a horizontal line means. */
+.board-row { position: relative; }
+/* Centered on the ROW, which is not centered on the screen — the unit beside
+   the digits pulls it off by a couple of hundred pixels, and a line exactly one
+   viewport wide then stopped short of the right edge. Wide enough that the
+   offset cannot reach either end. */
+.board-horizon { position: absolute; left: 50%; top: 50%;
+  width: 300vw; height: 1px; margin-left: -150vw; background: var(--line);
+  clip-path: inset(0 100% 0 0);
+  transition: clip-path 1100ms cubic-bezier(.42, 0, .28, 1); }
+.board-horizon.is-drawn { clip-path: inset(0 0 0 0); }
 
 /* THE SECTION'S NAME ARRIVES FULL SIZE and then takes its place. It opens as
    the only thing on screen, cascading in a character at a time, and on the next
@@ -165,7 +194,8 @@ html, body {
 
 .board-label { font-size: clamp(16px, 1.9vw, 25px); color: var(--dim);
   margin-top: clamp(18px, 3.2vh, 42px); }
-.board-row { display: flex; align-items: baseline; gap: .18em; }
+.board-row { display: flex; align-items: baseline; gap: .18em;
+  justify-content: center; }
 .board-unit { color: var(--dim); margin-left: .1em;
   font-size: clamp(20px, 2.6vw, 38px); font-family: 'Sora', sans-serif;
   font-weight: 200; letter-spacing: .02em; }

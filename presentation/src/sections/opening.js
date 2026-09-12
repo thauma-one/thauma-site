@@ -174,6 +174,34 @@ function slideIntoPlace(nodes, rearrange, ms = 760) {
 /** What the board reads, figure and unit together, for the line above. */
 const said = (b) => `${num(b.value, b.cells)}${b.unit ? (b.unit === "%" ? "%" : " " + b.unit) : ""}`;
 
+/**
+ * THE STAGES CHANGE, they do not cut. Going from the clock to the countries
+ * swapped one for the other in a single frame, which is the only hard cut left
+ * in the section. The one leaving withdraws upward and the one arriving comes
+ * up from below, the same grammar the deck uses between sections.
+ */
+async function swapStage(root, wanted) {
+  const board = root.querySelector("[data-board]");
+  const countries = root.querySelector("[data-countries]");
+  const leaving = wanted === "board" ? countries : board;
+  const entering = wanted === "board" ? board : countries;
+
+  if (!leaving.hidden) {
+    leaving.classList.add("is-out");
+    await motion.wait(360);
+    leaving.hidden = true;
+    leaving.classList.remove("is-out");
+  }
+  if (entering.hidden) {
+    entering.classList.add("is-pre");
+    entering.hidden = false;
+    /* Two frames, or the un-hiding and the arrival collapse into one paint. */
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    entering.classList.remove("is-pre");
+    await motion.wait(320);
+  }
+}
+
 /** One beat: a figure taking the board. */
 const beat = (i) => async ({ root, config }) => {
   const b = config.opening.beats[i];
@@ -181,13 +209,15 @@ const beat = (i) => async ({ root, config }) => {
   const figure = root.querySelector("[data-figure]");
   const unit = root.querySelector("[data-unit]");
 
-  root.querySelector("[data-board]").hidden = false;
-  root.querySelector("[data-countries]").hidden = true;
+  await swapStage(root, "board");
 
   /* The unit and the board are sized before anything turns over, so nothing
      moves sideways once the clock is running. */
   unit.textContent = b.unit || "";
   fitBoard(figure, unit, frame, b.cells || num(b.value, b.cells).length);
+
+  /* The line is drawn once, under the first figure, and stays for the rest. */
+  root.querySelector("[data-horizon]").classList.add("is-drawn");
 
   await flipTo(figure, num(b.value, b.cells), { cells: b.cells });
 };
@@ -206,6 +236,7 @@ export const opening = {
       <!-- A number and its unit. Nothing else belongs on a clock face. -->
       <div class="board" data-board>
         <div class="board-row">
+          <span class="board-horizon" data-horizon aria-hidden="true"></span>
           <div class="figure board-figure" data-figure></div>
           <span class="board-unit" data-unit></span>
         </div>
@@ -265,16 +296,14 @@ export const opening = {
 
     /* America, then Croatia, then the two of them together. */
     const stage = (keys, { maps = true } = {}) => async ({ root, config, gate }) => {
-      root.querySelector("[data-board]").hidden = true;
       const box = root.querySelector("[data-countries]");
-      box.hidden = false;
       if (keys.length === 1) {
         box.classList.remove("is-pair", "no-maps");
         for (const c of config.opening.countries) {
           root.querySelector(`[data-country="${c.key}"]`).hidden = !keys.includes(c.key);
         }
       }
-      await new Promise((r) => requestAnimationFrame(r));
+      await swapStage(root, "countries");
 
       if (keys.length > 1) {
         /* THE COMPARISON. Croatia is already up and already read, so it travels
@@ -284,10 +313,19 @@ export const opening = {
         const arriving = root.querySelector('[data-country="us"]');
         arriving.classList.remove("is-in");
 
-        slideIntoPlace([staying], () => {
-          box.classList.add("is-pair", "no-maps");
-          arriving.hidden = false;
-        });
+        /* THE THINGS THAT STAY ON SCREEN ARE WHAT HAS TO TRAVEL — the name and
+           the figures, not the card around them. Moving the card looked wrong
+           for a real reason: the disc vanishes in the same instant, so the
+           figures leap up inside the card before the card has gone anywhere.
+           Croatia appeared to jump to the top and then come down. Carrying the
+           parts a person is actually looking at takes them straight from where
+           they were to where they land. */
+        slideIntoPlace(
+          [staying.querySelector(".country-name"), staying.querySelector(".country-stats")],
+          () => {
+            box.classList.add("is-pair", "no-maps");
+            arriving.hidden = false;
+          });
 
         setStats(root, config.opening.countries.find((c) => c.key === "us"));
         arriving.classList.remove("is-in");
