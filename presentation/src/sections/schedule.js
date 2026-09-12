@@ -17,7 +17,7 @@
  * by the Worker and talks to the API, and this file has to run from a memory
  * stick with no network.
  */
-import { el, focusPoint, cascade, motion, T } from "../motifs.js";
+import { el, focusPoint, charCascade, motion, T } from "../motifs.js";
 
 /* MONTHS, NOT DAYS. None of these dates are actually nailed down — the first
    one is still marked unverified in the config — and a slide that says
@@ -92,7 +92,7 @@ export const schedule = {
     const ms = config.timeline.milestones;
     return el(`
       <div class="slide">
-        <p class="cue in" data-open>What happens next</p>
+        <p class="cue" data-cue>What happens next</p>
         <div class="track-window">
           <div class="track">
             <!-- The line. It is called a timeline and there was not one: five
@@ -130,41 +130,55 @@ export const schedule = {
        This is one beat, not several: it is an entrance, and a presenter should
        not have to press four times to finish arriving. */
     beats.push(async ({ root, config }) => {
-      await cascade([...root.querySelectorAll("[data-open]")], { gap: 0 });
-
-      /* LEAD-IN ROOM. The track is laid out from x=0, so building it where it
-         sits puts the first milestone hard against the left edge and pushes
-         today's marker — which belongs BEFORE the first milestone — clean off
-         the screen. Park the line so the first date sits at about two fifths
-         across, leaving the run-up visible. Set without a transition, because
-         this is where the section begins rather than somewhere it travels. */
       const track = root.querySelector(".track");
       const first = root.querySelector("[data-point]");
+
+      /* LEAD-IN ROOM. The track is laid out from x=0, so building it where it
+         sits puts February hard against the left edge and pushes today's
+         marker — which belongs BEFORE the first milestone — off the screen.
+         Park the line so the first date sits about two fifths across. Set
+         without a transition: this is where the section begins, not somewhere
+         it traveled to. */
       if (track && first) {
         const win = track.parentElement.clientWidth;
         const lead = win * 0.42 - (first.offsetLeft + first.offsetWidth / 2);
         track.style.transition = "none";
         track.style.transform = `translateX(${Math.round(lead)}px)`;
-        void track.offsetWidth;            // commit it before motion resumes
+        void track.offsetWidth;
         track.style.transition = "";
       }
 
-      root.querySelector(".track-rule").classList.add("is-drawn");
-      await motion.wait(T.normal);
+      /* AT THE SAME TIME, NOT IN A QUEUE. Run one after another this ran past
+         five seconds, which is a long time to stand in front of somebody
+         waiting for a slide to finish assembling itself. Overlapped, the whole
+         arrival is under three: the line starts travelling immediately, the
+         heading rolls in over it, the dates land on the line once there is a
+         line to land on, and today's marker fades up last. */
+      await Promise.all([
+        (async () => { root.querySelector(".track-rule").classList.add("is-drawn"); })(),
 
-      for (const point of root.querySelectorAll("[data-point]")) {
-        point.classList.add("is-built");
-        await motion.wait(T.quick * 0.45);
-      }
+        charCascade(root.querySelector("[data-cue]"), { stagger: 40, duration: 1000 }),
 
-      placeNow(root, config.timeline.milestones);
-      await motion.wait(T.normal);
+        (async () => {
+          await motion.wait(420);
+          for (const point of root.querySelectorAll("[data-point]")) {
+            point.classList.add("is-built");
+            await motion.wait(105);
+          }
+        })(),
 
-      await focusPoint(track, 0);
+        (async () => {
+          await motion.wait(1250);
+          placeNow(root, config.timeline.milestones);
+        })(),
+      ]);
+
+      await focusPoint(track, 0, { duration: 700 });
     });
+
     for (let i = 1; i < 5; i++) {
       beats.push(async ({ root }) => {
-        await focusPoint(root.querySelector(".track"), i);
+        await focusPoint(root.querySelector(".track"), i, { duration: 700 });
       });
     }
     return beats;

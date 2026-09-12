@@ -255,6 +255,7 @@ async function rewindTo(sectionIndex, step) {
   state.nav.step = 0;
   replaying = true;
   setInstant(true);
+  root.classList.add("is-replaying");
   try {
     await renderNow();
     const steps = currentSection()?.steps || [];
@@ -272,6 +273,11 @@ async function rewindTo(sectionIndex, step) {
        cut, which is exactly what it looked like before this. */
     if (step > 0 && step < steps.length) {
       setInstant(false);
+      /* Motion comes back one frame before the destination beat runs, or the
+         browser folds the un-freezing and the beat into a single paint and the
+         arrival is instant after all. */
+      root.classList.remove("is-replaying");
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
       state.nav.step = step;
       try { await steps[step]({ root, config, state, gate }); }
       catch (err) { console.error("replay step failed:", err); }
@@ -279,6 +285,7 @@ async function rewindTo(sectionIndex, step) {
   } finally {
     setInstant(false);
     replaying = false;
+    root.classList.remove("is-replaying");
   }
 }
 

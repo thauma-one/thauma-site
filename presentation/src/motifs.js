@@ -241,7 +241,10 @@ export async function focusPoint(track, index, { duration = T.normal } = {}) {
   track.style.transform = `translateX(${center - point.offsetLeft - point.offsetWidth / 2}px)`;
   await wait(duration * 0.55);
   track.classList.remove("is-wide");
-  await wait(duration * 0.4);
+  /* Just enough for the pull-back to settle. This was a further 40% of the
+     travel spent holding still, which on a five-stop line is most of a second
+     of nothing between every milestone. */
+  await wait(duration * 0.15);
 }
 
 /* ============================================================== MOTIF 3
@@ -325,6 +328,46 @@ export async function countTo(el, value, { duration = T.slow, format } = {}) {
    It lives at module scope rather than being threaded through every call site
    because EVERY narrative reveal in the deck should wait for the person
    talking. Making that the default is the point; the exceptions opt out. */
+/**
+ * THE CHARACTER CASCADE, carried over from the site's page wheel.
+ *
+ * Each character rolls down into place on its own, staggered left to right, so
+ * a label arrives as a movement rather than as text switching on. The numbers
+ * are the site's: 40ms of stagger, a 1.3s roll, and the symmetric ease-in-out
+ * that replaced an ease-out there for reading too abrupt at the start of each
+ * character's roll. Matching them is the point — the deck and the site should
+ * not hold two different ideas about how type arrives.
+ *
+ * The resting DOM stays correct. If this never runs the label is simply there,
+ * which is what a blocked script ought to cost.
+ */
+export async function charCascade(host, { stagger = 40, duration = 1300 } = {}) {
+  if (!host) return;
+  const text = host.textContent;
+  if (reduced() || instant) return;          // the words are already in place
+
+  host.textContent = "";
+  host.classList.add("cc");
+  const chars = [...text].map((ch, i) => {
+    const box = document.createElement("span");
+    box.className = "cc-box";
+    const inner = document.createElement("span");
+    inner.className = "cc-char";
+    /* A real space collapses inside an inline-block and the label loses its
+       word gaps, so it is carried as a non-breaking one. */
+    inner.textContent = ch === " " ? "\u00a0" : ch;
+    inner.style.transitionDelay = `${i * stagger}ms`;
+    inner.style.transitionDuration = `${duration}ms`;
+    box.appendChild(inner);
+    host.appendChild(box);
+    return inner;
+  });
+
+  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  for (const c of chars) c.classList.add("is-in");
+  await wait(duration + stagger * chars.length);
+}
+
 let beatGate = null;
 export function setBeatGate(fn) { beatGate = fn; }
 
