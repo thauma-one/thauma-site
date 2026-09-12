@@ -33,104 +33,78 @@ export const config = {
   },
 
   /* ---------------------------------------------------------------- SECTION 1 */
-  opening: {
-    /* THE ROLE'S AGE, one figure at a time. The argument is a proportion — two
-       thousand years of the church, twenty-five of this job, ten of it being
-       normal — and a proportion is something a room should see rather than
-       hear read out. One press per number; the founder says the rest. */
-    age: [
-      { value: 2000, label: "years of the church", verified: true,
-        source: "Rounded, and deliberately so — the point is the order of magnitude." },
-      { value: 25, label: "years of church production as a role", verified: true,
-        source: "Church Production Magazine has served the industry since 1999." },
-      { value: 10, label: "years of it being normal", verified: true,
-        source: "2025 church-staffing commentary: the technical director role was uncommon on staff org charts a decade ago." },
-    ],
+  /* ---------------------------------------------------------------- SECTION 1
+     NUMBERS, ALONE.
 
-    /* THE LINE THAT FOLLOWS THE NUMBERS. A DRAFT, in the founder's register but
-       not in his words — replace it before presenting. It is the one moment in
-       the section that is about him rather than about the field, and it should
-       sound like him. */
+     The section's job, in the founder's words, is that the room leaves it
+     thinking "that gap is much bigger than I realised". So it is one device
+     the whole way through — a single board, one figure at a time, filling the
+     frame — and the gap is made VISIBLE rather than remembered: the number
+     just left stays on screen above the new one, small and dimmed, so
+     300,000 and 7,000 are looked at together rather than one after the other.
+
+     The nouns carry the rest. "Churches in the United States" against
+     "Protestants in all of Croatia" is the whole argument, and it is the one
+     thing that must not be softened into matching units.
+
+     Everything the founder would otherwise read aloud is gone. */
+  opening: {
     heart: { text: "I have done this work. I know what it costs to be the person nobody names.",
              verified: false,
              source: "PLACEHOLDER written by Claude. The founder's own sentence goes here." },
 
-    vocation: [
-      { text: "Church production is about 25 years old as a role in the church.",
-        source: "Church Production Magazine has served the industry since 1999.",
-        verified: true },
-      { text: "It has only been normal for about ten.",
-        source: "2025 church-staffing commentary: the technical director role was uncommon on staff org charts a decade ago.",
-        verified: true },
-      { text: "No seminary track. No training pipeline. The role appeared faster than anything built to support it.",
-        source: "Stated plainly, in the founder's own words.", verified: true },
-    ],
-    /* Said, not quoted. The spec forbids borrowed authority where firsthand
-       knowledge carries the point. */
-    invisibility: [
-      "Nobody puts the tech booth on the church website.",
-      "Nobody's testimony starts with the sound guy.",
+    beats: [
+      { value: 2000, label: "years of the church", verified: true,
+        source: "Rounded on purpose — the point is the order of magnitude." },
+      { value: 25, label: "years of church production as a role", verified: true,
+        source: "Church Production Magazine has served the industry since 1999." },
+      { value: 10, label: "years of it being normal", verified: true,
+        source: "2025 church-staffing commentary: the technical director role was uncommon on staff org charts a decade ago." },
+
+      { heart: true },
+
+      /* A new movement, so the board is cleared before it. */
+      { value: 300000, label: "churches in the United States", clear: true, verified: true,
+        source: "Derived from Worship Leader Magazine's size-tier breakdown — 177,000 small churches at 59% implies ~300,000 total; cross-checked against Hartford Institute megachurch counts." },
+      /* THE GAP. Churches there, people here — and 300,000 is still on screen. */
+      { value: 7000, label: "Protestants in all of Croatia", verified: false,
+        source: "Estimate from a local ministry leader in personal relationship with the founder. Corroborated: Evangelical (Lutheran) Church reports 3,600 across 13 congregations; Reformed Christian Church 3,000-4,000 across 21-23. Combined 6,600-7,600." },
+      { value: 35, label: "in a typical congregation there", verified: false,
+        source: "The founder's own relationships among Baptist congregations — not a national survey. Say so if asked." },
+      { value: 2, label: "per thousand Croatians", verified: false,
+        source: "0.18 per cent, rounded to something a room can hold." },
     ],
 
-    usa: {
-      churches: { value: 300000, label: "churches in the United States",
-        source: "Derived from Worship Leader Magazine's size-tier breakdown — 177,000 small churches at 59% implies ~300,000 total; cross-checked against Hartford Institute megachurch counts.",
-        verified: true },
-      typical: { value: 60, label: "people on a typical Sunday",
-        source: "Same size-tier breakdown — the most common church size.", verified: true },
-      /* ONE LINE, not three. The other two facts — one in three Protestants in
-         a church of 1,000+, the largest tenth holding 70–75% of churchgoers —
-         are things the founder says out loud. They stay in `support` so the
-         prep screen can still show where they came from, but a slide that
-         prints what its presenter is about to say is competing with him. */
-      tension: {
-        point: "Most churches are small. Most people's experience of church is a bigger room.",
-        support: [
-          "One in three American Protestants attend a church of 1,000 or more.",
-          "The largest 10% of churches hold 70–75% of all churchgoers.",
-        ],
-        source: "Christianity Today, July 2026, citing Hartford Institute / Scott Thumma research.",
-        verified: true },
+    /* KEPT FOR THE PREP SCREEN, not drawn. These are the things the founder
+       says out loud, and their sourcing still has to be somewhere he can check
+       it before walking in. */
+    support: {
+      typicalUS: { value: 60, label: "people in a typical American church", verified: true,
+        source: "Same size-tier breakdown — the most common church size." },
+      oneInThree: { text: "One in three American Protestants attend a church of 1,000 or more.",
+        verified: true, source: "Christianity Today, July 2026, citing Hartford Institute / Scott Thumma." },
+      topTenth: { text: "The largest 10% of churches hold 70-75% of all churchgoers.",
+        verified: true, source: "Same." },
+      largestKnown: { value: 120, label: "in one of the larger Croatian churches he knows",
+        verified: false, source: "The founder's own relationships." },
+      invisibility: { text: "Nobody puts the tech booth on the church website. Nobody's testimony starts with the sound guy.",
+        verified: true, source: "Stated plainly, in the founder's own words." },
+
+      /* Croatia's religious makeup. No longer drawn — a pie cannot render the
+         0.18% it existed to show — but the figures are real and one of them is
+         explicitly unsourced, so the record stays where the prep screen can
+         still put it in front of the founder before he walks in. Deleting the
+         chart must not quietly delete what was known about its numbers. */
+      religion: [
+        { name: "Catholic", share: 82, verified: true,
+          source: "Catholic Church in Croatia reports 3,215,177 members (2021) against ~3.9M population." },
+        { name: "Orthodox", share: 4.4, verified: false,
+          source: "NOT YET SOURCED. The spec flags this as needing verification before use." },
+        { name: "Other / none", share: 13.42, verified: false, source: "Remainder." },
+        { name: "Protestant", share: 0.18, verified: false,
+          source: "See beats — seven thousand people, country-wide." },
+      ],
     },
-
-    croatia: {
-      population: { value: 3900000, label: "people in Croatia", verified: true },
-      protestants: { value: 7000, label: "Protestants, country-wide",
-        source: "Estimate from a local ministry leader in personal relationship with the founder. Corroborated: Evangelical (Lutheran) Church reports 3,600 across 13 congregations; Reformed Christian Church reports 3,000–4,000 across 21–23. Combined 6,600–7,600.",
-        verified: false },
-      share: { value: 0.18, label: "per cent of the country", verified: false },
-      averageCongregation: { value: 35, label: "people in a typical congregation",
-        source: "The founder's own relationships among Baptist congregations — not a national survey. Say so if asked.",
-        verified: false },
-      largestKnown: { value: 120, label: "in one of the larger churches he knows",
-        source: "Same — the founder's own relationships.", verified: false },
-      /* The framing the spec asks for: personal knowledge, not a database. */
-      attribution: "A ministry leader I'm in relationship with there puts the whole country's Protestant community at around seven thousand people.",
-      /* The slide's one line. The attribution above is what the founder SAYS —
-         where the number came from, and that it came from a friendship rather
-         than a database. Printing it would be printing his own script. */
-      anchor: "Seven thousand, in a country of four million.",
-    },
-
-    /* THE FIELD. A pie cannot show 0.18% — the slice is thinner than a pixel at
-       any size, which is why the chart read as decoration. A thousand dots with
-       two lit is the same fact, and it is the only form of it a room can
-       actually see. Same visual idea as the crew figures in the ask: the
-       unlit ones are the argument. */
-    field: { of: 1000, lit: 2, label: "Protestants, per thousand Croatians",
-             verified: false, source: "See croatia.share — 0.18 per cent." },
-
-    /* Kept for the prep screen's sourcing, no longer drawn as a chart.
-       Orthodox is the one figure the spec explicitly leaves unsourced. */
-    religion: [
-      { name: "Catholic", share: 82, verified: true,
-        source: "Catholic Church in Croatia reports 3,215,177 members (2021) against ~3.9M population." },
-      { name: "Orthodox", share: 4.4, verified: false,
-        source: "NOT YET SOURCED. The spec flags this as needing verification before use." },
-      { name: "Other / none", share: 13.42, verified: false, source: "Remainder." },
-      { name: "Protestant", share: 0.18, verified: false, emphasis: true,
-        source: "See croatia.protestants above." },
-    ],
   },
 
   /* ---------------------------------------------------------------- SECTION 2 */

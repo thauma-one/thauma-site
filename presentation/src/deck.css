@@ -82,16 +82,22 @@ html, body {
 .is-swapping { opacity: 0; transform: translateY(-18px);
   transition: opacity .28s ease, transform .28s cubic-bezier(.42, 0, .28, 1); }
 
-/* THE FIELD. A thousand dots, and however few are lit. The unlit ones are the
-   argument, exactly as the open seats are in the ask — so it is drawn in the
-   same language rather than as a chart. */
-.field { display: grid; grid-template-columns: repeat(40, 1fr);
-  gap: clamp(2px, .38vw, 5px); width: 100%; max-width: 900px; }
-.field i { display: block; aspect-ratio: 1; border-radius: 50%;
-  background: var(--line); opacity: .5;
-  transition: background .5s ease, opacity .5s ease, box-shadow .5s ease; }
-.field.is-lit i.on { background: var(--blue); opacity: 1;
-  box-shadow: 0 0 0 2px var(--blue-dim), 0 0 14px var(--blue-glow, rgba(47,216,255,.55)); }
+/* ---- Section 1: the board -------------------------------------------
+   One figure at a time, filling the frame, with the one it replaced kept
+   above it so the gap between them is looked at rather than remembered. */
+.slide.is-board { gap: clamp(14px, 2.4vh, 26px); }
+.board { display: flex; flex-direction: column; align-items: flex-start;
+  width: 100%; }
+
+/* The number just left. Small, quiet, and still there. */
+.board-prior { min-height: 1.5em; color: var(--dim); font-size: clamp(14px, 1.4vw, 18px);
+  letter-spacing: .02em; }
+.board-prior b { font-family: 'Sora', sans-serif; font-weight: 200; color: var(--text);
+  font-variant-numeric: tabular-nums; margin-right: .5em; }
+
+/* Sized in JS so seven digits and one digit carry the same weight. */
+.board-figure { line-height: .94; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.board-label { font-size: clamp(16px, 1.8vw, 24px); color: var(--dim); }
 
 /* A movement that has been made withdraws upward, the way one line of thought
    gives way to the next, rather than staying on screen forever underneath the

@@ -418,7 +418,7 @@ export async function showOnly(root, name, { keep = [], out = 340 } = {}) {
  * the number it lands on, and it is slow in a place where a presenter is
  * already talking.
  */
-export async function swapFigure(host, text, { stagger = 55, duration = 900 } = {}) {
+export async function swapFigure(host, text, { stagger = 55, duration = 900, before } = {}) {
   if (!host) return;
   if (host.textContent.trim()) {
     host.classList.add("is-swapping");
@@ -427,6 +427,10 @@ export async function swapFigure(host, text, { stagger = 55, duration = 900 } = 
   }
   host.classList.remove("cc");
   host.textContent = text;
+  /* A hook between the text landing and the roll starting, for anything that
+     has to measure the new text — a figure that resizes itself to fill the
+     frame cannot wait until it is already rolling in. */
+  if (before) before(host);
   await charCascade(host, { stagger, duration });
 }
 
