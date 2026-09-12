@@ -426,79 +426,79 @@ export async function showOnly(root, name, { keep = [], out = 340 } = {}) {
  * It starts empty, not at zero. A row of noughts is a reading, and the board
  * has not read anything yet.
  */
-const FOLD = 88;   /* one half-turn; a full tick is twice this */
+const FOLD = 215;   /* one flap falling; sharp ease-in */
 
+/**
+ * A SPLIT FLAP, built the safe way.
+ *
+ * ONE moving piece, not two. The earlier version swung a second half up from
+ * below, which is the technique that carries a flap into the bottom half's own
+ * rectangle and collides with it. This caps the rotation at 90 degrees: the
+ * flap vanishes edge-on at the seam and never reaches the bottom half at all.
+ *
+ * The bottom half swaps to the new value immediately — the flap never touches
+ * that rectangle, so there is no moment where a mismatch can be seen. The
+ * static top half is updated underneath at the instant the flap disappears.
+ */
 function flapCell() {
   const cell = document.createElement("span");
   cell.className = "flap";
   cell.innerHTML =
-    '<span class="flap-half flap-upper" data-static-up><i></i></span>' +
-    '<span class="flap-half flap-lower" data-static-down><i></i></span>' +
-    '<span class="flap-half flap-upper flap-fold-up" data-fold-up><i></i></span>' +
-    '<span class="flap-half flap-lower flap-fold-down" data-fold-down><i></i></span>';
+    '<span class="flap-half flap-top" data-top><i></i></span>' +
+    '<span class="flap-half flap-bottom" data-bottom><i></i></span>' +
+    '<span class="flap-seam"></span>' +
+    '<span class="flap-leaf" data-leaf><i></i></span>';
   return cell;
 }
 
-/** One physical tick: the old top falls, the new bottom swings up under it. */
 async function tick(cell, to) {
-  const set = (sel, ch) => { cell.querySelector(sel + " i").textContent = ch; };
+  const put = (sel, ch) => { cell.querySelector(sel + " i").textContent = ch; };
   const from = cell.dataset.value || "";
+  const leaf = cell.querySelector("[data-leaf]");
 
-  set("[data-static-up]", from);      // still showing the old, about to be covered
-  set("[data-fold-up]", from);        // the half that falls
-  set("[data-static-down]", to);      // revealed as the fall uncovers it
-  set("[data-fold-down]", to);        // swings up over the old bottom
+  put("[data-bottom]", to);          // safe at any moment: the leaf never goes there
+  put("[data-leaf]", from);          // the old top, falling away
 
-  cell.classList.add("is-folding");
-  await wait(FOLD * 2);
-  cell.classList.remove("is-folding");
+  leaf.style.transition = "none";
+  leaf.style.transform = "rotateX(0deg)";
+  void leaf.offsetHeight;
+  leaf.style.transition = `transform ${FOLD}ms cubic-bezier(.5, 0, .75, 0)`;
+  leaf.style.transform = "rotateX(-90deg)";
 
-  set("[data-static-up]", to);
+  await wait(FOLD);
+
+  put("[data-top]", to);             // already correct as the leaf vanishes
+  leaf.style.transition = "none";
+  leaf.style.transform = "rotateX(0deg)";
   cell.dataset.value = to;
 }
 
 /**
  * THE DIGITS IT PASSES THROUGH ON THE WAY.
  *
- * A flip clock does not jump and it does not pick at random — it advances, one
+ * A flip clock does not jump and does not pick at random — it advances, one
  * flap at a time, until the value it wants comes up. Landing on the digit it
- * already shows therefore means going all the way round, which is exactly what
- * the founder asked for: the cell turns over ten times and arrives back where
- * it started, and that is the most satisfying thing the board does.
+ * already shows therefore means going all the way round.
  */
 function route(from, to) {
-  if (!/\d/.test(to)) return [to];                 // turning over to a blank
-
+  if (!/\d/.test(to)) return [to];
   if (!/\d/.test(from)) {
-    /* Coming up from an empty board there is nothing to count from, so the
-       drum takes a full revolution and lands on the value — which is the most
-       a flip clock ever does and the right thing for the first number of the
-       section to do. */
     const steps = [];
     let cur = (Number(to) + 1) % 10;
     for (let k = 0; k < 10; k++) { steps.push(String(cur)); cur = (cur + 1) % 10; }
     return steps;
   }
-
   const steps = [];
   let cur = Number(from);
   do { cur = (cur + 1) % 10; steps.push(String(cur)); } while (String(cur) !== to);
   return steps;
 }
 
-/**
- * @param {Element} host
- * @param {string}  text    what the board should read
- * @param {object}  o
- * @param {number} [o.cells] board width; defaults to the text's own length
- */
-export async function flipTo(host, text, { cells, stagger = 105 } = {}) {
+export async function flipTo(host, text, { cells, stagger = 95 } = {}) {
   if (!host) return;
   const chars = [...String(text)];
   const width = cells || chars.length;
 
-  /* Built once and reused, so the cells keep their current faces between
-     values — that is what makes the next value flip FROM this one. */
   if (host.dataset.width !== String(width)) {
     host.dataset.width = String(width);
     host.className = (host.className.replace(/\bflip\b/, "").trim() + " flip").trim();
@@ -512,15 +512,15 @@ export async function flipTo(host, text, { cells, stagger = 105 } = {}) {
   if (reduced()) {
     board.forEach((cell, i) => {
       cell.dataset.value = want[i];
-      cell.querySelector("[data-static-up] i").textContent = want[i];
-      cell.querySelector("[data-static-down] i").textContent = want[i];
+      cell.querySelector("[data-top] i").textContent = want[i];
+      cell.querySelector("[data-bottom] i").textContent = want[i];
     });
     return;
   }
 
   await Promise.all(board.map(async (cell, i) => {
     const from = cell.dataset.value || "";
-    if (from === "" && want[i] === "") return;          // a blank staying blank
+    if (from === "" && want[i] === "") return;
     await wait(i * stagger);
     for (const step of route(from, want[i])) await tick(cell, step);
   }));

@@ -55,12 +55,6 @@ export const config = {
        room in a need it has never considered. */
     cue: "The Need",
 
-    /* The section's one line, and it is the spec's own wording rather than a
-       sentence written for him. The spec is explicit that this section is about
-       the field and not yet about him, so the line is about the work. */
-    line: { text: "Nobody's testimony starts with the sound guy.", verified: true,
-            source: "The spec's own suggested phrasing, to be said plainly rather than quoted." },
-
     beats: [
       /* THE YEARS. One board, four cells wide, "years" fixed beside it. No
          subtext — the founder says what each number is. The board is sized for
@@ -73,7 +67,6 @@ export const config = {
       { value: 10, unit: "years", cells: 4, verified: true,
         source: "Years of it being normal. 2025 church-staffing commentary: the technical director role was uncommon on staff org charts a decade ago." },
 
-      { line: true },
     ],
 
     /* THE TWO COUNTRIES, three screens: America, Croatia, then both together.
@@ -110,6 +103,10 @@ export const config = {
        of him before he walks in, without any of it being printed on a slide
        for him to read aloud against himself. */
     support: {
+      /* Said, not shown. It used to close the years illustration; a number
+         board wants the number and its unit and nothing else. */
+      line: { text: "Nobody's testimony starts with the sound guy.", verified: true,
+              source: "The spec's own suggested phrasing, to be said plainly rather than quoted." },
       invisibility: { text: "Nobody puts the tech booth on the church website. Nobody's testimony starts with the sound guy.",
         verified: true, source: "The spec's own wording for the invisibility point." },
       noPipeline: { text: "No seminary track, no training pipeline — the role appeared faster than any structure built to support it.",

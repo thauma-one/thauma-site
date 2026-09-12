@@ -81,75 +81,77 @@ function countryCard(c) {
       </svg>
       <figcaption class="country-name">${c.name}</figcaption>
       <div class="country-stats">
-        <div><b data-stat="population"></b><span>Population</span></div>
-        <div><b data-stat="protestants"></b><span>Protestants</span></div>
-        <div><b data-stat="share"></b><span>of the country</span></div>
+        <div data-figure-group><b data-stat="population"></b><span>Population</span></div>
+        <div data-figure-group><b data-stat="protestants"></b><span>Protestants</span></div>
+        <div data-figure-group><b data-stat="share"></b><span>of the country</span></div>
       </div>
     </figure>`;
 }
 
-/** Fill one card's three figures, flipping each board. */
-async function fillCountry(root, c) {
+/** Put the three figures in without ceremony, for the screen that compares. */
+function setStats(root, c) {
+  const card = root.querySelector(`[data-country="${c.key}"]`);
+  if (!card) return;
+  const put = (name, text) => {
+    const cell = card.querySelector(`[data-stat="${name}"]`);
+    cell.className = "";               // drop any cascade spans from before
+    cell.textContent = text;
+    cell.closest("[data-figure-group]").classList.add("is-in");
+  };
+  put("population", num(c.population.value));
+  put("protestants", num(c.protestants.value));
+  put("share", `${c.share.value}%`);
+  card.classList.add("is-in");
+}
+
+/**
+ * One country, a figure at a time, each on its own press.
+ *
+ * WRITTEN, NOT CLOCKED. The flip board belongs to the years — three of them on
+ * one screen was both too much machinery for a comparison and too wide to fit,
+ * which is why the digits were coming out shorn. These are cascaded in, which
+ * is the deck's other way of making type arrive and costs no width at all.
+ */
+async function tellCountry(root, c, gate) {
   const card = root.querySelector(`[data-country="${c.key}"]`);
   if (!card) return;
   card.classList.add("is-in");
-  const put = (name, text, cells) =>
-    flipTo(card.querySelector(`[data-stat="${name}"]`), text, { cells });
-  await Promise.all([
-    put("population", num(c.population.value)),
-    put("protestants", num(c.protestants.value)),
-    put("share", `${c.share.value}%`),
-  ]);
+
+  const stats = [
+    ["population", num(c.population.value)],
+    ["protestants", num(c.protestants.value)],
+    ["share", `${c.share.value}%`],
+  ];
+
+  for (let i = 0; i < stats.length; i++) {
+    if (i) await gate();
+    const cell = card.querySelector(`[data-stat="${stats[i][0]}"]`);
+    cell.className = "";
+    cell.textContent = stats[i][1];
+    cell.closest("[data-figure-group]").classList.add("is-in");
+    await charCascade(cell, { stagger: 45, duration: 760 });
+  }
 }
 
 /** What the board reads, figure and unit together, for the line above. */
 const said = (b) => `${num(b.value, b.cells)}${b.unit ? (b.unit === "%" ? "%" : " " + b.unit) : ""}`;
 
-/** One beat: a figure taking the board, or the section's single line. */
+/** One beat: a figure taking the board. */
 const beat = (i) => async ({ root, config }) => {
   const b = config.opening.beats[i];
   const frame = root.querySelector("[data-board]");
-  const prior = root.querySelector("[data-prior]");
   const figure = root.querySelector("[data-figure]");
   const unit = root.querySelector("[data-unit]");
-  const label = root.querySelector("[data-label]");
-  const line = root.querySelector("[data-line-text]");
 
-  if (b.line) {
-    root.querySelector("[data-countries]").hidden = true;
-    root.querySelector("[data-board]").hidden = false;
-    line.hidden = false;
-    await new Promise((r) => requestAnimationFrame(r));
-    line.classList.add("is-in");
-    return;
-  }
-
-  line.classList.remove("is-in");
-  line.hidden = true;
   root.querySelector("[data-board]").hidden = false;
   root.querySelector("[data-countries]").hidden = true;
-
-  /* THE GAP, held on screen. The figure being replaced does not vanish — it
-     goes up, small and quiet, so the new one is read against it. `clear`
-     starts a fresh movement, where there is nothing to compare against yet. */
-  const previous = config.opening.beats[i - 1];
-  if (b.clear || !previous || previous.line || !previous.value) {
-    prior.innerHTML = "";
-    prior.classList.remove("is-in");
-  } else {
-    prior.innerHTML = `<b>${said(previous)}</b> ${previous.label || ""}`;
-    prior.classList.add("is-in");
-  }
 
   /* The unit and the board are sized before anything turns over, so nothing
      moves sideways once the clock is running. */
   unit.textContent = b.unit || "";
-  fitBoard(figure, unit, frame, b.cells || num(b.value).length);
+  fitBoard(figure, unit, frame, b.cells || num(b.value, b.cells).length);
 
   await flipTo(figure, num(b.value, b.cells), { cells: b.cells });
-
-  label.textContent = b.label || "";
-  label.classList.toggle("is-in", Boolean(b.label));
 };
 
 export const opening = {
@@ -163,17 +165,13 @@ export const opening = {
     node.innerHTML = `
       <p class="cue" data-cue>${o.cue}</p>
 
+      <!-- A number and its unit. Nothing else belongs on a clock face. -->
       <div class="board" data-board>
-        <!-- The number just left, kept so the next one is read against it. -->
-        <div class="board-prior in" data-prior aria-hidden="true"></div>
         <div class="board-row">
           <div class="figure board-figure" data-figure></div>
           <span class="board-unit" data-unit></span>
         </div>
-        <div class="figure-label board-label in" data-label></div>
       </div>
-
-      <p class="lead in" data-line-text hidden>${o.line.text}</p>
 
       <!-- THE TWO COUNTRIES. Same three figures, same three places, so the
            screen that shows both is a comparison rather than a new picture. -->
@@ -223,30 +221,34 @@ export const opening = {
 
     for (let i = 1; i < 4; i++) beats.push(beat(i));
 
-    /* America, then Croatia, then both. The board and its prior line step
-       aside; the countries take the screen. */
-    const stage = (keys) => async ({ root, config }) => {
-      /* The clock and its line have said what they had to say. */
+    /* America, then Croatia, then the two of them together. */
+    const stage = (keys, { maps = true } = {}) => async ({ root, config, gate }) => {
       root.querySelector("[data-board]").hidden = true;
-      root.querySelector("[data-prior]").classList.remove("is-in");
-      const line = root.querySelector("[data-line-text]");
-      line.classList.remove("is-in");
-      line.hidden = true;
       const box = root.querySelector("[data-countries]");
       box.hidden = false;
       box.classList.toggle("is-pair", keys.length > 1);
+      box.classList.toggle("no-maps", !maps);
       for (const c of config.opening.countries) {
-        const card = root.querySelector(`[data-country="${c.key}"]`);
-        card.hidden = !keys.includes(c.key);
+        root.querySelector(`[data-country="${c.key}"]`).hidden = !keys.includes(c.key);
       }
       await new Promise((r) => requestAnimationFrame(r));
+
+      if (keys.length > 1) {
+        /* THE COMPARISON. Both sets of figures are already known by this point,
+           so nothing is re-performed — the two move into their new places and
+           that movement is the whole beat. The discs go: side by side they were
+           the picture, stacked they would only be in the way of the numbers. */
+        for (const c of config.opening.countries) setStats(root, c);
+        return;
+      }
+
       for (const key of keys) {
-        await fillCountry(root, config.opening.countries.find((c) => c.key === key));
+        await tellCountry(root, config.opening.countries.find((c) => c.key === key), gate);
       }
     };
     beats.push(stage(["us"]));
     beats.push(stage(["hr"]));
-    beats.push(stage(["us", "hr"]));
+    beats.push(stage(["us", "hr"], { maps: false }));
     return beats;
   })(),
 

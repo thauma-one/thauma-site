@@ -85,7 +85,12 @@ html, body {
 /* ---- Section 1: the board -------------------------------------------
    One figure at a time, filling the frame, with the one it replaced kept
    above it so the gap between them is looked at rather than remembered. */
-.slide.is-board { gap: clamp(14px, 2.4vh, 26px); }
+/* A STABLE HEIGHT, so the heading does not move after it has landed. The slide
+   is centered in the deck, so a slide holding only a title is short and centers
+   the title low — then the board fills and everything jumps upward. Reserving
+   the room means the title shrinks to the place it will actually stay in. */
+.slide.is-board { gap: clamp(14px, 2.4vh, 26px); min-height: 66vh;
+  justify-content: flex-start; }
 
 /* THE SECTION'S NAME ARRIVES FULL SIZE and then takes its place. It opens as
    the only thing on screen, cascading in a character at a time, and on the next
@@ -117,47 +122,42 @@ html, body {
    as one thing labeling another. */
 /* ---- The two countries ----------------------------------------------
    A disc standing in for the country with its congregations scattered inside
-   it, and the same three figures beneath every one. Identical geometry on all
-   three screens, so the screen showing both reads as a comparison rather than
-   as a third picture. */
+   it, and the same three figures beneath every one. */
 .countries { display: flex; gap: clamp(28px, 7vw, 110px); align-items: flex-start;
   width: 100%; }
-.country { margin: 0; flex: 1 1 0; min-width: 0; opacity: 0; translate: 0 12px;
-  transition: opacity .6s ease, translate .6s cubic-bezier(.42, 0, .28, 1); }
+.country { margin: 0; flex: 1 1 0; min-width: 0; opacity: 0; translate: 0 14px;
+  transition: opacity .55s ease, translate .55s cubic-bezier(.42, 0, .28, 1); }
 .country.is-in { opacity: 1; translate: 0 0; }
-.country[hidden] { display: none !important; }
-.countries:not(.is-pair) .country { max-width: 460px; }
 
+/* Bigger, and using the width it has. A single country has the whole screen. */
 .country-disc { display: block; width: 100%; height: auto;
-  max-height: clamp(140px, 26vh, 280px); margin: 0 auto; }
+  max-height: clamp(200px, 40vh, 420px); margin: 0 auto; }
 .disc-edge { fill: none; stroke: var(--line); stroke-width: .5; }
 .disc-pins circle { fill: var(--blue); opacity: .8; }
 [data-outline] path { fill: none; stroke: var(--dim); stroke-width: .6; }
 
-.country-name { font-size: clamp(13px, 1.3vw, 17px); color: var(--dim);
-  letter-spacing: .16em; text-transform: uppercase; margin: clamp(12px, 2vh, 22px) 0 0; }
+.country-name { font-size: clamp(14px, 1.5vw, 20px); color: var(--dim);
+  letter-spacing: .18em; text-transform: uppercase; margin: clamp(14px, 2.4vh, 26px) 0 0; }
 
-.country-stats { display: flex; gap: clamp(16px, 2.4vw, 40px);
-  margin-top: clamp(10px, 1.6vh, 18px); }
-
-/* SIZED FOR THE LONGEST NUMBER IN THE ROW. Two countries side by side puts
-   350,000,000 into half a screen beside two more figures — twenty-two flip
-   cells in about 480px — and a cell has a fixed width in em, so the row does
-   not wrap, it squeezes, and the digits come out shorn. The pair view is set
-   smaller and tighter so the widest row fits without being compressed. */
-.countries.is-pair .country-stats { gap: clamp(10px, 1.4vw, 22px); }
-.countries.is-pair .country-stats b { font-size: clamp(13px, 1.5vw, 22px); }
-.countries.is-pair .country-stats > div > span { font-size: clamp(10px, .9vw, 13px); }
-.country-stats .flip { flex: none; }
-.country-stats > div { display: flex; flex-direction: column; min-width: 0; }
+.country-stats { display: flex; gap: clamp(24px, 4vw, 72px);
+  margin-top: clamp(12px, 2vh, 22px); }
+.country-stats > div { display: flex; flex-direction: column; min-width: 0;
+  opacity: 0; translate: 0 10px;
+  transition: opacity .5s ease, translate .5s cubic-bezier(.42, 0, .28, 1); }
+.country-stats > div.is-in { opacity: 1; translate: 0 0; }
 .country-stats b { font-family: 'Sora', sans-serif; font-weight: 100;
-  font-size: clamp(20px, 2.3vw, 34px); color: var(--text); }
-/* DIRECT CHILDREN ONLY. A bare `span` here also matched the flip clock's own
-   cells, which are spans — so every flap was being re-sized to the caption's
-   font while its cell had already been measured in the figure's, and the
-   digits came out clipped in half. */
-.country-stats > div > span { font-size: clamp(12px, 1.1vw, 15px);
-  color: var(--dim); margin-top: .35em; }
+  font-size: clamp(30px, 4vw, 62px); color: var(--text); line-height: 1;
+  font-variant-numeric: tabular-nums; white-space: nowrap; }
+.country-stats > div > span { font-size: clamp(13px, 1.2vw, 17px);
+  color: var(--dim); margin-top: .5em; }
+
+/* THE COMPARISON. Stacked, with real air between them, and no discs — side by
+   side the discs were the picture; above one another they would only be in the
+   way of the numbers that are now the point. */
+.countries.is-pair { flex-direction: column; gap: clamp(30px, 6vh, 76px); }
+.countries.no-maps .country-disc { display: none; }
+.countries.no-maps .country-name { margin-top: 0; }
+.countries.is-pair .country-stats b { font-size: clamp(26px, 3.4vw, 52px); }
 
 .board-label { font-size: clamp(16px, 1.9vw, 25px); color: var(--dim);
   margin-top: clamp(18px, 3.2vh, 42px); }
@@ -168,48 +168,34 @@ html, body {
 
 /* THE FLIP CLOCK.
 
-   WHAT WAS MISSING was the card. The halves were transparent text on a dark
-   page, so a rotating one showed glyph skewing and nothing else — a cut, not a
-   fold. A flap has to be an OPAQUE object with an edge, or there is no object
-   to watch turn. Each half now carries the page's own background, a hairline
-   at the hinge, and a shadow that deepens as it falls and lifts as it rises,
-   which is the whole of what makes a split flap look like one. */
+   A permanent seam splits every digit. On a change ONE piece moves: a leaf
+   hinged at the seam, rotating to ninety degrees and vanishing edge-on. It
+   never travels into the bottom half's rectangle, which is the collision the
+   two-piece version invites. The bottom half swaps immediately and the static
+   top is corrected underneath at the instant the leaf disappears. */
 .flip { display: inline-flex; align-items: baseline; gap: .05em; }
 .flap { position: relative; display: inline-block;
-  width: .62em; height: .86em; perspective: 900px;
+  width: .62em; height: .92em; perspective: 420px;
   font-variant-numeric: tabular-nums; }
 
 .flap-half { position: absolute; left: 0; right: 0; height: 50%;
-  overflow: hidden; backface-visibility: hidden;
-  background: var(--bg); }
-.flap-upper { top: 0; border-bottom: 1px solid rgba(0, 0, 0, .55); }
-.flap-lower { bottom: 0; }
-.flap-half i { position: absolute; left: 0; width: 100%; height: 2em;
-  font-style: normal; line-height: .86em; text-align: center; display: block; }
-.flap-upper i { top: 0; }
-.flap-lower i { top: -.43em; }
+  overflow: hidden; background: var(--bg); }
+.flap-top { top: 0; }
+.flap-bottom { bottom: 0; }
+.flap-half i, .flap-leaf i { position: absolute; left: 0; width: 100%;
+  height: .92em; line-height: .92em; font-style: normal;
+  text-align: center; display: block; }
+.flap-top i, .flap-leaf i { top: 0; }
+.flap-bottom i { top: -.46em; }
 
-/* The light on a turning card. The falling half darkens as it goes over; the
-   rising half arrives dark and comes up into the light. */
-.flap-half::after { content: ""; position: absolute; inset: 0;
-  background: #000; opacity: 0; pointer-events: none;
-  transition: opacity 88ms linear; }
-.flap-fold-down::after { opacity: .62; }
+/* The seam is always there, so the digit reads as two halves even at rest. */
+.flap-seam { position: absolute; left: 4%; right: 4%; top: calc(50% - .5px);
+  height: 1px; background: rgba(0, 0, 0, .6); z-index: 5; }
 
-.flap-fold-up, .flap-fold-down { visibility: hidden; z-index: 3; }
-.flap.is-folding .flap-fold-up,
-.flap.is-folding .flap-fold-down { visibility: visible; }
-.flap-fold-up { transform-origin: bottom center; }
-.flap-fold-down { transform-origin: top center; transform: rotateX(90deg); }
-
-.flap.is-folding .flap-fold-up {
-  transform: rotateX(-90deg);
-  transition: transform 88ms cubic-bezier(.35, 0, .9, .55); }
-.flap.is-folding .flap-fold-up::after { opacity: .62; }
-.flap.is-folding .flap-fold-down {
-  transform: rotateX(0deg);
-  transition: transform 88ms cubic-bezier(.1, .45, .5, 1) 88ms; }
-.flap.is-folding .flap-fold-down::after { opacity: 0; transition-delay: 88ms; }
+/* The one moving piece. Same rectangle as the top half, hinged at the seam. */
+.flap-leaf { position: absolute; left: 0; right: 0; top: 0; height: 50%;
+  overflow: hidden; background: var(--bg);
+  transform-origin: bottom center; backface-visibility: hidden; z-index: 10; }
 .flap.is-folding .flap-fold-down {
   transform: rotateX(0deg);
   transition: transform 78ms cubic-bezier(0, .3, .6, 1) 78ms; }
@@ -424,7 +410,7 @@ p.lead { color: var(--text); font-size: clamp(18px, 2vw, 24px); }
 [data-point].is-built.is-focus { opacity: 1; scale: 1; }
 
 /* THE NOW MARKER, borrowed from the partner roadmap widget so a supporter who
-   has seen one recognises the other: a short pulsing upright on the line with
+   has seen one recognizes the other: a short pulsing upright on the line with
    a small label. Today is months BEFORE the first milestone, so it sits ahead
    of the line rather than being hidden — "we are here, none of this has
    happened yet" is the honest thing for the room to see. */
