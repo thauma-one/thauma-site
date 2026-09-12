@@ -258,12 +258,27 @@ p.lead { color: var(--text); font-size: clamp(18px, 2vw, 24px); }
    of the line rather than being hidden — "we are here, none of this has
    happened yet" is the honest thing for the room to see. */
 .track-now { position: absolute; top: 8px; transform: translateX(-50%);
-  z-index: 4; pointer-events: none; opacity: 0;
-  transition: opacity .7s ease; }
-.track-now.is-in { opacity: 1; }
+  z-index: 4; pointer-events: none; opacity: 0; }
+/* IT GROWS OUT OF THE LINE. It used to switch on, which on the one element
+   meant to say "you are here" is the worst thing it could do. Same shape of
+   arrival the partner widget uses for its own: up from almost nothing, over
+   nearly a second, only once the line it stands on exists. */
+.track-now.is-in { animation: now-in .95s cubic-bezier(.16, 1, .3, 1) both; }
+@keyframes now-in {
+  from { opacity: 0; transform: translateX(-50%) scaleY(.25); }
+  to   { opacity: 1; transform: translateX(-50%) scaleY(1); }
+}
 .now-line { position: absolute; left: 50%; top: -21px; width: 2px; height: 42px;
   transform: translateX(-50%); background: var(--foam);
   box-shadow: 0 0 10px var(--foam); animation: now-pulse 2.4s ease-in-out infinite; }
+
+/* THE FILL: time that has already gone, run up to today and stopped there.
+   It carries real information rather than decoration — as the months pass it
+   grows on its own, and the first milestone stops being the whole story. */
+.track-fill { position: absolute; left: -100vw; top: 8px; height: 1px;
+  width: 0; background: var(--foam); opacity: .55;
+  box-shadow: 0 0 8px var(--foam); pointer-events: none;
+  transition: width 1600ms cubic-bezier(.42, 0, .28, 1); }
 .now-label { position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%);
   white-space: nowrap; font-size: 11px; font-weight: 600; letter-spacing: .14em;
   color: var(--foam); }

@@ -80,8 +80,15 @@ function placeNow(root, milestones) {
 
   marker.style.left = `${Math.round(x)}px`;
   marker.hidden = false;
-  /* Next frame, or the browser folds the unhide and the fade into one paint. */
-  requestAnimationFrame(() => marker.classList.add("is-in"));
+
+  /* The fill runs from off the left edge up to today and stops. It starts at
+     -100vw with the rule, so its width is the viewport plus however far along
+     the track today sits. */
+  const fill = root.querySelector("[data-fill]");
+  requestAnimationFrame(() => {
+    marker.classList.add("is-in");
+    if (fill) fill.style.width = `calc(100vw + ${Math.round(x)}px)`;
+  });
 }
 
 export const schedule = {
@@ -99,6 +106,7 @@ export const schedule = {
                  dots floating unconnected read as five separate cards rather
                  than one journey, which is the whole argument of the section. -->
             <div class="track-rule"></div>
+            <div class="track-fill" data-fill></div>
             <!-- Where today actually is, in the partner roadmap's language. -->
             <div class="track-now" data-now hidden>
               <span class="now-line"></span>
@@ -141,7 +149,10 @@ export const schedule = {
          it traveled to. */
       if (track && first) {
         const win = track.parentElement.clientWidth;
-        const lead = win * 0.42 - (first.offsetLeft + first.offsetWidth / 2);
+        /* CENTERED, not parked short of center. The section used to build off
+           to one side and then slide to the first date, which reads as the
+           slide correcting itself. It opens where it means to stay. */
+        const lead = win * 0.5 - (first.offsetLeft + first.offsetWidth / 2);
         track.style.transition = "none";
         track.style.transform = `translateX(${Math.round(lead)}px)`;
         void track.offsetWidth;
@@ -157,23 +168,28 @@ export const schedule = {
       await Promise.all([
         (async () => { root.querySelector(".track-rule").classList.add("is-drawn"); })(),
 
-        charCascade(root.querySelector("[data-cue]"), { stagger: 40, duration: 1000 }),
+        charCascade(root.querySelector("[data-cue]"), { stagger: 55, duration: 1300 }),
 
         (async () => {
-          await motion.wait(420);
+          await motion.wait(620);
           for (const point of root.querySelectorAll("[data-point]")) {
             point.classList.add("is-built");
-            await motion.wait(105);
+            await motion.wait(165);
           }
         })(),
 
         (async () => {
-          await motion.wait(1250);
+          await motion.wait(1750);
           placeNow(root, config.timeline.milestones);
+          /* Let the marker finish growing and the fill finish running before
+             the section is handed to the presenter. */
+          await motion.wait(1500);
         })(),
       ]);
 
-      await focusPoint(track, 0, { duration: 700 });
+      /* Already in place, so this is a highlight rather than a journey — the
+         camera does not move at the end of its own arrival. */
+      first.classList.add("is-focus");
     });
 
     for (let i = 1; i < 5; i++) {
@@ -183,4 +199,12 @@ export const schedule = {
     }
     return beats;
   })(),
+
+  /* Going back inside the timeline is a camera move, not a rebuild. Beat i is
+     milestone i, and focusPoint lands correctly from wherever the track
+     currently sits — so the deck can skip reconstructing the section, which is
+     what made one press of back replay the whole arrival. */
+  async rewind({ root, step }) {
+    await focusPoint(root.querySelector(".track"), step, { duration: 700 });
+  },
 };

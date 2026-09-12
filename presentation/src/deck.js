@@ -251,6 +251,22 @@ export async function prev() {
 
 /** Rebuild a section and replay it, unwatched, up to one beat. */
 async function rewindTo(sectionIndex, step) {
+  /* A SECTION THAT CAN JUST GO THERE. Rebuilding is the fallback, not the
+     plan: where a section can land on any beat from wherever it currently is —
+     a camera move, a highlight — going back should cost that move and nothing
+     else. Rebuilding to reach the beat that BUILT the section meant one press
+     of back replayed the entire arrival, which is what it looked like.
+
+     Only within the section already on screen. Coming from another one there
+     is nothing built to move. */
+  const target = sections[sectionIndex];
+  if (sectionIndex === state.nav.section && target?.rewind && root.firstChild) {
+    state.nav.step = step;
+    try { await target.rewind({ root, config, state, step }); }
+    catch (err) { console.error("rewind failed:", err); }
+    return;
+  }
+
   state.nav.section = sectionIndex;
   state.nav.step = 0;
   replaying = true;
