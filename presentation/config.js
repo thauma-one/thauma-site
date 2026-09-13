@@ -82,14 +82,50 @@ export const config = {
        The American figures are PLACEHOLDERS the founder asked for so the
        screens could be built; they are flagged and must be replaced. */
     countries: [
-      { key: "us", name: "United States", dots: 220, seed: 7,
+      { key: "us", name: "United States", dots: 260, seed: 7,
+        /* REAL PLACES, REAL WEIGHTS. The field used to be even scatter inside a
+           circle, which says "a country" and nothing else. These are metro
+           areas with their population in millions, and the map files carry a
+           geoViewBox — the latitude and longitude of their own edges — so a
+           place can be drawn where it actually is. The shape of the country
+           then appears in the dots on its own: the eastern seaboard crowded,
+           the mountain west nearly empty. */
+        centers: [
+          [40.71, -74.01, 20.1], [34.05, -118.24, 13.2], [41.88, -87.63, 9.5],
+          [32.78, -96.80, 7.6], [29.76, -95.37, 7.1], [38.91, -77.04, 6.4],
+          [39.95, -75.17, 6.2], [25.76, -80.19, 6.1], [33.75, -84.39, 6.1],
+          [42.36, -71.06, 4.9], [33.45, -112.07, 4.9], [37.77, -122.42, 4.7],
+          [33.95, -117.40, 4.6], [42.33, -83.05, 4.3], [47.61, -122.33, 4.0],
+          [44.98, -93.27, 3.7], [32.72, -117.16, 3.3], [27.95, -82.46, 3.2],
+          [39.74, -104.99, 2.9], [38.63, -90.20, 2.8], [39.29, -76.61, 2.8],
+          [35.23, -80.84, 2.7], [28.54, -81.38, 2.7], [29.42, -98.49, 2.6],
+          [45.51, -122.68, 2.5], [38.58, -121.49, 2.4], [40.44, -79.99, 2.4],
+          [36.17, -115.14, 2.3], [30.27, -97.74, 2.3], [39.10, -84.51, 2.3],
+          [39.10, -94.58, 2.2], [39.96, -83.00, 2.1], [39.77, -86.16, 2.1],
+          [41.50, -81.69, 2.0], [36.16, -86.78, 2.0], [35.47, -97.52, 1.4],
+          [40.76, -111.89, 1.3], [29.95, -90.07, 1.3], [35.15, -90.05, 1.3],
+          [46.87, -96.79, 0.6], [43.62, -116.20, 0.8], [35.08, -106.65, 0.9],
+        ],
+        centersSource: "US metro populations in millions, rounded. Approximate, and for drawing only — no figure in the deck is read off this field.",
         population: { value: 350000000, verified: false,
           source: "PLACEHOLDER at the founder's request. Replace before presenting." },
         protestants: { value: 87500000, verified: false,
           source: "PLACEHOLDER — 25% of the placeholder population. Replace before presenting." },
         share: { value: 25, verified: false, source: "PLACEHOLDER." } },
 
-      { key: "hr", name: "Croatia", dots: 14, seed: 31,
+      { key: "hr", name: "Croatia", dots: 36, seed: 31,
+        /* Croatian cities, population in thousands. The country's own shape
+           shows here too: Zagreb heavy inland, a thin line down the coast, and
+           very little in between. */
+        centers: [
+          [45.815, 15.982, 800], [43.508, 16.440, 178], [45.327, 14.442, 128],
+          [45.555, 18.694, 96], [44.119, 15.232, 75], [45.160, 18.016, 53],
+          [44.868, 13.849, 52], [45.487, 15.548, 49], [45.485, 16.373, 40],
+          [46.306, 16.338, 38], [43.735, 15.895, 34], [45.288, 18.805, 31],
+          [42.650, 18.094, 28], [45.898, 16.842, 27], [45.351, 19.001, 23],
+          [46.161, 16.833, 22], [45.806, 17.190, 20], [44.545, 15.375, 12],
+        ],
+        centersSource: "Croatian city populations in thousands, rounded. Approximate, and for drawing only.",
         population: { value: 3900000, verified: true,
           source: "Croatian Bureau of Statistics, ~3.9 million." },
         protestants: { value: 7000, verified: false,

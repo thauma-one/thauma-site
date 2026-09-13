@@ -19,7 +19,7 @@
  * time rather than copied, so the deck cannot drift from the site. If somebody
  * changes the palette on the website, the next build of this picks it up.
  */
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import QRCode from "qrcode";
@@ -113,6 +113,56 @@ bundle("presentation/src/sections/schedule.js");
 bundle("presentation/src/sections/ask.js");
 bundle("presentation/src/main.js");
 
+/* ---------------------------------------------------------------- MAPS
+
+   The country outlines are read here and written into the file, because the
+   deck has to keep working from a memory stick with no network — the same
+   reason the fonts and the QR code are inlined rather than fetched.
+
+   These are MapSVG exports, which carry a `mapsvg:geoViewBox` attribute: the
+   longitude and latitude of the drawing's four edges. That is worth more than
+   the outline itself, because it makes the coordinate space LINEAR in latitude
+   and longitude — so a real place can be put on the map at its real position,
+   and the density fields stop being decorative scatter.
+
+   Only the maps a country in the config actually asks for are inlined. The
+   world file is 1.2MB and nothing uses it yet; inlining it would put that in
+   every copy of the deck for nothing. */
+const mapsDir = join(here, "maps");
+const MAPS = {};
+const wanted = new Set((config.opening?.countries || []).map((c) => c.map || c.key));
+
+if (existsSync(mapsDir)) {
+  for (const file of readdirSync(mapsDir).filter((f) => f.endsWith(".svg"))) {
+    const key = file.replace(/\.svg$/, "");
+    if (!wanted.has(key)) continue;
+
+    const svg = readFileSync(join(mapsDir, file), "utf8");
+    const geo = /mapsvg:geoViewBox="([^"]+)"/.exec(svg);
+    const box = /\sviewBox="([^"]+)"/.exec(svg);
+    const w = /\swidth="([\d.]+)"/.exec(svg);
+    const h = /\sheight="([\d.]+)"/.exec(svg);
+    if (!geo) { console.warn(`[maps] ${file} has no geoViewBox; skipped`); continue; }
+
+    /* Without an explicit viewBox the drawing occupies its own width and
+       height from the origin, which is what the geo box then describes. */
+    const viewBox = box ? box[1]
+      : (w && h ? `0 0 ${w[1]} ${h[1]}` : null);
+    if (!viewBox) { console.warn(`[maps] ${file} has no viewBox or size; skipped`); continue; }
+
+    /* Coordinates to one decimal. At the size a country is drawn here that is
+       already finer than a pixel, and it roughly halves the file. */
+    const paths = [...svg.matchAll(/\sd="([^"]+)"/g)]
+      .map((m) => m[1].replace(/-?\d+\.\d+/g, (n) => String(Math.round(n * 10) / 10)))
+      .filter((d) => d.length > 40);
+
+    const [west, north, east, south] = geo[1].trim().split(/\s+/).map(Number);
+    MAPS[key] = { viewBox, geo: { west, north, east, south }, paths };
+    console.log(`  map     ${key}  ${paths.length} paths, ${Math.round(
+      paths.join("").length / 1024)}kB`);
+  }
+}
+
 /* ------------------------------------------------------------------ QR
 
    Generated here, not at runtime: the deck ships with no libraries, and a
@@ -133,6 +183,7 @@ for (const url of qrUrls) {
 
 const chunksWithQr = [
   `/* qr (generated) */\nconst QR_CODES = ${JSON.stringify(qrCodes)};`,
+  `/* maps (generated) */\nconst MAPS = ${JSON.stringify(MAPS)};`,
   ...chunks,
 ];
 

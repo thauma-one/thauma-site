@@ -36,8 +36,11 @@ import { config } from "../../config.js";
  */
 function fitBoard(figure, unit, frame, cells) {
   if (!figure || !frame) return;
-  const room = frame.clientWidth * 0.9;
-  const ceiling = Math.min(300, (frame.ownerDocument.defaultView?.innerHeight || 800) * 0.4);
+  /* Smaller overall than it was. Filling nine tenths of the width made the
+     board the only thing in the room; at two thirds it is still the subject
+     and the screen has somewhere to breathe. */
+  const room = frame.clientWidth * 0.64;
+  const ceiling = Math.min(230, (frame.ownerDocument.defaultView?.innerHeight || 800) * 0.3);
   if (!room) return;
 
   /* Cells are .60em wide with .035em between them, and the unit runs about
@@ -56,36 +59,82 @@ const num = (n, cells) =>
   cells ? String(n) : n.toLocaleString("en-US", { maximumFractionDigits: 2 });
 
 
-/* A CIRCLE OF DOTS, standing in for the country until its outline arrives.
+/* THE COUNTRY, DRAWN WHERE IT IS.
 
-   Placed by a fixed pseudo-random walk rather than at random, so the same
-   slide looks the same in two different meetings. The outline goes in behind
-   these — the hook is `[data-outline]`, and nothing else has to change. */
-function scatter(count, seed) {
+   The map files carry a geoViewBox — the longitude and latitude of the
+   drawing's own four edges — which makes the coordinate space linear in both.
+   A real place therefore has a real position on the page, and the density
+   field stops being scatter that says "a country" and starts being the
+   country: the eastern seaboard crowded, the mountain west nearly empty,
+   Zagreb heavy and the Croatian interior almost bare.
+   
+   Pins are dealt out in proportion to population and jittered around their
+   city, by a fixed pseudo-random walk rather than at random — the same slide
+   has to look the same in two different meetings. */
+function project(geo, box, lat, lon) {
+  const [vx, vy, vw, vh] = box.split(/\s+/).map(Number);
+  return [
+    vx + ((lon - geo.west) / (geo.east - geo.west)) * vw,
+    vy + ((geo.north - lat) / (geo.north - geo.south)) * vh,
+  ];
+}
+
+function densityField(map, centers, count, seed) {
+  if (!map) return "";
+  const [, , vw, vh] = map.viewBox.split(/\s+/).map(Number);
+  const unit = Math.max(vw, vh);
   let n = seed;
   const rnd = () => ((n = (n * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+
+  const total = centers.reduce((sum, c) => sum + c[2], 0);
   const out = [];
-  /* Each pin carries its own delay, so the whole field is started by one class
-     rather than by hundreds of timers — 220 of them for America. */
-  const spread = 1700;
-  while (out.length < count) {
-    const x = rnd() * 2 - 1, y = rnd() * 2 - 1;
-    if (x * x + y * y > 0.82) continue;              // keep them inside the disc
-    out.push(`<circle cx="${(50 + x * 46).toFixed(1)}" cy="${(50 + y * 46).toFixed(1)}"
-                      r="${(0.7 + rnd() * 1.5).toFixed(2)}"
-                      style="--d:${Math.round((out.length / count) * spread)}ms"/>`);
+  let i = 0;
+  for (const [lat, lon, weight] of centers) {
+    /* At least one pin for every city, so a small place is still on the map. */
+    const share = Math.max(1, Math.round((weight / total) * count));
+    const [cx, cy] = project(map.geo, map.viewBox, lat, lon);
+    for (let k = 0; k < share; k++) {
+      /* A bigger place spreads further, the way a metro area does. */
+      const spread = unit * (0.004 + Math.sqrt(weight / total) * 0.09);
+      const a = rnd() * Math.PI * 2;
+      const r = Math.sqrt(rnd()) * spread;
+      out.push(`<circle cx="${(cx + Math.cos(a) * r).toFixed(1)}"
+                        cy="${(cy + Math.sin(a) * r).toFixed(1)}"
+                        r="${(unit * (0.0022 + rnd() * 0.003)).toFixed(2)}"
+                        style="--d:${Math.round((i / count) * 1700)}ms"/>`);
+      i++;
+    }
   }
   return out.join("");
 }
 
-/** One country: the disc, then population / Protestants / share beneath it. */
+/** One country: its outline and density inside the disc, figures beneath. */
 function countryCard(c) {
+  const map = typeof MAPS !== "undefined" ? MAPS[c.map || c.key] : null;
+  /* Clipped to the disc. Croatia runs corner to corner, so at any size that
+     fills the box its tail crosses the circle it is supposed to sit inside. */
+  const clip = `clip-${c.key}`;
+  /* The clip goes on a GROUP, not on the nested svg. A nested svg establishes
+     its own coordinate system, and the clip path is then resolved against that
+     rather than against the disc — the circle landed hundreds of map units
+     away and took the whole country with it. A <g> stays in the disc's own
+     space, where the circle means what it says. */
+  const inner = map
+    ? `<defs><clipPath id="${clip}"><circle cx="50" cy="50" r="46.4"/></clipPath></defs>
+       <g clip-path="url(#${clip})">
+         <svg viewBox="${map.viewBox}" x="5" y="5" width="90" height="90"
+              preserveAspectRatio="xMidYMid meet">
+           <g class="disc-land">${map.paths.map((d) => `<path d="${d}"/>`).join("")}</g>
+           <g class="disc-pins" data-pins>${densityField(map, c.centers, c.dots, c.seed)}</g>
+         </svg>
+       </g>`
+    : `<g class="disc-pins" data-pins></g>`;
+
   return `
     <figure class="country" data-country="${c.key}">
       <svg class="country-disc" viewBox="0 0 100 100" aria-label="${c.name}">
         <circle class="disc-edge" cx="50" cy="50" r="47"/>
-        <g data-outline></g>
-        <g class="disc-pins" data-pins>${scatter(c.dots, c.seed)}</g>
+        ${inner}
       </svg>
       <figcaption class="country-name">${c.name}</figcaption>
       <div class="country-stats">
@@ -116,17 +165,14 @@ function setStats(root, c) {
  * One country, a figure at a time, each on its own press.
  *
  * WRITTEN, NOT CLOCKED. The flip board belongs to the years — three of them on
- * one screen was both too much machinery for a comparison and too wide to fit,
- * which is why the digits were coming out shorn. These are cascaded in, which
- * is the deck's other way of making type arrive and costs no width at all.
+ * one screen was both too much machinery for a comparison and too wide to fit.
+ * These are cascaded in, which is the deck's other way of making type arrive
+ * and costs no width at all.
  */
 async function tellCountry(root, c, gate) {
   const card = root.querySelector(`[data-country="${c.key}"]`);
   if (!card) return;
 
-  /* The disc arrives first and settles, and only then does the country fill in
-     — a few seconds of it, so the density is watched accumulating rather than
-     found already there. */
   /* From nothing, every time it is arrived at — including on the way back. */
   const pins = card.querySelector("[data-pins]");
   pins.classList.remove("is-in");
@@ -176,9 +222,6 @@ function slideIntoPlace(nodes, rearrange, ms = 760) {
     n.style.transform = "";
   });
 }
-
-/** What the board reads, figure and unit together, for the line above. */
-const said = (b) => `${num(b.value, b.cells)}${b.unit ? (b.unit === "%" ? "%" : " " + b.unit) : ""}`;
 
 /**
  * THE STAGES CHANGE, they do not cut. Going from the clock to the countries

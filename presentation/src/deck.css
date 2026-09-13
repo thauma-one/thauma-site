@@ -146,9 +146,19 @@ html, body {
 .country.is-in { opacity: 1; translate: 0 0; }
 
 /* Bigger, and using the width it has. A single country has the whole screen. */
-.country-disc { display: block; width: 100%; height: auto;
-  max-height: clamp(200px, 40vh, 420px); margin: 0 auto; }
+/* Left, with the name and the figures under it. It was centered while
+   everything else in the card was not, which reads as two different
+   alignments arguing rather than as one card. */
+.country-disc { display: block; width: auto; height: clamp(210px, 42vh, 440px);
+  margin: 0; }
 .disc-edge { fill: none; stroke: var(--line); stroke-width: .5; }
+/* The outline, not the fill. These are territory maps, so every state and
+   county came as a filled shape; drawn as hairlines they read as a country
+   with its own internal structure rather than as a solid blob. */
+/* Strong enough to be a country rather than a smudge, quiet enough that the
+   density on top of it is still what the eye goes to. */
+.disc-land path { fill: none; stroke: var(--dim); stroke-width: .9; opacity: .55;
+  vector-effect: non-scaling-stroke; }
 /* The country fills in rather than arriving full. Each pin carries its own
    delay, so the field accumulates over a few seconds from one class. */
 .disc-pins circle { fill: var(--blue); opacity: 0;
@@ -182,14 +192,12 @@ html, body {
 
 .board-label { font-size: clamp(16px, 1.9vw, 25px); color: var(--dim);
   margin-top: clamp(18px, 3.2vh, 42px); }
-/* The unit reads as part of the figure, not as a footnote beside it. Baseline
-   alignment put it at the bottom of the flap CELL rather than on the digits'
-   own baseline, which dropped it well below them. */
-.board-row { display: flex; align-items: center; gap: .55em;
+/* The unit sits on the foot of the figure, not level with its middle. */
+.board-row { display: flex; align-items: flex-end; gap: .5em;
   justify-content: center; }
 .board-unit { color: var(--dim); font-family: 'Sora', sans-serif;
   font-weight: 200; letter-spacing: .01em; line-height: 1;
-  font-size: clamp(30px, 4.4vw, 72px); }
+  font-size: clamp(24px, 3.4vw, 54px); }
 
 /* THE FLIP CLOCK.
 
