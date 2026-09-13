@@ -375,21 +375,23 @@ const beat = (i) => async ({ root, config }) => {
 
   await swapStage(root, "board");
 
-  /* SIZED FIRST, ALWAYS. Setting the figure's size changes the row's height,
-     and doing that after the words had appeared pulled them upward just as
-     they finished arriving. */
+  /* MEASURED, NOT SHOWN. The row needs its real height before a word appears
+     above it, or the phrase settles and then shifts when the first cell is
+     built. So on the first figure the board IS built — and hidden while it is.
+     Nothing about the flip changes: the cells are blank, so the first turn
+     still takes its full revolution from nothing. The unit waits here too; it
+     belongs to the first flip, not to the moment before it. */
+  const cells = b.cells || num(b.value, b.cells).length;
   unit.textContent = b.unit || "";
-  fitBoard(figure, unit, frame, b.cells || num(b.value, b.cells).length);
+  fitBoard(figure, unit, frame, cells);
 
-  /* THE BOARD IS BUILT BEFORE THE WORDS APPEAR, empty and silent. Reserving
-     its height in CSS meant guessing at the line box a row of clipped flaps
-     sits in, and the guess was out by a few pixels — so the phrase settled and
-     then shifted the instant the first cell existed. Building the cells first
-     makes the height real rather than estimated, and nothing below the words
-     moves again.
-
-     Blank cells have nothing to turn, so this returns without animating. */
-  await flipTo(figure, "", { cells: b.cells || num(b.value, b.cells).length });
+  const firstFigure = !figure.dataset.width;
+  if (firstFigure) {
+    figure.style.visibility = "hidden";
+    unit.style.visibility = "hidden";
+    await flipTo(figure, "", { cells });
+    seatUnit(figure, unit);
+  }
 
   /* "The Church" is read before the first figure turns under it. Everything
      after that arrives WITH its figure — the phrase completing itself and the
@@ -397,11 +399,15 @@ const beat = (i) => async ({ root, config }) => {
   const arriving = phraseTo(root, i);
   if (arriving && i === 0) await motion.wait(820);
 
+  /* And now the board, and "years" with it, on the turn. */
+  figure.style.visibility = "";
+  unit.style.visibility = "";
+
   /* The cells are built synchronously at the head of flipTo, so the unit can
      be seated against them while the board is still turning — it used to be
      placed afterwards, which meant it sat visibly low for the whole run and
      then jumped. */
-  const turning = flipTo(figure, num(b.value, b.cells), { cells: b.cells });
+  const turning = flipTo(figure, num(b.value, b.cells), { cells });
   seatUnit(figure, unit);
   await turning;
 };
