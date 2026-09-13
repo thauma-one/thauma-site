@@ -114,11 +114,12 @@ export const config = {
           [20.8, -156.3, 0.2], [39.5, -111.5, 0.3],
         ],
         centersSource: "State centers weighted by approximate Protestant adherents in millions, drawn from the general shape of US religious-landscape surveys. Approximate, and for drawing only — no figure in the deck is read off this field.",
-        population: { value: 350000000, verified: false,
-          source: "PLACEHOLDER at the founder's request. Replace before presenting." },
-        protestants: { value: 87500000, verified: false,
-          source: "PLACEHOLDER — 25% of the placeholder population. Replace before presenting." },
-        share: { value: 25, verified: false, source: "PLACEHOLDER." } },
+        population: { value: 341000000, verified: true,
+          source: "US Census Bureau estimate for 1 July 2025: 341,784,857. Rounded down to the million, because a slide claiming a figure to the person claims a precision a slide does not have." },
+        protestants: { value: 136500000, verified: true,
+          source: "40 per cent of 341,000,000 is 136.4 million, rounded to the nearest half million. The three figures are arithmetic on each other: 136.5 of 341 is 40.0 per cent, so the number and the share cannot disagree on screen." },
+        share: { value: 40, verified: true,
+          source: "Pew Research Center Religious Landscape Study, 2023-24: 40% of US adults identify as Protestant." } },
 
       { key: "hr", name: "Croatia", dots: 64, seed: 31,
         /* Croatian cities, population in thousands, with a tighter spread —
