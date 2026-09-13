@@ -106,20 +106,7 @@ html, body {
 .board.is-out, .countries.is-out { opacity: 0; translate: 0 -18px; }
 .board.is-pre, .countries.is-pre { opacity: 0; translate: 0 20px; transition: none; }
 
-/* THE HORIZON. The seam that splits every digit, carried the full width of the
-   screen so the board stands on a line rather than floating in the middle of
-   an empty page. It is the schedule's rule, reused — the deck should not have
-   two different ideas about what a horizontal line means. */
-.board-row { position: relative; }
-/* Centered on the ROW, which is not centered on the screen — the unit beside
-   the digits pulls it off by a couple of hundred pixels, and a line exactly one
-   viewport wide then stopped short of the right edge. Wide enough that the
-   offset cannot reach either end. */
-.board-horizon { position: absolute; left: 50%; top: 50%;
-  width: 300vw; height: 1px; margin-left: -150vw; background: var(--line);
-  clip-path: inset(0 100% 0 0);
-  transition: clip-path 1100ms cubic-bezier(.42, 0, .28, 1); }
-.board-horizon.is-drawn { clip-path: inset(0 0 0 0); }
+
 
 /* THE SECTION'S NAME ARRIVES FULL SIZE and then takes its place. It opens as
    the only thing on screen, cascading in a character at a time, and on the next
@@ -187,18 +174,22 @@ html, body {
 /* THE COMPARISON. Stacked, with real air between them, and no discs — side by
    side the discs were the picture; above one another they would only be in the
    way of the numbers that are now the point. */
-.countries.is-pair { flex-direction: column; gap: clamp(30px, 6vh, 76px); }
+.countries.is-pair { flex-direction: column; gap: clamp(34px, 7vh, 88px);
+  margin-top: clamp(44px, 11vh, 120px); }
 .countries.no-maps .country-disc { display: none; }
 .countries.no-maps .country-name { margin-top: 0; }
 .countries.is-pair .country-stats b { font-size: clamp(26px, 3.4vw, 52px); }
 
 .board-label { font-size: clamp(16px, 1.9vw, 25px); color: var(--dim);
   margin-top: clamp(18px, 3.2vh, 42px); }
-.board-row { display: flex; align-items: baseline; gap: .18em;
+/* The unit reads as part of the figure, not as a footnote beside it. Baseline
+   alignment put it at the bottom of the flap CELL rather than on the digits'
+   own baseline, which dropped it well below them. */
+.board-row { display: flex; align-items: center; gap: .55em;
   justify-content: center; }
-.board-unit { color: var(--dim); margin-left: .1em;
-  font-size: clamp(20px, 2.6vw, 38px); font-family: 'Sora', sans-serif;
-  font-weight: 200; letter-spacing: .02em; }
+.board-unit { color: var(--dim); font-family: 'Sora', sans-serif;
+  font-weight: 200; letter-spacing: .01em; line-height: 1;
+  font-size: clamp(30px, 4.4vw, 72px); }
 
 /* THE FLIP CLOCK.
 

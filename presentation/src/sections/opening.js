@@ -67,7 +67,7 @@ function scatter(count, seed) {
   const out = [];
   /* Each pin carries its own delay, so the whole field is started by one class
      rather than by hundreds of timers — 220 of them for America. */
-  const spread = 2600;
+  const spread = 1700;
   while (out.length < count) {
     const x = rnd() * 2 - 1, y = rnd() * 2 - 1;
     if (x * x + y * y > 0.82) continue;              // keep them inside the disc
@@ -127,10 +127,16 @@ async function tellCountry(root, c, gate) {
   /* The disc arrives first and settles, and only then does the country fill in
      — a few seconds of it, so the density is watched accumulating rather than
      found already there. */
+  /* From nothing, every time it is arrived at — including on the way back. */
+  const pins = card.querySelector("[data-pins]");
+  pins.classList.remove("is-in");
+  card.classList.remove("is-in");
+  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+
   card.classList.add("is-in");
   await motion.wait(T.normal);
-  card.querySelector("[data-pins]").classList.add("is-in");
-  await motion.wait(3000);
+  pins.classList.add("is-in");
+  await motion.wait(1900);
 
   const stats = [
     ["population", num(c.population.value)],
@@ -216,9 +222,6 @@ const beat = (i) => async ({ root, config }) => {
   unit.textContent = b.unit || "";
   fitBoard(figure, unit, frame, b.cells || num(b.value, b.cells).length);
 
-  /* The line is drawn once, under the first figure, and stays for the rest. */
-  root.querySelector("[data-horizon]").classList.add("is-drawn");
-
   await flipTo(figure, num(b.value, b.cells), { cells: b.cells });
 };
 
@@ -236,7 +239,6 @@ export const opening = {
       <!-- A number and its unit. Nothing else belongs on a clock face. -->
       <div class="board" data-board>
         <div class="board-row">
-          <span class="board-horizon" data-horizon aria-hidden="true"></span>
           <div class="figure board-figure" data-figure></div>
           <span class="board-unit" data-unit></span>
         </div>
@@ -259,6 +261,17 @@ export const opening = {
        and nothing has been read yet. */
     beats.push(async ({ root }) => {
       const cue = root.querySelector("[data-cue]");
+
+      /* RETURNABLE. Stepping back to the opening used to leave the last figure
+         standing on the board behind a title that had already been read — the
+         beat only ever ran forward from nothing, so it never cleared anything.
+         It resets the board to empty, which is also what makes the first
+         figure take its full revolution again on the way back in. */
+      await swapStage(root, "board");
+      const figure = root.querySelector("[data-figure]");
+      figure.innerHTML = "";
+      figure.dataset.width = "";
+      root.querySelector("[data-unit]").textContent = "";
 
       /* Put it at full size and in the middle of the SCREEN before anything is
          watched. Measured rather than guessed: the slide's own flow would
@@ -299,6 +312,17 @@ export const opening = {
       const box = root.querySelector("[data-countries]");
       if (keys.length === 1) {
         box.classList.remove("is-pair", "no-maps");
+
+        /* ONE COUNTRY GIVES WAY TO THE NEXT. Croatia used to cut in, because
+           the stage itself was already on screen — only the card inside it was
+           being swapped, and nothing was animating that. The one leaving goes
+           first, then the one arriving is built from nothing. */
+        const leaving = [...root.querySelectorAll("[data-country]")]
+          .filter((c) => !c.hidden && !keys.includes(c.dataset.country));
+        if (leaving.length && !box.hidden) {
+          for (const c of leaving) c.classList.remove("is-in");
+          await motion.wait(420);
+        }
         for (const c of config.opening.countries) {
           root.querySelector(`[data-country="${c.key}"]`).hidden = !keys.includes(c.key);
         }
