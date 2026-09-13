@@ -525,10 +525,17 @@ export async function flipTo(host, text, { cells, stagger = 95 } = {}) {
     host.dataset.width = String(width);
     host.className = (host.className.replace(/\bflip\b/, "").trim() + " flip").trim();
     host.innerHTML = "";
+    /* A zero-width character, first, purely so the board has a text baseline
+       to offer anything set beside it. Every flap clips its own contents, and
+       a clipped inline-block reports its box bottom as its baseline. */
+    const base = document.createElement("span");
+    base.className = "flip-base";
+    base.textContent = "0";
+    host.appendChild(base);
     for (let i = 0; i < width; i++) host.appendChild(flapCell());
   }
 
-  const board = [...host.children];
+  const board = [...host.querySelectorAll(".flap")];
   const want = Array.from({ length: width }, (_, i) => chars[i] ?? "");
 
   if (reduced()) {

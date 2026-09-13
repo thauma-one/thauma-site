@@ -146,12 +146,10 @@ html, body {
 .country.is-in { opacity: 1; translate: 0 0; }
 
 /* Bigger, and using the width it has. A single country has the whole screen. */
-/* Left, with the name and the figures under it. It was centered while
-   everything else in the card was not, which reads as two different
-   alignments arguing rather than as one card. */
-.country-disc { display: block; width: auto; height: clamp(210px, 42vh, 440px);
-  margin: 0; }
-.disc-edge { fill: none; stroke: var(--line); stroke-width: .5; }
+/* As big as the room allows, and centered. Without a frame around it the map
+   can take the width it actually needs. */
+.country-disc { display: block; width: 100%; height: auto;
+  max-height: clamp(230px, 46vh, 500px); margin: 0 auto; }
 /* The outline, not the fill. These are territory maps, so every state and
    county came as a filled shape; drawn as hairlines they read as a country
    with its own internal structure rather than as a solid blob. */
@@ -193,8 +191,20 @@ html, body {
 .board-label { font-size: clamp(16px, 1.9vw, 25px); color: var(--dim);
   margin-top: clamp(18px, 3.2vh, 42px); }
 /* The unit sits on the foot of the figure, not level with its middle. */
-.board-row { display: flex; align-items: flex-end; gap: .5em;
+/* BASELINE, NOT BOX BOTTOM. Aligning the boxes put the descender of "years"
+   below the digits; what should line up is the foot of the letters with the
+   foot of the numbers. A flap cell clips its contents, which makes its own
+   baseline the bottom of the box — so the board carries a zero-width character
+   of the same size whose only job is to give the row a real baseline. */
+.board-row { display: flex; align-items: baseline; gap: .5em;
   justify-content: center; }
+/* NO overflow:hidden here — that is exactly what makes a clipped inline-block
+   report its box bottom as its baseline, which is the problem this element
+   exists to solve. Zero width and hidden instead, with the same line-height
+   the flaps give their glyphs, so its baseline is where a digit's baseline
+   actually sits. */
+.flip-base { display: inline-block; width: 0; visibility: hidden;
+  line-height: .92em; }
 .board-unit { color: var(--dim); font-family: 'Sora', sans-serif;
   font-weight: 200; letter-spacing: .01em; line-height: 1;
   font-size: clamp(24px, 3.4vw, 54px); }

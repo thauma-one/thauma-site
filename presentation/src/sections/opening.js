@@ -55,6 +55,43 @@ function fitBoard(figure, unit, frame, cells) {
    the board width, the value is written plainly so that "2000" is four cells
    and not five; everywhere else the separator stays, because a number being
    read rather than clocked still wants it. */
+/**
+ * SIT THE UNIT ON THE FIGURE'S OWN BASELINE.
+ *
+ * CSS cannot do this on its own here. Every flap clips its contents, and a
+ * clipped inline-block reports its box bottom as its baseline, so baseline
+ * alignment lines the word up with the bottom of the CARD rather than with the
+ * foot of the number — which put the descender of "years" well below the
+ * digits. The real baselines are computable from the font's own metrics, so
+ * they are computed: where the digit's baseline falls inside its line box,
+ * where the word's falls inside its own, and the difference applied.
+ */
+function seatUnit(figure, unit) {
+  if (!figure || !unit || !unit.textContent.trim()) return;
+  const cell = figure.querySelector(".flap");
+  if (!cell || typeof document.createElement("canvas").getContext !== "function") return;
+
+  const cx = document.createElement("canvas").getContext("2d");
+  if (!cx) return;
+  const baselineIn = (rect, weight, size, family, sample) => {
+    cx.font = `${weight} ${size}px ${family}`;
+    const m = cx.measureText(sample);
+    const asc = m.fontBoundingBoxAscent, desc = m.fontBoundingBoxDescent;
+    if (!asc && !desc) return null;
+    return rect.top + (rect.height - (asc + desc)) / 2 + asc;
+  };
+
+  const f = getComputedStyle(figure), u = getComputedStyle(unit);
+  unit.style.transform = "";
+  const onDigits = baselineIn(cell.getBoundingClientRect(),
+    f.fontWeight, parseFloat(f.fontSize), f.fontFamily, "0");
+  const onWord = baselineIn(unit.getBoundingClientRect(),
+    u.fontWeight, parseFloat(u.fontSize), u.fontFamily, "x");
+  if (onDigits == null || onWord == null) return;
+
+  unit.style.transform = `translateY(${Math.round(onDigits - onWord)}px)`;
+}
+
 const num = (n, cells) =>
   cells ? String(n) : n.toLocaleString("en-US", { maximumFractionDigits: 2 });
 
@@ -111,29 +148,18 @@ function densityField(map, centers, count, seed) {
 /** One country: its outline and density inside the disc, figures beneath. */
 function countryCard(c) {
   const map = typeof MAPS !== "undefined" ? MAPS[c.map || c.key] : null;
-  /* Clipped to the disc. Croatia runs corner to corner, so at any size that
-     fills the box its tail crosses the circle it is supposed to sit inside. */
-  const clip = `clip-${c.key}`;
-  /* The clip goes on a GROUP, not on the nested svg. A nested svg establishes
-     its own coordinate system, and the clip path is then resolved against that
-     rather than against the disc — the circle landed hundreds of map units
-     away and took the whole country with it. A <g> stays in the disc's own
-     space, where the circle means what it says. */
+  /* NO FRAME. The circle was a placeholder from the sketch, drawn before there
+     was a country to put in it; with the real outline there it only cropped the
+     shape and made it small. The map is the picture now. */
   const inner = map
-    ? `<defs><clipPath id="${clip}"><circle cx="50" cy="50" r="46.4"/></clipPath></defs>
-       <g clip-path="url(#${clip})">
-         <svg viewBox="${map.viewBox}" x="5" y="5" width="90" height="90"
-              preserveAspectRatio="xMidYMid meet">
-           <g class="disc-land">${map.paths.map((d) => `<path d="${d}"/>`).join("")}</g>
-           <g class="disc-pins" data-pins>${densityField(map, c.centers, c.dots, c.seed)}</g>
-         </svg>
-       </g>`
+    ? `<g class="disc-land">${map.paths.map((d) => `<path d="${d}"/>`).join("")}</g>
+       <g class="disc-pins" data-pins>${densityField(map, c.centers, c.dots, c.seed)}</g>`
     : `<g class="disc-pins" data-pins></g>`;
 
   return `
     <figure class="country" data-country="${c.key}">
-      <svg class="country-disc" viewBox="0 0 100 100" aria-label="${c.name}">
-        <circle class="disc-edge" cx="50" cy="50" r="47"/>
+      <svg class="country-disc" viewBox="${map ? map.viewBox : "0 0 100 100"}"
+           preserveAspectRatio="xMidYMid meet" aria-label="${c.name}">
         ${inner}
       </svg>
       <figcaption class="country-name">${c.name}</figcaption>
@@ -266,6 +292,7 @@ const beat = (i) => async ({ root, config }) => {
   fitBoard(figure, unit, frame, b.cells || num(b.value, b.cells).length);
 
   await flipTo(figure, num(b.value, b.cells), { cells: b.cells });
+  seatUnit(figure, unit);
 };
 
 export const opening = {

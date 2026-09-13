@@ -82,7 +82,7 @@ export const config = {
        The American figures are PLACEHOLDERS the founder asked for so the
        screens could be built; they are flagged and must be replaced. */
     countries: [
-      { key: "us", name: "United States", dots: 260, seed: 7,
+      { key: "us", name: "United States", dots: 460, seed: 7,
         /* REAL PLACES, REAL WEIGHTS. The field used to be even scatter inside a
            circle, which says "a country" and nothing else. These are metro
            areas with their population in millions, and the map files carry a
@@ -113,7 +113,7 @@ export const config = {
           source: "PLACEHOLDER — 25% of the placeholder population. Replace before presenting." },
         share: { value: 25, verified: false, source: "PLACEHOLDER." } },
 
-      { key: "hr", name: "Croatia", dots: 36, seed: 31,
+      { key: "hr", name: "Croatia", dots: 64, seed: 31,
         /* Croatian cities, population in thousands. The country's own shape
            shows here too: Zagreb heavy inland, a thin line down the coast, and
            very little in between. */
