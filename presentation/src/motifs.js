@@ -79,134 +79,97 @@ const wait = (ms) => new Promise((r) => setTimeout(r, (instant || reduced()) ? 0
 let handSeq = 0;
 
 /**
- * @param {object} o
- * @param {string} [o.text]   words to write, rendered from the handwriting face
- * @param {string} [o.path]   an SVG path — real traced handwriting, when it exists
- * @param {number} [o.size]   font size in px
+ * REAL HANDWRITING, as a pen path.
+ *
+ * This used to render the word as SVG <text> and reveal it behind a moving
+ * clip. That is a wipe, not writing: the letters are already there and a
+ * shutter slides off them. Nothing about it looks like a hand.
+ *
+ * The word is now the stroke a pen actually makes — authored path geometry,
+ * drawn by paying out its own dash offset, so the line grows from its
+ * beginning to its end in the order it was written. The f's crossbar is a
+ * second stroke because a hand lifts the pen to cross an f, and it is drawn
+ * after the word for the same reason.
+ *
+ * The deck's own spec asked for exactly this and called the alternative what
+ * it is: the handwritten word is the human addition that matters, and it has
+ * to look like somebody wrote it.
  */
-export function handwrite(o = {}) {
-  const id = `hw${++handSeq}`;
-  const size = o.size || 44;
+export function handwrite({ viewBox = "0 0 240 150", strokes = [], slant = -9 } = {}) {
+  /* No strokes, no handwriting. Returning an empty box here would be an empty
+     box the size of the whole viewBox — which is exactly what happened to
+     section 4 when this function's shape changed underneath it. */
+  if (!strokes.length) return null;
   const el = document.createElement("div");
   el.className = "hw";
-
-  if (o.path) {
-    el.innerHTML =
-      `<svg class="hw-svg" viewBox="${o.viewBox || "0 0 600 120"}" aria-label="${esc(o.text || "")}">
-         <path class="hw-stroke" d="${o.path}" />
-       </svg>`;
-  } else {
-    /* WRITTEN, NOT FADED, and left to right like a hand actually moves.
-
-       Two bugs lived here. The viewBox was a fixed 1000 units wide whatever the
-       text said, so a short phrase drew at a third of the width it was given and
-       read as tiny. And the reveal was a stroke-dasharray on the <text>, which
-       applies PER SUBPATH — every glyph is its own subpath, so all the letters
-       drew at once. It looked like the words simply appeared, because in every
-       way that mattered they did.
-
-       The box is now measured from the text, and the reveal is a clip rectangle
-       that sweeps across it, which is the one thing that reads as writing. */
-    const chars = Math.max(1, (o.text || "").length);
-    const w = Math.round(chars * size * 0.58);
-    const h = Math.round(size * 1.7);
-    el.innerHTML =
-      `<svg class="hw-svg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMinYMid meet">
-         <defs>
-           <clipPath id="${id}-wipe" clipPathUnits="userSpaceOnUse">
-             <rect class="hw-wipe" x="0" y="0" width="${w}" height="${h}" />
-           </clipPath>
-         </defs>
-         <text class="hw-text" clip-path="url(#${id}-wipe)"
-               x="4" y="${size * 1.15}" font-size="${size}">${esc(o.text || "")}</text>
-       </svg>`;
-  }
-  el.dataset.hw = id;
+  el.innerHTML =
+    `<svg class="hw-svg" viewBox="${viewBox}" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+       <g transform="skewX(${slant})">
+         ${strokes.map((d) => `<path class="hw-stroke" d="${d}"/>`).join("")}
+       </g>
+     </svg>`;
   return el;
 }
 
-/** Run the writing. Resolves when the hand has finished. */
-export async function playHandwrite(el, { delay = 0, duration = T.slow } = {}) {
-  if (delay) await wait(delay);
-  const target = el.querySelector(".hw-stroke, .hw-text");
-  if (!target) return;
-  if (reduced()) { el.classList.add("is-written", "is-instant"); return; }
+/** Draw it, stroke by stroke, in the order a hand would make them. */
+export async function playHandwrite(el, { duration = T.slow } = {}) {
+  const paths = [...el.querySelectorAll(".hw-stroke")];
+  if (!paths.length) return;
 
-  /* The dash length has to exceed the real path length or the tail never
-     closes. Measured where the browser can measure it, generously guessed
-     where it cannot — a <text> element has no getTotalLength. */
-  let len = 1200;
-  if (typeof target.getTotalLength === "function") {
-    try { len = Math.max(200, target.getTotalLength()); } catch { /* keep the guess */ }
-  } else {
-    len = Math.max(600, (el.textContent || "").length * 90);
-  }
-  target.style.setProperty("--hw-len", len);
-  target.style.setProperty("--hw-dur", `${duration}ms`);
+  /* Each stroke gets a share of the time proportional to its own length, so
+     the pen keeps one speed across the whole word rather than hurrying the
+     long letters and dawdling over the short ones. */
+  const lengths = paths.map((p) => (p.getTotalLength ? p.getTotalLength() : 400));
+  const total = lengths.reduce((a, b) => a + b, 0) || 1;
 
-  /* The character-count guess above is close, never right. Once the face has
-     loaded the browser can say exactly how wide the words are, so the box is
-     retaken from the glyphs themselves — the difference between the estimate
-     and the truth is the difference between filling the space and floating in
-     it. Where getBBox does not exist the estimate stands. */
-  const svg = el.querySelector("svg");
-  if (svg && typeof target.getBBox === "function") {
-    try {
-      const bb = target.getBBox();
-      if (bb.width > 1 && bb.height > 1) {
-        svg.setAttribute("viewBox", `0 0 ${Math.ceil(bb.width + 8)} ${Math.ceil(bb.height * 1.45)}`);
-        const wipe = el.querySelector(".hw-wipe");
-        if (wipe) { wipe.setAttribute("width", Math.ceil(bb.width + 8));
-                    wipe.setAttribute("height", Math.ceil(bb.height * 1.45)); }
-      }
-    } catch { /* unmeasurable here; the estimate is what we have */ }
+  paths.forEach((p, i) => {
+    p.style.transition = "none";
+    p.style.strokeDasharray = lengths[i];
+    p.style.strokeDashoffset = lengths[i];
+  });
+  void el.offsetWidth;
+
+  if (reduced()) {
+    paths.forEach((p) => { p.style.strokeDashoffset = 0; });
+    el.classList.add("is-written");
+    return;
   }
-  el.classList.add("is-writing");
-  await wait(duration);
+
+  for (let i = 0; i < paths.length; i++) {
+    const share = Math.max(90, Math.round(duration * (lengths[i] / total)));
+    paths[i].style.transition = `stroke-dashoffset ${share}ms ${T.hand}`;
+    paths[i].style.strokeDashoffset = 0;
+    await wait(share);
+    /* The pause between lifting the pen and crossing the f. */
+    if (i < paths.length - 1) await wait(160);
+  }
   el.classList.add("is-written");
 }
 
 /**
- * The full correction: printed word, a beat, a struck-through line drawn by
- * hand, then the replacement written above it.
+ * The full correction: the ordinary word is struck, and the replacement is
+ * written by hand ABOVE it — the way anybody corrects a sentence on paper.
  *
- * The beat is not padding. The audience has to have finished reading the
- * ordinary version before it is corrected, or the correction has nothing to
- * push against.
+ * Above, and not after, for a reason the founder asked for directly: inserting
+ * the word into the line re-flows the sentence, and the most important sentence
+ * in the deck should not move while it is being read. The written word floats
+ * over the struck one and nothing shifts.
  */
-export async function correct(host, { struck, written, size = 44 } = {}) {
+export async function correct(host, { hand, size } = {}) {
   const strike = host.querySelector("[data-strike]");
   const slot = host.querySelector("[data-written]");
   if (!strike || !slot) return;
 
   await wait(T.beat);
   strike.classList.add("is-struck");
-  await wait(T.quick);
+  await wait(T.normal);
 
-  const hand = handwrite({ text: written, size });
-  slot.appendChild(hand);
-  await playHandwrite(hand, { duration: T.slow });
+  slot.innerHTML = "";
+  const written = handwrite(hand);
+  slot.appendChild(written);
+  await playHandwrite(written, { duration: size || T.slow * 1.6 });
 }
 
-/* ============================================================== MOTIF 2
-   ZOOM TO A FIXED POINT — two uses, kept visually distinct
-
-   The spec is firm: used twice, and they must not read as the same device
-   repeated. Section 1 is GEOGRAPHIC — travel, distance, scale collapsing.
-   Section 5 is TEMPORAL — focus on a moment, not a place.
-
-   So they do not share a component. They share only the easing above, which is
-   what makes them feel like relatives rather than twins.
-   ============================================================== */
-
-/**
- * GEOGRAPHIC. A match cut, not a literal camera move — the United States and
- * Croatia are most of a hemisphere apart, and a true continuous zoom between
- * them is a globe rotation: expensive, and it draws attention to itself, which
- * this deck forbids. The outgoing frame contracts as the incoming one expands
- * through the same center, so the SCALE COLLAPSE reads without pretending it is
- * one unbroken shot.
- */
 export async function scaleCollapse(fromEl, toEl, { duration = T.slow } = {}) {
   if (reduced()) { fromEl.hidden = true; toEl.hidden = false; return; }
   fromEl.style.setProperty("--zoom-dur", `${duration}ms`);
@@ -293,10 +256,22 @@ export async function rushThenArrive(host, o = {}) {
   await wait(T.beat);
   if (arrival) {
     arrival.classList.add("is-arriving");
+    /* PENDING ITS OWN STROKES. The heart's correction is written from authored
+       pen geometry; section 4's two fulfillment lines have not been drawn yet,
+       so they arrive as type rather than pretending to be handwriting. When
+       their strokes exist this takes the same path the correction does. */
     if (o.hand) {
-      const hand = handwrite({ text: o.hand, size: o.size || 38 });
-      arrival.appendChild(hand);
-      await playHandwrite(hand, { duration: T.slow });
+      const hand = typeof o.hand === "string" ? null : handwrite(o.hand);
+      if (hand) {
+        arrival.appendChild(hand);
+        await playHandwrite(hand, { duration: T.slow });
+      } else {
+        const written = document.createElement("p");
+        written.className = "hand-pending";
+        written.textContent = o.hand;
+        arrival.appendChild(written);
+        await wait(T.normal);
+      }
     }
   }
 }

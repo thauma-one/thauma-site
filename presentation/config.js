@@ -201,17 +201,54 @@ export const config = {
   },
 
   /* ---------------------------------------------------------------- SECTION 2 */
+  /* ---------------------------------------------------------------- SECTION 2
+     THE HEART.
+
+     The spec calls this the quietest, most personal moment in the deck and
+     warns in its own words against over-decorating the most important sentence
+     in it. So there is one piece of motion here and nothing else moves: the
+     ordinary word is struck and the real one is written by hand above it.
+
+     Above it, not after it — inserting a word re-flows the line, and this
+     sentence must not move while it is being read. */
   heart: {
-    /* The deck's signature moment. `struck` is replaced by `written` in the
-       founder's hand. */
-    correction: { before: "I want people to", struck: "BE", written: "FEEL", after: "seen." },
-    principle: [
-      "This isn't a repair job, and it isn't a checklist of gear to fix.",
-      "Before touching anything, listening comes first. The technical need is real — it is never only about the gear.",
-      "That is the whole difference between a task and a relationship.",
-    ],
+    correction: {
+      before: "I want people to",
+      struck: "be",
+      after: "seen.",
+
+      /* THE WRITTEN WORD, as the strokes a pen makes rather than as letters
+         revealed behind a mask. Authored by hand: two strokes, because a hand
+         lifts the pen to cross an f and does it after the word. The slant is
+         the lean of a right-handed hand. */
+      hand: {
+        viewBox: "-16 6 240 146",
+        slant: -9,
+        strokes: [
+          "M 26 104 C 24 84 26 42 44 28 C 55 20 59 34 53 52 C 47 72 38 98 34 114" +
+          " C 30 130 42 135 48 123 C 52 114 55 108 58 102" +
+          " C 66 96 74 84 82 74 C 86 68 80 64 72 70 C 64 76 64 92 74 100 C 82 106 90 102 96 94" +
+          " C 106 88 114 78 122 68 C 126 62 120 58 112 64 C 104 70 104 86 114 94 C 122 100 130 96 136 88" +
+          " C 152 68 168 32 180 24 C 189 17 196 26 189 46 C 183 66 172 90 168 100" +
+          " C 164 110 172 114 180 107 C 187 101 194 94 200 88",
+          "M 24 82 C 36 78 50 76 64 74",
+        ],
+      },
+    },
+
+    /* One line each, and the quietest arrival the deck has. */
+    principle: "Listening comes first. That is the whole difference between a task and a relationship.",
     who: "The volunteer who is first in and last out, running a soundboard nobody thanks them for.",
     scripture: "Ephesians 4 says the body is built up when every part does its work. The booth is part of the body.",
+
+    /* SAID, NOT SHOWN. The fuller version of the principle the founder speaks
+       around the one line that is on screen. */
+    support: {
+      notARepair: { text: "This isn't a repair job, and it isn't a checklist of gear to fix.",
+        verified: true, source: "The spec's own phrasing for the operating principle." },
+      neverTheGear: { text: "The technical need is real — it is never only about the gear.",
+        verified: true, source: "Same." },
+    },
   },
 
   /* ---------------------------------------------------------------- SECTION 3 */

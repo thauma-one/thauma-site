@@ -315,56 +315,49 @@ p.lead { color: var(--text); font-size: clamp(18px, 2vw, 24px); }
    deck. Same palette, different surface: the same world, not a second design
    system briefly taking over.
    ============================================================ */
-.hand-ground {
-  position: relative; padding: clamp(22px, 4vw, 46px); border-radius: 3px;
-  background:
-    linear-gradient(180deg, rgba(255,255,255,.028), rgba(255,255,255,.012)),
-    var(--bg2);
-  box-shadow: inset 0 0 0 1px var(--line);
-}
-/* The faintest rule, like paper. Not a notebook pastiche — just enough that
-   the surface reads as something written on. */
-.hand-ground::before {
-  content: ""; position: absolute; inset: 0; border-radius: 3px; pointer-events: none;
-  background: repeating-linear-gradient(
-    180deg, transparent 0 33px, rgba(255,255,255,.022) 33px 34px);
-  opacity: .8;
-}
-.hand-ground > * { position: relative; }
+/* ---- Section 2: the correction ---------------------------------------
+   The quietest screen in the deck, and the one sentence in it must not move.
+   It is set once on a single line; the written word is placed OVER the struck
+   one rather than after it, so nothing can re-flow while it is being read. */
+.slide.is-heart { gap: clamp(26px, 5vh, 58px); }
 
-/* The handwriting fills the width it is given. It used to be inline-block
-   around a fixed 1000-unit box, so short phrases rendered at a fraction of the
-   space and read as an afterthought. The box now fits the words, so the words
-   now fit the slide. */
+.correction { font-family: 'Sora', sans-serif; font-weight: 200;
+  font-size: clamp(26px, 4.2vw, 62px); line-height: 1.25; color: var(--text);
+  white-space: nowrap; opacity: 0; translate: 0 10px;
+  transition: opacity .7s ease, translate .7s cubic-bezier(.42, 0, .28, 1); }
+.correction.is-in { opacity: 1; translate: 0 0; }
+
+.struck-slot { position: relative; display: inline-block; }
+
+/* The strike is drawn across the word rather than switched on. */
+[data-strike] { position: relative; color: var(--dim);
+  transition: color .5s ease; }
+[data-strike]::after { content: ""; position: absolute;
+  left: -.06em; right: -.06em; top: .58em; height: 2px; background: var(--foam);
+  transform: scaleX(0); transform-origin: left center;
+  transition: transform .55s cubic-bezier(.42, 0, .28, 1); }
+[data-strike].is-struck::after { transform: scaleX(1); }
+
+/* ABOVE THE STRUCK WORD, and out of the flow entirely. */
+/* Close over the word it replaces — a correction is written in the gap above
+   the line, not floated off somewhere near it. */
+.hand-slot { position: absolute; left: 50%; bottom: 70%; width: 4.1em;
+  transform: translateX(-50%); pointer-events: none; }
 .hw { display: block; width: 100%; }
 .hw-svg { display: block; overflow: visible; width: 100%; height: auto; }
 
-/* THE HAND MOVING. A rectangle sweeps left to right and the glyphs appear
-   behind it, which is the only part of this that actually reads as writing —
-   a dash animation on <text> draws every letter at the same instant, because
-   each glyph is its own subpath. */
-.hw-wipe { transform: scaleX(0); transform-origin: left center; }
-.hw.is-writing .hw-wipe {
-  transition: transform var(--hw-dur, 1900ms) cubic-bezier(.35,.1,.25,1);
-  transform: scaleX(1);
-}
-.hw.is-written .hw-wipe, .hw.is-instant .hw-wipe { transform: scaleX(1); }
+/* THE PEN. Drawn by paying out its own dash offset, so the line grows from
+   its beginning to its end in the order it was written — not a shutter
+   sliding off letters that were already there. */
+.hw-stroke { fill: none; stroke: var(--foam);
+  stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
 
-/* Written, then inked. The stroke draws first; the fill arrives behind it. */
-.hw-text, .hw-stroke {
-  fill: none;
-  stroke: var(--foam);
-  stroke-width: 1.6;
-  stroke-linecap: round; stroke-linejoin: round;
-  font-family: 'DeckHand', 'Segoe Script', 'Bradley Hand', cursive;
-  stroke-dasharray: var(--hw-len, 1200);
-  stroke-dashoffset: var(--hw-len, 1200);
-}
-.hw.is-writing .hw-text, .hw.is-writing .hw-stroke {
-  transition: stroke-dashoffset var(--hw-dur, 980ms) cubic-bezier(.35,.1,.25,1);
-  stroke-dashoffset: 0;
-}
-.hw.is-written .hw-text { fill: var(--foam); transition: fill .5s ease .1s; }
+/* Section 4's fulfillment lines, until they are drawn as strokes of their own. */
+.hand-pending { color: var(--foam); font-family: 'Sora', sans-serif; font-weight: 200;
+  font-size: clamp(20px, 2.4vw, 34px); margin: clamp(10px, 1.6vh, 18px) 0 0; }
+
+.heart-lines { display: flex; flex-direction: column;
+  gap: clamp(14px, 2.6vh, 30px); }
 .hw.is-written .hw-stroke { fill: none; }
 .hw.is-instant .hw-text { fill: var(--foam); stroke-dashoffset: 0; }
 
@@ -524,15 +517,20 @@ p.lead { color: var(--text); font-size: clamp(18px, 2vw, 24px); }
    Fast, then arriving. The rush is short and the arrival is not.
    ============================================================ */
 .rush { position: relative; }
-[data-line] { height: 1px; background: var(--line); position: relative; overflow: hidden; }
-[data-line]::after {
+/* Section 4's drawn rule. Scoped to the class it is actually used with,
+   because a bare `data-line` is the sort of attribute another section will
+   reach for — the heart's three lines did, and inherited a one-pixel height
+   and a background from a rule that had nothing to do with them. */
+.promise-line[data-line] { height: 1px; background: var(--line);
+  position: relative; overflow: hidden; }
+.promise-line[data-line]::after {
   content: ""; position: absolute; inset: 0 100% 0 0; background: var(--blue);
   box-shadow: 0 0 14px var(--blue-glow, rgba(47,216,255,.5));
 }
-[data-line].is-rushing::after {
+.promise-line[data-line].is-rushing::after {
   animation: rush-fill var(--rush-dur, 1200ms) cubic-bezier(.4,0,.2,1) forwards;
 }
-[data-line].is-slowing::after { inset: 0 6% 0 0; transition: inset 900ms cubic-bezier(.16,1,.3,1); }
+.promise-line[data-line].is-slowing::after { inset: 0 6% 0 0; transition: inset 900ms cubic-bezier(.16,1,.3,1); }
 @keyframes rush-fill { to { inset: 0 12% 0 0; } }
 
 [data-beat] { opacity: 0; transform: translateY(6px);
@@ -562,7 +560,7 @@ p.lead { color: var(--text); font-size: clamp(18px, 2vw, 24px); }
 
 @media (prefers-reduced-motion: reduce) {
   .in, .track, [data-point], [data-beat], [data-arrival] { transition: none !important; }
-  .zoom-frame.is-collapsing, .zoom-frame.is-arriving, [data-line].is-rushing::after {
+  .zoom-frame.is-collapsing, .zoom-frame.is-arriving, .promise-line[data-line].is-rushing::after {
     animation: none !important; }
 }
 
