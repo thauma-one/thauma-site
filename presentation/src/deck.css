@@ -93,9 +93,9 @@ html, body {
 
 /* THE SUBJECT, ABOVE THE CLOCK, arriving in two halves a beat apart. The
    first fades up; the second drops in beside it and completes the phrase. */
-.board-phrase { display: flex; justify-content: center; gap: .32em;
+.board-phrase { display: flex; gap: .32em;
   font-family: 'Sora', sans-serif; font-weight: 200; color: var(--text);
-  font-size: clamp(19px, 2.5vw, 40px); letter-spacing: .01em;
+  font-size: clamp(15px, 1.7vw, 27px); letter-spacing: .01em;
   margin: 0 0 clamp(14px, 2.8vh, 38px); min-height: 1.25em; white-space: nowrap; }
 .board-phrase span { opacity: 0;
   transition: opacity .75s ease, translate .75s cubic-bezier(.42, 0, .28, 1); }
@@ -107,7 +107,7 @@ html, body {
    figure attached rather than as a board somebody is being shown. It takes the
    space below the heading and centers itself in it. */
 .board { flex: 1 1 auto; display: flex; flex-direction: column;
-  justify-content: center; align-items: center;
+  justify-content: center; align-items: flex-start;
   margin-top: clamp(26px, 7vh, 96px); width: 100%; }
 
 /* Both stages arrive from below and leave upward, the same grammar the deck
@@ -134,7 +134,8 @@ html, body {
 
 
 /* Sized in JS so seven digits and one digit carry the same weight. */
-.board-figure { line-height: .94; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.board-figure { line-height: .94; white-space: nowrap;
+  font-variant-numeric: tabular-nums; }
 
 /* The label sits well clear of the figure. It was tucked under it at the type's
    own line-height, which on a number this size reads as cramped rather than

@@ -375,14 +375,27 @@ const beat = (i) => async ({ root, config }) => {
 
   await swapStage(root, "board");
 
-  /* The words land before the clock moves, so the room has read them by the
-     time the figure arrives under them. */
-  if (phraseTo(root, i)) await motion.wait(820);
-
-  /* The unit and the board are sized before anything turns over, so nothing
-     moves sideways once the clock is running. */
+  /* SIZED FIRST, ALWAYS. Setting the figure's size changes the row's height,
+     and doing that after the words had appeared pulled them upward just as
+     they finished arriving. */
   unit.textContent = b.unit || "";
   fitBoard(figure, unit, frame, b.cells || num(b.value, b.cells).length);
+
+  /* THE BOARD IS BUILT BEFORE THE WORDS APPEAR, empty and silent. Reserving
+     its height in CSS meant guessing at the line box a row of clipped flaps
+     sits in, and the guess was out by a few pixels — so the phrase settled and
+     then shifted the instant the first cell existed. Building the cells first
+     makes the height real rather than estimated, and nothing below the words
+     moves again.
+
+     Blank cells have nothing to turn, so this returns without animating. */
+  await flipTo(figure, "", { cells: b.cells || num(b.value, b.cells).length });
+
+  /* "The Church" is read before the first figure turns under it. Everything
+     after that arrives WITH its figure — the phrase completing itself and the
+     board changing are one moment, not two. */
+  const arriving = phraseTo(root, i);
+  if (arriving && i === 0) await motion.wait(820);
 
   /* The cells are built synchronously at the head of flipTo, so the unit can
      be seated against them while the board is still turning — it used to be
