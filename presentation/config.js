@@ -55,6 +55,12 @@ export const config = {
        room in a need it has never considered. */
     cue: "The Need",
 
+    /* Said in two halves, a beat apart, so the room hears the subject arrive
+       and then hears what it is really about. "The Church" fades up over the
+       clock before the first figure; "& Production" drops in beside it with
+       the second, and the phrase completes itself. */
+    phrase: { a: "The Church", b: "& Production" },
+
     beats: [
       /* THE YEARS. One board, four cells wide, "years" fixed beside it. No
          subtext — the founder says what each number is. The board is sized for
@@ -122,18 +128,32 @@ export const config = {
           source: "Pew Research Center Religious Landscape Study, 2023-24: 40% of US adults identify as Protestant." } },
 
       { key: "hr", name: "Croatia", dots: 64, seed: 31,
-        /* Croatian cities, population in thousands, with a tighter spread —
-           the country is small enough that a city really is close to a dot. */
-        spread: 0.02,
+        /* WHERE THE PROTESTANT CHURCH IS, which is not where the people are.
+           Croatia's population is Zagreb and the coast; its Protestants are
+           disproportionately EASTERN SLAVONIA and BARANJA. The Reformed
+           Christian Church is largely the Hungarian minority around Beli
+           Manastir, Darda and Vukovar, and Osijek carries an evangelical
+           community out of proportion to its size — the Evangelical
+           Theological Seminary is there. Zagreb holds the largest single
+           concentration; the Dalmatian coast is thin.
+
+           Weights are relative and approximate, built from the denominational
+           geography behind the spec's own corroboration — Lutheran 3,600
+           across 13 congregations, Reformed 3,000-4,000 across 21-23, both
+           concentrated in the east. Not a census, and nothing in the deck is
+           read off this field. */
+        spread: 0.022,
         centers: [
-          [45.815, 15.982, 800], [43.508, 16.440, 178], [45.327, 14.442, 128],
-          [45.555, 18.694, 96], [44.119, 15.232, 75], [45.160, 18.016, 53],
-          [44.868, 13.849, 52], [45.487, 15.548, 49], [45.485, 16.373, 40],
-          [46.306, 16.338, 38], [43.735, 15.895, 34], [45.288, 18.805, 31],
-          [42.650, 18.094, 28], [45.898, 16.842, 27], [45.351, 19.001, 23],
-          [46.161, 16.833, 22], [45.806, 17.190, 20], [44.545, 15.375, 12],
+          [45.815, 15.982, 1200], [45.555, 18.694, 900], [45.774, 18.607, 550],
+          [45.351, 19.001, 300], [45.288, 18.805, 280], [45.630, 18.687, 220],
+          [45.327, 14.442, 250], [43.508, 16.440, 200], [45.160, 18.016, 200],
+          [45.590, 17.225, 180], [46.389, 16.434, 160], [45.898, 16.842, 150],
+          [45.308, 18.410, 150], [46.306, 16.338, 140], [44.868, 13.849, 130],
+          [45.485, 16.373, 130], [45.660, 18.417, 130], [45.490, 18.093, 120],
+          [45.487, 15.548, 120], [44.119, 15.232, 110], [42.650, 18.094, 60],
+          [43.735, 15.895, 60], [45.081, 13.638, 50],
         ],
-        centersSource: "Croatian city populations in thousands, rounded. Approximate, and for drawing only.",
+        centersSource: "Relative weights for Croatian Protestant presence, from the denominational geography behind the spec's corroboration: Reformed congregations concentrated among the Hungarian minority in Baranja and eastern Slavonia, an evangelical community in Osijek, the largest single concentration in Zagreb, and a thin coast. Approximate, and for drawing only.",
         population: { value: 3900000, verified: true,
           source: "Croatian Bureau of Statistics, ~3.9 million." },
         protestants: { value: 7000, verified: false,

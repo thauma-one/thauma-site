@@ -353,6 +353,19 @@ function enlargeCue(root, cue) {
   cue.style.transition = "";
 }
 
+/** The phrase above the clock, in the two halves it arrives in. */
+function phraseTo(root, i) {
+  const want = { a: i >= 0, b: i >= 1 };
+  let changed = false;
+  for (const key of ["a", "b"]) {
+    const el = root.querySelector(`[data-phrase="${key}"]`);
+    if (!el) continue;
+    if (el.classList.contains("is-in") !== want[key]) changed = true;
+    el.classList.toggle("is-in", want[key]);
+  }
+  return changed;
+}
+
 /** One beat: a figure taking the board. */
 const beat = (i) => async ({ root, config }) => {
   const b = config.opening.beats[i];
@@ -361,6 +374,10 @@ const beat = (i) => async ({ root, config }) => {
   const unit = root.querySelector("[data-unit]");
 
   await swapStage(root, "board");
+
+  /* The words land before the clock moves, so the room has read them by the
+     time the figure arrives under them. */
+  if (phraseTo(root, i)) await motion.wait(820);
 
   /* The unit and the board are sized before anything turns over, so nothing
      moves sideways once the clock is running. */
@@ -389,6 +406,10 @@ export const opening = {
 
       <!-- A number and its unit. Nothing else belongs on a clock face. -->
       <div class="board" data-board>
+        <p class="board-phrase">
+          <span data-phrase="a">${o.phrase.a}</span>
+          <span data-phrase="b">${o.phrase.b}</span>
+        </p>
         <div class="board-row">
           <div class="figure board-figure" data-figure></div>
           <span class="board-unit" data-unit></span>
@@ -419,6 +440,7 @@ export const opening = {
          It resets the board to empty, which is also what makes the first
          figure take its full revolution again on the way back in. */
       await swapStage(root, "board");
+      phraseTo(root, -1);
       const figure = root.querySelector("[data-figure]");
       figure.innerHTML = "";
       figure.dataset.width = "";
@@ -587,6 +609,7 @@ export const opening = {
     /* Inside the clock: turn to the figure before this one. */
     if (step > 1) {
       const b = beats[step - 2];
+      if (phraseTo(root, step - 2)) await motion.wait(620);
       unit.textContent = b.unit || "";
       const turning = flipTo(figure, num(b.value, b.cells), { cells: b.cells });
       seatUnit(figure, unit);
@@ -596,6 +619,8 @@ export const opening = {
 
     /* And back to the name, alone and full size. */
     const cue = root.querySelector("[data-cue]");
+    phraseTo(root, -1);
+    await motion.wait(620);
     figure.innerHTML = "";
     figure.dataset.width = "";
     unit.textContent = "";

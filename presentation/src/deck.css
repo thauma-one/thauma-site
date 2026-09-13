@@ -91,6 +91,17 @@ html, body {
    the room means the title shrinks to the place it will actually stay in. */
 .slide.is-board { gap: 0; min-height: 74vh; justify-content: flex-start; }
 
+/* THE SUBJECT, ABOVE THE CLOCK, arriving in two halves a beat apart. The
+   first fades up; the second drops in beside it and completes the phrase. */
+.board-phrase { display: flex; justify-content: center; gap: .32em;
+  font-family: 'Sora', sans-serif; font-weight: 200; color: var(--text);
+  font-size: clamp(19px, 2.5vw, 40px); letter-spacing: .01em;
+  margin: 0 0 clamp(14px, 2.8vh, 38px); min-height: 1.25em; white-space: nowrap; }
+.board-phrase span { opacity: 0;
+  transition: opacity .75s ease, translate .75s cubic-bezier(.42, 0, .28, 1); }
+.board-phrase [data-phrase="b"] { translate: 0 -18px; }
+.board-phrase span.is-in { opacity: 1; translate: 0 0; }
+
 /* ROOM, AND THE NUMBER IN THE MIDDLE OF IT. The clock sat directly under the
    heading against the top of the screen, which reads as a caption with a big
    figure attached rather than as a board somebody is being shown. It takes the
@@ -121,14 +132,6 @@ html, body {
                    transform .85s cubic-bezier(.42, 0, .28, 1); }
 .cue.is-big { font-size: clamp(30px, 5.2vw, 68px); }
 
-.board { display: flex; flex-direction: column; align-items: flex-start;
-  width: 100%; }
-
-/* The number just left. Small, quiet, and still there. */
-.board-prior { min-height: 1.5em; color: var(--dim); font-size: clamp(14px, 1.4vw, 18px);
-  letter-spacing: .02em; }
-.board-prior b { font-family: 'Sora', sans-serif; font-weight: 200; color: var(--text);
-  font-variant-numeric: tabular-nums; margin-right: .5em; }
 
 /* Sized in JS so seven digits and one digit carry the same weight. */
 .board-figure { line-height: .94; white-space: nowrap; font-variant-numeric: tabular-nums; }
