@@ -20,7 +20,7 @@
  * in all of Croatia" is the argument, and the mismatch in units is the point:
  * it must never be softened into comparing like with like.
  */
-import { charCascade, flipTo, motion, setInstant, T } from "../motifs.js";
+import { charCascade, unCascade, flipTo, motion, setInstant, T } from "../motifs.js";
 /* NOT ALIASED. The build inlines each module and strips its import lines,
    so an alias names something the bundle never declares — `config as x` became
    a ReferenceError at module load and took the whole deck down with it. */
@@ -116,7 +116,7 @@ function project(geo, box, lat, lon) {
   ];
 }
 
-function densityField(map, centers, count, seed) {
+function densityField(map, centers, count, seed, spread = 0.02) {
   if (!map) return "";
   const [, , vw, vh] = map.viewBox.split(/\s+/).map(Number);
   const unit = Math.max(vw, vh);
@@ -131,10 +131,11 @@ function densityField(map, centers, count, seed) {
     const share = Math.max(1, Math.round((weight / total) * count));
     const [cx, cy] = project(map.geo, map.viewBox, lat, lon);
     for (let k = 0; k < share; k++) {
-      /* A bigger place spreads further, the way a metro area does. */
-      const spread = unit * (0.004 + Math.sqrt(weight / total) * 0.09);
+      /* A heavier place spreads further, but every place spreads — a state's
+         worth of people is a region, not a point. */
+      const reach = unit * spread * (0.9 + Math.sqrt(weight / total) * 4.2);
       const a = rnd() * Math.PI * 2;
-      const r = Math.sqrt(rnd()) * spread;
+      const r = Math.sqrt(rnd()) * reach;
       out.push(`<circle cx="${(cx + Math.cos(a) * r).toFixed(1)}"
                         cy="${(cy + Math.sin(a) * r).toFixed(1)}"
                         r="${(unit * (0.0022 + rnd() * 0.003)).toFixed(2)}"
@@ -153,7 +154,7 @@ function countryCard(c) {
      shape and made it small. The map is the picture now. */
   const inner = map
     ? `<g class="disc-land">${map.paths.map((d) => `<path d="${d}"/>`).join("")}</g>
-       <g class="disc-pins" data-pins>${densityField(map, c.centers, c.dots, c.seed)}</g>`
+       <g class="disc-pins" data-pins>${densityField(map, c.centers, c.dots, c.seed, c.spread)}</g>`
     : `<g class="disc-pins" data-pins></g>`;
 
   return `
@@ -277,6 +278,18 @@ async function swapStage(root, wanted) {
   }
 }
 
+/** The heading at full size, centered on the screen, set without animating. */
+function enlargeCue(root, cue) {
+  cue.style.transition = "none";
+  cue.classList.add("is-big");
+  const here = cue.getBoundingClientRect();
+  const screen = root.getBoundingClientRect();
+  const dy = (screen.top + screen.height / 2) - (here.top + here.height / 2);
+  cue.style.transform = `translateY(${Math.round(dy)}px)`;
+  void cue.offsetWidth;
+  cue.style.transition = "";
+}
+
 /** One beat: a figure taking the board. */
 const beat = (i) => async ({ root, config }) => {
   const b = config.opening.beats[i];
@@ -291,8 +304,13 @@ const beat = (i) => async ({ root, config }) => {
   unit.textContent = b.unit || "";
   fitBoard(figure, unit, frame, b.cells || num(b.value, b.cells).length);
 
-  await flipTo(figure, num(b.value, b.cells), { cells: b.cells });
+  /* The cells are built synchronously at the head of flipTo, so the unit can
+     be seated against them while the board is still turning — it used to be
+     placed afterwards, which meant it sat visibly low for the whole run and
+     then jumped. */
+  const turning = flipTo(figure, num(b.value, b.cells), { cells: b.cells });
   seatUnit(figure, unit);
+  await turning;
 };
 
 export const opening = {
@@ -347,15 +365,7 @@ export const opening = {
          watched. Measured rather than guessed: the slide's own flow would
          center it against whatever else happens to be in the slide, which at
          this moment is an empty board and nothing else. */
-      cue.style.transition = "none";
-      cue.classList.add("is-big");
-      await new Promise((r) => requestAnimationFrame(r));
-      const here = cue.getBoundingClientRect();
-      const screen = root.getBoundingClientRect();
-      const dy = (screen.top + screen.height / 2) - (here.top + here.height / 2);
-      cue.style.transform = `translateY(${Math.round(dy)}px)`;
-      void cue.offsetWidth;
-      cue.style.transition = "";
+      enlargeCue(root, cue);
 
       await charCascade(cue, { stagger: 90, duration: 1200 });
     });
@@ -438,6 +448,99 @@ export const opening = {
     beats.push(stage(["us", "hr"], { maps: false }));
     return beats;
   })(),
+
+  /**
+   * EVERY BEAT, BACKWARDS.
+   *
+   * Going back should undo what was just done rather than land the previous
+   * state by rebuilding — a density field that filled in empties out, a figure
+   * that cascaded in cascades out, a card that dropped in drops back out, and
+   * the clock turns to the number before it exactly as it turned to this one.
+   * What the undoing looks like depends entirely on what the beat did, which
+   * is why only the section can say.
+   */
+  async back({ root, config, state, step }) {
+    const beats = config.opening.beats;
+    const firstCountry = beats.length + 1;      // title, then one beat per figure
+    const figure = root.querySelector("[data-figure]");
+    const unit = root.querySelector("[data-unit]");
+    const box = root.querySelector("[data-countries]");
+    const card = (k) => root.querySelector(`[data-country="${k}"]`);
+
+    /* Out of a country: its figures leave, then the field empties, then the
+       country itself goes — the arrival in reverse order. */
+    const dismiss = async (key) => {
+      const c = card(key);
+      for (const cell of [...c.querySelectorAll("[data-stat]")].reverse()) {
+        await unCascade(cell, { stagger: 26, duration: 420 });
+        cell.closest("[data-figure-group]").classList.remove("is-in");
+      }
+      c.querySelector("[data-pins]").classList.remove("is-in");
+      await motion.wait(700);
+      c.classList.remove("is-in");
+      await motion.wait(520);
+      c.hidden = true;
+    };
+
+    /* The comparison, undone: America leaves and Croatia walks back to where
+       it stood on its own. */
+    if (step === firstCountry + 2) {
+      const us = card("us"), hr = card("hr");
+      us.classList.remove("is-in");
+      await motion.wait(520);
+      slideIntoPlace(
+        [hr.querySelector(".country-name"), hr.querySelector(".country-stats")],
+        () => { us.hidden = true; box.classList.remove("is-pair", "no-maps"); });
+      await motion.wait(780);
+      hr.querySelector("[data-pins]").classList.add("is-in");
+      return;
+    }
+
+    /* Croatia leaves and America is standing where it was left. */
+    if (step === firstCountry + 1) {
+      await dismiss("hr");
+      const us = card("us");
+      us.hidden = false;
+      setStats(root, config.opening.countries.find((c) => c.key === "us"));
+      us.querySelector("[data-pins]").classList.add("is-in");
+      await motion.wait(520);
+      return;
+    }
+
+    /* America leaves and the clock comes back, reading its last figure. */
+    if (step === firstCountry) {
+      await dismiss("us");
+      await swapStage(root, "board");
+      const last = beats[beats.length - 1];
+      unit.textContent = last.unit || "";
+      fitBoard(figure, unit, root.querySelector("[data-board]"),
+        last.cells || num(last.value, last.cells).length);
+      const turning = flipTo(figure, num(last.value, last.cells), { cells: last.cells });
+      seatUnit(figure, unit);
+      await turning;
+      return;
+    }
+
+    /* Inside the clock: turn to the figure before this one. */
+    if (step > 1) {
+      const b = beats[step - 2];
+      unit.textContent = b.unit || "";
+      const turning = flipTo(figure, num(b.value, b.cells), { cells: b.cells });
+      seatUnit(figure, unit);
+      await turning;
+      return;
+    }
+
+    /* And back to the name, alone and full size. */
+    const cue = root.querySelector("[data-cue]");
+    figure.innerHTML = "";
+    figure.dataset.width = "";
+    unit.textContent = "";
+    await motion.wait(240);
+    enlargeCue(root, cue);
+    cue.classList.remove("cc");
+    cue.textContent = config.opening.cue;
+  },
 
   /* Re-running the beat with motion off lands exactly the state it produces,
      without performing it — and without a second description of the section

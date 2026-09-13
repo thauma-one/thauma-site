@@ -241,6 +241,21 @@ export async function prev() {
   pendingGate = null;
   if (state.nav.playing) return;
 
+  /* A SECTION THAT CAN PLAY A BEAT BACKWARDS does that instead of being
+     rebuilt. Rebuilding lands the right state but shows none of the undoing —
+     a density field that faded in should fade out, a line that cascaded in
+     should cascade out, a card that dropped in should drop back out. Only the
+     section knows what the beat it just played actually did. */
+  const here = currentSection();
+  if (here?.back && state.nav.step > 0) {
+    state.nav.playing = true;
+    try { await here.back({ root, config, state, step: state.nav.step, gate }); }
+    catch (err) { console.error("back failed:", err); }
+    state.nav.playing = false;
+    state.nav.step -= 1;
+    return;
+  }
+
   if (state.nav.step > 0) { await rewindTo(state.nav.section, state.nav.step - 1); return; }
   if (state.nav.section > 0) {
     const i = state.nav.section - 1;

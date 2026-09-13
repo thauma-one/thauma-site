@@ -83,30 +83,37 @@ export const config = {
        screens could be built; they are flagged and must be replaced. */
     countries: [
       { key: "us", name: "United States", dots: 460, seed: 7,
-        /* REAL PLACES, REAL WEIGHTS. The field used to be even scatter inside a
-           circle, which says "a country" and nothing else. These are metro
-           areas with their population in millions, and the map files carry a
-           geoViewBox — the latitude and longitude of their own edges — so a
-           place can be drawn where it actually is. The shape of the country
-           then appears in the dots on its own: the eastern seaboard crowded,
-           the mountain west nearly empty. */
+        /* PROTESTANTS, NOT POPULATION. Weighting by metro size drew the
+           country America's CITIES live in — dense coastal clusters and an
+           empty middle — which is close to the opposite of where its
+           Protestant church actually is. These are state centers weighted by
+           approximate Protestant adherents in millions, so the South and the
+           Midwest carry the field and the rural states are on the map at all.
+
+           Spread is wide on purpose: a state's worth of people is not a dot,
+           and the point of the picture is a country covered rather than a
+           handful of pins. */
+        spread: 0.055,
         centers: [
-          [40.71, -74.01, 20.1], [34.05, -118.24, 13.2], [41.88, -87.63, 9.5],
-          [32.78, -96.80, 7.6], [29.76, -95.37, 7.1], [38.91, -77.04, 6.4],
-          [39.95, -75.17, 6.2], [25.76, -80.19, 6.1], [33.75, -84.39, 6.1],
-          [42.36, -71.06, 4.9], [33.45, -112.07, 4.9], [37.77, -122.42, 4.7],
-          [33.95, -117.40, 4.6], [42.33, -83.05, 4.3], [47.61, -122.33, 4.0],
-          [44.98, -93.27, 3.7], [32.72, -117.16, 3.3], [27.95, -82.46, 3.2],
-          [39.74, -104.99, 2.9], [38.63, -90.20, 2.8], [39.29, -76.61, 2.8],
-          [35.23, -80.84, 2.7], [28.54, -81.38, 2.7], [29.42, -98.49, 2.6],
-          [45.51, -122.68, 2.5], [38.58, -121.49, 2.4], [40.44, -79.99, 2.4],
-          [36.17, -115.14, 2.3], [30.27, -97.74, 2.3], [39.10, -84.51, 2.3],
-          [39.10, -94.58, 2.2], [39.96, -83.00, 2.1], [39.77, -86.16, 2.1],
-          [41.50, -81.69, 2.0], [36.16, -86.78, 2.0], [35.47, -97.52, 1.4],
-          [40.76, -111.89, 1.3], [29.95, -90.07, 1.3], [35.15, -90.05, 1.3],
-          [46.87, -96.79, 0.6], [43.62, -116.20, 0.8], [35.08, -106.65, 0.9],
+          [31.5, -99.3, 8.5], [32.8, -83.6, 4.2], [35.6, -79.4, 4.0],
+          [28.6, -81.8, 5.0], [40.3, -82.8, 3.5], [35.8, -86.4, 3.3],
+          [40.6, -77.2, 3.2], [37.5, -78.9, 2.9], [40.0, -89.2, 2.8],
+          [32.8, -86.8, 2.8], [38.4, -92.5, 2.6], [42.9, -84.6, 2.6],
+          [42.9, -75.5, 2.6], [33.9, -80.9, 2.4], [39.8, -86.3, 2.4],
+          [37.7, -85.3, 2.3], [36.0, -119.4, 5.5], [45.7, -93.9, 1.8],
+          [44.6, -89.7, 1.7], [32.7, -89.7, 1.7], [31.1, -92.0, 1.9],
+          [35.6, -97.5, 1.9], [34.9, -92.4, 1.6], [47.4, -120.5, 1.4],
+          [34.2, -111.6, 1.4], [39.1, -76.8, 1.2], [39.1, -105.4, 1.2],
+          [40.2, -74.7, 1.2], [42.0, -93.5, 1.1], [38.5, -98.4, 1.1],
+          [38.6, -80.6, 0.8], [42.3, -71.8, 0.8], [43.9, -120.6, 0.9],
+          [41.5, -99.8, 0.7], [41.6, -72.7, 0.5], [39.3, -116.6, 0.5],
+          [34.4, -106.1, 0.5], [44.4, -114.6, 0.4], [47.0, -109.6, 0.3],
+          [43.0, -107.5, 0.2], [47.4, -100.5, 0.3], [44.4, -100.2, 0.3],
+          [45.4, -69.2, 0.3], [43.7, -71.6, 0.2], [44.0, -72.7, 0.1],
+          [41.7, -71.6, 0.1], [39.0, -75.5, 0.2], [64.0, -152.0, 0.2],
+          [20.8, -156.3, 0.2], [39.5, -111.5, 0.3],
         ],
-        centersSource: "US metro populations in millions, rounded. Approximate, and for drawing only — no figure in the deck is read off this field.",
+        centersSource: "State centers weighted by approximate Protestant adherents in millions, drawn from the general shape of US religious-landscape surveys. Approximate, and for drawing only — no figure in the deck is read off this field.",
         population: { value: 350000000, verified: false,
           source: "PLACEHOLDER at the founder's request. Replace before presenting." },
         protestants: { value: 87500000, verified: false,
@@ -114,9 +121,9 @@ export const config = {
         share: { value: 25, verified: false, source: "PLACEHOLDER." } },
 
       { key: "hr", name: "Croatia", dots: 64, seed: 31,
-        /* Croatian cities, population in thousands. The country's own shape
-           shows here too: Zagreb heavy inland, a thin line down the coast, and
-           very little in between. */
+        /* Croatian cities, population in thousands, with a tighter spread —
+           the country is small enough that a city really is close to a dot. */
+        spread: 0.02,
         centers: [
           [45.815, 15.982, 800], [43.508, 16.440, 178], [45.327, 14.442, 128],
           [45.555, 18.694, 96], [44.119, 15.232, 75], [45.160, 18.016, 53],

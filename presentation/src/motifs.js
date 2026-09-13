@@ -555,6 +555,21 @@ export async function flipTo(host, text, { cells, stagger = 95 } = {}) {
   }));
 }
 
+/** The cascade run backwards: the characters roll back out, last one first. */
+export async function unCascade(host, { stagger = 38, duration = 640 } = {}) {
+  if (!host) return;
+  const chars = [...host.querySelectorAll(".cc-char")];
+  if (!chars.length || reduced()) { host.classList.remove("cc"); return; }
+
+  chars.forEach((c, i) => {
+    c.style.transitionDelay = `${(chars.length - 1 - i) * stagger}ms`;
+    c.style.transitionDuration = `${duration}ms`;
+  });
+  await new Promise((r) => requestAnimationFrame(r));
+  for (const c of chars) c.classList.remove("is-in");
+  await wait(duration + stagger * chars.length);
+}
+
 let beatGate = null;
 export function setBeatGate(fn) { beatGate = fn; }
 
