@@ -1,4 +1,65 @@
 /**
+ * Pins are placed INSIDE the country, tested against its own geometry.
+ *
+ * Scattering around a state's center put dots in the Gulf of Mexico, off the
+ * Pacific coast and over the Canadian border, because a jitter radius knows
+ * nothing about a coastline. Every candidate is now asked of the outline
+ * itself — `isPointInFill` on the real paths — and rejected if it is not on
+ * land. That also quietly drops the places the map does not contain: these
+ * files are the lower forty-eight, so Alaska and Hawaii simply find nowhere to
+ * land rather than appearing in the ocean beside California.
+ *
+ * It has to run after the SVG is in the document, since the test is a question
+ * put to a rendered element. Where that is impossible — jsdom has no geometry —
+ * the pins are placed unconstrained, which keeps the deck testable and costs
+ * only a picture nobody is looking at.
+ */
+function fillDensity(card, c, map) {
+  const group = card.querySelector("[data-pins]");
+  if (!group || group.childElementCount || !map) return;
+
+  const inner = card.querySelector("svg svg") || card.querySelector("svg");
+  const land = [...card.querySelectorAll(".disc-land path")];
+  const [, , vw, vh] = map.viewBox.split(/\s+/).map(Number);
+  const unit = Math.max(vw, vh);
+  const spread = c.spread || 0.02;
+
+  const probe = inner.createSVGPoint ? inner.createSVGPoint() : null;
+  const canTest = probe && land.length && typeof land[0].isPointInFill === "function";
+  const onLand = (x, y) => {
+    if (!canTest) return true;
+    probe.x = x; probe.y = y;
+    return land.some((path) => { try { return path.isPointInFill(probe); } catch { return true; } });
+  };
+
+  let n = c.seed;
+  const rnd = () => ((n = (n * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+  const total = c.centers.reduce((sum, x) => sum + x[2], 0);
+  const made = [];
+
+  for (const [lat, lon, weight] of c.centers) {
+    const want = Math.max(1, Math.round((weight / total) * c.dots));
+    const [cx, cy] = project(map.geo, map.viewBox, lat, lon);
+    const reach = unit * spread * (0.9 + Math.sqrt(weight / total) * 4.2);
+
+    let placed = 0;
+    for (let tries = 0; tries < want * 30 && placed < want; tries++) {
+      const a = rnd() * Math.PI * 2;
+      const r = Math.sqrt(rnd()) * reach;
+      const x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r;
+      const size = unit * (0.0022 + rnd() * 0.003);
+      if (!onLand(x, y)) continue;
+      made.push([x, y, size]);
+      placed++;
+    }
+  }
+
+  group.innerHTML = made.map(([x, y, r], i) =>
+    `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(2)}"
+             style="--d:${Math.round((i / Math.max(1, made.length)) * 1700)}ms"/>`).join("");
+}
+
+/**
  * Section 1 — Numbers, alone
  *
  * WHAT THIS SECTION IS FOR, in the founder's words: the room should leave it
@@ -154,7 +215,7 @@ function countryCard(c) {
      shape and made it small. The map is the picture now. */
   const inner = map
     ? `<g class="disc-land">${map.paths.map((d) => `<path d="${d}"/>`).join("")}</g>
-       <g class="disc-pins" data-pins>${densityField(map, c.centers, c.dots, c.seed, c.spread)}</g>`
+       <g class="disc-pins" data-pins></g>`
     : `<g class="disc-pins" data-pins></g>`;
 
   return `
@@ -199,6 +260,8 @@ function setStats(root, c) {
 async function tellCountry(root, c, gate) {
   const card = root.querySelector(`[data-country="${c.key}"]`);
   if (!card) return;
+
+  fillDensity(card, c, typeof MAPS !== "undefined" ? MAPS[c.map || c.key] : null);
 
   /* From nothing, every time it is arrived at — including on the way back. */
   const pins = card.querySelector("[data-pins]");
