@@ -164,7 +164,19 @@ export async function sendMail(env, { to, subject, html, text, replyTo, from: fr
   if (!from) return { ok: false, error: "No sender configured (MAIL_FROM)." };
 
   const payload = { from, to: [to], subject, html, text };
-  if (replyTo) payload.reply_to = replyTo;
+  /* ONLY IF IT IS ACTUALLY AN ADDRESS. Resend rejects a malformed reply_to
+     with a 422 and sends nothing, so one bad value costs the whole message —
+     and the value comes from whoever is signed in, which is not always a
+     person. A Cloudflare Access SERVICE TOKEN has no email claim, so
+     lib/access.js falls back to its common_name ("<id>.access"), and an
+     invitation sent by an automation failed outright with a message about a
+     reply-to field nobody had chosen.
+
+     Dropping it is the right failure: a reply-to is a courtesy, and losing it
+     is a smaller harm than an invitation that never arrives. */
+  if (replyTo && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(replyTo))) {
+    payload.reply_to = replyTo;
+  }
   /* EXTRA HEADERS, for exactly one caller: a newsletter's List-Unsubscribe.
      Gmail and Outlook put a one-click unsubscribe button beside the sender
      when they see it, and a reader who presses that is a reader who did NOT

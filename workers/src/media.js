@@ -143,7 +143,9 @@ export default {
       }
       owner = String(url.searchParams.get("for") || "").trim();
       if (!owner) return json({ error: "for=<user_id> is required" }, 400);
-      const person = await db.queryOne("user_by_id", { id: owner });
+      /* ANY STATUS: the same reason as admin-profile. A photo is usually
+         added while the person is still waiting on their invitation. */
+      const person = await db.queryOne("user_by_id_any_status", { id: owner });
       if (!person) return json({ error: "No such person" }, 404);
       prefix = "team";
     }

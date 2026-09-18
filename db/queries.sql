@@ -184,6 +184,30 @@ FROM users u
 WHERE u.id = :id AND u.status = 'active';
 
 
+-- name: user_by_id_any_status
+-- The same row again, WITHOUT the sign-in gate.
+--
+-- WHY THIS EXISTS. user_by_id above is for acting-as, where refusing anybody
+-- who is not active is the whole point. Administration asked it a different
+-- question — "does this person exist, so I can edit what belongs to them" —
+-- and got the acting-as answer, which is wrong twice over: a person invited
+-- this morning has status 'invited' until the first time they sign in, so
+-- their staff page could not be written; and the refusal read "No such
+-- person" about somebody the administrator had just created from a list this
+-- system produced.
+--
+-- Building somebody's page BEFORE they have signed in is the normal order of
+-- work — it is what an administrator does while waiting for them to accept —
+-- so this is the query for editing a person's things, and user_by_id stays
+-- the query for standing in their shoes.
+SELECT u.id AS user_id, u.email, u.name AS user_name, u.status,
+       COALESCE(u.preferred_lang, 'en') AS preferred_lang,
+       COALESCE((SELECT GROUP_CONCAT(r.role) FROM user_roles r WHERE r.user_id = u.id),
+                u.global_role) AS roles
+FROM users u
+WHERE u.id = :id;
+
+
 -- name: partners_for_user
 -- What a signed-in user is allowed to see. The admin must call this FIRST and
 -- scope everything else to the result. Org-level global_role deliberately

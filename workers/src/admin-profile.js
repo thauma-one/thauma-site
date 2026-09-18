@@ -190,7 +190,12 @@ export default {
     const userId = String(body.user_id || "").trim();
     if (!userId) return json({ error: "user_id is required" }, 400);
 
-    const person = await db.queryOne("user_by_id", { id: userId });
+    /* ANY STATUS, deliberately. Building somebody's staff page before they
+       have signed in is the normal order of work, and user_by_id refuses
+       anybody who is not active — which is right for acting-as and wrong
+       here. It made a person invited this morning unreachable, and said "No
+       such person" about an account the administrator had just created. */
+    const person = await db.queryOne("user_by_id_any_status", { id: userId });
     if (!person) return json({ error: "No such person" }, 404);
 
     /* ------------------------------------------------------------ DELETE */
