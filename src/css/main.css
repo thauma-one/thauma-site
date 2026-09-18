@@ -78,6 +78,14 @@
   --foam-glow:0 0 26px rgba(92,242,196,.35);
 }
 *{margin:0;padding:0;box-sizing:border-box}
+/* Present for a screen reader, absent for everyone else. The contact form
+   is styled to show placeholders rather than labels, and a placeholder is
+   not a name: it vanishes the moment somebody types, and several readers
+   never announce it at all. The labels are real and carry the same words
+   the placeholders do — this only takes them out of the layout.
+   Copied from staff.css, where it already existed. */
+.vh{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+  clip:rect(0 0 0 0);white-space:nowrap;border:0}
 /* touch-action:manipulation kills double-tap-to-zoom sitewide (and the
    ~300ms tap delay on buttons/links as a bonus) without touching
    pinch-zoom or text selection — neither is affected by this value. */
@@ -326,7 +334,13 @@ nav{position:fixed;inset:0 0 auto;z-index:20;backdrop-filter:blur(12px);
    Both are progressive — ignored where unsupported, no fallback needed. */
 h1,h2{font-family:'Sora',sans-serif;font-weight:100;letter-spacing:.01em;text-wrap:balance}
 h2{font-size:clamp(30px,4.4vw,48px);line-height:1.15;max-width:660px}
-h2 b{font-weight:600}
+/* EVERY PAGE NEEDS EXACTLY ONE h1 and no page had one — the whole site
+   opened at heading level two. On most pages the first section heading IS
+   the page's title, so it became the h1 and wears the same look; the class
+   carries the size rather than the element, because the home page's hero
+   line and About's dictionary word are also h1 now and set their own. */
+h1.page-h1{font-size:clamp(30px,4.4vw,48px);line-height:1.15;max-width:660px}
+h1 b,h2 b{font-weight:600}
 .lede{margin-top:22px;max-width:560px;color:var(--dim);font-size:15.5px;font-weight:200;line-height:1.85;text-wrap:pretty}
 .body-text{margin-top:22px;max-width:620px;color:var(--dim);font-size:15.5px;font-weight:200;line-height:1.9;text-wrap:pretty}
 

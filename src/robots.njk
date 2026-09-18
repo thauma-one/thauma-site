@@ -1,0 +1,21 @@
+---
+permalink: /robots.txt
+eleventyExcludeFromCollections: true
+---
+{#- robots.txt — written, rather than left to a 404.
+
+   A missing robots.txt is not neutral: every crawler asks for it first, and a
+   404 is answered by guessing. This says the two things worth saying — come
+   in, and here is the map.
+
+   THE CONSOLE IS NAMED EVEN THOUGH CLOUDFLARE ACCESS ALREADY REFUSES IT.
+   Access returns a login page, which is a 200 with words in it, and a crawler
+   that follows /staff/ gets that instead of the site. Disallow keeps it out of
+   the index. It is tidiness, not a control — the real door is Access, and
+   nothing here should ever be mistaken for one. -#}
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /staff/
+
+Sitemap: {{ site.url }}/sitemap.xml

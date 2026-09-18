@@ -1,0 +1,50 @@
+---
+permalink: /sitemap.xml
+eleventyExcludeFromCollections: true
+---
+{#- sitemap.xml — every public page this build wrote, in every language.
+
+   BUILT FROM collections.all, NOT FROM A LIST. src.11tydata.js turns a page
+   off by refusing to write it at all, and its own comment gives the reason: a
+   page that exists but is unlinked is "still crawlable, and still in the
+   sitemap". Reading the collection keeps that promise — a page that was not
+   built cannot appear here, and one that was cannot be forgotten. That covers
+   the coming-soon collapse and the per-page toggles without naming either.
+
+   ONE ENTRY PER TEMPLATE, EXPANDED TO FOUR URLS. The collection holds a single
+   item per page — the first language pagination wrote — so the languages are
+   expanded here with langSwap rather than read back out of the collection.
+   Every public page is paginated over the same activeLangs, so what that
+   produces is exactly what was built.
+
+   ONLY THE PUBLIC PAGES. The collection also holds /admin/ and /staff/, which
+   sit behind Cloudflare Access and have no business in a sitemap — and whose
+   URLs carry no language segment, so asking langSwap for their translations
+   produced four alternates all pointing back at themselves. The test is the
+   first path segment: a page belongs here when it lives under a language this
+   build published.
+
+   Each URL then carries the whole group as alternates, itself included, which
+   is the same set the page's own head declares — so the two cannot disagree. -#}
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+{%- for p in collections.all %}
+{%- set seg = p.url.split("/")[1] if p.url else "" %}
+{#- coming-soon is the landing page the site collapses TO. Under the dev server
+   it is built at its own URL so it can be worked on, which is the only reason
+   it is ever a page of its own — it is not somewhere to send a visitor. -#}
+{%- if p.url and p.url.endsWith("/") and seg in activeLangs
+       and "/coming-soon/" not in p.url %}
+{%- for l in activeLangs %}
+  <url>
+    <loc>{{ site.url }}{{ p.url | langSwap(l) }}</loc>
+{%- for a in activeLangs %}
+    <xhtml:link rel="alternate" hreflang="{{ a }}" href="{{ site.url }}{{ p.url | langSwap(a) }}"/>
+{%- endfor %}
+    <xhtml:link rel="alternate" hreflang="x-default" href="{{ site.url }}{{ p.url | langSwap(site.defaultLang) }}"/>
+  </url>
+{%- endfor %}
+{%- endif %}
+{%- endfor %}
+</urlset>

@@ -8,7 +8,7 @@ pagination:
 {% set t = i18n[lang] %}
 <header class="page"><div class="wrap">
   <div class="cue foam rise">{{ member.role[lang] }}</div>
-  <h2 class="rise-2">{{ member.name }}</h2>
+  <h1 class="page-h1 rise-2">{{ member.name }}</h1>
   <p class="lede rise-3">{{ t.team.base_label }}: {{ member.base }}
   {% if member.email %} · <a href="mailto:{{ member.email }}" style="color:var(--blue)">{{ t.team.contact }}</a>{% endif %}</p>
 </div></header>

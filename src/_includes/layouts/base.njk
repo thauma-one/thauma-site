@@ -26,11 +26,26 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{{ fullTitle }}</title>
 <meta name="description" content="{{ t.home.sub }}">
+{#- WHERE THIS PAGE REALLY LIVES. Without it every translation of a page looks
+   to a search engine like a separate page competing with the others, and a
+   tracking parameter on the end of a URL makes a second copy of it. -#}
+<link rel="canonical" href="{{ site.url }}{{ page.url }}">
 {#- activeLangs, not site.languages: an hreflang pointing at a language
    that was not built is a link to a 404, published in the page head where
-   search engines will follow it. -#}
-{%- for l in activeLangs %}{% if l != lang %}
-<link rel="alternate" hreflang="{{ l }}" href="{{ site.url }}{{ page.url | langSwap(l) }}">{% endif %}{% endfor %}
+   search engines will follow it.
+
+   EVERY LANGUAGE, INCLUDING THIS ONE. The set used to skip the page's own
+   language, which reads as the obvious economy and is the one thing that
+   breaks it: hreflang is only honoured when each page in a group names the
+   whole group, itself included. An English page listing only hr, sr and sl
+   describes a group it is not a member of, and the annotation is discarded.
+
+   x-default is where somebody goes when none of the four is their language.
+   That is the default language's copy of THIS page, not the site root — the
+   point is to land on the same thing they asked for. -#}
+{%- for l in activeLangs %}
+<link rel="alternate" hreflang="{{ l }}" href="{{ site.url }}{{ page.url | langSwap(l) }}">{% endfor %}
+<link rel="alternate" hreflang="x-default" href="{{ site.url }}{{ page.url | langSwap(site.defaultLang) }}">
 <link rel="preload" as="font" type="font/woff2" href="/fonts/Sora-latin-v2.woff2" crossorigin>
 <link rel="preload" as="font" type="font/woff2" href="/fonts/Inter-latin-v2.woff2" crossorigin>
 <link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
