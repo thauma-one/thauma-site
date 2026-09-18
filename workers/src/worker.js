@@ -107,8 +107,18 @@ async function staffSnapshot(request, env) {
   }
 
   const snap = await partnerSnapshot(db, partners[0].id);
+  /* WHO THIS IS, carried the way every other staff endpoint carries it. The
+     console filters its navigation from `you.roles`, and this was the one
+     endpoint behind a staff page that did not send them — so Stewardship and
+     Activity, opened directly, never learned who was asking and fell back to
+     showing every link to everybody. resolveActor has already looked the row
+     up; this just passes it on. */
   return json(withActing(
-    { ...snap, partner: partners[0], generated_at: new Date().toISOString() }, actor));
+    { ...snap, partner: partners[0],
+      you: { email: actor.email,
+             name: actor.me && actor.me.user_name,
+             roles: String((actor.me && actor.me.roles) || "").split(",").filter(Boolean) },
+      generated_at: new Date().toISOString() }, actor));
 }
 
 

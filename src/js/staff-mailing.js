@@ -1319,6 +1319,15 @@
       if (window.StaffProblem) window.StaffProblem(tr('err.unreadable') + ' (' + res.status + ')', load);
       return;
     }
+    /* The console's navigation is filtered from `you.roles`, and this page had
+       no other source for them — opened directly rather than walked to from
+       the dashboard, it showed every staff link to whoever arrived. Set before
+       the refusal branch below: a 403 still says who you are, and the header
+       should be right even when the rest of the page is not. */
+    if (body && body.you && window.StaffIdentity) {
+      window.StaffIdentity(body.you, body.partner);
+    }
+
     if (!res.ok) {
       if (window.StaffProblem) {
         window.StaffProblem(

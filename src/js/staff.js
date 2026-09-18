@@ -1084,6 +1084,12 @@
         // standing in an account with no partner still needs to be told whose
         // account they are standing in.
         noteActing(res.body);
+        /* The nav filters from this, and Stewardship and Activity had no other
+           source for it. Taken on the refusal path too: a 403 still says who
+           you are, and the header should be right even when the page is not. */
+        if (res.body && res.body.you && window.StaffIdentity) {
+          window.StaffIdentity(res.body.you, res.body.partner);
+        }
         if (res.ok) { renderSnapshot(res.body); wireStewardshipRows(); return; }
 
         if (res.status === 404) {
