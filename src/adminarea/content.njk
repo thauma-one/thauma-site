@@ -36,7 +36,8 @@ permalink: /admin/content/index.html
           data-i18n="con.export">Download</button>
   <button type="button" class="ghost-btn" id="cImport" disabled
           data-i18n="con.import">Upload</button>
-  <input type="file" id="cImportFile" accept=".csv,text/csv" hidden>
+  <input type="file" id="cImportFile" accept=".csv,text/csv" hidden
+         aria-label="Import CSV" data-i18n-attr="aria-label:con.import">
 
   {#- ALWAYS ENABLED, including when the page thinks nothing has changed.
 
@@ -72,7 +73,8 @@ permalink: /admin/content/index.html
   <div class="c-panel">
     <div class="c-search">
       <input type="search" id="cFind" autocomplete="off"
-             placeholder="Find a word or phrase…" data-i18n-attr="placeholder:con.find">
+             placeholder="Find a word or phrase…" aria-label="Find a word or phrase…"
+             data-i18n-attr="placeholder:con.find,aria-label:con.find">
       <span class="c-count" id="cCount"></span>
     </div>
     <div class="c-rows" id="cRows"></div>

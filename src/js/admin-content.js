@@ -384,7 +384,12 @@
         refCell +
         '<div class="c-edit">' +
           (refCode ? '<span class="c-lang">' + esc(state.file) + '</span>' : '') +
-          '<textarea rows="1" data-path="' + esc(p) + '" spellcheck="true">' +
+          /* NAMED BY THE STRING IT EDITS, and by which language's copy of it.
+             There is one of these per row and one row per phrase in the
+             dictionary, so an unnamed box is one of hundreds — both halves
+             are data rather than copy, so neither needs translating. */
+          '<textarea rows="1" data-path="' + esc(p) + '" spellcheck="true"' +
+            ' aria-label="' + esc(readable(p) + ' — ' + state.file) + '">' +
             esc(val) + '</textarea>' +
         '</div>' +
       '</div>';

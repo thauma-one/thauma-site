@@ -472,16 +472,19 @@
             (v ? 'On' : 'Off') + '</span><span class="switch-knob"></span></span>' +
         '</button>';
     } else if (typeof v === 'number') {
-      control = '<input type="number" data-path="' + esc(p) + '" value="' + esc(v) + '">';
+      control = '<input type="number" data-path="' + esc(p) + '"' +
+                ' aria-label="' + esc(label) + '" value="' + esc(v) + '">';
     } else if (p === 'defaultLang' && state.langs.length) {
       /* The one field with a real set of valid answers. A text box here means
          a typo silently breaks the fallback every translation depends on. */
-      control = '<select data-path="' + esc(p) + '">' + state.langs.map(function (c) {
+      control = '<select data-path="' + esc(p) + '" aria-label="' + esc(label) + '">' +
+                state.langs.map(function (c) {
         return '<option value="' + esc(c) + '"' + (c === v ? ' selected' : '') + '>' +
                esc(c) + '</option>';
       }).join('') + '</select>';
     } else {
       control = '<input type="text" data-path="' + esc(p) + '" value="' + esc(v) + '"' +
+                ' aria-label="' + esc(label) + '"' +
                 (/url|src|donorbox|youtube|instagram|facebook|^socials/.test(p)
                   ? ' spellcheck="false"' : '') + '>';
     }

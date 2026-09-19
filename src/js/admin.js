@@ -307,7 +307,10 @@
   }
 
   function langPicker(which, selected) {
-    return '<select class="lang-pick" data-plang="' + which + '">' +
+    /* Named, because there are two of these side by side — one per column —
+       and "select" twice tells somebody nothing about which is which. */
+    return '<select class="lang-pick" data-plang="' + which + '"' +
+             ' aria-label="' + esc(tr('adm.pf.lang')) + '">' +
       profileLangs().map(function (l) {
         return '<option value="' + esc(l.code) + '"' +
           (l.code === selected ? ' selected' : '') + '>' +
@@ -350,6 +353,7 @@
       '<input type="hidden" data-pf-master="' + esc(kind) + '" value="' +
         esc(masterFor(profileFor(u.id), kind)) + '">' +
       '<input type="file" accept="image/*" hidden' +
+        ' aria-label="' + esc(tr('adm.pf.' + kind)) + '"' +
         ' data-pf-file="' + esc(kind) + '" data-user="' + esc(u.id) + '">' +
       '<div class="pf-photo-acts">' +
         '<button type="button" class="ghost-btn" data-pf-pick="' + esc(kind) + '">' +
@@ -716,7 +720,11 @@
       (system ? '' : profileSection(u)) +
 
       '<div class="adm-section adm-danger">' +
-        '<div class="fld">' +
+        /* A <label>, not a <div>. The words "Sign-in status" were sitting
+           beside this control without being attached to it, so a screen
+           reader announced an unnamed dropdown. The partner pickers on the
+           next page already do this correctly — same class, same look. */
+        '<label class="fld">' +
           '<span>' + esc(tr('adm.signInStatus')) + '</span>' +
           '<select class="status-pick" data-user="' + esc(u.id) + '">' +
             ['invited', 'active', 'suspended'].map(function (s) {
@@ -725,7 +733,7 @@
             }).join('') +
           '</select>' +
           '<span class="switch-note">' + esc(tr('adm.statusNote')) + '</span>' +
-        '</div>' +
+        '</label>' +
         /* IT SUPPORT, NOT IMPERSONATION. Opening somebody's console is how
            you answer "my stewardship page is empty and it should not be"
            without asking for their password. It is audited on the way in, on
@@ -1018,7 +1026,12 @@
             (m.status === 'active' ? '' :
               ' · ' + esc(tr('adm.status.' + m.status))) + '</span>' +
         '</div>' +
+        /* The person's name is IN the label. This repeats once per member, and
+           three dropdowns all called "Access level" are three of the same
+           thing as far as a screen reader is concerned. */
         '<select class="member-role" data-member-role="' + esc(m.user_id) + '"' +
+                ' aria-label="' + esc(tr('adm.accessLevel') + ' — ' +
+                                       (m.user_name || m.email)) + '"' +
                 ' data-partner="' + esc(p.id) + '">' +
           PARTNER_ROLES.map(function (r) {
             return '<option value="' + r + '"' + (m.role === r ? ' selected' : '') + '>' +
@@ -1035,7 +1048,8 @@
     var free = (state.users || []).filter(function (u) { return !mine[u.id]; });
     var add = free.length
       ? '<div class="adm-member-add">' +
-          '<select data-member-add="' + esc(p.id) + '">' +
+          '<select data-member-add="' + esc(p.id) + '"' +
+                  ' aria-label="' + esc(tr('adm.attachWho')) + '">' +
             '<option value="">' + esc(tr('adm.attachWho')) + '</option>' +
             free.map(function (u) {
               return '<option value="' + esc(u.id) + '">' +
@@ -1157,6 +1171,7 @@
       '<div class="adm-mail-add">' +
         '<input type="text" class="adm-new-local" data-new-local="' + esc(p.id || '') + '" ' +
           'maxlength="64" spellcheck="false" autocapitalize="off" ' +
+          'aria-label="' + esc(tr('adm.mailLocal')) + '" ' +
           'placeholder="' + esc(tr('adm.mailLocal')) + '">' +
         '<span class="adm-at">@' + esc(d) + '</span>' +
         '<button type="button" class="ghost-btn" data-add-sender="' + esc(p.id || '') + '">' +

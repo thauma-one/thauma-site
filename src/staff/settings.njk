@@ -65,13 +65,13 @@ staffHint: some of these change what the public sees
      first. -#}
   <div class="set-row">
     <div class="set-label">
-      <h3 data-i18n="set.yourLanguage">Your language</h3>
+      <h3 id="setPrefLangLabel" data-i18n="set.yourLanguage">Your language</h3>
       <p data-i18n="set.yourLanguageDesc">Translates this console and opens the milestone editor in the same language.</p>
       <p class="note-inline" data-i18n="set.yourLanguageNote">Affects only you.
         It changes nothing a visitor sees, whatever your role.</p>
     </div>
     <div class="set-control">
-      <select id="setPrefLang" class="lang-pick"></select>
+      <select id="setPrefLang" class="lang-pick" aria-labelledby="setPrefLangLabel"></select>
     </div>
   </div>
 
@@ -95,7 +95,7 @@ staffHint: some of these change what the public sees
     interactions, no drafts.</p>
 
   <div class="ms-bar key-create">
-    <input type="text" id="setKeyName" class="key-name" maxlength="80" data-i18n-attr="placeholder:set.keyPlaceholder"
+    <input type="text" id="setKeyName" class="key-name" maxlength="80" data-i18n-attr="placeholder:set.keyPlaceholder,aria-label:set.keyPlaceholder" aria-label="What is this key for? e.g. chaseroush.com build"
            placeholder="What is this key for? e.g. chaseroush.com build">
     <button type="button" class="solid-btn" id="setKeyAdd"
             data-i18n="set.createKey">Create key</button>

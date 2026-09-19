@@ -27,10 +27,10 @@ staffHeading: Internal <b>resources</b>
   <form class="form dlg" id="resourceForm">
     <h3 id="resourceFormTitle" data-i18n="res.add">Add resource</h3>
     <input type="hidden" id="resourceIndex" value="">
-    <input type="text" id="resourceTitle" placeholder="Title" data-i18n-attr="placeholder:res.title" required>
-    <textarea id="resourceDescription" placeholder="Description (optional)" data-i18n-attr="placeholder:res.description"></textarea>
-    <input type="text" id="resourceLink" placeholder="Link — https://… (optional)" data-i18n-attr="placeholder:res.link">
-    <input type="text" id="resourcePhoto" placeholder="Photo URL or /img/… path (optional)" data-i18n-attr="placeholder:res.photo">
+    <input type="text" id="resourceTitle" placeholder="Title" data-i18n-attr="placeholder:res.title,aria-label:res.title" aria-label="Title" required>
+    <textarea id="resourceDescription" placeholder="Description (optional)" data-i18n-attr="placeholder:res.description,aria-label:res.description" aria-label="Description (optional)"></textarea>
+    <input type="text" id="resourceLink" placeholder="Link — https://… (optional)" data-i18n-attr="placeholder:res.link,aria-label:res.link" aria-label="Link — https://… (optional)">
+    <input type="text" id="resourcePhoto" placeholder="Photo URL or /img/… path (optional)" data-i18n-attr="placeholder:res.photo,aria-label:res.photo" aria-label="Photo URL or /img/… path (optional)">
 
     {#- WHO IT IS FOR, and only for somebody who may put something on the
        organization's shelf. A staff member's own resource is governed by

@@ -86,7 +86,7 @@ staffHint: your lists and the people on them — nobody else's
        actually asked of a subscriber list. -#}
     <div class="subs-bar">
       <input type="search" id="subsQ" class="subs-q"
-             data-i18n-attr="placeholder:ml.subsSearch"
+             data-i18n-attr="placeholder:ml.subsSearch,aria-label:ml.subsSearch" aria-label="Search a name or address"
              placeholder="Search a name or address">
       <select id="subsStatus" aria-label="Status">
         <option value="" data-i18n="ml.subsAll">Everyone</option>
@@ -121,7 +121,7 @@ staffHint: your lists and the people on them — nobody else's
       <div id="subsTagList"></div>
       <form class="subs-tag-add" id="subsTagAdd">
         <input type="text" id="subsTagName" maxlength="60"
-               data-i18n-attr="placeholder:ml.tagName" placeholder="Home church">
+               data-i18n-attr="placeholder:ml.tagName,aria-label:ml.tagName" aria-label="Home church" placeholder="Home church">
         <button type="submit" class="ghost-btn" data-i18n="ml.tagAdd">Add tag</button>
       </form>
     </div>
@@ -372,8 +372,12 @@ staffHint: your lists and the people on them — nobody else's
           {#- The ministry's own accent, stored as intent rather than as a
              color value — so it stays right after a rebrand, and a draft
              copied between ministries is not wearing the wrong one. -#}
+          {#- The only button in this toolbar with nothing inside it: the others
+             are named by the letter they show (B, I, U, S). A title alone is
+             an unreliable accessible name, so this one says it outright. -#}
           <button type="button" data-tool="accent" aria-pressed="false"
-                  title="Brand color" class="cp-swatch"><span></span></button>
+                  title="Brand color" aria-label="Brand color"
+                  class="cp-swatch"><span></span></button>
 
           <span class="cp-tools-sep"></span>
           <button type="button" data-tool="h2" aria-pressed="false" title="Heading">H1</button>
@@ -565,11 +569,12 @@ staffHint: your lists and the people on them — nobody else's
      call: it made the embed code look like it did not exist. Shown, with the
      reason it will not work yet said out loud instead. -#}
   <div class="ct-embed">
-    <span class="adm-label" data-i18n="ml.ctCode">The code to paste</span>
+    <span class="adm-label" id="ctCodeLabel" data-i18n="ml.ctCode">The code to paste</span>
     <p class="hint" id="ctEmbedOff" hidden data-i18n="ml.ctCodeOff">This works the
       moment you switch the form on above. Until then the two lines are harmless
       and draw nothing.</p>
-    <textarea readonly rows="3" spellcheck="false" id="ctSnippet"></textarea>
+    <textarea readonly rows="3" spellcheck="false" id="ctSnippet"
+              aria-labelledby="ctCodeLabel"></textarea>
     <button type="button" class="ghost-btn" id="ctCopy" data-i18n="ml.copy">Copy</button>
   </div>
 </section>
