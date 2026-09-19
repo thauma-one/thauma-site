@@ -88,8 +88,12 @@ function walk(dir, out = []) {
   return out;
 }
 
-/* Skips this file, which necessarily contains every British spelling there is. */
-const FILES = walk(".").filter((p) => !p.endsWith("us-english.test.mjs"));
+/* Skips this file, which necessarily contains every British spelling there is.
+   Skips package-lock.json, which is generated and nothing but a machine's words:
+   the 2026-09-06 sweep renamed the npm package @img/colour to @img/color in it, a
+   package that does not exist, and every `npm ci` failed with a 404 until 2026-09-19. */
+const FILES = walk(".").filter((p) =>
+  !p.endsWith("us-english.test.mjs") && !p.endsWith("package-lock.json"));
 
 function findings() {
   const out = [];
