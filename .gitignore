@@ -41,3 +41,11 @@ src/js/*.bundle.js
 # Presentation build output. The site build regenerates it into _site/present/,
 # so a committed copy is only ever a stale duplicate.
 presentation/dist/
+
+# Screenshots taken while working on the site (chromium --headless --screenshot).
+# They live INSIDE the repo so a session scoped to this folder can see them, and are
+# ignored because they are throwaway renders of whatever the dev server served that
+# minute. An image worth keeping goes in src/img/ or docs/ with a real name.
+# The README is kept so a fresh clone has the folder and the how-to.
+screenshots/*
+!screenshots/README.md
