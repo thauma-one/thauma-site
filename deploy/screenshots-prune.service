@@ -1,0 +1,15 @@
+# Prune screenshots/ — age first, then size. See screenshots-prune.sh for the why.
+#
+# Install:
+#   sudo cp /DATA/AppData/thauma/deploy/screenshots-prune.{service,timer} /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now screenshots-prune.timer
+#
+# Runs as chaseroushtech: the folder is owned by that user, and a cleaner has no
+# business running as root over a path inside a git repo.
+[Unit]
+Description=Prune Thauma dev screenshots (older than 30 days, or over 1 GiB)
+
+[Service]
+Type=oneshot
+User=chaseroushtech
+ExecStart=/bin/bash /DATA/AppData/thauma/deploy/screenshots-prune.sh

@@ -1,0 +1,15 @@
+# Daily. The size rule is the real guard (a runaway capture loop fills a card in
+# minutes, not days), but a daily sweep is enough: nothing writes here unattended.
+#
+# Persistent=true so a Pi that was off still prunes on the next boot rather than
+# skipping the window.
+[Unit]
+Description=Daily prune of Thauma dev screenshots
+
+[Timer]
+OnCalendar=daily
+RandomizedDelaySec=30m
+Persistent=true
+
+[Install]
+WantedBy=timers.target
