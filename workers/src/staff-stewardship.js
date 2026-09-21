@@ -1,46 +1,46 @@
 /**
- * staff-stewardship.js — one supporter, opened from their row
+ * staff-stewardship.js — one supporter's record: contacts and notes in one place
  *
- *   GET    /api/staff-stewardship?contact=…        quick facts + life events
- *   POST   /api/staff-stewardship  {event:…}       create or edit a life event
- *   POST   /api/staff-stewardship  {interaction:…} log a call, visit, note
- *   DELETE /api/staff-stewardship?event=…          remove a life event
+ *   GET    /api/staff-stewardship?contact=…                  their whole record
+ *   POST   /api/staff-stewardship  {person:…}                add or edit a person
+ *   POST   /api/staff-stewardship  {contact_id, event:…}     add or edit a life event
+ *   POST   /api/staff-stewardship  {contact_id, interaction:…} log or correct a contact
+ *   DELETE ?contact=…&event=…                                remove a life event
+ *   DELETE ?contact=…&interaction=…                          remove a logged contact
+ *   DELETE ?contact=…&confirm=DELETE                         remove the person, and
+ *                                                            everything about them
  *
- * WHAT THIS ENDPOINT IS FOR, AND WHY IT IS NOT PART OF THE SNAPSHOT
+ * WHAT THIS PAGE IS. Chase's words: "a digital version of keeping track of
+ * people in one place. Like Contacts and Notes in 1 place." A personal address
+ * book, not a CRM and not a mailing list — which is why there is no consent
+ * here (that lives with the mailing lists, in `subscribers`) and why
+ * everything on it can be corrected by the person who wrote it.
+ *
+ * WHO CAN REACH IT. Nobody outside the console. This is not the partner API —
+ * that one is for public websites, runs an allow-list of queries, and refuses
+ * to start if any of them names `contacts`, `interactions` or `life_events`
+ * (PRIVATE_TABLES in lib/db.js). A request here must carry a Cloudflare Access
+ * sign-in, which this file verifies itself rather than trusting the edge, and
+ * then only reaches the partner that sign-in is granted. "/api/" in the path
+ * is only where the console's pages talk to the database; a browser cannot
+ * read a database any other way.
+ *
+ * ONE PERSON AT A TIME. The list (/api/staff-snapshot) carries no email and no
+ * phone. This endpoint answers for ONE person by id, and it is the only place
+ * a supporter's contact details cross the wire. Every GET is written to the
+ * audit log, because it is the only GET that returns somebody's address.
+ *
+ * TWO KINDS OF THING ABOUT A PERSON, KEPT APART
  * ---------------------------------------------------------------------------
- * /api/staff-snapshot returns the whole stewardship LIST, and the query behind
- * it deliberately carries no email and no phone — its own comment explains
- * that shipping the partner's address book on every page load to render a
- * column of dates is not minimisation, whatever gate sits in front of it.
+ * A LIFE EVENT is a fact about them — a birth, a bereavement, a move. A
+ * LOGGED CONTACT is a touch that happened. Both are editable. They are kept in
+ * separate tables because only the second moves `last_personal_contact`: a
+ * bereavement is a reason to call, not a call. See 0034_life_events.sql.
  *
- * This endpoint is the other half of that decision. It answers for ONE person,
- * named by id, and it is the only place a supporter's contact details cross
- * the wire. Opening a dialog costs one person's details; nothing costs the
- * list.
- *
- * TWO KINDS OF WRITE, AND THEY ARE DIFFERENT KINDS OF THING
- * ---------------------------------------------------------------------------
- * A LIFE EVENT is a fact about a person — a birth, a bereavement, a move. It
- * is editable, because what is known changes: "expecting" acquires a date, a
- * name is misspelled, a note is written badly the first time.
- *
- * An INTERACTION is a touch that happened. It is appended and never edited,
- * because a contact log whose past can be rewritten is not a log. There is no
- * PATCH here and no interaction delete, deliberately. A mistake is corrected
- * by recording what actually happened — which is what anybody would do on
- * paper.
- *
- * The two must not be confused, and the database will not let them be: a life
- * event cannot move `last_personal_contact`, because `contact_touch` does not
- * know the table exists. See db/migrations/0034_life_events.sql.
- *
- * EVERY READ HERE IS AUDITED
- * ---------------------------------------------------------------------------
- * db/README.md: "An `admin` is not automatically entitled to read a partner's
- * contacts… every such read should write to audit_log." This is the screen
- * that makes that concrete, so a GET writes a row naming who opened whose
- * record. It is the only GET in the console that does, and the reason is that
- * it is the only GET that returns somebody's address and phone number.
+ * Only contacts a PERSON logged can be edited or removed. Newsletter entries
+ * are written by the mailing run and record what was actually sent; the SQL
+ * refuses them (`source = 'manual'`) rather than trusting the console not to
+ * offer them.
  */
 import { createDb } from "./lib/db.js";
 import { requireAccess } from "./lib/access.js";
@@ -179,6 +179,52 @@ export function cleanInteraction(body) {
   return { value: { type, channel, occurred_on, note, is_personal: body.is_personal ? 1 : 0 } };
 }
 
+const MAX_FIELD = 200;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * Validate a person. Returns `{ value }` or `{ error }`.
+ *
+ * Only a name is required — first OR last, because some people are known by
+ * one. Everything else is optional: an address book entry for somebody met
+ * once at a conference may be a name and a city and nothing more.
+ */
+export function cleanPerson(body) {
+  const field = (k) => {
+    const v = body[k] == null ? "" : String(body[k]).trim();
+    return v || null;
+  };
+  const value = {
+    first_name: field("first_name"), last_name: field("last_name"),
+    email: field("email"), phone: field("phone"),
+    address_1: field("address_1"), address_2: field("address_2"),
+    city: field("city"), region: field("region"),
+    postal_code: field("postal_code"), country: field("country"),
+    notes: field("notes"),
+  };
+
+  if (!value.first_name && !value.last_name) return { error: "A person needs a name." };
+  for (const [k, v] of Object.entries(value)) {
+    if (k === "notes") continue;
+    if (v && v.length > MAX_FIELD) return { error: `${k.replace("_", " ")} is too long.` };
+  }
+  if (value.notes && value.notes.length > MAX_NOTE * 5) {
+    return { error: `The notes are longer than ${MAX_NOTE * 5} characters.` };
+  }
+  if (value.email && !EMAIL_RE.test(value.email)) {
+    return { error: "That email address does not look right." };
+  }
+  /* The column holds a two-letter country code (0001: ISO-3166-1 alpha-2).
+     Uppercased so "hr" and "HR" are one country, not two. */
+  if (value.country) {
+    value.country = value.country.toUpperCase();
+    if (!/^[A-Z]{2}$/.test(value.country)) {
+      return { error: "Country is a two-letter code, like US or HR." };
+    }
+  }
+  return { value };
+}
+
 /** Everything the dialog shows, for one person. */
 async function detailFor(db, partner_id, contact_id) {
   const person = await db.queryOne("contact_detail", { contact_id, partner_id });
@@ -190,11 +236,7 @@ async function detailFor(db, partner_id, contact_id) {
   ]);
 
   return {
-    person: {
-      ...person,
-      newsletter_consent: !!person.newsletter_consent,
-      postal_consent: !!person.postal_consent,
-    },
+    person,
     events: events.map((e) => ({ ...e, recurs: !!e.recurs })),
     timeline: timeline.map((i) => ({ ...i, is_personal: !!i.is_personal })),
   };
@@ -210,30 +252,35 @@ export default {
     const partner_id = partner.id;
     const url = new URL(request.url);
     const now = new Date().toISOString();
+    const logged_by = me.user_id || null;
 
     const you = {
       email: actor.email,
       name: me.user_name || null,
       roles: String(me.roles || "staff").split(",").filter(Boolean),
     };
+    const note = (action, entity, entity_id, detail = null) => audit(db, {
+      email: actor.email, partner_id, action, entity, entity_id, detail,
+    });
+    /* The whole refreshed record, after any write. The dialog re-renders from
+       this rather than patching its own copy. */
+    const answer = async (contact_id, extra = {}) => {
+      const detail = await detailFor(db, partner_id, contact_id);
+      if (!detail) return json({ error: "No such person.", you }, 404);
+      return json(withActing({ you, ...extra, ...detail }, actor));
+    };
 
     if (request.method === "GET") {
       const contact_id = url.searchParams.get("contact");
-      if (!contact_id) return json({ error: "No supporter named.", you }, 400);
+      if (!contact_id) return json({ error: "No person named.", you }, 400);
 
       const detail = await detailFor(db, partner_id, contact_id);
       /* The same answer for "no such person" and "not yours". A distinct 403
-         would confirm that an id exists in somebody else's list, which is a
-         small leak but a free one to close. */
-      if (!detail) return json({ error: "No such supporter.", you }, 404);
+         would confirm that an id exists in somebody else's list. */
+      if (!detail) return json({ error: "No such person.", you }, 404);
 
-      /* The audited read. See the note at the top of this file. */
-      await audit(db, {
-        email: actor.email, partner_id,
-        action: "stewardship.open", entity: "contact", entity_id: contact_id,
-        detail: actor.acting ? { acting_as: actor.acting.name } : null,
-      });
-
+      await note("stewardship.open", "contact", contact_id,
+        actor.acting ? { acting_as: actor.acting.name } : null);
       return json(withActing({ you, ...detail }, actor));
     }
 
@@ -241,77 +288,108 @@ export default {
       const body = await readJson(request);
       if (!body) return json({ error: "Invalid JSON" }, 400);
 
+      /* ---- a person: the one write that may CREATE the record it names ---- */
+      if (body.person) {
+        const { value, error } = cleanPerson(body.person);
+        if (error) return json({ error, you }, 400);
+
+        const given = body.person.id ? String(body.person.id) : null;
+        const exists = given &&
+          await db.queryOne("contact_detail", { contact_id: given, partner_id });
+        /* An id that is not this partner's is treated as a new person, never
+           as an edit — contact_upsert's WHERE would refuse to touch the other
+           partner's row anyway, and this keeps it from even trying. */
+        const id = exists ? given : newId("c_");
+
+        await db.query("contact_upsert", { id, partner_id, now, ...value });
+        /* An id and nothing else. The audit log is append-only and survives
+           the person's deletion; their name must not. */
+        await note(exists ? "stewardship.person.edit" : "stewardship.person.add",
+          "contact", id);
+        return answer(id, { id, created: !exists });
+      }
+
+      /* ---- everything else is about a person who must already be this
+              partner's, proved BEFORE anything is written ---- */
       const contact_id = String(body.contact_id || "");
-      /* Proves the supporter is this partner's BEFORE anything is written.
-         Without it, the insert would be caught by the trigger in 0034 — which
-         is the right backstop but the wrong error message. */
       const person = await db.queryOne("contact_detail", { contact_id, partner_id });
-      if (!person) return json({ error: "No such supporter.", you }, 404);
+      if (!person) return json({ error: "No such person.", you }, 404);
 
       if (body.interaction) {
         const { value, error } = cleanInteraction(body.interaction);
         if (error) return json({ error, you }, 400);
 
-        const id = newId("in_");
-        await db.query("interaction_add", {
-          id, contact_id, partner_id, logged_by: me.user_id || null, now, ...value,
-        });
-        await audit(db, {
-          email: actor.email, partner_id,
-          action: "stewardship.interaction", entity: "interaction", entity_id: id,
-          detail: { contact_id, type: value.type, is_personal: !!value.is_personal },
-        });
+        const given = body.interaction.id ? String(body.interaction.id) : null;
+        if (given) {
+          const own = (await db.query("contact_timeline", { contact_id, partner_id }))
+            .find((i) => i.id === given);
+          if (!own) return json({ error: "That contact is not on this person's record.", you }, 404);
+          if (own.source !== "manual") {
+            return json({ error: "Newsletter entries record what was sent, and cannot be edited.", you }, 400);
+          }
+          await db.query("interaction_update", { id: given, contact_id, partner_id, ...value });
+          await note("stewardship.interaction.edit", "interaction", given,
+            { contact_id, type: value.type, is_personal: !!value.is_personal });
+          return answer(contact_id, { id: given });
+        }
 
-        return json(withActing({ you, logged: id, ...await detailFor(db, partner_id, contact_id) }, actor));
+        const id = newId("in_");
+        await db.query("interaction_add", { id, contact_id, partner_id, logged_by, now, ...value });
+        await note("stewardship.interaction", "interaction", id,
+          { contact_id, type: value.type, is_personal: !!value.is_personal });
+        return answer(contact_id, { logged: id });
       }
 
       if (body.event) {
         const { value, error } = cleanLifeEvent(body.event);
         if (error) return json({ error, you }, 400);
 
-        /* The id comes from us on a create so a retry cannot duplicate. On an
-           edit it comes from the caller, and `life_event_upsert` carries
-           partner_id in its UPDATE's WHERE — so an id belonging to another
-           tenant updates nothing rather than rewriting their row. */
         const existing = await db.query("life_events_for_contact", { contact_id, partner_id });
         const isNew = !body.event.id || !existing.some((e) => e.id === body.event.id);
         const id = isNew ? newId("le_") : String(body.event.id);
 
-        await db.query("life_event_upsert", {
-          id, contact_id, partner_id, logged_by: me.user_id || null, now, ...value,
-        });
-        await audit(db, {
-          email: actor.email, partner_id,
-          action: isNew ? "stewardship.event.add" : "stewardship.event.edit",
-          entity: "life_event", entity_id: id,
-          /* The KIND, never the note. An audit row records that something was
-             written about somebody; copying the words would put a second,
-             undeletable copy of a bereavement in an append-only table that
-             `DELETE FROM contacts` cannot reach. */
-          detail: { contact_id, kind: value.kind },
-        });
-
-        return json(withActing({ you, id, created: isNew, ...await detailFor(db, partner_id, contact_id) }, actor));
+        await db.query("life_event_upsert", { id, contact_id, partner_id, logged_by, now, ...value });
+        /* The KIND, never the note. Copying the words would put a second,
+           undeletable copy of a bereavement in an append-only table that
+           deleting the person cannot reach. */
+        await note(isNew ? "stewardship.event.add" : "stewardship.event.edit",
+          "life_event", id, { contact_id, kind: value.kind });
+        return answer(contact_id, { id, created: isNew });
       }
 
-      return json({ error: "Nothing to save — expected an event or an interaction.", you }, 400);
+      return json({ error: "Nothing to save.", you }, 400);
     }
 
     if (request.method === "DELETE") {
-      const id = url.searchParams.get("event");
       const contact_id = url.searchParams.get("contact");
-      if (!id || !contact_id) return json({ error: "No event named.", you }, 400);
+      if (!contact_id) return json({ error: "No person named.", you }, 400);
+      const person = await db.queryOne("contact_detail", { contact_id, partner_id });
+      if (!person) return json({ error: "No such person.", you }, 404);
 
-      await db.query("life_event_delete", { id, partner_id });
-      await audit(db, {
-        email: actor.email, partner_id,
-        action: "stewardship.event.delete", entity: "life_event", entity_id: id,
-        detail: { contact_id },
-      });
+      const event = url.searchParams.get("event");
+      if (event) {
+        await db.query("life_event_delete", { id: event, partner_id });
+        await note("stewardship.event.delete", "life_event", event, { contact_id });
+        return answer(contact_id, { deleted: event });
+      }
 
-      const detail = await detailFor(db, partner_id, contact_id);
-      if (!detail) return json({ error: "No such supporter.", you }, 404);
-      return json(withActing({ you, deleted: id, ...detail }, actor));
+      const interaction = url.searchParams.get("interaction");
+      if (interaction) {
+        await db.query("interaction_delete", { id: interaction, contact_id, partner_id });
+        await note("stewardship.interaction.delete", "interaction", interaction, { contact_id });
+        return answer(contact_id, { deleted: interaction });
+      }
+
+      /* THE PERSON. Checked here and not only in the dialog: a dialog is a
+         suggestion, and this is the one request on the page that cannot be
+         undone. Their contacts and life events go with them (ON DELETE
+         CASCADE), in the same statement. */
+      if (url.searchParams.get("confirm") !== "DELETE") {
+        return json({ error: "Removing a person needs confirm=DELETE.", you }, 400);
+      }
+      await db.query("contact_delete", { id: contact_id, partner_id });
+      await note("stewardship.person.delete", "contact", contact_id);
+      return json(withActing({ you, deleted: contact_id }, actor));
     }
 
     return json({ error: `${request.method} is not supported here.` }, 405);

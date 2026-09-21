@@ -341,6 +341,10 @@ await check("every real query converts with its documented params", async () => 
     type: "call", is_personal: 1, channel: "digital",
     occurred_on: "2026-09-21", note: null, logged_by: "u_chase",
     recurs: 0,
+    // a person's own details, for adding and editing them
+    first_name: "Ana", last_name: "Horvat", phone: null,
+    address_1: null, address_2: null, city: null, region: null,
+    postal_code: null, country: "HR", notes: null,
   };
   // The ONE query with no parameters: the language catalog belongs to the
   // organization, not to a partner, so there is nothing to scope it by. Named

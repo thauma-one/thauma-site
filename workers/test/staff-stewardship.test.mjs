@@ -20,7 +20,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { cleanLifeEvent, cleanInteraction } from "../src/staff-stewardship.js";
+import { cleanLifeEvent, cleanInteraction, cleanPerson } from "../src/staff-stewardship.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, "..", "..");
@@ -102,6 +102,38 @@ await check("a newsletter cannot be logged by hand here at all", async () => {
 await check("an invented channel is refused", async () => {
   assert(cleanInteraction({ type: "call", occurred_on: "2026-09-21", channel: "carrier_pigeon" }).error,
     "accepted an invented channel");
+});
+
+/* ---------------------------------------------------------------- people */
+
+await check("a person needs a name, and nothing else", async () => {
+  assert(cleanPerson({}).error, "accepted a person with no name");
+  assert(!cleanPerson({ first_name: "Ana" }).error, "refused a first name alone");
+  assert(!cleanPerson({ last_name: "Horvat" }).error, "refused a last name alone");
+});
+
+await check("blank fields are stored as nothing", async () => {
+  const { value } = cleanPerson({ first_name: "Ana", email: "  ", city: "" });
+  eq(value.email, null, "email");
+  eq(value.city, null, "city");
+});
+
+await check("an email must look like one, if given", async () => {
+  assert(cleanPerson({ first_name: "Ana", email: "not an address" }).error, "accepted prose");
+  assert(!cleanPerson({ first_name: "Ana", email: "ana@example.hr" }).error, "refused a real shape");
+});
+
+await check("country is a two-letter code, and case does not make two countries", async () => {
+  eq(cleanPerson({ first_name: "Ana", country: "hr" }).value.country, "HR", "lower case");
+  assert(cleanPerson({ first_name: "Ana", country: "Croatia" }).error, "accepted a name");
+});
+
+await check("no consent field survives the validator", async () => {
+  /* Chase: "why consent? I don't think we need that." Consent for mail lives
+     with the mailing lists; a stray field here must not reach the table. */
+  const { value } = cleanPerson({ first_name: "Ana", newsletter_consent: 1, postal_consent: 1 });
+  assert(!("newsletter_consent" in value) && !("postal_consent" in value),
+    "consent passed through the person validator");
 });
 
 /* ------------------------------------ the validators against the SCHEMA -- */

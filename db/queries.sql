@@ -18,9 +18,6 @@
 SELECT
   (SELECT COUNT(*) FROM contacts
      WHERE partner_id = :partner_id AND status = 'active')                       AS contacts_total,
-  (SELECT COUNT(*) FROM contacts
-     WHERE partner_id = :partner_id AND status = 'active'
-       AND newsletter_consent = 1)                                               AS newsletter_optin,
   (SELECT COUNT(*) FROM interactions
      WHERE partner_id = :partner_id AND is_personal = 1
        AND occurred_on >= date(:today, '-30 days'))                              AS personal_last_30,
@@ -58,8 +55,6 @@ SELECT
   c.last_name,
   c.city,
   c.country,
-  c.newsletter_consent,
-  c.postal_consent,
   t.last_contact_any,
   t.last_personal_contact,
   t.interaction_count,
@@ -2366,10 +2361,6 @@ SELECT
   c.postal_code,
   c.country,
   c.giving_ref,
-  c.newsletter_consent,
-  c.newsletter_consent_source,
-  c.newsletter_consent_at,
-  c.postal_consent,
   c.notes,
   c.created_at,
   t.last_contact_any,
@@ -2430,21 +2421,22 @@ DELETE FROM life_events WHERE id = :id AND partner_id = :partner_id;
 
 
 -- name: interaction_add
--- THE FIRST WRITE INTO `interactions`, and the one that makes the stewardship
--- page mean anything. Until this existed the console could display who needed
--- a call and had no way to record that one had been made, so every date on
--- the page was frozen wherever the seed left it.
+-- A call, visit, note or message, logged by hand from the supporter dialog —
+-- the write that makes the stewardship page mean anything. Until this existed
+-- the console could display who needed a call and had no way to record that
+-- one had been made.
 --
--- APPEND ONLY. There is no interaction_update and no interaction_delete, and
--- that is deliberate: a contact log whose past can be rewritten is not a log.
--- A mistake is corrected by recording what actually happened, which is also
--- what somebody would do on paper.
+-- EDITABLE, see interaction_update below. The first version was append-only
+-- on the theory that a log whose past can be rewritten is not a log. Chase's
+-- answer was that this is his own address book and notebook, not a ledger for
+-- somebody else to audit, and a wrong date typed on a phone should be fixable
+-- rather than contradicted by a second entry. `source = 'manual'` is what
+-- keeps that honest: only rows a person wrote can be edited by a person.
 --
 -- `is_personal` is passed rather than derived, because only the person who was
 -- there knows whether an email was a note to one friend or a forward to forty.
 -- The trigger from 0001 still refuses to let a newsletter claim to be personal
--- whatever this sends, so the dishonest combination is unreachable rather
--- than merely discouraged.
+-- whatever this sends.
 INSERT INTO interactions (
   id, contact_id, partner_id, type, is_personal, channel,
   occurred_on, note, logged_by, source, created_at
@@ -2452,3 +2444,77 @@ INSERT INTO interactions (
   :id, :contact_id, :partner_id, :type, :is_personal, :channel,
   :occurred_on, :note, :logged_by, 'manual', :now
 );
+
+
+-- name: interaction_update
+-- Correct a contact somebody logged by hand. MANUAL ROWS ONLY: a newsletter
+-- entry is written by the mailing run and records what was actually sent, so
+-- it is not a person's to rewrite — the WHERE refuses it rather than trusting
+-- the console not to offer it.
+--
+-- contact_id and partner_id are in the WHERE and not in the SET, so an edit can
+-- change what happened but never whose record it is filed under. The 0001
+-- partner-match trigger guards INSERT only; this is what guards UPDATE.
+UPDATE interactions
+   SET type = :type, is_personal = :is_personal, channel = :channel,
+       occurred_on = :occurred_on, note = :note
+ WHERE id = :id AND contact_id = :contact_id AND partner_id = :partner_id
+   AND source = 'manual';
+
+
+-- name: interaction_delete
+-- Remove a contact logged by mistake — on the wrong person, or twice. Manual
+-- rows only, for the reason above.
+DELETE FROM interactions
+ WHERE id = :id AND contact_id = :contact_id AND partner_id = :partner_id
+   AND source = 'manual';
+
+
+-- ===========================================================================
+-- PEOPLE — adding, editing and removing a supporter
+-- ===========================================================================
+-- Until this existed, the only way to put a person into Stewardship was SQL.
+-- Chase's description of the page: "a digital version of keeping track of
+-- people in one place. Like Contacts and Notes in 1 place." A contacts app you
+-- cannot add a contact to is not one.
+--
+-- NO CONSENT COLUMNS. newsletter_consent, its source and date, and
+-- postal_consent still exist on the table, but nothing here reads or writes
+-- them: this page is a personal address book, not a mailing list. Consent for
+-- mail lives with the mailing lists, in `subscribers`, where it is actually
+-- used. Left in the schema rather than dropped because dropping a column in
+-- D1 is a table rebuild, and `contact_touch` reads this table — see the trap
+-- recorded in 0010.
+
+
+-- name: contact_upsert
+-- Create or edit one person. Same contract as life_event_upsert: the id comes
+-- from the caller so a retry cannot duplicate, and partner_id is in the
+-- UPDATE's WHERE so an id from another tenant rewrites nothing.
+--
+-- `created_at` is not in the UPDATE list — "on record since" must not move
+-- because somebody fixed a phone number.
+INSERT INTO contacts (
+  id, partner_id, first_name, last_name, email, phone,
+  address_1, address_2, city, region, postal_code, country,
+  notes, status, created_at, updated_at
+) VALUES (
+  :id, :partner_id, :first_name, :last_name, :email, :phone,
+  :address_1, :address_2, :city, :region, :postal_code, :country,
+  :notes, 'active', :now, :now
+)
+ON CONFLICT(id) DO UPDATE SET
+  first_name = :first_name, last_name = :last_name, email = :email,
+  phone = :phone, address_1 = :address_1, address_2 = :address_2,
+  city = :city, region = :region, postal_code = :postal_code,
+  country = :country, notes = :notes, updated_at = :now
+WHERE contacts.partner_id = :partner_id;
+
+
+-- name: contact_delete
+-- REALLY GONE, not archived. Their contacts log and their life events go with
+-- them by ON DELETE CASCADE, in this one statement — which is what erasure
+-- has to mean for the most sensitive notes in the database. Nothing is kept
+-- "just in case"; the audit row that records the deletion names an id and
+-- nothing about the person.
+DELETE FROM contacts WHERE id = :id AND partner_id = :partner_id;

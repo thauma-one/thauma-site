@@ -195,6 +195,35 @@ check("the old drawer is gone from the row renderer", () => {
     "two renderers for one timeline — this is how the console's copies drifted before");
 });
 
+/* ------------------------------------------------ what Chase asked for -- */
+
+check("there is no consent anywhere on the page", () => {
+  /* "This is a digital version of keeping track of people in one place. Like
+     Contacts and Notes in 1 place." Consent belongs to the mailing lists. */
+  for (const [name, src] of [["stewardship.njk", NJK], ["staff-stewardship.js", JS]]) {
+    assert(!/consent/i.test(src.replace(/\/\*[\s\S]*?\*\/|\{#[\s\S]*?#\}/g, "")),
+      `${name} still shows consent`);
+  }
+  const row = STAFF.slice(STAFF.indexOf("--- stewardship table ---"),
+                          STAFF.indexOf("--- activity ---"));
+  assert(!/consent/.test(row), "the table still renders a consent column");
+});
+
+check("a person can be added, edited and removed", () => {
+  for (const id of ["swAddPerson", "swEditPerson", "swDeletePerson", "swPersonForm"]) {
+    assert(NJK.includes(`id="${id}"`), `no #${id} on the page`);
+  }
+  assert(/type: 'DELETE'/.test(JS) && JS.includes("&confirm=DELETE"),
+    "removing a person is not typed-to-confirm, or the word is not sent to the server");
+});
+
+check("logged contacts can be corrected — but only the ones a person wrote", () => {
+  assert(JS.includes("data-edit-tc") && JS.includes("data-del-tc"),
+    "no edit or remove on a logged contact");
+  assert(/i\.source === 'manual'/.test(JS),
+    "edit is offered on newsletter entries too, which the server refuses");
+});
+
 /* ------------------------------------------------------------- privacy -- */
 
 check("the dialog is emptied before it is filled", () => {

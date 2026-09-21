@@ -2054,3 +2054,23 @@ html:not(.roles-known)[data-area="admin"] .console-row[data-row="admin"] nav a{d
   .sw-dlg{padding:20px 18px}
 }
 @media (prefers-reduced-motion: reduce){ .sw-ev .row-actions{transition:none} }
+
+/* The person's details: two columns of short fields, with street address and
+   notes across the full width because they are the two that run long. */
+.sw-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 16px}
+.sw-grid .sw-wide{grid-column:1 / -1}
+.sw-grid input,.sw-grid textarea{width:100%}
+.sw-top{margin:0 0 14px}
+/* Edit and remove on a logged contact sit under its note, quiet until the
+   entry is reached — the same treatment life events get. */
+.sw-tl-a{display:flex;gap:6px;margin:6px 0 0;opacity:.55;
+  transition:opacity .15s var(--ease-main)}
+@media(hover:hover){ .ev:hover .sw-tl-a{opacity:1} }
+.ev:focus-within .sw-tl-a{opacity:1}
+tr.empty-row td{cursor:default}
+@media (max-width:560px){ .sw-grid{grid-template-columns:1fr} }
+@media (prefers-reduced-motion: reduce){ .sw-tl-a{transition:none} }
+/* A remove button says so only when reached — a row of red at rest reads as
+   an error, not as an option. The existing --crit token, no new color. */
+@media(hover:hover){ .sw-dlg .ghost-btn.del:hover{color:var(--crit);border-color:var(--crit)} }
+.sw-dlg .ghost-btn.del:focus-visible{color:var(--crit)}

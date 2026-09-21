@@ -62,6 +62,11 @@ SCRUB = {
     "contacts": ["first_name", "last_name", "email", "phone",
                  "address_1", "address_2", "city", "postal_code", "notes"],
     "interactions": ["note"],
+    # 0034. Bereavement, illness, a marriage — the most sensitive free text in
+    # the database, and it arrived after this list was written. db/test_schema.py
+    # now checks every note/notes column in the schema against all three copies
+    # of this list, so the next one cannot be forgotten the same way.
+    "life_events": ["note"],
     # The largest store of other people's addresses in this system. They gave
     # them on the understanding they would be written to; a copy on a
     # development machine is a second place to leak from that nobody agreed to.
@@ -184,7 +189,7 @@ def fake(col, i):
     if col == "phone":        return f"+1 555 01{i % 100:02d}"
     if col == "city":         return "Anytown"
     if col == "notes":        return "[scrubbed] stewardship note"
-    if col == "note":         return "[scrubbed] interaction note"
+    if col == "note":         return "[scrubbed] note"
     if col == "ip_hash":      return "0" * 32
     return None
 

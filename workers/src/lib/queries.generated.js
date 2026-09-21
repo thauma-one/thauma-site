@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "462fdf51dea4a6eb";
+export const SOURCE_DIGEST = "4a3515b6360c0109";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -127,6 +127,7 @@ ORDER BY a.at DESC
 LIMIT :limit;`,
   audit_write: `INSERT INTO audit_log (id, at, user_id, partner_id, action, entity, entity_id, detail)
 VALUES (:id, :now, :user_id, :partner_id, :action, :entity, :entity_id, :detail);`,
+  contact_delete: `DELETE FROM contacts WHERE id = :id AND partner_id = :partner_id;`,
   contact_detail: `SELECT
   c.id,
   c.first_name,
@@ -140,10 +141,6 @@ VALUES (:id, :now, :user_id, :partner_id, :action, :entity, :entity_id, :detail)
   c.postal_code,
   c.country,
   c.giving_ref,
-  c.newsletter_consent,
-  c.newsletter_consent_source,
-  c.newsletter_consent_at,
-  c.postal_consent,
   c.notes,
   c.created_at,
   t.last_contact_any,
@@ -210,14 +207,27 @@ VALUES (:id, :partner_id, :label, :deliver_to, :sort_order, :now);`,
 FROM contact_topics
 WHERE partner_id IS :partner_id
 ORDER BY sort_order, label COLLATE NOCASE;`,
+  contact_upsert: `INSERT INTO contacts (
+  id, partner_id, first_name, last_name, email, phone,
+  address_1, address_2, city, region, postal_code, country,
+  notes, status, created_at, updated_at
+) VALUES (
+  :id, :partner_id, :first_name, :last_name, :email, :phone,
+  :address_1, :address_2, :city, :region, :postal_code, :country,
+  :notes, 'active', :now, :now
+)
+ON CONFLICT(id) DO UPDATE SET
+  first_name = :first_name, last_name = :last_name, email = :email,
+  phone = :phone, address_1 = :address_1, address_2 = :address_2,
+  city = :city, region = :region, postal_code = :postal_code,
+  country = :country, notes = :notes, updated_at = :now
+WHERE contacts.partner_id = :partner_id;`,
   contacts_stewardship: `SELECT
   c.id,
   c.first_name,
   c.last_name,
   c.city,
   c.country,
-  c.newsletter_consent,
-  c.postal_consent,
   t.last_contact_any,
   t.last_personal_contact,
   t.interaction_count,
@@ -239,9 +249,6 @@ WHERE partner_id = :partner_id
   dashboard_partner_summary: `SELECT
   (SELECT COUNT(*) FROM contacts
      WHERE partner_id = :partner_id AND status = 'active')                       AS contacts_total,
-  (SELECT COUNT(*) FROM contacts
-     WHERE partner_id = :partner_id AND status = 'active'
-       AND newsletter_consent = 1)                                               AS newsletter_optin,
   (SELECT COUNT(*) FROM interactions
      WHERE partner_id = :partner_id AND is_personal = 1
        AND occurred_on >= date(:today, '-30 days'))                              AS personal_last_30,
@@ -297,6 +304,14 @@ ORDER BY kind, label;`,
   :id, :contact_id, :partner_id, :type, :is_personal, :channel,
   :occurred_on, :note, :logged_by, 'manual', :now
 );`,
+  interaction_delete: `DELETE FROM interactions
+ WHERE id = :id AND contact_id = :contact_id AND partner_id = :partner_id
+   AND source = 'manual';`,
+  interaction_update: `UPDATE interactions
+   SET type = :type, is_personal = :is_personal, channel = :channel,
+       occurred_on = :occurred_on, note = :note
+ WHERE id = :id AND contact_id = :contact_id AND partner_id = :partner_id
+   AND source = 'manual';`,
   interactions_for_partner: `SELECT
   i.contact_id,
   i.id,

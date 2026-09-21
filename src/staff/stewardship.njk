@@ -6,11 +6,14 @@ staffTitle: Stewardship
 staffHeading: Who needs a <b>call</b>
 staffHint: supporters — sorted worst first, click a row to open their record
 ---
+<p class="row-actions sw-top">
+  <button class="ghost-btn" type="button" id="swAddPerson" data-i18n="stew.addPerson">+ Add a person</button>
+</p>
 <div class="tw">
   <table>
     <thead><tr>
       <th data-i18n="stew.person">Person</th><th data-i18n="stew.lastPersonal">Last personal contact</th><th data-i18n="stew.lastAny">Last contact (any)</th>
-      <th data-i18n="stew.consent">Consent</th><th class="right" data-i18n="stew.touches">Touches</th>
+      <th class="right" data-i18n="stew.touches">Touches</th>
     </tr></thead>
     <tbody id="rows"></tbody>
   </table>
@@ -57,6 +60,47 @@ staffHint: supporters — sorted worst first, click a row to open their record
 
     <section class="tab-panel" data-swpanel="facts" role="tabpanel">
       <dl class="sw-facts" id="swFacts"></dl>
+      <p class="row-actions" id="swFactActions">
+        <button class="ghost-btn" type="button" id="swEditPerson" data-i18n="stew.editPerson">Edit details</button>
+        <button class="ghost-btn del" type="button" id="swDeletePerson" data-i18n="stew.deletePerson">Remove this person</button>
+      </p>
+
+      {#- THE PERSON'S OWN DETAILS. Also the whole dialog when adding somebody
+         new: there is no record yet to have life events or a history, so the
+         tabs are hidden until the first save creates one. Only a name is
+         required — an address book entry for somebody met once may be a name
+         and a city and nothing more. -#}
+      <form class="form sw-form sw-person" id="swPersonForm" hidden>
+        <input type="hidden" id="swPersonId" value="">
+        <div class="sw-grid">
+          <label class="fld"><span data-i18n="stew.pFirst">First name</span>
+            <input type="text" id="swPFirst" autocomplete="off"></label>
+          <label class="fld"><span data-i18n="stew.pLast">Last name</span>
+            <input type="text" id="swPLast" autocomplete="off"></label>
+          <label class="fld"><span data-i18n="stew.email">Email</span>
+            <input type="email" id="swPEmail" autocomplete="off"></label>
+          <label class="fld"><span data-i18n="stew.phone">Phone</span>
+            <input type="tel" id="swPPhone" autocomplete="off"></label>
+          <label class="fld sw-wide"><span data-i18n="stew.pAddress1">Street address</span>
+            <input type="text" id="swPAddr1" autocomplete="off"></label>
+          <label class="fld sw-wide"><span data-i18n="stew.pAddress2">Address, second line</span>
+            <input type="text" id="swPAddr2" autocomplete="off"></label>
+          <label class="fld"><span data-i18n="stew.pCity">City</span>
+            <input type="text" id="swPCity" autocomplete="off"></label>
+          <label class="fld"><span data-i18n="stew.pRegion">State or region</span>
+            <input type="text" id="swPRegion" autocomplete="off"></label>
+          <label class="fld"><span data-i18n="stew.pPostal">Postal code</span>
+            <input type="text" id="swPPostal" autocomplete="off"></label>
+          <label class="fld"><span data-i18n="stew.pCountry">Country (two letters, e.g. US, HR)</span>
+            <input type="text" id="swPCountry" maxlength="2" autocomplete="off"></label>
+          <label class="fld sw-wide"><span data-i18n="stew.notes">Notes</span>
+            <textarea id="swPNotes" rows="5"></textarea></label>
+        </div>
+        <div class="dlg-actions">
+          <button class="ghost-btn" type="button" id="swPersonCancel" data-i18n="common.cancel">Cancel</button>
+          <button class="solid-btn" type="submit" data-i18n="stew.pSave">Save</button>
+        </div>
+      </form>
     </section>
 
     <section class="tab-panel" data-swpanel="events" role="tabpanel" hidden>
@@ -111,10 +155,11 @@ staffHint: supporters — sorted worst first, click a row to open their record
         <button class="ghost-btn" type="button" id="swAddTouch" data-i18n="stew.logContact">+ Log a contact</button>
       </p>
 
-      {#- APPEND ONLY, and the form says so rather than the docs alone. There
-         is no edit and no delete for an interaction: a contact log whose past
-         can be rewritten is not a log. -#}
+      {#- The same form logs a new contact and corrects an old one; the hidden
+         id says which. Newsletter entries never open it — they record what
+         the mailing run actually sent, and the server refuses to edit them. -#}
       <form class="form sw-form" id="swTouchForm" hidden>
+        <input type="hidden" id="swTouchId" value="">
         <label class="fld">
           <span data-i18n="stew.tcType">What kind of contact</span>
           <select id="swTouchType">
@@ -146,7 +191,6 @@ staffHint: supporters — sorted worst first, click a row to open their record
           <input type="checkbox" id="swTouchPersonal" checked>
           <span data-i18n="stew.tcPersonal">This was a real one-to-one conversation</span>
         </label>
-        <p class="hint" data-i18n="stew.tcAppend">Logged contacts cannot be edited or removed afterwards. Correct a mistake by recording what actually happened.</p>
         <div class="dlg-actions">
           <button class="ghost-btn" type="button" id="swTouchCancel" data-i18n="common.cancel">Cancel</button>
           <button class="solid-btn" type="submit" data-i18n="stew.tcSave">Log it</button>

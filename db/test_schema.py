@@ -1757,6 +1757,143 @@ def t_a_leaver_takes_their_name_not_the_event():
     assert row[1] == "Married Tom.", "the event lost its content"
 
 
+
+def t_every_note_column_is_scrubbed_by_every_copy():
+    """Free text about a person must never come down to a development machine.
+
+    There are THREE copies of the scrub list — workers/src/lib/dbsync.js
+    (the console's button) and the two python scripts — and 0034 added
+    life_events.note to none of them. Nothing noticed, because each list only
+    covers what somebody remembered to put on it.
+
+    So this asks the SCHEMA which columns hold notes and checks each copy
+    against it. A table added tomorrow with a `note` column fails here
+    until all three are told about it."""
+    import importlib.util, re as _re
+    here = pathlib.Path(__file__).resolve().parent
+
+    def load(name):
+        spec = importlib.util.spec_from_file_location(name, str(here / name))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod.SCRUB
+
+    js = (here.parent / "workers" / "src" / "lib" / "dbsync.js").read_text()
+    block = js[js.index("export const SCRUB = {"):]
+    block = block[:block.index("};")]
+    js_scrub = {}
+    for m in _re.finditer(r"^\s*(\w+):\s*\[([^\]]*)\]", block, _re.M):
+        js_scrub[m.group(1)] = _re.findall(r'"(\w+)"', m.group(2))
+
+    copies = {
+        "workers/src/lib/dbsync.js": js_scrub,
+        "db/pull_staging.py": load("pull_staging.py"),
+        "db/refresh_dev.py": load("refresh_dev.py"),
+    }
+
+    db = fresh()
+    tables = [r[0] for r in db.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")]
+    missing = []
+    for t in tables:
+        for col in (r[1] for r in db.execute(f"PRAGMA table_info({t})")):
+            if col not in ("note", "notes"):
+                continue
+            for where, scrub in copies.items():
+                if col not in scrub.get(t, []):
+                    missing.append(f"{where} does not scrub {t}.{col}")
+    assert not missing, "; ".join(missing)
+
+
+
+# ------------------------------------------ people and contacts, as edited --
+# The SQL the stewardship dialog runs, against real rows. Written after Chase
+# asked for logged contacts to be editable: the edit must reach what a person
+# wrote and nothing the mailing run wrote, and removing a person must take
+# everything about them.
+def _person(db, cid="c_new", partner="p_chase", **over):
+    args = dict(id=cid, partner_id=partner, first_name="Ana", last_name="Horvat",
+                email="ana@example.hr", phone=None, address_1=None, address_2=None,
+                city="Osijek", region=None, postal_code=None, country="HR",
+                notes="Met at the Osijek conference.", now=NOW)
+    args.update(over)
+    _run(db, "contact_upsert", **args)
+    db.commit()
+
+
+def t_a_person_can_be_added_and_corrected():
+    db = fresh()
+    _person(db)
+    _person(db, city="Zagreb")
+    rows = db.execute("SELECT city, created_at FROM contacts WHERE id='c_new'").fetchall()
+    assert len(rows) == 1, f"an edit made a second person: {rows}"
+    assert rows[0][0] == "Zagreb", f"the edit did not land: {rows[0][0]!r}"
+
+
+def t_an_edit_cannot_rewrite_another_partners_person():
+    db = fresh()
+    # c_sara_1 belongs to p_sara. Chase's partner sending its id must not touch it.
+    _person(db, cid="c_sara_1", partner="p_chase", first_name="Hijacked")
+    name = db.execute("SELECT first_name FROM contacts WHERE id='c_sara_1'").fetchone()[0]
+    assert name == "Mira", f"another partner's person was rewritten to {name!r}"
+
+
+def t_a_logged_contact_can_be_corrected():
+    db = fresh()
+    add_interaction(db, "i_1", "c_1", "p_chase", "call", 1, "2026-03-02")
+    _run(db, "interaction_update", id="i_1", contact_id="c_1", partner_id="p_chase",
+         type="visit", is_personal=1, channel="in_person", occurred_on="2026-03-04",
+         note="It was a visit, not a call.")
+    db.commit()
+    row = db.execute("SELECT type, occurred_on FROM interactions WHERE id='i_1'").fetchone()
+    assert row == ("visit", "2026-03-04"), f"the correction did not land: {row}"
+
+
+def t_a_newsletter_entry_cannot_be_edited_or_removed():
+    """It records what the mailing run sent. Refused in the SQL, not the UI."""
+    db = fresh()
+    add_interaction(db, "i_news", "c_1", "p_chase", "newsletter", 0, "2026-06-01", "newsletter")
+    _run(db, "interaction_update", id="i_news", contact_id="c_1", partner_id="p_chase",
+         type="call", is_personal=1, channel="digital", occurred_on="2026-06-01", note=None)
+    _run(db, "interaction_delete", id="i_news", contact_id="c_1", partner_id="p_chase")
+    db.commit()
+    row = db.execute("SELECT type, is_personal FROM interactions WHERE id='i_news'").fetchone()
+    assert row is not None, "a newsletter entry was deleted by hand"
+    assert row == ("newsletter", 0), f"a newsletter entry was rewritten: {row}"
+
+
+def t_a_logged_contact_cannot_be_moved_to_someone_else():
+    db = fresh()
+    add_interaction(db, "i_1", "c_1", "p_chase", "call", 1, "2026-03-02")
+    # Wrong contact in the WHERE: nothing should change.
+    _run(db, "interaction_update", id="i_1", contact_id="c_sara_1", partner_id="p_chase",
+         type="meal", is_personal=1, channel="in_person", occurred_on="2026-03-02", note=None)
+    db.commit()
+    t = db.execute("SELECT type FROM interactions WHERE id='i_1'").fetchone()[0]
+    assert t == "call", f"an edit aimed at another person changed this one: {t}"
+
+
+def t_removing_a_person_takes_everything_about_them():
+    db = fresh()
+    add_interaction(db, "i_1", "c_1", "p_chase", "call", 1, "2026-03-02")
+    add_life_event(db, "le_1", "c_1", "p_chase", "bereavement", "2026-08-10", "Her father died.")
+    _run(db, "contact_delete", id="c_1", partner_id="p_chase")
+    db.commit()
+    left = [db.execute(f"SELECT COUNT(*) FROM {t} WHERE contact_id='c_1'").fetchone()[0]
+            for t in ("interactions", "life_events")]
+    assert db.execute("SELECT COUNT(*) FROM contacts WHERE id='c_1'").fetchone()[0] == 0, \
+        "the person is still there"
+    assert left == [0, 0], f"their contacts and events outlived them: {left}"
+
+
+def t_removing_cannot_reach_another_partner():
+    db = fresh()
+    _run(db, "contact_delete", id="c_sara_1", partner_id="p_chase")
+    db.commit()
+    n = db.execute("SELECT COUNT(*) FROM contacts WHERE id='c_sara_1'").fetchone()[0]
+    assert n == 1, "one partner removed another partner's person"
+
+
 if __name__ == "__main__":
     print(f"schema tests — {len(MIGRATIONS)} migrations: "
           f"{', '.join(p.name for p in MIGRATIONS)}\n")
@@ -1850,6 +1987,14 @@ if __name__ == "__main__":
         ("an undated event cannot recur",                t_an_event_with_no_date_cannot_recur),
         ("an event may have no date at all",             t_a_life_event_may_have_no_date_at_all),
         ("a leaver takes their name, not the event",     t_a_leaver_takes_their_name_not_the_event),
+        ("every note column is scrubbed by every copy",   t_every_note_column_is_scrubbed_by_every_copy),
+        ("a person can be added and corrected",          t_a_person_can_be_added_and_corrected),
+        ("an edit cannot rewrite another's person",      t_an_edit_cannot_rewrite_another_partners_person),
+        ("a logged contact can be corrected",            t_a_logged_contact_can_be_corrected),
+        ("a newsletter entry is not a person's to edit", t_a_newsletter_entry_cannot_be_edited_or_removed),
+        ("a contact cannot be moved to someone else",    t_a_logged_contact_cannot_be_moved_to_someone_else),
+        ("removing a person takes everything about them", t_removing_a_person_takes_everything_about_them),
+        ("removing cannot reach another partner",        t_removing_cannot_reach_another_partner),
     ]:
         check(name, fn)
     print(f"\n{passed} passed, {failed} failed")

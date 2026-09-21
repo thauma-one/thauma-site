@@ -147,8 +147,6 @@
         s: 'no personal contact in ' + d.stale_days + '+ days',
         cls: stale > 0 ? 'alert' : 'calm' },
       { k: tr('dash.supporters'), v: s.contacts_total, s: 'active records' },
-      { k: tr('dash.newsletterOptin'), v: s.newsletter_optin,
-        s: 'of ' + s.contacts_total + ' — consent recorded separately' },
       { k: tr('dash.personalTouches'), v: s.personal_last_30, s: 'in the last 30 days' }
     ].map(function (t) {
       return '<div class="tile ' + (t.cls || '') + '">' +
@@ -185,13 +183,12 @@
           '<span class="sub">' + esc(shortDate(c.last_personal_contact)) + '</span></td>' +
         '<td><span class="sub" style="color:var(--text)">' +
           esc(shortDate(c.last_contact_any)) + '</span></td>' +
-        '<td><span class="chips">' +
-          '<span class="chip' + (c.newsletter_consent ? ' on' : '') + '">email</span>' +
-          '<span class="chip' + (c.postal_consent ? ' on' : '') + '">post</span>' +
-        '</span></td>' +
         '<td class="right tnum">' + c.personal_count + ' / ' + c.interaction_count + '</td>' +
       '</tr>';
-    }).join('');
+    }).join('') ||
+      /* An empty table reads as broken rather than as empty. People are added
+         from the button above it now, so say so. */
+      '<tr class="empty-row"><td colspan="4"><p class="empty">' + esc(tr('stew.noPeople')) + '</p></td></tr>';
 
     // --- activity ---
     if ($('auditList')) $('auditList').innerHTML = d.audit.map(function (a) {

@@ -36,6 +36,12 @@ export const SCRUB = {
   contacts: ["first_name", "last_name", "email", "phone",
              "address_1", "address_2", "city", "postal_code", "notes"],
   interactions: ["note"],
+  /* The most sensitive column in the database — a bereavement, an illness —
+     and it arrived in 0034 AFTER this list was written. A list of what to
+     scrub only covers what somebody remembered to put on it, which is why
+     test/dbsync.test.mjs now asks the schema for every note/notes column
+     rather than trusting this one to be complete. */
+  life_events: ["note"],
   subscribers: ["email", "name", "confirm_token"],
   mailing_recipients: ["email"],
   signup_attempts: ["ip_hash"],
@@ -114,7 +120,9 @@ export function fake(col, i) {
     case "phone": return `+1 555 01${String(i % 100).padStart(2, "0")}`;
     case "city": return "Anytown";
     case "notes": return "[scrubbed] stewardship note";
-    case "note": return "[scrubbed] interaction note";
+    /* Not "interaction note": since 0034 the same column name is a life
+       event's too, and the placeholder should not claim to be the wrong one. */
+    case "note": return "[scrubbed] note";
     case "ip_hash": return "0".repeat(32);
     default: return null;
   }

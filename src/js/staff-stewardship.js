@@ -19,6 +19,12 @@
    what it already had. A dialog that edits its own copy is how two versions
    of somebody's history start to disagree.
 
+   CONTACTS AND NOTES IN ONE PLACE. Chase's description of the page. So a
+   person can be added, edited and removed from here, and everything written
+   about them — life events and logged contacts alike — can be corrected by
+   whoever wrote it. Newsletter entries are the one exception: they record
+   what the mailing run sent, and have no edit button.
+
    AND THE ROW BEHIND IT IS REFRESHED TOO. Logging a call changes what the
    table says — that is the entire point of logging it — so a successful
    write reloads the snapshot underneath. Without that the page would go on
@@ -43,6 +49,7 @@
     timeline: [],
     openedFrom: null,  // the row to give focus back to
     tab: 'facts',
+    isNew: false,      // adding somebody: no record yet, only the form
   };
 
   function esc(s) {
@@ -168,21 +175,6 @@
       add(tr('stew.address'), postal.map(esc).join('<br>'));
     }
 
-    /* CONSENT IS PER-PURPOSE and the source is shown with it, because "is she
-       on the list" and "how did she get on the list" are different questions
-       and the second one is the evidence. */
-    var consent = '<span class="chips">' +
-      '<span class="chip' + (p.newsletter_consent ? ' on' : '') + '">' + esc(tr('stew.emailConsent')) + '</span>' +
-      '<span class="chip' + (p.postal_consent ? ' on' : '') + '">' + esc(tr('stew.postConsent')) + '</span>' +
-      '</span>';
-    if (p.newsletter_consent && (p.newsletter_consent_source || p.newsletter_consent_at)) {
-      consent += '<span class="sub">' + esc(fill('stew.consentVia', {
-        how: p.newsletter_consent_source || tr('stew.consentUnknown'),
-        when: shortDate(p.newsletter_consent_at),
-      })) + '</span>';
-    }
-    add(tr('stew.consent'), consent);
-
     add(tr('stew.lastPersonal'), esc(shortDate(p.last_personal_contact)));
     add(tr('stew.lastAny'), esc(shortDate(p.last_contact_any)));
     add(tr('stew.touches'), esc(fill('stew.touchCount', {
@@ -249,13 +241,32 @@
           (i.logged_by_name ? '<span class="ev-tag">' + esc(i.logged_by_name) + '</span>' : '') +
         '</span>' +
         (i.note ? '<span class="ev-n">' + esc(i.note) + '</span>' : '') +
+        /* Only rows a person wrote. A newsletter entry records what was sent,
+           and the server refuses to change it — so it is not offered. */
+        (i.source === 'manual'
+          ? '<span class="row-actions sw-tl-a">' +
+              '<button type="button" class="ghost-btn sm" data-edit-tc="' + esc(i.id) + '">' + esc(tr('common.edit')) + '</button>' +
+              '<button type="button" class="ghost-btn sm del" data-del-tc="' + esc(i.id) + '">' + esc(tr('common.delete')) + '</button>' +
+            '</span>'
+          : '') +
         '</span></div>';
     }).join('') + '</div>';
+  }
+
+  /* Adding somebody has no record yet, so no life events and no history to
+     show — only the form. The tabs come back with the first save. */
+  function setNewMode(on) {
+    state.isNew = on;
+    var tabs = document.querySelector('#swBack .tabs');
+    if (tabs) tabs.hidden = on;
+    $('swFacts').hidden = on;
+    $('swFactActions').hidden = on;
   }
 
   function render() {
     var p = state.person;
     if (!p) return;
+    setNewMode(false);
     $('swName').textContent = fullName(p);
     $('swWhere').textContent = [p.city, p.country].filter(Boolean).join(', ');
     renderFacts();
@@ -293,15 +304,12 @@
     $('swEvents').innerHTML = '';
     $('swTimeline').innerHTML = '';
     hideForms();
+    setNewMode(false);
     showTab('facts');
     setStatus('');
+    show();
 
-    var back = $('swBack');
-    back.hidden = false;
-    void back.offsetHeight;
-    back.classList.add('in');
-
-    var firstTab = back.querySelector('.tab');
+    var firstTab = $('swBack').querySelector('.tab');
     if (firstTab) firstTab.focus();
 
     call({ url: API + '?contact=' + encodeURIComponent(contactId) }).then(function (body) {
@@ -311,6 +319,31 @@
       if (!body || state.contactId !== contactId) return;
       adopt(body);
     });
+  }
+
+  function show() {
+    var back = $('swBack');
+    back.hidden = false;
+    void back.offsetHeight;
+    back.classList.add('in');
+  }
+
+  /** A new person: an empty record and the details form, nothing else. */
+  function openNew(fromEl) {
+    state.contactId = null;
+    state.openedFrom = fromEl || null;
+    state.person = null;
+    state.events = [];
+    state.timeline = [];
+    $('swName').textContent = tr('stew.newPerson');
+    $('swWhere').textContent = '';
+    $('swFacts').innerHTML = '';
+    hideForms();
+    showTab('facts');
+    setNewMode(true);
+    setStatus('');
+    show();
+    openPersonForm(null);
   }
 
   function close() {
@@ -329,9 +362,10 @@
   }
 
   function hideForms() {
-    var ef = $('swEventForm'), tf = $('swTouchForm');
+    var ef = $('swEventForm'), tf = $('swTouchForm'), pf = $('swPersonForm');
     if (ef) { ef.hidden = true; ef.reset(); $('swEventId').value = ''; }
-    if (tf) { tf.hidden = true; tf.reset(); }
+    if (tf) { tf.hidden = true; tf.reset(); $('swTouchId').value = ''; }
+    if (pf) { pf.hidden = true; pf.reset(); $('swPersonId').value = ''; }
   }
 
   /* --------------------------------------------------------------- forms -- */
@@ -354,15 +388,97 @@
     $('swEventKind').focus();
   }
 
-  function openTouchForm() {
+  /* One form for logging and for correcting; `i` is the entry being
+     corrected, or nothing for a new one. */
+  function openTouchForm(i) {
     var f = $('swTouchForm');
     f.reset();
-    /* Defaults to today, because the overwhelming case is logging something
-       that just happened. Backdating stays one keystroke away. */
-    $('swTouchDate').value = today();
-    $('swTouchPersonal').checked = true;
+    $('swTouchId').value = i ? i.id : '';
+    $('swTouchType').value = i ? i.type : 'call';
+    /* A new one defaults to today, because the overwhelming case is logging
+       something that just happened. Backdating stays one keystroke away. */
+    $('swTouchDate').value = i ? String(i.occurred_on).slice(0, 10) : today();
+    $('swTouchNote').value = i && i.note ? i.note : '';
+    $('swTouchPersonal').checked = i ? !!i.is_personal : true;
     f.hidden = false;
     $('swTouchType').focus();
+  }
+
+  var PERSON_FIELDS = {
+    first_name: 'swPFirst', last_name: 'swPLast', email: 'swPEmail',
+    phone: 'swPPhone', address_1: 'swPAddr1', address_2: 'swPAddr2',
+    city: 'swPCity', region: 'swPRegion', postal_code: 'swPPostal',
+    country: 'swPCountry', notes: 'swPNotes',
+  };
+
+  function openPersonForm(p) {
+    var f = $('swPersonForm');
+    f.reset();
+    $('swPersonId').value = p ? p.id : '';
+    Object.keys(PERSON_FIELDS).forEach(function (k) {
+      $(PERSON_FIELDS[k]).value = p && p[k] ? p[k] : '';
+    });
+    f.hidden = false;
+    $('swFactActions').hidden = true;
+    $('swPFirst').focus();
+  }
+
+  function closePersonForm() {
+    $('swPersonForm').hidden = true;
+    /* Canceling a NEW person leaves nothing to look at — close the dialog
+       rather than show an empty record. */
+    if (state.isNew) { close(); return; }
+    $('swFactActions').hidden = false;
+  }
+
+  function removePerson() {
+    var p = state.person;
+    if (!p) return;
+    window.StaffConfirm({
+      title: fill('stew.pDeleteTitle', { name: fullName(p) }),
+      body: tr('stew.pDeleteBody'),
+      confirm: tr('common.delete'),
+      cancel: tr('common.cancel'),
+      danger: true,
+      /* The same word the server checks. A dialog is a suggestion; the
+         request carries confirm=DELETE or it is refused. */
+      type: 'DELETE',
+    }).then(function (yes) {
+      if (!yes) return;
+      var id = state.contactId;
+      call({
+        url: API + '?contact=' + encodeURIComponent(id) + '&confirm=DELETE',
+        method: 'DELETE',
+      }).then(function (body) {
+        if (!body) return;
+        state.openedFrom = null;  // that row is about to stop existing
+        close();
+        refreshRowsBehind();
+        toast(tr('stew.pDeleted'), 'ok');
+      });
+    });
+  }
+
+  function removeTouch(id) {
+    window.StaffConfirm({
+      title: tr('stew.tcDeleteTitle'),
+      body: tr('stew.tcDeleteBody'),
+      confirm: tr('common.delete'),
+      cancel: tr('common.cancel'),
+      danger: true,
+    }).then(function (yes) {
+      if (!yes) return;
+      call({
+        url: API + '?contact=' + encodeURIComponent(state.contactId) +
+             '&interaction=' + encodeURIComponent(id),
+        method: 'DELETE',
+      }).then(function (body) {
+        if (!body) return;
+        adopt(body);
+        refreshRowsBehind();
+        toast(tr('stew.tcDeleted'), 'ok');
+      });
+    });
   }
 
   /* ---------------------------------------------------------------- wire -- */
@@ -419,8 +535,41 @@
       });
     });
 
-    /* ------ logging a contact ------ */
-    $('swAddTouch').addEventListener('click', openTouchForm);
+    /* ------ the person ------ */
+    $('swAddPerson').addEventListener('click', function (e) { openNew(e.currentTarget); });
+    $('swEditPerson').addEventListener('click', function () { openPersonForm(state.person); });
+    $('swDeletePerson').addEventListener('click', removePerson);
+    $('swPersonCancel').addEventListener('click', closePersonForm);
+
+    $('swPersonForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var person = { id: $('swPersonId').value || undefined };
+      Object.keys(PERSON_FIELDS).forEach(function (k) {
+        person[k] = $(PERSON_FIELDS[k]).value;
+      });
+      call({ url: API, method: 'POST', body: { person: person } }).then(function (body) {
+        if (!body) return;
+        /* A new person has an id now; from here on this dialog is theirs. */
+        state.contactId = body.id || state.contactId;
+        hideForms();
+        adopt(body);
+        refreshRowsBehind();
+        toast(tr(body.created ? 'stew.pAdded' : 'stew.pSaved'), 'ok');
+      });
+    });
+
+    /* ------ logging and correcting contacts ------ */
+    $('swAddTouch').addEventListener('click', function () { openTouchForm(null); });
+    $('swTimeline').addEventListener('click', function (e) {
+      var edit = e.target.closest('[data-edit-tc]');
+      if (edit) {
+        var i = state.timeline.filter(function (x) { return x.id === edit.dataset.editTc; })[0];
+        if (i) openTouchForm(i);
+        return;
+      }
+      var del = e.target.closest('[data-del-tc]');
+      if (del) removeTouch(del.dataset.delTc);
+    });
     $('swTouchCancel').addEventListener('click', function () { $('swTouchForm').hidden = true; });
 
     $('swTouchForm').addEventListener('submit', function (e) {
@@ -428,6 +577,7 @@
       var payload = {
         contact_id: state.contactId,
         interaction: {
+          id: $('swTouchId').value || undefined,
           type: $('swTouchType').value,
           occurred_on: $('swTouchDate').value,
           note: $('swTouchNote').value,
@@ -443,7 +593,7 @@
         hideForms();
         adopt(body);
         refreshRowsBehind();
-        toast(tr('stew.tcLogged'), 'ok');
+        toast(tr(body.logged ? 'stew.tcLogged' : 'stew.tcSaved'), 'ok');
       });
     });
   }
@@ -487,5 +637,5 @@
   /* The row handler in staff.js calls this. Exposed rather than wired here
      because the rows are rebuilt on every snapshot load, so the listener has
      to live with whatever rebuilds them. */
-  window.StaffSupporterDialog = { open: open, close: close };
+  window.StaffSupporterDialog = { open: open, openNew: openNew, close: close };
 })();
