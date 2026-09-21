@@ -82,6 +82,11 @@
    esbuild emits an IIFE, and defer keeps it in the same execution order as
    every plain script above it. -#}
 <script defer src="/js/composer.bundle.js?v={{ "/js/composer.bundle.js" | v }}"></script>{% endif %}
+{#- The supporter dialog. Only Stewardship has one, and the script returns
+   immediately on any page without it — but it also carries the only client
+   that talks to /api/staff-stewardship, so loading it elsewhere would ship a
+   personal-data client to pages that have no business holding one. -#}
+{% if staffPage == "stewardship" %}<script src="/js/staff-stewardship.js?v={{ "/js/staff-stewardship.js" | v }}"></script>{% endif %}
 {% if staffPage == "settings" %}<script src="/js/staff-settings.js?v={{ "/js/staff-settings.js" | v }}"></script>{% endif %}
 {#- The embed panel loads on the two pages that AUTHOR what it publishes —
    the roadmap under the milestone editor, the giving progress under the

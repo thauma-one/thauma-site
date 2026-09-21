@@ -4,7 +4,7 @@ staffPage: stewardship
 staffNum: "03"
 staffTitle: Stewardship
 staffHeading: Who needs a <b>call</b>
-staffHint: supporters — sorted worst first, click a row for history
+staffHint: supporters — sorted worst first, click a row to open their record
 ---
 <div class="tw">
   <table>
@@ -19,3 +19,143 @@ staffHint: supporters — sorted worst first, click a row for history
 <p class="note" data-i18n-html="stew.note"><b>Newsletters do not count as personal contact.</b> A bulk send is contact, but it is not
   a conversation — and a dashboard that conflates the two reports everyone as looked after
   when nobody has been called in months.</p>
+
+{#- THE SUPPORTER DIALOG.
+
+   A DIALOG RATHER THAN THE DRAWER IT REPLACES. The row used to expand into a
+   read-only timeline underneath it, which was fine while there was nothing to
+   do but read. Now there is: contact details, life events to write, a call to
+   log. On a list sorted worst-first the person you want is near the top and
+   the drawer pushed everyone else down the page while you worked — and a form
+   inside a table row inherits the table's column widths, which is a fight not
+   worth having.
+
+   Same `.dlg` shell as the resource form and the confirm dialog, so there is
+   ONE thing in this console that means "this is the only thing you are doing
+   right now".
+
+   EMPTY ON PURPOSE. Every field is filled by /api/staff-stewardship, which is
+   the only endpoint that returns a supporter's email and phone, and which is
+   asked for one person at a time. Nothing about anybody is in this page's
+   HTML. -#}
+<div class="dlg-back" id="swBack" hidden>
+  <div class="dlg sw-dlg" role="dialog" aria-modal="true" aria-labelledby="swName">
+    <button type="button" class="sw-close" id="swClose"
+            data-i18n-attr="aria-label:common.close" aria-label="Close">&times;</button>
+
+    <h3 id="swName"></h3>
+    <p class="sw-sub" id="swWhere"></p>
+
+    <div class="tabs" role="tablist">
+      <button type="button" class="tab" role="tab" data-swtab="facts"
+              aria-selected="true" data-i18n="stew.tabFacts">Quick facts</button>
+      <button type="button" class="tab" role="tab" data-swtab="events"
+              aria-selected="false" data-i18n="stew.tabEvents">Life events</button>
+      <button type="button" class="tab" role="tab" data-swtab="history"
+              aria-selected="false" data-i18n="stew.tabHistory">History</button>
+    </div>
+
+    <section class="tab-panel" data-swpanel="facts" role="tabpanel">
+      <dl class="sw-facts" id="swFacts"></dl>
+    </section>
+
+    <section class="tab-panel" data-swpanel="events" role="tabpanel" hidden>
+      {#- What is known about this person, and what it is for. The note is not
+         decoration: this is the most sensitive data the system holds, and the
+         person writing into it should be reminded, at the moment of writing,
+         that the subject is entitled to read it. -#}
+      <div id="swEvents"></div>
+      <p class="row-actions">
+        <button class="ghost-btn" type="button" id="swAddEvent" data-i18n="stew.addEvent">+ Add a life event</button>
+      </p>
+
+      <form class="form sw-form" id="swEventForm" hidden>
+        <input type="hidden" id="swEventId" value="">
+        <label class="fld">
+          <span data-i18n="stew.evKind">What happened</span>
+          <select id="swEventKind">
+            <option value="birth" data-i18n="stew.kind.birth">A birth</option>
+            <option value="marriage" data-i18n="stew.kind.marriage">A marriage</option>
+            <option value="bereavement" data-i18n="stew.kind.bereavement">A bereavement</option>
+            <option value="illness" data-i18n="stew.kind.illness">Illness</option>
+            <option value="job_change" data-i18n="stew.kind.job_change">A change of work</option>
+            <option value="move" data-i18n="stew.kind.move">A move</option>
+            <option value="baptism" data-i18n="stew.kind.baptism">A baptism</option>
+            <option value="graduation" data-i18n="stew.kind.graduation">A graduation</option>
+            <option value="retirement" data-i18n="stew.kind.retirement">Retirement</option>
+            <option value="other" data-i18n="stew.kind.other">Something else</option>
+          </select>
+        </label>
+        <label class="fld">
+          <span data-i18n="stew.evDate">When — leave empty if it has not happened yet</span>
+          <input type="date" id="swEventDate">
+        </label>
+        <textarea id="swEventNote" rows="3"
+                  placeholder="What you want to remember"
+                  data-i18n-attr="placeholder:stew.evNote,aria-label:stew.evNote"
+                  aria-label="What you want to remember"></textarea>
+        <label class="chk">
+          <input type="checkbox" id="swEventRecurs">
+          <span data-i18n="stew.evRecurs">This comes round every year</span>
+        </label>
+        <p class="hint" data-i18n="stew.evPrivacy">Write as though they will read it — on request, they are entitled to.</p>
+        <div class="dlg-actions">
+          <button class="ghost-btn" type="button" id="swEventCancel" data-i18n="common.cancel">Cancel</button>
+          <button class="solid-btn" type="submit" data-i18n="stew.evSave">Save</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="tab-panel" data-swpanel="history" role="tabpanel" hidden>
+      <p class="row-actions">
+        <button class="ghost-btn" type="button" id="swAddTouch" data-i18n="stew.logContact">+ Log a contact</button>
+      </p>
+
+      {#- APPEND ONLY, and the form says so rather than the docs alone. There
+         is no edit and no delete for an interaction: a contact log whose past
+         can be rewritten is not a log. -#}
+      <form class="form sw-form" id="swTouchForm" hidden>
+        <label class="fld">
+          <span data-i18n="stew.tcType">What kind of contact</span>
+          <select id="swTouchType">
+            <option value="call" data-i18n="stew.type.call">A phone call</option>
+            <option value="text" data-i18n="stew.type.text">A text message</option>
+            <option value="email" data-i18n="stew.type.email">An email</option>
+            <option value="visit" data-i18n="stew.type.visit">A visit</option>
+            <option value="meal" data-i18n="stew.type.meal">A meal together</option>
+            <option value="video_call" data-i18n="stew.type.video_call">A video call</option>
+            <option value="handwritten" data-i18n="stew.type.handwritten">A handwritten note</option>
+            <option value="postal_mail" data-i18n="stew.type.postal_mail">Something posted</option>
+            <option value="event" data-i18n="stew.type.event">At an event</option>
+            <option value="other" data-i18n="stew.type.other">Something else</option>
+          </select>
+        </label>
+        <label class="fld">
+          <span data-i18n="stew.tcDate">When</span>
+          <input type="date" id="swTouchDate" required>
+        </label>
+        <textarea id="swTouchNote" rows="3"
+                  placeholder="Anything worth remembering (optional)"
+                  data-i18n-attr="placeholder:stew.tcNote,aria-label:stew.tcNote"
+                  aria-label="Anything worth remembering (optional)"></textarea>
+        {#- THE ONE CONTROL THAT DECIDES WHAT THIS PAGE REPORTS. Checked by
+           default, because somebody opening this form has almost always just
+           spoken to a person; the case it exists for is the forward to forty
+           that happens to have gone to this address too. -#}
+        <label class="chk">
+          <input type="checkbox" id="swTouchPersonal" checked>
+          <span data-i18n="stew.tcPersonal">This was a real one-to-one conversation</span>
+        </label>
+        <p class="hint" data-i18n="stew.tcAppend">Logged contacts cannot be edited or removed afterwards. Correct a mistake by recording what actually happened.</p>
+        <div class="dlg-actions">
+          <button class="ghost-btn" type="button" id="swTouchCancel" data-i18n="common.cancel">Cancel</button>
+          <button class="solid-btn" type="submit" data-i18n="stew.tcSave">Log it</button>
+        </div>
+      </form>
+
+      <div id="swTimeline"></div>
+    </section>
+
+    <p class="hint" id="swStatus"></p>
+  </div>
+</div>

@@ -2325,3 +2325,130 @@ SELECT m.id, m.slug, m.subject, m.status, m.finished_at, m.sent_count
    AND m.status = 'sent'
  ORDER BY m.finished_at DESC
  LIMIT 100;
+
+
+-- ===========================================================================
+-- THE SUPPORTER DIALOG — one person, on purpose
+-- ===========================================================================
+-- Everything below serves /staff/stewardship/'s row dialog. The list query
+-- `contacts_stewardship` deliberately returns no email and no phone, and its
+-- comment says what to do when a screen genuinely needs them:
+--
+--   "add a `contact_detail` query that returns one person by id. One row on
+--    purpose: fetching the whole list to reach one person is how this
+--    happened in the first place."
+--
+-- This is that query, written to that instruction.
+
+
+-- name: contact_detail
+-- ONE supporter, by id, for the dialog that opens on their row.
+--
+-- This is the only query in the file that returns a supporter's email and
+-- phone, and it returns exactly one person's. The cost of opening a dialog is
+-- one person's contact details crossing the wire; the cost of putting these
+-- columns back on the list query is the whole address book crossing it on
+-- every page load, to render a column of dates.
+--
+-- `giving_ref` is an identifier into the giving platform and nothing else —
+-- there is no amount in this database and db/README.md's second decision says
+-- why. It is here so the dialog can offer a link out, not a figure.
+SELECT
+  c.id,
+  c.first_name,
+  c.last_name,
+  c.email,
+  c.phone,
+  c.address_1,
+  c.address_2,
+  c.city,
+  c.region,
+  c.postal_code,
+  c.country,
+  c.giving_ref,
+  c.newsletter_consent,
+  c.newsletter_consent_source,
+  c.newsletter_consent_at,
+  c.postal_consent,
+  c.notes,
+  c.created_at,
+  t.last_contact_any,
+  t.last_personal_contact,
+  t.interaction_count,
+  t.personal_count
+FROM contacts c
+JOIN contact_touch t ON t.contact_id = c.id
+WHERE c.id = :contact_id
+  AND c.partner_id = :partner_id
+  AND c.status = 'active';
+
+
+-- name: life_events_for_contact
+-- What has happened to this person, newest first. Undated events sort to the
+-- top rather than the bottom: "expecting in the spring" is the most current
+-- thing known about somebody, not the oldest.
+SELECT
+  e.id,
+  e.kind,
+  e.occurred_on,
+  e.note,
+  e.recurs,
+  e.created_at,
+  e.updated_at,
+  u.name AS logged_by_name
+FROM life_events e
+LEFT JOIN users u ON u.id = e.logged_by
+WHERE e.contact_id = :contact_id
+  AND e.partner_id = :partner_id
+ORDER BY (e.occurred_on IS NULL) DESC, e.occurred_on DESC, e.created_at DESC;
+
+
+-- name: life_event_upsert
+-- Create or edit one event. Same contract as milestone_upsert: the id comes
+-- from the caller so a retry cannot duplicate, and partner_id is in the
+-- UPDATE's WHERE so an id belonging to another tenant can never be rewritten.
+--
+-- `created_at` is not in the UPDATE list — editing a note about somebody's
+-- bereavement must not restate when it was first written down.
+INSERT INTO life_events (
+  id, contact_id, partner_id, kind, occurred_on, note, recurs,
+  logged_by, created_at, updated_at
+) VALUES (
+  :id, :contact_id, :partner_id, :kind, :occurred_on, :note, :recurs,
+  :logged_by, :now, :now
+)
+ON CONFLICT(id) DO UPDATE SET
+  kind = :kind, occurred_on = :occurred_on, note = :note,
+  recurs = :recurs, updated_at = :now
+WHERE life_events.partner_id = :partner_id;
+
+
+-- name: life_event_delete
+-- Scoped by partner as well as id, for the reason milestone_delete is: an id
+-- alone must never be enough to delete somebody else's row.
+DELETE FROM life_events WHERE id = :id AND partner_id = :partner_id;
+
+
+-- name: interaction_add
+-- THE FIRST WRITE INTO `interactions`, and the one that makes the stewardship
+-- page mean anything. Until this existed the console could display who needed
+-- a call and had no way to record that one had been made, so every date on
+-- the page was frozen wherever the seed left it.
+--
+-- APPEND ONLY. There is no interaction_update and no interaction_delete, and
+-- that is deliberate: a contact log whose past can be rewritten is not a log.
+-- A mistake is corrected by recording what actually happened, which is also
+-- what somebody would do on paper.
+--
+-- `is_personal` is passed rather than derived, because only the person who was
+-- there knows whether an email was a note to one friend or a forward to forty.
+-- The trigger from 0001 still refuses to let a newsletter claim to be personal
+-- whatever this sends, so the dishonest combination is unreachable rather
+-- than merely discouraged.
+INSERT INTO interactions (
+  id, contact_id, partner_id, type, is_personal, channel,
+  occurred_on, note, logged_by, source, created_at
+) VALUES (
+  :id, :contact_id, :partner_id, :type, :is_personal, :channel,
+  :occurred_on, :note, :logged_by, 'manual', :now
+);

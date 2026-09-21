@@ -88,8 +88,16 @@ export const PUBLIC_QUERIES = new Set([
   "public_mailings_for_partner",
 ]);
 
-/** Tables a query in PUBLIC_QUERIES must never mention. */
-const PRIVATE_TABLES = ["contacts", "interactions", "users", "audit_log", "api_keys"];
+/** Tables a query in PUBLIC_QUERIES must never mention.
+ *
+ * `life_events` is the most sensitive of them — bereavement, illness, a
+ * marriage — and the one whose accidental publication would be least
+ * recoverable. It is listed for the same reason the others are: the
+ * allow-list already makes a new query private by default, and this is the
+ * second lock, on the day somebody adds a query to that list without thinking
+ * hard enough about what it joins to. */
+const PRIVATE_TABLES = ["contacts", "interactions", "life_events",
+                        "users", "audit_log", "api_keys"];
 
 /**
  * Public queries that turn an identifier into a partner, rather than reading

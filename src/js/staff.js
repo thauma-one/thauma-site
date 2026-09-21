@@ -175,7 +175,10 @@
     if ($('rows')) $('rows').innerHTML = d.contacts.map(function (c) {
       var sev = severity(c.days_since_personal);
       var where = [c.city, c.country].filter(Boolean).join(', ');
-      return '<tr data-id="' + esc(c.id) + '" aria-expanded="false" tabindex="0">' +
+      /* aria-haspopup="dialog", not aria-expanded: the row no longer expands
+         into anything, it opens a dialog over the page. */
+      return '<tr data-id="' + esc(c.id) + '" tabindex="0" role="button" ' +
+        'aria-haspopup="dialog">' +
         '<td><span class="nm">' + esc(fullName(c)) + '</span>' +
           (where ? '<span class="sub">' + esc(where) + '</span>' : '') + '</td>' +
         '<td><span class="sev ' + sev.cls + '">' + esc(sev.label) + '</span>' +
@@ -187,9 +190,7 @@
           '<span class="chip' + (c.postal_consent ? ' on' : '') + '">post</span>' +
         '</span></td>' +
         '<td class="right tnum">' + c.personal_count + ' / ' + c.interaction_count + '</td>' +
-      '</tr>' +
-      '<tr class="tl-row" data-for="' + esc(c.id) + '" hidden><td colspan="5">' +
-        timelineHTML(d.timelines[c.id]) + '</td></tr>';
+      '</tr>';
     }).join('');
 
     // --- activity ---
@@ -202,39 +203,37 @@
     }).join('');
   }
 
-  function timelineHTML(list) {
-    if (!list || !list.length) {
-      return '<div class="tl"><div class="ev"><span class="ev-d">—</span>' +
-             '<span class="ev-m"><i></i></span><span class="ev-t">No interactions logged.</span></div></div>';
-    }
-    return '<div class="tl">' + list.map(function (i) {
-      var personal = i.is_personal === 1;
-      return '<div class="ev ' + (personal ? 'personal' : 'bulk') + '">' +
-        '<span class="ev-d">' + esc(shortDate(i.occurred_on).toUpperCase()) + '</span>' +
-        '<span class="ev-m"><i></i></span>' +
-        '<span><span class="ev-t">' + esc(i.type.replace('_', ' ')) +
-          (personal ? '' : '<span class="ev-tag">bulk</span>') +
-          (i.logged_by_name ? '<span class="ev-tag">' + esc(i.logged_by_name) + '</span>' : '') +
-        '</span>' +
-        (i.note ? '<span class="ev-n">' + esc(i.note) + '</span>' : '') +
-        '</span></div>';
-    }).join('') + '</div>';
-  }
-
+  /* timelineHTML lived here and rendered the drawer under each row. The
+     drawer is gone — a row opens the supporter dialog now — and the dialog
+     renders its own timeline from its own fetch, in staff-stewardship.js.
+     Removed rather than left for a second caller to find: two renderers for
+     one list is how the console's copies drifted before. */
+  /* THE ROWS ARE REBUILT ON EVERY SNAPSHOT LOAD, so the listeners are bound
+     to the tbody once and find their row by closest() — binding per row would
+     add a fresh set on every reload and leak them all. `wired` is the guard:
+     this is called after each render, and without it a click would open the
+     dialog as many times as the page has been refreshed. */
+  var stewardshipWired = false;
   function wireStewardshipRows() {
-    if (!$('rows')) return;
-    function toggle(tr) {
-      var drawer = document.querySelector('.tl-row[data-for="' + tr.getAttribute('data-id') + '"]');
-      var open = tr.getAttribute('aria-expanded') === 'true';
-      tr.setAttribute('aria-expanded', open ? 'false' : 'true');
-      drawer.hidden = open;
+    var rows = $('rows');
+    if (!rows || stewardshipWired) return;
+    stewardshipWired = true;
+
+    function openFor(tr) {
+      var id = tr.getAttribute('data-id');
+      if (!id) return;
+      /* The dialog lives in staff-stewardship.js, which loads only on this
+         page. Absent means the script did not load — better to do nothing
+         than to throw on every row click. */
+      if (window.StaffSupporterDialog) window.StaffSupporterDialog.open(id, tr);
     }
-    $('rows').addEventListener('click', function (e) {
-      var tr = e.target.closest('tr[data-id]'); if (tr) toggle(tr);
+
+    rows.addEventListener('click', function (e) {
+      var tr = e.target.closest('tr[data-id]'); if (tr) openFor(tr);
     });
-    $('rows').addEventListener('keydown', function (e) {
+    rows.addEventListener('keydown', function (e) {
       if (e.key !== 'Enter' && e.key !== ' ') return;
-      var tr = e.target.closest('tr[data-id]'); if (tr) { e.preventDefault(); toggle(tr); }
+      var tr = e.target.closest('tr[data-id]'); if (tr) { e.preventDefault(); openFor(tr); }
     });
   }
 
@@ -1506,6 +1505,11 @@
 
   showEnvironment();
 
+  /* THE SEAM. Logging a contact from the supporter dialog changes what this
+     table says about that person — that is the point of logging it — so the
+     dialog reloads the snapshot rather than leaving the row showing the
+     figure it just invalidated. */
+  window.StaffSnapshotReload = loadSnapshot;
   window.StaffProblem = problem;
   window.StaffProblemClear = problemClear;
 

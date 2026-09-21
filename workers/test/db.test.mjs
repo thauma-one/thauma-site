@@ -334,6 +334,13 @@ await check("every real query converts with its documented params", async () => 
     provider_id: null, error: null, list_slug: "newsletter", archive_public: 0,
     // the rename cascade: an address moving from one domain to another
     old: "news@old.thauma.one", new: "news@chaseroush.thauma.one",
+    // the supporter dialog: one life event, and the first write into
+    // `interactions`. is_personal is 1 here because a call is the ordinary
+    // case — the schema trigger, not this fixture, is what stops a newsletter
+    // claiming the same.
+    type: "call", is_personal: 1, channel: "digital",
+    occurred_on: "2026-09-21", note: null, logged_by: "u_chase",
+    recurs: 0,
   };
   // The ONE query with no parameters: the language catalog belongs to the
   // organization, not to a partner, so there is nothing to scope it by. Named

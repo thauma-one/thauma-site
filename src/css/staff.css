@@ -170,9 +170,12 @@ tbody tr[aria-expanded="true"]{background:rgba(255,255,255,.045)}
   padding:3px 7px;border-radius:var(--radius);border:1px solid var(--line-hard);color:var(--dim)}
 .chip.on{color:var(--voice-human);border-color:rgba(92,242,196,.4)}
 
-/* ---------- timeline drawer ---------- */
-tr.tl-row td{padding:0;border-bottom:1px solid var(--line-soft)}
-.tl{padding:6px 16px 20px 34px;background:rgba(0,0,0,.22)}
+/* ---------- the timeline ----------
+   Was the drawer under a stewardship row; it lives in the supporter dialog
+   now, so it no longer needs a table row to sit in or a recessed background
+   to separate it from one. The .ev rules below are untouched — the timeline
+   itself did not change, only where it is drawn. */
+.tl{padding:4px 0 8px}
 .ev{display:grid;grid-template-columns:96px 14px 1fr;gap:14px;align-items:start;
   padding:10px 0;border-bottom:1px solid var(--line-soft)}
 .ev:last-child{border-bottom:0}
@@ -1976,3 +1979,78 @@ html:not(.roles-known)[data-area="admin"] .console-row[data-row="admin"] nav a{d
 .ml-sent-link:hover{text-decoration:underline}
 /* Not an error — a state. The switch above is how it changes. */
 .ml-sent-off{flex:none;font-size:12px;color:var(--dim);font-style:italic}
+
+
+/* ============================================================
+   THE SUPPORTER DIALOG  (/staff/stewardship/)
+   ============================================================
+   Built on the same .dlg shell as the confirm dialog and the resource form,
+   with one override: it is WIDER. Those two ask a question; this one holds a
+   person's record, three tabs of it, and 520px put every address onto three
+   lines. */
+.sw-dlg{max-width:680px;max-height:calc(100vh - 48px);overflow-y:auto;
+  position:relative;padding-top:24px}
+/* Its own close button, because this dialog is READ as often as it is
+   answered — there is frequently no action to take, and reaching for Cancel
+   to mean "I am done looking" reads wrong. Escape and the backdrop still
+   work, as everywhere else in this console. */
+.sw-close{position:absolute;top:10px;right:12px;background:none;border:0;
+  color:var(--dim);font-size:22px;line-height:1;padding:6px 10px;cursor:pointer;
+  border-radius:var(--radius)}
+@media(hover:hover){ .sw-close:hover{color:var(--text)} }
+.sw-close:focus-visible{outline:2px solid var(--voice-tech);outline-offset:-2px}
+.sw-dlg h3{margin-bottom:2px;padding-right:32px}
+.sw-sub{color:var(--dim);font-size:var(--fs-tiny);margin:0 0 18px}
+
+/* QUICK FACTS. A description list because that is what it is — a label and a
+   value, repeated — and because a screen reader then announces the pairing
+   rather than a run of unrelated text. */
+.sw-facts{display:grid;grid-template-columns:minmax(120px,auto) 1fr;
+  gap:10px 20px;margin:0;font-size:var(--fs-sm)}
+.sw-facts dt{color:var(--dim);font-size:var(--fs-tiny);letter-spacing:.04em;
+  padding-top:2px}
+.sw-facts dd{margin:0;color:var(--text)}
+.sw-facts dd .sub{display:block;color:var(--dim);font-size:var(--fs-tiny);margin-top:4px}
+.sw-facts code{font-size:var(--fs-tiny);color:var(--dim)}
+/* Freeform stewardship notes, which are prose somebody typed — so newlines
+   are kept rather than collapsed. */
+.sw-notes{white-space:pre-wrap;color:var(--dim);line-height:1.6}
+
+/* LIFE EVENTS. */
+.sw-events{list-style:none;margin:0;padding:0}
+.sw-ev{padding:12px 0;border-bottom:1px solid var(--line-soft)}
+.sw-ev:last-child{border-bottom:0}
+.sw-ev-h{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.sw-ev-k{font-size:var(--fs-sm);color:var(--text)}
+.sw-ev-d{font-family:var(--font-display);font-weight:var(--w-bold);font-size:10.5px;
+  letter-spacing:.1em;color:var(--dim);white-space:nowrap}
+.sw-ev-n{font-size:var(--fs-tiny);color:var(--dim);line-height:1.6;
+  margin:6px 0 0;max-width:70ch;white-space:pre-wrap}
+.sw-ev-a{display:flex;justify-content:space-between;align-items:center;
+  gap:12px;margin-top:8px}
+.sw-ev-a .sub{color:var(--dim);font-size:var(--fs-tiny)}
+/* The row's controls stay quiet until the row is reached — a list of events
+   should read as a history, not as a column of buttons. */
+.sw-ev .row-actions{margin:0;opacity:.55;transition:opacity .15s var(--ease-main)}
+@media(hover:hover){ .sw-ev:hover .row-actions{opacity:1} }
+.sw-ev:focus-within .row-actions{opacity:1}
+.ghost-btn.sm{font-size:10px;padding:4px 9px}
+
+/* The forms inside the dialog sit apart from the list they add to. */
+.sw-form{margin:16px 0 4px;padding:16px;border:1px solid var(--line);
+  border-radius:var(--radius);background:rgba(0,0,0,.18);gap:14px}
+.sw-form .hint{margin:0}
+
+/* A checkbox and its words on one line. The console had no generic one of
+   these — the only checkbox with a label was inside the embed panel and its
+   class is scoped to that panel. */
+.chk{display:flex;align-items:flex-start;gap:9px;font-size:var(--fs-sm);
+  color:var(--text);cursor:pointer;line-height:1.5}
+.chk input{margin-top:2px;flex:none;accent-color:var(--voice-human)}
+
+@media (max-width:560px){
+  .sw-facts{grid-template-columns:1fr;gap:4px 0}
+  .sw-facts dt{padding-top:10px}
+  .sw-dlg{padding:20px 18px}
+}
+@media (prefers-reduced-motion: reduce){ .sw-ev .row-actions{transition:none} }

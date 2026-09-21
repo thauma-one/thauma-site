@@ -38,6 +38,7 @@ import staffMilestones from "./staff-milestones.js";
 import staffSettings from "./staff-settings.js";
 import staffGoals from "./staff-goals.js";
 import staffPrayer from "./staff-prayer.js";
+import staffStewardship from "./staff-stewardship.js";
 import staffMailing from "./staff-mailing.js";
 import confirmSubscription from "./confirm.js";
 import unsubscribe from "./unsubscribe.js";
@@ -250,6 +251,13 @@ const ROUTES = {
   // Prayer requests and their answers. Same shape as milestones — a state row
   // and one translation per language. See staff-prayer.js.
   "/api/staff-prayer": staffPrayer,
+
+  // ONE supporter, opened from their row on the stewardship page: quick
+  // facts, their life events, and the only write path into `interactions`.
+  // The LIST comes from /api/staff-snapshot and deliberately carries no email
+  // or phone; this is where contact details are allowed to cross, one person
+  // at a time. Its GET is audited. See staff-stewardship.js.
+  "/api/staff-stewardship": staffStewardship,
 
   // A partner's own mailing lists. Scoped to them; see staff-mailing.js.
   "/api/staff-mailing": staffMailing,

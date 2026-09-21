@@ -1665,6 +1665,98 @@ def t_audit_is_still_append_only_after_the_rebuild():
             db.rollback()
 
 
+# ------------------------------------------------------------- life events --
+# A life event is a FACT ABOUT A PERSON; an interaction is a TOUCH. The whole
+# reason 0034 is its own table rather than two more entries in the
+# `interactions` type list is that conflating them would report somebody as
+# looked after because something happened TO them. The first test below is that
+# claim, and it is the one worth keeping if the others ever get in the way.
+def add_life_event(db, eid, contact, partner, kind, on=None, note=None, recurs=0):
+    db.execute(
+        "INSERT INTO life_events (id,contact_id,partner_id,kind,occurred_on,note,recurs,"
+        "logged_by,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+        (eid, contact, partner, kind, on, note, recurs, "u_chase", NOW, NOW))
+    db.commit()
+
+
+def t_a_life_event_is_not_contact():
+    """The central claim of 0034. A bereavement is a reason to call, not a call."""
+    db = fresh()
+    add_interaction(db, "i_call", "c_1", "p_chase", "call", 1, "2026-03-02")
+    add_life_event(db, "le_1", "c_1", "p_chase", "bereavement", "2026-08-10",
+                   "Her father died.")
+    row = db.execute("SELECT last_contact_any, last_personal_contact, interaction_count"
+                     " FROM contact_touch WHERE contact_id='c_1'").fetchone()
+    assert row[0] == "2026-03-02", (
+        f"a life event moved last_contact_any to {row[0]} — it is not contact")
+    assert row[1] == "2026-03-02", (
+        f"a life event moved last_personal_contact to {row[1]} — nobody called her")
+    assert row[2] == 1, f"a life event was counted as an interaction: {row[2]}"
+
+
+def t_a_life_event_cannot_cross_partners():
+    db = fresh()
+    try:
+        add_life_event(db, "le_x", "c_1", "p_sara", "birth", "2026-08-10")
+        assert False, "filed one partner's life event under another"
+    except sqlite3.IntegrityError as e:
+        assert "partner_id must match" in str(e), f"wrong error: {e}"
+
+
+def t_a_life_event_cannot_be_moved_to_another_partner():
+    """The UPDATE guard `interactions` does not have — a life event is editable."""
+    db = fresh()
+    add_life_event(db, "le_1", "c_1", "p_chase", "illness", "2026-08-10")
+    try:
+        db.execute("UPDATE life_events SET partner_id='p_sara' WHERE id='le_1'")
+        db.commit()
+        assert False, "a life event was moved to another partner by UPDATE"
+    except sqlite3.IntegrityError as e:
+        assert "partner_id must match" in str(e), f"wrong error: {e}"
+
+
+def t_erasing_a_supporter_erases_what_was_written_about_them():
+    """GDPR erasure in one statement, not two and a memo."""
+    db = fresh()
+    add_life_event(db, "le_1", "c_1", "p_chase", "bereavement", "2026-08-10",
+                   "Her father died.")
+    db.execute("DELETE FROM contacts WHERE id='c_1'")
+    db.commit()
+    n = db.execute("SELECT COUNT(*) FROM life_events WHERE contact_id='c_1'").fetchone()[0]
+    assert n == 0, f"{n} life events outlived the person they describe"
+
+
+def t_an_event_with_no_date_cannot_recur():
+    db = fresh()
+    add_life_event(db, "le_1", "c_1", "p_chase", "birth", None, "Expecting in the spring.")
+    try:
+        db.execute("UPDATE life_events SET recurs=1 WHERE id='le_1'")
+        db.commit()
+        assert False, "an undated event was marked as recurring"
+    except sqlite3.IntegrityError:
+        pass
+
+
+def t_a_life_event_may_have_no_date_at_all():
+    """"She is expecting" is worth writing down before there is a date."""
+    db = fresh()
+    add_life_event(db, "le_1", "c_1", "p_chase", "birth", None, "Expecting in the spring.")
+    row = db.execute("SELECT occurred_on, note FROM life_events WHERE id='le_1'").fetchone()
+    assert row[0] is None, f"expected no date, got {row[0]!r}"
+    assert "expecting" in row[1].lower(), "the note did not survive"
+
+
+def t_a_leaver_takes_their_name_not_the_event():
+    db = fresh()
+    add_life_event(db, "le_1", "c_1", "p_chase", "marriage", "2026-08-10", "Married Tom.")
+    db.execute("DELETE FROM users WHERE id='u_chase'")
+    db.commit()
+    row = db.execute("SELECT logged_by, note FROM life_events WHERE id='le_1'").fetchone()
+    assert row is not None, "the event was destroyed with the person who logged it"
+    assert row[0] is None, f"logged_by should be NULL, got {row[0]!r}"
+    assert row[1] == "Married Tom.", "the event lost its content"
+
+
 if __name__ == "__main__":
     print(f"schema tests — {len(MIGRATIONS)} migrations: "
           f"{', '.join(p.name for p in MIGRATIONS)}\n")
@@ -1751,6 +1843,13 @@ if __name__ == "__main__":
         ("two buttons cannot share a label",             t_two_buttons_cannot_share_a_label),
         ("bulk status cannot mark anybody subscribed",   t_bulk_status_cannot_mark_anybody_subscribed),
         ("bulk tagging cannot borrow another's tag",     t_bulk_tagging_cannot_borrow_another_partners_tag),
+        ("a life event is not contact",                  t_a_life_event_is_not_contact),
+        ("a life event cannot cross partners",           t_a_life_event_cannot_cross_partners),
+        ("nor be moved to one by UPDATE",                t_a_life_event_cannot_be_moved_to_another_partner),
+        ("erasing a supporter erases their events",      t_erasing_a_supporter_erases_what_was_written_about_them),
+        ("an undated event cannot recur",                t_an_event_with_no_date_cannot_recur),
+        ("an event may have no date at all",             t_a_life_event_may_have_no_date_at_all),
+        ("a leaver takes their name, not the event",     t_a_leaver_takes_their_name_not_the_event),
     ]:
         check(name, fn)
     print(f"\n{passed} passed, {failed} failed")

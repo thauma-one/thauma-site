@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "2620691f8492b7ca";
+export const SOURCE_DIGEST = "462fdf51dea4a6eb";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -127,6 +127,34 @@ ORDER BY a.at DESC
 LIMIT :limit;`,
   audit_write: `INSERT INTO audit_log (id, at, user_id, partner_id, action, entity, entity_id, detail)
 VALUES (:id, :now, :user_id, :partner_id, :action, :entity, :entity_id, :detail);`,
+  contact_detail: `SELECT
+  c.id,
+  c.first_name,
+  c.last_name,
+  c.email,
+  c.phone,
+  c.address_1,
+  c.address_2,
+  c.city,
+  c.region,
+  c.postal_code,
+  c.country,
+  c.giving_ref,
+  c.newsletter_consent,
+  c.newsletter_consent_source,
+  c.newsletter_consent_at,
+  c.postal_consent,
+  c.notes,
+  c.created_at,
+  t.last_contact_any,
+  t.last_personal_contact,
+  t.interaction_count,
+  t.personal_count
+FROM contacts c
+JOIN contact_touch t ON t.contact_id = c.id
+WHERE c.id = :contact_id
+  AND c.partner_id = :partner_id
+  AND c.status = 'active';`,
   contact_form_for_partner: `SELECT partner_id, deliver_to, from_address, heading, blurb, button, thanks,
        is_open, updated_at
 FROM contact_forms
@@ -262,6 +290,13 @@ WHERE goals.partner_id = :partner_id;`,
 FROM goal_progress
 WHERE partner_id = :partner_id
 ORDER BY kind, label;`,
+  interaction_add: `INSERT INTO interactions (
+  id, contact_id, partner_id, type, is_personal, channel,
+  occurred_on, note, logged_by, source, created_at
+) VALUES (
+  :id, :contact_id, :partner_id, :type, :is_personal, :channel,
+  :occurred_on, :note, :logged_by, 'manual', :now
+);`,
   interactions_for_partner: `SELECT
   i.contact_id,
   i.id,
@@ -288,6 +323,32 @@ ON CONFLICT(code) DO UPDATE SET
   native_name = excluded.native_name;`,
   languages_all: `SELECT code, name, native_name, is_active, sort_order
 FROM languages ORDER BY sort_order, name;`,
+  life_event_delete: `DELETE FROM life_events WHERE id = :id AND partner_id = :partner_id;`,
+  life_event_upsert: `INSERT INTO life_events (
+  id, contact_id, partner_id, kind, occurred_on, note, recurs,
+  logged_by, created_at, updated_at
+) VALUES (
+  :id, :contact_id, :partner_id, :kind, :occurred_on, :note, :recurs,
+  :logged_by, :now, :now
+)
+ON CONFLICT(id) DO UPDATE SET
+  kind = :kind, occurred_on = :occurred_on, note = :note,
+  recurs = :recurs, updated_at = :now
+WHERE life_events.partner_id = :partner_id;`,
+  life_events_for_contact: `SELECT
+  e.id,
+  e.kind,
+  e.occurred_on,
+  e.note,
+  e.recurs,
+  e.created_at,
+  e.updated_at,
+  u.name AS logged_by_name
+FROM life_events e
+LEFT JOIN users u ON u.id = e.logged_by
+WHERE e.contact_id = :contact_id
+  AND e.partner_id = :partner_id
+ORDER BY (e.occurred_on IS NULL) DESC, e.occurred_on DESC, e.created_at DESC;`,
   mailing_attachment_add: `INSERT INTO mailing_attachments
   (id, mailing_id, filename, content_type, bytes, object_key, sort_order, created_at)
 VALUES (:id, :mailing_id, :filename, :content_type, :bytes, :object_key, :sort_order, :now);`,
