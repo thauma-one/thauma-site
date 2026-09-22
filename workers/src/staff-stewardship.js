@@ -16,7 +16,15 @@
  * here (that lives with the mailing lists, in `subscribers`) and why
  * everything on it can be corrected by the person who wrote it.
  *
- * WHO CAN REACH IT. Nobody outside the console. This is not the partner API —
+ * ONLY THE OWNER, EVER. Chase, 2026-09-21, asked whether administrators should
+ * see this through "view as": no. So a request is refused unless the signed-in
+ * person holds the OWNER grant on the partner AND is not viewing as somebody
+ * else — not an assistant or read-only grant, and not an administrator
+ * standing in the owner's account. `stewardshipRefusal` below is the one
+ * statement of that rule; /api/staff-snapshot uses it too, so the LIST is
+ * withheld on the same terms as a single record.
+ *
+ * WHO ELSE CAN REACH IT. Nobody outside the console. This is not the partner API —
  * that one is for public websites, runs an allow-list of queries, and refuses
  * to start if any of them names `contacts`, `interactions` or `life_events`
  * (PRIVATE_TABLES in lib/db.js). A request here must carry a Cloudflare Access
@@ -69,6 +77,23 @@ function newId(prefix) {
   return prefix + crypto.randomUUID().replace(/-/g, "").slice(0, 20);
 }
 
+/**
+ * Why this caller may NOT see stewardship, or null if they may.
+ *
+ * Exported because the list and the record must answer the same question the
+ * same way — two copies of an access rule is how one of them ends up looser.
+ */
+export function stewardshipRefusal(actor, partner) {
+  if (actor && actor.acting) {
+    return "Stewardship is private to its owner and cannot be opened while " +
+           "viewing as somebody else.";
+  }
+  if (!partner || partner.access_role !== "owner") {
+    return "Stewardship is private to the owner of this ministry account.";
+  }
+  return null;
+}
+
 async function partnerFor(request, env) {
   const { user, denied } = await requireAccess(request, env);
   if (denied) return { denied };
@@ -88,6 +113,11 @@ async function partnerFor(request, env) {
              "on that person's row.",
     }, 403) };
   }
+  /* Checked here, before any handler runs, so no method — read or write —
+     can get past it by being the one somebody forgot. */
+  const refusal = stewardshipRefusal(actor, partners[0]);
+  if (refusal) return { denied: json({ error: refusal }, 403) };
+
   return { db, user, me, partner: partners[0], actor };
 }
 

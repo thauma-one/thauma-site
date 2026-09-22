@@ -107,7 +107,7 @@ await check("PUBLIC_QUERIES is an allow-list of exactly the intended queries", a
 
 await check("publicQuery REFUSES a private query even when asked directly", async () => {
   const db = createDb(null, async () => []);
-  for (const q of ["contacts_stewardship", "interactions_for_partner",
+  for (const q of ["contacts_stewardship", "life_events_for_contact", "contact_detail",
                    "audit_recent_for_partner", "partners_for_user", "api_key_lookup"]) {
     let threw = null;
     try { await db.publicQuery(q, { partner_id: "p_chase", today: "2026-08-15" }); }

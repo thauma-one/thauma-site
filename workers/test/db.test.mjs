@@ -99,7 +99,6 @@ await check("every query the Worker calls actually exists", async () => {
   const DELIBERATELY_UNUSED = new Set([
     // Read by db/build_snapshot.py and db/refresh_dev.py, not by the Worker.
     "audit_recent_for_partner",
-    "contact_timeline",
     "goal_history",
   ]);
 
@@ -444,7 +443,7 @@ await check("generation does not eat characters out of the SQL", async () => {
 await check("a tenant query without partner_id THROWS", async () => {
   const db = createDb(null, async () => []);
   for (const q of ["contacts_stewardship", "goals_for_partner", "contact_timeline",
-                   "interactions_for_partner"]) {
+                   "life_events_for_contact"]) {
     let threw = null;
     try { await db.query(q, { today: "2026-08-15", contact_id: "c_1" }); }
     catch (e) { threw = e.message; }
@@ -525,7 +524,7 @@ function fakeD1({ contacts = [{ id: "c_1" }, { id: "c_2" }], interactions = [] }
 await check("partnerSnapshot returns the same shape build_snapshot.py does", async () => {
   const snap = await partnerSnapshot(fakeD1(), "p_chase");
   for (const k of ["as_of", "stale_days", "summary", "needs_attention",
-                   "contacts", "timelines", "goals", "audit"]) {
+                   "contacts", "goals", "audit"]) {
     assert(k in snap, `missing key ${k}`);
   }
   eq(snap.needs_attention.stale_count, 1, "stale_count");
@@ -545,44 +544,22 @@ await check("every key partnerSnapshot emits also exists in the committed snapsh
     `the endpoint emits keys the generator does not: ${missing.join(", ")}`);
 });
 
-await check("EVERY contact gets a timeline key, even with no interactions", async () => {
-  // The drawer renders "No interactions logged." for [] but throws on
-  // undefined, so a contact who has never been touched must still get a key.
-  const snap = await partnerSnapshot(fakeD1({
-    contacts: [{ id: "c_1" }, { id: "c_quiet" }],
-    interactions: [{ contact_id: "c_1", id: "i_1", type: "call", is_personal: 1 }],
-  }), "p_chase");
-  eq(Object.keys(snap.timelines).sort(), ["c_1", "c_quiet"], "timeline keys");
-  eq(snap.timelines.c_quiet, [], "a contact with no interactions must get []");
-});
-
-await check("timelines group by contact and drop the grouping column", async () => {
-  const snap = await partnerSnapshot(fakeD1({
-    contacts: [{ id: "c_1" }, { id: "c_2" }],
-    interactions: [
-      { contact_id: "c_1", id: "i_1", occurred_on: "2026-08-01", is_personal: 1 },
-      { contact_id: "c_2", id: "i_2", occurred_on: "2026-07-01", is_personal: 0 },
-      { contact_id: "c_1", id: "i_3", occurred_on: "2026-06-01", is_personal: 1 },
-    ],
-  }), "p_chase");
-  eq(snap.timelines.c_1.map((i) => i.id), ["i_1", "i_3"], "c_1 events, in query order");
-  eq(snap.timelines.c_2.map((i) => i.id), ["i_2"], "c_2 events");
-  assert(!("contact_id" in snap.timelines.c_1[0]),
-    "contact_id is the key, it should not also be repeated in every event");
-});
-
-await check("an interaction for an unknown contact is dropped, not crashed on", async () => {
+await check("the snapshot carries nobody's notes", async () => {
+  /* It used to carry every logged contact, notes included, for a drawer that
+     no longer exists — so the dashboard downloaded every private note in the
+     partner's history to render none of them. One person's history now comes
+     from /api/staff-stewardship, one person at a time, owner only. */
   const snap = await partnerSnapshot(fakeD1({
     contacts: [{ id: "c_1" }],
-    interactions: [{ contact_id: "c_gone", id: "i_x" }],
+    interactions: [{ contact_id: "c_1", id: "i_1", note: "Her father died." }],
   }), "p_chase");
-  eq(Object.keys(snap.timelines), ["c_1"], "keys");
-  eq(snap.timelines.c_1, [], "orphan leaked into a timeline");
+  assert(!("timelines" in snap), "the snapshot still carries timelines");
+  assert(!JSON.stringify(snap).includes("Her father died"), "a note reached the snapshot");
 });
 
 await check("partnerSnapshot runs a FIXED number of queries, not one per contact", async () => {
-  // The reason interactions_for_partner exists. With a per-contact loop this
-  // would grow with the directory and nobody would notice until it was slow.
+  // With a per-contact loop this would grow with the directory and nobody
+  // would notice until it was slow.
   let calls = 0;
   const db = createDb(null, async (sql) => {
     calls++;
@@ -592,7 +569,7 @@ await check("partnerSnapshot runs a FIXED number of queries, not one per contact
     return [];
   });
   await partnerSnapshot(db, "p_chase");
-  eq(calls, 6, "query count must not scale with the number of contacts");
+  eq(calls, 5, "query count must not scale with the number of contacts");
 });
 
 await check("partnerSnapshot refuses to run without a partner", async () => {

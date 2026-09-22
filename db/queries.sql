@@ -90,35 +90,6 @@ WHERE i.contact_id = :contact_id
 ORDER BY i.occurred_on DESC, i.created_at DESC;
 
 
--- name: interactions_for_partner
--- Every timeline on one screen, in ONE query.
---
--- The stewardship table renders a drawer per contact, so the snapshot needs a
--- timeline for each. Running contact_timeline in a loop is N round trips to
--- D1 for one page — fine for the six seeded contacts, quietly awful at two
--- hundred. This returns the same columns for the whole partner and the caller
--- groups by contact_id.
---
--- contact_timeline stays: it is the right query for one person's history, and
--- a per-contact view will want it.
-SELECT
-  i.contact_id,
-  i.id,
-  i.type,
-  i.is_personal,
-  i.channel,
-  i.occurred_on,
-  i.note,
-  i.source,
-  u.name AS logged_by_name
-FROM interactions i
-JOIN contacts c ON c.id = i.contact_id
-LEFT JOIN users u ON u.id = i.logged_by
-WHERE i.partner_id = :partner_id
-  AND c.status = 'active'
-ORDER BY i.occurred_on DESC, i.created_at DESC;
-
-
 -- name: goals_for_partner
 -- Progress meters. Reads the view, so the percentage is always derived from
 -- the latest snapshot and can never disagree with it.

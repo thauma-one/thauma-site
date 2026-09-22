@@ -170,7 +170,15 @@
     }).join('');
 
     // --- stewardship table ---
-    if ($('rows')) $('rows').innerHTML = d.contacts.map(function (c) {
+    /* OWNER ONLY. The server sends no names at all to anybody else — an
+       administrator viewing as the owner included — and says why. Saying so
+       here matters: an empty list with "add the first person" under it would
+       read as the owner's supporters having vanished. */
+    if ($('swAddPerson')) $('swAddPerson').hidden = !!d.stewardship_withheld;
+    if ($('rows') && d.stewardship_withheld) {
+      $('rows').innerHTML = '<tr class="empty-row"><td colspan="4"><p class="empty">' +
+        esc(tr('stew.withheld')) + '</p></td></tr>';
+    } else if ($('rows')) $('rows').innerHTML = d.contacts.map(function (c) {
       var sev = severity(c.days_since_personal);
       var where = [c.city, c.country].filter(Boolean).join(', ');
       /* aria-haspopup="dialog", not aria-expanded: the row no longer expands

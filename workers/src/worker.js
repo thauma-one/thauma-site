@@ -38,7 +38,7 @@ import staffMilestones from "./staff-milestones.js";
 import staffSettings from "./staff-settings.js";
 import staffGoals from "./staff-goals.js";
 import staffPrayer from "./staff-prayer.js";
-import staffStewardship from "./staff-stewardship.js";
+import staffStewardship, { stewardshipRefusal } from "./staff-stewardship.js";
 import staffMailing from "./staff-mailing.js";
 import confirmSubscription from "./confirm.js";
 import unsubscribe from "./unsubscribe.js";
@@ -108,6 +108,13 @@ async function staffSnapshot(request, env) {
   }
 
   const snap = await partnerSnapshot(db, partners[0].id);
+
+  /* THE SUPPORTER LIST IS THE OWNER'S ALONE — the same rule, from the same
+     function, as a single record on /api/staff-stewardship. Everything else
+     in the snapshot (goals, counts, the activity feed) still answers under
+     "view as", which is what that feature is for; only the names go. */
+  const stewardshipWithheld = stewardshipRefusal(actor, partners[0]);
+  if (stewardshipWithheld) snap.contacts = [];
   /* WHO THIS IS, carried the way every other staff endpoint carries it. The
      console filters its navigation from `you.roles`, and this was the one
      endpoint behind a staff page that did not send them — so Stewardship and
@@ -115,7 +122,7 @@ async function staffSnapshot(request, env) {
      showing every link to everybody. resolveActor has already looked the row
      up; this just passes it on. */
   return json(withActing(
-    { ...snap, partner: partners[0],
+    { ...snap, partner: partners[0], stewardship_withheld: stewardshipWithheld,
       you: { email: actor.email,
              name: actor.me && actor.me.user_name,
              roles: String((actor.me && actor.me.roles) || "").split(",").filter(Boolean) },

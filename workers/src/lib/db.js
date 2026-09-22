@@ -27,7 +27,6 @@ const TENANT_SCOPED = new Set([
   "dashboard_needs_attention",
   "contacts_stewardship",
   "contact_timeline",
-  "interactions_for_partner",
   "goals_for_partner",
   "goal_history",
   "audit_recent_for_partner",
@@ -436,39 +435,29 @@ export async function partnerPublicSite(db, partnerId, partnerSlug = null) {
  * against the committed snapshot.json — if this drifts from the generator, the
  * tests fail rather than the dashboard rendering blanks.
  *
- * `timelines` is keyed by contact_id because that is how the stewardship table
- * reads it: `d.timelines[c.id]`. It was missing here originally, and the page
- * threw on first render against live data.
+ * NO TIMELINES, and no note anybody wrote. This used to carry every logged
+ * contact for every supporter, notes included, to feed a drawer under each
+ * stewardship row. The drawer became a dialog that fetches one person at a
+ * time from /api/staff-stewardship, and after that every page that loads this
+ * snapshot — the dashboard, Activity — was downloading every private note in
+ * the partner's history to render none of them. Removed rather than left,
+ * because the page's owner asked for it to be absolutely secure, and the
+ * safest copy of a note is the one that was never sent.
  *
- * Five queries, fixed — not five plus one per contact. See
- * interactions_for_partner in db/queries.sql.
+ * Five queries, fixed — none of them per contact.
  */
 export async function partnerSnapshot(db, partnerId, { staleDays = 120 } = {}) {
   if (!partnerId) throw new Error("partnerSnapshot requires a partnerId");
   const today = db.today();
   const base = { partner_id: partnerId, today };
 
-  const [summary, attention, contacts, interactions, goals, audit] = await Promise.all([
+  const [summary, attention, contacts, goals, audit] = await Promise.all([
     db.queryOne("dashboard_partner_summary", base),
     db.queryOne("dashboard_needs_attention", { ...base, stale_days: staleDays }),
     db.query("contacts_stewardship", base),
-    db.query("interactions_for_partner", { partner_id: partnerId }),
     db.query("goals_for_partner", { partner_id: partnerId }),
     db.query("audit_recent_for_partner", { partner_id: partnerId, limit: 10 }),
   ]);
-
-  // Every contact gets a key, including those with no interactions — the
-  // drawer renders "No interactions logged." for an empty list but would
-  // break on undefined.
-  const timelines = {};
-  for (const c of contacts) timelines[c.id] = [];
-  for (const i of interactions) {
-    // A contact_id with no matching row above belongs to an inactive contact;
-    // the query already excludes those, so this is belt and braces.
-    if (!timelines[i.contact_id]) continue;
-    const { contact_id, ...event } = i;
-    timelines[contact_id].push(event);
-  }
 
   return {
     as_of: today,
@@ -476,7 +465,6 @@ export async function partnerSnapshot(db, partnerId, { staleDays = 120 } = {}) {
     summary: summary || {},
     needs_attention: attention || { stale_count: 0 },
     contacts,
-    timelines,
     goals,
     audit,
   };

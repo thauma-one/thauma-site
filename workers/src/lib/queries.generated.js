@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "4a3515b6360c0109";
+export const SOURCE_DIGEST = "aff10b6fbd4568c4";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -312,22 +312,6 @@ ORDER BY kind, label;`,
        occurred_on = :occurred_on, note = :note
  WHERE id = :id AND contact_id = :contact_id AND partner_id = :partner_id
    AND source = 'manual';`,
-  interactions_for_partner: `SELECT
-  i.contact_id,
-  i.id,
-  i.type,
-  i.is_personal,
-  i.channel,
-  i.occurred_on,
-  i.note,
-  i.source,
-  u.name AS logged_by_name
-FROM interactions i
-JOIN contacts c ON c.id = i.contact_id
-LEFT JOIN users u ON u.id = i.logged_by
-WHERE i.partner_id = :partner_id
-  AND c.status = 'active'
-ORDER BY i.occurred_on DESC, i.created_at DESC;`,
   language_deactivate: `UPDATE languages SET is_active = 0 WHERE code = :code;`,
   language_next_sort_order: `SELECT COALESCE(MAX(sort_order), -1) + 1 AS sort_order FROM languages;`,
   language_upsert: `INSERT INTO languages (code, name, native_name, sort_order, is_active, created_at)
