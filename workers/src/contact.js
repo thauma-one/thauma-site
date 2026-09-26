@@ -45,7 +45,8 @@ import { json } from "./lib/store.js";
 import { sendMail, contactReceiptEmail } from "./lib/mail.js";
 import { detectLang } from "./contact-form.js";
 import { COLOUR_JS } from "./embed-colour.js";
-import { escapeHtml, palette, formStyles, LIGHT, DARK, BEHAVIOUR_JS } from "./lib/embed-form.js";
+import { escapeHtml, palette, formStyles, LIGHT, DARK, BEHAVIOUR_JS, WORDS_JS } from "./lib/embed-form.js";
+import { t, wordsFor } from "./lib/mail-i18n.js";
 import { siteOrigin } from "./lib/origin.js";
 import { isOrgSlug } from "./lib/org.js";
 
@@ -109,10 +110,12 @@ export function contactScript(form, partnerSlug, origin, theme, topics) {
   theme = theme || {
     accent: form.embed_accent, accent2: form.embed_accent2, mode: form.embed_theme,
   };
-  const heading = form.heading || "Get in touch";
+  /* The partner's own words when they set them; otherwise the default, in the
+     visitor's language — picked in the browser, see WORDS_JS. */
+  const heading = form.heading || "";
   const blurb = form.blurb || "";
-  const button = form.button || "Send";
-  const thanks = form.thanks || "Thank you — your message is on its way.";
+  const button = form.button || "";
+  const thanks = form.thanks || "";
   const action = `${origin}/embed/v1/${partnerSlug}/contact`;
 
   const { a: accent, b: accent2 } = palette(
@@ -128,9 +131,9 @@ export function contactScript(form, partnerSlug, origin, theme, topics) {
      Rendered only when the ministry has defined some. A dropdown with one
      option is a question with no answer to give. */
   const reason = (topics && topics.length)
-    ? '<label class="fld"><span>What is this about</span>' +
+    ? '<label class="fld"><span data-w="contact.about">What is this about</span>' +
         '<select name="topic">' +
-          '<option value="">Choose one…</option>' +
+          '<option value="" data-w="contact.choose">Choose one…</option>' +
           topics.map((t) => `<option value="${escapeHtml(t.id)}">` +
                             `${escapeHtml(t.label)}</option>`).join("") +
         '</select></label>'
@@ -138,12 +141,13 @@ export function contactScript(form, partnerSlug, origin, theme, topics) {
 
   const inner =
     '<div class="card">' +
-      `<h3 class="ttl">${escapeHtml(heading)}</h3>` +
+      (heading ? `<h3 class="ttl">${escapeHtml(heading)}</h3>`
+               : `<h3 class="ttl" data-w="contact.heading">${escapeHtml(t("en", "contact.heading"))}</h3>`) +
       `<p class="blurb"${blurb ? "" : " hidden"}>${escapeHtml(blurb)}</p>` +
       '<form class="form">' +
-        '<label class="fld"><span>Your name</span>' +
-          '<input name="name" autocomplete="name" required placeholder="Your name"></label>' +
-        '<label class="fld"><span>Email address</span>' +
+        '<label class="fld"><span data-w="form.name">Your name</span>' +
+          '<input name="name" autocomplete="name" required data-wp="form.name" placeholder="Your name"></label>' +
+        '<label class="fld"><span data-w="form.email">Email address</span>' +
           '<input name="email" type="email" required autocomplete="email" ' +
             'placeholder="you@example.com"></label>' +
         reason +
@@ -151,11 +155,11 @@ export function contactScript(form, partnerSlug, origin, theme, topics) {
            Request" tells you the category, "My mother is in hospital" tells
            you whether to open it now. Optional — somebody who has nothing to
            add to the dropdown should not be made to invent something. */
-        '<label class="fld"><span>Subject</span>' +
-          '<input name="subject" maxlength="160" ' +
+        '<label class="fld"><span data-w="contact.subject">Subject</span>' +
+          '<input name="subject" maxlength="160" data-wp="contact.subjectHint" ' +
             'placeholder="A few words about it"></label>' +
-        '<label class="fld"><span>Message</span>' +
-          '<textarea name="message" rows="5" required ' +
+        '<label class="fld"><span data-w="contact.message">Message</span>' +
+          '<textarea name="message" rows="5" required data-wp="contact.messageHint" ' +
             'placeholder="What would you like to say?"></textarea></label>' +
         /* THE HONEYPOT. Hidden from people three ways — off-screen, zero
            opacity and aria-hidden — because a bot reading only one of them
@@ -168,12 +172,14 @@ export function contactScript(form, partnerSlug, origin, theme, topics) {
             '<input name="website" tabindex="-1" autocomplete="off">' +
           '</label>' +
         '</div>' +
-        `<button type="submit" class="go">${escapeHtml(button)}</button>` +
+        (button ? `<button type="submit" class="go">${escapeHtml(button)}</button>`
+                : `<button type="submit" class="go" data-w="contact.button">${escapeHtml(t("en", "contact.button"))}</button>`) +
         '<p class="msg"></p>' +
       '</form>' +
       '<div class="done" hidden>' +
         '<p class="mark">✉</p>' +
-        `<p class="big">${escapeHtml(thanks)}</p>` +
+        (thanks ? `<p class="big">${escapeHtml(thanks)}</p>`
+                : `<p class="big" data-w="contact.thanks">${escapeHtml(t("en", "contact.thanks"))}</p>`) +
       '</div>' +
     '</div>';
 
@@ -184,6 +190,9 @@ export function contactScript(form, partnerSlug, origin, theme, topics) {
 
 ${COLOUR_JS}
 ${BEHAVIOUR_JS}
+
+  var WORDS = ${JSON.stringify(wordsFor("form.", "contact."))};
+${WORDS_JS}
 
   var STYLES = ${JSON.stringify(formStyles())};
   var LIGHT = ${JSON.stringify(LIGHT)};
@@ -253,6 +262,12 @@ ${BEHAVIOUR_JS}
     host.innerHTML = ${JSON.stringify(inner)};
     root.appendChild(host);
 
+    /* The visitor's language, then every fixed word in it — BEFORE the
+       data-heading/-button/-thanks overrides below, which are the partner's
+       own words in the console's preview and must win. */
+    var lang = chooseLang(node);
+    applyWords(host, lang);
+
     /* WATCHES ITS OWN CONTAINER. The width decides whether the card tightens,
        the message box grows with what is typed, and the height is reported to
        a parent frame if there is one — which there only is in the console's
@@ -290,7 +305,7 @@ ${BEHAVIOUR_JS}
       e.preventDefault();
       btn.disabled = true;
       msg.className = 'msg';
-      msg.textContent = 'Sending\\u2026';
+      msg.textContent = word(lang, 'form.sending');
 
       fetch(${JSON.stringify(action)}, {
         method: 'POST',
@@ -302,7 +317,11 @@ ${BEHAVIOUR_JS}
           subject: form.subject.value,
           message: form.message.value,
           website: form.website.value,
-          elapsed: Date.now() - started
+          elapsed: Date.now() - started,
+          /* The server said it read this, and it never came: the receipt's
+             language rested on the Referer alone, which names nothing on a
+             partner's own site. */
+          lang: lang
         })
       }).then(function (r) {
         return r.json().catch(function () { return {}; });
@@ -317,11 +336,10 @@ ${BEHAVIOUR_JS}
           return;
         }
         msg.className = 'msg bad';
-        msg.textContent = (b && b.error) ||
-          'Your message could not be sent. Please try again.';
+        msg.textContent = (b && b.error) || word(lang, 'contact.failed');
       }).catch(function () {
         msg.className = 'msg bad';
-        msg.textContent = 'Your message could not be sent. Please try again.';
+        msg.textContent = word(lang, 'contact.failed');
       }).then(function () { btn.disabled = false; });
     });
   });
@@ -442,7 +460,11 @@ export default {
 
     let body;
     try { body = await request.json(); }
-    catch { return json({ error: "Please fill the form in and try again." }, 400, CORS); }
+    catch { return json({ error: t("en", "contact.errForm") }, 400, CORS); }
+
+    /* The language the form was read in, so what goes back — an error here,
+       the receipt by email — is in it too. */
+    const lang = detectLang(body, request.headers.get("referer")) || "en";
 
     const now = new Date().toISOString();
     const ipHash = await hashIp(request.headers.get("CF-Connecting-IP") || "0.0.0.0", env);
@@ -481,12 +503,12 @@ export default {
        business; a mistyped address here is the sender's own problem and they
        can fix it. Silently thanking somebody for a message that went nowhere
        is the worst possible behavior. */
-    if (!fields.name) return json({ error: "Please add your name." }, 400, CORS);
+    if (!fields.name) return json({ error: t(lang, "contact.errName") }, 400, CORS);
     if (!EMAIL_RE.test(fields.email)) {
-      return json({ error: "That does not look like an email address." }, 400, CORS);
+      return json({ error: t(lang, "contact.errEmail") }, 400, CORS);
     }
     if (fields.message.length < 4) {
-      return json({ error: "Please write a message." }, 400, CORS);
+      return json({ error: t(lang, "contact.errMessage") }, 400, CORS);
     }
 
     /* Per IP, not per form. Capping a form per hour would make a genuine
@@ -507,20 +529,14 @@ export default {
     if (!form.deliver_to || !form.from_address) {
       /* Fails LOUDLY. A contact form that quietly loses mail is worse than one
          that is visibly broken, because nobody finds out for months. */
-      return json({
-        error: "This form is not finished being set up, so your message was " +
-               "not sent. Please try another way of getting in touch.",
-      }, 503, CORS);
+      return json({ error: t(lang, "contact.errSetup") }, 503, CORS);
     }
 
     await record("accepted");
     const sent = await sendMail(env,
       messageFor(form, fields, form.display_name, topic));
     if (!sent.ok) {
-      return json({
-        error: "Your message could not be sent just now. Please try again in " +
-               "a few minutes.",
-      }, 502, CORS);
+      return json({ error: t(lang, "contact.errSend") }, 502, CORS);
     }
 
     /* A RECEIPT TO THE SENDER, after the ministry's copy has gone and never
@@ -546,9 +562,9 @@ export default {
         name: fields.name, ministry: form.display_name,
         topic: topic ? topic.label : null, subject: fields.subject,
         message: fields.message, origin: siteOrigin(env, request),
-        /* The page they wrote from. The widget posts its own language, and the
-           Referer covers the case where it did not. */
-        lang: detectLang(fields, request.headers.get("referer")),
+        /* The widget posts the language it was read in; the Referer covers an
+           older copy of the widget that does not. */
+        lang,
       });
       await sendMail(env, {
         to: fields.email, subject: receipt.subject,

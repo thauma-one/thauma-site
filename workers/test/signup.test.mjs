@@ -266,7 +266,10 @@ await check("the form offers a checkbox per open list", async () => {
 await check("a single list gets a box but no chooser", async () => {
   const m = asMarkup(formScript([LIST], "chase-roush", "https://thauma.one"));
   assert(m.includes('value="newsletter"'), "the one list should still be named");
-  assert(!m.includes("I want to receive"), "no chooser for a single option");
+  /* The legend ELEMENT, not the words: the script now carries every
+     language's words for the browser to choose from, so "I want to receive"
+     is in it whatever the form shows. */
+  assert(!/<legend/.test(m), "no chooser for a single option");
 });
 
 await check("ticking two boxes writes two rows sharing ONE token", async () => {

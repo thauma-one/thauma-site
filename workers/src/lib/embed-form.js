@@ -168,6 +168,56 @@ export function formStyles() {
       internally hides the beginning of somebody's own sentence from them while
       they are still writing it.
    =========================================================================== */
+/* ============================================================================
+   THE FORM'S OWN WORDS, in the visitor's language.
+   The labels, the "Sending…" line and the errors were English on every site,
+   whatever language the page around them was in — a Croatian supporter met a
+   Croatian ministry's form in English. The script now carries every language's
+   words (WORDS, from mail-i18n.js, all small) and picks one in the browser,
+   the same way the roadmap and goal widgets already do:
+
+     1. the snippet's own data-lang, when the site owner set one
+     2. the host page's <html lang>
+     3. the visitor's browser language
+     4. English
+
+   Picked in the browser because the script is one cached file served to every
+   site; the server cannot know which page it is about to run on. Elements
+   carry data-w (text) or data-wp (placeholder) naming their key, and a missing
+   key falls back to English rather than to nothing.
+   =========================================================================== */
+export const WORDS_JS = [
+  "function chooseLang(node) {",
+  "  var have = Object.keys(WORDS);",
+  "  var tags = [];",
+  "  var asked = node.getAttribute('data-lang');",
+  "  if (asked) tags.push(String(asked).toLowerCase());",
+  "  var page = document.documentElement && document.documentElement.getAttribute('lang');",
+  "  if (page) tags.push(String(page).toLowerCase());",
+  "  var nav = window.navigator;",
+  "  if (nav && nav.language) tags.push(String(nav.language).toLowerCase());",
+  "  for (var i = 0; i < tags.length; i++) {",
+  "    if (have.indexOf(tags[i]) !== -1) return tags[i];",
+  "    var base = tags[i].split('-')[0];",
+  "    if (have.indexOf(base) !== -1) return base;",
+  "  }",
+  "  return 'en';",
+  "}",
+  "",
+  "function word(lang, key) {",
+  "  return (WORDS[lang] && WORDS[lang][key]) || (WORDS.en && WORDS.en[key]) || '';",
+  "}",
+  "",
+  "function applyWords(host, lang) {",
+  "  [].forEach.call(host.querySelectorAll('[data-w]'), function (el) {",
+  "    el.textContent = word(lang, el.getAttribute('data-w'));",
+  "  });",
+  "  [].forEach.call(host.querySelectorAll('[data-wp]'), function (el) {",
+  "    el.setAttribute('placeholder', word(lang, el.getAttribute('data-wp')));",
+  "  });",
+  "}",
+].join("\n");
+
 export const BEHAVIOUR_JS = [
   "function reportHeight() {",
   "  if (window.parent === window) return;",

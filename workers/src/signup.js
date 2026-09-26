@@ -43,7 +43,8 @@ import { json } from "./lib/store.js";
 import { sendMail, listConfirmEmail } from "./lib/mail.js";
 import { detectLang } from "./contact-form.js";
 import { COLOUR_JS } from "./embed-colour.js";
-import { escapeHtml, palette, formStyles, LIGHT, DARK, BEHAVIOUR_JS } from "./lib/embed-form.js";
+import { escapeHtml, palette, formStyles, LIGHT, DARK, BEHAVIOUR_JS, WORDS_JS } from "./lib/embed-form.js";
+import { t, wordsFor } from "./lib/mail-i18n.js";
 import { siteOrigin } from "./lib/origin.js";
 
 const CORS = {
@@ -127,9 +128,11 @@ export { escapeHtml };
 
 export function formScript(lists, partnerSlug, origin, theme) {
   const first = lists[0] || {};
-  const heading = first.form_heading || "Stay in touch";
+  /* The partner's own words when they set them; otherwise the default, in the
+     visitor's language — picked in the browser, see WORDS_JS. */
+  const heading = first.form_heading || "";
   const blurb = first.form_blurb || "";
-  const button = first.form_button || "Subscribe";
+  const button = first.form_button || "";
   const action = `${origin}/embed/v1/${partnerSlug}/signup`;
 
   const { a: accent, b: accent2 } = palette(
@@ -150,17 +153,18 @@ export function formScript(lists, partnerSlug, origin, theme) {
   /* A legend over ONE box is a question nobody asked — there is nothing to
      choose between, and the box is really "yes, the thing you just read". */
   const picks = lists.length > 1
-    ? '<fieldset class="picks"><legend>I want to receive</legend>' + boxes + '</fieldset>'
+    ? `<fieldset class="picks"><legend data-w="form.receive">${escapeHtml(t("en", "form.receive"))}</legend>` + boxes + '</fieldset>'
     : '<fieldset class="picks">' + boxes + '</fieldset>';
 
   const inner =
     '<div class="card">' +
-      `<h3 class="ttl">${escapeHtml(heading)}</h3>` +
+      (heading ? `<h3 class="ttl">${escapeHtml(heading)}</h3>`
+               : `<h3 class="ttl" data-w="form.heading">${escapeHtml(t("en", "form.heading"))}</h3>`) +
       `<p class="blurb"${blurb ? "" : " hidden"}>${escapeHtml(blurb)}</p>` +
       '<form class="form">' +
-        '<label class="fld"><span>Your name</span>' +
-          '<input name="name" autocomplete="name" placeholder="Your name"></label>' +
-        '<label class="fld"><span>Email address</span>' +
+        '<label class="fld"><span data-w="form.name">Your name</span>' +
+          '<input name="name" autocomplete="name" data-wp="form.name" placeholder="Your name"></label>' +
+        '<label class="fld"><span data-w="form.email">Email address</span>' +
           '<input name="email" type="email" required autocomplete="email" ' +
             'placeholder="you@example.com"></label>' +
         picks +
@@ -175,14 +179,15 @@ export function formScript(lists, partnerSlug, origin, theme) {
             '<input name="website" tabindex="-1" autocomplete="off">' +
           '</label>' +
         '</div>' +
-        `<button type="submit" class="go">${escapeHtml(button)}</button>` +
-        '<p class="fine">You can unsubscribe at any time.</p>' +
+        (button ? `<button type="submit" class="go">${escapeHtml(button)}</button>`
+                : `<button type="submit" class="go" data-w="form.button">${escapeHtml(t("en", "form.button"))}</button>`) +
+        '<p class="fine" data-w="form.fine">You can unsubscribe at any time.</p>' +
         '<p class="msg"></p>' +
       '</form>' +
       '<div class="done" hidden>' +
         '<p class="mark">✉</p>' +
-        '<p class="big">Check your email</p>' +
-        '<p class="sub">We sent you a confirmation link. Click it and you are on the list.</p>' +
+        '<p class="big" data-w="form.checkEmail">Check your email</p>' +
+        '<p class="sub" data-w="form.linkSent">We sent you a confirmation link. Click it and you are on the list.</p>' +
       '</div>' +
     '</div>';
 
@@ -193,6 +198,9 @@ export function formScript(lists, partnerSlug, origin, theme) {
 
 ${COLOUR_JS}
 ${BEHAVIOUR_JS}
+
+  var WORDS = ${JSON.stringify(wordsFor("form."))};
+${WORDS_JS}
 
   var STYLES = ${JSON.stringify(formStyles())};
   var LIGHT = ${JSON.stringify(LIGHT)};
@@ -230,6 +238,12 @@ ${BEHAVIOUR_JS}
     var host = document.createElement('div');
     host.innerHTML = ${JSON.stringify(inner)};
     root.appendChild(host);
+
+    /* The visitor's language, then every fixed word in it — BEFORE the
+       data-heading/-button overrides below, which are the partner's own words
+       in the console's preview and must win. */
+    var lang = chooseLang(node);
+    applyWords(host, lang);
 
     /* WATCHES ITS OWN CONTAINER. The width decides whether the card tightens,
        the message box grows with what is typed, and the height is reported to
@@ -272,13 +286,13 @@ ${BEHAVIOUR_JS}
         .map(function (i) { return i.value; });
       if (!picked.length) {
         msg.className = 'msg bad';
-        msg.textContent = 'Choose at least one thing to receive.';
+        msg.textContent = word(lang, 'form.chooseOne');
         return;
       }
 
       btn.disabled = true;
       msg.className = 'msg';
-      msg.textContent = 'Sending…';
+      msg.textContent = word(lang, 'form.sending');
 
       fetch(${JSON.stringify(action)}, {
         method: 'POST',
@@ -288,7 +302,11 @@ ${BEHAVIOUR_JS}
           name: form.name.value,
           lists: picked,
           website: form.website.value,
-          elapsed: Date.now() - started
+          elapsed: Date.now() - started,
+          /* So the confirmation email arrives in the language the form was
+             read in. The Referer only helped on thauma.one's own /hr/ pages;
+             on a partner's site it named nothing. */
+          lang: lang
         })
       }).then(function (r) {
         return r.json().catch(function () { return {}; });
@@ -301,10 +319,10 @@ ${BEHAVIOUR_JS}
           return;
         }
         msg.className = 'msg bad';
-        msg.textContent = (b && b.error) || 'Something went wrong. Please try again.';
+        msg.textContent = (b && b.error) || word(lang, 'form.failed');
       }).catch(function () {
         msg.className = 'msg bad';
-        msg.textContent = 'Something went wrong. Please try again.';
+        msg.textContent = word(lang, 'form.failed');
       }).then(function () { btn.disabled = false; });
     });
   });
