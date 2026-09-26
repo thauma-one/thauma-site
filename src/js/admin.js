@@ -588,9 +588,7 @@
         ' aria-checked="' + (on ? 'true' : 'false') + '">' +
         '<span class="switch-track"><span class="switch-state">' + (on ? 'On' : 'Off') +
           '</span><span class="switch-knob"></span></span>' +
-        '<span class="switch-label">' + esc(tr('adm.pf.shown')) +
-          '<span class="switch-note">' + esc(tr('adm.pf.shownNote')) + '</span>' +
-        '</span></button>' +
+        '<span class="switch-label">' + esc(tr('adm.pf.shown')) + '</span></button>' +
 
       /* ALWAYS VISIBLE, whatever the toggle says.
 
@@ -623,8 +621,6 @@
         : '') +
 
       '<div class="pf-body' + (on ? '' : ' is-unpublished') + '">' +
-        '<p class="hint pf-draft"' + (on ? ' hidden' : '') + '>' +
-          esc(tr('adm.pf.draftNote')) + '</p>' +
         '<div class="pf-grid">' +
           '<label class="fld"><span>' + esc(tr('adm.pf.region')) + '</span>' +
             '<input type="text" data-pf="region" maxlength="120"' +
@@ -632,16 +628,14 @@
             ' placeholder="Kansas City, USA &rarr; Croatia"></label>' +
           '<label class="fld"><span>' + esc(tr('adm.pf.email')) + '</span>' +
             '<input type="email" data-pf="public_email" maxlength="200"' +
-            ' value="' + esc((p && p.public_email) || '') + '">' +
-            '<span class="fld-hint">' + esc(tr('adm.pf.emailHint')) + '</span></label>' +
+            ' value="' + esc((p && p.public_email) || '') + '"></label>' +
           '<label class="fld"><span>' + esc(tr('adm.pf.order')) + '</span>' +
             '<input type="number" data-pf="sort_order" step="1"' +
             ' value="' + ((p && p.sort_order) || 0) + '"></label>' +
           '<label class="fld"><span>' + esc(tr('adm.pf.address')) + '</span>' +
             '<input type="text" data-pf="slug" maxlength="80"' +
             ' value="' + esc((p && p.slug) || '') + '"' +
-            ' placeholder="' + esc(slugHint(u.name)) + '">' +
-            '<span class="fld-hint">' + esc(tr('adm.pf.addressHint')) + '</span></label>' +
+            ' placeholder="' + esc(slugHint(u.name)) + '"></label>' +
         '</div>' +
 
         '<div class="pf-langs">' +
@@ -689,9 +683,7 @@
         ' aria-checked="' + (on ? 'true' : 'false') + '">' +
         '<span class="switch-track"><span class="switch-state">' +
           (on ? 'On' : 'Off') + '</span><span class="switch-knob"></span></span>' +
-        '<span class="switch-label">' + esc(ROLE_LABEL[r]) +
-          '<span class="switch-note">' + esc(tr('adm.role.' + r)) + '</span>' +
-        '</span></button>';
+        '<span class="switch-label">' + esc(ROLE_LABEL[r]) + '</span></button>';
     }).join('');
 
     var partners = state.partners.map(function (p) {
@@ -711,7 +703,6 @@
       '<div class="adm-section">' +
         '<span class="adm-label">' + esc(tr('adm.partnerAccess')) + '</span>' +
         '<div class="adm-chips">' + (partners || '<span class="hint">—</span>') + '</div>' +
-        '<span class="switch-note">' + esc(tr('adm.partnerAccessNote')) + '</span>' +
       '</div>' +
 
       /* No public profile: it is not a person, and 0029 refuses to create one.
@@ -732,7 +723,6 @@
                 esc(tr('adm.status.' + s)) + '</option>';
             }).join('') +
           '</select>' +
-          '<span class="switch-note">' + esc(tr('adm.statusNote')) + '</span>' +
         '</label>' +
         /* IT SUPPORT, NOT IMPERSONATION. Opening somebody's console is how
            you answer "my stewardship page is empty and it should not be"
@@ -754,10 +744,10 @@
         /* THE PROTECTED ACCOUNT GETS NO REMOVE BUTTON. The database refuses
            the delete outright and the endpoint refuses before that — but a
            button whose only outcome is a refusal is a button that teaches
-           people to distrust refusals. It says why instead. */
+           people to distrust refusals. A tag saying Permanent stands in its
+           place. */
         (u.protected
-          ? '<span class="adm-protected" title="' + esc(tr('adm.protectedWhy')) + '">' +
-              esc(tr('adm.protected')) + '</span>'
+          ? '<span class="adm-protected">' + esc(tr('adm.protected')) + '</span>'
           : '<button type="button" class="del" data-remove="' + esc(u.id) + '">' +
               esc(tr('adm.removePerson')) + '</button>') +
 
@@ -774,8 +764,7 @@
            work rather than sitting there looking the same either way. */
         (u.protected ? '' :
           '<div class="pf-commit">' +
-            '<span class="hint" data-pf-status="' + esc(u.id) + '">' +
-              esc(tr('adm.pf.saveNote')) + '</span>' +
+            '<span class="hint" data-pf-status="' + esc(u.id) + '"></span>' +
             '<button type="button" class="solid-btn pf-save" data-pf-save="' +
               esc(u.id) + '">' + esc(tr('adm.pf.save')) + '</button>' +
           '</div>') +
@@ -904,7 +893,6 @@
           '<span class="ms-chev" aria-hidden="true"></span>' +
           '<div class="adm-who">' +
             '<span class="adm-name">Thauma</span>' +
-            '<span class="adm-email">' + esc(tr('adm.orgMailNote')) + '</span>' +
           '</div>' +
           '<div class="adm-access">' + esc(state.org_domain || '') + ' · ' +
             esc(countAddresses(orgCount)) + '</div>' +
@@ -984,12 +972,6 @@
                   (l.retired ? ' — ' + esc(tr('adm.langRetired')) : '') + '</option>';
               }).join('') +
             '</select>' +
-            /* Named and explained, because there are TWO language settings in
-               this console and they were indistinguishable here. This one is
-               the partner's public site; the other is the person's own console
-               language, on their People row. Reading one as the other is what
-               makes a correct value look wrong. */
-            '<span class="fld-hint">' + esc(tr('adm.defaultLangHint')) + '</span>' +
           '</label>' +
         '</div>' +
 
@@ -1068,7 +1050,6 @@
       '</div>' +
       (rows || '<p class="empty">' + esc(tr('adm.nobodyAttached')) + '</p>') +
       add +
-      '<p class="fld-hint">' + esc(tr('adm.membersHint')) + '</p>' +
     '</div>';
   }
 
@@ -1113,14 +1094,12 @@
       ? '<div class="adm-mail-domain">' +
           '<label class="fld"><span>' + esc(tr('adm.mailDomain')) + '</span>' +
             '<input type="text" class="adm-domain" value="' + esc(d) + '" readonly>' +
-            '<span class="fld-hint">' + esc(tr('adm.mailOrgHint')) + '</span>' +
           '</label></div>'
       : '<div class="adm-mail-domain">' +
           '<label class="fld"><span>' + esc(tr('adm.mailDomain')) + '</span>' +
             '<input type="text" class="adm-domain" data-domain="' + esc(p.id) + '" ' +
               'value="' + esc(d) + '" spellcheck="false" autocapitalize="off" ' +
               'autocomplete="off" placeholder="' + esc(p.slug) + '.thauma.one">' +
-            '<span class="fld-hint">' + esc(tr('adm.mailDomainHint')) + '</span>' +
           '</label>' +
           '<button type="button" class="ghost-btn" data-domain-save="' + esc(p.id) + '">' +
             esc(tr('common.save')) + '</button>' +
@@ -1130,8 +1109,7 @@
        under a blank domain field can only produce addresses that do not
        send, and offering it invites exactly that. */
     if (!d) {
-      return '<div class="adm-mail">' + head + domainRow +
-        '<p class="adm-mail-first">' + esc(tr('adm.mailFirst')) + '</p></div>';
+      return '<div class="adm-mail">' + head + domainRow + '</div>';
     }
 
     /* THE ROW IS THE ADDRESS AND WHAT DEPENDS ON IT. Nothing else.
@@ -1292,8 +1270,6 @@
     var body = btn.parentNode.querySelector('.pf-body');
     if (body) {
       body.classList.toggle('is-unpublished', !on);
-      var note = body.querySelector('.pf-draft');
-      if (note) note.hidden = on;
     }
     /* AND IT NEEDS SAVING. This flipped the switch and told nobody, so the one
        control most likely to be pressed was the one that did not light the
@@ -1381,16 +1357,22 @@
       /* The database write and the repository write are separate, and the
          second can fail alone. Saying which happened beats a tick that means
          "half of it". */
-      if (status) {
-        status.textContent = body.file
-          ? tr('adm.pf.saved')
-          : tr('adm.pf.savedNoFile') + (body.fileError ? ' — ' + body.fileError : '');
-      }
+      var said = body.file
+        ? tr('adm.pf.saved')
+        : tr('adm.pf.savedNoFile') + (body.fileError ? ' — ' + body.fileError : '');
+      if (status) status.textContent = said;
       /* Before the reload, so the button stops announcing work that is done
          even if load() is slow — and load() re-renders from fresh state, which
          cannot be dirty. */
       markProfileClean(userId);
       await load();
+      /* AND SAID AGAIN AFTER IT. load() rebuilds the panel, status line
+         included, so the message above lasted until the reload landed and
+         then vanished. That went unnoticed because the line used to start
+         with a sentence already in it; with that gone, a successful save
+         looked like nothing had happened. */
+      var fresh = document.querySelector('[data-pf-status="' + userId + '"]');
+      if (fresh) fresh.textContent = said;
     } catch (e) {
       if (status) status.textContent = tr('err.unreachable') + ' ' + e.message;
     } finally {

@@ -194,8 +194,7 @@
     var host = $('msList');
     detachForm();
     if (!state.order.length) {
-      host.innerHTML = '<p class="empty">No milestones yet. ' +
-        'Add one and it will stay unpublished until you switch it on.</p>';
+      host.innerHTML = '<p class="empty">' + esc(tr('ms.empty')) + '</p>';
       return;
     }
 
@@ -480,7 +479,7 @@
     fillParents();
     $('msParent').value = m && m.parent_id ? m.parent_id : '';
 
-    setStatus($('msFormStatus'), 'Applies to the list — save to publish');
+    setStatus($('msFormStatus'), '');
 
     // Directly beneath its own row. The form used to sit at the bottom of the
     // page, so editing the third of twelve milestones meant scrolling past

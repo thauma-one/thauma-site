@@ -4,7 +4,6 @@ staffPage: mailing
 staffNum: "05"
 staffTitle: Mailing
 staffHeading: Who hears from <b>you</b>
-staffHint: your lists and the people on them — nobody else's
 ---
 {#- ONE TAB PER LIST, then the tools that work across all of them.
 
@@ -18,9 +17,9 @@ staffHint: your lists and the people on them — nobody else's
    Composer are pushed to the far end and visually separated, because they are
    not lists and must not read as one more of them.
 
-   THE HEADING SAYS "nobody else's" ON PURPOSE. Isolation is the feature, and
-   the person reading this should see that it applies to them rather than take
-   it on faith. -#}
+   THE HEADING SAYS "you" ON PURPOSE. Isolation is the feature, and the
+   person reading this should see that it applies to them rather than take it
+   on faith. -#}
 
 {#- WHOSE LISTS. Above the tabs and full width, because it changes what every
    tab below it means — a switch that quiet, tucked in beside them, was missed
@@ -74,8 +73,7 @@ staffHint: your lists and the people on them — nobody else's
         <input type="text" id="mlNewName" maxlength="120">
       </label>
       <button type="submit" class="solid-btn" data-i18n="ml.addPerson">Add</button>
-      <span class="hint" id="mlAddStatus" data-i18n="ml.addNote">Adds them as unconfirmed and
-        emails them to confirm. That link is also how you find out the address works.</span>
+      <span class="hint" id="mlAddStatus"></span>
     </form>
 
     <div class="ml-counts" id="mlCounts"></div>
@@ -115,9 +113,6 @@ staffHint: your lists and the people on them — nobody else's
        to every list — which is why this panel is not inside a list's Settings
        tab, where it would read as belonging to one. -#}
     <div class="subs-tags" id="subsTagPanel" hidden>
-      <p class="hint" data-i18n="ml.tagsHint">Tags are the ministry's own, shared
-        by every list. Use them to group people — a home church, a supporter
-        level, wherever somebody was met.</p>
       <div id="subsTagList"></div>
       <form class="subs-tag-add" id="subsTagAdd">
         <input type="text" id="subsTagName" maxlength="60"
@@ -174,7 +169,6 @@ staffHint: your lists and the people on them — nobody else's
       <div class="ms-grid">
         <label class="fld"><span data-i18n="ml.name">Name</span>
           <input type="text" id="mlName" maxlength="120" required>
-          <span class="fld-hint" data-i18n="ml.nameHint">What you call it. Subscribers never see this.</span>
         </label>
       </div>
 
@@ -185,7 +179,6 @@ staffHint: your lists and the people on them — nobody else's
       <div class="ms-grid">
         <label class="fld"><span data-i18n="ml.fromName">From name</span>
           <input type="text" id="mlFromName" maxlength="80" required>
-          <span class="fld-hint" data-i18n="ml.fromNameHint">Who the email appears to be from.</span>
         </label>
         {#- CHOSEN, NEVER TYPED. This was a text box, and that is unsafe in a
            way that stays invisible until it matters: the mail provider
@@ -201,8 +194,7 @@ staffHint: your lists and the people on them — nobody else's
            expected to receive has to exist as a mailbox. -#}
         <label class="fld"><span data-i18n="ml.fromEmail">From address</span>
           <select id="mlFromEmail" required></select>
-          <span class="fld-hint" data-i18n="ml.fromEmailHintPick">Set up by an administrator,
-            because a mistyped sender sends successfully and loses every reply.</span>
+          <span class="fld-hint" id="mlFromNone" hidden></span>
         </label>
         {#- STILL TYPED, deliberately. Replies can go anywhere somebody reads —
            a personal address, a shared inbox, a team alias — and none of those
@@ -211,9 +203,6 @@ staffHint: your lists and the people on them — nobody else's
         <label class="fld"><span data-i18n="ml.replyTo">Reply-to</span>
           <input type="email" id="mlReplyTo" maxlength="200"
                  placeholder="you@example.org">
-          <span class="fld-hint" data-i18n="ml.replyToHintFull">Optional. Where replies go —
-            leave it empty and they go to the sender above. It has to be an address somebody
-            actually reads.</span>
         </label>
       </div>
 
@@ -221,8 +210,6 @@ staffHint: your lists and the people on them — nobody else's
         <button type="button" class="switch" id="mlOpen" role="switch" aria-checked="false">
           <span class="switch-track"><span class="switch-state">Off</span><span class="switch-knob"></span></span>
           <span class="switch-label"><span data-i18n="ml.open">Open for sign-ups</span>
-            <span class="switch-note" data-i18n="ml.openNote">Lets a sign-up form add to this list.
-              Off means only you can add people, and any form already on a website stops working.</span>
           </span>
         </button>
 
@@ -238,9 +225,6 @@ staffHint: your lists and the people on them — nobody else's
         <button type="button" class="switch" id="mlArchivePublic" role="switch" aria-checked="false">
           <span class="switch-track"><span class="switch-state">Off</span><span class="switch-knob"></span></span>
           <span class="switch-label"><span data-i18n="ml.archivePublic">Past issues readable on the web</span>
-            <span class="switch-note" data-i18n="ml.archivePublicNote">Anyone with the link can read what
-              you have sent on this list, and every mailing carries a link to it. Leave this off for
-              anything naming people — prayer updates especially.</span>
           </span>
         </button>
       </div>
@@ -268,10 +252,6 @@ staffHint: your lists and the people on them — nobody else's
    them: they are pasting several into one page, not visiting each list in turn
    to collect snippets. -#}
 <section class="ml-view" data-view="embed" id="mlEmbedView" hidden>
-  <p class="note ms-note" data-i18n-html="ml.embedNote"><b>One snippet per list.</b>
-  Paste both lines wherever the form should appear. Nothing else is needed — no
-  account on that website, no key. A list that is not open for sign-ups has no
-  form, and a snippet already pasted stops working the moment you close it.</p>
   <div id="mlEmbedList"></div>
 </section>
 
@@ -439,10 +419,6 @@ staffHint: your lists and the people on them — nobody else's
    explains itself badly. -#}
 <section class="ml-view" data-view="contact" id="mlContactView" hidden>
 
-  <p class="note ms-note" data-i18n-html="ml.ctNote"><b>Messages are emailed to
-  you and stored nowhere.</b> Not a limitation — a contact form is the easiest
-  way to end up holding people's personal messages without meaning to, and your
-  mailbox is a better place for them than a database. Nothing here keeps a copy.</p>
 
   {#- THE VISUALISER, ABOVE THE SETTINGS, matching the roadmap and goal embeds
      on the Ministry page. Same position, same classes, same Desktop/Mobile
@@ -460,8 +436,6 @@ staffHint: your lists and the people on them — nobody else's
      Sandboxed to scripts only: no same-origin, so the preview cannot reach
      this console's session even though it loads code from our own domain. -#}
   <div class="emb-stagebar">
-    <p class="emb-lede" data-i18n="ml.ctLede">Exactly what somebody sees when
-      this is on their website.</p>
     <div class="emb-devices" role="tablist" aria-label="Width">
       <button type="button" class="emb-device is-on" role="tab" aria-selected="true"
               data-ct-width="wide" data-i18n="emb.desktop">Desktop</button>
@@ -484,17 +458,12 @@ staffHint: your lists and the people on them — nobody else's
     </div>
   </div>
 
-  <p class="hint ct-colours" data-i18n="ml.ctColours">Colors come from the
-    ministry's palette, set once on the Sign-up forms tab and shared by every
-    widget — this form, the goals, the roadmap.</p>
 
   <form id="mlContactForm" class="ct-form">
     <div class="ms-grid">
       <label class="fld"><span data-i18n="ml.ctTo">Send messages to</span>
         <input type="email" id="ctTo" maxlength="200" required
                placeholder="you@example.org">
-        <span class="fld-hint" data-i18n="ml.ctToHint">A mailbox you actually read.
-          Usually your own address, not one of the sending addresses below.</span>
       </label>
 
       {#- CHOSEN, NEVER TYPED, for the same reason the newsletter's sender is:
@@ -502,9 +471,6 @@ staffHint: your lists and the people on them — nobody else's
          sends successfully and drops every reply into nothing. -#}
       <label class="fld"><span data-i18n="ml.ctFrom">Sent from</span>
         <select id="ctFrom" required></select>
-        <span class="fld-hint" data-i18n="ml.ctFromHint">Whose address the message
-          appears to come from. The visitor's own address goes in Reply-to, so
-          pressing reply reaches them.</span>
       </label>
     </div>
 
@@ -537,10 +503,6 @@ staffHint: your lists and the people on them — nobody else's
        address above. -#}
     <div class="ct-topics">
       <span class="adm-label" data-i18n="ml.ctTopics">What is this about</span>
-      <p class="hint" data-i18n="ml.ctTopicsHint">The reasons somebody can pick
-        from before writing. Leave it empty and the form has no dropdown at all.
-        A reason with its own address goes there instead of the one above —
-        useful for prayer requests.</p>
       <div id="ctTopicList"></div>
       <button type="button" class="ghost-btn" id="ctAddTopic"
               data-i18n="ml.ctAddTopic">Add a reason</button>
@@ -550,9 +512,6 @@ staffHint: your lists and the people on them — nobody else's
       <button type="button" class="switch" id="ctOpen" role="switch" aria-checked="false">
         <span class="switch-track"><span class="switch-state">Off</span><span class="switch-knob"></span></span>
         <span class="switch-label"><span data-i18n="ml.ctOpen">Form is live</span>
-          <span class="switch-note" data-i18n="ml.ctOpenNote">Off means the form
-            disappears from every website it is on. Start off until you have sent
-            yourself a test.</span>
         </span>
       </button>
     </div>
@@ -566,13 +525,11 @@ staffHint: your lists and the people on them — nobody else's
   {#- ALWAYS VISIBLE, even before the form is switched on. It was hidden until
      then, on the reasoning that handing somebody two lines for a form that is
      off is handing them a blank space — which is true and was still the wrong
-     call: it made the embed code look like it did not exist. Shown, with the
-     reason it will not work yet said out loud instead. -#}
+     call: it made the embed code look like it did not exist. Shown either
+     way; the Form is live switch just above it says whether it draws
+     anything. -#}
   <div class="ct-embed">
     <span class="adm-label" id="ctCodeLabel" data-i18n="ml.ctCode">The code to paste</span>
-    <p class="hint" id="ctEmbedOff" hidden data-i18n="ml.ctCodeOff">This works the
-      moment you switch the form on above. Until then the two lines are harmless
-      and draw nothing.</p>
     <textarea readonly rows="3" spellcheck="false" id="ctSnippet"
               aria-labelledby="ctCodeLabel"></textarea>
     <button type="button" class="ghost-btn" id="ctCopy" data-i18n="ml.copy">Copy</button>

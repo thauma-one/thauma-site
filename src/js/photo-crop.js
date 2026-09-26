@@ -139,9 +139,6 @@
     back.appendChild(box);
 
     box.appendChild(el('h3', null, t('pc.title', 'Position the photo')));
-    box.appendChild(el('p', 'pc-hint', t('pc.hint',
-      'Drag to move, scroll or use the slider to zoom. Only what is inside the ' +
-      'frame is uploaded.')));
 
     var stage = el('div', 'pc-stage');
     var canvas = el('canvas', 'pc-canvas');

@@ -84,7 +84,6 @@ main{max-width:1240px;margin:0 auto;padding:32px var(--gutter) 80px;
    order. Same size: this is a correctness fix, not a visual one. */
 .sec-h h1,
 .sec-h h2{font-size:22px;line-height:1.2}
-.sec-h .hint{font-size:var(--fs-tiny);color:var(--dim);margin-left:auto}
 .cue{font-size:11px;letter-spacing:var(--ls-cue);text-transform:uppercase;
   font-weight:var(--w-bold);color:var(--voice-tech);display:flex;align-items:center;
   gap:12px;margin-bottom:12px}
@@ -259,8 +258,6 @@ tbody tr[aria-expanded="true"]{background:rgba(255,255,255,.045)}
 .rolegate{border-left:2px solid var(--warn);background:var(--warn-dim);
   padding:14px 18px;font-size:var(--fs-sm);color:var(--text);max-width:none}
 .rolegate b{color:var(--warn)}
-.foot-note code{font-family:var(--font-mono,ui-monospace,monospace);font-size:11.5px;
-  color:var(--text)}
 
 /* ---------- directory / resource cards ---------- */
 .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1px;
@@ -396,8 +393,6 @@ tbody tr[aria-expanded="true"]{background:rgba(255,255,255,.045)}
    MILESTONES EDITOR
    ============================================================ */
 .ms-bar{display:flex;align-items:center;gap:16px;margin-bottom:18px}
-.ms-note{margin-bottom:24px}
-.ms-note b{color:var(--warn)}
 
 .ms-list{display:flex;flex-direction:column;gap:1px;background:var(--line);
   border:1px solid var(--line)}
@@ -533,7 +528,6 @@ tbody tr[aria-expanded="true"]{background:rgba(255,255,255,.045)}
   border-top:1px solid rgba(245,184,69,.45);
   box-shadow:0 -10px 30px rgba(0,0,0,.55);
   font-size:var(--fs-sm);color:var(--text)}
-.ms-savebar-note{color:var(--dim);font-size:var(--fs-tiny)}
 .ms-savebar .solid-btn{margin-left:0}
 .ms-savebar .ghost-btn{margin-left:auto}
 /* Keeps the last row clear of the bar. Set from JS to the bar's real height,
@@ -642,7 +636,6 @@ body.has-savebar{padding-bottom:var(--ms-savebar-h,72px)}
 .set-label p{color:var(--dim);font-size:var(--fs-sm);margin:0;max-width:58ch}
 .set-control{display:flex;flex-direction:column;gap:10px}
 .set-control .lang-pick{width:100%}
-.note-inline{color:var(--dim);font-size:var(--fs-tiny);margin:0;max-width:52ch}
 
 .lang-row{display:flex;align-items:center;gap:16px;padding:12px 0}
 .lang-row + .lang-row{border-top:1px solid var(--line)}
@@ -664,7 +657,10 @@ body.has-savebar{padding-bottom:var(--ms-savebar-h,72px)}
 .key-reveal code{display:block;font-family:var(--font-mono,ui-monospace,monospace);
   font-size:13px;color:var(--text);background:rgba(0,0,0,.35);padding:12px 14px;
   border-radius:var(--radius);word-break:break-all;margin-bottom:12px}
-.key-reveal p{color:var(--dim);font-size:var(--fs-tiny);margin:12px 0 0;max-width:60ch}
+/* The variable the value belongs in, labeling it the way a field name labels
+   a field. */
+.key-var{display:block;font-family:var(--font-mono,ui-monospace,monospace);
+  font-size:var(--fs-micro);color:var(--dim);letter-spacing:.06em;margin:0 0 6px}
 
 .key-list{display:flex;flex-direction:column;gap:1px;background:var(--line);
   border:1px solid var(--line);margin-top:20px}
@@ -1036,8 +1032,6 @@ body.has-savebar .acting-mark{bottom:calc(var(--ms-savebar-h,72px) + 12px)}
 .emb-state.is-on:before{background:var(--ok,#5CF2C4);opacity:1}
 
 .emb-panel{display:flex;flex-direction:column;gap:26px}
-.emb-lede{font-size:var(--fs-tiny);color:var(--dim);line-height:var(--lh-body);
-  max-width:64ch;margin:0}
 
 /* The widget itself, first and large. Everything under it is about it. */
 .emb-stage{border:1px solid var(--line);border-radius:var(--radius);
@@ -1066,8 +1060,6 @@ body.has-savebar .acting-mark{bottom:calc(var(--ms-savebar-h,72px) + 12px)}
   border:1px solid var(--line);border-radius:var(--radius);background:var(--bg2);
   cursor:pointer}
 .emb-hex{inline-size:10ch;font-family:var(--font-mono);text-transform:uppercase}
-.emb-shared{margin:-12px 0 0;font-size:var(--fs-micro);color:var(--dim);
-  opacity:.8;max-width:64ch;line-height:var(--lh-body)}
 
 .emb-checkline{display:flex;align-items:center;gap:8px;font-size:var(--fs-micro);
   color:var(--dim);block-size:34px}
@@ -1081,11 +1073,9 @@ body.has-savebar .acting-mark{bottom:calc(var(--ms-savebar-h,72px) + 12px)}
 .emb-period-text{flex:1 1 34ch;min-inline-size:0}
 .emb-period-text h4{font-family:var(--font-display);font-size:var(--fs-sm);
   font-weight:var(--w-hair);color:var(--text)}
-.emb-period-text p{margin-top:6px;font-size:var(--fs-micro);color:var(--dim);
-  line-height:var(--lh-body)}
 .emb-period-fields{display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap}
 
-/* The stage bar: what this is, and how wide to show it. */
+/* The stage bar: how wide to show it. */
 .emb-stagebar{display:flex;justify-content:space-between;align-items:flex-end;
   gap:20px;flex-wrap:wrap}
 .emb-devices{display:inline-flex;background:var(--bg2);border:1px solid var(--line);
@@ -1120,8 +1110,6 @@ body.has-savebar .acting-mark{bottom:calc(var(--ms-savebar-h,72px) + 12px)}
 .emb-publish-text{flex:1 1 34ch;min-inline-size:0}
 .emb-publish-text h4{font-family:var(--font-display);font-size:var(--fs-sm);
   font-weight:var(--w-hair);color:var(--text)}
-.emb-publish-text p{margin-top:6px;font-size:var(--fs-micro);color:var(--dim);
-  line-height:var(--lh-body)}
 .emb-publish-ctl{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
 
 /* Snippet and data address side by side while there is room. */
@@ -1129,8 +1117,6 @@ body.has-savebar .acting-mark{bottom:calc(var(--ms-savebar-h,72px) + 12px)}
   gap:22px}
 .emb-copy-head h4{font-family:var(--font-display);font-size:var(--fs-sm);
   font-weight:var(--w-hair);color:var(--text)}
-.emb-copy-head p{margin:5px 0 10px;font-size:var(--fs-micro);color:var(--dim);
-  line-height:var(--lh-body)}
 .emb-codewrap{position:relative}
 .emb-code{margin:0;background:var(--bg);border:1px solid var(--line-hard);
   border-radius:var(--radius);padding:14px 16px;padding-right:84px;
@@ -1147,8 +1133,6 @@ body.has-savebar .acting-mark{bottom:calc(var(--ms-savebar-h,72px) + 12px)}
 @media(hover:hover){ .emb-guide:hover{border-color:var(--voice-tech);
   color:var(--voice-tech-hi)} }
 .emb-guide:focus-visible{outline:2px solid var(--voice-tech);outline-offset:2px}
-.emb-guide-sub{display:block;margin-top:4px;color:var(--dim);font-weight:400;
-  line-height:var(--lh-body)}
 
 
 /* ============================================================
@@ -1241,7 +1225,6 @@ body.has-savebar .acting-mark{bottom:calc(var(--ms-savebar-h,72px) + 12px)}
    screens are visibly the same control rather than two takes on it. */
 .ml-colours{margin:14px 0 6px;padding-top:14px;border-top:1px solid var(--line)}
 .ml-colours .emb-controls{margin:10px 0 12px}
-.ml-colours .hint{display:block;margin-top:8px;line-height:1.45}
 #mlSnippet{width:100%;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
   font-size:11.5px;line-height:1.5;resize:vertical}
 
@@ -1586,9 +1569,6 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
    there. */
 .emb-scale-note{font-size:11px;color:var(--dim,#8a93a3);
   font-variant-numeric:tabular-nums;white-space:nowrap}
-.ct-colours{display:block;margin:10px 2px 26px;line-height:1.5;max-width:70ch}
-.emb-lede{margin:0;font-size:12.5px;color:var(--dim,#8a93a3);line-height:1.5;
-  max-width:56ch}
 
 /* ============================================================
    THE SUBSCRIBER LIST
@@ -1658,7 +1638,6 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
   font-size:10px;font-family:var(--font-display);font-weight:var(--w-bold);
   letter-spacing:var(--ls-caps);text-transform:uppercase;color:var(--dim,#8a93a3)}
 .subs-edit input{font-size:13px;padding:7px 10px}
-.subs-edit-note{flex:1 1 100%;font-size:11px;color:var(--dim,#8a93a3);line-height:1.5}
 .subs tr.is-editing{background:var(--bg2,#0b1119)}
 
 .subs-pager{display:flex;align-items:center;gap:14px;margin-top:12px}
@@ -1949,8 +1928,7 @@ html:not(.roles-known)[data-area="admin"] .console-row[data-row="admin"] nav a{d
 /* The share switch is the card's own state, so it stays above the actions
    that act on it. */
 .res-shelf .res-toggle{order:98;margin-top:12px;align-self:flex-start}
-.res-shelf h3{font-size:16px;margin:0 0 4px}
-.res-shelf-note{margin:0 0 14px;font-size:13px;color:var(--dim);max-width:60ch}
+.res-shelf h3{font-size:16px;margin:0 0 14px}
 /* Where a shared card says who passed it on — the answer to "how did I get
    this", which is the question somebody asks about an unexpected document. */
 .res-from{margin:6px 0 0;font-size:12.5px;color:var(--dim);font-style:italic}
@@ -2039,7 +2017,6 @@ html:not(.roles-known)[data-area="admin"] .console-row[data-row="admin"] nav a{d
 /* The forms inside the dialog sit apart from the list they add to. */
 .sw-form{margin:16px 0 4px;padding:16px;border:1px solid var(--line);
   border-radius:var(--radius);background:rgba(0,0,0,.18);gap:14px}
-.sw-form .hint{margin:0}
 
 /* A checkbox and its words on one line. The console had no generic one of
    these — the only checkbox with a label was inside the embed panel and its

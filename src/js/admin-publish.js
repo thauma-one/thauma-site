@@ -390,7 +390,6 @@
     $('pBarCount').textContent = n
       ? (n === 1 ? tr('pub.oneWaiting') : tr('pub.nWaiting').replace('{n}', n))
       : tr('pub.upToDate');
-    $('pBarNote').textContent = n ? tr('pub.barNote') : '';
 
     /* The two SHAs, in the manual panel. When somebody is convinced the page
        is lying to them, this is the line that settles it — the live branch's

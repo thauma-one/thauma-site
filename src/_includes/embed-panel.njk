@@ -29,10 +29,6 @@
 <section class="emb-panel" data-emb="panel" hidden>
 
   <div class="emb-stagebar">
-    <p class="emb-lede" data-i18n="{{ 'emb.ledeRoadmap' if embedWidget == 'roadmap' else ('emb.ledePrayer' if embedWidget == 'prayer' else ('emb.ledeVideos' if embedWidget == 'videos' else 'emb.ledeGoal')) }}">
-      This is exactly what somebody sees when they put it on their own site.
-    </p>
-
     {#- DESKTOP OR MOBILE. The widget chooses its layout from the width it is
        actually given, not from a media query — so narrowing the frame is not
        a simulation of a phone, it is the same decision a phone would cause.
@@ -100,7 +96,6 @@
   <div class="emb-period">
     <div class="emb-period-text">
       <h4 data-i18n="emb.periodTitle">The period this covers</h4>
-      <p data-i18n="emb.periodDesc">Set both and the roadmap is drawn against these dates, with the line filling as time passes. Leave them empty and it spans your milestones instead — which means the last one always sits at the end.</p>
     </div>
     <div class="emb-period-fields">
       <label class="emb-field">
@@ -116,20 +111,12 @@
   </div>
   {% endif %}
 
-  <p class="emb-shared" data-i18n="emb.sharedNote">
-    Colors are shared by every widget this ministry publishes. The language
-    belongs to this snippet only.
-  </p>
-
   {#- THE PUBLICATION DECISION, worded as what it does rather than as a setting
      name. Everything above works whether this is on or off, because you should
      be able to look before you decide. -#}
   <div class="emb-publish">
     <div class="emb-publish-text">
       <h4 data-i18n="emb.shareTitle">Let other websites show this</h4>
-      <p data-emb="shareDesc" data-i18n="emb.shareOff">
-        Nobody can use the code below yet.
-      </p>
     </div>
     <div class="emb-publish-ctl">
       <button type="button" class="switch" role="switch" aria-checked="false" data-emb="on">
@@ -147,7 +134,6 @@
     <div class="emb-copy">
       <div class="emb-copy-head">
         <h4 data-i18n="emb.snippetTitle">The code to paste</h4>
-        <p data-i18n="emb.snippetDesc">For anyone who just wants the picture on their page.</p>
       </div>
       <div class="emb-codewrap">
         <pre class="emb-code" data-emb="code"></pre>
@@ -158,7 +144,6 @@
     <div class="emb-copy">
       <div class="emb-copy-head">
         <h4 data-i18n="emb.apiTitle">The data behind it</h4>
-        <p data-i18n="emb.apiDesc">For anyone building their own design. Plain JSON, same numbers, no key needed.</p>
       </div>
       <div class="emb-codewrap">
         <pre class="emb-code" data-emb="api"></pre>
@@ -166,7 +151,6 @@
       </div>
       <a class="emb-guide" data-emb="guide" download>
         <span data-i18n="emb.guide">Download the developer guide</span>
-        <span class="emb-guide-sub" data-i18n="emb.guideSub">Markdown — how to read the data, and how to keep working when goals or milestones are added.</span>
       </a>
     </div>
   </div>

@@ -150,7 +150,6 @@
       if ($('notAdmin')) $('notAdmin').hidden = false;
       $('cRoot').hidden = true;
       document.querySelector('.c-bar').hidden = true;
-      $('cNote').hidden = true;
       if (window.StaffProblemClear) window.StaffProblemClear();
       return null;
     }
@@ -176,7 +175,6 @@
     el.hidden = false;
     $('cRoot').hidden = true;
     document.querySelector('.c-bar').hidden = true;
-    $('cNote').hidden = true;
   }
 
   async function boot() {
@@ -415,8 +413,6 @@
     $('cDirtyCount').textContent = d.length === 1
       ? tr('con.oneChange')
       : d.length + ' ' + tr('con.nChanges');
-    $('cSaveNote').textContent =
-      tr('con.saveBarNote').replace('{lang}', state.file).replace('{branch}', state.branch);
   }
 
   /* ---- adding a language ----------------------------------------------

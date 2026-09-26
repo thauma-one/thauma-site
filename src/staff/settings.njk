@@ -4,7 +4,6 @@ staffPage: settings
 staffNum: "07"
 staffTitle: Settings
 staffHeading: How this <b>works</b>
-staffHint: some of these change what the public sees
 ---
 {#- Tabs rather than one long page: these groups have different audiences and
    different blast radii. Account is about you. Languages and API keys change
@@ -27,17 +26,13 @@ staffHint: some of these change what the public sees
       <p id="setEmail">—</p>
     </div>
     <div class="set-control">
-      {#- THERE IS STILL NO PASSWORD. Access owns sign-in and sends a one-time
-         code, so pretending otherwise would send people hunting for a control
-         that does not exist. The ADDRESS is different: it is the identity
-         here, so a typo in it needs an administrator and a Cloudflare
-         dashboard to fix unless this exists. -#}
-      <p class="note-inline" data-i18n="set.identityNote">There is no password. Signing in sends a one-time code to your address, so changing that address is the one thing worth doing here.</p>
-
+      {#- NO PASSWORD CONTROL, because there is no password: Access owns
+         sign-in and sends a one-time code. The ADDRESS is the identity here,
+         so a typo in it needs an administrator and a Cloudflare dashboard to
+         fix unless this exists. -#}
       <form class="set-email" id="setEmailForm">
         <label class="fld">
           <span data-i18n="set.newEmail">New email address</span>
-          <em data-i18n="set.newEmailHint">nothing changes until you open the link we send there</em>
           <input type="email" id="setNewEmail" autocomplete="email" spellcheck="false"
                  placeholder="you@example.org">
         </label>
@@ -50,7 +45,6 @@ staffHint: some of these change what the public sees
   <div class="set-row">
     <div class="set-label">
       <h3 data-i18n="set.yourAccess">Your access</h3>
-      <p data-i18n="set.accessNote">What this account is allowed to do. Changed by an administrator.</p>
     </div>
     <div class="set-control">
       <div class="role-tags" id="setRoles"></div>
@@ -66,23 +60,15 @@ staffHint: some of these change what the public sees
   <div class="set-row">
     <div class="set-label">
       <h3 id="setPrefLangLabel" data-i18n="set.yourLanguage">Your language</h3>
-      <p data-i18n="set.yourLanguageDesc">Translates this console and opens the milestone editor in the same language.</p>
-      <p class="note-inline" data-i18n="set.yourLanguageNote">Affects only you.
-        It changes nothing a visitor sees, whatever your role.</p>
     </div>
     <div class="set-control">
       <select id="setPrefLang" class="lang-pick" aria-labelledby="setPrefLangLabel"></select>
     </div>
   </div>
 
-  <p class="note" data-i18n-html="set.publicWarn"><b>Everything below changes what partner websites serve.</b> A language
-    switched on here is offered to visitors; one switched off disappears from
-    the public API. Translations you have already written are kept either way.</p>
-
   <div class="set-row set-row-block">
     <div class="set-label">
       <h3 data-i18n="set.publishedLanguages">Published languages</h3>
-      <p data-i18n="set.publishedDesc">Switch a language on to translate into it and serve it on partner sites. The site's default language cannot be switched off.</p>
     </div>
     <div class="set-control" id="setLangList"></div>
   </div>
@@ -90,13 +76,9 @@ staffHint: some of these change what the public sees
 
 <!-- ================================================================ KEYS -->
 <section class="tab-panel" data-panel="keys" role="tabpanel" hidden>
-  <p class="note" data-i18n-html="set.keysNote">An API key lets a partner website read your <b>published</b> milestones and
-    goal totals at build time. It can read nothing else — no contacts, no
-    interactions, no drafts.</p>
-
   <div class="ms-bar key-create">
-    <input type="text" id="setKeyName" class="key-name" maxlength="80" data-i18n-attr="placeholder:set.keyPlaceholder,aria-label:set.keyPlaceholder" aria-label="What is this key for? e.g. chaseroush.com build"
-           placeholder="What is this key for? e.g. chaseroush.com build">
+    <input type="text" id="setKeyName" class="key-name" maxlength="80" data-i18n-attr="placeholder:set.keyPlaceholder,aria-label:set.keyPlaceholder" aria-label="What is this key for?"
+           placeholder="What is this key for?">
     <button type="button" class="solid-btn" id="setKeyAdd"
             data-i18n="set.createKey">Create key</button>
   </div>
@@ -105,11 +87,12 @@ staffHint: some of these change what the public sees
      hash. Deliberately loud, because there is no second chance to copy it. -#}
   <div class="key-reveal" id="setKeyReveal" hidden>
     <h4 data-i18n="set.keyRevealTitle">Copy this now — it cannot be shown again</h4>
+    {#- The variable name is a LABEL on the value, not a sentence about it:
+        it is what the partner site's build reads, so it is the one thing
+        whoever pastes this has to get right. Not translated — it is a name. -#}
+    <span class="key-var">THAUMA_API_KEY</span>
     <code id="setKeyValue"></code>
     <button type="button" class="ghost-btn" id="setKeyCopy" data-i18n="common.copy">Copy</button>
-    <p data-i18n-html="set.keyRevealNote">Store it in the partner site's build environment as
-       <code>THAUMA_API_KEY</code>. Never in a repository, and never in
-       client-side JavaScript.</p>
   </div>
 
   <div class="key-list" id="setKeyList"></div>

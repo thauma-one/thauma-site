@@ -267,12 +267,12 @@
 
     /* Nothing to choose from is not a form problem to solve by typing — it is
        something an administrator has to do. Say which, rather than leaving an
-       empty dropdown that reads as broken. */
-    var hint = sel.parentNode.querySelector('.fld-hint');
-    if (hint) {
-      hint.textContent = state.senders.length
-        ? (tr('ml.fromEmailHintPick') || hint.textContent)
-        : (tr('ml.fromNone') || hint.textContent);
+       empty dropdown that reads as broken. Only then: with addresses to pick
+       from, the dropdown needs no words beside it. */
+    var none = $('mlFromNone');
+    if (none) {
+      none.textContent = state.senders.length ? '' : tr('ml.fromNone');
+      none.hidden = !!state.senders.length;
     }
   }
 
@@ -683,14 +683,6 @@
         '<button type="submit" class="solid-btn" data-i18n="ml.editSave">Save</button>' +
         '<button type="button" class="ghost-btn" data-edit-cancel="1" ' +
           'data-i18n="ms.cancel">Cancel</button>' +
-        /* SAID BEFORE, NOT AFTER. Changing an address sends the row back to
-           unconfirmed and emails a fresh confirmation — because otherwise
-           "edit" is a way to subscribe any address without its owner ever
-           agreeing. Somebody correcting a typo should know that before they
-           press Save, not discover it from a status that changed. */
-        '<span class="subs-edit-note" data-i18n="ml.editNote">Changing the address ' +
-          'sends them a new confirmation, and they count as unconfirmed until they ' +
-          'click it. Changing the name does not.</span>' +
       '</form></td>';
     if (window.StaffI18n) window.StaffI18n.apply(row);
     var first = row.querySelector('[data-edit="name"]');
@@ -792,7 +784,6 @@
     var preview = !open.length
       ? '<p class="hint">' + esc(tr('ml.embedNoneOpen')) + '</p>'
       : '<div class="emb-stagebar">' +
-          '<p class="emb-lede">' + esc(tr('ml.embedLede')) + '</p>' +
           '<div class="emb-devices" role="tablist" aria-label="Width">' +
             '<button type="button" class="emb-device is-on" role="tab" ' +
               'aria-selected="true" data-pv-width="wide">' + esc(tr('emb.desktop')) + '</button>' +
@@ -870,8 +861,7 @@
               '</div>' +
               (state.mayTheme
                 ? '<button type="button" class="ghost-btn" data-save-colours="1">' +
-                    esc(tr('emb.saveColours')) + '</button>' +
-                  '<p class="hint">' + esc(tr('emb.sharedShort')) + '</p>'
+                    esc(tr('emb.saveColours')) + '</button>'
                 : '<p class="rolegate">' + esc(tr('emb.adminOnly')) + '</p>') +
             '</div>' +
 
@@ -1074,9 +1064,7 @@
     renderTopics();
 
     /* SHOWN WHETHER OR NOT THE FORM IS LIVE. It was hidden until then, and
-       that made the embed code look like it did not exist. The reason it will
-       not work yet is said instead of the code being taken away. */
-    $('ctEmbedOff').hidden = !!c.is_open;
+       that made the embed code look like it did not exist. */
     var who = state.scope === 'organization' ? 'thauma' : state.partnerSlug;
     $('ctSnippet').value = who
       ? '<div data-thauma-contact></div>\n' +
@@ -1649,7 +1637,7 @@
     if (!res.ok) { setStatus($('mlAddStatus'), body.error || tr('err.refused')); return; }
 
     $('mlNewEmail').value = ''; $('mlNewName').value = '';
-    setStatus($('mlAddStatus'), tr('ml.addNote'));
+    setStatus($('mlAddStatus'), '');
 
     /* Which of the two happened. The row exists and is pending either way, and
        somebody waiting on a confirmation that never left deserves to know now. */

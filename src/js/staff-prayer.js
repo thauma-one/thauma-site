@@ -143,7 +143,7 @@
         el.value = v[el.getAttribute('data-ptx')] || '';
       });
       var tag = $(col === 'a' ? 'prTagA' : 'prTagB');
-      if (tag) tag.textContent = (v.title ? '' : tr('ms.untranslated'));
+      if (tag) tag.textContent = (v.title ? '' : tr('ms.missing'));
     });
   }
 

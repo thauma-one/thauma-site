@@ -4,7 +4,6 @@ adminPage: site
 adminNum: "05"
 adminTitle: Site
 adminHeading: Site <b>settings</b>
-adminHint: the switches the public site is built from
 adminScript: /js/admin-site.js
 permalink: /admin/site/index.html
 ---
@@ -23,11 +22,6 @@ permalink: /admin/site/index.html
    NEXT time it is built, so the changes gather and go out together when
    somebody publishes. -#}
 
-<p class="note" id="sNote">
-  <b>Saving does not change the website.</b> These settings are stored and
-  nothing else happens. Use <b>Publish</b> when you want them to take effect.
-</p>
-
 <p class="rolegate" id="sNotConfigured" hidden></p>
 
 <div class="adm-site" id="sRoot" hidden></div>
@@ -35,7 +29,6 @@ permalink: /admin/site/index.html
 <div class="ms-savebar" id="sSaveBar" role="status" aria-live="polite" hidden>
   <span class="ms-dirty-dot" aria-hidden="true"></span>
   <span id="sDirtyCount">0 unsaved changes</span>
-  <span class="ms-savebar-note" id="sSaveNote"></span>
   <button type="button" class="ghost-btn" id="sDiscard" data-i18n="ms.discard">Discard</button>
   <button type="button" class="solid-btn" id="sSave" data-i18n="con.save">Save</button>
 </div>

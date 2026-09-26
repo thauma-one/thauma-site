@@ -285,16 +285,15 @@
     if (!$('resourceList')) return;
 
     var shelves = [
-      { key: 'institutional', title: tr('res.shelfOrg'), note: tr('res.shelfOrgNote') },
+      { key: 'institutional', title: tr('res.shelfOrg') },
       /* NAMED, not "Mine". Three headings where one says a person's name reads
          as a place rather than a filter — and the same page is read by
          somebody an administrator is viewing as, where "Mine" would be a lie
          about whose shelf it is. Falls back when the name is not known yet. */
       { key: 'mine',
         title: state.whoName ? fill('res.shelfNamed', { who: state.whoName })
-                             : tr('res.shelfMine'),
-        note: tr('res.shelfMineNote') },
-      { key: 'shared', title: tr('res.shelfShared'), note: tr('res.shelfSharedNote') },
+                             : tr('res.shelfMine') },
+      { key: 'shared', title: tr('res.shelfShared') },
     ];
 
     var html = shelves.map(function (sh) {
@@ -310,7 +309,6 @@
 
       return '<section class="res-shelf" data-shelf="' + sh.key + '">' +
         '<h3>' + esc(sh.title) + '</h3>' +
-        '<p class="res-shelf-note">' + esc(sh.note) + '</p>' +
         '<div class="cards">' +
           (rows.length
             ? rows.map(function (r) {

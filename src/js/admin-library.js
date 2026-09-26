@@ -58,69 +58,43 @@
      asking questions that do not apply. */
   var FIELDS = {
     resources: [
-      { name: 'moment', kind: 'choice', label: 'Which moment', vocab: 'moment',
-        hint: 'What is the person doing when they need this? Crisis is something ' +
-              'broken now; growth is learning with time; planning is deciding what ' +
-              'to buy; lookup is the glossary.' },
-      { name: 'format', kind: 'choice', label: 'Format', vocab: 'format',
-        hint: 'Crisis material is better as text and diagrams — panic has no ' +
-              'patience for a video.' },
+      { name: 'moment', kind: 'choice', label: 'Which moment', vocab: 'moment' },
+      { name: 'format', kind: 'choice', label: 'Format', vocab: 'format' },
       { name: 'symptoms', kind: 'tags', label: 'Symptoms',
-        when: function (it) { return it.moment === 'crisis'; },
-        hint: 'What somebody would actually say out loud: "no sound", "one ' +
-              'channel dead". The one place an open vocabulary earns itself.' },
-      { name: 'pinned', kind: 'flag', label: 'Keep at the top',
-        hint: 'For material everything else refers to — the glossary — so newer ' +
-              'items do not bury it.' },
-      { name: 'link', kind: 'text', label: 'Link (optional)',
-        placeholder: 'thauma.one/guide',
-        hint: 'Somewhere this points to — a download, a video, a page. ' +
-              'https:// is added if you leave it off.' },
-      { name: 'photo', kind: 'photo', label: 'Picture (optional)' }
+        when: function (it) { return it.moment === 'crisis'; } },
+      { name: 'pinned', kind: 'flag', label: 'Keep at the top' },
+      { name: 'link', kind: 'text', label: 'Link',
+        placeholder: 'thauma.one/guide' },
+      { name: 'photo', kind: 'photo', label: 'Picture' }
     ],
     gatherings: [
-      { name: 'type', kind: 'choice', label: 'Kind', vocab: 'type',
-        hint: 'A gathering happens once. A cohort runs over several sessions.' },
-      { name: 'status', kind: 'choice', label: 'Status', vocab: 'status',
-        hint: 'Set deliberately, never worked out from the date — a canceled ' +
-              'gathering is not "upcoming" because its date has not passed yet.' },
+      { name: 'type', kind: 'choice', label: 'Kind', vocab: 'type' },
+      { name: 'status', kind: 'choice', label: 'Status', vocab: 'status' },
       { name: 'date', kind: 'date', label: 'First day',
         when: function (it) { return it.type !== 'cohort'; } },
-      { name: 'end_date', kind: 'date', label: 'Last day (if more than one)',
-        when: function (it) { return it.type !== 'cohort'; },
-        hint: 'Leave empty for a single day. A weekend is two dates, not a ' +
-              'sentence somebody has to read to work it out.' },
+      { name: 'end_date', kind: 'date', label: 'Last day',
+        when: function (it) { return it.type !== 'cohort'; } },
       { name: 'time', kind: 'text', label: 'Time', placeholder: '10:00',
         when: function (it) { return it.type !== 'cohort'; } },
       { name: 'location', kind: 'text', label: 'Where',
         placeholder: 'Kuća molitve, Zagreb',
-        when: function (it) { return it.type !== 'cohort'; },
-        hint: 'Written as you would say it. The page turns it into a link that ' +
-              'opens the reader\'s own maps app.' },
+        when: function (it) { return it.type !== 'cohort'; } },
       { name: 'cohort_name', kind: 'text', label: 'Cohort name',
         placeholder: 'Cohort 1', when: function (it) { return it.type === 'cohort'; } },
       { name: 'capacity', kind: 'text', label: 'Places',
         when: function (it) { return it.type === 'cohort'; } },
       { name: 'application_required', kind: 'flag', label: 'Application needed',
-        when: function (it) { return it.type === 'cohort'; },
-        hint: 'Off means anybody can register. On means you decide who joins.' },
+        when: function (it) { return it.type === 'cohort'; } },
       { name: 'cadence', kind: 'choice', label: 'How often they meet', vocab: 'cadence',
-        when: function (it) { return it.type === 'cohort'; },
-        hint: 'Said once here instead of being implied by a list of dates. ' +
-              'Choose Custom for anything that does not follow a rule — first ' +
-              'Monday of the month, or nothing regular at all.' },
+        when: function (it) { return it.type === 'cohort'; } },
       { name: 'location', kind: 'text', label: 'Where they meet',
         placeholder: 'Kuća molitve, Zagreb',
-        when: function (it) { return it.type === 'cohort'; },
-        hint: 'The page turns this into a link that opens the reader\'s own maps app.' },
-      { name: 'sessions', kind: 'sessions', label: 'The meetings themselves',
+        when: function (it) { return it.type === 'cohort'; } },
+      { name: 'sessions', kind: 'sessions', label: 'Each time the group meets',
         when: function (it) { return it.type === 'cohort'; } },
       { name: 'registration', kind: 'text', label: 'How to register',
-        placeholder: 'thauma.one/register  ·  hello@thauma.one',
-        hint: 'A link or an email address — https:// or mailto: is added for ' +
-              'you. Plain words are left alone, so "ask Chase" stays a note ' +
-              'rather than becoming a broken link.' },
-      { name: 'photo', kind: 'photo', label: 'Picture (optional)' }
+        placeholder: 'thauma.one/register  ·  hello@thauma.one' },
+      { name: 'photo', kind: 'photo', label: 'Picture' }
     ]
   };
 
@@ -291,8 +265,6 @@
   function field(collection, item, spec) {
     if (spec.when && !spec.when(item)) return '';
     var v = item[spec.name];
-    var hint = spec.hint
-      ? '<span class="fld-hint">' + esc(spec.hint) + '</span>' : '';
     var id = 'f-' + spec.name;
 
     if (spec.kind === 'choice') {
@@ -301,19 +273,18 @@
           esc(label(o)) + '</option>';
       }).join('');
       return '<label class="fld"><span>' + esc(spec.label) + '</span>' +
-        '<select data-lib-field="' + esc(spec.name) + '">' + options + '</select>' +
-        hint + '</label>';
+        '<select data-lib-field="' + esc(spec.name) + '">' + options + '</select></label>';
     }
     if (spec.kind === 'flag') {
       return '<label class="fld lib-flag"><span>' + esc(spec.label) + '</span>' +
         '<input type="checkbox" data-lib-field="' + esc(spec.name) + '"' +
-          (v ? ' checked' : '') + '>' + hint + '</label>';
+          (v ? ' checked' : '') + '></label>';
     }
     if (spec.kind === 'tags') {
       return '<label class="fld"><span>' + esc(spec.label) + '</span>' +
         '<input type="text" data-lib-field="' + esc(spec.name) + '" data-lib-list-field="1"' +
           ' value="' + esc((v || []).join(', ')) + '"' +
-          ' placeholder="no sound, one channel dead">' + hint + '</label>';
+          ' placeholder="no sound, one channel dead"></label>';
     }
     if (spec.kind === 'date') {
       /* A REAL DATE CONTROL, not a text box with a hopeful placeholder. Left
@@ -336,7 +307,7 @@
       }
       return '<label class="fld"><span>' + esc(spec.label) + '</span>' +
         '<input type="date" data-lib-field="' + esc(spec.name) + '"' +
-          ' value="' + esc(v || '') + '">' + hint + '</label>';
+          ' value="' + esc(v || '') + '"></label>';
     }
     if (spec.kind === 'photo') {
       /* A REAL UPLOAD, not a path. "Photo path (optional)" was a text box
@@ -362,7 +333,7 @@
                '<button type="button" class="del" data-lib-unphoto>' +
                  esc(tr('lib.removePhoto', 'Remove')) + '</button>' : '') +
         '</div>' +
-        '<span class="hint" data-lib-shot-status></span>' + hint +
+        '<span class="hint" data-lib-shot-status></span>' +
       '</div>';
     }
     if (spec.kind === 'sessions') {
@@ -375,11 +346,6 @@
         '</div>';
       }).join('');
       return '<div class="fld lib-sessions"><span>' + esc(spec.label) + '</span>' +
-        '<span class="fld-hint">' + esc(tr('lib.sessionsWhat',
-          'One row per time the group gets together — the date it happens and ' +
-          'what that meeting covers. A cohort that runs six evenings has six ' +
-          'rows. Leave the last one blank; a new one appears as you fill it.')) +
-        '</span>' +
         '<div class="lib-session lib-session-head"><span>' +
           esc(tr('lib.sessionDate', 'Date')) + '</span><span>' +
           esc(tr('lib.sessionTopic', 'What it covers')) + '</span></div>' +
@@ -388,8 +354,7 @@
     return '<label class="fld"><span>' + esc(spec.label) + '</span>' +
       '<input type="text" data-lib-field="' + esc(spec.name) + '"' +
         ' value="' + esc(v || '') + '"' +
-        (spec.placeholder ? ' placeholder="' + esc(spec.placeholder) + '"' : '') + '>' +
-      hint + '</label>';
+        (spec.placeholder ? ' placeholder="' + esc(spec.placeholder) + '"' : '') + '></label>';
   }
 
   function editor(collection, item) {
@@ -428,9 +393,8 @@
 
       '<div class="adm-section">' +
         '<span class="adm-label">' + esc(tr('lib.body', 'The full text')) + '</span>' +
-        '<textarea class="lib-body" data-lib-body rows="10" placeholder="' +
-          esc(tr('lib.bodyHint', 'Markdown. One clean topic — a title, a summary ' +
-                 'and this.')) + '">' + esc(item.body || '') + '</textarea>' +
+        '<textarea class="lib-body" data-lib-body rows="10">' +
+          esc(item.body || '') + '</textarea>' +
       '</div>' +
 
       '<div class="adm-section adm-danger">' +

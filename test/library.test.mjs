@@ -270,7 +270,10 @@ await check("a cohort is asked how often it meets, and a one-off is not", async 
 
 await check("the session table says what a session IS", async () => {
   /* "I don't understand what sessions means" was a fair question about two
-     unlabelled boxes under a bare heading. */
+     unlabelled boxes under a bare heading. The answer is in the LABELS — the
+     heading and the two columns — not in a paragraph under them: "if an
+     interface needs a sentence to explain how to operate it, the interface
+     needs work" (Chase, 2026-09-25). */
   const { w, d } = await boot({ gatherings: [] });
   d.querySelector('[data-lib-add="gatherings"]').dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
   await new Promise((r) => setTimeout(r, 60));
@@ -284,8 +287,9 @@ await check("the session table says what a session IS", async () => {
   assert(/Date/i.test(head.textContent) && /covers/i.test(head.textContent),
     `the columns say: ${head.textContent}`);
   const block = panel.querySelector(".lib-sessions");
-  assert(/each time the group|time the group gets together/i.test(block.textContent),
-    "nothing explains what a session is");
+  assert(/each time the group meets/i.test(block.querySelector(":scope > span").textContent),
+    "the heading does not say what a session is");
+  assert(!block.querySelector(".fld-hint"), "a paragraph is explaining the table again");
 });
 
 /* ----------------------------------------------------------------- pictures */

@@ -67,23 +67,6 @@
     });
   }
 
-  /* Sentences for the settings that decide something big. A switch labeled
-     `comingSoon` tells you its name; it does not tell you that it is the
-     difference between a holding page and a website. */
-  var EXPLAIN = {
-    defaultLang: 'con.f.defaultLang',
-    languages: 'con.f.languages',
-    url: 'con.f.url'
-  };
-
-  /* A whole GROUP can carry an explanation, not just a field. `donorbox` is
-     four blank boxes labeled en / hr / sr with nothing saying what belongs in
-     them — which is how a setting ends up permanently empty. */
-  var GROUP_EXPLAIN = {
-    donorbox: 'con.g.donorbox',
-    socials: 'con.g.socials'
-  };
-
   /* ---- loading -------------------------------------------------------- */
 
   async function get() {
@@ -101,7 +84,7 @@
     }
     if (res.status === 403) {
       if ($('notAdmin')) $('notAdmin').hidden = false;
-      $('sRoot').hidden = true; $('sNote').hidden = true;
+      $('sRoot').hidden = true;
       if (window.StaffProblemClear) window.StaffProblemClear();
       return null;
     }
@@ -126,7 +109,7 @@
       el.innerHTML = '<b>' + esc(tr('con.notConnected')) + '</b> ' +
                      esc(body.reason || body.error || '');
       el.hidden = false;
-      $('sRoot').hidden = true; $('sNote').hidden = true;
+      $('sRoot').hidden = true;
       return;
     }
 
@@ -191,8 +174,7 @@
      Technically complete and unusable: nothing on screen says these four
      belong together, and nothing says what a focal point is.
 
-     One card per image, human labels, and a sentence explaining the idea
-     once rather than implying it four times. */
+     One card per image, with human labels. */
 
   var IMAGE_FIELD = {
     src:     'set.img.file',
@@ -221,7 +203,6 @@
 
     return '<section class="s-group">' +
       '<h3>' + esc(tr('set.img.title')) + '</h3>' +
-      '<p class="v-note">' + esc(tr('set.img.explain')) + '</p>' +
       ids.map(function (id) {
         var src = state.draft['images.' + id + '.src'] || '';
         return '<div class="s-img">' +
@@ -262,8 +243,7 @@
      also the one setting on this page nobody can edit here, so it had the most
      space and the least purpose.
 
-     Collapsed to a single row, with a note pointing at the buttons that DO
-     change it. */
+     Collapsed to a single row. */
   function isFrozenList(p) {
     return state.frozen.some(function (f) { return p.indexOf(f + '.') === 0; });
   }
@@ -274,8 +254,7 @@
       .map(function (p) { return state.draft[p]; });
     if (!values.length) return '';
     return '<div class="s-field is-frozen">' +
-      '<div class="s-label"><code>' + esc(name) + '</code>' +
-        '<span class="s-hint">' + esc(tr('con.f.languages')) + '</span></div>' +
+      '<div class="s-label"><code>' + esc(name) + '</code></div>' +
       '<div class="s-control"><span class="s-frozen">' +
         esc(values.join(' · ')) + '</span></div>' +
     '</div>';
@@ -318,7 +297,6 @@
         });
         return '<section class="s-group">' +
           '<h3>' + esc(groupLabel(g)) + '</h3>' +
-          (GROUP_EXPLAIN[g] ? '<p class="v-note">' + esc(tr(GROUP_EXPLAIN[g])) + '</p>' : '') +
           rows.map(function (p) {
             /* The language list goes immediately under `defaultLang`, because
                that is the setting it explains: one says which language a
@@ -357,10 +335,9 @@
       '</button></span>';
   }
 
-  function visRow(label, base, hint, removableCode) {
+  function visRow(label, base, removableCode) {
     return '<div class="v-row' + (removableCode ? ' has-remove' : '') + '">' +
-      '<div class="v-label"><code>' + esc(label) + '</code>' +
-        (hint ? '<span class="s-hint">' + esc(hint) + '</span>' : '') + '</div>' +
+      '<div class="v-label"><code>' + esc(label) + '</code></div>' +
       switchCell(base + '.dev', 'is-dev') +
       switchCell(base + '.live', 'is-live') +
       /* Only languages can be removed. A page or a section is part of the
@@ -395,16 +372,14 @@
     var head =
       '<div class="v-head">' +
         '<div class="v-label"></div>' +
-        '<span class="v-cell is-dev"><b>' + esc(tr('vis.devCol')) + '</b>' +
-          '<span>' + esc(tr('vis.devColNote')) + '</span></span>' +
-        '<span class="v-cell is-live"><b>' + esc(tr('vis.liveCol')) + '</b>' +
-          '<span>' + esc(tr('vis.liveColNote')) + '</span></span>' +
+        '<span class="v-cell is-dev"><b>' + esc(tr('vis.devCol')) + '</b></span>' +
+        '<span class="v-cell is-live"><b>' + esc(tr('vis.liveCol')) + '</b></span>' +
       '</div>';
 
     var body = '';
     if (hasComingSoon) {
       body += '<div class="v-sub">' + esc(tr('vis.wholeSite')) + '</div>' +
-        visRow(tr('vis.comingSoon'), 'visibility.comingSoon', tr('con.f.comingSoon'));
+        visRow(tr('vis.comingSoon'), 'visibility.comingSoon');
     }
     if (langs.length) {
       /* A language switched off produces no pages at all — not hidden ones.
@@ -413,31 +388,30 @@
          fortnight before any visitor can reach it. */
       body += '<div class="v-sub">' + esc(tr('vis.languages')) + '</div>' +
         langs.map(function (code) {
-          return visRow(langName(code), 'visibility.languages.' + code, '', code);
+          return visRow(langName(code), 'visibility.languages.' + code, code);
         }).join('') +
         /* English is deliberately absent above and named here instead. It is
            the fallback every missing translation resolves to; a site with no
            fallback has nothing to serve when a string is missing. Showing a
-           switch that refuses to move would be worse than explaining why
-           there isn't one. */
+           switch that refuses to move would be worse than a row that says it
+           is always on. */
         '<div class="v-fixed">' + esc(tr('vis.langFallback')) + '</div>';
     }
     if (pages.length) {
       body += '<div class="v-sub">' + esc(tr('vis.pages')) + '</div>' +
         pages.map(function (slug) {
-          return visRow(humanise(slug), 'visibility.pages.' + slug, '');
+          return visRow(humanise(slug), 'visibility.pages.' + slug);
         }).join('');
     }
     if (sections.length) {
       body += '<div class="v-sub">' + esc(tr('vis.sections')) + '</div>' +
         sections.map(function (id) {
-          return visRow(humanise(id), 'visibility.sections.' + id, '');
+          return visRow(humanise(id), 'visibility.sections.' + id);
         }).join('');
     }
 
     return '<section class="s-group v-group">' +
       '<h3>' + esc(tr('vis.title')) + '</h3>' +
-      '<p class="v-note">' + esc(tr('vis.explain')) + '</p>' +
       head + body +
     '</section>';
   }
@@ -456,7 +430,6 @@
     var frozen = isFrozen(p);
     var dirty = !frozen && state.draft[p] !== state.saved[p];
     var label = p.indexOf('.') === -1 ? p : p.slice(p.indexOf('.') + 1);
-    var hint = EXPLAIN[p] ? tr(EXPLAIN[p]) : '';
 
     var control;
     if (frozen) {
@@ -494,7 +467,6 @@
       '<div class="s-label">' +
         '<code>' + esc(label) + '</code>' +
         (dirty ? '<span class="badge unsaved">' + esc(tr('ms.unsaved')) + '</span>' : '') +
-        (hint ? '<span class="s-hint">' + esc(hint) + '</span>' : '') +
       '</div>' +
       '<div class="s-control">' + control + '</div>' +
     '</div>';
@@ -516,7 +488,7 @@
       badge = document.createElement('span');
       badge.className = 'badge unsaved';
       badge.textContent = tr('ms.unsaved');
-      label.insertBefore(badge, label.querySelector('.s-hint') || null);
+      label.appendChild(badge);
     } else if (!dirty && badge) {
       badge.remove();
     }
@@ -529,7 +501,6 @@
     if (!d.length) return;
     $('sDirtyCount').textContent = d.length === 1
       ? tr('con.oneChange') : d.length + ' ' + tr('con.nChanges');
-    $('sSaveNote').textContent = tr('con.saveBarNoteSite').replace('{branch}', state.branch);
   }
 
   /* ---- removing a language --------------------------------------------

@@ -4,7 +4,6 @@ staffPage: ministry
 staffNum: "04"
 staffTitle: Ministry
 staffHeading: What this ministry <b>publishes</b>
-staffHint: four sections, all of them visible to anyone once published
 ---
 {#- FOUR SECTIONS, ONE PAGE.
 
@@ -38,13 +37,6 @@ staffHint: four sections, all of them visible to anyone once published
   <button type="button" class="solid-btn" id="msAdd" data-i18n="ms.add">Add milestone</button>
   <span class="hint" id="msStatus"></span>
 </div>
-
-
-{#- Said plainly and near the toggles, because this is the one screen in the
-   console where a mistake is visible to strangers rather than to staff. -#}
-<p class="note ms-note" data-i18n-html="ms.publishedLeave"><b>Published entries leave this building.</b> Anything switched to Published is
-  served to partner websites through the public API and can be read by anyone.
-  New milestones start unpublished.</p>
 
 <div class="ms-list" id="msList">
   <p class="empty" data-i18n="common.loading">Loading…</p>
@@ -82,7 +74,7 @@ staffHint: four sections, all of them visible to anyone once published
         <input type="text" data-tx="title" data-col="a" maxlength="200"></label>
       <label class="fld"><span data-i18n="ms.description">Description</span>
         <textarea data-tx="description" data-col="a" rows="5"></textarea></label>
-      <label class="fld"><span data-i18n="ms.when">When</span> <em data-i18n="ms.freeText">free text</em>
+      <label class="fld"><span data-i18n="ms.when">When</span>
         <input type="text" data-tx="target_label" data-col="a" maxlength="120"
                placeholder="End of September 2027"></label>
     </div>
@@ -96,7 +88,7 @@ staffHint: four sections, all of them visible to anyone once published
         <input type="text" data-tx="title" data-col="b" maxlength="200"></label>
       <label class="fld"><span data-i18n="ms.description">Description</span>
         <textarea data-tx="description" data-col="b" rows="5"></textarea></label>
-      <label class="fld"><span data-i18n="ms.when">When</span> <em data-i18n="ms.freeText">free text</em>
+      <label class="fld"><span data-i18n="ms.when">When</span>
         <input type="text" data-tx="target_label" data-col="b" maxlength="120"></label>
     </div>
   </div>
@@ -104,7 +96,7 @@ staffHint: four sections, all of them visible to anyone once published
   {#- Language-neutral: true regardless of which language you are reading. -#}
   <div class="ms-grid ms-neutral">
     <label class="fld">
-      <span data-i18n="ms.sortDate">Sort date</span> <em data-i18n="ms.orderingOnly">for ordering only</em>
+      <span data-i18n="ms.sortDate">Sort date</span>
       <input type="date" id="msDate">
     </label>
     <label class="fld">
@@ -117,11 +109,11 @@ staffHint: four sections, all of them visible to anyone once published
       </select>
     </label>
     <label class="fld">
-      <span data-i18n="ms.completion">Completion</span> <em data-i18n="ms.percent">percent</em>
+      <span data-i18n="ms.completion">Completion %</span>
       <input type="number" id="msCompletion" min="0" max="100" step="1" value="0">
     </label>
     <label class="fld">
-      <span data-i18n="ms.partOf">Part of</span> <em data-i18n="ms.optional">optional</em>
+      <span data-i18n="ms.partOf">Part of</span>
       <select id="msParent"><option value="" data-i18n="ms.topLevel">— top level —</option></select>
     </label>
   </div>
@@ -130,13 +122,11 @@ staffHint: four sections, all of them visible to anyone once published
     <button type="button" class="switch" id="msPublic" role="switch" aria-checked="false">
       <span class="switch-track"><span class="switch-state">Off</span><span class="switch-knob"></span></span>
       <span class="switch-label"><span data-i18n="ms.published">Published</span>
-        <span class="switch-note" data-i18n="ms.publishedNote">Visible on partner websites</span>
       </span>
     </button>
     <button type="button" class="switch" id="msFeatured" role="switch" aria-checked="false">
       <span class="switch-track"><span class="switch-state">Off</span><span class="switch-knob"></span></span>
       <span class="switch-label"><span data-i18n="ms.featured">Featured</span>
-        <span class="switch-note" data-i18n="ms.featuredNote">Highlighted on their home page</span>
       </span>
     </button>
   </div>
@@ -145,9 +135,10 @@ staffHint: four sections, all of them visible to anyone once published
     <button type="submit" class="solid-btn" data-i18n="ms.apply">Apply</button>
     <button type="button" class="ghost-btn" id="msCancel" data-i18n="ms.cancel">Cancel</button>
     {#- "Apply" not "Save": this closes the form and updates the list, but
-       nothing reaches the database until Save changes is pressed. Calling
-       both of them Save is how people end up believing work is safe. -#}
-    <span class="hint" id="msFormStatus" data-i18n="ms.applyNote">Applies to the list — save to publish</span>
+       nothing reaches the database until Save changes is pressed. The word
+       and the save bar that appears carry that — calling both of them Save
+       is how people end up believing work is safe. -#}
+    <span class="hint" id="msFormStatus"></span>
   </div>
 </form>
 
@@ -171,10 +162,6 @@ staffHint: four sections, all of them visible to anyone once published
       <button type="button" class="solid-btn" id="glAdd" data-i18n="gl.add">Add goal</button>
       <span class="hint" id="glStatus"></span>
     </div>
-
-    <p class="note ms-note" data-i18n-html="gl.publishedNote"><b>Published goals leave this building.</b> A goal switched to Published is
-      served to partner websites and can be read by anyone. It carries no donor
-      records — only the target, the amount raised and a count.</p>
 
     <div class="ms-list" id="glList">
       <p class="empty" data-i18n="common.loading">Loading…</p>
@@ -225,7 +212,6 @@ staffHint: four sections, all of them visible to anyone once published
          hooked up tomorrow needs no migration. -#}
       <div class="gl-progress">
         <h4 data-i18n="gl.progressTitle">Where it stands</h4>
-        <p data-i18n="gl.progressNote">Entered by hand until a giving platform is connected. Each entry is kept, and the most recent is the one shown.</p>
         <div class="ms-grid">
           <label class="fld">
             <span data-i18n="gl.raised">Raised</span>
@@ -233,7 +219,6 @@ staffHint: four sections, all of them visible to anyone once published
           </label>
           <label class="fld">
             <span data-i18n="gl.donors">Partners giving</span>
-            <em data-i18n="ms.optional">optional</em>
             <input type="number" id="glDonors" min="0" step="1" placeholder="14">
           </label>
         </div>
@@ -243,7 +228,6 @@ staffHint: four sections, all of them visible to anyone once published
         <button type="button" class="switch" id="glPublic" role="switch" aria-checked="false">
           <span class="switch-track"><span class="switch-state">Off</span><span class="switch-knob"></span></span>
           <span class="switch-label"><span data-i18n="ms.published">Published</span>
-            <span class="switch-note" data-i18n="ms.publishedNote">Visible on partner websites</span>
           </span>
         </button>
       </div>
@@ -254,7 +238,7 @@ staffHint: four sections, all of them visible to anyone once published
         {#- Unlike milestones, a goal saves STRAIGHT AWAY. There is no working
            copy to reconcile: one goal is one row, and a save bar for a single
            small form is ceremony. -#}
-        <span class="hint" id="glFormStatus" data-i18n="gl.savesNow">Saves immediately</span>
+        <span class="hint" id="glFormStatus"></span>
       </div>
     </form>
   </div>
@@ -270,10 +254,6 @@ staffHint: four sections, all of them visible to anyone once published
       <button type="button" class="solid-btn" id="prAdd" data-i18n="pr.add">Add request</button>
       <span class="hint" id="prStatus"></span>
     </div>
-
-    <p class="note ms-note" data-i18n-html="pr.publishedNote"><b>Published requests leave this building.</b> Write them as you would want
-      them read by a stranger — anything switched to Published is served to
-      partner websites. New requests start unpublished.</p>
 
     <div class="ms-list" id="prList">
       <p class="empty" data-i18n="common.loading">Loading…</p>
@@ -298,7 +278,6 @@ staffHint: four sections, all of them visible to anyone once published
           <label class="fld"><span data-i18n="pr.detail">Detail</span>
             <textarea data-ptx="description" data-col="a" rows="4"></textarea></label>
           <label class="fld"><span data-i18n="pr.answerText">What happened</span>
-            <em data-i18n="pr.whenAnswered">once answered</em>
             <textarea data-ptx="answer_text" data-col="a" rows="3"></textarea></label>
         </div>
 
@@ -312,7 +291,6 @@ staffHint: four sections, all of them visible to anyone once published
           <label class="fld"><span data-i18n="pr.detail">Detail</span>
             <textarea data-ptx="description" data-col="b" rows="4"></textarea></label>
           <label class="fld"><span data-i18n="pr.answerText">What happened</span>
-            <em data-i18n="pr.whenAnswered">once answered</em>
             <textarea data-ptx="answer_text" data-col="b" rows="3"></textarea></label>
         </div>
       </div>
@@ -320,12 +298,10 @@ staffHint: four sections, all of them visible to anyone once published
       <div class="ms-grid ms-neutral">
         <label class="fld">
           <span data-i18n="pr.answeredOn">Date answered</span>
-          <em data-i18n="ms.optional">optional</em>
           <input type="date" id="prAnsweredOn">
         </label>
         <label class="fld">
-          <span data-i18n="ms.sortDate">Order</span>
-          <em data-i18n="ms.orderingOnly">for ordering only</em>
+          <span data-i18n="pr.order">Order</span>
           <input type="number" id="prSort" step="1" value="0">
         </label>
       </div>
@@ -334,7 +310,6 @@ staffHint: four sections, all of them visible to anyone once published
         <button type="button" class="switch" id="prPublic" role="switch" aria-checked="false">
           <span class="switch-track"><span class="switch-state">Off</span><span class="switch-knob"></span></span>
           <span class="switch-label"><span data-i18n="ms.published">Published</span>
-            <span class="switch-note" data-i18n="ms.publishedNote">Visible on partner websites</span>
           </span>
         </button>
         {#- A boolean, not a status. A prayer is being asked or it has been
@@ -343,7 +318,6 @@ staffHint: four sections, all of them visible to anyone once published
         <button type="button" class="switch" id="prAnswered" role="switch" aria-checked="false">
           <span class="switch-track"><span class="switch-state">Off</span><span class="switch-knob"></span></span>
           <span class="switch-label"><span data-i18n="pr.answered">Answered</span>
-            <span class="switch-note" data-i18n="pr.answeredNote">Shown with the account of what happened</span>
           </span>
         </button>
       </div>
@@ -351,7 +325,7 @@ staffHint: four sections, all of them visible to anyone once published
       <div class="ms-actions">
         <button type="submit" class="solid-btn" data-i18n="pr.save">Save request</button>
         <button type="button" class="ghost-btn" id="prCancel" data-i18n="ms.cancel">Cancel</button>
-        <span class="hint" id="prFormStatus" data-i18n="gl.savesNow">Saves immediately</span>
+        <span class="hint" id="prFormStatus"></span>
       </div>
     </form>
   </div>
@@ -377,15 +351,9 @@ staffHint: four sections, all of them visible to anyone once published
     <span class="hint" id="vidStatus"></span>
   </div>
 
-  <p class="note ms-note" data-i18n-html="vid.lede"><b>Videos are pulled from YouTube, not uploaded here.</b> Point this at a
-    channel and the newest videos are read from its public feed every fifteen
-    minutes, then served to partner websites through the same API as everything
-    else on this page.</p>
-
   <form class="ms-form vid-form" id="vidForm">
     <label class="fld">
       <span data-i18n="vid.channel">YouTube channel or playlist</span>
-      <em data-i18n="vid.channelHint">paste the web address of whichever one you want</em>
       {#- ONE FIELD, NO PICKER. Nobody thinks "I am supplying a playlist
          identifier" — they copy what is in the address bar, and the string
          already says which kind it is. A playlist address carries list=; a
@@ -402,7 +370,6 @@ staffHint: four sections, all of them visible to anyone once published
     <div class="ms-grid ms-neutral">
       <label class="fld">
         <span data-i18n="vid.count">How many to show</span>
-        <em data-i18n="vid.countHint">newest first</em>
         <input type="number" id="vidCount" min="1" max="15" step="1" value="3">
       </label>
     </div>
@@ -411,7 +378,6 @@ staffHint: four sections, all of them visible to anyone once published
       <button type="button" class="switch" id="vidPublic" role="switch" aria-checked="false">
         <span class="switch-track"><span class="switch-state">Off</span><span class="switch-knob"></span></span>
         <span class="switch-label"><span data-i18n="ms.published">Published</span>
-          <span class="switch-note" data-i18n="vid.publishedNote">Sent to partner websites, and checked every fifteen minutes</span>
         </span>
       </button>
     </div>
@@ -424,7 +390,6 @@ staffHint: four sections, all of them visible to anyone once published
        empty row is simply not a button. -#}
     <div class="vid-links-head">
       <span data-i18n="vid.buttons">Buttons under the videos</span>
-      <em data-i18n="vid.buttonsHint">optional — where somebody goes next</em>
     </div>
 
     <div id="vidLinks"></div>
@@ -434,7 +399,7 @@ staffHint: four sections, all of them visible to anyone once published
       <button type="submit" class="solid-btn" data-i18n="vid.save">Save channel</button>
       <button type="button" class="ghost-btn" id="vidCheck" data-i18n="vid.check">Check now</button>
       <button type="button" class="ghost-btn danger" id="vidClear" data-i18n="vid.clear">Remove channel</button>
-      <span class="hint" id="vidFormStatus" data-i18n="gl.savesNow">Saves immediately</span>
+      <span class="hint" id="vidFormStatus"></span>
     </div>
   </form>
 
@@ -451,7 +416,6 @@ staffHint: four sections, all of them visible to anyone once published
 <div class="ms-savebar" id="msSaveBar" role="status" aria-live="polite" hidden>
   <span class="ms-dirty-dot" aria-hidden="true"></span>
   <span id="msDirtyCount">0 unsaved changes</span>
-  <span class="ms-savebar-note" data-i18n="ms.notLive">Nothing is live until you save.</span>
   <button type="button" class="ghost-btn" id="msDiscard" data-i18n="ms.discard">Discard</button>
   <button type="button" class="solid-btn" id="msSaveAll" data-i18n="ms.save">Save changes</button>
 </div>

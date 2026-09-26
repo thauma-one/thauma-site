@@ -101,6 +101,50 @@
     return [p.first_name, p.last_name].filter(Boolean).join(' ') || tr('stew.unnamed');
   }
 
+  /* COUNTRIES, AS CODES. The column holds ISO 3166-1 alpha-2 and the server
+     refuses anything else, so the form offers a list rather than a box that
+     asks somebody to remember that Croatia is HR. The names come from the
+     browser (Intl.DisplayNames) in the console's own language, which is why
+     only the codes live here: 250 names in three languages would be a second
+     dictionary that nobody keeps up to date. XK (Kosovo) is user-assigned
+     rather than official, and included because it is in this ministry's
+     region. */
+  var COUNTRIES = ('AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI ' +
+      'BJ BL BM BN BO BQ BR BS BT BV BW BY BZ CA CC CD CF CG CH CI CK CL CM CN ' +
+      'CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK ' +
+      'FM FO FR GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM ' +
+      'HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP KE KG KH KI KM KN ' +
+      'KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ' +
+      'ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP ' +
+      'NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW ' +
+      'SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF ' +
+      'TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI ' +
+      'VN VU WF WS XK YE YT ZA ZM ZW').trim().split(' ');
+
+  function countryName(code) {
+    if (!code) return '';
+    try {
+      var lang = (window.StaffI18n && window.StaffI18n.lang) || 'en';
+      return new Intl.DisplayNames([lang, 'en'], { type: 'region' }).of(code) || code;
+    } catch (e) {
+      return code;
+    }
+  }
+
+  /* Rebuilt each time the form opens, so it follows a language switch. A
+     value already saved that is not in the list still appears — dropping it
+     would clear it on the next save without anybody choosing that. */
+  function fillCountries(current) {
+    var codes = COUNTRIES.slice();
+    if (current && codes.indexOf(current) === -1) codes.push(current);
+    var named = codes.map(function (c) { return { code: c, name: countryName(c) }; });
+    var lang = (window.StaffI18n && window.StaffI18n.lang) || 'en';
+    named.sort(function (a, b) { return a.name.localeCompare(b.name, lang); });
+    $('swPCountry').innerHTML = '<option value=""></option>' + named.map(function (c) {
+      return '<option value="' + esc(c.code) + '">' + esc(c.name) + '</option>';
+    }).join('');
+  }
+
   /* --------------------------------------------------------------- fetch -- */
 
   function call(opts) {
@@ -170,7 +214,7 @@
     }
 
     var postal = [p.address_1, p.address_2, [p.postal_code, p.city].filter(Boolean).join(' '),
-                  p.region, p.country].filter(Boolean);
+                  p.region, countryName(p.country)].filter(Boolean);
     if (postal.length) {
       add(tr('stew.address'), postal.map(esc).join('<br>'));
     }
@@ -268,7 +312,7 @@
     if (!p) return;
     setNewMode(false);
     $('swName').textContent = fullName(p);
-    $('swWhere').textContent = [p.city, p.country].filter(Boolean).join(', ');
+    $('swWhere').textContent = [p.city, countryName(p.country)].filter(Boolean).join(', ');
     renderFacts();
     renderEvents();
     renderTimeline();
@@ -415,6 +459,7 @@
     var f = $('swPersonForm');
     f.reset();
     $('swPersonId').value = p ? p.id : '';
+    fillCountries(p && p.country);
     Object.keys(PERSON_FIELDS).forEach(function (k) {
       $(PERSON_FIELDS[k]).value = p && p[k] ? p[k] : '';
     });

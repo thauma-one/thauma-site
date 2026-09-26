@@ -428,7 +428,7 @@ check("nothing in the SAVE flow claims to publish", () => {
 
   const i18n = readFileSync(root + "js/staff-i18n.js", "utf8");
   const SAVE_KEYS = ["con.save", "con.saveTitle", "con.saveBody", "con.saveSiteBody",
-                     "con.saveNote", "con.saved", "con.saveBarNote", "con.saveBarNoteSite"];
+                     "con.saveNote", "con.saved"];
   /* SPECIFIC FALSE CLAIMS, not the word "publish".
 
      The first version of this banned the word outright and flagged three

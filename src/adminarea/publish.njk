@@ -4,7 +4,6 @@ adminPage: publish
 adminNum: "06"
 adminTitle: Publish
 adminHeading: What is <b>waiting to go live</b>
-adminHint: saved, but not on the public site yet
 adminScript: /js/admin-publish.js
 permalink: /admin/publish/index.html
 ---
@@ -60,11 +59,6 @@ permalink: /admin/publish/index.html
      not sitting next to the ordinary buttons inviting a misclick. -#}
   <details class="p-manual" id="pManual">
     <summary data-i18n="pub.manualTitle">Something looks out of step</summary>
-    <p class="p-manual-why" data-i18n="pub.manualWhy">
-      Use these when the page says everything is up to date but the site
-      disagrees. They do the same work as the buttons above, without waiting
-      to be told it is needed.
-    </p>
     <div class="p-manual-acts">
       <button type="button" class="ghost-btn" id="pForcePreview"
               data-i18n="pub.forcePreview">Rebuild the preview site</button>
@@ -84,21 +78,8 @@ permalink: /admin/publish/index.html
      there rather than being present and refusing. -#}
   <section class="p-sync" id="pSync" hidden>
     <h2 data-i18n="sync.title">Move data between sites</h2>
-    <p class="p-sync-why" data-i18n="sync.why">
-      Publishing carries the words and the code. It has never carried the
-      records — accounts, mailing lists, subscribers, videos. This does.
-    </p>
 
     <div class="p-sync-counts" id="pSyncCounts"></div>
-
-    {#- SAID BEFORE THE BUTTONS, not in the dialog after them. Whichever way
-       this runs, the other side's rows are gone — there is no merge, because
-       there is no honest answer to "edited in both places". -#}
-    <p class="p-sync-warn" data-i18n="sync.replaces">
-      <b>Each direction replaces the other side.</b> Whatever is on the
-      receiving end is gone, not merged. Decide where the work happened and
-      send it that way, once.
-    </p>
 
     <div class="p-sync-acts">
       <button type="button" class="ghost-btn" id="pSyncPush" data-i18n="sync.push">
@@ -116,7 +97,6 @@ permalink: /admin/publish/index.html
 <div class="ms-savebar" id="pBar" role="status" hidden>
   <span class="ms-dirty-dot" aria-hidden="true"></span>
   <span id="pBarCount"></span>
-  <span class="ms-savebar-note" id="pBarNote"></span>
   <button type="button" class="ghost-btn" id="pRefresh" data-i18n="pub.refresh">Refresh</button>
   <button type="button" class="ghost-btn" id="pPreview" data-i18n="pub.preview">Preview</button>
   <button type="button" class="solid-btn" id="pPublish" data-i18n="pub.publish">Publish</button>

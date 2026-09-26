@@ -4,7 +4,6 @@ staffPage: stewardship
 staffNum: "03"
 staffTitle: Stewardship
 staffHeading: Who needs a <b>call</b>
-staffHint: supporters — sorted worst first, click a row to open their record
 ---
 <p class="row-actions sw-top">
   <button class="ghost-btn" type="button" id="swAddPerson" data-i18n="stew.addPerson">+ Add a person</button>
@@ -18,10 +17,6 @@ staffHint: supporters — sorted worst first, click a row to open their record
     <tbody id="rows"></tbody>
   </table>
 </div>
-
-<p class="note" data-i18n-html="stew.note"><b>Newsletters do not count as personal contact.</b> A bulk send is contact, but it is not
-  a conversation — and a dashboard that conflates the two reports everyone as looked after
-  when nobody has been called in months.</p>
 
 {#- THE SUPPORTER DIALOG.
 
@@ -91,8 +86,12 @@ staffHint: supporters — sorted worst first, click a row to open their record
             <input type="text" id="swPRegion" autocomplete="off"></label>
           <label class="fld"><span data-i18n="stew.pPostal">Postal code</span>
             <input type="text" id="swPPostal" autocomplete="off"></label>
-          <label class="fld"><span data-i18n="stew.pCountry">Country (two letters, e.g. US, HR)</span>
-            <input type="text" id="swPCountry" maxlength="2" autocomplete="off"></label>
+          {#- A PICKER, not two letters typed from memory. The column holds an
+             ISO code and the server refuses anything else; the options are
+             filled by staff-stewardship.js with every country's name in the
+             console's own language, so nobody has to know that Croatia is HR. -#}
+          <label class="fld"><span data-i18n="stew.pCountry">Country</span>
+            <select id="swPCountry"></select></label>
           <label class="fld sw-wide"><span data-i18n="stew.notes">Notes</span>
             <textarea id="swPNotes" rows="5"></textarea></label>
         </div>
@@ -104,10 +103,6 @@ staffHint: supporters — sorted worst first, click a row to open their record
     </section>
 
     <section class="tab-panel" data-swpanel="events" role="tabpanel" hidden>
-      {#- What is known about this person, and what it is for. The note is not
-         decoration: this is the most sensitive data the system holds, and the
-         person writing into it should be reminded, at the moment of writing,
-         that the subject is entitled to read it. -#}
       <div id="swEvents"></div>
       <p class="row-actions">
         <button class="ghost-btn" type="button" id="swAddEvent" data-i18n="stew.addEvent">+ Add a life event</button>
@@ -131,7 +126,7 @@ staffHint: supporters — sorted worst first, click a row to open their record
           </select>
         </label>
         <label class="fld">
-          <span data-i18n="stew.evDate">When — leave empty if it has not happened yet</span>
+          <span data-i18n="stew.evDate">When</span>
           <input type="date" id="swEventDate">
         </label>
         <textarea id="swEventNote" rows="3"
@@ -142,7 +137,6 @@ staffHint: supporters — sorted worst first, click a row to open their record
           <input type="checkbox" id="swEventRecurs">
           <span data-i18n="stew.evRecurs">This comes round every year</span>
         </label>
-        <p class="hint" data-i18n="stew.evPrivacy">Write as though they will read it — on request, they are entitled to.</p>
         <div class="dlg-actions">
           <button class="ghost-btn" type="button" id="swEventCancel" data-i18n="common.cancel">Cancel</button>
           <button class="solid-btn" type="submit" data-i18n="stew.evSave">Save</button>
@@ -180,9 +174,9 @@ staffHint: supporters — sorted worst first, click a row to open their record
           <input type="date" id="swTouchDate" required>
         </label>
         <textarea id="swTouchNote" rows="3"
-                  placeholder="Anything worth remembering (optional)"
+                  placeholder="Anything worth remembering"
                   data-i18n-attr="placeholder:stew.tcNote,aria-label:stew.tcNote"
-                  aria-label="Anything worth remembering (optional)"></textarea>
+                  aria-label="Anything worth remembering"></textarea>
         {#- THE ONE CONTROL THAT DECIDES WHAT THIS PAGE REPORTS. Checked by
            default, because somebody opening this form has almost always just
            spoken to a person; the case it exists for is the forward to forty

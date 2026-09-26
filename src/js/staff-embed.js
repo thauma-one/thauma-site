@@ -247,7 +247,6 @@
       p.state.className = 'emb-state' + (on ? ' is-on' : '');
       p.on.setAttribute('aria-checked', on ? 'true' : 'false');
       if (p.onState) p.onState.textContent = on ? tr('emb.switchOn') : tr('emb.switchOff');
-      if (p.shareDesc) p.shareDesc.textContent = on ? tr('emb.shareOn') : tr('emb.shareOff');
 
       panel.renderCode();
     };

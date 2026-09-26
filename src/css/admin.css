@@ -116,14 +116,12 @@
 .chip-toggle.on{border-color:var(--voice-human);color:var(--voice-human);
   background:var(--voice-human-dim)}
 @media(hover:hover){ .chip-toggle:hover{border-color:var(--text);color:var(--text)} }
-.adm-chips + .switch-note{margin-top:10px;display:block;max-width:60ch}
 
 /* The two irreversible-ish controls, kept together and away from the rest. */
 .adm-danger{display:flex;justify-content:space-between;align-items:flex-end;
   gap:24px;flex-wrap:wrap;margin-top:8px;padding-top:22px;
   border-top:1px solid var(--line)}
 .adm-danger .fld{max-width:280px}
-.adm-danger .switch-note{max-width:44ch}
 .status-pick{background:var(--bg2,#0b1119);border:1px solid rgba(255,255,255,.14);
   color:var(--text);font-family:var(--font-body);font-size:var(--fs-sm);
   padding:9px 11px;border-radius:var(--radius);cursor:pointer;width:100%}
@@ -167,11 +165,6 @@
 .adm-partner-set{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
   gap:16px;min-width:0;margin-bottom:20px}
 .adm-partner .fld span{color:var(--voice-tech)}
-/* The hint is prose, not a field label — it must not take the caps treatment
-   the label above it has, or the two read as one shouted sentence. */
-.adm-partner .fld .fld-hint{display:block;margin-top:6px;color:var(--dim,#8a93a3);
-  font-family:inherit;font-size:11px;letter-spacing:0;text-transform:none;
-  font-weight:400;line-height:1.4}
 
 .adm-form{margin-bottom:24px}
 
@@ -400,8 +393,6 @@
 
 .s-label{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px}
 .s-label code{font-family:var(--font-mono);font-size:var(--fs-tiny);color:var(--text)}
-.s-hint{flex-basis:100%;font-size:var(--fs-micro);color:var(--dim);
-  line-height:var(--lh-body)}
 
 .s-control{justify-self:end;width:100%;max-width:320px}
 .s-control input,.s-control select{width:100%}
@@ -487,8 +478,6 @@
 @media(hover:hover){ .p-manual > summary:hover{color:var(--text)} }
 .p-manual > summary:focus-visible{outline:2px solid var(--voice-tech);
   outline-offset:-2px}
-.p-manual-why{margin:0 24px;font-size:var(--fs-micro);color:var(--dim);
-  line-height:var(--lh-body);max-width:62ch}
 .p-manual-acts{display:flex;gap:10px;flex-wrap:wrap;padding:16px 24px 4px}
 .p-manual-note{margin:0 24px 20px;font-family:var(--font-mono);
   font-size:var(--fs-micro);color:var(--dim);opacity:.75}
@@ -553,8 +542,6 @@
    the public and a mis-click there matters. */
 
 .v-group{padding-bottom:24px}
-.v-note{font-size:var(--fs-tiny);color:var(--dim);line-height:var(--lh-body);
-  margin:0 0 20px;max-width:60ch}
 
 .v-head,.v-row{display:grid;grid-template-columns:minmax(0,1fr) 96px 96px;
   gap:16px;align-items:center}
@@ -578,7 +565,6 @@
 .v-label{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px;min-width:0}
 .v-label code{font-family:var(--font-body);font-size:var(--fs-tiny);
   color:var(--text)}
-.v-label .s-hint{flex-basis:100%}
 
 .v-cell{display:flex;justify-content:center;border-radius:var(--radius)}
 /* The unsaved edge sits on the cell, not the row: with two switches sharing a
@@ -701,9 +687,6 @@
 
 .pf-photos{margin:18px 0 0}
 .pf-actions{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:18px}
-.adm-profile .fld-hint{display:block;margin-top:6px;color:var(--dim,#8a93a3);
-  font-family:inherit;font-size:11px;letter-spacing:0;text-transform:none;
-  font-weight:400;line-height:1.4}
 
 
 /* ---- photos ---- */
@@ -739,7 +722,6 @@
    ============================================================================ */
 .p-sync{margin-top:34px;padding-top:24px;border-top:1px solid var(--line)}
 .p-sync h2{font-size:17px;margin:0 0 6px}
-.p-sync-why{margin:0 0 16px;font-size:14px;color:var(--dim);max-width:62ch}
 
 .p-sync-counts{display:grid;gap:1px;background:var(--line);border:1px solid var(--line);
   margin-bottom:16px;font-size:13px}
@@ -751,7 +733,6 @@
 /* The side that is about to lose rows, once a direction is hovered. */
 .p-sync-row .loses{color:var(--crit,#FF6B6B)}
 
-.p-sync-warn{margin:0 0 16px;font-size:13.5px;line-height:1.55;max-width:62ch}
 .p-sync-acts{display:flex;flex-wrap:wrap;gap:10px}
 .p-sync-note{margin-top:12px;font-size:13px;color:var(--dim);min-height:1.2em}
 .p-sync-note.is-bad{color:var(--crit,#FF6B6B)}
@@ -788,8 +769,6 @@
    judged is the photograph rather than a line drawn near it.
    ==================================================================== */
 .pc{max-width:600px;width:100%}
-.pc-hint{color:var(--dim,#8a93a3);font-size:13px;line-height:1.55;margin:0 0 16px;
-  max-width:56ch}
 
 .pc-stage{display:flex;justify-content:center;padding:14px;border-radius:8px;
   background:
@@ -908,7 +887,6 @@
 
 .lib-flag{flex-direction:row;align-items:center;gap:10px;flex-wrap:wrap}
 .lib-flag input{inline-size:17px;block-size:17px;accent-color:var(--voice-tech)}
-.lib-flag .fld-hint{flex:1 1 100%}
 
 /* A session is a date and a topic. Two columns, because that is what it is —
    and the date is its own field so moving one is an edit rather than a
