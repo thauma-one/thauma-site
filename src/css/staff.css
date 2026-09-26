@@ -154,6 +154,10 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
 tbody tr[aria-expanded="true"]{background:rgba(255,255,255,.045)}
 .nm{font-weight:var(--w-bold);color:var(--text)}
 .sub{font-size:var(--fs-tiny);color:var(--dim)}
+/* In the Stewardship table the second line is a second LINE — city under the
+   name, date under the day count. Inline, they ran together:
+   "Ivana BabićZagreb, HR". */
+#rows .sub{display:block;margin-top:3px}
 .right{text-align:right}
 
 /* severity is carried by BOTH a stripe and a number, so it survives

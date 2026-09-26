@@ -84,22 +84,52 @@
       { style: 'currency', currency: currency || 'USD', maximumFractionDigits: 0 });
   }
   function fullName(c) {
-    return [c.first_name, c.last_name].filter(Boolean).join(' ') || '(no name)';
+    return [c.first_name, c.last_name].filter(Boolean).join(' ') || tr('stew.unnamed');
+  }
+  /* The console's language, not the browser's and not English. A Croatian
+     staff member was reading "Mar 15, 2026" and "195 days" inside an
+     otherwise Croatian table. */
+  function uiLang() {
+    return (window.StaffI18n && window.StaffI18n.lang) || 'en';
   }
   function shortDate(iso) {
     if (!iso) return '—';
     var d = new Date(iso + 'T00:00:00Z');
     if (isNaN(d)) return iso;
-    return d.toLocaleDateString('en-US',
-      { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+    try {
+      return d.toLocaleDateString(uiLang(),
+        { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+    } catch (e) {
+      return iso;
+    }
+  }
+  /* "195 days" in any language, plurals included, from the browser's own
+     number formatting rather than a word per language in the dictionary —
+     Croatian needs dan/dana, Slovenian dan/dneva/dni, and a thirtieth
+     language needs nothing added here. */
+  function dayCount(n) {
+    try {
+      return new Intl.NumberFormat(uiLang(), { style: 'unit', unit: 'day', unitDisplay: 'long' }).format(n);
+    } catch (e) {
+      return n + ' days';
+    }
+  }
+  /* The row stores a two-letter code; people read a country's name. */
+  function countryName(code) {
+    if (!code) return '';
+    try {
+      return new Intl.DisplayNames([uiLang(), 'en'], { type: 'region' }).of(code) || code;
+    } catch (e) {
+      return code;
+    }
   }
   /* severity carries a class AND a label, so the table never relies on
      color alone to communicate state */
   function severity(days) {
-    if (days === null || days === undefined) return { cls: 'none', label: 'never contacted' };
-    if (days >= CRIT_DAYS) return { cls: 'crit', label: days + ' days' };
-    if (days >= WARN_DAYS) return { cls: 'warn', label: days + ' days' };
-    return { cls: 'ok', label: days + ' days' };
+    if (days === null || days === undefined) return { cls: 'none', label: tr('stew.never') };
+    if (days >= CRIT_DAYS) return { cls: 'crit', label: dayCount(days) };
+    if (days >= WARN_DAYS) return { cls: 'warn', label: dayCount(days) };
+    return { cls: 'ok', label: dayCount(days) };
   }
 
   /* =====================================================================
@@ -180,7 +210,7 @@
         esc(tr('stew.withheld')) + '</p></td></tr>';
     } else if ($('rows')) $('rows').innerHTML = d.contacts.map(function (c) {
       var sev = severity(c.days_since_personal);
-      var where = [c.city, c.country].filter(Boolean).join(', ');
+      var where = [c.city, countryName(c.country)].filter(Boolean).join(', ');
       /* aria-haspopup="dialog", not aria-expanded: the row no longer expands
          into anything, it opens a dialog over the page. */
       return '<tr data-id="' + esc(c.id) + '" tabindex="0" role="button" ' +

@@ -243,5 +243,30 @@ check("a reply for somebody else is discarded", () => {
     "would be rendered into whoever is on screen now");
 });
 
+/* ------------------------------------------------------- the table rows -- */
+
+check("a row's second line sits under the first, not beside it", () => {
+  /* The city ran straight into the name — "Ivana BabićZagreb, HR" — and the
+     date into the day count, because .sub is an inline span everywhere else
+     in the console. */
+  const css = readFileSync(new URL("../src/css/staff.css", import.meta.url), "utf8");
+  assert(/#rows \.sub\{[^}]*display:\s*block/.test(css),
+    "the second line in a stewardship row is inline again");
+});
+
+check("the row speaks the console's language", () => {
+  /* "never contacted", "195 days" and "Mar 15, 2026" were English inside a
+     Croatian table. Day counts and dates come from the browser's formatting
+     in the console language, so a new language needs no strings for them. */
+  const row = STAFF.slice(STAFF.indexOf("function severity"), STAFF.indexOf("function severity") + 600);
+  assert(!/'never contacted'|' days'\s*\}/.test(row), "the row's labels are hardcoded English again");
+  assert(/tr\('stew\.never'\)/.test(row), "'never' is not looked up in the dictionary");
+  assert(!/toLocaleDateString\('en-US'/.test(STAFF), "dates are forced into US English again");
+  assert(/unit:\s*'day'/.test(STAFF), "day counts are not formatted in the console language");
+  for (const lang of ["en", "hr", "sr"]) {
+    assert(DICT[lang].has("stew.never"), `${lang} has no word for 'never'`);
+  }
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
