@@ -23,7 +23,7 @@
     "who_h2_bold": "resnične tehnične potrebe.",
     "who_lede": "Zastarela oprema, ki je nihče ne zna upravljati. Prostovoljci, ki sami vodijo zapletene sisteme. Nobenega usposabljanja, nobene mreže sodelavcev. Potreba je praktična in tu je že to nedeljo — zato začnemo prav tam.",
     "who_img_tag": "Fotografija — nedeljska produkcija v polnem teku",
-    "who_placeholder": "Fotografije še ni — dodajte jo v /admin → Nastavitve strani → Fotografije.",
+    "who_placeholder": "Fotografije še ni — dodajte jo na /admin/site/.",
     "values_cue": "Kako pomagamo",
     "values_h2_thin": "Tri oblike",
     "values_h2_bold": "istega dela.",
@@ -58,7 +58,7 @@
     "posture_h2_bold": "nikoli njeni reformatorji.",
     "body3": "V kulture, kjer služimo, prihajamo kot učenci in udeleženci. Nismo tam, da bi cerkve preoblikovali po podobi kakšnega tujega modela — pridružujemo se temu, kar je krajevna cerkev že vzpostavila, in odgovarjamo na potrebe tako, kot jih opredelijo same. Zato sta učenje jezika in kulture na prvem mestu, zaznamujeta prva leta in se nikoli povsem ne končata.",
     "posture_img_tag": "Fotografija — najprej učenje kulture, šele nato vse drugo",
-    "posture_placeholder": "Fotografije še ni — dodajte jo v /admin → Nastavitve strani → Fotografije.",
+    "posture_placeholder": "Fotografije še ni — dodajte jo na /admin/site/.",
     "status_note": "Thauma je neprofitna organizacija v ustanavljanju (zvezna država Missouri) in služi celotni protestantski cerkvi, ne glede na denominacijo."
   },
   "mission": {
@@ -82,7 +82,7 @@
     "horizon_text": "Obzorje je pošteno: pomembne sadove pričakujemo v petih do desetih letih, ne v dveh. Služenje zraste iz temeljev jezika in kulture; usposabljanje zraste iz služenja; skupnost in voditelji zrastejo iz obojega. Zavezujemo se celotnemu loku in ga nočemo prehitevati — počasen temelj je tisto, kar poznejši sad sploh omogoči.",
     "success_text": "Uspeh je videti kot skupnost cerkvenih produkcijskih ljudi — tehnikov, voditeljev bogoslužja in pastorjev — ki obstaja tam, kjer je prej ni bilo, in se srečuje ter si pomaga, ne da bi vsako povezavo poganjali mi.",
     "horizon_img_tag": "Fotografija — čez leta, skupaj",
-    "horizon_placeholder": "Fotografije še ni — dodajte jo v /admin → Nastavitve strani → Fotografije."
+    "horizon_placeholder": "Fotografije še ni — dodajte jo na /admin/site/."
   },
   "values": {
     "title": "Vrednote",
@@ -155,7 +155,7 @@
     "project_title": "Darovi za projekte",
     "project_text": "Enkratni darovi za opremo, potovanja in stroške srečanj, ko se pokažejo konkretne potrebe.",
     "impact_img_tag": "Fotografija — kaj omogoča vaše partnerstvo",
-    "impact_placeholder": "Fotografije še ni — dodajte jo v /admin → Nastavitve strani → Fotografije.",
+    "impact_placeholder": "Fotografije še ni — dodajte jo na /admin/site/.",
     "legal_note": "Thauma je neprofitna organizacija v ustanavljanju (zvezna država Missouri). Dokler ne pridobimo zveznega statusa davčne oprostitve, darovi še niso davčno olajšani — takoj ko se to spremeni, bomo to tukaj jasno zapisali.",
     "form_placeholder": "Tukaj bo naš varen obrazec za darovanje."
   },

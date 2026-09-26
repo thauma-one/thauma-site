@@ -113,5 +113,26 @@ check("country is chosen from a list, not typed as a code", () => {
   assert(/Intl\.DisplayNames/.test(js), "country names are not shown in the console's language");
 });
 
+check("site copy only points editors at admin pages that exist", () => {
+  /* The preview-only photo placeholders said "add one in /admin → Site
+     Settings → Photos" for weeks after that screen was gone. A path in copy
+     is a promise; this holds it to a real page. */
+  const pages = new Set(dir("src/adminarea").map((f) => {
+    const m = read(f).match(/^permalink:\s*(\S+)/m);
+    return m ? m[1].replace(/index\.html$/, "") : null;
+  }).filter(Boolean));
+  const langs = readdirSync(new URL("../src/_data/i18n/", import.meta.url)).filter((f) => f.endsWith(".json"));
+  const bad = [];
+  for (const f of langs) {
+    const text = read(`src/_data/i18n/${f}`);
+    if (/\/admin\s*→/.test(text)) bad.push(`${f}: a "/admin → …" menu path`);
+    for (const m of text.matchAll(/\/admin\/[a-z-]*\/?/g)) {
+      const path = m[0].endsWith("/") ? m[0] : m[0] + "/";
+      if (!pages.has(path)) bad.push(`${f}: ${m[0]}`);
+    }
+  }
+  assert(!bad.length, `copy points at admin pages that do not exist: ${bad.join(", ")}`);
+});
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
