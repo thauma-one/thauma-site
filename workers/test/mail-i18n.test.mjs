@@ -8,6 +8,7 @@
  * every key present everywhere, a fallback that degrades one key at a time,
  * and escaping that still holds when the surrounding words change.
  */
+import { readFileSync } from "node:fs";
 import { t, LANGS, _STRINGS } from "../src/lib/mail-i18n.js";
 import { listConfirmEmail, contactReceiptEmail } from "../src/lib/mail.js";
 
@@ -97,6 +98,23 @@ check("the staff messages are deliberately NOT translated", () => {
   const staffKeys = Object.keys(_STRINGS.en)
     .filter((k) => /^(invite|change)\./.test(k));
   eq(staffKeys.length, 0, `staff strings appeared: ${staffKeys.join(", ")}`);
+});
+
+check("a blank translation reads as English, not as nothing", () => {
+  /* A language added in the console arrives with every value empty, and a
+     translator may leave a line blank. Either way the supporter must get the
+     English sentence, never an empty heading or a bare key. */
+  const was = _STRINGS.hr["form.name"];
+  try {
+    _STRINGS.hr["form.name"] = "";
+    eq(t("hr", "form.name"), _STRINGS.en["form.name"], "blank Croatian");
+  } finally { _STRINGS.hr["form.name"] = was; }
+});
+
+check("the words are read from the data file the console edits", () => {
+  const file = JSON.parse(readFileSync(new URL("../../src/_data/emailsAndForms.json", import.meta.url), "utf8"));
+  eq(file.hr.form.name, _STRINGS.hr["form.name"], "Croatian name label");
+  eq(Object.keys(file).join(","), LANGS.join(","), "the languages");
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);

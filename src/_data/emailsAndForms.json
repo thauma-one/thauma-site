@@ -1,0 +1,246 @@
+{
+  "en": {
+    "confirm": {
+      "subject": "Confirm your {list} subscription",
+      "heading": "Confirm your subscription",
+      "hello": "Hi {name},",
+      "helloAnon": "Hello,",
+      "body": "Please confirm you would like to receive <b>{list}</b> from {from}.",
+      "button": "Yes, subscribe me",
+      "ignore": "If you did not ask for this, ignore this message. Nothing will be sent to you unless you confirm."
+    },
+    "receipt": {
+      "subject": "We have your message",
+      "heading": "We have your message",
+      "body": "Thank you for writing to {ministry}. This is just to say it arrived — somebody will read it and reply to this address.",
+      "noReply": "You do not need to do anything. If you think of something to add, send it through the form again — this address does not receive replies.",
+      "footer": "You are receiving this because this address was used to write to {ministry} through their website. No account was created and you have not been added to any mailing list."
+    },
+    "unsub": {
+      "title": "Unsubscribed",
+      "heading": "You are unsubscribed",
+      "body": "You will not receive any more of these.",
+      "undo": "That was a mistake — put me back on"
+    },
+    "back": {
+      "title": "Subscribed again",
+      "heading": "You are back on the list",
+      "body": "Nothing was lost — you will receive the next one as usual.",
+      "undo": "Actually, unsubscribe me"
+    },
+    "form": {
+      "name": "Your name",
+      "email": "Email address",
+      "receive": "I want to receive",
+      "fine": "You can unsubscribe at any time.",
+      "chooseOne": "Choose at least one thing to receive.",
+      "sending": "Sending…",
+      "failed": "Something went wrong. Please try again.",
+      "checkEmail": "Check your email",
+      "linkSent": "We sent you a confirmation link. Click it and you are on the list.",
+      "heading": "Stay in touch",
+      "button": "Subscribe"
+    },
+    "contact": {
+      "heading": "Get in touch",
+      "button": "Send",
+      "thanks": "Thank you — your message is on its way.",
+      "about": "What is this about",
+      "choose": "Choose one…",
+      "subject": "Subject",
+      "subjectHint": "A few words about it",
+      "message": "Message",
+      "messageHint": "What would you like to say?",
+      "failed": "Your message could not be sent. Please try again.",
+      "errForm": "Please fill the form in and try again.",
+      "errName": "Please add your name.",
+      "errEmail": "That does not look like an email address.",
+      "errMessage": "Please write a message.",
+      "errSetup": "This form is not finished being set up, so your message was not sent. Please try another way of getting in touch.",
+      "errSend": "Your message could not be sent just now. Please try again in a few minutes."
+    }
+  },
+  "hr": {
+    "confirm": {
+      "subject": "Potvrdite pretplatu na {list}",
+      "heading": "Potvrdite pretplatu",
+      "hello": "Bok {name},",
+      "helloAnon": "Poštovani,",
+      "body": "Molimo potvrdite da želite primati <b>{list}</b> od {from}.",
+      "button": "Da, pretplati me",
+      "ignore": "Ako ovo niste tražili, zanemarite ovu poruku. Ništa vam neće biti poslano ako ne potvrdite."
+    },
+    "receipt": {
+      "subject": "Primili smo vašu poruku",
+      "heading": "Primili smo vašu poruku",
+      "body": "Hvala što ste pisali {ministry}. Ovo je samo potvrda da je poruka stigla — netko će je pročitati i odgovoriti na ovu adresu.",
+      "noReply": "Ne morate ništa poduzimati. Ako se sjetite nečega što biste dodali, pošaljite to ponovno putem obrasca — ova adresa ne prima odgovore.",
+      "footer": "Ovu poruku primate jer je ova adresa upotrijebljena za pisanje {ministry} putem njihove stranice. Nije stvoren nikakav račun i niste dodani ni na jedan popis za slanje."
+    },
+    "unsub": {
+      "title": "Odjava",
+      "heading": "Odjavljeni ste",
+      "body": "Više nećete primati ove poruke.",
+      "undo": "Ovo je bila pogreška — vratite me natrag"
+    },
+    "back": {
+      "title": "Ponovno pretplaćeni",
+      "heading": "Ponovno ste na popisu",
+      "body": "Ništa nije izgubljeno — sljedeću poruku primit ćete kao i obično.",
+      "undo": "Ipak me odjavite"
+    },
+    "form": {
+      "name": "Vaše ime",
+      "email": "Adresa e-pošte",
+      "receive": "Želim primati",
+      "fine": "Odjaviti se možete u bilo kojem trenutku.",
+      "chooseOne": "Odaberite barem jedno što želite primati.",
+      "sending": "Šaljem…",
+      "failed": "Nešto nije u redu. Molimo pokušajte ponovno.",
+      "checkEmail": "Provjerite e-poštu",
+      "linkSent": "Poslali smo vam poveznicu za potvrdu. Kliknite je i na popisu ste.",
+      "heading": "Ostanimo u kontaktu",
+      "button": "Pretplati se"
+    },
+    "contact": {
+      "heading": "Javite nam se",
+      "button": "Pošalji",
+      "thanks": "Hvala — vaša je poruka na putu.",
+      "about": "O čemu se radi",
+      "choose": "Odaberite…",
+      "subject": "Naslov",
+      "subjectHint": "Nekoliko riječi o tome",
+      "message": "Poruka",
+      "messageHint": "Što nam želite poručiti?",
+      "failed": "Vašu poruku nije bilo moguće poslati. Molimo pokušajte ponovno.",
+      "errForm": "Molimo ispunite obrazac i pokušajte ponovno.",
+      "errName": "Molimo upišite svoje ime.",
+      "errEmail": "To ne izgleda kao adresa e-pošte.",
+      "errMessage": "Molimo napišite poruku.",
+      "errSetup": "Ovaj obrazac još nije do kraja postavljen pa vaša poruka nije poslana. Molimo javite nam se na drugi način.",
+      "errSend": "Vašu poruku trenutno nije moguće poslati. Molimo pokušajte ponovno za nekoliko minuta."
+    }
+  },
+  "sr": {
+    "confirm": {
+      "subject": "Потврдите претплату на {list}",
+      "heading": "Потврдите претплату",
+      "hello": "Здраво {name},",
+      "helloAnon": "Поштовани,",
+      "body": "Молимо потврдите да желите да примате <b>{list}</b> од {from}.",
+      "button": "Да, претплати ме",
+      "ignore": "Ако ово нисте тражили, занемарите ову поруку. Ништа вам неће бити послато ако не потврдите."
+    },
+    "receipt": {
+      "subject": "Примили смо вашу поруку",
+      "heading": "Примили смо вашу поруку",
+      "body": "Хвала што сте писали {ministry}. Ово је само потврда да је порука стигла — неко ће је прочитати и одговорити на ову адресу.",
+      "noReply": "Не морате ништа да предузимате. Ако се сетите нечега што бисте додали, пошаљите то поново преко обрасца — ова адреса не прима одговоре.",
+      "footer": "Ову поруку примате јер је ова адреса употребљена за писање {ministry} преко њиховог сајта. Није направљен никакав налог и нисте додати ни на једну листу за слање."
+    },
+    "unsub": {
+      "title": "Одјава",
+      "heading": "Одјављени сте",
+      "body": "Више нећете примати ове поруке.",
+      "undo": "Ово је била грешка — вратите ме назад"
+    },
+    "back": {
+      "title": "Поново претплаћени",
+      "heading": "Поново сте на листи",
+      "body": "Ништа није изгубљено — следећу поруку примићете као и обично.",
+      "undo": "Ипак ме одјавите"
+    },
+    "form": {
+      "name": "Ваше име",
+      "email": "Имејл адреса",
+      "receive": "Желим да примам",
+      "fine": "Можете се одјавити у било ком тренутку.",
+      "chooseOne": "Изаберите бар једну ствар коју желите да примате.",
+      "sending": "Шаљем…",
+      "failed": "Нешто није у реду. Молимо покушајте поново.",
+      "checkEmail": "Проверите имејл",
+      "linkSent": "Послали смо вам линк за потврду. Кликните на њега и на листи сте.",
+      "heading": "Останимо у контакту",
+      "button": "Претплати се"
+    },
+    "contact": {
+      "heading": "Јавите нам се",
+      "button": "Пошаљи",
+      "thanks": "Хвала — ваша порука је на путу.",
+      "about": "О чему се ради",
+      "choose": "Изаберите…",
+      "subject": "Наслов",
+      "subjectHint": "Неколико речи о томе",
+      "message": "Порука",
+      "messageHint": "Шта желите да нам поручите?",
+      "failed": "Вашу поруку није било могуће послати. Молимо покушајте поново.",
+      "errForm": "Молимо попуните образац и покушајте поново.",
+      "errName": "Молимо упишите своје име.",
+      "errEmail": "То не изгледа као имејл адреса.",
+      "errMessage": "Молимо напишите поруку.",
+      "errSetup": "Овај образац још није до краја подешен, па ваша порука није послата. Молимо јавите нам се на други начин.",
+      "errSend": "Вашу поруку тренутно није могуће послати. Молимо покушајте поново за неколико минута."
+    }
+  },
+  "sl": {
+    "confirm": {
+      "subject": "Potrdite naročnino na {list}",
+      "heading": "Potrdite naročnino",
+      "hello": "Pozdravljeni, {name},",
+      "helloAnon": "Pozdravljeni,",
+      "body": "Prosimo, potrdite, da želite od {from} prejemati <b>{list}</b>.",
+      "button": "Da, naroči me",
+      "ignore": "Če tega niste zahtevali, to sporočilo prezrite. Brez vaše potrditve vam ne bomo ničesar pošiljali."
+    },
+    "receipt": {
+      "subject": "Vaše sporočilo smo prejeli",
+      "heading": "Vaše sporočilo smo prejeli",
+      "body": "Hvala, ker ste pisali ekipi {ministry}. S tem vam le sporočamo, da je sporočilo prispelo — nekdo ga bo prebral in odgovoril na ta naslov.",
+      "noReply": "Ničesar vam ni treba storiti. Če se spomnite še česa, to ponovno pošljite prek obrazca — ta naslov ne sprejema odgovorov.",
+      "footer": "To sporočilo ste prejeli, ker je bil ta naslov uporabljen za pisanje ekipi {ministry} prek njihove spletne strani. Račun ni bil ustvarjen in niste bili dodani na noben poštni seznam."
+    },
+    "unsub": {
+      "title": "Odjava",
+      "heading": "Odjavljeni ste",
+      "body": "Teh sporočil ne boste več prejemali.",
+      "undo": "To je bila pomota — ponovno me prijavite"
+    },
+    "back": {
+      "title": "Ponovno naročeni",
+      "heading": "Spet ste na seznamu",
+      "body": "Nič se ni izgubilo — naslednje sporočilo boste prejeli kot običajno.",
+      "undo": "Vendarle me odjavite"
+    },
+    "form": {
+      "name": "Vaše ime",
+      "email": "E-poštni naslov",
+      "receive": "Želim prejemati",
+      "fine": "Odjavite se lahko kadar koli.",
+      "chooseOne": "Izberite vsaj eno stvar, ki jo želite prejemati.",
+      "sending": "Pošiljam…",
+      "failed": "Nekaj je šlo narobe. Prosimo, poskusite znova.",
+      "checkEmail": "Preverite e-pošto",
+      "linkSent": "Poslali smo vam povezavo za potrditev. Kliknite nanjo in ste na seznamu.",
+      "heading": "Ostanimo v stiku",
+      "button": "Naroči se"
+    },
+    "contact": {
+      "heading": "Pišite nam",
+      "button": "Pošlji",
+      "thanks": "Hvala — vaše sporočilo je na poti.",
+      "about": "O čem gre",
+      "choose": "Izberite…",
+      "subject": "Zadeva",
+      "subjectHint": "Nekaj besed o tem",
+      "message": "Sporočilo",
+      "messageHint": "Kaj bi nam radi sporočili?",
+      "failed": "Vašega sporočila ni bilo mogoče poslati. Prosimo, poskusite znova.",
+      "errForm": "Prosimo, izpolnite obrazec in poskusite znova.",
+      "errName": "Prosimo, vpišite svoje ime.",
+      "errEmail": "To ni videti kot e-poštni naslov.",
+      "errMessage": "Prosimo, napišite sporočilo.",
+      "errSetup": "Ta obrazec še ni povsem nastavljen, zato vaše sporočilo ni bilo poslano. Prosimo, stopite v stik z nami na drug način.",
+      "errSend": "Vašega sporočila trenutno ni mogoče poslati. Prosimo, poskusite znova čez nekaj minut."
+    }
+  }
+}
