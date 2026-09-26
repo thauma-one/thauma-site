@@ -128,7 +128,21 @@
     "empty_title": "Gradiva prihajajo.",
     "empty_text": "Ko bomo služili cerkvam na terenu, bodo tu živeli vodniki, prevodi in orodja, ki jih bomo ustvarili — v hrvaščini in angleščini, brezplačno za vsako cerkev. Če vaša ekipa kaj potrebuje že zdaj, nam pišite.",
     "empty_cta": "Prosite nas za pomoč",
-    "link_label": "Več o tem"
+    "link_label": "Več o tem",
+    "door_crisis": "Nekaj se je pokvarilo",
+    "door_growth": "Učim se za pultom",
+    "door_planning": "Izbiram, kaj kupiti",
+    "door_lookup": "Kaj to pomeni?",
+    "all_label": "Vse",
+    "search_label": "Išči gradiva",
+    "search_hint": "Išči",
+    "none_text": "Nič se ne ujema.",
+    "none_cta": "Pokaži vse",
+    "fmt_guide": "Vodnik",
+    "fmt_diagram": "Diagram",
+    "fmt_checklist": "Kontrolni seznam",
+    "fmt_glossary-entry": "Slovarček",
+    "fmt_video": "Video"
   },
   "give": {
     "title": "Darujte",

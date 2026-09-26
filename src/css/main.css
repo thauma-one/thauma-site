@@ -800,34 +800,66 @@ section .cue::before{content:counter(cue,decimal-leading-zero);width:auto;height
   .invite-photo{border-right:1px solid rgba(47,216,255,.18);aspect-ratio:16/9;min-height:0}
 }
 
-.invite-card{background:var(--panel);border:1px solid rgba(47,216,255,.18);
-  padding:44px 46px 40px;position:relative}
+.invite-card{background:var(--panel);border:1px solid rgba(92,242,196,.22);
+  padding:44px 46px 40px;position:relative;overflow:hidden}
 @media (max-width: 560px){ .invite-card{padding:34px 26px 30px} }
+
+/* THE SEAM. The card's top edge lights up as it arrives — one line, drawn
+   left to right, then left lit but quiet. It replaces the light that used to
+   cross the 1px rule in the middle of the card: that ran, but it crossed a
+   divider nobody looks at, and two travelling lights on one card is
+   decoration rather than a moment. The edge is where a card announces
+   itself. Same foam gradient the workline uses, so the signal is the site's
+   own. */
+.invite-card::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,var(--foam),rgba(92,242,196,.35) 60%,rgba(92,242,196,.12));
+  transform:scaleX(0);transform-origin:0 50%}
+@media(prefers-reduced-motion:no-preference){
+  .invite.sr-in .invite-card::before{
+    animation:invite-seam 1.1s cubic-bezier(.16,1,.3,1) .1s both}
+  @keyframes invite-seam{0%{transform:scaleX(0)}100%{transform:scaleX(1)}}
+}
+/* Nothing moves under reduced motion, but the edge must still be there —
+   otherwise that reader gets a card with a plainly unfinished border. */
+@media(prefers-reduced-motion:reduce){ .invite-card::before{transform:scaleX(1)} }
+
+/* THE DATE AND THE NAME, side by side. Only when there is no photograph: with
+   one, the card is the narrow half of a two-part object and a second split
+   inside it leaves both columns too thin to read. */
+.invite-head{display:grid;gap:26px 0;align-items:start}
+@media (min-width: 760px){
+  .invite:not(:has(.invite-photo)) .invite-head{
+    grid-template-columns:auto minmax(0,1fr);gap:0 clamp(40px,5vw,72px)}
+}
+.invite-when{margin:0;display:flex;flex-direction:column;gap:6px}
+/* Tabular figures so 14–15 and 1 June occupy honest widths, and so the
+   per-character roll does not reflow as each numeral lands. */
+.invite-date{font-family:'Sora',sans-serif;font-weight:100;
+  font-size:clamp(26px,3.4vw,38px);line-height:1.1;letter-spacing:.005em;
+  color:var(--text);font-variant-numeric:tabular-nums;white-space:nowrap}
+@media (max-width: 759px){ .invite-date{white-space:normal} }
 
 /* The announcement. Quieter than a page heading — it introduces, it does not
    compete with the name of the thing. */
 .invite-cue{font-size:11px;letter-spacing:.34em;text-transform:uppercase;
   font-weight:600;color:var(--foam);margin:0 0 22px}
-.invite-title{font-family:'Sora',sans-serif;font-weight:100;font-size:clamp(30px,4.6vw,44px);
-  line-height:1.12;letter-spacing:.01em;margin:0;text-wrap:balance}
+/* Smaller than it was (44px), because it no longer has to carry the card on
+   its own — the date does that now, and two things at 44px compete. */
+.invite-title{font-family:'Sora',sans-serif;font-weight:100;font-size:clamp(24px,3vw,32px);
+  line-height:1.15;letter-spacing:.01em;margin:0;text-wrap:balance}
 .invite-lang{font-size:13px;color:var(--dim);font-style:italic;margin:12px 0 0}
 .invite-blurb{margin-top:18px;color:var(--dim);line-height:1.75;max-width:46ch}
 .invite-blurb p{margin:0}
 
-/* THE ONE MOMENT. A light crosses the rule as the card arrives — the same
-   gradient and glow the workline uses to mean "something is in motion", so
-   this reuses the site's own signal instead of inventing a gimmick. It runs
-   ONCE, not on a loop: a loop is decoration, and the brief asked for restraint.
-   Nothing happens at all under prefers-reduced-motion. */
-.invite-rule{position:relative;height:1px;margin:30px 0 26px;
-  background:rgba(255,255,255,.10);overflow:hidden}
-.invite-rule i{position:absolute;top:-1px;height:3px;width:26%;left:-30%;display:block;
-  background:linear-gradient(90deg,rgba(92,242,196,0),#5CF2C4 45%,#B2FFE6 55%,rgba(92,242,196,0));
-  box-shadow:0 0 18px rgba(92,242,196,.55)}
-@media(prefers-reduced-motion:no-preference){
-  .invite.sr-in .invite-rule i{animation:invite-pass 1.5s cubic-bezier(.5,.05,.5,.95) .25s both}
-  @keyframes invite-pass{0%{left:-30%}100%{left:104%}}
-}
+/* A plain divider now. The moment moved to the card's top edge — see the
+   seam above. */
+.invite-rule{height:1px;margin:32px 0 24px;background:rgba(255,255,255,.10)}
+
+/* The place, stated rather than labeled. */
+.invite-where{margin:0;font-size:16px;line-height:1.45}
+.invite-where a{color:var(--foam);text-decoration:none;
+  border-bottom:1px solid rgba(92,242,196,.3);transition:border-color .2s}
+.invite-where a:hover{border-bottom-color:var(--foam)}
 
 /* THE FACTS, SET APART AND QUIET. Small uppercase labels above the answers is
    how an invitation prints them — you find the date without reading a
@@ -850,11 +882,25 @@ section .cue::before{content:counter(cue,decimal-leading-zero);width:auto;height
 
 /* SMALL AND BOUNDED. A link with a rule under it, not a filled button — the
    point of an invitation is the thing offered, never the RSVP. */
-.invite-act{margin:30px 0 0;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
-.invite-act a{font-size:12px;letter-spacing:.18em;text-transform:uppercase;
+.invite-act{margin:30px 0 0;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+/* BOUNDED, NOT LOUD. The brief is right that an invitation should not shout
+   its RSVP — but it had become a 12px underline in the corner, which is not
+   restraint, it is invisible. A bordered target the size of a real button,
+   in the ministry voice, reads as offered rather than shouted. */
+.invite-card .invite-act a{font-family:'Sora',sans-serif;font-weight:600;font-size:12.5px;
+  letter-spacing:.2em;text-transform:uppercase;padding:15px 34px;border-radius:2px;
+  border:1px solid rgba(92,242,196,.45);color:var(--foam);text-decoration:none;
+  display:inline-block;transition:.25s;border-bottom:1px solid rgba(92,242,196,.45)}
+.invite-card .invite-act a:hover{background:rgba(92,242,196,.10);
+  box-shadow:var(--foam-glow);border-color:var(--foam)}
+
+/* ALSO AHEAD keeps the quiet underline the featured card gave up. These are
+   named, not offered — one invitation per page is the whole point of the
+   announcement meaning something. */
+.also-item .invite-act a{font-size:12px;letter-spacing:.18em;text-transform:uppercase;
   font-weight:600;color:var(--foam);text-decoration:none;
   border-bottom:1px solid rgba(92,242,196,.4);padding-bottom:5px;transition:.2s}
-.invite-act a:hover{border-bottom-color:var(--foam);letter-spacing:.21em}
+.also-item .invite-act a:hover{border-bottom-color:var(--foam);letter-spacing:.21em}
 .invite-note{font-size:12px;color:var(--dim)}
 
 /* The wait, which is the expected condition for years — stated, not
@@ -915,3 +961,82 @@ section .cue::before{content:counter(cue,decimal-leading-zero);width:auto;height
 .also-when{font-size:11px;letter-spacing:.2em;text-transform:uppercase;
   color:var(--dim);margin-bottom:10px}
 .also-item .invite-act{margin-top:16px}
+
+/* ============================================================
+   THE LIBRARY — four doors, a search, and formats
+   ============================================================
+   The doors carry the BLUE voice: choosing where to look is a technical act,
+   and the page's own cue is already blue. No new colors, and no explanatory
+   line anywhere in here — the four phrases are the instruction. */
+
+/* Inert without JavaScript, so they are not in the page until main.js says
+   they work. See resources.njk. */
+.doors,.lib-bar,.lib-none{display:none}
+.lib-js .doors{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:8px 0 34px}
+.lib-js .lib-bar{display:flex;align-items:center;gap:18px 26px;flex-wrap:wrap;
+  margin:0 0 30px;padding-bottom:22px;border-bottom:1px solid var(--line,rgba(255,255,255,.08))}
+.lib-js .lib-none[hidden]{display:none}
+.lib-js .lib-none{display:flex;align-items:center;gap:22px;flex-wrap:wrap;
+  color:var(--dim);font-size:15px;margin:10px 0 0}
+
+/* A door is a place to walk through, so it is a panel with a lit edge rather
+   than a pill: big enough to read at a glance and to hit with a thumb. */
+.door{position:relative;text-align:left;background:var(--panel);
+  border:1px solid rgba(47,216,255,.14);border-top:2px solid rgba(47,216,255,.28);
+  padding:20px 20px 18px;min-height:96px;cursor:pointer;
+  display:flex;flex-direction:column;justify-content:space-between;gap:12px;
+  transition:border-color .22s,background .22s,transform .22s,box-shadow .22s}
+.door-label{font-family:'Sora',sans-serif;font-weight:200;font-size:16px;
+  line-height:1.3;color:var(--text);text-wrap:balance}
+.door-n{font-family:'Sora',sans-serif;font-weight:600;font-size:11px;
+  letter-spacing:.14em;color:var(--dim);font-variant-numeric:tabular-nums}
+@media(hover:hover){
+  .door:hover{border-top-color:var(--blue);background:var(--blue-dim);transform:translateY(-2px)}
+}
+.door:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.door[aria-pressed="true"]{border-top-color:var(--blue);background:var(--blue-dim);
+  box-shadow:var(--blue-glow)}
+.door[aria-pressed="true"] .door-label{font-weight:600}
+/* Quiet, never removed — a door that leads nowhere this minute is still worth
+   seeing, and a control that vanishes under the hand is worse than a dim one. */
+.door.is-empty{opacity:.42}
+.door.is-empty[aria-pressed="true"]{opacity:1}
+
+.lib-search{position:relative;display:flex;align-items:center;flex:1 1 260px;max-width:380px}
+.lib-mag{position:absolute;left:0;width:16px;height:16px;color:var(--dim);pointer-events:none}
+.lib-search input{width:100%;background:none;border:0;border-bottom:1px solid rgba(255,255,255,.14);
+  color:var(--text);font-family:'Inter',sans-serif;font-size:15px;font-weight:300;
+  padding:10px 0 10px 26px;transition:border-color .2s}
+.lib-search input::placeholder{color:var(--dim)}
+.lib-search input:focus{outline:none;border-bottom-color:var(--blue)}
+.lib-search input:focus ~ .lib-mag,.lib-search:focus-within .lib-mag{color:var(--blue)}
+/* The browser's own clear button, which is the way out of a search and needs
+   no label of ours. */
+.lib-search input::-webkit-search-cancel-button{filter:grayscale(1) opacity(.5);cursor:pointer}
+
+.fmts{display:flex;gap:8px;flex-wrap:wrap}
+.fmt{background:none;border:1px solid rgba(255,255,255,.14);border-radius:999px;
+  color:var(--dim);font-family:'Sora',sans-serif;font-weight:600;font-size:10.5px;
+  letter-spacing:.12em;text-transform:uppercase;padding:7px 15px;cursor:pointer;
+  transition:.2s}
+@media(hover:hover){ .fmt:hover{color:var(--text);border-color:rgba(255,255,255,.3)} }
+.fmt:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.fmt[aria-pressed="true"]{color:var(--blue);border-color:rgba(47,216,255,.5);
+  background:var(--blue-dim)}
+.fmt.is-empty{opacity:.4}
+.fmt.is-empty[aria-pressed="true"]{opacity:1}
+
+.resource-card[hidden]{display:none}
+
+@media (max-width: 900px){
+  .lib-js .doors{grid-template-columns:repeat(2,1fr)}
+}
+@media (max-width: 480px){
+  .lib-js .doors{grid-template-columns:1fr;gap:10px}
+  .door{min-height:0;flex-direction:row;align-items:center;justify-content:space-between;
+    padding:15px 16px}
+}
+@media (prefers-reduced-motion: reduce){
+  .door,.fmt{transition:none}
+  @media(hover:hover){ .door:hover{transform:none} }
+}

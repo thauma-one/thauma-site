@@ -64,32 +64,70 @@ await check("it has the anatomy of an invitation, in order", async () => {
   const order = [...card.children].map((el) => el.className.split(" ")[0]);
   const at = (c) => order.indexOf(c);
   assert(at("invite-cue") === 0, `the announcement is not first: ${order.join(" > ")}`);
-  assert(at("invite-title") > at("invite-cue"), "the name comes before the announcement");
-  assert(at("invite-facts") > at("invite-title"), "the date is stated before what it is for");
+  assert(at("invite-head") > at("invite-cue"), "the gathering comes before the announcement");
   assert(at("invite-act") === order.length - 1,
     `the action is not last: ${order.join(" > ")}`);
+
+  /* THE DATE BEFORE THE NAME, inside the head. An invitation prints the date
+     large and first because the date is the thing somebody has to decide
+     about; the name is what they read once they are already interested. This
+     replaced a WHEN/WHERE facts row in which the date was set smaller than
+     the summary above it. */
+  const head = [...card.querySelector(".invite-head").children]
+    .map((el) => el.className.split(" ")[0]);
+  assert(head.indexOf("invite-when") === 0,
+    `the date is not the first thing in the head: ${head.join(" > ")}`);
+  assert(card.querySelector(".invite-lede .invite-title"),
+    "the name is not inside the head beside the date");
 });
 
-await check("the RSVP is a link, never the loudest thing on the page", async () => {
-  /* An invitation does not shout its RSVP. A filled button here would make the
-     page about registering rather than about the gathering. */
+await check("the RSVP is bounded, and never the loudest thing on the page", async () => {
+  /* An invitation does not shout its RSVP. A FILLED button would make the page
+     about registering rather than about the gathering.
+     It is not a bare underline any more either: "small and bounded" had landed
+     on a 12px underline in the corner of the card, which is not restraint, it
+     is invisible. An outlined target is offered; a filled one is demanded. */
+  const css = readFileSync("src/css/main.css", "utf8");
   const act = d.querySelector(".invite-act a");
   assert(act, "no way to register");
   assert(!/\bbtn\b/.test(act.className),
-    "the action is styled as a button — the card is supposed to be the star");
+    "it borrowed the site's button classes — the invitation styles its own, " +
+    "so that changing the page's buttons cannot quietly make this one solid");
+  const rule = css.slice(css.indexOf(".invite-card .invite-act a{"));
+  const block = rule.slice(0, rule.indexOf("}"));
+  assert(/border:1px solid/.test(block), `the action has no boundary: ${block}`);
+  assert(!/background:var\(--foam\)/.test(block),
+    "the action is filled with the ministry color — that is a demand, not an offer");
 });
 
 await check("the date reads like a date, not like a database value", async () => {
-  const when = d.querySelector(".invite-facts dd").textContent;
+  const when = d.querySelector(".invite-date").textContent;
   assert(/14–15 March 2027/.test(when), `it says "${when.trim()}"`);
   assert(!/2027-03-14/.test(when), "an ISO date reached the page");
+});
+
+await check("the date is ONE string, so it stays right in Croatian", async () => {
+  /* Croatian, Serbian and Slovenian put the month in the genitive when a day
+     precedes it — "14.-15. ozujka 2027." — so splitting the date into a day
+     block and a month-year block to stack them would print correct English
+     and broken Croatian. The filter knows each locale's whole form; the page
+     must not take it apart. */
+  const when = d.querySelector(".invite-when");
+  const parts = [...when.querySelectorAll("span")]
+    .filter((el) => !el.classList.contains("vh"))
+    .map((el) => el.className);
+  assert(parts.filter((c) => /invite-date/.test(c)).length === 1,
+    `the date is split across ${parts.length} elements: ${parts.join(", ")}`);
 });
 
 await check("the place is a link, and it forces nobody's maps app", async () => {
   /* This shipped a Google Maps URL, which every platform recognizes and which
      opens Google Maps whatever the reader actually uses. Recognized by
      everything is not the same as right for anybody. */
-  const a = d.querySelector(".invite-facts a[data-map]");
+  /* Moved out of the facts row: the date and the place are the two things an
+     invitation states plainly, and a WHERE label in front of a place name is
+     the interface explaining itself. The cohort facts keep their labels. */
+  const a = d.querySelector(".invite-where a[data-map]");
   assert(a, "the location is not a link, or does not carry the place");
   const href = a.getAttribute("href");
   assert(!/google\.com\/maps/.test(href), `it still forces Google Maps: ${href}`);
@@ -145,13 +183,32 @@ await check("a typed address is repaired on the way out", async () => {
 
 await check("there is ONE interactive moment, and it does not loop", async () => {
   const css = readFileSync("src/css/main.css", "utf8");
-  assert(d.querySelector(".invite-rule i"), "the moment's element is missing");
-  const block = css.slice(css.indexOf("@keyframes invite-pass") - 400,
-                          css.indexOf("@keyframes invite-pass") + 200);
+  /* THE MOMENT IS THE CARD'S TOP EDGE now — a light drawn along it as the
+     card arrives — plus the date rolling in beneath. It used to be a light
+     crossing the 1px rule in the middle of the card: that ran, but it crossed
+     a divider nobody looks at. Two travelling lights on one card would be
+     decoration rather than a moment, so the rule is a plain divider and
+     carries no element to light. */
+  assert(!d.querySelector(".invite-rule i"),
+    "the old travelling light is still in the rule — that is a second moment");
+  assert(/@keyframes invite-seam/.test(css), "the seam has no animation");
+  const block = css.slice(css.indexOf("@keyframes invite-seam") - 500,
+                          css.indexOf("@keyframes invite-seam") + 200);
   assert(!/infinite/.test(block),
     "the moment loops — a loop is decoration, and the brief asked for one moment");
   assert(/prefers-reduced-motion:no-preference/.test(block),
     "it runs regardless of whether somebody asked for less motion");
+  /* The edge must still be DRAWN for a reader who asked for less motion —
+     animating it from scaleX(0) and stopping there would leave them a card
+     with a plainly unfinished border. */
+  assert(/prefers-reduced-motion:reduce\)\{\s*\.invite-card::before\{transform:scaleX\(1\)/.test(css),
+    "under reduced motion the seam never gets drawn at all");
+
+  /* The date rolls through the SHARED cascade, not a second implementation. */
+  const js = readFileSync("src/js/main.js", "utf8");
+  assert(/window\.ThaumaRollChars\s*=\s*reveal/.test(js),
+    "the character cascade is not lent out; the invitation must be copying it");
+  assert(/ThaumaRollChars\(when/.test(js), "the date never rolls");
 });
 
 /* --------------------------------------------------------- the record */

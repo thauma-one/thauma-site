@@ -128,7 +128,21 @@
     "empty_title": "Materijali dolaze.",
     "empty_text": "Dok služimo crkvama na terenu, vodiči, prijevodi i alati koje gradimo živjet će ovdje — na hrvatskom i engleskom, besplatno za svaku crkvu. Ako vašem timu nešto treba već sada, javite se i pitajte.",
     "empty_cta": "Zatražite pomoć",
-    "link_label": "Saznaj više"
+    "link_label": "Saznaj više",
+    "door_crisis": "Nešto se pokvarilo",
+    "door_growth": "Učim za pultom",
+    "door_planning": "Biram što kupiti",
+    "door_lookup": "Što ovo znači?",
+    "all_label": "Sve",
+    "search_label": "Pretraži materijale",
+    "search_hint": "Pretraži",
+    "none_text": "Ništa ne odgovara.",
+    "none_cta": "Prikaži sve",
+    "fmt_guide": "Vodič",
+    "fmt_diagram": "Dijagram",
+    "fmt_checklist": "Kontrolna lista",
+    "fmt_glossary-entry": "Pojmovnik",
+    "fmt_video": "Video"
   },
   "give": {
     "title": "Podrži",

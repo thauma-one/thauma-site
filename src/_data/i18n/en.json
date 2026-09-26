@@ -128,7 +128,21 @@
     "empty_title": "Resources are coming.",
     "empty_text": "As we serve churches on the ground, the guides, translations, and tools we build will live here — in Croatian and English, free to every church. If there's something your team needs now, reach out and ask.",
     "empty_cta": "Ask us for help",
-    "link_label": "Learn more"
+    "link_label": "Learn more",
+    "door_crisis": "Broken right now",
+    "door_growth": "Learning the booth",
+    "door_planning": "Deciding what to buy",
+    "door_lookup": "What does this mean?",
+    "all_label": "Everything",
+    "search_label": "Search resources",
+    "search_hint": "Search",
+    "none_text": "Nothing matches.",
+    "none_cta": "Show everything",
+    "fmt_guide": "Guide",
+    "fmt_diagram": "Diagram",
+    "fmt_checklist": "Checklist",
+    "fmt_glossary-entry": "Glossary",
+    "fmt_video": "Video"
   },
   "give": {
     "title": "Give",

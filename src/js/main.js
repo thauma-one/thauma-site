@@ -397,9 +397,22 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'Intersect
       el.classList.add('in');
       /* THE INVITATION'S ONE MOMENT, hung on the reveal that already exists
          rather than a second observer watching the same element. The light
-         crosses the rule as the card arrives and never again — a loop would be
-         decoration, and the brief asked for one moment, not several. */
-      if (el.classList.contains('invite')) el.classList.add('sr-in');
+         draws along the card's top edge as it arrives and never again — a loop
+         would be decoration, and the brief asked for one moment, not several.
+
+         The date rolls in under it, per character, through the SAME cascade
+         the section cues and the page wheel use. Called rather than copied:
+         the date is inside a card that is still fading up, so the cascade's
+         own observer would have rolled it while it was invisible and the
+         moment would have been spent before anybody could see it. .6s in,
+         which is after the seam has drawn most of the way across. */
+      if (el.classList.contains('invite')) {
+        el.classList.add('sr-in');
+        var when = el.querySelector('.invite-date');
+        if (when && window.ThaumaRollChars) {
+          setTimeout(function () { window.ThaumaRollChars(when, 0, 40); }, 600);
+        }
+      }
       setTimeout(function () { el.style.transitionDelay = ''; }, 800 + i * 90);
     });
   }, { threshold: 0.12 });
@@ -407,6 +420,136 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'Intersect
     toObserve.forEach(function (el) { io.observe(el); });
   });
 }
+
+// ---- The library's four doors, search and formats (2026-09-25) ----
+// Filed by the MOMENT somebody is in, not by subject — see the reasoning in
+// src/_data/resources.js. This filters the grid in the browser: the library
+// is a few dozen cards at most, so asking a server would add a wait to
+// something that should feel like sorting objects on a table.
+//
+// THE DOOR IS IN THE URL. ?door=crisis&q=hum survives a reload and can be
+// sent to somebody — "here, this is the page you want" — which a filter held
+// only in memory cannot do. replaceState, not pushState: refining a search
+// should not fill the back button with every keystroke.
+(function () {
+  var lib = document.getElementById('lib');
+  if (!lib) return;
+
+  var grid = document.getElementById('libGrid');
+  var none = document.getElementById('libNone');
+  var q = document.getElementById('libQ');
+  var cards = Array.prototype.slice.call(grid.querySelectorAll('.resource-card'));
+  var doors = Array.prototype.slice.call(lib.querySelectorAll('.door'));
+  var fmts = Array.prototype.slice.call(lib.querySelectorAll('.fmt'));
+
+  // The controls are inert without this file, so they stay out of the page
+  // until it runs. See the comment in resources.njk.
+  lib.classList.add('lib-js');
+
+  var state = { door: null, fmt: null, q: '' };
+
+  function matches(card, ignore) {
+    if (state.door && ignore !== 'door' && card.dataset.moment !== state.door) return false;
+    if (state.fmt && ignore !== 'fmt' && card.dataset.format !== state.fmt) return false;
+    if (state.q && (card.dataset.text || '').indexOf(state.q) === -1) return false;
+    return true;
+  }
+
+  /* A CARD THE FILTER SHOWS MUST BE VISIBLE.
+     The scroll-reveal hides every card behind `sr` until its observer adds
+     `in`. A card that was display:none when that observer ran was never
+     revealed — so arriving at ?door=crisis and then clearing the door showed
+     the right cards as empty boxes. Reveal on the way back in, but only after
+     the first pass, or the load-time fade would be skipped for the whole
+     grid. */
+  var settledOnce = false;
+  function ensureVisible(card) {
+    if (!settledOnce) return;
+    if (card.classList.contains('sr')) card.classList.add('in');
+  }
+
+  function apply() {
+    var shown = 0;
+    cards.forEach(function (card) {
+      var on = matches(card);
+      card.hidden = !on;
+      if (on) { shown++; ensureVisible(card); }
+    });
+
+    // COUNTS ARE WHAT IS LEFT, not what exists. A door reading 6 that shows
+    // nothing once you press it is a lie the first time and ignored after.
+    // Each door counts against the OTHER filters but not against itself, so
+    // the numbers describe what pressing it would actually give you.
+    doors.forEach(function (b) {
+      var n = cards.filter(function (c) {
+        return c.dataset.moment === b.dataset.door && matches(c, 'door');
+      }).length;
+      b.querySelector('.door-n').textContent = n ? n : '';
+      // Dimmed rather than disabled: a door that leads nowhere right now is
+      // still worth seeing, and a control that vanishes under your hand is
+      // worse than one that is plainly quiet.
+      b.classList.toggle('is-empty', n === 0);
+      b.setAttribute('aria-pressed', state.door === b.dataset.door ? 'true' : 'false');
+    });
+    fmts.forEach(function (b) {
+      var n = cards.filter(function (c) {
+        return c.dataset.format === b.dataset.fmt && matches(c, 'fmt');
+      }).length;
+      b.classList.toggle('is-empty', n === 0);
+      b.setAttribute('aria-pressed', state.fmt === b.dataset.fmt ? 'true' : 'false');
+    });
+
+    none.hidden = shown !== 0;
+    grid.hidden = shown === 0;
+
+    var p = new URLSearchParams();
+    if (state.door) p.set('door', state.door);
+    if (state.fmt) p.set('format', state.fmt);
+    if (state.q) p.set('q', state.q);
+    var qs = p.toString();
+    try {
+      history.replaceState(null, '', qs ? location.pathname + '?' + qs : location.pathname);
+    } catch (e) { /* file:// and some embedded browsers refuse; filtering still works */ }
+  }
+
+  // Pressing the door you are already inside returns you to everything —
+  // the same control both ways, so there is no separate "clear" to find.
+  doors.forEach(function (b) {
+    b.addEventListener('click', function () {
+      state.door = state.door === b.dataset.door ? null : b.dataset.door;
+      apply();
+    });
+  });
+  fmts.forEach(function (b) {
+    b.addEventListener('click', function () {
+      state.fmt = state.fmt === b.dataset.fmt ? null : b.dataset.fmt;
+      apply();
+    });
+  });
+  if (q) {
+    q.addEventListener('input', function () {
+      state.q = q.value.trim().toLowerCase();
+      apply();
+    });
+  }
+  document.getElementById('libClear').addEventListener('click', function () {
+    state = { door: null, fmt: null, q: '' };
+    if (q) q.value = '';
+    apply();
+    if (q) q.focus();
+  });
+
+  // Arriving with a door already chosen, from a link somebody was sent.
+  var incoming = new URLSearchParams(location.search);
+  var d = incoming.get('door'), f = incoming.get('format'), iq = incoming.get('q');
+  if (d && doors.some(function (b) { return b.dataset.door === d; })) state.door = d;
+  if (f && fmts.some(function (b) { return b.dataset.fmt === f; })) state.fmt = f;
+  if (iq) { state.q = iq.trim().toLowerCase(); if (q) q.value = iq; }
+  apply();
+  /* Everything from here is a person pressing something, so a card coming
+     back into the grid has to arrive visible. */
+  settledOnce = true;
+})();
 
 // ---- Character-reveal cascade for small labels (2026-07-20) ----
 // The section cue labels (and their leading counter number), the Mission
@@ -499,6 +642,10 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'Intersect
         el.classList.remove('cr-nonum');
       }, totalMs);
     }
+
+    /* Lent to the invitation, which needs the same roll on its own schedule
+       rather than on this observer's. One implementation, two callers. */
+    window.ThaumaRollChars = reveal;
 
     var crObserver = new IntersectionObserver(function (entries) {
       var show = entries.filter(function (e) { return e.isIntersecting; })

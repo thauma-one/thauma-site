@@ -24,16 +24,73 @@ pageTitle: resources
 
 <section><div class="wrap">
   {% if resourcesRevealed and resources.length %}
-  <div class="resource-grid">
-    {% for r in resources %}
-    <div class="resource-card">
-      {% if r.photo %}<div class="resource-photo"><img src="{{ r.photo }}" alt="{{ r.title[lang] }}" loading="lazy" decoding="async"></div>{% endif %}
-      <h3><a href="/{{ lang }}/resources/{{ r.slug }}/">{{ r.title[lang] or r.title.en or r.title[r.langs[0]] }}</a></h3>
-      <p class="resource-kind">{{ r.format | replace("-", " ") }}</p>
-      {% if r.description[lang] %}<p>{{ r.description[lang] | md | safe }}</p>{% endif %}
-      {% if r.link %}<a class="btn ghost" href="{{ r.link }}" target="_blank" rel="noopener">{{ t.resources.link_label }}</a>{% endif %}
+  {#- THE FOUR DOORS, which the data has always had and this page never used.
+     src/_data/resources.js files every resource by the MOMENT somebody is in
+     when they need it rather than by subject, and says why: a visitor with a
+     dead mixer does not know which category their problem belongs to, they
+     know what just happened. The page was printing `format` — guide, diagram
+     — which is the one thing a person in that state does not care about.
+
+     So the doors are the way in, in the visitor's own words, and format is a
+     refinement underneath. Nothing here explains how to use it: four phrases
+     and a search box are the instructions.
+
+     HIDDEN WITHOUT JAVASCRIPT. The filtering is in the browser, so `lib-js`
+     is set by main.js and the controls stay out of the document until it is.
+     Otherwise a no-script visitor gets four dead buttons above a grid that
+     never changes. The grid itself works with or without. -#}
+  <div class="lib" id="lib">
+    <div class="doors" role="group" aria-label="{{ t.resources.cue }}">
+      {%- for d in ["crisis", "growth", "planning", "lookup"] %}
+      <button type="button" class="door" data-door="{{ d }}" aria-pressed="false">
+        <span class="door-label">{{ t.resources["door_" + d] }}</span>
+        <span class="door-n" aria-hidden="true"></span>
+      </button>
+      {%- endfor %}
     </div>
-    {% endfor %}
+
+    <div class="lib-bar">
+      <label class="lib-search">
+        <span class="vh">{{ t.resources.search_label }}</span>
+        <svg class="lib-mag" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+          <circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.4"/>
+          <path d="M10.4 10.4 L14 14" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>
+        <input type="search" id="libQ" autocomplete="off"
+               placeholder="{{ t.resources.search_hint }}">
+      </label>
+      <div class="fmts" role="group" aria-label="{{ t.resources.link_label }}">
+        {%- for f in ["guide", "diagram", "checklist", "glossary-entry", "video"] %}
+        <button type="button" class="fmt" data-fmt="{{ f }}" aria-pressed="false">{{ t.resources["fmt_" + f] }}</button>
+        {%- endfor %}
+      </div>
+    </div>
+
+    <div class="resource-grid" id="libGrid">
+      {% for r in resources %}
+      {%- set rtitle = r.title[lang] or r.title.en or r.title[r.langs[0]] %}
+      {%- set rsum = r.description[lang] or r.description.en or "" %}
+      {#- The corpus the search reads, built once here rather than scraped out
+         of the rendered card: a card shows a summary in one language and the
+         symptoms not at all, and somebody typing "no sound" should still find
+         the resource that lists it. -#}
+      <div class="resource-card" data-moment="{{ r.moment }}" data-format="{{ r.format }}"
+           data-text="{{ (rtitle ~ ' ' ~ rsum ~ ' ' ~ (r.symptoms | join(' '))) | lower }}">
+        {% if r.photo %}<div class="resource-photo"><img src="{{ r.photo }}" alt="{{ rtitle }}" loading="lazy" decoding="async"></div>{% endif %}
+        <h3><a href="/{{ lang }}/resources/{{ r.slug }}/">{{ rtitle }}</a></h3>
+        <p class="resource-kind">{{ t.resources["fmt_" + r.format] or r.format }}</p>
+        {% if rsum %}<p>{{ rsum | md | safe }}</p>{% endif %}
+        {% if r.link %}<a class="btn ghost" href="{{ r.link }}" target="_blank" rel="noopener">{{ t.resources.link_label }}</a>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+
+    {#- Shown only when a filter empties the grid. The way out is a button,
+       not an instruction telling somebody to clear their filters. -#}
+    <p class="lib-none" id="libNone" hidden>
+      <span>{{ t.resources.none_text }}</span>
+      <button type="button" class="btn ghost" id="libClear">{{ t.resources.none_cta }}</button>
+    </p>
   </div>
   {% else %}
   <div class="empty">
