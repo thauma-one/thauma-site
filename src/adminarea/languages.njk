@@ -1,0 +1,74 @@
+---
+layout: layouts/admin.njk
+adminPage: languages
+adminNum: "07"
+adminTitle: Languages
+adminHeading: How each language is <b>written</b>
+adminScript: /js/admin-languages.js
+permalink: /admin/languages/index.html
+---
+{#- WHAT EVERY TRANSLATOR READS, AI or human (0035). The file handed to a
+   translator or to Claude carries these, and so will the auto-translate
+   button, so a phrase fixed here is fixed on every route to a translation.
+
+   Saves at once, like Settings: none of it is public, so there is nothing to
+   publish. Part 5 of the language work grows this page into the one place a
+   language is managed — switches, donation link, adding and removing. -#}
+<p class="rolegate" id="lnProblem" hidden></p>
+
+<div class="ln" id="lnRoot" hidden>
+  <section class="ln-sec" aria-labelledby="lnKeepTitle">
+    <h2 class="ln-h" id="lnKeepTitle" data-i18n="ln.keep">Never translated</h2>
+    <ul class="ln-chips" id="lnKeep"></ul>
+    <form class="ln-add" id="lnKeepAdd" data-write>
+      <input type="text" id="lnKeepTerm" maxlength="80" autocomplete="off"
+             placeholder="Add a word or name" aria-label="Add a word or name"
+             data-i18n-attr="placeholder:ln.keepAdd,aria-label:ln.keepAdd">
+      <button type="submit" class="ghost-btn" data-i18n="ln.add">Add</button>
+    </form>
+  </section>
+
+  <section class="ln-sec" aria-labelledby="lnLangLabel">
+    {#- A select, not tabs: this has to stay usable at thirty languages. -#}
+    <label class="ln-langpick">
+      <span class="ln-h" id="lnLangLabel" data-i18n="ln.language">Language</span>
+      <select id="lnLang"></select>
+    </label>
+
+    <label class="fld ln-guide">
+      <span data-i18n="ln.guide">Guide</span>
+      <textarea id="lnGuide" rows="4" maxlength="2000"></textarea>
+    </label>
+    <p class="ln-acts" data-write>
+      <button type="button" class="ghost-btn" id="lnGuideSave" disabled data-i18n="ln.saveGuide">Save guide</button>
+      <span class="hint" id="lnGuideStatus" role="status"></span>
+    </p>
+
+    {#- Fixed phrases belong to ONE language; "every language" has none. -#}
+    <div id="lnGlossWrap">
+      <h3 class="ln-h3" data-i18n="ln.fixed">Fixed phrases</h3>
+      <table class="ln-table">
+        <thead><tr>
+          <th scope="col" data-i18n="ln.english">English</th>
+          <th scope="col" id="lnTargetHead"></th>
+          <th scope="col"><span class="visually-hidden" data-i18n="ln.remove">Remove</span></th>
+        </tr></thead>
+        <tbody id="lnGlossary"></tbody>
+      </table>
+      <form class="ln-add ln-add-pair" id="lnGlossAdd" data-write>
+        <input type="text" id="lnSource" maxlength="300" autocomplete="off"
+               placeholder="English phrase" aria-label="English phrase"
+               data-i18n-attr="placeholder:ln.source,aria-label:ln.source">
+        <input type="text" id="lnTarget" maxlength="300" autocomplete="off"
+               placeholder="How it is said" aria-label="How it is said"
+               data-i18n-attr="placeholder:ln.target,aria-label:ln.target">
+        <button type="submit" class="ghost-btn" data-i18n="ln.add">Add</button>
+      </form>
+    </div>
+  </section>
+</div>
+
+{#- Every language the site has, English included for the guide list's sake
+   only (it is the source, so it has no phrases). Built from site.json and each
+   language's own name, so a language added there appears here. -#}
+<script id="lnLangs" type="application/json">[{% for code in site.languages %}{"code": {{ code | dump | safe }}, "name": {{ (i18n[code].name if i18n[code] else code) | dump | safe }}}{% if not loop.last %},{% endif %}{% endfor %}]</script>

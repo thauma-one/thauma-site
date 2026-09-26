@@ -56,6 +56,7 @@ import adminActAs from "./admin-actas.js";
 import adminProfile from "./admin-profile.js";
 import staffVideos from "./staff-videos.js";
 import adminDbSync from "./admin-dbsync.js";
+import adminTranslationNotes from "./admin-translation-notes.js";
 import confirmAccount from "./confirm-account.js";
 import confirmEmail from "./confirm-email.js";
 import staffAccount from "./staff-account.js";
@@ -338,6 +339,11 @@ const ROUTES = {
   // a terminal. Offered only where a D1 credential is configured, which is the
   // development site and nowhere else. See admin-dbsync.js.
   "/api/admin/db-sync": adminDbSync,
+
+  // What every translator reads: words never translated, fixed phrases, a
+  // guide per language. Read by anyone signed in, changed by admin and
+  // communications. See admin-translation-notes.js.
+  "/api/admin/translation-notes": adminTranslationNotes,
 
   // Uploads. GET /media/* is handled by prefix below, not here.
   "/api/admin/media": media,

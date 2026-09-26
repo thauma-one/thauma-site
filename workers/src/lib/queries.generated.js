@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "aff10b6fbd4568c4";
+export const SOURCE_DIGEST = "15916e2f15aa8d1d";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -938,6 +938,26 @@ ORDER BY s.subscribed_at
 LIMIT :limit OFFSET :offset;`,
   subscribers_to_send_count: `SELECT COUNT(*) AS n FROM subscribers
 WHERE list_id = :list_id AND partner_id IS :partner_id AND status = 'subscribed';`,
+  translation_glossary_add: `INSERT INTO translation_glossary (id, lang, source, target, created_at, updated_at, updated_by)
+VALUES (:id, :lang, :source, :target, :now, :now, :user_id)
+ON CONFLICT(lang, source) DO UPDATE SET
+  target = excluded.target, updated_at = excluded.updated_at, updated_by = excluded.updated_by;`,
+  translation_glossary_all: `SELECT id, lang, source, target FROM translation_glossary
+ORDER BY lang, source COLLATE NOCASE;`,
+  translation_glossary_delete: `DELETE FROM translation_glossary WHERE id = :id;`,
+  translation_glossary_update: `UPDATE translation_glossary
+SET source = :source, target = :target, updated_at = :now, updated_by = :user_id
+WHERE id = :id;`,
+  translation_guide_set: `INSERT INTO translation_guides (lang, guidance, updated_at, updated_by)
+VALUES (:lang, :guidance, :now, :user_id)
+ON CONFLICT(lang) DO UPDATE SET
+  guidance = excluded.guidance, updated_at = excluded.updated_at, updated_by = excluded.updated_by;`,
+  translation_guides_all: `SELECT lang, guidance FROM translation_guides ORDER BY lang;`,
+  translation_keep_add: `INSERT INTO translation_keep (id, term, created_at, created_by)
+VALUES (:id, :term, :now, :user_id)
+ON CONFLICT(term) DO NOTHING;`,
+  translation_keep_all: `SELECT id, term FROM translation_keep ORDER BY term COLLATE NOCASE;`,
+  translation_keep_delete: `DELETE FROM translation_keep WHERE id = :id;`,
   user_by_email: `SELECT u.id AS user_id, u.email, u.name AS user_name, u.status,
        COALESCE(u.preferred_lang, 'en') AS preferred_lang,
        COALESCE((SELECT GROUP_CONCAT(r.role) FROM user_roles r WHERE r.user_id = u.id),

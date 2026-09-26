@@ -1894,6 +1894,59 @@ def t_removing_cannot_reach_another_partner():
     assert n == 1, "one partner removed another partner's person"
 
 
+# ------------------------------------------------------ translation notes --
+# What every translator reads (0035). Tested against real rows because two of
+# the behaviors live only in the SQL: a word is the same word whatever its
+# case, and adding a phrase that is already there corrects it.
+
+def t_translation_notes_arrive_with_what_is_known():
+    db = fresh()
+    terms = {r[0] for r in db.execute("SELECT term FROM translation_keep")}
+    assert {"Thauma", "θαῦμα", "501(c)3", "IRS"} <= terms, f"never-translate list: {terms}"
+    motto = db.execute("SELECT target FROM translation_glossary WHERE lang='hr' "
+                       "AND source='All of Me For All of Him'").fetchone()
+    assert motto and motto[0] == "Sve od mene Darujem Njega", f"the motto: {motto}"
+    guides = {r[0] for r in db.execute("SELECT lang FROM translation_guides")}
+    assert {"*", "hr", "sr", "sl"} <= guides, f"guides: {guides}"
+
+
+def t_a_kept_word_is_one_word_whatever_its_case():
+    db = fresh()
+    _run(db, "translation_keep_add", id="tk_x", term="thauma", now=NOW, user_id="u_chase")
+    n = db.execute("SELECT COUNT(*) FROM translation_keep WHERE term = 'Thauma' COLLATE NOCASE").fetchone()[0]
+    assert n == 1, f"'thauma' was stored beside 'Thauma' ({n} rows)"
+
+
+def t_adding_a_phrase_again_corrects_it():
+    db = fresh()
+    _run(db, "translation_glossary_add", id="tg_new", lang="hr",
+         source="all of me for all of him", target="Sve od sebe dajem Njemu",
+         now=NOW, user_id="u_chase")
+    rows = db.execute("SELECT target FROM translation_glossary WHERE lang='hr'").fetchall()
+    assert rows == [("Sve od sebe dajem Njemu",)], f"a second copy instead of a correction: {rows}"
+    _run(db, "translation_glossary_add", id="tg_sr", lang="sr",
+         source="All of Me For All of Him", target="Све од мене",
+         now=NOW, user_id="u_chase")
+    n = db.execute("SELECT COUNT(*) FROM translation_glossary").fetchone()[0]
+    assert n == 2, "the same phrase in another language is its own entry"
+
+
+def t_a_guide_is_set_not_stacked():
+    db = fresh()
+    _run(db, "translation_guide_set", lang="hr", guidance="Latin script.", now=NOW, user_id="u_chase")
+    _run(db, "translation_guide_set", lang="hr", guidance="", now=NOW, user_id="u_chase")
+    rows = db.execute("SELECT guidance FROM translation_guides WHERE lang='hr'").fetchall()
+    assert rows == [("",)], f"guides for hr: {rows}"
+
+
+def t_translation_notes_outlive_their_author():
+    db = fresh()
+    _run(db, "translation_keep_add", id="tk_y", term="Kuća molitve", now=NOW, user_id="u_chase")
+    db.execute("DELETE FROM users WHERE id='u_chase'")
+    row = db.execute("SELECT term, created_by FROM translation_keep WHERE id='tk_y'").fetchone()
+    assert row == ("Kuća molitve", None), f"the note went with its author: {row}"
+
+
 if __name__ == "__main__":
     print(f"schema tests — {len(MIGRATIONS)} migrations: "
           f"{', '.join(p.name for p in MIGRATIONS)}\n")
@@ -1995,6 +2048,11 @@ if __name__ == "__main__":
         ("a contact cannot be moved to someone else",    t_a_logged_contact_cannot_be_moved_to_someone_else),
         ("removing a person takes everything about them", t_removing_a_person_takes_everything_about_them),
         ("removing cannot reach another partner",        t_removing_cannot_reach_another_partner),
+        ("translation notes arrive with what is known",  t_translation_notes_arrive_with_what_is_known),
+        ("a kept word is one word whatever its case",    t_a_kept_word_is_one_word_whatever_its_case),
+        ("adding a phrase again corrects it",            t_adding_a_phrase_again_corrects_it),
+        ("a guide is set, not stacked",                  t_a_guide_is_set_not_stacked),
+        ("translation notes outlive their author",       t_translation_notes_outlive_their_author),
     ]:
         check(name, fn)
     print(f"\n{passed} passed, {failed} failed")

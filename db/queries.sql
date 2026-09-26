@@ -1204,6 +1204,53 @@ VALUES (:id, :now, :user_id, :partner_id, :action, :entity, :entity_id, :detail)
 
 
 -- ============================================================================
+-- TRANSLATION NOTES — what every translator reads (0035). Organization-wide,
+-- never public: read by the console, the translation file and auto-translate.
+-- ============================================================================
+
+-- name: translation_keep_all
+SELECT id, term FROM translation_keep ORDER BY term COLLATE NOCASE;
+
+-- name: translation_keep_add
+INSERT INTO translation_keep (id, term, created_at, created_by)
+VALUES (:id, :term, :now, :user_id)
+ON CONFLICT(term) DO NOTHING;
+
+-- name: translation_keep_delete
+DELETE FROM translation_keep WHERE id = :id;
+
+-- name: translation_glossary_all
+SELECT id, lang, source, target FROM translation_glossary
+ORDER BY lang, source COLLATE NOCASE;
+
+-- name: translation_glossary_add
+-- The same phrase added twice in one language CORRECTS it rather than
+-- refusing: somebody retyping a phrase with a better rendering means the new
+-- one.
+INSERT INTO translation_glossary (id, lang, source, target, created_at, updated_at, updated_by)
+VALUES (:id, :lang, :source, :target, :now, :now, :user_id)
+ON CONFLICT(lang, source) DO UPDATE SET
+  target = excluded.target, updated_at = excluded.updated_at, updated_by = excluded.updated_by;
+
+-- name: translation_glossary_update
+UPDATE translation_glossary
+SET source = :source, target = :target, updated_at = :now, updated_by = :user_id
+WHERE id = :id;
+
+-- name: translation_glossary_delete
+DELETE FROM translation_glossary WHERE id = :id;
+
+-- name: translation_guides_all
+SELECT lang, guidance FROM translation_guides ORDER BY lang;
+
+-- name: translation_guide_set
+INSERT INTO translation_guides (lang, guidance, updated_at, updated_by)
+VALUES (:lang, :guidance, :now, :user_id)
+ON CONFLICT(lang) DO UPDATE SET
+  guidance = excluded.guidance, updated_at = excluded.updated_at, updated_by = excluded.updated_by;
+
+
+-- ============================================================================
 -- PARTNER API — everything below this line may be served to a PUBLIC WEBSITE
 -- ============================================================================
 -- Queries above this line answer a signed-in human in the staff console.

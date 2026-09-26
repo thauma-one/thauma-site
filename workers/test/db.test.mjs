@@ -326,6 +326,8 @@ await check("every real query converts with its documented params", async () => 
     // attachments: the pointer lives in D1, the bytes live in R2
     filename: "report.pdf", content_type: "application/pdf", bytes: 81920,
     object_key: "attachments/chase-roush/abc123",
+    // translation notes: never-translated words, fixed phrases, guides
+    term: "Thauma", target: "Sve od mene Darujem Njega", guidance: "Latin script.",
     // the contact form's configuration — the messages themselves are never stored
     deliver_to: "chase@example.org", from_address: "contact@chaseroush.thauma.one",
     heading: "Get in touch", blurb: null, button: "Send", thanks: null,
@@ -352,6 +354,11 @@ await check("every real query converts with its documented params", async () => 
   // Queries with nothing to scope by. languages_all is the organization's
   // catalog; the admin ones are unscoped BY DESIGN — see admin.test.mjs.
   const NO_PARAMS = new Set(["languages_all", "admin_users", "admin_partners",
+                             // Translation notes are organization-wide and
+                             // never about a person or a partner: the whole
+                             // set is the answer. The endpoint checks roles.
+                             "translation_keep_all", "translation_glossary_all",
+                             "translation_guides_all",
                              "admin_count_admins", "language_next_sort_order",
                              "staff_profiles_all", "staff_profiles_public",
                              // Org-wide by design: maintaining the addresses
