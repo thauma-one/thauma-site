@@ -233,6 +233,14 @@ await check("a signed-in NON-admin is refused", async () => {
   } finally { g.restore(); }
 });
 
+await check("communications may edit the words, as the navigation promises", async () => {
+  const g = stubGitHub();
+  try {
+    const res = await handler.fetch(req("GET", { query: "?file=en" }), envWith("communications"));
+    eq(res.status, 200, "status");
+  } finally { g.restore(); }
+});
+
 await check("an address with no account is refused", async () => {
   const res = await handler.fetch(req("GET", { query: "?file=en" }), envWith(null));
   eq(res.status, 403, "status");

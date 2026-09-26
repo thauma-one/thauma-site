@@ -15,7 +15,7 @@
  * It holds a token that can write to the repository that deploys the site.
  * Everything below exists because of that one sentence.
  *
- *   1. ADMIN ROLE, checked first, failing closed. Same gate as admin.js.
+ *   1. EDITOR ROLE (admin or communications), checked first, failing closed.
  *   2. THE PATH IS NEVER TAKEN FROM THE REQUEST. The client sends a short key
  *      ("en", "site"); this file derives the path. There is no input that
  *      reaches a path, so there is no traversal to defend against — a request
@@ -154,7 +154,19 @@ export function setLeaf(doc, path, value, creatable) {
   return null;
 }
 
-/** Resolve the caller and refuse anyone who is not an administrator. */
+/**
+ * Who may edit the site's words and settings: administrators and
+ * communications.
+ *
+ * This said administrators only, while the navigation has offered Content and
+ * Site to communications since the two consoles became one header — so a
+ * communications account was shown the editor and refused by it. The Library
+ * endpoint already followed the navigation. Exported because the Translate
+ * endpoint writes these same files and must answer the same way.
+ */
+export const EDITORS = ["admin", "communications"];
+
+/** Resolve the caller and refuse anyone who is not an editor. */
 async function requireAdmin(request, env) {
   const { user, denied } = await requireAccess(request, env);
   if (denied) return { denied };
@@ -166,10 +178,10 @@ async function requireAdmin(request, env) {
     return { denied: json({ error: "This address is not an active account.", email: user.email }, 403) };
   }
   const roles = String(me.roles || "").split(",").filter(Boolean);
-  if (!roles.includes("admin")) {
+  if (!roles.some((r) => EDITORS.includes(r))) {
     return {
       denied: json({
-        error: "Editing the site's content is limited to administrators.",
+        error: "Editing the site's content needs the administrator or communications role.",
         your_roles: roles,
       }, 403),
     };
