@@ -324,7 +324,7 @@ await check("PUT commits one changed value and nothing else", async () => {
 });
 
 await check("a translation saved here stops being outdated", async () => {
-  /* The Translate page marks a line outdated when its English changed after
+  /* The Content page marks a line outdated when its English changed after
      the translation was written. Fixing the line here has to clear that, or
      the only way out would be the file route. */
   const g = stubGitHub({ sha: "sha1" });

@@ -10,7 +10,7 @@
  * nothing errors.
  *
  * The file is built and read on the server, in workers/src/lib/
- * translation-file.js (the Translate page on Administration › Languages); this
+ * translation-file.js (the Content page's translation file); this
  * tests the functions it uses, and the real content they have to carry.
  */
 import { readFileSync } from "node:fs";

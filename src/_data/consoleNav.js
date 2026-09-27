@@ -74,11 +74,6 @@ const admin = [
     roles: ["admin", "communications"] },
   { slug: "site", url: "/admin/site/", label: "Site",
     roles: ["admin", "communications"] },
-  /* HOW EACH LANGUAGE IS WRITTEN: words never translated, fixed phrases, a
-     guide per language. The same people who write the site's words, because
-     these notes decide how every translation of them reads. */
-  { slug: "languages", url: "/admin/languages/", label: "Languages",
-    roles: ["admin", "communications"] },
   { slug: "publish", url: "/admin/publish/", label: "Publish",
     roles: ["admin", "communications"] },
   { slug: "activity", url: "/admin/activity/", label: "Activity",

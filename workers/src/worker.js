@@ -345,8 +345,9 @@ const ROUTES = {
   // guide per language. Read by anyone signed in, changed by admin and
   // communications. See admin-translation-notes.js.
   "/api/admin/translation-notes": adminTranslationNotes,
-  // The Translate page: what is missing per language, the file handed to a
-  // translator, and approving what comes back. See admin-translate.js.
+  // Every line of every language for the Content page: what is missing or
+  // outdated, saving, the file handed to a translator, and approving what
+  // comes back. See admin-translate.js.
   "/api/admin/translate": adminTranslate,
 
   // Uploads. GET /media/* is handled by prefix below, not here.

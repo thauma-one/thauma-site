@@ -210,7 +210,7 @@ async function audit(db, { user, action, entity_id, detail }) {
 
 
 /* A TRANSLATION TYPED HERE IS A TRANSLATION MADE AGAINST TODAY'S ENGLISH.
-   The Translate page marks a line outdated when its English has changed since
+   The Content page marks a line outdated when its English has changed since
    the translation was last written (see 0036); a line fixed here has to stop
    being outdated, or the only way to clear it would be the file route.
 

@@ -427,7 +427,9 @@ check("nothing in the SAVE flow claims to publish", () => {
   const root = fileURLToPath(new URL("../src/", import.meta.url));
 
   const i18n = readFileSync(root + "js/staff-i18n.js", "utf8");
-  const SAVE_KEYS = ["con.save", "con.saveTitle", "con.saveBody", "con.saveSiteBody",
+  /* con.saveBody went with the Content page's save dialog (2026-09-27): a
+     save there is a quiet commit and asks nothing. The Site page still asks. */
+  const SAVE_KEYS = ["con.save", "con.saveTitle", "con.saveSiteBody",
                      "con.saveNote", "con.saved"];
   /* SPECIFIC FALSE CLAIMS, not the word "publish".
 

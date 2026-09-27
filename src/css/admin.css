@@ -337,9 +337,6 @@
   border:1px solid var(--line)}
 .c-row{background:var(--panel);padding:16px 18px;display:grid;gap:6px 20px;
   grid-template-columns:minmax(140px,190px) minmax(0,1fr)}
-/* With a reference language showing, the source and the translation sit side
-   by side under one key. Without one, the box takes the whole width. */
-.c-row:has(.c-ref){grid-template-columns:minmax(140px,190px) minmax(0,1fr) minmax(0,1fr)}
 .c-row.is-dirty{box-shadow:inset 3px 0 0 var(--warn,#F5B845)}
 
 .c-key{display:flex;flex-direction:column;align-items:flex-start;gap:6px;
@@ -347,16 +344,7 @@
 .c-key code{font-family:var(--font-mono);font-size:var(--fs-micro);
   color:var(--dim);word-break:break-word;line-height:1.5}
 
-.c-lang{display:block;font-family:var(--font-display);font-size:9px;
-  letter-spacing:var(--ls-caps);text-transform:uppercase;
-  font-weight:var(--w-bold);color:var(--dim);opacity:.6;margin-bottom:5px}
 
-/* Read-only, and looks it. A reference column that looked editable would be
-   typed into, and the typing would be silently discarded on save. */
-.c-ref-val{font-size:var(--fs-tiny);color:var(--dim);line-height:var(--lh-body);
-  white-space:pre-wrap;padding:8px 0;border-left:1px solid var(--line-hard);
-  padding-left:14px}
-.c-ref-val.is-empty{font-style:italic;opacity:.5}
 
 .c-edit textarea{width:100%;display:block;resize:vertical;min-height:38px;
   line-height:var(--lh-body);font-family:var(--font-body);font-size:var(--fs-tiny)}
@@ -368,8 +356,7 @@
   .adm-content{grid-template-columns:1fr}
   .c-sections{position:static;flex-direction:row;flex-wrap:wrap}
   .c-sec{width:auto}
-  .c-row,.c-row:has(.c-ref){grid-template-columns:1fr}
-  .c-ref-val{border-left:0;padding-left:0}
+  .c-row{grid-template-columns:1fr}
 }
 
 
@@ -933,97 +920,43 @@
 .lib-group:first-child{margin-top:4px}
 
 /* ============================================================ LANGUAGES
-   How each language is written (admin-languages.js). Two plain sections:
-   the words never translated, then everything about one language, chosen
-   from a select so the page is the same at four languages or thirty. */
-.ln{display:flex;flex-direction:column;gap:34px;max-width:980px}
-.ln-sec{display:flex;flex-direction:column;gap:14px}
-.ln-h{font:600 11px var(--font-display);letter-spacing:.2em;text-transform:uppercase;
-  color:var(--warn,#F5B845)}
-.ln-h3{font:300 17px var(--font-display);margin:10px 0 0;color:var(--text)}
-.ln-chips{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:8px}
-.ln-chip{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 6px 0 14px;
-  border:1px solid var(--line-hard);border-radius:18px;background:var(--bg2);
-  font-size:var(--fs-sm);color:var(--text)}
-.ln-x{width:28px;height:28px;border:0;border-radius:14px;background:transparent;
-  color:var(--dim);font-size:18px;line-height:1;cursor:pointer}
-.ln-x:hover{color:var(--crit,#FF5A6E);background:rgba(255,90,110,.1)}
-.ln-x:focus-visible{outline:2px solid var(--warn,#F5B845);outline-offset:1px}
-.ln-none{color:var(--dim);font-size:var(--fs-sm);padding:8px 0}
-.ln-add{display:flex;gap:10px;flex-wrap:wrap}
-.ln-add input{flex:1 1 220px;min-width:0}
-.ln-langpick{display:flex;align-items:center;gap:14px}
-.ln-langpick select{min-width:240px}
-.ln-guide textarea{width:100%;box-sizing:border-box;min-height:96px}
-.ln-acts{display:flex;align-items:center;gap:14px;margin:0}
-/* min-width:0 undoes the console's table{min-width:760px}, which is for
-   data tables that scroll sideways — this one is a form, and has to fit. */
-.ln-table{width:100%;min-width:0;border-collapse:collapse}
-.ln-table th{font:600 10.5px var(--font-body);letter-spacing:.14em;text-transform:uppercase;
-  color:var(--dim);text-align:left;padding:8px 8px 8px 0}
-.ln-table td{padding:6px 8px 6px 0;vertical-align:middle}
-.ln-table td:last-child{width:40px}
-.ln-table input{width:100%;box-sizing:border-box}
-.ln-table input[readonly]{border-color:transparent;background:transparent}
-.visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;
-  clip:rect(0 0 0 0);white-space:nowrap}
-.ln-acts .ghost-btn:disabled{opacity:.4;cursor:default}
-@media (max-width:640px){
-  .ln-langpick{flex-direction:column;align-items:stretch}
-  .ln-langpick select{min-width:0}
-  /* A phrase and its translation stack, the remove button beside both —
-     two columns of inputs do not fit a phone. */
-  .ln-table,.ln-table tbody{display:block;width:100%}
-  .ln-table thead{display:none}
-  .ln-table tr{display:grid;grid-template-columns:minmax(0,1fr) 40px;
-    padding:8px 0;border-bottom:1px solid var(--line)}
-  .ln-table td{padding:3px 0}
-  .ln-table td:nth-child(1){grid-column:1;grid-row:1}
-  .ln-table td:nth-child(2){grid-column:1;grid-row:2}
-  .ln-table td:nth-child(3){grid-column:2;grid-row:1 / span 2;align-self:center;width:auto}
-}
+   Everything about the site's languages lives on the Content page
+   (admin-content.js): the English above each line, missing and
+   outdated marks, the approval list for a returned translation,
+   and the Language settings dialog. */
 
-/* ---- Translate (the top half of the Languages page) -------------------
-   One row per group — site words, emails and forms — saying what is left,
-   with a checkbox for the whole group and a disclosure for its lines. The
-   status colors are the console's status tokens: missing is a warning,
-   outdated is the technical voice (something moved underneath it). */
-.tl-groups{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;
-  border:1px solid var(--line);border-radius:var(--radius)}
-.tl-group + .tl-group{border-top:1px solid var(--line)}
-.tl-group.is-off{opacity:.6}
-.tl-ghead{display:flex;align-items:center;gap:14px;padding:12px 14px;flex-wrap:wrap}
-.tl-gcheck{display:flex;align-items:center;gap:10px;flex:1 1 180px;min-width:0;cursor:pointer}
-.tl-gcheck input,.tl-line input,.tl-approve input,.tl-finished input{inline-size:17px;block-size:17px;
-  accent-color:var(--voice-tech);flex:none}
-.tl-gname{font:300 16px var(--font-display);color:var(--text)}
-.tl-gsum{font-size:var(--fs-sm);color:var(--dim)}
-.tl-more{border:0;background:none;color:var(--voice-tech);font:600 11px var(--font-display);
-  letter-spacing:.12em;text-transform:uppercase;cursor:pointer;padding:6px 4px}
-.tl-more::after{content:"";display:inline-block;width:6px;height:6px;margin-left:8px;
-  border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;
-  transform:translateY(-2px) rotate(45deg)}
-.tl-more[aria-expanded="true"]::after{transform:translateY(1px) rotate(-135deg)}
-.tl-more:focus-visible{outline:2px solid var(--voice-tech);outline-offset:2px}
-.tl-lines{list-style:none;margin:0;padding:0 14px 10px;max-height:420px;overflow:auto}
-.tl-line{display:grid;grid-template-columns:17px minmax(0,190px) minmax(0,1fr) auto;
-  gap:12px;align-items:baseline;padding:7px 0;border-top:1px solid var(--line);cursor:pointer}
-.tl-key{font:12px var(--font-mono,ui-monospace,SFMono-Regular,Menlo,monospace);color:var(--dim);
-  overflow-wrap:anywhere}
-.tl-line .tl-en{font-size:var(--fs-sm);color:var(--text);overflow:hidden;
-  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+/* The bar: language and its settings on the left, the translator's file
+   on the right. */
+.c-gap{flex:1 1 0;min-width:0}
+.c-bar .ghost-btn:disabled{opacity:.4;cursor:default;box-shadow:none}
+
+/* "Needs work" and "All" are views, the pages below them are places; a
+   hairline keeps the two kinds apart without a heading to read. */
+.c-sec-rule{display:block;height:1px;background:var(--line);margin:6px 12px}
+
+/* The English, above the line being translated — read-only and looking it,
+   in the voice the source is always shown in. */
+.c-en{margin:0 0 6px;font-size:var(--fs-tiny);color:var(--dim);line-height:var(--lh-body);
+  white-space:pre-wrap}
+.c-edit textarea{field-sizing:content;max-height:420px}
+.c-key .tl-st{margin-top:2px}
+.c-row.is-missing{box-shadow:inset 3px 0 0 var(--warn)}
+/* Outdated is quieter than missing: the line still says something, just
+   possibly the old thing. Neutral, because in this console the blue voice is
+   amber and amber already means missing. */
+.c-row.is-outdated{box-shadow:inset 3px 0 0 var(--dim)}
+.c-row.is-blocked{box-shadow:inset 3px 0 0 var(--crit)}
+.c-row.is-blocked textarea{border-color:var(--crit)}
 .tl-st{font:600 10px var(--font-body);letter-spacing:.1em;text-transform:uppercase;
   padding:3px 7px;border-radius:3px;border:1px solid var(--line-hard);color:var(--dim);white-space:nowrap}
 .tl-st.is-missing{color:var(--warn);border-color:rgba(245,184,69,.4);background:var(--warn-dim)}
-.tl-st.is-outdated{color:var(--voice-tech);border-color:rgba(47,216,255,.4);background:var(--voice-tech-dim)}
-.tl-finished{display:flex;align-items:center;gap:10px;font-size:var(--fs-sm);color:var(--text);
-  margin:14px 0 4px;cursor:pointer;width:max-content;max-width:100%}
-#tlDownload:disabled{opacity:.4;cursor:default;box-shadow:none}
+.tl-st.is-outdated{color:var(--text);border-color:rgba(255,255,255,.3);background:none}
 
-/* ---- Approving what came back ----------------------------------------
+/* ---- Approving a returned translation ---------------------------------
    Each line: the English, what the language says now, and the new text in
    a box that can still be edited. The bar stays in view while scrolling a
    long review, because Approve is the one thing the page is waiting for. */
+.c-review{margin-top:24px}
 .tl-bar{position:sticky;top:var(--header-h,47px);z-index:2;display:flex;align-items:center;
   gap:12px;flex-wrap:wrap;padding:12px 0;background:var(--bg)}
 .tl-count{flex:1 1 200px;font-size:var(--fs-sm);color:var(--text)}
@@ -1034,8 +967,10 @@
 .tl-item.is-approved{border-left-color:var(--voice-human)}
 .tl-item.is-blocked{border-left-color:var(--crit)}
 .tl-approve{padding-top:2px}
+.tl-approve input{inline-size:17px;block-size:17px;accent-color:var(--voice-tech)}
 .tl-body{display:flex;flex-direction:column;gap:6px;min-width:0}
 .tl-body p{margin:0}
+.tl-key{font:12px var(--font-mono,ui-monospace,SFMono-Regular,Menlo,monospace);color:var(--dim)}
 .tl-body .tl-en{font-size:var(--fs-sm);color:var(--dim)}
 .tl-now{display:flex;gap:10px;font-size:var(--fs-sm);color:var(--dim)}
 .tl-now span[lang]{text-decoration:line-through;text-decoration-color:rgba(255,255,255,.3)}
@@ -1049,11 +984,68 @@
 .tl-flags li{font-size:12px;padding:3px 8px;border-radius:3px}
 .tl-flags .is-warning{color:var(--warn);background:var(--warn-dim)}
 .tl-flags .is-problem{color:var(--crit);background:var(--crit-dim)}
+.ln-h3{font:300 17px var(--font-display);margin:10px 0 0;color:var(--text)}
+
+/* ---- Language settings ------------------------------------------------
+   The console's dialog, wider and scrolling, because it holds a language's
+   guide and its fixed phrases as well as its switches. */
+.c-set .c-set-dlg{max-width:680px;max-height:calc(100vh - 48px);overflow:auto;
+  display:flex;flex-direction:column;gap:16px}
+.c-set-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.c-set-head h3{margin:0}
+.c-set-body{display:flex;flex-direction:column;gap:14px}
+.c-set-sws{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--radius)}
+.c-set-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 14px}
+.c-set-row + .c-set-row{border-top:1px solid var(--line)}
+.c-set-fld input,.c-set-guide textarea{width:100%;box-sizing:border-box}
+.c-set-guide textarea{min-height:96px;resize:vertical}
+.c-set-danger{margin:8px 0 0;padding-top:16px;border-top:1px solid var(--line)}
+.c-remove.ghost-btn{color:var(--crit);border-color:rgba(255,90,110,.45)}
+.c-remove.ghost-btn:hover{background:var(--crit-dim);box-shadow:none}
+
+.ln-chips{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:8px}
+.ln-chip{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 6px 0 14px;
+  border:1px solid var(--line-hard);border-radius:18px;background:var(--bg2);
+  font-size:var(--fs-sm);color:var(--text)}
+.ln-x{width:28px;height:28px;border:0;border-radius:14px;background:transparent;
+  color:var(--dim);font-size:18px;line-height:1;cursor:pointer;flex:none}
+.ln-x:hover{color:var(--crit,#FF5A6E);background:rgba(255,90,110,.1)}
+.ln-x:focus-visible{outline:2px solid var(--voice-tech);outline-offset:1px}
+.ln-none{color:var(--dim);font-size:var(--fs-sm);padding:8px 0}
+.ln-add{display:flex;gap:10px;flex-wrap:wrap}
+.ln-add input{flex:1 1 200px;min-width:0}
+.ln-acts{display:flex;align-items:center;gap:14px;margin:8px 0 0}
+.ln-acts .ghost-btn:disabled{opacity:.4;cursor:default}
+/* min-width:0 undoes the console's table{min-width:760px}, which is for
+   data tables that scroll sideways — this one is a form, and has to fit. */
+.ln-table{width:100%;min-width:0;border-collapse:collapse}
+.ln-table th{font:600 10.5px var(--font-body);letter-spacing:.14em;text-transform:uppercase;
+  color:var(--dim);text-align:left;padding:8px 8px 8px 0}
+.ln-table td{padding:6px 8px 6px 0;vertical-align:middle}
+.ln-table td:last-child{width:40px}
+.ln-table input{width:100%;box-sizing:border-box}
+.ln-table input[readonly]{border-color:transparent;background:transparent}
+.visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;
+  clip:rect(0 0 0 0);white-space:nowrap}
+
+@media (max-width:900px){ .c-sec-rule{display:none} }
 @media (max-width:640px){
-  .tl-line{grid-template-columns:17px minmax(0,1fr) auto}
-  .tl-line .tl-key{grid-column:2 / span 2}
-  .tl-line .tl-en{grid-column:2}
+  .c-gap{display:none}
+  .c-bar{gap:10px}
+  .c-bar .ghost-btn{padding:9px 12px;font-size:10px}
+  .c-pick{flex:1 1 100%}
+  .c-pick select{flex:1;min-width:0}
   .tl-new,.tl-now{flex-direction:column;align-items:stretch;gap:4px}
   .tl-tag{width:auto;padding-top:0}
+  .c-set .c-set-dlg{padding:20px 18px}
+  /* A phrase and its translation stack, the remove button beside both —
+     two columns of inputs do not fit a phone. */
+  .ln-table,.ln-table tbody{display:block;width:100%}
+  .ln-table thead{display:none}
+  .ln-table tr{display:grid;grid-template-columns:minmax(0,1fr) 40px;
+    padding:8px 0;border-bottom:1px solid var(--line)}
+  .ln-table td{padding:3px 0}
+  .ln-table td:nth-child(1){grid-column:1;grid-row:1}
+  .ln-table td:nth-child(2){grid-column:1;grid-row:2}
+  .ln-table td:nth-child(3){grid-column:2;grid-row:1 / span 2;align-self:center;width:auto}
 }
-@media (prefers-reduced-motion:reduce){ .tl-more::after{transition:none} }

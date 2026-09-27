@@ -1,5 +1,5 @@
 /**
- * admin-translate.js — /api/admin/translate, the Translate page's server
+ * admin-translate.js — /api/admin/translate, every line of every language
  *
  *   GET                            the site's languages
  *   GET  ?lang=hr                  every translatable line for Croatian, with
@@ -12,6 +12,13 @@
  *                                  line — nothing is saved
  *   POST { action: "apply", lang, items: [{ id, value, was, english_hash }] }
  *                                  the lines a person approved, saved
+ *   POST { action: "save", lang, items: [{ id, value, was }] }
+ *                                  the Content page's own edits, English
+ *                                  included; a translation may be cleared
+ *
+ * THE CONTENT PAGE IS BUILT ON THIS (part 4 of the language work): every
+ * line of a language, English above it, and whether it is missing or
+ * outdated, comes from GET ?lang=; its Save is "save".
  *
  * THE ROUTE CLAUDE TRANSLATES THROUGH, for free (Chase, 2026-09-26): download
  * the file, hand it to Claude in a chat or a session, bring it back, approve.
@@ -106,16 +113,20 @@ async function siteLanguages(env) {
  * and reaches `main` with the next merge. Until then that group is reported
  * as not there yet rather than failing the whole page.
  */
-async function load(env, db, lang) {
+async function load(env, db, lang, { english = false } = {}) {
   const langs = await siteLanguages(env);
   if (langs.error) return langs;
-  if (lang === "en" || !langs.languages.includes(lang)) {
+  if ((lang === "en" && !english) || !langs.languages.includes(lang)) {
     return { error: `The site has no language "${lang}" to translate into.`, code: "no-language", status: 400 };
   }
+  const isEn = lang === "en";
 
+  /* English is read once and is both columns: the Content page edits it like
+     any language, and it is never missing or outdated — it is what the
+     others are measured against. */
   const [enFile, langFile, emailsFile] = await Promise.all([
-    getFile(env, langPath("en")), getFile(env, langPath(lang)), getFile(env, EMAILS),
-  ]);
+    getFile(env, langPath("en")), isEn ? null : getFile(env, langPath(lang)), getFile(env, EMAILS),
+  ]).then(([a, b, c]) => [a, b || a, c]);
   for (const f of [enFile, langFile]) if (f.error) return { error: f.error, status: f.status || 502 };
   const en = parse(enFile), mine = parse(langFile);
   if (en.error || mine.error) return { error: `A language file is not valid JSON: ${en.error || mine.error}`, status: 502 };
@@ -135,13 +146,13 @@ async function load(env, db, lang) {
     lines = lines.concat(linesFor("emails", emails.doc.en, emails.doc[lang]));
   }
 
-  const state = await db.query("translation_state_for_lang", { lang });
+  const state = isEn ? [] : await db.query("translation_state_for_lang", { lang });
   const { lines: withS, baseline, refresh } = await withStatus(lines, state);
   const now = new Date().toISOString();
-  if (baseline.length) {
+  if (!isEn && baseline.length) {
     await db.query("translation_state_baseline", { lang, rows: JSON.stringify(baseline), now });
   }
-  if (refresh.length) {
+  if (!isEn && refresh.length) {
     await db.query("translation_state_confirm", { lang, rows: JSON.stringify(refresh), now, user_id: null });
   }
   const name = typeof mine.doc.name === "string" && mine.doc.name.trim() ? mine.doc.name.trim() : lang;
@@ -167,7 +178,7 @@ export default {
         const r = await siteLanguages(env);
         return r.error ? fail(r) : json({ languages: r.languages });
       }
-      const r = await load(env, db, String(lang).toLowerCase());
+      const r = await load(env, db, String(lang).toLowerCase(), { english: true });
       if (r.error) return fail(r);
       return json({
         lang: r.lang, name: r.name, languages: r.languages, unavailable: r.unavailable,
@@ -225,30 +236,44 @@ export default {
       return json({ lang: r.lang, name: r.name, items, skipped: { unknown, blank, unchanged } });
     }
 
-    /* ---- the approved lines, saved ---- */
-    if (body.action === "apply") {
+    /* ---- lines saved: approved from a file, or edited on the page ----
+
+       Two doors, one room. "apply" is a returned file's approved lines;
+       "save" is the Content page's own edits, where a line may also be
+       cleared (an empty translation is an untranslated one, and shows in
+       English). Both are checked here again — what the browser sends is a
+       request, and the one thing that must never reach the site is a broken
+       placeholder — and both commit one file per source, quietly. */
+    if (body.action === "apply" || body.action === "save") {
+      const editing = body.action === "save";
       const items = Array.isArray(body.items) ? body.items : null;
-      if (!items || !items.length) return json({ error: "Nothing was approved.", code: "nothing" }, 400);
+      if (!items || !items.length) return json({ error: "Nothing to save.", code: "nothing" }, 400);
       if (items.length > MAX_ITEMS) return json({ error: "Too many lines at once." }, 400);
 
-      const r = await load(env, db, String(body.lang || "").toLowerCase());
+      const r = await load(env, db, String(body.lang || "").toLowerCase(), { english: editing });
       if (r.error) return fail(r);
+      const isEn = r.lang === "en";
       const notes = await loadNotes(db);
       const byId = new Map(r.lines.map((l) => [l.id, l]));
 
-      /* Checked again here: what the browser approved is a request, and the
-         one thing that must never reach the site is a broken placeholder. */
       const broken = [];
       const conflicts = [];
       const plan = { site: [], emails: [] };
       for (const it of items) {
         const line = byId.get(String(it && it.id));
-        const value = cleanValue(it && it.value);
-        if (!line || !value) { broken.push(String(it && it.id)); continue; }
-        if (checkLine({ english: line.english, proposed: value, lang: r.lang, notes }).problems.length) {
+        const raw = it && typeof it.value === "string" ? it.value.trim() : null;
+        /* Cleared: only on the page, and never English — every other language
+           falls back to it, so an empty English line is an empty page. */
+        const cleared = editing && !isEn && raw === "";
+        const value = cleared ? "" : cleanValue(raw);
+        if (!line || value === null) { broken.push(String(it && it.id)); continue; }
+        /* English is checked against the English it replaces: the code fills
+           in {placeholders} by name, so a lost one breaks every language. */
+        const against = isEn ? line.current : line.english;
+        if (!cleared && checkLine({ english: against, proposed: value, lang: r.lang, notes }).problems.length) {
           broken.push(line.id); continue;
         }
-        /* Changed by somebody else since the review — theirs stands, and the
+        /* Changed by somebody else since it was read — theirs stands, and the
            line is reported so it can be looked at again. */
         if (typeof it.was === "string" && it.was !== line.current) { conflicts.push(line.id); continue; }
         const hash = /^[0-9a-f]{16}$/.test(String(it.english_hash)) ? it.english_hash : line.english_hash;
@@ -258,6 +283,7 @@ export default {
 
       const who = (me && me.user_name) || user.email;
       const now = new Date().toISOString();
+      const verb = editing ? "edited" : "approved";
       const saved = [];
       for (const source of Object.keys(plan)) {
         const todo = plan[source];
@@ -275,26 +301,33 @@ export default {
         }
 
         if (edits.length) {
+          const noun = editing ? (edits.length === 1 ? "line" : "lines")
+                               : (edits.length === 1 ? "translation" : "translations");
           const res = await putFile(env, {
             path: f.path, text: JSON.stringify(doc, null, 2) + f.trailing, sha: f.sha,
-            message: `${r.name} (${r.lang}): ${edits.length} ${edits.length === 1 ? "translation" : "translations"} approved\n\n` +
+            message: `${r.name} (${r.lang}): ${edits.length} ${noun} ${verb}\n\n` +
               edits.map((t) => `  ${t.line.key}`).join("\n") +
-              `\n\nApproved by ${who} in the Thauma admin console.`,
+              `\n\n${verb === "edited" ? "Edited" : "Approved"} by ${who} in the Thauma admin console.`,
             quiet: true, authorName: who, authorEmail: user.email,
           });
           if (res.error) {
-            return json({ error: res.error, saved, partial: saved.length > 0 }, res.status || 502);
+            return json({ error: res.error, saved: saved.length, partial: saved.length > 0 }, res.status || 502);
           }
           await audit(db, user, f.path, {
-            lang: r.lang, keys: edits.map((t) => t.line.key), commit: res.commit,
+            lang: r.lang, keys: edits.map((t) => t.line.key), commit: res.commit, how: body.action,
           });
         }
         /* Recorded after the commit, never before: the database must not say
-           a translation matches its English while the file does not have it. */
-        await db.query("translation_state_confirm", {
-          lang: r.lang, now, user_id: me.user_id,
-          rows: JSON.stringify(todo.map((t) => ({ source, key: t.line.key, english_hash: t.hash, text_hash: t.text_hash }))),
-        });
+           a translation matches its English while the file does not have it.
+           English has nothing to record — it is what the others are measured
+           against — and a cleared line is simply missing. */
+        const rows = isEn ? [] : todo.filter((t) => t.value)
+          .map((t) => ({ source, key: t.line.key, english_hash: t.hash, text_hash: t.text_hash }));
+        if (rows.length) {
+          await db.query("translation_state_confirm", {
+            lang: r.lang, now, user_id: me.user_id, rows: JSON.stringify(rows),
+          });
+        }
         saved.push(...todo.map((t) => t.line.id));
       }
       return json({ ok: true, saved: saved.length, conflicts });

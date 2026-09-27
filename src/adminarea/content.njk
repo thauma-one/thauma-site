@@ -7,45 +7,42 @@ adminHeading: The site's <b>words</b>
 adminScript: /js/admin-content.js
 permalink: /admin/content/index.html
 ---
-{#- The editor that replaced Decap. Decap died with Netlify Identity at the
-   2026-08-15 cutover, and this is the piece that had been missing since.
+{#- EVERY WORD THE SITE SAYS, IN EVERY LANGUAGE, AND EVERYTHING ABOUT THOSE
+   LANGUAGES — one page (Chase, 2026-09-27: "all language controls can be on
+   the page that actually edits the language"). The site's pages and the
+   emails and forms, one language at a time.
 
-   ONE LANGUAGE AT A TIME, with English beside it for reference. Copy is
-   written by a person working in one language; three editable columns is a
-   spreadsheet, and a spreadsheet is not how anybody writes a sentence.
-   English shows because a translator needs the source, and it is read-only
-   here for the same reason the columns are not all editable — you are working
-   on one language, and the other is context. -#}
+   ONE FIELD PER LINE, the English above it when the language is not English.
+   Not a column per language: that stops working somewhere around four, and
+   the site's languages are meant to grow to thirty. The language is a select
+   for the same reason.
+
+   WHAT YOU SEE IS WHAT YOU DOWNLOAD. The file for a translator holds the
+   lines on screen — a section, a search, "Needs work", or "All" — and the
+   button says how many. Choosing lines needs no controls of its own.
+
+   The language's own settings (dev and live switches, default, donation
+   form, how it reads, removing it) are one dialog away, because they are set
+   once and then left. -#}
 
 <div class="ms-bar c-bar">
   <label class="c-pick">
     <span data-i18n="con.editing">Editing</span>
     <select id="cLang" disabled></select>
   </label>
-  <label class="c-pick" id="cRefWrap" hidden>
-    <span data-i18n="con.reference">Reference</span>
-    <select id="cRef" disabled></select>
-  </label>
-  <button type="button" class="ghost-btn" id="cAddLang" disabled
-          data-i18n="con.addLang">Add a language</button>
-
-
-  {#- ALWAYS ENABLED, including when the page thinks nothing has changed.
-
-     Save is hidden when nothing is dirty, and that is correct — there is no
-     such thing as committing a file that is identical to the one already
-     there; git has nothing to record. But "nothing has changed" is a claim
-     about the copy this page loaded, and if somebody edited the same file
-     elsewhere, or a save half-failed, the honest remedy is to go and look
-     again rather than to force a commit that would be empty. -#}
-  <button type="button" class="ghost-btn" id="cReload"
-          data-i18n="con.reload">Reload from GitHub</button>
-  <span class="hint" id="cWhere"></span>
+  <button type="button" class="ghost-btn" id="cLangSet" disabled
+          data-i18n="con.langSettings">Language settings</button>
+  <span class="c-gap"></span>
+  <button type="button" class="ghost-btn" id="cDown" hidden></button>
+  <button type="button" class="ghost-btn" id="cUp" hidden data-i18n="tl.upload">Upload translation</button>
+  <input type="file" id="cFile" accept=".csv,text/csv" hidden
+         aria-label="Upload translation" data-i18n-attr="aria-label:tl.upload">
+  {#- Always enabled: "nothing has changed" is a claim about the copy this
+     page loaded, and the remedy for doubting it is to read again. -#}
+  <button type="button" class="ghost-btn" id="cReload" data-i18n="con.reload">Reload from GitHub</button>
 </div>
 
-{#- Shown instead of the editor when GITHUB_TOKEN is absent. A page that says
-   what is missing is worth more than one that fails to load, especially since
-   the missing thing is a deliberate act somebody has to perform. -#}
+{#- Shown instead of the editor when GITHUB_TOKEN is absent. -#}
 <p class="rolegate" id="cNotConfigured" hidden></p>
 
 <div class="adm-content" id="cRoot" hidden>
@@ -61,9 +58,34 @@ permalink: /admin/content/index.html
   </div>
 </div>
 
+{#- A returned translation, line by line, in place of the editor until it is
+   approved or put away. Lines the checks flag start unticked. -#}
+<div class="c-review" id="tlReview" hidden>
+  <div class="tl-bar">
+    <span class="tl-count" id="tlReviewCount" role="status"></span>
+    <button type="button" class="ghost-btn" id="tlCancel" data-i18n="common.cancel">Cancel</button>
+    <button type="button" class="solid-btn" id="tlApprove"></button>
+  </div>
+  <div class="tl-items" id="tlItems"></div>
+</div>
+
 <div class="ms-savebar" id="cSaveBar" role="status" aria-live="polite" hidden>
   <span class="ms-dirty-dot" aria-hidden="true"></span>
   <span id="cDirtyCount">0 unsaved changes</span>
   <button type="button" class="ghost-btn" id="cDiscard" data-i18n="ms.discard">Discard</button>
   <button type="button" class="solid-btn" id="cSave" data-i18n="con.save">Save</button>
+</div>
+
+{#- LANGUAGE SETTINGS, for the language being edited. The console's dialog
+   shell, so it looks and closes like every other dialog. Each control saves
+   as it is changed, like Settings: one decision, one result. Filled in by
+   admin-content.js. -#}
+<div class="dlg-back c-set" id="cSet" hidden>
+  <div class="dlg c-set-dlg" role="dialog" aria-modal="true" aria-labelledby="cSetTitle">
+    <div class="c-set-head">
+      <h3 id="cSetTitle"></h3>
+      <button type="button" class="ln-x" id="cSetClose" aria-label="Close" data-i18n-attr="aria-label:con.close">&times;</button>
+    </div>
+    <div class="c-set-body" id="cSetBody"></div>
+  </div>
 </div>

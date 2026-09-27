@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * The Translate page's server: lines, the file, and approving what comes back
+ * Every line of every language: reading, saving, the file, and approving what comes back
  *   node workers/test/translate.test.mjs
  *
  * The route Claude translates the site through (Chase, 2026-09-26): download
@@ -292,8 +292,10 @@ await check("a language's lines come with their status, from both sources", asyn
   assert(w.sql.some((s) => /INSERT OR IGNORE INTO translation_state/.test(s.q)), "first sight not recorded");
 });
 
-await check("English is the source, not a target; an unknown language is refused", async () => {
-  eq((await call(world().env, "GET", null, "?lang=en")).status, 400, "English");
+await check("English can be read and edited, but never sent out to translate", async () => {
+  const j = await (await call(world().env, "GET", null, "?lang=en")).json();
+  assert(j.lines.every((l) => l.english === l.current && l.status === "done"), "English is not its own source");
+  eq((await call(world().env, "POST", { action: "file", lang: "en" })).status, 400, "an English translation file");
   eq((await call(world().env, "GET", null, "?lang=de")).status, 400, "a language the site lacks");
 });
 
@@ -384,6 +386,46 @@ await check("a new language's first email line gets a place of its own", async (
     { id: "emails:form.name", value: "Ваше име" } ] });
   eq(res.status, 200, "status");
   eq(w.repo.puts[0].doc.sr, { form: { name: "Ваше име" } }, "the Serbian section");
+});
+
+/* ---------------------------------------------------- the Content page */
+
+await check("the page's own edits save as edits, and a translation can be cleared", async () => {
+  const w = world();
+  const res = await call(w.env, "POST", { action: "save", lang: "hr", items: [
+    { id: "site:home.title", value: "Služimo Crkvi", was: "Služiti Crkvi" },
+    { id: "site:home.count", value: "", was: "{n} crkava" },
+  ] });
+  eq(res.status, 200, "status");
+  const put = w.repo.puts[0];
+  eq([put.doc.home.title, put.doc.home.count], ["Služimo Crkvi", ""], "the lines");
+  assert(put.message.includes("Hrvatski (hr): 2 lines edited"), put.message);
+  const confirm = w.sql.find((s) => /INSERT INTO translation_state/.test(s.q) && !/OR IGNORE/.test(s.q));
+  const rows = JSON.parse(confirm.args.find((a) => typeof a === "string" && a.startsWith("[")));
+  eq(rows.map((r) => r.key), ["home.title"], "a cleared line was recorded as translated");
+});
+
+await check("English is saved in place, and cannot lose a placeholder or be emptied", async () => {
+  const w = world();
+  const ok = await call(w.env, "POST", { action: "save", lang: "en", items: [
+    { id: "site:home.title", value: "Serve the local Church", was: "Serve the Church" }] });
+  eq(ok.status, 200, "status");
+  eq(w.repo.puts[0].path, "src/_data/i18n/en.json", "the file");
+  eq(w.repo.puts[0].doc.home.title, "Serve the local Church", "the line");
+  assert(!w.sql.some((s) => /INSERT INTO translation_state/.test(s.q)), "English recorded as a translation");
+
+  const w2 = world();
+  const bad = await call(w2.env, "POST", { action: "save", lang: "en", items: [
+    { id: "site:home.count", value: "Many churches" }, { id: "site:home.title", value: "" }] });
+  eq(bad.status, 400, "status");
+  eq((await bad.json()).ids.sort(), ["site:home.count", "site:home.title"], "refused lines");
+  eq(w2.repo.puts.length, 0, "something was saved");
+});
+
+await check("a file's approval cannot clear a line", async () => {
+  const w = world();
+  const res = await call(w.env, "POST", { action: "apply", lang: "hr", items: [{ id: "site:home.title", value: "" }] });
+  eq(res.status, 400, "status");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

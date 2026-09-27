@@ -1,7 +1,7 @@
 /**
  * translation-file.js — the translation work as lines, as a file, and back
  *
- * Everything the Translate page (Administration › Languages) does that is not
+ * Everything the Content page's translation work does that is not
  * talking to GitHub or the database, so all of it can be tested in Node:
  *
  *   linesFor     the translatable lines of one source, English beside the

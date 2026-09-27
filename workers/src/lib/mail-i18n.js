@@ -30,7 +30,7 @@
  * they meet a real supporter. What is NOT rough is the shape: one table, three
  * languages, every key present in all of them, which is what a proper pass
  * needs in order to be a proper pass rather than a rewrite. That pass is now
- * the Translate page's job (Administration › Languages).
+ * the Content page's job, through its translation file.
  *
  * FALLBACK IS ENGLISH, ONE KEY AT A TIME. A missing Croatian string yields the
  * English one rather than nothing, so a half-finished translation degrades to
@@ -40,7 +40,7 @@
 
    They were a table in this file, which meant only somebody editing code could
    change or translate them. As data they are edited and translated in the
-   console like the site's own words (Administration › Languages), committed to
+   console like the site's own words (the Content page), committed to
    the repository, and shipped with the next Publish — the Worker is deployed
    from the same commit as the site.
 

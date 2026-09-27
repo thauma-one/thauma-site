@@ -13,6 +13,12 @@
    to come and add it, and a key removed stops appearing rather
    than throwing.
 
+   THE LANGUAGES ARE NOT HERE. Their switches, the default, the
+   donation form per language and removing one moved to the
+   Content page, the page that edits them (Chase, 2026-09-27:
+   "all language controls can be on the page that actually
+   edits the language"). isLanguage() keeps them off this form.
+
    comingSoon IS NOT AN ORDINARY SWITCH. It is the gate over the
    entire public site: with it on, every page is the holding
    page. Turning it OFF is the launch, and it is the one control
@@ -28,7 +34,7 @@
 
   var state = {
     sha: null, saved: {}, draft: {}, order: [],
-    frozen: [], langs: [], branch: '', repo: ''
+    frozen: [], branch: '', repo: ''
   };
 
   function esc(s) {
@@ -117,7 +123,6 @@
     state.frozen = body.frozen || [];
     state.branch = body.branch;
     state.repo = body.repo;
-    state.langs = (body.data && body.data.languages) || [];
     state.saved = leaves(body.data);
     state.draft = JSON.parse(JSON.stringify(state.saved));
     state.order = Object.keys(state.saved);
@@ -142,29 +147,18 @@
      just packed together. Not translated, for the same reason the content
      editor does not translate its section names: they identify a page or a
      block, and they are things you match against the site rather than read. */
-  /* The endonym, from the browser, rather than a table to maintain. A person
-     picking languages recognises "Srpski" faster than "sr".
-     
-     The content editor prefers each file's own `name` row where it has one
-     loaded; this page does not read those files, so Intl is the best available
-     and gives the same answer for every language the site has today. */
-  function langName(code) {
-    try {
-      var dn = new Intl.DisplayNames([code], { type: 'language' });
-      var n = dn.of(code);
-      if (n && n !== code) {
-        return n.charAt(0).toUpperCase() + n.slice(1) + ' (' + code + ')';
-      }
-    } catch (e) { /* older browser, or a code Intl does not know */ }
-    return code;
-  }
-
   function humanise(id) {
     return id.replace(/([A-Z])/g, ' $1').toLowerCase()
              .replace(/^./, function (c) { return c.toUpperCase(); }).trim();
   }
 
   var isVisibility = function (p) { return p.indexOf('visibility.') === 0; };
+
+  /* Everything about a language — edited on the Content page instead. */
+  var isLanguage = function (p) {
+    return p === 'defaultLang' || p === 'languages' || p.indexOf('languages.') === 0 ||
+           p.indexOf('donorbox.') === 0 || p.indexOf('visibility.languages.') === 0;
+  };
 
   var isImage = function (p) { return p.indexOf('images.') === 0; };
 
@@ -235,48 +229,11 @@
     '</label>';
   }
 
-  /* A FROZEN LIST IS ONE FACT, NOT FOUR.
-
-     `languages` is an array, and rendering it a leaf at a time gave four rows
-     labeled 0, 1, 2, 3 — each with its own disabled box holding two letters,
-     filling half a screen to say something a single line says better. It is
-     also the one setting on this page nobody can edit here, so it had the most
-     space and the least purpose.
-
-     Collapsed to a single row. */
+  /* Frozen lists — `languages`, the only one — are not edited here, and the
+     language list is shown where languages are managed (the Content page's
+     picker), so they are left off this form entirely. */
   function isFrozenList(p) {
     return state.frozen.some(function (f) { return p.indexOf(f + '.') === 0; });
-  }
-
-  function frozenListRow(name) {
-    var values = state.order
-      .filter(function (p) { return p.indexOf(name + '.') === 0; })
-      .map(function (p) { return state.draft[p]; });
-    if (!values.length) return '';
-    return '<div class="s-field is-frozen">' +
-      '<div class="s-label"><code>' + esc(name) + '</code></div>' +
-      '<div class="s-control"><span class="s-frozen">' +
-        esc(values.join(' · ')) + '</span></div>' +
-    '</div>';
-  }
-
-  /* ---- per-language groups, filled in from the language list ------------
-
-     `donorbox` is keyed by language, and a language added before this setting
-     existed simply has no key — so the field never appeared, and there was no
-     way to give it one. The page renders a row per LANGUAGE instead of per
-     existing key, so a missing slot shows as an empty box that can be filled
-     in and saved.
-
-     Self-healing rather than a repair button: the gap is visible, and using it
-     closes it. A repair action would need somebody to know it was there. */
-  var PER_LANGUAGE = ['donorbox'];
-
-  function missingLangKeys(group) {
-    if (PER_LANGUAGE.indexOf(group) === -1) return [];
-    return state.langs.filter(function (code) {
-      return state.draft[group + '.' + code] === undefined;
-    });
   }
 
   function render() {
@@ -284,7 +241,7 @@
     var seen = {};
     state.order.forEach(function (p) {
       // Visibility and images each get their own block below.
-      if (isVisibility(p) || isImage(p) || isFrozenList(p)) return;
+      if (isVisibility(p) || isImage(p) || isFrozenList(p) || isLanguage(p)) return;
       var g = groupOf(p);
       if (!seen[g]) { seen[g] = true; groups.push(g); }
     });
@@ -293,20 +250,11 @@
       renderVisibility() +
       groups.map(function (g) {
         var rows = state.order.filter(function (p) {
-          return !isVisibility(p) && !isImage(p) && !isFrozenList(p) && groupOf(p) === g;
+          return !isVisibility(p) && !isImage(p) && !isFrozenList(p) && !isLanguage(p) && groupOf(p) === g;
         });
         return '<section class="s-group">' +
           '<h3>' + esc(groupLabel(g)) + '</h3>' +
-          rows.map(function (p) {
-            /* The language list goes immediately under `defaultLang`, because
-               that is the setting it explains: one says which language a
-               visitor gets, the other says which languages there are to
-               choose from. At the bottom of the group they read as unrelated. */
-            return field(p) + (p === 'defaultLang' ? frozenListRow('languages') : '');
-          }).join('') +
-          missingLangKeys(g).map(function (code) {
-            return field(g + '.' + code, true);
-          }).join('') +
+          rows.map(function (p) { return field(p); }).join('') +
           '</section>';
       }).join('') +
       renderImages();
@@ -335,39 +283,31 @@
       '</button></span>';
   }
 
-  function visRow(label, base, removableCode) {
-    return '<div class="v-row' + (removableCode ? ' has-remove' : '') + '">' +
+  function visRow(label, base) {
+    return '<div class="v-row">' +
       '<div class="v-label"><code>' + esc(label) + '</code></div>' +
       switchCell(base + '.dev', 'is-dev') +
       switchCell(base + '.live', 'is-live') +
-      /* Only languages can be removed. A page or a section is part of the
-         site's structure and switching it off is the whole answer; a language
-         is a FILE, and leaving a dead one around is how the list and the
-         folder drift apart. */
-      (removableCode
-        ? '<button type="button" class="del danger" data-del-lang="' + esc(removableCode) +
-          '" title="' + esc(tr('vis.removeLang')) + '">' + esc(tr('vis.remove')) + '</button>'
-        : '<span></span>') +
+      '<span></span>' +
     '</div>';
   }
 
   function renderVisibility() {
     // Derived from whatever is in the file, so adding a page to site.json puts
     // a row here without anyone remembering to come and add one.
-    var pages = [], sections = [], langs = [], hasComingSoon = false;
+    var pages = [], sections = [], hasComingSoon = false;
     state.order.forEach(function (p) {
       if (!isVisibility(p)) return;
       var parts = p.split('.');          // visibility.pages.events.dev
       if (parts[1] === 'comingSoon') { hasComingSoon = true; return; }
       if (parts.length !== 4) return;
       var bucket = parts[1] === 'pages' ? pages
-                 : parts[1] === 'sections' ? sections
-                 : parts[1] === 'languages' ? langs : null;
+                 : parts[1] === 'sections' ? sections : null;
       if (!bucket) return;
       if (bucket.indexOf(parts[2]) === -1) bucket.push(parts[2]);
     });
 
-    if (!pages.length && !sections.length && !langs.length && !hasComingSoon) return '';
+    if (!pages.length && !sections.length && !hasComingSoon) return '';
 
     var head =
       '<div class="v-head">' +
@@ -380,22 +320,6 @@
     if (hasComingSoon) {
       body += '<div class="v-sub">' + esc(tr('vis.wholeSite')) + '</div>' +
         visRow(tr('vis.comingSoon'), 'visibility.comingSoon');
-    }
-    if (langs.length) {
-      /* A language switched off produces no pages at all — not hidden ones.
-         So this is the control that decides whether /sr/ exists, and the dev
-         column is what lets somebody translate and see it in place for a
-         fortnight before any visitor can reach it. */
-      body += '<div class="v-sub">' + esc(tr('vis.languages')) + '</div>' +
-        langs.map(function (code) {
-          return visRow(langName(code), 'visibility.languages.' + code, code);
-        }).join('') +
-        /* English is deliberately absent above and named here instead. It is
-           the fallback every missing translation resolves to; a site with no
-           fallback has nothing to serve when a string is missing. Showing a
-           switch that refuses to move would be worse than a row that says it
-           is always on. */
-        '<div class="v-fixed">' + esc(tr('vis.langFallback')) + '</div>';
     }
     if (pages.length) {
       body += '<div class="v-sub">' + esc(tr('vis.pages')) + '</div>' +
@@ -447,14 +371,6 @@
     } else if (typeof v === 'number') {
       control = '<input type="number" data-path="' + esc(p) + '"' +
                 ' aria-label="' + esc(label) + '" value="' + esc(v) + '">';
-    } else if (p === 'defaultLang' && state.langs.length) {
-      /* The one field with a real set of valid answers. A text box here means
-         a typo silently breaks the fallback every translation depends on. */
-      control = '<select data-path="' + esc(p) + '" aria-label="' + esc(label) + '">' +
-                state.langs.map(function (c) {
-        return '<option value="' + esc(c) + '"' + (c === v ? ' selected' : '') + '>' +
-               esc(c) + '</option>';
-      }).join('') + '</select>';
     } else {
       control = '<input type="text" data-path="' + esc(p) + '" value="' + esc(v) + '"' +
                 ' aria-label="' + esc(label) + '"' +
@@ -502,74 +418,6 @@
     $('sDirtyCount').textContent = d.length === 1
       ? tr('con.oneChange') : d.length + ' ' + tr('con.nChanges');
   }
-
-  /* ---- removing a language --------------------------------------------
-     Same shape as deleting a partner, because it is the same kind of act:
-     something that exists nowhere else stops existing. Typed confirmation,
-     checked on the server, and the count of what is being destroyed shown
-     BEFORE the word is asked for — "47 translated strings" is a sentence
-     somebody can weigh, "are you sure" is not. */
-
-  $('sRoot').addEventListener('click', async function (e) {
-    var btn = e.target.closest('[data-del-lang]');
-    if (!btn) return;
-    var code = btn.dataset.delLang;
-
-    // First request with no confirmation: the server answers with the count
-    // rather than doing anything.
-    var probe, info;
-    try {
-      probe = await fetch(API + '?code=' + encodeURIComponent(code), {
-        method: 'DELETE', credentials: 'same-origin'
-      });
-      info = await probe.json();
-    } catch (err) {
-      return toast(tr('err.unreachable') + ' ' + err.message, 'bad');
-    }
-    // Anything other than the expected "needs confirmation" is a real refusal
-    // — English, or a language with no file — and it explains itself.
-    if (probe.ok || info.translated === undefined) {
-      return toast(info.error || tr('err.refused'), 'bad');
-    }
-
-    var ok = await window.StaffConfirm({
-      title: tr('vis.removeTitle').replace('{lang}', langName(code)),
-      body: info.translated
-        ? tr('vis.removeBody').replace('{n}', info.translated).replace('{lang}', langName(code))
-        : tr('vis.removeEmpty').replace('{lang}', langName(code)),
-      note: tr('vis.removeNote'),
-      type: 'DELETE',
-      /* The same key the Publish page uses. Inventing a second one for the
-         same word is how two dialogs end up saying it differently. */
-      typeLabel: tr('pub.typeLabel'),
-      confirm: tr('vis.removeDo'),
-      cancel: tr('ms.cancel'),
-      danger: true
-    });
-    if (!ok) return;
-
-    btn.disabled = true;
-    var res, body;
-    try {
-      res = await fetch(API + '?code=' + encodeURIComponent(code) + '&confirm=DELETE', {
-        method: 'DELETE', credentials: 'same-origin'
-      });
-      body = await res.json();
-    } catch (err) {
-      toast(tr('err.unreachable') + ' ' + err.message, 'bad');
-      btn.disabled = false;
-      return;
-    }
-    if (!res.ok) {
-      if (body && body.partial && window.StaffProblem) window.StaffProblem(body.error, null);
-      else toast((body && body.error) || tr('err.refused'), 'bad');
-      btn.disabled = false;
-      return;
-    }
-
-    toast(fill('vis.removed', { lang: langName(code) }), 'ok');
-    await boot();          // site.json changed under us; re-read rather than guess
-  });
 
   /* ---- editing -------------------------------------------------------- */
 
