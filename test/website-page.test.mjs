@@ -67,11 +67,23 @@ const click = (w, d, tab) => d.querySelector(`[data-web-tab="${tab}"]`).dispatch
   new w.MouseEvent("click", { bubbles: true, cancelable: true, button: 0 }));
 
 await check("every tab is on the page, and the address decides which is showing", async () => {
-  for (const tab of ["pages", "resources", "events", "photos", "settings"]) {
+  const TABS = ["pages", "forms", "mail", "resources", "events", "photos", "settings"];
+  for (const tab of TABS) {
     const { d } = await boot(tab);
-    assert(d.querySelectorAll("[data-web-panel]").length === 5, "not every tab is on the page");
+    assert(d.querySelectorAll("[data-web-panel]").length === TABS.length, "not every tab is on the page");
     assert(on(d).join() === tab, `${tab}'s address shows ${on(d)}`);
   }
+});
+
+await check("a link on one tab opens another — Forms to the contact page's words and back", async () => {
+  const { w, d } = await boot("forms");
+  let asked = null;
+  d.addEventListener("content:section", (e) => { asked = e.detail; });
+  d.querySelector('#wfRoot [data-web-go="pages"]').dispatchEvent(
+    new w.MouseEvent("click", { bubbles: true, cancelable: true, button: 0 }));
+  assert(on(d).join() === "pages", `showing ${on(d)}`);
+  assert(w.location.pathname === "/admin/website/", `address ${w.location.pathname}`);
+  assert(asked === "contact", `Pages was asked for ${asked}`);
 });
 
 await check("a tab opens without leaving the page, and the address follows it", async () => {

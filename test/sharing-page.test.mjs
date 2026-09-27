@@ -294,12 +294,21 @@ await check("Discard puts everything back", async () => {
   eq(sent.length, 0, "Discard sent something");
 });
 
-await check("whose form — Thauma's or the ministry's — is offered only with the forms", async () => {
-  const { d, pick } = await boot();
-  await pick("roadmap");
-  eq(d.getElementById("shScope").hidden, true, "beside a widget");
-  await pick("contact");
-  eq(d.getElementById("shScope").hidden, false, "beside a form");
+await check("Sharing is the ministry's alone; Thauma's forms are in Website › Forms", async () => {
+  /* Chase, 2026-09-27: staff pages for staff work, admin for admin. */
+  const { d, sent } = await boot();
+  assert(!d.getElementById("shScope") && !d.querySelector("[data-scope]"), "a Thauma switch is still on Sharing");
+  assert(!readFileSync("src/js/staff-sharing.js", "utf8").includes("?scope=organization'"),
+    "Sharing still asks for Thauma's forms");
+  eq(sent.length, 0, "nothing sent");
+  let went = null;
+  const dom = new JSDOM(readFileSync(PAGE, "utf8"), {
+    runScripts: "outside-only", url: "https://next.thauma.one/staff/sharing/?scope=organization#contact" });
+  const w = dom.window;
+  w.__loc = { search: w.location.search, hash: w.location.hash, pathname: w.location.pathname,
+              replace: (u) => { went = u; } };
+  w.eval("(function (location) {" + readFileSync("src/js/staff-sharing.js", "utf8") + "\n})(window.__loc);");
+  eq(went, "/admin/website/forms/", "an old link to Thauma's forms");
 });
 
 await check("a reload comes back to the same one", async () => {

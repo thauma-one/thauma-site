@@ -7,9 +7,9 @@
    while working in it, it opens to the same tab we were working
    on."
 
-   So every tab (Pages, Resources, Events, Photos, Settings) is a
-   panel of one page, and every tab's script loads its data when
-   the page does. This moves between them:
+   So every tab (Pages, Forms, Mail, Resources, Events, Photos,
+   Settings) is a panel of one page, and every tab's script loads
+   its data when the page does. This moves between them:
 
    - A tab link shows its panel and changes the address
      (history.pushState) without a reload. The page exists at
@@ -78,6 +78,23 @@
     if (tab === current()) return;
     history.pushState({ webTab: tab }, '', a.href);
     show(tab);
+    window.scrollTo(0, 0);
+  });
+
+  /* A LINK FROM ONE TAB TO ANOTHER — "Its words → Pages › Contact" on
+     Forms, "Where messages go → Forms" on Pages — moves like the side list
+     does, keeping unsaved edits on the tab being left. data-pages-section
+     opens Pages on that page's words. */
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('[data-web-go]');
+    if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    var link = side.querySelector('[data-web-tab="' + a.getAttribute('data-web-go') + '"]');
+    if (!link) return;
+    e.preventDefault();
+    var tab = link.getAttribute('data-web-tab');
+    if (tab !== current()) { history.pushState({ webTab: tab }, '', link.href); show(tab); }
+    var section = a.getAttribute('data-pages-section');
+    if (section) document.dispatchEvent(new CustomEvent('content:section', { detail: section }));
     window.scrollTo(0, 0);
   });
 

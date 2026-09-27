@@ -1,0 +1,56 @@
+{#- THAUMA'S OWN FORMS (Chase, 2026-09-27: "staff is only for staff
+   functions and admin is for admin"). They were Sharing's "Thauma" side.
+
+   WHAT HAPPENS TO WHAT A VISITOR SENDS, AND NOTHING ELSE. thauma.one's forms
+   are part of its pages, hand-built on the API rather than the embed, so
+   every word on them is a site word, edited in Pages like the rest of the
+   page and published with it. What lives here is what no page says: where a
+   message goes, who it is sent as, the reasons a visitor picks from, and
+   which lists the sign-up form offers. Each form links to where its words
+   are. These save and apply at once; they are not part of the site's files,
+   so they do not wait for Publish (whose bar steps aside while this one
+   shows). -#}
+<div class="wf" id="wfRoot">
+  <div class="ml-whose-opts wf-pick" role="tablist" aria-label="Forms">
+    <button type="button" class="ml-whose-opt is-on" role="tab" aria-selected="true" data-wf="contact"
+            data-i18n="sh.item.contact">Contact form</button>
+    <button type="button" class="ml-whose-opt" role="tab" aria-selected="false" data-wf="signup"
+            data-i18n="sh.item.signup">Sign-up form</button>
+  </div>
+
+  <p class="rolegate" id="wfProblem" hidden></p>
+
+  <section class="sh-card wf-panel" data-wf-panel="contact">
+    <button type="button" class="switch" id="wfCtOpen" role="switch" aria-checked="false">
+      <span class="switch-track"><span class="switch-state">Off</span><span class="switch-knob"></span></span>
+      <span class="switch-label"><span data-i18n="sh.live">Live</span></span>
+    </button>
+    <div class="wf-grid">
+      <label class="fld"><span data-i18n="ml.ctTo">Send messages to</span>
+        <input type="email" id="wfCtTo" maxlength="200" placeholder="you@example.org"></label>
+      <label class="fld"><span data-i18n="ml.ctFrom">Sent from</span>
+        <select id="wfCtFrom"></select></label>
+    </div>
+    <div class="ct-topics">
+      <span class="sh-lbl" data-i18n="ml.ctTopics">What is this about</span>
+      <div id="wfTopics"></div>
+      <button type="button" class="ghost-btn" id="wfAddTopic" data-i18n="ml.ctAddTopic">Add a reason</button>
+    </div>
+    <a class="up-share-link" href="/admin/website/" data-web-go="pages" data-pages-section="contact"
+       data-i18n="wf.wordsContact">Its words → Pages › Contact</a>
+  </section>
+
+  <section class="sh-card wf-panel" data-wf-panel="signup" hidden>
+    <span class="sh-lbl" data-i18n="sh.lists">Lists on this form</span>
+    <div class="sh-switches" id="wfLists"></div>
+    <a class="up-share-link" href="/admin/website/mail/" data-web-go="mail"
+       data-i18n="wf.toMail">Thauma's lists → Mail</a>
+  </section>
+</div>
+
+<div class="ms-savebar" id="wfBar" role="status" aria-live="polite" hidden>
+  <span class="ms-dirty-dot" aria-hidden="true"></span>
+  <span id="wfCount"></span>
+  <button type="button" class="ghost-btn" id="wfDiscard" data-i18n="ms.discard">Discard</button>
+  <button type="button" class="solid-btn" id="wfSave" data-i18n="sh.save">Save changes</button>
+</div>

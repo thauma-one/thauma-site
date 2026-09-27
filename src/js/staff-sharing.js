@@ -25,6 +25,14 @@
 
   if (!document.getElementById('shList')) return;
 
+  /* THE MINISTRY'S ALONE. Thauma's own forms moved to Website › Forms in the
+     admin console (Chase, 2026-09-27: staff pages for staff work, admin for
+     admin); an old link to them lands there. */
+  if (/(\?|&)scope=organization\b/.test(location.search)) {
+    location.replace('/admin/website/forms/');
+    return;
+  }
+
   var SETTINGS = '/api/staff-settings';
   var PREVIEW = '/api/staff-embed';
   var MAILING = '/api/staff-mailing';
@@ -165,7 +173,6 @@
   /* ---- state ----------------------------------------------------------- */
 
   var state = {
-    scope: /(\?|&)scope=organization\b/.test(location.search) ? 'organization' : 'partner',
     settings: null, payload: null, mail: null,
     item: null, device: 'wide', lang: null,
     saved: null, draft: null, busy: false,
@@ -179,13 +186,10 @@
   function isAdmin() { return !!(state.settings && state.settings.you && state.settings.you.is_admin); }
   function slug() { return (state.settings && state.settings.partner && state.settings.partner.slug) ||
     (state.mail && state.mail.partner && state.mail.partner.slug) || ''; }
-  function who() { return state.scope === 'organization' ? 'thauma' : slug(); }
-  /* The four widgets are a ministry's data: Thauma's own scope, or an account
-     with no ministry, has only the forms. */
+  function who() { return slug(); }
+  /* The four widgets are a ministry's data: an account the settings refused
+     has only the forms. */
   function items() {
-    /* Thauma's own sign-up form is part of thauma.one, not an embed; its
-       contact form is. */
-    if (state.scope === 'organization') return ['contact'];
     return !state.settings ? ['signup', 'contact'] : ITEMS;
   }
 
@@ -283,7 +287,7 @@
     if (WIDGETS.indexOf(item) !== -1) return !!d.shared[item];
     if (item === 'signup') {
       var any = Object.keys(d.lists).some(function (id) { return d.lists[id]; });
-      return any && (state.scope === 'organization' || d.signupOpen);
+      return any && d.signupOpen;
     }
     return !!d.contact.is_open;
   }
@@ -314,7 +318,7 @@
   /* THE MINISTRY'S COLORS: two swatches, opening onto the wheel. */
   function drawColors() {
     var d = state.draft;
-    var show = state.scope !== 'organization' && !!state.settings;
+    var show = !!state.settings;
     $('shColors').hidden = !show;
     if (!show) return;
     var b = secondOf(d);
@@ -328,11 +332,10 @@
   }
 
   /* WHAT THE CHOSEN ITEM WEARS: the ministry's colors or its own, and its
-     background. Thauma's own contact form has no ministry to take colors
-     from, so it has neither. */
+     background. */
   function drawLook() {
     var d = state.draft, item = state.item;
-    var show = state.scope !== 'organization' && !!state.settings && !!item;
+    var show = !!state.settings && !!item;
     $('shLookCard').hidden = !show;
     if (!show) return;
     var l = d.looks[item], own = !!l.accent, admin = isAdmin();
@@ -554,10 +557,8 @@
     var admin = isAdmin();
 
     /* LIVE. A widget's is an administrator's decision; the sign-up form's is
-       the ministry's own; Thauma's own sign-up form is its lists alone. */
+       the ministry's own. */
     var live = $('shLive');
-    var liveCard = !(item === 'signup' && state.scope === 'organization');
-    $('shLiveCard').hidden = !liveCard;
     if (widget) setSwitch(live, d.shared[item]);
     else if (item === 'signup') setSwitch(live, d.signupOpen);
     else setSwitch(live, d.contact.is_open);
@@ -592,12 +593,9 @@
 
     $('shCode').textContent = code();
     $('shLangWrap').hidden = !widget;
-    /* Whose form — Thauma's or this ministry's — only means something for
-       the two forms, so it sits with them. */
-    $('shScope').hidden = !(state.mayOrg && isForm(item));
 
     var api = location.origin + '/embed/v1/' + slug() + '.json';
-    $('shDev').hidden = !slug() || state.scope === 'organization';
+    $('shDev').hidden = !slug();
     $('shApi').textContent = api;
     $('shGuide').href = location.origin + '/embed/v1/' + slug() + '-guide.md';
   }
@@ -828,8 +826,7 @@
   }
 
   async function load() {
-    var q = state.scope === 'organization' ? '?scope=organization' : '';
-    var r = await Promise.allSettled([get(SETTINGS), get(PREVIEW), get(MAILING + q)]);
+    var r = await Promise.allSettled([get(SETTINGS), get(PREVIEW), get(MAILING)]);
     state.settings = r[0].status === 'fulfilled' ? r[0].value : null;
     state.payload = r[1].status === 'fulfilled' ? r[1].value : null;
     state.mail = r[2].status === 'fulfilled' ? r[2].value : null;
@@ -841,16 +838,6 @@
     /* The header's name and rows come from whichever answer carries them. */
     var id = state.settings && state.settings.you ? state.settings : state.mail;
     if (id && id.you && window.StaffIdentity) window.StaffIdentity(id.you, id.partner);
-
-    /* Whose forms — offered only to accounts that can reach Thauma's. */
-    var mayOrg = !!(state.mail && state.mail.may_send_as_organisation);
-    state.mayOrg = mayOrg;
-    if (mayOrg) {
-      $('shScopeMine').textContent = (state.mail.partner && state.mail.partner.display_name) || '';
-      [].forEach.call(document.querySelectorAll('#shScope [data-scope]'), function (b) {
-        b.classList.toggle('is-on', b.dataset.scope === state.scope);
-      });
-    }
 
     state.saved = snapshot();
     state.draft = clone(state.saved);
@@ -873,7 +860,7 @@
   async function save() {
     if (state.busy) return;
     var c = changes(), d = state.draft;
-    var mailUrl = MAILING + (state.scope === 'organization' ? '?scope=organization' : '');
+    var mailUrl = MAILING;
     var failed = [];
     state.busy = true;
     $('shSave').disabled = $('shDiscard').disabled = true;
@@ -1079,24 +1066,6 @@
 
   $('shSave').addEventListener('click', save);
   $('shDiscard').addEventListener('click', discard);
-
-  $('shScope').addEventListener('click', async function (e) {
-    var b = e.target.closest('[data-scope]');
-    if (!b || b.dataset.scope === state.scope) return;
-    if (count()) {
-      var ok = await window.StaffConfirm({
-        title: tr('up.discardTitle1'), confirm: tr('ms.discard'), cancel: tr('ms.cancel'), danger: true
-      });
-      if (!ok) return;
-    }
-    state.scope = b.dataset.scope;
-    try {
-      history.replaceState(null, '', location.pathname +
-        (state.scope === 'organization' ? '?scope=organization' : '') + location.hash);
-    } catch (err) {}
-    state.item = null;
-    load();
-  });
 
   window.addEventListener('beforeunload', function (e) {
     if (!count()) return;

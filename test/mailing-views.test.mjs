@@ -173,29 +173,30 @@ async function bootMailing(url) {
   return { w, d: w.document, asked };
 }
 
-await check("reloading the organization's mailing comes back to the organization", async () => {
-  /* THE BUG. show() wrote '#' + view, which is a whole new URL — the query
-     string went with it. The scope was dropped on the first navigation and a
-     reload came back as the partner, whatever you had been editing. Landing in
-     a ministry's editor when you left Thauma's is an invitation to change the
-     wrong thing without noticing. */
-  const { w, d, asked } = await bootMailing(
-    "https://dev.thauma.one/staff/mail/?scope=organization#composer");
-  assert(/scope=organization/.test(asked[0]),
-    `the first request asked for the wrong scope: ${asked[0]}`);
-  assert(/scope=organization/.test(w.location.href),
-    `the address lost the scope while rendering: ${w.location.href}`);
-  const lit = [...d.querySelectorAll("[data-scope]")]
-    .filter((b) => b.classList.contains("is-on")).map((b) => b.dataset.scope);
-  assert(lit.join(",") === "organization",
-    `the switcher shows "${lit.join(",") || "nothing"}" while editing the organization`);
-});
+/* Run the Mail script with a stand-in `location` that records where it was
+   sent: jsdom will not let location.replace be watched. */
+function forwardOf(url) {
+  let went = null;
+  const dom = new JSDOM(readFileSync(`${build}/staff/mail/index.html`, "utf8"), {
+    runScripts: "dangerously", pretendToBeVisual: true, url,
+    beforeParse(w) {
+      w.fetch = async () => ({ ok: true, status: 200, json: async () => SCOPE_PAY });
+      w.scrollTo = () => {};
+    } });
+  const w = dom.window;
+  w.__loc = { hash: w.location.hash, search: w.location.search, pathname: w.location.pathname,
+              href: w.location.href, replace: (u) => { went = u; } };
+  w.eval(readFileSync("src/js/staff-i18n.js", "utf8"));
+  w.eval("(function (location) {" + readFileSync("src/js/staff-mailing.js", "utf8") + "\n})(window.__loc);");
+  return went;
+}
 
-await check("and the view comes back with it", async () => {
-  const { d } = await bootMailing(
-    "https://dev.thauma.one/staff/mail/?scope=organization#composer");
-  assert(!d.getElementById("mlComposerView").hidden,
-    "the scope was restored but the view was not");
+await check("Thauma's mail left the staff page: an old link lands in Website › Mail, view and all", async () => {
+  /* Chase, 2026-09-27: staff pages for staff work, admin for admin. */
+  eq2(forwardOf("https://dev.thauma.one/staff/mail/?scope=organization#composer"),
+    "/admin/website/mail/#composer", "the old address");
+  const page = readFileSync(`${build}/staff/mail/index.html`, "utf8");
+  assert(!/data-scope=/.test(page), "the staff Mail page still offers Thauma's lists");
 });
 
 await check("a partner's mailing is unaffected", async () => {
@@ -207,26 +208,14 @@ await check("a partner's mailing is unaffected", async () => {
 
 /* ------------------------------ the forms moved to Sharing (board 9) */
 
-await check("an old link to the contact or sign-up form lands on Sharing", async () => {
+await check("an old link to a form lands where the form lives now", async () => {
   /* The part after # never reaches the server, so the Worker cannot forward
-     it; the Mailing page does, keeping whose form it was. */
+     it; the Mail page does. A ministry's forms are on Sharing; Thauma's in
+     Website › Forms. */
   for (const [hash, item] of [["contact", "contact"], ["embed", "signup"]]) {
-    let went = null;
-    const dom = new JSDOM(readFileSync(`${build}/staff/mail/index.html`, "utf8"), {
-      runScripts: "dangerously", pretendToBeVisual: true,
-      url: "https://dev.thauma.one/staff/mail/?scope=organization#" + hash,
-      beforeParse(w) {
-        w.fetch = async () => ({ ok: true, status: 200, json: async () => SCOPE_PAY });
-        w.scrollTo = () => {};
-      } });
-    const w = dom.window;
-    /* jsdom will not let location.replace be watched, so the script is run
-       with a stand-in `location` that records where it was sent. */
-    w.__loc = { hash: w.location.hash, search: w.location.search, pathname: w.location.pathname,
-                href: w.location.href, replace: (u) => { went = u; } };
-    w.eval(readFileSync("src/js/staff-i18n.js", "utf8"));
-    w.eval("(function (location) {" + readFileSync("src/js/staff-mailing.js", "utf8") + "\n})(window.__loc);");
-    assert(went === "/staff/sharing/?scope=organization#" + item, `#${hash} went to ${went}`);
+    eq2(forwardOf("https://dev.thauma.one/staff/mail/#" + hash), "/staff/sharing/#" + item, `#${hash}`);
+    eq2(forwardOf("https://dev.thauma.one/staff/mail/?scope=organization#" + hash),
+      "/admin/website/forms/", `Thauma's #${hash}`);
   }
 });
 
@@ -238,10 +227,10 @@ const LISTS = [
   { id: "l_pray", name: "Prayer", slug: "prayer", subscribed: 4, drafts: 2, archive_public: 0,
     sent: [{ id: "m2", slug: "week-1", subject: "Week one", finished_at: "2026-07-02T10:00:00Z", sent_count: 4 }] },
 ];
-async function bootMail(url, pay = {}) {
+async function bootMail(url, pay = {}, file = "staff/mail") {
   const P = { ...SCOPE_PAY, lists: LISTS, ...pay };
   const asked = [];
-  const dom = new JSDOM(readFileSync(`${build}/staff/mail/index.html`, "utf8"), {
+  const dom = new JSDOM(readFileSync(`${build}/${file}/index.html`, "utf8"), {
     runScripts: "dangerously", pretendToBeVisual: true, url,
     beforeParse(w) {
       Object.defineProperty(w, "sessionStorage", { value: {
@@ -259,31 +248,25 @@ async function bootMail(url, pay = {}) {
   return { w, d: w.document, asked, click };
 }
 
-await check("the composer is told whose lists the page is showing", async () => {
+await check("Website › Mail is Thauma's, and tells the composer so", async () => {
   /* THE BUG (2026-09-27). window.StaffMailing went missing when the forms
      moved to Sharing, and the composer — a separate file on the same screen —
      asked it whose lists these were, got nothing, and wrote to the ministry's
      lists while the page showed Thauma's. */
-  const { w, click, d } = await bootMail("https://dev.thauma.one/staff/mail/?scope=organization");
+  const { w, asked } = await bootMail("https://dev.thauma.one/admin/website/mail/", {}, "admin/website/mail");
+  assert(/scope=organization/.test(asked[0]), `Website › Mail asked for ${asked[0]}`);
   assert(w.StaffMailing && w.StaffMailing.scope() === "organization",
     `the composer would ask for ${w.StaffMailing ? w.StaffMailing.scope() : "nothing"}`);
-  let rescoped = 0;
-  w.StaffComposer = { rescope: () => { rescoped++; }, dirty: () => false };
-  click(d.querySelector('[data-scope="partner"]'));
-  await new Promise((r) => setTimeout(r, 120));
-  eq2(w.StaffMailing.scope(), "partner", "after switching");
-  eq2(rescoped, 1, "the composer was not moved to the other owner's lists");
+  const staff = await bootMail("https://dev.thauma.one/staff/mail/");
+  assert(!/scope=organization/.test(staff.asked[0]), "the staff page asked for Thauma's lists");
+  eq2(staff.w.StaffMailing.scope(), "partner", "the staff page's composer");
 });
 
-await check("switching owners while words are unsaved asks first", async () => {
-  const { w, click, d } = await bootMail("https://dev.thauma.one/staff/mail/");
-  let asked = 0;
-  w.StaffConfirm = async () => { asked++; return false; };
-  w.StaffComposer = { rescope: () => {}, dirty: () => true };
-  click(d.querySelector('[data-scope="organization"]'));
-  await new Promise((r) => setTimeout(r, 80));
-  eq2(asked, 1, "no question");
-  eq2(w.StaffMailing.scope(), "partner", "refused, and switched anyway");
+await check("with no list, the page — not a composer with nothing to send to", async () => {
+  const { d } = await bootMail("https://dev.thauma.one/staff/mail/#composer", { lists: [] });
+  eq2(d.getElementById("mlComposerView").hidden, true, "opened a composer with no list");
+  eq2(d.getElementById("mlNoLists").hidden, false, "no word that there are no lists");
+  eq2(d.getElementById("mlWrite").hidden, true, "Write with nothing to write to");
 });
 
 await check("Write an update comes first, naming the lists it goes to", async () => {

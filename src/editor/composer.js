@@ -463,15 +463,6 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
     $("cpDraft").focus();
   }
 
-  /* The page switched between the ministry's lists and Thauma's: whatever
-     list and draft were open belong to the other one. */
-  async function rescope() {
-    cp.listId = null; cp.id = null; cp.dirty = false;
-    await load(null);
-    openDraft(null);
-  }
-
-  window.StaffComposer = { reload: () => load(cp.listId), write, drafts, rescope,
-                           dirty: () => cp.dirty, editor };
+  window.StaffComposer = { reload: () => load(cp.listId), write, drafts, editor };
   load(null).then(() => openDraft(null));
 })();

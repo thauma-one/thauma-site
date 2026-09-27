@@ -101,6 +101,12 @@ const rowRoles = (pages) => [...new Set(inRow(pages).flatMap((p) => p.roles || [
 const website = [
   { tab: "pages", url: "/admin/website/", label: "Pages",
     page: "content", heading: "The site's <b>words</b>" },
+  /* Thauma's own forms and mail (Chase, 2026-09-27): what happens to what a
+     visitor sends, and Thauma's lists — admin work, so off the staff pages. */
+  { tab: "forms", url: "/admin/website/forms/", label: "Forms",
+    page: "forms", heading: "Thauma's <b>forms</b>" },
+  { tab: "mail", url: "/admin/website/mail/", label: "Mail",
+    page: "orgmail", heading: "Who hears from <b>Thauma</b>" },
   { tab: "resources", url: "/admin/website/resources/", label: "Resources",
     page: "resources", heading: "The site's <b>resources</b>" },
   { tab: "events", url: "/admin/website/events/", label: "Events",

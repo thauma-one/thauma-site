@@ -508,8 +508,13 @@
   function renderRows() {
     var rows = visible();
     $('cCount').textContent = state.find ? rows.length + ' ' + tr('con.matches') : '';
-    $('cRows').innerHTML = rows.length ? rows.map(rowHtml).join('')
-      : '<p class="empty">' + esc(tr('con.noMatches')) + '</p>';
+    /* THE CONTACT PAGE'S FORM: its words are here, like the rest of the
+       page; where its messages go is Website › Forms. */
+    var forms = !state.find && state.view === 'section:contact'
+      ? '<a class="up-share-link c-formslink" href="/admin/website/forms/" data-web-go="forms">' +
+          esc(tr('con.formsLink')) + '</a>' : '';
+    $('cRows').innerHTML = forms + (rows.length ? rows.map(rowHtml).join('')
+      : '<p class="empty">' + esc(tr('con.noMatches')) + '</p>');
     $('cRows').querySelectorAll('textarea').forEach(autosize);
   }
 
@@ -650,15 +655,22 @@
     if (box.innerHTML !== html) box.innerHTML = html;
   });
 
-  $('cSections').addEventListener('click', function (e) {
-    var b = e.target.closest('[data-view]');
-    if (!b) return;
-    state.view = b.getAttribute('data-view');
+  function openView(view) {
+    state.view = view;
     try { sessionStorage.setItem('thauma.content.view.' + state.lang, state.view); } catch (e2) { /* private mode */ }
     // A page and a search are two ways of choosing what is on screen;
     // leaving both on shows neither.
     if (state.find) { state.find = ''; $('cFind').value = ''; }
     renderSections(); renderRows(); renderMore();
+  }
+  $('cSections').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-view]');
+    if (b) openView(b.getAttribute('data-view'));
+  });
+  /* Another tab asking for one page's words — Forms' "Its words → Pages ›
+     Contact" (admin-website.js). */
+  document.addEventListener('content:section', function (e) {
+    if (state.rows && viewExists('section:' + e.detail)) openView('section:' + e.detail);
   });
 
   var findTimer = null;

@@ -1197,7 +1197,7 @@ body.has-savebar .acting-mark{bottom:calc(var(--ms-savebar-h,72px) + 12px)}
 .ml-hero-title{font-family:var(--font-display);font-weight:300;font-size:21px;color:var(--text)}
 .ml-hero-to{font-size:13px;color:var(--dim)}
 .ml-hero .solid-btn{background:var(--ok);border-color:var(--ok);color:#06110c}
-.ml-hero .ghost-btn[hidden]{display:none}
+.ml-hero .ghost-btn[hidden],.ml-hero .solid-btn[hidden]{display:none}
 
 /* Everything sent, every list together: a record, one line each. */
 .ml-sentall{margin:0 0 28px}
@@ -1299,23 +1299,7 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
 .ml-soon h3{margin:0 0 .5rem;font-size:1.1rem}
 .ml-soon p{margin:0 0 .6rem;color:var(--dim,#8a93a3);line-height:1.6}
 
-/* WHOSE LISTS. It changes what everything on the page means. Two small pills
-   beside the TAB BAR were missed entirely; beside the page's own title
-   (board 10) it reads as being about the page. */
-.ml-whose{display:flex;align-items:center;gap:14px;flex-wrap:wrap;
-  padding:10px 14px;margin-bottom:14px;border:1px solid var(--line);
-  border-radius:var(--radius);background:var(--bg2,#0b1119)}
-/* Beside a page's title: just the two choices, at the far end of the line. */
-.sec-h .ml-whose{margin:0 0 0 auto;padding:0;border:0;background:none;align-self:center}
-.sec-h .ml-whose[hidden]{display:none}
-.sec-h .ml-whose-opt{white-space:nowrap}
-@media (max-width:560px){
-  .sec-h:has(.ml-whose){flex-wrap:wrap}
-  .sec-h .ml-whose{margin:6px 0 0;flex-basis:100%}
-}
-.ml-whose-label{color:var(--voice-tech);font-family:var(--font-display);
-  font-size:10px;letter-spacing:var(--ls-caps);text-transform:uppercase;
-  font-weight:var(--w-bold)}
+/* A pair of pills choosing between two things (a form, a look). */
 .ml-whose-opts{display:flex;gap:4px}
 .ml-whose-opt{background:none;border:1px solid var(--line);border-radius:99px;
   color:var(--dim,#8a93a3);padding:5px 15px;font-size:12.5px;cursor:pointer}
@@ -2166,7 +2150,6 @@ html.console-menu-open{overflow:hidden}
 .sh-side .ghost-btn{width:100%}
 .sh-side .fld{margin-bottom:14px}
 .sh-period{display:grid;grid-template-columns:1fr;gap:0}
-.sh-side .ml-whose{margin:0 0 14px}
 /* Reasons in a narrow column: what it says above where it goes. */
 .sh-side .ct-topics{margin:4px 0 0;padding-top:14px}
 .sh-side .ct-topic{grid-template-columns:minmax(0,1fr) auto auto;grid-template-rows:auto auto;
@@ -2186,6 +2169,14 @@ html.console-menu-open{overflow:hidden}
 .sh-dev-body{margin-top:16px;display:flex;flex-direction:column;gap:10px;align-items:flex-start}
 .sh-dev-body .emb-code{white-space:pre-wrap;word-break:break-all;align-self:stretch}
 .sh-dev[hidden]{display:none}
+
+/* ---- Website › Forms: Thauma's own (admin) ----
+   Two forms, a pill for each; a card of what happens to what is sent. */
+.wf{display:flex;flex-direction:column;gap:18px;max-width:760px}
+.wf-panel[hidden]{display:none}
+.wf-panel .switch{margin-bottom:18px}
+.wf-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:0 16px}
+.wf-panel .up-share-link{display:inline-block;margin-top:18px}
 
 @media (max-width:1100px){
   .sh-grid{grid-template-columns:200px minmax(0,1fr)}

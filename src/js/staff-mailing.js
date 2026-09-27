@@ -25,23 +25,34 @@
   /* The element it needs, not the page name — see staff-milestones.js. */
   if (!document.getElementById('mlTabs')) return;
 
-  /* THE FORMS MOVED TO SHARING (board 9). An old link to either still lands
-     on it — the part after # never reaches the server, so the Worker cannot
-     forward it; this page does. */
-  var moved = { embed: 'signup', contact: 'contact' }[(location.hash || '').slice(1)];
-  if (moved) {
-    location.replace('/staff/sharing/' + location.search + '#' + moved);
-    return;
-  }
-
   var API = '/api/staff-mailing';
   var $ = function (id) { return document.getElementById(id); };
 
-  /* WHOSE MAILING, taken from the address bar before anything is fetched — the
-     first load asks the server for one scope or the other, so this has to be
-     decided before it, not after. */
-  var startScope = /(\?|&)scope=organization\b/.test(location.search)
-    ? 'organization' : 'partner';
+  /* WHOSE MAILING. The staff page is the ministry's; Website › Mail in the
+     admin console is Thauma's (data-ml-fixed, mail-body.njk). Chase,
+     2026-09-27: staff pages for staff work, admin for admin — so there is no
+     switch between them on either page any more. */
+  var FIXED = $('mlHome').getAttribute('data-ml-fixed') || null;
+  var orgAsked = /(\?|&)scope=organization\b/.test(location.search);
+
+  /* OLD LINKS STILL LAND. The part after # never reaches the server, so the
+     Worker cannot forward these; this page does. The forms went to Sharing
+     (board 9) and Thauma's to Website › Forms; Thauma's lists to Website ›
+     Mail, with the list or view they named. */
+  if (!FIXED) {
+    var hash = (location.hash || '').slice(1);
+    var form = { embed: 'signup', contact: 'contact' }[hash];
+    if (form) {
+      location.replace(orgAsked ? '/admin/website/forms/' : '/staff/sharing/#' + form);
+      return;
+    }
+    if (orgAsked) {
+      location.replace('/admin/website/mail/' + location.hash);
+      return;
+    }
+  }
+
+  var startScope = FIXED || 'partner';
 
   var state = {
     lists: [], tags: [], senders: [], contact: null, topics: [],
@@ -120,7 +131,7 @@
       joined = new Intl.ListFormat(lang, { type: 'disjunction' }).format(names);
     } catch (e) {}
     $('mlHeroTo').textContent = names.length ? fill('ml.writeTo', { lists: joined }) : '';
-    $('mlWrite').disabled = !names.length;
+    $('mlWrite').hidden = !names.length;
     var n = state.lists.reduce(function (sum, l) { return sum + (Number(l.drafts) || 0); }, 0);
     $('mlDrafts').hidden = !n;
     $('mlDrafts').textContent = fill('ml.draftsN', { n: n });
@@ -212,26 +223,15 @@
       if (l) { fillSettings(l); showSub('people'); }
     }
 
-    /* SURVIVES A RELOAD — the view AND whose mailing it is.
-
-       The view always did: '#' + view is a fragment-only URL, which resolves
-       against the current one and keeps the path and query. The SCOPE did not,
-       because nothing ever put it in the address to begin with and startup
-       hardcoded 'partner'. So you could be editing Thauma's mailing, reload,
-       and land in a ministry's — not an inconvenience, an invitation to change
-       the wrong thing without noticing.
-
-       Built here rather than appended to a fragment, so the two halves of the
-       address are decided in one place instead of one of them being implied. */
-    try { history.replaceState(null, '', addressFor(view)); } catch (e) {}
+    /* SURVIVES A RELOAD: the view is in the address. Whose mailing it is,
+       is the page itself. In the Website area every tab is one page, so the
+       address is only this tab's to change while this tab is on screen. */
+    if (FIXED && !onScreen()) return;
+    try { history.replaceState(null, '', location.pathname + '#' + view); } catch (e) {}
   }
-
-  /* The address for a view in the current scope. Same word the API uses for
-     the same idea, so there is one spelling of "the organization" on this
-     page rather than two. */
-  function addressFor(view) {
-    return (state.scope === 'organization' ? '?scope=organization' : location.pathname)
-           + '#' + view;
+  function onScreen() {
+    var panel = $('mlHome').closest('[data-web-panel]');
+    return !panel || !panel.hidden;
   }
 
   function showSub(which) {
@@ -816,22 +816,15 @@
     state.partnerSlug = (body.partner && body.partner.slug) || '';
     renderSentAll();
 
-    if (body.may_send_as_organisation) {
-      $('mlScope').hidden = false;
-      $('mlScopeMine').textContent = (body.partner && body.partner.display_name) || tr('ml.scopeMine');
-      /* The switcher is only revealed here, so a scope restored from the
-         address bar has had nothing to mark until now — without this the page
-         loads Thauma's mailing with the ministry's button lit. */
-      Array.prototype.forEach.call(document.querySelectorAll('[data-scope]'), function (b) {
-        b.classList.toggle('is-on', b.dataset.scope === state.scope);
-      });
-    }
 
     /* Where to land: what the caller asked for, then the address bar, then the
        first list. Somebody arriving from a bookmark should get their list. */
     var wanted = keepView || (location.hash || '').slice(1);
     var valid = TOOLS.indexOf(wanted) >= 0 || !!listById(wanted);
-    show(valid ? wanted : (state.lists[0] ? state.lists[0].id : 'composer'));
+    /* With no list there is nothing to write to: the page itself, with New
+       list, rather than a composer with an empty picker and no way out. */
+    if (wanted === 'composer' && !state.lists.length) valid = false;
+    show(valid ? wanted : firstList());
   }
 
   /* WHOSE LISTS THE WHOLE PAGE IS SHOWING, read by the composer — a separate
@@ -884,7 +877,7 @@
   $('mlCancel').addEventListener('click', function () {
     var l = currentList();
     if (l) { fillSettings(l); showSub('people'); return; }
-    show(firstList() || 'composer');
+    show(firstList());
   });
   $('mlArchive').addEventListener('click', archive);
   $('mlArchivePublic').addEventListener('click', function () {
@@ -922,36 +915,7 @@
        an attribute that means "this is a tab" cannot also mean "this is a
        person" (a click on a person once blanked the page). The Subscribers
        and Settings tabs became the List settings button (board 10). */
-
-    var scope = e.target.closest('[data-scope]');
-    if (scope && scope.dataset.scope !== state.scope) {
-      switchScope(scope.dataset.scope);
-      return;
-    }
   });
-
-  /* Words being written belong to the owner they were started for, so
-     switching away from them asks first. */
-  async function switchScope(to) {
-    var c = window.StaffComposer;
-    if (c && c.dirty && c.dirty()) {
-      var ok = await window.StaffConfirm({
-        title: tr('up.discardTitle1'), confirm: tr('ms.discard'), cancel: tr('ms.cancel'), danger: true
-      });
-      if (!ok) return;
-    }
-    state.scope = to;
-    Array.prototype.forEach.call(document.querySelectorAll('[data-scope]'), function (b) {
-      b.classList.toggle('is-on', b.dataset.scope === state.scope);
-    });
-    /* Immediately, not when a view is next shown: somebody who switches to
-       Thauma and reloads before clicking anything else should still be in
-       Thauma. */
-    try { history.replaceState(null, '', addressFor(state.view || '')); } catch (e) {}
-    /* The composer follows: its lists are now the other owner's. */
-    if (c && c.rescope) c.rescope();
-    return load('');
-  }
 
   $('mlAddPerson').addEventListener('submit', async function (e) {
     e.preventDefault();
