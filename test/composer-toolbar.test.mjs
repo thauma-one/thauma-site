@@ -41,8 +41,8 @@ const BUNDLE = "src/js/composer.bundle.js";
    which is the exact failure this file was written to stop happening to
    somebody else. */
 const PAGE = ["_site", "_site_next", "_site_prod"]
-  .map((d) => `${d}/staff/mailing/index.html`)
-  .find((p) => existsSync(p)) || "_site/staff/mailing/index.html";
+  .map((d) => `${d}/staff/mail/index.html`)
+  .find((p) => existsSync(p)) || "_site/staff/mail/index.html";
 
 let pass = 0, fail = 0;
 const check = async (name, fn) => {
@@ -70,7 +70,7 @@ const LISTS = [{
 async function boot() {
   const dom = new JSDOM(readFileSync(PAGE, "utf8"), {
     runScripts: "outside-only",
-    url: "https://next.thauma.one/staff/mailing/",
+    url: "https://next.thauma.one/staff/mail/",
     pretendToBeVisual: true,
   });
   const w = dom.window;
@@ -117,7 +117,8 @@ async function boot() {
   await new Promise((r) => setTimeout(r, 400));
 
   const D = w.document;
-  D.querySelector('[data-view="composer"]')
+  /* Write, on Mail's first card, opens the composer (board 10). */
+  D.getElementById("mlWrite")
     .dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
   await new Promise((r) => setTimeout(r, 250));
 

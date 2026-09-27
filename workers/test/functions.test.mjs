@@ -249,6 +249,8 @@ await check("an old console address leads to where the page moved", async () => 
   eq(go("/admin/library/?tab=gatherings"), "https://x/admin/website/resources/?tab=gatherings", "keeps the query");
   eq(go("/admin/website/library/"), "https://x/admin/website/resources/", "Library became Resources and Events");
   eq(go("/staff/ministry/"), "https://x/staff/updates/", "Ministry became Updates");
+  eq(go("/staff/mailing/?scope=organization"), "https://x/staff/mail/?scope=organization",
+    "Mailing became Mail, still Thauma's");
   eq(go("/admin/users/"), null, "a page that did not move");
   /* And nobody reaches a moved page without signing in first: the forward
      happens after the gate, so an old bookmark still meets the sign-in. */

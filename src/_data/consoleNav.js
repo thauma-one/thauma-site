@@ -36,7 +36,8 @@ const staff = [
      things are its updates). */
   { slug: "updates", url: "/staff/updates/", label: "Updates",
     roles: ["staff", "partner", "communications"] },
-  { slug: "mailing", url: "/staff/mailing/", label: "Mailing",
+  /* Who hears from you (mockup board 10; was "Mailing"). */
+  { slug: "mail", url: "/staff/mail/", label: "Mail",
     roles: ["staff", "partner", "communications"] },
   /* Everything that goes on other websites (mockup board 9): the four
      widgets, the sign-up form, the contact form, their colors and code. */

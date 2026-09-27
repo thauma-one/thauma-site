@@ -418,7 +418,10 @@ SELECT
   (SELECT COUNT(*) FROM subscribers s
     WHERE s.list_id = l.id AND s.status = 'pending')     AS pending,
   (SELECT COUNT(*) FROM subscribers s
-    WHERE s.list_id = l.id AND s.status = 'unsubscribed') AS unsubscribed
+    WHERE s.list_id = l.id AND s.status = 'unsubscribed') AS unsubscribed,
+  -- Drafts waiting, for Mail's "Drafts" (board 10).
+  (SELECT COUNT(*) FROM mailings m
+    WHERE m.list_id = l.id AND m.status = 'draft')       AS drafts
 FROM mailing_lists l
 WHERE l.partner_id IS :partner_id AND l.archived_at IS NULL
 ORDER BY l.name COLLATE NOCASE;

@@ -1,10 +1,17 @@
 ---
 layout: layouts/staff.njk
-staffPage: mailing
-staffTitle: Mailing
+staffPage: mail
+staffTitle: Mail
 staffHeading: Who hears from <b>you</b>
+staffHeadAside: staff-mail-whose.njk
 ---
-{#- ONE TAB PER LIST, then the tools that work across all of them.
+{#- MAIL (mockup board 10; was Mailing at /staff/mailing/, which forwards).
+
+   WRITING FIRST. "Write an update" is the first and biggest thing on the page,
+   because it is the commonest reason to come here; what has gone out sits
+   right under it, every list together; the lists follow, one tab each.
+
+   ONE TAB PER LIST, then the tools that work across all of them.
 
    The first version put every list in one column and buried the sign-up form
    inside each list's edit panel. That made the page a list OF lists, when what
@@ -12,75 +19,74 @@ staffHeading: Who hears from <b>you</b>
    settings, write to it. A tab per list makes the thing being worked on the
    thing on screen.
 
-   New list sits WITH the lists, because it makes one. Composer is pushed to
-   the far end and visually separated, because it is not a list and must not
-   read as one more of them. (The sign-up and contact forms live on Sharing.)
+   New list sits WITH the lists, because it makes one. A list's settings are
+   at the far end of the strip, for the list on screen. The composer is not a
+   tab: it opens from Write and fills the page, because writing is one job at
+   a time. (The sign-up and contact forms live on Sharing.)
 
    THE HEADING SAYS "you" ON PURPOSE. Isolation is the feature, and the
    person reading this should see that it applies to them rather than take it
    on faith. -#}
 
-{#- WHOSE LISTS. Above the tabs and full width, because it changes what every
-   tab below it means — a switch that quiet, tucked in beside them, was missed
-   entirely by the person it was built for. Rendered only when the API says
-   this account may reach the organization's lists. -#}
-<div class="ml-whose" id="mlScope" hidden>
-  <span class="ml-whose-label" data-i18n="ml.scope">Whose lists</span>
-  <div class="ml-whose-opts">
-    <button type="button" class="ml-whose-opt is-on" data-scope="partner" id="mlScopeMine"></button>
-    <button type="button" class="ml-whose-opt" data-scope="organization" data-i18n="ml.scopeOrg">Thauma</button>
+{#- WRITE AN UPDATE: to which lists, the drafts waiting, and Write. -#}
+<div class="ml-home" id="mlHome">
+  <div class="ml-hero">
+    <div class="ml-hero-text">
+      <div class="ml-hero-title" data-i18n="ml.write">Write an update</div>
+      <div class="ml-hero-to" id="mlHeroTo"></div>
+    </div>
+    <button type="button" class="ghost-btn" id="mlDrafts" hidden></button>
+    <button type="button" class="solid-btn" id="mlWrite" data-i18n="ml.writeBtn">Write</button>
   </div>
+
+  {#- WHAT HAS GONE OUT, every list together, newest first. A sent mailing is
+     a record: its row opens the public copy where the list publishes one. -#}
+  <section class="ml-sentall" id="mlSentAll" hidden>
+    <span class="sh-lbl" data-i18n="ml.sentAll">Sent</span>
+    <div class="ml-sentall-rows" id="mlSentRows"></div>
+    <button type="button" class="link-btn" id="mlSentMore" hidden></button>
+  </section>
+
+  <div class="ml-tabs" role="tablist" aria-label="Lists">
+    <div class="ml-tabs-lists" id="mlTabs"></div>
+
+    <button type="button" class="ml-tab ml-tab-new" id="mlNewList">
+      <span aria-hidden="true">+</span>&nbsp;<span data-i18n="ml.add">New list</span>
+    </button>
+
+    <span class="ml-tabs-gap"></span>
+
+    <button type="button" class="ghost-btn ml-settings-btn" id="mlListSettings" aria-pressed="false"
+            data-i18n="ml.listSettings" hidden>List settings</button>
+  </div>
+
+  <p class="empty" id="mlNoLists" hidden data-i18n="ml.empty">No mailing lists yet.</p>
 </div>
-
-<div class="ml-tabs" role="tablist" aria-label="Mailing">
-  <div class="ml-tabs-lists" id="mlTabs"></div>
-
-  <button type="button" class="ml-tab ml-tab-new" id="mlNewList">
-    <span aria-hidden="true">+</span>&nbsp;<span data-i18n="ml.add">New list</span>
-  </button>
-
-  <span class="ml-tabs-gap"></span>
-
-  <button type="button" class="ml-tab ml-tab-tool" role="tab" data-view="composer"
-          data-i18n="ml.tabComposer">Composer</button>
-</div>
-
-
-
-<p class="empty" id="mlNoLists" hidden data-i18n="ml.empty">No mailing lists yet.</p>
 
 <!-- ============================================================== A LIST -->
 <section class="ml-view" data-view="list" id="mlListView" hidden>
-  <div class="ml-subtabs" role="tablist">
-    <button type="button" class="ml-subtab is-on" data-sub="people"
-            data-i18n="ml.subPeople">Subscribers</button>
-    <button type="button" class="ml-subtab" data-sub="settings"
-            data-i18n="ml.subSettings">Settings</button>
-  </div>
-
   <!-- ---------- subscribers ---------- -->
   <div class="ml-sub" data-subpanel="people">
-    <form class="ml-add" id="mlAddPerson">
-      <label class="fld"><span data-i18n="ml.addEmail">Email address</span>
-        <input type="email" id="mlNewEmail" maxlength="200" required>
-      </label>
-      <label class="fld"><span data-i18n="ml.addName">Name</span>
-        <input type="text" id="mlNewName" maxlength="120">
-      </label>
-      <button type="submit" class="solid-btn" data-i18n="ml.addPerson">Add</button>
-      <span class="hint" id="mlAddStatus"></span>
-    </form>
-
-    <div class="ml-counts" id="mlCounts"></div>
-
-    {#- FINDING SOMEBODY, rather than scrolling for them. At a hundred people
-       the old card list was fine; at a thousand it is a filing cabinet with no
-       drawers. Search, a status filter and a sort — the three questions
-       actually asked of a subscriber list. -#}
-    <div class="subs-bar">
+    {#- FINDING SOMEBODY AND ADDING SOMEBODY, on one line (board 10): the
+       two things done to a list most. A name is added from the person's row
+       afterwards, like everything else about them. -#}
+    <div class="ml-findadd">
       <input type="search" id="subsQ" class="subs-q"
              data-i18n-attr="placeholder:ml.subsSearch,aria-label:ml.subsSearch" aria-label="Search a name or address"
              placeholder="Search a name or address">
+      <form class="ml-add" id="mlAddPerson">
+        <input type="email" id="mlNewEmail" maxlength="200" required
+               data-i18n-attr="placeholder:ml.addAnEmail,aria-label:ml.addAnEmail"
+               aria-label="Add an email address" placeholder="Add an email address">
+        <button type="submit" class="ghost-btn" data-i18n="ml.addPerson">Add</button>
+      </form>
+    </div>
+    <span class="hint ml-add-status" id="mlAddStatus"></span>
+
+    {#- The three numbers, then what narrows the table: status, order, tag. -#}
+    <div class="subs-bar">
+      <div class="ml-counts" id="mlCounts"></div>
+      <span class="subs-bar-gap"></span>
       <select id="subsStatus" aria-label="Status">
         <option value="" data-i18n="ml.subsAll">Everyone</option>
         <option value="subscribed" data-i18n="ml.status.subscribed">Subscribed</option>
@@ -224,14 +230,6 @@ staffHeading: Who hears from <b>you</b>
         </button>
       </div>
 
-      {#- What has actually gone out, with the public address of each. Shown
-         whether or not the archive is on: a partner may look at their own
-         history regardless, and the line beneath each says which it is. -#}
-      <div class="ml-sent" id="mlSent" hidden>
-        <h4 data-i18n="ml.sentTitle">Already sent</h4>
-        <div class="ml-sent-list" id="mlSentList"></div>
-      </div>
-
       <div class="ms-actions">
         <button type="submit" class="solid-btn" data-i18n="ml.save">Save list</button>
         <button type="button" class="ghost-btn" id="mlCancel" data-i18n="ms.cancel">Cancel</button>
@@ -256,6 +254,7 @@ staffHeading: Who hears from <b>you</b>
    Text color, font family and font size are absent for that reason — they
    render three different ways and the third is unreadable. -#}
 <section class="ml-view" data-view="composer" id="mlComposerView" hidden>
+  <button type="button" class="ml-back" id="mlBack">&larr;&nbsp;<span data-i18n="nav.mail">Mail</span></button>
 
   {#- NO "To" FIELD, AND THAT IS THE DESIGN.
 
@@ -387,10 +386,4 @@ staffHeading: Who hears from <b>you</b>
 
   </div>
 
-  {#- Read-only on purpose: a sent mailing is a record, and editing one would
-     rewrite what people were told they received. -#}
-  <div class="cp-sent" id="cpSent" hidden>
-    <span class="adm-label" data-i18n="ml.cpHistory">Already sent</span>
-    <div id="cpSentList"></div>
-  </div>
 </section>

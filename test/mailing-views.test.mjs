@@ -18,7 +18,7 @@ import { JSDOM } from "jsdom";
 import { readFileSync, existsSync } from "node:fs";
 
 const build = ["_site", "_site_next", "_site_prod"].find((d) =>
-  existsSync(`${d}/staff/mailing/index.html`));
+  existsSync(`${d}/staff/mail/index.html`));
 
 let pass = 0, fail = 0;
 /* Awaits — half these tests boot a page and the rest do not, and a check that
@@ -28,12 +28,14 @@ const check = async (name, fn) => {
   catch (e) { console.log(`  FAIL  ${name}\n          ${e.message}`); fail++; }
 };
 const assert = (c, m) => { if (!c) throw new Error(m); };
+const eq2 = (a, b, m) => assert(JSON.stringify(a) === JSON.stringify(b),
+  `${m} — got ${JSON.stringify(a)}, want ${JSON.stringify(b)}`);
 
 console.log("one view at a time\n");
 
 if (!build) { console.log("  SKIP  no build — run eleventy first."); process.exit(1); }
 
-const page = readFileSync(`${build}/staff/mailing/index.html`, "utf8");
+const page = readFileSync(`${build}/staff/mail/index.html`, "utf8");
 const js = readFileSync("src/js/staff-mailing.js", "utf8");
 
 await check("every view section declares what it is", () => {
@@ -59,7 +61,7 @@ await check("nothing hides views by naming them one at a time", () => {
 });
 
 await check("onlyView hides every view except the one asked for", () => {
-  const dom = new JSDOM(page, { url: "https://dev.thauma.one/staff/mailing/" });
+  const dom = new JSDOM(page, { url: "https://dev.thauma.one/staff/mail/" });
   const d = dom.window.document;
   /* The real function, lifted out of the module rather than reimplemented —
      a copy here could pass while the shipped one is broken. */
@@ -156,7 +158,7 @@ const SCOPE_PAY = { lists: [], tags: [], senders: [], topics: [],
 
 async function bootMailing(url) {
   const asked = [];
-  const dom = new JSDOM(readFileSync(`${build}/staff/mailing/index.html`, "utf8"), {
+  const dom = new JSDOM(readFileSync(`${build}/staff/mail/index.html`, "utf8"), {
     runScripts: "dangerously", pretendToBeVisual: true, url,
     beforeParse(w) {
       Object.defineProperty(w, "sessionStorage", { value: {
@@ -178,7 +180,7 @@ await check("reloading the organization's mailing comes back to the organization
      a ministry's editor when you left Thauma's is an invitation to change the
      wrong thing without noticing. */
   const { w, d, asked } = await bootMailing(
-    "https://dev.thauma.one/staff/mailing/?scope=organization#composer");
+    "https://dev.thauma.one/staff/mail/?scope=organization#composer");
   assert(/scope=organization/.test(asked[0]),
     `the first request asked for the wrong scope: ${asked[0]}`);
   assert(/scope=organization/.test(w.location.href),
@@ -191,13 +193,13 @@ await check("reloading the organization's mailing comes back to the organization
 
 await check("and the view comes back with it", async () => {
   const { d } = await bootMailing(
-    "https://dev.thauma.one/staff/mailing/?scope=organization#composer");
+    "https://dev.thauma.one/staff/mail/?scope=organization#composer");
   assert(!d.getElementById("mlComposerView").hidden,
     "the scope was restored but the view was not");
 });
 
 await check("a partner's mailing is unaffected", async () => {
-  const { w, asked } = await bootMailing("https://dev.thauma.one/staff/mailing/");
+  const { w, asked } = await bootMailing("https://dev.thauma.one/staff/mail/");
   assert(!/scope=organization/.test(asked[0]), "a plain URL asked for the organization");
   assert(!/scope=/.test(w.location.href),
     `a partner's address grew a scope it does not need: ${w.location.href}`);
@@ -210,9 +212,9 @@ await check("an old link to the contact or sign-up form lands on Sharing", async
      it; the Mailing page does, keeping whose form it was. */
   for (const [hash, item] of [["contact", "contact"], ["embed", "signup"]]) {
     let went = null;
-    const dom = new JSDOM(readFileSync(`${build}/staff/mailing/index.html`, "utf8"), {
+    const dom = new JSDOM(readFileSync(`${build}/staff/mail/index.html`, "utf8"), {
       runScripts: "dangerously", pretendToBeVisual: true,
-      url: "https://dev.thauma.one/staff/mailing/?scope=organization#" + hash,
+      url: "https://dev.thauma.one/staff/mail/?scope=organization#" + hash,
       beforeParse(w) {
         w.fetch = async () => ({ ok: true, status: 200, json: async () => SCOPE_PAY });
         w.scrollTo = () => {};
@@ -228,14 +230,111 @@ await check("an old link to the contact or sign-up form lands on Sharing", async
   }
 });
 
-await check("the tabs themselves still switch views", async () => {
-  /* Scoping the selector must not break what it was for. */
-  const { w, d } = await bootMailing("https://dev.thauma.one/staff/mailing/");
-  const tab = d.querySelector('.ml-tabs [data-view="composer"]');
-  assert(tab, "no composer tab");
-  tab.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+/* ------------------------------ Mail (board 10) */
+
+const LISTS = [
+  { id: "l_news", name: "Newsletter", slug: "newsletter", subscribed: 12, drafts: 0, archive_public: 1,
+    sent: [{ id: "m1", slug: "june", subject: "June", finished_at: "2026-06-30T10:00:00Z", sent_count: 11 }] },
+  { id: "l_pray", name: "Prayer", slug: "prayer", subscribed: 4, drafts: 2, archive_public: 0,
+    sent: [{ id: "m2", slug: "week-1", subject: "Week one", finished_at: "2026-07-02T10:00:00Z", sent_count: 4 }] },
+];
+async function bootMail(url, pay = {}) {
+  const P = { ...SCOPE_PAY, lists: LISTS, ...pay };
+  const asked = [];
+  const dom = new JSDOM(readFileSync(`${build}/staff/mail/index.html`, "utf8"), {
+    runScripts: "dangerously", pretendToBeVisual: true, url,
+    beforeParse(w) {
+      Object.defineProperty(w, "sessionStorage", { value: {
+        getItem: () => JSON.stringify({ roles: ["admin", "staff"] }), setItem: () => {} } });
+      w.fetch = async (u) => { asked.push(String(u));
+        return { ok: true, status: 200, json: async () => JSON.parse(JSON.stringify(
+          { ...P, scope: /scope=organization/.test(String(u)) ? "organization" : "partner" })) }; };
+      w.scrollTo = () => {};
+    } });
+  const w = dom.window;
+  w.eval(readFileSync("src/js/staff-i18n.js", "utf8"));
+  w.eval(readFileSync("src/js/staff-mailing.js", "utf8"));
+  await new Promise((r) => setTimeout(r, 220));
+  const click = (el) => el.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+  return { w, d: w.document, asked, click };
+}
+
+await check("the composer is told whose lists the page is showing", async () => {
+  /* THE BUG (2026-09-27). window.StaffMailing went missing when the forms
+     moved to Sharing, and the composer — a separate file on the same screen —
+     asked it whose lists these were, got nothing, and wrote to the ministry's
+     lists while the page showed Thauma's. */
+  const { w, click, d } = await bootMail("https://dev.thauma.one/staff/mail/?scope=organization");
+  assert(w.StaffMailing && w.StaffMailing.scope() === "organization",
+    `the composer would ask for ${w.StaffMailing ? w.StaffMailing.scope() : "nothing"}`);
+  let rescoped = 0;
+  w.StaffComposer = { rescope: () => { rescoped++; }, dirty: () => false };
+  click(d.querySelector('[data-scope="partner"]'));
+  await new Promise((r) => setTimeout(r, 120));
+  eq2(w.StaffMailing.scope(), "partner", "after switching");
+  eq2(rescoped, 1, "the composer was not moved to the other owner's lists");
+});
+
+await check("switching owners while words are unsaved asks first", async () => {
+  const { w, click, d } = await bootMail("https://dev.thauma.one/staff/mail/");
+  let asked = 0;
+  w.StaffConfirm = async () => { asked++; return false; };
+  w.StaffComposer = { rescope: () => {}, dirty: () => true };
+  click(d.querySelector('[data-scope="organization"]'));
   await new Promise((r) => setTimeout(r, 80));
-  assert(!d.getElementById("mlComposerView").hidden, "the tab no longer switches view");
+  eq2(asked, 1, "no question");
+  eq2(w.StaffMailing.scope(), "partner", "refused, and switched anyway");
+});
+
+await check("Write an update comes first, naming the lists it goes to", async () => {
+  const { d } = await bootMail("https://dev.thauma.one/staff/mail/");
+  const home = d.getElementById("mlHome");
+  assert(home.firstElementChild.classList.contains("ml-hero"), "the first card is not first");
+  eq2(d.getElementById("mlHeroTo").textContent, "To Newsletter or Prayer", "the lists");
+  eq2(d.getElementById("mlDrafts").hidden, false, "two drafts waiting, and no Drafts");
+  assert(/2/.test(d.getElementById("mlDrafts").textContent), d.getElementById("mlDrafts").textContent);
+});
+
+await check("no drafts, no Drafts button", async () => {
+  const { d } = await bootMail("https://dev.thauma.one/staff/mail/",
+    { lists: LISTS.map((l) => ({ ...l, drafts: 0 })) });
+  eq2(d.getElementById("mlDrafts").hidden, true, "Drafts with none waiting");
+});
+
+await check("Sent is every list together, newest first, linking where the list publishes", async () => {
+  const { d } = await bootMail("https://dev.thauma.one/staff/mail/");
+  const rows = [...d.querySelectorAll("#mlSentRows .ml-sentall-row")];
+  eq2(rows.map((r) => r.querySelector(".ml-sentall-subject").textContent), ["Week one", "June"], "order");
+  eq2(rows[0].tagName, "DIV", "a prayer update with no public copy became a link");
+  eq2(rows[1].getAttribute("href"), "https://dev.thauma.one/archive/chase-roush/newsletter/june/", "public copy");
+  assert(/Newsletter/.test(rows[1].textContent) && /11/.test(rows[1].textContent), rows[1].textContent);
+});
+
+await check("Write opens the composer on the list on screen, and the way back returns to it", async () => {
+  const { w, d, click } = await bootMail("https://dev.thauma.one/staff/mail/#l_pray");
+  let wrote = null;
+  w.StaffComposer = { write: (id) => { wrote = id; }, drafts: () => {} };
+  click(d.getElementById("mlWrite"));
+  eq2(d.getElementById("mlComposerView").hidden, false, "no composer");
+  eq2(d.getElementById("mlHome").hidden, true, "the first card and the lists stayed under it");
+  eq2(wrote, "l_pray", "written to the wrong list");
+  click(d.getElementById("mlBack"));
+  eq2(d.getElementById("mlComposerView").hidden, true, "still writing");
+  assert(d.querySelector('.ml-tabs [data-view="l_pray"]').classList.contains("is-on"), "not back on Prayer");
+});
+
+await check("List settings opens the list's settings, and closes them again", async () => {
+  const { d, click } = await bootMail("https://dev.thauma.one/staff/mail/#l_news");
+  const btn = d.getElementById("mlListSettings");
+  eq2(btn.hidden, false, "no List settings on a list");
+  click(btn);
+  eq2(d.querySelector('[data-subpanel="settings"]').hidden, false, "settings did not open");
+  eq2(btn.getAttribute("aria-pressed"), "true", "pressed");
+  eq2(d.getElementById("mlName").value, "Newsletter", "whose settings");
+  click(btn);
+  eq2(d.querySelector('[data-subpanel="people"]').hidden, false, "back to the people");
+  click(d.querySelector('.ml-tabs [data-view="l_pray"]'));
+  eq2(d.querySelector('[data-subpanel="people"]').hidden, false, "a list opens on its people");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

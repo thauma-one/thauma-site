@@ -76,12 +76,15 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
     cp.lists = body.lists || [];
     cp.mailings = body.mailings || [];
     renderPickers();
+    /* The page around this shows the drafts waiting and what has gone out;
+       both just changed if this load follows a save or a send. */
+    if (window.StaffMailing && window.StaffMailing.changed) window.StaffMailing.changed(body);
   }
 
   function renderPickers() {
     $("cpNoLists").hidden = !!cp.lists.length;
     $("cpSplit").hidden = !cp.lists.length;
-    if (!cp.lists.length) { $("cpSent").hidden = true; return; }
+    if (!cp.lists.length) return;
 
     if (!cp.listId || !cp.lists.some((l) => l.id === cp.listId)) {
       cp.listId = cp.lists[0].id;
@@ -103,16 +106,6 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
         `<option value="${esc(m.id)}"${m.id === cp.id ? " selected" : ""}>` +
         `${esc(m.subject || tr("ml.cpUntitled"))}</option>`).join("");
 
-    const sent = cp.mailings.filter((m) => m.status !== "draft");
-    $("cpSent").hidden = !sent.length;
-    $("cpSentList").innerHTML = sent.map((m) =>
-      '<div class="cp-sent-row">' +
-        `<span class="cp-sent-subject">${esc(m.subject)}</span>` +
-        '<span class="cp-sent-meta">' +
-          esc((m.finished_at || "").slice(0, 10)) + " · " +
-          m.sent_count + " " + esc(tr("ml.cpRecipients")) +
-          (m.failed ? " · " + m.failed + " " + esc(tr("ml.cpFailed")) : "") +
-        "</span></div>").join("");
   }
 
   function openDraft(id) {
@@ -445,6 +438,40 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
      two previous editors got wrong and no test ever caught, because neither
      could be reached from outside. A debugging surface that makes the hard
      thing checkable is worth more than the tidiness of hiding it. */
-  window.StaffComposer = { reload: () => load(cp.listId), editor };
+  /* WRITE AND DRAFTS, from the Mail page's first card (board 10). Write
+     starts a new mailing to the list on screen — unless words are already
+     waiting unsaved here, which it leaves alone. Drafts opens the newest one,
+     on a list that has some, with the picker ready for the rest. */
+  async function write(listId) {
+    if (cp.dirty) return;
+    /* Loaded with its mailings every time, so the drafts picker is filled —
+       the first load of the page asks for no list's mailings at all. */
+    cp.listId = listId || cp.listId || (cp.lists[0] && cp.lists[0].id) || null;
+    await load(cp.listId);
+    openDraft(null);
+    $("cpSubject").focus();
+  }
+  async function drafts() {
+    if (cp.dirty) return;
+    const has = (l) => l && l.drafts > 0;
+    const mine = cp.lists.filter((l) => l.id === cp.listId)[0];
+    const list = has(mine) ? mine : cp.lists.filter(has)[0];
+    if (list && list.id !== cp.listId) cp.listId = list.id;
+    await load(cp.listId);
+    const first = cp.mailings.filter((m) => m.status === "draft")[0];
+    openDraft(first ? first.id : null);
+    $("cpDraft").focus();
+  }
+
+  /* The page switched between the ministry's lists and Thauma's: whatever
+     list and draft were open belong to the other one. */
+  async function rescope() {
+    cp.listId = null; cp.id = null; cp.dirty = false;
+    await load(null);
+    openDraft(null);
+  }
+
+  window.StaffComposer = { reload: () => load(cp.listId), write, drafts, rescope,
+                           dirty: () => cp.dirty, editor };
   load(null).then(() => openDraft(null));
 })();

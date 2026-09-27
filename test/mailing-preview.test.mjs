@@ -27,8 +27,8 @@ import { readFileSync, existsSync } from "node:fs";
    which is the exact failure this file was written to stop happening to
    somebody else. */
 const PAGE = ["_site", "_site_next", "_site_prod"]
-  .map((d) => `${d}/staff/mailing/index.html`)
-  .find((p) => existsSync(p)) || "_site/staff/mailing/index.html";
+  .map((d) => `${d}/staff/mail/index.html`)
+  .find((p) => existsSync(p)) || "_site/staff/mail/index.html";
 
 let pass = 0, fail = 0;
 const check = async (name, fn) => {
@@ -54,7 +54,7 @@ const LISTS = [{
 async function boot() {
   const dom = new JSDOM(readFileSync(PAGE, "utf8"), {
     runScripts: "outside-only",
-    url: "https://next.thauma.one/staff/mailing/",
+    url: "https://next.thauma.one/staff/mail/",
     pretendToBeVisual: true,
   });
   const w = dom.window;
@@ -128,8 +128,7 @@ await check("clicking a subscriber does not blank the page", async () => {
   await new Promise((r) => setTimeout(r, 250));
 
   const panel = w.document.querySelector('[data-subpanel="people"]');
-  const onTabs = () => [...w.document.querySelectorAll(".ml-subtab")]
-    .filter((b) => b.classList.contains("is-on")).map((b) => b.dataset.sub).join(",");
+  const settings = w.document.getElementById("mlListSettings");
 
   assert(!panel.hidden, "the people panel should be open to begin with");
   const rowsBefore = w.document.querySelectorAll("#mlSubscribers tbody tr").length;
@@ -138,7 +137,7 @@ await check("clicking a subscriber does not blank the page", async () => {
   for (const sel of ["#mlSubscribers tbody tr", "#mlSubscribers .subs-email"]) {
     press(w.document.querySelector(sel));
     await new Promise((r) => setTimeout(r, 80));
-    eq(onTabs(), "people", `clicking ${sel} changed which tab is selected`);
+    eq(settings.getAttribute("aria-pressed"), "false", `clicking ${sel} opened the list's settings`);
     assert(!panel.hidden, `clicking ${sel} hid the panel`);
     eq(w.document.querySelectorAll("#mlSubscribers tbody tr").length, rowsBefore,
       `clicking ${sel} emptied the list`);
@@ -146,13 +145,13 @@ await check("clicking a subscriber does not blank the page", async () => {
 });
 
 await check("the two attributes are no longer the same one", () => {
-  /* Belt and braces: the handler is scoped to the tab strip AND the rows use a
-     different attribute, so losing either guard alone does not bring the bug
-     back. */
+  /* Belt and braces: the rows carry their own attribute, and nothing on the
+     page is found by a data-sub or data-view that a row could also carry. */
   const js = readFileSync("src/js/staff-mailing.js", "utf8");
   assert(/data-subrow=/.test(js), "the rows should carry their own attribute");
-  assert(/\.ml-subtabs \[data-sub\]/.test(js),
-    "the sub-tab handler must be scoped to the tab strip, not to any data-sub");
+  assert(!/\.closest\('\[data-(sub|view)\]'\)/.test(js),
+    "a handler finds tabs by an attribute a row could carry");
+  assert(/\.ml-tabs \[data-view\]/.test(js), "the list tabs must be found inside the tab strip");
 });
 
 /* --------------------- a sticky header must be solid ------------------- */

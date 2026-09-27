@@ -900,7 +900,7 @@
       /* The list's own old word columns ride along unchanged; the form's
          words live in form_words now. */
       var w = { heading: l.form_heading || '', blurb: l.form_blurb || '', button: l.form_button || '' };
-      /* The whole list, as the Mailing page saves it: this endpoint takes a
+      /* The whole list, as the Mail page saves it: this endpoint takes a
          list entire. */
       await step(function () {
         return send(mailUrl, 'POST', {

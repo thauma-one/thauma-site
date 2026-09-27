@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "1a3a23294e3648e5";
+export const SOURCE_DIGEST = "bc292c1e769980b9";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -428,7 +428,9 @@ WHERE mailing_lists.partner_id IS :partner_id;`,
   (SELECT COUNT(*) FROM subscribers s
     WHERE s.list_id = l.id AND s.status = 'pending')     AS pending,
   (SELECT COUNT(*) FROM subscribers s
-    WHERE s.list_id = l.id AND s.status = 'unsubscribed') AS unsubscribed
+    WHERE s.list_id = l.id AND s.status = 'unsubscribed') AS unsubscribed,
+  (SELECT COUNT(*) FROM mailings m
+    WHERE m.list_id = l.id AND m.status = 'draft')       AS drafts
 FROM mailing_lists l
 WHERE l.partner_id IS :partner_id AND l.archived_at IS NULL
 ORDER BY l.name COLLATE NOCASE;`,

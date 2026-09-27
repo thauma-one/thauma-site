@@ -255,6 +255,8 @@ export const MOVED = {
   "/admin/site/": "/admin/website/settings/",
   // Ministry became Updates (mockup board 7). Its tabs (#goals…) ride along.
   "/staff/ministry/": "/staff/updates/",
+  // Mailing became Mail (mockup board 10). Its #list and #composer ride along.
+  "/staff/mailing/": "/staff/mail/",
   // The Publish page became the review on every Website screen.
   "/admin/publish/": "/admin/website/?review",
 };

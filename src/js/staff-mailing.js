@@ -13,9 +13,11 @@
    address, and changing the sender should not mean scrolling past four hundred
    people.
 
-   THE TOOLS ARE NOT LISTS. Composer sits at the far end with a
-   gap before it: a tab bar that mixes "a thing" with "a thing you do to all
-   the things" teaches people to read every tab before clicking.
+   WRITING FIRST (mockup board 10, "Mail"). The page opens on "Write an
+   update" and what has already gone out, every list together; the lists
+   follow. The composer is not a tab — a tab bar that mixes "a thing" with "a
+   thing you do to all the things" teaches people to read every tab before
+   clicking — it opens from Write or Drafts and fills the page.
    ============================================================ */
 (function () {
   'use strict';
@@ -98,14 +100,64 @@
       '</button>';
     }).join('');
 
-    Array.prototype.forEach.call(document.querySelectorAll('.ml-tab-tool'), function (b) {
-      var on = state.view === b.dataset.view;
-      b.classList.toggle('is-on', on);
-      b.setAttribute('aria-selected', on ? 'true' : 'false');
-    });
+    $('mlNoLists').hidden = state.lists.length > 0;
+    /* A list's settings are for the list on screen; a list being made is
+       all settings already. */
+    var l = currentList();
+    $('mlListSettings').hidden = !l;
+    $('mlListSettings').setAttribute('aria-pressed', l && state.sub === 'settings' ? 'true' : 'false');
+  }
 
-    $('mlNoLists').hidden = state.lists.length > 0 ||
-                            state.view === 'composer';
+  /* ---- the first card: write, and the drafts waiting ------------------- */
+
+  function renderHero() {
+    var names = state.lists.map(function (l) { return l.name; });
+    var lang = (window.StaffI18n && window.StaffI18n.lang) || 'en';
+    var joined = names.join(', ');
+    try {
+      /* "Newsletter, Prayer or Test" in whatever language the console is in,
+         with that language's own "or". */
+      joined = new Intl.ListFormat(lang, { type: 'disjunction' }).format(names);
+    } catch (e) {}
+    $('mlHeroTo').textContent = names.length ? fill('ml.writeTo', { lists: joined }) : '';
+    $('mlWrite').disabled = !names.length;
+    var n = state.lists.reduce(function (sum, l) { return sum + (Number(l.drafts) || 0); }, 0);
+    $('mlDrafts').hidden = !n;
+    $('mlDrafts').textContent = fill('ml.draftsN', { n: n });
+  }
+
+  /* ---- sent, every list together --------------------------------------
+     Newest first, five until asked for the rest. Each row opens its public
+     copy where the list publishes one; where it does not, the row says so —
+     that is how somebody finds the list's switch for it. */
+  var SENT_SHOWN = 5;
+  function renderSentAll() {
+    var rows = [];
+    state.lists.forEach(function (l) {
+      (l.sent || []).forEach(function (m) { rows.push({ m: m, l: l }); });
+    });
+    rows.sort(function (a, b) { return String(b.m.finished_at || '').localeCompare(String(a.m.finished_at || '')); });
+    $('mlSentAll').hidden = !rows.length;
+    var shown = state.sentAll ? rows : rows.slice(0, SENT_SHOWN);
+    var origin = window.location.origin;
+    $('mlSentRows').innerHTML = shown.map(function (r) {
+      var m = r.m, l = r.l;
+      var link = l.archive_public && m.slug && state.partnerSlug
+        ? origin + '/archive/' + encodeURIComponent(state.partnerSlug) + '/' +
+          encodeURIComponent(l.slug) + '/' + encodeURIComponent(m.slug) + '/'
+        : null;
+      var meta = esc(l.name) + ' · ' +
+        esc(m.finished_at ? new Date(m.finished_at).toLocaleDateString() : '') +
+        (m.sent_count ? ' · ' + esc(fill('ml.sentTo', { n: m.sent_count })) : '');
+      var inner = '<span class="ml-sentall-subject">' + esc(m.subject) + '</span>' +
+        '<span class="ml-sentall-meta">' + meta +
+          (link ? '' : ' · <i>' + esc(tr('ml.notPublished')) + '</i>') + '</span>';
+      return link
+        ? '<a class="ml-sentall-row" href="' + esc(link) + '" target="_blank" rel="noopener">' + inner + '</a>'
+        : '<div class="ml-sentall-row">' + inner + '</div>';
+    }).join('');
+    $('mlSentMore').hidden = rows.length <= SENT_SHOWN;
+    $('mlSentMore').textContent = state.sentAll ? tr('ml.sentFewer') : fill('ml.sentAllN', { n: rows.length });
   }
 
   /* The tool tabs — the views that are not a list. Kept as one list so a new
@@ -134,6 +186,9 @@
     state.view = view;
     var isTool = TOOLS.indexOf(view) >= 0;
     onlyView(isTool ? view : (listById(view) ? 'list' : null));
+    /* The composer fills the page; everything else sits under the first card. */
+    $('mlHome').hidden = view === 'composer';
+    if (listById(view)) state.lastList = view;
 
     renderTabs();
     if (view !== 'composer') {
@@ -181,9 +236,7 @@
 
   function showSub(which) {
     state.sub = which;
-    Array.prototype.forEach.call(document.querySelectorAll('.ml-subtab'), function (b) {
-      b.classList.toggle('is-on', b.dataset.sub === which);
-    });
+    $('mlListSettings').setAttribute('aria-pressed', which === 'settings' && currentList() ? 'true' : 'false');
     Array.prototype.forEach.call(document.querySelectorAll('[data-subpanel]'), function (p) {
       p.hidden = p.dataset.subpanel !== which;
     });
@@ -249,7 +302,6 @@
     $('mlReplyTo').value = l.reply_to || '';
     setSwitch($('mlOpen'), !!l.is_open);
     setSwitch($('mlArchivePublic'), !!l.archive_public);
-    renderSent(l);
     setStatus($('mlFormStatus'), '');
 
     $('mlArchive').hidden = !l.id;
@@ -258,6 +310,7 @@
   function newList() {
     state.view = null;
     onlyView('list');
+    $('mlHome').hidden = false;
     renderTabs();
 
     ['mlId', 'mlName', 'mlDescription', 'mlFromName', 'mlReplyTo']
@@ -265,7 +318,6 @@
     fillSenders('');
     setSwitch($('mlOpen'), false);
     setSwitch($('mlArchivePublic'), false);
-    if ($('mlSent')) $('mlSent').hidden = true;
     $('mlArchive').hidden = true;
     setStatus($('mlFormStatus'), '');
 
@@ -758,9 +810,11 @@
     state.lists = body.lists || [];
     state.tags = body.tags || [];
     renderTags();
+    renderHero();
     state.senders = body.senders || [];
     state.mayTheme = !!body.may_theme;
     state.partnerSlug = (body.partner && body.partner.slug) || '';
+    renderSentAll();
 
     if (body.may_send_as_organisation) {
       $('mlScope').hidden = false;
@@ -780,9 +834,47 @@
     show(valid ? wanted : (state.lists[0] ? state.lists[0].id : 'composer'));
   }
 
+  /* WHOSE LISTS THE WHOLE PAGE IS SHOWING, read by the composer — a separate
+     file, the same screen, one decision. (Lost once when the forms moved to
+     Sharing, and the composer quietly wrote to the ministry's lists while the
+     page showed Thauma's; test/mailing-views.test.mjs holds it now.) `changed`
+     is the composer saying a save or a send moved the drafts or the sent. */
+  window.StaffMailing = {
+    scope: function () { return state.scope; },
+    changed: function (body) {
+      if (!body || body.scope !== state.scope || !body.lists) return;
+      state.lists = body.lists;
+      renderHero();
+      renderSentAll();
+      renderTabs();
+    }
+  };
+
+  function firstList() {
+    return listById(state.lastList) ? state.lastList : (state.lists[0] ? state.lists[0].id : '');
+  }
+  function openComposer(how) {
+    var from = currentList();
+    show('composer');
+    var c = window.StaffComposer;
+    if (!c) return;
+    if (how === 'drafts') c.drafts(); else c.write(from ? from.id : null);
+  }
+
   /* ---- wiring ---------------------------------------------------------- */
 
   $('mlNewList').addEventListener('click', newList);
+  $('mlWrite').addEventListener('click', function () { openComposer('write'); });
+  $('mlDrafts').addEventListener('click', function () { openComposer('drafts'); });
+  $('mlBack').addEventListener('click', function () { show(firstList()); });
+  $('mlListSettings').addEventListener('click', function () {
+    if (!currentList()) return;
+    showSub(state.sub === 'settings' ? 'people' : 'settings');
+  });
+  $('mlSentMore').addEventListener('click', function () {
+    state.sentAll = !state.sentAll;
+    renderSentAll();
+  });
   $('mlForm').addEventListener('submit', submitSettings);
 
   /* CANCEL PUTS IT BACK. On an existing list, the saved values return; on one
@@ -792,42 +884,9 @@
   $('mlCancel').addEventListener('click', function () {
     var l = currentList();
     if (l) { fillSettings(l); showSub('people'); return; }
-    show(state.lists[0] ? state.lists[0].id : 'composer');
+    show(firstList() || 'composer');
   });
   $('mlArchive').addEventListener('click', archive);
-  /* WHAT HAS ALREADY GONE OUT, with the address each one lives at.
-
-     Shown whether or not the archive is switched on, and the line under each
-     says which — a partner should be able to look at their own history
-     regardless, and seeing "not published yet" beside a mailing is how
-     somebody discovers the switch above exists. */
-  function renderSent(l) {
-    var box = $('mlSent');
-    if (!box) return;
-    var rows = (l && l.sent) || [];
-    if (!rows.length) { box.hidden = true; return; }
-    box.hidden = false;
-
-    var origin = window.location.origin;
-    $('mlSentList').innerHTML = rows.map(function (m) {
-      var url = origin + '/archive/' + encodeURIComponent(state.partnerSlug || '') +
-                '/' + encodeURIComponent(l.slug) + '/' + encodeURIComponent(m.slug || '') + '/';
-      return '<div class="ml-sent-row">' +
-        '<div class="ml-sent-main">' +
-          '<b>' + esc(m.subject) + '</b>' +
-          '<span class="ml-sent-when">' +
-            esc(m.finished_at ? new Date(m.finished_at).toLocaleDateString() : '') +
-            (m.sent_count ? ' · ' + fill('ml.sentTo', { n: m.sent_count }) : '') +
-          '</span>' +
-        '</div>' +
-        (l.archive_public && m.slug
-          ? '<a class="ml-sent-link" href="' + esc(url) + '" target="_blank" ' +
-            'rel="noopener">' + esc(tr('ml.readIt')) + '</a>'
-          : '<span class="ml-sent-off">' + esc(tr('ml.notPublished')) + '</span>') +
-      '</div>';
-    }).join('');
-  }
-
   $('mlArchivePublic').addEventListener('click', function () {
     setSwitch(this, this.getAttribute('aria-checked') !== 'true');
   });
@@ -859,28 +918,40 @@
     var tab = e.target.closest('.ml-tabs [data-view]');
     if (tab) return show(tab.dataset.view);
 
-    /* SCOPED TO THE SUB-TABS, not to anything carrying data-sub.
-       The subscriber rows used the same attribute for their id, so clicking
-       one asked to show a panel named after a person — no panel matched, both
-       sub-tabs went dark and the page went blank. The rows are `data-subrow`
-       now, and this only looks inside the tab strip, so a future collision
-       cannot reach it either. */
-    var sub = e.target.closest('.ml-subtabs [data-sub]');
-    if (sub) return showSub(sub.dataset.sub);
+    /* The subscriber rows carry data-subrow, never data-sub or data-view:
+       an attribute that means "this is a tab" cannot also mean "this is a
+       person" (a click on a person once blanked the page). The Subscribers
+       and Settings tabs became the List settings button (board 10). */
 
     var scope = e.target.closest('[data-scope]');
-    if (scope) {
-      state.scope = scope.dataset.scope;
-      Array.prototype.forEach.call(document.querySelectorAll('[data-scope]'), function (b) {
-        b.classList.toggle('is-on', b.dataset.scope === state.scope);
-      });
-      /* Immediately, not when a view is next shown: somebody who switches to
-         Thauma and reloads before clicking anything else should still be in
-         Thauma. */
-      try { history.replaceState(null, '', addressFor(state.view || '')); } catch (e) {}
-      return load('');
+    if (scope && scope.dataset.scope !== state.scope) {
+      switchScope(scope.dataset.scope);
+      return;
     }
   });
+
+  /* Words being written belong to the owner they were started for, so
+     switching away from them asks first. */
+  async function switchScope(to) {
+    var c = window.StaffComposer;
+    if (c && c.dirty && c.dirty()) {
+      var ok = await window.StaffConfirm({
+        title: tr('up.discardTitle1'), confirm: tr('ms.discard'), cancel: tr('ms.cancel'), danger: true
+      });
+      if (!ok) return;
+    }
+    state.scope = to;
+    Array.prototype.forEach.call(document.querySelectorAll('[data-scope]'), function (b) {
+      b.classList.toggle('is-on', b.dataset.scope === state.scope);
+    });
+    /* Immediately, not when a view is next shown: somebody who switches to
+       Thauma and reloads before clicking anything else should still be in
+       Thauma. */
+    try { history.replaceState(null, '', addressFor(state.view || '')); } catch (e) {}
+    /* The composer follows: its lists are now the other owner's. */
+    if (c && c.rescope) c.rescope();
+    return load('');
+  }
 
   $('mlAddPerson').addEventListener('submit', async function (e) {
     e.preventDefault();
@@ -896,7 +967,7 @@
         method: 'POST', credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'add-subscriber', list_id: l.id,
-                               email: email, name: $('mlNewName').value.trim() }),
+                               email: email, name: '' }),
       });
       body = await res.json();
     } catch (err) {
@@ -905,7 +976,7 @@
     }
     if (!res.ok) { setStatus($('mlAddStatus'), body.error || tr('err.refused')); return; }
 
-    $('mlNewEmail').value = ''; $('mlNewName').value = '';
+    $('mlNewEmail').value = '';
     setStatus($('mlAddStatus'), '');
 
     /* Which of the two happened. The row exists and is pending either way, and
