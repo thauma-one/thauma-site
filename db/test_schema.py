@@ -22,6 +22,7 @@ database — the thing production does exactly once, and cannot redo.
 
 Run:  python3 db/test_schema.py
 """
+import json
 import sqlite3, pathlib, sys, datetime
 
 HERE = pathlib.Path(__file__).parent
@@ -1947,6 +1948,54 @@ def t_translation_notes_outlive_their_author():
     assert row == ("Kuća molitve", None), f"the note went with its author: {row}"
 
 
+def _state(db, lang="hr"):
+    return {(r[0], r[1]): r[2] for r in _run(db, "translation_state_for_lang", lang=lang)}
+
+
+def t_first_sight_is_taken_as_current_and_never_overwrites():
+    db = fresh()
+    rows = json.dumps([{"source": "site", "key": "home.title", "english_hash": "aaa", "text_hash": "t"},
+                       {"source": "emails", "key": "form.name", "english_hash": "bbb", "text_hash": "t"}])
+    _run(db, "translation_state_baseline", rows=rows, lang="hr", now=NOW)
+    assert _state(db) == {("site", "home.title"): "aaa", ("emails", "form.name"): "bbb"}, _state(db)
+    # Seeing it again with DIFFERENT English must not rewrite history — that
+    # difference is exactly what marks the line outdated.
+    again = json.dumps([{"source": "site", "key": "home.title", "english_hash": "zzz", "text_hash": "t"}])
+    _run(db, "translation_state_baseline", rows=again, lang="hr", now=NOW)
+    assert _state(db)[("site", "home.title")] == "aaa", "first sight overwrote the record"
+
+
+def t_approving_a_translation_records_its_english():
+    db = fresh()
+    _run(db, "translation_state_baseline", lang="hr", now=NOW,
+         rows=json.dumps([{"source": "site", "key": "home.title", "english_hash": "old", "text_hash": "t"}]))
+    _run(db, "translation_state_confirm", lang="hr", now=NOW, user_id="u_chase",
+         rows=json.dumps([{"source": "site", "key": "home.title", "english_hash": "new", "text_hash": "t"},
+                          {"source": "site", "key": "home.lede", "english_hash": "n2", "text_hash": "t"}]))
+    assert _state(db) == {("site", "home.title"): "new", ("site", "home.lede"): "n2"}, _state(db)
+    by = db.execute("SELECT confirmed_by FROM translation_state WHERE key='home.title'").fetchone()[0]
+    assert by == "u_chase", by
+    # Another language's lines are its own.
+    assert _state(db, "sr") == {}, "Croatian approval leaked into Serbian"
+
+
+def t_translation_state_outlives_its_approver():
+    db = fresh()
+    _run(db, "translation_state_confirm", lang="hr", now=NOW, user_id="u_chase",
+         rows=json.dumps([{"source": "emails", "key": "form.name", "english_hash": "h", "text_hash": "t"}]))
+    db.execute("DELETE FROM users WHERE id='u_chase'")
+    assert _state(db) == {("emails", "form.name"): "h"}, "the record went with the person"
+
+
+def t_translation_state_knows_only_its_two_sources():
+    db = fresh()
+    try:
+        _run(db, "translation_state_confirm", lang="hr", now=NOW, user_id="u_chase",
+             rows=json.dumps([{"source": "console", "key": "x", "english_hash": "h", "text_hash": "t"}]))
+    except sqlite3.IntegrityError:
+        return
+    raise AssertionError("an unknown source was accepted")
+
 if __name__ == "__main__":
     print(f"schema tests — {len(MIGRATIONS)} migrations: "
           f"{', '.join(p.name for p in MIGRATIONS)}\n")
@@ -2053,6 +2102,10 @@ if __name__ == "__main__":
         ("adding a phrase again corrects it",            t_adding_a_phrase_again_corrects_it),
         ("a guide is set, not stacked",                  t_a_guide_is_set_not_stacked),
         ("translation notes outlive their author",       t_translation_notes_outlive_their_author),
+        ("a translation first seen is taken as current",  t_first_sight_is_taken_as_current_and_never_overwrites),
+        ("approving a translation records its English",   t_approving_a_translation_records_its_english),
+        ("the record outlives whoever approved it",       t_translation_state_outlives_its_approver),
+        ("translation state knows only its two sources",  t_translation_state_knows_only_its_two_sources),
     ]:
         check(name, fn)
     print(f"\n{passed} passed, {failed} failed")

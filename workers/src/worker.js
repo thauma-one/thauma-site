@@ -57,6 +57,7 @@ import adminProfile from "./admin-profile.js";
 import staffVideos from "./staff-videos.js";
 import adminDbSync from "./admin-dbsync.js";
 import adminTranslationNotes from "./admin-translation-notes.js";
+import adminTranslate from "./admin-translate.js";
 import confirmAccount from "./confirm-account.js";
 import confirmEmail from "./confirm-email.js";
 import staffAccount from "./staff-account.js";
@@ -344,6 +345,9 @@ const ROUTES = {
   // guide per language. Read by anyone signed in, changed by admin and
   // communications. See admin-translation-notes.js.
   "/api/admin/translation-notes": adminTranslationNotes,
+  // The Translate page: what is missing per language, the file handed to a
+  // translator, and approving what comes back. See admin-translate.js.
+  "/api/admin/translate": adminTranslate,
 
   // Uploads. GET /media/* is handled by prefix below, not here.
   "/api/admin/media": media,

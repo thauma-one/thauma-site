@@ -45,6 +45,7 @@ import { createDb } from "./lib/db.js";
 import { requireAccess } from "./lib/access.js";
 import { json, readJson } from "./lib/store.js";
 import { getFile, putFile, deleteFile, githubConfig } from "./lib/github.js";
+import { hashText } from "./lib/translation-file.js";
 
 /**
  * Which files this endpoint may touch, as a derivation rather than a list.
@@ -204,6 +205,34 @@ async function audit(db, { user, action, entity_id, detail }) {
     });
   } catch (err) {
     console.error("audit_write failed:", err.message);
+  }
+}
+
+
+/* A TRANSLATION TYPED HERE IS A TRANSLATION MADE AGAINST TODAY'S ENGLISH.
+   The Translate page marks a line outdated when its English has changed since
+   the translation was last written (see 0036); a line fixed here has to stop
+   being outdated, or the only way to clear it would be the file route.
+
+   After the commit, and never fatal: the words are saved either way, and the
+   worst a failure here does is leave a line marked outdated that is not. */
+async function confirmTranslations(env, db, me, lang, applied, doc) {
+  try {
+    const enFile = await getFile(env, pathFor("en"));
+    if (enFile.error) return;
+    const en = leafPaths(JSON.parse(enFile.text));
+    const mine = leafPaths(doc);
+    const rows = [];
+    for (const p of applied) {
+      if (typeof en[p] !== "string" || typeof mine[p] !== "string" || !mine[p].trim()) continue;
+      rows.push({ source: "site", key: p, english_hash: await hashText(en[p]), text_hash: await hashText(mine[p]) });
+    }
+    if (!rows.length) return;
+    await db.query("translation_state_confirm", {
+      lang, rows: JSON.stringify(rows), now: new Date().toISOString(), user_id: me.user_id,
+    });
+  } catch (err) {
+    console.error("translation state not recorded:", err.message);
   }
 }
 
@@ -734,6 +763,8 @@ async function write(request, env, db, user, me, cfg) {
     entity_id: path,
     detail: { file: body.file, paths: applied, commit: res.commit, branch: cfg.branch },
   });
+
+  if (body.file !== "site" && body.file !== "en") await confirmTranslations(env, db, me, body.file, applied, doc);
 
   return json({
     ok: true,

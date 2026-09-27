@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "15916e2f15aa8d1d";
+export const SOURCE_DIGEST = "cac9939655d67aee";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -958,6 +958,22 @@ VALUES (:id, :term, :now, :user_id)
 ON CONFLICT(term) DO NOTHING;`,
   translation_keep_all: `SELECT id, term FROM translation_keep ORDER BY term COLLATE NOCASE;`,
   translation_keep_delete: `DELETE FROM translation_keep WHERE id = :id;`,
+  translation_state_baseline: `INSERT OR IGNORE INTO translation_state (source, key, lang, english_hash, text_hash, confirmed_at, confirmed_by)
+SELECT json_extract(r.value, '$.source'), json_extract(r.value, '$.key'), :lang,
+       json_extract(r.value, '$.english_hash'), json_extract(r.value, '$.text_hash'), :now, NULL
+FROM json_each(:rows) AS r;`,
+  translation_state_confirm: `INSERT INTO translation_state (source, key, lang, english_hash, text_hash, confirmed_at, confirmed_by)
+SELECT json_extract(r.value, '$.source'), json_extract(r.value, '$.key'), :lang,
+       json_extract(r.value, '$.english_hash'), json_extract(r.value, '$.text_hash'), :now, :user_id
+FROM json_each(:rows) AS r WHERE true
+ON CONFLICT(source, key, lang) DO UPDATE SET
+  english_hash = excluded.english_hash,
+  text_hash = excluded.text_hash,
+  confirmed_at = excluded.confirmed_at,
+  confirmed_by = excluded.confirmed_by;`,
+  translation_state_for_lang: `SELECT source, key, english_hash, text_hash
+FROM translation_state
+WHERE lang = :lang;`,
   user_by_email: `SELECT u.id AS user_id, u.email, u.name AS user_name, u.status,
        COALESCE(u.preferred_lang, 'en') AS preferred_lang,
        COALESCE((SELECT GROUP_CONCAT(r.role) FROM user_roles r WHERE r.user_id = u.id),

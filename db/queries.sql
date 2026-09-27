@@ -1250,6 +1250,42 @@ ON CONFLICT(lang) DO UPDATE SET
   guidance = excluded.guidance, updated_at = excluded.updated_at, updated_by = excluded.updated_by;
 
 
+-- ----------------------------------------------------------------------------
+-- Which translations still match their English (0036)
+-- ----------------------------------------------------------------------------
+-- :rows is a JSON array of {source, key, english_hash, text_hash}, so a whole language's
+-- worth of lines is one statement rather than three hundred — D1 has no
+-- batching in this layer, and json_each binds the list as a single value.
+
+-- name: translation_state_for_lang
+SELECT source, key, english_hash, text_hash
+FROM translation_state
+WHERE lang = :lang;
+
+-- Lines seen for the first time are taken as current (see the migration).
+-- OR IGNORE: a row that already exists is history, and first sight must never
+-- overwrite it.
+-- name: translation_state_baseline
+INSERT OR IGNORE INTO translation_state (source, key, lang, english_hash, text_hash, confirmed_at, confirmed_by)
+SELECT json_extract(r.value, '$.source'), json_extract(r.value, '$.key'), :lang,
+       json_extract(r.value, '$.english_hash'), json_extract(r.value, '$.text_hash'), :now, NULL
+FROM json_each(:rows) AS r;
+
+-- A translation written or approved against this English. WHERE true is
+-- SQLite's required disambiguation between a SELECT and an upsert clause.
+-- :user_id is NULL when the page itself notices a line was rewritten along
+-- with its English (see the migration) rather than a person approving it.
+-- name: translation_state_confirm
+INSERT INTO translation_state (source, key, lang, english_hash, text_hash, confirmed_at, confirmed_by)
+SELECT json_extract(r.value, '$.source'), json_extract(r.value, '$.key'), :lang,
+       json_extract(r.value, '$.english_hash'), json_extract(r.value, '$.text_hash'), :now, :user_id
+FROM json_each(:rows) AS r WHERE true
+ON CONFLICT(source, key, lang) DO UPDATE SET
+  english_hash = excluded.english_hash,
+  text_hash = excluded.text_hash,
+  confirmed_at = excluded.confirmed_at,
+  confirmed_by = excluded.confirmed_by;
+
 -- ============================================================================
 -- PARTNER API — everything below this line may be served to a PUBLIC WEBSITE
 -- ============================================================================

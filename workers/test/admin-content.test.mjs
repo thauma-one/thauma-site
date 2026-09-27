@@ -323,6 +323,24 @@ await check("PUT commits one changed value and nothing else", async () => {
   } finally { g.restore(); }
 });
 
+await check("a translation saved here stops being outdated", async () => {
+  /* The Translate page marks a line outdated when its English changed after
+     the translation was written. Fixing the line here has to clear that, or
+     the only way out would be the file route. */
+  const g = stubGitHub({ sha: "sha1" });
+  const env = envWith("admin");
+  const seen = [];
+  const prepare = env.DB.prepare;
+  env.DB.prepare = (sql) => { seen.push(sql); return prepare(sql); };
+  try {
+    const res = await handler.fetch(req("PUT", { body: {
+      file: "hr", sha: "sha1", changes: { "nav.home": "Početna" },
+    } }), env);
+    eq(res.status, 200, "status");
+    assert(seen.some((q) => /INSERT INTO translation_state/.test(q)), "not recorded as current");
+  } finally { g.restore(); }
+});
+
 await check("SAVING DOES NOT DEPLOY", async () => {
   /* The promise the word "Save" makes. Without the marker every keystroke
      batch would rebuild and republish the public site, which is the behavior

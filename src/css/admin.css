@@ -982,3 +982,78 @@
   .ln-table td:nth-child(2){grid-column:1;grid-row:2}
   .ln-table td:nth-child(3){grid-column:2;grid-row:1 / span 2;align-self:center;width:auto}
 }
+
+/* ---- Translate (the top half of the Languages page) -------------------
+   One row per group — site words, emails and forms — saying what is left,
+   with a checkbox for the whole group and a disclosure for its lines. The
+   status colors are the console's status tokens: missing is a warning,
+   outdated is the technical voice (something moved underneath it). */
+.tl-groups{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;
+  border:1px solid var(--line);border-radius:var(--radius)}
+.tl-group + .tl-group{border-top:1px solid var(--line)}
+.tl-group.is-off{opacity:.6}
+.tl-ghead{display:flex;align-items:center;gap:14px;padding:12px 14px;flex-wrap:wrap}
+.tl-gcheck{display:flex;align-items:center;gap:10px;flex:1 1 180px;min-width:0;cursor:pointer}
+.tl-gcheck input,.tl-line input,.tl-approve input,.tl-finished input{inline-size:17px;block-size:17px;
+  accent-color:var(--voice-tech);flex:none}
+.tl-gname{font:300 16px var(--font-display);color:var(--text)}
+.tl-gsum{font-size:var(--fs-sm);color:var(--dim)}
+.tl-more{border:0;background:none;color:var(--voice-tech);font:600 11px var(--font-display);
+  letter-spacing:.12em;text-transform:uppercase;cursor:pointer;padding:6px 4px}
+.tl-more::after{content:"";display:inline-block;width:6px;height:6px;margin-left:8px;
+  border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;
+  transform:translateY(-2px) rotate(45deg)}
+.tl-more[aria-expanded="true"]::after{transform:translateY(1px) rotate(-135deg)}
+.tl-more:focus-visible{outline:2px solid var(--voice-tech);outline-offset:2px}
+.tl-lines{list-style:none;margin:0;padding:0 14px 10px;max-height:420px;overflow:auto}
+.tl-line{display:grid;grid-template-columns:17px minmax(0,190px) minmax(0,1fr) auto;
+  gap:12px;align-items:baseline;padding:7px 0;border-top:1px solid var(--line);cursor:pointer}
+.tl-key{font:12px var(--font-mono,ui-monospace,SFMono-Regular,Menlo,monospace);color:var(--dim);
+  overflow-wrap:anywhere}
+.tl-line .tl-en{font-size:var(--fs-sm);color:var(--text);overflow:hidden;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.tl-st{font:600 10px var(--font-body);letter-spacing:.1em;text-transform:uppercase;
+  padding:3px 7px;border-radius:3px;border:1px solid var(--line-hard);color:var(--dim);white-space:nowrap}
+.tl-st.is-missing{color:var(--warn);border-color:rgba(245,184,69,.4);background:var(--warn-dim)}
+.tl-st.is-outdated{color:var(--voice-tech);border-color:rgba(47,216,255,.4);background:var(--voice-tech-dim)}
+.tl-finished{display:flex;align-items:center;gap:10px;font-size:var(--fs-sm);color:var(--text);
+  margin:14px 0 4px;cursor:pointer;width:max-content;max-width:100%}
+#tlDownload:disabled{opacity:.4;cursor:default;box-shadow:none}
+
+/* ---- Approving what came back ----------------------------------------
+   Each line: the English, what the language says now, and the new text in
+   a box that can still be edited. The bar stays in view while scrolling a
+   long review, because Approve is the one thing the page is waiting for. */
+.tl-bar{position:sticky;top:var(--header-h,47px);z-index:2;display:flex;align-items:center;
+  gap:12px;flex-wrap:wrap;padding:12px 0;background:var(--bg)}
+.tl-count{flex:1 1 200px;font-size:var(--fs-sm);color:var(--text)}
+#tlApprove:disabled{opacity:.4;cursor:default;box-shadow:none}
+.tl-items{display:flex;flex-direction:column;gap:10px}
+.tl-item{display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px;padding:14px;
+  border:1px solid var(--line);border-left:3px solid var(--line-hard);border-radius:var(--radius)}
+.tl-item.is-approved{border-left-color:var(--voice-human)}
+.tl-item.is-blocked{border-left-color:var(--crit)}
+.tl-approve{padding-top:2px}
+.tl-body{display:flex;flex-direction:column;gap:6px;min-width:0}
+.tl-body p{margin:0}
+.tl-body .tl-en{font-size:var(--fs-sm);color:var(--dim)}
+.tl-now{display:flex;gap:10px;font-size:var(--fs-sm);color:var(--dim)}
+.tl-now span[lang]{text-decoration:line-through;text-decoration-color:rgba(255,255,255,.3)}
+.tl-new{display:flex;gap:10px;align-items:flex-start}
+.tl-tag{flex:none;width:42px;padding-top:3px;font:600 10px var(--font-body);letter-spacing:.1em;
+  text-transform:uppercase;color:var(--dim)}
+.tl-new textarea{flex:1;min-width:0;resize:vertical;background:var(--bg2,#0b1119);
+  border:1px solid var(--line-hard);color:var(--text);border-radius:var(--radius);
+  padding:8px 10px;font:inherit;font-size:14px;line-height:1.5;field-sizing:content;min-height:3em}
+.tl-flags{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px}
+.tl-flags li{font-size:12px;padding:3px 8px;border-radius:3px}
+.tl-flags .is-warning{color:var(--warn);background:var(--warn-dim)}
+.tl-flags .is-problem{color:var(--crit);background:var(--crit-dim)}
+@media (max-width:640px){
+  .tl-line{grid-template-columns:17px minmax(0,1fr) auto}
+  .tl-line .tl-key{grid-column:2 / span 2}
+  .tl-line .tl-en{grid-column:2}
+  .tl-new,.tl-now{flex-direction:column;align-items:stretch;gap:4px}
+  .tl-tag{width:auto;padding-top:0}
+}
+@media (prefers-reduced-motion:reduce){ .tl-more::after{transition:none} }

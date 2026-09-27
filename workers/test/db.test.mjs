@@ -328,6 +328,7 @@ await check("every real query converts with its documented params", async () => 
     object_key: "attachments/chase-roush/abc123",
     // translation notes: never-translated words, fixed phrases, guides
     term: "Thauma", target: "Sve od mene Darujem Njega", guidance: "Latin script.",
+      rows: "[]",
     // the contact form's configuration — the messages themselves are never stored
     deliver_to: "chase@example.org", from_address: "contact@chaseroush.thauma.one",
     heading: "Get in touch", blurb: null, button: "Send", thanks: null,
