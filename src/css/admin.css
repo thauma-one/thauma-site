@@ -1067,8 +1067,12 @@
   border-top:1px solid var(--line-hard);font-size:var(--fs-sm);color:var(--text)}
 .web-bar-count{flex:1;min-width:0}
 body.has-webbar{padding-bottom:72px}
-/* Unsaved edits first: while a screen's own save bar is up, this steps aside. */
-body.has-savebar .web-bar{display:none}
+/* Unsaved edits first: while the tab on screen has its save bar up, this
+   steps aside. The tab on screen only — the Website is one page, and another
+   tab can be holding unsaved changes out of sight (its link says so). */
+body:has(.web-panel:not([hidden]) .ms-savebar:not([hidden])) .web-bar{display:none}
+.web-side a.is-dirty::after{content:"";display:inline-block;width:6px;height:6px;margin-left:8px;
+  border-radius:50%;background:var(--warn);vertical-align:middle}
 
 /* The review: the list of what publishing sends, over the screen from the
    right. It closes on ×, Escape, or a click beside it. */

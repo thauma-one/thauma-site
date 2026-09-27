@@ -27,7 +27,8 @@
 (function () {
   'use strict';
 
-  if (document.body.getAttribute('data-admin-page') !== 'site') return;
+  /* On the Website page, as its Settings tab; finds its own elements. */
+  if (!document.getElementById('sRoot')) return;
 
   var API = '/api/admin/content';
   var $ = function (id) { return document.getElementById(id); };
@@ -519,14 +520,36 @@
       return;
     }
     if (!res.ok) {
-      toast((body && body.error) || (tr('err.refused') + ' (' + res.status + ')'), 'bad');
+      toast((body && body.error) || (tr('err.refused') + ' (' + res.status + ')'), 'err');
       return;
     }
 
     state.saved = JSON.parse(JSON.stringify(state.draft));
     state.sha = body.sha;
+    announce(body.sha, changes);
     toast(body.unchanged ? tr('con.nothingChanged')
                          : fill('con.saved', { n: body.changed.length }), 'ok');
+    render();
+    renderSaveBar();
+  });
+
+  /* THE WEBSITE'S TABS SHARE site.json (admin-website.js). A save on another
+     tab moves the file on: take its new version, so the next save here is not
+     refused as a conflict, and its values — except where this tab is in the
+     middle of changing the same thing, which stays as typed. */
+  function announce(sha, changes) {
+    document.dispatchEvent(new CustomEvent('thauma:site-saved', { detail: { sha: sha, changes: changes, from: 'settings' } }));
+  }
+  document.addEventListener('thauma:site-saved', function (e) {
+    var d = e.detail || {};
+    if (d.from === 'settings' || !state.sha) return;
+    if (d.sha) state.sha = d.sha;
+    Object.keys(d.changes || {}).forEach(function (p) {
+      var wasClean = state.draft[p] === state.saved[p];
+      state.saved[p] = d.changes[p];
+      if (wasClean) state.draft[p] = d.changes[p];
+      if (state.order.indexOf(p) === -1) state.order.push(p);
+    });
     render();
     renderSaveBar();
   });

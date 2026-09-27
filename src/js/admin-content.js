@@ -42,7 +42,8 @@
 (function () {
   'use strict';
 
-  if (document.body.getAttribute('data-admin-page') !== 'content') return;
+  /* On the Website page, as its Pages tab; finds its own elements. */
+  if (!document.getElementById('cRoot')) return;
 
   var CONTENT = '/api/admin/content';
   var WORDS = '/api/admin/translate';
@@ -363,7 +364,13 @@
     /* Where to start: what needs doing, if anything does; otherwise the first
        page — or, after a save, wherever you were. */
     if (!keepView || !viewExists(state.view)) {
-      state.view = state.rows.some(needsWork) ? 'needs' : 'section:' + (orderedSections()[0] || '_general');
+      /* Where you were, if this language has it — a reload returns there
+         (Chase, 2026-09-27) — otherwise what needs doing, otherwise the
+         first page. */
+      var was = null;
+      try { was = sessionStorage.getItem('thauma.content.view.' + code); } catch (e) { /* private mode */ }
+      state.view = viewExists(was) ? was
+        : state.rows.some(needsWork) ? 'needs' : 'section:' + (orderedSections()[0] || '_general');
     }
     fillPickers();
     await loadBeside();
@@ -647,6 +654,7 @@
     var b = e.target.closest('[data-view]');
     if (!b) return;
     state.view = b.getAttribute('data-view');
+    try { sessionStorage.setItem('thauma.content.view.' + state.lang, state.view); } catch (e2) { /* private mode */ }
     // A page and a search are two ways of choosing what is on screen;
     // leaving both on shows neither.
     if (state.find) { state.find = ''; $('cFind').value = ''; }
@@ -774,6 +782,12 @@
 
   window.addEventListener('beforeunload', function (e) {
     if (dirtyIds().length || state.review) { e.preventDefault(); e.returnValue = ''; }
+  });
+
+  /* Shown after loading hidden (admin-website.js): a text box measured while
+     hidden measured nothing, so measure again. */
+  document.addEventListener('web:panel', function (e) {
+    if (e.detail === 'pages') $('cRows').querySelectorAll('textarea').forEach(autosize);
   });
 
   /* ---- the file for a translator, and what comes back ---------------- */
@@ -1069,9 +1083,21 @@
     }
     if (body.sha) state.siteSha = body.sha;
     setSiteValue(path, value);
+    document.dispatchEvent(new CustomEvent('thauma:site-saved', { detail: { sha: state.siteSha, changes: changes, from: 'pages' } }));
     toast(tr('ln.saved'), 'ok');
     return true;
   }
+
+  /* Another Website tab saved site.json (admin-website.js): take its version
+     and values. Nothing here is a working copy — the languages table saves
+     as it changes — so they simply apply. */
+  document.addEventListener('thauma:site-saved', function (e) {
+    var d = e.detail || {};
+    if (d.from === 'pages' || !state.site) return;
+    if (d.sha) state.siteSha = d.sha;
+    Object.keys(d.changes || {}).forEach(function (p) { setSiteValue(p, d.changes[p]); });
+    if (!$('cSet').hidden) renderTable();
+  });
 
   function sw(path, on, label) {
     return '<button type="button" class="switch small" role="switch" data-set="' + esc(path) + '"' +

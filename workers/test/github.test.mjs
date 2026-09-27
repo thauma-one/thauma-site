@@ -485,5 +485,26 @@ await check("every content write in the workers is quiet", async () => {
     `these writes would deploy the live site:\n          ${offenders.join("\n          ")}`);
 });
 
+await check("reads of one file at the same moment share one request; a later read asks again", async () => {
+  /* The Website page loads every tab at once, and several want site.json. */
+  let asked = 0;
+  const fake = async (url, init = {}) => {
+    if (init.method === "PUT") return new Response(JSON.stringify({ content: { sha: "s2" }, commit: { sha: "c" } }));
+    asked++;
+    await new Promise((r) => setTimeout(r, 20));
+    return new Response(JSON.stringify({ type: "file", sha: "s1", content: toBase64("{}") }));
+  };
+  const [a, b, c] = await Promise.all([1, 2, 3].map(() => getFile(ENV, "src/_data/site.json", fake)));
+  eq(asked, 1, "three reads at once");
+  eq([a.sha, b.sha, c.sha], ["s1", "s1", "s1"], "all three answered");
+  await getFile(ENV, "src/_data/site.json", fake);
+  eq(asked, 2, "an answered read is not kept");
+  const slow = getFile(ENV, "src/_data/site.json", fake);
+  await putFile(ENV, { path: "src/_data/site.json", text: "{}", sha: "s1", message: "m" }, fake);
+  await getFile(ENV, "src/_data/site.json", fake);
+  await slow;
+  eq(asked, 4, "a read after a write joined a read from before it");
+});
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

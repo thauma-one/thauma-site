@@ -84,15 +84,24 @@ const admin = [
 const inRow = (pages) => pages.filter((p) => !p.menu);
 const rowRoles = (pages) => [...new Set(inRow(pages).flatMap((p) => p.roles || []))];
 
-/* The Website area's own side list. `tab` is what a page sets in its front
-   matter (`websiteTab`) to be marked as the one you are on. A tab is never
+/* The Website area's own side list. The Website is ONE page with a panel per
+   tab (Chase, 2026-09-27: "have all tabs load all the content at once. Then
+   nav through the tabs can happen at once"): src/adminarea/website.njk writes
+   it at every tab's address, each opening on its own tab, so a reload or a
+   bookmark comes back to where you were. `page` is the tab's i18n page key
+   (adm.page.<page>.heading); `heading` is its English heading. A tab is never
    listed before its page exists. */
 const website = [
-  { tab: "pages", url: "/admin/website/", label: "Pages" },
-  { tab: "resources", url: "/admin/website/resources/", label: "Resources" },
-  { tab: "events", url: "/admin/website/events/", label: "Events" },
-  { tab: "photos", url: "/admin/website/photos/", label: "Photos" },
-  { tab: "settings", url: "/admin/website/settings/", label: "Settings" },
+  { tab: "pages", url: "/admin/website/", label: "Pages",
+    page: "content", heading: "The site's <b>words</b>" },
+  { tab: "resources", url: "/admin/website/resources/", label: "Resources",
+    page: "resources", heading: "The site's <b>resources</b>" },
+  { tab: "events", url: "/admin/website/events/", label: "Events",
+    page: "events", heading: "What is <b>coming up</b>" },
+  { tab: "photos", url: "/admin/website/photos/", label: "Photos",
+    page: "photos", heading: "Frame what <b>matters</b>" },
+  { tab: "settings", url: "/admin/website/settings/", label: "Settings",
+    page: "site", heading: "Site <b>settings</b>" },
 ];
 
 module.exports = {

@@ -27,7 +27,8 @@
 (function () {
   'use strict';
 
-  if (document.body.getAttribute('data-admin-page') !== 'photos') return;
+  /* On the Website page, as its Photos tab; finds its own elements. */
+  if (!document.getElementById('phRoot')) return;
 
   var API = '/api/admin/content';
   var DRIFT = 0.045, HEADROOM = 1.12;
@@ -335,7 +336,24 @@
     if (!res.ok) return toast((body && body.error) || tr('err.refused'), 'err');
     state.sha = body.sha || state.sha;
     state.saved = clone(state.draft);
+    document.dispatchEvent(new CustomEvent('thauma:site-saved', { detail: { sha: state.sha, changes: ch, from: 'photos' } }));
     toast(fill('con.saved', { n: Object.keys(ch).length }), 'ok');
+    render();
+  });
+
+  /* Another Website tab saved site.json (admin-website.js): take its version
+     and any photo values it changed, except where this tab is mid-change. */
+  document.addEventListener('thauma:site-saved', function (e) {
+    var d = e.detail || {};
+    if (d.from === 'photos' || !state.sha) return;
+    if (d.sha) state.sha = d.sha;
+    Object.keys(d.changes || {}).forEach(function (p) {
+      var m = p.match(/^images\.([^.]+)\.([^.]+)$/);
+      if (!m || !state.saved[m[1]]) return;
+      var wasClean = state.draft[m[1]][m[2]] === state.saved[m[1]][m[2]];
+      state.saved[m[1]][m[2]] = d.changes[p];
+      if (wasClean) state.draft[m[1]][m[2]] = d.changes[p];
+    });
     render();
   });
 

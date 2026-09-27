@@ -1,12 +1,3 @@
----
-layout: layouts/admin.njk
-adminPage: events
-adminTitle: Events
-adminHeading: What is <b>coming up</b>
-adminScript: /js/admin-library.js
-permalink: /admin/website/events/index.html
-websiteTab: events
----
 {#- WEBSITE › EVENTS — one of the site's two collections, on a page of its own
    (Chase, 2026-09-27: the Library page "is just a tab navigation", so
    Resources and Events are their own entries in the Website list). One file
@@ -21,7 +12,3 @@ websiteTab: events
   <p class="empty" data-i18n="common.loading">Loading&hellip;</p>
 </div>
 
-{#- The languages this build publishes, handed to the script rather than
-   fetched: it is the same list Eleventy paginated the public pages over, so
-   the editor cannot offer a language the site does not render. -#}
-<script id="libLangs" type="application/json">{{ activeLangs | dump | safe }}</script>

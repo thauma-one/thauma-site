@@ -695,11 +695,5 @@
     render();
   });
 
-  /* The old Library page's Gatherings tab was #gatherings; its address now
-     forwards to Resources, and the fragment rides along — so send it on. */
-  if (location.hash === '#gatherings' && onlyCollection() === 'resources') {
-    location.replace('/admin/website/events/');
-    return;
-  }
   if (document.querySelector('[data-lib-list]')) load();
 })();

@@ -46,7 +46,7 @@
     <div class="cue"><span data-i18n="adm.page.{{ adminPage }}.title">{{ adminTitle }}</span></div>
     {%- endif %}
     <div class="sec-h">
-      <h1 data-i18n-html="adm.page.{{ adminPage }}.heading">{{ adminHeading | safe }}</h1>
+      <h1 id="pageHeading" data-i18n-html="adm.page.{{ headingKey or adminPage }}.heading">{{ adminHeading | safe }}</h1>
     </div>
   </div>
 
@@ -63,7 +63,8 @@
   <div class="web">
     <nav class="web-side" aria-label="Website">
       {%- for t in consoleNav.website %}
-      <a href="{{ t.url }}" {% if t.tab == websiteTab %}aria-current="page"{% endif %}
+      <a href="{{ t.url }}" data-web-tab="{{ t.tab }}" data-heading-key="{{ t.page }}"
+         {% if t.tab == websiteTab %}aria-current="page"{% endif %}
          data-i18n="web.{{ t.tab }}">{{ t.label }}</a>
       {%- endfor %}
     </nav>
@@ -92,7 +93,9 @@
 {%- if adminScript %}<script src="{{ adminScript }}?v={{ adminScript | v }}"></script>{% endif %}
 {#- Publishing, and the data-mover inside its review, on every Website screen
    and nowhere else. -#}
-{% if websiteTab %}<script src="/js/admin-publish.js?v={{ "/js/admin-publish.js" | v }}"></script>
-<script src="/js/admin-dbsync.js?v={{ "/js/admin-dbsync.js" | v }}"></script>{% endif %}
+{#- THE WEBSITE AREA IS ONE PAGE: every tab's script, so every tab loads at
+   once, then the shell that moves between them (admin-website.js). -#}
+{% if websiteTab %}{% for f in ["admin-content", "admin-library", "admin-photos", "admin-site", "admin-publish", "admin-dbsync", "admin-website"] %}
+<script src="/js/{{ f }}.js?v={{ ("/js/" + f + ".js") | v }}"></script>{% endfor %}{% endif %}
 </body>
 </html>

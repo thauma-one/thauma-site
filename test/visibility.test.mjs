@@ -468,7 +468,7 @@ check("nothing in the SAVE flow claims to publish", () => {
   /* The markup fallback is real copy: it is what shows before the translation
      sweep runs, and what shows for good if a key ever goes missing. The button
      said "Save & publish" in the HTML long after the key was corrected. */
-  for (const f of ["adminarea/content.njk", "adminarea/site.njk"]) {
+  for (const f of ["_includes/website/pages.njk", "_includes/website/settings.njk"]) {
     const src = readFileSync(root + f, "utf8");
     for (const m of src.matchAll(/data-i18n="(con\.save[A-Za-z]*)">([^<]*)</g)) {
       const found = lies(m[2]);
@@ -481,7 +481,7 @@ check("nothing in the SAVE flow claims to publish", () => {
   /* And the source comments, which is where two of them survived longest.
      A comment nobody has to look at is a comment nobody corrects. */
   for (const f of ["js/admin-content.js", "js/admin-site.js",
-                   "adminarea/content.njk", "adminarea/site.njk"]) {
+                   "_includes/website/pages.njk", "_includes/website/settings.njk"]) {
     const src = readFileSync(root + f, "utf8");
     /* Only lines that ASSERT it, not lines RECORDING that it used to be said.
 

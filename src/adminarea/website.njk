@@ -1,0 +1,35 @@
+---
+layout: layouts/admin.njk
+adminPage: website
+pagination:
+  data: consoleNav.website
+  size: 1
+  alias: tab
+eleventyComputed:
+  permalink: "{{ tab.url }}index.html"
+  websiteTab: "{{ tab.tab }}"
+  adminTitle: "{{ tab.label }}"
+  adminHeading: "{{ tab.heading | safe }}"
+  headingKey: "{{ tab.page }}"
+---
+{#- THE WEBSITE AREA, ONE PAGE (Chase, 2026-09-27): every tab is here, and
+   every tab's data loads when the page does — so moving between tabs is
+   instant, and an unsaved edit on one tab is still there after a look at
+   another. Written at each tab's own address, opening on that tab, so a
+   reload or a bookmark returns to where you were; admin-website.js moves
+   between them without a reload and keeps the address in step.
+
+   Each tab's markup is its own include (src/_includes/website/), unchanged
+   from when it was a page of its own, and each tab's script finds its own
+   elements, so the five do not know about one another — except for one
+   thing, the site settings they share: see admin-website.js. -#}
+{%- for t in consoleNav.website %}
+<section class="web-panel" data-web-panel="{{ t.tab }}"{% if t.tab != websiteTab %} hidden{% endif %}>
+  {% include "website/" + t.tab + ".njk" %}
+</section>
+{%- endfor %}
+
+{#- The languages this build publishes, for Resources and Events: the same list
+   Eleventy paginated the public pages over, so the editor cannot offer a
+   language the site does not render. -#}
+<script id="libLangs" type="application/json">{{ activeLangs | dump | safe }}</script>

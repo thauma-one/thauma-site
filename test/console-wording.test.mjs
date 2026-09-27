@@ -16,6 +16,7 @@
  * it lived in already held a sentence. So this guards the sweep, not the
  * wording of any one string.
  */
+import { createRequire } from "node:module";
 import { readFileSync, readdirSync } from "node:fs";
 
 const read = (p) => readFileSync(new URL("../" + p, import.meta.url), "utf8");
@@ -121,12 +122,14 @@ check("site copy only points editors at admin pages that exist", () => {
     const m = read(f).match(/^permalink:\s*(\S+)/m);
     return m ? m[1].replace(/index\.html$/, "") : null;
   }).filter(Boolean));
+  /* The Website area is one template written at every tab's address. */
+  for (const t of createRequire(import.meta.url)("../src/_data/consoleNav.js").website) pages.add(t.url);
   const langs = readdirSync(new URL("../src/_data/i18n/", import.meta.url)).filter((f) => f.endsWith(".json"));
   const bad = [];
   for (const f of langs) {
     const text = read(`src/_data/i18n/${f}`);
     if (/\/admin\s*→/.test(text)) bad.push(`${f}: a "/admin → …" menu path`);
-    for (const m of text.matchAll(/\/admin\/[a-z-]*\/?/g)) {
+    for (const m of text.matchAll(/\/admin(?:\/[a-z-]+)*\/?/g)) {
       const path = m[0].endsWith("/") ? m[0] : m[0] + "/";
       if (!pages.has(path)) bad.push(`${f}: ${m[0]}`);
     }

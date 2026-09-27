@@ -81,15 +81,13 @@ const GLOSSARY = {
 
 /* --------------------------------------------------- both collections, one page */
 
-await check("each collection is its own page, and asks for only itself", async () => {
+await check("Resources and Events are tabs of the Website page, both loaded at once", async () => {
   const r = await boot({ page: "resources" });
-  assert(r.d.querySelector('[data-lib-list="resources"]') && !r.d.querySelector('[data-lib-list="gatherings"]'), "Resources page lists");
-  const lib = (a) => a.filter((u) => u.includes("/api/admin/library"));
-  assert(lib(r.asked).join() === "/api/admin/library?collection=resources", `asked ${lib(r.asked)}`);
-  const e = await boot({ page: "events" });
-  assert(e.d.querySelector('[data-lib-list="gatherings"]') && !e.d.querySelector('[data-lib-list="resources"]'), "Events page lists");
-  assert(lib(e.asked).join() === "/api/admin/library?collection=gatherings", `asked ${lib(e.asked)}`);
-  assert(!e.d.querySelector(".tabs"), "a tab bar left over from Library");
+  assert(r.d.querySelector('[data-lib-list="resources"]') && r.d.querySelector('[data-lib-list="gatherings"]'), "both lists");
+  const lib = r.asked.filter((u) => u.includes("/api/admin/library"));
+  assert(lib.join() === "/api/admin/library", `one request for both: ${lib}`);
+  assert(!r.d.querySelector('[data-web-panel="resources"]').hidden && r.d.querySelector('[data-web-panel="events"]').hidden,
+    "the Resources address opens on Resources");
 });
 
 await check("an empty collection says so rather than looking broken", async () => {

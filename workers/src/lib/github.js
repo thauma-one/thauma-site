@@ -245,9 +245,31 @@ async function headers(env, fetchImpl) {
  * Returns { text, sha }. The SHA is the blob's, not the commit's, and it is
  * what putFile must be handed back — carry it through the browser untouched.
  */
+/* READS ALREADY ON THE WAY ARE SHARED. The Website area loads every tab at
+   once, and three of them want site.json at the same moment; they get one
+   trip to GitHub between them rather than three. Only a read still in flight
+   is shared — nothing is kept once it has answered, so there is no copy to go
+   stale, and a write clears the path so a read after it goes to GitHub. */
+const inFlight = new Map();
+
 export async function getFile(env, path, fetchImpl = fetch) {
   const cfg = githubConfig(env);
   if (cfg.error) return { error: cfg.error, status: 500 };
+  const key = `${cfg.repo}@${cfg.branch}:${path}`;
+  const pending = inFlight.get(key);
+  if (pending && pending.fetchImpl === fetchImpl) return pending.promise;
+  const promise = readFile(env, cfg, path, fetchImpl);
+  inFlight.set(key, { promise, fetchImpl });
+  try { return await promise; }
+  finally { if (inFlight.get(key) && inFlight.get(key).promise === promise) inFlight.delete(key); }
+}
+
+function forget(env, path) {
+  const cfg = githubConfig(env);
+  if (!cfg.error) inFlight.delete(`${cfg.repo}@${cfg.branch}:${path}`);
+}
+
+async function readFile(env, cfg, path, fetchImpl) {
 
   const h = await headers(env, fetchImpl);
   if (h.error) return { error: h.error, status: 500 };
@@ -316,6 +338,7 @@ export async function listDir(env, path, fetchImpl = fetch) {
  * caller that has genuinely lost the SHA should re-read the file, not omit it.
  */
 export async function putFile(env, { path, text, sha, message, authorName, authorEmail, quiet, create }, fetchImpl = fetch) {
+  forget(env, path);
   const cfg = githubConfig(env);
   if (cfg.error) return { error: cfg.error, status: 500 };
 
@@ -464,6 +487,7 @@ export function skipCi(message) {
  * and the delete is refused rather than quietly destroying their afternoon.
  */
 export async function deleteFile(env, { path, sha, message, authorName, authorEmail, quiet }, fetchImpl = fetch) {
+  forget(env, path);
   const cfg = githubConfig(env);
   if (cfg.error) return { error: cfg.error, status: 500 };
   if (!sha) return { error: "Refusing to delete without the SHA of the file being removed.", status: 400 };
