@@ -140,8 +140,9 @@ staffHeading: What appears on <b>other websites</b>
   </aside>
 </div>
 
-{#- FOR DEVELOPERS: the raw data behind the widgets and the guide to it, for
-   somebody building their own design. -#}
+{#- FOR DEVELOPERS (board 9): the raw data behind the widgets, the guide to
+   it, and API keys for a partner website's own build (moved from Settings —
+   they are one more way this ministry's data reaches another website). -#}
 <details class="sh-card sh-dev" id="shDev">
   <summary><span class="sh-lbl" data-i18n="sh.dev">For developers</span></summary>
   <div class="sh-dev-body">
@@ -149,6 +150,24 @@ staffHeading: What appears on <b>other websites</b>
     <pre class="emb-code" id="shApi"></pre>
     <button type="button" class="ghost-btn" id="shCopyApi" data-i18n="common.copy">Copy</button>
     <a class="emb-guide" id="shGuide" download><span data-i18n="emb.guide">Download the developer guide</span></a>
+
+    <span class="sh-lbl sh-keys-lbl" data-i18n="set.keys">API keys</span>
+    <div class="key-create">
+      <input type="text" id="shKeyName" class="key-name" maxlength="80"
+             data-i18n-attr="placeholder:set.keyPlaceholder,aria-label:set.keyPlaceholder"
+             aria-label="What is this key for?" placeholder="What is this key for?">
+      <button type="button" class="solid-btn" id="shKeyAdd" data-i18n="set.createKey">Create key</button>
+    </div>
+    {#- Shown once, on creation, and never again — the database stores only a
+       hash. The variable name is a LABEL on the value: it is what the partner
+       site's build reads. Not translated — it is a name. -#}
+    <div class="key-reveal" id="shKeyReveal" hidden>
+      <h4 data-i18n="set.keyRevealTitle">Copy this now — it cannot be shown again</h4>
+      <span class="key-var">THAUMA_API_KEY</span>
+      <code id="shKeyValue"></code>
+      <button type="button" class="ghost-btn" id="shKeyCopy" data-i18n="common.copy">Copy</button>
+    </div>
+    <div class="key-list" id="shKeyList"></div>
   </div>
 </details>
 

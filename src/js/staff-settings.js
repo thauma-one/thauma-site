@@ -18,7 +18,7 @@
 
   var API = '/api/staff-settings';
   var $ = function (id) { return document.getElementById(id); };
-  var state = { languages: [], keys: [], you: null, partner: null };
+  var state = { languages: [], you: null, partner: null };
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -110,31 +110,6 @@
         '</span></div>';
     }).join('');
 
-    renderKeys();
-  }
-
-  /* Reads state.api_keys, which is what the endpoint actually returns. It
-     read state.keys until 2026-08-15 — undefined, so .length threw and the
-     whole Settings page failed to draw. The error was visible only because
-     render failures stopped being reported as network problems. */
-  function renderKeys() {
-    var keys = state.api_keys || [];
-    if (!keys.length) {
-      $('setKeyList').innerHTML = '<p class="empty">' + tr('set.keysEmpty') + '</p>';
-      return;
-    }
-    $('setKeyList').innerHTML = keys.map(function (k) {
-      return '<div class="key-row' + (k.revoked ? ' is-revoked' : '') + '">' +
-        '<div><span class="key-title">' + esc(k.name) + '</span>' +
-          '<span class="key-meta">created ' + esc((k.created_at || '').slice(0, 10)) +
-          ' · ' + (k.last_used_at
-            ? 'last used ' + esc(k.last_used_at.slice(0, 10))
-            : 'never used') + '</span></div>' +
-        (k.revoked
-          ? '<span class="badge proto">' + tr('set.revoked') + '</span>'
-          : '<button type="button" class="del" data-revoke="' + esc(k.id) + '">Revoke</button>') +
-      '</div>';
-    }).join('');
   }
 
   /* ---- loading and saving --------------------------------------------- */
@@ -271,57 +246,10 @@
            on ? 'toast.published' : 'toast.unpublished');
   });
 
-  $('setKeyList').addEventListener('click', function (e) {
-    var btn = e.target.closest('[data-revoke]');
-    if (!btn) return;
-    if (!confirm('Revoke this key? Any site using it will stop receiving data ' +
-                 'immediately, and it cannot be un-revoked.')) return;
-    change({ revoke_key: btn.dataset.revoke }, btn, 'toast.keyRevoked');
-  });
-
-  $('setKeyAdd').addEventListener('click', async function () {
-    var name = $('setKeyName').value.trim();
-    if (!name) { toastKey('err.nameKeyFirst', 'err'); $('setKeyName').focus(); return; }
-
-    $('setKeyAdd').disabled = true;
-    try {
-      var res = await fetch(API, {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name })
-      });
-      var body = await res.json().catch(function () { return {}; });
-      if (!res.ok) throw new Error(body.error || ('failed (' + res.status + ')'));
-
-      // The one and only time this value exists outside the database as a hash.
-      $('setKeyValue').textContent = body.key;
-      $('setKeyReveal').hidden = false;
-      $('setKeyName').value = '';
-      state.api_keys = body.api_keys || [];
-      renderKeys();
-      toastKey('toast.keyCreated', 'ok');
-    } catch (e) {
-      setStatus(e.message, 'err');
-    } finally {
-      $('setKeyAdd').disabled = false;
-    }
-  });
-
-  $('setKeyCopy').addEventListener('click', function () {
-    var v = $('setKeyValue').textContent;
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(v).then(function () { toastKey('toast.copied', 'ok'); });
-    } else {
-      // Older Safari over http has no clipboard API; select it so Ctrl-C works.
-      var r = document.createRange();
-      r.selectNode($('setKeyValue'));
-      window.getSelection().removeAllRanges();
-      window.getSelection().addRange(r);
-      setStatus('Selected — press Ctrl/Cmd C', 'ok');
-    }
-  });
-
+  /* API KEYS MOVED TO SHARING › For developers (board 9): they are one more
+     way this ministry's data reaches another website. An old link lands
+     there. */
+  if (location.hash === '#keys') { location.replace('/staff/sharing/#keys'); return; }
   showTab((location.hash || '#account').slice(1));
   load();
 })();

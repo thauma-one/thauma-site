@@ -2118,6 +2118,9 @@ html.console-menu-open{overflow:hidden}
 .sh-dev[open] summary::after{transform:rotate(-135deg)}
 .sh-dev-body{margin-top:16px;display:flex;flex-direction:column;gap:10px;align-items:flex-start}
 .sh-dev-body .emb-code{white-space:pre-wrap;word-break:break-all;align-self:stretch}
+.sh-keys-lbl{margin-top:18px}
+.sh-dev-body .key-create{display:flex;gap:10px;flex-wrap:wrap;align-self:stretch}
+.sh-dev-body .key-reveal,.sh-dev-body .key-list{align-self:stretch}
 .sh-dev[hidden]{display:none}
 
 @media (max-width:1100px){
