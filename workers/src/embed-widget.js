@@ -6,7 +6,8 @@
  * serves it.
  *
  * ONE CONSTRAINT WHILE EDITING: no backticks and no dollar-brace anywhere in
- * the widget source, because it lives inside a template literal.
+ * the widget source, because it lives inside a template literal — except the
+ * one that inlines COLOUR_JS, which is the point of it.
  *
  * PORTED FROM chaseroush.com's TIMELINE — THE WHOLE THING, NOT THE SKIN
  * ---------------------------------------------------------------------------
@@ -37,12 +38,13 @@
  * the percentage large on the right with raised / target beneath it, a full
  * width bar, and either what remains or a funded badge.
  *
- * THE COLOR MATHS IS DUPLICATED HERE, deliberately and unavoidably: this file
- * is a string shipped to browsers and cannot import anything. embed-colour.js
- * holds the same functions for the Worker and the tests, and a test asserts
- * the two agree on a spread of inputs — which is the only thing that keeps a
- * necessary duplication honest.
+ * THE COLOR MATHS IS NOT COPIED HERE: this file is a string shipped to
+ * browsers and cannot import anything, so it inlines COLOUR_JS from
+ * embed-colour.js — the one browser copy of the maths, which a test compares
+ * with the Worker's functions on every run.
  */
+
+import { COLOUR_JS } from "./embed-colour.js";
 
 export const WIDGET_JS = String.raw`
 /* Thauma embed widget. https://thauma.one
@@ -163,57 +165,14 @@ export const WIDGET_JS = String.raw`
 
   /* ---------- the COLOR PAIR ----------
      Completed and in-progress are different hues, which is what the legend is
-     for. The second is rotated -33 degrees from the first, the same distance
-     that separates cyan from green on chaseroush.com. A gray accent has no hue
-     to rotate, so it separates by lightness instead. */
+     for. The ministry sends both, resolved (embed.js); the maths here is for
+     a page that overrides the first with data-accent, where the second is
+     rotated -33 degrees from it, the distance that separates cyan from green
+     on chaseroush.com. A gray accent has no hue to rotate, so it separates by
+     lightness instead. The same maths as the Worker's: embed-colour.js. */
 
-  function hexToHsl(hex) {
-    var m = /^#?([0-9a-f]{6})$/i.exec(String(hex).trim());
-    if (!m) return null;
-    var n = parseInt(m[1], 16);
-    var r = ((n >> 16) & 255) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
-    var max = Math.max(r, g, b), min = Math.min(r, g, b);
-    var l = (max + min) / 2, d = max - min;
-    if (d === 0) return { h: 0, s: 0, l: l };
-    var s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-    var h;
-    if (max === r) h = ((g - b) / d + (g < b ? 6 : 0));
-    else if (max === g) h = (b - r) / d + 2;
-    else h = (r - g) / d + 4;
-    return { h: h * 60, s: s, l: l };
-  }
-
-  function hslToHex(o) {
-    var h = ((o.h % 360) + 360) % 360, s = o.s, l = o.l;
-    var c = (1 - Math.abs(2 * l - 1)) * s;
-    var x = c * (1 - Math.abs(((h / 60) % 2) - 1));
-    var m = l - c / 2, r = 0, g = 0, b = 0;
-    if (h < 60) { r = c; g = x; }
-    else if (h < 120) { r = x; g = c; }
-    else if (h < 180) { g = c; b = x; }
-    else if (h < 240) { g = x; b = c; }
-    else if (h < 300) { r = x; b = c; }
-    else { r = c; b = x; }
-    function to(v) { var q = Math.round((v + m) * 255).toString(16); return q.length < 2 ? '0' + q : q; }
-    return '#' + to(r) + to(g) + to(b);
-  }
-
-  function companion(hex) {
-    var o = hexToHsl(hex);
-    if (!o) return hex;
-    if (o.s < 0.12) {
-      var l = o.l > 0.5 ? Math.max(0.28, o.l - 0.3) : Math.min(0.82, o.l + 0.3);
-      return hslToHex({ h: o.h, s: o.s, l: l });
-    }
-    return hslToHex({ h: o.h - 33, s: Math.min(1, o.s * 1.05), l: Math.min(0.72, o.l * 1.04) });
-  }
-
-  function rgba(hex, a) {
-    var m = /^#?([0-9a-f]{6})$/i.exec(String(hex).trim());
-    if (!m) return 'rgba(109,74,255,' + a + ')';
-    var n = parseInt(m[1], 16);
-    return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
-  }
+${COLOUR_JS}
+  var rgba = alpha;
 
   /* ---------- parsing: parents, children, aggregate ---------- */
 
@@ -263,10 +222,15 @@ export const WIDGET_JS = String.raw`
 
   function styles(accent, done, mode) {
 
+    /* TEXT IN THE COLORS reads on every page: --prog-t and --done-t are the
+       pair nudged just far enough to be legible on this scheme's background
+       (readable, embed-colour.js). Fills and dots keep the colors as chosen. */
     var light = ':host{--bg:#fff;--fg:#12121a;--dim:#5c5c6b;--line:#e6e6ee;' +
-                '--track:#eef0f6;--panel:#f7f8fb}';
+                '--track:#eef0f6;--panel:#f7f8fb;' +
+                '--prog-t:' + readable(accent, '#ffffff') + ';--done-t:' + readable(done, '#ffffff') + '}';
     var dark  = ':host{--bg:#15151c;--fg:#f2f2f7;--dim:#9a9aad;--line:#2a2a36;' +
-                '--track:#22222e;--panel:#1c1c25}';
+                '--track:#22222e;--panel:#1c1c25;' +
+                '--prog-t:' + readable(accent, '#15151c') + ';--done-t:' + readable(done, '#15151c') + '}';
 
     var scheme = mode === 'light' ? light
                : mode === 'dark'  ? dark
@@ -276,6 +240,7 @@ export const WIDGET_JS = String.raw`
       ':host{--prog:' + accent + ';--done:' + done + ';' +
         '--glow-p:' + rgba(accent, 0.45) + ';--glow-d:' + rgba(done, 0.45) + ';' +
         '--faint-p:' + rgba(accent, 0.16) + ';--faint-d:' + rgba(done, 0.16) + ';' +
+        '--on-prog:' + onColor(accent) + ';--on-done:' + onColor(done) + ';' +
         'all:initial;display:block;color:var(--fg);line-height:1.5;' +
         'font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,' +
           'Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}' +
@@ -297,9 +262,9 @@ export const WIDGET_JS = String.raw`
       '.gdesc{margin-top:8px;color:var(--dim);font-size:14.5px;line-height:1.55;' +
         'border-left:3px solid var(--prog);padding-left:12px}' +
       '.gright{text-align:right;flex-shrink:0}' +
-      '.gpct{font-size:30px;font-weight:700;line-height:1;color:var(--done);' +
+      '.gpct{font-size:30px;font-weight:700;line-height:1;color:var(--done-t);' +
         'font-variant-numeric:tabular-nums}' +
-      '.gmoney{margin-top:5px;font-size:13.5px;font-weight:600;color:var(--prog);' +
+      '.gmoney{margin-top:5px;font-size:13.5px;font-weight:600;color:var(--prog-t);' +
         'font-variant-numeric:tabular-nums;white-space:nowrap}' +
       '.gbar{height:10px;border-radius:5px;margin-top:16px;overflow:hidden;' +
         'position:relative;border:1px solid var(--faint-p);' +
@@ -313,7 +278,7 @@ export const WIDGET_JS = String.raw`
         'min-height:20px}' +
       '.gfoot .sp{margin-left:auto}' +
       '.gbadge{display:inline-block;border-radius:20px;padding:3px 12px;font-size:12.5px;' +
-        'font-weight:700;color:var(--done);border:1px solid var(--done);' +
+        'font-weight:700;color:var(--done-t);border:1px solid var(--done);' +
         'background:var(--faint-d)}' +
 
       '.gfill:after,.rfill:after,.dfill:after{content:"";position:absolute;top:0;' +
@@ -352,7 +317,7 @@ export const WIDGET_JS = String.raw`
         /* Small: it names the line, it is not a heading, and at 11px bold it
            competed with the milestone titles (Chase, 2026-09-27). */
         'white-space:nowrap;text-transform:uppercase;font-size:9px;font-weight:600;letter-spacing:.14em;' +
-        'color:var(--prog)}' +
+        'color:var(--prog-t)}' +
       '.nlabel.below{bottom:auto;top:26px}' +
 
       /* A pin is a button. Absolutely placed, never wrapping, alternating
@@ -382,7 +347,7 @@ export const WIDGET_JS = String.raw`
       '.plab{font-size:13.5px;line-height:1.45;display:block}' +
       '.plab b{display:block;font-weight:700;margin-bottom:2px}' +
       '.plab .pd{display:block;font-size:12px;color:var(--dim)}' +
-      '.plab .pp{display:block;margin-top:2px;font-weight:700;color:var(--done);' +
+      '.plab .pp{display:block;margin-top:2px;font-weight:700;color:var(--done-t);' +
         'font-variant-numeric:tabular-nums}' +
       '.kidcount{display:block;font-size:11px;color:var(--dim);margin-top:1px;' +
         'opacity:.85;font-weight:500}' +
@@ -423,9 +388,9 @@ export const WIDGET_JS = String.raw`
       '.stitle{display:block;font-size:15.5px;font-weight:700;margin-top:2px}' +
       '.step.canceled .stitle{text-decoration:line-through;opacity:.6}' +
       '.spct{display:block;margin-top:3px;font-size:13px;font-weight:700;' +
-        'color:var(--done);font-variant-numeric:tabular-nums}' +
+        'color:var(--done-t);font-variant-numeric:tabular-nums}' +
 
-      '.feat{display:inline-block;margin-left:8px;font-size:10.5px;color:var(--prog);' +
+      '.feat{display:inline-block;margin-left:8px;font-size:10.5px;color:var(--prog-t);' +
         'border:1px solid var(--prog);border-radius:99px;padding:1px 8px;' +
         'vertical-align:2px;font-weight:700;letter-spacing:.04em}' +
 
@@ -455,9 +420,9 @@ export const WIDGET_JS = String.raw`
         'gap:28px;padding-right:44px}' +
       '.dtitle{font-size:26px;font-weight:700;line-height:1.2;letter-spacing:-.01em;' +
         'font-family:Georgia,Cambria,"Times New Roman",serif}' +
-      '.ddate{margin-top:7px;font-size:14px;font-weight:700;color:var(--prog)}' +
+      '.ddate{margin-top:7px;font-size:14px;font-weight:700;color:var(--prog-t)}' +
       '.dpct{text-align:right;flex-shrink:0}' +
-      '.dpct b{display:block;font-size:30px;line-height:1;color:var(--done);' +
+      '.dpct b{display:block;font-size:30px;line-height:1;color:var(--done-t);' +
         'font-variant-numeric:tabular-nums}' +
       '.dpct i{display:block;margin-top:4px;font-size:12px;color:var(--dim);' +
         'font-style:normal}' +
@@ -478,8 +443,8 @@ export const WIDGET_JS = String.raw`
       '.kmark{flex:0 0 auto;width:20px;height:20px;border-radius:50%;font-size:11px;' +
         'display:flex;align-items:center;justify-content:center;font-weight:700;' +
         'margin-top:2px}' +
-      '.kmark.complete{background:var(--done);color:var(--bg)}' +
-      '.kmark.in_progress{background:var(--prog);color:var(--bg)}' +
+      '.kmark.complete{background:var(--done);color:var(--on-done)}' +
+      '.kmark.in_progress{background:var(--prog);color:var(--on-prog)}' +
       '.kmark.upcoming{box-shadow:inset 0 0 0 2px var(--faint-p);color:var(--dim)}' +
       '.kmark.canceled{box-shadow:inset 0 0 0 2px var(--line);color:var(--dim);opacity:.6}' +
       '.kbody{flex:1;min-width:0}' +
@@ -507,7 +472,7 @@ export const WIDGET_JS = String.raw`
       '.pcard.answered:hover{border-color:var(--done)}' +
       '.pbadge{position:absolute;top:18px;right:18px;border-radius:20px;' +
         'padding:3px 12px;font-size:11.5px;font-weight:700;letter-spacing:.05em;' +
-        'color:var(--done);border:1px solid var(--done);background:var(--faint-d)}' +
+        'color:var(--done-t);border:1px solid var(--done);background:var(--faint-d)}' +
       '.ptitle{font-size:22px;font-weight:700;line-height:1.25;padding-right:96px;' +
         'letter-spacing:-.01em;font-family:Georgia,Cambria,"Times New Roman",serif}' +
       '.pbody{margin-top:9px;color:var(--dim);font-size:14.5px;line-height:1.6;' +
@@ -1320,8 +1285,11 @@ export const WIDGET_JS = String.raw`
       fail(node, w(lang, 'notShared'));
       return;
     }
-    var accent = node.getAttribute('data-accent') || (data.theme && data.theme.accent) || '#6D4AFF';
-    var mode   = node.getAttribute('data-theme')  || (data.theme && data.theme.mode)   || 'auto';
+    /* What this widget wears: its own look if the ministry gave it one,
+       the ministry's otherwise (0040). */
+    var look = (data.looks && data.looks[kind]) || data.theme || {};
+    var accent = node.getAttribute('data-accent') || look.accent || '#6D4AFF';
+    var mode   = node.getAttribute('data-theme')  || look.mode   || 'auto';
 
     if (!/^#[0-9a-fA-F]{6}$/.test(accent)) accent = '#6D4AFF';
     if (['auto', 'light', 'dark'].indexOf(mode) === -1) mode = 'auto';
@@ -1333,7 +1301,7 @@ export const WIDGET_JS = String.raw`
     if (!second || !/^#[0-9a-fA-F]{6}$/.test(second)) {
       second = node.getAttribute('data-accent')
         ? companion(accent)
-        : ((data.theme && data.theme.accent2) || companion(accent));
+        : (look.accent2 || companion(accent));
     }
     if (!/^#[0-9a-fA-F]{6}$/.test(second)) second = companion(accent);
 

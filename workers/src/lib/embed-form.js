@@ -94,7 +94,7 @@ export function formStyles() {
     ".pick input{accent-color:var(--acc);width:17px;height:17px;flex:0 0 auto;cursor:pointer}",
     ".pick span{font-weight:600;font-size:15px}",
 
-    ".go{display:block;width:100%;padding:15px;background:var(--acc);color:#fff;",
+    ".go{display:block;width:100%;padding:15px;background:var(--acc);color:var(--on-acc);",
       "border:0;border-radius:7px;font:inherit;font-size:15px;font-weight:600;",
       "cursor:pointer;transition:filter .2s ease,transform .1s ease}",
     ".go:hover:not(:disabled){filter:brightness(1.08)}",
@@ -102,13 +102,13 @@ export function formStyles() {
     ".go:disabled{opacity:.6;cursor:default}",
 
     ".fine{margin-top:13px;font-size:12.5px;color:var(--dim);text-align:center}",
-    ".msg{margin-top:12px;font-size:13.5px;text-align:center;color:var(--acc2)}",
+    ".msg{margin-top:12px;font-size:13.5px;text-align:center;color:var(--acc2-t)}",
     ".msg.bad{color:#e5484d}",
 
     /* The confirmation REPLACES the form. Leaving a filled-in form on screen
        under a success message invites a second submission. */
     ".done{text-align:center;padding:14px 0 6px}",
-    ".done .mark{font-size:34px;line-height:1;color:var(--acc2)}",
+    ".done .mark{font-size:34px;line-height:1;color:var(--acc2-t)}",
     ".done .big{margin-top:12px;font-size:19px;font-weight:700}",
     ".done .sub{margin-top:7px;color:var(--dim);font-size:14.5px;line-height:1.6}",
 

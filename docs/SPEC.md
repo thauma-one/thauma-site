@@ -44,6 +44,19 @@ back as an empty list, and the answer's `parts` says which it carries. Keys
 made before this hold `read:public`, which means every part. The parts are
 defined once, in `workers/src/lib/apikey.js` (`KEY_PARTS`).
 
+**Embed colors: two points on one wheel (2026-09-27, 0040).** Sharing sets
+the ministry's colors once: a first color by hue, saturation and brightness,
+and a second that sits -33°, 120° or 180° round the wheel from it
+(`partners.embed_turn`, NULL = -33, the rotation every ministry had before)
+or is picked freely (`embed_accent2`). Any of the six embeds may wear its own
+colors instead, and each has its own background (`embed_looks`, one row per
+embed that departs; none = the ministry's). The payload resolves both colors
+for every widget (`theme`, `looks`), so a developer's own design gets what the
+widget draws. Text drawn in a color is nudged just far enough to read on the
+page (3:1), and words on a colored button are white or near-black, whichever
+reads. The maths lives in `workers/src/embed-colour.js`; the widgets ship its
+`COLOUR_JS`, and a test holds the console's copy to it.
+
 Build-time and not browser-side, for three reasons: an API key shipped to the
 browser is public; CR must survive Thauma being down; and runtime fetching is
 the exact flaw CR has today (`header-loader.js` pulls page titles from R2 on

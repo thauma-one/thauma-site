@@ -278,7 +278,9 @@ await check("every real query converts with its documented params", async () => 
     slug: "a-partner", display_name: "A Partner",
     // embeds
     embed_enabled: 0, embed_accent: "#6D4AFF", embed_accent2: null,
-    embed_theme: "auto",
+    embed_theme: "auto", embed_turn: null,
+    // an embed's own look (0040)
+    kind: "roadmap", accent: "#E4572E", accent2: null, turn: 120, theme: null,
     // the language catalog
     code: "sl", native_name: "slovenščina",
     // staff profiles

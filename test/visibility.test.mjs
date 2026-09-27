@@ -527,36 +527,42 @@ check("secrets cannot be committed", () => {
 
 check("the color derivation is the SAME in all three copies", () => {
   /* It exists three times and cannot not: the Worker imports a module, the
-     widget is a string shipped to browsers that cannot import, and the console
-     panel needs it to show what "match automatically" will produce without a
-     round trip.
+     widgets are strings shipped to browsers that cannot import (they share
+     COLOUR_JS, the module's browser copy — the roadmap widget inlines it, the
+     forms too), and the console's picker needs it to show the pair a turn
+     will produce without a round trip.
 
      Three copies that drift means the console previews one pair, the payload
      publishes another, and the widget draws a third. This compares the actual
-     source text of the function rather than trusting a comment. */
+     source text rather than trusting a comment. */
   const read = (p) => readFileSync(fileURLToPath(new URL(p, import.meta.url)), "utf8");
+  const maths = read("../workers/src/embed-colour.js");
+  const split = maths.indexOf("export const COLOUR_JS");
 
   const bodies = [
-    ["embed-colour.js", read("../workers/src/embed-colour.js")],
-    ["embed-widget.js", read("../workers/src/embed-widget.js")],
+    ["embed-colour.js", maths.slice(0, split)],
+    ["COLOUR_JS", maths.slice(split)],
     ["staff-sharing.js", read("../src/js/staff-sharing.js")],
   ].map(([name, src]) => {
-    /* The rotation and the gray fallback are the whole algorithm; the rest is
-       hex/HSL plumbing that would be caught by any of the value tests. */
-    const rot = /h:\s*(?:hsl|o)\.h\s*-\s*(\d+)/.exec(src);
+    /* The default turn and the gray fallback are the whole algorithm; the
+       rest is hex/HSL plumbing that would be caught by any of the value tests. */
+    const rot = /\?\s*turn\s*:\s*-(\d+)/.exec(src);
     const gray = /s\s*<\s*(0?\.\d+)/.exec(src);
     const lift = /Math\.min\((0?\.\d+),\s*(?:hsl|o)\.l\s*\+\s*(0?\.\d+)\)/.exec(src);
     return { name, rot: rot && rot[1], gray: gray && gray[1], lift: lift && lift[2] };
   });
 
   for (const b of bodies) {
-    assert(b.rot, `${b.name}: could not find the hue rotation — has it been renamed?`);
+    assert(b.rot, `${b.name}: could not find the default turn — has it been renamed?`);
   }
   const first = bodies[0];
   for (const b of bodies.slice(1)) {
     eq([b.rot, b.gray, b.lift], [first.rot, first.gray, first.lift],
        `${b.name} has drifted from ${first.name}`);
   }
+  const widget = read("../workers/src/embed-widget.js");
+  assert(widget.includes("${COLOUR_JS}") && !/function companion\(/.test(widget),
+    "embed-widget.js carries its own copy again instead of COLOUR_JS");
 });
 
 check("no dictionary key is defined twice", () => {

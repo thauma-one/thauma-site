@@ -72,7 +72,10 @@ export function hslToHex({ h, s, l }) {
  * The companion color: what "completed" is drawn in when the accent means
  * "in progress".
  *
- * -33°, the same rotation that separates CR's cyan from its green.
+ * -33° by default, the same rotation that separates CR's cyan from its green.
+ * `turn` is how far round the wheel it sits instead — the degrees a ministry
+ * picks on Sharing (0040): -33, 120 or 180. NULL means -33, which is what
+ * every ministry had before there was a choice.
  *
  * A GRAY ACCENT IS THE ONE CASE THAT HAS TO BE HANDLED, and it is not
  * theoretical — a partner choosing black, white or a neutral is entirely
@@ -80,7 +83,7 @@ export function hslToHex({ h, s, l }) {
  * color, so the pair would silently collapse back into one. There, the second
  * color is separated by LIGHTNESS instead, which is the only axis a gray has.
  */
-export function companion(hex) {
+export function companion(hex, turn) {
   const hsl = hexToHsl(hex);
   if (!hsl) return hex;
 
@@ -90,12 +93,85 @@ export function companion(hex) {
   }
 
   return hslToHex({
-    h: hsl.h - 33,
+    h: hsl.h + (Number.isFinite(turn) ? turn : -33),
     /* Nudged up a little, because the eye reads the completed color as the
        "arrived" one and a flatter version of the accent reads as faded. */
     s: Math.min(1, hsl.s * 1.05),
     l: Math.min(0.72, hsl.l * 1.04),
   });
+}
+
+/* The degrees a second color may sit from the first (0040). */
+export const TURNS = [-33, 120, 180];
+const HEX = /^#[0-9a-fA-F]{6}$/;
+const MODES = ["auto", "light", "dark"];
+
+/**
+ * THE COLORS ONE EMBED WEARS: its own if it has them, the ministry's if not,
+ * resolved to two hex values and a background. `row` carries the ministry's
+ * columns (embed_accent, embed_accent2, embed_turn, embed_theme); `look` is
+ * the embed's embed_looks row or null. A stored second color is the free
+ * choice; without one, the second sits `turn` degrees from the first.
+ */
+export function lookFor(row, look, fallback = "#6D4AFF") {
+  row = row || {};
+  const own = look && HEX.test(look.accent || "");
+  const accent = own ? look.accent : HEX.test(row.embed_accent || "") ? row.embed_accent : fallback;
+  const two = own ? look.accent2 : row.embed_accent2;
+  const turn = own ? look.turn : row.embed_turn;
+  const theme = look && MODES.includes(look.theme) ? look.theme : row.embed_theme;
+  return {
+    accent,
+    accent2: HEX.test(two || "") ? two : companion(accent, TURNS.includes(turn) ? turn : undefined),
+    mode: MODES.includes(theme) ? theme : "auto",
+  };
+}
+
+/** lookFor, for a form's row, which carries its own look as look_* columns
+    beside the ministry's (public_lists_for_signup, public_contact_form). */
+export function rowLook(row) {
+  row = row || {};
+  return lookFor(row, { accent: row.look_accent, accent2: row.look_accent2,
+                        turn: row.look_turn, theme: row.look_theme });
+}
+
+/* ---- READABILITY -----------------------------------------------------------
+   A ministry may pick any color at all, and some are unreadable as text on
+   some pages — a pale yellow on white, a navy on a dark page. The widgets
+   draw their colored TEXT (a percentage, an amount, a date) in a version
+   nudged just far enough in lightness to reach `min` contrast against the
+   page, and pick white or near-black for words ON the color (a button). The
+   fills, dots and bars keep the color exactly as chosen. */
+
+function channel(v) { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }
+/** WCAG relative luminance of a hex. */
+export function luminance(hex) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex).trim());
+  if (!m) return 0;
+  const n = parseInt(m[1], 16);
+  return 0.2126 * channel((n >> 16) & 255) + 0.7152 * channel((n >> 8) & 255) + 0.0722 * channel(n & 255);
+}
+/** WCAG contrast ratio between two hexes. */
+export function contrast(a, b) {
+  const x = luminance(a), y = luminance(b);
+  return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+}
+/** `hex`, lightened or darkened only as far as it takes to read on `bg`. */
+export function readable(hex, bg, min = 3) {
+  const o = hexToHsl(hex);
+  if (!o) return hex;
+  const up = luminance(bg) < 0.5;
+  let c = hslToHex(o), i = 0;
+  while (contrast(c, bg) < min && i < 100) {
+    o.l = Math.max(0, Math.min(1, o.l + (up ? 0.01 : -0.01)));
+    c = hslToHex(o);
+    i++;
+  }
+  return c;
+}
+/** White or near-black, whichever reads better on `hex`. */
+export function onColor(hex) {
+  return contrast("#ffffff", hex) >= contrast("#12121a", hex) ? "#ffffff" : "#12121a";
 }
 
 /** rgba() from a hex and an alpha — for glows, where a hex cannot carry one. */
@@ -120,10 +196,8 @@ export function alpha(hex, a) {
    TWO CONSTRAINTS while editing: no backticks and no dollar-brace, because
    this is inlined into template literals that build widget source.
 
-   embed-widget.js still carries its own transcription. It predates this and
-   is covered by its own comparison test, so it is left alone rather than
-   changed to prove a point about tidiness — but it is the next thing to fold
-   in here if either is touched again.
+   embed-widget.js carried its own transcription until the readability maths
+   arrived (0040); it inlines this one now, so there is one browser copy.
    =========================================================================== */
 export const COLOUR_JS = [
   "function hexToHsl(hex) {",
@@ -154,14 +228,41 @@ export const COLOUR_JS = [
   "  function to(v) { var q = Math.round((v + m) * 255).toString(16); return q.length < 2 ? '0' + q : q; }",
   "  return '#' + to(r) + to(g) + to(b);",
   "}",
-  "function companion(hex) {",
+  "function companion(hex, turn) {",
   "  var o = hexToHsl(hex);",
   "  if (!o) return hex;",
   "  if (o.s < 0.12) {",
   "    var l = o.l > 0.5 ? Math.max(0.28, o.l - 0.3) : Math.min(0.82, o.l + 0.3);",
   "    return hslToHex({ h: o.h, s: o.s, l: l });",
   "  }",
-  "  return hslToHex({ h: o.h - 33, s: Math.min(1, o.s * 1.05), l: Math.min(0.72, o.l * 1.04) });",
+  "  var t = typeof turn === 'number' && isFinite(turn) ? turn : -33;",
+  "  return hslToHex({ h: o.h + t, s: Math.min(1, o.s * 1.05), l: Math.min(0.72, o.l * 1.04) });",
+  "}",
+  "function channel(v) { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }",
+  "function luminance(hex) {",
+  "  var m = /^#?([0-9a-f]{6})$/i.exec(String(hex).trim());",
+  "  if (!m) return 0;",
+  "  var n = parseInt(m[1], 16);",
+  "  return 0.2126 * channel((n >> 16) & 255) + 0.7152 * channel((n >> 8) & 255) + 0.0722 * channel(n & 255);",
+  "}",
+  "function contrast(a, b) {",
+  "  var x = luminance(a), y = luminance(b);",
+  "  return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);",
+  "}",
+  "function readable(hex, bg, min) {",
+  "  if (min === undefined) min = 3;",
+  "  var o = hexToHsl(hex);",
+  "  if (!o) return hex;",
+  "  var up = luminance(bg) < 0.5, c = hslToHex(o), i = 0;",
+  "  while (contrast(c, bg) < min && i < 100) {",
+  "    o.l = Math.max(0, Math.min(1, o.l + (up ? 0.01 : -0.01)));",
+  "    c = hslToHex(o);",
+  "    i++;",
+  "  }",
+  "  return c;",
+  "}",
+  "function onColor(hex) {",
+  "  return contrast('#ffffff', hex) >= contrast('#12121a', hex) ? '#ffffff' : '#12121a';",
   "}",
   "function alpha(hex, a) {",
   "  var m = /^#?([0-9a-f]{6})$/i.exec(String(hex).trim());",

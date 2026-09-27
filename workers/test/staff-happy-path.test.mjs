@@ -319,6 +319,43 @@ await check("only an administrator changes what is shared", async () => {
   eq(res.status, 403, "status");
 });
 
+await check("the second color's turn is kept unless a save names it, and only -33, 120 or 180", async () => {
+  SETTINGS_ROW = { embed_turn: 120 };
+  let db = makeDb();
+  await staffSettings.fetch(patch("/api/staff-settings",
+    { embed: { accent: "#FF0066", theme: "dark" } }, BOSS), env(db));
+  eq(embedSaved(db).embed_turn, 120, "a save that did not mention the turn changed it");
+  db = makeDb();
+  await staffSettings.fetch(patch("/api/staff-settings",
+    { embed: { accent: "#FF0066", theme: "dark", turn: 180 } }, BOSS), env(db));
+  eq(embedSaved(db).embed_turn, 180, "the turn chosen");
+  const res = await staffSettings.fetch(patch("/api/staff-settings",
+    { embed: { accent: "#FF0066", theme: "dark", turn: 45 } }, BOSS), env(makeDb()));
+  eq(res.status, 400, "45 degrees");
+  SETTINGS_ROW = {};
+});
+
+await check("an embed's own look is written whole, and null puts it back on the ministry's", async () => {
+  const db = makeDb();
+  const res = await staffSettings.fetch(patch("/api/staff-settings", { embed: {
+    accent: "#FF0066", theme: "auto",
+    looks: { goal: { accent: "#e4572e", accent2: null, turn: 180, theme: "dark" },
+             signup: { accent: null, accent2: "#111111", turn: 120, theme: "light" },
+             contact: null } } }, BOSS), env(db));
+  eq(res.status, 200, "status");
+  const sets = db.calls.filter((c) => c.name === "embed_look_set").map(named);
+  eq(sets.map((v) => [v.kind, v.accent, v.accent2, v.turn, v.theme]),
+     [["goal", "#E4572E", null, 180, "dark"], ["signup", null, null, null, "light"]],
+     "a background alone carries no half a color");
+  eq(db.calls.filter((c) => c.name === "embed_look_clear").map((c) => named(c).kind), ["contact"], "cleared");
+  const bad = await staffSettings.fetch(patch("/api/staff-settings",
+    { embed: { accent: "#FF0066", theme: "auto", looks: { banner: null } } }, BOSS), env(makeDb()));
+  eq(bad.status, 400, "an embed that does not exist");
+  const badHex = await staffSettings.fetch(patch("/api/staff-settings",
+    { embed: { accent: "#FF0066", theme: "auto", looks: { goal: { accent: "red" } } } }, BOSS), env(makeDb()));
+  eq(badHex.status, 400, "a color that is not a hex code — it ends up in a stranger's stylesheet");
+});
+
 /* ---------------- API keys: the ministry's, part by part ---------------- */
 
 const postJson = (path, body, token = MIRA) => new Request("https://dev.thauma.one" + path, {

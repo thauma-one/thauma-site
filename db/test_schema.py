@@ -1476,6 +1476,45 @@ def t_form_words_belong_to_their_owner():
     assert len(_run(db, "form_words_for_owner", partner_id=None)) == 1, "clearing a ministry's touched Thauma's"
 
 
+def t_embed_looks_are_the_embeds_own():
+    """0040: an embed's own look is one row per kind, a turn is one of the
+    three, the signup form's row joins only its own kind, and clearing puts it
+    back on the ministry's."""
+    db = fresh()
+    db.execute("INSERT INTO partners (id,slug,display_name,status,created_at,updated_at) "
+               "VALUES ('p_1','p-one','P One','active',?,?)", (NOW, NOW))
+    assert db.execute("SELECT embed_turn FROM partners WHERE id='p_1'").fetchone()[0] is None, \
+        "an existing ministry's turn must stay NULL (-33), or its colors change"
+    try:
+        db.execute("UPDATE partners SET embed_turn = 45 WHERE id='p_1'")
+    except sqlite3.IntegrityError:
+        pass
+    else:
+        raise AssertionError("a turn of 45 degrees was stored")
+    _run(db, "embed_look_set", partner_id="p_1", kind="signup", accent="#E4572E", accent2=None,
+         turn=180, theme="dark", now=NOW)
+    _run(db, "embed_look_set", partner_id="p_1", kind="signup", accent="#22C55E", accent2=None,
+         turn=None, theme=None, now=NOW)
+    rows = _run(db, "embed_looks_for_partner", partner_id="p_1")
+    assert rows == [("signup", "#22C55E", None, None, None)], rows
+    try:
+        _run(db, "embed_look_set", partner_id="p_1", kind="banner", accent=None, accent2=None,
+             turn=None, theme="dark", now=NOW)
+    except sqlite3.IntegrityError:
+        pass
+    else:
+        raise AssertionError("a look for an embed that does not exist was stored")
+    _list(db, "l1", "p_1")
+    db.execute("UPDATE mailing_lists SET is_open = 1 WHERE id = 'l1'")
+    db.execute("UPDATE partners SET signup_form_open = 1 WHERE id = 'p_1'")
+    _run(db, "embed_look_set", partner_id="p_1", kind="contact", accent="#000000", accent2=None,
+         turn=None, theme=None, now=NOW)
+    got = _run(db, "public_lists_for_signup", partner_slug="p-one")
+    assert len(got) == 1, "the contact form's look duplicated the sign-up form's lists"
+    _run(db, "embed_look_clear", partner_id="p_1", kind="signup")
+    assert [r[0] for r in _run(db, "embed_looks_for_partner", partner_id="p_1")] == ["contact"]
+
+
 def t_milestone_parent_must_match_partner():
     """A sub-step cannot hang off another partner's milestone."""
     db = fresh()
@@ -2092,6 +2131,7 @@ if __name__ == "__main__":
         ("upcoming milestones publish no progress",     t_upcoming_milestones_publish_no_progress),
         ("the sign-up form's Live switch",              t_signup_form_live_switch_stops_every_copy),
         ("form words belong to their owner",            t_form_words_belong_to_their_owner),
+        ("an embed's own look is its own",              t_embed_looks_are_the_embeds_own),
         ("three roles, and only three",                 t_three_roles_and_only_three),
         ("a person can hold two roles",                 t_a_person_can_hold_two_roles),
         ("removing a user removes their roles",         t_removing_a_user_removes_their_roles),

@@ -42,7 +42,7 @@ import { createDb } from "./lib/db.js";
 import { json } from "./lib/store.js";
 import { sendMail, listConfirmEmail } from "./lib/mail.js";
 import { detectLang } from "./contact-form.js";
-import { COLOUR_JS } from "./embed-colour.js";
+import { COLOUR_JS, rowLook } from "./embed-colour.js";
 import { escapeHtml, palette, formStyles, LIGHT, DARK, BEHAVIOUR_JS, WORDS_JS } from "./lib/embed-form.js";
 import { t, wordsFor } from "./lib/mail-i18n.js";
 import { siteOrigin } from "./lib/origin.js";
@@ -222,9 +222,16 @@ ${WORDS_JS}
     if (!/^#[0-9a-fA-F]{6}$/.test(second)) second = companion(accent);
 
     var mode = node.getAttribute('data-theme') || ${JSON.stringify(mode)};
-    var scheme = mode === 'light' ? LIGHT
-               : mode === 'dark'  ? DARK
-               : LIGHT + '@media(prefers-color-scheme:dark){' + DARK + '}';
+    /* Text in the colors, nudged just far enough to read on the card in
+       each scheme (readable, embed-colour.js); the button's words are white
+       or near-black, whichever reads on the color. */
+    var tones = function (card) {
+      return ':host{--acc-t:' + readable(accent, card) + ';--acc2-t:' + readable(second, card) + '}';
+    };
+    var light = LIGHT + tones('#f7f8fb'), dark = DARK + tones('#1c1c25');
+    var scheme = mode === 'light' ? light
+               : mode === 'dark'  ? dark
+               : light + '@media(prefers-color-scheme:dark){' + dark + '}';
 
     /* SHADOW DOM, and here it earns its keep more than on any other widget:
        this is a form, and a host page's own rule for input elements would
@@ -232,7 +239,7 @@ ${WORDS_JS}
     var root = node.attachShadow ? node.attachShadow({ mode: 'open' }) : node;
     var style = document.createElement('style');
     style.textContent = STYLES.replace('SCHEME', scheme) +
-      ':host{--acc:' + accent + ';--acc2:' + second + ';' +
+      ':host{--acc:' + accent + ';--acc2:' + second + ';--on-acc:' + onColor(accent) + ';' +
       '--faint:' + alpha(accent, 0.22) + '}';
     root.appendChild(style);
 
@@ -360,10 +367,9 @@ export default {
 
     if (action === "form.js") {
       const origin = siteOrigin(env, request);
-      // The ministry's colors, carried on every row by the join.
-      const theme = { accent: lists[0].embed_accent,
-                      accent2: lists[0].embed_accent2,
-                      mode: lists[0].embed_theme };
+      /* The form's own colors if it has them, the ministry's if not — both
+         carried on every row by the join (0040). */
+      const theme = rowLook(lists[0]);
       const own = byLang(await db.query("public_form_words", { partner_slug: partnerSlug, form: "signup" }));
       return new Response(formScript(lists, partnerSlug, origin, theme, own), {
         headers: {

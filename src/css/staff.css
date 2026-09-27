@@ -2053,16 +2053,81 @@ html.console-menu-open{overflow:hidden}
 .sh-lbl{display:block;font-size:10px;letter-spacing:var(--ls-label);text-transform:uppercase;
   font-weight:var(--w-bold);color:var(--voice-tech);margin-bottom:12px}
 .sh-page{display:block}
-.sh-colors{display:flex;align-items:center;gap:14px 22px;flex-wrap:wrap;margin:0 0 18px;
-  padding:16px 20px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius)}
+.sh-colors{margin:0 0 18px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius)}
 .sh-colors[hidden]{display:none}
-.sh-colors .sh-lbl{margin:0}
-.sh-pair{font-size:var(--fs-sm);color:var(--dim)}
+.sh-colors-head{display:flex;align-items:center;gap:16px;width:100%;padding:14px 20px;text-align:left}
+.sh-colors-head .sh-lbl{margin:0}
+.sh-colors-head:focus-visible{outline:2px solid var(--voice-tech);outline-offset:-2px}
+.sh-pair{display:flex;align-items:center;gap:6px;font-size:var(--fs-sm);color:var(--dim)}
+.sh-sw{inline-size:22px;block-size:22px;border-radius:50%;border:2px solid rgba(255,255,255,.85);
+  box-shadow:0 0 0 1px rgba(0,0,0,.4)}
+.sh-sw + .sh-sw{margin-left:-10px}
+.sh-hexes{margin-left:6px;font-family:var(--font-mono);font-size:12px;letter-spacing:.02em}
+.sh-chev{margin-left:auto;inline-size:7px;block-size:7px;border-right:1.5px solid var(--dim);
+  border-bottom:1.5px solid var(--dim);transform:rotate(45deg);transition:transform .2s ease}
+.sh-colors.is-open .sh-chev{transform:rotate(-135deg)}
+.sh-colors > .sh-picker{padding:4px 20px 20px}
+
+/* ---- the wheel (mockup option C) ----
+   Wheel beside its controls at the top; stacked in an item's own Colors card,
+   which is a side column wide. */
+.sh-picker[hidden]{display:none}
+.sh-picker{display:grid;grid-template-columns:200px minmax(0,1fr);gap:22px 28px;align-items:start}
+.sh-picker.is-stacked{grid-template-columns:1fr;gap:16px;margin:14px 0 16px}
+.sh-picker.is-stacked .pk-wheel{inline-size:170px;margin-inline:auto}
+.pk-wheel{position:relative;inline-size:200px;aspect-ratio:1;touch-action:none;cursor:crosshair;user-select:none}
+.pk-wheel.is-off{cursor:default}
+.pk-ring{position:absolute;inset:0;border-radius:50%}
+.pk-hole{position:absolute;inset:18%;border-radius:50%;background:var(--panel);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:4px;font-family:var(--font-mono);font-size:11px;color:var(--text)}
+.pk-hole span + span{color:var(--dim)}
+.pk-dot{position:absolute;inline-size:26px;block-size:26px;margin:-13px 0 0 -13px;border-radius:50%;
+  border:3px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.45),0 2px 6px rgba(0,0,0,.35);pointer-events:none}
+.pk-dot2{inline-size:20px;block-size:20px;margin:-10px 0 0 -10px}
+.pk-dot2.is-fixed{border-style:dashed}
+.pk-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 32px;min-width:0}
+.pk-samples{grid-column:1 / -1}
+.sh-picker.is-stacked .pk-controls{grid-template-columns:1fr}
+.pk-group{display:flex;flex-direction:column;gap:10px}
+.pk-head{display:flex;align-items:center;justify-content:space-between;gap:12px;min-block-size:34px}
+.pk-head .sh-lbl{margin:0}
+.pk-head .emb-hex{inline-size:92px;background:var(--bg2,#0b1119);border:1px solid rgba(255,255,255,.14);
+  color:var(--text);padding:7px 10px;border-radius:var(--radius);font-size:12px}
+.pk-row{display:grid;grid-template-columns:minmax(0,80px) minmax(0,1fr) 42px;gap:10px;align-items:center;
+  font-size:var(--fs-sm);color:var(--dim)}
+/* EACH TRACK SHOWS WHERE IT GOES — the hues round, gray to full, black to
+   full — painted by staff-sharing.js from the color being set. */
+/* Scoped past the console's base rule for every input (.is-staff input). */
+.sh-picker .pk-rng{-webkit-appearance:none;appearance:none;inline-size:100%;block-size:12px;border-radius:6px;
+  background:var(--track,var(--line));border:0;padding:0;outline:0;margin:0;cursor:pointer;box-shadow:none}
+.pk-rng::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;inline-size:18px;block-size:18px;border-radius:50%;
+  background:var(--knob,#fff);border:3px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.5),0 1px 4px rgba(0,0,0,.4)}
+.pk-rng::-moz-range-thumb{inline-size:12px;block-size:12px;border-radius:50%;background:var(--knob,#fff);
+  border:3px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.5),0 1px 4px rgba(0,0,0,.4)}
+.pk-rng:focus-visible{outline:2px solid var(--voice-tech);outline-offset:3px}
+.pk-num{font-family:var(--font-mono);font-size:12px;color:var(--text);text-align:right}
+.pk-turns{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.pk-turn{padding:8px 4px;border:1px solid var(--line);border-radius:var(--radius);color:var(--dim);
+  font-size:var(--fs-sm);font-variant-numeric:tabular-nums}
+@media(hover:hover){ .pk-turn:hover:not(:disabled){color:var(--text)} }
+.pk-turn.is-on{border-color:var(--voice-tech);color:var(--text);background:rgba(47,216,255,.1)}
+.pk-turn:focus-visible{outline:2px solid var(--voice-tech);outline-offset:2px}
+.pk-turn:disabled,.pk-rng:disabled,.pk-head .emb-hex:disabled{opacity:.5;cursor:not-allowed}
+.pk-samples{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pk-sample{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px;border-radius:var(--radius);
+  border:1px solid var(--line);font-weight:700;font-size:15px}
+.pk-sample.is-light{background:#fff}
+.pk-sample.is-dark{background:#15151c}
+.pk-btn{padding:3px 10px;border-radius:6px;font-size:12px;font-weight:600}
+.pk-adj{flex-basis:100%;font-size:9px;letter-spacing:.12em;text-transform:uppercase;font-weight:600;color:#8a8a9a}
+.pk-adj[hidden]{display:none}
+.sh-look .ml-whose-opts{margin-bottom:12px}
+.sh-look .sh-pick{justify-content:space-between}
 .sh-pick{display:flex;align-items:center;gap:10px;font-size:var(--fs-sm);color:var(--dim)}
 .sh-pick select{background:var(--bg2,#0b1119);border:1px solid rgba(255,255,255,.14);color:var(--text);
   font-family:var(--font-body);font-size:var(--fs-sm);padding:8px 10px;border-radius:var(--radius)}
 .sh-pick[hidden]{display:none}
-.sh-colors input:disabled,.sh-colors select:disabled{opacity:.5;cursor:not-allowed}
+.sh-colors input:disabled,.sh-colors select:disabled,.sh-look select:disabled{opacity:.5;cursor:not-allowed}
 
 .sh-grid{display:grid;grid-template-columns:230px minmax(0,1fr) 300px;gap:18px;align-items:start}
 .sh-list{display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);
@@ -2126,6 +2191,9 @@ html.console-menu-open{overflow:hidden}
 }
 @media (max-width:760px){
   .sh-grid{grid-template-columns:1fr}
+  .sh-colors > .sh-picker,.sh-colors .pk-controls{grid-template-columns:1fr}
+  .sh-colors .pk-wheel{margin-inline:auto}
+  .sh-hexes{display:none}
   .sh-list{flex-direction:row;overflow-x:auto}
   .sh-item{flex-direction:column;align-items:flex-start;border-left:0;border-bottom:3px solid transparent;
     min-width:max-content}

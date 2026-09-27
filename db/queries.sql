@@ -619,9 +619,13 @@ SELECT :id, l.id, l.partner_id, :email, :name, 'pending', :token, :source, :lang
 SELECT l.id, l.partner_id, l.name, l.slug, l.description,
        l.from_name, l.from_email, l.reply_to,
        l.form_heading, l.form_blurb, l.form_button, l.form_thanks_url,
-       p.embed_accent, p.embed_accent2, p.embed_theme
+       p.embed_accent, p.embed_accent2, p.embed_theme, p.embed_turn,
+       k.accent AS look_accent, k.accent2 AS look_accent2,
+       k.turn AS look_turn, k.theme AS look_theme
   FROM mailing_lists l
   JOIN partners p ON p.slug = :partner_slug AND l.partner_id IS p.id
+  -- The form's own colors, where it has them (0040).
+  LEFT JOIN embed_looks k ON k.partner_id = p.id AND k.kind = 'signup'
  WHERE l.is_open = 1 AND l.archived_at IS NULL
    AND p.signup_form_open = 1     -- the form's own Live switch (0038)
  ORDER BY l.name COLLATE NOCASE;
@@ -1146,7 +1150,7 @@ UPDATE users SET preferred_lang = :lang WHERE email = :email AND status = 'activ
 -- everyone who can see the partner can see what it is.
 SELECT p.id, p.slug, p.display_name, p.status,
        COALESCE(p.default_lang, 'en') AS default_lang,
-       p.embed_enabled, p.embed_accent, p.embed_accent2, p.embed_theme,
+       p.embed_enabled, p.embed_accent, p.embed_accent2, p.embed_theme, p.embed_turn,
        p.embed_roadmap, p.embed_goal, p.embed_prayer, p.embed_videos,
        p.signup_form_open,
        p.timeline_start, p.timeline_end
@@ -1176,9 +1180,37 @@ UPDATE partners
        embed_videos  = :embed_videos,
        embed_accent  = :embed_accent,
        embed_accent2 = :embed_accent2,
+       embed_turn    = :embed_turn,
        embed_theme   = :embed_theme,
        updated_at    = :now
  WHERE id = :partner_id;
+
+
+-- name: embed_looks_for_partner
+-- The embeds that depart from the ministry's colors or background (0040).
+-- An embed with no row wears the ministry's.
+SELECT kind, accent, accent2, turn, theme
+  FROM embed_looks
+ WHERE partner_id = :partner_id
+ ORDER BY kind;
+
+
+-- name: embed_look_set
+-- One embed's own look, whole. accent NULL = the ministry's colors; theme
+-- NULL = the ministry's background. Hex values are validated in the Worker.
+INSERT INTO embed_looks (partner_id, kind, accent, accent2, turn, theme, updated_at)
+VALUES (:partner_id, :kind, :accent, :accent2, :turn, :theme, :now)
+ON CONFLICT (partner_id, kind) DO UPDATE SET
+  accent     = excluded.accent,
+  accent2    = excluded.accent2,
+  turn       = excluded.turn,
+  theme      = excluded.theme,
+  updated_at = excluded.updated_at;
+
+
+-- name: embed_look_clear
+-- Back to the ministry's colors and background entirely.
+DELETE FROM embed_looks WHERE partner_id = :partner_id AND kind = :kind;
 
 
 -- name: partner_set_default_lang
@@ -1419,7 +1451,7 @@ ORDER BY pl.sort_order, l.name;
 -- is_public is checked as well. A partner can be public without embedding,
 -- but embedding one who is NOT public would put them on somebody else's
 -- website while their own listing is still hidden.
-SELECT id, slug, display_name, embed_accent, embed_accent2, embed_theme,
+SELECT id, slug, display_name, embed_accent, embed_accent2, embed_theme, embed_turn,
        timeline_start, timeline_end,
        embed_roadmap, embed_goal, embed_prayer, embed_videos
 FROM partners
@@ -1988,9 +2020,13 @@ ON CONFLICT ((partner_id IS NULL)) WHERE partner_id IS NULL DO UPDATE SET
 -- `is_open` is the switch, so closing the form takes it off every page it is
 -- embedded on without anybody editing those pages.
 SELECT c.deliver_to, c.from_address, c.heading, c.blurb, c.button, c.thanks,
-       p.display_name, p.embed_accent, p.embed_accent2, p.embed_theme
+       p.display_name, p.embed_accent, p.embed_accent2, p.embed_theme, p.embed_turn,
+       k.accent AS look_accent, k.accent2 AS look_accent2,
+       k.turn AS look_turn, k.theme AS look_theme
 FROM contact_forms c
 JOIN partners p ON p.slug = :partner_slug AND c.partner_id IS p.id
+-- The form's own colors, where it has them (0040).
+LEFT JOIN embed_looks k ON k.partner_id = p.id AND k.kind = 'contact'
 WHERE c.is_open = 1;
 
 

@@ -129,11 +129,84 @@ await check("sharing one widget waits for Save, then sends only what is shared",
 });
 
 await check("picking a color never changes what is shared", async () => {
-  const { d, sent, type, save } = await boot();
-  type(d.getElementById("shAccentHex"), "#FF6600");
+  const { d, sent, click, type, save } = await boot();
+  click(d.getElementById("shColorsToggle"));
+  type(d.querySelector('#shMinistryPicker [data-hex="1"]'), "#FF6600");
   await save();
   eq(sent[0].body.embed.accent, "#FF6600", "the color");
   eq(sent[0].body.embed.shared, { roadmap: true, goal: false, prayer: false, videos: false }, "sharing kept");
+  eq(sent[0].body.embed.looks, {}, "no embed's own look was touched");
+});
+
+await check("the ministry's colors fold to two swatches until opened", async () => {
+  const { d, click } = await boot();
+  eq(d.getElementById("shMinistryPicker").hidden, true, "open on arrival");
+  assert(/#1AE4FF/.test(d.getElementById("shPair").textContent), d.getElementById("shPair").textContent);
+  click(d.getElementById("shColorsToggle"));
+  eq(d.getElementById("shMinistryPicker").hidden, false, "did not open");
+  eq(d.getElementById("shColorsToggle").getAttribute("aria-expanded"), "true", "aria-expanded");
+});
+
+await check("hue, saturation and brightness move the first color", async () => {
+  const { d, click, type } = await boot();
+  click(d.getElementById("shColorsToggle"));
+  const box = d.getElementById("shMinistryPicker");
+  eq(box.querySelector('[data-num="1v"]').textContent, "100%", "#1AE4FF is at full brightness");
+  type(box.querySelector('[data-ch="1v"]'), "50");
+  eq(box.querySelector('[data-num="1v"]').textContent, "50%", "brightness shown");
+  eq(box.querySelector('[data-hex="1"]').value, "#0D7280", "half as bright, same hue and saturation");
+  eq(d.getElementById("shBar").hidden, false, "a change waits for Save");
+});
+
+await check("the second color is a number of degrees round, or free", async () => {
+  const { d, sent, click, save } = await boot();
+  click(d.getElementById("shColorsToggle"));
+  const box = d.getElementById("shMinistryPicker");
+  const on = () => box.querySelector('[data-turn][aria-checked="true"]').dataset.turn;
+  eq(on(), "-33", "a ministry that never chose sits at -33, as before");
+  eq([...box.querySelectorAll("[data-turn]")].map((b) => b.textContent), ["\u221233°", "120°", "180°", "Free"], "the choices");
+  click(box.querySelector('[data-turn="180"]'));
+  eq(box.querySelectorAll('[data-ch^="2"]').length, 0, "a turned second color has no sliders of its own");
+  click(box.querySelector('[data-turn="free"]'));
+  eq(box.querySelectorAll('[data-ch^="2"]').length, 3, "Free gives the second its own three");
+  const second = box.querySelector('[data-hex="2"]').value;
+  await save();
+  eq([sent[0].body.embed.accent2, sent[0].body.embed.turn], [second, 180],
+    "Free keeps the color it was showing, and the turn is kept for later");
+});
+
+await check("an embed wears the ministry's colors, or its own", async () => {
+  const { d, sent, pick, click, type, save, item } = await boot();
+  await pick("goal");
+  eq(d.getElementById("shOwnPicker").hidden, true, "its own picker shows before it has its own");
+  click(d.querySelector('#shLookSeg [data-look="own"]'));
+  eq(d.getElementById("shOwnPicker").hidden, false, "Its own opens the wheel");
+  eq(d.querySelector('#shOwnPicker [data-hex="1"]').value, "#1AE4FF", "starts from the ministry's");
+  type(d.querySelector('#shOwnPicker [data-hex="1"]'), "#E4572E");
+  assert(item("goal").classList.contains("is-dirty"), "the row should be marked");
+  await settle(250);
+  assert(/"accent":"#E4572E"/.test(d.getElementById("shFrame").getAttribute("srcdoc") || ""),
+    "the preview does not wear the embed's own color");
+  await save();
+  eq(sent[0].body.embed.accent, "#1AE4FF", "the ministry's color moved");
+  eq(sent[0].body.embed.looks, { goal: { accent: "#E4572E", accent2: null, turn: null, theme: null } }, "its own");
+});
+
+await check("each embed has its own background, and going back to the ministry's clears it", async () => {
+  const { w, d, sent, pick, click, save } = await boot();
+  await pick("contact");
+  const sel = d.getElementById("shTheme");
+  eq(sel.value, "auto", "the ministry's background");
+  sel.value = "dark";
+  sel.dispatchEvent(new w.Event("change", { bubbles: true }));
+  eq(d.getElementById("shBar").hidden, false, "a background waits for Save");
+  sel.value = "auto";
+  sel.dispatchEvent(new w.Event("change", { bubbles: true }));
+  eq(d.getElementById("shBar").hidden, true, "back on the ministry's is no change at all");
+  sel.value = "dark";
+  sel.dispatchEvent(new w.Event("change", { bubbles: true }));
+  await save();
+  eq(sent[0].body.embed.looks, { contact: { accent: null, accent2: null, turn: null, theme: "dark" } }, "its own background");
 });
 
 await check("only an administrator switches a widget or its colors", async () => {
@@ -143,7 +216,10 @@ await check("only an administrator switches a widget or its colors", async () =>
   eq(d.getElementById("shAdminOnly").hidden, false, "and say who changes it");
   click(d.getElementById("shLive"));
   eq(d.getElementById("shBar").hidden, true, "a refused click still made a change");
-  eq(d.getElementById("shAccentHex").disabled, true, "the colors too");
+  click(d.querySelector('#shLookSeg [data-look="own"]'));
+  eq(d.getElementById("shBar").hidden, true, "a refused Its own still made a change");
+  click(d.getElementById("shColorsToggle"));
+  eq(d.querySelector('#shMinistryPicker [data-hex="1"]').disabled, true, "the colors too");
 });
 
 await check("the sign-up form: a list saved whole, the form's words saved as the form's", async () => {

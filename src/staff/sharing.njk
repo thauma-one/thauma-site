@@ -11,8 +11,9 @@ staffHeading: What appears on <b>other websites</b>
    progress, prayer, videos, the sign-up form and the contact form. They used
    to live on two pages in three layouts, with the colors set in two places.
    Now one page: the six on the left, the real preview in the middle, and on
-   the right what decides whether it is live and the code to paste. Colors
-   once, at the top, because every one of the six wears them.
+   the right what decides whether it is live, what it wears and the code to
+   paste. The ministry's colors once, at the top; any of the six may wear its
+   own instead.
 
    ORGANIZED AS WAYS TO SHARE, so a data feed or notifications later is a new
    row on the left, not a new page.
@@ -25,28 +26,20 @@ staffHeading: What appears on <b>other websites</b>
 
 <div class="sh-page">
 
-{#- ONE PAIR OF COLORS FOR ALL SIX. The second is matched to the first unless
-   somebody picks it; picking it is the whole control. Administrator-only,
-   like sharing itself: both change what the public sees. -#}
+{#- THE MINISTRY'S COLORS, which every embed wears unless it has its own
+   (Chase, 2026-09-27: mockup option C, two points on one wheel). A first
+   color by hue, saturation and brightness; a second that sits a number of
+   degrees round the wheel from it, or is picked freely. Folded to its two
+   swatches until opened. Administrator-only, like sharing itself: both change
+   what the public sees. The picker is drawn by staff-sharing.js, because an
+   embed's own colors use the same one. -#}
 <div class="sh-colors" id="shColors">
-  <span class="sh-lbl" data-i18n="sh.colors">Colors · all six</span>
-  <span class="emb-colour">
-    <input type="color" id="shAccent" aria-label="Accent color">
-    <input type="text" id="shAccentHex" class="emb-hex" maxlength="7" spellcheck="false" aria-label="Accent color hex">
-  </span>
-  <span class="emb-colour">
-    <input type="color" id="shAccent2" aria-label="Second color">
-    <span class="sh-pair" id="shPairNote"></span>
-    <button type="button" class="link-btn" id="shPairAuto" data-i18n="sh.matchAgain" hidden>Match automatically</button>
-  </span>
-  <span class="c-gap"></span>
-  <label class="sh-pick"><span data-i18n="emb.theme">Background</span>
-    <select id="shTheme">
-      <option value="auto" data-i18n="emb.auto">Match their page</option>
-      <option value="light" data-i18n="emb.light">Always light</option>
-      <option value="dark" data-i18n="emb.dark">Always dark</option>
-    </select>
-  </label>
+  <button type="button" class="sh-colors-head" id="shColorsToggle" aria-expanded="false" aria-controls="shMinistryPicker">
+    <span class="sh-lbl" data-i18n="sh.colors">Ministry colors</span>
+    <span class="sh-pair" id="shPair"></span>
+    <span class="sh-chev" aria-hidden="true"></span>
+  </button>
+  <div class="sh-picker" id="shMinistryPicker" hidden></div>
 </div>
 
 <div class="sh-grid">
@@ -105,6 +98,25 @@ staffHeading: What appears on <b>other websites</b>
         <span class="switch-label"><span data-i18n="sh.live">Live</span></span>
       </button>
       <p class="rolegate" id="shAdminOnly" hidden data-i18n="emb.adminOnly">An administrator changes this.</p>
+    </div>
+
+    {#- WHAT THIS ONE WEARS: the ministry's colors, or its own on the same
+       wheel. The background is always its own — where the code is pasted
+       decides it. -#}
+    <div class="sh-card sh-look" id="shLookCard" hidden>
+      <span class="sh-lbl" data-i18n="sh.lookTitle">Colors</span>
+      <div class="ml-whose-opts sh-seg" id="shLookSeg">
+        <button type="button" class="ml-whose-opt" data-look="ministry" data-i18n="sh.colors">Ministry colors</button>
+        <button type="button" class="ml-whose-opt" data-look="own" data-i18n="sh.lookOwn">Its own</button>
+      </div>
+      <div class="sh-picker is-stacked" id="shOwnPicker" hidden></div>
+      <label class="sh-pick"><span data-i18n="emb.theme">Background</span>
+        <select id="shTheme">
+          <option value="auto" data-i18n="emb.auto">Match their page</option>
+          <option value="light" data-i18n="emb.light">Always light</option>
+          <option value="dark" data-i18n="emb.dark">Always dark</option>
+        </select>
+      </label>
     </div>
 
     <div class="sh-card" id="shListsCard" hidden>

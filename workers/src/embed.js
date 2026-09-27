@@ -40,13 +40,10 @@ import { json } from "./lib/store.js";
 import { WIDGET_JS } from "./embed-widget.js";
 import { wordsFor } from "./lib/mail-i18n.js";
 import { embedGuide } from "./embed-guide.js";
-import { companion } from "./embed-colour.js";
+import { lookFor } from "./embed-colour.js";
 
 /** A slug is lowercase letters, digits and hyphens. Nothing else reaches SQL. */
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,62}$/;
-
-/** Six-digit hex, with the hash. Validated here because SQLite cannot. */
-const HEX_RE = /^#[0-9a-fA-F]{6}$/;
 
 /** The house color, used when a partner has not chosen one. */
 const DEFAULT_ACCENT = "#6D4AFF";
@@ -155,25 +152,27 @@ export async function embedPayload(db, partner, { onlyShared = false } = {}) {
       if (!shared.includes(w)) parts.forEach((k) => { site[k] = []; });
     }
   }
-  const accent = HEX_RE.test(partner.embed_accent || "")
-    ? partner.embed_accent : DEFAULT_ACCENT;
+  /* Each widget's own colors or background, where it departs from the
+     ministry's (0040). */
+  const own = {};
+  for (const r of await db.query("embed_looks_for_partner", { partner_id: partner.id })) own[r.kind] = r;
+  const looks = {};
+  Object.keys(WIDGET_PARTS).forEach((w) => { looks[w] = lookFor(partner, own[w] || null, DEFAULT_ACCENT); });
   return {
     version: 1,
     partner: { slug: partner.slug, display_name: partner.display_name },
     /* The partner's stored appearance, so a page embedded years ago picks up
        a rebrand without being edited. The snippet can still override it. */
-    theme: {
-      accent: accent,
-      /* THE SECOND COLOR, resolved here rather than in the browser. NULL in
-         the database means "derive it", so a partner who has never chosen a
-         pair still gets one — and a partner who has chosen gets theirs. Doing
-         it server-side means every consumer of this payload, including
-         somebody building their own design from the JSON, sees the same two
-         colors the widget draws. */
-      accent2: HEX_RE.test(partner.embed_accent2 || "")
-        ? partner.embed_accent2 : companion(accent),
-      mode: ["auto", "light", "dark"].includes(partner.embed_theme) ? partner.embed_theme : "auto",
-    },
+    /* THE SECOND COLOR, resolved here rather than in the browser. NULL in
+       the database means "derive it" — `embed_turn` degrees round the wheel,
+       -33 unless chosen — so a partner who has never chosen a pair still
+       gets one, and a partner who has chosen gets theirs. Doing it
+       server-side means every consumer of this payload, including somebody
+       building their own design from the JSON, sees the same two colors the
+       widget draws. */
+    theme: lookFor(partner, null, DEFAULT_ACCENT),
+    /* What each widget wears — the ministry's colors, or its own (0040). */
+    looks,
     /* The arc the roadmap is drawn against. Null when unset, which the widget
        reads as "span the milestones themselves". */
     timeline: {

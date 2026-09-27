@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "ac1c414ec050117c";
+export const SOURCE_DIGEST = "1a3a23294e3648e5";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -273,6 +273,19 @@ ON CONFLICT(id) DO UPDATE SET
   updated_at = :now
 WHERE directory_contacts.user_id = :user_id
   AND directory_contacts.partner_id = :partner_id;`,
+  embed_look_clear: `DELETE FROM embed_looks WHERE partner_id = :partner_id AND kind = :kind;`,
+  embed_look_set: `INSERT INTO embed_looks (partner_id, kind, accent, accent2, turn, theme, updated_at)
+VALUES (:partner_id, :kind, :accent, :accent2, :turn, :theme, :now)
+ON CONFLICT (partner_id, kind) DO UPDATE SET
+  accent     = excluded.accent,
+  accent2    = excluded.accent2,
+  turn       = excluded.turn,
+  theme      = excluded.theme,
+  updated_at = excluded.updated_at;`,
+  embed_looks_for_partner: `SELECT kind, accent, accent2, turn, theme
+  FROM embed_looks
+ WHERE partner_id = :partner_id
+ ORDER BY kind;`,
   form_word_insert: `INSERT INTO form_words (partner_id, form, lang, heading, blurb, button, thanks, updated_at)
 VALUES (:partner_id, :form, :lang, :heading, :blurb, :button, :thanks, :now);`,
   form_words_clear: `DELETE FROM form_words WHERE partner_id IS :partner_id AND form = :form;`,
@@ -533,6 +546,7 @@ ORDER BY sort_order, l.name;`,
        embed_videos  = :embed_videos,
        embed_accent  = :embed_accent,
        embed_accent2 = :embed_accent2,
+       embed_turn    = :embed_turn,
        embed_theme   = :embed_theme,
        updated_at    = :now
  WHERE id = :partner_id;`,
@@ -544,7 +558,7 @@ ORDER BY sort_order, l.name;`,
  WHERE id = :partner_id;`,
   partner_settings: `SELECT p.id, p.slug, p.display_name, p.status,
        COALESCE(p.default_lang, 'en') AS default_lang,
-       p.embed_enabled, p.embed_accent, p.embed_accent2, p.embed_theme,
+       p.embed_enabled, p.embed_accent, p.embed_accent2, p.embed_theme, p.embed_turn,
        p.embed_roadmap, p.embed_goal, p.embed_prayer, p.embed_videos,
        p.signup_form_open,
        p.timeline_start, p.timeline_end
@@ -608,9 +622,12 @@ JOIN partners p ON p.slug = :partner_slug AND l.partner_id IS p.id
 WHERE l.slug = :list_slug AND l.archive_public = 1 AND l.archived_at IS NULL
   AND m.status = 'sent' AND m.slug = :slug;`,
   public_contact_form: `SELECT c.deliver_to, c.from_address, c.heading, c.blurb, c.button, c.thanks,
-       p.display_name, p.embed_accent, p.embed_accent2, p.embed_theme
+       p.display_name, p.embed_accent, p.embed_accent2, p.embed_theme, p.embed_turn,
+       k.accent AS look_accent, k.accent2 AS look_accent2,
+       k.turn AS look_turn, k.theme AS look_theme
 FROM contact_forms c
 JOIN partners p ON p.slug = :partner_slug AND c.partner_id IS p.id
+LEFT JOIN embed_looks k ON k.partner_id = p.id AND k.kind = 'contact'
 WHERE c.is_open = 1;`,
   public_contact_form_org: `SELECT deliver_to, from_address, heading, blurb, button, thanks
 FROM contact_forms
@@ -647,9 +664,12 @@ ORDER BY pl.sort_order, l.name;`,
   public_lists_for_signup: `SELECT l.id, l.partner_id, l.name, l.slug, l.description,
        l.from_name, l.from_email, l.reply_to,
        l.form_heading, l.form_blurb, l.form_button, l.form_thanks_url,
-       p.embed_accent, p.embed_accent2, p.embed_theme
+       p.embed_accent, p.embed_accent2, p.embed_theme, p.embed_turn,
+       k.accent AS look_accent, k.accent2 AS look_accent2,
+       k.turn AS look_turn, k.theme AS look_theme
   FROM mailing_lists l
   JOIN partners p ON p.slug = :partner_slug AND l.partner_id IS p.id
+  LEFT JOIN embed_looks k ON k.partner_id = p.id AND k.kind = 'signup'
  WHERE l.is_open = 1 AND l.archived_at IS NULL
    AND p.signup_form_open = 1     -- the form's own Live switch (0038)
  ORDER BY l.name COLLATE NOCASE;`,
@@ -681,7 +701,7 @@ FROM milestones
 WHERE partner_id = :partner_id
   AND is_public = 1
 ORDER BY sort_order ASC, (actual_date IS NULL), actual_date ASC;`,
-  public_partner_for_embed: `SELECT id, slug, display_name, embed_accent, embed_accent2, embed_theme,
+  public_partner_for_embed: `SELECT id, slug, display_name, embed_accent, embed_accent2, embed_theme, embed_turn,
        timeline_start, timeline_end,
        embed_roadmap, embed_goal, embed_prayer, embed_videos
 FROM partners

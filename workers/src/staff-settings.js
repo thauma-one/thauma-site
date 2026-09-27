@@ -27,9 +27,22 @@ import { createDb } from "./lib/db.js";
 import { requireAccess } from "./lib/access.js";
 import { resolveActor, auditActingWrite, withActing } from "./lib/actas.js";
 import { hashKey, partsOf, scopesFor } from "./lib/apikey.js";
+import { TURNS } from "./embed-colour.js";
 
 /* A key as the screen shows it: what it may read, never its hash. */
 const keyRows = (keys) => keys.map((k) => ({ ...k, revoked: !!k.revoked_at, parts: partsOf(k.scopes) }));
+
+/* The six things on Sharing, each of which may wear its own look (0040). */
+const LOOK_KINDS = ["roadmap", "goal", "prayer", "videos", "signup", "contact"];
+/* embed_looks rows as { kind: {accent, accent2, turn, theme} }. */
+const lookRows = (rows) => {
+  const out = {};
+  (rows || []).forEach((r) => {
+    out[r.kind] = { accent: r.accent || null, accent2: r.accent2 || null,
+                    turn: r.turn != null ? r.turn : null, theme: r.theme || null };
+  });
+  return out;
+};
 import { json, readJson } from "./lib/store.js";
 
 /** Resolve the caller to a partner and a role, or a denial. */
@@ -120,10 +133,11 @@ export default {
 
     /* ---------------------------------------------------------------- GET */
     if (request.method === "GET") {
-      const [languages, settings, keys] = await Promise.all([
+      const [languages, settings, keys, looks] = await Promise.all([
         db.query("partner_languages_for_partner", { partner_id }),
         db.queryOne("partner_settings", { partner_id }),
         db.query("api_keys_for_partner", { partner_id }),
+        db.query("embed_looks_for_partner", { partner_id }),
       ]);
       return json(withActing({
         you: {
@@ -153,7 +167,11 @@ export default {
           /* NULL means "derive it from the first". The panel shows the derived
              value so the pair is never displayed half-chosen. */
           accent2: (settings && settings.embed_accent2) || null,
+          /* Degrees round the wheel to the second color; NULL is -33 (0040). */
+          turn: settings && settings.embed_turn != null ? settings.embed_turn : null,
           theme: (settings && settings.embed_theme) || "auto",
+          /* The embeds that depart from the above, by kind (0040). */
+          looks: lookRows(looks),
           /* Each widget on its own (0038). `enabled` is "any of them". */
           shared: {
             roadmap: !!(settings && settings.embed_roadmap),
@@ -318,6 +336,31 @@ export default {
         if (!["auto", "light", "dark"].includes(theme)) {
           return json({ error: "Theme must be auto, light or dark." }, 400);
         }
+        const turnOf = (v) => (v === null || v === undefined || v === "" ? { ok: true, value: null }
+          : TURNS.includes(Number(v)) ? { ok: true, value: Number(v) } : { ok: false });
+
+        /* AN EMBED'S OWN LOOK (0040): { kind: {accent, accent2, turn, theme} }
+           for each embed the save touches; null puts one back on the
+           ministry's colors and background. A kind not mentioned is left. */
+        const looks = [];
+        if (e.looks && typeof e.looks === "object") {
+          for (const [kind, v] of Object.entries(e.looks)) {
+            if (!LOOK_KINDS.includes(kind)) return json({ error: "Unknown embed: " + kind }, 400);
+            if (v === null) { looks.push({ kind, clear: true }); continue; }
+            const la = hex(v.accent), lb = hex(v.accent2), lt = turnOf(v.turn);
+            if (!la.ok || !lb.ok) return json({ error: "A color must be a six-digit hex code, like #6D4AFF." }, 400);
+            if (!lt.ok) return json({ error: "The second color sits -33, 120 or 180 degrees away, or is chosen." }, 400);
+            const lm = v.theme === null || v.theme === undefined ? null : String(v.theme);
+            if (lm !== null && !["auto", "light", "dark"].includes(lm)) {
+              return json({ error: "Theme must be auto, light or dark." }, 400);
+            }
+            /* A look with neither its own colors nor its own background is no
+               look at all. */
+            if (!la.value && !lm) { looks.push({ kind, clear: true }); continue; }
+            looks.push({ kind, accent: la.value, accent2: la.value ? lb.value : null,
+                         turn: la.value ? lt.value : null, theme: lm });
+          }
+        }
 
         /* EACH WIDGET ON ITS OWN (0038, the Sharing page). `shared` names
            the four. A save that does not mention them — a screen saving only
@@ -327,6 +370,13 @@ export default {
            public route's gate reads. */
         const WIDGETS = ["roadmap", "goal", "prayer", "videos"];
         const now_ = await db.queryOne("partner_settings", { partner_id });
+        /* A save that does not mention the turn keeps it. */
+        let turn = now_ && now_.embed_turn != null ? now_.embed_turn : null;
+        if ("turn" in e) {
+          const t = turnOf(e.turn);
+          if (!t.ok) return json({ error: "The second color sits -33, 120 or 180 degrees away, or is chosen." }, 400);
+          turn = t.value;
+        }
         const was = {};
         WIDGETS.forEach((w) => { was[w] = !!(now_ && now_["embed_" + w]); });
         const wasOn = !!(now_ && now_.embed_enabled);
@@ -344,16 +394,22 @@ export default {
 
         await db.query("partner_set_embed", {
           partner_id, embed_enabled: enabled, embed_accent: accent,
-          embed_accent2: accent2, embed_theme: theme, now,
+          embed_accent2: accent2, embed_turn: turn, embed_theme: theme, now,
           embed_roadmap: shared.roadmap ? 1 : 0, embed_goal: shared.goal ? 1 : 0,
           embed_prayer: shared.prayer ? 1 : 0, embed_videos: shared.videos ? 1 : 0,
         });
         /* Audited as a publication decision, with the state it moved TO —
            "who made this readable by the world, and when" is the first
            question anybody asks about an unauthenticated endpoint. */
+        for (const l of looks) {
+          if (l.clear) await db.query("embed_look_clear", { partner_id, kind: l.kind });
+          else await db.query("embed_look_set", { partner_id, kind: l.kind, accent: l.accent,
+                                                  accent2: l.accent2, turn: l.turn, theme: l.theme, now });
+        }
+        const lookNow = lookRows(await db.query("embed_looks_for_partner", { partner_id }));
         await audit(db, { user, partner, action: "update", entity: "partner.embed",
-                          detail: { enabled: !!enabled, shared, accent, accent2, theme } });
-        return json({ embed: { enabled: !!enabled, shared, accent, accent2, theme } });
+                          detail: { enabled: !!enabled, shared, accent, accent2, turn, theme, looks: lookNow } });
+        return json({ embed: { enabled: !!enabled, shared, accent, accent2, turn, theme, looks: lookNow } });
       }
 
       // --- revoke a key ---
