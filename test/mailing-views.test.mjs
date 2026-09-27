@@ -39,7 +39,8 @@ const js = readFileSync("src/js/staff-mailing.js", "utf8");
 await check("every view section declares what it is", () => {
   const dom = new JSDOM(page);
   const views = [...dom.window.document.querySelectorAll(".ml-view")];
-  assert(views.length >= 4, `only ${views.length} .ml-view sections found`);
+  /* A list, and Composer. The two forms moved to Sharing. */
+  assert(views.length >= 2, `only ${views.length} .ml-view sections found`);
   const missing = views.filter((v) => !v.getAttribute("data-view"));
   assert(missing.length === 0,
     `${missing.map((v) => v.id).join(", ")} carry no data-view, so onlyView() ` +
@@ -177,7 +178,7 @@ await check("reloading the organization's mailing comes back to the organization
      a ministry's editor when you left Thauma's is an invitation to change the
      wrong thing without noticing. */
   const { w, d, asked } = await bootMailing(
-    "https://dev.thauma.one/staff/mailing/?scope=organization#contact");
+    "https://dev.thauma.one/staff/mailing/?scope=organization#composer");
   assert(/scope=organization/.test(asked[0]),
     `the first request asked for the wrong scope: ${asked[0]}`);
   assert(/scope=organization/.test(w.location.href),
@@ -190,8 +191,8 @@ await check("reloading the organization's mailing comes back to the organization
 
 await check("and the view comes back with it", async () => {
   const { d } = await bootMailing(
-    "https://dev.thauma.one/staff/mailing/?scope=organization#contact");
-  assert(!d.getElementById("mlContactView").hidden,
+    "https://dev.thauma.one/staff/mailing/?scope=organization#composer");
+  assert(!d.getElementById("mlComposerView").hidden,
     "the scope was restored but the view was not");
 });
 
@@ -202,103 +203,39 @@ await check("a partner's mailing is unaffected", async () => {
     `a partner's address grew a scope it does not need: ${w.location.href}`);
 });
 
-/* ------------------------------------ clicking a field must not redraw the view */
+/* ------------------------------ the forms moved to Sharing (board 9) */
 
-const CT_PAY = { lists: [], tags: [], senders: [{ address: "noreply@thauma.one" }],
-  topics: [{ id: "t1", label: "Prayer request", deliver_to: "" }],
-  contact: { partner_id: null, deliver_to: "OLD@thauma.one", heading: "Contact Thauma",
-             blurb: "", button: "Send", thanks: "", is_open: 1,
-             from_address: "noreply@thauma.one" },
-  may_send_as_organisation: true, partners: [],
-  you: { email: "me@thauma.one", name: "Me", roles: ["admin", "staff"] },
-  partner: { id: "p_1", display_name: "Chase Roush", slug: "chase-roush" } };
-
-async function bootContact() {
-  const posts = [];
-  const dom = new JSDOM(readFileSync(`${build}/staff/mailing/index.html`, "utf8"), {
-    runScripts: "dangerously", pretendToBeVisual: true,
-    url: "https://dev.thauma.one/staff/mailing/?scope=organization#contact",
-    beforeParse(w) {
-      Object.defineProperty(w, "sessionStorage", { value: {
-        getItem: () => JSON.stringify({ roles: ["admin", "staff"] }), setItem: () => {} } });
-      w.fetch = async (u, o) => {
-        if (o && o.method === "POST") posts.push(JSON.parse(o.body));
-        return { ok: true, status: 200, json: async () => CT_PAY };
-      };
-      w.scrollTo = () => {};
-    } });
-  const w = dom.window;
-  w.eval(readFileSync("src/js/staff-i18n.js", "utf8"));
-  w.eval(readFileSync("src/js/staff-mailing.js", "utf8"));
-  await new Promise((r) => setTimeout(r, 240));
-  return { w, d: w.document, posts };
-}
-
-await check("clicking inside a view does not re-render it", async () => {
-  /* THE BUG, AND IT WAS MINE. The tab handler read closest('[data-view]')
-     anywhere on the page. Fine while only the tab buttons carried it — then
-     the view SECTIONS were given data-view so one view could be shown and the
-     rest hidden by what the markup says they are. After that every field had
-     an ancestor carrying data-view, so clicking any box called show() and
-     redrew the form underneath the caret. */
-  const { w, d } = await bootContact();
-  const label = d.querySelector(".ct-topic-label");
-  assert(label, "no topic row rendered");
-  label.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
-  await new Promise((r) => setTimeout(r, 60));
-  assert(d.querySelector(".ct-topic-label") === label,
-    "the input was replaced by a click on itself — anything typed into it is " +
-    "gone and the caret with it");
-});
-
-await check("an edited field survives being clicked away from", async () => {
-  const { w, d } = await bootContact();
-  const to = d.getElementById("ctTo");
-  to.value = "NEW@thauma.one";
-  to.dispatchEvent(new w.Event("input", { bubbles: true }));
-  /* Click anything else inside the view — a label, the heading box, whatever. */
-  d.getElementById("ctHeading").dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
-  await new Promise((r) => setTimeout(r, 80));
-  assert(d.getElementById("ctTo").value === "NEW@thauma.one",
-    `the edit was reverted to "${d.getElementById("ctTo").value}" by clicking elsewhere`);
-});
-
-await check("Save posts what is on screen, not what was there before", async () => {
-  /* The worst of the three symptoms: pressing Save is itself a click inside
-     the view, so the form was redrawn from the saved values BEFORE the submit
-     handler read them. An edited address was saved back exactly as it had
-     been, and the toast said it saved — which it truthfully had. */
-  const { w, d, posts } = await bootContact();
-  const to = d.getElementById("ctTo");
-  to.value = "NEW@thauma.one";
-  to.dispatchEvent(new w.Event("input", { bubbles: true }));
-
-  /* The CLICK, and only the click. Pressing the button is what a person does,
-     and jsdom submits the form from it — dispatching a submit as well ran the
-     handler twice and the test failed for its own reason. The click is also
-     the whole point: it is the event that used to redraw the form. */
-  const form = d.getElementById("mlContactForm");
-  const save = form.querySelector('[type="submit"]');
-  assert(save, "the contact form has no submit button");
-  save.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
-  await new Promise((r) => setTimeout(r, 200));
-
-  const sent = posts.filter((p) => p.action === "contact-form");
-  assert(sent.length === 1, `${sent.length} contact saves posted`);
-  assert(sent[0].deliver_to === "NEW@thauma.one",
-    `Save posted "${sent[0].deliver_to}" — the field was redrawn from the ` +
-    `saved value before the handler read it`);
+await check("an old link to the contact or sign-up form lands on Sharing", async () => {
+  /* The part after # never reaches the server, so the Worker cannot forward
+     it; the Mailing page does, keeping whose form it was. */
+  for (const [hash, item] of [["contact", "contact"], ["embed", "signup"]]) {
+    let went = null;
+    const dom = new JSDOM(readFileSync(`${build}/staff/mailing/index.html`, "utf8"), {
+      runScripts: "dangerously", pretendToBeVisual: true,
+      url: "https://dev.thauma.one/staff/mailing/?scope=organization#" + hash,
+      beforeParse(w) {
+        w.fetch = async () => ({ ok: true, status: 200, json: async () => SCOPE_PAY });
+        w.scrollTo = () => {};
+      } });
+    const w = dom.window;
+    /* jsdom will not let location.replace be watched, so the script is run
+       with a stand-in `location` that records where it was sent. */
+    w.__loc = { hash: w.location.hash, search: w.location.search, pathname: w.location.pathname,
+                href: w.location.href, replace: (u) => { went = u; } };
+    w.eval(readFileSync("src/js/staff-i18n.js", "utf8"));
+    w.eval("(function (location) {" + readFileSync("src/js/staff-mailing.js", "utf8") + "\n})(window.__loc);");
+    assert(went === "/staff/sharing/?scope=organization#" + item, `#${hash} went to ${went}`);
+  }
 });
 
 await check("the tabs themselves still switch views", async () => {
   /* Scoping the selector must not break what it was for. */
-  const { w, d } = await bootContact();
-  const tab = d.querySelector('.ml-tabs [data-view="embed"]');
-  assert(tab, "no embed tab");
+  const { w, d } = await bootMailing("https://dev.thauma.one/staff/mailing/");
+  const tab = d.querySelector('.ml-tabs [data-view="composer"]');
+  assert(tab, "no composer tab");
   tab.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
   await new Promise((r) => setTimeout(r, 80));
-  assert(!d.getElementById("mlEmbedView").hidden, "the tab no longer switches view");
-  assert(d.getElementById("mlContactView").hidden, "the old view stayed on screen");
+  assert(!d.getElementById("mlComposerView").hidden, "the tab no longer switches view");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

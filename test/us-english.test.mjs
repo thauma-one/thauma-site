@@ -137,7 +137,7 @@ await check("the identifiers that must not change are still there", async () => 
   /* The other half. A sweep that "fixed" '~organisation' would pass the check
      above and break five UNIQUE indexes, so the protection is asserted too. */
   const all = FILES.map((p) => { try { return readFileSync(p, "utf8"); } catch { return ""; } }).join("\n");
-  for (const tok of ["catalogue_order", "COLOUR_JS", "emb-colour", "colourInput",
+  for (const tok of ["catalogue_order", "COLOUR_JS", "emb-colour",
                      "may_send_as_organisation"]) {
     assert(all.includes(tok),
       `${tok} has been renamed — it is a machine's word, not a reader's, and ` +

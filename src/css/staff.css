@@ -2171,3 +2171,87 @@ html:has(.dlg-back:not([hidden])),
 html.review-open,
 html.console-menu-open{overflow:hidden}
 .dlg-back,.dlg,.web-review,.console-menu{overscroll-behavior:contain}
+
+/* ============================================================
+   SHARING (mockup board 9) — the six things on other websites
+   ============================================================
+   Colors across the top; then the six, the preview and the controls in
+   three columns, which fold into one on a narrow screen. */
+.sh-lbl{display:block;font-size:10px;letter-spacing:var(--ls-label);text-transform:uppercase;
+  font-weight:var(--w-bold);color:var(--voice-tech);margin-bottom:12px}
+.sh-page{display:block}
+.sh-colors{display:flex;align-items:center;gap:14px 22px;flex-wrap:wrap;margin:0 0 18px;
+  padding:16px 20px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius)}
+.sh-colors[hidden]{display:none}
+.sh-colors .sh-lbl{margin:0}
+.sh-pair{font-size:var(--fs-sm);color:var(--dim)}
+.sh-pick{display:flex;align-items:center;gap:10px;font-size:var(--fs-sm);color:var(--dim)}
+.sh-pick select{background:var(--bg2,#0b1119);border:1px solid rgba(255,255,255,.14);color:var(--text);
+  font-family:var(--font-body);font-size:var(--fs-sm);padding:8px 10px;border-radius:var(--radius)}
+.sh-pick[hidden]{display:none}
+.sh-colors input:disabled,.sh-colors select:disabled{opacity:.5;cursor:not-allowed}
+
+.sh-grid{display:grid;grid-template-columns:230px minmax(0,1fr) 300px;gap:18px;align-items:start}
+.sh-list{display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);
+  border-radius:var(--radius);overflow:hidden}
+.sh-item{display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left;
+  background:none;border:0;border-left:3px solid transparent;color:var(--text);cursor:pointer;
+  font-family:var(--font-body);font-size:var(--fs-sm);padding:14px 16px;transition:background var(--dur-3) var(--ease-main)}
+@media(hover:hover){ .sh-item:hover{background:var(--bg2,#0b1119)} }
+.sh-item.is-on{background:var(--bg2,#0b1119);border-left-color:var(--voice-tech)}
+.sh-item:focus-visible{outline:2px solid var(--voice-tech);outline-offset:-2px}
+.sh-item-state{font-size:9px;letter-spacing:.14em;text-transform:uppercase;font-weight:var(--w-bold);
+  color:var(--dim);white-space:nowrap}
+.sh-item-state.is-live{color:var(--voice-human)}
+/* A change not saved yet: the same dot the save bar wears. */
+.sh-item.is-dirty .sh-item-name::after{content:"";display:inline-block;width:6px;height:6px;
+  margin-left:7px;border-radius:50%;background:var(--warn,#F5B845);vertical-align:middle}
+
+.sh-mid{min-width:0}
+.sh-mid .emb-stagebar{align-items:center;gap:12px}
+#shStage{overflow:hidden}
+#shStage iframe{display:block;inline-size:100%;block-size:300px;border:0;background:transparent}
+.sh-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  padding:18px 20px;margin-bottom:14px}
+.sh-card[hidden]{display:none}
+.sh-words{margin-top:14px}
+.sh-word-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.sh-switches{display:flex;flex-direction:column;gap:12px}
+.sh-live .switch-label{font-size:var(--fs-md);color:var(--text)}
+.sh-live .rolegate{margin-top:12px}
+.sh-side .emb-code{white-space:pre-wrap;word-break:break-all;font-size:11px;margin-bottom:12px}
+.sh-side .ghost-btn{width:100%}
+.sh-side .fld{margin-bottom:14px}
+.sh-period{display:grid;grid-template-columns:1fr;gap:0}
+.sh-side .ml-whose{margin:0 0 14px}
+/* Reasons in a narrow column: what it says above where it goes. */
+.sh-side .ct-topics{margin:4px 0 0;padding-top:14px}
+.sh-side .ct-topic{grid-template-columns:minmax(0,1fr) auto auto;grid-template-rows:auto auto;
+  row-gap:6px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+.sh-side .ct-topic-to{grid-column:1;grid-row:2}
+.sh-side .ct-topic-move{grid-column:2;grid-row:1 / span 2}
+.sh-side .ct-topic .del{grid-column:3;grid-row:1 / span 2}
+.sh-side .ct-topics .ghost-btn{margin-top:10px}
+
+.sh-dev{margin-top:10px}
+.sh-dev summary{cursor:pointer;list-style:none}
+.sh-dev summary::-webkit-details-marker{display:none}
+.sh-dev summary .sh-lbl{margin:0;display:inline-block}
+.sh-dev summary::after{content:"";display:inline-block;width:6px;height:6px;margin-left:10px;
+  border-right:1.5px solid var(--dim);border-bottom:1.5px solid var(--dim);transform:rotate(45deg) translateY(-3px)}
+.sh-dev[open] summary::after{transform:rotate(-135deg)}
+.sh-dev-body{margin-top:16px;display:flex;flex-direction:column;gap:10px;align-items:flex-start}
+.sh-dev-body .emb-code{white-space:pre-wrap;word-break:break-all;align-self:stretch}
+.sh-dev[hidden]{display:none}
+
+@media (max-width:1100px){
+  .sh-grid{grid-template-columns:200px minmax(0,1fr)}
+  .sh-side{grid-column:1 / -1}
+}
+@media (max-width:760px){
+  .sh-grid{grid-template-columns:1fr}
+  .sh-list{flex-direction:row;overflow-x:auto}
+  .sh-item{flex-direction:column;align-items:flex-start;border-left:0;border-bottom:3px solid transparent;
+    min-width:max-content}
+  .sh-item.is-on{border-bottom-color:var(--voice-tech)}
+}

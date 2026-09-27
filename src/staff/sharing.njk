@@ -1,0 +1,154 @@
+---
+layout: layouts/staff.njk
+staffPage: sharing
+staffTitle: Sharing
+staffHeading: What appears on <b>other websites</b>
+---
+{#- SHARING (mockup board 9, "Everything that goes on other websites"; the nav
+   name is Chase's — "Other websites" read wrong).
+
+   Six things can appear on somebody else's website: the roadmap, goal
+   progress, prayer, videos, the sign-up form and the contact form. They used
+   to live on two pages in three layouts, with the colors set in two places.
+   Now one page: the six on the left, the real preview in the middle, and on
+   the right what decides whether it is live and the code to paste. Colors
+   once, at the top, because every one of the six wears them.
+
+   ORGANIZED AS WAYS TO SHARE, so a data feed or notifications later is a new
+   row on the left, not a new page.
+
+   THE PREVIEW ALSO STAYS WHERE THE WORDS ARE WRITTEN — Updates opens it
+   beside its list. What lives here is what is set once: sharing, colors, code.
+
+   ONE SAVE BAR, like the rest of the console: switching something to Live,
+   picking a color, rewording a form are all changes until Save. -#}
+
+<div class="sh-page">
+
+{#- ONE PAIR OF COLORS FOR ALL SIX. The second is matched to the first unless
+   somebody picks it; picking it is the whole control. Administrator-only,
+   like sharing itself: both change what the public sees. -#}
+<div class="sh-colors" id="shColors">
+  <span class="sh-lbl" data-i18n="sh.colors">Colors · all six</span>
+  <span class="emb-colour">
+    <input type="color" id="shAccent" aria-label="Accent color">
+    <input type="text" id="shAccentHex" class="emb-hex" maxlength="7" spellcheck="false" aria-label="Accent color hex">
+  </span>
+  <span class="emb-colour">
+    <input type="color" id="shAccent2" aria-label="Second color">
+    <span class="sh-pair" id="shPairNote"></span>
+    <button type="button" class="link-btn" id="shPairAuto" data-i18n="sh.matchAgain" hidden>Match automatically</button>
+  </span>
+  <span class="c-gap"></span>
+  <label class="sh-pick"><span data-i18n="emb.theme">Background</span>
+    <select id="shTheme">
+      <option value="auto" data-i18n="emb.auto">Match their page</option>
+      <option value="light" data-i18n="emb.light">Always light</option>
+      <option value="dark" data-i18n="emb.dark">Always dark</option>
+    </select>
+  </label>
+</div>
+
+<div class="sh-grid">
+  <nav class="sh-list" id="shList" aria-label="What is shared"></nav>
+
+  <div class="sh-mid">
+    <div class="emb-stagebar">
+      <div class="emb-devices" role="tablist" aria-label="Width">
+        <button type="button" class="emb-device is-on" role="tab" aria-selected="true"
+                data-width="wide" data-i18n="emb.desktop">Desktop</button>
+        <button type="button" class="emb-device" role="tab" aria-selected="false"
+                data-width="narrow" data-i18n="emb.mobile">Mobile</button>
+      </div>
+      <span class="emb-scale-note" id="shScaleNote"></span>
+      <span class="c-gap"></span>
+      <label class="sh-pick" id="shLangWrap"><span data-i18n="emb.lang">Language</span>
+        <select id="shLang"></select></label>
+    </div>
+    <div class="emb-stage" id="shStage">
+      <div class="emb-scale" id="shScale">
+        <iframe id="shFrame" title="Preview" sandbox="allow-scripts"></iframe>
+      </div>
+    </div>
+
+    {#- The words a form carries. The four widgets have none of their own —
+       their words are the ministry's updates, written on Updates. -#}
+    <div class="sh-card sh-words" id="shWords" hidden>
+      <span class="sh-lbl" data-i18n="sh.words">The words on it</span>
+      <div class="sh-word-fields" id="shWordFields"></div>
+    </div>
+  </div>
+
+  <aside class="sh-side">
+    {#- WHOSE FORMS: Thauma's own, or this ministry's. Only for accounts that can
+       reach Thauma's (the Mailing page's rule), and it only changes the two forms:
+       the four widgets are a ministry's data. -#}
+    <div class="ml-whose sh-card" id="shScope" hidden>
+      <span class="ml-whose-label" data-i18n="ml.scope">Whose lists</span>
+      <div class="ml-whose-opts">
+        <button type="button" class="ml-whose-opt is-on" data-scope="partner" id="shScopeMine"></button>
+        <button type="button" class="ml-whose-opt" data-scope="organization" data-i18n="ml.scopeOrg">Thauma</button>
+      </div>
+    </div>
+
+    <div class="sh-card sh-live" id="shLiveCard">
+      <button type="button" class="switch" id="shLive" role="switch" aria-checked="false">
+        <span class="switch-track"><span class="switch-state">Off</span><span class="switch-knob"></span></span>
+        <span class="switch-label"><span data-i18n="sh.live">Live</span></span>
+      </button>
+      <p class="rolegate" id="shAdminOnly" hidden data-i18n="emb.adminOnly">An administrator changes this.</p>
+    </div>
+
+    <div class="sh-card" id="shListsCard" hidden>
+      <span class="sh-lbl" data-i18n="sh.lists">Lists on this form</span>
+      <div class="sh-switches" id="shLists"></div>
+    </div>
+
+    <div class="sh-card" id="shContactCard" hidden>
+      <label class="fld"><span data-i18n="ml.ctTo">Send messages to</span>
+        <input type="email" id="shCtTo" maxlength="200" placeholder="you@example.org"></label>
+      <label class="fld"><span data-i18n="ml.ctFrom">Sent from</span>
+        <select id="shCtFrom"></select></label>
+      <div class="ct-topics">
+        <span class="sh-lbl" data-i18n="ml.ctTopics">What is this about</span>
+        <div id="shTopics"></div>
+        <button type="button" class="ghost-btn" id="shAddTopic" data-i18n="ml.ctAddTopic">Add a reason</button>
+      </div>
+    </div>
+
+    <div class="sh-card" id="shPeriodCard" hidden>
+      <span class="sh-lbl" data-i18n="emb.periodTitle">The period this covers</span>
+      <div class="sh-period">
+        <label class="fld"><span data-i18n="emb.periodStart">Starts</span><input type="date" id="shStart"></label>
+        <label class="fld"><span data-i18n="emb.periodEnd">Ends</span><input type="date" id="shEnd"></label>
+      </div>
+    </div>
+
+    <div class="sh-card">
+      <span class="sh-lbl" data-i18n="sh.code">Code to paste</span>
+      <pre class="emb-code" id="shCode"></pre>
+      <button type="button" class="ghost-btn" id="shCopy" data-i18n="common.copy">Copy</button>
+    </div>
+  </aside>
+</div>
+
+{#- FOR DEVELOPERS: the raw data behind the widgets and the guide to it, for
+   somebody building their own design. -#}
+<details class="sh-card sh-dev" id="shDev">
+  <summary><span class="sh-lbl" data-i18n="sh.dev">For developers</span></summary>
+  <div class="sh-dev-body">
+    <span class="sh-lbl" data-i18n="emb.apiTitle">The data behind it</span>
+    <pre class="emb-code" id="shApi"></pre>
+    <button type="button" class="ghost-btn" id="shCopyApi" data-i18n="common.copy">Copy</button>
+    <a class="emb-guide" id="shGuide" download><span data-i18n="emb.guide">Download the developer guide</span></a>
+  </div>
+</details>
+
+</div>
+
+<div class="ms-savebar" id="shBar" role="status" aria-live="polite" hidden>
+  <span class="ms-dirty-dot" aria-hidden="true"></span>
+  <span id="shCount"></span>
+  <button type="button" class="ghost-btn" id="shDiscard" data-i18n="ms.discard">Discard</button>
+  <button type="button" class="solid-btn" id="shSave" data-i18n="sh.save">Save changes</button>
+</div>

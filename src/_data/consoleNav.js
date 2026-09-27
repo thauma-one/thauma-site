@@ -38,6 +38,10 @@ const staff = [
     roles: ["staff", "partner", "communications"] },
   { slug: "mailing", url: "/staff/mailing/", label: "Mailing",
     roles: ["staff", "partner", "communications"] },
+  /* Everything that goes on other websites (mockup board 9): the four
+     widgets, the sign-up form, the contact form, their colors and code. */
+  { slug: "sharing", url: "/staff/sharing/", label: "Sharing",
+    roles: ["staff", "partner", "communications"] },
   /* Supporter names, giving history and stewardship notes. The narrowest
      thing in the console and the only one holding other people's private
      details, so communications does not get it by being able to write. */

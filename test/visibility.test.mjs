@@ -540,6 +540,7 @@ check("the color derivation is the SAME in all three copies", () => {
     ["embed-colour.js", read("../workers/src/embed-colour.js")],
     ["embed-widget.js", read("../workers/src/embed-widget.js")],
     ["staff-embed.js", read("../src/js/staff-embed.js")],
+    ["staff-sharing.js", read("../src/js/staff-sharing.js")],
   ].map(([name, src]) => {
     /* The rotation and the gray fallback are the whole algorithm; the rest is
        hex/HSL plumbing that would be caught by any of the value tests. */

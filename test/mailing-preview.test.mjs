@@ -38,7 +38,7 @@ const check = async (name, fn) => {
 const assert = (c, m) => { if (!c) throw new Error(m); };
 const eq = (a, b, m) => assert(a === b, `${m} — got ${JSON.stringify(a)}, want ${JSON.stringify(b)}`);
 
-console.log("mailing previews — do they fit\n");
+console.log("mailing — the subscriber screens\n");
 
 if (!existsSync(PAGE)) {
   console.log(`  SKIP  ${PAGE} is missing — run the build first.`);
@@ -112,68 +112,8 @@ function reportHeight(w, kind, h) {
 const w = await boot();
 const press = (el) => el.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
 
-press(w.document.querySelector('[data-view="contact"]'));
-await new Promise((r) => setTimeout(r, 200));
-
-await check("a tall form is scaled down so the whole thing is visible", () => {
-  const { frame, wrap, stage, note } = reportHeight(w, "ct", 760);
-  eq(stage.style.blockSize, "480px", "the box must not grow past what fits on screen");
-  eq(frame.style.blockSize, "760px",
-    "the FRAME stays full size — only the wrapper scales, or the widget would " +
-    "be drawing itself into a smaller container and answering a different question");
-  assert(/scale\(0\.63/.test(wrap.style.transform),
-    `expected roughly 63%: ${wrap.style.transform}`);
-  assert(/shown at 63%/.test(note.textContent),
-    `the scale must be stated, or smaller type reads as the type a visitor gets: ` +
-    JSON.stringify(note.textContent));
-});
-
-await check("the wrapper is widened by exactly what the scale takes back", () => {
-  /* Otherwise the scaled result lands narrower than its box and leaves a
-     gutter down the right-hand side. */
-  const { wrap } = reportHeight(w, "ct", 760);
-  const scale = Number(/scale\(([\d.]+)\)/.exec(wrap.style.transform)[1]);
-  const width = Number(/([\d.]+)%/.exec(wrap.style.inlineSize)[1]);
-  assert(Math.abs(width * scale - 100) < 0.5,
-    `${width}% at ${scale} lands at ${(width * scale).toFixed(1)}%, not 100%`);
-});
-
-await check("a short form is left alone at 1:1", () => {
-  // Shrinking something that already fits would make it needlessly harder to read.
-  const { wrap, stage, note } = reportHeight(w, "ct", 400);
-  eq(stage.style.blockSize, "400px", "the box should match the content");
-  eq(wrap.style.transform, "scale(1)", "no scaling needed");
-  eq(note.textContent, "", "and nothing to announce");
-});
-
-await check("a nonsense height cannot blow the box open", () => {
-  const { stage } = reportHeight(w, "ct", 99999);
-  assert(parseInt(stage.style.blockSize, 10) <= 480,
-    `the box grew to ${stage.style.blockSize}`);
-});
-
-await check("the sign-up preview fits the same way", () => {
-  /* Two screens, one behavior. A second copy of this logic is a second thing
-     to fix when the number changes. */
-  press(w.document.querySelector('[data-view="embed"]'));
-  const { frame, wrap, stage } = reportHeight(w, "pv", 900);
-  eq(stage.style.blockSize, "480px", "the sign-up box should cap too");
-  eq(frame.style.blockSize, "900px", "and its frame should stay full size");
-  assert(/scale\(0\.5/.test(wrap.style.transform),
-    `expected roughly 53%: ${wrap.style.transform}`);
-});
-
-await check("the stage clips what the scaled frame overhangs", () => {
-  /* The wrapper is deliberately wider than its box, so without overflow
-     hidden the console would gain a horizontal scrollbar. */
-  const css = readFileSync("src/css/staff.css", "utf8");
-  const rule = /\.ct-stage\{([^}]*)\}/.exec(css);
-  assert(rule, "no .ct-stage rule");
-  assert(/overflow:\s*hidden/.test(rule[1]), `the stage does not clip: ${rule[1]}`);
-  assert(/transform-origin:\s*top left/.test(css),
-    "the scale origin must be top left — the wrapper's extra width is added on " +
-    "the right, and a centered origin would offset it by half");
-});
+/* The form previews moved to Sharing with the forms themselves; their
+   fitting is tested in sharing-page.test.mjs. */
 
 /* ------------------- clicking a person is not a tab ------------------- */
 

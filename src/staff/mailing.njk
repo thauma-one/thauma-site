@@ -12,9 +12,9 @@ staffHeading: Who hears from <b>you</b>
    settings, write to it. A tab per list makes the thing being worked on the
    thing on screen.
 
-   New list sits WITH the lists, because it makes one. Sign-up forms and
-   Composer are pushed to the far end and visually separated, because they are
-   not lists and must not read as one more of them.
+   New list sits WITH the lists, because it makes one. Composer is pushed to
+   the far end and visually separated, because it is not a list and must not
+   read as one more of them. (The sign-up and contact forms live on Sharing.)
 
    THE HEADING SAYS "you" ON PURPOSE. Isolation is the feature, and the
    person reading this should see that it applies to them rather than take it
@@ -41,12 +41,8 @@ staffHeading: Who hears from <b>you</b>
 
   <span class="ml-tabs-gap"></span>
 
-  <button type="button" class="ml-tab ml-tab-tool" role="tab" data-view="embed"
-          data-i18n="ml.tabEmbed">Sign-up forms</button>
   <button type="button" class="ml-tab ml-tab-tool" role="tab" data-view="composer"
           data-i18n="ml.tabComposer">Composer</button>
-  <button type="button" class="ml-tab ml-tab-tool" role="tab" data-view="contact"
-          data-i18n="ml.tabContact">Contact form</button>
 </div>
 
 
@@ -246,14 +242,6 @@ staffHeading: Who hears from <b>you</b>
   </div>
 </section>
 
-<!-- ======================================================= SIGN-UP FORMS -->
-{#- EVERY LIST IN ONE PLACE, which is how somebody building a website wants
-   them: they are pasting several into one page, not visiting each list in turn
-   to collect snippets. -#}
-<section class="ml-view" data-view="embed" id="mlEmbedView" hidden>
-  <div id="mlEmbedList"></div>
-</section>
-
 <!-- ============================================================ COMPOSER -->
 {#- WRITING ON THE LEFT, WHAT ARRIVES ON THE RIGHT.
 
@@ -404,133 +392,5 @@ staffHeading: Who hears from <b>you</b>
   <div class="cp-sent" id="cpSent" hidden>
     <span class="adm-label" data-i18n="ml.cpHistory">Already sent</span>
     <div id="cpSentList"></div>
-  </div>
-</section>
-
-<!-- ======================================================== CONTACT FORM -->
-{#- BESIDE THE SIGN-UP FORM, not on a page of its own. They are the same kind
-   of thing — a form on somebody else's website that reaches this ministry —
-   and they share a look, a honeypot, a rate limit and a sending address. Two
-   screens would have meant discovering that twice.
-
-   ONE PER MINISTRY. Not several: there is one place people write to you, and a
-   screen for managing forms nobody has more than one of is a screen that
-   explains itself badly. -#}
-<section class="ml-view" data-view="contact" id="mlContactView" hidden>
-
-
-  {#- THE VISUALISER, ABOVE THE SETTINGS, matching the roadmap and goal embeds
-     on the Ministry page. Same position, same classes, same Desktop/Mobile
-     control — a third layout for the same idea would be a third thing to
-     learn.
-
-     It sits above rather than beside because of the narrow view: 380px in a
-     half-width column is not a phone, it is a squeeze. Full width above gives
-     the frame room to actually be 380px with the page around it.
-
-     And here a browser preview is HONEST, unlike the email composer's — which
-     was removed for exactly that reason. This form ends up on a web page, so a
-     browser is what will draw it.
-
-     Sandboxed to scripts only: no same-origin, so the preview cannot reach
-     this console's session even though it loads code from our own domain. -#}
-  <div class="emb-stagebar">
-    <div class="emb-devices" role="tablist" aria-label="Width">
-      <button type="button" class="emb-device is-on" role="tab" aria-selected="true"
-              data-ct-width="wide" data-i18n="emb.desktop">Desktop</button>
-      <button type="button" class="emb-device" role="tab" aria-selected="false"
-              data-ct-width="narrow" data-i18n="emb.mobile">Mobile</button>
-    </div>
-    <span class="emb-scale-note" data-ct="scaleNote"></span>
-  </div>
-
-  {#- THE FRAME IS SCALED DOWN, and the wrapper is what does it. The form is
-     genuinely 700-odd pixels tall — that is not a fault, it is a form with six
-     fields — so at 1:1 the console had to be scrolled to see the end of a
-     preview, which defeats the point of having one.
-
-     The percentage is shown beside it rather than left implicit, so nobody
-     reads the smaller type as the type a visitor gets. -#}
-  <div class="emb-stage ct-stage" data-ct="stage">
-    <div class="emb-scale" data-ct="scale">
-      <iframe data-ct="frame" title="Contact form preview" sandbox="allow-scripts"></iframe>
-    </div>
-  </div>
-
-
-  <form id="mlContactForm" class="ct-form">
-    <div class="ms-grid">
-      <label class="fld"><span data-i18n="ml.ctTo">Send messages to</span>
-        <input type="email" id="ctTo" maxlength="200" required
-               placeholder="you@example.org">
-      </label>
-
-      {#- CHOSEN, NEVER TYPED, for the same reason the newsletter's sender is:
-         the mail provider verifies DOMAINS, so an address with a typo in it
-         sends successfully and drops every reply into nothing. -#}
-      <label class="fld"><span data-i18n="ml.ctFrom">Sent from</span>
-        <select id="ctFrom" required></select>
-      </label>
-    </div>
-
-    <div class="ms-grid">
-      <label class="fld"><span data-i18n="ml.ctHeading">Heading</span>
-        <input type="text" id="ctHeading" maxlength="120" placeholder="Get in touch">
-      </label>
-      <label class="fld"><span data-i18n="ml.ctButton">Button</span>
-        <input type="text" id="ctButton" maxlength="40" placeholder="Send">
-      </label>
-    </div>
-
-    <label class="fld"><span data-i18n="ml.ctBlurb">Line under the heading</span>
-      <input type="text" id="ctBlurb" maxlength="240">
-    </label>
-
-    <label class="fld"><span data-i18n="ml.ctThanks">What they see after sending</span>
-      <input type="text" id="ctThanks" maxlength="240"
-             placeholder="Thank you — your message is on its way.">
-    </label>
-
-    {#- WHAT IS THIS ABOUT. The dropdown a visitor picks from before writing.
-       It does more work than its size suggests: somebody deciding whether to
-       write at all is helped by seeing that their kind of message is expected,
-       and the person reading knows what they are opening before they open it.
-
-       Each reason can go somewhere different. That is the whole point of
-       having them as rows rather than a list of words — prayer requests to
-       one inbox, partnership inquiries to another, everything else to the
-       address above. -#}
-    <div class="ct-topics">
-      <span class="adm-label" data-i18n="ml.ctTopics">What is this about</span>
-      <div id="ctTopicList"></div>
-      <button type="button" class="ghost-btn" id="ctAddTopic"
-              data-i18n="ml.ctAddTopic">Add a reason</button>
-    </div>
-
-    <div class="ms-switches">
-      <button type="button" class="switch" id="ctOpen" role="switch" aria-checked="false">
-        <span class="switch-track"><span class="switch-state">Off</span><span class="switch-knob"></span></span>
-        <span class="switch-label"><span data-i18n="ml.ctOpen">Form is live</span>
-        </span>
-      </button>
-    </div>
-
-    <div class="ms-actions">
-      <button type="submit" class="solid-btn" data-i18n="ml.ctSave">Save form</button>
-      <span class="hint" id="ctStatus"></span>
-    </div>
-  </form>
-
-  {#- ALWAYS VISIBLE, even before the form is switched on. It was hidden until
-     then, on the reasoning that handing somebody two lines for a form that is
-     off is handing them a blank space — which is true and was still the wrong
-     call: it made the embed code look like it did not exist. Shown either
-     way; the Form is live switch just above it says whether it draws
-     anything. -#}
-  <div class="ct-embed">
-    <span class="adm-label" id="ctCodeLabel" data-i18n="ml.ctCode">The code to paste</span>
-    <textarea readonly rows="3" spellcheck="false" id="ctSnippet"
-              aria-labelledby="ctCodeLabel"></textarea>
-    <button type="button" class="ghost-btn" id="ctCopy" data-i18n="ml.copy">Copy</button>
   </div>
 </section>
