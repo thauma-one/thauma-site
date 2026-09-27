@@ -176,7 +176,7 @@
     settings: null, payload: null, mail: null,
     item: null, device: 'wide', lang: null,
     saved: null, draft: null, busy: false,
-    writing: null, beside: null,
+    writing: null, beside: null, roadStyle: 'full',
     /* The picker's own hue, saturation and brightness per color, kept while
        it still makes the stored hex — a gray has no hue of its own, and
        recomputing one from the hex would throw the slider back to 0. */
@@ -592,6 +592,12 @@
     }
 
     $('shCode').textContent = code();
+    $('shRoadStyle').hidden = item !== 'roadmap';
+    [].forEach.call(document.querySelectorAll('#shRoadStyle [data-road]'), function (b) {
+      var on = b.dataset.road === state.roadStyle;
+      b.classList.toggle('is-on', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
     $('shLangWrap').hidden = !widget;
 
     var api = location.origin + '/embed/v1/' + slug() + '.json';
@@ -692,6 +698,7 @@
     }
     var a = ['data-thauma="' + esc(slug()) + '"'];
     if (item !== 'goal') a.push('data-widget="' + item + '"');
+    if (item === 'roadmap' && state.roadStyle === 'condensed') a.push('data-style="condensed"');
     if (state.lang && state.lang !== 'en') a.push('data-lang="' + esc(state.lang) + '"');
     return '<div ' + a.join(' ') + '></div>\n' +
       '<script src="' + location.origin + '/embed/v1/widget.js" async></' + 'script>';
@@ -735,6 +742,7 @@
       delete live.looks;
       live.timeline = { start: d.period.start || null, end: d.period.end || null };
       var attrs = 'data-thauma="' + esc(slug()) + '"' + (item !== 'goal' ? ' data-widget="' + item + '"' : '') +
+        (item === 'roadmap' && state.roadStyle === 'condensed' ? ' data-style="condensed"' : '') +
         (state.lang ? ' data-lang="' + esc(state.lang) + '"' : '');
       frame.srcdoc = head +
         '<script>window.__thaumaPreview=' + JSON.stringify(live).replace(/</g, '\\u003c') + '</' + 'script>' +
@@ -1036,6 +1044,14 @@
       state.draft.period[id === 'shStart' ? 'start' : 'end'] = this.value;
       changed();
     });
+  });
+
+  $('shRoadStyle').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-road]');
+    if (!b || b.dataset.road === state.roadStyle) return;
+    state.roadStyle = b.dataset.road;
+    drawSide();
+    drawPreviewSoon();
   });
 
   $('shLang').addEventListener('change', function () {

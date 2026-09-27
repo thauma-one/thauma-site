@@ -306,9 +306,11 @@ await check("partnerPublicSite refuses to run without a partner", async () => {
   assert(threw, "ran unscoped");
 });
 
-await check("is_featured comes back as a boolean, not SQLite's 1/0", async () => {
+await check("Featured is gone from the answer — nothing ever showed it", async () => {
+  /* Chase, 2026-09-27: removed. The column stays in the database; it is not
+     published. */
   const site = await partnerPublicSite(fakePublicDb(), "p_chase");
-  eq(site.milestones[0].is_featured, true, "is_featured");
+  assert(!("is_featured" in site.milestones[0]), "is_featured is still published");
 });
 
 /* ------------------------------ key auth -------------------------------- */

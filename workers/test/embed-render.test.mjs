@@ -346,8 +346,8 @@ await check("a milestone with no label falls back to a formatted date", async ()
 });
 
 await check("there is no FOCUS badge — CR's timeline does not mark one", async () => {
-  /* is_featured still reaches the payload for anyone building their own
-     design; the pin already carries a title, a date and a percentage. */
+  /* Featured is gone altogether (2026-09-27); the pin already carries a
+     title, a date and a percentage. */
   const { root } = await run(ROADMAP, { "data-thauma": "mira-petrovic", "data-widget": "roadmap" });
   assert(!/Focus/i.test(shown(root)), `a Focus badge is being drawn: ${shown(root).slice(0, 160)}`);
 });
@@ -460,6 +460,25 @@ await check("clicking a milestone opens a details panel", async () => {
   assert(d.allText.includes("Commissioned in Beograd"), "panel should name the milestone");
   assert(d.allText.includes("Sent by the church."), "panel should carry the description");
   assert(d.allText.includes("Complete"), "panel should label the percentage");
+});
+
+await check("the condensed roadmap is the timeline and nothing else", async () => {
+  /* Chase, 2026-09-27: for a home page — no legend, nothing to press, no
+     details. The full one stays the default. */
+  const { root } = await run(ROADMAP, { "data-thauma": "mira-petrovic", "data-widget": "roadmap",
+                                        "data-style": "condensed" });
+  eq(root.byClass("legend").length, 0, "a legend");
+  const pins = root.byClass("pin");
+  eq(pins.length, 2, "the milestones are still on it");
+  assert(pins.every((p) => p.tagName !== "BUTTON"), "a pin is still a button");
+  assert(root.byClass("step").every((p) => p.tagName !== "BUTTON"), "a step is still a button");
+  pins[0].click();
+  eq(root.byClass("detail").length, 0, "a click opened details");
+  eq(root.byClass("kidcount").length, 0, "the breakdown count");
+  assert(shown(root).includes("Commissioned in Beograd"), "the titles are on it");
+  eq(root.byClass("road")[0].className.split(" ").includes("still"), true, "marked still");
+  const full = await run(ROADMAP, { "data-thauma": "mira-petrovic", "data-widget": "roadmap" });
+  eq(full.root.byClass("legend").length, 1, "the full roadmap lost its legend");
 });
 
 await check("clicking the OPEN one closes it", async () => {

@@ -144,8 +144,8 @@ await check("is_public is TRUE only for a literal true or 1", async () => {
     fs.readFileSync(new URL("../src/staff-milestones.js", import.meta.url), "utf8"));
   assert(/is_public:\s*body\.is_public === true \|\| body\.is_public === 1 \? 1 : 0/.test(src),
     "the is_public coercion has been loosened — check it cannot publish on a truthy string");
-  assert(/is_featured:\s*body\.is_featured === true \|\| body\.is_featured === 1 \? 1 : 0/.test(src),
-    "the is_featured coercion has been loosened");
+  /* Featured is gone (2026-09-27): whatever a request says, it is written 0. */
+  assert(/is_featured:\s*0,/.test(src), "a request can set Featured again");
 });
 
 await check("the schema still defaults new milestones to unpublished", async () => {

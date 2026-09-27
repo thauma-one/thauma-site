@@ -135,6 +135,14 @@ staffHeading: What appears on <b>other websites</b>
 
     <div class="sh-card">
       <span class="sh-lbl" data-i18n="sh.code">Code to paste</span>
+      {#- THE ROADMAP, FULL OR CONDENSED (Chase, 2026-09-27): the full one to
+         explore, the condensed one — the timeline and nothing else — for a
+         home page. The same data and the same Live switch; only the code
+         differs, so this is not saved, like the preview's language. -#}
+      <div class="ml-whose-opts sh-roadstyle" id="shRoadStyle" role="group" hidden>
+        <button type="button" class="ml-whose-opt is-on" data-road="full" data-i18n="sh.roadFull">Full</button>
+        <button type="button" class="ml-whose-opt" data-road="condensed" data-i18n="sh.roadCondensed">Condensed</button>
+      </div>
       <pre class="emb-code" id="shCode"></pre>
       <button type="button" class="ghost-btn" id="shCopy" data-i18n="common.copy">Copy</button>
     </div>

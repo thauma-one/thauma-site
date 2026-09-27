@@ -380,7 +380,6 @@ export async function partnerPublicSite(db, partnerId, partnerSlug = null) {
         actual_date: m.actual_date,
         status: m.status,
         completion: m.completion,
-        is_featured: !!m.is_featured,
         text: byMilestone[m.id],
       })),
     /* Published prayer, same shape as milestones: a state row plus text keyed

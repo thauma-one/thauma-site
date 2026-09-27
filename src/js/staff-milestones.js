@@ -73,13 +73,6 @@
     var label = btn.querySelector('.switch-state');
     if (label) label.textContent = on ? 'On' : 'Off';
   }
-  function isOn(btn) { return btn.getAttribute('aria-checked') === 'true'; }
-
-  /* Wires a switch that only changes local state — used inside the form,
-     where nothing persists until Save. */
-  function wireLocalSwitch(btn) {
-    btn.addEventListener('click', function () { setSwitch(btn, !isOn(btn)); });
-  }
 
   function has(code) {
     return state.languages.some(function (l) { return l.code === code; });
@@ -205,9 +198,6 @@
         ' aria-expanded="false">' +
         '<div class="ms-main">' +
           '<div class="ms-t">' +
-            /* No Featured star: nothing on any public page shows Featured
-               (the widget and chaseroush.com both leave it out), so a mark
-               for it here explained nothing (Chase, 2026-09-27). */
             '<span class="ms-title">' + esc(titleOf(m)) + '</span>' +
             (gone ? '<span class="badge unsaved">' + esc(tr('up.willRemove')) + '</span>'
               : isDirty(rid) ? '<span class="badge unsaved">' + esc(tr('up.notLive')) + '</span>' : '') +
@@ -670,7 +660,6 @@
     };
     drawProgress();
 
-    setSwitch($('msFeatured'), m ? !!m.is_featured : false);
     $('msDelete').hidden = !m;
 
     fillParents();
@@ -773,8 +762,7 @@
       id: isNew ? undefined : id,
       text: merged,
       parent_id: $('msParent').value || null,
-      is_public: isNew ? false : !!existing.is_public,
-      is_featured: isOn($('msFeatured'))
+      is_public: isNew ? false : !!existing.is_public
     });
     /* A brand-new milestone keeps its local id as the key, so the editor and
        the row agree on which one this is until the server issues a real id.
@@ -812,8 +800,6 @@
      condition; a page can be renamed or merged into another without it
      becoming a no-op again. */
   if (!document.getElementById('msList')) return;
-
-  wireLocalSwitch($('msFeatured'));
 
   /* When: the precision, the dates, and the switch to typing it. */
   $('msPrec').addEventListener('click', function (e) {
@@ -932,7 +918,7 @@
           });
           return { id: m.localId || m.id, parent_id: m.parent_id || null, actual_date: m.actual_date || null,
                    status: m.status || 'upcoming', completion: m.status === 'upcoming' ? 0 : (Number(m.completion) || 0),
-                   is_featured: !!m.is_featured, text: text };
+                   text: text };
         }).filter(function (m) { return Object.keys(m.text).length; });
       },
       count: function () { return dirtyIds().length; },

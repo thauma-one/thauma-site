@@ -311,6 +311,20 @@ await check("Sharing is the ministry's alone; Thauma's forms are in Website › 
   eq(went, "/admin/website/forms/", "an old link to Thauma's forms");
 });
 
+await check("the roadmap's code is Full or Condensed, and nothing is saved by choosing", async () => {
+  const { d, pick, click, sent } = await boot();
+  await pick("roadmap");
+  eq(d.getElementById("shRoadStyle").hidden, false, "no choice on the roadmap");
+  assert(!/data-style/.test(d.getElementById("shCode").textContent), "full is the default");
+  click(d.querySelector('#shRoadStyle [data-road="condensed"]'));
+  assert(/data-widget="roadmap" data-style="condensed"/.test(d.getElementById("shCode").textContent),
+    d.getElementById("shCode").textContent);
+  eq(d.getElementById("shBar").hidden, true, "choosing the code is not a change to save");
+  await pick("goal");
+  eq(d.getElementById("shRoadStyle").hidden, true, "the choice beside another widget");
+  eq(sent.length, 0, "sent");
+});
+
 await check("a reload comes back to the same one", async () => {
   const { item } = await boot({ hash: "#contact" });
   assert(item("contact").classList.contains("is-on"), "opened on something else");

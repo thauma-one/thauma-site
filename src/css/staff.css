@@ -2171,6 +2171,8 @@ html.console-menu-open{overflow:hidden}
 .sh-live .switch-label{font-size:var(--fs-md);color:var(--text)}
 .sh-live .rolegate{margin-top:12px}
 .sh-side .emb-code,.sh-dev-body .emb-code{padding-right:16px}
+.sh-roadstyle{margin:0 0 12px}
+.sh-roadstyle[hidden]{display:none}
 .sh-side .emb-code{white-space:pre-wrap;word-break:break-all;font-size:11px;margin-bottom:12px}
 .sh-side .ghost-btn{width:100%}
 .sh-side .fld{margin-bottom:14px}

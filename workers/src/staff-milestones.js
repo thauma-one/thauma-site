@@ -147,7 +147,9 @@ function clean(body, existingIds) {
       // Publication is explicit. Anything other than a literal true is false —
       // a missing or malformed flag must not publish a draft.
       is_public: body.is_public === true || body.is_public === 1 ? 1 : 0,
-      is_featured: body.is_featured === true || body.is_featured === 1 ? 1 : 0,
+      /* FEATURED IS GONE (Chase, 2026-09-27): nothing anywhere showed it.
+         The column stays — the schema only grows — and is written 0. */
+      is_featured: 0,
       sort_order: Number.isFinite(Number(body.sort_order)) ? Number(body.sort_order) : 0,
     },
   };
@@ -212,7 +214,6 @@ async function listWithText(db, partner_id) {
   return rows.map((m) => ({
     ...m,
     is_public: !!m.is_public,
-    is_featured: !!m.is_featured,
     text: byId[m.id] || {},
   }));
 }

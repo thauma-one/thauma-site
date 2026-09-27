@@ -54,6 +54,8 @@ export const WIDGET_JS = String.raw`
 
    Attributes, all optional:
      data-widget   goal | roadmap | prayer | videos (default goal)
+     data-style    condensed   the roadmap as a still timeline: no legend,
+                               nothing to press, no details
      data-lang     en | hr | sr | ...    (default: the host page's own language)
      data-accent   #6D4AFF               overrides the ministry's color
      data-theme    auto | light | dark
@@ -343,6 +345,9 @@ ${COLOUR_JS}
       '.pin.sel .dot{transform:scale(1.3)}' +
       '.pin:focus-visible{outline:2px solid var(--prog);outline-offset:4px;' +
         'border-radius:6px}' +
+      /* CONDENSED: nothing to press, so nothing reacts to the pointer. */
+      '.road.still .pin,.road.still .step{cursor:default}' +
+      '.road.still .pin:hover .dot,.road.still .step:hover .sdot{transform:none}' +
 
       '.plab{font-size:13.5px;line-height:1.45;display:block}' +
       '.plab b{display:block;font-weight:700;margin-bottom:2px}' +
@@ -389,10 +394,6 @@ ${COLOUR_JS}
       '.step.canceled .stitle{text-decoration:line-through;opacity:.6}' +
       '.spct{display:block;margin-top:3px;font-size:13px;font-weight:700;' +
         'color:var(--done-t);font-variant-numeric:tabular-nums}' +
-
-      '.feat{display:inline-block;margin-left:8px;font-size:10.5px;color:var(--prog-t);' +
-        'border:1px solid var(--prog);border-radius:99px;padding:1px 8px;' +
-        'vertical-align:2px;font-weight:700;letter-spacing:.04em}' +
 
       /* ---- the details panel ---- */
       /* The entrance and the exit are chaseroush.com's, to the frame: half a
@@ -825,21 +826,27 @@ ${COLOUR_JS}
     return d;
   }
 
-  function roadmap(milestones, lang, bounds) {
+  /* STILL is the CONDENSED timeline (data-style="condensed"; Chase,
+     2026-09-27): for a home page or a side column, the timeline and nothing
+     else — no legend, nothing to press, no details, no breakdown count. The
+     rail, NOW, and each milestone's title, date and percentage. */
+  function roadmap(milestones, lang, bounds, still) {
     var parsed = parse(milestones, lang);
     var rows = parsed.parents, kids = parsed.kids;
     if (!rows.length) return null;
 
-    var road = el('div', 'road');
+    var road = el('div', 'road' + (still ? ' still' : ''));
 
-    var legend = el('div', 'legend');
-    ['complete', 'in_progress', 'upcoming'].forEach(function (s) {
-      var item = el('span', 'lg');
-      item.appendChild(el('span', 'lgd ' + s));
-      item.appendChild(el('span', null, w(lang, s)));
-      legend.appendChild(item);
-    });
-    road.appendChild(legend);
+    if (!still) {
+      var legend = el('div', 'legend');
+      ['complete', 'in_progress', 'upcoming'].forEach(function (s) {
+        var item = el('span', 'lg');
+        item.appendChild(el('span', 'lgd ' + s));
+        item.appendChild(el('span', null, w(lang, s)));
+        legend.appendChild(item);
+      });
+      road.appendChild(legend);
+    }
 
     var P = positions(rows, bounds);
 
@@ -974,16 +981,14 @@ ${COLOUR_JS}
     rows.forEach(function (m, i) {
       var t = pick(m.text, lang) || {};
       var up = i % 2 === 0;
-      var pin = el('button', 'pin ' + (up ? 'up' : 'down'));
-      pin.type = 'button';
+      var pin = el(still ? 'div' : 'button', 'pin ' + (up ? 'up' : 'down'));
+      if (!still) { pin.type = 'button'; pin.setAttribute('aria-expanded', 'false'); }
       pin.style.left = P.pos[i] + '%';
-      pin.setAttribute('aria-expanded', 'false');
 
       var lab = el('span', 'plab');
-      /* No FOCUS badge. is_featured is still in the payload for anyone
-         building their own design, but chaseroush.com's timeline does not
-         mark it and the pin is already carrying a title, a date and a
-         percentage — a fourth thing on one line is clutter. */
+      /* No FOCUS badge: chaseroush.com's timeline does not mark one, and the
+         pin is already carrying a title, a date and a percentage — a fourth
+         thing on one line is clutter. (Featured itself is gone, 2026-09-27.) */
       lab.appendChild(el('b', null, t.title));
 
       var dt = dateText(m, lang);
@@ -993,7 +998,7 @@ ${COLOUR_JS}
       if (pc > 0) lab.appendChild(el('span', 'pp', pc + '%'));
 
       var kc = kids[m.id];
-      if (kc && kc.length) {
+      if (kc && kc.length && !still) {
         lab.appendChild(el('span', 'kidcount', kc.length + ' · ' + w(lang, 'breakdown')));
       }
 
@@ -1002,7 +1007,7 @@ ${COLOUR_JS}
       if (up) { pin.appendChild(lab); pin.appendChild(dot); }
       else { pin.appendChild(dot); pin.appendChild(lab); }
 
-      pin.addEventListener('click', function () { openDetail(i); });
+      if (!still) pin.addEventListener('click', function () { openDetail(i); });
       pins.push(pin);
       track.appendChild(pin);
     });
@@ -1016,9 +1021,8 @@ ${COLOUR_JS}
 
     rows.forEach(function (m, i) {
       var t = pick(m.text, lang) || {};
-      var step = el('button', 'step ' + (m.status || 'upcoming'));
-      step.type = 'button';
-      step.setAttribute('aria-expanded', 'false');
+      var step = el(still ? 'div' : 'button', 'step ' + (m.status || 'upcoming'));
+      if (!still) { step.type = 'button'; step.setAttribute('aria-expanded', 'false'); }
       step.appendChild(el('span', 'sdot ' + (m.status || 'upcoming')));
 
       var dt = dateText(m, lang);
@@ -1027,7 +1031,7 @@ ${COLOUR_JS}
       step.appendChild(el('span', 'stitle', t.title));
 
       var pc = pctOf(m);
-      var kc2 = kids[m.id];
+      var kc2 = still ? null : kids[m.id];
       if (pc > 0 || (kc2 && kc2.length)) {
         var line = el('span', 'spct', pc > 0 ? pc + '%' : '');
         if (kc2 && kc2.length) {
@@ -1036,12 +1040,12 @@ ${COLOUR_JS}
         step.appendChild(line);
       }
 
-      step.addEventListener('click', function () { openDetail(i); });
+      if (!still) step.addEventListener('click', function () { openDetail(i); });
       steps.push(step);
       col.appendChild(step);
     });
     road.appendChild(col);
-    road.appendChild(slot);
+    if (!still) road.appendChild(slot);
 
     /* THE COLUMN IS LAID OUT BY CONTENT, NOT BY DATE. Each step is as tall as
        its own text, so a percentage of elapsed time means nothing in this
@@ -1316,7 +1320,8 @@ ${COLOUR_JS}
     var body;
 
     if (kind === 'roadmap') {
-      body = roadmap(data.milestones || [], lang, data.timeline);
+      body = roadmap(data.milestones || [], lang, data.timeline,
+                     node.getAttribute('data-style') === 'condensed');
     } else if (kind === 'prayer') {
       body = prayerCards(data.prayer || [], lang);
     } else if (kind === 'videos') {
