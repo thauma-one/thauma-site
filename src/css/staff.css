@@ -1213,10 +1213,12 @@ a.ml-sentall-row:hover .ml-sentall-subject{color:var(--voice-tech)}
   .ml-sentall-row{flex-direction:column;gap:3px}
 }
 
-/* The list sits right under its tabs. <main> spaces its blocks 38px apart,
-   and the tabs and the list are two of them. */
-.ml-home .ml-tabs{margin-bottom:0}
-.ml-home:not([hidden]) + .ml-view{margin-top:-22px}
+/* A list's settings: every row spaced the same. */
+#mlForm{display:flex;flex-direction:column;gap:18px}
+#mlForm .ms-switches,#mlForm .ms-actions{margin:0}
+
+/* The list sits right under its tabs. */
+.ml-home .ml-tabs{margin-bottom:16px}
 
 /* A list's settings, at the end of the tab strip; pressed while open. */
 .ml-settings-btn{align-self:center;margin-bottom:6px}

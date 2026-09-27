@@ -4,6 +4,9 @@
    Thauma's own, with `mailFixed` = "organization" (Chase, 2026-09-27: staff
    pages for staff work, admin for admin — and "Mail" once in the nav, so
    Thauma's sits inside Website). staff-mailing.js reads data-ml-fixed. -#}
+{#- ONE BLOCK, so the page's spacing is its own wherever it is shown: the
+   staff console spaces its blocks apart, the Website area does not. -#}
+<div class="ml-page">
 {#- WRITE AN UPDATE: to which lists, the drafts waiting, and Write. -#}
 <div class="ml-home" id="mlHome"{% if mailFixed %} data-ml-fixed="{{ mailFixed }}"{% endif %}>
   <div class="ml-hero">
@@ -363,3 +366,4 @@
   </div>
 
 </section>
+</div>
