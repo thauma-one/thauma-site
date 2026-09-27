@@ -44,7 +44,25 @@
     if (st) st.textContent = on ? 'On' : 'Off';
   }
 
-  var state = { mail: null, saved: null, draft: null, form: 'contact', busy: false };
+  var state = { mail: null, saved: null, draft: null, form: 'contact', busy: false,
+                writing: 'en', beside: null };
+
+  /* THE REASONS IN EVERY LANGUAGE the site publishes (0041). English is
+     thauma.one's own and each reason's fallback name (`label`); the rest are
+     `labels`. The site's languages are the ones this build publishes
+     (#libLangs, website.njk). */
+  var HOME = 'en';
+  var LANGS = (function () {
+    try { return JSON.parse(document.getElementById('libLangs').textContent) || [HOME]; }
+    catch (e) { return [HOME]; }
+  })();
+  function langName(code) {
+    try {
+      var n = new Intl.DisplayNames([code], { type: 'language' }).of(code);
+      return n ? n.charAt(0).toUpperCase() + n.slice(1) : code;
+    } catch (e) { return code; }
+  }
+  function topicName(x, lang) { return lang === HOME ? x.label : ((x.labels || {})[lang] || ''); }
 
   function snapshot() {
     var m = state.mail || {}, c = m.contact || {}, open = {};
@@ -52,7 +70,9 @@
     return {
       contact: {
         deliver_to: c.deliver_to || '', from_address: c.from_address || '', is_open: !!c.is_open,
-        topics: (m.topics || []).map(function (t) { return { label: t.label || '', deliver_to: t.deliver_to || '' }; })
+        topics: (m.topics || []).map(function (t) {
+          return { label: t.label || '', deliver_to: t.deliver_to || '', labels: Object.assign({}, t.labels || {}) };
+        })
       },
       lists: open
     };
@@ -97,12 +117,33 @@
     drawTopics();
   }
 
+  function drawWriting() {
+    $('wfWritingRow').hidden = LANGS.length < 2;
+    if (LANGS.indexOf(state.writing) === -1) state.writing = HOME;
+    var others = LANGS.filter(function (c) { return c !== state.writing; });
+    if (others.indexOf(state.beside) === -1) state.beside = others[0] || null;
+    $('wfWriting').innerHTML = LANGS.map(function (c) {
+      return '<option value="' + esc(c) + '">' + esc(langName(c)) + '</option>';
+    }).join('');
+    $('wfWriting').value = state.writing;
+    $('wfBesideWrap').hidden = !others.length;
+    $('wfBeside').innerHTML = others.map(function (c) {
+      return '<option value="' + esc(c) + '">' + esc(langName(c)) + '</option>';
+    }).join('');
+    $('wfBeside').value = state.beside || '';
+  }
+
   function drawTopics() {
-    var t = state.draft.contact.topics;
+    var t = state.draft.contact.topics, w = state.writing, b = state.beside;
     $('wfTopics').innerHTML = t.length ? t.map(function (x, i) {
+      var ref = b ? topicName(x, b) : '';
       return '<div class="ct-topic" data-topic="' + i + '">' +
-        '<input type="text" class="ct-topic-label" maxlength="80" value="' + esc(x.label) + '"' +
-          ' placeholder="' + esc(tr('ml.ctTopicLabel')) + '">' +
+        '<span class="ct-topic-name">' +
+          (ref ? '<small class="ms-ref" lang="' + esc(b) + '">' + esc(ref) + '</small>' : '') +
+          '<input type="text" class="ct-topic-label" maxlength="80" lang="' + esc(w) + '"' +
+            ' value="' + esc(topicName(x, w)) + '"' +
+            ' placeholder="' + esc(w === HOME ? tr('ml.ctTopicLabel') : x.label) + '">' +
+        '</span>' +
         '<input type="email" class="ct-topic-to" maxlength="200" value="' + esc(x.deliver_to) + '"' +
           ' placeholder="' + esc(tr('ml.ctTopicTo')) + '">' +
         '<span class="ct-topic-move">' +
@@ -134,7 +175,7 @@
     $('wfCount').textContent = n === 1 ? tr('up.pending1') : fill('up.pendingN', { n: n });
   }
 
-  function drawAll() { drawPick(); drawContact(); drawLists(); drawBar(); }
+  function drawAll() { drawPick(); drawWriting(); drawContact(); drawLists(); drawBar(); }
 
   /* ---- loading and saving ---------------------------------------------- */
 
@@ -174,7 +215,7 @@
            words are its own site words (Pages). */
         heading: old.heading || '', blurb: old.blurb || '', button: old.button || '', thanks: old.thanks || '',
         topics: k.topics.filter(function (t) { return t.label.trim(); })
-          .map(function (t) { return { label: t.label.trim(), deliver_to: t.deliver_to.trim() }; })
+          .map(function (t) { return { label: t.label.trim(), deliver_to: t.deliver_to.trim(), labels: t.labels }; })
       });
     });
     for (var i = 0; i < c.lists.length; i++) {
@@ -241,17 +282,25 @@
     var row = e.target.closest('[data-topic]');
     if (!row || !state.draft) return;
     var t = state.draft.contact.topics[+row.dataset.topic];
-    t.label = row.querySelector('.ct-topic-label').value;
+    var v = row.querySelector('.ct-topic-label').value;
+    if (state.writing === HOME) t.label = v;
+    else {
+      t.labels = t.labels || {};
+      /* An emptied translation is no translation. */
+      if (v.trim()) t.labels[state.writing] = v; else delete t.labels[state.writing];
+    }
     t.deliver_to = row.querySelector('.ct-topic-to').value;
     drawBar();
   });
   $('wfAddTopic').addEventListener('click', function () {
     if (!state.draft) return;
-    state.draft.contact.topics.push({ label: '', deliver_to: '' });
+    state.draft.contact.topics.push({ label: '', deliver_to: '', labels: {} });
     drawTopics(); drawBar();
     var rows = root.querySelectorAll('#wfTopics .ct-topic-label');
     if (rows.length) rows[rows.length - 1].focus();
   });
+  $('wfWriting').addEventListener('change', function () { state.writing = this.value; drawWriting(); drawTopics(); });
+  $('wfBeside').addEventListener('change', function () { state.beside = this.value; drawTopics(); });
   $('wfSave').addEventListener('click', save);
   $('wfDiscard').addEventListener('click', discard);
 

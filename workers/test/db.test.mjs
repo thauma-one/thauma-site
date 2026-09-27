@@ -281,6 +281,8 @@ await check("every real query converts with its documented params", async () => 
     embed_theme: "auto", embed_turn: null,
     // an embed's own look (0040)
     kind: "roadmap", accent: "#E4572E", accent2: null, turn: 120, theme: null,
+    // a contact reason in other languages (0041)
+    labels: null,
     // the language catalog
     code: "sl", native_name: "slovenščina",
     // staff profiles

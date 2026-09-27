@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "02606f98f7a9e194";
+export const SOURCE_DIGEST = "8afd6cc35ed47fc5";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -204,10 +204,10 @@ LEFT JOIN users u ON u.id = i.logged_by
 WHERE i.contact_id = :contact_id
   AND i.partner_id = :partner_id
 ORDER BY i.occurred_on DESC, i.created_at DESC;`,
-  contact_topic_add: `INSERT INTO contact_topics (id, partner_id, label, deliver_to, sort_order, created_at)
-VALUES (:id, :partner_id, :label, :deliver_to, :sort_order, :now);`,
+  contact_topic_add: `INSERT INTO contact_topics (id, partner_id, label, labels, deliver_to, sort_order, created_at)
+VALUES (:id, :partner_id, :label, :labels, :deliver_to, :sort_order, :now);`,
   contact_topics_clear: `DELETE FROM contact_topics WHERE partner_id IS :partner_id;`,
-  contact_topics_for_partner: `SELECT id, label, deliver_to, sort_order
+  contact_topics_for_partner: `SELECT id, label, labels, deliver_to, sort_order
 FROM contact_topics
 WHERE partner_id IS :partner_id
 ORDER BY sort_order, label COLLATE NOCASE;`,
@@ -634,11 +634,11 @@ WHERE c.is_open = 1;`,
   public_contact_form_org: `SELECT deliver_to, from_address, heading, blurb, button, thanks
 FROM contact_forms
 WHERE partner_id IS NULL AND is_open = 1;`,
-  public_contact_topics: `SELECT t.id, t.label, t.deliver_to, t.sort_order
+  public_contact_topics: `SELECT t.id, t.label, t.labels, t.deliver_to, t.sort_order
 FROM contact_topics t
 JOIN partners p ON p.slug = :partner_slug AND t.partner_id IS p.id
 ORDER BY t.sort_order, t.label COLLATE NOCASE;`,
-  public_contact_topics_org: `SELECT id, label, deliver_to, sort_order
+  public_contact_topics_org: `SELECT id, label, labels, deliver_to, sort_order
 FROM contact_topics
 WHERE partner_id IS NULL
 ORDER BY sort_order, label COLLATE NOCASE;`,

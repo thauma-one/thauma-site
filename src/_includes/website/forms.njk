@@ -33,6 +33,14 @@
     </div>
     <div class="ct-topics">
       <span class="sh-lbl" data-i18n="ml.ctTopics">What is this about</span>
+      {#- The reasons in every language the site publishes (0041), one
+         language at a time with another beside it, like Pages. -#}
+      <div class="ms-writing wf-writing" id="wfWritingRow" hidden>
+        <label class="ms-pick"><span data-i18n="con.writing">Writing</span>
+          <select id="wfWriting" class="lang-pick"></select></label>
+        <label class="ms-pick" id="wfBesideWrap"><span data-i18n="con.beside">beside</span>
+          <select id="wfBeside" class="lang-pick"></select></label>
+      </div>
       <div id="wfTopics"></div>
       <button type="button" class="ghost-btn" id="wfAddTopic" data-i18n="ml.ctAddTopic">Add a reason</button>
     </div>

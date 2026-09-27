@@ -94,7 +94,7 @@ await check("where messages go waits for Save, and goes whole with the reasons",
   eq(sent.length, 1, "one request");
   assert(/scope=organization/.test(sent[0].url), "saved to a ministry's form");
   eq([sent[0].body.action, sent[0].body.deliver_to, sent[0].body.topics],
-     ["contact-form", "hello@thauma.one", [{ label: "General", deliver_to: "" }]], "the form");
+     ["contact-form", "hello@thauma.one", [{ label: "General", deliver_to: "", labels: {} }]], "the form");
 });
 
 await check("the sign-up form's lists: a list saved whole, its archive switch kept", async () => {
@@ -107,6 +107,23 @@ await check("the sign-up form's lists: a list saved whole, its archive switch ke
   eq(sent.length, 1, "only the list that changed");
   eq([sent[0].body.id, sent[0].body.is_open, sent[0].body.archive_public, sent[0].body.name],
      ["l_pray", true, false, "Prayer"], "the list");
+});
+
+await check("a reason is written in each of the site's languages, English its fallback", async () => {
+  const { w, d, sent, click, type } = await boot();
+  eq(d.getElementById("wfWritingRow").hidden, false, "no language picker");
+  const pickLang = (v) => { const s = d.getElementById("wfWriting"); s.value = v;
+    s.dispatchEvent(new w.Event("change", { bubbles: true })); };
+  pickLang("hr");
+  const input = d.querySelector("#wfTopics .ct-topic-label");
+  eq([input.value, input.placeholder], ["", "General"], "an unwritten language shows the English as its hint");
+  eq(d.querySelector("#wfTopics .ms-ref").textContent, "General", "English beside it");
+  type(input, "Općenito");
+  pickLang("en");
+  eq(d.querySelector("#wfTopics .ct-topic-label").value, "General", "English untouched");
+  click(d.getElementById("wfSave"));
+  await new Promise((r) => setTimeout(r, 150));
+  eq(sent[0].body.topics, [{ label: "General", deliver_to: "", labels: { hr: "Općenito" } }], "saved");
 });
 
 await check("Discard puts it back", async () => {

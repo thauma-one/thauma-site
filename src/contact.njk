@@ -128,7 +128,9 @@ pageTitle: contact
     (function () {
       var sel = document.getElementById('contact-reason');
       if (!sel) return;
-      fetch('/api/contact', { headers: { Accept: 'application/json' } })
+      /* In this page's language: each reason as written in it (0041). */
+      fetch('/api/contact?lang=' + encodeURIComponent(document.documentElement.lang || ''),
+            { headers: { Accept: 'application/json' } })
         .then(function (r) { return r.ok ? r.json() : null; })
         .then(function (body) {
           var topics = (body && body.topics) || [];

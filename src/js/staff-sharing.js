@@ -231,7 +231,9 @@
       contact: {
         deliver_to: c.deliver_to || '', from_address: c.from_address || '',
         is_open: !!c.is_open,
-        topics: (m.topics || []).map(function (t) { return { label: t.label || '', deliver_to: t.deliver_to || '' }; })
+        topics: (m.topics || []).map(function (t) {
+          return { label: t.label || '', deliver_to: t.deliver_to || '', labels: Object.assign({}, t.labels || {}) };
+        })
       }
     };
   }
@@ -623,12 +625,29 @@
     drawTopics();
   }
 
+  /* THE REASONS IN EVERY LANGUAGE (0041), written in the language the
+     form's words are being written in — "Writing X beside Y" below the
+     preview — with the other language small above each. `label` is the name
+     in the ministry's own language and the fallback; `labels` the rest. */
+  function topicHome() {
+    return (state.settings && state.settings.partner && state.settings.partner.default_lang) || 'en';
+  }
+  function topicName(x, lang) { return lang === topicHome() ? x.label : ((x.labels || {})[lang] || ''); }
   function drawTopics() {
     var t = state.draft.contact.topics;
+    var writing = state.writing || topicHome(), beside = state.beside;
+    var many = formLangs().length > 1;
+    var named = formLangs().filter(function (l) { return l.code === writing; })[0];
+    $('shTopicsLang').textContent = many && named ? ' · ' + (named.native_name || named.name || writing) : '';
     $('shTopics').innerHTML = t.length ? t.map(function (x, i) {
+      var ref = beside && beside !== writing ? topicName(x, beside) : '';
       return '<div class="ct-topic" data-topic="' + i + '">' +
-        '<input type="text" class="ct-topic-label" maxlength="80" value="' + esc(x.label) + '"' +
-          ' placeholder="' + esc(tr('ml.ctTopicLabel')) + '">' +
+        '<span class="ct-topic-name">' +
+          (ref ? '<small class="ms-ref" lang="' + esc(beside) + '">' + esc(ref) + '</small>' : '') +
+          '<input type="text" class="ct-topic-label" maxlength="80" lang="' + esc(writing) + '"' +
+            ' value="' + esc(topicName(x, writing)) + '"' +
+            ' placeholder="' + esc(writing === topicHome() ? tr('ml.ctTopicLabel') : x.label) + '">' +
+        '</span>' +
         '<input type="email" class="ct-topic-to" maxlength="200" value="' + esc(x.deliver_to) + '"' +
           ' placeholder="' + esc(tr('ml.ctTopicTo')) + '">' +
         '<span class="ct-topic-move">' +
@@ -687,6 +706,8 @@
         '<input type="text" data-word="' + f[0] + '" maxlength="' + f[2] + '" value="' + esc(mine[f[0]] || '') + '"' +
         ' lang="' + esc(state.writing) + '"' + (f[3] ? ' placeholder="' + esc(tr(f[3])) + '"' : '') + '></label>';
     }).join('');
+    /* The contact form's reasons are written in the same language. */
+    if (item === 'contact') drawTopics();
   }
 
   function code() {
@@ -926,7 +947,7 @@
         is_open: k.is_open,
         /* A reason nobody named is not a reason yet. */
         topics: k.topics.filter(function (t) { return t.label.trim(); })
-          .map(function (t) { return { label: t.label.trim(), deliver_to: t.deliver_to.trim() }; })
+          .map(function (t) { return { label: t.label.trim(), deliver_to: t.deliver_to.trim(), labels: t.labels }; })
       });
     });
 
@@ -1016,7 +1037,14 @@
     var row = e.target.closest('[data-topic]');
     if (!row) return;
     var t = state.draft.contact.topics[+row.dataset.topic];
-    t.label = row.querySelector('.ct-topic-label').value;
+    var v = row.querySelector('.ct-topic-label').value, writing = state.writing || topicHome();
+    if (writing === topicHome()) t.label = v;
+    else {
+      t.labels = t.labels || {};
+      /* An emptied translation is no translation: the reason shows its
+         first-written name there again. */
+      if (v.trim()) t.labels[writing] = v; else delete t.labels[writing];
+    }
     t.deliver_to = row.querySelector('.ct-topic-to').value;
     changed();
   });
@@ -1033,7 +1061,7 @@
     if (dr) { t.splice(+dr.dataset.dropTopic, 1); drawTopics(); changed(); }
   });
   $('shAddTopic').addEventListener('click', function () {
-    state.draft.contact.topics.push({ label: '', deliver_to: '' });
+    state.draft.contact.topics.push({ label: '', deliver_to: '', labels: {} });
     drawTopics();
     var rows = document.querySelectorAll('#shTopics .ct-topic-label');
     if (rows.length) rows[rows.length - 1].focus();

@@ -26,6 +26,7 @@ import { sanitise, render, toText, plainLine, tooBig, sizeOf } from "./lib/newsl
 import { unsubscribeUrl } from "./lib/unsub.js";
 import { sendMail, listConfirmEmail } from "./lib/mail.js";
 import { siteOrigin } from "./lib/origin.js";
+import { topicLabels, cleanLabels } from "./lib/topics.js";
 
 const MAX = { name: 120, slug: 60, desc: 400, from_name: 80, email: 200 };
 const PAGE = 100;
@@ -292,6 +293,9 @@ export function cleanList(body, existingSlug, allowed) {
   } };
 }
 
+/* A reason's other languages, as an object rather than the stored JSON. */
+const withLabels = (rows) => rows.map((t) => ({ ...t, labels: topicLabels(t) }));
+
 export default {
   async fetch(request, env) {
     const s = await scopeFor(request, env);
@@ -455,7 +459,8 @@ export default {
            rather than after a second request — the tab is one click away and
            a blank form that fills in a moment later reads as broken. */
         contact: await db.queryOne("contact_form_for_partner", { partner_id: partnerId }),
-        topics: await db.query("contact_topics_for_partner", { partner_id: partnerId }),
+        /* Each reason with its names in every language it has (0041). */
+        topics: withLabels(await db.query("contact_topics_for_partner", { partner_id: partnerId })),
         /* Each form's own words, per language (0039) — { signup: { lang:
            {…} }, contact: {…} } — for Sharing's "Writing X beside Y". */
         form_words: formWords(await db.query("form_words_for_owner", { partner_id: partnerId })),
@@ -988,7 +993,8 @@ export default {
           if (to && !EMAIL_RE.test(to)) {
             return json({ error: `"${to}" is not an email address.` }, 400);
           }
-          cleaned.push({ label, deliver_to: to || null });
+          /* The reason in the other languages (0041). */
+          cleaned.push({ label, deliver_to: to || null, labels: cleanLabels(t.labels) });
         }
 
         /* TWO STATEMENTS, because one cannot carry two conflict targets.
@@ -1013,14 +1019,14 @@ export default {
         for (let i = 0; i < cleaned.length; i++) {
           await db.query("contact_topic_add", {
             id: newId("ct"), partner_id: partnerId,
-            label: cleaned[i].label, deliver_to: cleaned[i].deliver_to,
+            label: cleaned[i].label, labels: cleaned[i].labels, deliver_to: cleaned[i].deliver_to,
             sort_order: i, now,
           });
         }
 
         return json({ ok: true,
           contact: await db.queryOne("contact_form_for_partner", { partner_id: partnerId }),
-          topics: await db.query("contact_topics_for_partner", { partner_id: partnerId }) });
+          topics: withLabels(await db.query("contact_topics_for_partner", { partner_id: partnerId })) });
       }
 
       /* ---- correcting somebody's details ----

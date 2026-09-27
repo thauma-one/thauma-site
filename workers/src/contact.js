@@ -50,6 +50,7 @@ import { t, wordsFor } from "./lib/mail-i18n.js";
 import { siteOrigin } from "./lib/origin.js";
 import { isOrgSlug } from "./lib/org.js";
 import { byLang } from "./signup.js";
+import { topicLabels } from "./lib/topics.js";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -189,6 +190,8 @@ ${BEHAVIOUR_JS}
   var WORDS = ${JSON.stringify(wordsFor("form.", "contact."))};
   /* The ministry's own words, per language; < escaped (text in a script). */
   var OWN = ${JSON.stringify(own || {}).replace(/</g, "\\u003c")};
+  /* Each reason's name per language (0041), keyed by its id. */
+  var TOPICS = ${JSON.stringify(Object.fromEntries((topics || []).map((t) => [t.id, topicLabels(t)]))).replace(/</g, "\\u003c")};
 ${WORDS_JS}
 
   var STYLES = ${JSON.stringify(formStyles())};
@@ -271,6 +274,12 @@ ${WORDS_JS}
        own words in the console's preview and must win. */
     var lang = chooseLang(node);
     applyWords(host, lang);
+    /* The reasons in the visitor's language, where they have been written in
+       it; otherwise as first written. */
+    [].forEach.call(host.querySelectorAll('select[name=topic] option[value]'), function (o) {
+      var t = TOPICS[o.value];
+      if (o.value && t && t[lang]) o.textContent = t[lang];
+    });
     /* Then the ministry's own words in that language, where it wrote them. */
     var mine = OWN[lang] || {};
     if (mine.heading) host.querySelector('.ttl').textContent = mine.heading;

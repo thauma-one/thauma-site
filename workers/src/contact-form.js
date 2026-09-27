@@ -193,7 +193,11 @@ export async function handle(request, env, send) {
       /* A closed form offers nothing, the same as a partner's. The page keeps
          working without a dropdown rather than showing one that leads nowhere. */
       if (!form) return json(empty);
-      return json({ topics: topics.map((t) => ({ id: t.id, label: t.label })) },
+      /* In the page's own language (?lang=), which thauma.one's contact page
+         sends; the name as first written where that language has none. */
+      const lang = String(new URL(request.url).searchParams.get("lang") || "").slice(0, 12);
+      const { topicLabel } = await import("./lib/topics.js");
+      return json({ topics: topics.map((t) => ({ id: t.id, label: topicLabel(t, lang) })) },
                   { "Cache-Control": "public, max-age=300" });
     } catch {
       /* The form must not depend on this. No dropdown is a smaller loss than

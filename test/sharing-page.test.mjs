@@ -280,7 +280,7 @@ await check("the contact form: clicking a field does not redraw it, and Save sen
   await save();
   const c = sent.find((s) => s.body.action === "contact-form");
   assert(c, "no contact save");
-  eq([c.body.deliver_to, c.body.topics], ["NEW@thauma.one", [{ label: "Prayer", deliver_to: "" }]], "sent");
+  eq([c.body.deliver_to, c.body.topics], ["NEW@thauma.one", [{ label: "Prayer", deliver_to: "", labels: {} }]], "sent");
 });
 
 await check("Discard puts everything back", async () => {

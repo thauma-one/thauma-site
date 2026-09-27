@@ -2060,7 +2060,7 @@ FROM contact_forms
 WHERE partner_id IS NULL AND is_open = 1;
 
 -- name: contact_topics_for_partner
-SELECT id, label, deliver_to, sort_order
+SELECT id, label, labels, deliver_to, sort_order
 FROM contact_topics
 WHERE partner_id IS :partner_id
 ORDER BY sort_order, label COLLATE NOCASE;
@@ -2075,8 +2075,9 @@ DELETE FROM contact_topics WHERE partner_id IS :partner_id;
 
 
 -- name: contact_topic_add
-INSERT INTO contact_topics (id, partner_id, label, deliver_to, sort_order, created_at)
-VALUES (:id, :partner_id, :label, :deliver_to, :sort_order, :now);
+-- `labels`: the reason in other languages, JSON { lang: label } (0041).
+INSERT INTO contact_topics (id, partner_id, label, labels, deliver_to, sort_order, created_at)
+VALUES (:id, :partner_id, :label, :labels, :deliver_to, :sort_order, :now);
 
 
 -- name: public_contact_topics
@@ -2084,7 +2085,7 @@ VALUES (:id, :partner_id, :label, :deliver_to, :sort_order, :now);
 -- same way public_contact_form is, and for the same reason: a NULL-matching
 -- comparison against a slug nobody has would hand back the ORGANIZATION's
 -- topics. See public_contact_form for the leak that taught this.
-SELECT t.id, t.label, t.deliver_to, t.sort_order
+SELECT t.id, t.label, t.labels, t.deliver_to, t.sort_order
 FROM contact_topics t
 JOIN partners p ON p.slug = :partner_slug AND t.partner_id IS p.id
 ORDER BY t.sort_order, t.label COLLATE NOCASE;
@@ -2093,7 +2094,7 @@ ORDER BY t.sort_order, t.label COLLATE NOCASE;
 -- name: public_contact_topics_org
 -- Thauma's own. A separate query because the organization has no slug to join
 -- on, and inventing one would be the same trap in a new place.
-SELECT id, label, deliver_to, sort_order
+SELECT id, label, labels, deliver_to, sort_order
 FROM contact_topics
 WHERE partner_id IS NULL
 ORDER BY sort_order, label COLLATE NOCASE;

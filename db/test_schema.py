@@ -1515,6 +1515,20 @@ def t_embed_looks_are_the_embeds_own():
     assert [r[0] for r in _run(db, "embed_looks_for_partner", partner_id="p_1")] == ["contact"]
 
 
+def t_contact_reasons_carry_their_languages():
+    """0041: a reason's other languages ride on its row, NULL until written,
+    and are replaced with the row when the console saves the dropdown."""
+    db = fresh()
+    _run(db, "contact_topic_add", id="t1", partner_id=None, label="General",
+         labels=None, deliver_to=None, sort_order=0, now=NOW)
+    _run(db, "contact_topic_add", id="t2", partner_id=None, label="Inquiry",
+         labels='{"hr":"Upit"}', deliver_to=None, sort_order=1, now=NOW)
+    got = _run(db, "public_contact_topics_org")
+    assert [(r[1], r[2]) for r in got] == [("General", None), ("Inquiry", '{"hr":"Upit"}')], got
+    _run(db, "contact_topics_clear", partner_id=None)
+    assert _run(db, "public_contact_topics_org") == []
+
+
 def t_milestone_parent_must_match_partner():
     """A sub-step cannot hang off another partner's milestone."""
     db = fresh()
@@ -2132,6 +2146,7 @@ if __name__ == "__main__":
         ("the sign-up form's Live switch",              t_signup_form_live_switch_stops_every_copy),
         ("form words belong to their owner",            t_form_words_belong_to_their_owner),
         ("an embed's own look is its own",              t_embed_looks_are_the_embeds_own),
+        ("contact reasons carry their languages",       t_contact_reasons_carry_their_languages),
         ("three roles, and only three",                 t_three_roles_and_only_three),
         ("a person can hold two roles",                 t_a_person_can_hold_two_roles),
         ("removing a user removes their roles",         t_removing_a_user_removes_their_roles),

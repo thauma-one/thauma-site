@@ -118,8 +118,8 @@ await check("the topics still come from the API, not baked in", () => {
   /* The half that already worked, and must keep working: the page keeps its
      own design and takes only the data. */
   const html = readFileSync(`${build}/en/contact/index.html`, "utf8");
-  assert(/fetch\('\/api\/contact'|fetch\("\/api\/contact"/.test(html),
-    "the reasons are no longer fetched from the API");
+  assert(/fetch\('\/api\/contact\?lang='/.test(html),
+    "the reasons are no longer fetched from the API, in the page's language");
   const sel = doc("en").querySelector("#contact-reason");
   assert(sel && sel.hasAttribute("hidden"),
     "the dropdown is not hidden by default — a page whose API call fails " +
