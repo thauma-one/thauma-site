@@ -1450,6 +1450,32 @@ def t_signup_form_live_switch_stops_every_copy():
     assert flags == (0, 0, 0, 0, 0), f"a new partner shares nothing: {flags}"
 
 
+def t_form_words_belong_to_their_owner():
+    """0039: one row per form per language per owner — Thauma's own (NULL)
+    included — and a slug that matches nobody never returns Thauma's."""
+    db = fresh()
+    db.execute("INSERT INTO partners (id,slug,display_name,status,created_at,updated_at) "
+               "VALUES ('p_1','p-one','P One','active',?,?)", (NOW, NOW))
+    for owner in ("p_1", None):
+        _run(db, "form_word_insert", partner_id=owner, form="signup", lang="en",
+             heading="Mine" if owner else "Thauma's", blurb=None, button=None, thanks=None, now=NOW)
+        try:
+            _run(db, "form_word_insert", partner_id=owner, form="signup", lang="en",
+                 heading="Twice", blurb=None, button=None, thanks=None, now=NOW)
+        except sqlite3.IntegrityError:
+            pass
+        else:
+            raise AssertionError(f"two English sign-up rows for {owner!r}")
+    got = _run(db, "public_form_words", partner_slug="p-one", form="signup")
+    assert [r[1] for r in got] == ["Mine"], got
+    assert _run(db, "public_form_words", partner_slug="nobody", form="signup") == [], \
+        "an unknown slug returned Thauma's own words"
+    assert [r[1] for r in _run(db, "public_form_words_org", form="signup")] == ["Thauma's"]
+    _run(db, "form_words_clear", partner_id="p_1", form="signup")
+    assert _run(db, "form_words_for_owner", partner_id="p_1") == []
+    assert len(_run(db, "form_words_for_owner", partner_id=None)) == 1, "clearing a ministry's touched Thauma's"
+
+
 def t_milestone_parent_must_match_partner():
     """A sub-step cannot hang off another partner's milestone."""
     db = fresh()
@@ -2065,6 +2091,7 @@ if __name__ == "__main__":
         ("milestone dates are a known precision",       t_milestone_dates_are_a_known_precision),
         ("upcoming milestones publish no progress",     t_upcoming_milestones_publish_no_progress),
         ("the sign-up form's Live switch",              t_signup_form_live_switch_stops_every_copy),
+        ("form words belong to their owner",            t_form_words_belong_to_their_owner),
         ("three roles, and only three",                 t_three_roles_and_only_three),
         ("a person can hold two roles",                 t_a_person_can_hold_two_roles),
         ("removing a user removes their roles",         t_removing_a_user_removes_their_roles),

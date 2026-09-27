@@ -258,7 +258,7 @@ await check("every real query converts with its documented params", async () => 
     // milestone columns
     parent_id: null, title: "t", description: null, target_label: null,
     actual_date: null, end_date: null, date_precision: null, status: "upcoming", completion: 0,
-    embed_roadmap: 0, embed_goal: 0, embed_prayer: 0, embed_videos: 0, open: 1,
+    embed_roadmap: 0, embed_goal: 0, embed_prayer: 0, embed_videos: 0, open: 1, form: "signup",
     is_public: 0, is_featured: 0, sort_order: 0, id: "m_1",
     milestone_id: "m_1", lang: "en", is_enabled: 1,
     // settings

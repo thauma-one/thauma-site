@@ -40,7 +40,8 @@ function answers({ admin = true } = {}) {
       embed: { enabled: true, accent: "#1AE4FF", accent2: null, theme: "auto",
                shared: { roadmap: true, goal: false, prayer: false, videos: false } },
       timeline: { start: "2026-01-01", end: "2027-12-31" },
-      languages: [{ code: "en", name: "English", is_enabled: true }],
+      languages: [{ code: "en", name: "English", is_enabled: true },
+                  { code: "hr", name: "Croatian", native_name: "Hrvatski", is_enabled: true }],
     },
     preview: {
       version: 1, partner: { slug: "chase-roush", display_name: "Chase Roush" },
@@ -60,6 +61,9 @@ function answers({ admin = true } = {}) {
                  heading: "Contact", blurb: "", button: "Send", thanks: "", is_open: 1 },
       topics: [{ label: "Prayer request", deliver_to: "" }],
       embed: { accent: "#1AE4FF", theme: "auto", enabled: true, signup_form_open: true },
+      /* Each form's own words, per language (0039). */
+      form_words: { signup: { en: { heading: "Stay in touch", blurb: "", button: "", thanks: "" } },
+                    contact: { en: { heading: "Contact", blurb: "", button: "Send", thanks: "" } } },
     },
   };
 }
@@ -142,18 +146,36 @@ await check("only an administrator switches a widget or its colors", async () =>
   eq(d.getElementById("shAccentHex").disabled, true, "the colors too");
 });
 
-await check("the sign-up form: a list and its words, each saved as the whole list", async () => {
+await check("the sign-up form: a list saved whole, the form's words saved as the form's", async () => {
   const { d, sent, pick, click, type, save } = await boot();
   await pick("signup");
   click(d.querySelector('#shLists [data-list="l2"]'));
   type(d.querySelector('#shWordFields [data-word="heading"]'), "Hear from us");
   await save();
-  const posts = sent.filter((s) => s.url.includes("staff-mailing"));
-  const l1 = posts.find((p) => p.body.id === "l1"), l2 = posts.find((p) => p.body.id === "l2");
-  assert(l1 && l2, JSON.stringify(sent));
-  eq(l2.body.is_open, true, "the Test list opened");
-  eq([l1.body.form_heading, l1.body.name, l1.body.is_open], ["Hear from us", "Newsletter", true],
-    "the words go to the list the form wears, the rest of it unchanged");
+  const l2 = sent.find((p) => p.body.id === "l2");
+  eq([l2 && l2.body.is_open, l2 && l2.body.name], [true, "Test"], "the Test list opened, the rest of it unchanged");
+  assert(!sent.some((p) => p.body.id === "l1"), "the untouched list was saved too");
+  const w = sent.find((p) => p.body.action === "form-words");
+  eq([w.body.form, w.body.words], ["signup", { en: { heading: "Hear from us" } }], "the form's own words");
+});
+
+await check("writing Croatian beside English: the English shows above, both are saved", async () => {
+  const { w, d, sent, pick, type, save } = await boot();
+  await pick("signup");
+  const writing = d.getElementById("shWriting");
+  assert(/usual words/.test(writing.querySelector('option[value="hr"]').textContent),
+    "a language with no words of its own should say it shows the usual ones");
+  writing.value = "hr";
+  writing.dispatchEvent(new w.Event("change", { bubbles: true }));
+  const ref = d.querySelector('#shWordFields .ms-ref');
+  eq(ref && ref.textContent, "Stay in touch", "the English heading shown above");
+  type(d.querySelector('#shWordFields [data-word="heading"]'), "Javite nam se");
+  assert(/data-lang="hr"/.test(d.getElementById("shFrame").srcdoc || "") ||
+    await new Promise((r) => setTimeout(() => r(/data-lang="hr"/.test(d.getElementById("shFrame").srcdoc)), 250)),
+    "the preview should be in the language being written");
+  await save();
+  const f = sent.find((p) => p.body.action === "form-words");
+  eq(f.body.words, { en: { heading: "Stay in touch" }, hr: { heading: "Javite nam se" } }, "both languages");
 });
 
 await check("the sign-up form's Live switch is its own request", async () => {

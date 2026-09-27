@@ -57,7 +57,7 @@ globalThis.fetch = async (url) => {
  * A database that records every call. Returns plausible rows so the handler
  * reaches its own logic, and keeps the params so the test can inspect them.
  */
-function envWith(roles = "staff", { partners = [{ id: "p_chase", display_name: "Chase" }] } = {}) {
+function envWith(roles = "staff", { partners = [{ id: "p_chase", display_name: "Chase" }], languages = null } = {}) {
   const calls = [];
   const env = {
     ACCESS_TEAM_DOMAIN: TEAM, ACCESS_AUD: AUD,
@@ -71,6 +71,7 @@ function envWith(roles = "staff", { partners = [{ id: "p_chase", display_name: "
              partners was asked for — which made an account with no partner
              look like it had one. */
           if (/partner_users/i.test(sql)) return { results: partners };
+          if (languages && /FROM languages/i.test(sql)) return { results: languages };
           if (/FROM users/i.test(sql) && /email/i.test(sql)) {
             return { results: [{ user_id: "u_1", email: "chase@thauma.one",
                                  user_name: "Chase", status: "active", roles }] };
@@ -421,6 +422,39 @@ await check("AN ABSENT FILTER IS AN EMPTY STRING, NEVER NULL", async () => {
     "the no-filter case must be an explicit empty-string test");
   assert(/:q = '' OR/.test(QUERIES.subscribers_for_list),
     "same for the search");
+});
+
+/* ---- a form's own words, every language (0039) ---- */
+
+const LANGS = [{ code: "en", is_active: 1 }, { code: "hr", is_active: 1 }];
+const byName = (env, name) => env.calls.filter((c) => c.sql === QUERIES[name].replace(/:[a-z_][a-z0-9_]*/gi, "?"));
+
+await check("a form's words are written whole: languages with words, and only those", async () => {
+  const env = envWith("staff", { languages: LANGS });
+  const res = await handler.fetch(req("POST", { body: { action: "form-words", form: "contact",
+    words: { en: { heading: "Write to us", thanks: "Thank you." }, hr: { heading: "", blurb: "" } } } }), env);
+  eq(res.status, 200, "status");
+  eq(byName(env, "form_words_clear").length, 1, "cleared first");
+  const ins = byName(env, "form_word_insert");
+  eq(ins.length, 1, "only English had words");
+  assert(ins[0].params.includes("Write to us") && ins[0].params.includes("Thank you."), JSON.stringify(ins[0].params));
+  assert(ins[0].params.includes("p_chase"), "written for this ministry");
+});
+
+await check("a language Thauma does not offer is refused", async () => {
+  const env = envWith("staff", { languages: LANGS });
+  const res = await handler.fetch(req("POST", { body: { action: "form-words", form: "signup",
+    words: { xx: { heading: "?" } } } }), env);
+  eq(res.status, 400, "status");
+  eq(byName(env, "form_word_insert").length, 0, "nothing written");
+});
+
+await check("the sign-up form keeps no after-sending words (the contact form does)", async () => {
+  const env = envWith("staff", { languages: LANGS });
+  await handler.fetch(req("POST", { body: { action: "form-words", form: "signup",
+    words: { en: { heading: "Join", thanks: "ignored" } } } }), env);
+  const ins = byName(env, "form_word_insert");
+  assert(!ins[0].params.includes("ignored"), "thanks stored on the sign-up form");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

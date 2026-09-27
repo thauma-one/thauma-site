@@ -156,7 +156,10 @@ check("the wording can be overridden by attribute, for the visualiser", () => {
 });
 
 check("without overrides it shows what the ministry saved", () => {
-  const { root } = draw(contactScript(FORM, "chase-roush", "https://thauma.one", null, TOPICS),
+  /* Its own words now come per language (0039, form_words), not from the
+     form row. */
+  const own = { en: { heading: "Get in touch", blurb: "The saved blurb.", button: "", thanks: "" } };
+  const { root } = draw(contactScript(FORM, "chase-roush", "https://thauma.one", null, TOPICS, own),
     "data-thauma-contact");
   eq(root.querySelector(".ttl").textContent, "Get in touch", "the saved heading");
   eq(root.querySelector(".blurb").textContent, "The saved blurb.", "the saved blurb");

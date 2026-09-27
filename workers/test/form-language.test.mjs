@@ -91,13 +91,27 @@ await check("a language nobody has translated reads English, not blank", async (
   eq(text(root, ".go"), t("en", "form.button"), "English fallback");
 });
 
-await check("the partner's own heading and button are left as they wrote them", async () => {
-  const own = formScript([{ ...LIST, form_heading: "Hear from us", form_button: "Yes please" }],
-    "chase-roush", "https://thauma.one");
-  const { root } = mount(own, { pageLang: "hr", selector: "data-thauma-form" });
+/* A ministry's own words, per language (0039). */
+const ownJs = formScript([LIST], "chase-roush", "https://thauma.one", null, {
+  en: { heading: "Hear from us", button: "Yes please", blurb: "Once a month." },
+  hr: { heading: "Javite nam se", button: "", blurb: "" },
+});
+
+await check("the partner's own words show in their own language", async () => {
+  const { root } = mount(ownJs, { pageLang: "en", selector: "data-thauma-form" });
   eq(text(root, ".ttl"), "Hear from us", "their heading");
   eq(text(root, ".go"), "Yes please", "their button");
-  eq(text(root, ".fld span"), t("hr", "form.name"), "while the fixed labels still follow the page");
+  eq(text(root, ".blurb"), "Once a month.", "their line");
+});
+
+await check("another language gets ITS words, or the translated default — never the English", async () => {
+  const { root } = mount(ownJs, { pageLang: "hr", selector: "data-thauma-form" });
+  eq(text(root, ".ttl"), "Javite nam se", "the Croatian heading they wrote");
+  eq(text(root, ".go"), t("hr", "form.button"), "no Croatian button written: the translated default");
+  assert(root.querySelector(".blurb").hidden, "no Croatian line written: none shown, not the English one");
+  eq(text(root, ".fld span"), t("hr", "form.name"), "the fixed labels follow the page");
+  const sl = mount(ownJs, { pageLang: "sl", selector: "data-thauma-form" }).root;
+  eq(text(sl, ".ttl"), t("sl", "form.heading"), "a language with nothing written: all defaults");
 });
 
 await check("the sign-up sends the language it was read in", async () => {

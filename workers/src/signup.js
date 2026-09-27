@@ -126,13 +126,13 @@ export { escapeHtml };
  * are the choice.
  */
 
-export function formScript(lists, partnerSlug, origin, theme) {
-  const first = lists[0] || {};
-  /* The partner's own words when they set them; otherwise the default, in the
-     visitor's language — picked in the browser, see WORDS_JS. */
-  const heading = first.form_heading || "";
-  const blurb = first.form_blurb || "";
-  const button = first.form_button || "";
+/**
+ * `own` is the form's own words, per language (0039, form_words):
+ * { hr: { heading, blurb, button }, ... }. In the visitor's language they
+ * replace the defaults; a language with none shows the defaults TRANSLATED —
+ * never another language's own words.
+ */
+export function formScript(lists, partnerSlug, origin, theme, own = {}) {
   const action = `${origin}/embed/v1/${partnerSlug}/signup`;
 
   const { a: accent, b: accent2 } = palette(
@@ -158,9 +158,8 @@ export function formScript(lists, partnerSlug, origin, theme) {
 
   const inner =
     '<div class="card">' +
-      (heading ? `<h3 class="ttl">${escapeHtml(heading)}</h3>`
-               : `<h3 class="ttl" data-w="form.heading">${escapeHtml(t("en", "form.heading"))}</h3>`) +
-      `<p class="blurb"${blurb ? "" : " hidden"}>${escapeHtml(blurb)}</p>` +
+      `<h3 class="ttl" data-w="form.heading">${escapeHtml(t("en", "form.heading"))}</h3>` +
+      '<p class="blurb" hidden></p>' +
       '<form class="form">' +
         '<label class="fld"><span data-w="form.name">Your name</span>' +
           '<input name="name" autocomplete="name" data-wp="form.name" placeholder="Your name"></label>' +
@@ -179,8 +178,7 @@ export function formScript(lists, partnerSlug, origin, theme) {
             '<input name="website" tabindex="-1" autocomplete="off">' +
           '</label>' +
         '</div>' +
-        (button ? `<button type="submit" class="go">${escapeHtml(button)}</button>`
-                : `<button type="submit" class="go" data-w="form.button">${escapeHtml(t("en", "form.button"))}</button>`) +
+        `<button type="submit" class="go" data-w="form.button">${escapeHtml(t("en", "form.button"))}</button>` +
         '<p class="fine" data-w="form.fine">You can unsubscribe at any time.</p>' +
         '<p class="msg"></p>' +
       '</form>' +
@@ -201,6 +199,9 @@ ${BEHAVIOUR_JS}
 
   var WORDS = ${JSON.stringify(wordsFor("form."))};
 ${WORDS_JS}
+  /* The ministry's own words, per language. < is escaped: this is text in a
+     script served to strangers' pages. */
+  var OWN = ${JSON.stringify(own || {}).replace(/</g, "\\u003c")};
 
   var STYLES = ${JSON.stringify(formStyles())};
   var LIGHT = ${JSON.stringify(LIGHT)};
@@ -244,6 +245,13 @@ ${WORDS_JS}
        in the console's preview and must win. */
     var lang = chooseLang(node);
     applyWords(host, lang);
+    /* Then the ministry's own words in that language, where it wrote them. */
+    var mine = OWN[lang] || {};
+    if (mine.heading) host.querySelector('.ttl').textContent = mine.heading;
+    if (mine.button) host.querySelector('.go').textContent = mine.button;
+    var bl = host.querySelector('.blurb');
+    bl.textContent = mine.blurb || '';
+    bl.hidden = !mine.blurb;
 
     /* WATCHES ITS OWN CONTAINER. The width decides whether the card tightens,
        the message box grows with what is typed, and the height is reported to
@@ -329,6 +337,15 @@ ${WORDS_JS}
 })();`;
 }
 
+/** form_words rows -> { lang: { heading, blurb, button, thanks } }. */
+export function byLang(rows) {
+  const out = {};
+  for (const r of rows || []) {
+    out[r.lang] = { heading: r.heading || "", blurb: r.blurb || "", button: r.button || "", thanks: r.thanks || "" };
+  }
+  return out;
+}
+
 export default {
   async fetch(request, env, partnerSlug, action) {
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
@@ -347,7 +364,8 @@ export default {
       const theme = { accent: lists[0].embed_accent,
                       accent2: lists[0].embed_accent2,
                       mode: lists[0].embed_theme };
-      return new Response(formScript(lists, partnerSlug, origin, theme), {
+      const own = byLang(await db.query("public_form_words", { partner_slug: partnerSlug, form: "signup" }));
+      return new Response(formScript(lists, partnerSlug, origin, theme, own), {
         headers: {
           ...CORS,
           "Content-Type": "application/javascript; charset=utf-8",

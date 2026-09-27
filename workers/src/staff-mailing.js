@@ -138,6 +138,16 @@ async function scopeFor(request, env) {
 /* Drafts come back with their files. Only drafts: a sent mailing cannot be
    reopened for editing, so loading its attachments would be reading rows
    nothing will use. */
+/** form_words rows -> { signup: { lang: {…} }, contact: { lang: {…} } }. */
+function formWords(rows) {
+  const out = { signup: {}, contact: {} };
+  for (const r of rows || []) {
+    out[r.form][r.lang] = { heading: r.heading || "", blurb: r.blurb || "",
+                            button: r.button || "", thanks: r.thanks || "" };
+  }
+  return out;
+}
+
 async function withAttachments(db, listId, partnerId) {
   const rows = await db.query("mailings_for_list",
     { list_id: listId, partner_id: partnerId });
@@ -446,6 +456,9 @@ export default {
            a blank form that fills in a moment later reads as broken. */
         contact: await db.queryOne("contact_form_for_partner", { partner_id: partnerId }),
         topics: await db.query("contact_topics_for_partner", { partner_id: partnerId }),
+        /* Each form's own words, per language (0039) — { signup: { lang:
+           {…} }, contact: {…} } — for Sharing's "Writing X beside Y". */
+        form_words: formWords(await db.query("form_words_for_owner", { partner_id: partnerId })),
 
         embed: look
           ? { accent: look.embed_accent, accent2: look.embed_accent2,
@@ -895,6 +908,32 @@ export default {
          form at once; each list keeps its own open/closed choice. A partner
          setting: Thauma's own form has no partner row, and its lists alone
          decide it. */
+      /* A FORM'S OWN WORDS, every language at once (0039). Written whole:
+         a language sent empty is removed, so it shows the translated
+         defaults again. Only languages Thauma offers. */
+      if (body.action === "form-words") {
+        const form = body.form === "contact" ? "contact" : body.form === "signup" ? "signup" : null;
+        if (!form) return json({ error: "Which form?" }, 400);
+        const codes = new Set((await db.query("languages_all", {}))
+          .filter((l) => l.is_active).map((l) => l.code));
+        const words = body.words && typeof body.words === "object" ? body.words : {};
+        const rows = [];
+        for (const [lang, w] of Object.entries(words)) {
+          if (!codes.has(lang)) return json({ error: `"${lang}" is not a language Thauma offers.` }, 400);
+          const row = {
+            heading: clean(w && w.heading, 120), blurb: clean(w && w.blurb, 240),
+            button: clean(w && w.button, 40), thanks: form === "contact" ? clean(w && w.thanks, 240) : null,
+          };
+          if (row.heading || row.blurb || row.button || row.thanks) rows.push({ lang, ...row });
+        }
+        const now = new Date().toISOString();
+        await db.query("form_words_clear", { partner_id: partnerId, form });
+        for (const r of rows) {
+          await db.query("form_word_insert", { partner_id: partnerId, form, now, ...r });
+        }
+        return json({ form_words: formWords(await db.query("form_words_for_owner", { partner_id: partnerId })) });
+      }
+
       if (body.action === "signup-form") {
         if (!partnerId) return json({ error: "Thauma's own form is switched by its lists." }, 400);
         const open = body.open ? 1 : 0;

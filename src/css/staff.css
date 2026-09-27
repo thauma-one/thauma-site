@@ -2089,6 +2089,8 @@ html.console-menu-open{overflow:hidden}
 .sh-card[hidden]{display:none}
 .sh-words{margin-top:14px}
 .sh-word-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.sh-words .ms-writing{margin-bottom:14px;padding-bottom:12px}
+.sh-word-fields .ms-ref{display:block}
 .sh-switches{display:flex;flex-direction:column;gap:12px}
 .sh-live .switch-label{font-size:var(--fs-md);color:var(--text)}
 .sh-live .rolegate{margin-top:12px}

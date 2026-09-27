@@ -107,7 +107,8 @@
     scope: /(\?|&)scope=organization\b/.test(location.search) ? 'organization' : 'partner',
     settings: null, payload: null, mail: null,
     item: null, device: 'wide', lang: null,
-    saved: null, draft: null, busy: false
+    saved: null, draft: null, busy: false,
+    writing: null, beside: null
   };
 
   function isAdmin() { return !!(state.settings && state.settings.you && state.settings.you.is_admin); }
@@ -117,15 +118,10 @@
   /* The four widgets are a ministry's data: Thauma's own scope, or an account
      with no ministry, has only the forms. */
   function items() {
-    return state.scope === 'organization' || !state.settings ? ['signup', 'contact'] : ITEMS;
-  }
-
-  /* The list whose words the form wears: the first open one, alphabetically —
-     the rule form.js uses. (Part 4 gives the form words of its own.) */
-  function wordsList(lists, open) {
-    var on = lists.filter(function (l) { return open[l.id]; });
-    on.sort(function (a, b) { return String(a.name).toLowerCase() < String(b.name).toLowerCase() ? -1 : 1; });
-    return on[0] || null;
+    /* Thauma's own sign-up form is part of thauma.one, not an embed; its
+       contact form is. */
+    if (state.scope === 'organization') return ['contact'];
+    return !state.settings ? ['signup', 'contact'] : ITEMS;
   }
 
   function snapshot() {
@@ -137,8 +133,8 @@
     var lists = m.lists || [];
     var open = {};
     lists.forEach(function (l) { open[l.id] = !!l.is_open; });
-    var wl = wordsList(lists, open);
     var c = m.contact || {};
+    var fw = m.form_words || {};
     return {
       accent: HEX.test(e.accent || '') ? e.accent.toUpperCase() : DEFAULT_ACCENT,
       accent2: HEX.test(e.accent2 || '') ? e.accent2.toUpperCase() : null,
@@ -147,11 +143,10 @@
       period: { start: tl.start || '', end: tl.end || '' },
       signupOpen: m.embed ? !!m.embed.signup_form_open : true,
       lists: open,
-      wordsList: wl ? wl.id : null,
-      words: wl ? { heading: wl.form_heading || '', blurb: wl.form_blurb || '', button: wl.form_button || '' } : null,
+      /* Each form's own words, per language (0039): { signup: { lang: {…} }, contact: … } */
+      formWords: { signup: fw.signup || {}, contact: fw.contact || {} },
       contact: {
         deliver_to: c.deliver_to || '', from_address: c.from_address || '',
-        heading: c.heading || '', blurb: c.blurb || '', button: c.button || '', thanks: c.thanks || '',
         is_open: !!c.is_open,
         topics: (m.topics || []).map(function (t) { return { label: t.label || '', deliver_to: t.deliver_to || '' }; })
       }
@@ -167,17 +162,27 @@
     if (!same(a.period, b.period)) out.period = true;
     if (a.signupOpen !== b.signupOpen) out.signupOpen = true;
     var lists = Object.keys(b.lists).filter(function (id) { return a.lists[id] !== b.lists[id]; });
-    if (b.wordsList && !same(a.words, b.words)) {
-      if (lists.indexOf(b.wordsList) === -1) lists.push(b.wordsList);
-    }
     if (lists.length) out.lists = lists;
+    var words = ['signup', 'contact'].filter(function (f) { return !same(tidy(a.formWords[f]), tidy(b.formWords[f])); });
+    if (words.length) out.words = words;
     if (!same(a.contact, b.contact)) out.contact = true;
+    return out;
+  }
+  /* Words compared as what would be stored: a language with nothing in it is
+     no language at all. */
+  function tidy(byLang) {
+    var out = {};
+    Object.keys(byLang || {}).sort().forEach(function (l) {
+      var w = byLang[l] || {}, keep = {};
+      ['heading', 'blurb', 'button', 'thanks'].forEach(function (k) { if (String(w[k] || '').trim()) keep[k] = String(w[k]).trim(); });
+      if (Object.keys(keep).length) out[l] = keep;
+    });
     return out;
   }
   function count() {
     var c = changes();
     return (c.embed ? 1 : 0) + (c.period ? 1 : 0) + (c.signupOpen ? 1 : 0) +
-      (c.lists ? c.lists.length : 0) + (c.contact ? 1 : 0);
+      (c.lists ? c.lists.length : 0) + (c.contact ? 1 : 0) + (c.words ? c.words.length : 0);
   }
 
   /* Which of the six a change touches, for the dot on its row. */
@@ -187,8 +192,9 @@
     if (WIDGETS.indexOf(item) !== -1) {
       return a.shared[item] !== b.shared[item] || (item === 'roadmap' && !same(a.period, b.period));
     }
-    if (item === 'signup') return a.signupOpen !== b.signupOpen || !same(a.lists, b.lists) || !same(a.words, b.words);
-    return !same(a.contact, b.contact);
+    if (item === 'signup') return a.signupOpen !== b.signupOpen || !same(a.lists, b.lists) ||
+      !same(tidy(a.formWords.signup), tidy(b.formWords.signup));
+    return !same(a.contact, b.contact) || !same(tidy(a.formWords.contact), tidy(b.formWords.contact));
   }
   function itemLive(item, d) {
     if (WIDGETS.indexOf(item) !== -1) return !!d.shared[item];
@@ -336,19 +342,42 @@
     contact: [['heading', 'ml.ctHeading', 120, null], ['blurb', 'ml.ctBlurb', 240, null],
               ['button', 'ml.ctButton', 40, null], ['thanks', 'ml.ctThanks', 240, null]]
   };
-  function wordsOf(item) {
-    var d = state.draft;
-    return item === 'signup' ? d.words : item === 'contact' ? d.contact : null;
+  /* "WRITING X BESIDE Y", as on Updates and Website › Pages: one language's
+     words at a time, the other language small above each field. Languages
+     are the ministry's own; a language left empty shows the form's
+     translated defaults. */
+  function formLangs() {
+    var langs = ((state.settings && state.settings.languages) || []).filter(function (l) { return l.is_enabled; });
+    return langs.length ? langs : [{ code: 'en', name: 'English' }];
+  }
+  function wordsIn(item, lang) {
+    var byLang = state.draft.formWords[item];
+    return byLang[lang] || (byLang[lang] = { heading: '', blurb: '', button: '', thanks: '' });
   }
   function drawWords() {
     var item = state.item;
-    var words = wordsOf(item);
-    $('shWords').hidden = !words;
-    if (!words) return;
+    $('shWords').hidden = !isForm(item);
+    if (!isForm(item)) return;
+    var langs = formLangs(), codes = langs.map(function (l) { return l.code; });
+    if (codes.indexOf(state.writing) === -1) state.writing = codes.indexOf('en') !== -1 ? 'en' : codes[0];
+    var others = langs.filter(function (l) { return l.code !== state.writing; });
+    if (!others.some(function (l) { return l.code === state.beside; })) state.beside = others.length ? others[0].code : null;
+    var named = function (l) { return esc(l.native_name || l.name || l.code); };
+    $('shWriting').innerHTML = langs.map(function (l) {
+      var has = Object.keys(tidy(state.draft.formWords[item])).indexOf(l.code) !== -1;
+      return '<option value="' + esc(l.code) + '">' + named(l) + (has ? '' : ' · ' + esc(tr('sh.defaults'))) + '</option>';
+    }).join('');
+    $('shWriting').value = state.writing;
+    $('shBesideWrap').hidden = !others.length;
+    $('shBeside').innerHTML = others.map(function (l) { return '<option value="' + esc(l.code) + '">' + named(l) + '</option>'; }).join('');
+    $('shBeside').value = state.beside || '';
+    var mine = wordsIn(item, state.writing);
+    var ref = state.beside ? (state.draft.formWords[item][state.beside] || {}) : {};
     $('shWordFields').innerHTML = WORD_FIELDS[item].map(function (f) {
       return '<label class="fld"><span>' + esc(tr(f[1])) + '</span>' +
-        '<input type="text" data-word="' + f[0] + '" maxlength="' + f[2] + '" value="' + esc(words[f[0]] || '') + '"' +
-        (f[3] ? ' placeholder="' + esc(tr(f[3])) + '"' : '') + '></label>';
+        (ref[f[0]] ? '<small class="ms-ref" lang="' + esc(state.beside) + '">' + esc(ref[f[0]]) + '</small>' : '') +
+        '<input type="text" data-word="' + f[0] + '" maxlength="' + f[2] + '" value="' + esc(mine[f[0]] || '') + '"' +
+        ' lang="' + esc(state.writing) + '"' + (f[3] ? ' placeholder="' + esc(tr(f[3])) + '"' : '') + '></label>';
     }).join('');
   }
 
@@ -415,7 +444,9 @@
     if (!who()) { frame.removeAttribute('srcdoc'); return; }
     var fa = ' data-accent="' + esc(d.accent) + '" data-theme="' + esc(mode) + '"' +
       (d.accent2 ? ' data-accent2="' + esc(d.accent2) + '"' : '');
-    var words = wordsOf(item) || {};
+    /* In the language being written, with its words as typed. */
+    if (state.writing) fa += ' data-lang="' + esc(state.writing) + '"';
+    var words = state.draft.formWords[item][state.writing] || {};
     WORD_FIELDS[item].forEach(function (f) {
       var v = String(words[f[0]] || '').trim();
       if (v) fa += ' data-' + f[0] + '="' + esc(v) + '"';
@@ -555,8 +586,9 @@
     for (var i = 0; c.lists && i < c.lists.length; i++) {
       var l = ((state.mail && state.mail.lists) || []).filter(function (x) { return x.id === c.lists[i]; })[0];
       if (!l) continue;
-      var w = l.id === d.wordsList && d.words ? d.words
-        : { heading: l.form_heading || '', blurb: l.form_blurb || '', button: l.form_button || '' };
+      /* The list's own old word columns ride along unchanged; the form's
+         words live in form_words now. */
+      var w = { heading: l.form_heading || '', blurb: l.form_blurb || '', button: l.form_button || '' };
       /* The whole list, as the Mailing page saves it: this endpoint takes a
          list entire. */
       await step(function () {
@@ -568,12 +600,19 @@
         });
       });
     }
+    for (var f = 0; c.words && f < c.words.length; f++) {
+      var form = c.words[f];
+      await step(function () {
+        return send(mailUrl, 'POST', { action: 'form-words', form: form, words: tidy(d.formWords[form]) });
+      });
+    }
     if (c.contact) await step(function () {
-      var k = d.contact;
+      var k = d.contact, old = (state.mail && state.mail.contact) || {};
       return send(mailUrl, 'POST', {
         action: 'contact-form',
         deliver_to: k.deliver_to.trim(), from_address: k.from_address,
-        heading: k.heading.trim(), blurb: k.blurb.trim(), button: k.button.trim(), thanks: k.thanks.trim(),
+        /* The old single-language word columns ride along unchanged. */
+        heading: old.heading || '', blurb: old.blurb || '', button: old.button || '', thanks: old.thanks || '',
         is_open: k.is_open,
         /* A reason nobody named is not a reason yet. */
         topics: k.topics.filter(function (t) { return t.label.trim(); })
@@ -645,24 +684,18 @@
     if (!b) return;
     var d = state.draft;
     d.lists[b.dataset.list] = !d.lists[b.dataset.list];
-    /* The words follow the first open list, as they do on the form. */
-    var lists = (state.mail && state.mail.lists) || [];
-    var wl = wordsList(lists, d.lists);
-    if ((wl ? wl.id : null) !== d.wordsList) {
-      d.wordsList = wl ? wl.id : null;
-      d.words = wl ? { heading: wl.form_heading || '', blurb: wl.form_blurb || '', button: wl.form_button || '' } : null;
-      drawWords();
-    }
     drawSide(); changed();
   });
 
   $('shWordFields').addEventListener('input', function (e) {
     var f = e.target.closest('[data-word]');
-    var words = wordsOf(state.item);
-    if (!f || !words) return;
-    words[f.dataset.word] = f.value;
+    if (!f || !isForm(state.item)) return;
+    wordsIn(state.item, state.writing)[f.dataset.word] = f.value;
     changed();
   });
+  /* Switching either language: the words typed are already in the draft. */
+  $('shWriting').addEventListener('change', function () { state.writing = this.value; drawWords(); drawPreviewSoon(); });
+  $('shBeside').addEventListener('change', function () { state.beside = this.value; drawWords(); });
 
   $('shCtTo').addEventListener('input', function () { state.draft.contact.deliver_to = this.value; changed(); });
   $('shCtFrom').addEventListener('change', function () { state.draft.contact.from_address = this.value; changed(); });

@@ -180,10 +180,9 @@ await check("a partner's own words cannot inject script into the form", async ()
   /* The heading and blurb are typed by a partner and rendered into a page on
      somebody else's website. An unescaped `</script>` there would be theirs to
      exploit and the host site's to suffer. */
-  const nasty = { ...LIST,
-    form_heading: '</script><img src=x onerror=alert(1)>',
-    form_blurb: '"><script>alert(2)</script>' };
-  const js = formScript([nasty], "chase-roush", "https://thauma.one");
+  const own = { en: { heading: '</script><img src=x onerror=alert(1)>',
+                      blurb: '"><script>alert(2)</script>' } };
+  const js = formScript([LIST], "chase-roush", "https://thauma.one", null, own);
   assert(!/<img src=x onerror/.test(js), "raw HTML survived into the script");
   assert(!/<script>alert\(2\)/.test(js), "a script tag survived into the script");
   assert(/&lt;/.test(js) || /\\u003c/.test(js), "expected the markup to be escaped");

@@ -71,10 +71,18 @@ staffHeading: What appears on <b>other websites</b>
       </div>
     </div>
 
-    {#- The words a form carries. The four widgets have none of their own —
+    {#- The words a form carries, in every language — "Writing X beside Y",
+       as on Updates and Website › Pages. A language left empty shows the
+       form's translated defaults. The four widgets have none of their own:
        their words are the ministry's updates, written on Updates. -#}
     <div class="sh-card sh-words" id="shWords" hidden>
       <span class="sh-lbl" data-i18n="sh.words">The words on it</span>
+      <div class="ms-writing">
+        <label class="ms-pick"><span data-i18n="con.writing">Writing</span>
+          <select id="shWriting" class="lang-pick"></select></label>
+        <label class="ms-pick" id="shBesideWrap"><span data-i18n="con.beside">beside</span>
+          <select id="shBeside" class="lang-pick"></select></label>
+      </div>
       <div class="sh-word-fields" id="shWordFields"></div>
     </div>
   </div>

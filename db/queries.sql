@@ -2593,3 +2593,40 @@ WHERE contacts.partner_id = :partner_id;
 -- "just in case"; the audit row that records the deletion names an id and
 -- nothing about the person.
 DELETE FROM contacts WHERE id = :id AND partner_id = :partner_id;
+
+
+-- name: form_words_for_owner
+-- A form's own words, every language (0039). :partner_id NULL is Thauma's own
+-- form. Always given by the server from the caller's scope, never from a slug
+-- — see public_form_words for why that matters.
+SELECT form, lang, heading, blurb, button, thanks
+  FROM form_words
+ WHERE partner_id IS :partner_id
+ ORDER BY form, lang;
+
+
+-- name: form_words_clear
+-- Before a form's words are written again, whole. Same owner rule as above.
+DELETE FROM form_words WHERE partner_id IS :partner_id AND form = :form;
+
+
+-- name: form_word_insert
+INSERT INTO form_words (partner_id, form, lang, heading, blurb, button, thanks, updated_at)
+VALUES (:partner_id, :form, :lang, :heading, :blurb, :button, :thanks, :now);
+
+
+-- name: public_form_words
+-- A ministry's form words, for its public form. `=` and NOT `IS` on purpose:
+-- a slug that matches nobody gives a NULL id, and `partner_id IS NULL` would
+-- then return THAUMA'S own words — the leak public_lists_for_signup documents.
+SELECT w.lang, w.heading, w.blurb, w.button, w.thanks
+  FROM form_words w
+  JOIN partners p ON p.slug = :partner_slug AND w.partner_id = p.id
+ WHERE w.form = :form;
+
+
+-- name: public_form_words_org
+-- Thauma's own form's words.
+SELECT lang, heading, blurb, button, thanks
+  FROM form_words
+ WHERE partner_id IS NULL AND form = :form;

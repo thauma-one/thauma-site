@@ -49,6 +49,7 @@ import { escapeHtml, palette, formStyles, LIGHT, DARK, BEHAVIOUR_JS, WORDS_JS } 
 import { t, wordsFor } from "./lib/mail-i18n.js";
 import { siteOrigin } from "./lib/origin.js";
 import { isOrgSlug } from "./lib/org.js";
+import { byLang } from "./signup.js";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -103,19 +104,18 @@ async function hashIp(ip, env) {
 }
 
 /** The widget, as a script the host page loads. */
-export function contactScript(form, partnerSlug, origin, theme, topics) {
+/**
+ * `own` is the form's own words per language (0039, form_words), applied in
+ * the visitor's language over the translated defaults — see formScript in
+ * signup.js for the rule.
+ */
+export function contactScript(form, partnerSlug, origin, theme, topics, own = {}) {
   /* The row already carries the ministry's colors, so an omitted `theme` reads
      them rather than falling back to the default purple. A second source of the
      same fact is a second thing to forget to pass. */
   theme = theme || {
     accent: form.embed_accent, accent2: form.embed_accent2, mode: form.embed_theme,
   };
-  /* The partner's own words when they set them; otherwise the default, in the
-     visitor's language — picked in the browser, see WORDS_JS. */
-  const heading = form.heading || "";
-  const blurb = form.blurb || "";
-  const button = form.button || "";
-  const thanks = form.thanks || "";
   const action = `${origin}/embed/v1/${partnerSlug}/contact`;
 
   const { a: accent, b: accent2 } = palette(
@@ -141,9 +141,8 @@ export function contactScript(form, partnerSlug, origin, theme, topics) {
 
   const inner =
     '<div class="card">' +
-      (heading ? `<h3 class="ttl">${escapeHtml(heading)}</h3>`
-               : `<h3 class="ttl" data-w="contact.heading">${escapeHtml(t("en", "contact.heading"))}</h3>`) +
-      `<p class="blurb"${blurb ? "" : " hidden"}>${escapeHtml(blurb)}</p>` +
+      `<h3 class="ttl" data-w="contact.heading">${escapeHtml(t("en", "contact.heading"))}</h3>` +
+      '<p class="blurb" hidden></p>' +
       '<form class="form">' +
         '<label class="fld"><span data-w="form.name">Your name</span>' +
           '<input name="name" autocomplete="name" required data-wp="form.name" placeholder="Your name"></label>' +
@@ -172,14 +171,12 @@ export function contactScript(form, partnerSlug, origin, theme, topics) {
             '<input name="website" tabindex="-1" autocomplete="off">' +
           '</label>' +
         '</div>' +
-        (button ? `<button type="submit" class="go">${escapeHtml(button)}</button>`
-                : `<button type="submit" class="go" data-w="contact.button">${escapeHtml(t("en", "contact.button"))}</button>`) +
+        `<button type="submit" class="go" data-w="contact.button">${escapeHtml(t("en", "contact.button"))}</button>` +
         '<p class="msg"></p>' +
       '</form>' +
       '<div class="done" hidden>' +
         '<p class="mark">✉</p>' +
-        (thanks ? `<p class="big">${escapeHtml(thanks)}</p>`
-                : `<p class="big" data-w="contact.thanks">${escapeHtml(t("en", "contact.thanks"))}</p>`) +
+        `<p class="big" data-w="contact.thanks">${escapeHtml(t("en", "contact.thanks"))}</p>` +
       '</div>' +
     '</div>';
 
@@ -192,6 +189,8 @@ ${COLOUR_JS}
 ${BEHAVIOUR_JS}
 
   var WORDS = ${JSON.stringify(wordsFor("form.", "contact."))};
+  /* The ministry's own words, per language; < escaped (text in a script). */
+  var OWN = ${JSON.stringify(own || {}).replace(/</g, "\\u003c")};
 ${WORDS_JS}
 
   var STYLES = ${JSON.stringify(formStyles())};
@@ -267,6 +266,14 @@ ${WORDS_JS}
        own words in the console's preview and must win. */
     var lang = chooseLang(node);
     applyWords(host, lang);
+    /* Then the ministry's own words in that language, where it wrote them. */
+    var mine = OWN[lang] || {};
+    if (mine.heading) host.querySelector('.ttl').textContent = mine.heading;
+    if (mine.button) host.querySelector('.go').textContent = mine.button;
+    if (mine.thanks) host.querySelector('.done .big').textContent = mine.thanks;
+    var bl = host.querySelector('.blurb');
+    bl.textContent = mine.blurb || '';
+    bl.hidden = !mine.blurb;
 
     /* WATCHES ITS OWN CONTAINER. The width decides whether the card tightens,
        the message box grows with what is typed, and the height is reported to
@@ -443,9 +450,12 @@ export default {
       /* The organization's row carries no palette — there is no partner to
          read one from — so the widget's own default stands, which is Thauma's
          purple. */
+      const own = byLang(await (isOrg
+        ? db.query("public_form_words_org", { form: "contact" })
+        : db.query("public_form_words", { partner_slug: partnerSlug, form: "contact" })));
       return new Response(contactScript(form, partnerSlug, origin, {
         accent: form.embed_accent, accent2: form.embed_accent2, mode: form.embed_theme,
-      }, topics), {
+      }, topics, own), {
         headers: {
           ...CORS,
           "Content-Type": "application/javascript; charset=utf-8",

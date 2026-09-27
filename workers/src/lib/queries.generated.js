@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "fba5cd24bd8e73e2";
+export const SOURCE_DIGEST = "3d8b8e2b92487957";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -269,6 +269,13 @@ ON CONFLICT(id) DO UPDATE SET
   updated_at = :now
 WHERE directory_contacts.user_id = :user_id
   AND directory_contacts.partner_id = :partner_id;`,
+  form_word_insert: `INSERT INTO form_words (partner_id, form, lang, heading, blurb, button, thanks, updated_at)
+VALUES (:partner_id, :form, :lang, :heading, :blurb, :button, :thanks, :now);`,
+  form_words_clear: `DELETE FROM form_words WHERE partner_id IS :partner_id AND form = :form;`,
+  form_words_for_owner: `SELECT form, lang, heading, blurb, button, thanks
+  FROM form_words
+ WHERE partner_id IS :partner_id
+ ORDER BY form, lang;`,
   goal_delete: `DELETE FROM goals WHERE id = :id AND partner_id = :partner_id;`,
   goal_history: `SELECT raised_cents, donor_count, captured_at
 FROM goal_snapshots
@@ -612,6 +619,13 @@ ORDER BY t.sort_order, t.label COLLATE NOCASE;`,
 FROM contact_topics
 WHERE partner_id IS NULL
 ORDER BY sort_order, label COLLATE NOCASE;`,
+  public_form_words: `SELECT w.lang, w.heading, w.blurb, w.button, w.thanks
+  FROM form_words w
+  JOIN partners p ON p.slug = :partner_slug AND w.partner_id = p.id
+ WHERE w.form = :form;`,
+  public_form_words_org: `SELECT lang, heading, blurb, button, thanks
+  FROM form_words
+ WHERE partner_id IS NULL AND form = :form;`,
   public_goals_for_partner: `SELECT
   goal_id, label, description, kind, target_cents, currency,
   raised_cents, donor_count, percent, captured_at
