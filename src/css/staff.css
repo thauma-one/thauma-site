@@ -547,19 +547,12 @@ body.has-savebar{padding-bottom:var(--ms-savebar-h,72px)}
 /* The form now sits inside the list, directly under the row being edited. */
 .ms-form{margin:0;border-top:0}
 
-/* ---- the editor panel's open/close motion ---- */
-/* Height is animated from JS, which measures the real value; this supplies the
-   curve and duration. --ease-main is the site's symmetrical ease-in-out, so
-   opening and closing mirror each other rather than one feeling heavier.
-   420ms: slow enough to read as a panel unfolding from its row rather than
-   appearing, short enough not to be in the way when moving between rows. */
-.ms-form.is-animating{overflow:hidden;
-  transition:height .6s var(--ease-panel), opacity .38s var(--ease-panel)}
+/* ---- the editor panel's open/close motion ----
+   Driven frame by frame from staff-rowpanel.js, together with the page's
+   scroll, on the --ease-panel curve over 600ms. No CSS transition here: one
+   would trail the values the script sets and the two would fight. */
+.ms-form.is-animating{overflow:hidden}
 .ms-form[hidden]{display:none}
-
-@media (prefers-reduced-motion: reduce){
-  .ms-form,.ms-form.is-animating{transition:none}
-}
 
 /* ---- the row as a disclosure control ---- */
 /* A gentler curve than --ease-main, which is a steep symmetrical S built for
@@ -611,7 +604,6 @@ body.has-savebar{padding-bottom:var(--ms-savebar-h,72px)}
    from Done and Cancel. A delete waiting for Publish strikes its row and
    offers Keep in the switch's place. */
 .ms-toggle{display:flex;align-items:center}
-.ms-star{color:var(--voice-human);font-size:var(--fs-sm);line-height:1;margin-right:4px}
 .ms-actions .c-gap{flex:1 1 0}
 .ghost-btn.danger{color:var(--crit,#FF6B6B);border-color:rgba(255,107,107,.4)}
 .ghost-btn.danger:hover{background:rgba(255,107,107,.1);box-shadow:none}

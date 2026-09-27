@@ -184,8 +184,6 @@
   function cssEscape(v) { return panel.cssEscape(v); }
   function reducedMotion() { return panel.reducedMotion(); }
   function updateStickyOffsets() { panel.updateStickyOffsets(); }
-  function scrollRowToTop(row) { panel.scrollRowToTop(row); }
-  function openPanel() { return panel.open(); }
   function closePanel() { return panel.close(); }
 
   function render() {
@@ -207,11 +205,10 @@
         ' aria-expanded="false">' +
         '<div class="ms-main">' +
           '<div class="ms-t">' +
-            /* The star inside the title, so a long title wraps with it. */
-            '<span class="ms-title">' +
-              (m.is_featured ? '<span class="ms-star" title="' + esc(tr('ms.featured')) + '" aria-label="' +
-                esc(tr('ms.featured')) + '">★</span> ' : '') +
-              esc(titleOf(m)) + '</span>' +
+            /* No Featured star: nothing on any public page shows Featured
+               (the widget and chaseroush.com both leave it out), so a mark
+               for it here explained nothing (Chase, 2026-09-27). */
+            '<span class="ms-title">' + esc(titleOf(m)) + '</span>' +
             (gone ? '<span class="badge unsaved">' + esc(tr('up.willRemove')) + '</span>'
               : isDirty(rid) ? '<span class="badge unsaved">' + esc(tr('up.notLive')) + '</span>' : '') +
           '</div>' +
@@ -694,8 +691,7 @@
     // scroll the form, so which milestone you are editing never leaves the
     // screen — the panel is tall enough that its own heading would otherwise
     // scroll away within a few lines.
-    scrollRowToTop(row);
-    await openPanel(form);
+    await panel.open(row);
 
     var first = form.querySelector('[data-col="a"][data-tx="title"]');
     if (first) first.focus({ preventScroll: true });

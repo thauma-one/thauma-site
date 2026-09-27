@@ -199,9 +199,7 @@
     writeCols();
     panel.moveTo(state.editing);
     panel.markOpen(state.editing);
-    await panel.open();
-    var row = panel.rowFor(state.editing);
-    if (row) panel.scrollRowToTop(row);
+    await panel.open(panel.rowFor(state.editing));
     var first = $('prForm').querySelector('[data-ptx="title"][data-col="a"]');
     if (first) first.focus();
   }

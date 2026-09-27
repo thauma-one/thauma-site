@@ -1,6 +1,6 @@
 /* ============================================================
    staff-rowpanel.js — one row-with-a-panel, used by all three
-   ministry editors
+   Updates editors
    ============================================================
    Milestones, giving goals and prayer are the same shape of screen: a list of
    rows, and a form that opens directly beneath whichever row you pressed.
@@ -35,67 +35,90 @@
     return window.CSS && CSS.escape ? CSS.escape(s) : String(s).replace(/["\\]/g, '\\$&');
   }
 
+  /* The height of the console header, which the open row pins beneath.
+     console-roles-head.njk measures the header into --header-h (it has one
+     or two rows depending on roles). This used to read an element called
+     .top that the redesigned header no longer has, so it answered 0 and
+     every open scrolled the row up under the header — the panel's first
+     lines ended up hidden behind its own pinned row. */
   function stickyTop() {
-    var header = document.querySelector('.top');
-    return header ? header.offsetHeight : 0;
+    var v = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--header-h'));
+    if (v > 0) return v;
+    var header = document.querySelector('.console');
+    return header ? header.getBoundingClientRect().height : 0;
   }
 
-  /* Height cannot be transitioned to or from `auto`, so each direction
-     measures the real height and animates between that and zero, then hands
-     control back to the layout. Doing it in JS rather than with a max-height
-     guess means the timing is the same for a one-line entry and a long one —
-     a max-height large enough for the longest makes short panels appear to
-     snap open early and then hang. */
-  function openPanel(el) {
+  /* The same curve as --ease-panel in staff.css, cubic-bezier(.32,.06,.16,1),
+     solved for y at time x. */
+  function ease(x) {
+    var p1x = .32, p1y = .06, p2x = .16, p2y = 1;
+    var t = x;
+    for (var i = 0; i < 8; i++) {
+      var cx = 3 * p1x * t * (1 - t) * (1 - t) + 3 * p2x * t * t * (1 - t) + t * t * t - x;
+      var dx = 3 * p1x * (1 - t) * (1 - 4 * t + 3 * t * t) + 3 * p2x * t * (2 - 3 * t) + 3 * t * t;
+      if (Math.abs(cx) < 1e-4 || !dx) break;
+      t = Math.min(1, Math.max(0, t - cx / dx));
+    }
+    return 3 * p1y * t * (1 - t) * (1 - t) + 3 * p2y * t * t * (1 - t) + t * t * t;
+  }
+
+  /* ONE MOTION, NOT TWO. The panel's height and the page's scroll are moved
+     together, frame by frame, on the same curve. They used to be a CSS
+     height transition plus a smooth scroll: the two either ran at once and
+     fought (the browser's smooth scroll stops short while the page is still
+     too short to reach its target), or ran one after the other — grow, then
+     jump — which is what read as stutter. `scrollTo` (optional) is where the
+     page should end: the open row's top edge just under the header. */
+  function animate(el, from, to, scrollTo) {
     return new Promise(function (resolve) {
-      if (!el.hidden) return resolve();
-      el.hidden = false;
-
-      if (reducedMotion()) { el.style.height = ''; return resolve(); }
-
+      var root = document.documentElement;
+      var startY = window.scrollY;
+      var t0 = null;
       el.classList.add('is-animating');
-      el.style.height = '0px';
-      el.style.opacity = '0';
-      // Force the browser to accept 0 as a starting point before changing it,
-      // or both assignments collapse into one frame and nothing animates.
-      void el.offsetHeight;
-      el.style.height = el.scrollHeight + 'px';
-      el.style.opacity = '1';
-
-      setTimeout(function () {
-        // Back to auto so the panel can grow as its content does — a fixed
-        // height would clip a description someone keeps typing into.
+      /* Keep the browser from "helpfully" adjusting the scroll while the
+         content under the viewport changes size. */
+      root.style.overflowAnchor = 'none';
+      el.style.height = from + 'px';
+      function frame(now) {
+        if (t0 === null) t0 = now;
+        var k = Math.min(1, (now - t0) / PANEL_MS);
+        var e = ease(k);
+        el.style.height = (from + (to - from) * e) + 'px';
+        el.style.opacity = String(to > from ? Math.min(1, e * 1.6) : 1 - Math.min(1, e * 1.6));
+        if (scrollTo !== undefined) window.scrollTo(0, startY + (scrollTo - startY) * e);
+        if (k < 1) { requestAnimationFrame(frame); return; }
         el.style.height = '';
         el.style.opacity = '';
         el.classList.remove('is-animating');
+        root.style.overflowAnchor = '';
         resolve();
-      }, PANEL_MS);
+      }
+      requestAnimationFrame(frame);
     });
+  }
+
+  /* Where the page must scroll to put `row` just under the header. */
+  function rowTarget(row) {
+    return Math.max(0, window.scrollY + row.getBoundingClientRect().top - stickyTop());
+  }
+
+  function openPanel(el, row) {
+    if (!el.hidden) return Promise.resolve();
+    el.hidden = false;
+    var target = row ? rowTarget(row) : undefined;
+    if (reducedMotion()) {
+      el.style.height = '';
+      if (target !== undefined) window.scrollTo(0, target);
+      return Promise.resolve();
+    }
+    var full = el.scrollHeight;
+    return animate(el, 0, full, target);
   }
 
   function closePanel(el) {
-    return new Promise(function (resolve) {
-      if (el.hidden) return resolve();
-      if (reducedMotion()) { el.hidden = true; el.style.height = ''; return resolve(); }
-
-      el.classList.add('is-animating');
-      el.style.height = el.scrollHeight + 'px';
-      el.style.opacity = '1';
-      void el.offsetHeight;
-      el.style.height = '0px';
-      // Fades faster than it collapses (see the CSS), so the text stops being
-      // legible early rather than shrinking while still readable — that is
-      // what makes a collapsing panel feel like a flicker.
-      el.style.opacity = '0';
-
-      setTimeout(function () {
-        el.hidden = true;
-        el.style.height = '';
-        el.style.opacity = '';
-        el.classList.remove('is-animating');
-        resolve();
-      }, PANEL_MS);
-    });
+    if (el.hidden) return Promise.resolve();
+    if (reducedMotion()) { el.hidden = true; el.style.height = ''; return Promise.resolve(); }
+    return animate(el, el.getBoundingClientRect().height, 0).then(function () { el.hidden = true; });
   }
 
   /* opts: { listId, formId, holderId, saveBarId } — saveBarId optional, only
@@ -160,7 +183,9 @@
         });
       },
 
-      open: function () { return openPanel(form()); },
+      /* Opens under its row and brings that row up under the header, in
+         one motion. Without a row it only opens. */
+      open: function (row) { return openPanel(form(), row); },
       close: function () { return closePanel(form()); },
       isOpen: function () { var f = form(); return !!f && !f.hidden; },
 
@@ -184,9 +209,8 @@
          be seen, and block:"nearest" often does not move at all. */
       scrollRowToTop: function (row) {
         if (!row) return;
-        var y = window.scrollY + row.getBoundingClientRect().top - stickyTop() - 10;
         window.scrollTo({
-          top: Math.max(0, y),
+          top: rowTarget(row),
           behavior: reducedMotion() ? 'auto' : 'smooth'
         });
       },
