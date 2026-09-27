@@ -301,13 +301,10 @@
    strings it holds and how many are still empty.
    ============================================================ */
 
-.c-bar{display:flex;align-items:center;gap:22px;flex-wrap:wrap}
 .c-pick{display:flex;align-items:center;gap:10px;font-size:var(--fs-tiny);
   color:var(--dim);text-transform:uppercase;letter-spacing:var(--ls-caps);
   font-family:var(--font-display);font-weight:var(--w-bold)}
 .c-pick select{min-width:150px}
-.c-bar .hint{margin-left:auto;font-family:var(--font-mono);font-size:var(--fs-micro);
-  color:var(--dim);opacity:.7}
 
 .adm-content{display:grid;grid-template-columns:minmax(180px,220px) minmax(0,1fr);
   gap:24px;align-items:start;margin-top:24px}
@@ -928,7 +925,6 @@
 /* The bar: language and its settings on the left, the translator's file
    on the right. */
 .c-gap{flex:1 1 0;min-width:0}
-.c-bar .ghost-btn:disabled{opacity:.4;cursor:default;box-shadow:none}
 
 /* "Needs work" and "All" are views, the pages below them are places; a
    hairline keeps the two kinds apart without a heading to read. */
@@ -1031,9 +1027,7 @@
 @media (max-width:900px){ .c-sec-rule{display:none} }
 @media (max-width:640px){
   .c-gap{display:none}
-  .c-bar{gap:10px}
-  .c-bar .ghost-btn{padding:9px 12px;font-size:10px}
-  .c-pick{flex:1 1 100%}
+  .c-tools .ghost-btn{padding:9px 12px;font-size:10px}
   .c-pick select{flex:1;min-width:0}
   .tl-new,.tl-now{flex-direction:column;align-items:stretch;gap:4px}
   .tl-tag{width:auto;padding-top:0}
@@ -1098,10 +1092,98 @@ html.review-open{overflow:hidden}
   .web-side a[aria-current]{border-bottom-color:var(--console-admin)}
 }
 @media (max-width:640px){
-  .web-bar{flex-wrap:wrap;gap:8px}
-  .web-bar-count{flex-basis:100%}
-  body.has-webbar{padding-bottom:110px}
+  /* One row on a phone: what is waiting, and the review. Preview site is
+     in the review too. */
+  .web-bar #pPreview{display:none}
+  .web-bar-count{font-size:13px}
   .web-review{padding:16px 16px 32px}
 }
 .web-review-problem{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
 .web-review-problem span{flex:1 1 240px}
+
+/* ---- Website › Pages, to its board ------------------------------------
+   One toolbar: Writing X beside Y, find, Languages, More. Each line is its
+   name and key, the other language above it, then the box — one column,
+   read top to bottom the way it is written. */
+.c-tools{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.c-tools input[type="search"]{flex:1 1 200px;min-width:0}
+.c-tools .c-pick{text-transform:none;letter-spacing:0;font-family:var(--font-body);
+  font-weight:var(--w-body);font-size:var(--fs-sm)}
+.c-tools .c-pick select{min-width:0}
+.c-tools .ghost-btn:disabled{opacity:.4;cursor:default;box-shadow:none}
+
+.c-more{position:relative}
+.c-more > .ghost-btn{display:inline-flex;align-items:center;gap:10px}
+.c-more.is-open .console-caret{transform:translateY(1px) rotate(-135deg)}
+.c-more-menu{display:none;position:absolute;right:0;top:calc(100% + 6px);z-index:30;min-width:220px;
+  flex-direction:column;padding:6px 0;background:var(--panel);border:1px solid var(--line-hard);
+  border-radius:var(--radius);box-shadow:0 18px 40px rgba(0,0,0,.45)}
+.c-more.is-open .c-more-menu{display:flex}
+.c-more-menu button{background:none;border:0;text-align:left;padding:10px 16px;color:var(--dim);
+  font:inherit;font-size:var(--fs-sm);cursor:pointer}
+.c-more-menu button:hover,.c-more-menu button:focus-visible{color:var(--text);background:var(--bg2)}
+.c-more-menu button:disabled{opacity:.4;cursor:default;background:none}
+.c-more-menu button[hidden]{display:none}
+
+.c-panel{display:flex;flex-direction:column;gap:10px}
+.c-row{display:flex;flex-direction:column;gap:8px}
+.c-key{flex-direction:row;flex-wrap:wrap;align-items:baseline;gap:6px 12px;padding-top:0}
+.c-name{font-size:var(--fs-sm);margin:0}
+.c-key code{opacity:.5;font-size:10px}
+/* The other language, above the line, read-only and looking it. */
+.c-ref{margin:0;font-size:var(--fs-tiny);color:var(--dim);line-height:var(--lh-body);white-space:pre-wrap}
+.c-ref b,.c-splitbox b{font-weight:600;color:var(--text)}
+.c-row textarea{width:100%;display:block;resize:vertical;min-height:38px;field-sizing:content;max-height:420px;
+  line-height:var(--lh-body);font-family:var(--font-body);font-size:var(--fs-sm)}
+
+/* A heading as it reads: one box, the bold half bold. */
+.c-split{display:flex;gap:8px;align-items:stretch}
+.c-splitbox{flex:1;min-width:0;min-height:38px;padding:8px 12px;background:var(--bg2,#0b1119);
+  border:1px solid var(--line-hard);border-radius:var(--radius);color:var(--text);
+  font-size:var(--fs-sm);line-height:var(--lh-body);outline:none;cursor:text}
+.c-splitbox:focus{border-color:var(--voice-tech)}
+.c-row.is-blocked .c-splitbox{border-color:var(--crit)}
+.c-bold{flex:none;width:38px;background:none;border:1px solid var(--line-hard);border-radius:var(--radius);
+  color:var(--text);font:700 14px var(--font-body);cursor:pointer}
+.c-bold:hover,.c-bold:focus-visible{border-color:var(--voice-tech);color:var(--voice-tech)}
+
+/* ---- Every language, in one place -------------------------------------
+   The table of languages: a row each, how much is translated, the two
+   switches, the donation page, how it is written, removing it. */
+.c-set .c-set-dlg{max-width:980px}
+.lt{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--radius)}
+/* Every column a fixed share, the last one sized for the widest row's
+   buttons, so the rows line up whatever each row holds. */
+.lt-r{display:grid;grid-template-columns:minmax(110px,1fr) minmax(110px,1fr) 88px 88px minmax(130px,1.2fr) 250px;
+  gap:14px;align-items:center;padding:12px 14px}
+.lt-r + .lt-r,.lt-notes + .lt-r{border-top:1px solid var(--line)}
+.lt-head{font:600 10px var(--font-body);letter-spacing:.12em;text-transform:uppercase;color:var(--dim);padding-bottom:6px}
+.lt-name b{display:block;font-weight:400;color:var(--text)}
+.lt small{display:block;font-size:12px;color:var(--dim)}
+.lt-bar{display:block;height:4px;border-radius:2px;background:var(--line-hard);overflow:hidden;margin-bottom:5px}
+.lt-bar i{display:block;height:100%;background:var(--voice-human)}
+.lt-r input{width:100%;box-sizing:border-box}
+.lt-acts{display:flex;align-items:center;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+.lt .tl-more{border:0;background:none;color:var(--voice-tech);font:600 10px var(--font-display);
+  letter-spacing:.12em;text-transform:uppercase;cursor:pointer;padding:6px 2px}
+.lt .tl-more::after{content:"";display:inline-block;width:5px;height:5px;margin-left:7px;
+  border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:translateY(-2px) rotate(45deg)}
+.lt .tl-more[aria-expanded="true"]::after{transform:translateY(1px) rotate(-135deg)}
+.lt-notes{padding:4px 14px 16px;background:var(--bg2);display:flex;flex-direction:column;gap:12px}
+.lt-add{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.lt-add select{min-width:220px}
+.lt-default{max-width:420px}
+.lt-default select{width:100%}
+
+@media (max-width:760px){
+  .lt-head{display:none}
+  .lt-r{grid-template-columns:1fr 1fr;gap:10px}
+  .lt-name,.lt-words,.lt-acts,.lt-donate{grid-column:1 / -1}
+  .lt-acts{justify-content:flex-start}
+  .lt-r [data-label]::before{content:attr(data-label);display:block;margin-bottom:6px;
+    font:600 10px var(--font-body);letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+}
+@media (max-width:640px){
+  .c-tools{gap:10px}
+  .c-tools .c-pick{flex:1 1 45%}
+}

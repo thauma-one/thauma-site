@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 /**
- * Administration › Content — every word, every language, and the languages
+ * Website › Pages — every word, every language, and the languages
  *   node test/content-page.test.mjs
  *
- * The browser half against canned server answers: what each language shows,
- * that the file for a translator is exactly what is on screen, that nothing
- * is saved until Save or Approve (and only what was changed or approved),
- * and that each language's settings are its own.
+ * The browser half against canned server answers: what each line is called,
+ * that a two-part heading is one line and still saves as two, that the file
+ * for a translator is exactly what is on screen, that nothing is saved until
+ * Save or Approve (and only what was changed or approved), and that the
+ * languages table saves each setting as it changes.
  */
 import { JSDOM } from "jsdom";
 import { readFileSync, existsSync } from "node:fs";
@@ -22,7 +23,7 @@ const check = async (name, fn) => {
 const assert = (c, m) => { if (!c) throw new Error(m); };
 const tick = (ms = 60) => new Promise((r) => setTimeout(r, ms));
 
-console.log("the Content page\n");
+console.log("Website › Pages\n");
 if (!build) { console.log("  SKIP  no build — run eleventy first."); process.exit(1); }
 
 const SITE = {
@@ -36,23 +37,41 @@ const NOTES = {
   guides: { "*": "Warm, plain.", hr: "Standard Croatian." },
   can_write: true,
 };
+const L = (id, english, current, status = "done") => {
+  const [source, key] = id.split(/:(.*)/);
+  return { id, source, key, english, current, status };
+};
 const EN_LINES = [
-  { id: "site:nav.home", source: "site", key: "nav.home", english: "Home", current: "Home", status: "done" },
-  { id: "site:home.title", source: "site", key: "home.title", english: "Serve", current: "Serve", status: "done" },
-  { id: "emails:form.name", source: "emails", key: "form.name", english: "Your name", current: "Your name", status: "done" },
+  L("site:nav.about", "About", "About"),
+  L("site:home.title", "Home", "Home"),
+  L("site:home.cue", "θαῦμα · Greek for wonder", "θαῦμα · Greek for wonder"),
+  L("site:home.h1_thin", "On-site,", "On-site,"),
+  L("site:home.h1_bold", "behind the scenes.", "behind the scenes."),
+  L("site:home.who_cue", "The need", "The need"),
+  L("site:home.who_h2_thin", "Real churches,", "Real churches,"),
+  L("site:home.who_h2_bold", "real technical need.", "real technical need."),
+  L("site:home.who_img_tag", "A stage", "A stage"),
+  L("emails:confirm.helloAnon", "Hello,", "Hello,"),
 ];
 const HR_LINES = [
-  { id: "site:nav.home", source: "site", key: "nav.home", english: "Home", current: "Početna", status: "done" },
-  { id: "site:home.title", source: "site", key: "home.title", english: "Serve", current: "Služiti", status: "outdated" },
-  { id: "emails:form.name", source: "emails", key: "form.name", english: "Your name", current: "", status: "missing" },
+  L("site:nav.about", "About", "O nama"),
+  L("site:home.title", "Home", "Početna", "outdated"),
+  L("site:home.cue", "θαῦμα · Greek for wonder", "θαῦμα · grčki: čudo"),
+  L("site:home.h1_thin", "On-site,", "Na terenu,"),
+  L("site:home.h1_bold", "behind the scenes.", "iza pozornice."),
+  L("site:home.who_cue", "The need", "Potreba"),
+  L("site:home.who_h2_thin", "Real churches,", "Prave crkve,"),
+  L("site:home.who_h2_bold", "real technical need.", "stvarna potreba."),
+  L("site:home.who_img_tag", "A stage", "Pozornica"),
+  L("emails:confirm.helloAnon", "Hello,", "", "missing"),
 ];
 const REVIEW = {
   lang: "hr", name: "Hrvatski", skipped: { unknown: 0, blank: 0, unchanged: 0 },
   items: [
-    { id: "emails:form.name", source: "emails", key: "form.name", english: "Your name", english_hash: "h1",
-      current: "", proposed: "Vaše ime", status: "missing", problems: [], warnings: [] },
-    { id: "site:home.title", source: "site", key: "home.title", english: "Serve", english_hash: "h2",
-      current: "Služiti", proposed: "Serve", status: "outdated", problems: [], warnings: [{ code: "same" }] },
+    { id: "emails:confirm.helloAnon", source: "emails", key: "confirm.helloAnon", english: "Hello,", english_hash: "h1",
+      current: "", proposed: "Pozdrav,", status: "missing", problems: [], warnings: [] },
+    { id: "site:home.title", source: "site", key: "home.title", english: "Home", english_hash: "h2",
+      current: "Početna", proposed: "Home", status: "outdated", problems: [], warnings: [{ code: "same" }] },
   ],
 };
 
@@ -71,11 +90,16 @@ async function boot({ answers = {} } = {}) {
         if (o.method && o.method !== "GET") sent.push({ method: o.method, url: u, body });
         const ok = (j, status = 200) => ({ ok: status < 400, status, json: async () => j });
         if (u.includes("/translation-notes")) return ok(NOTES);
+        if (u.includes("/api/admin/publish")) return ok({ configured: true, waiting: 0 });
         if (u.includes("/api/admin/content")) {
           if (o.method === "PUT") return ok({ ok: true, sha: "s2", changed: Object.keys(body.changes) });
           return ok({ configured: true, data: JSON.parse(JSON.stringify(SITE)), sha: "s1" });
         }
         if (u.includes("/translate")) {
+          if (u.includes("summary")) return ok({ languages: [
+            { code: "en", name: "English", total: 10, missing: 0, outdated: 0 },
+            { code: "hr", name: "Hrvatski", total: 10, missing: 1, outdated: 1 },
+            { code: "sr", name: "Српски", total: 10, missing: 10, outdated: 0 }] });
           if (!body) return ok(u.includes("lang=hr")
             ? { lang: "hr", name: "Hrvatski", lines: HR_LINES }
             : { lang: "en", name: "English", lines: EN_LINES });
@@ -108,55 +132,90 @@ async function pick(w, d, lang) {
   sel.dispatchEvent(new w.Event("change"));
   await tick(100);
 }
-const shown = (d) => [...d.querySelectorAll("#cRows [data-id].c-row")].map((r) => r.dataset.id);
+const rows = (d) => [...d.querySelectorAll("#cRows .c-row")].map((r) => r.dataset.row);
+const names = (d) => Object.fromEntries([...d.querySelectorAll("#cRows .c-row")]
+  .map((r) => [r.dataset.row, r.querySelector(".c-name").textContent]));
 const count = (d) => Number((d.getElementById("cDown").textContent.match(/\d+/) || [0])[0]);
-const view = (w, d, v) => { d.querySelector(`[data-view="${v}"]`).click(); };
+const view = (d, v) => { d.querySelector(`[data-view="${v}"]`).click(); };
 
-/* ------------------------------------------------------------- languages */
+/* ------------------------------------------------------------- the lines */
 
-await check("the picker lists the site's languages, then adding one", async () => {
+await check("each line is named for what it is, its block named by its own heading", async () => {
   const { d } = await boot();
-  const opts = [...d.querySelectorAll("#cLang option")].map((o) => o.value);
-  assert(opts.join() === "en,hr,sr,__add", `offered: ${opts}`);
+  view(d, "section:home");
+  const n = names(d);
+  assert(n["site:home.title"] === "Page name", n["site:home.title"]);
+  assert(n["site:home.cue"] === "Small line above the headline", n["site:home.cue"]);
+  assert(n["split:site:home.h1"] === "Headline", n["split:site:home.h1"]);
+  assert(n["split:site:home.who_h2"] === "The need · Heading", n["split:site:home.who_h2"]);
+  assert(n["site:home.who_img_tag"] === "The need · Photo description", n["site:home.who_img_tag"]);
+  view(d, "section:emails");
+  assert(names(d)["emails:confirm.helloAnon"] === "Confirmation email · Greeting, without a name",
+    names(d)["emails:confirm.helloAnon"]);
 });
 
-await check("English is edited in place, with nothing to send out", async () => {
+await check("the menu and the footer are one page, as on the board", async () => {
   const { d } = await boot();
-  assert(d.getElementById("cLang").value === "en", "did not start on English");
-  assert(d.getElementById("cDown").hidden && d.getElementById("cUp").hidden, "a translation file offered for English");
-  assert(!d.querySelector("#cRows .c-en"), "English shown above English");
+  assert(d.querySelector('[data-view="section:menu"]'), "no Menu & footer");
+  assert(!d.querySelector('[data-view="section:nav"]'), "nav listed on its own");
 });
 
-await check("another language opens on what needs work, English above each line", async () => {
+await check("a two-part heading is one line, shown as it reads", async () => {
+  const { d } = await boot();
+  view(d, "section:home");
+  const box = d.querySelector('[data-row="split:site:home.h1"] .c-splitbox');
+  assert(box && box.innerHTML === "On-site, <b>behind the scenes.</b>", box && box.innerHTML);
+  assert(!d.querySelector('[data-row="site:home.h1_thin"]'), "the halves are listed separately too");
+});
+
+await check("editing it saves the two halves, split where the bold begins", async () => {
+  const { w, d, sent } = await boot();
+  await pick(w, d, "hr");
+  view(d, "section:home");
+  const box = d.querySelector('[data-row="split:site:home.h1"] .c-splitbox');
+  box.innerHTML = "Na licu mjesta, <b>iza kulisa.</b>";
+  box.dispatchEvent(new w.Event("input", { bubbles: true }));
+  d.getElementById("cSave").click();
+  await tick(150);
+  const save = sent.find((s) => s.body && s.body.action === "save");
+  const items = Object.fromEntries(save.body.items.map((i) => [i.id, i.value]));
+  assert(items["site:home.h1_thin"] === "Na licu mjesta," && items["site:home.h1_bold"] === "iza kulisa.",
+    JSON.stringify(items));
+});
+
+await check("another language opens on what needs work, beside English", async () => {
   const { w, d } = await boot();
   await pick(w, d, "hr");
   assert(d.querySelector('[data-view="needs"]').classList.contains("is-on"), "did not open on Needs work");
-  assert(shown(d).join() === "site:home.title,emails:form.name", `shown: ${shown(d)}`);
-  assert(d.querySelector("#cRows .c-en").textContent === "Serve", "the English is not above the line");
-  assert(d.querySelector(".c-row.is-outdated") && d.querySelector(".c-row.is-missing"), "not marked");
+  assert(rows(d).join() === "site:home.title,emails:confirm.helloAnon", `shown: ${rows(d)}`);
+  assert(d.querySelector("#cRows .c-ref").textContent === "Home", "the English is not above the line");
+  assert(!d.getElementById("cBesideWrap").hidden, "no beside choice");
 });
 
-await check("the emails and forms are a section like any page", async () => {
-  const { w, d } = await boot();
-  await pick(w, d, "hr");
-  view(w, d, "section:emails");
-  assert(shown(d).join() === "emails:form.name", `shown: ${shown(d)}`);
+await check("English is written beside nothing, with nothing to send out", async () => {
+  const { d } = await boot();
+  assert(d.getElementById("cLang").value === "en", "did not start on English");
+  assert(d.getElementById("cBesideWrap").hidden, "English offered a language beside it");
+  assert(d.getElementById("cDown").hidden && d.getElementById("cUp").hidden, "a translation file offered for English");
+  assert(!d.querySelector("#cRows .c-ref"), "a line shown above English");
 });
 
 /* ------------------------------------------------------------------ file */
 
-await check("the file holds exactly what is on screen, and says how many", async () => {
+await check("the file holds exactly what is on screen, and More says how many", async () => {
   const { w, d, sent } = await boot();
   await pick(w, d, "hr");
   assert(count(d) === 2, `Needs work offers ${count(d)}`);
-  view(w, d, "all");
-  assert(count(d) === 3, `All offers ${count(d)}`);
-  view(w, d, "section:nav");
-  assert(count(d) === 1 && /line\b/.test(d.getElementById("cDown").textContent), d.getElementById("cDown").textContent);
+  view(d, "section:home");
+  assert(count(d) === 8, `Home offers ${count(d)} (two-part headings count as two lines)`);
+  view(d, "section:menu");
+  assert(/1 line\b/.test(d.getElementById("cDown").textContent), d.getElementById("cDown").textContent);
+  d.getElementById("cMoreBtn").click();
+  assert(d.querySelector(".c-more").classList.contains("is-open"), "More did not open");
   d.getElementById("cDown").click();
   await tick();
   const file = sent.find((s) => s.body && s.body.action === "file");
-  assert(file && file.body.ids.join() === "site:nav.home", `downloaded ${JSON.stringify(file && file.body.ids)}`);
+  assert(file && file.body.ids.join() === "site:nav.about", `downloaded ${JSON.stringify(file && file.body.ids)}`);
 });
 
 /* ---------------------------------------------------------------- saving */
@@ -170,14 +229,13 @@ async function type(w, d, id, value) {
 await check("an edit is held until Save, which sends only it and asks nothing", async () => {
   const { w, d, sent, asked } = await boot();
   await pick(w, d, "hr");
-  await type(w, d, "site:home.title", "Služimo");
+  await type(w, d, "site:home.title", "Naslovnica");
   assert(!d.getElementById("cSaveBar").hidden, "no save bar");
   assert(!sent.length, "saved before Save");
   d.getElementById("cSave").click();
   await tick(150);
   const save = sent.find((s) => s.body && s.body.action === "save");
-  assert(save, "nothing saved");
-  assert(JSON.stringify(save.body.items) === JSON.stringify([{ id: "site:home.title", value: "Služimo", was: "Služiti" }]),
+  assert(JSON.stringify(save.body.items) === JSON.stringify([{ id: "site:home.title", value: "Naslovnica", was: "Početna" }]),
     JSON.stringify(save.body.items));
   assert(!asked.length, "Save asked a question");
 });
@@ -189,7 +247,7 @@ await check("a line the server refuses is marked, and stays unsaved", async () =
   await type(w, d, "site:home.title", "broken");
   d.getElementById("cSave").click();
   await tick(150);
-  assert(d.querySelector('.c-row[data-id="site:home.title"]').classList.contains("is-blocked"), "not marked");
+  assert(d.querySelector('.c-row[data-row="site:home.title"]').classList.contains("is-blocked"), "not marked");
   assert(!d.getElementById("cSaveBar").hidden, "the edit was dropped");
 });
 
@@ -210,56 +268,80 @@ await check("a returned file replaces the editor for approval, flagged lines unt
   await upload(w, d);
   assert(d.getElementById("cRoot").hidden && !d.getElementById("tlReview").hidden, "no review shown");
   const box = (id) => d.querySelector(`[data-item="${id}"] [data-approve]`);
-  assert(box("emails:form.name").checked && !box("site:home.title").checked, "ticks wrong");
+  assert(box("emails:confirm.helloAnon").checked && !box("site:home.title").checked, "ticks wrong");
+  assert(d.querySelector('[data-item="site:home.title"] .tl-key').textContent === "Page name", "not named");
   d.getElementById("tlApprove").click();
   await tick(150);
   const apply = sent.find((s) => s.body && s.body.action === "apply");
-  assert(apply && apply.body.items.map((i) => i.id).join() === "emails:form.name", JSON.stringify(apply && apply.body));
+  assert(apply && apply.body.items.map((i) => i.id).join() === "emails:confirm.helloAnon", JSON.stringify(apply && apply.body));
   assert(!d.getElementById("cRoot").hidden, "the editor did not come back");
 });
 
-/* -------------------------------------------------------------- settings */
+/* ------------------------------------------------------------- languages */
 
-await check("a language's settings: its switches, the default, its donation form, its notes", async () => {
-  const { w, d } = await boot();
-  await pick(w, d, "hr");
-  d.getElementById("cLangSet").click();
-  const body = d.getElementById("cSetBody");
+async function table(d) { d.getElementById("cLangs").click(); await tick(100); return d.getElementById("cSetBody"); }
+
+await check("the languages table: progress, both switches, donation page, remove", async () => {
+  const { d } = await boot();
+  const body = await table(d);
   assert(!d.getElementById("cSet").hidden, "did not open");
-  assert(body.querySelector('[data-set="visibility.languages.hr.live"]'), "no live switch");
-  assert(body.querySelector('[data-set="donorbox.hr"]').value === "hr-form", "not its donation form");
-  assert(body.querySelector('[data-guide="hr"] textarea').value === "Standard Croatian.", "not its guide");
-  assert(body.querySelector('[data-gloss-row="tg_1"]'), "not its phrases");
-  assert(body.querySelector("[data-remove]"), "cannot be removed");
+  const hr = body.querySelector('[data-lang="hr"]');
+  assert(/9 of 10/.test(hr.textContent), `progress: ${hr.textContent}`);
+  assert(hr.querySelector('[data-set="visibility.languages.hr.dev"]') && hr.querySelector('[data-set="visibility.languages.hr.live"]'), "switches");
+  assert(body.querySelector('[data-set="donorbox.hr"]').value === "hr-form", "not its donation page");
+  assert(body.querySelector('[data-remove="hr"]'), "cannot be removed");
+  const en = body.querySelector('[data-lang="en"]');
+  assert(!en.querySelector(".switch") && !en.querySelector("[data-remove]"), "English can be switched off or removed");
+  assert(/not public yet/.test(body.querySelector('[data-lang="sr"]').textContent), "a hidden language not marked");
 });
 
-await check("English's settings hold the rules for every translation, and no switches", async () => {
+await check("how a language is written opens under its row", async () => {
   const { d } = await boot();
-  d.getElementById("cLangSet").click();
-  const body = d.getElementById("cSetBody");
-  assert(!body.querySelector('[data-set^="visibility"]'), "English can be switched off");
-  assert(!body.querySelector("[data-remove]"), "English can be removed");
-  assert(body.querySelector("[data-keep]"), "no never-translated words");
-  assert(body.querySelector('[data-guide="*"] textarea').value === "Warm, plain.", "no every-language guide");
-  assert(body.querySelector("[data-default]").disabled, "the default can be switched off");
+  const body = await table(d);
+  body.querySelector('[data-notes="hr"]').click();
+  assert(body.querySelector('[data-notes-for="hr"] [data-guide="hr"] textarea').value === "Standard Croatian.", "not its guide");
+  assert(body.querySelector('[data-notes-for="hr"] [data-gloss-row="tg_1"]'), "not its phrases");
+  body.querySelector('[data-notes="en"]').click();
+  assert(!body.querySelector('[data-notes-for="hr"]'), "two open at once");
+  assert(body.querySelector('[data-notes-for="en"] [data-keep]'), "English's words never translated");
+  assert(body.querySelector('[data-guide="*"] textarea').value === "Warm, plain.", "the every-language guide");
 });
 
 await check("a switch saves at once, against the file it was read from", async () => {
-  const { w, d, sent } = await boot();
-  await pick(w, d, "sr");
-  d.getElementById("cLangSet").click();
-  d.querySelector('[data-set="visibility.languages.sr.live"]').click();
+  const { d, sent } = await boot();
+  const body = await table(d);
+  body.querySelector('[data-set="visibility.languages.sr.live"]').click();
   await tick(100);
   const put = sent.find((s) => s.method === "PUT");
   assert(put && put.body.sha === "s1" && put.body.changes["visibility.languages.sr.live"] === true,
     JSON.stringify(put && put.body));
 });
 
-await check("choosing Add a language asks for its code and stays where it was", async () => {
-  const { w, d, asked } = await boot();
+await check("the default language is chosen from the site's languages and saved", async () => {
+  const { w, d, sent } = await boot();
+  const body = await table(d);
+  const sel = body.querySelector("[data-default]");
+  sel.value = "hr";
+  sel.dispatchEvent(new w.Event("change", { bubbles: true }));
+  await tick(100);
+  const put = sent.find((s) => s.method === "PUT");
+  assert(put && put.body.changes.defaultLang === "hr", JSON.stringify(put && put.body));
+});
+
+await check("a language is added by name, or by its code for one the list lacks", async () => {
+  const { w, d, sent, asked } = await boot();
+  const body = await table(d);
+  const opts = [...body.querySelectorAll("#ltAdd option")].map((o) => o.value);
+  assert(opts.includes("de") && !opts.includes("hr"), "the list offers a language the site has, or lacks German");
+  const sel = body.querySelector("#ltAdd");
+  sel.value = "de";
+  sel.dispatchEvent(new w.Event("change", { bubbles: true }));
+  body.querySelector("#ltAddBtn").click();
+  await tick(150);
+  const post = sent.find((s) => s.method === "POST" && s.url.includes("/api/admin/content"));
+  assert(post && post.body.code === "de", JSON.stringify(post && post.body));
   await pick(w, d, "__add");
-  assert(asked.some((a) => a.placeholder === "sl"), "no prompt");
-  assert(d.getElementById("cLang").value === "en", "the picker was left on Add");
+  assert(asked.some((a) => a.placeholder === "sl"), "Add a language… in the picker did not ask for a code");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

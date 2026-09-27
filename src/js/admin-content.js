@@ -1,19 +1,22 @@
 /* ============================================================
-   admin-content.js — every word the site says, in every language
+   admin-content.js — Website › Pages: every word, every language
    ============================================================
-   One page for the words and for the languages they are in
-   (Chase, 2026-09-27). Three servers behind it:
+   Built to the mockup board "Site words by page", with Chase's
+   notes (2026-09-26/27): labels first and the live preview
+   later; every language control with the words; everything a
+   visitor reads translatable. Three servers behind it:
 
      /api/admin/translate          every line of one language —
                                    the site's pages and the emails
-                                   and forms — with the English and
+                                   and forms — with its English and
                                    whether it is missing or
                                    outdated; saving; the file for
                                    a translator and approving what
-                                   comes back
-     /api/admin/content            site.json: a language's dev and
-                                   live switches, the default, the
-                                   donation form; adding and
+                                   comes back; every language's
+                                   progress (?summary)
+     /api/admin/content            site.json: a language's preview
+                                   and live switches, the default,
+                                   the donation page; adding and
                                    removing a language
      /api/admin/translation-notes  how each language is written
 
@@ -21,16 +24,20 @@
    passes, and half a rewritten sentence must never reach the
    site: `saved` is what the repository holds, `draft` is the
    screen, and nothing crosses without Save. A save is a quiet
-   commit; Publish is a separate act on a separate page.
+   commit; publishing is the bar along the foot of the screen.
 
-   THE SETTINGS SAVE AS THEY ARE CHANGED, like Settings: each is
-   one decision with an obvious result, and none is live before
-   Publish either.
+   THE LANGUAGE SETTINGS SAVE AS THEY ARE CHANGED, like Settings:
+   each is one decision with an obvious result, and none is live
+   before publishing either.
+
+   A ROW IS WHAT A PERSON READS AS ONE LINE. Usually that is one
+   stored string. A heading stored as two strings for its bold
+   half (`h1_thin` + `h1_bold`) is one row, edited as it reads.
+   Saving still sends the two strings; the row is presentation.
 
    WHAT YOU SEE IS WHAT YOU DOWNLOAD. The translator's file holds
-   the lines on screen — a section, a search, Needs work, All —
-   and the button says how many, so choosing lines needs no
-   controls of its own.
+   the rows on screen — a page, a search, Needs work, All — and
+   More says how many lines that is.
    ============================================================ */
 (function () {
   'use strict';
@@ -45,10 +52,11 @@
 
   var state = {
     site: null, siteSha: null,
-    langs: [], lang: null, names: {},
-    lines: [], saved: {}, draft: {}, blocked: {},
+    langs: [], lang: null, names: {}, summary: {},
+    lines: [], byId: {}, rows: [], saved: {}, draft: {}, blocked: {},
+    beside: 'en', besideLines: {},
     view: null, find: '',
-    notes: { keep: [], glossary: [], guides: {} }, notesWrite: false,
+    notes: { keep: [], glossary: [], guides: {} }, notesWrite: false, openNotes: null,
     review: null
   };
 
@@ -58,6 +66,7 @@
     });
   }
   function tr(key) { return window.StaffI18n ? window.StaffI18n.t(key) : key; }
+  function has(key) { return tr(key) !== key; }
   /* Translate and substitute together — see StaffI18n.fill. */
   function fill(key, vars) {
     return window.StaffI18n && window.StaffI18n.fill ? window.StaffI18n.fill(key, vars) : tr(key);
@@ -79,12 +88,12 @@
         body: body ? JSON.stringify(body) : undefined
       });
     } catch (e) {
-      if (window.StaffProblem) window.StaffProblem(tr('err.unreachable') + ' ' + e.message, boot);
+      if (!quiet && window.StaffProblem) window.StaffProblem(tr('err.unreachable') + ' ' + e.message, boot);
       return null;
     }
     try { data = await res.json(); }
     catch (e) {
-      if (window.StaffProblem) window.StaffProblem(tr('err.unreadable') + ' (' + res.status + ')', boot);
+      if (!quiet && window.StaffProblem) window.StaffProblem(tr('err.unreadable') + ' (' + res.status + ')', boot);
       return null;
     }
     data.status = res.status;
@@ -93,7 +102,7 @@
       if (res.status === 403 && url.indexOf(CONTENT) === 0 && (!method || method === 'GET')) {
         if ($('notAdmin')) $('notAdmin').hidden = false;
         $('cRoot').hidden = true;
-        document.querySelector('.c-bar').hidden = true;
+        document.querySelector('.c-tools').hidden = true;
       } else if ((!method || method === 'GET') && !quiet && window.StaffProblem) {
         window.StaffProblem(res.status === 401 ? tr('err.expired')
           : tr('err.refused') + ' (' + res.status + ')' + (data.error ? ' — ' + data.error : ''),
@@ -101,16 +110,15 @@
       }
       return data;
     }
-    if (window.StaffProblemClear) window.StaffProblemClear();
     return data;
   }
 
   function refused(data) { toast((data && data.error) || tr('err.refused'), 'err'); }
 
-  /* ---- names and places ---------------------------------------------- */
+  /* ---- names ------------------------------------------------------------ */
 
-  /* What a language calls itself: its own `name` line once its words are
-     loaded, the browser's endonym before that, the code in brackets always. */
+  /* What a language calls itself: its own `name` line once any answer has
+     carried it, the browser's endonym before that, the code in brackets. */
   function langName(code) {
     if (state.names[code]) return state.names[code];
     try {
@@ -121,37 +129,148 @@
   }
   function langLabel(code) { return langName(code) + ' (' + code + ')'; }
 
-  /* The section a line belongs to: the page of the site it is on, or the
-     emails and forms. Top-level lines (the language's name) gather under one
-     heading rather than each being a section of one. */
-  function sectionOf(line) {
-    if (line.source === 'emails') return 'emails';
-    return line.key.indexOf('.') === -1 ? '_general' : line.key.split('.')[0];
-  }
-  function sectionLabel(s) {
-    if (s === '_general') return tr('con.general');
-    if (s === 'emails') return tr('tl.src.emails');
-    // Page names name files and URL segments — typed, not read — so they are
-    // shown as they are rather than translated.
-    return s.replace(/([A-Z])/g, ' $1').replace(/^./, function (c) { return c.toUpperCase(); });
-  }
-  function shortKey(line) {
-    return line.source === 'emails' || line.key.indexOf('.') === -1
-      ? line.key : line.key.slice(line.key.indexOf('.') + 1);
-  }
-  /* `home.who_h2_bold` -> "Who h2 bold": mechanical, with the key kept
-     underneath. A confidently wrong label is worse than a plain one. */
-  function readable(line) {
-    return shortKey(line).replace(/[._]/g, ' ')
-      .replace(/\b\d+\b/g, function (n) { return '#' + n; })
+  /* `helloAnon` or `who_h2` -> "Hello anon", "Who h2". The last resort, for a
+     line the vocabulary below does not know yet. */
+  function humanize(s) {
+    return String(s).replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[._]/g, ' ').trim()
       .replace(/^./, function (c) { return c.toUpperCase(); });
   }
 
+  /* ---- where a line lives, and what it is called ----------------------
+
+     THE PAGES, in the order the site has them; the menu and the footer are
+     one entry, as on the board. */
+  var PAGE_ORDER = ['home', 'about', 'mission', 'values', 'resources', 'give', 'contact',
+                    'events', 'team', 'menu', 'coming', 'notFound', 'staff', 'emails', '_general'];
+
+  function sectionOf(line) {
+    if (line.source === 'emails') return 'emails';
+    if (line.key.indexOf('.') === -1) return '_general';
+    var s = line.key.split('.')[0];
+    return s === 'nav' || s === 'footer' ? 'menu' : s;
+  }
+  function sectionLabel(s) {
+    if (s === '_general') return tr('lbl.s.general');
+    if (s === 'emails') return tr('tl.src.emails');
+    return has('lbl.s.' + s) ? tr('lbl.s.' + s) : humanize(s);
+  }
+
+  /* NAMES ARE COMPOSED, NOT LISTED. The keys follow a pattern — a block
+     (`who`) and a part (`h2`), or a page-level part (`cue`) — so a line is
+     named "<block> · <part>", where the block's name is its OWN English
+     heading line (`who_cue` is "The need") and the part comes from a short
+     vocabulary. A line added next month is named without anybody writing a
+     label for it; only a new KIND of part needs a word. */
+  var PART_KEY = {
+    img_tag: 'lbl.p.img_tag', placeholder: 'lbl.p.placeholder', title: 'lbl.p.title', cue: 'lbl.p.cue',
+    h1: 'lbl.p.h1', h2: 'lbl.p.h2', line: 'lbl.p.line', sub: 'lbl.p.intro', lede: 'lbl.p.intro',
+    text: 'lbl.p.text', body: 'lbl.p.body', label: 'lbl.p.label', link: 'lbl.p.link', word: 'lbl.p.word',
+    ipa: 'lbl.p.ipa', def: 'lbl.p.def', note: 'lbl.p.note', cta: 'lbl.p.cta', hint: 'lbl.p.tip'
+  };
+  var PARTS = Object.keys(PART_KEY).sort(function (a, b) { return b.length - a.length; });
+  var PART_RE = PARTS.map(function (p) { return { p: p, re: new RegExp('^(?:(.+)_)?' + p + '(\\d*)$') }; });
+
+  function english(key) {
+    var l = state.byId['site:' + key];
+    return l ? l.english : '';
+  }
+  function short(s) { s = String(s || ''); return s.length > 40 ? s.slice(0, 38).trim() + '…' : s; }
+
+  function partLabel(part, inBlock, n) {
+    if (part === 'cue') return tr(inBlock ? 'lbl.p.cue' : 'lbl.p.cueTop');
+    if (part === 'title') return tr(inBlock ? 'lbl.p.blockTitle' : 'lbl.p.title');
+    if (PART_KEY[part]) return fill(PART_KEY[part], { n: n || '' }).replace(/\s+$/, '');
+    return humanize(part);
+  }
+  function blockName(section, block) {
+    return short(english(section + '.' + block + '_cue')) ||
+      short(english(section + '.' + block + '_title')) ||
+      (has('lbl.b.' + block) ? tr('lbl.b.' + block) : humanize(block));
+  }
+
+  var EMAIL_PART = { subjectHint: 'subjectEmpty', messageHint: 'messageEmpty' };
+  function emailLabel(key) {
+    var b = key.split('.')[0], p = key.split('.')[1] || '';
+    var pk = EMAIL_PART[p] || p;
+    var part = has('lbl.m.' + b + '.' + pk) ? tr('lbl.m.' + b + '.' + pk)
+      : has('lbl.m.' + pk) ? tr('lbl.m.' + pk) : humanize(p);
+    return (has('lbl.e.' + b) ? tr('lbl.e.' + b) : humanize(b)) + ' · ' + part;
+  }
+
+  function labelFor(row) {
+    if (row.source === 'emails') return emailLabel(row.key);
+    var dot = row.key.indexOf('.');
+    if (dot === -1) return row.key === 'name' ? tr('lbl.p.name') : humanize(row.key);
+    var section = row.key.slice(0, dot), rest = row.key.slice(dot + 1);
+
+    /* A list: `values.items.2.title` is named by that item's own title;
+       `notFound.taunts.3` is "Game taunt 4". */
+    var arr = rest.match(/^([A-Za-z_]+)\.(\d+)(?:\.([A-Za-z_]+))?$/);
+    if (arr) {
+      var n = Number(arr[2]) + 1;
+      if (arr[3]) {
+        var name = short(english(section + '.' + arr[1] + '.' + arr[2] + '.title')) || humanize(arr[1]) + ' ' + n;
+        return name + ' · ' + partLabel(arr[3], true);
+      }
+      return has('lbl.b.' + arr[1]) ? fill('lbl.b.' + arr[1], { n: n }) : humanize(arr[1]) + ' ' + n;
+    }
+
+    for (var i = 0; i < PART_RE.length; i++) {
+      var m = rest.match(PART_RE[i].re);
+      if (m) {
+        return m[1] ? blockName(section, m[1]) + ' · ' + partLabel(PART_RE[i].p, true, m[2])
+                    : partLabel(PART_RE[i].p, false, m[2]);
+      }
+    }
+    /* No known part: the first word is the block (`door_crisis` is the
+       "crisis" line of the doors), the rest is its own name. */
+    var us = rest.indexOf('_');
+    return us === -1 ? humanize(rest) : blockName(section, rest.slice(0, us)) + ' · ' + humanize(rest.slice(us + 1));
+  }
+
+  /* ---- rows ------------------------------------------------------------- */
+
+  function buildRows() {
+    state.byId = {};
+    state.lines.forEach(function (l) { state.byId[l.id] = l; });
+    var used = {}, rows = [];
+    state.lines.forEach(function (l) {
+      if (used[l.id]) return;
+      var m = l.key.match(/^(.*)_(thin|bold)$/);
+      if (m) {
+        var thin = state.byId[l.source + ':' + m[1] + '_thin'];
+        var bold = state.byId[l.source + ':' + m[1] + '_bold'];
+        if (thin && bold) {
+          used[thin.id] = used[bold.id] = true;
+          rows.push({ id: 'split:' + l.source + ':' + m[1], split: true, source: l.source,
+                      key: m[1], thin: thin, bold: bold, lines: [thin, bold] });
+          return;
+        }
+      }
+      used[l.id] = true;
+      rows.push({ id: l.id, source: l.source, key: l.key, line: l, lines: [l] });
+    });
+    rows.forEach(function (r) { r.label = labelFor(r); r.section = sectionOf(r.lines[0]); });
+    state.rows = rows;
+  }
+
   var isEn = function () { return state.lang === 'en'; };
-  function needsWork(line) { return !isEn() && line.status !== 'done'; }
+  function rowStatus(row) {
+    var st = row.lines.map(function (l) { return l.status; });
+    return st.indexOf('missing') !== -1 ? 'missing' : st.indexOf('outdated') !== -1 ? 'outdated' : 'done';
+  }
+  function needsWork(row) { return !isEn() && rowStatus(row) !== 'done'; }
+  function lineDirty(l) { return state.draft[l.id] !== state.saved[l.id]; }
+  function rowDirty(row) { return row.lines.some(lineDirty); }
   function dirtyIds() {
-    return state.lines.filter(function (l) { return state.draft[l.id] !== state.saved[l.id]; })
-      .map(function (l) { return l.id; });
+    return state.lines.filter(lineDirty).map(function (l) { return l.id; });
+  }
+
+  function orderedSections() {
+    var seen = [];
+    state.rows.forEach(function (r) { if (seen.indexOf(r.section) === -1) seen.push(r.section); });
+    return PAGE_ORDER.filter(function (s) { return seen.indexOf(s) !== -1; })
+      .concat(seen.filter(function (s) { return PAGE_ORDER.indexOf(s) === -1; }));
   }
 
   /* ---- loading -------------------------------------------------------- */
@@ -169,10 +288,11 @@
     try { remembered = localStorage.getItem('thauma.content.lang'); } catch (e) { /* private mode */ }
     var want = state.langs.indexOf(state.lang) !== -1 ? state.lang
       : (state.langs.indexOf(remembered) !== -1 ? remembered : state.langs[0]);
-    fillPicker();
+    fillPickers();
     $('cLang').disabled = false;
-    $('cLangSet').disabled = false;
+    $('cLangs').disabled = false;
     await openLang(want);
+    loadSummary();               // names and progress, after the first draw
   }
 
   function takeSite(site) {
@@ -181,21 +301,44 @@
     state.langs = (site.data && site.data.languages) || ['en'];
   }
 
+  /* Every language's progress and its own name, in one answer. Not awaited:
+     the page is usable before it arrives, and it only fills in. */
+  async function loadSummary() {
+    var data = await send(WORDS + '?summary', 'GET', null, true);
+    if (!data || data.failed) return;
+    state.summary = {};
+    (data.languages || []).forEach(function (l) {
+      state.summary[l.code] = l;
+      if (l.name && l.name !== l.code) state.names[l.code] = l.name;
+    });
+    fillPickers();
+    if (!$('cSet').hidden) renderTable();
+  }
+
   function notConfigured(reason) {
     var el = $('cNotConfigured');
     el.innerHTML = '<b>' + esc(tr('con.notConnected')) + '</b> ' + esc(reason);
     el.hidden = false;
     $('cRoot').hidden = true;
-    document.querySelector('.c-bar').hidden = true;
+    document.querySelector('.c-tools').hidden = true;
   }
 
-  function fillPicker() {
+  function fillPickers() {
     /* Adding a language is the last choice in the list of languages, where
        somebody looking for one that is not there is already looking. */
     $('cLang').innerHTML = state.langs.map(function (c) {
       return '<option value="' + esc(c) + '">' + esc(langLabel(c)) + '</option>';
     }).join('') + '<option value="' + ADD + '">' + esc(tr('con.addLang')) + '…</option>';
     $('cLang').value = state.lang || state.langs[0];
+
+    var others = state.langs.filter(function (c) { return c !== state.lang; });
+    if (others.indexOf(state.beside) === -1) state.beside = others.indexOf('en') !== -1 ? 'en' : others[0];
+    $('cBeside').innerHTML = others.map(function (c) {
+      return '<option value="' + esc(c) + '">' + esc(langName(c)) + '</option>';
+    }).join('');
+    $('cBeside').value = state.beside || '';
+    /* English is written beside nothing: it is what the others come from. */
+    $('cBesideWrap').hidden = isEn() || !others.length;
   }
 
   async function openLang(code, keepView) {
@@ -206,34 +349,42 @@
     state.lines = data.lines || [];
     state.saved = {}; state.draft = {}; state.blocked = {};
     state.lines.forEach(function (l) { state.saved[l.id] = l.current; state.draft[l.id] = l.current; });
+    buildRows();
     try { localStorage.setItem('thauma.content.lang', code); } catch (e) { /* private mode */ }
 
     /* Where to start: what needs doing, if anything does; otherwise the first
        page — or, after a save, wherever you were. */
     if (!keepView || !viewExists(state.view)) {
-      state.view = state.lines.some(needsWork) ? 'needs'
-        : 'section:' + (orderedSections()[0] || '_general');
+      state.view = state.rows.some(needsWork) ? 'needs' : 'section:' + (orderedSections()[0] || '_general');
     }
-    fillPicker();
+    fillPickers();
+    await loadBeside();
     $('cRoot').hidden = !!state.review;
     render();
     return true;
   }
 
-  /* The pages in the order the site has them, then the emails and forms;
-     the language's own name — one line, set once — last rather than first. */
-  function orderedSections() {
-    var out = [];
-    state.lines.forEach(function (l) { var s = sectionOf(l); if (out.indexOf(s) === -1) out.push(s); });
-    return out.filter(function (s) { return s !== '_general'; })
-      .concat(out.indexOf('_general') !== -1 ? ['_general'] : []);
+  /* The language shown above each line. English comes with every answer;
+     another language is read once and kept. */
+  async function loadBeside() {
+    var b = state.beside;
+    if (!b || b === 'en' || state.besideLines[b]) return;
+    var data = await send(WORDS + '?lang=' + encodeURIComponent(b), 'GET', null, true);
+    if (!data || data.failed) return;
+    var map = {};
+    (data.lines || []).forEach(function (l) { map[l.id] = l.current; });
+    state.besideLines[b] = map;
+  }
+  function besideText(line) {
+    if (state.beside === 'en' || !state.besideLines[state.beside]) return line.english;
+    return state.besideLines[state.beside][line.id] || '';
   }
 
   function viewExists(v) {
     if (!v) return false;
     if (v === 'all') return true;
-    if (v === 'needs') return state.lines.some(needsWork);
-    return state.lines.some(function (l) { return 'section:' + sectionOf(l) === v; });
+    if (v === 'needs') return state.rows.some(needsWork);
+    return state.rows.some(function (r) { return 'section:' + r.section === v; });
   }
 
   /* ---- drawing -------------------------------------------------------- */
@@ -241,34 +392,41 @@
   function visible() {
     if (state.find) {
       var q = state.find.toLowerCase();
-      return state.lines.filter(function (l) {
-        return l.key.toLowerCase().indexOf(q) >= 0 ||
-          String(state.draft[l.id]).toLowerCase().indexOf(q) >= 0 ||
-          l.english.toLowerCase().indexOf(q) >= 0;
+      return state.rows.filter(function (r) {
+        return r.label.toLowerCase().indexOf(q) >= 0 || r.key.toLowerCase().indexOf(q) >= 0 ||
+          r.lines.some(function (l) {
+            return String(state.draft[l.id]).toLowerCase().indexOf(q) >= 0 ||
+              l.english.toLowerCase().indexOf(q) >= 0;
+          });
       });
     }
-    if (state.view === 'all') return state.lines;
-    if (state.view === 'needs') return state.lines.filter(needsWork);
-    return state.lines.filter(function (l) { return 'section:' + sectionOf(l) === state.view; });
+    if (state.view === 'all') return state.rows;
+    if (state.view === 'needs') return state.rows.filter(needsWork);
+    return state.rows.filter(function (r) { return 'section:' + r.section === state.view; });
+  }
+  function visibleLineIds() {
+    var ids = [];
+    visible().forEach(function (r) { r.lines.forEach(function (l) { ids.push(l.id); }); });
+    return ids;
   }
 
   function render() {
     renderSections();
     renderRows();
-    renderBar();
+    renderMore();
     renderSaveBar();
   }
 
   function renderSections() {
-    var sections = [], counts = {};
-    orderedSections().forEach(function (s) { counts[s] = { n: 0, needs: 0, dirty: 0 }; sections.push(s); });
-    state.lines.forEach(function (l) {
-      var s = sectionOf(l);
-      counts[s].n++;
-      if (needsWork(l)) counts[s].needs++;
-      if (state.draft[l.id] !== state.saved[l.id]) counts[s].dirty++;
+    var counts = {};
+    orderedSections().forEach(function (s) { counts[s] = { n: 0, needs: 0, dirty: 0 }; });
+    state.rows.forEach(function (r) {
+      var c = counts[r.section];
+      c.n++;
+      if (needsWork(r)) c.needs++;
+      if (rowDirty(r)) c.dirty++;
     });
-    var needs = state.lines.filter(needsWork).length;
+    var needs = state.rows.filter(needsWork).length;
     var on = state.find ? null : state.view;
 
     function button(view, label, n, extra, dirty) {
@@ -280,50 +438,69 @@
 
     $('cSections').innerHTML =
       (needs ? button('needs', tr('con.needsWork'), needs, '', false) : '') +
-      button('all', tr('con.all'), state.lines.length, '', false) +
+      button('all', tr('con.all'), state.rows.length, '', false) +
       '<span class="c-sec-rule" aria-hidden="true"></span>' +
-      sections.map(function (s) {
+      orderedSections().map(function (s) {
         var c = counts[s];
         return button('section:' + s, sectionLabel(s), c.n,
           c.needs ? '<span class="c-sec-empty">' + c.needs + '</span>' : '', c.dirty);
       }).join('');
   }
 
-  function renderRows() {
-    var lines = visible();
-    $('cCount').textContent = state.find ? lines.length + ' ' + tr('con.matches') : '';
-    if (!lines.length) {
-      $('cRows').innerHTML = '<p class="empty">' + esc(tr('con.noMatches')) + '</p>';
-      return;
+  function splitHtml(thin, bold) {
+    thin = String(thin || '').trim(); bold = String(bold || '').trim();
+    return esc(thin) + (thin && bold ? ' ' : '') + (bold ? '<b>' + esc(bold) + '</b>' : '');
+  }
+
+  function rowHtml(r) {
+    /* In a view that mixes pages — Needs work, All, a search — "Intro" alone
+       does not say which page; there the page leads the name. */
+    var mixed = !!state.find || state.view === 'needs' || state.view === 'all';
+    var name = mixed && r.section !== '_general' ? sectionLabel(r.section) + ' · ' + r.label : r.label;
+    var dirty = rowDirty(r);
+    var mark = needsWork(r) && !dirty ? rowStatus(r) : '';
+    var blocked = r.lines.some(function (l) { return state.blocked[l.id]; });
+    var lang = esc(state.lang);
+    var aria = esc(r.label + ' — ' + langName(state.lang));
+    var ref = '';
+    if (!isEn()) {
+      var bl = esc(state.beside || 'en');
+      ref = r.split
+        ? '<p class="c-ref" lang="' + bl + '">' + splitHtml(besideText(r.thin), besideText(r.bold)) + '</p>'
+        : '<p class="c-ref" lang="' + bl + '">' + esc(besideText(r.line)) + '</p>';
     }
-    var en = isEn();
-    $('cRows').innerHTML = lines.map(function (l) {
-      var dirty = state.draft[l.id] !== state.saved[l.id];
-      var mark = needsWork(l) && !dirty ? l.status : '';
-      return '<div class="c-row' + (dirty ? ' is-dirty' : '') + (mark ? ' is-' + mark : '') +
-          (state.blocked[l.id] ? ' is-blocked' : '') + '" data-id="' + esc(l.id) + '">' +
-        '<div class="c-key">' +
-          '<span class="c-name">' + esc(readable(l)) + '</span>' +
-          '<code>' + esc(state.find ? l.key : shortKey(l)) + '</code>' +
-          (mark ? '<span class="tl-st is-' + mark + '">' + esc(tr('tl.status.' + mark)) + '</span>' : '') +
-          (dirty ? '<span class="badge unsaved">' + esc(tr('ms.unsaved')) + '</span>' : '') +
-        '</div>' +
-        '<div class="c-edit">' +
-          (en ? '' : '<p class="c-en" lang="en">' + esc(l.english) + '</p>') +
-          /* Named by the line it edits and the language of this copy of it:
-             one box among hundreds needs both. */
-          '<textarea rows="1" data-id="' + esc(l.id) + '" lang="' + esc(state.lang) + '" spellcheck="true"' +
-            ' aria-label="' + esc(readable(l) + ' — ' + langName(state.lang)) + '">' +
-            esc(state.draft[l.id]) + '</textarea>' +
-        '</div>' +
-      '</div>';
-    }).join('');
+    var field = r.split
+      ? '<div class="c-split">' +
+          '<div class="c-splitbox" contenteditable="true" role="textbox" spellcheck="true" lang="' + lang + '"' +
+            ' data-thin="' + esc(r.thin.id) + '" data-bold="' + esc(r.bold.id) + '" aria-label="' + aria + '">' +
+            splitHtml(state.draft[r.thin.id], state.draft[r.bold.id]) + '</div>' +
+          '<button type="button" class="c-bold" data-mark aria-label="' + esc(tr('con.markBold')) + '"' +
+            ' title="' + esc(tr('con.markBold')) + '">B</button>' +
+        '</div>'
+      : '<textarea rows="1" data-id="' + esc(r.line.id) + '" lang="' + lang + '" spellcheck="true"' +
+          ' aria-label="' + aria + '">' + esc(state.draft[r.line.id]) + '</textarea>';
+    return '<div class="c-row' + (dirty ? ' is-dirty' : '') + (mark ? ' is-' + mark : '') +
+        (blocked ? ' is-blocked' : '') + '" data-row="' + esc(r.id) + '">' +
+      '<div class="c-key">' +
+        '<span class="c-name">' + esc(name) + '</span>' +
+        '<code>' + esc(r.split ? r.key + '_thin + _bold' : r.key) + '</code>' +
+        (mark ? '<span class="tl-st is-' + mark + '">' + esc(tr('tl.status.' + mark)) + '</span>' : '') +
+        (dirty ? '<span class="badge unsaved">' + esc(tr('ms.unsaved')) + '</span>' : '') +
+      '</div>' + ref + field +
+    '</div>';
+  }
+
+  function renderRows() {
+    var rows = visible();
+    $('cCount').textContent = state.find ? rows.length + ' ' + tr('con.matches') : '';
+    $('cRows').innerHTML = rows.length ? rows.map(rowHtml).join('')
+      : '<p class="empty">' + esc(tr('con.noMatches')) + '</p>';
     $('cRows').querySelectorAll('textarea').forEach(autosize);
   }
 
-  function renderBar() {
+  function renderMore() {
     /* The file and the upload are for translating, so English has neither. */
-    var n = visible().length;
+    var n = visibleLineIds().length;
     $('cDown').hidden = isEn();
     $('cUp').hidden = isEn();
     $('cDown').textContent = n === 1 ? tr('con.download1') : fill('con.downloadN', { n: n });
@@ -345,32 +522,127 @@
     $('cDirtyCount').textContent = d.length === 1 ? tr('con.oneChange') : d.length + ' ' + tr('con.nChanges');
   }
 
+  /* After an edit, the row's own marks change without a redraw — a redraw
+     would take the focus out of the box being typed into. */
+  function markRow(el) {
+    var rowEl = el.closest('.c-row');
+    var row = state.rows.filter(function (r) { return r.id === rowEl.getAttribute('data-row'); })[0];
+    if (!row) return;
+    row.lines.forEach(function (l) { delete state.blocked[l.id]; });
+    var dirty = rowDirty(row);
+    rowEl.classList.toggle('is-dirty', dirty);
+    rowEl.classList.remove('is-blocked');
+    /* Being written now says more than having been missing or outdated. */
+    var mark = needsWork(row) ? rowStatus(row) : '';
+    rowEl.classList.toggle('is-' + mark, !!mark && !dirty);
+    var badge = rowEl.querySelector('.c-key .tl-st');
+    if (badge) badge.hidden = dirty;
+    renderSaveBar();
+    renderSections();
+  }
+
   /* ---- editing -------------------------------------------------------- */
 
   $('cRows').addEventListener('input', function (e) {
-    var ta = e.target;
-    if (ta.tagName !== 'TEXTAREA') return;
-    var id = ta.getAttribute('data-id');
-    state.draft[id] = ta.value;
-    delete state.blocked[id];
-    autosize(ta);
-    // The row's own marks change without a redraw, which would take the
-    // focus out of the box being typed into.
-    var row = ta.closest('.c-row');
-    row.classList.toggle('is-dirty', state.draft[id] !== state.saved[id]);
-    row.classList.remove('is-blocked');
-    renderSaveBar();
-    renderSections();
+    var t = e.target;
+    if (t.tagName === 'TEXTAREA') {
+      state.draft[t.getAttribute('data-id')] = t.value;
+      autosize(t);
+      return markRow(t);
+    }
+    var box = t.closest && t.closest('.c-splitbox');
+    if (box) {
+      var parts = readSplit(box);
+      state.draft[box.getAttribute('data-thin')] = parts.thin;
+      state.draft[box.getAttribute('data-bold')] = parts.bold;
+      markRow(box);
+    }
+  });
+
+  /* ---- a heading written as it reads -----------------------------------
+
+     The site prints `thin <b>bold</b>`. The box shows exactly that and
+     reads it back: everything before the first bold text is the thin part,
+     everything from there on is the bold part. B (or Ctrl/⌘+B) moves where
+     the bold begins to the cursor. One line, plain text only — a pasted
+     heading brings its words, not somebody else's formatting. */
+  function readSplit(box) {
+    var thin = '', bold = '', inBold = false;
+    (function walk(node, b) {
+      Array.prototype.forEach.call(node.childNodes, function (c) {
+        if (c.nodeType === 3) {
+          if (b) inBold = true;
+          if (inBold) bold += c.nodeValue; else thin += c.nodeValue;
+        } else if (c.nodeType === 1) {
+          if (c.tagName === 'BR') { if (inBold) bold += ' '; else thin += ' '; return; }
+          var weight = c.style && c.style.fontWeight;
+          walk(c, b || /^(B|STRONG)$/.test(c.tagName) || weight === 'bold' || Number(weight) >= 600);
+        }
+      });
+    })(box, false);
+    var clean = function (s) { return s.replace(/\s+/g, ' ').trim(); };
+    return { thin: clean(thin), bold: clean(bold) };
+  }
+
+  function caretOffset(box) {
+    var sel = window.getSelection && window.getSelection();
+    if (!sel || !sel.rangeCount || !box.contains(sel.anchorNode)) return null;
+    var r = sel.getRangeAt(0).cloneRange();
+    r.selectNodeContents(box);
+    r.setEnd(sel.getRangeAt(0).startContainer, sel.getRangeAt(0).startOffset);
+    return r.toString().length;
+  }
+
+  function markBold(box) {
+    var at = caretOffset(box);
+    if (at === null) return;
+    var all = box.textContent;
+    var thin = all.slice(0, at).replace(/\s+/g, ' ').trim();
+    var bold = all.slice(at).replace(/\s+/g, ' ').trim();
+    box.innerHTML = splitHtml(thin, bold);
+    state.draft[box.getAttribute('data-thin')] = thin;
+    state.draft[box.getAttribute('data-bold')] = bold;
+    markRow(box);
+    box.focus();
+  }
+
+  $('cRows').addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('[data-mark]');
+    if (b) markBold(b.parentNode.querySelector('.c-splitbox'));
+  });
+  /* Pressing B takes the focus from the box; remember where the cursor was. */
+  $('cRows').addEventListener('mousedown', function (e) {
+    if (e.target.closest && e.target.closest('[data-mark]')) e.preventDefault();
+  });
+  $('cRows').addEventListener('keydown', function (e) {
+    var box = e.target.closest && e.target.closest('.c-splitbox');
+    if (!box) return;
+    if (e.key === 'Enter') { e.preventDefault(); return; }
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) { e.preventDefault(); markBold(box); }
+  });
+  $('cRows').addEventListener('paste', function (e) {
+    var box = e.target.closest && e.target.closest('.c-splitbox');
+    if (!box) return;
+    e.preventDefault();
+    var text = ((e.clipboardData || window.clipboardData).getData('text') || '').replace(/\s+/g, ' ');
+    if (document.execCommand) document.execCommand('insertText', false, text);
+  });
+  /* Leaving the box shows it as it will be saved. */
+  $('cRows').addEventListener('focusout', function (e) {
+    var box = e.target.closest && e.target.closest('.c-splitbox');
+    if (!box) return;
+    var html = splitHtml(state.draft[box.getAttribute('data-thin')], state.draft[box.getAttribute('data-bold')]);
+    if (box.innerHTML !== html) box.innerHTML = html;
   });
 
   $('cSections').addEventListener('click', function (e) {
     var b = e.target.closest('[data-view]');
     if (!b) return;
     state.view = b.getAttribute('data-view');
-    // A section and a search are two ways of choosing what is on screen;
+    // A page and a search are two ways of choosing what is on screen;
     // leaving both on shows neither.
     if (state.find) { state.find = ''; $('cFind').value = ''; }
-    renderSections(); renderRows(); renderBar();
+    renderSections(); renderRows(); renderMore();
   });
 
   var findTimer = null;
@@ -379,7 +651,7 @@
     var v = e.target.value.trim();
     findTimer = setTimeout(function () {
       state.find = v;
-      renderSections(); renderRows(); renderBar();
+      renderSections(); renderRows(); renderMore();
     }, 150);
   });
 
@@ -403,6 +675,12 @@
     await openLang(next);
   });
 
+  $('cBeside').addEventListener('change', async function (e) {
+    state.beside = e.target.value;
+    await loadBeside();
+    renderRows();
+  });
+
   $('cDiscard').addEventListener('click', async function () {
     var n = dirtyIds().length;
     if (!n) return;
@@ -416,6 +694,27 @@
     render();
   });
 
+  /* ---- More ------------------------------------------------------------
+     The file for a translator, bringing one back, and reading the words
+     again. A disclosure: a button showing buttons. */
+  function setMore(open) {
+    $('cMoreBtn').setAttribute('aria-expanded', open ? 'true' : 'false');
+    $('cMore').parentNode.classList.toggle('is-open', open);
+  }
+  $('cMoreBtn').addEventListener('click', function (e) {
+    e.stopPropagation();
+    setMore($('cMoreBtn').getAttribute('aria-expanded') !== 'true');
+  });
+  $('cMore').addEventListener('click', function () { setMore(false); });
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest || !e.target.closest('.c-more')) setMore(false);
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && $('cMoreBtn').getAttribute('aria-expanded') === 'true') {
+      setMore(false); $('cMoreBtn').focus();
+    }
+  });
+
   $('cReload').addEventListener('click', async function () {
     if (!state.lang) return;
     var n = dirtyIds().length;
@@ -426,13 +725,11 @@
       });
       if (!ok) return;
     }
-    var btn = this;
-    btn.disabled = true;
-    try { if (await openLang(state.lang, true)) toast(tr('con.reloaded'), 'ok'); }
-    finally { btn.disabled = false; }
+    state.besideLines = {};
+    if (await openLang(state.lang, true)) toast(tr('con.reloaded'), 'ok');
   });
 
-  /* A save is a quiet commit — nothing is live before Publish — so it asks
+  /* A save is a quiet commit — nothing is live before publishing — so it asks
      nothing. The server checks every line again: a lost {placeholder} is
      refused, and a line somebody else changed meanwhile is left as theirs. */
   $('cSave').addEventListener('click', async function () {
@@ -459,6 +756,7 @@
     var conflicts = data.conflicts || [];
     if (conflicts.length) toast(fill('tl.conflicts', { n: conflicts.length }), 'err');
     await openLang(state.lang, true);
+    loadSummary();
     // A line left as somebody else's keeps what was typed, still unsaved.
     if (conflicts.length) {
       conflicts.forEach(function (id) { if (id in kept) state.draft[id] = kept[id]; });
@@ -473,12 +771,9 @@
   /* ---- the file for a translator, and what comes back ---------------- */
 
   $('cDown').addEventListener('click', async function () {
-    var ids = visible().map(function (l) { return l.id; });
+    var ids = visibleLineIds();
     if (!ids.length) return;
-    var btn = this;
-    btn.disabled = true;
     var data = await send(WORDS, 'POST', { action: 'file', lang: state.lang, ids: ids });
-    btn.disabled = false;
     if (!data) return;
     if (data.failed) return refused(data);
     var a = document.createElement('a');
@@ -523,8 +818,10 @@
     state.review = {
       lang: data.lang,
       items: data.items.map(function (it) {
+        var row = { source: it.source, key: it.key, lines: [{ source: it.source, key: it.key }] };
         return {
-          id: it.id, source: it.source, key: it.key, english: it.english,
+          id: it.id, source: it.source, key: it.key, english: it.english, label: labelFor(row),
+          section: sectionOf(row.lines[0]),
           english_hash: it.english_hash, current: it.current, value: it.proposed,
           problems: it.problems, warnings: it.warnings,
           approved: !it.problems.length && !it.warnings.length, blocked: it.problems.length > 0
@@ -533,7 +830,7 @@
     };
     $('cRoot').hidden = true;
     $('tlReview').hidden = false;
-    renderBar();
+    renderMore();
     renderReview();
     window.scrollTo(0, 0);
   }
@@ -543,16 +840,13 @@
     $('tlReview').hidden = true;
     $('tlItems').innerHTML = '';
     $('cRoot').hidden = false;
-    renderBar();
+    renderMore();
   }
 
   function renderReview() {
     var r = state.review;
     var sections = [];
-    r.items.forEach(function (it) {
-      var s = sectionOf(it);
-      if (sections.indexOf(s) === -1) sections.push(s);
-    });
+    r.items.forEach(function (it) { if (sections.indexOf(it.section) === -1) sections.push(it.section); });
     function flag(kind) {
       return function (f) {
         return '<li class="is-' + kind + '">' + esc(fill('tl.flag.' + f.code, { detail: f.detail || '' })) + '</li>';
@@ -560,14 +854,14 @@
     }
     $('tlItems').innerHTML = sections.map(function (s) {
       return '<h3 class="ln-h3">' + esc(sectionLabel(s)) + '</h3>' +
-        r.items.filter(function (it) { return sectionOf(it) === s; }).map(function (it) {
+        r.items.filter(function (it) { return it.section === s; }).map(function (it) {
           var flags = it.problems.map(flag('problem')).concat(it.warnings.map(flag('warning')));
           return '<article class="tl-item' + (it.blocked ? ' is-blocked' : '') + (it.approved ? ' is-approved' : '') +
               '" data-item="' + esc(it.id) + '">' +
             '<label class="tl-approve"><input type="checkbox" data-approve' + (it.approved ? ' checked' : '') +
-              (it.blocked ? ' disabled' : '') + ' aria-label="' + esc(fill('tl.approve', { n: readable(it) })) + '"></label>' +
+              (it.blocked ? ' disabled' : '') + ' aria-label="' + esc(fill('tl.approve', { n: it.label })) + '"></label>' +
             '<div class="tl-body">' +
-              '<p class="tl-key">' + esc(readable(it)) + '</p>' +
+              '<p class="tl-key">' + esc(it.label) + '</p>' +
               '<p class="tl-en" lang="en">' + esc(it.english) + '</p>' +
               (it.current
                 ? '<p class="tl-now"><span class="tl-tag">' + esc(tr('tl.now')) + '</span>' +
@@ -658,29 +952,39 @@
     if (data.conflicts && data.conflicts.length) toast(fill('tl.conflicts', { n: data.conflicts.length }), 'err');
     closeReview();
     await openLang(state.lang, true);
+    loadSummary();
   });
 
   /* ---- adding and removing a language --------------------------------- */
 
   var codeLooksValid = function (v) { return /^[a-z]{2}(-[a-z]{2})?$/.test(String(v || '').trim().toLowerCase()); };
 
-  async function addLanguage() {
+  /* Picked BY NAME, from the languages people are likeliest to need — each
+     named in itself, the way somebody who speaks it would look for it — with
+     "Another language…" for a code the list does not have (mockup board 6). */
+  var OFFERED = ['de', 'fr', 'it', 'es', 'pt', 'nl', 'pl', 'cs', 'sk', 'sl', 'hu', 'ro', 'bg', 'mk', 'sq',
+                 'bs', 'me', 'uk', 'ru', 'el', 'tr', 'lt', 'lv', 'et', 'fi', 'sv', 'no', 'da',
+                 'ar', 'fa', 'he', 'hi', 'zh', 'ja', 'ko', 'sw', 'am'];
+
+  async function addLanguage(code) {
     if (!(await mayLeave())) return;
-    var code = await window.StaffPrompt({
-      title: tr('con.addLangTitle'),
-      label: tr('con.addLangLabel'),
-      placeholder: 'sl',
-      confirm: tr('con.addLangDo'),
-      cancel: tr('ms.cancel'),
-      // Checked here for a quick answer and again on the server, which counts.
-      validate: function (v) {
-        v = String(v || '').trim().toLowerCase();
-        if (!codeLooksValid(v)) return tr('con.addLangBadCode');
-        if (state.langs.indexOf(v) !== -1) return tr('con.addLangExists');
-        return null;
-      }
-    });
-    if (!code) return;
+    if (!code) {
+      code = await window.StaffPrompt({
+        title: tr('con.addLangTitle'),
+        label: tr('con.addLangLabel'),
+        placeholder: 'sl',
+        confirm: tr('con.addLangDo'),
+        cancel: tr('ms.cancel'),
+        // Checked here for a quick answer and again on the server, which counts.
+        validate: function (v) {
+          v = String(v || '').trim().toLowerCase();
+          if (!codeLooksValid(v)) return tr('con.addLangBadCode');
+          if (state.langs.indexOf(v) !== -1) return tr('con.addLangExists');
+          return null;
+        }
+      });
+      if (!code) return;
+    }
     var body = await send(CONTENT, 'POST', { code: code.trim().toLowerCase() });
     if (!body) return;
     if (body.failed) {
@@ -692,7 +996,9 @@
     toast(fill('con.addLangDone', { code: langLabel(body.code), n: body.strings }), 'ok');
     var site = await send(CONTENT + '?file=site');
     if (site && !site.failed) takeSite(site);
+    closeSettings();
     await openLang(body.code);
+    loadSummary();
   }
 
   /* Same shape as deleting a partner: something that exists nowhere else
@@ -720,13 +1026,15 @@
       return refused(body);
     }
     toast(fill('vis.removed', { lang: langName(code) }), 'ok');
-    closeSettings();
     var site = await send(CONTENT + '?file=site');
     if (site && !site.failed) takeSite(site);
-    await openLang('en');
+    delete state.summary[code];
+    if (state.lang === code) await openLang('en'); else fillPickers();
+    renderTable();
+    loadSummary();
   }
 
-  /* ---- language settings ---------------------------------------------- */
+  /* ---- every language, in one place ------------------------------------ */
 
   function siteValue(path) {
     return path.split('.').reduce(function (o, k) { return o == null ? undefined : o[k]; }, state.site);
@@ -737,9 +1045,8 @@
     o[parts[parts.length - 1]] = value;
   }
 
-  /* One setting, saved as it is changed: a quiet commit to site.json, like
-     every save here. The SHA moves with each one, so the next is checked
-     against it. */
+  /* One setting, saved as it is changed: a quiet commit to site.json. The
+     SHA moves with each one, so the next is checked against it. */
   async function saveSetting(path, value) {
     var changes = {};
     changes[path] = value;
@@ -749,7 +1056,7 @@
       refused(body);
       var site = await send(CONTENT + '?file=site');       // read again rather than guess
       if (site && !site.failed) takeSite(site);
-      renderSettings();
+      renderTable();
       return false;
     }
     if (body.sha) state.siteSha = body.sha;
@@ -758,20 +1065,19 @@
     return true;
   }
 
-  function switchHtml(attr, on, label, disabled) {
-    return '<div class="c-set-row"><span class="switch-label">' + esc(label) + '</span>' +
-      '<button type="button" class="switch" role="switch" ' + attr +
+  function sw(path, on, label) {
+    return '<button type="button" class="switch small" role="switch" data-set="' + esc(path) + '"' +
       ' aria-checked="' + (on ? 'true' : 'false') + '"' + (on ? ' data-on="1"' : '') +
-      (disabled ? ' disabled' : '') + ' aria-label="' + esc(label) + '">' +
+      ' aria-label="' + esc(label) + '">' +
         '<span class="switch-track"><span class="switch-state">' + (on ? 'On' : 'Off') +
-        '</span><span class="switch-knob"></span></span></button></div>';
+        '</span><span class="switch-knob"></span></span></button>';
   }
 
   function guideHtml(lang, label) {
     var ro = state.notesWrite ? '' : ' readonly';
     return '<div class="c-set-guide" data-guide="' + esc(lang) + '">' +
       '<label class="fld"><span>' + esc(label) + '</span>' +
-        '<textarea rows="4" maxlength="2000"' + ro + ' lang="' + esc(lang === '*' ? 'en' : lang) + '">' +
+        '<textarea rows="3" maxlength="2000"' + ro + ' lang="' + esc(lang === '*' ? 'en' : lang) + '">' +
         esc(state.notes.guides[lang] || '') + '</textarea></label>' +
       (state.notesWrite
         ? '<p class="ln-acts"><button type="button" class="ghost-btn" data-save-guide disabled>' +
@@ -780,34 +1086,12 @@
     '</div>';
   }
 
-  function renderSettings() {
-    var code = state.lang;
-    var en = code === 'en';
-    $('cSetTitle').textContent = langLabel(code);
-    var html = '<div class="c-set-sws">';
-
-    /* Whether the language is built at all. English has no switch: every
-       missing translation falls back to it. */
-    var vis = siteValue('visibility.languages.' + code);
-    if (!en && vis) {
-      html += switchHtml('data-set="visibility.languages.' + esc(code) + '.dev"', !!vis.dev, tr('vis.devCol')) +
-              switchHtml('data-set="visibility.languages.' + esc(code) + '.live"', !!vis.live, tr('vis.liveCol'));
-    }
-    /* The default can be given to a language, not taken away: exactly one
-       language is it, so turning another on is how it moves. */
-    var isDefault = state.site.defaultLang === code;
-    html += switchHtml('data-default', isDefault, tr('con.set.default'), isDefault) + '</div>';
-
-    if (state.site.donorbox && typeof state.site.donorbox === 'object') {
-      html += '<label class="fld c-set-fld"><span>' + esc(tr('con.set.donate')) + '</span>' +
-        '<input type="text" data-set="donorbox.' + esc(code) + '" value="' +
-        esc(state.site.donorbox[code] || '') + '" autocomplete="off" spellcheck="false"></label>';
-    }
-
-    if (en) {
-      /* English is the source, so its notes are the ones every translation
-         follows: the words that stay as written, and the guide for all. */
-      html += '<h4 class="ln-h3">' + esc(tr('ln.keep')) + '</h4>' +
+  /* How a language is written, opened under its row. English's is the rules
+     every translation follows: the words that stay as written, and the
+     guide for all of them. */
+  function notesHtml(code) {
+    if (code === 'en') {
+      return '<h4 class="ln-h3">' + esc(tr('ln.keep')) + '</h4>' +
         '<ul class="ln-chips">' + (state.notes.keep.length
           ? state.notes.keep.map(function (k) {
               return '<li class="ln-chip"><span>' + esc(k.term) + '</span>' +
@@ -821,47 +1105,104 @@
             '<button type="submit" class="ghost-btn">' + esc(tr('ln.add')) + '</button></form>'
           : '') +
         guideHtml('*', tr('ln.every'));
-    } else {
-      html += guideHtml(code, tr('con.set.written'));
-      var rows = state.notes.glossary.filter(function (g) { return g.lang === code; });
-      var ro = state.notesWrite ? '' : ' readonly';
-      html += '<h4 class="ln-h3">' + esc(tr('ln.fixed')) + '</h4>' +
-        '<table class="ln-table"><thead><tr><th scope="col">' + esc(tr('ln.english')) + '</th>' +
-        '<th scope="col">' + esc(langName(code)) + '</th><th scope="col"><span class="visually-hidden">' +
-        esc(tr('ln.remove')) + '</span></th></tr></thead><tbody>' +
-        (rows.length ? rows.map(function (g) {
-          return '<tr data-gloss-row="' + esc(g.id) + '">' +
-            '<td><input type="text" lang="en" maxlength="300" data-gl="source" value="' + esc(g.source) +
-              '" aria-label="' + esc(tr('ln.english')) + '"' + ro + '></td>' +
-            '<td><input type="text" lang="' + esc(code) + '" maxlength="300" data-gl="target" value="' + esc(g.target) +
-              '" aria-label="' + esc(langName(code)) + '"' + ro + '></td>' +
-            '<td>' + (state.notesWrite ? '<button type="button" class="ln-x" data-gloss="' + esc(g.id) +
-              '" aria-label="' + esc(tr('ln.remove') + ' ' + g.source) + '">&times;</button>' : '') + '</td></tr>';
-        }).join('') : '<tr><td colspan="3" class="ln-none">' + esc(tr('ln.none')) + '</td></tr>') +
-        '</tbody></table>' +
-        (state.notesWrite
-          ? '<form class="ln-add ln-add-pair" data-gloss-add>' +
-            '<input type="text" lang="en" maxlength="300" autocomplete="off" placeholder="' + esc(tr('ln.source')) +
-              '" aria-label="' + esc(tr('ln.source')) + '" data-new="source">' +
-            '<input type="text" lang="' + esc(code) + '" maxlength="300" autocomplete="off" placeholder="' +
-              esc(tr('ln.target')) + '" aria-label="' + esc(tr('ln.target')) + '" data-new="target">' +
-            '<button type="submit" class="ghost-btn">' + esc(tr('ln.add')) + '</button></form>'
-          : '') +
-        '<p class="c-set-danger"><button type="button" class="ghost-btn c-remove" data-remove>' +
-          esc(fill('con.set.remove', { lang: langName(code) })) + '</button></p>';
     }
+    var rows = state.notes.glossary.filter(function (g) { return g.lang === code; });
+    var ro = state.notesWrite ? '' : ' readonly';
+    return guideHtml(code, tr('con.set.written')) +
+      '<h4 class="ln-h3">' + esc(tr('ln.fixed')) + '</h4>' +
+      '<table class="ln-table"><thead><tr><th scope="col">' + esc(tr('ln.english')) + '</th>' +
+      '<th scope="col">' + esc(langName(code)) + '</th><th scope="col"><span class="visually-hidden">' +
+      esc(tr('ln.remove')) + '</span></th></tr></thead><tbody>' +
+      (rows.length ? rows.map(function (g) {
+        return '<tr data-gloss-row="' + esc(g.id) + '">' +
+          '<td><input type="text" lang="en" maxlength="300" data-gl="source" value="' + esc(g.source) +
+            '" aria-label="' + esc(tr('ln.english')) + '"' + ro + '></td>' +
+          '<td><input type="text" lang="' + esc(code) + '" maxlength="300" data-gl="target" value="' + esc(g.target) +
+            '" aria-label="' + esc(langName(code)) + '"' + ro + '></td>' +
+          '<td>' + (state.notesWrite ? '<button type="button" class="ln-x" data-gloss="' + esc(g.id) +
+            '" aria-label="' + esc(tr('ln.remove') + ' ' + g.source) + '">&times;</button>' : '') + '</td></tr>';
+      }).join('') : '<tr><td colspan="3" class="ln-none">' + esc(tr('ln.none')) + '</td></tr>') +
+      '</tbody></table>' +
+      (state.notesWrite
+        ? '<form class="ln-add ln-add-pair" data-gloss-add>' +
+          '<input type="text" lang="en" maxlength="300" autocomplete="off" placeholder="' + esc(tr('ln.source')) +
+            '" aria-label="' + esc(tr('ln.source')) + '" data-new="source">' +
+          '<input type="text" lang="' + esc(code) + '" maxlength="300" autocomplete="off" placeholder="' +
+            esc(tr('ln.target')) + '" aria-label="' + esc(tr('ln.target')) + '" data-new="target">' +
+          '<button type="submit" class="ghost-btn">' + esc(tr('ln.add')) + '</button></form>'
+        : '');
+  }
+
+  function renderTable() {
+    var donate = state.site.donorbox && typeof state.site.donorbox === 'object';
+    var html = '<div class="lt" role="table" aria-label="' + esc(tr('con.languages')) + '">' +
+      '<div class="lt-r lt-head" role="row">' +
+        ['con.lt.language', 'con.lt.words', 'con.lt.preview', 'con.lt.everyone', 'con.lt.donate'].map(function (k) {
+          return '<span role="columnheader">' + esc(tr(k)) + '</span>';
+        }).join('') + '<span role="columnheader"></span></div>';
+
+    state.langs.forEach(function (code) {
+      var en = code === 'en';
+      var vis = siteValue('visibility.languages.' + code) || {};
+      var sum = state.summary[code];
+      var done = sum && sum.total ? sum.total - (sum.missing || 0) : null;
+      var pct = sum && sum.total ? Math.round(100 * done / sum.total) : 0;
+      var open = state.openNotes === code;
+      var sub = en ? tr('con.lt.source') : code + (vis.live === false ? ' · ' + tr('con.lt.notPublic') : '');
+      html += '<div class="lt-r" role="row" data-lang="' + esc(code) + '">' +
+        '<span role="cell" class="lt-name"><b>' + esc(langName(code)) + '</b><small>' + esc(sub) + '</small></span>' +
+        '<span role="cell" class="lt-words">' + (sum
+          ? '<span class="lt-bar"><i style="width:' + pct + '%"></i></span><small>' +
+            esc(fill('con.lt.of', { done: done, total: sum.total })) + '</small>'
+          : '<small>…</small>') + '</span>' +
+        /* data-label: on a phone the header row is gone, and each cell
+           carries its own heading instead. */
+        '<span role="cell" data-label="' + esc(tr('con.lt.preview')) + '">' + (en ? '<small>' + esc(tr('con.lt.always')) + '</small>'
+          : sw('visibility.languages.' + code + '.dev', !!vis.dev, langName(code) + ' — ' + tr('con.lt.preview'))) + '</span>' +
+        '<span role="cell" data-label="' + esc(tr('con.lt.everyone')) + '">' + (en ? '<small>' + esc(tr('con.lt.always')) + '</small>'
+          : sw('visibility.languages.' + code + '.live', !!vis.live, langName(code) + ' — ' + tr('con.lt.everyone'))) + '</span>' +
+        '<span role="cell" class="lt-donate" data-label="' + esc(tr('con.lt.donate')) + '">' + (donate
+          ? '<input type="url" data-set="donorbox.' + esc(code) + '" value="' + esc(state.site.donorbox[code] || '') +
+            '" autocomplete="off" spellcheck="false" aria-label="' + esc(langName(code) + ' — ' + tr('con.lt.donate')) + '">'
+          : '') + '</span>' +
+        '<span role="cell" class="lt-acts">' +
+          '<button type="button" class="tl-more" data-notes="' + esc(code) + '" aria-expanded="' + open + '">' +
+            esc(tr('con.lt.written')) + '</button>' +
+          (en ? '' : '<button type="button" class="ghost-btn sm c-remove" data-remove="' + esc(code) + '">' +
+            esc(tr('ln.remove')) + '</button>') +
+        '</span>' +
+      '</div>' +
+      (open ? '<div class="lt-notes" data-notes-for="' + esc(code) + '">' + notesHtml(code) + '</div>' : '');
+    });
+    html += '</div>';
+
+    var offered = OFFERED.filter(function (c) { return state.langs.indexOf(c) === -1; })
+      .map(function (c) { return { c: c, n: langName(c) }; })
+      .sort(function (a, b) { return a.n.localeCompare(b.n); });
+    html += '<div class="lt-add">' +
+      '<select id="ltAdd" aria-label="' + esc(tr('con.addLang')) + '"><option value="">' + esc(tr('con.lt.add')) + '</option>' +
+        offered.map(function (o) { return '<option value="' + esc(o.c) + '">' + esc(o.n) + '</option>'; }).join('') +
+        '<option value="' + ADD + '">' + esc(tr('con.lt.other')) + '</option></select>' +
+      '<button type="button" class="ghost-btn" id="ltAddBtn" disabled>' + esc(tr('con.lt.addBtn')) + '</button>' +
+    '</div>' +
+    '<label class="lt-default fld"><span>' + esc(tr('con.lt.default')) + '</span>' +
+      '<select data-default>' + state.langs.map(function (c) {
+        return '<option value="' + esc(c) + '"' + (c === state.site.defaultLang ? ' selected' : '') + '>' +
+          esc(langName(c)) + '</option>';
+      }).join('') + '</select></label>';
     $('cSetBody').innerHTML = html;
   }
 
   var lastFocus = null;
   function openSettings() {
-    renderSettings();
+    renderTable();
     lastFocus = document.activeElement;
     var back = $('cSet');
     back.hidden = false;
     void back.offsetHeight;
     back.classList.add('in');
     $('cSetClose').focus();
+    loadSummary();
   }
   function guidesDirty() {
     return [].some.call(document.querySelectorAll('#cSetBody [data-guide]'), function (box) {
@@ -882,7 +1223,7 @@
     if (lastFocus && lastFocus.focus) lastFocus.focus();
   }
 
-  $('cLangSet').addEventListener('click', openSettings);
+  $('cLangs').addEventListener('click', openSettings);
   $('cSetClose').addEventListener('click', function () { closeSettings(true); });
   $('cSet').addEventListener('click', function (e) { if (e.target === $('cSet')) closeSettings(true); });
   document.addEventListener('keydown', function (e) {
@@ -894,21 +1235,42 @@
     state.notes = { keep: data.keep || [], glossary: data.glossary || [], guides: data.guides || {} };
     state.notesWrite = !!data.can_write;
   }
+  function notesLang(el) {
+    var box = el.closest && el.closest('[data-notes-for]');
+    return box ? box.getAttribute('data-notes-for') : null;
+  }
 
   $('cSetBody').addEventListener('click', async function (e) {
-    var sw = e.target.closest('.switch');
-    if (sw) {
-      if (sw.disabled) return;
-      sw.disabled = true;
-      var ok = sw.hasAttribute('data-default')
-        ? await saveSetting('defaultLang', state.lang)
-        : await saveSetting(sw.getAttribute('data-set'), !siteValue(sw.getAttribute('data-set')));
-      if (ok) renderSettings(); else sw.disabled = false;
+    var t = e.target;
+    var s = t.closest && t.closest('.switch[data-set]');
+    if (s) {
+      if (s.disabled) return;
+      s.disabled = true;
+      var path = s.getAttribute('data-set');
+      if (await saveSetting(path, !siteValue(path))) renderTable(); else s.disabled = false;
       return;
     }
-    if (e.target.closest('[data-remove]')) return removeLanguage(state.lang);
+    var n = t.closest && t.closest('[data-notes]');
+    if (n) {
+      var code = n.getAttribute('data-notes');
+      if (state.openNotes && state.openNotes !== code && guidesDirty()) {
+        var ok = await window.StaffConfirm({ title: tr('ln.discardGuide'), confirm: tr('ln.discard'), cancel: tr('common.cancel') });
+        if (!ok) return;
+      }
+      state.openNotes = state.openNotes === code ? null : code;
+      renderTable();
+      var again = $('cSetBody').querySelector('[data-notes="' + code + '"]');
+      if (again) again.focus();
+      return;
+    }
+    var rm = t.closest && t.closest('[data-remove]');
+    if (rm) return removeLanguage(rm.getAttribute('data-remove'));
+    if (t.id === 'ltAddBtn') {
+      var v = $('ltAdd').value;
+      return v ? addLanguage(v === ADD ? null : v) : null;
+    }
 
-    var save = e.target.closest('[data-save-guide]');
+    var save = t.closest && t.closest('[data-save-guide]');
     if (save) {
       var box = save.closest('[data-guide]');
       save.disabled = true;
@@ -919,19 +1281,19 @@
       toast(tr('ln.saved'), 'ok');
       return;
     }
-    var k = e.target.closest('[data-keep]');
-    var g = e.target.closest('[data-gloss]');
+    var k = t.closest && t.closest('[data-keep]');
+    var g = t.closest && t.closest('[data-gloss]');
     if (!k && !g) return;
     var data = await send(NOTES + (k ? '?kind=keep&id=' + encodeURIComponent(k.getAttribute('data-keep'))
                                      : '?kind=glossary&id=' + encodeURIComponent(g.getAttribute('data-gloss'))), 'DELETE');
     if (!data) return;
     if (data.failed) return refused(data);
     takeNotes(data);
-    renderSettings();
+    renderTable();
   });
 
   $('cSetBody').addEventListener('input', function (e) {
-    var box = e.target.closest('[data-guide]');
+    var box = e.target.closest && e.target.closest('[data-guide]');
     if (!box || e.target.tagName !== 'TEXTAREA') return;
     var btn = box.querySelector('[data-save-guide]');
     if (btn) btn.disabled = e.target.value === (state.notes.guides[box.getAttribute('data-guide')] || '');
@@ -939,15 +1301,20 @@
 
   $('cSetBody').addEventListener('change', async function (e) {
     var t = e.target;
+    if (t.id === 'ltAdd') { $('ltAddBtn').disabled = !t.value; return; }
+    if (t.matches('[data-default]')) {
+      if (!(await saveSetting('defaultLang', t.value))) renderTable();
+      return;
+    }
     if (t.matches('input[data-set]')) return saveSetting(t.getAttribute('data-set'), t.value.trim());
     if (!t.matches('[data-gl]')) return;
     var row = t.closest('tr');
     var source = row.querySelector('[data-gl="source"]').value;
     var target = row.querySelector('[data-gl="target"]').value;
-    if (!source.trim() || !target.trim()) return renderSettings();
+    if (!source.trim() || !target.trim()) return renderTable();
     var data = await send(NOTES, 'POST', { kind: 'glossary', id: row.getAttribute('data-gloss-row'),
-                                           lang: state.lang, source: source, target: target });
-    if (!data || data.failed) { if (data) refused(data); return renderSettings(); }
+                                           lang: notesLang(t), source: source, target: target });
+    if (!data || data.failed) { if (data) refused(data); return renderTable(); }
     takeNotes(data);
     toast(tr('ln.saved'), 'ok');
   });
@@ -965,12 +1332,12 @@
       var src = form.querySelector('[data-new="source"]'), tgt = form.querySelector('[data-new="target"]');
       if (!src.value.trim()) return src.focus();
       if (!tgt.value.trim()) return tgt.focus();
-      data = await send(NOTES, 'POST', { kind: 'glossary', lang: state.lang, source: src.value, target: tgt.value });
+      data = await send(NOTES, 'POST', { kind: 'glossary', lang: notesLang(form), source: src.value, target: tgt.value });
     } else return;
     if (!data) return;
     if (data.failed) return refused(data);
     takeNotes(data);
-    renderSettings();
+    renderTable();
     var again = $('cSetBody').querySelector(keepAdd ? '[data-keep-add] input' : '[data-new="source"]');
     if (again) again.focus();
   });

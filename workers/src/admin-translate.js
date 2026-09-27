@@ -2,6 +2,8 @@
  * admin-translate.js — /api/admin/translate, every line of every language
  *
  *   GET                            the site's languages
+ *   GET  ?summary                  every language's progress: total lines,
+ *                                  missing, outdated
  *   GET  ?lang=hr                  every translatable line for Croatian, with
  *                                  its status: missing, outdated or done
  *   POST { action: "file", lang, ids? }
@@ -173,6 +175,23 @@ export default {
     const { db, user, me } = g;
 
     if (request.method === "GET") {
+      /* EVERY LANGUAGE'S PROGRESS AT ONCE, for the languages table on the
+         Content page ("189 of 189"). One read of each file rather than one
+         request per language from the browser. */
+      if (new URL(request.url).searchParams.has("summary")) {
+        const langs = await siteLanguages(env);
+        if (langs.error) return fail(langs);
+        const out = [];
+        for (const code of langs.languages) {
+          const r = await load(env, db, code, { english: true });
+          if (r.error) { out.push({ code, error: r.error }); continue; }
+          const count = (st) => r.lines.filter((l) => l.status === st).length;
+          out.push({ code, name: r.name, total: r.lines.length,
+                     missing: code === "en" ? 0 : count("missing"),
+                     outdated: code === "en" ? 0 : count("outdated") });
+        }
+        return json({ languages: out });
+      }
       const lang = new URL(request.url).searchParams.get("lang");
       if (!lang) {
         const r = await siteLanguages(env);

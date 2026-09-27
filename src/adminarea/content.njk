@@ -1,59 +1,67 @@
 ---
 layout: layouts/admin.njk
 adminPage: content
-adminTitle: Content
+adminTitle: Pages
 adminHeading: The site's <b>words</b>
 adminScript: /js/admin-content.js
 permalink: /admin/website/index.html
 websiteTab: pages
 ---
-{#- EVERY WORD THE SITE SAYS, IN EVERY LANGUAGE, AND EVERYTHING ABOUT THOSE
-   LANGUAGES — one page (Chase, 2026-09-27: "all language controls can be on
-   the page that actually edits the language"). The site's pages and the
-   emails and forms, one language at a time.
+{#- WEBSITE › PAGES (mockup board "Site words by page", with Chase's notes:
+   labels first, the live preview later; every language control with the
+   words; everything a visitor reads translatable).
 
-   ONE FIELD PER LINE, the English above it when the language is not English.
-   Not a column per language: that stops working somewhere around four, and
-   the site's languages are meant to grow to thirty. The language is a select
-   for the same reason.
+   ONE LANGUAGE AT A TIME, "Writing X beside Y": the line being written, with
+   the same line in another language above it — English unless you choose
+   otherwise. Not a column per language, which stops working somewhere around
+   four; the site's languages are meant to grow to thirty.
+
+   EACH LINE IS NAMED FOR WHAT IT IS ("Small line above the headline"), with
+   its key kept small beside it. A heading stored as two strings for its bold
+   half is ONE line here, edited as it reads, with B to mark where the bold
+   begins.
 
    WHAT YOU SEE IS WHAT YOU DOWNLOAD. The file for a translator holds the
-   lines on screen — a section, a search, "Needs work", or "All" — and the
-   button says how many. Choosing lines needs no controls of its own.
+   lines on screen — a page, a search, Needs work, All — and More says how
+   many. The languages themselves — on or off, donation page, how each is
+   written, adding and removing — are one button away, in a table. -#}
 
-   The language's own settings (dev and live switches, default, donation
-   form, how it reads, removing it) are one dialog away, because they are set
-   once and then left. -#}
-
-<div class="ms-bar c-bar">
+<div class="c-tools">
   <label class="c-pick">
-    <span data-i18n="con.editing">Editing</span>
+    <span data-i18n="con.writing">Writing</span>
     <select id="cLang" disabled></select>
   </label>
-  <button type="button" class="ghost-btn" id="cLangSet" disabled
-          data-i18n="con.langSettings">Language settings</button>
-  <span class="c-gap"></span>
-  <button type="button" class="ghost-btn" id="cDown" hidden></button>
-  <button type="button" class="ghost-btn" id="cUp" hidden data-i18n="tl.upload">Upload translation</button>
+  <label class="c-pick" id="cBesideWrap" hidden>
+    <span data-i18n="con.beside">beside</span>
+    <select id="cBeside"></select>
+  </label>
+  <input type="search" id="cFind" autocomplete="off"
+         placeholder="Find a word" aria-label="Find a word"
+         data-i18n-attr="placeholder:con.find,aria-label:con.find">
+  <button type="button" class="ghost-btn" id="cLangs" disabled data-i18n="con.languages">Languages</button>
+  <div class="c-more">
+    <button type="button" class="ghost-btn" id="cMoreBtn" aria-expanded="false" aria-controls="cMore">
+      <span data-i18n="con.more">More</span><span class="console-caret" aria-hidden="true"></span>
+    </button>
+    <div class="c-more-menu" id="cMore">
+      <button type="button" id="cDown"></button>
+      <button type="button" id="cUp" data-i18n="tl.upload">Upload translation</button>
+      {#- "Nothing has changed" is a claim about the copy this page loaded; the
+         remedy for doubting it is to read again. -#}
+      <button type="button" id="cReload" data-i18n="con.reload">Reload from GitHub</button>
+    </div>
+  </div>
   <input type="file" id="cFile" accept=".csv,text/csv" hidden
          aria-label="Upload translation" data-i18n-attr="aria-label:tl.upload">
-  {#- Always enabled: "nothing has changed" is a claim about the copy this
-     page loaded, and the remedy for doubting it is to read again. -#}
-  <button type="button" class="ghost-btn" id="cReload" data-i18n="con.reload">Reload from GitHub</button>
 </div>
 
 {#- Shown instead of the editor when GITHUB_TOKEN is absent. -#}
 <p class="rolegate" id="cNotConfigured" hidden></p>
 
 <div class="adm-content" id="cRoot" hidden>
-  <nav class="c-sections" id="cSections" aria-label="Sections"></nav>
+  <nav class="c-sections" id="cSections" aria-label="Pages"></nav>
   <div class="c-panel">
-    <div class="c-search">
-      <input type="search" id="cFind" autocomplete="off"
-             placeholder="Find a word or phrase…" aria-label="Find a word or phrase…"
-             data-i18n-attr="placeholder:con.find,aria-label:con.find">
-      <span class="c-count" id="cCount"></span>
-    </div>
+    <span class="c-count" id="cCount" role="status"></span>
     <div class="c-rows" id="cRows"></div>
   </div>
 </div>
@@ -76,14 +84,15 @@ websiteTab: pages
   <button type="button" class="solid-btn" id="cSave" data-i18n="con.save">Save</button>
 </div>
 
-{#- LANGUAGE SETTINGS, for the language being edited. The console's dialog
-   shell, so it looks and closes like every other dialog. Each control saves
-   as it is changed, like Settings: one decision, one result. Filled in by
-   admin-content.js. -#}
+{#- EVERY LANGUAGE, IN ONE PLACE (mockup board "Every language, in one
+   place"): one row per language — how much is translated, on for the preview
+   site, on for everyone, its donation page, how it is written, removing it —
+   then adding one and the default. The console's dialog shell, so it looks
+   and closes like every other dialog. Each control saves as it changes. -#}
 <div class="dlg-back c-set" id="cSet" hidden>
   <div class="dlg c-set-dlg" role="dialog" aria-modal="true" aria-labelledby="cSetTitle">
     <div class="c-set-head">
-      <h3 id="cSetTitle"></h3>
+      <h3 id="cSetTitle" data-i18n="con.languages">Languages</h3>
       <button type="button" class="ln-x" id="cSetClose" aria-label="Close" data-i18n-attr="aria-label:con.close">&times;</button>
     </div>
     <div class="c-set-body" id="cSetBody"></div>

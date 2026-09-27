@@ -388,6 +388,15 @@ await check("a new language's first email line gets a place of its own", async (
   eq(w.repo.puts[0].doc.sr, { form: { name: "Ваше име" } }, "the Serbian section");
 });
 
+await check("every language's progress comes in one answer", async () => {
+  const j = await (await call(world().env, "GET", null, "?summary")).json();
+  const by = Object.fromEntries(j.languages.map((l) => [l.code, l]));
+  eq(Object.keys(by), ["en", "hr", "sr"], "languages, in the site's order");
+  eq([by.en.missing, by.en.outdated], [0, 0], "English is never behind");
+  assert(by.hr.missing === 3 && by.hr.total === by.en.total, `Croatian: ${JSON.stringify(by.hr)}`);
+  assert(by.sr.missing === by.sr.total, "an empty language is all missing");
+});
+
 /* ---------------------------------------------------- the Content page */
 
 await check("the page's own edits save as edits, and a translation can be cleared", async () => {
