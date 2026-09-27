@@ -27,7 +27,11 @@
      a decision you can change your mind about, and "what is live" never
      depends on having noticed a switch move. */
   var state = { saved: {}, draft: {}, order: [], languages: [], editing: null,
-                colA: null, colB: null, prefLang: 'en', removed: {}, before: null };
+                colA: null, colB: null, prefLang: 'en', removed: {}, before: null,
+                /* The open editor's date and status (see "when" and "progress"
+                   below); dateWords are the public season words it previews
+                   with, from the endpoint. */
+                when: null, prog: null, dateWords: {} };
 
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
   function isDirty(id) {
@@ -215,7 +219,8 @@
           '<div class="ms-meta">' +
             '<span>' + esc(tr(STATUS_KEY[m.status] || 'ms.upcoming')) + '</span>' +
             (whenOf(m) ? '<span>' + esc(whenOf(m)) + '</span>' : '') +
-            (m.completion ? '<span class="tnum">' + m.completion + '%</span>' : '') +
+            /* Upcoming carries no progress, here as on the public site. */
+            (m.completion && m.status !== 'upcoming' ? '<span class="tnum">' + m.completion + '%</span>' : '') +
             missingWarning(m) +
           '</div>' +
         '</div>' +
@@ -298,6 +303,7 @@
       state.order.push(m.id);
     });
     state.languages = body.languages || [];
+    state.dateWords = body.date_words || {};
     state.prefLang = body.preferred_lang || 'en';
     if (window.StaffI18n) window.StaffI18n.setLang(state.prefLang);
 
@@ -425,6 +431,168 @@
       form.querySelectorAll('[data-col="' + col + '"]'));
   }
 
+  /* ---- when: picked once (board 8) ------------------------------------
+     THE SAME SENTENCES AS THE WORKER. workers/src/lib/when.js writes every
+     language's "When" on save; snap() and whenLabel() here are its twins, so
+     the preview is the sentence that will be stored. test/milestone-dates
+     runs both over the same dates and fails if they ever disagree. */
+  var PRECISIONS = ['day', 'month', 'season', 'year'];
+  var SEASONS = ['spring', 'summer', 'autumn', 'winter'];
+  var SEASON_MONTH = { spring: 3, summer: 6, autumn: 9, winter: 12 };
+  var SEASON_OF = { 3: 'spring', 6: 'summer', 9: 'autumn', 12: 'winter' };
+  var INTL = {
+    day: { day: 'numeric', month: 'long', year: 'numeric' },
+    month: { month: 'long', year: 'numeric' },
+    year: { year: 'numeric' }
+  };
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+
+  function snap(precision, iso) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
+    if (!m) return null;
+    var y = +m[1], mo = +m[2], d = +m[3];
+    if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+    if (precision === 'day') return y + '-' + pad(mo) + '-' + pad(d);
+    if (precision === 'month') return y + '-' + pad(mo) + '-01';
+    if (precision === 'year') return y + '-01-01';
+    if (precision === 'season') {
+      if (mo < 3) return (y - 1) + '-12-01';
+      return y + '-' + pad(mo >= 12 ? 12 : mo >= 9 ? 9 : mo >= 6 ? 6 : 3) + '-01';
+    }
+    return null;
+  }
+
+  function dateWord(lang, key, vars) {
+    var en = state.dateWords.en || {};
+    var table = state.dateWords[String(lang).toLowerCase()] || en;
+    var s = table['dates.' + key] || en['dates.' + key] || '';
+    Object.keys(vars).forEach(function (k) { s = s.split('{' + k + '}').join(String(vars[k])); });
+    return s;
+  }
+  function asDate(iso) { return new Date(iso + 'T12:00:00Z'); }
+  function fmt(lang, precision) {
+    return new Intl.DateTimeFormat(lang, Object.assign({ timeZone: 'UTC' }, INTL[precision]));
+  }
+  function oneDate(lang, precision, iso) {
+    if (precision === 'season') {
+      return dateWord(lang, SEASON_OF[+iso.slice(5, 7)], { year: +iso.slice(0, 4) });
+    }
+    return fmt(lang, precision).format(asDate(iso));
+  }
+  function whenLabel(lang, precision, start, end) {
+    if (PRECISIONS.indexOf(precision) === -1 || !start) return null;
+    if (!(end && end > start)) return oneDate(lang, precision, start);
+    if (precision === 'season') {
+      return dateWord(lang, 'range', { from: oneDate(lang, precision, start), to: oneDate(lang, precision, end) });
+    }
+    return fmt(lang, precision).formatRange(asDate(start), asDate(end));
+  }
+
+  /* A milestone from before dates were picked: a sort date that is not the
+     first of a month was a real day. */
+  function guessPrecision(iso) {
+    return iso && iso.slice(8, 10) !== '01' ? 'day' : 'month';
+  }
+  function uiLang() { return (window.StaffI18n && window.StaffI18n.lang) || 'en'; }
+
+  /* One end of the date, as the inputs its precision needs. Day is the
+     browser's date picker; the others are a month or season list and a year,
+     because not every browser has a month picker. */
+  function drawSlot(el, precision, iso) {
+    var y = iso ? +iso.slice(0, 4) : '';
+    var mo = iso ? +iso.slice(5, 7) : 0;
+    var year = '<input type="number" data-w="y" min="1900" max="2200" step="1" inputmode="numeric"' +
+      ' aria-label="' + esc(tr('ms.prec.year')) + '" value="' + y + '">';
+    if (precision === 'day') {
+      el.innerHTML = '<input type="date" data-w="d" aria-label="' + esc(tr('ms.prec.day')) +
+        '" value="' + esc(iso || '') + '">';
+    } else if (precision === 'year') {
+      el.innerHTML = year;
+    } else if (precision === 'month') {
+      var names = new Intl.DateTimeFormat(uiLang(), { month: 'long', timeZone: 'UTC' });
+      var opts = '<option value=""></option>';
+      for (var i = 1; i <= 12; i++) {
+        opts += '<option value="' + i + '"' + (i === mo ? ' selected' : '') + '>' +
+          esc(names.format(new Date(Date.UTC(2020, i - 1, 1)))) + '</option>';
+      }
+      el.innerHTML = '<select data-w="m" aria-label="' + esc(tr('ms.prec.month')) + '">' + opts + '</select>' + year;
+    } else {
+      el.innerHTML = '<select data-w="s" aria-label="' + esc(tr('ms.prec.season')) + '">' +
+        '<option value=""></option>' + SEASONS.map(function (k) {
+          return '<option value="' + k + '"' + (SEASON_OF[mo] === k ? ' selected' : '') + '>' +
+            esc(tr('ms.season.' + k)) + '</option>';
+        }).join('') + '</select>' + year;
+    }
+  }
+  function readSlot(el, precision) {
+    var q = function (w) { var f = el.querySelector('[data-w="' + w + '"]'); return f ? f.value : ''; };
+    var y = parseInt(q('y'), 10);
+    var ok = y >= 1900 && y <= 2200;
+    if (precision === 'day') return snap('day', q('d'));
+    if (!ok) return null;
+    if (precision === 'year') return y + '-01-01';
+    if (precision === 'month') return q('m') ? y + '-' + pad(+q('m')) + '-01' : null;
+    return q('s') ? y + '-' + pad(SEASON_MONTH[q('s')]) + '-01' : null;
+  }
+
+  function drawWhen() {
+    var w = state.when, typed = w.mode === 'custom';
+    $('msForm').classList.toggle('is-typed', typed);
+    /* Typed, the sentences above say when; this date only orders the list. */
+    var lbl = $('msWhenLbl');
+    lbl.setAttribute('data-i18n', typed ? 'ms.sortDate' : 'ms.when');
+    lbl.textContent = tr(typed ? 'ms.sortDate' : 'ms.when');
+    $('msPrec').hidden = typed;
+    Array.prototype.forEach.call($('msPrec').querySelectorAll('[data-prec]'), function (b) {
+      var on = b.dataset.prec === w.precision;
+      b.classList.toggle('is-on', on);
+      b.setAttribute('aria-checked', on ? 'true' : 'false');
+    });
+    /* Written my way, the date only orders the list: one day, no range. */
+    drawSlot($('msFrom'), typed ? 'day' : w.precision, w.start);
+    if (typed) $('msFrom').querySelector('input').setAttribute('aria-label', tr('ms.sortDate'));
+    $('msToWord').hidden = typed;
+    $('msTo').hidden = typed;
+    if (!typed) drawSlot($('msTo'), w.precision, w.end);
+    $('msMyWay').textContent = tr(typed ? 'ms.pickWay' : 'ms.myWay');
+    drawGen();
+  }
+  /* The sentence each published language will show. */
+  function drawGen() {
+    var w = state.when, el = $('msGen');
+    var show = w.mode !== 'custom' && !!w.start;
+    el.hidden = !show;
+    el.innerHTML = show ? enabledLangs().map(function (l) {
+      return '<div><b>' + esc(l.code.toUpperCase()) + '</b>' +
+        esc(whenLabel(l.code, w.precision, w.start, w.end)) + '</div>';
+    }).join('') : '';
+  }
+  function readWhen() {
+    var w = state.when;
+    var typed = w.mode === 'custom';
+    w.start = readSlot($('msFrom'), typed ? 'day' : w.precision);
+    w.end = typed ? null : readSlot($('msTo'), w.precision);
+    w.touched = true;
+    drawGen();
+  }
+
+  /* ---- progress: the status follows it -------------------------------- */
+  function statusNow() {
+    var p = state.prog;
+    if (p.canceled) return 'canceled';
+    if (p.upcoming) return 'upcoming';
+    return p.pct >= 100 ? 'complete' : 'in_progress';
+  }
+  function drawProgress() {
+    var p = state.prog, st = statusNow();
+    setSwitch($('msUpcoming'), p.upcoming);
+    setSwitch($('msCanceled'), p.canceled);
+    $('msCompletion').value = p.pct;
+    $('msProgOut').textContent = st === 'upcoming' || st === 'canceled'
+      ? tr(STATUS_KEY[st]) : p.pct + '% · ' + tr(STATUS_KEY[st]);
+    $('msForm').classList.toggle('is-not-started', st === 'upcoming' || st === 'canceled');
+  }
+
   function fillColumn(col, m) {
     var code = col === 'a' ? state.colA : state.colB;
     var tx = (m && m.text && code) ? (m.text[code] || {}) : {};
@@ -458,9 +626,32 @@
     $('msId').value = m && state.saved[id] ? id : '';
     fillColumn('a', m);
     fillColumn('b', m);
-    $('msDate').value = m ? (m.actual_date || '') : '';
-    $('msStatusSel').value = m ? (m.status || 'upcoming') : 'upcoming';
-    $('msCompletion').value = m ? (m.completion || 0) : 0;
+
+    /* What the date was saved as. NULL is a milestone from before dates were
+       picked: its typed sentences stand ("my way") until somebody picks. */
+    var stored = m ? (m.date_precision == null ? null : m.date_precision) : undefined;
+    var typedBefore = !!m && Object.keys(m.text || {}).some(function (c) {
+      return m.text[c] && m.text[c].target_label;
+    });
+    var picked = PRECISIONS.indexOf(stored) !== -1;
+    state.when = {
+      stored: stored,
+      mode: picked || (stored !== 'custom' && !(stored === null && typedBefore)) ? 'picked' : 'custom',
+      precision: picked ? stored : guessPrecision(m && m.actual_date),
+      start: m ? (m.actual_date || null) : null,
+      end: m ? (m.end_date || null) : null,
+      touched: false
+    };
+    drawWhen();
+
+    /* A new milestone starts Upcoming: nothing has happened yet. */
+    state.prog = {
+      upcoming: m ? m.status === 'upcoming' : true,
+      canceled: m ? m.status === 'canceled' : false,
+      pct: m ? (Number(m.completion) || 0) : 0,
+      touched: false
+    };
+    drawProgress();
 
     setSwitch($('msFeatured'), m ? !!m.is_featured : false);
     $('msDelete').hidden = !m;
@@ -516,9 +707,24 @@
      not added — there would be nothing to show for it. */
   function applyForm() {
 
+    /* A column comes back exactly as it went in unless something was typed:
+       an empty box over a missing value stays missing, and a language nobody
+       wrote in is not added. Otherwise opening a milestone and closing it
+       would mark it changed. */
+    var before = (state.editing && state.draft[state.editing] && state.draft[state.editing].text) || {};
     var text = {};
-    if (state.colA) text[state.colA] = readColumn('a');
-    if (state.colB && state.colB !== state.colA) text[state.colB] = readColumn('b');
+    [['a', state.colA], ['b', state.colB]].forEach(function (c) {
+      var code = c[1];
+      if (!code || text[code]) return;
+      var had = before[code], read = readColumn(c[0]), out = {}, any = false;
+      Object.keys(read).forEach(function (k) {
+        var v = read[k];
+        if (v === '' && (!had || had[k] == null)) v = had ? had[k] : null;
+        if (v) any = true;
+        out[k] = v;
+      });
+      if (had || any) text[code] = had ? Object.assign({}, had, out) : out;
+    });
 
     var id = state.editing || $('msId').value;
     var isNew = !id;
@@ -536,20 +742,44 @@
     // Merge rather than replace: a language not on screen keeps its text.
     var merged = Object.assign({}, existing.text || {}, text);
 
-    state.draft[id] = Object.assign({}, existing, {
+    /* The date and status change only when their controls were touched, so
+       opening an older milestone and closing it changes nothing. */
+    var w = state.when, p = state.prog;
+    var dates = {};
+    if (w.touched || isNew) {
+      var typed = w.mode === 'custom';
+      dates.date_precision = typed ? (w.stored === null ? null : 'custom') : w.precision;
+      dates.actual_date = w.start || null;
+      dates.end_date = typed ? null : (w.end && w.end > w.start ? w.end : null);
+      /* Picked: every language's sentence is written from the date, here for
+         the list and again by the server when it is published. */
+      if (!typed) {
+        Object.keys(merged).forEach(function (c) {
+          if (merged[c] && merged[c].title) {
+            merged[c] = Object.assign({}, merged[c],
+              { target_label: whenLabel(c, w.precision, dates.actual_date, dates.end_date) });
+          }
+        });
+      }
+    }
+    var progress = {};
+    if (p.touched || isNew) {
+      progress.status = statusNow();
+      progress.completion = p.pct;
+    }
+
+    state.draft[id] = Object.assign({}, existing, dates, progress, {
       id: isNew ? undefined : id,
-      localId: id,
       text: merged,
-      actual_date: $('msDate').value,
-      status: $('msStatusSel').value,
-      completion: Number($('msCompletion').value) || 0,
       parent_id: $('msParent').value || null,
       is_public: isNew ? false : !!existing.is_public,
       is_featured: isOn($('msFeatured'))
     });
     /* A brand-new milestone keeps its local id as the key, so the editor and
-       the row agree on which one this is until the server issues a real id. */
-    if (isNew) state.editing = id;
+       the row agree on which one this is until the server issues a real id.
+       Only a new one: on a saved one it would be a field the server never
+       sent, and the row would read as changed after merely being opened. */
+    if (isNew) { state.draft[id].localId = id; state.editing = id; }
   }
 
   /* A delete waits for Publish like everything else — marked, undoable with
@@ -583,6 +813,61 @@
   if (!document.getElementById('msList')) return;
 
   wireLocalSwitch($('msFeatured'));
+
+  /* When: the precision, the dates, and the switch to typing it. */
+  $('msPrec').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-prec]');
+    if (!b) return;
+    var w = state.when;
+    w.precision = b.dataset.prec;
+    w.start = snap(w.precision, w.start);
+    w.end = snap(w.precision, w.end);
+    w.touched = true;
+    drawWhen();
+  });
+  ['msFrom', 'msTo'].forEach(function (id) {
+    $(id).addEventListener('input', readWhen);
+    $(id).addEventListener('change', readWhen);
+  });
+  $('msMyWay').addEventListener('click', function () {
+    var w = state.when;
+    if (w.mode === 'custom') {
+      w.mode = 'picked';
+      w.precision = guessPrecision(w.start);
+    } else {
+      /* Start typing from the sentence the date already makes. */
+      [['a', state.colA], ['b', state.colB]].forEach(function (c) {
+        var f = $('msForm').querySelector('[data-tx="target_label"][data-col="' + c[0] + '"]');
+        if (f && !f.value && c[1] && w.start) f.value = whenLabel(c[1], w.precision, w.start, w.end) || '';
+      });
+      w.mode = 'custom';
+      w.end = null;
+    }
+    w.touched = true;
+    drawWhen();
+  });
+
+  /* Progress and the two decisions beside it. Canceling ends Upcoming, and
+     the other way round: a milestone is one or the other. */
+  $('msCompletion').addEventListener('input', function () {
+    state.prog.pct = Number(this.value) || 0;
+    state.prog.touched = true;
+    drawProgress();
+  });
+  $('msUpcoming').addEventListener('click', function () {
+    var p = state.prog;
+    p.upcoming = !p.upcoming;
+    if (p.upcoming) p.canceled = false;
+    p.touched = true;
+    drawProgress();
+  });
+  $('msCanceled').addEventListener('click', function () {
+    var p = state.prog;
+    p.canceled = !p.canceled;
+    if (p.canceled) p.upcoming = false;
+    p.touched = true;
+    drawProgress();
+  });
 
   // Switching a column's language re-reads that column from the milestone
   // being edited, so unsaved text in the OTHER column is never disturbed.

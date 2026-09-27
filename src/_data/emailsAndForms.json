@@ -58,6 +58,13 @@
       "errMessage": "Please write a message.",
       "errSetup": "This form is not finished being set up, so your message was not sent. Please try another way of getting in touch.",
       "errSend": "Your message could not be sent just now. Please try again in a few minutes."
+    },
+    "dates": {
+      "spring": "Spring {year}",
+      "summer": "Summer {year}",
+      "autumn": "Fall {year}",
+      "winter": "Winter {year}",
+      "range": "{from} – {to}"
     }
   },
   "hr": {
@@ -119,6 +126,13 @@
       "errMessage": "Molimo napišite poruku.",
       "errSetup": "Ovaj obrazac još nije do kraja postavljen pa vaša poruka nije poslana. Molimo javite nam se na drugi način.",
       "errSend": "Vašu poruku trenutno nije moguće poslati. Molimo pokušajte ponovno za nekoliko minuta."
+    },
+    "dates": {
+      "spring": "proljeće {year}.",
+      "summer": "ljeto {year}.",
+      "autumn": "jesen {year}.",
+      "winter": "zima {year}.",
+      "range": "{from} – {to}"
     }
   },
   "sr": {
@@ -180,6 +194,13 @@
       "errMessage": "Молимо напишите поруку.",
       "errSetup": "Овај образац још није до краја подешен, па ваша порука није послата. Молимо јавите нам се на други начин.",
       "errSend": "Вашу поруку тренутно није могуће послати. Молимо покушајте поново за неколико минута."
+    },
+    "dates": {
+      "spring": "пролеће {year}.",
+      "summer": "лето {year}.",
+      "autumn": "јесен {year}.",
+      "winter": "зима {year}.",
+      "range": "{from} – {to}"
     }
   },
   "sl": {
@@ -241,6 +262,13 @@
       "errMessage": "Prosimo, napišite sporočilo.",
       "errSetup": "Ta obrazec še ni povsem nastavljen, zato vaše sporočilo ni bilo poslano. Prosimo, stopite v stik z nami na drug način.",
       "errSend": "Vašega sporočila trenutno ni mogoče poslati. Prosimo, poskusite znova čez nekaj minut."
+    },
+    "dates": {
+      "spring": "pomlad {year}",
+      "summer": "poletje {year}",
+      "autumn": "jesen {year}",
+      "winter": "zima {year}",
+      "range": "{from}–{to}"
     }
   }
 }

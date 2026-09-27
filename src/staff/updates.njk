@@ -76,9 +76,8 @@ staffHeading: What this ministry <b>publishes</b>
         <input type="text" data-tx="title" data-col="a" maxlength="200"></label>
       <label class="fld"><span data-i18n="ms.description">Description</span>
         <textarea data-tx="description" data-col="a" rows="5"></textarea></label>
-      <label class="fld"><span data-i18n="ms.when">When</span>
-        <input type="text" data-tx="target_label" data-col="a" maxlength="120"
-               placeholder="End of September 2027"></label>
+      <label class="fld ms-when-typed"><span data-i18n="ms.when">When</span>
+        <input type="text" data-tx="target_label" data-col="a" maxlength="120"></label>
     </div>
 
     <div class="ms-col">
@@ -90,30 +89,46 @@ staffHeading: What this ministry <b>publishes</b>
         <input type="text" data-tx="title" data-col="b" maxlength="200"></label>
       <label class="fld"><span data-i18n="ms.description">Description</span>
         <textarea data-tx="description" data-col="b" rows="5"></textarea></label>
-      <label class="fld"><span data-i18n="ms.when">When</span>
+      <label class="fld ms-when-typed"><span data-i18n="ms.when">When</span>
         <input type="text" data-tx="target_label" data-col="b" maxlength="120"></label>
     </div>
   </div>
 
-  {#- Language-neutral: true regardless of which language you are reading. -#}
+  {#- WHEN: PICKED ONCE (board 8). The precision that is honest — a day, a
+     month, a season or a year — and an optional end. Every language's
+     sentence is written from it (the Worker's lib/when.js; previewed here
+     line by line). "Write it my way" swaps the preview for the typed
+     sentences in the columns above, and the date then only orders the list. -#}
+  <div class="ms-neutral ms-when">
+    <span class="ms-lbl" id="msWhenLbl" data-i18n="ms.when">When</span>
+    <div class="emb-views ms-prec" id="msPrec" role="radiogroup">
+      <button type="button" class="emb-view" role="radio" data-prec="day" data-i18n="ms.prec.day">Day</button>
+      <button type="button" class="emb-view" role="radio" data-prec="month" data-i18n="ms.prec.month">Month</button>
+      <button type="button" class="emb-view" role="radio" data-prec="season" data-i18n="ms.prec.season">Season</button>
+      <button type="button" class="emb-view" role="radio" data-prec="year" data-i18n="ms.prec.year">Year</button>
+    </div>
+    <div class="ms-when-row">
+      <span class="ms-slot" id="msFrom"></span>
+      <span class="ms-to" id="msToWord" data-i18n="ms.to">to</span>
+      <span class="ms-slot" id="msTo"></span>
+    </div>
+    <div class="ms-gen" id="msGen" aria-live="polite"></div>
+    <button type="button" class="link-btn" id="msMyWay" data-i18n="ms.myWay">Write it my way instead</button>
+  </div>
+
+  {#- PROGRESS SETS THE STATUS: 1–99% is In progress, 100% is Complete.
+     Upcoming and Canceled are switches because they are decisions, not
+     amounts: Upcoming says it has not started, and the public shows no
+     progress for it even when a figure is filled in (Chase, 2026-09-26). -#}
+  <div class="ms-neutral ms-progress">
+    <div class="ms-prog-head">
+      <span class="ms-lbl" data-i18n="ms.progress">Progress</span>
+      <output id="msProgOut" for="msCompletion"></output>
+    </div>
+    <input type="range" id="msCompletion" min="0" max="100" step="1" value="0">
+  </div>
+
   <div class="ms-grid ms-neutral">
-    <label class="fld">
-      <span data-i18n="ms.sortDate">Sort date</span>
-      <input type="date" id="msDate">
-    </label>
-    <label class="fld">
-      <span data-i18n="ms.status">Status</span>
-      <select id="msStatusSel">
-        <option value="upcoming" data-i18n="ms.upcoming">Upcoming</option>
-        <option value="in_progress" data-i18n="ms.inProgress">In progress</option>
-        <option value="complete" data-i18n="ms.complete">Complete</option>
-        <option value="canceled" data-i18n="ms.canceled">Canceled</option>
-      </select>
-    </label>
-    <label class="fld">
-      <span data-i18n="ms.completion">Completion %</span>
-      <input type="number" id="msCompletion" min="0" max="100" step="1" value="0">
-    </label>
     <label class="fld">
       <span data-i18n="ms.partOf">Part of</span>
       <select id="msParent"><option value="" data-i18n="ms.topLevel">— top level —</option></select>
@@ -121,6 +136,14 @@ staffHeading: What this ministry <b>publishes</b>
   </div>
 
   <div class="ms-switches">
+    <button type="button" class="switch" id="msUpcoming" role="switch" aria-checked="false">
+      <span class="switch-track"><span class="switch-state">Off</span><span class="switch-knob"></span></span>
+      <span class="switch-label"><span data-i18n="ms.upcoming">Upcoming</span></span>
+    </button>
+    <button type="button" class="switch" id="msCanceled" role="switch" aria-checked="false">
+      <span class="switch-track"><span class="switch-state">Off</span><span class="switch-knob"></span></span>
+      <span class="switch-label"><span data-i18n="ms.canceled">Canceled</span></span>
+    </button>
     <button type="button" class="switch" id="msFeatured" role="switch" aria-checked="false">
       <span class="switch-track"><span class="switch-state">Off</span><span class="switch-knob"></span></span>
       <span class="switch-label"><span data-i18n="ms.featured">Featured</span>

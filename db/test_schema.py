@@ -1390,6 +1390,48 @@ def t_milestones_default_to_private():
     assert feat == 0, f"milestone featured by default (is_featured={feat})"
 
 
+def t_milestone_dates_are_a_known_precision():
+    """0037: a date is picked at a precision the labels know how to write.
+
+    Anything else would reach the Worker's label writer with no words for it,
+    and old rows (NULL) must stay valid so no existing sentence is rewritten.
+    """
+    db = fresh()
+    db.execute("INSERT INTO partners (id,slug,display_name,status,created_at,updated_at) "
+               "VALUES ('p_1','p-one','P One','active',?,?)", (NOW, NOW))
+    db.execute("INSERT INTO milestones (id,partner_id,created_at,updated_at) "
+               "VALUES ('m_old','p_1',?,?)", (NOW, NOW))
+    for p in ("day", "month", "season", "year", "custom"):
+        db.execute("INSERT INTO milestones (id,partner_id,date_precision,actual_date,end_date,"
+                   "created_at,updated_at) VALUES (?,?,?,?,?,?,?)",
+                   ("m_" + p, "p_1", p, "2026-09-01", "2026-10-01", NOW, NOW))
+    try:
+        db.execute("INSERT INTO milestones (id,partner_id,date_precision,created_at,updated_at) "
+                   "VALUES ('m_bad','p_1','week',?,?)", (NOW, NOW))
+    except sqlite3.IntegrityError:
+        pass
+    else:
+        raise AssertionError("a milestone was stored with an unknown date precision")
+    old = db.execute("SELECT date_precision, end_date FROM milestones WHERE id='m_old'").fetchone()
+    assert old == (None, None), f"an existing milestone gained a precision: {old}"
+
+
+def t_upcoming_milestones_publish_no_progress():
+    """Chase: Upcoming "shouldn't have milestone data in it yet, even if there
+    are some values in it." The figure stays for the console; the public
+    query gives 0 until the milestone has started."""
+    db = fresh()
+    db.execute("INSERT INTO partners (id,slug,display_name,status,created_at,updated_at) "
+               "VALUES ('p_1','p-one','P One','active',?,?)", (NOW, NOW))
+    for mid, status in (("m_up", "upcoming"), ("m_go", "in_progress")):
+        db.execute("INSERT INTO milestones (id,partner_id,status,completion,is_public,created_at,updated_at) "
+                   "VALUES (?,?,?,40,1,?,?)", (mid, "p_1", status, NOW, NOW))
+    got = {r[0]: r[4] for r in _run(db, "public_milestones_for_partner", partner_id="p_1")}
+    assert got == {"m_up": 0, "m_go": 40}, got
+    kept = db.execute("SELECT completion FROM milestones WHERE id='m_up'").fetchone()[0]
+    assert kept == 40, "the console's figure was lost"
+
+
 def t_milestone_parent_must_match_partner():
     """A sub-step cannot hang off another partner's milestone."""
     db = fresh()
@@ -2002,6 +2044,8 @@ if __name__ == "__main__":
     for name, fn in [
         ("migration runs and creates all tables/views", t_migration_runs),
         ("milestones default to unpublished",           t_milestones_default_to_private),
+        ("milestone dates are a known precision",       t_milestone_dates_are_a_known_precision),
+        ("upcoming milestones publish no progress",     t_upcoming_milestones_publish_no_progress),
         ("three roles, and only three",                 t_three_roles_and_only_three),
         ("a person can hold two roles",                 t_a_person_can_hold_two_roles),
         ("removing a user removes their roles",         t_removing_a_user_removes_their_roles),

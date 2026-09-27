@@ -136,14 +136,17 @@ function rowsFor(name, params) {
 
 function makeDb() {
   const seen = [];
+  const calls = [];
   return {
     seen,
+    calls,
     prepare(sql) {
       const name = NAME_OF.get(sql);
       if (!name) throw new Error("the handler ran SQL that is not in queries.sql");
       return {
         bind(...args) {
           seen.push(name);
+          calls.push({ name, args });
           return {
             async all() {
               // Params are positional by the time they reach D1; the few
@@ -193,6 +196,66 @@ for (const [path, handler] of ENDPOINTS) {
     eq(body.you.name, "Mira Petrović", "wrong person");
   });
 }
+
+/* ---------------------- a milestone's date, picked once ----------------- */
+
+const post = (path, body, token = MIRA) => new Request("https://dev.thauma.one" + path, {
+  method: "POST",
+  headers: { "Cf-Access-Jwt-Assertion": token, "Content-Type": "application/json" },
+  body: JSON.stringify(body),
+});
+const labelsWritten = (db) => db.calls
+  .filter((c) => c.name === "milestone_translation_upsert")
+  .map((c) => c.args.find((a) => typeof a === "string" && /20\d\d/.test(a)))
+  /* Intl sets a range's dash between thin spaces; the words are what matter. */
+  .map((s) => s && s.replace(/[\u2009\u202f\u00a0]/g, " "));
+
+await check("a picked date writes every language's When, snapped to its precision", async () => {
+  const db = makeDb();
+  const res = await staffMilestones.fetch(post("/api/staff-milestones", {
+    id: "ms_m1", status: "in_progress", completion: 10,
+    date_precision: "month", actual_date: "2026-09-17", end_date: "2026-10-02",
+    text: { en: { title: "Visas", target_label: "typed long ago" }, sr: { title: "Визе" } },
+  }), env(db));
+  const body = await res.json();
+  eq(res.status, 200, JSON.stringify(body).slice(0, 200));
+  eq(labelsWritten(db), ["September – October 2026", "септембар – октобар 2026."], "the sentences");
+  const row = db.calls.find((c) => c.name === "milestone_upsert").args;
+  assert(row.includes("2026-09-01") && row.includes("2026-10-01") && row.includes("month"),
+    `stored ${JSON.stringify(row)}`);
+});
+
+await check("a season is written from the public words, winter crossing the year", async () => {
+  const db = makeDb();
+  await staffMilestones.fetch(post("/api/staff-milestones", {
+    id: "ms_m1", status: "upcoming", date_precision: "season", actual_date: "2027-01-20",
+    text: { en: { title: "Visas" }, sr: { title: "Визе" } },
+  }), env(db));
+  eq(labelsWritten(db), ["Winter 2026", "зима 2026."], "January is the winter that began in December");
+});
+
+await check("written my way, the typed sentence stands", async () => {
+  const db = makeDb();
+  await staffMilestones.fetch(post("/api/staff-milestones", {
+    id: "ms_m1", status: "upcoming", date_precision: "custom", actual_date: "2026-09-30",
+    text: { en: { title: "Visas", target_label: "End of September 2026" } },
+  }), env(db));
+  eq(labelsWritten(db), ["End of September 2026"], "kept");
+});
+
+await check("a range that ends before it starts is refused", async () => {
+  const res = await staffMilestones.fetch(post("/api/staff-milestones", {
+    id: "ms_m1", status: "upcoming", date_precision: "day",
+    actual_date: "2026-09-10", end_date: "2026-09-01", text: { en: { title: "Visas" } },
+  }), env(makeDb()));
+  eq(res.status, 400, "status");
+});
+
+await check("the editor is handed the season words it previews with", async () => {
+  const res = await staffMilestones.fetch(get("/api/staff-milestones"), env(makeDb()));
+  const body = await res.json();
+  eq(body.date_words && body.date_words.en["dates.autumn"], "Fall {year}", "English fall");
+});
 
 await check("GET /api/staff-snapshot returns 200 through the router", async () => {
   // Routed rather than imported: this handler lives inside worker.js, so the

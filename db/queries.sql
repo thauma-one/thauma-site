@@ -214,7 +214,7 @@ ORDER BY p.display_name;
 -- pivot has to name its languages — which is exactly the constraint 0003
 -- removed. Adding Portuguese must not require touching a query.
 SELECT
-  id, parent_id, actual_date, status, completion,
+  id, parent_id, actual_date, end_date, date_precision, status, completion,
   is_public, is_featured, sort_order, created_at, updated_at
 FROM milestones
 WHERE partner_id = :partner_id
@@ -238,14 +238,15 @@ ORDER BY milestone_id, lang;
 -- partner_id is in the UPDATE's WHERE so an id from another tenant can never
 -- move or rewrite their row.
 INSERT INTO milestones (
-  id, partner_id, parent_id, actual_date, status, completion,
+  id, partner_id, parent_id, actual_date, end_date, date_precision, status, completion,
   is_public, is_featured, sort_order, created_at, updated_at
 ) VALUES (
-  :id, :partner_id, :parent_id, :actual_date, :status, :completion,
+  :id, :partner_id, :parent_id, :actual_date, :end_date, :date_precision, :status, :completion,
   :is_public, :is_featured, :sort_order, :now, :now
 )
 ON CONFLICT(id) DO UPDATE SET
-  parent_id = :parent_id, actual_date = :actual_date, status = :status,
+  parent_id = :parent_id, actual_date = :actual_date, end_date = :end_date,
+  date_precision = :date_precision, status = :status,
   completion = :completion, is_public = :is_public, is_featured = :is_featured,
   sort_order = :sort_order, updated_at = :now
 WHERE milestones.partner_id = :partner_id;
@@ -1331,8 +1332,14 @@ ORDER BY kind, label;
 -- name: public_milestones_for_partner
 -- The public ministry roadmap, language-neutral half. NOT stewardship history
 -- — see the warning at the top of db/migrations/0002_milestones.sql.
+--
+-- UPCOMING CARRIES NO PROGRESS (Chase, 2026-09-26): "Upcoming means that it
+-- shouldn't have milestone data in it yet, even if there are some values in
+-- it." The console keeps the figure for when work starts; the public gets 0.
 SELECT
-  id, parent_id, actual_date, status, completion, is_featured, sort_order
+  id, parent_id, actual_date, status,
+  CASE WHEN status = 'upcoming' THEN 0 ELSE completion END AS completion,
+  is_featured, sort_order
 FROM milestones
 WHERE partner_id = :partner_id
   AND is_public = 1

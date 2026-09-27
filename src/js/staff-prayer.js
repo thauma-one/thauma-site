@@ -136,10 +136,18 @@
     ['a', 'b'].forEach(function (col) {
       var lang = $(col === 'a' ? 'prLangA' : 'prLangB').value;
       if (!lang) return;
-      var into = state.text[lang] || (state.text[lang] = {});
+      /* An empty box over a missing value stays missing, and a language
+         nobody wrote in is not added — so opening a request and closing it
+         does not mark it changed. */
+      var had = state.text[lang], into = {}, any = false;
       document.querySelectorAll('[data-ptx][data-col="' + col + '"]').forEach(function (el) {
-        into[el.getAttribute('data-ptx')] = el.value;
+        var k = el.getAttribute('data-ptx'), v = el.value;
+        if (v === '' && (!had || had[k] == null)) v = had ? had[k] : null;
+        if (v) any = true;
+        into[k] = v;
       });
+      if (had) Object.assign(had, into);
+      else if (any) state.text[lang] = into;
     });
   }
 

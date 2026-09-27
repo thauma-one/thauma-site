@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "cac9939655d67aee";
+export const SOURCE_DIGEST = "d9569487da4f56ea";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -483,19 +483,20 @@ FROM milestone_translations
 WHERE partner_id = :partner_id
 ORDER BY milestone_id, lang;`,
   milestone_upsert: `INSERT INTO milestones (
-  id, partner_id, parent_id, actual_date, status, completion,
+  id, partner_id, parent_id, actual_date, end_date, date_precision, status, completion,
   is_public, is_featured, sort_order, created_at, updated_at
 ) VALUES (
-  :id, :partner_id, :parent_id, :actual_date, :status, :completion,
+  :id, :partner_id, :parent_id, :actual_date, :end_date, :date_precision, :status, :completion,
   :is_public, :is_featured, :sort_order, :now, :now
 )
 ON CONFLICT(id) DO UPDATE SET
-  parent_id = :parent_id, actual_date = :actual_date, status = :status,
+  parent_id = :parent_id, actual_date = :actual_date, end_date = :end_date,
+  date_precision = :date_precision, status = :status,
   completion = :completion, is_public = :is_public, is_featured = :is_featured,
   sort_order = :sort_order, updated_at = :now
 WHERE milestones.partner_id = :partner_id;`,
   milestones_for_staff: `SELECT
-  id, parent_id, actual_date, status, completion,
+  id, parent_id, actual_date, end_date, date_precision, status, completion,
   is_public, is_featured, sort_order, created_at, updated_at
 FROM milestones
 WHERE partner_id = :partner_id
@@ -647,7 +648,9 @@ WHERE t.partner_id = :partner_id
   AND l.is_active = 1
 ORDER BY t.milestone_id, l.sort_order;`,
   public_milestones_for_partner: `SELECT
-  id, parent_id, actual_date, status, completion, is_featured, sort_order
+  id, parent_id, actual_date, status,
+  CASE WHEN status = 'upcoming' THEN 0 ELSE completion END AS completion,
+  is_featured, sort_order
 FROM milestones
 WHERE partner_id = :partner_id
   AND is_public = 1

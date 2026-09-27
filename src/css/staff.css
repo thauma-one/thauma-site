@@ -625,10 +625,38 @@ body.has-savebar{padding-bottom:var(--ms-savebar-h,72px)}
 .ms-row.is-removed .ms-meta{opacity:.6}
 .vid-form.is-removed #vidChannel,.vid-form.is-removed .vid-found{
   text-decoration:line-through;opacity:.6}
+/* ---- a milestone's date and progress (board 8) ---- */
+.ms-lbl{display:block;font-size:10px;letter-spacing:var(--ls-label);text-transform:uppercase;
+  font-weight:var(--w-bold);color:var(--voice-tech);margin-bottom:10px}
+.ms-when-typed{display:none}
+.ms-form.is-typed .ms-when-typed{display:flex}
+.ms-prec[hidden],.ms-gen[hidden],.ms-to[hidden],.ms-slot[hidden]{display:none}
+.ms-when-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px}
+.ms-slot{display:inline-flex;gap:8px}
+.ms-slot input,.ms-slot select{background:var(--bg2,#0b1119);border:1px solid rgba(255,255,255,.14);
+  color:var(--text);font-family:var(--font-body);font-size:var(--fs-sm);padding:10px 12px;
+  border-radius:var(--radius);color-scheme:dark}
+.ms-slot input[data-w="y"]{width:6.5em}
+.ms-slot input:focus,.ms-slot select:focus{outline:none;border-color:var(--voice-tech);
+  box-shadow:var(--voice-tech-glow)}
+.ms-to{color:var(--dim);font-size:var(--fs-sm)}
+/* The sentence each language will show: public words, so the ministry voice. */
+.ms-gen{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;margin-top:16px}
+.ms-gen div{padding:10px 12px;border:1px solid rgba(92,242,196,.3);border-radius:var(--radius);
+  font-size:var(--fs-sm);color:var(--text)}
+.ms-gen b{display:block;font-size:10px;letter-spacing:.1em;color:var(--voice-human);margin-bottom:4px}
+.ms-when .link-btn{margin-top:14px}
+.ms-prog-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.ms-prog-head output{font-size:var(--fs-sm);color:var(--text)}
+#msCompletion{width:100%;accent-color:var(--voice-tech)}
+.ms-form.is-not-started #msCompletion{opacity:.4}
+
 @media (max-width:760px){
   /* The switch stays beside its title on a phone. */
   .ms-row:has(.ms-toggle){grid-template-columns:1fr auto}
   .up-parts{display:none}
+  .emb-views.ms-prec{display:flex}
+  .ms-prec .emb-view{flex:1 1 0;padding:8px 4px;min-width:0;letter-spacing:.06em}
 }
 
 /* ============================================================

@@ -257,7 +257,7 @@ await check("every real query converts with its documented params", async () => 
     key_hash: "0".repeat(64), key_id: "k_1", now: "2026-08-15T00:00:00Z",
     // milestone columns
     parent_id: null, title: "t", description: null, target_label: null,
-    actual_date: null, status: "upcoming", completion: 0,
+    actual_date: null, end_date: null, date_precision: null, status: "upcoming", completion: 0,
     is_public: 0, is_featured: 0, sort_order: 0, id: "m_1",
     milestone_id: "m_1", lang: "en", is_enabled: 1,
     // settings

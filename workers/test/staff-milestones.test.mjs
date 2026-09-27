@@ -123,7 +123,8 @@ await check("every milestone query converts with its documented params", async (
   const params = {
     id: "m_1", partner_id: "p_chase", parent_id: null, title: "t", title_hr: null,
     description: null, description_hr: null, target_label: null,
-    target_label_hr: null, actual_date: null, status: "upcoming", completion: 0,
+    target_label_hr: null, actual_date: null, end_date: null, date_precision: null,
+    status: "upcoming", completion: 0,
     is_public: 0, is_featured: 0, sort_order: 0, now: "2026-08-15T00:00:00Z",
   };
   for (const q of ["milestone_upsert", "milestone_delete", "milestone_reorder",

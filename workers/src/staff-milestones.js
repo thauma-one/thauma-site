@@ -21,6 +21,8 @@ import { createDb } from "./lib/db.js";
 import { requireAccess } from "./lib/access.js";
 import { resolveActor, auditActingWrite, withActing } from "./lib/actas.js";
 import { json, readJson } from "./lib/store.js";
+import { PRECISIONS, snap, whenLabel } from "./lib/when.js";
+import { wordsFor } from "./lib/mail-i18n.js";
 
 const STATUSES = new Set(["upcoming", "in_progress", "complete", "canceled"]);
 
@@ -97,9 +99,30 @@ function clean(body, existingIds) {
   // A date the database will accept. Anything else is rejected rather than
   // silently stored, because "2027" and "next spring" both look fine in a
   // text box and neither sorts.
-  const actual_date = str(body.actual_date, 10);
+  let actual_date = str(body.actual_date, 10);
   if (actual_date && !/^\d{4}-\d{2}-\d{2}$/.test(actual_date)) {
     return { error: "actual_date must be YYYY-MM-DD, or empty" };
+  }
+
+  /* THE DATE, PICKED ONCE (0037). A picked precision snaps both ends to its
+     start — a month to its first day, a season to its first month — so the
+     sort key and the written sentence can never disagree. 'custom' keeps the
+     typed sentences; NULL is a milestone from before, left exactly as it was. */
+  const date_precision = str(body.date_precision, 10);
+  if (date_precision && date_precision !== "custom" && !PRECISIONS.includes(date_precision)) {
+    return { error: `date_precision must be one of: ${PRECISIONS.join(", ")}, custom` };
+  }
+  let end_date = null;
+  if (PRECISIONS.includes(date_precision)) {
+    actual_date = actual_date ? snap(date_precision, actual_date) : null;
+    const end = str(body.end_date, 10);
+    if (end) {
+      end_date = snap(date_precision, end);
+      if (!end_date) return { error: "end_date must be YYYY-MM-DD, or empty" };
+      if (!actual_date) return { error: "A range needs its start." };
+      if (end_date < actual_date) return { error: "The end comes before the start." };
+      if (end_date === actual_date) end_date = null;
+    }
   }
 
   const parent_id = str(body.parent_id, 64);
@@ -117,6 +140,8 @@ function clean(body, existingIds) {
     value: {
       parent_id,
       actual_date,
+      end_date,
+      date_precision,
       status,
       completion,
       // Publication is explicit. Anything other than a literal true is false —
@@ -230,6 +255,9 @@ export default {
         // before it is switched on.
         languages: languages.map((l) => ({ ...l, is_enabled: !!l.is_enabled })),
         milestones,
+        /* The public words a picked date is written with (season names), so
+           the editor previews exactly the sentence this endpoint will store. */
+        date_words: wordsFor("dates."),
       }, actor));
     }
 
@@ -253,6 +281,14 @@ export default {
 
       const { value: text, error: textError } = cleanText(body.text, codes);
       if (textError) return json({ error: textError }, 400);
+
+      /* A picked date writes every language's "When" itself, over whatever
+         the form sent, so no language is left saying an old date. */
+      if (PRECISIONS.includes(value.date_precision)) {
+        for (const [lang, fields] of Object.entries(text)) {
+          fields.target_label = whenLabel(lang, value.date_precision, value.actual_date, value.end_date);
+        }
+      }
 
       // Every milestone needs a title in at least one language, otherwise it
       // is not a draft — it is a row nothing can ever render.

@@ -39,12 +39,12 @@ const DATA = () => ({
     milestones: [{
       id: "m1", status: "in_progress", completion: 40, actual_date: "", parent_id: null,
       is_public: true, is_featured: false,
-      text: { en: { title: "Build the studio", description: "", target_label: "" } },
+      text: { en: { title: "Build the studio", description: null, target_label: null } },
     }],
   },
   "staff-goals": {
     goals: [{
-      goal_id: "g1", label: "Cameras", description: "", kind: "project",
+      goal_id: "g1", label: "Cameras", description: null, kind: "project",
       target_cents: 500000, currency: "USD", is_public: true, raised_cents: 100000, donor_count: 3,
     }],
   },
@@ -52,7 +52,7 @@ const DATA = () => ({
     languages: LANGS, preferred_lang: "en",
     prayer: [{
       id: "p1", is_public: false, is_answered: false, answered_on: null, sort_order: 0,
-      text: { en: { title: "Visas", description: "", answer_text: "" } },
+      text: { en: { title: "Visas", description: null, answer_text: null } },
     }],
   },
   "staff-videos": { channel: null, videos: [], links: [] },
@@ -151,6 +151,16 @@ await check("the whole row opens its editor; Done keeps the edit, Cancel undoes 
   await settle();
   assert(/Visas for the team/.test(row("prList", "p1").textContent), "Cancel should put back what was there");
   eq(bar().hidden, false, "the earlier edit is still waiting");
+});
+
+await check("opening any row and pressing Done changes nothing", async () => {
+  const { click, row, bar, done } = await boot();
+  for (const [list, id, form] of [["msList", "m1", "msForm"], ["glList", "g1", "glForm"], ["prList", "p1", "prForm"]]) {
+    click(row(list, id));
+    await settle();
+    await done(form);
+    eq(bar().hidden, true, `${id} reads as changed after merely being opened`);
+  }
 });
 
 await check("a delete waits for Publish, Keep takes it back, and Publish asks first", async () => {

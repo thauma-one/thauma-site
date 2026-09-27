@@ -212,7 +212,10 @@
     }
     var g = state.draft[id];
     g.label = $('glLabel').value;
-    g.description = $('glDescription').value;
+    /* An empty box over no description stays no description, so opening a
+       goal and closing it does not mark it changed. */
+    var desc = $('glDescription').value;
+    g.description = desc === '' && g.description == null ? null : desc;
     g.kind = $('glKind').value;
     if (okTarget) g.target_cents = target;
     g.currency = $('glCurrency').value;
