@@ -44,8 +44,12 @@
       "dash.personalTouches": "Personal touches",
       "stew.person": "Person",
       "stew.lastPersonal": "Last personal contact",
-      "stew.lastAny": "Last contact (any)",
+      "stew.lastAny": "Last contact of any kind",
       "stew.touches": "Touches",
+      "stew.personalCol": "Personal",
+      "stew.personalOf": "{n} of {total}",
+      "stew.search": "Search people",
+      "stew.noMatch": "Nobody matches that.",
       /* The supporter dialog on Stewardship. `stew.kind.*` and
          `stew.type.*` mirror the CHECK lists in the schema, so a value the
          database accepts always has a word here to show for it. */
@@ -96,7 +100,7 @@
       "stew.touchCount": "{personal} personal of {total}",
       "stew.noDate": "\u2014",
       "stew.unnamed": "Unnamed",
-      "stew.never": "Never",
+      "stew.never": "Not yet",
       "stew.noEvents": "Nothing recorded about this person yet.",
       "stew.noTouches": "No contact logged.",
       "stew.everyYear": "every year",
@@ -1099,8 +1103,12 @@
       "dash.personalTouches": "Osobni kontakti",
       "stew.person": "Osoba",
       "stew.lastPersonal": "Zadnji osobni kontakt",
-      "stew.lastAny": "Zadnji kontakt (bilo koji)",
+      "stew.lastAny": "Zadnji kontakt bilo koje vrste",
       "stew.touches": "Kontakti",
+      "stew.personalCol": "Osobni",
+      "stew.personalOf": "{n} od {total}",
+      "stew.search": "Pretraži osobe",
+      "stew.noMatch": "Nitko ne odgovara tome.",
       /* The supporter dialog on Stewardship. `stew.kind.*` and
          `stew.type.*` mirror the CHECK lists in the schema, so a value the
          database accepts always has a word here to show for it. */
@@ -1151,7 +1159,7 @@
       "stew.touchCount": "{personal} osobnih od ukupno {total}",
       "stew.noDate": "\u2014",
       "stew.unnamed": "Bez imena",
-      "stew.never": "Nikad",
+      "stew.never": "Još ne",
       "stew.noEvents": "Još ništa nije zabilježeno o ovoj osobi.",
       "stew.noTouches": "Nema zabilježenih kontakata.",
       "stew.everyYear": "svake godine",
@@ -2144,8 +2152,12 @@
       "dash.personalTouches": "Лични контакти",
       "stew.person": "Особа",
       "stew.lastPersonal": "Последњи лични контакт",
-      "stew.lastAny": "Последњи контакт (било који)",
+      "stew.lastAny": "Последњи контакт било које врсте",
       "stew.touches": "Контакти",
+      "stew.personalCol": "Лични",
+      "stew.personalOf": "{n} од {total}",
+      "stew.search": "Претражи особе",
+      "stew.noMatch": "Нико не одговара томе.",
       /* The supporter dialog on Stewardship. `stew.kind.*` and
          `stew.type.*` mirror the CHECK lists in the schema, so a value the
          database accepts always has a word here to show for it. */
@@ -2196,7 +2208,7 @@
       "stew.touchCount": "{personal} личних од укупно {total}",
       "stew.noDate": "\u2014",
       "stew.unnamed": "Без имена",
-      "stew.never": "Никад",
+      "stew.never": "Још не",
       "stew.noEvents": "Још ништа није забиљежено о овој особи.",
       "stew.noTouches": "Нема забиљежених контаката.",
       "stew.everyYear": "сваке године",

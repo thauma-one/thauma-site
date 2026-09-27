@@ -204,29 +204,8 @@
        administrator viewing as the owner included — and says why. Saying so
        here matters: an empty list with "add the first person" under it would
        read as the owner's supporters having vanished. */
-    if ($('swAddPerson')) $('swAddPerson').hidden = !!d.stewardship_withheld;
-    if ($('rows') && d.stewardship_withheld) {
-      $('rows').innerHTML = '<tr class="empty-row"><td colspan="4"><p class="empty">' +
-        esc(tr('stew.withheld')) + '</p></td></tr>';
-    } else if ($('rows')) $('rows').innerHTML = d.contacts.map(function (c) {
-      var sev = severity(c.days_since_personal);
-      var where = [c.city, countryName(c.country)].filter(Boolean).join(', ');
-      /* aria-haspopup="dialog", not aria-expanded: the row no longer expands
-         into anything, it opens a dialog over the page. */
-      return '<tr data-id="' + esc(c.id) + '" tabindex="0" role="button" ' +
-        'aria-haspopup="dialog">' +
-        '<td><span class="nm">' + esc(fullName(c)) + '</span>' +
-          (where ? '<span class="sub">' + esc(where) + '</span>' : '') + '</td>' +
-        '<td><span class="sev ' + sev.cls + '">' + esc(sev.label) + '</span>' +
-          '<span class="sub">' + esc(shortDate(c.last_personal_contact)) + '</span></td>' +
-        '<td><span class="sub" style="color:var(--text)">' +
-          esc(shortDate(c.last_contact_any)) + '</span></td>' +
-        '<td class="right tnum">' + c.personal_count + ' / ' + c.interaction_count + '</td>' +
-      '</tr>';
-    }).join('') ||
-      /* An empty table reads as broken rather than as empty. People are added
-         from the button above it now, so say so. */
-      '<tr class="empty-row"><td colspan="4"><p class="empty">' + esc(tr('stew.noPeople')) + '</p></td></tr>';
+    lastSnapshot = d;
+    renderStewardship();
 
     // --- activity ---
     if ($('auditList')) $('auditList').innerHTML = d.audit.map(function (a) {
@@ -237,6 +216,53 @@
           ' — ' + esc(a.actor || 'system') + '</span></div>';
     }).join('');
   }
+
+  /* THE SUPPORTERS, worst first as the server sorted them, narrowed by the
+     search box (board 11). Kept apart from renderSnapshot so typing in the
+     search redraws the rows without refetching anybody. On a phone each row
+     is a card: data-label names what each cell is once the header is gone. */
+  var lastSnapshot = null;
+  function renderStewardship() {
+    var d = lastSnapshot, rows = $('rows');
+    if (!d || !rows) return;
+    if ($('swAddPerson')) $('swAddPerson').hidden = !!d.stewardship_withheld;
+    if ($('swFind')) $('swFind').hidden = !!d.stewardship_withheld || !d.contacts.length;
+    if (d.stewardship_withheld) {
+      rows.innerHTML = '<tr class="empty-row"><td colspan="4"><p class="empty">' +
+        esc(tr('stew.withheld')) + '</p></td></tr>';
+      return;
+    }
+    var q = ($('swFind') ? $('swFind').value : '').trim().toLowerCase();
+    var shown = d.contacts.filter(function (c) {
+      if (!q) return true;
+      return [fullName(c), c.city, countryName(c.country)].join(' ').toLowerCase().indexOf(q) !== -1;
+    });
+    rows.innerHTML = shown.map(function (c) {
+      var sev = severity(c.days_since_personal);
+      var where = [c.city, countryName(c.country)].filter(Boolean).join(', ');
+      /* aria-haspopup="dialog", not aria-expanded: the row no longer expands
+         into anything, it opens a dialog over the page. */
+      return '<tr data-id="' + esc(c.id) + '" tabindex="0" role="button" ' +
+        'aria-haspopup="dialog">' +
+        '<td class="sw-who"><span class="nm">' + esc(fullName(c)) + '</span>' +
+          (where ? '<span class="sub">' + esc(where) + '</span>' : '') + '</td>' +
+        '<td data-label="' + esc(tr('stew.lastPersonal')) + '"><span class="sev ' + sev.cls + '">' +
+          esc(sev.label) + '</span>' +
+          '<span class="sub">' + esc(shortDate(c.last_personal_contact)) + '</span></td>' +
+        '<td data-label="' + esc(tr('stew.lastAny')) + '"><span class="sub" style="color:var(--text)">' +
+          esc(shortDate(c.last_contact_any)) + '</span></td>' +
+        /* "1 of 2", not "1 / 2": personal contacts out of every contact. */
+        '<td class="right tnum" data-label="' + esc(tr('stew.personalCol')) + '">' +
+          esc(fill('stew.personalOf', { n: c.personal_count, total: c.interaction_count })) + '</td>' +
+      '</tr>';
+    }).join('') ||
+      /* An empty table reads as broken rather than as empty. People are added
+         from the button above it now, so say so; a search that found nobody
+         says that instead. */
+      '<tr class="empty-row"><td colspan="4"><p class="empty">' +
+        esc(tr(q ? 'stew.noMatch' : 'stew.noPeople')) + '</p></td></tr>';
+  }
+  if ($('swFind')) $('swFind').addEventListener('input', renderStewardship);
 
   /* timelineHTML lived here and rendered the drawer under each row. The
      drawer is gone — a row opens the supporter dialog now — and the dialog

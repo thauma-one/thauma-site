@@ -4,14 +4,20 @@ staffPage: stewardship
 staffTitle: Stewardship
 staffHeading: Who needs a <b>call</b>
 ---
-<p class="row-actions sw-top">
+{#- FINDING SOMEBODY, for when there are two hundred (board 11), beside
+   adding somebody. Filters the list already on screen: nothing about a
+   supporter is fetched to search. -#}
+<div class="sw-top">
+  <input type="search" id="swFind" class="sw-find" maxlength="80"
+         data-i18n-attr="placeholder:stew.search,aria-label:stew.search"
+         placeholder="Search people" aria-label="Search people">
   <button class="ghost-btn" type="button" id="swAddPerson" data-i18n="stew.addPerson">+ Add a person</button>
-</p>
+</div>
 <div class="tw">
   <table>
     <thead><tr>
       <th data-i18n="stew.person">Person</th><th data-i18n="stew.lastPersonal">Last personal contact</th><th data-i18n="stew.lastAny">Last contact (any)</th>
-      <th class="right" data-i18n="stew.touches">Touches</th>
+      <th class="right" data-i18n="stew.personalCol">Personal</th>
     </tr></thead>
     <tbody id="rows"></tbody>
   </table>

@@ -2003,7 +2003,30 @@ html:not(.roles-known)[data-area="staff"] .console-me-menu a[data-roles]{display
 .sw-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 16px}
 .sw-grid .sw-wide{grid-column:1 / -1}
 .sw-grid input,.sw-grid textarea{width:100%}
-.sw-top{margin:0 0 14px}
+/* Search and Add, one row (board 11): the search takes the room. */
+.sw-top{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 14px}
+.sw-find{flex:1 1 240px;max-width:360px;min-width:0;font-size:13px;padding:8px 11px}
+.sw-top .ghost-btn{margin-left:auto}
+.sw-find[hidden]{display:none}
+
+/* ON A PHONE, A CARD PER PERSON (board 11): the table ran off the screen.
+   The name leads; each other cell says what it is (data-label), since the
+   header row is gone. */
+@media (max-width:640px){
+  [data-staff-page="stewardship"] .tw{border:0;overflow:visible}
+  [data-staff-page="stewardship"] .tw table,
+  [data-staff-page="stewardship"] .tw tbody{display:block;min-width:0}
+  [data-staff-page="stewardship"] .tw thead{display:none}
+  [data-staff-page="stewardship"] .tw tr[data-id]{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;
+    padding:14px 16px;margin-bottom:10px;border:1px solid var(--line);border-radius:var(--radius);background:var(--panel)}
+  [data-staff-page="stewardship"] .tw tr[data-id] td{display:block;padding:0;border:0;text-align:left}
+  [data-staff-page="stewardship"] .tw td.sw-who{grid-column:1 / -1}
+  [data-staff-page="stewardship"] .tw td[data-label]::before{content:attr(data-label);display:block;
+    font-size:9.5px;letter-spacing:var(--ls-label);text-transform:uppercase;color:var(--dim);margin-bottom:4px}
+  [data-staff-page="stewardship"] .tw tr.empty-row{display:block}
+  [data-staff-page="stewardship"] .tw tr.empty-row td{display:block}
+  .sw-top .ghost-btn{margin-left:0}
+}
 /* Edit and remove on a logged contact sit under its note, quiet until the
    entry is reached — the same treatment life events get. */
 .sw-tl-a{display:flex;gap:6px;margin:6px 0 0;opacity:.55;
