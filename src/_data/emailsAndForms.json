@@ -65,6 +65,24 @@
       "autumn": "Fall {year}",
       "winter": "Winter {year}",
       "range": "{from} – {to}"
+    },
+    "widget": {
+      "now": "Now",
+      "complete": "Completed",
+      "in_progress": "In progress",
+      "upcoming": "Upcoming",
+      "canceled": "Canceled",
+      "completeWord": "Complete",
+      "remaining": "remaining",
+      "funded": "Funded",
+      "partners": "partners",
+      "partner": "partner",
+      "breakdown": "Breakdown",
+      "empty": "Nothing to show yet.",
+      "close": "Close",
+      "answered": "Answered",
+      "praying": "Still praying",
+      "watch": "Watch on YouTube"
     }
   },
   "hr": {
@@ -133,6 +151,24 @@
       "autumn": "jesen {year}.",
       "winter": "zima {year}.",
       "range": "{from} – {to}"
+    },
+    "widget": {
+      "now": "Sada",
+      "complete": "Završeno",
+      "in_progress": "U tijeku",
+      "upcoming": "Nadolazeće",
+      "canceled": "Otkazano",
+      "completeWord": "Završeno",
+      "remaining": "preostalo",
+      "funded": "Financirano",
+      "partners": "podupiratelja",
+      "partner": "podupiratelj",
+      "breakdown": "Raščlamba",
+      "empty": "Još nema ničega za prikazati.",
+      "close": "Zatvori",
+      "answered": "Uslišano",
+      "praying": "Još molimo",
+      "watch": "Pogledaj na YouTubeu"
     }
   },
   "sr": {
@@ -201,6 +237,24 @@
       "autumn": "јесен {year}.",
       "winter": "зима {year}.",
       "range": "{from} – {to}"
+    },
+    "widget": {
+      "now": "Сада",
+      "complete": "Завршено",
+      "in_progress": "У току",
+      "upcoming": "Предстоји",
+      "canceled": "Отказано",
+      "completeWord": "Завршено",
+      "remaining": "преостало",
+      "funded": "Финансирано",
+      "partners": "подржавалаца",
+      "partner": "подржавалац",
+      "breakdown": "Рашчламба",
+      "empty": "Још нема ничега за приказ.",
+      "close": "Затвори",
+      "answered": "Услишено",
+      "praying": "Још молимо",
+      "watch": "Погледај на Јутјубу"
     }
   },
   "sl": {
@@ -269,6 +323,24 @@
       "autumn": "jesen {year}",
       "winter": "zima {year}",
       "range": "{from}–{to}"
+    },
+    "widget": {
+      "now": "Zdaj",
+      "complete": "Zaključeno",
+      "in_progress": "V teku",
+      "upcoming": "Prihajajoče",
+      "canceled": "Preklicano",
+      "completeWord": "Zaključeno",
+      "remaining": "preostane",
+      "funded": "Financirano",
+      "partners": "podpornikov",
+      "partner": "podpornik",
+      "breakdown": "Razčlenitev",
+      "empty": "Tu še ni ničesar.",
+      "close": "Zapri",
+      "answered": "Uslišano",
+      "praying": "Še molimo",
+      "watch": "Poglej na YouTubu"
     }
   }
 }

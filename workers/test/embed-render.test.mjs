@@ -581,6 +581,62 @@ await check("the NOW marker never sits before a milestone already past", async (
   });
 });
 
+/* ---- the NOW marker and the rail agree (Chase, 2026-09-27) ---- */
+
+const DAY_MS = 86400000;
+const isoDay = (ms) => new Date(ms).toISOString().slice(0, 10);
+/* Three past milestones pushed apart by the de-crowding, one far future — so
+   the marker's place among the pins and the raw elapsed percentage differ. */
+function nowRoadmap(extra = {}) {
+  const now = Date.now();
+  return {
+    ...ROADMAP,
+    timeline: { start: isoDay(now - 365 * DAY_MS), end: isoDay(now + 5 * 365 * DAY_MS) },
+    milestones: [200, 190, 1].map((back, i) => ({
+      id: "n" + i, parent_id: null, status: "complete",
+      actual_date: isoDay(now - back * DAY_MS), completion: 100, is_featured: false,
+      text: { en: { title: "Step " + i } },
+    })).concat([{ id: "n9", parent_id: null, status: "upcoming",
+      actual_date: isoDay(now + 1500 * DAY_MS), completion: 0, is_featured: false,
+      text: { en: { title: "Later" } } }]),
+    ...extra,
+  };
+}
+
+await check("the rail fills exactly to the NOW marker", async () => {
+  const { root } = await run(nowRoadmap(), { "data-thauma": "mira-petrovic", "data-widget": "roadmap" });
+  const marker = root.byClass("now")[0];
+  assert(marker, "no marker");
+  eq(root.byClass("rfill")[0].style.width, marker.style.left, "fill and marker");
+});
+
+await check("NOW is always labeled — even right beside a pin", async () => {
+  /* A milestone dated yesterday sits almost on the marker; the word used to
+     be dropped whenever a pin was within 7%. */
+  const { root } = await run(nowRoadmap(), { "data-thauma": "mira-petrovic", "data-widget": "roadmap" });
+  const label = root.byClass("nlabel")[0];
+  assert(label, "the marker carries no word");
+  eq(label.allText, "Now", "the word");
+});
+
+await check("the widget's words come with the data, in the chosen language", async () => {
+  /* A language this script has never heard of: its words arrive in the
+     payload (the Translate page's "widget" section), not in the code. */
+  const words = {
+    en: { now: "Now", complete: "Completed", in_progress: "In progress", upcoming: "Upcoming" },
+    sl: { now: "Zdaj", complete: "Zaključeno", in_progress: "V teku", upcoming: "Prihajajoče" },
+  };
+  const data = nowRoadmap({ words, languages: [{ code: "en" }, { code: "sl" }] });
+  const { root } = await run(data, { "data-thauma": "mira-petrovic", "data-widget": "roadmap", "data-lang": "sl" });
+  eq(root.byClass("nlabel")[0].allText, "Zdaj", "the marker");
+  assert(/Zaključeno/.test(shown(root)) && /Prihajajoče/.test(shown(root)), "the legend speaks Slovenian");
+});
+
+await check("a payload without words still speaks English", async () => {
+  const { root } = await run(ROADMAP, { "data-thauma": "mira-petrovic", "data-widget": "roadmap" });
+  assert(/Completed/.test(shown(root)), "the legend fell silent");
+});
+
 await check("a milestone with no children has no breakdown", async () => {
   const { root } = await run(ROADMAP, { "data-thauma": "mira-petrovic", "data-widget": "roadmap" });
   root.byClass("pin")[1].click();

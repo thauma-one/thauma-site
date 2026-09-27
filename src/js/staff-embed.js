@@ -153,10 +153,19 @@
           mode: p.theme.value || 'auto',
         });
 
+        /* THE BACKGROUND THE MODE ASSUMES. "Match their page" follows the
+           visitor's own light or dark setting, so the preview does too; on a
+           transparent frame over the dark console a light-mode widget drew
+           its dark titles on dark and they vanished. */
+        var mode = live.theme.mode;
+        /* Dark is --bg from main.css; the frame is its own document and
+           cannot read the console's variables. */
+        var bg = mode === 'light' ? '#ffffff' : mode === 'dark' ? '#0b0f15' : 'Canvas';
         p.frame.srcdoc =
           '<!doctype html><meta charset="utf-8">' +
           '<meta name="viewport" content="width=device-width,initial-scale=1">' +
-          '<body style="margin:0;padding:20px;background:transparent">' +
+          '<meta name="color-scheme" content="light dark">' +
+          '<body style="margin:0;padding:20px;background:' + bg + '">' +
           '<script>window.__thaumaPreview=' +
             JSON.stringify(live).replace(/</g, '\\u003c') +
           '</' + 'script>' +
@@ -299,7 +308,7 @@
       save(panel, this);
     });
 
-    // Snippet-only — nothing to save.
+    // Snippet-only — nothing to save. (renderCode redraws the preview too.)
     p.lang.addEventListener('change', panel.renderCode);
 
     if (p.tlSave) {

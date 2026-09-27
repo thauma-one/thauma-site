@@ -144,30 +144,21 @@ export const WIDGET_JS = String.raw`
     return monthYear(m.actual_date, lang);
   }
 
-  var WORDS = {
-    en: { now: 'NOW', complete: 'Completed', in_progress: 'In progress',
-          upcoming: 'Upcoming', canceled: 'Canceled', completeWord: 'Complete',
-          remaining: 'remaining', funded: 'Funded',
-          partners: 'partners', partner: 'partner', breakdown: 'Breakdown',
-          empty: 'Nothing to show yet.', close: 'Close',
-          answered: 'Answered', praying: 'Still praying',
-          watch: 'Watch on YouTube' },
-    hr: { now: 'SADA', complete: 'Završeno', in_progress: 'U tijeku',
-          upcoming: 'Nadolazeće', canceled: 'Otkazano', completeWord: 'Završeno',
-          remaining: 'preostalo', funded: 'Financirano',
-          partners: 'podupiratelja', partner: 'podupiratelj', breakdown: 'Raščlamba',
-          empty: 'Još nema ničega za prikazati.', close: 'Zatvori',
-          answered: 'Uslišano', praying: 'Još molimo',
-          watch: 'Pogledaj na YouTubeu' },
-    sr: { now: 'САДА', complete: 'Завршено', in_progress: 'У току',
-          upcoming: 'Предстоји', canceled: 'Отказано', completeWord: 'Завршено',
-          remaining: 'преостало', funded: 'Финансирано',
-          partners: 'подржавалаца', partner: 'подржавалац', breakdown: 'Рашчламба',
-          empty: 'Још нема ничега за приказ.', close: 'Затвори',
-          answered: 'Услишено', praying: 'Још молимо',
-          watch: 'Погледај на Јутјубу' }
-  };
-  function w(lang, key) { return (WORDS[lang] || WORDS.en)[key] || WORDS.en[key]; }
+  /* THE WORDS COME WITH THE DATA. Each payload carries { lang: { now, ... } }
+     from the public wording file (emailsAndForms.json, "widget"), translated
+     on Thauma's Translate page, so a newly added language speaks its own words
+     here without this script changing. English is kept below only for a
+     payload that predates them. */
+  var FALLBACK = { now: 'Now', complete: 'Completed', in_progress: 'In progress',
+    upcoming: 'Upcoming', canceled: 'Canceled', completeWord: 'Complete',
+    remaining: 'remaining', funded: 'Funded', partners: 'partners', partner: 'partner',
+    breakdown: 'Breakdown', empty: 'Nothing to show yet.', close: 'Close',
+    answered: 'Answered', praying: 'Still praying', watch: 'Watch on YouTube' };
+  var WORDS = { en: FALLBACK };
+  function w(lang, key) {
+    var t = WORDS[lang] || {}, en = WORDS.en || {};
+    return t[key] || en[key] || FALLBACK[key];
+  }
 
   /* ---------- the COLOR PAIR ----------
      Completed and in-progress are different hues, which is what the legend is
@@ -357,8 +348,9 @@ export const WIDGET_JS = String.raw`
         'animation:pulse 2s ease-in-out infinite}' +
       '@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}' +
       '.nlabel{position:absolute;bottom:26px;left:50%;transform:translateX(-50%);' +
-        'white-space:nowrap;font-size:11px;font-weight:700;letter-spacing:.11em;' +
+        'white-space:nowrap;text-transform:uppercase;font-size:11px;font-weight:700;letter-spacing:.11em;' +
         'color:var(--prog)}' +
+      '.nlabel.below{bottom:auto;top:26px}' +
 
       /* A pin is a button. Absolutely placed, never wrapping, alternating
          above and below so long titles cannot collide. */
@@ -994,10 +986,19 @@ export const WIDGET_JS = String.raw`
     track.appendChild(rfill);
 
     if (P.now !== null) {
-      var near = P.pos.some(function (x) { return Math.abs(x - P.now) < 7; });
+      /* THE WORD IS ALWAYS THERE. It used to be dropped whenever any pin was
+         within 7% of the marker, which on a real roadmap was most of the time.
+         Pins alternate above and below the rail, so the word goes to the side
+         whose nearest dot is further away. */
+      var gapUp = 100, gapDown = 100;
+      P.pos.forEach(function (x, i) {
+        var d = Math.abs(x - P.now);
+        if (i % 2 === 0) gapUp = Math.min(gapUp, d); else gapDown = Math.min(gapDown, d);
+      });
+      var below = gapUp < 3.5 && gapDown > gapUp;
       var nowEl = el('div', 'now');
       nowEl.style.left = P.now + '%';
-      if (!near) nowEl.appendChild(el('div', 'nlabel', w(lang, 'now')));
+      nowEl.appendChild(el('div', 'nlabel' + (below ? ' below' : ''), w(lang, 'now')));
       nowEl.appendChild(el('div', 'nline'));
       track.appendChild(nowEl);
     }
@@ -1088,7 +1089,11 @@ export const WIDGET_JS = String.raw`
     col.appendChild(vn);
 
     function placeNow() {
-      rfill.style.width = progress + '%';
+      /* The rail fills TO THE MARKER. The marker sits among the pins after
+         they are spread apart (see positions()), so the raw elapsed-time
+         percentage and the marker disagree by however far the pins moved —
+         the fill used to stop visibly short of NOW, or run past it. */
+      rfill.style.width = (P.now !== null ? P.now : progress) + '%';
 
       var h = col.offsetHeight;
       var measurable = typeof h === 'number' && isFinite(h) && h > 0;
@@ -1299,6 +1304,7 @@ export const WIDGET_JS = String.raw`
   }
 
   function render(node, data) {
+    if (data.words && data.words.en) WORDS = data.words;
     var kind   = node.getAttribute('data-widget') || 'goal';
     var lang   = chooseLang(node, data);
     var accent = node.getAttribute('data-accent') || (data.theme && data.theme.accent) || '#6D4AFF';

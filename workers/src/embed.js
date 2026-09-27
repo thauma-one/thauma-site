@@ -38,6 +38,7 @@ import { createDb, partnerPublicSite } from "./lib/db.js";
 import { assertNoPersonalData } from "./lib/nopii.js";
 import { json } from "./lib/store.js";
 import { WIDGET_JS } from "./embed-widget.js";
+import { wordsFor } from "./lib/mail-i18n.js";
 import { embedGuide } from "./embed-guide.js";
 import { companion } from "./embed-colour.js";
 
@@ -161,7 +162,26 @@ export async function embedPayload(db, partner) {
     },
     generated_at: new Date().toISOString(),
     ...site,
+    words: widgetWords(site.languages),
   };
+}
+
+/* THE WIDGET'S OWN WORDS — "Now", "Completed", "Funded" — for each language
+   this partner publishes, plus English as everyone's fallback. They live in
+   src/_data/emailsAndForms.json ("widget"), translated on the Translate page
+   like every other public word, and they ship in the payload rather than in
+   the script so somebody building their own design from this JSON gets the
+   same words the widget draws. Keyed { lang: { now: "Now", ... } }. */
+function widgetWords(languages) {
+  const all = wordsFor("widget.");
+  const want = new Set(["en", ...(languages || []).map((l) => l.code)]);
+  const out = {};
+  for (const [lang, table] of Object.entries(all)) {
+    if (!want.has(lang)) continue;
+    out[lang] = {};
+    for (const [k, v] of Object.entries(table)) out[lang][k.slice("widget.".length)] = v;
+  }
+  return out;
 }
 
 async function partnerJson(slug, env) {

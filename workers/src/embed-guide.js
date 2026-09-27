@@ -114,6 +114,7 @@ Guard the null explicitly before comparing dates.
 | \`milestones\` | array | May be empty. |
 | \`videos\` | array | Their latest YouTube videos, newest first. May be empty. |
 | \`video_links\` | array | Optional buttons to show under the videos. Usually empty. |
+| \`words\` | object | The short words the ministry's own widget uses — \`now\`, \`complete\`, \`in_progress\`, \`upcoming\`, \`funded\`, \`remaining\` and so on — **keyed by language code**, for each language in \`languages\` plus \`en\`. Use them instead of writing your own, so your page says "Sada" where theirs does. |
 
 ### A goal
 
@@ -137,7 +138,7 @@ Guard the null explicitly before comparing dates.
 | \`parent_id\` | string \\| null | Milestones can nest one level. |
 | \`actual_date\` | string \\| null | ISO date. **Null is normal.** |
 | \`status\` | string | \`upcoming\` \\| \`in_progress\` \\| \`complete\` \\| \`canceled\` |
-| \`completion\` | number \\| null | 0–100, if they track it. |
+| \`completion\` | number \\| null | 0–100, if they track it. Always 0 while \`status\` is \`upcoming\`: the ministry has not started it. |
 | \`is_featured\` | boolean | The ministry marked this as the current focus. |
 | \`text\` | object | **Keyed by language code.** See below. |
 
