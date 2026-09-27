@@ -28,7 +28,7 @@
      words, lang -> { title, description, answer_text }. */
   var state = {
     saved: {}, draft: {}, order: [], removed: {}, languages: [], preferred: 'en',
-    editing: null, before: null, isAnswered: false, text: {},
+    editing: null, before: null, isAnswered: false, text: {}, colA: null, colB: null,
   };
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
   function isDirty(id) {
@@ -114,52 +114,65 @@
     panel.reattach(state.editing);
   }
 
-  /* ---- the two language columns ---- */
+  /* ---- "Writing X beside Y" ----
+     One language's fields at a time, with the language beside shown small
+     above each field — the same model as the milestone editor and Website ›
+     Pages, because a column per language stops working long before thirty.
+     Writing opens on this person's own language; beside on another that has
+     words to show. */
 
   function fillLangPickers() {
-    var opts = state.languages.map(function (l) {
+    var codes = state.languages.map(function (l) { return l.code; });
+    if (codes.indexOf(state.colA) === -1) {
+      state.colA = codes.indexOf(state.preferred) !== -1 ? state.preferred : (codes[0] || 'en');
+    }
+    var open = panel.isOpen() || state.editing !== null;
+    var titled = function (c) { return !!(state.text[c] && state.text[c].title); };
+    $('prLangA').innerHTML = state.languages.map(function (l) {
+      return '<option value="' + esc(l.code) + '">' + esc(langLabel(l)) +
+        (open && !titled(l.code) ? ' · ' + esc(tr('ms.missing')) : '') + '</option>';
+    }).join('');
+    $('prLangA').value = state.colA;
+    var others = state.languages.filter(function (l) { return l.code !== state.colA; });
+    if (!others.some(function (l) { return l.code === state.colB; })) {
+      var best = others.filter(function (l) { return titled(l.code); })[0] || others[0];
+      state.colB = best ? best.code : null;
+    }
+    $('prBesideWrap').hidden = !others.length;
+    $('prLangB').innerHTML = others.map(function (l) {
       return '<option value="' + esc(l.code) + '">' + esc(langLabel(l)) + '</option>';
     }).join('');
-    $('prLangA').innerHTML = opts;
-    $('prLangB').innerHTML = opts;
-
-    /* The left column opens on this person's own language and the right on the
-       next one published, so the common case needs no picking. */
-    var codes = state.languages.map(function (l) { return l.code; });
-    var a = codes.indexOf(state.preferred) !== -1 ? state.preferred : (codes[0] || 'en');
-    var b = codes.find(function (c) { return c !== a; }) || a;
-    $('prLangA').value = a;
-    $('prLangB').value = b;
+    $('prLangB').value = state.colB || '';
   }
 
+  /* An empty box over a missing value stays missing, and a language nobody
+     wrote in is not added — so opening a request and closing it does not
+     mark it changed. */
   function readCols() {
-    ['a', 'b'].forEach(function (col) {
-      var lang = $(col === 'a' ? 'prLangA' : 'prLangB').value;
-      if (!lang) return;
-      /* An empty box over a missing value stays missing, and a language
-         nobody wrote in is not added — so opening a request and closing it
-         does not mark it changed. */
-      var had = state.text[lang], into = {}, any = false;
-      document.querySelectorAll('[data-ptx][data-col="' + col + '"]').forEach(function (el) {
-        var k = el.getAttribute('data-ptx'), v = el.value;
-        if (v === '' && (!had || had[k] == null)) v = had ? had[k] : null;
-        if (v) any = true;
-        into[k] = v;
-      });
-      if (had) Object.assign(had, into);
-      else if (any) state.text[lang] = into;
+    var lang = state.colA;
+    if (!lang) return;
+    var had = state.text[lang], into = {}, any = false;
+    document.querySelectorAll('#prForm [data-ptx]').forEach(function (el) {
+      var k = el.getAttribute('data-ptx'), v = el.value;
+      if (v === '' && (!had || had[k] == null)) v = had ? had[k] : null;
+      if (v) any = true;
+      into[k] = v;
     });
+    if (had) Object.assign(had, into);
+    else if (any) state.text[lang] = into;
   }
 
   function writeCols() {
-    ['a', 'b'].forEach(function (col) {
-      var lang = $(col === 'a' ? 'prLangA' : 'prLangB').value;
-      var v = state.text[lang] || {};
-      document.querySelectorAll('[data-ptx][data-col="' + col + '"]').forEach(function (el) {
-        el.value = v[el.getAttribute('data-ptx')] || '';
-      });
-      var tag = $(col === 'a' ? 'prTagA' : 'prTagB');
-      if (tag) tag.textContent = (v.title ? '' : tr('ms.missing'));
+    fillLangPickers();   // first: it moves beside off the language now being written
+    var mine = state.text[state.colA] || {}, ref = (state.colB && state.text[state.colB]) || {};
+    document.querySelectorAll('#prForm [data-ptx]').forEach(function (el) {
+      el.value = mine[el.getAttribute('data-ptx')] || '';
+    });
+    document.querySelectorAll('#prForm [data-pref]').forEach(function (el) {
+      var v = ref[el.getAttribute('data-pref')];
+      el.textContent = v || '';
+      el.hidden = !v;
+      if (state.colB) el.setAttribute('lang', state.colB);
     });
   }
 
@@ -337,11 +350,13 @@
     setSwitch('prAnswered', state.isAnswered);
   });
 
-  /* Changing a column's language keeps what was typed: read the old language
-     out before the picker moves, then write the new one in. */
-  ['prLangA', 'prLangB'].forEach(function (id) {
-    $(id).addEventListener('focus', readCols);
-    $(id).addEventListener('change', writeCols);
+  /* Switching either language keeps what was typed: read it out first. */
+  [['prLangA', 'colA'], ['prLangB', 'colB']].forEach(function (cfg) {
+    $(cfg[0]).addEventListener('change', function (e) {
+      readCols();
+      state[cfg[1]] = e.target.value;
+      writeCols();
+    });
   });
 
   /* Keyboard parity: the row is focusable and announces itself as a button. */

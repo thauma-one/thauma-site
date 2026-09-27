@@ -56,42 +56,27 @@ staffHeading: What this ministry <b>publishes</b>
 <form class="ms-form" id="msForm" hidden>
   <input type="hidden" id="msId">
 
-  {#- TWO LANGUAGE COLUMNS, EITHER OF WHICH CAN BE ANY LANGUAGE.
-
-     Not "English and Croatian": the columns are built from whatever the
-     organization offers, so adding Portuguese needs no change here. The left
-     column opens on the staff member's own language and the right on the next
-     one they publish, but both are free to change.
-
-     Side by side because a missing or stale translation is invisible when you
-     edit one language at a time — which is how a trilingual site ends up with
-     three versions that disagree. -#}
-  <div class="ms-langs">
-    <div class="ms-col">
-      <div class="ms-col-head">
-        <select id="msLangA" class="lang-pick" aria-label="Language, left column"></select>
-        <span class="ms-col-tag" id="msTagA"></span>
-      </div>
-      <label class="fld"><span data-i18n="ms.title">Title</span>
-        <input type="text" data-tx="title" data-col="a" maxlength="200"></label>
-      <label class="fld"><span data-i18n="ms.description">Description</span>
-        <textarea data-tx="description" data-col="a" rows="5"></textarea></label>
-      <label class="fld ms-when-typed"><span data-i18n="ms.when">When</span>
-        <input type="text" data-tx="target_label" data-col="a" maxlength="120"></label>
-    </div>
-
-    <div class="ms-col">
-      <div class="ms-col-head">
-        <select id="msLangB" class="lang-pick" aria-label="Language, right column"></select>
-        <span class="ms-col-tag" id="msTagB"></span>
-      </div>
-      <label class="fld"><span data-i18n="ms.title">Title</span>
-        <input type="text" data-tx="title" data-col="b" maxlength="200"></label>
-      <label class="fld"><span data-i18n="ms.description">Description</span>
-        <textarea data-tx="description" data-col="b" rows="5"></textarea></label>
-      <label class="fld ms-when-typed"><span data-i18n="ms.when">When</span>
-        <input type="text" data-tx="target_label" data-col="b" maxlength="120"></label>
-    </div>
+  {#- ONE LANGUAGE AT A TIME, "Writing X beside Y" — the same model as Website
+     › Pages. A column per language stops working somewhere around four, and
+     the languages are meant to grow to thirty. The language beside is shown
+     small above each field, so a missing or stale translation is still seen
+     while writing. Switching Writing keeps what was typed. -#}
+  <div class="ms-writing">
+    <label class="ms-pick"><span data-i18n="con.writing">Writing</span>
+      <select id="msLangA" class="lang-pick"></select></label>
+    <label class="ms-pick" id="msBesideWrap"><span data-i18n="con.beside">beside</span>
+      <select id="msLangB" class="lang-pick"></select></label>
+  </div>
+  <div class="ms-fields">
+    <label class="fld"><span data-i18n="ms.title">Title</span>
+      <small class="ms-ref" data-ref="title" hidden></small>
+      <input type="text" data-tx="title" data-col="a" maxlength="200"></label>
+    <label class="fld"><span data-i18n="ms.description">Description</span>
+      <small class="ms-ref" data-ref="description" hidden></small>
+      <textarea data-tx="description" data-col="a" rows="5"></textarea></label>
+    <label class="fld ms-when-typed"><span data-i18n="ms.when">When</span>
+      <small class="ms-ref" data-ref="target_label" hidden></small>
+      <input type="text" data-tx="target_label" data-col="a" maxlength="120"></label>
   </div>
 
   {#- WHEN: PICKED ONCE (board 8). The precision that is honest — a day, a
@@ -265,35 +250,23 @@ staffHeading: What this ministry <b>publishes</b>
     <form class="ms-form" id="prForm" hidden>
       <input type="hidden" id="prId">
 
-      {#- Two language columns, same as the milestone editor and for the same
-         reason: a missing or stale translation is invisible when you edit one
-         language at a time. -#}
-      <div class="ms-langs">
-        <div class="ms-col">
-          <div class="ms-col-head">
-            <select id="prLangA" class="lang-pick" aria-label="Language, left column"></select>
-            <span class="ms-col-tag" id="prTagA"></span>
-          </div>
-          <label class="fld"><span data-i18n="pr.title">Request</span>
-            <input type="text" data-ptx="title" data-col="a" maxlength="160"></label>
-          <label class="fld"><span data-i18n="pr.detail">Detail</span>
-            <textarea data-ptx="description" data-col="a" rows="4"></textarea></label>
-          <label class="fld"><span data-i18n="pr.answerText">What happened</span>
-            <textarea data-ptx="answer_text" data-col="a" rows="3"></textarea></label>
-        </div>
-
-        <div class="ms-col">
-          <div class="ms-col-head">
-            <select id="prLangB" class="lang-pick" aria-label="Language, right column"></select>
-            <span class="ms-col-tag" id="prTagB"></span>
-          </div>
-          <label class="fld"><span data-i18n="pr.title">Request</span>
-            <input type="text" data-ptx="title" data-col="b" maxlength="160"></label>
-          <label class="fld"><span data-i18n="pr.detail">Detail</span>
-            <textarea data-ptx="description" data-col="b" rows="4"></textarea></label>
-          <label class="fld"><span data-i18n="pr.answerText">What happened</span>
-            <textarea data-ptx="answer_text" data-col="b" rows="3"></textarea></label>
-        </div>
+      {#- "Writing X beside Y", as in the milestone editor. -#}
+      <div class="ms-writing">
+        <label class="ms-pick"><span data-i18n="con.writing">Writing</span>
+          <select id="prLangA" class="lang-pick"></select></label>
+        <label class="ms-pick" id="prBesideWrap"><span data-i18n="con.beside">beside</span>
+          <select id="prLangB" class="lang-pick"></select></label>
+      </div>
+      <div class="ms-fields">
+        <label class="fld"><span data-i18n="pr.title">Request</span>
+          <small class="ms-ref" data-pref="title" hidden></small>
+          <input type="text" data-ptx="title" data-col="a" maxlength="160"></label>
+        <label class="fld"><span data-i18n="pr.detail">Detail</span>
+          <small class="ms-ref" data-pref="description" hidden></small>
+          <textarea data-ptx="description" data-col="a" rows="4"></textarea></label>
+        <label class="fld"><span data-i18n="pr.answerText">What happened</span>
+          <small class="ms-ref" data-pref="answer_text" hidden></small>
+          <textarea data-ptx="answer_text" data-col="a" rows="3"></textarea></label>
       </div>
 
       <div class="ms-grid ms-neutral">

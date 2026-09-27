@@ -496,26 +496,22 @@ tbody tr[aria-expanded="true"]{background:rgba(255,255,255,.045)}
   .ms-row-actions{justify-content:flex-start}
 }
 
-/* ---- the two language columns ---- */
-.ms-langs{display:grid;grid-template-columns:1fr 1fr;gap:26px}
-.ms-col{display:flex;flex-direction:column;gap:16px}
-.ms-col-head{display:flex;align-items:center;gap:10px;padding-bottom:12px;
+/* ---- "Writing X beside Y": one language's fields, the other shown above ---- */
+.ms-writing{display:flex;flex-wrap:wrap;gap:12px 22px;padding-bottom:16px;margin-bottom:18px;
   border-bottom:1px solid var(--line)}
+.ms-pick{display:flex;align-items:center;gap:10px;font-size:var(--fs-sm);color:var(--dim)}
+.ms-fields{display:flex;flex-direction:column;gap:16px}
+/* The same line in the language beside: small, quiet, above the field. */
+.ms-ref{font-size:var(--fs-tiny);color:var(--dim);line-height:var(--lh-body);white-space:pre-wrap}
+.ms-ref[hidden]{display:none}
 .lang-pick{background:var(--bg2,#0b1119);border:1px solid rgba(255,255,255,.14);
   color:var(--text);font-family:var(--font-display);font-size:12px;font-weight:var(--w-bold);
   letter-spacing:.06em;padding:7px 10px;border-radius:var(--radius);cursor:pointer}
 .lang-pick:focus{outline:none;border-color:var(--voice-tech)}
-/* Says whether THIS column's language actually reaches partner sites. A
-   translation can be written before it is switched on, so the editor must be
-   explicit about which of the two you are looking at. */
-.ms-col-tag{font-size:9px;letter-spacing:.12em;text-transform:uppercase;
-  font-weight:var(--w-bold);color:var(--dim)}
-.ms-col-tag.on{color:var(--voice-human)}
 .ms-neutral{margin-top:26px;padding-top:22px;border-top:1px solid var(--line)}
-/* …but with no language columns above it (Goals), it is the top of the form. */
+/* …but with no language fields above it (Goals), it is the top of the form. */
 .ms-form > input[type="hidden"]:first-child + .ms-neutral{margin-top:0;padding-top:0;border-top:0}
 
-@media (max-width:760px){ .ms-langs{grid-template-columns:1fr} }
 
 /* ---- the unsaved-changes bar ---- */
 /* AT THE BOTTOM, not stuck under the header.
@@ -769,7 +765,6 @@ body.has-savebar .toasts{--toast-lift:var(--ms-savebar-h,72px)}
 @media (prefers-reduced-motion: reduce){ .toast{transition:none} }
 
 /* One published language means one column, at full width. */
-.ms-langs.single{grid-template-columns:1fr}
 
 /* Role tags — a list rather than a sentence, because there will be more of
    them (board, and whatever the org grows into) and a list reads the same at
@@ -794,7 +789,7 @@ body.has-savebar .toasts{--toast-lift:var(--ms-savebar-h,72px)}
 /* `hidden` loses to any display declaration, so a column set to display:flex
    stays on screen when hidden — which is how the unused language column kept
    showing its empty boxes. Every element that sets display needs this. */
-.ms-col[hidden],.tab-panel[hidden],.key-reveal[hidden],.ms-savebar[hidden]{display:none}
+.tab-panel[hidden],.key-reveal[hidden],.ms-savebar[hidden]{display:none}
 
 /* ---- toasts, louder ---- */
 /* The first pass was a thin left border on a dark panel, which on a dark page

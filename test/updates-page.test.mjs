@@ -23,7 +23,9 @@ const check = async (name, fn) => {
   catch (e) { console.log(`  FAIL  ${name}\n          ${e.message}`); fail++; }
 };
 const assert = (c, m) => { if (!c) throw new Error(m); };
-const eq = (a, b, m) => assert(a === b, `${m} — got ${JSON.stringify(a)}, want ${JSON.stringify(b)}`);
+/* Compared as JSON, so a pair of values reads as one fact. */
+const eq = (a, b, m) => assert(JSON.stringify(a) === JSON.stringify(b),
+  `${m} — got ${JSON.stringify(a)}, want ${JSON.stringify(b)}`);
 const settle = (ms = 80) => new Promise((r) => setTimeout(r, ms));
 
 console.log("Updates — edit freely, then Publish\n");
@@ -32,7 +34,7 @@ if (!existsSync(PAGE)) {
   process.exit(1);
 }
 
-const LANGS = [{ code: "en", name: "English" }, { code: "hr", name: "Hrvatski" }];
+const LANGS = [{ code: "en", name: "English", is_enabled: true }, { code: "hr", name: "Hrvatski", is_enabled: true }];
 const DATA = () => ({
   "staff-milestones": {
     languages: LANGS, preferred_lang: "en",
@@ -58,7 +60,7 @@ const DATA = () => ({
   "staff-videos": { channel: null, videos: [], links: [] },
 });
 
-async function boot() {
+async function boot({ oneLanguage = false } = {}) {
   const dom = new JSDOM(readFileSync(PAGE, "utf8"), {
     runScripts: "outside-only", pretendToBeVisual: true,
     url: "https://next.thauma.one/staff/updates/",
@@ -67,6 +69,7 @@ async function boot() {
   const sent = [];
   const toasts = [];
   const data = DATA();
+  if (oneLanguage) for (const k of Object.keys(data)) if (data[k].languages) data[k].languages = [LANGS[0]];
   w.fetch = async (url, opts = {}) => {
     url = String(url);
     const method = opts.method || "GET";
@@ -161,6 +164,57 @@ await check("opening any row and pressing Done changes nothing", async () => {
     await done(form);
     eq(bar().hidden, true, `${id} reads as changed after merely being opened`);
   }
+});
+
+await check("Writing one language beside another: typing survives a switch, and the other shows above", async () => {
+  const { w, d, sent, click, row, done, publish } = await boot();
+  click(row("prList", "p1"));
+  await settle();
+  const writing = d.getElementById("prLangA"), beside = d.getElementById("prLangB");
+  eq(writing.value, "en", "writing opens on the person's language");
+  eq(beside.value, "hr", "beside opens on another");
+  assert(/missing/i.test(writing.querySelector('option[value="hr"]').textContent),
+    "a language with no words should say so in the list");
+  const title = () => d.querySelector('#prForm [data-ptx="title"]');
+  title().value = "Visas, soon";
+  writing.value = "hr";
+  writing.dispatchEvent(new w.Event("change", { bubbles: true }));
+  eq(title().value, "", "Croatian has no words yet");
+  const ref = d.querySelector('#prForm [data-pref="title"]');
+  eq([ref.hidden, ref.textContent], [false, "Visas, soon"], "the English, typed a moment ago, shows above");
+  title().value = "Vize";
+  writing.value = "en";
+  writing.dispatchEvent(new w.Event("change", { bubbles: true }));
+  eq(title().value, "Visas, soon", "switching back keeps what was typed");
+  await done("prForm");
+  await publish();
+  const post = sent.find((s) => s.method === "POST" && s.url.includes("staff-prayer"));
+  eq([post.body.text.en.title, post.body.text.hr.title], ["Visas, soon", "Vize"], "both languages");
+});
+
+await check("the milestone editor writes the same way", async () => {
+  const { w, d, click, row, done } = await boot();
+  click(row("msList", "m1"));
+  await settle();
+  const title = () => d.querySelector('#msForm [data-tx="title"]');
+  const writing = d.getElementById("msLangA");
+  writing.value = "hr";
+  writing.dispatchEvent(new w.Event("change", { bubbles: true }));
+  const ref = d.querySelector('#msForm [data-ref="title"]');
+  eq([ref.hidden, ref.textContent], [false, "Build the studio"], "the English above");
+  title().value = "Izgradnja studija";
+  writing.value = "en";
+  writing.dispatchEvent(new w.Event("change", { bubbles: true }));
+  eq(title().value, "Build the studio", "English is still English");
+  await done("msForm");
+  assert(/1 milestone/.test(d.getElementById("upCount").textContent), "the Croatian title is waiting");
+});
+
+await check("with one language there is nothing to write beside", async () => {
+  const { d, click, row } = await boot({ oneLanguage: true });
+  click(row("msList", "m1"));
+  await settle();
+  eq(d.getElementById("msBesideWrap").hidden, true, "beside should go away");
 });
 
 await check("a delete waits for Publish, Keep takes it back, and Publish asks first", async () => {

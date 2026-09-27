@@ -105,29 +105,28 @@
     return state.languages.filter(function (l) { return l.is_enabled; });
   }
 
+  /* "Writing X beside Y". Writing lists every published language and says
+     which have no title yet; beside lists the others, and goes away when there
+     is only one language. Beside opens on a language that has words to show. */
   function fillLangPickers() {
-    // ONE LANGUAGE, ONE COLUMN. A second column offering the same language as
-    // the first is a side-by-side comparison of a thing with itself, and it
-    // halves the width available for the text you are actually writing.
-    var only = enabledLangs().length < 2;
-    document.querySelector('.ms-langs').classList.toggle('single', only);
-    var colB = document.querySelectorAll('.ms-col')[1];
-    if (colB) colB.hidden = only;
-    if (only) state.colB = null;
-
-    [['msLangA', 'colA', 'msTagA'], ['msLangB', 'colB', 'msTagB']].forEach(function (t) {
-      var sel = $(t[0]); if (!sel) return;
-      sel.innerHTML = enabledLangs().map(function (l) {
-        return '<option value="' + esc(l.code) + '">' + esc(l.native_name || l.name) +
-               '</option>';
-      }).join('');
-      sel.value = state[t[1]] || '';
-      // Every language in the list is published, so the old published /
-      // not-published tag said the same thing on every column. It now shows
-      // the code, which is the useful thing when two columns look alike.
-      var tag = $(t[2]);
-      if (tag) tag.textContent = sel.value ? sel.value.toUpperCase() : '';
-    });
+    var on = enabledLangs();
+    var tx = state.formText || {};
+    var titled = function (c) { return !!(tx[c] && tx[c].title); };
+    $('msLangA').innerHTML = on.map(function (l) {
+      return '<option value="' + esc(l.code) + '">' + esc(l.native_name || l.name) +
+        (state.formText && !titled(l.code) ? ' · ' + esc(tr('ms.missing')) : '') + '</option>';
+    }).join('');
+    $('msLangA').value = state.colA || '';
+    var others = on.filter(function (l) { return l.code !== state.colA; });
+    if (!others.some(function (l) { return l.code === state.colB; })) {
+      var best = others.filter(function (l) { return titled(l.code); })[0] || others[0];
+      state.colB = best ? best.code : null;
+    }
+    $('msBesideWrap').hidden = !others.length;
+    $('msLangB').innerHTML = others.map(function (l) {
+      return '<option value="' + esc(l.code) + '">' + esc(l.native_name || l.name) + '</option>';
+    }).join('');
+    $('msLangB').value = state.colB || '';
   }
 
   /* ---- rendering ------------------------------------------------------ */
@@ -593,16 +592,37 @@
     $('msForm').classList.toggle('is-not-started', st === 'upcoming' || st === 'canceled');
   }
 
-  function fillColumn(col, m) {
-    var code = col === 'a' ? state.colA : state.colB;
-    var tx = (m && m.text && code) ? (m.text[code] || {}) : {};
-    colFields(col).forEach(function (el) { el.value = tx[el.dataset.tx] || ''; });
+  /* The open editor's words, every language, lang -> { title, description,
+     target_label }. Switching Writing reads the fields into it first, so
+     nothing typed is lost; Done hands it to the working copy. */
+  function fillWriting() {
+    fillLangPickers();   // first: it moves beside off the language now being written
+    var tx = state.formText || {};
+    var mine = tx[state.colA] || {}, ref = (state.colB && tx[state.colB]) || {};
+    colFields('a').forEach(function (el) { el.value = mine[el.dataset.tx] || ''; });
+    Array.prototype.forEach.call($('msForm').querySelectorAll('[data-ref]'), function (el) {
+      var v = ref[el.dataset.ref];
+      el.textContent = v || '';
+      el.hidden = !v;
+      if (state.colB) el.setAttribute('lang', state.colB);
+    });
   }
 
-  function readColumn(col) {
-    var out = {};
-    colFields(col).forEach(function (el) { out[el.dataset.tx] = el.value; });
-    return out;
+  /* An empty box over a missing value stays missing, and a language nobody
+     wrote in is not added — otherwise opening a milestone and closing it
+     would mark it changed. */
+  function readWriting() {
+    var code = state.colA;
+    if (!code || !state.formText) return;
+    var had = state.formText[code], out = {}, any = false;
+    colFields('a').forEach(function (el) {
+      var k = el.dataset.tx, v = el.value;
+      if (v === '' && (!had || had[k] == null)) v = had ? had[k] : null;
+      if (v) any = true;
+      out[k] = v;
+    });
+    if (had) Object.assign(had, out);
+    else if (any) state.formText[code] = out;
   }
 
   async function openForm(id) {
@@ -624,8 +644,8 @@
     state.before = m ? clone(m) : null;
 
     $('msId').value = m && state.saved[id] ? id : '';
-    fillColumn('a', m);
-    fillColumn('b', m);
+    state.formText = clone(m ? (m.text || {}) : {});
+    fillWriting();
 
     /* What the date was saved as. NULL is a milestone from before dates were
        picked: its typed sentences stand ("my way") until somebody picks. */
@@ -692,6 +712,7 @@
     await closePanel(form);
     state.editing = null;
     state.before = null;
+    state.formText = null;
     markOpenRow();
     render();
     updateSaveBar();
@@ -707,24 +728,8 @@
      not added — there would be nothing to show for it. */
   function applyForm() {
 
-    /* A column comes back exactly as it went in unless something was typed:
-       an empty box over a missing value stays missing, and a language nobody
-       wrote in is not added. Otherwise opening a milestone and closing it
-       would mark it changed. */
-    var before = (state.editing && state.draft[state.editing] && state.draft[state.editing].text) || {};
-    var text = {};
-    [['a', state.colA], ['b', state.colB]].forEach(function (c) {
-      var code = c[1];
-      if (!code || text[code]) return;
-      var had = before[code], read = readColumn(c[0]), out = {}, any = false;
-      Object.keys(read).forEach(function (k) {
-        var v = read[k];
-        if (v === '' && (!had || had[k] == null)) v = had ? had[k] : null;
-        if (v) any = true;
-        out[k] = v;
-      });
-      if (had || any) text[code] = had ? Object.assign({}, had, out) : out;
-    });
+    readWriting();
+    var text = state.formText || {};
 
     var id = state.editing || $('msId').value;
     var isNew = !id;
@@ -835,11 +840,14 @@
       w.mode = 'picked';
       w.precision = guessPrecision(w.start);
     } else {
-      /* Start typing from the sentence the date already makes. */
-      [['a', state.colA], ['b', state.colB]].forEach(function (c) {
-        var f = $('msForm').querySelector('[data-tx="target_label"][data-col="' + c[0] + '"]');
-        if (f && !f.value && c[1] && w.start) f.value = whenLabel(c[1], w.precision, w.start, w.end) || '';
+      /* Start typing from the sentence the date already makes, in every
+         language that has words. */
+      readWriting();
+      Object.keys(state.formText).forEach(function (c) {
+        var t = state.formText[c];
+        if (t && t.title && w.start) t.target_label = whenLabel(c, w.precision, w.start, w.end);
       });
+      fillWriting();
       w.mode = 'custom';
       w.end = null;
     }
@@ -869,16 +877,13 @@
     drawProgress();
   });
 
-  // Switching a column's language re-reads that column from the milestone
-  // being edited, so unsaved text in the OTHER column is never disturbed.
-  [['msLangA', 'colA', 'a'], ['msLangB', 'colB', 'b']].forEach(function (cfg) {
+  /* Switching either language reads what was typed first, so nothing is lost;
+     the list follows Writing, so its titles are in the language being written. */
+  [['msLangA', 'colA'], ['msLangB', 'colB']].forEach(function (cfg) {
     $(cfg[0]).addEventListener('change', function (e) {
+      readWriting();
       state[cfg[1]] = e.target.value;
-      fillLangPickers();
-      var m = state.editing
-        ? state.draft[state.editing]
-        : null;
-      fillColumn(cfg[2], m);
+      fillWriting();
       render();
     });
   });
