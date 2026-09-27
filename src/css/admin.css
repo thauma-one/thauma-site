@@ -1187,3 +1187,6 @@ html.review-open{overflow:hidden}
   .c-tools{gap:10px}
   .c-tools .c-pick{flex:1 1 45%}
 }
+
+/* Website › Settings: real names where the raw keys were (board 13). */
+.s-name{font-size:var(--fs-sm);color:var(--text)}

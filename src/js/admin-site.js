@@ -137,8 +137,18 @@
   function groupOf(p) {
     return p.indexOf('.') === -1 ? '_general' : p.split('.')[0];
   }
+  /* REAL NAMES (mockup board 13): "Site name", "Address", "Social links",
+     not name / url / socials. A setting the vocabulary does not know yet
+     still appears, under its key — the form is derived from the file. */
+  function has(key) { return tr(key) !== key; }
+  function fieldLabel(p) { return has('set.f.' + p) ? tr('set.f.' + p) : p; }
+  /* The social links belong to the site, so they sit in its card. */
+  function cardOf(p) {
+    var g = groupOf(p);
+    return g === 'socials' ? '_general' : g;
+  }
   function groupLabel(g) {
-    if (g === '_general') return tr('con.general');
+    if (g === '_general') return tr('set.g.site');
     return g.replace(/([A-Z_])/g, ' $1').replace(/_/g, '')
             .replace(/^./, function (c) { return c.toUpperCase(); }).trim();
   }
@@ -148,6 +158,8 @@
      editor does not translate its section names: they identify a page or a
      block, and they are things you match against the site rather than read. */
   function humanise(id) {
+    if (has('lbl.s.' + id)) return tr('lbl.s.' + id);
+    if (has('set.v.' + id)) return tr('set.v.' + id);
     return id.replace(/([A-Z])/g, ' $1').toLowerCase()
              .replace(/^./, function (c) { return c.toUpperCase(); }).trim();
   }
@@ -242,21 +254,22 @@
     state.order.forEach(function (p) {
       // Visibility and images each get their own block below.
       if (isVisibility(p) || isImage(p) || isFrozenList(p) || isLanguage(p)) return;
-      var g = groupOf(p);
+      var g = cardOf(p);
       if (!seen[g]) { seen[g] = true; groups.push(g); }
     });
 
+    /* The site first, then what visitors can see (board 13). */
     $('sRoot').innerHTML =
-      renderVisibility() +
       groups.map(function (g) {
         var rows = state.order.filter(function (p) {
-          return !isVisibility(p) && !isImage(p) && !isFrozenList(p) && !isLanguage(p) && groupOf(p) === g;
+          return !isVisibility(p) && !isImage(p) && !isFrozenList(p) && !isLanguage(p) && cardOf(p) === g;
         });
         return '<section class="s-group">' +
           '<h3>' + esc(groupLabel(g)) + '</h3>' +
           rows.map(function (p) { return field(p); }).join('') +
           '</section>';
       }).join('') +
+      renderVisibility() +
       renderImages();
   }
 
@@ -285,7 +298,7 @@
 
   function visRow(label, base) {
     return '<div class="v-row">' +
-      '<div class="v-label"><code>' + esc(label) + '</code></div>' +
+      '<div class="v-label"><span class="s-name">' + esc(label) + '</span></div>' +
       switchCell(base + '.dev', 'is-dev') +
       switchCell(base + '.live', 'is-live') +
       '<span></span>' +
@@ -353,7 +366,7 @@
     var v = state.draft[p];
     var frozen = isFrozen(p);
     var dirty = !frozen && state.draft[p] !== state.saved[p];
-    var label = p.indexOf('.') === -1 ? p : p.slice(p.indexOf('.') + 1);
+    var label = fieldLabel(p);
 
     var control;
     if (frozen) {
@@ -381,7 +394,7 @@
     return '<div class="s-field' + (dirty ? ' is-dirty' : '') +
              (frozen ? ' is-frozen' : '') + '" data-field="' + esc(p) + '">' +
       '<div class="s-label">' +
-        '<code>' + esc(label) + '</code>' +
+        '<span class="s-name">' + esc(label) + '</span>' +
         (dirty ? '<span class="badge unsaved">' + esc(tr('ms.unsaved')) + '</span>' : '') +
       '</div>' +
       '<div class="s-control">' + control + '</div>' +
