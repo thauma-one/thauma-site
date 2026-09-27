@@ -319,6 +319,37 @@ await check("only an administrator changes what is shared", async () => {
   eq(res.status, 403, "status");
 });
 
+/* ---------------- API keys: the ministry's, part by part ---------------- */
+
+const postJson = (path, body, token = MIRA) => new Request("https://dev.thauma.one" + path, {
+  method: "POST",
+  headers: { "Cf-Access-Jwt-Assertion": token, "Content-Type": "application/json" },
+  body: JSON.stringify(body),
+});
+
+await check("a new key reads only the parts chosen, and records who made it", async () => {
+  const db = makeDb();
+  const res = await staffSettings.fetch(postJson("/api/staff-settings",
+    { name: "chaseroush.com build", parts: ["milestones", "videos"] }), env(db));
+  eq(res.status, 200, "status");
+  const v = named(db.calls.find((c) => c.name === "api_key_create"));
+  eq([v.scopes, v.created_by, v.partner_id], ["read:milestones read:videos", "u_mira", "p_mira"], "stored");
+});
+
+await check("a key asked to read nothing is refused", async () => {
+  const res = await staffSettings.fetch(postJson("/api/staff-settings", { name: "x", parts: [] }), env(makeDb()));
+  eq(res.status, 400, "status");
+});
+
+await check("what a key reads can be changed later, for this ministry's keys only", async () => {
+  const db = makeDb();
+  const res = await staffSettings.fetch(patch("/api/staff-settings",
+    { key_parts: { id: "k_1", parts: ["goals"] } }, MIRA), env(db));
+  eq(res.status, 200, "status");
+  const v = named(db.calls.find((c) => c.name === "api_key_set_scopes"));
+  eq([v.id, v.partner_id, v.scopes], ["k_1", "p_mira", "read:goals"], "stored");
+});
+
 await check("GET /api/staff-snapshot returns 200 through the router", async () => {
   // Routed rather than imported: this handler lives inside worker.js, so the
   // only way to reach it is the way a browser does.

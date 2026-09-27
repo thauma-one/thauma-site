@@ -18,7 +18,7 @@
 
   var API = '/api/staff-settings';
   var $ = function (id) { return document.getElementById(id); };
-  var state = { languages: [], you: null, partner: null };
+  var state = { languages: [], keys: [], you: null, partner: null };
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -39,6 +39,9 @@
      string here was the bug: the interface translated and its notifications
      did not. */
   function tr(key) { return window.StaffI18n ? window.StaffI18n.t(key) : key; }
+  function fill(key, vars) {
+    return window.StaffI18n && window.StaffI18n.fill ? window.StaffI18n.fill(key, vars) : tr(key);
+  }
 
   function toastKey(key, kind) {
     setStatus(window.StaffI18n ? window.StaffI18n.t(key) : key, kind);
@@ -110,6 +113,55 @@
         '</span></div>';
     }).join('');
 
+    renderKeys();
+  }
+
+  /* Reads state.api_keys, which is what the endpoint actually returns. It
+     read state.keys until 2026-08-15 — undefined, so .length threw and the
+     whole Settings page failed to draw. The error was visible only because
+     render failures stopped being reported as network problems. */
+  /* The parts a key may read — the partner API's parts (lib/apikey.js
+     KEY_PARTS on the Worker). Switches, not a list to read. */
+  var PARTS = ['milestones', 'goals', 'prayer', 'videos', 'mailings'];
+  function partSwitches(on, attrs) {
+    return PARTS.map(function (p) {
+      var yes = on.indexOf(p) !== -1;
+      return '<button type="button" class="switch small" role="switch" aria-checked="' + yes + '" ' +
+        attrs + ' data-part="' + p + '">' +
+        '<span class="switch-track"><span class="switch-state">' + (yes ? 'On' : 'Off') +
+        '</span><span class="switch-knob"></span></span>' +
+        '<span class="switch-label">' + esc(tr('set.part.' + p)) + '</span></button>';
+    }).join('');
+  }
+  function drawNewParts() {
+    var on = state.newParts || (state.newParts = PARTS.slice());
+    $('setKeyParts').innerHTML = partSwitches(on, 'data-new');
+  }
+
+  function renderKeys() {
+    drawNewParts();
+    var keys = state.api_keys || [];
+    if (!keys.length) {
+      $('setKeyList').innerHTML = '<p class="empty">' + esc(tr('set.keysEmpty')) + '</p>';
+      return;
+    }
+    $('setKeyList').innerHTML = keys.map(function (k) {
+      var made = (k.created_at || '').slice(0, 10);
+      var used = (k.last_used_at || '').slice(0, 10);
+      var meta = [k.created_by_name ? fill('set.keyBy', { who: k.created_by_name }) : null,
+                  fill('set.keyMade', { made: made }),
+                  used ? fill('set.keyUsed', { used: used }) : tr('set.keyNeverUsed')]
+        .filter(Boolean).join(' · ');
+      return '<div class="key-row' + (k.revoked ? ' is-revoked' : '') + '" data-key="' + esc(k.id) + '">' +
+        '<div class="key-head"><div><span class="key-title">' + esc(k.name) + '</span>' +
+          '<span class="key-meta">' + esc(meta) + '</span></div>' +
+        (k.revoked
+          ? '<span class="badge proto">' + esc(tr('set.revoked')) + '</span>'
+          : '<button type="button" class="del" data-revoke="' + esc(k.id) + '">' + esc(tr('set.revoke')) + '</button>') +
+        '</div>' +
+        (k.revoked ? '' : '<div class="key-parts">' + partSwitches(k.parts || [], 'data-key-part="' + esc(k.id) + '"') + '</div>') +
+      '</div>';
+    }).join('');
   }
 
   /* ---- loading and saving --------------------------------------------- */
@@ -246,10 +298,79 @@
            on ? 'toast.published' : 'toast.unpublished');
   });
 
-  /* API KEYS MOVED TO SHARING › For developers (board 9): they are one more
-     way this ministry's data reaches another website. An old link lands
-     there. */
-  if (location.hash === '#keys') { location.replace('/staff/sharing/#keys'); return; }
+  $('setKeyList').addEventListener('click', async function (e) {
+    /* What a key may read: changed at once, like making or revoking one — a
+       key is a credential, not a draft. */
+    var sw = e.target.closest('[data-key-part]');
+    if (sw) {
+      var key = (state.api_keys || []).filter(function (k) { return k.id === sw.dataset.keyPart; })[0];
+      if (!key) return;
+      var parts = (key.parts || []).slice(), p = sw.dataset.part, at = parts.indexOf(p);
+      if (at === -1) parts.push(p); else parts.splice(at, 1);
+      if (!parts.length) { toastKey('err.keyNeedsPart', 'err'); return; }
+      sw.disabled = true;
+      await change({ key_parts: { id: key.id, parts: parts } }, sw, 'toast.saved');
+      return;
+    }
+    var btn = e.target.closest('[data-revoke]');
+    if (!btn) return;
+    var ok = await window.StaffConfirm({ title: tr('set.revokeTitle'), confirm: tr('set.revoke'),
+      cancel: tr('ms.cancel'), danger: true });
+    if (!ok) return;
+    change({ revoke_key: btn.dataset.revoke }, btn, 'toast.keyRevoked');
+  });
+
+  $('setKeyParts').addEventListener('click', function (e) {
+    var sw = e.target.closest('[data-new]');
+    if (!sw) return;
+    var on = state.newParts, p = sw.dataset.part, at = on.indexOf(p);
+    if (at === -1) on.push(p); else if (on.length > 1) on.splice(at, 1);
+    drawNewParts();
+  });
+
+  $('setKeyAdd').addEventListener('click', async function () {
+    var name = $('setKeyName').value.trim();
+    if (!name) { toastKey('err.nameKeyFirst', 'err'); $('setKeyName').focus(); return; }
+
+    $('setKeyAdd').disabled = true;
+    try {
+      var res = await fetch(API, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name, parts: state.newParts || PARTS })
+      });
+      var body = await res.json().catch(function () { return {}; });
+      if (!res.ok) throw new Error(body.error || ('failed (' + res.status + ')'));
+
+      // The one and only time this value exists outside the database as a hash.
+      $('setKeyValue').textContent = body.key;
+      $('setKeyReveal').hidden = false;
+      $('setKeyName').value = '';
+      state.api_keys = body.api_keys || [];
+      renderKeys();
+      toastKey('toast.keyCreated', 'ok');
+    } catch (e) {
+      setStatus(e.message, 'err');
+    } finally {
+      $('setKeyAdd').disabled = false;
+    }
+  });
+
+  $('setKeyCopy').addEventListener('click', function () {
+    var v = $('setKeyValue').textContent;
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(v).then(function () { toastKey('toast.copied', 'ok'); });
+    } else {
+      // Older Safari over http has no clipboard API; select it so Ctrl-C works.
+      var r = document.createRange();
+      r.selectNode($('setKeyValue'));
+      window.getSelection().removeAllRanges();
+      window.getSelection().addRange(r);
+      setStatus('Selected — press Ctrl/Cmd C', 'ok');
+    }
+  });
+
   showTab((location.hash || '#account').slice(1));
   load();
 })();

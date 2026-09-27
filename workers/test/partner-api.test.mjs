@@ -12,7 +12,8 @@
  */
 import { createDb, partnerPublicSite, assertPublicSafe, PUBLIC_QUERIES, QUERIES }
   from "../src/lib/db.js";
-import { hashKey, extractKey, requirePartnerKey } from "../src/lib/apikey.js";
+import { hashKey, extractKey, requirePartnerKey, partsOf, scopesFor } from "../src/lib/apikey.js";
+import partnerApi from "../src/partner-api.js";
 
 let pass = 0, fail = 0;
 async function check(name, fn) {
@@ -384,6 +385,52 @@ await check("the partner id comes from the KEY, never from the request", async (
     { headers: { authorization: `Bearer ${KEY}` } });
   const { partner } = await requirePartnerKey(r, keyDb(GOOD));
   eq(partner.id, "p_chase", "a query parameter influenced the partner");
+});
+
+/* ------------- what a key may read, part by part (Settings › API keys) ------------- */
+
+function apiDb(scopes) {
+  /* A D1 binding, as the handler receives one. */
+  const answer = (sql) => {
+    if (sql.includes("api_keys")) return [{ ...GOOD, scopes }];
+    if (sql.includes("goal_progress")) return [{ goal_id: "g_1", label: "Monthly support", kind: "monthly",
+      target_cents: 100, currency: "USD", raised_cents: 50, donor_count: 1, percent: 50, captured_at: null }];
+    if (sql.includes("FROM milestone_translations")) return [{ milestone_id: "m_1", lang: "en", title: "Trip" }];
+    if (sql.includes("FROM partner_languages")) return [{ code: "en", name: "English", native_name: "English" }];
+    if (sql.includes("FROM milestones")) return [{ id: "m_1", parent_id: null, status: "upcoming", completion: 0 }];
+    return [];
+  };
+  return { prepare: (sql) => ({ bind: () => ({
+    all: async () => ({ results: answer(sql) }), run: async () => ({}),
+    first: async () => answer(sql)[0] || null }) }) };
+}
+const apiCall = async (scopes) => {
+  const res = await partnerApi.fetch(req({ authorization: `Bearer ${KEY}` }), { DB: apiDb(scopes) });
+  return { status: res.status, body: await res.json() };
+};
+
+await check("a key given only goal progress reads goals, and nothing else", async () => {
+  const { status, body } = await apiCall("read:goals");
+  eq(status, 200, "status");
+  eq(body.parts, ["goals"], "what it carries");
+  eq(body.goals.length, 1, "the goals");
+  eq(body.milestones, [], "the roadmap was read without being given");
+});
+
+await check("a key from before parts existed still reads everything", async () => {
+  const { body } = await apiCall("read:public");
+  eq(body.parts, ["milestones", "goals", "prayer", "videos", "mailings"], "everything");
+  eq([body.goals.length, body.milestones.length], [1, 1], "both parts");
+});
+
+await check("a key that names no part it knows is refused", async () => {
+  const { status } = await apiCall("read:something-else");
+  eq(status, 403, "status");
+});
+
+await check("the parts and the scopes say the same thing", async () => {
+  eq(partsOf(scopesFor(["prayer", "videos", "nonsense"])), ["prayer", "videos"], "round trip");
+  eq(scopesFor([]), "", "no parts is no scope");
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);

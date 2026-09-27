@@ -26,7 +26,10 @@
 import { createDb } from "./lib/db.js";
 import { requireAccess } from "./lib/access.js";
 import { resolveActor, auditActingWrite, withActing } from "./lib/actas.js";
-import { hashKey } from "./lib/apikey.js";
+import { hashKey, partsOf, scopesFor } from "./lib/apikey.js";
+
+/* A key as the screen shows it: what it may read, never its hash. */
+const keyRows = (keys) => keys.map((k) => ({ ...k, revoked: !!k.revoked_at, parts: partsOf(k.scopes) }));
 import { json, readJson } from "./lib/store.js";
 
 /** Resolve the caller to a partner and a role, or a denial. */
@@ -164,7 +167,7 @@ export default {
           end: (settings && settings.timeline_end) || null,
         },
         languages: languages.map((l) => ({ ...l, is_enabled: !!l.is_enabled })),
-        api_keys: keys.map((k) => ({ ...k, revoked: !!k.revoked_at })),
+        api_keys: keyRows(keys),
       }, actor));
     }
 
@@ -354,12 +357,23 @@ export default {
       }
 
       // --- revoke a key ---
+      /* WHAT A KEY MAY READ, changed after it was made. */
+      if (body.key_parts && body.key_parts.id) {
+        const scopes = scopesFor(body.key_parts.parts);
+        if (!scopes) return json({ error: "A key has to be able to read something — revoke it instead." }, 400);
+        await db.query("api_key_set_scopes", { id: String(body.key_parts.id), partner_id, scopes });
+        await audit(db, { user, partner, action: "update", entity: "api_key",
+                          entity_id: String(body.key_parts.id), detail: { scopes } });
+        const keys = await db.query("api_keys_for_partner", { partner_id });
+        return json({ api_keys: keyRows(keys) });
+      }
+
       if (body.revoke_key) {
         await db.query("api_key_revoke", { id: String(body.revoke_key), partner_id, now });
         await audit(db, { user, partner, action: "revoke", entity: "api_key",
                           entity_id: String(body.revoke_key) });
         const keys = await db.query("api_keys_for_partner", { partner_id });
-        return json({ api_keys: keys.map((k) => ({ ...k, revoked: !!k.revoked_at })) });
+        return json({ api_keys: keyRows(keys) });
       }
 
       return json({ error: "Nothing to change" }, 400);
@@ -372,6 +386,10 @@ export default {
       const body = await readJson(request);
       const name = String((body && body.name) || "").trim().slice(0, 80);
       if (!name) return json({ error: "Give the key a name so it can be recognized later" }, 400);
+      /* WHAT IT MAY READ, chosen when it is made. A request that names no
+         parts (an older screen) gets everything, as every key did before. */
+      const scopes = Array.isArray(body.parts) ? scopesFor(body.parts) : "read:public";
+      if (!scopes) return json({ error: "Choose at least one thing the key may read." }, 400);
 
       const raw = [...crypto.getRandomValues(new Uint8Array(32))]
         .map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -379,7 +397,7 @@ export default {
 
       await db.query("api_key_create", {
         id, partner_id, name, key_hash: await hashKey(raw),
-        scopes: "read:public", created_by: null, now,
+        scopes, created_by: (me && me.user_id) || null, now,
       });
       await audit(db, { user, partner, action: "create", entity: "api_key",
                         entity_id: id, detail: { name } });
@@ -389,7 +407,7 @@ export default {
         // The ONLY time this value exists outside the caller's browser.
         key: raw,
         id,
-        api_keys: keys.map((k) => ({ ...k, revoked: !!k.revoked_at })),
+        api_keys: keyRows(keys),
       });
     }
 

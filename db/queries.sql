@@ -1192,15 +1192,29 @@ UPDATE partners SET default_lang = :lang, updated_at = :now WHERE id = :partner_
 -- Never selects key_hash. The screen needs to know a key exists, what it is
 -- for, and when it was last used — the hash is not useful to a human and a
 -- payload that carries it is a payload that can leak it.
-SELECT id, name, scopes, created_at, last_used_at, revoked_at
-FROM api_keys
-WHERE partner_id = :partner_id
-ORDER BY revoked_at IS NOT NULL, created_at DESC;
+--
+-- THE MINISTRY'S KEYS, not a person's: a partner website's build uses one,
+-- and a key that died with the staff member who made it would stop that site
+-- updating the day they left. Who made it is shown, not who owns it.
+SELECT k.id, k.name, k.scopes, k.created_at, k.last_used_at, k.revoked_at,
+       u.name AS created_by_name
+FROM api_keys k
+LEFT JOIN users u ON u.id = k.created_by
+WHERE k.partner_id = :partner_id
+ORDER BY k.revoked_at IS NOT NULL, k.created_at DESC;
 
 
 -- name: api_key_create
 INSERT INTO api_keys (id, partner_id, name, key_hash, scopes, created_by, created_at)
 VALUES (:id, :partner_id, :name, :key_hash, :scopes, :created_by, :now);
+
+
+-- name: api_key_set_scopes
+-- What a key may read, changed after it was made (as GitHub and Cloudflare
+-- allow). The key itself is unchanged: sites using it keep working, and read
+-- more or less from their next request.
+UPDATE api_keys SET scopes = :scopes
+WHERE id = :id AND partner_id = :partner_id AND revoked_at IS NULL;
 
 
 -- name: api_key_revoke

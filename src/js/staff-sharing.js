@@ -491,26 +491,7 @@
   }
   window.addEventListener('resize', function () { fit(lastH); });
 
-  /* ---- API keys (For developers; moved from Settings) ------------------
-     Created and revoked at once, not through the save bar: a new key is
-     shown exactly once and a revoked one stops working that moment. */
-  function drawKeys() {
-    var keys = (state.settings && state.settings.api_keys) || [];
-    $('shKeyList').innerHTML = keys.length ? keys.map(function (k) {
-      var made = (k.created_at || '').slice(0, 10);
-      var used = k.last_used_at ? k.last_used_at.slice(0, 10) : '';
-      return '<div class="key-row' + (k.revoked ? ' is-revoked' : '') + '">' +
-        '<div><span class="key-title">' + esc(k.name) + '</span>' +
-          '<span class="key-meta">' + esc(used ? fill('sh.keyMeta', { made: made, used: used })
-                                             : fill('sh.keyNever', { made: made })) + '</span></div>' +
-        (k.revoked ? '<span class="badge proto">' + esc(tr('set.revoked')) + '</span>'
-          : '<button type="button" class="del" data-revoke="' + esc(k.id) + '">' + esc(tr('sh.revoke')) + '</button>') +
-      '</div>';
-    }).join('') : '<p class="empty">' + esc(tr('set.keysEmpty')) + '</p>';
-  }
-
   function drawAll() {
-    drawKeys();
     drawColors();
     drawList();
     drawSide();
@@ -569,15 +550,7 @@
     state.saved = snapshot();
     state.draft = clone(state.saved);
     fillLangs();
-    var want = (location.hash || '').slice(1);
-    /* An old Settings link to the API keys arrives as #keys: open For
-       developers, where they live now. */
-    if (want === 'keys') {
-      $('shDev').open = true;
-      setTimeout(function () { $('shDev').scrollIntoView({ block: 'start' }); }, 0);
-      want = '';
-    }
-    choose(state.item || want || items()[0]);
+    choose(state.item || (location.hash || '').slice(1) || items()[0]);
   }
 
   /* ---- saving ---------------------------------------------------------- */
@@ -785,42 +758,6 @@
   }
   $('shCopy').addEventListener('click', function () { copy(code()); });
   $('shCopyApi').addEventListener('click', function () { copy($('shApi').textContent); });
-
-  $('shKeyAdd').addEventListener('click', async function () {
-    var name = $('shKeyName').value.trim();
-    if (!name) { toast(tr('err.nameKeyFirst'), 'err'); $('shKeyName').focus(); return; }
-    this.disabled = true;
-    try {
-      var body = await send(SETTINGS, 'POST', { name: name });
-      /* The one and only time this value exists outside the database as a hash. */
-      $('shKeyValue').textContent = body.key;
-      $('shKeyReveal').hidden = false;
-      $('shKeyName').value = '';
-      state.settings.api_keys = body.api_keys || [];
-      drawKeys();
-      toast(tr('toast.keyCreated'), 'ok');
-    } catch (e) {
-      toast(e.message, 'err');
-    }
-    this.disabled = false;
-  });
-  $('shKeyList').addEventListener('click', async function (e) {
-    var b = e.target.closest('[data-revoke]');
-    if (!b) return;
-    var ok = await window.StaffConfirm({ title: tr('sh.revokeTitle'), confirm: tr('sh.revoke'),
-      cancel: tr('ms.cancel'), danger: true });
-    if (!ok) return;
-    try {
-      var body = await send(SETTINGS, 'PATCH', { revoke_key: b.dataset.revoke });
-      if (body.api_keys) state.settings.api_keys = body.api_keys;
-      else (state.settings.api_keys || []).forEach(function (k) { if (k.id === b.dataset.revoke) k.revoked = true; });
-      drawKeys();
-      toast(tr('toast.keyRevoked'), 'ok');
-    } catch (err) {
-      toast(err.message, 'err');
-    }
-  });
-  $('shKeyCopy').addEventListener('click', function () { copy($('shKeyValue').textContent); });
 
   $('shSave').addEventListener('click', save);
   $('shDiscard').addEventListener('click', discard);

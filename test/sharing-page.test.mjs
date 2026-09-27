@@ -40,8 +40,6 @@ function answers({ admin = true } = {}) {
       embed: { enabled: true, accent: "#1AE4FF", accent2: null, theme: "auto",
                shared: { roadmap: true, goal: false, prayer: false, videos: false } },
       timeline: { start: "2026-01-01", end: "2027-12-31" },
-      api_keys: [{ id: "k1", name: "chaseroush.com build", created_at: "2026-08-01T00:00:00Z",
-                   last_used_at: null, revoked: false }],
       languages: [{ code: "en", name: "English", is_enabled: true },
                   { code: "hr", name: "Croatian", native_name: "Hrvatski", is_enabled: true }],
     },
@@ -82,11 +80,6 @@ async function boot({ hash = "", admin = true } = {}) {
     url = String(url);
     const method = opts.method || "GET";
     if (method !== "GET") sent.push({ url, method, body: JSON.parse(opts.body) });
-    /* Creating a key answers with the key, once. */
-    if (method === "POST" && url.includes("staff-settings")) {
-      return { ok: true, status: 200, json: async () => ({ key: "thk_secret_once",
-        api_keys: a.settings.api_keys.concat([{ id: "k2", name: "new", created_at: "2026-09-27T00:00:00Z" }]) }) };
-    }
     const body = url.includes("staff-settings") ? a.settings
       : url.includes("staff-embed") ? a.preview : a.mail;
     return { ok: true, status: 200, json: async () => JSON.parse(JSON.stringify(body)) };
@@ -235,47 +228,6 @@ await check("whose form — Thauma's or the ministry's — is offered only with 
 await check("a reload comes back to the same one", async () => {
   const { item } = await boot({ hash: "#contact" });
   assert(item("contact").classList.contains("is-on"), "opened on something else");
-});
-
-/* ---- API keys, under For developers (moved from Settings) ---- */
-
-await check("a key is created at once and shown exactly once, not through the save bar", async () => {
-  const { d, sent, click } = await boot();
-  const name = d.getElementById("shKeyName");
-  name.value = "New site";
-  click(d.getElementById("shKeyAdd"));
-  await settle(120);
-  eq(sent.map((x) => [x.method, x.body.name]), [["POST", "New site"]], "one request, with the name");
-  eq(d.getElementById("shKeyValue").textContent, "thk_secret_once", "the key, shown");
-  eq(d.getElementById("shKeyReveal").hidden, false, "revealed");
-  eq(d.querySelectorAll("#shKeyList .key-row").length, 2, "and listed");
-  eq(d.getElementById("shBar").hidden, true, "a key is not a pending change");
-});
-
-await check("revoking asks first, then stops the key", async () => {
-  const { w, d, sent, click } = await boot();
-  let asked = false;
-  w.StaffConfirm = async () => { asked = true; return false; };
-  click(d.querySelector('#shKeyList [data-revoke="k1"]'));
-  await settle(60);
-  assert(asked, "it did not ask");
-  eq(sent.length, 0, "refused, so nothing sent");
-  w.StaffConfirm = async () => true;
-  click(d.querySelector('#shKeyList [data-revoke="k1"]'));
-  await settle(60);
-  eq(sent.map((x) => x.body.revoke_key), ["k1"], "revoked");
-});
-
-await check("a key's line is in the console's language, not English only", async () => {
-  const { d } = await boot();
-  assert(/never used/.test(d.querySelector("#shKeyList .key-meta").textContent), "the English line");
-  const src = readFileSync("src/js/staff-sharing.js", "utf8");
-  assert(!/'created '|'last used '|'never used'/.test(src), "hard-coded English in the key rows");
-});
-
-await check("an old Settings link to the keys opens For developers", async () => {
-  const { d } = await boot({ hash: "#keys" });
-  eq(d.getElementById("shDev").open, true, "For developers should be open");
 });
 
 /* ---- the preview fits ---- */

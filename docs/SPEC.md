@@ -36,6 +36,14 @@ build.
 API key. Returns public goal aggregates and public milestones. Nothing else,
 ever — see §4a.
 
+**Keys read part by part (2026-09-27).** Keys live in Settings › API keys
+(like GitHub's and Cloudflare's tokens) and belong to the ministry, showing
+who made them. Each carries scopes `read:milestones`, `read:goals`,
+`read:prayer`, `read:videos`, `read:mailings`; a part a key may not read comes
+back as an empty list, and the answer's `parts` says which it carries. Keys
+made before this hold `read:public`, which means every part. The parts are
+defined once, in `workers/src/lib/apikey.js` (`KEY_PARTS`).
+
 Build-time and not browser-side, for three reasons: an API key shipped to the
 browser is public; CR must survive Thauma being down; and runtime fetching is
 the exact flaw CR has today (`header-loader.js` pulls page titles from R2 on

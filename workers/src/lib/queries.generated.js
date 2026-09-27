@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "3d8b8e2b92487957";
+export const SOURCE_DIGEST = "ac1c414ec050117c";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -113,11 +113,15 @@ WHERE k.key_hash = :key_hash
   AND p.status = 'active';`,
   api_key_revoke: `UPDATE api_keys SET revoked_at = :now
 WHERE id = :id AND partner_id = :partner_id AND revoked_at IS NULL;`,
+  api_key_set_scopes: `UPDATE api_keys SET scopes = :scopes
+WHERE id = :id AND partner_id = :partner_id AND revoked_at IS NULL;`,
   api_key_touch: `UPDATE api_keys SET last_used_at = :now WHERE id = :key_id;`,
-  api_keys_for_partner: `SELECT id, name, scopes, created_at, last_used_at, revoked_at
-FROM api_keys
-WHERE partner_id = :partner_id
-ORDER BY revoked_at IS NOT NULL, created_at DESC;`,
+  api_keys_for_partner: `SELECT k.id, k.name, k.scopes, k.created_at, k.last_used_at, k.revoked_at,
+       u.name AS created_by_name
+FROM api_keys k
+LEFT JOIN users u ON u.id = k.created_by
+WHERE k.partner_id = :partner_id
+ORDER BY k.revoked_at IS NOT NULL, k.created_at DESC;`,
   audit_recent_for_partner: `SELECT a.at, a.action, a.entity, a.entity_id,
        COALESCE(u.name, a.user_id) AS actor
 FROM audit_log a

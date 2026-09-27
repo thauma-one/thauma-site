@@ -57,6 +57,31 @@ export function extractKey(request) {
  * Returns { partner } or { denied: Response }. Fails closed on everything:
  * no key, unknown key, revoked key, inactive partner, missing scope.
  */
+/* WHAT A KEY MAY READ, part by part (Settings › API keys, like GitHub's and
+   Cloudflare's tokens). Each part of the partner API's answer has a scope;
+   `read:public` — every key made before parts existed — means all of them.
+   Languages and the ministry's name come with any key: without them no part
+   can be shown. */
+export const KEY_PARTS = {
+  milestones: ["milestones"],
+  goals: ["goals"],
+  prayer: ["prayer"],
+  videos: ["videos", "video_links"],
+  mailings: ["mailings"],
+};
+
+/** "read:milestones read:goals" -> ["milestones", "goals"]; read:public -> all. */
+export function partsOf(scopes) {
+  const list = Array.isArray(scopes) ? scopes : String(scopes || "").split(/[,\s]+/).filter(Boolean);
+  if (list.includes("read:public")) return Object.keys(KEY_PARTS);
+  return Object.keys(KEY_PARTS).filter((p) => list.includes("read:" + p));
+}
+
+/** ["goals", "nonsense"] -> "read:goals" (unknown parts dropped). */
+export function scopesFor(parts) {
+  return (parts || []).filter((p) => p in KEY_PARTS).map((p) => "read:" + p).join(" ");
+}
+
 export async function requirePartnerKey(request, db, { scope = "read:public" } = {}) {
   const deny = (status, error) => ({
     denied: new Response(JSON.stringify({ error }), {
@@ -84,7 +109,10 @@ export async function requirePartnerKey(request, db, { scope = "read:public" } =
   if (!row) return deny(401, "Invalid or revoked API key");
 
   const scopes = String(row.scopes || "").split(/[,\s]+/).filter(Boolean);
-  if (!scopes.includes(scope)) {
+  /* "read:any": the key may read at least one part — the caller then shows
+     only the parts it carries (see partsOf). */
+  const allowed = scope === "read:any" ? partsOf(scopes).length > 0 : scopes.includes(scope);
+  if (!allowed) {
     return deny(403, `This key does not carry the "${scope}" scope`);
   }
 

@@ -29,7 +29,7 @@
  * the top of db/migrations/0002_milestones.sql.
  */
 import { createDb, partnerPublicSite } from "./lib/db.js";
-import { requirePartnerKey } from "./lib/apikey.js";
+import { requirePartnerKey, partsOf, KEY_PARTS } from "./lib/apikey.js";
 import { assertNoPersonalData } from "./lib/nopii.js";
 import { json } from "./lib/store.js";
 
@@ -42,10 +42,17 @@ export default {
 
     const db = createDb(env.DB);
 
-    const { partner, denied } = await requirePartnerKey(request, db);
+    const { partner, denied } = await requirePartnerKey(request, db, { scope: "read:any" });
     if (denied) return denied;
 
     const site = await partnerPublicSite(db, partner.id, partner.slug);
+    /* ONLY THE PARTS THIS KEY WAS GIVEN (Settings › API keys). A part it may
+       not read is an empty list, and `parts` says which it carries, so a
+       developer can tell "not allowed" from "nothing yet". */
+    const parts = partsOf(partner.scopes);
+    for (const [part, fields] of Object.entries(KEY_PARTS)) {
+      if (!parts.includes(part)) fields.forEach((f) => { site[f] = []; });
+    }
 
     // Best-effort usage record. A failure here must not fail the request —
     // the build asked a legitimate question and deserves its answer.
@@ -61,6 +68,7 @@ export default {
       version: 1,
       partner: { slug: partner.slug, display_name: partner.display_name },
       generated_at: new Date().toISOString(),
+      parts,
       ...site,
     };
 

@@ -2118,9 +2118,6 @@ html.console-menu-open{overflow:hidden}
 .sh-dev[open] summary::after{transform:rotate(-135deg)}
 .sh-dev-body{margin-top:16px;display:flex;flex-direction:column;gap:10px;align-items:flex-start}
 .sh-dev-body .emb-code{white-space:pre-wrap;word-break:break-all;align-self:stretch}
-.sh-keys-lbl{margin-top:18px}
-.sh-dev-body .key-create{display:flex;gap:10px;flex-wrap:wrap;align-self:stretch}
-.sh-dev-body .key-reveal,.sh-dev-body .key-list{align-self:stretch}
 .sh-dev[hidden]{display:none}
 
 @media (max-width:1100px){
@@ -2164,3 +2161,9 @@ html.console-menu-open{overflow:hidden}
   .up-tabsrow{flex-direction:column;align-items:stretch}
   .up-preview-btn{align-self:flex-start}
 }
+
+/* ---- API keys: what each may read (Settings) ---- */
+.key-create{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:18px}
+.key-parts{display:flex;flex-wrap:wrap;gap:10px 18px;flex-basis:100%}
+.key-row{flex-direction:column;align-items:stretch;gap:12px}
+.key-head{display:flex;justify-content:space-between;align-items:center;gap:14px}
