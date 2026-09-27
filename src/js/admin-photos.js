@@ -96,7 +96,10 @@
   }
 
   async function boot() {
-    var site = await get(API + '?file=site');
+    /* Both at once: the photos, and English for their sections' names. */
+    var both = await Promise.all([get(API + '?file=site'), get(API + '?file=en')]);
+    var site = both[0];
+    if (both[1] && both[1].data) state.english = both[1].data;
     if (!site) return;
     if (site.configured === false) {
       var el = $('phNotConfigured');
@@ -111,10 +114,6 @@
     if (!state.on || state.ids.indexOf(state.on) === -1) state.on = state.ids[0] || null;
     $('phRoot').hidden = false;
     render();
-
-    // The sections' own names, for the labels. Not needed to work.
-    var en = await get(API + '?file=en');
-    if (en && en.data) { state.english = en.data; renderThumbs(); }
   }
 
   /* ---- drawing -------------------------------------------------------- */

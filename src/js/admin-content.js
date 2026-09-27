@@ -275,23 +275,31 @@
 
   /* ---- loading -------------------------------------------------------- */
 
+  /* EVERYTHING THE FIRST DRAW NEEDS, ASKED FOR AT ONCE. The settings, the
+     notes and the words of the language you were last writing each cost a
+     trip to GitHub (about 100–140ms, measured); asked one after another
+     they were most of the second the page took to appear. The language is
+     guessed from last time and checked against the list when it arrives. */
   async function boot() {
-    var site = await send(CONTENT + '?file=site');
+    var remembered = null;
+    try { remembered = localStorage.getItem('thauma.content.lang'); } catch (e) { /* private mode */ }
+    var guess = state.lang || remembered || 'en';
+    var both = await Promise.all([
+      send(CONTENT + '?file=site'),
+      send(NOTES, 'GET', null, true),
+      send(WORDS + '?lang=' + encodeURIComponent(guess), 'GET', null, true)
+    ]);
+    var site = both[0], notes = both[1], words = both[2];
     if (!site || site.failed) return;
     if (site.configured === false) return notConfigured(site.reason || site.error || '');
     takeSite(site);
-
-    var notes = await send(NOTES, 'GET', null, true);
     if (notes && !notes.failed) takeNotes(notes);
 
-    var remembered = null;
-    try { remembered = localStorage.getItem('thauma.content.lang'); } catch (e) { /* private mode */ }
-    var want = state.langs.indexOf(state.lang) !== -1 ? state.lang
-      : (state.langs.indexOf(remembered) !== -1 ? remembered : state.langs[0]);
+    var want = state.langs.indexOf(guess) !== -1 ? guess : state.langs[0];
     fillPickers();
     $('cLang').disabled = false;
     $('cLangs').disabled = false;
-    await openLang(want);
+    await openLang(want, false, want === guess && words && !words.failed ? words : null);
     loadSummary();               // names and progress, after the first draw
   }
 
@@ -341,8 +349,8 @@
     $('cBesideWrap').hidden = isEn() || !others.length;
   }
 
-  async function openLang(code, keepView) {
-    var data = await send(WORDS + '?lang=' + encodeURIComponent(code));
+  async function openLang(code, keepView, already) {
+    var data = already || await send(WORDS + '?lang=' + encodeURIComponent(code));
     if (!data || data.failed) { $('cLang').value = state.lang || ''; return false; }
     state.lang = code;
     if (data.name && data.name !== code) state.names[code] = data.name;

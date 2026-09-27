@@ -290,12 +290,15 @@ async function readCollection(env, collection) {
     a.name.localeCompare(b.name));
   const truncated = files.length > MAX_ITEMS;
 
+  /* ALL AT ONCE, not one after another. Each read is a round trip to GitHub
+     (about 100–140ms measured from the Pi); in a queue, forty items were
+     forty of them before the page could draw. Order is kept by the listing. */
+  const got = await Promise.all(files.slice(0, MAX_ITEMS).map((file) => getFile(env, file.path)));
   const items = [];
-  for (const file of files.slice(0, MAX_ITEMS)) {
-    const got = await getFile(env, file.path);
-    if (got.error) continue;
-    items.push({ slug: file.name.replace(/\.md$/, ""), sha: got.sha, ...parseMarkdown(got.text) });
-  }
+  got.forEach((g, i) => {
+    if (g.error) return;
+    items.push({ slug: files[i].name.replace(/\.md$/, ""), sha: g.sha, ...parseMarkdown(g.text) });
+  });
   return { items, truncated };
 }
 

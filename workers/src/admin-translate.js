@@ -115,20 +115,32 @@ async function siteLanguages(env) {
  * and reaches `main` with the next merge. Until then that group is reported
  * as not there yet rather than failing the whole page.
  */
-async function load(env, db, lang, { english = false } = {}) {
-  const langs = await siteLanguages(env);
-  if (langs.error) return langs;
-  if ((lang === "en" && !english) || !langs.languages.includes(lang)) {
+/* Everything a language needs, read in ONE round trip to GitHub: the site's
+   language list, English, the language, and the emails. These used to be two
+   rounds (the list, then the files) — at about 100–140ms a read, measured, the
+   difference is visible on every screen that opens a language. `shared` lets
+   a caller that opens several languages read the common files once. */
+async function readFiles(env, lang, shared) {
+  const isEn = lang === "en";
+  const [siteFile, enFile, langFile, emailsFile] = await Promise.all([
+    shared ? shared.site : getFile(env, SITE),
+    shared ? shared.en : getFile(env, langPath("en")),
+    isEn || !/^[a-z]{2,3}(-[a-z0-9]{2,8})*$/.test(lang) ? null : getFile(env, langPath(lang)),
+    shared ? shared.emails : getFile(env, EMAILS),
+  ]);
+  return { siteFile, enFile, langFile: isEn ? enFile : langFile, emailsFile };
+}
+
+async function load(env, db, lang, { english = false, shared = null } = {}) {
+  const { siteFile, enFile, langFile, emailsFile } = await readFiles(env, lang, shared);
+  if (siteFile.error) return { error: siteFile.error, status: siteFile.status || 502 };
+  const sp = parse(siteFile);
+  if (sp.error) return { error: `${SITE} is not valid JSON: ${sp.error}`, status: 502 };
+  const langs = { languages: Array.isArray(sp.doc.languages) ? sp.doc.languages : ["en"] };
+  if ((lang === "en" && !english) || !langs.languages.includes(lang) || !langFile) {
     return { error: `The site has no language "${lang}" to translate into.`, code: "no-language", status: 400 };
   }
   const isEn = lang === "en";
-
-  /* English is read once and is both columns: the Content page edits it like
-     any language, and it is never missing or outdated — it is what the
-     others are measured against. */
-  const [enFile, langFile, emailsFile] = await Promise.all([
-    getFile(env, langPath("en")), isEn ? null : getFile(env, langPath(lang)), getFile(env, EMAILS),
-  ]).then(([a, b, c]) => [a, b || a, c]);
   for (const f of [enFile, langFile]) if (f.error) return { error: f.error, status: f.status || 502 };
   const en = parse(enFile), mine = parse(langFile);
   if (en.error || mine.error) return { error: `A language file is not valid JSON: ${en.error || mine.error}`, status: 502 };
@@ -179,11 +191,18 @@ export default {
          Content page ("189 of 189"). One read of each file rather than one
          request per language from the browser. */
       if (new URL(request.url).searchParams.has("summary")) {
-        const langs = await siteLanguages(env);
-        if (langs.error) return fail(langs);
+        const [site, en, emails] = await Promise.all([
+          getFile(env, SITE), getFile(env, langPath("en")), getFile(env, EMAILS)]);
+        if (site.error) return fail({ error: site.error, status: site.status || 502 });
+        const sp = parse(site);
+        if (sp.error) return fail({ error: `${SITE} is not valid JSON: ${sp.error}`, status: 502 });
+        const codes = Array.isArray(sp.doc.languages) ? sp.doc.languages : ["en"];
+        /* Every language at once, sharing the three common files. */
+        const shared = { site, en, emails };
+        const results = await Promise.all(codes.map((code) => load(env, db, code, { english: true, shared })));
         const out = [];
-        for (const code of langs.languages) {
-          const r = await load(env, db, code, { english: true });
+        for (let i = 0; i < codes.length; i++) {
+          const code = codes[i], r = results[i];
           if (r.error) { out.push({ code, error: r.error }); continue; }
           const count = (st) => r.lines.filter((l) => l.status === st).length;
           out.push({ code, name: r.name, total: r.lines.length,
