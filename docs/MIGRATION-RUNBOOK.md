@@ -134,8 +134,8 @@ The last piece of the original plan. Decap died with Netlify Identity at the
 cutover and `src/admin/` was deleted; this is its replacement.
 
 ```
-/admin/content/   the words     src/_data/i18n/*.json    210 strings each
-/admin/site/      the settings  src/_data/site.json
+/admin/website/            the words     src/_data/i18n/*.json    242 strings each
+/admin/website/settings/   the settings  src/_data/site.json
 ```
 
 ### Built

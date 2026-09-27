@@ -48,7 +48,7 @@ if (!build) {
   process.exit(1);                       // NOT 0: a skip here is a gap.
 }
 const STAFF_PAGE = `${build}/staff/index.html`;
-const ADMIN_PAGE = `${build}/admin/publish/index.html`;
+const ADMIN_PAGE = `${build}/admin/website/index.html`;
 
 /** A page as a browser would have it: inline scripts run, stylesheet applied. */
 function boot(page, cached) {
@@ -121,7 +121,7 @@ await check("a site editor spans both rows, without the private pages", async ()
   eq(rows(w), ["staff", "admin"], "rows");
   assert(!links(w, "staff").includes("Stewardship"), "reached supporter records");
   assert(!links(w, "admin").includes("People"), "reached account management");
-  for (const p of ["Content", "Site", "Publish"]) {
+  for (const p of ["Website"]) {
     assert(links(w, "admin").includes(p), `missing ${p}`);
   }
 });

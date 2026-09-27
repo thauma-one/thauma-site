@@ -1,22 +1,40 @@
----
-layout: layouts/admin.njk
-adminPage: publish
-adminTitle: Publish
-adminHeading: What is <b>waiting to go live</b>
-adminScript: /js/admin-publish.js
-permalink: /admin/publish/index.html
----
-{#- Three words, and no branch named anywhere a person can see:
+{#- website-publish.njk — publishing, on every screen of the Website area
 
-     Save      already happened, on the page you were editing
-     Preview   build next.thauma.one so you can look at it
-     Publish   build thauma.one — the site changes
+   Mockup board 13: Publish stops being a separate page somebody has to
+   remember. A bar along the foot of every Website screen says what is waiting
+   and opens the review — the SAME list the Publish page showed, because "a
+   button with nothing behind it is a button you press without knowing what
+   it does". Nothing goes out without that list in front of you.
 
-   The page is mostly a LIST because publishing carries every change that has
-   been saved, not only the last one you made. A button with nothing behind it
-   is a button you press without knowing what it does. -#}
+   Three words, and no branch named anywhere a person can see:
+
+     Save      already happened, on the screen you were editing
+     Preview   build the preview site so you can look at it
+     Publish   build the live site — the site changes
+
+   The bar steps aside while a screen has unsaved edits (its own save bar is
+   showing): save first, then publish. -#}
+
+<div class="web-bar" id="pBar" role="status" hidden>
+  <span class="ms-dirty-dot" aria-hidden="true"></span>
+  <span class="web-bar-count" id="pBarCount"></span>
+  <button type="button" class="ghost-btn" id="pPreview" data-i18n="pub.previewSite">Preview site</button>
+  <button type="button" class="solid-btn" id="pReview" aria-expanded="false" aria-controls="pReviewPanel"
+          data-i18n="pub.review">Review and publish</button>
+</div>
+
+<div class="web-review-back" id="pReviewBack" hidden></div>
+<aside class="web-review" id="pReviewPanel" aria-labelledby="pReviewTitle" data-live="{{ site.url | replace('https://', '') }}" hidden>
+  <div class="web-review-head">
+    <h2 id="pReviewTitle" data-i18n="pub.review">Review and publish</h2>
+    <button type="button" class="ln-x" id="pReviewClose" aria-label="Close" data-i18n-attr="aria-label:con.close">&times;</button>
+  </div>
 
 <p class="rolegate" id="pNotConfigured" hidden></p>
+<p class="rolegate web-review-problem" id="pReviewProblem" role="alert" hidden>
+  <span></span>
+  <button type="button" class="ghost-btn" data-i18n="err.tryAgain">Try again</button>
+</p>
 
 <div class="adm-publish" id="pRoot" hidden>
 
@@ -43,6 +61,14 @@ permalink: /admin/publish/index.html
       <h3 data-i18n="pub.files">Files</h3>
       <div class="p-files" id="pFiles"></div>
     </section>
+  </div>
+
+  {#- The review's own actions, under the list they act on. -#}
+  <div class="p-acts">
+    <button type="button" class="ghost-btn" id="pRefresh" data-i18n="pub.refresh">Refresh</button>
+    <span class="c-gap"></span>
+    <button type="button" class="ghost-btn" id="pPreviewIn" data-i18n="pub.previewSite">Preview site</button>
+    <button type="button" class="solid-btn" id="pPublish">Publish</button>
   </div>
 
   {#- MANUAL ACTIONS, deliberately behind a disclosure.
@@ -93,10 +119,4 @@ permalink: /admin/publish/index.html
 
 </div>
 
-<div class="ms-savebar" id="pBar" role="status" hidden>
-  <span class="ms-dirty-dot" aria-hidden="true"></span>
-  <span id="pBarCount"></span>
-  <button type="button" class="ghost-btn" id="pRefresh" data-i18n="pub.refresh">Refresh</button>
-  <button type="button" class="ghost-btn" id="pPreview" data-i18n="pub.preview">Preview</button>
-  <button type="button" class="solid-btn" id="pPublish" data-i18n="pub.publish">Publish</button>
-</div>
+</aside>

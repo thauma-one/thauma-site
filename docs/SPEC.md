@@ -905,7 +905,7 @@ thauma.one runs on Cloudflare Workers. What is left is listed in
 | build on push | GitHub Actions — `main` deploys; staging and sync are their own workflows | done |
 | **Git Gateway (Decap CMS)** | **custom editor** | **built 2026-08-15 — needs its token** |
 
-Site copy is editable through `/admin/content/` and `/admin/site/`, which
+Site copy is editable through `/admin/website/` (Pages) and `/admin/website/settings/`, which
 commit to the repository rather than writing to D1. **The editor needs a
 GitHub token before it can do anything** — see the runbook. Until one is set it
 loads and says it is not connected, which is the correct state rather than a
@@ -1094,7 +1094,7 @@ browser rather than the application.
 
 ### Taking a language away and bringing it back
 
-`/admin/content/` → **Download** and **Upload**. A translator usually has no
+`/admin/website/` (Pages) → **Download** and **Upload translation** — the file holds the lines on screen, and what comes back is approved line by line. A translator usually has no
 console login and no reason to want one: they want the words in something they
 can open, and to hand them back.
 
@@ -1240,7 +1240,7 @@ path.
 
 ### Removing a language
 
-`/admin/site/` → **Remove**, beside each language's switches. English has none —
+`/admin/website/` (Pages) → **Language settings** → **Remove**. English has none —
 it is the fallback, and that is structural rather than a permission.
 
 **The same shape as deleting a partner**, because it is the same kind of act:
@@ -1265,7 +1265,7 @@ while the dialog was open, it is refused.
 
 ### Adding a language
 
-`/admin/content/` → **Add a language**. Two commits, in this order:
+`/admin/website/` (Pages) → the language list → **Add a language…**. Two commits, in this order:
 
 ```
 1. create src/_data/i18n/<code>.json   every key from English, values empty

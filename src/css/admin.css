@@ -1049,3 +1049,59 @@
   .ln-table td:nth-child(2){grid-column:1;grid-row:2}
   .ln-table td:nth-child(3){grid-column:2;grid-row:1 / span 2;align-self:center;width:auto}
 }
+
+/* ============================================================ WEBSITE AREA
+   Mockup board 13: the public site in one place. A side list of its
+   screens, and a publish bar along the foot of every one of them. */
+.web{display:grid;grid-template-columns:150px minmax(0,1fr);gap:28px;align-items:start}
+.web-side{display:flex;flex-direction:column;gap:2px;position:sticky;
+  top:calc(var(--header-h,62px) + 16px)}
+.web-side a{padding:8px 12px;border-radius:var(--radius);color:var(--dim);
+  font-size:var(--fs-sm);text-decoration:none;border-left:2px solid transparent}
+.web-side a:hover{color:var(--text)}
+.web-side a[aria-current]{color:var(--text);background:var(--panel);border-left-color:var(--console-admin)}
+.web-main{min-width:0}
+/* The screens inside keep their own top spacing from before they were
+   screens of one area; here the side list already sets the line. */
+.web-main > :first-child{margin-top:0}
+.web-main .adm-content{margin-top:20px}
+
+/* The publish bar: quieter than a save bar, because nothing on it is
+   unsaved — it says what is waiting and opens the review. */
+.web-bar{position:fixed;left:0;right:0;bottom:0;z-index:25;display:flex;align-items:center;
+  gap:14px;padding:12px max(var(--gutter),24px);background:var(--bg2);
+  border-top:1px solid var(--line-hard);font-size:var(--fs-sm);color:var(--text)}
+.web-bar-count{flex:1;min-width:0}
+body.has-webbar{padding-bottom:72px}
+/* Unsaved edits first: while a screen's own save bar is up, this steps aside. */
+body.has-savebar .web-bar{display:none}
+
+/* The review: the list of what publishing sends, over the screen from the
+   right. It closes on ×, Escape, or a click beside it. */
+.web-review-back{position:fixed;inset:0;z-index:40;background:rgba(3,6,10,.6)}
+.web-review{position:fixed;top:0;right:0;bottom:0;z-index:41;width:min(640px,100%);
+  overflow-y:auto;background:var(--bg);border-left:1px solid var(--line-hard);
+  box-shadow:-24px 0 60px rgba(0,0,0,.5);padding:20px 24px 40px}
+.web-review[hidden],.web-review-back[hidden]{display:none}
+.web-review-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+.web-review-head h2{font:300 20px var(--font-display);margin:0;color:var(--text)}
+.web-review .adm-publish{margin-top:0}
+.web-review .p-cols{grid-template-columns:1fr}
+.p-acts{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.p-acts .solid-btn:disabled{opacity:.4;cursor:default;box-shadow:none}
+html.review-open{overflow:hidden}
+
+@media (max-width:900px){
+  .web{grid-template-columns:1fr;gap:16px}
+  .web-side{position:static;flex-direction:row;flex-wrap:wrap;gap:6px}
+  .web-side a{border-left:0;border-bottom:2px solid transparent}
+  .web-side a[aria-current]{border-bottom-color:var(--console-admin)}
+}
+@media (max-width:640px){
+  .web-bar{flex-wrap:wrap;gap:8px}
+  .web-bar-count{flex-basis:100%}
+  body.has-webbar{padding-bottom:110px}
+  .web-review{padding:16px 16px 32px}
+}
+.web-review-problem{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.web-review-problem span{flex:1 1 240px}

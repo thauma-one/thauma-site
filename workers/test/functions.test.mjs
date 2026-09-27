@@ -227,7 +227,7 @@ await check("/staff and /admin are gated IDENTICALLY", async () => {
   const env = { ACCESS_TEAM_DOMAIN: "t.cloudflareaccess.com", ACCESS_AUD: "aud" };
 
   const staffPaths = ["/staff", "/staff/", "/staff/settings/", "/staff/data/snapshot.json"];
-  const adminPaths = ["/admin", "/admin/", "/admin/users/", "/admin/publish/"];
+  const adminPaths = ["/admin", "/admin/", "/admin/users/", "/admin/website/"];
 
   for (const [a, b] of staffPaths.map((p, i) => [p, adminPaths[i]])) {
     for (const accept of ["text/html", "application/json"]) {
@@ -238,6 +238,19 @@ await check("/staff and /admin are gated IDENTICALLY", async () => {
          `${a} and ${b} disagree on content type (${accept})`);
     }
   }
+});
+
+await check("an old console address leads to where the page moved", async () => {
+  const { movedTo, MOVED } = await import("../src/worker.js");
+  const go = (u) => movedTo(new URL("https://x" + u));
+  eq(go("/admin/content/"), "https://x/admin/website/", "Content");
+  eq(go("/admin/site"), "https://x/admin/website/settings/", "without the slash");
+  eq(go("/admin/publish/"), "https://x/admin/website/?review", "Publish opens the review");
+  eq(go("/admin/library/?tab=gatherings"), "https://x/admin/website/library/?tab=gatherings", "keeps the query");
+  eq(go("/admin/users/"), null, "a page that did not move");
+  /* And nobody reaches a moved page without signing in first: the forward
+     happens after the gate, so an old bookmark still meets the sign-in. */
+  for (const from of Object.keys(MOVED)) assert(isProtected(from), `${from} is not behind the gate`);
 });
 
 await check("isProtected covers both areas and nothing else", () => {

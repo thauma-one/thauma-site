@@ -40,7 +40,11 @@
   <div class="page-head">
     {#- The page's name, without a number: the numbers disagreed with each
        other (two 04s, two 05s) and so meant nothing (mockup board 1). -#}
+    {%- if websiteTab %}
+    <div class="cue"><span data-i18n="adm.nav.website">Website</span></div>
+    {%- else %}
     <div class="cue"><span data-i18n="adm.page.{{ adminPage }}.title">{{ adminTitle }}</span></div>
+    {%- endif %}
     <div class="sec-h">
       <h1 data-i18n-html="adm.page.{{ adminPage }}.heading">{{ adminHeading | safe }}</h1>
     </div>
@@ -53,7 +57,24 @@
     Your account can use the <a href="/staff/">staff console</a>.
   </p>
 
+  {%- if websiteTab %}
+  {#- THE WEBSITE AREA (mockup board 13): a side list of its screens, and the
+     publish bar and review along the foot of every one of them. -#}
+  <div class="web">
+    <nav class="web-side" aria-label="Website">
+      {%- for t in consoleNav.website %}
+      <a href="{{ t.url }}" {% if t.tab == websiteTab %}aria-current="page"{% endif %}
+         data-i18n="web.{{ t.tab }}">{{ t.label }}</a>
+      {%- endfor %}
+    </nav>
+    <div class="web-main">
+      {{ content | safe }}
+    </div>
+  </div>
+  {% include "website-publish.njk" %}
+  {%- else %}
   {{ content | safe }}
+  {%- endif %}
 </main>
 
 <script src="/js/staff-i18n.js?v={{ "/js/staff-i18n.js" | v }}"></script>
@@ -69,9 +90,9 @@
    filter, so a version written there is a hand-maintained number — the exact
    thing the content hash exists to remove. -#}
 {%- if adminScript %}<script src="{{ adminScript }}?v={{ adminScript | v }}"></script>{% endif %}
-{#- The data-mover, on the Publish page only. It no-ops elsewhere by looking
-   for its own panel first, but loading it everywhere would still be a request
-   nobody needs. -#}
-{% if adminPage == "publish" %}<script src="/js/admin-dbsync.js?v={{ "/js/admin-dbsync.js" | v }}"></script>{% endif %}
+{#- Publishing, and the data-mover inside its review, on every Website screen
+   and nowhere else. -#}
+{% if websiteTab %}<script src="/js/admin-publish.js?v={{ "/js/admin-publish.js" | v }}"></script>
+<script src="/js/admin-dbsync.js?v={{ "/js/admin-dbsync.js" | v }}"></script>{% endif %}
 </body>
 </html>

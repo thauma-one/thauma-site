@@ -240,6 +240,32 @@ export function isProtected(pathname) {
 
 const AREAS = ["/staff", "/admin"];
 
+/**
+ * Console pages that moved, old address → new. Followed after the sign-in
+ * check, so the answer to an old bookmark is the page it now lives on rather
+ * than a 404. The mockup redesign moves pages one area at a time; each move
+ * adds its lines here in the same commit.
+ */
+export const MOVED = {
+  "/admin/content/": "/admin/website/",
+  "/admin/library/": "/admin/website/library/",
+  "/admin/site/": "/admin/website/settings/",
+  // The Publish page became the review on every Website screen.
+  "/admin/publish/": "/admin/website/?review",
+};
+
+/** Where an old console address now lives, or null. */
+export function movedTo(url) {
+  const path = url.pathname.endsWith("/") ? url.pathname : url.pathname + "/";
+  const to = MOVED[path];
+  if (!to) return null;
+  const dest = new URL(to, url.origin);
+  // Anything the old address carried comes along, except where the new
+  // address already says what it needs.
+  for (const [k, v] of url.searchParams) if (!dest.searchParams.has(k)) dest.searchParams.set(k, v);
+  return dest.toString().replace("?review=", "?review");
+}
+
 /** Exact-path routes. Checked before static assets. */
 const ROUTES = {
   "/api/contact": contactForm,
@@ -435,6 +461,11 @@ export default {
     if (isProtected(url.pathname)) {
       const { denied } = await requireAccess(request, env);
       if (denied) return signInPage(request, env, url) || denied;
+      /* 302, not 301: browsers remember a permanent move forever, and every
+         step of the redesign has to stay revertable (tag before-mockup-build).
+         A temporary one is re-asked each time, so undoing a move undoes it. */
+      const moved = movedTo(url);
+      if (moved) return Response.redirect(moved, 302);
     }
 
     return env.ASSETS.fetch(request);

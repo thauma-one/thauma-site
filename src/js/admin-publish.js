@@ -3,6 +3,11 @@
    ============================================================
    Talks to /api/admin/publish.
 
+   ON EVERY WEBSITE SCREEN, not a page of its own (mockup board
+   13): a bar along the foot says what is waiting, and Review
+   and publish opens the list below as a panel. It loads on any
+   page that has the panel (#pRoot).
+
    NO WORKING COPY AND NO SAVE BAR IN THE USUAL SENSE. The other
    admin screens hold a draft because they are editing
    something. This one has nothing to edit: it reads a state
@@ -24,7 +29,7 @@
 (function () {
   'use strict';
 
-  if (document.body.getAttribute('data-admin-page') !== 'publish') return;
+  if (!document.getElementById('pRoot')) return;
 
   var API = '/api/admin/publish';
   var MIG = '/api/admin/migrate';
@@ -62,36 +67,53 @@
 
   /* ---- loading -------------------------------------------------------- */
 
+  /* A FAILED CHECK IS QUIET UNTIL YOU ASK. This runs on every Website screen,
+     and a hiccup at GitHub must not take over a screen somebody is writing
+     on. So the bar says it could not check; the full reason, and the retry,
+     are for the review, which is where somebody goes to publish. */
+  function reviewOpen() { return !$('pReviewPanel').hidden; }
+  function problem(msg, retry) {
+    /* In the review, the reason and a retry sit where the list would be —
+       not in the page's own problem strip, which the panel covers. */
+    var box = $('pReviewProblem');
+    box.hidden = false;
+    box.querySelector('span').textContent = msg;
+    box.querySelector('button').hidden = !retry;
+    $('pRoot').hidden = true;
+    $('pBar').hidden = false;
+    document.body.classList.add('has-webbar');
+    $('pBarCount').textContent = tr('pub.checkFailed');
+    $('pPreview').hidden = true;
+  }
+
   async function load() {
     var res, body;
     try {
       res = await fetch(API, { credentials: 'same-origin', cache: 'no-store' });
     } catch (e) {
-      if (window.StaffProblem) window.StaffProblem(tr('err.unreachable') + ' ' + e.message, load);
-      return;
+      return problem(tr('err.unreachable') + ' ' + e.message, load);
     }
     try { body = await res.json(); }
     catch (e) {
-      if (window.StaffProblem) window.StaffProblem(tr('err.unreadable') + ' (' + res.status + ')', load);
-      return;
+      return problem(tr('err.unreadable') + ' (' + res.status + ')', load);
     }
 
     if (res.status === 403) {
-      if ($('notAdmin')) $('notAdmin').hidden = false;
+      /* Somebody who may edit the words but not publish them: no bar at all,
+         rather than one offering a button that will be refused. */
       $('pRoot').hidden = true; $('pBar').hidden = true;
-      if (window.StaffProblemClear) window.StaffProblemClear();
+      document.body.classList.remove('has-webbar');
       return;
     }
     if (!res.ok) {
-      if (window.StaffProblem) {
-        window.StaffProblem(
-          res.status === 401 ? tr('err.expired')
-            : tr('err.refused') + ' (' + res.status + ')' + (body.error ? ' — ' + body.error : ''),
-          res.status === 401 ? null : load);
-      }
-      return;
+      return problem(res.status === 401 ? tr('err.expired')
+        : tr('err.refused') + ' (' + res.status + ')' + (body.error ? ' — ' + body.error : ''),
+        res.status === 401 ? null : load);
     }
-    if (window.StaffProblemClear) window.StaffProblemClear();
+    $('pPreview').hidden = false;
+    $('pReviewProblem').hidden = true;
+    // Only its own problem: on a Website screen the editor may have one too.
+    if (reviewOpen() && window.StaffProblemClear) window.StaffProblemClear();
 
     if (body.configured === false) {
       var el = $('pNotConfigured');
@@ -306,7 +328,7 @@
       });
       body = await res.json();
     } catch (e) {
-      toast(tr('err.unreachable') + ' ' + e.message, 'bad');
+      toast(tr('err.unreachable') + ' ' + e.message, 'err');
       busy = false;
       if (btn) btn.disabled = false;
       return;
@@ -324,7 +346,7 @@
       } else if (window.StaffProblem) {
         window.StaffProblem(msg, loadMigrations);
       } else {
-        toast(msg, 'bad');
+        toast(msg, 'err');
       }
       loadMigrations();
       return;
@@ -384,8 +406,9 @@
     // Preview is useful even with nothing waiting — it rebuilds the preview
     // site. Publish is not, so only that one goes away.
     $('pBar').hidden = false;
-    document.body.classList.toggle('has-savebar', true);
+    document.body.classList.add('has-webbar');
     $('pPublish').disabled = !n && !state.neverPublished;
+    $('pPublish').textContent = fill('pub.publishTo', { site: $('pReviewPanel').getAttribute('data-live') || '' });
 
     $('pBarCount').textContent = n
       ? (n === 1 ? tr('pub.oneWaiting') : tr('pub.nWaiting').replace('{n}', n))
@@ -442,10 +465,34 @@
     await act({ action: 'publish', confirm: state.confirm_word }, this);
   });
 
-  $('pPreview').addEventListener('click', function () {
-    // No confirmation. Preview changes nothing anybody outside can see, and a
-    // dialog on a harmless action trains people to dismiss dialogs.
-    if (!busy) act({ action: 'preview' }, this);
+  [$('pPreview'), $('pPreviewIn')].forEach(function (b) {
+    b.addEventListener('click', function () {
+      // No confirmation. Preview changes nothing anybody outside can see, and
+      // a dialog on a harmless action trains people to dismiss dialogs.
+      if (!busy) act({ action: 'preview' }, this);
+    });
+  });
+
+  /* ---- the review panel ------------------------------------------------
+     Opens over the screen from the right, and closes on its ×, Escape, or a
+     click beside it. The old /admin/publish/ address lands here with
+     ?review, so a bookmark still opens what it used to show. */
+  function setReview(open) {
+    $('pReviewPanel').hidden = !open;
+    $('pReviewBack').hidden = !open;
+    $('pReview').setAttribute('aria-expanded', open ? 'true' : 'false');
+    document.documentElement.classList.toggle('review-open', open);
+    // Re-read on opening, so the list is what is waiting now (not on first
+    // load, which is already reading it).
+    if (open) { $('pReviewClose').focus(); if ((state || !$('pReviewProblem').hidden) && !busy) load(); }
+    else $('pReview').focus();
+  }
+  $('pReview').addEventListener('click', function () { setReview(true); });
+  $('pReviewClose').addEventListener('click', function () { setReview(false); });
+  $('pReviewProblem').querySelector('button').addEventListener('click', function () { if (!busy) load(); });
+  $('pReviewBack').addEventListener('click', function () { setReview(false); });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && !$('pReviewPanel').hidden && !document.querySelector('.dlg-back')) setReview(false);
   });
 
   $('pPublish').addEventListener('click', async function () {
@@ -481,7 +528,7 @@
       });
       body = await res.json();
     } catch (e) {
-      toast(tr('err.unreachable') + ' ' + e.message, 'bad');
+      toast(tr('err.unreachable') + ' ' + e.message, 'err');
       busy = false;
       if (btn) btn.disabled = false;
       $('pRefresh').disabled = false;
@@ -500,7 +547,7 @@
          the real answer instead of the one from before somebody merged. */
       if (body && body.refreshMigrations) {
         if (window.StaffProblem) window.StaffProblem(body.error, loadMigrations);
-        else toast(body.error, 'bad');
+        else toast(body.error, 'err');
         loadMigrations();
         return;
       }
@@ -508,7 +555,7 @@
          time until somebody changes the app's settings — so it is pinned
          rather than raised as a toast that scrolls away. */
       if (res.status === 403 && window.StaffProblem) window.StaffProblem(body.error, load);
-      else toast((body && body.error) || (tr('err.refused') + ' (' + res.status + ')'), 'bad');
+      else toast((body && body.error) || (tr('err.refused') + ' (' + res.status + ')'), 'err');
       return;
     }
 
@@ -524,4 +571,5 @@
   }
 
   load();
+  if (/[?&]review\b/.test(location.search)) setReview(true);
 })();

@@ -65,21 +65,12 @@ const admin = [
   { slug: "users", url: "/admin/users/", label: "People", roles: ["admin"] },
   { slug: "partners", url: "/admin/partners/", label: "Partners",
     roles: ["admin", "board"] },
-  /* THE SITE EDITOR'S PAGES. Content is the words, Site is the settings around
-     them, Publish moves both. Somebody who writes for the site needs all three
-     and none of the account management above. */
-  { slug: "content", url: "/admin/content/", label: "Content",
-    roles: ["admin", "communications"] },
-  /* THE SITE'S COLLECTIONS. Content is the words and Site is the settings
-     around them; this is the things — resources and gatherings, one file each.
-     Two tabs on one page rather than two headers, the way the Ministry page
-     already holds four tools under one entry. A third collection later is a
-     third tab. */
-  { slug: "library", url: "/admin/library/", label: "Library",
-    roles: ["admin", "communications"] },
-  { slug: "site", url: "/admin/site/", label: "Site",
-    roles: ["admin", "communications"] },
-  { slug: "publish", url: "/admin/publish/", label: "Publish",
+  /* THE PUBLIC SITE, IN ONE PLACE (mockup board 13, built 2026-09-27).
+     Content, Library, Site and Publish were four links doing one job —
+     change the public site, then publish it. Now one link, with its own
+     side list (`website` below) and a publish bar along the foot of every
+     screen in it, so publishing is never a page you have to remember. */
+  { slug: "website", url: "/admin/website/", label: "Website",
     roles: ["admin", "communications"] },
   { slug: "activity", url: "/admin/activity/", label: "Activity",
     roles: ["admin", "board"] },
@@ -93,6 +84,15 @@ const admin = [
 const inRow = (pages) => pages.filter((p) => !p.menu);
 const rowRoles = (pages) => [...new Set(inRow(pages).flatMap((p) => p.roles || []))];
 
+/* The Website area's own side list. `tab` is what a page sets in its front
+   matter (`websiteTab`) to be marked as the one you are on. Photos joins
+   when it is built (board 14); a tab is never listed before its page exists. */
+const website = [
+  { tab: "pages", url: "/admin/website/", label: "Pages" },
+  { tab: "library", url: "/admin/website/library/", label: "Library" },
+  { tab: "settings", url: "/admin/website/settings/", label: "Settings" },
+];
+
 module.exports = {
   staff,
   admin,
@@ -102,4 +102,5 @@ module.exports = {
   /* What each row shows, and what goes under the name instead. */
   row: { staff: inRow(staff), admin: inRow(admin) },
   menu: [...staff, ...admin].filter((p) => p.menu),
+  website,
 };

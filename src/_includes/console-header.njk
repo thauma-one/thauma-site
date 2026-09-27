@@ -50,7 +50,7 @@
           {%- for p in list %}
           <a href="{{ p.url }}" class="r-{{ p.roles | join(' r-') }}"
              data-roles="{{ p.roles | join(' ') }}"
-             {% if p.slug == current %}aria-current="page"{% endif %}
+             {% if p.slug == current or (area == "admin" and p.slug == "website" and websiteTab) %}aria-current="page"{% endif %}
              data-i18n="{{ ('nav.' + ('dashboard' if p.slug == 'index' else p.slug)) if area == 'staff' else ('adm.nav.' + p.slug) }}">{{ p.label }}</a>
           {%- endfor %}
         </nav>

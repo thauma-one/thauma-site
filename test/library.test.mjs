@@ -13,7 +13,7 @@ import { JSDOM } from "jsdom";
 import { readFileSync, existsSync } from "node:fs";
 
 const build = ["_site", "_site_next", "_site_prod"].find((d) =>
-  existsSync(`${d}/admin/library/index.html`));
+  existsSync(`${d}/admin/website/library/index.html`));
 
 let pass = 0, fail = 0;
 const check = async (name, fn) => {
@@ -34,9 +34,9 @@ const VOCAB = {
 
 async function boot({ resources = [], gatherings = [], truncated = false } = {}) {
   const posts = [];
-  const dom = new JSDOM(readFileSync(`${build}/admin/library/index.html`, "utf8"), {
+  const dom = new JSDOM(readFileSync(`${build}/admin/website/library/index.html`, "utf8"), {
     runScripts: "dangerously", pretendToBeVisual: true,
-    url: "https://dev.thauma.one/admin/library/",
+    url: "https://dev.thauma.one/admin/website/library/",
     beforeParse(w) {
       Object.defineProperty(w, "sessionStorage", { value: {
         getItem: () => JSON.stringify({ roles: ["admin"] }), setItem: () => {} } });
