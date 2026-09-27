@@ -825,6 +825,11 @@
       if (!row.hidden && !firstVisible) firstVisible = row;
     });
 
+    /* The pages under your name follow the same rule as the rows. */
+    Array.prototype.forEach.call(document.querySelectorAll('.console-me-menu a[data-roles]'), function (a) {
+      a.hidden = !matches(a, roles);
+    });
+
     /* The wordmark goes to a console this account actually has. It used to be
        hardcoded to /staff/, which sent a board member to a page that refused
        them the moment they clicked their own logo. */
@@ -845,6 +850,58 @@
     var cached = null;
     try { cached = JSON.parse(sessionStorage.getItem(IDENT) || 'null'); } catch (e) {}
     if (cached && cached.roles && cached.roles.length) applyNav(cached.roles);
+  })();
+
+  /* =====================================================================
+     THE TWO MENUS IN THE HEADER (mockup board 1)
+     =====================================================================
+     Your name opens what is about you: Settings, your Activity, Sign out.
+     On a phone, Menu opens everything — both rows and those — as one list.
+     Both are disclosures (a button that shows a list of links), not ARIA
+     menus: links are what they hold, and Tab moves through them as links.
+
+     They close on Escape (focus back to the button that opened them), on a
+     click anywhere else, and on choosing a link, which leaves the page. */
+  (function headerMenus() {
+    var header = $('console');
+    var meBtn = $('consoleMeBtn'), me = $('consoleMe');
+    var menuBtn = $('consoleMenuBtn');
+    if (!header || !meBtn || !me || !menuBtn) return;
+
+    function setMe(open) {
+      meBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      header.classList.toggle('me-open', open);
+    }
+    function setMenu(open) {
+      menuBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      header.classList.toggle('menu-open', open);
+      document.documentElement.classList.toggle('console-menu-open', open);
+    }
+
+    meBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      setMe(meBtn.getAttribute('aria-expanded') !== 'true');
+    });
+    menuBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      setMenu(menuBtn.getAttribute('aria-expanded') !== 'true');
+    });
+    document.addEventListener('click', function (e) {
+      if (header.classList.contains('me-open') && !e.target.closest('.console-me')) setMe(false);
+      if (header.classList.contains('menu-open') && !e.target.closest('#console')) setMenu(false);
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape') return;
+      if (header.classList.contains('me-open')) { setMe(false); meBtn.focus(); }
+      else if (header.classList.contains('menu-open')) { setMenu(false); menuBtn.focus(); }
+    });
+    /* A phone turned sideways past the breakpoint should not come back to a
+       wide header with the phone menu still open underneath it. */
+    if (window.matchMedia) {
+      var wide = window.matchMedia('(min-width: 821px)');
+      var onWide = function () { if (wide.matches) setMenu(false); };
+      if (wide.addEventListener) wide.addEventListener('change', onWide);
+    }
   })();
 
   /* Called by any page whose data included an identity block. */

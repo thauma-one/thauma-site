@@ -43,7 +43,8 @@
        every page reads the database. A badge on all seven distinguishes
        nothing and trains people to stop reading badges. The .badge styles
        stay — the milestone list uses them for draft and featured. -#}
-    <div class="cue">{{ staffNum }} &mdash; <span data-i18n="page.{{ staffPage }}.title">{{ staffTitle }}</span></div>
+    {#- The page's name, without a number (see admin.njk). -#}
+    <div class="cue"><span data-i18n="page.{{ staffPage }}.title">{{ staffTitle }}</span></div>
     <div class="sec-h">
       <h1 data-i18n-html="page.{{ staffPage }}.heading">{{ staffHeading | safe }}</h1>
     </div>

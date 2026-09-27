@@ -15,7 +15,7 @@
    mistaken for one. Every endpoint checks the role itself. A hidden link is a
    tidier console, not a closed door. -#}
 
-<header class="console">
+<header class="console" id="console">
   <div class="console-in">
 
     {#- The wordmark is a link to whichever console the person actually has.
@@ -23,9 +23,20 @@
        that refused them the moment they clicked their own logo. -#}
     <a class="mark console-mark" id="consoleHome" href="/staff/">THAUMA</a>
 
+    {#- ONE BUTTON ON A PHONE (mockup board 1). Two rows of links do not fit
+       390px — five of the eight staff links were off the edge — so on a
+       narrow screen the rows and the actions fold behind this, and open as a
+       list. On a wide screen it is not shown. -#}
+    <button type="button" class="ghost-btn console-menu-btn" id="consoleMenuBtn"
+            aria-expanded="false" aria-controls="consoleMenu">
+      <span class="when-closed" data-i18n="nav.menu">Menu</span>
+      <span class="when-open" data-i18n="nav.close">Close</span>
+    </button>
+
+    <div class="console-menu" id="consoleMenu">
     <div class="console-rows">
       {%- for area in ["staff", "admin"] %}
-      {%- set list = consoleNav.staff if area == "staff" else consoleNav.admin %}
+      {%- set list = consoleNav.row.staff if area == "staff" else consoleNav.row.admin %}
       {%- set current = staffPage if area == "staff" else adminPage %}
       {#- The roles are BOTH a class and an attribute. The class is what CSS
          matches, so the right rows are there in the first paint; the attribute
@@ -47,23 +58,33 @@
       {%- endfor %}
     </div>
 
-    {#- Vertically centered beside however many rows there are, rather than
-       living inside the first one. Putting it in a row meant the actions moved
-       down the header when a second row appeared, and moved back when it did
-       not. -#}
-    {#- The buttons on one line, the name UNDER them. Side by side, the name
-       was the widest thing in the header and the row it competed with was the
-       navigation — which is the part people came for. Stacked, it costs
-       nothing horizontally and the header keeps its width for links. -#}
+    {#- The public site, then YOU: your name opens what is about you —
+       Settings, your Activity, Sign out (mockup board 1). Sign out used to sit
+       beside the navigation as the loudest button in the header, which is the
+       wrong thing to be loudest. -#}
     <div class="console-actions">
-      <div class="console-actions-row">
-        <a class="area-switch" href="/" target="_blank" rel="noopener">
-          <span data-i18n="nav.viewSite">Public site</span>
-          <span class="area-arrow" aria-hidden="true">&#8599;</span>
-        </a>
-        <a class="ghost-btn" href="/cdn-cgi/access/logout" data-i18n="nav.signout">Sign out</a>
+      <a class="area-switch" href="/" target="_blank" rel="noopener">
+        <span data-i18n="nav.viewSite">Public site</span>
+        <span class="area-arrow" aria-hidden="true">&#8599;</span>
+      </a>
+      <div class="console-me">
+        <button type="button" class="console-me-btn" id="consoleMeBtn"
+                aria-expanded="false" aria-controls="consoleMe">
+          <span class="pill" id="partnerPill" hidden></span>
+          <span class="console-me-fallback" data-i18n="nav.account">Account</span>
+          <span class="console-caret" aria-hidden="true"></span>
+        </button>
+        <div class="console-me-menu" id="consoleMe">
+          {%- for p in consoleNav.menu %}
+          <a href="{{ p.url }}" class="r-{{ p.roles | join(' r-') }}"
+             data-roles="{{ p.roles | join(' ') }}"
+             {% if p.slug == staffPage %}aria-current="page"{% endif %}
+             data-i18n="nav.{{ p.slug }}">{{ p.label }}</a>
+          {%- endfor %}
+          <a href="/cdn-cgi/access/logout" class="console-signout" data-i18n="nav.signout">Sign out</a>
+        </div>
       </div>
-      <span class="pill" id="partnerPill" hidden></span>
+    </div>
     </div>
 
   </div>

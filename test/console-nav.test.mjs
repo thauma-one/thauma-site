@@ -25,7 +25,8 @@ import { createRequire } from "node:module";
    is worth asserting is that every page an ADMIN may see is rendered, which is
    a question only the matrix can answer. */
 const NAV = createRequire(import.meta.url)("../src/_data/consoleNav.js");
-const forRole = (list, role) => list.filter((p) => p.roles.includes(role)).length;
+/* Row pages only: a page marked `menu` lives under the name instead. */
+const forRole = (list, role) => list.filter((p) => !p.menu && p.roles.includes(role)).length;
 import { readFileSync, existsSync, readdirSync } from "node:fs";
 
 const build = ["_site", "_site_next", "_site_prod"].find((d) =>
@@ -91,7 +92,7 @@ const links = (w, area) =>
 await check("a ministry account gets ONE row, the staff one", async () => {
   const w = boot(STAFF_PAGE, { roles: ["staff"] });
   eq(rows(w), ["staff"], "rows");
-  eq(links(w, "staff").length, 8, "every staff page");
+  eq(links(w, "staff").length, forRole(NAV.staff, "staff"), "every staff page");
 });
 
 await check("an administrator gets ONE row, the admin one", async () => {
@@ -127,6 +128,53 @@ await check("a site editor spans both rows, without the private pages", async ()
 
 await check("an account with no useful role is given no rows at all", async () => {
   eq(rows(boot(STAFF_PAGE, { roles: ["nothing-real"] })), [], "rows");
+});
+
+/* ------------------------- under your name ----------------------------- */
+
+const menu = (w) => visible(w, ".console-me-menu a").map((a) => a.textContent.trim());
+
+await check("Settings and Activity are under your name, not in the row", async () => {
+  const w = boot(STAFF_PAGE, { roles: ["staff"] });
+  eq(menu(w), ["Activity", "Settings", "Sign out"], "the name menu");
+  for (const p of ["Settings", "Activity"]) assert(!links(w, "staff").includes(p), `${p} still in the row`);
+});
+
+await check("an administrator only has Sign out there — their Activity is in their row", async () => {
+  const w = boot(STAFF_PAGE, { roles: ["admin"] });
+  eq(menu(w), ["Sign out"], "the name menu");
+  assert(links(w, "admin").includes("Activity"), "admin Activity left the row");
+});
+
+await check("the name opens its menu, and Escape or a click elsewhere closes it", async () => {
+  const w = boot(STAFF_PAGE, { roles: ["staff"] });
+  const d = w.document, btn = d.getElementById("consoleMeBtn"), header = d.getElementById("console");
+  assert(w.getComputedStyle(d.getElementById("consoleMe")).display === "none", "open before it was asked");
+  btn.click();
+  assert(btn.getAttribute("aria-expanded") === "true" && header.classList.contains("me-open"), "did not open");
+  assert(w.getComputedStyle(d.getElementById("consoleMe")).display !== "none", "open but not shown");
+  d.dispatchEvent(new w.KeyboardEvent("keydown", { key: "Escape" }));
+  assert(btn.getAttribute("aria-expanded") === "false", "Escape did not close it");
+  assert(d.activeElement === btn, "focus did not go back to the name");
+  btn.click();
+  d.querySelector("main").click();
+  assert(!header.classList.contains("me-open"), "a click elsewhere did not close it");
+});
+
+await check("on a phone, Menu opens the whole list and says Close", async () => {
+  const w = boot(STAFF_PAGE, { roles: ["staff"] });
+  const d = w.document, btn = d.getElementById("consoleMenuBtn"), header = d.getElementById("console");
+  btn.click();
+  assert(btn.getAttribute("aria-expanded") === "true" && header.classList.contains("menu-open"), "did not open");
+  d.dispatchEvent(new w.KeyboardEvent("keydown", { key: "Escape" }));
+  assert(!header.classList.contains("menu-open") && d.activeElement === btn, "Escape did not close it");
+});
+
+await check("the page's label has no number", async () => {
+  for (const page of [STAFF_PAGE, ADMIN_PAGE]) {
+    const cue = boot(page, { roles: ["admin", "staff"] }).document.querySelector(".page-head .cue").textContent.trim();
+    assert(!/\d/.test(cue), `${page}: "${cue}"`);
+  }
 });
 
 /* --------------------- and it does not move afterwards ------------------ */

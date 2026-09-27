@@ -45,10 +45,15 @@ const staff = [
     roles: ["staff", "partner", "communications"] },
   { slug: "resources", url: "/staff/resources/", label: "Resources",
     roles: ["staff", "partner", "communications"] },
+  /* UNDER YOUR NAME, not in the row (mockup board 1, built 2026-09-27).
+     Settings is about you and Activity is a record you look back at — neither
+     is a job you come to the console to do, and the row is for jobs. `menu`
+     puts a page in the name menu instead; the roles still decide who sees
+     it, the same way. */
   { slug: "activity", url: "/staff/activity/", label: "Activity",
-    roles: ["staff", "partner"] },
+    roles: ["staff", "partner"], menu: true },
   { slug: "settings", url: "/staff/settings/", label: "Settings",
-    roles: ["staff", "partner"] },
+    roles: ["staff", "partner"], menu: true },
 ];
 
 /** The organization's console. */
@@ -85,7 +90,8 @@ const admin = [
  * it for you is a row you do not get. So the two-row header is not a case to
  * handle, it is what happens when both rows have something.
  */
-const rowRoles = (pages) => [...new Set(pages.flatMap((p) => p.roles || []))];
+const inRow = (pages) => pages.filter((p) => !p.menu);
+const rowRoles = (pages) => [...new Set(inRow(pages).flatMap((p) => p.roles || []))];
 
 module.exports = {
   staff,
@@ -93,4 +99,7 @@ module.exports = {
   /* Emitted into the page so the browser filters against the same lists the
      build rendered, rather than a second copy that can disagree. */
   rows: { staff: rowRoles(staff), admin: rowRoles(admin) },
+  /* What each row shows, and what goes under the name instead. */
+  row: { staff: inRow(staff), admin: inRow(admin) },
+  menu: [...staff, ...admin].filter((p) => p.menu),
 };
