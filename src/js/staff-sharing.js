@@ -907,6 +907,10 @@
           id: l.id, name: l.name, description: l.description || '',
           from_name: l.from_name, from_email: l.from_email, reply_to: l.reply_to || '',
           is_open: !!d.lists[l.id],
+          /* EVERY FIELD, because a field left out is saved as off: this once
+             sent no archive_public, so switching a list here also stopped
+             its past issues being readable on the web. */
+          archive_public: !!l.archive_public, form_thanks_url: l.form_thanks_url || '',
           form_heading: w.heading.trim(), form_blurb: w.blurb.trim(), form_button: w.button.trim()
         });
       });

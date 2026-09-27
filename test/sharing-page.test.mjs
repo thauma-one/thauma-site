@@ -53,7 +53,7 @@ function answers({ admin = true } = {}) {
       lists: [
         { id: "l1", name: "Newsletter", is_open: 1, form_heading: "Stay in touch", form_blurb: "",
           form_button: "", from_name: "Chase", from_email: "news@x.one", reply_to: "", description: "" },
-        { id: "l2", name: "Test", is_open: 0, form_heading: "", form_blurb: "", form_button: "",
+        { id: "l2", name: "Test", is_open: 0, archive_public: 1, form_heading: "", form_blurb: "", form_button: "",
           from_name: "Chase", from_email: "news@x.one", reply_to: "", description: "" },
       ],
       senders: [{ address: "noreply@thauma.one" }],
@@ -230,6 +230,7 @@ await check("the sign-up form: a list saved whole, the form's words saved as the
   await save();
   const l2 = sent.find((p) => p.body.id === "l2");
   eq([l2 && l2.body.is_open, l2 && l2.body.name], [true, "Test"], "the Test list opened, the rest of it unchanged");
+  eq(l2.body.archive_public, true, "opening a list here stopped its past issues being readable on the web");
   assert(!sent.some((p) => p.body.id === "l1"), "the untouched list was saved too");
   const w = sent.find((p) => p.body.action === "form-words");
   eq([w.body.form, w.body.words], ["signup", { en: { heading: "Hear from us" } }], "the form's own words");
