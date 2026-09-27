@@ -371,6 +371,10 @@ await check("every real query converts with its documented params", async () => 
                              // by a WHERE clause. The partner-scoped view of
                              // the same table is sender_addresses_for_partner.
                              "admin_sender_addresses",
+                             /* Thauma's own open lists, for its own sign-up
+                                form: the organization by name (partner_id IS
+                                NULL), reached only for the slug `thauma`. */
+                             "public_lists_for_signup_org",
                              /* The organization's own contact form. It has no
                                 slug to be found by and exactly one row, which
                                 is what the partial unique index in 0021

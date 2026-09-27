@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "bc292c1e769980b9";
+export const SOURCE_DIGEST = "02606f98f7a9e194";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -674,6 +674,12 @@ ORDER BY pl.sort_order, l.name;`,
   LEFT JOIN embed_looks k ON k.partner_id = p.id AND k.kind = 'signup'
  WHERE l.is_open = 1 AND l.archived_at IS NULL
    AND p.signup_form_open = 1     -- the form's own Live switch (0038)
+ ORDER BY l.name COLLATE NOCASE;`,
+  public_lists_for_signup_org: `SELECT l.id, l.partner_id, l.name, l.slug, l.description,
+       l.from_name, l.from_email, l.reply_to,
+       l.form_heading, l.form_blurb, l.form_button, l.form_thanks_url
+  FROM mailing_lists l
+ WHERE l.partner_id IS NULL AND l.is_open = 1 AND l.archived_at IS NULL
  ORDER BY l.name COLLATE NOCASE;`,
   public_mailings_for_partner: `SELECT m.slug, m.subject, m.preheader, m.finished_at AS sent_at,
        l.slug AS list_slug, l.name AS list_name

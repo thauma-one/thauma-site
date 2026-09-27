@@ -634,6 +634,24 @@ SELECT l.id, l.partner_id, l.name, l.slug, l.description,
  ORDER BY l.name COLLATE NOCASE;
 
 
+-- name: public_lists_for_signup_org
+-- Thauma's own open lists, for Thauma's own sign-up form (Website › Forms;
+-- the form thauma.one carries). A SEPARATE QUERY, for the reason
+-- public_lists_for_signup explains: NULL is how the organization is spelled,
+-- and a lookup by slug that finds nothing produces the same NULL. This one is
+-- reached only for the exact slug `thauma`, which no partner may take
+-- (lib/org.js), and asks for the organization by name rather than by miss.
+--
+-- Thauma has no partner row, so no Live switch beyond its lists: the form
+-- exists while any list is open.
+SELECT l.id, l.partner_id, l.name, l.slug, l.description,
+       l.from_name, l.from_email, l.reply_to,
+       l.form_heading, l.form_blurb, l.form_button, l.form_thanks_url
+  FROM mailing_lists l
+ WHERE l.partner_id IS NULL AND l.is_open = 1 AND l.archived_at IS NULL
+ ORDER BY l.name COLLATE NOCASE;
+
+
 -- name: signup_attempt_record
 INSERT OR REPLACE INTO signup_attempts (ip_hash, list_id, at, outcome)
 VALUES (:ip_hash, :list_id, :at, :outcome);

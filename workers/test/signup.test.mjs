@@ -176,6 +176,36 @@ await check("a closed or unknown list has no form at all", async () => {
   eq(res.status, 404, "status");
 });
 
+await check("Thauma's own form asks for the organization by name, never by a missed slug", async () => {
+  /* public_lists_for_signup with a slug that finds nobody returned the
+     ORGANIZATION's lists once. Thauma's form must use its own query, and a
+     partner's must never reach it. */
+  const org = envWith({ list: { ...LIST, partner_id: null } });
+  const res = await handler.fetch(new Request("https://thauma.one/embed/v1/thauma/form.js"),
+    org, "thauma", "form.js");
+  eq(res.status, 200, "Thauma's form");
+  assert(org.calls.some((c) => /partner_id IS NULL AND l\.is_open = 1/.test(c.sql)), "not the organization's own query");
+  assert(!org.calls.some((c) => /JOIN partners p ON p\.slug/.test(c.sql)), "Thauma's form asked the partner query");
+  assert(org.calls.some((c) => /FROM form_words/.test(c.sql) && /partner_id IS NULL/.test(c.sql)), "Thauma's words");
+  const partner = envWith();
+  await handler.fetch(new Request("https://thauma.one/embed/v1/chase-roush/form.js"),
+    partner, "chase-roush", "form.js");
+  assert(!partner.calls.some((c) => /partner_id IS NULL AND l\.is_open = 1/.test(c.sql)),
+    "a ministry's form asked for Thauma's lists");
+});
+
+await check("a sign-up to Thauma's list is Thauma's subscriber", async () => {
+  const env = envWith({ list: { ...LIST, partner_id: null } });
+  await handler.fetch(new Request("https://thauma.one/embed/v1/thauma/signup", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "CF-Connecting-IP": "203.0.113.9" },
+    body: JSON.stringify({ lists: ["newsletter"], email: "a@b.invalid", elapsed: 9000 }),
+  }), env, "thauma", "signup");
+  const add = env.calls.find((c) => /INSERT INTO subscribers/i.test(c.sql));
+  assert(add, "nobody was added");
+  assert(add.params.includes(null) && !add.params.includes("p_chase"), `added under ${JSON.stringify(add.params)}`);
+});
+
 await check("a partner's own words cannot inject script into the form", async () => {
   /* The heading and blurb are typed by a partner and rendered into a page on
      somebody else's website. An unescaped `</script>` there would be theirs to

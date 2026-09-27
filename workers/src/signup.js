@@ -46,6 +46,7 @@ import { COLOUR_JS, rowLook } from "./embed-colour.js";
 import { escapeHtml, palette, formStyles, LIGHT, DARK, BEHAVIOUR_JS, WORDS_JS } from "./lib/embed-form.js";
 import { t, wordsFor } from "./lib/mail-i18n.js";
 import { siteOrigin } from "./lib/origin.js";
+import { isOrgSlug } from "./lib/org.js";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -360,7 +361,12 @@ export default {
     if (!SLUG_RE.test(partnerSlug || "")) return json({ error: "Not found" }, 404, CORS);
 
     const db = createDb(env.DB);
-    const lists = await db.query("public_lists_for_signup", { partner_slug: partnerSlug });
+    /* THAUMA'S OWN FORM by its own query, never the partner one with a miss
+       (see public_lists_for_signup_org). */
+    const isOrg = isOrgSlug(partnerSlug);
+    const lists = await (isOrg
+      ? db.query("public_lists_for_signup_org", {})
+      : db.query("public_lists_for_signup", { partner_slug: partnerSlug }));
     /* No open lists is the same as no such partner: both mean "there is no form
        here", and telling them apart reports the ministry's internal state. */
     if (!lists.length) return json({ error: "Not found" }, 404, CORS);
@@ -370,7 +376,9 @@ export default {
       /* The form's own colors if it has them, the ministry's if not — both
          carried on every row by the join (0040). */
       const theme = rowLook(lists[0]);
-      const own = byLang(await db.query("public_form_words", { partner_slug: partnerSlug, form: "signup" }));
+      const own = byLang(await (isOrg
+        ? db.query("public_form_words_org", { form: "signup" })
+        : db.query("public_form_words", { partner_slug: partnerSlug, form: "signup" })));
       return new Response(formScript(lists, partnerSlug, origin, theme, own), {
         headers: {
           ...CORS,
