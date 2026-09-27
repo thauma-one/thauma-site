@@ -54,6 +54,8 @@ function bindingFor(rows) {
 const ENABLED = {
   id: "p_1", slug: "chase-roush", display_name: "Chase Roush",
   embed_accent: "#FF0066", embed_theme: "dark",
+  /* Each widget shared on its own (0038). */
+  embed_roadmap: 1, embed_goal: 1, embed_prayer: 1, embed_videos: 1,
 };
 
 const req = (path, init) => new Request("https://thauma.one" + path, init);
@@ -231,6 +233,20 @@ await check("an opted-in partner gets their numbers and their colors", async () 
   eq(body.theme.mode, "dark", "the partner's stored theme");
   eq(body.goals[0].percent, 65, "percent");
   eq(body.goals[0].donor_count, 41, "donor count");
+});
+
+await check("a widget that is not shared leaves its part of the data empty", async () => {
+  /* The roadmap is shared, goal progress is not: the goals must not be
+     readable by anyone who knows the address. */
+  const res = await handler.fetch(req("/embed/v1/chase-roush.json"), env({
+    partner: { ...ENABLED, embed_goal: 0, embed_prayer: 0, embed_videos: 0 },
+    goals: [{ goal_id: "g1", label: "Monthly support", kind: "monthly",
+              target_cents: 500000, currency: "USD", raised_cents: 325000,
+              donor_count: 41, percent: 65, captured_at: "2026-08-01" }],
+  }));
+  const body = await res.json();
+  eq(body.shared, ["roadmap"], "what is shared");
+  eq(body.goals, [], "unshared goals were published");
 });
 
 await check("a junk accent in the database falls back rather than reaching CSS", async () => {

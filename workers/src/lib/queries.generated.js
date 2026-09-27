@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "d9569487da4f56ea";
+export const SOURCE_DIGEST = "fba5cd24bd8e73e2";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -516,11 +516,16 @@ ORDER BY sort_order, l.name;`,
   partner_set_default_lang: `UPDATE partners SET default_lang = :lang, updated_at = :now WHERE id = :partner_id;`,
   partner_set_embed: `UPDATE partners
    SET embed_enabled = :embed_enabled,
+       embed_roadmap = :embed_roadmap,
+       embed_goal    = :embed_goal,
+       embed_prayer  = :embed_prayer,
+       embed_videos  = :embed_videos,
        embed_accent  = :embed_accent,
        embed_accent2 = :embed_accent2,
        embed_theme   = :embed_theme,
        updated_at    = :now
  WHERE id = :partner_id;`,
+  partner_set_signup_form: `UPDATE partners SET signup_form_open = :open, updated_at = :now WHERE id = :partner_id;`,
   partner_set_timeline: `UPDATE partners
    SET timeline_start = :timeline_start,
        timeline_end   = :timeline_end,
@@ -529,6 +534,8 @@ ORDER BY sort_order, l.name;`,
   partner_settings: `SELECT p.id, p.slug, p.display_name, p.status,
        COALESCE(p.default_lang, 'en') AS default_lang,
        p.embed_enabled, p.embed_accent, p.embed_accent2, p.embed_theme,
+       p.embed_roadmap, p.embed_goal, p.embed_prayer, p.embed_videos,
+       p.signup_form_open,
        p.timeline_start, p.timeline_end
 FROM partners p WHERE p.id = :partner_id;`,
   partners_for_user: `SELECT p.id, p.slug, p.display_name, p.status, pu.role AS access_role,
@@ -626,6 +633,7 @@ ORDER BY pl.sort_order, l.name;`,
   FROM mailing_lists l
   JOIN partners p ON p.slug = :partner_slug AND l.partner_id IS p.id
  WHERE l.is_open = 1 AND l.archived_at IS NULL
+   AND p.signup_form_open = 1     -- the form's own Live switch (0038)
  ORDER BY l.name COLLATE NOCASE;`,
   public_mailings_for_partner: `SELECT m.slug, m.subject, m.preheader, m.finished_at AS sent_at,
        l.slug AS list_slug, l.name AS list_name
@@ -656,7 +664,8 @@ WHERE partner_id = :partner_id
   AND is_public = 1
 ORDER BY sort_order ASC, (actual_date IS NULL), actual_date ASC;`,
   public_partner_for_embed: `SELECT id, slug, display_name, embed_accent, embed_accent2, embed_theme,
-       timeline_start, timeline_end
+       timeline_start, timeline_end,
+       embed_roadmap, embed_goal, embed_prayer, embed_videos
 FROM partners
 WHERE slug = :slug
   AND embed_enabled = 1

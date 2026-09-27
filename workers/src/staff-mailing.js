@@ -456,7 +456,9 @@ export default {
                  it out of this payload made the console send `false`, which
                  would have switched a ministry's published widgets off because
                  somebody picked a color on the mailing page. */
-              enabled: !!look.embed_enabled }
+              enabled: !!look.embed_enabled,
+              /* The sign-up form's own Live switch (0038). */
+              signup_form_open: !!look.signup_form_open }
           : null,
         /* Changing them is admin-only, the same rule staff-settings enforces —
            they are shared by every widget this ministry publishes, so one
@@ -889,6 +891,17 @@ export default {
          One per ministry, so a save rather than a create. The organization's
          own is the same row shape with a NULL partner, which is why the site's
          contact page could stop being a special case in code. */
+      /* THE SIGN-UP FORM'S LIVE SWITCH (0038). Off stops every copy of the
+         form at once; each list keeps its own open/closed choice. A partner
+         setting: Thauma's own form has no partner row, and its lists alone
+         decide it. */
+      if (body.action === "signup-form") {
+        if (!partnerId) return json({ error: "Thauma's own form is switched by its lists." }, 400);
+        const open = body.open ? 1 : 0;
+        await db.query("partner_set_signup_form", { partner_id: partnerId, open, now: new Date().toISOString() });
+        return json({ signup_form_open: !!open });
+      }
+
       if (body.action === "contact-form") {
         const deliverTo = clean(body.deliver_to, 200);
         if (!deliverTo || !EMAIL_RE.test(deliverTo)) {

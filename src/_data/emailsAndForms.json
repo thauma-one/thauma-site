@@ -82,7 +82,8 @@
       "close": "Close",
       "answered": "Answered",
       "praying": "Still praying",
-      "watch": "Watch on YouTube"
+      "watch": "Watch on YouTube",
+      "notShared": "This ministry is not sharing this here."
     }
   },
   "hr": {
@@ -168,7 +169,8 @@
       "close": "Zatvori",
       "answered": "Uslišano",
       "praying": "Još molimo",
-      "watch": "Pogledaj na YouTubeu"
+      "watch": "Pogledaj na YouTubeu",
+      "notShared": "Ova služba ovo ne dijeli ovdje."
     }
   },
   "sr": {
@@ -254,7 +256,8 @@
       "close": "Затвори",
       "answered": "Услишено",
       "praying": "Још молимо",
-      "watch": "Погледај на Јутјубу"
+      "watch": "Погледај на Јутјубу",
+      "notShared": "Ова служба ово не дели овде."
     }
   },
   "sl": {
@@ -340,7 +343,8 @@
       "close": "Zapri",
       "answered": "Uslišano",
       "praying": "Še molimo",
-      "watch": "Poglej na YouTubu"
+      "watch": "Poglej na YouTubu",
+      "notShared": "Ta služba tega tukaj ne deli."
     }
   }
 }

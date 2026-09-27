@@ -151,6 +151,13 @@ export default {
              value so the pair is never displayed half-chosen. */
           accent2: (settings && settings.embed_accent2) || null,
           theme: (settings && settings.embed_theme) || "auto",
+          /* Each widget on its own (0038). `enabled` is "any of them". */
+          shared: {
+            roadmap: !!(settings && settings.embed_roadmap),
+            goal: !!(settings && settings.embed_goal),
+            prayer: !!(settings && settings.embed_prayer),
+            videos: !!(settings && settings.embed_videos),
+          },
         },
         timeline: {
           start: (settings && settings.timeline_start) || null,
@@ -309,18 +316,41 @@ export default {
           return json({ error: "Theme must be auto, light or dark." }, 400);
         }
 
-        const enabled = e.enabled ? 1 : 0;
+        /* EACH WIDGET ON ITS OWN (0038, the Sharing page). `shared` names
+           the four. A save that does not mention them — a screen saving only
+           a color — keeps them exactly as they are; one that flips only the
+           old single `enabled` switches all four together, as it always did.
+           `enabled` is then stored as "any of the four", which is what the
+           public route's gate reads. */
+        const WIDGETS = ["roadmap", "goal", "prayer", "videos"];
+        const now_ = await db.queryOne("partner_settings", { partner_id });
+        const was = {};
+        WIDGETS.forEach((w) => { was[w] = !!(now_ && now_["embed_" + w]); });
+        const wasOn = !!(now_ && now_.embed_enabled);
+        let shared;
+        if (e.shared && typeof e.shared === "object") {
+          shared = {};
+          WIDGETS.forEach((w) => { shared[w] = w in e.shared ? !!e.shared[w] : was[w]; });
+        } else if (e.enabled !== undefined && !!e.enabled !== wasOn) {
+          shared = {};
+          WIDGETS.forEach((w) => { shared[w] = !!e.enabled; });
+        } else {
+          shared = was;
+        }
+        const enabled = WIDGETS.some((w) => shared[w]) ? 1 : 0;
 
         await db.query("partner_set_embed", {
           partner_id, embed_enabled: enabled, embed_accent: accent,
           embed_accent2: accent2, embed_theme: theme, now,
+          embed_roadmap: shared.roadmap ? 1 : 0, embed_goal: shared.goal ? 1 : 0,
+          embed_prayer: shared.prayer ? 1 : 0, embed_videos: shared.videos ? 1 : 0,
         });
         /* Audited as a publication decision, with the state it moved TO —
            "who made this readable by the world, and when" is the first
            question anybody asks about an unauthenticated endpoint. */
         await audit(db, { user, partner, action: "update", entity: "partner.embed",
-                          detail: { enabled: !!enabled, accent, accent2, theme } });
-        return json({ embed: { enabled: !!enabled, accent, accent2, theme } });
+                          detail: { enabled: !!enabled, shared, accent, accent2, theme } });
+        return json({ embed: { enabled: !!enabled, shared, accent, accent2, theme } });
       }
 
       // --- revoke a key ---

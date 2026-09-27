@@ -114,6 +114,7 @@ Guard the null explicitly before comparing dates.
 | \`milestones\` | array | May be empty. |
 | \`videos\` | array | Their latest YouTube videos, newest first. May be empty. |
 | \`video_links\` | array | Optional buttons to show under the videos. Usually empty. |
+| \`shared\` | array | Which widgets the ministry shares: any of \`roadmap\`, \`goal\`, \`prayer\`, \`videos\`. A part that is not shared is an empty list here — so an empty \`milestones\` with no \`roadmap\` in \`shared\` means "not shared", not "nothing yet". |
 | \`words\` | object | The short words the ministry's own widget uses — \`now\`, \`complete\`, \`in_progress\`, \`upcoming\`, \`funded\`, \`remaining\` and so on — **keyed by language code**, for each language in \`languages\` plus \`en\`. Use them instead of writing your own, so your page says "Sada" where theirs does. |
 
 ### A goal

@@ -1432,6 +1432,24 @@ def t_upcoming_milestones_publish_no_progress():
     assert kept == 40, "the console's figure was lost"
 
 
+def t_signup_form_live_switch_stops_every_copy():
+    """0038: the sign-up form's Live switch hides every list at once, and
+    each list keeps its own open/closed choice for when it comes back."""
+    db = fresh()
+    db.execute("INSERT INTO partners (id,slug,display_name,status,created_at,updated_at) "
+               "VALUES ('p_1','p-one','P One','active',?,?)", (NOW, NOW))
+    _list(db, "l1", "p_1")
+    db.execute("UPDATE mailing_lists SET is_open = 1 WHERE id = 'l1'")
+    assert len(_run(db, "public_lists_for_signup", partner_slug="p-one")) == 1, "live form shows its list"
+    _run(db, "partner_set_signup_form", open=0, now=NOW, partner_id="p_1")
+    assert _run(db, "public_lists_for_signup", partner_slug="p-one") == [], "switched off, still showing"
+    still = db.execute("SELECT is_open FROM mailing_lists WHERE id='l1'").fetchone()[0]
+    assert still == 1, "switching the form off closed the list itself"
+    flags = db.execute("SELECT embed_roadmap, embed_goal, embed_prayer, embed_videos, "
+                       "signup_form_open FROM partners WHERE id='p_1'").fetchone()
+    assert flags == (0, 0, 0, 0, 0), f"a new partner shares nothing: {flags}"
+
+
 def t_milestone_parent_must_match_partner():
     """A sub-step cannot hang off another partner's milestone."""
     db = fresh()
@@ -2046,6 +2064,7 @@ if __name__ == "__main__":
         ("milestones default to unpublished",           t_milestones_default_to_private),
         ("milestone dates are a known precision",       t_milestone_dates_are_a_known_precision),
         ("upcoming milestones publish no progress",     t_upcoming_milestones_publish_no_progress),
+        ("the sign-up form's Live switch",              t_signup_form_live_switch_stops_every_copy),
         ("three roles, and only three",                 t_three_roles_and_only_three),
         ("a person can hold two roles",                 t_a_person_can_hold_two_roles),
         ("removing a user removes their roles",         t_removing_a_user_removes_their_roles),

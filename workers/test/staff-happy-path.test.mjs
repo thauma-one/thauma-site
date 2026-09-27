@@ -61,6 +61,7 @@ async function mint(email) {
     pair.privateKey, new TextEncoder().encode(`${h}.${p}`)))}`;
 }
 const MIRA = await mint("mira@thauma.one");
+const BOSS = await mint("boss@thauma.one");
 const ADMIN = await mint("admin@thauma.one");
 
 globalThis.fetch = async (url) => {
@@ -86,6 +87,11 @@ const USER = {
   "mira@thauma.one": { user_id: "u_mira", email: "mira@thauma.one",
                        user_name: "Mira Petrović", status: "active",
                        preferred_lang: "sr", roles: "partner,staff" },
+  /* An administrator who is also on a partner's team — the person who may
+     publish that partner's widgets. */
+  "boss@thauma.one": { user_id: "u_boss", email: "boss@thauma.one",
+                       user_name: "Boss", status: "active",
+                       preferred_lang: "en", roles: "admin,staff" },
   "admin@thauma.one": { user_id: "u_admin", email: "admin@thauma.one",
                         user_name: "Chase Roush", status: "active",
                         preferred_lang: "en", roles: "admin" },
@@ -93,6 +99,8 @@ const USER = {
 const BY_ID = Object.fromEntries(Object.values(USER).map((u) => [u.user_id, u]));
 
 const PARTNER = { id: "p_mira", display_name: "Mira Petrović", role: "owner" };
+/* The partner's stored sharing, changed by the tests that need it. */
+let SETTINGS_ROW = {};
 
 /** Rows for each named query. Absent means "an empty list is fine". */
 function rowsFor(name, params) {
@@ -101,14 +109,14 @@ function rowsFor(name, params) {
     case "user_by_id":    return BY_ID[params.id] ? [BY_ID[params.id]] : [];
     case "partners_for_user":
       // The admin has no partner of their own — deliberately, as in the seed.
-      return params.email === "mira@thauma.one" ? [PARTNER] : [];
+      return params.email === "mira@thauma.one" || params.email === "boss@thauma.one" ? [PARTNER] : [];
     case "languages_all":
       return [{ code: "en", name: "English", is_active: 1 },
               { code: "sr", name: "Srpski", is_active: 1 }];
     case "partner_languages_for_partner":
       return [{ lang: "en", is_enabled: 1, sort_order: 0 },
               { lang: "sr", is_enabled: 1, sort_order: 1 }];
-    case "partner_settings":  return [{ default_lang: "en" }];
+    case "partner_settings":  return [{ default_lang: "en", ...SETTINGS_ROW }];
     case "milestones_for_staff":
       return [{ id: "ms_m1", status: "complete", completion: 100, sort_order: 0,
                 is_public: 1, is_featured: 0, parent_id: null, actual_date: "2026-03-01" }];
@@ -255,6 +263,60 @@ await check("the editor is handed the season words it previews with", async () =
   const res = await staffMilestones.fetch(get("/api/staff-milestones"), env(makeDb()));
   const body = await res.json();
   eq(body.date_words && body.date_words.en["dates.autumn"], "Fall {year}", "English fall");
+});
+
+/* ------------------- sharing, one widget at a time (0038) --------------- */
+
+const patch = (path, body, token) => new Request("https://dev.thauma.one" + path, {
+  method: "PATCH",
+  headers: { "Cf-Access-Jwt-Assertion": token, "Content-Type": "application/json" },
+  body: JSON.stringify(body),
+});
+/* The values a call bound, by parameter name. */
+function named(call) {
+  const names = QUERIES[call.name].match(/:[a-z_][a-z0-9_]*/gi).map((n) => n.slice(1));
+  const out = {};
+  names.forEach((n, i) => { out[n] = call.args[i]; });
+  return out;
+}
+const embedSaved = (db) => named(db.calls.find((c) => c.name === "partner_set_embed"));
+
+await check("sharing one widget publishes that one, and 'any' is what the gate reads", async () => {
+  SETTINGS_ROW = { embed_enabled: 0 };
+  const db = makeDb();
+  const res = await staffSettings.fetch(patch("/api/staff-settings",
+    { embed: { accent: "#1AE4FF", theme: "auto", shared: { roadmap: true } } }, BOSS), env(db));
+  eq(res.status, 200, "status");
+  const v = embedSaved(db);
+  eq([v.embed_roadmap, v.embed_goal, v.embed_prayer, v.embed_videos, v.embed_enabled],
+     [1, 0, 0, 0, 1], "stored");
+});
+
+await check("saving only a color never changes what is shared", async () => {
+  SETTINGS_ROW = { embed_enabled: 1, embed_roadmap: 1, embed_goal: 0, embed_prayer: 1, embed_videos: 0 };
+  const db = makeDb();
+  await staffSettings.fetch(patch("/api/staff-settings",
+    { embed: { accent: "#FF0066", theme: "dark", enabled: true } }, BOSS), env(db));
+  const v = embedSaved(db);
+  eq([v.embed_roadmap, v.embed_goal, v.embed_prayer, v.embed_videos], [1, 0, 1, 0],
+     "a color save reshuffled the sharing");
+});
+
+await check("the old single switch still turns all four off at once", async () => {
+  SETTINGS_ROW = { embed_enabled: 1, embed_roadmap: 1, embed_goal: 1, embed_prayer: 0, embed_videos: 1 };
+  const db = makeDb();
+  await staffSettings.fetch(patch("/api/staff-settings",
+    { embed: { accent: "#FF0066", theme: "dark", enabled: false } }, BOSS), env(db));
+  const v = embedSaved(db);
+  eq([v.embed_roadmap, v.embed_goal, v.embed_prayer, v.embed_videos, v.embed_enabled],
+     [0, 0, 0, 0, 0], "stored");
+});
+
+await check("only an administrator changes what is shared", async () => {
+  SETTINGS_ROW = {};
+  const res = await staffSettings.fetch(patch("/api/staff-settings",
+    { embed: { accent: "#FF0066", theme: "dark", shared: { prayer: true } } }, MIRA), env(makeDb()));
+  eq(res.status, 403, "status");
 });
 
 await check("GET /api/staff-snapshot returns 200 through the router", async () => {

@@ -153,7 +153,8 @@ export const WIDGET_JS = String.raw`
     upcoming: 'Upcoming', canceled: 'Canceled', completeWord: 'Complete',
     remaining: 'remaining', funded: 'Funded', partners: 'partners', partner: 'partner',
     breakdown: 'Breakdown', empty: 'Nothing to show yet.', close: 'Close',
-    answered: 'Answered', praying: 'Still praying', watch: 'Watch on YouTube' };
+    answered: 'Answered', praying: 'Still praying', watch: 'Watch on YouTube',
+    notShared: 'This ministry is not sharing this here.' };
   var WORDS = { en: FALLBACK };
   function w(lang, key) {
     var t = WORDS[lang] || {}, en = WORDS.en || {};
@@ -1309,6 +1310,16 @@ export const WIDGET_JS = String.raw`
     if (data.words && data.words.en) WORDS = data.words;
     var kind   = node.getAttribute('data-widget') || 'goal';
     var lang   = chooseLang(node, data);
+
+    /* EACH WIDGET IS SHARED ON ITS OWN (the Sharing page). The data leaves
+       out a part that is not shared, so drawing it would read "nothing to
+       show yet" — which is untrue. Say what is true instead. The console's
+       preview is exempt: you look before you decide. */
+    if (Array.isArray(data.shared) && data !== window.__thaumaPreview &&
+        data.shared.indexOf(kind) === -1) {
+      fail(node, w(lang, 'notShared'));
+      return;
+    }
     var accent = node.getAttribute('data-accent') || (data.theme && data.theme.accent) || '#6D4AFF';
     var mode   = node.getAttribute('data-theme')  || (data.theme && data.theme.mode)   || 'auto';
 

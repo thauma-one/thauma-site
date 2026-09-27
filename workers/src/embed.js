@@ -133,8 +133,28 @@ function widgetScript(hostname) {
  * callers find it differently: the public route by slug among partners who
  * have opted in, the console by who is signed in.
  */
-export async function embedPayload(db, partner) {
+/* The four widgets, each shared on its own (0038), and the parts of the
+   data each one draws. */
+const WIDGET_PARTS = {
+  roadmap: ["milestones"],
+  goal: ["goals"],
+  prayer: ["prayer"],
+  videos: ["videos", "video_links"],
+};
+
+/**
+ * `onlyShared` is the PUBLIC rule: a widget the ministry has not shared
+ * leaves its part of the data empty. The console's preview passes false —
+ * it shows everything, so a ministry can look before it decides.
+ */
+export async function embedPayload(db, partner, { onlyShared = false } = {}) {
   const site = await partnerPublicSite(db, partner.id, partner.slug);
+  const shared = Object.keys(WIDGET_PARTS).filter((w) => !!partner["embed_" + w]);
+  if (onlyShared) {
+    for (const [w, parts] of Object.entries(WIDGET_PARTS)) {
+      if (!shared.includes(w)) parts.forEach((k) => { site[k] = []; });
+    }
+  }
   const accent = HEX_RE.test(partner.embed_accent || "")
     ? partner.embed_accent : DEFAULT_ACCENT;
   return {
@@ -162,6 +182,9 @@ export async function embedPayload(db, partner) {
     },
     generated_at: new Date().toISOString(),
     ...site,
+    /* Which widgets are shared — so a widget asked for one that is not can
+       say so, and a developer can tell "empty" from "not shared". */
+    shared,
     words: widgetWords(site.languages),
   };
 }
@@ -196,7 +219,7 @@ async function partnerJson(slug, env) {
      would turn this into a directory of who is in the system. */
   if (!partner) return json({ error: "Not found" }, 404, CORS);
 
-  const body = await embedPayload(db, partner);
+  const body = await embedPayload(db, partner, { onlyShared: true });
 
   // LAST GATE, same as the partner API. Milestone text is free text.
   try {

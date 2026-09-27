@@ -623,6 +623,7 @@ SELECT l.id, l.partner_id, l.name, l.slug, l.description,
   FROM mailing_lists l
   JOIN partners p ON p.slug = :partner_slug AND l.partner_id IS p.id
  WHERE l.is_open = 1 AND l.archived_at IS NULL
+   AND p.signup_form_open = 1     -- the form's own Live switch (0038)
  ORDER BY l.name COLLATE NOCASE;
 
 
@@ -1146,8 +1147,16 @@ UPDATE users SET preferred_lang = :lang WHERE email = :email AND status = 'activ
 SELECT p.id, p.slug, p.display_name, p.status,
        COALESCE(p.default_lang, 'en') AS default_lang,
        p.embed_enabled, p.embed_accent, p.embed_accent2, p.embed_theme,
+       p.embed_roadmap, p.embed_goal, p.embed_prayer, p.embed_videos,
+       p.signup_form_open,
        p.timeline_start, p.timeline_end
 FROM partners p WHERE p.id = :partner_id;
+
+
+-- name: partner_set_signup_form
+-- The sign-up form's Live switch (0038). Off stops every copy of the form at
+-- once; each list keeps its own open/closed choice for when it comes back.
+UPDATE partners SET signup_form_open = :open, updated_at = :now WHERE id = :partner_id;
 
 
 -- name: partner_set_embed
@@ -1161,6 +1170,10 @@ FROM partners p WHERE p.id = :partner_id;
 -- stylesheet in a stranger's browser.
 UPDATE partners
    SET embed_enabled = :embed_enabled,
+       embed_roadmap = :embed_roadmap,
+       embed_goal    = :embed_goal,
+       embed_prayer  = :embed_prayer,
+       embed_videos  = :embed_videos,
        embed_accent  = :embed_accent,
        embed_accent2 = :embed_accent2,
        embed_theme   = :embed_theme,
@@ -1393,7 +1406,8 @@ ORDER BY pl.sort_order, l.name;
 -- but embedding one who is NOT public would put them on somebody else's
 -- website while their own listing is still hidden.
 SELECT id, slug, display_name, embed_accent, embed_accent2, embed_theme,
-       timeline_start, timeline_end
+       timeline_start, timeline_end,
+       embed_roadmap, embed_goal, embed_prayer, embed_videos
 FROM partners
 WHERE slug = :slug
   AND embed_enabled = 1

@@ -632,6 +632,21 @@ await check("the widget's words come with the data, in the chosen language", asy
   assert(/Zaključeno/.test(shown(root)) && /Prihajajoče/.test(shown(root)), "the legend speaks Slovenian");
 });
 
+await check("a widget that is not shared says so, in the page's language", async () => {
+  const data = { ...ROADMAP, shared: ["goal"],
+    words: { en: { notShared: "Not shared here." }, sr: { notShared: "Није подељено овде." } } };
+  const { root, node } = await run(data, { "data-thauma": "mira-petrovic", "data-widget": "roadmap", "data-lang": "sr" });
+  const text = (root || node).allText;
+  assert(/Није подељено овде\./.test(text), `said: ${text.slice(0, 120)}`);
+  assert(!(root && root.byClass("pin").length), "it drew the roadmap anyway");
+});
+
+await check("the console's preview draws a widget before it is shared", async () => {
+  const data = { ...ROADMAP, shared: [] };
+  const { root } = await run(data, { "data-thauma": "mira-petrovic", "data-widget": "roadmap" }, { preview: data });
+  assert(root.byClass("pin").length > 0, "the preview refused to draw");
+});
+
 await check("a payload without words still speaks English", async () => {
   const { root } = await run(ROADMAP, { "data-thauma": "mira-petrovic", "data-widget": "roadmap" });
   assert(/Completed/.test(shown(root)), "the legend fell silent");
