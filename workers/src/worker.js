@@ -248,7 +248,10 @@ const AREAS = ["/staff", "/admin"];
  */
 export const MOVED = {
   "/admin/content/": "/admin/website/",
-  "/admin/library/": "/admin/website/library/",
+  "/admin/library/": "/admin/website/resources/",
+  // Library became two pages; its Gatherings tab (#gatherings) is sent on
+  // to Events by the Resources page itself — a fragment never reaches here.
+  "/admin/website/library/": "/admin/website/resources/",
   "/admin/site/": "/admin/website/settings/",
   // The Publish page became the review on every Website screen.
   "/admin/publish/": "/admin/website/?review",

@@ -100,10 +100,18 @@
 
   /* ------------------------------------------------------------- loading */
 
+  /* Resources and Events are separate pages; each holds one list and asks
+     for only that collection. */
+  function onlyCollection() {
+    var lists = document.querySelectorAll('[data-lib-list]');
+    return lists.length === 1 ? lists[0].getAttribute('data-lib-list') : null;
+  }
+
   async function load() {
     var res, body;
+    var only = onlyCollection();
     try {
-      res = await fetch(API, { credentials: 'same-origin' });
+      res = await fetch(API + (only ? '?collection=' + encodeURIComponent(only) : ''), { credentials: 'same-origin' });
       body = await res.json();
     } catch (e) {
       return fail(tr('err.unreachable', 'Could not reach the server.') + ' ' + e.message);
@@ -687,5 +695,11 @@
     render();
   });
 
+  /* The old Library page's Gatherings tab was #gatherings; its address now
+     forwards to Resources, and the fragment rides along — so send it on. */
+  if (location.hash === '#gatherings' && onlyCollection() === 'resources') {
+    location.replace('/admin/website/events/');
+    return;
+  }
   if (document.querySelector('[data-lib-list]')) load();
 })();

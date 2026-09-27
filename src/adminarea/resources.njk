@@ -1,0 +1,27 @@
+---
+layout: layouts/admin.njk
+adminPage: resources
+adminTitle: Resources
+adminHeading: The site's <b>resources</b>
+adminScript: /js/admin-library.js
+permalink: /admin/website/resources/index.html
+websiteTab: resources
+---
+{#- WEBSITE › RESOURCES — one of the site's two collections, on a page of its own
+   (Chase, 2026-09-27: the Library page "is just a tab navigation", so
+   Resources and Events are their own entries in the Website list). One file
+   per item under src/content/resources/; admin-library.js draws the list and
+   asks the server for this collection only. -#}
+
+<div class="ms-bar">
+  <button type="button" class="solid-btn" data-lib-add="resources"
+          data-i18n="lib.addResource">+ Add resource</button>
+</div>
+<div class="adm-people" data-lib-list="resources">
+  <p class="empty" data-i18n="common.loading">Loading&hellip;</p>
+</div>
+
+{#- The languages this build publishes, handed to the script rather than
+   fetched: it is the same list Eleventy paginated the public pages over, so
+   the editor cannot offer a language the site does not render. -#}
+<script id="libLangs" type="application/json">{{ activeLangs | dump | safe }}</script>

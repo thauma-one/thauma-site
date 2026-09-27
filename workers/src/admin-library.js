@@ -378,13 +378,18 @@ export default {
     const { db, user, me } = gate;
 
     if (request.method === "GET") {
+      /* ?collection= asks for one: Resources and Events are their own pages
+         (Website › Resources, Website › Events), and each needs only its own
+         folder read. Without it, both, as before. */
+      const only = new URL(request.url).searchParams.get("collection");
+      if (only && !COLLECTIONS[only]) return json({ error: `No collection "${only}".` }, 400);
       const [resources, gatherings] = await Promise.all([
-        readCollection(env, "resources"),
-        readCollection(env, "gatherings"),
+        only && only !== "resources" ? undefined : readCollection(env, "resources"),
+        only && only !== "gatherings" ? undefined : readCollection(env, "gatherings"),
       ]);
       return json({
         you: { email: user.email, name: me.user_name || null },
-        resources, gatherings,
+        ...(resources ? { resources } : {}), ...(gatherings ? { gatherings } : {}),
         vocabulary: {
           moment: COLLECTIONS.resources.enums.moment,
           format: COLLECTIONS.resources.enums.format,

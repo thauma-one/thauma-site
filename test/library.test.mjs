@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * The Library editor — resources and gatherings
+ * Website › Resources and Website › Events — the site's two collections
  *   node test/library.test.mjs
  *
  * DRIVEN, NOT READ. Every bug this console has produced in the last week was
@@ -13,7 +13,7 @@ import { JSDOM } from "jsdom";
 import { readFileSync, existsSync } from "node:fs";
 
 const build = ["_site", "_site_next", "_site_prod"].find((d) =>
-  existsSync(`${d}/admin/website/library/index.html`));
+  existsSync(`${d}/admin/website/resources/index.html`));
 
 let pass = 0, fail = 0;
 const check = async (name, fn) => {
@@ -22,7 +22,7 @@ const check = async (name, fn) => {
 };
 const assert = (c, m) => { if (!c) throw new Error(m); };
 
-console.log("the Library editor\n");
+console.log("Resources and Events\n");
 if (!build) { console.log("  SKIP  no build — run eleventy first."); process.exit(1); }
 
 const VOCAB = {
@@ -32,15 +32,20 @@ const VOCAB = {
   cadence: ["weekly", "fortnightly", "monthly", "custom"],
 };
 
-async function boot({ resources = [], gatherings = [], truncated = false } = {}) {
-  const posts = [];
-  const dom = new JSDOM(readFileSync(`${build}/admin/website/library/index.html`, "utf8"), {
+/* Each collection is its own page now: a test that passes gatherings is
+   about Events, anything else about Resources. */
+async function boot(opts = {}) {
+  const { resources = [], gatherings = [], truncated = false } = opts;
+  const page = opts.page || ("gatherings" in opts ? "events" : "resources");
+  const posts = [], asked = [];
+  const dom = new JSDOM(readFileSync(`${build}/admin/website/${page}/index.html`, "utf8"), {
     runScripts: "dangerously", pretendToBeVisual: true,
-    url: "https://dev.thauma.one/admin/website/library/",
+    url: `https://dev.thauma.one/admin/website/${page}/`,
     beforeParse(w) {
       Object.defineProperty(w, "sessionStorage", { value: {
         getItem: () => JSON.stringify({ roles: ["admin"] }), setItem: () => {} } });
       w.fetch = async (u, o = {}) => {
+        asked.push(String(u));
         if (o.method === "POST") {
           posts.push(JSON.parse(o.body));
           return { ok: true, status: 200, json: async () => ({ ok: true, slug: "saved-slug" }) };
@@ -65,7 +70,7 @@ async function boot({ resources = [], gatherings = [], truncated = false } = {})
   w.eval(readFileSync("src/js/staff.js", "utf8"));
   w.eval(readFileSync("src/js/admin-library.js", "utf8"));
   await new Promise((r) => setTimeout(r, 220));
-  return { w, d, posts };
+  return { w, d, posts, asked };
 }
 
 const GLOSSARY = {
@@ -76,12 +81,15 @@ const GLOSSARY = {
 
 /* --------------------------------------------------- both collections, one page */
 
-await check("one nav entry holds both collections", async () => {
-  const { d } = await boot();
-  const tabs = [...d.querySelectorAll(".tabs .tab")].map((t) => t.dataset.tab);
-  assert(tabs.join(",") === "resources,gatherings", `tabs are ${tabs.join(",")}`);
-  assert(d.querySelector('[data-lib-list="resources"]'), "no resources list");
-  assert(d.querySelector('[data-lib-list="gatherings"]'), "no gatherings list");
+await check("each collection is its own page, and asks for only itself", async () => {
+  const r = await boot({ page: "resources" });
+  assert(r.d.querySelector('[data-lib-list="resources"]') && !r.d.querySelector('[data-lib-list="gatherings"]'), "Resources page lists");
+  const lib = (a) => a.filter((u) => u.includes("/api/admin/library"));
+  assert(lib(r.asked).join() === "/api/admin/library?collection=resources", `asked ${lib(r.asked)}`);
+  const e = await boot({ page: "events" });
+  assert(e.d.querySelector('[data-lib-list="gatherings"]') && !e.d.querySelector('[data-lib-list="resources"]'), "Events page lists");
+  assert(lib(e.asked).join() === "/api/admin/library?collection=gatherings", `asked ${lib(e.asked)}`);
+  assert(!e.d.querySelector(".tabs"), "a tab bar left over from Library");
 });
 
 await check("an empty collection says so rather than looking broken", async () => {

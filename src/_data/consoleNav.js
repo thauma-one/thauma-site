@@ -89,7 +89,8 @@ const rowRoles = (pages) => [...new Set(inRow(pages).flatMap((p) => p.roles || [
    listed before its page exists. */
 const website = [
   { tab: "pages", url: "/admin/website/", label: "Pages" },
-  { tab: "library", url: "/admin/website/library/", label: "Library" },
+  { tab: "resources", url: "/admin/website/resources/", label: "Resources" },
+  { tab: "events", url: "/admin/website/events/", label: "Events" },
   { tab: "photos", url: "/admin/website/photos/", label: "Photos" },
   { tab: "settings", url: "/admin/website/settings/", label: "Settings" },
 ];
