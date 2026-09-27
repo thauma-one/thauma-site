@@ -1190,3 +1190,48 @@ html.review-open{overflow:hidden}
 
 /* Website › Settings: real names where the raw keys were (board 13). */
 .s-name{font-size:var(--fs-sm);color:var(--text)}
+
+/* ============================================================ PHOTOS
+   Website › Photos (board 14): the pictures as a row to choose from, the
+   chosen one large with its dot and the bands it cannot enter, and the
+   frame as the site will show it. */
+.ph{display:flex;flex-direction:column;gap:22px}
+.ph-thumbs{display:flex;gap:12px;overflow-x:auto;padding-bottom:4px}
+.ph-thumb{flex:none;width:170px;display:flex;flex-direction:column;gap:8px;padding:6px;
+  background:none;border:1px solid var(--line);border-radius:var(--radius);color:var(--dim);
+  font:inherit;font-size:var(--fs-tiny);text-align:left;cursor:pointer}
+.ph-thumb img{width:100%;aspect-ratio:16/10;object-fit:cover;border-radius:2px;display:block}
+.ph-thumb.is-on{border-color:var(--console-admin);color:var(--text)}
+.ph-thumb.is-dirty span::after{content:" •";color:var(--warn)}
+.ph-thumb:focus-visible{outline:2px solid var(--voice-tech);outline-offset:2px}
+
+.ph-work{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:24px;align-items:start}
+.ph-main{display:flex;flex-direction:column;gap:14px;min-width:0}
+/* The picture, whole, at its own shape. The dot and the bands are placed in
+   percent of it, which is what the site's focus values are. */
+.ph-pic{position:relative;border-radius:var(--radius);overflow:hidden;cursor:crosshair;
+  touch-action:none;user-select:none;background:var(--bg2)}
+.ph-pic img{display:block;width:100%;height:auto;pointer-events:none}
+.ph-band{position:absolute;left:0;right:0;background:rgba(3,6,10,.62);pointer-events:none}
+.ph-band-top{top:0;border-bottom:1px dashed rgba(245,184,69,.55)}
+.ph-band-bottom{bottom:0;border-top:1px dashed rgba(245,184,69,.55)}
+.ph-dot{position:absolute;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;
+  border:2px solid #fff;background:rgba(245,184,69,.85);box-shadow:0 0 0 3px rgba(3,6,10,.55),0 4px 14px rgba(0,0,0,.5);
+  cursor:grab;padding:0}
+.ph-dot:focus-visible{outline:3px solid var(--voice-tech);outline-offset:3px}
+.ph-controls{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.ph-zoom{display:flex;align-items:center;gap:12px;font-size:var(--fs-sm);color:var(--text)}
+.ph-zoom input{width:220px;accent-color:var(--console-admin)}
+.ph-zoom output{min-width:44px;color:var(--dim);font-variant-numeric:tabular-nums}
+.ph-preview{margin:0;display:flex;flex-direction:column;gap:8px;position:sticky;top:calc(var(--header-h,62px) + 16px)}
+.ph-preview figcaption{font:600 10px var(--font-body);letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+/* The site's frame: 21:9, the picture covering it, placed and scaled by
+   admin-photos.js exactly as the page does. */
+.ph-frame{position:relative;aspect-ratio:21/9;overflow:hidden;border:1px solid var(--line-hard);border-radius:2px;background:var(--bg2)}
+.ph-frame img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+
+@media (max-width:900px){
+  .ph-work{grid-template-columns:1fr}
+  .ph-preview{position:static}
+}
+@media (prefers-reduced-motion:reduce){ .ph-thumb{transition:none} }

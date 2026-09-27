@@ -53,7 +53,7 @@ const TYPES = {
    to a PARTNER rather than to a person, and the people who write newsletters
    are staff rather than administrators. Both differences are handled below
    rather than by pretending it is a third kind of portrait. */
-const KINDS = new Set(["photo", "bio_photo", "newsletter", "library"]);
+const KINDS = new Set(["photo", "bio_photo", "newsletter", "library", "site"]);
 
 export async function serve(request, env, key) {
   if (!env.MEDIA) return new Response("No media store on this deploy", { status: 500 });
@@ -122,7 +122,7 @@ export default {
          naming their own folder is a caller who can name somebody else's. */
       owner = partners.length ? partners[0].slug : "thauma";
       prefix = `newsletter/${owner}`;
-    } else if (kind === "library") {
+    } else if (kind === "library" || kind === "site") {
       /* A picture on a resource or a gathering. It belongs to the SITE, not to
          a person and not to a partner, so there is no owner to scope it by —
          which is why it cannot reuse the team branch below, whose whole shape
@@ -135,8 +135,10 @@ export default {
       if (!roles.some((r) => r === "admin" || r === "communications")) {
         return json({ error: "Administrator or communications access is required" }, 403);
       }
+      /* "site" is a picture in one of the public site's photo frames
+         (Website › Photos), belonging to the site in the same way. */
       owner = "site";
-      prefix = "library";
+      prefix = kind === "site" ? "site" : "library";
     } else {
       if (!roles.includes("admin")) {
         return json({ error: "Administrator access is required" }, 403);

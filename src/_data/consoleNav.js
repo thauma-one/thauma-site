@@ -85,11 +85,12 @@ const inRow = (pages) => pages.filter((p) => !p.menu);
 const rowRoles = (pages) => [...new Set(inRow(pages).flatMap((p) => p.roles || []))];
 
 /* The Website area's own side list. `tab` is what a page sets in its front
-   matter (`websiteTab`) to be marked as the one you are on. Photos joins
-   when it is built (board 14); a tab is never listed before its page exists. */
+   matter (`websiteTab`) to be marked as the one you are on. A tab is never
+   listed before its page exists. */
 const website = [
   { tab: "pages", url: "/admin/website/", label: "Pages" },
   { tab: "library", url: "/admin/website/library/", label: "Library" },
+  { tab: "photos", url: "/admin/website/photos/", label: "Photos" },
   { tab: "settings", url: "/admin/website/settings/", label: "Settings" },
 ];
 

@@ -1,0 +1,67 @@
+---
+layout: layouts/admin.njk
+adminPage: photos
+adminTitle: Photos
+adminHeading: Put the dot on <b>what matters</b>
+adminScript: /js/admin-photos.js
+permalink: /admin/website/photos/index.html
+websiteTab: photos
+---
+{#- WEBSITE › PHOTOS (mockup board 14). Each photo frame on the site was four
+   text boxes — a file path, focus left to right, focus top to bottom, zoom.
+   Now it is the picture itself: drag the dot onto what matters, set the zoom,
+   and see the frame as the site will show it.
+
+   THE SAFE RANGE IS A SHAPE, NOT A RULE. The site drifts each photo up and
+   down a little as the page scrolls (main.js, "whisper-parallax"), and a
+   focus too near the top or bottom lets the frame's edge show mid-drift. How
+   near is too near depends on the zoom. The bands where the dot cannot go are
+   drawn, and the dot stays out of them — nobody has to know the numbers.
+
+   Replace goes through the same crop tool as every other picture here, and
+   the new photo is in the frame with the rest of this screen's changes until
+   Save. -#}
+
+<p class="rolegate" id="phNotConfigured" hidden></p>
+
+<div class="ph" id="phRoot" hidden>
+  <div class="ph-thumbs" id="phThumbs" role="tablist" aria-label="Photos"></div>
+
+  <div class="ph-work">
+    <div class="ph-main">
+      <div class="ph-pic" id="phPic">
+        <img id="phImg" alt="">
+        <div class="ph-band ph-band-top" id="phBandTop" aria-hidden="true"></div>
+        <div class="ph-band ph-band-bottom" id="phBandBottom" aria-hidden="true"></div>
+        <button type="button" class="ph-dot" id="phDot" aria-label="Focus point"
+                data-i18n-attr="aria-label:ph.dot"></button>
+      </div>
+      <div class="ph-controls">
+        <label class="ph-zoom">
+          <span data-i18n="ph.zoom">Zoom</span>
+          <input type="range" id="phZoom" min="100" max="160" step="1">
+          <output id="phZoomOut" for="phZoom"></output>
+        </label>
+        <span class="c-gap"></span>
+        <button type="button" class="ghost-btn" id="phReplace" data-i18n="ph.replace">Replace photo</button>
+        <input type="file" id="phFile" accept="image/*" hidden
+               aria-label="Replace photo" data-i18n-attr="aria-label:ph.replace">
+      </div>
+    </div>
+
+    <figure class="ph-preview">
+      <figcaption data-i18n="ph.onSite">On the site</figcaption>
+      {#- Drawn exactly as the site draws it: the same frame shape, the same
+         object-position and transform-origin at the focus, and the same scale
+         the site holds a photo at while the page is still (zoom × 1.12). -#}
+      <div class="ph-frame"><img id="phPreview" alt=""></div>
+    </figure>
+  </div>
+</div>
+
+<div class="ms-savebar" id="phSaveBar" role="status" aria-live="polite" hidden>
+  <span class="ms-dirty-dot" aria-hidden="true"></span>
+  <span id="phDirtyCount"></span>
+  <button type="button" class="ghost-btn" id="phDiscard" data-i18n="ms.discard">Discard</button>
+  <button type="button" class="solid-btn" id="phSave" data-i18n="con.save">Save</button>
+</div>

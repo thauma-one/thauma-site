@@ -187,6 +187,20 @@ await check("an unknown kind is refused, so the key space stays predictable", as
   eq(env.MEDIA.objects.size, 0, "nothing stored");
 });
 
+await check("a site photo is the site's, for the people who edit the site", async () => {
+  /* Website › Photos replaces the picture in one of the public site's
+     frames. It belongs to the site, not to a person, so it has no owner
+     to name — and the people who edit the site's words may change it. */
+  const SITE = "https://dev.thauma.one/api/admin/media?kind=site";
+  const env = envWith("communications");
+  const res = await put(env, webp(), "image/webp", SITE);
+  eq(res.status, 200, "communications may");
+  assert((await res.json()).url.startsWith("/media/site/"), "stored under site/");
+  const staff = envWith("staff");
+  eq((await put(staff, webp(), "image/webp", SITE)).status, 403, "staff may not");
+  eq(staff.MEDIA.objects.size, 0, "nothing stored for staff");
+});
+
 await check("a misconfigured deploy FAILS CLOSED", async () => {
   const res = await put({ ACCESS_TEAM_DOMAIN: TEAM, ACCESS_AUD: AUD }, webp(), "image/webp");
   eq(res.status, 500, "no bucket bound");

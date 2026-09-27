@@ -50,7 +50,12 @@
     bio_photo:   { aspect: null,   max: 1600, label: 'Bio page photo — any shape' },
     home:        { aspect: 21 / 9, max: 2400, label: 'Home page band' },
     wide:        { aspect: 16 / 9, max: 1600, label: 'Wide' },
-    newsletter:  { aspect: null,   max: 1200, label: 'Newsletter image' }
+    newsletter:  { aspect: null,   max: 1200, label: 'Newsletter image' },
+    /* A photo in one of the site's 21:9 frames. FREE, not 21:9: the frame
+       shows a window of the picture chosen by its focus point (Website ›
+       Photos), and a picture cropped to exactly the frame's shape would leave
+       that point nowhere to move. */
+    site:        { aspect: null,   max: 2400, label: 'Site photo' }
   };
   var FREE_MIN = 0.4, FREE_MAX = 2.5;
 
