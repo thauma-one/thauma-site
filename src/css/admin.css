@@ -1211,13 +1211,16 @@ body.has-savebar .web-bar{display:none}
 .ph-pic{position:relative;border-radius:var(--radius);overflow:hidden;cursor:crosshair;
   touch-action:none;user-select:none;background:var(--bg2)}
 .ph-pic img{display:block;width:100%;height:auto;pointer-events:none}
-.ph-band{position:absolute;left:0;right:0;background:rgba(3,6,10,.62);pointer-events:none}
-.ph-band-top{top:0;border-bottom:1px dashed rgba(245,184,69,.55)}
-.ph-band-bottom{bottom:0;border-top:1px dashed rgba(245,184,69,.55)}
-.ph-dot{position:absolute;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;
-  border:2px solid #fff;background:rgba(245,184,69,.85);box-shadow:0 0 0 3px rgba(3,6,10,.55),0 4px 14px rgba(0,0,0,.5);
-  cursor:grab;padding:0}
-.ph-dot:focus-visible{outline:3px solid var(--voice-tech);outline-offset:3px}
+/* The window the frame shows: the picture outside it dimmed, its top and
+   bottom edges the dashed lines that move. The faint lines beyond them are
+   how far it travels as the page scrolls. */
+.ph-window{position:absolute;padding:0;background:transparent;cursor:grab;
+  border:1px solid rgba(245,184,69,.35);border-top:2px dashed var(--console-admin);
+  border-bottom:2px dashed var(--console-admin);box-shadow:0 0 0 9999px rgba(3,6,10,.58)}
+.ph-window:active{cursor:grabbing}
+.ph-window:focus-visible{outline:3px solid var(--voice-tech);outline-offset:2px}
+.ph-travel{position:absolute;pointer-events:none;border-top:1px dotted rgba(245,184,69,.6);
+  border-bottom:1px dotted rgba(245,184,69,.6)}
 .ph-controls{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
 .ph-zoom{display:flex;align-items:center;gap:12px;font-size:var(--fs-sm);color:var(--text)}
 .ph-zoom input{width:220px;accent-color:var(--console-admin)}

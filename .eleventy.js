@@ -224,6 +224,11 @@ module.exports = function (eleventyConfig) {
     return h;
   });
 
+  /* A framed photo's placement — see lib/frame.js for why the scale's origin
+     is not always the focus. One filter for all four frames, so the rule
+     cannot be applied on three pages and forgotten on the fourth. */
+  eleventyConfig.addFilter("frameStyle", require("./lib/frame.js").frameStyle);
+
   // Swap the language segment of a URL: /en/about/ -> /hr/about/
   // (Pages skipped by the comingSoon flag have no URL; return a safe value.)
   eleventyConfig.addFilter("langSwap", function (url, targetLang) {

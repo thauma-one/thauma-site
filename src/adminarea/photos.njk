@@ -2,21 +2,20 @@
 layout: layouts/admin.njk
 adminPage: photos
 adminTitle: Photos
-adminHeading: Put the dot on <b>what matters</b>
+adminHeading: Frame what <b>matters</b>
 adminScript: /js/admin-photos.js
 permalink: /admin/website/photos/index.html
 websiteTab: photos
 ---
-{#- WEBSITE › PHOTOS (mockup board 14). Each photo frame on the site was four
-   text boxes — a file path, focus left to right, focus top to bottom, zoom.
-   Now it is the picture itself: drag the dot onto what matters, set the zoom,
-   and see the frame as the site will show it.
+{#- WEBSITE › PHOTOS (mockup board 14, then Chase, 2026-09-27: "I'd like to be
+   able to reposition the parallax zone itself"). Each photo frame on the site
+   was four text boxes. Now it is the picture, with the WINDOW the frame shows
+   drawn on it — drag the window to what matters, set the zoom to size it —
+   and the frame as the site will show it.
 
-   THE SAFE RANGE IS A SHAPE, NOT A RULE. The site drifts each photo up and
-   down a little as the page scrolls (main.js, "whisper-parallax"), and a
-   focus too near the top or bottom lets the frame's edge show mid-drift. How
-   near is too near depends on the zoom. The bands where the dot cannot go are
-   drawn, and the dot stays out of them — nobody has to know the numbers.
+   The faint lines above and below the window are how far it travels as the
+   page scrolls (main.js, "whisper-parallax"). The window can go anywhere on
+   the picture; lib/frame.js keeps the frame's edge hidden wherever it is.
 
    Replace goes through the same crop tool as every other picture here, and
    the new photo is in the frame with the rest of this screen's changes until
@@ -31,10 +30,9 @@ websiteTab: photos
     <div class="ph-main">
       <div class="ph-pic" id="phPic">
         <img id="phImg" alt="">
-        <div class="ph-band ph-band-top" id="phBandTop" aria-hidden="true"></div>
-        <div class="ph-band ph-band-bottom" id="phBandBottom" aria-hidden="true"></div>
-        <button type="button" class="ph-dot" id="phDot" aria-label="Focus point"
-                data-i18n-attr="aria-label:ph.dot"></button>
+        <div class="ph-travel" id="phTravel" aria-hidden="true"></div>
+        <button type="button" class="ph-window" id="phWin" aria-label="The part the frame shows"
+                data-i18n-attr="aria-label:ph.window"></button>
       </div>
       <div class="ph-controls">
         <label class="ph-zoom">

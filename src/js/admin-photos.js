@@ -6,17 +6,15 @@
    and they used to be four text boxes. Here they are the
    picture, a dot, a zoom and a preview.
 
-   THE SAFE RANGE. The site holds a framed photo at
-   zoom × 1.12 around its focus point and drifts it up and down
-   by 4.5% of the frame's height as the page scrolls (main.js,
-   "whisper-parallax"). The frame's edge stays hidden only while
-   there is at least that much picture above and below the focus
-   — so the focus height must stay between
-       0.045 ÷ (scale − 1)   and   1 − that
-   which is 37.5–62.5% at zoom 100 and about 19–81% at zoom 110,
-   the numbers the project notes give. The bands outside it are
-   drawn; the dot cannot enter them, and lowering the zoom moves
-   the dot back in rather than leaving it somewhere unsafe.
+   THE WINDOW (Chase, 2026-09-27: "reposition the parallax zone
+   itself"). What matters to a person is which part of the picture
+   the frame shows, so that is what is drawn — a rectangle on the
+   picture, dragged to move it, sized by the zoom — with faint
+   lines for how far it travels as the page scrolls. The window is
+   computed exactly as the site places the photo (lib/frame.js:
+   cover, object-position at the focus, scale zoom × 1.12 around an
+   origin kept inside the band that leaves room for the drift), and
+   dragging it solves back for the focus that puts it there.
 
    THE WORKING-COPY MODEL, like Settings: nothing is written
    until Save, which commits site.json quietly; publishing is
@@ -50,16 +48,43 @@
   function toast(msg, kind) { if (window.StaffToast) window.StaffToast(msg, kind); }
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
 
-  /* ---- the range the dot may use ------------------------------------- */
+  /* ---- where the frame looks ------------------------------------------
+     The same arithmetic as lib/frame.js and main.js, in the picture's own
+     terms: everything below is a fraction of the picture's width or height. */
+  var FRAME = 21 / 9;
 
-  function safe(zoom) {
+  function band(zoom) {
     var scale = Math.max(zoom / 100, 1) * HEADROOM;
-    var edge = Math.min(0.5, DRIFT / (scale - 1)) * 100;
-    return { min: Math.ceil(edge), max: Math.floor(100 - edge) };
+    var edge = Math.min(0.5, DRIFT / (scale - 1));
+    return { min: edge, max: 1 - edge, scale: scale };
   }
-  function clampY(y, zoom) {
-    var r = safe(zoom);
-    return Math.max(r.min, Math.min(r.max, y));
+
+  /* The part of the picture the frame shows while the page is still, and how
+     far that moves as it scrolls. */
+  function windowOf(img, nat) {
+    var b = band(img.zoom), S = b.scale;
+    var H = 1, W = FRAME;
+    var c = Math.max(W / nat.w, H / nat.h), Iw = c * nat.w, Ih = c * nat.h;
+    var fx = img.focal_x / 100, fy = img.focal_y / 100;
+    var oy = Math.min(b.max, Math.max(b.min, fy)) * H, ox = fx * W;
+    var left = ((Iw - W) * fx + ox * (1 - 1 / S)) / Iw;
+    var top = ((Ih - H) * fy + oy * (1 - 1 / S)) / Ih;
+    return { left: left, top: top, width: (W / S) / Iw, height: (H / S) / Ih,
+             travel: (DRIFT * H / S) / Ih };
+  }
+
+  /* The focus that puts the window's top (or left) edge where it was asked.
+     The edge only ever moves one way as the focus does, so halving the
+     interval finds it; the answer is a whole percent, like the file holds. */
+  function solve(img, nat, axis, want) {
+    var lo = 0, hi = 100;
+    for (var i = 0; i < 30; i++) {
+      var mid = (lo + hi) / 2, probe = Object.assign({}, img);
+      probe[axis === 'y' ? 'focal_y' : 'focal_x'] = mid;
+      var w = windowOf(probe, nat);
+      if ((axis === 'y' ? w.top : w.left) < want) lo = mid; else hi = mid;
+    }
+    return Math.round((lo + hi) / 2);
   }
 
   /* ---- names ----------------------------------------------------------
@@ -136,10 +161,19 @@
   }
 
   function place(img, el, scale) {
+    var b = band(img.zoom);
+    var oy = Math.round(100 * Math.min(b.max, Math.max(b.min, img.focal_y / 100)) * 100) / 100;
     el.style.objectPosition = img.focal_x + '% ' + img.focal_y + '%';
-    el.style.transformOrigin = img.focal_x + '% ' + img.focal_y + '%';
+    el.style.transformOrigin = img.focal_x + '% ' + oy + '%';
     el.style.transform = 'scale(' + scale + ')';
   }
+  /* The picture's own size, once it has loaded; until then there is nothing
+     to draw the window on. */
+  function natural() {
+    var el = $('phImg');
+    return el.naturalWidth ? { w: el.naturalWidth, h: el.naturalHeight } : null;
+  }
+  $('phImg').addEventListener('load', function () { renderMain(); });
 
   function renderMain() {
     var img = state.draft[state.on];
@@ -149,15 +183,17 @@
       $('phPreview').src = img.src;
     }
     $('phImg').alt = nameOf(state.on);
-    var r = safe(img.zoom);
-    $('phBandTop').style.height = r.min + '%';
-    $('phBandBottom').style.height = (100 - r.max) + '%';
-    $('phDot').style.left = img.focal_x + '%';
-    $('phDot').style.top = img.focal_y + '%';
-    $('phDot').setAttribute('aria-valuetext', img.focal_x + '%, ' + img.focal_y + '%');
+    var nat = natural();
+    if (nat) {
+      var w = windowOf(img, nat), pc = function (n) { return (n * 100).toFixed(2) + '%'; };
+      var win = $('phWin').style, tr = $('phTravel').style;
+      win.left = pc(w.left); win.width = pc(w.width); win.top = pc(w.top); win.height = pc(w.height);
+      tr.left = pc(w.left); tr.width = pc(w.width);
+      tr.top = pc(w.top - w.travel); tr.height = pc(w.height + 2 * w.travel);
+    }
     $('phZoom').value = img.zoom;
     $('phZoomOut').textContent = img.zoom + '%';
-    place(img, $('phPreview'), (Math.max(img.zoom / 100, 1) * HEADROOM).toFixed(3));
+    place(img, $('phPreview'), band(img.zoom).scale.toFixed(3));
   }
 
   function dirty(id) {
@@ -182,40 +218,52 @@
   function set(fields) {
     var img = state.draft[state.on];
     Object.keys(fields).forEach(function (k) { img[k] = fields[k]; });
-    img.focal_y = clampY(img.focal_y, img.zoom);
     renderMain();
     renderSaveBar();
     var t = $('phThumbs').querySelector('[data-photo="' + state.on + '"]');
     if (t) t.classList.toggle('is-dirty', dirty(state.on));
   }
 
-  /* ---- the dot ---------------------------------------------------------
-     Dragged, or clicked where it should go, or moved with the arrow keys
-     (Shift for bigger steps) — it is a button, so it can be reached and
-     moved without a mouse. */
-  function pointAt(e) {
+  /* ---- the window -----------------------------------------------------
+     Dragged where it should look, or placed by pressing where it should be
+     centered, or moved with the arrow keys (Shift for bigger steps) — it is
+     a button, so it can be reached and moved without a mouse. */
+  function pointerAt(e) {
     var box = $('phPic').getBoundingClientRect();
-    var x = Math.round(100 * (e.clientX - box.left) / box.width);
-    var y = Math.round(100 * (e.clientY - box.top) / box.height);
-    set({ focal_x: Math.max(0, Math.min(100, x)), focal_y: Math.max(0, Math.min(100, y)) });
+    return { x: (e.clientX - box.left) / box.width, y: (e.clientY - box.top) / box.height };
   }
-  var dragging = false;
+  function moveTo(left, top) {
+    var nat = natural(), img = state.draft[state.on];
+    if (!nat) return;
+    set({ focal_x: solve(img, nat, 'x', left), focal_y: solve(img, nat, 'y', top) });
+  }
+  var grab = null;
   $('phPic').addEventListener('pointerdown', function (e) {
-    dragging = true;
+    var nat = natural();
+    if (!nat) return;
+    var w = windowOf(state.draft[state.on], nat), p = pointerAt(e);
+    var inside = p.x >= w.left && p.x <= w.left + w.width && p.y >= w.top && p.y <= w.top + w.height;
+    /* Grabbed where it was pressed; pressed outside, it comes to the press. */
+    grab = inside ? { dx: p.x - w.left, dy: p.y - w.top } : { dx: w.width / 2, dy: w.height / 2 };
+    if (!inside) moveTo(p.x - grab.dx, p.y - grab.dy);
     $('phPic').setPointerCapture(e.pointerId);
-    pointAt(e);
-    $('phDot').focus();
-  });
-  $('phPic').addEventListener('pointermove', function (e) { if (dragging) pointAt(e); });
-  $('phPic').addEventListener('pointerup', function () { dragging = false; });
-  $('phPic').addEventListener('pointercancel', function () { dragging = false; });
-  $('phDot').addEventListener('keydown', function (e) {
-    var step = e.shiftKey ? 5 : 1, img = state.draft[state.on];
-    var move = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[e.key];
-    if (!move) return;
+    $('phWin').focus();
     e.preventDefault();
-    set({ focal_x: Math.max(0, Math.min(100, img.focal_x + move[0])),
-          focal_y: Math.max(0, Math.min(100, img.focal_y + move[1])) });
+  });
+  $('phPic').addEventListener('pointermove', function (e) {
+    if (!grab) return;
+    var p = pointerAt(e);
+    moveTo(p.x - grab.dx, p.y - grab.dy);
+  });
+  $('phPic').addEventListener('pointerup', function () { grab = null; });
+  $('phPic').addEventListener('pointercancel', function () { grab = null; });
+  $('phWin').addEventListener('keydown', function (e) {
+    var nat = natural();
+    var move = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+    if (!move || !nat) return;
+    e.preventDefault();
+    var step = e.shiftKey ? 0.05 : 0.01, w = windowOf(state.draft[state.on], nat);
+    moveTo(w.left + move[0] * step, w.top + move[1] * step);
   });
 
   $('phZoom').addEventListener('input', function (e) { set({ zoom: Number(e.target.value) }); });

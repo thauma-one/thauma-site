@@ -1,15 +1,18 @@
 #!/usr/bin/env node
 /**
- * Website › Photos — put the dot on what matters
+ * Website › Photos — frame what matters
  *   node test/photos-page.test.mjs
  *
- * The focus of a framed photo must stay where the site's scroll drift never
- * shows the frame's edge (see admin-photos.js for the arithmetic). These
- * check that the page draws that range where the project notes say it is,
- * keeps the dot inside it, and saves only what changed.
+ * The window drawn on each picture has to be the part the site's frame
+ * really shows, and it has to be able to go anywhere on the picture without
+ * the frame's edge ever showing as the page scrolls. The rule lives in
+ * lib/frame.js (the site), main.js (the scroll) and admin-photos.js (this
+ * screen); these check all three say the same thing.
  */
 import { JSDOM } from "jsdom";
 import { readFileSync, existsSync } from "node:fs";
+import { createRequire } from "node:module";
+const require = createRequire(import.meta.url);
 
 const build = ["_site", "_site_next", "_site_prod"].find((d) =>
   existsSync(`${d}/admin/website/photos/index.html`));
@@ -62,14 +65,41 @@ async function boot() {
   return { w, d, sent };
 }
 const pct = (el, prop) => parseFloat(el.style[prop]);
+/* The pictures do not load in the test browser; give them their size. */
+function sized(w, d) {
+  const img = d.getElementById("phImg");
+  Object.defineProperty(img, "naturalWidth", { value: 1800, configurable: true });
+  Object.defineProperty(img, "naturalHeight", { value: 1200, configurable: true });
+  img.dispatchEvent(new w.Event("load"));
+}
 async function zoom(w, d, z) {
   const el = d.getElementById("phZoom");
   el.value = z;
   el.dispatchEvent(new w.Event("input"));
 }
 function key(w, d, k, shift = false) {
-  d.getElementById("phDot").dispatchEvent(new w.KeyboardEvent("keydown", { key: k, shiftKey: shift, bubbles: true }));
+  d.getElementById("phWin").dispatchEvent(new w.KeyboardEvent("keydown", { key: k, shiftKey: shift, bubbles: true }));
 }
+
+await check("the site, the scroll and this screen agree on the numbers", async () => {
+  const frame = require("../lib/frame.js");
+  const main = readFileSync("src/js/main.js", "utf8");
+  const photos = readFileSync("src/js/admin-photos.js", "utf8");
+  assert(main.includes("* " + frame.HEADROOM + ";") && main.includes("PMAX = " + frame.DRIFT + ";"),
+    "main.js's headroom or drift is not lib/frame.js's");
+  assert(photos.includes("DRIFT = " + frame.DRIFT) && photos.includes("HEADROOM = " + frame.HEADROOM),
+    "admin-photos.js's numbers are not lib/frame.js's");
+});
+
+await check("inside the band a photo renders exactly as before; outside, the zoom's origin stays in it", async () => {
+  const { frameStyle } = require("../lib/frame.js");
+  const inside = frameStyle({ focal_x: 50, focal_y: 28, zoom: 110 });
+  assert(inside === "object-position:50% 28%;transform-origin:50% 28%;transform:scale(1.1)", inside);
+  const top = frameStyle({ focal_x: 50, focal_y: 0, zoom: 100 });
+  assert(top === "object-position:50% 0%;transform-origin:50% 37.5%;transform:scale(1)", top);
+  const bottom = frameStyle({ focal_x: 50, focal_y: 100, zoom: 100 });
+  assert(bottom === "object-position:50% 100%;transform-origin:50% 62.5%;transform:scale(1)", bottom);
+});
 
 await check("every photo slot in the file is offered, named by its page and section", async () => {
   const { d } = await boot();
@@ -77,45 +107,48 @@ await check("every photo slot in the file is offered, named by its page and sect
   assert(names.join(" | ") === "Home · The need | Give · Impact", names.join(" | "));
 });
 
-await check("the bands sit where the project notes put the safe range", async () => {
-  /* zoom 110: about 19–81%; zoom 100: 37.5–62.5%. */
+await check("the window is the part the frame shows: 57% of a 3:2 photo's height at zoom 100", async () => {
   const { w, d } = await boot();
-  const top = d.getElementById("phBandTop"), bottom = d.getElementById("phBandBottom");
-  assert(pct(top, "height") === 20 && pct(bottom, "height") === 20, `110: ${top.style.height} / ${bottom.style.height}`);
-  await zoom(w, d, 100);
-  assert(pct(top, "height") === 38 && pct(bottom, "height") === 38, `100: ${top.style.height} / ${bottom.style.height}`);
+  d.querySelector('[data-photo="give_impact"]').click();
+  sized(w, d);
+  const win = d.getElementById("phWin");
+  assert(Math.abs(pct(win, "height") - 57.4) < 0.1, `height ${win.style.height}`);
+  assert(Math.abs(pct(win, "width") - 89.29) < 0.1, `width ${win.style.width}`);
+  await zoom(w, d, 150);
+  assert(pct(win, "height") < 40, `zooming in did not shrink it: ${win.style.height}`);
 });
 
-await check("lowering the zoom moves an unsafe focus back inside, never leaves it", async () => {
+await check("the window goes to the very top, and its travel stops at the picture's edge", async () => {
   const { w, d } = await boot();
-  await zoom(w, d, 100);
-  assert(pct(d.getElementById("phDot"), "top") === 38, `dot at ${d.getElementById("phDot").style.top}`);
-});
-
-await check("the dot moves with the arrow keys and stops at the band", async () => {
-  const { w, d } = await boot();
-  key(w, d, "ArrowRight", true);
-  assert(pct(d.getElementById("phDot"), "left") === 55, d.getElementById("phDot").style.left);
-  for (let i = 0; i < 20; i++) key(w, d, "ArrowUp", true);
-  assert(pct(d.getElementById("phDot"), "top") === 20, `went to ${d.getElementById("phDot").style.top}`);
+  sized(w, d);
+  for (let i = 0; i < 30; i++) key(w, d, "ArrowUp", true);
+  const win = d.getElementById("phWin"), travel = d.getElementById("phTravel");
+  assert(Math.abs(pct(travel, "top")) < 0.2, `travel reaches ${travel.style.top}, not the top edge`);
+  assert(pct(win, "top") > 0, "the window itself sits on the edge, so the drift would show it");
 });
 
 await check("the preview frames the photo exactly as the site does", async () => {
-  const { d } = await boot();
+  const { w, d } = await boot();
   const img = d.getElementById("phPreview");
   assert(img.style.objectPosition === "50% 28%" && img.style.transformOrigin === "50% 28%", img.style.cssText);
   assert(img.style.transform === "scale(1.232)", img.style.transform);
+  sized(w, d);
+  for (let i = 0; i < 30; i++) key(w, d, "ArrowUp", true);
+  assert(img.style.objectPosition === "50% 0%" && /50% 19\.\d+%/.test(img.style.transformOrigin),
+    `at the top: ${img.style.cssText}`);
 });
 
 await check("Save sends only what changed, against the file it read", async () => {
   const { w, d, sent } = await boot();
   assert(d.getElementById("phSaveBar").hidden, "a save bar with nothing to save");
+  sized(w, d);
   key(w, d, "ArrowDown");
   d.getElementById("phSave").click();
   await tick(100);
   const put = sent.find((s) => s.method === "PUT");
-  assert(put && put.body.sha === "s1" && JSON.stringify(put.body.changes) === JSON.stringify({ "images.home_who.focal_y": 29 }),
-    JSON.stringify(put && put.body));
+  const keys = put ? Object.keys(put.body.changes) : [];
+  assert(put && put.body.sha === "s1" && keys.length === 1 && keys[0] === "images.home_who.focal_y" &&
+    put.body.changes["images.home_who.focal_y"] > 28, JSON.stringify(put && put.body));
   assert(d.getElementById("phSaveBar").hidden, "still unsaved after saving");
 });
 

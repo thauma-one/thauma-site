@@ -87,10 +87,13 @@ Transitions. The pieces:
   transitioned arrivals, above-fold targets are un-hidden pre-paint
   (they ride the fade); below-fold keep scroll fades.
 - Whisper-parallax: .frame img + .person-photo img drift 4.5% of
-  frame height, using 1.12x extra zoom as edge headroom. SAFE FOCAL
-  RANGE depends on the slot's zoom: at zoom 100, focal_y must stay in
-  37.5–62.5%; at zoom 110, ~19–81%. Going outside exposes the frame
-  edge mid-drift — bump zoom before pushing focal_y further.
+  frame height, using 1.12x extra zoom as edge headroom. The edge
+  stays hidden only while the scale's ORIGIN sits inside a band that
+  depends on zoom (37.5–62.5% at zoom 100, ~19–81% at 110). Framed
+  photos are styled by the `frameStyle` filter (lib/frame.js), which
+  keeps the origin in that band while object-position follows the
+  focus — so focal_y may be anything (2026-09-27). Never hand-write a
+  .frame img style; DRIFT/HEADROOM must match main.js (a test checks).
 - Grid→bio morph: team-card photo and bio portrait share a
   view-transition-name (person-<slug>, via data-vt-person attrs,
   assigned in main.js DESKTOP ONLY). The morph is the portraits' only
@@ -124,7 +127,7 @@ Transitions. The pieces:
   the project-local sharp: resize width 1800, quality ~68-82 to taste).
   All four page-photo slots (home_who, about_posture, mission_horizon,
   give_impact) are filled; framing is focal_x/focal_y/zoom in site.json
-  (adjustable in /admin) — mind the parallax safe focal range above.
+  (Website › Photos: drag the window the frame shows).
   No visible captions on framed photos; the i18n *_img_tag strings are
   alt text only.
 - Every interactive/animated element must respect
