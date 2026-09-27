@@ -9,10 +9,9 @@
  * column after it, so the import writes the wrong text into the wrong keys and
  * nothing errors.
  *
- * The functions are lifted from src/js/admin-content.js rather than imported —
- * that file is a browser IIFE with no exports. The copies are kept identical
- * on purpose and this file asserts they still are, so the test cannot drift
- * away from the code it is testing.
+ * The file is built and read on the server, in workers/src/lib/
+ * translation-file.js (the Translate page on Administration › Languages); this
+ * tests the functions it uses, and the real content they have to carry.
  */
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -26,52 +25,8 @@ const assert = (c, m) => { if (!c) throw new Error(m); };
 const eq = (a, b, m) => assert(JSON.stringify(a) === JSON.stringify(b),
   `${m} — got ${JSON.stringify(a)}, want ${JSON.stringify(b)}`);
 
-/* ---- the implementations, copied verbatim from admin-content.js ---- */
-
-function csvCell(v) {
-  v = String(v == null ? '' : v);
-  return /[",\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
-}
-
-function parseCsv(text) {
-  if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
-  var rows = [], row = [], field = '', inQuotes = false, i = 0;
-  while (i < text.length) {
-    var c = text[i];
-    if (inQuotes) {
-      if (c === '"') {
-        if (text[i + 1] === '"') { field += '"'; i += 2; continue; }
-        inQuotes = false; i++; continue;
-      }
-      field += c; i++; continue;
-    }
-    if (c === '"') { inQuotes = true; i++; continue; }
-    if (c === ',') { row.push(field); field = ''; i++; continue; }
-    if (c === '\r') { i++; continue; }
-    if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; i++; continue; }
-    field += c; i++;
-  }
-  if (field.length || row.length) { row.push(field); rows.push(row); }
-  return rows.filter(function (r) { return r.length > 1 || (r[0] && r[0].length); });
-}
-
-const WRAP_AT = 60;
-
-function wrapCell(text) {
-  var s = String(text == null ? '' : text);
-  if (s.length <= WRAP_AT) return s;
-  var out = [], line = '';
-  s.split(' ').forEach(function (word) {
-    if (line && (line + ' ' + word).length > WRAP_AT) { out.push(line); line = word; }
-    else { line = line ? line + ' ' + word : word; }
-  });
-  if (line) out.push(line);
-  return out.join('\n');
-}
-
-function unwrapCell(text) {
-  return String(text == null ? '' : text).replace(/\s*\r?\n\s*/g, ' ').trim();
-}
+import { csvCell, parseCsv, wrapCell, unwrapCell, buildFile, readFile }
+  from "../workers/src/lib/translation-file.js";
 
 const roundTrip = (rows) =>
   parseCsv(rows.map((r) => r.map(csvCell).join(",")).join("\r\n"));
@@ -215,15 +170,12 @@ check("a wrapped cell survives the CSV itself", () => {
   eq(unwrapCell(back[0][3]), long, "and unwrapping returns the original");
 });
 
-check("the key column is never wrapped", () => {
+check("the id column is never wrapped", () => {
   // A line break in an identifier makes the row unmatchable on the way back.
-  const key = "notFound.taunts.30";
-  eq(wrapCell(key), key, "short keys are untouched anyway");
-  // And the export passes the key through directly — asserted against source.
-  const src = readFileSync(
-    fileURLToPath(new URL("../src/js/admin-content.js", import.meta.url)), "utf8");
-  assert(/rows\.push\(\[p,\s*\n\s*wrapCell\(/.test(src),
-         "the export should push the key unwrapped, then wrapped columns");
+  const long = "x".repeat(200);
+  const text = buildFile({ lang: "hr", langName: "Hrvatski", brief: "", lines: [
+    { id: "site:notFound.taunts.30", source: "site", key: "notFound.taunts.30", english: long, current: "" }] });
+  eq(readFile(text).entries.map((e) => e.id), ["site:notFound.taunts.30"], "the id came back changed");
 });
 
 check("the file carries the language's own name, in a row", () => {
@@ -248,49 +200,23 @@ check("the file carries the language's own name, in a row", () => {
 /* ------------------------- the column layout --------------------------- */
 
 check("the header carries the language CODE in brackets", () => {
-  /* The header is written for the person who receives the file — "Slovenščina
-     (sl) — PUT YOUR TRANSLATION HERE" rather than "sl". The upload still has
-     to know which language it is, so the code lives in brackets: long name for
-     the human, code for the machine, one string. */
-  const extract = (h) => {
-    const m = String(h).trim().match(/\(([a-z]{2}(?:-[a-z]{2})?)\)/i);
-    return (m ? m[1] : String(h).trim()).toLowerCase();
-  };
-  eq(extract("Slovenščina (sl) — PUT YOUR TRANSLATION HERE"), "sl", "long header");
-  eq(extract("English (en) — EDIT HERE, or change the code in brackets"), "en", "template header");
-  eq(extract("Português (pt-br) — PUT YOUR TRANSLATION HERE"), "pt-br", "regional code");
-  // A hand-made file with a bare code still works — refusing it would be pedantry.
-  eq(extract("hr"), "hr", "bare code");
-  eq(extract(" SL "), "sl", "bare code, sloppily typed");
+  /* Long name for the person, code for the machine, one string. A hand-made
+     file with a bare code still works — refusing it would be pedantry. */
+  const lang = (h) => readFile(`id,English,${h}\nsite:a,b,c`).lang;
+  eq(lang("Slovenščina (sl)"), "sl", "long header");
+  eq(lang("Português (pt-br)"), "pt-br", "regional code");
+  eq(lang("hr"), "hr", "bare code");
+  eq(lang(" SL "), "sl", "bare code, sloppily typed");
 });
 
-check("the translation is the LAST column in ONE shape", () => {
-  /* The import reads header.length - 1. Two shapes exist — translating a
-     language carries an English source column, editing English itself has
-     nothing to put in one — and the rule has to hold for both, or the import
-     silently reads the context column as the translation. */
-  /* ONE shape now, not two. The reference column used to be dropped when the
-     language being downloaded WAS the reference — which produced a file with
-     no source text, useful only to somebody who already knows the site, which
-     is exactly not who receives it. Four columns always; English simply
-     appears twice when English is what you asked for. */
-  const translating = ["key (do not change)", "English (en) — the original, for reference",
-                       "notes — …", "Slovenščina (sl) — PUT YOUR TRANSLATION HERE"];
-  const template = ["key (do not change)", "English (en) — the original, for reference",
-                    "notes — …", "English (en) — EDIT HERE, or change the code"];
-
-  for (const header of [translating, template]) {
-    eq(header.length, 4, "always four columns");
-    const m = header[header.length - 1].match(/\(([a-z]{2}(?:-[a-z]{2})?)\)/i);
-    assert(m, `the last header must carry a language code: "${header[3]}"`);
-  }
-});
-
-check("an inserted column does not move the translation", () => {
-  /* A spreadsheet invites this: somebody adds a "notes" or "done?" column.
-     Reading a fixed index would then import notes as translations. */
-  const header = ["key", "en", "context", "notes", "hr"];
-  eq(header[header.length - 1], "hr", "the translation must still be last");
+check("the translation is the LAST column, whatever is added before it", () => {
+  /* A spreadsheet invites an extra "notes" or "done?" column. Reading a fixed
+     index would then import notes as translations. */
+  const text = buildFile({ lang: "sl", langName: "Slovenščina", brief: "", lines: [] });
+  const header = parseCsv(text).find((r) => r[0] === "id");
+  eq(header[header.length - 1], "Slovenščina (sl)", "last header");
+  const back = readFile("id,English,Notes,Done?,sl\nsite:a,Hi,,yes,Živjo");
+  eq(back.entries, [{ id: "site:a", value: "Živjo" }], "an inserted column moved the translation");
 });
 
 /* --------------------- context for a split phrase ---------------------- */
@@ -338,43 +264,6 @@ check("the three languages agree about which headings are split", () => {
   const en = read("en");
   for (const code of ["hr", "sr"]) {
     eq(read(code), en, `${code}.json splits different headings from en.json`);
-  }
-});
-
-/* ----------------------- the copies have not drifted ------------------- */
-
-check("these functions still match the ones in admin-content.js", () => {
-  /* A copied implementation is a test that slowly stops testing anything.
-     Comparing the source text is crude and it is enough: if somebody fixes a
-     parser bug in one place, this fails until they fix it in both. */
-  const src = readFileSync(
-    fileURLToPath(new URL("../src/js/admin-content.js", import.meta.url)), "utf8");
-
-  /* Comments stripped before comparing: the copies above are deliberately
-     bare while the originals carry their reasoning, and a test that failed
-     over a comment would be a test people delete. Logic is what must match. */
-  const strip = (s) => s
-    .replace(/\/\*[\s\S]*?\*\//g, " ")
-    .replace(/\/\/[^\n]*/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  /* All FOUR copies, not the two that existed when this was written. wrapCell
-     and unwrapCell are exact inverses of each other, and a fix to one of them
-     that missed the copy here would leave the test proving a round trip the
-     product does not perform. */
-  for (const [name, fn] of [["csvCell", csvCell], ["parseCsv", parseCsv],
-                            ["wrapCell", wrapCell], ["unwrapCell", unwrapCell]]) {
-    const mine = strip(fn.toString());
-    // Pull the same function out of the browser file.
-    const start = src.indexOf(`function ${name}(`);
-    assert(start !== -1, `${name} is no longer in admin-content.js`);
-    let depth = 0, i = src.indexOf("{", start), end = i;
-    for (; i < src.length; i++) {
-      if (src[i] === "{") depth++;
-      else if (src[i] === "}") { depth--; if (!depth) { end = i + 1; break; } }
-    }
-    const theirs = strip(src.slice(start, end));
-    eq(mine, theirs, `${name} has drifted from the copy in admin-content.js`);
   }
 });
 
