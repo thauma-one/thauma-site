@@ -1083,7 +1083,6 @@ body.has-savebar .web-bar{display:none}
 .web-review .p-cols{grid-template-columns:1fr}
 .p-acts{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .p-acts .solid-btn:disabled{opacity:.4;cursor:default;box-shadow:none}
-html.review-open{overflow:hidden}
 
 @media (max-width:900px){
   .web{grid-template-columns:1fr;gap:16px}

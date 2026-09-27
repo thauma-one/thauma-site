@@ -1040,3 +1040,8 @@ section .cue::before{content:counter(cue,decimal-leading-zero);width:auto;height
   .door,.fmt{transition:none}
   @media(hover:hover){ .door:hover{transform:none} }
 }
+
+/* The phone menu covers the page below the nav; while it is open the page
+   behind it does not scroll (the consoles' rule for every popup, 2026-09-27). */
+html:has(body.menu-open){overflow:hidden}
+.mobile-menu{overscroll-behavior:contain}

@@ -170,6 +170,21 @@ await check("on a phone, Menu opens the whole list and says Close", async () => 
   assert(!header.classList.contains("menu-open") && d.activeElement === btn, "Escape did not close it");
 });
 
+await check("nothing behind a popup scrolls, and closing it lets the page scroll again", async () => {
+  const w = boot(STAFF_PAGE, { roles: ["staff"] });
+  const html = w.document.documentElement;
+  const locked = () => w.getComputedStyle(html).overflow === "hidden";
+  assert(!locked(), "the page is locked before anything opened");
+  const answer = w.StaffConfirm({ title: "?", confirm: "Yes", cancel: "No" });
+  assert(locked(), "the page scrolls behind a confirmation");
+  w.document.querySelector(".dlg-no").click();
+  await answer;
+  await new Promise((r) => setTimeout(r, 260));
+  assert(!locked(), "the page stayed locked after it closed");
+  w.document.getElementById("consoleMenuBtn").click();
+  assert(locked(), "the page scrolls behind the phone menu");
+});
+
 await check("the page's label has no number", async () => {
   for (const page of [STAFF_PAGE, ADMIN_PAGE]) {
     const cue = boot(page, { roles: ["admin", "staff"] }).document.querySelector(".page-head .cue").textContent.trim();

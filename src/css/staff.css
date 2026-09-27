@@ -2115,3 +2115,18 @@ tr.empty-row td{cursor:default}
    an error, not as an option. The existing --crit token, no new color. */
 @media(hover:hover){ .sw-dlg .ghost-btn.del:hover{color:var(--crit);border-color:var(--crit)} }
 .sw-dlg .ghost-btn.del:focus-visible{color:var(--crit)}
+
+/* ---- NOTHING BEHIND A POPUP SCROLLS ------------------------------------
+   Chase, 2026-09-27: "while the popup window is up, I can still scroll the
+   page behind it." Every console popup is a .dlg-back — confirmations,
+   prompts, a supporter's record, the photo cropper, the languages table —
+   so one rule covers all of them, present and future; the review panel and
+   the phone menu say so with a class. The popup itself still scrolls, and
+   its scrolling stops at its own edge rather than carrying on into the page.
+   The gutter is kept so the page does not jump sideways when its scrollbar
+   goes away. */
+html{scrollbar-gutter:stable}
+html:has(.dlg-back:not([hidden])),
+html.review-open,
+html.console-menu-open{overflow:hidden}
+.dlg-back,.dlg,.web-review,.console-menu{overscroll-behavior:contain}
