@@ -123,6 +123,8 @@
     state.frozen = body.frozen || [];
     state.branch = body.branch;
     state.repo = body.repo;
+    state.langs = (body.data && body.data.languages) || [];
+    state.hasDonations = !!(body.data && body.data.donorbox && typeof body.data.donorbox === 'object');
     state.saved = leaves(body.data);
     state.draft = JSON.parse(JSON.stringify(state.saved));
     state.order = Object.keys(state.saved);
@@ -141,7 +143,10 @@
      not name / url / socials. A setting the vocabulary does not know yet
      still appears, under its key — the form is derived from the file. */
   function has(key) { return tr(key) !== key; }
-  function fieldLabel(p) { return has('set.f.' + p) ? tr('set.f.' + p) : p; }
+  function fieldLabel(p) {
+    if (p.indexOf('donorbox.') === 0) return langName(p.slice(9));
+    return has('set.f.' + p) ? tr('set.f.' + p) : p;
+  }
   /* The social links belong to the site, so they sit in its card. */
   function cardOf(p) {
     var g = groupOf(p);
@@ -169,8 +174,32 @@
   /* Everything about a language — edited on the Content page instead. */
   var isLanguage = function (p) {
     return p === 'defaultLang' || p === 'languages' || p.indexOf('languages.') === 0 ||
-           p.indexOf('donorbox.') === 0 || p.indexOf('visibility.languages.') === 0;
+           p.indexOf('visibility.languages.') === 0;
   };
+
+  /* THE GIVE PAGE'S DONATION FORM, ONE PER LANGUAGE. It is a setting of a
+     page, not of a language (Chase, 2026-09-27: in the languages table it
+     "doesn't make much sense"), so it is here — a line per language the site
+     has, named by the language, with an empty line for a language added
+     before it had a slot; saving that line creates it. */
+  var isDonation = function (p) { return p.indexOf('donorbox.') === 0; };
+  function langName(code) {
+    try {
+      var n = new Intl.DisplayNames([code], { type: 'language' }).of(code);
+      if (n && n !== code) return n.charAt(0).toUpperCase() + n.slice(1) + ' (' + code + ')';
+    } catch (e) { /* a code Intl does not know */ }
+    return code;
+  }
+  function renderDonations() {
+    if (!state.hasDonations) return '';
+    return '<section class="s-group">' +
+      '<h3>' + esc(tr('set.g.donate')) + '</h3>' +
+      state.langs.map(function (code) {
+        var p = 'donorbox.' + code;
+        return field(p, state.draft[p] === undefined);
+      }).join('') +
+      '</section>';
+  }
 
   var isImage = function (p) { return p.indexOf('images.') === 0; };
 
@@ -190,7 +219,7 @@
     var seen = {};
     state.order.forEach(function (p) {
       // Visibility and images each get their own block below.
-      if (isVisibility(p) || isImage(p) || isFrozenList(p) || isLanguage(p)) return;
+      if (isVisibility(p) || isImage(p) || isFrozenList(p) || isLanguage(p) || isDonation(p)) return;
       var g = cardOf(p);
       if (!seen[g]) { seen[g] = true; groups.push(g); }
     });
@@ -199,13 +228,14 @@
     $('sRoot').innerHTML =
       groups.map(function (g) {
         var rows = state.order.filter(function (p) {
-          return !isVisibility(p) && !isImage(p) && !isFrozenList(p) && !isLanguage(p) && cardOf(p) === g;
+          return !isVisibility(p) && !isImage(p) && !isFrozenList(p) && !isLanguage(p) && !isDonation(p) && cardOf(p) === g;
         });
         return '<section class="s-group">' +
           '<h3>' + esc(groupLabel(g)) + '</h3>' +
           rows.map(function (p) { return field(p); }).join('') +
           '</section>';
       }).join('') +
+      renderDonations() +
       renderVisibility();
   }
 
@@ -294,9 +324,11 @@
        before this setting did. It renders as an ordinary empty text box, and
        saving it creates the key. Treating it as a normal field is the point:
        nothing about the screen should say "this one is special". */
+    /* Empty on both sides, so an untouched slot is not an unsaved change the
+       moment the page opens; typing into it is, and saving creates the key. */
     if (isNew && state.draft[p] === undefined) {
       state.draft[p] = '';
-      state.saved[p] = undefined;      // undefined !== '' so it counts as a change
+      state.saved[p] = '';
       if (state.order.indexOf(p) === -1) state.order.push(p);
     }
     var v = state.draft[p];

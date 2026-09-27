@@ -281,14 +281,14 @@ await check("a returned file replaces the editor for approval, flagged lines unt
 
 async function table(d) { d.getElementById("cLangs").click(); await tick(100); return d.getElementById("cSetBody"); }
 
-await check("the languages table: progress, both switches, donation page, remove", async () => {
+await check("the languages table: progress, both switches, remove — no donation form", async () => {
   const { d } = await boot();
   const body = await table(d);
   assert(!d.getElementById("cSet").hidden, "did not open");
   const hr = body.querySelector('[data-lang="hr"]');
   assert(/9 of 10/.test(hr.textContent), `progress: ${hr.textContent}`);
   assert(hr.querySelector('[data-set="visibility.languages.hr.dev"]') && hr.querySelector('[data-set="visibility.languages.hr.live"]'), "switches");
-  assert(body.querySelector('[data-set="donorbox.hr"]').value === "hr-form", "not its donation page");
+  assert(!body.querySelector('[data-set^="donorbox"]'), "the donation form is a Give-page setting, not a language's");
   assert(body.querySelector('[data-remove="hr"]'), "cannot be removed");
   const en = body.querySelector('[data-lang="en"]');
   assert(!en.querySelector(".switch") && !en.querySelector("[data-remove]"), "English can be switched off or removed");

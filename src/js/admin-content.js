@@ -1142,10 +1142,9 @@
   }
 
   function renderTable() {
-    var donate = state.site.donorbox && typeof state.site.donorbox === 'object';
     var html = '<div class="lt" role="table" aria-label="' + esc(tr('con.languages')) + '">' +
       '<div class="lt-r lt-head" role="row">' +
-        ['con.lt.language', 'con.lt.words', 'con.lt.preview', 'con.lt.everyone', 'con.lt.donate'].map(function (k) {
+        ['con.lt.language', 'con.lt.words', 'con.lt.preview', 'con.lt.everyone'].map(function (k) {
           return '<span role="columnheader">' + esc(tr(k)) + '</span>';
         }).join('') + '<span role="columnheader"></span></div>';
 
@@ -1169,10 +1168,6 @@
           : sw('visibility.languages.' + code + '.dev', !!vis.dev, langName(code) + ' — ' + tr('con.lt.preview'))) + '</span>' +
         '<span role="cell" data-label="' + esc(tr('con.lt.everyone')) + '">' + (en ? '<small>' + esc(tr('con.lt.always')) + '</small>'
           : sw('visibility.languages.' + code + '.live', !!vis.live, langName(code) + ' — ' + tr('con.lt.everyone'))) + '</span>' +
-        '<span role="cell" class="lt-donate" data-label="' + esc(tr('con.lt.donate')) + '">' + (donate
-          ? '<input type="url" data-set="donorbox.' + esc(code) + '" value="' + esc(state.site.donorbox[code] || '') +
-            '" autocomplete="off" spellcheck="false" aria-label="' + esc(langName(code) + ' — ' + tr('con.lt.donate')) + '">'
-          : '') + '</span>' +
         '<span role="cell" class="lt-acts">' +
           '<button type="button" class="tl-more" data-notes="' + esc(code) + '" aria-expanded="' + open + '">' +
             esc(tr('con.lt.written')) + '</button>' +

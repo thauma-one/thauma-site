@@ -1153,7 +1153,7 @@ body.has-savebar .web-bar{display:none}
 .lt{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--radius)}
 /* Every column a fixed share, the last one sized for the widest row's
    buttons, so the rows line up whatever each row holds. */
-.lt-r{display:grid;grid-template-columns:minmax(110px,1fr) minmax(110px,1fr) 88px 88px minmax(130px,1.2fr) 250px;
+.lt-r{display:grid;grid-template-columns:minmax(120px,1.2fr) minmax(130px,1.2fr) 96px 96px 250px;
   gap:14px;align-items:center;padding:12px 14px}
 .lt-r + .lt-r,.lt-notes + .lt-r{border-top:1px solid var(--line)}
 .lt-head{font:600 10px var(--font-body);letter-spacing:.12em;text-transform:uppercase;color:var(--dim);padding-bottom:6px}
@@ -1177,7 +1177,7 @@ body.has-savebar .web-bar{display:none}
 @media (max-width:760px){
   .lt-head{display:none}
   .lt-r{grid-template-columns:1fr 1fr;gap:10px}
-  .lt-name,.lt-words,.lt-acts,.lt-donate{grid-column:1 / -1}
+  .lt-name,.lt-words,.lt-acts{grid-column:1 / -1}
   .lt-acts{justify-content:flex-start}
   .lt-r [data-label]::before{content:attr(data-label);display:block;margin-bottom:6px;
     font:600 10px var(--font-body);letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
