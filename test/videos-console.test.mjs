@@ -10,8 +10,11 @@
  * real buttons, and reads what actually reaches `fetch`.
  *
  * WHAT IT IS LOOKING FOR. The two things this screen can get wrong in a way
- * nobody notices: saying "Saved" over a sync that failed, and rendering a
+ * nobody notices: saying "Published" over a sync that failed, and rendering a
  * video title as markup. Both are quiet, both are on somebody's public site.
+ *
+ * AND THAT IT SAVES LIKE THE REST OF UPDATES: nothing is sent until the page's
+ * one Publish changes, removing the channel included (option B).
  */
 import { JSDOM } from "jsdom";
 import { readFileSync, existsSync } from "node:fs";
@@ -19,8 +22,8 @@ import { readFileSync, existsSync } from "node:fs";
 /* CI builds to _site_next or _site_prod, never _site. Looking only in _site is
    how a test file skips itself in the one place it matters. */
 const PAGE = ["_site", "_site_next", "_site_prod"]
-  .map((d) => `${d}/staff/ministry/index.html`)
-  .find((p) => existsSync(p)) || "_site/staff/ministry/index.html";
+  .map((d) => `${d}/staff/updates/index.html`)
+  .find((p) => existsSync(p)) || "_site/staff/updates/index.html";
 
 let pass = 0, fail = 0;
 const check = async (name, fn) => {
@@ -71,7 +74,7 @@ function payload(over = {}) {
 async function boot(reply = payload()) {
   const dom = new JSDOM(readFileSync(PAGE, "utf8"), {
     runScripts: "outside-only",
-    url: "https://next.thauma.one/staff/ministry/",
+    url: "https://next.thauma.one/staff/updates/",
     pretendToBeVisual: true,
   });
   const w = dom.window;
@@ -88,7 +91,7 @@ async function boot(reply = payload()) {
   w.StaffActing = () => {}; w.StaffIdentity = () => {};
   w.console.error = () => {};
 
-  for (const f of ["staff-i18n.js", "staff.js", "staff-rowpanel.js",
+  for (const f of ["staff-i18n.js", "staff.js", "staff-updates.js", "staff-rowpanel.js",
                    "staff-milestones.js", "staff-goals.js", "staff-prayer.js",
                    "staff-videos.js"]) {
     w.eval(readFileSync("src/js/" + f, "utf8"));
@@ -106,6 +109,8 @@ async function boot(reply = payload()) {
 }
 
 const press = (w, el) => el.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+const settle = () => new Promise((r) => setTimeout(r, 120));
+const publish = async (w) => { press(w, w.document.getElementById("upPublish")); await settle(); };
 const openTab = async (w) => {
   press(w, w.document.querySelector('.tab[data-tab="videos"]'));
   await new Promise((r) => setTimeout(r, 120));
@@ -113,12 +118,31 @@ const openTab = async (w) => {
 
 /* ------------------------------------------------------------------ */
 
-await check("the tab exists and fetches nothing until it is opened", async () => {
+await check("the tab loads with the page, so opening it is instant", async () => {
   const { w, sent } = await boot();
   assert(w.document.querySelector('.tab[data-tab="videos"]'), "no Videos tab");
   assert(w.document.getElementById("vidForm"), "no form on the page");
-  eq(sent.filter((s) => s.url.includes("staff-videos")).length, 0,
-     "a tab nobody opened should not cost a request");
+  eq(sent.filter((s) => s.url.includes("staff-videos")).length, 1,
+     "one GET on arrival, like every other section");
+  eq(w.document.getElementById("upBar").hidden, true, "nothing to publish yet");
+});
+
+await check("editing sends nothing, marks the tab, and waits for Publish", async () => {
+  const { w, sent } = await boot();
+  await openTab(w);
+  w.document.getElementById("vidCount").value = "5";
+  w.document.getElementById("vidForm").dispatchEvent(new w.Event("input", { bubbles: true }));
+  w.document.getElementById("vidForm")
+    .dispatchEvent(new w.Event("submit", { bubbles: true, cancelable: true }));
+  await settle();
+  eq(sent.filter((s) => s.method !== "GET").length, 0, "Enter in a field must not publish");
+  eq(w.document.getElementById("upBar").hidden, false, "the bar should say something is waiting");
+  assert(w.document.querySelector('.tab[data-tab="videos"]').classList.contains("is-dirty"),
+    "the Videos tab should be marked");
+  await publish(w);
+  const post = sent.find((s) => s.method === "POST");
+  eq(post && post.body.max_items, 5, "Publish sends it");
+  eq(w.document.getElementById("upBar").hidden, true, "and the bar goes away");
 });
 
 await check("opening it loads the channel into the form", async () => {
@@ -179,27 +203,23 @@ await check("a failed sync does NOT report success", async () => {
   }));
   await openTab(w);
   w.document.getElementById("vidChannel").value = "@nope";
-  w.document.getElementById("vidForm")
-    .dispatchEvent(new w.Event("submit", { bubbles: true, cancelable: true }));
-  await new Promise((r) => setTimeout(r, 120));
+  await publish(w);
 
   const last = toasts[toasts.length - 1];
-  eq(last.kind, "bad", "the toast must not be a success");
+  eq(last.kind, "err", "the toast must not be a success");
   assert(/no channel with that id/i.test(last.msg), `unhelpful: ${last.msg}`);
   assert(/YouTube has no channel/.test(w.document.getElementById("vidSync").textContent),
          "and the reason should stay on screen after the toast has gone");
 });
 
-await check("a good save reports how many it found", async () => {
+await check("a good publish sends what was typed and says so", async () => {
   const { w, toasts, sent } = await boot(payload({
     checked: { ok: true, count: 4, title: "Thauma" },
   }));
   await openTab(w);
   w.document.getElementById("vidChannel").value = "@thauma";
   w.document.getElementById("vidCount").value = "5";
-  w.document.getElementById("vidForm")
-    .dispatchEvent(new w.Event("submit", { bubbles: true, cancelable: true }));
-  await new Promise((r) => setTimeout(r, 120));
+  await publish(w);
 
   const post = sent.find((s) => s.method === "POST");
   eq(post.body.channel, "@thauma", "sends what was typed, unresolved");
@@ -207,9 +227,8 @@ await check("a good save reports how many it found", async () => {
   eq(post.body.is_public, true, "sends the switch");
 
   const last = toasts[toasts.length - 1];
-  eq(last.kind, "good", "kind");
-  assert(/4/.test(last.msg), `the count should be substituted, got "${last.msg}"`);
-  assert(!/\{n\}/.test(last.msg), `an unsubstituted placeholder reached the screen: ${last.msg}`);
+  eq(last.kind, "ok", "kind");
+  assert(!/\{[a-z]+\}/.test(last.msg), `an unsubstituted placeholder reached the screen: ${last.msg}`);
 });
 
 await check("no message on this screen ever shows a raw {placeholder}", async () => {
@@ -251,17 +270,25 @@ await check("with no channel set, Check and Remove are not offered", async () =>
   eq(w.document.getElementById("vidSync").hidden, true, "the sync line");
 });
 
-await check("removing the channel asks first, and does nothing if refused", async () => {
+await check("removing the channel waits for Publish, can be kept, and asks before it goes", async () => {
   const { w, sent } = await boot();
   await openTab(w);
+  const clear = w.document.getElementById("vidClear");
+  press(w, clear);
+  await settle();
+  eq(sent.filter((s) => s.method === "DELETE").length, 0, "nothing sent on the press");
+  eq(w.document.getElementById("upBar").hidden, false, "the removal is waiting");
+  eq(clear.textContent, "Keep", "the button now keeps it");
+  press(w, clear);
+  eq(w.document.getElementById("upBar").hidden, true, "kept, so nothing waits");
+
+  press(w, clear);
   w.StaffConfirm = async () => false;
-  press(w, w.document.getElementById("vidClear"));
-  await new Promise((r) => setTimeout(r, 120));
+  await publish(w);
   eq(sent.filter((s) => s.method === "DELETE").length, 0, "refused, so nothing sent");
 
   w.StaffConfirm = async () => true;
-  press(w, w.document.getElementById("vidClear"));
-  await new Promise((r) => setTimeout(r, 120));
+  await publish(w);
   eq(sent.filter((s) => s.method === "DELETE").length, 1, "confirmed, so sent");
 });
 
@@ -279,7 +306,7 @@ await check("saved buttons come back into the editor", async () => {
   eq(rows[1].querySelector('[data-vl="url"]').value, "https://thauma.one/give", "url");
 });
 
-await check("the whole rail is sent on save, so removing one removes it", async () => {
+await check("the whole rail is sent on publish, so removing one removes it", async () => {
   /* Replaced wholesale rather than diffed. Deleting a row and saving must be
      the thing that removes it — if the browser sent only what it had ADDED,
      a deleted button would live on in the database and keep appearing. */
@@ -292,9 +319,7 @@ await check("the whole rail is sent on save, so removing one removes it", async 
     .querySelector('[data-vl="del"]')
     .dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
 
-  w.document.getElementById("vidForm")
-    .dispatchEvent(new w.Event("submit", { bubbles: true, cancelable: true }));
-  await new Promise((r) => setTimeout(r, 120));
+  await publish(w);
 
   const post = sent.find((s) => s.method === "POST");
   deq(post.body.links, [{ label: "Keep", url: "https://a.example" }], "the rail as it now stands");
@@ -307,9 +332,7 @@ await check("a typed button reaches the request exactly as typed", async () => {
   const row = w.document.querySelector("#vidLinks .vid-link-row");
   row.querySelector('[data-vl="label"]').value = "  Newsletter  ";
   row.querySelector('[data-vl="url"]').value = "https://thauma.one/news";
-  w.document.getElementById("vidForm")
-    .dispatchEvent(new w.Event("submit", { bubbles: true, cancelable: true }));
-  await new Promise((r) => setTimeout(r, 120));
+  await publish(w);
 
   const post = sent.find((s) => s.method === "POST");
   deq(post.body.links, [{ label: "Newsletter", url: "https://thauma.one/news" }],

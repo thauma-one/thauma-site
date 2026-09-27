@@ -1,19 +1,22 @@
 ---
 layout: layouts/staff.njk
-staffPage: ministry
-staffTitle: Ministry
+staffPage: updates
+staffTitle: Updates
 staffHeading: What this ministry <b>publishes</b>
 ---
-{#- FOUR SECTIONS, ONE PAGE.
+{#- UPDATES (mockup boards 7 and "Option B"; was Ministry). Four sections, one
+   page: milestones, giving goals, prayer and videos are the same job — the
+   things a ministry says about itself in public.
 
-   Milestones, giving goals, prayer and videos are the same job — the things a
-   ministry says about itself in public — and each is small. Four nav entries
-   for four short pages crowded the bar and made them look unrelated.
+   EDIT FREELY, THEN PUBLISH (Chase, 2026-09-26: option B). Every section keeps
+   a working copy: changes, new items, the switch on a row and even a delete
+   are marked "not live yet" in the list, and nothing reaches a partner's
+   site until the bar at the foot says Publish changes. One bar for all four
+   sections, so the page behaves one way. Closing an editor keeps what was
+   typed; Cancel undoes that editing.
 
-   Every section is built the same way, deliberately: a view switch at the top,
-   an EDIT half that is a list of rows opening into a form, and an AS EMBEDDED
-   half that is the real widget plus the code to paste. Learning one teaches
-   all three. -#}
+   THE SWITCH STAYS ON THE ROW (Chase): one click says whether an item is on
+   the site. The whole row opens its editor; Delete is inside it. -#}
 
 <div class="tabs" role="tablist">
   <button type="button" class="tab" role="tab" data-tab="milestones"
@@ -118,11 +121,6 @@ staffHeading: What this ministry <b>publishes</b>
   </div>
 
   <div class="ms-switches">
-    <button type="button" class="switch" id="msPublic" role="switch" aria-checked="false">
-      <span class="switch-track"><span class="switch-state">Off</span><span class="switch-knob"></span></span>
-      <span class="switch-label"><span data-i18n="ms.published">Published</span>
-      </span>
-    </button>
     <button type="button" class="switch" id="msFeatured" role="switch" aria-checked="false">
       <span class="switch-track"><span class="switch-state">Off</span><span class="switch-knob"></span></span>
       <span class="switch-label"><span data-i18n="ms.featured">Featured</span>
@@ -131,23 +129,13 @@ staffHeading: What this ministry <b>publishes</b>
   </div>
 
   <div class="ms-actions">
-    <button type="submit" class="solid-btn" data-i18n="ms.apply">Apply</button>
+    <button type="submit" class="solid-btn" data-i18n="ms.done">Done</button>
     <button type="button" class="ghost-btn" id="msCancel" data-i18n="ms.cancel">Cancel</button>
-    {#- "Apply" not "Save": this closes the form and updates the list, but
-       nothing reaches the database until Save changes is pressed. The word
-       and the save bar that appears carry that — calling both of them Save
-       is how people end up believing work is safe. -#}
-    <span class="hint" id="msFormStatus"></span>
+    <span class="c-gap"></span>
+    <button type="button" class="ghost-btn danger" id="msDelete" data-i18n="ms.delete">Delete</button>
   </div>
 </form>
 
-{#- Only appears when something is actually unsaved, so its presence is the
-   signal. Fixed to the bottom of the viewport and LAST in the document, so
-   reading order matches what you see — a bar announced before the content
-   it refers to reads oddly to a screen reader.
-
-   role=status so the change in count is announced without stealing focus
-   from whatever is being edited. -#}
   </div>
 </section>
 
@@ -223,21 +211,12 @@ staffHeading: What this ministry <b>publishes</b>
         </div>
       </div>
 
-      <div class="ms-switches">
-        <button type="button" class="switch" id="glPublic" role="switch" aria-checked="false">
-          <span class="switch-track"><span class="switch-state">Off</span><span class="switch-knob"></span></span>
-          <span class="switch-label"><span data-i18n="ms.published">Published</span>
-          </span>
-        </button>
-      </div>
 
       <div class="ms-actions">
-        <button type="submit" class="solid-btn" data-i18n="gl.save">Save goal</button>
+        <button type="submit" class="solid-btn" data-i18n="ms.done">Done</button>
         <button type="button" class="ghost-btn" id="glCancel" data-i18n="ms.cancel">Cancel</button>
-        {#- Unlike milestones, a goal saves STRAIGHT AWAY. There is no working
-           copy to reconcile: one goal is one row, and a save bar for a single
-           small form is ceremony. -#}
-        <span class="hint" id="glFormStatus"></span>
+        <span class="c-gap"></span>
+        <button type="button" class="ghost-btn danger" id="glDelete" data-i18n="ms.delete">Delete</button>
       </div>
     </form>
   </div>
@@ -306,11 +285,6 @@ staffHeading: What this ministry <b>publishes</b>
       </div>
 
       <div class="ms-switches">
-        <button type="button" class="switch" id="prPublic" role="switch" aria-checked="false">
-          <span class="switch-track"><span class="switch-state">Off</span><span class="switch-knob"></span></span>
-          <span class="switch-label"><span data-i18n="ms.published">Published</span>
-          </span>
-        </button>
         {#- A boolean, not a status. A prayer is being asked or it has been
            answered; an enum here would invite "in progress", which is not a
            thing anybody means. -#}
@@ -322,9 +296,10 @@ staffHeading: What this ministry <b>publishes</b>
       </div>
 
       <div class="ms-actions">
-        <button type="submit" class="solid-btn" data-i18n="pr.save">Save request</button>
+        <button type="submit" class="solid-btn" data-i18n="ms.done">Done</button>
         <button type="button" class="ghost-btn" id="prCancel" data-i18n="ms.cancel">Cancel</button>
-        <span class="hint" id="prFormStatus"></span>
+        <span class="c-gap"></span>
+        <button type="button" class="ghost-btn danger" id="prDelete" data-i18n="ms.delete">Delete</button>
       </div>
     </form>
   </div>
@@ -395,7 +370,6 @@ staffHeading: What this ministry <b>publishes</b>
     <button type="button" class="ghost-btn" id="vidLinkAdd" data-i18n="vid.addButton">Add a button</button>
 
     <div class="ms-actions">
-      <button type="submit" class="solid-btn" data-i18n="vid.save">Save channel</button>
       <button type="button" class="ghost-btn" id="vidCheck" data-i18n="vid.check">Check now</button>
       <button type="button" class="ghost-btn danger" id="vidClear" data-i18n="vid.clear">Remove channel</button>
       <span class="hint" id="vidFormStatus"></span>
@@ -412,9 +386,13 @@ staffHeading: What this ministry <b>publishes</b>
   </div>
 </section>
 
-<div class="ms-savebar" id="msSaveBar" role="status" aria-live="polite" hidden>
+{#- THE ONE BAR FOR ALL FOUR SECTIONS (staff-updates.js): how much is not
+   live yet, and in which sections; Discard; Publish changes. role=status so
+   the count is announced without taking the focus from what is being
+   edited. -#}
+<div class="ms-savebar" id="upBar" role="status" aria-live="polite" hidden>
   <span class="ms-dirty-dot" aria-hidden="true"></span>
-  <span id="msDirtyCount">0 unsaved changes</span>
-  <button type="button" class="ghost-btn" id="msDiscard" data-i18n="ms.discard">Discard</button>
-  <button type="button" class="solid-btn" id="msSaveAll" data-i18n="ms.save">Save changes</button>
+  <span id="upCount"></span>
+  <button type="button" class="ghost-btn" id="upDiscard" data-i18n="ms.discard">Discard</button>
+  <button type="button" class="solid-btn" id="upPublish" data-i18n="up.publish">Publish changes</button>
 </div>

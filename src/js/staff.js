@@ -1244,6 +1244,8 @@
 
   function toast(message, kind) {
     if (!message) return;
+    /* Half the console says 'bad'/'good' for what the styles call 'err'/'ok'. */
+    kind = { bad: 'err', good: 'ok' }[kind] || kind;
     var el = document.createElement('div');
     el.className = 'toast' + (kind ? ' ' + kind : '');
     el.textContent = message;
@@ -1625,7 +1627,7 @@
     });
   }
 
-  /* TABS, for any page that has them. Ministry carries three sections and
+  /* TABS, for any page that has them. Updates carries four sections and
      Settings carries three panels; both use the same markup, so the behavior
      belongs here rather than being written twice.
 

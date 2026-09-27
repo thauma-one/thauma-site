@@ -1,17 +1,22 @@
 /* ============================================================
-   staff-videos.js — the Videos section of the Ministry page
+   staff-videos.js — the Videos section of the Updates page
    ============================================================
    THE SIMPLEST SECTION ON THIS PAGE, and it should stay that way. The other
    three edit words somebody typed into the console. This one edits ONE fact —
    which channel — and everything it lists was written on YouTube by whoever
    uploaded it. There is nothing here to edit, so there is no editor: no row
-   panel, no save bar, no language columns.
+   panel, no language columns.
 
-   SAVING CHECKS THE CHANNEL WHILE YOU ARE STILL LOOKING AT IT. The endpoint
-   resolves the address, stores it, and reads the feed in the same request, so
-   a wrong channel says so immediately rather than fifteen minutes later on a
-   screen nobody is watching. That is why Save can take a second and why the
-   button says so while it works.
+   IT SAVES LIKE THE REST OF UPDATES (Chase's option B, 2026-09-26): the
+   channel, the count, the switch and the buttons are edited freely and go
+   live with the page's one Publish changes (staff-updates.js). Removing the
+   channel waits for Publish too. Check now is the exception — it changes
+   nothing, it only reads the stored channel's feed again.
+
+   PUBLISHING CHECKS THE CHANNEL WHILE YOU ARE STILL LOOKING AT IT. The
+   endpoint resolves the address, stores it, and reads the feed in the same
+   request, so a wrong channel says so immediately rather than fifteen minutes
+   later on a screen nobody is watching.
    ============================================================ */
 (function () {
   'use strict';
@@ -20,7 +25,7 @@
 
   var API = '/api/staff-videos';
   var $ = function (id) { return document.getElementById(id); };
-  var state = { channel: null, videos: [], links: [], busy: false };
+  var state = { channel: null, videos: [], links: [], busy: false, removing: false };
 
   /* Four is not a technical limit. A rail of eight pill buttons under three
      videos is not navigation, it is a sitemap — and the endpoint enforces the
@@ -90,6 +95,7 @@
 
     $('vidClear').hidden = !c;
     $('vidCheck').hidden = !c;
+    renderRemoving();
 
     renderSync();
     renderLinks();
@@ -112,6 +118,14 @@
       el.className = 'vid-sync';
       el.textContent = tr('vid.neverChecked');
     }
+  }
+
+  /* A removal waiting for Publish: the button turns into Keep, and the form
+     shows the channel struck. */
+  function renderRemoving() {
+    $('vidClear').textContent = tr(state.removing ? 'up.keep' : 'vid.clear');
+    $('vidClear').classList.toggle('danger', !state.removing);
+    $('vidForm').classList.toggle('is-removed', state.removing);
   }
 
   /* ------------------------------ the rail ------------------------------ */
@@ -144,6 +158,7 @@
     row.querySelector('[data-vl="del"]').addEventListener('click', function () {
       row.remove();
       refreshAddButton();
+      changed();
     });
     return row;
   }
@@ -190,8 +205,34 @@
     state.channel = data.channel || null;
     state.videos = data.videos || [];
     state.links = data.links || [];
+    state.removing = false;
     render();
+    changed();
   }
+
+  /* What the form says, and what the server holds, in the same shape. A
+     button row with nothing typed in it is not a button. */
+  function current() {
+    return {
+      channel: $('vidChannel').value.trim(),
+      max_items: Number($('vidCount').value) || 3,
+      is_public: isOn($('vidPublic')),
+      links: readLinks().filter(function (l) { return l.label || l.url; }),
+    };
+  }
+  function saved() {
+    var c = state.channel;
+    return {
+      channel: c ? c.source_id : '',
+      max_items: c ? c.max_items : 3,
+      is_public: !!(c && c.is_public),
+      links: state.links.map(function (l) { return { label: l.label || '', url: l.url || '' }; }),
+    };
+  }
+  function isDirty() {
+    return state.removing || JSON.stringify(current()) !== JSON.stringify(saved());
+  }
+  function changed() { if (window.StaffUpdates) window.StaffUpdates.changed(); }
 
   function busy(on, key) {
     state.busy = on;
@@ -201,58 +242,75 @@
       function (b) { b.disabled = on; });
   }
 
+  /* Returns the answer, or throws with the server's reason. The caller says
+     so: Check now as a toast, Publish through the Updates bar. */
   async function send(method, body, busyKey) {
     busy(true, busyKey);
     try {
-      var res = await fetch(API, {
-        method: method,
-        headers: body ? { 'Content-Type': 'application/json' } : undefined,
-        body: body ? JSON.stringify(body) : undefined,
-      });
-      var data = await res.json();
-      if (!res.ok) { toast(data.error || tr('common.saveFailed'), 'bad'); return null; }
+      var res, data;
+      try {
+        res = await fetch(API, {
+          method: method,
+          headers: body ? { 'Content-Type': 'application/json' } : undefined,
+          body: body ? JSON.stringify(body) : undefined,
+        });
+        data = await res.json();
+      } catch (e) {
+        throw new Error(tr('common.saveFailed'));
+      }
+      if (!res.ok) throw new Error(data.error || tr('common.saveFailed'));
       apply(data);
       return data;
-    } catch (e) {
-      toast(tr('common.saveFailed'), 'bad');
-      return null;
     } finally {
       busy(false);
     }
   }
 
-  /* Save and Check report the SYNC's outcome, not the request's. A save that
-     stored the channel and then could not read its feed is not a success, and
-     saying "Saved" over the top of that is how somebody walks away from a
-     channel that will never update. */
-  function reportSync(data) {
-    if (!data) return;
-    var r = data.checked;
-    if (!r) { toast(tr('vid.saved'), 'good'); return; }
-    if (!r.ok) { toast(r.error || tr('vid.syncFailedShort'), 'bad'); return; }
-    toast(fill('vid.gotVideos', { n: r.count }), 'good');
+  /* Publish and Check report the SYNC's outcome, not the request's. A save
+     that stored the channel and then could not read its feed is not a
+     success, and saying "Published" over the top of that is how somebody
+     walks away from a channel that will never update. */
+  function syncFailure(data) {
+    var r = data && data.checked;
+    if (r && !r.ok) return r.error || tr('vid.syncFailedShort');
+    return null;
+  }
+
+  /* ---- publishing: what the Updates bar asks of this section ---- */
+
+  async function publish() {
+    var label = tr('min.videos');
+    try {
+      if (state.removing) {
+        await send('DELETE');
+        return { failed: [] };
+      }
+      var now = current();
+      if (!now.channel) return { failed: [label + ' — ' + tr('vid.needChannel')] };
+      var data = await send('POST', now, 'vid.checking');
+      var bad = syncFailure(data);
+      return { failed: bad ? [label + ' — ' + bad] : [] };
+    } catch (e) {
+      return { failed: [label + ' — ' + e.message] };
+    }
+  }
+
+  function discard() {
+    state.removing = false;
+    render();
+    changed();
   }
 
   /* ------------------------------- events ------------------------------- */
 
   $('vidPublic').addEventListener('click', function () {
     setSwitch(this, !isOn(this));
+    changed();
   });
 
-  $('vidForm').addEventListener('submit', async function (e) {
-    e.preventDefault();
-    if (state.busy) return;
-
-    var raw = $('vidChannel').value.trim();
-    if (!raw) { toast(tr('vid.needChannel'), 'bad'); return; }
-
-    reportSync(await send('POST', {
-      channel: raw,
-      max_items: Number($('vidCount').value) || 3,
-      is_public: isOn($('vidPublic')),
-      links: readLinks(),
-    }, 'vid.checking'));
-  });
+  /* Enter in a field does not publish; the bar does. */
+  $('vidForm').addEventListener('submit', function (e) { e.preventDefault(); });
+  $('vidForm').addEventListener('input', changed);
 
   $('vidLinkAdd').addEventListener('click', function () {
     $('vidLinks').appendChild(linkRow(null));
@@ -263,40 +321,38 @@
 
   $('vidCheck').addEventListener('click', async function () {
     if (state.busy) return;
-    reportSync(await send('POST', { action: 'check' }, 'vid.checking'));
+    try {
+      var data = await send('POST', { action: 'check' }, 'vid.checking');
+      var bad = syncFailure(data);
+      if (bad) toast(bad, 'bad');
+      else toast(fill('vid.gotVideos', { n: data.checked ? data.checked.count : state.videos.length }), 'good');
+    } catch (e) {
+      toast(e.message, 'bad');
+    }
   });
 
-  $('vidClear').addEventListener('click', async function () {
+  /* Removing waits for Publish like any other change, and the bar asks
+     before a removal goes out. Pressing it again keeps the channel. */
+  $('vidClear').addEventListener('click', function () {
     if (state.busy) return;
-    /* Asks, because a partner site loses its video section the moment this
-       lands. Not a typed confirmation: nothing is destroyed that cannot be
-       restored by pasting the channel back in. */
-    var ok = window.StaffConfirm
-      ? await window.StaffConfirm({
-          title: tr('vid.clearTitle'),
-          body: tr('vid.clearBody'),
-          confirm: tr('vid.clear'),
-          danger: true,
-        })
-      : window.confirm(tr('vid.clearBody'));
-    if (!ok) return;
-    if (await send('DELETE')) toast(tr('vid.cleared'), 'good');
+    state.removing = !state.removing;
+    renderRemoving();
+    changed();
   });
 
-  /* Loaded when the tab is first shown rather than on page load: three other
-     sections already fetch on arrival, and a channel nobody opened does not
-     need a request. */
-  var loaded = false;
-  function load() {
-    if (loaded) return;
-    loaded = true;
-    send('GET');
+  if (window.StaffUpdates) {
+    window.StaffUpdates.register({
+      key: 'videos',
+      count: function () { return isDirty() ? 1 : 0; },
+      removals: function () { return state.removing ? 1 : 0; },
+      publish: publish,
+      discard: discard
+    });
   }
 
-  var tab = document.querySelector('.tab[data-tab="videos"]');
-  if (tab) tab.addEventListener('click', load);
-  /* …unless the page was opened straight onto this tab, in which case no
-     click is coming. */
-  var panel = document.querySelector('[data-panel="videos"]');
-  if (panel && !panel.hidden) load();
+  /* Loaded with the page, like the other three sections: every tab of
+     Updates is ready before it is opened (Chase, 2026-09-27). */
+  send('GET').catch(function (e) {
+    $('vidList').innerHTML = '<p class="empty">' + esc(e.message) + '</p>';
+  });
 })();

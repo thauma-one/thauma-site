@@ -32,7 +32,9 @@
 const staff = [
   { slug: "index", url: "/staff/", label: "Dashboard",
     roles: ["staff", "partner", "communications"] },
-  { slug: "ministry", url: "/staff/ministry/", label: "Ministry",
+  /* What this ministry publishes (mockup board 7; was "Ministry" — these four
+     things are its updates). */
+  { slug: "updates", url: "/staff/updates/", label: "Updates",
     roles: ["staff", "partner", "communications"] },
   { slug: "mailing", url: "/staff/mailing/", label: "Mailing",
     roles: ["staff", "partner", "communications"] },

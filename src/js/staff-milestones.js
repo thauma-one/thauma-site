@@ -5,21 +5,15 @@
    the visitor by the time this runs; the endpoint re-verifies and
    scopes every query to the partner it resolves.
 
-   TWO SAVE MODELS ON ONE SCREEN, DELIBERATELY:
+   EDIT FREELY, THEN PUBLISH (Chase's option B, 2026-09-26). The
+   list is a working copy: an edit, a new milestone, the switch on
+   a row, even a delete, is marked "not live yet" and waits for the
+   Updates bar's Publish changes (staff-updates.js), which this
+   section answers with publish(). Closing the editor keeps what
+   was typed; Cancel undoes that editing.
 
-     The toggles save IMMEDIATELY. Publishing is a decision, not a
-     draft — you should not be able to flip "Published" and wander
-     off believing it took effect. The switch disables while the
-     request is in flight and reverts if it fails, so the control
-     never shows a state the database does not hold.
-
-     The form saves on SUBMIT. Text is edited in passes; saving
-     every keystroke would fill the audit trail with noise and
-     fight the person typing.
-
-   Nothing here is optimistic. The list is re-rendered from what the
-   server returned, not from what we hoped it would say — the whole
-   point of a publish flag is that its displayed state is true.
+   Nothing is optimistic after publishing: the list is re-read from
+   the server, so what it shows is what landed.
    ============================================================ */
 (function () {
   'use strict';
@@ -33,11 +27,12 @@
      a decision you can change your mind about, and "what is live" never
      depends on having noticed a switch move. */
   var state = { saved: {}, draft: {}, order: [], languages: [], editing: null,
-                colA: null, colB: null, prefLang: 'en' };
+                colA: null, colB: null, prefLang: 'en', removed: {}, before: null };
 
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
   function isDirty(id) {
-    return JSON.stringify(state.saved[id]) !== JSON.stringify(state.draft[id]);
+    return !!state.removed[id] ||
+      JSON.stringify(state.saved[id]) !== JSON.stringify(state.draft[id]);
   }
   function dirtyIds() { return state.order.filter(isDirty); }
   function list() { return state.order.map(function (id) { return state.draft[id]; }); }
@@ -133,9 +128,9 @@
 
   /* ---- rendering ------------------------------------------------------ */
 
-  var STATUS_LABEL = {
-    upcoming: 'Upcoming', in_progress: 'In progress',
-    complete: 'Complete', canceled: 'Canceled'
+  var STATUS_KEY = {
+    upcoming: 'ms.upcoming', in_progress: 'ms.inProgress',
+    complete: 'ms.complete', canceled: 'ms.canceled'
   };
 
   /* The list shows the left column's language, falling back to any other so a
@@ -177,7 +172,7 @@
      See staff-rowpanel.js; this file used to carry its own copy. */
   var panel = window.StaffRowPanel({
     listId: 'msList', formId: 'msForm', holderId: 'msFormHolder',
-    saveBarId: 'msSaveBar',
+    saveBarId: 'upBar',
   });
 
   function detachForm() { return panel.detach(); }
@@ -203,35 +198,37 @@
       var rid = m.localId || m.id;
       // The row IS the control: role and aria-expanded so it reads as an
       // expander to a screen reader, not as decoration with a button in it.
-      return '<div class="ms-row' + child + (isDirty(rid) ? ' is-dirty' : '') +
+      var gone = !!state.removed[rid];
+      return '<div class="ms-row' + child + (isDirty(rid) ? ' is-dirty' : '') + (gone ? ' is-removed' : '') +
         '" data-id="' + esc(rid) + '" role="button" tabindex="0"' +
         ' aria-expanded="false">' +
         '<div class="ms-main">' +
           '<div class="ms-t">' +
-            '<span class="ms-title">' + esc(titleOf(m)) + '</span>' +
-            (m.is_featured ? '<span class="badge live">' + tr('ms.featuredBadge') + '</span>' : '') +
-            (m.is_public ? '' : '<span class="badge proto">' + tr('ms.draft') + '</span>') +
-            (isDirty(m.localId || m.id) ? '<span class="badge unsaved">' + tr('ms.unsaved') + '</span>' : '') +
+            /* The star inside the title, so a long title wraps with it. */
+            '<span class="ms-title">' +
+              (m.is_featured ? '<span class="ms-star" title="' + esc(tr('ms.featured')) + '" aria-label="' +
+                esc(tr('ms.featured')) + '">★</span> ' : '') +
+              esc(titleOf(m)) + '</span>' +
+            (gone ? '<span class="badge unsaved">' + esc(tr('up.willRemove')) + '</span>'
+              : isDirty(rid) ? '<span class="badge unsaved">' + esc(tr('up.notLive')) + '</span>' : '') +
           '</div>' +
           '<div class="ms-meta">' +
-            '<span>' + esc(STATUS_LABEL[m.status] || m.status) + '</span>' +
+            '<span>' + esc(tr(STATUS_KEY[m.status] || 'ms.upcoming')) + '</span>' +
             (whenOf(m) ? '<span>' + esc(whenOf(m)) + '</span>' : '') +
             (m.completion ? '<span class="tnum">' + m.completion + '%</span>' : '') +
             missingWarning(m) +
           '</div>' +
         '</div>' +
-        '<div class="ms-toggle">' +
-          '<button type="button" class="switch" role="switch" data-pub="' + esc(rid) + '"' +
+        /* THE SWITCH STAYS ON THE ROW (Chase): whether it is on the site, in
+           one click. A removed row offers Keep instead. */
+        '<div class="ms-toggle">' + (gone
+          ? '<button type="button" class="ghost-btn sm" data-keep="' + esc(rid) + '">' + esc(tr('up.keep')) + '</button>'
+          : '<button type="button" class="switch" role="switch" data-pub="' + esc(rid) + '"' +
             ' aria-checked="' + (m.is_public ? 'true' : 'false') + '"' +
-            ' aria-label="Published">' +
+            ' aria-label="' + esc(tr('ms.published')) + '">' +
             '<span class="switch-track"><span class="switch-state">' +
               (m.is_public ? 'On' : 'Off') + '</span><span class="switch-knob"></span></span>' +
-          '</button>' +
-        '</div>' +
-        '<div class="ms-row-actions">' +
-          '<span class="ms-chev" aria-hidden="true"></span>' +
-          '<button type="button" data-edit="' + esc(rid) + '">Edit</button>' +
-          '<button type="button" class="del" data-del="' + esc(rid) + '">Delete</button>' +
+          '</button>') +
         '</div>' +
       '</div>';
     }).join('');
@@ -294,7 +291,7 @@
     if (window.StaffProblemClear) window.StaffProblemClear();
 
     if (window.StaffActing) window.StaffActing(body);
-    state.saved = {}; state.draft = {}; state.order = [];
+    state.saved = {}; state.draft = {}; state.order = []; state.removed = {};
     (body.milestones || []).forEach(function (m) {
       state.saved[m.id] = m;
       state.draft[m.id] = clone(m);
@@ -346,62 +343,52 @@
   /* ---- saving, explicitly ---------------------------------------------- */
 
   function updateSaveBar() {
-    var n = dirtyIds().length;
-    var bar = $('msSaveBar');
-    if (!bar) return;
-    bar.hidden = n === 0;
-    var label = $('msDirtyCount');
-    if (label) {
-      label.textContent = n === 1 ? '1 unsaved change' : n + ' unsaved changes';
-    }
+    if (window.StaffUpdates) window.StaffUpdates.changed();
     // The bar appearing or leaving changes how far down the open row must sit.
     updateStickyOffsets();
   }
 
-  async function saveAll() {
-    var ids = dirtyIds();
-    if (!ids.length) return;
+  /* ---- publishing: what the Updates bar asks of this section ------------ */
 
-    var btn = $('msSaveAll');
-    btn.disabled = true;
-
+  async function publish() {
+    if (!$('msForm').hidden) await closeForm(true);    // what is open is included
     var failed = [];
+    var ids = dirtyIds();
     for (var i = 0; i < ids.length; i++) {
-      var m = state.draft[ids[i]];
+      var id = ids[i], m = state.draft[id];
       try {
-        var res = await fetch(API, {
-          method: 'POST',
-          credentials: 'same-origin',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(m)
-        });
+        var res;
+        if (state.removed[id]) {
+          res = await fetch(API + '?id=' + encodeURIComponent(id), { method: 'DELETE', credentials: 'same-origin' });
+        } else {
+          res = await fetch(API, {
+            method: 'POST', credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(m)
+          });
+        }
         if (!res.ok) {
           var body = await res.json().catch(function () { return {}; });
-          throw new Error(body.error || ('save failed (' + res.status + ')'));
+          throw new Error(body.error || ('(' + res.status + ')'));
         }
       } catch (e) {
-        // Keep going: one bad milestone should not strand the others as
-        // unsaved, and the reload afterwards shows exactly what landed.
+        // One bad milestone does not strand the others; the reload shows
+        // exactly what landed.
         failed.push(titleOf(m) + ' — ' + e.message);
       }
     }
-
-    btn.disabled = false;
     await load();
-    if (failed.length) {
-      setStatus($('msStatus'), failed.length + ' could not be saved: ' + failed[0], 'err');
-    } else {
-      toastKey('toast.saved', 'ok');
-    }
+    return { failed: failed };
   }
 
-  function discardAll() {
-    if (!confirm('Discard ' + dirtyIds().length + ' unsaved change(s)?')) return;
+  function discard() {
+    state.order = state.order.filter(function (id) { return state.saved[id]; });
     state.order.forEach(function (id) { state.draft[id] = clone(state.saved[id]); });
-    closeForm();
+    Object.keys(state.draft).forEach(function (id) { if (!state.saved[id]) delete state.draft[id]; });
+    state.removed = {};
+    state.before = null;               // nothing to put back: all of it goes
+    if (!$('msForm').hidden) closeForm(false);
     render();
     updateSaveBar();
-    toastKey('toast.discarded', 'ok');
   }
 
   /* ---- the form -------------------------------------------------------- */
@@ -458,13 +445,15 @@
     // reads as a broken button.
     if (!form.hidden && state.editing === id) { await closeForm(); return; }
 
-    // Open on a DIFFERENT row: close where it is before moving it. Without
-    // the wait, the panel jumps to its new position at full height and then
-    // animates from there, which looks like two unrelated things happening.
-    if (!form.hidden) await closePanel(form);
+    // Open on a DIFFERENT row: close where it is — keeping what was typed —
+    // before moving it. Without the wait, the panel jumps to its new position
+    // at full height and then animates from there.
+    if (!form.hidden) await closeForm(true);
 
     var m = id ? state.draft[id] : null;
     state.editing = id || null;
+    /* What it was when opened, so Cancel can put it back. */
+    state.before = m ? clone(m) : null;
 
     $('msId').value = m && state.saved[id] ? id : '';
     fillColumn('a', m);
@@ -473,8 +462,8 @@
     $('msStatusSel').value = m ? (m.status || 'upcoming') : 'upcoming';
     $('msCompletion').value = m ? (m.completion || 0) : 0;
 
-    setSwitch($('msPublic'), m ? !!m.is_public : false);
     setSwitch($('msFeatured'), m ? !!m.is_featured : false);
+    $('msDelete').hidden = !m;
 
     fillParents();
     $('msParent').value = m && m.parent_id ? m.parent_id : '';
@@ -501,22 +490,40 @@
     if (first) first.focus({ preventScroll: true });
   }
 
-  async function closeForm() {
-    await closePanel($('msForm'));
+  /* Closing KEEPS what was typed (option B: "closing the editor keeps your
+     change in the list, marked") — except Cancel, which puts back what it was
+     when opened. */
+  async function closeForm(keep) {
+    var form = $('msForm');
+    if (form.hidden) return;
+    if (keep) applyForm();
+    else if (state.editing && state.before) state.draft[state.editing] = state.before;
+    await closePanel(form);
     state.editing = null;
+    state.before = null;
     markOpenRow();
+    render();
+    updateSaveBar();
   }
 
-  /* Applies to the WORKING COPY. Nothing reaches the database until Save. */
   function submitForm(e) {
     e.preventDefault();
+    closeForm(true);
+  }
+
+  /* The form into the WORKING COPY. Nothing reaches the database until the
+     Updates bar publishes. A new milestone with no title in any language is
+     not added — there would be nothing to show for it. */
+  function applyForm() {
 
     var text = {};
     if (state.colA) text[state.colA] = readColumn('a');
     if (state.colB && state.colB !== state.colA) text[state.colB] = readColumn('b');
 
-    var id = $('msId').value;
+    var id = state.editing || $('msId').value;
     var isNew = !id;
+    var titled = Object.keys(text).some(function (c) { return String(text[c].title || '').trim(); });
+    if (isNew && !titled) return;
     if (isNew) {
       // A local id until the server issues a real one. Prefixed so it is
       // obvious in any log that this row has never been saved.
@@ -537,47 +544,31 @@
       status: $('msStatusSel').value,
       completion: Number($('msCompletion').value) || 0,
       parent_id: $('msParent').value || null,
-      is_public: isOn($('msPublic')),
+      is_public: isNew ? false : !!existing.is_public,
       is_featured: isOn($('msFeatured'))
     });
-
-    closeForm();
-    render();
-    updateSaveBar();
-    toastKey(isNew ? 'toast.added' : 'toast.updated', 'ok');
+    /* A brand-new milestone keeps its local id as the key, so the editor and
+       the row agree on which one this is until the server issues a real id. */
+    if (isNew) state.editing = id;
   }
 
+  /* A delete waits for Publish like everything else — marked, undoable with
+     Keep or Discard — and the bar asks before any is published. A milestone
+     that was never saved exists only here, so it simply goes. */
   async function remove(id) {
     var m = state.draft[id];
     if (!m) return;
-
-    // A milestone that has never been saved exists only in this tab. Asking
-    // the server to delete it would 404 on an id it has never seen, and
-    // confirming a "permanent" delete for something that was never stored
-    // would be theater.
     if (!state.saved[id]) {
       delete state.draft[id];
       state.order = state.order.filter(function (x) { return x !== id; });
-      closeForm(); render(); updateSaveBar();
-      toastKey('toast.discarded', 'ok');
-      return;
+    } else {
+      state.removed[id] = true;
     }
-
-    if (!confirm('Delete "' + titleOf(m) + '"? This cannot be undone.')) return;
-
-    try {
-      var res = await fetch(API + '?id=' + encodeURIComponent(id), {
-        method: 'DELETE', credentials: 'same-origin'
-      });
-      if (!res.ok) {
-        var body = await res.json().catch(function () { return {}; });
-        throw new Error(body.error || ('delete failed (' + res.status + ')'));
-      }
-      await load();
-      toastKey('toast.deleted', 'ok');
-    } catch (e) {
-      setStatus($('msStatus'), e.message, 'err');
-    }
+    state.before = null;
+    var form = $('msForm');
+    if (!form.hidden) { await closePanel(form); state.editing = null; markOpenRow(); }
+    render();
+    updateSaveBar();
   }
 
   /* ---- boot ------------------------------------------------------------ */
@@ -591,7 +582,6 @@
      becoming a no-op again. */
   if (!document.getElementById('msList')) return;
 
-  wireLocalSwitch($('msPublic'));
   wireLocalSwitch($('msFeatured'));
 
   // Switching a column's language re-reads that column from the milestone
@@ -609,25 +599,26 @@
   });
 
   $('msAdd').addEventListener('click', function () { openForm(null); });
-  $('msCancel').addEventListener('click', closeForm);
+  $('msCancel').addEventListener('click', function () { closeForm(false); });
+  $('msDelete').addEventListener('click', function () { if (state.editing) remove(state.editing); });
   $('msForm').addEventListener('submit', submitForm);
 
   // Delegated: the list re-renders after every change.
   $('msList').addEventListener('click', function (e) {
+    if (e.target.closest('.ms-form')) return;
     var btn = e.target.closest('button');
     if (btn) {
       if (btn.dataset.pub !== undefined) return togglePublished(btn, btn.dataset.pub);
-      if (btn.dataset.edit !== undefined) return openForm(btn.dataset.edit);
-      if (btn.dataset.del !== undefined) return remove(btn.dataset.del);
+      if (btn.dataset.keep !== undefined) {
+        delete state.removed[btn.dataset.keep];
+        render(); updateSaveBar();
+      }
       return;
     }
-    // THE WHOLE BAR IS THE TARGET. Clicking a row opens it, the way a
-    // disclosure row does everywhere else — the Edit button stays because it
-    // is the discoverable affordance, but nobody should have to find it.
-    // Clicks that land inside the open panel are not the row's business.
-    if (e.target.closest('.ms-form')) return;
+    // THE WHOLE ROW OPENS IT (board 7) — no Edit button to find. A row marked
+    // for removal opens nothing; Keep is what it offers.
     var row = e.target.closest('.ms-row');
-    if (row) openForm(row.dataset.id);
+    if (row && !state.removed[row.dataset.id]) openForm(row.dataset.id);
   });
 
   // Keyboard parity: the row is focusable and announces itself as a button.
@@ -638,17 +629,15 @@
     if (row) { e.preventDefault(); openForm(row.dataset.id); }
   });
 
-  // The browser's own dialog: wording is not ours to choose, and a custom
-  // one cannot block navigation. Only armed when something is actually
-  // unsaved, so it never cries wolf.
-  window.addEventListener('beforeunload', function (e) {
-    if (!dirtyIds().length) return;
-    e.preventDefault();
-    e.returnValue = '';
-  });
-
-  $('msSaveAll').addEventListener('click', saveAll);
-  $('msDiscard').addEventListener('click', discardAll);
+  if (window.StaffUpdates) {
+    window.StaffUpdates.register({
+      key: 'milestones',
+      count: function () { return dirtyIds().length; },
+      removals: function () { return Object.keys(state.removed).length; },
+      publish: publish,
+      discard: discard
+    });
+  }
 
   updateStickyOffsets();
   window.addEventListener('resize', updateStickyOffsets);

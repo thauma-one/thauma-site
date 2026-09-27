@@ -2,35 +2,46 @@
    staff-goals.js — the Goals section of the Ministry page
    ============================================================
    The same shape as the milestone editor: a list of rows, each opening into a
-   form. Learning one should teach the other.
+   form, and the same save model — EDIT FREELY, THEN PUBLISH (Chase's option
+   B, 2026-09-26). An edit, a new goal, the switch on a row, a new progress
+   reading, a delete: each is marked "not live yet" and waits for the Updates
+   bar's Publish changes (staff-updates.js). Closing the editor keeps what was
+   typed; Cancel undoes it.
 
-   TWO DELIBERATE DIFFERENCES.
-
-   NO LANGUAGE COLUMNS. A goal's label has always been a plain column rather
-   than a translations table. That is a real gap on a multilingual site and it
-   is pre-existing — giving goals translations is its own migration and its own
-   surface, and half-doing it here would leave two mechanisms for one job.
-
-   NO SAVE BAR. Milestones hold a working copy because several are edited in
-   one sitting and the list is reordered as you go. One goal is one row: it
-   saves when you press Save, and a bar announcing unsaved work for a single
-   small form is ceremony that teaches people to ignore bars.
+   NO LANGUAGE COLUMNS. A goal's label is still a plain column rather than a
+   translations table; making it translatable is its own migration and its
+   own surface (noted in the language work), not something to half-do here.
    ============================================================ */
 (function () {
   'use strict';
 
   /* The list, not the page name — see the note in staff-milestones.js. */
   if (!document.getElementById('glList')) return;
-  if (!document.getElementById('glList')) return;
 
   var API = '/api/staff-goals';
   var $ = function (id) { return document.getElementById(id); };
-  var state = { goals: [], editing: null, isPublic: false };
+  /* A working copy. `saved` is what the server holds, `draft` what the screen
+     shows; `reading` is a new progress figure waiting to be appended;
+     `removed` is a delete waiting for Publish. */
+  var state = { saved: {}, draft: {}, order: [], removed: {}, reading: {},
+                editing: null, before: null, isPublic: false };
+  var FIELDS = ['label', 'description', 'kind', 'target_cents', 'currency', 'is_public'];
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+  function defn(g) {
+    var out = {};
+    FIELDS.forEach(function (f) { out[f] = g ? (g[f] == null ? null : g[f]) : null; });
+    return out;
+  }
+  function isDirty(id) {
+    return !!state.removed[id] || !state.saved[id] || !!state.reading[id] ||
+      JSON.stringify(defn(state.saved[id])) !== JSON.stringify(defn(state.draft[id]));
+  }
+  function dirtyIds() { return state.order.filter(isDirty); }
 
   /* The row-with-a-panel behavior is shared with milestones and prayer —
      see staff-rowpanel.js for why there is one copy of it and not three. */
   var panel = window.StaffRowPanel({
-    listId: 'glList', formId: 'glForm', holderId: 'glFormHolder',
+    listId: 'glList', formId: 'glForm', holderId: 'glFormHolder', saveBarId: 'upBar',
   });
 
   function esc(s) {
@@ -86,34 +97,40 @@
   function render() {
     panel.detach();
 
-    var rows = state.goals;
-    if (!rows.length) {
+    if (!state.order.length) {
       $('glList').innerHTML = '<p class="empty">' + esc(tr('gl.empty')) + '</p>';
       return;
     }
 
-    $('glList').innerHTML = rows.map(function (g) {
-      var pct = g.percent == null ? 0 : g.percent;
-      return '<div class="ms-row" data-id="' + esc(g.goal_id) + '"' +
-        ' role="button" tabindex="0" aria-expanded="false">' +
+    $('glList').innerHTML = state.order.map(function (id) {
+      var g = state.draft[id];
+      var r = state.reading[id];
+      var raised = r ? r.raised_cents : (g.raised_cents || 0);
+      var donors = r && r.donor_count != null ? r.donor_count : g.donor_count;
+      var pct = g.target_cents ? Math.round(100 * raised / g.target_cents) : 0;
+      var gone = !!state.removed[id];
+      return '<div class="ms-row' + (isDirty(id) ? ' is-dirty' : '') + (gone ? ' is-removed' : '') +
+          '" data-id="' + esc(id) + '" role="button" tabindex="0" aria-expanded="false">' +
         '<div class="ms-main">' +
           '<div class="ms-t">' +
             '<span class="ms-title">' + esc(g.label) + '</span>' +
-            (g.is_public ? '' : '<span class="badge proto">' + esc(tr('ms.draft')) + '</span>') +
+            (gone ? '<span class="badge unsaved">' + esc(tr('up.willRemove')) + '</span>'
+              : isDirty(id) ? '<span class="badge unsaved">' + esc(tr('up.notLive')) + '</span>' : '') +
           '</div>' +
           '<div class="ms-meta">' +
             '<span>' + esc(tr(KIND_KEY[g.kind] || 'gl.kind')) + '</span>' +
-            '<span>' + esc(money(g.raised_cents || 0, g.currency)) +
-              ' / ' + esc(money(g.target_cents, g.currency)) + '</span>' +
+            '<span>' + esc(money(raised, g.currency)) + ' / ' + esc(money(g.target_cents, g.currency)) + '</span>' +
             '<span class="tnum">' + pct + '%</span>' +
-            (g.donor_count
-              ? '<span>' + g.donor_count + ' · ' + esc(tr('gl.donors')) + '</span>' : '') +
+            (donors ? '<span>' + donors + ' · ' + esc(tr('gl.donors')) + '</span>' : '') +
           '</div>' +
         '</div>' +
-        '<div class="ms-row-actions">' +
-          '<span class="ms-chev" aria-hidden="true"></span>' +
-          '<button type="button" data-edit="' + esc(g.goal_id) + '">Edit</button>' +
-          '<button type="button" class="del" data-del="' + esc(g.goal_id) + '">Delete</button>' +
+        /* The published switch on the row, as on every Updates row (Chase). */
+        '<div class="ms-toggle">' + (gone
+          ? '<button type="button" class="ghost-btn sm" data-keep="' + esc(id) + '">' + esc(tr('up.keep')) + '</button>'
+          : '<button type="button" class="switch" role="switch" data-pub="' + esc(id) + '"' +
+            ' aria-checked="' + (g.is_public ? 'true' : 'false') + '" aria-label="' + esc(tr('ms.published')) + '">' +
+            '<span class="switch-track"><span class="switch-state">' + (g.is_public ? 'On' : 'Off') +
+            '</span><span class="switch-knob"></span></span></button>') +
         '</div>' +
       '</div>';
     }).join('');
@@ -123,63 +140,92 @@
 
   /* ---- the form ---- */
 
-  function setPublic(on) {
-    state.isPublic = !!on;
-    var b = $('glPublic');
-    b.setAttribute('aria-checked', on ? 'true' : 'false');
-    b.querySelector('.switch-state').textContent = on ? 'On' : 'Off';
-  }
+  async function openForm(id) {
+    /* Pressing the open row again closes it (keeping what was typed). */
+    if (panel.isOpen() && state.editing === id) { await closeForm(true); return; }
+    if (panel.isOpen()) await closeForm(true);
 
-  async function openForm(goal) {
-    var id = goal ? goal.goal_id : null;
-
-    /* ALREADY OPEN ON THIS ROW -> close it. Pressing Edit again to put the
-       panel away is what everyone reaches for first, and having it do nothing
-       reads as a broken button. */
-    if (panel.isOpen() && state.editing === id) { await closeForm(); return; }
-    /* Open on a DIFFERENT row: close where it is before moving it, or the
-       panel jumps to its new position at full height and animates from there,
-       which looks like two unrelated things happening. */
-    if (panel.isOpen()) await panel.close();
-
+    var goal = id ? state.draft[id] : null;
     state.editing = id;
+    state.before = goal ? { goal: clone(goal), reading: state.reading[id] ? clone(state.reading[id]) : null } : null;
 
-    $('glId').value = goal ? goal.goal_id : '';
+    $('glId').value = id || '';
     $('glLabel').value = goal ? goal.label : '';
     $('glDescription').value = goal && goal.description ? goal.description : '';
     $('glKind').value = goal ? goal.kind : 'monthly';
     $('glTarget').value = goal ? fromCents(goal.target_cents) : '';
     $('glCurrency').value = goal ? goal.currency : 'USD';
-    setPublic(goal ? goal.is_public : false);
+    $('glDelete').hidden = !goal;
 
-    /* Progress is left EMPTY when editing rather than pre-filled with the
-       current figure. Pre-filling would mean every save re-appended the same
-       reading as a new snapshot, filling the series with duplicates that say
-       nothing happened. Blank means "no new reading". */
-    $('glRaised').value = '';
-    $('glDonors').value = '';
-    $('glRaised').placeholder = goal && goal.raised_cents != null
-      ? fromCents(goal.raised_cents) : '0';
-    $('glDonors').placeholder = goal && goal.donor_count != null
-      ? String(goal.donor_count) : '';
+    /* Progress is left EMPTY rather than pre-filled with the current figure:
+       a figure is a new reading, appended, and pre-filling would append the
+       same reading again on every save. Blank means "no new reading". */
+    var r = id && state.reading[id];
+    $('glRaised').value = r ? fromCents(r.raised_cents) : '';
+    $('glDonors').value = r && r.donor_count != null ? String(r.donor_count) : '';
+    $('glRaised').placeholder = goal && goal.raised_cents != null ? fromCents(goal.raised_cents) : '0';
+    $('glDonors').placeholder = goal && goal.donor_count != null ? String(goal.donor_count) : '';
 
-    /* Beneath its own row, and animated open — the same movement the
-       milestone editor makes, because these are the same kind of screen. */
     panel.moveTo(state.editing);
     panel.markOpen(state.editing);
     await panel.open();
-
     var row = panel.rowFor(state.editing);
     if (row) panel.scrollRowToTop(row);
     $('glLabel').focus();
   }
 
-  async function closeForm() {
+  /* Closing KEEPS what was typed (option B); Cancel puts back what it was. */
+  async function closeForm(keep) {
+    if (!panel.isOpen()) return;
+    if (keep) applyForm();
+    else if (state.editing && state.before) {
+      state.draft[state.editing] = state.before.goal;
+      if (state.before.reading) state.reading[state.editing] = state.before.reading;
+      else delete state.reading[state.editing];
+    }
     await panel.close();
     state.editing = null;
+    state.before = null;
     panel.markOpen(null);
     panel.detach();
+    render();
+    changed();
   }
+
+  /* The form into the working copy. A new goal needs a name and a target, or
+     there is nothing to add; an existing one keeps its target if the box was
+     emptied. */
+  function applyForm() {
+    var target = toCents($('glTarget').value);
+    var okTarget = Number.isFinite(target) && target > 0;
+    var id = state.editing;
+    if (!id) {
+      if (!$('glLabel').value.trim() || !okTarget) {
+        if ($('glLabel').value.trim() || $('glTarget').value.trim()) toast(tr('gl.needTarget'), 'err');
+        return;
+      }
+      id = 'new_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+      state.order.push(id);
+      state.saved[id] = null;
+      state.draft[id] = { goal_id: id, is_public: false, raised_cents: 0 };
+      state.editing = id;
+    }
+    var g = state.draft[id];
+    g.label = $('glLabel').value;
+    g.description = $('glDescription').value;
+    g.kind = $('glKind').value;
+    if (okTarget) g.target_cents = target;
+    g.currency = $('glCurrency').value;
+    var raised = $('glRaised').value.trim();
+    if (raised !== '') {
+      state.reading[id] = { raised_cents: toCents(raised),
+        donor_count: $('glDonors').value.trim() === '' ? null : Number($('glDonors').value) };
+    } else {
+      delete state.reading[id];
+    }
+  }
+
+  function changed() { if (window.StaffUpdates) window.StaffUpdates.changed(); }
 
   /* ---- talking to the server ---- */
 
@@ -197,136 +243,128 @@
         esc((body && body.error) || tr('err.refused')) + '</p>';
       return;
     }
-    state.goals = body.goals || [];
+    state.saved = {}; state.draft = {}; state.order = []; state.removed = {}; state.reading = {};
+    (body.goals || []).forEach(function (g) {
+      state.saved[g.goal_id] = g;
+      state.draft[g.goal_id] = clone(g);
+      state.order.push(g.goal_id);
+    });
     render();
+    changed();
   }
 
   async function send(method, payload, query) {
-    var res, body;
-    try {
-      res = await fetch(API + (query || ''), {
-        method: method,
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' },
-        body: payload ? JSON.stringify(payload) : undefined,
-      });
-      body = await res.json().catch(function () { return {}; });
-    } catch (e) {
-      toast(tr('err.unreachable') + ' ' + e.message, 'bad');
-      return null;
-    }
-    if (!res.ok) {
-      toast((body && body.error) || (tr('err.refused') + ' (' + res.status + ')'), 'bad');
-      return null;
-    }
-    if (body.goals) { state.goals = body.goals; render(); }
+    var res = await fetch(API + (query || ''), {
+      method: method, credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: payload ? JSON.stringify(payload) : undefined,
+    });
+    var body = await res.json().catch(function () { return {}; });
+    if (!res.ok) throw new Error((body && body.error) || ('(' + res.status + ')'));
     return body;
+  }
+
+  /* ---- publishing: what the Updates bar asks of this section ---- */
+
+  async function publish() {
+    if (panel.isOpen()) await closeForm(true);
+    var failed = [];
+    var ids = dirtyIds();
+    for (var i = 0; i < ids.length; i++) {
+      var id = ids[i], g = state.draft[id], r = state.reading[id];
+      try {
+        if (state.removed[id]) {
+          await send('DELETE', null, '?id=' + encodeURIComponent(id));
+          continue;
+        }
+        var isNew = !state.saved[id];
+        var payload = defn(g);
+        payload.id = isNew ? undefined : id;
+        /* A new goal carries its opening figure in the same write, so it
+           does not read 0% until somebody remembers a second step. */
+        if (isNew && r) { payload.raised_cents = r.raised_cents; payload.donor_count = r.donor_count; }
+        if (isNew || JSON.stringify(defn(state.saved[id])) !== JSON.stringify(defn(g))) await send('POST', payload);
+        /* On an existing goal a figure is a new reading — appended, not an
+           edit of the definition. */
+        if (!isNew && r) await send('PATCH', { id: id, raised_cents: r.raised_cents, donor_count: r.donor_count });
+      } catch (e) {
+        failed.push((g && g.label ? g.label : id) + ' — ' + e.message);
+      }
+    }
+    await load();
+    return { failed: failed };
+  }
+
+  function discard() {
+    state.before = null;
+    if (panel.isOpen()) closeForm(false);
+    state.order = state.order.filter(function (id) { return state.saved[id]; });
+    Object.keys(state.draft).forEach(function (id) {
+      if (state.saved[id]) state.draft[id] = clone(state.saved[id]); else delete state.draft[id];
+    });
+    state.removed = {}; state.reading = {};
+    render();
+    changed();
+  }
+
+  /* A delete waits for Publish like everything else; the bar asks before any
+     is published, because a goal takes its history of readings with it. */
+  async function remove(id) {
+    if (!state.saved[id]) {
+      delete state.draft[id]; delete state.reading[id];
+      state.order = state.order.filter(function (x) { return x !== id; });
+    } else {
+      state.removed[id] = true;
+    }
+    state.before = null;
+    if (panel.isOpen()) { await panel.close(); state.editing = null; panel.markOpen(null); panel.detach(); }
+    render();
+    changed();
   }
 
   /* ---- wiring ---- */
 
   $('glAdd').addEventListener('click', function () { openForm(null); });
-  $('glCancel').addEventListener('click', closeForm);
-  $('glPublic').addEventListener('click', function () { setPublic(!state.isPublic); });
-
-  function goalById(id) {
-    return state.goals.find(function (x) { return x.goal_id === id; });
-  }
+  $('glCancel').addEventListener('click', function () { closeForm(false); });
+  $('glDelete').addEventListener('click', function () { if (state.editing) remove(state.editing); });
+  $('glForm').addEventListener('submit', function (e) { e.preventDefault(); closeForm(true); });
 
   /* Keyboard parity: the row is focusable and announces itself as a button. */
   $('glList').addEventListener('keydown', function (e) {
     if (e.key !== 'Enter' && e.key !== ' ') return;
     if (e.target.closest('button') || e.target.closest('#glForm')) return;
     var row = e.target.closest('.ms-row');
-    if (!row) return;
+    if (!row || state.removed[row.dataset.id]) return;
     e.preventDefault();
-    var g = goalById(row.dataset.id);
-    if (g) openForm(g);
+    openForm(row.dataset.id);
   });
 
-  $('glList').addEventListener('click', async function (e) {
-    var edit = e.target.closest('[data-edit]');
-    if (edit) {
-      var g = goalById(edit.dataset.edit);
-      if (g) openForm(g);
+  $('glList').addEventListener('click', function (e) {
+    if (e.target.closest('#glForm')) return;
+    var btn = e.target.closest('button');
+    if (btn) {
+      if (btn.dataset.pub !== undefined) {
+        var g = state.draft[btn.dataset.pub];
+        if (g) { g.is_public = !g.is_public; render(); changed(); }
+      } else if (btn.dataset.keep !== undefined) {
+        delete state.removed[btn.dataset.keep]; render(); changed();
+      }
       return;
     }
-    var del = e.target.closest('[data-del]');
-    if (!del) {
-      /* THE WHOLE BAR IS THE TARGET, the way the milestone rows work — the
-         Edit button stays because it is the discoverable affordance, but
-         nobody should have to find it. Clicks inside the open panel are not
-         the row's business. */
-      if (e.target.closest('.gl-form') || e.target.closest('#glForm')) return;
-      var row = e.target.closest('.ms-row');
-      if (row) { var rg = goalById(row.dataset.id); if (rg) openForm(rg); }
-      return;
-    }
+    /* THE WHOLE ROW OPENS IT (board 7). */
+    var row = e.target.closest('.ms-row');
+    if (row && !state.removed[row.dataset.id]) openForm(row.dataset.id);
+  });
 
-    var g = state.goals.find(function (x) { return x.goal_id === del.dataset.del; });
-    if (!g) return;
-
-    /* The typed confirmation the rest of the console uses for anything that
-       destroys a record. A goal takes its whole history of readings with it. */
-    var ok = await window.StaffConfirm({
-      title: tr('gl.deleteTitle'),
-      body: fill('gl.deleteBody', { name: g.label }),
-      note: tr('gl.deleteNote'),
-      type: 'DELETE',
-      typeLabel: tr('pub.typeLabel'),
-      confirm: tr('ms.delete'),
-      cancel: tr('ms.cancel'),
-      danger: true,
+  if (window.StaffUpdates) {
+    window.StaffUpdates.register({
+      key: 'goals',
+      count: function () { return dirtyIds().length; },
+      removals: function () { return Object.keys(state.removed).length; },
+      publish: publish,
+      discard: discard
     });
-    if (!ok) return;
-
-    var r = await send('DELETE', null, '?id=' + encodeURIComponent(g.goal_id));
-    if (r) toast(tr('gl.deleted'), 'ok');
-  });
-
-  $('glForm').addEventListener('submit', async function (e) {
-    e.preventDefault();
-
-    var target = toCents($('glTarget').value);
-    if (!Number.isFinite(target) || target <= 0) {
-      toast(tr('gl.needTarget'), 'bad');
-      return;
-    }
-
-    var payload = {
-      id: $('glId').value || undefined,
-      label: $('glLabel').value,
-      description: $('glDescription').value,
-      kind: $('glKind').value,
-      target_cents: target,
-      currency: $('glCurrency').value,
-      is_public: state.isPublic,
-    };
-
-    /* A new goal can carry its opening figure in the same action, so it does
-       not read 0% until somebody remembers a second step. */
-    var raised = $('glRaised').value.trim();
-    if (!state.editing && raised !== '') {
-      payload.raised_cents = toCents(raised);
-      if ($('glDonors').value.trim() !== '') payload.donor_count = Number($('glDonors').value);
-    }
-
-    var r = await send('POST', payload);
-    if (!r) return;
-
-    /* On an EXISTING goal a figure is a new reading, which is a different
-       write — the definition is edited, the progress is appended. */
-    if (state.editing && raised !== '') {
-      await send('PATCH', {
-        id: state.editing,
-        raised_cents: toCents(raised),
-        donor_count: $('glDonors').value.trim() === '' ? null : Number($('glDonors').value),
-      });
-    }
-
-    closeForm();
-    toast(tr('gl.saved'), 'ok');
-  });
+  }
 
   load();
 })();

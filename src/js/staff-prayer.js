@@ -1,10 +1,11 @@
 /* ============================================================
    staff-prayer.js — the Prayer section of the Ministry page
    ============================================================
-   The milestone editor's shape, including its two language columns and for
-   the same reason: a missing or stale translation is invisible when you edit
-   one language at a time, which is how a trilingual site ends up with three
-   versions that disagree.
+   The milestone editor's shape and save model — EDIT FREELY, THEN PUBLISH
+   (Chase's option B, 2026-09-26): an edit, a new request, the switch on a
+   row, a delete, each is marked "not live yet" until the Updates bar's
+   Publish changes (staff-updates.js). Closing the editor keeps what was
+   typed; Cancel undoes it.
 
    ANSWERED IS A SWITCH, NOT A STATUS. A prayer is being asked, or it has been
    answered. An enum here would invite "in progress", which is not a thing
@@ -19,19 +20,27 @@
 
   /* The list, not the page name — see the note in staff-milestones.js. */
   if (!document.getElementById('prList')) return;
-  if (!document.getElementById('prList')) return;
 
   var API = '/api/staff-prayer';
   var $ = function (id) { return document.getElementById(id); };
+  /* A working copy: `saved` is what the server holds, `draft` what the screen
+     shows, `removed` deletes waiting for Publish. `text` is the open editor's
+     words, lang -> { title, description, answer_text }. */
   var state = {
-    prayer: [], languages: [], preferred: 'en',
-    editing: null, isPublic: false, isAnswered: false,
-    text: {},           // lang -> { title, description, answer_text }
+    saved: {}, draft: {}, order: [], removed: {}, languages: [], preferred: 'en',
+    editing: null, before: null, isAnswered: false, text: {},
   };
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+  function isDirty(id) {
+    return !!state.removed[id] || !state.saved[id] ||
+      JSON.stringify(state.saved[id]) !== JSON.stringify(state.draft[id]);
+  }
+  function dirtyIds() { return state.order.filter(isDirty); }
+  function changed() { if (window.StaffUpdates) window.StaffUpdates.changed(); }
 
   /* Shared with milestones and goals — see staff-rowpanel.js. */
   var panel = window.StaffRowPanel({
-    listId: 'prList', formId: 'prForm', holderId: 'prFormHolder',
+    listId: 'prList', formId: 'prForm', holderId: 'prFormHolder', saveBarId: 'upBar',
   });
 
   function esc(s) {
@@ -72,37 +81,36 @@
      had, so this list was unstyled inside a styled shell. */
   function render() {
     panel.detach();
-
-    var rows = state.prayer;
-    if (!rows.length) {
+    if (!state.order.length) {
       $('prList').innerHTML = '<p class="empty">' + esc(tr('pr.empty')) + '</p>';
       return;
     }
-
-    $('prList').innerHTML = rows.map(function (p) {
-      var langs = Object.keys(p.text || {}).filter(function (c) { return p.text[c].title; });
-      return '<div class="ms-row" data-id="' + esc(p.id) + '"' +
-        ' role="button" tabindex="0" aria-expanded="false">' +
+    $('prList').innerHTML = state.order.map(function (id) {
+      var p = state.draft[id];
+      var gone = !!state.removed[id];
+      return '<div class="ms-row' + (isDirty(id) ? ' is-dirty' : '') + (gone ? ' is-removed' : '') +
+          '" data-id="' + esc(id) + '" role="button" tabindex="0" aria-expanded="false">' +
         '<div class="ms-main">' +
           '<div class="ms-t">' +
             '<span class="ms-title">' + esc(anyTitle(p)) + '</span>' +
-            (p.is_answered
-              ? '<span class="badge live">' + esc(tr('pr.answered')) + '</span>' : '') +
-            (p.is_public ? '' : '<span class="badge proto">' + esc(tr('ms.draft')) + '</span>') +
+            (p.is_answered ? '<span class="badge live">' + esc(tr('pr.answered')) + '</span>' : '') +
+            (gone ? '<span class="badge unsaved">' + esc(tr('up.willRemove')) + '</span>'
+              : isDirty(id) ? '<span class="badge unsaved">' + esc(tr('up.notLive')) + '</span>' : '') +
           '</div>' +
           '<div class="ms-meta">' +
-            '<span>' + esc(langs.join(', ').toUpperCase()) + '</span>' +
             (p.answered_on ? '<span>' + esc(p.answered_on) + '</span>' : '') +
           '</div>' +
         '</div>' +
-        '<div class="ms-row-actions">' +
-          '<span class="ms-chev" aria-hidden="true"></span>' +
-          '<button type="button" data-edit="' + esc(p.id) + '">Edit</button>' +
-          '<button type="button" class="del" data-del="' + esc(p.id) + '">Delete</button>' +
+        /* The published switch on the row, as on every Updates row (Chase). */
+        '<div class="ms-toggle">' + (gone
+          ? '<button type="button" class="ghost-btn sm" data-keep="' + esc(id) + '">' + esc(tr('up.keep')) + '</button>'
+          : '<button type="button" class="switch" role="switch" data-pub="' + esc(id) + '"' +
+            ' aria-checked="' + (p.is_public ? 'true' : 'false') + '" aria-label="' + esc(tr('ms.published')) + '">' +
+            '<span class="switch-track"><span class="switch-state">' + (p.is_public ? 'On' : 'Off') +
+            '</span><span class="switch-knob"></span></span></button>') +
         '</div>' +
       '</div>';
     }).join('');
-
     panel.reattach(state.editing);
   }
 
@@ -153,41 +161,66 @@
     b.querySelector('.switch-state').textContent = on ? 'On' : 'Off';
   }
 
-  async function openForm(p) {
-    var id = p ? p.id : null;
-
-    /* Pressing the open row again closes it — see staff-milestones.js. */
-    if (panel.isOpen() && state.editing === id) { await closeForm(); return; }
-    if (panel.isOpen()) await panel.close();
-
-    state.editing = p ? p.id : null;
-    state.text = p ? JSON.parse(JSON.stringify(p.text || {})) : {};
-    state.isPublic = p ? !!p.is_public : false;
+  async function openForm(id) {
+    /* Pressing the open row again closes it (keeping what was typed). */
+    if (panel.isOpen() && state.editing === id) { await closeForm(true); return; }
+    if (panel.isOpen()) await closeForm(true);
+    var p = id ? state.draft[id] : null;
+    state.editing = id;
+    state.before = p ? clone(p) : null;
+    state.text = p ? clone(p.text || {}) : {};
     state.isAnswered = p ? !!p.is_answered : false;
-
-    $('prId').value = p ? p.id : '';
+    $('prId').value = id || '';
     $('prAnsweredOn').value = (p && p.answered_on) || '';
     $('prSort').value = p ? (p.sort_order || 0) : 0;
-    setSwitch('prPublic', state.isPublic);
     setSwitch('prAnswered', state.isAnswered);
+    $('prDelete').hidden = !p;
     writeCols();
-
     panel.moveTo(state.editing);
     panel.markOpen(state.editing);
     await panel.open();
-
     var row = panel.rowFor(state.editing);
     if (row) panel.scrollRowToTop(row);
-
     var first = $('prForm').querySelector('[data-ptx="title"][data-col="a"]');
     if (first) first.focus();
   }
 
-  async function closeForm() {
+  /* Closing KEEPS what was typed (option B); Cancel puts back what it was. */
+  async function closeForm(keep) {
+    if (!panel.isOpen()) return;
+    if (keep) applyForm();
+    else if (state.editing && state.before) state.draft[state.editing] = state.before;
     await panel.close();
     state.editing = null;
+    state.before = null;
     panel.markOpen(null);
     panel.detach();
+    render();
+    changed();
+  }
+
+  /* The form into the working copy. A new request with no words in any
+     language is not added — there would be nothing to show. */
+  function applyForm() {
+    readCols();
+    var titled = Object.keys(state.text).some(function (c) {
+      return state.text[c] && String(state.text[c].title || '').trim();
+    });
+    var id = state.editing;
+    if (!id) {
+      if (!titled) return;
+      id = 'new_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+      state.order.push(id);
+      state.saved[id] = null;
+      state.draft[id] = { id: id, is_public: false };
+      state.editing = id;
+    }
+    var p = state.draft[id];
+    p.text = clone(state.text);
+    p.is_answered = state.isAnswered;
+    /* Only meaningful once answered; the endpoint clears it otherwise. */
+    p.answered_on = state.isAnswered ? ($('prAnsweredOn').value || null) : null;
+    p.sort_order = Number($('prSort').value) || 0;
   }
 
   /* ---- server ---- */
@@ -206,51 +239,98 @@
         esc((body && body.error) || tr('err.refused')) + '</p>';
       return;
     }
-    state.prayer = body.prayer || [];
+    state.saved = {}; state.draft = {}; state.order = []; state.removed = {};
+    (body.prayer || []).forEach(function (p) {
+      state.saved[p.id] = p;
+      state.draft[p.id] = clone(p);
+      state.order.push(p.id);
+    });
     state.languages = body.languages || [];
     state.preferred = body.preferred_lang || 'en';
     fillLangPickers();
     render();
+    changed();
   }
 
   async function send(method, payload, query) {
-    var res, body;
-    try {
-      res = await fetch(API + (query || ''), {
-        method: method,
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' },
-        body: payload ? JSON.stringify(payload) : undefined,
-      });
-      body = await res.json().catch(function () { return {}; });
-    } catch (e) {
-      toast(tr('err.unreachable') + ' ' + e.message, 'bad');
-      return null;
-    }
-    if (!res.ok) {
-      toast((body && body.error) || (tr('err.refused') + ' (' + res.status + ')'), 'bad');
-      return null;
-    }
-    if (body.prayer) { state.prayer = body.prayer; render(); }
+    var res = await fetch(API + (query || ''), {
+      method: method, credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: payload ? JSON.stringify(payload) : undefined,
+    });
+    var body = await res.json().catch(function () { return {}; });
+    if (!res.ok) throw new Error((body && body.error) || ('(' + res.status + ')'));
     return body;
+  }
+
+  /* ---- publishing: what the Updates bar asks of this section ---- */
+
+  async function publish() {
+    if (panel.isOpen()) await closeForm(true);
+    var failed = [];
+    var ids = dirtyIds();
+    for (var i = 0; i < ids.length; i++) {
+      var id = ids[i], p = state.draft[id];
+      try {
+        if (state.removed[id]) {
+          await send('DELETE', null, '?id=' + encodeURIComponent(id));
+          continue;
+        }
+        await send('POST', {
+          id: state.saved[id] ? id : undefined,
+          is_public: !!p.is_public,
+          is_answered: !!p.is_answered,
+          answered_on: p.is_answered ? (p.answered_on || null) : null,
+          sort_order: Number(p.sort_order) || 0,
+          text: p.text || {},
+        });
+      } catch (e) {
+        failed.push(anyTitle(p) + ' — ' + e.message);
+      }
+    }
+    await load();
+    return { failed: failed };
+  }
+
+  function discard() {
+    state.before = null;
+    if (panel.isOpen()) closeForm(false);
+    state.order = state.order.filter(function (id) { return state.saved[id]; });
+    Object.keys(state.draft).forEach(function (id) {
+      if (state.saved[id]) state.draft[id] = clone(state.saved[id]); else delete state.draft[id];
+    });
+    state.removed = {};
+    render();
+    changed();
+  }
+
+  /* A delete waits for Publish like everything else. */
+  async function remove(id) {
+    if (!state.saved[id]) {
+      delete state.draft[id];
+      state.order = state.order.filter(function (x) { return x !== id; });
+    } else {
+      state.removed[id] = true;
+    }
+    state.before = null;
+    if (panel.isOpen()) { await panel.close(); state.editing = null; panel.markOpen(null); panel.detach(); }
+    render();
+    changed();
   }
 
   /* ---- wiring ---- */
 
   $('prAdd').addEventListener('click', function () { openForm(null); });
-  $('prCancel').addEventListener('click', closeForm);
-  $('prPublic').addEventListener('click', function () {
-    state.isPublic = !state.isPublic;
-    setSwitch('prPublic', state.isPublic);
-  });
+  $('prCancel').addEventListener('click', function () { closeForm(false); });
+  $('prDelete').addEventListener('click', function () { if (state.editing) remove(state.editing); });
+  $('prForm').addEventListener('submit', function (e) { e.preventDefault(); closeForm(true); });
   $('prAnswered').addEventListener('click', function () {
     state.isAnswered = !state.isAnswered;
     setSwitch('prAnswered', state.isAnswered);
   });
 
   /* Changing a column's language keeps what was typed: read the old language
-     out before the picker moves, then write the new one in. Without this,
-     switching columns silently discards an unsaved translation. */
+     out before the picker moves, then write the new one in. */
   ['prLangA', 'prLangB'].forEach(function (id) {
     $(id).addEventListener('focus', readCols);
     $(id).addEventListener('change', writeCols);
@@ -261,74 +341,37 @@
     if (e.key !== 'Enter' && e.key !== ' ') return;
     if (e.target.closest('button') || e.target.closest('#prForm')) return;
     var row = e.target.closest('.ms-row');
-    if (!row) return;
+    if (!row || state.removed[row.dataset.id]) return;
     e.preventDefault();
-    var p = state.prayer.find(function (x) { return x.id === row.dataset.id; });
-    if (p) openForm(p);
+    openForm(row.dataset.id);
   });
 
-  $('prList').addEventListener('click', async function (e) {
-    var edit = e.target.closest('[data-edit]');
-    if (edit) {
-      var p = state.prayer.find(function (x) { return x.id === edit.dataset.edit; });
-      if (p) openForm(p);
-      return;
-    }
-    var del = e.target.closest('[data-del]');
-    if (!del) {
-      /* THE WHOLE BAR IS THE TARGET, matching the milestone rows. */
-      if (e.target.closest('#prForm')) return;
-      var row = e.target.closest('.ms-row');
-      if (row) {
-        var rp = state.prayer.find(function (x) { return x.id === row.dataset.id; });
-        if (rp) openForm(rp);
+  $('prList').addEventListener('click', function (e) {
+    if (e.target.closest('#prForm')) return;
+    var btn = e.target.closest('button');
+    if (btn) {
+      if (btn.dataset.pub !== undefined) {
+        var p = state.draft[btn.dataset.pub];
+        if (p) { p.is_public = !p.is_public; render(); changed(); }
+      } else if (btn.dataset.keep !== undefined) {
+        delete state.removed[btn.dataset.keep]; render(); changed();
       }
       return;
     }
-
-    var p = state.prayer.find(function (x) { return x.id === del.dataset.del; });
-    if (!p) return;
-
-    var ok = await window.StaffConfirm({
-      title: tr('pr.deleteTitle'),
-      body: fill('pr.deleteBody', { name: anyTitle(p) }),
-      note: tr('pr.deleteNote'),
-      type: 'DELETE',
-      typeLabel: tr('pub.typeLabel'),
-      confirm: tr('ms.delete'),
-      cancel: tr('ms.cancel'),
-      danger: true,
-    });
-    if (!ok) return;
-
-    var r = await send('DELETE', null, '?id=' + encodeURIComponent(p.id));
-    if (r) toast(tr('pr.deleted'), 'ok');
+    /* THE WHOLE ROW OPENS IT (board 7). */
+    var row = e.target.closest('.ms-row');
+    if (row && !state.removed[row.dataset.id]) openForm(row.dataset.id);
   });
 
-  $('prForm').addEventListener('submit', async function (e) {
-    e.preventDefault();
-    readCols();
-
-    var titled = Object.keys(state.text).some(function (c) {
-      return state.text[c] && String(state.text[c].title || '').trim();
+  if (window.StaffUpdates) {
+    window.StaffUpdates.register({
+      key: 'prayer',
+      count: function () { return dirtyIds().length; },
+      removals: function () { return Object.keys(state.removed).length; },
+      publish: publish,
+      discard: discard
     });
-    if (!titled) { toast(tr('pr.needTitle'), 'bad'); return; }
-
-    var r = await send('POST', {
-      id: $('prId').value || undefined,
-      is_public: state.isPublic,
-      is_answered: state.isAnswered,
-      /* Only meaningful once answered; the endpoint clears it otherwise, so a
-         request un-marked by mistake does not keep a date that means nothing. */
-      answered_on: state.isAnswered ? ($('prAnsweredOn').value || null) : null,
-      sort_order: Number($('prSort').value) || 0,
-      text: state.text,
-    });
-    if (!r) return;
-
-    closeForm();
-    toast(tr('pr.saved'), 'ok');
-  });
+  }
 
   load();
 })();

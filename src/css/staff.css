@@ -512,6 +512,8 @@ tbody tr[aria-expanded="true"]{background:rgba(255,255,255,.045)}
   font-weight:var(--w-bold);color:var(--dim)}
 .ms-col-tag.on{color:var(--voice-human)}
 .ms-neutral{margin-top:26px;padding-top:22px;border-top:1px solid var(--line)}
+/* …but with no language columns above it (Goals), it is the top of the form. */
+.ms-form > input[type="hidden"]:first-child + .ms-neutral{margin-top:0;padding-top:0;border-top:0}
 
 @media (max-width:760px){ .ms-langs{grid-template-columns:1fr} }
 
@@ -608,6 +610,27 @@ body.has-savebar{padding-bottom:var(--ms-savebar-h,72px)}
 /* The panel scrolls under its own row rather than over it. */
 .ms-form{position:relative;z-index:1}
 
+/* ---- Updates: edit freely, then Publish (staff-updates.js) ----
+   The published switch sits on the row; Delete sits in the editor, apart
+   from Done and Cancel. A delete waiting for Publish strikes its row and
+   offers Keep in the switch's place. */
+.ms-toggle{display:flex;align-items:center}
+.ms-star{color:var(--voice-human);font-size:var(--fs-sm);line-height:1;margin-right:4px}
+.ms-actions .c-gap{flex:1 1 0}
+.ghost-btn.danger{color:var(--crit,#FF6B6B);border-color:rgba(255,107,107,.4)}
+.ghost-btn.danger:hover{background:rgba(255,107,107,.1);box-shadow:none}
+.ms-row.is-removed{cursor:default;box-shadow:inset 3px 0 0 var(--crit,#FF6B6B)}
+@media(hover:hover){ .ms-row.is-removed:hover{background:var(--panel)} }
+.ms-row.is-removed .ms-title{text-decoration:line-through;color:var(--dim)}
+.ms-row.is-removed .ms-meta{opacity:.6}
+.vid-form.is-removed #vidChannel,.vid-form.is-removed .vid-found{
+  text-decoration:line-through;opacity:.6}
+@media (max-width:760px){
+  /* The switch stays beside its title on a phone. */
+  .ms-row:has(.ms-toggle){grid-template-columns:1fr auto}
+  .up-parts{display:none}
+}
+
 /* ============================================================
    SETTINGS
    ============================================================ */
@@ -626,6 +649,9 @@ body.has-savebar{padding-bottom:var(--ms-savebar-h,72px)}
   text-transform:uppercase;font-weight:var(--w-bold);padding:12px 18px;cursor:pointer;
   transition:color var(--dur-3) var(--ease-main),border-color var(--dur-3) var(--ease-main)}
 .tab[aria-selected="true"]{color:var(--text);border-bottom-color:var(--voice-tech)}
+/* Holding changes not published yet (staff-updates.js). */
+.tab.is-dirty::after{content:"";display:inline-block;width:6px;height:6px;margin-left:7px;
+  border-radius:50%;background:var(--warn,#F5B845);vertical-align:middle}
 @media(hover:hover){ .tab:hover{color:var(--text)} }
 .tab:focus-visible{outline:2px solid var(--voice-tech);outline-offset:-2px}
 .tab-panel{padding-top:26px}

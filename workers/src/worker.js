@@ -253,6 +253,8 @@ export const MOVED = {
   // to Events by the Resources page itself — a fragment never reaches here.
   "/admin/website/library/": "/admin/website/resources/",
   "/admin/site/": "/admin/website/settings/",
+  // Ministry became Updates (mockup board 7). Its tabs (#goals…) ride along.
+  "/staff/ministry/": "/staff/updates/",
   // The Publish page became the review on every Website screen.
   "/admin/publish/": "/admin/website/?review",
 };
