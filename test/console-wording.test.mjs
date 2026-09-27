@@ -24,7 +24,6 @@ const dir = (d) => readdirSync(new URL("../" + d, import.meta.url))
   .filter((f) => f.endsWith(".njk")).map((f) => `${d}/${f}`);
 
 const TEMPLATES = [...dir("src/staff"), ...dir("src/adminarea"),
-                   "src/_includes/embed-panel.njk",
                    "src/_includes/layouts/staff.njk", "src/_includes/layouts/admin.njk"];
 const I18N = read("src/js/staff-i18n.js");
 

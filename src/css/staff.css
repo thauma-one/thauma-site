@@ -512,7 +512,6 @@ tbody tr[aria-expanded="true"]{background:rgba(255,255,255,.045)}
 /* …but with no language fields above it (Goals), it is the top of the form. */
 .ms-form > input[type="hidden"]:first-child + .ms-neutral{margin-top:0;padding-top:0;border-top:0}
 
-
 /* ---- the unsaved-changes bar ---- */
 /* AT THE BOTTOM, not stuck under the header.
    It was sticky at the top, which put three things in a queue for the same
@@ -955,7 +954,6 @@ body.has-savebar .toasts{--toast-lift:var(--ms-savebar-h,72px)}
 .dlg-target{display:block;margin-top:6px;font-family:var(--font-display);
   font-size:var(--fs-md);color:var(--text)}
 
-
 /* ============================================================
    ACTING AS SOMEBODY ELSE
    ============================================================
@@ -1046,14 +1044,11 @@ body.has-savebar .acting-mark{bottom:calc(var(--ms-savebar-h,72px) + 12px)}
 .dlg-err[hidden]{display:none}
 
 /* ============================================================
-   EMBEDS — the view switch, and the panel it reveals
+   EMBEDS — the pieces the previews are built from
    ============================================================
-   The bar sits at the top of Milestones and Support. Choosing "As embedded"
-   hides the page's own content and shows the real widget in its place, so
-   there is never a screen with two renderings of the same numbers on it. */
-
-.emb-bar{display:flex;align-items:center;gap:16px;flex-wrap:wrap;
-  margin:0 0 26px}
+   A two-way switch (.emb-views, also the milestone date's precision), the
+   Desktop/Mobile control, the stage the real widget draws in, and the code
+   box. Used by Sharing and by the preview beside Updates. */
 
 .emb-views{display:inline-flex;background:var(--bg2);border:1px solid var(--line);
   border-radius:var(--radius);padding:3px;gap:2px}
@@ -1066,17 +1061,6 @@ body.has-savebar .acting-mark{bottom:calc(var(--ms-savebar-h,72px) + 12px)}
 .emb-view.is-on{background:var(--panel);color:var(--text);
   box-shadow:0 1px 2px rgba(0,0,0,.25)}
 .emb-view:focus-visible{outline:2px solid var(--voice-tech);outline-offset:1px}
-
-/* Whether this is on somebody else's site RIGHT NOW — the question you have
-   while looking at either view, so it is readable from both. */
-.emb-state{font-size:var(--fs-micro);color:var(--dim);
-  display:inline-flex;align-items:center;gap:7px}
-.emb-state:before{content:"";inline-size:7px;block-size:7px;border-radius:50%;
-  background:var(--dim);opacity:.5}
-.emb-state.is-on{color:var(--ok,#5CF2C4)}
-.emb-state.is-on:before{background:var(--ok,#5CF2C4);opacity:1}
-
-.emb-panel{display:flex;flex-direction:column;gap:26px}
 
 /* The widget itself, first and large. Everything under it is about it. */
 .emb-stage{border:1px solid var(--line);border-radius:var(--radius);
@@ -1093,32 +1077,11 @@ body.has-savebar .acting-mark{bottom:calc(var(--ms-savebar-h,72px) + 12px)}
      scrollbar is not what the thing looks like on a real page. */
   transition:block-size .35s cubic-bezier(.16,1,.3,1)}
 @media(prefers-reduced-motion:reduce){ .emb-stage iframe{transition:none} }
-
-.emb-controls{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-end}
-.emb-field{display:flex;flex-direction:column;gap:6px;font-size:var(--fs-micro);
-  color:var(--dim)}
-.emb-field > span{letter-spacing:var(--ls-caps);text-transform:uppercase;
-  font-weight:600}
-.emb-field select,.emb-field input[type=number]{min-width:11ch}
 .emb-colour{display:flex;align-items:center;gap:8px}
 .emb-colour input[type=color]{inline-size:44px;block-size:34px;padding:2px;
   border:1px solid var(--line);border-radius:var(--radius);background:var(--bg2);
   cursor:pointer}
 .emb-hex{inline-size:10ch;font-family:var(--font-mono);text-transform:uppercase}
-
-.emb-checkline{display:flex;align-items:center;gap:8px;font-size:var(--fs-micro);
-  color:var(--dim);block-size:34px}
-.emb-auto{max-inline-size:16ch}
-
-/* The period, set apart because it changes the SHAPE of the roadmap rather
-   than its colors. */
-.emb-period{display:flex;gap:24px;flex-wrap:wrap;justify-content:space-between;
-  align-items:flex-end;background:var(--panel);border:1px solid var(--line);
-  border-radius:var(--radius);padding:20px 24px}
-.emb-period-text{flex:1 1 34ch;min-inline-size:0}
-.emb-period-text h4{font-family:var(--font-display);font-size:var(--fs-sm);
-  font-weight:var(--w-hair);color:var(--text)}
-.emb-period-fields{display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap}
 
 /* The stage bar: how wide to show it. */
 .emb-stagebar{display:flex;justify-content:space-between;align-items:flex-end;
@@ -1146,29 +1109,11 @@ body.has-savebar .acting-mark{bottom:calc(var(--ms-savebar-h,72px) + 12px)}
   font-weight:var(--w-hair);color:var(--text)}
 .gl-progress > p{margin:6px 0 14px;font-size:var(--fs-micro);color:var(--dim);
   line-height:var(--lh-body);max-width:64ch}
-
-/* The publication decision, set apart because it is the only control here
-   that changes what strangers can reach. */
-.emb-publish{display:flex;align-items:flex-start;gap:24px;flex-wrap:wrap;
-  justify-content:space-between;background:var(--panel);
-  border:1px solid var(--line);border-radius:var(--radius);padding:20px 24px}
-.emb-publish-text{flex:1 1 34ch;min-inline-size:0}
-.emb-publish-text h4{font-family:var(--font-display);font-size:var(--fs-sm);
-  font-weight:var(--w-hair);color:var(--text)}
-.emb-publish-ctl{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
-
-/* Snippet and data address side by side while there is room. */
-.emb-copies{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));
-  gap:22px}
-.emb-copy-head h4{font-family:var(--font-display);font-size:var(--fs-sm);
-  font-weight:var(--w-hair);color:var(--text)}
-.emb-codewrap{position:relative}
 .emb-code{margin:0;background:var(--bg);border:1px solid var(--line-hard);
   border-radius:var(--radius);padding:14px 16px;padding-right:84px;
   font-family:var(--font-mono);font-size:var(--fs-micro);
   color:var(--voice-tech-hi);line-height:1.7;overflow-x:auto;
   white-space:pre-wrap;word-break:break-all}
-.emb-codewrap .ghost-btn{position:absolute;top:10px;right:10px}
 
 /* The written guide, offered under the data address it explains. */
 .emb-guide{display:block;margin-top:12px;padding:12px 14px;
@@ -1178,7 +1123,6 @@ body.has-savebar .acting-mark{bottom:calc(var(--ms-savebar-h,72px) + 12px)}
 @media(hover:hover){ .emb-guide:hover{border-color:var(--voice-tech);
   color:var(--voice-tech-hi)} }
 .emb-guide:focus-visible{outline:2px solid var(--voice-tech);outline-offset:2px}
-
 
 /* ============================================================
    WHICH CONSOLE AM I IN
@@ -1211,7 +1155,6 @@ body.has-savebar .acting-mark{bottom:calc(var(--ms-savebar-h,72px) + 12px)}
   .env-band{padding:6px 14px;gap:8px}
   .env-db{margin-left:0;width:100%}
 }
-
 
 /* ============================================================
    MAILING
@@ -1265,14 +1208,8 @@ body.has-savebar .acting-mark{bottom:calc(var(--ms-savebar-h,72px) + 12px)}
   background-size:18px 18px;background-position:0 0,9px 9px}
 .ml-preview iframe{display:block;width:100%;height:430px;border:0;
   background:transparent;color-scheme:light dark}
-
-/* The color controls, reusing the ministry page's .emb-* fields so the two
-   screens are visibly the same control rather than two takes on it. */
-.ml-colours{margin:14px 0 6px;padding-top:14px;border-top:1px solid var(--line)}
-.ml-colours .emb-controls{margin:10px 0 12px}
 #mlSnippet{width:100%;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
   font-size:11.5px;line-height:1.5;resize:vertical}
-
 
 /* ============================================================
    MAILING — tabs
@@ -1328,24 +1265,6 @@ body.has-savebar .acting-mark{bottom:calc(var(--ms-savebar-h,72px) + 12px)}
    somebody types into one and wonders why nothing saved. */
 input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
 
-/* ---- the sign-up forms tab ---- */
-.ml-embed-card{border:1px solid var(--line);border-radius:var(--radius);
-  padding:18px 20px;margin-bottom:14px;background:var(--panel)}
-.ml-embed-card h4{margin:0 0 12px;font-size:1rem}
-.ml-embed-card.is-closed{opacity:.72}
-/* Kept for the shape of the block below the preview. The preview itself moved
-   above, full width, so the narrow view has room to actually be narrow. */
-.ml-embed-below{margin-top:22px}
-.ml-embed-split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);
-  gap:20px;align-items:start}
-.ml-embed-code{display:flex;flex-direction:column;gap:8px;min-width:0}
-.ml-embed-code textarea{width:100%;box-sizing:border-box;
-  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;
-  line-height:1.5;resize:vertical;background:var(--bg2,#0b1119);
-  border:1px solid var(--line);border-radius:4px;color:var(--text);padding:8px}
-.ml-embed-code .ghost-btn{align-self:flex-start}
-@media (max-width:820px){ .ml-embed-split{grid-template-columns:1fr} }
-
 .ml-soon{border:1px dashed var(--line);border-radius:var(--radius);
   padding:28px;max-width:36rem}
 .ml-soon h3{margin:0 0 .5rem;font-size:1.1rem}
@@ -1380,22 +1299,6 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
 @media(hover:hover){ .ml-whose-opt:hover{color:var(--text)} }
 .ml-whose-opt.is-on{background:var(--voice-tech);border-color:var(--voice-tech);
   color:var(--bg,#0b1119);font-weight:var(--w-bold)}
-
-.ml-embed-card .switch.small{margin-bottom:10px}
-.ml-embed-card.is-closed .switch.small{margin-bottom:0}
-
-/* The wording, beside the preview of it. Compact because these are three short
-   fields, not a form somebody fills in from scratch. */
-.ml-wording{display:flex;flex-direction:column;gap:10px;padding:14px;
-  border:1px solid var(--line);border-radius:var(--radius);
-  background:var(--bg2,#0b1119)}
-.ml-wording .fld{margin:0}
-.ml-wording .fld span{font-size:10px}
-.ml-wording input{width:100%;box-sizing:border-box;padding:.4rem .5rem}
-.ml-wording .ghost-btn{align-self:flex-start}
-
-.ml-embed-switches{display:flex;flex-direction:column;gap:6px;margin-bottom:6px}
-.ml-embed-code .adm-label{margin-top:4px}
 
 /* ============================================================
    THE COMPOSER
@@ -1533,26 +1436,6 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
   .cp-size{margin-left:0}
 }
 
-/* ---- the contact form's settings ----
-   Beside the sign-up form because they are the same kind of thing: a form on
-   somebody else's website that reaches this ministry. One per ministry, so
-   this is a form rather than a list of forms. */
-.ct-form{max-width:760px}
-.ct-embed{margin-top:26px;padding-top:20px;border-top:1px solid var(--line);
-  max-width:760px}
-/* CODE, NOT PROSE. 760px is a reading measure for the settings above; the
-   snippet is not read left to right and does not wrap by choice, so a narrow
-   box only means more lines and more scrolling to check one attribute. Given
-   the room, it takes it. */
-@media (min-width: 900px){
-  .ct-embed{max-width:none}
-  .ct-embed textarea{min-height:150px}
-}
-.ct-embed textarea{width:100%;margin-top:8px;
-  font-family:var(--font-mono,ui-monospace,SFMono-Regular,Menlo,monospace);
-  font-size:11.5px;line-height:1.5;resize:vertical}
-.ct-embed .ghost-btn{margin-top:8px}
-
 /* Each reason is a row: what it says, and optionally where it goes. The second
    box is what makes a reason more than a label — prayer requests to one inbox,
    partnership inquiries to another. */
@@ -1590,13 +1473,6 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
    the Desktop/Mobile control is one control rather than three lookalikes.
    `.emb-stage` and `.emb-stage.is-narrow` come from there; only the height
    differs, because a form is taller than a progress bar. */
-/* A STARTING SIZE ONLY. The widget measures itself and posts its real height
-   the moment it draws — see the message listener in staff-mailing.js — which
-   then sets both the frame's height and the wrapper's scale. This is what
-   shows for one frame, not what the box stays at. */
-.ct-stage{margin:14px 0 0;block-size:420px;overflow:hidden;
-  transition:block-size .3s cubic-bezier(.16,1,.3,1)}
-@media(prefers-reduced-motion:reduce){ .ct-stage{transition:none} }
 
 /* THE WRAPPER IS WHAT SHRINKS, not the frame. Scaling the iframe would shrink
    the drawing surface with it, and the widget would then answer a different
@@ -1606,8 +1482,6 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
    top left origin, because the wrapper is made wider by exactly the amount the
    scale takes back; centring the origin would leave it offset by half. */
 .emb-scale{transform-origin:top left;inline-size:100%}
-.ct-stage iframe{display:block;inline-size:100%;block-size:420px;border:0;
-  background:transparent;color-scheme:light dark}
 
 /* Said out loud, so the smaller type does not read as the type a visitor gets
    — otherwise somebody enlarges their heading to fix a problem that is not
@@ -2063,7 +1937,6 @@ html:not(.roles-known)[data-area="staff"] .console-me-menu a[data-roles]{display
 /* Not an error — a state. The switch above is how it changes. */
 .ml-sent-off{flex:none;font-size:12px;color:var(--dim);font-style:italic}
 
-
 /* ============================================================
    THE SUPPORTER DIALOG  (/staff/stewardship/)
    ============================================================
@@ -2219,6 +2092,7 @@ html.console-menu-open{overflow:hidden}
 .sh-switches{display:flex;flex-direction:column;gap:12px}
 .sh-live .switch-label{font-size:var(--fs-md);color:var(--text)}
 .sh-live .rolegate{margin-top:12px}
+.sh-side .emb-code,.sh-dev-body .emb-code{padding-right:16px}
 .sh-side .emb-code{white-space:pre-wrap;word-break:break-all;font-size:11px;margin-bottom:12px}
 .sh-side .ghost-btn{width:100%}
 .sh-side .fld{margin-bottom:14px}
@@ -2254,4 +2128,34 @@ html.console-menu-open{overflow:hidden}
   .sh-item{flex-direction:column;align-items:flex-start;border-left:0;border-bottom:3px solid transparent;
     min-width:max-content}
   .sh-item.is-on{border-bottom-color:var(--voice-tech)}
+}
+
+/* ============================================================
+   UPDATES — the preview beside the editing
+   ============================================================ */
+.up-page{display:block}
+.up-tabsrow{display:flex;align-items:flex-end;gap:16px;border-bottom:1px solid var(--line);margin-bottom:22px}
+.up-body .tab-panel{padding-top:0}
+.up-tabsrow .tabs{border-bottom:0;margin-bottom:0;flex:1 1 auto;min-width:0}
+.up-preview-btn{margin-bottom:8px;white-space:nowrap}
+.up-preview-btn .up-x{display:none}
+.up-preview-btn.is-on{background:var(--voice-tech-dim)}
+.up-preview-btn.is-on .up-x{display:inline}
+.up-body.is-previewing{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:22px;align-items:start}
+.up-preview{position:sticky;top:calc(var(--header-h) + 16px)}
+.up-preview[hidden]{display:none}
+#upStage{overflow:hidden}
+#upStage iframe{display:block;inline-size:100%;block-size:300px;border:0;background:transparent}
+.up-lang{background:var(--bg2,#0b1119);border:1px solid rgba(255,255,255,.14);color:var(--text);
+  font-family:var(--font-body);font-size:var(--fs-sm);padding:6px 8px;border-radius:var(--radius)}
+.up-lang[hidden]{display:none}
+.up-share-link{display:inline-block;margin-top:12px;font-size:var(--fs-sm);color:var(--voice-tech);
+  text-decoration:underline;text-underline-offset:3px}
+@media (max-width:1100px){
+  .up-body.is-previewing{grid-template-columns:1fr}
+  .up-preview{position:static;order:-1}
+}
+@media (max-width:760px){
+  .up-tabsrow{flex-direction:column;align-items:stretch}
+  .up-preview-btn{align-self:flex-start}
 }

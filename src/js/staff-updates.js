@@ -16,6 +16,8 @@
        removals: function () { … },     // how many of those are deletes
        publish:  async function () { … return { failed: [msg…] } },
        discard:  function () { … },
+       preview:  function () { … },     // optional: the working copy,
+                                        // in the public data's shape
      });
 
    and calls StaffUpdates.changed() whenever its count may have
@@ -30,6 +32,9 @@
   var $ = function (id) { return document.getElementById(id); };
   var sections = [];
   var busy = false;
+  /* Anything that shows the working copy — the preview beside the list —
+     hears every change. */
+  var listeners = [];
 
   function tr(key) { return window.StaffI18n ? window.StaffI18n.t(key) : key; }
   function fill(key, vars) {
@@ -42,6 +47,7 @@
   }
 
   function refresh() {
+    listeners.forEach(function (fn) { try { fn(); } catch (e) {} });
     /* A tab holding changes is marked, so nothing typed on one section is
        forgotten while looking at another. */
     sections.forEach(function (s) {
@@ -94,6 +100,8 @@
     busy = false;
     btn.disabled = false; $('upDiscard').disabled = false;
     refresh();
+    /* What is live changed: anything showing the live data reloads it. */
+    document.dispatchEvent(new CustomEvent('updates:published'));
     if (failed.length) toast(fill('up.failed', { n: failed.length, first: failed[0] }), 'err');
     else toast(tr('up.published'), 'ok');
   });
@@ -120,6 +128,14 @@
 
   window.StaffUpdates = {
     register: function (section) { sections.push(section); refresh(); },
-    changed: refresh
+    changed: refresh,
+    onChange: function (fn) { listeners.push(fn); },
+    /* A section's working copy in the PUBLIC shape (what the embed data
+       carries), for the preview: `preview()` is optional on a section.
+       Null when the section has none — the preview then shows the live data. */
+    previewOf: function (key) {
+      var s = sections.filter(function (x) { return x.key === key; })[0];
+      return s && s.preview ? s.preview() : null;
+    }
   };
 })();

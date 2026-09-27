@@ -18,23 +18,32 @@ staffHeading: What this ministry <b>publishes</b>
    THE SWITCH STAYS ON THE ROW (Chase): one click says whether an item is on
    the site. The whole row opens its editor; Delete is inside it. -#}
 
-<div class="tabs" role="tablist">
-  <button type="button" class="tab" role="tab" data-tab="milestones"
-          aria-selected="true" data-i18n="min.milestones">Milestones</button>
-  <button type="button" class="tab" role="tab" data-tab="goals"
-          aria-selected="false" data-i18n="min.goals">Goals</button>
-  <button type="button" class="tab" role="tab" data-tab="prayer"
-          aria-selected="false" data-i18n="min.prayer">Prayer</button>
-  <button type="button" class="tab" role="tab" data-tab="videos"
-          aria-selected="false" data-i18n="min.videos">Videos</button>
+{#- PREVIEW ON A WEBSITE (board "Preview beside the editing"): the real
+   widget beside the list, redrawn as rows are edited — what Publish would
+   put on a partner's page, before it is pressed. Sharing it, its colors and
+   its code are set once, on Sharing; the link says where. -#}
+<div class="up-page">
+<div class="up-tabsrow">
+  <div class="tabs" role="tablist">
+    <button type="button" class="tab" role="tab" data-tab="milestones"
+            aria-selected="true" data-i18n="min.milestones">Milestones</button>
+    <button type="button" class="tab" role="tab" data-tab="goals"
+            aria-selected="false" data-i18n="min.goals">Goals</button>
+    <button type="button" class="tab" role="tab" data-tab="prayer"
+            aria-selected="false" data-i18n="min.prayer">Prayer</button>
+    <button type="button" class="tab" role="tab" data-tab="videos"
+            aria-selected="false" data-i18n="min.videos">Videos</button>
+  </div>
+  <button type="button" class="ghost-btn up-preview-btn" id="upPreviewBtn" aria-pressed="false">
+    <span data-i18n="up.preview">Preview on a website</span><span class="up-x" aria-hidden="true"> ✕</span>
+  </button>
 </div>
+
+<div class="up-body" id="upBody">
+<div class="up-main">
 
 <!-- ========================================================== MILESTONES -->
 <section class="tab-panel" data-panel="milestones" role="tabpanel">
-  {% set embedWidget = "roadmap" %}
-  {% include "embed-panel.njk" %}
-
-  <div data-emb-content>
 <div class="ms-bar">
   <button type="button" class="solid-btn" id="msAdd" data-i18n="ms.add">Add milestone</button>
   <span class="hint" id="msStatus"></span>
@@ -144,15 +153,10 @@ staffHeading: What this ministry <b>publishes</b>
   </div>
 </form>
 
-  </div>
 </section>
 
 <!-- =============================================================== GOALS -->
 <section class="tab-panel" data-panel="goals" role="tabpanel" hidden>
-  {% set embedWidget = "goal" %}
-  {% include "embed-panel.njk" %}
-
-  <div data-emb-content>
     <div class="ms-bar">
       <button type="button" class="solid-btn" id="glAdd" data-i18n="gl.add">Add goal</button>
       <span class="hint" id="glStatus"></span>
@@ -227,15 +231,10 @@ staffHeading: What this ministry <b>publishes</b>
         <button type="button" class="ghost-btn danger" id="glDelete" data-i18n="ms.delete">Delete</button>
       </div>
     </form>
-  </div>
 </section>
 
 <!-- ============================================================== PRAYER -->
 <section class="tab-panel" data-panel="prayer" role="tabpanel" hidden>
-  {% set embedWidget = "prayer" %}
-  {% include "embed-panel.njk" %}
-
-  <div data-emb-content>
     <div class="ms-bar">
       <button type="button" class="solid-btn" id="prAdd" data-i18n="pr.add">Add request</button>
       <span class="hint" id="prStatus"></span>
@@ -298,7 +297,6 @@ staffHeading: What this ministry <b>publishes</b>
         <button type="button" class="ghost-btn danger" id="prDelete" data-i18n="ms.delete">Delete</button>
       </div>
     </form>
-  </div>
 </section>
 
 <!-- ============================================================== VIDEOS -->
@@ -313,10 +311,6 @@ staffHeading: What this ministry <b>publishes</b>
    So no row panel, no save bar, no language columns. A field, a switch, and a
    list you can look at to confirm the right channel is attached. -#}
 <section class="tab-panel" data-panel="videos" role="tabpanel" hidden>
-  {% set embedWidget = "videos" %}
-  {% include "embed-panel.njk" %}
-
-  <div data-emb-content>
   <div class="ms-bar">
     <span class="hint" id="vidStatus"></span>
   </div>
@@ -379,8 +373,31 @@ staffHeading: What this ministry <b>publishes</b>
   <p class="vid-sync" id="vidSync" hidden></p>
 
   <div class="vid-list" id="vidList"></div>
-  </div>
 </section>
+
+</div>
+
+<aside class="up-preview" id="upPreview" hidden>
+  <div class="emb-stagebar">
+    <div class="emb-devices" role="tablist" aria-label="Width">
+      <button type="button" class="emb-device is-on" role="tab" aria-selected="true"
+              data-width="wide" data-i18n="emb.desktop">Desktop</button>
+      <button type="button" class="emb-device" role="tab" aria-selected="false"
+              data-width="narrow" data-i18n="emb.mobile">Mobile</button>
+    </div>
+    <span class="emb-scale-note" id="upScaleNote"></span>
+    <span class="c-gap"></span>
+    <select id="upLang" class="up-lang" aria-label="Language"></select>
+  </div>
+  <div class="emb-stage" id="upStage">
+    <div class="emb-scale" id="upScale">
+      <iframe id="upFrame" title="Preview" sandbox="allow-scripts"></iframe>
+    </div>
+  </div>
+  <a class="up-share-link" id="upShareLink" href="/staff/sharing/" data-i18n="up.shareLink">Share settings and code → Sharing</a>
+</aside>
+</div>
+</div>
 
 {#- THE ONE BAR FOR ALL FOUR SECTIONS (staff-updates.js): how much is not
    live yet, and in which sections; Discard; Publish changes. role=status so

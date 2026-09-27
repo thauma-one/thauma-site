@@ -918,6 +918,23 @@
   if (window.StaffUpdates) {
     window.StaffUpdates.register({
       key: 'milestones',
+      /* The working copy as the public data would carry it — published rows
+         only, Upcoming with no progress — so the preview shows what Publish
+         would put on a partner's page. */
+      preview: function () {
+        return list().filter(function (m) {
+          return m.is_public && !state.removed[m.localId || m.id];
+        }).map(function (m) {
+          var text = {};
+          Object.keys(m.text || {}).forEach(function (c) {
+            var t = m.text[c];
+            if (t && t.title) text[c] = { title: t.title, description: t.description || null, target_label: t.target_label || null };
+          });
+          return { id: m.localId || m.id, parent_id: m.parent_id || null, actual_date: m.actual_date || null,
+                   status: m.status || 'upcoming', completion: m.status === 'upcoming' ? 0 : (Number(m.completion) || 0),
+                   is_featured: !!m.is_featured, text: text };
+        }).filter(function (m) { return Object.keys(m.text).length; });
+      },
       count: function () { return dirtyIds().length; },
       removals: function () { return Object.keys(state.removed).length; },
       publish: publish,

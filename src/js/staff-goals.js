@@ -360,6 +360,22 @@
   if (window.StaffUpdates) {
     window.StaffUpdates.register({
       key: 'goals',
+      /* The working copy in the public shape, for the preview: published
+         goals, with a reading typed but not yet published already counted. */
+      preview: function () {
+        return state.order.filter(function (id) {
+          return !state.removed[id] && state.draft[id] && state.draft[id].is_public;
+        }).map(function (id) {
+          var g = state.draft[id], r = state.reading[id] || {};
+          var raised = r.raised_cents != null ? r.raised_cents : (g.raised_cents || 0);
+          var donors = r.donor_count !== undefined ? r.donor_count : g.donor_count;
+          return { id: id, label: g.label, description: g.description || null, kind: g.kind,
+                   target_cents: g.target_cents, currency: g.currency, raised_cents: raised,
+                   donor_count: donors == null ? null : donors,
+                   percent: g.target_cents ? Math.round((raised / g.target_cents) * 100) : 0,
+                   captured_at: g.captured_at || null };
+        });
+      },
       count: function () { return dirtyIds().length; },
       removals: function () { return Object.keys(state.removed).length; },
       publish: publish,

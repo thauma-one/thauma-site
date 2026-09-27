@@ -331,7 +331,7 @@ export default {
           db.queryOne("subscribers_for_list_count", args),
         ]);
         return json(withActing({
-          you: { email: actor.email, roles: myRoles },
+          you: { email: actor.email, name: (s.me && s.me.user_name) || null, roles: myRoles },
           scope: s.isOrg ? "organization" : "partner",
           list, subscribers, page, page_size: PAGE,
           /* So the console can say "1–100 of 340" rather than leaving somebody
@@ -402,7 +402,7 @@ export default {
       ]);
 
       return json(withActing({
-        you: { email: actor.email, roles: myRoles },
+        you: { email: actor.email, name: (s.me && s.me.user_name) || null, roles: myRoles },
         scope: s.isOrg ? "organization" : "partner",
         /* So the console can offer the switch only to people who have it,
            rather than showing a control that answers 403. */

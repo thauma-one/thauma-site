@@ -387,6 +387,19 @@
   if (window.StaffUpdates) {
     window.StaffUpdates.register({
       key: 'prayer',
+      /* The working copy in the public shape, for the preview. */
+      preview: function () {
+        return state.order.filter(function (id) {
+          return !state.removed[id] && state.draft[id] && state.draft[id].is_public;
+        }).map(function (id) {
+          var p = state.draft[id], text = {};
+          Object.keys(p.text || {}).forEach(function (c) {
+            var t = p.text[c];
+            if (t && t.title) text[c] = { title: t.title, description: t.description || null, answer_text: t.answer_text || null };
+          });
+          return { id: id, is_answered: !!p.is_answered, answered_on: p.answered_on || null, text: text };
+        }).filter(function (p) { return Object.keys(p.text).length; });
+      },
       count: function () { return dirtyIds().length; },
       removals: function () { return Object.keys(state.removed).length; },
       publish: publish,

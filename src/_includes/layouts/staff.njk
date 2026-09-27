@@ -90,9 +90,8 @@
 {% if staffPage == "stewardship" %}<script src="/js/staff-stewardship.js?v={{ "/js/staff-stewardship.js" | v }}"></script>{% endif %}
 {% if staffPage == "settings" %}<script src="/js/staff-settings.js?v={{ "/js/staff-settings.js" | v }}"></script>{% endif %}
 {% if staffPage == "sharing" %}<script src="/js/staff-sharing.js?v={{ "/js/staff-sharing.js" | v }}"></script>{% endif %}
-{#- The embed panel loads on the two pages that AUTHOR what it publishes —
-   the roadmap under the milestone editor, the giving progress under the
-   goals — rather than on a settings tab away from both. -#}
-{% if staffPage == "updates" %}<script src="/js/staff-embed.js?v={{ "/js/staff-embed.js" | v }}"></script>{% endif %}
+{#- The preview beside the editing, on the page that AUTHORS what it
+   shows; sharing, colors and code are on Sharing. -#}
+{% if staffPage == "updates" %}<script src="/js/staff-updates-preview.js?v={{ "/js/staff-updates-preview.js" | v }}"></script>{% endif %}
 </body>
 </html>

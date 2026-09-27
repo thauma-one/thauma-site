@@ -58,6 +58,10 @@ const DATA = () => ({
     }],
   },
   "staff-videos": { channel: null, videos: [], links: [] },
+  /* The embed data the preview starts from: what is LIVE. */
+  "staff-embed": { version: 1, partner: { slug: "chase-roush", display_name: "Chase Roush" },
+    theme: { accent: "#1AE4FF", mode: "auto" }, languages: [{ code: "en" }],
+    milestones: [], goals: [{ id: "g1", label: "Cameras" }], prayer: [], videos: [], shared: [] },
 });
 
 async function boot({ oneLanguage = false } = {}) {
@@ -86,7 +90,8 @@ async function boot({ oneLanguage = false } = {}) {
   w.console.error = () => {};
   w.scrollTo = () => {};
   for (const f of ["staff-i18n.js", "staff.js", "staff-updates.js", "staff-rowpanel.js",
-                   "staff-milestones.js", "staff-goals.js", "staff-prayer.js", "staff-videos.js"]) {
+                   "staff-milestones.js", "staff-goals.js", "staff-prayer.js", "staff-videos.js",
+                   "staff-updates-preview.js"]) {
     w.eval(readFileSync("src/js/" + f, "utf8"));
   }
   w.StaffToast = (msg, kind) => toasts.push({ msg, kind });
@@ -215,6 +220,33 @@ await check("with one language there is nothing to write beside", async () => {
   click(row("msList", "m1"));
   await settle();
   eq(d.getElementById("msBesideWrap").hidden, true, "beside should go away");
+});
+
+await check("the preview beside the list draws the working copy, not just what is live", async () => {
+  const { w, d, click, row } = await boot();
+  click(d.getElementById("upPreviewBtn"));
+  await settle(150);
+  eq(d.getElementById("upPreview").hidden, false, "the preview did not open");
+  const drawn = () => {
+    const m = /window\.__thaumaPreview=(.*?)<\/script>/.exec(d.getElementById("upFrame").srcdoc || "");
+    return m ? JSON.parse(m[1]) : null;
+  };
+  eq(drawn().milestones.map((m) => m.id), ["m1"], "the published milestone");
+  click(row("msList", "m1").querySelector("[data-pub]"));
+  await settle(300);
+  eq(drawn().milestones, [], "switched off but not published — the preview already shows it gone");
+  assert(/sharing\/#roadmap$/.test(d.getElementById("upShareLink").href), "the link to its settings");
+  click(d.querySelector('.tab[data-tab="goals"]'));
+  await settle(300);
+  assert(/data-widget/.test(d.getElementById("upFrame").srcdoc) === false, "goals is the default widget");
+  eq(drawn().goals.map((g) => g.label), ["Cameras"], "the goals tab draws goals");
+});
+
+await check("the preview stays open across a reload", async () => {
+  const { d, click } = await boot();
+  click(d.getElementById("upPreviewBtn"));
+  await settle(100);
+  eq(d.defaultView.sessionStorage.getItem("thauma.updates.preview"), "1", "remembered");
 });
 
 await check("a delete waits for Publish, Keep takes it back, and Publish asks first", async () => {
