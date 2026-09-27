@@ -348,7 +348,9 @@ export const WIDGET_JS = String.raw`
         'animation:pulse 2s ease-in-out infinite}' +
       '@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}' +
       '.nlabel{position:absolute;bottom:26px;left:50%;transform:translateX(-50%);' +
-        'white-space:nowrap;text-transform:uppercase;font-size:11px;font-weight:700;letter-spacing:.11em;' +
+        /* Small: it names the line, it is not a heading, and at 11px bold it
+           competed with the milestone titles (Chase, 2026-09-27). */
+        'white-space:nowrap;text-transform:uppercase;font-size:9px;font-weight:600;letter-spacing:.14em;' +
         'color:var(--prog)}' +
       '.nlabel.below{bottom:auto;top:26px}' +
 

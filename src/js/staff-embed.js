@@ -245,6 +245,14 @@
          to English on somebody else's website. */
       var langs = (settings.languages || []).filter(function (l) { return l.is_enabled; });
       if (!langs.length) langs = settings.languages || [];
+      /* And only those the embed data actually offers — a published language
+         nothing is written in yet is left out there, so it is left out here,
+         or the snippet would ask for a language the widget cannot show. */
+      var offered = payload && payload.languages ? payload.languages.map(function (l) { return l.code; }) : null;
+      if (offered && offered.length) {
+        var kept = langs.filter(function (l) { return offered.indexOf(l.code) !== -1; });
+        if (kept.length) langs = kept;
+      }
       var keep = p.lang.value;
       p.lang.innerHTML = langs.map(function (l) {
         return '<option value="' + esc(l.code) + '">' + esc(langLabel(l)) + '</option>';

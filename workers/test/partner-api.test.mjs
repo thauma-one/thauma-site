@@ -255,6 +255,22 @@ await check("a language the partner has switched OFF never reaches the payload",
   eq(Object.keys(site.milestones[0].text), ["en"], "languages present");
 });
 
+await check("a language with nothing written in it is not offered", async () => {
+  /* Slovenian switched on, nothing yet written in it: a switcher offering
+     it would lead to English content under Slovenian labels. */
+  const langs = [
+    { code: "en", name: "English", native_name: "English", sort_order: 0 },
+    { code: "hr", name: "Croatian", native_name: "Hrvatski", sort_order: 1 },
+    { code: "sl", name: "Slovenian", native_name: "Slovenščina", sort_order: 2 },
+  ];
+  const site = await partnerPublicSite(fakePublicDb({ languages: langs }), "p_chase");
+  eq(site.languages.map((l) => l.code), ["en", "hr"], "offered");
+  /* With no translatable text at all there is nothing to judge by, so every
+     published language stays. */
+  const bare = await partnerPublicSite(fakePublicDb({ languages: langs, translations: [] }), "p_chase");
+  eq(bare.languages.map((l) => l.code), ["en", "hr", "sl"], "nothing written anywhere");
+});
+
 await check("a milestone with NO publishable text is dropped, not shipped empty", async () => {
   // Otherwise a partner site draws a row with no words in it.
   const site = await partnerPublicSite(fakePublicDb({ translations: [] }), "p_chase");

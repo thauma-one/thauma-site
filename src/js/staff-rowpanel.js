@@ -78,16 +78,31 @@
       /* Keep the browser from "helpfully" adjusting the scroll while the
          content under the viewport changes size. */
       root.style.overflowAnchor = 'none';
-      el.style.height = from + 'px';
+      /* THE PADDING SHRINKS WITH IT. Heights here include the padding, so a
+         panel cannot be shorter than its own padding (~53px): closing stopped
+         there and then snapped shut, and opening started there with a jump.
+         Scaling the padding by the same fraction lets it reach zero. */
+      var cs = getComputedStyle(el);
+      var pt = parseFloat(cs.paddingTop) || 0, pb = parseFloat(cs.paddingBottom) || 0;
+      var full = Math.max(from, to) || 1;
+      function size(h) {
+        var r = Math.min(1, h / full);
+        el.style.height = h + 'px';
+        el.style.paddingTop = (pt * r) + 'px';
+        el.style.paddingBottom = (pb * r) + 'px';
+      }
+      size(from);
       function frame(now) {
         if (t0 === null) t0 = now;
         var k = Math.min(1, (now - t0) / PANEL_MS);
         var e = ease(k);
-        el.style.height = (from + (to - from) * e) + 'px';
+        size(from + (to - from) * e);
         el.style.opacity = String(to > from ? Math.min(1, e * 1.6) : 1 - Math.min(1, e * 1.6));
         if (scrollTo !== undefined) window.scrollTo(0, startY + (scrollTo - startY) * e);
         if (k < 1) { requestAnimationFrame(frame); return; }
         el.style.height = '';
+        el.style.paddingTop = '';
+        el.style.paddingBottom = '';
         el.style.opacity = '';
         el.classList.remove('is-animating');
         root.style.overflowAnchor = '';

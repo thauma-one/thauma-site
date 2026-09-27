@@ -339,10 +339,20 @@ export async function partnerPublicSite(db, partnerId, partnerSlug = null) {
     };
   }
 
+  /* ONLY LANGUAGES WITH SOMETHING WRITTEN IN THEM. A language the partner
+     has switched on but not yet written a milestone or prayer request in
+     would put a choice in a switcher that leads to English content under
+     that language's labels. Once one published item is written in it, it
+     appears. A partner with no translatable text at all (only goals or
+     videos) keeps every language they publish — there is nothing to judge
+     by. (Chase left this call to Claude, 2026-09-27.) */
+  const written = new Set([...translations, ...prayerTx].map((t) => t.lang));
+  const offered = written.size ? languages.filter((l) => written.has(l.code)) : languages;
+
   return {
     // What a consumer should offer in its own language switcher, rather than
     // inferring it from whichever translations happen to exist.
-    languages: languages.map((l) => ({
+    languages: offered.map((l) => ({
       code: l.code, name: l.name, native_name: l.native_name,
     })),
     goals: goals.map((g) => ({
