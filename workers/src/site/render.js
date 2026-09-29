@@ -18,7 +18,7 @@
  * of it switched off for anyone whose device asks for less motion.
  */
 import { word, SECTIONS } from "./model.js";
-import { readable, onColor, alpha } from "../embed-colour.js";
+import { readable, onColor, alpha, luminance, companion } from "../embed-colour.js";
 
 export function esc(s) {
   return String(s == null ? "" : s).replace(/[&<>"']/g, (c) =>
@@ -31,23 +31,50 @@ const FONTS = {
   night: "family=Sora:wght@100;300;600&family=Inter:wght@300;400;600",
   paper: "family=Fraunces:opsz,wght@9..144,300;9..144,600&family=Manrope:wght@400;600;700",
   bold: "family=Manrope:wght@400;600;800",
-  classic: "family=Crimson+Pro:wght@500;600;700&family=Work+Sans:wght@300;400;500;600",
 };
 
 /* Each look: surfaces, ink, fonts. `acc` fills (buttons, rules, the
    progress line); `ink` is the accent as TEXT, lightened where needed so it
    stays readable on the background. */
-function looks(look, theme) {
+/** Two colors mixed: `t` of the way from a to b. */
+function mix(a, b, t) {
+  const n = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const [x, y] = [n(a), n(b)];
+  return "#" + x.map((v, i) => Math.round(v + (y[i] - v) * t).toString(16).padStart(2, "0")).join("").toUpperCase();
+}
+
+/**
+ * THE OWNER'S COLORS (design.colors), and everything that has to follow
+ * them. A background decides light or dark, and from it the text, the
+ * quieter text, the raised bands and the lines are worked out so they stay
+ * readable on it; an accent replaces the ministry's everywhere on the site,
+ * the widgets included, lightened or darkened only where it is used as text.
+ */
+function looks(lookName, theme, colors = {}) {
+  const accent = colors.accent || theme.accent;
+  const accent2 = colors.accent ? companion(colors.accent, -33) : theme.accent2;
+  const L = baseLook(lookName, { accent, accent2 });
+  if (!colors.background) return L;
+  const bg = colors.background;
+  const dark = luminance(bg) < 0.25;
+  const fg = dark ? "#F2F3F5" : "#15171C";
+  const acc = readable(accent, bg, 3), acc2 = readable(accent2, bg, 3);
+  return {
+    ...L, bg, fg,
+    panel: mix(bg, fg, dark ? 0.07 : 0.04),
+    dim: mix(fg, bg, 0.38),
+    line: alpha(fg, dark ? 0.1 : 0.12),
+    acc, acc2, ink: readable(accent, bg, 4.5), onAcc: onColor(acc),
+    scheme: dark ? "dark" : "light",
+    heroBg: lookName === "bold" ? acc
+      : lookName === "paper" ? `linear-gradient(135deg, ${alpha(acc, .22)}, ${alpha(acc2, .18)}), ${bg}`
+      : `radial-gradient(120% 90% at 20% 10%, ${alpha(acc, .35)}, transparent 60%), radial-gradient(90% 80% at 90% 90%, ${alpha(acc2, .28)}, transparent 60%), ${bg}`,
+    heroFg: lookName === "bold" ? onColor(acc) : undefined,
+  };
+}
+
+function baseLook(look, theme) {
   const acc = theme.accent, acc2 = theme.accent2;
-  if (look === "classic") {
-    /* chaseroush.com: charcoal, Crimson Pro over Work Sans, the brick red.
-       The red is the site's own; the widgets keep the ministry's colors. */
-    const bg = "#1A1A1A", brick = "#A63D40";
-    return { bg, panel: "#232323", fg: "#F2EFEA", dim: "#A9A39C", line: "rgba(255,255,255,.09)",
-      acc: brick, acc2: brick, ink: readable(brick, bg, 4.5), onAcc: "#FFFFFF",
-      display: "'Crimson Pro', Georgia, serif", body: "'Work Sans', system-ui, sans-serif", thin: 600, boldW: 700, scheme: "dark",
-      heroBg: "radial-gradient(75% 70% at 50% 45%, #1F1F1F, #161616)" };
-  }
   if (look === "paper") {
     const bg = "#F6F2EA";
     return { bg, panel: "#FFFDF8", fg: "#1A1C22", dim: "#5B5F68", line: "rgba(26,28,34,.12)",
@@ -92,10 +119,24 @@ html[data-menu="center"] .nav{margin:0 auto;justify-content:center}
 html[data-menu="button"] .menubtn{display:inline-block}
 html[data-menu="button"] .nav{display:none}
 html.menu-open .nav{display:flex;position:absolute;left:0;right:0;top:100%;flex-direction:column;align-items:flex-start;gap:14px;padding:22px 24px;background:var(--bg);border-bottom:1px solid var(--line)}
-.langs{display:flex;gap:6px}.langs a{font-size:13px;color:var(--dim);text-decoration:none;padding:3px 7px;border:1px solid var(--line);border-radius:999px}
-.langs a[aria-current]{color:var(--fg);border-color:var(--acc)}
+.langmenu{position:relative;flex:none}
+.langmenu summary{list-style:none;display:inline-flex;align-items:center;gap:7px;cursor:pointer;font:600 13px var(--body);letter-spacing:.06em;
+  color:var(--fg);padding:7px 12px;border:1px solid var(--line);border-radius:999px}
+.langmenu summary::-webkit-details-marker{display:none}
+.langmenu summary svg{width:10px;height:6px;transition:transform .2s ease}.langmenu[open] summary svg{transform:rotate(180deg)}
+.langmenu summary:hover,.langmenu[open] summary{border-color:var(--acc)}
+.langmenu ul{position:absolute;right:0;top:calc(100% + 8px);z-index:50;list-style:none;margin:0;padding:6px;min-width:170px;
+  background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:0 18px 40px -18px rgba(0,0,0,.45)}
+.langmenu.up ul{top:auto;bottom:calc(100% + 8px)}
+.langmenu a{display:block;padding:8px 12px;border-radius:8px;color:var(--fg);text-decoration:none;font-size:15px}
+.langmenu a:hover{background:color-mix(in srgb,var(--fg) 7%,transparent)}
+.langmenu a[aria-current]{color:var(--ink);font-weight:600}
+.foot-center .langmenu ul{right:auto;left:50%;transform:translateX(-50%)}
 .headlinks{display:flex;gap:10px}
 @media (max-width:820px){.menubtn{display:inline-block}.nav{display:none}.top .wrap{flex-direction:row!important;padding:0!important}}
+html[data-menu="center"] .top .wrap{position:relative}
+html[data-menu="center"] .top .langmenu{position:absolute;right:0;top:16px}
+@media (max-width:820px){html[data-menu="center"] .top .langmenu{position:static}}
 /* sections */
 main section{padding:88px 0}
 main section + section{border-top:1px solid var(--line)}
@@ -187,6 +228,7 @@ main section.raised + section{border-top-color:transparent}
 .socials a:hover{border-color:var(--acc);color:var(--ink)}.socials svg{width:18px;height:18px}
 .customlinks{display:flex;gap:16px;flex-wrap:wrap}.customlinks a{color:var(--fg)}
 .powered{font-size:12px;opacity:.7}
+body.only-foot .foot{border-top:0}
 /* motion */
 .progress{position:fixed;left:0;top:0;height:2px;width:100%;transform-origin:0 50%;transform:scaleX(0);background:linear-gradient(90deg,var(--acc),var(--acc2));z-index:40}
 html[data-progress="off"] .progress{display:none}
@@ -205,29 +247,8 @@ html[data-pages="fade"]{view-transition-name:root}
  .kb img{animation:none!important}.progress{display:none}.btn{transition:none}}
 @media (max-width:820px){main section{padding:64px 0}.pt,.hero-beside .wrap,.hero-monogram .wrap{grid-template-columns:1fr;gap:28px}.pt-right .pt .pic{order:0}
  .hero .wrap{padding:110px 0 64px}.hero-monogram .wrap{padding:100px 0 130px}.mono-pic img{max-height:240px}.card{padding:26px}}
-${design.look === "classic" ? CLASSIC : ""}`;
-}
-
-/* What makes Classic chaseroush.com rather than Night in a serif: the plain
-   name for a brand, a red line under the page you are on, the language as
-   a small box, square-shouldered red buttons, centered headings over the
-   ministry's data, and a footer tagline in spaced capitals. */
-const CLASSIC = `
-.wrap{width:min(1300px,calc(100% - 64px))}
-.brand{font:400 22px/1 var(--body);letter-spacing:0}.brand b{font-weight:400}
-.nav{gap:30px}.nav a{color:var(--fg);padding:8px 0;border-bottom:2px solid transparent}
-.nav a[aria-current]{color:var(--ink);border-bottom-color:var(--acc)}
-.nav .givebtn{border-radius:4px;padding:8px 16px;border-bottom:0}
-.langs{padding-left:26px;border-left:1px solid var(--line)}
-.langs a{border-radius:4px;padding:7px 13px;color:var(--fg);border-color:rgba(255,255,255,.14)}
-.h{font-weight:var(--thin);letter-spacing:0}.h b{font-weight:var(--boldw)}
-.btn{border-radius:4px;padding:15px 30px}.btn.solid{border-color:var(--acc)}
-.pic{border-radius:8px}.card{border-radius:8px}.linklist a,.news a{border-radius:8px}.linklist .lpic{border-radius:7px 7px 0 0}
-.data .h,.data .lede{text-align:center;margin-left:auto;margin-right:auto}
-.foot{background:var(--panel);border-top-color:var(--line)}
-.foot .langs{padding-left:0;border-left:0}
-@media (max-width:820px){.langs{padding-left:0;border-left:0}}
 `;
+}
 
 /* ---------------------------------------------------------------- icons -- */
 
@@ -281,7 +302,8 @@ function renderSection(sec, ctx) {
   const sub = w("text") ? `<p class="lede m">${esc(w("text"))}</p>` : "";
   const cls = (...c) => { const k = [...c, sec.raised ? "raised" : ""].filter(Boolean).join(" "); return k ? ` class="${k}"` : ""; };
   const widget = (kind, extra = "") =>
-    `<div class="m" data-thauma="${esc(ctx.slug)}" data-widget="${kind}" data-lang="${esc(lang)}" data-theme="${ctx.widgetTheme}" data-foot="off"${extra}></div>`;
+    `<div class="m" data-thauma="${esc(ctx.slug)}" data-widget="${kind}" data-lang="${esc(lang)}" data-theme="${ctx.widgetTheme}" data-foot="off"` +
+    `${ctx.widgetAccent ? ` data-accent="${esc(ctx.widgetAccent)}"` : ""}${extra}></div>`;
 
   switch (sec.type) {
     case "hero": {
@@ -382,10 +404,10 @@ function renderSection(sec, ctx) {
  *   origin   where the widget and form scripts come from
  *   draft    true: a preview of what is not published yet
  */
-export function renderPage({ doc, site, payload, theme, lang, pageId, base, origin, draft }) {
+export function renderPage({ doc, site, payload, theme, lang, pageId, base, origin, draft, only = null, langNames = {} }) {
   const fallback = doc.fallback;
   const design = doc.design;
-  const L = looks(design.look, theme);
+  const L = looks(design.look, theme, design.colors || {});
   const pages = doc.pages.filter((p) => p.on);
   const page = doc.pages.find((p) => p.id === pageId);
   const label = (id) => {
@@ -397,6 +419,8 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
   const ctx = {
     lang, fallback, design, slug: site.slug, payload, needs: {},
     widgetTheme: L.scheme === "dark" ? "dark" : "light",
+    /* The owner's accent reaches the widgets too; the ministry's otherwise. */
+    widgetAccent: (design.colors || {}).accent || null,
     giveUrl: doc.give || site.giving_url || "",
     pageOn: (id) => pages.some((p) => p.id === id),
     href, label, name: site.display_name || "",
@@ -418,9 +442,18 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
   const nav = pages.filter((p) => p.id !== "give").map((p) =>
     `<a href="${esc(href(p.id))}"${p.id === pageId ? ' aria-current="page"' : ""}>${esc(label(p.id))}</a>`).join("");
   const give = ctx.pageOn("give") ? `<a class="givebtn" href="${esc(href("give"))}"${pageId === "give" ? ' aria-current="page"' : ""}>${esc(label("give"))}</a>` : "";
-  const langLinks = doc.languages.length > 1
-    ? `<nav class="langs" aria-label="${esc(word(lang, "lang"))}">${doc.languages.map((l) =>
-        `<a href="${esc(href(pageId, l))}" hreflang="${esc(l)}" lang="${esc(l)}"${l === lang ? ' aria-current="true"' : ""}>${esc(l.toUpperCase())}</a>`).join("")}</nav>` : "";
+  /* THE LANGUAGE MENU IS ALWAYS A DROPDOWN (Chase, 2026-09-29: "Language
+     selection should maintain the dropdown menu regardless"): the current
+     language's code, opening to every language by its own name. Outside the
+     page menu, so it stays on screen on a phone. <details>, so it opens
+     without a script; the script only closes it on a click elsewhere. */
+  const langMenu = (up) => doc.languages.length > 1
+    ? `<details class="langmenu${up ? " up" : ""}"><summary aria-label="${esc(word(lang, "lang"))}">` +
+      `<span>${esc(lang.toUpperCase())}</span><svg viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></summary>` +
+      `<ul>${doc.languages.map((l) =>
+        `<li><a href="${esc(href(pageId, l))}" hreflang="${esc(l)}" lang="${esc(l)}"${l === lang ? ' aria-current="true"' : ""}>${esc(langNames[l] || l.toUpperCase())}</a></li>`).join("")}</ul></details>`
+    : "";
+  const langLinks = langMenu(true);
   const socials = doc.links.filter((k) => k.kind !== "custom").map((k) =>
     `<a href="${esc(k.url)}" aria-label="${esc(SOCIAL_NAME[k.kind])}" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k.kind]}</svg></a>`).join("");
   /* The owner's own links may point at a page of the site, as a section's can. */
@@ -441,13 +474,12 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
      four short pages keeps its menu on a laptop and one with nine long ones
      folds before it wraps onto a second row. Estimated generously from the
      characters; a fold a little early beats a menu on two lines. */
-  const classic = design.look === "classic";
-  const chars = (t) => String(t).length * (classic ? 8.6 : 8.2);
+  const chars = (t) => String(t).length * 8.2;
   const inMenu = pages.filter((p) => p.id !== "give");
   const menuW = (design.brand === "logo" ? 160 : chars(name) * 1.35) + 28 +
-    inMenu.reduce((n, p) => n + chars(label(p.id)) + (classic ? 30 : 22), 0) +
+    inMenu.reduce((n, p) => n + chars(label(p.id)) + 22, 0) +
     (ctx.pageOn("give") ? chars(label("give")) + 60 : 0) +
-    (doc.languages.length > 1 ? doc.languages.length * (classic ? 52 : 40) + (classic ? 26 : 0) : 0) +
+    (doc.languages.length > 1 ? 96 : 0) +
     (design.headerLinks ? doc.links.filter((k) => k.kind !== "custom").length * 52 : 0) + 72;
   const fold = design.menu === "center" ? 820 : Math.max(820, Math.ceil(menuW / 10) * 10);
 
@@ -465,19 +497,20 @@ ${alternates}
 <style>${css(L, design)}
 @media (max-width:${fold}px){.menubtn{display:inline-block}.nav{display:none}.top .wrap{flex-direction:row!important;padding:0!important}}</style>
 </head>
-<body>
-<a class="skip" href="#main">${esc(label(pageId))}</a>
+<body${only ? ' class="only-foot"' : ""}>
+${only === "footer" ? foot : `<a class="skip" href="#main">${esc(label(pageId))}</a>
 <div class="progress" aria-hidden="true"></div>
 ${draft ? `<div style="background:#F5B845;color:#1a1200;font:600 13px system-ui;padding:8px 16px;text-align:center">Preview — not published yet</div>` : ""}
 <header class="top"><div class="wrap">
 <a class="brand" href="${esc(href("home"))}">${brand}</a>
 <button class="menubtn" type="button" aria-expanded="false" aria-controls="sitenav">${esc(word(lang, "menu"))}</button>
-<nav class="nav" id="sitenav">${nav}${give}${design.headerLinks && socials ? `<span class="socials headlinks">${socials}</span>` : ""}${langLinks}</nav>
+<nav class="nav" id="sitenav">${nav}${give}${design.headerLinks && socials ? `<span class="socials headlinks">${socials}</span>` : ""}</nav>
+${langMenu(false)}
 </div></header>
 <main id="main">
 ${body}
 </main>
-${foot}
+${foot}`}
 ${widgets ? `<script>window.__thaumaPreview=${JSON.stringify(payload).replace(/</g, "\\u003c")};</script><script src="${esc(origin)}/embed/v1/widget.js" async></script>` : ""}
 ${ctx.needs.signup ? `<script src="${esc(origin)}/embed/v1/${esc(site.slug)}/form.js" defer></script>` : ""}
 ${ctx.needs.contact ? `<script src="${esc(origin)}/embed/v1/${esc(site.slug)}/contact.js" defer></script>` : ""}
@@ -541,6 +574,8 @@ function frame(){tick=false;var vh=innerHeight;
  drift.forEach(function(i){var r=i.parentNode.getBoundingClientRect();var p=((r.top+r.height/2)-vh/2)/(vh/2+r.height/2);p=Math.max(-1,Math.min(1,p));i.style.transform='translate3d(0,'+(-p*0.05*r.height).toFixed(1)+'px,0)'});
  if(bar&&!still){var m=document.documentElement.scrollHeight-vh;bar.style.transform='scaleX('+(m>0?scrollY/m:0)+')'}}
 addEventListener('scroll',function(){if(!tick){tick=true;requestAnimationFrame(frame)}},{passive:true});frame();
+document.addEventListener('click',function(e){[].forEach.call(document.querySelectorAll('details.langmenu[open]'),function(m){if(!m.contains(e.target))m.removeAttribute('open')})});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')[].forEach.call(document.querySelectorAll('details.langmenu[open]'),function(m){m.removeAttribute('open')})});
 var cue=document.querySelector('.scrollcue');if(cue)cue.addEventListener('click',function(){var n=cue.closest('section').nextElementSibling;if(n)n.scrollIntoView({behavior:still?'auto':'smooth'})});
 })();`;
 

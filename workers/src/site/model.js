@@ -122,10 +122,14 @@ const NOT_RAISED = new Set(["hero", "photo"]);
 
 /* ------------------------------------------------------- design, motion -- */
 
-/* classic: chaseroush.com's own look (Chase, 2026-09-29: "If we can
-   recreate how chaseroush.com looks … I will consider that a win") —
-   charcoal, a serif, and one brick red. */
-export const LOOKS = ["night", "paper", "bold", "classic"];
+/* Three looks, each with its own type and shape; the colors are the
+   owner's to change (design.colors). A fourth look, Classic — chaseroush.com
+   in particular — was built and taken back out the same day (Chase,
+   2026-09-29: "we don't need a classic design. Maybe just give options for
+   more customization … background and accent colors. But the other elements
+   would need to match"). A site saved with it opens as Night. */
+export const LOOKS = ["night", "paper", "bold"];
+const HEX_RE = /^#[0-9a-fA-F]{6}$/;
 export const MENUS = ["top", "center", "button"];
 /* Chase, 2026-09-29: "I'd like a few more animation tools available". Each is
    one choice, each respected only where the visitor has not asked their
@@ -247,6 +251,7 @@ export function starter(kind, { name, langs, fallback, give }) {
     fallback: L.includes(fallback) ? fallback : L[0],
     give: give || "",
     design: { look: "night", menu: "top", brand: "name", logo: null, headerLinks: false,
+              colors: { background: null, accent: null },
               motion: { entrance: "rise", photos: "drift", headings: "letters", buttons: "lift", pages: "fade", progress: "on" } },
     links: [],
     footer: { layout: "split", menu: false, socials: "icons", words: {} },
@@ -394,6 +399,12 @@ export function cleanDoc(raw, catalog) {
       brand: design.brand === "logo" && safePhoto(design.logo) ? "logo" : "name",
       logo: safePhoto(design.logo),
       headerLinks: !!design.headerLinks,
+      /* The owner's own colors, or null for the look's background and the
+         ministry's accent. Everything else is worked out from these two. */
+      colors: {
+        background: HEX_RE.test((design.colors || {}).background || "") ? design.colors.background.toUpperCase() : null,
+        accent: HEX_RE.test((design.colors || {}).accent || "") ? design.colors.accent.toUpperCase() : null,
+      },
       motion: m,
     },
     links,

@@ -64,7 +64,9 @@
     pages: ['fade', 'cut'], progress: ['on', 'off'],
   };
   var SOCIALS = ['youtube', 'instagram', 'facebook', 'x', 'tiktok', 'linkedin', 'spotify', 'email'];
-  var LOOKS = ['night', 'paper', 'bold', 'classic'];
+  var LOOKS = ['night', 'paper', 'bold'];
+  /* Each look's own background, shown in the picker until the owner picks one. */
+  var LOOK_BG = { night: '#0A0D12', paper: '#F6F2EA', bold: '#F4F4F1' };
   var FOOTERS = ['split', 'center', 'columns'];
   var SOCIAL_NAME = { youtube: 'YouTube', instagram: 'Instagram', facebook: 'Facebook', x: 'X', tiktok: 'TikTok',
     linkedin: 'LinkedIn', spotify: 'Spotify', email: 'Email' };
@@ -258,19 +260,11 @@
     var page = state.tab === 'pages' && state.page ? state.page : 'home';
     var path = s.preview.replace(/\?draft$/, '') + lang + '/' + (page === 'home' ? '' : page + '/');
     $('wsPreviewPath').textContent = '/' + lang + '/' + (page === 'home' ? '' : page + '/');
-    $('wsFrame').src = path + '?draft&t=' + Date.now();
+    /* On the Footer tab, the footer and nothing else (Chase, 2026-09-29). */
+    var foot = state.tab === 'footer';
+    $('wsPreviewPane').classList.toggle('only-foot', foot);
+    $('wsFrame').src = path + '?draft' + (foot ? '&part=footer' : '') + '&t=' + Date.now();
   }
-  /* On the Footer tab the preview opens at the foot of the page. */
-  $('wsFrame').addEventListener('load', function () {
-    if (state.tab !== 'footer') return;
-    var frame = this;
-    /* Again once the widgets have drawn, which makes the page taller. */
-    [0, 600, 1500].forEach(function (ms) {
-      setTimeout(function () {
-        try { var w = frame.contentWindow; w.scrollTo(0, w.document.documentElement.scrollHeight); } catch (e) {}
-      }, ms);
-    });
-  });
 
   /* ---- small pieces ---------------------------------------------------- */
 
@@ -480,24 +474,28 @@
   var LOOK_SAMPLE = {
     night: 'background:#0A0D12;color:#EDF2F8;font-family:Sora,system-ui', paper: 'background:#F6F2EA;color:#1A1C22;font-family:Georgia,serif',
     bold: 'color:#041D24;font-family:system-ui;font-weight:800',
-    classic: 'background:#1A1A1A;color:#F2EFEA;font-family:"Crimson Pro",Georgia,serif;font-weight:600',
   };
   function drawDesign() {
     var d = state.doc.design, th = state.body.theme || { accent: '#1AE4FF', accent2: '#25FFA1' };
+    var col = d.colors || (d.colors = { background: null, accent: null });
+    var acc = col.accent || th.accent;
     var name = state.body.partner.display_name;
     var html = '<div class="ws-head"><h2>' + esc(tr('ws.look')) + '</h2></div><div class="ws-looks">' + LOOKS.map(function (l) {
-      var bg = l === 'bold' ? 'background:' + th.accent + ';' : '';
-      /* Classic wears its own brick red, square-shouldered. */
-      var btn = l === 'classic' ? 'background:#A63D40;color:#fff;border-radius:3px'
-        : 'background:' + (l === 'bold' ? '#041D24' : th.accent) + ';color:' + (l === 'bold' ? th.accent : '#06110c');
+      /* Each card wears the owner's colors, so the choice is seen as it will be. */
+      var bg = l === 'bold' ? 'background:' + acc + ';' : '';
+      var btn = 'background:' + (l === 'bold' ? '#041D24' : acc) + ';color:' + (l === 'bold' ? acc : '#06110c');
+      var own = col.background && l !== 'bold' ? ';background:' + col.background + ';color:' + (dark(col.background) ? '#F2F3F5' : '#15171C') : '';
       return '<button type="button" class="ws-look" data-chip="look" data-value="' + l + '" aria-pressed="' + (d.look === l) + '">' +
-        '<span class="ws-look-sample" style="' + bg + LOOK_SAMPLE[l] + '"><span class="ws-look-name">' + esc(name) + '</span>' +
+        '<span class="ws-look-sample" style="' + bg + LOOK_SAMPLE[l] + own + '"><span class="ws-look-name">' + esc(name) + '</span>' +
         '<span class="ws-look-btn" style="' + btn + '">' + esc(tr('ws.btn.give')) + '</span></span>' +
         '<span class="ws-look-cap"><b>' + esc(tr('ws.look.' + l)) + '</b><span>' + esc(tr('ws.look.' + l + '.what')) + '</span></span></button>';
     }).join('') + '</div>';
     html += '<div class="ws-rows">' +
-      row(tr('ws.colors'), '<span class="ws-swatch" style="background:' + esc(th.accent) + '"></span><span class="ws-swatch" style="background:' + esc(th.accent2) + '"></span>' +
-        '<a href="/staff/sharing/">' + esc(tr('ws.colorsWhere')) + '</a>') +
+      /* THE OWNER'S COLORS (Chase, 2026-09-29). A picker each, showing what
+         is in use now; Reset goes back to the look's background, or the
+         ministry's accent from Sharing. The rest follows on the site. */
+      row(tr('ws.bgColor'), colorPick('background', col.background, LOOK_BG[d.look] || '#0A0D12')) +
+      row(tr('ws.accentColor'), colorPick('accent', col.accent, th.accent)) +
       row(tr('ws.menu'), chips('menu', ['top', 'center', 'button'], d.menu, function (v) { return tr('ws.menu.' + v); })) +
       row(tr('ws.brand'), chips('brand', ['name', 'logo'], d.brand, function (v) { return v === 'name' ? name : tr('ws.brand.logo'); }) +
         (d.brand === 'logo' ? (d.logo ? '<img class="ws-logo" src="' + esc(d.logo) + '" alt="">' : '') +
@@ -507,6 +505,16 @@
         return row(tr('ws.m.' + k), chips('motion:' + k, MOTION[k], d.motion[k], function (v) { return tr('ws.m.' + k + '.' + v); }));
       }).join('') + '</div>';
     $('wsDesign').innerHTML = html;
+  }
+
+  function dark(hex) {
+    var n = [1, 3, 5].map(function (i) { var v = parseInt(hex.slice(i, i + 2), 16) / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+    return 0.2126 * n[0] + 0.7152 * n[1] + 0.0722 * n[2] < 0.25;
+  }
+  function colorPick(which, chosen, fallback) {
+    return '<label class="ws-color"><input type="color" data-color="' + which + '" value="' + esc((chosen || fallback).toLowerCase()) + '">' +
+      '<span>' + esc(chosen ? chosen.toUpperCase() : tr(which === 'accent' ? 'ws.colorMinistry' : 'ws.colorLook')) + '</span></label>' +
+      (chosen ? '<button type="button" class="link-btn" data-color-reset="' + which + '">' + esc(tr('ws.colorReset')) + '</button>' : '');
   }
 
   /* ---- Links ----------------------------------------------------------- */
@@ -606,6 +614,12 @@
     if (t.dataset.secWord) { var a = t.dataset.secWord.split(':'); words(p.sections[+a[0]], state.langA)[a[1]] = v; return changed(); }
     if (t.dataset.item) { var b = t.dataset.item.split(':'); words(p.sections[+b[0]].items[+b[1]], state.langA)[b[2]] = v; return changed(); }
     if (t.dataset.linkUrl) { setLink(t.dataset.linkUrl, v.trim() || 'https://'); return changed(); }
+    if (t.dataset.color) {
+      state.doc.design.colors = state.doc.design.colors || {};
+      state.doc.design.colors[t.dataset.color] = t.value.toUpperCase();
+      var lbl = t.parentNode.querySelector('span'); if (lbl) lbl.textContent = t.value.toUpperCase();
+      return changed();
+    }
     if (t.dataset.footerWord) { var fw = state.doc.footer.words; fw[state.langA] = fw[state.langA] || {}; fw[state.langA][t.dataset.footerWord] = v; return changed(); }
     if (t.dataset.social) {
       var k = t.dataset.social, list = state.doc.links, at = list.findIndex(function (x) { return x.kind === k; });
@@ -627,6 +641,9 @@
 
   $('wsRoot').addEventListener('change', async function (e) {
     var t = e.target, p = currentPage();
+    /* A color settled on: the look cards redraw in it (not while dragging,
+       which would close the picker under the pointer). */
+    if (t.dataset.color) { drawDesign(); return; }
     if (t.dataset.link) {
       /* "Another address" opens a box for it, empty and waiting. */
       setLink(t.dataset.link, t.value === 'url' ? 'https://' : t.value);
@@ -677,6 +694,7 @@
     if (d.secUnphoto) { p.sections[+d.secUnphoto].photo = null; drawSections(); return changed(); }
     if (d.itemAdd) { var sec = p.sections[+d.itemAdd]; sec.items = sec.items || []; sec.items.push({ url: 'https://', photo: null, words: {} }); drawSections(); return; }
     if (d.itemUnphoto) { var up = d.itemUnphoto.split(':'); p.sections[+up[0]].items[+up[1]].photo = null; drawSections(); return changed(); }
+    if (d.colorReset) { state.doc.design.colors[d.colorReset] = null; drawDesign(); return changed(); }
     if (d.footerMenu !== undefined) { state.doc.footer.menu = !state.doc.footer.menu; drawFooter(); return changed(); }
     if (d.itemRemove) { var r = d.itemRemove.split(':'); p.sections[+r[0]].items.splice(+r[1], 1); drawSections(); return changed(); }
     if (d.customAdd !== undefined) { state.doc.links.push({ kind: 'custom', url: 'https://', label: {} }); drawLinks(); return; }

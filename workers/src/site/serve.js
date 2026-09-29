@@ -87,7 +87,10 @@ export async function serveSite(request, env, { sub, rest, base, draft = false }
     ? (await db.queryOne("partner_site_get", { partner_id: row.partner_id })).draft
     : row.published;
   if (!full) return simplePage("Coming soon", "This site is not open yet.", 404);
-  const catalog = (await db.query("languages_all", {})).filter((l) => l.is_active).map((l) => l.code);
+  const active = (await db.query("languages_all", {})).filter((l) => l.is_active);
+  const catalog = active.map((l) => l.code);
+  /* Each language by its own name, for the site's language menu. */
+  const langNames = Object.fromEntries(active.map((l) => [l.code, l.native_name || l.name || l.code]));
   const doc = cleanDoc(JSON.parse(full), catalog);
 
   const url = new URL(request.url);
@@ -118,8 +121,11 @@ export async function serveSite(request, env, { sub, rest, base, draft = false }
     return simplePage("Not available", "This page could not be shown.", 500);
   }
 
+  /* ?part=footer, for the console's Footer tab (Chase, 2026-09-29: "Can the
+     footer preview show ONLY the footer?"). Previews only. */
+  const only = draft && url.searchParams.get("part") === "footer" ? "footer" : null;
   const html = renderPage({
-    doc, payload, lang, pageId, base, draft,
+    doc, payload, lang, pageId, base, draft, only, langNames,
     theme: payload.theme,
     site: { slug: row.slug, display_name: row.display_name, giving_url: row.giving_url, subdomain: row.subdomain },
     origin: siteOrigin(env, request) || url.origin,

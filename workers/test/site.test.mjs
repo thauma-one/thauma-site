@@ -156,20 +156,41 @@ check("a photo opens the link when asked; link cards carry their own pictures", 
   assert(html.includes('<p class="lede m">Worth your time</p>'), "a line under the heading");
 });
 
-check("Classic is chaseroush.com: the serif, the brick, the monogram, the spaced line, a cue to scroll", () => {
-  const d = blankWith([{ type: "hero", variant: "monogram", photo: "https://x.org/map.png",
+check("the owner's colors: a background decides everything that must be read on it", () => {
+  const d = blankWith([{ type: "hero", variant: "monogram", photo: null,
     words: { en: { thin: "All of Me", bold: "for All of Him", text: "Serving churches in Croatia" } }, buttons: [] },
     { type: "timeline", words: { en: { bold: "Journey", text: "Every step" } }, raised: true }],
-    (x) => { x.design.look = "classic"; return x; });
-  const html = page(d);
-  assert(html.includes("Crimson+Pro") && html.includes("Work+Sans"), "the fonts");
-  assert(html.includes("--acc:#A63D40"), "the brick red");
-  assert(html.includes('<span class="mono-mark" aria-hidden="true">CR</span>'), "the initials behind the title");
-  assert(html.includes("All of Me<br><b>for All of Him</b>"), "the title on two lines");
-  assert(html.includes('<p class="spaced m">Serving churches in Croatia</p>'), "the spaced line");
-  assert(html.includes('class="scrollcue"') && html.includes(">Scroll<"), "the cue");
-  assert(/<section class="data raised">/.test(html), "a raised band, centered as data");
-  assert(!page(blankWith([])).includes("Crimson"), "the other looks untouched");
+    (x) => { x.design.colors = { background: "#1a1a1a", accent: "#A63D40" }; return x; });
+  const html = page(d, "home", "en", { payload: { ...payload, milestones: [{ id: "m" }] } });
+  assert(html.includes("--bg:#1A1A1A"), "the background, as chosen");
+  assert(/--fg:#F2F3F5/.test(html), "light words on a dark background");
+  assert(/--acc:#b14144/i.test(html), "the chosen accent, only as much lighter as a dark page needs — not the ministry's");
+  assert(html.includes('data-accent="#A63D40"'), "the widgets wear it too");
+  assert(html.includes('data-theme="dark"'), "and know the page is dark");
+  assert(html.includes('<span class="mono-mark" aria-hidden="true">CR</span>'), "the monogram opening stays, in any look");
+  const light = page(blankWith([], (x) => { x.design.colors = { background: "#FAF7F0", accent: null }; return x; }));
+  assert(/--fg:#15171C/.test(light), "dark words on a light background");
+  eq(cleanDoc({ design: { look: "classic", colors: { background: "red", accent: "#12AB34" } } }, ["en"]).design,
+    { ...cleanDoc({}, ["en"]).design, colors: { background: null, accent: "#12AB34" } }, "Classic opens as Night; only real colors are kept");
+});
+
+check("the language menu is always a dropdown, by each language's own name, on a phone too", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en", "hr", "sr"], fallback: "en" });
+  const html = renderPage({ doc: cleanDoc(d, ["en", "hr", "sr"]), site: { slug: "c", display_name: "Chase Roush", giving_url: "" },
+    payload, theme: payload.theme, lang: "hr", pageId: "home", base: "/site/c", origin: "", draft: false,
+    langNames: { en: "English", hr: "Hrvatski", sr: "Српски" } });
+  const header = html.slice(html.indexOf("<header"), html.indexOf("</header>"));
+  assert(/<details class="langmenu"><summary[^>]*><span>HR<\/span>/.test(header), "in the header, showing the language in use");
+  assert(header.indexOf("langmenu") > header.indexOf("</nav>"), "outside the page menu, so a phone still shows it");
+  assert(html.includes('hreflang="sr" lang="sr">Српски</a>'), "each language by its own name");
+  assert(/<details class="langmenu up">/.test(html.slice(html.indexOf("<footer"))), "and in the footer, opening upward");
+});
+
+check("the Footer tab's preview can be the footer alone", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  const html = page(d, "home", "en", { draft: true, only: "footer" });
+  const body = html.slice(html.indexOf("<body"));
+  assert(body.includes("<footer") && !body.includes("<header") && !body.includes("<main"), "the footer and nothing else");
 });
 
 check("the footer: three layouts, a tagline and small print in each language, the credit always", () => {
