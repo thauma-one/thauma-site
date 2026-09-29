@@ -12,7 +12,7 @@
 import { parseFeed, parseChannelTitle, decodeEntities, resolveSource, feedUrl,
          sourceUrl } from "../src/lib/youtube.js";
 import { syncSource, syncAll } from "../src/lib/video-sync.js";
-import { safeUrl, cleanLinks } from "../src/staff-videos.js";
+import { safeUrl, cleanLinks, isStale } from "../src/staff-videos.js";
 
 let pass = 0, fail = 0;
 async function check(name, fn) {
@@ -299,6 +299,15 @@ await check("one bad channel does not stop the scheduled run", async () => {
 });
 
 /* ------------------------ the optional button rail ----------------------- */
+
+await check("the tab re-reads a feed older than one run of the schedule, or never read", async () => {
+  /* wrangler dev never fires the schedule, so on the Pi opening the tab is
+     the only thing that ever re-reads the feed (found 2026-09-28). */
+  const now = "2026-09-28T12:00:00.000Z";
+  if (isStale("2026-09-28T11:50:00.000Z", now)) throw new Error("ten minutes old is fresh");
+  if (!isStale("2026-09-28T11:40:00.000Z", now)) throw new Error("twenty minutes old is stale");
+  if (!isStale(null, now)) throw new Error("never read is stale");
+});
 
 await check("ONLY http AND https EVER BECOME A BUTTON", async () => {
   /* This value becomes an href in a widget on a stranger's website. A

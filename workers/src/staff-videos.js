@@ -161,6 +161,12 @@ async function state(db, partnerId) {
   };
 }
 
+/** Older than one run of the schedule (every 15 minutes), or never read. */
+export function isStale(syncedAt, now) {
+  const at = Date.parse(syncedAt || "");
+  return !Number.isFinite(at) || Date.parse(now) - at > 15 * 60 * 1000;
+}
+
 export default {
   async fetch(request, env) {
     const s = await scopeFor(request, env);
@@ -180,6 +186,15 @@ export default {
     }, actor);
 
     if (request.method === "GET") {
+      /* STALE, SO READ IT NOW. The quarter-hourly schedule is the normal way
+         the shelf stays current — but `wrangler dev` (the Pi, dev.thauma.one)
+         never fires scheduled jobs, so there a video made public on YouTube
+         never appeared until somebody pressed Check now (found 2026-09-28).
+         Opening the tab with a sync older than the schedule's interval runs
+         the same sync the schedule would have. Everywhere the schedule does
+         run this is a no-op; a failed read keeps the old videos, as always. */
+      const channel = await db.queryOne("video_source_get", { partner_id: partnerId });
+      if (channel && isStale(channel.synced_at, now)) await syncSource(db, channel, { now });
       return json(shell(await state(db, partnerId)));
     }
 
