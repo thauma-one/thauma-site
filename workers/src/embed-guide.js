@@ -33,7 +33,7 @@ export function embedGuide(origin, slug, displayName) {
 
   return `# ${displayName} — public data
 
-A single JSON document with this ministry's published goals, roadmap, prayer
+A single JSON document with this ministry's published goals, timeline (its milestones), prayer
 and videos.
 No key, no sign-up, no rate limit worth worrying about.
 
@@ -90,7 +90,7 @@ track.
 \`actual_date\` is \`null\` for anything not yet scheduled. Two traps:
 
 - \`new Date(null)\` is **1 January 1970**, not an invalid date. Sort naively
-  and every undated milestone jumps to the front of your roadmap.
+  and every undated milestone jumps to the front of your timeline.
 - Undated entries belong at the END of a chronological list.
 
 Guard the null explicitly before comparing dates.

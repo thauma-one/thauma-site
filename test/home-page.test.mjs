@@ -129,7 +129,7 @@ await check("not finished: each with the button that does it", async () => {
 
 await check("waiting for translation: a chip per language, in the ministry's order", async () => {
   const { d, text } = await boot();
-  eq(text("#hmLangRows .hm-nm"), ["Milestones"], "only sections with gaps");
+  eq(text("#hmLangRows .hm-nm"), ["Timeline"], "only sections with gaps");
   eq(text("#hmLangRows .hm-chip"), ["HR 1", "SR 2"], "chips");
   assert(d.querySelector("#hmLangRows .hm-chip").title.includes("Hrvatski"), "the chip's title names the language");
   eq(d.querySelector("#hmLangRows a").getAttribute("href"), "/staff/updates/#milestones", "Translate goes there");

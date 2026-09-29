@@ -496,6 +496,13 @@ They share a word and nothing else. The partner API never uses the word
 timeline" cannot be resolved to the wrong table by someone moving quickly.
 This is the single most dangerous ambiguity in the system.
 
+**What people see (2026-09-28, Chase's choice):** the public thing is the
+**Timeline**, and its entries are **milestones** — the Updates tab, the
+Sharing widget and the API-key part all say Timeline. The supporter side is
+called **History** on screen. The code is unchanged and still never says
+"timeline" for either: the table is `milestones`, the embed kind is
+`roadmap`, and the private history is `interactions`.
+
 ### The fourth gate: content, not shape
 
 The three guarantees above all constrain the **shape** of a response.
