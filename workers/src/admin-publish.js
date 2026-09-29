@@ -253,9 +253,11 @@ async function act(request, env, db, user, me) {
       who: (me && me.user_name) || user.email });
   } catch (err) {
     return json({ error: `Dev's data could not be copied to ${action === "publish" ? "the live site" : "the preview"}: ` +
-      `${err.message}. Nothing was built.`, action }, 502);
+      `${err.message}. Nothing was built.`, action }, 500);
   }
-  if (carried.error) return json({ error: carried.error, action }, 502);
+  /* 500, not 502: in front of the Pi, Cloudflare replaces a 502 with its own
+     HTML page, and this sentence never reached the screen (2026-09-29). */
+  if (carried.error) return json({ error: carried.error, action }, 500);
 
   const workflow = action === "publish" ? PROD_WORKFLOW : STAGING_WORKFLOW;
   const res = await dispatchWorkflow(env, workflow, branch);

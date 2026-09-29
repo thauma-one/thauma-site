@@ -274,11 +274,24 @@ function withPieces(t, pk, row, cols) {
 export function planReplace(order, rowsByTable, meta, far = {}) {
   const tables = order.filter((t) => meta[t] && !SKIP_TABLES.has(t));
   const hasProtected = meta.users && meta.users.cols.includes("protected");
+  /* What the master account itself points at — its language, on staging —
+     cannot be deleted from under it either (found on the first real Preview:
+     DELETE FROM languages failed its foreign key). Those rows stay and are
+     written over like the account is. */
+  const heldBy = {};
+  if (hasProtected) {
+    for (const fk of meta.users.fks || []) {
+      if (fk.table === "users") continue;
+      (heldBy[fk.table] = heldBy[fk.table] || []).push(
+        `${fk.to} NOT IN (SELECT ${fk.from} FROM users WHERE protected = 1 AND ${fk.from} IS NOT NULL)`);
+    }
+  }
   const deletes = [...tables].reverse().map((t) => {
     if (hasProtected && t === "users") return { sql: "DELETE FROM users WHERE protected = 0", params: [] };
     if (hasProtected && t === "user_roles") {
       return { sql: "DELETE FROM user_roles WHERE user_id NOT IN (SELECT id FROM users WHERE protected = 1)", params: [] };
     }
+    if (heldBy[t]) return { sql: `DELETE FROM ${t} WHERE ${heldBy[t].join(" AND ")}`, params: [] };
     return { sql: `DELETE FROM ${t}`, params: [] };
   });
   const scrubbed = {};

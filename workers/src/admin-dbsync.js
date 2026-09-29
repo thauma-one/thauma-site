@@ -204,7 +204,7 @@ export default {
     if (direction === "push") {
       const done = await carry(env, { target: "staging", branch: env.STAGING_BRANCH || "dev",
         who: (gate.me && gate.me.user_name) || gate.user.email });
-      if (done.error) return json({ error: done.error }, 502);
+      if (done.error) return json({ error: done.error }, 500);
       return json({ done: "push", rows: done.rows, migrations: done.migrations, remote: done.database });
     }
 

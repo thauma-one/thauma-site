@@ -107,7 +107,11 @@ await check("Publish: dev's account and ministry reach live, onto live's own min
 });
 
 await check("Preview: staging becomes dev's copy, except the master account it cannot lose", async () => {
-  const stg = built(fs.readFileSync(ROOT + "db/seed.dev.sql", "utf8"));
+  /* The real staging's master account has English set, and the first real
+     Preview died deleting the language it points at. */
+  const stg = built(fs.readFileSync(ROOT + "db/seed.dev.sql", "utf8") +
+    "\nUPDATE users SET protected = 1, preferred_lang = 'en' WHERE email = 'admin@thauma.one';");
+  assert(one(stg, "SELECT preferred_lang AS l FROM users WHERE protected = 1").l === "en", "the master account has a language");
   assert(one(stg, "SELECT 1 AS x FROM users WHERE email = 'chase@thauma.one'"), "staging starts with the old seed account");
   const env = { DB: binding(dev), SYNC_ACCOUNT_ID: "a", SYNC_D1_TOKEN: "t", SYNC_REMOTE_DB: "stg" };
   await carry(env, { target: "staging", branch: "dev", who: "t", migrate: false, fetchImpl: d1({ stg }) });

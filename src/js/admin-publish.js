@@ -526,7 +526,11 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      body = await res.json();
+      /* The server answered, even if with an HTML error page rather than
+         JSON — that is a refusal with a status, not a lost connection
+         (2026-09-29: a Preview failure read "Cannot reach the server"). */
+      var text = await res.text();
+      try { body = JSON.parse(text); } catch (e2) { body = { error: tr('err.refused') + ' (' + res.status + ')' }; }
     } catch (e) {
       toast(tr('err.unreachable') + ' ' + e.message, 'err');
       busy = false;
