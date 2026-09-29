@@ -587,7 +587,7 @@ footer{flex-shrink:0;background:var(--bg2);border-top:1px solid rgba(255,255,255
 .foot-tag{font-family:'Sora',sans-serif;font-weight:200;letter-spacing:.08em;color:var(--foam)}
 .foot-legal{font-size:12px;opacity:.85}
 /* Contact and Stay connected, under the tagline (2026-09-28). Quiet, the
-   way a footer's links are: the footer's own grey, no underline, the
+   way a footer's links are: the footer's own gray, no underline, the
    ministry voice only on hover — like the social icons beside them.
    (They were white and underlined at first; Chase: "blend in more with
    the background like other sites".) */
