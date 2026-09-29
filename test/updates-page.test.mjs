@@ -64,7 +64,7 @@ const DATA = () => ({
     milestones: [], goals: [{ id: "g1", label: "Cameras" }], prayer: [], videos: [], shared: [] },
 });
 
-async function boot({ oneLanguage = false } = {}) {
+async function boot({ oneLanguage = false, milestones = null } = {}) {
   const dom = new JSDOM(readFileSync(PAGE, "utf8"), {
     runScripts: "outside-only", pretendToBeVisual: true,
     url: "https://next.thauma.one/staff/updates/",
@@ -73,6 +73,7 @@ async function boot({ oneLanguage = false } = {}) {
   const sent = [];
   const toasts = [];
   const data = DATA();
+  if (milestones) data["staff-milestones"].milestones = milestones;
   if (oneLanguage) for (const k of Object.keys(data)) if (data[k].languages) data[k].languages = [LANGS[0]];
   w.fetch = async (url, opts = {}) => {
     url = String(url);
@@ -108,6 +109,19 @@ async function boot({ oneLanguage = false } = {}) {
   };
   return { w, d, sent, toasts, click, row, bar, publish, done };
 }
+
+await check("milestones are listed by date, undated last, each sub-milestone under its parent", async () => {
+  /* Chase, 2026-09-28: by sort date, not by when each was created. Given
+     here in creation order, which is how the list used to show them. */
+  const m = (id, date, parent = null) => ({ id, status: "upcoming", completion: 0, actual_date: date,
+    parent_id: parent, is_public: true, is_featured: false,
+    text: { en: { title: id, description: null, target_label: null } } });
+  const { d } = await boot({ milestones: [m("visa", "2027-04-01"), m("undated", ""), m("board", "2026-09-01"),
+    m("submit", "2027-06-01", "visa"), m("prints", "2027-04-10", "visa"), m("move", "2027-09-30")] });
+  const order = [...d.querySelectorAll("#msList .ms-row")].map((r) => r.dataset.id);
+  if (JSON.stringify(order) !== JSON.stringify(["board", "visa", "prints", "submit", "move", "undated"]))
+    throw new Error("order " + JSON.stringify(order));
+});
 
 await check("every row carries its own published switch, and nothing is waiting on arrival", async () => {
   const { d, row, bar } = await boot();

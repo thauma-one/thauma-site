@@ -39,7 +39,25 @@
       JSON.stringify(state.saved[id]) !== JSON.stringify(state.draft[id]);
   }
   function dirtyIds() { return state.order.filter(isDirty); }
-  function list() { return state.order.map(function (id) { return state.draft[id]; }); }
+  /* BY DATE (Chase, 2026-09-28), the working copy's dates, so the list
+     re-sorts the moment one changes: undated last, each sub-milestone right
+     under its parent in its own date order. A child whose parent is gone
+     stands on its own. */
+  function list() {
+    var rows = state.order.map(function (id) { return state.draft[id]; });
+    var at = function (m) { var t = m.actual_date ? Date.parse(m.actual_date) : NaN; return isNaN(t) ? Infinity : t; };
+    var byDate = function (a, b) { return at(a) - at(b); };
+    var ids = {};
+    rows.forEach(function (m) { ids[m.localId || m.id] = true; });
+    var roots = rows.filter(function (m) { return !m.parent_id || !ids[m.parent_id]; }).sort(byDate);
+    var out = [];
+    roots.forEach(function (r) {
+      out.push(r);
+      rows.filter(function (m) { return m.parent_id && m.parent_id === (r.localId || r.id); })
+        .sort(byDate).forEach(function (c) { out.push(c); });
+    });
+    return out;
+  }
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {

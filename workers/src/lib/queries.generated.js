@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "ba65c92c94226feb";
+export const SOURCE_DIGEST = "4ea51e994369c684";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -539,7 +539,7 @@ WHERE milestones.partner_id = :partner_id;`,
   is_public, is_featured, sort_order, created_at, updated_at
 FROM milestones
 WHERE partner_id = :partner_id
-ORDER BY sort_order ASC, (actual_date IS NULL), actual_date ASC;`,
+ORDER BY (actual_date IS NULL), actual_date ASC, sort_order ASC;`,
   partner_language_set: `INSERT INTO partner_languages (partner_id, lang, is_enabled, sort_order)
 VALUES (:partner_id, :lang, :is_enabled, :sort_order)
 ON CONFLICT(partner_id, lang) DO UPDATE SET
@@ -721,7 +721,7 @@ ORDER BY t.milestone_id, l.sort_order;`,
 FROM milestones
 WHERE partner_id = :partner_id
   AND is_public = 1
-ORDER BY sort_order ASC, (actual_date IS NULL), actual_date ASC;`,
+ORDER BY (actual_date IS NULL), actual_date ASC, sort_order ASC;`,
   public_partner_for_embed: `SELECT id, slug, display_name, embed_accent, embed_accent2, embed_theme, embed_turn,
        timeline_start, timeline_end,
        embed_roadmap, embed_goal, embed_prayer, embed_videos

@@ -218,7 +218,9 @@ SELECT
   is_public, is_featured, sort_order, created_at, updated_at
 FROM milestones
 WHERE partner_id = :partner_id
-ORDER BY sort_order ASC, (actual_date IS NULL), actual_date ASC;
+-- By its date (Chase, 2026-09-28), undated last; sort_order only ever
+-- recorded creation order, so it settles ties.
+ORDER BY (actual_date IS NULL), actual_date ASC, sort_order ASC;
 
 
 -- name: milestone_translations_for_staff
@@ -1445,7 +1447,9 @@ SELECT
 FROM milestones
 WHERE partner_id = :partner_id
   AND is_public = 1
-ORDER BY sort_order ASC, (actual_date IS NULL), actual_date ASC;
+-- By its date (Chase, 2026-09-28), undated last; sort_order only ever
+-- recorded creation order, so it settles ties.
+ORDER BY (actual_date IS NULL), actual_date ASC, sort_order ASC;
 
 
 -- name: public_milestone_translations
