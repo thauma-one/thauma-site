@@ -17,80 +17,35 @@
 
 /* ---------------------------------------------------------------- words -- */
 
-/* The site's own words, for the languages Thauma already speaks. A language
-   added later starts from English and the owner writes its words. */
-const W = {
-  en: {
-    home: "Home", about: "About", mission: "Mission", timeline: "Timeline", updates: "Updates",
-    give: "Give", stay: "Stay connected", resources: "Resources", contact: "Contact",
-    giveBtn: "Give", stayBtn: "Stay connected", heroThin: "Follow the work of", heroText:
-      "News, prayer and the road ahead — all in one place.",
-    aboutThin: "Who", aboutBold: "we are", missionThin: "Why", missionBold: "we go",
-    timelineThin: "The road", timelineBold: "so far", goalsThin: "Where giving", goalsBold: "stands",
-    videosThin: "Watch", videosBold: "the latest", signupThin: "Stay", signupBold: "in touch",
-    giveThin: "Stand with", giveBold: "the work", giveText: "Every gift, monthly or once, keeps this work going.",
-    prayerThin: "Pray", prayerBold: "with us", newsThin: "Past", newsBold: "updates",
-    contactThin: "Say", contactBold: "hello", resourcesThin: "Worth", resourcesBold: "reading",
-    lang: "Language", menu: "Menu", poweredBy: "A Thauma site", scroll: "Scroll", more: "Read more",
-    homeFill: "Tell your story here: who you are, where you serve, and why it matters. Replace these words with your own.",
-    pastNews: "See past newsletters", readIt: "Read it",
-    emptyPreview: "This section shows here once it has something in it. Only you can see this note.",
-  },
-  hr: {
-    home: "Početna", about: "O nama", mission: "Misija", timeline: "Vremenska crta", updates: "Novosti",
-    give: "Darujte", stay: "Ostanimo povezani", resources: "Resursi", contact: "Kontakt",
-    giveBtn: "Daruj", stayBtn: "Ostanimo povezani", heroThin: "Pratite rad —",
-    heroText: "Novosti, molitva i put pred nama — sve na jednom mjestu.",
-    aboutThin: "Tko", aboutBold: "smo", missionThin: "Zašto", missionBold: "idemo",
-    timelineThin: "Put", timelineBold: "do sada", goalsThin: "Gdje stoji", goalsBold: "darivanje",
-    videosThin: "Pogledajte", videosBold: "najnovije", signupThin: "Ostanimo", signupBold: "u kontaktu",
-    giveThin: "Stanite uz", giveBold: "ovaj rad", giveText: "Svaki dar, mjesečni ili jednokratni, drži ovaj rad živim.",
-    prayerThin: "Molite", prayerBold: "s nama", newsThin: "Prošle", newsBold: "novosti",
-    contactThin: "Javite", contactBold: "se", resourcesThin: "Vrijedi", resourcesBold: "pročitati",
-    lang: "Jezik", menu: "Izbornik", poweredBy: "Stranica Thaume", scroll: "Dolje", more: "Pročitajte više",
-    homeFill: "Ovdje ispričajte svoju priču: tko ste, gdje služite i zašto je to važno. Zamijenite ove riječi svojima.",
-    pastNews: "Pogledajte prošle novosti", readIt: "Pročitajte",
-    emptyPreview: "Ovaj se odjeljak prikazuje ovdje kad u njemu nešto bude. Ovu bilješku vidite samo vi.",
-  },
-  sr: {
-    home: "Почетна", about: "О нама", mission: "Мисија", timeline: "Временска линија", updates: "Новости",
-    give: "Дарујте", stay: "Останимо повезани", resources: "Ресурси", contact: "Контакт",
-    giveBtn: "Даруј", stayBtn: "Останимо повезани", heroThin: "Пратите рад —",
-    heroText: "Новости, молитва и пут пред нама — све на једном месту.",
-    aboutThin: "Ко", aboutBold: "смо", missionThin: "Зашто", missionBold: "идемо",
-    timelineThin: "Пут", timelineBold: "до сада", goalsThin: "Где стоји", goalsBold: "даривање",
-    videosThin: "Погледајте", videosBold: "најновије", signupThin: "Останимо", signupBold: "у контакту",
-    giveThin: "Станите уз", giveBold: "овај рад", giveText: "Сваки дар, месечни или једнократни, држи овај рад живим.",
-    prayerThin: "Молите", prayerBold: "са нама", newsThin: "Претходне", newsBold: "новости",
-    contactThin: "Јавите", contactBold: "се", resourcesThin: "Вреди", resourcesBold: "прочитати",
-    lang: "Језик", menu: "Мени", poweredBy: "Сајт Thauma", scroll: "Доле", more: "Прочитајте више",
-    homeFill: "Овдје испричајте своју причу: ко сте, гдје служите и зашто је то важно. Замијените ове ријечи својим.",
-    pastNews: "Погледајте претходне новости", readIt: "Прочитајте",
-    emptyPreview: "Овај се одјељак приказује овдје кад у њему нешто буде. Ову биљешку видите само ви.",
-  },
-  sl: {
-    home: "Domov", about: "O nas", mission: "Poslanstvo", timeline: "Časovnica", updates: "Novice",
-    give: "Podarite", stay: "Ostanimo povezani", resources: "Viri", contact: "Kontakt",
-    giveBtn: "Podari", stayBtn: "Ostanimo povezani", heroThin: "Spremljajte delo —",
-    heroText: "Novice, molitev in pot pred nami — vse na enem mestu.",
-    aboutThin: "Kdo", aboutBold: "smo", missionThin: "Zakaj", missionBold: "gremo",
-    timelineThin: "Pot", timelineBold: "do zdaj", goalsThin: "Kje je", goalsBold: "darovanje",
-    videosThin: "Poglejte", videosBold: "najnovejše", signupThin: "Ostanimo", signupBold: "v stiku",
-    giveThin: "Stojte ob", giveBold: "tem delu", giveText: "Vsak dar, mesečni ali enkratni, ohranja to delo živo.",
-    prayerThin: "Molite", prayerBold: "z nami", newsThin: "Pretekle", newsBold: "novice",
-    contactThin: "Oglasite", contactBold: "se", resourcesThin: "Vredno", resourcesBold: "branja",
-    lang: "Jezik", menu: "Meni", poweredBy: "Stran Thauma", scroll: "Navzdol", more: "Preberite več",
-    homeFill: "Tukaj povejte svojo zgodbo: kdo ste, kje služite in zakaj je to pomembno. Te besede zamenjajte s svojimi.",
-    pastNews: "Oglejte si pretekle novice", readIt: "Preberite",
-    emptyPreview: "Ta del se prikaže tukaj, ko bo v njem kaj. To opombo vidite samo vi.",
-  },
-};
+/* THE SITE'S OWN WORDS — page names, "Give", "Read more", the starting
+   headings — live in src/_data/emailsAndForms.json ("site"), beside the
+   widgets' and the emails' words, not in this file (Chase, 2026-09-29: "Are
+   all of these controls added to the global language settings as well? Like
+   if Thauma was to add another language?"). There they are edited on the
+   Content page and translated on the Translate page like every other word
+   Thauma writes for a visitor, so a language Thauma adds is a language a
+   partner site speaks without anybody changing this code. A word a
+   language has not been given yet is its English one. */
+import { wordsFor as sharedWords } from "../lib/mail-i18n.js";
+
+let WORDS = null;
+function words() {
+  if (!WORDS) {
+    WORDS = {};
+    for (const [lang, table] of Object.entries(sharedWords("site."))) {
+      WORDS[lang] = {};
+      for (const [k, v] of Object.entries(table)) WORDS[lang][k.slice(5)] = v;
+    }
+  }
+  return WORDS;
+}
 
 /** A built-in word in a language, English where that language has none. */
 export function word(lang, key) {
-  return (W[lang] && W[lang][key]) || W.en[key] || "";
+  const W = words();
+  return (W[lang] && W[lang][key]) || (W.en && W.en[key]) || "";
 }
-export const BUILT_IN_LANGS = Object.keys(W);
+export function builtInLangs() { return Object.keys(words()); }
 
 /* ---------------------------------------------------------------- pages -- */
 

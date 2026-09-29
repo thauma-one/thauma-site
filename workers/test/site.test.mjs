@@ -7,6 +7,8 @@ import { subdomainFrom, validSubdomain, cleanDoc, starter, safeUrl, safePhoto, P
 import { renderPage, esc } from "../src/site/render.js";
 import { pickLang } from "../src/site/serve.js";
 import { removeSiteDns } from "../src/lib/site-dns.js";
+import { word } from "../src/site/model.js";
+import { readFileSync } from "node:fs";
 
 let pass = 0, fail = 0;
 const check = (name, fn) => {
@@ -288,6 +290,16 @@ await checkAsync("taking an address down removes only the record Thauma made", a
   const r = await removeSiteDns({ SITE_DNS_TOKEN: "t", SITE_ZONE_ID: "z" }, "chaseroush", fake);
   eq(r.state, "removed", "done");
   eq(seen.filter((x) => x.startsWith("DELETE")), ["DELETE /dns_records/r1"], "the mail record stays");
+});
+
+check("the site's own words come from the wording file Thauma translates, so a new language needs no code", () => {
+  const file = JSON.parse(readFileSync(new URL("../../src/_data/emailsAndForms.json", import.meta.url), "utf8"));
+  for (const lang of Object.keys(file)) {
+    assert(file[lang].site, `${lang} has no "site" words in emailsAndForms.json`);
+    eq(word(lang, "give"), file[lang].site.give, `${lang}: the menu's Give`);
+    eq(word(lang, "pastNews"), file[lang].site.pastNews, `${lang}: past newsletters`);
+  }
+  eq(word("de", "readIt"), file.en.site.readIt, "a language not given a word yet reads English");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);
