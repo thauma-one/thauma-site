@@ -22,7 +22,7 @@
 
   var API = '/api/staff-site';
   var $ = function (id) { return document.getElementById(id); };
-  var state = { body: null, doc: null, tab: 'pages', page: null, langA: null, langB: null,
+  var state = { body: null, doc: null, tab: 'design', page: null, langA: null, langB: null,
                 timer: null, saving: false, again: false, frameTimer: null };
 
   function esc(s) {
@@ -43,15 +43,15 @@
     photoText: { variants: ['left', 'right', 'above'], words: ['thin', 'bold', 'text', 'button'], photo: true, link: 'both' },
     photo: { variants: ['drift', 'still', 'zoom'], words: ['caption'], photo: true, link: 'photo' },
     quote: { variants: ['large', 'quiet'], words: ['quote', 'who'] },
-    timeline: { variants: ['condensed', 'full'], words: ['thin', 'bold', 'text'], data: 'updates/#milestones' },
-    goals: { variants: ['cards'], words: ['thin', 'bold', 'text'], data: 'updates/#goals' },
-    prayer: { variants: ['list'], words: ['thin', 'bold', 'text'], data: 'updates/#prayer' },
-    videos: { variants: ['stage'], words: ['thin', 'bold', 'text'], data: 'updates/#videos' },
-    newsletters: { variants: ['list'], words: ['thin', 'bold', 'text'], data: 'mail/' },
+    timeline: { variants: ['condensed', 'full'], words: ['thin', 'bold', 'text'], data: 'updates/#milestones', align: true },
+    goals: { variants: ['cards'], words: ['thin', 'bold', 'text'], data: 'updates/#goals', align: true },
+    prayer: { variants: ['list'], words: ['thin', 'bold', 'text'], data: 'updates/#prayer', align: true },
+    videos: { variants: ['stage'], words: ['thin', 'bold', 'text'], data: 'updates/#videos', align: true },
+    newsletters: { variants: ['latest', 'list'], words: ['thin', 'bold', 'text'], data: 'mail/', align: true },
     signup: { variants: ['band', 'card'], words: ['thin', 'bold', 'text'], data: 'sharing/#signup' },
-    contact: { variants: ['form'], words: ['thin', 'bold', 'text'], data: 'sharing/#contact' },
+    contact: { variants: ['form'], words: ['thin', 'bold', 'text'], data: 'sharing/#contact', align: true },
     give: { variants: ['band', 'card'], words: ['thin', 'bold', 'text', 'button'] },
-    links: { variants: ['list', 'cards'], words: ['thin', 'bold', 'text'], items: true },
+    links: { variants: ['list', 'cards'], words: ['thin', 'bold', 'text'], items: true, align: true },
   };
   /* Everything but the opening and a full-width photo can sit on a raised band. */
   var FLAT = { hero: 1, photo: 1 };
@@ -99,6 +99,7 @@
 
   function changed(redrawPreview) {
     if (!canEdit()) return;
+    drawDots();
     $('wsSaved').textContent = tr('ws.saving');
     clearTimeout(state.timer);
     state.timer = setTimeout(save, 650);
@@ -162,7 +163,7 @@
       h.innerHTML = esc(fill('ws.theirs', { name: body.owner.name || body.partner.display_name })).replace(/\s(\S+)$/, ' <b>$1</b>');
     }
     document.body.classList.toggle('ws-readonly', !body.can.edit);
-    drawStatus(); drawAsk(); drawBar(); fillPair(); draw();
+    drawStatus(); drawAsk(); drawBar(); fillPair(); draw(); drawDots();
   }
 
   function drawStatus() {
@@ -198,6 +199,39 @@
   $('wsAskBtn').addEventListener('click', function () {
     act({ action: 'request', note: $('wsAskNote').value.trim() }, tr('ws.askSent'));
   });
+
+  /* ---- which parts have changes not yet published ------------------- */
+
+  /* Each tab's part of the site, as text to compare. A tab shows its dot while
+     its part of the working copy differs from what visitors see (Chase,
+     2026-09-29) — on every tab, not only the one being edited. */
+  function areas(doc) {
+    var d = JSON.parse(JSON.stringify(doc.design)); var head = d.headerLinks; delete d.headerLinks;
+    return {
+      design: JSON.stringify(d),
+      pages: JSON.stringify(doc.pages),
+      links: JSON.stringify([doc.links, head]),
+      footer: JSON.stringify(doc.footer),
+      settings: JSON.stringify([doc.languages, doc.fallback, doc.give]),
+    };
+  }
+  function pageChanged(p) {
+    var pub = state.body.published;
+    if (!pub) return false;
+    var was = pub.pages.filter(function (x) { return x.id === p.id; })[0];
+    return JSON.stringify(p) !== JSON.stringify(was);
+  }
+  function drawDots() {
+    var pub = state.body && state.body.published;
+    var now = areas(state.doc), was = pub ? areas(pub) : null;
+    [].forEach.call(document.querySelectorAll('[data-ws-tab]'), function (b) {
+      var dot = b.querySelector('.ws-dot');
+      if (!dot) return;
+      var t = b.getAttribute('data-ws-tab');
+      dot.hidden = !was || now[t] === was[t];
+      dot.title = dot.hidden ? '' : tr('ws.changedHere');
+    });
+  }
 
   function drawBar() {
     var show = canEdit() && state.body.site.unpublished;
@@ -289,21 +323,27 @@
   function pageLabel(p, lang) {
     return (p.label && p.label[lang]) || tr('ws.page.' + p.id);
   }
-  /* Where something sends a visitor: nowhere, one of the site's pages, or an
-     address typed out. `key` is what the change handler finds it by. A page
-     that is switched off is still offered, marked, and the link simply does
-     not show until the page does. */
+  /* WHERE SOMETHING SENDS A VISITOR: first what kind — nothing, one of the
+     site's pages, or a web address — as three plain choices; then only the
+     one thing that kind needs. (Chase, 2026-09-29, of the dropdown's
+     "Another address…": "I don't know what that is there for.") A page that
+     is switched off is still offered, marked; the link shows once it is on. */
   function linkPicker(key, value, allowNone) {
-    var v = value || '', isUrl = v && v.indexOf('page:') !== 0;
-    var opts = (allowNone ? '<option value="">' + esc(tr('ws.link.none')) + '</option>' : '') +
-      '<optgroup label="' + esc(tr('ws.link.pages')) + '">' + state.doc.pages.map(function (p) {
+    var v = value || '';
+    var kind = !v ? 'none' : v.indexOf('page:') === 0 ? 'page' : 'url';
+    var kinds = (allowNone ? ['none'] : []).concat(['page', 'url']);
+    var html = chips('linkkind:' + key, kinds, kind, function (k) { return tr('ws.link.kind.' + k); });
+    if (kind === 'page') {
+      html += '<select data-link="' + esc(key) + '">' + state.doc.pages.map(function (p) {
         var name = pageLabel(p, state.langA);
         return '<option value="page:' + esc(p.id) + '"' + (v === 'page:' + p.id ? ' selected' : '') + '>' +
           esc(p.on ? name : fill('ws.link.hidden', { page: name })) + '</option>';
-      }).join('') + '</optgroup>' +
-      '<option value="url"' + (isUrl ? ' selected' : '') + '>' + esc(tr('ws.link.url')) + '</option>';
-    return '<span class="ws-link"><select data-link="' + esc(key) + '">' + opts + '</select>' +
-      (isUrl ? '<input type="url" data-link-url="' + esc(key) + '" value="' + esc(v === 'https://' ? '' : v) + '" placeholder="https://">' : '') + '</span>';
+      }).join('') + '</select>';
+    }
+    if (kind === 'url') {
+      html += '<input type="url" data-link-url="' + esc(key) + '" value="' + esc(v === 'https://' ? '' : v) + '" placeholder="https://…">';
+    }
+    return '<span class="ws-link">' + html + '</span>';
   }
 
   /* ---- Pages ----------------------------------------------------------- */
@@ -320,7 +360,7 @@
             '<button type="button" class="ws-icon" data-page-up="' + i + '" aria-label="' + esc(tr('ws.up')) + '"' + (i === 0 ? ' disabled' : '') + '>↑</button>' +
             '<button type="button" class="ws-icon" data-page-down="' + i + '" aria-label="' + esc(tr('ws.down')) + '"' + (i === pages.length - 1 ? ' disabled' : '') + '>↓</button>' +
           '</span>' +
-          '<span class="ws-pname">' + esc(tr('ws.page.' + p.id)) + '</span>' +
+          '<span class="ws-pname">' + esc(tr('ws.page.' + p.id)) + (pageChanged(p) ? '<i class="ws-dot" title="' + esc(tr('ws.changedHere')) + '"></i>' : '') + '</span>' +
           '<label class="ws-plabel"><span class="sr-only">' + esc(tr('ws.inMenu')) + '</span>' + ref(p.label) +
             '<input type="text" maxlength="40" data-page-label="' + i + '" value="' + esc((p.label || {})[state.langA] || '') + '" placeholder="' + esc(tr('ws.page.' + p.id)) + '" lang="' + esc(state.langA) + '"></label>' +
           (p.id === 'home' ? '<span class="ws-always">' + esc(tr('ws.always')) + '</span>'
@@ -378,6 +418,10 @@
         linkPicker('sec:' + i, s.link, true) +
         (spec.link === 'both' && s.link && s.photo ? '<label class="chk"><input type="checkbox" data-sec-photolink="' + i + '"' + (s.photoLink ? ' checked' : '') + '><span>' + esc(tr('ws.link.photoToo')) + '</span></label>' : '') +
         '</div>';
+    }
+    if (spec.align) {
+      html += '<div class="ws-sec-row"><span class="ws-small">' + esc(tr('ws.align')) + '</span>' +
+        chips('align:' + i, ['center', 'left'], s.align || 'center', function (v) { return tr('ws.align.' + v); }) + '</div>';
     }
     if (!FLAT[s.type]) {
       html += '<div class="ws-sec-row"><span class="ws-small">' + esc(tr('ws.bg')) + '</span>' +
@@ -500,6 +544,12 @@
       row(tr('ws.brand'), chips('brand', ['name', 'logo'], d.brand, function (v) { return v === 'name' ? name : tr('ws.brand.logo'); }) +
         (d.brand === 'logo' ? (d.logo ? '<img class="ws-logo" src="' + esc(d.logo) + '" alt="">' : '') +
           '<label class="ghost-btn sm ws-file">' + esc(d.logo ? tr('ws.changePhoto') : tr('ws.chooseLogo')) + '<input type="file" accept="image/*" data-logo hidden></label>' : '')) +
+      /* The little picture in the browser tab. */
+      row(tr('ws.favicon'), (d.favicon ? '<img class="ws-favicon" src="' + esc(d.favicon) + '" alt="">' : '') +
+        '<label class="ghost-btn sm ws-file">' + esc(d.favicon ? tr('ws.changePhoto') : tr('ws.choosePhoto')) +
+        '<input type="file" accept="image/*" data-favicon hidden></label>' +
+        (d.favicon ? '<button type="button" class="link-btn" data-unfavicon>' + esc(tr('ws.removePhoto')) + '</button>' : '') +
+        '<span class="hint"></span>') +
       '</div><div class="ws-head"><h2>' + esc(tr('ws.motion')) + '</h2></div><div class="ws-rows">' +
       Object.keys(MOTION).map(function (k) {
         return row(tr('ws.m.' + k), chips('motion:' + k, MOTION[k], d.motion[k], function (v) { return tr('ws.m.' + k + '.' + v); }));
@@ -549,7 +599,18 @@
     var f = state.doc.footer || (state.doc.footer = { layout: 'split', menu: false, socials: 'icons', words: {} });
     var w = (f.words || {})[state.langA] || {};
     var src = function (k) { var o = {}; Object.keys(f.words || {}).forEach(function (l) { o[l] = (f.words[l] || {})[k]; }); return o; };
-    var html = '<div class="ws-head"><h2>' + esc(tr('ws.footer.layout')) + '</h2></div><div class="ws-looks ws-foots">' + FOOTERS.map(function (k) {
+    /* WHAT IS IN IT, and where that comes from (Chase, 2026-09-29: "How do
+       the footer links populate? I don't see any."): the social and other
+       links from the Links tab, and the pages if switched on below. */
+    var inIt = state.doc.links.filter(function (l) { return l.url && l.url !== 'https://'; }).map(function (l) {
+      return l.kind === 'custom' ? ((l.label || {})[state.langA] || l.url.replace(/^page:/, '')) : SOCIAL_NAME[l.kind];
+    });
+    if (f.menu) inIt = state.doc.pages.filter(function (p) { return p.on; }).map(function (p) { return pageLabel(p, state.langA); }).concat(inIt);
+    var html = '<div class="ws-head"><h2>' + esc(tr('ws.footer.has')) + '</h2></div><div class="ws-infoot">' +
+      (inIt.length ? inIt.map(function (x) { return '<span class="ws-pill">' + esc(x) + '</span>'; }).join('')
+                   : '<span class="ws-small">' + esc(tr('ws.footer.nothing')) + '</span>') +
+      '<button type="button" class="ghost-btn sm" data-goto-tab="links">' + esc(tr('ws.footer.editLinks')) + ' →</button></div>';
+    html += '<div class="ws-head"><h2>' + esc(tr('ws.footer.layout')) + '</h2></div><div class="ws-looks ws-foots">' + FOOTERS.map(function (k) {
       return '<button type="button" class="ws-look" data-chip="footer:layout" data-value="' + k + '" aria-pressed="' + (f.layout === k) + '">' +
         '<span class="ws-sketch ws-foot-sketch" aria-hidden="true">' + (FOOT_SKETCH[k] || []).map(function (r) {
           return '<span class="sk sk-' + r[4] + '" style="left:' + r[0] + '%;top:' + r[1] + '%;width:' + r[2] + '%;height:' + r[3] + '%"></span>';
@@ -646,12 +707,8 @@
     if (t.dataset.color) { drawDesign(); return; }
     if (t.dataset.link) {
       /* "Another address" opens a box for it, empty and waiting. */
-      setLink(t.dataset.link, t.value === 'url' ? 'https://' : t.value);
-      if (state.tab === 'links') drawLinks(); else drawSections();
-      changed();
-      var box = $('wsRoot').querySelector('[data-link-url="' + t.dataset.link + '"]');
-      if (box) box.focus();
-      return;
+      setLink(t.dataset.link, t.value);
+      return changed();
     }
     if (t.dataset.secPhotolink) { p.sections[+t.dataset.secPhotolink].photoLink = t.checked; return changed(); }
     if (t.dataset.itemPhoto) { var ip = t.dataset.itemPhoto.split(':'); return upload(t, function (url) { p.sections[+ip[0]].items[+ip[1]].photo = url; drawSections(); }); }
@@ -671,6 +728,7 @@
     if (t.dataset.fallback !== undefined) { state.doc.fallback = t.value; return changed(); }
     if (t.dataset.secPhoto) return upload(t, function (url) { p.sections[+t.dataset.secPhoto].photo = url; drawSections(); });
     if (t.dataset.logo !== undefined) return upload(t, function (url) { state.doc.design.logo = url; drawDesign(); });
+    if (t.dataset.favicon !== undefined) return upload(t, function (url) { state.doc.design.favicon = url; drawDesign(); }, 256);
   });
 
   $('wsRoot').addEventListener('click', async function (e) {
@@ -694,6 +752,8 @@
     if (d.secUnphoto) { p.sections[+d.secUnphoto].photo = null; drawSections(); return changed(); }
     if (d.itemAdd) { var sec = p.sections[+d.itemAdd]; sec.items = sec.items || []; sec.items.push({ url: 'https://', photo: null, words: {} }); drawSections(); return; }
     if (d.itemUnphoto) { var up = d.itemUnphoto.split(':'); p.sections[+up[0]].items[+up[1]].photo = null; drawSections(); return changed(); }
+    if (d.unfavicon !== undefined) { state.doc.design.favicon = null; drawDesign(); return changed(); }
+    if (d.gotoTab) { var tb = document.querySelector('[data-ws-tab="' + d.gotoTab + '"]'); if (tb) tb.click(); return; }
     if (d.colorReset) { state.doc.design.colors[d.colorReset] = null; drawDesign(); return changed(); }
     if (d.footerMenu !== undefined) { state.doc.footer.menu = !state.doc.footer.menu; drawFooter(); return changed(); }
     if (d.itemRemove) { var r = d.itemRemove.split(':'); p.sections[+r[0]].items.splice(+r[1], 1); drawSections(); return changed(); }
@@ -704,6 +764,15 @@
       var val = d.value, name = d.chip;
       if (name.indexOf('variant:') === 0) { p.sections[+name.slice(8)].variant = val; drawSections(); }
       else if (name.indexOf('raised:') === 0) { p.sections[+name.slice(7)].raised = val === 'raised'; drawSections(); }
+      else if (name.indexOf('align:') === 0) { p.sections[+name.slice(6)].align = val; drawSections(); }
+      else if (name.indexOf('linkkind:') === 0) {
+        var key = name.slice(9);
+        var firstPage = (state.doc.pages.filter(function (x) { return x.on && x.id !== 'home'; })[0] || state.doc.pages[0]).id;
+        setLink(key, val === 'none' ? '' : val === 'page' ? 'page:' + firstPage : 'https://');
+        if (state.tab === 'links') drawLinks(); else drawSections();
+        var box = val === 'url' && $('wsRoot').querySelector('[data-link-url="' + key + '"]');
+        if (box) box.focus();
+      }
       else if (name.indexOf('footer:') === 0) { state.doc.footer[name.slice(7)] = val; drawFooter(); }
       else if (name.indexOf('motion:') === 0) { state.doc.design.motion[name.slice(7)] = val; drawDesign(); }
       else if (name === 'look' || name === 'menu' || name === 'brand') { state.doc.design[name] = val; drawDesign(); }
@@ -722,7 +791,7 @@
 
   /* A picture: made smaller and WebP in the browser, then stored with the
      ministry's other pictures. */
-  async function upload(input, done) {
+  async function upload(input, done, max) {
     var file = input.files && input.files[0];
     input.value = '';
     if (!file) return;
@@ -731,7 +800,7 @@
     if (note) note.textContent = tr('ws.uploading');
     try {
       var bitmap = await createImageBitmap(file);
-      var scale = Math.min(1, 2000 / Math.max(bitmap.width, bitmap.height));
+      var scale = Math.min(1, (max || 2000) / Math.max(bitmap.width, bitmap.height));
       var c = document.createElement('canvas');
       c.width = Math.round(bitmap.width * scale); c.height = Math.round(bitmap.height * scale);
       c.getContext('2d').drawImage(bitmap, 0, 0, c.width, c.height);

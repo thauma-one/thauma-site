@@ -30,10 +30,16 @@ check("the address is the first and last name, letters only, accents folded", ()
   assert(validSubdomain("chaseroush2"), "a number is fine");
 });
 
-check("a new site starts as the full default, every page but Resources shown", () => {
+check("a new site: seven pages on in Chase's order; Home is an opening and one photo; Updates, videos and the newest newsletter", () => {
   const d = starter("full", { name: "Chase Roush", langs: ["en", "hr"], fallback: "en", give: "" });
   eq(d.pages.map((p) => p.id), PAGES, "pages in order");
-  eq(d.pages.filter((p) => !p.on).map((p) => p.id), ["resources"], "only Resources off");
+  eq(d.pages.filter((p) => p.on).map((p) => p.id), ["home", "about", "mission", "updates", "give", "stay", "contact"], "on, in order");
+  eq(d.pages.filter((p) => !p.on).map((p) => p.id), ["timeline", "resources"], "ready, and off");
+  eq(d.pages[0].sections.map((x) => x.type), ["hero", "photoText"], "Home");
+  assert(/Replace these words/.test(d.pages[0].sections[1].words.en.text), "filler words, to be replaced");
+  eq(d.pages.find((p) => p.id === "updates").sections.map((x) => x.type + ":" + x.variant), ["videos:stage", "newsletters:latest"], "Updates");
+  eq(d.design.motion, { entrance: "rise", photos: "still", headings: "plain", buttons: "lift", pages: "fade", progress: "off" }, "Chase's motion defaults");
+  eq([d.design.menu, d.design.brand], ["top", "name"], "across the top, the name in the corner");
   eq(d.pages[0].sections[0].words.en.bold, "Chase Roush.", "the name in the opening");
   eq(d.pages[0].sections[0].words.hr.thin, "Pratite rad —", "Croatian words for Croatian");
 });
@@ -102,7 +108,7 @@ check("the menu lists the shown pages; a hidden page is not in it", () => {
 check("motion choices reach the page; widgets are the real ones, without their credit line", () => {
   const d = starter("full", { name: "Chase Roush", langs: ["en", "hr"], fallback: "en" });
   d.design.motion.entrance = "slide"; d.design.motion.headings = "words";
-  const html = page(d);
+  const html = page(d, "timeline");
   assert(/data-entrance="slide"/.test(html) && /data-headings="words"/.test(html), "motion attributes");
   assert(/data-widget="roadmap"[^>]*data-foot="off"|data-foot="off"[^>]*data-style/.test(html) || /data-widget="roadmap".*data-foot="off"/.test(html), "timeline widget, no credit line");
   assert(html.includes("prefers-reduced-motion"), "reduced motion respected");
@@ -184,6 +190,34 @@ check("the language menu is always a dropdown, by each language's own name, on a
   assert(header.indexOf("langmenu") > header.indexOf("</nav>"), "outside the page menu, so a phone still shows it");
   assert(html.includes('hreflang="sr" lang="sr">Српски</a>'), "each language by its own name");
   assert(/<details class="langmenu up">/.test(html.slice(html.indexOf("<footer"))), "and in the footer, opening upward");
+});
+
+check("the opening fills the screen, with an arrow that bounces until the visitor scrolls", () => {
+  const html = page(starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" }));
+  assert(/\.hero\{[^}]*min-height:calc\(100svh - 69px\)/.test(html), "the whole first screen");
+  assert(/<section class="hero hero-behind[^"]*">[\s\S]*?<button type="button" class="scrollcue"/.test(html), "the arrow");
+  assert(/@keyframes cue/.test(html) && /html\.scrolled \.scrollcue\{opacity:0/.test(html), "bouncing, and gone once scrolled");
+  assert(/\.scrollcue\{animation:none\}/.test(html), "still, for anyone who asked for less motion");
+});
+
+check("the ministry's widgets sit centered unless put left; the newest newsletter as a card, the rest behind a link", () => {
+  const mail = [{ subject: "September", sent_at: "2026-09-20", url: "https://thauma.one/archive/chase-roush/news/september/", preheader: "The visa." },
+                { subject: "August", sent_at: "2026-08-20", url: "https://thauma.one/archive/chase-roush/news/august/" }];
+  const d = blankWith([{ type: "newsletters", variant: "latest", words: { en: { bold: "News" } } },
+                       { type: "timeline", align: "left", words: { en: { bold: "Road" } } }]);
+  const html = page(d, "home", "en", { payload: { ...payload, milestones: [{ id: "m" }], mailings: mail } });
+  assert(/<section class="data al-center">/.test(html), "centered, by default");
+  assert(/<section class="data al-left">/.test(html), "left, when chosen");
+  assert(html.includes('<a class="latest m" href="https://thauma.one/archive/chase-roush/news/september/">'), "the newest");
+  assert(!html.includes('href="https://thauma.one/archive/chase-roush/news/august/"'), "only the newest is linked");
+  assert(html.includes('<a href="https://thauma.one/archive/chase-roush/news/">See past newsletters</a>'), "the rest, at the list's archive");
+});
+
+check("a site's own tab icon", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  d.design.favicon = "/media/partnersite/p/icon.webp";
+  assert(page(d).includes('<link rel="icon" href="/media/partnersite/p/icon.webp">'), "in the page");
+  eq(cleanDoc({ design: { favicon: "javascript:alert(1)" } }, ["en"]).design.favicon, null, "only our own pictures or https");
 });
 
 check("the Footer tab's preview can be the footer alone", () => {

@@ -32,6 +32,8 @@ const W = {
     prayerThin: "Pray", prayerBold: "with us", newsThin: "Past", newsBold: "updates",
     contactThin: "Say", contactBold: "hello", resourcesThin: "Worth", resourcesBold: "reading",
     lang: "Language", menu: "Menu", poweredBy: "A Thauma site", scroll: "Scroll", more: "Read more",
+    homeFill: "Tell your story here: who you are, where you serve, and why it matters. Replace these words with your own.",
+    pastNews: "See past newsletters", readIt: "Read it",
   },
   hr: {
     home: "Početna", about: "O nama", mission: "Misija", timeline: "Vremenska crta", updates: "Novosti",
@@ -45,6 +47,8 @@ const W = {
     prayerThin: "Molite", prayerBold: "s nama", newsThin: "Prošle", newsBold: "novosti",
     contactThin: "Javite", contactBold: "se", resourcesThin: "Vrijedi", resourcesBold: "pročitati",
     lang: "Jezik", menu: "Izbornik", poweredBy: "Stranica Thaume", scroll: "Dolje", more: "Pročitajte više",
+    homeFill: "Ovdje ispričajte svoju priču: tko ste, gdje služite i zašto je to važno. Zamijenite ove riječi svojima.",
+    pastNews: "Pogledajte prošle novosti", readIt: "Pročitajte",
   },
   sr: {
     home: "Почетна", about: "О нама", mission: "Мисија", timeline: "Временска линија", updates: "Новости",
@@ -58,6 +62,8 @@ const W = {
     prayerThin: "Молите", prayerBold: "са нама", newsThin: "Претходне", newsBold: "новости",
     contactThin: "Јавите", contactBold: "се", resourcesThin: "Вреди", resourcesBold: "прочитати",
     lang: "Језик", menu: "Мени", poweredBy: "Сајт Thauma", scroll: "Доле", more: "Прочитајте више",
+    homeFill: "Овдје испричајте своју причу: ко сте, гдје служите и зашто је то важно. Замијените ове ријечи својим.",
+    pastNews: "Погледајте претходне новости", readIt: "Прочитајте",
   },
   sl: {
     home: "Domov", about: "O nas", mission: "Poslanstvo", timeline: "Časovnica", updates: "Novice",
@@ -71,6 +77,8 @@ const W = {
     prayerThin: "Molite", prayerBold: "z nami", newsThin: "Pretekle", newsBold: "novice",
     contactThin: "Oglasite", contactBold: "se", resourcesThin: "Vredno", resourcesBold: "branja",
     lang: "Jezik", menu: "Meni", poweredBy: "Stran Thauma", scroll: "Navzdol", more: "Preberite več",
+    homeFill: "Tukaj povejte svojo zgodbo: kdo ste, kje služite in zakaj je to pomembno. Te besede zamenjajte s svojimi.",
+    pastNews: "Oglejte si pretekle novice", readIt: "Preberite",
   },
 };
 
@@ -83,8 +91,10 @@ export const BUILT_IN_LANGS = Object.keys(W);
 /* ---------------------------------------------------------------- pages -- */
 
 /* Every page a site can have, in the default menu order. `id` is its address
-   (/en/<id>/; home is /en/). */
-export const PAGES = ["home", "about", "mission", "timeline", "updates", "give", "stay", "resources", "contact"];
+   (/en/<id>/; home is /en/). The first seven are on in a new site; Timeline
+   and Resources wait, off, at the end (Chase, 2026-09-29). */
+export const PAGES = ["home", "about", "mission", "updates", "give", "stay", "contact", "timeline", "resources"];
+export const PAGES_ON = ["home", "about", "mission", "updates", "give", "stay", "contact"];
 
 /* ------------------------------------------------------------- sections -- */
 
@@ -108,16 +118,20 @@ export const SECTIONS = {
   photoText: { variants: ["left", "right", "above"], words: ["thin", "bold", "text", "button"], photo: true, link: "both" },
   photo:     { variants: ["drift", "still", "zoom"], words: ["caption"], photo: true, link: "photo" },
   quote:     { variants: ["large", "quiet"], words: ["quote", "who"] },
-  timeline:  { variants: ["condensed", "full"], words: ["thin", "bold", "text"] },
-  goals:     { variants: ["cards"], words: ["thin", "bold", "text"] },
-  prayer:    { variants: ["list"], words: ["thin", "bold", "text"] },
-  videos:    { variants: ["stage"], words: ["thin", "bold", "text"] },
-  newsletters: { variants: ["list"], words: ["thin", "bold", "text"] },
+  timeline:  { variants: ["condensed", "full"], words: ["thin", "bold", "text"], align: true },
+  goals:     { variants: ["cards"], words: ["thin", "bold", "text"], align: true },
+  prayer:    { variants: ["list"], words: ["thin", "bold", "text"], align: true },
+  videos:    { variants: ["stage"], words: ["thin", "bold", "text"], align: true },
+  /* latest: the newest one, and a small way to the rest (Chase, 2026-09-29). */
+  newsletters: { variants: ["latest", "list"], words: ["thin", "bold", "text"], align: true },
   signup:    { variants: ["band", "card"], words: ["thin", "bold", "text"] },
-  contact:   { variants: ["form"], words: ["thin", "bold", "text"] },
+  contact:   { variants: ["form"], words: ["thin", "bold", "text"], align: true },
   give:      { variants: ["band", "card"], words: ["thin", "bold", "text", "button"] },
-  links:     { variants: ["list", "cards"], words: ["thin", "bold", "text"], items: true },
+  links:     { variants: ["list", "cards"], words: ["thin", "bold", "text"], items: true, align: true },
 };
+/* The ministry's widgets and lists sit centered unless the owner puts them
+   left (Chase, 2026-09-29: "the embed codes seem to be left aligned"). */
+export const ALIGNS = ["center", "left"];
 const NOT_RAISED = new Set(["hero", "photo"]);
 
 /* ------------------------------------------------------- design, motion -- */
@@ -213,14 +227,14 @@ export function starter(kind, { name, langs, fallback, give }) {
     pages.give.on = true; pages.give.sections = [section("give", "card", L, { thin: "giveThin", bold: "giveBold", text: "giveText", button: "giveBtn" })];
     pages.contact.on = true; pages.contact.sections = [section("contact", "form", L, { thin: "contactThin", bold: "contactBold", text: "=" })];
   } else {
-    PAGES.forEach((p) => { pages[p].on = p !== "resources"; });
+    /* THE FULL DEFAULT (Chase, 2026-09-29): seven pages on, in this order;
+       Home is an opening that fills the screen and one photo with words —
+       filler words, to be replaced; Updates is the videos and the newest
+       newsletter. Timeline and Resources are ready, and off. */
+    PAGES.forEach((p) => { pages[p].on = PAGES_ON.includes(p); });
     pages.home.sections = [
       hero("behind"),
-      section("photoText", "left", L, { thin: "aboutThin", bold: "aboutBold", text: "=", button: "more" }, { photo: null, link: "page:about" }),
-      section("timeline", "condensed", L, { thin: "timelineThin", bold: "timelineBold" }),
-      section("goals", "cards", L, { thin: "goalsThin", bold: "goalsBold" }),
-      section("videos", "stage", L, { thin: "videosThin", bold: "videosBold" }),
-      section("signup", "band", L, { thin: "signupThin", bold: "signupBold", text: "=" }),
+      section("photoText", "left", L, { thin: "aboutThin", bold: "aboutBold", text: "homeFill" }, { photo: null }),
     ];
     pages.about.sections = [
       section("photoText", "left", L, { thin: "aboutThin", bold: "aboutBold", text: "=" }, { photo: null }),
@@ -228,21 +242,20 @@ export function starter(kind, { name, langs, fallback, give }) {
     ];
     pages.mission.sections = [
       section("text", "left", L, { thin: "missionThin", bold: "missionBold", text: "=" }),
-      section("photo", "drift", L, { caption: "=" }, { photo: null }),
+      section("photo", "still", L, { caption: "=" }, { photo: null }),
     ];
-    pages.timeline.sections = [section("timeline", "full", L, { thin: "timelineThin", bold: "timelineBold" })];
     pages.updates.sections = [
       section("videos", "stage", L, { thin: "videosThin", bold: "videosBold" }),
-      section("prayer", "list", L, { thin: "prayerThin", bold: "prayerBold" }),
-      section("newsletters", "list", L, { thin: "newsThin", bold: "newsBold" }),
+      section("newsletters", "latest", L, { thin: "newsThin", bold: "newsBold" }),
     ];
     pages.give.sections = [
       section("give", "band", L, { thin: "giveThin", bold: "giveBold", text: "giveText", button: "giveBtn" }),
       section("goals", "cards", L, { thin: "goalsThin", bold: "goalsBold" }),
     ];
     pages.stay.sections = [section("signup", "card", L, { thin: "signupThin", bold: "signupBold", text: "=" })];
-    pages.resources.sections = [section("links", "list", L, { thin: "resourcesThin", bold: "resourcesBold" }, { items: [] })];
     pages.contact.sections = [section("contact", "form", L, { thin: "contactThin", bold: "contactBold", text: "=" })];
+    pages.timeline.sections = [section("timeline", "full", L, { thin: "timelineThin", bold: "timelineBold" })];
+    pages.resources.sections = [section("links", "list", L, { thin: "resourcesThin", bold: "resourcesBold" }, { items: [] })];
   }
 
   return {
@@ -250,9 +263,12 @@ export function starter(kind, { name, langs, fallback, give }) {
     languages: L,
     fallback: L.includes(fallback) ? fallback : L[0],
     give: give || "",
-    design: { look: "night", menu: "top", brand: "name", logo: null, headerLinks: false,
+    /* Chase's defaults, 2026-09-29: across the top, the name in the corner,
+       sections rise in, photos still, headings all at once, buttons lift,
+       pages fade, no scroll line. */
+    design: { look: "night", menu: "top", brand: "name", logo: null, favicon: null, headerLinks: false,
               colors: { background: null, accent: null },
-              motion: { entrance: "rise", photos: "drift", headings: "letters", buttons: "lift", pages: "fade", progress: "on" } },
+              motion: { entrance: "rise", photos: "still", headings: "plain", buttons: "lift", pages: "fade", progress: "off" } },
     links: [],
     footer: { layout: "split", menu: false, socials: "icons", words: {} },
     pages: PAGES.map((p) => pages[p]),
@@ -321,6 +337,7 @@ function cleanSection(raw, langs) {
   if (spec.link) s.link = safeLink(raw.link);
   if (spec.link === "both") s.photoLink = !!raw.photoLink;
   if (!NOT_RAISED.has(raw.type)) s.raised = !!raw.raised;
+  if (spec.align) s.align = pick(raw.align, ALIGNS);
   if (spec.buttons) {
     s.buttons = (Array.isArray(raw.buttons) ? raw.buttons : []).filter((b) => ["give", "stay", "contact"].includes(b)).slice(0, 2);
   }
@@ -398,6 +415,8 @@ export function cleanDoc(raw, catalog) {
       menu: pick(design.menu, MENUS),
       brand: design.brand === "logo" && safePhoto(design.logo) ? "logo" : "name",
       logo: safePhoto(design.logo),
+      /* The little picture in a browser tab (Chase, 2026-09-29). */
+      favicon: safePhoto(design.favicon),
       headerLinks: !!design.headerLinks,
       /* The owner's own colors, or null for the look's background and the
          ministry's accent. Everything else is worked out from these two. */

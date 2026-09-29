@@ -2550,6 +2550,15 @@ html.has-ai .lang-ai{display:inline-block}
 .ws-card-pic .ws-nophoto{width:150px;text-align:center;padding:30px 8px}
 .ws-card-words{display:flex;flex-direction:column;gap:8px;min-width:0}.ws-card-words input{width:100%}
 .ws-foot-sketch{height:64px}
+/* Changes not yet published, on a tab or a page: the same amber as the bar. */
+.ws-dot{display:inline-block;width:7px;height:7px;margin-left:8px;border-radius:50%;background:var(--warn,#F5B845);vertical-align:middle}
+.ws-dot[hidden]{display:none}
+.ws-tab{display:flex;align-items:center}
+.ws-favicon{width:32px;height:32px;object-fit:cover;border-radius:6px}
+.ws-infoot{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:8px}
+.ws-pill{font-size:13px;padding:5px 11px;border:1px solid rgba(255,255,255,.16);border-radius:999px;color:var(--text)}
+.ws-infoot .ghost-btn{margin-left:auto}
+.ws-link .ws-chips{flex:none}
 /* A color: the swatch IS the picker, its value beside it. */
 .ws-color{display:inline-flex;align-items:center;gap:10px;cursor:pointer}
 .ws-color input[type="color"]{width:40px;height:32px;padding:0;border:1px solid rgba(255,255,255,.2);border-radius:var(--radius);background:none;cursor:pointer}

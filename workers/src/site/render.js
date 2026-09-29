@@ -151,7 +151,8 @@ main section + section{border-top:1px solid var(--line)}
 html[data-buttons="lift"] .btn:hover{transform:translateY(-2px)}
 html[data-buttons="glow"] .btn:hover{box-shadow:0 0 0 6px color-mix(in srgb,var(--acc) 22%,transparent),0 10px 30px -8px var(--acc)}
 /* hero */
-.hero{position:relative;overflow:hidden;padding:0!important;min-height:min(86vh,760px);display:flex;align-items:flex-end}
+/* The opening fills the first screen, under the header (Chase, 2026-09-29). */
+.hero{position:relative;overflow:hidden;padding:0!important;min-height:calc(100svh - 69px);display:flex;align-items:flex-end}
 .hero .wrap{position:relative;padding:140px 0 88px}
 .hero .h{font-size:clamp(40px,6.6vw,86px)}
 .hero-media{position:absolute;inset:0;background:${L.heroBg}}
@@ -162,7 +163,7 @@ ${L.heroFg ? `.hero-behind:not(.has-photo),.hero-words{color:${L.heroFg}}.hero-b
 .hero-behind:not(.has-photo) .btn.solid,.hero-words .btn.solid{background:${L.heroFg};color:${L.heroBg}}.hero-behind:not(.has-photo) .btn,.hero-words .btn{border-color:${L.heroFg};color:${L.heroFg}}` : ""}
 .hero-beside{align-items:center}.hero-beside .wrap{display:grid;grid-template-columns:1.1fr .9fr;gap:48px;align-items:center;padding:110px 0}
 .hero-beside .hero-media{display:none}.hero-beside .pic{aspect-ratio:4/5;border-radius:18px;overflow:hidden}.hero-beside .pic img{width:100%;height:100%;object-fit:cover}
-.hero-words{min-height:0;text-align:center;background:${L.heroBg}}.hero-words .wrap{padding:130px 0 110px}.hero-words .lede{margin:0 auto}.hero-words .btns{justify-content:center}
+.hero-words{align-items:center;text-align:center;background:${L.heroBg}}.hero-words .wrap{padding:130px 0 110px}.hero-words .lede{margin:0 auto}.hero-words .btns{justify-content:center}
 /* the monogram opening — chaseroush.com's: initials behind the title, a short
    rule, a spaced line, a picture beside it, a cue to scroll */
 .hero-monogram{align-items:center;background:${L.heroBg}}
@@ -173,8 +174,13 @@ ${L.heroFg ? `.hero-behind:not(.has-photo),.hero-words{color:${L.heroFg}}.hero-b
 .rule{display:block;width:90px;height:2px;background:var(--acc);margin:30px 0 26px}
 .spaced{font:400 13px/1.7 var(--body);letter-spacing:.2em;text-transform:uppercase;color:var(--dim);margin:0;max-width:60ch}
 .mono-pic img{width:100%;max-height:460px;object-fit:contain}
-.scrollcue{position:absolute;left:50%;bottom:34px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:12px;background:none;border:0;color:var(--dim);font:600 11px var(--body);letter-spacing:.24em;text-transform:uppercase;cursor:pointer}
-.scrollcue:before{content:"";width:2px;height:32px;background:var(--acc)}
+/* A slowly bouncing arrow, on every opening, until the visitor scrolls. */
+.scrollcue{position:absolute;left:50%;bottom:28px;margin-left:-22px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;
+  background:none;border:0;padding:0;color:var(--fg);opacity:.75;cursor:pointer;transition:opacity .5s ease;animation:cue 2.4s cubic-bezier(.55,.05,.45,.95) infinite}
+.scrollcue svg{width:26px;height:26px}
+.hero-behind.has-photo .scrollcue{color:#fff}
+@keyframes cue{0%,100%{transform:translateY(0)}50%{transform:translateY(9px)}}
+html.scrolled .scrollcue{opacity:0;pointer-events:none}
 /* a section on a raised band */
 main section.raised{background:var(--panel);border-top-color:transparent}
 main section.raised + section{border-top-color:transparent}
@@ -207,6 +213,15 @@ main section.raised + section{border-top-color:transparent}
 .linklist .lpic{display:block;aspect-ratio:16/10;margin:-20px -22px 16px;overflow:hidden;border-radius:13px 13px 0 0;background:var(--bg)}
 .linklist .lpic img{width:100%;height:100%;object-fit:cover;transition:transform .6s cubic-bezier(.16,1,.3,1)}.linklist a:hover .lpic img{transform:scale(1.04)}
 .data .lede{margin-bottom:28px}
+/* The ministry's widgets and lists, centered unless the owner puts them left. */
+.al-center .h,.al-center .lede{text-align:center;margin-left:auto;margin-right:auto}
+.al-center [data-thauma],.al-center .news,.al-center .linklist,.al-center .formbox,.al-center .latest{margin-left:auto;margin-right:auto}
+.al-center .past{text-align:center}
+.latest{display:block;max-width:720px;padding:28px 30px;background:var(--panel);border:1px solid var(--line);border-radius:16px;color:var(--fg);text-decoration:none}
+.latest:hover{border-color:var(--acc)}.latest small{color:var(--dim);font-size:13px}
+.latest b{display:block;font:var(--boldw) clamp(20px,2vw,26px)/1.25 var(--display);margin:6px 0 8px}.latest span{color:var(--dim)}
+.latest em{display:inline-block;margin-top:14px;font-style:normal;font-weight:600;color:var(--ink)}
+.past{margin:16px 0 0;font-size:14px}.past a{color:var(--dim)}.past a:hover{color:var(--fg)}
 /* footer */
 .foot{border-top:1px solid var(--line);padding:48px 0 60px;color:var(--dim);font-size:14px}
 .foot .wrap{display:flex;gap:28px;flex-wrap:wrap;justify-content:space-between;align-items:flex-start}
@@ -244,6 +259,7 @@ html[data-photos="zoom"] .kb img{animation:kb 18s ease-in-out infinite alternate
 html[data-pages="fade"]{view-transition-name:root}
 @view-transition{navigation:auto}
 @media (prefers-reduced-motion:reduce){.m,.h .ch{opacity:1!important;transform:none!important;transition:none!important}
+ .scrollcue{animation:none}
  .kb img{animation:none!important}.progress{display:none}.btn{transition:none}}
 @media (max-width:820px){main section{padding:64px 0}.pt,.hero-beside .wrap,.hero-monogram .wrap{grid-template-columns:1fr;gap:28px}.pt-right .pt .pic{order:0}
  .hero .wrap{padding:110px 0 64px}.hero-monogram .wrap{padding:100px 0 130px}.mono-pic img{max-height:240px}.card{padding:26px}}
@@ -300,7 +316,10 @@ function renderSection(sec, ctx) {
   const button = (solid = true) => to ? `<a class="btn${solid ? " solid" : ""}" href="${esc(to)}"${rel(to)}>${esc(btnWords)} →</a>` : "";
   const pictured = (html, label) => to && html ? `<a class="piclink" href="${esc(to)}"${rel(to)} aria-label="${esc(label)}">${html}</a>` : html;
   const sub = w("text") ? `<p class="lede m">${esc(w("text"))}</p>` : "";
-  const cls = (...c) => { const k = [...c, sec.raised ? "raised" : ""].filter(Boolean).join(" "); return k ? ` class="${k}"` : ""; };
+  const cls = (...c) => {
+    const k = [...c, sec.raised ? "raised" : "", sec.align ? "al-" + sec.align : ""].filter(Boolean).join(" ");
+    return k ? ` class="${k}"` : "";
+  };
   const widget = (kind, extra = "") =>
     `<div class="m" data-thauma="${esc(ctx.slug)}" data-widget="${kind}" data-lang="${esc(lang)}" data-theme="${ctx.widgetTheme}" data-foot="off"` +
     `${ctx.widgetAccent ? ` data-accent="${esc(ctx.widgetAccent)}"` : ""}${extra}></div>`;
@@ -319,6 +338,7 @@ function renderSection(sec, ctx) {
       }).join("");
       /* The owner's own button: solid only when it is the only one. */
       const btns = builtIn + button(!builtIn);
+      const cue = `<button type="button" class="scrollcue" aria-hidden="true" tabindex="-1"><svg viewBox="0 0 24 24"><path d="M5 9l7 7 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`;
       if (sec.variant === "monogram") {
         const initials = String(ctx.name).split(/\s+/).filter(Boolean).map((x) => x[0]).slice(0, 3).join("").toUpperCase();
         const h = w("thin") || w("bold") ? `<h1 class="h m">${esc(w("thin"))}${w("thin") && w("bold") ? "<br>" : ""}${w("bold") ? `<b>${esc(w("bold"))}</b>` : ""}</h1>` : "";
@@ -326,15 +346,15 @@ function renderSection(sec, ctx) {
           `${w("kicker") ? `<p class="kicker m">${esc(w("kicker"))}</p>` : ""}${h}<span class="rule m" aria-hidden="true"></span>` +
           `${w("text") ? `<p class="spaced m">${esc(w("text"))}</p>` : ""}${btns ? `<div class="btns m">${btns}</div>` : ""}</div>` +
           `${sec.photo ? `<div class="mono-pic m">${img(sec.photo)}</div>` : ""}</div>` +
-          `<button type="button" class="scrollcue" aria-hidden="true" tabindex="-1">${esc(word(lang, "scroll"))}</button></section>`;
+          `${cue}</section>`;
       }
       const words = `${w("kicker") ? `<p class="kicker m">${esc(w("kicker"))}</p>` : ""}${heading(w("thin"), w("bold"), "h1")}` +
         `${w("text") ? `<p class="lede m">${esc(w("text"))}</p>` : ""}${btns ? `<div class="btns m">${btns}</div>` : ""}`;
       if (sec.variant === "beside") {
-        return `<section class="hero hero-beside"><div class="wrap"><div>${words}</div>${sec.photo ? `<div class="pic m ${photoMotion === "zoom" ? "kb" : ""}">${img(sec.photo)}</div>` : ""}</div></section>`;
+        return `<section class="hero hero-beside"><div class="wrap"><div>${words}</div>${sec.photo ? `<div class="pic m ${photoMotion === "zoom" ? "kb" : ""}">${img(sec.photo)}</div>` : ""}</div>${cue}</section>`;
       }
-      if (sec.variant === "words") return `<section class="hero hero-words"><div class="wrap">${words}</div></section>`;
-      return `<section class="hero hero-behind${sec.photo ? " has-photo" : ""}"><div class="hero-media ${photoMotion === "zoom" ? "kb" : ""}"${photoMotion === "drift" ? " data-drift" : ""}>${img(sec.photo)}</div><div class="wrap">${words}</div></section>`;
+      if (sec.variant === "words") return `<section class="hero hero-words"><div class="wrap">${words}</div>${cue}</section>`;
+      return `<section class="hero hero-behind${sec.photo ? " has-photo" : ""}"><div class="hero-media ${photoMotion === "zoom" ? "kb" : ""}"${photoMotion === "drift" ? " data-drift" : ""}>${img(sec.photo)}</div><div class="wrap">${words}</div>${cue}</section>`;
     }
     case "text":
       if (!w("thin") && !w("bold") && !w("text")) return "";
@@ -366,6 +386,15 @@ function renderSection(sec, ctx) {
       const list = (ctx.payload.mailings || []).filter((m) => m.url).slice(0, 12);
       if (!list.length) return "";
       const date = (d) => { try { return new Date(d).toLocaleDateString(lang, { day: "numeric", month: "long", year: "numeric" }); } catch { return String(d || "").slice(0, 10); } };
+      if (sec.variant === "latest") {
+        /* The newest, as a card; below it, quietly, the list's own archive. */
+        const m = list[0];
+        const archive = m.url.replace(/[^/]+\/?$/, "");
+        return `<section${cls("data")}><div class="wrap">${heading(w("thin"), w("bold"))}${sub}` +
+          `<a class="latest m" href="${esc(m.url)}"><small>${esc(date(m.sent_at))}</small><b>${esc(m.subject)}</b>` +
+          `${m.preheader ? `<span>${esc(m.preheader)}</span>` : ""}<em>${esc(word(lang, "readIt"))} →</em></a>` +
+          `<p class="past m"><a href="${esc(archive)}">${esc(word(lang, "pastNews"))}</a></p></div></section>`;
+      }
       return `<section${cls("data")}><div class="wrap">${heading(w("thin"), w("bold"))}${sub}<ul class="news m">${list.map((m) =>
         `<li><a href="${esc(m.url)}"><span>${esc(m.subject)}</span><small>${esc(date(m.sent_at))}</small></a></li>`).join("")}</ul></div></section>`;
     }
@@ -374,7 +403,7 @@ function renderSection(sec, ctx) {
       return `<section${cls(sec.variant === "band" ? "band" : "")}><div class="wrap">${sec.variant === "card" ? '<div class="card">' : '<div class="bandrow">'}<div>${heading(w("thin"), w("bold"))}${w("text") ? `<p class="lede m">${esc(w("text"))}</p>` : ""}</div><div class="m" style="flex:1 1 360px;max-width:520px"><div data-thauma-form data-lang="${esc(lang)}"></div></div></div></div></section>`;
     case "contact":
       ctx.needs.contact = true;
-      return `<section${cls()}><div class="wrap">${heading(w("thin"), w("bold"))}${w("text") ? `<p class="lede m">${esc(w("text"))}</p>` : ""}<div class="m" style="max-width:640px;margin-top:24px"><div data-thauma-contact data-lang="${esc(lang)}"></div></div></div></section>`;
+      return `<section${cls()}><div class="wrap">${heading(w("thin"), w("bold"))}${w("text") ? `<p class="lede m">${esc(w("text"))}</p>` : ""}<div class="m formbox" style="max-width:640px;margin-top:24px"><div data-thauma-contact data-lang="${esc(lang)}"></div></div></div></section>`;
     case "give":
       if (!ctx.giveUrl) return "";
       return `<section${cls(sec.variant === "band" ? "band" : "")}><div class="wrap">${sec.variant === "card" ? '<div class="card">' : '<div class="bandrow">'}<div>${heading(w("thin"), w("bold"))}${w("text") ? `<p class="lede m">${esc(w("text"))}</p>` : ""}</div><div class="btns m" style="margin:0"><a class="btn solid" href="${esc(ctx.giveUrl)}">${esc(w("button") || word(lang, "giveBtn"))} →</a></div></div></div></section>`;
@@ -489,6 +518,7 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)}</title>
+${design.favicon ? `<link rel="icon" href="${esc(design.favicon)}">` : ""}
 ${desc ? `<meta name="description" content="${esc(desc)}">` : ""}
 ${draft ? '<meta name="robots" content="noindex">' : ""}
 ${alternates}
@@ -573,7 +603,7 @@ var bar=document.querySelector('.progress'),tick=false;
 function frame(){tick=false;var vh=innerHeight;
  drift.forEach(function(i){var r=i.parentNode.getBoundingClientRect();var p=((r.top+r.height/2)-vh/2)/(vh/2+r.height/2);p=Math.max(-1,Math.min(1,p));i.style.transform='translate3d(0,'+(-p*0.05*r.height).toFixed(1)+'px,0)'});
  if(bar&&!still){var m=document.documentElement.scrollHeight-vh;bar.style.transform='scaleX('+(m>0?scrollY/m:0)+')'}}
-addEventListener('scroll',function(){if(!tick){tick=true;requestAnimationFrame(frame)}},{passive:true});frame();
+addEventListener('scroll',function(){if(!tick){tick=true;requestAnimationFrame(frame)}d.classList.toggle('scrolled',scrollY>40)},{passive:true});frame();
 document.addEventListener('click',function(e){[].forEach.call(document.querySelectorAll('details.langmenu[open]'),function(m){if(!m.contains(e.target))m.removeAttribute('open')})});
 document.addEventListener('keydown',function(e){if(e.key==='Escape')[].forEach.call(document.querySelectorAll('details.langmenu[open]'),function(m){m.removeAttribute('open')})});
 var cue=document.querySelector('.scrollcue');if(cue)cue.addEventListener('click',function(){var n=cue.closest('section').nextElementSibling;if(n)n.scrollIntoView({behavior:still?'auto':'smooth'})});

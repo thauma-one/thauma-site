@@ -25,13 +25,15 @@ const settle = (ms = 150) => new Promise((r) => setTimeout(r, ms));
 console.log("Website editor\n");
 if (!PAGE) { console.log("  SKIP  no build — run eleventy first."); process.exit(1); }
 
-function answer({ edit = true, owner = true } = {}) {
+function answer({ edit = true, owner = true, published = false } = {}) {
+  const draft = cleanDoc(starter("full", { name: "Chase Roush", langs: ["en", "hr"], fallback: "en" }), ["en", "hr"]);
   return {
+    published: published ? JSON.parse(JSON.stringify(draft)) : null,
     you: { email: "c@t.one", name: "Chase Roush", roles: ["partner", "staff"] },
     partner: { id: "p", display_name: "Chase Roush", slug: "chase-roush" },
     site: { subdomain: "chaseroush", address: "/site/chaseroush/", preview: "/site/chaseroush/?draft",
             enabled: false, published_at: null, unpublished: true, dns: null },
-    draft: cleanDoc(starter("full", { name: "Chase Roush", langs: ["en", "hr"], fallback: "en" }), ["en", "hr"]),
+    draft,
     languages: [{ code: "en", name: "English", native_name: "English" }, { code: "hr", name: "Croatian", native_name: "Hrvatski" }],
     theme: { accent: "#1AE4FF", accent2: "#25FFA1" },
     can: { edit, owner }, owner: { name: "Chase Roush" }, editors: [], requests: [], my_request: null,
@@ -55,22 +57,27 @@ async function boot(opts) {
   await settle(200);
   const d = w.document;
   const click = (el) => el.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
-  return { w, d, sent, click };
+  /* Design is the first tab (Chase, 2026-09-29); Pages is one click away. */
+  const pages = () => click(d.querySelector('[data-ws-tab="pages"]'));
+  return { w, d, sent, click, pages };
 }
 
-await check("the menu, in order, with each page's name and switch", async () => {
-  const { d } = await boot();
+await check("it opens on Design; Pages lists the menu in order, with each page's switch", async () => {
+  const { d, pages } = await boot();
+  assert(!d.getElementById("wsDesign").hidden && d.getElementById("wsPages").hidden, "Design first");
+  pages();
   const names = [...d.querySelectorAll(".ws-pname")].map((n) => n.textContent);
-  eq(names, ["Home", "About", "Mission", "Timeline", "Updates", "Give", "Stay connected", "Resources", "Contact"], "pages");
-  assert(d.querySelector('[data-page-on="7"]').getAttribute("aria-checked") === "false", "Resources off");
+  eq(names, ["Home", "About", "Mission", "Updates", "Give", "Stay connected", "Contact", "Timeline", "Resources"], "pages");
+  assert(d.querySelector('[data-page-on="7"]').getAttribute("aria-checked") === "false", "Timeline off");
+  assert(d.querySelector('[data-page-on="8"]').getAttribute("aria-checked") === "false", "Resources off");
   assert(!d.querySelector('[data-page-on="0"]'), "Home cannot be switched off");
 });
 
 await check("opening Home shows its sections, and a new one can be added", async () => {
-  const { d, click } = await boot();
+  const { d, click, pages } = await boot();
+  pages();
   click(d.querySelector('[data-ws-open="home"]'));
-  eq([...d.querySelectorAll(".ws-type")].map((n) => n.textContent),
-    ["Opening", "Photo and words", "Timeline", "Goals", "Videos", "Sign-up"], "sections");
+  eq([...d.querySelectorAll(".ws-type")].map((n) => n.textContent), ["Opening", "Photo and words"], "sections");
   click(d.querySelector("[data-ws-add]"));
   assert(!d.getElementById("wsAddBack").hidden, "the picker opens");
   eq(d.querySelectorAll("[data-add-type]").length, 14, "every kind offered");
@@ -79,7 +86,8 @@ await check("opening Home shows its sections, and a new one can be added", async
 });
 
 await check("typed words are saved to the working copy", async () => {
-  const { w, d, sent, click } = await boot();
+  const { w, d, sent, click, pages } = await boot();
+  pages();
   click(d.querySelector('[data-ws-open="home"]'));
   const f = d.querySelector('[data-sec-word="0:text"]');
   f.value = "Serving Croatia's churches.";
@@ -90,20 +98,39 @@ await check("typed words are saved to the working copy", async () => {
   eq(save.draft.pages[0].sections[0].words.en.text, "Serving Croatia's churches.", "the words");
 });
 
-await check("a section opens a page of the site, or an address typed out", async () => {
-  const { w, d, sent, click } = await boot();
+await check("where a section goes: nothing, a page, or a web address — three plain choices", async () => {
+  const { w, d, sent, click, pages } = await boot();
+  pages();
   click(d.querySelector('[data-ws-open="home"]'));
+  const kind = (k) => d.querySelector(`[data-chip="linkkind:sec:1"][data-value="${k}"]`);
+  eq(kind("none").getAttribute("aria-pressed"), "true", "nowhere, to begin with");
+  assert(!d.querySelector('[data-sec-word="1:button"]'), "no button words until there is a button");
+  click(kind("page"));
   const pick = d.querySelector('[data-link="sec:1"]');
-  eq(pick.value, "page:about", "the default opens About");
-  assert(d.querySelector('[data-sec-word="1:button"]'), "and has words for its button");
-  pick.value = "url";
+  assert(pick && ![...pick.options].some((o) => /address/i.test(o.textContent)), "a list of pages, and only pages");
+  pick.value = "page:give";
   pick.dispatchEvent(new w.Event("change", { bubbles: true }));
+  assert(d.querySelector('[data-sec-word="1:button"]'), "once it goes somewhere, words for its button");
+  click(kind("url"));
   const box = d.querySelector('[data-link-url="sec:1"]');
   assert(box, "a box for the address");
   box.value = "https://blog.example.org/";
   box.dispatchEvent(new w.Event("input", { bubbles: true }));
   await settle(900);
   eq(sent.filter((x) => x.action === "save").pop().draft.pages[0].sections[1].link, "https://blog.example.org/", "saved");
+});
+
+await check("a change marks its tab, and the tab keeps its dot on another tab", async () => {
+  const { w, d, click, pages } = await boot({ published: true });
+  const dot = (t) => d.querySelector(`[data-ws-tab="${t}"] .ws-dot`);
+  assert(dot("pages").hidden && dot("design").hidden, "nothing changed yet");
+  pages();
+  click(d.querySelector('[data-page-on="1"]'));
+  assert(!dot("pages").hidden, "Pages marked");
+  click(d.querySelector('[data-ws-tab="links"]'));
+  assert(!dot("pages").hidden && dot("links").hidden, "still marked on the Links tab, and only Pages");
+  pages();
+  assert(d.querySelector('.ws-page[data-pi="1"] .ws-dot'), "and the page itself");
 });
 
 await check("the footer: a layout picked, a tagline written", async () => {

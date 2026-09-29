@@ -142,6 +142,9 @@ export default {
           archived: !!fresh.archived_at,
         },
         draft: cleanDoc(JSON.parse(fresh.draft), catalog.map((l) => l.code)),
+        /* What visitors see, so the editor can mark each tab whose part of the
+           working copy differs from it (Chase, 2026-09-29: the yellow dot). */
+        published: fresh.published ? cleanDoc(JSON.parse(fresh.published), catalog.map((l) => l.code)) : null,
         languages: catalog.map((l) => ({ code: l.code, name: l.name, native_name: l.native_name })),
         /* The ministry's colors (Sharing), which the site wears. */
         theme: { accent: theme.accent, accent2: theme.accent2 },
