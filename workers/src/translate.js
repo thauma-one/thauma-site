@@ -21,10 +21,9 @@
  * flagged `check`, and the page says so.
  *
  * WHERE IT RUNS: wherever the Worker has an AI binding (wrangler.toml —
- * staging and live). The Pi's `wrangler dev` has none, because the local
- * dev server would call Cloudflare with this machine's token, which is not
- * allowed Workers AI; there GET answers available: false and the Translate
- * buttons stay hidden.
+ * staging and live; the Pi once its dev server runs with a token allowed
+ * Workers AI, see the note there). Without one, GET answers
+ * available: false and the Translate buttons stay hidden.
  *
  * Any signed-in console account may ask: the words it translates are ones
  * that person is already editing. Bounded per request so a mistake cannot

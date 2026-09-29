@@ -261,6 +261,30 @@ await check("Translate fills the empty fields from the reference, as if typed", 
   eq(d.querySelector('#prForm [data-ptx="title"]').value, "«hr» Visas", "the title, from English");
 });
 
+await check("each reference line has its own quiet Translate, for that line alone", async () => {
+  const { w, d, click, row, sent } = await boot();
+  click(row("prList", "p1"));
+  await settle();
+  const edit = d.getElementById("prLangA");
+  edit.value = "hr";
+  edit.dispatchEvent(new w.Event("change", { bubbles: true }));
+  await settle(60);
+  const refs = [...d.querySelectorAll("#prForm .ms-ref, #prForm .c-ref")].filter((r) => r.textContent.trim());
+  assert(refs.length >= 1, "a reference line to try it on");
+  assert(refs.every((r) => r.querySelector(".ai-one")), "every reference line has the icon");
+  const title = d.querySelector('#prForm [data-ptx="title"]');
+  const titleRef = refs.find((r) => r.textContent.trim() === "Visas");
+  assert(titleRef, "the title's reference line");
+  const others = [...d.querySelectorAll("#prForm [data-ptx]")].filter((f) => f !== title).map((f) => f.value);
+  click(titleRef.querySelector(".ai-one"));
+  await settle(120);
+  eq(title.value, "«hr» Visas", "that line, translated");
+  eq([...d.querySelectorAll("#prForm [data-ptx]")].filter((f) => f !== title).map((f) => f.value), others, "nothing else touched");
+  const asked = sent.filter((s) => s.url.includes("/api/translate")).pop();
+  eq([asked.body.from, asked.body.to, asked.body.items.length, asked.body.items[0].text], ["en", "hr", 1, "Visas"],
+    "one line asked for, without the icon in its words");
+});
+
 await check("the milestone editor writes the same way", async () => {
   const { w, d, click, row, done } = await boot();
   click(row("msList", "m1"));

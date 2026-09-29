@@ -156,10 +156,14 @@ database_id = "db7fcd6a-56e2-4a67-98da-3da87e95dc86"
 # authorize anything on its own. Real secrets (RESEND_API_KEY,
 # GAME_ADMIN_TOKEN) go in via `wrangler secret put` and never live here.
 # WORKERS AI, for machine translation drafts (/api/translate, 2026-09-28).
-# Staging and live only. Deliberately NOT in [env.dev]: `wrangler dev` runs
-# an AI binding remotely with this machine's API token, which is not allowed
-# Workers AI, so the Pi's dev server would carry a binding that fails on use.
-# Without one, /api/translate says it is unavailable and the buttons hide.
+# Staging here, live below ([env.production.ai]). NOT YET on the Pi: `wrangler
+# dev` runs AI remotely, and on 2026-09-29 adding [env.dev.ai] stopped the dev
+# server from starting ("Failed to start the remote proxy session"). The
+# service's EnvironmentFile token was allowed Workers AI, but ExecStart's
+# `bash -lc` loads ~/.bashrc, whose CLOUDFLARE_API_TOKEN replaces it — and
+# that token is allowed neither. Fix the token the service really runs with
+# BEFORE adding the binding back. Without a binding, /api/translate says it
+# is unavailable and the buttons hide.
 [ai]
 binding = "AI"
 
@@ -367,6 +371,11 @@ id = "f79f07b51f3a493a9f2bb3714115d037"
 binding = "GAME_SCORES"
 id = "f23971d5b4aa460daba43e97b9d84273"
 
+# WORKERS AI ON THE PI TOO (Chase, 2026-09-29: "can we add that to the dev
+# as well?"). `wrangler dev` always runs AI remotely, with the dev server's
+# own token (~/.config/cloudflare-thauma.env) — which was given Workers AI
+# Read + Edit that day. Before that the binding was left out, because a
+# binding the token cannot use shows the Translate buttons and then fails.
 [env.dev.vars]
 
 # WHERE THIS DEPLOYMENT LIVES, stated rather than detected.
