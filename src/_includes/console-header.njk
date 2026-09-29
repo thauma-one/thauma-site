@@ -69,7 +69,11 @@
         <span data-i18n="nav.mySite">Your site</span>
         <span class="area-arrow" aria-hidden="true">&#8599;</span>
       </a>
-      <a class="area-switch" href="/" target="_blank" rel="noopener">
+      {#- Beside "Your site", Thauma's own site steps aside for anyone who does
+          not look after it — partners and staff want their ministry's site,
+          and two "site ↗" links side by side read as the same link twice.
+          Administrators and communications keep both (staff.css). -#}
+      <a class="area-switch area-public" href="/" target="_blank" rel="noopener">
         <span data-i18n="nav.viewSite">Public site</span>
         <span class="area-arrow" aria-hidden="true">&#8599;</span>
       </a>

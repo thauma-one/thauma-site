@@ -1968,7 +1968,9 @@
   (function mySite() {
     var a = document.getElementById('consoleMySite');
     if (!a) return;
-    function show(b) { if (b && b.enabled && b.address) { a.href = b.address; a.hidden = false; } }
+    function show(b) {
+      if (b && b.enabled && b.address) { a.href = b.address; a.hidden = false; a.parentNode.classList.add('has-mysite'); }
+    }
     try {
       var kept = JSON.parse(sessionStorage.getItem('thauma.mysite') || 'null');
       if (kept && Date.now() - kept.at < 300000) return show(kept.b);

@@ -1288,3 +1288,9 @@ body:has(.web-panel:not([hidden]) .ms-savebar:not([hidden])) .web-bar{display:no
 .lib-lang-block[hidden]{display:none}
 .lib-langs-one .lib-lang-block{max-width:none}
 .lib-writing{margin-top:4px}
+/* A site's old addresses, still sending visitors on (0045). */
+.adm-site-old{margin:10px 0 0;font-size:12.5px;color:var(--dim,#8a93a3)}
+.adm-site-old b{font-weight:500;color:var(--text,#e8edf3)}
+.adm-site-alias{display:inline-flex;align-items:center;gap:2px;margin:0 10px 0 4px}
+.adm-site-alias .adm-x{background:none;border:0;color:var(--dim,#8a93a3);font-size:16px;line-height:1;padding:2px 6px;cursor:pointer}
+.adm-site-alias .adm-x:hover{color:var(--crit,#FF6B6B)}

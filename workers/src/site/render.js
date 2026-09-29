@@ -31,38 +31,51 @@ const FONTS = {
   night: "family=Sora:wght@100;300;600&family=Inter:wght@300;400;600",
   paper: "family=Fraunces:opsz,wght@9..144,300;9..144,600&family=Manrope:wght@400;600;700",
   bold: "family=Manrope:wght@400;600;800",
+  classic: "family=Crimson+Pro:wght@500;600;700&family=Work+Sans:wght@300;400;500;600",
 };
 
+/* Each look: surfaces, ink, fonts. `acc` fills (buttons, rules, the
+   progress line); `ink` is the accent as TEXT, lightened where needed so it
+   stays readable on the background. */
 function looks(look, theme) {
   const acc = theme.accent, acc2 = theme.accent2;
+  if (look === "classic") {
+    /* chaseroush.com: charcoal, Crimson Pro over Work Sans, the brick red.
+       The red is the site's own; the widgets keep the ministry's colors. */
+    const bg = "#1A1A1A", brick = "#A63D40";
+    return { bg, panel: "#232323", fg: "#F2EFEA", dim: "#A9A39C", line: "rgba(255,255,255,.09)",
+      acc: brick, acc2: brick, ink: readable(brick, bg, 4.5), onAcc: "#FFFFFF",
+      display: "'Crimson Pro', Georgia, serif", body: "'Work Sans', system-ui, sans-serif", thin: 600, boldW: 700, scheme: "dark",
+      heroBg: "radial-gradient(75% 70% at 50% 45%, #1F1F1F, #161616)" };
+  }
   if (look === "paper") {
     const bg = "#F6F2EA";
     return { bg, panel: "#FFFDF8", fg: "#1A1C22", dim: "#5B5F68", line: "rgba(26,28,34,.12)",
-      acc: readable(acc, bg, 4.5), acc2: readable(acc2, bg, 4.5), onAcc: onColor(readable(acc, bg, 4.5)),
+      acc: readable(acc, bg, 4.5), acc2: readable(acc2, bg, 4.5), ink: readable(acc, bg, 4.5), onAcc: onColor(readable(acc, bg, 4.5)),
       display: "'Fraunces', Georgia, serif", body: "'Manrope', system-ui, sans-serif", thin: 300, boldW: 600, scheme: "light",
       heroBg: `linear-gradient(135deg, ${alpha(acc, .22)}, ${alpha(acc2, .18)})` };
   }
   if (look === "bold") {
     const bg = "#F4F4F1";
     return { bg, panel: "#FFFFFF", fg: "#0D0F12", dim: "#4F545C", line: "rgba(13,15,18,.12)",
-      acc: readable(acc, bg, 4.5), acc2: readable(acc2, bg, 4.5), onAcc: onColor(readable(acc, bg, 4.5)),
+      acc: readable(acc, bg, 4.5), acc2: readable(acc2, bg, 4.5), ink: readable(acc, bg, 4.5), onAcc: onColor(readable(acc, bg, 4.5)),
       display: "'Manrope', system-ui, sans-serif", body: "'Manrope', system-ui, sans-serif", thin: 800, boldW: 800, scheme: "light",
       heroBg: acc, heroFg: onColor(acc) };
   }
   const bg = "#0A0D12";
   return { bg, panel: "#10161E", fg: "#EDF2F8", dim: "#9AA6B6", line: "rgba(255,255,255,.09)",
-    acc, acc2, onAcc: onColor(acc),
+    acc, acc2, ink: readable(acc, bg, 4.5), onAcc: onColor(acc),
     display: "'Sora', system-ui, sans-serif", body: "'Inter', system-ui, sans-serif", thin: 100, boldW: 600, scheme: "dark",
     heroBg: `radial-gradient(120% 90% at 20% 10%, ${alpha(acc, .35)}, transparent 60%), radial-gradient(90% 80% at 90% 90%, ${alpha(acc2, .28)}, transparent 60%), #0A0D12` };
 }
 
 function css(L, design) {
   return `
-:root{--bg:${L.bg};--panel:${L.panel};--fg:${L.fg};--dim:${L.dim};--line:${L.line};--acc:${L.acc};--acc2:${L.acc2};--on-acc:${L.onAcc};
+:root{--bg:${L.bg};--panel:${L.panel};--fg:${L.fg};--dim:${L.dim};--line:${L.line};--acc:${L.acc};--acc2:${L.acc2};--ink:${L.ink};--on-acc:${L.onAcc};
 --display:${L.display};--body:${L.body};--thin:${L.thin};--boldw:${L.boldW};color-scheme:${L.scheme}}
 *{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--fg);font:400 17px/1.65 var(--body);-webkit-font-smoothing:antialiased}
-a{color:var(--acc)}img{max-width:100%;display:block}
+a{color:var(--ink)}img{max-width:100%;display:block}
 .wrap{width:min(1120px,calc(100% - 48px));margin:0 auto}
 .skip{position:absolute;left:-999px}.skip:focus{left:16px;top:16px;z-index:99;background:var(--panel);padding:8px 12px}
 /* header */
@@ -88,7 +101,7 @@ main section{padding:88px 0}
 main section + section{border-top:1px solid var(--line)}
 .h{font:var(--thin) clamp(30px,4.4vw,52px)/1.1 var(--display);margin:0 0 20px;letter-spacing:-.01em}
 .h b{font-weight:var(--boldw)}
-.kicker{font:600 12px var(--body);letter-spacing:.28em;text-transform:uppercase;color:var(--acc);margin:0 0 16px}
+.kicker{font:600 12px var(--body);letter-spacing:.28em;text-transform:uppercase;color:var(--ink);margin:0 0 16px}
 .lede{font-size:clamp(17px,1.6vw,20px);color:var(--dim);max-width:60ch;margin:0}
 .prose p{margin:0 0 1em;max-width:68ch}.prose p:last-child{margin-bottom:0}
 .btns{display:flex;gap:12px;flex-wrap:wrap;margin-top:30px}
@@ -109,6 +122,24 @@ ${L.heroFg ? `.hero-behind:not(.has-photo),.hero-words{color:${L.heroFg}}.hero-b
 .hero-beside{align-items:center}.hero-beside .wrap{display:grid;grid-template-columns:1.1fr .9fr;gap:48px;align-items:center;padding:110px 0}
 .hero-beside .hero-media{display:none}.hero-beside .pic{aspect-ratio:4/5;border-radius:18px;overflow:hidden}.hero-beside .pic img{width:100%;height:100%;object-fit:cover}
 .hero-words{min-height:0;text-align:center;background:${L.heroBg}}.hero-words .wrap{padding:130px 0 110px}.hero-words .lede{margin:0 auto}.hero-words .btns{justify-content:center}
+/* the monogram opening — chaseroush.com's: initials behind the title, a short
+   rule, a spaced line, a picture beside it, a cue to scroll */
+.hero-monogram{align-items:center;background:${L.heroBg}}
+.hero-monogram .wrap{display:grid;grid-template-columns:1.05fr .95fr;gap:48px;align-items:center;padding:120px 0 150px}
+.mono-words{position:relative}
+.mono-mark{position:absolute;left:-.06em;top:50%;transform:translateY(-58%);font:700 clamp(150px,19vw,280px)/1 var(--display);color:var(--fg);opacity:.05;pointer-events:none;user-select:none;letter-spacing:-.04em;white-space:nowrap}
+.hero-monogram .h{position:relative;font-size:clamp(44px,6vw,80px);line-height:1.08}
+.rule{display:block;width:90px;height:2px;background:var(--acc);margin:30px 0 26px}
+.spaced{font:400 13px/1.7 var(--body);letter-spacing:.2em;text-transform:uppercase;color:var(--dim);margin:0;max-width:60ch}
+.mono-pic img{width:100%;max-height:460px;object-fit:contain}
+.scrollcue{position:absolute;left:50%;bottom:34px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:12px;background:none;border:0;color:var(--dim);font:600 11px var(--body);letter-spacing:.24em;text-transform:uppercase;cursor:pointer}
+.scrollcue:before{content:"";width:2px;height:32px;background:var(--acc)}
+/* a section on a raised band */
+main section.raised{background:var(--panel);border-top-color:transparent}
+main section.raised + section{border-top-color:transparent}
+/* a photo that opens something */
+.piclink{display:block;height:100%;color:inherit}.piclink img{transition:transform .6s cubic-bezier(.16,1,.3,1)}
+.piclink:hover img{transform:scale(1.03)}.piclink:focus-visible{outline:2px solid var(--acc);outline-offset:4px}
 /* text, photo and words */
 .text-center{text-align:center}.text-center .prose p{margin-left:auto;margin-right:auto}
 .pt{display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center}
@@ -120,7 +151,7 @@ ${L.heroFg ? `.hero-behind:not(.has-photo),.hero-words{color:${L.heroFg}}.hero-b
 .fullphoto figcaption{font-size:13px;color:var(--dim);padding:10px 24px}
 .quote blockquote{margin:0;font:var(--thin) clamp(26px,3.4vw,44px)/1.25 var(--display);max-width:26ch}
 .quote-quiet blockquote{font-size:clamp(20px,2.2vw,28px);max-width:40ch}
-.quote cite{display:block;margin-top:18px;font:600 13px var(--body);letter-spacing:.2em;text-transform:uppercase;color:var(--acc);font-style:normal}
+.quote cite{display:block;margin-top:18px;font:600 13px var(--body);letter-spacing:.2em;text-transform:uppercase;color:var(--ink);font-style:normal}
 /* bands */
 .band{background:var(--panel)}
 .bandrow{display:flex;gap:40px;align-items:center;justify-content:space-between;flex-wrap:wrap}
@@ -132,11 +163,28 @@ ${L.heroFg ? `.hero-behind:not(.has-photo),.hero-words{color:${L.heroFg}}.hero-b
 .links-cards .linklist{grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
 .linklist a{display:block;padding:20px 22px;background:var(--panel);border:1px solid var(--line);border-radius:14px;text-decoration:none;color:var(--fg)}
 .linklist a:hover{border-color:var(--acc)}.linklist b{display:block}.linklist span{color:var(--dim);font-size:15px}
+.linklist .lpic{display:block;aspect-ratio:16/10;margin:-20px -22px 16px;overflow:hidden;border-radius:13px 13px 0 0;background:var(--bg)}
+.linklist .lpic img{width:100%;height:100%;object-fit:cover;transition:transform .6s cubic-bezier(.16,1,.3,1)}.linklist a:hover .lpic img{transform:scale(1.04)}
+.data .lede{margin-bottom:28px}
 /* footer */
 .foot{border-top:1px solid var(--line);padding:48px 0 60px;color:var(--dim);font-size:14px}
 .foot .wrap{display:flex;gap:28px;flex-wrap:wrap;justify-content:space-between;align-items:flex-start}
+.foot .col{display:flex;flex-direction:column;gap:14px}.foot .col.end{align-items:flex-end}
+.foot .tagline{margin:0;color:var(--fg)}
+.foot .small{flex-basis:100%;margin:0;font-size:12px;opacity:.75;max-width:80ch}
+.foot .menu{display:flex;gap:10px 20px;flex-wrap:wrap}.foot .menu a,.foot .words a{color:var(--dim);text-decoration:none}
+.foot .menu a:hover,.foot .words a:hover{color:var(--fg)}
+.foot .words{display:flex;gap:10px 32px;flex-wrap:wrap}
+.foot-center .wrap{flex-direction:column;align-items:center;text-align:center;gap:22px}
+.foot-center .words,.foot-center .menu,.foot-center .socials{justify-content:center}
+.foot-center .tagline{font:600 13px var(--body);letter-spacing:.2em;text-transform:uppercase;color:var(--dim)}
+.foot-center .small{margin:0 auto}
+.foot-columns .wrap{display:grid;grid-template-columns:1.4fr repeat(3,1fr);gap:32px}
+.foot-columns .menu{flex-direction:column;gap:10px}.foot-columns .words{flex-direction:column;gap:10px}
+.foot-columns .small{grid-column:1/-1}
+@media (max-width:820px){.foot-columns .wrap{grid-template-columns:1fr 1fr}.foot .col.end{align-items:flex-start}}
 .socials{display:flex;gap:12px;flex-wrap:wrap}.socials a{display:inline-flex;width:40px;height:40px;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:50%;color:var(--fg)}
-.socials a:hover{border-color:var(--acc);color:var(--acc)}.socials svg{width:18px;height:18px}
+.socials a:hover{border-color:var(--acc);color:var(--ink)}.socials svg{width:18px;height:18px}
 .customlinks{display:flex;gap:16px;flex-wrap:wrap}.customlinks a{color:var(--fg)}
 .powered{font-size:12px;opacity:.7}
 /* motion */
@@ -155,10 +203,31 @@ html[data-pages="fade"]{view-transition-name:root}
 @view-transition{navigation:auto}
 @media (prefers-reduced-motion:reduce){.m,.h .ch{opacity:1!important;transform:none!important;transition:none!important}
  .kb img{animation:none!important}.progress{display:none}.btn{transition:none}}
-@media (max-width:820px){main section{padding:64px 0}.pt,.hero-beside .wrap{grid-template-columns:1fr;gap:28px}.pt-right .pt .pic{order:0}
- .hero .wrap{padding:110px 0 64px}.card{padding:26px}}
-`;
+@media (max-width:820px){main section{padding:64px 0}.pt,.hero-beside .wrap,.hero-monogram .wrap{grid-template-columns:1fr;gap:28px}.pt-right .pt .pic{order:0}
+ .hero .wrap{padding:110px 0 64px}.hero-monogram .wrap{padding:100px 0 130px}.mono-pic img{max-height:240px}.card{padding:26px}}
+${design.look === "classic" ? CLASSIC : ""}`;
 }
+
+/* What makes Classic chaseroush.com rather than Night in a serif: the plain
+   name for a brand, a red line under the page you are on, the language as
+   a small box, square-shouldered red buttons, centered headings over the
+   ministry's data, and a footer tagline in spaced capitals. */
+const CLASSIC = `
+.wrap{width:min(1300px,calc(100% - 64px))}
+.brand{font:400 22px/1 var(--body);letter-spacing:0}.brand b{font-weight:400}
+.nav{gap:30px}.nav a{color:var(--fg);padding:8px 0;border-bottom:2px solid transparent}
+.nav a[aria-current]{color:var(--ink);border-bottom-color:var(--acc)}
+.nav .givebtn{border-radius:4px;padding:8px 16px;border-bottom:0}
+.langs{padding-left:26px;border-left:1px solid var(--line)}
+.langs a{border-radius:4px;padding:7px 13px;color:var(--fg);border-color:rgba(255,255,255,.14)}
+.h{font-weight:var(--thin);letter-spacing:0}.h b{font-weight:var(--boldw)}
+.btn{border-radius:4px;padding:15px 30px}.btn.solid{border-color:var(--acc)}
+.pic{border-radius:8px}.card{border-radius:8px}.linklist a,.news a{border-radius:8px}.linklist .lpic{border-radius:7px 7px 0 0}
+.data .h,.data .lede{text-align:center;margin-left:auto;margin-right:auto}
+.foot{background:var(--panel);border-top-color:var(--line)}
+.foot .langs{padding-left:0;border-left:0}
+@media (max-width:820px){.langs{padding-left:0;border-left:0}}
+`;
 
 /* ---------------------------------------------------------------- icons -- */
 
@@ -194,6 +263,8 @@ function prose(text) {
 function img(src, alt = "") {
   return src ? `<img src="${esc(src)}" alt="${esc(alt)}" loading="lazy">` : "";
 }
+/* Leaving the site opens nothing new, but tells the other site nothing. */
+const rel = (href) => (/^https?:/.test(href) ? ' rel="noopener"' : "");
 
 /* ------------------------------------------------------------- sections -- */
 
@@ -201,12 +272,20 @@ function renderSection(sec, ctx) {
   const { lang, fallback } = ctx;
   const w = (f) => wf(sec, lang, fallback, f);
   const photoMotion = ctx.design.motion.photos;
+  /* Where this section sends a visitor: "" when nowhere, or when the page it
+     names is switched off. */
+  const to = ctx.linkHref(sec.link);
+  const btnWords = w("button") || word(lang, "more");
+  const button = (solid = true) => to ? `<a class="btn${solid ? " solid" : ""}" href="${esc(to)}"${rel(to)}>${esc(btnWords)} →</a>` : "";
+  const pictured = (html, label) => to && html ? `<a class="piclink" href="${esc(to)}"${rel(to)} aria-label="${esc(label)}">${html}</a>` : html;
+  const sub = w("text") ? `<p class="lede m">${esc(w("text"))}</p>` : "";
+  const cls = (...c) => { const k = [...c, sec.raised ? "raised" : ""].filter(Boolean).join(" "); return k ? ` class="${k}"` : ""; };
   const widget = (kind, extra = "") =>
     `<div class="m" data-thauma="${esc(ctx.slug)}" data-widget="${kind}" data-lang="${esc(lang)}" data-theme="${ctx.widgetTheme}" data-foot="off"${extra}></div>`;
 
   switch (sec.type) {
     case "hero": {
-      const btns = (sec.buttons || []).map((b, i) => {
+      const builtIn = (sec.buttons || []).map((b, i) => {
         /* Give goes to the giving page if the site has one — it says why —
            else straight to the giving link. */
         if (b === "give" && (ctx.pageOn("give") || ctx.giveUrl)) {
@@ -216,6 +295,17 @@ function renderSection(sec, ctx) {
         if (b === "contact" && ctx.pageOn("contact")) return `<a class="btn${i === 0 ? " solid" : ""}" href="${esc(ctx.href("contact"))}">${esc(ctx.label("contact"))}</a>`;
         return "";
       }).join("");
+      /* The owner's own button: solid only when it is the only one. */
+      const btns = builtIn + button(!builtIn);
+      if (sec.variant === "monogram") {
+        const initials = String(ctx.name).split(/\s+/).filter(Boolean).map((x) => x[0]).slice(0, 3).join("").toUpperCase();
+        const h = w("thin") || w("bold") ? `<h1 class="h m">${esc(w("thin"))}${w("thin") && w("bold") ? "<br>" : ""}${w("bold") ? `<b>${esc(w("bold"))}</b>` : ""}</h1>` : "";
+        return `<section class="hero hero-monogram"><div class="wrap"><div class="mono-words"><span class="mono-mark" aria-hidden="true">${esc(initials)}</span>` +
+          `${w("kicker") ? `<p class="kicker m">${esc(w("kicker"))}</p>` : ""}${h}<span class="rule m" aria-hidden="true"></span>` +
+          `${w("text") ? `<p class="spaced m">${esc(w("text"))}</p>` : ""}${btns ? `<div class="btns m">${btns}</div>` : ""}</div>` +
+          `${sec.photo ? `<div class="mono-pic m">${img(sec.photo)}</div>` : ""}</div>` +
+          `<button type="button" class="scrollcue" aria-hidden="true" tabindex="-1">${esc(word(lang, "scroll"))}</button></section>`;
+      }
       const words = `${w("kicker") ? `<p class="kicker m">${esc(w("kicker"))}</p>` : ""}${heading(w("thin"), w("bold"), "h1")}` +
         `${w("text") ? `<p class="lede m">${esc(w("text"))}</p>` : ""}${btns ? `<div class="btns m">${btns}</div>` : ""}`;
       if (sec.variant === "beside") {
@@ -226,50 +316,52 @@ function renderSection(sec, ctx) {
     }
     case "text":
       if (!w("thin") && !w("bold") && !w("text")) return "";
-      return `<section class="${sec.variant === "center" ? "text-center" : ""}"><div class="wrap">${heading(w("thin"), w("bold"))}${prose(w("text"))}</div></section>`;
-    case "photoText":
+      return `<section${cls(sec.variant === "center" ? "text-center" : "")}><div class="wrap">${heading(w("thin"), w("bold"))}${prose(w("text"))}${to ? `<div class="btns m">${button()}</div>` : ""}</div></section>`;
+    case "photoText": {
       if (!sec.photo && !w("text")) return "";
-      return `<section class="pt-${sec.variant}"><div class="wrap pt">${sec.photo ? `<div class="pic m ${photoMotion === "zoom" ? "kb" : ""}">${img(sec.photo)}</div>` : ""}<div>${heading(w("thin"), w("bold"))}${prose(w("text"))}</div></div></section>`;
+      const pic = img(sec.photo, w("thin") + " " + w("bold"));
+      return `<section${cls("pt-" + sec.variant)}><div class="wrap pt">${sec.photo ? `<div class="pic m ${photoMotion === "zoom" ? "kb" : ""}">${sec.photoLink ? pictured(pic, btnWords) : pic}</div>` : ""}<div>${heading(w("thin"), w("bold"))}${prose(w("text"))}${to ? `<div class="btns m">${button()}</div>` : ""}</div></div></section>`;
+    }
     case "photo":
       if (!sec.photo) return "";
-      return `<section class="fullphoto"><figure style="margin:0"><div class="frame ${sec.variant === "zoom" ? "kb" : ""}"${sec.variant === "drift" ? " data-drift" : ""}>${img(sec.photo, w("caption"))}</div>${w("caption") ? `<figcaption class="wrap">${esc(w("caption"))}</figcaption>` : ""}</figure></section>`;
+      return `<section class="fullphoto"><figure style="margin:0"><div class="frame ${sec.variant === "zoom" ? "kb" : ""}"${sec.variant === "drift" ? " data-drift" : ""}>${pictured(img(sec.photo, w("caption")), w("caption") || word(lang, "more"))}</div>${w("caption") ? `<figcaption class="wrap">${esc(w("caption"))}</figcaption>` : ""}</figure></section>`;
     case "quote":
       if (!w("quote")) return "";
-      return `<section class="quote quote-${sec.variant}"><div class="wrap m"><blockquote>“${esc(w("quote"))}”</blockquote>${w("who") ? `<cite>${esc(w("who"))}</cite>` : ""}</div></section>`;
+      return `<section${cls("quote", "quote-" + sec.variant)}><div class="wrap m"><blockquote>“${esc(w("quote"))}”</blockquote>${w("who") ? `<cite>${esc(w("who"))}</cite>` : ""}</div></section>`;
     case "timeline":
       if (!(ctx.payload.milestones || []).length) return "";
-      return `<section><div class="wrap">${heading(w("thin"), w("bold"))}${widget("roadmap", sec.variant === "condensed" ? ' data-style="condensed"' : "")}</div></section>`;
+      return `<section${cls("data")}><div class="wrap">${heading(w("thin"), w("bold"))}${sub}${widget("roadmap", sec.variant === "condensed" ? ' data-style="condensed"' : "")}</div></section>`;
     case "goals":
       if (!(ctx.payload.goals || []).length) return "";
-      return `<section><div class="wrap">${heading(w("thin"), w("bold"))}${widget("goal")}</div></section>`;
+      return `<section${cls("data")}><div class="wrap">${heading(w("thin"), w("bold"))}${sub}${widget("goal")}</div></section>`;
     case "prayer":
       if (!(ctx.payload.prayer || []).length) return "";
-      return `<section><div class="wrap">${heading(w("thin"), w("bold"))}${widget("prayer")}</div></section>`;
+      return `<section${cls("data")}><div class="wrap">${heading(w("thin"), w("bold"))}${sub}${widget("prayer")}</div></section>`;
     case "videos":
       if (!(ctx.payload.videos || []).length && !(ctx.payload.video_links || []).length) return "";
-      return `<section><div class="wrap">${heading(w("thin"), w("bold"))}${widget("videos")}</div></section>`;
+      return `<section${cls("data")}><div class="wrap">${heading(w("thin"), w("bold"))}${sub}${widget("videos")}</div></section>`;
     case "newsletters": {
       const list = (ctx.payload.mailings || []).filter((m) => m.url).slice(0, 12);
       if (!list.length) return "";
       const date = (d) => { try { return new Date(d).toLocaleDateString(lang, { day: "numeric", month: "long", year: "numeric" }); } catch { return String(d || "").slice(0, 10); } };
-      return `<section><div class="wrap">${heading(w("thin"), w("bold"))}<ul class="news m">${list.map((m) =>
+      return `<section${cls("data")}><div class="wrap">${heading(w("thin"), w("bold"))}${sub}<ul class="news m">${list.map((m) =>
         `<li><a href="${esc(m.url)}"><span>${esc(m.subject)}</span><small>${esc(date(m.sent_at))}</small></a></li>`).join("")}</ul></div></section>`;
     }
     case "signup":
       ctx.needs.signup = true;
-      return `<section class="${sec.variant === "band" ? "band" : ""}"><div class="wrap">${sec.variant === "card" ? '<div class="card">' : '<div class="bandrow">'}<div>${heading(w("thin"), w("bold"))}${w("text") ? `<p class="lede m">${esc(w("text"))}</p>` : ""}</div><div class="m" style="flex:1 1 360px;max-width:520px"><div data-thauma-form data-lang="${esc(lang)}"></div></div></div></div></section>`;
+      return `<section${cls(sec.variant === "band" ? "band" : "")}><div class="wrap">${sec.variant === "card" ? '<div class="card">' : '<div class="bandrow">'}<div>${heading(w("thin"), w("bold"))}${w("text") ? `<p class="lede m">${esc(w("text"))}</p>` : ""}</div><div class="m" style="flex:1 1 360px;max-width:520px"><div data-thauma-form data-lang="${esc(lang)}"></div></div></div></div></section>`;
     case "contact":
       ctx.needs.contact = true;
-      return `<section><div class="wrap">${heading(w("thin"), w("bold"))}${w("text") ? `<p class="lede m">${esc(w("text"))}</p>` : ""}<div class="m" style="max-width:640px;margin-top:24px"><div data-thauma-contact data-lang="${esc(lang)}"></div></div></div></section>`;
+      return `<section${cls()}><div class="wrap">${heading(w("thin"), w("bold"))}${w("text") ? `<p class="lede m">${esc(w("text"))}</p>` : ""}<div class="m" style="max-width:640px;margin-top:24px"><div data-thauma-contact data-lang="${esc(lang)}"></div></div></div></section>`;
     case "give":
       if (!ctx.giveUrl) return "";
-      return `<section class="${sec.variant === "band" ? "band" : ""}"><div class="wrap">${sec.variant === "card" ? '<div class="card">' : '<div class="bandrow">'}<div>${heading(w("thin"), w("bold"))}${w("text") ? `<p class="lede m">${esc(w("text"))}</p>` : ""}</div><div class="btns m" style="margin:0"><a class="btn solid" href="${esc(ctx.giveUrl)}">${esc(w("button") || word(lang, "giveBtn"))} →</a></div></div></div></section>`;
+      return `<section${cls(sec.variant === "band" ? "band" : "")}><div class="wrap">${sec.variant === "card" ? '<div class="card">' : '<div class="bandrow">'}<div>${heading(w("thin"), w("bold"))}${w("text") ? `<p class="lede m">${esc(w("text"))}</p>` : ""}</div><div class="btns m" style="margin:0"><a class="btn solid" href="${esc(ctx.giveUrl)}">${esc(w("button") || word(lang, "giveBtn"))} →</a></div></div></div></section>`;
     case "links": {
-      const items = (sec.items || []).filter((it) => it.url);
+      const items = (sec.items || []).map((it) => ({ ...it, href: ctx.linkHref(it.url) })).filter((it) => it.href);
       if (!items.length) return "";
       const t = (it, f) => (it.words[lang] && it.words[lang][f]) || (it.words[fallback] && it.words[fallback][f]) || "";
-      return `<section class="links-${sec.variant}"><div class="wrap">${heading(w("thin"), w("bold"))}<ul class="linklist m">${items.map((it) =>
-        `<li><a href="${esc(it.url)}" rel="noopener"><b>${esc(t(it, "title") || it.url)}</b>${t(it, "text") ? `<span>${esc(t(it, "text"))}</span>` : ""}</a></li>`).join("")}</ul></div></section>`;
+      return `<section${cls("links-" + sec.variant)}><div class="wrap">${heading(w("thin"), w("bold"))}${sub}<ul class="linklist m">${items.map((it) =>
+        `<li><a href="${esc(it.href)}"${rel(it.href)}>${it.photo ? `<span class="lpic">${img(it.photo)}</span>` : ""}<b>${esc(t(it, "title") || it.href)}</b>${t(it, "text") ? `<span>${esc(t(it, "text"))}</span>` : ""}</a></li>`).join("")}</ul></div></section>`;
     }
     default:
       return "";
@@ -307,7 +399,13 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
     widgetTheme: L.scheme === "dark" ? "dark" : "light",
     giveUrl: doc.give || site.giving_url || "",
     pageOn: (id) => pages.some((p) => p.id === id),
-    href, label,
+    href, label, name: site.display_name || "",
+    linkHref: (link) => {
+      if (!link) return "";
+      const m = /^page:([a-z]+)$/.exec(link);
+      if (!m) return link;
+      return pages.some((p) => p.id === m[1]) ? href(m[1]) : "";
+    },
   };
 
   const body = page.sections.map((s) => renderSection(s, ctx)).join("\n");
@@ -325,8 +423,10 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
         `<a href="${esc(href(pageId, l))}" hreflang="${esc(l)}" lang="${esc(l)}"${l === lang ? ' aria-current="true"' : ""}>${esc(l.toUpperCase())}</a>`).join("")}</nav>` : "";
   const socials = doc.links.filter((k) => k.kind !== "custom").map((k) =>
     `<a href="${esc(k.url)}" aria-label="${esc(SOCIAL_NAME[k.kind])}" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k.kind]}</svg></a>`).join("");
-  const custom = doc.links.filter((k) => k.kind === "custom").map((k) =>
-    `<a href="${esc(k.url)}" rel="noopener">${esc(k.label[lang] || k.label[fallback] || k.url)}</a>`).join("");
+  /* The owner's own links may point at a page of the site, as a section's can. */
+  const custom = doc.links.filter((k) => k.kind === "custom").map((k) => ({ ...k, href: ctx.linkHref(k.url) })).filter((k) => k.href).map((k) =>
+    `<a href="${esc(k.href)}"${rel(k.href)}>${esc(k.label[lang] || k.label[fallback] || k.href)}</a>`).join("");
+  const foot = footer({ doc, lang, fallback, brand, name, pages, href, label, socials, custom, langLinks });
 
   const title = pageId === "home" ? name : `${label(pageId)} · ${name}`;
   const desc = (() => {
@@ -336,6 +436,20 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
   const alternates = doc.languages.map((l) => `<link rel="alternate" hreflang="${esc(l)}" href="${esc(href(pageId, l))}">`).join("");
   const m = design.motion;
   const widgets = /data-thauma="/.test(body);
+  /* WHEN THE MENU FOLDS INTO ITS BUTTON: when this site's own menu would no
+     longer fit on one line — worked out from its real labels, so a site with
+     four short pages keeps its menu on a laptop and one with nine long ones
+     folds before it wraps onto a second row. Estimated generously from the
+     characters; a fold a little early beats a menu on two lines. */
+  const classic = design.look === "classic";
+  const chars = (t) => String(t).length * (classic ? 8.6 : 8.2);
+  const inMenu = pages.filter((p) => p.id !== "give");
+  const menuW = (design.brand === "logo" ? 160 : chars(name) * 1.35) + 28 +
+    inMenu.reduce((n, p) => n + chars(label(p.id)) + (classic ? 30 : 22), 0) +
+    (ctx.pageOn("give") ? chars(label("give")) + 60 : 0) +
+    (doc.languages.length > 1 ? doc.languages.length * (classic ? 52 : 40) + (classic ? 26 : 0) : 0) +
+    (design.headerLinks ? doc.links.filter((k) => k.kind !== "custom").length * 52 : 0) + 72;
+  const fold = design.menu === "center" ? 820 : Math.max(820, Math.ceil(menuW / 10) * 10);
 
   return `<!doctype html>
 <html lang="${esc(lang)}" data-menu="${esc(design.menu)}" data-entrance="${esc(m.entrance)}" data-photos="${esc(m.photos)}" data-headings="${esc(m.headings)}" data-buttons="${esc(m.buttons)}" data-pages="${esc(m.pages)}" data-progress="${esc(m.progress)}">
@@ -348,7 +462,8 @@ ${draft ? '<meta name="robots" content="noindex">' : ""}
 ${alternates}
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?${FONTS[design.look]}&display=swap">
-<style>${css(L, design)}</style>
+<style>${css(L, design)}
+@media (max-width:${fold}px){.menubtn{display:inline-block}.nav{display:none}.top .wrap{flex-direction:row!important;padding:0!important}}</style>
 </head>
 <body>
 <a class="skip" href="#main">${esc(label(pageId))}</a>
@@ -362,16 +477,47 @@ ${draft ? `<div style="background:#F5B845;color:#1a1200;font:600 13px system-ui;
 <main id="main">
 ${body}
 </main>
-<footer class="foot"><div class="wrap">
-<div style="display:flex;flex-direction:column;gap:14px"><a class="brand" href="${esc(href("home"))}">${brand}</a>${custom ? `<span class="customlinks">${custom}</span>` : ""}</div>
-<div style="display:flex;flex-direction:column;gap:14px;align-items:flex-end">${socials ? `<span class="socials">${socials}</span>` : ""}${langLinks}<span class="powered">© ${new Date().getFullYear()} ${esc(name)} · ${esc(word(lang, "poweredBy"))}</span></div>
-</div></footer>
+${foot}
 ${widgets ? `<script>window.__thaumaPreview=${JSON.stringify(payload).replace(/</g, "\\u003c")};</script><script src="${esc(origin)}/embed/v1/widget.js" async></script>` : ""}
 ${ctx.needs.signup ? `<script src="${esc(origin)}/embed/v1/${esc(site.slug)}/form.js" defer></script>` : ""}
 ${ctx.needs.contact ? `<script src="${esc(origin)}/embed/v1/${esc(site.slug)}/contact.js" defer></script>` : ""}
 <script>${MOTION_JS}</script>
 </body>
 </html>`;
+}
+
+/**
+ * The foot of the page, in the owner's chosen layout (model.FOOTERS). The
+ * credit line is in every one of them.
+ */
+function footer({ doc, lang, fallback, brand, name, pages, href, label, socials, custom, langLinks }) {
+  const F = doc.footer || { layout: "split", menu: false, socials: "icons", words: {} };
+  const fw = (f) => (F.words[lang] && F.words[lang][f]) || (F.words[fallback] && F.words[fallback][f]) || "";
+  const tagline = fw("tagline") ? `<p class="tagline">${esc(fw("tagline"))}</p>` : "";
+  const small = fw("small") ? `<p class="small">${esc(fw("small")).replace(/\n/g, "<br>")}</p>` : "";
+  const menu = F.menu ? `<nav class="menu" aria-label="${esc(word(lang, "menu"))}">${pages.map((p) =>
+    `<a href="${esc(href(p.id))}">${esc(label(p.id))}</a>`).join("")}</nav>` : "";
+  /* Socials as names ("YouTube") sit in one line with the owner's own links,
+     as chaseroush.com's do; as icons they are a row of their own. */
+  const socialWords = doc.links.filter((k) => k.kind !== "custom").map((k) =>
+    `<a href="${esc(k.url)}" rel="noopener">${esc(SOCIAL_NAME[k.kind])}</a>`).join("");
+  const asWords = F.socials === "words";
+  const linkRow = (asWords ? socialWords : "") + custom;
+  const words = linkRow ? `<span class="words">${linkRow}</span>` : "";
+  const icons = !asWords && socials ? `<span class="socials">${socials}</span>` : "";
+  const credit = `<span class="powered">© ${new Date().getFullYear()} ${esc(name)} · ${esc(word(lang, "poweredBy"))}</span>`;
+  const home = `<a class="brand" href="${esc(href("home"))}">${brand}</a>`;
+
+  let inner;
+  if (F.layout === "center") {
+    inner = `${menu}${words}${icons}${tagline}${small}${langLinks}${credit}`;
+  } else if (F.layout === "columns") {
+    inner = `<div class="col">${home}${tagline}</div><div class="col">${menu}</div><div class="col">${words}</div>` +
+      `<div class="col">${icons}${langLinks}</div>${small}<div class="col">${credit}</div>`;
+  } else {
+    inner = `<div class="col">${home}${tagline}${menu}${words}</div><div class="col end">${icons}${langLinks}${credit}</div>${small}`;
+  }
+  return `<footer class="foot foot-${esc(F.layout)}"><div class="wrap">${inner}</div></footer>`;
 }
 
 /* The motion script: menu, entrances, headings, drift, progress. Small, no
@@ -395,6 +541,7 @@ function frame(){tick=false;var vh=innerHeight;
  drift.forEach(function(i){var r=i.parentNode.getBoundingClientRect();var p=((r.top+r.height/2)-vh/2)/(vh/2+r.height/2);p=Math.max(-1,Math.min(1,p));i.style.transform='translate3d(0,'+(-p*0.05*r.height).toFixed(1)+'px,0)'});
  if(bar&&!still){var m=document.documentElement.scrollHeight-vh;bar.style.transform='scaleX('+(m>0?scrollY/m:0)+')'}}
 addEventListener('scroll',function(){if(!tick){tick=true;requestAnimationFrame(frame)}},{passive:true});frame();
+var cue=document.querySelector('.scrollcue');if(cue)cue.addEventListener('click',function(){var n=cue.closest('section').nextElementSibling;if(n)n.scrollIntoView({behavior:still?'auto':'smooth'})});
 })();`;
 
 /** The two pages a visitor can hit that are not a page: not there, and not yet. */

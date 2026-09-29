@@ -90,6 +90,36 @@ await check("typed words are saved to the working copy", async () => {
   eq(save.draft.pages[0].sections[0].words.en.text, "Serving Croatia's churches.", "the words");
 });
 
+await check("a section opens a page of the site, or an address typed out", async () => {
+  const { w, d, sent, click } = await boot();
+  click(d.querySelector('[data-ws-open="home"]'));
+  const pick = d.querySelector('[data-link="sec:1"]');
+  eq(pick.value, "page:about", "the default opens About");
+  assert(d.querySelector('[data-sec-word="1:button"]'), "and has words for its button");
+  pick.value = "url";
+  pick.dispatchEvent(new w.Event("change", { bubbles: true }));
+  const box = d.querySelector('[data-link-url="sec:1"]');
+  assert(box, "a box for the address");
+  box.value = "https://blog.example.org/";
+  box.dispatchEvent(new w.Event("input", { bubbles: true }));
+  await settle(900);
+  eq(sent.filter((x) => x.action === "save").pop().draft.pages[0].sections[1].link, "https://blog.example.org/", "saved");
+});
+
+await check("the footer: a layout picked, a tagline written", async () => {
+  const { w, d, sent, click } = await boot();
+  click(d.querySelector('[data-ws-tab="footer"]'));
+  assert(!d.getElementById("wsFooter").hidden, "the Footer panel");
+  assert(!d.getElementById("wsPreviewPane").hidden, "with the site beside it");
+  click(d.querySelector('[data-chip="footer:layout"][data-value="center"]'));
+  const t = d.querySelector('[data-footer-word="tagline"]');
+  t.value = "All of me for all of Him";
+  t.dispatchEvent(new w.Event("input", { bubbles: true }));
+  await settle(900);
+  const f = sent.filter((x) => x.action === "save").pop().draft.footer;
+  eq([f.layout, f.words.en.tagline], ["center", "All of me for all of Him"], "saved");
+});
+
 await check("somebody not allowed sees it all, changes nothing, and can ask", async () => {
   const { d } = await boot({ edit: false, owner: false });
   assert(!d.getElementById("wsAsk").hidden, "Ask to edit offered");

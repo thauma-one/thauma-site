@@ -5,7 +5,7 @@ staffTitle: Website
 staffHeading: Your <b>website</b>
 ---
 {#- THE MINISTRY'S OWN WEBSITE (0044; mockup canvas "Thauma partner sites").
-   Pages, Design, Links and Settings, one side list like Website in the
+   Pages, Design, Links, Footer and Settings, one side list like Website in the
    administrators' area, and one Publish bar along the foot.
 
    Everything here is drawn by staff-site.js from /api/staff-site. Changes
@@ -41,6 +41,7 @@ staffHeading: Your <b>website</b>
     <button type="button" class="ws-tab" data-ws-tab="pages" aria-current="page" data-i18n="ws.tab.pages">Pages</button>
     <button type="button" class="ws-tab" data-ws-tab="design" data-i18n="ws.tab.design">Design</button>
     <button type="button" class="ws-tab" data-ws-tab="links" data-i18n="ws.tab.links">Links</button>
+    <button type="button" class="ws-tab" data-ws-tab="footer" data-i18n="ws.tab.footer">Footer</button>
     <button type="button" class="ws-tab" data-ws-tab="settings" data-i18n="ws.tab.settings">Settings</button>
   </nav>
 
@@ -61,11 +62,13 @@ staffHeading: Your <b>website</b>
     <section class="ws-panel" data-ws-panel="pages" id="wsPages"></section>
     <section class="ws-panel" data-ws-panel="design" id="wsDesign" hidden></section>
     <section class="ws-panel" data-ws-panel="links" id="wsLinks" hidden></section>
+    <section class="ws-panel" data-ws-panel="footer" id="wsFooter" hidden></section>
     <section class="ws-panel" data-ws-panel="settings" id="wsSettings" hidden></section>
   </div>
 
-  {#- The page as it will look, beside the sections being arranged: the real
-      site, drawn from the working copy, redrawn after each change. -#}
+  {#- The page as it will look, beside whatever is being changed: the real
+      site, drawn from the working copy, redrawn after each change — the page
+      being arranged on Pages, Home on Design, Links and Footer. -#}
   <aside class="ws-preview" id="wsPreviewPane" hidden>
     <div class="ws-preview-head"><span data-i18n="ws.onSite">On the site</span><span id="wsPreviewPath"></span></div>
     <div class="ws-preview-frame"><iframe id="wsFrame" title="Preview" loading="lazy"></iframe></div>

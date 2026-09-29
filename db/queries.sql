@@ -2813,7 +2813,7 @@ SELECT lang, heading, blurb, button, thanks
 
 -- name: partner_site_get
 -- The whole row, for the ministry's Website tab.
-SELECT partner_id, subdomain, enabled, draft, published, published_at, dns_state,
+SELECT partner_id, subdomain, enabled, draft, published, published_at, dns_state, archived_at,
        (SELECT u.name FROM users u WHERE u.id = partner_sites.published_by) AS published_by_name,
        updated_at
   FROM partner_sites
@@ -2828,8 +2828,11 @@ VALUES (:partner_id, :subdomain, 0, :draft, :now, :now);
 
 
 -- name: partner_site_subdomain_taken
--- Whether another ministry already has this address.
-SELECT partner_id FROM partner_sites WHERE subdomain = :subdomain AND partner_id <> :partner_id;
+-- Whether another ministry already has this address — as its own, or as an
+-- old one that still sends visitors on (0045).
+SELECT partner_id FROM partner_sites WHERE subdomain = :subdomain AND partner_id <> :partner_id
+UNION ALL
+SELECT partner_id FROM partner_site_aliases WHERE subdomain = :subdomain AND partner_id <> :partner_id;
 
 
 -- name: partner_site_save_draft
@@ -2850,7 +2853,11 @@ UPDATE partner_sites SET draft = published, updated_at = :now
 
 
 -- name: partner_site_set_enabled
-UPDATE partner_sites SET enabled = :enabled, updated_at = :now WHERE partner_id = :partner_id;
+-- Switching on also brings an archived site back (0045).
+UPDATE partner_sites
+   SET enabled = :enabled, updated_at = :now,
+       archived_at = CASE WHEN :enabled = 1 THEN NULL ELSE archived_at END
+ WHERE partner_id = :partner_id;
 
 
 -- name: partner_site_set_dns
@@ -2875,7 +2882,10 @@ SELECT s.partner_id, s.subdomain, s.enabled, s.published,
 
 -- name: partner_site_all
 -- Every site, for the administrators' Partners page.
-SELECT partner_id, subdomain, enabled, published_at, dns_state FROM partner_sites;
+SELECT partner_id, subdomain, enabled, published_at, dns_state, archived_at,
+       (SELECT GROUP_CONCAT(a.subdomain, ',') FROM partner_site_aliases a
+         WHERE a.partner_id = partner_sites.partner_id) AS aliases
+  FROM partner_sites;
 
 
 -- name: partner_site_owner
@@ -2933,3 +2943,49 @@ SELECT id, slug, display_name, giving_url, embed_accent, embed_accent2, embed_th
        embed_roadmap, embed_goal, embed_prayer, embed_videos
   FROM partners
  WHERE id = :partner_id;
+
+
+-- ============================================================================
+-- PARTNER SITES — archiving, deleting, old addresses (0045)
+-- ============================================================================
+
+-- name: partner_site_archive
+-- Off, and marked archived. Everything else is kept.
+UPDATE partner_sites SET enabled = 0, archived_at = :now, dns_state = NULL, updated_at = :now
+ WHERE partner_id = :partner_id;
+
+
+-- name: partner_site_delete
+DELETE FROM partner_sites WHERE partner_id = :partner_id;
+
+
+-- name: partner_site_editors_clear
+DELETE FROM partner_site_editors WHERE partner_id = :partner_id;
+
+
+-- name: partner_site_requests_clear
+DELETE FROM partner_site_requests WHERE partner_id = :partner_id;
+
+
+-- name: partner_site_alias_add
+INSERT OR REPLACE INTO partner_site_aliases (subdomain, partner_id, created_at)
+VALUES (:subdomain, :partner_id, :now);
+
+
+-- name: partner_site_alias_remove
+DELETE FROM partner_site_aliases WHERE subdomain = :subdomain;
+
+
+-- name: partner_site_aliases_for
+SELECT subdomain FROM partner_site_aliases WHERE partner_id = :partner_id ORDER BY created_at;
+
+
+-- name: partner_site_aliases_clear
+DELETE FROM partner_site_aliases WHERE partner_id = :partner_id;
+
+
+-- name: partner_site_by_alias
+-- A visitor at an old address: where the site is now, if it is open.
+SELECT s.subdomain, s.enabled
+  FROM partner_site_aliases a JOIN partner_sites s ON s.partner_id = a.partner_id
+ WHERE a.subdomain = :subdomain;

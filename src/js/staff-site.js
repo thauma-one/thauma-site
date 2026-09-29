@@ -1,7 +1,7 @@
 /* ============================================================
    staff-site.js — the ministry's own website (Website tab, 0044)
    ============================================================
-   Pages · Design · Links · Settings, from /api/staff-site.
+   Pages · Design · Links · Footer · Settings, from /api/staff-site.
 
    HOW SAVING WORKS. Every change goes into the working copy on the
    server a moment after it is made ("Saved"), so nothing is lost
@@ -38,21 +38,25 @@
 
   /* What each kind of section is made of — the same list as site/model.js. */
   var SECTIONS = {
-    hero: { variants: ['behind', 'beside', 'words'], words: ['kicker', 'thin', 'bold', 'text'], photo: true, buttons: true },
-    text: { variants: ['left', 'center'], words: ['thin', 'bold', 'text'] },
-    photoText: { variants: ['left', 'right', 'above'], words: ['thin', 'bold', 'text'], photo: true },
-    photo: { variants: ['drift', 'still', 'zoom'], words: ['caption'], photo: true },
+    hero: { variants: ['behind', 'beside', 'words', 'monogram'], words: ['kicker', 'thin', 'bold', 'text', 'button'], photo: true, buttons: true, link: 'button' },
+    text: { variants: ['left', 'center'], words: ['thin', 'bold', 'text', 'button'], link: 'button' },
+    photoText: { variants: ['left', 'right', 'above'], words: ['thin', 'bold', 'text', 'button'], photo: true, link: 'both' },
+    photo: { variants: ['drift', 'still', 'zoom'], words: ['caption'], photo: true, link: 'photo' },
     quote: { variants: ['large', 'quiet'], words: ['quote', 'who'] },
-    timeline: { variants: ['condensed', 'full'], words: ['thin', 'bold'], data: 'updates/#milestones' },
-    goals: { variants: ['cards'], words: ['thin', 'bold'], data: 'updates/#goals' },
-    prayer: { variants: ['list'], words: ['thin', 'bold'], data: 'updates/#prayer' },
-    videos: { variants: ['stage'], words: ['thin', 'bold'], data: 'updates/#videos' },
-    newsletters: { variants: ['list'], words: ['thin', 'bold'], data: 'mail/' },
+    timeline: { variants: ['condensed', 'full'], words: ['thin', 'bold', 'text'], data: 'updates/#milestones' },
+    goals: { variants: ['cards'], words: ['thin', 'bold', 'text'], data: 'updates/#goals' },
+    prayer: { variants: ['list'], words: ['thin', 'bold', 'text'], data: 'updates/#prayer' },
+    videos: { variants: ['stage'], words: ['thin', 'bold', 'text'], data: 'updates/#videos' },
+    newsletters: { variants: ['list'], words: ['thin', 'bold', 'text'], data: 'mail/' },
     signup: { variants: ['band', 'card'], words: ['thin', 'bold', 'text'], data: 'sharing/#signup' },
     contact: { variants: ['form'], words: ['thin', 'bold', 'text'], data: 'sharing/#contact' },
     give: { variants: ['band', 'card'], words: ['thin', 'bold', 'text', 'button'] },
-    links: { variants: ['list', 'cards'], words: ['thin', 'bold'], items: true },
+    links: { variants: ['list', 'cards'], words: ['thin', 'bold', 'text'], items: true },
   };
+  /* Everything but the opening and a full-width photo can sit on a raised band. */
+  var FLAT = { hero: 1, photo: 1 };
+  /* On a section of the ministry's data, "text" is the line under the heading. */
+  function fieldName(type, f) { return f === 'text' && (SECTIONS[type].data || type === 'links') && type !== 'signup' && type !== 'contact' ? tr('ws.f.subtitle') : tr('ws.f.' + f); }
   var ORDER = ['hero', 'text', 'photoText', 'photo', 'quote', 'timeline', 'goals', 'prayer', 'videos', 'newsletters', 'signup', 'contact', 'give', 'links'];
   var MOTION = {
     entrance: ['rise', 'fade', 'slide', 'zoom', 'none'], photos: ['drift', 'zoom', 'still'],
@@ -60,6 +64,8 @@
     pages: ['fade', 'cut'], progress: ['on', 'off'],
   };
   var SOCIALS = ['youtube', 'instagram', 'facebook', 'x', 'tiktok', 'linkedin', 'spotify', 'email'];
+  var LOOKS = ['night', 'paper', 'bold', 'classic'];
+  var FOOTERS = ['split', 'center', 'columns'];
   var SOCIAL_NAME = { youtube: 'YouTube', instagram: 'Instagram', facebook: 'Facebook', x: 'X', tiktok: 'TikTok',
     linkedin: 'LinkedIn', spotify: 'Spotify', email: 'Email' };
 
@@ -81,8 +87,8 @@
     }).join('');
     $('wsLangB').value = state.langB || '';
     $('wsRefWrap').hidden = !others.length;
-    /* Words are written on Pages and Links; Design and Settings have none. */
-    $('wsWriting').hidden = !(state.tab === 'pages' || state.tab === 'links');
+    /* Words are written on Pages, Links and Footer; Design and Settings have none. */
+    $('wsWriting').hidden = !(state.tab === 'pages' || state.tab === 'links' || state.tab === 'footer');
   }
   $('wsLangA').addEventListener('change', function () { state.langA = this.value; if (state.langB === state.langA) state.langB = null; fillPair(); draw(); });
   $('wsLangB').addEventListener('change', function () { state.langB = this.value; draw(); });
@@ -164,7 +170,7 @@
     on.querySelector('.switch-state').textContent = s.enabled ? 'On' : 'Off';
     on.disabled = !state.body.can.owner;
     on.hidden = !state.body.can.owner;
-    $('wsState').textContent = s.enabled ? tr('ws.isLive') : tr('ws.isOff');
+    $('wsState').textContent = s.enabled ? tr('ws.isLive') : s.archived ? tr('ws.isArchived') : tr('ws.isOff');
     var shown = s.address.replace(/^https?:\/\//, '').replace(/\/$/, '');
     $('wsAddress').textContent = shown + (s.enabled && s.dns && s.dns !== 'ready' ? ' · ' + tr('ws.dnsPending') : '');
     $('wsOpen').href = s.address;
@@ -233,8 +239,11 @@
     if (state.tab === 'pages') drawPages();
     if (state.tab === 'design') drawDesign();
     if (state.tab === 'links') drawLinks();
+    if (state.tab === 'footer') drawFooter();
     if (state.tab === 'settings') drawSettings();
-    var showFrame = state.tab === 'pages' && !!state.page;
+    /* The site beside whatever is being changed: the page being arranged, or
+       Home for the look, the links and the footer. */
+    var showFrame = (state.tab === 'pages' && !!state.page) || state.tab === 'design' || state.tab === 'links' || state.tab === 'footer';
     $('wsPreviewPane').hidden = !showFrame;
     $('wsRoot').classList.toggle('with-preview', showFrame);
     if (showFrame) refreshFrame();
@@ -244,12 +253,24 @@
   }
 
   function refreshFrame() {
-    if ($('wsPreviewPane').hidden || !state.page) return;
+    if ($('wsPreviewPane').hidden) return;
     var s = state.body.site, lang = state.langA;
-    var path = s.preview.replace(/\?draft$/, '') + lang + '/' + (state.page === 'home' ? '' : state.page + '/');
-    $('wsPreviewPath').textContent = '/' + lang + '/' + (state.page === 'home' ? '' : state.page + '/');
+    var page = state.tab === 'pages' && state.page ? state.page : 'home';
+    var path = s.preview.replace(/\?draft$/, '') + lang + '/' + (page === 'home' ? '' : page + '/');
+    $('wsPreviewPath').textContent = '/' + lang + '/' + (page === 'home' ? '' : page + '/');
     $('wsFrame').src = path + '?draft&t=' + Date.now();
   }
+  /* On the Footer tab the preview opens at the foot of the page. */
+  $('wsFrame').addEventListener('load', function () {
+    if (state.tab !== 'footer') return;
+    var frame = this;
+    /* Again once the widgets have drawn, which makes the page taller. */
+    [0, 600, 1500].forEach(function (ms) {
+      setTimeout(function () {
+        try { var w = frame.contentWindow; w.scrollTo(0, w.document.documentElement.scrollHeight); } catch (e) {}
+      }, ms);
+    });
+  });
 
   /* ---- small pieces ---------------------------------------------------- */
 
@@ -273,6 +294,22 @@
   }
   function pageLabel(p, lang) {
     return (p.label && p.label[lang]) || tr('ws.page.' + p.id);
+  }
+  /* Where something sends a visitor: nowhere, one of the site's pages, or an
+     address typed out. `key` is what the change handler finds it by. A page
+     that is switched off is still offered, marked, and the link simply does
+     not show until the page does. */
+  function linkPicker(key, value, allowNone) {
+    var v = value || '', isUrl = v && v.indexOf('page:') !== 0;
+    var opts = (allowNone ? '<option value="">' + esc(tr('ws.link.none')) + '</option>' : '') +
+      '<optgroup label="' + esc(tr('ws.link.pages')) + '">' + state.doc.pages.map(function (p) {
+        var name = pageLabel(p, state.langA);
+        return '<option value="page:' + esc(p.id) + '"' + (v === 'page:' + p.id ? ' selected' : '') + '>' +
+          esc(p.on ? name : fill('ws.link.hidden', { page: name })) + '</option>';
+      }).join('') + '</optgroup>' +
+      '<option value="url"' + (isUrl ? ' selected' : '') + '>' + esc(tr('ws.link.url')) + '</option>';
+    return '<span class="ws-link"><select data-link="' + esc(key) + '">' + opts + '</select>' +
+      (isUrl ? '<input type="url" data-link-url="' + esc(key) + '" value="' + esc(v === 'https://' ? '' : v) + '" placeholder="https://">' : '') + '</span>';
   }
 
   /* ---- Pages ----------------------------------------------------------- */
@@ -342,21 +379,40 @@
         return '<label class="chk"><input type="checkbox" data-sec-btn="' + i + ':' + b + '"' + (on ? ' checked' : '') + '><span>' + esc(tr('ws.btn.' + b)) + '</span></label>';
       }).join('') + '</div>';
     }
-    html += '<div class="ws-fields">' + spec.words.map(function (f) {
+    if (spec.link) {
+      html += '<div class="ws-sec-row"><span class="ws-small">' + esc(tr(spec.link === 'photo' ? 'ws.link.photo' : 'ws.link.button')) + '</span>' +
+        linkPicker('sec:' + i, s.link, true) +
+        (spec.link === 'both' && s.link && s.photo ? '<label class="chk"><input type="checkbox" data-sec-photolink="' + i + '"' + (s.photoLink ? ' checked' : '') + '><span>' + esc(tr('ws.link.photoToo')) + '</span></label>' : '') +
+        '</div>';
+    }
+    if (!FLAT[s.type]) {
+      html += '<div class="ws-sec-row"><span class="ws-small">' + esc(tr('ws.bg')) + '</span>' +
+        chips('raised:' + i, ['plain', 'raised'], s.raised ? 'raised' : 'plain', function (v) { return tr('ws.bg.' + v); }) + '</div>';
+    }
+    /* A button's words only once there is a button (Give always has one). */
+    var fields = spec.words.filter(function (f) { return f !== 'button' || !spec.link || s.link; });
+    html += '<div class="ws-fields">' + fields.map(function (f) {
       var long = f === 'text' || f === 'quote';
       var src = {}; Object.keys(s.words || {}).forEach(function (l) { src[l] = (s.words[l] || {})[f]; });
-      return '<label class="fld' + (long ? ' ws-wide' : '') + '"><span>' + esc(tr('ws.f.' + f)) + '</span>' + ref(src) +
-        (long ? '<textarea rows="' + (f === 'text' ? 4 : 3) + '" data-sec-word="' + i + ':' + f + '" lang="' + esc(state.langA) + '">' + esc(w[f] || '') + '</textarea>'
-              : '<input type="text" data-sec-word="' + i + ':' + f + '" value="' + esc(w[f] || '') + '" lang="' + esc(state.langA) + '">') + '</label>';
+      return '<label class="fld' + (long ? ' ws-wide' : '') + '"><span>' + esc(fieldName(s.type, f)) + '</span>' + ref(src) +
+        (long ? '<textarea rows="' + (f === 'text' && !SECTIONS[s.type].data ? 4 : 2) + '" data-sec-word="' + i + ':' + f + '" lang="' + esc(state.langA) + '">' + esc(w[f] || '') + '</textarea>'
+              : '<input type="text" data-sec-word="' + i + ':' + f + '" value="' + esc(w[f] || '') + '"' + (f === 'button' ? ' placeholder="' + esc(tr('ws.readMore')) + '"' : '') + ' lang="' + esc(state.langA) + '">') + '</label>';
     }).join('') + '</div>';
     if (spec.items) {
+      /* Each link is a small card: its picture, its words, where it goes. */
       html += '<div class="ws-items">' + (s.items || []).map(function (it, j) {
-        var t = (it.words || {})[state.langA] || {};
-        return '<div class="ws-item">' +
-          '<input type="text" placeholder="' + esc(tr('ws.itemTitle')) + '" data-item="' + i + ':' + j + ':title" value="' + esc(t.title || '') + '">' +
-          '<input type="text" placeholder="' + esc(tr('ws.itemText')) + '" data-item="' + i + ':' + j + ':text" value="' + esc(t.text || '') + '">' +
-          '<input type="url" placeholder="https://" data-item-url="' + i + ':' + j + '" value="' + esc(it.url || '') + '">' +
-          '<button type="button" class="ws-icon del" data-item-remove="' + i + ':' + j + '" aria-label="' + esc(tr('ws.remove')) + '">✕</button></div>';
+        var t = (it.words || {})[state.langA] || {}, k = i + ':' + j;
+        return '<div class="ws-card">' +
+          '<div class="ws-card-pic">' + (it.photo ? '<img src="' + esc(it.photo) + '" alt="">' : '<span class="ws-nophoto">' + esc(tr('ws.noPhoto')) + '</span>') +
+            '<label class="ghost-btn sm ws-file">' + esc(it.photo ? tr('ws.changePhoto') : tr('ws.choosePhoto')) +
+            '<input type="file" accept="image/*" data-item-photo="' + k + '" hidden></label>' +
+            (it.photo ? '<button type="button" class="link-btn" data-item-unphoto="' + k + '">' + esc(tr('ws.removePhoto')) + '</button>' : '') +
+            '<span class="hint"></span></div>' +
+          '<div class="ws-card-words">' +
+            '<input type="text" placeholder="' + esc(tr('ws.itemTitle')) + '" data-item="' + k + ':title" value="' + esc(t.title || '') + '" lang="' + esc(state.langA) + '">' +
+            '<input type="text" placeholder="' + esc(tr('ws.itemText')) + '" data-item="' + k + ':text" value="' + esc(t.text || '') + '" lang="' + esc(state.langA) + '">' +
+            linkPicker('item:' + k, it.url || 'https://', false) + '</div>' +
+          '<button type="button" class="ws-icon del" data-item-remove="' + k + '" aria-label="' + esc(tr('ws.remove')) + '">✕</button></div>';
       }).join('') + '<button type="button" class="link-btn" data-item-add="' + i + '">+ ' + esc(tr('ws.addLink')) + '</button></div>';
     }
     if (spec.data) {
@@ -424,15 +480,19 @@
   var LOOK_SAMPLE = {
     night: 'background:#0A0D12;color:#EDF2F8;font-family:Sora,system-ui', paper: 'background:#F6F2EA;color:#1A1C22;font-family:Georgia,serif',
     bold: 'color:#041D24;font-family:system-ui;font-weight:800',
+    classic: 'background:#1A1A1A;color:#F2EFEA;font-family:"Crimson Pro",Georgia,serif;font-weight:600',
   };
   function drawDesign() {
     var d = state.doc.design, th = state.body.theme || { accent: '#1AE4FF', accent2: '#25FFA1' };
     var name = state.body.partner.display_name;
-    var html = '<div class="ws-head"><h2>' + esc(tr('ws.look')) + '</h2></div><div class="ws-looks">' + ['night', 'paper', 'bold'].map(function (l) {
+    var html = '<div class="ws-head"><h2>' + esc(tr('ws.look')) + '</h2></div><div class="ws-looks">' + LOOKS.map(function (l) {
       var bg = l === 'bold' ? 'background:' + th.accent + ';' : '';
+      /* Classic wears its own brick red, square-shouldered. */
+      var btn = l === 'classic' ? 'background:#A63D40;color:#fff;border-radius:3px'
+        : 'background:' + (l === 'bold' ? '#041D24' : th.accent) + ';color:' + (l === 'bold' ? th.accent : '#06110c');
       return '<button type="button" class="ws-look" data-chip="look" data-value="' + l + '" aria-pressed="' + (d.look === l) + '">' +
         '<span class="ws-look-sample" style="' + bg + LOOK_SAMPLE[l] + '"><span class="ws-look-name">' + esc(name) + '</span>' +
-        '<span class="ws-look-btn" style="background:' + (l === 'bold' ? '#041D24' : th.accent) + ';color:' + (l === 'bold' ? th.accent : '#06110c') + '">' + esc(tr('ws.btn.give')) + '</span></span>' +
+        '<span class="ws-look-btn" style="' + btn + '">' + esc(tr('ws.btn.give')) + '</span></span>' +
         '<span class="ws-look-cap"><b>' + esc(tr('ws.look.' + l)) + '</b><span>' + esc(tr('ws.look.' + l + '.what')) + '</span></span></button>';
     }).join('') + '</div>';
     html += '<div class="ws-rows">' +
@@ -463,10 +523,41 @@
     html += '<div class="ws-head"><h2>' + esc(tr('ws.custom')) + '</h2></div><div class="ws-customs">' + custom.map(function (x) {
       return '<div class="ws-item">' + ref(x.l.label) +
         '<input type="text" maxlength="40" placeholder="' + esc(tr('ws.linkName')) + '" data-custom-label="' + x.i + '" value="' + esc((x.l.label || {})[state.langA] || '') + '" lang="' + esc(state.langA) + '">' +
-        '<input type="url" placeholder="https://" data-custom-url="' + x.i + '" value="' + esc(x.l.url || '') + '">' +
+        linkPicker('custom:' + x.i, x.l.url || 'https://', false) +
         '<button type="button" class="ws-icon del" data-custom-remove="' + x.i + '" aria-label="' + esc(tr('ws.remove')) + '">✕</button></div>';
     }).join('') + '<button type="button" class="link-btn" data-custom-add>+ ' + esc(tr('ws.addLink')) + '</button></div>';
     $('wsLinks').innerHTML = html;
+  }
+
+  /* ---- Footer ---------------------------------------------------------- */
+
+  /* Each layout drawn small, so the choice is seen rather than described. */
+  var FOOT_SKETCH = {
+    split: [[6,30,26,12,'t'],[6,52,34,7,'l'],[70,30,24,12,'o'],[62,56,32,7,'l']],
+    center: [[26,18,48,8,'l'],[40,38,20,10,'o'],[22,58,56,8,'t'],[30,76,40,6,'l']],
+    columns: [[5,24,22,12,'t'],[34,24,16,6,'l'],[34,38,14,6,'l'],[56,24,16,6,'l'],[56,38,14,6,'l'],[78,24,16,12,'o'],[5,74,90,5,'l']],
+  };
+  function drawFooter() {
+    var f = state.doc.footer || (state.doc.footer = { layout: 'split', menu: false, socials: 'icons', words: {} });
+    var w = (f.words || {})[state.langA] || {};
+    var src = function (k) { var o = {}; Object.keys(f.words || {}).forEach(function (l) { o[l] = (f.words[l] || {})[k]; }); return o; };
+    var html = '<div class="ws-head"><h2>' + esc(tr('ws.footer.layout')) + '</h2></div><div class="ws-looks ws-foots">' + FOOTERS.map(function (k) {
+      return '<button type="button" class="ws-look" data-chip="footer:layout" data-value="' + k + '" aria-pressed="' + (f.layout === k) + '">' +
+        '<span class="ws-sketch ws-foot-sketch" aria-hidden="true">' + (FOOT_SKETCH[k] || []).map(function (r) {
+          return '<span class="sk sk-' + r[4] + '" style="left:' + r[0] + '%;top:' + r[1] + '%;width:' + r[2] + '%;height:' + r[3] + '%"></span>';
+        }).join('') + '</span>' +
+        '<span class="ws-look-cap"><b>' + esc(tr('ws.footer.' + k)) + '</b><span>' + esc(tr('ws.footer.' + k + '.what')) + '</span></span></button>';
+    }).join('') + '</div>';
+    html += '<div class="ws-rows">' +
+      row(tr('ws.footer.menu'), sw('data-footer-menu', f.menu, '')) +
+      row(tr('ws.footer.socials'), chips('footer:socials', ['icons', 'words'], f.socials, function (v) { return tr('ws.footer.socials.' + v); })) +
+      '</div><div class="ws-fields">' +
+      '<label class="fld ws-wide"><span>' + esc(tr('ws.footer.tagline')) + '</span>' + ref(src('tagline')) +
+        '<input type="text" maxlength="120" data-footer-word="tagline" value="' + esc(w.tagline || '') + '" lang="' + esc(state.langA) + '"></label>' +
+      '<label class="fld ws-wide"><span>' + esc(tr('ws.footer.small')) + '</span>' + ref(src('small')) +
+        '<textarea rows="2" maxlength="400" data-footer-word="small" lang="' + esc(state.langA) + '">' + esc(w.small || '') + '</textarea></label>' +
+      '</div>';
+    $('wsFooter').innerHTML = html;
   }
 
   /* ---- Settings -------------------------------------------------------- */
@@ -514,7 +605,8 @@
     if (t.dataset.pageLabel !== undefined) { var pg = state.doc.pages[+t.dataset.pageLabel]; pg.label = pg.label || {}; pg.label[state.langA] = v; return changed(); }
     if (t.dataset.secWord) { var a = t.dataset.secWord.split(':'); words(p.sections[+a[0]], state.langA)[a[1]] = v; return changed(); }
     if (t.dataset.item) { var b = t.dataset.item.split(':'); words(p.sections[+b[0]].items[+b[1]], state.langA)[b[2]] = v; return changed(); }
-    if (t.dataset.itemUrl) { var c = t.dataset.itemUrl.split(':'); p.sections[+c[0]].items[+c[1]].url = v.trim(); return changed(); }
+    if (t.dataset.linkUrl) { setLink(t.dataset.linkUrl, v.trim() || 'https://'); return changed(); }
+    if (t.dataset.footerWord) { var fw = state.doc.footer.words; fw[state.langA] = fw[state.langA] || {}; fw[state.langA][t.dataset.footerWord] = v; return changed(); }
     if (t.dataset.social) {
       var k = t.dataset.social, list = state.doc.links, at = list.findIndex(function (x) { return x.kind === k; });
       var url = v.trim(); if (k === 'email' && url && !/^mailto:/.test(url)) url = 'mailto:' + url;
@@ -522,12 +614,30 @@
       return changed();
     }
     if (t.dataset.customLabel !== undefined) { var cl = state.doc.links[+t.dataset.customLabel]; cl.label = cl.label || {}; cl.label[state.langA] = v; return changed(); }
-    if (t.dataset.customUrl !== undefined) { state.doc.links[+t.dataset.customUrl].url = v.trim(); return changed(); }
     if (t.dataset.give !== undefined) { state.doc.give = v.trim(); return changed(); }
   });
 
+  /* "sec:<i>" is a section's link; "item:<i>:<j>" is one card's. */
+  function setLink(key, value) {
+    var a = key.split(':');
+    if (a[0] === 'custom') { state.doc.links[+a[1]].url = value; return; }
+    var s = currentPage().sections[+a[1]];
+    if (a[0] === 'sec') s.link = value; else s.items[+a[2]].url = value;
+  }
+
   $('wsRoot').addEventListener('change', async function (e) {
     var t = e.target, p = currentPage();
+    if (t.dataset.link) {
+      /* "Another address" opens a box for it, empty and waiting. */
+      setLink(t.dataset.link, t.value === 'url' ? 'https://' : t.value);
+      if (state.tab === 'links') drawLinks(); else drawSections();
+      changed();
+      var box = $('wsRoot').querySelector('[data-link-url="' + t.dataset.link + '"]');
+      if (box) box.focus();
+      return;
+    }
+    if (t.dataset.secPhotolink) { p.sections[+t.dataset.secPhotolink].photoLink = t.checked; return changed(); }
+    if (t.dataset.itemPhoto) { var ip = t.dataset.itemPhoto.split(':'); return upload(t, function (url) { p.sections[+ip[0]].items[+ip[1]].photo = url; drawSections(); }); }
     if (t.dataset.secBtn) {
       var a = t.dataset.secBtn.split(':'), s = p.sections[+a[0]];
       s.buttons = (s.buttons || []).filter(function (x) { return x !== a[1]; });
@@ -565,14 +675,18 @@
       return;
     }
     if (d.secUnphoto) { p.sections[+d.secUnphoto].photo = null; drawSections(); return changed(); }
-    if (d.itemAdd) { var sec = p.sections[+d.itemAdd]; sec.items = sec.items || []; sec.items.push({ url: '', words: {} }); drawSections(); return; }
+    if (d.itemAdd) { var sec = p.sections[+d.itemAdd]; sec.items = sec.items || []; sec.items.push({ url: 'https://', photo: null, words: {} }); drawSections(); return; }
+    if (d.itemUnphoto) { var up = d.itemUnphoto.split(':'); p.sections[+up[0]].items[+up[1]].photo = null; drawSections(); return changed(); }
+    if (d.footerMenu !== undefined) { state.doc.footer.menu = !state.doc.footer.menu; drawFooter(); return changed(); }
     if (d.itemRemove) { var r = d.itemRemove.split(':'); p.sections[+r[0]].items.splice(+r[1], 1); drawSections(); return changed(); }
-    if (d.customAdd !== undefined) { state.doc.links.push({ kind: 'custom', url: '', label: {} }); drawLinks(); return; }
+    if (d.customAdd !== undefined) { state.doc.links.push({ kind: 'custom', url: 'https://', label: {} }); drawLinks(); return; }
     if (d.customRemove) { state.doc.links.splice(+d.customRemove, 1); drawLinks(); return changed(); }
     if (d.headerLinks !== undefined) { state.doc.design.headerLinks = !state.doc.design.headerLinks; drawLinks(); return changed(); }
     if (d.chip) {
       var val = d.value, name = d.chip;
       if (name.indexOf('variant:') === 0) { p.sections[+name.slice(8)].variant = val; drawSections(); }
+      else if (name.indexOf('raised:') === 0) { p.sections[+name.slice(7)].raised = val === 'raised'; drawSections(); }
+      else if (name.indexOf('footer:') === 0) { state.doc.footer[name.slice(7)] = val; drawFooter(); }
       else if (name.indexOf('motion:') === 0) { state.doc.design.motion[name.slice(7)] = val; drawDesign(); }
       else if (name === 'look' || name === 'menu' || name === 'brand') { state.doc.design[name] = val; drawDesign(); }
       return changed();
@@ -594,7 +708,7 @@
     var file = input.files && input.files[0];
     input.value = '';
     if (!file) return;
-    var status = input.closest('.ws-sec-row, .ws-ctl');
+    var status = input.closest('.ws-sec-row, .ws-ctl, .ws-card-pic');
     var note = status && status.querySelector('.hint');
     if (note) note.textContent = tr('ws.uploading');
     try {

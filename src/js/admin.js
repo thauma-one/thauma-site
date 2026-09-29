@@ -147,6 +147,9 @@
     }
 
     if (window.StaffProblemClear) window.StaffProblemClear();
+    /* The partners' websites come from their own request (loadSites), which
+       can answer first; replacing the state must not drop them. */
+    body.sites = body.sites || state.sites;
     state = body;
     if (body.you && window.StaffIdentity) window.StaffIdentity(body.you);
     // Still viewing somebody? Say so here as well — the cookie does not
@@ -1127,15 +1130,28 @@
   /* THE MINISTRY'S OWN WEBSITE'S ADDRESS (0044). Made from its name when
      the site is first opened; only here can it change (Chase, 2026-09-29:
      two people with one name). */
+  /* ARCHIVE AND DELETE (0045): archive takes the address down and keeps the
+     site, which the owner's switch brings back; delete takes both, and the
+     owner's next visit starts a new one. An old address, after a change
+     here, keeps sending visitors on — listed so nobody wonders why a name
+     is taken. */
   function siteBlock(p) {
     var site = (state.sites || []).filter(function (x) { return x.partner_id === p.id; })[0];
+    var st = site ? (site.enabled ? tr('ws.isLive') : site.archived_at ? tr('adm.siteArchived') : tr('adm.siteOff')) : '';
+    var old = site && site.aliases ? site.aliases.split(',') : [];
     return '<div class="adm-mail adm-site">' +
       '<div class="adm-mail-head"><span class="adm-mail-t">' + esc(tr('adm.siteTitle')) + '</span>' +
-        '<span class="adm-mail-n">' + (site ? esc(site.subdomain + '.thauma.one') + (site.enabled ? ' · ' + esc(tr('ws.isLive')) : '')
+        '<span class="adm-mail-n">' + (site ? esc(site.subdomain + '.thauma.one') + ' · ' + esc(st)
                                             : esc(tr('adm.siteNone'))) + '</span></div>' +
       (site ? '<div class="adm-mail-domain"><label class="fld"><span>' + esc(tr('ws.address')) + '</span>' +
           '<input type="text" class="adm-domain" data-site-sub="' + esc(p.id) + '" value="' + esc(site.subdomain) + '" spellcheck="false" autocapitalize="off" autocomplete="off"></label>' +
-          '<button type="button" class="ghost-btn" data-site-save="' + esc(p.id) + '">' + esc(tr('common.save')) + '</button></div>' : '') +
+          '<button type="button" class="ghost-btn" data-site-save="' + esc(p.id) + '">' + esc(tr('common.save')) + '</button>' +
+          (site.archived_at ? '' : '<button type="button" class="ghost-btn" data-site-archive="' + esc(p.id) + '">' + esc(tr('adm.siteArchive')) + '</button>') +
+          '<button type="button" class="ghost-btn danger" data-site-delete="' + esc(p.id) + '">' + esc(tr('adm.siteDelete')) + '</button></div>' +
+          (old.length ? '<p class="adm-site-old">' + esc(tr('adm.siteOld')) + ' ' + old.map(function (o) {
+            return '<span class="adm-site-alias"><b>' + esc(o) + '.thauma.one</b><button type="button" class="adm-x" data-site-unalias="' + esc(p.id) + ':' + esc(o) + '" aria-label="' +
+              esc(tr('adm.siteLetGo').replace('{address}', o + '.thauma.one')) + '" title="' + esc(tr('adm.siteLetGo').replace('{address}', o + '.thauma.one')) + '">&times;</button></span>';
+          }).join('') + '</p>' : '') : '') +
     '</div>';
   }
   async function loadSites() {
@@ -1144,9 +1160,63 @@
       if (r.ok) { state.sites = (await r.json()).sites || []; if (page === 'partners') renderPartners(); }
     } catch (e) {}
   }
+  async function siteAction(pid, action, btn) {
+    var site = (state.sites || []).filter(function (x) { return x.partner_id === pid; })[0];
+    var partner = (state.partners || []).filter(function (x) { return x.id === pid; })[0];
+    if (!site) return;
+    var at = site.subdomain + '.thauma.one', name = partner ? partner.display_name : '';
+    var ok = await window.StaffConfirm(action === 'archive' ? {
+      title: tr('adm.siteArchiveTitle').replace('{address}', at),
+      body: tr('adm.siteArchiveBody').replace('{name}', name),
+      confirm: tr('adm.siteArchive'), cancel: tr('ms.cancel'), danger: true,
+    } : {
+      title: tr('adm.siteDeleteTitle').replace('{address}', at),
+      body: tr('adm.siteDeleteBody').replace('{name}', name),
+      type: site.subdomain, typeLabel: tr('pub.typeLabel'),
+      confirm: tr('adm.siteDelete'), cancel: tr('ms.cancel'), danger: true,
+    });
+    if (!ok) return;
+    btn.disabled = true;
+    try {
+      var r = await fetch('/api/admin/site-address', { method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ partner_id: pid, action: action, confirm: site.subdomain }) });
+      var body = await r.json().catch(function () { return {}; });
+      if (!r.ok) throw new Error(body.error || tr('common.saveFailed'));
+      state.sites = body.sites || state.sites;
+      toast(action === 'archive' ? tr('adm.siteArchivedToast') : tr('adm.siteDeletedToast'), 'ok');
+      renderPartners();
+    } catch (e) { toast(e.message, 'err'); btn.disabled = false; }
+  }
+  async function letGo(pair, btn) {
+    var ok = await window.StaffConfirm({
+      title: tr('adm.siteLetGo').replace('{address}', pair[1] + '.thauma.one'),
+      body: tr('adm.siteLetGoBody'), confirm: tr('adm.siteLetGoDo'), cancel: tr('ms.cancel'), danger: true,
+    });
+    if (!ok) return;
+    btn.disabled = true;
+    try {
+      var r = await fetch('/api/admin/site-address', { method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ partner_id: pair[0], action: 'unalias', subdomain: pair[1] }) });
+      var body = await r.json().catch(function () { return {}; });
+      if (!r.ok) throw new Error(body.error || tr('common.saveFailed'));
+      state.sites = body.sites || state.sites;
+      renderPartners();
+    } catch (e) { toast(e.message, 'err'); btn.disabled = false; }
+  }
   async function saveSiteAddress(pid, btn) {
     var input = document.querySelector('[data-site-sub="' + pid + '"]');
     if (!input) return;
+    var site = (state.sites || []).filter(function (x) { return x.partner_id === pid; })[0];
+    var next = input.value.trim().toLowerCase();
+    if (site && next && next !== site.subdomain) {
+      var ok = await window.StaffConfirm({
+        title: tr('adm.siteMoveTitle').replace('{address}', next + '.thauma.one'),
+        body: tr('adm.siteMoveBody').replace('{old}', site.subdomain + '.thauma.one'),
+        confirm: tr('common.save'), cancel: tr('ms.cancel'),
+      });
+      if (!ok) return;
+    }
     btn.disabled = true;
     try {
       var r = await fetch('/api/admin/site-address', { method: 'POST', credentials: 'same-origin',
@@ -1600,6 +1670,12 @@
 
     var ss = e.target.closest('[data-site-save]');
     if (ss) return saveSiteAddress(ss.dataset.siteSave, ss);
+    var sa = e.target.closest('[data-site-archive]');
+    if (sa) return siteAction(sa.dataset.siteArchive, 'archive', sa);
+    var sd = e.target.closest('[data-site-delete]');
+    if (sd) return siteAction(sd.dataset.siteDelete, 'delete', sd);
+    var su = e.target.closest('[data-site-unalias]');
+    if (su) return letGo(su.dataset.siteUnalias.split(':'), su);
     var ds = e.target.closest('[data-domain-save]');
     if (ds) return saveDomain(ds.dataset.domainSave, ds);
     var as = e.target.closest('[data-add-sender]');

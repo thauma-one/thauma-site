@@ -894,6 +894,10 @@ body.has-savebar .toasts{--toast-lift:var(--ms-savebar-h,72px)}
   border:1px solid var(--line-hard);border-radius:var(--radius);
   padding:6px 12px;white-space:nowrap;transition:.2s}
 .area-switch[hidden]{display:none}
+/* One "site ↗" link, not two: see console-header.njk. */
+.console-actions.has-mysite .area-public{display:none}
+html.role-admin .console-actions.has-mysite .area-public,
+html.role-communications .console-actions.has-mysite .area-public{display:inline-flex}
 @media(hover:hover){
   .area-switch:hover{color:var(--warn,#F5B845);border-color:var(--warn,#F5B845)}
 }
@@ -2485,7 +2489,7 @@ html.has-ai .lang-ai{display:inline-block}
 .ws-ctl{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0}
 .ws-swatch{width:22px;height:22px;border-radius:50%;display:inline-block;border:2px solid var(--bg)}
 .ws-swatch + .ws-swatch{margin-left:-12px}
-.ws-looks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.ws-looks{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:14px}
 .ws-look{padding:0;background:none;border:1px solid rgba(255,255,255,.14);color:var(--text);text-align:left;cursor:pointer;font:14px var(--font-body)}
 .ws-look[aria-pressed="true"]{border:2px solid var(--voice-tech)}
 .ws-look-sample{display:flex;flex-direction:column;justify-content:space-between;height:120px;padding:16px}
@@ -2533,6 +2537,17 @@ html.has-ai .lang-ai{display:inline-block}
 }
 /* A checkbox is a box, even inside a row whose fields fill it. */
 .ws-rows .chk input,.ws-sec .chk input{width:auto;padding:0;border:0;background:none;flex:none}
+/* Where a section sends a visitor: a page, or an address typed out. */
+.ws-link{display:flex;gap:8px;flex:1 1 320px;min-width:0;flex-wrap:wrap}
+.ws-link select{flex:0 1 220px;min-width:0}.ws-link input{flex:1 1 200px;min-width:0}
+/* A link card: its picture, its words, where it goes. */
+.ws-card{display:grid;grid-template-columns:150px minmax(0,1fr) auto;gap:12px;align-items:start;padding:10px;border:1px solid var(--line);border-radius:var(--radius);background:var(--bg)}
+.ws-card-pic{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.ws-card-pic img{width:150px;height:94px;object-fit:cover;border-radius:2px}
+.ws-card-pic .ws-nophoto{width:150px;text-align:center;padding:30px 8px}
+.ws-card-words{display:flex;flex-direction:column;gap:8px;min-width:0}.ws-card-words input{width:100%}
+.ws-foot-sketch{height:64px}
+@media (max-width:760px){.ws-card{grid-template-columns:1fr}}
 .ws-looks{margin-bottom:12px}
 .ws-head + .ws-rows{margin-top:0}
 .ws-rows + .ws-head{margin-top:22px}

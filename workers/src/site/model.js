@@ -31,7 +31,7 @@ const W = {
     giveThin: "Stand with", giveBold: "the work", giveText: "Every gift, monthly or once, keeps this work going.",
     prayerThin: "Pray", prayerBold: "with us", newsThin: "Past", newsBold: "updates",
     contactThin: "Say", contactBold: "hello", resourcesThin: "Worth", resourcesBold: "reading",
-    lang: "Language", menu: "Menu", poweredBy: "A Thauma site",
+    lang: "Language", menu: "Menu", poweredBy: "A Thauma site", scroll: "Scroll", more: "Read more",
   },
   hr: {
     home: "Početna", about: "O nama", mission: "Misija", timeline: "Vremenska crta", updates: "Novosti",
@@ -44,7 +44,7 @@ const W = {
     giveThin: "Stanite uz", giveBold: "ovaj rad", giveText: "Svaki dar, mjesečni ili jednokratni, drži ovaj rad živim.",
     prayerThin: "Molite", prayerBold: "s nama", newsThin: "Prošle", newsBold: "novosti",
     contactThin: "Javite", contactBold: "se", resourcesThin: "Vrijedi", resourcesBold: "pročitati",
-    lang: "Jezik", menu: "Izbornik", poweredBy: "Stranica Thaume",
+    lang: "Jezik", menu: "Izbornik", poweredBy: "Stranica Thaume", scroll: "Dolje", more: "Pročitajte više",
   },
   sr: {
     home: "Почетна", about: "О нама", mission: "Мисија", timeline: "Временска линија", updates: "Новости",
@@ -57,7 +57,7 @@ const W = {
     giveThin: "Станите уз", giveBold: "овај рад", giveText: "Сваки дар, месечни или једнократни, држи овај рад живим.",
     prayerThin: "Молите", prayerBold: "са нама", newsThin: "Претходне", newsBold: "новости",
     contactThin: "Јавите", contactBold: "се", resourcesThin: "Вреди", resourcesBold: "прочитати",
-    lang: "Језик", menu: "Мени", poweredBy: "Сајт Thauma",
+    lang: "Језик", menu: "Мени", poweredBy: "Сајт Thauma", scroll: "Доле", more: "Прочитајте више",
   },
   sl: {
     home: "Domov", about: "O nas", mission: "Poslanstvo", timeline: "Časovnica", updates: "Novice",
@@ -70,7 +70,7 @@ const W = {
     giveThin: "Stojte ob", giveBold: "tem delu", giveText: "Vsak dar, mesečni ali enkratni, ohranja to delo živo.",
     prayerThin: "Molite", prayerBold: "z nami", newsThin: "Pretekle", newsBold: "novice",
     contactThin: "Oglasite", contactBold: "se", resourcesThin: "Vredno", resourcesBold: "branja",
-    lang: "Jezik", menu: "Meni", poweredBy: "Stran Thauma",
+    lang: "Jezik", menu: "Meni", poweredBy: "Stran Thauma", scroll: "Navzdol", more: "Preberite več",
   },
 };
 
@@ -90,27 +90,42 @@ export const PAGES = ["home", "about", "mission", "timeline", "updates", "give",
 
 /* Each section type: its layout variants (the first is the default), which
    words it has, and whether it carries a photo. Data-driven sections
-   (timeline, goals, …) draw the ministry's own published content. */
+   (timeline, goals, …) draw the ministry's own published content; their
+   "text" is a line under the heading.
+
+   `link` (Chase, 2026-09-29: "a photo in a Resource box could also send you
+   directly to the resource"): where a section can send a visitor — one of
+   the site's own pages or any address.
+     "button"  a button, its words in `button`
+     "both"    a button, and the photo can be made to open it too
+     "photo"   the photo opens it
+
+   Every section but the opening and a full-width photo can sit on a raised
+   band (`raised`), the way chaseroush.com sets its Mission apart. */
 export const SECTIONS = {
-  hero:      { variants: ["behind", "beside", "words"], words: ["kicker", "thin", "bold", "text"], photo: true, buttons: true },
-  text:      { variants: ["left", "center"], words: ["thin", "bold", "text"] },
-  photoText: { variants: ["left", "right", "above"], words: ["thin", "bold", "text"], photo: true },
-  photo:     { variants: ["drift", "still", "zoom"], words: ["caption"], photo: true },
+  hero:      { variants: ["behind", "beside", "words", "monogram"], words: ["kicker", "thin", "bold", "text", "button"], photo: true, buttons: true, link: "button" },
+  text:      { variants: ["left", "center"], words: ["thin", "bold", "text", "button"], link: "button" },
+  photoText: { variants: ["left", "right", "above"], words: ["thin", "bold", "text", "button"], photo: true, link: "both" },
+  photo:     { variants: ["drift", "still", "zoom"], words: ["caption"], photo: true, link: "photo" },
   quote:     { variants: ["large", "quiet"], words: ["quote", "who"] },
-  timeline:  { variants: ["condensed", "full"], words: ["thin", "bold"] },
-  goals:     { variants: ["cards"], words: ["thin", "bold"] },
-  prayer:    { variants: ["list"], words: ["thin", "bold"] },
-  videos:    { variants: ["stage"], words: ["thin", "bold"] },
-  newsletters: { variants: ["list"], words: ["thin", "bold"] },
+  timeline:  { variants: ["condensed", "full"], words: ["thin", "bold", "text"] },
+  goals:     { variants: ["cards"], words: ["thin", "bold", "text"] },
+  prayer:    { variants: ["list"], words: ["thin", "bold", "text"] },
+  videos:    { variants: ["stage"], words: ["thin", "bold", "text"] },
+  newsletters: { variants: ["list"], words: ["thin", "bold", "text"] },
   signup:    { variants: ["band", "card"], words: ["thin", "bold", "text"] },
   contact:   { variants: ["form"], words: ["thin", "bold", "text"] },
   give:      { variants: ["band", "card"], words: ["thin", "bold", "text", "button"] },
-  links:     { variants: ["list", "cards"], words: ["thin", "bold"], items: true },
+  links:     { variants: ["list", "cards"], words: ["thin", "bold", "text"], items: true },
 };
+const NOT_RAISED = new Set(["hero", "photo"]);
 
 /* ------------------------------------------------------- design, motion -- */
 
-export const LOOKS = ["night", "paper", "bold"];
+/* classic: chaseroush.com's own look (Chase, 2026-09-29: "If we can
+   recreate how chaseroush.com looks … I will consider that a win") —
+   charcoal, a serif, and one brick red. */
+export const LOOKS = ["night", "paper", "bold", "classic"];
 export const MENUS = ["top", "center", "button"];
 /* Chase, 2026-09-29: "I'd like a few more animation tools available". Each is
    one choice, each respected only where the visitor has not asked their
@@ -124,6 +139,16 @@ export const MOTION = {
   progress: ["on", "off"],                               // a thin line tracking the scroll
 };
 export const SOCIALS = ["youtube", "instagram", "facebook", "x", "tiktok", "linkedin", "spotify", "email"];
+
+/* The foot of every page (Chase, 2026-09-29: "Should we add a footer
+   designer as well?").
+     split    the name and links on one side, socials on the other
+     center   everything in one centered column — chaseroush.com's footer
+     columns  the name, the pages, the links and the socials side by side
+   A line of its own (tagline) and small print (a tax note, a registration
+   number) in each language. The "A Thauma site" credit always stays. */
+export const FOOTERS = ["split", "center", "columns"];
+export const SOCIAL_STYLES = ["icons", "words"];
 
 /* ------------------------------------------------------------ addresses -- */
 
@@ -187,7 +212,7 @@ export function starter(kind, { name, langs, fallback, give }) {
     PAGES.forEach((p) => { pages[p].on = p !== "resources"; });
     pages.home.sections = [
       hero("behind"),
-      section("photoText", "left", L, { thin: "aboutThin", bold: "aboutBold", text: "=" }, { photo: null }),
+      section("photoText", "left", L, { thin: "aboutThin", bold: "aboutBold", text: "=", button: "more" }, { photo: null, link: "page:about" }),
       section("timeline", "condensed", L, { thin: "timelineThin", bold: "timelineBold" }),
       section("goals", "cards", L, { thin: "goalsThin", bold: "goalsBold" }),
       section("videos", "stage", L, { thin: "videosThin", bold: "videosBold" }),
@@ -224,6 +249,7 @@ export function starter(kind, { name, langs, fallback, give }) {
     design: { look: "night", menu: "top", brand: "name", logo: null, headerLinks: false,
               motion: { entrance: "rise", photos: "drift", headings: "letters", buttons: "lift", pages: "fade", progress: "on" } },
     links: [],
+    footer: { layout: "split", menu: false, socials: "icons", words: {} },
     pages: PAGES.map((p) => pages[p]),
   };
 }
@@ -243,6 +269,17 @@ export function safeUrl(u) {
     return x.protocol === "https:" || x.protocol === "http:" ? x.toString() : "";
   } catch { return ""; }
 }
+/**
+ * Where a section sends a visitor: "page:<id>" for one of the site's own
+ * pages, or an address safeUrl allows. "" for nowhere.
+ */
+export function safeLink(u) {
+  const s = str(u, 500);
+  const m = /^page:([a-z]+)$/.exec(s);
+  if (m) return PAGES.includes(m[1]) ? s : "";
+  return safeUrl(s);
+}
+
 /** Our own uploads (/media/...) or an https picture. Nothing else. */
 export function safePhoto(u) {
   const s = str(u, 400);
@@ -252,7 +289,8 @@ export function safePhoto(u) {
   return x.startsWith("https://") ? x : null;
 }
 
-const WORD_MAX = { kicker: 80, thin: 120, bold: 120, text: 4000, quote: 600, who: 120, caption: 200, button: 40 };
+const WORD_MAX = { kicker: 80, thin: 120, bold: 120, text: 4000, quote: 600, who: 120, caption: 200, button: 40,
+  tagline: 120, small: 400 };
 
 function cleanWords(raw, fields, langs) {
   const out = {};
@@ -275,12 +313,18 @@ function cleanSection(raw, langs) {
     words: cleanWords(raw.words, spec.words, langs),
   };
   if (spec.photo) s.photo = safePhoto(raw.photo);
+  if (spec.link) s.link = safeLink(raw.link);
+  if (spec.link === "both") s.photoLink = !!raw.photoLink;
+  if (!NOT_RAISED.has(raw.type)) s.raised = !!raw.raised;
   if (spec.buttons) {
     s.buttons = (Array.isArray(raw.buttons) ? raw.buttons : []).filter((b) => ["give", "stay", "contact"].includes(b)).slice(0, 2);
   }
   if (spec.items) {
+    /* A card may carry a picture, and may point at one of the site's own
+       pages as well as anywhere else. */
     s.items = (Array.isArray(raw.items) ? raw.items : []).slice(0, 40).map((it) => ({
-      url: safeUrl(it && it.url),
+      url: safeLink(it && it.url),
+      photo: safePhoto(it && it.photo),
       words: cleanWords(it && it.words, ["title", "text"], langs),
     })).filter((it) => it.url);
   }
@@ -320,7 +364,7 @@ export function cleanDoc(raw, catalog) {
 
   const links = (Array.isArray(d.links) ? d.links : []).slice(0, 20).map((k) => {
     const kind = SOCIALS.includes(k && k.kind) ? k.kind : "custom";
-    let url = safeUrl(k && k.url);
+    let url = kind === "custom" ? safeLink(k && k.url) : safeUrl(k && k.url);
     /* An address typed as it is said, without "mailto:", is still one. */
     if (kind === "email") {
       const raw = str(k.url, 200).replace(/^mailto:/i, "");
@@ -330,6 +374,14 @@ export function cleanDoc(raw, catalog) {
     if (kind === "custom") for (const l of langs) { const v = str(k.label && k.label[l], 40); if (v) label[l] = v; }
     return { kind, url, label };
   }).filter((k) => k.url);
+
+  const f = d.footer && typeof d.footer === "object" ? d.footer : {};
+  const footer = {
+    layout: pick(f.layout, FOOTERS),
+    menu: !!f.menu,
+    socials: pick(f.socials, SOCIAL_STYLES),
+    words: cleanWords(f.words, ["tagline", "small"], langs),
+  };
 
   return {
     v: 1,
@@ -345,6 +397,7 @@ export function cleanDoc(raw, catalog) {
       motion: m,
     },
     links,
+    footer,
     pages,
   };
 }

@@ -6,10 +6,15 @@
 import { subdomainFrom, validSubdomain, cleanDoc, starter, safeUrl, safePhoto, PAGES } from "../src/site/model.js";
 import { renderPage, esc } from "../src/site/render.js";
 import { pickLang } from "../src/site/serve.js";
+import { removeSiteDns } from "../src/lib/site-dns.js";
 
 let pass = 0, fail = 0;
 const check = (name, fn) => {
   try { fn(); console.log(`  PASS  ${name}`); pass++; }
+  catch (e) { console.log(`  FAIL  ${name}\n          ${e.message}`); fail++; }
+};
+const checkAsync = async (name, fn) => {
+  try { await fn(); console.log(`  PASS  ${name}`); pass++; }
   catch (e) { console.log(`  FAIL  ${name}\n          ${e.message}`); fail++; }
 };
 const assert = (c, m) => { if (!c) throw new Error(m); };
@@ -110,6 +115,92 @@ check("the visitor's language when the site has it; otherwise the site's own fal
   eq(pickLang("de-DE,de;q=0.9", ["en", "hr"], "hr"), "hr", "fallback, not English");
   eq(pickLang("", ["en", "sr"], "sr"), "sr", "no header");
   eq(pickLang("bs-BA", ["en", "hr"], "en"), "hr", "Bosnian reads Croatian");
+});
+
+/* ---- 0045: links on sections, Classic, the footer, taking an address down */
+
+const blankWith = (sections, tweak = (d) => d) => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en", "hr"], fallback: "en" });
+  d.pages[0].sections = sections;
+  return tweak(d);
+};
+
+check("a section's button goes to a page of the site, or anywhere safe; never to a hidden page", () => {
+  const d = blankWith([
+    { type: "text", words: { en: { bold: "Mission", text: "Why.", button: "Read the story" } }, link: "page:mission" },
+    { type: "text", words: { en: { bold: "Blog", text: "Out." } }, link: "https://blog.example.org/" },
+    { type: "text", words: { en: { bold: "Gone", text: "Hidden." } }, link: "page:resources" },
+    { type: "text", words: { en: { bold: "Bad", text: "No." } }, link: "javascript:alert(1)" },
+  ]);
+  const html = page(d);
+  assert(html.includes('href="/site/chaseroush/en/mission/">Read the story →'), "to the Mission page, in the owner's words");
+  assert(/href="https:\/\/blog\.example\.org\/" rel="noopener">Read more →/.test(html), "outward, with the built-in words");
+  assert(!html.includes("/en/resources/"), "a hidden page is not linked");
+  assert(!html.includes("javascript:"), "an unsafe link is dropped");
+  eq(cleanDoc(d, ["en"]).pages[0].sections[3].link, "", "and not even stored");
+});
+
+check("a photo opens the link when asked; link cards carry their own pictures", () => {
+  const d = blankWith([
+    { type: "photoText", photo: "/media/partnersite/p/a.webp", words: { en: { bold: "Team", text: "Us." } }, link: "page:about", photoLink: true },
+    { type: "photo", photo: "/media/partnersite/p/b.webp", words: { en: { caption: "Split" } }, link: "https://x.org/" },
+    { type: "links", variant: "cards", words: { en: { bold: "Read", text: "Worth your time" } },
+      items: [{ url: "https://r.org/book", photo: "/media/partnersite/p/c.webp", words: { en: { title: "The book" } } },
+              { url: "page:give", words: { en: { title: "Give" } } }] },
+  ]);
+  const html = page(d);
+  assert(/<a class="piclink" href="\/site\/chaseroush\/en\/about\/"[^>]*><img src="\/media\/partnersite\/p\/a\.webp"/.test(html), "the photo opens About");
+  assert(/<a class="piclink" href="https:\/\/x\.org\/"/.test(html), "a full-width photo opens its link");
+  assert(/<span class="lpic"><img src="\/media\/partnersite\/p\/c\.webp"/.test(html), "a card's picture");
+  assert(html.includes('href="/site/chaseroush/en/give/"><b>Give</b>'), "a card can open a page of the site");
+  assert(html.includes('<p class="lede m">Worth your time</p>'), "a line under the heading");
+});
+
+check("Classic is chaseroush.com: the serif, the brick, the monogram, the spaced line, a cue to scroll", () => {
+  const d = blankWith([{ type: "hero", variant: "monogram", photo: "https://x.org/map.png",
+    words: { en: { thin: "All of Me", bold: "for All of Him", text: "Serving churches in Croatia" } }, buttons: [] },
+    { type: "timeline", words: { en: { bold: "Journey", text: "Every step" } }, raised: true }],
+    (x) => { x.design.look = "classic"; return x; });
+  const html = page(d);
+  assert(html.includes("Crimson+Pro") && html.includes("Work+Sans"), "the fonts");
+  assert(html.includes("--acc:#A63D40"), "the brick red");
+  assert(html.includes('<span class="mono-mark" aria-hidden="true">CR</span>'), "the initials behind the title");
+  assert(html.includes("All of Me<br><b>for All of Him</b>"), "the title on two lines");
+  assert(html.includes('<p class="spaced m">Serving churches in Croatia</p>'), "the spaced line");
+  assert(html.includes('class="scrollcue"') && html.includes(">Scroll<"), "the cue");
+  assert(/<section class="data raised">/.test(html), "a raised band, centered as data");
+  assert(!page(blankWith([])).includes("Crimson"), "the other looks untouched");
+});
+
+check("the footer: three layouts, a tagline and small print in each language, the credit always", () => {
+  const d = blankWith([], (x) => {
+    x.links = [{ kind: "youtube", url: "https://youtube.com/@c" }, { kind: "custom", url: "https://cal.example/", label: { en: "Schedule a conversation" } }];
+    x.footer = { layout: "center", menu: true, socials: "words",
+      words: { en: { tagline: "All of me for all of Him", small: "Donations are tax-deductible." }, hr: { tagline: "Sve od mene" } } };
+    return x;
+  });
+  const html = page(d);
+  assert(html.includes('class="foot foot-center"'), "centered");
+  assert(/<span class="words"><a href="https:\/\/youtube\.com\/@c" rel="noopener">YouTube<\/a><a href="https:\/\/cal\.example\/"/.test(html), "socials as names, beside the owner's links");
+  assert(html.includes('<p class="tagline">All of me for all of Him</p>') && html.includes("Donations are tax-deductible."), "the words");
+  assert(/<nav class="menu"[^>]*><a href="\/site\/chaseroush\/en\/">Home<\/a>/.test(html), "the pages");
+  assert(html.includes("A Thauma site"), "the credit");
+  const hr = page(d, "home", "hr");
+  assert(hr.includes("Sve od mene") && hr.includes("Donations are tax-deductible."), "Croatian where written, the fallback where not");
+  eq(cleanDoc({ footer: { layout: "sideways", socials: "smoke" } }, ["en"]).footer.layout, "split", "an unknown layout is the first");
+});
+
+await checkAsync("taking an address down removes only the record Thauma made", async () => {
+  const seen = [];
+  const fake = async (url, init = {}) => {
+    seen.push((init.method || "GET") + " " + url.replace(/^.*\/zones\/z/, ""));
+    if (!init.method) return new Response(JSON.stringify({ success: true, result: [
+      { id: "r1", type: "AAAA", comment: "Thauma partner site" }, { id: "r2", type: "MX", comment: null }] }));
+    return new Response(JSON.stringify({ success: true }));
+  };
+  const r = await removeSiteDns({ SITE_DNS_TOKEN: "t", SITE_ZONE_ID: "z" }, "chaseroush", fake);
+  eq(r.state, "removed", "done");
+  eq(seen.filter((x) => x.startsWith("DELETE")), ["DELETE /dns_records/r1"], "the mail record stays");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

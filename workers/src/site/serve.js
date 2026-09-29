@@ -5,6 +5,7 @@
  *                       site's fallback language (302)
  *   /<lang>/          → Home
  *   /<lang>/<page>/   → that page, if it is switched on
+ *   an old name       → the same path at the current name (301, 0045)
  *
  * The same site is also reachable under /site/<name>/ on the console's own
  * address, which is how the owner previews it: ?draft shows the working copy
@@ -54,7 +55,19 @@ export async function serveSite(request, env, { sub, rest, base, draft = false }
   if (!env.DB) return simplePage("Not available", "This site is not available right now.", 503);
   const db = createDb(env.DB);
   const row = await db.queryOne("partner_site_by_subdomain", { subdomain: sub });
-  if (!row || row.status === "archived") return null;
+  if (!row) {
+    /* A name the site used to have (0045): an administrator changed the
+       address, and every link to the old one still arrives — sent on, page
+       and all. Permanent, so search engines move their entry over. */
+    const moved = await db.queryOne("partner_site_by_alias", { subdomain: sub });
+    if (!moved) return null;
+    const url = new URL(request.url);
+    const domain = env.SITE_DOMAIN || "thauma.one";
+    const to = base ? `${url.origin}/site/${moved.subdomain}${rest}${url.search}`
+      : `https://${moved.subdomain}.${domain}${rest}${url.search}`;
+    return new Response(null, { status: 301, headers: { Location: to } });
+  }
+  if (row.status === "archived") return null;
 
   if (draft) {
     /* The working copy is the team's to look at, nobody else's. */

@@ -27,6 +27,7 @@ import staffMilestones from "../src/staff-milestones.js";
 import staffSettings from "../src/staff-settings.js";
 import translate from "../src/translate.js";
 import staffSite, { siteAddress } from "../src/staff-site.js";
+import { serveSite } from "../src/site/serve.js";
 import { starter } from "../src/site/model.js";
 import worker from "../src/worker.js";
 
@@ -596,6 +597,63 @@ await check("only an administrator changes an address, and only to a free, well-
     const db = makeDb();
     eq((await siteAddress.fetch(post("/api/admin/site-address", { partner_id: "p_mira", subdomain: "mirap" }, BOSS), env(db))).status, 200, "changed");
     assert(called(db, "partner_site_set_subdomain")[0].args.includes("mirap"), "stored");
+    /* 0045: the old name is kept, so links to it still arrive. */
+    assert(called(db, "partner_site_alias_add")[0].args.includes("mirapetrovic"), "the old name kept as an alias");
+    assert(called(db, "partner_site_alias_remove")[0].args.includes("mirap"), "the new name is nobody's alias");
+  } finally { EXTRA = {}; }
+});
+
+await check("an administrator archives a site (kept) or deletes it (typed out first)", async () => {
+  EXTRA = { partner_site_get: [SITE_ROW()] };
+  try {
+    eq((await siteAddress.fetch(post("/api/admin/site-address", { partner_id: "p_mira", action: "archive" }), env(makeDb()))).status, 403, "not an administrator");
+    let db = makeDb();
+    eq((await siteAddress.fetch(post("/api/admin/site-address", { partner_id: "p_mira", action: "archive" }, BOSS), env(db))).status, 200, "archived");
+    assert(called(db, "partner_site_archive").length === 1, "marked archived");
+    assert(!called(db, "partner_site_delete").length, "nothing deleted");
+    db = makeDb();
+    eq((await siteAddress.fetch(post("/api/admin/site-address", { partner_id: "p_mira", action: "delete" }, BOSS), env(db))).status, 400, "not typed out");
+    assert(!called(db, "partner_site_delete").length, "nothing deleted without the name");
+    db = makeDb();
+    eq((await siteAddress.fetch(post("/api/admin/site-address", { partner_id: "p_mira", action: "delete", confirm: "mirapetrovic" }, BOSS), env(db))).status, 200, "deleted");
+    for (const q of ["partner_site_aliases_clear", "partner_site_editors_clear", "partner_site_requests_clear", "partner_site_delete"]) {
+      assert(called(db, q).length === 1, q);
+    }
+  } finally { EXTRA = {}; }
+});
+
+await check("an old name can be let go of — only one of this site's own", async () => {
+  EXTRA = { partner_site_aliases_for: [{ subdomain: "chaser" }] };
+  try {
+    let db = makeDb();
+    eq((await siteAddress.fetch(post("/api/admin/site-address", { partner_id: "p_mira", action: "unalias", subdomain: "someoneelse" }, BOSS), env(db))).status, 404, "not theirs");
+    assert(!called(db, "partner_site_alias_remove").length, "nothing removed");
+    db = makeDb();
+    eq((await siteAddress.fetch(post("/api/admin/site-address", { partner_id: "p_mira", action: "unalias", subdomain: "chaser" }, BOSS), env(db))).status, 200, "let go");
+    assert(called(db, "partner_site_alias_remove")[0].args.includes("chaser"), "removed");
+  } finally { EXTRA = {}; }
+});
+
+await check("switching an archived site on brings it back", async () => {
+  EXTRA = { partner_site_get: [{ ...SITE_ROW(), published: "{}", archived_at: "2026-09-29T00:00:00Z" }] };
+  try {
+    const db = makeDb();
+    eq((await staffSite.fetch(post("/api/staff-site", { action: "enable", on: true }), env(db))).status, 200, "switched on");
+    assert(called(db, "partner_site_set_enabled")[0].args.includes(1), "enabled — which clears archived_at");
+  } finally { EXTRA = {}; }
+});
+
+await check("an old address sends visitors on to the new one, page and all", async () => {
+  EXTRA = { partner_site_by_subdomain: [], partner_site_by_alias: [{ subdomain: "mirap", enabled: 1 }] };
+  try {
+    const e = { ...env(makeDb()), SITE_DOMAIN: "thauma.one" };
+    let res = await serveSite(new Request("https://mirapetrovic.thauma.one/sr/give/?from=card"), e, { sub: "mirapetrovic", rest: "/sr/give/", base: "" });
+    eq(res.status, 301, "permanent");
+    eq(res.headers.get("Location"), "https://mirap.thauma.one/sr/give/?from=card", "same page, new name");
+    res = await serveSite(new Request("https://dev.thauma.one/site/mirapetrovic/sr/"), e, { sub: "mirapetrovic", rest: "/sr/", base: "/site/mirapetrovic" });
+    eq(res.headers.get("Location"), "https://dev.thauma.one/site/mirap/sr/", "under /site/ too");
+    EXTRA.partner_site_by_alias = [];
+    eq(await serveSite(new Request("https://nobody.thauma.one/"), e, { sub: "nobody", rest: "/", base: "" }), null, "a name nobody has passes through");
   } finally { EXTRA = {}; }
 });
 
