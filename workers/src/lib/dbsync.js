@@ -29,6 +29,9 @@ export const SKIP_TABLES = new Set([
   /* Somebody's signed-in session. Copying it hands the other side a live
      credential for a browser that is not theirs. */
   "sessions",
+  /* Each site's own count of today's machine translation (0046). Carried,
+     dev's count would replace live's mid-day and let live pass its share. */
+  "ai_usage",
 ]);
 
 /** Columns holding somebody's personal data, per table. */

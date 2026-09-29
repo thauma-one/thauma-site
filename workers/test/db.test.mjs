@@ -286,6 +286,7 @@ await check("every real query converts with its documented params", async () => 
     audience: "team", can_edit: 0,
     // a partner site (0044)
     subdomain: "chaseroush", enabled: 1, dns_state: "ready", draft: "{}",
+    day: "2026-09-29", est: 12.5, cap: 1500, actual: 3.2,
     // the language catalog
     code: "sl", native_name: "slovenščina",
     // staff profiles

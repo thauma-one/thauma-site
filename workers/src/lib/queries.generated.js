@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "41b87fcbb2f0de50";
+export const SOURCE_DIGEST = "470989912bc1f0a3";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -107,6 +107,13 @@ VALUES (:id, :email, :name, 'staff', 'invited', :now);`,
   (SELECT GROUP_CONCAT(pu.partner_id) FROM partner_users pu WHERE pu.user_id = u.id) AS partner_ids
 FROM users u
 ORDER BY u.status, u.name COLLATE NOCASE;`,
+  ai_usage_reserve: `INSERT INTO ai_usage (day, neurons, calls)
+SELECT :day, :est, 1 WHERE :est <= :cap
+ON CONFLICT(day) DO UPDATE SET neurons = neurons + excluded.neurons, calls = calls + 1
+  WHERE ai_usage.neurons + excluded.neurons <= :cap
+RETURNING neurons;`,
+  ai_usage_settle: `UPDATE ai_usage SET neurons = MAX(0, neurons - :est + :actual) WHERE day = :day;`,
+  ai_usage_today: `SELECT neurons, calls FROM ai_usage WHERE day = :day;`,
   api_key_create: `INSERT INTO api_keys (id, partner_id, name, key_hash, scopes, created_by, created_at)
 VALUES (:id, :partner_id, :name, :key_hash, :scopes, :created_by, :now);`,
   api_key_lookup: `SELECT k.id AS key_id, k.partner_id, k.scopes, p.slug, p.display_name

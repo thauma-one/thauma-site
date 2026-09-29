@@ -72,6 +72,13 @@
     });
   }
 
+  /* The server's refusal, in the reader's language where it has a code: the
+     day's free share used up (translate.js) is the one that will happen. */
+  function said(body) {
+    if (body && body.code === 'ai_resting') return tr('ai.resting');
+    return (body && body.error) || tr('common.saveFailed');
+  }
+
   function valueOf(field) {
     return field.isContentEditable ? field.innerHTML.replace(/<(?!\/?b>)[^>]*>/g, '').trim() : field.value.trim();
   }
@@ -120,7 +127,7 @@
           body: JSON.stringify({ from: from, to: to, items: chunk.map(function (p, j) { return { id: String(j), text: sourceOf(p.ref) }; }) }),
         });
         var body = await res.json().catch(function () { return {}; });
-        if (!res.ok) { failed = body.error || tr('common.saveFailed'); break; }
+        if (!res.ok) { failed = said(body); break; }
         (body.items || []).forEach(function (it) {
           var p = chunk[Number(it.id)];
           if (!p) return;
@@ -182,7 +189,7 @@
         body: JSON.stringify({ from: from, to: to, items: [{ id: '0', text: sourceOf(ref) }] }),
       });
       var body = await res.json().catch(function () { return {}; });
-      if (!res.ok) throw new Error(body.error || tr('common.saveFailed'));
+      if (!res.ok) throw new Error(said(body));
       var it = (body.items || [])[0];
       if (it && it.text) put(field, it.text);
       field.classList.toggle('ai-check', !!(it && it.check));

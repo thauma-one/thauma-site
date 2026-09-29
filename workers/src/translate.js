@@ -28,6 +28,17 @@
  * Any signed-in console account may ask: the words it translates are ones
  * that person is already editing. Bounded per request so a mistake cannot
  * run up a bill: at most 40 fields, 2,000 characters each, 12,000 in all.
+ *
+ * AND BOUNDED PER DAY, so it never costs anything (Chase, 2026-09-29: "I
+ * want to make sure I don't exceed the credit usage … You can make sure of
+ * that"). Cloudflare gives the ACCOUNT 10,000 Neurons a day free, and dev,
+ * staging and live share that account — so each has a fixed share,
+ * AI_DAILY_NEURONS in wrangler.toml (live 6,000, staging 1,500, dev 1,500:
+ * 9,000, leaving a margin; a test holds the sum there). Every call's worst
+ * case is reserved in the ai_usage table before it is made, in a statement
+ * that refuses to pass the share (0046), and replaced afterwards by what
+ * Cloudflare reports it used. The answer cannot be longer than its
+ * max_tokens, so the worst case is a real ceiling, not a guess.
  */
 import { createDb } from "./lib/db.js";
 import { requireAccess } from "./lib/access.js";
@@ -41,6 +52,34 @@ import { json, readJson } from "./lib/store.js";
 export const MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 
 const MAX_ITEMS = 40, MAX_TEXT = 2000, MAX_TOTAL = 12000;
+
+/* Cloudflare's published price for MODEL, in Neurons per token. */
+const NEURONS_IN = 26668 / 1e6, NEURONS_OUT = 204805 / 1e6;
+/* A deployment that names no share gets 3,000: three of them still fit. */
+const DEFAULT_SHARE = 3000;
+
+export function dailyShare(env) {
+  const n = Number(env && env.AI_DAILY_NEURONS);
+  return Number.isFinite(n) && n >= 0 ? n : DEFAULT_SHARE;
+}
+
+/** The longest answer a request may produce: the translation of every piece
+    (a character is at least half a token of it, in any script), plus the
+    JSON around each, plus a little. max_tokens, and so a hard ceiling. */
+export function answerCeiling(items) {
+  const chars = items.reduce((n, it) => n + it.text.length, 0);
+  return Math.min(4096, Math.ceil(chars / 1.5) + 24 * items.length + 64);
+}
+
+/** The most a call can cost: every BYTE of the question a token (a token is
+    never less than a byte — a Cyrillic letter is two), the chat template's
+    own few, and the whole ceiling of the answer. */
+export function worstCase(systemPrompt, userPrompt, maxTokens) {
+  const bytes = new TextEncoder().encode(systemPrompt + userPrompt).length;
+  return (bytes + 64) * NEURONS_IN + maxTokens * NEURONS_OUT;
+}
+
+const today = () => new Date().toISOString().slice(0, 10);
 const LANG_RE = /^[a-z]{2,3}(-[A-Za-z0-9]{2,8})?$/;
 
 /* What a language needs said that its name does not say. The language's own
@@ -117,7 +156,11 @@ export default {
     const actor = await resolveActor(request, env, db, user);
     if (!actor.me) return json({ error: "This address is not an active account." }, 403);
 
-    if (request.method === "GET") return json({ available: !!env.AI, model: MODEL });
+    if (request.method === "GET") {
+      const row = await db.queryOne("ai_usage_today", { day: today() }).catch(() => null);
+      return json({ available: !!env.AI, model: MODEL,
+        share: dailyShare(env), used: Math.round((row && row.neurons) || 0) });
+    }
     if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, { Allow: "GET, POST" });
     if (!env.AI) {
       return json({ error: "Machine translation is not switched on for this copy of the site." }, 503);
@@ -142,20 +185,42 @@ export default {
 
     const notes = await notesFor(db, to);
     const ask = items.map((it, i) => ({ id: String(it.id ?? i), text: it.text }));
-    let answer;
+    const system = instruction(from, to, notes), question = JSON.stringify({ items: ask });
+    const maxTokens = answerCeiling(ask);
+
+    /* THE DAY'S SHARE, reserved before anything is spent. Refused here means
+       nothing was asked of Cloudflare, so nothing can be charged. */
+    const day = today(), est = worstCase(system, question, maxTokens), cap = dailyShare(env);
+    const held = await db.query("ai_usage_reserve", { day, est, cap });
+    if (!held.length) {
+      return json({ error: "Today's free translation allowance is used up. It comes back at midnight UTC.",
+        code: "ai_resting" }, 429);
+    }
+
+    let answer, used = est;
     try {
       const res = await env.AI.run(MODEL, {
-        messages: [
-          { role: "system", content: instruction(from, to, notes) },
-          { role: "user", content: JSON.stringify({ items: ask }) },
-        ],
-        max_tokens: 4096,
+        messages: [{ role: "system", content: system }, { role: "user", content: question }],
+        max_tokens: maxTokens,
         temperature: 0.2,
       });
       answer = parseAnswer(res && res.response);
+      /* What it really used, as Cloudflare counts it; from the tokens if it
+         does not say; and if it says neither, the reservation stands. */
+      const u = res && res.usage;
+      if (u && Number.isFinite(u.neurons)) used = u.neurons;
+      else if (u && Number.isFinite(u.prompt_tokens) && Number.isFinite(u.completion_tokens)) {
+        used = u.prompt_tokens * NEURONS_IN + u.completion_tokens * NEURONS_OUT;
+      }
     } catch (err) {
-      return json({ error: "The translator did not answer: " + err.message }, 502);
+      /* A failed call may still have been counted by Cloudflare: keep the
+         reservation rather than guess it was free. */
+      /* 500, not 502: Cloudflare swaps a 502 for its own HTML page. */
+      return json({ error: "The translator did not answer: " + err.message }, 500);
     }
+    /* The true figure, even in the unexpected case it is over the estimate:
+       the count must be honest, and the margin under 10,000 absorbs it. */
+    await db.query("ai_usage_settle", { day, est, actual: used }).catch(() => {});
     const got = new Map(((answer && answer.items) || []).map((x) => [String(x.id), x.text]));
     const out = ask.map((it) => {
       const text = clean(got.get(it.id));

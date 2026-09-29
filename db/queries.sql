@@ -2989,3 +2989,27 @@ DELETE FROM partner_site_aliases WHERE partner_id = :partner_id;
 SELECT s.subdomain, s.enabled
   FROM partner_site_aliases a JOIN partner_sites s ON s.partner_id = a.partner_id
  WHERE a.subdomain = :subdomain;
+
+
+-- ============================================================================
+-- MACHINE TRANSLATION'S DAILY ALLOWANCE (0046, translate.js)
+-- ============================================================================
+
+-- name: ai_usage_reserve
+-- Adds a call's worst case to today's total ONLY if the total stays within
+-- :cap, in one statement. Returns the new total when it fits, nothing when
+-- it does not — the call is then refused before it is made.
+INSERT INTO ai_usage (day, neurons, calls)
+SELECT :day, :est, 1 WHERE :est <= :cap
+ON CONFLICT(day) DO UPDATE SET neurons = neurons + excluded.neurons, calls = calls + 1
+  WHERE ai_usage.neurons + excluded.neurons <= :cap
+RETURNING neurons;
+
+
+-- name: ai_usage_settle
+-- The reservation replaced by what the call really used.
+UPDATE ai_usage SET neurons = MAX(0, neurons - :est + :actual) WHERE day = :day;
+
+
+-- name: ai_usage_today
+SELECT neurons, calls FROM ai_usage WHERE day = :day;

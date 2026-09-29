@@ -151,6 +151,9 @@ function rowsFor(name, params) {
       return [{ id: "g_m1", label: "Monthly support", currency: "EUR",
                 target_cents: 180000, raised_cents: 103500, donor_count: 14,
                 is_public: 1, kind: "monthly" }];
+    /* Translation's daily share (0046): the reservation fits. */
+    case "ai_usage_reserve":
+      return [{ neurons: 10 }];
     default: return [];
   }
 }
@@ -512,6 +515,36 @@ await check("translate returns each piece, and flags one that lost its placehold
   eq(res.status, 200, JSON.stringify(body));
   eq(body.items, [{ id: "a", text: "Bok {name}" }, { id: "b", text: "Sada", check: true }], "items");
   assert(/English to Croatian/.test(fakeAI.last.input.messages[0].content), "the instruction names the languages");
+});
+
+await check("translation stops at the day's share — refused BEFORE Cloudflare is asked", async () => {
+  let asked = 0;
+  const AI = { async run() { asked++; return { response: "{}" }; } };
+  EXTRA = { ai_usage_reserve: [] };             // the reservation did not fit
+  try {
+    const res = await translate.fetch(post("/api/translate", { from: "en", to: "hr", items: [{ id: "a", text: "Give" }] }),
+      { ...env(makeDb()), AI, AI_DAILY_NEURONS: "1500" });
+    eq(res.status, 429, "refused");
+    eq((await res.json()).code, "ai_resting", "the page can say it in the person's language");
+    eq(asked, 0, "Cloudflare was never asked, so nothing can be charged");
+  } finally { EXTRA = {}; }
+});
+
+await check("translation reserves its worst case, then records what Cloudflare says it used", async () => {
+  const AI = { async run(model, input) {
+    fakeAI.last = { input };
+    return { response: JSON.stringify({ items: [{ id: "a", text: "Daj" }] }), usage: { neurons: 1.79 } };
+  } };
+  const db = makeDb();
+  const res = await translate.fetch(post("/api/translate", { from: "en", to: "hr", items: [{ id: "a", text: "Give" }] }),
+    { ...env(db), AI, AI_DAILY_NEURONS: "1500" });
+  eq(res.status, 200, "translated");
+  const r = db.calls.find((c) => c.name === "ai_usage_reserve");
+  const est = r.args.find((x) => typeof x === "number" && x > 0 && x < 1500);
+  assert(est > 1.79, "the reservation is at least what it used");
+  assert(fakeAI.last.input.max_tokens < 200, "a short piece may only have a short answer — got " + fakeAI.last.input.max_tokens);
+  const settle = db.calls.find((c) => c.name === "ai_usage_settle");
+  assert(settle && settle.args.includes(1.79), "Cloudflare's own figure recorded");
 });
 
 await check("translate is bounded: same language, too many, too long", async () => {

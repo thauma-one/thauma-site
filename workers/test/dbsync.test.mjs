@@ -230,5 +230,10 @@ check("a long value goes in pieces, each small enough for D1", () => {
   assert(parts.every((p) => new TextEncoder().encode(p).length <= 90000 + 70000), "requests stay bounded");
 });
 
+check("a site's own translation count is never carried to another", () => {
+  assert(SKIP_TABLES.has("ai_usage"), "ai_usage would be copied");
+  eq(copyableTables(["ai_usage", "users"]), ["users"], "left out of every transfer");
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

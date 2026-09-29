@@ -173,6 +173,12 @@ database_id = "db7fcd6a-56e2-4a67-98da-3da87e95dc86"
 binding = "AI"
 
 [vars]
+# TRANSLATION'S DAILY SHARE of the account's free Workers AI allowance
+# (10,000 Neurons a day for the whole account; translate.js). The three add
+# up to 9,000 — a test holds them there — so all three sites translating
+# flat out still cannot reach a charge.
+AI_DAILY_NEURONS = "1500"
+
 
 # WHERE THIS DEPLOYMENT LIVES, stated rather than detected.
 #
@@ -389,6 +395,12 @@ id = "f23971d5b4aa460daba43e97b9d84273"
 binding = "AI"
 
 [env.dev.vars]
+# TRANSLATION'S DAILY SHARE of the account's free Workers AI allowance
+# (10,000 Neurons a day for the whole account; translate.js). The three add
+# up to 9,000 — a test holds them there — so all three sites translating
+# flat out still cannot reach a charge.
+AI_DAILY_NEURONS = "1500"
+
 
 # WHERE THIS DEPLOYMENT LIVES, stated rather than detected.
 #
@@ -552,6 +564,12 @@ database_id = "1a30f6c9-1dc7-42b0-abaa-fab3da334c9e"
 binding = "AI"
 
 [env.production.vars]
+# TRANSLATION'S DAILY SHARE of the account's free Workers AI allowance
+# (10,000 Neurons a day for the whole account; translate.js). The three add
+# up to 9,000 — a test holds them there — so all three sites translating
+# flat out still cannot reach a charge.
+AI_DAILY_NEURONS = "6000"
+
 
 # WHERE THIS DEPLOYMENT LIVES, stated rather than detected.
 #
