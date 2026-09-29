@@ -39,7 +39,11 @@ html{scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.14) transparent}
 ::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.20);background-clip:padding-box}
 ::-webkit-scrollbar-corner{background:transparent}
 
-body{background:var(--bg);color:var(--text);
+/* 14px, the size every console board is drawn at, set here once. It was
+   never set: the page took the browser's 16px, except for anyone with the
+   Partner role, where a stray .role-partner rule on <html> made it 12px —
+   so the console was two sizes depending on who looked (fixed 2026-09-28). */
+body{background:var(--bg);color:var(--text);font-size:14px;
   font-family:var(--font-body);font-weight:var(--w-body);line-height:1.6;
   -webkit-font-smoothing:antialiased;min-height:100vh}
 h1,h2,h3{font-family:var(--font-display);font-weight:var(--w-hair);text-wrap:balance}
