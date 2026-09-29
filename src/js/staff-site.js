@@ -98,8 +98,9 @@
 
   /* ---- saving ---------------------------------------------------------- */
 
-  function changed(redrawPreview) {
+  function changed(redrawPreview, fromUndo) {
     if (!canEdit()) return;
+    if (!fromUndo) pushUndo();
     drawDots();
     $('wsSaved').textContent = tr('ws.saving');
     clearTimeout(state.timer);
@@ -168,8 +169,47 @@
       h.innerHTML = esc(fill('ws.theirs', { name: body.owner.name || body.partner.display_name })).replace(/\s(\S+)$/, ' <b>$1</b>');
     }
     document.body.classList.toggle('ws-readonly', !body.can.edit);
+    if (!state.placed) { state.placed = true; restorePlace(); }
+    /* What Undo steps back through starts again from what the server holds. */
+    state.undo = []; state.redo = []; state.snap = JSON.stringify(state.doc); drawUndo();
     drawStatus(); drawAsk(); drawBar(); fillPair(); draw(); drawDots();
   }
+
+  /* ---- undo -------------------------------------------------------------- */
+
+  /* EVERY CHANGE SAVES AS IT IS MADE, so there is no Cancel; Undo is the way
+     back (Chase, 2026-09-29: "Do you think an undo button would be good?").
+     A burst of typing is one step: the copy before the burst goes on the
+     stack when the burst starts. Ctrl/Cmd+Z does the same outside a text
+     box (inside one, the box's own undo is the right one); Shift adds redo.
+     Discard is still the way back to what visitors see. */
+  function pushUndo() {
+    if (!state.burst) { state.undo.push(state.snap); if (state.undo.length > 60) state.undo.shift(); state.redo = []; drawUndo(); }
+    clearTimeout(state.burst);
+    state.burst = setTimeout(function () { state.burst = null; state.snap = JSON.stringify(state.doc); }, 700);
+  }
+  function drawUndo() {
+    var u = $('wsUndo');
+    if (u) u.disabled = !(state.undo && state.undo.length);
+  }
+  function stepBack(from, to) {
+    if (!from.length) return;
+    clearTimeout(state.burst); state.burst = null;
+    to.push(JSON.stringify(state.doc));
+    state.snap = from.pop();
+    state.doc = JSON.parse(state.snap);
+    drawUndo(); fillPair(); draw(); drawDots();
+    changed(true, true);
+  }
+  $('wsUndo').addEventListener('click', function () { stepBack(state.undo, state.redo); });
+  document.addEventListener('keydown', function (e) {
+    if (!(e.ctrlKey || e.metaKey) || (e.key !== 'z' && e.key !== 'Z' && e.key !== 'y')) return;
+    var t = e.target;
+    if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+    if (!canEdit() || document.body.getAttribute('data-staff-page') !== 'website') return;
+    e.preventDefault();
+    if (e.key === 'y' || e.shiftKey) stepBack(state.redo, state.undo); else stepBack(state.undo, state.redo);
+  });
 
   function drawStatus() {
     var s = state.body.site;
@@ -265,18 +305,43 @@
 
   /* ---- tabs ------------------------------------------------------------ */
 
+  function showTab(name) {
+    state.tab = name;
+    [].forEach.call(document.querySelectorAll('[data-ws-tab]'), function (b) {
+      if (b.getAttribute('data-ws-tab') === name) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+    });
+    [].forEach.call(document.querySelectorAll('[data-ws-panel]'), function (p) { p.hidden = p.getAttribute('data-ws-panel') !== state.tab; });
+  }
   document.querySelector('.ws-side').addEventListener('click', function (e) {
     var t = e.target.closest('[data-ws-tab]');
     if (!t) return;
-    state.tab = t.getAttribute('data-ws-tab');
-    [].forEach.call(document.querySelectorAll('[data-ws-tab]'), function (b) {
-      if (b === t) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
-    });
-    [].forEach.call(document.querySelectorAll('[data-ws-panel]'), function (p) { p.hidden = p.getAttribute('data-ws-panel') !== state.tab; });
+    showTab(t.getAttribute('data-ws-tab'));
     fillPair(); draw();
   });
 
+  /* ---- where you were ---------------------------------------------------- */
+
+  /* A reload opens where the owner left off — the tab, the page, the open
+     section and its tab (Chase, 2026-09-29: "let's also remember the page
+     that was present too"). Kept in this browser only: a convenience, not a
+     record, so it is fine for it to be missing. */
+  var PLACE = 'thauma.ws.place';
+  function keepPlace() {
+    try { localStorage.setItem(PLACE, JSON.stringify({ tab: state.tab, page: state.page, edit: state.edit, sectab: state.sectab })); } catch (e) {}
+  }
+  function restorePlace() {
+    var p = null;
+    try { p = JSON.parse(localStorage.getItem(PLACE) || 'null'); } catch (e) {}
+    if (!p || !document.querySelector('[data-ws-tab="' + p.tab + '"]')) return;
+    showTab(p.tab);
+    var page = p.page && state.doc.pages.filter(function (x) { return x.id === p.page; })[0];
+    state.page = page ? page.id : null;
+    state.edit = page && typeof p.edit === 'number' && page.sections[p.edit] ? p.edit : null;
+    if (p.sectab) state.sectab = p.sectab;
+  }
+
   function draw() {
+    keepPlace();
     if (state.tab === 'pages') drawPages();
     if (state.tab === 'design') drawDesign();
     if (state.tab === 'links') drawLinks();
@@ -418,6 +483,7 @@
      of the screen stays still. "← All pages" and a menu of the pages sit at
      the top of every page. */
   function drawPages() {
+    keepPlace();
     if (!state.page) return drawOverview();
     var p = currentPage();
     if (state.edit != null && !p.sections[state.edit]) state.edit = null;
@@ -894,6 +960,12 @@
       html += '<p class="ws-small">' + esc(tr('ws.noCustom')) + '</p>';
     }
     html += '<div class="ws-rows ws-attop">' + row(tr('ws.atTop'), sw('data-header-links', state.doc.design.headerLinks, '')) + '</div>';
+    /* WHERE THE GIVE BUTTONS GO — a link, so it lives with the links (Chase,
+       2026-09-29). Empty, it is the ministry's own giving link, shown in the
+       box so it is plain which one that is. */
+    html += '<div class="ws-head"><h2>' + esc(tr('ws.givingHead')) + '</h2></div><div class="ws-rows">' +
+      row(tr('ws.giveLink'), '<input type="url" data-give value="' + esc(state.doc.give || '') + '" placeholder="' +
+        esc(state.body.partner.giving_url || 'https://') + '">') + '</div>';
     $('wsLinks').innerHTML = html;
   }
 
@@ -965,7 +1037,6 @@
       row(tr('ws.fallback'), '<select data-fallback>' + d.languages.map(function (l) {
         return '<option value="' + esc(l) + '"' + (l === d.fallback ? ' selected' : '') + '>' + esc(langName(l)) + '</option>';
       }).join('') + '</select>') +
-      row(tr('ws.giveLink'), '<input type="url" data-give value="' + esc(d.give || '') + '" placeholder="https://">') +
       row(tr('ws.whoEdits'), who) +
       '</div><div class="ws-head"><h2>' + esc(tr('ws.startAgain')) + '</h2></div><div class="ws-starts">' +
       ['full', 'basic', 'blank'].map(function (k) {

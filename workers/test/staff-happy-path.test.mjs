@@ -676,6 +676,19 @@ await check("switching an archived site on brings it back", async () => {
   } finally { EXTRA = {}; }
 });
 
+await check("a site that is switched off does not exist: no page at all, not even Coming soon", async () => {
+  EXTRA = { partner_site_by_subdomain: [{ partner_id: "p_mira", subdomain: "mirapetrovic", enabled: 0, published: "{}",
+    slug: "mira", display_name: "Mira", giving_url: null, status: "active" }] };
+  try {
+    const e = { ...env(makeDb()), SITE_DOMAIN: "thauma.one" };
+    const res = await serveSite(new Request("https://mirapetrovic.thauma.one/en/"), e, { sub: "mirapetrovic", rest: "/en/", base: "" });
+    eq(res.status, 404, "not found");
+    eq(await res.text(), "", "and nothing in it");
+    eq(await serveSite(new Request("https://dev.thauma.one/site/mirapetrovic/en/"), e,
+      { sub: "mirapetrovic", rest: "/en/", base: "/site/mirapetrovic" }), null, "under /site/, the console's own 404");
+  } finally { EXTRA = {}; }
+});
+
 await check("an old address sends visitors on to the new one, page and all", async () => {
   EXTRA = { partner_site_by_subdomain: [], partner_site_by_alias: [{ subdomain: "mirap", enabled: 1 }] };
   try {

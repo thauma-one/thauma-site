@@ -201,43 +201,54 @@ export function starter(kind, { name, langs, fallback, give }) {
   const pages = {};
   PAGES.forEach((p) => { pages[p] = { id: p, on: false, label: {}, sections: [] }; });
 
-  if (kind === "blank") {
-    pages.home.on = true;
-  } else if (kind === "basic") {
-    pages.home.on = true; pages.home.sections = [hero("words"), section("text", "left", L, { thin: "aboutThin", bold: "aboutBold", text: "=" })];
-    pages.about.on = true; pages.about.sections = [section("photoText", "left", L, { thin: "aboutThin", bold: "aboutBold", text: "=" }, { photo: null })];
-    pages.give.on = true; pages.give.sections = [section("give", "card", L, { thin: "giveThin", bold: "giveBold", text: "giveText", button: "giveBtn" })];
-    pages.contact.on = true; pages.contact.sections = [section("contact", "form", L, { thin: "contactThin", bold: "contactBold", text: "=" })];
-  } else {
-    /* THE FULL DEFAULT (Chase, 2026-09-29): seven pages on, in this order;
-       Home is an opening that fills the screen and one photo with words —
-       filler words, to be replaced; Updates is the videos and the newest
-       newsletter. Timeline and Resources are ready, and off. */
-    PAGES.forEach((p) => { pages[p].on = PAGES_ON.includes(p); });
-    pages.home.sections = [
-      hero("behind"),
-      section("photoText", "left", L, { thin: "aboutThin", bold: "aboutBold", text: "homeFill" }, { photo: null }),
-    ];
-    pages.about.sections = [
-      section("photoText", "left", L, { thin: "aboutThin", bold: "aboutBold", text: "=" }, { photo: null }),
-      section("quote", "large", L, { quote: "=", who: "=" }),
-    ];
-    pages.mission.sections = [
-      section("text", "left", L, { thin: "missionThin", bold: "missionBold", text: "=" }),
-      section("photo", "still", L, { caption: "=" }, { photo: null }),
-    ];
-    pages.updates.sections = [
-      section("videos", "stage", L, { thin: "videosThin", bold: "videosBold" }),
-      section("newsletters", "latest", L, { thin: "newsThin", bold: "newsBold" }),
-    ];
-    pages.give.sections = [
+  /* EVERY PAGE STARTS WITH SOMETHING ON IT (Chase, 2026-09-29: "I want it
+     to start with this placeholder text. Every default layout needs this.
+     Even the pages that are turned [off] need placeholder text so the user
+     can visualize what is happening"). The words come from the site's own
+     words ("…Fill"), in each language, and ask to be replaced. */
+  const links = (variant) => section("links", variant, L, { thin: "resourcesThin", bold: "resourcesBold", text: "resourcesFill" }, {
+    items: [["page:about", "link1Title", "link1Text"], ["page:mission", "link2Title", "link2Text"]].map(([url, t, x]) => ({
+      url, photo: null, words: Object.fromEntries(L.map((l) => [l, { title: word(l, t), text: word(l, x) }])),
+    })),
+  });
+  const every = {
+    home: [hero("behind"), section("photoText", "left", L, { thin: "aboutThin", bold: "aboutBold", text: "homeFill" }, { photo: null })],
+    about: [
+      section("photoText", "left", L, { thin: "aboutThin", bold: "aboutBold", text: "aboutFill" }, { photo: null }),
+      section("quote", "large", L, { quote: "quoteFill", who: "quoteWho" }),
+    ],
+    mission: [
+      section("text", "left", L, { thin: "missionThin", bold: "missionBold", text: "missionFill" }),
+      section("photo", "still", L, { caption: "captionFill" }, { photo: null }),
+    ],
+    updates: [
+      section("videos", "stage", L, { thin: "videosThin", bold: "videosBold", text: "videosFill" }),
+      section("newsletters", "latest", L, { thin: "newsThin", bold: "newsBold", text: "newsFill" }),
+    ],
+    give: [
       section("give", "band", L, { thin: "giveThin", bold: "giveBold", text: "giveText", button: "giveBtn" }),
-      section("goals", "cards", L, { thin: "goalsThin", bold: "goalsBold" }),
-    ];
-    pages.stay.sections = [section("signup", "card", L, { thin: "signupThin", bold: "signupBold", text: "=" })];
-    pages.contact.sections = [section("contact", "form", L, { thin: "contactThin", bold: "contactBold", text: "=" })];
-    pages.timeline.sections = [section("timeline", "full", L, { thin: "timelineThin", bold: "timelineBold" })];
-    pages.resources.sections = [section("links", "list", L, { thin: "resourcesThin", bold: "resourcesBold" }, { items: [] })];
+      section("goals", "cards", L, { thin: "goalsThin", bold: "goalsBold", text: "goalsFill" }),
+    ],
+    stay: [section("signup", "card", L, { thin: "signupThin", bold: "signupBold", text: "signupFill" })],
+    contact: [section("contact", "form", L, { thin: "contactThin", bold: "contactBold", text: "contactFill" })],
+    timeline: [section("timeline", "full", L, { thin: "timelineThin", bold: "timelineBold", text: "timelineFill" })],
+    resources: [links("list")],
+  };
+
+  if (kind === "blank") {
+    /* Nothing, on purpose: the one start that is a clean page. */
+    pages.home.on = true;
+  } else {
+    /* THE FULL DEFAULT: seven pages on, in this order; Timeline and
+       Resources ready, and off. THE BASIC ONE: the same pages, filled the
+       same way, with only Home, About, Give and Contact on — and a Home of
+       the opening in words alone and one block of text. */
+    const on = kind === "basic" ? ["home", "about", "give", "contact"] : PAGES_ON;
+    PAGES.forEach((p) => { pages[p].on = on.includes(p); pages[p].sections = every[p]; });
+    if (kind === "basic") {
+      pages.home.sections = [hero("words"), section("text", "left", L, { thin: "aboutThin", bold: "aboutBold", text: "homeFill" })];
+      pages.give.sections = [section("give", "card", L, { thin: "giveThin", bold: "giveBold", text: "giveText", button: "giveBtn" })];
+    }
   }
 
   return {
@@ -252,7 +263,8 @@ export function starter(kind, { name, langs, fallback, give }) {
               colors: { background: null, accent: null },
               motion: { entrance: "rise", photos: "still", headings: "plain", buttons: "lift", pages: "fade", progress: "off" } },
     links: [],
-    footer: { layout: "split", menu: false, socials: "icons", words: {} },
+    footer: { layout: "split", menu: false, socials: "icons",
+              words: kind === "blank" ? {} : Object.fromEntries(L.map((l) => [l, { tagline: word(l, "taglineFill"), small: word(l, "smallFill") }])) },
     pages: PAGES.map((p) => pages[p]),
   };
 }

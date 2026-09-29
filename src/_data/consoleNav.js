@@ -43,11 +43,6 @@ const staff = [
      widgets, the sign-up form, the contact form, their colors and code. */
   { slug: "sharing", url: "/staff/sharing/", label: "Sharing",
     roles: ["staff", "partner", "communications"] },
-  /* THE MINISTRY'S OWN WEBSITE (0044, Chase 2026-09-28): <name>.thauma.one,
-     arranged here. Everyone on the team may look; the owner, and whoever the
-     owner allows, may change it — the endpoint decides that, not this line. */
-  { slug: "website", url: "/staff/website/", label: "Website",
-    roles: ["staff", "partner", "communications"] },
   /* Supporter names, giving history and stewardship notes. The narrowest
      thing in the console and the only one holding other people's private
      details, so communications does not get it by being able to write. */
@@ -56,6 +51,13 @@ const staff = [
   { slug: "directory", url: "/staff/directory/", label: "Directory",
     roles: ["staff", "partner", "communications"] },
   { slug: "resources", url: "/staff/resources/", label: "Resources",
+    roles: ["staff", "partner", "communications"] },
+  /* THE MINISTRY'S OWN WEBSITE (0044): <name>.thauma.one, arranged here —
+     "Site Creator", last in the row (Chase, 2026-09-29; it was "Website",
+     after Sharing). The address stays /staff/website/, so nothing that links
+     to it breaks. Everyone on the team may look; the owner, and whoever the
+     owner allows, may change it — the endpoint decides that, not this line. */
+  { slug: "website", url: "/staff/website/", label: "Site Creator",
     roles: ["staff", "partner", "communications"] },
   /* UNDER YOUR NAME, not in the row (mockup board 1, built 2026-09-27).
      Settings is about you and Activity is a record you look back at — neither

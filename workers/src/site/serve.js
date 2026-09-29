@@ -26,6 +26,11 @@ import { siteOrigin } from "../lib/origin.js";
 import { cleanDoc, PAGES } from "./model.js";
 import { renderPage, simplePage } from "./render.js";
 
+/** Nothing at all: an empty 404, not a page. */
+export function nowhere() {
+  return new Response(null, { status: 404, headers: { "Cache-Control": "no-store" } });
+}
+
 /** The visitor's best language among the site's, else the site's fallback. */
 export function pickLang(acceptLanguage, langs, fallback) {
   const wanted = String(acceptLanguage || "").split(",").map((part) => {
@@ -79,14 +84,20 @@ export async function serveSite(request, env, { sub, rest, base, draft = false }
     if (!mine.some((p) => p.id === row.partner_id) && !isAdmin) {
       return simplePage("Not yours to preview", "Only the ministry's team can see its unpublished site.", 403);
     }
-  } else if (!row.enabled) {
-    return simplePage("Coming soon", "This site is not open yet.", 404);
+  } else if (!row.enabled || !row.published) {
+    /* A SITE THAT IS OFF DOES NOT EXIST (Chase, 2026-09-29: "I don't want
+       the page to load at all if the subdomain is typed in and the site is
+       disabled"). Its name has no DNS record then (staff-site.js takes it
+       away on switching off), so a browser finds nothing; should a request
+       reach here anyway, it gets an empty "not found" — no page, no name,
+       not even "coming soon". Under /site/<name>/ it is the console's own
+       404, as for any address that is not there. */
+    return base ? null : nowhere();
   }
 
   const full = draft
     ? (await db.queryOne("partner_site_get", { partner_id: row.partner_id })).draft
     : row.published;
-  if (!full) return simplePage("Coming soon", "This site is not open yet.", 404);
   const active = (await db.query("languages_all", {})).filter((l) => l.is_active);
   const catalog = active.map((l) => l.code);
   /* Each language by its own name, for the site's language menu. */

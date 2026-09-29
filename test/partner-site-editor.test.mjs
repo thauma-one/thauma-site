@@ -40,7 +40,7 @@ function answer({ edit = true, owner = true, published = false } = {}) {
   };
 }
 
-async function boot(opts) {
+async function boot(opts = {}) {
   const sent = [];
   const dom = new JSDOM(readFileSync(PAGE, "utf8"), { runScripts: "outside-only", pretendToBeVisual: true,
     url: "https://next.thauma.one/staff/website/" });
@@ -50,6 +50,8 @@ async function boot(opts) {
     return { ok: true, status: 200, json: async () => answer(opts) };
   };
   w.console.error = () => {};
+  /* What a browser kept from before, for the "reload" tests. */
+  if (opts.place) w.localStorage.setItem("thauma.ws.place", opts.place);
   w.scrollTo = () => {};
   w.scrollBy = () => {};
   w.HTMLElement.prototype.scrollIntoView = () => {};
@@ -148,14 +150,16 @@ await check("a Links section: plain rows, one opened at a time", async () => {
   click(d.querySelector('[data-open-page="resources"]'));
   click(d.querySelector('[data-edit-sec="0"]'));
   click(d.querySelector('[data-sectab="links"]'));
+  const before = d.querySelectorAll(".ws-linkrow").length;
+  assert(before === 2, "two sample links to begin with");
   click(d.querySelector("[data-item-add]"));
   const title = d.querySelector('[data-item$=":title"]');
   assert(title, "the new link opens, ready for its name");
   title.value = "The book";
   title.dispatchEvent(new w.Event("input", { bubbles: true }));
-  click(d.querySelector('[data-chip="linkkind:item:0:0"][data-value="page"]'));
+  click(d.querySelector('[data-chip="linkkind:item:0:2"][data-value="page"]'));
   await settle(900);
-  const it = sent.filter((x) => x.action === "save").pop().draft.pages.find((p) => p.id === "resources").sections[0].items[0];
+  const it = sent.filter((x) => x.action === "save").pop().draft.pages.find((p) => p.id === "resources").sections[0].items[2];
   eq([it.words.en.title, it.url.startsWith("page:")], ["The book", true], "saved, pointing at a page");
 });
 
@@ -216,6 +220,27 @@ await check("Design: Custom's colors and what visitors see appear only when Cust
   await settle(900);
   const design = sent.filter((x) => x.action === "save").pop().draft.design;
   eq([design.look, design.mode], ["custom", "dark"], "saved");
+});
+
+await check("Undo steps back through changes; a reload opens where you left off", async () => {
+  const { w, d, sent, click, pages } = await boot();
+  pages();
+  click(d.querySelector('[data-open-page="home"]'));
+  const order = () => [...d.querySelectorAll(".ws-stile-words b")].map((b) => b.textContent);
+  eq(order(), ["Opening", "Photo and words"], "as it starts");
+  click(d.querySelector('[data-sec-down="0"]'));
+  eq(order(), ["Photo and words", "Opening"], "moved");
+  assert(!d.getElementById("wsUndo").disabled, "Undo is offered");
+  click(d.getElementById("wsUndo"));
+  eq(order(), ["Opening", "Photo and words"], "and back again");
+  await settle(900);
+  eq(sent.filter((x) => x.action === "save").pop().draft.pages[0].sections[0].type, "hero", "and saved that way");
+  click(d.querySelector('[data-edit-sec="1"]'));
+  const kept = JSON.parse(w.localStorage.getItem("thauma.ws.place"));
+  eq([kept.tab, kept.page, kept.edit], ["pages", "home", 1], "the place is kept");
+  const again = await boot({ place: w.localStorage.getItem("thauma.ws.place") });
+  eq([again.d.querySelector('[data-ws-tab="pages"]').getAttribute("aria-current"), again.d.querySelector('.ws-acc.is-open') && again.d.querySelector('.ws-acc.is-open').dataset.si],
+     ["page", "1"], "and a reload opens there");
 });
 
 await check("somebody not allowed sees it all, changes nothing, and can ask", async () => {

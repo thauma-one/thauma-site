@@ -232,6 +232,10 @@ main section.raised + section{border-top-color:transparent}
 .linklist .lpic{display:block;aspect-ratio:16/10;margin:-20px -22px 16px;overflow:hidden;border-radius:13px 13px 0 0;background:var(--bg)}
 .linklist .lpic img{width:100%;height:100%;object-fit:cover;transition:transform .6s cubic-bezier(.16,1,.3,1)}.linklist a:hover .lpic img{transform:scale(1.04)}
 .data .lede{margin-bottom:28px}
+.wanted{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;text-align:center;
+  border:1.5px dashed var(--line);border-radius:inherit;color:var(--dim);font-size:14px;background:color-mix(in srgb,var(--fg) 4%,transparent)}
+.pic:has(> .wanted){min-height:220px}.fullphoto .frame:has(> .wanted){height:min(50vh,420px)}
+.fullphoto .caption{font-size:13px;color:var(--dim);padding:10px 24px;margin:0}
 main section.empty{padding:40px 0}.empty p{margin:0;padding:22px;border:1px dashed var(--line);border-radius:12px;color:var(--dim);text-align:center;font-size:14px}
 main section.is-editing{outline:2px solid var(--acc);outline-offset:-2px}
 /* The ministry's widgets and lists, centered unless the owner puts them left. */
@@ -343,6 +347,9 @@ function renderSection(sec, ctx) {
   const button = (solid = true) => to ? `<a class="btn${solid ? " solid" : ""}" href="${esc(to)}"${rel(to)}>${esc(btnWords)} →</a>` : "";
   const pictured = (html, label) => to && html ? `<a class="piclink" href="${esc(to)}"${rel(to)} aria-label="${esc(label)}">${html}</a>` : html;
   const sub = w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : "";
+  /* Where a photo is wanted and none is chosen yet, a preview shows the
+     place for it, so the owner sees the page as it will be. Visitors never do. */
+  const wanted = () => ctx.draft ? `<span class="wanted">${esc(word(lang, "photoWanted"))}</span>` : "";
   const cls = (...c) => {
     const k = [...c, sec.raised ? "raised" : "", sec.align ? "al-" + sec.align : ""].filter(Boolean).join(" ");
     return k ? ` class="${k}"` : "";
@@ -372,13 +379,13 @@ function renderSection(sec, ctx) {
         return `<section class="hero hero-monogram"><div class="wrap"><div class="mono-words"><span class="mono-mark" aria-hidden="true">${esc(initials)}</span>` +
           `${w("kicker") ? `<p class="kicker m">${esc(w("kicker"))}</p>` : ""}${h}<span class="rule m" aria-hidden="true"></span>` +
           `${w("text") ? `<p class="spaced m">${inline(w("text"))}</p>` : ""}${btns ? `<div class="btns m">${btns}</div>` : ""}</div>` +
-          `${sec.photo ? `<div class="mono-pic m">${img(sec.photo)}</div>` : ""}</div>` +
+          `${sec.photo ? `<div class="mono-pic m">${img(sec.photo)}</div>` : ctx.draft ? `<div class="pic m">${wanted()}</div>` : ""}</div>` +
           `${cue}</section>`;
       }
       const words = `${w("kicker") ? `<p class="kicker m">${esc(w("kicker"))}</p>` : ""}${heading(w("heading"), "h1")}` +
         `${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}${btns ? `<div class="btns m">${btns}</div>` : ""}`;
       if (sec.variant === "beside") {
-        return `<section class="hero hero-beside"><div class="wrap"><div>${words}</div>${sec.photo ? `<div class="pic m ${photoMotion === "zoom" ? "kb" : ""}">${img(sec.photo)}</div>` : ""}</div>${cue}</section>`;
+        return `<section class="hero hero-beside"><div class="wrap"><div>${words}</div>${sec.photo ? `<div class="pic m ${photoMotion === "zoom" ? "kb" : ""}">${img(sec.photo)}</div>` : ctx.draft ? `<div class="pic m">${wanted()}</div>` : ""}</div>${cue}</section>`;
       }
       if (sec.variant === "words") return `<section class="hero hero-words"><div class="wrap">${words}</div>${cue}</section>`;
       return `<section class="hero hero-behind${sec.photo ? " has-photo" : ""}"><div class="hero-media ${photoMotion === "zoom" ? "kb" : ""}"${photoMotion === "drift" ? " data-drift" : ""}>${img(sec.photo)}</div><div class="wrap">${words}</div>${cue}</section>`;
@@ -387,12 +394,14 @@ function renderSection(sec, ctx) {
       if (!w("heading") && !w("text")) return "";
       return `<section${cls(sec.variant === "center" ? "text-center" : "")}><div class="wrap">${heading(w("heading"))}${prose(w("text"))}${to ? `<div class="btns m">${button()}</div>` : ""}</div></section>`;
     case "photoText": {
-      if (!sec.photo && !w("text")) return "";
-      const pic = img(sec.photo, plainOf(raw("heading")));
-      return `<section${cls("pt-" + sec.variant)}><div class="wrap pt">${sec.photo ? `<div class="pic m ${photoMotion === "zoom" ? "kb" : ""}">${sec.photoLink ? pictured(pic, btnWords) : pic}</div>` : ""}<div>${heading(w("heading"))}${prose(w("text"))}${to ? `<div class="btns m">${button()}</div>` : ""}</div></div></section>`;
+      if (!sec.photo && !w("text") && !ctx.draft) return "";
+      const pic = sec.photo ? img(sec.photo, plainOf(raw("heading"))) : wanted();
+      return `<section${cls("pt-" + sec.variant)}><div class="wrap pt">${sec.photo || ctx.draft ? `<div class="pic m ${photoMotion === "zoom" && sec.photo ? "kb" : ""}">${sec.photo && sec.photoLink ? pictured(pic, btnWords) : pic}</div>` : ""}<div>${heading(w("heading"))}${prose(w("text"))}${to ? `<div class="btns m">${button()}</div>` : ""}</div></div></section>`;
     }
     case "photo":
-      if (!sec.photo) return "";
+      if (!sec.photo) {
+        return ctx.draft ? `<section class="fullphoto"><div class="frame">${wanted()}</div>${w("caption") ? `<p class="wrap caption">${esc(w("caption"))}</p>` : ""}</section>` : "";
+      }
       return `<section class="fullphoto"><figure style="margin:0"><div class="frame ${sec.variant === "zoom" ? "kb" : ""}"${sec.variant === "drift" ? " data-drift" : ""}>${pictured(img(sec.photo, w("caption")), w("caption") || word(lang, "more"))}</div>${w("caption") ? `<figcaption class="wrap">${esc(w("caption"))}</figcaption>` : ""}</figure></section>`;
     case "quote":
       if (!w("quote")) return "";
@@ -473,7 +482,7 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
   /* A preview stays a preview as it is clicked through. */
   const href = (id, l = lang) => `${base}/${l}/${id === "home" ? "" : id + "/"}${draft ? "?draft" : ""}`;
   const ctx = {
-    lang, fallback, design, slug: site.slug, payload, needs: {},
+    lang, fallback, design, slug: site.slug, payload, needs: {}, draft,
     /* Widgets follow the page: light, dark, or — a Custom site that follows
        the visitor's device — the device too. */
     widgetTheme: L.alt ? "auto" : L.scheme === "dark" ? "dark" : "light",

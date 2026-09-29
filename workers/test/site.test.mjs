@@ -3,7 +3,7 @@
  * Partner sites (0044): the document, the page, and the language
  *   node workers/test/site.test.mjs
  */
-import { subdomainFrom, validSubdomain, cleanDoc, starter, safeUrl, safePhoto, PAGES } from "../src/site/model.js";
+import { subdomainFrom, validSubdomain, cleanDoc, starter, safeUrl, safePhoto, PAGES, SECTIONS, plainOf } from "../src/site/model.js";
 import { renderPage, esc } from "../src/site/render.js";
 import { pickLang } from "../src/site/serve.js";
 import { removeSiteDns } from "../src/lib/site-dns.js";
@@ -300,6 +300,28 @@ check("the site's own words come from the wording file Thauma translates, so a n
     eq(word(lang, "pastNews"), file[lang].site.pastNews, `${lang}: past newsletters`);
   }
   eq(word("de", "readIt"), file.en.site.readIt, "a language not given a word yet reads English");
+});
+
+check("every section of both starting sites has words to replace, in every language — switched-off pages too", () => {
+  for (const kind of ["full", "basic"]) {
+    const d = starter(kind, { name: "Chase Roush", langs: ["en", "hr", "sr"], fallback: "en" });
+    for (const p of d.pages) {
+      assert(p.sections.length, `${kind}: ${p.id} has nothing on it`);
+      for (const x of p.sections) for (const l of d.languages) for (const f of SECTIONS[x.type].words) {
+        if (f === "kicker" || (f === "button" && x.type !== "give")) continue;
+        assert(plainOf(x.words[l][f]), `${kind}: ${p.id} › ${x.type} has no ${f} in ${l}`);
+      }
+    }
+    assert(d.footer.words.en.tagline && d.footer.words.hr.small, `${kind}: the footer has its words`);
+  }
+  eq(starter("blank", { name: "X", langs: ["en"], fallback: "en" }).pages.every((p) => !p.sections.length), true, "blank stays blank");
+});
+
+check("a preview shows where a photo will go; visitors see no such thing", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  assert((page(d, "about", "en", { draft: true }).match(/class="wanted"/g) || []).length === 1, "About's photo, waiting");
+  assert(page(d, "mission", "en", { draft: true }).includes("Your photo goes here"), "the full-width one too");
+  assert(!page(d, "about").includes('class="wanted"') && !page(d, "mission").includes('class="wanted"'), "not on the real site");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

@@ -128,7 +128,9 @@ export default {
       const theme = lookFor(face, null, "#1AE4FF");
       return json(withActing({
         you: { email: user.email, name: me.user_name || null, roles: String(me.roles || "staff").split(",") },
-        partner: { id: partner.id, display_name: partner.display_name, slug: partner.slug },
+        partner: { id: partner.id, display_name: partner.display_name, slug: partner.slug,
+                   /* Where Give goes when the site names nowhere of its own. */
+                   giving_url: (face && face.giving_url) || null },
         site: {
           subdomain: fresh.subdomain,
           address: addressOf(env, fresh.subdomain),
@@ -207,6 +209,13 @@ export default {
          archived_at is cleared, and its names are made again. */
       await db.query("partner_site_set_enabled", { partner_id: partner.id, enabled: on, now });
       if (on && row.dns_state !== "ready") await bringUp(env, db, partner.id, row.subdomain, now);
+      /* Switched off, the name stops existing: its DNS record goes, as on
+         archiving, and comes back when it is switched on again (Chase,
+         2026-09-29: "while the site isn't enabled, the site doesn't exist"). */
+      if (!on && env.SITE_WILDCARD === "1") {
+        const problem = await takeDown(env, db, partner.id, row.subdomain);
+        await db.query("partner_site_set_dns", { partner_id: partner.id, dns_state: problem || null, now });
+      }
       return answer();
     }
     if (action === "request") {
