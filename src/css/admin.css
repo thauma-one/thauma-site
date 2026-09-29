@@ -1283,3 +1283,8 @@ body:has(.web-panel:not([hidden]) .ms-savebar:not([hidden])) .web-bar{display:no
   .pp-cols,.pp-team{grid-template-columns:1fr}
   .pp-preview{position:static;margin-top:22px;max-width:320px}
 }
+
+/* The Library's words, one language at a time (Editing / Reference). */
+.lib-lang-block[hidden]{display:none}
+.lib-langs-one .lib-lang-block{max-width:none}
+.lib-writing{margin-top:4px}

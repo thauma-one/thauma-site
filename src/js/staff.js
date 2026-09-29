@@ -1871,6 +1871,38 @@
      table says about that person — that is the point of logging it — so the
      dialog reloads the snapshot rather than leaving the row showing the
      figure it just invalidated. */
+  /* EDITING ⇄ REFERENCE (Chase, 2026-09-28: "Editing: Language" and
+     "Reference: Language" with a swap button between them). One handler for
+     every editor that has the pair — Pages, Forms, milestones, prayer, the
+     form words on Sharing, the site's Resources and Events. It changes the
+     two pickers the way a person would, so each editor's own handling runs:
+     Editing first, then — once Editing has taken the new language, which on
+     Pages waits for "discard unsaved changes?" — Reference. If Editing does
+     not change (that question was answered No), nothing else does. */
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest && e.target.closest('[data-lang-swap]');
+    if (!btn) return;
+    var ref = btn.closest('.lang-ref');
+    var edit = ref && ref.parentNode.querySelector('[data-lang-edit]');
+    var refSel = ref && ref.querySelector('[data-lang-ref]');
+    if (!edit || !refSel || !refSel.value) return;
+    var was = edit.value, next = refSel.value;
+    edit.value = next;
+    edit.dispatchEvent(new Event('change', { bubbles: true }));
+    var tries = 0;
+    (function settle() {
+      if (edit.value !== next) {
+        if (++tries < 60) return setTimeout(settle, 50);
+        return;
+      }
+      setTimeout(function () {
+        if (![].some.call(refSel.options, function (o) { return o.value === was; })) return;
+        refSel.value = was;
+        refSel.dispatchEvent(new Event('change', { bubbles: true }));
+      }, 0);
+    })();
+  });
+
   window.StaffSnapshotReload = loadSnapshot;
   window.StaffProblem = problem;
   window.StaffProblemClear = problemClear;

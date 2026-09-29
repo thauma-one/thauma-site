@@ -196,7 +196,7 @@ await check("opening any row and pressing Done changes nothing", async () => {
   }
 });
 
-await check("Writing one language beside another: typing survives a switch, and the other shows above", async () => {
+await check("Editing one language with another for reference: typing survives a switch, and the other shows above", async () => {
   const { w, d, sent, click, row, done, publish } = await boot();
   click(row("prList", "p1"));
   await settle();
@@ -220,6 +220,24 @@ await check("Writing one language beside another: typing survives a switch, and 
   await publish();
   const post = sent.find((s) => s.method === "POST" && s.url.includes("staff-prayer"));
   eq([post.body.text.en.title, post.body.text.hr.title], ["Visas, soon", "Vize"], "both languages");
+});
+
+await check("the swap button trades Editing and Reference, and keeps what was typed", async () => {
+  /* Chase, 2026-09-28: "Editing: Language" and "Reference: Language" with a
+     swap button between them. */
+  const { w, d, click, row } = await boot();
+  click(row("prList", "p1"));
+  await settle();
+  const edit = d.getElementById("prLangA"), ref = d.getElementById("prLangB");
+  eq(d.querySelector("#prForm .ms-pick span").textContent, "Editing", "the label");
+  d.querySelector('#prForm [data-ptx="title"]').value = "Visas, soon";
+  click(d.querySelector("#prForm [data-lang-swap]"));
+  await settle(120);
+  eq([edit.value, ref.value], ["hr", "en"], "swapped");
+  eq(d.querySelector('#prForm [data-pref="title"]').textContent, "Visas, soon", "the English, typed, is the reference");
+  click(d.querySelector("#prForm [data-lang-swap]"));
+  await settle(120);
+  eq([edit.value, ref.value, d.querySelector('#prForm [data-ptx="title"]').value], ["en", "hr", "Visas, soon"], "and back");
 });
 
 await check("the milestone editor writes the same way", async () => {

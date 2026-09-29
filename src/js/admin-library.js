@@ -51,6 +51,35 @@
   })();
 
   var state = { resources: [], gatherings: [], vocabulary: {}, open: null, limit: 40 };
+  /* Which language is being edited and which shown for reference. Kept
+     across items and redraws, like the other editors' pair. */
+  var lib = { edit: null, ref: null };
+  /* Each language in its own words — "Hrvatski", "Српски" — as the other
+     editors' pickers name them. */
+  function langName(code) {
+    try {
+      var n = new Intl.DisplayNames([code, 'en'], { type: 'language' }).of(code) || code;
+      return n.charAt(0).toUpperCase() + n.slice(1);
+    } catch (e) { return code; }
+  }
+  /* Show the language being edited; write the reference language's words,
+     as they stand in their boxes now, small above each box. */
+  function showLangs(panel) {
+    if (!panel) return;
+    [].forEach.call(panel.querySelectorAll('.lib-lang-block'), function (b) {
+      b.hidden = b.dataset.lang !== lib.edit;
+    });
+    var block = panel.querySelector('.lib-lang-block[data-lang="' + lib.edit + '"]');
+    if (!block) return;
+    ['title', 'summary'].forEach(function (k) {
+      var src = lib.ref && panel.querySelector('[data-lib-' + k + '="' + lib.ref + '"]');
+      var el = block.querySelector('[data-lib-ref="' + k + '"]');
+      var v = src ? src.value.trim() : '';
+      el.textContent = v;
+      el.hidden = !v;
+      if (lib.ref) el.setAttribute('lang', lib.ref);
+    });
+  }
 
   /* WHAT AN ITEM IS MADE OF. `when` decides whether a field applies to this
      particular item — a location belongs to a one-off gathering and a session
@@ -244,6 +273,8 @@
           '</div>';
         }).join('');
         }).join('');
+      /* The reference words above each box, from the boxes as drawn. */
+      [].forEach.call(host.querySelectorAll('.adm-panel'), showLangs);
     });
   }
 
@@ -368,28 +399,57 @@
   function editor(collection, item) {
     var specs = FIELDS[collection] || [];
 
-    /* THE WORDS, ONE LANGUAGE AT A TIME. Every language gets a box and an
-       empty one is a legitimate saved state — this is the screen where "not
-       translated yet" has to be as easy to leave as to fill in. */
+    /* THE WORDS, ONE LANGUAGE AT A TIME — "Editing" and "Reference", the
+       same pair every other editor has (Chase, 2026-09-28). Every language
+       still has its boxes, so saving reads them all as before; only the one
+       being edited shows, and the reference language's words sit small above
+       each box. An empty language is a legitimate saved state: "not
+       translated yet" must be as easy to leave as to fill in. */
+    if (LANGS.indexOf(lib.edit) === -1) lib.edit = LANGS[0];
+    if (lib.ref === lib.edit || LANGS.indexOf(lib.ref) === -1) {
+      lib.ref = LANGS.filter(function (l) { return l !== lib.edit; })[0] || null;
+    }
     var words = LANGS.map(function (l) {
       var t = (item.title || {})[l] || '';
       var s = (item.summary || item.description || {})[l] || '';
-      return '<div class="lib-lang-block' + (t ? '' : ' is-empty') + '" data-lang="' + esc(l) + '">' +
-        '<div class="lib-lang-head"><b>' + esc(l.toUpperCase()) + '</b>' +
-          (t ? '' : '<span class="lib-lang-none">' +
-            esc(tr('lib.notYet', 'not written yet')) + '</span>') + '</div>' +
+      return '<div class="lib-lang-block" data-lang="' + esc(l) + '"' + (l === lib.edit ? '' : ' hidden') + '>' +
+        '<small class="ms-ref" data-lib-ref="title" hidden></small>' +
         '<input type="text" data-lib-title="' + esc(l) + '" value="' + esc(t) + '"' +
-          ' placeholder="' + esc(tr('lib.title', 'Title')) + '">' +
-        '<textarea data-lib-summary="' + esc(l) + '" rows="2"' +
+          ' placeholder="' + esc(tr('lib.title', 'Title')) + '" lang="' + esc(l) + '">' +
+        '<small class="ms-ref" data-lib-ref="summary" hidden></small>' +
+        '<textarea data-lib-summary="' + esc(l) + '" rows="2" lang="' + esc(l) + '"' +
           ' placeholder="' + esc(tr('lib.summary', 'One or two sentences')) + '">' +
           esc(s) + '</textarea>' +
       '</div>';
     }).join('');
+    var pick = function (attr, selected, except) {
+      /* Every language, the one being edited hidden and disabled rather
+         than left out, so a swap can pick it the moment it is not. */
+      return '<select class="lang-pick" ' + attr + '>' + LANGS
+        .map(function (l) {
+          var has = !!(item.title || {})[l];
+          return '<option value="' + esc(l) + '"' + (l === selected ? ' selected' : '') +
+            (l === except ? ' hidden disabled' : '') + '>' +
+            esc(langName(l)) + (has ? '' : ' · ' + esc(tr('ms.missing', 'missing'))) + '</option>';
+        }).join('') + '</select>';
+    };
+    var pair = '<div class="ms-writing lib-writing">' +
+      '<label class="ms-pick"><span>' + esc(tr('con.editing', 'Editing')) + '</span>' +
+        pick('data-lang-edit data-lib-lang="edit"', lib.edit) + '</label>' +
+      (LANGS.length > 1
+        ? '<span class="lang-ref">' +
+            '<button type="button" class="lang-swap" data-lang-swap aria-label="' + esc(tr('con.swap', 'Swap languages')) +
+              '" title="' + esc(tr('con.swap', 'Swap languages')) + '">&#8644;</button>' +
+            '<label class="ms-pick"><span>' + esc(tr('con.reference', 'Reference')) + '</span>' +
+              pick('data-lang-ref data-lib-lang="ref"', lib.ref, lib.edit) + '</label>' +
+          '</span>'
+        : '') +
+    '</div>';
 
     return '<div class="adm-panel">' +
       '<div class="adm-section">' +
         '<span class="adm-label">' + esc(tr('lib.words', 'Words')) + '</span>' +
-        '<div class="lib-langs-grid">' + words + '</div>' +
+        pair + '<div class="lib-langs-one">' + words + '</div>' +
       '</div>' +
 
       '<div class="adm-section">' +
@@ -678,6 +738,27 @@
       var f = file.files && file.files[0];
       if (f) uploadPhoto(file.closest('[data-lib-photo]'), f);
       file.value = '';                 // so choosing the same file twice fires
+      return;
+    }
+
+    /* Editing or Reference changed: no redraw, so nothing typed is lost.
+       Reference never offers the language being edited. */
+    var lp = e.target.closest('[data-lib-lang]');
+    if (lp) {
+      var panel = lp.closest('.adm-panel');
+      if (lp.dataset.libLang === 'edit') {
+        lib.edit = lp.value;
+        if (lib.ref === lib.edit) lib.ref = LANGS.filter(function (l) { return l !== lib.edit; })[0] || null;
+        var refSel = panel.querySelector('[data-lib-lang="ref"]');
+        if (refSel) {
+          var keep = lib.ref;
+          [].forEach.call(refSel.options, function (o) { o.hidden = o.value === lib.edit; o.disabled = o.value === lib.edit; });
+          refSel.value = keep;
+        }
+      } else {
+        lib.ref = lp.value;
+      }
+      showLangs(panel);
       return;
     }
 

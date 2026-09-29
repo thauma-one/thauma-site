@@ -2390,3 +2390,14 @@ html.console-menu-open{overflow:hidden}
 .share-x:hover{color:var(--crit)}
 .share-dlg .dlg-actions{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .share-dlg .dlg-actions .hint{margin:0}
+
+/* ---- EDITING ⇄ REFERENCE (2026-09-28) ----
+   The language being written, a swap button, and the language shown small
+   above each field for comparison. The swap and Reference hide together
+   when there is only one language. */
+.lang-ref{display:inline-flex;align-items:center;gap:10px}
+.lang-ref[hidden]{display:none}
+.lang-swap{background:none;border:1px solid var(--line-hard,rgba(255,255,255,.14));color:var(--voice-tech);
+  border-radius:var(--radius);width:34px;height:34px;font-size:16px;line-height:1;cursor:pointer;flex:none}
+.lang-swap:hover{border-color:var(--voice-tech)}
+.lang-swap:focus-visible{outline:2px solid var(--voice-tech);outline-offset:2px}

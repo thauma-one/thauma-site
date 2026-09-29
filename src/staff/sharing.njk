@@ -71,10 +71,13 @@ staffHeading: What appears on <b>other websites</b>
     <div class="sh-card sh-words" id="shWords" hidden>
       <span class="sh-lbl" data-i18n="sh.words">The words on it</span>
       <div class="ms-writing">
-        <label class="ms-pick"><span data-i18n="con.writing">Writing</span>
-          <select id="shWriting" class="lang-pick"></select></label>
-        <label class="ms-pick" id="shBesideWrap"><span data-i18n="con.beside">beside</span>
-          <select id="shBeside" class="lang-pick"></select></label>
+        <label class="ms-pick"><span data-i18n="con.editing">Editing</span>
+          <select id="shWriting" class="lang-pick" data-lang-edit></select></label>
+        <span class="lang-ref" id="shBesideWrap">
+          <button type="button" class="lang-swap" data-lang-swap data-i18n-attr="aria-label:con.swap,title:con.swap" aria-label="Swap" title="Swap">&#8644;</button>
+          <label class="ms-pick"><span data-i18n="con.reference">Reference</span>
+            <select id="shBeside" class="lang-pick" data-lang-ref></select></label>
+        </span>
       </div>
       <div class="sh-word-fields" id="shWordFields"></div>
     </div>

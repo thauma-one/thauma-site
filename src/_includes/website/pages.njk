@@ -19,13 +19,16 @@
 
 <div class="c-tools">
   <label class="c-pick">
-    <span data-i18n="con.writing">Writing</span>
-    <select id="cLang" disabled></select>
+    <span data-i18n="con.editing">Editing</span>
+    <select id="cLang" disabled data-lang-edit></select>
   </label>
-  <label class="c-pick" id="cBesideWrap" hidden>
-    <span data-i18n="con.beside">beside</span>
-    <select id="cBeside"></select>
-  </label>
+  <span class="lang-ref" id="cBesideWrap" hidden>
+    <button type="button" class="lang-swap" data-lang-swap data-i18n-attr="aria-label:con.swap,title:con.swap" aria-label="Swap" title="Swap">&#8644;</button>
+    <label class="c-pick">
+      <span data-i18n="con.reference">Reference</span>
+      <select id="cBeside" data-lang-ref></select>
+    </label>
+  </span>
   <input type="search" id="cFind" autocomplete="off"
          placeholder="Find a word" aria-label="Find a word"
          data-i18n-attr="placeholder:con.find,aria-label:con.find">

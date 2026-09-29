@@ -71,10 +71,13 @@ staffHeading: What this ministry <b>publishes</b>
      small above each field, so a missing or stale translation is still seen
      while writing. Switching Writing keeps what was typed. -#}
   <div class="ms-writing">
-    <label class="ms-pick"><span data-i18n="con.writing">Writing</span>
-      <select id="msLangA" class="lang-pick"></select></label>
-    <label class="ms-pick" id="msBesideWrap"><span data-i18n="con.beside">beside</span>
-      <select id="msLangB" class="lang-pick"></select></label>
+    <label class="ms-pick"><span data-i18n="con.editing">Editing</span>
+      <select id="msLangA" class="lang-pick" data-lang-edit></select></label>
+    <span class="lang-ref" id="msBesideWrap">
+      <button type="button" class="lang-swap" data-lang-swap data-i18n-attr="aria-label:con.swap,title:con.swap" aria-label="Swap" title="Swap">&#8644;</button>
+      <label class="ms-pick"><span data-i18n="con.reference">Reference</span>
+        <select id="msLangB" class="lang-pick" data-lang-ref></select></label>
+    </span>
   </div>
   <div class="ms-fields">
     <label class="fld"><span data-i18n="ms.title">Title</span>
@@ -249,10 +252,13 @@ staffHeading: What this ministry <b>publishes</b>
 
       {#- "Writing X beside Y", as in the milestone editor. -#}
       <div class="ms-writing">
-        <label class="ms-pick"><span data-i18n="con.writing">Writing</span>
-          <select id="prLangA" class="lang-pick"></select></label>
-        <label class="ms-pick" id="prBesideWrap"><span data-i18n="con.beside">beside</span>
-          <select id="prLangB" class="lang-pick"></select></label>
+        <label class="ms-pick"><span data-i18n="con.editing">Editing</span>
+          <select id="prLangA" class="lang-pick" data-lang-edit></select></label>
+        <span class="lang-ref" id="prBesideWrap">
+          <button type="button" class="lang-swap" data-lang-swap data-i18n-attr="aria-label:con.swap,title:con.swap" aria-label="Swap" title="Swap">&#8644;</button>
+          <label class="ms-pick"><span data-i18n="con.reference">Reference</span>
+            <select id="prLangB" class="lang-pick" data-lang-ref></select></label>
+        </span>
       </div>
       <div class="ms-fields">
         <label class="fld"><span data-i18n="pr.title">Request</span>
