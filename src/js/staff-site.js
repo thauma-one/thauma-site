@@ -314,7 +314,17 @@
     if (!state.frameTarget) return;
     try {
       var w = this.contentWindow, el = w.document.getElementById(state.frameTarget);
-      if (el) { el.classList.add('is-editing'); w.scrollTo(0, Math.max(0, el.offsetTop - 24)); }
+      /* In the middle of the preview, so the outline is easy to see; a
+         section taller than the preview starts at its top instead. */
+      if (el) {
+        el.classList.add('is-editing');
+        /* Room below, in the editor's copy only, so a section near the end
+           of the page can still come to the middle. */
+        var pad = w.document.createElement('div');
+        pad.style.height = Math.round(w.innerHeight / 2) + 'px';
+        w.document.body.appendChild(pad);
+        w.scrollTo(0, Math.max(0, el.offsetTop - Math.max(24, (w.innerHeight - el.offsetHeight) / 2)));
+      }
     } catch (e) {}
   });
 
@@ -430,7 +440,8 @@
         '<input type="text" maxlength="40" data-page-label="' + pi + '" value="' + esc((p.label || {})[state.langA] || '') + '" placeholder="' + esc(tr('ws.page.' + p.id)) + '" lang="' + esc(state.langA) + '"></label>';
 
     var n = p.sections.length;
-    html += '<div class="ws-stack">' + (n ? '' : '<p class="empty">' + esc(tr('ws.noSections')) + '</p>') +
+    /* Room below an open section, so even the last one can rise to the top. */
+    html += '<div class="ws-stack' + (state.edit != null ? ' has-open' : '') + '">' + (n ? '' : '<p class="empty">' + esc(tr('ws.noSections')) + '</p>') +
       p.sections.map(function (x, i) {
         var open = state.edit === i;
         return '<article class="ws-acc' + (open ? ' is-open' + (state.animate === i ? ' is-entering' : '') : '') + '" data-si="' + i + '">' +
@@ -457,7 +468,17 @@
     /* The unfolding: drawn closed, then opened on the next frame, so the
        height eases open (none of it for reduced motion — see staff.css). */
     var entering = $('wsPages').querySelector('.ws-acc.is-entering');
-    if (entering) requestAnimationFrame(function () { requestAnimationFrame(function () { entering.classList.remove('is-entering'); }); });
+    if (entering) {
+      requestAnimationFrame(function () { requestAnimationFrame(function () { entering.classList.remove('is-entering'); }); });
+      /* …then glides up to where it is worked on: its top just under the
+         console's header (Chase, 2026-09-29: "can it reposition itself on
+         the page to be worked on"). The row does not jump — it is carried
+         there, and not at all for reduced motion, which is a plain move. */
+      var bar = document.getElementById('console');
+      var head = bar ? bar.offsetHeight : 64;
+      var y = window.scrollY + entering.getBoundingClientRect().top - head - 16;
+      window.scrollTo({ top: Math.max(0, y), behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    }
     state.anchor = null; state.animate = null;
   }
   var drawSections = function () { drawPages(); };
