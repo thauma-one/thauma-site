@@ -1020,3 +1020,100 @@ if (window.THAUMA_ENV && !window.THAUMA_ENV.isProduction) {
     });
   })();
 }
+
+// ---- STAY CONNECTED (2026-09-28): Thauma's sign-up form, from the footer ----
+// Hand-built on the API rather than pasted from the embed (Chase: "I like
+// custom coding it"). The lists are asked for once per page; the footer link
+// appears only when there is one to join. The window is a native <dialog>, so
+// focus stays inside it, Escape closes it and the page behind is inert. The
+// server answers every sign-up the same way (so nobody learns who is already
+// subscribed), and so does this: "check your email".
+(function () {
+  var dlg = document.getElementById('stay');
+  var opener = document.querySelector('[data-stay-open]');
+  if (!dlg || !opener || typeof dlg.showModal !== 'function') return;
+  var API = '/embed/v1/thauma/signup';
+  var form = document.getElementById('stayForm');
+  var box = document.getElementById('stayLists');
+  var msg = document.getElementById('stayMsg');
+  var done = document.getElementById('stayDone');
+  /* The fields by id: a form has a `name` of its own. */
+  var email = document.getElementById('stay-email');
+  var nameIn = document.getElementById('stay-name');
+  var trap = form.querySelector('input[name=website]');
+  var lists = [], started = 0;
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  fetch(API, { headers: { Accept: 'application/json' } })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (b) {
+      lists = (b && b.lists) || [];
+      if (!lists.length) return;
+      // One list needs no choosing: it is simply what they are joining.
+      box.hidden = lists.length < 2;
+      box.insertAdjacentHTML('beforeend', lists.map(function (l) {
+        return '<label class="stay-list"><input type="checkbox" name="list" value="' + esc(l.slug) + '" checked>' +
+          '<span><b>' + esc(l.name) + '</b>' +
+          (l.description ? '<small>' + esc(l.description) + '</small>' : '') + '</span></label>';
+      }).join(''));
+      opener.hidden = false;
+    })
+    .catch(function () { /* no link rather than a broken one */ });
+
+  function open() {
+    form.hidden = false;
+    done.hidden = true;
+    msg.textContent = '';
+    msg.className = 'stay-msg';
+    started = Date.now();
+    dlg.showModal();
+  }
+  opener.addEventListener('click', open);
+  dlg.addEventListener('click', function (e) {
+    // The close button, or a click on the backdrop (the dialog element itself).
+    if (e.target === dlg || e.target.closest('[data-stay-close]')) dlg.close();
+  });
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var picked = lists.length < 2 ? lists.map(function (l) { return l.slug; })
+      : [].slice.call(form.querySelectorAll('input[name=list]:checked')).map(function (i) { return i.value; });
+    if (!email.value.trim() || !email.checkValidity()) { email.focus(); return; }
+    if (!picked.length) {
+      msg.className = 'stay-msg bad';
+      msg.textContent = dlg.getAttribute('data-pick-one');
+      return;
+    }
+    var btn = form.querySelector('button[type=submit]');
+    btn.disabled = true;
+    msg.className = 'stay-msg';
+    msg.textContent = dlg.getAttribute('data-sending');
+    fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: email.value.trim(), name: nameIn.value.trim(), lists: picked,
+        website: trap ? trap.value : '', elapsed: Date.now() - started,
+        // So the confirmation arrives in the language they were reading.
+        lang: document.documentElement.lang || ''
+      })
+    }).then(function (r) { return r.ok ? r.json() : {}; }).then(function (b) {
+      if (!b || !b.ok) throw new Error('refused');
+      // Replaced, not added to: a filled form under a thank-you invites a
+      // second submission.
+      form.hidden = true;
+      done.hidden = false;
+      done.focus();
+      form.reset();
+      [].forEach.call(form.querySelectorAll('input[name=list]'), function (i) { i.checked = true; });
+    }).catch(function () {
+      msg.className = 'stay-msg bad';
+      msg.textContent = dlg.getAttribute('data-error');
+    }).then(function () { btn.disabled = false; msg.textContent = msg.className.indexOf('bad') > -1 ? msg.textContent : ''; });
+  });
+})();

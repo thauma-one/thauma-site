@@ -174,6 +174,21 @@
     "form_subject": "O čemu se radi (neobavezno)",
     "form_reason": "Odaberite razlog…"
   },
+  "stay": {
+    "h_thin": "Ostanimo",
+    "h_bold": "povezani",
+    "lede": "Novosti iz našeg rada, u vašem sandučiću.",
+    "name": "Vaše ime",
+    "email": "Adresa e-pošte",
+    "choose": "Želim primati",
+    "send": "Prijavi me",
+    "pick_one": "Odaberite barem jedno.",
+    "sending": "Šaljem…",
+    "thanks_h": "Još samo korak",
+    "thanks": "Poslali smo vam e-poruku. Otvorite je i potvrdite prijavu.",
+    "error": "Nije uspjelo. Pokušajte ponovno.",
+    "close": "Zatvori"
+  },
   "events": {
     "title": "Događaji",
     "cue": "Okupljanja",
@@ -205,7 +220,8 @@
   "footer": {
     "legal": "© 2026 Thauma · Neprofitna organizacija u osnivanju (Missouri, SAD)",
     "region": "Hrvatska i Balkan",
-    "tagline": "Sve od mene darujem Njemu."
+    "tagline": "Sve od mene darujem Njemu.",
+    "stay": "Ostanimo povezani"
   },
   "coming": {
     "line_thin": "Thauma je",

@@ -109,6 +109,15 @@
 <footer><div class="wrap foot-in">
   <div class="foot-col">
     <div class="foot-tag">{{ t.footer.tagline }}</div>
+    {#- Two ways to be in touch from every page (Chase, 2026-09-28). Contact
+       follows its page's switch, as in the nav. Stay connected opens the
+       sign-up form over the page rather than going anywhere, and is shown by
+       main.js only once there is a list to join — a link that opens a form
+       with nothing to choose is a broken promise. -#}
+    <div class="foot-links">
+      {% if visible.pages.contact %}<a href="/{{ lang }}/contact/">{{ t.nav.contact }}</a>{% endif %}
+      <button type="button" class="foot-stay" data-stay-open hidden>{{ t.footer.stay }}</button>
+    </div>
     <div class="foot-legal">{{ t.footer.legal }}</div>
   </div>
   <div class="foot-col foot-right">
@@ -122,6 +131,33 @@
     <span class="foot-region">{{ t.footer.region }}</span>
   </div>
 </div></footer>
+
+{#- STAY CONNECTED — Thauma's own sign-up form, on every page (Chase,
+   2026-09-28: a footer link that opens it, not a pop-up that interrupts).
+   HAND-BUILT ON THE API, not the embed: the lists come from
+   /embed/v1/thauma/signup and a sign-up posts back to it, so the form wears
+   this site's design and its words are this site's own (Website › Pages ›
+   Stay connected). The server sends the confirmation email in the visitor's
+   language and says the same thing whatever happened, so the form does too. -#}
+<dialog class="stay" id="stay" aria-labelledby="stayTitle"
+        data-pick-one="{{ t.stay.pick_one }}" data-sending="{{ t.stay.sending }}" data-error="{{ t.stay.error }}">
+  <button type="button" class="stay-x" data-stay-close aria-label="{{ t.stay.close }}">&times;</button>
+  <h2 class="stay-h" id="stayTitle">{{ t.stay.h_thin }} <b>{{ t.stay.h_bold }}</b></h2>
+  <p class="stay-lede">{{ t.stay.lede }}</p>
+  <form class="contact stay-form" id="stayForm" novalidate>
+    <p hidden><label>Do not fill: <input name="website" tabindex="-1" autocomplete="off"></label></p>
+    <label class="vh" for="stay-name">{{ t.stay.name }}</label>
+    <input type="text" id="stay-name" name="name" maxlength="120" autocomplete="name" placeholder="{{ t.stay.name }}">
+    <label class="vh" for="stay-email">{{ t.stay.email }}</label>
+    <input type="email" id="stay-email" name="email" maxlength="200" autocomplete="email" required placeholder="{{ t.stay.email }}">
+    <fieldset class="stay-lists" id="stayLists" hidden><legend>{{ t.stay.choose }}</legend></fieldset>
+    <button class="btn solid" type="submit">{{ t.stay.send }}</button>
+    <p class="stay-msg" id="stayMsg" role="status" aria-live="polite"></p>
+  </form>
+  <div class="contact-sent stay-done" id="stayDone" tabindex="-1" hidden>
+    <b>{{ t.stay.thanks_h }}</b><br>{{ t.stay.thanks }}
+  </div>
+</dialog>
 
 <script>window.THAUMA_ENV = { isProduction: {{ env.isProduction | dump | safe }} };</script>
 {%- if not env.isProduction %}

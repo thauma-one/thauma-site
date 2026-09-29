@@ -586,6 +586,49 @@ footer{flex-shrink:0;background:var(--bg2);border-top:1px solid rgba(255,255,255
 .foot-col.foot-right{align-items:flex-end}
 .foot-tag{font-family:'Sora',sans-serif;font-weight:200;letter-spacing:.08em;color:var(--foam)}
 .foot-legal{font-size:12px;opacity:.85}
+/* Contact and Stay connected, under the tagline (2026-09-28). */
+.foot-links{display:flex;gap:22px;flex-wrap:wrap;font-size:13px}
+.foot-links a,.foot-stay{color:var(--text);background:none;border:0;padding:0;font:inherit;cursor:pointer;
+  border-bottom:1px solid rgba(92,242,196,.35);transition:border-color .2s,color .2s}
+.foot-links a:hover,.foot-stay:hover{color:var(--foam);border-color:var(--foam)}
+.foot-stay:focus-visible,.foot-links a:focus-visible{outline:2px solid var(--foam);outline-offset:4px}
+.foot-stay[hidden]{display:none}
+
+/* ---------- Stay connected: the sign-up window (2026-09-28) ----------
+   The ministry voice (seafoam): it is about people keeping in touch. Fields
+   are the contact form's own (form.contact), so the two forms read as one
+   design. A native <dialog>: the page behind is inert while it is open. */
+dialog.stay{width:min(520px,calc(100vw - 32px));max-height:calc(100vh - 32px);overflow:auto;
+  margin:auto;padding:40px 36px 34px;border:1px solid rgba(92,242,196,.3);border-radius:4px;
+  background:var(--bg2);color:var(--text);box-shadow:0 30px 80px rgba(0,0,0,.6)}
+dialog.stay::backdrop{background:rgba(5,8,12,.72);backdrop-filter:blur(3px)}
+.stay-x{position:absolute;top:12px;right:14px;width:36px;height:36px;border:0;background:none;
+  color:var(--dim);font-size:24px;line-height:1;cursor:pointer;border-radius:2px}
+.stay-x:hover{color:var(--text)}
+.stay-x:focus-visible{outline:2px solid var(--foam);outline-offset:2px}
+.stay-h{font-family:'Sora',sans-serif;font-weight:100;font-size:30px;line-height:1.2;margin:0 40px 10px 0}
+.stay-h b{font-weight:600}
+.stay-lede{color:var(--dim);font-weight:300;font-size:15px;line-height:1.7;margin:0}
+form.stay-form{margin-top:26px;gap:14px}
+/* form.contact is display:flex, which outranks [hidden] — the filled form
+   must go when the thank-you comes. */
+form.stay-form[hidden]{display:none}
+.stay-lists{border:0;padding:0;margin:4px 0 2px;display:flex;flex-direction:column;gap:10px}
+.stay-lists[hidden]{display:none}
+.stay-lists legend{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);margin-bottom:10px;padding:0}
+.stay-list{display:flex;gap:12px;align-items:flex-start;cursor:pointer;font-size:15px}
+.stay-list input{accent-color:var(--foam);width:18px;height:18px;margin-top:2px;flex:none}
+.stay-list small{display:block;color:var(--dim);font-size:13px;font-weight:300;margin-top:2px}
+form.stay-form .btn{margin-top:6px;align-self:flex-start}
+form.stay-form .btn:disabled{opacity:.6;cursor:default;transform:none}
+.stay-msg{margin:0;font-size:13px;color:var(--dim);min-height:1em}
+.stay-msg.bad{color:#FF8A8A}
+.stay-done{margin-top:26px}
+.stay-done[hidden]{display:none}
+@media (prefers-reduced-motion: no-preference){
+  dialog.stay[open]{animation:stay-in .35s cubic-bezier(.16,1,.3,1) both}
+}
+@keyframes stay-in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
 .foot-region{font-size:12px}
 
 /* ---------- Responsive ---------- */

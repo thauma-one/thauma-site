@@ -174,6 +174,21 @@
     "form_subject": "What it's about (optional)",
     "form_reason": "Choose a reason…"
   },
+  "stay": {
+    "h_thin": "Stay",
+    "h_bold": "connected",
+    "lede": "Updates from the work, in your inbox.",
+    "name": "Your name",
+    "email": "Email address",
+    "choose": "I'd like to receive",
+    "send": "Sign me up",
+    "pick_one": "Choose at least one.",
+    "sending": "Sending…",
+    "thanks_h": "Almost there",
+    "thanks": "We've sent you an email. Open it and confirm, and you're in.",
+    "error": "That didn't go through. Please try again.",
+    "close": "Close"
+  },
   "events": {
     "title": "Events",
     "cue": "Gatherings",
@@ -205,7 +220,8 @@
   "footer": {
     "legal": "© 2026 Thauma · A Missouri nonprofit in formation",
     "region": "Croatia & the Balkans",
-    "tagline": "All of me for all of Him."
+    "tagline": "All of me for all of Him.",
+    "stay": "Stay connected"
   },
   "coming": {
     "line_thin": "Thauma is",

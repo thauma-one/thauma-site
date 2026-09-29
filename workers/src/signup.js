@@ -388,8 +388,19 @@ export default {
       });
     }
 
+    /* THE LISTS A FORM OFFERS, as data — for a sign-up form built by hand on
+       the API rather than pasted from the embed (thauma.one's own Stay
+       connected, Chase 2026-09-28: "I like custom coding it"). Only what the
+       embed already shows a stranger: each open list's slug, name and
+       description. The form's words are the page's own. */
+    if (request.method === "GET" && action === "signup") {
+      return json({
+        lists: lists.map((l) => ({ slug: l.slug, name: l.name, description: l.description || null })),
+      }, 200, { ...CORS, "Cache-Control": "public, max-age=300" });
+    }
+
     if (request.method !== "POST") {
-      return json({ error: "Method not allowed" }, 405, { ...CORS, Allow: "POST, OPTIONS" });
+      return json({ error: "Method not allowed" }, 405, { ...CORS, Allow: "GET, POST, OPTIONS" });
     }
 
     let body;

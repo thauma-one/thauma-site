@@ -141,7 +141,7 @@
 
      THE PAGES, in the order the site has them; the menu and the footer are
      one entry, as on the board. */
-  var PAGE_ORDER = ['home', 'about', 'mission', 'values', 'resources', 'give', 'contact',
+  var PAGE_ORDER = ['home', 'about', 'mission', 'values', 'resources', 'give', 'contact', 'stay',
                     'events', 'team', 'menu', 'coming', 'notFound', 'staff', 'emails', '_general'];
 
   function sectionOf(line) {

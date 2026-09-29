@@ -206,6 +206,16 @@ await check("a sign-up to Thauma's list is Thauma's subscriber", async () => {
   assert(add.params.includes(null) && !add.params.includes("p_chase"), `added under ${JSON.stringify(add.params)}`);
 });
 
+await check("a hand-built form can read the lists it offers, and nothing more", async () => {
+  const env = envWith({ list: [{ ...LIST, partner_id: null, description: "Monthly" }] });
+  const res = await handler.fetch(new Request("https://thauma.one/embed/v1/thauma/signup"), env, "thauma", "signup");
+  eq(res.status, 200, "status");
+  eq(await res.json(), { lists: [{ slug: "newsletter", name: "Newsletter", description: "Monthly" }] }, "the lists");
+  const none = await handler.fetch(new Request("https://thauma.one/embed/v1/thauma/signup"),
+    envWith({ list: null }), "thauma", "signup");
+  eq(none.status, 404, "no open list is no form");
+});
+
 await check("a partner's own words cannot inject script into the form", async () => {
   /* The heading and blurb are typed by a partner and rendered into a page on
      somebody else's website. An unescaped `</script>` there would be theirs to
