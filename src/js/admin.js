@@ -284,6 +284,8 @@
         personPanel(u, open) +
       '</div>';
     }).join('');
+    /* The team card beside each profile starts from the saved fields. */
+    Array.prototype.forEach.call($('admPeople').querySelectorAll('[data-profile]'), refreshPreview);
   }
 
   /* THE PUBLIC HALF OF A PERSON.
@@ -582,8 +584,11 @@
     var text = profileText(p);
     profileLangs();
 
-    return '<div class="adm-section adm-profile" data-profile="' + esc(u.id) + '">' +
-      '<span class="adm-label">' + esc(tr('adm.pf.heading')) + '</span>' +
+    /* The tab says "Team page", so the section no longer carries its own
+       heading; the card as the site will show it sits beside the fields
+       (board "a person: Team page"). */
+    return '<div class="adm-section adm-profile pp-team" data-profile="' + esc(u.id) + '">' +
+      '<div class="pp-team-fields">' +
 
       '<button type="button" class="switch small" role="switch" data-pf-public="' + esc(u.id) + '"' +
         ' aria-checked="' + (on ? 'true' : 'false') + '">' +
@@ -656,7 +661,46 @@
            row, beside Remove, where the two ends of "I am finished with this
            person" sit together. */
       '</div>' +
+      '</div>' +
+      pfPreview(u, p) +
     '</div>';
+  }
+
+  /* THE CARD AS THE SITE WILL SHOW IT, beside the fields and following them
+     as they are typed: the team photo, the name (first name thin, the rest
+     bold, as the site sets it), the title in the left column's language, the
+     region, and the address the bio page will have. */
+  function pfPreview(u, p) {
+    var parts = String(u.name || '').trim().split(/\s+/);
+    var first = parts.shift() || '';
+    var lang = ui.profileLangA || 'en';
+    return '<aside class="pp-preview" data-pf-preview>' +
+      '<span class="adm-label">' + esc(tr('adm.onSite')) + ' · /' + esc(lang) + '/team/</span>' +
+      '<div class="pp-card">' +
+        '<div class="pp-card-photo"><img alt="" data-pv="photo" hidden></div>' +
+        '<div class="pp-card-name">' + esc(first) + (parts.length ? ' <b>' + esc(parts.join(' ')) + '</b>' : '') + '</div>' +
+        '<div class="pp-card-title" data-pv="title"></div>' +
+        '<div class="pp-card-region" data-pv="region"></div>' +
+      '</div>' +
+      '<span class="hint pp-card-addr">' + esc(tr('adm.pf.address')) + ': ' +
+        '<span data-pv="address"></span></span>' +
+    '</aside>';
+  }
+
+  /* Fill the card from what the fields say right now. */
+  function refreshPreview(sect) {
+    var pv = sect && sect.querySelector('[data-pf-preview]');
+    if (!pv) return;
+    var field = function (sel) { var el = sect.querySelector(sel); return el ? el.value.trim() : ''; };
+    pv.querySelector('[data-pv="title"]').textContent = field('[data-pf="role_title"][data-col="a"]');
+    pv.querySelector('[data-pv="region"]').textContent = field('.pf-grid [data-pf="region"]');
+    var slugEl = sect.querySelector('.pf-grid [data-pf="slug"]');
+    var slug = field('.pf-grid [data-pf="slug"]') || (slugEl ? slugEl.placeholder : '');
+    pv.querySelector('[data-pv="address"]').textContent =
+      location.host + '/' + (ui.profileLangA || 'en') + '/team/' + slug + '/';
+    var img = pv.querySelector('[data-pv="photo"]');
+    var photo = field('[data-slot="photo"] [data-pf="photo"]');
+    if (photo) { img.src = photo; img.hidden = false; } else { img.removeAttribute('src'); img.hidden = true; }
   }
 
   /* Mirrors the server's slugify closely enough to show what the address will
@@ -695,81 +739,89 @@
         esc(p.display_name) + '</button>';
     }).join('');
 
+    /* TWO TABS (boards "a person: Access" and "a person: Team page"). They
+       differ in how they save, and each says so at its foot: Access changes
+       the moment a switch is touched; the team page is one edit, saved with
+       Save and live on the site with the next Publish. The master account is
+       not a person and has no team page, so it has no tabs either. */
+    var tab = system ? 'access' : (ui.personTab || 'access');
+    var tabBtn = function (name, key) {
+      return '<button type="button" class="tab" role="tab" data-pp-tab="' + name + '"' +
+        ' aria-selected="' + (tab === name ? 'true' : 'false') + '">' + esc(tr(key)) + '</button>';
+    };
+
     return '<div class="adm-panel"' + (open ? '' : ' hidden') + '>' +
-      '<div class="adm-section">' +
-        '<span class="adm-label">' + esc(tr('adm.roles')) + '</span>' +
-        '<div class="adm-roles">' + roles + '</div>' +
+      (system ? '' : '<div class="tabs pp-tabs" role="tablist">' +
+        tabBtn('access', 'adm.tabAccess') + tabBtn('team', 'adm.pf.heading') + '</div>') +
+
+      '<div class="pp-panel" data-pp-panel="access"' + (tab === 'access' ? '' : ' hidden') + '>' +
+        '<div class="pp-cols">' +
+          '<div class="adm-section">' +
+            '<span class="adm-label">' + esc(tr('adm.canDo')) + '</span>' +
+            '<div class="adm-roles pp-roles">' + roles + '</div>' +
+          '</div>' +
+          '<div class="pp-side">' +
+            '<div class="adm-section">' +
+              '<span class="adm-label">' + esc(tr('adm.ministries')) + '</span>' +
+              '<div class="adm-chips">' + (partners || '<span class="hint">—</span>') + '</div>' +
+            '</div>' +
+            /* A <label>, not a <div>: the words are attached to the control,
+               so a screen reader names the dropdown. */
+            '<label class="fld pp-signin">' +
+              '<span class="adm-label">' + esc(tr('adm.signInStatus')) + '</span>' +
+              '<select class="status-pick" data-user="' + esc(u.id) + '">' +
+                ['invited', 'active', 'suspended'].map(function (s) {
+                  return '<option value="' + s + '"' + (u.status === s ? ' selected' : '') + '>' +
+                    esc(tr('adm.status.' + s)) + '</option>';
+                }).join('') +
+              '</select>' +
+            '</label>' +
+            '<div class="pp-acts">' +
+              /* Only while they are still invited: once somebody has signed
+                 in, re-sending an invite is a button that confuses them. */
+              (u.status === 'invited'
+                ? '<button type="button" class="ghost-btn" data-reinvite="' + esc(u.id) + '">' +
+                    esc(tr('adm.resendInvite')) + '</button>'
+                : '') +
+              /* IT SUPPORT, NOT IMPERSONATION: audited on the way in, on the
+                 way out, and on every change made in between. */
+              (u.status === 'active' && u.id !== (state.you && state.you.id)
+                ? '<button type="button" class="ghost-btn view-as" data-view-as="' + esc(u.id) +
+                  '" data-name="' + esc(u.name || u.email) + '">' +
+                    esc(tr('act.viewAs')) + '</button>'
+                : '') +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="pp-foot">' +
+          '<span class="hint">' + esc(tr('adm.savesNow')) + '</span>' +
+          /* THE PROTECTED ACCOUNT GETS NO REMOVE BUTTON — the database refuses
+             the delete, and a button whose only outcome is a refusal teaches
+             people to distrust refusals. Permanent stands in its place. */
+          (u.protected
+            ? '<span class="adm-protected">' + esc(tr('adm.protected')) + '</span>'
+            : '<button type="button" class="del" data-remove="' + esc(u.id) + '">' +
+                esc(tr('adm.removePerson')) + '</button>') +
+        '</div>' +
       '</div>' +
 
-      '<div class="adm-section">' +
-        '<span class="adm-label">' + esc(tr('adm.partnerAccess')) + '</span>' +
-        '<div class="adm-chips">' + (partners || '<span class="hint">—</span>') + '</div>' +
-      '</div>' +
-
-      /* No public profile: it is not a person, and 0029 refuses to create one.
-         The section offers a photo, a region and a contact address — three
-         things a system account has nothing true to say about. */
-      (system ? '' : profileSection(u)) +
-
-      '<div class="adm-section adm-danger">' +
-        /* A <label>, not a <div>. The words "Sign-in status" were sitting
-           beside this control without being attached to it, so a screen
-           reader announced an unnamed dropdown. The partner pickers on the
-           next page already do this correctly — same class, same look. */
-        '<label class="fld">' +
-          '<span>' + esc(tr('adm.signInStatus')) + '</span>' +
-          '<select class="status-pick" data-user="' + esc(u.id) + '">' +
-            ['invited', 'active', 'suspended'].map(function (s) {
-              return '<option value="' + s + '"' + (u.status === s ? ' selected' : '') + '>' +
-                esc(tr('adm.status.' + s)) + '</option>';
-            }).join('') +
-          '</select>' +
-        '</label>' +
-        /* IT SUPPORT, NOT IMPERSONATION. Opening somebody's console is how
-           you answer "my stewardship page is empty and it should not be"
-           without asking for their password. It is audited on the way in, on
-           the way out, and on every change made in between, and the console
-           says whose account it is on every screen while it lasts. */
-        /* Only while they are still invited. Once somebody is active they
-           have signed in, and offering to re-send an invite would just be a
-           button that confuses them. */
-        (u.status === 'invited'
-          ? '<button type="button" class="ghost-btn" data-reinvite="' + esc(u.id) + '">' +
-              esc(tr('adm.resendInvite')) + '</button>'
-          : '') +
-        (u.status === 'active' && u.id !== (state.you && state.you.id)
-          ? '<button type="button" class="ghost-btn view-as" data-view-as="' + esc(u.id) +
-            '" data-name="' + esc(u.name || u.email) + '">' +
-              esc(tr('act.viewAs')) + '</button>'
-          : '') +
-        /* THE PROTECTED ACCOUNT GETS NO REMOVE BUTTON. The database refuses
-           the delete outright and the endpoint refuses before that — but a
-           button whose only outcome is a refusal is a button that teaches
-           people to distrust refusals. A tag saying Permanent stands in its
-           place. */
-        (u.protected
-          ? '<span class="adm-protected">' + esc(tr('adm.protected')) + '</span>'
-          : '<button type="button" class="del" data-remove="' + esc(u.id) + '">' +
-              esc(tr('adm.removePerson')) + '</button>') +
-
-        /* THE ONE BUTTON THAT MAKES ANY OF THIS REAL.
-
-           Everything else in this panel saves the moment it is touched — a
-           role, a status, a partner grant. The profile does not: the bio, the
-           photos and the slug are one edit, saved together. That difference
-           was invisible, so a photo was cropped, looked right on screen, and
-           was lost on the next click.
-
-           `is-dirty` is added the moment anything in the section changes and
-           removed when the save lands, so the button ANNOUNCES the pending
-           work rather than sitting there looking the same either way. */
-        (u.protected ? '' :
-          '<div class="pf-commit">' +
+      /* No team page for the master account: it is not a person, and 0029
+         refuses to create one. */
+      (system ? '' :
+        '<div class="pp-panel" data-pp-panel="team"' + (tab === 'team' ? '' : ' hidden') + '>' +
+          profileSection(u) +
+          /* THE ONE BUTTON THAT MAKES ANY OF THIS REAL. `is-dirty` lights it
+             the moment anything in the section changes, and Cancel puts the
+             section back to what is saved. */
+          '<div class="pp-foot pf-commit">' +
+            '<span class="hint">' + esc(tr('adm.pf.whenLive')) + '</span>' +
             '<span class="hint" data-pf-status="' + esc(u.id) + '"></span>' +
+            '<button type="button" class="ghost-btn" data-pf-cancel="' + esc(u.id) + '">' +
+              esc(tr('ms.cancel')) + '</button>' +
             '<button type="button" class="solid-btn pf-save" data-pf-save="' +
               esc(u.id) + '">' + esc(tr('adm.pf.save')) + '</button>' +
-          '</div>') +
-      '</div>' +
+          '</div>' +
+        '</div>') +
     '</div>';
   }
 
@@ -1379,7 +1431,33 @@
      typing and the language pickers; the photo paths call markProfileDirty
      themselves because they change a hidden field, which fires nothing. */
   document.addEventListener('input', function (e) {
-    if (e.target.closest && e.target.closest('[data-profile]')) markProfileDirty(e.target);
+    var sect = e.target.closest && e.target.closest('[data-profile]');
+    if (sect) { markProfileDirty(e.target); refreshPreview(sect); }
+  });
+
+  /* A person's two tabs. Remembered, so the panel re-rendered by a save or
+     a switch comes back on the tab you were on. */
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest && e.target.closest('[data-pp-tab]');
+    if (t) {
+      ui.personTab = t.getAttribute('data-pp-tab');
+      var panel = t.closest('.adm-panel');
+      panel.querySelectorAll('[data-pp-tab]').forEach(function (b) {
+        b.setAttribute('aria-selected', b === t ? 'true' : 'false');
+      });
+      panel.querySelectorAll('[data-pp-panel]').forEach(function (p) {
+        p.hidden = p.getAttribute('data-pp-panel') !== ui.personTab;
+      });
+      refreshPreview(panel.querySelector('[data-profile]'));
+      return;
+    }
+    /* Cancel: back to what is saved. The section is drawn again from state,
+       which Save alone changes. */
+    var c = e.target.closest && e.target.closest('[data-pf-cancel]');
+    if (c) {
+      markProfileClean(c.getAttribute('data-pf-cancel'));
+      render();
+    }
   });
 
   document.addEventListener('change', function (e) {
