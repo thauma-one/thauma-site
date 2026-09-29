@@ -18,7 +18,7 @@
    - An answer that lost a {placeholder} or a bold mark is still put in,
      and the field is marked so somebody looks at it.
    - The button shows only where the server has Workers AI
-     (html.has-ai) — staging and live; not yet the Pi.
+     (html.has-ai) — staging, live and the Pi.
 
    AND ONE PER LINE (Chase, 2026-09-29: "a subtle Auto-Translate … per
    line as well as the whole document"). A small icon at the end of each

@@ -156,14 +156,14 @@ database_id = "db7fcd6a-56e2-4a67-98da-3da87e95dc86"
 # authorize anything on its own. Real secrets (RESEND_API_KEY,
 # GAME_ADMIN_TOKEN) go in via `wrangler secret put` and never live here.
 # WORKERS AI, for machine translation drafts (/api/translate, 2026-09-28).
-# Staging here, live below ([env.production.ai]). NOT YET on the Pi: `wrangler
-# dev` runs AI remotely, and on 2026-09-29 adding [env.dev.ai] stopped the dev
-# server from starting ("Failed to start the remote proxy session"). The
-# service's EnvironmentFile token was allowed Workers AI, but ExecStart's
-# `bash -lc` loads ~/.bashrc, whose CLOUDFLARE_API_TOKEN replaces it — and
-# that token is allowed neither. Fix the token the service really runs with
-# BEFORE adding the binding back. Without a binding, /api/translate says it
-# is unavailable and the buttons hide.
+# Staging here; live and the Pi below ([env.production.ai], [env.dev.ai]).
+# `wrangler dev` runs AI remotely with the service's own token. On
+# 2026-09-29 the first try stopped the dev server ("Failed to start the
+# remote proxy session"): ExecStart's `bash -lc` loaded ~/.bashrc, whose
+# CLOUDFLARE_API_TOKEN (not allowed Workers AI) replaced the
+# EnvironmentFile's. The service now loads that file inside the shell, last.
+# Without a binding, /api/translate says it is unavailable and the buttons
+# hide.
 [ai]
 binding = "AI"
 
@@ -371,11 +371,15 @@ id = "f79f07b51f3a493a9f2bb3714115d037"
 binding = "GAME_SCORES"
 id = "f23971d5b4aa460daba43e97b9d84273"
 
-# WORKERS AI ON THE PI TOO (Chase, 2026-09-29: "can we add that to the dev
-# as well?"). `wrangler dev` always runs AI remotely, with the dev server's
-# own token (~/.config/cloudflare-thauma.env) — which was given Workers AI
-# Read + Edit that day. Before that the binding was left out, because a
-# binding the token cannot use shows the Translate buttons and then fails.
+# WORKERS AI ON THE PI (Chase, 2026-09-29: "can we add that to the dev as
+# well?"). `wrangler dev` always runs AI remotely, with the service's token —
+# which is now really ~/.config/cloudflare-thauma.env's (Workers AI Read +
+# Edit): thauma-dev.service loads that file INSIDE its login shell, after
+# ~/.bashrc, whose own CLOUDFLARE_API_TOKEN used to win and is allowed
+# neither. See the note at the top-level [ai].
+[env.dev.ai]
+binding = "AI"
+
 [env.dev.vars]
 
 # WHERE THIS DEPLOYMENT LIVES, stated rather than detected.
