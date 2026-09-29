@@ -84,6 +84,37 @@
     } catch (e) { return (currency || '') + ' ' + Math.round((cents || 0) / 100); }
   }
 
+  /* ---- the currency picker ---- */
+
+  /* The ones a ministry here is likely to use, first; then every other
+     current currency the browser knows (ISO 4217, via Intl), so a partner
+     somewhere unexpected is never refused. Each says its code, its name in
+     the console's language and its sign: "EUR — Euro (€)". */
+  var COMMON = ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'CHF', 'RSD', 'BAM', 'MKD', 'HUF'];
+  function currencyLabel(code) {
+    var lang = (window.StaffI18n && window.StaffI18n.lang) || 'en';
+    var name = code, sign = '';
+    try { name = new Intl.DisplayNames([lang, 'en'], { type: 'currency' }).of(code) || code; } catch (e) {}
+    try {
+      sign = new Intl.NumberFormat(lang, { style: 'currency', currency: code, currencyDisplay: 'symbol' })
+        .formatToParts(1).filter(function (p) { return p.type === 'currency'; })[0].value;
+    } catch (e) {}
+    return code + ' — ' + name + (sign && sign !== code ? ' (' + sign + ')' : '');
+  }
+  function fillCurrencies(selected) {
+    var all = [];
+    try { all = Intl.supportedValuesOf('currency'); } catch (e) { all = COMMON.slice(); }
+    var rest = all.filter(function (c) { return COMMON.indexOf(c) === -1; });
+    /* A stored code the browser does not list still shows as itself. */
+    if (selected && COMMON.indexOf(selected) === -1 && rest.indexOf(selected) === -1) rest.unshift(selected);
+    var opt = function (c) {
+      return '<option value="' + esc(c) + '"' + (c === selected ? ' selected' : '') + '>' + esc(currencyLabel(c)) + '</option>';
+    };
+    $('glCurrency').innerHTML = COMMON.map(opt).join('') +
+      '<option disabled>──────────</option>' + rest.map(opt).join('');
+    $('glCurrency').value = selected;
+  }
+
   /* ---- the list ---- */
 
   var KIND_KEY = { monthly: 'gl.monthly', one_time: 'gl.oneTime', project: 'gl.project' };
@@ -154,7 +185,7 @@
     $('glDescription').value = goal && goal.description ? goal.description : '';
     $('glKind').value = goal ? goal.kind : 'monthly';
     $('glTarget').value = goal ? fromCents(goal.target_cents) : '';
-    $('glCurrency').value = goal ? goal.currency : 'USD';
+    fillCurrencies(goal ? goal.currency : 'USD');
     $('glDelete').hidden = !goal;
 
     /* Progress is left EMPTY rather than pre-filled with the current figure:

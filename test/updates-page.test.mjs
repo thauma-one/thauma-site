@@ -123,6 +123,17 @@ await check("milestones are listed by date, undated last, each sub-milestone und
     throw new Error("order " + JSON.stringify(order));
 });
 
+await check("currency is chosen from a named list, the common ones first", async () => {
+  const { w, d } = await boot();
+  d.querySelector('#glList [data-id="g1"]').dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 50));
+  const sel = d.getElementById("glCurrency");
+  if (sel.tagName !== "SELECT") throw new Error("still a text box");
+  if (sel.value !== "USD") throw new Error("the goal's own currency is not selected: " + sel.value);
+  if (!/^EUR — Euro/.test(sel.options[1].text)) throw new Error("second option " + sel.options[1].text);
+  if (sel.options.length < 100) throw new Error("only " + sel.options.length + " currencies");
+});
+
 await check("every row carries its own published switch, and nothing is waiting on arrival", async () => {
   const { d, row, bar } = await boot();
   for (const [list, id] of [["msList", "m1"], ["glList", "g1"], ["prList", "p1"]]) {

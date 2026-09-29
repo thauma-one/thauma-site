@@ -194,8 +194,11 @@ staffHeading: What this ministry <b>publishes</b>
         </label>
         <label class="fld">
           <span data-i18n="gl.currency">Currency</span>
-          <input type="text" id="glCurrency" maxlength="3" value="USD"
-                 spellcheck="false" placeholder="USD">
+          {#- A list, not three letters to remember (Chase, 2026-09-28): every
+             currency the browser knows, named in the console's language —
+             "EUR — Euro (€)" — the common ones first. Filled by
+             staff-goals.js. -#}
+          <select id="glCurrency"><option value="USD">USD</option></select>
         </label>
       </div>
 
