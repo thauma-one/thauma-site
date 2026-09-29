@@ -152,7 +152,7 @@ SQLite and assert the guarantees below.
 | `0002_milestones` | the public roadmap |
 | `0003_languages` | language catalog + per-partner publishing + translations |
 | `0004_settings` | `partners.default_lang` |
-| `0005_directory_resources` | per-person address book, shared library with levels |
+| `0005_directory_resources` | address book (per person until 2026-09-28, now the ministry's — see 0042), shared library with levels |
 | `0006_roles` | `user_roles` — replaced the single-value `global_role` |
 | `0007_partner_role` | the fourth role: **partner** |
 | `0008_audit_survives_deletion` | audit entries outlive what they describe |
@@ -180,7 +180,7 @@ One entry point, `workers/src/worker.js`. **286 tests** (`cd workers && npm test
 | `staff-snapshot` (in worker.js) | dashboard/support/stewardship/activity |
 | `staff-milestones.js` | the roadmap editor |
 | `staff-settings.js` | account, languages, API keys |
-| `staff-data.js` | directory (per person) + resources (per partner) |
+| `staff-data.js` | directory (the ministry's, shared by its team) + resources (per partner) |
 | `admin.js` | organization administration — the only UNSCOPED endpoint |
 | `admin-content.js` | the site's own words and settings — the only endpoint that COMMITS |
 | `admin-publish.js` | Preview and Publish — the only endpoint that DEPLOYS |
@@ -252,7 +252,7 @@ and hidden the problem entirely.
 | | scope | why |
 |---|---|---|
 | `contacts` | partner | supporters belong to the partner, not a person |
-| `directory_contacts` | **person** | somebody's own address book |
+| `directory_contacts` | **partner** | the ministry's address book, shared by its team; `user_id` is who added a card (2026-09-28) |
 | `resources` | partner, or org-wide | a library, shared on purpose |
 | `milestones` | partner | published to partner websites |
 
@@ -409,7 +409,7 @@ before claiming its deletions work.**
 |---|---|---|
 | `audit_log.user_id`, `.partner_id` | **no foreign key at all** | the record must go on naming what it describes after that thing is gone |
 | `*.granted_by`, `*.created_by`, `*.logged_by` | **ON DELETE SET NULL** | attribution on a row whose real content is something else. Losing "who logged it" is a shame; losing the conversation is data loss |
-| `partner_users.user_id`, `user_roles.user_id`, `directory_contacts.user_id` | **ON DELETE CASCADE** | these ARE the person — their access, roles and address book. None of it should outlive the account |
+| `partner_users.user_id`, `user_roles.user_id` | **ON DELETE CASCADE** | these ARE the person — their access and roles. None of it should outlive the account. (`directory_contacts.user_id` was here until 0042: the directory is the team's now, so it is SET NULL — the card stays, its author becomes unknown) |
 
 A schema test asks the schema which references exist and asserts none of them
 can block, so a column added later is covered without anybody remembering.

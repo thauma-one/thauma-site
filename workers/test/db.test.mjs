@@ -117,23 +117,22 @@ await check("NO query names a language column — languages are data now", async
   }
 });
 
-await check("a directory contact is scoped by its OWNER, not just the partner", async () => {
-  // The whole point of 0005. A colleague sharing the partner must not be able
-  // to read, rewrite or delete somebody else's address book.
-  for (const q of ["directory_for_user", "directory_upsert", "directory_delete"]) {
-    assert(/user_id\s*=\s*:user_id/.test(QUERIES[q]),
-      `${q} is not scoped by the contact's owner`);
-    assert(/partner_id\s*=\s*:partner_id/.test(QUERIES[q]),
-      `${q} is not tenant-scoped`);
+await check("the directory is the ministry's: shared by its team, never across ministries", async () => {
+  /* Chase, 2026-09-26: a new team member inherits the ministry's contacts.
+     Every query stays tenant-scoped; none of them is scoped to one person. */
+  for (const q of ["directory_for_partner", "directory_upsert", "directory_delete"]) {
+    assert(/partner_id\s*=\s*:partner_id/.test(QUERIES[q]), `${q} is not tenant-scoped`);
   }
+  assert(!/user_id\s*=\s*:user_id/.test(QUERIES.directory_for_partner),
+    "the directory is still one person's");
 });
 
-await check("the upsert cannot be used to take over another person's contact", async () => {
-  // The UPDATE half needs the ownership check too, or an id from elsewhere
+await check("the upsert cannot be used to take over another ministry's contact", async () => {
+  // The UPDATE half needs the tenant check too, or an id from elsewhere
   // rewrites their row rather than being refused.
   const update = QUERIES.directory_upsert.slice(QUERIES.directory_upsert.indexOf("DO UPDATE"));
-  assert(/directory_contacts\.user_id\s*=\s*:user_id/.test(update),
-    "ON CONFLICT DO UPDATE is not scoped by owner");
+  assert(/directory_contacts\.partner_id\s*=\s*:partner_id/.test(update),
+    "ON CONFLICT DO UPDATE is not scoped by ministry");
 });
 
 await check("resource visibility is matched exactly, not by prefix", async () => {

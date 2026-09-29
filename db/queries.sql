@@ -911,8 +911,9 @@ UPDATE users SET name = :name, status = :status WHERE id = :id;
 
 
 -- name: admin_user_delete
--- Cascades to user_roles, partner_users and their directory. Deliberate: a
--- person's private address book should not outlive their account.
+-- Cascades to user_roles and partner_users. The directory cards they added
+-- stay with their ministry, author unknown (0042): the directory is the
+-- team's, not theirs.
 DELETE FROM users WHERE id = :id;
 
 
@@ -1051,17 +1052,27 @@ LIMIT :limit;
 -- DIRECTORY (per person) and RESOURCES (shared, with levels)
 -- ============================================================================
 
--- name: directory_for_user
--- SOMEBODY'S OWN address book. Scoped by user AND partner: the user id decides
--- whose it is, the partner id is the tenant guard every table here carries.
--- A colleague sharing the partner sees none of this.
-SELECT id, name, role, emails, phones, created_at, updated_at
-FROM directory_contacts
-WHERE user_id = :user_id AND partner_id = :partner_id
-ORDER BY name COLLATE NOCASE;
+-- name: directory_for_partner
+-- THE MINISTRY'S address book, shared by everyone on its team (Chase,
+-- 2026-09-26: a new team member inherits the ministry's contacts; existing
+-- contacts included). It was one person's own until 2026-09-28; the rows
+-- always carried the partner, so sharing is this WHERE, not a migration.
+-- `added_by` is who wrote the card, kept as a record, never as a lock. The
+-- partner id is the tenant guard every table here carries.
+--
+-- Nothing here is Stewardship's: supporters stay owner-only in their own
+-- table (contacts), with their own endpoint.
+SELECT d.id, d.name, d.role, d.emails, d.phones, d.created_at, d.updated_at,
+       u.name AS added_by
+FROM directory_contacts d
+LEFT JOIN users u ON u.id = d.user_id
+WHERE d.partner_id = :partner_id
+ORDER BY d.name COLLATE NOCASE;
 
 
 -- name: directory_upsert
+-- :user_id is who ADDS a card (added_by) and stays theirs to be credited
+-- with; anybody on the ministry's team may correct one afterwards.
 INSERT INTO directory_contacts
   (id, user_id, partner_id, name, role, emails, phones, created_at, updated_at)
 VALUES
@@ -1069,15 +1080,16 @@ VALUES
 ON CONFLICT(id) DO UPDATE SET
   name = :name, role = :role, emails = :emails, phones = :phones,
   updated_at = :now
--- Both halves of the ownership check: an id alone must never be enough to
--- rewrite a card, and neither must an id plus the right partner.
-WHERE directory_contacts.user_id = :user_id
-  AND directory_contacts.partner_id = :partner_id;
+-- The tenant check: an id alone must never be enough to rewrite a card —
+-- only one belonging to this ministry.
+WHERE directory_contacts.partner_id = :partner_id;
 
 
 -- name: directory_delete
+-- Anybody on the ministry's team, the same as editing; never another
+-- ministry's card.
 DELETE FROM directory_contacts
-WHERE id = :id AND user_id = :user_id AND partner_id = :partner_id;
+WHERE id = :id AND partner_id = :partner_id;
 
 
 -- name: resources_visible

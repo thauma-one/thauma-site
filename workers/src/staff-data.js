@@ -11,15 +11,17 @@
  * for the entire installation. Every staff member of every partner shared it.
  * Two problems, both structural:
  *
- *   NO OWNERSHIP   a directory is somebody's own address book, and everyone
- *                  was looking at the same one.
+ *   NO OWNERSHIP   everyone, of every ministry, was looking at the same
+ *                  address book.
  *
  *   LOST WRITES    the editor saved the WHOLE document, so two people editing
  *                  on the same afternoon meant the second silently erased the
  *                  first. Nothing warned anyone; the data was simply gone.
  *
  * Both are fixed by the storage rather than by care. Contacts belong to a
- * user, resources belong to a partner or the organization, and every operation
+ * ministry and are shared by its team (Chase, 2026-09-26; each card still
+ * records who added it), resources belong to a partner or the organization,
+ * and every operation
  * touches ONE row — so concurrent editing costs you a conflict at worst
  * instead of somebody else's afternoon.
  */
@@ -152,7 +154,7 @@ export default {
     /* ---------------------------------------------------------------- GET */
     if (request.method === "GET") {
       const [contacts, resources] = await Promise.all([
-        db.query("directory_for_user", { user_id, partner_id }),
+        db.query("directory_for_partner", { partner_id }),
         db.query("resources_visible", { partner_id, levels, user_id, is_admin: isAdmin ? 1 : 0 }),
       ]);
       return json(withActing({
@@ -164,9 +166,7 @@ export default {
           roles: String(me.roles || "staff").split(","),
         },
         partner: { id: partner.id, display_name: partner.display_name },
-        // Named so the screen can say whose these are, rather than implying
-        // they are everyone's.
-        owner: { email: user.email },
+
         contacts: contacts.map((c) => ({
           ...c,
           // Stored as JSON text; a malformed row must not take the page down.
@@ -199,7 +199,7 @@ export default {
           phones: JSON.stringify(stringList(body.phones)),
           now,
         });
-        const contacts = await db.query("directory_for_user", { user_id, partner_id });
+        const contacts = await db.query("directory_for_partner", { partner_id });
         return json({ contacts: contacts.map((c) => ({
           ...c, emails: safeList(c.emails), phones: safeList(c.phones) })) });
       }
@@ -341,9 +341,10 @@ export default {
       if (!id) return json({ error: "id is required" }, 400);
 
       if (kind === "contact") {
-        // Scoped by owner as well as id: your id cannot delete my contact.
-        await db.query("directory_delete", { id, user_id, partner_id });
-        const contacts = await db.query("directory_for_user", { user_id, partner_id });
+        // Scoped by ministry as well as id: another ministry's id cannot
+        // delete this one's contact. Anybody on the team may (shared, 2026-09-28).
+        await db.query("directory_delete", { id, partner_id });
+        const contacts = await db.query("directory_for_partner", { partner_id });
         return json({ contacts: contacts.map((c) => ({
           ...c, emails: safeList(c.emails), phones: safeList(c.phones) })) });
       }

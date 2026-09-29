@@ -123,7 +123,7 @@ function rowsFor(name, params) {
     case "milestone_translations_for_staff":
       return [{ milestone_id: "ms_m1", lang: "en", title: "Commissioned",
                 description: null, target_label: null }];
-    case "directory_for_user":
+    case "directory_for_partner":
       return [{ id: "dc_m1", name: "Pastor Dragan", role: "Home church",
                 emails: '["dragan@example.com"]', phones: "[]" }];
     case "resources_visible":

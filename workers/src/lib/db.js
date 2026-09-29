@@ -39,7 +39,7 @@ const TENANT_SCOPED = new Set([
   "partner_languages_for_partner",
   "partner_settings",
   "api_keys_for_partner",
-  "directory_for_user",
+  "directory_for_partner",
   "resources_visible",
   /* Called with a real partner id by the partner API. Listed here so that a
      call with an undefined one throws instead of falling through to

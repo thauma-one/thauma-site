@@ -1695,20 +1695,60 @@ def t_removing_a_user_removes_their_roles():
     assert left == 0, f"{left} roles outlived their user"
 
 
-def t_a_directory_contact_belongs_to_one_person():
-    """The reason 0005 exists: a colleague sharing the partner must not be
-    able to reach somebody else's address book."""
+def t_the_directory_is_shared_by_the_ministrys_team():
+    """Chase, 2026-09-26: the directory is the ministry's, shared by its team —
+    a colleague sees, corrects and removes the cards somebody else added, and
+    nobody reaches another ministry's."""
     db = fresh()
     db.execute("INSERT INTO users (id,email,name,created_at) VALUES ('u_a','a@x.co','A',?)", (NOW,))
     db.execute("INSERT INTO partner_users (partner_id,user_id,role,granted_at) VALUES ('p_chase','u_a','assist',?)", (NOW,))
-    db.commit()
-    db.execute("INSERT INTO directory_contacts (id,user_id,partner_id,name,created_at,updated_at) "
-               "VALUES ('dc_1','u_a','p_chase','Someone',?,?)", (NOW, NOW))
+    db.execute("INSERT INTO users (id,email,name,created_at) VALUES ('u_b','b@x.co','B',?)", (NOW,))
+    db.execute("INSERT INTO partner_users (partner_id,user_id,role,granted_at) VALUES ('p_chase','u_b','assist',?)", (NOW,))
+    db.execute("INSERT INTO partners (id,slug,display_name,status,created_at,updated_at) "
+               "VALUES ('p_2','p-two','P Two','active',?,?)", (NOW, NOW))
     db.commit()
 
-    mine = db.execute("SELECT COUNT(*) FROM directory_contacts "
-                      "WHERE user_id='u_chase' AND partner_id='p_chase'").fetchone()[0]
-    assert mine == 0, "another user's contact appeared in this user's directory"
+    def upsert(**v):  # `name` is _run's own parameter, so this one goes direct
+        sql, names = _query("directory_upsert")
+        db.execute(sql, [v[n] for n in names])
+
+    upsert( id="dc_1", user_id="u_a", partner_id="p_chase", name="Someone",
+         role=None, emails="[]", phones="[]", now=NOW)
+    got = _run(db, "directory_for_partner", partner_id="p_chase")
+    assert [(r[1], r[-1]) for r in got] == [("Someone", "A")], f"the team does not see it, or not who added it: {got}"
+    upsert(id="dc_1", user_id="u_b", partner_id="p_chase", name="Someone Else",
+         role=None, emails="[]", phones="[]", now=NOW)
+    row = db.execute("SELECT name, user_id FROM directory_contacts WHERE id='dc_1'").fetchone()
+    assert row == ("Someone Else", "u_a"), f"a colleague's correction, or who added it: {row}"
+    try:  # refused outright (the owner trigger) or matched nothing — either way, not rewritten
+        upsert(id="dc_1", user_id="u_b", partner_id="p_2", name="Hijacked",
+               role=None, emails="[]", phones="[]", now=NOW)
+    except sqlite3.IntegrityError:
+        pass
+    assert db.execute("SELECT name FROM directory_contacts WHERE id='dc_1'").fetchone()[0] == "Someone Else", \
+        "another ministry rewrote this one's card"
+    assert _run(db, "directory_for_partner", partner_id="p_2") == [], "another ministry sees this one's cards"
+    _run(db, "directory_delete", id="dc_1", partner_id="p_2")
+    assert len(_run(db, "directory_for_partner", partner_id="p_chase")) == 1, "another ministry deleted it"
+    _run(db, "directory_delete", id="dc_1", partner_id="p_chase")
+    assert _run(db, "directory_for_partner", partner_id="p_chase") == [], "the team could not remove it"
+
+
+def t_a_shared_card_outlives_whoever_added_it():
+    """0042: removing somebody's account keeps the cards they added to the
+    ministry's directory; only who added them becomes unknown."""
+    db = fresh()
+    db.execute("INSERT INTO users (id,email,name,created_at) VALUES ('u_l','l@x.co','Leaver',?)", (NOW,))
+    db.execute("INSERT INTO partner_users (partner_id,user_id,role,granted_at) VALUES ('p_chase','u_l','assist',?)", (NOW,))
+    db.execute("INSERT INTO directory_contacts (id,user_id,partner_id,name,created_at,updated_at) "
+               "VALUES ('dc_l','u_l','p_chase','Pastor',?,?)", (NOW, NOW))
+    db.commit()
+    db.execute("DELETE FROM users WHERE id='u_l'")
+    db.commit()
+    row = db.execute("SELECT name, user_id FROM directory_contacts WHERE id='dc_l'").fetchone()
+    assert row == ("Pastor", None), f"the card went with its author: {row}"
+    names = [r[1] for r in db.execute("SELECT * FROM sqlite_master WHERE type='trigger'").fetchall()]
+    assert "directory_owner_has_partner" in names, "the rebuild lost the owner trigger"
 
 
 def t_a_contact_cannot_be_filed_under_a_partner_you_lack():
@@ -2150,7 +2190,8 @@ if __name__ == "__main__":
         ("three roles, and only three",                 t_three_roles_and_only_three),
         ("a person can hold two roles",                 t_a_person_can_hold_two_roles),
         ("removing a user removes their roles",         t_removing_a_user_removes_their_roles),
-        ("a directory contact belongs to one person",   t_a_directory_contact_belongs_to_one_person),
+        ("the directory is shared by the ministry's team", t_the_directory_is_shared_by_the_ministrys_team),
+        ("a shared card outlives whoever added it",     t_a_shared_card_outlives_whoever_added_it),
         ("a contact needs its owner to hold the partner", t_a_contact_cannot_be_filed_under_a_partner_you_lack),
         ("resources default to staff-visible",          t_resources_default_to_staff_visible),
         ("deleting a partner takes everything with it", t_deleting_a_partner_takes_everything_with_it),

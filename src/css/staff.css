@@ -151,6 +151,12 @@ tbody td{padding:13px 16px;border-bottom:1px solid var(--line-soft);vertical-ali
 tbody tr:last-child td{border-bottom:0}
 tbody tr{cursor:pointer;transition:background var(--dur-3) var(--ease-main)}
 tbody tr:hover{background:rgba(255,255,255,.03)}
+/* A row that opens a card says so under the pointer. */
+tbody tr[role=button]{cursor:pointer}
+tbody tr[role=button]:focus-visible{outline:2px solid var(--voice-tech);outline-offset:-2px}
+.tw td .lnk{color:var(--text)}
+/* A dialog's remove sits apart from Save and Cancel, at the far end. */
+#contactForm .frow .del{margin-left:auto}
 tbody tr[aria-expanded="true"]{background:rgba(255,255,255,.045)}
 .nm{font-weight:var(--w-bold);color:var(--text)}
 .sub{font-size:var(--fs-tiny);color:var(--dim)}
@@ -2011,22 +2017,23 @@ html:not(.roles-known)[data-area="staff"] .console-me-menu a[data-roles]{display
 .sw-top .ghost-btn{margin-left:auto}
 .sw-find[hidden]{display:none}
 
-/* ON A PHONE, A CARD PER PERSON (board 11): the table ran off the screen.
+/* ON A PHONE, A CARD PER PERSON (board 11), on Stewardship and Directory:
+   the table ran off the screen.
    The name leads; each other cell says what it is (data-label), since the
    header row is gone. */
 @media (max-width:640px){
-  [data-staff-page="stewardship"] .tw{border:0;overflow:visible}
-  [data-staff-page="stewardship"] .tw table,
-  [data-staff-page="stewardship"] .tw tbody{display:block;min-width:0}
-  [data-staff-page="stewardship"] .tw thead{display:none}
-  [data-staff-page="stewardship"] .tw tr[data-id]{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;
+  .tw.sw-cards{border:0;overflow:visible}
+  .tw.sw-cards table,
+  .tw.sw-cards tbody{display:block;min-width:0}
+  .tw.sw-cards thead{display:none}
+  .tw.sw-cards tr[role=button]{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;
     padding:14px 16px;margin-bottom:10px;border:1px solid var(--line);border-radius:var(--radius);background:var(--panel)}
-  [data-staff-page="stewardship"] .tw tr[data-id] td{display:block;padding:0;border:0;text-align:left}
-  [data-staff-page="stewardship"] .tw td.sw-who{grid-column:1 / -1}
-  [data-staff-page="stewardship"] .tw td[data-label]::before{content:attr(data-label);display:block;
+  .tw.sw-cards tr[role=button] td{display:block;padding:0;border:0;text-align:left}
+  .tw.sw-cards td.sw-who{grid-column:1 / -1}
+  .tw.sw-cards td[data-label]::before{content:attr(data-label);display:block;
     font-size:9.5px;letter-spacing:var(--ls-label);text-transform:uppercase;color:var(--dim);margin-bottom:4px}
-  [data-staff-page="stewardship"] .tw tr.empty-row{display:block}
-  [data-staff-page="stewardship"] .tw tr.empty-row td{display:block}
+  .tw.sw-cards tr.empty-row{display:block}
+  .tw.sw-cards tr.empty-row td{display:block}
   .sw-top .ghost-btn{margin-left:0}
 }
 /* Edit and remove on a logged contact sit under its note, quiet until the

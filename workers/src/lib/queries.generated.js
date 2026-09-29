@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "8afd6cc35ed47fc5";
+export const SOURCE_DIGEST = "23293f8da8876e9d";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -259,11 +259,13 @@ WHERE partner_id = :partner_id
   (SELECT COUNT(*) FROM goals
      WHERE partner_id = :partner_id)                                             AS goals_total;`,
   directory_delete: `DELETE FROM directory_contacts
-WHERE id = :id AND user_id = :user_id AND partner_id = :partner_id;`,
-  directory_for_user: `SELECT id, name, role, emails, phones, created_at, updated_at
-FROM directory_contacts
-WHERE user_id = :user_id AND partner_id = :partner_id
-ORDER BY name COLLATE NOCASE;`,
+WHERE id = :id AND partner_id = :partner_id;`,
+  directory_for_partner: `SELECT d.id, d.name, d.role, d.emails, d.phones, d.created_at, d.updated_at,
+       u.name AS added_by
+FROM directory_contacts d
+LEFT JOIN users u ON u.id = d.user_id
+WHERE d.partner_id = :partner_id
+ORDER BY d.name COLLATE NOCASE;`,
   directory_upsert: `INSERT INTO directory_contacts
   (id, user_id, partner_id, name, role, emails, phones, created_at, updated_at)
 VALUES
@@ -271,8 +273,7 @@ VALUES
 ON CONFLICT(id) DO UPDATE SET
   name = :name, role = :role, emails = :emails, phones = :phones,
   updated_at = :now
-WHERE directory_contacts.user_id = :user_id
-  AND directory_contacts.partner_id = :partner_id;`,
+WHERE directory_contacts.partner_id = :partner_id;`,
   embed_look_clear: `DELETE FROM embed_looks WHERE partner_id = :partner_id AND kind = :kind;`,
   embed_look_set: `INSERT INTO embed_looks (partner_id, kind, accent, accent2, turn, theme, updated_at)
 VALUES (:partner_id, :kind, :accent, :accent2, :turn, :theme, :now)

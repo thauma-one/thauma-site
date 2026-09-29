@@ -310,23 +310,39 @@
   }
 
   function renderCards() {
-    if ($('qContacts')) $('qContacts').textContent = state.contacts.length;
-    if ($('contacts')) $('contacts').innerHTML = state.contacts.map(function (c, i) {
-      return '<div class="card">' +
-        '<div class="card-actions">' +
-          '<button type="button" data-edit-contact="' + i + '">Edit</button>' +
-          '<button type="button" class="del" data-delete-contact="' + i + '">Delete</button></div>' +
-        '<h4>' + esc(c.name) + '</h4>' +
-        (c.role ? '<div class="role">' + esc(c.role) + '</div>' : '') +
-        (c.emails || []).map(function (e) {
-          return '<a class="lnk" href="mailto:' + esc(e) + '">' + esc(e) + '</a>'; }).join('') +
-        (c.phones || []).map(function (p) {
-          return '<a class="lnk" href="tel:' + esc(String(p).replace(/[^0-9+]/g, '')) + '">' +
-                 esc(p) + '</a>'; }).join('') +
-      '</div>';
-    }).join('') || '<p class="empty">' + tr('dir.empty') + '</p>';
-
+    renderDirectory();
     renderResources();
+  }
+
+  /* THE MINISTRY'S ADDRESS BOOK (board 11): one row per person, opening its
+     card in a dialog, narrowed by the search box. Every address and number is
+     listed, each a link that dials or writes rather than opening the card. On
+     a phone the rows are cards (.sw-cards), each cell saying what it is. */
+  function renderDirectory() {
+    if ($('qContacts')) $('qContacts').textContent = state.contacts.length;
+    var body = $('contacts');
+    if (!body) return;
+    var q = ($('dirFind') ? $('dirFind').value : '').trim().toLowerCase();
+    var rows = state.contacts.map(function (c, i) { return { c: c, i: i }; }).filter(function (r) {
+      if (!q) return true;
+      var c = r.c;
+      return [c.name, c.role].concat(c.emails || [], c.phones || []).join(' ').toLowerCase().indexOf(q) !== -1;
+    });
+    if ($('dirFind')) $('dirFind').hidden = !state.contacts.length;
+    body.innerHTML = rows.map(function (r) {
+      var c = r.c;
+      return '<tr data-contact="' + r.i + '" tabindex="0" role="button" aria-haspopup="dialog">' +
+        '<td class="sw-who"><span class="nm">' + esc(c.name) + '</span></td>' +
+        '<td data-label="' + esc(tr('dir.role')) + '">' + esc(c.role || '') + '</td>' +
+        '<td data-label="' + esc(tr('dir.email')) + '">' + (c.emails || []).map(function (e) {
+          return '<a class="lnk" href="mailto:' + esc(e) + '">' + esc(e) + '</a>'; }).join('<br>') + '</td>' +
+        '<td data-label="' + esc(tr('dir.phone')) + '">' + (c.phones || []).map(function (p) {
+          return '<a class="lnk" href="tel:' + esc(String(p).replace(/[^0-9+]/g, '')) + '">' + esc(p) + '</a>';
+        }).join('<br>') + '</td>' +
+      '</tr>';
+    }).join('') ||
+      '<tr class="empty-row"><td colspan="4"><p class="empty">' +
+        esc(tr(q ? 'stew.noMatch' : 'dir.empty')) + '</p></td></tr>';
   }
 
   /* THREE SHELVES, and the controls follow what the SERVER said rather than
@@ -572,33 +588,65 @@
     var input = document.createElement('input');
     input.type = type; input.className = cls; input.value = value || '';
     var rm = document.createElement('button');
-    rm.type = 'button'; rm.className = 'ghost-btn'; rm.textContent = 'Remove';
+    rm.type = 'button'; rm.className = 'ghost-btn'; rm.textContent = tr('dir.removeRow');
     rm.addEventListener('click', function () { row.remove(); });
     row.appendChild(input); row.appendChild(rm);
     container.appendChild(row);
   }
 
   function wireContactForm() {
-    var cForm = $('contactForm');
-    if (!cForm) return;
+    var cForm = $('contactForm'), back = $('contactBack');
+    if (!cForm || !back) return;
     var emails = $('contactEmails'), phones = $('contactPhones');
 
     $('addEmailRow').addEventListener('click', function () { addRow(emails, 'email', 'c-email', ''); });
     $('addPhoneRow').addEventListener('click', function () { addRow(phones, 'tel', 'c-phone', ''); });
 
+    function close() {
+      back.hidden = true;
+      back.classList.remove('in');
+      cForm.reset();
+      emails.innerHTML = ''; phones.innerHTML = '';
+    }
+
     function open(index) {
       var c = (index === '' || index === undefined) ? {} : state.contacts[index];
       $('contactIndex').value = index === undefined ? '' : index;
+      $('contactFormTitle').textContent = c.id ? c.name : tr('dir.new');
+      /* Who added it: the team shares the card, and this is the one thing
+         about it nobody else wrote. */
+      var added = $('contactAdded');
+      added.hidden = !(c.id && c.added_by);
+      if (!added.hidden) added.textContent = fill('dir.addedBy', { name: c.added_by, date: shortDate(String(c.created_at || '').slice(0, 10)) });
+      $('contactDelete').hidden = !c.id;
       $('contactName').value = c.name || '';
       $('contactRole').value = c.role || '';
       emails.innerHTML = ''; phones.innerHTML = '';
       ((c.emails && c.emails.length) ? c.emails : ['']).forEach(function (v) {
         addRow(emails, 'email', 'c-email', v); });
       (c.phones || []).forEach(function (v) { addRow(phones, 'tel', 'c-phone', v); });
-      cForm.classList.add('open');
+      back.hidden = false;
+      void back.offsetHeight;
+      back.classList.add('in');
+      $('contactName').focus();
     }
     $('addContactBtn').addEventListener('click', function () { open(''); });
-    $('contactCancel').addEventListener('click', function () { cForm.classList.remove('open'); });
+    $('contactCancel').addEventListener('click', close);
+    /* The backdrop and Escape both cancel, as on every dialog here. */
+    back.addEventListener('click', function (e) { if (e.target === back) close(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !back.hidden) close(); });
+
+    $('contactDelete').addEventListener('click', async function () {
+      var c = state.contacts[Number($('contactIndex').value)];
+      if (!c) return;
+      var ok = await window.StaffConfirm({
+        title: fill('dir.deleteTitle', { name: c.name }),
+        confirm: tr('dir.delete'), cancel: tr('common.cancel'), danger: true
+      });
+      if (!ok) return;
+      close();
+      deleteItem('contact', c.id);
+    });
 
     cForm.addEventListener('submit', function (e) {
       e.preventDefault();
@@ -606,25 +654,26 @@
       var entry = {
         name: $('contactName').value,
         role: $('contactRole').value,
-        emails: Array.from(document.querySelectorAll('.c-email'))
+        emails: Array.from(cForm.querySelectorAll('.c-email'))
                   .map(function (i) { return i.value.trim(); }).filter(Boolean),
-        phones: Array.from(document.querySelectorAll('.c-phone'))
+        phones: Array.from(cForm.querySelectorAll('.c-phone'))
                   .map(function (i) { return i.value.trim(); }).filter(Boolean)
       };
       if (idx !== '') entry.id = state.contacts[idx] && state.contacts[idx].id;
-      cForm.classList.remove('open'); cForm.reset();
-      emails.innerHTML = ''; phones.innerHTML = '';
+      close();
       saveItem('contact', entry);
     });
 
-    // event delegation — cards re-render on every save
+    /* A row opens its card; an address or number in it writes or dials. */
+    function rowOf(e) { return e.target.closest && !e.target.closest('a') && e.target.closest('tr[data-contact]'); }
     $('contacts').addEventListener('click', function (e) {
-      if (e.target.dataset.editContact !== undefined) open(e.target.dataset.editContact);
-      if (e.target.dataset.deleteContact !== undefined) {
-        var c = state.contacts[Number(e.target.dataset.deleteContact)];
-        if (c && confirm('Delete "' + c.name + '"?')) deleteItem('contact', c.id);
-      }
+      var tr_ = rowOf(e); if (tr_) open(tr_.dataset.contact);
     });
+    $('contacts').addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      var tr_ = rowOf(e); if (tr_) { e.preventDefault(); open(tr_.dataset.contact); }
+    });
+    if ($('dirFind')) $('dirFind').addEventListener('input', renderDirectory);
   }
 
   function wireResourceForm() {
