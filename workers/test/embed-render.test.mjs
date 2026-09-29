@@ -812,19 +812,22 @@ const VIDEOS = {
 
 const asVideos = { "data-thauma": "chase-roush", "data-widget": "videos" };
 
-await check("the videos widget draws a card per video", async () => {
+await check("the videos widget is a stage for the newest, and a row of every one", async () => {
+  /* Chase, 2026-09-28: "it looks more like a list of information than a
+     presented file". The newest is shown large; the row picks. */
   const { root } = await run(VIDEOS, asVideos);
-  eq(root.byClass("vcard").length, 2, "cards");
-  eq(root.byClass("vthumb").length, 2, "thumbnails");
-  eq(root.byClass("vplay").length, 2, "play controls");
+  eq(root.byClass("vhero").length, 1, "one stage");
+  eq(root.byClass("vcard").length, 2, "a card per video in the row");
+  eq(root.byClass("vthumb").length, 3, "thumbnails: the stage's and the row's");
+  eq(root.byClass("vplay").length, 3, "play controls");
 });
 
-await check("each card carries the title and the DAY it went up", async () => {
+await check("the stage carries the newest title and the DAY it went up; the row names each", async () => {
   /* A day, not a month: "Feb 2026" about something posted last Tuesday reads
      as older than it is. Milestones are the opposite and keep monthYear. */
   const { root } = await run(VIDEOS, asVideos);
-  const titles = root.byClass("vtitle").map((n) => n.textContent);
-  eq(titles, ["This is Amazing!!!", "Faith & Works"], "titles");
+  eq(root.byClass("vtitle").map((n) => n.textContent), ["This is Amazing!!!"], "the stage");
+  eq(root.byClass("vctitle").map((n) => n.textContent), ["This is Amazing!!!", "Faith & Works"], "the row");
 
   const dates = root.byClass("vdate").map((n) => n.textContent);
   assert(/15/.test(dates[0]) && /2026/.test(dates[0]),
@@ -845,18 +848,29 @@ await check("a card links to YouTube and opens away from the host's page", async
     "no player should be loaded before anybody asks for one");
 });
 
-await check("the CARDS are neutral and the BUTTONS are not", async () => {
+await check("pressing play plays it here, from YouTube's privacy-enhanced host", async () => {
+  /* One frame, only once somebody asks: the reason the widget used to link
+     out rather than load players still holds. */
+  const { root } = await run(VIDEOS, asVideos);
+  root.byClass("vhero")[0].click();
+  const f = root.find((n) => n.tagName === "IFRAME");
+  eq(f.length, 1, "one player");
+  assert(/^https:\/\/www\.youtube-nocookie\.com\/embed\/[A-Za-z0-9_-]+\?autoplay=1/.test(f[0].src), f[0].src);
+});
+
+await check("the PICTURES are never painted; the play button and the BUTTONS speak for the ministry", async () => {
   /* The line this widget draws. A video is somebody else's artwork with
-     somebody else's title on it, and an accent gradient over a YouTube still
-     makes it look like neither — so the cards take no color at all. A button
-     underneath is the ministry speaking in its own voice ("watch more of
-     ours"), so the rail does. */
+     somebody else's title on it, and an accent over a YouTube still makes it
+     look like neither — so the still, and the shade that keeps its title
+     readable, take no color at all. The play button and the rail are the
+     ministry speaking ("watch", "more of ours"), so they do. */
   const { root } = await run(VIDEOS, { ...asVideos, "data-accent": "#E4572E" });
   const css = root.children.find((n) => n.tagName === "STYLE").textContent;
-
-  const cards = css.slice(css.indexOf(".vids{"), css.indexOf(".vlinks{"));
-  assert(!/var\(--prog\)|var\(--done\)|var\(--faint/i.test(cards),
-    "the video CARDS reach for the ministry's color");
+  const rule = (sel) => { const i = css.indexOf(sel + "{"); return i < 0 ? "" : css.slice(i, css.indexOf("}", i)); };
+  for (const sel of [".vthumb", ".vcap", ".vshot", ".vmini", ".vstage"]) {
+    assert(!/var\(--prog\)|var\(--done\)|var\(--faint/i.test(rule(sel)), `${sel} reaches for the ministry's color`);
+  }
+  assert(/var\(--prog\)/.test(rule(".vplay")), "the play button should be the ministry's color");
 
   const rail = css.slice(css.indexOf(".vlinks{"), css.indexOf(".foot{"));
   assert(/var\(--prog\)|var\(--faint-p\)/.test(rail),
@@ -893,7 +907,7 @@ const RAIL = [
 await check("the buttons under the shelf are drawn, in order", async () => {
   const { root } = await run({ ...VIDEOS, video_links: RAIL }, asVideos);
   const links = root.byClass("vlink");
-  eq(links.map((a) => a.textContent), RAIL.map((l) => l.label), "labels");
+  eq(links.map((a) => a.textContent.replace("\u2197", "")), RAIL.map((l) => l.label), "labels");
   eq(links[0].href, RAIL[0].url, "href");
   eq(links[0].target, "_blank", "target");
 });
@@ -909,7 +923,7 @@ await check("A BUTTON URL THAT IS NOT http(s) IS NEVER MADE INTO A LINK", async 
     { label: "Fine", url: "https://thauma.one/give" },
   ] }, asVideos);
   const links = root.byClass("vlink");
-  eq(links.map((a) => a.textContent), ["Fine"], "only the safe one survives");
+  eq(links.map((a) => a.textContent.replace("\u2197", "")), ["Fine"], "only the safe one survives");
 });
 
 await check("no buttons means no rail, not an empty one", async () => {

@@ -157,7 +157,7 @@ export const WIDGET_JS = String.raw`
     upcoming: 'Upcoming', canceled: 'Canceled', completeWord: 'Complete',
     remaining: 'remaining', funded: 'Funded', partners: 'partners', partner: 'partner',
     breakdown: 'Breakdown', empty: 'Nothing to show yet.', close: 'Close',
-    answered: 'Answered', praying: 'Still praying', watch: 'Watch on YouTube',
+    answered: 'Answered', praying: 'Still praying', watch: 'Watch on YouTube', play: 'Play',
     notShared: 'This ministry is not sharing this here.' };
   var WORDS = { en: FALLBACK };
   function w(lang, key) {
@@ -523,48 +523,56 @@ ${COLOUR_JS}
       '.is-wide .col{display:none}' +
 
       /* ============ VIDEOS ============
-         No accent, no gradient, no hover lift. See videoCards() for why. */
-      /* auto-fill, NOT auto-fit: with one video auto-fit stretches the single
-         card the whole width and a 16:9 still becomes a banner. */
-      '.vids{display:grid;gap:18px;' +
-        'grid-template-columns:repeat(auto-fill,minmax(210px,1fr))}' +
-      '.vcard{display:block;color:inherit;text-decoration:none}' +
-
-      /* The box is declared rather than left to the image, so the grid does
-         not reflow as each still arrives from YouTube's CDN. */
-      '.vshot{position:relative;aspect-ratio:16/9;overflow:hidden;' +
-        'border-radius:8px;background:var(--track)}' +
-      /* hqdefault is 4:3 with letterboxing baked in; cover crops it back to
-         the frame the video was actually shot in. */
+         A stage and a row (videoCards). The ministry's color is on the play
+         button and the first button of the rail — never painted over
+         somebody's picture: the only shade on a still is the dark one that
+         keeps its title readable. */
+      '.vshow{display:flex;flex-direction:column;gap:14px}' +
+      '.vstage{position:relative;aspect-ratio:16/9;border-radius:14px;overflow:hidden;' +
+        'background:#000;box-shadow:0 18px 40px -22px rgba(0,0,0,.55)}' +
+      '.vhero{display:block;width:100%;height:100%;color:#fff;text-decoration:none}' +
+      /* Declared boxes, so nothing reflows as stills arrive. hqdefault is 4:3
+         with bars baked in; cover crops it back to the frame it was shot in. */
+      '.vshot{position:relative;width:100%;height:100%}' +
       '.vthumb{display:block;width:100%;height:100%;object-fit:cover}' +
-
-      /* YouTube's own shape, in neutral gray rather than its red — this is a
-         play control, not a YouTube badge, and the widget does not claim to
-         be them. */
-      '.vplay{position:absolute;left:50%;top:50%;width:48px;height:34px;' +
-        'margin:-17px 0 0 -24px;border-radius:8px;background:rgba(0,0,0,.62);' +
+      '.vhero .vthumb{transition:transform .6s cubic-bezier(.16,1,.3,1)}' +
+      '.vhero:hover .vthumb{transform:scale(1.03)}' +
+      '.vcap{position:absolute;left:0;right:0;bottom:0;padding:48px 22px 18px;' +
+        'background:linear-gradient(180deg,transparent,rgba(0,0,0,.78))}' +
+      '.vtitle{font-size:clamp(16px,2.4vw,22px);font-weight:700;line-height:1.25;' +
+        'display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;' +
+        'text-shadow:0 1px 12px rgba(0,0,0,.4)}' +
+      '.vdate{margin-top:6px;font-size:13px;opacity:.82}' +
+      /* The play control, round, in the ministry's color. */
+      '.vplay{position:absolute;left:50%;top:50%;width:68px;height:68px;margin:-34px 0 0 -34px;' +
+        'border-radius:50%;background:var(--prog);box-shadow:0 8px 28px -6px var(--glow-p);' +
+        'transition:transform .25s ease}' +
+      '.vplay:after{content:"";position:absolute;left:27px;top:22px;border-style:solid;' +
+        'border-width:12px 0 12px 19px;border-color:transparent transparent transparent var(--on-prog)}' +
+      '.vhero:hover .vplay{transform:scale(1.08)}' +
+      '.vplay.sm{width:34px;height:34px;margin:-17px 0 0 -17px;box-shadow:none;opacity:.92}' +
+      '.vplay.sm:after{left:13px;top:10px;border-width:7px 0 7px 11px}' +
+      '.vframe{position:absolute;inset:0;width:100%;height:100%;border:0}' +
+      /* The row: the others, to pick from; the one on the stage is marked. */
+      '.vrow{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}' +
+      '.vcard{display:block;color:inherit;text-decoration:none;border-radius:10px;padding:6px;' +
         'transition:background .2s ease}' +
-      '.vplay:after{content:"";position:absolute;left:19px;top:10px;' +
-        'border-style:solid;border-width:7px 0 7px 11px;' +
-        'border-color:transparent transparent transparent #fff}' +
-      '.vcard:hover .vplay{background:rgba(0,0,0,.82)}' +
+      '.vcard:hover{background:var(--panel)}' +
+      '.vcard.is-on{background:var(--faint-p)}' +
+      '.vmini{position:relative;aspect-ratio:16/9;border-radius:8px;overflow:hidden;background:var(--track)}' +
+      '.vctitle{margin-top:7px;font-size:13px;font-weight:600;line-height:1.3;' +
+        'display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}' +
 
-      '.vtitle{margin-top:9px;font-size:15px;font-weight:600;line-height:1.35;' +
-        /* Two lines then ellipsis. Video titles run long, and a card that
-           grows to fit one drags its whole grid row with it. */
-        'display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;' +
-        'overflow:hidden}' +
-      '.vdate{margin-top:4px;font-size:12.5px;color:var(--dim)}' +
-
-      /* The optional rail. Outlined rather than filled, and in the ministry's
-         color — unlike the cards above it. A button IS the ministry speaking
-         ("watch more of ours"), where a thumbnail is somebody's video. */
-      '.vlinks{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}' +
-      '.vlink{display:inline-block;padding:9px 16px;border-radius:999px;' +
-        'border:1.5px solid var(--faint-p);color:var(--fg);font-size:13.5px;' +
-        'font-weight:600;text-decoration:none;line-height:1.2;' +
-        'transition:border-color .2s ease,background .2s ease}' +
-      '.vlink:hover{border-color:var(--prog);background:var(--faint-p)}' +
+      /* The rail: real buttons. The first is filled in the ministry's color,
+         the rest outlined; each carries an arrow, because each leaves. */
+      '.vlinks{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}' +
+      '.vlink{display:inline-flex;align-items:center;gap:10px;padding:12px 20px;border-radius:999px;' +
+        'border:1.5px solid var(--prog);color:var(--fg);font-size:14px;font-weight:650;' +
+        'text-decoration:none;line-height:1.2;transition:background .2s ease,transform .2s ease,box-shadow .2s ease}' +
+      '.vlink:hover{background:var(--faint-p);transform:translateY(-1px)}' +
+      '.vlink.is-first{background:var(--prog);color:var(--on-prog);box-shadow:0 8px 22px -10px var(--glow-p)}' +
+      '.vlink.is-first:hover{background:var(--prog);box-shadow:0 10px 26px -8px var(--glow-p)}' +
+      '.varrow{font-size:15px;line-height:1}' +
 
       '.foot{margin-top:20px;padding-top:12px;border-top:1px solid var(--line);' +
         'font-size:12px;color:var(--dim)}' +
@@ -577,7 +585,8 @@ ${COLOUR_JS}
         '.gfill:after,.rfill:after,.dfill:after{animation:none;display:none}' +
         '.dot.in_progress,.sdot.in_progress,.nline,.vnow,.now,.detail{animation:none}' +
         '.gcard:hover{transform:none}' +
-        '.vplay,.vlink{transition:none}}';
+        '.vplay,.vlink,.vcard,.vhero .vthumb{transition:none}' +
+        '.vhero:hover .vthumb,.vhero:hover .vplay,.vlink:hover{transform:none}}';
   }
 
   /* ---------- count-up ---------- */
@@ -1145,71 +1154,112 @@ ${COLOUR_JS}
     return wrap;
   }
 
-  /* ---------- videos ----------
+  /* A SHOWCASE, NOT A LIST (Chase, 2026-09-28: "it looks more like a list of
+     information than a presented file"). The newest video is the stage —
+     full width, its title over the picture, a play button in the ministry's
+     color — and the rest sit beneath it as a row to pick from.
 
-     THE ONE WIDGET THAT IS NOT DRESSED IN THE MINISTRY'S COLORS, on purpose.
-     Everything else here is Thauma's design applied to Thauma's data. A video
-     is somebody else's artwork with somebody else's title on it, and painting
-     an accent gradient over a YouTube thumbnail makes it look like neither.
-     So: the picture, the title, the date, and nothing else. It reads as a
-     video shelf on the host's own site, which is what it is.
+     IT PLAYS HERE. Pressing play swaps the still for YouTube's player
+     (youtube-nocookie.com, the privacy-enhanced host), so nothing is loaded
+     from YouTube until somebody asks to watch. Picking a video underneath
+     plays it on the stage. Every one is still a real link to YouTube, so a
+     new tab, a middle click or a page that blocks frames still gets there.
 
-     IT LINKS OUT RATHER THAN PLAYING IN PLACE. Three players is three
-     third-party frames loading on somebody's page before a visitor has asked
-     for any of them — slow, and it hands YouTube a record of the visit whether
-     or not anybody watches. A thumbnail costs one image. Playing inline is a
-     small change if it is wanted; this is the default that does not surprise
-     anyone. */
+     (No backticks below WIDGET_JS: the whole script is a template literal.) */
   function videoCards(rows, lang) {
-    var usable = (rows || []).filter(function (v) { return v && v.id && v.title; });
+    var usable = (rows || []).filter(function (v) {
+      return v && v.id && v.title && /^[A-Za-z0-9_-]{6,20}$/.test(String(v.id));
+    });
     if (!usable.length) return null;
 
-    var wrap = el('div', 'vids');
-    usable.forEach(function (v) {
-      var card = el('a', 'vcard');
-      card.href = v.url || ('https://www.youtube.com/watch?v=' + v.id);
-      card.target = '_blank';
-      card.rel = 'noopener noreferrer';
-      /* The title is already the visible text, so the label adds only what a
-         screen reader cannot see: that this leaves the page. */
-      card.setAttribute('aria-label', v.title + ' — ' + w(lang, 'watch'));
+    var wrap = el('div', 'vshow');
+    var stage = el('div', 'vstage');
+    wrap.appendChild(stage);
 
-      var shot = el('div', 'vshot');
+    function still(v) {
       var img = document.createElement('img');
       img.className = 'vthumb';
       img.src = v.thumbnail_url || ('https://i.ytimg.com/vi/' + v.id + '/hqdefault.jpg');
-      /* Empty, not the title: the title is read out immediately below, and a
-         screen reader announcing it twice is worse than not describing a
-         decorative still. */
       img.alt = '';
       img.loading = 'lazy';
       img.width = 480; img.height = 360;
-      shot.appendChild(img);
+      return img;
+    }
+    function link(v, cls) {
+      var a = el('a', cls);
+      a.href = v.url || ('https://www.youtube.com/watch?v=' + v.id);
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      return a;
+    }
+    function play(v) {
+      var f = document.createElement('iframe');
+      f.className = 'vframe';
+      f.src = 'https://www.youtube-nocookie.com/embed/' + v.id + '?autoplay=1&rel=0&modestbranding=1';
+      f.title = v.title;
+      f.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+      f.setAttribute('allowfullscreen', '');
+      stage.innerHTML = '';
+      stage.appendChild(f);
+      stage.classList.add('is-playing');
+    }
+    function show(v, autoplay) {
+      stage.classList.remove('is-playing');
+      stage.innerHTML = '';
+      if (autoplay) return play(v);
+      var a = link(v, 'vhero');
+      a.setAttribute('aria-label', w(lang, 'play') + ': ' + v.title);
+      var shot = el('div', 'vshot');
+      shot.appendChild(still(v));
       shot.appendChild(el('span', 'vplay'));
-      card.appendChild(shot);
+      var cap = el('div', 'vcap');
+      cap.appendChild(el('div', 'vtitle', v.title));
+      if (v.published_at) cap.appendChild(el('div', 'vdate', fullDate(v.published_at, lang)));
+      shot.appendChild(cap);
+      a.appendChild(shot);
+      a.addEventListener('click', function (e) {
+        if (e.button > 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        if (e.preventDefault) e.preventDefault();
+        play(v);
+      });
+      stage.appendChild(a);
+    }
+    show(usable[0], false);
 
-      card.appendChild(el('div', 'vtitle', v.title));
-      if (v.published_at) {
-        card.appendChild(el('div', 'vdate', fullDate(v.published_at, lang)));
-      }
-      wrap.appendChild(card);
-    });
+    if (usable.length > 1) {
+      var row = el('div', 'vrow');
+      usable.forEach(function (v, i) {
+        var a = link(v, 'vcard' + (i === 0 ? ' is-on' : ''));
+        a.setAttribute('aria-label', w(lang, 'play') + ': ' + v.title);
+        var shot = el('div', 'vmini');
+        shot.appendChild(still(v));
+        shot.appendChild(el('span', 'vplay sm'));
+        a.appendChild(shot);
+        a.appendChild(el('div', 'vctitle', v.title));
+        a.addEventListener('click', function (e) {
+          if (e.button > 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+          if (e.preventDefault) e.preventDefault();
+          [].forEach.call(row.children, function (c) { c.classList.toggle('is-on', c === a); });
+          show(v, true);
+          if (stage.scrollIntoView) stage.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        });
+        row.appendChild(a);
+      });
+      wrap.appendChild(row);
+    }
     return wrap;
   }
 
-  /* The optional rail underneath — the channel, a newsletter, a giving page.
-     chaseroush.com has had one of these under its player for a year ("View
-     All Updates on YouTube"), and it is the most-used thing in that section:
-     somebody who watched one video wants somewhere to go next.
+  /* The rail underneath — the channel, a newsletter, a giving page — as
+     real buttons (Chase, 2026-09-28): the first filled in the ministry's
+     color, the rest outlined, each with an arrow, because each leaves for
+     somewhere else. chaseroush.com has had one under its player for a year,
+     and it is the most-used thing in that section.
 
      THE SCHEME IS CHECKED AGAIN HERE. The console refuses anything but http
      and https before storing it, and this refuses it again before it becomes
      an href — because a row could predate that check, and a javascript: URL
-     in a link on somebody else's website is script execution on their page.
-     Two cheap checks for something that only has to be missed once.
-
-     (No backticks in this file below WIDGET_JS: the whole script is a raw
-     template literal, and one would end it here.) */
+     in a link on somebody else's website is script execution on their page. */
   function linkRail(links) {
     var usable = (links || []).filter(function (l) {
       return l && l.label && /^https?:\/\//i.test(String(l.url || ''));
@@ -1217,8 +1267,10 @@ ${COLOUR_JS}
     if (!usable.length) return null;
 
     var rail = el('div', 'vlinks');
-    usable.forEach(function (l) {
-      var a = el('a', 'vlink', l.label);
+    usable.forEach(function (l, i) {
+      var a = el('a', 'vlink' + (i === 0 ? ' is-first' : ''));
+      a.appendChild(el('span', null, l.label));
+      a.appendChild(el('span', 'varrow', '↗'));
       a.href = l.url;
       a.target = '_blank';
       a.rel = 'noopener noreferrer';
