@@ -282,6 +282,8 @@ await check("every real query converts with its documented params", async () => 
     kind: "roadmap", accent: "#E4572E", accent2: null, turn: 120, theme: null,
     // a contact reason in other languages (0041)
     labels: null,
+    // sharing a resource with a group (0043)
+    audience: "team", can_edit: 0,
     // the language catalog
     code: "sl", native_name: "slovenščina",
     // staff profiles

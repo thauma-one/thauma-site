@@ -436,6 +436,59 @@ await check("…and drops them for anybody else, an administrator viewing as the
   } finally { EXTRA = {}; }
 });
 
+/* Sharing a resource (Chase, 2026-09-28): the owner alone shares; everyone
+   is for administrators; a "Can edit" share may save but stays the owner's. */
+const argsOf = (db, name) => (db.calls.find((c) => c.name === name) || {}).args;
+
+await check("only a resource's owner may share it", async () => {
+  EXTRA = { resource_owner: [{ id: "r_x", owner_user_id: "u_other", partner_id: null }] };
+  try {
+    const res = await staffData.fetch(post("/api/staff-data", { kind: "share", resource_id: "r_x", audience: "team" }), env(makeDb()));
+    eq(res.status, 403, "a non-owner shared");
+  } finally { EXTRA = {}; }
+});
+
+await check("the owner shares with their team; only an administrator with everyone", async () => {
+  EXTRA = { resource_owner: [{ id: "r_m", owner_user_id: "u_mira", partner_id: null }] };
+  try {
+    const db = makeDb();
+    const res = await staffData.fetch(post("/api/staff-data", { kind: "share", resource_id: "r_m", audience: "team" }), env(db));
+    eq(res.status, 200, "team share");
+    const a = argsOf(db, "resource_group_share_set");
+    assert(a && a.includes("p_mira") && a.includes("team") && a.includes(0), `stored ${JSON.stringify(a)}`);
+    const res2 = await staffData.fetch(post("/api/staff-data", { kind: "share", resource_id: "r_m", audience: "everyone" }), env(makeDb()));
+    eq(res2.status, 403, "a non-administrator shared with everyone");
+  } finally { EXTRA = {}; }
+});
+
+await check("someone it was shared with as Can edit may save it, and it stays the owner's", async () => {
+  EXTRA = { resource_owner: [{ id: "r_x", owner_user_id: "u_other", partner_id: null }],
+            resource_can_edit_shared: [{ ok: 1 }] };
+  try {
+    const db = makeDb();
+    const res = await staffData.fetch(post("/api/staff-data", { kind: "resource", id: "r_x", title: "Edited" }), env(db));
+    eq(res.status, 200, "the editor's save");
+    const a = argsOf(db, "resource_upsert");
+    /* Saved under the OWNER's id — Mira appears only as created_by. */
+    const sql = (await import("../src/lib/db.js")).QUERIES.resource_upsert;
+    const names = [...sql.matchAll(/:([a-z_]+)/g)].map((m) => m[1]);
+    eq(a[names.indexOf("owner_user_id")], "u_other", "whose it is");
+    EXTRA.resource_can_edit_shared = [];
+    const res2 = await staffData.fetch(post("/api/staff-data", { kind: "resource", id: "r_x", title: "Edited" }), env(makeDb()));
+    eq(res2.status, 403, "saved without Can edit");
+  } finally { EXTRA = {}; }
+});
+
+await check("people are found only after two letters", async () => {
+  const db = makeDb();
+  const one = await (await staffData.fetch(get("/api/staff-data?people=a"), env(db))).json();
+  eq(one.people, [], "one letter");
+  assert(!db.calls.some((c) => c.name === "people_find"), "searched on one letter");
+  const db2 = makeDb();
+  await staffData.fetch(get("/api/staff-data?people=an"), env(db2));
+  assert(db2.calls.some((c) => c.name === "people_find"), "two letters did not search");
+});
+
 /* ----------------------- and the same while acting --------------------- */
 
 for (const [path, handler] of ENDPOINTS) {

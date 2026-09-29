@@ -9,8 +9,11 @@ staffHeading: Internal <b>resources</b>
    Thauma, personal and shared sat side by side in three narrow columns
    instead of stacking, with the cards crushed inside them. Each shelf
    brings its own `.cards` grid; this is just the thing they stack in. -#}
+{#- Add, top right, where Directory has its own (Chase, 2026-09-28). -#}
+<div class="sw-top">
+  <button class="ghost-btn" id="addResourceBtn" type="button" data-i18n="res.add">+ Add resource</button>
+</div>
 <div id="resourceList"><p class="empty" data-i18n="common.loading">Loading&hellip;</p></div>
-<p class="row-actions"><button class="ghost-btn" id="addResourceBtn" type="button" data-i18n="res.add">+ Add resource</button></p>
 
 {#- A DIALOG, NOT A PANEL AT THE BOTTOM OF THE PAGE.
 
@@ -50,5 +53,29 @@ staffHeading: Internal <b>resources</b>
       <button class="solid-btn" type="submit" data-i18n="res.save">Save resource</button>
     </div>
   </form>
+</div>
+{#- SHARING ONE RESOURCE (Chase, 2026-09-28), instead of the browser's own
+   box asking for an email address. Only its owner opens this. Groups first —
+   the owner's ministry team, and for an administrator everyone at Thauma —
+   then people, found by typing two letters of a name, never a list of
+   everybody. Each is "Can view" unless the owner picks "Can edit"; nobody
+   but the owner may delete or share it. Every change saves as it is made,
+   like Access on a person. -#}
+<div class="dlg-back" id="shareBack" hidden>
+  <div class="dlg share-dlg" role="dialog" aria-modal="true" aria-labelledby="shareTitle">
+    <h3 id="shareTitle"></h3>
+    <div class="share-groups" id="shareGroups"></div>
+    <label class="fld share-findrow">
+      <span data-i18n="res.people">People</span>
+      <input type="search" id="shareFind" autocomplete="off" maxlength="60"
+             data-i18n-attr="placeholder:res.find" placeholder="Type a name">
+    </label>
+    <div class="share-found" id="shareFound"></div>
+    <div class="share-people" id="sharePeople"></div>
+    <div class="dlg-actions">
+      <span class="hint" data-i18n="adm.savesNow">Changes here save as you make them.</span>
+      <button class="solid-btn" type="button" id="shareClose" data-i18n="res.done">Done</button>
+    </div>
+  </div>
 </div>
 <p class="hint" id="saveStatus"></p>

@@ -2366,3 +2366,27 @@ html.console-menu-open{overflow:hidden}
   .act-code{display:none}
   .act-e{gap:12px;padding:12px 14px}
 }
+
+/* ---- SHARING ONE RESOURCE (Resources, 2026-09-28) ----
+   Groups as switches, then a box that finds people by name, then who has it,
+   each with Can view / Can edit. Saves as it goes; Done closes. */
+.share-dlg{max-width:560px;width:100%;display:flex;flex-direction:column;gap:14px}
+.share-dlg h3{margin:0}
+.share-groups{display:flex;flex-direction:column;gap:12px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+.share-row{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:38px}
+.share-dlg .share-can{height:36px;font-size:13px;padding:0 10px;flex:none;width:auto}
+.share-findrow{display:flex;flex-direction:column;gap:6px}
+.share-found{display:flex;flex-direction:column;gap:6px}
+.share-found:empty{display:none}
+.share-hit{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;text-align:left;
+  background:var(--bg2,#0b1119);border:1px solid var(--line);border-radius:var(--radius);
+  padding:9px 12px;color:var(--text);cursor:pointer;font:inherit}
+.share-hit:hover,.share-hit:focus-visible{border-color:var(--voice-tech)}
+.share-sub{font-size:12px;color:var(--dim)}
+.share-people:empty{display:none}
+.share-person{border-top:1px solid var(--line);padding-top:8px}
+.share-name{flex:1 1 auto;min-width:0;overflow-wrap:anywhere}
+.share-x{background:none;border:0;color:var(--dim);font-size:20px;line-height:1;cursor:pointer;padding:4px 6px}
+.share-x:hover{color:var(--crit)}
+.share-dlg .dlg-actions{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.share-dlg .dlg-actions .hint{margin:0}

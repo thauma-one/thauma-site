@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "4ea51e994369c684";
+export const SOURCE_DIGEST = "15c05188448d3d64";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -589,6 +589,17 @@ JOIN partners p ON p.id = pu.partner_id
 WHERE u.email = :email
   AND u.status = 'active'
 ORDER BY p.display_name;`,
+  people_find: `SELECT u.id AS user_id, u.name,
+       (SELECT GROUP_CONCAT(p.display_name, ', ')
+          FROM partner_users pu JOIN partners p ON p.id = pu.partner_id
+         WHERE pu.user_id = u.id) AS ministries
+  FROM users u
+ WHERE u.status = 'active'
+   AND u.id <> :user_id
+   AND COALESCE(u.protected, 0) = 0
+   AND (u.name LIKE '%' || :q || '%' OR u.email LIKE :q || '%')
+ ORDER BY u.name COLLATE NOCASE
+ LIMIT 8;`,
   prayer_delete: `DELETE FROM prayer WHERE id = :id AND partner_id = :partner_id;`,
   prayer_for_staff: `SELECT p.id, p.is_public, p.is_answered, p.answered_on, p.sort_order,
        p.created_at, p.updated_at
@@ -751,20 +762,34 @@ WHERE t.partner_id = :partner_id
  ORDER BY v.published_at DESC
  LIMIT COALESCE(
    (SELECT max_items FROM video_sources WHERE partner_id IS :partner_id), 0);`,
-  resource_can_see: `SELECT 1 AS ok
-  FROM resources r
- WHERE r.id = :id
-   AND (r.owner_user_id = :user_id
-        OR r.owner_user_id IS NULL
-        OR EXISTS (SELECT 1 FROM resource_shares sh
-                    WHERE sh.resource_id = r.id AND sh.user_id = :user_id));`,
+  resource_can_edit_shared: `SELECT 1 AS ok FROM resource_shares
+ WHERE resource_id = :id AND user_id = :user_id AND can_edit = 1
+UNION ALL
+SELECT 1 FROM resource_group_shares g
+ WHERE g.resource_id = :id AND g.can_edit = 1
+   AND (g.audience = 'everyone'
+        OR EXISTS (SELECT 1 FROM partner_users pu
+                    WHERE pu.partner_id = g.partner_id AND pu.user_id = :user_id))
+LIMIT 1;`,
   resource_delete: `DELETE FROM resources WHERE id = :id AND partner_id IS :partner_id;`,
+  resource_group_share_remove: `DELETE FROM resource_group_shares WHERE resource_id = :resource_id AND audience = :audience;`,
+  resource_group_share_set: `INSERT INTO resource_group_shares (resource_id, audience, partner_id, can_edit, shared_by, shared_at)
+VALUES (:resource_id, :audience, :partner_id, :can_edit, :shared_by, :now)
+ON CONFLICT(resource_id, audience) DO UPDATE SET
+  can_edit = excluded.can_edit, partner_id = excluded.partner_id;`,
+  resource_group_shares_for: `SELECT g.audience, g.partner_id, p.display_name AS partner_name, g.can_edit, g.shared_at
+  FROM resource_group_shares g
+  LEFT JOIN partners p ON p.id = g.partner_id
+ WHERE g.resource_id = :resource_id
+ ORDER BY g.audience;`,
   resource_owner: `SELECT id, owner_user_id, partner_id FROM resources WHERE id = :id;`,
-  resource_share_add: `INSERT OR IGNORE INTO resource_shares (resource_id, user_id, shared_by, shared_at)
-VALUES (:resource_id, :user_id, :shared_by, :now);`,
+  resource_share_add: `INSERT INTO resource_shares (resource_id, user_id, shared_by, shared_at, can_edit)
+VALUES (:resource_id, :user_id, :shared_by, :now, :can_edit)
+ON CONFLICT(resource_id, user_id) DO UPDATE SET can_edit = excluded.can_edit;`,
   resource_share_remove: `DELETE FROM resource_shares WHERE resource_id = :resource_id AND user_id = :user_id;`,
   resource_shared_with: `SELECT sh.user_id, u.name, u.email, sh.shared_at,
-       (SELECT b.name FROM users b WHERE b.id = sh.shared_by) AS shared_by_name
+       (SELECT b.name FROM users b WHERE b.id = sh.shared_by) AS shared_by_name,
+       sh.can_edit
   FROM resource_shares sh
   JOIN users u ON u.id = sh.user_id
  WHERE sh.resource_id = :resource_id
@@ -802,11 +827,22 @@ UNION ALL
 
 SELECT r.id, r.partner_id, r.title, r.description, r.link, r.photo, r.visibility,
        r.owner_user_id, r.created_at, r.updated_at,
-       'shared' AS shelf, 0 AS can_edit,
-       (SELECT u.name FROM users u WHERE u.id = sh.shared_by) AS shared_by_name
-  FROM resource_shares sh
-  JOIN resources r ON r.id = sh.resource_id
- WHERE sh.user_id = :user_id
+       'shared' AS shelf, s.can_edit,
+       (SELECT u.name FROM users u WHERE u.id = r.owner_user_id) AS shared_by_name
+  FROM resources r
+  JOIN (SELECT resource_id, MAX(can_edit) AS can_edit FROM (
+          SELECT sh.resource_id, sh.can_edit FROM resource_shares sh
+           WHERE sh.user_id = :user_id
+          UNION ALL
+          SELECT g.resource_id, g.can_edit FROM resource_group_shares g
+           WHERE g.audience = 'everyone'
+          UNION ALL
+          SELECT g.resource_id, g.can_edit FROM resource_group_shares g
+            JOIN partner_users pu ON pu.partner_id = g.partner_id AND pu.user_id = :user_id
+           WHERE g.audience = 'team')
+        GROUP BY resource_id) s ON s.resource_id = r.id
+ WHERE r.owner_user_id IS NOT NULL
+   AND r.owner_user_id <> :user_id
 
 ORDER BY shelf, title COLLATE NOCASE;`,
   sender_addresses_for_partner: `SELECT id, partner_id, address, label, can_receive, created_at

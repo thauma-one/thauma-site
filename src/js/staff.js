@@ -471,16 +471,23 @@
 
                 return '<div class="card">' +
                   '<div class="card-actions">' +
+                    /* Edit for whoever may change it — the owner, an
+                       administrator on the organization's shelf, or someone
+                       it was shared with as "Can edit". Delete and Share are
+                       the owner's alone (Chase, 2026-09-28); the endpoint
+                       refuses anybody else either way. */
                     (r.can_edit
                       ? '<button type="button" data-edit-resource="' + i + '">' +
-                          esc(tr('common.edit')) + '</button>' +
-                        '<button type="button" class="del" data-delete-resource="' + i + '">' +
+                          esc(tr('common.edit')) + '</button>'
+                      : '') +
+                    (r.can_edit && sh.key !== 'shared'
+                      ? '<button type="button" class="del" data-delete-resource="' + i + '">' +
                           esc(tr('common.delete')) + '</button>'
                       : '') +
-                    /* Sharing needs only that you can SEE it — resharing is
-                       allowed, so this is offered on every card. */
-                    '<button type="button" data-share-resource="' + i + '">' +
-                      esc(tr('res.share')) + '</button>' +
+                    (sh.key === 'mine'
+                      ? '<button type="button" data-share-resource="' + i + '">' +
+                          esc(tr('res.share')) + '</button>'
+                      : '') +
                   '</div>' +
                   (r.photo ? '<div class="photo"><img src="' + esc(r.photo) +
                              '" alt="" loading="lazy"></div>' : '') +
@@ -588,37 +595,153 @@
     }
   }
 
-  /* PASSING A RESOURCE TO A COLLEAGUE.
+  /* SHARING ONE RESOURCE (Chase, 2026-09-28) — the dialog in resources.njk.
 
-     Offered on every card, because resharing is allowed — these are internal
-     Thauma documents among colleagues rather than material where onward
-     sharing betrays whoever wrote it. The endpoint still checks that you can
-     SEE the thing you are passing on.
+     Only the owner is offered Share (the endpoint refuses anybody else).
+     Groups are switches: the owner's ministry team, and everyone at Thauma
+     for an administrator. People are found by typing two letters of a name
+     (people_find: names and ministries, never a list of everybody, never an
+     address to type). Each share is "Can view" unless the owner picks "Can
+     edit". Every change saves the moment it is made, and the dialog redraws
+     from what the server answered. */
+  var share = { r: null, data: null, findTimer: null, findSeq: 0 };
 
-     A prompt rather than a picker, for now. The list of colleagues is not on
-     this page and fetching one to fill a dropdown is a second endpoint for a
-     feature nobody has used yet; the address is what somebody knows anyway. */
-  async function shareResource(r) {
-    if (!r) return;
-    var who = window.prompt(fill('res.sharePrompt', { title: r.title }), '');
-    if (!who) return;
+  function shareSelect(attrs, canEdit) {
+    return '<select class="share-can" ' + attrs + ' aria-label="' + esc(tr('res.canEdit')) + '">' +
+      '<option value="0"' + (canEdit ? '' : ' selected') + '>' + esc(tr('res.canView')) + '</option>' +
+      '<option value="1"' + (canEdit ? ' selected' : '') + '>' + esc(tr('res.canEdit')) + '</option>' +
+    '</select>';
+  }
 
+  function renderShare() {
+    var d = share.data;
+    if (!d) return;
+    var group = function (audience, label) {
+      var g = (d.groups || []).filter(function (x) { return x.audience === audience; })[0];
+      return '<div class="share-row">' +
+        '<button type="button" class="switch small" role="switch" data-share-group="' + audience + '"' +
+          ' aria-checked="' + (g ? 'true' : 'false') + '">' +
+          '<span class="switch-track"><span class="switch-state">' + (g ? 'On' : 'Off') +
+          '</span><span class="switch-knob"></span></span>' +
+          '<span class="switch-label">' + esc(label) + '</span></button>' +
+        (g ? shareSelect('data-share-group-can="' + audience + '"', g.can_edit) : '') +
+      '</div>';
+    };
+    $('shareGroups').innerHTML =
+      group('team', fill('res.shareTeam', { name: d.team.name })) +
+      (d.may_everyone ? group('everyone', tr('res.shareEveryone')) : '');
+    $('sharePeople').innerHTML = (d.people || []).map(function (p) {
+      return '<div class="share-row share-person">' +
+        '<span class="share-name">' + esc(p.name || p.email) + '</span>' +
+        shareSelect('data-share-person-can="' + esc(p.user_id) + '"', p.can_edit) +
+        '<button type="button" class="share-x" data-share-remove="' + esc(p.user_id) + '"' +
+          ' aria-label="' + esc(fill('res.unshare', { who: p.name || p.email })) + '">&times;</button>' +
+      '</div>';
+    }).join('');
+  }
+
+  async function shareSend(payload) {
     try {
       var res = await fetch(STAFF_API, {
         method: 'POST', credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ kind: 'share', resource_id: r.id, email: who.trim() }),
+        body: JSON.stringify(Object.assign({ kind: 'share', resource_id: share.r.id }, payload)),
       });
       var body = await res.json().catch(function () { return {}; });
       if (!res.ok) throw new Error(body.error || tr('common.saveFailed'));
-      if (body.resources) state.resources = body.resources;
-      renderCards();
-      if (window.StaffToast) {
-        window.StaffToast(fill('res.sharedWith', { who: who.trim() }), 'ok');
-      }
+      share.data = body;
+      if (body.resources) { state.resources = body.resources; renderCards(); }
+      renderShare();
     } catch (e) {
-      setStatus(e.message, true);
+      if (window.StaffToast) window.StaffToast(e.message, 'err');
     }
+  }
+
+  async function shareResource(r) {
+    if (!r) return;
+    share.r = r;
+    share.data = null;
+    $('shareTitle').textContent = fill('res.shareTitle', { title: r.title });
+    $('shareGroups').innerHTML = '<p class="hint">' + esc(tr('common.loading')) + '</p>';
+    $('sharePeople').innerHTML = '';
+    $('shareFound').innerHTML = '';
+    $('shareFind').value = '';
+    $('shareBack').hidden = false;
+    void $('shareBack').offsetHeight;
+    $('shareBack').classList.add('in');
+    try {
+      var res = await fetch(STAFF_API + '?shares=' + encodeURIComponent(r.id), { credentials: 'same-origin' });
+      var body = await res.json().catch(function () { return {}; });
+      if (!res.ok) throw new Error(body.error || tr('common.saveFailed'));
+      share.data = body;
+      renderShare();
+      $('shareFind').focus();
+    } catch (e) {
+      $('shareGroups').innerHTML = '<p class="hint">' + esc(e.message) + '</p>';
+    }
+  }
+
+  function closeShare() { $('shareBack').classList.remove('in'); $('shareBack').hidden = true; share.r = null; }
+
+  /* Two letters, then ask; the newest answer wins, so a slow reply to "an"
+     never overwrites the answer to "ana". */
+  function findPeople() {
+    var q = $('shareFind').value.trim();
+    clearTimeout(share.findTimer);
+    if (q.length < 2) { $('shareFound').innerHTML = ''; return; }
+    share.findTimer = setTimeout(async function () {
+      var seq = ++share.findSeq;
+      var res = await fetch(STAFF_API + '?people=' + encodeURIComponent(q), { credentials: 'same-origin' });
+      var body = await res.json().catch(function () { return {}; });
+      if (seq !== share.findSeq) return;
+      var have = {};
+      ((share.data && share.data.people) || []).forEach(function (p) { have[p.user_id] = true; });
+      var found = (body.people || []).filter(function (p) { return !have[p.user_id]; });
+      /* Everyone it found already has it: nothing to offer, and "nobody by
+         that name" would not be true. */
+      $('shareFound').innerHTML = !found.length && (body.people || []).length ? ''
+        : found.length
+        ? found.map(function (p) {
+            return '<button type="button" class="share-hit" data-share-add="' + esc(p.user_id) + '">' +
+              '<span class="share-name">' + esc(p.name) + '</span>' +
+              (p.ministries ? '<span class="share-sub">' + esc(p.ministries) + '</span>' : '') +
+            '</button>';
+          }).join('')
+        : '<p class="hint">' + esc(tr('res.noMatch')) + '</p>';
+    }, 180);
+  }
+
+  function wireShare() {
+    if (!$('shareBack') || wireShare.done) return;
+    wireShare.done = true;
+    var back = $('shareBack');
+    back.addEventListener('click', function (e) {
+      if (e.target === back) return closeShare();
+      var sw = e.target.closest('[data-share-group]');
+      if (sw) {
+        var on = sw.getAttribute('aria-checked') === 'true';
+        return shareSend({ audience: sw.getAttribute('data-share-group'), remove: on });
+      }
+      var add = e.target.closest('[data-share-add]');
+      if (add) {
+        $('shareFind').value = '';
+        $('shareFound').innerHTML = '';
+        return shareSend({ user_id: add.getAttribute('data-share-add') });
+      }
+      var x = e.target.closest('[data-share-remove]');
+      if (x) return shareSend({ user_id: x.getAttribute('data-share-remove'), remove: true });
+    });
+    back.addEventListener('change', function (e) {
+      var g = e.target.closest('[data-share-group-can]');
+      if (g) return shareSend({ audience: g.getAttribute('data-share-group-can'), can_edit: g.value === '1' });
+      var p = e.target.closest('[data-share-person-can]');
+      if (p) return shareSend({ user_id: p.getAttribute('data-share-person-can'), can_edit: p.value === '1' });
+    });
+    $('shareFind').addEventListener('input', findPeople);
+    $('shareClose').addEventListener('click', closeShare);
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !back.hidden) closeShare();
+    });
   }
 
   /* Flip an organization resource between "all staff" and "administrators
@@ -742,6 +865,7 @@
   }
 
   function wireResourceForm() {
+    wireShare();
     var rForm = $('resourceForm');
     var back = $('resourceBack');
     if (!rForm || !back) return;
@@ -820,8 +944,12 @@
       if (e.target.dataset.editResource !== undefined) open(e.target.dataset.editResource);
       if (e.target.dataset.deleteResource !== undefined) {
         var r = state.resources[Number(e.target.dataset.deleteResource)];
-        if (r && confirm(fill('res.confirmDelete', { title: r.title }))) {
-          deleteItem('resource', r.id);
+        /* The console's own dialog, in the console's language, not the
+           browser's English confirm. */
+        if (r && window.StaffConfirm) {
+          window.StaffConfirm({ title: fill('res.confirmDelete', { title: r.title }),
+                                confirm: tr('common.delete'), cancel: tr('common.cancel'), danger: true })
+            .then(function (yes) { if (yes) deleteItem('resource', r.id); });
         }
       }
       if (e.target.dataset.shareResource !== undefined) {

@@ -765,7 +765,7 @@ def t_editability_is_ownership_and_cannot_be_claimed():
 def t_a_shared_resource_is_readable_but_never_editable():
     db, _ = _resource_world(fresh())
     sql, names = _query("resource_share_add")
-    a = {"resource_id": "r_a", "user_id": "u_b", "shared_by": "u_a", "now": NOW}
+    a = {"resource_id": "r_a", "user_id": "u_b", "shared_by": "u_a", "now": NOW, "can_edit": 0}
     db.execute(sql, [a[n] for n in names])
 
     seen = _shelves(db, "u_b")
@@ -774,15 +774,15 @@ def t_a_shared_resource_is_readable_but_never_editable():
 
 
 def t_resharing_is_allowed_and_records_who_passed_it_on():
-    """Chase's call: these are internal documents among colleagues. So the test
-    is 'can you see it', and shared_by keeps the trail for 'how did I get
-    this'."""
+    """The DATABASE keeps the trail: shared_by answers 'how did I get this'.
+    Who may share is the endpoint's rule — since 2026-09-28 only the owner
+    (staff-data.js) — so the table itself still records any sharer."""
     db, _ = _resource_world(fresh())
     db.execute("INSERT INTO users (id,email,name,global_role,status,created_at)"
                " VALUES ('u_c','c@example.invalid','C','staff','active',?)", (NOW,))
     add, names = _query("resource_share_add")
     for user, by in [("u_b", "u_a"), ("u_c", "u_b")]:      # A -> B, then B -> C
-        a = {"resource_id": "r_a", "user_id": user, "shared_by": by, "now": NOW}
+        a = {"resource_id": "r_a", "user_id": user, "shared_by": by, "now": NOW, "can_edit": 0}
         db.execute(add, [a[n] for n in names])
 
     seen = _shelves(db, "u_c")
@@ -798,12 +798,80 @@ def t_a_resource_cannot_be_shared_with_its_own_owner():
     rather than de-duplicated at every read."""
     db, _ = _resource_world(fresh())
     add, names = _query("resource_share_add")
-    a = {"resource_id": "r_a", "user_id": "u_a", "shared_by": "u_a", "now": NOW}
+    a = {"resource_id": "r_a", "user_id": "u_a", "shared_by": "u_a", "now": NOW, "can_edit": 0}
     try:
         db.execute(add, [a[n] for n in names])
         raise AssertionError("a resource was shared with its own owner")
     except sqlite3.IntegrityError:
         pass
+
+
+def _group_world():
+    """The resource world, plus two ministries: A and B on p_one, the admin
+    on neither."""
+    db, _ = _resource_world(fresh())
+    for pid in ("p_one", "p_two"):
+        db.execute("INSERT INTO partners (id,slug,display_name,status,created_at,updated_at)"
+                   " VALUES (?,?,?,'active',?,?)", (pid, pid, pid, NOW, NOW))
+    for uid in ("u_a", "u_b"):
+        db.execute("INSERT INTO partner_users (partner_id,user_id,role,granted_at)"
+                   " VALUES ('p_one',?,'assist',?)", (uid, NOW))
+    return db
+
+
+def _group_share(db, audience, partner_id, can_edit=0):
+    sql, names = _query("resource_group_share_set")
+    a = {"resource_id": "r_a", "audience": audience, "partner_id": partner_id,
+         "can_edit": can_edit, "shared_by": "u_a", "now": NOW}
+    db.execute(sql, [a[n] for n in names])
+
+
+def t_a_team_share_reaches_the_team_and_nobody_else():
+    """0043: shared with the owner's ministry team, every member reads it and
+    nobody off the team does."""
+    db = _group_world()
+    _group_share(db, "team", "p_one")
+    assert _shelves(db, "u_b").get("A's notes") == ("shared", 0), _shelves(db, "u_b")
+    assert "A's notes" not in _shelves(db, "u_admin"), "someone off the team saw it"
+    assert _shelves(db, "u_a").get("A's notes") == ("mine", 1), "the owner lost it to 'shared'"
+
+
+def t_everyone_and_can_edit_and_one_row_however_it_arrived():
+    """Shared with everyone AND by name, it is one row, and editable if any
+    share says so."""
+    db = _group_world()
+    _group_share(db, "everyone", None)
+    add, names = _query("resource_share_add")
+    a = {"resource_id": "r_a", "user_id": "u_b", "shared_by": "u_a", "now": NOW, "can_edit": 1}
+    db.execute(add, [a[n] for n in names])
+    rows = [r for r in _shelves(db, "u_b").items() if r[0] == "A's notes"]
+    assert rows == [("A's notes", ("shared", 1))], rows
+    assert _shelves(db, "u_admin").get("A's notes") == ("shared", 0), "everyone did not reach"
+    sql, names = _query("resource_can_edit_shared")
+    ok = lambda u: db.execute(sql, [{"id": "r_a", "user_id": u}[n] for n in names]).fetchone()
+    assert ok("u_b") and not ok("u_admin"), "can_edit_shared is wrong"
+
+
+def t_a_team_share_names_its_team():
+    """'team' needs its ministry; 'everyone' must not carry one."""
+    db = _group_world()
+    for audience, partner in (("team", None), ("everyone", "p_one")):
+        try:
+            _group_share(db, audience, partner)
+            raise AssertionError(f"{audience} with partner {partner} was accepted")
+        except sqlite3.IntegrityError:
+            pass
+
+
+def t_people_find_never_offers_the_asker_or_the_master_account():
+    db = _group_world()
+    db.execute("UPDATE users SET name='Ana Horvat' WHERE id='u_b'")
+    db.execute("UPDATE users SET name='Ana Admin', protected=1 WHERE id='u_admin'")
+    sql, names = _query("people_find")
+    got = [r[1] for r in db.execute(sql, [{"q": "an", "user_id": "u_a"}[n] for n in names])]
+    assert got == ["Ana Horvat"], got
+    got = [r for r in db.execute(sql, [{"q": "ana", "user_id": "u_b"}[n] for n in names])]
+    assert got == [], f"asked by Ana, it offered: {got}"
 
 
 def t_deleting_a_person_takes_their_private_shelf_with_them():
@@ -2252,6 +2320,10 @@ if __name__ == "__main__":
         ("resharing works and records who",              t_resharing_is_allowed_and_records_who_passed_it_on),
         ("cannot share with the owner",                  t_a_resource_cannot_be_shared_with_its_own_owner),
         ("a leaver takes their shelf",                   t_deleting_a_person_takes_their_private_shelf_with_them),
+        ("a team share reaches the team only",           t_a_team_share_reaches_the_team_and_nobody_else),
+        ("everyone + by name is one row, can edit",      t_everyone_and_can_edit_and_one_row_however_it_arrived),
+        ("a team share names its team",                  t_a_team_share_names_its_team),
+        ("people_find skips the asker and master",       t_people_find_never_offers_the_asker_or_the_master_account),
         ("confirming only promotes an invited account", t_confirming_only_ever_promotes_an_invited_account),
         ("the protected account cannot be removed",      t_the_protected_account_cannot_be_removed_or_disabled),
         ("protection applies to that account only",      t_protection_applies_to_that_account_only),

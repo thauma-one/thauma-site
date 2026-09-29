@@ -135,6 +135,22 @@ const str = (v, max) => {
 
 const newId = (p) => p + "_" + crypto.randomUUID().replace(/-/g, "").slice(0, 16);
 
+/** Who has one resource, for its share dialog: the people, the groups, and
+    which groups this person may offer. */
+async function sharesOf(db, rid, partner, isAdmin) {
+  const [people, groups] = await Promise.all([
+    db.query("resource_shared_with", { resource_id: rid }),
+    db.query("resource_group_shares_for", { resource_id: rid }),
+  ]);
+  return {
+    resource_id: rid,
+    people: people.map((p) => ({ ...p, can_edit: !!p.can_edit })),
+    groups: groups.map((g) => ({ ...g, can_edit: !!g.can_edit })),
+    team: { partner_id: partner.id, name: partner.display_name },
+    may_everyone: !!isAdmin,
+  };
+}
+
 export default {
   async fetch(request, env) {
     const { db, user, me, partner, isAdmin, levels, actor, denied } = await context(request, env);
@@ -152,6 +168,22 @@ export default {
     const url = new URL(request.url);
 
     /* ---------------------------------------------------------------- GET */
+    /* TYPE-TO-FIND, for the share dialog: two letters at least, eight
+       answers at most, names and ministries only (people_find). */
+    if (request.method === "GET" && url.searchParams.has("people")) {
+      const q = str(url.searchParams.get("people"), 60);
+      if (q.length < 2) return json({ people: [] });
+      return json({ people: await db.query("people_find", { q, user_id }) });
+    }
+    /* WHO HAS ONE RESOURCE, for its share dialog. The owner's to see. */
+    if (request.method === "GET" && url.searchParams.has("shares")) {
+      const rid = str(url.searchParams.get("shares"), 60);
+      const owner = await db.queryOne("resource_owner", { id: rid });
+      if (!owner || owner.owner_user_id !== user_id) {
+        return json({ error: "Only the person a resource belongs to can share it." }, 403);
+      }
+      return json(await sharesOf(db, rid, partner, isAdmin));
+    }
     if (request.method === "GET") {
       const [contacts, resources] = await Promise.all([
         db.query("directory_for_partner", { partner_id }),
@@ -241,12 +273,19 @@ export default {
            browser said the resource was. An id that already exists must
            belong to whoever is editing it — or to the organization, with an
            administrator asking. */
+        let keepOwner = owner_user_id;
         if (body.id) {
           const existing = await db.queryOne("resource_owner", { id: body.id });
           if (!existing) return json({ error: "No such resource." }, 404);
           const mine = existing.owner_user_id === user_id;
           const institutional = existing.owner_user_id === null;
-          if (!(mine || (institutional && isAdmin))) {
+          /* SHARED WITH "CAN EDIT" (0043): its owner said this person may
+             change it. The resource stays the owner's — saved under their
+             id, on their shelf — and only they may delete or share it. */
+          const editor = !mine && !institutional &&
+            !!(await db.queryOne("resource_can_edit_shared", { id: body.id, user_id }));
+          if (editor) keepOwner = existing.owner_user_id;
+          if (!(mine || editor || (institutional && isAdmin))) {
             return json({
               error: institutional
                 ? "That resource belongs to the organization. Only an " +
@@ -259,8 +298,8 @@ export default {
 
         const id = body.id || newId("rs");
         await db.query("resource_upsert", {
-          id, partner_id: owner_user_id ? null : partner_id,
-          owner_user_id, title,
+          id, partner_id: keepOwner ? null : partner_id,
+          owner_user_id: keepOwner, title,
           description: str(body.description, 4000),
           link: safeLink(body.link),
           photo: safeLink(body.photo),
@@ -272,60 +311,71 @@ export default {
         return json({ resources });
       }
 
-      /* ---- passing a resource to a colleague ---- */
+      /* ---- sharing a resource (Chase, 2026-09-28) ----
+         ONLY ITS OWNER SHARES. This used to be open to anyone who could see
+         the resource ("resharing is allowed"); the share dialog changed that:
+         the owner decides who has it and who may edit it, and nobody else.
+
+         Three things can be shared with: one person (user_id), the owner's
+         ministry team (audience "team"), or everyone (audience "everyone",
+         administrators only). Each is "can view" unless can_edit is sent. */
       if (body.kind === "share") {
         const rid = str(body.resource_id, 60);
         if (!rid) return json({ error: "A resource is required" }, 400);
+        const owner = await db.queryOne("resource_owner", { id: rid });
+        if (!owner) return json({ error: "No such resource." }, 404);
+        if (owner.owner_user_id !== user_id) {
+          return json({ error: "Only the person a resource belongs to can share it." }, 403);
+        }
+        const can_edit = body.can_edit ? 1 : 0;
 
-        /* BY ADDRESS, resolved here. The page asks for an email because that
-           is what somebody knows about a colleague; the database wants an id.
-           user_by_email only matches ACTIVE accounts, so an invited person who
-           has not confirmed cannot be shared with — they would see nothing
-           anyway, and the refusal says so rather than silently doing nothing. */
-        let who = str(body.user_id, 60);
-        if (!who) {
-          const email = str(body.email, 200).toLowerCase();
-          if (!email) return json({ error: "A person is required" }, 400);
-          const found = await db.queryOne("user_by_email", { email });
-          if (!found) {
-            return json({
-              error: "No active account has that address. They need to be added " +
-                     "and to have confirmed before you can share with them.",
-            }, 404);
+        if (body.audience) {
+          const audience = String(body.audience);
+          if (audience !== "team" && audience !== "everyone") {
+            return json({ error: 'audience must be "team" or "everyone"' }, 400);
           }
-          who = found.user_id;
-        }
-        if (who === user_id) {
-          return json({ error: "That is you — it is already on your shelf." }, 400);
-        }
-
-        /* RESHARING IS ALLOWED — Chase's call, and these are internal Thauma
-           documents among colleagues rather than material where onward
-           sharing betrays the owner. So the test is "can you see it", not "do
-           you own it". It is still a test: a resource nobody showed you is
-           not yours to forward. */
-        const seen = await db.queryOne("resource_can_see", { id: rid, user_id });
-        if (!seen) {
-          return json({ error: "You cannot share a resource you cannot see." }, 403);
-        }
-
-        if (body.remove) {
-          await db.query("resource_share_remove", { resource_id: rid, user_id: who });
+          if (audience === "everyone" && !isAdmin) {
+            return json({ error: "Only an administrator can share with everyone." }, 403);
+          }
+          if (body.remove) {
+            await db.query("resource_group_share_remove", { resource_id: rid, audience });
+          } else {
+            await db.query("resource_group_share_set", {
+              resource_id: rid, audience, partner_id: audience === "team" ? partner_id : null,
+              can_edit, shared_by: user_id, now,
+            });
+          }
         } else {
-          /* The trigger refuses sharing with the owner, so a slip there is a
-             500 rather than a silent duplicate. Checked here so it is a
-             sentence instead. */
-          const owner = await db.queryOne("resource_owner", { id: rid });
-          if (owner && owner.owner_user_id === who) {
-            return json({ error: "That is already their own resource." }, 400);
+          /* A person, by id from the type-to-find list. An address still
+             works, for anything that sends one. user_by_email only matches
+             ACTIVE accounts. */
+          let who = str(body.user_id, 60);
+          if (!who) {
+            const email = str(body.email, 200).toLowerCase();
+            if (!email) return json({ error: "A person is required" }, 400);
+            const found = await db.queryOne("user_by_email", { email });
+            if (!found) {
+              return json({
+                error: "No active account has that address. They need to be added " +
+                       "and to have confirmed before you can share with them.",
+              }, 404);
+            }
+            who = found.user_id;
           }
-          await db.query("resource_share_add", {
-            resource_id: rid, user_id: who, shared_by: user_id, now,
-          });
+          if (who === user_id) {
+            return json({ error: "That is you — it is already on your shelf." }, 400);
+          }
+          if (body.remove) {
+            await db.query("resource_share_remove", { resource_id: rid, user_id: who });
+          } else {
+            await db.query("resource_share_add", {
+              resource_id: rid, user_id: who, shared_by: user_id, now, can_edit,
+            });
+          }
         }
 
         return json({
-          shared_with: await db.query("resource_shared_with", { resource_id: rid }),
+          ...(await sharesOf(db, rid, partner, isAdmin)),
           resources: await db.query("resources_visible",
             { partner_id, levels, user_id, is_admin: isAdmin ? 1 : 0 }),
         });

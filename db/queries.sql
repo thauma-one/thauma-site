@@ -1144,13 +1144,28 @@ SELECT r.id, r.partner_id, r.title, r.description, r.link, r.photo, r.visibility
 
 UNION ALL
 
+-- SHARED: with this person, with a ministry team they are on, or with
+-- everyone (0043). One row per resource however many ways it arrived, and it
+-- can be edited if ANY of those ways says so. Only the owner shares (the
+-- endpoint's rule since 2026-09-28), so "shared by" is the owner.
 SELECT r.id, r.partner_id, r.title, r.description, r.link, r.photo, r.visibility,
        r.owner_user_id, r.created_at, r.updated_at,
-       'shared' AS shelf, 0 AS can_edit,
-       (SELECT u.name FROM users u WHERE u.id = sh.shared_by) AS shared_by_name
-  FROM resource_shares sh
-  JOIN resources r ON r.id = sh.resource_id
- WHERE sh.user_id = :user_id
+       'shared' AS shelf, s.can_edit,
+       (SELECT u.name FROM users u WHERE u.id = r.owner_user_id) AS shared_by_name
+  FROM resources r
+  JOIN (SELECT resource_id, MAX(can_edit) AS can_edit FROM (
+          SELECT sh.resource_id, sh.can_edit FROM resource_shares sh
+           WHERE sh.user_id = :user_id
+          UNION ALL
+          SELECT g.resource_id, g.can_edit FROM resource_group_shares g
+           WHERE g.audience = 'everyone'
+          UNION ALL
+          SELECT g.resource_id, g.can_edit FROM resource_group_shares g
+            JOIN partner_users pu ON pu.partner_id = g.partner_id AND pu.user_id = :user_id
+           WHERE g.audience = 'team')
+        GROUP BY resource_id) s ON s.resource_id = r.id
+ WHERE r.owner_user_id IS NOT NULL
+   AND r.owner_user_id <> :user_id
 
 ORDER BY shelf, title COLLATE NOCASE;
 
@@ -2438,11 +2453,12 @@ SELECT id, owner_user_id, partner_id FROM resources WHERE id = :id;
 
 
 -- name: resource_share_add
--- INSERT OR IGNORE: sharing twice is the same as sharing once, and a second
--- attempt is somebody being helpful rather than an error worth reporting.
--- A trigger refuses sharing with the owner.
-INSERT OR IGNORE INTO resource_shares (resource_id, user_id, shared_by, shared_at)
-VALUES (:resource_id, :user_id, :shared_by, :now);
+-- Sharing twice is the same as sharing once — except that the second time
+-- may change whether they can edit (0043), so it updates that and nothing
+-- else. A trigger refuses sharing with the owner.
+INSERT INTO resource_shares (resource_id, user_id, shared_by, shared_at, can_edit)
+VALUES (:resource_id, :user_id, :shared_by, :now, :can_edit)
+ON CONFLICT(resource_id, user_id) DO UPDATE SET can_edit = excluded.can_edit;
 
 
 -- name: resource_share_remove
@@ -2452,24 +2468,68 @@ DELETE FROM resource_shares WHERE resource_id = :resource_id AND user_id = :user
 -- name: resource_shared_with
 -- Who can currently see this, for the owner to look at before adding another.
 SELECT sh.user_id, u.name, u.email, sh.shared_at,
-       (SELECT b.name FROM users b WHERE b.id = sh.shared_by) AS shared_by_name
+       (SELECT b.name FROM users b WHERE b.id = sh.shared_by) AS shared_by_name,
+       sh.can_edit
   FROM resource_shares sh
   JOIN users u ON u.id = sh.user_id
  WHERE sh.resource_id = :resource_id
  ORDER BY u.name COLLATE NOCASE;
 
 
--- name: resource_can_see
--- Whether this person may pass a resource on. Resharing is allowed, so the
--- test is "can you see it" rather than "do you own it" — but it is still a
--- test, because a resource nobody showed you is not yours to forward.
-SELECT 1 AS ok
-  FROM resources r
- WHERE r.id = :id
-   AND (r.owner_user_id = :user_id
-        OR r.owner_user_id IS NULL
-        OR EXISTS (SELECT 1 FROM resource_shares sh
-                    WHERE sh.resource_id = r.id AND sh.user_id = :user_id));
+-- name: resource_group_shares_for
+-- The groups a resource is shared with (0043), for its share dialog.
+SELECT g.audience, g.partner_id, p.display_name AS partner_name, g.can_edit, g.shared_at
+  FROM resource_group_shares g
+  LEFT JOIN partners p ON p.id = g.partner_id
+ WHERE g.resource_id = :resource_id
+ ORDER BY g.audience;
+
+
+-- name: resource_group_share_set
+-- On, or its can-edit changed. One row per audience per resource.
+INSERT INTO resource_group_shares (resource_id, audience, partner_id, can_edit, shared_by, shared_at)
+VALUES (:resource_id, :audience, :partner_id, :can_edit, :shared_by, :now)
+ON CONFLICT(resource_id, audience) DO UPDATE SET
+  can_edit = excluded.can_edit, partner_id = excluded.partner_id;
+
+
+-- name: resource_group_share_remove
+DELETE FROM resource_group_shares WHERE resource_id = :resource_id AND audience = :audience;
+
+
+-- name: resource_can_edit_shared
+-- Whether a share lets this person change a resource they do not own: by
+-- name, through their team, or through everyone — any one is enough.
+SELECT 1 AS ok FROM resource_shares
+ WHERE resource_id = :id AND user_id = :user_id AND can_edit = 1
+UNION ALL
+SELECT 1 FROM resource_group_shares g
+ WHERE g.resource_id = :id AND g.can_edit = 1
+   AND (g.audience = 'everyone'
+        OR EXISTS (SELECT 1 FROM partner_users pu
+                    WHERE pu.partner_id = g.partner_id AND pu.user_id = :user_id))
+LIMIT 1;
+
+
+-- name: people_find
+-- Type-to-find for sharing (Chase, 2026-09-28: not an email to type, and not
+-- a list of every staff member). Only after two letters, at most eight,
+-- active accounts only, never the person asking or the master account. Each
+-- carries the ministries they are on, so two people with one name can be
+-- told apart without showing an address.
+SELECT u.id AS user_id, u.name,
+       (SELECT GROUP_CONCAT(p.display_name, ', ')
+          FROM partner_users pu JOIN partners p ON p.id = pu.partner_id
+         WHERE pu.user_id = u.id) AS ministries
+  FROM users u
+ WHERE u.status = 'active'
+   AND u.id <> :user_id
+   AND COALESCE(u.protected, 0) = 0
+   AND (u.name LIKE '%' || :q || '%' OR u.email LIKE :q || '%')
+ ORDER BY u.name COLLATE NOCASE
+ LIMIT 8;
+
+
 
 
 -- name: public_mailings_for_partner
