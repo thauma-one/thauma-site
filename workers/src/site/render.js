@@ -214,7 +214,7 @@ main section.raised + section{border-top-color:transparent}
 .linklist .lpic img{width:100%;height:100%;object-fit:cover;transition:transform .6s cubic-bezier(.16,1,.3,1)}.linklist a:hover .lpic img{transform:scale(1.04)}
 .data .lede{margin-bottom:28px}
 main section.empty{padding:40px 0}.empty p{margin:0;padding:22px;border:1px dashed var(--line);border-radius:12px;color:var(--dim);text-align:center;font-size:14px}
-main section:target{outline:2px solid var(--acc);outline-offset:-2px}
+main section.is-editing{outline:2px solid var(--acc);outline-offset:-2px}
 /* The ministry's widgets and lists, centered unless the owner puts them left. */
 .al-center .h,.al-center .lede{text-align:center;margin-left:auto;margin-right:auto}
 .al-center [data-thauma],.al-center .news,.al-center .linklist,.al-center .formbox,.al-center .latest{margin-left:auto;margin-right:auto}

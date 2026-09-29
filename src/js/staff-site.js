@@ -22,7 +22,7 @@
 
   var API = '/api/staff-site';
   var $ = function (id) { return document.getElementById(id); };
-  var state = { body: null, doc: null, tab: 'design', page: 'home', edit: null, sectab: 'words', openItem: null, showKicker: false,
+  var state = { body: null, doc: null, tab: 'design', page: null, edit: null, anchor: null, animate: null, sectab: 'words', openItem: null, showKicker: false,
                 insertAt: null, frameDirty: false, langA: null, langB: null,
                 timer: null, saving: false, again: false, frameTimer: null };
 
@@ -289,23 +289,36 @@
     $('wsRoot').classList.toggle('with-preview', showFrame);
     if (showFrame) refreshFrame();
     if (!canEdit()) {
-      [].forEach.call($('wsRoot').querySelectorAll('.ws-panel input, .ws-panel textarea, .ws-panel select, .ws-panel button:not([data-pick-page]):not([data-edit-sec]):not([data-panel-back]):not([data-sectab]):not([data-item-open])'), function (el) { el.disabled = true; });
+      [].forEach.call($('wsRoot').querySelectorAll('.ws-panel input, .ws-panel textarea, .ws-panel select, .ws-panel button:not([data-open-page]):not([data-all-pages]):not([data-pick-page]):not([data-edit-sec]):not([data-panel-back]):not([data-sectab]):not([data-item-open])'), function (el) { el.disabled = true; });
     }
   }
 
   function refreshFrame() {
     if ($('wsPreviewPane').hidden) return;
     var s = state.body.site, lang = state.langA;
-    var page = state.tab === 'pages' ? currentPage().id : 'home';
+    var page = state.tab === 'pages' && state.page ? currentPage().id : 'home';
     var path = s.preview.replace(/\?draft$/, '') + lang + '/' + (page === 'home' ? '' : page + '/');
     $('wsPreviewPath').textContent = '/' + lang + '/' + (page === 'home' ? '' : page + '/');
     /* On the Footer tab, the footer and nothing else (Chase, 2026-09-29). */
     /* On Footer and Links, the footer and nothing else — links show there. */
     var foot = state.tab === 'footer' || state.tab === 'links';
     $('wsPreviewPane').classList.toggle('only-foot', foot);
-    var open = state.tab === 'pages' && state.edit != null && currentPage().sections[state.edit];
-    $('wsFrame').src = path + '?draft' + (foot ? '&part=footer' : '') + '&t=' + Date.now() + (open ? '#s-' + open.id : '');
+    /* To the section being edited — scrolled INSIDE the preview once it has
+       loaded. A #fragment on the frame's address would do it too, but a
+       browser then scrolls this page as well, to bring the frame's target
+       into view: the jump Chase saw when opening a section. */
+    var open = state.tab === 'pages' && state.page && state.edit != null && currentPage().sections[state.edit];
+    state.frameTarget = open ? 's-' + open.id : null;
+    $('wsFrame').src = path + '?draft' + (foot ? '&part=footer' : '') + '&t=' + Date.now();
   }
+
+  $('wsFrame').addEventListener('load', function () {
+    if (!state.frameTarget) return;
+    try {
+      var w = this.contentWindow, el = w.document.getElementById(state.frameTarget);
+      if (el) { el.classList.add('is-editing'); w.scrollTo(0, Math.max(0, el.offsetTop - 24)); }
+    } catch (e) {}
+  });
 
   /* ---- small pieces ---------------------------------------------------- */
 
@@ -364,8 +377,9 @@
      the site beside it keeps showing the result. */
 
   function currentPage() {
-    var p = state.doc.pages.filter(function (x) { return x.id === state.page; })[0];
-    if (!p) { state.page = 'home'; state.edit = null; p = state.doc.pages[0]; }
+    var id = state.page || 'home';
+    var p = state.doc.pages.filter(function (x) { return x.id === id; })[0];
+    if (!p) { state.page = null; state.edit = null; p = state.doc.pages[0]; }
     return p;
   }
   function plain(html) {
@@ -386,44 +400,87 @@
   }
   function dot(on) { return on ? '<i class="ws-dot" title="' + esc(tr('ws.changedHere')) + '"></i>' : ''; }
 
+  /* ALL PAGES, then ONE PAGE (Chase, 2026-09-29, after the page tabs: "didn't
+     work as well as I hoped … keep the original idea, but with the
+     condensed sections that open when you click on them … a better way to
+     go back to the page selection"). The list of pages first; a page opens
+     to its sections as short rows, and a row unfolds where it is — the rest
+     of the screen stays still. "← All pages" and a menu of the pages sit at
+     the top of every page. */
   function drawPages() {
+    if (!state.page) return drawOverview();
     var p = currentPage();
-    if (state.edit != null && p.sections[state.edit]) return drawPanel(p, state.edit);
-    state.edit = null;
-    var pi = state.doc.pages.indexOf(p), last = state.doc.pages.length - 1;
-    var html = '<div class="ws-pills" role="tablist" aria-label="' + esc(tr('ws.tab.pages')) + '">' + state.doc.pages.map(function (x) {
-      return '<button type="button" role="tab" class="ws-pill-btn' + (x.on ? '' : ' is-off') + '" data-pick-page="' + esc(x.id) + '" aria-selected="' + (x.id === p.id) + '">' +
-        esc(pageLabel(x, state.langA)) + (x.on ? '' : ' · ' + esc(tr('ws.off'))) + dot(pageChanged(x)) + '</button>';
-    }).join('') + '</div>';
+    if (state.edit != null && !p.sections[state.edit]) state.edit = null;
 
-    html += '<div class="ws-pagebar">' +
-      '<label class="ws-pagename"><span>' + esc(tr('ws.nameInMenu')) + '</span>' + ref(p.label) +
-        '<input type="text" maxlength="40" data-page-label="' + pi + '" value="' + esc((p.label || {})[state.langA] || '') + '" placeholder="' + esc(tr('ws.page.' + p.id)) + '" lang="' + esc(state.langA) + '"></label>' +
+    /* THE ROW BEING WORKED ON STAYS WHERE IT IS ON SCREEN through the redraw:
+       what jumped before was the window scrolling to the top. */
+    var anchorAt = state.anchor != null ? state.anchor : state.edit;
+    var was = anchorAt != null && $('wsPages').querySelector('.ws-acc[data-si="' + anchorAt + '"]');
+    var before = was ? was.getBoundingClientRect().top : null;
+
+    var pi = state.doc.pages.indexOf(p);
+    var html = '<div class="ws-crumb">' +
+      '<button type="button" class="ghost-btn sm" data-all-pages>← ' + esc(tr('ws.allPages')) + '</button>' +
+      '<label class="ws-pagepick"><span class="sr-only">' + esc(tr('ws.tab.pages')) + '</span>' +
+        '<select data-pick-page>' + state.doc.pages.map(function (x) {
+          return '<option value="' + esc(x.id) + '"' + (x.id === p.id ? ' selected' : '') + '>' +
+            esc(pageLabel(x, state.langA)) + (x.on ? '' : ' · ' + esc(tr('ws.off'))) + '</option>';
+        }).join('') + '</select></label>' +
       (p.id === 'home' ? '<span class="ws-always">' + esc(tr('ws.always')) + '</span>' : sw('data-page-on="' + pi + '"', p.on, tr('ws.shown'))) +
-      '<span class="ws-move">' +
-        '<button type="button" class="ws-icon" data-page-up="' + pi + '" aria-label="' + esc(tr('ws.earlier')) + '" title="' + esc(tr('ws.earlier')) + '"' + (pi === 0 ? ' disabled' : '') + '>←</button>' +
-        '<button type="button" class="ws-icon" data-page-down="' + pi + '" aria-label="' + esc(tr('ws.later')) + '" title="' + esc(tr('ws.later')) + '"' + (pi === last ? ' disabled' : '') + '>→</button>' +
-      '</span></div>';
+      '</div>' +
+      '<label class="ws-pagename"><span>' + esc(tr('ws.nameInMenu')) + '</span>' + ref(p.label) +
+        '<input type="text" maxlength="40" data-page-label="' + pi + '" value="' + esc((p.label || {})[state.langA] || '') + '" placeholder="' + esc(tr('ws.page.' + p.id)) + '" lang="' + esc(state.langA) + '"></label>';
 
     var n = p.sections.length;
     html += '<div class="ws-stack">' + (n ? '' : '<p class="empty">' + esc(tr('ws.noSections')) + '</p>') +
-      p.sections.map(function (s, i) {
-        return '<div class="ws-srow">' +
-          '<button type="button" class="ws-stile" data-edit-sec="' + i + '">' +
-            '<span class="ws-sketch ws-sketch-sm" aria-hidden="true">' + sketch(s.type) + '</span>' +
-            '<span class="ws-stile-words"><b>' + esc(tr('ws.sec.' + s.type)) + dot(sectionChanged(s)) + '</b><span>' + esc(summary(s)) + '</span></span>' +
-            '<span class="ws-stile-edit">' + esc(tr('ws.edit')) + '</span></button>' +
-          '<span class="ws-stile-tools">' +
-            '<button type="button" class="ws-icon" data-sec-up="' + i + '" aria-label="' + esc(tr('ws.up')) + '"' + (i === 0 ? ' disabled' : '') + '>↑</button>' +
-            '<button type="button" class="ws-icon" data-sec-down="' + i + '" aria-label="' + esc(tr('ws.down')) + '"' + (i === n - 1 ? ' disabled' : '') + '>↓</button>' +
-            '<button type="button" class="ws-icon del" data-sec-remove="' + i + '" aria-label="' + esc(tr('ws.remove')) + '">✕</button>' +
-          '</span></div>' +
-          '<button type="button" class="ws-insert" data-insert-at="' + (i + 1) + '">+ ' + esc(tr('ws.addHere')) + '</button>';
+      p.sections.map(function (x, i) {
+        var open = state.edit === i;
+        return '<article class="ws-acc' + (open ? ' is-open' + (state.animate === i ? ' is-entering' : '') : '') + '" data-si="' + i + '">' +
+          '<div class="ws-acc-head">' +
+            '<button type="button" class="ws-stile" data-edit-sec="' + i + '" aria-expanded="' + open + '">' +
+              '<span class="ws-sketch ws-sketch-sm" aria-hidden="true">' + sketch(x.type) + '</span>' +
+              '<span class="ws-stile-words"><b>' + esc(tr('ws.sec.' + x.type)) + dot(sectionChanged(x)) + '</b><span>' + esc(summary(x)) + '</span></span>' +
+              '<span class="ws-chev" aria-hidden="true"></span></button>' +
+            '<span class="ws-stile-tools">' +
+              '<button type="button" class="ws-icon" data-sec-up="' + i + '" aria-label="' + esc(tr('ws.up')) + '"' + (i === 0 ? ' disabled' : '') + '>↑</button>' +
+              '<button type="button" class="ws-icon" data-sec-down="' + i + '" aria-label="' + esc(tr('ws.down')) + '"' + (i === n - 1 ? ' disabled' : '') + '>↓</button>' +
+              '<button type="button" class="ws-icon del" data-sec-remove="' + i + '" aria-label="' + esc(tr('ws.remove')) + '">✕</button>' +
+            '</span></div>' +
+          '<div class="ws-acc-body"><div class="ws-acc-inner">' + (open ? panelHtml(p, i) : '') + '</div></div>' +
+        '</article>' +
+        '<button type="button" class="ws-insert" data-insert-at="' + (i + 1) + '">+ ' + esc(tr('ws.addHere')) + '</button>';
       }).join('') +
       (n ? '' : '<button type="button" class="ws-addbtn" data-insert-at="0">+ ' + esc(tr('ws.addSection')) + '</button>') + '</div>';
     $('wsPages').innerHTML = html;
+    if (!canEdit()) [].forEach.call($('wsPages').querySelectorAll('[contenteditable]'), function (el) { el.setAttribute('contenteditable', 'false'); });
+
+    var now = anchorAt != null && $('wsPages').querySelector('.ws-acc[data-si="' + anchorAt + '"]');
+    if (before != null && now) window.scrollBy(0, now.getBoundingClientRect().top - before);
+    /* The unfolding: drawn closed, then opened on the next frame, so the
+       height eases open (none of it for reduced motion — see staff.css). */
+    var entering = $('wsPages').querySelector('.ws-acc.is-entering');
+    if (entering) requestAnimationFrame(function () { requestAnimationFrame(function () { entering.classList.remove('is-entering'); }); });
+    state.anchor = null; state.animate = null;
   }
   var drawSections = function () { drawPages(); };
+
+  function drawOverview() {
+    var pages = state.doc.pages, last = pages.length - 1;
+    $('wsPages').innerHTML = '<div class="ws-head"><h2>' + esc(tr('ws.yourPages')) + '</h2></div>' +
+      '<ol class="ws-plist">' + pages.map(function (x, i) {
+        var n = x.sections.length;
+        return '<li class="ws-prow' + (x.on ? '' : ' is-off') + '">' +
+          '<button type="button" class="ws-prow-open" data-open-page="' + esc(x.id) + '">' +
+            '<b>' + esc(pageLabel(x, state.langA)) + dot(pageChanged(x)) + '</b>' +
+            '<span>' + esc(n === 1 ? tr('ws.nSections1') : n ? fill('ws.nSections', { n: n }) : tr('ws.noSectionsShort')) + '</span>' +
+            '<span class="ws-chev ws-chev-r" aria-hidden="true"></span></button>' +
+          (x.id === 'home' ? '<span class="ws-always">' + esc(tr('ws.always')) + '</span>' : sw('data-page-on="' + i + '"', x.on, tr('ws.shown'))) +
+          '<span class="ws-move">' +
+            '<button type="button" class="ws-icon" data-page-up="' + i + '" aria-label="' + esc(tr('ws.earlier')) + '"' + (i === 0 ? ' disabled' : '') + '>↑</button>' +
+            '<button type="button" class="ws-icon" data-page-down="' + i + '" aria-label="' + esc(tr('ws.later')) + '"' + (i === last ? ' disabled' : '') + '>↓</button>' +
+          '</span></li>';
+      }).join('') + '</ol>';
+  }
 
   /* One section, alone. Only the tabs it has something for. */
   function tabsFor(s) {
@@ -435,15 +492,12 @@
     return t;
   }
 
-  function drawPanel(p, i) {
+  function panelHtml(p, i) {
     var s = p.sections[i], spec = SECTIONS[s.type], tabs = tabsFor(s);
     if (tabs.indexOf(state.sectab) === -1) state.sectab = 'words';
     var w = (s.words || {})[state.langA] || {};
     var src = function (f) { var o = {}; Object.keys(s.words || {}).forEach(function (l) { o[l] = (s.words[l] || {})[f]; }); return o; };
-    var html = '<div class="ws-panelhead">' +
-      '<button type="button" class="link-btn" data-panel-back>← ' + esc(pageLabel(p, state.langA)) + '</button>' +
-      '<h2>' + esc(tr('ws.sec.' + s.type)) + '</h2></div>' +
-      '<div class="ws-sectabs" role="tablist">' + tabs.map(function (t) {
+    var html = '<div class="ws-sectabs" role="tablist">' + tabs.map(function (t) {
         return '<button type="button" role="tab" data-sectab="' + t + '" aria-selected="' + (t === state.sectab) + '">' + esc(tr('ws.tabw.' + t)) + '</button>';
       }).join('') + '</div><div class="ws-panelbody">';
 
@@ -522,10 +576,9 @@
       }
     }
 
-    html += '</div><div class="ws-panelfoot"><span class="ws-small" id="wsPanelSaved"></span>' +
+    html += '</div><div class="ws-panelfoot">' +
       '<button type="button" class="solid-btn" data-panel-back>' + esc(tr('ws.done')) + '</button></div>';
-    $('wsPages').innerHTML = html;
-    if (!canEdit()) [].forEach.call($('wsPages').querySelectorAll('[contenteditable]'), function (el) { el.setAttribute('contenteditable', 'false'); });
+    return html;
   }
 
   /* One field. Headings, words and quotes are formatted boxes (bold, italic,
@@ -683,9 +736,10 @@
        to be filled in. */
     var at = Math.min(state.insertAt == null ? 1e9 : state.insertAt, currentPage().sections.length);
     currentPage().sections.splice(at, 0, s);
-    state.edit = at; state.sectab = spec.items ? 'links' : 'words'; state.openItem = null;
+    state.edit = at; state.animate = at; state.sectab = spec.items ? 'links' : 'words'; state.openItem = null;
     closeAdd(); drawPages(); changed(); refreshFrame();
-    window.scrollTo(0, 0);
+    var row = $('wsPages').querySelector('.ws-acc[data-si="' + at + '"]');
+    if (row) row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('wsAddBack').hidden) closeAdd(); });
 
@@ -877,8 +931,16 @@
     if (a[0] === 'sec') s.link = value; else s.items[+a[2]].url = value;
   }
 
+  /* Bring the top of the editor into view after moving between the list of
+     pages and a page — gently, and only if it is off the screen. */
+  function editorIntoView() {
+    var top = $('wsRoot').getBoundingClientRect().top;
+    if (top < 0) $('wsRoot').scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  }
+
   $('wsRoot').addEventListener('change', async function (e) {
     var t = e.target, p = currentPage();
+    if (t.dataset.pickPage !== undefined) { state.page = t.value; state.edit = null; drawPages(); refreshFrame(); return; }
     /* A color settled on: the look cards redraw in it (not while dragging,
        which would close the picker under the pointer). */
     if (t.dataset.color) { drawDesign(); return; }
@@ -912,9 +974,16 @@
     var t = e.target.closest('button');
     if (!t || t.disabled) return;
     var p = currentPage(), d = t.dataset;
-    if (d.pickPage) { state.page = d.pickPage; state.edit = null; drawPages(); refreshFrame(); return; }
-    if (d.editSec) { state.edit = +d.editSec; state.sectab = 'words'; state.openItem = null; state.showKicker = false; drawPages(); refreshFrame(); window.scrollTo(0, 0); return; }
-    if (d.panelBack !== undefined) { state.edit = null; drawPages(); refreshFrame(); return; }
+    if (d.openPage) { state.page = d.openPage; state.edit = null; drawPages(); refreshFrame(); editorIntoView(); return; }
+    if (d.allPages !== undefined) { state.page = null; state.edit = null; drawPages(); refreshFrame(); editorIntoView(); return; }
+    if (d.editSec !== undefined) {
+      /* A row opens where it is; pressing it again, or Done, folds it. */
+      var si = +d.editSec;
+      state.anchor = si;
+      if (state.edit === si) { state.edit = null; } else { state.edit = si; state.animate = si; state.sectab = 'words'; state.openItem = null; state.showKicker = false; }
+      drawPages(); refreshFrame(); return;
+    }
+    if (d.panelBack !== undefined) { state.anchor = state.edit; state.edit = null; drawPages(); refreshFrame(); return; }
     if (d.sectab) { state.sectab = d.sectab; drawPages(); return; }
     if (d.insertAt !== undefined) return openAdd(+d.insertAt);
     if (d.itemOpen !== undefined) { state.openItem = state.openItem === +d.itemOpen ? null : +d.itemOpen; drawPages(); return; }
@@ -962,7 +1031,7 @@
     if (d.start) {
       var ok2 = window.StaffConfirm ? await window.StaffConfirm({ title: fill('ws.startTitle', { kind: tr('ws.start.' + d.start) }),
         body: tr('ws.startBody'), confirm: tr('ws.startGo'), cancel: tr('ms.cancel'), danger: true }) : true;
-      if (ok2) { state.page = 'home'; state.edit = null; act({ action: 'start', kind: d.start }, tr('ws.started')); }
+      if (ok2) { state.page = null; state.edit = null; act({ action: 'start', kind: d.start }, tr('ws.started')); }
       return;
     }
     if (d.grant) return act({ action: 'grant', user_id: d.grant }, tr('ws.allowed'));

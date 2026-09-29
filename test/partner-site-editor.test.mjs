@@ -51,6 +51,7 @@ async function boot(opts) {
   };
   w.console.error = () => {};
   w.scrollTo = () => {};
+  w.scrollBy = () => {};
   w.HTMLElement.prototype.scrollIntoView = () => {};
   for (const f of ["staff-i18n.js", "staff.js", "staff-site.js"]) w.eval(readFileSync("src/js/" + f, "utf8"));
   w.StaffToast = () => {};
@@ -62,35 +63,51 @@ async function boot(opts) {
   return { w, d, sent, click, pages };
 }
 
-await check("it opens on Design; Pages shows the site's pages as tabs, Home first, with Timeline and Resources off", async () => {
+await check("it opens on Design; Pages lists every page, Timeline and Resources off, nothing to type in", async () => {
   const { d, pages } = await boot();
   assert(!d.getElementById("wsDesign").hidden && d.getElementById("wsPages").hidden, "Design first");
   pages();
-  const pills = [...d.querySelectorAll(".ws-pill-btn")];
-  eq(pills.map((b) => b.textContent.replace(/ · .*/, "")), ["Home", "About", "Mission", "Updates", "Give", "Stay connected", "Contact", "Timeline", "Resources"], "pages");
-  eq(pills[0].getAttribute("aria-selected"), "true", "Home chosen");
-  assert(pills[7].classList.contains("is-off") && pills[8].classList.contains("is-off"), "Timeline and Resources off");
-  eq([d.querySelectorAll("#wsPages input[type=text], #wsPages textarea, #wsPages [data-rt]").length,
-      !!d.querySelector("#wsPages [data-page-label]")], [1, true], "no box to type in but the page's name in the menu");
+  const rows = [...d.querySelectorAll(".ws-prow")];
+  eq(rows.map((r) => r.querySelector("b").textContent), ["Home", "About", "Mission", "Updates", "Give", "Stay connected", "Contact", "Timeline", "Resources"], "pages");
+  assert(rows[7].classList.contains("is-off") && rows[8].classList.contains("is-off"), "Timeline and Resources off");
+  eq(d.querySelectorAll("#wsPages input[type=text], #wsPages [data-rt]").length, 0, "no box to type in");
 });
 
-await check("a page is a stack of pictures; a new section goes where it was asked for, and opens", async () => {
-  const { d, click, pages } = await boot();
+await check("a page opens to its sections as rows; All pages and the page menu lead out", async () => {
+  const { w, d, click, pages } = await boot();
   pages();
+  click(d.querySelector('[data-open-page="home"]'));
   eq([...d.querySelectorAll(".ws-stile-words b")].map((n) => n.textContent), ["Opening", "Photo and words"], "Home's sections");
   assert(/Follow the work of/.test(d.querySelector(".ws-stile-words span").textContent), "each with one line of its words");
+  const pick = d.querySelector("[data-pick-page]");
+  pick.value = "give";
+  pick.dispatchEvent(new w.Event("change", { bubbles: true }));
+  eq(d.querySelector("[data-pick-page]").value, "give", "straight to another page");
+  click(d.querySelector("[data-all-pages]"));
+  assert(d.querySelector(".ws-plist"), "back to all pages");
+});
+
+await check("a row unfolds where it is, one at a time; a new section goes where asked and opens", async () => {
+  const { d, click, pages } = await boot();
+  pages();
+  click(d.querySelector('[data-open-page="home"]'));
+  click(d.querySelector('[data-edit-sec="1"]'));
+  assert(d.querySelector('.ws-acc[data-si="1"]').classList.contains("is-open"), "the second opened");
+  click(d.querySelector('[data-edit-sec="0"]'));
+  eq([...d.querySelectorAll(".ws-acc.is-open")].map((a) => a.dataset.si), ["0"], "only one open");
+  click(d.querySelector('[data-edit-sec="0"]'));
+  eq(d.querySelectorAll(".ws-acc.is-open").length, 0, "pressed again, it folds");
   click(d.querySelector('[data-insert-at="1"]'));
-  assert(!d.getElementById("wsAddBack").hidden, "the picker opens");
   eq(d.querySelectorAll("[data-add-type]").length, 14, "every kind offered");
   click(d.querySelector('[data-add-type="quote"]'));
-  assert(d.querySelector(".ws-panelhead h2").textContent === "A verse or a quote", "straight into the new one");
-  click(d.querySelector("[data-panel-back]"));
   eq([...d.querySelectorAll(".ws-stile-words b")].map((n) => n.textContent), ["Opening", "A verse or a quote", "Photo and words"], "between the two");
+  assert(d.querySelector('.ws-acc[data-si="1"]').classList.contains("is-open"), "and open");
 });
 
 await check("one section at a time: only its tabs; formatted words saved clean", async () => {
   const { w, d, sent, click, pages } = await boot();
   pages();
+  click(d.querySelector('[data-open-page="home"]'));
   click(d.querySelector('[data-edit-sec="0"]'));
   eq([...d.querySelectorAll("[data-sectab]")].map((b) => b.dataset.sectab), ["words", "photo", "buttons", "look"], "the opening's tabs");
   const heading = d.querySelector('[data-rt="0:heading"]');
@@ -108,6 +125,7 @@ await check("one section at a time: only its tabs; formatted words saved clean",
 await check("where a button goes: nothing, a page, or a web address — three plain choices", async () => {
   const { w, d, sent, click, pages } = await boot();
   pages();
+  click(d.querySelector('[data-open-page="home"]'));
   click(d.querySelector('[data-edit-sec="1"]'));
   click(d.querySelector('[data-sectab="buttons"]'));
   const kind = (k) => d.querySelector(`[data-chip="linkkind:sec:1"][data-value="${k}"]`);
@@ -127,7 +145,7 @@ await check("where a button goes: nothing, a page, or a web address — three pl
 await check("a Links section: plain rows, one opened at a time", async () => {
   const { w, d, sent, click, pages } = await boot();
   pages();
-  click(d.querySelector('[data-pick-page="resources"]'));
+  click(d.querySelector('[data-open-page="resources"]'));
   click(d.querySelector('[data-edit-sec="0"]'));
   click(d.querySelector('[data-sectab="links"]'));
   click(d.querySelector("[data-item-add]"));
@@ -146,10 +164,9 @@ await check("a change marks its tab, its page and its section, and the tab keeps
   const dot = (t) => d.querySelector(`[data-ws-tab="${t}"] .ws-dot`);
   assert(dot("pages").hidden && dot("design").hidden, "nothing changed yet");
   pages();
-  click(d.querySelector('[data-pick-page="about"]'));
-  click(d.querySelector("[data-page-on]"));
+  click(d.querySelector('[data-page-on="1"]'));
   assert(!dot("pages").hidden, "Pages marked");
-  assert(d.querySelector('[data-pick-page="about"] .ws-dot'), "and the page");
+  assert(d.querySelector('[data-open-page="about"] .ws-dot'), "and the page");
   click(d.querySelector('[data-ws-tab="links"]'));
   assert(!dot("pages").hidden && dot("links").hidden, "still marked on the Links tab, and only Pages");
 });

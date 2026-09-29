@@ -2584,15 +2584,8 @@ html.has-ai .ai-one{display:inline-flex;align-items:center;justify-content:cente
    Page tabs; the page as a stack of pictures with one line each; one
    section at a time, its settings in a few tabs; formatted boxes with a
    small B / I / U / link bar. */
-.ws-pills{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
-.ws-pill-btn{font:13px var(--font-body);color:var(--text);background:none;border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:8px 15px;cursor:pointer;display:inline-flex;align-items:center}
-.ws-pill-btn[aria-selected="true"]{background:var(--voice-tech);border-color:var(--voice-tech);color:#06121A;font-weight:500}
-.ws-pill-btn.is-off{color:var(--dim);border-style:dashed}
-.ws-pill-btn[aria-selected="true"] .ws-dot{background:#06121A}
-.ws-pagebar{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;padding:14px 16px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);margin-bottom:16px}
 .ws-pagename{display:flex;flex-direction:column;gap:6px;flex:1 1 220px;min-width:0;font-size:12.5px;color:var(--dim)}
 .ws-pagename input{width:100%}
-.ws-pagebar .switch{margin-bottom:6px}.ws-pagebar .ws-always{margin-bottom:10px}
 .ws-stack{display:flex;flex-direction:column;gap:6px}
 .ws-srow{display:flex;align-items:stretch;gap:8px}
 .ws-stile{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:16px;padding:12px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);color:var(--text);text-align:left;cursor:pointer;font:14px var(--font-body)}
@@ -2606,8 +2599,6 @@ html.has-ai .ai-one{display:inline-flex;align-items:center;justify-content:cente
 .ws-stile-tools .ws-icon{width:28px;height:28px}
 .ws-insert{align-self:stretch;background:none;border:0;border-top:1px dashed rgba(255,255,255,.12);color:var(--dim);font:12px var(--font-body);padding:6px 0 4px;cursor:pointer;opacity:.7}
 .ws-insert:hover,.ws-insert:focus-visible{opacity:1;color:var(--voice-tech);border-top-color:var(--voice-tech)}
-.ws-panelhead{display:flex;align-items:baseline;gap:16px;margin-bottom:12px}
-.ws-panelhead h2{font:300 22px var(--font-display);margin:0}
 .ws-sectabs{display:flex;border-bottom:1px solid rgba(255,255,255,.1);margin-bottom:18px}
 .ws-sectabs button{font:13px var(--font-body);color:var(--dim);background:none;border:0;border-bottom:2px solid transparent;padding:10px 16px;cursor:pointer}
 .ws-sectabs button[aria-selected="true"]{color:var(--text);border-bottom-color:var(--voice-tech);font-weight:500}
@@ -2645,7 +2636,38 @@ html.has-ai .ai-one{display:inline-flex;align-items:center;justify-content:cente
 .ws-fmt button[aria-pressed="true"]{background:var(--voice-tech)}
 .ws-fmt .ws-fmt-italic{font:italic 500 15px Georgia,serif}.ws-fmt .ws-fmt-underline{text-decoration:underline}
 .ws-fmt button[data-fmt="link"]{border-left:1px solid rgba(0,0,0,.12)}
-@media (max-width:760px){.ws-sketch.ws-sketch-sm{width:84px;height:48px}.ws-pagebar{align-items:stretch}}
+@media (max-width:760px){.ws-sketch.ws-sketch-sm{width:84px;height:48px}}
 /* Inside a stacked field the link picker is a row, not a 320px-tall column. */
 .ws-field .ws-link{flex:0 0 auto;align-items:center}
 .ws-field .ws-link select{flex:0 1 240px}.ws-field .ws-link input{flex:1 1 220px}
+
+/* ---- Website › Pages: all pages, then one page whose rows unfold -------- */
+.ws-plist{list-style:none;margin:0;padding:0;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius)}
+.ws-prow{display:flex;align-items:center;gap:14px;padding:6px 14px 6px 6px;border-top:1px solid var(--line)}
+.ws-prow:first-child{border-top:0}
+.ws-prow-open{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:14px;padding:12px;background:none;border:0;border-radius:var(--radius);color:var(--text);font:14px var(--font-body);text-align:left;cursor:pointer}
+.ws-prow-open:hover,.ws-prow-open:focus-visible{background:rgba(47,216,255,.06)}
+.ws-prow-open b{font-weight:600;min-width:150px;display:flex;align-items:center}
+.ws-prow-open span{color:var(--dim);font-size:13px;flex:1 1 auto}
+.ws-prow.is-off .ws-prow-open b{color:var(--dim)}
+.ws-crumb{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.ws-pagepick select{font:500 15px var(--font-body);padding:9px 12px;min-width:200px}
+.ws-pagename{display:flex;flex-direction:column;gap:6px;max-width:420px;margin-bottom:18px;font-size:12.5px;color:var(--dim)}
+.ws-pagename input{width:100%}
+.ws-chev{width:9px;height:9px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(45deg);color:var(--dim);
+  transition:transform .3s cubic-bezier(.16,1,.3,1);flex:none;margin:0 6px 4px}
+.ws-chev-r{transform:rotate(-45deg);margin:0 6px}
+.ws-acc{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius)}
+.ws-acc.is-open{border-color:rgba(47,216,255,.45)}
+.ws-acc-head{display:flex;align-items:stretch;gap:8px;padding-right:8px}
+.ws-acc .ws-stile{border:0;background:none}
+.ws-acc.is-open .ws-chev{transform:rotate(-135deg);margin-bottom:0;margin-top:4px;color:var(--voice-tech)}
+/* The unfolding: a grid row eased from nothing to its own height. */
+.ws-acc-body{display:grid;grid-template-rows:0fr;transition:grid-template-rows .38s cubic-bezier(.16,1,.3,1)}
+.ws-acc.is-open .ws-acc-body{grid-template-rows:1fr}
+.ws-acc.is-open.is-entering .ws-acc-body{grid-template-rows:0fr}
+.ws-acc-inner{overflow:hidden;min-height:0}
+.ws-acc.is-open .ws-acc-inner{padding:0 18px 18px;border-top:1px solid var(--line)}
+.ws-acc .ws-sectabs{margin-top:4px}
+@media (prefers-reduced-motion:reduce){.ws-acc-body,.ws-chev{transition:none}}
+.ws-prow-open .ws-chev{flex:0 0 9px}
