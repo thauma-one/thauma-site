@@ -18,7 +18,7 @@
  * of it switched off for anyone whose device asks for less motion.
  */
 import { word, SECTIONS, plainOf } from "./model.js";
-import { readable, onColor, alpha, luminance, companion } from "../embed-colour.js";
+import { readable, onColor, alpha, luminance, companion, hexToHsl, hslToHex } from "../embed-colour.js";
 
 export function esc(s) {
   return String(s == null ? "" : s).replace(/[&<>"']/g, (c) =>
@@ -31,6 +31,7 @@ const FONTS = {
   night: "family=Sora:wght@100;300;600&family=Inter:wght@300;400;600",
   paper: "family=Fraunces:opsz,wght@9..144,300;9..144,600&family=Manrope:wght@400;600;700",
   bold: "family=Manrope:wght@400;600;800",
+  custom: "family=Sora:wght@100;300;600&family=Inter:wght@300;400;600",
 };
 
 /* Each look: surfaces, ink, fonts. `acc` fills (buttons, rules, the
@@ -44,33 +45,49 @@ function mix(a, b, t) {
 }
 
 /**
- * THE OWNER'S COLORS (design.colors), and everything that has to follow
- * them. A background decides light or dark, and from it the text, the
- * quieter text, the raised bands and the lines are worked out so they stay
- * readable on it; an accent replaces the ministry's everywhere on the site,
- * the widgets included, lightened or darkened only where it is used as text.
+ * ONE PALETTE FROM A BACKGROUND AND AN ACCENT: the background decides light
+ * or dark, and the text, the quieter text, the raised bands and the lines
+ * are mixed from it so they stay readable on it; the accent fills buttons
+ * as chosen, only as much lighter or darker as it needs, and more so where
+ * it is used as text.
  */
-function looks(lookName, theme, colors = {}) {
-  const accent = colors.accent || theme.accent;
-  const accent2 = colors.accent ? companion(colors.accent, -33) : theme.accent2;
-  const L = baseLook(lookName, { accent, accent2 });
-  if (!colors.background) return L;
-  const bg = colors.background;
+function paletteFrom(bg, accent, accent2) {
   const dark = luminance(bg) < 0.25;
   const fg = dark ? "#F2F3F5" : "#15171C";
   const acc = readable(accent, bg, 3), acc2 = readable(accent2, bg, 3);
   return {
-    ...L, bg, fg,
+    bg, fg,
     panel: mix(bg, fg, dark ? 0.07 : 0.04),
     dim: mix(fg, bg, 0.38),
     line: alpha(fg, dark ? 0.1 : 0.12),
     acc, acc2, ink: readable(accent, bg, 4.5), onAcc: onColor(acc),
     scheme: dark ? "dark" : "light",
-    heroBg: lookName === "bold" ? acc
-      : lookName === "paper" ? `linear-gradient(135deg, ${alpha(acc, .22)}, ${alpha(acc2, .18)}), ${bg}`
-      : `radial-gradient(120% 90% at 20% 10%, ${alpha(acc, .35)}, transparent 60%), radial-gradient(90% 80% at 90% 90%, ${alpha(acc2, .28)}, transparent 60%), ${bg}`,
-    heroFg: lookName === "bold" ? onColor(acc) : undefined,
+    heroBg: `radial-gradient(120% 90% at 20% 10%, ${alpha(acc, .3)}, transparent 60%), radial-gradient(90% 80% at 90% 90%, ${alpha(acc2, .22)}, transparent 60%), ${bg}`,
   };
+}
+
+/**
+ * THE LOOK A PAGE WEARS. The three presets keep their own colors (and the
+ * ministry's accent); Custom is made from the owner's two colors, as both
+ * a dark and a light version — the chosen background is one of them, the
+ * other the same hue at the opposite end. `alt` carries the dark one when
+ * visitors see whatever their device prefers.
+ */
+function looks(lookName, theme, colors = {}, mode = "auto") {
+  if (lookName !== "custom") return baseLook(lookName, theme);
+  const accent = colors.accent || theme.accent;
+  const accent2 = colors.accent ? companion(colors.accent, -33) : theme.accent2;
+  const base = colors.background || "#15171C";
+  const hsl = hexToHsl(base) || { h: 220, s: 0.1, l: 0.1 };
+  const baseDark = luminance(base) < 0.25;
+  const other = baseDark ? hslToHex({ h: hsl.h, s: Math.min(hsl.s, 0.3), l: 0.96 })
+                         : hslToHex({ h: hsl.h, s: Math.min(hsl.s, 0.25), l: 0.09 });
+  const dark = paletteFrom(baseDark ? base : other, accent, accent2);
+  const light = paletteFrom(baseDark ? other : base, accent, accent2);
+  const type = baseLook("night", theme);
+  if (mode === "dark") return { ...type, ...dark };
+  if (mode === "light") return { ...type, ...light };
+  return { ...type, ...light, alt: dark };
 }
 
 function baseLook(look, theme) {
@@ -98,8 +115,10 @@ function baseLook(look, theme) {
 
 function css(L, design) {
   return `
-:root{--bg:${L.bg};--panel:${L.panel};--fg:${L.fg};--dim:${L.dim};--line:${L.line};--acc:${L.acc};--acc2:${L.acc2};--ink:${L.ink};--on-acc:${L.onAcc};
+:root{--bg:${L.bg};--panel:${L.panel};--fg:${L.fg};--dim:${L.dim};--line:${L.line};--acc:${L.acc};--acc2:${L.acc2};--ink:${L.ink};--on-acc:${L.onAcc};--herobg:${L.heroBg};
 --display:${L.display};--body:${L.body};--thin:${L.thin};--boldw:${L.boldW};color-scheme:${L.scheme}}
+${L.alt ? `@media (prefers-color-scheme:dark){:root{--bg:${L.alt.bg};--panel:${L.alt.panel};--fg:${L.alt.fg};--dim:${L.alt.dim};--line:${L.alt.line};` +
+  `--acc:${L.alt.acc};--acc2:${L.alt.acc2};--ink:${L.alt.ink};--on-acc:${L.alt.onAcc};--herobg:${L.alt.heroBg};color-scheme:dark}}` : ""}
 *{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--fg);font:400 17px/1.65 var(--body);-webkit-font-smoothing:antialiased}
 a{color:var(--ink)}img{max-width:100%;display:block}
@@ -155,7 +174,7 @@ html[data-buttons="glow"] .btn:hover{box-shadow:0 0 0 6px color-mix(in srgb,var(
 .hero{position:relative;overflow:hidden;padding:0!important;min-height:calc(100svh - 69px);display:flex;align-items:center}
 .hero .wrap{position:relative;padding:96px 0 120px}
 .hero .h{font-size:clamp(40px,6.6vw,86px)}
-.hero-media{position:absolute;inset:0;background:${L.heroBg}}
+.hero-media{position:absolute;inset:0;background:var(--herobg)}
 .hero-media img{width:100%;height:112%;object-fit:cover;position:absolute;top:-6%}
 .hero-behind .hero-media:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 20%,color-mix(in srgb,var(--bg) 88%,transparent) 88%)}
 .hero-behind.has-photo{color:#fff}.hero-behind.has-photo .lede{color:rgba(255,255,255,.86)}.hero-behind.has-photo .btn:not(.solid){color:#fff}
@@ -163,10 +182,10 @@ ${L.heroFg ? `.hero-behind:not(.has-photo),.hero-words{color:${L.heroFg}}.hero-b
 .hero-behind:not(.has-photo) .btn.solid,.hero-words .btn.solid{background:${L.heroFg};color:${L.heroBg}}.hero-behind:not(.has-photo) .btn,.hero-words .btn{border-color:${L.heroFg};color:${L.heroFg}}` : ""}
 .hero-beside{align-items:center}.hero-beside .wrap{display:grid;grid-template-columns:1.1fr .9fr;gap:48px;align-items:center;padding:110px 0}
 .hero-beside .hero-media{display:none}.hero-beside .pic{aspect-ratio:4/5;border-radius:18px;overflow:hidden}.hero-beside .pic img{width:100%;height:100%;object-fit:cover}
-.hero-words{align-items:center;text-align:center;background:${L.heroBg}}.hero-words .wrap{padding:130px 0 110px}.hero-words .lede{margin:0 auto}.hero-words .btns{justify-content:center}
+.hero-words{align-items:center;text-align:center;background:var(--herobg)}.hero-words .wrap{padding:130px 0 110px}.hero-words .lede{margin:0 auto}.hero-words .btns{justify-content:center}
 /* the monogram opening — chaseroush.com's: initials behind the title, a short
    rule, a spaced line, a picture beside it, a cue to scroll */
-.hero-monogram{align-items:center;background:${L.heroBg}}
+.hero-monogram{align-items:center;background:var(--herobg)}
 .hero-monogram .wrap{display:grid;grid-template-columns:1.05fr .95fr;gap:48px;align-items:center;padding:120px 0 150px}
 .mono-words{position:relative}
 .mono-mark{position:absolute;left:-.06em;top:50%;transform:translateY(-58%);font:700 clamp(150px,19vw,280px)/1 var(--display);color:var(--fg);opacity:.05;pointer-events:none;user-select:none;letter-spacing:-.04em;white-space:nowrap}
@@ -444,7 +463,7 @@ function renderSection(sec, ctx) {
 export function renderPage({ doc, site, payload, theme, lang, pageId, base, origin, draft, only = null, langNames = {} }) {
   const fallback = doc.fallback;
   const design = doc.design;
-  const L = looks(design.look, theme, design.colors || {});
+  const L = looks(design.look, theme, design.colors || {}, design.mode);
   const pages = doc.pages.filter((p) => p.on);
   const page = doc.pages.find((p) => p.id === pageId);
   const label = (id) => {
@@ -455,9 +474,11 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
   const href = (id, l = lang) => `${base}/${l}/${id === "home" ? "" : id + "/"}${draft ? "?draft" : ""}`;
   const ctx = {
     lang, fallback, design, slug: site.slug, payload, needs: {},
-    widgetTheme: L.scheme === "dark" ? "dark" : "light",
-    /* The owner's accent reaches the widgets too; the ministry's otherwise. */
-    widgetAccent: (design.colors || {}).accent || null,
+    /* Widgets follow the page: light, dark, or — a Custom site that follows
+       the visitor's device — the device too. */
+    widgetTheme: L.alt ? "auto" : L.scheme === "dark" ? "dark" : "light",
+    /* A Custom site's accent reaches the widgets; the ministry's otherwise. */
+    widgetAccent: design.look === "custom" ? (design.colors || {}).accent || null : null,
     giveUrl: doc.give || site.giving_url || "",
     pageOn: (id) => pages.some((p) => p.id === id),
     href, label, name: site.display_name || "",

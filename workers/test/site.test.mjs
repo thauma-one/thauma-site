@@ -83,6 +83,7 @@ check("links and pictures: only http(s)/mailto, only our media or https", () => 
   eq(safePhoto("https://x.org/a.jpg"), "https://x.org/a.jpg", "https");
 });
 
+const luminanceOf = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).reduce((a, v) => a + v, 0) / 3;
 const payload = { milestones: [{ id: "m" }], goals: [], prayer: [], videos: [], video_links: [], mailings: [], theme: { accent: "#1AE4FF", accent2: "#25FFA1" } };
 function page(doc, pageId = "home", lang = "en", extra = {}) {
   return renderPage({ doc: cleanDoc(doc, ["en", "hr"]), site: { slug: "chase-roush", display_name: "Chase Roush", giving_url: "" },
@@ -183,7 +184,7 @@ check("the owner's colors: a background decides everything that must be read on 
   const d = blankWith([{ type: "hero", variant: "monogram", photo: null,
     words: { en: { thin: "All of Me", bold: "for All of Him", text: "Serving churches in Croatia" } }, buttons: [] },
     { type: "timeline", words: { en: { bold: "Journey", text: "Every step" } }, raised: true }],
-    (x) => { x.design.colors = { background: "#1a1a1a", accent: "#A63D40" }; return x; });
+    (x) => { x.design.look = "custom"; x.design.mode = "dark"; x.design.colors = { background: "#1a1a1a", accent: "#A63D40" }; return x; });
   const html = page(d, "home", "en", { payload: { ...payload, milestones: [{ id: "m" }] } });
   assert(html.includes("--bg:#1A1A1A"), "the background, as chosen");
   assert(/--fg:#F2F3F5/.test(html), "light words on a dark background");
@@ -191,10 +192,24 @@ check("the owner's colors: a background decides everything that must be read on 
   assert(html.includes('data-accent="#A63D40"'), "the widgets wear it too");
   assert(html.includes('data-theme="dark"'), "and know the page is dark");
   assert(html.includes('<span class="mono-mark" aria-hidden="true">CR</span>'), "the monogram opening stays, in any look");
-  const light = page(blankWith([], (x) => { x.design.colors = { background: "#FAF7F0", accent: null }; return x; }));
+  const light = page(blankWith([], (x) => { x.design.look = "custom"; x.design.mode = "light"; x.design.colors = { background: "#FAF7F0", accent: null }; return x; }));
   assert(/--fg:#15171C/.test(light), "dark words on a light background");
   eq(cleanDoc({ design: { look: "classic", colors: { background: "red", accent: "#12AB34" } } }, ["en"]).design,
     { ...cleanDoc({}, ["en"]).design, colors: { background: null, accent: "#12AB34" } }, "Classic opens as Night; only real colors are kept");
+});
+
+check("Custom makes a light and a dark version; the device chooses unless the owner does; the presets keep their own colors", () => {
+  const custom = (mode) => blankWith([{ type: "timeline", words: { en: { heading: "Road" } } }],
+    (x) => { x.design.look = "custom"; x.design.mode = mode; x.design.colors = { background: "#1A1A1A", accent: "#A63D40" }; return x; });
+  const pay = { payload: { ...payload, milestones: [{ id: "m" }] } };
+  const auto = page(custom("auto"), "home", "en", pay);
+  const root = auto.match(/:root\{--bg:(#[0-9A-Fa-f]{6})/)[1];
+  assert(luminanceOf(root) > 0.8, "light by default: " + root);
+  assert(/@media \(prefers-color-scheme:dark\)\{:root\{--bg:#1A1A1A/.test(auto), "the chosen dark one when the device is dark");
+  assert(auto.includes('data-theme="auto"'), "widgets follow the device too");
+  assert(page(custom("dark"), "home", "en", pay).includes('data-theme="dark"') && !page(custom("dark")).includes("prefers-color-scheme:dark)"), "always dark, when chosen");
+  const night = page(blankWith([], (x) => { x.design.look = "night"; x.design.colors = { background: "#FAF7F0", accent: "#A63D40" }; return x; }));
+  assert(night.includes("--bg:#0A0D12") && !night.includes('data-accent="#A63D40"'), "Night stays Night, whatever Custom holds");
 });
 
 check("the language menu is always a dropdown, by each language's own name, on a phone too", () => {

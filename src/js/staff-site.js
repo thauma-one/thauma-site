@@ -22,7 +22,7 @@
 
   var API = '/api/staff-site';
   var $ = function (id) { return document.getElementById(id); };
-  var state = { body: null, doc: null, tab: 'design', page: null, edit: null, anchor: null, animate: null, sectab: 'words', openItem: null, showKicker: false,
+  var state = { body: null, doc: null, openSocial: null, openCustom: null, tab: 'design', page: null, edit: null, anchor: null, animate: null, sectab: 'words', openItem: null, showKicker: false,
                 insertAt: null, frameDirty: false, langA: null, langB: null,
                 timer: null, saving: false, again: false, frameTimer: null };
 
@@ -65,9 +65,7 @@
     pages: ['fade', 'cut'], progress: ['on', 'off'],
   };
   var SOCIALS = ['youtube', 'instagram', 'facebook', 'x', 'tiktok', 'linkedin', 'spotify', 'email'];
-  var LOOKS = ['night', 'paper', 'bold'];
-  /* Each look's own background, shown in the picker until the owner picks one. */
-  var LOOK_BG = { night: '#0A0D12', paper: '#F6F2EA', bold: '#F4F4F1' };
+  var LOOKS = ['night', 'paper', 'bold', 'custom'];
   var FOOTERS = ['split', 'center', 'columns'];
   var SOCIAL_NAME = { youtube: 'YouTube', instagram: 'Instagram', facebook: 'Facebook', x: 'X', tiktok: 'TikTok',
     linkedin: 'LinkedIn', spotify: 'Spotify', email: 'Email' };
@@ -754,22 +752,38 @@
     var col = d.colors || (d.colors = { background: null, accent: null });
     var acc = col.accent || th.accent;
     var name = state.body.partner.display_name;
+    /* THE PRESETS WEAR THEIR OWN COLORS (and the ministry's accent); only
+       Custom wears the owner's — as a dark and a light half, since that is
+       what it makes (Chase, 2026-09-29). */
+    var cBg = col.background || '#15171C', cAcc = col.accent || th.accent;
     var html = '<div class="ws-head"><h2>' + esc(tr('ws.look')) + '</h2></div><div class="ws-looks">' + LOOKS.map(function (l) {
-      /* Each card wears the owner's colors, so the choice is seen as it will be. */
-      var bg = l === 'bold' ? 'background:' + acc + ';' : '';
-      var btn = 'background:' + (l === 'bold' ? '#041D24' : acc) + ';color:' + (l === 'bold' ? acc : '#06110c');
-      var own = col.background && l !== 'bold' ? ';background:' + col.background + ';color:' + (dark(col.background) ? '#F2F3F5' : '#15171C') : '';
-      return '<button type="button" class="ws-look" data-chip="look" data-value="' + l + '" aria-pressed="' + (d.look === l) + '">' +
-        '<span class="ws-look-sample" style="' + bg + LOOK_SAMPLE[l] + own + '"><span class="ws-look-name">' + esc(name) + '</span>' +
-        '<span class="ws-look-btn" style="' + btn + '">' + esc(tr('ws.btn.give')) + '</span></span>' +
+      var sample;
+      if (l === 'custom') {
+        var other = dark(cBg) ? '#F6F4F2' : '#16171B';
+        var dk = dark(cBg) ? cBg : other, lt = dark(cBg) ? other : cBg;
+        sample = '<span class="ws-look-sample ws-look-split">' +
+          '<span style="background:' + dk + ';color:#F2F3F5"><span class="ws-look-name">' + esc(name.split(' ')[0]) + '</span>' +
+            '<span class="ws-look-btn" style="background:' + cAcc + ';color:#fff">' + esc(tr('ws.btn.give')) + '</span></span>' +
+          '<span style="background:' + lt + ';color:#15171C"><span class="ws-look-name">' + esc(name.split(' ')[0]) + '</span>' +
+            '<span class="ws-look-btn" style="background:' + cAcc + ';color:#fff">' + esc(tr('ws.btn.give')) + '</span></span></span>';
+      } else {
+        var bg = l === 'bold' ? 'background:' + th.accent + ';' : '';
+        var btn = 'background:' + (l === 'bold' ? '#041D24' : th.accent) + ';color:' + (l === 'bold' ? th.accent : '#06110c');
+        sample = '<span class="ws-look-sample" style="' + bg + LOOK_SAMPLE[l] + '"><span class="ws-look-name">' + esc(name) + '</span>' +
+          '<span class="ws-look-btn" style="' + btn + '">' + esc(tr('ws.btn.give')) + '</span></span>';
+      }
+      return '<button type="button" class="ws-look" data-chip="look" data-value="' + l + '" aria-pressed="' + (d.look === l) + '">' + sample +
         '<span class="ws-look-cap"><b>' + esc(tr('ws.look.' + l)) + '</b><span>' + esc(tr('ws.look.' + l + '.what')) + '</span></span></button>';
     }).join('') + '</div>';
+    /* Custom's own settings, under it, only while it is chosen. */
+    if (d.look === 'custom') {
+      html += '<div class="ws-rows ws-custom">' +
+        row(tr('ws.bgColor'), colorPick('background', col.background, '#15171C')) +
+        row(tr('ws.accentColor'), colorPick('accent', col.accent, th.accent)) +
+        row(tr('ws.mode'), chips('mode', ['auto', 'dark', 'light'], d.mode || 'auto', function (v) { return tr('ws.mode.' + v); })) +
+        '</div>';
+    }
     html += '<div class="ws-rows">' +
-      /* THE OWNER'S COLORS (Chase, 2026-09-29). A picker each, showing what
-         is in use now; Reset goes back to the look's background, or the
-         ministry's accent from Sharing. The rest follows on the site. */
-      row(tr('ws.bgColor'), colorPick('background', col.background, LOOK_BG[d.look] || '#0A0D12')) +
-      row(tr('ws.accentColor'), colorPick('accent', col.accent, th.accent)) +
       row(tr('ws.menu'), chips('menu', ['top', 'center', 'button'], d.menu, function (v) { return tr('ws.menu.' + v); })) +
       row(tr('ws.brand'), chips('brand', ['name', 'logo'], d.brand, function (v) { return v === 'name' ? name : tr('ws.brand.logo'); }) +
         (d.brand === 'logo' ? (d.logo ? '<img class="ws-logo" src="' + esc(d.logo) + '" alt="">' : '') +
@@ -799,21 +813,64 @@
 
   /* ---- Links ----------------------------------------------------------- */
 
+  /* The same icons the site draws (site/render.js). */
+  var SOCIAL_ICON = {
+    youtube: '<path d="M22 8.2s-.2-1.5-.8-2.1c-.8-.8-1.6-.8-2-.9C16.4 5 12 5 12 5s-4.4 0-7.2.2c-.4.1-1.2.1-2 .9-.6.6-.8 2.1-.8 2.1S2 9.9 2 11.6v1.6c0 1.7.2 3.4.2 3.4s.2 1.5.8 2.1c.8.8 1.8.8 2.2.9 1.6.2 6.8.2 6.8.2s4.4 0 7.2-.2c.4-.1 1.2-.1 2-.9.6-.6.8-2.1.8-2.1s.2-1.7.2-3.4v-1.6c0-1.7-.2-3.4-.2-3.4zM10 15V9l5.2 3L10 15z" fill="currentColor"/>',
+    instagram: '<rect x="3" y="3" width="18" height="18" rx="5" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="17.4" cy="6.6" r="1.1" fill="currentColor"/>',
+    facebook: '<path d="M13.5 21v-8h2.7l.4-3.1h-3.1V7.9c0-.9.3-1.5 1.6-1.5h1.6V3.6c-.3 0-1.3-.1-2.4-.1-2.4 0-4 1.4-4 4.1v2.3H7.6V13h2.7v8h3.2z" fill="currentColor"/>',
+    x: '<path d="M17.7 3h3l-6.6 7.5L22 21h-6.1l-4.8-6.2L5.6 21h-3l7-8L2.5 3h6.2l4.3 5.7L17.7 3zm-1 16.2h1.7L7.8 4.7H6l10.7 14.5z" fill="currentColor"/>',
+    tiktok: '<path d="M16.5 3c.4 2.2 1.8 3.6 4 3.8v3c-1.5 0-2.9-.4-4-1.2v6.2c0 3.4-2.6 5.7-5.7 5.7S5 18.2 5 15.1c0-3.3 2.8-5.8 6.2-5.6v3.1c-1.6-.3-3.1.8-3.1 2.5 0 1.4 1.1 2.6 2.6 2.6 1.6 0 2.7-1.1 2.7-3V3h3.1z" fill="currentColor"/>',
+    linkedin: '<path d="M4.5 9h3v11h-3V9zm1.5-5a1.8 1.8 0 110 3.6A1.8 1.8 0 016 4zm4 5h2.9v1.5c.4-.8 1.5-1.7 3.1-1.7 3.3 0 3.9 2.1 3.9 4.9V20h-3v-5.6c0-1.3 0-3-1.8-3s-2.1 1.4-2.1 2.9V20h-3V9z" fill="currentColor"/>',
+    spotify: '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M7.5 9.6c3-1 6.6-.7 9.2.8M8 12.6c2.5-.7 5.3-.4 7.4.8M8.6 15.4c2-.5 4-.3 5.6.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
+    email: '<rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3.5 6.5l8.5 6.5 8.5-6.5" fill="none" stroke="currentColor" stroke-width="1.8"/>'
+  };
+
+  /* THE LINKS TAB, REWORKED (Chase, 2026-09-29; canvas "Round two ·
+     Links"). Where people follow you, as a row of icons: a filled one is on
+     the site, and a tap opens its one box. The owner's other links as
+     plain rows — what it says, where it goes — one opened at a time. The
+     preview beside shows the footer, where they appear. */
   function drawLinks() {
     var links = state.doc.links;
     var social = function (k) { return links.filter(function (x) { return x.kind === k; })[0]; };
-    var html = '<div class="ws-head"><h2>' + esc(tr('ws.socials')) + '</h2></div><div class="ws-rows">' + SOCIALS.map(function (k) {
-      var l = social(k);
-      return row(SOCIAL_NAME[k], '<input type="' + (k === 'email' ? 'email' : 'url') + '" data-social="' + k + '" value="' + esc(l ? l.url.replace(/^mailto:/, '') : '') + '" placeholder="' +
-        esc(k === 'email' ? 'you@example.org' : 'https://') + '">');
-    }).join('') + row(tr('ws.atTop'), sw('data-header-links', state.doc.design.headerLinks, '')) + '</div>';
+    var html = '<div class="ws-head"><h2>' + esc(tr('ws.socials')) + '</h2></div><div class="ws-socials">' + SOCIALS.map(function (k) {
+      var set = !!social(k), open = state.openSocial === k;
+      return '<button type="button" class="ws-soc' + (set ? ' is-set' : '') + '" data-social-pick="' + k + '" aria-pressed="' + open + '" aria-label="' +
+        esc(SOCIAL_NAME[k] + (set ? '' : ' — ' + tr('ws.notSet'))) + '" title="' + esc(SOCIAL_NAME[k]) + '"><svg viewBox="0 0 24 24" aria-hidden="true">' + SOCIAL_ICON[k] + '</svg></button>';
+    }).join('') + '</div>';
+    if (state.openSocial) {
+      var k = state.openSocial, l = social(k);
+      html += '<div class="ws-socbox"><b>' + esc(SOCIAL_NAME[k]) + '</b>' +
+        '<input type="' + (k === 'email' ? 'email' : 'url') + '" data-social="' + k + '" value="' + esc(l ? l.url.replace(/^mailto:/, '') : '') + '" placeholder="' +
+          esc(k === 'email' ? 'you@example.org' : 'https://') + '" aria-label="' + esc(SOCIAL_NAME[k]) + '">' +
+        (l ? '<button type="button" class="link-btn" data-social-remove="' + k + '">' + esc(tr('ws.remove')) + '</button>' : '') + '</div>';
+    }
+    html += '<p class="ws-small ws-soc-hint">' + esc(tr('ws.socialsHow')) + '</p>';
+
     var custom = links.map(function (l, i) { return { l: l, i: i }; }).filter(function (x) { return x.l.kind === 'custom'; });
-    html += '<div class="ws-head"><h2>' + esc(tr('ws.custom')) + '</h2></div><div class="ws-customs">' + custom.map(function (x) {
-      return '<div class="ws-item">' + ref(x.l.label) +
-        '<input type="text" maxlength="40" placeholder="' + esc(tr('ws.linkName')) + '" data-custom-label="' + x.i + '" value="' + esc((x.l.label || {})[state.langA] || '') + '" lang="' + esc(state.langA) + '">' +
-        linkPicker('custom:' + x.i, x.l.url || 'https://', false) +
-        '<button type="button" class="ws-icon del" data-custom-remove="' + x.i + '" aria-label="' + esc(tr('ws.remove')) + '">✕</button></div>';
-    }).join('') + '<button type="button" class="link-btn" data-custom-add>+ ' + esc(tr('ws.addLink')) + '</button></div>';
+    html += '<div class="ws-head ws-head-row"><h2>' + esc(tr('ws.custom')) + '</h2>' +
+      '<button type="button" class="solid-btn sm" data-custom-add>+ ' + esc(tr('ws.addLink')) + '</button></div>';
+    if (custom.length) {
+      html += '<div class="ws-linkrows">' + custom.map(function (x, n) {
+        var open = state.openCustom === x.i, u = x.l.url || '';
+        var where = !u || u === 'https://' ? tr('ws.link.nowhere') : u.indexOf('page:') === 0
+          ? pageLabel(state.doc.pages.filter(function (p) { return 'page:' + p.id === u; })[0] || { id: u.slice(5) }, state.langA) : u.replace(/^https?:\/\//, '');
+        var row1 = '<div class="ws-linkrow' + (open ? ' is-open' : '') + '">' +
+          '<b>' + esc((x.l.label || {})[state.langA] || tr('ws.itemUntitled')) + '</b><span>→ ' + esc(where) + '</span>' +
+          '<button type="button" class="ws-icon" data-custom-up="' + x.i + '" aria-label="' + esc(tr('ws.up')) + '"' + (n === 0 ? ' disabled' : '') + '>↑</button>' +
+          '<button type="button" class="ws-icon" data-custom-down="' + x.i + '" aria-label="' + esc(tr('ws.down')) + '"' + (n === custom.length - 1 ? ' disabled' : '') + '>↓</button>' +
+          '<button type="button" class="link-btn" data-custom-open="' + x.i + '">' + esc(open ? tr('ws.close') : tr('ws.edit')) + '</button>' +
+          '<button type="button" class="ws-icon del" data-custom-remove="' + x.i + '" aria-label="' + esc(tr('ws.remove')) + '">✕</button></div>';
+        if (!open) return row1;
+        return row1 + '<div class="ws-linkedit">' +
+          '<label class="fld"><span>' + esc(tr('ws.linkName')) + '</span>' + ref(x.l.label) +
+            '<input type="text" maxlength="40" data-custom-label="' + x.i + '" value="' + esc((x.l.label || {})[state.langA] || '') + '" lang="' + esc(state.langA) + '"></label>' +
+          '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.link.goesTo')) + '</span>' + linkPicker('custom:' + x.i, u || 'https://', false) + '</div></div>';
+      }).join('') + '</div>';
+    } else {
+      html += '<p class="ws-small">' + esc(tr('ws.noCustom')) + '</p>';
+    }
+    html += '<div class="ws-rows ws-attop">' + row(tr('ws.atTop'), sw('data-header-links', state.doc.design.headerLinks, '')) + '</div>';
     $('wsLinks').innerHTML = html;
   }
 
@@ -917,9 +974,15 @@
       var k = t.dataset.social, list = state.doc.links, at = list.findIndex(function (x) { return x.kind === k; });
       var url = v.trim(); if (k === 'email' && url && !/^mailto:/.test(url)) url = 'mailto:' + url;
       if (!url) { if (at !== -1) list.splice(at, 1); } else if (at === -1) list.push({ kind: k, url: url, label: {} }); else list[at].url = url;
+      var ic = $('wsLinks').querySelector('[data-social-pick="' + k + '"]'); if (ic) ic.classList.toggle('is-set', !!url);
       return changed();
     }
-    if (t.dataset.customLabel !== undefined) { var cl = state.doc.links[+t.dataset.customLabel]; cl.label = cl.label || {}; cl.label[state.langA] = v; return changed(); }
+    if (t.dataset.customLabel !== undefined) {
+      var cl = state.doc.links[+t.dataset.customLabel]; cl.label = cl.label || {}; cl.label[state.langA] = v;
+      var rb = t.closest('.ws-linkedit'); rb = rb && rb.previousElementSibling && rb.previousElementSibling.querySelector('b');
+      if (rb) rb.textContent = v || tr('ws.itemUntitled');
+      return changed();
+    }
     if (t.dataset.give !== undefined) { state.doc.give = v.trim(); return changed(); }
   });
 
@@ -1007,8 +1070,33 @@
     if (d.colorReset) { state.doc.design.colors[d.colorReset] = null; drawDesign(); return changed(); }
     if (d.footerMenu !== undefined) { state.doc.footer.menu = !state.doc.footer.menu; drawFooter(); return changed(); }
     if (d.itemRemove) { var r = d.itemRemove.split(':'); p.sections[+r[0]].items.splice(+r[1], 1); state.openItem = null; drawSections(); return changed(); }
-    if (d.customAdd !== undefined) { state.doc.links.push({ kind: 'custom', url: 'https://', label: {} }); drawLinks(); return; }
-    if (d.customRemove) { state.doc.links.splice(+d.customRemove, 1); drawLinks(); return changed(); }
+    if (d.customAdd !== undefined) {
+      state.doc.links.push({ kind: 'custom', url: 'https://', label: {} });
+      state.openCustom = state.doc.links.length - 1; drawLinks();
+      var nm = $('wsLinks').querySelector('[data-custom-label="' + state.openCustom + '"]'); if (nm) nm.focus();
+      return;
+    }
+    if (d.customRemove) { state.doc.links.splice(+d.customRemove, 1); state.openCustom = null; drawLinks(); return changed(); }
+    if (d.customOpen !== undefined) { state.openCustom = state.openCustom === +d.customOpen ? null : +d.customOpen; drawLinks(); return; }
+    if (d.customUp || d.customDown) {
+      /* Moved among the other links only; the social ones keep their place. */
+      var at = +(d.customUp || d.customDown), list = state.doc.links;
+      var idx = list.map(function (l, n) { return l.kind === 'custom' ? n : -1; }).filter(function (n) { return n !== -1; });
+      var pos = idx.indexOf(at), to = idx[pos + (d.customUp ? -1 : 1)];
+      if (to == null) return;
+      var tmp = list[at]; list[at] = list[to]; list[to] = tmp;
+      if (state.openCustom === at) state.openCustom = to; else if (state.openCustom === to) state.openCustom = at;
+      drawLinks(); return changed();
+    }
+    if (d.socialPick) {
+      state.openSocial = state.openSocial === d.socialPick ? null : d.socialPick; drawLinks();
+      var sb = $('wsLinks').querySelector('[data-social="' + state.openSocial + '"]'); if (sb) sb.focus();
+      return;
+    }
+    if (d.socialRemove) {
+      state.doc.links = state.doc.links.filter(function (l) { return l.kind !== d.socialRemove; });
+      state.openSocial = null; drawLinks(); return changed();
+    }
     if (d.headerLinks !== undefined) { state.doc.design.headerLinks = !state.doc.design.headerLinks; drawLinks(); return changed(); }
     if (d.chip) {
       var val = d.value, name = d.chip;
@@ -1025,7 +1113,7 @@
       }
       else if (name.indexOf('footer:') === 0) { state.doc.footer[name.slice(7)] = val; drawFooter(); }
       else if (name.indexOf('motion:') === 0) { state.doc.design.motion[name.slice(7)] = val; drawDesign(); }
-      else if (name === 'look' || name === 'menu' || name === 'brand') { state.doc.design[name] = val; drawDesign(); }
+      else if (name === 'look' || name === 'menu' || name === 'brand' || name === 'mode') { state.doc.design[name] = val; drawDesign(); }
       return changed();
     }
     if (d.start) {

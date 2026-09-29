@@ -2671,3 +2671,20 @@ html.has-ai .ai-one{display:inline-flex;align-items:center;justify-content:cente
 .ws-acc .ws-sectabs{margin-top:4px}
 @media (prefers-reduced-motion:reduce){.ws-acc-body,.ws-chev{transition:none}}
 .ws-prow-open .ws-chev{flex:0 0 9px}
+/* Custom's card: its dark and its light half side by side. */
+.ws-look-split{display:grid!important;grid-template-columns:1fr 1fr;padding:0!important}
+.ws-look-split > span{display:flex;flex-direction:column;justify-content:space-between;padding:14px}
+.ws-look-split .ws-look-name{font-family:Sora,system-ui;font-size:17px}
+.ws-custom{border-color:rgba(47,216,255,.35);margin-bottom:14px}
+/* ---- Website › Links: icons for where people follow you; plain rows ---- */
+.ws-socials{display:flex;flex-wrap:wrap;gap:10px}
+.ws-soc{width:52px;height:52px;border-radius:50%;border:1px dashed rgba(255,255,255,.28);background:none;color:var(--dim);display:flex;align-items:center;justify-content:center;cursor:pointer}
+.ws-soc svg{width:21px;height:21px}
+.ws-soc.is-set{border:0;background:var(--voice-tech);color:#06121A}
+.ws-soc[aria-pressed="true"]{outline:2px solid var(--voice-tech);outline-offset:3px}
+.ws-soc:hover:not(.is-set){border-color:var(--voice-tech);color:var(--text)}
+.ws-socbox{display:flex;align-items:center;gap:12px;margin-top:12px;padding:12px 14px;background:var(--panel);border:1px solid rgba(47,216,255,.45);border-radius:var(--radius)}
+.ws-socbox b{font-weight:600;min-width:80px}.ws-socbox input{flex:1 1 auto;min-width:0}
+.ws-soc-hint{margin:10px 0 0}
+.ws-head-row{display:flex;align-items:center;justify-content:space-between;margin-top:26px}
+.ws-attop{margin-top:20px}

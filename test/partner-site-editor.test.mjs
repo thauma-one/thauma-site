@@ -185,6 +185,39 @@ await check("the footer: a layout picked, a tagline written", async () => {
   eq([f.layout, f.words.en.tagline], ["center", "All of me for all of Him"], "saved");
 });
 
+await check("Links: a tap on an icon opens its box; other links are rows, one opened at a time", async () => {
+  const { w, d, sent, click } = await boot();
+  click(d.querySelector('[data-ws-tab="links"]'));
+  const yt = d.querySelector('[data-social-pick="youtube"]');
+  assert(yt && !yt.classList.contains("is-set"), "an icon, not added yet");
+  assert(!d.querySelector('[data-social="youtube"]'), "no box until it is wanted");
+  click(yt);
+  const box = d.querySelector('[data-social="youtube"]');
+  box.value = "https://youtube.com/@chaseroush";
+  box.dispatchEvent(new w.Event("input", { bubbles: true }));
+  assert(d.querySelector('[data-social-pick="youtube"]').classList.contains("is-set"), "filled as it is typed");
+  click(d.querySelector("[data-custom-add]"));
+  const name = d.querySelector("[data-custom-label]");
+  assert(name, "a new link opens, ready for its name");
+  name.value = "Schedule a conversation";
+  name.dispatchEvent(new w.Event("input", { bubbles: true }));
+  await settle(900);
+  const links = sent.filter((x) => x.action === "save").pop().draft.links;
+  eq(links.map((l) => l.kind), ["youtube", "custom"], "both saved");
+  eq(links[1].label.en, "Schedule a conversation", "with its name");
+});
+
+await check("Design: Custom's colors and what visitors see appear only when Custom is chosen", async () => {
+  const { d, sent, click } = await boot();
+  assert(!d.querySelector('[data-color="background"]'), "a preset has no color pickers");
+  click(d.querySelector('[data-chip="look"][data-value="custom"]'));
+  assert(d.querySelector('[data-color="background"]') && d.querySelector('[data-chip="mode"][data-value="auto"]'), "Custom does");
+  click(d.querySelector('[data-chip="mode"][data-value="dark"]'));
+  await settle(900);
+  const design = sent.filter((x) => x.action === "save").pop().draft.design;
+  eq([design.look, design.mode], ["custom", "dark"], "saved");
+});
+
 await check("somebody not allowed sees it all, changes nothing, and can ask", async () => {
   const { d } = await boot({ edit: false, owner: false });
   assert(!d.getElementById("wsAsk").hidden, "Ask to edit offered");

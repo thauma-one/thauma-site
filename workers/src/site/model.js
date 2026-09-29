@@ -146,7 +146,13 @@ const NOT_RAISED = new Set(["hero", "photo"]);
    2026-09-29: "we don't need a classic design. Maybe just give options for
    more customization … background and accent colors. But the other elements
    would need to match"). A site saved with it opens as Night. */
-export const LOOKS = ["night", "paper", "bold"];
+export const LOOKS = ["night", "paper", "bold", "custom"];
+/* Custom (Chase, 2026-09-29: "compile a light/dark mode from those and maybe
+   make the 4th box Custom"): the owner's background and accent, and from
+   them both a light and a dark version. What a visitor sees: whatever their
+   device is set to, or always one of the two. The three preset looks keep
+   their own colors, whatever is picked here. */
+export const MODES = ["auto", "dark", "light"];
 const HEX_RE = /^#[0-9a-fA-F]{6}$/;
 export const MENUS = ["top", "center", "button"];
 /* Chase, 2026-09-29: "I'd like a few more animation tools available". Each is
@@ -508,8 +514,9 @@ export function cleanDoc(raw, catalog) {
       /* The little picture in a browser tab (Chase, 2026-09-29). */
       favicon: safePhoto(design.favicon),
       headerLinks: !!design.headerLinks,
-      /* The owner's own colors, or null for the look's background and the
-         ministry's accent. Everything else is worked out from these two. */
+      /* The owner's own colors (the Custom look), or null for a dark ground
+         and the ministry's accent. Everything else is worked out from these. */
+      mode: pick(design.mode, MODES),
       colors: {
         background: HEX_RE.test((design.colors || {}).background || "") ? design.colors.background.toUpperCase() : null,
         accent: HEX_RE.test((design.colors || {}).accent || "") ? design.colors.accent.toUpperCase() : null,
