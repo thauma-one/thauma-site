@@ -39,6 +39,7 @@ import { requireAccess } from "./lib/access.js";
 import { json, readJson } from "./lib/store.js";
 import { compareBranches, dispatchWorkflow, lastSuccessfulRun, refSha, githubConfig }
   from "./lib/github.js";
+import { carry } from "./lib/carry.js";
 
 const CONFIRM_WORD = "PUBLISH";
 
@@ -240,6 +241,22 @@ async function act(request, env, db, user, me) {
     }
   }
 
+  /* DEV'S DATA GOES WITH IT (lib/carry.js). On the Pi, before the build:
+     the other database's structure brought up to date from this branch's
+     migrations, then dev's rows — staging replaced, live added to and
+     updated. If that fails nothing is built, because code arriving ahead of
+     the data it shows is the gap this closes. Everywhere else (no sync
+     credential) it answers "skipped" and the buttons behave as before. */
+  let carried;
+  try {
+    carried = await carry(env, { target: action === "publish" ? "live" : "staging", branch,
+      who: (me && me.user_name) || user.email });
+  } catch (err) {
+    return json({ error: `Dev's data could not be copied to ${action === "publish" ? "the live site" : "the preview"}: ` +
+      `${err.message}. Nothing was built.`, action }, 502);
+  }
+  if (carried.error) return json({ error: carried.error, action }, 502);
+
   const workflow = action === "publish" ? PROD_WORKFLOW : STAGING_WORKFLOW;
   const res = await dispatchWorkflow(env, workflow, branch);
   if (res.error) return json({ error: res.error, action }, res.status || 502);
@@ -251,7 +268,8 @@ async function act(request, env, db, user, me) {
     user,
     action: action === "publish" ? "release.publish" : "release.preview",
     entity_id: `${workflow}@${branch}`,
-    detail: { by: (me && me.user_name) || user.email, branch },
+    detail: { by: (me && me.user_name) || user.email, branch,
+              carried: carried.skipped ? undefined : { rows: carried.rows, migrations: carried.migrations, matched: carried.matched } },
   });
 
   return json({
@@ -262,5 +280,6 @@ async function act(request, env, db, user, me) {
     // says so rather than implying the site has already changed.
     started: true,
     where: action === "publish" ? "thauma.one" : "next.thauma.one",
+    carried: carried.skipped ? null : { rows: carried.rows, migrations: carried.migrations.length },
   });
 }

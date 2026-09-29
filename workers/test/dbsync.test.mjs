@@ -13,7 +13,7 @@
  */
 import {
   invented, copyableTables, loadOrder, buildStatements, renderSql, lit,
-  realAddresses, SKIP_TABLES,
+  realAddresses, SKIP_TABLES, planMerge, planReplace, scripts, LIVE_KEEPS,
 } from "../src/lib/dbsync.js";
 import { isProduction, remoteConfig } from "../src/admin-dbsync.js";
 
@@ -165,6 +165,69 @@ check("values are bound, not interpolated, on the local side", () => {
   for (const s of statements.filter((x) => x.sql.startsWith("INSERT"))) {
     assert(/VALUES \((\?, )*\?\)$/.test(s.sql), `not parameterised: ${s.sql}`);
   }
+});
+
+/* ---- carrying dev's data forward (Preview and Publish) ---- */
+
+const CMETA = {
+  users: { cols: ["id", "email", "protected"], pk: ["id"], uniques: [["email"]], fks: [] },
+  partners: { cols: ["id", "slug"], pk: ["id"], uniques: [["slug"]], fks: [] },
+  partner_users: { cols: ["partner_id", "user_id", "role"], pk: ["partner_id", "user_id"], uniques: [],
+    fks: [{ from: "partner_id", table: "partners", to: "id" }, { from: "user_id", table: "users", to: "id" }] },
+  subscribers: { cols: ["id", "email"], pk: ["id"], uniques: [], fks: [] },
+  contact_forms: { cols: ["partner_id", "heading"], pk: ["partner_id"], uniques: [], fks: [] },
+};
+const CORDER = ["users", "partners", "partner_users", "subscribers", "contact_forms"];
+const CDEV = {
+  users: [{ id: "u_d", email: "Chase.Roush@thauma.one", protected: 0 }],
+  partners: [{ id: "p_chase_roush", slug: "chase-roush" }],
+  partner_users: [{ partner_id: "p_chase_roush", user_id: "u_d", role: "owner" }],
+  subscribers: [{ id: "s1", email: "x@example.com" }],
+  contact_forms: [{ partner_id: null, heading: "Hi" }],
+};
+
+check("Publish: the same ministry under another id is live's, and its members follow it", () => {
+  const { statements, matched } = planMerge(CORDER, CDEV, CMETA, { partners: [{ id: "p_chase", slug: "chase-roush" }], users: [] });
+  eq(matched, [{ table: "partners", dev: "p_chase_roush", live: "p_chase" }], "matched on the slug");
+  const pu = statements.find((x) => /INTO partner_users/.test(x.sql));
+  eq(pu.params.slice(0, 2), ["p_chase", "u_d"], "membership points at live's id");
+  assert(statements.every((x) => !/^DELETE/.test(x.sql)), "nothing is deleted on live");
+  assert(/ON CONFLICT \(id\) DO UPDATE SET email = excluded.email/.test(statements[0].sql), "dev's version wins");
+});
+
+check("Publish: what only live has is not touched; an email matches whatever its case", () => {
+  const { statements, matched } = planMerge(CORDER, CDEV, CMETA, { users: [{ id: "u_live", email: "chase.roush@thauma.one" }], partners: [] });
+  assert(LIVE_KEEPS.has("subscribers") && !statements.some((x) => /subscribers/.test(x.sql)), "sign-ups left alone");
+  eq(matched[0], { table: "users", dev: "u_d", live: "u_live" }, "the same person");
+});
+
+check("a NULL key is updated in place and added only when absent", () => {
+  const { statements } = planMerge(CORDER, CDEV, CMETA, {});
+  const cf = statements.filter((x) => /contact_forms/.test(x.sql));
+  assert(/^UPDATE contact_forms SET heading = \? WHERE partner_id IS \?/.test(cf[0].sql), "update where it is");
+  assert(/WHERE NOT EXISTS/.test(cf[1].sql), "insert only if missing");
+});
+
+check("Preview: staging replaced, but never the master account or its roles", () => {
+  const meta = { ...CMETA, user_roles: { cols: ["user_id", "role"], pk: ["user_id", "role"], uniques: [], fks: [] } };
+  const { statements } = planReplace(["users", "user_roles", "subscribers"], { ...CDEV, user_roles: [] }, meta, {});
+  eq(statements.filter((x) => /^DELETE/.test(x.sql)).map((x) => x.sql), [
+    "DELETE FROM subscribers",
+    "DELETE FROM user_roles WHERE user_id NOT IN (SELECT id FROM users WHERE protected = 1)",
+    "DELETE FROM users WHERE protected = 0",
+  ], "deletes in reverse order, the master account spared");
+  const sub = statements.find((x) => /INTO subscribers/.test(x.sql));
+  assert(sub.params[1] !== "x@example.com", "personal columns scrubbed on staging");
+});
+
+check("a long value goes in pieces, each small enough for D1", () => {
+  const big = "é".repeat(50000);
+  const meta = { notes: { cols: ["id", "body"], pk: ["id"], uniques: [], fks: [] } };
+  const { statements } = planMerge(["notes"], { notes: [{ id: "n1", body: big }] }, meta, {});
+  eq(statements.length, 4, "one insert, three appends");
+  eq(statements.slice(1).map((x) => x.params[0]).join(""), big, "the whole value, in order");
+  const parts = scripts(statements, 90000);
+  assert(parts.every((p) => new TextEncoder().encode(p).length <= 90000 + 70000), "requests stay bounded");
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);

@@ -35,8 +35,9 @@ import { createDb } from "./lib/db.js";
 import { requireAccess } from "./lib/access.js";
 import { json, readJson } from "./lib/store.js";
 import {
-  copyableTables, loadOrder, buildStatements, renderSql, realAddresses,
+  copyableTables, loadOrder, buildStatements, renderSql,
 } from "./lib/dbsync.js";
+import { carry } from "./lib/carry.js";
 
 const API = "https://api.cloudflare.com/client/v4";
 
@@ -195,29 +196,16 @@ export default {
       return json({ error: `Type ${WORD} to confirm — this replaces every row on that side.` }, 400);
     }
 
+    /* PUSH IS PREVIEW'S DATA STEP (lib/carry.js): staging's structure
+       brought up to date, then replaced by dev's rows with personal columns
+       scrubbed. The copy this used to do stopped at the master account —
+       its triggers refuse the DELETE a plain replace needs — and refused
+       outright whenever dev held a real address. */
     if (direction === "push") {
-      const rowsByTable = {};
-      for (const t of order) {
-        rowsByTable[t] = (await env.DB.prepare(`SELECT * FROM ${t}`).all()).results;
-      }
-      /* THE ONE THING THAT STOPS A PUSH. Staging is on the public internet and
-         this machine is not, so seed data may go up and real supporters may
-         not. Checked before a single statement is built. */
-      const leaks = realAddresses(rowsByTable);
-      if (leaks.length) {
-        return json({
-          error: "Refusing: this site's database holds addresses that do not look invented, " +
-                 "and staging is reachable from the internet.",
-          found: leaks.slice(0, 10).map((l) => ({ table: l.table,
-            address: l.address.replace(/^(.).*(@.*)$/, "$1***$2") })),
-          more: Math.max(0, leaks.length - 10),
-        }, 409);
-      }
-      const { statements, rows } = buildStatements(order, rowsByTable, { scrub: false });
-      /* ONE request, not one per statement. A Worker gets fifty subrequests on
-         the free plan and this is comfortably more than fifty statements. */
-      await remote(cfg, renderSql(statements), cache);
-      return json({ done: "push", rows, remote: cfg.name });
+      const done = await carry(env, { target: "staging", branch: env.STAGING_BRANCH || "dev",
+        who: (gate.me && gate.me.user_name) || gate.user.email });
+      if (done.error) return json({ error: done.error }, 502);
+      return json({ done: "push", rows: done.rows, migrations: done.migrations, remote: done.database });
     }
 
     // pull: read the far side in one request, write here in one batch.

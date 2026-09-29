@@ -559,9 +559,12 @@
       return;
     }
 
-    toast(payload.action === 'publish'
-      ? tr('pub.publishStarted')
-      : tr('pub.previewStarted'), 'ok');
+    /* When dev's data went with it (lib/carry.js), say so — how many rows,
+       and whether the database's structure had to catch up first. */
+    var c = body && body.carried;
+    toast(c
+      ? fill(payload.action === 'publish' ? 'pub.publishCarried' : 'pub.previewCarried', { n: c.rows, m: c.migrations })
+      : payload.action === 'publish' ? tr('pub.publishStarted') : tr('pub.previewStarted'), 'ok');
 
     /* The build takes a minute or two and nothing here waits for it. Re-read
        shortly, so "live since" catches up without anyone pressing Refresh —

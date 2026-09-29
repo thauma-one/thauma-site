@@ -213,3 +213,193 @@ export function renderSql(statements) {
     return sql.replace(/\?/g, () => lit(params[i++])) + ";";
   }).join("\n");
 }
+
+/* ===========================================================================
+ * CARRYING DEV'S DATA FORWARD — Preview and Publish (Chase, 2026-09-29)
+ * ===========================================================================
+ * "The dev site doesn't populate data correctly to the Preview and live sites.
+ * When I push, the data should populate to those as well. And if account data
+ * isn't synced, then that is still a problem."
+ *
+ * Dev is where the ministry's content is made, so Preview and Publish carry it:
+ *   Preview   staging becomes dev's copy (replace, personal columns scrubbed)
+ *   Publish   dev's rows are ADDED AND UPDATED on live — never deleted there
+ * Chosen by Chase over "replace live" (which would erase what only live has)
+ * and over "live is the source" (which would move content-making off dev).
+ * When real people start using the live console, that choice flips.
+ */
+
+/** Tables whose rows are born on the live site and never written there from
+    dev: people who signed up, who a mailing reached, and credentials — an API
+    key made on dev is a test key, and must not start working on live. */
+export const LIVE_KEEPS = new Set([
+  "subscribers", "subscriber_tags", "signup_attempts", "mailing_recipients", "api_keys",
+]);
+
+/* D1 refuses a statement longer than 100,000 bytes. A website draft can be
+   several times that, so a long value is sent in pieces: the row with the
+   value empty, then appended to. Characters, not bytes: 20,000 characters is
+   at most 80,000 bytes of UTF-8. */
+const PIECE = 20000;
+
+function withPieces(t, pk, row, cols) {
+  const long = cols.filter((c) => typeof row[c] === "string" && row[c].length > PIECE);
+  if (!long.length || !pk || !pk.length) return { row, tail: [] };
+  const first = { ...row };
+  const tail = [];
+  for (const c of long) {
+    first[c] = "";
+    for (let i = 0; i < row[c].length; i += PIECE) {
+      tail.push({
+        sql: `UPDATE ${t} SET ${c} = ${c} || ? WHERE ${pk.map((k) => `${k} IS ?`).join(" AND ")}`,
+        params: [row[c].slice(i, i + PIECE), ...pk.map((k) => row[k])],
+      });
+    }
+  }
+  return { row: first, tail };
+}
+
+/**
+ * Staging's copy: everything replaced — except the one thing that cannot be.
+ *
+ * The master account (0026) refuses to be deleted or to lose a role, by
+ * trigger, so a plain DELETE-everything aborts on its first row; the old Push
+ * to staging button failed exactly there. So what CAN be deleted is, and then
+ * dev's rows are written the merge's way (below): the master account is
+ * updated in place, everything else arrives fresh. Personal columns are
+ * scrubbed — staging is on the internet and is a rehearsal, not a record.
+ *
+ *   meta[t] = { cols, pk, uniques, fks }   far = the rows that survive
+ */
+export function planReplace(order, rowsByTable, meta, far = {}) {
+  const tables = order.filter((t) => meta[t] && !SKIP_TABLES.has(t));
+  const hasProtected = meta.users && meta.users.cols.includes("protected");
+  const deletes = [...tables].reverse().map((t) => {
+    if (hasProtected && t === "users") return { sql: "DELETE FROM users WHERE protected = 0", params: [] };
+    if (hasProtected && t === "user_roles") {
+      return { sql: "DELETE FROM user_roles WHERE user_id NOT IN (SELECT id FROM users WHERE protected = 1)", params: [] };
+    }
+    return { sql: `DELETE FROM ${t}`, params: [] };
+  });
+  const scrubbed = {};
+  for (const t of tables) {
+    scrubbed[t] = (rowsByTable[t] || []).map((r, i) => {
+      const x = { ...r };
+      for (const c of SCRUB[t] || []) if (c in x) x[c] = fake(c, i);
+      return x;
+    });
+  }
+  const merged = planMerge(order, scrubbed, meta, far, { keepLive: false });
+  return { statements: [...deletes, ...merged.statements], rows: merged.rows, matched: merged.matched };
+}
+
+const keyOf = (row, cols) => JSON.stringify(cols.map((c) =>
+  typeof row[c] === "string" ? row[c].toLowerCase() : row[c]));
+
+/**
+ * Live's merge: dev's rows added, or updated where live has the same row.
+ * Nothing is deleted, and LIVE_KEEPS are not touched at all.
+ *
+ * THE SAME THING UNDER TWO NAMES. Live was seeded on its own, so its ministry
+ * is `p_chase` while dev's is `p_chase_roush` — one ministry, one slug, two
+ * ids. Inserting dev's would break the slug's UNIQUE and stop the whole
+ * publish. So a dev row that matches a live row on a UNIQUE column (a slug,
+ * an email) IS that row: it takes live's id, and every dev row pointing at it
+ * is pointed at live's id instead. Worked out table by table in load order, so
+ * a parent's new id is known before its children are written.
+ *
+ *   meta[t] = { cols, pk, uniques: [[col, …], …], fks: [{ from, table, to }] }
+ *   far[t]  = live's rows (primary key and unique columns) for tables that
+ *             have a single-column primary key and a UNIQUE constraint
+ *
+ * Where both sides changed the same row, dev's version wins (Chase's choice).
+ */
+export function planMerge(order, rowsByTable, meta, far = {}, { keepLive = true } = {}) {
+  const tables = order.filter((t) => meta[t] && !SKIP_TABLES.has(t) && !(keepLive && LIVE_KEEPS.has(t)));
+  const remap = {};
+  const matched = [];
+  const out = [];
+  let rows = 0;
+
+  for (const t of tables) {
+    const { cols, pk, uniques = [], fks = [] } = meta[t];
+    let list = (rowsByTable[t] || []).map((r) => {
+      const x = { ...r };
+      for (const fk of fks) {
+        const m = remap[fk.table];
+        if (m && x[fk.from] != null && m.has(x[fk.from])) x[fk.from] = m.get(x[fk.from]);
+      }
+      return x;
+    });
+
+    if (pk.length === 1 && uniques.length && far[t]) {
+      const id = pk[0];
+      const usable = uniques.filter((u) => u.every((c) => cols.includes(c)));
+      const index = usable.map((u) => new Map(far[t].map((r) => [keyOf(r, u), r[id]])));
+      list = list.map((r) => {
+        for (let k = 0; k < usable.length; k++) {
+          if (usable[k].some((c) => r[c] == null)) continue;
+          const theirs = index[k].get(keyOf(r, usable[k]));
+          if (theirs != null && theirs !== r[id]) {
+            (remap[t] = remap[t] || new Map()).set(r[id], theirs);
+            matched.push({ table: t, dev: r[id], live: theirs });
+            return { ...r, [id]: theirs };
+          }
+        }
+        return r;
+      });
+    }
+
+    const rest = cols.filter((c) => !pk.includes(c));
+    const onConflict = !pk.length ? null
+      : rest.length ? `ON CONFLICT (${pk.join(", ")}) DO UPDATE SET ${rest.map((c) => `${c} = excluded.${c}`).join(", ")}`
+      : `ON CONFLICT (${pk.join(", ")}) DO NOTHING`;
+    for (const raw of list) {
+      const full = {};
+      for (const c of cols) full[c] = raw[c] ?? null;
+      const { row, tail } = withPieces(t, pk, full, cols);
+      /* A NULL in the key — the organization's own contact form is the row
+         with no partner. ON CONFLICT never matches a NULL (two NULLs are not
+         equal), so the second publish would add it again; it is updated
+         where it is, and added only when absent. */
+      if (pk.length && pk.some((k) => row[k] == null)) {
+        const where = pk.map((k) => `${k} IS ?`).join(" AND ");
+        const keys = pk.map((k) => row[k]);
+        if (rest.length) {
+          out.push({ sql: `UPDATE ${t} SET ${rest.map((c) => `${c} = ?`).join(", ")} WHERE ${where}`,
+                     params: [...rest.map((c) => row[c]), ...keys] });
+        }
+        out.push({ sql: `INSERT INTO ${t} (${cols.join(", ")}) SELECT ${cols.map(() => "?").join(", ")} ` +
+                        `WHERE NOT EXISTS (SELECT 1 FROM ${t} WHERE ${where})`,
+                   params: [...cols.map((c) => row[c]), ...keys] }, ...tail);
+        rows += 1;
+        continue;
+      }
+      out.push({
+        sql: `INSERT ${onConflict ? "" : "OR IGNORE "}INTO ${t} (${cols.join(", ")}) VALUES (${cols.map(() => "?").join(", ")})` +
+             (onConflict ? " " + onConflict : ""),
+        params: cols.map((c) => row[c]),
+      }, ...tail);
+      rows += 1;
+    }
+  }
+  return { statements: out, rows, matched };
+}
+
+/**
+ * Rendered scripts no larger than `max` bytes each, so no single request to
+ * D1's HTTP API carries the whole database. Statements are never split.
+ */
+export function scripts(statements, max = 400000) {
+  const enc = new TextEncoder();
+  const out = [];
+  let cur = [], size = 0;
+  for (const s of statements) {
+    const line = renderSql([s]);
+    const n = enc.encode(line).length + 1;
+    if (cur.length && size + n > max) { out.push(cur.join("\n")); cur = []; size = 0; }
+    cur.push(line); size += n;
+  }
+  if (cur.length) out.push(cur.join("\n"));
+  return out;
+}
