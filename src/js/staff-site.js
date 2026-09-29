@@ -35,6 +35,8 @@
   function fill(k, v) { return window.StaffI18n && window.StaffI18n.fill ? window.StaffI18n.fill(k, v) : tr(k); }
   function toast(m, kind) { if (window.StaffToast) window.StaffToast(m, kind); }
   function canEdit() { return !!(state.body && state.body.can.edit); }
+  /* Asked the device for less motion? (Never assume there is a way to ask.) */
+  function still() { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }
   function uid() { return 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
   /* What each kind of section is made of — the same list as site/model.js. */
@@ -477,7 +479,7 @@
       var bar = document.getElementById('console');
       var head = bar ? bar.offsetHeight : 64;
       var y = window.scrollY + entering.getBoundingClientRect().top - head - 16;
-      window.scrollTo({ top: Math.max(0, y), behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+      window.scrollTo({ top: Math.max(0, y), behavior: still() ? 'auto' : 'smooth' });
     }
     state.anchor = null; state.animate = null;
   }
@@ -1019,7 +1021,7 @@
      pages and a page — gently, and only if it is off the screen. */
   function editorIntoView() {
     var top = $('wsRoot').getBoundingClientRect().top;
-    if (top < 0) $('wsRoot').scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    if (top < 0) $('wsRoot').scrollIntoView({ block: 'start', behavior: still() ? 'auto' : 'smooth' });
   }
 
   $('wsRoot').addEventListener('change', async function (e) {
