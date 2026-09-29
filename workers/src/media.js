@@ -193,7 +193,9 @@ export default {
     await db.query("audit_write", {
       id: crypto.randomUUID(),
       now: new Date().toISOString(),
-      user_id: me.user_id,
+      /* The address, as the log records everyone since 0009 (it joins on
+         it); this wrote the internal id, so Activity showed "u_1903…". */
+      user_id: gate.user.email,
       partner_id: null,
       action: "media.upload",
       entity: kind === "newsletter" ? "mailing" : "staff_profile",

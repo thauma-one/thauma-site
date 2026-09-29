@@ -2338,3 +2338,31 @@ html.console-menu-open{overflow:hidden}
   .set-you .set-r{grid-template-columns:1fr}
   .set-now{min-width:0;flex-basis:100%}
 }
+
+/* ---- ACTIVITY: the record, in sentences (board "Activity") ----
+   Days as small caps headings, a card of lines under each: the time, the
+   sentence with who did it in bold, and the stored code faint at the end.
+   The two filters sit beside the page heading. */
+.page-head.has-act{position:relative}
+.act-bar{display:flex;gap:10px;flex-wrap:wrap}
+.act-bar[hidden]{display:none}
+.page-head .act-bar{margin-top:18px}
+@media (min-width:900px){
+  .page-head.has-act{padding-right:420px}
+  .page-head .act-bar{position:absolute;right:0;bottom:0;margin:0}
+}
+.act-sel{height:38px;font-size:13px;max-width:200px}
+.act-day{font-family:var(--font-body);font-size:10.5px;font-weight:600;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--dim);margin:0 0 8px}
+.act-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);margin-bottom:22px}
+.act-e{display:flex;gap:18px;align-items:baseline;padding:12px 20px;border-top:1px solid var(--line)}
+.act-e:first-child{border-top:0}
+.act-t{font-family:var(--font-mono);font-size:12.5px;color:var(--dim);width:48px;flex:none}
+.act-s{flex:1 1 auto;min-width:0;overflow-wrap:anywhere}
+.act-who{font-weight:600}
+.act-n{color:var(--dim)}
+.act-code{margin-left:auto;font-family:var(--font-mono);font-size:11px;color:#4A5563;white-space:nowrap}
+@media (max-width:760px){
+  .act-code{display:none}
+  .act-e{gap:12px;padding:12px 14px}
+}

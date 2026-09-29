@@ -295,7 +295,9 @@ export default {
     await db.query("audit_write", {
       id: crypto.randomUUID(),
       now,
-      user_id: me.user_id,
+      /* The address, as the log records everyone since 0009 (it joins on
+         it); this wrote the internal id, so Activity showed "u_1903…". */
+      user_id: user.email,
       partner_id: null,
       action: isPublic ? "profile.publish" : "profile.unpublish",
       entity: "staff_profile",

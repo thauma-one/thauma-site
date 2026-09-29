@@ -317,6 +317,11 @@ export function senderProblem(address, domain) {
   return null;
 }
 
+function auditLimit(url) {
+  const asked = parseInt(url.searchParams.get("audit"), 10);
+  return Number.isFinite(asked) ? Math.min(Math.max(asked, 1), 500) : 40;
+}
+
 export default {
   async fetch(request, env) {
     const { db, user, me, denied } = await requireAdmin(request, env);
@@ -331,7 +336,9 @@ export default {
         db.query("admin_users", {}),
         listPartners(db),
         db.query("languages_all", {}),
-        db.query("admin_audit_recent", { limit: 40 }),
+        /* Activity asks for more (?audit=N, at most 500); Overview's count
+           and everything else keep forty. */
+        db.query("admin_audit_recent", { limit: auditLimit(url) }),
         // Fetched WITH the people rather than per row: the People page sorts
         // by region and role title, and a sort cannot wait on 40 requests.
         db.query("staff_profiles_all", {}),

@@ -89,6 +89,7 @@
    ship a personal-data client to pages that have no business holding one.
    Home's "Log a contact" opens it (board "Home"). -#}
 {% if staffPage == "stewardship" or staffPage == "index" %}<script src="/js/staff-stewardship.js?v={{ "/js/staff-stewardship.js" | v }}"></script>{% endif %}
+{% if staffPage == "activity" %}<script src="/js/activity.js?v={{ "/js/activity.js" | v }}"></script>{% endif %}
 {% if staffPage == "settings" %}<script src="/js/staff-settings.js?v={{ "/js/staff-settings.js" | v }}"></script>{% endif %}
 {% if staffPage == "sharing" %}<script src="/js/staff-sharing.js?v={{ "/js/staff-sharing.js" | v }}"></script>{% endif %}
 {#- The preview beside the editing, on the page that AUTHORS what it

@@ -1040,10 +1040,20 @@ WHERE r.role = 'admin' AND u.status = 'active';
 -- The two seed rows predate 0009 and hold internal ids. They fall through to
 -- COALESCE and display as ids, which is the honest history of a system that
 -- changed its mind rather than a past invented to look consistent.
+--
+-- WITH THE NAMES A SENTENCE NEEDS (Activity, board "Activity"): the person a
+-- change was about, and the ministry it happened in. People are matched by
+-- id as well as address: the library, team-page and photo writers recorded
+-- the internal id until 2026-09-28, and those rows should name them too. NOT the supporter's
+-- name — that is the owner's alone, and an administrator is not the owner.
 SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
-       a.partner_id, COALESCE(u.name, a.user_id) AS actor
+       a.partner_id, COALESCE(u.name, a.user_id) AS actor,
+       t.name AS target_name, p.display_name AS partner_name
 FROM audit_log a
-LEFT JOIN users u ON u.email = a.user_id
+LEFT JOIN users u ON u.email = a.user_id OR u.id = a.user_id
+LEFT JOIN users t
+  ON a.entity IN ('user', 'user_role', 'partner_access', 'acting', 'staff_profile') AND t.id = a.entity_id
+LEFT JOIN partners p ON p.id = a.partner_id
 ORDER BY a.at DESC
 LIMIT :limit;
 
@@ -1525,10 +1535,27 @@ UPDATE api_keys SET last_used_at = :now WHERE id = :key_id;
 -- COALESCE, not a bare u.name: an administrator who has since been removed
 -- must still show as somebody. A blank in this column would read as "nobody
 -- did this", which is the opposite of the truth.
-SELECT a.at, a.action, a.entity, a.entity_id,
-       COALESCE(u.name, a.user_id) AS actor
+--
+-- WITH THE NAMES A SENTENCE NEEDS (Activity, board "Activity"): the
+-- supporter a record belongs to — named by the row itself, or by the
+-- contact_id in its detail for a logged contact or a life event — and the
+-- person a change was about. The endpoint drops contact_name for anybody
+-- but the owner, exactly as it drops the supporter list. A supporter since
+-- removed has no row to join, and reads as "a supporter".
+-- json_valid first: json_extract on a detail that is not JSON is an error,
+-- not a NULL.
+SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
+       COALESCE(u.name, a.user_id) AS actor,
+       TRIM(COALESCE(c.first_name, '') || ' ' || COALESCE(c.last_name, '')) AS contact_name,
+       t.name AS target_name
 FROM audit_log a
-LEFT JOIN users u ON u.email = a.user_id
+LEFT JOIN users u ON u.email = a.user_id OR u.id = a.user_id
+LEFT JOIN contacts c
+  ON c.partner_id = a.partner_id
+ AND c.id = CASE WHEN a.entity = 'contact' THEN a.entity_id
+                 WHEN json_valid(a.detail) THEN json_extract(a.detail, '$.contact_id') END
+LEFT JOIN users t
+  ON a.entity IN ('user', 'user_role', 'partner_access', 'acting', 'staff_profile') AND t.id = a.entity_id
 WHERE a.partner_id = :partner_id
 ORDER BY a.at DESC
 LIMIT :limit;

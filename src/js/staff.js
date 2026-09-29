@@ -151,14 +151,8 @@
     renderStewardship();
     renderHome();
 
-    // --- activity ---
-    if ($('auditList')) $('auditList').innerHTML = d.audit.map(function (a) {
-      return '<div class="audit-r">' +
-        '<span class="tnum">' + esc(a.at.replace('T', ' ').replace('Z', '')) + '</span>' +
-        '<span><b>' + esc(a.action) + '</b></span>' +
-        '<span>' + esc(a.entity) + (a.entity_id ? ' · ' + esc(a.entity_id) : '') +
-          ' — ' + esc(a.actor || 'system') + '</span></div>';
-    }).join('');
+    // --- activity (board "Activity"): sentences, by day — activity.js ---
+    if ($('auditList') && window.ConsoleActivity) window.ConsoleActivity.render($('auditList'), d.audit);
   }
 
   /* THE SUPPORTERS, worst first as the server sorted them, narrowed by the
@@ -1309,7 +1303,9 @@
   }
 
   function loadSnapshot() {
-    return fetch(SNAPSHOT_URL, { cache: 'no-store', credentials: 'same-origin' })
+    /* Activity reads further back than the ten every other page carries. */
+    var url = SNAPSHOT_URL + (page === 'activity' ? '?audit=300' : '');
+    return fetch(url, { cache: 'no-store', credentials: 'same-origin' })
       .then(function (r) {
         return r.json().catch(function () { return {}; })
           .then(function (body) { return { status: r.status, ok: r.ok, body: body }; });

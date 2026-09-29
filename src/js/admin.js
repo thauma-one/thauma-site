@@ -113,7 +113,8 @@
   async function load() {
     var res, body;
     try {
-      res = await fetch(API, { credentials: 'same-origin', cache: 'no-store' });
+      /* Activity reads further back than Overview's forty. */
+      res = await fetch(API + (page === 'activity' ? '?audit=300' : ''), { credentials: 'same-origin', cache: 'no-store' });
     } catch (e) {
       if (window.StaffProblem) window.StaffProblem(tr('err.unreachable') + ' ' + e.message, load);
       return;
@@ -129,7 +130,7 @@
       // page says so plainly rather than shouting about a failure.
       if ($('notAdmin')) $('notAdmin').hidden = false;
       document.querySelectorAll('.adm-people, .adm-partners, .adm-content, .adm-site, ' +
-                                '.audit, .tiles, .quick, .ms-bar, .ms-savebar, .note')
+                                '.audit, .act-list, .tiles, .quick, .ms-bar, .ms-savebar, .note')
         .forEach(function (el) { el.hidden = true; });
       if (window.StaffProblemClear) window.StaffProblemClear();
       return;
@@ -1165,18 +1166,10 @@
     '</div>';
   }
 
+  /* Sentences by day, with the ministry on each line (board "Activity";
+     activity.js, shared with the staff console's Activity). */
   function renderAudit() {
-    if (!state.audit.length) {
-      $('admAudit').innerHTML = '<p class="empty">' + esc(tr('adm.noAudit')) + '</p>';
-      return;
-    }
-    $('admAudit').innerHTML = state.audit.map(function (a) {
-      return '<div class="audit-r">' +
-        '<span class="tnum">' + esc((a.at || '').replace('T', ' ').replace('Z', '')) + '</span>' +
-        '<span><b>' + esc(a.action) + '</b></span>' +
-        '<span>' + esc(a.entity) + (a.entity_id ? ' · ' + esc(a.entity_id) : '') +
-          ' — ' + esc(a.actor || 'system') + '</span></div>';
-    }).join('');
+    if (window.ConsoleActivity) window.ConsoleActivity.render($('admAudit'), state.audit, { where: true });
   }
 
   /* ---- wiring --------------------------------------------------------- */

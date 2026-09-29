@@ -98,7 +98,9 @@ const USER = {
 };
 const BY_ID = Object.fromEntries(Object.values(USER).map((u) => [u.user_id, u]));
 
-const PARTNER = { id: "p_mira", display_name: "Mira Petrović", role: "owner" };
+/* access_role, as partners_for_user selects it (pu.role AS access_role) —
+   this said `role` until Activity's owner-only names depended on it. */
+const PARTNER = { id: "p_mira", display_name: "Mira Petrović", access_role: "owner" };
 /* The partner's stored sharing, changed by the tests that need it. */
 let SETTINGS_ROW = {};
 
@@ -401,6 +403,37 @@ await check("GET /api/staff-snapshot returns 200 through the router", async () =
   const res = await worker.fetch(get("/api/staff-snapshot"), env(db));
   const body = await res.json().catch(() => ({}));
   eq(res.status, 200, `snapshot said ${res.status}: ${JSON.stringify(body).slice(0, 200)}`);
+});
+
+/* Activity (board "Activity"): its sentence names whose record was opened,
+   but only for the owner — the same rule as the supporter list. */
+const AUDIT_ROW = { at: "2026-09-24T15:28:00Z", action: "stewardship.open", entity: "contact",
+                    entity_id: "c_m1", actor: "Mira Petrović", contact_name: "Nikola Jovanović" };
+
+await check("the snapshot carries the log's names to the owner, and ?audit= reads further back", async () => {
+  EXTRA = { audit_recent_for_partner: [AUDIT_ROW] };
+  try {
+    const db = makeDb();
+    const res = await worker.fetch(get("/api/staff-snapshot?audit=300"), env(db));
+    const body = await res.json();
+    eq(body.audit[0].contact_name, "Nikola Jovanović", "the owner reads the name");
+    const call = db.calls.find((c) => c.name === "audit_recent_for_partner");
+    assert(call.args.includes(300), `limit ${JSON.stringify(call.args)}`);
+    const db2 = makeDb();
+    await worker.fetch(get("/api/staff-snapshot?audit=99999"), env(db2));
+    assert(db2.calls.find((c) => c.name === "audit_recent_for_partner").args.includes(500), "capped at 500");
+  } finally { EXTRA = {}; }
+});
+
+await check("…and drops them for anybody else, an administrator viewing as the owner included", async () => {
+  EXTRA = { audit_recent_for_partner: [AUDIT_ROW] };
+  try {
+    const res = await worker.fetch(get("/api/staff-snapshot", ADMIN, "thauma_act_as=u_mira"), env(makeDb()));
+    const body = await res.json();
+    eq(body.stewardship_withheld ? true : false, true, "withheld");
+    eq(body.audit[0].contact_name, null, "no supporter name in the log");
+    eq(body.audit[0].action, "stewardship.open", "the row itself stays");
+  } finally { EXTRA = {}; }
 });
 
 /* ----------------------- and the same while acting --------------------- */

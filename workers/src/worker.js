@@ -110,14 +110,23 @@ async function staffSnapshot(request, env) {
     }, actor), 403);
   }
 
-  const snap = await partnerSnapshot(db, partners[0].id);
+  /* Activity asks for more of the log than the ten every other page carries
+     (?audit=N, at most 500). Read here, never trusted as a partner id. */
+  const asked = parseInt(new URL(request.url).searchParams.get("audit"), 10);
+  const auditLimit = Number.isFinite(asked) ? Math.min(Math.max(asked, 1), 500) : 10;
+  const snap = await partnerSnapshot(db, partners[0].id, { auditLimit });
 
   /* THE SUPPORTER LIST IS THE OWNER'S ALONE — the same rule, from the same
      function, as a single record on /api/staff-stewardship. Everything else
      in the snapshot (goals, counts, the activity feed) still answers under
      "view as", which is what that feature is for; only the names go. */
   const stewardshipWithheld = stewardshipRefusal(actor, partners[0]);
-  if (stewardshipWithheld) snap.contacts = [];
+  if (stewardshipWithheld) {
+    snap.contacts = [];
+    /* The same names, arriving by the other door: Activity's "opened Ivana
+       Babić's record". Without them it reads "a supporter's record". */
+    snap.audit = snap.audit.map((a) => ({ ...a, contact_name: null }));
+  }
   /* WHO THIS IS, carried the way every other staff endpoint carries it. The
      console filters its navigation from `you.roles`, and this was the one
      endpoint behind a staff page that did not send them — so Stewardship and

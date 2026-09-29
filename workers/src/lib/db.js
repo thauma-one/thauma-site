@@ -455,7 +455,7 @@ export async function partnerPublicSite(db, partnerId, partnerSlug = null) {
  *
  * Five queries, fixed — none of them per contact.
  */
-export async function partnerSnapshot(db, partnerId, { staleDays = 120 } = {}) {
+export async function partnerSnapshot(db, partnerId, { staleDays = 120, auditLimit = 10 } = {}) {
   if (!partnerId) throw new Error("partnerSnapshot requires a partnerId");
   const today = db.today();
   const base = { partner_id: partnerId, today };
@@ -465,7 +465,7 @@ export async function partnerSnapshot(db, partnerId, { staleDays = 120 } = {}) {
     db.queryOne("dashboard_needs_attention", { ...base, stale_days: staleDays }),
     db.query("contacts_stewardship", base),
     db.query("goals_for_partner", { partner_id: partnerId }),
-    db.query("audit_recent_for_partner", { partner_id: partnerId, limit: 10 }),
+    db.query("audit_recent_for_partner", { partner_id: partnerId, limit: auditLimit }),
   ]);
 
   return {

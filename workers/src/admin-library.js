@@ -256,7 +256,10 @@ async function audit(db, { me, user, action, collection, slug, detail }) {
     await db.query("audit_write", {
       id: crypto.randomUUID(),
       now: new Date().toISOString(),
-      user_id: me.user_id,
+      /* The ADDRESS, as every other writer records it since 0009 — the log
+         joins people on it. This wrote the internal id, so Activity named
+         the person "u_1903…" instead of by name. */
+      user_id: user.email || me.user_id,
       partner_id: null,
       action,
       entity: `site_${collection}`,

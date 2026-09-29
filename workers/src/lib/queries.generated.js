@@ -8,13 +8,17 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "23293f8da8876e9d";
+export const SOURCE_DIGEST = "ba65c92c94226feb";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
-       a.partner_id, COALESCE(u.name, a.user_id) AS actor
+       a.partner_id, COALESCE(u.name, a.user_id) AS actor,
+       t.name AS target_name, p.display_name AS partner_name
 FROM audit_log a
-LEFT JOIN users u ON u.email = a.user_id
+LEFT JOIN users u ON u.email = a.user_id OR u.id = a.user_id
+LEFT JOIN users t
+  ON a.entity IN ('user', 'user_role', 'partner_access', 'acting', 'staff_profile') AND t.id = a.entity_id
+LEFT JOIN partners p ON p.id = a.partner_id
 ORDER BY a.at DESC
 LIMIT :limit;`,
   admin_count_admins: `SELECT COUNT(*) AS n
@@ -122,10 +126,18 @@ FROM api_keys k
 LEFT JOIN users u ON u.id = k.created_by
 WHERE k.partner_id = :partner_id
 ORDER BY k.revoked_at IS NOT NULL, k.created_at DESC;`,
-  audit_recent_for_partner: `SELECT a.at, a.action, a.entity, a.entity_id,
-       COALESCE(u.name, a.user_id) AS actor
+  audit_recent_for_partner: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
+       COALESCE(u.name, a.user_id) AS actor,
+       TRIM(COALESCE(c.first_name, '') || ' ' || COALESCE(c.last_name, '')) AS contact_name,
+       t.name AS target_name
 FROM audit_log a
-LEFT JOIN users u ON u.email = a.user_id
+LEFT JOIN users u ON u.email = a.user_id OR u.id = a.user_id
+LEFT JOIN contacts c
+  ON c.partner_id = a.partner_id
+ AND c.id = CASE WHEN a.entity = 'contact' THEN a.entity_id
+                 WHEN json_valid(a.detail) THEN json_extract(a.detail, '$.contact_id') END
+LEFT JOIN users t
+  ON a.entity IN ('user', 'user_role', 'partner_access', 'acting', 'staff_profile') AND t.id = a.entity_id
 WHERE a.partner_id = :partner_id
 ORDER BY a.at DESC
 LIMIT :limit;`,
