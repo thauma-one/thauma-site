@@ -855,10 +855,11 @@ body.has-savebar .toasts{--toast-lift:var(--ms-savebar-h,72px)}
   .top-r{margin-left:0;width:100%;justify-content:space-between}
 }
 
-/* Roles are roles. Which partner you work with is a different fact and reads
-   as one now, rather than sitting in the same row of tags. */
-.role-partner{display:block;margin-top:10px;font-size:var(--fs-tiny);color:var(--dim)}
-.role-partner b{color:var(--text);font-weight:var(--w-body)}
+/* (.role-partner was here: a line under Settings' role tags, long gone.
+   The console now puts role-partner on <html> for everyone with the
+   Partner role (console-roles-head.njk), so these two rules set the whole
+   page's base font size and color, and un-bolded every <b> in the console
+   for partners. Removed 2026-09-28; nothing uses the class on an element.) */
 .role-tag.admin{color:var(--voice-tech);border-color:rgba(47,216,255,.4);
   background:var(--voice-tech-dim)}
 .role-tag.board{color:var(--voice-human);border-color:rgba(92,242,196,.35);

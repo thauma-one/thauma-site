@@ -294,5 +294,18 @@ await check("the badge colors do not change between the two areas", async () => 
     "the badge still reaches for a token the admin area overrides");
 });
 
+await check("no style reaches for the role classes on <html>", async () => {
+  /* The console marks <html> with role-admin, role-partner… so the nav can be
+     filtered before it paints. A rule named after one of them styles the
+     whole page: .role-partner b un-bolded every <b> for partners until
+     2026-09-28. Only html.role-… may name them, as the nav does. */
+  const css = ["staff.css", "tokens.css"].map((f) => readFileSync("src/css/" + f, "utf8"))
+    .join("\n").replace(/\/\*[\s\S]*?\*\//g, "");
+  /* html.role-… is how the nav is shown, and says what it is for. A bare
+     .role-… is the collision. */
+  const hit = css.match(/(?<!html)\.role-(admin|partner|staff|board|communications)(?![\w-])/g);
+  assert(!hit, `rules named after a role class: ${hit}`);
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
