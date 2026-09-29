@@ -40,8 +40,8 @@ check("a new site: seven pages on in Chase's order; Home is an opening and one p
   eq(d.pages.find((p) => p.id === "updates").sections.map((x) => x.type + ":" + x.variant), ["videos:stage", "newsletters:latest"], "Updates");
   eq(d.design.motion, { entrance: "rise", photos: "still", headings: "plain", buttons: "lift", pages: "fade", progress: "off" }, "Chase's motion defaults");
   eq([d.design.menu, d.design.brand], ["top", "name"], "across the top, the name in the corner");
-  eq(d.pages[0].sections[0].words.en.bold, "Chase Roush.", "the name in the opening");
-  eq(d.pages[0].sections[0].words.hr.thin, "Pratite rad —", "Croatian words for Croatian");
+  eq(d.pages[0].sections[0].words.en.heading, "Follow the work of <b>Chase Roush.</b>", "the name in the opening, bold");
+  eq(d.pages[0].sections[0].words.hr.heading, "Pratite rad — <b>Chase Roush.</b>", "Croatian words for Croatian");
 });
 
 check("basic is four pages; blank is Home alone, with nothing on it", () => {
@@ -89,12 +89,29 @@ function page(doc, pageId = "home", lang = "en", extra = {}) {
     payload, theme: payload.theme, lang, pageId, base: "/site/chaseroush", origin: "https://thauma.one", draft: false, ...extra });
 }
 
-check("every word the owner types is escaped", () => {
+check("every word the owner types is made safe: only bold, italic, underline and checked links survive", () => {
   const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
-  d.pages[0].sections[0].words.en.text = '<script>alert(1)</script>';
+  d.pages[0].sections[0].words.en.text = 'A & B <script>alert(1)</script><img src=x onerror=alert(1)> <i>really</i> <a href="javascript:alert(1)">no</a>';
+  d.pages[0].sections[1].words.en.text = 'Read <a href="page:give">how to give</a> or <a href="https://x.org/">elsewhere</a>.\n\nSecond <u>paragraph</u>.';
   const html = page(d);
-  assert(!html.includes("<script>alert(1)"), "a script got through");
-  assert(html.includes(esc("<script>alert(1)</script>")), "the words are shown, escaped");
+  assert(!/<script>alert|onerror|javascript:/.test(html), "nothing that runs got through");
+  assert(html.includes("A &amp; B  <i>really</i> no"), "the words kept, the marks kept, the bad link reduced to its words");
+  assert(html.includes('<a href="/site/chaseroush/en/give/">how to give</a>'), "a link to one of the site's pages");
+  assert(html.includes('<p>Second <u>paragraph</u>.</p>'), "paragraphs");
+});
+
+check("a heading is one field; a site saved with the two halves opens with them joined", () => {
+  const d = cleanDoc({ pages: [{ id: "home", sections: [{ type: "text", words: { en: { thin: "Who", bold: "we are", text: "x" } } }] }] }, ["en"]);
+  eq(d.pages[0].sections[0].words.en.heading, "Who <b>we are</b>", "joined");
+  assert(page(d).includes('<h2 class="h m">Who <b>we are</b></h2>'), "and drawn light, then bold");
+});
+
+check("a preview shows every section, an empty one as a note; visitors never see the note", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  d.pages[0].sections = [{ id: "sLinks1", type: "links", words: { en: { heading: "Read" } }, items: [] }];
+  const draft = page(d, "home", "en", { draft: true });
+  assert(/<section id="s-sLinks1" class="empty">/.test(draft), "there, with its id");
+  assert(!page(d).includes('class="empty"'), "not on the real site");
 });
 
 check("the menu lists the shown pages; a hidden page is not in it", () => {

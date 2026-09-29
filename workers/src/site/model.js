@@ -34,6 +34,7 @@ const W = {
     lang: "Language", menu: "Menu", poweredBy: "A Thauma site", scroll: "Scroll", more: "Read more",
     homeFill: "Tell your story here: who you are, where you serve, and why it matters. Replace these words with your own.",
     pastNews: "See past newsletters", readIt: "Read it",
+    emptyPreview: "This section shows here once it has something in it. Only you can see this note.",
   },
   hr: {
     home: "Početna", about: "O nama", mission: "Misija", timeline: "Vremenska crta", updates: "Novosti",
@@ -49,6 +50,7 @@ const W = {
     lang: "Jezik", menu: "Izbornik", poweredBy: "Stranica Thaume", scroll: "Dolje", more: "Pročitajte više",
     homeFill: "Ovdje ispričajte svoju priču: tko ste, gdje služite i zašto je to važno. Zamijenite ove riječi svojima.",
     pastNews: "Pogledajte prošle novosti", readIt: "Pročitajte",
+    emptyPreview: "Ovaj se odjeljak prikazuje ovdje kad u njemu nešto bude. Ovu bilješku vidite samo vi.",
   },
   sr: {
     home: "Почетна", about: "О нама", mission: "Мисија", timeline: "Временска линија", updates: "Новости",
@@ -64,6 +66,7 @@ const W = {
     lang: "Језик", menu: "Мени", poweredBy: "Сајт Thauma", scroll: "Доле", more: "Прочитајте више",
     homeFill: "Овдје испричајте своју причу: ко сте, гдје служите и зашто је то важно. Замијените ове ријечи својим.",
     pastNews: "Погледајте претходне новости", readIt: "Прочитајте",
+    emptyPreview: "Овај се одјељак приказује овдје кад у њему нешто буде. Ову биљешку видите само ви.",
   },
   sl: {
     home: "Domov", about: "O nas", mission: "Poslanstvo", timeline: "Časovnica", updates: "Novice",
@@ -79,6 +82,7 @@ const W = {
     lang: "Jezik", menu: "Meni", poweredBy: "Stran Thauma", scroll: "Navzdol", more: "Preberite več",
     homeFill: "Tukaj povejte svojo zgodbo: kdo ste, kje služite in zakaj je to pomembno. Te besede zamenjajte s svojimi.",
     pastNews: "Oglejte si pretekle novice", readIt: "Preberite",
+    emptyPreview: "Ta del se prikaže tukaj, ko bo v njem kaj. To opombo vidite samo vi.",
   },
 };
 
@@ -113,21 +117,21 @@ export const PAGES_ON = ["home", "about", "mission", "updates", "give", "stay", 
    Every section but the opening and a full-width photo can sit on a raised
    band (`raised`), the way chaseroush.com sets its Mission apart. */
 export const SECTIONS = {
-  hero:      { variants: ["behind", "beside", "words", "monogram"], words: ["kicker", "thin", "bold", "text", "button"], photo: true, buttons: true, link: "button" },
-  text:      { variants: ["left", "center"], words: ["thin", "bold", "text", "button"], link: "button" },
-  photoText: { variants: ["left", "right", "above"], words: ["thin", "bold", "text", "button"], photo: true, link: "both" },
+  hero:      { variants: ["behind", "beside", "words", "monogram"], words: ["kicker", "heading", "text", "button"], photo: true, buttons: true, link: "button" },
+  text:      { variants: ["left", "center"], words: ["heading", "text", "button"], link: "button" },
+  photoText: { variants: ["left", "right", "above"], words: ["heading", "text", "button"], photo: true, link: "both" },
   photo:     { variants: ["drift", "still", "zoom"], words: ["caption"], photo: true, link: "photo" },
   quote:     { variants: ["large", "quiet"], words: ["quote", "who"] },
-  timeline:  { variants: ["condensed", "full"], words: ["thin", "bold", "text"], align: true },
-  goals:     { variants: ["cards"], words: ["thin", "bold", "text"], align: true },
-  prayer:    { variants: ["list"], words: ["thin", "bold", "text"], align: true },
-  videos:    { variants: ["stage"], words: ["thin", "bold", "text"], align: true },
+  timeline:  { variants: ["condensed", "full"], words: ["heading", "text"], align: true },
+  goals:     { variants: ["cards"], words: ["heading", "text"], align: true },
+  prayer:    { variants: ["list"], words: ["heading", "text"], align: true },
+  videos:    { variants: ["stage"], words: ["heading", "text"], align: true },
   /* latest: the newest one, and a small way to the rest (Chase, 2026-09-29). */
-  newsletters: { variants: ["latest", "list"], words: ["thin", "bold", "text"], align: true },
-  signup:    { variants: ["band", "card"], words: ["thin", "bold", "text"] },
-  contact:   { variants: ["form"], words: ["thin", "bold", "text"], align: true },
-  give:      { variants: ["band", "card"], words: ["thin", "bold", "text", "button"] },
-  links:     { variants: ["list", "cards"], words: ["thin", "bold", "text"], items: true, align: true },
+  newsletters: { variants: ["latest", "list"], words: ["heading", "text"], align: true },
+  signup:    { variants: ["band", "card"], words: ["heading", "text"] },
+  contact:   { variants: ["form"], words: ["heading", "text"], align: true },
+  give:      { variants: ["band", "card"], words: ["heading", "text", "button"] },
+  links:     { variants: ["list", "cards"], words: ["heading", "text"], items: true, align: true },
 };
 /* The ministry's widgets and lists sit centered unless the owner puts them
    left (Chase, 2026-09-29: "the embed codes seem to be left aligned"). */
@@ -202,7 +206,24 @@ function wordsFor(langs, map) {
   return out;
 }
 function section(type, variant, langs, map = {}, extra = {}) {
-  return { id: sid(), type, variant: variant || SECTIONS[type].variants[0], words: wordsFor(langs, map), ...extra };
+  /* A starting heading is written as its two halves, the light words and
+     the bold ones; stored as one heading with the bold half in <b>. */
+  const words = wordsFor(langs, map);
+  for (const l of Object.keys(words)) {
+    const w = words[l];
+    if ("thin" in w || "bold" in w) {
+      w.heading = joinHeading(w.thin, w.bold);
+      delete w.thin; delete w.bold;
+    }
+  }
+  return { id: sid(), type, variant: variant || SECTIONS[type].variants[0], words, ...extra };
+}
+
+const escHtml = (t) => String(t == null ? "" : t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+/** "Follow the work of" + "Chase Roush." → one heading, the second half bold. */
+export function joinHeading(thin, bold) {
+  thin = String(thin || "").trim(); bold = String(bold || "").trim();
+  return escHtml(thin) + (thin && bold ? " " : "") + (bold ? "<b>" + escHtml(bold) + "</b>" : "");
 }
 
 /**
@@ -310,15 +331,84 @@ export function safePhoto(u) {
   return x.startsWith("https://") ? x : null;
 }
 
-const WORD_MAX = { kicker: 80, thin: 120, bold: 120, text: 4000, quote: 600, who: 120, caption: 200, button: 40,
+const WORD_MAX = { kicker: 80, heading: 400, text: 6000, quote: 900, who: 120, caption: 200, button: 40,
   tagline: 120, small: 400 };
+
+/* ------------------------------------------------------ formatted words -- */
+
+/* Bold, italic, underline and links (Chase, 2026-09-29: "options for text
+   bolding, underlining, and italicizing"). These fields keep them; every
+   other word stays plain text. */
+export const RICH = new Set(["heading", "text", "quote"]);
+
+const ENT = { amp: "&", lt: "<", gt: ">", quot: '"', "#39": "'", apos: "'", nbsp: " " };
+const decode = (t) => t.replace(/&(amp|lt|gt|quot|#39|apos|nbsp);/g, (_, e) => ENT[e])
+  .replace(/&#(\d{1,6});/g, (_, n) => String.fromCodePoint(Math.min(+n, 0x10ffff)));
+
+/**
+ * Formatted words as they may be stored: only <b>, <i>, <u> and <a href>
+ * (an address safeLink allows), every tag closed, all other text escaped,
+ * line breaks as "\n". Whatever a browser's editable box produces — <div>
+ * per line, <strong>, <span style>, pasted pages — comes out as that. This
+ * is the only way formatting reaches a page strangers read; the renderer
+ * writes it as it is, because this has already made it safe.
+ */
+export function richClean(input, max = 6000) {
+  let s = String(input == null ? "" : input).replace(/\r\n?/g, "\n");
+  /* Script and style bodies are not words. */
+  s = s.replace(/<(script|style|template|noscript)[\s\S]*?<\/\1\s*>/gi, "");
+  /* Blocks become line breaks. */
+  s = s.replace(/<br\s*\/?>/gi, "\n").replace(/<\/(div|p|li|h[1-6]|blockquote)\s*>/gi, "\n");
+  const MAP = { b: "b", strong: "b", i: "i", em: "i", u: "u", a: "a" };
+  const TAG = /<(\/?)([a-zA-Z][a-zA-Z0-9]*)([^>]*)>/g;
+  let out = "", last = 0, m;
+  const open = [];
+  const text = (t) => escHtml(decode(t));
+  while ((m = TAG.exec(s))) {
+    out += text(s.slice(last, m.index));
+    last = m.index + m[0].length;
+    const t = MAP[m[2].toLowerCase()];
+    if (!t) continue;
+    if (m[1]) {
+      const k = open.lastIndexOf(t);
+      if (k !== -1) { for (let j = open.length - 1; j >= k; j--) out += "</" + open[j] + ">"; open.splice(k); }
+      continue;
+    }
+    if (t === "a") {
+      const h = /href\s*=\s*(?:"([^"]*)"|'([^']*)')/i.exec(m[3]);
+      const href = safeLink(decode((h && (h[1] || h[2])) || ""));
+      if (!href) continue;
+      out += '<a href="' + escHtml(href) + '">';
+    } else {
+      if (open.includes(t)) continue;
+      out += "<" + t + ">";
+    }
+    open.push(t);
+  }
+  out += text(s.slice(last));
+  for (let j = open.length - 1; j >= 0; j--) out += "</" + open[j] + ">";
+  /* Empty marks and runs of blank lines go; so does anything too long,
+     measured without its tags and cut as plain words. */
+  out = out.replace(/<(b|i|u)><\/\1>/g, "").replace(/\n{3,}/g, "\n\n").replace(/^\s+|\s+$/g, "");
+  if (out.replace(/<[^>]+>/g, "").length > max) out = escHtml(decode(out.replace(/<[^>]+>/g, "")).slice(0, max));
+  return out;
+}
+
+/** The words alone, for a page's description, a photo's alt text, a summary. */
+export function plainOf(rich) {
+  return decode(String(rich || "").replace(/<[^>]+>/g, "")).replace(/\s+/g, " ").trim();
+}
 
 function cleanWords(raw, fields, langs) {
   const out = {};
   for (const l of langs) {
     const src = (raw && raw[l]) || {};
     const w = {};
-    for (const f of fields) w[f] = str(src[f], WORD_MAX[f] || 200);
+    for (const f of fields) {
+      /* A site saved before headings were one field: its two halves joined. */
+      const v = f === "heading" && src.heading == null && (src.thin || src.bold) ? joinHeading(src.thin, src.bold) : src[f];
+      w[f] = RICH.has(f) ? richClean(v, WORD_MAX[f] || 200) : str(v, WORD_MAX[f] || 200);
+    }
     out[l] = w;
   }
   return out;

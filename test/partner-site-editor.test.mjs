@@ -62,75 +62,96 @@ async function boot(opts) {
   return { w, d, sent, click, pages };
 }
 
-await check("it opens on Design; Pages lists the menu in order, with each page's switch", async () => {
+await check("it opens on Design; Pages shows the site's pages as tabs, Home first, with Timeline and Resources off", async () => {
   const { d, pages } = await boot();
   assert(!d.getElementById("wsDesign").hidden && d.getElementById("wsPages").hidden, "Design first");
   pages();
-  const names = [...d.querySelectorAll(".ws-pname")].map((n) => n.textContent);
-  eq(names, ["Home", "About", "Mission", "Updates", "Give", "Stay connected", "Contact", "Timeline", "Resources"], "pages");
-  assert(d.querySelector('[data-page-on="7"]').getAttribute("aria-checked") === "false", "Timeline off");
-  assert(d.querySelector('[data-page-on="8"]').getAttribute("aria-checked") === "false", "Resources off");
-  assert(!d.querySelector('[data-page-on="0"]'), "Home cannot be switched off");
+  const pills = [...d.querySelectorAll(".ws-pill-btn")];
+  eq(pills.map((b) => b.textContent.replace(/ · .*/, "")), ["Home", "About", "Mission", "Updates", "Give", "Stay connected", "Contact", "Timeline", "Resources"], "pages");
+  eq(pills[0].getAttribute("aria-selected"), "true", "Home chosen");
+  assert(pills[7].classList.contains("is-off") && pills[8].classList.contains("is-off"), "Timeline and Resources off");
+  eq([d.querySelectorAll("#wsPages input[type=text], #wsPages textarea, #wsPages [data-rt]").length,
+      !!d.querySelector("#wsPages [data-page-label]")], [1, true], "no box to type in but the page's name in the menu");
 });
 
-await check("opening Home shows its sections, and a new one can be added", async () => {
+await check("a page is a stack of pictures; a new section goes where it was asked for, and opens", async () => {
   const { d, click, pages } = await boot();
   pages();
-  click(d.querySelector('[data-ws-open="home"]'));
-  eq([...d.querySelectorAll(".ws-type")].map((n) => n.textContent), ["Opening", "Photo and words"], "sections");
-  click(d.querySelector("[data-ws-add]"));
+  eq([...d.querySelectorAll(".ws-stile-words b")].map((n) => n.textContent), ["Opening", "Photo and words"], "Home's sections");
+  assert(/Follow the work of/.test(d.querySelector(".ws-stile-words span").textContent), "each with one line of its words");
+  click(d.querySelector('[data-insert-at="1"]'));
   assert(!d.getElementById("wsAddBack").hidden, "the picker opens");
   eq(d.querySelectorAll("[data-add-type]").length, 14, "every kind offered");
   click(d.querySelector('[data-add-type="quote"]'));
-  eq([...d.querySelectorAll(".ws-type")].pop().textContent, "A verse or a quote", "added last");
+  assert(d.querySelector(".ws-panelhead h2").textContent === "A verse or a quote", "straight into the new one");
+  click(d.querySelector("[data-panel-back]"));
+  eq([...d.querySelectorAll(".ws-stile-words b")].map((n) => n.textContent), ["Opening", "A verse or a quote", "Photo and words"], "between the two");
 });
 
-await check("typed words are saved to the working copy", async () => {
+await check("one section at a time: only its tabs; formatted words saved clean", async () => {
   const { w, d, sent, click, pages } = await boot();
   pages();
-  click(d.querySelector('[data-ws-open="home"]'));
-  const f = d.querySelector('[data-sec-word="0:text"]');
-  f.value = "Serving Croatia's churches.";
-  f.dispatchEvent(new w.Event("input", { bubbles: true }));
+  click(d.querySelector('[data-edit-sec="0"]'));
+  eq([...d.querySelectorAll("[data-sectab]")].map((b) => b.dataset.sectab), ["words", "photo", "buttons", "look"], "the opening's tabs");
+  const heading = d.querySelector('[data-rt="0:heading"]');
+  assert(heading && heading.getAttribute("contenteditable") === "true", "one heading box");
+  eq(heading.innerHTML, "Follow the work of <b>Chase Roush.</b>", "its bold half shown bold");
+  assert(!d.querySelector('[data-rt="0:thin"], [data-sec-word="0:thin"]'), "no second heading box");
+  const text = d.querySelector('[data-rt="0:text"]');
+  text.innerHTML = '<div>Serving <strong>Croatia</strong></div><div><span style="color:red">churches</span> <i>well</i></div>';
+  text.dispatchEvent(new w.Event("input", { bubbles: true }));
   await settle(900);
-  const save = sent.find((x) => x.action === "save");
-  assert(save, "nothing saved");
-  eq(save.draft.pages[0].sections[0].words.en.text, "Serving Croatia's churches.", "the words");
+  eq(sent.filter((x) => x.action === "save").pop().draft.pages[0].sections[0].words.en.text,
+    "Serving <b>Croatia</b>\nchurches <i>well</i>", "bold, italic and lines kept; the rest gone");
 });
 
-await check("where a section goes: nothing, a page, or a web address — three plain choices", async () => {
+await check("where a button goes: nothing, a page, or a web address — three plain choices", async () => {
   const { w, d, sent, click, pages } = await boot();
   pages();
-  click(d.querySelector('[data-ws-open="home"]'));
+  click(d.querySelector('[data-edit-sec="1"]'));
+  click(d.querySelector('[data-sectab="buttons"]'));
   const kind = (k) => d.querySelector(`[data-chip="linkkind:sec:1"][data-value="${k}"]`);
   eq(kind("none").getAttribute("aria-pressed"), "true", "nowhere, to begin with");
-  assert(!d.querySelector('[data-sec-word="1:button"]'), "no button words until there is a button");
   click(kind("page"));
   const pick = d.querySelector('[data-link="sec:1"]');
   assert(pick && ![...pick.options].some((o) => /address/i.test(o.textContent)), "a list of pages, and only pages");
-  pick.value = "page:give";
-  pick.dispatchEvent(new w.Event("change", { bubbles: true }));
   assert(d.querySelector('[data-sec-word="1:button"]'), "once it goes somewhere, words for its button");
   click(kind("url"));
   const box = d.querySelector('[data-link-url="sec:1"]');
-  assert(box, "a box for the address");
   box.value = "https://blog.example.org/";
   box.dispatchEvent(new w.Event("input", { bubbles: true }));
   await settle(900);
   eq(sent.filter((x) => x.action === "save").pop().draft.pages[0].sections[1].link, "https://blog.example.org/", "saved");
 });
 
-await check("a change marks its tab, and the tab keeps its dot on another tab", async () => {
-  const { w, d, click, pages } = await boot({ published: true });
+await check("a Links section: plain rows, one opened at a time", async () => {
+  const { w, d, sent, click, pages } = await boot();
+  pages();
+  click(d.querySelector('[data-pick-page="resources"]'));
+  click(d.querySelector('[data-edit-sec="0"]'));
+  click(d.querySelector('[data-sectab="links"]'));
+  click(d.querySelector("[data-item-add]"));
+  const title = d.querySelector('[data-item$=":title"]');
+  assert(title, "the new link opens, ready for its name");
+  title.value = "The book";
+  title.dispatchEvent(new w.Event("input", { bubbles: true }));
+  click(d.querySelector('[data-chip="linkkind:item:0:0"][data-value="page"]'));
+  await settle(900);
+  const it = sent.filter((x) => x.action === "save").pop().draft.pages.find((p) => p.id === "resources").sections[0].items[0];
+  eq([it.words.en.title, it.url.startsWith("page:")], ["The book", true], "saved, pointing at a page");
+});
+
+await check("a change marks its tab, its page and its section, and the tab keeps its dot on another tab", async () => {
+  const { d, click, pages } = await boot({ published: true });
   const dot = (t) => d.querySelector(`[data-ws-tab="${t}"] .ws-dot`);
   assert(dot("pages").hidden && dot("design").hidden, "nothing changed yet");
   pages();
-  click(d.querySelector('[data-page-on="1"]'));
+  click(d.querySelector('[data-pick-page="about"]'));
+  click(d.querySelector("[data-page-on]"));
   assert(!dot("pages").hidden, "Pages marked");
+  assert(d.querySelector('[data-pick-page="about"] .ws-dot'), "and the page");
   click(d.querySelector('[data-ws-tab="links"]'));
   assert(!dot("pages").hidden && dot("links").hidden, "still marked on the Links tab, and only Pages");
-  pages();
-  assert(d.querySelector('.ws-page[data-pi="1"] .ws-dot'), "and the page itself");
 });
 
 await check("the footer: a layout picked, a tagline written", async () => {

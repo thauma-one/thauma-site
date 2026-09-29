@@ -17,7 +17,7 @@
  * are attributes on <html> that the CSS and the small script below read, all
  * of it switched off for anyone whose device asks for less motion.
  */
-import { word, SECTIONS } from "./model.js";
+import { word, SECTIONS, plainOf } from "./model.js";
 import { readable, onColor, alpha, luminance, companion } from "../embed-colour.js";
 
 export function esc(s) {
@@ -152,8 +152,8 @@ html[data-buttons="lift"] .btn:hover{transform:translateY(-2px)}
 html[data-buttons="glow"] .btn:hover{box-shadow:0 0 0 6px color-mix(in srgb,var(--acc) 22%,transparent),0 10px 30px -8px var(--acc)}
 /* hero */
 /* The opening fills the first screen, under the header (Chase, 2026-09-29). */
-.hero{position:relative;overflow:hidden;padding:0!important;min-height:calc(100svh - 69px);display:flex;align-items:flex-end}
-.hero .wrap{position:relative;padding:140px 0 88px}
+.hero{position:relative;overflow:hidden;padding:0!important;min-height:calc(100svh - 69px);display:flex;align-items:center}
+.hero .wrap{position:relative;padding:96px 0 120px}
 .hero .h{font-size:clamp(40px,6.6vw,86px)}
 .hero-media{position:absolute;inset:0;background:${L.heroBg}}
 .hero-media img{width:100%;height:112%;object-fit:cover;position:absolute;top:-6%}
@@ -213,6 +213,8 @@ main section.raised + section{border-top-color:transparent}
 .linklist .lpic{display:block;aspect-ratio:16/10;margin:-20px -22px 16px;overflow:hidden;border-radius:13px 13px 0 0;background:var(--bg)}
 .linklist .lpic img{width:100%;height:100%;object-fit:cover;transition:transform .6s cubic-bezier(.16,1,.3,1)}.linklist a:hover .lpic img{transform:scale(1.04)}
 .data .lede{margin-bottom:28px}
+main section.empty{padding:40px 0}.empty p{margin:0;padding:22px;border:1px dashed var(--line);border-radius:12px;color:var(--dim);text-align:center;font-size:14px}
+main section:target{outline:2px solid var(--acc);outline-offset:-2px}
 /* The ministry's widgets and lists, centered unless the owner puts them left. */
 .al-center .h,.al-center .lede{text-align:center;margin-left:auto;margin-right:auto}
 .al-center [data-thauma],.al-center .news,.al-center .linklist,.al-center .formbox,.al-center .latest{margin-left:auto;margin-right:auto}
@@ -288,14 +290,16 @@ function wf(sec, lang, fallback, field) {
   const w = sec.words || {};
   return (w[lang] && w[lang][field]) || (w[fallback] && w[fallback][field]) || "";
 }
-function heading(thin, bold, tag = "h2") {
-  if (!thin && !bold) return "";
-  return `<${tag} class="h m">${esc(thin)}${thin && bold ? " " : ""}${bold ? `<b>${esc(bold)}</b>` : ""}</${tag}>`;
+/* Headings and words arrive already made safe (model.richClean: only <b>,
+   <i>, <u> and checked <a href>, the rest escaped), so they are written as
+   they are; `rich` only turns line breaks into <br> and a link to one of
+   the site's own pages into its address. */
+function heading(h, tag = "h2") {
+  return h ? `<${tag} class="h m">${h}</${tag}>` : "";
 }
-function prose(text) {
-  if (!text) return "";
-  return `<div class="prose m">${text.split(/\n{2,}/).map((p) =>
-    `<p>${esc(p).replace(/\n/g, "<br>")}</p>`).join("")}</div>`;
+function prose(html) {
+  if (!html) return "";
+  return `<div class="prose m">${html.split(/\n{2,}/).map((p) => `<p>${p}</p>`).join("")}</div>`;
 }
 function img(src, alt = "") {
   return src ? `<img src="${esc(src)}" alt="${esc(alt)}" loading="lazy">` : "";
@@ -307,7 +311,11 @@ const rel = (href) => (/^https?:/.test(href) ? ' rel="noopener"' : "");
 
 function renderSection(sec, ctx) {
   const { lang, fallback } = ctx;
-  const w = (f) => wf(sec, lang, fallback, f);
+  const raw = (f) => wf(sec, lang, fallback, f);
+  const rich = (x) => String(x || "").replace(/href="page:([a-z]+)"/g, (m0, id) => `href="${esc(ctx.linkHref("page:" + id) || "#")}"`);
+  /* Formatted fields come out ready for the page; plain ones are escaped where used. */
+  const w = (f) => (f === "heading" || f === "quote") ? rich(raw(f)).replace(/\n/g, "<br>") : f === "text" ? rich(raw(f)) : raw(f);
+  const inline = (x) => String(x || "").replace(/\n/g, "<br>");
   const photoMotion = ctx.design.motion.photos;
   /* Where this section sends a visitor: "" when nowhere, or when the page it
      names is switched off. */
@@ -315,7 +323,7 @@ function renderSection(sec, ctx) {
   const btnWords = w("button") || word(lang, "more");
   const button = (solid = true) => to ? `<a class="btn${solid ? " solid" : ""}" href="${esc(to)}"${rel(to)}>${esc(btnWords)} →</a>` : "";
   const pictured = (html, label) => to && html ? `<a class="piclink" href="${esc(to)}"${rel(to)} aria-label="${esc(label)}">${html}</a>` : html;
-  const sub = w("text") ? `<p class="lede m">${esc(w("text"))}</p>` : "";
+  const sub = w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : "";
   const cls = (...c) => {
     const k = [...c, sec.raised ? "raised" : "", sec.align ? "al-" + sec.align : ""].filter(Boolean).join(" ");
     return k ? ` class="${k}"` : "";
@@ -341,15 +349,15 @@ function renderSection(sec, ctx) {
       const cue = `<button type="button" class="scrollcue" aria-hidden="true" tabindex="-1"><svg viewBox="0 0 24 24"><path d="M5 9l7 7 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`;
       if (sec.variant === "monogram") {
         const initials = String(ctx.name).split(/\s+/).filter(Boolean).map((x) => x[0]).slice(0, 3).join("").toUpperCase();
-        const h = w("thin") || w("bold") ? `<h1 class="h m">${esc(w("thin"))}${w("thin") && w("bold") ? "<br>" : ""}${w("bold") ? `<b>${esc(w("bold"))}</b>` : ""}</h1>` : "";
+        const h = heading(w("heading"), "h1");
         return `<section class="hero hero-monogram"><div class="wrap"><div class="mono-words"><span class="mono-mark" aria-hidden="true">${esc(initials)}</span>` +
           `${w("kicker") ? `<p class="kicker m">${esc(w("kicker"))}</p>` : ""}${h}<span class="rule m" aria-hidden="true"></span>` +
-          `${w("text") ? `<p class="spaced m">${esc(w("text"))}</p>` : ""}${btns ? `<div class="btns m">${btns}</div>` : ""}</div>` +
+          `${w("text") ? `<p class="spaced m">${inline(w("text"))}</p>` : ""}${btns ? `<div class="btns m">${btns}</div>` : ""}</div>` +
           `${sec.photo ? `<div class="mono-pic m">${img(sec.photo)}</div>` : ""}</div>` +
           `${cue}</section>`;
       }
-      const words = `${w("kicker") ? `<p class="kicker m">${esc(w("kicker"))}</p>` : ""}${heading(w("thin"), w("bold"), "h1")}` +
-        `${w("text") ? `<p class="lede m">${esc(w("text"))}</p>` : ""}${btns ? `<div class="btns m">${btns}</div>` : ""}`;
+      const words = `${w("kicker") ? `<p class="kicker m">${esc(w("kicker"))}</p>` : ""}${heading(w("heading"), "h1")}` +
+        `${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}${btns ? `<div class="btns m">${btns}</div>` : ""}`;
       if (sec.variant === "beside") {
         return `<section class="hero hero-beside"><div class="wrap"><div>${words}</div>${sec.photo ? `<div class="pic m ${photoMotion === "zoom" ? "kb" : ""}">${img(sec.photo)}</div>` : ""}</div>${cue}</section>`;
       }
@@ -357,31 +365,31 @@ function renderSection(sec, ctx) {
       return `<section class="hero hero-behind${sec.photo ? " has-photo" : ""}"><div class="hero-media ${photoMotion === "zoom" ? "kb" : ""}"${photoMotion === "drift" ? " data-drift" : ""}>${img(sec.photo)}</div><div class="wrap">${words}</div>${cue}</section>`;
     }
     case "text":
-      if (!w("thin") && !w("bold") && !w("text")) return "";
-      return `<section${cls(sec.variant === "center" ? "text-center" : "")}><div class="wrap">${heading(w("thin"), w("bold"))}${prose(w("text"))}${to ? `<div class="btns m">${button()}</div>` : ""}</div></section>`;
+      if (!w("heading") && !w("text")) return "";
+      return `<section${cls(sec.variant === "center" ? "text-center" : "")}><div class="wrap">${heading(w("heading"))}${prose(w("text"))}${to ? `<div class="btns m">${button()}</div>` : ""}</div></section>`;
     case "photoText": {
       if (!sec.photo && !w("text")) return "";
-      const pic = img(sec.photo, w("thin") + " " + w("bold"));
-      return `<section${cls("pt-" + sec.variant)}><div class="wrap pt">${sec.photo ? `<div class="pic m ${photoMotion === "zoom" ? "kb" : ""}">${sec.photoLink ? pictured(pic, btnWords) : pic}</div>` : ""}<div>${heading(w("thin"), w("bold"))}${prose(w("text"))}${to ? `<div class="btns m">${button()}</div>` : ""}</div></div></section>`;
+      const pic = img(sec.photo, plainOf(raw("heading")));
+      return `<section${cls("pt-" + sec.variant)}><div class="wrap pt">${sec.photo ? `<div class="pic m ${photoMotion === "zoom" ? "kb" : ""}">${sec.photoLink ? pictured(pic, btnWords) : pic}</div>` : ""}<div>${heading(w("heading"))}${prose(w("text"))}${to ? `<div class="btns m">${button()}</div>` : ""}</div></div></section>`;
     }
     case "photo":
       if (!sec.photo) return "";
       return `<section class="fullphoto"><figure style="margin:0"><div class="frame ${sec.variant === "zoom" ? "kb" : ""}"${sec.variant === "drift" ? " data-drift" : ""}>${pictured(img(sec.photo, w("caption")), w("caption") || word(lang, "more"))}</div>${w("caption") ? `<figcaption class="wrap">${esc(w("caption"))}</figcaption>` : ""}</figure></section>`;
     case "quote":
       if (!w("quote")) return "";
-      return `<section${cls("quote", "quote-" + sec.variant)}><div class="wrap m"><blockquote>“${esc(w("quote"))}”</blockquote>${w("who") ? `<cite>${esc(w("who"))}</cite>` : ""}</div></section>`;
+      return `<section${cls("quote", "quote-" + sec.variant)}><div class="wrap m"><blockquote>“${w("quote")}”</blockquote>${w("who") ? `<cite>${esc(w("who"))}</cite>` : ""}</div></section>`;
     case "timeline":
       if (!(ctx.payload.milestones || []).length) return "";
-      return `<section${cls("data")}><div class="wrap">${heading(w("thin"), w("bold"))}${sub}${widget("roadmap", sec.variant === "condensed" ? ' data-style="condensed"' : "")}</div></section>`;
+      return `<section${cls("data")}><div class="wrap">${heading(w("heading"))}${sub}${widget("roadmap", sec.variant === "condensed" ? ' data-style="condensed"' : "")}</div></section>`;
     case "goals":
       if (!(ctx.payload.goals || []).length) return "";
-      return `<section${cls("data")}><div class="wrap">${heading(w("thin"), w("bold"))}${sub}${widget("goal")}</div></section>`;
+      return `<section${cls("data")}><div class="wrap">${heading(w("heading"))}${sub}${widget("goal")}</div></section>`;
     case "prayer":
       if (!(ctx.payload.prayer || []).length) return "";
-      return `<section${cls("data")}><div class="wrap">${heading(w("thin"), w("bold"))}${sub}${widget("prayer")}</div></section>`;
+      return `<section${cls("data")}><div class="wrap">${heading(w("heading"))}${sub}${widget("prayer")}</div></section>`;
     case "videos":
       if (!(ctx.payload.videos || []).length && !(ctx.payload.video_links || []).length) return "";
-      return `<section${cls("data")}><div class="wrap">${heading(w("thin"), w("bold"))}${sub}${widget("videos")}</div></section>`;
+      return `<section${cls("data")}><div class="wrap">${heading(w("heading"))}${sub}${widget("videos")}</div></section>`;
     case "newsletters": {
       const list = (ctx.payload.mailings || []).filter((m) => m.url).slice(0, 12);
       if (!list.length) return "";
@@ -390,28 +398,28 @@ function renderSection(sec, ctx) {
         /* The newest, as a card; below it, quietly, the list's own archive. */
         const m = list[0];
         const archive = m.url.replace(/[^/]+\/?$/, "");
-        return `<section${cls("data")}><div class="wrap">${heading(w("thin"), w("bold"))}${sub}` +
+        return `<section${cls("data")}><div class="wrap">${heading(w("heading"))}${sub}` +
           `<a class="latest m" href="${esc(m.url)}"><small>${esc(date(m.sent_at))}</small><b>${esc(m.subject)}</b>` +
           `${m.preheader ? `<span>${esc(m.preheader)}</span>` : ""}<em>${esc(word(lang, "readIt"))} →</em></a>` +
           `<p class="past m"><a href="${esc(archive)}">${esc(word(lang, "pastNews"))}</a></p></div></section>`;
       }
-      return `<section${cls("data")}><div class="wrap">${heading(w("thin"), w("bold"))}${sub}<ul class="news m">${list.map((m) =>
+      return `<section${cls("data")}><div class="wrap">${heading(w("heading"))}${sub}<ul class="news m">${list.map((m) =>
         `<li><a href="${esc(m.url)}"><span>${esc(m.subject)}</span><small>${esc(date(m.sent_at))}</small></a></li>`).join("")}</ul></div></section>`;
     }
     case "signup":
       ctx.needs.signup = true;
-      return `<section${cls(sec.variant === "band" ? "band" : "")}><div class="wrap">${sec.variant === "card" ? '<div class="card">' : '<div class="bandrow">'}<div>${heading(w("thin"), w("bold"))}${w("text") ? `<p class="lede m">${esc(w("text"))}</p>` : ""}</div><div class="m" style="flex:1 1 360px;max-width:520px"><div data-thauma-form data-lang="${esc(lang)}"></div></div></div></div></section>`;
+      return `<section${cls(sec.variant === "band" ? "band" : "")}><div class="wrap">${sec.variant === "card" ? '<div class="card">' : '<div class="bandrow">'}<div>${heading(w("heading"))}${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}</div><div class="m" style="flex:1 1 360px;max-width:520px"><div data-thauma-form data-lang="${esc(lang)}"></div></div></div></div></section>`;
     case "contact":
       ctx.needs.contact = true;
-      return `<section${cls()}><div class="wrap">${heading(w("thin"), w("bold"))}${w("text") ? `<p class="lede m">${esc(w("text"))}</p>` : ""}<div class="m formbox" style="max-width:640px;margin-top:24px"><div data-thauma-contact data-lang="${esc(lang)}"></div></div></div></section>`;
+      return `<section${cls()}><div class="wrap">${heading(w("heading"))}${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}<div class="m formbox" style="max-width:640px;margin-top:24px"><div data-thauma-contact data-lang="${esc(lang)}"></div></div></div></section>`;
     case "give":
       if (!ctx.giveUrl) return "";
-      return `<section${cls(sec.variant === "band" ? "band" : "")}><div class="wrap">${sec.variant === "card" ? '<div class="card">' : '<div class="bandrow">'}<div>${heading(w("thin"), w("bold"))}${w("text") ? `<p class="lede m">${esc(w("text"))}</p>` : ""}</div><div class="btns m" style="margin:0"><a class="btn solid" href="${esc(ctx.giveUrl)}">${esc(w("button") || word(lang, "giveBtn"))} →</a></div></div></div></section>`;
+      return `<section${cls(sec.variant === "band" ? "band" : "")}><div class="wrap">${sec.variant === "card" ? '<div class="card">' : '<div class="bandrow">'}<div>${heading(w("heading"))}${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}</div><div class="btns m" style="margin:0"><a class="btn solid" href="${esc(ctx.giveUrl)}">${esc(w("button") || word(lang, "giveBtn"))} →</a></div></div></div></section>`;
     case "links": {
       const items = (sec.items || []).map((it) => ({ ...it, href: ctx.linkHref(it.url) })).filter((it) => it.href);
       if (!items.length) return "";
       const t = (it, f) => (it.words[lang] && it.words[lang][f]) || (it.words[fallback] && it.words[fallback][f]) || "";
-      return `<section${cls("links-" + sec.variant)}><div class="wrap">${heading(w("thin"), w("bold"))}${sub}<ul class="linklist m">${items.map((it) =>
+      return `<section${cls("links-" + sec.variant)}><div class="wrap">${heading(w("heading"))}${sub}<ul class="linklist m">${items.map((it) =>
         `<li><a href="${esc(it.href)}"${rel(it.href)}>${it.photo ? `<span class="lpic">${img(it.photo)}</span>` : ""}<b>${esc(t(it, "title") || it.href)}</b>${t(it, "text") ? `<span>${esc(t(it, "text"))}</span>` : ""}</a></li>`).join("")}</ul></div></section>`;
     }
     default:
@@ -461,7 +469,19 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
     },
   };
 
-  const body = page.sections.map((s) => renderSection(s, ctx)).join("\n");
+  /* In a preview every section is there, even one with nothing to show yet
+     — a Links section with no links, goals before any are published — so
+     the owner can see it was added (Chase, 2026-09-29: the Links section
+     "doesn't get added properly"). Each carries its id, for the editor to
+     scroll to the one being edited. Visitors see neither. */
+  const body = page.sections.map((s) => {
+    const html = renderSection(s, ctx);
+    if (!draft) return html;
+    if (!html) {
+      return `<section id="s-${esc(s.id)}" class="empty"><div class="wrap"><p>${esc(word(lang, "emptyPreview"))}</p></div></section>`;
+    }
+    return html.replace(/^<section/, `<section id="s-${esc(s.id)}"`);
+  }).join("\n");
   const name = String(site.display_name || "").trim();
   const parts = name.split(/\s+/);
   const brand = design.brand === "logo" && design.logo
@@ -493,7 +513,7 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
   const title = pageId === "home" ? name : `${label(pageId)} · ${name}`;
   const desc = (() => {
     const hero = doc.pages[0].sections.find((s) => s.type === "hero");
-    return hero ? wf(hero, lang, fallback, "text") : "";
+    return hero ? plainOf(wf(hero, lang, fallback, "text")) : "";
   })();
   const alternates = doc.languages.map((l) => `<link rel="alternate" hreflang="${esc(l)}" href="${esc(href(pageId, l))}">`).join("");
   const m = design.motion;

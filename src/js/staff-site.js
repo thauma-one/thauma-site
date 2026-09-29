@@ -22,7 +22,8 @@
 
   var API = '/api/staff-site';
   var $ = function (id) { return document.getElementById(id); };
-  var state = { body: null, doc: null, tab: 'design', page: null, langA: null, langB: null,
+  var state = { body: null, doc: null, tab: 'design', page: 'home', edit: null, sectab: 'words', openItem: null, showKicker: false,
+                insertAt: null, frameDirty: false, langA: null, langB: null,
                 timer: null, saving: false, again: false, frameTimer: null };
 
   function esc(s) {
@@ -38,20 +39,20 @@
 
   /* What each kind of section is made of — the same list as site/model.js. */
   var SECTIONS = {
-    hero: { variants: ['behind', 'beside', 'words', 'monogram'], words: ['kicker', 'thin', 'bold', 'text', 'button'], photo: true, buttons: true, link: 'button' },
-    text: { variants: ['left', 'center'], words: ['thin', 'bold', 'text', 'button'], link: 'button' },
-    photoText: { variants: ['left', 'right', 'above'], words: ['thin', 'bold', 'text', 'button'], photo: true, link: 'both' },
+    hero: { variants: ['behind', 'beside', 'words', 'monogram'], words: ['kicker', 'heading', 'text', 'button'], photo: true, buttons: true, link: 'button' },
+    text: { variants: ['left', 'center'], words: ['heading', 'text', 'button'], link: 'button' },
+    photoText: { variants: ['left', 'right', 'above'], words: ['heading', 'text', 'button'], photo: true, link: 'both' },
     photo: { variants: ['drift', 'still', 'zoom'], words: ['caption'], photo: true, link: 'photo' },
     quote: { variants: ['large', 'quiet'], words: ['quote', 'who'] },
-    timeline: { variants: ['condensed', 'full'], words: ['thin', 'bold', 'text'], data: 'updates/#milestones', align: true },
-    goals: { variants: ['cards'], words: ['thin', 'bold', 'text'], data: 'updates/#goals', align: true },
-    prayer: { variants: ['list'], words: ['thin', 'bold', 'text'], data: 'updates/#prayer', align: true },
-    videos: { variants: ['stage'], words: ['thin', 'bold', 'text'], data: 'updates/#videos', align: true },
-    newsletters: { variants: ['latest', 'list'], words: ['thin', 'bold', 'text'], data: 'mail/', align: true },
-    signup: { variants: ['band', 'card'], words: ['thin', 'bold', 'text'], data: 'sharing/#signup' },
-    contact: { variants: ['form'], words: ['thin', 'bold', 'text'], data: 'sharing/#contact', align: true },
-    give: { variants: ['band', 'card'], words: ['thin', 'bold', 'text', 'button'] },
-    links: { variants: ['list', 'cards'], words: ['thin', 'bold', 'text'], items: true, align: true },
+    timeline: { variants: ['condensed', 'full'], words: ['heading', 'text'], data: 'updates/#milestones', align: true },
+    goals: { variants: ['cards'], words: ['heading', 'text'], data: 'updates/#goals', align: true },
+    prayer: { variants: ['list'], words: ['heading', 'text'], data: 'updates/#prayer', align: true },
+    videos: { variants: ['stage'], words: ['heading', 'text'], data: 'updates/#videos', align: true },
+    newsletters: { variants: ['latest', 'list'], words: ['heading', 'text'], data: 'mail/', align: true },
+    signup: { variants: ['band', 'card'], words: ['heading', 'text'], data: 'sharing/#signup' },
+    contact: { variants: ['form'], words: ['heading', 'text'], data: 'sharing/#contact', align: true },
+    give: { variants: ['band', 'card'], words: ['heading', 'text', 'button'] },
+    links: { variants: ['list', 'cards'], words: ['heading', 'text'], items: true, align: true },
   };
   /* Everything but the opening and a full-width photo can sit on a raised band. */
   var FLAT = { hero: 1, photo: 1 };
@@ -102,8 +103,11 @@
     drawDots();
     $('wsSaved').textContent = tr('ws.saving');
     clearTimeout(state.timer);
-    state.timer = setTimeout(save, 650);
-    if (redrawPreview !== false) { clearTimeout(state.frameTimer); state.frameTimer = setTimeout(refreshFrame, 1600); }
+    state.timer_pending = true;
+    state.timer = setTimeout(function () { state.timer_pending = false; save(); }, 650);
+    /* The preview is redrawn once the save has landed, never before — so
+       it shows exactly what is in the boxes (Chase, 2026-09-29). */
+    if (redrawPreview !== false) state.frameDirty = true;
   }
   async function save() {
     if (state.saving) { state.again = true; return; }
@@ -113,6 +117,7 @@
       state.body.site = body.site;
       $('wsSaved').textContent = tr('ws.saved');
       drawBar(); drawStatus();
+      if (state.frameDirty && !state.timer_pending) { state.frameDirty = false; refreshFrame(); }
     } catch (e) {
       $('wsSaved').textContent = '';
       toast(e.message, 'err');
@@ -279,25 +284,27 @@
     if (state.tab === 'settings') drawSettings();
     /* The site beside whatever is being changed: the page being arranged, or
        Home for the look, the links and the footer. */
-    var showFrame = (state.tab === 'pages' && !!state.page) || state.tab === 'design' || state.tab === 'links' || state.tab === 'footer';
+    var showFrame = state.tab === 'pages' || state.tab === 'design' || state.tab === 'links' || state.tab === 'footer';
     $('wsPreviewPane').hidden = !showFrame;
     $('wsRoot').classList.toggle('with-preview', showFrame);
     if (showFrame) refreshFrame();
     if (!canEdit()) {
-      [].forEach.call($('wsRoot').querySelectorAll('.ws-panel input, .ws-panel textarea, .ws-panel select, .ws-panel button:not([data-ws-open]):not([data-ws-back])'), function (el) { el.disabled = true; });
+      [].forEach.call($('wsRoot').querySelectorAll('.ws-panel input, .ws-panel textarea, .ws-panel select, .ws-panel button:not([data-pick-page]):not([data-edit-sec]):not([data-panel-back]):not([data-sectab]):not([data-item-open])'), function (el) { el.disabled = true; });
     }
   }
 
   function refreshFrame() {
     if ($('wsPreviewPane').hidden) return;
     var s = state.body.site, lang = state.langA;
-    var page = state.tab === 'pages' && state.page ? state.page : 'home';
+    var page = state.tab === 'pages' ? currentPage().id : 'home';
     var path = s.preview.replace(/\?draft$/, '') + lang + '/' + (page === 'home' ? '' : page + '/');
     $('wsPreviewPath').textContent = '/' + lang + '/' + (page === 'home' ? '' : page + '/');
     /* On the Footer tab, the footer and nothing else (Chase, 2026-09-29). */
-    var foot = state.tab === 'footer';
+    /* On Footer and Links, the footer and nothing else — links show there. */
+    var foot = state.tab === 'footer' || state.tab === 'links';
     $('wsPreviewPane').classList.toggle('only-foot', foot);
-    $('wsFrame').src = path + '?draft' + (foot ? '&part=footer' : '') + '&t=' + Date.now();
+    var open = state.tab === 'pages' && state.edit != null && currentPage().sections[state.edit];
+    $('wsFrame').src = path + '?draft' + (foot ? '&part=footer' : '') + '&t=' + Date.now() + (open ? '#s-' + open.id : '');
   }
 
   /* ---- small pieces ---------------------------------------------------- */
@@ -348,117 +355,282 @@
 
   /* ---- Pages ----------------------------------------------------------- */
 
-  function drawPages() {
-    if (state.page) return drawSections();
-    var pages = state.doc.pages;
-    $('wsPages').innerHTML =
-      '<div class="ws-head"><h2>' + esc(tr('ws.menuOrder')) + '</h2></div>' +
-      '<ol class="ws-list">' + pages.map(function (p, i) {
-        var n = p.sections.length;
-        return '<li class="ws-page' + (p.on ? '' : ' is-off') + '" data-pi="' + i + '">' +
-          '<span class="ws-move">' +
-            '<button type="button" class="ws-icon" data-page-up="' + i + '" aria-label="' + esc(tr('ws.up')) + '"' + (i === 0 ? ' disabled' : '') + '>↑</button>' +
-            '<button type="button" class="ws-icon" data-page-down="' + i + '" aria-label="' + esc(tr('ws.down')) + '"' + (i === pages.length - 1 ? ' disabled' : '') + '>↓</button>' +
-          '</span>' +
-          '<span class="ws-pname">' + esc(tr('ws.page.' + p.id)) + (pageChanged(p) ? '<i class="ws-dot" title="' + esc(tr('ws.changedHere')) + '"></i>' : '') + '</span>' +
-          '<label class="ws-plabel"><span class="sr-only">' + esc(tr('ws.inMenu')) + '</span>' + ref(p.label) +
-            '<input type="text" maxlength="40" data-page-label="' + i + '" value="' + esc((p.label || {})[state.langA] || '') + '" placeholder="' + esc(tr('ws.page.' + p.id)) + '" lang="' + esc(state.langA) + '"></label>' +
-          (p.id === 'home' ? '<span class="ws-always">' + esc(tr('ws.always')) + '</span>'
-            : sw('data-page-on="' + i + '"', p.on, tr('ws.shown'))) +
-          '<button type="button" class="ghost-btn" data-ws-open="' + esc(p.id) + '">' +
-            esc(n ? (n === 1 ? tr('ws.sections1') : fill('ws.sectionsN', { n: n })) : tr('ws.empty')) + '</button>' +
-        '</li>';
-      }).join('') + '</ol>';
+  /* PAGES, REWORKED (Chase, 2026-09-29: "overly complicated … really
+     crowded and has lots of text boxes, which will overwhelm the user";
+     canvas board "Round two · Pages"). The site's pages as tabs; the page
+     chosen, as a short stack of pictures, one line of words each — no box
+     to type in until a section is opened. Opening one shows that section
+     alone, in the same place, its settings sorted into a few tabs, while
+     the site beside it keeps showing the result. */
+
+  function currentPage() {
+    var p = state.doc.pages.filter(function (x) { return x.id === state.page; })[0];
+    if (!p) { state.page = 'home'; state.edit = null; p = state.doc.pages[0]; }
+    return p;
   }
+  function plain(html) {
+    var d = document.createElement('div'); d.innerHTML = String(html || '').replace(/\n/g, ' ');
+    return (d.textContent || '').replace(/\s+/g, ' ').trim();
+  }
+  function summary(s) {
+    var w = (s.words || {})[state.langA] || {};
+    var bits = [plain(w.heading), plain(w.text || w.quote || w.caption)].filter(Boolean);
+    if (s.type === 'links') bits.push(fill('ws.linksN', { n: (s.items || []).filter(function (it) { return it.url && it.url !== 'https://'; }).length }));
+    return bits.join(' · ') || tr('ws.sec.' + s.type + '.what');
+  }
+  function sectionChanged(s) {
+    var pub = state.body.published, p = currentPage();
+    if (!pub) return false;
+    var was = (pub.pages.filter(function (x) { return x.id === p.id; })[0] || { sections: [] }).sections.filter(function (x) { return x.id === s.id; })[0];
+    return JSON.stringify(s) !== JSON.stringify(was);
+  }
+  function dot(on) { return on ? '<i class="ws-dot" title="' + esc(tr('ws.changedHere')) + '"></i>' : ''; }
 
-  /* ---- one page's sections --------------------------------------------- */
-
-  function currentPage() { return state.doc.pages.filter(function (p) { return p.id === state.page; })[0]; }
-
-  function drawSections() {
+  function drawPages() {
     var p = currentPage();
-    if (!p) { state.page = null; return drawPages(); }
-    var html = '<div class="ws-head"><button type="button" class="link-btn" data-ws-back>← ' + esc(tr('ws.tab.pages')) + '</button>' +
-      '<h2>' + esc(fill('ws.sectionsOf', { page: pageLabel(p, state.langA) })) + '</h2></div>';
-    html += p.sections.length ? p.sections.map(sectionCard).join('') : '<p class="empty">' + esc(tr('ws.noSections')) + '</p>';
-    html += '<button type="button" class="ws-addbtn" data-ws-add>+ ' + esc(tr('ws.addSection')) + '</button>';
+    if (state.edit != null && p.sections[state.edit]) return drawPanel(p, state.edit);
+    state.edit = null;
+    var pi = state.doc.pages.indexOf(p), last = state.doc.pages.length - 1;
+    var html = '<div class="ws-pills" role="tablist" aria-label="' + esc(tr('ws.tab.pages')) + '">' + state.doc.pages.map(function (x) {
+      return '<button type="button" role="tab" class="ws-pill-btn' + (x.on ? '' : ' is-off') + '" data-pick-page="' + esc(x.id) + '" aria-selected="' + (x.id === p.id) + '">' +
+        esc(pageLabel(x, state.langA)) + (x.on ? '' : ' · ' + esc(tr('ws.off'))) + dot(pageChanged(x)) + '</button>';
+    }).join('') + '</div>';
+
+    html += '<div class="ws-pagebar">' +
+      '<label class="ws-pagename"><span>' + esc(tr('ws.nameInMenu')) + '</span>' + ref(p.label) +
+        '<input type="text" maxlength="40" data-page-label="' + pi + '" value="' + esc((p.label || {})[state.langA] || '') + '" placeholder="' + esc(tr('ws.page.' + p.id)) + '" lang="' + esc(state.langA) + '"></label>' +
+      (p.id === 'home' ? '<span class="ws-always">' + esc(tr('ws.always')) + '</span>' : sw('data-page-on="' + pi + '"', p.on, tr('ws.shown'))) +
+      '<span class="ws-move">' +
+        '<button type="button" class="ws-icon" data-page-up="' + pi + '" aria-label="' + esc(tr('ws.earlier')) + '" title="' + esc(tr('ws.earlier')) + '"' + (pi === 0 ? ' disabled' : '') + '>←</button>' +
+        '<button type="button" class="ws-icon" data-page-down="' + pi + '" aria-label="' + esc(tr('ws.later')) + '" title="' + esc(tr('ws.later')) + '"' + (pi === last ? ' disabled' : '') + '>→</button>' +
+      '</span></div>';
+
+    var n = p.sections.length;
+    html += '<div class="ws-stack">' + (n ? '' : '<p class="empty">' + esc(tr('ws.noSections')) + '</p>') +
+      p.sections.map(function (s, i) {
+        return '<div class="ws-srow">' +
+          '<button type="button" class="ws-stile" data-edit-sec="' + i + '">' +
+            '<span class="ws-sketch ws-sketch-sm" aria-hidden="true">' + sketch(s.type) + '</span>' +
+            '<span class="ws-stile-words"><b>' + esc(tr('ws.sec.' + s.type)) + dot(sectionChanged(s)) + '</b><span>' + esc(summary(s)) + '</span></span>' +
+            '<span class="ws-stile-edit">' + esc(tr('ws.edit')) + '</span></button>' +
+          '<span class="ws-stile-tools">' +
+            '<button type="button" class="ws-icon" data-sec-up="' + i + '" aria-label="' + esc(tr('ws.up')) + '"' + (i === 0 ? ' disabled' : '') + '>↑</button>' +
+            '<button type="button" class="ws-icon" data-sec-down="' + i + '" aria-label="' + esc(tr('ws.down')) + '"' + (i === n - 1 ? ' disabled' : '') + '>↓</button>' +
+            '<button type="button" class="ws-icon del" data-sec-remove="' + i + '" aria-label="' + esc(tr('ws.remove')) + '">✕</button>' +
+          '</span></div>' +
+          '<button type="button" class="ws-insert" data-insert-at="' + (i + 1) + '">+ ' + esc(tr('ws.addHere')) + '</button>';
+      }).join('') +
+      (n ? '' : '<button type="button" class="ws-addbtn" data-insert-at="0">+ ' + esc(tr('ws.addSection')) + '</button>') + '</div>';
     $('wsPages').innerHTML = html;
   }
+  var drawSections = function () { drawPages(); };
 
-  function sectionCard(s, i) {
-    var spec = SECTIONS[s.type], p = currentPage(), last = p.sections.length - 1;
-    var w = (s.words || {})[state.langA] || {};
-    var html = '<article class="ws-sec" data-si="' + i + '">' +
-      '<div class="ws-sec-head"><span class="ws-num">' + String(i + 1).padStart(2, '0') + '</span>' +
-        '<b class="ws-type">' + esc(tr('ws.sec.' + s.type)) + '</b>' +
-        '<button type="button" class="ws-icon" data-sec-up="' + i + '" aria-label="' + esc(tr('ws.up')) + '"' + (i === 0 ? ' disabled' : '') + '>↑</button>' +
-        '<button type="button" class="ws-icon" data-sec-down="' + i + '" aria-label="' + esc(tr('ws.down')) + '"' + (i === last ? ' disabled' : '') + '>↓</button>' +
-        '<button type="button" class="ws-icon del" data-sec-remove="' + i + '" aria-label="' + esc(tr('ws.remove')) + '">✕</button>' +
-      '</div>';
-    if (spec.variants.length > 1) {
-      html += '<div class="ws-sec-row"><span class="ws-small">' + esc(tr('ws.layout')) + '</span>' +
-        chips('variant:' + i, spec.variants, s.variant, function (v) { return tr('ws.v.' + s.type + '.' + v); }) + '</div>';
-    }
-    if (spec.photo) {
-      html += '<div class="ws-sec-row ws-photo"><span class="ws-small">' + esc(tr('ws.photo')) + '</span>' +
-        (s.photo ? '<img src="' + esc(s.photo) + '" alt="">' : '<span class="ws-nophoto">' + esc(tr('ws.noPhoto')) + '</span>') +
-        '<label class="ghost-btn sm ws-file">' + esc(s.photo ? tr('ws.changePhoto') : tr('ws.choosePhoto')) +
-          '<input type="file" accept="image/*" data-sec-photo="' + i + '" hidden></label>' +
-        (s.photo ? '<button type="button" class="link-btn" data-sec-unphoto="' + i + '">' + esc(tr('ws.removePhoto')) + '</button>' : '') +
-        '<span class="hint" data-photo-status="' + i + '"></span></div>';
-    }
-    if (spec.buttons) {
-      html += '<div class="ws-sec-row"><span class="ws-small">' + esc(tr('ws.buttons')) + '</span>' + ['give', 'stay', 'contact'].map(function (b) {
-        var on = (s.buttons || []).indexOf(b) !== -1;
-        return '<label class="chk"><input type="checkbox" data-sec-btn="' + i + ':' + b + '"' + (on ? ' checked' : '') + '><span>' + esc(tr('ws.btn.' + b)) + '</span></label>';
-      }).join('') + '</div>';
-    }
-    if (spec.link) {
-      html += '<div class="ws-sec-row"><span class="ws-small">' + esc(tr(spec.link === 'photo' ? 'ws.link.photo' : 'ws.link.button')) + '</span>' +
-        linkPicker('sec:' + i, s.link, true) +
-        (spec.link === 'both' && s.link && s.photo ? '<label class="chk"><input type="checkbox" data-sec-photolink="' + i + '"' + (s.photoLink ? ' checked' : '') + '><span>' + esc(tr('ws.link.photoToo')) + '</span></label>' : '') +
-        '</div>';
-    }
-    if (spec.align) {
-      html += '<div class="ws-sec-row"><span class="ws-small">' + esc(tr('ws.align')) + '</span>' +
-        chips('align:' + i, ['center', 'left'], s.align || 'center', function (v) { return tr('ws.align.' + v); }) + '</div>';
-    }
-    if (!FLAT[s.type]) {
-      html += '<div class="ws-sec-row"><span class="ws-small">' + esc(tr('ws.bg')) + '</span>' +
-        chips('raised:' + i, ['plain', 'raised'], s.raised ? 'raised' : 'plain', function (v) { return tr('ws.bg.' + v); }) + '</div>';
-    }
-    /* A button's words only once there is a button (Give always has one). */
-    var fields = spec.words.filter(function (f) { return f !== 'button' || !spec.link || s.link; });
-    html += '<div class="ws-fields">' + fields.map(function (f) {
-      var long = f === 'text' || f === 'quote';
-      var src = {}; Object.keys(s.words || {}).forEach(function (l) { src[l] = (s.words[l] || {})[f]; });
-      return '<label class="fld' + (long ? ' ws-wide' : '') + '"><span>' + esc(fieldName(s.type, f)) + '</span>' + ref(src) +
-        (long ? '<textarea rows="' + (f === 'text' && !SECTIONS[s.type].data ? 4 : 2) + '" data-sec-word="' + i + ':' + f + '" lang="' + esc(state.langA) + '">' + esc(w[f] || '') + '</textarea>'
-              : '<input type="text" data-sec-word="' + i + ':' + f + '" value="' + esc(w[f] || '') + '"' + (f === 'button' ? ' placeholder="' + esc(tr('ws.readMore')) + '"' : '') + ' lang="' + esc(state.langA) + '">') + '</label>';
-    }).join('') + '</div>';
-    if (spec.items) {
-      /* Each link is a small card: its picture, its words, where it goes. */
-      html += '<div class="ws-items">' + (s.items || []).map(function (it, j) {
-        var t = (it.words || {})[state.langA] || {}, k = i + ':' + j;
-        return '<div class="ws-card">' +
-          '<div class="ws-card-pic">' + (it.photo ? '<img src="' + esc(it.photo) + '" alt="">' : '<span class="ws-nophoto">' + esc(tr('ws.noPhoto')) + '</span>') +
-            '<label class="ghost-btn sm ws-file">' + esc(it.photo ? tr('ws.changePhoto') : tr('ws.choosePhoto')) +
-            '<input type="file" accept="image/*" data-item-photo="' + k + '" hidden></label>' +
-            (it.photo ? '<button type="button" class="link-btn" data-item-unphoto="' + k + '">' + esc(tr('ws.removePhoto')) + '</button>' : '') +
-            '<span class="hint"></span></div>' +
-          '<div class="ws-card-words">' +
-            '<input type="text" placeholder="' + esc(tr('ws.itemTitle')) + '" data-item="' + k + ':title" value="' + esc(t.title || '') + '" lang="' + esc(state.langA) + '">' +
-            '<input type="text" placeholder="' + esc(tr('ws.itemText')) + '" data-item="' + k + ':text" value="' + esc(t.text || '') + '" lang="' + esc(state.langA) + '">' +
-            linkPicker('item:' + k, it.url || 'https://', false) + '</div>' +
-          '<button type="button" class="ws-icon del" data-item-remove="' + k + '" aria-label="' + esc(tr('ws.remove')) + '">✕</button></div>';
-      }).join('') + '<button type="button" class="link-btn" data-item-add="' + i + '">+ ' + esc(tr('ws.addLink')) + '</button></div>';
-    }
-    if (spec.data) {
-      html += '<p class="ws-data">' + esc(tr('ws.data.' + s.type)) + ' <a href="/staff/' + spec.data + '">' + esc(tr('ws.editThere')) + ' →</a></p>';
-    }
-    if (s.type === 'give') html += '<p class="ws-data">' + esc(tr('ws.data.give')) + '</p>';
-    return html + '</article>';
+  /* One section, alone. Only the tabs it has something for. */
+  function tabsFor(s) {
+    var spec = SECTIONS[s.type], t = ['words'];
+    if (spec.photo) t.push('photo');
+    if (spec.buttons || spec.link === 'button' || spec.link === 'both' || s.type === 'give') t.push('buttons');
+    if (spec.items) t.push('links');
+    if (spec.variants.length > 1 || !FLAT[s.type] || spec.align) t.push('look');
+    return t;
   }
+
+  function drawPanel(p, i) {
+    var s = p.sections[i], spec = SECTIONS[s.type], tabs = tabsFor(s);
+    if (tabs.indexOf(state.sectab) === -1) state.sectab = 'words';
+    var w = (s.words || {})[state.langA] || {};
+    var src = function (f) { var o = {}; Object.keys(s.words || {}).forEach(function (l) { o[l] = (s.words[l] || {})[f]; }); return o; };
+    var html = '<div class="ws-panelhead">' +
+      '<button type="button" class="link-btn" data-panel-back>← ' + esc(pageLabel(p, state.langA)) + '</button>' +
+      '<h2>' + esc(tr('ws.sec.' + s.type)) + '</h2></div>' +
+      '<div class="ws-sectabs" role="tablist">' + tabs.map(function (t) {
+        return '<button type="button" role="tab" data-sectab="' + t + '" aria-selected="' + (t === state.sectab) + '">' + esc(tr('ws.tabw.' + t)) + '</button>';
+      }).join('') + '</div><div class="ws-panelbody">';
+
+    if (state.sectab === 'words') {
+      spec.words.filter(function (f) { return f !== 'button'; }).forEach(function (f) {
+        /* The small line above the heading waits behind a button until wanted. */
+        if (f === 'kicker' && !w.kicker && !state.showKicker) {
+          html += '<button type="button" class="link-btn ws-more" data-show-kicker>+ ' + esc(tr('ws.kickerAdd')) + '</button>';
+          return;
+        }
+        html += field(i, f, w[f], src(f), s.type);
+      });
+      if (spec.data) html += '<p class="ws-data">' + esc(tr('ws.data.' + s.type)) + ' <a href="/staff/' + spec.data + '">' + esc(tr('ws.editThere')) + ' →</a></p>';
+    }
+
+    if (state.sectab === 'photo') {
+      html += '<div class="ws-bigphoto">' + (s.photo ? '<img src="' + esc(s.photo) + '" alt="">' : '<span class="ws-nophoto">' + esc(tr('ws.noPhoto')) + '</span>') + '</div>' +
+        '<div class="ws-sec-row"><label class="ghost-btn sm ws-file">' + esc(s.photo ? tr('ws.changePhoto') : tr('ws.choosePhoto')) +
+          '<input type="file" accept="image/*" data-sec-photo="' + i + '" hidden></label>' +
+          (s.photo ? '<button type="button" class="link-btn" data-sec-unphoto="' + i + '">' + esc(tr('ws.removePhoto')) + '</button>' : '') +
+          '<span class="hint"></span></div>';
+      if (spec.link === 'photo') html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.link.photo')) + '</span>' + linkPicker('sec:' + i, s.link, true) + '</div>';
+      if (spec.link === 'both' && s.link && s.photo) {
+        html += '<label class="chk"><input type="checkbox" data-sec-photolink="' + i + '"' + (s.photoLink ? ' checked' : '') + '><span>' + esc(tr('ws.link.photoToo')) + '</span></label>';
+      }
+    }
+
+    if (state.sectab === 'buttons') {
+      if (spec.buttons) {
+        html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.buttons')) + '</span><div class="ws-checks">' + ['give', 'stay', 'contact'].map(function (b) {
+          var on = (s.buttons || []).indexOf(b) !== -1;
+          return '<label class="chk"><input type="checkbox" data-sec-btn="' + i + ':' + b + '"' + (on ? ' checked' : '') + '><span>' + esc(tr('ws.btn.' + b)) + '</span></label>';
+        }).join('') + '</div></div>';
+      }
+      if (spec.link === 'button' || spec.link === 'both') {
+        html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr(spec.buttons ? 'ws.link.another' : 'ws.link.button')) + '</span>' + linkPicker('sec:' + i, s.link, true) + '</div>';
+      }
+      if (s.type === 'give' || s.link) html += field(i, 'button', w.button, src('button'), s.type);
+      if (s.type === 'give') html += '<p class="ws-data">' + esc(tr('ws.data.give')) + '</p>';
+    }
+
+    if (state.sectab === 'links') {
+      html += '<div class="ws-linkrows">' + (s.items || []).map(function (it, j) {
+        var t = (it.words || {})[state.langA] || {}, k = i + ':' + j, open = state.openItem === j;
+        var where = !it.url || it.url === 'https://' ? tr('ws.link.nowhere') : it.url.indexOf('page:') === 0
+          ? pageLabel(state.doc.pages.filter(function (x) { return 'page:' + x.id === it.url; })[0] || { id: it.url.slice(5) }, state.langA) : it.url.replace(/^https?:\/\//, '');
+        var head = '<div class="ws-linkrow' + (open ? ' is-open' : '') + '">' +
+          (it.photo ? '<img src="' + esc(it.photo) + '" alt="">' : '') +
+          '<b>' + esc(t.title || tr('ws.itemUntitled')) + '</b><span>→ ' + esc(where) + '</span>' +
+          '<button type="button" class="link-btn" data-item-open="' + j + '">' + esc(open ? tr('ws.close') : tr('ws.edit')) + '</button>' +
+          '<button type="button" class="ws-icon del" data-item-remove="' + k + '" aria-label="' + esc(tr('ws.remove')) + '">✕</button></div>';
+        if (!open) return head;
+        return head + '<div class="ws-linkedit">' +
+          '<label class="fld"><span>' + esc(tr('ws.itemTitle')) + '</span><input type="text" data-item="' + k + ':title" value="' + esc(t.title || '') + '" lang="' + esc(state.langA) + '"></label>' +
+          '<label class="fld"><span>' + esc(tr('ws.itemText')) + '</span><input type="text" data-item="' + k + ':text" value="' + esc(t.text || '') + '" lang="' + esc(state.langA) + '"></label>' +
+          '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.link.goesTo')) + '</span>' + linkPicker('item:' + k, it.url || 'https://', false) + '</div>' +
+          '<div class="ws-sec-row">' + (it.photo ? '<img class="ws-thumb" src="' + esc(it.photo) + '" alt="">' : '') +
+            '<label class="ghost-btn sm ws-file">' + esc(it.photo ? tr('ws.changePhoto') : tr('ws.choosePhoto')) + '<input type="file" accept="image/*" data-item-photo="' + k + '" hidden></label>' +
+            (it.photo ? '<button type="button" class="link-btn" data-item-unphoto="' + k + '">' + esc(tr('ws.removePhoto')) + '</button>' : '') +
+            '<span class="hint"></span></div></div>';
+      }).join('') + '</div><button type="button" class="ghost-btn" data-item-add="' + i + '">+ ' + esc(tr('ws.addLink')) + '</button>';
+    }
+
+    if (state.sectab === 'look') {
+      if (spec.variants.length > 1) {
+        html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.layout')) + '</span>' +
+          chips('variant:' + i, spec.variants, s.variant, function (v) { return tr('ws.v.' + s.type + '.' + v); }) + '</div>';
+      }
+      if (spec.align) {
+        html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.align')) + '</span>' +
+          chips('align:' + i, ['center', 'left'], s.align || 'center', function (v) { return tr('ws.align.' + v); }) + '</div>';
+      }
+      if (!FLAT[s.type]) {
+        html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.bg')) + '</span>' +
+          chips('raised:' + i, ['plain', 'raised'], s.raised ? 'raised' : 'plain', function (v) { return tr('ws.bg.' + v); }) + '</div>';
+      }
+    }
+
+    html += '</div><div class="ws-panelfoot"><span class="ws-small" id="wsPanelSaved"></span>' +
+      '<button type="button" class="solid-btn" data-panel-back>' + esc(tr('ws.done')) + '</button></div>';
+    $('wsPages').innerHTML = html;
+    if (!canEdit()) [].forEach.call($('wsPages').querySelectorAll('[contenteditable]'), function (el) { el.setAttribute('contenteditable', 'false'); });
+  }
+
+  /* One field. Headings, words and quotes are formatted boxes (bold, italic,
+     underline, links); the rest are plain. */
+  var RICH = { heading: 1, text: 1, quote: 1 };
+  function field(i, f, value, refWords, type) {
+    var label = '<span>' + esc(fieldName(type, f)) + '</span>';
+    if (RICH[f]) {
+      var b = state.langB, r = b && refWords && refWords[b];
+      return '<div class="fld ws-rfld">' + label +
+        (r ? '<small class="ms-ref" lang="' + esc(b) + '">' + inlineHtml(r) + '</small>' : '') +
+        '<div class="rt rt-' + f + '" contenteditable="true" role="textbox" aria-multiline="' + (f !== 'heading') + '" data-rt="' + i + ':' + f + '" lang="' + esc(state.langA) + '">' +
+        inlineHtml(value, true) + '</div></div>';
+    }
+    return '<label class="fld">' + label + ref(refWords) +
+      '<input type="text" data-sec-word="' + i + ':' + f + '" value="' + esc(value || '') + '"' +
+      (f === 'button' ? ' placeholder="' + esc(tr('ws.readMore')) + '"' : '') + ' lang="' + esc(state.langA) + '"></label>';
+  }
+  /* Stored formatted words back into a box: only the marks it may hold, links
+     kept only inside the box being edited. */
+  function inlineHtml(v, withLinks) {
+    var out = String(v || '').replace(/<(?!\/?(b|i|u)>)(?!a href="[^"]*">)(?!\/a>)[^>]*>/g, '');
+    if (!withLinks) out = out.replace(/<\/?a[^>]*>/g, '');
+    return out.replace(/\n/g, '<br>');
+  }
+  /* A box's contents as they are stored: what a browser's editable box makes
+     — <div> per line, <strong>, pasted styles — reduced to <b>, <i>, <u>,
+     <a href> and line breaks. The server cleans it again (model.richClean);
+     this keeps the working copy tidy and the change dots honest. */
+  function richFrom(el) {
+    var out = '';
+    var TAGS = { b: 'b', strong: 'b', i: 'i', em: 'i', u: 'u', a: 'a' };
+    (function walk(n) {
+      for (var c = n.firstChild; c; c = c.nextSibling) {
+        if (c.nodeType === 3) { out += esc(c.nodeValue.replace(/ /g, ' ')); continue; }
+        if (c.nodeType !== 1) continue;
+        var t = c.nodeName.toLowerCase();
+        if (t === 'br') { out += '\n'; continue; }
+        if (/^(div|p|li|h[1-6]|blockquote)$/.test(t) && out && !/\n$/.test(out)) out += '\n';
+        var tag = TAGS[t];
+        if (tag === 'a') {
+          var h = c.getAttribute('href') || '';
+          if (/^(https?:\/\/|mailto:|page:[a-z]+$)/i.test(h)) out += '<a href="' + esc(h) + '">'; else tag = null;
+        } else if (tag) out += '<' + tag + '>';
+        walk(c);
+        if (tag) out += '</' + tag + '>';
+      }
+    })(el);
+    return out.replace(/<(b|i|u)><\/\1>/g, '').replace(/\n{3,}/g, '\n\n').replace(/^\s+|\s+$/g, '');
+  }
+
+  /* ---- the formatting bar ------------------------------------------------ */
+
+  /* B, I, U and a link, above whatever is selected in a formatted box —
+     the only formatting there is, so a person is never faced with a
+     toolbar full of choices (Chase: "without overly complicating
+     everything"). The usual keys work too: Ctrl/Cmd + B, I, U. */
+  var fmt = document.createElement('div');
+  fmt.className = 'ws-fmt';
+  fmt.hidden = true;
+  fmt.innerHTML = [['bold', 'B'], ['italic', 'I'], ['underline', 'U']].map(function (x) {
+    return '<button type="button" data-fmt="' + x[0] + '" class="ws-fmt-' + x[0] + '" aria-label="' + esc(tr('ws.fmt.' + x[0])) + '" title="' + esc(tr('ws.fmt.' + x[0])) + '">' + x[1] + '</button>';
+  }).join('') + '<button type="button" data-fmt="link" aria-label="' + esc(tr('ws.fmt.link')) + '" title="' + esc(tr('ws.fmt.link')) + '">' +
+    '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg></button>';
+  document.body.appendChild(fmt);
+  function boxOfSelection() {
+    var sel = window.getSelection();
+    if (!sel || !sel.rangeCount || sel.isCollapsed) return null;
+    var n = sel.anchorNode; n = n && (n.nodeType === 1 ? n : n.parentNode);
+    var box = n && n.closest && n.closest('[data-rt]');
+    return box && box.getAttribute('contenteditable') === 'true' ? box : null;
+  }
+  document.addEventListener('selectionchange', function () {
+    var box = boxOfSelection();
+    if (!box) { if (!fmt.contains(document.activeElement)) fmt.hidden = true; return; }
+    var r = window.getSelection().getRangeAt(0).getBoundingClientRect();
+    fmt.hidden = false;
+    fmt.style.top = (window.scrollY + r.top - fmt.offsetHeight - 8) + 'px';
+    fmt.style.left = Math.max(8, window.scrollX + r.left + r.width / 2 - fmt.offsetWidth / 2) + 'px';
+    [].forEach.call(fmt.querySelectorAll('[data-fmt]'), function (b) {
+      var c = b.getAttribute('data-fmt');
+      if (c !== 'link') b.setAttribute('aria-pressed', document.queryCommandState(c) ? 'true' : 'false');
+    });
+  });
+  /* Keep the selection: a press on the bar must not take focus from the box. */
+  fmt.addEventListener('mousedown', function (e) { e.preventDefault(); });
+  fmt.addEventListener('click', async function (e) {
+    var b = e.target.closest('[data-fmt]'), box = boxOfSelection();
+    if (!b || !box) return;
+    var c = b.getAttribute('data-fmt');
+    if (c === 'link') {
+      var range = window.getSelection().getRangeAt(0).cloneRange();
+      var url = window.StaffPrompt ? await window.StaffPrompt({ title: tr('ws.fmt.linkAsk'), label: tr('ws.fmt.linkLabel'),
+        placeholder: 'https://…', confirm: tr('ws.fmt.link'), cancel: tr('ms.cancel') }) : null;
+      if (!url) return;
+      url = String(url).trim();
+      if (!/^(https?:\/\/|mailto:)/i.test(url)) url = /@/.test(url) ? 'mailto:' + url : 'https://' + url;
+      box.focus();
+      var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+      document.execCommand('createLink', false, url);
+    } else {
+      document.execCommand(c, false, null);
+    }
+    box.dispatchEvent(new Event('input', { bubbles: true }));
+  });
 
   /* ---- adding a section ------------------------------------------------ */
 
@@ -484,8 +656,9 @@
         (r[5] ? ';border-radius:' + r[5] : '') + '"></span>';
     }).join('');
   }
-  function openAdd() {
+  function openAdd(at) {
     var p = currentPage();
+    state.insertAt = at == null ? p.sections.length : at;
     $('wsAddTitle').innerHTML = esc(tr('ws.addTo')) + ' <b>' + esc(pageLabel(p, state.langA)) + '</b>';
     $('wsTiles').innerHTML = ORDER.map(function (t) {
       return '<button type="button" class="ws-tile" data-add-type="' + t + '"><span class="ws-sketch" aria-hidden="true">' + sketch(t) + '</span>' +
@@ -506,10 +679,13 @@
     if (spec.photo) s.photo = null;
     if (spec.buttons) s.buttons = ['give', 'stay'];
     if (spec.items) s.items = [];
-    currentPage().sections.push(s);
-    closeAdd(); drawSections(); changed();
-    var cards = $('wsPages').querySelectorAll('.ws-sec');
-    if (cards.length) cards[cards.length - 1].scrollIntoView({ block: 'center', behavior: 'smooth' });
+    /* Where it was asked for, and straight into it: a new section is one
+       to be filled in. */
+    var at = Math.min(state.insertAt == null ? 1e9 : state.insertAt, currentPage().sections.length);
+    currentPage().sections.splice(at, 0, s);
+    state.edit = at; state.sectab = spec.items ? 'links' : 'words'; state.openItem = null;
+    closeAdd(); drawPages(); changed(); refreshFrame();
+    window.scrollTo(0, 0);
   });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('wsAddBack').hidden) closeAdd(); });
 
@@ -673,6 +849,7 @@
     var t = e.target, p = currentPage(), v = t.value;
     if (t.dataset.pageLabel !== undefined) { var pg = state.doc.pages[+t.dataset.pageLabel]; pg.label = pg.label || {}; pg.label[state.langA] = v; return changed(); }
     if (t.dataset.secWord) { var a = t.dataset.secWord.split(':'); words(p.sections[+a[0]], state.langA)[a[1]] = v; return changed(); }
+    if (t.dataset && t.dataset.rt) { var rt = t.dataset.rt.split(':'); words(p.sections[+rt[0]], state.langA)[rt[1]] = richFrom(t); return changed(); }
     if (t.dataset.item) { var b = t.dataset.item.split(':'); words(p.sections[+b[0]].items[+b[1]], state.langA)[b[2]] = v; return changed(); }
     if (t.dataset.linkUrl) { setLink(t.dataset.linkUrl, v.trim() || 'https://'); return changed(); }
     if (t.dataset.color) {
@@ -735,9 +912,13 @@
     var t = e.target.closest('button');
     if (!t || t.disabled) return;
     var p = currentPage(), d = t.dataset;
-    if (d.wsOpen) { state.page = d.wsOpen; draw(); window.scrollTo(0, 0); return; }
-    if (d.wsBack !== undefined) { state.page = null; draw(); return; }
-    if (d.wsAdd !== undefined) return openAdd();
+    if (d.pickPage) { state.page = d.pickPage; state.edit = null; drawPages(); refreshFrame(); return; }
+    if (d.editSec) { state.edit = +d.editSec; state.sectab = 'words'; state.openItem = null; state.showKicker = false; drawPages(); refreshFrame(); window.scrollTo(0, 0); return; }
+    if (d.panelBack !== undefined) { state.edit = null; drawPages(); refreshFrame(); return; }
+    if (d.sectab) { state.sectab = d.sectab; drawPages(); return; }
+    if (d.insertAt !== undefined) return openAdd(+d.insertAt);
+    if (d.itemOpen !== undefined) { state.openItem = state.openItem === +d.itemOpen ? null : +d.itemOpen; drawPages(); return; }
+    if (d.showKicker !== undefined) { state.showKicker = true; drawPages(); var k = $('wsPages').querySelector('[data-sec-word$=":kicker"]'); if (k) k.focus(); return; }
     if (d.pageUp) { move(state.doc.pages, +d.pageUp, -1); drawPages(); return changed(); }
     if (d.pageDown) { move(state.doc.pages, +d.pageDown, 1); drawPages(); return changed(); }
     if (d.pageOn) { var pg = state.doc.pages[+d.pageOn]; pg.on = !pg.on; drawPages(); return changed(); }
@@ -746,17 +927,17 @@
     if (d.secRemove) {
       var s = p.sections[+d.secRemove];
       var ok = window.StaffConfirm ? await window.StaffConfirm({ title: fill('ws.removeTitle', { kind: tr('ws.sec.' + s.type) }), confirm: tr('ws.remove'), cancel: tr('ms.cancel'), danger: true }) : true;
-      if (ok) { p.sections.splice(+d.secRemove, 1); drawSections(); changed(); }
+      if (ok) { p.sections.splice(+d.secRemove, 1); state.edit = null; drawSections(); changed(); }
       return;
     }
     if (d.secUnphoto) { p.sections[+d.secUnphoto].photo = null; drawSections(); return changed(); }
-    if (d.itemAdd) { var sec = p.sections[+d.itemAdd]; sec.items = sec.items || []; sec.items.push({ url: 'https://', photo: null, words: {} }); drawSections(); return; }
+    if (d.itemAdd) { var sec = p.sections[+d.itemAdd]; sec.items = sec.items || []; sec.items.push({ url: 'https://', photo: null, words: {} }); state.openItem = sec.items.length - 1; drawSections(); var ti = $('wsPages').querySelector('[data-item$=":title"]'); if (ti) ti.focus(); return; }
     if (d.itemUnphoto) { var up = d.itemUnphoto.split(':'); p.sections[+up[0]].items[+up[1]].photo = null; drawSections(); return changed(); }
     if (d.unfavicon !== undefined) { state.doc.design.favicon = null; drawDesign(); return changed(); }
     if (d.gotoTab) { var tb = document.querySelector('[data-ws-tab="' + d.gotoTab + '"]'); if (tb) tb.click(); return; }
     if (d.colorReset) { state.doc.design.colors[d.colorReset] = null; drawDesign(); return changed(); }
     if (d.footerMenu !== undefined) { state.doc.footer.menu = !state.doc.footer.menu; drawFooter(); return changed(); }
-    if (d.itemRemove) { var r = d.itemRemove.split(':'); p.sections[+r[0]].items.splice(+r[1], 1); drawSections(); return changed(); }
+    if (d.itemRemove) { var r = d.itemRemove.split(':'); p.sections[+r[0]].items.splice(+r[1], 1); state.openItem = null; drawSections(); return changed(); }
     if (d.customAdd !== undefined) { state.doc.links.push({ kind: 'custom', url: 'https://', label: {} }); drawLinks(); return; }
     if (d.customRemove) { state.doc.links.splice(+d.customRemove, 1); drawLinks(); return changed(); }
     if (d.headerLinks !== undefined) { state.doc.design.headerLinks = !state.doc.design.headerLinks; drawLinks(); return changed(); }
@@ -781,7 +962,7 @@
     if (d.start) {
       var ok2 = window.StaffConfirm ? await window.StaffConfirm({ title: fill('ws.startTitle', { kind: tr('ws.start.' + d.start) }),
         body: tr('ws.startBody'), confirm: tr('ws.startGo'), cancel: tr('ms.cancel'), danger: true }) : true;
-      if (ok2) { state.page = null; act({ action: 'start', kind: d.start }, tr('ws.started')); }
+      if (ok2) { state.page = 'home'; state.edit = null; act({ action: 'start', kind: d.start }, tr('ws.started')); }
       return;
     }
     if (d.grant) return act({ action: 'grant', user_id: d.grant }, tr('ws.allowed'));
