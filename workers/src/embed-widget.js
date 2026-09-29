@@ -1174,6 +1174,8 @@ ${COLOUR_JS}
 
     var wrap = el('div', 'vshow');
     var stage = el('div', 'vstage');
+    /* Emptied node by node, never by assigning markup (see embed.test). */
+    function clear(n) { while (n.firstChild) n.removeChild(n.firstChild); }
     wrap.appendChild(stage);
 
     function still(v) {
@@ -1199,13 +1201,13 @@ ${COLOUR_JS}
       f.title = v.title;
       f.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
       f.setAttribute('allowfullscreen', '');
-      stage.innerHTML = '';
+      clear(stage);
       stage.appendChild(f);
       stage.classList.add('is-playing');
     }
     function show(v, autoplay) {
       stage.classList.remove('is-playing');
-      stage.innerHTML = '';
+      clear(stage);
       if (autoplay) return play(v);
       var a = link(v, 'vhero');
       a.setAttribute('aria-label', w(lang, 'play') + ': ' + v.title);

@@ -45,6 +45,7 @@ class Node {
     this.className = "";
   }
   appendChild(n) { this.children.push(n); return n; }
+  removeChild(n) { this.children = this.children.filter((c) => c !== n); return n; }
   setAttribute(k, v) { this.attributes[k] = String(v); }
   getAttribute(k) { return k in this.attributes ? this.attributes[k] : null; }
   attachShadow() { this.shadowRoot = new Node("#shadow"); return this.shadowRoot; }
