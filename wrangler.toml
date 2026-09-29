@@ -82,7 +82,12 @@ run_worker_first = [
   # damages the sending domain for everybody else the ministry writes to.
   "/unsubscribe",
   # Past newsletters, linked from the footer of every mailing.
-  "/archive/*"
+  "/archive/*",
+  # A ministry's own website, opened from the console (0044). Nothing is on
+  # disk here either: left off this list until 2026-09-29, and the Website
+  # tab's Preview button 404'd — the tests call the Worker directly, so only
+  # a real deploy could show it.
+  "/site/*"
 ]
 
 [[routes]]
@@ -309,7 +314,10 @@ directory = "_site"
 binding = "ASSETS"
 html_handling = "auto-trailing-slash"
 not_found_handling = "404-page"
-run_worker_first = ["/", "/api/*", "/.netlify/functions/*", "/staff", "/staff/*", "/admin", "/admin/*", "/embed/v1/*", "/media/*", "/confirm", "/confirm-account", "/confirm-email", "/unsubscribe", "/archive/*"]
+# The same allow-list as staging's, annotated at the top of this file; one
+# line here so the three are easy to compare. test/admin-console.test.mjs
+# checks every route and prefix reaches the Worker in all three.
+run_worker_first = ["/", "/api/*", "/.netlify/functions/*", "/staff", "/staff/*", "/admin", "/admin/*", "/embed/v1/*", "/media/*", "/confirm", "/confirm-account", "/confirm-email", "/unsubscribe", "/archive/*", "/site/*"]
 
 # LOCAL SIMULATION, INCLUDING THE DATABASE. `wrangler dev` runs D1 and KV in
 # miniflare against state under .wrangler/state — NOT against thauma-ops-dev.
@@ -473,7 +481,16 @@ directory = "_site_prod"
 binding = "ASSETS"
 html_handling = "auto-trailing-slash"
 not_found_handling = "404-page"
-run_worker_first = ["/", "/api/*", "/.netlify/functions/*", "/staff", "/staff/*", "/admin", "/admin/*", "/embed/v1/*", "/media/*", "/confirm", "/confirm-account", "/confirm-email", "/unsubscribe", "/archive/*"]
+# LIVE IS DIFFERENT: EVERY PAGE REACHES THE WORKER FIRST. Partner sites
+# (0044) live at <name>.thauma.one on this same Worker, and their pages sit at
+# the same paths as Thauma's own — /en/, /hr/about/. This list can only match
+# paths, never hosts, so asset-first, chaseroush.thauma.one/en/ would have
+# been answered with THAUMA's English page before the Worker could look at
+# the host. So every path goes to the Worker (which hands Thauma's own
+# requests to ASSETS at the end, as it always has), except the folders that
+# only hold stylesheets, scripts, fonts and pictures — those stay on the fast
+# asset-first path. Found 2026-09-29, before live ever served a partner site.
+run_worker_first = ["/*", "!/css/*", "!/js/*", "!/fonts/*", "!/img/*"]
 
 [[env.production.routes]]
 pattern = "thauma.one/*"

@@ -95,25 +95,46 @@ check("a used sending address cannot be deleted without the cascade flag", () =>
 const TOML = readFileSync(new URL("../wrangler.toml", import.meta.url), "utf8");
 const WORKER = readFileSync(new URL("../workers/src/worker.js", import.meta.url), "utf8");
 
+/* Each environment's list as patterns, and whether a real path reaches the
+   Worker under them: some pattern matches and no "!" pattern does. Live's
+   list is "/*" minus the static folders (partner sites share its paths), so
+   comparing strings stopped being enough on 2026-09-29. */
+const LISTS = TOML.split(/run_worker_first\s*=\s*\[/).slice(1)
+  .map((b) => [...b.slice(0, b.indexOf("]")).matchAll(/"([^"]+)"/g)].map((m) => m[1]));
+const matches = (pattern, path) => pattern.endsWith("/*")
+  ? path.startsWith(pattern.slice(0, -1)) || path === pattern.slice(0, -2)
+  : path === pattern;
+const reaches = (list, path) =>
+  list.some((p) => !p.startsWith("!") && matches(p, path)) &&
+  !list.some((p) => p.startsWith("!") && matches(p.slice(1), path));
+
 check("every route the Worker claims is in run_worker_first, in all 3 environments", () => {
   /* Split on the ASSIGNMENT, not the word — the file also explains the setting
      in prose above it, and counting those mentions found four environments. */
-  const blocks = TOML.split(/run_worker_first\s*=\s*\[/).slice(1);
-  assert(blocks.length === 3, `expected 3 environments, found ${blocks.length}`);
+  assert(LISTS.length === 3, `expected 3 environments, found ${LISTS.length}`);
 
-  /* Exact paths from the ROUTES table, plus the prefixes matched by hand.
-     Only the ones with nothing on disk matter — a path backed by a real file
-     is served correctly either way. */
-  const needed = ["/", "/api/*", "/staff/*", "/admin/*", "/embed/v1/*",
-                  "/media/*", "/confirm", "/unsubscribe", "/archive/*"];
-  blocks.forEach((b, i) => {
-    const list = b.slice(0, b.indexOf("]"));
+  /* Real paths under each route and prefix with nothing on disk — a path
+     backed by a real file is served correctly either way. /site/ was missing
+     from all three until 2026-09-29 and the Website tab's Preview 404'd. */
+  const needed = ["/", "/api/x", "/staff/x", "/admin/x", "/embed/v1/x",
+                  "/media/x", "/confirm", "/unsubscribe", "/archive/x", "/site/chaseroush/"];
+  LISTS.forEach((list, i) => {
     for (const path of needed) {
-      assert(list.includes(`"${path}"`),
-        `environment ${i + 1} does not list ${path} — it will be answered by the ` +
+      assert(reaches(list, path),
+        `environment ${i + 1} does not send ${path} to the Worker — it will be answered by the ` +
         `asset handler and 404, while the code behind it stays correct`);
     }
   });
+});
+
+check("live sends partner-site pages to the Worker, and keeps static files fast", () => {
+  const live = LISTS[2];
+  for (const path of ["/en/", "/hr/about/", "/sr/give/"]) {
+    assert(reaches(live, path), `${path} on <name>.thauma.one would be Thauma's own page`);
+  }
+  for (const path of ["/css/main.css", "/js/main.js", "/fonts/x.woff2", "/img/x.webp"]) {
+    assert(!reaches(live, path), `${path} no longer takes the fast asset-first path`);
+  }
 });
 
 check("a route added to the Worker was added to EVERY environment's allow-list", () => {
@@ -130,17 +151,11 @@ check("a route added to the Worker was added to EVERY environment's allow-list",
   const declared = [...WORKER.matchAll(/^\s*"(\/[a-z0-9/.-]*)":\s*\w/gim)].map((m) => m[1]);
   assert(declared.length > 3, `only found ${declared.length} routes — did ROUTES move?`);
 
-  const blocks = TOML.split(/run_worker_first\s*=\s*\[/).slice(1)
-    .map((b) => b.slice(0, b.indexOf("]")));
-  assert(blocks.length === 3, `expected 3 environments, found ${blocks.length}`);
+  assert(LISTS.length === 3, `expected 3 environments, found ${LISTS.length}`);
 
-  const PREFIXES = ["/api", "/staff", "/admin", "/media", "/embed/v1",
-                    "/archive", "/.netlify/functions"];
-  blocks.forEach((list, i) => {
+  LISTS.forEach((list, i) => {
     for (const path of declared) {
-      const covered = list.includes(`"${path}"`) ||
-        PREFIXES.some((pre) => path.startsWith(pre + "/") && list.includes(`"${pre}/*"`));
-      assert(covered,
+      assert(reaches(list, path),
         `environment ${i + 1} routes ${path} in worker.js but does not list it in ` +
         `run_worker_first — it will 404 there while the code behind it is correct`);
     }
