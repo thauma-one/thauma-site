@@ -192,12 +192,14 @@ await check("another language opens on what needs work, beside English", async (
   assert(!d.getElementById("cBesideWrap").hidden, "no beside choice");
 });
 
-await check("English is written beside nothing, with nothing to send out", async () => {
+await check("English has a Reference too, and nothing to send out", async () => {
+  /* Chase, 2026-09-28: editing English, the reference language used to
+     disappear. Writing the source, it helps to see what a translation says. */
   const { d } = await boot();
   assert(d.getElementById("cLang").value === "en", "did not start on English");
-  assert(d.getElementById("cBesideWrap").hidden, "English offered a language beside it");
+  assert(!d.getElementById("cBesideWrap").hidden, "English has no Reference");
+  assert(d.getElementById("cBeside").value !== "en", "English offered as its own reference");
   assert(d.getElementById("cDown").hidden && d.getElementById("cUp").hidden, "a translation file offered for English");
-  assert(!d.querySelector("#cRows .c-ref"), "a line shown above English");
 });
 
 /* ------------------------------------------------------------------ file */

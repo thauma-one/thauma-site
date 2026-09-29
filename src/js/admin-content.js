@@ -346,8 +346,9 @@
       return '<option value="' + esc(c) + '">' + esc(langName(c)) + '</option>';
     }).join('');
     $('cBeside').value = state.beside || '';
-    /* English is written beside nothing: it is what the others come from. */
-    $('cBesideWrap').hidden = isEn() || !others.length;
+    /* English too has a Reference (Chase, 2026-09-28): writing the source,
+       it helps to see what a translation already says. */
+    $('cBesideWrap').hidden = !others.length;
   }
 
   async function openLang(code, keepView, already) {
@@ -391,7 +392,9 @@
     state.besideLines[b] = map;
   }
   function besideText(line) {
-    if (state.beside === 'en' || !state.besideLines[state.beside]) return line.english;
+    if (state.beside === 'en') return line.english;
+    /* Not read yet: nothing, rather than English beside English. */
+    if (!state.besideLines[state.beside]) return '';
     return state.besideLines[state.beside][line.id] || '';
   }
 
@@ -478,7 +481,7 @@
     var lang = esc(state.lang);
     var aria = esc(r.label + ' — ' + langName(state.lang));
     var ref = '';
-    if (!isEn()) {
+    if (state.beside && state.beside !== state.lang) {
       var bl = esc(state.beside || 'en');
       ref = r.split
         ? '<p class="c-ref" lang="' + bl + '">' + splitHtml(besideText(r.thin), besideText(r.bold)) + '</p>'
