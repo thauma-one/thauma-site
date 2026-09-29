@@ -179,6 +179,8 @@ One entry point, `workers/src/worker.js`. **286 tests** (`cd workers && npm test
 | `lib/mail.js` | transactional email through Resend, and the invite |
 | `staff-snapshot` (in worker.js) | Home's numbers and people, stewardship, activity |
 | `staff-home.js` | Home: what is not finished, and what waits for translation (read-only) |
+| `staff-site.js` | a ministry's own website (0044): the Website tab — working copy, Publish, switching on, starting again, who may edit; and /api/admin/site-address |
+| `site/` | partner sites: `model.js` (the document, its starting points, cleaning), `render.js` (the page), `serve.js` (<name>.thauma.one and /site/<name>/) |
 | `translate.js` | machine translation drafts through Workers AI — returns words, never saves; staging and live only |
 | `staff-milestones.js` | the roadmap editor |
 | `staff-settings.js` | account, languages, API keys |

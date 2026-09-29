@@ -1404,13 +1404,18 @@ ${COLOUR_JS}
     }
     host.appendChild(body);
 
-    var foot = el('div', 'foot');
-    var a = el('a', null, data.partner ? data.partner.display_name : 'Thauma');
-    a.href = ORIGIN + '/partners/' + (data.partner ? data.partner.slug : '');
-    a.rel = 'noopener';
-    a.target = '_blank';
-    foot.appendChild(a);
-    host.appendChild(foot);
+    /* The credit line says whose this is — on somebody else's page. On the
+       ministry's own site (data-foot="off") it would only repeat the name
+       at the top of the page. */
+    if (node.getAttribute('data-foot') !== 'off') {
+      var foot = el('div', 'foot');
+      var a = el('a', null, data.partner ? data.partner.display_name : 'Thauma');
+      a.href = ORIGIN + '/partners/' + (data.partner ? data.partner.slug : '');
+      a.rel = 'noopener';
+      a.target = '_blank';
+      foot.appendChild(a);
+      host.appendChild(foot);
+    }
 
     root.appendChild(host);
 

@@ -43,6 +43,11 @@ const staff = [
      widgets, the sign-up form, the contact form, their colors and code. */
   { slug: "sharing", url: "/staff/sharing/", label: "Sharing",
     roles: ["staff", "partner", "communications"] },
+  /* THE MINISTRY'S OWN WEBSITE (0044, Chase 2026-09-28): <name>.thauma.one,
+     arranged here. Everyone on the team may look; the owner, and whoever the
+     owner allows, may change it — the endpoint decides that, not this line. */
+  { slug: "website", url: "/staff/website/", label: "Website",
+    roles: ["staff", "partner", "communications"] },
   /* Supporter names, giving history and stewardship notes. The narrowest
      thing in the console and the only one holding other people's private
      details, so communications does not get it by being able to write. */

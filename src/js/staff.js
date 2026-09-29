@@ -1962,6 +1962,25 @@
     show(known ? wanted : tabs[0].dataset.tab);
   })();
 
+  /* YOUR SITE (0044): beside Public site, once the ministry's own site is
+     switched on. Asked once and kept for five minutes, so moving between
+     pages does not ask again; nobody with no ministry sees it. */
+  (function mySite() {
+    var a = document.getElementById('consoleMySite');
+    if (!a) return;
+    function show(b) { if (b && b.enabled && b.address) { a.href = b.address; a.hidden = false; } }
+    try {
+      var kept = JSON.parse(sessionStorage.getItem('thauma.mysite') || 'null');
+      if (kept && Date.now() - kept.at < 300000) return show(kept.b);
+    } catch (e) {}
+    fetch('/api/staff-site?brief', { credentials: 'same-origin' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (b) {
+        try { sessionStorage.setItem('thauma.mysite', JSON.stringify({ at: Date.now(), b: b })); } catch (e) {}
+        show(b);
+      }).catch(function () {});
+  })();
+
   loadIdentity();
   if (NEEDS_SNAPSHOT.indexOf(page) !== -1) loadSnapshot();
   if (page === 'index') { wireHome(); loadHome(); }

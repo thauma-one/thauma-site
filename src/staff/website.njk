@@ -1,0 +1,90 @@
+---
+layout: layouts/staff.njk
+staffPage: website
+staffTitle: Website
+staffHeading: Your <b>website</b>
+---
+{#- THE MINISTRY'S OWN WEBSITE (0044; mockup canvas "Thauma partner sites").
+   Pages, Design, Links and Settings, one side list like Website in the
+   administrators' area, and one Publish bar along the foot.
+
+   Everything here is drawn by staff-site.js from /api/staff-site. Changes
+   save as they are made (to the working copy, so nothing is lost between
+   visits) and reach visitors only with Publish. Only the ministry's owner,
+   and whoever the owner allows, can change anything; everyone else on the
+   team sees the same screens, read-only, with "Ask to edit". -#}
+
+<div class="ws-status" id="wsStatus" hidden>
+  <button type="button" class="switch" role="switch" id="wsOn" aria-checked="false"
+          data-i18n-attr="aria-label:ws.live" aria-label="Live">
+    <span class="switch-track"><span class="switch-state">Off</span><span class="switch-knob"></span></span>
+  </button>
+  <div class="ws-where">
+    <b id="wsState"></b>
+    <span id="wsAddress"></span>
+  </div>
+  <a class="ghost-btn" id="wsOpen" href="#" target="_blank" rel="noopener" data-i18n="ws.open">Open site ↗</a>
+  <a class="ghost-btn" id="wsPreview" href="#" target="_blank" rel="noopener" data-i18n="ws.preview">Preview ↗</a>
+</div>
+
+{#- For somebody on the team who is not allowed to edit (Chase, 2026-09-28:
+   "Staff can view the site and request edit access"). -#}
+<div class="ws-ask" id="wsAsk" hidden>
+  <div class="ws-ask-words"><b id="wsAskTitle"></b><span id="wsAskText"></span></div>
+  <label class="fld ws-ask-note"><span data-i18n="ws.askNote">A note for them</span>
+    <input type="text" id="wsAskNote" maxlength="300"></label>
+  <button type="button" class="solid-btn" id="wsAskBtn" data-i18n="ws.ask">Ask to edit</button>
+</div>
+
+<div class="ws" id="wsRoot" hidden>
+  <nav class="ws-side" aria-label="Website">
+    <button type="button" class="ws-tab" data-ws-tab="pages" aria-current="page" data-i18n="ws.tab.pages">Pages</button>
+    <button type="button" class="ws-tab" data-ws-tab="design" data-i18n="ws.tab.design">Design</button>
+    <button type="button" class="ws-tab" data-ws-tab="links" data-i18n="ws.tab.links">Links</button>
+    <button type="button" class="ws-tab" data-ws-tab="settings" data-i18n="ws.tab.settings">Settings</button>
+  </nav>
+
+  <div class="ws-main">
+    {#- The language being written, and one to compare with — the same pair,
+        swap and Translate as every other editor. Pages and Links use it. -#}
+    <div class="ms-writing ws-writing" id="wsWriting">
+      <label class="ms-pick"><span data-i18n="con.editing">Editing</span>
+        <select id="wsLangA" class="lang-pick" data-lang-edit></select></label>
+      <span class="lang-ref" id="wsRefWrap">
+        <button type="button" class="lang-swap" data-lang-swap data-i18n-attr="aria-label:con.swap,title:con.swap" aria-label="Swap" title="Swap">&#8644;</button>
+        <label class="ms-pick"><span data-i18n="con.reference">Reference</span>
+          <select id="wsLangB" class="lang-pick" data-lang-ref></select></label>
+        <button type="button" class="ghost-btn sm lang-ai" data-lang-translate data-i18n="ai.translate">Translate</button>
+      </span>
+    </div>
+
+    <section class="ws-panel" data-ws-panel="pages" id="wsPages"></section>
+    <section class="ws-panel" data-ws-panel="design" id="wsDesign" hidden></section>
+    <section class="ws-panel" data-ws-panel="links" id="wsLinks" hidden></section>
+    <section class="ws-panel" data-ws-panel="settings" id="wsSettings" hidden></section>
+  </div>
+
+  {#- The page as it will look, beside the sections being arranged: the real
+      site, drawn from the working copy, redrawn after each change. -#}
+  <aside class="ws-preview" id="wsPreviewPane" hidden>
+    <div class="ws-preview-head"><span data-i18n="ws.onSite">On the site</span><span id="wsPreviewPath"></span></div>
+    <div class="ws-preview-frame"><iframe id="wsFrame" title="Preview" loading="lazy"></iframe></div>
+  </aside>
+</div>
+
+{#- Adding a section: every kind there is, each drawn as a small sketch. -#}
+<div class="dlg-back" id="wsAddBack" hidden>
+  <div class="dlg ws-add" role="dialog" aria-modal="true" aria-labelledby="wsAddTitle">
+    <div class="ws-add-head"><h3 id="wsAddTitle"></h3>
+      <button type="button" class="sw-close" id="wsAddClose" data-i18n-attr="aria-label:common.close" aria-label="Close">&times;</button></div>
+    <div class="ws-tiles" id="wsTiles"></div>
+  </div>
+</div>
+
+<div class="ms-savebar ws-bar" id="wsBar" role="status" aria-live="polite" hidden>
+  <span class="ms-dot" aria-hidden="true"></span>
+  <span id="wsBarText" data-i18n="ws.unpublished">Changes not published yet</span>
+  <span class="ws-saved" id="wsSaved"></span>
+  <button type="button" class="ghost-btn" id="wsDiscard" data-i18n="ms.discard">Discard</button>
+  <button type="button" class="solid-btn" id="wsPublish" data-i18n="up.publish">Publish</button>
+</div>

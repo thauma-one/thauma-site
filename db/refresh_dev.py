@@ -50,6 +50,7 @@ SCRUB = {
     # now checks every note/notes column in the schema against all three copies
     # of this list, so the next one cannot be forgotten the same way.
     "life_events": ["note"],
+    "partner_site_requests": ["note"],
     "audit_log": ["detail"],
 
     # MAILING LISTS ARE THE LARGEST STORE OF OTHER PEOPLE'S ADDRESSES IN THIS

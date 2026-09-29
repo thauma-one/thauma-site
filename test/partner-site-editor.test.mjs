@@ -1,0 +1,102 @@
+#!/usr/bin/env node
+/**
+ * Website (the ministry's own site, 0044) — the editor
+ *   node test/partner-site-editor.test.mjs
+ *
+ * The real page and scripts, with /api/staff-site answered in place: the
+ * menu, a page's sections, adding one, the words saved as typed, and the
+ * read-only view for somebody the owner has not allowed.
+ */
+import { JSDOM } from "jsdom";
+import { readFileSync, existsSync } from "node:fs";
+import { starter, cleanDoc } from "../workers/src/site/model.js";
+
+const PAGE = ["_site", "_site_next", "_site_prod"].map((d) => `${d}/staff/website/index.html`).find((f) => existsSync(f));
+
+let pass = 0, fail = 0;
+const check = async (name, fn) => {
+  try { await fn(); console.log(`  PASS  ${name}`); pass++; }
+  catch (e) { console.log(`  FAIL  ${name}\n          ${e.message}`); fail++; }
+};
+const assert = (c, m) => { if (!c) throw new Error(m); };
+const eq = (a, b, m) => assert(JSON.stringify(a) === JSON.stringify(b), `${m} — got ${JSON.stringify(a)}, want ${JSON.stringify(b)}`);
+const settle = (ms = 150) => new Promise((r) => setTimeout(r, ms));
+
+console.log("Website editor\n");
+if (!PAGE) { console.log("  SKIP  no build — run eleventy first."); process.exit(1); }
+
+function answer({ edit = true, owner = true } = {}) {
+  return {
+    you: { email: "c@t.one", name: "Chase Roush", roles: ["partner", "staff"] },
+    partner: { id: "p", display_name: "Chase Roush", slug: "chase-roush" },
+    site: { subdomain: "chaseroush", address: "/site/chaseroush/", preview: "/site/chaseroush/?draft",
+            enabled: false, published_at: null, unpublished: true, dns: null },
+    draft: cleanDoc(starter("full", { name: "Chase Roush", langs: ["en", "hr"], fallback: "en" }), ["en", "hr"]),
+    languages: [{ code: "en", name: "English", native_name: "English" }, { code: "hr", name: "Croatian", native_name: "Hrvatski" }],
+    theme: { accent: "#1AE4FF", accent2: "#25FFA1" },
+    can: { edit, owner }, owner: { name: "Chase Roush" }, editors: [], requests: [], my_request: null,
+  };
+}
+
+async function boot(opts) {
+  const sent = [];
+  const dom = new JSDOM(readFileSync(PAGE, "utf8"), { runScripts: "outside-only", pretendToBeVisual: true,
+    url: "https://next.thauma.one/staff/website/" });
+  const w = dom.window;
+  w.fetch = async (u, o = {}) => {
+    if (o.method === "POST") sent.push(JSON.parse(o.body));
+    return { ok: true, status: 200, json: async () => answer(opts) };
+  };
+  w.console.error = () => {};
+  w.scrollTo = () => {};
+  w.HTMLElement.prototype.scrollIntoView = () => {};
+  for (const f of ["staff-i18n.js", "staff.js", "staff-site.js"]) w.eval(readFileSync("src/js/" + f, "utf8"));
+  w.StaffToast = () => {};
+  await settle(200);
+  const d = w.document;
+  const click = (el) => el.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+  return { w, d, sent, click };
+}
+
+await check("the menu, in order, with each page's name and switch", async () => {
+  const { d } = await boot();
+  const names = [...d.querySelectorAll(".ws-pname")].map((n) => n.textContent);
+  eq(names, ["Home", "About", "Mission", "Timeline", "Updates", "Give", "Stay connected", "Resources", "Contact"], "pages");
+  assert(d.querySelector('[data-page-on="7"]').getAttribute("aria-checked") === "false", "Resources off");
+  assert(!d.querySelector('[data-page-on="0"]'), "Home cannot be switched off");
+});
+
+await check("opening Home shows its sections, and a new one can be added", async () => {
+  const { d, click } = await boot();
+  click(d.querySelector('[data-ws-open="home"]'));
+  eq([...d.querySelectorAll(".ws-type")].map((n) => n.textContent),
+    ["Opening", "Photo and words", "Timeline", "Goals", "Videos", "Sign-up"], "sections");
+  click(d.querySelector("[data-ws-add]"));
+  assert(!d.getElementById("wsAddBack").hidden, "the picker opens");
+  eq(d.querySelectorAll("[data-add-type]").length, 14, "every kind offered");
+  click(d.querySelector('[data-add-type="quote"]'));
+  eq([...d.querySelectorAll(".ws-type")].pop().textContent, "A verse or a quote", "added last");
+});
+
+await check("typed words are saved to the working copy", async () => {
+  const { w, d, sent, click } = await boot();
+  click(d.querySelector('[data-ws-open="home"]'));
+  const f = d.querySelector('[data-sec-word="0:text"]');
+  f.value = "Serving Croatia's churches.";
+  f.dispatchEvent(new w.Event("input", { bubbles: true }));
+  await settle(900);
+  const save = sent.find((x) => x.action === "save");
+  assert(save, "nothing saved");
+  eq(save.draft.pages[0].sections[0].words.en.text, "Serving Croatia's churches.", "the words");
+});
+
+await check("somebody not allowed sees it all, changes nothing, and can ask", async () => {
+  const { d } = await boot({ edit: false, owner: false });
+  assert(!d.getElementById("wsAsk").hidden, "Ask to edit offered");
+  assert(d.getElementById("wsOn").hidden, "no on/off switch");
+  assert([...d.querySelectorAll(".ws-panel input")].every((i) => i.disabled), "fields switched off");
+  assert(d.getElementById("wsBar").hidden, "no Publish bar");
+});
+
+console.log(`\n  ${pass} passed, ${fail} failed`);
+process.exit(fail ? 1 : 0);

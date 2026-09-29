@@ -37,6 +37,9 @@ import partnerApi from "./partner-api.js";
 import staffMilestones from "./staff-milestones.js";
 import staffHome from "./staff-home.js";
 import translate from "./translate.js";
+import staffSite, { siteAddress } from "./staff-site.js";
+import { serveSite } from "./site/serve.js";
+import { RESERVED as SITE_RESERVED } from "./site/model.js";
 import staffSettings from "./staff-settings.js";
 import staffGoals from "./staff-goals.js";
 import staffPrayer from "./staff-prayer.js";
@@ -297,6 +300,10 @@ const ROUTES = {
   // A machine's first draft of a translation, for any console editor to
   // put in a field and review. Workers AI; see translate.js.
   "/api/translate": translate,
+  // The ministry's own website (0044): the Website tab, and an administrator
+  // changing a site's address. See staff-site.js.
+  "/api/staff-site": staffSite,
+  "/api/admin/site-address": siteAddress,
   "/api/staff-settings": staffSettings,
 
   // ORG-WIDE, and the only endpoint that is not partner-scoped. Its role
@@ -429,6 +436,35 @@ export default {
     if (url.hostname.startsWith("www.")) {
       url.hostname = url.hostname.slice(4);
       return Response.redirect(url.toString(), 301);
+    }
+
+    /* PARTNER SITES (0044) — <name>.thauma.one, and /site/<name>/ on any of
+       our addresses (the console's preview, and every deploy before the
+       address exists). Their own pages only: the widget and form scripts,
+       uploaded photos and newsletter pages they load fall through to the
+       ordinary routes below, on whichever host they were asked for.
+
+       ON THE LIVE WORKER A ROUTE CATCHES EVERY *.thauma.one (wrangler.toml,
+       SITE_WILDCARD). A name that is not a partner site — dev.thauma.one,
+       which is the Pi behind a tunnel, or a ministry's mail-only name — is
+       passed on untouched to wherever it went before the route existed. */
+    const own = /^\/(embed|media|archive|confirm|unsubscribe)\//.test(url.pathname) || url.pathname === "/confirm";
+    const siteHost = env.SITE_WILDCARD === "1"
+      ? url.hostname.match(new RegExp("^([a-z0-9-]{1,63})\\." + (env.SITE_DOMAIN || "thauma.one").replace(/\./g, "\\.") + "$"))
+      : null;
+    if (siteHost && !own) {
+      const sub = siteHost[1];
+      const answer = SITE_RESERVED.has(sub) ? null
+        : await serveSite(request, env, { sub, rest: url.pathname, base: "" });
+      return answer || fetch(request);
+    }
+    const sitePath = url.pathname.match(/^\/site\/([a-z0-9]{2,40})(\/.*)?$/);
+    if (sitePath) {
+      if (!sitePath[2]) return Response.redirect(url.origin + url.pathname + "/" + url.search, 301);
+      const answer = await serveSite(request, env, {
+        sub: sitePath[1], rest: sitePath[2], base: "/site/" + sitePath[1], draft: url.searchParams.has("draft"),
+      });
+      if (answer) return answer;
     }
 
     const route = ROUTES[url.pathname];

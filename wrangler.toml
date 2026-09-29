@@ -474,6 +474,16 @@ zone_name = "thauma.one"
 pattern = "www.thauma.one/*"
 zone_name = "thauma.one"
 
+# PARTNER SITES (0044): every <name>.thauma.one reaches this Worker, which
+# answers for the names that are partner sites and passes every other name
+# (dev.thauma.one — the Pi's tunnel — and mail-only names) straight on to
+# where it went before. A more specific route (next.thauma.one, above, on the
+# staging Worker) still wins. Each site's own DNS record is made when it is
+# switched on — see workers/src/lib/site-dns.js.
+[[env.production.routes]]
+pattern = "*.thauma.one/*"
+zone_name = "thauma.one"
+
 [[env.production.kv_namespaces]]
 binding = "STAFF_DATA"
 id = "f79f07b51f3a493a9f2bb3714115d037"
@@ -521,6 +531,9 @@ binding = "AI"
 # sent from dev pointed at staging — a different database and a different
 # signing salt, so they could not have worked. See workers/src/lib/origin.js.
 SITE_ORIGIN = "https://thauma.one"
+# Partner sites answer at their own <name>.thauma.one (the route above). Off
+# on dev and staging, where a site is opened at /site/<name>/ instead.
+SITE_WILDCARD = "1"
 
 # See the note on ACCESS_ACCOUNT_ID in the top-level [vars]. Repeated because
 # a named environment does not inherit vars from it.

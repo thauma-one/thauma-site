@@ -26,6 +26,8 @@ import staffData from "../src/staff-data.js";
 import staffMilestones from "../src/staff-milestones.js";
 import staffSettings from "../src/staff-settings.js";
 import translate from "../src/translate.js";
+import staffSite, { siteAddress } from "../src/staff-site.js";
+import { starter } from "../src/site/model.js";
 import worker from "../src/worker.js";
 
 let pass = 0, fail = 0;
@@ -111,7 +113,7 @@ let EXTRA = {};
 
 /** Rows for each named query. Absent means "an empty list is fine". */
 function rowsFor(name, params) {
-  if (EXTRA[name]) return EXTRA[name];
+  if (EXTRA[name]) return typeof EXTRA[name] === "function" ? EXTRA[name](params) : EXTRA[name];
   switch (name) {
     case "user_by_email": return USER[params.email] ? [USER[params.email]] : [];
     case "user_by_id":    return BY_ID[params.id] ? [BY_ID[params.id]] : [];
@@ -518,6 +520,83 @@ await check("translate is bounded: same language, too many, too long", async () 
   eq((await translate.fetch(post("/api/translate", { from: "en", to: "hr",
     items: Array.from({ length: 41 }, (_, i) => ({ id: String(i), text: "x" })) }), e)).status, 400, "41 pieces");
   eq((await translate.fetch(post("/api/translate", { from: "en", to: "hr", items: [{ id: "a", text: "x".repeat(2001) }] }), e)).status, 400, "too long");
+});
+
+/* The ministry's own website (0044). */
+const SITE_ROW = () => ({ partner_id: "p_mira", subdomain: "mirapetrovic", enabled: 0, published: null,
+  draft: JSON.stringify(starter("full", { name: "Mira Petrović", langs: ["en", "sr"], fallback: "sr" })),
+  published_at: null, dns_state: null, updated_at: "2026-09-29T00:00:00Z" });
+const called = (db, name) => db.calls.filter((c) => c.name === name);
+
+await check("the site is made on first opening, its address from the name", async () => {
+  /* No row the first time it is asked for; the one just made after that. */
+  let asked = 0;
+  EXTRA = { partner_site_get: () => (asked++ ? [SITE_ROW()] : []),
+            partner_site_owner: [{ user_id: "u_mira", name: "Mira Petrović" }] };
+  try {
+    const db = makeDb();
+    const res = await staffSite.fetch(get("/api/staff-site"), env(db));
+    const body = await res.json();
+    eq(res.status, 200, JSON.stringify(body).slice(0, 200));
+    assert(called(db, "partner_site_create")[0].args.includes("mirapetrovic"), "the address from the name");
+    eq(body.site.subdomain, "mirapetrovic", "answered");
+    eq([body.can.edit, body.can.owner], [true, true], "the owner edits");
+  } finally { EXTRA = {}; }
+});
+
+await check("someone on the team who is not the owner sees it, cannot change it, and may ask", async () => {
+  EXTRA = { partner_site_get: [SITE_ROW()], partners_for_user: [{ ...PARTNER, access_role: "assist" }] };
+  try {
+    const got = await (await staffSite.fetch(get("/api/staff-site"), env(makeDb()))).json();
+    eq([got.can.edit, got.can.owner], [false, false], "read-only");
+    const save = await staffSite.fetch(post("/api/staff-site", { action: "save", draft: {} }), env(makeDb()));
+    eq(save.status, 403, "a save refused");
+    const on = await staffSite.fetch(post("/api/staff-site", { action: "enable", on: true }), env(makeDb()));
+    eq(on.status, 403, "switching on refused");
+    const db = makeDb();
+    const ask = await staffSite.fetch(post("/api/staff-site", { action: "request", note: "I can keep the Serbian current." }), env(db));
+    eq(ask.status, 200, "asking allowed");
+    assert(called(db, "partner_site_request_add")[0].args.includes("I can keep the Serbian current."), "the note kept");
+  } finally { EXTRA = {}; }
+});
+
+await check("switching on a site nobody published publishes it first", async () => {
+  EXTRA = { partner_site_get: [SITE_ROW()] };
+  try {
+    const db = makeDb();
+    const res = await staffSite.fetch(post("/api/staff-site", { action: "enable", on: true }), env(db));
+    eq(res.status, 200, "switched on");
+    assert(called(db, "partner_site_publish").length === 1, "published");
+    assert(called(db, "partner_site_set_enabled")[0].args.includes(1), "enabled");
+  } finally { EXTRA = {}; }
+});
+
+await check("starting again keeps the look, links and languages, and replaces the pages", async () => {
+  const row = SITE_ROW(); const d = JSON.parse(row.draft); d.design.look = "paper";
+  d.links = [{ kind: "custom", url: "https://a.org", label: { en: "Blog" } }]; row.draft = JSON.stringify(d);
+  EXTRA = { partner_site_get: [row] };
+  try {
+    const db = makeDb();
+    const res = await staffSite.fetch(post("/api/staff-site", { action: "start", kind: "basic" }), env(db));
+    eq(res.status, 200, "started");
+    const saved = JSON.parse(called(db, "partner_site_save_draft")[0].args.find((a) => typeof a === "string" && a.startsWith("{")));
+    eq(saved.pages.filter((p) => p.on).map((p) => p.id), ["home", "about", "give", "contact"], "basic pages");
+    eq([saved.design.look, saved.links.length, saved.languages], ["paper", 1, ["en", "sr"]], "kept");
+  } finally { EXTRA = {}; }
+});
+
+await check("only an administrator changes an address, and only to a free, well-formed one", async () => {
+  EXTRA = { partner_site_get: [SITE_ROW()] };
+  try {
+    eq((await siteAddress.fetch(post("/api/admin/site-address", { partner_id: "p_mira", subdomain: "mira" }), env(makeDb()))).status, 403, "not an administrator");
+    eq((await siteAddress.fetch(post("/api/admin/site-address", { partner_id: "p_mira", subdomain: "www" }, BOSS), env(makeDb()))).status, 400, "reserved");
+    EXTRA.partner_site_subdomain_taken = [{ partner_id: "p_other" }];
+    eq((await siteAddress.fetch(post("/api/admin/site-address", { partner_id: "p_mira", subdomain: "mira" }, BOSS), env(makeDb()))).status, 409, "taken");
+    delete EXTRA.partner_site_subdomain_taken;
+    const db = makeDb();
+    eq((await siteAddress.fetch(post("/api/admin/site-address", { partner_id: "p_mira", subdomain: "mirap" }, BOSS), env(db))).status, 200, "changed");
+    assert(called(db, "partner_site_set_subdomain")[0].args.includes("mirap"), "stored");
+  } finally { EXTRA = {}; }
 });
 
 /* ----------------------- and the same while acting --------------------- */

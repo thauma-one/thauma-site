@@ -67,6 +67,7 @@ SCRUB = {
     # now checks every note/notes column in the schema against all three copies
     # of this list, so the next one cannot be forgotten the same way.
     "life_events": ["note"],
+    "partner_site_requests": ["note"],
     # The largest store of other people's addresses in this system. They gave
     # them on the understanding they would be written to; a copy on a
     # development machine is a second place to leak from that nobody agreed to.

@@ -63,6 +63,12 @@
        beside the navigation as the loudest button in the header, which is the
        wrong thing to be loudest. -#}
     <div class="console-actions">
+      {#- The ministry's own site, once it is switched on (0044) — filled and
+         shown by staff.js from /api/staff-site?brief. -#}
+      <a class="area-switch area-mysite" id="consoleMySite" href="#" target="_blank" rel="noopener" hidden>
+        <span data-i18n="nav.mySite">Your site</span>
+        <span class="area-arrow" aria-hidden="true">&#8599;</span>
+      </a>
       <a class="area-switch" href="/" target="_blank" rel="noopener">
         <span data-i18n="nav.viewSite">Public site</span>
         <span class="area-arrow" aria-hidden="true">&#8599;</span>

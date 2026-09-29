@@ -2805,3 +2805,131 @@ SELECT w.lang, w.heading, w.blurb, w.button, w.thanks
 SELECT lang, heading, blurb, button, thanks
   FROM form_words
  WHERE partner_id IS NULL AND form = :form;
+
+
+-- ============================================================================
+-- PARTNER SITES — a ministry's own website at <name>.thauma.one (0044)
+-- ============================================================================
+
+-- name: partner_site_get
+-- The whole row, for the ministry's Website tab.
+SELECT partner_id, subdomain, enabled, draft, published, published_at, dns_state,
+       (SELECT u.name FROM users u WHERE u.id = partner_sites.published_by) AS published_by_name,
+       updated_at
+  FROM partner_sites
+ WHERE partner_id = :partner_id;
+
+
+-- name: partner_site_create
+-- The first time the tab opens. OR IGNORE: two tabs opening at once must not
+-- fail, and a row that exists is kept as it is.
+INSERT OR IGNORE INTO partner_sites (partner_id, subdomain, enabled, draft, created_at, updated_at)
+VALUES (:partner_id, :subdomain, 0, :draft, :now, :now);
+
+
+-- name: partner_site_subdomain_taken
+-- Whether another ministry already has this address.
+SELECT partner_id FROM partner_sites WHERE subdomain = :subdomain AND partner_id <> :partner_id;
+
+
+-- name: partner_site_save_draft
+UPDATE partner_sites SET draft = :draft, updated_at = :now WHERE partner_id = :partner_id;
+
+
+-- name: partner_site_publish
+-- What is being edited becomes what visitors see.
+UPDATE partner_sites
+   SET published = draft, published_at = :now, published_by = :user_id, updated_at = :now
+ WHERE partner_id = :partner_id;
+
+
+-- name: partner_site_discard
+-- Back to what visitors see. Nothing to go back to before a first Publish.
+UPDATE partner_sites SET draft = published, updated_at = :now
+ WHERE partner_id = :partner_id AND published IS NOT NULL;
+
+
+-- name: partner_site_set_enabled
+UPDATE partner_sites SET enabled = :enabled, updated_at = :now WHERE partner_id = :partner_id;
+
+
+-- name: partner_site_set_dns
+UPDATE partner_sites SET dns_state = :dns_state, updated_at = :now WHERE partner_id = :partner_id;
+
+
+-- name: partner_site_set_subdomain
+-- An administrator's act only (two people with one name); the endpoint checks.
+UPDATE partner_sites SET subdomain = :subdomain, dns_state = NULL, updated_at = :now
+ WHERE partner_id = :partner_id;
+
+
+-- name: partner_site_by_subdomain
+-- A visitor asking for <name>.thauma.one. Only what a page needs: the
+-- published document and the ministry's public face. Never the draft.
+SELECT s.partner_id, s.subdomain, s.enabled, s.published,
+       p.slug, p.display_name, p.giving_url, p.status
+  FROM partner_sites s
+  JOIN partners p ON p.id = s.partner_id
+ WHERE s.subdomain = :subdomain;
+
+
+-- name: partner_site_all
+-- Every site, for the administrators' Partners page.
+SELECT partner_id, subdomain, enabled, published_at, dns_state FROM partner_sites;
+
+
+-- name: partner_site_owner
+-- Who owns the ministry, and so the site.
+SELECT pu.user_id, u.name, u.email
+  FROM partner_users pu JOIN users u ON u.id = pu.user_id
+ WHERE pu.partner_id = :partner_id AND pu.role = 'owner'
+ ORDER BY pu.granted_at LIMIT 1;
+
+
+-- name: partner_site_editors_for
+SELECT e.user_id, u.name, u.email, e.granted_at
+  FROM partner_site_editors e JOIN users u ON u.id = e.user_id
+ WHERE e.partner_id = :partner_id
+ ORDER BY u.name COLLATE NOCASE;
+
+
+-- name: partner_site_editor_add
+INSERT OR IGNORE INTO partner_site_editors (partner_id, user_id, granted_by, granted_at)
+VALUES (:partner_id, :user_id, :granted_by, :now);
+
+
+-- name: partner_site_editor_remove
+DELETE FROM partner_site_editors WHERE partner_id = :partner_id AND user_id = :user_id;
+
+
+-- name: partner_site_is_editor
+SELECT 1 AS ok FROM partner_site_editors WHERE partner_id = :partner_id AND user_id = :user_id;
+
+
+-- name: partner_site_requests_for
+SELECT r.user_id, u.name, u.email, r.note, r.requested_at
+  FROM partner_site_requests r JOIN users u ON u.id = r.user_id
+ WHERE r.partner_id = :partner_id
+ ORDER BY r.requested_at;
+
+
+-- name: partner_site_request_add
+-- Asking again replaces the note rather than adding a second request.
+INSERT INTO partner_site_requests (partner_id, user_id, note, requested_at)
+VALUES (:partner_id, :user_id, :note, :now)
+ON CONFLICT(partner_id, user_id) DO UPDATE SET note = excluded.note, requested_at = excluded.requested_at;
+
+
+-- name: partner_site_request_remove
+DELETE FROM partner_site_requests WHERE partner_id = :partner_id AND user_id = :user_id;
+
+
+-- name: partner_for_site
+-- The ministry's public face and colors, for its own site's pages — the same
+-- columns the embed reads, found by id rather than behind the embed's
+-- opt-in: a ministry's own site shows whatever sections its owner placed.
+SELECT id, slug, display_name, giving_url, embed_accent, embed_accent2, embed_theme, embed_turn,
+       timeline_start, timeline_end,
+       embed_roadmap, embed_goal, embed_prayer, embed_videos
+  FROM partners
+ WHERE id = :partner_id;

@@ -42,6 +42,8 @@ export const SCRUB = {
      test/dbsync.test.mjs now asks the schema for every note/notes column
      rather than trusting this one to be complete. */
   life_events: ["note"],
+  /* A note asking the owner to edit their site (0044) — free text. */
+  partner_site_requests: ["note"],
   subscribers: ["email", "name", "confirm_token"],
   mailing_recipients: ["email"],
   signup_attempts: ["ip_hash"],

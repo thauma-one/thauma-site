@@ -1028,6 +1028,7 @@
           '</label>' +
         '</div>' +
 
+        siteBlock(p) +
         mailBlock(p) +
 
         memberBlock(p) +
@@ -1123,6 +1124,42 @@
      ministry's junk reports stay with that ministry rather than degrading
      everybody's mail. That is the whole reason for the split, and it is why
      the domain sits on the partner rather than on each address. */
+  /* THE MINISTRY'S OWN WEBSITE'S ADDRESS (0044). Made from its name when
+     the site is first opened; only here can it change (Chase, 2026-09-29:
+     two people with one name). */
+  function siteBlock(p) {
+    var site = (state.sites || []).filter(function (x) { return x.partner_id === p.id; })[0];
+    return '<div class="adm-mail adm-site">' +
+      '<div class="adm-mail-head"><span class="adm-mail-t">' + esc(tr('adm.siteTitle')) + '</span>' +
+        '<span class="adm-mail-n">' + (site ? esc(site.subdomain + '.thauma.one') + (site.enabled ? ' · ' + esc(tr('ws.isLive')) : '')
+                                            : esc(tr('adm.siteNone'))) + '</span></div>' +
+      (site ? '<div class="adm-mail-domain"><label class="fld"><span>' + esc(tr('ws.address')) + '</span>' +
+          '<input type="text" class="adm-domain" data-site-sub="' + esc(p.id) + '" value="' + esc(site.subdomain) + '" spellcheck="false" autocapitalize="off" autocomplete="off"></label>' +
+          '<button type="button" class="ghost-btn" data-site-save="' + esc(p.id) + '">' + esc(tr('common.save')) + '</button></div>' : '') +
+    '</div>';
+  }
+  async function loadSites() {
+    try {
+      var r = await fetch('/api/admin/site-address', { credentials: 'same-origin' });
+      if (r.ok) { state.sites = (await r.json()).sites || []; if (page === 'partners') renderPartners(); }
+    } catch (e) {}
+  }
+  async function saveSiteAddress(pid, btn) {
+    var input = document.querySelector('[data-site-sub="' + pid + '"]');
+    if (!input) return;
+    btn.disabled = true;
+    try {
+      var r = await fetch('/api/admin/site-address', { method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ partner_id: pid, subdomain: input.value.trim().toLowerCase() }) });
+      var body = await r.json().catch(function () { return {}; });
+      if (!r.ok) throw new Error(body.error || tr('common.saveFailed'));
+      state.sites = body.sites || state.sites;
+      toast(tr('toast.saved'), 'ok');
+      renderPartners();
+    } catch (e) { toast(e.message, 'err'); }
+    btn.disabled = false;
+  }
+
   function mailBlock(p) {
     /* `p.id` is null for the organization, which is the same convention the
        mailing tables use — and it matches the null partner_id on its rows
@@ -1561,6 +1598,8 @@
     var dp = e.target.closest('[data-del-partner]');
     if (dp) return deletePartner(dp.dataset.delPartner, dp);
 
+    var ss = e.target.closest('[data-site-save]');
+    if (ss) return saveSiteAddress(ss.dataset.siteSave, ss);
     var ds = e.target.closest('[data-domain-save]');
     if (ds) return saveDomain(ds.dataset.domainSave, ds);
     var as = e.target.closest('[data-add-sender]');
@@ -1984,4 +2023,5 @@
   }
 
   load();
+  if (page === 'partners') loadSites();
 })();

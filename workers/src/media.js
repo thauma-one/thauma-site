@@ -53,7 +53,9 @@ const TYPES = {
    to a PARTNER rather than to a person, and the people who write newsletters
    are staff rather than administrators. Both differences are handled below
    rather than by pretending it is a third kind of portrait. */
-const KINDS = new Set(["photo", "bio_photo", "newsletter", "library", "site"]);
+/* `partnersite` is a picture on a ministry's own website (0044): the
+   ministry's, scoped exactly like a newsletter image. */
+const KINDS = new Set(["photo", "bio_photo", "newsletter", "library", "site", "partnersite"]);
 
 export async function serve(request, env, key) {
   if (!env.MEDIA) return new Response("No media store on this deploy", { status: 500 });
@@ -113,7 +115,7 @@ export default {
        allowed to staff and SCOPED TO THEIR OWN PARTNER, which is what stops
        one ministry writing into another's folder. */
     let owner, prefix;
-    if (kind === "newsletter") {
+    if (kind === "newsletter" || kind === "partnersite") {
       const partners = await db.query("partners_for_user", { email: gate.user.email });
       if (!partners.length && !roles.includes("admin")) {
         return json({ error: "This account is not attached to a partner." }, 403);
@@ -121,7 +123,7 @@ export default {
       /* The slug comes from the DATABASE, never from the request. A caller
          naming their own folder is a caller who can name somebody else's. */
       owner = partners.length ? partners[0].slug : "thauma";
-      prefix = `newsletter/${owner}`;
+      prefix = `${kind}/${owner}`;
     } else if (kind === "library" || kind === "site") {
       /* A picture on a resource or a gathering. It belongs to the SITE, not to
          a person and not to a partner, so there is no owner to scope it by —
@@ -181,7 +183,7 @@ export default {
     const digest = await crypto.subtle.digest("SHA-256", bytes);
     const hash = [...new Uint8Array(digest)].slice(0, 8)
       .map((b) => b.toString(16).padStart(2, "0")).join("");
-    const key = kind === "newsletter"
+    const key = kind === "newsletter" || kind === "partnersite"
       ? `${prefix}/${hash}.${spec.ext}`
       : `${prefix}/${owner}-${kind}-${hash}.${spec.ext}`;
 
@@ -198,7 +200,7 @@ export default {
       user_id: gate.user.email,
       partner_id: null,
       action: "media.upload",
-      entity: kind === "newsletter" ? "mailing" : "staff_profile",
+      entity: kind === "newsletter" ? "mailing" : kind === "partnersite" ? "partner_site" : "staff_profile",
       entity_id: owner,
       detail: JSON.stringify({ key, kind, bytes: bytes.length, type: declared }),
     });

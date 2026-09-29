@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "15c05188448d3d64";
+export const SOURCE_DIGEST = "e8f047b0400958a4";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -540,6 +540,11 @@ WHERE milestones.partner_id = :partner_id;`,
 FROM milestones
 WHERE partner_id = :partner_id
 ORDER BY (actual_date IS NULL), actual_date ASC, sort_order ASC;`,
+  partner_for_site: `SELECT id, slug, display_name, giving_url, embed_accent, embed_accent2, embed_theme, embed_turn,
+       timeline_start, timeline_end,
+       embed_roadmap, embed_goal, embed_prayer, embed_videos
+  FROM partners
+ WHERE id = :partner_id;`,
   partner_language_set: `INSERT INTO partner_languages (partner_id, lang, is_enabled, sort_order)
 VALUES (:partner_id, :lang, :is_enabled, :sort_order)
 ON CONFLICT(partner_id, lang) DO UPDATE SET
@@ -578,6 +583,50 @@ ORDER BY sort_order, l.name;`,
        p.signup_form_open,
        p.timeline_start, p.timeline_end
 FROM partners p WHERE p.id = :partner_id;`,
+  partner_site_all: `SELECT partner_id, subdomain, enabled, published_at, dns_state FROM partner_sites;`,
+  partner_site_by_subdomain: `SELECT s.partner_id, s.subdomain, s.enabled, s.published,
+       p.slug, p.display_name, p.giving_url, p.status
+  FROM partner_sites s
+  JOIN partners p ON p.id = s.partner_id
+ WHERE s.subdomain = :subdomain;`,
+  partner_site_create: `INSERT OR IGNORE INTO partner_sites (partner_id, subdomain, enabled, draft, created_at, updated_at)
+VALUES (:partner_id, :subdomain, 0, :draft, :now, :now);`,
+  partner_site_discard: `UPDATE partner_sites SET draft = published, updated_at = :now
+ WHERE partner_id = :partner_id AND published IS NOT NULL;`,
+  partner_site_editor_add: `INSERT OR IGNORE INTO partner_site_editors (partner_id, user_id, granted_by, granted_at)
+VALUES (:partner_id, :user_id, :granted_by, :now);`,
+  partner_site_editor_remove: `DELETE FROM partner_site_editors WHERE partner_id = :partner_id AND user_id = :user_id;`,
+  partner_site_editors_for: `SELECT e.user_id, u.name, u.email, e.granted_at
+  FROM partner_site_editors e JOIN users u ON u.id = e.user_id
+ WHERE e.partner_id = :partner_id
+ ORDER BY u.name COLLATE NOCASE;`,
+  partner_site_get: `SELECT partner_id, subdomain, enabled, draft, published, published_at, dns_state,
+       (SELECT u.name FROM users u WHERE u.id = partner_sites.published_by) AS published_by_name,
+       updated_at
+  FROM partner_sites
+ WHERE partner_id = :partner_id;`,
+  partner_site_is_editor: `SELECT 1 AS ok FROM partner_site_editors WHERE partner_id = :partner_id AND user_id = :user_id;`,
+  partner_site_owner: `SELECT pu.user_id, u.name, u.email
+  FROM partner_users pu JOIN users u ON u.id = pu.user_id
+ WHERE pu.partner_id = :partner_id AND pu.role = 'owner'
+ ORDER BY pu.granted_at LIMIT 1;`,
+  partner_site_publish: `UPDATE partner_sites
+   SET published = draft, published_at = :now, published_by = :user_id, updated_at = :now
+ WHERE partner_id = :partner_id;`,
+  partner_site_request_add: `INSERT INTO partner_site_requests (partner_id, user_id, note, requested_at)
+VALUES (:partner_id, :user_id, :note, :now)
+ON CONFLICT(partner_id, user_id) DO UPDATE SET note = excluded.note, requested_at = excluded.requested_at;`,
+  partner_site_request_remove: `DELETE FROM partner_site_requests WHERE partner_id = :partner_id AND user_id = :user_id;`,
+  partner_site_requests_for: `SELECT r.user_id, u.name, u.email, r.note, r.requested_at
+  FROM partner_site_requests r JOIN users u ON u.id = r.user_id
+ WHERE r.partner_id = :partner_id
+ ORDER BY r.requested_at;`,
+  partner_site_save_draft: `UPDATE partner_sites SET draft = :draft, updated_at = :now WHERE partner_id = :partner_id;`,
+  partner_site_set_dns: `UPDATE partner_sites SET dns_state = :dns_state, updated_at = :now WHERE partner_id = :partner_id;`,
+  partner_site_set_enabled: `UPDATE partner_sites SET enabled = :enabled, updated_at = :now WHERE partner_id = :partner_id;`,
+  partner_site_set_subdomain: `UPDATE partner_sites SET subdomain = :subdomain, dns_state = NULL, updated_at = :now
+ WHERE partner_id = :partner_id;`,
+  partner_site_subdomain_taken: `SELECT partner_id FROM partner_sites WHERE subdomain = :subdomain AND partner_id <> :partner_id;`,
   partners_for_user: `SELECT p.id, p.slug, p.display_name, p.status, pu.role AS access_role,
        u.id AS user_id, u.name AS user_name,
        COALESCE((SELECT GROUP_CONCAT(r.role) FROM user_roles r WHERE r.user_id = u.id),

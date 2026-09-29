@@ -284,6 +284,8 @@ await check("every real query converts with its documented params", async () => 
     labels: null,
     // sharing a resource with a group (0043)
     audience: "team", can_edit: 0,
+    // a partner site (0044)
+    subdomain: "chaseroush", enabled: 1, dns_state: "ready", draft: "{}",
     // the language catalog
     code: "sl", native_name: "slovenščina",
     // staff profiles
@@ -360,7 +362,7 @@ await check("every real query converts with its documented params", async () => 
   // justified here rather than quietly slipping past.
   // Queries with nothing to scope by. languages_all is the organization's
   // catalog; the admin ones are unscoped BY DESIGN — see admin.test.mjs.
-  const NO_PARAMS = new Set(["languages_all", "admin_users", "admin_partners",
+  const NO_PARAMS = new Set(["languages_all", "admin_users", "admin_partners", "partner_site_all",
                              // Translation notes are organization-wide and
                              // never about a person or a partner: the whole
                              // set is the answer. The endpoint checks roles.
