@@ -179,6 +179,7 @@ One entry point, `workers/src/worker.js`. **286 tests** (`cd workers && npm test
 | `lib/mail.js` | transactional email through Resend, and the invite |
 | `staff-snapshot` (in worker.js) | Home's numbers and people, stewardship, activity |
 | `staff-home.js` | Home: what is not finished, and what waits for translation (read-only) |
+| `translate.js` | machine translation drafts through Workers AI — returns words, never saves; staging and live only |
 | `staff-milestones.js` | the roadmap editor |
 | `staff-settings.js` | account, languages, API keys |
 | `staff-data.js` | directory (the ministry's, shared by its team) + resources (per partner) |

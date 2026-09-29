@@ -2401,3 +2401,11 @@ html.console-menu-open{overflow:hidden}
   border-radius:var(--radius);width:34px;height:34px;font-size:16px;line-height:1;cursor:pointer;flex:none}
 .lang-swap:hover{border-color:var(--voice-tech)}
 .lang-swap:focus-visible{outline:2px solid var(--voice-tech);outline-offset:2px}
+
+/* ---- TRANSLATE (Workers AI, 2026-09-28) ----
+   Beside the language pair, only where the server has AI (html.has-ai).
+   A field whose machine answer lost a {placeholder} or a bold mark is
+   outlined until somebody edits it. */
+.lang-ai{display:none}
+html.has-ai .lang-ai{display:inline-block}
+.ai-check{border-color:var(--warn) !important;box-shadow:0 0 0 1px var(--warn)}

@@ -36,6 +36,7 @@ import contactForm from "./contact-form.js";
 import partnerApi from "./partner-api.js";
 import staffMilestones from "./staff-milestones.js";
 import staffHome from "./staff-home.js";
+import translate from "./translate.js";
 import staffSettings from "./staff-settings.js";
 import staffGoals from "./staff-goals.js";
 import staffPrayer from "./staff-prayer.js";
@@ -293,6 +294,9 @@ const ROUTES = {
   // What Home needs you for: unpublished work, lists nobody has found yet,
   // drafts, and what is waiting for translation. Read-only. See staff-home.js.
   "/api/staff-home": staffHome,
+  // A machine's first draft of a translation, for any console editor to
+  // put in a field and review. Workers AI; see translate.js.
+  "/api/translate": translate,
   "/api/staff-settings": staffSettings,
 
   // ORG-WIDE, and the only endpoint that is not partner-scoped. Its role

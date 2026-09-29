@@ -155,6 +155,14 @@ database_id = "db7fcd6a-56e2-4a67-98da-3da87e95dc86"
 # Not secrets. The AUD tag identifies an Access application; it does not
 # authorize anything on its own. Real secrets (RESEND_API_KEY,
 # GAME_ADMIN_TOKEN) go in via `wrangler secret put` and never live here.
+# WORKERS AI, for machine translation drafts (/api/translate, 2026-09-28).
+# Staging and live only. Deliberately NOT in [env.dev]: `wrangler dev` runs
+# an AI binding remotely with this machine's API token, which is not allowed
+# Workers AI, so the Pi's dev server would carry a binding that fails on use.
+# Without one, /api/translate says it is unavailable and the buttons hide.
+[ai]
+binding = "AI"
+
 [vars]
 
 # WHERE THIS DEPLOYMENT LIVES, stated rather than detected.
@@ -498,6 +506,10 @@ bucket_name = "thauma-media"
 binding = "DB"
 database_name = "thauma-ops"
 database_id = "1a30f6c9-1dc7-42b0-abaa-fab3da334c9e"
+
+# Workers AI, as at the top of this file (not inherited by a named env).
+[env.production.ai]
+binding = "AI"
 
 [env.production.vars]
 

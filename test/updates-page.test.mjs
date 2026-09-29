@@ -79,6 +79,12 @@ async function boot({ oneLanguage = false, milestones = null } = {}) {
     url = String(url);
     const method = opts.method || "GET";
     if (method !== "GET") sent.push({ url, method, body: opts.body ? JSON.parse(opts.body) : null });
+    /* Workers AI stand-in: every piece comes back marked with its language. */
+    if (url.includes("/api/translate")) {
+      const b = opts.body ? JSON.parse(opts.body) : null;
+      const reply = b ? { items: b.items.map((i) => ({ id: i.id, text: "«" + b.to + "» " + i.text })) } : { available: true };
+      return { ok: true, status: 200, json: async () => reply };
+    }
     const key = Object.keys(data).find((k) => url.includes("/api/" + k));
     const reply = method === "GET" && key ? data[key] : {};
     return { ok: true, status: 200, json: async () => JSON.parse(JSON.stringify(reply)) };
@@ -90,7 +96,7 @@ async function boot({ oneLanguage = false, milestones = null } = {}) {
   w.StaffActing = () => {}; w.StaffIdentity = () => {};
   w.console.error = () => {};
   w.scrollTo = () => {};
-  for (const f of ["staff-i18n.js", "staff.js", "staff-updates.js", "staff-rowpanel.js",
+  for (const f of ["staff-i18n.js", "staff.js", "console-translate.js", "staff-updates.js", "staff-rowpanel.js",
                    "staff-milestones.js", "staff-goals.js", "staff-prayer.js", "staff-videos.js",
                    "staff-updates-preview.js"]) {
     w.eval(readFileSync("src/js/" + f, "utf8"));
@@ -238,6 +244,21 @@ await check("the swap button trades Editing and Reference, and keeps what was ty
   click(d.querySelector("#prForm [data-lang-swap]"));
   await settle(120);
   eq([edit.value, ref.value, d.querySelector('#prForm [data-ptx="title"]').value], ["en", "hr", "Visas, soon"], "and back");
+});
+
+await check("Translate fills the empty fields from the reference, as if typed", async () => {
+  const { w, d, click, row } = await boot();
+  assert(d.documentElement.classList.contains("has-ai"), "the button is not offered where AI is on");
+  click(row("prList", "p1"));
+  await settle();
+  const edit = d.getElementById("prLangA");
+  edit.value = "hr";
+  edit.dispatchEvent(new w.Event("change", { bubbles: true }));
+  /* jsdom lays nothing out, so "on screen" is taken as given here. */
+  Object.defineProperty(w.HTMLElement.prototype, "offsetParent", { get() { return this.parentNode; }, configurable: true });
+  click(d.querySelector("#prForm [data-lang-translate]"));
+  await settle(200);
+  eq(d.querySelector('#prForm [data-ptx="title"]').value, "«hr» Visas", "the title, from English");
 });
 
 await check("the milestone editor writes the same way", async () => {

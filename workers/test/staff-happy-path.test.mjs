@@ -25,6 +25,7 @@ import { QUERIES, toPositional } from "../src/lib/db.js";
 import staffData from "../src/staff-data.js";
 import staffMilestones from "../src/staff-milestones.js";
 import staffSettings from "../src/staff-settings.js";
+import translate from "../src/translate.js";
 import worker from "../src/worker.js";
 
 let pass = 0, fail = 0;
@@ -487,6 +488,36 @@ await check("people are found only after two letters", async () => {
   const db2 = makeDb();
   await staffData.fetch(get("/api/staff-data?people=an"), env(db2));
   assert(db2.calls.some((c) => c.name === "people_find"), "two letters did not search");
+});
+
+/* Machine translation drafts (Workers AI, 2026-09-28). */
+const fakeAI = (reply) => ({ async run(model, input) { fakeAI.last = { model, input }; return { response: reply(input) }; } });
+
+await check("translate says where it is not switched on, and refuses there", async () => {
+  const got = await (await translate.fetch(get("/api/translate"), env(makeDb()))).json();
+  eq(got.available, false, "no AI binding, not available");
+  const res = await translate.fetch(post("/api/translate", { from: "en", to: "hr", items: [{ id: "a", text: "Hi" }] }), env(makeDb()));
+  eq(res.status, 503, "status");
+});
+
+await check("translate returns each piece, and flags one that lost its placeholder", async () => {
+  const AI = fakeAI((input) => JSON.stringify({ items: [
+    { id: "a", text: "Bok {name}" }, { id: "b", text: "Sada" } ] }));
+  const res = await translate.fetch(post("/api/translate", { from: "en", to: "hr",
+    items: [{ id: "a", text: "Hi {name}" }, { id: "b", text: "Now {n}" }] }), { ...env(makeDb()), AI });
+  const body = await res.json();
+  eq(res.status, 200, JSON.stringify(body));
+  eq(body.items, [{ id: "a", text: "Bok {name}" }, { id: "b", text: "Sada", check: true }], "items");
+  assert(/English to Croatian/.test(fakeAI.last.input.messages[0].content), "the instruction names the languages");
+});
+
+await check("translate is bounded: same language, too many, too long", async () => {
+  const AI = fakeAI(() => "{}");
+  const e = { ...env(makeDb()), AI };
+  eq((await translate.fetch(post("/api/translate", { from: "en", to: "en", items: [{ id: "a", text: "x" }] }), e)).status, 400, "same language");
+  eq((await translate.fetch(post("/api/translate", { from: "en", to: "hr",
+    items: Array.from({ length: 41 }, (_, i) => ({ id: String(i), text: "x" })) }), e)).status, 400, "41 pieces");
+  eq((await translate.fetch(post("/api/translate", { from: "en", to: "hr", items: [{ id: "a", text: "x".repeat(2001) }] }), e)).status, 400, "too long");
 });
 
 /* ----------------------- and the same while acting --------------------- */

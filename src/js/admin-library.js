@@ -442,6 +442,8 @@
               '" title="' + esc(tr('con.swap', 'Swap languages')) + '">&#8644;</button>' +
             '<label class="ms-pick"><span>' + esc(tr('con.reference', 'Reference')) + '</span>' +
               pick('data-lang-ref data-lib-lang="ref"', lib.ref, lib.edit) + '</label>' +
+            '<button type="button" class="ghost-btn sm lang-ai" data-lang-translate>' +
+              esc(tr('ai.translate', 'Translate')) + '</button>' +
           '</span>'
         : '') +
     '</div>';
