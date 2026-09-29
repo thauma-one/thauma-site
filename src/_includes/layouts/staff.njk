@@ -83,11 +83,12 @@
    esbuild emits an IIFE, and defer keeps it in the same execution order as
    every plain script above it. -#}
 <script defer src="/js/composer.bundle.js?v={{ "/js/composer.bundle.js" | v }}"></script>{% endif %}
-{#- The supporter dialog. Only Stewardship has one, and the script returns
-   immediately on any page without it — but it also carries the only client
-   that talks to /api/staff-stewardship, so loading it elsewhere would ship a
-   personal-data client to pages that have no business holding one. -#}
-{% if staffPage == "stewardship" %}<script src="/js/staff-stewardship.js?v={{ "/js/staff-stewardship.js" | v }}"></script>{% endif %}
+{#- The supporter dialog. Stewardship and Home have one, and the script
+   returns immediately on any page without it — but it also carries the only
+   client that talks to /api/staff-stewardship, so loading it elsewhere would
+   ship a personal-data client to pages that have no business holding one.
+   Home's "Log a contact" opens it (board "Home"). -#}
+{% if staffPage == "stewardship" or staffPage == "index" %}<script src="/js/staff-stewardship.js?v={{ "/js/staff-stewardship.js" | v }}"></script>{% endif %}
 {% if staffPage == "settings" %}<script src="/js/staff-settings.js?v={{ "/js/staff-settings.js" | v }}"></script>{% endif %}
 {% if staffPage == "sharing" %}<script src="/js/staff-sharing.js?v={{ "/js/staff-sharing.js" | v }}"></script>{% endif %}
 {#- The preview beside the editing, on the page that AUTHORS what it

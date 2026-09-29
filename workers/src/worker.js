@@ -35,6 +35,7 @@ import staffData from "./staff-data.js";
 import contactForm from "./contact-form.js";
 import partnerApi from "./partner-api.js";
 import staffMilestones from "./staff-milestones.js";
+import staffHome from "./staff-home.js";
 import staffSettings from "./staff-settings.js";
 import staffGoals from "./staff-goals.js";
 import staffPrayer from "./staff-prayer.js";
@@ -280,6 +281,9 @@ const ROUTES = {
   "/api/staff-data": staffData,
   "/api/staff-snapshot": { fetch: staffSnapshot },
   "/api/staff-milestones": staffMilestones,
+  // What Home needs you for: unpublished work, lists nobody has found yet,
+  // drafts, and what is waiting for translation. Read-only. See staff-home.js.
+  "/api/staff-home": staffHome,
   "/api/staff-settings": staffSettings,
 
   // ORG-WIDE, and the only endpoint that is not partner-scoped. Its role

@@ -21,7 +21,10 @@
  */
 import { readFileSync } from "node:fs";
 
-const NJK = readFileSync(new URL("../src/staff/stewardship.njk", import.meta.url), "utf8");
+/* The page and the dialog it includes — the dialog is shared with Home
+   (board "Home", step 7), so its markup lives in an include. */
+const NJK = readFileSync(new URL("../src/staff/stewardship.njk", import.meta.url), "utf8") +
+  readFileSync(new URL("../src/_includes/supporter-dialog.njk", import.meta.url), "utf8");
 const JS = readFileSync(new URL("../src/js/staff-stewardship.js", import.meta.url), "utf8");
 const STAFF = readFileSync(new URL("../src/js/staff.js", import.meta.url), "utf8");
 const I18N = readFileSync(new URL("../src/js/staff-i18n.js", import.meta.url), "utf8");
@@ -158,15 +161,16 @@ check("every id the script reaches for exists in the markup", () => {
   assert(!missing.length, `the script looks up ids that are not on the page: ${missing.join(", ")}`);
 });
 
-check("the dialog is loaded on the stewardship page and nowhere else", () => {
+check("the dialog is loaded on Stewardship and Home and nowhere else", () => {
   const layout = readFileSync(
     new URL("../src/_includes/layouts/staff.njk", import.meta.url), "utf8");
   const line = layout.split("\n").find((l) => l.includes("staff-stewardship.js"));
   assert(line, "the layout never loads staff-stewardship.js");
-  assert(line.includes('staffPage == "stewardship"'),
-    "it is loaded unconditionally — this script is the only client of an " +
+  const pages = [...line.split("%}")[0].matchAll(/staffPage == "([a-z]+)"/g)].map((m) => m[1]).sort();
+  assert(JSON.stringify(pages) === JSON.stringify(["index", "stewardship"]),
+    `loaded on ${JSON.stringify(pages)} — this script is the only client of an ` +
     "endpoint that returns supporters' contact details, and it has no " +
-    "business on pages that do not show them");
+    "business on pages that do not show them (Stewardship, and Home's Gone quiet)");
 });
 
 /* ------------------------------------------------------------- the seam -- */

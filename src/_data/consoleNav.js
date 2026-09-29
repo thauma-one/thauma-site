@@ -30,7 +30,7 @@
 
 /** The ministry's own console. */
 const staff = [
-  { slug: "index", url: "/staff/", label: "Dashboard",
+  { slug: "index", url: "/staff/", label: "Home",
     roles: ["staff", "partner", "communications"] },
   /* What this ministry publishes (mockup board 7; was "Ministry" — these four
      things are its updates). */

@@ -26,8 +26,9 @@ import { wordsFor } from "./lib/mail-i18n.js";
 
 const STATUSES = new Set(["upcoming", "in_progress", "complete", "canceled"]);
 
-/** Resolve the caller to exactly one partner, or a denial. */
-async function partnerFor(request, env) {
+/** Resolve the caller to exactly one partner, or a denial. Home
+ * (staff-home.js) asks the same question the same way, so it borrows this. */
+export async function partnerFor(request, env) {
   const { user, denied } = await requireAccess(request, env);
   if (denied) return { denied };
   if (!env.DB) return { denied: json({ error: "No database bound to this deploy" }, 500) };

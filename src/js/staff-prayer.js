@@ -407,5 +407,20 @@
     });
   }
 
-  load();
+  /* HOME'S "Open" (board "Home") names the one it means: ?open=<id>. Opened
+     once, then taken out of the address so a reload does not reopen it. The
+     milestone and prayer lists both read it; only the one holding the id
+     acts. */
+  function openAsked() {
+    var want = new URLSearchParams(location.search).get('open');
+    if (!want || !state.saved[want]) return;
+    openForm(want);
+    try {
+      var u = new URL(location.href);
+      u.searchParams.delete('open');
+      history.replaceState(null, '', u);
+    } catch (e) {}
+  }
+
+  load().then(openAsked);
 })();

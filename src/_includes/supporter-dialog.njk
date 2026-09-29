@@ -1,0 +1,181 @@
+{#- THE SUPPORTER DIALOG — on Stewardship, opened from a row, and on Home,
+   opened from "Log a contact" (board "Home"). One copy of the markup, so the
+   two can never ask for different things.
+
+   A DIALOG RATHER THAN THE DRAWER IT REPLACES. The row used to expand into a
+   read-only timeline underneath it, which was fine while there was nothing to
+   do but read. Now there is: contact details, life events to write, a call to
+   log. On a list sorted worst-first the person you want is near the top and
+   the drawer pushed everyone else down the page while you worked — and a form
+   inside a table row inherits the table's column widths, which is a fight not
+   worth having.
+
+   Same `.dlg` shell as the resource form and the confirm dialog, so there is
+   ONE thing in this console that means "this is the only thing you are doing
+   right now".
+
+   EMPTY ON PURPOSE. Every field is filled by /api/staff-stewardship, which is
+   the only endpoint that returns a supporter's email and phone, and which is
+   asked for one person at a time. Nothing about anybody is in this page's
+   HTML. -#}
+<div class="dlg-back" id="swBack" hidden>
+  <div class="dlg sw-dlg" role="dialog" aria-modal="true" aria-labelledby="swName">
+    <button type="button" class="sw-close" id="swClose"
+            data-i18n-attr="aria-label:common.close" aria-label="Close">&times;</button>
+
+    <h3 id="swName"></h3>
+    <p class="sw-sub" id="swWhere"></p>
+
+    <div class="tabs" role="tablist">
+      <button type="button" class="tab" role="tab" data-swtab="facts"
+              aria-selected="true" data-i18n="stew.tabFacts">Quick facts</button>
+      <button type="button" class="tab" role="tab" data-swtab="events"
+              aria-selected="false" data-i18n="stew.tabEvents">Life events</button>
+      <button type="button" class="tab" role="tab" data-swtab="history"
+              aria-selected="false" data-i18n="stew.tabHistory">History</button>
+    </div>
+
+    <section class="tab-panel" data-swpanel="facts" role="tabpanel">
+      <dl class="sw-facts" id="swFacts"></dl>
+      <p class="row-actions" id="swFactActions">
+        <button class="ghost-btn" type="button" id="swEditPerson" data-i18n="stew.editPerson">Edit details</button>
+        <button class="ghost-btn del" type="button" id="swDeletePerson" data-i18n="stew.deletePerson">Remove this person</button>
+      </p>
+
+      {#- THE PERSON'S OWN DETAILS. Also the whole dialog when adding somebody
+         new: there is no record yet to have life events or a history, so the
+         tabs are hidden until the first save creates one. Only a name is
+         required — an address book entry for somebody met once may be a name
+         and a city and nothing more. -#}
+      <form class="form sw-form sw-person" id="swPersonForm" hidden>
+        <input type="hidden" id="swPersonId" value="">
+        <div class="sw-grid">
+          <label class="fld"><span data-i18n="stew.pFirst">First name</span>
+            <input type="text" id="swPFirst" autocomplete="off"></label>
+          <label class="fld"><span data-i18n="stew.pLast">Last name</span>
+            <input type="text" id="swPLast" autocomplete="off"></label>
+          <label class="fld"><span data-i18n="stew.email">Email</span>
+            <input type="email" id="swPEmail" autocomplete="off"></label>
+          <label class="fld"><span data-i18n="stew.phone">Phone</span>
+            <input type="tel" id="swPPhone" autocomplete="off"></label>
+          <label class="fld sw-wide"><span data-i18n="stew.pAddress1">Street address</span>
+            <input type="text" id="swPAddr1" autocomplete="off"></label>
+          <label class="fld sw-wide"><span data-i18n="stew.pAddress2">Address, second line</span>
+            <input type="text" id="swPAddr2" autocomplete="off"></label>
+          <label class="fld"><span data-i18n="stew.pCity">City</span>
+            <input type="text" id="swPCity" autocomplete="off"></label>
+          <label class="fld"><span data-i18n="stew.pRegion">State or region</span>
+            <input type="text" id="swPRegion" autocomplete="off"></label>
+          <label class="fld"><span data-i18n="stew.pPostal">Postal code</span>
+            <input type="text" id="swPPostal" autocomplete="off"></label>
+          {#- A PICKER, not two letters typed from memory. The column holds an
+             ISO code and the server refuses anything else; the options are
+             filled by staff-stewardship.js with every country's name in the
+             console's own language, so nobody has to know that Croatia is HR. -#}
+          <label class="fld"><span data-i18n="stew.pCountry">Country</span>
+            <select id="swPCountry"></select></label>
+          <label class="fld sw-wide"><span data-i18n="stew.notes">Notes</span>
+            <textarea id="swPNotes" rows="5"></textarea></label>
+        </div>
+        <div class="dlg-actions">
+          <button class="ghost-btn" type="button" id="swPersonCancel" data-i18n="common.cancel">Cancel</button>
+          <button class="solid-btn" type="submit" data-i18n="stew.pSave">Save</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="tab-panel" data-swpanel="events" role="tabpanel" hidden>
+      <div id="swEvents"></div>
+      <p class="row-actions">
+        <button class="ghost-btn" type="button" id="swAddEvent" data-i18n="stew.addEvent">+ Add a life event</button>
+      </p>
+
+      <form class="form sw-form" id="swEventForm" hidden>
+        <input type="hidden" id="swEventId" value="">
+        <label class="fld">
+          <span data-i18n="stew.evKind">What happened</span>
+          <select id="swEventKind">
+            <option value="birth" data-i18n="stew.kind.birth">A birth</option>
+            <option value="marriage" data-i18n="stew.kind.marriage">A marriage</option>
+            <option value="bereavement" data-i18n="stew.kind.bereavement">A bereavement</option>
+            <option value="illness" data-i18n="stew.kind.illness">Illness</option>
+            <option value="job_change" data-i18n="stew.kind.job_change">A change of work</option>
+            <option value="move" data-i18n="stew.kind.move">A move</option>
+            <option value="baptism" data-i18n="stew.kind.baptism">A baptism</option>
+            <option value="graduation" data-i18n="stew.kind.graduation">A graduation</option>
+            <option value="retirement" data-i18n="stew.kind.retirement">Retirement</option>
+            <option value="other" data-i18n="stew.kind.other">Something else</option>
+          </select>
+        </label>
+        <label class="fld">
+          <span data-i18n="stew.evDate">When</span>
+          <input type="date" id="swEventDate">
+        </label>
+        <textarea id="swEventNote" rows="3"
+                  placeholder="What you want to remember"
+                  data-i18n-attr="placeholder:stew.evNote,aria-label:stew.evNote"
+                  aria-label="What you want to remember"></textarea>
+        <label class="chk">
+          <input type="checkbox" id="swEventRecurs">
+          <span data-i18n="stew.evRecurs">This comes round every year</span>
+        </label>
+        <div class="dlg-actions">
+          <button class="ghost-btn" type="button" id="swEventCancel" data-i18n="common.cancel">Cancel</button>
+          <button class="solid-btn" type="submit" data-i18n="stew.evSave">Save</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="tab-panel" data-swpanel="history" role="tabpanel" hidden>
+      <p class="row-actions">
+        <button class="ghost-btn" type="button" id="swAddTouch" data-i18n="stew.logContact">+ Log a contact</button>
+      </p>
+
+      {#- The same form logs a new contact and corrects an old one; the hidden
+         id says which. Newsletter entries never open it — they record what
+         the mailing run actually sent, and the server refuses to edit them. -#}
+      <form class="form sw-form" id="swTouchForm" hidden>
+        <input type="hidden" id="swTouchId" value="">
+        <label class="fld">
+          <span data-i18n="stew.tcType">What kind of contact</span>
+          <select id="swTouchType">
+            <option value="call" data-i18n="stew.type.call">A phone call</option>
+            <option value="text" data-i18n="stew.type.text">A text message</option>
+            <option value="email" data-i18n="stew.type.email">An email</option>
+            <option value="visit" data-i18n="stew.type.visit">A visit</option>
+            <option value="meal" data-i18n="stew.type.meal">A meal together</option>
+            <option value="video_call" data-i18n="stew.type.video_call">A video call</option>
+            <option value="handwritten" data-i18n="stew.type.handwritten">A handwritten note</option>
+            <option value="postal_mail" data-i18n="stew.type.postal_mail">Something posted</option>
+            <option value="event" data-i18n="stew.type.event">At an event</option>
+            <option value="other" data-i18n="stew.type.other">Something else</option>
+          </select>
+        </label>
+        <label class="fld">
+          <span data-i18n="stew.tcDate">When</span>
+          <input type="date" id="swTouchDate" required>
+        </label>
+        <textarea id="swTouchNote" rows="3"
+                  placeholder="Anything worth remembering"
+                  data-i18n-attr="placeholder:stew.tcNote,aria-label:stew.tcNote"
+                  aria-label="Anything worth remembering"></textarea>
+        {#- THE ONE CONTROL THAT DECIDES WHAT THIS PAGE REPORTS. Checked by
+           default, because somebody opening this form has almost always just
+           spoken to a person; the case it exists for is the forward to forty
+           that happens to have gone to this address too. -#}
+        <label class="chk">
+          <input type="checkbox" id="swTouchPersonal" checked>
+          <span data-i18n="stew.tcPersonal">This was a real one-to-one conversation</span>
+        </label>
+        <div class="dlg-actions">
+          <button class="ghost-btn" type="button" id="swTouchCancel" data-i18n="common.cancel">Cancel</button>
+          <button class="solid-btn" type="submit" data-i18n="stew.tcSave">Log it</button>
+        </div>
+      </form>
+
+      <div id="swTimeline"></div>
+    </section>
+
+    <p class="hint" id="swStatus"></p>
+  </div>
+</div>

@@ -106,7 +106,7 @@ check("the dictionary holds no hint, description or lede strings", () => {
 });
 
 check("country is chosen from a list, not typed as a code", () => {
-  const njk = read("src/staff/stewardship.njk");
+  const njk = read("src/_includes/supporter-dialog.njk");
   assert(/<select id="swPCountry">/.test(njk), "the country field is not a picker");
   assert(!/id="swPCountry"[^>]*maxlength/.test(njk), "the two-letter text box is back");
   const js = read("src/js/staff-stewardship.js");

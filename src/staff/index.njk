@@ -1,27 +1,38 @@
 ---
 layout: layouts/staff.njk
 staffPage: index
-staffTitle: Dashboard
-staffHeading: Where things <b>stand</b>
+staffTitle: Home
+staffHeading: What needs <b>you</b>
 ---
-<div class="tiles" id="tiles"></div>
+{#- HOME (mockup board "Home", step 7). The dashboard it replaces said where
+   things stood — the same "2" twice, and nothing to press. Home says what is
+   waiting on you, each line with the button that does it: four numbers, then
+   the people who have gone quiet, the things not finished, and what is
+   waiting for translation. A section with nothing in it is not shown; with
+   nothing anywhere, one calm line says so.
 
-<div class="quick">
-  <a class="quick-card" href="/staff/stewardship/">
-    <span class="qk" data-i18n="dash.stewardship">Stewardship</span>
-    <span class="qv tnum" id="qStale">—</span>
-    <span class="qs" data-i18n="dash.staleNote">people overdue a personal contact</span>
-  </a>
-  <a class="quick-card" href="/staff/support/">
-    <span class="qk" data-i18n="dash.support">Support</span>
-    <span class="qv tnum" id="qGoal">—</span>
-    <span class="qs" data-i18n="dash.goalNote">of the monthly goal</span>
-  </a>
-  <a class="quick-card" href="/staff/directory/">
-    <span class="qk" data-i18n="dash.directory">Directory</span>
-    <span class="qv tnum" id="qContacts">—</span>
-    <span class="qs" data-i18n="dash.contactsNote">network contacts</span>
-  </a>
-</div>
+   Filled by staff.js from /api/staff-snapshot (the numbers and the people)
+   and /api/staff-home (everything else). -#}
+<div class="hm-stats" id="hmStats"></div>
 
-<p class="note foot-note"><span id="snapshotPartner" class="who-for" hidden></span> <span id="genStamp"></span></p>
+<section class="hm-sec" id="hmQuiet" hidden>
+  <div class="hm-h">
+    <h2 id="hmQuietH"></h2>
+    <a href="/staff/stewardship/" data-i18n="home.allPeople">All people →</a>
+  </div>
+  <div class="hm-card" id="hmQuietRows"></div>
+</section>
+
+<section class="hm-sec" id="hmTodo" hidden>
+  <div class="hm-h"><h2 data-i18n="home.todo">Not finished</h2></div>
+  <div class="hm-card" id="hmTodoRows"></div>
+</section>
+
+<section class="hm-sec" id="hmLang" hidden>
+  <div class="hm-h"><h2 data-i18n="home.langs">Waiting for translation</h2></div>
+  <div class="hm-card" id="hmLangRows"></div>
+</section>
+
+<p class="empty hm-calm" id="hmCalm" hidden data-i18n="home.calm">Nothing needs you right now.</p>
+
+{% include "supporter-dialog.njk" %}

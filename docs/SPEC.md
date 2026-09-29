@@ -177,7 +177,8 @@ One entry point, `workers/src/worker.js`. **286 tests** (`cd workers && npm test
 | `lib/apikey.js` | partner API keys, SHA-256 |
 | `lib/nopii.js` | the content gate on the public boundary |
 | `lib/mail.js` | transactional email through Resend, and the invite |
-| `staff-snapshot` (in worker.js) | dashboard/support/stewardship/activity |
+| `staff-snapshot` (in worker.js) | Home's numbers and people, stewardship, activity |
+| `staff-home.js` | Home: what is not finished, and what waits for translation (read-only) |
 | `staff-milestones.js` | the roadmap editor |
 | `staff-settings.js` | account, languages, API keys |
 | `staff-data.js` | directory (the ministry's, shared by its team) + resources (per partner) |
@@ -193,9 +194,10 @@ One entry point, `workers/src/worker.js`. **286 tests** (`cd workers && npm test
 ### Two consoles
 
 ```
-/staff/   eight pages — dashboard, support, stewardship, milestones,
-          directory, resources, activity, settings. PARTNER-SCOPED: what one
-          person sees of one ministry.
+/staff/   Home, Updates, Mail, Sharing, Stewardship, Directory, Resources,
+          and Activity and Settings under your name. PARTNER-SCOPED: what
+          one person sees of one ministry. Home says what is waiting on you:
+          people gone quiet, work not finished, translations missing.
 
 /admin/   seven pages — overview, people, partners, content, site, publish,
           activity. ORG-WIDE: accounts, roles, partner access, each partner's

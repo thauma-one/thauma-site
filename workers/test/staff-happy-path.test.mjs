@@ -102,8 +102,13 @@ const PARTNER = { id: "p_mira", display_name: "Mira Petrović", role: "owner" };
 /* The partner's stored sharing, changed by the tests that need it. */
 let SETTINGS_ROW = {};
 
+/* Rows one test sets for itself (Home's), cleared after it, so the rest of
+   the file keeps the plain partner above. */
+let EXTRA = {};
+
 /** Rows for each named query. Absent means "an empty list is fine". */
 function rowsFor(name, params) {
+  if (EXTRA[name]) return EXTRA[name];
   switch (name) {
     case "user_by_email": return USER[params.email] ? [USER[params.email]] : [];
     case "user_by_id":    return BY_ID[params.id] ? [BY_ID[params.id]] : [];
@@ -113,9 +118,11 @@ function rowsFor(name, params) {
     case "languages_all":
       return [{ code: "en", name: "English", is_active: 1 },
               { code: "sr", name: "Srpski", is_active: 1 }];
+    /* `code`, as the query selects it (l.code) — this said `lang` until Home
+       read it and counted everything as missing in "undefined". */
     case "partner_languages_for_partner":
-      return [{ lang: "en", is_enabled: 1, sort_order: 0 },
-              { lang: "sr", is_enabled: 1, sort_order: 1 }];
+      return [{ code: "en", name: "English", is_enabled: 1, sort_order: 0 },
+              { code: "sr", name: "Srpski", is_enabled: 1, sort_order: 1 }];
     case "partner_settings":  return [{ default_lang: "en", ...SETTINGS_ROW }];
     case "milestones_for_staff":
       return [{ id: "ms_m1", status: "complete", completion: 100, sort_order: 0,
@@ -420,6 +427,53 @@ for (const [path, handler] of ENDPOINTS) {
     eq(body.acting.lang, "sr", `${path} did not carry the viewed person's language`);
   });
 }
+
+/* ------------------------------- Home ---------------------------------- */
+
+await check("Home lists what is not finished and what is waiting for translation", async () => {
+  EXTRA = {
+    milestones_for_staff: [
+      { id: "ms_live", status: "complete", is_public: 1 },
+      { id: "ms_draft", status: "upcoming", is_public: 0 },
+      /* Left off the site on purpose: a decision, not a job. */
+      { id: "ms_cut", status: "canceled", is_public: 0 },
+    ],
+    milestone_translations_for_staff: [
+      { milestone_id: "ms_live", lang: "en", title: "Commissioned" },
+      { milestone_id: "ms_draft", lang: "en", title: "Get Fingerprinted" },
+    ],
+    prayer_for_staff: [{ id: "pr_1", is_public: 0 }],
+    prayer_translations_for_staff: [{ prayer_id: "pr_1", lang: "sr", title: "Визе" }],
+    mailing_lists_for_partner: [
+      { id: "l_new", name: "Newsletter", is_open: 1, subscribed: 0, pending: 0, drafts: 2 },
+      { id: "l_shut", name: "Board", is_open: 0, subscribed: 0, pending: 0, drafts: 0 },
+      /* Somebody has signed up and not confirmed yet: it has been found. */
+      { id: "l_found", name: "Prayer", is_open: 1, subscribed: 0, pending: 1, drafts: 0 },
+    ],
+  };
+  try {
+    const res = await worker.fetch(get("/api/staff-home"), env(makeDb()));
+    const body = await res.json();
+    eq(res.status, 200, JSON.stringify(body).slice(0, 200));
+    eq(body.you.name, "Mira Petrović", "who");
+    eq(body.published, 1, "milestones published");
+    eq(body.unfinished.map((u) => u.kind + ":" + u.id),
+      ["milestone:ms_draft", "prayer:pr_1", "drafts:l_new", "list:l_new"], "not finished");
+    eq(body.unfinished[0].title, { en: "Get Fingerprinted" }, "titles by language");
+    eq(body.unfinished[2].n, 2, "drafts counted");
+    /* Only PUBLISHED items count: the unpublished prayer is missing English
+       too, and is already listed as not finished. */
+    eq(body.missing, { milestones: { sr: 1 }, prayer: {} }, "missing");
+    eq(body.languages.map((l) => l.code), ["en", "sr"], "switched-on languages");
+  } finally {
+    EXTRA = {};
+  }
+});
+
+await check("Home only reads", async () => {
+  const res = await worker.fetch(post("/api/staff-home", {}), env(makeDb()));
+  eq(res.status, 405, "status");
+});
 
 await check("an admin NOT acting gets their own 403, not somebody's data", async () => {
   // The admin has no partner. The refusal is a normal state and must say so

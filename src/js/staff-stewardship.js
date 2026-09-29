@@ -332,7 +332,9 @@
 
   /* ------------------------------------------------------ open and close -- */
 
-  function open(contactId, fromEl) {
+  /* `log`: straight to History with a new contact being written — Home's
+     "Log a contact" (board "Home") is asking for that and nothing else. */
+  function open(contactId, fromEl, log) {
     state.contactId = contactId;
     state.openedFrom = fromEl || null;
     state.person = null;
@@ -353,8 +355,13 @@
     setStatus('');
     show();
 
-    var firstTab = $('swBack').querySelector('.tab');
-    if (firstTab) firstTab.focus();
+    if (log) {
+      showTab('history');
+      openTouchForm(null);
+    } else {
+      var firstTab = $('swBack').querySelector('.tab');
+      if (firstTab) firstTab.focus();
+    }
 
     call({ url: API + '?contact=' + encodeURIComponent(contactId) }).then(function (body) {
       /* Somebody may have closed it, or opened somebody else, while this was
@@ -581,7 +588,9 @@
     });
 
     /* ------ the person ------ */
-    $('swAddPerson').addEventListener('click', function (e) { openNew(e.currentTarget); });
+    /* Stewardship's own button, beside its search. Home opens this dialog
+       too, and has no button for adding somebody. */
+    if ($('swAddPerson')) $('swAddPerson').addEventListener('click', function (e) { openNew(e.currentTarget); });
     $('swEditPerson').addEventListener('click', function () { openPersonForm(state.person); });
     $('swDeletePerson').addEventListener('click', removePerson);
     $('swPersonCancel').addEventListener('click', closePersonForm);

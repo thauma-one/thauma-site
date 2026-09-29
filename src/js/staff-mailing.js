@@ -820,6 +820,14 @@
     /* Where to land: what the caller asked for, then the address bar, then the
        first list. Somebody arriving from a bookmark should get their list. */
     var wanted = keepView || (location.hash || '').slice(1);
+    /* #drafts: Home's "Open" beside the drafts not sent (board "Home"). The
+       composer is a deferred script, so it may not be there yet. */
+    if (wanted === 'drafts' && state.lists.length) {
+      var toDrafts = function () { openComposer('drafts'); };
+      if (window.StaffComposer) toDrafts();
+      else window.addEventListener('load', toDrafts, { once: true });
+      return;
+    }
     var valid = TOOLS.indexOf(wanted) >= 0 || !!listById(wanted);
     /* With no list there is nothing to write to: the page itself, with New
        list, rather than a composer with an empty picker and no way out. */

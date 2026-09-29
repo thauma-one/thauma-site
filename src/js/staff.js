@@ -3,7 +3,7 @@
    ============================================================
    Two data sources, deliberately kept separate:
 
-     D1 — dashboard, support, stewardship, activity.
+     D1 — Home, stewardship, activity.
        Reads /api/staff-snapshot, which runs the named queries
        in db/queries.sql against the D1 database and returns
        the shape db/build_snapshot.py used to write to a file.
@@ -79,10 +79,6 @@
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
     });
   }
-  function money(cents, currency) {
-    return (cents / 100).toLocaleString('en-US',
-      { style: 'currency', currency: currency || 'USD', maximumFractionDigits: 0 });
-  }
   function fullName(c) {
     return [c.first_name, c.last_name].filter(Boolean).join(' ') || tr('stew.unnamed');
   }
@@ -146,59 +142,6 @@
        those and held everywhere else.
 
        Only one place may write to the pill: paintIdentity(). */
-    // Whose records these are — labeled, on the page, where there is room
-    // for the word "for". The pill in the header is who YOU are.
-    if ($('snapshotPartner')) {
-      $('snapshotPartner').textContent = tr('dash.showingFor') + ' ' + d.partner.display_name + '.';
-      $('snapshotPartner').hidden = false;
-    }
-    if ($('genStamp')) {
-      var when = new Date(d.generated_at);
-      $('genStamp').textContent = 'Live from the operations database · loaded ' +
-        (isNaN(when) ? d.generated_at : when.toLocaleTimeString()) + '.';
-    }
-
-    var s = d.summary, stale = d.needs_attention.stale_count;
-
-    // --- dashboard quick-links ---
-    if ($('qStale')) $('qStale').textContent = stale;
-    // NOTE: qContacts is the DIRECTORY count and comes from staff-data, not
-    // from here. s.contacts_total is SUPPORTERS — a different thing with a
-    // confusingly similar name, which is exactly why the two live on
-    // separate pages.
-    if ($('qGoal')) {
-      var monthly = d.goals.filter(function (g) { return g.kind === 'monthly'; })[0];
-      $('qGoal').textContent = monthly ? monthly.percent + '%' : '—';
-    }
-
-    // --- tiles ---
-    if ($('tiles')) $('tiles').innerHTML = [
-      { k: tr('dash.needsAttention'), v: stale,
-        s: 'no personal contact in ' + d.stale_days + '+ days',
-        cls: stale > 0 ? 'alert' : 'calm' },
-      { k: tr('dash.supporters'), v: s.contacts_total, s: 'active records' },
-      { k: tr('dash.personalTouches'), v: s.personal_last_30, s: 'in the last 30 days' }
-    ].map(function (t) {
-      return '<div class="tile ' + (t.cls || '') + '">' +
-        '<span class="k">' + esc(t.k) + '</span>' +
-        '<span class="v tnum">' + esc(t.v) + '</span>' +
-        '<span class="s">' + esc(t.s) + '</span></div>';
-    }).join('');
-
-    // --- goals ---
-    if ($('goalGrid')) $('goalGrid').innerHTML = d.goals.map(function (g) {
-      var pct = g.percent == null ? 0 : g.percent;
-      return '<div class="goal">' +
-        '<div class="goal-t"><h3>' + esc(g.label) + '</h3>' +
-        '<span class="kind">' + esc(g.kind.replace('_', ' ')) + '</span>' +
-        '<span class="pct tnum">' + pct + '%</span></div>' +
-        '<div class="bar"><i style="width:' + pct + '%"></i></div>' +
-        '<div class="goal-f"><span class="tnum">' +
-          money(g.raised_cents || 0, g.currency) + ' of ' + money(g.target_cents, g.currency) +
-        '</span><span class="tnum">' + (g.donor_count == null ? '—' : g.donor_count) +
-        ' donors</span></div></div>';
-    }).join('');
-
     // --- stewardship table ---
     /* OWNER ONLY. The server sends no names at all to anybody else — an
        administrator viewing as the owner included — and says why. Saying so
@@ -206,6 +149,7 @@
        read as the owner's supporters having vanished. */
     lastSnapshot = d;
     renderStewardship();
+    renderHome();
 
     // --- activity ---
     if ($('auditList')) $('auditList').innerHTML = d.audit.map(function (a) {
@@ -299,6 +243,134 @@
   }
 
   /* =====================================================================
+     HOME — what needs you (board "Home", step 7)
+     =====================================================================
+     Four numbers, then three lists, each line with the button that does
+     it. The numbers and the people come from the snapshot; the rest from
+     /api/staff-home. Either can arrive first, so each draws what it has and
+     the other fills in; the calm line waits for both, or it would flash up
+     before the lists arrived.
+
+     WHO SEES THE PEOPLE. Supporter numbers only for the roles that have
+     Stewardship (consoleNav.js), and names only when the server sent them —
+     it withholds them from anybody but the owner. */
+  var homeData = null;
+  var QUIET_SHOWN = 5;
+
+  /* A title in the reader's language, or any language it has. */
+  function titleIn(t) {
+    t = t || {};
+    if (t[uiLang()]) return t[uiLang()];
+    for (var k in t) if (t[k]) return t[k];
+    return tr('ms.untitled');
+  }
+
+  function homeRow(main, sub, mid, action) {
+    return '<div class="hm-row">' +
+      '<div class="hm-what"><span class="hm-nm">' + main + '</span>' +
+        (sub ? '<span class="hm-sub">' + sub + '</span>' : '') + '</div>' +
+      (mid || '') + action + '</div>';
+  }
+  function homeLink(href, key, solid) {
+    return '<a class="' + (solid ? 'solid-btn' : 'ghost-btn') + '" href="' + esc(href) + '">' +
+      esc(tr(key)) + '</a>';
+  }
+  function showSection(id, html) {
+    $(id + 'Rows').innerHTML = html;
+    $(id).hidden = !html;
+    return !!html;
+  }
+
+  function renderHome() {
+    if (!$('hmStats')) return;
+    var d = lastSnapshot, h = homeData;
+    var roles = (d && d.you && d.you.roles) || [];
+    var steward = roles.indexOf('staff') !== -1 || roles.indexOf('partner') !== -1;
+
+    var stats = [];
+    if (d && steward) {
+      stats.push({ v: d.summary.contacts_total || 0, k: 'home.stat.supporters', href: '/staff/stewardship/' });
+      stats.push({ v: d.summary.personal_last_30 || 0, k: 'home.stat.personal', href: '/staff/stewardship/' });
+    }
+    var monthly = d && (d.goals || []).filter(function (g) { return g.kind === 'monthly'; })[0];
+    if (monthly && monthly.percent != null) {
+      stats.push({ v: monthly.percent + '%', k: 'home.stat.monthly', href: '/staff/updates/#goals' });
+    }
+    if (h) stats.push({ v: h.published, k: 'home.stat.published', href: '/staff/updates/#milestones' });
+    $('hmStats').innerHTML = stats.map(function (s) {
+      return '<a class="hm-stat" href="' + s.href + '"><b class="tnum">' + esc(s.v) + '</b>' +
+        '<span>' + esc(tr(s.k)) + '</span></a>';
+    }).join('');
+
+    var any = false;
+
+    if (d) {
+      var quiet = steward && !d.stewardship_withheld ? d.contacts.filter(function (c) {
+        return c.days_since_personal == null || c.days_since_personal >= d.stale_days;
+      }) : [];
+      $('hmQuietH').textContent = fill('home.quiet', { n: d.stale_days });
+      any = showSection('hmQuiet', quiet.slice(0, QUIET_SHOWN).map(function (c) {
+        var where = [c.city, countryName(c.country)].filter(Boolean).join(', ');
+        var never = c.days_since_personal == null;
+        return homeRow(esc(fullName(c)), esc(where),
+          '<span class="sev ' + (never ? 'none' : 'crit') + ' hm-sev">' +
+            esc(never ? tr('home.never') : dayCount(c.days_since_personal)) + '</span>',
+          '<button type="button" class="ghost-btn" data-log="' + esc(c.id) + '">' +
+            esc(tr('home.log')) + '</button>');
+      }).join('')) || any;
+    }
+
+    if (h) {
+      any = showSection('hmTodo', h.unfinished.map(function (u) {
+        if (u.kind === 'milestone' || u.kind === 'prayer') {
+          return homeRow(esc(titleIn(u.title)), esc(tr(u.kind === 'milestone' ? 'home.msDraft' : 'home.prDraft')), '',
+            homeLink('/staff/updates/?open=' + encodeURIComponent(u.id) + '#' + (u.kind === 'milestone' ? 'milestones' : 'prayer'), 'home.open'));
+        }
+        if (u.kind === 'drafts') {
+          return homeRow(esc(u.name), esc(u.n === 1 ? tr('home.drafts1') : fill('home.draftsN', { n: u.n })), '',
+            homeLink('/staff/mail/#drafts', 'home.open'));
+        }
+        return homeRow(esc(u.name), esc(tr('home.listEmpty')), '', homeLink('/staff/sharing/#signup', 'home.share'));
+      }).join('')) || any;
+
+      /* One line per section, a chip per language with the count missing.
+         The chip says the code; its title says the language. */
+      any = showSection('hmLang', ['milestones', 'prayer'].map(function (part) {
+        var gaps = h.missing[part] || {};
+        var chips = h.languages.filter(function (l) { return gaps[l.code]; }).map(function (l) {
+          var name = l.native_name || l.name;
+          return '<span class="hm-chip" title="' + esc(fill('home.chip', { lang: name, n: gaps[l.code] })) + '">' +
+            esc(l.code.toUpperCase()) + ' <b class="tnum">' + gaps[l.code] + '</b></span>';
+        }).join('');
+        if (!chips) return '';
+        return homeRow(esc(tr('min.' + part)), '', '<span class="hm-chips">' + chips + '</span>',
+          homeLink('/staff/updates/#' + part, 'home.translate', true));
+      }).join('')) || any;
+    }
+
+    $('hmCalm').hidden = !(d && h) || any;
+  }
+
+  function loadHome() {
+    return fetch('/api/staff-home', { cache: 'no-store', credentials: 'same-origin' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (body) {
+        if (!body) return;
+        homeData = body;
+        renderHome();
+      })
+      .catch(function () {});
+  }
+
+  function wireHome() {
+    if (!$('hmQuietRows')) return;
+    $('hmQuietRows').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-log]');
+      if (b && window.StaffSupporterDialog) window.StaffSupporterDialog.open(b.getAttribute('data-log'), b, true);
+    });
+  }
+
+  /* =====================================================================
      LIVE SECTIONS — directory + resources via staff-data
      ===================================================================== */
 
@@ -319,7 +391,6 @@
      listed, each a link that dials or writes rather than opening the card. On
      a phone the rows are cards (.sw-cards), each cell saying what it is. */
   function renderDirectory() {
-    if ($('qContacts')) $('qContacts').textContent = state.contacts.length;
     var body = $('contacts');
     if (!body) return;
     var q = ($('dirFind') ? $('dirFind').value : '').trim().toLowerCase();
@@ -1686,10 +1757,10 @@
      ===================================================================== */
 
   // Pages that render snapshot-backed sections. /staff/directory/ and
-  // /staff/resources/ are live-only, so they never fetch the snapshot; the
-  // dashboard needs both.
+  // /staff/resources/ are live-only, so they never fetch the snapshot. Home
+  // needs the snapshot and /api/staff-home, not staff-data.
   var NEEDS_SNAPSHOT = ['index', 'stewardship', 'activity'];
-  var NEEDS_STAFF_API = ['index', 'directory', 'resources'];
+  var NEEDS_STAFF_API = ['directory', 'resources'];
 
   var page = document.body.getAttribute('data-staff-page') || 'index';
 
@@ -1710,7 +1781,9 @@
      own load — so this bails out there rather than two handlers fighting over
      the same buttons. */
   (function wireTabs() {
-    var tabs = document.querySelectorAll('.tabs .tab');
+    /* [data-tab]: the supporter dialog's own tabs (data-swtab) are not
+       page tabs, and on Stewardship and Home they are the only ones. */
+    var tabs = document.querySelectorAll('.tabs .tab[data-tab]');
     if (!tabs.length || page === 'settings') return;
 
     function show(name) {
@@ -1735,6 +1808,7 @@
 
   loadIdentity();
   if (NEEDS_SNAPSHOT.indexOf(page) !== -1) loadSnapshot();
+  if (page === 'index') { wireHome(); loadHome(); }
   if (NEEDS_STAFF_API.indexOf(page) !== -1) {
     wireContactForm();
     wireResourceForm();
