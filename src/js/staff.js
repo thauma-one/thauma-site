@@ -1766,12 +1766,12 @@
 
   // Clear the cached identity on the way out, so the next person to use this
   // browser starts from nothing rather than from whoever was here last.
-  var signOut = document.querySelector('a[href*="access/logout"]');
-  if (signOut) {
+  /* Every sign-out link: the name menu's, and Settings' own. */
+  Array.prototype.forEach.call(document.querySelectorAll('a[href*="access/logout"]'), function (signOut) {
     signOut.addEventListener('click', function () {
       try { sessionStorage.removeItem(IDENT); } catch (e) {}
     });
-  }
+  });
 
   /* TABS, for any page that has them. Updates carries four sections and
      Settings carries three panels; both use the same markup, so the behavior

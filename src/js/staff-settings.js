@@ -70,23 +70,34 @@
   /* ---- rendering ------------------------------------------------------ */
 
   function render() {
-    // Name AND address. The header shows whatever Cloudflare Access happens
-    // to carry, which is often just an email; this is the record we hold.
-    $('setEmail').innerHTML = (state.you.name ? '<b>' + esc(state.you.name) + '</b><br>' : '') +
-      esc(state.you.email);
-
-    // Roles as tags rather than a sentence, because there will be more of them
-    // — board, and whatever else the org grows into — and a list reads the
-    // same at one item as at four.
-    var roles = [];
-    if (state.you.is_admin) roles.push({ label: 'Administrator', cls: 'admin' });
-    else roles.push({ label: 'Staff', cls: '' });
-    if (state.partner && state.partner.display_name) {
-      roles.push({ label: state.partner.display_name, cls: 'partner' });
+    /* THE HEADING IS YOU (board "Settings, just you"): first name thin, the
+       rest bold, the way every heading here is set. No name on record falls
+       back to the address. The key is dropped so a later language sweep does
+       not put the generic heading back over it. */
+    var h = document.querySelector('.page-head h1');
+    if (h) {
+      var parts = String(state.you.name || state.you.email || '').trim().split(/\s+/);
+      var first = parts.shift() || '';
+      h.removeAttribute('data-i18n-html');
+      h.innerHTML = esc(first) + (parts.length ? ' <b>' + esc(parts.join(' ')) + '</b>' : '');
     }
-    $('setRoles').innerHTML = roles.map(function (r) {
-      return '<span class="role-tag ' + r.cls + '">' + esc(r.label) + '</span>';
-    }).join('');
+    $('setEmail').textContent = state.you.email;
+
+    /* What you can do: every role you hold, then the ministry and how you
+       are on it — "Chase Roush · owner". Tags rather than a sentence, because
+       a list reads the same at one item as at four. */
+    var ROLE_ORDER = ['admin', 'partner', 'staff', 'board', 'communications'];
+    var held = (state.you.roles || []).slice().sort(function (a, b) {
+      return ROLE_ORDER.indexOf(a) - ROLE_ORDER.indexOf(b);
+    });
+    var tags = held.map(function (r) {
+      return '<span class="role-tag ' + esc(r) + '">' + esc(tr('role.' + r)) + '</span>';
+    });
+    if (state.partner && state.partner.display_name) {
+      var how = state.partner.access_role ? ' · ' + tr('access.' + state.partner.access_role) : '';
+      tags.push('<span class="role-tag ministry">' + esc(state.partner.display_name + how) + '</span>');
+    }
+    $('setRoles').innerHTML = tags.join('');
 
     // Your own working language: every language the organization offers, not
     // just the ones this partner publishes — you might work in a language the

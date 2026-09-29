@@ -1889,8 +1889,6 @@ html:not(.roles-known)[data-area="staff"] .console-me-menu a[data-roles]{display
 }
 
 /* Changing your own sign-in address, on Settings. */
-.set-email{margin-top:14px;max-width:420px}
-.set-email .fld{display:block;margin-bottom:10px}
 .set-email-note{margin-top:10px;font-size:13px;color:var(--dim);min-height:1.2em}
 .set-email-note.is-bad{color:var(--crit,#FF6B6B)}
 
@@ -2308,4 +2306,30 @@ html.console-menu-open{overflow:hidden}
   .hm-sev{width:auto;flex:1 1 auto}
   .hm-chips{justify-content:flex-start;flex:1 1 auto}
   .hm-row .ghost-btn,.hm-row .solid-btn{margin-left:auto}
+}
+
+/* ---- SETTINGS › ACCOUNT: you, one line each (board "Settings, just you") ----
+   A label in thin Sora, the control beside it, a hairline between. On a
+   phone the label sits above its control. */
+.set-you .set-r{display:grid;grid-template-columns:260px minmax(0,1fr);gap:10px 24px;align-items:center;
+  padding:22px 0;border-top:1px solid var(--line)}
+.set-you .set-r:last-child{border-bottom:1px solid var(--line)}
+.set-you .set-r:first-child{border-top:0;padding-top:4px}
+.set-lbl{font-family:var(--font-display);font-weight:300;font-size:17px;color:var(--text)}
+.set-ctl{display:flex;flex-wrap:wrap;align-items:center;gap:10px;min-width:0}
+.set-now{min-width:240px;overflow-wrap:anywhere}
+.set-email input{flex:0 1 280px;min-width:0}
+.set-email .set-email-note{flex-basis:100%;margin:0;min-height:0}
+.set-email .set-email-note:empty{display:none}
+.set-you .lang-pick{width:280px;max-width:100%}
+.set-link{color:var(--voice-tech);text-decoration:none}
+.set-link:hover{text-decoration:underline}
+.set-you a.ghost-btn{text-decoration:none}
+/* The two colors of the header: administration's amber, the ministry's
+   seafoam. */
+.set-you .role-tag.admin{color:var(--warn);border-color:rgba(245,184,69,.5);background:none}
+.role-tag.ministry{color:var(--voice-human);border-color:rgba(92,242,196,.45);text-transform:none;letter-spacing:.02em;font-size:11px}
+@media (max-width:760px){
+  .set-you .set-r{grid-template-columns:1fr}
+  .set-now{min-width:0;flex-basis:100%}
 }

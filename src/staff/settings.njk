@@ -2,12 +2,21 @@
 layout: layouts/staff.njk
 staffPage: settings
 staffTitle: Settings
-staffHeading: How this <b>works</b>
+staffHeading: Your <b>account</b>
 ---
-{#- Tabs rather than one long page: these groups have different audiences and
-   different blast radii. Account is about you. Languages and API keys change
-   what a public website serves. Keeping them apart makes that difference
-   visible before you touch anything, instead of after. -#}
+{#- SETTINGS (mockup board "Settings, just you", the last step). The heading
+   is your name, and Account is the board's rows — your address, the
+   language you read the console in, what you can do, the record of who
+   looked at what, and signing out — one line each, nothing about the
+   ministry among them.
+
+   THE MINISTRY'S TWO THINGS KEEP THEIR OWN TABS. The board had none: it
+   wanted Settings to be just you. But API keys came back here on
+   2026-09-27 (Chase: like Cloudflare's and GitHub's, under the name
+   menu), and the ministry's published languages sit with them. They change
+   what strangers' websites serve, so they are apart from you, a tab away,
+   rather than mixed in the way they were ("Your language" used to sit on
+   the Languages tab above the ministry's). -#}
 <div class="tabs" role="tablist">
   <button type="button" class="tab" role="tab" data-tab="account"
           aria-selected="true" data-i18n="set.account">Account</button>
@@ -18,53 +27,48 @@ staffHeading: How this <b>works</b>
 </div>
 
 <!-- ============================================================= ACCOUNT -->
-<section class="tab-panel" data-panel="account" role="tabpanel">
-  <div class="set-row">
-    <div class="set-label">
-      <h3 data-i18n="set.signedInAs">Signed in as</h3>
-      <p id="setEmail">—</p>
-    </div>
-    <div class="set-control">
-      {#- NO PASSWORD CONTROL, because there is no password: Access owns
-         sign-in and sends a one-time code. The ADDRESS is the identity here,
-         so a typo in it needs an administrator and a Cloudflare dashboard to
-         fix unless this exists. -#}
-      <form class="set-email" id="setEmailForm">
-        <label class="fld">
-          <span data-i18n="set.newEmail">New email address</span>
-          <input type="email" id="setNewEmail" autocomplete="email" spellcheck="false"
-                 placeholder="you@example.org">
-        </label>
-        <button type="submit" class="ghost-btn" data-i18n="set.sendEmailLink">Send confirmation</button>
-        <p class="set-email-note" id="setEmailNote"></p>
-      </form>
-    </div>
+<section class="tab-panel set-you" data-panel="account" role="tabpanel">
+  <div class="set-r">
+    <span class="set-lbl" data-i18n="set.email">Email</span>
+    {#- NO PASSWORD CONTROL, because there is no password: Access owns
+       sign-in and sends a one-time code. The ADDRESS is the identity here,
+       so a typo in it needs an administrator and a Cloudflare dashboard to
+       fix unless this exists. -#}
+    <form class="set-ctl set-email" id="setEmailForm">
+      <span class="set-now" id="setEmail">—</span>
+      <input type="email" id="setNewEmail" autocomplete="email" spellcheck="false"
+             data-i18n-attr="placeholder:set.newEmailShort,aria-label:set.newEmail"
+             placeholder="New address" aria-label="New email address">
+      <button type="submit" class="ghost-btn" data-i18n="set.sendEmailLink">Send confirmation</button>
+      <p class="set-email-note" id="setEmailNote"></p>
+    </form>
   </div>
 
-  <div class="set-row">
-    <div class="set-label">
-      <h3 data-i18n="set.yourAccess">Your access</h3>
-    </div>
-    <div class="set-control">
-      <div class="role-tags" id="setRoles"></div>
-    </div>
+  <div class="set-r">
+    <label class="set-lbl" for="setPrefLang" data-i18n="set.consoleLang">Console language</label>
+    <div class="set-ctl"><select id="setPrefLang" class="lang-pick"></select></div>
+  </div>
+
+  <div class="set-r">
+    <span class="set-lbl" data-i18n="set.canDo">What you can do</span>
+    <div class="set-ctl role-tags" id="setRoles"></div>
+  </div>
+
+  <div class="set-r">
+    <span class="set-lbl" data-i18n="nav.activity">Activity</span>
+    <div class="set-ctl"><a class="set-link" href="/staff/activity/" data-i18n="set.activityLink">Who looked at what in your ministry →</a></div>
+  </div>
+
+  <div class="set-r">
+    <span class="set-lbl" data-i18n="nav.signout">Sign out</span>
+    <div class="set-ctl"><a class="ghost-btn" href="/cdn-cgi/access/logout" data-i18n="nav.signout">Sign out</a></div>
   </div>
 </section>
 
 <!-- =========================================================== LANGUAGES -->
 <section class="tab-panel" data-panel="languages" role="tabpanel" hidden>
-  {#- YOUR language first, and marked as personal, because everything below it
-     changes what strangers see. Reading order is blast radius: smallest
-     first. -#}
-  <div class="set-row">
-    <div class="set-label">
-      <h3 id="setPrefLangLabel" data-i18n="set.yourLanguage">Your language</h3>
-    </div>
-    <div class="set-control">
-      <select id="setPrefLang" class="lang-pick" aria-labelledby="setPrefLangLabel"></select>
-    </div>
-  </div>
-
+  {#- The MINISTRY's languages: what its widgets and forms are published in.
+     Your own reading language is on Account. -#}
   <div class="set-row set-row-block">
     <div class="set-label">
       <h3 data-i18n="set.publishedLanguages">Published languages</h3>

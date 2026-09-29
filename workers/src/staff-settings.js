@@ -155,6 +155,9 @@ export default {
         partner: {
           id: partner.id,
           display_name: partner.display_name,
+          /* owner / assist / view — how YOU are on it, for "What you can do"
+             ("Chase Roush · owner", board "Settings, just you"). */
+          access_role: partner.access_role || null,
           default_lang: settings ? settings.default_lang : "en",
           /* The slug is in the embed snippet, so the panel cannot build the
              code to copy without it. Not sensitive — it is already in every
