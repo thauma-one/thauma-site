@@ -197,6 +197,27 @@
     place(img, $('phPreview'), band(img.zoom).scale.toFixed(3));
   }
 
+  /* THE DRIFT, ON A LOOP (Chase, 2026-09-28: "have the preview show the
+     parallaxing on loop so there is a visual for how it would look on the
+     site"). main.js moves a framed photo by -p × DRIFT × the frame's height
+     as the frame crosses the screen (p from -1, entering at the bottom, to
+     1, leaving at the top). The preview runs p back and forth on a sine,
+     one pass each way every six seconds, with the same scale and origin
+     place() set — so what it shows is what scrolling past it does. Still for
+     anyone who asks for less motion, and idle while the tab is hidden. */
+  var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var loop = { t0: null };
+  function drift(ts) {
+    requestAnimationFrame(drift);
+    var el = $('phPreview'), img = state.draft[state.on];
+    if (!img || !el.offsetParent || !el.parentNode.clientHeight) return;
+    if (loop.t0 === null) loop.t0 = ts;
+    var p = Math.sin(((ts - loop.t0) / 12000) * 2 * Math.PI);
+    var ty = -p * DRIFT * el.parentNode.clientHeight;
+    el.style.transform = 'translate3d(0,' + ty.toFixed(1) + 'px,0) scale(' + band(img.zoom).scale.toFixed(3) + ')';
+  }
+  if (!reduced && window.requestAnimationFrame) requestAnimationFrame(drift);
+
   function dirty(id) {
     return JSON.stringify(state.draft[id]) !== JSON.stringify(state.saved[id]);
   }
