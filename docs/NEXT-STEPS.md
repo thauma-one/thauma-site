@@ -213,6 +213,8 @@ reads a **SQLite file on that machine** and never touches the Cloudflare
 database of that name. The two can be twenty-two migrations apart while the
 console says the same word. The environment band now says *"a local copy on
 this Pi"* rather than naming a binding it is not actually using.
+*(Superseded 2026-09-29: all three sites bind `thauma-ops`, dev with
+`remote = true`. See ONE DATABASE in wrangler.toml.)*
 
 **Neither workflow has a push trigger.** Both are `workflow_dispatch` only —
 pushing `dev` deploys nothing at all. **Preview** dispatches staging against
@@ -750,6 +752,9 @@ kinds of content travel differently:
 
 That is why production's roadmap was empty while dev's was full. Nothing was
 broken; the two halves were never connected.
+*(Closed 2026-09-29: first Publish carried dev's rows (lib/carry.js), then
+all three sites moved onto the one database, `thauma-ops`, so there are no
+halves left to connect.)*
 
 Making publishing carry records is real work and needs decisions first — which
 side authors, what happens when both change, and how the test fixtures (Mira)

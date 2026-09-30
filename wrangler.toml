@@ -109,26 +109,25 @@ id = "f23971d5b4aa460daba43e97b9d84273"
 
 # D1 for the relational data: partners, users, contacts, interactions, goals.
 #
-# TWO DATABASES, DELIBERATELY. The top-level binding here is the DEV database,
-# because the top-level config is what `wrangler deploy` uses for staging
-# (next.thauma.one). Production is in [env.production] below and is the only
-# thing that ever touches real supporter data.
+# ONE DATABASE FOR ALL THREE SITES (Chase, 2026-09-29, choosing it over a
+# two-way copy: "if we make changes on the staging or live sites, we need to
+# make sure that the dev site knows that those changes happened … if the Pi
+# goes offline for a while, we need to make sure that it still has a automated
+# way to sync to the real data"). Dev, staging and live all bind thauma-ops.
+# There is nothing to sync, a deletion is a deletion everywhere, and nothing
+# depends on the Pi being up.
 #
-# "Dev should always match production" and "dev should be safe to edit" cannot
-# both be true — a mirror you can change is not a mirror. So they are split by
-# what actually needs to match:
+# WHAT IT COSTS, said plainly: every site's console edits the REAL records,
+# subscribers included, and a test send from dev reaches real people. D1 Time
+# Travel (30 days) is the way back from a mistake.
 #
-#   SCHEMA  must always match. That is what migrations are for. Apply every
-#           numbered migration to BOTH, in order, and never hand-edit a
-#           database. Dev is where a migration is supposed to fail first,
-#           which only works if it is separate.
+# SCHEMA: migrations are additive only and applied ONCE, to thauma-ops, by a
+# person — Admin › Publish › Migrations (on any site). Deploys only check and
+# refuse (deploy/migration-state.mjs without --apply). ONE_DATABASE below
+# switches off the old copying (lib/carry.js, admin-dbsync.js).
 #
-#   DATA    does not need to match. Dev runs db/seed.dev.sql, which contains
-#           the edge cases ON PURPOSE (the contact overdue by 165 days).
-#           When production's shape is genuinely needed, refresh explicitly
-#           with db/refresh_dev.py — which SCRUBS names and emails on the way
-#           in. Keeping a full copy of supporter PII in a poked-at dev
-#           database would undo much of why this schema holds so little.
+# thauma-ops-dev, the old staging copy, is left in Cloudflare untouched and
+# unbound — a record of before, not something anything reads.
 
 # ---------------------------------------------------------------------------
 # MEDIA — staff photos, and anything else a person uploads
@@ -151,8 +150,8 @@ bucket_name = "thauma-media"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "thauma-ops-dev"
-database_id = "db7fcd6a-56e2-4a67-98da-3da87e95dc86"
+database_name = "thauma-ops"
+database_id = "1a30f6c9-1dc7-42b0-abaa-fab3da334c9e"
 
 # ---------------------------------------------------------------------------
 # Public configuration
@@ -173,6 +172,8 @@ database_id = "db7fcd6a-56e2-4a67-98da-3da87e95dc86"
 binding = "AI"
 
 [vars]
+# Every site binds the same database; nothing is copied between them.
+ONE_DATABASE = "thauma-ops"
 # TRANSLATION'S DAILY SHARE of the account's free Workers AI allowance
 # (10,000 Neurons a day for the whole account; translate.js). The three add
 # up to 9,000 — a test holds them there — so all three sites translating
@@ -325,33 +326,16 @@ not_found_handling = "404-page"
 # checks every route and prefix reaches the Worker in all three.
 run_worker_first = ["/", "/api/*", "/.netlify/functions/*", "/staff", "/staff/*", "/admin", "/admin/*", "/embed/v1/*", "/media/*", "/confirm", "/confirm-account", "/confirm-email", "/unsubscribe", "/archive/*", "/site/*"]
 
-# LOCAL SIMULATION, INCLUDING THE DATABASE. `wrangler dev` runs D1 and KV in
-# miniflare against state under .wrangler/state — NOT against thauma-ops-dev.
+# THE REAL DATABASE, PHOTOS AND KV — `remote = true` on each binding (see
+# ONE DATABASE at the top). `wrangler dev` still runs the Worker on the Pi, so
+# dev.thauma.one keeps its own Access login; only the bindings reach
+# Cloudflare, through the same remote proxy the AI binding always used, with
+# the service's token (~/.config/cloudflare-thauma.env: D1, R2, KV, Workers AI).
 #
-# Two better-looking options were tried on 2026-08-15 and both failed:
-#
-#   experimental_remote = true   Rejected by wrangler 4.86 ("unexpected
-#                                field"). Supported from ~4.123, which
-#                                requires Node 22; the Pi runs Node 20.
-#
-#   wrangler dev --remote        Starts fine, real bindings — but it runs the
-#                                Worker inside Cloudflare's edge under
-#                                next.thauma.one's Access application. A
-#                                browser that had already passed
-#                                dev.thauma.one's Access got redirected to a
-#                                SECOND login, for a different hostname.
-#
-# So: seed the local database once and it persists.
-#
-#   npx wrangler d1 execute thauma-ops-dev --local --env dev \
-#       --file=db/migrations/0001_init.sql
-#   npx wrangler d1 execute thauma-ops-dev --local --env dev \
-#       --file=db/seed.dev.sql
-#
-# This is a THIRD database — local, remote-dev, production. It is reproducible
-# from seed.dev.sql, it is safe to break, and it needs no network. The upgrade
-# path that collapses it back to two is Node 22 + wrangler >= 4.123, which
-# makes experimental_remote work.
+# Until 2026-09-29 this was a local SQLite file under .wrangler/state (the
+# `experimental_remote` field 4.86 rejected is spelled `remote` now). That file
+# is still there, unread; the Pi's records were published into thauma-ops
+# before the switch.
 
 # ---------------------------------------------------------------------------
 # MEDIA — staff photos, and anything else a person uploads
@@ -371,19 +355,23 @@ run_worker_first = ["/", "/api/*", "/.netlify/functions/*", "/staff", "/staff/*"
 [[env.dev.r2_buckets]]
 binding = "MEDIA"
 bucket_name = "thauma-media"
+remote = true
 
 [[env.dev.d1_databases]]
 binding = "DB"
-database_name = "thauma-ops-dev"
-database_id = "db7fcd6a-56e2-4a67-98da-3da87e95dc86"
+database_name = "thauma-ops"
+database_id = "1a30f6c9-1dc7-42b0-abaa-fab3da334c9e"
+remote = true
 
 [[env.dev.kv_namespaces]]
 binding = "STAFF_DATA"
 id = "f79f07b51f3a493a9f2bb3714115d037"
+remote = true
 
 [[env.dev.kv_namespaces]]
 binding = "GAME_SCORES"
 id = "f23971d5b4aa460daba43e97b9d84273"
+remote = true
 
 # WORKERS AI ON THE PI (Chase, 2026-09-29: "can we add that to the dev as
 # well?"). `wrangler dev` always runs AI remotely, with the service's token —
@@ -395,6 +383,8 @@ id = "f23971d5b4aa460daba43e97b9d84273"
 binding = "AI"
 
 [env.dev.vars]
+# Every site binds the same database; nothing is copied between them.
+ONE_DATABASE = "thauma-ops"
 # TRANSLATION'S DAILY SHARE of the account's free Workers AI allowance
 # (10,000 Neurons a day for the whole account; translate.js). The three add
 # up to 9,000 — a test holds them there — so all three sites translating
@@ -564,6 +554,8 @@ database_id = "1a30f6c9-1dc7-42b0-abaa-fab3da334c9e"
 binding = "AI"
 
 [env.production.vars]
+# Every site binds the same database; nothing is copied between them.
+ONE_DATABASE = "thauma-ops"
 # TRANSLATION'S DAILY SHARE of the account's free Workers AI allowance
 # (10,000 Neurons a day for the whole account; translate.js). The three add
 # up to 9,000 — a test holds them there — so all three sites translating
