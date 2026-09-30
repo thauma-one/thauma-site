@@ -1831,10 +1831,10 @@
                          note: 'the live site' },
     'next.thauma.one': { key: 'staging',    label: 'STAGING',
                          db: 'thauma-ops — the real records, shared with the live site',
-                         note: 'preview of the next code — the records are real' },
+                         note: 'Edits here are real — the live site uses these same records' },
     'dev.thauma.one':  { key: 'dev',        label: 'DEV',
                          db: 'thauma-ops — the real records, shared with the live site',
-                         note: 'the Pi’s code — the records are real' },
+                         note: 'Edits here are real — the live site uses these same records' },
   };
 
   function showEnvironment() {
