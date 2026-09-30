@@ -648,6 +648,38 @@ export async function dispatchWorkflow(env, workflowFile, ref, fetchImpl = fetch
   return { started: true };
 }
 
+/**
+ * Merge `head` into `base` on GitHub — what Publish does before it builds
+ * (Chase, 2026-09-29: "yes to the merge"). It happens on GitHub, never in
+ * the Pi's checkout: a local `git checkout main` is what knocked dev's
+ * settings out mid-reload that evening.
+ *
+ * 201 merged, 204 nothing to merge, 409 the branches conflict (nothing
+ * changes — a person resolves it), 403 the app lacks Contents: write.
+ */
+export async function mergeBranch(env, base, head, message, fetchImpl = fetch) {
+  const cfg = githubConfig(env);
+  if (cfg.error) return { error: cfg.error, status: 500 };
+  const h = await headers(env, fetchImpl);
+  if (h.error) return { error: h.error, status: 500 };
+  const res = await fetchImpl(`${API}/repos/${cfg.repo}/merges`, {
+    method: "POST",
+    headers: { ...h.headers, "Content-Type": "application/json" },
+    body: JSON.stringify({ base, head, commit_message: message }),
+  });
+  if (res.status === 204) return { merged: false };
+  if (res.status === 201) {
+    let sha = null;
+    try { sha = (await res.json()).sha || null; } catch {}
+    return { merged: true, sha };
+  }
+  if (res.status === 409) return { conflict: true };
+  if (res.status === 403) {
+    return { error: "GitHub refused the merge. The app needs the \"Contents: read and write\" permission.", status: 403 };
+  }
+  return { error: await githubError(res), status: 502 };
+}
+
 /** GitHub's own message if it sent one — it is usually the useful part. */
 async function githubError(res) {
   let detail = "";
