@@ -2864,6 +2864,15 @@ UPDATE partner_sites
 UPDATE partner_sites SET dns_state = :dns_state, updated_at = :now WHERE partner_id = :partner_id;
 
 
+-- name: partner_site_needing_dns
+-- The live Worker's quarter-hour check: sites switched on whose name was
+-- never made — on dev or staging, which share this database but hold no DNS
+-- key. Archived ones are left alone; switching one on clears archived_at.
+SELECT partner_id, subdomain FROM partner_sites
+ WHERE enabled = 1 AND archived_at IS NULL
+   AND (dns_state IS NULL OR dns_state <> 'ready');
+
+
 -- name: partner_site_set_subdomain
 -- An administrator's act only (two people with one name); the endpoint checks.
 UPDATE partner_sites SET subdomain = :subdomain, dns_state = NULL, updated_at = :now

@@ -138,7 +138,9 @@ export const SOCIAL_STYLES = ["icons", "words"];
 /* "Chase Roush" → "chaseroush": first and last name, letters and digits only,
    accents folded (Petrović → petrovic). The owner does not choose it; an
    administrator may change it (Chase, 2026-09-29). */
-export const RESERVED = new Set(["www", "dev", "next", "staff", "admin", "api", "mail", "embed",
+/* "send" and "news" carry Thauma's own mail records (send.thauma.one,
+   send.news.thauma.one), so no site may take them. */
+export const RESERVED = new Set(["www", "dev", "next", "staff", "admin", "api", "mail", "send", "news", "embed",
   "thauma", "app", "preview", "media", "archive", "site", "sites", "help", "status"]);
 export function subdomainFrom(name) {
   const s = String(name || "").normalize("NFD").replace(/[̀-ͯ]/g, "")

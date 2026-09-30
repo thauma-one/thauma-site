@@ -30,6 +30,7 @@ import staffSite, { siteAddress } from "../src/staff-site.js";
 import { serveSite } from "../src/site/serve.js";
 import { starter } from "../src/site/model.js";
 import worker from "../src/worker.js";
+import { ensureSiteNames } from "../src/staff-site.js";
 
 let pass = 0, fail = 0;
 async function check(name, fn) {
@@ -676,17 +677,78 @@ await check("switching an archived site on brings it back", async () => {
   } finally { EXTRA = {}; }
 });
 
-await check("a site that is switched off does not exist: no page at all, not even Coming soon", async () => {
+await check("a site that is switched off shows Thauma's closed page — nothing of the ministry", async () => {
   EXTRA = { partner_site_by_subdomain: [{ partner_id: "p_mira", subdomain: "mirapetrovic", enabled: 0, published: "{}",
     slug: "mira", display_name: "Mira", giving_url: null, status: "active" }] };
   try {
     const e = { ...env(makeDb()), SITE_DOMAIN: "thauma.one" };
     const res = await serveSite(new Request("https://mirapetrovic.thauma.one/en/"), e, { sub: "mirapetrovic", rest: "/en/", base: "" });
     eq(res.status, 404, "not found");
-    eq(await res.text(), "", "and nothing in it");
+    const html = await res.text();
+    assert(html.includes("THAUMA") && html.includes("Nothing here right now"), "Thauma's page, in words");
+    assert(html.includes('href="https://thauma.one/"'), "a way on to thauma.one");
+    assert(!/Mira/.test(html), "nothing of the ministry");
+    eq([res.headers.get("Cache-Control"), res.headers.get("X-Robots-Tag")], ["no-store", "noindex"],
+      "never remembered, never indexed — switching on shows the site at once");
+    const hr = await serveSite(new Request("https://mirapetrovic.thauma.one/", { headers: { "Accept-Language": "hr-HR,hr;q=0.9" } }), e,
+      { sub: "mirapetrovic", rest: "/", base: "" });
+    assert((await hr.text()).includes("Ovdje trenutno nema ničega"), "in the visitor's language");
     eq(await serveSite(new Request("https://dev.thauma.one/site/mirapetrovic/en/"), e,
       { sub: "mirapetrovic", rest: "/en/", base: "/site/mirapetrovic" }), null, "under /site/, the console's own 404");
   } finally { EXTRA = {}; }
+});
+
+/* The live Worker, as a visitor's browser reaches it through *.thauma.one. */
+const LIVE = (db) => ({ ...env(db), SITE_WILDCARD: "1", SITE_DOMAIN: "thauma.one" });
+async function withFetch(fake, fn) {
+  const real = globalThis.fetch;
+  globalThis.fetch = async (url, init) => (await fake(typeof url === "string" ? url : url.url, init || {})) || real(url, init);
+  try { return await fn(); } finally { globalThis.fetch = real; }
+}
+
+await check("a name nobody has gets the closed page; Thauma's own names pass through untouched", async () => {
+  const res = await worker.fetch(new Request("https://nobody.thauma.one/"), LIVE(makeDb()));
+  eq(res.status, 404, "not found");
+  assert((await res.text()).includes("THAUMA"), "Thauma's page, not Cloudflare's error for an address with no origin");
+  const passed = [];
+  await withFetch((url) => { if (url.startsWith("https://dev.thauma.one/")) { passed.push(url); return new Response("the Pi"); } }, async () => {
+    const pi = await worker.fetch(new Request("https://dev.thauma.one/en/"), LIVE(makeDb()));
+    eq(await pi.text(), "the Pi", "dev.thauma.one still reaches the Pi");
+  });
+  eq(passed, ["https://dev.thauma.one/en/"], "passed on as it came");
+});
+
+await check("switching off, archiving and deleting keep the name's record — no remembered 'does not exist'", async () => {
+  const dns = [];
+  await withFetch((url, init) => { if (url.includes("api.cloudflare.com")) { dns.push(`${init.method || "GET"} ${url}`); return new Response(JSON.stringify({ success: true, result: [] })); } }, async () => {
+    const e = (db) => ({ ...LIVE(db), SITE_DNS_TOKEN: "t", SITE_ZONE_ID: "z" });
+    EXTRA = { partner_site_get: [{ ...SITE_ROW(), enabled: 1, dns_state: "ready" }] };
+    try {
+      eq((await staffSite.fetch(post("/api/staff-site", { action: "enable", on: false }), e(makeDb()))).status, 200, "switched off");
+      eq((await siteAddress.fetch(post("/api/admin/site-address", { partner_id: "p_mira", action: "archive" }, BOSS), e(makeDb()))).status, 200, "archived");
+      eq((await siteAddress.fetch(post("/api/admin/site-address", { partner_id: "p_mira", action: "delete", confirm: "mirapetrovic" }, BOSS), e(makeDb()))).status, 200, "deleted");
+    } finally { EXTRA = {}; }
+  });
+  eq(dns.filter((d) => d.startsWith("DELETE")), [], "no record removed");
+});
+
+await check("the quarter-hour check keeps the wildcard and makes names switched on where there is no DNS key", async () => {
+  eq(await ensureSiteNames(env(makeDb())), { skipped: true }, "not on dev or staging");
+  const made = [];
+  await withFetch((url, init) => {
+    if (!url.includes("api.cloudflare.com")) return;
+    if (init.method === "POST") made.push(JSON.parse(init.body).name);
+    return new Response(JSON.stringify({ success: true, result: [] }));
+  }, async () => {
+    EXTRA = { partner_site_needing_dns: [{ partner_id: "p_mira", subdomain: "mirapetrovic" }] };
+    try {
+      const db = makeDb();
+      const r = await ensureSiteNames({ ...LIVE(db), SITE_DNS_TOKEN: "t", SITE_ZONE_ID: "z" });
+      eq(r, { wildcard: "ready", made: ["mirapetrovic"] }, "what it did");
+      assert(called(db, "partner_site_set_dns")[0].args.includes("ready"), "recorded, so it is not asked again");
+    } finally { EXTRA = {}; }
+  });
+  eq(made, ["*.thauma.one", "mirapetrovic.thauma.one"], "the wildcard, then the site's own name");
 });
 
 await check("an old address sends visitors on to the new one, page and all", async () => {
