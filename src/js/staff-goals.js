@@ -292,8 +292,23 @@
       body: payload ? JSON.stringify(payload) : undefined,
     });
     var body = await res.json().catch(function () { return {}; });
-    if (!res.ok) throw new Error((body && body.error) || ('(' + res.status + ')'));
+    if (!res.ok) {
+      var err = new Error((body && body.error) || ('(' + res.status + ')'));
+      err.answer = body;
+      throw err;
+    }
     return body;
+  }
+
+  /* A definition saved by someone else since it loaded (workers/src/lib/
+     fresh.js): ask, never overwrite in silence. Keeping theirs skips it; the
+     reload after publishing shows it. */
+  async function saveDefinition(payload) {
+    try { await send('POST', payload); }
+    catch (e) {
+      if (!(e.answer && e.answer.changed)) throw e;
+      if (await window.StaffChanged(e.answer)) await send('POST', Object.assign({}, payload, { overwrite: true }));
+    }
   }
 
   /* ---- publishing: what the Updates bar asks of this section ---- */
@@ -312,10 +327,11 @@
         var isNew = !state.saved[id];
         var payload = defn(g);
         payload.id = isNew ? undefined : id;
+        payload.updated_at = isNew ? undefined : state.saved[id].updated_at;
         /* A new goal carries its opening figure in the same write, so it
            does not read 0% until somebody remembers a second step. */
         if (isNew && r) { payload.raised_cents = r.raised_cents; payload.donor_count = r.donor_count; }
-        if (isNew || JSON.stringify(defn(state.saved[id])) !== JSON.stringify(defn(g))) await send('POST', payload);
+        if (isNew || JSON.stringify(defn(state.saved[id])) !== JSON.stringify(defn(g))) await saveDefinition(payload);
         /* On an existing goal a figure is a new reading — appended, not an
            edit of the definition. */
         if (!isNew && r) await send('PATCH', { id: id, raised_cents: r.raised_cents, donor_count: r.donor_count });

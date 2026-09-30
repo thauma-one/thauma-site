@@ -360,6 +360,13 @@
 
   /* ---- publishing: what the Updates bar asks of this section ------------ */
 
+  function send(m) {
+    return fetch(API, {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(m)
+    });
+  }
+
   async function publish() {
     if (!$('msForm').hidden) await closeForm(true);    // what is open is included
     var failed = [];
@@ -371,10 +378,15 @@
         if (state.removed[id]) {
           res = await fetch(API + '?id=' + encodeURIComponent(id), { method: 'DELETE', credentials: 'same-origin' });
         } else {
-          res = await fetch(API, {
-            method: 'POST', credentials: 'same-origin',
-            headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(m)
-          });
+          res = await send(m);
+          /* Someone else saved it since it was loaded: ask, never overwrite
+             in silence. Keeping theirs skips it; the reload below shows it. */
+          if (res.status === 409) {
+            var answer = await res.json().catch(function () { return {}; });
+            if (!answer.changed) throw new Error(answer.error || '(409)');
+            if (!(await window.StaffChanged(answer))) continue;
+            res = await send(Object.assign({}, m, { overwrite: true }));
+          }
         }
         if (!res.ok) {
           var body = await res.json().catch(function () { return {}; });

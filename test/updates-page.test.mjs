@@ -168,6 +168,32 @@ await check("the switch on a row waits for Publish, then goes out", async () => 
   eq(post.body.id, "m1", "and as the same milestone");
 });
 
+/* ONE DATABASE, TWO PEOPLE (workers/src/lib/fresh.js): someone else saved
+   the milestone since this page loaded it. The page asks; "save mine" sends
+   it again with overwrite, "keep theirs" sends nothing more. */
+for (const [mine, label] of [[true, "save mine"], [false, "keep theirs"]]) {
+  await check(`a milestone someone else saved meanwhile: the page asks, and "${label}" is honored`, async () => {
+    const { w, d, sent, click, row, publish } = await boot();
+    const real = w.fetch;
+    w.fetch = async (url, opts = {}) => {
+      if (String(url).includes("staff-milestones") && opts.method === "POST" && !JSON.parse(opts.body).overwrite) {
+        sent.push({ url: String(url), method: "POST", body: JSON.parse(opts.body) });
+        return { ok: false, status: 409, json: async () => ({ changed: true, at: "2026-09-30T10:42:00Z", current: {} }) };
+      }
+      return real(url, opts);
+    };
+    let asked = null;
+    w.StaffConfirm = async (o) => { asked = o; return mine; };
+    click(row("msList", "m1").querySelector("[data-pub]"));
+    await settle();
+    await publish();
+    assert(asked && /Someone else saved this/.test(asked.title), "asked, in words: " + JSON.stringify(asked));
+    const posts = sent.filter((s) => s.method === "POST" && s.url.includes("staff-milestones"));
+    eq(posts.map((p) => !!p.body.overwrite), mine ? [false, true] : [false], "what was sent");
+    void d;
+  });
+}
+
 await check("the whole row opens its editor; Done keeps the edit, Cancel undoes it", async () => {
   const { d, click, row, bar, done } = await boot();
   click(row("prList", "p1"));

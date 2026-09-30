@@ -23,6 +23,7 @@ import { resolveActor, auditActingWrite, withActing } from "./lib/actas.js";
 import { json, readJson } from "./lib/store.js";
 import { PRECISIONS, snap, whenLabel } from "./lib/when.js";
 import { wordsFor } from "./lib/mail-i18n.js";
+import { changedSince, changedAnswer } from "./lib/fresh.js";
 
 const STATUSES = new Set(["upcoming", "in_progress", "complete", "canceled"]);
 
@@ -277,6 +278,12 @@ export default {
 
       const isNew = !body.id || !ids.has(body.id);
       const id = isNew ? newId() : body.id;
+
+      /* Saved by someone else since this editor opened it (lib/fresh.js):
+         write nothing, and hand back what is there now. */
+      if (!isNew && changedSince(body, existing.find((m) => m.id === id))) {
+        return changedAnswer((await listWithText(db, partner_id)).find((m) => m.id === id));
+      }
 
       const { value, error } = clean({ ...body, id }, ids);
       if (error) return json({ error }, 400);

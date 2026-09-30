@@ -101,6 +101,13 @@ WHERE partner_id = :partner_id
 ORDER BY kind, label;
 
 
+-- name: goal_stamps
+-- When each goal's definition was last saved. goal_progress (the view the
+-- list reads) leaves it out; the editor needs it so a save made on another
+-- site since it opened the goal is caught, not overwritten (lib/fresh.js).
+SELECT id, updated_at FROM goals WHERE partner_id = :partner_id;
+
+
 -- name: goal_history
 -- Snapshot series for one goal, for a sparkline. Aggregates only — there is
 -- no donor-level data to chart, by design.

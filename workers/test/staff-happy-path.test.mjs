@@ -24,6 +24,8 @@
 import { QUERIES, toPositional } from "../src/lib/db.js";
 import staffData from "../src/staff-data.js";
 import staffMilestones from "../src/staff-milestones.js";
+import staffGoals from "../src/staff-goals.js";
+import staffPrayer from "../src/staff-prayer.js";
 import staffSettings from "../src/staff-settings.js";
 import translate from "../src/translate.js";
 import staffSite, { siteAddress } from "../src/staff-site.js";
@@ -133,7 +135,8 @@ function rowsFor(name, params) {
     case "partner_settings":  return [{ default_lang: "en", ...SETTINGS_ROW }];
     case "milestones_for_staff":
       return [{ id: "ms_m1", status: "complete", completion: 100, sort_order: 0,
-                is_public: 1, is_featured: 0, parent_id: null, actual_date: "2026-03-01" }];
+                is_public: 1, is_featured: 0, parent_id: null, actual_date: "2026-03-01",
+                updated_at: "2026-09-30T10:00:00.000Z" }];
     case "milestone_translations_for_staff":
       return [{ milestone_id: "ms_m1", lang: "en", title: "Commissioned",
                 description: null, target_label: null }];
@@ -149,9 +152,12 @@ function rowsFor(name, params) {
                 last_personal_contact: "2025-07-14", last_contact_any: "2026-08-01",
                 days_since_personal: 398 }];
     case "goals_for_partner":
-      return [{ id: "g_m1", label: "Monthly support", currency: "EUR",
+      /* goal_id, as the goal_progress view names it */
+      return [{ goal_id: "g_m1", id: "g_m1", label: "Monthly support", currency: "EUR",
                 target_cents: 180000, raised_cents: 103500, donor_count: 14,
                 is_public: 1, kind: "monthly" }];
+    case "goal_stamps":
+      return [{ id: "g_m1", updated_at: "2026-09-30T10:00:00.000Z" }];
     /* Translation's daily share (0046): the reservation fits. */
     case "ai_usage_reserve":
       return [{ neurons: 10 }];
@@ -274,6 +280,72 @@ await check("a range that ends before it starts is refused", async () => {
     actual_date: "2026-09-10", end_date: "2026-09-01", text: { en: { title: "Visas" } },
   }), env(makeDb()));
   eq(res.status, 400, "status");
+});
+
+/* ONE DATABASE, TWO PEOPLE (lib/fresh.js): a staff member on live and Chase
+   on dev can have the same milestone open. The later save must not erase the
+   earlier one in silence. */
+await check("a milestone saved by someone else since it was opened is not overwritten", async () => {
+  const db = makeDb();
+  const res = await staffMilestones.fetch(post("/api/staff-milestones", {
+    id: "ms_m1", status: "in_progress", updated_at: "2026-09-29T08:00:00.000Z",
+    text: { en: { title: "Mine" } },
+  }), env(db));
+  const body = await res.json();
+  eq(res.status, 409, "refused");
+  eq([body.changed, body.current && body.current.id, body.current && body.current.text.en.title], [true, "ms_m1", "Commissioned"],
+    "with the milestone as it now is, to show");
+  assert(!db.calls.some((c) => c.name === "milestone_upsert" || c.name === "milestone_translation_upsert"), "nothing written");
+});
+
+await check("…saved as opened, or with overwrite chosen, or from an older editor, it saves", async () => {
+  for (const extra of [{ updated_at: "2026-09-30T10:00:00.000Z" }, { updated_at: "2026-09-29T08:00:00.000Z", overwrite: true }, {}]) {
+    const db = makeDb();
+    const res = await staffMilestones.fetch(post("/api/staff-milestones", {
+      id: "ms_m1", status: "in_progress", text: { en: { title: "Mine" } }, ...extra,
+    }), env(db));
+    eq(res.status, 200, JSON.stringify(extra));
+    assert(db.calls.filter((c) => c.name === "milestone_upsert").length === 1, "written: " + JSON.stringify(extra));
+  }
+});
+
+await check("a goal is handed out with when it was last saved, and a stale save is refused", async () => {
+  const list = await (await staffGoals.fetch(get("/api/staff-goals"), env(makeDb()))).json();
+  eq(list.goals && list.goals[0].updated_at, "2026-09-30T10:00:00.000Z", "the editor gets the stamp");
+  const db = makeDb();
+  const res = await staffGoals.fetch(post("/api/staff-goals", {
+    id: "g_m1", label: "Mine", kind: "monthly", target_cents: 200000, currency: "EUR",
+    updated_at: "2026-09-29T08:00:00.000Z",
+  }), env(db));
+  const body = await res.json();
+  eq([res.status, body.changed, body.current && body.current.label], [409, true, "Monthly support"], "refused, with theirs");
+  assert(!db.calls.some((c) => c.name === "goal_upsert"), "nothing written");
+  const ok = makeDb();
+  eq((await staffGoals.fetch(post("/api/staff-goals", {
+    id: "g_m1", label: "Mine", kind: "monthly", target_cents: 200000, currency: "EUR",
+    updated_at: "2026-09-29T08:00:00.000Z", overwrite: true,
+  }), env(ok))).status, 200, "saved over it when chosen");
+});
+
+await check("a prayer request saved by someone else since it was opened is not overwritten", async () => {
+  EXTRA = {
+    prayer_for_staff: [{ id: "pr_1", is_public: 1, updated_at: "2026-09-30T10:00:00.000Z" }],
+    prayer_translations_for_staff: [{ prayer_id: "pr_1", lang: "en", title: "Visas" }],
+  };
+  try {
+    const list = await (await staffPrayer.fetch(get("/api/staff-prayer"), env(makeDb()))).json();
+    eq(list.prayer && list.prayer[0].updated_at, "2026-09-30T10:00:00.000Z", "the editor gets the stamp");
+    const db = makeDb();
+    const res = await staffPrayer.fetch(post("/api/staff-prayer", {
+      id: "pr_1", is_public: true, updated_at: "2026-09-29T08:00:00.000Z", text: { en: { title: "Mine" } },
+    }), env(db));
+    const body = await res.json();
+    eq([res.status, body.changed, body.current && body.current.text.en.title], [409, true, "Visas"], "refused, with theirs");
+    assert(!db.calls.some((c) => c.name === "prayer_upsert"), "nothing written");
+    eq((await staffPrayer.fetch(post("/api/staff-prayer", {
+      id: "pr_1", is_public: true, updated_at: "2026-09-30T10:00:00.000Z", text: { en: { title: "Mine" } },
+    }), env(makeDb()))).status, 200, "saved as opened");
+  } finally { EXTRA = {}; }
 });
 
 await check("the editor is handed the season words it previews with", async () => {

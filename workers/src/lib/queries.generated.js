@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "5d753fcf5f4f4df8";
+export const SOURCE_DIGEST = "081c0596535d523c";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -323,6 +323,7 @@ ORDER BY captured_at ASC;`,
 ) VALUES (
   :id, :goal_id, :partner_id, :raised_cents, :donor_count, 'manual', :now
 );`,
+  goal_stamps: `SELECT id, updated_at FROM goals WHERE partner_id = :partner_id;`,
   goal_upsert: `INSERT INTO goals (
   id, partner_id, label, description, kind, target_cents, currency,
   is_public, created_at, updated_at

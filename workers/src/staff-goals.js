@@ -28,6 +28,8 @@ import { createDb } from "./lib/db.js";
 import { requireAccess } from "./lib/access.js";
 import { resolveActor, auditActingWrite, withActing } from "./lib/actas.js";
 import { json, readJson } from "./lib/store.js";
+import { changedSince, changedAnswer } from "./lib/fresh.js";
+
 
 const KINDS = ["monthly", "one_time", "project"];
 /* ISO 4217 is three letters. Validated by shape rather than against a list —
@@ -122,6 +124,16 @@ export function cleanProgress(body) {
   return { value: { raised_cents, donor_count } };
 }
 
+/* The list, with when each goal was last saved (goal_stamps). */
+async function withStamps(db, partner_id) {
+  const [goals, stamps] = await Promise.all([
+    db.query("goals_for_partner", { partner_id }),
+    db.query("goal_stamps", { partner_id }),
+  ]);
+  const at = Object.fromEntries(stamps.map((s) => [s.id, s.updated_at]));
+  return goals.map((g) => ({ ...g, updated_at: at[g.goal_id] || null }));
+}
+
 export default {
   async fetch(request, env) {
     const { db, user, me, partner, actor, denied } = await partnerFor(request, env);
@@ -133,7 +145,7 @@ export default {
     const now = new Date().toISOString();
 
     if (request.method === "GET") {
-      const goals = await db.query("goals_for_partner", { partner_id });
+      const goals = await withStamps(db, partner_id);
       return json(withActing({
         you: {
           email: user.email,
@@ -149,10 +161,16 @@ export default {
       const body = await readJson(request);
       if (!body) return json({ error: "Invalid JSON" }, 400);
 
-      const existing = await db.query("goals_for_partner", { partner_id });
+      const existing = await withStamps(db, partner_id);
       const ids = new Set(existing.map((g) => g.goal_id));
       const isNew = !body.id || !ids.has(body.id);
       const id = isNew ? newId() : body.id;
+
+      /* Saved by someone else since this editor opened it (lib/fresh.js). */
+      const current = existing.find((g) => g.goal_id === id);
+      if (!isNew && changedSince(body, current)) {
+        return changedAnswer({ ...current, is_public: !!current.is_public });
+      }
 
       const { value, error } = cleanGoal(body);
       if (error) return json({ error }, 400);
@@ -171,7 +189,7 @@ export default {
         });
       }
 
-      const goals = await db.query("goals_for_partner", { partner_id });
+      const goals = await withStamps(db, partner_id);
       return json(withActing({
         id, created: isNew,
         goals: goals.map((g) => ({ ...g, is_public: !!g.is_public })),
@@ -198,7 +216,7 @@ export default {
         goal_id: id, partner_id, now, ...value,
       });
 
-      const goals = await db.query("goals_for_partner", { partner_id });
+      const goals = await withStamps(db, partner_id);
       return json(withActing({
         goals: goals.map((g) => ({ ...g, is_public: !!g.is_public })),
       }, actor));
@@ -213,7 +231,7 @@ export default {
          query would find and be unable to explain. */
       await db.query("goal_delete", { id, partner_id });
 
-      const goals = await db.query("goals_for_partner", { partner_id });
+      const goals = await withStamps(db, partner_id);
       return json(withActing({
         deleted: id,
         goals: goals.map((g) => ({ ...g, is_public: !!g.is_public })),

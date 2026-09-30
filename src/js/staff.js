@@ -1708,6 +1708,24 @@
   }
   window.StaffConfirm = confirmDialog;
 
+  /* SOMEONE ELSE SAVED THIS (workers/src/lib/fresh.js). Every site shares one
+     database, so a staff member on the live site and Chase on dev can have
+     the same record open; the second save used to overwrite the first
+     without a word. Now the endpoint refuses with the record as it now is,
+     and this asks: keep theirs, or save mine over it. Resolves true for
+     "save mine". One dialog for every editor, so it reads the same
+     everywhere. */
+  window.StaffChanged = function (answer) {
+    var at = answer && answer.at ? new Date(String(answer.at).replace(' ', 'T')) : null;
+    var when = at && !isNaN(at) ? at.toLocaleTimeString(document.documentElement.lang || undefined,
+      { hour: '2-digit', minute: '2-digit' }) : '';
+    return (window.StaffConfirm || confirmDialog)({
+      title: tr('changed.title'),
+      body: fill('changed.body', { when: when }),
+      confirm: tr('changed.mine'), cancel: tr('changed.theirs')
+    });
+  };
+
   /* =====================================================================
      PROMPT — a dialog that asks for one value
      =====================================================================

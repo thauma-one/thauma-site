@@ -24,6 +24,8 @@ import { createDb } from "./lib/db.js";
 import { requireAccess } from "./lib/access.js";
 import { resolveActor, auditActingWrite, withActing } from "./lib/actas.js";
 import { json, readJson } from "./lib/store.js";
+import { changedSince, changedAnswer } from "./lib/fresh.js";
+
 
 const MAX_TITLE = 160;
 const MAX_BODY = 2000;
@@ -126,6 +128,9 @@ async function listWithText(db, partner_id) {
     is_answered: !!p.is_answered,
     answered_on: p.answered_on,
     sort_order: p.sort_order,
+    /* for the editor to send back, so a save from another site since it
+       opened this one is caught (lib/fresh.js) */
+    updated_at: p.updated_at,
     text: byId[p.id] || {},
   }));
 }
@@ -171,6 +176,11 @@ export default {
 
       const isNew = !body.id || !ids.has(body.id);
       const id = isNew ? newId() : body.id;
+
+      /* Saved by someone else since this editor opened it (lib/fresh.js). */
+      if (!isNew && changedSince(body, existing.find((p) => p.id === id))) {
+        return changedAnswer((await listWithText(db, partner_id)).find((p) => p.id === id));
+      }
 
       const { value, error } = cleanPrayer(body);
       if (error) return json({ error }, 400);
