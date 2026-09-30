@@ -419,6 +419,10 @@
 .p-branch.is-live{color:var(--text);border-color:var(--voice-tech)}
 .p-arrow{color:var(--dim);opacity:.5}
 
+.p-sync-stuck{margin:-6px 0 16px;padding:10px 14px;border-radius:var(--radius);font-size:var(--fs-micro);line-height:1.5;
+  color:var(--text);background:rgba(245,184,69,.08);border:1px solid rgba(245,184,69,.35)}
+.p-sync-stuck a{color:var(--voice-tech);text-decoration:none;white-space:nowrap}
+@media(hover:hover){ .p-sync-stuck a:hover{text-decoration:underline} }
 .p-headline{font-family:var(--font-display);font-size:var(--fs-xl);
   font-weight:var(--w-hair);color:var(--text);line-height:var(--lh-tight)}
 .p-sub{margin-top:8px;font-size:var(--fs-micro);color:var(--dim);

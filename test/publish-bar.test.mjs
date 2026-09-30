@@ -22,7 +22,7 @@ const settle = (ms = 120) => new Promise((r) => setTimeout(r, ms));
 console.log("publishing says what happened\n");
 if (!PAGE) { console.log("  SKIP  no build — run eleventy first."); process.exit(1); }
 
-async function boot(runs) {
+async function boot(runs, extra = {}) {
   const dom = new JSDOM(readFileSync(PAGE, "utf8"), { runScripts: "outside-only", pretendToBeVisual: true, url: "https://dev.thauma.one/admin/website/" });
   const w = dom.window;
   let n = 0;
@@ -33,7 +33,7 @@ async function boot(runs) {
       const latest = runs[Math.min(n++, runs.length - 1)];
       const body = { configured: true, branch: "main", neverPublished: false, published: { sha: "7bee186", at: "2026-09-29T23:30:41Z" },
         head: "7bee186", waiting: 2, commits: [], files: [], migrations: [], confirm_word: "PUBLISH",
-        latest: { live: latest, preview: null }, carries: { live: true, preview: true } };
+        latest: { live: latest, preview: null }, carries: { live: true, preview: true }, ...extra };
       return { ok: true, status: 200, text: async () => JSON.stringify(body), json: async () => body };
     }
     return { ok: true, status: 200, text: async () => "{}", json: async () => ({}) };
@@ -80,6 +80,16 @@ await check("a build that fails says so, with where to look", async () => {
   d.getElementById("pRefresh").click(); await settle(300);
   assert(d.getElementById("pBar").classList.contains("is-failed"), "failed");
   assert(d.querySelector('#pBarCount a[href="https://x/run/2"]'), "linked to the run");
+});
+
+await check("when live's edits could not reach dev, the page says so, with where to look", async () => {
+  const done = { status: "completed", conclusion: "success", started: "2026-09-29T23:30:41Z" };
+  const stuck = await boot([done], { sync: { failed: true, at: "2026-09-30T10:00:00Z", url: "https://x/sync/9" } });
+  const box = stuck.d.querySelector("#pState .p-sync-stuck");
+  assert(box && /couldn't be brought into dev/.test(box.textContent), "the warning is on the page");
+  assert(box.querySelector('a[href="https://x/sync/9"]'), "linked to the run");
+  const fine = await boot([done], { sync: { failed: false, at: "2026-09-30T10:00:00Z", url: "https://x/sync/9" } });
+  assert(!fine.d.querySelector("#pState .p-sync-stuck"), "no warning when the sync is healthy");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);
