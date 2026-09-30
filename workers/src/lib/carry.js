@@ -26,6 +26,7 @@
  */
 import { listDir, getFile } from "./github.js";
 import { copyableTables, loadOrder, planReplace, planMerge, scripts } from "./dbsync.js";
+import { splitStatements } from "./sqlsplit.js";
 
 const API = "https://api.cloudflare.com/client/v4";
 const MIGRATIONS = "db/migrations";
@@ -99,13 +100,28 @@ export async function migrateFar(env, far, branch, who) {
   for (const f of files.filter((x) => !done.has(x.name))) {
     const file = await getFile(e, `${MIGRATIONS}/${f.name}`);
     if (file.error) throw new Error(file.error);
-    try { await far.run(file.text); }
+    try { await applyFile(far, file.text); }
     catch (err) { throw new Error(`${f.name} did not apply: ${err.message}` + (ran.length ? ` (after ${ran.join(", ")})` : "")); }
     await far.run(`INSERT INTO schema_migrations (name, applied_at, applied_by, statements, baselined) VALUES (` +
       `'${f.name.replace(/'/g, "''")}', '${new Date().toISOString()}', '${String(who).replace(/'/g, "''")}', NULL, 0)`);
     ran.push(f.name);
   }
   return ran;
+}
+
+/**
+ * One migration file, a statement at a time, cut by lib/sqlsplit.js — the
+ * same cutter the console's own Apply uses. Sent whole, D1's HTTP API does
+ * its own splitting and cut 0042's trigger at the CASE's END ("incomplete
+ * input", Publish, 2026-09-29).
+ */
+export async function applyFile(far, text) {
+  const statements = splitStatements(text);
+  for (let i = 0; i < statements.length; i++) {
+    try { await far.run(statements[i].sql); }
+    catch (err) { throw new Error(`statement ${i + 1} of ${statements.length} (line ${statements[i].line}): ${err.message}`); }
+  }
+  return statements.length;
 }
 
 /* ----------------------------------------------------------------- rows -- */

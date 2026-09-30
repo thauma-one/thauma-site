@@ -18,7 +18,7 @@ try { sqlite = await import("node:sqlite"); } catch {}
 console.log("carrying dev's data forward\n");
 if (!sqlite) { console.log("  SKIP  node:sqlite is not available on this Node"); process.exit(0); }
 const { DatabaseSync } = sqlite;
-const { carry } = await import("../src/lib/carry.js");
+const { carry, applyFile } = await import("../src/lib/carry.js");
 
 const ROOT = new URL("../../", import.meta.url).pathname;
 let pass = 0, fail = 0;
@@ -136,6 +136,49 @@ await check("one database: Preview and Publish copy nothing, even with the crede
     eq(await carry(full, { target, branch: "main", who: "t", fetchImpl: count }), { skipped: true }, `${target} skipped`);
   }
   eq(asked, 0, "no request reached any database");
+});
+
+/* A far database that takes ONE statement per request, as prepare() does:
+   anything the cutter got wrong fails here instead of on live. */
+const oneAtATime = (db) => ({ sent: 0, async run(sql) { this.sent++; db.prepare(sql).run(); return []; } });
+function builtBefore(stop) {
+  const db = new DatabaseSync(":memory:");
+  db.exec("PRAGMA foreign_keys = ON");
+  for (const f of fs.readdirSync(ROOT + "db/migrations").filter((n) => /^\d{4}_.*\.sql$/.test(n)).sort()) {
+    if (f >= stop) break;
+    db.exec(fs.readFileSync(ROOT + "db/migrations/" + f, "utf8"));
+  }
+  return db;
+}
+const M42 = "0042_directory_outlives_a_leaver.sql";
+const hasTrigger = (db) => !!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'trigger' AND name = 'directory_owner_has_partner'").get();
+
+await check("a migration goes in statement by statement, its CASE trigger whole (0042 on Publish)", async () => {
+  const db = builtBefore(M42);
+  const far = oneAtATime(db);
+  const n = await applyFile(far, fs.readFileSync(ROOT + "db/migrations/" + M42, "utf8"));
+  eq(far.sent, n, "one request per statement");
+  assert(hasTrigger(db), "the trigger came back");
+  const col = db.prepare("SELECT \"notnull\" AS nn FROM pragma_table_info('directory_contacts') WHERE name = 'user_id'").get();
+  eq(col.nn, 0, "user_id became nullable");
+});
+
+await check("0042 applies again cleanly after the Publish that stopped at its trigger", async () => {
+  const db = builtBefore(M42);
+  const text = fs.readFileSync(ROOT + "db/migrations/" + M42, "utf8");
+  db.exec(text.slice(0, text.indexOf("CREATE TRIGGER directory_owner_has_partner")));
+  assert(!hasTrigger(db), "set up: everything but the trigger ran");
+  await applyFile(oneAtATime(db), text);
+  assert(hasTrigger(db), "and the retry finished it");
+});
+
+await check("every migration file cuts into statements SQLite accepts one at a time", async () => {
+  const db = new DatabaseSync(":memory:");
+  db.exec("PRAGMA foreign_keys = ON");
+  for (const f of fs.readdirSync(ROOT + "db/migrations").filter((n) => /^\d{4}_.*\.sql$/.test(n)).sort()) {
+    try { await applyFile(oneAtATime(db), fs.readFileSync(ROOT + "db/migrations/" + f, "utf8")); }
+    catch (e) { throw new Error(`${f}: ${e.message}`); }
+  }
 });
 
 await check("without the Pi's credential it does nothing, and says so", async () => {
