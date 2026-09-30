@@ -7,8 +7,8 @@ full history is in git).
 **Status (2026-09-30):**
 - **Built:** the ways in, the failure engine, the arcade shell, the game
   runtime, and Load Out.
-- **Not built yet:** Soundcheck, Panel Fixer, Cable Run ("Coming soon"), and
-  the three "Out of order" cabinets.
+- **Not built yet:** Panel Fixer ("Coming soon"), and the three "Out of
+  order" cabinets. Soundcheck and Cable Run are built.
 - **Release:** switched ON for dev and OFF for the live site
   (`site.json › visibility.sections.arcade`, or Website › Settings). Turn
   it on for live only once the games are worth finding.
@@ -171,6 +171,25 @@ with 3-letter initials.
 - **Radio lines** (`loadout_lost`, `_nice`, `_heavy`) are English with my
   Croatian and Slovenian, and Serbian transliterated. They are jokes, so a
   native speaker should rewrite them.
+
+**Soundcheck (built 2026-09-30):**
+- You hold the bottom fader; FOH (front of house) holds the top one, and
+  gets sharper as the rally grows.
+- Every return turns up the gain, and a meter on the side climbs.
+- No feedback audio (Chase's call); radio lines instead.
+- The match ends when FOH has 5 points. Score is your returns plus 10 per
+  point you win.
+- Versus (two players) waits: toggle input has one pair of halves.
+
+**Cable Run (built 2026-09-30):**
+- Snake as a cable on a stage deck: gear (mic, DI box, in-ear pack) plugs
+  in and lengthens it.
+- **The worship leader** crosses a row that glows first. Bare cable in
+  their path trips them and ends the run.
+- **Gaff tape** rolls: one tapes down the oldest half of the cable for 9s;
+  taped cable is safe to walk and to cross.
+- Nothing moves until the first direction press. In play, a run that
+  started on its own hit the wall before the player found the cable.
 
 **NEVER TEST AGAINST THE REAL BOARD.** Dev shares live's storage. A test on
 2026-09-30 mashed Space through game over and saved "AAA 103" to the real

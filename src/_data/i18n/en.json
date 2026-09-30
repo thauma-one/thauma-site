@@ -308,6 +308,46 @@
       "Two-person lift.",
       "Lift with your legs.",
       "Somebody call the stagehands."
+    ],
+    "soundcheck_you": "You",
+    "soundcheck_foh": "FOH",
+    "soundcheck_gain": "Gain",
+    "soundcheck_serve": [
+      "Check, one-two.",
+      "Is this thing on?",
+      "Testing, testing."
+    ],
+    "soundcheck_rally": [
+      "Little more gain.",
+      "Sounding good out front.",
+      "Can I get more me in my monitor?"
+    ],
+    "soundcheck_miss": [
+      "Dropped the signal.",
+      "Somebody pulled a cable.",
+      "That's a mute."
+    ],
+    "soundcheck_win": [
+      "Front of house missed it.",
+      "Line check: passed."
+    ],
+    "cablerun_crash": [
+      "That's a trip hazard.",
+      "Cable management: none.",
+      "You've made a knot."
+    ],
+    "cablerun_trip": [
+      "You tripped the worship leader.",
+      "Mid-chorus, too."
+    ],
+    "cablerun_tape": [
+      "Gaff it!",
+      "Taped down. Safe to step on.",
+      "Gaff tape fixes everything."
+    ],
+    "cablerun_leader": [
+      "Worship leader crossing!",
+      "Heads up, the worship leader."
     ]
   }
 }

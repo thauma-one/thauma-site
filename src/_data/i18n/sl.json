@@ -308,6 +308,46 @@
       "Za dve osebi.",
       "Dvigni z nogami.",
       "Pokličite odrske delavce."
+    ],
+    "soundcheck_you": "Ti",
+    "soundcheck_foh": "FOH",
+    "soundcheck_gain": "Ojačanje",
+    "soundcheck_serve": [
+      "Preizkus, ena-dva.",
+      "Ali to deluje?",
+      "Test, test."
+    ],
+    "soundcheck_rally": [
+      "Še malo ojačanja.",
+      "Spredaj zveni dobro.",
+      "Lahko dobim več sebe v monitorju?"
+    ],
+    "soundcheck_miss": [
+      "Signal je padel.",
+      "Nekdo je izvlekel kabel.",
+      "To je mute."
+    ],
+    "soundcheck_win": [
+      "Tonski mojster je zgrešil.",
+      "Preverjanje linije: opravljeno."
+    ],
+    "cablerun_crash": [
+      "To je nevarnost spotika.",
+      "Urejanje kablov: nič.",
+      "Naredil si vozel."
+    ],
+    "cablerun_trip": [
+      "Spotaknil si vodjo čaščenja.",
+      "Pa še sredi refrena."
+    ],
+    "cablerun_tape": [
+      "Prelepi ga!",
+      "Prelepljeno. Varno za hojo.",
+      "Gaffer trak popravi vse."
+    ],
+    "cablerun_leader": [
+      "Vodja čaščenja prihaja!",
+      "Pozor, vodja čaščenja."
     ]
   }
 }

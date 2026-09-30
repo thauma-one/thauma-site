@@ -132,7 +132,7 @@ await check("every language has every word the arcade asks for", () => {
 });
 
 await check("the Serbian is Cyrillic, apart from the names", () => {
-  const KEEP = /Thaum\w*|Load Out|Soundcheck|Panel Fixer|Cable Run|Follow Spot|Strike|Cue Stack|Tetris\w*|WASD|LED|SUB|\bA D\b/g;
+  const KEEP = /Thaum\w*|Load Out|Soundcheck|Panel Fixer|Cable Run|Follow Spot|Strike|Cue Stack|Tetris\w*|WASD|LED|SUB|FOH|\bA D\b/g;
   for (const [k, v] of Object.entries(I18N.sr.arcade)) {
     for (const line of [].concat(v)) {
       assert(!/[A-Za-zČĆŠŽĐčćšžđ]/.test(line.replace(KEEP, "")), `sr arcade.${k} still has Latin: ${line}`);
