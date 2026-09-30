@@ -565,6 +565,15 @@
         body: JSON.stringify(Object.assign({ kind: kind }, item))
       });
       var body = await res.json().catch(function () { return {}; });
+      /* Saved by someone else since this page loaded it (workers/src/lib/
+         fresh.js): ask. Keeping theirs shows theirs; saving mine sends it
+         again with overwrite. */
+      if (res.status === 409 && body.changed) {
+        setStatus('');
+        if (await window.StaffChanged(body)) return saveItem(kind, Object.assign({}, item, { overwrite: true }));
+        await loadStaffData();
+        return;
+      }
       if (!res.ok) throw new Error(body.error || ('save failed (' + res.status + ')'));
 
       if (body.contacts) state.contacts = body.contacts;
@@ -847,7 +856,10 @@
         phones: Array.from(cForm.querySelectorAll('.c-phone'))
                   .map(function (i) { return i.value.trim(); }).filter(Boolean)
       };
-      if (idx !== '') entry.id = state.contacts[idx] && state.contacts[idx].id;
+      if (idx !== '' && state.contacts[idx]) {
+        entry.id = state.contacts[idx].id;
+        entry.updated_at = state.contacts[idx].updated_at;   /* see saveItem */
+      }
       close();
       saveItem('contact', entry);
     });
@@ -935,7 +947,10 @@
         entry.shelf = w === 'mine' ? 'mine' : 'institutional';
         if (w !== 'mine') entry.visibility = w;
       }
-      if (idx !== '') entry.id = state.resources[idx] && state.resources[idx].id;
+      if (idx !== '' && state.resources[idx]) {
+        entry.id = state.resources[idx].id;
+        entry.updated_at = state.resources[idx].updated_at;  /* see saveItem */
+      }
       close();
       saveItem('resource', entry);
     });

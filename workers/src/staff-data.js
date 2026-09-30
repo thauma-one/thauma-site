@@ -29,6 +29,8 @@ import { createDb } from "./lib/db.js";
 import { requireAccess } from "./lib/access.js";
 import { resolveActor, auditActingWrite, withActing } from "./lib/actas.js";
 import { json, readJson } from "./lib/store.js";
+import { changedSince, changedAnswer } from "./lib/fresh.js";
+
 
 const VISIBILITY = new Set(["staff", "admin", "board"]);
 
@@ -221,6 +223,14 @@ export default {
         const name = str(body.name, 200);
         if (!name) return json({ error: "A name is required" }, 400);
 
+        /* Saved by someone else since this editor opened it (lib/fresh.js). */
+        if (body.id) {
+          const current = (await db.query("directory_for_partner", { partner_id })).find((c) => c.id === body.id);
+          if (changedSince(body, current)) {
+            return changedAnswer({ ...current, emails: safeList(current.emails), phones: safeList(current.phones) });
+          }
+        }
+
         const id = body.id || newId("dc");
         await db.query("directory_upsert", {
           id, user_id, partner_id, name,
@@ -285,6 +295,12 @@ export default {
           const editor = !mine && !institutional &&
             !!(await db.queryOne("resource_can_edit_shared", { id: body.id, user_id }));
           if (editor) keepOwner = existing.owner_user_id;
+          /* Saved by someone else since this editor opened it (lib/fresh.js):
+             checked after who-may-edit, so it tells nobody anything new. */
+          if ((mine || editor || (institutional && isAdmin)) && changedSince(body, existing)) {
+            const all = await db.query("resources_visible", { partner_id, levels, user_id, is_admin: isAdmin ? 1 : 0 });
+            return changedAnswer(all.find((r) => r.id === body.id) || existing);
+          }
           if (!(mine || editor || (institutional && isAdmin))) {
             return json({
               error: institutional

@@ -26,6 +26,7 @@ import staffData from "../src/staff-data.js";
 import staffMilestones from "../src/staff-milestones.js";
 import staffGoals from "../src/staff-goals.js";
 import staffPrayer from "../src/staff-prayer.js";
+import staffStewardship from "../src/staff-stewardship.js";
 import staffSettings from "../src/staff-settings.js";
 import translate from "../src/translate.js";
 import staffSite, { siteAddress } from "../src/staff-site.js";
@@ -556,6 +557,76 @@ await check("someone it was shared with as Can edit may save it, and it stays th
     EXTRA.resource_can_edit_shared = [];
     const res2 = await staffData.fetch(post("/api/staff-data", { kind: "resource", id: "r_x", title: "Edited" }), env(makeDb()));
     eq(res2.status, 403, "saved without Can edit");
+  } finally { EXTRA = {}; }
+});
+
+await check("a directory card or resource someone else saved meanwhile is not overwritten", async () => {
+  EXTRA = {
+    directory_for_partner: [{ id: "dc_m1", name: "Pastor Dragan", role: "Home church", emails: "[]", phones: "[]",
+      updated_at: "2026-09-30T10:00:00.000Z" }],
+    resource_owner: [{ id: "r_x", owner_user_id: "u_mira", partner_id: null, updated_at: "2026-09-30T10:00:00.000Z" }],
+  };
+  try {
+    let db = makeDb();
+    let res = await staffData.fetch(post("/api/staff-data", { kind: "contact", id: "dc_m1", name: "Mine",
+      updated_at: "2026-09-29T08:00:00.000Z" }), env(db));
+    let body = await res.json();
+    eq([res.status, body.changed, body.current && body.current.name], [409, true, "Pastor Dragan"], "card refused, with theirs");
+    assert(!db.calls.some((c) => c.name === "directory_upsert"), "card not written");
+    eq((await staffData.fetch(post("/api/staff-data", { kind: "contact", id: "dc_m1", name: "Mine",
+      updated_at: "2026-09-30T10:00:00.000Z" }), env(makeDb()))).status, 200, "card saved as opened");
+
+    db = makeDb();
+    res = await staffData.fetch(post("/api/staff-data", { kind: "resource", id: "r_x", title: "Mine",
+      updated_at: "2026-09-29T08:00:00.000Z" }), env(db));
+    body = await res.json();
+    eq([res.status, body.changed], [409, true], "resource refused");
+    assert(!db.calls.some((c) => c.name === "resource_upsert"), "resource not written");
+    eq((await staffData.fetch(post("/api/staff-data", { kind: "resource", id: "r_x", title: "Mine",
+      updated_at: "2026-09-29T08:00:00.000Z", overwrite: true }), env(makeDb()))).status, 200, "saved over it when chosen");
+    /* Who may edit is still asked first: a stranger's stale save is a 403, not a peek at the record. */
+    EXTRA.resource_owner = [{ id: "r_x", owner_user_id: "u_other", partner_id: null, updated_at: "2026-09-30T10:00:00.000Z" }];
+    eq((await staffData.fetch(post("/api/staff-data", { kind: "resource", id: "r_x", title: "Mine",
+      updated_at: "2026-09-29T08:00:00.000Z" }), env(makeDb()))).status, 403, "not theirs to see");
+  } finally { EXTRA = {}; }
+});
+
+await check("stewardship: a person, a life event or a logged contact saved by someone else meanwhile is not overwritten", async () => {
+  EXTRA = {
+    contact_detail: [{ id: "c_1", first_name: "Ana", last_name: "K", updated_at: "2026-09-30T10:00:00.000Z" }],
+    life_events_for_contact: [{ id: "le_1", kind: "birth", occurred_on: "2026-05-01", note: "", recurs: 1,
+      updated_at: "2026-09-30T10:00:00.000Z" }],
+    contact_timeline: [{ id: "in_1", type: "call", is_personal: 1, channel: "digital", occurred_on: "2026-09-01",
+      note: "Theirs", source: "manual" }],
+  };
+  const wrote = (db, q) => db.calls.some((c) => c.name === q);
+  try {
+    let db = makeDb();
+    let res = await staffStewardship.fetch(post("/api/staff-stewardship", {
+      person: { id: "c_1", first_name: "Mine", last_name: "K" }, updated_at: "2026-09-29T08:00:00.000Z" }), env(db));
+    eq([res.status, (await res.json()).changed], [409, true], "the person, refused");
+    assert(!wrote(db, "contact_upsert"), "the person was written");
+
+    db = makeDb();
+    res = await staffStewardship.fetch(post("/api/staff-stewardship", { contact_id: "c_1",
+      event: { id: "le_1", kind: "birth", occurred_on: "2026-05-02" }, updated_at: "2026-09-29T08:00:00.000Z" }), env(db));
+    eq([res.status, (await res.json()).changed], [409, true], "the life event, refused");
+    assert(!wrote(db, "life_event_upsert"), "the event was written");
+
+    /* interactions keep no updated_at: what the dialog opened is compared */
+    const base = { type: "call", is_personal: true, channel: "digital", occurred_on: "2026-09-01", note: "Was" };
+    db = makeDb();
+    res = await staffStewardship.fetch(post("/api/staff-stewardship", { contact_id: "c_1",
+      interaction: { id: "in_1", type: "call", occurred_on: "2026-09-01", note: "Mine", is_personal: true, channel: "digital" },
+      base }), env(db));
+    eq([res.status, (await res.json()).changed], [409, true], "the logged contact, refused");
+    assert(!wrote(db, "interaction_update"), "the contact was written");
+
+    db = makeDb();
+    await staffStewardship.fetch(post("/api/staff-stewardship", { contact_id: "c_1",
+      interaction: { id: "in_1", type: "call", occurred_on: "2026-09-01", note: "Mine", is_personal: true, channel: "digital" },
+      base: { ...base, note: "Theirs" } }), env(db));
+    assert(wrote(db, "interaction_update"), "unchanged since opened (true there, 1 here) — it must save");
   } finally { EXTRA = {}; }
 });
 

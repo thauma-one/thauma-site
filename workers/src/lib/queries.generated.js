@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "081c0596535d523c";
+export const SOURCE_DIGEST = "987ee8ddd2913d1d";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -166,6 +166,7 @@ VALUES (:id, :now, :user_id, :partner_id, :action, :entity, :entity_id, :detail)
   c.giving_ref,
   c.notes,
   c.created_at,
+  c.updated_at,
   t.last_contact_any,
   t.last_personal_contact,
   t.interaction_count,
@@ -863,7 +864,7 @@ ON CONFLICT(resource_id, audience) DO UPDATE SET
   LEFT JOIN partners p ON p.id = g.partner_id
  WHERE g.resource_id = :resource_id
  ORDER BY g.audience;`,
-  resource_owner: `SELECT id, owner_user_id, partner_id FROM resources WHERE id = :id;`,
+  resource_owner: `SELECT id, owner_user_id, partner_id, updated_at FROM resources WHERE id = :id;`,
   resource_share_add: `INSERT INTO resource_shares (resource_id, user_id, shared_by, shared_at, can_edit)
 VALUES (:resource_id, :user_id, :shared_by, :now, :can_edit)
 ON CONFLICT(resource_id, user_id) DO UPDATE SET can_edit = excluded.can_edit;`,

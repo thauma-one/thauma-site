@@ -37,7 +37,10 @@ export function changedSince(body, current, fields) {
   const opened = body.updated_at, now = current.updated_at;
   if (opened && now) return String(opened) !== String(now);
   if (fields && body.base && typeof body.base === "object") {
-    const norm = (v) => (v === undefined || v === null ? "" : typeof v === "object" ? JSON.stringify(v) : String(v));
+    /* true/1 and false/0 are one value: the page holds booleans where the
+       database keeps integers, and that is not somebody else's edit. */
+    const norm = (v) => (v === undefined || v === null ? "" : v === true ? "1" : v === false ? "0"
+      : typeof v === "object" ? JSON.stringify(v) : String(v));
     return fields.some((f) => f in body.base && norm(body.base[f]) !== norm(current[f]));
   }
   return false;

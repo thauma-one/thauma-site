@@ -2456,7 +2456,7 @@ UPDATE subscribers
 -- name: resource_owner
 -- Who may change this, in one row. The endpoint compares rather than trusting
 -- anything the browser sent about which shelf a resource came from.
-SELECT id, owner_user_id, partner_id FROM resources WHERE id = :id;
+SELECT id, owner_user_id, partner_id, updated_at FROM resources WHERE id = :id;
 
 
 -- name: resource_share_add
@@ -2620,6 +2620,7 @@ SELECT
   c.giving_ref,
   c.notes,
   c.created_at,
+  c.updated_at,
   t.last_contact_any,
   t.last_personal_contact,
   t.interaction_count,
