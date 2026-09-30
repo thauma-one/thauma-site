@@ -26,7 +26,7 @@
  */
 import { listDir, getFile } from "./github.js";
 import { copyableTables, loadOrder, planReplace, planMerge, scripts } from "./dbsync.js";
-import { splitStatements } from "./sqlsplit.js";
+import { createHash } from "node:crypto";
 
 const API = "https://api.cloudflare.com/client/v4";
 const MIGRATIONS = "db/migrations";
@@ -69,7 +69,41 @@ export function farDb(cfg, fetchImpl = fetch) {
     if (!body.success) throw new Error((body.errors || []).map((e) => e.message).join("; ") || `HTTP ${res.status}`);
     return body.result || [];
   }
-  return { run, rows: async (sql) => ((await run(sql))[0] || {}).results || [] };
+  /* A WHOLE FILE, the way `wrangler d1 execute --remote --file` sends one:
+     uploaded, then imported by D1 with SQLite's own parser, all or nothing.
+     /query cannot take the repo's triggers — it cuts BEGIN SELECT CASE …
+     END; END; at the CASE's END, even sent alone (Publish, 2026-09-29). */
+  async function post(path, body) {
+    if (!uuid) await run("SELECT 1");
+    const res = await fetchImpl(`${API}/accounts/${cfg.account}/d1/database/${uuid}/${path}`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${cfg.token}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const out = await res.json();
+    if (!out.success) throw new Error((out.errors || []).map((e) => e.message || e).join("; ") || `HTTP ${res.status}`);
+    return out.result || {};
+  }
+  async function importSql(sql) {
+    const etag = createHash("md5").update(sql).digest("hex");
+    let r = await post("import", { action: "init", etag });
+    if (r.upload_url) {
+      const put = await fetchImpl(r.upload_url, { method: "PUT", body: sql });
+      if (put.status !== 200) throw new Error(`the file could not be uploaded (HTTP ${put.status})`);
+      if ((put.headers.get("etag") || "").replace(/^"|"$/g, "") !== etag) throw new Error("the file did not upload intact");
+      r = await post("import", { action: "ingest", filename: r.filename, etag });
+    }
+    for (let i = 0; i < 120; i++) {
+      if (r.status === "complete") return r;
+      if (r.status === "error" || r.success === false) {
+        throw new Error([...(r.errors || []), ...(r.error ? [r.error] : [])].join("; ") || "the import failed");
+      }
+      await new Promise((ok) => setTimeout(ok, i ? 1000 : 0));
+      r = await post("import", { action: "poll", current_bookmark: r.at_bookmark });
+    }
+    throw new Error("the import did not finish in two minutes");
+  }
+  return { run, importSql, rows: async (sql) => ((await run(sql))[0] || {}).results || [] };
 }
 
 /* Cloudflare's own tables inside a D1 file (_cf_KV) refuse to be described
@@ -100,28 +134,13 @@ export async function migrateFar(env, far, branch, who) {
   for (const f of files.filter((x) => !done.has(x.name))) {
     const file = await getFile(e, `${MIGRATIONS}/${f.name}`);
     if (file.error) throw new Error(file.error);
-    try { await applyFile(far, file.text); }
+    try { await far.importSql(file.text); }
     catch (err) { throw new Error(`${f.name} did not apply: ${err.message}` + (ran.length ? ` (after ${ran.join(", ")})` : "")); }
     await far.run(`INSERT INTO schema_migrations (name, applied_at, applied_by, statements, baselined) VALUES (` +
       `'${f.name.replace(/'/g, "''")}', '${new Date().toISOString()}', '${String(who).replace(/'/g, "''")}', NULL, 0)`);
     ran.push(f.name);
   }
   return ran;
-}
-
-/**
- * One migration file, a statement at a time, cut by lib/sqlsplit.js — the
- * same cutter the console's own Apply uses. Sent whole, D1's HTTP API does
- * its own splitting and cut 0042's trigger at the CASE's END ("incomplete
- * input", Publish, 2026-09-29).
- */
-export async function applyFile(far, text) {
-  const statements = splitStatements(text);
-  for (let i = 0; i < statements.length; i++) {
-    try { await far.run(statements[i].sql); }
-    catch (err) { throw new Error(`statement ${i + 1} of ${statements.length} (line ${statements[i].line}): ${err.message}`); }
-  }
-  return statements.length;
 }
 
 /* ----------------------------------------------------------------- rows -- */

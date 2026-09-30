@@ -18,7 +18,8 @@ try { sqlite = await import("node:sqlite"); } catch {}
 console.log("carrying dev's data forward\n");
 if (!sqlite) { console.log("  SKIP  node:sqlite is not available on this Node"); process.exit(0); }
 const { DatabaseSync } = sqlite;
-const { carry, applyFile } = await import("../src/lib/carry.js");
+const { carry, farDb } = await import("../src/lib/carry.js");
+const { createHash } = await import("node:crypto");
 
 const ROOT = new URL("../../", import.meta.url).pathname;
 let pass = 0, fail = 0;
@@ -138,9 +139,30 @@ await check("one database: Preview and Publish copy nothing, even with the crede
   eq(asked, 0, "no request reached any database");
 });
 
-/* A far database that takes ONE statement per request, as prepare() does:
-   anything the cutter got wrong fails here instead of on live. */
-const oneAtATime = (db) => ({ sent: 0, async run(sql) { this.sent++; db.prepare(sql).run(); return []; } });
+/* D1's file import (init → PUT → ingest → poll), answered by a local
+   database the way D1 does it: SQLite's own parser, all or nothing. */
+const importing = (db, seen) => async (url, init = {}) => {
+  const ok = (result) => new Response(JSON.stringify({ success: true, result }));
+  if (!init.body && !url.includes("upload.invalid")) return ok([{ name: "far", uuid: "far" }]);
+  if (url.includes("upload.invalid")) {
+    seen.file = init.body;
+    return new Response("", { status: 200, headers: { etag: `"${createHash("md5").update(init.body).digest("hex")}"` } });
+  }
+  const body = JSON.parse(init.body);
+  if (url.endsWith("/query")) { db.prepare(body.sql).all(); return ok([{ results: [] }]); }
+  seen.actions.push(body.action);
+  if (body.action === "init") return ok({ upload_url: "https://upload.invalid/put", filename: "m.sql" });
+  if (body.action === "ingest") {
+    db.exec("BEGIN");
+    try { db.exec(seen.file); db.exec("COMMIT"); } catch (e) {
+      db.exec("ROLLBACK");
+      return ok({ success: false, status: "error", errors: [e.message] });
+    }
+    return ok({ status: "active", at_bookmark: "b1" });
+  }
+  if (body.action === "poll") return ok({ status: "complete", success: true });
+  throw new Error("unexpected " + body.action);
+};
 function builtBefore(stop) {
   const db = new DatabaseSync(":memory:");
   db.exec("PRAGMA foreign_keys = ON");
@@ -151,34 +173,35 @@ function builtBefore(stop) {
   return db;
 }
 const M42 = "0042_directory_outlives_a_leaver.sql";
+const M42_TEXT = fs.readFileSync(ROOT + "db/migrations/" + M42, "utf8");
 const hasTrigger = (db) => !!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'trigger' AND name = 'directory_owner_has_partner'").get();
+const cfg = { account: "a", token: "t", name: "far" };
 
-await check("a migration goes in statement by statement, its CASE trigger whole (0042 on Publish)", async () => {
-  const db = builtBefore(M42);
-  const far = oneAtATime(db);
-  const n = await applyFile(far, fs.readFileSync(ROOT + "db/migrations/" + M42, "utf8"));
-  eq(far.sent, n, "one request per statement");
+await check("a migration goes in as one uploaded file, its CASE trigger whole (0042 on Publish)", async () => {
+  const db = builtBefore(M42), seen = { actions: [] };
+  await farDb(cfg, importing(db, seen)).importSql(M42_TEXT);
+  eq(seen.actions, ["init", "ingest", "poll"], "wrangler's own steps");
+  eq(seen.file, M42_TEXT, "the file went up exactly as written");
   assert(hasTrigger(db), "the trigger came back");
   const col = db.prepare("SELECT \"notnull\" AS nn FROM pragma_table_info('directory_contacts') WHERE name = 'user_id'").get();
   eq(col.nn, 0, "user_id became nullable");
 });
 
-await check("0042 applies again cleanly after the Publish that stopped at its trigger", async () => {
+await check("0042 finishes on live, where Publish stopped at its trigger", async () => {
   const db = builtBefore(M42);
-  const text = fs.readFileSync(ROOT + "db/migrations/" + M42, "utf8");
-  db.exec(text.slice(0, text.indexOf("CREATE TRIGGER directory_owner_has_partner")));
+  db.exec(M42_TEXT.slice(0, M42_TEXT.indexOf("CREATE TRIGGER directory_owner_has_partner")));
   assert(!hasTrigger(db), "set up: everything but the trigger ran");
-  await applyFile(oneAtATime(db), text);
+  await farDb(cfg, importing(db, { actions: [] })).importSql(M42_TEXT);
   assert(hasTrigger(db), "and the retry finished it");
 });
 
-await check("every migration file cuts into statements SQLite accepts one at a time", async () => {
-  const db = new DatabaseSync(":memory:");
-  db.exec("PRAGMA foreign_keys = ON");
-  for (const f of fs.readdirSync(ROOT + "db/migrations").filter((n) => /^\d{4}_.*\.sql$/.test(n)).sort()) {
-    try { await applyFile(oneAtATime(db), fs.readFileSync(ROOT + "db/migrations/" + f, "utf8")); }
-    catch (e) { throw new Error(`${f}: ${e.message}`); }
-  }
+await check("a file that fails says why and changes nothing", async () => {
+  const db = builtBefore(M42), before = db.prepare("SELECT count(*) AS n FROM sqlite_master").get().n;
+  let msg = "";
+  try { await farDb(cfg, importing(db, { actions: [] })).importSql("CREATE TABLE zz (a); CREATE TABLE zz (a);"); }
+  catch (e) { msg = e.message; }
+  assert(/already exists/.test(msg), `the reason reached the screen — got "${msg}"`);
+  eq(db.prepare("SELECT count(*) AS n FROM sqlite_master").get().n, before, "nothing half-applied");
 });
 
 await check("without the Pi's credential it does nothing, and says so", async () => {
