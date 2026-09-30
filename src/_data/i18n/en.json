@@ -348,6 +348,25 @@
     "cablerun_leader": [
       "Worship leader crossing!",
       "Heads up, the worship leader."
+    ],
+    "panelfixer_round": "Round",
+    "panelfixer_throws": "Throws",
+    "panelfixer_fix": [
+      "Reseated.",
+      "Signal's back.",
+      "That's the official fix."
+    ],
+    "panelfixer_oops": [
+      "That one was fine.",
+      "You broke a working one."
+    ],
+    "panelfixer_bank": [
+      "Off the truss!",
+      "Bank shot!"
+    ],
+    "panelfixer_clear": [
+      "Wall's clean. Doors in five.",
+      "Looks great from the back row."
     ]
   }
 }

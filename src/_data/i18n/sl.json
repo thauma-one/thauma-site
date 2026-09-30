@@ -348,6 +348,25 @@
     "cablerun_leader": [
       "Vodja čaščenja prihaja!",
       "Pozor, vodja čaščenja."
+    ],
+    "panelfixer_round": "Krog",
+    "panelfixer_throws": "Meti",
+    "panelfixer_fix": [
+      "Ponovno nameščen.",
+      "Signal je nazaj.",
+      "To je uradni popravek."
+    ],
+    "panelfixer_oops": [
+      "Tisti je bil v redu.",
+      "Pokvaril si delujočega."
+    ],
+    "panelfixer_bank": [
+      "Od traverze!",
+      "Odboj!"
+    ],
+    "panelfixer_clear": [
+      "Stena je čista. Vrata čez pet minut.",
+      "Iz zadnje vrste izgleda odlično."
     ]
   }
 }

@@ -348,6 +348,25 @@
     "cablerun_leader": [
       "Voditelj hvale prolazi!",
       "Pazi, voditelj hvale."
+    ],
+    "panelfixer_round": "Runda",
+    "panelfixer_throws": "Bacanja",
+    "panelfixer_fix": [
+      "Ponovno sjelo.",
+      "Signal se vratio.",
+      "To je službeni popravak."
+    ],
+    "panelfixer_oops": [
+      "Taj je bio u redu.",
+      "Pokvario si ispravan."
+    ],
+    "panelfixer_bank": [
+      "Od traverze!",
+      "Odbijanac!"
+    ],
+    "panelfixer_clear": [
+      "Zid je čist. Vrata za pet minuta.",
+      "Izgleda sjajno iz zadnjeg reda."
     ]
   }
 }

@@ -23,7 +23,7 @@
   var CABINETS = [
     { id: 'loadout',    controls: 'tap',    c: '--ar-amber',  ready: true },
     { id: 'soundcheck', controls: 'toggle', c: '--ar-blue',   ready: true },
-    { id: 'panelfixer', controls: 'tap',    c: '--ar-magenta' },
+    { id: 'panelfixer', controls: 'tap',    c: '--ar-magenta', ready: true },
     { id: 'cablerun',   controls: 'dpad',   c: '--ar-foam',   ready: true },
     { id: 'followspot', controls: 'toggle', c: '--ar-violet', broken: true },
     { id: 'strike',     controls: 'toggle', c: '--ar-red',    broken: true },

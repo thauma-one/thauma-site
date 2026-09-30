@@ -7,8 +7,10 @@ full history is in git).
 **Status (2026-09-30):**
 - **Built:** the ways in, the failure engine, the arcade shell, the game
   runtime, and Load Out.
-- **Not built yet:** Panel Fixer ("Coming soon"), and the three "Out of
-  order" cabinets. Soundcheck and Cable Run are built.
+- **The launch four are all built:** Load Out, Soundcheck, Panel Fixer and
+  Cable Run.
+- **Not built yet:** the three "Out of order" cabinets (Follow Spot,
+  Strike, Cue Stack).
 - **Release:** switched ON for dev and OFF for the live site
   (`site.json › visibility.sections.arcade`, or Website › Settings). Turn
   it on for live only once the games are worth finding.
@@ -190,6 +192,22 @@ with 3-letter initials.
   taped cable is safe to walk and to cross.
 - Nothing moves until the first direction press. In play, a run that
   started on its own hit the wall before the player found the cable.
+
+**Panel Fixer (built 2026-09-30), darts-style as Chase chose:**
+- A column of ten panels up the right side, and the tech bottom-left.
+- **Throwing:** tap to lock the sweeping angle, tap to lock the pulsing
+  power, and the ball flies on a real arc. A short dotted preview shows
+  while you aim.
+- **Hits:** a broken panel (dead, flickering, or the wrong color, with a
+  red corner flag) is reseated. A working one is knocked out, at -50.
+- Off the truss and into a broken panel is a bank shot (+150).
+- **Rounds:** broken panels and a throw budget; clearing the wall turns
+  leftover throws into points. Fixes in a row multiply up to ×5. From round
+  4, working panels fail on their own.
+- **Aim ranges come from a simulation of every angle × power.** The first
+  guess reached only the lower six panels and never the truss. 0.25–1.45
+  rad and 450–1100 px/s reach every row (the top ones hardest) and allow
+  the odd bank.
 
 **NEVER TEST AGAINST THE REAL BOARD.** Dev shares live's storage. A test on
 2026-09-30 mashed Space through game over and saved "AAA 103" to the real
