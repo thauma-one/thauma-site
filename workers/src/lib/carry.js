@@ -35,6 +35,9 @@ const NAME_RE = /^(\d{4})_[a-z0-9_]+\.sql$/i;
 export function carryConfig(env, target) {
   const account = env.SYNC_ACCOUNT_ID, token = env.SYNC_D1_TOKEN;
   const name = target === "live" ? env.SYNC_LIVE_DB : env.SYNC_REMOTE_DB;
+  /* ONE DATABASE: dev, staging and live share their records, so Preview and
+     Publish carry code only. Skipped, not refused — the buttons still build. */
+  if (env.ONE_DATABASE) return { ok: false };
   if (!account || !token || !name || !env.DB) return { ok: false };
   /* Staging is only ever replaced; anything that looks like live's database
      name is refused as a staging target, so a typo in .dev.vars can never

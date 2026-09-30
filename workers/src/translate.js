@@ -79,7 +79,15 @@ export function worstCase(systemPrompt, userPrompt, maxTokens) {
   return (bytes + 64) * NEURONS_IN + maxTokens * NEURONS_OUT;
 }
 
-const today = () => new Date().toISOString().slice(0, 10);
+/* A DAY PER SITE. The three sites share one database, so each counts its
+   own share under its own row: "2026-09-29 dev.thauma.one". A site with no
+   SITE_ORIGIN (tests) counts under the bare date. */
+export function dayKey(env, now = new Date()) {
+  const day = now.toISOString().slice(0, 10);
+  let host = "";
+  try { host = new URL(String(env.SITE_ORIGIN || "").trim()).host; } catch {}
+  return host ? `${day} ${host}` : day;
+}
 const LANG_RE = /^[a-z]{2,3}(-[A-Za-z0-9]{2,8})?$/;
 
 /* What a language needs said that its name does not say. The language's own
@@ -157,7 +165,7 @@ export default {
     if (!actor.me) return json({ error: "This address is not an active account." }, 403);
 
     if (request.method === "GET") {
-      const row = await db.queryOne("ai_usage_today", { day: today() }).catch(() => null);
+      const row = await db.queryOne("ai_usage_today", { day: dayKey(env) }).catch(() => null);
       return json({ available: !!env.AI, model: MODEL,
         share: dailyShare(env), used: Math.round((row && row.neurons) || 0) });
     }
@@ -190,7 +198,7 @@ export default {
 
     /* THE DAY'S SHARE, reserved before anything is spent. Refused here means
        nothing was asked of Cloudflare, so nothing can be charged. */
-    const day = today(), est = worstCase(system, question, maxTokens), cap = dailyShare(env);
+    const day = dayKey(env), est = worstCase(system, question, maxTokens), cap = dailyShare(env);
     const held = await db.query("ai_usage_reserve", { day, est, cap });
     if (!held.length) {
       return json({ error: "Today's free translation allowance is used up. It comes back at midnight UTC.",

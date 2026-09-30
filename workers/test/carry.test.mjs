@@ -128,6 +128,16 @@ await check("staging can never be the live database, whatever .dev.vars says", a
   assert(r.error && /live database/.test(r.error), "refused");
 });
 
+await check("one database: Preview and Publish copy nothing, even with the credential", async () => {
+  const full = { DB: binding(dev), SYNC_ACCOUNT_ID: "a", SYNC_D1_TOKEN: "t", SYNC_REMOTE_DB: "stg", SYNC_LIVE_DB: "live", ONE_DATABASE: "thauma-ops" };
+  let asked = 0;
+  const count = async () => { asked++; return new Response("{}"); };
+  for (const target of ["live", "staging"]) {
+    eq(await carry(full, { target, branch: "main", who: "t", fetchImpl: count }), { skipped: true }, `${target} skipped`);
+  }
+  eq(asked, 0, "no request reached any database");
+});
+
 await check("without the Pi's credential it does nothing, and says so", async () => {
   const r = await carry({ DB: binding(dev) }, { target: "live", branch: "main", who: "t" });
   eq(r, { skipped: true }, "skipped");

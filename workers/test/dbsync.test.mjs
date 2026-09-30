@@ -47,6 +47,8 @@ check("a deployment with no credential does not offer this at all", () => {
   }
   const full = { SYNC_ACCOUNT_ID: "a", SYNC_D1_TOKEN: "t", SYNC_REMOTE_DB: "thauma-ops-dev" };
   eq(remoteConfig(full).ok, true, "refused a complete configuration");
+  eq(remoteConfig({ ...full, ONE_DATABASE: "thauma-ops" }).ok, false,
+     "offered Push and Pull when every site shares one database");
   eq(remoteConfig({ ...full, SYNC_REMOTE_DB: "thauma-ops" }).ok, false,
      "let production be configured as the target");
 });

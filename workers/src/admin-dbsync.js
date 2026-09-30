@@ -69,6 +69,13 @@ export function remoteConfig(env) {
   const account = env.SYNC_ACCOUNT_ID;
   const token = env.SYNC_D1_TOKEN;
   const name = env.SYNC_REMOTE_DB;
+  /* ONE DATABASE (wrangler.toml, ONE_DATABASE): every site already reads and
+     writes the same records, so there is nothing to move — and a Pull here
+     would write the old staging copy over the real ones. */
+  if (env.ONE_DATABASE) {
+    return { ok: false, reason:
+      "Every site uses the same database now, so there is nothing to copy between them." };
+  }
   if (!account || !token || !name) {
     return { ok: false, reason:
       "This site is not set up to move data. It is offered on the development " +
