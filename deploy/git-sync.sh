@@ -53,6 +53,11 @@ cd "$REPO" || { echo "sync: no repo at $REPO"; exit 1; }
 
 log() { echo "[git-sync $(date -Is)] $*"; }
 
+# Word files merge entry by entry (.gitattributes, deploy/json-merge.mjs):
+# registered on every run, before anything can merge, so a fresh clone needs
+# no setup and any merge made on this machine uses it.
+git config merge.jsonentries.driver "node deploy/json-merge.mjs %O %A %B %P"
+
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 BEFORE="$(git rev-parse HEAD)"
 
@@ -160,10 +165,6 @@ if [ "$BRANCH" != "$CONTENT_BRANCH" ] \
     # What main carries that we do not, ignoring anything we already have.
     OTHER="$(git diff --name-only "$BASE" "origin/$CONTENT_BRANCH" | grep -vE "$CONTENT_PATHS" || true)"
 
-    # Word files merge entry by entry (.gitattributes, deploy/json-merge.mjs):
-    # registered here every run, so a fresh clone needs no setup. The driver
-    # is told which side is which to find when a value was set.
-    git config merge.jsonentries.driver "node deploy/json-merge.mjs %O %A %B %P"
     GITDIR="$(git rev-parse --git-dir)"
     rm -f "$GITDIR/thauma-merge-report"
 
