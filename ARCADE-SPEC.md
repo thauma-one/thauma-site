@@ -43,6 +43,7 @@ full history is in git).
 | 404 | the error's numeral | one press. It hints on its own: a digit misfires and rolls back every ~5s |
 | Konami | anywhere | ↑ ↑ ↓ ↓ ← → ← → B A, then Enter. The first two presses show nothing |
 | "thauma" | typed anywhere | each letter lights that letter wherever the page shows it; the last one gathers them into THAUMA |
+| THAUMA, closed page | any `*.thauma.one` with no open site | 5 taps. The page fails and falls, then switches off into `thauma.one/arcade/`. Shown only once `/arcade/` is built for live (the Worker asks its own assets) |
 
 - **Stages and healing:** every door drives stages 1 to 4 (§2). Stop partway
   and the page **heals**, snapping back after 1.9s, and the door's count
@@ -75,7 +76,7 @@ already has.
   then there is no page left to act on.
 
 **Typed word:** the lit letters are lifted out of their words into their own
-layer (the words keep the gap), then fly to the centre as THAUMA while
+layer (the words keep the gap), then fly to the center as THAUMA while
 everything else falls.
 
 **Back from the arcade:** the screen switches on and the fall runs in
@@ -100,11 +101,11 @@ Gotchas found on real screens:
   the page flies home. At `/arcade/` directly (src/arcade.njk) it powers on
   by itself, and Back leads to the site's home.
 - **The menu is a row of cabinets:**
-  - moving: ← → / A D / swipe / tap a neighbour;
+  - moving: ← → / A D / swipe / tap a neighbor;
   - playing: Space / Enter / tap the chosen one;
   - leaving: Esc or Backspace.
 - **Each cabinet has an attract screen:** a few seconds of its game, drawn
-  small, with only the chosen cabinet and its neighbours animating.
+  small, with only the chosen cabinet and its neighbors animating.
   Unfinished ones flash "Coming soon"; the workshop ones have static and
   "Out of order" tape.
 - **Palette: arcade only.** Amber, magenta, violet and red exist nowhere
@@ -120,6 +121,15 @@ Gotchas found on real screens:
 ## 4. A game (next)
 
 A game is a script that registers `ThaumaArcade.games[id] = { start(ctx) }`.
+**Scores** (workers/src/game-scores.js): one board per game, the top 5,
+with 3-letter initials.
+- `GET /api/game-scores?game=<id>` returns `{ game, scores }`.
+- `POST { game, name, score }` adds a score.
+- Only the listed games have boards, so no invented keys.
+- Crude initials (leetspeak and the classic three-letter offenders) become
+  "???".
+- Deleting a score needs `GAME_ADMIN_TOKEN`.
+
 The shell still owes:
 - a fixed logical play area, scaled whole to the screen (the old game's
   three rounds of mobile fixes came from sizing its world to the window);
@@ -168,6 +178,10 @@ Later:
   - Failure engine, six ways in, arcade shell with seven cabinets, and
     `/arcade/`.
   - The Flappy game, its collage wall, its words and GAME-SPEC.md retired.
+  - The score boards rebuilt per game, and the partner-site closed page
+    redone (THAUMA over a drifting hero gradient, one link, and the door).
+  - A tapped door's own element is never torn: a clipped band doesn't
+    take taps, and the fifth tap missed on the closed page.
   - Verified in headless Chromium at 1280×800 and 390×844 (touch) on the
     dev server, stage by stage, including the round trip back to the page
     and reduced motion.

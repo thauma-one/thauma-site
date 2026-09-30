@@ -26,100 +26,80 @@ const eq = (a, b, m) => assert(JSON.stringify(a) === JSON.stringify(b),
 const post = (body) => new Request("https://x/", {
   method: "POST", body: JSON.stringify(body), headers: { "Content-Type": "application/json" },
 });
-const get = (headers = {}) => new Request("https://x/", { method: "GET", headers });
+const get = (query = "", headers = {}) => new Request("https://x/" + query, { method: "GET", headers });
 
 /* ===================== game-scores ===================== */
-console.log("game-scores\n");
+console.log("game-scores — the arcade's boards\n");
 
-await check("GET on an empty store returns the empty shape", async () => {
-  const r = await game.handle(get(), {}, memoryStore());
-  eq(await r.json(), { scores: [], totalDeaths: 0 }, "empty");
-});
+const read = async (s, g = "loadout") => (await (await game.handle(get("?game=" + g), {}, s)).json()).scores;
 
-await check("a score is added and read back", async () => {
+await check("each game has its own board, empty to begin with", async () => {
   const s = memoryStore();
-  await game.handle(post({ name: "Chase", score: 120 }), {}, s);
-  const r = await game.handle(get(), {}, s);
-  eq((await r.json()).scores, [{ name: "Chase", score: 120 }], "scores");
+  eq(await (await game.handle(get("?game=loadout"), {}, s)).json(), { game: "loadout", scores: [] }, "empty");
+  await game.handle(post({ game: "loadout", name: "CHR", score: 120 }), {}, s);
+  eq(await read(s, "loadout"), [{ name: "CHR", score: 120 }], "loadout");
+  eq(await read(s, "soundcheck"), [], "another game's board untouched");
 });
 
-await check("only the top 3 survive, highest first", async () => {
+await check("a board keeps the top five, highest first", async () => {
   const s = memoryStore();
-  for (const n of [50, 300, 10, 200, 400]) {
-    await game.handle(post({ name: "P" + n, score: n }), {}, s);
-  }
-  const { scores } = await (await game.handle(get(), {}, s)).json();
-  eq(scores.map((x) => x.score), [400, 300, 200], "top three");
+  for (const n of [50, 300, 10, 200, 400, 250, 5]) await game.handle(post({ game: "cablerun", name: "AAA", score: n }), {}, s);
+  eq((await read(s, "cablerun")).map((x) => x.score), [400, 300, 250, 200, 50], "top five");
 });
 
-await check("crude names are replaced entirely, including leetspeak", async () => {
-  eq(game.sanitizeName("sh1t"), "Anonymous", "leet sh1t");
-  eq(game.sanitizeName("F   U   C   K"), "Anonymous", "spaced");
-  eq(game.sanitizeName("@sshole"), "Anonymous", "symbol substitution");
-  eq(game.sanitizeName("$hit"), "Anonymous", "dollar substitution");
-  eq(game.sanitizeName("Chase"), "Chase", "clean name survived");
+await check("only real games have boards", async () => {
+  const s = memoryStore();
+  eq((await game.handle(get("?game=flappy"), {}, s)).status, 404, "unknown game read");
+  eq((await game.handle(get(""), {}, s)).status, 404, "no game named");
+  eq((await game.handle(post({ game: "../etc", name: "AAA", score: 9 }), {}, s)).status, 404, "invented key");
+  eq(Object.keys(s._dump()).length, 0, "nothing stored for an unknown game");
 });
 
-await check("KNOWN LIMITATION: substring matching over-blocks (Scunthorpe)", async () => {
-  // Documented, not fixed. Substring matching means an innocent name
-  // containing a blocked word is renamed. True of the original too; for a
-  // hidden leaderboard, over-blocking is the cheaper mistake. This test
-  // exists so the behavior is a known decision rather than a surprise.
-  eq(game.sanitizeName("Scunthorpe"), "Anonymous", "Scunthorpe now passes — did the policy change?");
+await check("initials: three letters or digits, upper-cased", async () => {
+  eq(game.sanitizeInitials("chr"), "CHR", "upper-cased");
+  eq(game.sanitizeInitials("a-b!c"), "ABC", "only letters and digits");
+  eq(game.sanitizeInitials("ABCDEF"), "ABC", "three at most");
+  eq(game.sanitizeInitials(""), "???", "blank");
+  eq(game.sanitizeInitials(123), "???", "not a string");
+  eq(game.sanitizeInitials("<b>"), "B", "markup stripped");
 });
 
-await check("names are stripped of markup and clamped to 20 chars", async () => {
-  eq(game.sanitizeName("<script>x</script>"), "scriptxscript", "html stripped");
-  assert(game.sanitizeName("A".repeat(50)).length === 20, "not clamped");
-  eq(game.sanitizeName("   "), "Anonymous", "whitespace-only");
-  eq(game.sanitizeName(12345), "Anonymous", "non-string");
-});
-
-await check("non-latin names are preserved", async () => {
-  eq(game.sanitizeName("Тomislav"), "Тomislav", "cyrillic dropped");
-  eq(game.sanitizeName("Željko"), "Željko", "diacritic dropped");
+await check("crude initials become ???, leetspeak and the classics included", async () => {
+  for (const bad of ["ASS", "a55", "KKK", "FUK", "cum", "SEX", "sh1t", "fag"]) eq(game.sanitizeInitials(bad), "???", bad);
+  for (const ok of ["CHR", "DAD", "ANA", "007"]) eq(game.sanitizeInitials(ok), ok, ok);
 });
 
 await check("scores are clamped and never negative", async () => {
   eq(game.sanitizeScore(-5), 0, "negative");
-  eq(game.sanitizeScore(1e9), 999999, "over max");
+  eq(game.sanitizeScore(1e12), 9999999, "over max");
   eq(game.sanitizeScore("abc"), 0, "NaN");
   eq(game.sanitizeScore(12.9), 12, "floored");
 });
 
 await check("a zero score is not recorded", async () => {
   const s = memoryStore();
-  await game.handle(post({ name: "Nobody", score: 0 }), {}, s);
-  eq((await (await game.handle(get(), {}, s)).json()).scores, [], "zero recorded");
-});
-
-await check("death increments the counter", async () => {
-  const s = memoryStore();
-  await game.handle(post({ death: true }), {}, s);
-  await game.handle(post({ death: true }), {}, s);
-  eq((await (await game.handle(get(), {}, s)).json()).totalDeaths, 2, "deaths");
+  await game.handle(post({ game: "loadout", name: "NOB", score: 0 }), {}, s);
+  eq(await read(s), [], "zero recorded");
 });
 
 await check("delete requires the admin token", async () => {
-  const s = memoryStore({ data: { scores: [{ name: "A", score: 9 }], totalDeaths: 0 } });
+  const s = memoryStore({ "board:loadout": { scores: [{ name: "AAA", score: 9 }] } });
   const env = { GAME_ADMIN_TOKEN: "secret" };
-  eq((await game.handle(post({ action: "delete", index: 0 }), env, s)).status, 403, "no token");
-  eq((await game.handle(post({ action: "delete", index: 0, token: "wrong" }), env, s)).status, 403, "wrong token");
-  const ok = await game.handle(post({ action: "delete", index: 0, token: "secret" }), env, s);
+  eq((await game.handle(post({ action: "delete", game: "loadout", index: 0 }), env, s)).status, 403, "no token");
+  eq((await game.handle(post({ action: "delete", game: "loadout", index: 0, token: "wrong" }), env, s)).status, 403, "wrong token");
+  const ok = await game.handle(post({ action: "delete", game: "loadout", index: 0, token: "secret" }), env, s);
   eq(ok.status, 200, "right token");
   eq((await ok.json()).scores, [], "not deleted");
 });
 
 await check("delete is DISABLED, not open, when no token is configured", async () => {
-  const s = memoryStore({ data: { scores: [{ name: "A", score: 9 }], totalDeaths: 0 } });
-  const r = await game.handle(post({ action: "delete", index: 0, token: "" }), {}, s);
-  eq(r.status, 403, "unconfigured deploy allowed a delete");
+  const s = memoryStore({ "board:loadout": { scores: [{ name: "AAA", score: 9 }] } });
+  eq((await game.handle(post({ action: "delete", game: "loadout", index: 0, token: "" }), {}, s)).status, 403, "allowed");
 });
 
 await check("out-of-range delete index is ignored, not an error", async () => {
-  const s = memoryStore({ data: { scores: [{ name: "A", score: 9 }], totalDeaths: 0 } });
-  const env = { GAME_ADMIN_TOKEN: "secret" };
-  const r = await game.handle(post({ action: "delete", index: 99, token: "secret" }), env, s);
+  const s = memoryStore({ "board:loadout": { scores: [{ name: "AAA", score: 9 }] } });
+  const r = await game.handle(post({ action: "delete", game: "loadout", index: 99, token: "secret" }), { GAME_ADMIN_TOKEN: "secret" }, s);
   eq(r.status, 200, "status");
   eq((await r.json()).scores.length, 1, "list changed");
 });

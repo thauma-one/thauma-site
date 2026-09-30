@@ -69,6 +69,7 @@
       if (onTap) onTap(n);
       if (n >= taps) { n = 0; ev.preventDefault(); enter(name, { first: el }); return; }
       fx().then(function (e) {
+        if (!hit) e.spare(el);
         e.progress(name, Math.ceil(n * 4 / taps), function (quiet) { n = 0; if (onReset) onReset(quiet); });
       });
     });

@@ -1,44 +1,44 @@
 /**
- * game-scores — leaderboard + futility counter for the hidden 404 game
- * (GAME-SPEC.md §6, Phase 3)
+ * game-scores — the hidden arcade's high scores (ARCADE-SPEC.md §4)
  *
- * Port of netlify/functions/game-scores.js. The moderation and sanitisation
- * logic is carried over UNCHANGED — it is the interesting part of this file and
- * a port is the wrong moment to redesign it.
+ * ONE BOARD PER GAME, the top five, with classic three-letter initials —
+ * entered with the same controls the games use, so a phone never has to
+ * open its keyboard. Rebuilt 2026-09-29 for the arcade; the single Flappy
+ * game's board (top 3, free-text names, a death counter) went with it, and
+ * its old KV key is simply no longer read.
  *
- * No auth on GET or on score submission: scores are client-submitted and
+ * No auth on reading or submitting: scores are client-submitted and
  * forgeable by design, and the stakes are bragging rights on a hidden page.
- * Deletion is the one destructive action and is gated by a shared secret.
+ * Deletion is the one destructive action and is gated by a shared secret
+ * (GAME_ADMIN_TOKEN), compared in constant time.
  *
- * Changed from the original:
- *   - Netlify Blobs   -> KV binding (see lib/store.js)
- *   - exports.handler -> export default { fetch }
- *   - the admin token comparison is now CONSTANT-TIME. The original used `!==`.
- *     Negligible risk for a leaderboard, but this is the one destructive path
- *     in the file and a constant-time compare costs nothing.
- *
- * GET  -> { scores: [{name, score}] (top 3, desc), totalDeaths }
- * POST { name, score }                         -> add a score
- * POST { death: true }                         -> increment totalDeaths
- * POST { action:"delete", index, token }       -> remove scores[index]
+ * GET  ?game=<id>                              -> { game, scores: [{ name, score }] } (top 5, desc)
+ * POST { game, name, score }                   -> adds a score, returns the board
+ * POST { action:"delete", game, index, token } -> removes scores[index]
  */
 import { kvStore, json, readJson, timingSafeEqualStr } from "./lib/store.js";
 
-const KEY = "data";
-const MAX_SCORES = 3;
-const MAX_SCORE_VALUE = 999999;
-const MAX_NAME_LEN = 20;
-const FALLBACK_NAME = "Anonymous";
+/* The cabinets (js/arcade/arcade.js). A board exists only for a game that
+   does, so the KV namespace cannot be filled with invented keys. */
+export const GAMES = ["loadout", "soundcheck", "panelfixer", "cablerun", "followspot", "strike", "cuestack"];
+const MAX_SCORES = 5;
+const MAX_SCORE_VALUE = 9999999;
+const HIDDEN = "???";
+const keyFor = (game) => "board:" + game;
 
 // Deliberately non-exhaustive. Normalized matching (below) catches the common
 // leetspeak dodges without needing a huge word list for a low-stakes hidden
-// leaderboard. A match replaces the name ENTIRELY rather than masking part of
-// it — safer than trying to censor in place.
+// leaderboard. A match replaces the initials ENTIRELY rather than masking
+// part of them.
 const BLOCKLIST = [
   "fuck", "shit", "bitch", "cunt", "asshole", "bastard", "dick", "pussy",
   "nigger", "nigga", "faggot", "fag", "retard", "whore", "slut", "rape",
   "nazi", "hitler", "kike", "spic", "chink", "tranny",
 ];
+/* Three letters is short enough that the classic arcade offenders need
+   naming on their own. */
+const THREE = new Set(["ASS", "FUK", "FUC", "FCK", "FKU", "KKK", "CUM", "TIT", "FAG", "NIG", "NGR", "SEX",
+  "DIK", "DIC", "CNT", "KYS", "SS", "HH", "WTF", "STD", "POO", "PEE", "JIZ", "COK", "COC", "VAG", "PUS", "HOE"]);
 
 export function normalizeForModeration(s) {
   return String(s)
@@ -54,28 +54,18 @@ export function isCrude(s) {
   return BLOCKLIST.some((w) => n.includes(w));
 }
 
-export function sanitizeName(v) {
-  const raw = (typeof v === "string" ? v : "").trim();
-  // Letters (any script), digits, spaces and a few safe punctuation marks —
-  // no HTML or control characters. Collapse repeated whitespace.
-  const cleaned = raw
-    .replace(/[^\p{L}\p{N} '\-.]/gu, "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, MAX_NAME_LEN);
-
-  // BUG FIX vs the Netlify original, which only moderated `cleaned`.
-  // The character filter above strips @ and $ BEFORE normalizeForModeration
-  // can map them back to "a" and "s" — so those two substitutions could never
-  // fire, and "@sshole" sailed through as "sshole". Moderate the RAW input as
-  // well.
-  //
-  // KNOWN AND ACCEPTED: substring matching means innocent names containing a
-  // blocked word are caught too (the Scunthorpe problem). That was already
-  // true of the original, and for a hidden leaderboard where the penalty is
-  // being renamed "Anonymous", over-blocking is the cheaper mistake.
-  if (!cleaned || isCrude(raw) || isCrude(cleaned)) return FALLBACK_NAME;
-  return cleaned;
+/**
+ * Up to three letters or digits, upper-cased (the entry screen offers A–Z
+ * and 0–9). Anything crude — as it stands, spelled in leetspeak, or one of
+ * the classic three-letter offenders — becomes "???".
+ */
+export function sanitizeInitials(v) {
+  const raw = typeof v === "string" ? v : "";
+  const clean = raw.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 3);
+  if (!clean) return HIDDEN;
+  if (THREE.has(clean) || THREE.has(clean.replace(/[0-9]/g, (d) => ({ 0: "O", 1: "I", 3: "E", 4: "A", 5: "S", 7: "T" })[d] || d))) return HIDDEN;
+  if (isCrude(raw) || isCrude(clean)) return HIDDEN;
+  return clean;
 }
 
 export function sanitizeScore(v) {
@@ -84,21 +74,22 @@ export function sanitizeScore(v) {
   return Math.min(n, MAX_SCORE_VALUE);
 }
 
-const EMPTY = () => ({ scores: [], totalDeaths: 0 });
-
 /** Exported for tests: the handler with its store injected. */
 export async function handle(request, env, store) {
-  if (request.method === "GET") {
-    return json((await store.get(KEY)) || EMPTY());
-  }
-  if (request.method !== "POST") {
+  if (request.method !== "GET" && request.method !== "POST") {
     return json({ error: "Method not allowed" }, 405, { Allow: "GET, POST" });
   }
+  let body = null;
+  if (request.method === "POST") {
+    body = await readJson(request);
+    if (body === null) return json({ error: "Invalid JSON" }, 400);
+  }
+  const game = request.method === "GET" ? new URL(request.url).searchParams.get("game") : body.game;
+  if (!GAMES.includes(game)) return json({ error: "No such game." }, 404);
 
-  const body = await readJson(request);
-  if (body === null) return json({ error: "Invalid JSON" }, 400);
-
-  const existing = (await store.get(KEY)) || EMPTY();
+  const board = (await store.get(keyFor(game))) || { scores: [] };
+  const answer = () => json({ game, scores: board.scores });
+  if (request.method === "GET") return answer();
 
   if (body.action === "delete") {
     const adminToken = env?.GAME_ADMIN_TOKEN;
@@ -107,27 +98,21 @@ export async function handle(request, env, store) {
       return json({ error: "Not authorized" }, 403);
     }
     const index = Number(body.index);
-    if (Number.isInteger(index) && index >= 0 && index < existing.scores.length) {
-      existing.scores.splice(index, 1);
-      await store.put(KEY, existing);
+    if (Number.isInteger(index) && index >= 0 && index < board.scores.length) {
+      board.scores.splice(index, 1);
+      await store.put(keyFor(game), board);
     }
-    return json(existing);
-  }
-
-  if (body.death) {
-    existing.totalDeaths = (existing.totalDeaths || 0) + 1;
-    await store.put(KEY, existing);
-    return json(existing);
+    return answer();
   }
 
   const score = sanitizeScore(body.score);
   if (score > 0) {
-    existing.scores.push({ name: sanitizeName(body.name), score });
-    existing.scores.sort((a, b) => b.score - a.score);
-    existing.scores = existing.scores.slice(0, MAX_SCORES);
+    board.scores.push({ name: sanitizeInitials(body.name), score });
+    board.scores.sort((a, b) => b.score - a.score);
+    board.scores = board.scores.slice(0, MAX_SCORES);
+    await store.put(keyFor(game), board);
   }
-  await store.put(KEY, existing);
-  return json(existing);
+  return answer();
 }
 
 export default {

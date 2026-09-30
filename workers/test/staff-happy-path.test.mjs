@@ -685,14 +685,19 @@ await check("a site that is switched off shows Thauma's closed page — nothing 
     const res = await serveSite(new Request("https://mirapetrovic.thauma.one/en/"), e, { sub: "mirapetrovic", rest: "/en/", base: "" });
     eq(res.status, 404, "not found");
     const html = await res.text();
-    assert(html.includes("THAUMA") && html.includes("Nothing here right now"), "Thauma's page, in words");
-    assert(html.includes('href="https://thauma.one/"'), "a way on to thauma.one");
+    assert(/class="wordmark">THAUMA</.test(html), "Thauma's wordmark");
+    assert(html.includes('href="https://thauma.one/">Go to thauma.one<'), "one way on, to thauma.one");
     assert(!/Mira/.test(html), "nothing of the ministry");
+    assert(!html.includes("fail.js"), "no arcade door while the arcade is not out");
     eq([res.headers.get("Cache-Control"), res.headers.get("X-Robots-Tag")], ["no-store", "noindex"],
       "never remembered, never indexed — switching on shows the site at once");
     const hr = await serveSite(new Request("https://mirapetrovic.thauma.one/", { headers: { "Accept-Language": "hr-HR,hr;q=0.9" } }), e,
       { sub: "mirapetrovic", rest: "/", base: "" });
-    assert((await hr.text()).includes("Ovdje trenutno nema ničega"), "in the visitor's language");
+    assert((await hr.text()).includes("Idite na thauma.one"), "in the visitor's language");
+    /* Once /arcade/ is built for live, THAUMA is a door into it. */
+    const out = { ...e, ASSETS: { fetch: async (r) => new Response("", { status: new URL(r.url).pathname === "/arcade/" ? 200 : 404 }) } };
+    const withDoor = await (await serveSite(new Request("https://mirapetrovic.thauma.one/"), out, { sub: "mirapetrovic", rest: "/", base: "" })).text();
+    assert(withDoor.includes("/js/arcade/fail.js") && withDoor.includes("https://thauma.one/arcade/"), "the door, and where it leads");
     eq(await serveSite(new Request("https://dev.thauma.one/site/mirapetrovic/en/"), e,
       { sub: "mirapetrovic", rest: "/en/", base: "/site/mirapetrovic" }), null, "under /site/, the console's own 404");
   } finally { EXTRA = {}; }

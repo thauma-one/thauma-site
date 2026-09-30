@@ -73,6 +73,10 @@
     var tickers = [];
     var healTimer = null, onHealed = null;
     var fallen = [];                /* the collapse's animations, reversed on the way back */
+    /* The element a door is being tapped on is never torn: a torn element
+       is clipped, and a tap on a clipped-away band does not reach it — the
+       fifth tap would miss (found on the closed page, 2026-09-29). */
+    var spared = new Set();
     var busy = false;
 
     /* ---------------------------------------------------------- helpers */
@@ -210,7 +214,7 @@
       /* 4 — TEARING. The page's own pictures and biggest words are sliced
          into bands that jump sideways. */
       function () {
-        pick(visible(MEDIA), 4).forEach(function (el) { remember(el); el.classList.add('arc-tear'); el.style.animationDelay = (-Math.random()).toFixed(2) + 's'; torn.add(el); });
+        pick(visible(MEDIA).filter(function (el) { return !spared.has(el); }), 4).forEach(function (el) { remember(el); el.classList.add('arc-tear'); el.style.animationDelay = (-Math.random()).toFixed(2) + 's'; torn.add(el); });
         visible(LINKS).forEach(function (el) { nudge(el, rnd(-9, 9), rnd(-6, 6), rnd(-4, 4)); });
       }
     ];
@@ -343,18 +347,14 @@
       return new Promise(function (res) { a.onfinish = function () { b.remove(); res(); }; });
     }
 
-    /* The last door opens: failure runs to its end, the page falls, the
-       screen switches off, and the arcade powers on in its place — the same
-       document, no new page (Chase: "it isn't loading a new page, but that
-       you found something secret!"). */
-    function enter(door, opts) {
+    /* The page runs out of stages, falls, and the screen switches off.
+       Resolves once it is dark. On its own for a page that hands off to
+       another address (the partner-site closed page); inside enter() for
+       the arcade opening in place. */
+    function collapse(opts) {
       opts = opts || {};
-      if (busy) return Promise.resolve();
-      busy = true; clearTimeout(healTimer);
-      var arcadeReady = window.THAUMA_ARCADE.loadArcade();
-      if (reduced) {
-        return arcadeReady.then(function (A) { busy = false; return A.mount({ from: door, onExit: function () { return Promise.resolve(); } }); });
-      }
+      clearTimeout(healTimer);
+      if (reduced) return Promise.resolve();
       /* Falling pieces must not widen the page: on a phone the browser
          zooms out to show overflow, and the arcade, sized to the viewport,
          would open shifted and shrunk (seen at 390px, 2026-09-29). */
@@ -381,11 +381,22 @@
           var sq = body.animate([{ transform: 'none', filter: 'brightness(1)' }, { transform: 'scale(1,.004)', filter: 'brightness(3)' }],
             { duration: 200, easing: EASE, fill: 'forwards' });
           return off.then(function () { root.classList.add('arc-off'); sq.cancel(); body.style.transformOrigin = ''; });
-        })
+        });
+    }
+
+    /* The last door opens: failure runs to its end, the page falls, the
+       screen switches off, and the arcade powers on in its place — the same
+       document, no new page (Chase: "it isn't loading a new page, but that
+       you found something secret!"). */
+    function enter(door, opts) {
+      if (busy) return Promise.resolve();
+      busy = true;
+      var arcadeReady = window.THAUMA_ARCADE.loadArcade();
+      return collapse(opts)
         .then(function () { return arcadeReady; })
         .then(function (A) {
           busy = false;
-          return A.mount({ from: door, onExit: restore });
+          return A.mount({ from: door, onExit: reduced ? function () { return Promise.resolve(); } : restore });
         });
     }
 
@@ -411,7 +422,8 @@
     }
 
     return {
-      progress: progress, heal: healNow, light: light, enter: enter, restore: restore,
+      progress: progress, heal: healNow, light: light, enter: enter, collapse: collapse, restore: restore,
+      spare: function (el) { spared.add(el); },
       rollChar: rollChar, split: split, get level() { return level; }, reduced: reduced
     };
   }

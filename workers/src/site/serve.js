@@ -31,51 +31,91 @@ const escHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<"
 /**
  * A NAME WITH NO OPEN SITE: Thauma's own quiet page, not an empty one.
  *
- * Every *.thauma.one reaches the live Worker now (a wildcard record the
- * Worker's scheduled() keeps in place), so a visitor who opens a site before it is switched on
- * gets an answer at once — and nothing for their device to remember as
- * "does not exist" for half an hour, which is what the per-name records
- * cost (Chase, 2026-09-29: "how do we make sure that someone who wants to
- * check the live site doesn't open it too early and then has to wait?" …
- * "can we have it just be a THAUMA branded page instead?").
+ * Every *.thauma.one reaches the live Worker (a wildcard record the Worker's
+ * scheduled() keeps in place), so a visitor who opens a site before it is
+ * switched on gets an answer at once — and nothing for their device to
+ * remember as "does not exist" for half an hour (Chase, 2026-09-29: "how do
+ * we make sure that someone who wants to check the live site doesn't open it
+ * too early and then has to wait?").
  *
- * The same for a site switched off, archived, or never made. It says
- * nothing about whose name it is. 404 and noindex, never cached, so the
- * moment the site is switched on, the site is what answers.
+ * WHAT IT IS (Chase, 2026-09-29: "something simple, like the word THAUMA in
+ * big text with the hero gradient we've been using. Maybe with a little
+ * movement in the background. And then a link to the main Thauma site"):
+ * the site's own wordmark over the partner sites' hero gradient in Thauma's
+ * two voices (blue from the top left, seafoam from the bottom right), both
+ * drifting slowly; one link on. Nothing of whose name it is.
  *
- * Colors are main.css's tokens (--bg, --text, --dim, --blue); the fonts are
- * the site's own, same-origin — /fonts/ is served before the Worker on
- * every host (run_worker_first), partner names included.
+ * AND A DOOR (ARCADE-SPEC.md §1): once the arcade is out (it is, exactly
+ * when /arcade/ was built — the one switch, site.json), five taps on THAUMA
+ * fail this page the way every door fails the site's, and it switches off
+ * into thauma.one/arcade/. /js/ is served before the Worker on every host, so
+ * the engine loads from here.
+ *
+ * 404 and noindex, never cached: the moment the site is switched on, the
+ * site is what answers. Colors are main.css's tokens; the fonts are the
+ * site's own, same-origin.
  */
-export function closedSite(request) {
+async function arcadeIsOut(env) {
+  if (!env || !env.ASSETS) return false;
+  try { return (await env.ASSETS.fetch(new Request("https://thauma.one/arcade/"))).ok; } catch { return false; }
+}
+export async function closedSite(request, env) {
   const lang = pickLang(request.headers.get("Accept-Language"), builtInLangs(), "en");
-  const w = (k) => escHtml(word(lang, k));
+  const home = `https://${(env && env.SITE_DOMAIN) || "thauma.one"}`;
+  const door = await arcadeIsOut(env);
   const html = `<!doctype html><html lang="${lang}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
 <title>Thauma</title>
 <style>
 @font-face{font-family:'Sora';font-weight:100 600;font-display:swap;src:url('/fonts/Sora-latin-v2.woff2') format('woff2')}
-@font-face{font-family:'Sora';font-weight:100 600;font-display:swap;src:url('/fonts/Sora-latin-ext-v2.woff2') format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+1E00-1E9F}
-@font-face{font-family:'Inter';font-weight:200 300;font-display:swap;src:url('/fonts/Inter-latin-v2.woff2') format('woff2')}
-@font-face{font-family:'Inter';font-weight:200 300;font-display:swap;src:url('/fonts/Inter-latin-ext-v2.woff2') format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+1E00-1E9F}
-:root{--bg:#0B0F15;--text:#EDF2F8;--dim:#8A96A6;--blue:#2FD8FF;--blue-hi:#8FEBFF;--blue-dim:rgba(47,216,255,.14)}
+@font-face{font-family:'Inter';font-weight:200 600;font-display:swap;src:url('/fonts/Inter-latin-v2.woff2') format('woff2')}
+:root{--bg:#0B0F15;--text:#EDF2F8;--dim:#8A96A6;--blue:#2FD8FF;--blue-hi:#8FEBFF;--blue-dim:rgba(47,216,255,.14);
+  --blue-glow:0 0 26px rgba(47,216,255,.35);--foam:#5CF2C4;--foam-hi:#B2FFE6;--foam-dim:rgba(92,242,196,.14);--foam-glow:0 0 26px rgba(92,242,196,.35)}
 *{box-sizing:border-box}
-body{margin:0;min-height:100vh;min-height:100svh;display:flex;align-items:center;justify-content:center;
+html,body{height:100%}
+body{margin:0;min-height:100vh;min-height:100svh;display:flex;align-items:center;justify-content:center;overflow:hidden;
   background:var(--bg);color:var(--text);font:300 16px/1.6 'Inter',system-ui,sans-serif;padding:32px 16px;text-align:center}
-main{max-width:520px}
-.mark{font-family:'Sora',sans-serif;font-weight:100;letter-spacing:.42em;font-size:18px;margin:0 0 28px;padding-left:.42em}
-.rule{width:48px;height:1px;background:var(--blue);margin:0 auto 28px}
-h1{font-family:'Sora',sans-serif;font-weight:100;font-size:clamp(26px,6vw,36px);line-height:1.25;margin:0 0 12px}
-p{color:var(--dim);margin:0 0 32px}
-a{display:inline-block;color:var(--blue);text-decoration:none;border:1px solid var(--blue-dim);padding:10px 20px;
-  font-size:13px;letter-spacing:.08em;transition:border-color .2s,color .2s}
-a:hover{color:var(--blue-hi);border-color:var(--blue)}
-a:focus-visible{outline:2px solid var(--blue);outline-offset:3px}
-@media (prefers-reduced-motion:reduce){a{transition:none}}
+.glow{position:fixed;inset:-25%;pointer-events:none}
+.glow::before,.glow::after{content:"";position:absolute;inset:0}
+.glow::before{background:radial-gradient(42% 38% at 34% 32%,rgba(47,216,255,.30),transparent 70%);animation:a 24s ease-in-out infinite alternate}
+.glow::after{background:radial-gradient(38% 36% at 68% 70%,rgba(92,242,196,.22),transparent 70%);animation:b 31s ease-in-out infinite alternate}
+@keyframes a{to{transform:translate(9%,7%) scale(1.18)}}
+@keyframes b{from{transform:scale(1.12)}to{transform:translate(-8%,-6%) scale(1)}}
+main{position:relative}
+.wordmark{font-family:'Sora',sans-serif;font-weight:100;font-size:clamp(52px,13vw,160px);letter-spacing:.14em;padding-left:.14em;
+  line-height:1;text-shadow:0 0 60px rgba(47,216,255,.22);margin:0;-webkit-user-select:none;user-select:none;touch-action:manipulation}
+p{margin:44px 0 0}
+.btn{display:inline-block;color:var(--blue);text-decoration:none;border:1px solid var(--blue-dim);padding:12px 22px;
+  font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;transition:border-color .2s,color .2s}
+.btn:hover{color:var(--blue-hi);border-color:var(--blue)}
+.btn:focus-visible{outline:2px solid var(--blue);outline-offset:3px}
+@media (prefers-reduced-motion:reduce){.glow::before,.glow::after{animation:none}.btn{transition:none}}
 </style></head>
-<body><main><div class="mark">THAUMA</div><div class="rule"></div>
-<h1>${w("closedTitle")}</h1><p>${w("closedText")}</p>
-<a href="https://thauma.one/">${w("closedLink")}</a></main></body></html>`;
+<body><div class="glow"></div><main><div class="wordmark">THAUMA</div>
+<p><a class="btn" href="${home}/">${escHtml(word(lang, "closedLink"))}</a></p></main>${door ? `
+<script>
+(function () {
+  var mark = document.querySelector('.wordmark'), n = 0, going = false, eng = null;
+  function fx() {
+    return eng || (eng = new Promise(function (res, rej) {
+      var s = document.createElement('script'); s.src = '/js/arcade/fail.js';
+      s.onload = function () { res(window.ThaumaFail.create()); }; s.onerror = rej;
+      document.head.appendChild(s);
+    }));
+  }
+  mark.addEventListener('click', function () {
+    if (going) return;
+    n++;
+    if (n >= 5) {
+      going = true;
+      fx().then(function (e) { return e.collapse({ first: mark }); })
+        .then(function () { location.href = '${home}/arcade/'; }, function () { location.href = '${home}/arcade/'; });
+      return;
+    }
+    fx().then(function (e) { e.spare(mark); e.progress('closed', Math.ceil(n * 4 / 5), function () { n = 0; }); });
+  });
+})();
+</script>` : ""}</body></html>`;
   return new Response(html, { status: 404, headers: {
     "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store",
     "X-Robots-Tag": "noindex", "Vary": "Accept-Language",
@@ -123,7 +163,7 @@ export async function serveSite(request, env, { sub, rest, base, draft = false }
       : `https://${moved.subdomain}.${domain}${rest}${url.search}`;
     return new Response(null, { status: 301, headers: { Location: to } });
   }
-  if (row.status === "archived") return base ? null : closedSite(request);
+  if (row.status === "archived") return base ? null : closedSite(request, env);
 
   if (draft) {
     /* The working copy is the team's to look at, nobody else's. */
@@ -144,7 +184,7 @@ export async function serveSite(request, env, { sub, rest, base, draft = false }
        ministry name, no "coming soon" (closedSite above). Under
        /site/<name>/ it is the console's own 404, as for any address that is
        not there. */
-    return base ? null : closedSite(request);
+    return base ? null : closedSite(request, env);
   }
 
   const full = draft

@@ -62,7 +62,7 @@
   /* ------------------------------------------------ attract screens */
   /* What each cabinet shows while it waits: a few seconds of its game,
      played by itself. Drawn small and cheap; only the chosen cabinet and
-     its neighbours move. */
+     its neighbors move. */
   var ATTRACT = {
     loadout: function (g, w, h, t, col) {
       g.fillStyle = '#0b1220'; g.fillRect(0, h - 16, w, 16);
