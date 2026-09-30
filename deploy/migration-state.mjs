@@ -3,7 +3,11 @@
  * migration-state.mjs — is this database ready for the code about to ship?
  *
  *   node deploy/migration-state.mjs --database thauma-ops
- *   node deploy/migration-state.mjs --database thauma-ops-dev --apply
+ *
+ * ONE DATABASE SINCE 2026-09-29: dev, staging and live all bind thauma-ops
+ * (wrangler.toml), so both deploys only CHECK it and refuse while anything is
+ * pending. --apply is still here for a database that is nobody's real one;
+ * the "STAGING APPLIES" below describes the two-database years.
  *
  * THE PROBLEM THIS EXISTS FOR
  * ---------------------------------------------------------------------------

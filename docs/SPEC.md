@@ -160,10 +160,16 @@ SQLite and assert the guarantees below.
 | `0010_attribution_survives_a_leaver` | the other five references that blocked deleting anyone |
 
 ```
-thauma-ops       production   schema only, no real data yet
-thauma-ops-dev   shared dev   seeded, scrubbed by db/refresh_dev.py
-local            the Pi       .wrangler/state, reseeded from seed.dev.sql
+thauma-ops       ALL THREE    dev (remote = true), staging and live, since 2026-09-29
+thauma-ops-dev   unbound      the old staging copy, kept, read by nothing
+local            unbound      .wrangler/state on the Pi, kept, read by nothing
 ```
+
+One database on purpose (Chase, 2026-09-29): nothing to sync, deletions
+are real everywhere, and nothing depends on the Pi being up. The price is
+that dev and staging edit the real records. Migrations are applied once,
+by a person (Admin › Publish › Migrations); both deploys only check. See
+ONE DATABASE in wrangler.toml.
 
 ### The Worker
 

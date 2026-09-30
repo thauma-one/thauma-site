@@ -37,7 +37,7 @@ import { createDb } from "./lib/db.js";
 import { pendingMigrations } from "./admin-migrate.js";
 import { requireAccess } from "./lib/access.js";
 import { json, readJson } from "./lib/store.js";
-import { compareBranches, dispatchWorkflow, lastSuccessfulRun, latestRun, refSha, githubConfig }
+import { compareBranches, dispatchWorkflow, lastSuccessfulRun, latestRun, mergeBranch, refSha, githubConfig }
   from "./lib/github.js";
 import { carry, carryConfig } from "./lib/carry.js";
 
@@ -163,13 +163,15 @@ async function status(env) {
 
   // What is on the branch that the last successful production build did not
   // contain. `compareBranches` takes any two refs, not only branch names.
-  const cmp = await compareBranches(env, live.sha, branch);
+  // Measured against DEV, not main: Publish merges dev into main before it
+  // builds (act, below), so dev is what pressing it puts on the site.
+  const cmp = await compareBranches(env, live.sha, stagingBranch(env));
   if (cmp.error) return json({ error: cmp.error }, cmp.status || 502);
 
   // What the branch points at right now — so the page can say whether the
   // preview is showing the same thing you would be publishing, or something
   // older. A preview that is quietly out of date is worse than none.
-  const head = await refSha(env, branch);
+  const head = await refSha(env, stagingBranch(env));
 
   return json({
     configured: true,
@@ -235,7 +237,8 @@ async function act(request, env, db, user, me) {
      If the check itself cannot run, publishing is refused. A deploy that might
      break the site is not the thing to wave through on a failed lookup. */
   if (action === "publish") {
-    const mig = await pendingMigrations(env);
+    /* Against dev's migration files: after the merge below, they are main's. */
+    const mig = await pendingMigrations({ ...env, CONTENT_BRANCH: stagingBranch(env) });
     if (mig.error) {
       return json({
         error: `Could not check whether the database is up to date: ${mig.error}. ` +
@@ -253,6 +256,24 @@ async function act(request, env, db, user, me) {
         refreshMigrations: true,
       }, 409);
     }
+  }
+
+  /* DEV'S CODE GOES WITH IT (Chase, 2026-09-29: "Any work we do on Dev
+     should auto populate to the live site … yes to the merge"). dev is
+     merged into main on GitHub, then main is built. Merging used to be a
+     terminal command on the Pi, and its `git checkout main` knocked dev's
+     settings out mid-reload that evening; on GitHub the Pi's checkout never
+     moves. A conflict changes nothing and says so. */
+  let merged = null;
+  if (action === "publish" && stagingBranch(env) !== branch) {
+    const m = await mergeBranch(env, branch, stagingBranch(env),
+      `Publish: bring ${stagingBranch(env)} into ${branch} (${(me && me.user_name) || user.email})`);
+    if (m.conflict) {
+      return json({ error: `${stagingBranch(env)} and ${branch} changed the same lines, so they cannot be combined ` +
+        `automatically. Nothing was published. This needs a developer to combine them by hand.`, action }, 409);
+    }
+    if (m.error) return json({ error: `${m.error} Nothing was published.`, action }, 500);
+    merged = m.merged;
   }
 
   /* DEV'S DATA GOES WITH IT (lib/carry.js). On the Pi, before the build:
@@ -284,7 +305,7 @@ async function act(request, env, db, user, me) {
     user,
     action: action === "publish" ? "release.publish" : "release.preview",
     entity_id: `${workflow}@${branch}`,
-    detail: { by: (me && me.user_name) || user.email, branch,
+    detail: { by: (me && me.user_name) || user.email, branch, merged,
               carried: carried.skipped ? undefined : { rows: carried.rows, migrations: carried.migrations, matched: carried.matched } },
   });
 
@@ -296,6 +317,7 @@ async function act(request, env, db, user, me) {
     // says so rather than implying the site has already changed.
     started: true,
     where: action === "publish" ? "thauma.one" : "next.thauma.one",
+    merged,
     carried: carried.skipped ? null : { rows: carried.rows, migrations: carried.migrations.length },
   });
 }

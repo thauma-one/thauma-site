@@ -5,7 +5,8 @@
  *
  * WHY THIS EXISTS
  * ---------------------------------------------------------------------------
- * Three consoles, pixel-identical, each reading a different database. On
+ * Three consoles, pixel-identical. Until 2026-09-29 each read a different
+ * database (now all three share thauma-ops, and the band says so). On
  * 2026-08-20 the dev console was asked whether the database was up to date and
  * answered yes — correctly, about ITS database — and production was published
  * past three unapplied migrations on the strength of that answer. The embed
@@ -79,21 +80,22 @@ check("production points at the production database", () => {
   eq(MAP["thauma.one"].db, "thauma-ops", "database");
 });
 
-check("staging and dev point at the DEV database, not production", () => {
-  /* The one thing that must never be true: a non-production console reading
-     production data. The labels are prose now — they say WHERE the data lives
-     rather than only naming a binding — so this checks the substance. */
+/* ONE DATABASE (2026-09-29). All three bind thauma-ops, so the band's job on
+   dev and staging became saying that the records there are the real ones —
+   an edit is an edit, a test send reaches real people. */
+check("every console names the database wrangler.toml binds for it", () => {
+  const envOf = { "thauma.one": "production", "next.thauma.one": "staging", "dev.thauma.one": "dev" };
+  for (const [host, env] of Object.entries(envOf)) {
+    assert(DBS[env], `no database found for ${env} in wrangler.toml`);
+    assert(MAP[host].db === DBS[env] || MAP[host].db.startsWith(DBS[env] + " "),
+      `${host} says ${JSON.stringify(MAP[host].db)}, but ${env} binds ${DBS[env]}`);
+  }
+});
+
+check("dev and staging say their records are the real ones", () => {
   for (const host of ["next.thauma.one", "dev.thauma.one"]) {
-    assert(MAP[host].db.includes(DBS.dev || "thauma-ops-dev"),
-      `${host} should name the dev database, got ${JSON.stringify(MAP[host].db)}`);
-    /* The dev name is removed before looking for the production one, because
-       "thauma-ops" is a prefix of "thauma-ops-dev" and a word boundary does
-       not separate them — `-` is not a word character, so \bthauma-ops\b
-       matches inside the longer name and every dev label looked like
-       production. */
-    const withoutDev = MAP[host].db.split(DBS.dev || "thauma-ops-dev").join("");
-    assert(!withoutDev.includes(DBS.production),
-      `${host} must not point at production: ${MAP[host].db}`);
+    if (DBS[MAP[host].key] !== DBS.production) continue;
+    assert(/real/i.test(MAP[host].db), `${host} shares live's database and must say so: ${MAP[host].db}`);
   }
 });
 
@@ -103,23 +105,13 @@ check("the labels match what wrangler.toml actually binds", () => {
     "thauma.one's label vs [env.production] binding");
 });
 
-check("DEV DOES NOT CLAIM TO BE THE DATABASE IT BINDS", () => {
-  /* dev and staging bind the SAME name in wrangler.toml, but the Pi runs
-     `wrangler dev --local` — so dev reads a SQLite file on that machine and
-     never touches the Cloudflare database of that name. They can be twenty-two
-     migrations apart while the console says the same word, which is exactly
-     the confusion this label has to prevent.
-
-     So dev must say it is local, and must not read as the remote one. */
-  const dev = MAP["dev.thauma.one"].db;
-  assert(/local/i.test(dev),
-    `dev must say its data is local, got ${JSON.stringify(dev)}`);
-  assert(dev !== (DBS.dev || "thauma-ops-dev"),
-    "dev naming the binding alone is true and misleading — it is not that database");
-
-  const staging = MAP["next.thauma.one"].db;
-  assert(/cloudflare/i.test(staging),
-    `staging should say its data is the real one, got ${JSON.stringify(staging)}`);
+check("DEV REALLY REACHES THE DATABASE IT NAMES", () => {
+  /* Without `remote = true`, `wrangler dev` quietly simulates the binding in a
+     SQLite file on the Pi — the same name, a different database, which is the
+     confusion this band exists to prevent. */
+  const block = toml.split(/^\[\[env\.dev\.d1_databases\]\]/m)[1] || "";
+  const body = block.split(/^\[/m)[0];
+  assert(/^\s*remote\s*=\s*true/m.test(body), "env.dev's database is not remote = true");
 });
 
 check("the band is rendered from the hostname, not fetched", () => {

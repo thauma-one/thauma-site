@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "470989912bc1f0a3";
+export const SOURCE_DIGEST = "5d753fcf5f4f4df8";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -628,6 +628,9 @@ VALUES (:partner_id, :user_id, :granted_by, :now);`,
   FROM partner_sites
  WHERE partner_id = :partner_id;`,
   partner_site_is_editor: `SELECT 1 AS ok FROM partner_site_editors WHERE partner_id = :partner_id AND user_id = :user_id;`,
+  partner_site_needing_dns: `SELECT partner_id, subdomain FROM partner_sites
+ WHERE enabled = 1 AND archived_at IS NULL
+   AND (dns_state IS NULL OR dns_state <> 'ready');`,
   partner_site_owner: `SELECT pu.user_id, u.name, u.email
   FROM partner_users pu JOIN users u ON u.id = pu.user_id
  WHERE pu.partner_id = :partner_id AND pu.role = 'owner'

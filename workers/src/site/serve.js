@@ -23,12 +23,63 @@ import { resolveActor } from "../lib/actas.js";
 import { embedPayload } from "../embed.js";
 import { assertNoPersonalData } from "../lib/nopii.js";
 import { siteOrigin } from "../lib/origin.js";
-import { cleanDoc, PAGES } from "./model.js";
+import { cleanDoc, PAGES, word, builtInLangs } from "./model.js";
 import { renderPage, simplePage } from "./render.js";
 
-/** Nothing at all: an empty 404, not a page. */
-export function nowhere() {
-  return new Response(null, { status: 404, headers: { "Cache-Control": "no-store" } });
+const escHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+
+/**
+ * A NAME WITH NO OPEN SITE: Thauma's own quiet page, not an empty one.
+ *
+ * Every *.thauma.one reaches the live Worker now (a wildcard record the
+ * Worker's scheduled() keeps in place), so a visitor who opens a site before it is switched on
+ * gets an answer at once — and nothing for their device to remember as
+ * "does not exist" for half an hour, which is what the per-name records
+ * cost (Chase, 2026-09-29: "how do we make sure that someone who wants to
+ * check the live site doesn't open it too early and then has to wait?" …
+ * "can we have it just be a THAUMA branded page instead?").
+ *
+ * The same for a site switched off, archived, or never made. It says
+ * nothing about whose name it is. 404 and noindex, never cached, so the
+ * moment the site is switched on, the site is what answers.
+ *
+ * Colors are main.css's tokens (--bg, --text, --dim, --blue); the fonts are
+ * the site's own, same-origin — /fonts/ is served before the Worker on
+ * every host (run_worker_first), partner names included.
+ */
+export function closedSite(request) {
+  const lang = pickLang(request.headers.get("Accept-Language"), builtInLangs(), "en");
+  const w = (k) => escHtml(word(lang, k));
+  const html = `<!doctype html><html lang="${lang}"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
+<title>Thauma</title>
+<style>
+@font-face{font-family:'Sora';font-weight:100 600;font-display:swap;src:url('/fonts/Sora-latin-v2.woff2') format('woff2')}
+@font-face{font-family:'Sora';font-weight:100 600;font-display:swap;src:url('/fonts/Sora-latin-ext-v2.woff2') format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+1E00-1E9F}
+@font-face{font-family:'Inter';font-weight:200 300;font-display:swap;src:url('/fonts/Inter-latin-v2.woff2') format('woff2')}
+@font-face{font-family:'Inter';font-weight:200 300;font-display:swap;src:url('/fonts/Inter-latin-ext-v2.woff2') format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+1E00-1E9F}
+:root{--bg:#0B0F15;--text:#EDF2F8;--dim:#8A96A6;--blue:#2FD8FF;--blue-hi:#8FEBFF;--blue-dim:rgba(47,216,255,.14)}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;min-height:100svh;display:flex;align-items:center;justify-content:center;
+  background:var(--bg);color:var(--text);font:300 16px/1.6 'Inter',system-ui,sans-serif;padding:32px 16px;text-align:center}
+main{max-width:520px}
+.mark{font-family:'Sora',sans-serif;font-weight:100;letter-spacing:.42em;font-size:18px;margin:0 0 28px;padding-left:.42em}
+.rule{width:48px;height:1px;background:var(--blue);margin:0 auto 28px}
+h1{font-family:'Sora',sans-serif;font-weight:100;font-size:clamp(26px,6vw,36px);line-height:1.25;margin:0 0 12px}
+p{color:var(--dim);margin:0 0 32px}
+a{display:inline-block;color:var(--blue);text-decoration:none;border:1px solid var(--blue-dim);padding:10px 20px;
+  font-size:13px;letter-spacing:.08em;transition:border-color .2s,color .2s}
+a:hover{color:var(--blue-hi);border-color:var(--blue)}
+a:focus-visible{outline:2px solid var(--blue);outline-offset:3px}
+@media (prefers-reduced-motion:reduce){a{transition:none}}
+</style></head>
+<body><main><div class="mark">THAUMA</div><div class="rule"></div>
+<h1>${w("closedTitle")}</h1><p>${w("closedText")}</p>
+<a href="https://thauma.one/">${w("closedLink")}</a></main></body></html>`;
+  return new Response(html, { status: 404, headers: {
+    "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store",
+    "X-Robots-Tag": "noindex", "Vary": "Accept-Language",
+  } });
 }
 
 /** The visitor's best language among the site's, else the site's fallback. */
@@ -72,7 +123,7 @@ export async function serveSite(request, env, { sub, rest, base, draft = false }
       : `https://${moved.subdomain}.${domain}${rest}${url.search}`;
     return new Response(null, { status: 301, headers: { Location: to } });
   }
-  if (row.status === "archived") return null;
+  if (row.status === "archived") return base ? null : closedSite(request);
 
   if (draft) {
     /* The working copy is the team's to look at, nobody else's. */
@@ -85,14 +136,15 @@ export async function serveSite(request, env, { sub, rest, base, draft = false }
       return simplePage("Not yours to preview", "Only the ministry's team can see its unpublished site.", 403);
     }
   } else if (!row.enabled || !row.published) {
-    /* A SITE THAT IS OFF DOES NOT EXIST (Chase, 2026-09-29: "I don't want
-       the page to load at all if the subdomain is typed in and the site is
-       disabled"). Its name has no DNS record then (staff-site.js takes it
-       away on switching off), so a browser finds nothing; should a request
-       reach here anyway, it gets an empty "not found" — no page, no name,
-       not even "coming soon". Under /site/<name>/ it is the console's own
-       404, as for any address that is not there. */
-    return base ? null : nowhere();
+    /* A SITE THAT IS OFF SHOWS NOTHING OF ITSELF (Chase, 2026-09-29: "I
+       don't want the page to load at all … if the subdomain is typed in and
+       the site is disabled"). Its name used to vanish from DNS; that made
+       anyone who looked too early wait out a remembered "does not exist",
+       so now the name stays and answers with Thauma's closed page — no
+       ministry name, no "coming soon" (closedSite above). Under
+       /site/<name>/ it is the console's own 404, as for any address that is
+       not there. */
+    return base ? null : closedSite(request);
   }
 
   const full = draft

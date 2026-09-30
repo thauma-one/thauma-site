@@ -1805,8 +1805,12 @@
   /* =====================================================================
      WHICH ONE AM I LOOKING AT
      =====================================================================
-     Three consoles exist, they are pixel-identical, and each one reads a
-     DIFFERENT database. On 2026-08-20 that cost an evening: the dev console
+     Three consoles exist and they are pixel-identical. Since 2026-09-29 all
+     three read and write ONE database, thauma-ops (wrangler.toml, ONE
+     DATABASE) — so what differs is the CODE each runs, and the band's job
+     became saying that an edit on dev or staging is an edit to the real
+     records. Before that each read a different database, and on 2026-08-20
+     that cost an evening: the dev console
      was asked whether the database was up to date, answered "yes" — correctly,
      about its own database — and production was published past three unapplied
      migrations on the strength of it. Later the same night, production's admin
@@ -1826,19 +1830,11 @@
     'thauma.one':      { key: 'production', label: 'PRODUCTION', db: 'thauma-ops',
                          note: 'the live site' },
     'next.thauma.one': { key: 'staging',    label: 'STAGING',
-                         db: 'thauma-ops-dev (in Cloudflare)',
-                         note: 'preview only — nobody outside sees this' },
-    /* ⚠ THE SAME NAME, A DIFFERENT DATABASE.
-       dev and staging both bind `thauma-ops-dev` in wrangler.toml, but the Pi
-       runs `wrangler dev --local`, so this one reads a SQLite FILE on that
-       machine and never touches the Cloudflare database of that name. They can
-       be twenty-two migrations apart while the console says the same word.
-
-       Saying "thauma-ops-dev" here would be true and useless, so the label
-       says where the data actually lives. */
+                         db: 'thauma-ops — the real records, shared with the live site',
+                         note: 'Edits here are real — the live site uses these same records' },
     'dev.thauma.one':  { key: 'dev',        label: 'DEV',
-                         db: 'a local copy on this Pi — not thauma-ops-dev in Cloudflare',
-                         note: 'this Pi — not the live site' },
+                         db: 'thauma-ops — the real records, shared with the live site',
+                         note: 'Edits here are real — the live site uses these same records' },
   };
 
   function showEnvironment() {

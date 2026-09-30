@@ -18,7 +18,8 @@ try { sqlite = await import("node:sqlite"); } catch {}
 console.log("carrying dev's data forward\n");
 if (!sqlite) { console.log("  SKIP  node:sqlite is not available on this Node"); process.exit(0); }
 const { DatabaseSync } = sqlite;
-const { carry } = await import("../src/lib/carry.js");
+const { carry, farDb } = await import("../src/lib/carry.js");
+const { createHash } = await import("node:crypto");
 
 const ROOT = new URL("../../", import.meta.url).pathname;
 let pass = 0, fail = 0;
@@ -126,6 +127,81 @@ await check("staging can never be the live database, whatever .dev.vars says", a
   const env = { DB: binding(dev), SYNC_ACCOUNT_ID: "a", SYNC_D1_TOKEN: "t", SYNC_REMOTE_DB: "thauma-ops", SYNC_LIVE_DB: "thauma-ops" };
   const r = await carry(env, { target: "staging", branch: "dev", who: "t", migrate: false, fetchImpl: d1({}) });
   assert(r.error && /live database/.test(r.error), "refused");
+});
+
+await check("one database: Preview and Publish copy nothing, even with the credential", async () => {
+  const full = { DB: binding(dev), SYNC_ACCOUNT_ID: "a", SYNC_D1_TOKEN: "t", SYNC_REMOTE_DB: "stg", SYNC_LIVE_DB: "live", ONE_DATABASE: "thauma-ops" };
+  let asked = 0;
+  const count = async () => { asked++; return new Response("{}"); };
+  for (const target of ["live", "staging"]) {
+    eq(await carry(full, { target, branch: "main", who: "t", fetchImpl: count }), { skipped: true }, `${target} skipped`);
+  }
+  eq(asked, 0, "no request reached any database");
+});
+
+/* D1's file import (init → PUT → ingest → poll), answered by a local
+   database the way D1 does it: SQLite's own parser, all or nothing. */
+const importing = (db, seen) => async (url, init = {}) => {
+  const ok = (result) => new Response(JSON.stringify({ success: true, result }));
+  if (!init.body && !url.includes("upload.invalid")) return ok([{ name: "far", uuid: "far" }]);
+  if (url.includes("upload.invalid")) {
+    seen.file = init.body;
+    return new Response("", { status: 200, headers: { etag: `"${createHash("md5").update(init.body).digest("hex")}"` } });
+  }
+  const body = JSON.parse(init.body);
+  if (url.endsWith("/query")) { db.prepare(body.sql).all(); return ok([{ results: [] }]); }
+  seen.actions.push(body.action);
+  if (body.action === "init") return ok({ upload_url: "https://upload.invalid/put", filename: "m.sql" });
+  if (body.action === "ingest") {
+    db.exec("BEGIN");
+    try { db.exec(seen.file); db.exec("COMMIT"); } catch (e) {
+      db.exec("ROLLBACK");
+      return ok({ success: false, status: "error", errors: [e.message] });
+    }
+    return ok({ status: "active", at_bookmark: "b1" });
+  }
+  if (body.action === "poll") return ok({ status: "complete", success: true });
+  throw new Error("unexpected " + body.action);
+};
+function builtBefore(stop) {
+  const db = new DatabaseSync(":memory:");
+  db.exec("PRAGMA foreign_keys = ON");
+  for (const f of fs.readdirSync(ROOT + "db/migrations").filter((n) => /^\d{4}_.*\.sql$/.test(n)).sort()) {
+    if (f >= stop) break;
+    db.exec(fs.readFileSync(ROOT + "db/migrations/" + f, "utf8"));
+  }
+  return db;
+}
+const M42 = "0042_directory_outlives_a_leaver.sql";
+const M42_TEXT = fs.readFileSync(ROOT + "db/migrations/" + M42, "utf8");
+const hasTrigger = (db) => !!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'trigger' AND name = 'directory_owner_has_partner'").get();
+const cfg = { account: "a", token: "t", name: "far" };
+
+await check("a migration goes in as one uploaded file, its CASE trigger whole (0042 on Publish)", async () => {
+  const db = builtBefore(M42), seen = { actions: [] };
+  await farDb(cfg, importing(db, seen)).importSql(M42_TEXT);
+  eq(seen.actions, ["init", "ingest", "poll"], "wrangler's own steps");
+  eq(seen.file, M42_TEXT, "the file went up exactly as written");
+  assert(hasTrigger(db), "the trigger came back");
+  const col = db.prepare("SELECT \"notnull\" AS nn FROM pragma_table_info('directory_contacts') WHERE name = 'user_id'").get();
+  eq(col.nn, 0, "user_id became nullable");
+});
+
+await check("0042 finishes on live, where Publish stopped at its trigger", async () => {
+  const db = builtBefore(M42);
+  db.exec(M42_TEXT.slice(0, M42_TEXT.indexOf("CREATE TRIGGER directory_owner_has_partner")));
+  assert(!hasTrigger(db), "set up: everything but the trigger ran");
+  await farDb(cfg, importing(db, { actions: [] })).importSql(M42_TEXT);
+  assert(hasTrigger(db), "and the retry finished it");
+});
+
+await check("a file that fails says why and changes nothing", async () => {
+  const db = builtBefore(M42), before = db.prepare("SELECT count(*) AS n FROM sqlite_master").get().n;
+  let msg = "";
+  try { await farDb(cfg, importing(db, { actions: [] })).importSql("CREATE TABLE zz (a); CREATE TABLE zz (a);"); }
+  catch (e) { msg = e.message; }
+  assert(/already exists/.test(msg), `the reason reached the screen — got "${msg}"`);
+  eq(db.prepare("SELECT count(*) AS n FROM sqlite_master").get().n, before, "nothing half-applied");
 });
 
 await check("without the Pi's credential it does nothing, and says so", async () => {

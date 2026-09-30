@@ -1165,6 +1165,11 @@ body.has-savebar .acting-mark{bottom:calc(var(--ms-savebar-h,72px) + 12px)}
 .env-staging{background:#101a2b;color:#8ab4ff;border-bottom-color:rgba(138,180,255,.22)}
 .env-dev{background:#241a08;color:#f5b845;border-bottom-color:rgba(245,184,69,.3)}
 .env-unknown{background:#241010;color:#ff8f8f;border-bottom-color:rgba(255,143,143,.3)}
+/* ONE DATABASE (2026-09-29): on dev and staging the note is the warning that
+   matters — an edit there is an edit to the real records — so it is read at
+   full strength. Chase looked for it and did not find it at .75. Production
+   stays the quiet one. */
+.env-dev .env-note,.env-staging .env-note{opacity:1;font-weight:600}
 
 @media (max-width:640px){
   .env-band{padding:6px 14px;gap:8px}

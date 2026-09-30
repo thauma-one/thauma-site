@@ -50,6 +50,26 @@ async function namesOf(db, partner_id, sub) {
   return [sub, ...(await db.query("partner_site_aliases_for", { partner_id })).map((a) => a.subdomain)];
 }
 
+/**
+ * THE QUARTER-HOUR CHECK (worker.js scheduled(), live only). Dev and staging
+ * share the database but not the DNS key, so a site switched on there is
+ * recorded but its name is made here. Also keeps the wildcard record that
+ * lets every other name answer at once (site/serve.js closedSite).
+ * Returns what it did, for the log.
+ */
+export async function ensureSiteNames(env) {
+  if (env.SITE_WILDCARD !== "1" || !env.DB) return { skipped: true };
+  const db = createDb(env.DB);
+  const wildcard = (await ensureSiteDns(env, "*")).state;
+  const made = [];
+  const now = new Date().toISOString();
+  for (const s of await db.query("partner_site_needing_dns", {})) {
+    await bringUp(env, db, s.partner_id, s.subdomain, now);
+    made.push(s.subdomain);
+  }
+  return { wildcard, made };
+}
+
 /** Make every name exist in DNS (live only); the site's own name's answer is kept. */
 async function bringUp(env, db, partner_id, sub, now) {
   if (env.SITE_WILDCARD !== "1") return;
@@ -57,16 +77,6 @@ async function bringUp(env, db, partner_id, sub, now) {
   const own = await ensureSiteDns(env, names[0]);
   for (const old of names.slice(1)) await ensureSiteDns(env, old);
   await db.query("partner_site_set_dns", { partner_id, dns_state: own.state, now });
-}
-
-/** Take every name out of DNS (live only). The first problem, or null. */
-async function takeDown(env, db, partner_id, sub) {
-  if (env.SITE_WILDCARD !== "1") return null;
-  for (const name of await namesOf(db, partner_id, sub)) {
-    const r = await removeSiteDns(env, name);
-    if (r.state !== "removed" && r.state !== "pending") return r.state;
-  }
-  return null;
 }
 
 async function catalogOf(db) {
@@ -209,13 +219,12 @@ export default {
          archived_at is cleared, and its names are made again. */
       await db.query("partner_site_set_enabled", { partner_id: partner.id, enabled: on, now });
       if (on && row.dns_state !== "ready") await bringUp(env, db, partner.id, row.subdomain, now);
-      /* Switched off, the name stops existing: its DNS record goes, as on
-         archiving, and comes back when it is switched on again (Chase,
-         2026-09-29: "while the site isn't enabled, the site doesn't exist"). */
-      if (!on && env.SITE_WILDCARD === "1") {
-        const problem = await takeDown(env, db, partner.id, row.subdomain);
-        await db.query("partner_site_set_dns", { partner_id: partner.id, dns_state: problem || null, now });
-      }
+      /* Switched off, the NAME STAYS and answers with Thauma's closed page
+         (site/serve.js closedSite). Taking the record away made the site
+         truly vanish, but anyone who looked while it was gone then waited
+         out a remembered "does not exist" once it came back (Chase,
+         2026-09-29). On dev and staging nothing is made here — they hold no
+         DNS key; the live Worker's quarter-hour check makes it. */
       return answer();
     }
     if (action === "request") {
@@ -288,10 +297,9 @@ export const siteAddress = {
       if (action === "delete" && String(body.confirm || "") !== site.subdomain) {
         return json({ error: "Type the site's address to confirm." }, 400);
       }
-      /* The records first: a site deleted while its name still answered
-         would leave an address nobody can take down from here. */
-      const problem = await takeDown(env, db, partner_id, site.subdomain);
-      if (problem) return json({ error: "Cloudflare did not remove the address: " + problem }, 502);
+      /* The name's record stays: archived or deleted, it answers with
+         Thauma's closed page, and a site made again under it is there at
+         once rather than after a remembered "does not exist". */
       const now = new Date().toISOString();
       if (action === "archive") {
         await db.query("partner_site_archive", { partner_id, now });

@@ -37,8 +37,8 @@ import partnerApi from "./partner-api.js";
 import staffMilestones from "./staff-milestones.js";
 import staffHome from "./staff-home.js";
 import translate from "./translate.js";
-import staffSite, { siteAddress } from "./staff-site.js";
-import { serveSite } from "./site/serve.js";
+import staffSite, { siteAddress, ensureSiteNames } from "./staff-site.js";
+import { serveSite, closedSite } from "./site/serve.js";
 import { RESERVED as SITE_RESERVED } from "./site/model.js";
 import staffSettings from "./staff-settings.js";
 import staffGoals from "./staff-goals.js";
@@ -445,18 +445,19 @@ export default {
        ordinary routes below, on whichever host they were asked for.
 
        ON THE LIVE WORKER A ROUTE CATCHES EVERY *.thauma.one (wrangler.toml,
-       SITE_WILDCARD). A name that is not a partner site — dev.thauma.one,
-       which is the Pi behind a tunnel, or a ministry's mail-only name — is
-       passed on untouched to wherever it went before the route existed. */
+       SITE_WILDCARD), and a wildcard DNS record sends every name here. A
+       name Thauma keeps for itself (RESERVED — dev.thauma.one is the Pi
+       behind a tunnel, next is staging) is passed on untouched. Any other
+       name with no open site gets Thauma's closed page: through the
+       wildcard it has no origin of its own to pass on to. */
     const own = /^\/(embed|media|archive|confirm|unsubscribe)\//.test(url.pathname) || url.pathname === "/confirm";
     const siteHost = env.SITE_WILDCARD === "1"
       ? url.hostname.match(new RegExp("^([a-z0-9-]{1,63})\\." + (env.SITE_DOMAIN || "thauma.one").replace(/\./g, "\\.") + "$"))
       : null;
     if (siteHost && !own) {
       const sub = siteHost[1];
-      const answer = SITE_RESERVED.has(sub) ? null
-        : await serveSite(request, env, { sub, rest: url.pathname, base: "" });
-      return answer || fetch(request);
+      if (SITE_RESERVED.has(sub)) return fetch(request);
+      return (await serveSite(request, env, { sub, rest: url.pathname, base: "" })) || closedSite(request);
     }
     const sitePath = url.pathname.match(/^\/site\/([a-z0-9]{2,40})(\/.*)?$/);
     if (sitePath) {
@@ -557,5 +558,17 @@ export default {
     console.log(
       `video sync: ${results.length} source(s), ${failed.length} failed`,
       failed.map((f) => `${f.partner_id || "organization"}: ${f.error}`).join("; "));
+
+    /* PARTNER SITE NAMES, on the same quarter hour (live only; staff-site.js
+       ensureSiteNames). A second job in this handler, not a second handler,
+       and as cheap: one list request for the wildcard, and a site only when
+       it was switched on somewhere without the DNS key. Its failure must
+       never cost the video sync above, which has already run. */
+    try {
+      const names = await ensureSiteNames(env);
+      if (!names.skipped) console.log(`site names: wildcard ${names.wildcard}; made ${names.made.join(", ") || "none"}`);
+    } catch (err) {
+      console.error("site names:", err.message);
+    }
   },
 };

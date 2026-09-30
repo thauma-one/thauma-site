@@ -6,12 +6,16 @@
  *
  *   1. A Workers route, "*.thauma.one/*", on the live Worker — once, in
  *      wrangler.toml. Every partner site shares it.
- *   2. A DNS record for the name. A wildcard record would cover most names,
- *      but NOT one that already has records of its own — and every ministry
- *      that sends email from <name>.thauma.one has mail records there. So each
- *      site gets its own record, made here through the Cloudflare API: a
- *      proxied AAAA to 100:: (a placeholder address; the Worker answers
- *      before any origin is asked).
+ *   2. A DNS record for the name. The wildcard, *.thauma.one, covers most
+ *      names and is kept in place by the live Worker's scheduled() (since
+ *      2026-09-29, so an unknown name answers with Thauma's closed page
+ *      rather than "does not exist"). It does NOT cover a name that has
+ *      records under it — every ministry that sends email from
+ *      <name>.thauma.one has send.<name> and friends — so each site also
+ *      gets its own record, made here through the Cloudflare API: a proxied
+ *      AAAA to 100:: (a placeholder address; the Worker answers before any
+ *      origin is asked). Records stay when a site is switched off; only an
+ *      old name an administrator lets go of is removed.
  *
  * Needs two secrets on the live Worker: SITE_DNS_TOKEN (a Cloudflare API
  * token allowed to edit thauma.one's DNS) and SITE_ZONE_ID (thauma.one's

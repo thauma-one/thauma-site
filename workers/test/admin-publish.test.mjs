@@ -99,7 +99,7 @@ const ALL_MIGRATIONS = ["0001_init.sql", "0002_milestones.sql"];
 
 function stubGitHub({ ahead = 2, files = [], lastProdSha = "live000",
                       prodNever = false, previewSha = "live000",
-                      dispatchStatus = 204, migrations = ALL_MIGRATIONS } = {}) {
+                      dispatchStatus = 204, migrations = ALL_MIGRATIONS, mergeStatus = 201 } = {}) {
   const seen = [];
   seen.handle = async (u, init) => {
     seen.push({ url: u, method: init.method || "GET",
@@ -122,6 +122,13 @@ function stubGitHub({ ahead = 2, files = [], lastProdSha = "live000",
         return new Response(JSON.stringify({ message: "Resource not accessible" }), { status: 403 });
       }
       return new Response(null, { status: 204 });
+    }
+
+    /* Publish merges dev into main on GitHub before it builds. */
+    if (u.endsWith("/merges")) {
+      if (mergeStatus === 201) return new Response(JSON.stringify({ sha: "merge000" }), { status: 201 });
+      if (mergeStatus === 409) return new Response(JSON.stringify({ message: "Merge conflict" }), { status: 409 });
+      return new Response(null, { status: mergeStatus });
     }
 
     if (u.includes("/compare/")) {
@@ -419,6 +426,71 @@ await check("publish is refused if the migration check itself fails", async () =
   eq(res.status, 502, "status");
   assert(/could not check/i.test(body.error), `should say the check failed — got ${body.error}`);
   assert(!gh.some((c) => String(c.url).endsWith("/dispatches")), "nothing dispatched");
+});
+
+/* --------------------------- dev into main ---------------------------- */
+
+await check("publish merges dev into main on GitHub, THEN builds main", async () => {
+  const g = stubGitHub();
+  try {
+    const b = await (await handler.fetch(req("POST", { action: "publish", confirm: "PUBLISH" }), envWith("admin"))).json();
+    const mi = g.findIndex((c) => c.url.endsWith("/merges"));
+    const di = g.findIndex((c) => c.url.endsWith("/dispatches"));
+    assert(mi !== -1, "never merged");
+    eq([g[mi].body.base, g[mi].body.head], ["main", "dev"], "dev goes INTO main");
+    assert(mi < di, "built before the merge landed");
+    eq(g[di].body.ref, "main", "and main is what gets built");
+    eq(b.merged, true, "the answer says it merged");
+  } finally { g.restore(); }
+});
+
+await check("nothing new on dev: publish still builds", async () => {
+  const g = stubGitHub({ mergeStatus: 204 });
+  try {
+    const res = await handler.fetch(req("POST", { action: "publish", confirm: "PUBLISH" }), envWith("admin"));
+    eq(res.status, 200, "status");
+    eq((await res.json()).merged, false, "merged");
+    assert(g.some((c) => c.url.endsWith("/dispatches")), "did not build");
+  } finally { g.restore(); }
+});
+
+await check("a merge conflict publishes NOTHING and says so", async () => {
+  const g = stubGitHub({ mergeStatus: 409 });
+  try {
+    const res = await handler.fetch(req("POST", { action: "publish", confirm: "PUBLISH" }), envWith("admin"));
+    eq(res.status, 409, "status");
+    assert(/Nothing was published/.test((await res.json()).error), "the reason reaches the screen");
+    assert(!g.some((c) => c.url.endsWith("/dispatches")), "built anyway");
+  } finally { g.restore(); }
+});
+
+await check("the merge waits for the word, and for the database check", async () => {
+  const g = stubGitHub({ migrations: [...ALL_MIGRATIONS, "0003_new.sql"] });
+  try {
+    await handler.fetch(req("POST", { action: "publish" }), envWith("admin"));
+    const res = await handler.fetch(req("POST", { action: "publish", confirm: "PUBLISH" }), envWith("admin"));
+    eq(res.status, 409, "refused for the migration");
+    assert(!g.some((c) => c.url.endsWith("/merges")), "merged main ahead of a refused publish");
+    assert(g.some((c) => c.url.includes("migrations") && c.url.includes("ref=dev")),
+      "checked dev's migrations — the ones the merge brings");
+  } finally { g.restore(); }
+});
+
+await check("preview never touches main", async () => {
+  const g = stubGitHub();
+  try {
+    await handler.fetch(req("POST", { action: "preview" }), envWith("admin"));
+    assert(!g.some((c) => c.url.endsWith("/merges")), "preview merged");
+  } finally { g.restore(); }
+});
+
+await check("what is waiting is measured against dev, which is what Publish ships", async () => {
+  const g = stubGitHub();
+  try {
+    await handler.fetch(req("GET"), envWith("admin"));
+    const cmp = g.find((c) => c.url.includes("/compare/"));
+    assert(/live000\.\.\.dev$/.test(decodeURIComponent(cmp.url)), "compared against " + cmp.url);
+  } finally { g.restore(); }
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

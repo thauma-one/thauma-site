@@ -13,7 +13,7 @@
  * 22); CI's Node 20 skips just that part.
  */
 import { readFileSync } from "node:fs";
-import { answerCeiling, worstCase, dailyShare } from "../src/translate.js";
+import { answerCeiling, worstCase, dailyShare, dayKey } from "../src/translate.js";
 import { QUERIES } from "../src/lib/queries.generated.js";
 import { createDb } from "../src/lib/db.js";
 
@@ -75,6 +75,15 @@ if (!sqlite) {
     assert((await db.query("ai_usage_reserve", { day: "2026-09-30", est: 10, cap })).length === 1, "and a new day starts at nothing");
   });
 }
+
+await check("each site counts its share in its own row of the one database", () => {
+  const at = new Date("2026-09-29T23:59:00Z");
+  assert(dayKey({ SITE_ORIGIN: "https://dev.thauma.one" }, at) === "2026-09-29 dev.thauma.one", "dev keeps its own row");
+  assert(dayKey({ SITE_ORIGIN: "https://thauma.one/" }, at) === "2026-09-29 thauma.one", "live keeps its own row");
+  assert(dayKey({ SITE_ORIGIN: "https://next.thauma.one" }, at) !== dayKey({ SITE_ORIGIN: "https://thauma.one" }, at),
+    "staging and live never share a count");
+  assert(dayKey({}, at) === "2026-09-29", "no origin: the bare date");
+});
 
 void QUERIES;
 console.log(`\n  ${pass} passed, ${fail} failed`);
