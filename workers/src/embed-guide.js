@@ -140,6 +140,7 @@ Guard the null explicitly before comparing dates.
 | \`actual_date\` | string \\| null | ISO date. **Null is normal.** |
 | \`status\` | string | \`upcoming\` \\| \`in_progress\` \\| \`complete\` \\| \`canceled\` |
 | \`completion\` | number \\| null | 0–100, if they track it. Always 0 while \`status\` is \`upcoming\`: the ministry has not started it. |
+| \`featured\` | boolean | Starred in the console: the few to show on a home page. The full list is still every milestone. |
 | \`text\` | object | **Keyed by language code.** See below. |
 
 ### A video

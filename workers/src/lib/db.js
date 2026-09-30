@@ -380,6 +380,9 @@ export async function partnerPublicSite(db, partnerId, partnerSlug = null) {
         actual_date: m.actual_date,
         status: m.status,
         completion: m.completion,
+        /* The console's "featured" star — what a site's own home page shows
+           as a teaser (chaseroush.com's old "homepage" flag). */
+        featured: !!m.is_featured,
         text: byMilestone[m.id],
       })),
     /* Published prayer, same shape as milestones: a state row plus text keyed
