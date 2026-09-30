@@ -16,10 +16,9 @@
    actually shortens the flash to be barely perceptible, not the
    display strategy.
    Both are variable fonts — one file per subset covers every weight
-   actually used, so 4 files total. Only latin/latin-ext are needed; the
-   game's collage wall draws many more scripts (Cyrillic, Greek) but Sora
-   doesn't ship those glyphs anyway, so that text was always falling back
-   to system fonts regardless.
+   actually used, so 4 files total. Only latin/latin-ext are needed:
+   Sora doesn't ship Cyrillic or Greek glyphs anyway, so Serbian text
+   always falls back to system fonts regardless.
    Sora is declared as DISCRETE weights (100/200/600 — the only ones
    actually used), not a single font-weight:100 800 range (2026-07-16,
    third pass): elements using Sora consistently fell back to a system
@@ -346,8 +345,8 @@ h1 b,h2 b{font-weight:600}
 
 /* ---------- Home hero ---------- */
 header.hero{min-height:100vh;display:flex;flex-direction:column;justify-content:center;position:relative;padding-top:64px}
-/* touch-action:manipulation — this is also the hidden game's door 1 (5
-   quick taps, GAME-SPEC.md §3); without it, rapid taps register as a
+/* touch-action:manipulation — this is also one of the arcade's doors (5
+   quick taps, ARCADE-SPEC.md); without it, rapid taps register as a
    native double-tap-zoom gesture instead of 5 clean clicks. */
 .wordmark{font-family:'Sora',sans-serif;font-weight:100;font-size:clamp(56px,11vw,150px);letter-spacing:.14em;line-height:1;
   text-shadow:0 0 60px rgba(47,216,255,.22);touch-action:manipulation}

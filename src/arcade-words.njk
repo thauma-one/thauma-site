@@ -1,0 +1,7 @@
+---
+eleventyExcludeFromCollections: true
+---
+{#- Every language's arcade words in one file: the arcade opens over
+   whatever page it was found on, the 404 included, and that page's language
+   is only known in the browser. Gathered and gated in arcade-words.11tydata.js. -#}
+{{ arcadeWords | dump | safe }}

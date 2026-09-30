@@ -1,0 +1,34 @@
+---
+eleventyExcludeFromCollections: true
+---
+{#- THE ARCADE'S OWN ADDRESS (ARCADE-SPEC.md). Found through a door, the
+   arcade opens over the page it was found on and this file is never
+   loaded; this is for the shared link and a reload. One file for every
+   language: the visitor's is the site's cookie, as on the 404. -#}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Thauma Arcade</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#07090E">
+<link rel="preload" as="font" type="font/woff2" href="/fonts/Sora-latin-v2.woff2" crossorigin>
+<link rel="preload" as="font" type="font/woff2" href="/fonts/Inter-latin-v2.woff2" crossorigin>
+<link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/css/main.css?v={{ "/css/main.css" | v }}">
+<style>html,body{height:100%;background:#07090E;overflow:hidden}</style>
+<script>
+  (function () {
+    var m = document.cookie.match(/thauma_lang=([a-z]{2})/);
+    var langs = {{ activeLangs | dump | safe }};
+    if (m && langs.indexOf(m[1]) !== -1) document.documentElement.lang = m[1];
+  })();
+</script>
+</head>
+<body class="arcade-page">
+{#- Straight in: there is no page to break, so doors.js sees body.arcade-page
+   and powers the arcade on by itself; Back leads to the site's home. -#}
+{% include "arcade-doors.njk" %}
+</body>
+</html>

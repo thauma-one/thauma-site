@@ -69,6 +69,10 @@
       "socialLinks": {
         "live": false,
         "dev": true
+      },
+      "arcade": {
+        "live": false,
+        "dev": true
       }
     }
   },

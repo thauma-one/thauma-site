@@ -142,7 +142,7 @@
      THE PAGES, in the order the site has them; the menu and the footer are
      one entry, as on the board. */
   var PAGE_ORDER = ['home', 'about', 'mission', 'values', 'resources', 'give', 'contact', 'stay',
-                    'events', 'team', 'menu', 'coming', 'notFound', 'staff', 'emails', '_general'];
+                    'events', 'team', 'menu', 'coming', 'notFound', 'arcade', 'staff', 'emails', '_general'];
 
   function sectionOf(line) {
     if (line.source === 'emails') return 'emails';
@@ -205,7 +205,7 @@
     var section = row.key.slice(0, dot), rest = row.key.slice(dot + 1);
 
     /* A list: `values.items.2.title` is named by that item's own title;
-       `notFound.taunts.3` is "Game taunt 4". */
+       an item with no title is its list's name and number. */
     var arr = rest.match(/^([A-Za-z_]+)\.(\d+)(?:\.([A-Za-z_]+))?$/);
     if (arr) {
       var n = Number(arr[2]) + 1;
