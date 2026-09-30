@@ -738,6 +738,33 @@ await check("someone on the team who is not the owner sees it, cannot change it,
   } finally { EXTRA = {}; }
 });
 
+await check("a site draft someone else saved meanwhile is not overwritten — compared by the draft, not the stamp", async () => {
+  /* one row: a starter site carries random ids, so two calls differ */
+  const row = SITE_ROW();
+  EXTRA = { partner_site_get: [row] };
+  try {
+    const stored = JSON.parse(row.draft);
+    const mine = JSON.parse(row.draft); mine.design.menu = "side";
+    const older = JSON.parse(row.draft); older.pages[1].on = !older.pages[1].on;   /* a change cleaning keeps */
+
+    let db = makeDb();
+    let res = await staffSite.fetch(post("/api/staff-site", { action: "save", draft: mine, base: older }), env(db));
+    const body = await res.json();
+    eq([res.status, body.changed], [409, true], "refused");
+    assert(body.current && body.current.draft && body.current.draft.design, "with the draft as it now is");
+    assert(!called(db, "partner_site_save_draft").length, "written anyway");
+
+    db = makeDb();
+    eq((await staffSite.fetch(post("/api/staff-site", { action: "save", draft: mine, base: stored }), env(db))).status, 200,
+      "unchanged since it loaded");
+    assert(called(db, "partner_site_save_draft").length === 1, "saved");
+
+    db = makeDb();
+    await staffSite.fetch(post("/api/staff-site", { action: "save", draft: mine, base: older, overwrite: true }), env(db));
+    assert(called(db, "partner_site_save_draft").length === 1, "saved over it when chosen");
+  } finally { EXTRA = {}; }
+});
+
 await check("switching on a site nobody published publishes it first", async () => {
   EXTRA = { partner_site_get: [SITE_ROW()] };
   try {
