@@ -11,9 +11,9 @@
    the debris home. The browser's Back does the same, because opening the
    arcade put /arcade/ into the history.
 
-   A GAME, when there is one, is a script registering itself in
-   ThaumaArcade.games[id] = { start(ctx) } — see ARCADE-SPEC.md §4. Until
-   then its cabinet says so.
+   A GAME is js/arcade/games/<id>.js, registering itself in
+   ThaumaArcade.games[id] and run by play.js (ARCADE-SPEC.md §4); both load
+   only when its cabinet is played. A cabinet without `ready` says so.
    ===================================================================== */
 (function () {
   'use strict';
@@ -21,7 +21,7 @@
   /* The launch four (Chase, 2026-09-29: "You can start with the four"),
      then the three still in the workshop. */
   var CABINETS = [
-    { id: 'loadout',    controls: 'tap',    c: '--ar-amber' },
+    { id: 'loadout',    controls: 'tap',    c: '--ar-amber',  ready: true },
     { id: 'soundcheck', controls: 'toggle', c: '--ar-blue' },
     { id: 'panelfixer', controls: 'tap',    c: '--ar-magenta' },
     { id: 'cablerun',   controls: 'dpad',   c: '--ar-foam' },
@@ -55,6 +55,17 @@
     var m = document.cookie.match(/thauma_lang=([a-z]{2})/);
     if (!all[l] && m) l = m[1];
     return all[l] ? l : 'en';
+  }
+  var scripts = {};
+  function script(key, src) {
+    if (scripts[key]) return scripts[key];
+    var v = (window.THAUMA_ARCADE.v.games || {})[key] || window.THAUMA_ARCADE.v[key] || '';
+    scripts[key] = new Promise(function (res, rej) {
+      var s = document.createElement('script'); s.src = src + '?v=' + v;
+      s.onload = res; s.onerror = function () { delete scripts[key]; rej(new Error(src)); };
+      document.head.appendChild(s);
+    });
+    return scripts[key];
   }
   function best(id) { try { return parseInt(localStorage.getItem(BEST + id), 10) || 0; } catch (e) { return 0; } }
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
@@ -177,7 +188,7 @@
         });
       }
       function describe() {
-        var c = CABINETS[sel], ready = !!games[c.id];
+        var c = CABINETS[sel], ready = !!c.ready;
         el.style.setProperty('--c', 'var(' + c.c + ')');
         rollTitle(w(c.id + '_title'));
         line.textContent = w(c.id + '_line');
@@ -190,7 +201,7 @@
       }
       function showBoard(c) {
         board.innerHTML = '';
-        if (c.broken || !games[c.id]) return;
+        if (c.broken || !c.ready) return;
         var paint = function (list) {
           if (CABINETS[sel] !== c) return;
           board.innerHTML = list.length
@@ -198,9 +209,7 @@
             : '<li>' + esc(w('empty_label')) + '</li>';
         };
         if (boards[c.id]) return paint(boards[c.id]);
-        fetch('/api/game-scores?game=' + c.id).then(function (r) { return r.ok ? r.json() : { scores: [] }; })
-          .then(function (d) { boards[c.id] = d.scores || []; paint(boards[c.id]); })
-          .catch(function () {});
+        boardFor(c.id).then(paint).catch(function () {});
       }
       function choose(i) {
         i = Math.max(0, Math.min(cabs.length - 1, i));
@@ -215,12 +224,35 @@
         cab.classList.remove('is-shake'); void cab.offsetWidth; cab.classList.add('is-shake');
         clearTimeout(f._t); f._t = setTimeout(function () { f.classList.remove('is-shown'); }, 1100);
       }
+      var playing = false;
       function play() {
         var c = CABINETS[sel], cab = cabs[sel];
+        if (playing) return;
         if (c.broken) return flash(cab, w('broken_label'));
-        if (!games[c.id]) return flash(cab, w('soon_label'));
-        /* A game takes the whole screen; ARCADE-SPEC.md §4. */
-        games[c.id].start({ root: el, words: w, lang: L, id: c.id, best: best(c.id) });
+        if (!c.ready) return flash(cab, w('soon_label'));
+        /* A game takes the whole arcade screen until Menu (play.js). */
+        playing = true;
+        Promise.all([script('play', '/js/arcade/play.js'), script(c.id, '/js/arcade/games/' + c.id + '.js')])
+          .then(function () {
+            return window.ThaumaPlay.run(games[c.id], {
+              root: el, id: c.id, words: w,
+              board: function () { return boardFor(c.id); },
+              submit: function (name, score) { return submit(c.id, name, score); }
+            });
+          })
+          .then(function () { playing = false; describe(); el.focus({ preventScroll: true }); },
+                function () { playing = false; flash(cab, w('broken_label')); });
+      }
+      function boardFor(id) {
+        if (boards[id]) return Promise.resolve(boards[id]);
+        return fetch('/api/game-scores?game=' + id).then(function (r) { return r.ok ? r.json() : { scores: [] }; })
+          .then(function (d) { boards[id] = d.scores || []; return boards[id]; });
+      }
+      function submit(id, name, score) {
+        return fetch('/api/game-scores', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ game: id, name: name, score: score }) })
+          .then(function (r) { return r.json(); })
+          .then(function (d) { boards[id] = d.scores || []; return boards[id]; });
       }
 
       /* ---- the attract screens ---- */
@@ -235,7 +267,7 @@
       var t0 = performance.now(), last = 0;
       function frame(now) {
         raf = requestAnimationFrame(frame);
-        if (now - last < 33) return; last = now;
+        if (playing || now - last < 33) return; last = now;
         var t = (now - t0) / 1000;
         screens.forEach(function (s, i) {
           if (Math.abs(i - sel) > 1 && t > .1) return;
@@ -248,7 +280,7 @@
 
       /* ---- controls: the same three the games use ---- */
       function onKey(e) {
-        if (closing) return;
+        if (closing || playing) return;
         var k = e.key;
         if (k === 'ArrowLeft' || k === 'a' || k === 'A') { choose(sel - 1); e.preventDefault(); }
         else if (k === 'ArrowRight' || k === 'd' || k === 'D') { choose(sel + 1); e.preventDefault(); }
@@ -261,7 +293,7 @@
       floor.addEventListener('pointerdown', function (e) { sx = e.clientX; sy = e.clientY; });
       floor.addEventListener('pointercancel', function () { sx = null; });
       floor.addEventListener('pointerup', function (e) {
-        if (sx === null) return;
+        if (sx === null || playing) return;
         var dx = e.clientX - sx, dy = e.clientY - sy; sx = null;
         if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) { choose(sel + (dx < 0 ? 1 : -1)); return; }
         var cab = e.target.closest('.cab');

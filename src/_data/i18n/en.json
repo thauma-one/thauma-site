@@ -280,6 +280,34 @@
     "strike_title": "Strike",
     "strike_line": "Tear down the set, one brick at a time.",
     "cuestack_title": "Cue Stack",
-    "cuestack_line": "Standby… GO."
+    "cuestack_line": "Standby… GO.",
+    "paused_label": "Paused",
+    "resume_label": "Resume",
+    "newbest_label": "New best!",
+    "saving_label": "Saving…",
+    "loadout_height": "Height",
+    "loadout_spares": "Spares",
+    "loadout_amp": "AMP RACK",
+    "loadout_cable": "CABLE",
+    "loadout_mics": "MICS",
+    "loadout_lights": "LIGHTS",
+    "loadout_drums": "DRUMS",
+    "loadout_sub": "SUB",
+    "loadout_lost": [
+      "That one's coming out of your paycheck.",
+      "Who packed this truck?",
+      "The drummer is not going to love this.",
+      "Gravity: still undefeated."
+    ],
+    "loadout_nice": [
+      "Clean.",
+      "Tetris-level packing.",
+      "The crew chief nods. Once."
+    ],
+    "loadout_heavy": [
+      "Two-person lift.",
+      "Lift with your legs.",
+      "Somebody call the stagehands."
+    ]
   }
 }

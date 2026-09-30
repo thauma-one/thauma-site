@@ -280,6 +280,34 @@
     "strike_title": "Strike",
     "strike_line": "Podri sceno, opeko za opeko.",
     "cuestack_title": "Cue Stack",
-    "cuestack_line": "Pripravljen… ZDAJ."
+    "cuestack_line": "Pripravljen… ZDAJ.",
+    "paused_label": "Premor",
+    "resume_label": "Nadaljuj",
+    "newbest_label": "Nov rekord!",
+    "saving_label": "Shranjujem…",
+    "loadout_height": "Višina",
+    "loadout_spares": "Rezerve",
+    "loadout_amp": "OJAČEVALCI",
+    "loadout_cable": "KABLI",
+    "loadout_mics": "MIKROFONI",
+    "loadout_lights": "LUČI",
+    "loadout_drums": "BOBNI",
+    "loadout_sub": "SUB",
+    "loadout_lost": [
+      "To gre od tvoje plače.",
+      "Kdo je to pakiral?",
+      "Bobnar tega ne bo vesel.",
+      "Gravitacija: še vedno neporažena."
+    ],
+    "loadout_nice": [
+      "Čisto.",
+      "Pakiranje kot v Tetrisu.",
+      "Vodja ekipe prikima. Enkrat."
+    ],
+    "loadout_heavy": [
+      "Za dve osebi.",
+      "Dvigni z nogami.",
+      "Pokličite odrske delavce."
+    ]
   }
 }

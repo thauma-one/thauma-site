@@ -17,6 +17,7 @@
  */
 import { JSDOM } from "jsdom";
 import { readFileSync } from "node:fs";
+import { readdirSync } from "node:fs";
 
 const ROOT = new URL("../", import.meta.url);
 const read = (p) => readFileSync(new URL(p, ROOT), "utf8");
@@ -110,8 +111,15 @@ const I18N = Object.fromEntries(LANGS.map((l) => [l, JSON.parse(read(`src/_data/
 const cabinets = [...read("src/js/arcade/arcade.js").matchAll(/\{ id: '([a-z]+)',/g)].map((m) => m[1]);
 
 await check("every language has every word the arcade asks for", () => {
-  const src = read("src/js/arcade/arcade.js");
-  const asked = new Set([...src.matchAll(/w\('([a-z_]+)'\)/g)].map((m) => m[1]));
+  const files = ["src/js/arcade/arcade.js", "src/js/arcade/play.js",
+    ...readdirSync(new URL("src/js/arcade/games/", ROOT)).map((f) => "src/js/arcade/games/" + f)];
+  const asked = new Set();
+  for (const f of files) {
+    const src = read(f);
+    for (const m of src.matchAll(/\b(?:w|words)\('([a-z_]+)'\)/g)) asked.add(m[1]);
+    /* Load Out's stencils: words('loadout_' + t.key) over its CASES */
+    if (/words\('loadout_' \+ t\.key\)/.test(src)) for (const m of src.matchAll(/\{ key: '([a-z]+)'/g)) asked.add("loadout_" + m[1]);
+  }
   for (const c of cabinets) { asked.add(c + "_title"); asked.add(c + "_line"); }
   for (const h of ["tap_hint", "toggle_hint", "dpad_hint"]) asked.add(h);
   assert(cabinets.length >= 7, `found ${cabinets.length} cabinets`);
@@ -124,10 +132,25 @@ await check("every language has every word the arcade asks for", () => {
 });
 
 await check("the Serbian is Cyrillic, apart from the names", () => {
-  const KEEP = /Thaum\w*|Load Out|Soundcheck|Panel Fixer|Cable Run|Follow Spot|Strike|Cue Stack|WASD|LED|\bA D\b/g;
+  const KEEP = /Thaum\w*|Load Out|Soundcheck|Panel Fixer|Cable Run|Follow Spot|Strike|Cue Stack|Tetris\w*|WASD|LED|SUB|\bA D\b/g;
   for (const [k, v] of Object.entries(I18N.sr.arcade)) {
-    assert(!/[A-Za-zČĆŠŽĐčćšžđ]/.test(v.replace(KEEP, "")), `sr arcade.${k} still has Latin: ${v}`);
+    for (const line of [].concat(v)) {
+      assert(!/[A-Za-zČĆŠŽĐčćšžđ]/.test(line.replace(KEEP, "")), `sr arcade.${k} still has Latin: ${line}`);
+    }
   }
+});
+
+await check("a list of lines is a list in every language, the same length", () => {
+  for (const [k, v] of Object.entries(I18N.en.arcade)) {
+    if (!Array.isArray(v)) continue;
+    for (const l of LANGS) eq((I18N[l].arcade[k] || []).length, v.length, `${l} arcade.${k}`);
+  }
+});
+
+await check("the physics engine comes from the package, into the build, never the repo", () => {
+  assert(/"planck":/.test(read("package.json")), "planck is not a dependency");
+  assert(read(".eleventy.js").includes('"node_modules/planck/dist/planck.min.js": "js/arcade/vendor/planck.min.js"'), "not copied into the build");
+  assert(/needs: \['planck'\]/.test(read("src/js/arcade/games/loadout.js")), "Load Out does not ask for it");
 });
 
 await check("the old game's words are gone from every language", () => {

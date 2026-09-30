@@ -280,6 +280,34 @@
     "strike_title": "Strike",
     "strike_line": "Rastavi scenu, ciglu po ciglu.",
     "cuestack_title": "Cue Stack",
-    "cuestack_line": "Pozor… SAD."
+    "cuestack_line": "Pozor… SAD.",
+    "paused_label": "Pauza",
+    "resume_label": "Nastavi",
+    "newbest_label": "Novi rekord!",
+    "saving_label": "Spremanje…",
+    "loadout_height": "Visina",
+    "loadout_spares": "Rezerve",
+    "loadout_amp": "POJAČALA",
+    "loadout_cable": "KABELI",
+    "loadout_mics": "MIKROFONI",
+    "loadout_lights": "RASVJETA",
+    "loadout_drums": "BUBNJEVI",
+    "loadout_sub": "SUB",
+    "loadout_lost": [
+      "To ti ide od plaće.",
+      "Tko je ovo pakirao?",
+      "Bubnjar ovo neće voljeti.",
+      "Gravitacija: i dalje neporažena."
+    ],
+    "loadout_nice": [
+      "Čisto.",
+      "Pakiranje kao u Tetrisu.",
+      "Šef ekipe kimne. Jednom."
+    ],
+    "loadout_heavy": [
+      "Za dvije osobe.",
+      "Diži nogama.",
+      "Zovite scenske radnike."
+    ]
   }
 }

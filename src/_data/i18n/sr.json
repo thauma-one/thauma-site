@@ -280,6 +280,34 @@
     "strike_title": "Strike",
     "strike_line": "Растави сцену, циглу по циглу.",
     "cuestack_title": "Cue Stack",
-    "cuestack_line": "Позор… САД."
+    "cuestack_line": "Позор… САД.",
+    "paused_label": "Пауза",
+    "resume_label": "Настави",
+    "newbest_label": "Нови рекорд!",
+    "saving_label": "Спремање…",
+    "loadout_height": "Висина",
+    "loadout_spares": "Резерве",
+    "loadout_amp": "ПОЈАЧАЛА",
+    "loadout_cable": "КАБЕЛИ",
+    "loadout_mics": "МИКРОФОНИ",
+    "loadout_lights": "РАСВЈЕТА",
+    "loadout_drums": "БУБЊЕВИ",
+    "loadout_sub": "SUB",
+    "loadout_lost": [
+      "То ти иде од плаће.",
+      "Тко је ово пакирао?",
+      "Бубњар ово неће вољети.",
+      "Гравитација: и даље непоражена."
+    ],
+    "loadout_nice": [
+      "Чисто.",
+      "Пакирање као у Tetrisu.",
+      "Шеф екипе кимне. Једном."
+    ],
+    "loadout_heavy": [
+      "За двије особе.",
+      "Дижи ногама.",
+      "Зовите сценске раднике."
+    ]
   }
 }

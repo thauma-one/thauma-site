@@ -4,9 +4,11 @@ A living document: append and revise, don't rediscover. Replaces
 GAME-SPEC.md (the single hidden Flappy-style game, retired 2026-09-29; its
 full history is in git).
 
-**Status (2026-09-29):**
-- **Built:** the ways in, the failure engine and the arcade shell.
-- **Not built yet:** the games. Every cabinet is "Coming soon" or "Out of order".
+**Status (2026-09-30):**
+- **Built:** the ways in, the failure engine, the arcade shell, the game
+  runtime, and Load Out.
+- **Not built yet:** Soundcheck, Panel Fixer, Cable Run ("Coming soon"), and
+  the three "Out of order" cabinets.
 - **Release:** switched ON for dev and OFF for the live site
   (`site.json › visibility.sections.arcade`, or Website › Settings). Turn
   it on for live only once the games are worth finding.
@@ -130,12 +132,51 @@ with 3-letter initials.
   "???".
 - Deleting a score needs `GAME_ADMIN_TOKEN`.
 
-The shell still owes:
-- a fixed logical play area, scaled whole to the screen (the old game's
-  three rounds of mobile fixes came from sizing its world to the window);
-- input for the three control types, including the phone control strip;
-- pause, game over, and 3-letter initials for a global top 5 per game
-  (`/api/game-scores?game=<id>`).
+**The runtime (src/js/arcade/play.js)**, built 2026-09-30:
+- **A fixed play area** of the game's own size (Load Out is 360×640),
+  scaled whole and letterboxed. The old game's three rounds of mobile fixes
+  came from sizing its world to the window.
+- **The three control types:** tap anywhere / Space / Enter; hold a half /
+  ← → / A D; and arrows / WASD, plus the button strip and swipes on touch
+  screens.
+- **Pause:** Esc / P, the pause button, or the tab going to the
+  background.
+- **Game over:** a new-best flag, the board, and 3-letter initials (↑↓ to
+  change, ←→ to move, letters type, Enter saves).
+- **THE CARD LOCKS AFTER GAME OVER** until the player has stopped for half
+  a second, however long they keep mashing. A fixed delay let a steady
+  tapper land on Save and put "AAA" on the board. Focus starts on the first
+  letter, never on Save.
+- **The contract:** `ThaumaArcade.games[id] = { size, controls, needs,
+  create(ctx) }`, where `create` returns `{ update(dt), draw(g),
+  press(dir), stop() }`. ctx has `score()`, `shake()`, `say()` (the stage
+  manager's radio line), `over()`, `held` and `words()`.
+- **Loading:** the runtime, each game and its vendor scripts load only when
+  a cabinet is played.
+
+**Load Out (built 2026-09-30):**
+- **Physics:** Planck.js 1.5.0 (a port of Box2D, MIT), copied from the
+  npm package into the build. It's the engine stacking games are built on.
+- **Six cases:** 12 to 120 kg.
+- **Weight you can see:**
+  - the kg stencil;
+  - heavy builds (diamond plate, hazard tape, big corners);
+  - a longer chain and a slower motor;
+  - less swing on the hook;
+  - the motor's LOAD gauge;
+  - a landing jolt of weight × speed, with dust.
+- **Rules:** three spares, and a case off the stage costs one. The score
+  is the tower's best height in cm. Early cases are kind; later ones are
+  longer and heavier.
+- **Radio lines** (`loadout_lost`, `_nice`, `_heavy`) are English with my
+  Croatian and Slovenian, and Serbian transliterated. They are jokes, so a
+  native speaker should rewrite them.
+
+**NEVER TEST AGAINST THE REAL BOARD.** Dev shares live's storage. A test on
+2026-09-30 mashed Space through game over and saved "AAA 103" to the real
+Load Out board. The key was brand new, so it was deleted and the storage is
+exactly as before. The scratch browser harness now fails every POST to
+/api/game-scores.
 
 The launch four (Chase: "You can start with the four"):
 1. **Load Out** (tap): road cases hang from a chain motor; tap to drop.
@@ -182,6 +223,9 @@ Later:
     redone (THAUMA over a drifting hero gradient, one link, and the door).
   - A tapped door's own element is never torn: a clipped band doesn't
     take taps, and the fifth tap missed on the closed page.
+  - 2026-09-30: the game runtime (play.js) and Load Out, played through in
+    headless Chromium at desktop and phone size, including mashing through
+    game over.
   - Verified in headless Chromium at 1280×800 and 390×844 (touch) on the
     dev server, stage by stage, including the round trip back to the page
     and reduced motion.
