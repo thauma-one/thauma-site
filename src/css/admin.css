@@ -1294,3 +1294,11 @@ body:has(.web-panel:not([hidden]) .ms-savebar:not([hidden])) .web-bar{display:no
 .adm-site-alias{display:inline-flex;align-items:center;gap:2px;margin:0 10px 0 4px}
 .adm-site-alias .adm-x{background:none;border:0;color:var(--dim,#8a93a3);font-size:16px;line-height:1;padding:2px 6px;cursor:pointer}
 .adm-site-alias .adm-x:hover{color:var(--crit,#FF6B6B)}
+/* The bar following a build (admin-publish.js followBuild): its dot pulses
+   while it builds, turns seafoam when it is live, red when it failed. */
+.web-bar.is-building .ms-dirty-dot{background:var(--voice-tech);animation:web-build 1.2s cubic-bezier(.55,.05,.45,.95) infinite}
+.web-bar.is-done .ms-dirty-dot{background:var(--ok)}
+.web-bar.is-failed .ms-dirty-dot{background:var(--crit)}
+.web-bar .web-bar-count a{color:inherit;text-decoration:underline;margin-left:6px}
+@keyframes web-build{50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.web-bar.is-building .ms-dirty-dot{animation:none}}

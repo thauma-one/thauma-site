@@ -37,9 +37,9 @@ import { createDb } from "./lib/db.js";
 import { pendingMigrations } from "./admin-migrate.js";
 import { requireAccess } from "./lib/access.js";
 import { json, readJson } from "./lib/store.js";
-import { compareBranches, dispatchWorkflow, lastSuccessfulRun, refSha, githubConfig }
+import { compareBranches, dispatchWorkflow, lastSuccessfulRun, latestRun, refSha, githubConfig }
   from "./lib/github.js";
-import { carry } from "./lib/carry.js";
+import { carry, carryConfig } from "./lib/carry.js";
 
 const CONFIRM_WORD = "PUBLISH";
 
@@ -127,9 +127,21 @@ export default {
 
 /* -------------------------------- status -------------------------------- */
 
+/* The newest build of each kind, finished or not, and whether pressing the
+   button here also carries dev's data (only on the Pi — lib/carry.js). */
+async function runsAndCarry(env) {
+  const [live, preview] = await Promise.all([latestRun(env, PROD_WORKFLOW), latestRun(env, STAGING_WORKFLOW)]);
+  const pick = (r) => (r && !r.error && !r.never ? r : null);
+  return {
+    latest: { live: pick(live), preview: pick(preview) },
+    carries: { live: carryConfig(env, "live").ok === true, preview: carryConfig(env, "staging").ok === true },
+  };
+}
+
 async function status(env) {
   const branch = liveBranch(env);
   const cfg = githubConfig(env);
+  const extra = await runsAndCarry(env);
 
   const live = await lastSuccessfulRun(env, PROD_WORKFLOW);
   if (live.error) return json({ error: live.error }, live.status || 502);
@@ -145,6 +157,7 @@ async function status(env) {
       neverPublished: true, waiting: 0, commits: [], files: [], migrations: [],
       preview: preview.never ? null : preview,
       confirm_word: CONFIRM_WORD,
+      ...extra,
     });
   }
 
@@ -180,6 +193,7 @@ async function status(env) {
     migrations: migrationsIn(cmp.files),
     compare_url: cmp.permalink,
     confirm_word: CONFIRM_WORD,
+    ...extra,
   });
 }
 

@@ -413,6 +413,7 @@
     $('pBarCount').textContent = n
       ? (n === 1 ? tr('pub.oneWaiting') : tr('pub.nWaiting').replace('{n}', n))
       : tr('pub.upToDate');
+    followBuild();
 
     /* The two SHAs, in the manual panel. When somebody is convinced the page
        is lying to them, this is the line that settles it — the live branch's
@@ -423,6 +424,53 @@
         ? fill('pub.manualShas', { head: state.head, live: state.published.sha })
         : '';
     }
+  }
+
+  /* ---- following a build to its end --------------------------------------
+     A build takes a minute or two, and the page used to say nothing once it
+     had asked for one — the review stayed open showing the list it had
+     before, and "it seems as though the changes didn't take effect" (Chase,
+     2026-09-29). So after Publish or Preview the review closes and this bar
+     says where the build is — building, live, or failed — reading the newest
+     run every 15 seconds until it has finished, then stopping. */
+  var pending = null, poll = null, lastWord = null;
+  function followBuild() {
+    var el = $('pBarCount'), bar = $('pBar');
+    bar.classList.remove('is-building', 'is-done', 'is-failed');
+    if (!pending) {
+      if (lastWord) { bar.classList.add(lastWord.cls); el.innerHTML = lastWord.html; }
+      return;
+    }
+    var run = state && state.latest && state.latest[pending.action === 'publish' ? 'live' : 'preview'];
+    var mine = run && Date.parse(run.started) >= pending.since - 90000;
+    var site = pending.action === 'publish' ? ($('pReviewPanel').getAttribute('data-live') || 'thauma.one') : 'next.thauma.one';
+    if (mine && run.status === 'completed') {
+      var ok = run.conclusion === 'success';
+      var said = ok ? fill(pending.action === 'publish' ? 'pub.nowLive' : 'pub.nowPreview', { site: site }) : tr('pub.buildFailed');
+      lastWord = {
+        cls: ok ? 'is-done' : 'is-failed',
+        html: esc(said) + (ok
+          ? ' <a href="https://' + esc(site) + '/" target="_blank" rel="noopener">' + esc(tr('pub.open')) + ' ↗</a>'
+          : ' <a href="' + esc(run.url) + '" target="_blank" rel="noopener">' + esc(tr('pub.whatHappened')) + ' ↗</a>'),
+      };
+      pending = null; clearInterval(poll); poll = null;
+      toast(said, ok ? 'ok' : 'err');
+      return followBuild();
+    }
+    if (Date.now() - pending.since > 15 * 60 * 1000) {
+      pending = null; clearInterval(poll); poll = null;
+      lastWord = { cls: 'is-failed', html: esc(tr('pub.tooLong')) };
+      return followBuild();
+    }
+    bar.classList.add('is-building');
+    el.textContent = fill(pending.action === 'publish' ? 'pub.buildingLive' : 'pub.buildingPreview', { site: site });
+  }
+  function startFollowing(action) {
+    pending = { action: action, since: Date.now() };
+    lastWord = null;
+    clearInterval(poll);
+    poll = setInterval(function () { if (!busy) load(); }, 15000);
+    followBuild();
   }
 
   /* ---- the two actions ------------------------------------------------ */
@@ -502,7 +550,8 @@
     var ok = await window.StaffConfirm({
       title: tr('pub.confirmTitle'),
       body: tr('pub.confirmBody').replace('{n}', state.waiting),
-      note: m ? tr('pub.confirmMigrations').replace('{n}', m) : tr('pub.confirmNote'),
+      note: (m ? tr('pub.confirmMigrations').replace('{n}', m) : tr('pub.confirmNote')) +
+        (state.carries && state.carries.live ? ' ' + tr('pub.carriesLive') : ''),
       type: state.confirm_word,
       typeLabel: tr('pub.typeLabel'),
       confirm: tr('pub.publish'),
@@ -570,11 +619,10 @@
       ? fill(payload.action === 'publish' ? 'pub.publishCarried' : 'pub.previewCarried', { n: c.rows, m: c.migrations })
       : payload.action === 'publish' ? tr('pub.publishStarted') : tr('pub.previewStarted'), 'ok');
 
-    /* The build takes a minute or two and nothing here waits for it. Re-read
-       shortly, so "live since" catches up without anyone pressing Refresh —
-       once, not on a loop, because a page that polls forever is a page that
-       keeps a laptop awake. */
-    setTimeout(load, 20000);
+    /* The review has done its job: it closes, and the bar follows the build
+       to its end (startFollowing) — then stops; never a loop left running. */
+    setReview(false);
+    startFollowing(payload.action);
   }
 
   load();

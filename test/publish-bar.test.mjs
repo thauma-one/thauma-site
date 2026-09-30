@@ -1,0 +1,86 @@
+#!/usr/bin/env node
+/**
+ * Publishing says what happened (Admin › Website, the bar along the foot)
+ *   node test/publish-bar.test.mjs
+ *
+ * Chase, 2026-09-29: "when I did publish, the side bar that comes out did
+ * not disappear, so it seems as though the changes didn't take effect."
+ * The review now closes on Publish, and the bar follows the build — building,
+ * then live or failed — from the newest run the server reports.
+ */
+import { JSDOM } from "jsdom";
+import { readFileSync, existsSync } from "node:fs";
+
+const PAGE = ["_site", "_site_next", "_site_prod"].map((d) => `${d}/admin/website/index.html`).find((f) => existsSync(f));
+let pass = 0, fail = 0;
+const check = async (name, fn) => {
+  try { await fn(); console.log(`  PASS  ${name}`); pass++; }
+  catch (e) { console.log(`  FAIL  ${name}\n          ${e.message}`); fail++; }
+};
+const assert = (c, m) => { if (!c) throw new Error(m); };
+const settle = (ms = 120) => new Promise((r) => setTimeout(r, ms));
+console.log("publishing says what happened\n");
+if (!PAGE) { console.log("  SKIP  no build — run eleventy first."); process.exit(1); }
+
+async function boot(runs) {
+  const dom = new JSDOM(readFileSync(PAGE, "utf8"), { runScripts: "outside-only", pretendToBeVisual: true, url: "https://dev.thauma.one/admin/website/" });
+  const w = dom.window;
+  let n = 0;
+  w.fetch = async (url, opts = {}) => {
+    url = String(url);
+    if (url.includes("/api/admin/publish")) {
+      if (opts.method === "POST") return { ok: true, status: 200, text: async () => JSON.stringify({ ok: true, action: "publish", started: true }), json: async () => ({ ok: true }) };
+      const latest = runs[Math.min(n++, runs.length - 1)];
+      const body = { configured: true, branch: "main", neverPublished: false, published: { sha: "7bee186", at: "2026-09-29T23:30:41Z" },
+        head: "7bee186", waiting: 2, commits: [], files: [], migrations: [], confirm_word: "PUBLISH",
+        latest: { live: latest, preview: null }, carries: { live: true, preview: true } };
+      return { ok: true, status: 200, text: async () => JSON.stringify(body), json: async () => body };
+    }
+    return { ok: true, status: 200, text: async () => "{}", json: async () => ({}) };
+  };
+  w.console.error = () => {}; w.scrollTo = () => {};
+  w.HTMLElement.prototype.scrollIntoView = () => {};
+  w.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {} });
+  for (const f of ["staff-i18n.js", "staff.js", "admin-publish.js"]) w.eval(readFileSync("src/js/" + f, "utf8"));
+  w.StaffConfirm = async () => true;
+  const toasts = []; w.StaffToast = (m, k) => toasts.push({ m, k });
+  await settle(200);
+  return { w, d: w.document, toasts };
+}
+const now = () => new Date(Date.now() + 1000).toISOString();
+
+await check("Publish closes the review, then the bar follows the build until it is live", async () => {
+  const { d, toasts } = await boot([
+    { status: "completed", conclusion: "success", started: "2026-09-29T23:30:41Z" },       // before
+    { status: "in_progress", conclusion: null, started: now(), url: "https://x/run/1" },    // just started
+    { status: "completed", conclusion: "success", started: now(), url: "https://x/run/1" }, // done
+  ]);
+  d.getElementById("pReview").click();
+  await settle();
+  assert(!d.getElementById("pReviewPanel").hidden, "the review opens");
+  d.getElementById("pPublish").click();
+  await settle(300);
+  assert(d.getElementById("pReviewPanel").hidden, "the review closes on Publish");
+  assert(d.getElementById("pBar").classList.contains("is-building"), "the bar says it is building");
+  assert(/Publishing to/.test(d.getElementById("pBarCount").textContent), "in words");
+  d.getElementById("pRefresh").click();          // the 15-second check, now
+  await settle(300);
+  assert(d.getElementById("pBar").classList.contains("is-done"), "then that it is live");
+  assert(/Live on/.test(d.getElementById("pBarCount").textContent) && d.querySelector("#pBarCount a"), "with a way to open it");
+  assert(toasts.some((t) => /Live on/.test(t.m) && t.k === "ok"), "and says so once");
+});
+
+await check("a build that fails says so, with where to look", async () => {
+  const { d } = await boot([
+    { status: "completed", conclusion: "success", started: "2026-09-29T23:30:41Z" },
+    { status: "completed", conclusion: "failure", started: now(), url: "https://x/run/2" },
+  ]);
+  d.getElementById("pReview").click(); await settle();
+  d.getElementById("pPublish").click(); await settle(300);
+  d.getElementById("pRefresh").click(); await settle(300);
+  assert(d.getElementById("pBar").classList.contains("is-failed"), "failed");
+  assert(d.querySelector('#pBarCount a[href="https://x/run/2"]'), "linked to the run");
+});
+
+console.log(`\n  ${pass} passed, ${fail} failed`);
+process.exit(fail ? 1 : 0);

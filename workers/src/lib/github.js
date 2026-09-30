@@ -579,6 +579,28 @@ export async function lastSuccessfulRun(env, workflowFile, fetchImpl = fetch) {
 }
 
 /**
+ * The newest run of a workflow, finished or not — so a page that just asked
+ * for a build can say "still building", "done" or "failed" instead of
+ * waiting in silence for lastSuccessfulRun to move (Chase, 2026-09-29: the
+ * Publish panel stayed open and "it seems as though the changes didn't take
+ * effect").
+ */
+export async function latestRun(env, workflowFile, fetchImpl = fetch) {
+  const cfg = githubConfig(env);
+  if (cfg.error) return { error: cfg.error, status: 500 };
+  const h = await headers(env, fetchImpl);
+  if (h.error) return { error: h.error, status: 500 };
+  const res = await fetchImpl(`${API}/repos/${cfg.repo}/actions/workflows/` +
+    `${encodeURIComponent(workflowFile)}/runs?per_page=1`, { headers: h.headers });
+  if (res.status === 404) return { never: true };
+  if (!res.ok) return { error: await githubError(res), status: 502 };
+  const run = ((await res.json()).workflow_runs || [])[0];
+  if (!run) return { never: true };
+  return { status: run.status, conclusion: run.conclusion, sha: run.head_sha,
+           started: run.created_at, url: run.html_url };
+}
+
+/**
  * Start a deploy without pushing anything.
  *
  * Content saves carry `[skip ci]`, which stops GitHub running ANY workflow for
