@@ -882,6 +882,13 @@
       headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
     });
     var out = await res.json().catch(function () { return {}; });
+    /* Saved by someone else since this page loaded it (workers/src/lib/
+       fresh.js): ask. Saving mine sends it again with overwrite; keeping
+       theirs skips it, and the reload after saving shows theirs. */
+    if (res.status === 409 && out.changed && body) {
+      if (await window.StaffChanged(out)) return send(url, method, Object.assign({}, body, { overwrite: true }));
+      return {};
+    }
     if (!res.ok) throw new Error(out.error || (tr('err.refused') + ' (' + res.status + ')'));
     return out;
   }
@@ -920,7 +927,7 @@
          list entire. */
       await step(function () {
         return send(mailUrl, 'POST', {
-          id: l.id, name: l.name, description: l.description || '',
+          id: l.id, updated_at: l.updated_at, name: l.name, description: l.description || '',
           from_name: l.from_name, from_email: l.from_email, reply_to: l.reply_to || '',
           is_open: !!d.lists[l.id],
           /* EVERY FIELD, because a field left out is saved as off: this once
@@ -940,7 +947,7 @@
     if (c.contact) await step(function () {
       var k = d.contact, old = (state.mail && state.mail.contact) || {};
       return send(mailUrl, 'POST', {
-        action: 'contact-form',
+        action: 'contact-form', updated_at: old.updated_at,
         deliver_to: k.deliver_to.trim(), from_address: k.from_address,
         /* The old single-language word columns ride along unchanged. */
         heading: old.heading || '', blurb: old.blurb || '', button: old.button || '', thanks: old.thanks || '',

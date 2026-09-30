@@ -337,7 +337,13 @@
       is_open: $('mlOpen').getAttribute('aria-checked') === 'true',
       archive_public: $('mlArchivePublic').getAttribute('aria-checked') === 'true',
     };
+    /* as this form loaded it, so a save from another site since is caught */
+    var opened = payload.id && currentList();
+    if (opened && opened.id === payload.id) payload.updated_at = opened.updated_at;
+    return sendSettings(payload);
+  }
 
+  async function sendSettings(payload) {
     setStatus($('mlFormStatus'), tr('ml.saving'));
     var res, body;
     try {
@@ -349,6 +355,14 @@
       body = await res.json();
     } catch (err) {
       setStatus($('mlFormStatus'), tr('err.unreachable') + ' ' + err.message);
+      return;
+    }
+    /* Saved by someone else since it loaded (workers/src/lib/fresh.js): ask.
+       Saving mine sends it again with overwrite; keeping theirs reloads. */
+    if (res.status === 409 && body.changed) {
+      setStatus($('mlFormStatus'), '');
+      if (await window.StaffChanged(body)) return sendSettings(Object.assign({}, payload, { overwrite: true }));
+      await load(state.view);
       return;
     }
     if (!res.ok) { setStatus($('mlFormStatus'), body.error || tr('err.refused')); return; }

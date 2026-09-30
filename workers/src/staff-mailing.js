@@ -27,6 +27,7 @@ import { unsubscribeUrl } from "./lib/unsub.js";
 import { sendMail, listConfirmEmail } from "./lib/mail.js";
 import { siteOrigin } from "./lib/origin.js";
 import { topicLabels, cleanLabels } from "./lib/topics.js";
+import { changedSince, changedAnswer } from "./lib/fresh.js";
 
 const MAX = { name: 120, slug: 60, desc: 400, from_name: 80, email: 200 };
 const PAGE = 100;
@@ -727,6 +728,17 @@ export default {
         const html = sanitise(body.body_html || "");
         const id = clean(body.id, 60) || newId("mg");
 
+        /* Saved by someone else since this composer opened it (lib/fresh.js).
+           Mailings keep no updated_at, so the composer sends the draft as the
+           SERVER last gave it (`base`: what was stored, not what the editor
+           typed, which the server cleans) and these fields are compared. */
+        if (body.id) {
+          const current = await db.queryOne("mailing_one", { id, partner_id: partnerId });
+          if (current && current.status === "draft" && changedSince(body, current, ["subject", "preheader", "body_html"])) {
+            return changedAnswer(current);
+          }
+        }
+
         await db.query("mailing_upsert", {
           id, list_id: list.id, partner_id: partnerId,
           subject, preheader: plainLine(body.preheader, 160) || null,
@@ -947,6 +959,10 @@ export default {
       }
 
       if (body.action === "contact-form") {
+        /* Saved by someone else since this page loaded it (lib/fresh.js). */
+        const current = await db.queryOne("contact_form_for_partner", { partner_id: partnerId });
+        if (current && changedSince(body, current)) return changedAnswer(current);
+
         const deliverTo = clean(body.deliver_to, 200);
         if (!deliverTo || !EMAIL_RE.test(deliverTo)) {
           return json({ error: "Messages need somewhere to go — add an address you read." }, 400);
@@ -1105,6 +1121,9 @@ export default {
 
       const allowed = (await db.query("sender_addresses_for_partner",
                                       { partner_id: partnerId })).map((a) => a.address);
+      /* Saved by someone else since this form opened it (lib/fresh.js). */
+      if (prior && changedSince(body, prior)) return changedAnswer(prior);
+
       const { value, error } = cleanList(body, prior && prior.slug, allowed);
       if (error) return json({ error }, 400);
       const taken = await db.queryOne("mailing_list_slug_taken", {
