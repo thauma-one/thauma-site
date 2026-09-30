@@ -1489,9 +1489,14 @@
       bio_photo_aspect: shotAspect('bio_photo'),
       photo_master: shotMaster('photo'),
       bio_photo_master: shotMaster('bio_photo'),
-      text: text
+      text: text,
+      /* as this page loaded it, so a save from another site since is caught */
+      updated_at: (profileFor(userId) || {}).updated_at
     };
+    return sendProfile(userId, btn, status, payload);
+  }
 
+  async function sendProfile(userId, btn, status, payload) {
     btn.disabled = true;
     if (status) status.textContent = tr('adm.pf.saving');
     try {
@@ -1502,6 +1507,17 @@
         body: JSON.stringify(payload)
       });
       var body = await res.json();
+      /* Saved by someone else since this page loaded it (workers/src/lib/
+         fresh.js): ask. Saving mine sends it again with overwrite; keeping
+         theirs reloads, so theirs is what shows. */
+      if (res.status === 409 && body.changed) {
+        if (status) status.textContent = '';
+        btn.disabled = false;
+        if (await window.StaffChanged(body)) return sendProfile(userId, btn, status, Object.assign({}, payload, { overwrite: true }));
+        markProfileClean(userId);
+        await load();
+        return;
+      }
       if (!res.ok) {
         if (status) status.textContent = body.error || tr('err.refused');
         return;

@@ -909,7 +909,10 @@
         looks[k] = l.accent || l.theme ? l : null;
       });
       return send(SETTINGS, 'PATCH', { embed: { accent: d.accent, accent2: d.accent2, turn: d.turn,
-        theme: d.theme, shared: d.shared, looks: looks } });
+        theme: d.theme, shared: d.shared, looks: looks },
+        /* as this page was handed them, so a change made elsewhere since is
+           caught rather than switched back (workers/src/lib/fresh.js) */
+        base: (state.settings && state.settings.embed) || undefined });
     });
     if (c.period) await step(function () {
       return send(SETTINGS, 'PATCH', { timeline: { start: d.period.start || null, end: d.period.end || null } });

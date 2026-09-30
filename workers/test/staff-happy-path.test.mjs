@@ -27,6 +27,7 @@ import staffMilestones from "../src/staff-milestones.js";
 import staffGoals from "../src/staff-goals.js";
 import staffPrayer from "../src/staff-prayer.js";
 import staffStewardship from "../src/staff-stewardship.js";
+import adminProfile from "../src/admin-profile.js";
 import staffSettings from "../src/staff-settings.js";
 import translate from "../src/translate.js";
 import staffSite, { siteAddress } from "../src/staff-site.js";
@@ -392,6 +393,27 @@ await check("saving only a color never changes what is shared", async () => {
      "a color save reshuffled the sharing");
 });
 
+await check("the Sharing page never switches back a widget someone else changed since it loaded", async () => {
+  /* Someone shared the prayer list after this page loaded, when it was off. */
+  SETTINGS_ROW = { embed_enabled: 1, embed_roadmap: 1, embed_goal: 0, embed_prayer: 1, embed_videos: 0, embed_theme: "auto" };
+  const loaded = { accent: null, accent2: null, turn: null, theme: "auto",
+    shared: { roadmap: true, goal: false, prayer: false, videos: false } };
+  let db = makeDb();
+  const res = await staffSettings.fetch(patch("/api/staff-settings",
+    { embed: { accent: "#FF0066", theme: "auto", shared: { roadmap: true, goal: false, prayer: false, videos: false } }, base: loaded },
+    BOSS), env(db));
+  const body = await res.json();
+  eq([res.status, body.changed, body.current && body.current.embed.shared.prayer], [409, true, true], "refused, with theirs");
+  assert(!db.calls.some((c) => c.name === "partner_set_embed"), "switched it back anyway");
+  /* As loaded, it saves — even though the partner's updated_at moved for the
+     timeline in the same Save. */
+  db = makeDb();
+  eq((await staffSettings.fetch(patch("/api/staff-settings",
+    { embed: { accent: "#FF0066", theme: "auto", shared: { roadmap: true, goal: false, prayer: true, videos: false } },
+      base: { ...loaded, shared: { ...loaded.shared, prayer: true } } }, BOSS), env(db))).status, 200, "saved as loaded");
+  SETTINGS_ROW = {};
+});
+
 await check("the old single switch still turns all four off at once", async () => {
   SETTINGS_ROW = { embed_enabled: 1, embed_roadmap: 1, embed_goal: 1, embed_prayer: 0, embed_videos: 1 };
   const db = makeDb();
@@ -627,6 +649,21 @@ await check("stewardship: a person, a life event or a logged contact saved by so
       interaction: { id: "in_1", type: "call", occurred_on: "2026-09-01", note: "Mine", is_personal: true, channel: "digital" },
       base: { ...base, note: "Theirs" } }), env(db));
     assert(wrote(db, "interaction_update"), "unchanged since opened (true there, 1 here) — it must save");
+  } finally { EXTRA = {}; }
+});
+
+await check("a staff profile someone else saved meanwhile is not overwritten", async () => {
+  EXTRA = {
+    user_by_id_any_status: [{ id: "u_mira", user_id: "u_mira", user_name: "Mira Petrović", name: "Mira Petrović", status: "active" }],
+    staff_profiles_all: [{ user_id: "u_mira", slug: "mira-petrovic", region: "Theirs", updated_at: "2026-09-30T10:00:00.000Z" }],
+  };
+  try {
+    const db = makeDb();
+    const res = await adminProfile.fetch(post("/api/admin/profile", { user_id: "u_mira", slug: "mira-petrovic",
+      region: "Mine", updated_at: "2026-09-29T08:00:00.000Z" }, BOSS), env(db));
+    const body = await res.json();
+    eq([res.status, body.changed, body.current && body.current.region], [409, true, "Theirs"], "refused, with theirs " + JSON.stringify(body).slice(0, 160));
+    assert(!db.calls.some((c) => c.name === "staff_profile_upsert"), "written anyway");
   } finally { EXTRA = {}; }
 });
 
