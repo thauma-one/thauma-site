@@ -331,26 +331,40 @@
     });
     [].forEach.call(document.querySelectorAll('[data-ws-panel]'), function (p) { p.hidden = p.getAttribute('data-ws-panel') !== state.tab; });
   }
+  /* A tab opens at its start — Pages at the list of pages, even when Pages is
+     the tab already open (Chase, 2026-10-01: "If I press the Pages button,
+     it should take me back to the Page selection screen"). Only a reload
+     returns to where the owner was (restorePlace). */
   document.querySelector('.ws-side').addEventListener('click', function (e) {
     var t = e.target.closest('[data-ws-tab]');
     if (!t) return;
     showTab(t.getAttribute('data-ws-tab'));
-    fillPair(); draw();
+    state.page = null; state.edit = null;
+    fillPair(); draw(); keepPlace();
   });
 
   /* ---- where you were ---------------------------------------------------- */
 
-  /* A reload opens where the owner left off — the tab, the page, the open
+  /* A RELOAD opens where the owner left off — the tab, the page, the open
      section and its tab (Chase, 2026-09-29: "let's also remember the page
-     that was present too"). Kept in this browser only: a convenience, not a
-     record, so it is fine for it to be missing. */
+     that was present too"). Only a reload (Chase, 2026-10-01: "basic
+     navigation should take us to the home page of each tab"): arriving from
+     elsewhere starts fresh. Kept for this browser tab only (sessionStorage):
+     a convenience, not a record, so it is fine for it to be missing. */
   var PLACE = 'thauma.ws.place';
   function keepPlace() {
-    try { localStorage.setItem(PLACE, JSON.stringify({ tab: state.tab, page: state.page, edit: state.edit, sectab: state.sectab })); } catch (e) {}
+    try { sessionStorage.setItem(PLACE, JSON.stringify({ tab: state.tab, page: state.page, edit: state.edit, sectab: state.sectab })); } catch (e) {}
+  }
+  function reloaded() {
+    try {
+      var nav = performance.getEntriesByType && performance.getEntriesByType('navigation')[0];
+      return !!nav && nav.type === 'reload';
+    } catch (e) { return false; }
   }
   function restorePlace() {
     var p = null;
-    try { p = JSON.parse(localStorage.getItem(PLACE) || 'null'); } catch (e) {}
+    if (!reloaded()) return;
+    try { p = JSON.parse(sessionStorage.getItem(PLACE) || 'null'); } catch (e) {}
     if (!p || !document.querySelector('[data-ws-tab="' + p.tab + '"]')) return;
     showTab(p.tab);
     var page = p.page && state.doc.pages.filter(function (x) { return x.id === p.page; })[0];
@@ -1021,6 +1035,8 @@
     html += '<div class="ws-rows">' +
       row(tr('ws.footer.menu'), sw('data-footer-menu', f.menu, '')) +
       row(tr('ws.footer.socials'), chips('footer:socials', ['icons', 'words'], f.socials, function (v) { return tr('ws.footer.socials.' + v); })) +
+      /* The tagline's color (Chase, 2026-10-01): as now, quieter, or the accent. */
+      row(tr('ws.footer.taglineColor'), chips('footer:tagline', ['plain', 'subtle', 'accent'], f.tagline || 'plain', function (v) { return tr('ws.footer.tagline.' + v); })) +
       '</div><div class="ws-fields">' +
       '<label class="fld ws-wide"><span>' + esc(tr('ws.footer.tagline')) + '</span>' + ref(src('tagline')) +
         '<input type="text" maxlength="120" data-footer-word="tagline" value="' + esc(w.tagline || '') + '" lang="' + esc(state.langA) + '"></label>' +
