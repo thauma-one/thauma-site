@@ -223,7 +223,9 @@ check("the language menu is always a dropdown, by each language's own name, on a
   assert(/<details class="langmenu"><summary[^>]*><span>HR<\/span>/.test(header), "in the header, showing the language in use");
   assert(header.indexOf("langmenu") > header.indexOf("</nav>"), "outside the page menu, so a phone still shows it");
   assert(html.includes('hreflang="sr" lang="sr">Српски</a>'), "each language by its own name");
-  assert(/<details class="langmenu up">/.test(html.slice(html.indexOf("<footer"))), "and in the footer, opening upward");
+  /* Not in the footer (Chase, 2026-10-01: "We also don't need the language
+     toggle in the footer"): the header's is on every page. */
+  assert(!/langmenu/.test(html.slice(html.indexOf("<footer"), html.indexOf("</footer>"))), "not repeated in the footer");
 });
 
 check("the opening fills the screen, with an arrow that bounces until the visitor scrolls", () => {
@@ -231,7 +233,9 @@ check("the opening fills the screen, with an arrow that bounces until the visito
   assert(/\.hero\{[^}]*min-height:calc\(100svh - 69px\)/.test(html), "the whole first screen");
   assert(/<section class="hero hero-behind[^"]*">[\s\S]*?<button type="button" class="scrollcue"/.test(html), "the arrow");
   assert(/@keyframes cue/.test(html) && /html\.scrolled \.scrollcue\{opacity:0/.test(html), "bouncing, and gone once scrolled");
-  assert(/\.scrollcue\{animation:none\}/.test(html), "still, for anyone who asked for less motion");
+  assert(/\.scrollcue svg\{animation:none\}/.test(html), "still, for anyone who asked for less motion");
+  /* "an arrow with a line pointing downward with the word Scroll there" */
+  assert(/class="scrollcue"[^>]*><span>Scroll<\/span><svg viewBox="0 0 16 44"><path d="M8 1v40/.test(html), "the word, over a line ending in an arrow");
 });
 
 check("the ministry's widgets sit centered unless put left; the newest newsletter as a card, the rest behind a link", () => {
@@ -254,6 +258,45 @@ check("a site's own tab icon", () => {
   eq(cleanDoc({ design: { favicon: "javascript:alert(1)" } }, ["en"]).design.favicon, null, "only our own pictures or https");
 });
 
+check("Chase, 2026-10-01: initials for a favicon, forms in the site's colors, a tagline's color, links typed bare", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  d.design.look = "custom"; d.design.colors = { bg: "#101418", accent: "#E8553A" };
+  d.pages.find((p) => p.id === "stay").on = true;
+  /* No favicon chosen: the owner's initials, in the site's accent. */
+  const html = page(d);
+  const icon = /<link rel="icon" type="image\/svg\+xml" href="data:image\/svg\+xml,([^"]+)">/.exec(html);
+  assert(icon && decodeURIComponent(icon[1]).includes(">CR</text>"), "the initials as the icon");
+  /* The forms wear the site's accent, not their own embed colors. */
+  const stay = page(d, "stay");
+  assert(/<div data-thauma-form data-lang="en" data-theme="[a-z]+" data-accent="#E8553A" data-accent2="#[0-9A-Fa-f]{6}"><\/div>/.test(stay), "the sign-up form in the site's colors");
+  /* The tagline in the accent, when chosen. */
+  d.footer = { layout: "split", menu: false, socials: "icons", tagline: "accent", words: { en: { tagline: "All of me" } } };
+  assert(page(d).includes('<p class="tagline tagline-accent">All of me</p>'), "the tagline's color");
+  eq(cleanDoc({ footer: { tagline: "neon" } }, ["en"]).footer.tagline, "plain", "an unknown color is the plain one");
+  /* An address typed as it is said is kept, not dropped. */
+  eq(cleanDoc({ links: [{ kind: "youtube", url: "youtube.com/@chase" }] }, ["en"]).links.map((k) => k.url),
+     ["https://youtube.com/@chase"], "youtube.com/@chase");
+  eq(safeUrl("javascript:alert(1)"), "", "and a script is still not an address");
+});
+
+check("Chase, 2026-10-01: a social link may be just the handle; the footers fill the width", () => {
+  const url = (kind, u) => cleanDoc({ links: [{ kind, url: u }] }, ["en"]).links.map((k) => k.url)[0];
+  eq(url("youtube", "ChaseRoushMissions"), "https://www.youtube.com/@ChaseRoushMissions", "a YouTube name");
+  eq(url("youtube", "@ChaseRoushMissions"), "https://www.youtube.com/@ChaseRoushMissions", "a YouTube handle");
+  eq(url("instagram", "@chase"), "https://www.instagram.com/chase", "an Instagram handle");
+  eq(url("tiktok", "chase"), "https://www.tiktok.com/@chase", "a TikTok name");
+  eq(url("linkedin", "chase-roush"), "https://www.linkedin.com/in/chase-roush", "a LinkedIn name");
+  eq(url("spotify", "abc"), undefined, "Spotify needs the whole link");
+  eq(url("youtube", "<b>x</b>"), undefined, "and markup is not a handle");
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  d.footer = { layout: "columns", menu: true, socials: "icons", words: { en: { tagline: "T", small: "S" } } };
+  const html = page(d);
+  /* The small print had max-width:80ch, which kept it beside the columns. */
+  assert(/\.foot \.small\{flex:1 0 100%;[^}]*max-width:none/.test(html), "the small print takes its own row");
+  assert(/<div class="cols">[\s\S]*?<\/div><div class="bar"><p class="small">S<\/p><span class="powered">/.test(html), "columns: the columns, then a bar for the small print and the credit");
+  assert(/\.foot-columns \.menu\{display:grid;grid-template-columns:repeat\(2,auto\)/.test(html), "the pages in two columns, not a long list");
+});
+
 check("the Footer tab's preview can be the footer alone", () => {
   const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
   const html = page(d, "home", "en", { draft: true, only: "footer" });
@@ -271,7 +314,7 @@ check("the footer: three layouts, a tagline and small print in each language, th
   const html = page(d);
   assert(html.includes('class="foot foot-center"'), "centered");
   assert(/<span class="words"><a href="https:\/\/youtube\.com\/@c" rel="noopener">YouTube<\/a><a href="https:\/\/cal\.example\/"/.test(html), "socials as names, beside the owner's links");
-  assert(html.includes('<p class="tagline">All of me for all of Him</p>') && html.includes("Donations are tax-deductible."), "the words");
+  assert(html.includes('<p class="tagline tagline-plain">All of me for all of Him</p>') && html.includes("Donations are tax-deductible."), "the words");
   assert(/<nav class="menu"[^>]*><a href="\/site\/chaseroush\/en\/">Home<\/a>/.test(html), "the pages");
   assert(html.includes("A Thauma site"), "the credit");
   const hr = page(d, "home", "hr");

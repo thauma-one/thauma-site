@@ -8,9 +8,11 @@
    bar's Publish changes (staff-updates.js). Closing the editor keeps what was
    typed; Cancel undoes it.
 
-   NO LANGUAGE COLUMNS. A goal's label is still a plain column rather than a
-   translations table; making it translatable is its own migration and its
-   own surface (noted in the language work), not something to half-do here.
+   ONE LANGUAGE AT A TIME (0047, Chase 2026-10-01: "We need to fix that on
+   Goals"). label and description are the ministry's own language and every
+   other language's fallback; `texts` holds the rest as { lang: { label,
+   description } }. "Editing" picks which one the two boxes show; the
+   ministry's own wording sits small above them while writing another.
    ============================================================ */
 (function () {
   'use strict';
@@ -24,8 +26,9 @@
      shows; `reading` is a new progress figure waiting to be appended;
      `removed` is a delete waiting for Publish. */
   var state = { saved: {}, draft: {}, order: [], removed: {}, reading: {},
-                editing: null, before: null, isPublic: false };
-  var FIELDS = ['label', 'description', 'kind', 'target_cents', 'currency', 'is_public'];
+                editing: null, before: null, isPublic: false,
+                home: 'en', langs: [], writing: 'en', beside: null };
+  var FIELDS = ['label', 'description', 'kind', 'target_cents', 'currency', 'is_public', 'texts'];
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
   function defn(g) {
     var out = {};
@@ -181,8 +184,12 @@
     state.before = goal ? { goal: clone(goal), reading: state.reading[id] ? clone(state.reading[id]) : null } : null;
 
     $('glId').value = id || '';
-    $('glLabel').value = goal ? goal.label : '';
-    $('glDescription').value = goal && goal.description ? goal.description : '';
+    /* A new goal is named in the ministry's own language first: that name is
+       the one every other language falls back to. */
+    state.writing = state.home;
+    state.beside = null;
+    state.formGoal = goal ? clone(goal) : { label: '', description: null, texts: {} };
+    drawWriting();
     $('glKind').value = goal ? goal.kind : 'monthly';
     $('glTarget').value = goal ? fromCents(goal.target_cents) : '';
     fillCurrencies(goal ? goal.currency : 'USD');
@@ -224,13 +231,83 @@
   /* The form into the working copy. A new goal needs a name and a target, or
      there is nothing to add; an existing one keeps its target if the box was
      emptied. */
+  /* ---- the name and description, one language at a time ---- */
+
+  function langName(code) {
+    var l = state.langs.filter(function (x) { return x.code === code; })[0];
+    return l ? (l.native_name || l.name) : code;
+  }
+  /* One language's wording: the ministry's own is the columns, the rest `texts`. */
+  function goalText(g, code, field) {
+    return code === state.home ? (g[field] || '') : (((g.texts || {})[code] || {})[field] || '');
+  }
+  /* The two boxes into the form's copy, for the language being edited. */
+  function keepWriting() {
+    var g = state.formGoal, w = state.writing;
+    if (!g) return;
+    var label = $('glLabel').value, desc = $('glDescription').value;
+    if (w === state.home) {
+      g.label = label;
+      g.description = desc === '' && g.description == null ? null : desc;
+      return;
+    }
+    g.texts = g.texts || {};
+    var t = Object.assign({}, g.texts[w] || {});
+    if (label.trim()) t.label = label; else delete t.label;
+    if (desc.trim()) t.description = desc; else delete t.description;
+    if (Object.keys(t).length) g.texts[w] = t; else delete g.texts[w];
+  }
+  /* "Editing X, Reference Y" — the milestone editor's pair. Reference lists
+     the other languages and opens on one that has words; its wording sits
+     small above each box, tagged with its language, which is what
+     console-translate.js translates from. */
+  function drawWriting() {
+    var g = state.formGoal || {}, w = state.writing;
+    var named = function (c) { return !!goalText(g, c, 'label').trim(); };
+    $('glWriting').hidden = state.langs.length < 2;
+    $('glLang').innerHTML = state.langs.map(function (l) {
+      return '<option value="' + esc(l.code) + '">' + esc(l.native_name || l.name) +
+        (named(l.code) ? '' : ' · ' + esc(tr('ms.missing'))) + '</option>';
+    }).join('');
+    $('glLang').value = w;
+    var others = state.langs.filter(function (l) { return l.code !== w; });
+    if (!others.some(function (l) { return l.code === state.beside; })) {
+      var best = others.filter(function (l) { return named(l.code); })[0] || others[0];
+      state.beside = best ? best.code : null;
+    }
+    $('glBesideWrap').hidden = !others.length;
+    $('glBeside').innerHTML = others.map(function (l) {
+      return '<option value="' + esc(l.code) + '">' + esc(l.native_name || l.name) + '</option>';
+    }).join('');
+    $('glBeside').value = state.beside || '';
+    $('glLabel').value = goalText(g, w, 'label');
+    $('glDescription').value = goalText(g, w, 'description');
+    var b = state.beside;
+    [['glLabelRef', 'label'], ['glDescriptionRef', 'description']].forEach(function (r) {
+      var v = b ? goalText(g, b, r[1]) : '';
+      $(r[0]).hidden = !v;
+      $(r[0]).textContent = v;
+      if (b) { $(r[0]).setAttribute('lang', b); $(r[0]).title = langName(b); }
+    });
+  }
+  /* Switching either language keeps what was typed first. */
+  [['glLang', 'writing'], ['glBeside', 'beside']].forEach(function (cfg) {
+    $(cfg[0]).addEventListener('change', function () {
+      keepWriting();
+      state[cfg[1]] = this.value;
+      drawWriting();
+    });
+  });
+
   function applyForm() {
+    keepWriting();
+    var fg = state.formGoal || { label: '', description: null, texts: {} };
     var target = toCents($('glTarget').value);
     var okTarget = Number.isFinite(target) && target > 0;
     var id = state.editing;
     if (!id) {
-      if (!$('glLabel').value.trim() || !okTarget) {
-        if ($('glLabel').value.trim() || $('glTarget').value.trim()) toast(tr('gl.needTarget'), 'err');
+      if (!(fg.label || '').trim() || !okTarget) {
+        if ((fg.label || '').trim() || $('glTarget').value.trim()) toast(tr('gl.needTarget'), 'err');
         return;
       }
       id = 'new_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
@@ -240,11 +317,11 @@
       state.editing = id;
     }
     var g = state.draft[id];
-    g.label = $('glLabel').value;
     /* An empty box over no description stays no description, so opening a
-       goal and closing it does not mark it changed. */
-    var desc = $('glDescription').value;
-    g.description = desc === '' && g.description == null ? null : desc;
+       goal and closing it does not mark it changed (keepWriting). */
+    g.label = fg.label;
+    g.description = fg.description;
+    g.texts = fg.texts || {};
     g.kind = $('glKind').value;
     if (okTarget) g.target_cents = target;
     g.currency = $('glCurrency').value;
@@ -276,7 +353,18 @@
       return;
     }
     state.saved = {}; state.draft = {}; state.order = []; state.removed = {}; state.reading = {};
+    /* The languages this ministry publishes, its own first. */
+    state.home = body.default_lang || 'en';
+    state.langs = (body.languages || []).filter(function (l) { return l.is_enabled; });
+    if (!state.langs.some(function (l) { return l.code === state.home; })) {
+      state.langs.unshift({ code: state.home, name: state.home });
+    } else {
+      state.langs.sort(function (a, b) { return (a.code === state.home ? -1 : 0) - (b.code === state.home ? -1 : 0); });
+    }
     (body.goals || []).forEach(function (g) {
+      /* No translations reads the same as none sent, so opening a goal and
+         pressing Done never marks it changed. */
+      g.texts = g.texts || {};
       state.saved[g.goal_id] = g;
       state.draft[g.goal_id] = clone(g);
       state.order.push(g.goal_id);

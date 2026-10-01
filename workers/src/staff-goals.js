@@ -28,6 +28,7 @@ import { createDb } from "./lib/db.js";
 import { requireAccess } from "./lib/access.js";
 import { resolveActor, auditActingWrite, withActing } from "./lib/actas.js";
 import { json, readJson } from "./lib/store.js";
+import { readTexts, cleanTexts } from "./lib/texts.js";
 import { changedSince, changedAnswer } from "./lib/fresh.js";
 
 
@@ -124,14 +125,25 @@ export function cleanProgress(body) {
   return { value: { raised_cents, donor_count } };
 }
 
-/* The list, with when each goal was last saved (goal_stamps). */
+/* The list, with when each goal was last saved and its other languages
+   (goal_stamps; the view predates both). */
 async function withStamps(db, partner_id) {
   const [goals, stamps] = await Promise.all([
     db.query("goals_for_partner", { partner_id }),
     db.query("goal_stamps", { partner_id }),
   ]);
-  const at = Object.fromEntries(stamps.map((s) => [s.id, s.updated_at]));
-  return goals.map((g) => ({ ...g, updated_at: at[g.goal_id] || null }));
+  const by = Object.fromEntries(stamps.map((s) => [s.id, s]));
+  return goals.map((g) => ({
+    ...g,
+    updated_at: by[g.goal_id] ? by[g.goal_id].updated_at : null,
+    texts: readTexts(by[g.goal_id] && by[g.goal_id].texts),
+  }));
+}
+
+/* A goal's name and description in the ministry's other languages (0047):
+   { lang: { label, description } }, capped like the columns themselves. */
+export function cleanGoalTexts(texts) {
+  return cleanTexts(texts, { label: MAX_LABEL, description: MAX_DESC });
 }
 
 export default {
@@ -153,6 +165,11 @@ export default {
           roles: String(me.roles || "staff").split(","),
         },
         partner: { id: partner.id, display_name: partner.display_name },
+        /* What the editor writes in: the ministry's own language (the
+           columns) and the ones it publishes (texts). */
+        default_lang: partner.default_lang || "en",
+        languages: (await db.query("partner_languages_for_partner", { partner_id }))
+          .map((l) => ({ ...l, is_enabled: !!l.is_enabled })),
         goals: goals.map((g) => ({ ...g, is_public: !!g.is_public })),
       }, actor));
     }
@@ -176,6 +193,11 @@ export default {
       if (error) return json({ error }, 400);
 
       await db.query("goal_upsert", { id, partner_id, now, ...value });
+      /* Only when the editor sent them: a caller that does not know about
+         translations leaves them as they were. */
+      if (body.texts !== undefined) {
+        await db.query("goal_set_texts", { id, partner_id, texts: cleanGoalTexts(body.texts) });
+      }
 
       /* A new goal with a starting figure, in one action. Without this a goal
          is created and then immediately reads 0% until somebody remembers a

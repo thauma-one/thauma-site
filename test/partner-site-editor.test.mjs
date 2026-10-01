@@ -50,8 +50,10 @@ async function boot(opts = {}) {
     return { ok: true, status: 200, json: async () => answer(opts) };
   };
   w.console.error = () => {};
-  /* What a browser kept from before, for the "reload" tests. */
-  if (opts.place) w.localStorage.setItem("thauma.ws.place", opts.place);
+  /* What this browser tab kept from before, and whether this load is a
+     reload, for the "reload" tests: only a reload goes back to the place. */
+  if (opts.place) w.sessionStorage.setItem("thauma.ws.place", opts.place);
+  w.performance.getEntriesByType = () => [{ type: opts.reload ? "reload" : "navigate" }];
   w.scrollTo = () => {};
   w.scrollBy = () => {};
   w.HTMLElement.prototype.scrollIntoView = () => {};
@@ -236,11 +238,22 @@ await check("Undo steps back through changes; a reload opens where you left off"
   await settle(900);
   eq(sent.filter((x) => x.action === "save").pop().draft.pages[0].sections[0].type, "hero", "and saved that way");
   click(d.querySelector('[data-edit-sec="1"]'));
-  const kept = JSON.parse(w.localStorage.getItem("thauma.ws.place"));
+  const place = w.sessionStorage.getItem("thauma.ws.place");
+  const kept = JSON.parse(place);
   eq([kept.tab, kept.page, kept.edit], ["pages", "home", 1], "the place is kept");
-  const again = await boot({ place: w.localStorage.getItem("thauma.ws.place") });
+  const again = await boot({ place, reload: true });
   eq([again.d.querySelector('[data-ws-tab="pages"]').getAttribute("aria-current"), again.d.querySelector('.ws-acc.is-open') && again.d.querySelector('.ws-acc.is-open').dataset.si],
      ["page", "1"], "and a reload opens there");
+  /* Chase, 2026-10-01: "basic navigation should take us to the home page of
+     each tab". Arriving from elsewhere starts at the list of pages... */
+  const fresh = await boot({ place });
+  assert(!fresh.d.querySelector('.ws-acc.is-open'), "arriving, not reloading, does not reopen the section");
+  assert(fresh.d.querySelector('[data-ws-tab="pages"]').getAttribute("aria-current") !== "page" || fresh.d.querySelector('[data-open-page="home"]'),
+    "and starts at a tab's beginning");
+  /* ...and pressing Pages, even on Pages, goes back to that list. */
+  click(d.querySelector('[data-ws-tab="pages"]'));
+  assert(d.querySelector('[data-open-page="home"]'), "the Pages button goes back to the list of pages");
+  eq(JSON.parse(w.sessionStorage.getItem("thauma.ws.place")).page, null, "and that is the place kept");
 });
 
 await check("somebody not allowed sees it all, changes nothing, and can ask", async () => {

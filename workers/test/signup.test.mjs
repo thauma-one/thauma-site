@@ -207,13 +207,25 @@ await check("a sign-up to Thauma's list is Thauma's subscriber", async () => {
 });
 
 await check("a hand-built form can read the lists it offers, and nothing more", async () => {
-  const env = envWith({ list: [{ ...LIST, partner_id: null, description: "Monthly" }] });
+  const env = envWith({ list: [{ ...LIST, partner_id: null, description: "Monthly",
+                                  texts: JSON.stringify({ hr: { name: "Bilten" } }) }] });
   const res = await handler.fetch(new Request("https://thauma.one/embed/v1/thauma/signup"), env, "thauma", "signup");
   eq(res.status, 200, "status");
-  eq(await res.json(), { lists: [{ slug: "newsletter", name: "Newsletter", description: "Monthly" }] }, "the lists");
+  /* texts: the name in the ministry's other languages (0047). */
+  eq(await res.json(), { lists: [{ slug: "newsletter", name: "Newsletter", description: "Monthly",
+                                   texts: { hr: { name: "Bilten" } } }] }, "the lists");
   const none = await handler.fetch(new Request("https://thauma.one/embed/v1/thauma/signup"),
     envWith({ list: null }), "thauma", "signup");
   eq(none.status, 404, "no open list is no form");
+});
+
+await check("the embedded form carries each list's other names, escaped", () => {
+  const js = formScript([{ ...LIST, texts: JSON.stringify({ hr: { name: 'Bilten"><b>' } }) }],
+    "chase-roush", "https://thauma.one", null, {});
+  new Function(js);
+  assert(/data-names=/.test(js) && /Bilten/.test(js), "the Croatian name is not in the form");
+  assert(!/Bilten"><b>/.test(js), "a list name broke out of its attribute");
+  assert(/getAttribute\('data-names'\)\)\[lang\]/.test(js), "the form does not pick the name by language");
 });
 
 await check("a partner's own words cannot inject script into the form", async () => {

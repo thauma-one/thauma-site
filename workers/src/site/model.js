@@ -132,6 +132,9 @@ export const SOCIALS = ["youtube", "instagram", "facebook", "x", "tiktok", "link
    number) in each language. The "A Thauma site" credit always stays. */
 export const FOOTERS = ["split", "center", "columns"];
 export const SOCIAL_STYLES = ["icons", "words"];
+/* The tagline's color (Chase, 2026-10-01): as it was, quieter, or in the
+   site's accent. */
+export const TAGLINE_STYLES = ["plain", "subtle", "accent"];
 
 /* ------------------------------------------------------------ addresses -- */
 
@@ -277,9 +280,37 @@ const LANG_RE = /^[a-z]{2,3}(-[a-z0-9]{2,8})?$/;
 const str = (v, max) => String(v == null ? "" : v).replace(/\r\n?/g, "\n").slice(0, max).trim();
 const pick = (v, allowed) => (allowed.includes(v) ? v : allowed[0]);
 
+/**
+ * A social link typed as only what comes after the site's address (Chase,
+ * 2026-10-01: "if they only put in the text after youtube.com/ it will still
+ * work"): "@name", "name" or "channel/UC…" becomes the full address. A full
+ * or bare-domain address passes through to safeUrl unchanged. Spotify's
+ * addresses are opaque ids nobody types, so it needs the whole link.
+ */
+const SOCIAL_HOME = {
+  youtube: (h) => "https://www.youtube.com/" + (/^(@|channel\/|c\/|user\/)/i.test(h) ? h : "@" + h),
+  instagram: (h) => "https://www.instagram.com/" + h.replace(/^@/, ""),
+  facebook: (h) => "https://www.facebook.com/" + h.replace(/^@/, ""),
+  x: (h) => "https://x.com/" + h.replace(/^@/, ""),
+  tiktok: (h) => "https://www.tiktok.com/" + (h.startsWith("@") ? h : "@" + h),
+  linkedin: (h) => "https://www.linkedin.com/" + (/^(in|company|school)\//i.test(h) ? h : "in/" + h),
+};
+export function socialUrl(kind, u) {
+  const s = str(u, 300).replace(/^\/+/, "");
+  if (!s || !SOCIAL_HOME[kind]) return u;
+  /* Already an address: a scheme, or a domain before the first slash. */
+  if (/^[a-z][a-z0-9+.-]*:/i.test(s) || /^[^\s/]+\.[a-z]{2,}([/?#]|$)/i.test(s)) return u;
+  if (!/^[@\w.\-\/]+$/.test(s)) return "";
+  return SOCIAL_HOME[kind](s);
+}
+
 export function safeUrl(u) {
-  const s = str(u, 500);
+  let s = str(u, 500);
   if (!s) return "";
+  /* An address typed as it is said — "youtube.com/@name", "www.x.org" — is
+     still an address. Without this the save quietly dropped it (Chase,
+     2026-10-01: his YouTube link never reached the footer). */
+  if (!/^[a-z][a-z0-9+.-]*:/i.test(s) && /^[^\s/]+\.[a-z]{2,}([/?#]|$)/i.test(s)) s = "https://" + s;
   if (/^mailto:[^\s<>"']+@[^\s<>"']+$/i.test(s)) return s;
   try {
     const x = new URL(s);
@@ -451,7 +482,7 @@ export function cleanDoc(raw, catalog) {
 
   const links = (Array.isArray(d.links) ? d.links : []).slice(0, 20).map((k) => {
     const kind = SOCIALS.includes(k && k.kind) ? k.kind : "custom";
-    let url = kind === "custom" ? safeLink(k && k.url) : safeUrl(k && k.url);
+    let url = kind === "custom" ? safeLink(k && k.url) : safeUrl(socialUrl(kind, k && k.url));
     /* An address typed as it is said, without "mailto:", is still one. */
     if (kind === "email") {
       const raw = str(k.url, 200).replace(/^mailto:/i, "");
@@ -467,6 +498,7 @@ export function cleanDoc(raw, catalog) {
     layout: pick(f.layout, FOOTERS),
     menu: !!f.menu,
     socials: pick(f.socials, SOCIAL_STYLES),
+    tagline: pick(f.tagline, TAGLINE_STYLES),
     words: cleanWords(f.words, ["tagline", "small"], langs),
   };
 

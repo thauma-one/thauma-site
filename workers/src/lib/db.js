@@ -15,6 +15,7 @@
  * A forgotten scope must be a crash, not a cross-tenant read.
  */
 import { QUERIES, SOURCE_DIGEST } from "./queries.generated.js";
+import { readTexts } from "./texts.js";
 
 export { QUERIES, SOURCE_DIGEST };
 
@@ -378,6 +379,10 @@ export async function partnerPublicSite(db, partnerId, partnerSlug = null) {
       donor_count: g.donor_count,
       percent: g.percent,
       captured_at: g.captured_at,
+      /* The name and description in the ministry's other languages (0047),
+         { lang: { label, description } }. `label` and `description` above
+         are its own language and the fallback for any language not here. */
+      text: readTexts(g.texts),
     })),
     // The PUBLIC ROADMAP. Not stewardship history — see
     // db/migrations/0002_milestones.sql before adding anything here.

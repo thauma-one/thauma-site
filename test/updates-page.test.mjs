@@ -45,6 +45,7 @@ const DATA = () => ({
     }],
   },
   "staff-goals": {
+    languages: LANGS, default_lang: "en",
     goals: [{
       goal_id: "g1", label: "Cameras", description: null, kind: "project",
       target_cents: 500000, currency: "USD", is_public: true, raised_cents: 100000, donor_count: 3,
@@ -228,6 +229,28 @@ await check("opening any row and pressing Done changes nothing", async () => {
   }
 });
 
+await check("a goal's name is written per language: the ministry's own stays, the other is its translation", async () => {
+  /* Chase, 2026-10-01: "We need to fix that on Goals" (0047). */
+  const { d, sent, click, row, done, publish } = await boot();
+  click(row("glList", "g1"));
+  await settle();
+  const pick = d.getElementById("glLang"), name = d.getElementById("glLabel");
+  eq(pick.value, "en", "a goal opens in the ministry's own language");
+  assert(/missing/i.test(pick.querySelector('option[value="hr"]').textContent), "Croatian should say it is missing");
+  pick.value = "hr"; pick.dispatchEvent(new d.defaultView.Event("change"));
+  eq(name.value, "", "no Croatian name yet");
+  assert(/Cameras/.test(d.getElementById("glLabelRef").textContent), "the ministry's own name shows above");
+  name.value = "Kamere";
+  pick.value = "en"; pick.dispatchEvent(new d.defaultView.Event("change"));
+  eq(name.value, "Cameras", "switching back shows the ministry's own name");
+  await done("glForm");
+  await publish();
+  const post = sent.find((x) => /staff-goals/.test(x.url) && x.method === "POST");
+  assert(post, "nothing was saved");
+  eq(post.body.label, "Cameras", "the ministry's own name is unchanged");
+  eq(post.body.texts, { hr: { label: "Kamere" } }, "the Croatian name");
+});
+
 await check("Editing one language with another for reference: typing survives a switch, and the other shows above", async () => {
   const { w, d, sent, click, row, done, publish } = await boot();
   click(row("prList", "p1"));
@@ -285,6 +308,25 @@ await check("Translate fills the empty fields from the reference, as if typed", 
   click(d.querySelector("#prForm [data-lang-translate]"));
   await settle(200);
   eq(d.querySelector('#prForm [data-ptx="title"]').value, "«hr» Visas", "the title, from English");
+});
+
+await check("Translate fills a goal's name from the ministry's own (0047)", async () => {
+  /* Chase, 2026-10-01: "The autotranslate doesn't work for that ... option."
+     The goal editor's picker and reference lines carry what
+     console-translate.js reads, so its button works there too. */
+  const { w, d, click, row, sent } = await boot();
+  click(row("glList", "g1"));
+  await settle();
+  const pick = d.getElementById("glLang");
+  pick.value = "hr";
+  pick.dispatchEvent(new w.Event("change", { bubbles: true }));
+  Object.defineProperty(w.HTMLElement.prototype, "offsetParent", { get() { return this.parentNode; }, configurable: true });
+  eq(d.getElementById("glLabelRef").getAttribute("lang"), "en", "the reference line says its language");
+  click(d.querySelector("#glForm [data-lang-translate]"));
+  await settle(200);
+  eq(d.getElementById("glLabel").value, "«hr» Cameras", "the name, from English");
+  const asked = sent.filter((s) => s.url.includes("/api/translate")).pop();
+  eq([asked.body.from, asked.body.to], ["en", "hr"], "from the ministry's language into the one being written");
 });
 
 await check("each reference line has its own quiet Translate, for that line alone", async () => {

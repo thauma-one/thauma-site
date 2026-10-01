@@ -194,11 +194,12 @@ ${L.heroFg ? `.hero-behind:not(.has-photo),.hero-words{color:${L.heroFg}}.hero-b
 .spaced{font:400 13px/1.7 var(--body);letter-spacing:.2em;text-transform:uppercase;color:var(--dim);margin:0;max-width:60ch}
 .mono-pic img{width:100%;max-height:460px;object-fit:contain}
 /* A slowly bouncing arrow, on every opening, until the visitor scrolls. */
-.scrollcue{position:absolute;left:50%;bottom:28px;margin-left:-22px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;
-  background:none;border:0;padding:0;color:var(--fg);opacity:.75;cursor:pointer;transition:opacity .5s ease;animation:cue 2.4s cubic-bezier(.55,.05,.45,.95) infinite}
-.scrollcue svg{width:26px;height:26px}
+.scrollcue{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:8px;
+  background:none;border:0;padding:0;color:var(--fg);opacity:.75;cursor:pointer;transition:opacity .5s ease;font:600 11px var(--body);letter-spacing:.22em;text-transform:uppercase}
+.scrollcue span{padding-left:.22em}
+.scrollcue svg{width:16px;height:44px;animation:cue 2.4s cubic-bezier(.55,.05,.45,.95) infinite}
 .hero-behind.has-photo .scrollcue{color:#fff}
-@keyframes cue{0%,100%{transform:translateY(0)}50%{transform:translateY(9px)}}
+@keyframes cue{0%,100%{transform:translateY(0)}50%{transform:translateY(7px)}}
 html.scrolled .scrollcue{opacity:0;pointer-events:none}
 /* a section on a raised band */
 main section.raised{background:var(--panel);border-top-color:transparent}
@@ -252,7 +253,11 @@ main section.is-editing{outline:2px solid var(--acc);outline-offset:-2px}
 .foot .wrap{display:flex;gap:28px;flex-wrap:wrap;justify-content:space-between;align-items:flex-start}
 .foot .col{display:flex;flex-direction:column;gap:14px}.foot .col.end{align-items:flex-end}
 .foot .tagline{margin:0;color:var(--fg)}
-.foot .small{flex-basis:100%;margin:0;font-size:12px;opacity:.75;max-width:80ch}
+.foot .tagline.tagline-subtle{color:var(--dim)}.foot .tagline.tagline-accent{color:var(--ink)}
+/* Its own row, the whole width. It had max-width:80ch, which capped the
+   100% basis below the row's width, so it never wrapped: the small print sat
+   beside the columns and squeezed them together (Chase, 2026-10-01). */
+.foot .small{flex:1 0 100%;margin:0;font-size:12px;opacity:.75;max-width:none;text-wrap:pretty}
 .foot .menu{display:flex;gap:10px 20px;flex-wrap:wrap}.foot .menu a,.foot .words a{color:var(--dim);text-decoration:none}
 .foot .menu a:hover,.foot .words a:hover{color:var(--fg)}
 .foot .words{display:flex;gap:10px 32px;flex-wrap:wrap}
@@ -260,10 +265,18 @@ main section.is-editing{outline:2px solid var(--acc);outline-offset:-2px}
 .foot-center .words,.foot-center .menu,.foot-center .socials{justify-content:center}
 .foot-center .tagline{font:600 13px var(--body);letter-spacing:.2em;text-transform:uppercase;color:var(--dim)}
 .foot-center .small{margin:0 auto}
-.foot-columns .wrap{display:grid;grid-template-columns:1.4fr repeat(3,1fr);gap:32px}
-.foot-columns .menu{flex-direction:column;gap:10px}.foot-columns .words{flex-direction:column;gap:10px}
-.foot-columns .small{grid-column:1/-1}
-@media (max-width:820px){.foot-columns .wrap{grid-template-columns:1fr 1fr}.foot .col.end{align-items:flex-start}}
+/* Columns: only the columns that have something, spread across; the pages
+   as a two-column grid rather than a long list; then a bar under a rule for
+   the small print and the credit (Chase, 2026-10-01: with Pages on "It
+   doesn't look good at all"). */
+.foot-columns .wrap{display:block}
+.foot-columns .cols{display:flex;gap:32px 64px;flex-wrap:wrap;justify-content:space-between;align-items:flex-start}
+.foot-columns .col:first-child{flex:1 1 220px;max-width:360px}
+.foot-columns .menu{display:grid;grid-template-columns:repeat(2,auto);gap:10px 36px}
+.foot-columns .words{flex-direction:column;gap:10px}
+.foot-columns .bar{display:flex;gap:12px 24px;flex-wrap:wrap;justify-content:space-between;align-items:baseline;margin-top:40px;padding-top:20px;border-top:1px solid var(--line)}
+.foot-columns .bar .small{flex:1 1 320px}
+@media (max-width:820px){.foot .col.end{align-items:flex-start}}
 .socials{display:flex;gap:12px;flex-wrap:wrap}.socials a{display:inline-flex;width:40px;height:40px;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:50%;color:var(--fg)}
 .socials a:hover{border-color:var(--acc);color:var(--ink)}.socials svg{width:18px;height:18px}
 .customlinks{display:flex;gap:16px;flex-wrap:wrap}.customlinks a{color:var(--fg)}
@@ -284,7 +297,7 @@ html[data-photos="zoom"] .kb img{animation:kb 18s ease-in-out infinite alternate
 html[data-pages="fade"]{view-transition-name:root}
 @view-transition{navigation:auto}
 @media (prefers-reduced-motion:reduce){.m,.h .ch{opacity:1!important;transform:none!important;transition:none!important}
- .scrollcue{animation:none}
+ .scrollcue svg{animation:none}
  .kb img{animation:none!important}.progress{display:none}.btn{transition:none}}
 @media (max-width:820px){main section{padding:64px 0}.pt,.hero-beside .wrap,.hero-monogram .wrap{grid-template-columns:1fr;gap:28px}.pt-right .pt .pic{order:0}
  .hero .wrap{padding:110px 0 64px}.hero-monogram .wrap{padding:100px 0 130px}.mono-pic img{max-height:240px}.card{padding:26px}}
@@ -317,6 +330,39 @@ function wf(sec, lang, fallback, field) {
    <i>, <u> and checked <a href>, the rest escaped), so they are written as
    they are; `rich` only turns line breaks into <br> and a link to one of
    the site's own pages into its address. */
+/**
+ * A name's initials in any alphabet (Chase, 2026-10-01: "first and last
+ * initial from any alphabet ... the Cyrillic works and even the croatian
+ * alphabet"). Whole letters, not code units: a letter written with a
+ * combining mark stays one letter, and Croatian's Dž, Lj and Nj are each one
+ * letter of its alphabet, so Ljiljana Njegoš is "LjNj", not "LN". The first
+ * and last word, or the one word there is.
+ */
+export function initialsOf(name) {
+  const words = String(name || "").normalize("NFC").trim().split(/\s+/).filter(Boolean);
+  const pick = words.length > 1 ? [words[0], words[words.length - 1]] : words;
+  const seg = typeof Intl !== "undefined" && Intl.Segmenter ? new Intl.Segmenter(undefined, { granularity: "grapheme" }) : null;
+  return pick.map((w) => {
+    const di = /^(d\u017e|lj|nj)/i.exec(w);
+    if (di) return di[1][0].toLocaleUpperCase() + di[1].slice(1).toLocaleLowerCase();
+    const first = seg ? (seg.segment(w)[Symbol.iterator]().next().value || {}).segment : Array.from(w)[0];
+    return String(first || "").toLocaleUpperCase();
+  }).join("");
+}
+
+/* The favicon when the owner has not chosen one: their initials in the
+   site's own accent, as an SVG the browser draws at any size. */
+function initialsIcon(name, L) {
+  const ini = initialsOf(name);
+  if (!ini) return "";
+  const size = Array.from(ini).length > 2 ? 26 : 34;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">` +
+    `<rect width="64" height="64" rx="14" fill="${L.acc}"/>` +
+    `<text x="32" y="33" text-anchor="middle" dominant-baseline="central" fill="${L.onAcc}" ` +
+    `font-family="${String(L.display).replace(/"/g, "'")}" font-weight="${L.boldW || 700}" font-size="${size}">${esc(ini)}</text></svg>`;
+  return "data:image/svg+xml," + encodeURIComponent(svg);
+}
+
 function heading(h, tag = "h2") {
   return h ? `<${tag} class="h m">${h}</${tag}>` : "";
 }
@@ -372,9 +418,12 @@ function renderSection(sec, ctx) {
       }).join("");
       /* The owner's own button: solid only when it is the only one. */
       const btns = builtIn + button(!builtIn);
-      const cue = `<button type="button" class="scrollcue" aria-hidden="true" tabindex="-1"><svg viewBox="0 0 24 24"><path d="M5 9l7 7 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`;
+      /* "Scroll", over a line that ends in an arrow, pointing down (Chase,
+         2026-10-01). */
+      const cue = `<button type="button" class="scrollcue" aria-hidden="true" tabindex="-1"><span>${esc(word(lang, "scroll"))}</span>` +
+        `<svg viewBox="0 0 16 44"><path d="M8 1v40M2.5 35.5L8 41l5.5-5.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`;
       if (sec.variant === "monogram") {
-        const initials = String(ctx.name).split(/\s+/).filter(Boolean).map((x) => x[0]).slice(0, 3).join("").toUpperCase();
+        const initials = initialsOf(ctx.name);
         const h = heading(w("heading"), "h1");
         return `<section class="hero hero-monogram"><div class="wrap"><div class="mono-words"><span class="mono-mark" aria-hidden="true">${esc(initials)}</span>` +
           `${w("kicker") ? `<p class="kicker m">${esc(w("kicker"))}</p>` : ""}${h}<span class="rule m" aria-hidden="true"></span>` +
@@ -436,10 +485,10 @@ function renderSection(sec, ctx) {
     }
     case "signup":
       ctx.needs.signup = true;
-      return `<section${cls(sec.variant === "band" ? "band" : "")}><div class="wrap">${sec.variant === "card" ? '<div class="card">' : '<div class="bandrow">'}<div>${heading(w("heading"))}${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}</div><div class="m" style="flex:1 1 360px;max-width:520px"><div data-thauma-form data-lang="${esc(lang)}"></div></div></div></div></section>`;
+      return `<section${cls(sec.variant === "band" ? "band" : "")}><div class="wrap">${sec.variant === "card" ? '<div class="card">' : '<div class="bandrow">'}<div>${heading(w("heading"))}${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}</div><div class="m" style="flex:1 1 360px;max-width:520px"><div data-thauma-form data-lang="${esc(lang)}"${ctx.formLook}></div></div></div></div></section>`;
     case "contact":
       ctx.needs.contact = true;
-      return `<section${cls()}><div class="wrap">${heading(w("heading"))}${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}<div class="m formbox" style="max-width:640px;margin-top:24px"><div data-thauma-contact data-lang="${esc(lang)}"></div></div></div></section>`;
+      return `<section${cls()}><div class="wrap">${heading(w("heading"))}${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}<div class="m formbox" style="max-width:640px;margin-top:24px"><div data-thauma-contact data-lang="${esc(lang)}"${ctx.formLook}></div></div></div></section>`;
     case "give":
       if (!ctx.giveUrl) return "";
       return `<section${cls(sec.variant === "band" ? "band" : "")}><div class="wrap">${sec.variant === "card" ? '<div class="card">' : '<div class="bandrow">'}<div>${heading(w("heading"))}${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}</div><div class="btns m" style="margin:0"><a class="btn solid" href="${esc(ctx.giveUrl)}">${esc(w("button") || word(lang, "giveBtn"))} →</a></div></div></div></section>`;
@@ -488,6 +537,15 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
     widgetTheme: L.alt ? "auto" : L.scheme === "dark" ? "dark" : "light",
     /* A Custom site's accent reaches the widgets; the ministry's otherwise. */
     widgetAccent: design.look === "custom" ? (design.colors || {}).accent || null : null,
+    /* The sign-up and contact forms wear the SITE's colors, not the form's
+       own embed colors (Chase, 2026-10-01: they "don't follow the color
+       scheme of the designer"): its accent pair and its light or dark. */
+    formLook: (() => {
+      const own = design.look === "custom" && (design.colors || {}).accent;
+      const a = own ? design.colors.accent : theme.accent, a2 = own ? companion(own, -33) : theme.accent2;
+      return ` data-theme="${L.alt ? "auto" : L.scheme === "dark" ? "dark" : "light"}"` +
+        (a ? ` data-accent="${esc(a)}"` : "") + (a2 ? ` data-accent2="${esc(a2)}"` : "");
+    })(),
     giveUrl: doc.give || site.giving_url || "",
     pageOn: (id) => pages.some((p) => p.id === id),
     href, label, name: site.display_name || "",
@@ -532,13 +590,12 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
       `<ul>${doc.languages.map((l) =>
         `<li><a href="${esc(href(pageId, l))}" hreflang="${esc(l)}" lang="${esc(l)}"${l === lang ? ' aria-current="true"' : ""}>${esc(langNames[l] || l.toUpperCase())}</a></li>`).join("")}</ul></details>`
     : "";
-  const langLinks = langMenu(true);
   const socials = doc.links.filter((k) => k.kind !== "custom").map((k) =>
     `<a href="${esc(k.url)}" aria-label="${esc(SOCIAL_NAME[k.kind])}" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k.kind]}</svg></a>`).join("");
   /* The owner's own links may point at a page of the site, as a section's can. */
   const custom = doc.links.filter((k) => k.kind === "custom").map((k) => ({ ...k, href: ctx.linkHref(k.url) })).filter((k) => k.href).map((k) =>
     `<a href="${esc(k.href)}"${rel(k.href)}>${esc(k.label[lang] || k.label[fallback] || k.href)}</a>`).join("");
-  const foot = footer({ doc, lang, fallback, brand, name, pages, href, label, socials, custom, langLinks });
+  const foot = footer({ doc, lang, fallback, name, pages, href, label, socials, custom });
 
   const title = pageId === "home" ? name : `${label(pageId)} · ${name}`;
   const desc = (() => {
@@ -568,7 +625,7 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)}</title>
-${design.favicon ? `<link rel="icon" href="${esc(design.favicon)}">` : ""}
+${design.favicon ? `<link rel="icon" href="${esc(design.favicon)}">` : initialsIcon(name, L) ? `<link rel="icon" type="image/svg+xml" href="${esc(initialsIcon(name, L))}">` : ""}
 ${desc ? `<meta name="description" content="${esc(desc)}">` : ""}
 ${draft ? '<meta name="robots" content="noindex">' : ""}
 ${alternates}
@@ -603,10 +660,10 @@ ${ctx.needs.contact ? `<script src="${esc(origin)}/embed/v1/${esc(site.slug)}/co
  * The foot of the page, in the owner's chosen layout (model.FOOTERS). The
  * credit line is in every one of them.
  */
-function footer({ doc, lang, fallback, brand, name, pages, href, label, socials, custom, langLinks }) {
+function footer({ doc, lang, fallback, name, pages, href, label, socials, custom }) {
   const F = doc.footer || { layout: "split", menu: false, socials: "icons", words: {} };
   const fw = (f) => (F.words[lang] && F.words[lang][f]) || (F.words[fallback] && F.words[fallback][f]) || "";
-  const tagline = fw("tagline") ? `<p class="tagline">${esc(fw("tagline"))}</p>` : "";
+  const tagline = fw("tagline") ? `<p class="tagline tagline-${esc(F.tagline || "plain")}">${esc(fw("tagline"))}</p>` : "";
   const small = fw("small") ? `<p class="small">${esc(fw("small")).replace(/\n/g, "<br>")}</p>` : "";
   const menu = F.menu ? `<nav class="menu" aria-label="${esc(word(lang, "menu"))}">${pages.map((p) =>
     `<a href="${esc(href(p.id))}">${esc(label(p.id))}</a>`).join("")}</nav>` : "";
@@ -619,16 +676,17 @@ function footer({ doc, lang, fallback, brand, name, pages, href, label, socials,
   const words = linkRow ? `<span class="words">${linkRow}</span>` : "";
   const icons = !asWords && socials ? `<span class="socials">${socials}</span>` : "";
   const credit = `<span class="powered">© ${new Date().getFullYear()} ${esc(name)} · ${esc(word(lang, "poweredBy"))}</span>`;
-  const home = `<a class="brand" href="${esc(href("home"))}">${brand}</a>`;
-
+  /* NOT IN THE FOOTER (Chase, 2026-10-01): the name as a brand, and the
+     language menu — both are already in the header. */
   let inner;
   if (F.layout === "center") {
-    inner = `${menu}${words}${icons}${tagline}${small}${langLinks}${credit}`;
+    inner = `${menu}${words}${icons}${tagline}${small}${credit}`;
   } else if (F.layout === "columns") {
-    inner = `<div class="col">${home}${tagline}</div><div class="col">${menu}</div><div class="col">${words}</div>` +
-      `<div class="col">${icons}${langLinks}</div>${small}<div class="col">${credit}</div>`;
+    const cols = [tagline, menu, words].filter(Boolean).map((x) => `<div class="col">${x}</div>`).join("") +
+      (icons ? `<div class="col end">${icons}</div>` : "");
+    inner = `<div class="cols">${cols}</div><div class="bar">${small}${credit}</div>`;
   } else {
-    inner = `<div class="col">${home}${tagline}${menu}${words}</div><div class="col end">${icons}${langLinks}${credit}</div>${small}`;
+    inner = `<div class="col">${tagline}${menu}${words}</div><div class="col end">${icons}${credit}</div>${small}`;
   }
   return `<footer class="foot foot-${esc(F.layout)}"><div class="wrap">${inner}</div></footer>`;
 }
