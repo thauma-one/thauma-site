@@ -27,7 +27,7 @@
      `removed` is a delete waiting for Publish. */
   var state = { saved: {}, draft: {}, order: [], removed: {}, reading: {},
                 editing: null, before: null, isPublic: false,
-                home: 'en', langs: [], writing: 'en' };
+                home: 'en', langs: [], writing: 'en', beside: null };
   var FIELDS = ['label', 'description', 'kind', 'target_cents', 'currency', 'is_public', 'texts'];
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
   function defn(g) {
@@ -187,6 +187,7 @@
     /* A new goal is named in the ministry's own language first: that name is
        the one every other language falls back to. */
     state.writing = state.home;
+    state.beside = null;
     state.formGoal = goal ? clone(goal) : { label: '', description: null, texts: {} };
     drawWriting();
     $('glKind').value = goal ? goal.kind : 'monthly';
@@ -236,7 +237,11 @@
     var l = state.langs.filter(function (x) { return x.code === code; })[0];
     return l ? (l.native_name || l.name) : code;
   }
-  /* The two boxes into the form's copy, for the language they show. */
+  /* One language's wording: the ministry's own is the columns, the rest `texts`. */
+  function goalText(g, code, field) {
+    return code === state.home ? (g[field] || '') : (((g.texts || {})[code] || {})[field] || '');
+  }
+  /* The two boxes into the form's copy, for the language being edited. */
   function keepWriting() {
     var g = state.formGoal, w = state.writing;
     if (!g) return;
@@ -252,33 +257,46 @@
     if (desc.trim()) t.description = desc; else delete t.description;
     if (Object.keys(t).length) g.texts[w] = t; else delete g.texts[w];
   }
-  /* The picker, the boxes and the reference for the language being written. */
+  /* "Editing X, Reference Y" — the milestone editor's pair. Reference lists
+     the other languages and opens on one that has words; its wording sits
+     small above each box, tagged with its language, which is what
+     console-translate.js translates from. */
   function drawWriting() {
-    var g = state.formGoal || {}, tx = g.texts || {}, w = state.writing, home = w === state.home;
-    var named = function (c) { return c === state.home ? !!(g.label || '').trim() : !!(tx[c] && tx[c].label); };
+    var g = state.formGoal || {}, w = state.writing;
+    var named = function (c) { return !!goalText(g, c, 'label').trim(); };
     $('glWriting').hidden = state.langs.length < 2;
     $('glLang').innerHTML = state.langs.map(function (l) {
       return '<option value="' + esc(l.code) + '">' + esc(l.native_name || l.name) +
         (named(l.code) ? '' : ' · ' + esc(tr('ms.missing'))) + '</option>';
     }).join('');
     $('glLang').value = w;
-    $('glLabel').value = home ? (g.label || '') : ((tx[w] && tx[w].label) || '');
-    $('glDescription').value = home ? (g.description || '') : ((tx[w] && tx[w].description) || '');
-    /* The ministry's own words only, tagged with their language: the line
-       console-translate.js translates from (as the milestone editor's). */
-    var ref = function (id, text) {
-      $(id).hidden = home || !text;
-      $(id).textContent = home || !text ? '' : text;
-      $(id).setAttribute('lang', state.home);
-      $(id).title = langName(state.home);
-    };
-    ref('glLabelRef', g.label);
-    ref('glDescriptionRef', g.description);
+    var others = state.langs.filter(function (l) { return l.code !== w; });
+    if (!others.some(function (l) { return l.code === state.beside; })) {
+      var best = others.filter(function (l) { return named(l.code); })[0] || others[0];
+      state.beside = best ? best.code : null;
+    }
+    $('glBesideWrap').hidden = !others.length;
+    $('glBeside').innerHTML = others.map(function (l) {
+      return '<option value="' + esc(l.code) + '">' + esc(l.native_name || l.name) + '</option>';
+    }).join('');
+    $('glBeside').value = state.beside || '';
+    $('glLabel').value = goalText(g, w, 'label');
+    $('glDescription').value = goalText(g, w, 'description');
+    var b = state.beside;
+    [['glLabelRef', 'label'], ['glDescriptionRef', 'description']].forEach(function (r) {
+      var v = b ? goalText(g, b, r[1]) : '';
+      $(r[0]).hidden = !v;
+      $(r[0]).textContent = v;
+      if (b) { $(r[0]).setAttribute('lang', b); $(r[0]).title = langName(b); }
+    });
   }
-  $('glLang').addEventListener('change', function () {
-    keepWriting();
-    state.writing = this.value;
-    drawWriting();
+  /* Switching either language keeps what was typed first. */
+  [['glLang', 'writing'], ['glBeside', 'beside']].forEach(function (cfg) {
+    $(cfg[0]).addEventListener('change', function () {
+      keepWriting();
+      state[cfg[1]] = this.value;
+      drawWriting();
+    });
   });
 
   function applyForm() {

@@ -236,6 +236,12 @@ async function bootMail(url, pay = {}, file = "staff/mail") {
       Object.defineProperty(w, "sessionStorage", { value: {
         getItem: () => JSON.stringify({ roles: ["admin", "staff"] }), setItem: () => {} } });
       w.fetch = async (u, o) => { asked.push(String(u));
+        /* A stand-in translator, as in updates-page.test.mjs. */
+        if (String(u).includes("/api/translate")) {
+          const b = o && o.body ? JSON.parse(o.body) : null;
+          const reply = b ? { items: b.items.map((i) => ({ id: i.id, text: "«" + b.to + "» " + i.text })) } : { available: true };
+          return { ok: true, status: 200, json: async () => reply };
+        }
         if (o && o.method && o.method !== "GET") posted.push(JSON.parse(o.body || "null"));
         return { ok: true, status: 200, json: async () => JSON.parse(JSON.stringify(
           { ...P, scope: /scope=organization/.test(String(u)) ? "organization" : "partner" })) }; };
@@ -244,6 +250,7 @@ async function bootMail(url, pay = {}, file = "staff/mail") {
   const w = dom.window;
   w.eval(readFileSync("src/js/staff-i18n.js", "utf8"));
   w.eval(readFileSync("src/js/staff-mailing.js", "utf8"));
+  w.eval(readFileSync("src/js/console-translate.js", "utf8"));
   await new Promise((r) => setTimeout(r, 220));
   const click = (el) => el.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
   return { w, d: w.document, asked, posted, click };
@@ -331,7 +338,13 @@ await check("a list's name is written per language, and the form saves the trans
   const pick = d.getElementById("mlLang"), name = d.getElementById("mlName");
   eq2(d.getElementById("mlWriting").hidden, false, "no language picker with two languages");
   eq2(pick.value, "en", "opens in the ministry's own language");
+  /* Editing ⇄ Reference, the milestone editor's pair (Chase: "It only shows
+     the editing language"). */
+  eq2(d.getElementById("mlBesideWrap").hidden, false, "no Reference beside Editing");
+  eq2(d.getElementById("mlBeside").value, "hr", "Reference opens on the other language");
   pick.value = "hr"; pick.dispatchEvent(new w.Event("change"));
+  eq2(d.getElementById("mlBeside").value, "en", "writing Croatian, the reference is the English");
+  eq2(d.getElementById("mlNameRef").getAttribute("lang"), "en", "the reference line says its language");
   eq2(name.value, "", "no Croatian name yet");
   eq2(name.required, false, "a translation is not required");
   assert(/Newsletter/.test(d.getElementById("mlNameRef").textContent), "the list's own name shows above");
@@ -342,6 +355,22 @@ await check("a list's name is written per language, and the form saves the trans
   assert(body, "nothing was saved");
   eq2(body.name, "Newsletter", "the list's own name is unchanged");
   eq2(JSON.stringify(body.texts), JSON.stringify({ hr: { name: "Bilten" } }), "the Croatian name");
+});
+
+await check("Translate in List settings fills the Croatian name from the English", async () => {
+  /* Chase, 2026-10-01: "Still says Nothing to Translate Here." */
+  const { w, d, click } = await bootMail("https://dev.thauma.one/staff/mail/#l_news", {
+    default_lang: "en",
+    languages: [{ code: "en", name: "English" }, { code: "hr", name: "Hrvatski" }],
+  });
+  click(d.getElementById("mlListSettings"));
+  const pick = d.getElementById("mlLang");
+  pick.value = "hr"; pick.dispatchEvent(new w.Event("change"));
+  /* jsdom lays nothing out, so "on screen" is taken as given here. */
+  Object.defineProperty(w.HTMLElement.prototype, "offsetParent", { get() { return this.parentNode; }, configurable: true });
+  click(d.querySelector("#mlForm [data-lang-translate]"));
+  await new Promise((r) => setTimeout(r, 200));
+  eq2(d.getElementById("mlName").value, "«hr» Newsletter", "the name, from English");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

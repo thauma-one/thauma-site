@@ -514,6 +514,9 @@ tbody tr[aria-expanded="true"]{background:rgba(255,255,255,.045)}
 /* The same line in the language beside: small, quiet, above the field. */
 .ms-ref{font-size:var(--fs-tiny);color:var(--dim);line-height:var(--lh-body);white-space:pre-wrap}
 .ms-ref[hidden]{display:none}
+/* The Editing ⇄ Reference row, hidden where there is one language (Goals and
+   List settings, 0047): its display:flex would otherwise beat [hidden]. */
+.ms-writing[hidden],.lang-ref[hidden]{display:none}
 .lang-pick{background:var(--bg2,#0b1119);border:1px solid rgba(255,255,255,.14);
   color:var(--text);font-family:var(--font-display);font-size:12px;font-weight:var(--w-bold);
   letter-spacing:.06em;padding:7px 10px;border-radius:var(--radius);cursor:pointer}

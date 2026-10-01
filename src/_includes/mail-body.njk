@@ -151,8 +151,13 @@
       <div class="ms-writing" id="mlWriting" hidden>
         <label class="ms-pick"><span data-i18n="con.editing">Editing</span>
           <select id="mlLang" class="lang-pick" data-lang-edit></select></label>
-        {#- console-translate.js: fills the boxes from the reference lines. -#}
-        <button type="button" class="ghost-btn sm lang-ai" data-lang-translate data-i18n="ai.translate">Translate</button>
+        <span class="lang-ref" id="mlBesideWrap">
+          <button type="button" class="lang-swap" data-lang-swap data-i18n-attr="aria-label:con.swap,title:con.swap" aria-label="Swap" title="Swap">&#8644;</button>
+          <label class="ms-pick"><span data-i18n="con.reference">Reference</span>
+            <select id="mlBeside" class="lang-pick" data-lang-ref></select></label>
+          {#- console-translate.js: fills the boxes from the reference lines. -#}
+          <button type="button" class="ghost-btn sm lang-ai" data-lang-translate data-i18n="ai.translate">Translate</button>
+        </span>
       </div>
 
       <div class="ms-grid">

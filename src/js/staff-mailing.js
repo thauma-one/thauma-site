@@ -56,7 +56,7 @@
 
   var state = {
     lists: [], tags: [], senders: [], contact: null, topics: [],
-    home: 'en', langs: [], writing: 'en', listForm: null,
+    home: 'en', langs: [], writing: 'en', beside: null, listForm: null,
     subsQ: '', subsStatus: '', subsSort: '', subsTag: '', subsPage: 0, picked: [],
     subsTotal: 0, subsPageSize: 100,
     scope: startScope, partnerSlug: '',
@@ -302,6 +302,11 @@
     var l = state.langs.filter(function (x) { return x.code === code; })[0];
     return l ? l.name : code;
   }
+  /* One language's wording: the ministry's own is the columns, the rest `texts`. */
+  function listText(f, code, field) {
+    return code === state.home ? (f[field] || '') : ((f.texts[code] || {})[field] || '');
+  }
+  /* The two boxes into the form's copy, for the language being edited. */
   function keepListWriting() {
     var f = state.listForm, w = state.writing;
     if (!f) return;
@@ -312,38 +317,55 @@
     if (desc.trim()) t.description = desc; else delete t.description;
     if (Object.keys(t).length) f.texts[w] = t; else delete f.texts[w];
   }
+  /* "Editing X, Reference Y" — the milestone editor's pair. Reference lists
+     the other languages and opens on one that has words; its wording sits
+     small above each box, tagged with its language, which is what
+     console-translate.js translates from. */
   function drawListWriting() {
-    var f = state.listForm, tx = f.texts, w = state.writing, home = w === state.home;
-    var named = function (c) { return c === state.home ? !!f.name.trim() : !!(tx[c] && tx[c].name); };
+    var f = state.listForm, w = state.writing;
+    var named = function (c) { return !!listText(f, c, 'name').trim(); };
     $('mlWriting').hidden = state.langs.length < 2;
     $('mlLang').innerHTML = state.langs.map(function (l) {
       return '<option value="' + esc(l.code) + '">' + esc(l.name) +
         (named(l.code) ? '' : ' · ' + esc(tr('ms.missing'))) + '</option>';
     }).join('');
     $('mlLang').value = w;
-    $('mlName').value = home ? f.name : ((tx[w] && tx[w].name) || '');
-    $('mlDescription').value = home ? f.description : ((tx[w] && tx[w].description) || '');
+    var others = state.langs.filter(function (l) { return l.code !== w; });
+    if (!others.some(function (l) { return l.code === state.beside; })) {
+      var best = others.filter(function (l) { return named(l.code); })[0] || others[0];
+      state.beside = best ? best.code : null;
+    }
+    $('mlBesideWrap').hidden = !others.length;
+    $('mlBeside').innerHTML = others.map(function (l) {
+      return '<option value="' + esc(l.code) + '">' + esc(l.name) + '</option>';
+    }).join('');
+    $('mlBeside').value = state.beside || '';
+    $('mlName').value = listText(f, w, 'name');
+    $('mlDescription').value = listText(f, w, 'description');
     /* Only the list's own name is required; a translation may be left for later. */
-    $('mlName').required = home;
-    /* The ministry's own words only, tagged with their language: the line
-       console-translate.js translates from (as the milestone editor's). */
-    [['mlNameRef', f.name], ['mlDescriptionRef', f.description]].forEach(function (r) {
-      $(r[0]).hidden = home || !r[1];
-      $(r[0]).textContent = home || !r[1] ? '' : r[1];
-      $(r[0]).setAttribute('lang', state.home);
-      $(r[0]).title = langLabel(state.home);
+    $('mlName').required = w === state.home;
+    var b = state.beside;
+    [['mlNameRef', 'name'], ['mlDescriptionRef', 'description']].forEach(function (r) {
+      var v = b ? listText(f, b, r[1]) : '';
+      $(r[0]).hidden = !v;
+      $(r[0]).textContent = v;
+      if (b) { $(r[0]).setAttribute('lang', b); $(r[0]).title = langLabel(b); }
     });
   }
   function startListForm(l) {
     state.listForm = { name: (l && l.name) || '', description: (l && l.description) || '',
                        texts: JSON.parse(JSON.stringify((l && l.texts) || {})) };
     state.writing = state.home;
+    state.beside = null;
     drawListWriting();
   }
-  $('mlLang').addEventListener('change', function () {
-    keepListWriting();
-    state.writing = this.value;
-    drawListWriting();
+  /* Switching either language keeps what was typed first. */
+  [['mlLang', 'writing'], ['mlBeside', 'beside']].forEach(function (cfg) {
+    $(cfg[0]).addEventListener('change', function () {
+      keepListWriting();
+      state[cfg[1]] = this.value;
+      drawListWriting();
+    });
   });
 
   function fillSettings(l) {
