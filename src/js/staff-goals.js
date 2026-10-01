@@ -264,9 +264,13 @@
     $('glLang').value = w;
     $('glLabel').value = home ? (g.label || '') : ((tx[w] && tx[w].label) || '');
     $('glDescription').value = home ? (g.description || '') : ((tx[w] && tx[w].description) || '');
+    /* The ministry's own words only, tagged with their language: the line
+       console-translate.js translates from (as the milestone editor's). */
     var ref = function (id, text) {
       $(id).hidden = home || !text;
-      $(id).textContent = home || !text ? '' : langName(state.home) + ': ' + text;
+      $(id).textContent = home || !text ? '' : text;
+      $(id).setAttribute('lang', state.home);
+      $(id).title = langName(state.home);
     };
     ref('glLabelRef', g.label);
     ref('glDescriptionRef', g.description);

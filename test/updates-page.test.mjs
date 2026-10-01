@@ -310,6 +310,25 @@ await check("Translate fills the empty fields from the reference, as if typed", 
   eq(d.querySelector('#prForm [data-ptx="title"]').value, "«hr» Visas", "the title, from English");
 });
 
+await check("Translate fills a goal's name from the ministry's own (0047)", async () => {
+  /* Chase, 2026-10-01: "The autotranslate doesn't work for that ... option."
+     The goal editor's picker and reference lines carry what
+     console-translate.js reads, so its button works there too. */
+  const { w, d, click, row, sent } = await boot();
+  click(row("glList", "g1"));
+  await settle();
+  const pick = d.getElementById("glLang");
+  pick.value = "hr";
+  pick.dispatchEvent(new w.Event("change", { bubbles: true }));
+  Object.defineProperty(w.HTMLElement.prototype, "offsetParent", { get() { return this.parentNode; }, configurable: true });
+  eq(d.getElementById("glLabelRef").getAttribute("lang"), "en", "the reference line says its language");
+  click(d.querySelector("#glForm [data-lang-translate]"));
+  await settle(200);
+  eq(d.getElementById("glLabel").value, "«hr» Cameras", "the name, from English");
+  const asked = sent.filter((s) => s.url.includes("/api/translate")).pop();
+  eq([asked.body.from, asked.body.to], ["en", "hr"], "from the ministry's language into the one being written");
+});
+
 await check("each reference line has its own quiet Translate, for that line alone", async () => {
   const { w, d, click, row, sent } = await boot();
   click(row("prList", "p1"));

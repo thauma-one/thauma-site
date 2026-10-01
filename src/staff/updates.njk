@@ -176,7 +176,9 @@ staffHeading: What this ministry <b>publishes</b>
       <input type="hidden" id="glId">
       <div class="ms-writing" id="glWriting" hidden>
         <label class="ms-pick"><span data-i18n="con.editing">Editing</span>
-          <select id="glLang" class="lang-pick"></select></label>
+          <select id="glLang" class="lang-pick" data-lang-edit></select></label>
+        {#- console-translate.js: fills the boxes from the reference lines. -#}
+        <button type="button" class="ghost-btn sm lang-ai" data-lang-translate data-i18n="ai.translate">Translate</button>
       </div>
 
       <div class="ms-grid ms-neutral">

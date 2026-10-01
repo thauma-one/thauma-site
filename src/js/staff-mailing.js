@@ -325,9 +325,13 @@
     $('mlDescription').value = home ? f.description : ((tx[w] && tx[w].description) || '');
     /* Only the list's own name is required; a translation may be left for later. */
     $('mlName').required = home;
+    /* The ministry's own words only, tagged with their language: the line
+       console-translate.js translates from (as the milestone editor's). */
     [['mlNameRef', f.name], ['mlDescriptionRef', f.description]].forEach(function (r) {
       $(r[0]).hidden = home || !r[1];
-      $(r[0]).textContent = home || !r[1] ? '' : langLabel(state.home) + ': ' + r[1];
+      $(r[0]).textContent = home || !r[1] ? '' : r[1];
+      $(r[0]).setAttribute('lang', state.home);
+      $(r[0]).title = langLabel(state.home);
     });
   }
   function startListForm(l) {
