@@ -135,6 +135,9 @@ export const SOCIAL_STYLES = ["icons", "words"];
 /* The tagline's color (Chase, 2026-10-01): as it was, quieter, or in the
    site's accent. */
 export const TAGLINE_STYLES = ["plain", "subtle", "accent"];
+/* The initials favicon, when no picture is chosen (Chase, 2026-10-01):
+   letters on an accent tile, or accent letters on the site's background. */
+export const FAVICON_STYLES = ["filled", "letters"];
 
 /* ------------------------------------------------------------ addresses -- */
 
@@ -514,6 +517,7 @@ export function cleanDoc(raw, catalog) {
       logo: safePhoto(design.logo),
       /* The little picture in a browser tab (Chase, 2026-09-29). */
       favicon: safePhoto(design.favicon),
+      faviconStyle: pick(design.faviconStyle, FAVICON_STYLES),
       headerLinks: !!design.headerLinks,
       /* The owner's own colors (the Custom look), or null for a dark ground
          and the ministry's accent. Everything else is worked out from these. */

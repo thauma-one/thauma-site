@@ -233,9 +233,10 @@ check("the opening fills the screen, with an arrow that bounces until the visito
   assert(/\.hero\{[^}]*min-height:calc\(100svh - 69px\)/.test(html), "the whole first screen");
   assert(/<section class="hero hero-behind[^"]*">[\s\S]*?<button type="button" class="scrollcue"/.test(html), "the arrow");
   assert(/@keyframes cue/.test(html) && /html\.scrolled \.scrollcue\{opacity:0/.test(html), "bouncing, and gone once scrolled");
-  assert(/\.scrollcue svg\{animation:none\}/.test(html), "still, for anyone who asked for less motion");
-  /* "an arrow with a line pointing downward with the word Scroll there" */
-  assert(/class="scrollcue"[^>]*><span>Scroll<\/span><svg viewBox="0 0 16 44"><path d="M8 1v40/.test(html), "the word, over a line ending in an arrow");
+  assert(/\.scrollcue\{animation:none\}/.test(html), "still, for anyone who asked for less motion");
+  /* chaseroush.com's: a short accent line over the word, bobbing together. */
+  assert(/class="scrollcue"[^>]*><i><\/i><span>Scroll<\/span><\/button>/.test(html), "a line over the word");
+  assert(/\.scrollcue i\{[^}]*width:2px;height:32px;background:var\(--acc\)/.test(html), "the line in the accent");
 });
 
 check("the ministry's widgets sit centered unless put left; the newest newsletter as a card, the rest behind a link", () => {
@@ -248,7 +249,7 @@ check("the ministry's widgets sit centered unless put left; the newest newslette
   assert(/<section class="data al-left">/.test(html), "left, when chosen");
   assert(html.includes('<a class="latest m" href="https://thauma.one/archive/chase-roush/news/september/">'), "the newest");
   assert(!html.includes('href="https://thauma.one/archive/chase-roush/news/august/"'), "only the newest is linked");
-  assert(html.includes('<a href="https://thauma.one/archive/chase-roush/news/">See past newsletters</a>'), "the rest, at the list's archive");
+  assert(html.includes('<a href="https://thauma.one/archive/chase-roush/news/" target="_blank" rel="noopener">See past newsletters</a>'), "the rest, at the list's archive");
 });
 
 check("a site's own tab icon", () => {
@@ -268,7 +269,21 @@ check("Chase, 2026-10-01: initials for a favicon, forms in the site's colors, a 
   assert(icon && decodeURIComponent(icon[1]).includes(">CR</text>"), "the initials as the icon");
   /* The forms wear the site's accent, not their own embed colors. */
   const stay = page(d, "stay");
-  assert(/<div data-thauma-form data-lang="en" data-theme="[a-z]+" data-accent="#E8553A" data-accent2="#[0-9A-Fa-f]{6}"><\/div>/.test(stay), "the sign-up form in the site's colors");
+  assert(/<div data-thauma-form data-lang="en" data-theme="[a-z]+" data-accent="#E8553A" data-accent2="#[0-9A-Fa-f]{6}" data-look="[^"]+"><\/div>/.test(stay), "the sign-up form in the site's colors");
+  /* Or the accent letters on the site's own background. */
+  d.design.faviconStyle = "letters";
+  const lettersIcon = decodeURIComponent(/<link rel="icon" type="image\/svg\+xml" href="data:image\/svg\+xml,([^"]+)">/.exec(page(d))[1]);
+  assert(/<rect [^>]*fill="#[0-9A-Fa-f]{6}"\/><text [^>]*fill="#[0-9A-Fa-f]{6}"/.test(lettersIcon) && !lettersIcon.includes('fill="#E8553A"/>'), "accent letters, not an accent tile");
+  eq(cleanDoc({ design: { faviconStyle: "neon" } }, ["en"]).design.faviconStyle, "filled", "an unknown style is the filled one");
+  /* The forms take the site's card, fields, lines and type too. */
+  const lookAttr = /data-thauma-form[^>]*data-look="([^"]+)"/.exec(stay);
+  const look = lookAttr && JSON.parse(lookAttr[1].replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&"));
+  assert(look && look.panel && look.bg && look.font, "the form is told the site's look: " + (lookAttr && lookAttr[1]));
+  /* Every link that leaves the site opens a new tab; the site's own do not. */
+  d.links = [{ kind: "youtube", url: "@chase" }];
+  const withLinks = page(d);
+  assert(/<a href="https:\/\/www\.youtube\.com\/@chase" target="_blank"[^>]* rel="noopener"/.test(withLinks), "a social link, in a new tab");
+  assert(!/<a href="\/[^"]*" target=/.test(withLinks), "the site's own pages stay in the tab");
   /* The tagline in the accent, when chosen. */
   d.footer = { layout: "split", menu: false, socials: "icons", tagline: "accent", words: { en: { tagline: "All of me" } } };
   assert(page(d).includes('<p class="tagline tagline-accent">All of me</p>'), "the tagline's color");
@@ -313,7 +328,7 @@ check("the footer: three layouts, a tagline and small print in each language, th
   });
   const html = page(d);
   assert(html.includes('class="foot foot-center"'), "centered");
-  assert(/<span class="words"><a href="https:\/\/youtube\.com\/@c" rel="noopener">YouTube<\/a><a href="https:\/\/cal\.example\/"/.test(html), "socials as names, beside the owner's links");
+  assert(/<span class="words"><a href="https:\/\/youtube\.com\/@c" target="_blank" rel="noopener">YouTube<\/a><a href="https:\/\/cal\.example\/"/.test(html), "socials as names, beside the owner's links");
   assert(html.includes('<p class="tagline tagline-plain">All of me for all of Him</p>') && html.includes("Donations are tax-deductible."), "the words");
   assert(/<nav class="menu"[^>]*><a href="\/site\/chaseroush\/en\/">Home<\/a>/.test(html), "the pages");
   assert(html.includes("A Thauma site"), "the credit");

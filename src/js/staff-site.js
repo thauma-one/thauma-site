@@ -930,6 +930,11 @@
         '<input type="file" accept="image/*" data-favicon hidden></label>' +
         (d.favicon ? '<button type="button" class="link-btn" data-unfavicon>' + esc(tr('ws.removePhoto')) + '</button>' : '') +
         '<span class="hint"></span>') +
+      /* Without a picture, the initials — on an accent tile, or in the accent
+         (Chase, 2026-10-01). Hidden once a picture is chosen. */
+      (d.favicon ? '' : row(tr('ws.faviconStyle'), chips('faviconStyle', ['filled', 'letters'], d.faviconStyle || 'filled', function (v) {
+        return tr('ws.faviconStyle.' + v);
+      }))) +
       '</div><div class="ws-head"><h2>' + esc(tr('ws.motion')) + '</h2></div><div class="ws-rows">' +
       Object.keys(MOTION).map(function (k) {
         return row(tr('ws.m.' + k), chips('motion:' + k, MOTION[k], d.motion[k], function (v) { return tr('ws.m.' + k + '.' + v); }));
@@ -1258,7 +1263,7 @@
       }
       else if (name.indexOf('footer:') === 0) { state.doc.footer[name.slice(7)] = val; drawFooter(); }
       else if (name.indexOf('motion:') === 0) { state.doc.design.motion[name.slice(7)] = val; drawDesign(); }
-      else if (name === 'look' || name === 'menu' || name === 'brand' || name === 'mode') { state.doc.design[name] = val; drawDesign(); }
+      else if (name === 'look' || name === 'menu' || name === 'brand' || name === 'mode' || name === 'faviconStyle') { state.doc.design[name] = val; drawDesign(); }
       return changed();
     }
     if (d.start) {

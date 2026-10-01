@@ -194,12 +194,13 @@ ${L.heroFg ? `.hero-behind:not(.has-photo),.hero-words{color:${L.heroFg}}.hero-b
 .spaced{font:400 13px/1.7 var(--body);letter-spacing:.2em;text-transform:uppercase;color:var(--dim);margin:0;max-width:60ch}
 .mono-pic img{width:100%;max-height:460px;object-fit:contain}
 /* A slowly bouncing arrow, on every opening, until the visitor scrolls. */
-.scrollcue{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:8px;
-  background:none;border:0;padding:0;color:var(--fg);opacity:.75;cursor:pointer;transition:opacity .5s ease;font:600 11px var(--body);letter-spacing:.22em;text-transform:uppercase}
-.scrollcue span{padding-left:.22em}
-.scrollcue svg{width:16px;height:44px;animation:cue 2.4s cubic-bezier(.55,.05,.45,.95) infinite}
+.scrollcue{position:absolute;left:50%;bottom:2rem;margin-left:-40px;width:80px;display:flex;flex-direction:column;align-items:center;gap:6px;
+  background:none;border:0;padding:0;color:var(--fg);cursor:pointer;transition:opacity .6s ease;font:600 11px var(--body);letter-spacing:.15em;text-transform:uppercase;
+  animation:cue 2s ease-in-out infinite}
+.scrollcue i{display:block;width:2px;height:32px;background:var(--acc);opacity:.9}
+.scrollcue span{padding-left:.15em;opacity:.8}
 .hero-behind.has-photo .scrollcue{color:#fff}
-@keyframes cue{0%,100%{transform:translateY(0)}50%{transform:translateY(7px)}}
+@keyframes cue{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
 html.scrolled .scrollcue{opacity:0;pointer-events:none}
 /* a section on a raised band */
 main section.raised{background:var(--panel);border-top-color:transparent}
@@ -297,7 +298,7 @@ html[data-photos="zoom"] .kb img{animation:kb 18s ease-in-out infinite alternate
 html[data-pages="fade"]{view-transition-name:root}
 @view-transition{navigation:auto}
 @media (prefers-reduced-motion:reduce){.m,.h .ch{opacity:1!important;transform:none!important;transition:none!important}
- .scrollcue svg{animation:none}
+ .scrollcue{animation:none}
  .kb img{animation:none!important}.progress{display:none}.btn{transition:none}}
 @media (max-width:820px){main section{padding:64px 0}.pt,.hero-beside .wrap,.hero-monogram .wrap{grid-template-columns:1fr;gap:28px}.pt-right .pt .pic{order:0}
  .hero .wrap{padding:110px 0 64px}.hero-monogram .wrap{padding:100px 0 130px}.mono-pic img{max-height:240px}.card{padding:26px}}
@@ -352,13 +353,16 @@ export function initialsOf(name) {
 
 /* The favicon when the owner has not chosen one: their initials in the
    site's own accent, as an SVG the browser draws at any size. */
-function initialsIcon(name, L) {
+function initialsIcon(name, L, style = "filled") {
   const ini = initialsOf(name);
   if (!ini) return "";
   const size = Array.from(ini).length > 2 ? 26 : 34;
+  /* "filled": the letters on an accent tile; "letters": accent letters on the
+     site's own background (Chase, 2026-10-01). */
+  const letters = style === "letters";
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">` +
-    `<rect width="64" height="64" rx="14" fill="${L.acc}"/>` +
-    `<text x="32" y="33" text-anchor="middle" dominant-baseline="central" fill="${L.onAcc}" ` +
+    `<rect width="64" height="64" rx="14" fill="${letters ? L.bg : L.acc}"/>` +
+    `<text x="32" y="33" text-anchor="middle" dominant-baseline="central" fill="${letters ? L.acc : L.onAcc}" ` +
     `font-family="${String(L.display).replace(/"/g, "'")}" font-weight="${L.boldW || 700}" font-size="${size}">${esc(ini)}</text></svg>`;
   return "data:image/svg+xml," + encodeURIComponent(svg);
 }
@@ -418,10 +422,10 @@ function renderSection(sec, ctx) {
       }).join("");
       /* The owner's own button: solid only when it is the only one. */
       const btns = builtIn + button(!builtIn);
-      /* "Scroll", over a line that ends in an arrow, pointing down (Chase,
-         2026-10-01). */
-      const cue = `<button type="button" class="scrollcue" aria-hidden="true" tabindex="-1"><span>${esc(word(lang, "scroll"))}</span>` +
-        `<svg viewBox="0 0 16 44"><path d="M8 1v40M2.5 35.5L8 41l5.5-5.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`;
+      /* As chaseroush.com's (Chase, 2026-10-01: "look at chaseroush.com home
+         page to get a feel for what I'm actually wanting"): a short line in
+         the accent over the word "Scroll", the two bobbing together. */
+      const cue = `<button type="button" class="scrollcue" aria-hidden="true" tabindex="-1"><i></i><span>${esc(word(lang, "scroll"))}</span></button>`;
       if (sec.variant === "monogram") {
         const initials = initialsOf(ctx.name);
         const h = heading(w("heading"), "h1");
@@ -485,10 +489,10 @@ function renderSection(sec, ctx) {
     }
     case "signup":
       ctx.needs.signup = true;
-      return `<section${cls(sec.variant === "band" ? "band" : "")}><div class="wrap">${sec.variant === "card" ? '<div class="card">' : '<div class="bandrow">'}<div>${heading(w("heading"))}${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}</div><div class="m" style="flex:1 1 360px;max-width:520px"><div data-thauma-form data-lang="${esc(lang)}"${ctx.formLook}></div></div></div></div></section>`;
+      return `<section${cls(sec.variant === "band" ? "band" : "")}><div class="wrap">${sec.variant === "card" ? '<div class="card">' : '<div class="bandrow">'}<div>${heading(w("heading"))}${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}</div><div class="m" style="flex:1 1 360px;max-width:520px"><div data-thauma-form data-lang="${esc(lang)}"${ctx.formLook(sec.variant === "card")}></div></div></div></div></section>`;
     case "contact":
       ctx.needs.contact = true;
-      return `<section${cls()}><div class="wrap">${heading(w("heading"))}${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}<div class="m formbox" style="max-width:640px;margin-top:24px"><div data-thauma-contact data-lang="${esc(lang)}"${ctx.formLook}></div></div></div></section>`;
+      return `<section${cls()}><div class="wrap">${heading(w("heading"))}${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}<div class="m formbox" style="max-width:640px;margin-top:24px"><div data-thauma-contact data-lang="${esc(lang)}"${ctx.formLook(false)}></div></div></div></section>`;
     case "give":
       if (!ctx.giveUrl) return "";
       return `<section${cls(sec.variant === "band" ? "band" : "")}><div class="wrap">${sec.variant === "card" ? '<div class="card">' : '<div class="bandrow">'}<div>${heading(w("heading"))}${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}</div><div class="btns m" style="margin:0"><a class="btn solid" href="${esc(ctx.giveUrl)}">${esc(w("button") || word(lang, "giveBtn"))} →</a></div></div></div></section>`;
@@ -543,8 +547,17 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
     formLook: (() => {
       const own = design.look === "custom" && (design.colors || {}).accent;
       const a = own ? design.colors.accent : theme.accent, a2 = own ? companion(own, -33) : theme.accent2;
-      return ` data-theme="${L.alt ? "auto" : L.scheme === "dark" ? "dark" : "light"}"` +
-        (a ? ` data-accent="${esc(a)}"` : "") + (a2 ? ` data-accent2="${esc(a2)}"` : "");
+      /* And the site's own card, fields, lines and type (data-look,
+         lib/embed-form.js LOOK_JS), so the form looks like part of the page
+         rather than a box dropped onto it — for both schemes when the site
+         follows the visitor's device. */
+      const look = (P) => ({ bg: P.bg, fg: P.fg, dim: P.dim, line: P.line, panel: P.panel, field: P.bg, font: P.body });
+      /* The section's heading already names the form, so it has no title of
+         its own here; its words are in the site's display face. */
+      const both = { ...(L.alt ? { ...look(L), dark: look(L.alt) } : look(L)), display: L.display, notitle: true };
+      return (flat) => ` data-theme="${L.alt ? "auto" : L.scheme === "dark" ? "dark" : "light"}"` +
+        (a ? ` data-accent="${esc(a)}"` : "") + (a2 ? ` data-accent2="${esc(a2)}"` : "") +
+        ` data-look="${esc(JSON.stringify(flat ? { ...both, flat: true } : both))}"`;
     })(),
     giveUrl: doc.give || site.giving_url || "",
     pageOn: (id) => pages.some((p) => p.id === id),
@@ -619,13 +632,13 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
     (design.headerLinks ? doc.links.filter((k) => k.kind !== "custom").length * 52 : 0) + 72;
   const fold = design.menu === "center" ? 820 : Math.max(820, Math.ceil(menuW / 10) * 10);
 
-  return `<!doctype html>
+  const out = `<!doctype html>
 <html lang="${esc(lang)}" data-menu="${esc(design.menu)}" data-entrance="${esc(m.entrance)}" data-photos="${esc(m.photos)}" data-headings="${esc(m.headings)}" data-buttons="${esc(m.buttons)}" data-pages="${esc(m.pages)}" data-progress="${esc(m.progress)}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)}</title>
-${design.favicon ? `<link rel="icon" href="${esc(design.favicon)}">` : initialsIcon(name, L) ? `<link rel="icon" type="image/svg+xml" href="${esc(initialsIcon(name, L))}">` : ""}
+${design.favicon ? `<link rel="icon" href="${esc(design.favicon)}">` : initialsIcon(name, L, design.faviconStyle) ? `<link rel="icon" type="image/svg+xml" href="${esc(initialsIcon(name, L, design.faviconStyle))}">` : ""}
 ${desc ? `<meta name="description" content="${esc(desc)}">` : ""}
 ${draft ? '<meta name="robots" content="noindex">' : ""}
 ${alternates}
@@ -654,6 +667,18 @@ ${ctx.needs.contact ? `<script src="${esc(origin)}/embed/v1/${esc(site.slug)}/co
 <script>${MOTION_JS}</script>
 </body>
 </html>`;
+  return newTabs(out);
+}
+
+/* EVERY LINK THAT LEAVES THE SITE OPENS A NEW TAB (Chase, 2026-10-01:
+   "Clicking a link anywhere should open a new tab, not load in the same
+   tab") — socials, buttons, the owner's own links, links written into the
+   words. The site's own pages are relative ("/en/about/") and stay in the
+   tab; mailto opens the mail program. Done once over the finished page, so
+   a link added to any section later is covered without remembering to. */
+export function newTabs(html) {
+  return html.replace(/<a href="(https?:\/\/[^"]*)"(?![^>]*\btarget=)([^>]*)>/g, (m, href, rest) =>
+    `<a href="${href}" target="_blank"${/\brel=/.test(rest) ? "" : ' rel="noopener"'}${rest}>`);
 }
 
 /**
