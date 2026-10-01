@@ -54,7 +54,7 @@ import { topicLabels } from "./lib/topics.js";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
 };
 
@@ -477,8 +477,22 @@ export default {
       });
     }
 
+    /* THE TOPICS A FORM OFFERS, as data — for a contact form built by hand on
+       the API rather than pasted from the embed, the way signup.js answers
+       GET with its lists (chaseroush.com's own Contact page, Chase
+       2026-10-01: "I was wanting the data to populate, not to make it the
+       embed codes"). Exactly what the embed's dropdown already shows a
+       stranger: each topic's id and its name per language. NEVER deliver_to —
+       where a message goes is the ministry's business, and the POST looks it
+       up from the id. */
+    if (request.method === "GET" && action === "contact") {
+      return json({
+        topics: topics.map((t) => ({ id: t.id, label: t.label, labels: topicLabels(t) })),
+      }, 200, { ...CORS, "Cache-Control": "public, max-age=300" });
+    }
+
     if (request.method !== "POST") {
-      return json({ error: "Method not allowed" }, 405, { ...CORS, Allow: "POST, OPTIONS" });
+      return json({ error: "Method not allowed" }, 405, { ...CORS, Allow: "GET, POST, OPTIONS" });
     }
 
     let body;

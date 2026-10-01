@@ -7,7 +7,7 @@
  * and the contact widget, and the endpoints that serve them.
  */
 import { topicLabels, topicLabel, cleanLabels } from "../src/lib/topics.js";
-import { contactScript } from "../src/contact.js";
+import contact, { contactScript } from "../src/contact.js";
 import contactForm from "../src/contact-form.js";
 
 let pass = 0, fail = 0;
@@ -50,6 +50,25 @@ await check("thauma.one's contact page gets each reason in its own language", as
   eq((await ask("?lang=hr")).map((t) => t.label), ["Općenito"], "Croatian page");
   eq((await ask("?lang=en")).map((t) => t.label), ["General"], "English page");
   eq((await ask("")).map((t) => t.label), ["General"], "a page that did not say");
+});
+
+await check("a hand-built form gets the reasons as data, and never where they are delivered", async () => {
+  /* chaseroush.com builds its own Contact page on GET /embed/v1/<slug>/contact
+     (Chase, 2026-10-01). Both rows carry a delivery address in the database;
+     neither may reach a stranger. */
+  const form = { deliver_to: "inbox@b.invalid", from_address: "f@b.invalid" };
+  const topic = { ...ROW, deliver_to: "secret@b.invalid" };
+  const env = { DB: { prepare(sql) {
+    const rows = /FROM contact_forms/.test(sql) ? [form] : /FROM contact_topics/.test(sql) ? [topic] : [];
+    const run = async () => ({ results: rows });
+    const first = async () => rows[0] || null;
+    return { bind() { return { all: run, run, first }; }, all: run, run, first };
+  } } };
+  const res = await contact.fetch(new Request("https://thauma.one/embed/v1/chase-roush/contact"), env, "chase-roush", "contact");
+  eq(res.status, 200, "answered");
+  const text = await res.text();
+  assert(!/b\.invalid|deliver_to|from_address/.test(text), "a delivery address reached the public: " + text);
+  eq(JSON.parse(text).topics, [{ id: "t1", label: "General", labels: { hr: "Općenito" } }], "the reasons");
 });
 
 await check("the contact widget carries every language and picks the visitor's", () => {
