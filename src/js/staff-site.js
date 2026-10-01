@@ -411,6 +411,20 @@
   }
 
   $('wsFrame').addEventListener('load', function () {
+    /* THE FOOTER PREVIEW IS AS TALL AS THE FOOTER (Chase, 2026-10-01: the
+       small print "doesn't show up on the preview for Split view"). It was a
+       fixed 170px of a scaled frame, which cut off whatever wrapped below
+       the columns. Measured from the footer itself, at the frame's scale. */
+    var box = this.parentNode;
+    if ($('wsPreviewPane').classList.contains('only-foot')) {
+      try {
+        var f = this.contentWindow.document.querySelector('footer');
+        var scale = this.getBoundingClientRect().width / this.offsetWidth || 1;
+        if (f) box.style.height = Math.ceil((f.getBoundingClientRect().height + 8) * scale) + 'px';
+      } catch (e) { box.style.height = ''; }
+    } else {
+      box.style.height = '';
+    }
     if (!state.frameTarget) return;
     try {
       var w = this.contentWindow, el = w.document.getElementById(state.frameTarget);
@@ -963,8 +977,10 @@
     if (state.openSocial) {
       var k = state.openSocial, l = social(k);
       html += '<div class="ws-socbox"><b>' + esc(SOCIAL_NAME[k]) + '</b>' +
-        '<input type="' + (k === 'email' ? 'email' : 'url') + '" data-social="' + k + '" value="' + esc(l ? l.url.replace(/^mailto:/, '') : '') + '" placeholder="' +
-          esc(k === 'email' ? 'you@example.org' : 'https://') + '" aria-label="' + esc(SOCIAL_NAME[k]) + '">' +
+        /* A handle is enough (model.js socialUrl), so a plain text box: a url
+           box would flag "@name" as wrong. Spotify needs the whole link. */
+        '<input type="' + (k === 'email' ? 'email' : 'text') + '" data-social="' + k + '" value="' + esc(l ? l.url.replace(/^mailto:/, '') : '') + '" placeholder="' +
+          esc(k === 'email' ? 'you@example.org' : k === 'spotify' ? 'https://' : '@name / https://') + '" aria-label="' + esc(SOCIAL_NAME[k]) + '">' +
         (l ? '<button type="button" class="link-btn" data-social-remove="' + k + '">' + esc(tr('ws.remove')) + '</button>' : '') + '</div>';
     }
     html += '<p class="ws-small ws-soc-hint">' + esc(tr('ws.socialsHow')) + '</p>';

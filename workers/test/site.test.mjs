@@ -279,6 +279,24 @@ check("Chase, 2026-10-01: initials for a favicon, forms in the site's colors, a 
   eq(safeUrl("javascript:alert(1)"), "", "and a script is still not an address");
 });
 
+check("Chase, 2026-10-01: a social link may be just the handle; the footers fill the width", () => {
+  const url = (kind, u) => cleanDoc({ links: [{ kind, url: u }] }, ["en"]).links.map((k) => k.url)[0];
+  eq(url("youtube", "ChaseRoushMissions"), "https://www.youtube.com/@ChaseRoushMissions", "a YouTube name");
+  eq(url("youtube", "@ChaseRoushMissions"), "https://www.youtube.com/@ChaseRoushMissions", "a YouTube handle");
+  eq(url("instagram", "@chase"), "https://www.instagram.com/chase", "an Instagram handle");
+  eq(url("tiktok", "chase"), "https://www.tiktok.com/@chase", "a TikTok name");
+  eq(url("linkedin", "chase-roush"), "https://www.linkedin.com/in/chase-roush", "a LinkedIn name");
+  eq(url("spotify", "abc"), undefined, "Spotify needs the whole link");
+  eq(url("youtube", "<b>x</b>"), undefined, "and markup is not a handle");
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  d.footer = { layout: "columns", menu: true, socials: "icons", words: { en: { tagline: "T", small: "S" } } };
+  const html = page(d);
+  /* The small print had max-width:80ch, which kept it beside the columns. */
+  assert(/\.foot \.small\{flex:1 0 100%;[^}]*max-width:none/.test(html), "the small print takes its own row");
+  assert(/<div class="cols">[\s\S]*?<\/div><div class="bar"><p class="small">S<\/p><span class="powered">/.test(html), "columns: the columns, then a bar for the small print and the credit");
+  assert(/\.foot-columns \.menu\{display:grid;grid-template-columns:repeat\(2,auto\)/.test(html), "the pages in two columns, not a long list");
+});
+
 check("the Footer tab's preview can be the footer alone", () => {
   const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
   const html = page(d, "home", "en", { draft: true, only: "footer" });

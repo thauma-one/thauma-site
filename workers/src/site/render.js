@@ -254,7 +254,10 @@ main section.is-editing{outline:2px solid var(--acc);outline-offset:-2px}
 .foot .col{display:flex;flex-direction:column;gap:14px}.foot .col.end{align-items:flex-end}
 .foot .tagline{margin:0;color:var(--fg)}
 .foot .tagline.tagline-subtle{color:var(--dim)}.foot .tagline.tagline-accent{color:var(--ink)}
-.foot .small{flex-basis:100%;margin:0;font-size:12px;opacity:.75;max-width:80ch}
+/* Its own row, the whole width. It had max-width:80ch, which capped the
+   100% basis below the row's width, so it never wrapped: the small print sat
+   beside the columns and squeezed them together (Chase, 2026-10-01). */
+.foot .small{flex:1 0 100%;margin:0;font-size:12px;opacity:.75;max-width:none;text-wrap:pretty}
 .foot .menu{display:flex;gap:10px 20px;flex-wrap:wrap}.foot .menu a,.foot .words a{color:var(--dim);text-decoration:none}
 .foot .menu a:hover,.foot .words a:hover{color:var(--fg)}
 .foot .words{display:flex;gap:10px 32px;flex-wrap:wrap}
@@ -262,10 +265,18 @@ main section.is-editing{outline:2px solid var(--acc);outline-offset:-2px}
 .foot-center .words,.foot-center .menu,.foot-center .socials{justify-content:center}
 .foot-center .tagline{font:600 13px var(--body);letter-spacing:.2em;text-transform:uppercase;color:var(--dim)}
 .foot-center .small{margin:0 auto}
-.foot-columns .wrap{display:grid;grid-template-columns:1.4fr repeat(3,1fr);gap:32px}
-.foot-columns .menu{flex-direction:column;gap:10px}.foot-columns .words{flex-direction:column;gap:10px}
-.foot-columns .small{grid-column:1/-1}
-@media (max-width:820px){.foot-columns .wrap{grid-template-columns:1fr 1fr}.foot .col.end{align-items:flex-start}}
+/* Columns: only the columns that have something, spread across; the pages
+   as a two-column grid rather than a long list; then a bar under a rule for
+   the small print and the credit (Chase, 2026-10-01: with Pages on "It
+   doesn't look good at all"). */
+.foot-columns .wrap{display:block}
+.foot-columns .cols{display:flex;gap:32px 64px;flex-wrap:wrap;justify-content:space-between;align-items:flex-start}
+.foot-columns .col:first-child{flex:1 1 220px;max-width:360px}
+.foot-columns .menu{display:grid;grid-template-columns:repeat(2,auto);gap:10px 36px}
+.foot-columns .words{flex-direction:column;gap:10px}
+.foot-columns .bar{display:flex;gap:12px 24px;flex-wrap:wrap;justify-content:space-between;align-items:baseline;margin-top:40px;padding-top:20px;border-top:1px solid var(--line)}
+.foot-columns .bar .small{flex:1 1 320px}
+@media (max-width:820px){.foot .col.end{align-items:flex-start}}
 .socials{display:flex;gap:12px;flex-wrap:wrap}.socials a{display:inline-flex;width:40px;height:40px;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:50%;color:var(--fg)}
 .socials a:hover{border-color:var(--acc);color:var(--ink)}.socials svg{width:18px;height:18px}
 .customlinks{display:flex;gap:16px;flex-wrap:wrap}.customlinks a{color:var(--fg)}
@@ -671,8 +682,9 @@ function footer({ doc, lang, fallback, name, pages, href, label, socials, custom
   if (F.layout === "center") {
     inner = `${menu}${words}${icons}${tagline}${small}${credit}`;
   } else if (F.layout === "columns") {
-    inner = `<div class="col">${tagline}</div><div class="col">${menu}</div><div class="col">${words}</div>` +
-      `<div class="col">${icons}</div>${small}<div class="col">${credit}</div>`;
+    const cols = [tagline, menu, words].filter(Boolean).map((x) => `<div class="col">${x}</div>`).join("") +
+      (icons ? `<div class="col end">${icons}</div>` : "");
+    inner = `<div class="cols">${cols}</div><div class="bar">${small}${credit}</div>`;
   } else {
     inner = `<div class="col">${tagline}${menu}${words}</div><div class="col end">${icons}${credit}</div>${small}`;
   }

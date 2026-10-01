@@ -527,7 +527,14 @@ ${COLOUR_JS}
          button and the first button of the rail — never painted over
          somebody's picture: the only shade on a still is the dark one that
          keeps its title readable. */
-      '.vshow{display:flex;flex-direction:column;gap:14px}' +
+      /* NO TALLER THAN THE SCREEN ALLOWS (Chase, 2026-10-01: "the video
+         player takes up the entire height of the screen. So it's just in
+         your face"). The stage, its row and its buttons are sized together
+         from the window's height — room left for a heading and the row — so
+         on a desktop the whole section fits; a phone, narrower than that,
+         keeps the full width. Never below 520px wide where there is room. */
+      '.vshow{display:flex;flex-direction:column;gap:14px;' +
+        'width:min(100%,max(520px,calc((100svh - 520px) * 16 / 9)));margin-inline:auto}' +
       '.vstage{position:relative;aspect-ratio:16/9;border-radius:14px;overflow:hidden;' +
         'background:#000;box-shadow:0 18px 40px -22px rgba(0,0,0,.55)}' +
       '.vhero{display:block;width:100%;height:100%;color:#fff;text-decoration:none}' +
@@ -565,7 +572,9 @@ ${COLOUR_JS}
 
       /* The rail: real buttons. The first is filled in the ministry's color,
          the rest outlined; each carries an arrow, because each leaves. */
-      '.vlinks{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}' +
+      /* As wide as the videos above (.vshow), so their edges line up. */
+      '.vlinks{display:flex;flex-wrap:wrap;gap:10px;margin:18px auto 0;' +
+        'width:min(100%,max(520px,calc((100svh - 520px) * 16 / 9)))}' +
       '.vlink{display:inline-flex;align-items:center;gap:10px;padding:12px 20px;border-radius:999px;' +
         'border:1.5px solid var(--prog);color:var(--fg);font-size:14px;font-weight:650;' +
         'text-decoration:none;line-height:1.2;transition:background .2s ease,transform .2s ease,box-shadow .2s ease}' +
