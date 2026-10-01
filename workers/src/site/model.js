@@ -120,6 +120,10 @@ export const MOTION = {
   buttons:  ["lift", "glow", "plain"],                   // what buttons do under the pointer
   pages:    ["fade", "cut"],                             // moving between pages
   progress: ["on", "off"],                               // a thin line tracking the scroll
+  /* The opening's scroll hint (Chase, 2026-10-01: "give it multiple
+     options ... the Arrow and Scroll"): chaseroush.com's line over the word,
+     a bouncing arrow, a mouse whose wheel rolls, or nothing. */
+  cue:      ["line", "arrow", "mouse", "none"],
 };
 export const SOCIALS = ["youtube", "instagram", "facebook", "x", "tiktok", "linkedin", "spotify", "email"];
 
@@ -135,9 +139,10 @@ export const SOCIAL_STYLES = ["icons", "words"];
 /* The tagline's color (Chase, 2026-10-01): as it was, quieter, or in the
    site's accent. */
 export const TAGLINE_STYLES = ["plain", "subtle", "accent"];
-/* The initials favicon, when no picture is chosen (Chase, 2026-10-01):
-   letters on an accent tile, or accent letters on the site's background. */
-export const FAVICON_STYLES = ["filled", "letters"];
+/* The tab icon (Chase, 2026-10-01: "Let the options be Filled, Letters, and
+   Photo"): the initials on an accent tile, accent initials on the site's
+   background, or the owner's picture. */
+export const FAVICON_STYLES = ["filled", "letters", "photo"];
 
 /* ------------------------------------------------------------ addresses -- */
 
@@ -517,7 +522,9 @@ export function cleanDoc(raw, catalog) {
       logo: safePhoto(design.logo),
       /* The little picture in a browser tab (Chase, 2026-09-29). */
       favicon: safePhoto(design.favicon),
-      faviconStyle: pick(design.faviconStyle, FAVICON_STYLES),
+      /* A site that uploaded a picture before there was a choice keeps it. */
+      faviconStyle: FAVICON_STYLES.includes(design.faviconStyle) ? design.faviconStyle
+        : safePhoto(design.favicon) ? "photo" : "filled",
       headerLinks: !!design.headerLinks,
       /* The owner's own colors (the Custom look), or null for a dark ground
          and the ministry's accent. Everything else is worked out from these. */

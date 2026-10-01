@@ -220,6 +220,37 @@ ${COLOUR_JS}
     return typeof m._rolled === 'number' ? m._rolled : (Number(m.completion) || 0);
   }
 
+  /* ---------- the page's own look ----------
+     A Site Creator page says what it looks like (data-look, JSON: bg, fg,
+     dim, line, panel, track, font, and a dark set), and its cards, dropdowns
+     and panels wear that instead of this widget's own (Chase, 2026-10-01:
+     the background mismatch "was also a thing with all of the cards and
+     milestone dropdowns"). bg is the CARD here, worked out by the page for
+     the band it sits on, so a raised band gets cards that stand apart from
+     it. Every value is checked before it reaches CSS, as in the forms. */
+  function siteLook(node, accent, done) {
+    var raw = node.getAttribute('data-look'), o;
+    if (!raw) return '';
+    try { o = JSON.parse(raw); } catch (e) { return ''; }
+    var COLOR = /^(#[0-9a-fA-F]{3,8}|rgba?\([0-9.,\s%]+\))$/, FONT = /^[\w\s'",.-]{1,200}$/;
+    var VARS = { bg: '--bg', fg: '--fg', dim: '--dim', line: '--line', panel: '--panel', track: '--track' };
+    function rules(x) {
+      var css = '';
+      if (!x || typeof x !== 'object') return css;
+      Object.keys(VARS).forEach(function (k) { if (typeof x[k] === 'string' && COLOR.test(x[k])) css += VARS[k] + ':' + x[k] + ';'; });
+      if (typeof x.font === 'string' && FONT.test(x.font)) css += 'font-family:' + x.font + ';';
+      if (typeof x.bg === 'string' && /^#[0-9a-fA-F]{6}$/.test(x.bg)) {
+        css += '--prog-t:' + readable(accent, x.bg) + ';--done-t:' + readable(done, x.bg) + ';';
+      }
+      return css ? ':host{' + css + '}' : '';
+    }
+    var light = rules(o), dark = rules(o.dark);
+    /* The names on cards in the page's display face, not this widget's serif. */
+    var display = typeof o.display === 'string' && FONT.test(o.display)
+      ? '.gname,.dtitle,.ptitle{font-family:' + o.display + '}' : '';
+    return light + (dark ? '@media(prefers-color-scheme:dark){' + dark + '}' : '') + display;
+  }
+
   /* ---------- styles ---------- */
 
   function styles(accent, done, mode) {
@@ -534,7 +565,7 @@ ${COLOUR_JS}
          on a desktop the whole section fits; a phone, narrower than that,
          keeps the full width. Never below 520px wide where there is room. */
       '.vshow{display:flex;flex-direction:column;gap:14px;' +
-        'width:min(100%,max(520px,calc((100svh - 520px) * 16 / 9)));margin-inline:auto}' +
+        'width:min(100%,max(520px,calc((100svh - 440px) * 16 / 9)));margin-inline:auto}' +
       '.vstage{position:relative;aspect-ratio:16/9;border-radius:14px;overflow:hidden;' +
         'background:#000;box-shadow:0 18px 40px -22px rgba(0,0,0,.55)}' +
       '.vhero{display:block;width:100%;height:100%;color:#fff;text-decoration:none}' +
@@ -574,7 +605,7 @@ ${COLOUR_JS}
          the rest outlined; each carries an arrow, because each leaves. */
       /* As wide as the videos above (.vshow), so their edges line up. */
       '.vlinks{display:flex;flex-wrap:wrap;gap:10px;margin:18px auto 0;' +
-        'width:min(100%,max(520px,calc((100svh - 520px) * 16 / 9)))}' +
+        'width:min(100%,max(520px,calc((100svh - 440px) * 16 / 9)))}' +
       '.vlink{display:inline-flex;align-items:center;gap:10px;padding:12px 20px;border-radius:999px;' +
         'border:1.5px solid var(--prog);color:var(--fg);font-size:14px;font-weight:650;' +
         'text-decoration:none;line-height:1.2;transition:background .2s ease,transform .2s ease,box-shadow .2s ease}' +
@@ -1380,7 +1411,7 @@ ${COLOUR_JS}
     root.textContent = '';
 
     var style = document.createElement('style');
-    style.textContent = styles(accent, second, mode);
+    style.textContent = styles(accent, second, mode) + siteLook(node, accent, second);
     root.appendChild(style);
 
     var host = el('div', 'host');
