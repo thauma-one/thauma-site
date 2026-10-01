@@ -186,6 +186,13 @@
       body: body ? JSON.stringify(body) : undefined
     });
     var out = await res.json().catch(function () { return {}; });
+    /* Saved by someone else since this page loaded it (workers/src/lib/
+       fresh.js): ask. Saving mine sends it again with overwrite; keeping
+       theirs skips it, and the reload after saving shows theirs. */
+    if (res.status === 409 && out.changed && body) {
+      if (await window.StaffChanged(out)) return call(method, Object.assign({}, body, { overwrite: true }));
+      return {};
+    }
     if (!res.ok) throw new Error(out.error || (tr('err.refused') + ' (' + res.status + ')'));
     return out;
   }
@@ -209,7 +216,7 @@
     if (c.contact) await step(function () {
       var k = d.contact, old = (state.mail && state.mail.contact) || {};
       return call('POST', {
-        action: 'contact-form',
+        action: 'contact-form', updated_at: old.updated_at,
         deliver_to: k.deliver_to.trim(), from_address: k.from_address, is_open: k.is_open,
         /* The form's old word columns ride along unchanged; thauma.one's
            words are its own site words (Pages). */
@@ -224,7 +231,7 @@
       /* The whole list, as the Mail page saves it. */
       await step(function () {
         return call('POST', {
-          id: l.id, name: l.name, description: l.description || '',
+          id: l.id, updated_at: l.updated_at, name: l.name, description: l.description || '',
           from_name: l.from_name, from_email: l.from_email, reply_to: l.reply_to || '',
           /* Every field: one left out is saved as off. */
           is_open: !!d.lists[l.id], archive_public: !!l.archive_public, form_thanks_url: l.form_thanks_url || '',

@@ -159,6 +159,17 @@
       return r.json().catch(function () { return {}; })
         .then(function (body) { return { ok: r.ok, status: r.status, body: body }; });
     }).then(function (res) {
+      /* Saved by someone else since this dialog opened it (workers/src/lib/
+         fresh.js): ask. Saving mine sends it again with overwrite; keeping
+         theirs reloads the person, so theirs is what shows. */
+      if (res.status === 409 && res.body && res.body.changed && opts.body) {
+        setStatus('');
+        return window.StaffChanged(res.body).then(function (mine) {
+          if (mine) return call(Object.assign({}, opts, { body: Object.assign({}, opts.body, { overwrite: true }) }));
+          if (state.contactId) open(state.contactId);
+          return null;
+        });
+      }
       if (!res.ok) {
         /* The server's sentence, not a generic one. Every refusal in
            staff-stewardship.js is written to be read by the person who hit
@@ -429,6 +440,7 @@
   }
 
   function openEventForm(ev) {
+    state.openedEvent = ev || null;     /* as it was, for the save to compare */
     var f = $('swEventForm');
     $('swEventId').value = ev ? ev.id : '';
     $('swEventKind').value = ev ? ev.kind : 'birth';
@@ -442,6 +454,7 @@
   /* One form for logging and for correcting; `i` is the entry being
      corrected, or nothing for a new one. */
   function openTouchForm(i) {
+    state.openedTouch = i || null;      /* as it was, for the save to compare */
     var f = $('swTouchForm');
     f.reset();
     $('swTouchId').value = i ? i.id : '';
@@ -578,6 +591,7 @@
           note: $('swEventNote').value,
           recurs: $('swEventRecurs').checked,
         },
+        updated_at: state.openedEvent ? state.openedEvent.updated_at : undefined,
       };
       call({ url: API, method: 'POST', body: payload }).then(function (body) {
         if (!body) return;
@@ -601,7 +615,8 @@
       Object.keys(PERSON_FIELDS).forEach(function (k) {
         person[k] = $(PERSON_FIELDS[k]).value;
       });
-      call({ url: API, method: 'POST', body: { person: person } }).then(function (body) {
+      call({ url: API, method: 'POST', body: { person: person,
+        updated_at: person.id && state.person ? state.person.updated_at : undefined } }).then(function (body) {
         if (!body) return;
         /* A new person has an id now; from here on this dialog is theirs. */
         state.contactId = body.id || state.contactId;
@@ -641,6 +656,11 @@
              describe the touch rather than to be chosen. */
           channel: channelFor($('swTouchType').value),
         },
+        /* interactions keep no updated_at: the entry as it opened */
+        base: state.openedTouch ? {
+          type: state.openedTouch.type, is_personal: state.openedTouch.is_personal,
+          channel: state.openedTouch.channel, occurred_on: state.openedTouch.occurred_on, note: state.openedTouch.note,
+        } : undefined,
       };
       call({ url: API, method: 'POST', body: payload }).then(function (body) {
         if (!body) return;

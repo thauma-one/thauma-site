@@ -244,65 +244,129 @@
     "dict_ipa": "/nɒt ˈfaʊnd/ · noun",
     "dict_def": "a page that isn't here — moved, mistyped, or never built.",
     "lede": "The link's broken, or the page wandered off. Everything else is exactly where you left it.",
-    "cta": "Take me home",
-    "signal_label": "SCORE",
-    "best_label": "Best",
-    "new_best": "New best.",
-    "leaderboard_title": "Global best",
-    "new_global_best": "New global best — enter your name",
-    "initials_submit": "Submit",
-    "global_futility": "The page has won {n} times.",
-    "reset_pb": "Reset personal best",
-    "reset_pb_confirm": "Reset your personal best? This can't be undone.",
-    "anonymous": "Anonymous",
-    "delete_score_prompt": "Admin token to delete this score:",
-    "game_title": "WONDER",
-    "home_tag": "still lost.",
-    "pb_lines": [
-      "New best. Try not to peak here.",
-      "A new record. History will remember this fondly.",
-      "Personal best. Somewhere, a trophy is being engraved.",
-      "Best score yet. Suspiciously good, actually.",
-      "New high score. The page is a little concerned.",
-      "That's your best. For now.",
-      "Personal best achieved. Please remain calm.",
-      "New record. Framing this moment in your mind.",
-      "Best yet. The bar has been raised, slightly.",
-      "New best. This is basically a promotion."
+    "cta": "Take me home"
+  },
+  "arcade": {
+    "title": "Arcade",
+    "back_label": "Back to Thauma",
+    "play_label": "Play",
+    "soon_label": "Coming soon",
+    "broken_label": "Out of order",
+    "best_label": "Your best",
+    "top_label": "High scores",
+    "empty_label": "No scores yet. Be the first.",
+    "tap_hint": "Tap · Space",
+    "toggle_hint": "Hold left or right · ← → · A D",
+    "dpad_hint": "Arrows · WASD",
+    "pick_hint": "← → to choose · Space to play",
+    "pick_touch_hint": "Swipe to choose · tap to play",
+    "initials_title": "New high score",
+    "initials_hint": "Your initials",
+    "initials_ok": "Save",
+    "over_title": "Game over",
+    "again_label": "Again",
+    "menu_label": "Menu",
+    "score_label": "Score",
+    "loadout_title": "Load Out",
+    "loadout_line": "Stack the cases. Mind the lean.",
+    "soundcheck_title": "Soundcheck",
+    "soundcheck_line": "One-two, one-two. Keep it in the air.",
+    "panelfixer_title": "Panel Fixer",
+    "panelfixer_line": "The official LED wall fix: a tennis ball.",
+    "cablerun_title": "Cable Run",
+    "cablerun_line": "Run the cable. Don't trip the band.",
+    "followspot_title": "Follow Spot",
+    "followspot_line": "Keep them lit. They won't make it easy.",
+    "strike_title": "Strike",
+    "strike_line": "Tear down the set, one brick at a time.",
+    "cuestack_title": "Cue Stack",
+    "cuestack_line": "Standby… GO.",
+    "paused_label": "Paused",
+    "resume_label": "Resume",
+    "newbest_label": "New best!",
+    "saving_label": "Saving…",
+    "loadout_height": "Height",
+    "loadout_spares": "Spares",
+    "loadout_amp": "AMP RACK",
+    "loadout_cable": "CABLE",
+    "loadout_mics": "MICS",
+    "loadout_lights": "LIGHTS",
+    "loadout_drums": "DRUMS",
+    "loadout_sub": "SUB",
+    "loadout_lost": [
+      "That one's coming out of your paycheck.",
+      "Who packed this truck?",
+      "The drummer is not going to love this.",
+      "Gravity: still undefeated."
     ],
-    "taunts": [
-      "Page not found.",
-      "Page still not found.",
-      "Still looking?",
-      "The page is winning.",
-      "This is becoming a pattern.",
-      "The page has notes on your technique.",
-      "Statistically, you should try a different link.",
-      "The page respects your persistence.",
-      "At this point it's basically a rivalry.",
-      "The page is starting to feel bad for you.",
-      "Some would call this dedication.",
-      "The page has seen worse. Barely.",
-      "You and the 404 are basically coworkers now.",
-      "Achievement unlocked: still not found.",
-      "The page suggests a snack break.",
-      "Loyalty like this deserves a raise.",
-      "The page is flattered, honestly.",
-      "Might we interest you in a working link?",
-      "The page has started keeping a diary about you.",
-      "This is either impressive or concerning.",
-      "The page would like to formally apologize. Sort of.",
-      "Legends say you're still here.",
-      "The page has put up a small plaque in your honor.",
-      "Round however-many-this-is: still 404.",
-      "The page admires the commitment.",
-      "Somewhere, a sysadmin is proud of you.",
-      "The 404 has started rooting for you, against its will.",
-      "This page has become a personality trait.",
-      "The page is considering therapy.",
-      "You have officially outlasted the page's patience.",
-      "The page surrenders. You win. There is still no page.",
-      "Welcome back. The page missed you, sort of."
+    "loadout_nice": [
+      "Clean.",
+      "Tetris-level packing.",
+      "The crew chief nods. Once."
+    ],
+    "loadout_heavy": [
+      "Two-person lift.",
+      "Lift with your legs.",
+      "Somebody call the stagehands."
+    ],
+    "soundcheck_you": "You",
+    "soundcheck_foh": "FOH",
+    "soundcheck_gain": "Gain",
+    "soundcheck_serve": [
+      "Check, one-two.",
+      "Is this thing on?",
+      "Testing, testing."
+    ],
+    "soundcheck_rally": [
+      "Little more gain.",
+      "Sounding good out front.",
+      "Can I get more me in my monitor?"
+    ],
+    "soundcheck_miss": [
+      "Dropped the signal.",
+      "Somebody pulled a cable.",
+      "That's a mute."
+    ],
+    "soundcheck_win": [
+      "Front of house missed it.",
+      "Line check: passed."
+    ],
+    "cablerun_crash": [
+      "That's a trip hazard.",
+      "Cable management: none.",
+      "You've made a knot."
+    ],
+    "cablerun_trip": [
+      "You tripped the worship leader.",
+      "Mid-chorus, too."
+    ],
+    "cablerun_tape": [
+      "Gaff it!",
+      "Taped down. Safe to step on.",
+      "Gaff tape fixes everything."
+    ],
+    "cablerun_leader": [
+      "Worship leader crossing!",
+      "Heads up, the worship leader."
+    ],
+    "panelfixer_round": "Round",
+    "panelfixer_throws": "Throws",
+    "panelfixer_fix": [
+      "Reseated.",
+      "Signal's back.",
+      "That's the official fix."
+    ],
+    "panelfixer_oops": [
+      "That one was fine.",
+      "You broke a working one."
+    ],
+    "panelfixer_bank": [
+      "Off the truss!",
+      "Bank shot!"
+    ],
+    "panelfixer_clear": [
+      "Wall's clean. Doors in five.",
+      "Looks great from the back row."
     ]
   }
 }

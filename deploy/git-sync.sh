@@ -53,6 +53,11 @@ cd "$REPO" || { echo "sync: no repo at $REPO"; exit 1; }
 
 log() { echo "[git-sync $(date -Is)] $*"; }
 
+# Word files merge entry by entry (.gitattributes, deploy/json-merge.mjs):
+# registered on every run, before anything can merge, so a fresh clone needs
+# no setup and any merge made on this machine uses it.
+git config merge.jsonentries.driver "node deploy/json-merge.mjs %O %A %B %P"
+
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 BEFORE="$(git rev-parse HEAD)"
 
@@ -160,11 +165,26 @@ if [ "$BRANCH" != "$CONTENT_BRANCH" ] \
     # What main carries that we do not, ignoring anything we already have.
     OTHER="$(git diff --name-only "$BASE" "origin/$CONTENT_BRANCH" | grep -vE "$CONTENT_PATHS" || true)"
 
+    GITDIR="$(git rev-parse --git-dir)"
+    rm -f "$GITDIR/thauma-merge-report"
+
     if [ -n "$OTHER" ]; then
       log "not merging $CONTENT_BRANCH: it carries more than content ($(echo "$OTHER" | tr '\n' ' ' | cut -c1-90)). A person should decide about that."
-    elif git -c advice.diverging=false merge --no-edit --quiet \
+    elif THAUMA_MERGE_OURS=HEAD THAUMA_MERGE_THEIRS="origin/$CONTENT_BRANCH" \
+         git -c advice.diverging=false merge --no-edit --quiet \
            -m "Merge content from $CONTENT_BRANCH" "origin/$CONTENT_BRANCH" 2>/dev/null; then
       log "merged content from $CONTENT_BRANCH ($INCOMING commit(s))"
+      # An entry changed on both sides kept the newer value; the older one is
+      # said out loud, in the log and in the merge commit, never dropped quietly.
+      if [ -s "$GITDIR/thauma-merge-report" ]; then
+        log "entries changed on both sides — kept the newer:"
+        while IFS= read -r line; do log "$line"; done < "$GITDIR/thauma-merge-report"
+        git commit --amend --quiet -m "Merge content from $CONTENT_BRANCH
+
+Entries changed on both sides; the newer value was kept:
+$(cat "$GITDIR/thauma-merge-report")"
+        rm -f "$GITDIR/thauma-merge-report"
+      fi
       if git push --quiet origin "$BRANCH" 2>/dev/null; then
         log "pushed the content merge to $UPSTREAM"
       else

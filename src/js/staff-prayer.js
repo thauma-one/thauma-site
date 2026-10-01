@@ -278,7 +278,11 @@
       body: payload ? JSON.stringify(payload) : undefined,
     });
     var body = await res.json().catch(function () { return {}; });
-    if (!res.ok) throw new Error((body && body.error) || ('(' + res.status + ')'));
+    if (!res.ok) {
+      var err = new Error((body && body.error) || ('(' + res.status + ')'));
+      err.answer = body;
+      throw err;
+    }
     return body;
   }
 
@@ -295,14 +299,23 @@
           await send('DELETE', null, '?id=' + encodeURIComponent(id));
           continue;
         }
-        await send('POST', {
+        var payload = {
           id: state.saved[id] ? id : undefined,
+          updated_at: state.saved[id] ? state.saved[id].updated_at : undefined,
           is_public: !!p.is_public,
           is_answered: !!p.is_answered,
           answered_on: p.is_answered ? (p.answered_on || null) : null,
           sort_order: Number(p.sort_order) || 0,
           text: p.text || {},
-        });
+        };
+        /* Saved by someone else since it loaded (workers/src/lib/fresh.js):
+           ask, never overwrite in silence. Keeping theirs skips it; the
+           reload after publishing shows it. */
+        try { await send('POST', payload); }
+        catch (e) {
+          if (!(e.answer && e.answer.changed)) throw e;
+          if (await window.StaffChanged(e.answer)) await send('POST', Object.assign({}, payload, { overwrite: true }));
+        }
       } catch (e) {
         failed.push(anyTitle(p) + ' — ' + e.message);
       }

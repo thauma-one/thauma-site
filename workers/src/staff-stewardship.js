@@ -54,6 +54,7 @@ import { createDb } from "./lib/db.js";
 import { requireAccess } from "./lib/access.js";
 import { resolveActor, auditActingWrite, withActing } from "./lib/actas.js";
 import { json, readJson } from "./lib/store.js";
+import { changedSince, changedAnswer } from "./lib/fresh.js";
 
 /* Mirrors the CHECK constraint in 0034. Duplicated on purpose: the database is
    the authority, and this exists so a bad value gets a sentence instead of a
@@ -331,6 +332,9 @@ export default {
            partner's row anyway, and this keeps it from even trying. */
         const id = exists ? given : newId("c_");
 
+        /* Saved by someone else since this dialog opened it (lib/fresh.js). */
+        if (exists && changedSince(body, exists)) return changedAnswer(exists, { you });
+
         await db.query("contact_upsert", { id, partner_id, now, ...value });
         /* An id and nothing else. The audit log is append-only and survives
            the person's deletion; their name must not. */
@@ -357,6 +361,11 @@ export default {
           if (own.source !== "manual") {
             return json({ error: "Newsletter entries record what was sent, and cannot be edited.", you }, 400);
           }
+          /* No updated_at on interactions: the dialog sends the entry as it
+             opened it (`base`), and these fields are compared (lib/fresh.js). */
+          if (changedSince(body, own, ["type", "is_personal", "channel", "occurred_on", "note"])) {
+            return changedAnswer(own, { you });
+          }
           await db.query("interaction_update", { id: given, contact_id, partner_id, ...value });
           await note("stewardship.interaction.edit", "interaction", given,
             { contact_id, type: value.type, is_personal: !!value.is_personal });
@@ -377,6 +386,10 @@ export default {
         const existing = await db.query("life_events_for_contact", { contact_id, partner_id });
         const isNew = !body.event.id || !existing.some((e) => e.id === body.event.id);
         const id = isNew ? newId("le_") : String(body.event.id);
+
+        /* Saved by someone else since this dialog opened it (lib/fresh.js). */
+        const was = existing.find((e) => e.id === id);
+        if (!isNew && changedSince(body, was)) return changedAnswer(was, { you });
 
         await db.query("life_event_upsert", { id, contact_id, partner_id, logged_by, now, ...value });
         /* The KIND, never the note. Copying the words would put a second,

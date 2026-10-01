@@ -171,6 +171,29 @@ that dev and staging edit the real records. Migrations are applied once,
 by a person (Admin › Publish › Migrations); both deploys only check. See
 ONE DATABASE in wrangler.toml.
 
+**Two people, one record (2026-09-30).** A staff member on live and Chase
+on dev can have the same record open. Every editor that saves a record it
+loaded sends back what it opened; the endpoint compares it with the record
+just before writing and, if it moved, writes nothing and answers 409
+`changed` with the record as it now is. The console asks, in one dialog
+(staff.js `StaffChanged`): *Save mine* resends with `overwrite: true`,
+*Keep theirs* reloads. See `workers/src/lib/fresh.js`.
+
+- **By updated_at:** milestones, goals (via `goal_stamps`), prayer,
+  Directory, Resources, Stewardship people and life events, mailing-list
+  settings, the contact form, staff profiles.
+- **By content (`base`), where the table keeps no updated_at or where
+  updated_at also moves for unrelated reasons:** Stewardship's logged
+  contacts, newsletter drafts (the stored, cleaned copy), Site Creator's
+  draft, the Sharing page's widget settings.
+- **Deliberately last-save-wins:** single switches, the small one-purpose
+  settings, and admin-only tools.
+
+A new editor follows the same rule. **Words** are git, not records: word
+files merge entry by entry, and the newer edit wins and is reported
+(`deploy/json-merge.mjs`, `.gitattributes`). A sync that still can't
+combine something shows on the Publish page.
+
 ### The Worker
 
 One entry point, `workers/src/worker.js`. **286 tests** (`cd workers && npm test`).
@@ -479,8 +502,15 @@ which is the whole design.
    queries. A query added tomorrow is private until somebody deliberately adds
    it to that set. A deny-list would have silently exposed every future query.
 2. **`assertPublicSafe()` proves the public queries cannot reach private
-   tables.** It greps their SQL for `contacts`, `interactions`, `users`,
-   `audit_log`, `api_keys`, and for a missing `is_public = 1` or `:partner_id`.
+   tables.** It greps their SQL for the private tables — Stewardship
+   (`contacts`, `interactions`, `life_events`), the Directory
+   (`directory_contacts`), Resources (`resources`, `resource_shares`,
+   `resource_group_shares`), mailing-list people (`subscribers`,
+   `subscriber_tags`, `mailing_recipients`), `users`, `audit_log`, `api_keys`
+   — and for a missing publication switch (`is_public`, `is_enabled`,
+   `archive_public` or the Sharing page's `embed_enabled` = 1) or
+   `:partner_id`. A ministry has ONE sharing decision, the Sharing page;
+   `partners.is_public` is not consulted (nothing could ever set it).
    It runs in the test suite **and at Worker startup**, so a bad deploy fails
    at boot rather than serving supporter records to a website.
 3. **`partnerPublicSite()` names every field it returns.** It does not spread

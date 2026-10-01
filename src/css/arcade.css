@@ -1,0 +1,198 @@
+/* =====================================================================
+   arcade.css — the hidden arcade (ARCADE-SPEC.md)
+   =====================================================================
+   ITS OWN PALETTE, AND ONLY HERE. The site keeps to two voices, blue and
+   seafoam (main.css); the arcade may be louder (Chase, 2026-09-29: "You
+   can use the unique color palette for sure!" … "keep it modern and
+   colorful, but having flares of arcade"). Blue and seafoam are the site's
+   own, so the arcade still reads as Thauma; amber, magenta, violet and red
+   exist nowhere outside #arcade.
+
+   Loaded by arcade.js the first time the arcade opens — never with a page.
+   ===================================================================== */
+#arcade{
+  --ar-bg:#07090E; --ar-floor:#0B0F17; --ar-panel:#111724; --ar-edge:rgba(237,242,248,.08);
+  --ar-ink:#EDF2F8; --ar-dim:#8A96A6;
+  --ar-blue:#2FD8FF; --ar-foam:#5CF2C4; --ar-amber:#FFB547; --ar-magenta:#FF4FD8;
+  --ar-violet:#9B7BFF; --ar-red:#FF5A6E;
+  --ease:cubic-bezier(.55,.05,.45,.95); --unfurl:cubic-bezier(.16,1,.3,1);
+  position:fixed;inset:0;z-index:2147482500;visibility:visible;
+  display:flex;flex-direction:column;overflow:hidden;
+  background:
+    radial-gradient(900px 420px at 50% 112%, rgba(155,123,255,.16), transparent 70%),
+    radial-gradient(700px 360px at 12% -8%, rgba(47,216,255,.12), transparent 70%),
+    radial-gradient(640px 340px at 92% 0%, rgba(255,79,216,.10), transparent 70%),
+    var(--ar-bg);
+  color:var(--ar-ink);font-family:'Inter',system-ui,sans-serif;font-weight:300;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:manipulation;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+#arcade *{box-sizing:border-box}
+#arcade button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+#arcade :focus-visible{outline:2px solid var(--ar-blue);outline-offset:3px}
+
+/* ---- power: the old-CRT switch-on, and off --------------------------- */
+@keyframes arc-power-on{
+  0%{transform:scale(0,.004);filter:brightness(6)}
+  18%{transform:scale(1,.004);filter:brightness(4)}
+  55%{transform:scale(1,1);filter:brightness(1.6)}
+  100%{transform:scale(1,1);filter:brightness(1)}}
+@keyframes arc-power-off{
+  0%{transform:scale(1,1);filter:brightness(1)}
+  45%{transform:scale(1,.004);filter:brightness(4)}
+  100%{transform:scale(0,.004);filter:brightness(6)}}
+#arcade.is-on{animation:arc-power-on .62s var(--ease) both}
+#arcade.is-off{animation:arc-power-off .42s var(--ease) both}
+
+/* The faint lines of a tube, over everything the arcade draws. */
+.arc-scan{position:absolute;inset:0;pointer-events:none;z-index:5;opacity:.5;mix-blend-mode:overlay;
+  background:repeating-linear-gradient(0deg,rgba(255,255,255,.05) 0 1px,transparent 1px 3px)}
+
+/* ---- top ------------------------------------------------------------- */
+.arc-top{position:relative;z-index:3;display:flex;align-items:center;justify-content:space-between;
+  padding:18px clamp(16px,4vw,40px) 0}
+.arc-back{display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+  font-weight:600;color:var(--ar-dim);padding:10px 4px;transition:color .2s}
+.arc-back:hover{color:var(--ar-ink)}
+.arc-back svg{width:16px;height:16px}
+.arc-logo{position:absolute;left:50%;transform:translateX(-50%);text-align:center;line-height:1;pointer-events:none}
+.arc-logo b{display:block;font:100 13px/1 'Sora',sans-serif;letter-spacing:.62em;padding-left:.62em;color:var(--ar-dim)}
+.arc-logo span{display:block;margin-top:6px;font:600 clamp(22px,4.2vw,34px)/1 'Sora',sans-serif;letter-spacing:.22em;padding-left:.22em;
+  background:linear-gradient(90deg,var(--ar-blue),var(--ar-magenta) 55%,var(--ar-amber));-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 0 14px rgba(255,79,216,.35))}
+.arc-spacer{width:120px}
+@media (max-width:640px){ .arc-back span{display:none} .arc-spacer{width:40px} }
+
+/* ---- the row of cabinets --------------------------------------------- */
+/* Swipes are the menu's, not the browser's (a claimed pan cancels the pointer). */
+.arc-floor{position:relative;z-index:2;flex:1;min-height:0;display:flex;align-items:center;overflow:hidden;padding-top:14px;touch-action:none}
+.arc-floor::after{content:"";position:absolute;left:-10%;right:-10%;bottom:0;height:34%;pointer-events:none;
+  background:linear-gradient(180deg,transparent,rgba(155,123,255,.07)),
+    repeating-linear-gradient(90deg,transparent 0 58px,rgba(155,123,255,.10) 58px 59px);
+  transform:perspective(420px) rotateX(58deg);transform-origin:50% 100%;
+  -webkit-mask-image:linear-gradient(0deg,transparent,#000 45%);mask-image:linear-gradient(0deg,transparent,#000 45%)}
+.arc-row{position:relative;display:flex;align-items:flex-end;gap:clamp(18px,4vw,46px);
+  transition:transform .55s var(--unfurl);will-change:transform;padding:0 50vw}
+.cab{--c:var(--ar-blue);position:relative;flex:0 0 auto;width:clamp(140px,min(44vw,30vh),236px);
+  transform:scale(.78);opacity:.42;filter:saturate(.55);transform-origin:50% 100%;
+  transition:transform .55s var(--unfurl),opacity .4s,filter .4s;cursor:pointer}
+.cab.is-sel{transform:scale(1);opacity:1;filter:none}
+.cab.is-shake{animation:arc-shake .38s steps(1,end)}
+@keyframes arc-shake{0%,100%{translate:0 0}20%{translate:-6px 0}40%{translate:5px 0}60%{translate:-4px 0}80%{translate:3px 0}}
+
+.cab-body{position:relative;border-radius:14px 14px 6px 6px;padding:10px 10px 0;
+  background:linear-gradient(180deg,#151c2b,#0d121c 70%);box-shadow:inset 0 0 0 1px var(--ar-edge),0 30px 60px -30px rgba(0,0,0,.9)}
+.cab.is-sel .cab-body{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--c) 40%,transparent),0 0 44px -8px color-mix(in srgb,var(--c) 45%,transparent),0 30px 60px -30px rgba(0,0,0,.9)}
+.cab-marquee{height:40px;border-radius:8px 8px 3px 3px;display:flex;align-items:center;justify-content:center;white-space:nowrap;overflow:hidden;
+  font:600 clamp(10px,3vw,14px)/1 'Sora',sans-serif;letter-spacing:.16em;padding-left:.16em;text-transform:uppercase;color:var(--c);
+  background:radial-gradient(120% 140% at 50% 0%,color-mix(in srgb,var(--c) 28%,transparent),transparent 70%),#0a0e16;
+  text-shadow:0 0 12px color-mix(in srgb,var(--c) 70%,transparent);box-shadow:inset 0 -1px 0 color-mix(in srgb,var(--c) 30%,transparent)}
+.cab-screen{position:relative;margin:10px 4px 0;aspect-ratio:4/5;border-radius:10px;overflow:hidden;background:#04060a;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.06),inset 0 0 38px rgba(0,0,0,.9)}
+.cab-screen canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.cab-screen::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:10px;
+  background:radial-gradient(120% 90% at 30% 20%,rgba(255,255,255,.07),transparent 50%),
+    repeating-linear-gradient(0deg,rgba(0,0,0,.28) 0 1px,transparent 1px 3px)}
+.cab-flash{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:12px;
+  font:600 13px/1.3 'Sora',sans-serif;letter-spacing:.18em;text-transform:uppercase;color:var(--c);
+  text-shadow:0 0 14px color-mix(in srgb,var(--c) 80%,transparent);background:rgba(4,6,10,.72);opacity:0;transition:opacity .2s;z-index:2}
+.cab-flash.is-shown{opacity:1}
+.cab-tape{position:absolute;left:-12%;right:-12%;top:42%;z-index:3;transform:rotate(-14deg);padding:7px 0;text-align:center;
+  font:600 12px/1 'Inter',sans-serif;letter-spacing:.24em;text-transform:uppercase;color:#1a1204;
+  background:repeating-linear-gradient(-45deg,var(--ar-amber) 0 14px,#f0a52f 14px 28px);box-shadow:0 4px 14px rgba(0,0,0,.6)}
+.cab-panel{height:46px;margin:10px -10px 0;border-radius:4px 4px 0 0;display:flex;align-items:center;justify-content:center;gap:18px;
+  background:linear-gradient(180deg,#1b2334,#121826);clip-path:polygon(0 30%,100% 30%,100% 100%,0 100%)}
+.cab-stick{width:10px;height:22px;border-radius:5px;margin-top:6px;background:linear-gradient(90deg,#39445a,#1b2231);position:relative}
+.cab-stick::before{content:"";position:absolute;left:50%;top:-8px;width:14px;height:14px;margin-left:-7px;border-radius:50%;background:var(--ar-red);box-shadow:0 0 10px rgba(255,90,110,.6)}
+.cab-btn{width:14px;height:14px;border-radius:50%;margin-top:14px;background:var(--c);box-shadow:0 0 12px color-mix(in srgb,var(--c) 70%,transparent),inset 0 -2px 0 rgba(0,0,0,.3)}
+.cab-btn + .cab-btn{background:var(--ar-ink);box-shadow:inset 0 -2px 0 rgba(0,0,0,.3)}
+.cab-base{height:16px;margin:0 -2px;border-radius:0 0 6px 6px;background:#0a0e16;box-shadow:inset 0 1px 0 var(--ar-edge)}
+
+/* ---- what the chosen cabinet is ---------------------------------------- */
+.arc-info{position:relative;z-index:3;text-align:center;padding:0 16px 8px;min-height:176px}
+/* The site's own h2 (main.css) is narrower and left-set; not in here. */
+.arc-title{font:100 clamp(28px,5vw,46px)/1.1 'Sora',sans-serif;letter-spacing:.06em;margin:0 auto;max-width:none;text-align:center}
+.arc-title .arc-ch{display:inline-block;white-space:pre}
+.arc-line{margin:8px auto 0;max-width:40ch;color:var(--ar-dim);font-size:15px}
+.arc-meta{display:flex;align-items:center;justify-content:center;gap:10px 18px;flex-wrap:wrap;margin-top:14px;
+  font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;color:var(--ar-dim)}
+.arc-chip{display:inline-flex;align-items:center;gap:8px;padding:6px 11px;border-radius:999px;box-shadow:inset 0 0 0 1px var(--ar-edge)}
+.arc-chip b{font:600 13px/1 'Sora',sans-serif;letter-spacing:.04em;color:var(--c,var(--ar-blue));font-variant-numeric:tabular-nums}
+.arc-chip.is-soon{color:var(--ar-amber);box-shadow:inset 0 0 0 1px rgba(255,181,71,.35)}
+.arc-board{list-style:none;margin:14px auto 0;padding:0;display:flex;justify-content:center;gap:8px 22px;flex-wrap:wrap;
+  font:600 12px/1.4 'Sora',sans-serif;letter-spacing:.12em;color:var(--ar-dim)}
+.arc-board li b{color:var(--ar-ink);font-weight:600;margin-left:8px;font-variant-numeric:tabular-nums}
+.arc-board li:first-child{color:var(--c,var(--ar-amber))}
+.arc-hint{position:relative;z-index:3;text-align:center;padding:10px 16px 18px;font-size:11px;letter-spacing:.16em;
+  text-transform:uppercase;color:rgba(138,150,166,.7);font-weight:600}
+.arc-hint .pulse{animation:arc-blink 1.4s steps(1,end) infinite}
+@keyframes arc-blink{50%{opacity:.25}}
+
+@media (max-height:640px){ .arc-info{min-height:0} .arc-board{display:none} .cab{width:clamp(150px,22vw,200px)} }
+
+@media (prefers-reduced-motion:reduce){
+  #arcade.is-on,#arcade.is-off{animation:none}
+  .arc-row,.cab{transition:none}
+  .cab.is-shake,.arc-hint .pulse{animation:none}
+}
+
+/* =====================================================================
+   A GAME (play.js): the play area, scaled whole and letterboxed, under a
+   score line; the pad on touch screens for d-pad games; pause and game
+   over as cards over the play area.
+   ===================================================================== */
+.arc-play{position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;background:var(--ar-bg);
+  opacity:0;transition:opacity .26s var(--ease);touch-action:none}
+.arc-play.is-in{opacity:1}
+.arc-hud{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px clamp(12px,3vw,24px);
+  font-size:10px;letter-spacing:.18em;text-transform:uppercase;font-weight:600;color:var(--ar-dim)}
+.arc-hud b{display:block;font:600 22px/1.1 'Sora',sans-serif;letter-spacing:.04em;color:var(--ar-ink);font-variant-numeric:tabular-nums}
+.arc-score{text-align:center;flex:1}
+.arc-score b{color:var(--c,var(--ar-amber));font-size:28px;text-shadow:0 0 16px color-mix(in srgb,var(--c,var(--ar-amber)) 55%,transparent)}
+.arc-best{text-align:right;min-width:64px}
+.arc-pause{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;color:var(--ar-dim);box-shadow:inset 0 0 0 1px var(--ar-edge)}
+.arc-pause svg{width:14px;height:14px}
+.arc-pause:hover{color:var(--ar-ink)}
+.arc-stage{position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
+.arc-stage canvas{display:block;border-radius:8px;box-shadow:0 0 0 1px var(--ar-edge),0 30px 80px -40px rgba(0,0,0,.9)}
+.arc-toast{position:absolute;left:50%;top:14px;transform:translateX(-50%);max-width:min(92%,420px);padding:8px 14px;border-radius:999px;
+  background:rgba(7,9,14,.8);box-shadow:inset 0 0 0 1px var(--ar-edge);font-size:13px;color:var(--ar-ink);text-align:center;
+  opacity:0;pointer-events:none}
+.arc-toast.is-shown{animation:arc-toast 2.6s var(--ease) both}
+@keyframes arc-toast{0%{opacity:0;translate:0 -6px}10%,78%{opacity:1;translate:0 0}100%{opacity:0;translate:0 -4px}}
+.arc-pad{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:10px 12px 14px}
+.arc-pad button{height:64px;border-radius:14px;display:grid;place-items:center;color:var(--ar-ink);
+  background:linear-gradient(180deg,#161d2c,#0f1522);box-shadow:inset 0 0 0 1px var(--ar-edge)}
+.arc-pad button:active{background:color-mix(in srgb,var(--c,var(--ar-foam)) 22%,#0f1522)}
+.arc-pad svg{width:22px;height:22px}
+.arc-over{position:absolute;inset:0;z-index:3;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(7,9,14,.72);
+  backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+.arc-over[hidden]{display:none}
+.arc-card{width:min(360px,100%);text-align:center;padding:26px 22px 22px;border-radius:16px;background:linear-gradient(180deg,#121927,#0c111b);
+  box-shadow:inset 0 0 0 1px var(--ar-edge),0 30px 80px -30px rgba(0,0,0,.9)}
+.arc-card h3{margin:0;font:100 30px/1.1 'Sora',sans-serif;letter-spacing:.06em}
+.arc-final{margin-top:10px}
+.arc-final b{display:block;font:600 52px/1 'Sora',sans-serif;color:var(--c,var(--ar-amber));font-variant-numeric:tabular-nums;
+  text-shadow:0 0 22px color-mix(in srgb,var(--c,var(--ar-amber)) 55%,transparent)}
+.arc-final span{display:inline-block;margin-top:8px;font-size:11px;letter-spacing:.18em;text-transform:uppercase;font-weight:600;color:var(--ar-amber)}
+.arc-card .arc-board{margin-top:16px;flex-direction:column;align-items:stretch;gap:4px;display:flex}
+.arc-card .arc-board li{display:flex;justify-content:space-between;gap:10px;color:var(--ar-dim)}
+.arc-card .arc-board li i{font-style:normal;width:18px;text-align:left;opacity:.6}
+.arc-card .arc-board li b{margin-left:auto}
+.arc-btns{display:flex;justify-content:center;gap:10px;margin-top:20px}
+.arc-btn{min-width:110px;padding:12px 18px;border-radius:10px;font-size:12px!important;font-weight:600!important;letter-spacing:.16em;text-transform:uppercase;
+  box-shadow:inset 0 0 0 1px var(--ar-edge);color:var(--ar-ink)}
+/* #arcade button{background:none} outranks a bare class. */
+#arcade .arc-btn.is-main{background:var(--c,var(--ar-amber));color:#10131a!important;box-shadow:0 0 22px -4px color-mix(in srgb,var(--c,var(--ar-amber)) 70%,transparent)}
+.arc-card.is-locked button{opacity:.3;pointer-events:none}
+.arc-card button{transition:opacity .3s var(--ease)}
+.arc-initials{margin-top:16px}
+.arc-initials[hidden]{display:none}
+.arc-initials p{margin:0 0 10px;font-size:11px;letter-spacing:.16em;text-transform:uppercase;font-weight:600;color:var(--ar-amber)}
+.arc-slots{display:flex;justify-content:center;gap:10px;margin-bottom:12px}
+.arc-slot{display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px;border-radius:10px}
+.arc-slot.is-on{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--c,var(--ar-amber)) 60%,transparent)}
+.arc-slot button{width:44px;height:30px;display:grid;place-items:center;color:var(--ar-dim)}
+.arc-slot button svg{width:14px;height:14px}
+.arc-slot b{font:600 34px/1 'Sora',sans-serif;width:44px;text-align:center;color:var(--ar-ink)}
+@media (prefers-reduced-motion:reduce){ .arc-play{transition:none} .arc-toast.is-shown{animation:none;opacity:1} }

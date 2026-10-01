@@ -26,6 +26,7 @@
 import { requireAccess } from "./lib/access.js";
 import { createDb } from "./lib/db.js";
 import { getFile, putFile, deleteFile } from "./lib/github.js";
+import { changedSince, changedAnswer } from "./lib/fresh.js";
 
 const json = (body, status = 200, headers = {}) =>
   new Response(JSON.stringify(body), {
@@ -211,6 +212,10 @@ export default {
     }
 
     /* -------------------------------------------------------------- POST */
+    /* Saved by someone else since this editor opened it (lib/fresh.js). */
+    const current = (await db.query("staff_profiles_all", {})).find((r) => r.user_id === userId);
+    if (current && changedSince(body, current)) return changedAnswer(current);
+
     const isPublic = body.is_public ? 1 : 0;
     const slug = clean(body.slug, MAX.slug) || slugify(person.user_name || person.name);
     if (!slug) {

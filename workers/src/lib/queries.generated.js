@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "5d753fcf5f4f4df8";
+export const SOURCE_DIGEST = "34150369278a720e";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -166,6 +166,7 @@ VALUES (:id, :now, :user_id, :partner_id, :action, :entity, :entity_id, :detail)
   c.giving_ref,
   c.notes,
   c.created_at,
+  c.updated_at,
   t.last_contact_any,
   t.last_personal_contact,
   t.interaction_count,
@@ -323,6 +324,7 @@ ORDER BY captured_at ASC;`,
 ) VALUES (
   :id, :goal_id, :partner_id, :raised_cents, :donor_count, 'manual', :now
 );`,
+  goal_stamps: `SELECT id, updated_at FROM goals WHERE partner_id = :partner_id;`,
   goal_upsert: `INSERT INTO goals (
   id, partner_id, label, description, kind, target_cents, currency,
   is_public, created_at, updated_at
@@ -818,8 +820,7 @@ ORDER BY (actual_date IS NULL), actual_date ASC, sort_order ASC;`,
        embed_roadmap, embed_goal, embed_prayer, embed_videos
 FROM partners
 WHERE slug = :slug
-  AND embed_enabled = 1
-  AND is_public = 1;`,
+  AND embed_enabled = 1;`,
   public_prayer_for_partner: `SELECT id, is_answered, answered_on, sort_order
 FROM prayer
 WHERE partner_id = :partner_id
@@ -862,7 +863,7 @@ ON CONFLICT(resource_id, audience) DO UPDATE SET
   LEFT JOIN partners p ON p.id = g.partner_id
  WHERE g.resource_id = :resource_id
  ORDER BY g.audience;`,
-  resource_owner: `SELECT id, owner_user_id, partner_id FROM resources WHERE id = :id;`,
+  resource_owner: `SELECT id, owner_user_id, partner_id, updated_at FROM resources WHERE id = :id;`,
   resource_share_add: `INSERT INTO resource_shares (resource_id, user_id, shared_by, shared_at, can_edit)
 VALUES (:resource_id, :user_id, :shared_by, :now, :can_edit)
 ON CONFLICT(resource_id, user_id) DO UPDATE SET can_edit = excluded.can_edit;`,

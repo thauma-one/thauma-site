@@ -35,6 +35,7 @@ import { partnerFor } from "./staff-milestones.js";
 import { ensureSiteDns, removeSiteDns } from "./lib/site-dns.js";
 import { cleanDoc, starter, subdomainFrom, validSubdomain } from "./site/model.js";
 import { lookFor } from "./embed-colour.js";
+import { changedAnswer } from "./lib/fresh.js";
 
 const MAX_DRAFT = 400000;
 
@@ -182,7 +183,21 @@ export default {
       if (!isEditor) return onlyEditors();
       const raw = JSON.stringify(body.draft || {});
       if (raw.length > MAX_DRAFT) return json({ error: "This site has grown too large to save." }, 400);
-      const doc = cleanDoc(body.draft, (await catalogOf(db)).map((l) => l.code));
+      const codes = (await catalogOf(db)).map((l) => l.code);
+      /* SAVED BY SOMEONE ELSE since this editor last heard from the server
+         (lib/fresh.js). The owner and the editors they grant can all have a
+         site open. Compared by the DRAFT, not updated_at: the row's stamp
+         also moves when the site is switched on, published, or its name is
+         made, none of which is somebody else's edit. `base` is the draft as
+         this server last handed it over, cleaned the same way as what is
+         stored, so an autosave never trips over its own previous one. */
+      if (body.base && body.overwrite !== true) {
+        const theirs = cleanDoc(JSON.parse(row.draft), codes);
+        if (JSON.stringify(cleanDoc(body.base, codes)) !== JSON.stringify(theirs)) {
+          return changedAnswer({ draft: theirs, updated_at: row.updated_at });
+        }
+      }
+      const doc = cleanDoc(body.draft, codes);
       await db.query("partner_site_save_draft", { partner_id: partner.id, draft: JSON.stringify(doc), now });
       return answer();
     }

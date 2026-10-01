@@ -44,6 +44,7 @@ const lookRows = (rows) => {
   return out;
 };
 import { json, readJson } from "./lib/store.js";
+import { changedAnswer } from "./lib/fresh.js";
 
 /** Resolve the caller to a partner and a role, or a denial. */
 async function context(request, env) {
@@ -117,6 +118,36 @@ async function audit(db, { user, partner, action, entity, entity_id = null, deta
   }
 }
 
+/* The embed settings as the Sharing page is handed them. One shape for the
+   GET and for "did somebody else change these?" (lib/fresh.js), so the two
+   can never disagree about what unchanged means. */
+function embedOf(settings) {
+  return {
+    enabled: settings ? !!settings.embed_enabled : false,
+    accent: (settings && settings.embed_accent) || null,
+    /* NULL means "derive it from the first". The panel shows the derived
+       value so the pair is never displayed half-chosen. */
+    accent2: (settings && settings.embed_accent2) || null,
+    /* Degrees round the wheel to the second color; NULL is -33 (0040). */
+    turn: settings && settings.embed_turn != null ? settings.embed_turn : null,
+    theme: (settings && settings.embed_theme) || "auto",
+    /* Each widget on its own (0038). `enabled` is "any of them". */
+    shared: {
+      roadmap: !!(settings && settings.embed_roadmap),
+      goal: !!(settings && settings.embed_goal),
+      prayer: !!(settings && settings.embed_prayer),
+      videos: !!(settings && settings.embed_videos),
+    },
+  };
+}
+/* The part of it a Save rewrites. */
+function embedCore(e) {
+  const sh = (e && e.shared) || {};
+  return { accent: (e && e.accent) || null, accent2: (e && e.accent2) || null,
+    turn: e && e.turn != null ? e.turn : null, theme: (e && e.theme) || "auto",
+    shared: { roadmap: !!sh.roadmap, goal: !!sh.goal, prayer: !!sh.prayer, videos: !!sh.videos } };
+}
+
 export default {
   async fetch(request, env) {
     const { db, user, me, partner, roles, isAdmin, actor, denied } = await context(request, env);
@@ -164,24 +195,9 @@ export default {
              public URL this partner has. */
           slug: settings ? settings.slug : null,
         },
-        embed: {
-          enabled: settings ? !!settings.embed_enabled : false,
-          accent: (settings && settings.embed_accent) || null,
-          /* NULL means "derive it from the first". The panel shows the derived
-             value so the pair is never displayed half-chosen. */
-          accent2: (settings && settings.embed_accent2) || null,
-          /* Degrees round the wheel to the second color; NULL is -33 (0040). */
-          turn: settings && settings.embed_turn != null ? settings.embed_turn : null,
-          theme: (settings && settings.embed_theme) || "auto",
+        embed: { ...embedOf(settings),
           /* The embeds that depart from the above, by kind (0040). */
           looks: lookRows(looks),
-          /* Each widget on its own (0038). `enabled` is "any of them". */
-          shared: {
-            roadmap: !!(settings && settings.embed_roadmap),
-            goal: !!(settings && settings.embed_goal),
-            prayer: !!(settings && settings.embed_prayer),
-            videos: !!(settings && settings.embed_videos),
-          },
         },
         timeline: {
           start: (settings && settings.timeline_start) || null,
@@ -373,6 +389,14 @@ export default {
            public route's gate reads. */
         const WIDGETS = ["roadmap", "goal", "prayer", "videos"];
         const now_ = await db.queryOne("partner_settings", { partner_id });
+        /* SAVED BY SOMEONE ELSE since this page loaded it (lib/fresh.js).
+           Compared by the embed settings themselves, as the page was handed
+           them — not the partner's updated_at, which the timeline and the
+           default language move too, often in the same Save as this. */
+        if (body.base && body.overwrite !== true &&
+            JSON.stringify(embedCore(body.base)) !== JSON.stringify(embedCore(embedOf(now_)))) {
+          return changedAnswer({ embed: embedOf(now_) });
+        }
         /* A save that does not mention the turn keeps it. */
         let turn = now_ && now_.embed_turn != null ? now_.embed_turn : null;
         if ("turn" in e) {

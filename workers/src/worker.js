@@ -457,7 +457,7 @@ export default {
     if (siteHost && !own) {
       const sub = siteHost[1];
       if (SITE_RESERVED.has(sub)) return fetch(request);
-      return (await serveSite(request, env, { sub, rest: url.pathname, base: "" })) || closedSite(request);
+      return (await serveSite(request, env, { sub, rest: url.pathname, base: "" })) || closedSite(request, env);
     }
     const sitePath = url.pathname.match(/^\/site\/([a-z0-9]{2,40})(\/.*)?$/);
     if (sitePath) {

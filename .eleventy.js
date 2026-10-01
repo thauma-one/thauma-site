@@ -49,6 +49,12 @@ module.exports = function (eleventyConfig) {
   eleventyConfig.addPassthroughCopy({ "src/js": "js" });
   eleventyConfig.addPassthroughCopy({ "src/img": "img" });
   eleventyConfig.addPassthroughCopy({ "src/fonts": "fonts" });
+  /* The arcade's physics engine (ARCADE-SPEC.md §4, Load Out): Planck.js, a
+     port of Box2D, MIT. Stacked boxes are the hardest thing to simulate
+     stably, and Box2D is what stacking games are built on. Copied from the
+     package, never committed; it loads only when a game that needs it
+     starts. */
+  eleventyConfig.addPassthroughCopy({ "node_modules/planck/dist/planck.min.js": "js/arcade/vendor/planck.min.js" });
   // src/admin was Decap CMS. Git Gateway is a Netlify Identity service, so it
   // stopped working at the cutover and the directory only served to occupy the
   // /admin path that the administration area now uses. Removed 2026-08-15;

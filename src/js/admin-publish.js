@@ -191,8 +191,16 @@
       lines.push(tr('pub.previewNever'));
     }
 
+    /* Live's edits could not be brought into dev: said here, where it is
+       seen, not only in GitHub's log. */
+    var stuck = state.sync && state.sync.failed
+      ? '<div class="p-sync-stuck">' + esc(fill('pub.syncStuck', { when: ago(state.sync.at) })) +
+        (state.sync.url ? ' <a href="' + esc(state.sync.url) + '" target="_blank" rel="noopener">' + esc(tr('pub.syncOpen')) + '</a>' : '') +
+        '</div>'
+      : '';
+
     $('pState').className = 'p-state ' + cls;
-    $('pState').innerHTML =
+    $('pState').innerHTML = stuck +
       '<div class="p-headline">' + esc(headline) + '</div>' +
       '<div class="p-sub">' + lines.map(esc).join(' &middot; ') +
         (state.compare_url

@@ -508,10 +508,20 @@ zone_name = "thauma.one"
 
 # PARTNER SITES (0044): every <name>.thauma.one reaches this Worker, which
 # answers for the names that are partner sites and passes every other name
-# (dev.thauma.one — the Pi's tunnel — and mail-only names) straight on to
-# where it went before. A more specific route (next.thauma.one, above, on the
-# staging Worker) still wins. Each site's own DNS record is made when it is
-# switched on — see workers/src/lib/site-dns.js.
+# it keeps (site/model.js RESERVED) straight on to where it went before. A
+# more specific route (next.thauma.one, above, on the staging Worker) still
+# wins. Each site's own DNS record is made when it is switched on — see
+# workers/src/lib/site-dns.js.
+#
+# ⚠ DEV.THAUMA.ONE MUST NOT REACH THIS WORKER. Passing its pages on is not
+# enough: /css /js /fonts /img are served before any Worker code runs
+# (run_worker_first below), so they came from LIVE's build — dev ran live's
+# main.js and got 404s for everything not yet published (the arcade, and
+# the "stale" banner of 2026-09-29, which was this, not a cache). The fix
+# lives in the dashboard, not here: a Workers route `dev.thauma.one/*` with
+# NO Worker (added 2026-09-30, id f51dc427…), which beats this wildcard for
+# being more specific. wrangler cannot express a Worker-less route. Check:
+# dev.thauma.one/js/main.js must hash the same as the Pi's own copy.
 [[env.production.routes]]
 pattern = "*.thauma.one/*"
 zone_name = "thauma.one"

@@ -1,0 +1,20 @@
+{#- THE ARCADE'S WAYS IN (ARCADE-SPEC.md) — on every page that has a door:
+   the site's pages, the landing page and the 404. Nothing at all is sent
+   while the arcade is switched off (site.json › visibility.sections.arcade,
+   Website › Settings): until then no page loads or links
+   it, and /arcade/ is not built (the scripts are copied, and sit unread).
+   The versions are content hashes (the `v` filter), so a changed file is
+   fetched fresh; the engine and the arcade load only when someone reaches
+   for them. -#}
+{%- if visible.sections.arcade %}
+<script>window.THAUMA_ARCADE = { v: {
+  doors: "{{ '/js/arcade/doors.js' | v }}", fail: "{{ '/js/arcade/fail.js' | v }}",
+  arcade: "{{ '/js/arcade/arcade.js' | v }}", css: "{{ '/css/arcade.css' | v }}",
+  play: "{{ '/js/arcade/play.js' | v }}", games: { loadout: "{{ '/js/arcade/games/loadout.js' | v }}",
+    soundcheck: "{{ '/js/arcade/games/soundcheck.js' | v }}",
+    cablerun: "{{ '/js/arcade/games/cablerun.js' | v }}",
+    panelfixer: "{{ '/js/arcade/games/panelfixer.js' | v }}" },
+  vendor: { planck: "1.5.0" },
+  words: "{{ '/_data/i18n/en.json' | v }}{{ '/_data/i18n/hr.json' | v }}" } };</script>
+<script src="/js/arcade/doors.js?v={{ '/js/arcade/doors.js' | v }}" defer></script>
+{%- endif %}

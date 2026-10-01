@@ -100,6 +100,7 @@ async function audit(db, { user, action, entity_id, detail }) {
  */
 const liveBranch = (env) => env.LIVE_BRANCH || "main";
 const stagingBranch = (env) => env.STAGING_BRANCH || env.LIVE_BRANCH || "main";
+const SYNC_WORKFLOW = "sync-dev.yml";
 const branchFor = (env, action) =>
   action === "preview" ? stagingBranch(env) : liveBranch(env);
 
@@ -130,10 +131,19 @@ export default {
 /* The newest build of each kind, finished or not, and whether pressing the
    button here also carries dev's data (only on the Pi — lib/carry.js). */
 async function runsAndCarry(env) {
-  const [live, preview] = await Promise.all([latestRun(env, PROD_WORKFLOW), latestRun(env, STAGING_WORKFLOW)]);
+  const [live, preview, sync] = await Promise.all([
+    latestRun(env, PROD_WORKFLOW), latestRun(env, STAGING_WORKFLOW), latestRun(env, SYNC_WORKFLOW)]);
   const pick = (r) => (r && !r.error && !r.never ? r : null);
+  const s = pick(sync);
   return {
     latest: { live: pick(live), preview: pick(preview) },
+    /* THE SYNC THAT BRINGS LIVE'S EDITS INTO DEV (sync-dev.yml, every ten
+       minutes). When it cannot combine them it fails in GitHub's log, where
+       nobody reads, and dev quietly stops hearing about live — so its last
+       run is shown here (Chase, 2026-09-30: "Dev needs to be up to date on
+       all changes made from Preview or Live"). Word files merge entry by
+       entry now, so this should be rare. */
+    sync: s ? { failed: s.status === "completed" && s.conclusion === "failure", at: s.started, url: s.url } : null,
     carries: { live: carryConfig(env, "live").ok === true, preview: carryConfig(env, "staging").ok === true },
   };
 }
@@ -269,8 +279,17 @@ async function act(request, env, db, user, me) {
     const m = await mergeBranch(env, branch, stagingBranch(env),
       `Publish: bring ${stagingBranch(env)} into ${branch} (${(me && me.user_name) || user.email})`);
     if (m.conflict) {
-      return json({ error: `${stagingBranch(env)} and ${branch} changed the same lines, so they cannot be combined ` +
-        `automatically. Nothing was published. This needs a developer to combine them by hand.`, action }, 409);
+      /* GitHub's merge knows only lines. The sync knows word files entry by
+         entry (deploy/json-merge.mjs), so it is started now to bring live's
+         newest edits into dev properly; after it, dev contains main and the
+         merge above is clean. Nothing was published this time. */
+      const sync = await dispatchWorkflow(env, SYNC_WORKFLOW, stagingBranch(env));
+      return json({ error: sync.error
+        ? `${stagingBranch(env)} and ${branch} changed the same lines, so they cannot be combined automatically. ` +
+          `Nothing was published. This needs a developer to combine them by hand.`
+        : `Live's newest edits are being combined into ${stagingBranch(env)} first. Nothing was published yet — ` +
+          `press Publish again in a minute. If this message comes back, the same text was changed in both places ` +
+          `and a developer needs to combine them.`, action, syncing: !sync.error }, 409);
     }
     if (m.error) return json({ error: `${m.error} Nothing was published.`, action }, 500);
     merged = m.merged;

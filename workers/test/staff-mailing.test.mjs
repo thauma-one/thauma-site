@@ -260,6 +260,61 @@ await check("a status the console does not offer is refused", async () => {
   eq(res.status, 400, "status");
 });
 
+/* ONE DATABASE, TWO PEOPLE (lib/fresh.js): a list's settings or a draft
+   saved by someone else since this console opened it is not overwritten. */
+function stubbed(rows) {
+  const env = envWith("staff");
+  const orig = env.DB.prepare;
+  const ran = [];
+  /* db.js hands D1 positional `?`, not the :names in queries.sql */
+  const as = (n) => QUERIES[n].replace(/:([a-z_]+)/g, "?");
+  env.DB.prepare = (sql) => {
+    const name = Object.keys(rows).find((n) => as(n) === sql) ||
+      ["mailing_list_upsert", "mailing_upsert", "contact_form_save", "contact_form_save_org"].find((n) => as(n) === sql);
+    if (!name) return orig(sql);
+    const run = async () => { ran.push(name); return { results: rows[name] || [] }; };
+    return { bind() { return { all: run, run }; }, all: run, run };
+  };
+  return { env, ran };
+}
+
+await check("list settings saved by someone else meanwhile are not overwritten", async () => {
+  const { env, ran } = stubbed({ mailing_list_one: [{ id: "ml_1", slug: "news", name: "Theirs", updated_at: "2026-09-30T10:00:00.000Z" }] });
+  const res = await handler.fetch(req("POST", { body: { id: "ml_1", name: "Mine", updated_at: "2026-09-29T08:00:00.000Z" } }), env);
+  const body = await res.json();
+  eq([res.status, body.changed, body.current && body.current.name], [409, true, "Theirs"], "refused, with theirs " + JSON.stringify(body));
+  assert(!ran.includes("mailing_list_upsert"), "written anyway");
+});
+
+await check("a draft saved by someone else meanwhile is not overwritten — compared by what was stored", async () => {
+  const stored = { id: "mg_1", list_id: "ml_1", status: "draft", subject: "Theirs", preheader: null, body_html: "<p>Hi</p>" };
+  const rows = { mailing_list_one: [{ id: "ml_1", slug: "news", name: "News" }], mailing_one: [stored] };
+  let { env, ran } = stubbed(rows);
+  let res = await handler.fetch(req("POST", { body: { action: "mailing-save", id: "mg_1", list_id: "ml_1",
+    subject: "Mine", body_html: "<p>Mine</p>", base: { subject: "Before", preheader: null, body_html: "<p>Hi</p>" } } }), env);
+  const b1 = await res.json();
+  eq([res.status, b1.changed], [409, true], "refused " + JSON.stringify(b1) + " ran " + ran);
+  assert(!ran.includes("mailing_upsert"), "written anyway");
+  ({ env, ran } = stubbed(rows));
+  await handler.fetch(req("POST", { body: { action: "mailing-save", id: "mg_1", list_id: "ml_1",
+    subject: "Mine", body_html: "<p>Mine</p>", base: { subject: "Theirs", preheader: null, body_html: "<p>Hi</p>" } } }), env);
+  assert(ran.includes("mailing_upsert"), "unchanged since it opened — it must save");
+});
+
+await check("the contact form's settings saved by someone else meanwhile are not overwritten", async () => {
+  const rows = { contact_form_for_partner: [{ deliver_to: "theirs@thauma.one", is_open: 1, updated_at: "2026-09-30T10:00:00.000Z" }] };
+  let { env, ran } = stubbed(rows);
+  const res = await handler.fetch(req("POST", { body: { action: "contact-form", deliver_to: "mine@thauma.one",
+    updated_at: "2026-09-29T08:00:00.000Z" } }), env);
+  const body = await res.json();
+  eq([res.status, body.changed, body.current && body.current.deliver_to], [409, true, "theirs@thauma.one"], "refused, with theirs");
+  assert(!ran.some((n) => n.startsWith("contact_form_save")), "written anyway");
+  ({ env, ran } = stubbed(rows));
+  await handler.fetch(req("POST", { body: { action: "contact-form", deliver_to: "mine@thauma.one",
+    updated_at: "2026-09-30T10:00:00.000Z" } }), env);
+  assert(ran.some((n) => n.startsWith("contact_form_save")), "saved as opened");
+});
+
 await check("adding by hand is refused an address that cannot be one", async () => {
   const env = envWith("staff");
   const res = await handler.fetch(req("POST", {

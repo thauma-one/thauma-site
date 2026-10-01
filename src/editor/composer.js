@@ -39,6 +39,9 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
     lists: [], mailings: [], attachments: [],
     listId: null, id: null,
     savedHtml: "", savedSubject: "", savedPreheader: "", dirty: false,
+    /* The draft as the SERVER last gave it — what is stored, cleaned — for a
+       save to be compared against (workers/src/lib/fresh.js). */
+    base: null,
   };
 
   /* The composer shares the mailing page's scope switch: whose lists these are
@@ -119,6 +122,7 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
     editor.commands.setContent(m ? (m.body_html || "") : "", false);
 
     cp.attachments = (m && m.attachments) || [];
+    cp.base = m ? { subject: m.subject, preheader: m.preheader, body_html: m.body_html } : null;
     cp.savedHtml = editor.getHTML();
     cp.savedSubject = $("cpSubject").value;
     cp.savedPreheader = $("cpPreheader").value;
@@ -251,6 +255,7 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
       });
       body = await res.json().catch(() => ({}));
     } catch (e) { return { error: tr("err.unreachable") + " " + e.message }; }
+    if (res.status === 409 && body.changed) return { changed: body };
     if (!res.ok) return { error: body.error || `${tr("err.refused")} (${res.status})` };
     return body;
   }
@@ -267,13 +272,29 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
        from this same stored source, and each recipient's unsubscribe link has
        to be injected per message. Converting in the browser would mean three
        implementations of one thing, two of which nobody ever receives. */
-    const body = await post({
+    const payload = {
       action: "mailing-save", id: cp.id || undefined, list_id: cp.listId,
       subject: $("cpSubject").value, preheader: $("cpPreheader").value,
       body_html: editor.getHTML(),
       attachments: cp.attachments,
-    });
+      base: cp.id ? cp.base : undefined,
+    };
+    let body = await post(payload);
+    /* Saved by someone else since this draft opened: ask. Saving mine sends
+       it again with overwrite; keeping theirs opens their version. */
+    if (body.changed) {
+      setState("");
+      if (!(await window.StaffChanged(body.changed))) {
+        const id = cp.id;
+        await load(cp.listId);
+        openDraft(id);
+        return null;
+      }
+      body = await post(Object.assign({}, payload, { overwrite: true }));
+    }
     if (body.error) { setState(""); toast(body.error, "bad"); return null; }
+    const m = body.mailing;
+    cp.base = { subject: m.subject, preheader: m.preheader, body_html: m.body_html };
 
     cp.id = body.mailing.id;
     cp.savedHtml = editor.getHTML();

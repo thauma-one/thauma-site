@@ -114,7 +114,18 @@
     if (state.saving) { state.again = true; return; }
     state.saving = true;
     try {
-      var body = await send({ action: 'save', draft: state.doc });
+      var body;
+      try { body = await send({ action: 'save', draft: state.doc, base: state.base }); }
+      catch (e) {
+        /* Someone else saved this site since it loaded (workers/src/lib/
+           fresh.js): ask. Saving mine sends it again with overwrite;
+           keeping theirs loads their version into the editor. */
+        if (!(e.answer && e.answer.changed)) throw e;
+        $('wsSaved').textContent = '';
+        if (!(await window.StaffChanged(e.answer))) { state.saving = false; await load(); return; }
+        body = await send({ action: 'save', draft: state.doc, overwrite: true });
+      }
+      state.base = body.draft;
       state.body.site = body.site;
       $('wsSaved').textContent = tr('ws.saved');
       drawBar(); drawStatus();
@@ -130,12 +141,18 @@
     var res = await fetch(API, { method: 'POST', credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     var body = await res.json().catch(function () { return {}; });
-    if (!res.ok) throw new Error(body.error || tr('common.saveFailed'));
+    if (!res.ok) {
+      var err = new Error(body.error || tr('common.saveFailed'));
+      err.answer = body;
+      throw err;
+    }
     return body;
   }
   async function act(payload, message) {
     clearTimeout(state.timer);
-    if (state.saving || state.timer) { try { await send({ action: 'save', draft: state.doc }); } catch (e) {} }
+    if (state.saving || state.timer) {
+      try { state.base = (await send({ action: 'save', draft: state.doc, base: state.base })).draft; } catch (e) {}
+    }
     try {
       apply(await send(payload));
       if (message) toast(message, 'ok');
@@ -160,6 +177,8 @@
   function apply(body) {
     state.body = body;
     state.doc = body.draft;
+    /* the draft as the server holds it, for a save to be compared against */
+    state.base = JSON.parse(JSON.stringify(body.draft));
     if (state.page && !state.doc.pages.some(function (p) { return p.id === state.page; })) state.page = null;
     $('wsRoot').hidden = false;
     $('wsStatus').hidden = false;

@@ -63,15 +63,34 @@ jobs:
             exit 0
           fi
 
+          # WORD FILES MERGE ENTRY BY ENTRY (.gitattributes, deploy/json-merge.mjs,
+          # 2026-09-30). A staff member's edit on main and a key added on dev
+          # sit on neighboring lines and used to conflict here, stopping this
+          # sync until a person came. As entries they never disagreed. The
+          # same entry changed on both sides keeps the NEWER value — the
+          # driver walks each side's history to see when it was set — and the
+          # older value is written into the merge commit, not dropped quietly.
+          git config merge.jsonentries.driver "node deploy/json-merge.mjs %O %A %B %P"
+          rm -f .git/thauma-merge-report
+
           # --no-edit so an unattended merge does not sit waiting for an editor.
-          # If it conflicts, the job fails and NOTHING is pushed: the branches
-          # stay as they were and a person sorts it out. That is the right
-          # outcome — an automated conflict resolution is a guess about
-          # somebody's intent.
-          if ! git merge origin/main --no-edit -m "Bring content edits from main into dev"; then
+          # Anything else that conflicts still fails the job and NOTHING is
+          # pushed: the branches stay as they were and a person sorts it out,
+          # and the Publish page says so (admin-publish.js, the sync's last run).
+          if ! THAUMA_MERGE_OURS=HEAD THAUMA_MERGE_THEIRS=origin/main \
+               git merge origin/main --no-edit -m "Bring content edits from main into dev"; then
             echo "::error::main and dev have conflicting changes. Merge them by hand."
+            git diff --name-only --diff-filter=U | sed 's/^/::error::  conflict in /' || true
             git merge --abort || true
             exit 1
+          fi
+          if [ -s .git/thauma-merge-report ]; then
+            echo "::warning::Entries changed on both sides; kept the newer:"
+            cat .git/thauma-merge-report
+            git commit --amend -m "Bring content edits from main into dev
+
+          Entries changed on both sides; the newer value was kept:
+          $(cat .git/thauma-merge-report)"
           fi
 
           git push origin dev

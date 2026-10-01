@@ -99,12 +99,17 @@ const ALL_MIGRATIONS = ["0001_init.sql", "0002_milestones.sql"];
 
 function stubGitHub({ ahead = 2, files = [], lastProdSha = "live000",
                       prodNever = false, previewSha = "live000",
-                      dispatchStatus = 204, migrations = ALL_MIGRATIONS, mergeStatus = 201 } = {}) {
+                      dispatchStatus = 204, migrations = ALL_MIGRATIONS, mergeStatus = 201,
+                      syncConclusion = "success" } = {}) {
   const seen = [];
   seen.handle = async (u, init) => {
     seen.push({ url: u, method: init.method || "GET",
                 body: init.body ? JSON.parse(init.body) : null });
 
+    if (u.includes("/actions/workflows/sync-dev.yml/runs")) {
+      return new Response(JSON.stringify({ workflow_runs: [{ status: "completed", conclusion: syncConclusion,
+        head_sha: "dev000", created_at: "2026-09-30T10:00:00Z", html_url: "https://gh/sync" }] }), { status: 200 });
+    }
     if (u.includes("/actions/workflows/") && u.includes("/runs")) {
       const isProd = u.includes("deploy.yml");
       if (isProd && prodNever) {
@@ -454,14 +459,31 @@ await check("nothing new on dev: publish still builds", async () => {
   } finally { g.restore(); }
 });
 
-await check("a merge conflict publishes NOTHING and says so", async () => {
+await check("a merge conflict publishes NOTHING, and starts the sync that can combine it", async () => {
   const g = stubGitHub({ mergeStatus: 409 });
   try {
     const res = await handler.fetch(req("POST", { action: "publish", confirm: "PUBLISH" }), envWith("admin"));
     eq(res.status, 409, "status");
-    assert(/Nothing was published/.test((await res.json()).error), "the reason reaches the screen");
-    assert(!g.some((c) => c.url.endsWith("/dispatches")), "built anyway");
+    const b = await res.json();
+    assert(/Nothing was published/.test(b.error) && /press Publish again/.test(b.error), "the reason and the next step reach the screen");
+    eq(b.syncing, true, "says the sync is running");
+    const d = g.filter((c) => c.url.endsWith("/dispatches"));
+    eq(d.length, 1, "exactly one workflow started");
+    assert(d[0].url.includes("sync-dev.yml") && d[0].body.ref === "dev", "and it is the sync, on dev — not a build: " + d[0].url);
   } finally { g.restore(); }
+});
+
+await check("the Publish page says when live's edits could not reach dev", async () => {
+  const g = stubGitHub({ syncConclusion: "failure" });
+  try {
+    const b = await (await handler.fetch(req("GET"), envWith("admin"))).json();
+    eq(b.sync && b.sync.failed, true, "the sync's failure is in the status");
+  } finally { g.restore(); }
+  const ok = stubGitHub();
+  try {
+    const b = await (await handler.fetch(req("GET"), envWith("admin"))).json();
+    eq(b.sync && b.sync.failed, false, "and a healthy sync is not a warning");
+  } finally { ok.restore(); }
 });
 
 await check("the merge waits for the word, and for the database check", async () => {

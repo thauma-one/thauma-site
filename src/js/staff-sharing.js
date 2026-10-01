@@ -882,6 +882,13 @@
       headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
     });
     var out = await res.json().catch(function () { return {}; });
+    /* Saved by someone else since this page loaded it (workers/src/lib/
+       fresh.js): ask. Saving mine sends it again with overwrite; keeping
+       theirs skips it, and the reload after saving shows theirs. */
+    if (res.status === 409 && out.changed && body) {
+      if (await window.StaffChanged(out)) return send(url, method, Object.assign({}, body, { overwrite: true }));
+      return {};
+    }
     if (!res.ok) throw new Error(out.error || (tr('err.refused') + ' (' + res.status + ')'));
     return out;
   }
@@ -902,7 +909,10 @@
         looks[k] = l.accent || l.theme ? l : null;
       });
       return send(SETTINGS, 'PATCH', { embed: { accent: d.accent, accent2: d.accent2, turn: d.turn,
-        theme: d.theme, shared: d.shared, looks: looks } });
+        theme: d.theme, shared: d.shared, looks: looks },
+        /* as this page was handed them, so a change made elsewhere since is
+           caught rather than switched back (workers/src/lib/fresh.js) */
+        base: (state.settings && state.settings.embed) || undefined });
     });
     if (c.period) await step(function () {
       return send(SETTINGS, 'PATCH', { timeline: { start: d.period.start || null, end: d.period.end || null } });
@@ -920,7 +930,7 @@
          list entire. */
       await step(function () {
         return send(mailUrl, 'POST', {
-          id: l.id, name: l.name, description: l.description || '',
+          id: l.id, updated_at: l.updated_at, name: l.name, description: l.description || '',
           from_name: l.from_name, from_email: l.from_email, reply_to: l.reply_to || '',
           is_open: !!d.lists[l.id],
           /* EVERY FIELD, because a field left out is saved as off: this once
@@ -940,7 +950,7 @@
     if (c.contact) await step(function () {
       var k = d.contact, old = (state.mail && state.mail.contact) || {};
       return send(mailUrl, 'POST', {
-        action: 'contact-form',
+        action: 'contact-form', updated_at: old.updated_at,
         deliver_to: k.deliver_to.trim(), from_address: k.from_address,
         /* The old single-language word columns ride along unchanged. */
         heading: old.heading || '', blurb: old.blurb || '', button: old.button || '', thanks: old.thanks || '',

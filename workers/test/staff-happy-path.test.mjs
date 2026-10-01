@@ -24,6 +24,10 @@
 import { QUERIES, toPositional } from "../src/lib/db.js";
 import staffData from "../src/staff-data.js";
 import staffMilestones from "../src/staff-milestones.js";
+import staffGoals from "../src/staff-goals.js";
+import staffPrayer from "../src/staff-prayer.js";
+import staffStewardship from "../src/staff-stewardship.js";
+import adminProfile from "../src/admin-profile.js";
 import staffSettings from "../src/staff-settings.js";
 import translate from "../src/translate.js";
 import staffSite, { siteAddress } from "../src/staff-site.js";
@@ -133,7 +137,8 @@ function rowsFor(name, params) {
     case "partner_settings":  return [{ default_lang: "en", ...SETTINGS_ROW }];
     case "milestones_for_staff":
       return [{ id: "ms_m1", status: "complete", completion: 100, sort_order: 0,
-                is_public: 1, is_featured: 0, parent_id: null, actual_date: "2026-03-01" }];
+                is_public: 1, is_featured: 0, parent_id: null, actual_date: "2026-03-01",
+                updated_at: "2026-09-30T10:00:00.000Z" }];
     case "milestone_translations_for_staff":
       return [{ milestone_id: "ms_m1", lang: "en", title: "Commissioned",
                 description: null, target_label: null }];
@@ -149,9 +154,12 @@ function rowsFor(name, params) {
                 last_personal_contact: "2025-07-14", last_contact_any: "2026-08-01",
                 days_since_personal: 398 }];
     case "goals_for_partner":
-      return [{ id: "g_m1", label: "Monthly support", currency: "EUR",
+      /* goal_id, as the goal_progress view names it */
+      return [{ goal_id: "g_m1", id: "g_m1", label: "Monthly support", currency: "EUR",
                 target_cents: 180000, raised_cents: 103500, donor_count: 14,
                 is_public: 1, kind: "monthly" }];
+    case "goal_stamps":
+      return [{ id: "g_m1", updated_at: "2026-09-30T10:00:00.000Z" }];
     /* Translation's daily share (0046): the reservation fits. */
     case "ai_usage_reserve":
       return [{ neurons: 10 }];
@@ -276,6 +284,72 @@ await check("a range that ends before it starts is refused", async () => {
   eq(res.status, 400, "status");
 });
 
+/* ONE DATABASE, TWO PEOPLE (lib/fresh.js): a staff member on live and Chase
+   on dev can have the same milestone open. The later save must not erase the
+   earlier one in silence. */
+await check("a milestone saved by someone else since it was opened is not overwritten", async () => {
+  const db = makeDb();
+  const res = await staffMilestones.fetch(post("/api/staff-milestones", {
+    id: "ms_m1", status: "in_progress", updated_at: "2026-09-29T08:00:00.000Z",
+    text: { en: { title: "Mine" } },
+  }), env(db));
+  const body = await res.json();
+  eq(res.status, 409, "refused");
+  eq([body.changed, body.current && body.current.id, body.current && body.current.text.en.title], [true, "ms_m1", "Commissioned"],
+    "with the milestone as it now is, to show");
+  assert(!db.calls.some((c) => c.name === "milestone_upsert" || c.name === "milestone_translation_upsert"), "nothing written");
+});
+
+await check("…saved as opened, or with overwrite chosen, or from an older editor, it saves", async () => {
+  for (const extra of [{ updated_at: "2026-09-30T10:00:00.000Z" }, { updated_at: "2026-09-29T08:00:00.000Z", overwrite: true }, {}]) {
+    const db = makeDb();
+    const res = await staffMilestones.fetch(post("/api/staff-milestones", {
+      id: "ms_m1", status: "in_progress", text: { en: { title: "Mine" } }, ...extra,
+    }), env(db));
+    eq(res.status, 200, JSON.stringify(extra));
+    assert(db.calls.filter((c) => c.name === "milestone_upsert").length === 1, "written: " + JSON.stringify(extra));
+  }
+});
+
+await check("a goal is handed out with when it was last saved, and a stale save is refused", async () => {
+  const list = await (await staffGoals.fetch(get("/api/staff-goals"), env(makeDb()))).json();
+  eq(list.goals && list.goals[0].updated_at, "2026-09-30T10:00:00.000Z", "the editor gets the stamp");
+  const db = makeDb();
+  const res = await staffGoals.fetch(post("/api/staff-goals", {
+    id: "g_m1", label: "Mine", kind: "monthly", target_cents: 200000, currency: "EUR",
+    updated_at: "2026-09-29T08:00:00.000Z",
+  }), env(db));
+  const body = await res.json();
+  eq([res.status, body.changed, body.current && body.current.label], [409, true, "Monthly support"], "refused, with theirs");
+  assert(!db.calls.some((c) => c.name === "goal_upsert"), "nothing written");
+  const ok = makeDb();
+  eq((await staffGoals.fetch(post("/api/staff-goals", {
+    id: "g_m1", label: "Mine", kind: "monthly", target_cents: 200000, currency: "EUR",
+    updated_at: "2026-09-29T08:00:00.000Z", overwrite: true,
+  }), env(ok))).status, 200, "saved over it when chosen");
+});
+
+await check("a prayer request saved by someone else since it was opened is not overwritten", async () => {
+  EXTRA = {
+    prayer_for_staff: [{ id: "pr_1", is_public: 1, updated_at: "2026-09-30T10:00:00.000Z" }],
+    prayer_translations_for_staff: [{ prayer_id: "pr_1", lang: "en", title: "Visas" }],
+  };
+  try {
+    const list = await (await staffPrayer.fetch(get("/api/staff-prayer"), env(makeDb()))).json();
+    eq(list.prayer && list.prayer[0].updated_at, "2026-09-30T10:00:00.000Z", "the editor gets the stamp");
+    const db = makeDb();
+    const res = await staffPrayer.fetch(post("/api/staff-prayer", {
+      id: "pr_1", is_public: true, updated_at: "2026-09-29T08:00:00.000Z", text: { en: { title: "Mine" } },
+    }), env(db));
+    const body = await res.json();
+    eq([res.status, body.changed, body.current && body.current.text.en.title], [409, true, "Visas"], "refused, with theirs");
+    assert(!db.calls.some((c) => c.name === "prayer_upsert"), "nothing written");
+    eq((await staffPrayer.fetch(post("/api/staff-prayer", {
+      id: "pr_1", is_public: true, updated_at: "2026-09-30T10:00:00.000Z", text: { en: { title: "Mine" } },
+    }), env(makeDb()))).status, 200, "saved as opened");
+  } finally { EXTRA = {}; }
+});
+
 await check("the editor is handed the season words it previews with", async () => {
   const res = await staffMilestones.fetch(get("/api/staff-milestones"), env(makeDb()));
   const body = await res.json();
@@ -317,6 +391,27 @@ await check("saving only a color never changes what is shared", async () => {
   const v = embedSaved(db);
   eq([v.embed_roadmap, v.embed_goal, v.embed_prayer, v.embed_videos], [1, 0, 1, 0],
      "a color save reshuffled the sharing");
+});
+
+await check("the Sharing page never switches back a widget someone else changed since it loaded", async () => {
+  /* Someone shared the prayer list after this page loaded, when it was off. */
+  SETTINGS_ROW = { embed_enabled: 1, embed_roadmap: 1, embed_goal: 0, embed_prayer: 1, embed_videos: 0, embed_theme: "auto" };
+  const loaded = { accent: null, accent2: null, turn: null, theme: "auto",
+    shared: { roadmap: true, goal: false, prayer: false, videos: false } };
+  let db = makeDb();
+  const res = await staffSettings.fetch(patch("/api/staff-settings",
+    { embed: { accent: "#FF0066", theme: "auto", shared: { roadmap: true, goal: false, prayer: false, videos: false } }, base: loaded },
+    BOSS), env(db));
+  const body = await res.json();
+  eq([res.status, body.changed, body.current && body.current.embed.shared.prayer], [409, true, true], "refused, with theirs");
+  assert(!db.calls.some((c) => c.name === "partner_set_embed"), "switched it back anyway");
+  /* As loaded, it saves — even though the partner's updated_at moved for the
+     timeline in the same Save. */
+  db = makeDb();
+  eq((await staffSettings.fetch(patch("/api/staff-settings",
+    { embed: { accent: "#FF0066", theme: "auto", shared: { roadmap: true, goal: false, prayer: true, videos: false } },
+      base: { ...loaded, shared: { ...loaded.shared, prayer: true } } }, BOSS), env(db))).status, 200, "saved as loaded");
+  SETTINGS_ROW = {};
 });
 
 await check("the old single switch still turns all four off at once", async () => {
@@ -487,6 +582,91 @@ await check("someone it was shared with as Can edit may save it, and it stays th
   } finally { EXTRA = {}; }
 });
 
+await check("a directory card or resource someone else saved meanwhile is not overwritten", async () => {
+  EXTRA = {
+    directory_for_partner: [{ id: "dc_m1", name: "Pastor Dragan", role: "Home church", emails: "[]", phones: "[]",
+      updated_at: "2026-09-30T10:00:00.000Z" }],
+    resource_owner: [{ id: "r_x", owner_user_id: "u_mira", partner_id: null, updated_at: "2026-09-30T10:00:00.000Z" }],
+  };
+  try {
+    let db = makeDb();
+    let res = await staffData.fetch(post("/api/staff-data", { kind: "contact", id: "dc_m1", name: "Mine",
+      updated_at: "2026-09-29T08:00:00.000Z" }), env(db));
+    let body = await res.json();
+    eq([res.status, body.changed, body.current && body.current.name], [409, true, "Pastor Dragan"], "card refused, with theirs");
+    assert(!db.calls.some((c) => c.name === "directory_upsert"), "card not written");
+    eq((await staffData.fetch(post("/api/staff-data", { kind: "contact", id: "dc_m1", name: "Mine",
+      updated_at: "2026-09-30T10:00:00.000Z" }), env(makeDb()))).status, 200, "card saved as opened");
+
+    db = makeDb();
+    res = await staffData.fetch(post("/api/staff-data", { kind: "resource", id: "r_x", title: "Mine",
+      updated_at: "2026-09-29T08:00:00.000Z" }), env(db));
+    body = await res.json();
+    eq([res.status, body.changed], [409, true], "resource refused");
+    assert(!db.calls.some((c) => c.name === "resource_upsert"), "resource not written");
+    eq((await staffData.fetch(post("/api/staff-data", { kind: "resource", id: "r_x", title: "Mine",
+      updated_at: "2026-09-29T08:00:00.000Z", overwrite: true }), env(makeDb()))).status, 200, "saved over it when chosen");
+    /* Who may edit is still asked first: a stranger's stale save is a 403, not a peek at the record. */
+    EXTRA.resource_owner = [{ id: "r_x", owner_user_id: "u_other", partner_id: null, updated_at: "2026-09-30T10:00:00.000Z" }];
+    eq((await staffData.fetch(post("/api/staff-data", { kind: "resource", id: "r_x", title: "Mine",
+      updated_at: "2026-09-29T08:00:00.000Z" }), env(makeDb()))).status, 403, "not theirs to see");
+  } finally { EXTRA = {}; }
+});
+
+await check("stewardship: a person, a life event or a logged contact saved by someone else meanwhile is not overwritten", async () => {
+  EXTRA = {
+    contact_detail: [{ id: "c_1", first_name: "Ana", last_name: "K", updated_at: "2026-09-30T10:00:00.000Z" }],
+    life_events_for_contact: [{ id: "le_1", kind: "birth", occurred_on: "2026-05-01", note: "", recurs: 1,
+      updated_at: "2026-09-30T10:00:00.000Z" }],
+    contact_timeline: [{ id: "in_1", type: "call", is_personal: 1, channel: "digital", occurred_on: "2026-09-01",
+      note: "Theirs", source: "manual" }],
+  };
+  const wrote = (db, q) => db.calls.some((c) => c.name === q);
+  try {
+    let db = makeDb();
+    let res = await staffStewardship.fetch(post("/api/staff-stewardship", {
+      person: { id: "c_1", first_name: "Mine", last_name: "K" }, updated_at: "2026-09-29T08:00:00.000Z" }), env(db));
+    eq([res.status, (await res.json()).changed], [409, true], "the person, refused");
+    assert(!wrote(db, "contact_upsert"), "the person was written");
+
+    db = makeDb();
+    res = await staffStewardship.fetch(post("/api/staff-stewardship", { contact_id: "c_1",
+      event: { id: "le_1", kind: "birth", occurred_on: "2026-05-02" }, updated_at: "2026-09-29T08:00:00.000Z" }), env(db));
+    eq([res.status, (await res.json()).changed], [409, true], "the life event, refused");
+    assert(!wrote(db, "life_event_upsert"), "the event was written");
+
+    /* interactions keep no updated_at: what the dialog opened is compared */
+    const base = { type: "call", is_personal: true, channel: "digital", occurred_on: "2026-09-01", note: "Was" };
+    db = makeDb();
+    res = await staffStewardship.fetch(post("/api/staff-stewardship", { contact_id: "c_1",
+      interaction: { id: "in_1", type: "call", occurred_on: "2026-09-01", note: "Mine", is_personal: true, channel: "digital" },
+      base }), env(db));
+    eq([res.status, (await res.json()).changed], [409, true], "the logged contact, refused");
+    assert(!wrote(db, "interaction_update"), "the contact was written");
+
+    db = makeDb();
+    await staffStewardship.fetch(post("/api/staff-stewardship", { contact_id: "c_1",
+      interaction: { id: "in_1", type: "call", occurred_on: "2026-09-01", note: "Mine", is_personal: true, channel: "digital" },
+      base: { ...base, note: "Theirs" } }), env(db));
+    assert(wrote(db, "interaction_update"), "unchanged since opened (true there, 1 here) — it must save");
+  } finally { EXTRA = {}; }
+});
+
+await check("a staff profile someone else saved meanwhile is not overwritten", async () => {
+  EXTRA = {
+    user_by_id_any_status: [{ id: "u_mira", user_id: "u_mira", user_name: "Mira Petrović", name: "Mira Petrović", status: "active" }],
+    staff_profiles_all: [{ user_id: "u_mira", slug: "mira-petrovic", region: "Theirs", updated_at: "2026-09-30T10:00:00.000Z" }],
+  };
+  try {
+    const db = makeDb();
+    const res = await adminProfile.fetch(post("/api/admin/profile", { user_id: "u_mira", slug: "mira-petrovic",
+      region: "Mine", updated_at: "2026-09-29T08:00:00.000Z" }, BOSS), env(db));
+    const body = await res.json();
+    eq([res.status, body.changed, body.current && body.current.region], [409, true, "Theirs"], "refused, with theirs " + JSON.stringify(body).slice(0, 160));
+    assert(!db.calls.some((c) => c.name === "staff_profile_upsert"), "written anyway");
+  } finally { EXTRA = {}; }
+});
+
 await check("people are found only after two letters", async () => {
   const db = makeDb();
   const one = await (await staffData.fetch(get("/api/staff-data?people=a"), env(db))).json();
@@ -595,6 +775,33 @@ await check("someone on the team who is not the owner sees it, cannot change it,
   } finally { EXTRA = {}; }
 });
 
+await check("a site draft someone else saved meanwhile is not overwritten — compared by the draft, not the stamp", async () => {
+  /* one row: a starter site carries random ids, so two calls differ */
+  const row = SITE_ROW();
+  EXTRA = { partner_site_get: [row] };
+  try {
+    const stored = JSON.parse(row.draft);
+    const mine = JSON.parse(row.draft); mine.design.menu = "side";
+    const older = JSON.parse(row.draft); older.pages[1].on = !older.pages[1].on;   /* a change cleaning keeps */
+
+    let db = makeDb();
+    let res = await staffSite.fetch(post("/api/staff-site", { action: "save", draft: mine, base: older }), env(db));
+    const body = await res.json();
+    eq([res.status, body.changed], [409, true], "refused");
+    assert(body.current && body.current.draft && body.current.draft.design, "with the draft as it now is");
+    assert(!called(db, "partner_site_save_draft").length, "written anyway");
+
+    db = makeDb();
+    eq((await staffSite.fetch(post("/api/staff-site", { action: "save", draft: mine, base: stored }), env(db))).status, 200,
+      "unchanged since it loaded");
+    assert(called(db, "partner_site_save_draft").length === 1, "saved");
+
+    db = makeDb();
+    await staffSite.fetch(post("/api/staff-site", { action: "save", draft: mine, base: older, overwrite: true }), env(db));
+    assert(called(db, "partner_site_save_draft").length === 1, "saved over it when chosen");
+  } finally { EXTRA = {}; }
+});
+
 await check("switching on a site nobody published publishes it first", async () => {
   EXTRA = { partner_site_get: [SITE_ROW()] };
   try {
@@ -685,14 +892,19 @@ await check("a site that is switched off shows Thauma's closed page — nothing 
     const res = await serveSite(new Request("https://mirapetrovic.thauma.one/en/"), e, { sub: "mirapetrovic", rest: "/en/", base: "" });
     eq(res.status, 404, "not found");
     const html = await res.text();
-    assert(html.includes("THAUMA") && html.includes("Nothing here right now"), "Thauma's page, in words");
-    assert(html.includes('href="https://thauma.one/"'), "a way on to thauma.one");
+    assert(/class="wordmark">THAUMA</.test(html), "Thauma's wordmark");
+    assert(html.includes('href="https://thauma.one/">Go to thauma.one<'), "one way on, to thauma.one");
     assert(!/Mira/.test(html), "nothing of the ministry");
+    assert(!html.includes("fail.js"), "no arcade door while the arcade is not out");
     eq([res.headers.get("Cache-Control"), res.headers.get("X-Robots-Tag")], ["no-store", "noindex"],
       "never remembered, never indexed — switching on shows the site at once");
     const hr = await serveSite(new Request("https://mirapetrovic.thauma.one/", { headers: { "Accept-Language": "hr-HR,hr;q=0.9" } }), e,
       { sub: "mirapetrovic", rest: "/", base: "" });
-    assert((await hr.text()).includes("Ovdje trenutno nema ničega"), "in the visitor's language");
+    assert((await hr.text()).includes("Idite na thauma.one"), "in the visitor's language");
+    /* Once /arcade/ is built for live, THAUMA is a door into it. */
+    const out = { ...e, ASSETS: { fetch: async (r) => new Response("", { status: new URL(r.url).pathname === "/arcade/" ? 200 : 404 }) } };
+    const withDoor = await (await serveSite(new Request("https://mirapetrovic.thauma.one/"), out, { sub: "mirapetrovic", rest: "/", base: "" })).text();
+    assert(withDoor.includes("/js/arcade/fail.js") && withDoor.includes("https://thauma.one/arcade/"), "the door, and where it leads");
     eq(await serveSite(new Request("https://dev.thauma.one/site/mirapetrovic/en/"), e,
       { sub: "mirapetrovic", rest: "/en/", base: "/site/mirapetrovic" }), null, "under /site/, the console's own 404");
   } finally { EXTRA = {}; }

@@ -101,6 +101,13 @@ WHERE partner_id = :partner_id
 ORDER BY kind, label;
 
 
+-- name: goal_stamps
+-- When each goal's definition was last saved. goal_progress (the view the
+-- list reads) leaves it out; the editor needs it so a save made on another
+-- site since it opened the goal is caught, not overwritten (lib/fresh.js).
+SELECT id, updated_at FROM goals WHERE partner_id = :partner_id;
+
+
 -- name: goal_history
 -- Snapshot series for one goal, for a sparkline. Aggregates only — there is
 -- no donor-level data to chart, by design.
@@ -1510,16 +1517,19 @@ ORDER BY pl.sort_order, l.name;
 -- has not opted in must not be findable through it — the endpoint returns 404
 -- on no rows, which does not confirm whether the slug exists.
 --
--- is_public is checked as well. A partner can be public without embedding,
--- but embedding one who is NOT public would put them on somebody else's
--- website while their own listing is still hidden.
+-- partners.is_public is NOT checked (Chase, 2026-10-01: "We should remove
+-- the public switch. It's pointless then. The Sharing page already tells the
+-- site what to share"). It used to be, but every ministry is created with
+-- is_public = 0 and nothing in the system could ever set it to 1 — no console
+-- control, no query — so turning sharing on never published anything. The
+-- Sharing page's switches are the decision; what they publish is public by
+-- construction (PUBLIC_QUERIES, assertPublicSafe, nopii).
 SELECT id, slug, display_name, embed_accent, embed_accent2, embed_theme, embed_turn,
        timeline_start, timeline_end,
        embed_roadmap, embed_goal, embed_prayer, embed_videos
 FROM partners
 WHERE slug = :slug
-  AND embed_enabled = 1
-  AND is_public = 1;
+  AND embed_enabled = 1;
 
 
 -- name: api_key_lookup
@@ -2449,7 +2459,7 @@ UPDATE subscribers
 -- name: resource_owner
 -- Who may change this, in one row. The endpoint compares rather than trusting
 -- anything the browser sent about which shelf a resource came from.
-SELECT id, owner_user_id, partner_id FROM resources WHERE id = :id;
+SELECT id, owner_user_id, partner_id, updated_at FROM resources WHERE id = :id;
 
 
 -- name: resource_share_add
@@ -2613,6 +2623,7 @@ SELECT
   c.giving_ref,
   c.notes,
   c.created_at,
+  c.updated_at,
   t.last_contact_any,
   t.last_personal_contact,
   t.interaction_count,

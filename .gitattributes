@@ -1,0 +1,6 @@
+# The site's word files merge entry by entry, not line by line: a staff
+# member's edit on main and a new key on dev never disagreed, and the same
+# entry changed on both sides keeps the newer value and reports the older.
+# The driver is deploy/json-merge.mjs; the syncs (sync-dev.yml, git-sync.sh)
+# register it. Where it is not registered, git merges these as text.
+src/_data/**/*.json merge=jsonentries
