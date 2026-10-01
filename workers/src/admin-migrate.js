@@ -24,11 +24,18 @@
  * `schema_migrations` in the same database, so the answer to "has this run"
  * comes from the database itself rather than from anybody's memory.
  *
- * The migration FILES are read from the repository at the live branch — the
- * same source of truth Publish builds from. So the sequence for a schema
- * change is: merge the migration to the live branch, apply it here, then
- * publish the code that depends on it. Schema first, code second, which is
- * the order that survives a half-finished deploy.
+ * The migration FILES are read from the repository at the branch Publish is
+ * about to send live (STAGING_BRANCH, `dev`) — the same branch Publish checks
+ * before it will merge. So the sequence for a schema change is: commit the
+ * migration, apply it here, then publish the code that depends on it. Schema
+ * first, code second, which is the order that survives a half-finished deploy.
+ *
+ * It used to read the LIVE branch, which only worked while dev had a database
+ * of its own. With ONE database (68f8ce3) that was a deadlock, met the first
+ * time a migration was added after it (0047, 2026-10-01): Apply could not see
+ * a file that was only on dev, and Publish refused because that same file was
+ * not applied. Applying from dev before publishing is safe because migrations
+ * are additive — the live code simply does not use what was added yet.
  *
  * WHY THERE IS A BASELINE ACTION
  * ---------------------------------------------------------------------------
@@ -342,6 +349,9 @@ export default {
       if (request.method === "GET") return json({ configured: false, reason: cfg.error }, 200);
       return json({ error: cfg.error, configured: false }, 500);
     }
+
+    /* Read the files from the branch about to be published (see THE MODEL). */
+    env = { ...env, CONTENT_BRANCH: env.STAGING_BRANCH || env.CONTENT_BRANCH };
 
     if (request.method === "GET") return status(env);
 

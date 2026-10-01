@@ -176,6 +176,22 @@ await check("GET lists pending migrations against an empty tracking table", asyn
   assert(b.state.created, "the tracking table was never created");
 });
 
+await check("the files come from the branch Publish is about to send live, not from live", async () => {
+  /* One database (68f8ce3): Publish refuses while a migration on dev is not
+     applied, so Apply must read dev too. Reading main was a deadlock, met
+     with 0047 on 2026-10-01: no Apply button, and Publish refusing. */
+  const asked = [], real = globalThis.fetch;
+  globalThis.fetch = async (url, o) => { if (/github/.test(String(url))) asked.push(String(url)); return real(url, o); };
+  try {
+    const res = await withFetch(["0001_init.sql", "0047_new.sql"], () =>
+      handler.fetch(req("GET"), { ...ENV(fakeBinding()), STAGING_BRANCH: "dev" }));
+    const body = await res.json();
+    eq(body.branch, "dev", "the branch it read");
+    assert(asked.length && asked.every((u) => /ref=dev\b/.test(u)), "asked GitHub for: " + asked.join(", "));
+    eq(body.pending, ["0001_init.sql", "0047_new.sql"], "a file only on dev is offered");
+  } finally { globalThis.fetch = real; }
+});
+
 await check("a database with schema but no records asks to be baselined", async () => {
   const b = fakeBinding();
   const res = await withFetch(undefined, () => handler.fetch(req("GET"), ENV(b)));
