@@ -172,7 +172,10 @@ await check("the authorisation is in the SQL, not in the handler", async () => {
   const sql = QUERIES.public_partner_for_embed;
   assert(sql, "public_partner_for_embed is missing");
   assert(/embed_enabled\s*=\s*1/.test(sql), "must filter on embed_enabled = 1");
-  assert(/is_public\s*=\s*1/.test(sql), "must filter on is_public = 1");
+  /* ONE switch (Chase, 2026-10-01): the Sharing page's. partners.is_public
+     used to be required too, but nothing could ever set it, so sharing never
+     published anything. A second flag must not creep back in. */
+  assert(!/is_public/.test(sql), "must not require partners.is_public — the Sharing page is the one switch");
 });
 
 await check("the embed query is in the public-safe set and cannot read private tables", async () => {
