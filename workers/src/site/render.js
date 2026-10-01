@@ -199,6 +199,17 @@ ${L.heroFg ? `.hero-behind:not(.has-photo),.hero-words{color:${L.heroFg}}.hero-b
   animation:cue 2s ease-in-out infinite}
 .scrollcue i{display:block;width:2px;height:32px;background:var(--acc);opacity:.9}
 .scrollcue span{padding-left:.15em;opacity:.8}
+/* Design › Motion › Scroll hint: the line and word (above), an arrow, a mouse, or none. */
+.scrollcue .cue-arrow,.scrollcue .cue-mouse{display:none}
+html[data-cue="none"] .scrollcue{display:none}
+html[data-cue="arrow"] .scrollcue i,html[data-cue="arrow"] .scrollcue span,html[data-cue="mouse"] .scrollcue i,html[data-cue="mouse"] .scrollcue span{display:none}
+html[data-cue="arrow"] .scrollcue .cue-arrow{display:block;width:30px;height:30px;opacity:.8}
+html[data-cue="arrow"] .scrollcue{animation-name:cuedown}
+html[data-cue="mouse"] .scrollcue{animation-name:none}
+html[data-cue="mouse"] .scrollcue .cue-mouse{display:block;position:relative;width:22px;height:34px;border:1.6px solid currentColor;border-radius:12px;opacity:.75}
+.cue-mouse em{position:absolute;left:50%;top:7px;width:3px;height:7px;margin-left:-1.5px;border-radius:2px;background:var(--acc);animation:wheel 1.8s ease-in-out infinite}
+@keyframes cuedown{0%,100%{transform:translateY(0)}50%{transform:translateY(9px)}}
+@keyframes wheel{0%{transform:translateY(0);opacity:1}70%{transform:translateY(10px);opacity:0}100%{transform:translateY(0);opacity:0}}
 .hero-behind.has-photo .scrollcue{color:#fff}
 @keyframes cue{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
 html.scrolled .scrollcue{opacity:0;pointer-events:none}
@@ -224,6 +235,15 @@ main section.raised + section{border-top-color:transparent}
 .band{background:var(--panel)}
 .bandrow{display:flex;gap:40px;align-items:center;justify-content:space-between;flex-wrap:wrap}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:40px}
+/* On a raised band (the card color) a card takes the page color instead, so
+   it never melts into the band (Chase, 2026-10-01). */
+main section.raised .card{background:var(--bg)}
+/* The sign-up card: as wide as a form wants, centered, not the whole column
+   with the boxes pushed left (Chase, 2026-10-01: "extra wide with left
+   alignment of the boxes"). */
+.signcard{max-width:600px;margin:0 auto;text-align:center}
+.signcard .lede{margin-left:auto;margin-right:auto}
+.signcard .signform{margin:22px auto 0;text-align:left}
 .news{list-style:none;margin:0;padding:0;display:grid;gap:10px}
 .news a{display:flex;justify-content:space-between;gap:20px;padding:18px 20px;background:var(--panel);border:1px solid var(--line);border-radius:12px;color:var(--fg);text-decoration:none}
 .news a:hover{border-color:var(--acc)}.news small{color:var(--dim)}
@@ -298,7 +318,7 @@ html[data-photos="zoom"] .kb img{animation:kb 18s ease-in-out infinite alternate
 html[data-pages="fade"]{view-transition-name:root}
 @view-transition{navigation:auto}
 @media (prefers-reduced-motion:reduce){.m,.h .ch{opacity:1!important;transform:none!important;transition:none!important}
- .scrollcue{animation:none}
+ .scrollcue,.cue-mouse em{animation:none}
  .kb img{animation:none!important}.progress{display:none}.btn{transition:none}}
 @media (max-width:820px){main section{padding:64px 0}.pt,.hero-beside .wrap,.hero-monogram .wrap{grid-template-columns:1fr;gap:28px}.pt-right .pt .pic{order:0}
  .hero .wrap{padding:110px 0 64px}.hero-monogram .wrap{padding:100px 0 130px}.mono-pic img{max-height:240px}.card{padding:26px}}
@@ -406,7 +426,7 @@ function renderSection(sec, ctx) {
   };
   const widget = (kind, extra = "") =>
     `<div class="m" data-thauma="${esc(ctx.slug)}" data-widget="${kind}" data-lang="${esc(lang)}" data-theme="${ctx.widgetTheme}" data-foot="off"` +
-    `${ctx.widgetAccent ? ` data-accent="${esc(ctx.widgetAccent)}"` : ""}${extra}></div>`;
+    `${ctx.widgetAccent ? ` data-accent="${esc(ctx.widgetAccent)}"` : ""}${ctx.widgetLook(!!sec.raised)}${extra}></div>`;
 
   switch (sec.type) {
     case "hero": {
@@ -425,7 +445,10 @@ function renderSection(sec, ctx) {
       /* As chaseroush.com's (Chase, 2026-10-01: "look at chaseroush.com home
          page to get a feel for what I'm actually wanting"): a short line in
          the accent over the word "Scroll", the two bobbing together. */
-      const cue = `<button type="button" class="scrollcue" aria-hidden="true" tabindex="-1"><i></i><span>${esc(word(lang, "scroll"))}</span></button>`;
+      /* Every kind is in the markup; html[data-cue] (Design › Motion) shows one. */
+      const cue = `<button type="button" class="scrollcue" aria-hidden="true" tabindex="-1"><i></i>` +
+        `<svg class="cue-arrow" viewBox="0 0 24 24"><path d="M5 9l7 7 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>` +
+        `<b class="cue-mouse"><em></em></b><span>${esc(word(lang, "scroll"))}</span></button>`;
       if (sec.variant === "monogram") {
         const initials = initialsOf(ctx.name);
         const h = heading(w("heading"), "h1");
@@ -489,10 +512,10 @@ function renderSection(sec, ctx) {
     }
     case "signup":
       ctx.needs.signup = true;
-      return `<section${cls(sec.variant === "band" ? "band" : "")}><div class="wrap">${sec.variant === "card" ? '<div class="card">' : '<div class="bandrow">'}<div>${heading(w("heading"))}${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}</div><div class="m" style="flex:1 1 360px;max-width:520px"><div data-thauma-form data-lang="${esc(lang)}"${ctx.formLook(sec.variant === "card")}></div></div></div></div></section>`;
+      return `<section${cls(sec.variant === "band" ? "band" : "")}><div class="wrap">${sec.variant === "card" ? '<div class="card signcard">' : '<div class="bandrow">'}<div>${heading(w("heading"))}${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}</div><div class="m${sec.variant === "card" ? " signform" : ""}" style="flex:1 1 360px;max-width:${sec.variant === "card" ? "100%" : "460px"}"><div data-thauma-form data-lang="${esc(lang)}"${ctx.formLook(sec.variant === "card", !!sec.raised)}></div></div></div></div></section>`;
     case "contact":
       ctx.needs.contact = true;
-      return `<section${cls()}><div class="wrap">${heading(w("heading"))}${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}<div class="m formbox" style="max-width:640px;margin-top:24px"><div data-thauma-contact data-lang="${esc(lang)}"${ctx.formLook(false)}></div></div></div></section>`;
+      return `<section${cls()}><div class="wrap">${heading(w("heading"))}${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}<div class="m formbox" style="max-width:560px;margin-top:24px"><div data-thauma-contact data-lang="${esc(lang)}"${ctx.formLook(false, !!sec.raised)}></div></div></div></section>`;
     case "give":
       if (!ctx.giveUrl) return "";
       return `<section${cls(sec.variant === "band" ? "band" : "")}><div class="wrap">${sec.variant === "card" ? '<div class="card">' : '<div class="bandrow">'}<div>${heading(w("heading"))}${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}</div><div class="btns m" style="margin:0"><a class="btn solid" href="${esc(ctx.giveUrl)}">${esc(w("button") || word(lang, "giveBtn"))} →</a></div></div></div></section>`;
@@ -541,6 +564,15 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
     widgetTheme: L.alt ? "auto" : L.scheme === "dark" ? "dark" : "light",
     /* A Custom site's accent reaches the widgets; the ministry's otherwise. */
     widgetAccent: design.look === "custom" ? (design.colors || {}).accent || null : null,
+    /* The widgets' cards, dropdowns and panels in the site's colors (Chase,
+       2026-10-01): bg is the CARD — the site's card color on a plain band,
+       the page color on a raised one (which is the card color), so cards
+       never melt into the band they sit on. */
+    widgetLook: (raised) => {
+      const w = (P) => ({ bg: raised ? P.bg : P.panel, panel: raised ? P.panel : P.bg, fg: P.fg, dim: P.dim,
+        line: P.line, track: P.line, font: P.body });
+      return ` data-look="${esc(JSON.stringify({ ...(L.alt ? { ...w(L), dark: w(L.alt) } : w(L)), display: L.display }))}"`;
+    },
     /* The sign-up and contact forms wear the SITE's colors, not the form's
        own embed colors (Chase, 2026-10-01: they "don't follow the color
        scheme of the designer"): its accent pair and its light or dark. */
@@ -550,14 +582,19 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
       /* And the site's own card, fields, lines and type (data-look,
          lib/embed-form.js LOOK_JS), so the form looks like part of the page
          rather than a box dropped onto it — for both schemes when the site
-         follows the visitor's device. */
-      const look = (P) => ({ bg: P.bg, fg: P.fg, dim: P.dim, line: P.line, panel: P.panel, field: P.bg, font: P.body });
-      /* The section's heading already names the form, so it has no title of
-         its own here; its words are in the site's display face. */
-      const both = { ...(L.alt ? { ...look(L), dark: look(L.alt) } : look(L)), display: L.display, notitle: true };
-      return (flat) => ` data-theme="${L.alt ? "auto" : L.scheme === "dark" ? "dark" : "light"}"` +
-        (a ? ` data-accent="${esc(a)}"` : "") + (a2 ? ` data-accent2="${esc(a2)}"` : "") +
-        ` data-look="${esc(JSON.stringify(flat ? { ...both, flat: true } : both))}"`;
+         follows the visitor's device. On a RAISED band (which is the site's
+         card color) the card and its fields swap, so it stands apart. */
+      const look = (P, raised) => ({ bg: P.bg, fg: P.fg, dim: P.dim, line: P.line,
+        panel: raised ? P.bg : P.panel, field: raised ? P.panel : P.bg, font: P.body });
+      return (flat, raised) => {
+        /* The section's heading already names the form, so it has no title
+           of its own here; its words are in the site's display face. */
+        const both = { ...(L.alt ? { ...look(L, raised), dark: look(L.alt, raised) } : look(L, raised)),
+          display: L.display, notitle: true, ...(flat ? { flat: true } : {}) };
+        return ` data-theme="${L.alt ? "auto" : L.scheme === "dark" ? "dark" : "light"}"` +
+          (a ? ` data-accent="${esc(a)}"` : "") + (a2 ? ` data-accent2="${esc(a2)}"` : "") +
+          ` data-look="${esc(JSON.stringify(both))}"`;
+      };
     })(),
     giveUrl: doc.give || site.giving_url || "",
     pageOn: (id) => pages.some((p) => p.id === id),
@@ -633,12 +670,12 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
   const fold = design.menu === "center" ? 820 : Math.max(820, Math.ceil(menuW / 10) * 10);
 
   const out = `<!doctype html>
-<html lang="${esc(lang)}" data-menu="${esc(design.menu)}" data-entrance="${esc(m.entrance)}" data-photos="${esc(m.photos)}" data-headings="${esc(m.headings)}" data-buttons="${esc(m.buttons)}" data-pages="${esc(m.pages)}" data-progress="${esc(m.progress)}">
+<html lang="${esc(lang)}" data-menu="${esc(design.menu)}" data-entrance="${esc(m.entrance)}" data-photos="${esc(m.photos)}" data-headings="${esc(m.headings)}" data-buttons="${esc(m.buttons)}" data-pages="${esc(m.pages)}" data-progress="${esc(m.progress)}" data-cue="${esc(m.cue)}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)}</title>
-${design.favicon ? `<link rel="icon" href="${esc(design.favicon)}">` : initialsIcon(name, L, design.faviconStyle) ? `<link rel="icon" type="image/svg+xml" href="${esc(initialsIcon(name, L, design.faviconStyle))}">` : ""}
+${design.faviconStyle === "photo" && design.favicon ? `<link rel="icon" href="${esc(design.favicon)}">` : initialsIcon(name, L, design.faviconStyle) ? `<link rel="icon" type="image/svg+xml" href="${esc(initialsIcon(name, L, design.faviconStyle))}">` : ""}
 ${desc ? `<meta name="description" content="${esc(desc)}">` : ""}
 ${draft ? '<meta name="robots" content="noindex">' : ""}
 ${alternates}

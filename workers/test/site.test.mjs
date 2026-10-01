@@ -233,9 +233,16 @@ check("the opening fills the screen, with an arrow that bounces until the visito
   assert(/\.hero\{[^}]*min-height:calc\(100svh - 69px\)/.test(html), "the whole first screen");
   assert(/<section class="hero hero-behind[^"]*">[\s\S]*?<button type="button" class="scrollcue"/.test(html), "the arrow");
   assert(/@keyframes cue/.test(html) && /html\.scrolled \.scrollcue\{opacity:0/.test(html), "bouncing, and gone once scrolled");
-  assert(/\.scrollcue\{animation:none\}/.test(html), "still, for anyone who asked for less motion");
+  assert(/\.scrollcue,\.cue-mouse em\{animation:none\}/.test(html), "still, for anyone who asked for less motion");
+  /* Design › Motion › Scroll hint picks which (Chase, 2026-10-01). */
+  assert(/<html[^>]* data-cue="line"/.test(html), "the line and word unless chosen otherwise");
+  const d2 = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  d2.design.motion.cue = "mouse";
+  assert(/<html[^>]* data-cue="mouse"/.test(page(d2)) && /class="cue-mouse"/.test(page(d2)), "or a mouse");
+  d2.design.motion.cue = "sideways";
+  assert(/<html[^>]* data-cue="line"/.test(page(d2)), "an unknown one is the line");
   /* chaseroush.com's: a short accent line over the word, bobbing together. */
-  assert(/class="scrollcue"[^>]*><i><\/i><span>Scroll<\/span><\/button>/.test(html), "a line over the word");
+  assert(/class="scrollcue"[^>]*><i><\/i>[\s\S]*?<span>Scroll<\/span><\/button>/.test(html), "a line over the word");
   assert(/\.scrollcue i\{[^}]*width:2px;height:32px;background:var\(--acc\)/.test(html), "the line in the accent");
 });
 
@@ -310,6 +317,22 @@ check("Chase, 2026-10-01: a social link may be just the handle; the footers fill
   assert(/\.foot \.small\{flex:1 0 100%;[^}]*max-width:none/.test(html), "the small print takes its own row");
   assert(/<div class="cols">[\s\S]*?<\/div><div class="bar"><p class="small">S<\/p><span class="powered">/.test(html), "columns: the columns, then a bar for the small print and the credit");
   assert(/\.foot-columns \.menu\{display:grid;grid-template-columns:repeat\(2,auto\)/.test(html), "the pages in two columns, not a long list");
+});
+
+check("Chase, 2026-10-01: widgets and forms wear the site's cards, which stand apart on a raised band", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  d.design.mode = "dark";
+  const lookOf = (html, attr) => {
+    const m = new RegExp(attr + '[^>]*data-look="([^"]+)"').exec(html);
+    return m && JSON.parse(m[1].replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&"));
+  };
+  const tl = d.pages.find((p) => p.id === "timeline").sections[0];
+  tl.raised = false;
+  const plain = lookOf(page(d, "timeline"), 'data-widget="roadmap"');
+  tl.raised = true;
+  const raised = lookOf(page(d, "timeline"), 'data-widget="roadmap"');
+  assert(plain && raised, "the widget is told the site's look");
+  assert(plain.bg !== raised.bg && plain.bg === raised.panel, "a raised band swaps the card and the panel: " + JSON.stringify([plain, raised]));
 });
 
 check("the Footer tab's preview can be the footer alone", () => {

@@ -64,7 +64,7 @@
   var MOTION = {
     entrance: ['rise', 'fade', 'slide', 'zoom', 'none'], photos: ['drift', 'zoom', 'still'],
     headings: ['letters', 'words', 'plain'], buttons: ['lift', 'glow', 'plain'],
-    pages: ['fade', 'cut'], progress: ['on', 'off'],
+    pages: ['fade', 'cut'], progress: ['on', 'off'], cue: ['line', 'arrow', 'mouse', 'none'],
   };
   var SOCIALS = ['youtube', 'instagram', 'facebook', 'x', 'tiktok', 'linkedin', 'spotify', 'email'];
   var LOOKS = ['night', 'paper', 'bold', 'custom'];
@@ -925,16 +925,17 @@
         (d.brand === 'logo' ? (d.logo ? '<img class="ws-logo" src="' + esc(d.logo) + '" alt="">' : '') +
           '<label class="ghost-btn sm ws-file">' + esc(d.logo ? tr('ws.changePhoto') : tr('ws.chooseLogo')) + '<input type="file" accept="image/*" data-logo hidden></label>' : '')) +
       /* The little picture in the browser tab. */
-      row(tr('ws.favicon'), (d.favicon ? '<img class="ws-favicon" src="' + esc(d.favicon) + '" alt="">' : '') +
-        '<label class="ghost-btn sm ws-file">' + esc(d.favicon ? tr('ws.changePhoto') : tr('ws.choosePhoto')) +
-        '<input type="file" accept="image/*" data-favicon hidden></label>' +
-        (d.favicon ? '<button type="button" class="link-btn" data-unfavicon>' + esc(tr('ws.removePhoto')) + '</button>' : '') +
+      /* Filled, Letters or Photo (Chase, 2026-10-01); the picture's controls
+         only under Photo. Without a picture, Photo shows the filled initials. */
+      row(tr('ws.favicon'), chips('faviconStyle', ['filled', 'letters', 'photo'],
+        d.faviconStyle || (d.favicon ? 'photo' : 'filled'), function (v) { return tr('ws.faviconStyle.' + v); }) +
+        ((d.faviconStyle || (d.favicon ? 'photo' : 'filled')) === 'photo'
+          ? (d.favicon ? '<img class="ws-favicon" src="' + esc(d.favicon) + '" alt="">' : '') +
+            '<label class="ghost-btn sm ws-file">' + esc(d.favicon ? tr('ws.changePhoto') : tr('ws.choosePhoto')) +
+            '<input type="file" accept="image/*" data-favicon hidden></label>' +
+            (d.favicon ? '<button type="button" class="link-btn" data-unfavicon>' + esc(tr('ws.removePhoto')) + '</button>' : '')
+          : '') +
         '<span class="hint"></span>') +
-      /* Without a picture, the initials — on an accent tile, or in the accent
-         (Chase, 2026-10-01). Hidden once a picture is chosen. */
-      (d.favicon ? '' : row(tr('ws.faviconStyle'), chips('faviconStyle', ['filled', 'letters'], d.faviconStyle || 'filled', function (v) {
-        return tr('ws.faviconStyle.' + v);
-      }))) +
       '</div><div class="ws-head"><h2>' + esc(tr('ws.motion')) + '</h2></div><div class="ws-rows">' +
       Object.keys(MOTION).map(function (k) {
         return row(tr('ws.m.' + k), chips('motion:' + k, MOTION[k], d.motion[k], function (v) { return tr('ws.m.' + k + '.' + v); }));
