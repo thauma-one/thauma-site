@@ -186,6 +186,43 @@ export function formStyles() {
    carry data-w (text) or data-wp (placeholder) naming their key, and a missing
    key falls back to English rather than to nothing.
    =========================================================================== */
+/* ===========================================================================
+   THE PAGE'S OWN LOOK, when the page says what it is (Chase, 2026-10-01: on
+   a Site Creator site "the background of the form itself doesn't seem like
+   it matches"). data-look carries the site's colors and font as JSON —
+   { bg, fg, dim, line, panel, field, font, dark: { ...the same } } — and
+   they win over the form's own scheme. Every value is checked before it
+   goes into CSS: a color is a hex or an rgb()/rgba() with digits only, a
+   font is letters, quotes, commas and hyphens. Anything else is ignored.
+   The accent's text tones are worked out again on the page's own card.
+   =========================================================================== */
+export const LOOK_JS = [
+  "function siteLook(node, accent, second) {",
+  "  var raw = node.getAttribute('data-look'), o;",
+  "  if (!raw) return '';",
+  "  try { o = JSON.parse(raw); } catch (e) { return ''; }",
+  "  var COLOR = /^(#[0-9a-fA-F]{3,8}|rgba?\\([0-9.,\\s%]+\\))$/, FONT = /^[\\w\\s'\",.-]{1,200}$/;",
+  "  var VARS = { bg: '--bg', fg: '--fg', dim: '--dim', line: '--line', panel: '--panel', field: '--field' };",
+  "  function rules(x) {",
+  "    var css = '';",
+  "    if (!x || typeof x !== 'object') return css;",
+  "    Object.keys(VARS).forEach(function (k) { if (typeof x[k] === 'string' && COLOR.test(x[k])) css += VARS[k] + ':' + x[k] + ';'; });",
+  "    if (typeof x.font === 'string' && FONT.test(x.font)) css += 'font-family:' + x.font + ';';",
+  "    if (typeof x.panel === 'string' && /^#[0-9a-fA-F]{6}$/.test(x.panel)) {",
+  "      css += '--acc-t:' + readable(accent, x.panel) + ';--acc2-t:' + readable(second, x.panel) + ';';",
+  "    }",
+  "    return css ? ':host{' + css + '}' : '';",
+  "  }",
+  "  var light = rules(o), dark = rules(o.dark), extra = '';",
+  /* Its headings in the page's display face; flat inside a card the page
+     already draws; no title of its own where the page's heading names it. */
+  "  if (typeof o.display === 'string' && FONT.test(o.display)) extra += '.ttl{font-family:' + o.display + '}';",
+  "  if (o.flat === true) extra += '.card{background:transparent;border:0;padding:0;max-width:none}';",
+  "  if (o.notitle === true) extra += '.ttl{display:none}.blurb{margin-top:0}';",
+  "  return light + (dark ? '@media(prefers-color-scheme:dark){' + dark + '}' : '') + extra;",
+  "}",
+].join("\n");
+
 export const WORDS_JS = [
   "function chooseLang(node) {",
   "  var have = Object.keys(WORDS);",

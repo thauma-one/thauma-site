@@ -43,7 +43,7 @@ import { json } from "./lib/store.js";
 import { sendMail, listConfirmEmail } from "./lib/mail.js";
 import { detectLang } from "./contact-form.js";
 import { COLOUR_JS, rowLook } from "./embed-colour.js";
-import { escapeHtml, palette, formStyles, LIGHT, DARK, BEHAVIOUR_JS, WORDS_JS } from "./lib/embed-form.js";
+import { escapeHtml, palette, formStyles, LIGHT, DARK, BEHAVIOUR_JS, WORDS_JS, LOOK_JS } from "./lib/embed-form.js";
 import { t, wordsFor } from "./lib/mail-i18n.js";
 import { siteOrigin } from "./lib/origin.js";
 import { isOrgSlug } from "./lib/org.js";
@@ -205,6 +205,7 @@ ${BEHAVIOUR_JS}
 
   var WORDS = ${JSON.stringify(wordsFor("form."))};
 ${WORDS_JS}
+${LOOK_JS}
   /* The ministry's own words, per language. < is escaped: this is text in a
      script served to strangers' pages. */
   var OWN = ${JSON.stringify(own || {}).replace(/</g, "\\u003c")};
@@ -244,7 +245,7 @@ ${WORDS_JS}
        otherwise reach in and reshape controls somebody has to type into. */
     var root = node.attachShadow ? node.attachShadow({ mode: 'open' }) : node;
     var style = document.createElement('style');
-    style.textContent = STYLES.replace('SCHEME', scheme) +
+    style.textContent = STYLES.replace('SCHEME', scheme) + siteLook(node, accent, second) +
       ':host{--acc:' + accent + ';--acc2:' + second + ';--on-acc:' + onColor(accent) + ';' +
       '--faint:' + alpha(accent, 0.22) + '}';
     root.appendChild(style);

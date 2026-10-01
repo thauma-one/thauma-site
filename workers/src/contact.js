@@ -45,7 +45,7 @@ import { json } from "./lib/store.js";
 import { sendMail, contactReceiptEmail } from "./lib/mail.js";
 import { detectLang } from "./contact-form.js";
 import { COLOUR_JS, rowLook } from "./embed-colour.js";
-import { escapeHtml, palette, formStyles, LIGHT, DARK, BEHAVIOUR_JS, WORDS_JS } from "./lib/embed-form.js";
+import { escapeHtml, palette, formStyles, LIGHT, DARK, BEHAVIOUR_JS, WORDS_JS, LOOK_JS } from "./lib/embed-form.js";
 import { t, wordsFor } from "./lib/mail-i18n.js";
 import { siteOrigin } from "./lib/origin.js";
 import { isOrgSlug } from "./lib/org.js";
@@ -193,6 +193,7 @@ ${BEHAVIOUR_JS}
   /* Each reason's name per language (0041), keyed by its id. */
   var TOPICS = ${JSON.stringify(Object.fromEntries((topics || []).map((t) => [t.id, topicLabels(t)]))).replace(/</g, "\\u003c")};
 ${WORDS_JS}
+${LOOK_JS}
 
   var STYLES = ${JSON.stringify(formStyles())};
   var LIGHT = ${JSON.stringify(LIGHT)};
@@ -222,7 +223,7 @@ ${WORDS_JS}
 
     var root = node.attachShadow ? node.attachShadow({ mode: 'open' }) : node;
     var style = document.createElement('style');
-    style.textContent = STYLES.replace('SCHEME', scheme) +
+    style.textContent = STYLES.replace('SCHEME', scheme) + siteLook(node, accent, second) +
       ':host{--acc:' + accent + ';--acc2:' + second + ';--on-acc:' + onColor(accent) + ';' +
       '--faint:' + alpha(accent, 0.22) + '}' +
       /* The message box is the one control the sign-up form does not have, so
