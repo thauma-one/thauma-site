@@ -218,7 +218,8 @@ export const LOOK_JS = [
      already draws; no title of its own where the page's heading names it. */
   "  if (typeof o.display === 'string' && FONT.test(o.display)) extra += '.ttl{font-family:' + o.display + '}';",
   "  if (o.flat === true) extra += '.card{background:transparent;border:0;padding:0;max-width:none}';",
-  "  if (o.notitle === true) extra += '.ttl{display:none}.blurb{margin-top:0}';",
+  /* Hidden from sight, not from a screen reader: it still names the form. */
+  "  if (o.notitle === true) extra += '.ttl{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}.blurb{margin-top:0}';",
   "  return light + (dark ? '@media(prefers-color-scheme:dark){' + dark + '}' : '') + extra;",
   "}",
 ].join("\n");
