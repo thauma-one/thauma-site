@@ -96,7 +96,14 @@ export const PUBLIC_QUERIES = new Set([
  * second lock, on the day somebody adds a query to that list without thinking
  * hard enough about what it joins to. */
 const PRIVATE_TABLES = ["contacts", "interactions", "life_events",
-                        "users", "audit_log", "api_keys"];
+                        "users", "audit_log", "api_keys",
+                        /* Chase, 2026-10-01: "we definitely don't want the
+                           Resources, Directory, or Stewardship being broadcast
+                           AT ALL". Stewardship is the three above; these are
+                           the other two, and the mailing lists' people. */
+                        "directory_contacts", "resources", "resource_shares",
+                        "resource_group_shares", "subscribers", "subscriber_tags",
+                        "mailing_recipients"];
 
 /**
  * Public queries that turn an identifier into a partner, rather than reading
@@ -146,8 +153,13 @@ export function assertPublicSafe(queries = QUERIES) {
        of decision as the other two: a deliberate, per-list opt-in, made once
        and calmly, that a mailing must clear before anybody outside can read
        it. What would NOT belong here is a flag meaning "not deleted" or "is
-       finished" — those are states, not consent. */
-    const PUBLICATION_FLAGS = ["is_public", "is_enabled", "archive_public"];
+       finished" — those are states, not consent.
+
+       embed_enabled joined it on 2026-10-01: it is the Sharing page's
+       switch, a ministry's own opt-in to having its data on other websites.
+       The resolver used to require partners.is_public as well, but nothing
+       could ever set that, so sharing never published anything. */
+    const PUBLICATION_FLAGS = ["is_public", "is_enabled", "archive_public", "embed_enabled"];
     const gated = PUBLICATION_FLAGS.some(
       (flag) => new RegExp(`\\b${flag}\\s*=\\s*1\\b`, "i").test(sql));
     if (!gated) {

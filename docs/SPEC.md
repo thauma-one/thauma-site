@@ -502,8 +502,15 @@ which is the whole design.
    queries. A query added tomorrow is private until somebody deliberately adds
    it to that set. A deny-list would have silently exposed every future query.
 2. **`assertPublicSafe()` proves the public queries cannot reach private
-   tables.** It greps their SQL for `contacts`, `interactions`, `users`,
-   `audit_log`, `api_keys`, and for a missing `is_public = 1` or `:partner_id`.
+   tables.** It greps their SQL for the private tables — Stewardship
+   (`contacts`, `interactions`, `life_events`), the Directory
+   (`directory_contacts`), Resources (`resources`, `resource_shares`,
+   `resource_group_shares`), mailing-list people (`subscribers`,
+   `subscriber_tags`, `mailing_recipients`), `users`, `audit_log`, `api_keys`
+   — and for a missing publication switch (`is_public`, `is_enabled`,
+   `archive_public` or the Sharing page's `embed_enabled` = 1) or
+   `:partner_id`. A ministry has ONE sharing decision, the Sharing page;
+   `partners.is_public` is not consulted (nothing could ever set it).
    It runs in the test suite **and at Worker startup**, so a bad deploy fails
    at boot rather than serving supporter records to a website.
 3. **`partnerPublicSite()` names every field it returns.** It does not spread

@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "987ee8ddd2913d1d";
+export const SOURCE_DIGEST = "34150369278a720e";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -820,8 +820,7 @@ ORDER BY (actual_date IS NULL), actual_date ASC, sort_order ASC;`,
        embed_roadmap, embed_goal, embed_prayer, embed_videos
 FROM partners
 WHERE slug = :slug
-  AND embed_enabled = 1
-  AND is_public = 1;`,
+  AND embed_enabled = 1;`,
   public_prayer_for_partner: `SELECT id, is_answered, answered_on, sort_order
 FROM prayer
 WHERE partner_id = :partner_id
