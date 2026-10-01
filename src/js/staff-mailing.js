@@ -56,6 +56,7 @@
 
   var state = {
     lists: [], tags: [], senders: [], contact: null, topics: [],
+    home: 'en', langs: [], writing: 'en', listForm: null,
     subsQ: '', subsStatus: '', subsSort: '', subsTag: '', subsPage: 0, picked: [],
     subsTotal: 0, subsPageSize: 100,
     scope: startScope, partnerSlug: '',
@@ -293,10 +294,57 @@
     }
   }
 
+  /* ---- a list's name and description, one language at a time (0047) ----
+     Chase, 2026-10-01: "We need to fix that on Goals and Sign Up." name and
+     description are the ministry's own language and the fallback; `texts`
+     holds the others as { lang: { name, description } }. */
+  function langLabel(code) {
+    var l = state.langs.filter(function (x) { return x.code === code; })[0];
+    return l ? l.name : code;
+  }
+  function keepListWriting() {
+    var f = state.listForm, w = state.writing;
+    if (!f) return;
+    var name = $('mlName').value, desc = $('mlDescription').value;
+    if (w === state.home) { f.name = name; f.description = desc; return; }
+    var t = Object.assign({}, f.texts[w] || {});
+    if (name.trim()) t.name = name; else delete t.name;
+    if (desc.trim()) t.description = desc; else delete t.description;
+    if (Object.keys(t).length) f.texts[w] = t; else delete f.texts[w];
+  }
+  function drawListWriting() {
+    var f = state.listForm, tx = f.texts, w = state.writing, home = w === state.home;
+    var named = function (c) { return c === state.home ? !!f.name.trim() : !!(tx[c] && tx[c].name); };
+    $('mlWriting').hidden = state.langs.length < 2;
+    $('mlLang').innerHTML = state.langs.map(function (l) {
+      return '<option value="' + esc(l.code) + '">' + esc(l.name) +
+        (named(l.code) ? '' : ' · ' + esc(tr('ms.missing'))) + '</option>';
+    }).join('');
+    $('mlLang').value = w;
+    $('mlName').value = home ? f.name : ((tx[w] && tx[w].name) || '');
+    $('mlDescription').value = home ? f.description : ((tx[w] && tx[w].description) || '');
+    /* Only the list's own name is required; a translation may be left for later. */
+    $('mlName').required = home;
+    [['mlNameRef', f.name], ['mlDescriptionRef', f.description]].forEach(function (r) {
+      $(r[0]).hidden = home || !r[1];
+      $(r[0]).textContent = home || !r[1] ? '' : langLabel(state.home) + ': ' + r[1];
+    });
+  }
+  function startListForm(l) {
+    state.listForm = { name: (l && l.name) || '', description: (l && l.description) || '',
+                       texts: JSON.parse(JSON.stringify((l && l.texts) || {})) };
+    state.writing = state.home;
+    drawListWriting();
+  }
+  $('mlLang').addEventListener('change', function () {
+    keepListWriting();
+    state.writing = this.value;
+    drawListWriting();
+  });
+
   function fillSettings(l) {
     $('mlId').value = l.id || '';
-    $('mlName').value = l.name || '';
-    $('mlDescription').value = l.description || '';
+    startListForm(l);
     $('mlFromName').value = l.from_name || '';
     fillSenders(l.from_email || '');
     $('mlReplyTo').value = l.reply_to || '';
@@ -313,8 +361,9 @@
     $('mlHome').hidden = false;
     renderTabs();
 
-    ['mlId', 'mlName', 'mlDescription', 'mlFromName', 'mlReplyTo']
+    ['mlId', 'mlFromName', 'mlReplyTo']
       .forEach(function (id) { $(id).value = ''; });
+    startListForm(null);
     fillSenders('');
     setSwitch($('mlOpen'), false);
     setSwitch($('mlArchivePublic'), false);
@@ -327,10 +376,17 @@
 
   async function submitSettings(e) {
     e.preventDefault();
+    keepListWriting();
+    var f = state.listForm;
+    /* The list's own name is what every language falls back to. */
+    if (!f.name.trim()) {
+      state.writing = state.home; drawListWriting(); $('mlName').reportValidity(); return;
+    }
     var payload = {
       id: $('mlId').value || undefined,
-      name: $('mlName').value.trim(),
-      description: $('mlDescription').value.trim(),
+      name: f.name.trim(),
+      description: f.description.trim(),
+      texts: f.texts,
       from_name: $('mlFromName').value.trim(),
       from_email: $('mlFromEmail').value,
       reply_to: $('mlReplyTo').value.trim(),
@@ -822,6 +878,14 @@
     if (window.StaffActing) window.StaffActing(body);
 
     state.lists = body.lists || [];
+    /* The languages a list's name is written in, the ministry's own first. */
+    state.home = body.default_lang || 'en';
+    state.langs = body.languages || [];
+    if (!state.langs.some(function (l) { return l.code === state.home; })) {
+      state.langs.unshift({ code: state.home, name: state.home });
+    } else {
+      state.langs.sort(function (a, b) { return (a.code === state.home ? -1 : 0) - (b.code === state.home ? -1 : 0); });
+    }
     state.tags = body.tags || [];
     renderTags();
     renderHero();

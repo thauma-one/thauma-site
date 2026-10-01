@@ -28,6 +28,7 @@ import { sendMail, listConfirmEmail } from "./lib/mail.js";
 import { siteOrigin } from "./lib/origin.js";
 import { topicLabels, cleanLabels } from "./lib/topics.js";
 import { changedSince, changedAnswer } from "./lib/fresh.js";
+import { readTexts, cleanTexts } from "./lib/texts.js";
 
 const MAX = { name: 120, slug: 60, desc: 400, from_name: 80, email: 200 };
 const PAGE = 100;
@@ -432,8 +433,18 @@ export default {
            One query per list rather than one for everything, because a
            partner has a handful of lists and the alternative is a join whose
            result has to be regrouped in JavaScript. */
+        /* What a list's name is written in: the ministry's own language (the
+           columns) and the others it publishes, for `texts` (0047). The
+           organization writes in English and Thauma's site languages. */
+        default_lang: (look && look.default_lang) || "en",
+        languages: partnerId
+          ? (await db.query("partner_languages_for_partner", { partner_id: partnerId }))
+              .filter((l) => l.is_enabled).map((l) => ({ code: l.code, name: l.native_name || l.name }))
+          : (await db.query("languages_all", {}))
+              .filter((l) => l.is_active).map((l) => ({ code: l.code, name: l.native_name || l.name })),
         lists: await Promise.all(lists.map(async (l) => ({
           ...l,
+          texts: readTexts(l.texts),
           sent: await db.query("mailings_sent_for_list",
             { list_id: l.id, partner_id: partnerId }),
         }))),
@@ -1134,12 +1145,18 @@ export default {
       }
 
       await db.query("mailing_list_upsert", { id, partner_id: partnerId, ...value, now });
+      /* The other languages (0047), only when the editor sent them. */
+      if (body.texts !== undefined) {
+        await db.query("mailing_list_set_texts", {
+          id, partner_id: partnerId, texts: cleanTexts(body.texts, { name: MAX.name, description: MAX.desc }),
+        });
+      }
       const saved = await db.queryOne("mailing_list_one", { id, partner_id: partnerId });
       /* Absent after a write means the WHERE partner_id guard refused it — an
          id that belongs to somebody else. Reported as not-found for the same
          reason the GET does. */
       if (!saved) return json({ error: "No such list." }, 404);
-      return json({ ok: true, list: saved });
+      return json({ ok: true, list: { ...saved, texts: readTexts(saved.texts) } });
     }
 
     /* --------------------------------------------------------- DELETE */

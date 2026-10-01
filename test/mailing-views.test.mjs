@@ -229,13 +229,14 @@ const LISTS = [
 ];
 async function bootMail(url, pay = {}, file = "staff/mail") {
   const P = { ...SCOPE_PAY, lists: LISTS, ...pay };
-  const asked = [];
+  const asked = [], posted = [];
   const dom = new JSDOM(readFileSync(`${build}/${file}/index.html`, "utf8"), {
     runScripts: "dangerously", pretendToBeVisual: true, url,
     beforeParse(w) {
       Object.defineProperty(w, "sessionStorage", { value: {
         getItem: () => JSON.stringify({ roles: ["admin", "staff"] }), setItem: () => {} } });
-      w.fetch = async (u) => { asked.push(String(u));
+      w.fetch = async (u, o) => { asked.push(String(u));
+        if (o && o.method && o.method !== "GET") posted.push(JSON.parse(o.body || "null"));
         return { ok: true, status: 200, json: async () => JSON.parse(JSON.stringify(
           { ...P, scope: /scope=organization/.test(String(u)) ? "organization" : "partner" })) }; };
       w.scrollTo = () => {};
@@ -245,7 +246,7 @@ async function bootMail(url, pay = {}, file = "staff/mail") {
   w.eval(readFileSync("src/js/staff-mailing.js", "utf8"));
   await new Promise((r) => setTimeout(r, 220));
   const click = (el) => el.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
-  return { w, d: w.document, asked, click };
+  return { w, d: w.document, asked, posted, click };
 }
 
 await check("Website › Mail is Thauma's, and tells the composer so", async () => {
@@ -318,6 +319,29 @@ await check("List settings opens the list's settings, and closes them again", as
   eq2(d.querySelector('[data-subpanel="people"]').hidden, false, "back to the people");
   click(d.querySelector('.ml-tabs [data-view="l_pray"]'));
   eq2(d.querySelector('[data-subpanel="people"]').hidden, false, "a list opens on its people");
+});
+
+await check("a list's name is written per language, and the form saves the translation", async () => {
+  /* Chase, 2026-10-01: "We need to fix that on ... Sign Up" (0047). */
+  const { w, d, posted, click } = await bootMail("https://dev.thauma.one/staff/mail/#l_news", {
+    default_lang: "en",
+    languages: [{ code: "en", name: "English" }, { code: "hr", name: "Hrvatski" }],
+  });
+  click(d.getElementById("mlListSettings"));
+  const pick = d.getElementById("mlLang"), name = d.getElementById("mlName");
+  eq2(d.getElementById("mlWriting").hidden, false, "no language picker with two languages");
+  eq2(pick.value, "en", "opens in the ministry's own language");
+  pick.value = "hr"; pick.dispatchEvent(new w.Event("change"));
+  eq2(name.value, "", "no Croatian name yet");
+  eq2(name.required, false, "a translation is not required");
+  assert(/Newsletter/.test(d.getElementById("mlNameRef").textContent), "the list's own name shows above");
+  name.value = "Bilten";
+  d.getElementById("mlForm").dispatchEvent(new w.Event("submit", { cancelable: true }));
+  await new Promise((r) => setTimeout(r, 50));
+  const body = posted[posted.length - 1];
+  assert(body, "nothing was saved");
+  eq2(body.name, "Newsletter", "the list's own name is unchanged");
+  eq2(JSON.stringify(body.texts), JSON.stringify({ hr: { name: "Bilten" } }), "the Croatian name");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

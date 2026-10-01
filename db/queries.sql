@@ -105,7 +105,8 @@ ORDER BY kind, label;
 -- When each goal's definition was last saved. goal_progress (the view the
 -- list reads) leaves it out; the editor needs it so a save made on another
 -- site since it opened the goal is caught, not overwritten (lib/fresh.js).
-SELECT id, updated_at FROM goals WHERE partner_id = :partner_id;
+-- texts (0047) rides along for the same reason: the view predates it.
+SELECT id, updated_at, texts FROM goals WHERE partner_id = :partner_id;
 
 
 -- name: goal_history
@@ -203,7 +204,8 @@ SELECT p.id, p.slug, p.display_name, p.status, pu.role AS access_role,
        u.id AS user_id, u.name AS user_name,
        COALESCE((SELECT GROUP_CONCAT(r.role) FROM user_roles r WHERE r.user_id = u.id),
                 u.global_role) AS roles,
-       COALESCE(u.preferred_lang, 'en') AS preferred_lang
+       COALESCE(u.preferred_lang, 'en') AS preferred_lang,
+       COALESCE(p.default_lang, 'en') AS default_lang
 FROM users u
 JOIN partner_users pu ON pu.user_id = u.id
 JOIN partners p ON p.id = pu.partner_id
@@ -421,7 +423,7 @@ SELECT
   l.id, l.partner_id, l.slug, l.name, l.description,
   l.from_name, l.from_email, l.reply_to, l.is_open, l.archive_public,
   l.form_heading, l.form_blurb, l.form_button, l.form_thanks_url,
-  l.created_at, l.updated_at,
+  l.texts, l.created_at, l.updated_at,
   (SELECT COUNT(*) FROM subscribers s
     WHERE s.list_id = l.id AND s.status = 'subscribed')  AS subscribed,
   (SELECT COUNT(*) FROM subscribers s
@@ -464,10 +466,16 @@ ON CONFLICT(id) DO UPDATE SET
 WHERE mailing_lists.partner_id IS :partner_id;
 
 
+-- name: mailing_list_set_texts
+-- A list's name and description in the ministry's other languages (0047).
+-- Run after mailing_list_upsert only when the editor sent texts.
+UPDATE mailing_lists SET texts = :texts WHERE id = :id AND partner_id IS :partner_id;
+
+
 -- name: mailing_list_one
 SELECT id, partner_id, slug, name, description, from_name, from_email,
        reply_to, is_open, archive_public, form_heading, form_blurb, form_button,
-       form_thanks_url, archived_at, created_at, updated_at
+       form_thanks_url, texts, archived_at, created_at, updated_at
 FROM mailing_lists
 WHERE id = :id AND partner_id IS :partner_id;
 
@@ -628,7 +636,7 @@ SELECT :id, l.id, l.partner_id, :email, :name, 'pending', :token, :source, :lang
 -- like every other embed. NOT gated on embed_enabled: that switch governs
 -- publishing the ministry's DATA, and a color is not data — a list's own
 -- is_open is what decides whether this form exists at all.
-SELECT l.id, l.partner_id, l.name, l.slug, l.description,
+SELECT l.id, l.partner_id, l.name, l.slug, l.description, l.texts,
        l.from_name, l.from_email, l.reply_to,
        l.form_heading, l.form_blurb, l.form_button, l.form_thanks_url,
        p.embed_accent, p.embed_accent2, p.embed_theme, p.embed_turn,
@@ -653,7 +661,7 @@ SELECT l.id, l.partner_id, l.name, l.slug, l.description,
 --
 -- Thauma has no partner row, so no Live switch beyond its lists: the form
 -- exists while any list is open.
-SELECT l.id, l.partner_id, l.name, l.slug, l.description,
+SELECT l.id, l.partner_id, l.name, l.slug, l.description, l.texts,
        l.from_name, l.from_email, l.reply_to,
        l.form_heading, l.form_blurb, l.form_button, l.form_thanks_url
   FROM mailing_lists l
@@ -1448,7 +1456,9 @@ ON CONFLICT(source, key, lang) DO UPDATE SET
 -- anywhere in this database to leak — see the note above goal_snapshots.
 SELECT
   goal_id, label, description, kind, target_cents, currency,
-  raised_cents, donor_count, percent, captured_at
+  raised_cents, donor_count, percent, captured_at,
+  -- The other languages (0047); the view predates the column.
+  (SELECT g.texts FROM goals g WHERE g.id = goal_progress.goal_id) AS texts
 FROM goal_progress
 WHERE partner_id = :partner_id
   AND is_public = 1
@@ -1611,6 +1621,13 @@ ON CONFLICT(id) DO UPDATE SET
   target_cents = :target_cents, currency = :currency, is_public = :is_public,
   updated_at = :now
 WHERE goals.partner_id = :partner_id;
+
+
+-- name: goal_set_texts
+-- A goal's name and description in the ministry's other languages (0047).
+-- Its own statement, run after goal_upsert only when the editor sent texts,
+-- so nothing else that saves a goal has to carry them.
+UPDATE goals SET texts = :texts WHERE id = :id AND partner_id = :partner_id;
 
 
 -- name: goal_delete

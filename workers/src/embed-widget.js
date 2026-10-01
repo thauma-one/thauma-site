@@ -617,7 +617,10 @@ ${COLOUR_JS}
     var top = el('div', 'gtop');
 
     var left = el('div', 'gleft');
-    left.appendChild(el('div', 'gname', g.label));
+    /* The name in the visitor's language where the ministry wrote one
+       (0047), else its own wording. */
+    var tx = (g.text && g.text[lang]) || {};
+    left.appendChild(el('div', 'gname', tx.label || g.label));
     top.appendChild(left);
 
     var pct = typeof g.percent === 'number' ? g.percent : 0;
@@ -635,7 +638,8 @@ ${COLOUR_JS}
     top.appendChild(right);
     card.appendChild(top);
 
-    if (g.description) left.appendChild(el('div', 'gdesc', g.description));
+    var about = tx.description || g.description;
+    if (about) left.appendChild(el('div', 'gdesc', about));
 
     var bar = el('div', 'gbar');
     var fill = el('div', 'gfill');

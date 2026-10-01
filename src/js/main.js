@@ -768,9 +768,12 @@ if (document.body.scrollHeight > window.innerHeight * 1.3) {
       // One list needs no choosing: it is simply what they are joining.
       box.hidden = lists.length < 2;
       box.insertAdjacentHTML('beforeend', lists.map(function (l) {
+        // The page's language where the list has one (0047), else its own.
+        var tx = (l.texts && l.texts[document.documentElement.lang]) || {};
+        var name = tx.name || l.name, about = tx.description || l.description;
         return '<label class="stay-list"><input type="checkbox" name="list" value="' + esc(l.slug) + '" checked>' +
-          '<span><b>' + esc(l.name) + '</b>' +
-          (l.description ? '<small>' + esc(l.description) + '</small>' : '') + '</span></label>';
+          '<span><b>' + esc(name) + '</b>' +
+          (about ? '<small>' + esc(about) + '</small>' : '') + '</span></label>';
       }).join(''));
       opener.hidden = false;
     })

@@ -47,6 +47,7 @@ import { escapeHtml, palette, formStyles, LIGHT, DARK, BEHAVIOUR_JS, WORDS_JS } 
 import { t, wordsFor } from "./lib/mail-i18n.js";
 import { siteOrigin } from "./lib/origin.js";
 import { isOrgSlug } from "./lib/org.js";
+import { readTexts, textIn } from "./lib/texts.js";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -144,12 +145,16 @@ export function formScript(lists, partnerSlug, origin, theme, own = {}) {
   /* One checkbox per open list, ticked by default — somebody who opened the
      form generally wants what it offers, and unticking is easier than hunting
      for what to tick. The NAME only: see the note above formStyles. */
-  const boxes = lists.map((l) => (
-    '<label class="pick">' +
+  /* The name in the ministry's own language, with its other languages
+     (0047) on the span for the visitor's language to pick below. */
+  const boxes = lists.map((l) => {
+    const names = Object.fromEntries(Object.entries(readTexts(l.texts))
+      .filter(([, t]) => t.name).map(([code, t]) => [code, t.name]));
+    return '<label class="pick">' +
       `<input type="checkbox" name="list" value="${escapeHtml(l.slug)}" checked>` +
-      `<span>${escapeHtml(l.name)}</span>` +
-    '</label>'
-  )).join("");
+      `<span data-names="${escapeHtml(JSON.stringify(names))}">${escapeHtml(l.name)}</span>` +
+    '</label>';
+  }).join("");
 
   /* A legend over ONE box is a question nobody asked — there is nothing to
      choose between, and the box is really "yes, the thing you just read". */
@@ -253,6 +258,11 @@ ${WORDS_JS}
        in the console's preview and must win. */
     var lang = chooseLang(node);
     applyWords(host, lang);
+    /* Each list's name in that language, where the ministry wrote one. */
+    Array.prototype.forEach.call(host.querySelectorAll('[data-names]'), function (el) {
+      try { var n = JSON.parse(el.getAttribute('data-names'))[lang]; if (n) el.textContent = n; }
+      catch (e) { /* keep the ministry's own wording */ }
+    });
     /* Then the ministry's own words in that language, where it wrote them. */
     var mine = OWN[lang] || {};
     if (mine.heading) host.querySelector('.ttl').textContent = mine.heading;
@@ -395,7 +405,11 @@ export default {
        description. The form's words are the page's own. */
     if (request.method === "GET" && action === "signup") {
       return json({
-        lists: lists.map((l) => ({ slug: l.slug, name: l.name, description: l.description || null })),
+        /* `texts`: the name and description in the ministry's other
+           languages (0047), { lang: { name, description } }; name and
+           description are its own language and the fallback. */
+        lists: lists.map((l) => ({ slug: l.slug, name: l.name, description: l.description || null,
+                                   texts: readTexts(l.texts) })),
       }, 200, { ...CORS, "Cache-Control": "public, max-age=300" });
     }
 
@@ -506,10 +520,11 @@ export default {
     const mail = listConfirmEmail({
       name,
       listName: joined.length === 1
-        ? joined[0].name
+        ? textIn(joined[0], "name", lang, joined[0].name)
         /* "the Newsletter and Prayer Partners" reads as one thing being
            confirmed, which is what one click is about to do. */
-        : joined.slice(0, -1).map((l) => l.name).join(", ") + " and " + joined[joined.length - 1].name,
+        : joined.slice(0, -1).map((l) => textIn(l, "name", lang, l.name)).join(", ") + " and " +
+          textIn(joined[joined.length - 1], "name", lang, joined[joined.length - 1].name),
       fromName: joined[0].from_name, origin, lang,
       confirmUrl: `${origin}/confirm?t=${token}`,
     });

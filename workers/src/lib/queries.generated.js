@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "34150369278a720e";
+export const SOURCE_DIGEST = "d19360010da20e74";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -319,12 +319,13 @@ VALUES (:partner_id, :form, :lang, :heading, :blurb, :button, :thanks, :now);`,
 FROM goal_snapshots
 WHERE goal_id = :goal_id AND partner_id = :partner_id
 ORDER BY captured_at ASC;`,
+  goal_set_texts: `UPDATE goals SET texts = :texts WHERE id = :id AND partner_id = :partner_id;`,
   goal_snapshot_insert: `INSERT INTO goal_snapshots (
   id, goal_id, partner_id, raised_cents, donor_count, source, captured_at
 ) VALUES (
   :id, :goal_id, :partner_id, :raised_cents, :donor_count, 'manual', :now
 );`,
-  goal_stamps: `SELECT id, updated_at FROM goals WHERE partner_id = :partner_id;`,
+  goal_stamps: `SELECT id, updated_at, texts FROM goals WHERE partner_id = :partner_id;`,
   goal_upsert: `INSERT INTO goals (
   id, partner_id, label, description, kind, target_cents, currency,
   is_public, created_at, updated_at
@@ -412,9 +413,10 @@ SET archived_at = :now, updated_at = :now
 WHERE id = :id AND partner_id IS :partner_id;`,
   mailing_list_one: `SELECT id, partner_id, slug, name, description, from_name, from_email,
        reply_to, is_open, archive_public, form_heading, form_blurb, form_button,
-       form_thanks_url, archived_at, created_at, updated_at
+       form_thanks_url, texts, archived_at, created_at, updated_at
 FROM mailing_lists
 WHERE id = :id AND partner_id IS :partner_id;`,
+  mailing_list_set_texts: `UPDATE mailing_lists SET texts = :texts WHERE id = :id AND partner_id IS :partner_id;`,
   mailing_list_slug_taken: `SELECT id FROM mailing_lists
 WHERE partner_id IS :partner_id AND slug = :slug AND id <> :id;`,
   mailing_list_upsert: `INSERT INTO mailing_lists
@@ -444,7 +446,7 @@ WHERE mailing_lists.partner_id IS :partner_id;`,
   l.id, l.partner_id, l.slug, l.name, l.description,
   l.from_name, l.from_email, l.reply_to, l.is_open, l.archive_public,
   l.form_heading, l.form_blurb, l.form_button, l.form_thanks_url,
-  l.created_at, l.updated_at,
+  l.texts, l.created_at, l.updated_at,
   (SELECT COUNT(*) FROM subscribers s
     WHERE s.list_id = l.id AND s.status = 'subscribed')  AS subscribed,
   (SELECT COUNT(*) FROM subscribers s
@@ -664,7 +666,8 @@ SELECT partner_id FROM partner_site_aliases WHERE subdomain = :subdomain AND par
        u.id AS user_id, u.name AS user_name,
        COALESCE((SELECT GROUP_CONCAT(r.role) FROM user_roles r WHERE r.user_id = u.id),
                 u.global_role) AS roles,
-       COALESCE(u.preferred_lang, 'en') AS preferred_lang
+       COALESCE(u.preferred_lang, 'en') AS preferred_lang,
+       COALESCE(p.default_lang, 'en') AS default_lang
 FROM users u
 JOIN partner_users pu ON pu.user_id = u.id
 JOIN partners p ON p.id = pu.partner_id
@@ -757,7 +760,8 @@ ORDER BY sort_order, label COLLATE NOCASE;`,
  WHERE partner_id IS NULL AND form = :form;`,
   public_goals_for_partner: `SELECT
   goal_id, label, description, kind, target_cents, currency,
-  raised_cents, donor_count, percent, captured_at
+  raised_cents, donor_count, percent, captured_at,
+  (SELECT g.texts FROM goals g WHERE g.id = goal_progress.goal_id) AS texts
 FROM goal_progress
 WHERE partner_id = :partner_id
   AND is_public = 1
@@ -769,7 +773,7 @@ WHERE pl.partner_id = :partner_id
   AND pl.is_enabled = 1
   AND l.is_active = 1
 ORDER BY pl.sort_order, l.name;`,
-  public_lists_for_signup: `SELECT l.id, l.partner_id, l.name, l.slug, l.description,
+  public_lists_for_signup: `SELECT l.id, l.partner_id, l.name, l.slug, l.description, l.texts,
        l.from_name, l.from_email, l.reply_to,
        l.form_heading, l.form_blurb, l.form_button, l.form_thanks_url,
        p.embed_accent, p.embed_accent2, p.embed_theme, p.embed_turn,
@@ -781,7 +785,7 @@ ORDER BY pl.sort_order, l.name;`,
  WHERE l.is_open = 1 AND l.archived_at IS NULL
    AND p.signup_form_open = 1     -- the form's own Live switch (0038)
  ORDER BY l.name COLLATE NOCASE;`,
-  public_lists_for_signup_org: `SELECT l.id, l.partner_id, l.name, l.slug, l.description,
+  public_lists_for_signup_org: `SELECT l.id, l.partner_id, l.name, l.slug, l.description, l.texts,
        l.from_name, l.from_email, l.reply_to,
        l.form_heading, l.form_blurb, l.form_button, l.form_thanks_url
   FROM mailing_lists l

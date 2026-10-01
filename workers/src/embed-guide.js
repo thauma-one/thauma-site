@@ -122,7 +122,9 @@ Guard the null explicitly before comparing dates.
 | field | type | notes |
 |---|---|---|
 | \`id\` | string | Stable. Safe to use as a key. |
-| \`label\` | string | Already in the ministry's own words. |
+| \`label\` | string | Already in the ministry's own words, in its own language. The fallback for any language not in \`text\`. |
+| \`description\` | string \\| null | Same: its own language, and the fallback. |
+| \`text\` | object | **Keyed by language code**: \`{ "hr": { "label": "...", "description": "..." } }\` for the languages it has been translated into. Use \`g.text[lang]?.label || g.label\`. May be empty. |
 | \`kind\` | string | \`monthly\` \\| \`one_time\` \\| \`project\` |
 | \`target_cents\` | number \\| null | Minor units. Null means no target set. |
 | \`raised_cents\` | number | Minor units. |

@@ -167,20 +167,27 @@ staffHeading: What this ministry <b>publishes</b>
 
     <div id="glFormHolder"></div>
 
-    {#- One form for create and edit, like the milestone editor. Goals are NOT
-       translated — `label` has always been a plain column — so there are no
-       language columns here. Giving them a translations table is its own
-       migration and its own editing surface. -#}
+    {#- One form for create and edit, like the milestone editor. The name and
+       description are written ONE LANGUAGE AT A TIME (0047), the milestone
+       model: the ministry's own language is the goal's columns and every
+       other language's fallback; the rest are `texts`. The picker hides when
+       the ministry publishes one language. -#}
     <form class="ms-form" id="glForm" hidden>
       <input type="hidden" id="glId">
+      <div class="ms-writing" id="glWriting" hidden>
+        <label class="ms-pick"><span data-i18n="con.editing">Editing</span>
+          <select id="glLang" class="lang-pick"></select></label>
+      </div>
 
       <div class="ms-grid ms-neutral">
         <label class="fld gl-wide">
           <span data-i18n="gl.name">Name</span>
+          <small class="ms-ref" id="glLabelRef" hidden></small>
           <input type="text" id="glLabel" maxlength="120" placeholder="Monthly support">
         </label>
         <label class="fld gl-wide">
           <span data-i18n="gl.description">Description</span>
+          <small class="ms-ref" id="glDescriptionRef" hidden></small>
           <textarea id="glDescription" rows="3" maxlength="600"
                     placeholder="What this is for."></textarea>
         </label>

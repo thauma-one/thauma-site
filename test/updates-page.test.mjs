@@ -45,6 +45,7 @@ const DATA = () => ({
     }],
   },
   "staff-goals": {
+    languages: LANGS, default_lang: "en",
     goals: [{
       goal_id: "g1", label: "Cameras", description: null, kind: "project",
       target_cents: 500000, currency: "USD", is_public: true, raised_cents: 100000, donor_count: 3,
@@ -226,6 +227,28 @@ await check("opening any row and pressing Done changes nothing", async () => {
     await done(form);
     eq(bar().hidden, true, `${id} reads as changed after merely being opened`);
   }
+});
+
+await check("a goal's name is written per language: the ministry's own stays, the other is its translation", async () => {
+  /* Chase, 2026-10-01: "We need to fix that on Goals" (0047). */
+  const { d, sent, click, row, done, publish } = await boot();
+  click(row("glList", "g1"));
+  await settle();
+  const pick = d.getElementById("glLang"), name = d.getElementById("glLabel");
+  eq(pick.value, "en", "a goal opens in the ministry's own language");
+  assert(/missing/i.test(pick.querySelector('option[value="hr"]').textContent), "Croatian should say it is missing");
+  pick.value = "hr"; pick.dispatchEvent(new d.defaultView.Event("change"));
+  eq(name.value, "", "no Croatian name yet");
+  assert(/Cameras/.test(d.getElementById("glLabelRef").textContent), "the ministry's own name shows above");
+  name.value = "Kamere";
+  pick.value = "en"; pick.dispatchEvent(new d.defaultView.Event("change"));
+  eq(name.value, "Cameras", "switching back shows the ministry's own name");
+  await done("glForm");
+  await publish();
+  const post = sent.find((x) => /staff-goals/.test(x.url) && x.method === "POST");
+  assert(post, "nothing was saved");
+  eq(post.body.label, "Cameras", "the ministry's own name is unchanged");
+  eq(post.body.texts, { hr: { label: "Kamere" } }, "the Croatian name");
 });
 
 await check("Editing one language with another for reference: typing survives a switch, and the other shows above", async () => {
