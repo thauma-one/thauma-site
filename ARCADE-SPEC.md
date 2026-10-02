@@ -252,7 +252,8 @@ Later:
 - **Signal Run** (working name; Chase, 2026-10-01): an endless runner like
   Subway Surfers. Chase's first idea is voltage running down a mic cable.
   His preferred one ("this may be more fun") is a DMX signal travelling to
-  a light. Not started: idea only, at Chase's word ("Add it to the list.
+  a light. A third version: a stagehand running snacks to the talent in the
+  green room. Not started: idea only, at Chase's word ("Add it to the list.
   Don't work on it").
 
 ## 5. Revision log
