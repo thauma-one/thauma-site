@@ -360,11 +360,13 @@ await check("a bounced address can be set back to subscribed", async () => {
   eq(res.status, 200, "an address that starts working again must have a way back");
 });
 
-await check("only GET, POST and DELETE are allowed", async () => {
-  for (const m of ["PUT", "PATCH"]) {
-    const res = await handler.fetch(req(m, { body: {} }), envWith("staff"));
-    eq(res.status, 405, `${m} status`);
-  }
+await check("only GET, POST, DELETE, and PUT for an attachment are allowed", async () => {
+  /* PUT was in this list until 2026-10-03, which is how the attachment
+     button's "Method not allowed" passed every test. */
+  const res = await handler.fetch(req("PATCH", { body: {} }), envWith("staff"));
+  eq(res.status, 405, "PATCH status");
+  const put = await handler.fetch(req("PUT", { body: {} }), envWith("staff"));
+  eq(put.status, 400, "PUT with nothing to attach");
 });
 
 /* --------------------- a bigger subscriber list ------------------------ */
@@ -516,8 +518,8 @@ await check("the sign-up form keeps no after-sending words (the contact form doe
 
 /* The live site, 2026-10: two mailings crashed after the claim, stayed at
    'sending' forever, and the console said only "(500)". */
-function crashingSendEnv({ crash = true } = {}) {
-  const env = envWith("staff");
+function crashingSendEnv({ crash = true, roles = "staff" } = {}) {
+  const env = envWith(roles);
   env.SIGNUP_SALT = "s".repeat(32);
   const sqlOf = (name) => QUERIES[name].replace(/:[a-z_][a-z0-9_]*/gi, "?");
   let status = "draft";
@@ -597,6 +599,90 @@ await check("Send delivers it, and the mailing gets a slug from its subject", as
   const start = byName(env, "mailing_start");
   assert(start.length === 1 && start[0].params.includes("hello"),
     `slug should be "hello", bound ${JSON.stringify(start.map((c) => c.params))}`);
+});
+
+/* ---- attachments (2026-10-03: the button answered "Method not allowed") ---- */
+
+function attachEnv(roles = "staff") {
+  const { env } = crashingSendEnv({ crash: false, roles });
+  const bucket = new Map();
+  env.MEDIA = {
+    async put(key, bytes, opts) { bucket.set(key, { bytes, opts }); },
+    async head(key) { const o = bucket.get(key); return o ? { size: o.bytes.length } : null; },
+    async get() { return null; },
+  };
+  return { env, bucket };
+}
+const upload = (env, name, bytes, query = "") => handler.fetch(new Request(
+  `https://x/api/staff-mailing?${query}attach=${encodeURIComponent(name)}`, {
+    method: "PUT", body: bytes,
+    headers: { "Content-Type": "application/octet-stream", "Cf-Access-Jwt-Assertion": TOKEN },
+  }), env);
+const saveWith = (env, attachments) => handler.fetch(req("POST", { body: {
+  action: "mailing-save", id: "mg_1", list_id: "ml_1", subject: "Hello",
+  body_html: "<p>Hi</p>", attachments } }), env);
+
+await check("an attachment uploads into the caller's own folder and comes back in the draft's shape", async () => {
+  const { env, bucket } = attachEnv();
+  const res = await upload(env, "Prayer letter.pdf", new Uint8Array([37, 80, 68, 70]));
+  eq(res.status, 200, "status");
+  const { file } = await res.json();
+  assert(/^attachments\/p_chase\/[0-9a-f]{16}-Prayer-letter\.pdf$/.test(file.object_key),
+    `key ${file.object_key}`);
+  eq([file.filename, file.content_type, file.bytes], ["Prayer letter.pdf", "application/pdf", 4], "fields");
+  assert(bucket.has(file.object_key), "not stored");
+});
+
+await check("a file type mail filters distrust is refused before it is stored", async () => {
+  const { env, bucket } = attachEnv();
+  for (const name of ["setup.exe", "page.html", "photos.zip", "noextension"]) {
+    const res = await upload(env, name, new Uint8Array([1]));
+    eq(res.status, 415, name);
+  }
+  eq(bucket.size, 0, "nothing stored");
+});
+
+await check("a file over 5MB is refused", async () => {
+  const { env, bucket } = attachEnv();
+  const res = await upload(env, "big.pdf", new Uint8Array(5 * 1024 * 1024 + 1));
+  eq(res.status, 413, "status");
+  eq(bucket.size, 0, "nothing stored");
+});
+
+await check("saving keeps only keys from the caller's own folder, sized by the bucket", async () => {
+  const { env } = attachEnv();
+  const { file } = await (await upload(env, "a.pdf", new Uint8Array(1000))).json();
+  const res = await saveWith(env, [
+    { ...file, bytes: 1 },                                     // the page lies about the size
+    { object_key: "attachments/p_mira/aaaa-theirs.pdf", filename: "theirs.pdf", bytes: 5 },
+    { object_key: "attachments/p_chase/never-uploaded.pdf", filename: "ghost.pdf", bytes: 5 },
+  ]);
+  eq(res.status, 200, "status");
+  const added = byName(env, "mailing_attachment_add");
+  eq(added.length, 1, "attachments recorded");
+  assert(added[0].params.includes(file.object_key), "own file missing");
+  assert(added[0].params.includes(1000), "size should come from the bucket");
+});
+
+await check("a mailing over 10MB of attachments is refused and keeps what it had", async () => {
+  const { env } = attachEnv();
+  const files = [];
+  for (let i = 0; i < 3; i++) {
+    files.push((await (await upload(env, `f${i}.pdf`, new Uint8Array(4 * 1024 * 1024))).json()).file);
+  }
+  const res = await saveWith(env, files);
+  eq(res.status, 413, "status");
+  eq(byName(env, "mailing_attachment_clear").length, 0, "the old list was cleared anyway");
+});
+
+await check("one of Thauma's own lists attaches into the organization's folder", async () => {
+  /* The composer used to upload without the scope, so the file landed in the
+     signed-in person's partner folder and the organization's save refused it. */
+  const { env } = attachEnv("admin,staff");
+  const res = await upload(env, "a.pdf", new Uint8Array([1]), "scope=organization&");
+  eq(res.status, 200, "status");
+  const { file } = await res.json();
+  assert(file.object_key.startsWith("attachments/org/"), `key ${file.object_key}`);
 });
 
 await check("any other failure answers with its message, not a bare 500", async () => {

@@ -340,5 +340,32 @@ check("escapeHtml covers the characters that matter", () => {
   eq(escapeHtml(`<>&"'`), "&lt;&gt;&amp;&quot;&#39;", "all five");
 });
 
+/* ---- pictures uploaded from the composer (2026-10-03) ----
+   The upload answers a /media/ PATH. safeUrl admitted only http(s), so every
+   save stripped the src and the draft came back as a bare <img>. */
+
+check("an uploaded picture's /media/ path survives a save", () => {
+  const out = sanitise('<p>a</p><img src="/media/newsletter/chase-roush/0a1b2c3d.jpg" alt="Team">');
+  assert(out.includes('src="/media/newsletter/chase-roush/0a1b2c3d.jpg"'), `src lost: ${out}`);
+  assert(out.includes('alt="Team"'), "alt lost");
+});
+
+check("only the bucket's own paths pass, nothing that climbs or wanders", () => {
+  for (const bad of ["/media/../admin", "/admin/x.jpg", "//evil.test/x.jpg", "/media/a b.jpg"]) {
+    const out = sanitise(`<img src="${bad}">`);
+    assert(!/src=/.test(out), `${bad} survived: ${out}`);
+  }
+});
+
+check("a picture whose address was refused is dropped, not left as an empty box", () => {
+  eq(sanitise('<p>a</p><img src="javascript:alert(1)"><img>'), "<p>a</p>", "html");
+});
+
+check("in the email the picture points at the live site, which readers can reach", () => {
+  const html = render(sanitise('<img src="/media/newsletter/x/a.jpg">'), OPTS);
+  assert(html.includes('src="https://thauma.one/media/newsletter/x/a.jpg"'), "not absolute");
+  assert(!/src="\/media\//.test(html), "a relative src reached the email");
+});
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
