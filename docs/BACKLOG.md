@@ -24,7 +24,11 @@ in the 2026-10-03 session; start a fresh one.
   pickAttachment). `workers/src/staff-mailing.js` has no PUT handler, so the
   answer is its 405. The save and send sides exist (mailing_attachment_add,
   loadAttachments). Only the upload into R2 `attachments/` was never built.
-- **BUG "Send me a test" and Send: "The server refused the request (500)."**
+- **FIXED on dev 2026-10-03 (9941bae), not yet published.** Cause: Test and Send
+  read buildMailing's `{ value }` wrapper as the message, so render() got
+  `undefined`. Mail errors now show their message in the console (461b0e7).
+  Old notes follow.
+  **BUG "Send me a test" and Send: "The server refused the request (500)."**
   Not on dev (dev's log is clean since 0047), so it was staging or live.
   This machine's wrangler login cannot read those deployments' secrets or
   logs. Next step: Chase presses Send me a test while the session tails that
@@ -35,7 +39,7 @@ in the 2026-10-03 session; start a fresh one.
 - **BUG Back deletes the draft.** Wanted: autosave; drafts deleted only by
   hand or once sent; a list of drafts to reopen.
 - **BUG Confirmation email:**
-  - a small "undefined" at the bottom;
+  - ~~a small "undefined" at the bottom~~ FIXED on dev (a37d63e);
   - a download button on the banner image;
   - branded THAUMA for Chase Roush's list. It must be the ministry's brand,
     with a small Thauma note at the bottom, like the Site Creator footer.
