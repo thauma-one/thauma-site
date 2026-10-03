@@ -271,6 +271,14 @@ STAGING_BRANCH = "dev"
 # The handler is `scheduled()` in workers/src/worker.js. It is deliberately the
 # only one — see the comment there before adding a second.
 # ---------------------------------------------------------------------------
+# WORKERS LOGS. Without this an uncaught error on staging or live vanished:
+# the local wrangler token may not tail those Workers, so the Mail 500s of
+# 2026-10 could not be read by anyone. Kept 7 days, visible in the dashboard
+# (Workers & Pages > the Worker > Logs). Per environment, as Cloudflare asks.
+[observability]
+enabled = true
+head_sampling_rate = 1
+
 [triggers]
 crons = ["*/15 * * * *"]
 
@@ -562,6 +570,14 @@ database_id = "1a30f6c9-1dc7-42b0-abaa-fab3da334c9e"
 # Workers AI, as at the top of this file (not inherited by a named env).
 [env.production.ai]
 binding = "AI"
+
+# WORKERS LOGS. Without this an uncaught error on staging or live vanished:
+# the local wrangler token may not tail those Workers, so the Mail 500s of
+# 2026-10 could not be read by anyone. Kept 7 days, visible in the dashboard
+# (Workers & Pages > the Worker > Logs). Per environment, as Cloudflare asks.
+[env.production.observability]
+enabled = true
+head_sampling_rate = 1
 
 [env.production.vars]
 # Every site binds the same database; nothing is copied between them.

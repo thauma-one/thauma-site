@@ -512,5 +512,64 @@ await check("the sign-up form keeps no after-sending words (the contact form doe
   assert(!ins[0].params.includes("ignored"), "thanks stored on the sign-up form");
 });
 
+/* ------------------------- a send that breaks --------------------------- */
+
+/* The live site, 2026-10: two mailings crashed after the claim, stayed at
+   'sending' forever, and the console said only "(500)". */
+function crashingSendEnv() {
+  const env = envWith("staff");
+  env.SIGNUP_SALT = "s".repeat(32);
+  const sqlOf = (name) => QUERIES[name].replace(/:[a-z_][a-z0-9_]*/gi, "?");
+  let status = "draft";
+  const inner = env.DB.prepare;
+  env.DB.prepare = (sql) => {
+    const answer = async () => {
+      if (sql === sqlOf("mailing_start")) { status = "sending"; return { results: [] }; }
+      if (sql === sqlOf("mailing_unstart")) { status = "draft"; return { results: [] }; }
+      if (sql === sqlOf("mailing_one")) {
+        return { results: [{ id: "mg_1", list_id: "ml_1", partner_id: "p_chase", status,
+                             subject: "Hello", body_html: "<p>Hi</p>", body_text: "Hi" }] };
+      }
+      if (sql === sqlOf("subscribers_to_send_count")) return { results: [{ n: 1 }] };
+      if (sql === sqlOf("subscribers_to_send")) {
+        return { results: [{ id: "sb_1", email: "a@b.one", name: "A" }] };
+      }
+      if (sql === sqlOf("partner_settings")) throw new Error("boom in partner_settings");
+      return null;
+    };
+    const stmt = inner(sql);
+    const run = async () => {
+      const mine = await answer();
+      if (!mine) return stmt.all();             // the inner mock records it
+      env.calls.push({ sql, params: env._lastParams });
+      return mine;
+    };
+    return { bind(...args) { env._lastParams = args; return { all: run, run }; }, all: run, run };
+  };
+  return { env, status: () => status };
+}
+
+await check("a send that breaks before anything left goes back to draft, and says why", async () => {
+  const { env, status } = crashingSendEnv();
+  const res = await handler.fetch(req("POST", { body: { action: "mailing-send", id: "mg_1" } }), env);
+  eq(res.status, 500, "status");
+  const body = await res.json();
+  assert(/boom in partner_settings/.test(body.error || ""), `error should name the cause, got ${JSON.stringify(body)}`);
+  eq(status(), "draft", "mailing status after the crash");
+  eq(byName(env, "mailing_recipients_clear_pending").length, 1, "pending rows cleared");
+});
+
+await check("any other failure answers with its message, not a bare 500", async () => {
+  const env = envWith("staff");
+  const inner = env.DB.prepare;
+  env.DB.prepare = (sql) => {
+    if (/FROM mailing_lists/i.test(sql)) throw new Error("no such column: x");
+    return inner(sql);
+  };
+  const res = await handler.fetch(req("GET"), env);
+  eq(res.status, 500, "status");
+  assert(/no such column: x/.test((await res.json()).error || ""), "message missing");
+});
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

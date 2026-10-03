@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "d19360010da20e74";
+export const SOURCE_DIGEST = "6167c8f9eef69688";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -469,6 +469,8 @@ ON CONFLICT(mailing_id, subscriber_id) DO UPDATE SET
   mailing_recipient_result: `UPDATE mailing_recipients
 SET status = :status, provider_id = :provider_id, error = :error, updated_at = :now
 WHERE mailing_id = :mailing_id AND subscriber_id = :subscriber_id;`,
+  mailing_recipients_clear_pending: `DELETE FROM mailing_recipients
+WHERE mailing_id = :mailing_id AND status = 'pending';`,
   mailing_start: `UPDATE mailings
 SET status = 'sending', started_at = :now, slug = :slug
 WHERE id = :id AND partner_id IS :partner_id AND status = 'draft';`,
@@ -487,6 +489,10 @@ GROUP BY t.id;`,
 FROM mailing_tags t
 WHERE t.partner_id IS :partner_id
 ORDER BY t.sort_order, t.name COLLATE NOCASE;`,
+  mailing_unstart: `UPDATE mailings
+SET status = 'draft', started_at = NULL, slug = NULL
+WHERE id = :id AND partner_id IS :partner_id AND status = 'sending'
+  AND COALESCE(sent_count, 0) = 0;`,
   mailing_upsert: `INSERT INTO mailings (id, list_id, partner_id, subject, preheader,
                       body_md, body_html, body_text, status, created_by, created_at)
 VALUES (:id, :list_id, :partner_id, :subject, :preheader,

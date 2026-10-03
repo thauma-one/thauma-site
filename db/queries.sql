@@ -1943,6 +1943,22 @@ SET status = :status, finished_at = :now, sent_count = :sent_count
 WHERE id = :id AND partner_id IS :partner_id;
 
 
+-- name: mailing_unstart
+-- A send that broke before a single message left goes BACK TO DRAFT. Left at
+-- 'sending' it could never be sent, edited or deleted again — every one of
+-- those refuses a mailing that is not a draft.
+UPDATE mailings
+SET status = 'draft', started_at = NULL, slug = NULL
+WHERE id = :id AND partner_id IS :partner_id AND status = 'sending'
+  AND COALESCE(sent_count, 0) = 0;
+
+
+-- name: mailing_recipients_clear_pending
+-- The rows written before a send that then never happened.
+DELETE FROM mailing_recipients
+WHERE mailing_id = :mailing_id AND status = 'pending';
+
+
 -- name: mailing_recipient_add
 -- The address AS IT IS NOW. A subscriber may change theirs, and the record of
 -- where a message actually went must not change with them.

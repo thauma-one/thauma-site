@@ -298,8 +298,22 @@ export function cleanList(body, existingSlug, allowed) {
 /* A reason's other languages, as an object rather than the stored JSON. */
 const withLabels = (rows) => rows.map((t) => ({ ...t, labels: topicLabels(t) }));
 
-export default {
+/* EVERY FAILURE ANSWERS IN WORDS. An uncaught exception reaches the console
+   as a bare 500 with no body, so the only message anybody saw was "The server
+   refused the request (500)" — and on the live site, where nobody here can
+   read the log, that was the whole investigation. The message is for signed-in
+   staff and names the code's own failure, never a subscriber's data. */
+const api = {
   async fetch(request, env) {
+    try {
+      return await api.handle(request, env);
+    } catch (e) {
+      console.error("staff-mailing", request.method, e && e.stack || e);
+      return json({ error: "The mail service failed: " + (e && e.message || e) }, 500);
+    }
+  },
+
+  async handle(request, env) {
     const s = await scopeFor(request, env);
     if (s.denied) return s.denied;
 
@@ -877,55 +891,74 @@ export default {
           return json({ error: "That mailing is already going out." }, 409);
         }
 
-        const people = await db.query("subscribers_to_send",
-          { list_id: list.id, partner_id: partnerId, limit: 500, offset: 0 });
-
-        // Written down BEFORE anything leaves, so a crash mid-send still
-        // leaves a record of who was meant to be reached.
-        for (const sub of people) {
-          await db.query("mailing_recipient_add", {
-            mailing_id: id, subscriber_id: sub.id, email: sub.email,
-            status: "pending", now,
-          });
-        }
-
-        const look = partnerId
-          ? await db.queryOne("partner_settings", { partner_id: partnerId }) : null;
-        const theme = look ? { accent: look.embed_accent, mode: look.embed_theme } : null;
-        /* Loaded ONCE for the whole send. Reading the same file per recipient
-           would be a hundred fetches of one object and, at any real list size,
-           more time than the request has. */
-        const files = await loadAttachments(env,
-          await db.query("mailing_attachments_for", { mailing_id: id }));
-
-        const archiveUrl = list.archive_public
-          ? `${origin}/archive/${s.partner ? s.partner.slug : "thauma"}/${list.slug}/${slug}`
-          : null;
-
-        /* ONE MESSAGE PER PERSON, deliberately not a batch. Each carries its
-           own unsubscribe link, and a shared one would remove whoever pressed
-           it from somebody else's row. */
+        /* A CRASH PAST THIS POINT MUST NOT STRAND THE MAILING. The claim
+           above moved it to 'sending', and every action refuses a mailing
+           that is not a draft — so an exception here once left two mailings
+           that could never be sent, edited or deleted, and the console said
+           only "500". If nothing left yet, it goes back to draft; either way
+           the answer says what broke. */
         let sent = 0, failed = 0;
-        for (const sub of people) {
-          const msg = await messageFor(env,
-            { built, list, sub, origin, theme, archiveUrl, attachments: files });
-          const r = await sendMail(env, msg);
-          if (r.ok) sent++; else failed++;
-          await db.query("mailing_recipient_result", {
-            mailing_id: id, subscriber_id: sub.id,
-            status: r.ok ? "sent" : "failed",
-            provider_id: r.id || null,
-            error: r.ok ? null : String(r.error || "").slice(0, 300), now,
-          });
-        }
+        try {
+          const people = await db.query("subscribers_to_send",
+            { list_id: list.id, partner_id: partnerId, limit: 500, offset: 0 });
 
-        await db.query("mailing_finish", {
-          id, partner_id: partnerId,
-          status: sent > 0 ? "sent" : "failed",
-          sent_count: sent, now,
-        });
-        return json({ ok: sent > 0, sent, failed, total: people.length,
-                      mailing: await db.queryOne("mailing_one", { id, partner_id: partnerId }) });
+          // Written down BEFORE anything leaves, so a crash mid-send still
+          // leaves a record of who was meant to be reached.
+          for (const sub of people) {
+            await db.query("mailing_recipient_add", {
+              mailing_id: id, subscriber_id: sub.id, email: sub.email,
+              status: "pending", now,
+            });
+          }
+
+          const look = partnerId
+            ? await db.queryOne("partner_settings", { partner_id: partnerId }) : null;
+          const theme = look ? { accent: look.embed_accent, mode: look.embed_theme } : null;
+          /* Loaded ONCE for the whole send. Reading the same file per recipient
+             would be a hundred fetches of one object and, at any real list size,
+             more time than the request has. */
+          const files = await loadAttachments(env,
+            await db.query("mailing_attachments_for", { mailing_id: id }));
+
+          const archiveUrl = list.archive_public
+            ? `${origin}/archive/${s.partner ? s.partner.slug : "thauma"}/${list.slug}/${slug}`
+            : null;
+
+          /* ONE MESSAGE PER PERSON, deliberately not a batch. Each carries its
+             own unsubscribe link, and a shared one would remove whoever pressed
+             it from somebody else's row. */
+          for (const sub of people) {
+            const msg = await messageFor(env,
+              { built, list, sub, origin, theme, archiveUrl, attachments: files });
+            const r = await sendMail(env, msg);
+            if (r.ok) sent++; else failed++;
+            await db.query("mailing_recipient_result", {
+              mailing_id: id, subscriber_id: sub.id,
+              status: r.ok ? "sent" : "failed",
+              provider_id: r.id || null,
+              error: r.ok ? null : String(r.error || "").slice(0, 300), now,
+            });
+          }
+
+          await db.query("mailing_finish", {
+            id, partner_id: partnerId,
+            status: sent > 0 ? "sent" : "failed",
+            sent_count: sent, now,
+          });
+          return json({ ok: sent > 0, sent, failed, total: people.length,
+                        mailing: await db.queryOne("mailing_one", { id, partner_id: partnerId }) });
+        } catch (e) {
+          console.error("mailing-send", id, e && e.stack || e);
+          if (sent === 0) {
+            await db.query("mailing_recipients_clear_pending", { mailing_id: id });
+            await db.query("mailing_unstart", { id, partner_id: partnerId });
+          } else {
+            await db.query("mailing_finish",
+              { id, partner_id: partnerId, status: "sent", sent_count: sent, now });
+          }
+          return json({ error: `Sending stopped after ${sent}: ${e && e.message || e}`,
+                        sent, failed }, 500);
+        }
       }
 
       /* ---- the contact form ----
@@ -1181,3 +1214,5 @@ export default {
                 { Allow: "GET, POST, PUT, DELETE" });
   },
 };
+
+export default api;
