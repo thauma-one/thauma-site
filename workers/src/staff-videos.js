@@ -275,7 +275,7 @@ export default {
 
       await db.query("audit_write", {
         id: crypto.randomUUID(), now,
-        user_id: actor.user_id || null, partner_id: partnerId,
+        user_id: (actor.me && actor.me.user_id) || null, partner_id: partnerId,
         action: "videos.source", entity: "video_sources", entity_id: source.id,
         detail: JSON.stringify({ kind: source.kind, is_public: !!is_public,
                                  max_items, links: links ? links.length : null }),
@@ -296,7 +296,7 @@ export default {
       await db.query("video_links_clear", { partner_id: partnerId });
       await db.query("audit_write", {
         id: crypto.randomUUID(), now,
-        user_id: actor.user_id || null, partner_id: partnerId,
+        user_id: (actor.me && actor.me.user_id) || null, partner_id: partnerId,
         action: "videos.clear", entity: "video_sources", entity_id: "-",
         detail: "{}",
       }).catch(() => {});

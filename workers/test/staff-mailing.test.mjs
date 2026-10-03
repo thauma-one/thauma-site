@@ -735,5 +735,16 @@ await check("any other failure answers with its message, not a bare 500", async 
   assert(/no such column: x/.test((await res.json()).error || ""), "message missing");
 });
 
+await check("a saved mailing records WHO wrote it", async () => {
+  /* The actor carries the user at actor.me.user_id; actor.user_id does not
+     exist, so every mailing was saved with created_by NULL until 2026-10-03. */
+  const env = envWith("staff");
+  await handler.fetch(req("POST", { body: { action: "mailing-save", list_id: "ml_1",
+    subject: "Hi", body_html: "<p>x</p>" } }), env);
+  const up = byName(env, "mailing_upsert");
+  assert(up.length === 1 && up[0].params.includes("u_1"),
+    `created_by should be u_1, bound ${JSON.stringify(up.map((c) => c.params))}`);
+});
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

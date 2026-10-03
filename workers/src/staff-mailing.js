@@ -633,7 +633,7 @@ const api = {
            answerable afterwards. */
         await db.query("audit_write", {
           id: crypto.randomUUID(), now,
-          user_id: actor.user_id || null, partner_id: partnerId,
+          user_id: (actor.me && actor.me.user_id) || null, partner_id: partnerId,
           action: "subscribers." + what, entity: "subscribers",
           entity_id: String(ids.length), detail: JSON.stringify({ count: ids.length }),
         }).catch(() => {});
@@ -821,7 +821,7 @@ const api = {
           id, list_id: list.id, partner_id: partnerId,
           subject, preheader: plainLine(body.preheader, 160) || null,
           body_md: null, body_html: html, body_text: toText(html),
-          created_by: actor.user_id || null, now,
+          created_by: (actor.me && actor.me.user_id) || null, now,
         });
         const saved = await db.queryOne("mailing_one", { id, partner_id: partnerId });
         if (!saved) return json({ error: "That mailing has already been sent." }, 409);
@@ -909,7 +909,7 @@ const api = {
            would fail to show. */
         const msg = await messageFor(env, {
           built, list, origin,
-          sub: { id: "test-" + (actor.user_id || "x"), email: actor.email },
+          sub: { id: "test-" + ((actor.me && actor.me.user_id) || "x"), email: actor.email },
           theme: look ? { accent: look.embed_accent, mode: look.embed_theme } : null,
           attachments: await loadAttachments(env,
             await db.query("mailing_attachments_for", { mailing_id: m.id })),
