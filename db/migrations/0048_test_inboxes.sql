@@ -14,8 +14,11 @@
 -- tests went only to the sign-in address in the first place).
 --
 -- email         the address asked for
--- token         the confirm link's secret; NULL once confirmed
 -- confirmed_at  NULL until the link is followed; tests go here only after
+--
+-- No token column: the link is signed (lib/signed-link.js, as the change of
+-- sign-in address does), with the account AND the address inside the
+-- signature, so nothing secret is stored and a link confirms one address.
 --
 -- One row per person. Additive: reverting the code strands nothing, and
 -- tests fall back to the sign-in address.
@@ -23,7 +26,6 @@
 CREATE TABLE test_inboxes (
   user_id       TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
   email         TEXT NOT NULL COLLATE NOCASE,
-  token         TEXT UNIQUE,
   created_at    TEXT NOT NULL,
   confirmed_at  TEXT
 );
