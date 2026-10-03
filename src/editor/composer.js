@@ -43,6 +43,11 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
        save to be compared against (workers/src/lib/fresh.js). */
     base: null,
   };
+  /* The save that is out, if any, and the pending autosave. Up here because
+     the editor's change handler reaches them from the moment it exists. */
+  let saving = null;
+  let autoTimer = null;
+  const AUTOSAVE_MS = 3000;
 
   /* The composer shares the mailing page's scope switch: whose lists these are
      is one decision for the whole screen, not one per panel. */
@@ -140,6 +145,7 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
       $("cpSubject").value !== cp.savedSubject ||
       $("cpPreheader").value !== cp.savedPreheader;
     setState(cp.dirty ? tr("ml.cpUnsaved") : "");
+    if (cp.dirty) autosaveSoon(); else clearTimeout(autoTimer);
   }
 
   /* ---- links and pictures --------------------------------------------- */
@@ -245,14 +251,14 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
 
   /* ---- saving --------------------------------------------------------- */
 
-  async function post(payload) {
+  async function post(payload, opts) {
     let res, body;
     try {
-      res = await fetch(url(), {
+      res = await fetch(url(), Object.assign({
         method: "POST", credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-      });
+      }, opts || {}));
       body = await res.json().catch(() => ({}));
     } catch (e) { return { error: tr("err.unreachable") + " " + e.message }; }
     if (res.status === 409 && body.changed) return { changed: body };
@@ -260,11 +266,32 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
     return body;
   }
 
-  async function save(quiet) {
-    if (!$("cpSubject").value.trim()) {
+  /* Anything somebody would mind losing: a subject, a word, a picture, a
+     file. A draft with none of those is not worth a row. */
+  function hasWords() {
+    return !!$("cpSubject").value.trim() || !editor.isEmpty || cp.attachments.length > 0;
+  }
+
+  /* ONE SAVE AT A TIME. Autosave, Save, Back and Send can all ask at once;
+     two posts for a NEW draft would make two drafts, because the first has
+     not yet told this page its id. A second ask waits for the first and then
+     saves only if something is still unsaved. */
+
+  async function save(quiet, opts) {
+    if (saving) {
+      await saving;
+      if (!cp.dirty && cp.id) return cp.mailings.filter((m) => m.id === cp.id)[0] || {};
+    }
+    if (!hasWords()) {
       if (!quiet) toast(tr("ml.cpNeedSubject"), "bad");
       return null;
     }
+    saving = saveNow(quiet, opts);
+    try { return await saving; } finally { saving = null; }
+  }
+
+  async function saveNow(quiet, opts) {
+    clearTimeout(autoTimer);
     setState(tr("common.saving"));
     /* LAYER A HANDS OVER ITS RICH CONTENT AND STOPS THERE. Turning it into
        email-safe HTML happens on the server, not here: the server has to
@@ -276,10 +303,12 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
       action: "mailing-save", id: cp.id || undefined, list_id: cp.listId,
       subject: $("cpSubject").value, preheader: $("cpPreheader").value,
       body_html: editor.getHTML(),
-      attachments: cp.attachments,
+      attachments: cp.attachments.slice(),
       base: cp.id ? cp.base : undefined,
     };
-    let body = await post(payload);
+    const wasNew = !cp.id;
+    const before = cp.mailings.filter((m) => m.id === cp.id)[0];
+    let body = await post(payload, opts);
     /* Saved by someone else since this draft opened: ask. Saving mine sends
        it again with overwrite; keeping theirs opens their version. */
     if (body.changed) {
@@ -290,22 +319,59 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
         openDraft(id);
         return null;
       }
-      body = await post(Object.assign({}, payload, { overwrite: true }));
+      body = await post(Object.assign({}, payload, { overwrite: true }), opts);
     }
-    if (body.error) { setState(""); toast(body.error, "bad"); return null; }
+    if (body.error) {
+      setState("");
+      toast(body.error, "bad");
+      return null;
+    }
     const m = body.mailing;
     cp.base = { subject: m.subject, preheader: m.preheader, body_html: m.body_html };
+    cp.id = m.id;
 
-    cp.id = body.mailing.id;
-    cp.savedHtml = editor.getHTML();
-    cp.savedSubject = $("cpSubject").value;
-    cp.savedPreheader = $("cpPreheader").value;
-    cp.dirty = false;
-    setState(tr("ml.cpSaved"));
-    await load(cp.listId);
+    /* WHAT WAS SENT is what is saved — not what the editor holds now. Words
+       typed while the request was out are still unsaved, and stay marked so;
+       reading the editor here would call them saved and drop them. */
+    cp.savedHtml = payload.body_html;
+    cp.savedSubject = payload.subject;
+    cp.savedPreheader = payload.preheader;
+    markDirty();
+    if (!cp.dirty) setState(tr("ml.cpSaved"));
+
+    /* The draft list on this page holds the body each draft reopens with, so
+       it is updated here rather than left to the next load. */
+    const row = Object.assign({}, m, { status: "draft" });
+    const at = cp.mailings.findIndex((x) => x.id === m.id);
+    if (at === -1) cp.mailings.unshift(row); else cp.mailings[at] = row;
+    renderPickers();
     $("cpDraft").value = cp.id;
+
+    /* The page's Drafts card and counts change only when a draft appears or
+       is renamed; a reload for every pause in typing would be a request for
+       nothing. */
+    if (!quiet || wasNew || !before || before.subject !== m.subject) await load(cp.listId);
     measure();
-    return body.mailing;
+    if (cp.dirty) autosaveSoon();
+    return m;
+  }
+
+  /* AUTOSAVE, quietly, a few seconds after the typing stops. Never two at
+     once: save() queues behind one that is out. */
+  function autosaveSoon() {
+    clearTimeout(autoTimer);
+    autoTimer = setTimeout(() => {
+      if (cp.dirty && hasWords()) save(true);
+    }, AUTOSAVE_MS);
+  }
+
+  /* LEAVING NEVER LOSES WORDS. Back, New, another draft, another list: each
+     saves what is on screen first. True when it is safe to move on. */
+  async function flush() {
+    clearTimeout(autoTimer);
+    if (saving) await saving;
+    if (!cp.dirty || !hasWords()) return true;
+    return !!(await save(true));
   }
 
   /* ---- how heavy is it -------------------------------------------------
@@ -410,13 +476,31 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
 
   /* ---- wiring --------------------------------------------------------- */
 
+  /* "SENDING TO" MOVES THIS DRAFT. Changing it used to start an empty one on
+     the other list and drop what was written. Now the words go with it; with
+     nothing written, the other list simply opens. */
   $("cpList").addEventListener("change", async function () {
-    cp.listId = this.value; cp.id = null;
-    await load(cp.listId); openDraft(null);
+    const to = this.value, from = cp.listId;
+    if (saving) await saving;
+    if (!hasWords()) {
+      cp.listId = to; cp.id = null;
+      await load(cp.listId); openDraft(null);
+      return;
+    }
+    cp.listId = to;
+    if (!(await save(true))) { cp.listId = from; this.value = from; return; }
+    const id = cp.id;
+    await load(cp.listId);
+    openDraft(id);
   });
-  $("cpDraft").addEventListener("change", function () { openDraft(this.value || null); });
-  $("cpNew").addEventListener("click", () => {
-    cp.id = null; openDraft(null); $("cpSubject").focus();
+  $("cpDraft").addEventListener("change", async function () {
+    const want = this.value || null;
+    if (!(await flush())) { this.value = cp.id || ""; return; }
+    openDraft(want);
+  });
+  $("cpNew").addEventListener("click", async () => {
+    if (!(await flush())) return;
+    openDraft(null); $("cpSubject").focus();
   });
   $("cpSave").addEventListener("click", () => save());
   $("cpTest").addEventListener("click", function () { test(this); });
@@ -460,11 +544,11 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
      could be reached from outside. A debugging surface that makes the hard
      thing checkable is worth more than the tidiness of hiding it. */
   /* WRITE AND DRAFTS, from the Mail page's first card (board 10). Write
-     starts a new mailing to the list on screen — unless words are already
-     waiting unsaved here, which it leaves alone. Drafts opens the newest one,
-     on a list that has some, with the picker ready for the rest. */
+     starts a new mailing to the list on screen. Drafts opens the newest one,
+     on a list that has some, with the picker ready for the rest. Whatever was
+     on screen is saved first — leaving never discards (Chase, 2026-10-03). */
   async function write(listId) {
-    if (cp.dirty) return;
+    if (!(await flush())) return;
     /* Loaded with its mailings every time, so the drafts picker is filled —
        the first load of the page asks for no list's mailings at all. */
     cp.listId = listId || cp.listId || (cp.lists[0] && cp.lists[0].id) || null;
@@ -472,8 +556,16 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
     openDraft(null);
     $("cpSubject").focus();
   }
+  /* One draft, from the Mail page's Drafts card. */
+  async function open(listId, id) {
+    if (!(await flush())) return;
+    cp.listId = listId;
+    await load(cp.listId);
+    openDraft(id);
+    $("cpSubject").focus();
+  }
   async function drafts() {
-    if (cp.dirty) return;
+    if (!(await flush())) return;
     const has = (l) => l && l.drafts > 0;
     const mine = cp.lists.filter((l) => l.id === cp.listId)[0];
     const list = has(mine) ? mine : cp.lists.filter(has)[0];
@@ -484,6 +576,16 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
     $("cpDraft").focus();
   }
 
-  window.StaffComposer = { reload: () => load(cp.listId), write, drafts, editor };
+  /* A tab put away or a phone locked is often the last moment this page
+     gets: save then, on a request that outlives the page. keepalive caps a
+     body at 64KB, so a very long draft may miss this one — beforeunload
+     still asks before anything is lost. */
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden" && cp.dirty && hasWords() && !saving) {
+      save(true, { keepalive: true });
+    }
+  });
+
+  window.StaffComposer = { reload: () => load(cp.listId), write, drafts, open, flush, editor };
   load(null).then(() => openDraft(null));
 })();

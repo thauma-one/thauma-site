@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "6167c8f9eef69688";
+export const SOURCE_DIGEST = "926c98198687946b";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -498,12 +498,21 @@ WHERE id = :id AND partner_id IS :partner_id AND status = 'sending'
 VALUES (:id, :list_id, :partner_id, :subject, :preheader,
         :body_md, :body_html, :body_text, 'draft', :created_by, :now)
 ON CONFLICT(id) DO UPDATE SET
+  list_id = excluded.list_id,
   subject = excluded.subject,
   preheader = excluded.preheader,
   body_md = excluded.body_md,
   body_html = excluded.body_html,
   body_text = excluded.body_text
-WHERE mailings.status = 'draft';`,
+WHERE mailings.status = 'draft'
+  AND mailings.partner_id IS excluded.partner_id;`,
+  mailings_drafts_for_list: `SELECT m.id, m.subject, m.created_at
+  FROM mailings m
+  JOIN mailing_lists l ON l.id = m.list_id
+ WHERE m.list_id = :list_id AND l.partner_id IS :partner_id
+   AND m.status = 'draft'
+ ORDER BY m.created_at DESC
+ LIMIT 100;`,
   mailings_for_list: `SELECT m.id, m.list_id, m.subject, m.preheader, m.status, m.slug,
        m.sent_count, m.created_at, m.started_at, m.finished_at,
        CASE WHEN m.status = 'draft' THEN m.body_html END AS body_html,

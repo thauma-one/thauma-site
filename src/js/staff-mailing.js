@@ -172,6 +172,28 @@
     $('mlSentMore').textContent = state.sentAll ? tr('ml.sentFewer') : fill('ml.sentAllN', { n: rows.length });
   }
 
+  /* ---- drafts, every list together ------------------------------------
+     Sent's shape, above it: what is waiting is what somebody came back for.
+     A row reopens its draft in the composer. */
+  function renderDraftsAll() {
+    var rows = [];
+    state.lists.forEach(function (l) {
+      (l.draft_rows || []).forEach(function (m) { rows.push({ m: m, l: l }); });
+    });
+    rows.sort(function (a, b) { return String(b.m.created_at || '').localeCompare(String(a.m.created_at || '')); });
+    $('mlDraftsAll').hidden = !rows.length;
+    $('mlDraftRows').innerHTML = rows.map(function (r) {
+      var m = r.m, l = r.l;
+      var meta = esc(l.name) + ' · ' +
+        esc(m.created_at ? new Date(m.created_at).toLocaleDateString() : '');
+      return '<button type="button" class="ml-sentall-row" data-open-draft="' + esc(m.id) +
+          '" data-draft-list="' + esc(l.id) + '">' +
+        '<span class="ml-sentall-subject' + (m.subject ? '' : ' is-untitled') + '">' +
+          esc(m.subject || tr('ml.cpUntitled')) + '</span>' +
+        '<span class="ml-sentall-meta">' + meta + '</span></button>';
+    }).join('');
+  }
+
   /* The tool tabs — the views that are not a list. Kept as one list so a new
      one cannot be added to the tab bar and forgotten here, which is what
      leaves a tab that highlights and shows nothing. */
@@ -919,6 +941,7 @@
     state.mayTheme = !!body.may_theme;
     state.partnerSlug = (body.partner && body.partner.slug) || '';
     renderSentAll();
+    renderDraftsAll();
 
 
     /* Where to land: what the caller asked for, then the address bar, then the
@@ -951,6 +974,7 @@
       state.lists = body.lists;
       renderHero();
       renderSentAll();
+      renderDraftsAll();
       renderTabs();
     }
   };
@@ -971,10 +995,25 @@
   $('mlNewList').addEventListener('click', newList);
   $('mlWrite').addEventListener('click', function () { openComposer('write'); });
   $('mlDrafts').addEventListener('click', function () { openComposer('drafts'); });
-  $('mlBack').addEventListener('click', function () { show(firstList()); });
+  /* BACK SAVES. It only ever hid the composer, so an unsaved draft stayed
+     in a page nobody returned to and was gone at the next reload — which read
+     as Back deleting it. Saved first now; if that fails, the composer stays
+     open with the words in it. */
+  $('mlBack').addEventListener('click', function () {
+    var c = window.StaffComposer;
+    if (!c || !c.flush) { show(firstList()); return; }
+    c.flush().then(function (ok) { if (ok) show(firstList()); });
+  });
   $('mlListSettings').addEventListener('click', function () {
     if (!currentList()) return;
     showSub(state.sub === 'settings' ? 'people' : 'settings');
+  });
+  $('mlDraftRows').addEventListener('click', function (e) {
+    var row = e.target.closest('[data-open-draft]');
+    if (!row) return;
+    show('composer');
+    var c = window.StaffComposer;
+    if (c && c.open) c.open(row.dataset.draftList, row.dataset.openDraft);
   });
   $('mlSentMore').addEventListener('click', function () {
     state.sentAll = !state.sentAll;

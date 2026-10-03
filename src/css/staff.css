@@ -1229,6 +1229,12 @@ body.has-savebar .acting-mark{bottom:calc(var(--ms-savebar-h,72px) + 12px)}
   text-decoration:none;border-top:1px solid var(--line)}
 .ml-sentall-row:first-child{border-top:0}
 a.ml-sentall-row:hover .ml-sentall-subject{color:var(--voice-tech)}
+/* A draft row is a button: it reopens the draft in the composer. */
+button.ml-sentall-row{width:100%;background:none;border-left:0;border-right:0;border-bottom:0;
+  font:inherit;text-align:left;cursor:pointer}
+button.ml-sentall-row:hover .ml-sentall-subject,
+button.ml-sentall-row:focus-visible .ml-sentall-subject{color:var(--voice-tech)}
+.ml-draftsall .ml-sentall-subject.is-untitled{color:var(--dim);font-style:italic}
 .ml-sentall-subject{flex:1 1 auto;min-width:0;font-size:14px;overflow-wrap:anywhere}
 .ml-sentall-meta{flex:none;font-size:12.5px;color:var(--dim);font-variant-numeric:tabular-nums}
 .ml-sentall .link-btn{margin-top:8px}

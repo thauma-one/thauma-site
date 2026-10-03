@@ -114,6 +114,7 @@ jobs:
           node test/console-nav.test.mjs
           node test/console-banner.test.mjs
           node test/mailing-views.test.mjs
+          node test/mail-drafts.test.mjs
           node test/photo-crop.test.mjs
           node test/us-english.test.mjs
           node test/profile-save.test.mjs
