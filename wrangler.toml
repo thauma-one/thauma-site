@@ -76,7 +76,7 @@ run_worker_first = [
   # as the two below: it is the page somebody visits BEFORE they can sign in,
   # so it cannot be behind the sign-in.
   "/confirm-account",
-  "/confirm-email",
+  "/confirm-email", "/confirm-test-inbox",
   # THE WAY OUT OF A MAILING LIST, and it must never be the thing that 404s.
   # A reader who cannot unsubscribe presses "report spam" instead, and that
   # damages the sending domain for everybody else the ministry writes to.
@@ -332,7 +332,7 @@ not_found_handling = "404-page"
 # The same allow-list as staging's, annotated at the top of this file; one
 # line here so the three are easy to compare. test/admin-console.test.mjs
 # checks every route and prefix reaches the Worker in all three.
-run_worker_first = ["/", "/api/*", "/.netlify/functions/*", "/staff", "/staff/*", "/admin", "/admin/*", "/embed/v1/*", "/media/*", "/confirm", "/confirm-account", "/confirm-email", "/unsubscribe", "/archive/*", "/site/*"]
+run_worker_first = ["/", "/api/*", "/.netlify/functions/*", "/staff", "/staff/*", "/admin", "/admin/*", "/embed/v1/*", "/media/*", "/confirm", "/confirm-account", "/confirm-email", "/confirm-test-inbox", "/unsubscribe", "/archive/*", "/site/*"]
 
 # THE REAL DATABASE, PHOTOS AND KV — `remote = true` on each binding (see
 # ONE DATABASE at the top). `wrangler dev` still runs the Worker on the Pi, so

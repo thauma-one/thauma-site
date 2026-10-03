@@ -104,7 +104,9 @@ const PRIVATE_TABLES = ["contacts", "interactions", "life_events",
                            the other two, and the mailing lists' people. */
                         "directory_contacts", "resources", "resource_shares",
                         "resource_group_shares", "subscribers", "subscriber_tags",
-                        "mailing_recipients"];
+                        "mailing_recipients",
+                        /* A person's own inbox for test sends (0048). */
+                        "test_inboxes"];
 
 /**
  * Public queries that turn an identifier into a partner, rather than reading

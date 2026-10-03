@@ -24,7 +24,8 @@ import { resolveActor, withActing } from "./lib/actas.js";
 import { json, readJson } from "./lib/store.js";
 import { sanitise, render, toText, plainLine, tooBig, sizeOf } from "./lib/newsletter.js";
 import { unsubscribeUrl } from "./lib/unsub.js";
-import { sendMail, listConfirmEmail } from "./lib/mail.js";
+import { sendMail, listConfirmEmail, testInboxEmail } from "./lib/mail.js";
+import { linkParams } from "./lib/signed-link.js";
 import { siteOrigin } from "./lib/origin.js";
 import { topicLabels, cleanLabels } from "./lib/topics.js";
 import { changedSince, changedAnswer } from "./lib/fresh.js";
@@ -200,6 +201,15 @@ async function withAttachments(db, listId, partnerId) {
     m.attachments = await db.query("mailing_attachments_for", { mailing_id: m.id });
   }
   return rows;
+}
+
+/* A person's proven test inbox (0048), or null. TOLERANT of the table not
+   existing: dev runs this code the moment it is saved, before the migration
+   is applied, and a test must still go to the sign-in address meanwhile. */
+async function testInboxOf(db, userId) {
+  if (!userId) return null;
+  try { return await db.queryOne("test_inbox_for_user", { user_id: userId }); }
+  catch { return null; }
 }
 
 /** Everything a message needs, or the reason it cannot go. */
@@ -472,8 +482,11 @@ const api = {
         partnerId ? db.queryOne("partner_settings", { partner_id: partnerId }) : null,
       ]);
 
+      const inbox = await testInboxOf(db, s.me && s.me.user_id);
       return json(withActing({
         you: { email: actor.email, name: (s.me && s.me.user_name) || null, roles: myRoles },
+        /* Where "Send me a test" goes: this address once proven, else `you`. */
+        test_inbox: inbox ? { email: inbox.email, confirmed: !!inbox.confirmed_at } : null,
         scope: s.isOrg ? "organization" : "partner",
         /* So the console can offer the switch only to people who have it,
            rather than showing a control that answers 403. */
@@ -876,6 +889,40 @@ const api = {
         return json({ ok: true });
       }
 
+      /* ---- the inbox tests go to (0048) ----
+         One address besides the sign-in one, PROVEN by a link sent to it
+         before any test goes there — otherwise this box would send unsent
+         newsletters to anybody, called a test. Choosing the sign-in address
+         again simply removes the extra one. */
+      if (body.action === "test-inbox" || body.action === "test-inbox-clear") {
+        const uid = s.me && s.me.user_id;
+        if (!uid) return json({ error: "This account has no id." }, 403);
+        const email = String(body.email || "").trim().toLowerCase();
+        if (body.action === "test-inbox-clear" || email === String(actor.email).toLowerCase()) {
+          await db.query("test_inbox_clear", { user_id: uid });
+          return json({ ok: true, test_inbox: null });
+        }
+        if (!EMAIL_RE.test(email)) {
+          return json({ error: "That does not look like an email address." }, 400);
+        }
+        /* One link a minute per person, so the button cannot be used to fill
+           somebody's inbox. */
+        const prior = await testInboxOf(db, uid);
+        if (prior && !prior.confirmed_at && String(prior.email).toLowerCase() === email &&
+            Date.now() - Date.parse(prior.created_at) < 60000) {
+          return json({ error: "A link was just sent there. Give it a minute." }, 429);
+        }
+        await db.query("test_inbox_request", { user_id: uid, email, now });
+        const origin = siteOrigin(env, request);
+        const confirmUrl = `${origin}/confirm-test-inbox?` +
+          await linkParams(env, "test-inbox", `${uid}|${email}`);
+        const mail = testInboxEmail({ name: s.me.user_name, origin,
+                                      signInEmail: actor.email, confirmUrl });
+        const sent = await sendMail(env, { to: email, ...mail });
+        if (!sent.ok) return json({ error: sent.error }, 502);
+        return json({ ok: true, test_inbox: { email, confirmed: false } });
+      }
+
       /* ---- a test to yourself ----
          To the SIGNED-IN ADDRESS and nowhere else. A free-text "send test to"
          box is a way to send a newsletter to anybody while it is still called
@@ -885,6 +932,10 @@ const api = {
         const m = await db.queryOne("mailing_one",
           { id: clean(body.id, 60), partner_id: partnerId });
         if (!m) return json({ error: "No such mailing." }, 404);
+        /* The proven test inbox if there is one (0048): the sign-in address
+           may be a forward, and Gmail files forwarded tests as spam. */
+        const inbox = await testInboxOf(db, s.me && s.me.user_id);
+        const testTo = inbox && inbox.confirmed_at ? inbox.email : actor.email;
         const list = await db.queryOne("mailing_list_one",
           { id: m.list_id, partner_id: partnerId });
         if (!list) return json({ error: "No such list." }, 404);
@@ -909,7 +960,7 @@ const api = {
            would fail to show. */
         const msg = await messageFor(env, {
           built, list, origin,
-          sub: { id: "test-" + ((actor.me && actor.me.user_id) || "x"), email: actor.email },
+          sub: { id: "test-" + ((actor.me && actor.me.user_id) || "x"), email: testTo },
           theme: look ? { accent: look.embed_accent, mode: look.embed_theme } : null,
           attachments: await loadAttachments(env,
             await db.query("mailing_attachments_for", { mailing_id: m.id })),
@@ -917,7 +968,7 @@ const api = {
         msg.subject = "[TEST] " + msg.subject;
 
         const sent = await sendMail(env, msg);
-        return json({ ok: sent.ok === true, to: actor.email,
+        return json({ ok: sent.ok === true, to: testTo,
                       error: sent.ok ? undefined : sent.error },
                     sent.ok ? 200 : 502);
       }

@@ -3084,3 +3084,31 @@ UPDATE ai_usage SET neurons = MAX(0, neurons - :est + :actual) WHERE day = :day;
 
 -- name: ai_usage_today
 SELECT neurons, calls FROM ai_usage WHERE day = :day;
+
+
+-- ===========================================================================
+-- TEST INBOXES (0048) — where a person's "Send me a test" goes
+-- ===========================================================================
+
+-- name: test_inbox_for_user
+SELECT email, confirmed_at FROM test_inboxes WHERE user_id = :user_id;
+
+
+-- name: test_inbox_request
+-- Asking again, or for a different address, starts over: unconfirmed until
+-- the new link is followed.
+INSERT INTO test_inboxes (user_id, email, created_at, confirmed_at)
+VALUES (:user_id, :email, :now, NULL)
+ON CONFLICT(user_id) DO UPDATE SET
+  email = excluded.email, created_at = excluded.created_at, confirmed_at = NULL;
+
+
+-- name: test_inbox_confirm
+-- The address is in the WHERE: a link for an address since replaced
+-- confirms nothing.
+UPDATE test_inboxes SET confirmed_at = :now
+WHERE user_id = :user_id AND email = :email;
+
+
+-- name: test_inbox_clear
+DELETE FROM test_inboxes WHERE user_id = :user_id;

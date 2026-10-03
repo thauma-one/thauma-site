@@ -229,6 +229,49 @@ export async function sendMail(env, { to, subject, html, text, replyTo, from: fr
    --------------------------------------------------------------------------- */
 
 /**
+ * Proving a TEST INBOX (0048): the address a person's "Send me a test" goes to
+ * instead of their sign-in address. Sent to that address only; the link is
+ * the proof they can read it. English, like the other account emails.
+ */
+export function testInboxEmail({ name, origin, signInEmail, confirmUrl }) {
+  const greeting = name ? `Hi ${esc(name)},` : "Hello,";
+  const rows =
+    h1("Send your tests here?") +
+    p(greeting) +
+    p(`The Thauma console signed in as ` +
+      `<strong style="color:#FFFFFF;">${esc(signInEmail)}</strong> asked to send ` +
+      `its newsletter tests to this inbox.`) +
+    button(confirmUrl, "Yes, send tests here") +
+    p(`<span style="color:#93a1b2;font-size:14px;">This link is good for ` +
+      `seven days. If this was not you, ignore this message and nothing will ` +
+      `be sent here.</span>`);
+  const footer =
+    `You are receiving this because this address was entered as a test inbox ` +
+    `in the Thauma console.`;
+  const text = [
+    "Send your tests here?",
+    "",
+    name ? `Hi ${name},` : "Hello,",
+    "",
+    `The Thauma console signed in as ${signInEmail} asked to send its`,
+    "newsletter tests to this inbox.",
+    "",
+    `Yes, send tests here: ${confirmUrl}`,
+    "",
+    "This link is good for seven days. If this was not you, ignore this",
+    "message and nothing will be sent here.",
+    "",
+    "--",
+    footer,
+  ].join("\n");
+  return {
+    subject: "Send your Thauma tests here?",
+    html: shell({ heading: "Send your tests here?", rows, footer, origin }),
+    text,
+  };
+}
+
+/**
  * Confirming a NEW address, sent to the new address and nowhere else.
  *
  * That is the whole design: the only proof that somebody can read an inbox is

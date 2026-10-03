@@ -16,6 +16,8 @@
  * the caller's own.
  */
 import handler, { cleanList, slugify } from "../src/staff-mailing.js";
+import confirmTestInbox from "../src/confirm-test-inbox.js";
+import { linkParams } from "../src/lib/signed-link.js";
 /* The generated SQL, so the tests below assert on what the Worker actually
    runs rather than on a copy of it in a string here. */
 import { QUERIES } from "../src/lib/db.js";
@@ -744,6 +746,100 @@ await check("a saved mailing records WHO wrote it", async () => {
   const up = byName(env, "mailing_upsert");
   assert(up.length === 1 && up[0].params.includes("u_1"),
     `created_by should be u_1, bound ${JSON.stringify(up.map((c) => c.params))}`);
+});
+
+/* ------------------------ the test inbox (0048) ------------------------ */
+
+/* An env whose test_inboxes row is `inbox` (or whose table is missing). */
+function inboxEnv({ inbox = null, missing = false } = {}) {
+  const { env } = crashingSendEnv({ crash: false });
+  env.RESEND_API_KEY = "re_test";
+  env.MAIL_FROM = "Thauma <noreply@thauma.one>";
+  const sqlOf = (name) => QUERIES[name].replace(/:[a-z_][a-z0-9_]*/gi, "?");
+  const inner = env.DB.prepare;
+  env.DB.prepare = (sql) => {
+    if (sql === sqlOf("test_inbox_for_user")) {
+      const run = async () => {
+        if (missing) throw new Error("no such table: test_inboxes");
+        env.calls.push({ sql, params: env._lastParams });
+        return { results: inbox ? [inbox] : [] };
+      };
+      return { bind(...a) { env._lastParams = a; return { all: run, run }; }, all: run, run };
+    }
+    return inner(sql);
+  };
+  return env;
+}
+async function withResend(fn) {
+  const out = [];
+  const before = globalThis.fetch;
+  globalThis.fetch = async (url, init) => {
+    if (String(url).includes("api.resend.com")) {
+      out.push(JSON.parse(init.body));
+      return new Response(JSON.stringify({ id: "re_1" }), { status: 200 });
+    }
+    return before(url, init);
+  };
+  try { return { res: await fn(), out }; } finally { globalThis.fetch = before; }
+}
+
+await check("asking for a test inbox sends a signed link TO that inbox and stores it unconfirmed", async () => {
+  const env = inboxEnv();
+  const { res, out } = await withResend(() => handler.fetch(
+    req("POST", { body: { action: "test-inbox", email: "Me@Gmail.com" } }), env));
+  eq(res.status, 200, "status");
+  eq((await res.json()).test_inbox, { email: "me@gmail.com", confirmed: false }, "answer");
+  eq(out.length, 1, "emails sent");
+  eq(out[0].to, ["me@gmail.com"], "sent to the new inbox only");
+  assert(/\/confirm-test-inbox\?u=u_1%7Cme%40gmail\.com&e=\d+&t=[0-9a-f]+/.test(out[0].text),
+    "the link names the account and the address");
+  const req0 = byName(env, "test_inbox_request");
+  assert(req0.length === 1 && req0[0].params.includes("me@gmail.com"), "row not stored");
+});
+
+await check("Send me a test goes to a CONFIRMED test inbox", async () => {
+  const env = inboxEnv({ inbox: { email: "me@gmail.com", confirmed_at: "2026-10-03T00:00:00Z" } });
+  const { res, out } = await withResend(() => handler.fetch(
+    req("POST", { body: { action: "mailing-test", id: "mg_1" } }), env));
+  eq(res.status, 200, "status");
+  eq(out[0].to, ["me@gmail.com"], "recipient");
+});
+
+await check("an UNCONFIRMED inbox, or no table yet, leaves tests on the sign-in address", async () => {
+  for (const env of [inboxEnv({ inbox: { email: "me@gmail.com", confirmed_at: null } }),
+                     inboxEnv({ missing: true })]) {
+    const { res, out } = await withResend(() => handler.fetch(
+      req("POST", { body: { action: "mailing-test", id: "mg_1" } }), env));
+    eq(res.status, 200, "status");
+    eq(out[0].to, ["chase@thauma.one"], "recipient");
+  }
+});
+
+await check("the confirm link confirms exactly the address it names", async () => {
+  const SALT = "s".repeat(32);
+  const calls = [];
+  const row = { email: "me@gmail.com", confirmed_at: null };
+  const sqlOf = (name) => QUERIES[name].replace(/:[a-z_][a-z0-9_]*/gi, "?");
+  const env = { SIGNUP_SALT: SALT, DB: { prepare(sql) {
+    let args = [];
+    const run = async () => { calls.push({ sql, args });
+      return { results: sql === sqlOf("test_inbox_for_user") ? [row] : [] }; };
+    return { bind(...a) { args = a; return { all: run, run }; }, all: run, run };
+  } } };
+  const good = await linkParams(env, "test-inbox", "u_1|me@gmail.com");
+  const ok = await confirmTestInbox.fetch(new Request("https://x/confirm-test-inbox?" + good), env);
+  eq(ok.status, 200, "good link");
+  assert(calls.some((c) => c.sql === sqlOf("test_inbox_confirm")), "not confirmed");
+
+  calls.length = 0;
+  const other = await linkParams(env, "test-inbox", "u_1|someone@else.com");
+  const no = await confirmTestInbox.fetch(new Request("https://x/confirm-test-inbox?" + other), env);
+  eq(no.status, 400, "a link for a replaced address");
+  assert(!calls.some((c) => c.sql === sqlOf("test_inbox_confirm")), "confirmed the wrong address");
+
+  const forged = good.replace(/t=[0-9a-f]+/, "t=" + "0".repeat(40));
+  eq((await confirmTestInbox.fetch(new Request("https://x/confirm-test-inbox?" + forged), env)).status,
+     400, "a forged signature");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

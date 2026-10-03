@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "926c98198687946b";
+export const SOURCE_DIGEST = "5db997a988b82902";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -1145,6 +1145,14 @@ ORDER BY s.subscribed_at
 LIMIT :limit OFFSET :offset;`,
   subscribers_to_send_count: `SELECT COUNT(*) AS n FROM subscribers
 WHERE list_id = :list_id AND partner_id IS :partner_id AND status = 'subscribed';`,
+  test_inbox_clear: `DELETE FROM test_inboxes WHERE user_id = :user_id;`,
+  test_inbox_confirm: `UPDATE test_inboxes SET confirmed_at = :now
+WHERE user_id = :user_id AND email = :email;`,
+  test_inbox_for_user: `SELECT email, confirmed_at FROM test_inboxes WHERE user_id = :user_id;`,
+  test_inbox_request: `INSERT INTO test_inboxes (user_id, email, created_at, confirmed_at)
+VALUES (:user_id, :email, :now, NULL)
+ON CONFLICT(user_id) DO UPDATE SET
+  email = excluded.email, created_at = excluded.created_at, confirmed_at = NULL;`,
   translation_glossary_add: `INSERT INTO translation_glossary (id, lang, source, target, created_at, updated_at, updated_by)
 VALUES (:id, :lang, :source, :target, :now, :now, :user_id)
 ON CONFLICT(lang, source) DO UPDATE SET

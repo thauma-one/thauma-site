@@ -378,6 +378,19 @@
         <button type="button" class="solid-btn cp-send" id="cpSend" data-i18n="ml.cpSend">Send</button>
         <button type="button" class="ghost-btn" id="cpSave" data-i18n="ml.cpSave">Save draft</button>
         <button type="button" class="ghost-btn" id="cpTest" data-i18n="ml.cpTest">Send me a test</button>
+        {#- Where the test goes (0048). The sign-in address may be a forward,
+            and Gmail files forwarded tests as spam; a second inbox is proven
+            by a link before any test goes there. -#}
+        <span class="cp-testto">
+          <button type="button" class="cp-testto-addr" id="cpTestTo"
+                  data-i18n-attr="title:ml.cpTestTo" title="Tests go to"></button>
+          <span class="cp-testto-box" id="cpTestBox" hidden>
+            <input type="email" id="cpTestEmail" autocomplete="email"
+                   data-i18n-attr="aria-label:ml.cpTestTo" aria-label="Tests go to">
+            <button type="button" class="ghost-btn" id="cpTestLink" data-i18n="ml.cpTestSendLink">Send confirm link</button>
+            <button type="button" class="ghost-btn" id="cpTestReset" data-i18n="ml.cpTestUseSignIn" hidden>Use my sign-in address</button>
+          </span>
+        </span>
         <span class="cp-actions-gap"></span>
         <button type="button" class="cp-icon" id="cpAttach"
                 data-i18n-attr="title:ml.cpAttach" title="Attach a file">&#128206;</button>

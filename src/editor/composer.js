@@ -37,6 +37,7 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
 
   const cp = {
     lists: [], mailings: [], attachments: [],
+    you: null, testInbox: null,
     listId: null, id: null,
     savedHtml: "", savedSubject: "", savedPreheader: "", dirty: false,
     /* The draft as the SERVER last gave it — what is stored, cleaned — for a
@@ -83,7 +84,10 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
 
     cp.lists = body.lists || [];
     cp.mailings = body.mailings || [];
+    cp.you = body.you || null;
+    cp.testInbox = body.test_inbox || null;
     renderPickers();
+    renderTestTo();
     /* The page around this shows the drafts waiting and what has gone out;
        both just changed if this load follows a save or a send. */
     if (window.StaffMailing && window.StaffMailing.changed) window.StaffMailing.changed(body);
@@ -409,6 +413,34 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
     el.title = body.tooBig || tr("ml.cpSizeOk");
   }
 
+  /* ---- where a test goes (0048) ---------------------------------------
+     The address is shown beside the button and pressing it changes it. A
+     new inbox is proven by a link first; until then tests keep going to the
+     sign-in address, and the new one shows as waiting. */
+  function renderTestTo() {
+    const el = $("cpTestTo");
+    if (!el) return;
+    const signIn = cp.you ? cp.you.email : "";
+    const ti = cp.testInbox;
+    el.textContent = ti ? ti.email : signIn;
+    el.classList.toggle("is-waiting", !!(ti && !ti.confirmed));
+    el.title = ti && !ti.confirmed ? tr("ml.cpTestWaiting") : tr("ml.cpTestTo");
+    $("cpTestReset").hidden = !ti;
+    $("cpTestEmail").placeholder = signIn;
+  }
+
+  async function chooseTestInbox(clear) {
+    const email = $("cpTestEmail").value.trim();
+    if (!clear && !email) return;
+    const body = await post(clear ? { action: "test-inbox-clear" }
+                                  : { action: "test-inbox", email });
+    if (body.error) { toast(body.error, "bad"); return; }
+    cp.testInbox = body.test_inbox || null;
+    $("cpTestBox").hidden = true;
+    renderTestTo();
+    if (cp.testInbox) toast(tr("ml.cpTestLinkSent").replace("{email}", cp.testInbox.email), "ok");
+  }
+
   /* ---- sending -------------------------------------------------------- */
 
   async function test(btn) {
@@ -506,6 +538,20 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
   });
   $("cpSave").addEventListener("click", () => save());
   $("cpTest").addEventListener("click", function () { test(this); });
+  $("cpTestTo").addEventListener("click", function () {
+    const box = $("cpTestBox");
+    box.hidden = !box.hidden;
+    if (!box.hidden) {
+      $("cpTestEmail").value = cp.testInbox ? cp.testInbox.email : "";
+      $("cpTestEmail").focus();
+    }
+  });
+  $("cpTestLink").addEventListener("click", () => chooseTestInbox(false));
+  $("cpTestReset").addEventListener("click", () => chooseTestInbox(true));
+  $("cpTestEmail").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); chooseTestInbox(false); }
+    if (e.key === "Escape") { $("cpTestBox").hidden = true; }
+  });
   $("cpSend").addEventListener("click", function () { send(this); });
   $("cpDelete").addEventListener("click", function () { remove(this); });
   $("cpAttach").addEventListener("click", pickAttachment);
