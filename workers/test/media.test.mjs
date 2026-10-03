@@ -228,6 +228,16 @@ await check("a path trying to climb out of the bucket is a 404", async () => {
   }
 });
 
+await check("a mail attachment is never served publicly, even when it exists", async () => {
+  /* Read by the send through the binding only; a prayer list's file must not
+     also be a URL. */
+  const key = "attachments/p_chase/0123456789abcdef-letter.pdf";
+  const env = { MEDIA: { get: async () => ({
+    body: "%PDF", httpEtag: '"e"', writeHttpMetadata() {} }) } };
+  const res = await serve(new Request("https://x/media/" + key), env, key);
+  eq(res.status, 404, "status");
+});
+
 await check("a missing object is a 404, not a crash", async () => {
   const env = envWith("admin,staff");
   const res = await serve(new Request("https://x/media/team/nope.webp"), env, "team/nope.webp");

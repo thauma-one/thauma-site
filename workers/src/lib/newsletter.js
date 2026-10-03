@@ -106,6 +106,26 @@ function safeUrl(raw) {
   return null;
 }
 
+/* A PICTURE UPLOADED FROM THE COMPOSER. /api/admin/media answers a path,
+   "/media/newsletter/<partner>/<hash>.jpg", and safeUrl above — which only
+   admits http(s) — dropped it on every save: the draft came back as a bare
+   <img>, which is the "pictures are not saved" bug. Kept as a path, because
+   the console and the public archive are served from the same Worker and
+   resolve it themselves; render() makes it absolute for the email, where
+   there is no page to be relative to. Only that one shape: no "..", no
+   other directory, nothing that could point anywhere but the bucket. */
+const MEDIA_PATH = /^\/media\/[A-Za-z0-9._\/-]{1,200}$/;
+function mediaPath(raw) {
+  const v = String(raw || "").trim();
+  return MEDIA_PATH.test(v) && !v.includes("..") ? v : null;
+}
+
+/* Where a mail client fetches an uploaded picture from. Every host shares one
+   bucket and the live site serves /media/ to anybody, while dev.thauma.one
+   sits behind a login no reader has — so a message sent from dev must still
+   point at the live address. Same default as embed.js publicOrigin. */
+const MEDIA_ORIGIN = "https://thauma.one";
+
 /**
  * Reduce arbitrary editor HTML to the KEEP set.
  *
@@ -176,8 +196,12 @@ export function sanitise(html) {
       let value = m[1];
       if (key === "data-sz" && !SIZES[value]) continue;
       if (key === "data-c" && !COLORS.has(value)) continue;
-      if (key === "href" || key === "src") {
+      if (key === "href") {
         value = safeUrl(value);
+        if (!value) continue;
+      }
+      if (key === "src") {
+        value = safeUrl(value) || mediaPath(value);
         if (!value) continue;
       }
       /* A data: URI never reaches safeUrl, which only admits http(s) and
@@ -192,6 +216,9 @@ export function sanitise(html) {
        color is doing nothing at all — and pastes are full of them. */
     if (name === "a" && !attrs) continue;
     if (name === "span" && !attrs) continue;
+    /* A picture whose address was refused is nothing at all; kept, it is an
+       empty box in Outlook and a broken-image icon everywhere else. */
+    if (name === "img" && !/ src="/.test(attrs)) continue;
 
     if (selfClosing) { out += "<" + name + attrs + ">"; continue; }
     out += "<" + name + attrs + ">";
@@ -304,7 +331,9 @@ export function render(body, opts = {}) {
   const dim  = dark ? "#9a9aad" : "#5c5c6b";
   const line = dark ? "#2a2a36" : "#e6e6ee";
 
-  const styled = inlineStyles(body, accent, ink, dim, line);
+  const mediaOrigin = String(opts.mediaOrigin || MEDIA_ORIGIN).replace(/\/+$/, "");
+  const styled = inlineStyles(body, accent, ink, dim, line)
+    .replace(/(<img\b[^>]*\ssrc=")(\/media\/)/gi, `$1${mediaOrigin}$2`);
   const title = escapeHtml(opts.subject || "");
 
   /* THE PREHEADER. Hidden, and followed by enough blank characters to stop the

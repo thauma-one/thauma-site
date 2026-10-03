@@ -226,8 +226,10 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
       if (!file) return;
       setState(tr("ml.cpUploading"));
       try {
+        /* url(), so a file for one of Thauma's own lists lands in the
+           organization's folder — the folder its save will accept. */
         const res = await fetch(
-          "/api/staff-mailing?attach=" + encodeURIComponent(file.name), {
+          url("attach=" + encodeURIComponent(file.name)), {
             method: "PUT", credentials: "same-origin",
             headers: { "Content-Type": file.type || "application/octet-stream" },
             body: file,

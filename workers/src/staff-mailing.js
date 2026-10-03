@@ -31,6 +31,47 @@ import { changedSince, changedAnswer } from "./lib/fresh.js";
 import { readTexts, cleanTexts } from "./lib/texts.js";
 
 const MAX = { name: 120, slug: 60, desc: 400, from_name: 80, email: 200 };
+
+/* ATTACHMENTS. Resend takes about 40MB per message AFTER base64, which adds a
+   third, and every copy of a newsletter carries the files in full — so the
+   caps sit well under that: 5MB a file (mailing-save already clamped to it)
+   and 10MB a mailing. A bigger file belongs behind a link. */
+export const ATTACH_FILE_MAX = 5 * 1024 * 1024;
+export const ATTACH_TOTAL_MAX = 10 * 1024 * 1024;
+
+/* WHAT MAY BE ATTACHED, by extension, and the type is ours rather than the
+   browser's. Documents, sheets, slides, pictures, audio. No archives and
+   nothing executable or scriptable: those are what mail filters exist to
+   catch, and one of them would mark the whole list's mail as dangerous. */
+const ATTACH_TYPES = {
+  pdf: "application/pdf",
+  doc: "application/msword",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  xls: "application/vnd.ms-excel",
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  ppt: "application/vnd.ms-powerpoint",
+  pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  odt: "application/vnd.oasis.opendocument.text",
+  ods: "application/vnd.oasis.opendocument.spreadsheet",
+  odp: "application/vnd.oasis.opendocument.presentation",
+  rtf: "application/rtf", txt: "text/plain", csv: "text/csv",
+  jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", gif: "image/gif",
+  webp: "image/webp", heic: "image/heic",
+  mp3: "audio/mpeg", m4a: "audio/mp4",
+};
+
+/* The ONE folder a caller may attach from. From the scope the sign-in
+   resolved, never from the request: a key naming another ministry's folder
+   would otherwise attach their file to this ministry's newsletter. */
+const attachPrefix = (partnerId) => `attachments/${partnerId || "org"}/`;
+
+/* A filename as it will appear in somebody's inbox: no path, no control
+   characters, nothing a mail client would misread. */
+function attachName(raw) {
+  const base = String(raw || "").split(/[\\/]/).pop()
+    .replace(/[\x00-\x1f\x7f"<>|:*?]/g, "").replace(/\s+/g, " ").trim();
+  return base.slice(-120) || null;
+}
 const PAGE = 100;
 
 const newId = (p) => p + "_" + crypto.randomUUID().replace(/-/g, "").slice(0, 20);
@@ -777,20 +818,39 @@ const api = {
            so removing one is a matter of not sending it — which is exactly
            what the delete button does. Cheap at this size, and there is no
            second code path that could disagree with the first. */
-        await db.query("mailing_attachment_clear", { mailing_id: id });
         const files = Array.isArray(body.attachments) ? body.attachments.slice(0, 10) : [];
-        let n = 0;
+        const keep = [];
+        let total = 0;
         for (const f of files) {
-          const key = clean(f.object_key, 200);
-          /* The key has to be one this endpoint issued. Without this check a
-             caller could name any object in the bucket and have it attached to
-             a mailing going to a hundred people. */
-          if (!key || !/^attachments\//.test(key)) continue;
+          const key = clean(f && f.object_key, 200);
+          /* The key has to be one this endpoint issued TO THIS CALLER. Without
+             the folder check a caller could name any object in the bucket —
+             another ministry's attachment included — and have it sent to a
+             hundred people. */
+          if (!key || !key.startsWith(attachPrefix(partnerId)) || key.includes("..")) continue;
+          /* The size from the bucket, not from the page: the page's number is
+             the caller's word, and the cap exists because of the real one. A
+             key with nothing behind it is dropped rather than sent empty. */
+          const head = env.MEDIA ? await env.MEDIA.head(key) : null;
+          if (env.MEDIA && !head) continue;
+          const size = head ? head.size : Math.max(0, Number(f.bytes) || 0);
+          total += size;
+          keep.push({ key, size, f });
+        }
+        /* Refused BEFORE the old list is cleared, so the draft keeps the
+           attachments it had. */
+        if (total > ATTACH_TOTAL_MAX) {
+          return json({ error: `The attachments come to ${(total / 1048576).toFixed(1)}MB. ` +
+                               `A mailing can carry ${ATTACH_TOTAL_MAX / 1048576}MB at most.` }, 413);
+        }
+        await db.query("mailing_attachment_clear", { mailing_id: id });
+        let n = 0;
+        for (const { key, size, f } of keep) {
           await db.query("mailing_attachment_add", {
             id: newId("at"), mailing_id: id,
-            filename: clean(f.filename, 160) || "file",
+            filename: attachName(f.filename) || "file",
             content_type: clean(f.content_type, 120) || "application/octet-stream",
-            bytes: Math.max(0, Math.min(Number(f.bytes) || 0, 5 * 1024 * 1024)),
+            bytes: Math.min(size, ATTACH_FILE_MAX),
             object_key: key, sort_order: n++, now,
           });
         }
@@ -1198,6 +1258,49 @@ const api = {
          reason the GET does. */
       if (!saved) return json({ error: "No such list." }, 404);
       return json({ ok: true, list: { ...saved, texts: readTexts(saved.texts) } });
+    }
+
+    /* ------------------------------------------------------------ PUT */
+    /* AN ATTACHMENT, uploaded the moment it is picked. The composer sends the
+       raw file to ?attach=<its name> and keeps what comes back in the draft;
+       mailing-save then records it and the send reads it from the bucket.
+       Until 2026-10-03 this half did not exist and the button answered
+       "Method not allowed". */
+    if (request.method === "PUT") {
+      if (!url.searchParams.has("attach")) return json({ error: "Upload what?" }, 400);
+      if (!env.MEDIA) return json({ error: "No file store is bound to this deploy." }, 500);
+
+      const filename = attachName(url.searchParams.get("attach"));
+      if (!filename) return json({ error: "That file has no name." }, 400);
+      const ext = (filename.match(/\.([A-Za-z0-9]{1,5})$/) || [])[1];
+      const type = ext && ATTACH_TYPES[ext.toLowerCase()];
+      if (!type) {
+        return json({ error: `${filename} cannot be attached. Send a PDF, a document, ` +
+                             `a spreadsheet, slides, a picture or audio.` }, 415);
+      }
+
+      /* Refused on the declared length before reading, then again on what
+         actually arrived: the header is the caller's word. */
+      const tooBigFile = (n) => json({
+        error: `${filename} is ${(n / 1048576).toFixed(1)}MB. ` +
+               `A file can be ${ATTACH_FILE_MAX / 1048576}MB at most.` }, 413);
+      const declared = Number(request.headers.get("Content-Length") || 0);
+      if (declared > ATTACH_FILE_MAX) return tooBigFile(declared);
+      const bytes = new Uint8Array(await request.arrayBuffer());
+      if (!bytes.length) return json({ error: `${filename} is empty.` }, 400);
+      if (bytes.length > ATTACH_FILE_MAX) return tooBigFile(bytes.length);
+
+      /* A random part, so a key cannot be guessed, and the name kept readable
+         for whoever opens the bucket. */
+      const safe = filename.replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "file";
+      const object_key = attachPrefix(partnerId) +
+        crypto.randomUUID().replace(/-/g, "").slice(0, 16) + "-" + safe;
+      await env.MEDIA.put(object_key, bytes, {
+        httpMetadata: { contentType: type },
+        customMetadata: { uploadedBy: actor.email || "", uploadedAt: now, filename },
+      });
+      return json({ ok: true,
+                    file: { object_key, filename, content_type: type, bytes: bytes.length } });
     }
 
     /* --------------------------------------------------------- DELETE */
