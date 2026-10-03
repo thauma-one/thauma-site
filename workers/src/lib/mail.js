@@ -71,7 +71,7 @@ const esc = (s) =>
  * invert it; saying "dark light" tells them it is deliberate and to leave it
  * be. Every text color is set explicitly for the ones that ignore that.
  */
-export function shell({ heading, rows, footer, origin }) {
+export function shell({ heading, rows, footer = "", origin }) {
   /* WHERE THE BAND IMAGE IS FETCHED FROM. The sending deployment's own origin,
      so a message from staging shows staging's copy and one from production
      shows production's. Falling back to the live site means an environment
@@ -110,14 +110,15 @@ export function shell({ heading, rows, footer, origin }) {
         ${Array.isArray(rows) ? rows.join("") : rows}
       </td></tr>
     </table>
-
+${/* NO FOOTER, NO ROW. A list confirmation passes none, and the template
+     printed the word "undefined" under every one sent. */ footer ? `
     <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"
            style="width:100%;max-width:600px;">
       <tr><td style="padding:20px 32px 18px 32px;font-family:Helvetica,Arial,sans-serif;
                      font-size:12px;line-height:1.6;color:#6f7c8c;">
         ${footer}
       </td></tr>
-    </table>
+    </table>` : ""}
   </td></tr>
 </table>
 </body></html>`;
