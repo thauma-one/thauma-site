@@ -818,8 +818,12 @@ const api = {
         if (!list) return json({ error: "No such list." }, 404);
 
         const origin = siteOrigin(env, request);
-        const built = await buildMailing(db, env, { mailing: m, list, origin });
-        if (built.error) return json({ error: built.error }, 400);
+        /* { value } or { error } — the message itself is .value. Read as if
+           it were the message, from 2026-08-24 until 2026-10-03: every test
+           and every send rendered `undefined` and died with a 500. */
+        const prepared = await buildMailing(db, env, { mailing: m, list, origin });
+        if (prepared.error) return json({ error: prepared.error }, 400);
+        const built = prepared.value;
 
         const look = partnerId
           ? await db.queryOne("partner_settings", { partner_id: partnerId }) : null;
@@ -859,8 +863,12 @@ const api = {
         if (!list) return json({ error: "No such list." }, 404);
 
         const origin = siteOrigin(env, request);
-        const built = await buildMailing(db, env, { mailing: m, list, origin });
-        if (built.error) return json({ error: built.error }, 400);
+        /* { value } or { error } — the message itself is .value. Read as if
+           it were the message, from 2026-08-24 until 2026-10-03: every test
+           and every send rendered `undefined` and died with a 500. */
+        const prepared = await buildMailing(db, env, { mailing: m, list, origin });
+        if (prepared.error) return json({ error: prepared.error }, 400);
+        const built = prepared.value;
 
         const total = await db.queryOne("subscribers_to_send_count",
           { list_id: list.id, partner_id: partnerId });

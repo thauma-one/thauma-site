@@ -516,7 +516,7 @@ await check("the sign-up form keeps no after-sending words (the contact form doe
 
 /* The live site, 2026-10: two mailings crashed after the claim, stayed at
    'sending' forever, and the console said only "(500)". */
-function crashingSendEnv() {
+function crashingSendEnv({ crash = true } = {}) {
   const env = envWith("staff");
   env.SIGNUP_SALT = "s".repeat(32);
   const sqlOf = (name) => QUERIES[name].replace(/:[a-z_][a-z0-9_]*/gi, "?");
@@ -534,7 +534,7 @@ function crashingSendEnv() {
       if (sql === sqlOf("subscribers_to_send")) {
         return { results: [{ id: "sb_1", email: "a@b.one", name: "A" }] };
       }
-      if (sql === sqlOf("partner_settings")) throw new Error("boom in partner_settings");
+      if (crash && sql === sqlOf("partner_settings")) throw new Error("boom in partner_settings");
       return null;
     };
     const stmt = inner(sql);
@@ -557,6 +557,46 @@ await check("a send that breaks before anything left goes back to draft, and say
   assert(/boom in partner_settings/.test(body.error || ""), `error should name the cause, got ${JSON.stringify(body)}`);
   eq(status(), "draft", "mailing status after the crash");
   eq(byName(env, "mailing_recipients_clear_pending").length, 1, "pending rows cleared");
+});
+
+/* The 500 itself (2026-08-24 → 10-03): buildMailing answers { value }, and
+   both buttons read the message off the wrapper — so the body was undefined
+   and render() threw. The mocks above never reached a real render. */
+async function sendsThrough(action) {
+  const { env } = crashingSendEnv({ crash: false });
+  env.RESEND_API_KEY = "re_test";
+  const out = [];
+  const before = globalThis.fetch;
+  globalThis.fetch = async (url, init) => {
+    if (String(url).includes("api.resend.com")) {
+      out.push(JSON.parse(init.body));
+      return new Response(JSON.stringify({ id: "re_1" }), { status: 200 });
+    }
+    return before(url, init);
+  };
+  try {
+    const res = await handler.fetch(req("POST", { body: { action, id: "mg_1" } }), env);
+    return { res, out, env };
+  } finally { globalThis.fetch = before; }
+}
+
+await check("Send me a test delivers the mailing's own subject and words", async () => {
+  const { res, out } = await sendsThrough("mailing-test");
+  eq(res.status, 200, "status");
+  eq(out.length, 1, "messages handed to Resend");
+  eq(out[0].subject, "[TEST] Hello", "subject");
+  assert(out[0].html.includes("Hi"), "the body is missing from the html");
+  assert(!/undefined/.test(out[0].html + out[0].text), "undefined in the message");
+});
+
+await check("Send delivers it, and the mailing gets a slug from its subject", async () => {
+  const { res, out, env } = await sendsThrough("mailing-send");
+  eq(res.status, 200, "status");
+  eq(out.length, 1, "messages handed to Resend");
+  eq(out[0].subject, "Hello", "subject");
+  const start = byName(env, "mailing_start");
+  assert(start.length === 1 && start[0].params.includes("hello"),
+    `slug should be "hello", bound ${JSON.stringify(start.map((c) => c.params))}`);
 });
 
 await check("any other failure answers with its message, not a bare 500", async () => {
