@@ -18,6 +18,13 @@
     <button type="button" class="solid-btn" id="mlWrite" data-i18n="ml.writeBtn">Write</button>
   </div>
 
+  {#- WHAT IS WAITING, every list together, newest first, in Sent's shape.
+     A row reopens that draft. Drafts leave only by Delete or by being sent. -#}
+  <section class="ml-sentall ml-draftsall" id="mlDraftsAll" hidden>
+    <span class="sh-lbl" data-i18n="ml.draftsAll">Drafts</span>
+    <div class="ml-sentall-rows" id="mlDraftRows"></div>
+  </section>
+
   {#- WHAT HAS GONE OUT, every list together, newest first. A sent mailing is
      a record: its row opens the public copy where the list publishes one. -#}
   <section class="ml-sentall" id="mlSentAll" hidden>

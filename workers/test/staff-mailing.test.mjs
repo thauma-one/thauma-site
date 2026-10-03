@@ -301,6 +301,44 @@ await check("a draft saved by someone else meanwhile is not overwritten — comp
   assert(ran.includes("mailing_upsert"), "unchanged since it opened — it must save");
 });
 
+/* Leaving the composer saves (Chase, 2026-10-03: drafts are deleted only by
+   hand). Words written before a subject is chosen are kept; Send and Test
+   still refuse a mailing without one (buildMailing). */
+await check("a draft with words and no subject yet is saved", async () => {
+  const rows = { mailing_list_one: [{ id: "ml_1", slug: "news", name: "News" }],
+                 mailing_one: [{ id: "mg_1", list_id: "ml_1", status: "draft", subject: "", body_html: "<p>Words</p>" }] };
+  const { env, ran } = stubbed(rows);
+  const res = await handler.fetch(req("POST", { body: { action: "mailing-save", list_id: "ml_1",
+    subject: "", body_html: "<p>Words first</p>" } }), env);
+  eq(res.status, 200, "status");
+  assert(ran.includes("mailing_upsert"), "not written");
+});
+
+await check("a draft with nothing in it at all is refused, not stored", async () => {
+  const { env, ran } = stubbed({ mailing_list_one: [{ id: "ml_1", slug: "news", name: "News" }] });
+  const res = await handler.fetch(req("POST", { body: { action: "mailing-save", list_id: "ml_1",
+    subject: "  ", body_html: "<p></p>" } }), env);
+  eq(res.status, 400, "status");
+  assert(!ran.includes("mailing_upsert"), "an empty draft was written");
+});
+
+await check("a draft's save can move it to another list, and only ever touches the caller's own", () => {
+  const sql = QUERIES.mailing_upsert;
+  assert(/list_id\s*=\s*excluded\.list_id/.test(sql), "the list does not move with Sending to");
+  assert(/mailings\.partner_id IS excluded\.partner_id/.test(sql),
+    "an id from another ministry would be overwritten before the read-back refused it");
+});
+
+await check("Mail's lists carry their drafts, for the Drafts card", async () => {
+  const env = envWith("staff");
+  const res = await handler.fetch(req("GET"), env);
+  const body = await res.json();
+  assert(Array.isArray(body.lists) && body.lists.length, "no lists");
+  assert(Array.isArray(body.lists[0].draft_rows), "a list has no draft_rows");
+  assert(env.calls.some((c) => c.sql === QUERIES.mailings_drafts_for_list.replace(/:[a-z_][a-z0-9_]*/gi, "?")),
+    "mailings_drafts_for_list was not asked");
+});
+
 await check("the contact form's settings saved by someone else meanwhile are not overwritten", async () => {
   const rows = { contact_form_for_partner: [{ deliver_to: "theirs@thauma.one", is_open: 1, updated_at: "2026-09-30T10:00:00.000Z" }] };
   let { env, ran } = stubbed(rows);

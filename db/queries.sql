@@ -1912,6 +1912,9 @@ INSERT INTO mailings (id, list_id, partner_id, subject, preheader,
 VALUES (:id, :list_id, :partner_id, :subject, :preheader,
         :body_md, :body_html, :body_text, 'draft', :created_by, :now)
 ON CONFLICT(id) DO UPDATE SET
+  -- The list moves with the "Sending to" picker: a draft goes where it says.
+  -- The Worker has already found that list under the caller's partner.
+  list_id = excluded.list_id,
   subject = excluded.subject,
   preheader = excluded.preheader,
   body_md = excluded.body_md,
@@ -1919,7 +1922,10 @@ ON CONFLICT(id) DO UPDATE SET
   body_text = excluded.body_text
 -- A sent mailing is a RECORD. Editing one would rewrite what people were told
 -- they received, and the archive would stop matching the inbox.
-WHERE mailings.status = 'draft';
+-- And only the caller's own: an id is not a key, and without this a draft
+-- id from another ministry would be overwritten before the read-back refused.
+WHERE mailings.status = 'draft'
+  AND mailings.partner_id IS excluded.partner_id;
 
 
 -- name: mailing_delete
@@ -2612,6 +2618,18 @@ SELECT m.id, m.slug, m.subject, m.status, m.finished_at, m.sent_count
  WHERE m.list_id = :list_id AND l.partner_id IS :partner_id
    AND m.status = 'sent'
  ORDER BY m.finished_at DESC
+ LIMIT 100;
+
+
+-- name: mailings_drafts_for_list
+-- Mail's Drafts card: every draft waiting, to reopen one. Subjects only — the
+-- body comes with the composer's own load, for the one that is opened.
+SELECT m.id, m.subject, m.created_at
+  FROM mailings m
+  JOIN mailing_lists l ON l.id = m.list_id
+ WHERE m.list_id = :list_id AND l.partner_id IS :partner_id
+   AND m.status = 'draft'
+ ORDER BY m.created_at DESC
  LIMIT 100;
 
 

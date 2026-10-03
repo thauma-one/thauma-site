@@ -2243,6 +2243,32 @@ def t_translation_state_knows_only_its_two_sources():
         return
     raise AssertionError("an unknown source was accepted")
 
+def t_a_draft_save_moves_lists_but_never_crosses_ministries():
+    """mailing_upsert, bound as the Worker binds it. A draft follows the
+    "Sending to" picker to another of its own lists; an id that belongs to
+    another ministry is left alone (the read-back used to refuse only AFTER
+    the overwrite)."""
+    db = fresh()
+    _list(db, "l1", "p_chase", "news")
+    _list(db, "l2", "p_chase", "prayer")
+    _list(db, "l9", "p_sara", "sara-news")
+    args = dict(body_md=None, body_text="t", created_by=None, now=NOW, preheader=None)
+    _run(db, "mailing_upsert", id="mg_1", list_id="l1", partner_id="p_chase",
+         subject="Mine", body_html="<p>a</p>", **args)
+    _run(db, "mailing_upsert", id="mg_1", list_id="l2", partner_id="p_chase",
+         subject="Mine", body_html="<p>b</p>", **args)
+    row = db.execute("SELECT list_id, body_html FROM mailings WHERE id='mg_1'").fetchone()
+    assert row == ("l2", "<p>b</p>"), f"draft did not move with its list: {row}"
+    _run(db, "mailing_upsert", id="mg_1", list_id="l9", partner_id="p_sara",
+         subject="Hijack", body_html="<p>x</p>", **args)
+    row = db.execute("SELECT list_id, subject, partner_id FROM mailings WHERE id='mg_1'").fetchone()
+    assert row == ("l2", "Mine", "p_chase"), f"another ministry overwrote the draft: {row}"
+    drafts = _run(db, "mailings_drafts_for_list", list_id="l2", partner_id="p_chase")
+    assert [d[0] for d in drafts] == ["mg_1"], f"drafts card: {drafts}"
+    assert _run(db, "mailings_drafts_for_list", list_id="l2", partner_id="p_sara") == [], \
+        "another ministry sees the drafts"
+
+
 if __name__ == "__main__":
     print(f"schema tests — {len(MIGRATIONS)} migrations: "
           f"{', '.join(p.name for p in MIGRATIONS)}\n")
@@ -2252,6 +2278,7 @@ if __name__ == "__main__":
         ("milestone dates are a known precision",       t_milestone_dates_are_a_known_precision),
         ("upcoming milestones publish no progress",     t_upcoming_milestones_publish_no_progress),
         ("the sign-up form's Live switch",              t_signup_form_live_switch_stops_every_copy),
+        ("a draft moves lists, never ministries",       t_a_draft_save_moves_lists_but_never_crosses_ministries),
         ("form words belong to their owner",            t_form_words_belong_to_their_owner),
         ("an embed's own look is its own",              t_embed_looks_are_the_embeds_own),
         ("contact reasons carry their languages",       t_contact_reasons_carry_their_languages),

@@ -502,6 +502,9 @@ const api = {
           texts: readTexts(l.texts),
           sent: await db.query("mailings_sent_for_list",
             { list_id: l.id, partner_id: partnerId }),
+          /* Mail's Drafts card, beside Sent: what is waiting, to reopen. */
+          draft_rows: await db.query("mailings_drafts_for_list",
+            { list_id: l.id, partner_id: partnerId }),
         }))),
         /* Each tag carries how many people wear it, so deleting one can say
            what it takes off rather than asking for confidence in the abstract. */
@@ -780,8 +783,14 @@ const api = {
           { id: clean(body.list_id, 60), partner_id: partnerId });
         if (!list) return json({ error: "No such list." }, 404);
 
+        /* A DRAFT MAY HAVE NO SUBJECT YET. Leaving the composer saves what is
+           there (Chase, 2026-10-03: "drafts deleted only by hand"), and words
+           written before a subject is chosen are still somebody's words.
+           Sending is where a subject is required: buildMailing refuses one
+           without, for Test and Send alike. Something must be there, though —
+           an empty draft is not worth a row. */
         const subject = plainLine(body.subject, 200);
-        if (!subject) return json({ error: "A mailing needs a subject." }, 400);
+        const hasWords = (h) => /<img\b/i.test(h) || toText(h).trim() !== "";
 
         /* LAYER B, AND IT LIVES HERE RATHER THAN IN THE BROWSER.
            The composer hands over the editor's rich HTML and stops. Turning
@@ -792,6 +801,9 @@ const api = {
            injected per message. Converting in the browser would mean three
            implementations of one thing, two of which nobody ever receives. */
         const html = sanitise(body.body_html || "");
+        if (!subject && !hasWords(html)) {
+          return json({ error: "There is nothing to save yet." }, 400);
+        }
         const id = clean(body.id, 60) || newId("mg");
 
         /* Saved by someone else since this composer opened it (lib/fresh.js).
