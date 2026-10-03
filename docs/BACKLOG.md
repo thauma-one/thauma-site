@@ -1,6 +1,7 @@
 # Backlog — Chase's review of 2026-10-03 (and earlier "later" items)
 
-One list, so nothing is lost between sessions. Each item keeps Chase's own
+Start with docs/HANDOFF.md (context, rules, what is known). One list, so
+nothing is lost between sessions. Each item keeps Chase's own
 words where they decide something. **Status** says what is already known.
 Order inside each part is rough priority, broken things first.
 
@@ -11,7 +12,8 @@ decision or a look first.
 
 ## 1. Mail (highest: it blocks testing everything downstream)
 
-Chase: "the whole mailing situation needs looked at and fixed." People
+Chase: "the whole mailing situation needs looked at and fixed." All of it
+was seen on the LIVE site, thauma.one. People
 without admin access to Resend will send and receive mail, so everything
 must work from the console alone. He wants Resend's tools explored to build
 this out well. The Resend and Cloudflare connections he added do not load
