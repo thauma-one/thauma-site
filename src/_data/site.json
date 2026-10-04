@@ -84,25 +84,25 @@
   },
   "images": {
     "home_who": {
-      "src": "/img/home-worship-stage.webp",
+      "src": "/media/site/home-worship-stage-560dcbe5b12ad2e5.webp",
       "focal_x": 50,
       "focal_y": 28,
       "zoom": 110
     },
     "about_posture": {
-      "src": "/img/about-worship-team.webp",
+      "src": "/media/site/about-worship-team-1512637382bb8058.webp",
       "focal_x": 50,
       "focal_y": 66,
       "zoom": 110
     },
     "mission_horizon": {
-      "src": "/img/mission-raised-hand.webp",
+      "src": "/media/site/mission-raised-hand-afc44b786639b139.webp",
       "focal_x": 50,
       "focal_y": 50,
       "zoom": 100
     },
     "give_impact": {
-      "src": "/img/give-congregation.webp",
+      "src": "/media/site/give-congregation-38fd8864eb273d62.webp",
       "focal_x": 50,
       "focal_y": 68,
       "zoom": 110
