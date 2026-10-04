@@ -124,7 +124,7 @@ await check("a row unfolds where it is, one at a time; a new section goes where 
   click(d.querySelector('[data-edit-sec="0"]'));
   eq(d.querySelectorAll(".ws-acc.is-open").length, 0, "pressed again, it folds");
   click(d.querySelector('[data-insert-at="1"]'));
-  eq(d.querySelectorAll("[data-add-type]").length, 14, "every kind offered");
+  eq(d.querySelectorAll("[data-add-type]").length, 15, "every kind offered");
   click(d.querySelector('[data-add-type="quote"]'));
   eq([...d.querySelectorAll(".ws-stile-words b")].map((n) => n.textContent), ["Hero", "A verse or a quote", "Photo and words"], "between the two");
   assert(d.querySelector('.ws-acc[data-si="1"]').classList.contains("is-open"), "and open");
@@ -217,6 +217,27 @@ await check("every section lines up: left, centered, right or indented; a Words 
   click(d.querySelector('[data-chip="align:0"][data-value="right"]'));
   await settle(900);
   eq(sent.filter((x) => x.action === "save").pop().draft.pages.filter((p) => p.id === "mission")[0].sections[0].align, "right", "saved");
+});
+
+await check("a header can be added; its Look has background, top line and title line; a verse has its own look", async () => {
+  const { d, sent, click, pages } = await boot();
+  pages();
+  click(d.querySelector('[data-open-page="mission"]'));
+  click(d.querySelector('[data-insert-at="0"]'));
+  click(d.querySelector('[data-add-type="header"]'));
+  assert(d.querySelector('[data-rt="0:heading"]'), "the new header is not open");
+  click(d.querySelector('[data-sectab="look"]'));
+  eq([...d.querySelectorAll('[data-chip="hbg:0"]')].map((b) => b.dataset.value), ["plain", "raised", "tint", "accent"], "backgrounds");
+  assert(!d.querySelector('[data-chip="raised:0"]'), "no second background control");
+  click(d.querySelector('[data-chip="hbg:0"][data-value="tint"]'));
+  click(d.querySelector('[data-chip="topline:0"][data-value="off"]'));
+  await settle(900);
+  const s = sent.filter((x) => x.action === "save").pop().draft.pages.filter((p) => p.id === "mission")[0].sections;
+  eq([s[0].type, s[0].bg, s[0].topline], ["header", "tint", false], "saved");
+
+  click(d.querySelector('[data-edit-sec="1"]'));            // the Words section, now second
+  click(d.querySelector('[data-sectab="look"]'));
+  eq([...d.querySelectorAll('[data-chip="verse:1"]')].map((b) => b.dataset.value), ["quote", "line", "mark"], "verse looks");
 });
 
 await check("the opening's Look has this page's scroll indicator switch; off saves on the page", async () => {

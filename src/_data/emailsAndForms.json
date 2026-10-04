@@ -153,6 +153,9 @@
       "smallFill": "Small print goes here — a registration number, or how gifts are received.",
       "photoWanted": "Your photo goes here",
       "kickerFill": "Serving in the Balkans",
+      "headerLabel": "About",
+      "headerSub": "Serving churches through production excellence",
+      "headerMark": "Story",
       "prayerFill": "Where we need your prayer this season."
     }
   },
@@ -310,7 +313,10 @@
       "smallFill": "Sitni tisak ide ovdje — matični broj ili kako se primaju darovi.",
       "photoWanted": "Ovdje ide vaša fotografija",
       "kickerFill": "Služimo na Balkanu",
-      "prayerFill": "Gdje nam je ove sezone potrebna vaša molitva."
+      "prayerFill": "Gdje nam je ove sezone potrebna vaša molitva.",
+      "headerLabel": "O nama",
+      "headerSub": "Služimo crkvama kroz produkcijsku izvrsnost",
+      "headerMark": "Priča"
     }
   },
   "sr": {
@@ -467,7 +473,10 @@
       "smallFill": "Ситни тисак иде овдје — матични број или како се примају дарови.",
       "photoWanted": "Овдје иде ваша фотографија",
       "kickerFill": "Служимо на Балкану",
-      "prayerFill": "Гдје нам је ове сезоне потребна ваша молитва."
+      "prayerFill": "Гдје нам је ове сезоне потребна ваша молитва.",
+      "headerLabel": "О нама",
+      "headerSub": "Служимо црквама кроз продукцијску изврсност",
+      "headerMark": "Прича"
     }
   },
   "sl": {
@@ -624,7 +633,10 @@
       "smallFill": "Tukaj je drobni tisk — matična številka ali kako se sprejemajo darovi.",
       "photoWanted": "Tukaj bo vaša fotografija",
       "kickerFill": "Služimo na Balkanu",
-      "prayerFill": "Kje to obdobje potrebujemo vašo molitev."
+      "prayerFill": "Kje to obdobje potrebujemo vašo molitev.",
+      "headerLabel": "O nas",
+      "headerSub": "Cerkvam služimo z odlično produkcijo",
+      "headerMark": "Zgodba"
     }
   }
 }

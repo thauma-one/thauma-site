@@ -390,7 +390,8 @@ check("every section of both starting sites has words to replace, in every langu
     for (const p of d.pages) {
       assert(p.sections.length, `${kind}: ${p.id} has nothing on it`);
       for (const x of p.sections) for (const l of d.languages) for (const f of SECTIONS[x.type].words) {
-        if (f === "kicker" || (f === "button" && x.type !== "give")) continue;
+        /* Optional: a starting site has no verse unless the owner adds one. */
+        if (f === "kicker" || f === "verse" || f === "verseRef" || (f === "button" && x.type !== "give")) continue;
         assert(plainOf(x.words[l][f]), `${kind}: ${p.id} › ${x.type} has no ${f} in ${l}`);
       }
     }
@@ -637,6 +638,62 @@ check("a page may hide the opening's scroll indicator; every page shows it until
   d.pages[0].cue = false;
   eq(cleanDoc(d, ["en"]).pages[0].cue, false, "kept off");
   assert(!page(d).includes('class="scrollcue"'), "Home hides it");
+});
+
+/* ---- the header, verses, photo and words (2026-10-04) ---- */
+
+check("a header: small print above and below, the page's h1, a watermark that defaults to the page's name", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  d.pages[0].sections = [{ id: "h1", type: "header", variant: "watermark",
+    words: { en: { label: "About", heading: "About <b>Chase</b>", text: "Serving churches" } } }];
+  const html = page(d);
+  const sec = html.match(/<section[^>]*class="phead[^"]*"[^>]*>[\s\S]*?<\/section>/);
+  assert(sec, "no header section");
+  assert(/class="phead phead-watermark ph-plain ph-top al-left"/.test(sec[0]), "default looks: " + sec[0].slice(0, 120));
+  assert(/<span class="ph-mark" aria-hidden="true">Home<\/span>/.test(sec[0]), "the watermark falls back to the page's name");
+  assert(/<p class="ph-label m">About<\/p><h1 class="h m">About <b>Chase<\/b><\/h1><span class="rule m"/.test(sec[0]), "label, h1, line");
+  assert(/<p class="ph-sub m">Serving churches<\/p>/.test(sec[0]), "the small line below");
+
+  d.pages[0].sections[0] = { ...d.pages[0].sections[0], variant: "plain", bg: "accent", topline: false, divider: false,
+    words: { en: { heading: "Give", mark: "Hidden" } } };
+  const plain = page(d).match(/<section[^>]*class="phead[^"]*"[^>]*>[\s\S]*?<\/section>/)[0];
+  assert(/class="phead phead-plain ph-accent al-left"/.test(plain), "plain, accent, no top line: " + plain.slice(0, 90));
+  assert(!/ph-mark|class="rule/.test(plain), "no watermark on Plain, no line when hidden");
+  const bad = cleanDoc({ ...d, pages: [{ ...d.pages[0], sections: [{ id: "h2", type: "header", bg: "url(x)" }] }] }, ["en"]);
+  eq(bad.pages[0].sections[0].bg, "plain", "an unknown background falls back");
+});
+
+check("a verse in three looks, in Words and in Photo and words; formatted like a quote, never unsafe", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  const v = { heading: "H", text: "T", verse: "Here am I. <i>Send me!</i><script>x</script>", verseRef: "Isaiah 6:8" };
+  d.pages[0].sections = [
+    { id: "a", type: "text", words: { en: v } },
+    { id: "b", type: "text", verseStyle: "line", words: { en: v } },
+    { id: "c", type: "photoText", verseStyle: "mark", words: { en: v } },
+  ];
+  const html = page(d);
+  assert(/<figure class="verse verse-quote m"><blockquote>“Here am I\. <i>Send me!<\/i>”<\/blockquote><figcaption>Isaiah 6:8<\/figcaption><\/figure>/.test(html), "the quote look, by default");
+  assert(/<figure class="verse verse-line m"><blockquote>Here am I\./.test(html), "the line look");
+  assert(/<figure class="verse verse-mark m"><span class="verse-glyph"/.test(html), "set apart");
+  assert(!/<script>x/.test(html), "a script got through");
+  /* A section saved before verses existed renders as it did. */
+  d.pages[0].sections = [{ id: "z", type: "text", words: { en: { heading: "H", text: "T" } } }];
+  assert(!/class="verse/.test(page(d)), "a verse appeared from nowhere");
+});
+
+check("photo and words: words can flow around the photo, and a photo is never cropped or backed by a panel", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  d.pages[0].sections = [
+    { id: "w", type: "photoText", variant: "wrapRight", photo: "/media/site/x.jpg", words: { en: { heading: "H", text: "T" } } },
+  ];
+  const html = page(d);
+  assert(/<section[^>]*class="pt-wrap pt-wrapRight al-left"[^>]*><div class="wrap"><h2 class="h m">H<\/h2><div class="ptw"><div class="pic m[^"]*"><img/.test(html),
+    "the wrapped layout: heading, then the photo floated in the words");
+  assert(/\.pt-wrapRight \.ptw \.pic\{float:right/.test(html), "floats right");
+  assert(/\.pt \.pic:has\(img\),\.ptw \.pic:has\(img\)\{aspect-ratio:auto;background:none/.test(html),
+    "a chosen photo keeps its own shape and no panel behind it");
+  assert(/\.pt \.pic img,\.ptw \.pic img\{display:block;width:auto;max-width:100%;height:auto;max-height:640px;object-fit:contain\}/.test(html),
+    "the whole photo shows");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

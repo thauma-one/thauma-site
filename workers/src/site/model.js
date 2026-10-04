@@ -74,8 +74,14 @@ export const PAGES_ON = ["home", "about", "mission", "updates", "give", "stay", 
    band (`raised`), the way chaseroush.com sets its Mission apart. */
 export const SECTIONS = {
   hero:      { variants: ["behind", "beside", "words", "monogram"], words: ["kicker", "heading", "text", "button"], photo: true, buttons: true, link: "button" },
-  text:      { variants: ["left", "center"], words: ["heading", "text", "button"], link: "button" },
-  photoText: { variants: ["left", "right", "above"], words: ["heading", "text", "button"], photo: true, link: "both" },
+  /* A page's title area (BACKLOG §3, 2026-10-03: headers "should offer some
+     of the most creativity and versatility"): small print above and below
+     the title, and a watermark whose words may differ from the page's name,
+     as on chaseroush.com's page headers. */
+  header:    { variants: ["watermark", "plain"], words: ["label", "heading", "text", "mark"] },
+  text:      { variants: ["left", "center"], words: ["heading", "text", "verse", "verseRef", "button"], link: "button" },
+  /* wrapLeft / wrapRight: the words flow around the photo, chaseroush.com's About. */
+  photoText: { variants: ["left", "right", "above", "wrapLeft", "wrapRight"], words: ["heading", "text", "verse", "verseRef", "button"], photo: true, link: "both" },
   photo:     { variants: ["drift", "still", "zoom"], words: ["caption"], photo: true, link: "photo" },
   quote:     { variants: ["large", "quiet"], words: ["quote", "who"] },
   timeline:  { variants: ["condensed", "full"], words: ["heading", "text"], align: true },
@@ -106,7 +112,8 @@ export function defaultAlign(type, variant) {
       (type === "hero" && variant === "words")) return "center";
   return "left";
 }
-const NOT_RAISED = new Set(["hero", "photo"]);
+/* The header has its own Background choice (bg), which includes raised. */
+const NOT_RAISED = new Set(["hero", "photo", "header"]);
 
 /* PLACEHOLDERS (Chase, 2026-10-03: "Placeholder words in every language
    whenever a section is added … It helps those who may not know how to
@@ -118,8 +125,9 @@ const NOT_RAISED = new Set(["hero", "photo"]);
    ministry's name. */
 const PH = {
   hero:      { kicker: "kickerFill", heading: ["heroThin", "@name"], text: "heroText", button: "more" },
-  text:      { heading: ["aboutThin", "aboutBold"], text: "aboutFill", button: "more" },
-  photoText: { heading: ["missionThin", "missionBold"], text: "missionFill", button: "more" },
+  header:    { label: "headerLabel", heading: ["aboutThin", "aboutBold"], text: "headerSub", mark: "headerMark" },
+  text:      { heading: ["aboutThin", "aboutBold"], text: "aboutFill", verse: "quoteFill", verseRef: "quoteWho", button: "more" },
+  photoText: { heading: ["missionThin", "missionBold"], text: "missionFill", verse: "quoteFill", verseRef: "quoteWho", button: "more" },
   photo:     { caption: "captionFill" },
   quote:     { quote: "quoteFill", who: "quoteWho" },
   timeline:  { heading: ["timelineThin", "timelineBold"], text: "timelineFill" },
@@ -404,7 +412,7 @@ export function safePhoto(u) {
 }
 
 const WORD_MAX = { kicker: 80, heading: 400, text: 6000, quote: 900, who: 120, caption: 200, button: 40,
-  tagline: 120, small: 400 };
+  tagline: 120, small: 400, label: 80, mark: 40, verse: 900, verseRef: 120 };
 
 /* ------------------------------------------------------ formatted words -- */
 
@@ -413,7 +421,7 @@ const WORD_MAX = { kicker: 80, heading: 400, text: 6000, quote: 900, who: 120, c
    color on any run of words ("different sizes and colors WITHIN one text
    box"): <span data-sz data-c>, the same names the Mail composer stores
    (lib/tones.js). These fields keep them; every other word stays plain. */
-export const RICH = new Set(["heading", "text", "quote"]);
+export const RICH = new Set(["heading", "text", "quote", "verse"]);
 
 const ENT = { amp: "&", lt: "<", gt: ">", quot: '"', "#39": "'", apos: "'", nbsp: " " };
 const decode = (t) => t.replace(/&(amp|lt|gt|quot|#39|apos|nbsp);/g, (_, e) => ENT[e])
@@ -521,6 +529,17 @@ function cleanSection(raw, langs) {
   /* The hero's line under the title (render.js): kept only when it was
      chosen, so a hero saved before the option renders as it always did. */
   if (raw.type === "hero" && typeof raw.divider === "boolean") s.divider = raw.divider;
+  /* The header (render.js): its background, the line along its top and the
+     line under its title. Absent means the default look. */
+  if (raw.type === "header") {
+    s.bg = ["plain", "raised", "tint", "accent"].includes(raw.bg) ? raw.bg : "plain";
+    s.topline = raw.topline !== false;
+    s.divider = raw.divider !== false;
+  }
+  /* A verse inside Words or Photo and words: its look. */
+  if (raw.type === "text" || raw.type === "photoText") {
+    s.verseStyle = ["quote", "line", "mark"].includes(raw.verseStyle) ? raw.verseStyle : "quote";
+  }
   if (spec.items) {
     /* A card may carry a picture, and may point at one of the site's own
        pages as well as anywhere else. */

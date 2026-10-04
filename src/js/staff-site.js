@@ -42,8 +42,9 @@
   /* What each kind of section is made of — the same list as site/model.js. */
   var SECTIONS = {
     hero: { variants: ['behind', 'beside', 'words', 'monogram'], words: ['kicker', 'heading', 'text', 'button'], photo: true, buttons: true, link: 'button' },
-    text: { variants: ['left', 'center'], words: ['heading', 'text', 'button'], link: 'button' },
-    photoText: { variants: ['left', 'right', 'above'], words: ['heading', 'text', 'button'], photo: true, link: 'both' },
+    header: { variants: ['watermark', 'plain'], words: ['label', 'heading', 'text', 'mark'] },
+    text: { variants: ['left', 'center'], words: ['heading', 'text', 'verse', 'verseRef', 'button'], link: 'button' },
+    photoText: { variants: ['left', 'right', 'above', 'wrapLeft', 'wrapRight'], words: ['heading', 'text', 'verse', 'verseRef', 'button'], photo: true, link: 'both' },
     photo: { variants: ['drift', 'still', 'zoom'], words: ['caption'], photo: true, link: 'photo' },
     quote: { variants: ['large', 'quiet'], words: ['quote', 'who'] },
     timeline: { variants: ['condensed', 'full'], words: ['heading', 'text'], data: 'updates/#milestones', align: true },
@@ -57,10 +58,14 @@
     links: { variants: ['list', 'cards'], words: ['heading', 'text'], items: true, align: true },
   };
   /* Everything but the opening and a full-width photo can sit on a raised band. */
-  var FLAT = { hero: 1, photo: 1 };
-  /* On a section of the ministry's data, "text" is the line under the heading. */
-  function fieldName(type, f) { return f === 'text' && (SECTIONS[type].data || type === 'links') && type !== 'signup' && type !== 'contact' ? tr('ws.f.subtitle') : tr('ws.f.' + f); }
-  var ORDER = ['hero', 'text', 'photoText', 'photo', 'quote', 'timeline', 'goals', 'prayer', 'videos', 'newsletters', 'signup', 'contact', 'give', 'links'];
+  var FLAT = { hero: 1, photo: 1, header: 1 };
+  /* On a section of the ministry's data, "text" is the line under the heading;
+     on a header it is the small print below the title. */
+  function fieldName(type, f) {
+    if (type === 'header' && f === 'text') return tr('ws.f.below');
+    return f === 'text' && (SECTIONS[type].data || type === 'links') && type !== 'signup' && type !== 'contact' ? tr('ws.f.subtitle') : tr('ws.f.' + f);
+  }
+  var ORDER = ['hero', 'header', 'text', 'photoText', 'photo', 'quote', 'timeline', 'goals', 'prayer', 'videos', 'newsletters', 'signup', 'contact', 'give', 'links'];
   var MOTION = {
     entrance: ['rise', 'fade', 'slide', 'zoom', 'none'], photos: ['drift', 'zoom', 'still'],
     headings: ['letters', 'words', 'plain'], buttons: ['lift', 'glow', 'plain'],
@@ -595,7 +600,8 @@
 
     var n = p.sections.length;
     /* Room below an open section, so even the last one can rise to the top. */
-    html += '<div class="ws-stack' + (state.edit != null ? ' has-open' : '') + '">' + (n ? '' : '<p class="empty">' + esc(tr('ws.noSections')) + '</p>') +
+    /* A place above the first section too: a Header belongs at the top. */
+    html += '<div class="ws-stack' + (state.edit != null ? ' has-open' : '') + '">' + (n ? '<button type="button" class="ws-insert" data-insert-at="0">+ ' + esc(tr('ws.addHere')) + '</button>' : '<p class="empty">' + esc(tr('ws.noSections')) + '</p>') +
       p.sections.map(function (x, i) {
         var open = state.edit === i;
         return '<article class="ws-acc' + (open ? ' is-open' + (state.animate === i ? ' is-entering' : '') : '') + '" data-si="' + i + '">' +
@@ -766,6 +772,20 @@
         html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.divider')) + '</span>' +
           chips('divider:' + i, ['on', 'off'], lined ? 'on' : 'off', function (v) { return tr('ws.divider.' + v); }) + '</div>';
       }
+      /* The header's own looks (render.js .phead). */
+      if (s.type === 'header') {
+        html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.bg')) + '</span>' +
+          chips('hbg:' + i, ['plain', 'raised', 'tint', 'accent'], s.bg || 'plain', function (v) { return tr('ws.bg.' + v); }) + '</div>' +
+          '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.topline')) + '</span>' +
+          chips('topline:' + i, ['on', 'off'], s.topline === false ? 'off' : 'on', function (v) { return tr('ws.divider.' + v); }) + '</div>' +
+          '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.divider')) + '</span>' +
+          chips('divider:' + i, ['on', 'off'], s.divider === false ? 'off' : 'on', function (v) { return tr('ws.divider.' + v); }) + '</div>';
+      }
+      /* A verse's look, where a section can carry one. */
+      if (s.type === 'text' || s.type === 'photoText') {
+        html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.verseStyle')) + '</span>' +
+          chips('verse:' + i, ['quote', 'line', 'mark'], s.verseStyle || 'quote', function (v) { return tr('ws.verseStyle.' + v); }) + '</div>';
+      }
       if (!FLAT[s.type]) {
         html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.bg')) + '</span>' +
           chips('raised:' + i, ['plain', 'raised'], s.raised ? 'raised' : 'plain', function (v) { return tr('ws.bg.' + v); }) + '</div>';
@@ -779,7 +799,7 @@
 
   /* One field. Headings, words and quotes are formatted boxes (bold, italic,
      underline, links); the rest are plain. */
-  var RICH = { heading: 1, text: 1, quote: 1 };
+  var RICH = { heading: 1, text: 1, quote: 1, verse: 1 };
   /* What an empty field suggests, in the language being written (the site's
      words, from the server; model.js placeholders). Never saved. */
   function ph(type, f) {
@@ -1484,6 +1504,9 @@
       if (name.indexOf('variant:') === 0) { p.sections[+name.slice(8)].variant = val; drawSections(); }
       else if (name.indexOf('raised:') === 0) { p.sections[+name.slice(7)].raised = val === 'raised'; drawSections(); }
       else if (name.indexOf('divider:') === 0) { p.sections[+name.slice(8)].divider = val === 'on'; drawSections(); }
+      else if (name.indexOf('topline:') === 0) { p.sections[+name.slice(8)].topline = val === 'on'; drawSections(); }
+      else if (name.indexOf('hbg:') === 0) { p.sections[+name.slice(4)].bg = val; drawSections(); }
+      else if (name.indexOf('verse:') === 0) { p.sections[+name.slice(6)].verseStyle = val; drawSections(); }
       else if (name.indexOf('align:') === 0) { p.sections[+name.slice(6)].align = val; drawSections(); }
       else if (name.indexOf('linkkind:') === 0) {
         var key = name.slice(9);

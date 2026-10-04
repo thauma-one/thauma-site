@@ -273,12 +273,63 @@ main section.raised + section{border-top-color:transparent}
 .pt-right .pt .pic{order:2}.pt-above .pt{grid-template-columns:1fr}
 .pic{border-radius:16px;overflow:hidden;position:relative;background:var(--panel)}.pt .pic{aspect-ratio:4/3}
 .pic img{width:100%;height:100%;object-fit:cover}
+/* PHOTO AND WORDS SHOWS THE WHOLE PHOTO (BACKLOG §3: "portrait photos must
+   not be cut off; transparent photos must work"). The frame fits the photo
+   rather than cropping it to 4:3, and drops its panel color, so a PNG's
+   clear parts show the page. Until a photo is chosen the 4:3 placeholder stays. */
+.pt .pic:has(img),.ptw .pic:has(img){aspect-ratio:auto;background:none;width:fit-content;max-width:100%;margin:0 auto}
+.pt .pic img,.ptw .pic img{display:block;width:auto;max-width:100%;height:auto;max-height:640px;object-fit:contain}
+/* wrapped: the words flow around the photo (chaseroush.com's About) */
+.ptw{display:flow-root}
+.ptw .pic{float:left;width:38%;max-width:380px;margin:6px 40px 18px 0}
+.pt-wrapRight .ptw .pic{float:right;margin:6px 0 18px 40px}
+.ptw .pic:has(img){width:38%;max-width:380px;margin:6px 40px 18px 0}
+.pt-wrapRight .ptw .pic:has(img){margin:6px 0 18px 40px}
+.ptw .pic:not(:has(img)){aspect-ratio:4/5}
+.ptw .pic img{width:100%;max-height:none}
+.ptw .prose p{max-width:none}
+@media (max-width:760px){.ptw .pic,.ptw .pic:has(img),.pt-wrapRight .ptw .pic,.pt-wrapRight .ptw .pic:has(img){float:none;width:100%;max-width:none;margin:0 0 24px}}
 .fullphoto{padding:0!important}.fullphoto .frame{height:min(70vh,620px);overflow:hidden;position:relative}
 .fullphoto img{position:absolute;left:0;width:100%;height:118%;top:-9%;object-fit:cover}
 .fullphoto figcaption{font-size:13px;color:var(--dim);padding:10px 24px}
 .quote blockquote{margin:0;font:var(--thin) clamp(26px,3.4vw,44px)/1.25 var(--display);max-width:26ch}
 .quote-quiet blockquote{font-size:clamp(20px,2.2vw,28px);max-width:40ch}
 .quote cite{display:block;margin-top:18px;font:600 13px var(--body);letter-spacing:.2em;text-transform:uppercase;color:var(--ink);font-style:normal}
+/* a verse inside Words or Photo and words, in three looks */
+.verse{margin:28px 0}
+.verse blockquote{margin:0}
+.verse figcaption{margin-top:12px;font:600 12px var(--body);letter-spacing:.2em;text-transform:uppercase;color:var(--ink)}
+.verse-quote blockquote{font:var(--thin) clamp(22px,2.6vw,32px)/1.3 var(--display);max-width:32ch}
+.verse-line{border-left:3px solid var(--acc);padding:4px 0 4px 22px}
+.verse-line blockquote{font-size:clamp(17px,1.5vw,19px);line-height:1.7;max-width:60ch}
+.verse-mark{text-align:center;max-width:46ch;margin-left:auto;margin-right:auto}
+.verse-glyph{display:block;font:600 64px/0.6 var(--display);color:var(--acc);height:30px}
+.verse-mark blockquote{font:italic var(--thin) clamp(19px,1.9vw,24px)/1.5 var(--display)}
+.verse-mark figcaption::before{content:"";display:block;width:36px;height:1px;background:var(--acc);margin:0 auto 12px}
+.al-right .verse-line{border-left:0;border-right:3px solid var(--acc);padding:4px 22px 4px 0}
+.al-center .verse-quote blockquote,.al-center .verse-line blockquote{margin-left:auto;margin-right:auto}
+/* THE HEADER: a page's title area, as chaseroush.com's page headers */
+main section.phead{position:relative;overflow:hidden;padding:clamp(56px,8vw,112px) 0 clamp(40px,6vw,76px)}
+.phead .wrap{position:relative;z-index:1}
+.phead .h{margin:0}
+.phead .rule{margin:22px 0}
+.phead.al-center .rule{margin-left:auto;margin-right:auto}.phead.al-right .rule{margin-left:auto}
+.phead.al-center :is(.ph-label,.ph-sub,.h){text-align:center;margin-left:auto;margin-right:auto}
+.phead.al-right :is(.ph-label,.ph-sub,.h){text-align:right;margin-left:auto}
+.ph-label{font:600 13px var(--body);letter-spacing:.18em;text-transform:uppercase;color:var(--ink);margin:0 0 14px}
+.ph-sub{font:400 14px/1.7 var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin:0;max-width:60ch}
+.phead:not(:has(.rule)) .ph-sub{margin-top:18px}
+.ph-top::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:var(--acc)}
+.ph-mark{position:absolute;left:clamp(16px,4vw,64px);top:50%;transform:translateY(-46%);font:700 clamp(110px,17vw,250px)/1 var(--display);color:var(--fg);opacity:.05;white-space:nowrap;pointer-events:none;user-select:none;letter-spacing:-.03em;z-index:0}
+.phead.al-center .ph-mark{left:50%;transform:translate(-50%,-46%)}.phead.al-right .ph-mark{left:auto;right:clamp(16px,4vw,64px)}
+main section.ph-raised{background:var(--panel)}
+main section.ph-tint{background:var(--band)}
+main section.ph-accent{background:var(--acc);color:var(--on-acc)}
+.ph-accent .ph-label,.ph-accent .ph-sub,.ph-accent .h{color:var(--on-acc)}
+.ph-accent .rule,.ph-accent.ph-top::before{background:var(--on-acc)}
+.ph-accent .ph-mark{color:var(--on-acc);opacity:.1}
+main section.phead + section{border-top-color:transparent}
+@media (max-width:760px){.ph-mark{font-size:clamp(80px,24vw,140px)}}
 /* bands */
 .band{background-color:var(--band)}main section.raised.band{background-color:var(--band2)}
 .bandrow{display:flex;gap:40px;align-items:center;justify-content:space-between;flex-wrap:wrap}
@@ -474,7 +525,18 @@ function renderSection(sec, ctx) {
   const raw = (f) => wf(sec, lang, fallback, f);
   const rich = (x) => styledSpans(String(x || "").replace(/href="page:([a-z]+)"/g, (m0, id) => `href="${esc(ctx.linkHref("page:" + id) || "#")}"`));
   /* Formatted fields come out ready for the page; plain ones are escaped where used. */
-  const w = (f) => (f === "heading" || f === "quote") ? rich(raw(f)).replace(/\n/g, "<br>") : f === "text" ? rich(raw(f)) : raw(f);
+  const w = (f) => (f === "heading" || f === "quote" || f === "verse") ? rich(raw(f)).replace(/\n/g, "<br>") : f === "text" ? rich(raw(f)) : raw(f);
+  /* A VERSE inside Words or Photo and words (BACKLOG §3), in one of three
+     looks: the Quote section's own (large, thin, quotation marks), plain
+     words beside a line in the accent, or set apart with a large accent
+     quotation mark above and the reference in small capitals. */
+  const verse = () => {
+    if (!w("verse")) return "";
+    const st = sec.verseStyle || "quote";
+    const text = st === "quote" ? `“${w("verse")}”` : w("verse");
+    return `<figure class="verse verse-${st} m">${st === "mark" ? `<span class="verse-glyph" aria-hidden="true">“</span>` : ""}` +
+      `<blockquote>${text}</blockquote>${raw("verseRef") ? `<figcaption>${esc(w("verseRef"))}</figcaption>` : ""}</figure>`;
+  };
   const inline = (x) => String(x || "").replace(/\n/g, "<br>");
   const photoMotion = ctx.design.motion.photos;
   /* Where this section sends a visitor: "" when nowhere, or when the page it
@@ -540,13 +602,34 @@ function renderSection(sec, ctx) {
       if (sec.variant === "words") return `<section class="hero hero-words al-${sec.align || "center"}"><div class="wrap">${words}</div>${cue}</section>`;
       return `<section class="hero hero-behind al-${sec.align || "left"}${sec.photo ? " has-photo" : ""}"><div class="hero-media ${photoMotion === "zoom" ? "kb" : ""}"${photoMotion === "drift" ? " data-drift" : ""}>${img(sec.photo)}</div><div class="wrap">${words}</div>${cue}</section>`;
     }
+    case "header": {
+      /* A page's title area, chaseroush.com's page header made adjustable:
+         small print above (label) and below (text), the line under the
+         title, an accent line along the top, and a watermark behind whose
+         words default to the page's own name. The page's h1. */
+      if (!w("heading") && !w("label") && !ctx.draft) return "";
+      const mark = sec.variant === "watermark"
+        ? `<span class="ph-mark" aria-hidden="true">${esc(raw("mark") || ctx.label(ctx.pageId) || "")}</span>` : "";
+      const k = ["phead", "phead-" + sec.variant, "ph-" + (sec.bg || "plain"), sec.topline !== false ? "ph-top" : "",
+        sec.bg === "raised" ? "raised" : "", "al-" + (sec.align || "left")].filter(Boolean).join(" ");
+      return `<section class="${k}">${mark}<div class="wrap">` +
+        `${w("label") ? `<p class="ph-label m">${esc(w("label"))}</p>` : ""}${heading(w("heading"), "h1")}` +
+        `${sec.divider !== false ? `<span class="rule m" aria-hidden="true"></span>` : ""}` +
+        `${w("text") ? `<p class="ph-sub m">${inline(w("text"))}</p>` : ""}</div></section>`;
+    }
     case "text":
-      if (!w("heading") && !w("text")) return "";
-      return `<section${cls()}><div class="wrap">${heading(w("heading"))}${prose(w("text"))}${to ? `<div class="btns m">${button()}</div>` : ""}</div></section>`;
+      if (!w("heading") && !w("text") && !w("verse")) return "";
+      return `<section${cls()}><div class="wrap">${heading(w("heading"))}${prose(w("text"))}${verse()}${to ? `<div class="btns m">${button()}</div>` : ""}</div></section>`;
     case "photoText": {
       if (!sec.photo && !w("text") && !ctx.draft) return "";
       const pic = sec.photo ? img(sec.photo, plainOf(raw("heading"))) : wanted();
-      return `<section${cls("pt-" + sec.variant)}><div class="wrap pt">${sec.photo || ctx.draft ? `<div class="pic m ${photoMotion === "zoom" && sec.photo ? "kb" : ""}">${sec.photo && sec.photoLink ? pictured(pic, btnWords) : pic}</div>` : ""}<div>${heading(w("heading"))}${prose(w("text"))}${to ? `<div class="btns m">${button()}</div>` : ""}</div></div></section>`;
+      const frame = sec.photo || ctx.draft ? `<div class="pic m ${photoMotion === "zoom" && sec.photo ? "kb" : ""}">${sec.photo && sec.photoLink ? pictured(pic, btnWords) : pic}</div>` : "";
+      /* WRAPPED (chaseroush.com's About): the photo floats and the words
+         flow around it; on a phone it sits above them, full width. */
+      if (sec.variant === "wrapLeft" || sec.variant === "wrapRight") {
+        return `<section${cls("pt-wrap", "pt-" + sec.variant)}><div class="wrap">${heading(w("heading"))}<div class="ptw">${frame}${prose(w("text"))}${verse()}</div>${to ? `<div class="btns m">${button()}</div>` : ""}</div></section>`;
+      }
+      return `<section${cls("pt-" + sec.variant)}><div class="wrap pt">${frame}<div>${heading(w("heading"))}${prose(w("text"))}${verse()}${to ? `<div class="btns m">${button()}</div>` : ""}</div></div></section>`;
     }
     case "photo":
       if (!sec.photo) {
@@ -632,7 +715,7 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
   /* A preview stays a preview as it is clicked through. */
   const href = (id, l = lang) => `${base}/${l}/${id === "home" ? "" : id + "/"}${draft ? "?draft" : ""}`;
   const ctx = {
-    lang, fallback, design, slug: site.slug, payload, needs: {}, draft,
+    lang, fallback, design, slug: site.slug, payload, needs: {}, draft, pageId,
     /* This page's own say over the opening's scroll indicator. */
     cueOn: !page || page.cue !== false,
     /* Widgets follow the page: light, dark, or — a Custom site that follows
