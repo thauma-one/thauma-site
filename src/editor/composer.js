@@ -279,7 +279,7 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
         const blob = await shrink(file, 1200);
         const res = await fetch("/api/admin/media?kind=newsletter", {
           method: "POST", credentials: "same-origin",
-          headers: { "Content-Type": blob.type }, body: blob,
+          headers: { "Content-Type": blob.type, "X-File-Name": String(file.name || "").replace(/[^\x20-\x7e]/g, "").slice(0, 80) }, body: blob,
         });
         const body = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(body.error || `failed (${res.status})`);
@@ -311,7 +311,7 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
       setState(tr("ml.cpUploading"));
       const blob = await window.PhotoEditor.exportBlob(orig, v, { max: 1200 });
       const res = await fetch("/api/admin/media?kind=newsletter", {
-        method: "POST", credentials: "same-origin", headers: { "Content-Type": blob.type }, body: blob,
+        method: "POST", credentials: "same-origin", headers: { "Content-Type": blob.type, "X-File-Name": (orig.split("/").pop() || "").replace(/-?[0-9a-f]{16}\.[a-z]+$/, "") + "-edit" }, body: blob,
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || `failed (${res.status})`);

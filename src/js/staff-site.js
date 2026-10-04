@@ -1529,7 +1529,7 @@
       var c = await makeCard(p, l);
       if (!c) continue;
       var blob = await new Promise(function (r) { c.toBlob(r, 'image/jpeg', 0.88); });
-      var res = await fetch('/api/admin/media?kind=partnersite', { method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'image/jpeg' }, body: blob });
+      var res = await fetch('/api/admin/media?kind=partnersite', { method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'image/jpeg', 'X-File-Name': 'share-card-' + p.id + '-' + l }, body: blob });
       var body = await res.json().catch(function () { return {}; });
       if (!res.ok) throw new Error(body.error || tr('common.saveFailed'));
       p.shareCards = p.shareCards || {};
@@ -1549,7 +1549,7 @@
     if (got2.remove) { ae.shareImage = null; ae.shareOrig = null; ae.seo = ae.seo || {}; ae.seo.image = 'card'; drawAdvanced(); return changed(); }
     try {
       var blob2 = await window.PhotoEditor.exportBlob(orig2, got2, { max: 1200 });
-      var r2 = await fetch('/api/admin/media?kind=partnersite', { method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'image/jpeg' }, body: blob2 });
+      var r2 = await fetch('/api/admin/media?kind=partnersite', { method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'image/jpeg', 'X-File-Name': 'share-' + ae.id }, body: blob2 });
       var b2 = await r2.json().catch(function () { return {}; });
       if (!r2.ok) throw new Error(b2.error || tr('common.saveFailed'));
       ae.shareOrig = orig2; ae.shareImage = b2.url; drawAdvanced(); changed();
@@ -1690,7 +1690,25 @@
       ['full', 'basic', 'blank'].map(function (k) {
         return '<button type="button" class="ws-start" data-start="' + k + '"><b>' + esc(tr('ws.start.' + k)) + '</b><span>' + esc(tr('ws.start.' + k + '.what')) + '</span></button>';
       }).join('') + '</div>';
+    /* STORAGE (R2 hygiene): uploads nothing uses any more — a replaced photo,
+       a removed picture, a superseded edit or card — found on the server and
+       removed on request. Recent uploads and Thauma's own folders are never
+       touched (media-cleanup.js). */
+    html += '<div class="ws-head"><h2>' + esc(tr('ws.storage')) + '</h2></div><div class="ws-rows" id="wsStorage"><span class="ws-small">…</span></div>';
     $('wsSettings').innerHTML = html;
+    drawStorage();
+  }
+  async function drawStorage() {
+    var box = $('wsStorage');
+    if (!box) return;
+    var res = await fetch('/api/staff-media-cleanup', { credentials: 'same-origin', cache: 'no-store' }).catch(function () { return null; });
+    var body = res && res.ok ? await res.json() : null;
+    if (!body) { box.innerHTML = ''; return; }
+    var mb = (body.bytes / 1048576).toFixed(1);
+    box.innerHTML = row(tr('ws.storage.unused'), body.files.length
+      ? '<span>' + esc(fill('ws.storage.count', { n: body.files.length, mb: mb })) + '</span> <button type="button" class="ghost-btn sm" data-storage-clean>' + esc(tr('ws.storage.clean')) + '</button>'
+      : '<span class="ws-small">' + esc(tr('ws.storage.none')) + '</span>');
+    box.dataset.keys = JSON.stringify(body.files.map(function (f) { return f.key; }));
   }
 
   /* ---- every change ---------------------------------------------------- */
@@ -1820,6 +1838,17 @@
     if (d.secUnphoto) { p.sections[+d.secUnphoto].photo = null; p.sections[+d.secUnphoto].photoEdit = null; drawSections(); return changed(); }
     if (d.secEdit) return editSectionPhoto(p.sections[+d.secEdit]);
     if (d.advEdit !== undefined) return editSharePicture(advPage());
+    if (d.storageClean !== undefined) {
+      var keys = JSON.parse($('wsStorage').dataset.keys || '[]');
+      var ok = await window.StaffConfirm({ title: tr('ws.storage.clean'), body: fill('ws.storage.sure', { n: keys.length }),
+        confirm: tr('ws.storage.clean'), cancel: tr('ms.cancel'), danger: true });
+      if (!ok) return;
+      var rc = await fetch('/api/staff-media-cleanup', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ keys: keys }) });
+      var bc = await rc.json().catch(function () { return {}; });
+      if (!rc.ok) { toast(bc.error || tr('common.saveFailed'), 'err'); return; }
+      toast(fill('ws.storage.done', { n: bc.removed }), 'ok');
+      return drawStorage();
+    }
     if (d.itemAdd) { var sec = p.sections[+d.itemAdd]; sec.items = sec.items || []; sec.items.push(sec.type === 'cards' ? { words: {} } : { url: 'https://', photo: null, words: {} }); state.openItem = sec.items.length - 1; drawSections(); var ti = $('wsPages').querySelector('[data-item$=":title"]'); if (ti) ti.focus(); return; }
     if (d.itemUnphoto) { var up = d.itemUnphoto.split(':'); p.sections[+up[0]].items[+up[1]].photo = null; drawSections(); return changed(); }
     if (d.unfavicon !== undefined) { state.doc.design.favicon = null; drawDesign(); return changed(); }
@@ -1908,6 +1937,9 @@
     if (d.revoke) return act({ action: 'revoke', user_id: d.revoke });
   });
 
+  /* A header carries plain words only: the name without its ending, and
+     nothing a header could not hold. The server makes it readable. */
+  function fileName(n) { return String(n || '').replace(/[^\x20-\x7e]/g, '').slice(0, 80); }
   /* A picture: made smaller and WebP in the browser, then stored with the
      ministry's other pictures. */
   async function upload(input, done, max) {
@@ -1925,7 +1957,7 @@
       c.getContext('2d').drawImage(bitmap, 0, 0, c.width, c.height);
       var blob = await new Promise(function (r) { c.toBlob(r, 'image/webp', 0.84); });
       var res = await fetch('/api/admin/media?kind=partnersite', { method: 'PUT', credentials: 'same-origin',
-        headers: { 'Content-Type': 'image/webp' }, body: blob });
+        headers: { 'Content-Type': 'image/webp', 'X-File-Name': fileName(file.name) }, body: blob });
       var body = await res.json();
       if (!res.ok) throw new Error(body.error || tr('common.saveFailed'));
       done(body.url);

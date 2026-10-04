@@ -188,9 +188,16 @@ export default {
     const digest = await crypto.subtle.digest("SHA-256", bytes);
     const hash = [...new Uint8Array(digest)].slice(0, 8)
       .map((b) => b.toString(16).padStart(2, "0")).join("");
+    /* A READABLE NAME in front of the fingerprint (BACKLOG §3, R2 hygiene:
+       "readable object names"): what the file was called, or what it is (a
+       share card), as plain lowercase words — so a person looking in the
+       bucket can tell one picture from another. The fingerprint stays: it
+       is what makes a second upload of the same photo the same object. */
+    const named = String(request.headers.get("X-File-Name") || "").replace(/\.[a-z0-9]{2,5}$/i, "")
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40);
     const key = kind === "newsletter" || kind === "partnersite"
-      ? `${prefix}/${hash}.${spec.ext}`
-      : `${prefix}/${owner}-${kind}-${hash}.${spec.ext}`;
+      ? `${prefix}/${named ? named + "-" : ""}${hash}.${spec.ext}`
+      : `${prefix}/${named ? named + "-" : owner + "-" + kind + "-"}${hash}.${spec.ext}`;
 
     await env.MEDIA.put(key, bytes, {
       httpMetadata: { contentType: declared, cacheControl: "public, max-age=31536000, immutable" },

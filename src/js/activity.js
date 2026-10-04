@@ -66,6 +66,7 @@
     'content.remove_language': 'act.langRemove',
     'translate.apply': 'act.translations',
     'media.upload': 'act.photo',
+    'media.cleanup': 'act.storageClean',
     'profile.publish': 'act.teamUp',
     'profile.unpublish': 'act.teamDown',
     'migration.apply': 'act.migrate',

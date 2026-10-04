@@ -224,6 +224,9 @@ jobs:
       - name: Test · workers/mail
         working-directory: workers
         run: node test/mail.test.mjs
+      - name: Test · workers/media-cleanup
+        working-directory: workers
+        run: node test/media-cleanup.test.mjs
       - name: Test · workers/media
         working-directory: workers
         run: node test/media.test.mjs

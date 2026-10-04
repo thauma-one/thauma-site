@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "98883c5b1d3d4239";
+export const SOURCE_DIGEST = "6e4263517722a72f";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -529,6 +529,9 @@ ORDER BY CASE m.status WHEN 'draft' THEN 0 ELSE 1 END,
    AND m.status = 'sent'
  ORDER BY m.finished_at DESC
  LIMIT 100;`,
+  media_refs_attachments: `SELECT a.object_key FROM mailing_attachments a JOIN mailings m ON m.id = a.mailing_id
+WHERE m.partner_id IS :partner_id;`,
+  media_refs_mailings: `SELECT body_html FROM mailings WHERE partner_id IS :partner_id;`,
   milestone_delete: `DELETE FROM milestones WHERE id = :id AND partner_id = :partner_id;`,
   milestone_reorder: `UPDATE milestones SET sort_order = :sort_order, updated_at = :now
 WHERE id = :id AND partner_id = :partner_id;`,

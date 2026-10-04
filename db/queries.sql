@@ -3137,3 +3137,19 @@ WHERE user_id = :user_id AND email = :email;
 
 -- name: test_inbox_clear
 DELETE FROM test_inboxes WHERE user_id = :user_id;
+
+
+-- ===========================================================================
+-- STORAGE (2026-10-04) — what a ministry's uploads are still used by, so the
+-- unused ones can be found and removed (workers/src/media-cleanup.js).
+-- ===========================================================================
+
+-- name: media_refs_mailings
+-- Every mailing's words, drafts and sent alike: a sent newsletter's pictures
+-- stay as long as its archive does.
+SELECT body_html FROM mailings WHERE partner_id IS :partner_id;
+
+
+-- name: media_refs_attachments
+SELECT a.object_key FROM mailing_attachments a JOIN mailings m ON m.id = a.mailing_id
+WHERE m.partner_id IS :partner_id;

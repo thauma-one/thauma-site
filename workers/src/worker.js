@@ -57,6 +57,7 @@ import adminPublish from "./admin-publish.js";
 import adminMigrate from "./admin-migrate.js";
 import embed from "./embed.js";
 import embedIcon from "./embed-icon.js";
+import mediaCleanup from "./media-cleanup.js";
 import staffEmbed from "./staff-embed.js";
 import adminActAs from "./admin-actas.js";
 import adminProfile from "./admin-profile.js";
@@ -415,6 +416,8 @@ const ROUTES = {
 
   // Uploads. GET /media/* is handled by prefix below, not here.
   "/api/admin/media": media,
+  /* A ministry's unused uploads, found and removed (media-cleanup.js). */
+  "/api/staff-media-cleanup": mediaCleanup,
 
   // THE ONLY ROUTE A CREDENTIAL OUTSIDE THAUMA CAN REACH. Key-authenticated,
   // public-safe by construction, versioned in the path so a breaking change
