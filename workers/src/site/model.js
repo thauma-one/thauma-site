@@ -584,7 +584,13 @@ function cleanSection(raw, langs) {
       const c = { x: n(e.x, 0, 1), y: n(e.y, 0, 1), w: n(e.w, 0.02, 1), h: n(e.h, 0.02, 1), ar: n(e.ar, 0.1, 10) };
       if (Object.values(c).every((v) => v !== null)) {
         if (["square", "soft", "round"].includes(e.corners)) c.corners = e.corners;
+        /* A border: a width and a color (the site's two by name, or any). The
+           first version's "thin" / "accent" still read. */
         if (["thin", "accent"].includes(e.border)) c.border = e.border;
+        else if (e.border && typeof e.border === "object") {
+          const bw = n(e.border.w, 0, 24), bc = String(e.border.c || "");
+          if (bw && (bc === "accent" || bc === "accent2" || /^#[0-9a-f]{6}$/i.test(bc))) c.border = { w: Math.round(bw), c: bc.toLowerCase() };
+        }
         s.photoEdit = c;
       }
     } else if (e.fx != null) {
@@ -671,7 +677,7 @@ export function cleanDoc(raw, catalog) {
         const o = p.seo && typeof p.seo === "object" ? p.seo : {};
         const per = (x, n) => { const r = {}; for (const l of langs) { const v = str(x && x[l], n); if (v) r[l] = v; } return r; };
         return { title: per(o.title, 70), desc: per(o.desc, 200),
-                 image: ["card", "photo", "custom"].includes(o.image) ? o.image : null };
+                 image: ["card", "photo", "custom", "none"].includes(o.image) ? o.image : null };
       })(),
       shareCards: (() => {
         const r = {};

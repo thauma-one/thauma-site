@@ -286,6 +286,10 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
         insertImage(editor, body.url);
         markDirty(); measureSoon();
         setState("");
+        /* Chosen, then straight into the editor (one step, not two). */
+        let at = null;
+        editor.state.doc.descendants((n, pos) => { if (n.type.name === "image" && n.attrs.src === body.url) at = pos; });
+        if (at !== null) { editor.commands.setNodeSelection(at); editImage(); }
       } catch (e) { setState(""); toast(e.message, "bad"); }
     });
     input.click();
@@ -301,8 +305,9 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
     const a = editor.getAttributes("image");
     const orig = a.orig || a.src;
     try {
-      const v = await window.PhotoEditor.open(orig, { purpose: "mail" });
+      const v = await window.PhotoEditor.open(orig, { purpose: "mail", removable: true });
       if (!v) return;
+      if (v.remove) { editor.chain().focus().deleteSelection().run(); markDirty(); measureSoon(); return; }
       setState(tr("ml.cpUploading"));
       const blob = await window.PhotoEditor.exportBlob(orig, v, { max: 1200 });
       const res = await fetch("/api/admin/media?kind=newsletter", {

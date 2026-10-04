@@ -394,6 +394,18 @@
   }
   /* The site's second color, as render.js derives it: Custom's accent turned
      33 degrees back, else the ministry's own second color. */
+  /* The one photo editor on a section's photo; removing the photo there
+     removes it from the section. */
+  async function editSectionPhoto(sec) {
+    var purpose = photoPurpose(sec);
+    if (!sec.photo || !purpose || !window.PhotoEditor) return;
+    var got = await window.PhotoEditor.open(sec.photo, { purpose: purpose, value: sec.photoEdit, accent: siteAccent(), accent2: siteAccent2(), removable: true })
+      .catch(function (err) { toast(err.message, 'err'); return null; });
+    if (!got) return;
+    if (got.remove) { sec.photo = null; sec.photoEdit = null; }
+    else sec.photoEdit = got;
+    drawSections(); changed();
+  }
   /* What the photo editor may do for this section's frame. */
   function photoPurpose(sec) {
     if (sec.type === 'photoText') return 'section';
@@ -1402,7 +1414,9 @@
     var id = state.advPage || state.page || 'home';
     return state.doc.pages.filter(function (x) { return x.id === id; })[0] || state.doc.pages[0];
   }
-  function siteName() { return (state.body.owner && state.body.owner.name) || state.body.partner.display_name || ''; }
+  /* The ministry's name, as the site itself shows it — not the account that
+     owns the site (that read "Thauma Master Account"). */
+  function siteName() { return state.body.partner.display_name || (state.body.owner && state.body.owner.name) || ''; }
   function autoTitle(p, l) { var nm = siteName(); return p.id === 'home' ? nm : pageLabel(p, l) + ' · ' + nm; }
   function autoDesc(p, l) {
     var pick = function (pg) {
@@ -1495,6 +1509,23 @@
     changed();
   }
 
+  /* A share picture through the photo editor: the share shape or free, then
+     real pixels (a social app cannot apply settings), its original kept. */
+  async function editSharePicture(ae) {
+    var orig2 = ae.shareOrig || ae.shareImage;
+    if (!orig2 || !window.PhotoEditor) return;
+    var got2 = await window.PhotoEditor.open(orig2, { purpose: 'share', accent: siteAccent(), accent2: siteAccent2(), removable: true })
+      .catch(function (err) { toast(err.message, 'err'); return null; });
+    if (!got2) return;
+    if (got2.remove) { ae.shareImage = null; ae.shareOrig = null; ae.seo = ae.seo || {}; ae.seo.image = 'card'; drawAdvanced(); return changed(); }
+    try {
+      var blob2 = await window.PhotoEditor.exportBlob(orig2, got2, { max: 1200 });
+      var r2 = await fetch('/api/admin/media?kind=partnersite', { method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'image/jpeg' }, body: blob2 });
+      var b2 = await r2.json().catch(function () { return {}; });
+      if (!r2.ok) throw new Error(b2.error || tr('common.saveFailed'));
+      ae.shareOrig = orig2; ae.shareImage = b2.url; drawAdvanced(); changed();
+    } catch (err) { toast(err.message, 'err'); }
+  }
   function drawAdvanced() {
     var p = advPage(), l = state.langA, o = p.seo || (p.seo = { title: {}, desc: {}, image: null });
     o.title = o.title || {}; o.desc = o.desc || {};
@@ -1517,14 +1548,15 @@
         '<input type="text" maxlength="70" data-adv-title value="' + esc(o.title[l] || '') + '" placeholder="' + esc(autoTitle(p, l)) + '" lang="' + esc(l) + '"></label>' +
       '<label class="fld ws-wide"><span>' + esc(tr('ws.adv.descField')) + ' <small class="ws-count">' + (o.desc[l] || '').length + ' / 160</small></span>' +
         '<textarea rows="3" maxlength="200" data-adv-desc placeholder="' + esc(autoDesc(p, l)) + '" lang="' + esc(l) + '">' + esc(o.desc[l] || '') + '</textarea></label></div>';
-    html += '<div class="ws-rows">' + row(tr('ws.adv.picture'), chips('advpic', ['card', 'photo', 'custom'], mode, function (v) { return tr('ws.adv.picture.' + v); }) +
+    html += '<div class="ws-rows">' + row(tr('ws.adv.picture'), chips('advpic', ['card', 'photo', 'custom', 'none'], mode, function (v) { return tr('ws.adv.picture.' + v); }) +
       (mode === 'custom' ? '<label class="ghost-btn sm ws-file">' + esc(tr('ws.sharePic.choose')) + '<input type="file" accept="image/*" data-adv-upload hidden></label>' +
         (p.shareImage && window.PhotoEditor ? '<button type="button" class="ghost-btn sm" data-adv-edit>' + esc(tr('pe.edit')) + '</button>' : '') : '')) + '</div>';
     $('wsAdvanced').innerHTML = html;
     /* The picture in the share preview: the card drawn live, or the photo. */
     var box = $('wsSharePic');
     if (mode === 'card') makeCard(p, l).then(function (c) { if (c) box.style.backgroundImage = 'url(' + c.toDataURL('image/jpeg', 0.8) + ')'; }).catch(function () {});
-    else { var pic = mode === 'custom' ? p.shareImage : firstPhotoOf(p) || firstPhotoOf(state.doc.pages[0]); if (pic) box.style.backgroundImage = 'url(' + pic + ')'; }
+    else if (mode !== 'none') { var pic = mode === 'custom' ? p.shareImage : firstPhotoOf(p) || firstPhotoOf(state.doc.pages[0]); if (pic) box.style.backgroundImage = 'url(' + pic + ')'; }
+    else box.hidden = true;
   }
 
   /* ---- the Navigation tab (2026-10-04, from the approved mockup) ---- */
@@ -1695,7 +1727,7 @@
     var t = e.target, p = currentPage();
     if (t.dataset.pickPage !== undefined) { state.page = t.value; state.edit = null; drawPages(); refreshFrame(); return; }
     if (t.dataset.advPage !== undefined) { state.advPage = t.value; drawAdvanced(); return; }
-    if (t.dataset.advUpload !== undefined) { var au = advPage(); return upload(t, function (url) { au.shareImage = url; au.shareOrig = null; au.seo = au.seo || {}; au.seo.image = 'custom'; drawAdvanced(); }); }
+    if (t.dataset.advUpload !== undefined) { var au = advPage(); return upload(t, function (url) { au.shareImage = url; au.shareOrig = null; au.seo = au.seo || {}; au.seo.image = 'custom'; drawAdvanced(); editSharePicture(au); }); }
     /* A color settled on: the look cards redraw in it (not while dragging,
        which would close the picker under the pointer). */
     if (t.dataset.color) { drawDesign(); return; }
@@ -1720,7 +1752,9 @@
       fillPair(); drawSettings(); return changed();
     }
     if (t.dataset.fallback !== undefined) { state.doc.fallback = t.value; return changed(); }
-    if (t.dataset.secPhoto) return upload(t, function (url) { var ps = p.sections[+t.dataset.secPhoto]; ps.photo = url; ps.photoEdit = null; drawSections(); });
+    /* Chosen, then straight into the editor: one step, not two (Chase,
+       2026-10-04). Canceling keeps the photo as it came. */
+    if (t.dataset.secPhoto) return upload(t, function (url) { var ps = p.sections[+t.dataset.secPhoto]; ps.photo = url; ps.photoEdit = null; drawSections(); editSectionPhoto(ps); });
     if (t.dataset.logo !== undefined) return upload(t, function (url) { state.doc.design.logo = url; drawDesign(); });
     if (t.dataset.favicon !== undefined) return upload(t, function (url) { state.doc.design.favicon = url; drawDesign(); }, 256);
   });
@@ -1755,23 +1789,8 @@
       return;
     }
     if (d.secUnphoto) { p.sections[+d.secUnphoto].photo = null; p.sections[+d.secUnphoto].photoEdit = null; drawSections(); return changed(); }
-    if (d.secEdit) {
-      var es = p.sections[+d.secEdit];
-      var got = await window.PhotoEditor.open(es.photo, { purpose: photoPurpose(es), value: es.photoEdit, accent: siteAccent() }).catch(function (err) { toast(err.message, 'err'); return null; });
-      if (got) { es.photoEdit = got; drawSections(); changed(); }
-      return;
-    }
-    if (d.advEdit !== undefined) {
-      var ae = advPage();
-      var orig2 = ae.shareOrig || ae.shareImage;
-      var got2 = await window.PhotoEditor.open(orig2, { purpose: 'share', accent: siteAccent() }).catch(function (err) { toast(err.message, 'err'); return null; });
-      if (!got2) return;
-      var blob2 = await window.PhotoEditor.exportBlob(orig2, got2, { max: 1200 });
-      var r2 = await fetch('/api/admin/media?kind=partnersite', { method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'image/jpeg' }, body: blob2 });
-      var b2 = await r2.json().catch(function () { return {}; });
-      if (!r2.ok) { toast(b2.error || tr('common.saveFailed'), 'err'); return; }
-      ae.shareOrig = orig2; ae.shareImage = b2.url; drawAdvanced(); return changed();
-    }
+    if (d.secEdit) return editSectionPhoto(p.sections[+d.secEdit]);
+    if (d.advEdit !== undefined) return editSharePicture(advPage());
     if (d.itemAdd) { var sec = p.sections[+d.itemAdd]; sec.items = sec.items || []; sec.items.push(sec.type === 'cards' ? { words: {} } : { url: 'https://', photo: null, words: {} }); state.openItem = sec.items.length - 1; drawSections(); var ti = $('wsPages').querySelector('[data-item$=":title"]'); if (ti) ti.focus(); return; }
     if (d.itemUnphoto) { var up = d.itemUnphoto.split(':'); p.sections[+up[0]].items[+up[1]].photo = null; drawSections(); return changed(); }
     if (d.unfavicon !== undefined) { state.doc.design.favicon = null; drawDesign(); return changed(); }

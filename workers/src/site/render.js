@@ -646,8 +646,10 @@ function img(src, alt = "") {
 function edited(src, e, alt = "") {
   if (!src) return "";
   if (e && e.w) {
-    const cls = `pe-crop${e.corners ? " pe-" + e.corners : ""}${e.border ? " pe-b-" + e.border : ""}`;
-    return `<span class="${cls}" style="aspect-ratio:${+e.ar}"><img src="${esc(src)}" alt="${esc(alt)}" loading="lazy" ` +
+    const b = e.border && typeof e.border === "object" ? e.border : null;
+    const cls = `pe-crop${e.corners ? " pe-" + e.corners : ""}${typeof e.border === "string" ? " pe-b-" + e.border : ""}`;
+    const ring = b ? `;box-shadow:0 0 0 ${+b.w}px ${b.c === "accent" ? "var(--acc)" : b.c === "accent2" ? "var(--acc2)" : esc(b.c)}` : "";
+    return `<span class="${cls}" style="aspect-ratio:${+e.ar}${ring}"><img src="${esc(src)}" alt="${esc(alt)}" loading="lazy" ` +
       `style="width:${+(100 / e.w).toFixed(3)}%;height:auto;left:${+(-e.x / e.w * 100).toFixed(3)}%;top:${+(-e.y / e.h * 100).toFixed(3)}%"></span>`;
   }
   if (e && e.fx != null) {
@@ -1090,7 +1092,7 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
   const mode = seo.image || (thisPage.shareImage ? "custom" : "card");
   const card = thisPage.shareCards && thisPage.shareCards[lang] && thisPage.shareCards[lang].url;
   const fallbackPic = firstPhoto(thisPage) || firstPhoto(doc.pages[0]) || (design.brand === "logo" && design.logo) || null;
-  const shareImage = absolute(mode === "custom" && thisPage.shareImage ? thisPage.shareImage
+  const shareImage = mode === "none" ? null : absolute(mode === "custom" && thisPage.shareImage ? thisPage.shareImage
     : mode === "card" && card ? card : fallbackPic);
   const publicBase = site.subdomain ? `https://${site.subdomain}.thauma.one` : origin + base;
   const publicUrl = (id, l) => `${publicBase}/${l}/${id === "home" ? "" : id + "/"}`;
