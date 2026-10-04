@@ -575,6 +575,23 @@ function cleanSection(raw, langs) {
   }
   /* Videos (BACKLOG §3): the buttons under them, and whether the newest
      video's own title and date head the section. */
+  /* THE PHOTO EDITOR'S CHOICES (src/js/photo-editor.js): never new pixels,
+     only how the original is shown — a crop window with its corners and
+     border, or a point, zoom and darkening for frames that change shape. */
+  if (raw.photoEdit && typeof raw.photoEdit === "object" && s.photo) {
+    const e = raw.photoEdit, n = (v, a, b) => (Number.isFinite(+v) ? Math.max(a, Math.min(b, +v)) : null);
+    if (e.w != null) {
+      const c = { x: n(e.x, 0, 1), y: n(e.y, 0, 1), w: n(e.w, 0.02, 1), h: n(e.h, 0.02, 1), ar: n(e.ar, 0.1, 10) };
+      if (Object.values(c).every((v) => v !== null)) {
+        if (["square", "soft", "round"].includes(e.corners)) c.corners = e.corners;
+        if (["thin", "accent"].includes(e.border)) c.border = e.border;
+        s.photoEdit = c;
+      }
+    } else if (e.fx != null) {
+      const f = { fx: n(e.fx, 0, 100), fy: n(e.fy, 0, 100), zoom: n(e.zoom, 1, 3), darken: n(e.darken, 0, 0.8) ?? 0 };
+      if (f.fx !== null && f.fy !== null && f.zoom !== null) s.photoEdit = f;
+    }
+  }
   /* A full-width photo's band: how tall, and the part kept in view (0 top,
      100 bottom). "whole" shows the photo uncropped. */
   if (raw.type === "photo") {

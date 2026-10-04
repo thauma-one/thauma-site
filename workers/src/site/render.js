@@ -348,6 +348,17 @@ main section.raised + section{border-top-color:transparent}
 .quote cite{display:block;margin-top:18px;font:600 13px var(--body);letter-spacing:.2em;text-transform:uppercase;color:var(--ink);font-style:normal}
 /* a verse inside Words or Photo and words, in three looks */
 .verse{margin:28px 0}
+/* The photo editor's crop window, corners, border and darkening. */
+.pe-crop{position:relative;display:block;overflow:hidden;width:100%}
+.pe-crop img{position:absolute;max-width:none;object-fit:fill}
+.pe-soft{border-radius:12px}.pe-round{border-radius:28px}.pe-square{border-radius:0}
+.pe-b-thin{box-shadow:0 0 0 1px var(--line)}.pe-b-accent{box-shadow:0 0 0 3px var(--acc)}
+.pic:has(> .pe-crop),.pic:has(> .piclink > .pe-crop){aspect-ratio:auto;border-radius:0;overflow:visible;background:none}
+.pe-dark{position:absolute;inset:0;background:#000;pointer-events:none}
+/* A cropped photo fills its column; the uncropped-photo rules above (fit to
+   the photo, capped at its width) would collapse it or undo the crop. */
+.pt .pic:has(> .pe-crop),.ptw .pic:has(> .pe-crop),.pt .pic:has(> .piclink > .pe-crop){width:100%;max-width:560px}
+.pic .pe-crop img,.pe-crop img{max-width:none!important;max-height:none!important}
 /* A title's own alignment and its line (2026-10-04). */
 .th-left{text-align:left}.th-left .h{margin-left:0;margin-right:auto}.th-left .rule{margin:14px auto 26px 0}
 .th-center{text-align:center}.th-center .h{margin-left:auto;margin-right:auto}.th-center .rule{margin:14px auto 26px}
@@ -626,6 +637,25 @@ function prose(html) {
 function img(src, alt = "") {
   return src ? `<img src="${esc(src)}" alt="${esc(alt)}" loading="lazy">` : "";
 }
+/* A photo as the photo editor left it (src/js/photo-editor.js). A crop is an
+   exact window onto the ORIGINAL: a box of the crop's shape with the photo
+   placed inside it, scaled and offset — no new image file. A point is
+   object-position and zoom, for frames whose shape changes with the screen,
+   with any darkening laid over it. `scale` (not transform) so the page's
+   drift motion, which sets transform, still works. */
+function edited(src, e, alt = "") {
+  if (!src) return "";
+  if (e && e.w) {
+    const cls = `pe-crop${e.corners ? " pe-" + e.corners : ""}${e.border ? " pe-b-" + e.border : ""}`;
+    return `<span class="${cls}" style="aspect-ratio:${+e.ar}"><img src="${esc(src)}" alt="${esc(alt)}" loading="lazy" ` +
+      `style="width:${+(100 / e.w).toFixed(3)}%;height:auto;left:${+(-e.x / e.w * 100).toFixed(3)}%;top:${+(-e.y / e.h * 100).toFixed(3)}%"></span>`;
+  }
+  if (e && e.fx != null) {
+    return `<img src="${esc(src)}" alt="${esc(alt)}" loading="lazy" style="object-position:${+e.fx}% ${+e.fy}%;scale:${+e.zoom};transform-origin:${+e.fx}% ${+e.fy}%">` +
+      (e.darken ? `<i class="pe-dark" style="opacity:${+e.darken}"></i>` : "");
+  }
+  return img(src, alt);
+}
 /* Leaving the site opens nothing new, but tells the other site nothing. */
 const rel = (href) => (/^https?:/.test(href) ? ' rel="noopener"' : "");
 
@@ -721,16 +751,16 @@ function renderSection(sec, ctx) {
         return `<section class="hero hero-monogram al-${sec.align || "left"}"><div class="wrap"><div class="mono-words"><span class="mono-mark" aria-hidden="true">${esc(initials)}</span>` +
           `${w("kicker") ? `<p class="kicker m">${esc(w("kicker"))}</p>` : ""}${h}${line}` +
           `${w("text") ? `<p class="spaced m">${inline(w("text"))}</p>` : ""}${btns ? `<div class="btns m">${btns}</div>` : ""}</div>` +
-          `${sec.photo ? `<div class="mono-pic m">${img(sec.photo)}</div>` : ctx.draft ? `<div class="pic m">${wanted()}</div>` : ""}</div>` +
+          `${sec.photo ? `<div class="mono-pic m">${edited(sec.photo, sec.photoEdit)}</div>` : ctx.draft ? `<div class="pic m">${wanted()}</div>` : ""}</div>` +
           `${cue}</section>`;
       }
       const words = `${w("kicker") ? `<p class="kicker m">${esc(w("kicker"))}</p>` : ""}${heading(w("heading"), "h1")}${line}` +
         `${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}${btns ? `<div class="btns m">${btns}</div>` : ""}`;
       if (sec.variant === "beside") {
-        return `<section class="hero hero-beside al-${sec.align || "left"}"><div class="wrap"><div>${words}</div>${sec.photo ? `<div class="pic m ${photoMotion === "zoom" ? "kb" : ""}">${img(sec.photo)}</div>` : ctx.draft ? `<div class="pic m">${wanted()}</div>` : ""}</div>${cue}</section>`;
+        return `<section class="hero hero-beside al-${sec.align || "left"}"><div class="wrap"><div>${words}</div>${sec.photo ? `<div class="pic m ${photoMotion === "zoom" ? "kb" : ""}">${edited(sec.photo, sec.photoEdit)}</div>` : ctx.draft ? `<div class="pic m">${wanted()}</div>` : ""}</div>${cue}</section>`;
       }
       if (sec.variant === "words") return `<section class="hero hero-words al-${sec.align || "center"}"><div class="wrap">${words}</div>${cue}</section>`;
-      return `<section class="hero hero-behind al-${sec.align || "left"}${sec.photo ? " has-photo" : ""}"><div class="hero-media ${photoMotion === "zoom" ? "kb" : ""}"${photoMotion === "drift" ? " data-drift" : ""}>${img(sec.photo)}</div><div class="wrap">${words}</div>${cue}</section>`;
+      return `<section class="hero hero-behind al-${sec.align || "left"}${sec.photo ? " has-photo" : ""}"><div class="hero-media ${photoMotion === "zoom" ? "kb" : ""}"${photoMotion === "drift" ? " data-drift" : ""}>${edited(sec.photo, sec.photoEdit)}</div><div class="wrap">${words}</div>${cue}</section>`;
     }
     case "header": {
       /* A page's title area, chaseroush.com's page header made adjustable:
@@ -752,7 +782,7 @@ function renderSection(sec, ctx) {
       return `<section${cls()}><div class="wrap">${head()}${words(w("text"))}${to ? `<div class="btns m">${button()}</div>` : ""}</div></section>`;
     case "photoText": {
       if (!sec.photo && !w("text") && !ctx.draft) return "";
-      const pic = sec.photo ? img(sec.photo, plainOf(raw("heading"))) : wanted();
+      const pic = sec.photo ? edited(sec.photo, sec.photoEdit, plainOf(raw("heading"))) : wanted();
       const frame = sec.photo || ctx.draft ? `<div class="pic m ${photoMotion === "zoom" && sec.photo ? "kb" : ""}">${sec.photo && sec.photoLink ? pictured(pic, btnWords) : pic}</div>` : "";
       /* WRAPPED (chaseroush.com's About): the photo floats and the words
          flow around it; on a phone it sits above them, full width. */
@@ -769,7 +799,7 @@ function renderSection(sec, ctx) {
       if (!sec.photo) {
         return ctx.draft ? `<section class="fullphoto al-${sec.align || "left"}"><div class="frame">${wanted()}</div>${w("caption") ? `<p class="wrap caption">${esc(w("caption"))}</p>` : ""}</section>` : "";
       }
-      return `<section class="fullphoto h-${esc(sec.height || "medium")} al-${sec.align || "left"}" style="--fy:${Number.isFinite(sec.focusY) ? sec.focusY : 50}%"><figure style="margin:0"><div class="frame ${sec.variant === "zoom" ? "kb" : ""}"${sec.variant === "drift" && sec.height !== "whole" ? " data-drift" : ""}>${pictured(img(sec.photo, w("caption")), w("caption") || word(lang, "more"))}</div>${w("caption") ? `<figcaption class="wrap">${esc(w("caption"))}</figcaption>` : ""}</figure></section>`;
+      return `<section class="fullphoto h-${esc(sec.height || "medium")} al-${sec.align || "left"}" style="--fy:${Number.isFinite(sec.focusY) ? sec.focusY : 50}%"><figure style="margin:0"><div class="frame ${sec.variant === "zoom" ? "kb" : ""}"${sec.variant === "drift" && sec.height !== "whole" ? " data-drift" : ""}>${pictured(edited(sec.photo, sec.photoEdit, w("caption")), w("caption") || word(lang, "more"))}</div>${w("caption") ? `<figcaption class="wrap">${esc(w("caption"))}</figcaption>` : ""}</figure></section>`;
     case "quote":
       if (!w("quote")) return "";
       return `<section${cls("quote", "quote-" + sec.variant)}><div class="wrap m"><blockquote>“${w("quote")}”</blockquote>${w("who") ? `<cite>${esc(w("who"))}</cite>` : ""}</div></section>`;

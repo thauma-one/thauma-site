@@ -389,6 +389,13 @@
   }
   /* The site's second color, as render.js derives it: Custom's accent turned
      33 degrees back, else the ministry's own second color. */
+  /* What the photo editor may do for this section's frame. */
+  function photoPurpose(sec) {
+    if (sec.type === 'photoText') return 'section';
+    if (sec.type === 'photo') return 'band';
+    if (sec.type === 'hero') return sec.variant === 'behind' ? 'background' : sec.variant === 'words' ? null : 'framed';
+    return null;
+  }
   function siteAccent2() {
     var d = state.doc && state.doc.design, th = state.body && state.body.theme;
     if (d && d.colors && d.colors.accent) return turnHue(d.colors.accent, -33);
@@ -755,16 +762,13 @@
     }
 
     if (state.sectab === 'photo') {
-      /* A full-width photo is cropped to a band: press the spot that must
-         stay in view (Chase, BACKLOG §3: "height cropping and positioning"). */
-      var aim = s.type === 'photo' && s.photo && (s.height || 'medium') !== 'whole';
-      var fy = typeof s.focusY === 'number' ? s.focusY : 50;
-      html += '<div class="ws-bigphoto' + (aim ? ' ws-aim' : '') + '"' + (aim ? ' data-sec-focus="' + i + '" title="' + esc(tr('ws.photoFocus')) + '"' : '') + '>' +
-        (s.photo ? '<img src="' + esc(s.photo) + '" alt="">' + (aim ? '<i class="ws-aimline" style="top:' + fy + '%"></i>' : '') : '<span class="ws-nophoto">' + esc(tr('ws.noPhoto')) + '</span>') + '</div>' +
+      html += '<div class="ws-bigphoto">' + (s.photo ? '<img src="' + esc(s.photo) + '" alt="">' : '<span class="ws-nophoto">' + esc(tr('ws.noPhoto')) + '</span>') + '</div>' +
         (s.type === 'photo' ? '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.photoHeight')) + '</span>' +
           chips('pheight:' + i, ['short', 'medium', 'tall', 'whole'], s.height || 'medium', function (v) { return tr('ws.photoHeight.' + v); }) + '</div>' : '') +
         '<div class="ws-sec-row"><label class="ghost-btn sm ws-file">' + esc(s.photo ? tr('ws.changePhoto') : tr('ws.choosePhoto')) +
           '<input type="file" accept="image/*" data-sec-photo="' + i + '" hidden></label>' +
+          /* The one photo editor, for what this frame needs (photo-editor.js). */
+          (s.photo && window.PhotoEditor && photoPurpose(s) ? '<button type="button" class="ghost-btn sm" data-sec-edit="' + i + '">' + esc(tr('pe.edit')) + '</button>' : '') +
           (s.photo ? '<button type="button" class="link-btn" data-sec-unphoto="' + i + '">' + esc(tr('ws.removePhoto')) + '</button>' : '') +
           '<span class="hint"></span></div>';
       if (spec.link === 'photo') html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.link.photo')) + '</span>' + linkPicker('sec:' + i, s.link, true) + '</div>';
@@ -1573,7 +1577,7 @@
       fillPair(); drawSettings(); return changed();
     }
     if (t.dataset.fallback !== undefined) { state.doc.fallback = t.value; return changed(); }
-    if (t.dataset.secPhoto) return upload(t, function (url) { p.sections[+t.dataset.secPhoto].photo = url; drawSections(); });
+    if (t.dataset.secPhoto) return upload(t, function (url) { var ps = p.sections[+t.dataset.secPhoto]; ps.photo = url; ps.photoEdit = null; drawSections(); });
     if (t.dataset.pageShare) return upload(t, function (url) { state.doc.pages[+t.dataset.pageShare].shareImage = url; drawPages(); });
     if (t.dataset.logo !== undefined) return upload(t, function (url) { state.doc.design.logo = url; drawDesign(); });
     if (t.dataset.favicon !== undefined) return upload(t, function (url) { state.doc.design.favicon = url; drawDesign(); }, 256);
@@ -1608,18 +1612,17 @@
       if (ok) { p.sections.splice(+d.secRemove, 1); state.edit = null; drawSections(); changed(); }
       return;
     }
-    if (d.secUnphoto) { p.sections[+d.secUnphoto].photo = null; drawSections(); return changed(); }
+    if (d.secUnphoto) { p.sections[+d.secUnphoto].photo = null; p.sections[+d.secUnphoto].photoEdit = null; drawSections(); return changed(); }
+    if (d.secEdit) {
+      var es = p.sections[+d.secEdit];
+      var got = await window.PhotoEditor.open(es.photo, { purpose: photoPurpose(es), value: es.photoEdit, accent: siteAccent() }).catch(function (err) { toast(err.message, 'err'); return null; });
+      if (got) { es.photoEdit = got; drawSections(); changed(); }
+      return;
+    }
     if (d.pageUnshare) { state.doc.pages[+d.pageUnshare].shareImage = null; drawPages(); return changed(); }
     if (d.itemAdd) { var sec = p.sections[+d.itemAdd]; sec.items = sec.items || []; sec.items.push(sec.type === 'cards' ? { words: {} } : { url: 'https://', photo: null, words: {} }); state.openItem = sec.items.length - 1; drawSections(); var ti = $('wsPages').querySelector('[data-item$=":title"]'); if (ti) ti.focus(); return; }
     if (d.itemUnphoto) { var up = d.itemUnphoto.split(':'); p.sections[+up[0]].items[+up[1]].photo = null; drawSections(); return changed(); }
     if (d.unfavicon !== undefined) { state.doc.design.favicon = null; drawDesign(); return changed(); }
-    /* Press the photo where it must stay in view. */
-    var aimBox = e.target.closest && e.target.closest('[data-sec-focus]');
-    if (aimBox) {
-      var r = aimBox.getBoundingClientRect();
-      p.sections[+aimBox.getAttribute('data-sec-focus')].focusY = Math.max(0, Math.min(100, Math.round((e.clientY - r.top) / r.height * 100)));
-      drawSections(); return changed();
-    }
     if (d.gotoTab) { var tb = document.querySelector('[data-ws-tab="' + d.gotoTab + '"]'); if (tb) tb.click(); return; }
     if (d.colorReset) { state.doc.design.colors[d.colorReset] = null; drawDesign(); return changed(); }
     if (d.footerMenu !== undefined) { state.doc.footer.menu = !state.doc.footer.menu; drawFooter(); return changed(); }

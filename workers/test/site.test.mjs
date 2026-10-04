@@ -867,5 +867,18 @@ check("sharing and search: each page's own words and picture, the real public ad
   assert(!/og:|canonical/.test(head({ draft: true })), "not on a draft");
 });
 
+check("the photo editor's choices: a crop is a window onto the original; a point is position, zoom and darkening; junk is dropped", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  const ph = "https://thauma.one/media/p.jpg";
+  d.pages[0].sections = [{ id: "a", type: "photoText", variant: "left", photo: ph, words: { en: { text: "x" } },
+    photoEdit: { x: 0.25, y: 0.1, w: 0.5, h: 0.4, ar: 1, corners: "round", border: "accent" } }];
+  assert(/<span class="pe-crop pe-round pe-b-accent" style="aspect-ratio:1"><img src="https:\/\/thauma\.one\/media\/p\.jpg"[^>]*style="width:200%;height:auto;left:-50%;top:-25%">/.test(page(d)), "crop window");
+  d.pages[0].sections = [{ id: "b", type: "photo", variant: "drift", photo: ph, words: { en: {} }, photoEdit: { fx: 30, fy: 70, zoom: 1.4, darken: 0.35 } }];
+  const band = page(d).match(/<section class="fullphoto[\s\S]*?<\/section>/)[0];
+  assert(/style="object-position:30% 70%;scale:1\.4;transform-origin:30% 70%"><i class="pe-dark" style="opacity:0\.35">/.test(band), "point, zoom, darken");
+  const c = cleanDoc({ ...d, pages: [{ ...d.pages[0], sections: [{ id: "c", type: "photoText", variant: "left", photo: ph, words: { en: {} }, photoEdit: { x: "a", w: 2 } }] }] }, ["en"]);
+  assert(!c.pages[0].sections[0].photoEdit, "junk dropped");
+});
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -100,6 +100,7 @@
 <script src="/js/{{ f }}.js?v={{ ("/js/" + f + ".js") | v }}"></script>{% endfor %}
 {#- Thauma's Mail tab writes with the same composer as the staff Mail page,
    after staff-mailing.js, which it reads (see staff.njk). -#}
+<script src="/js/photo-editor.js?v={{ "/js/photo-editor.js" | v }}"></script>
 <script defer src="/js/composer.bundle.js?v={{ "/js/composer.bundle.js" | v }}"></script>{% endif %}
 </body>
 </html>
