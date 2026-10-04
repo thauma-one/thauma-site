@@ -453,6 +453,10 @@ main section.raised .card{background:var(--bg)}
 .wanted{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;text-align:center;
   border:1.5px dashed var(--line);border-radius:inherit;color:var(--dim);font-size:14px;background:color-mix(in srgb,var(--fg) 4%,transparent)}
 .pic:has(> .wanted){min-height:220px}.fullphoto .frame:has(> .wanted){height:min(50vh,420px)}
+/* Height and the part kept in view (BACKLOG §3, 2026-10-04). */
+.fullphoto img{object-position:50% var(--fy,50%)}
+.fullphoto.h-short .frame{height:min(42vh,380px)}.fullphoto.h-tall .frame{height:min(92vh,880px)}
+.fullphoto.h-whole .frame{height:auto}.fullphoto.h-whole img{position:static;height:auto;top:0}
 .fullphoto .caption{font-size:13px;color:var(--dim);padding:10px 24px;margin:0}
 main section.empty{padding:40px 0}.empty p{margin:0;padding:22px;border:1px dashed var(--line);border-radius:12px;color:var(--dim);text-align:center;font-size:14px}
 main section.is-editing{outline:2px solid var(--acc);outline-offset:-2px}
@@ -734,7 +738,7 @@ function renderSection(sec, ctx) {
       if (!sec.photo) {
         return ctx.draft ? `<section class="fullphoto al-${sec.align || "left"}"><div class="frame">${wanted()}</div>${w("caption") ? `<p class="wrap caption">${esc(w("caption"))}</p>` : ""}</section>` : "";
       }
-      return `<section class="fullphoto al-${sec.align || "left"}"><figure style="margin:0"><div class="frame ${sec.variant === "zoom" ? "kb" : ""}"${sec.variant === "drift" ? " data-drift" : ""}>${pictured(img(sec.photo, w("caption")), w("caption") || word(lang, "more"))}</div>${w("caption") ? `<figcaption class="wrap">${esc(w("caption"))}</figcaption>` : ""}</figure></section>`;
+      return `<section class="fullphoto h-${esc(sec.height || "medium")} al-${sec.align || "left"}" style="--fy:${Number.isFinite(sec.focusY) ? sec.focusY : 50}%"><figure style="margin:0"><div class="frame ${sec.variant === "zoom" ? "kb" : ""}"${sec.variant === "drift" && sec.height !== "whole" ? " data-drift" : ""}>${pictured(img(sec.photo, w("caption")), w("caption") || word(lang, "more"))}</div>${w("caption") ? `<figcaption class="wrap">${esc(w("caption"))}</figcaption>` : ""}</figure></section>`;
     case "quote":
       if (!w("quote")) return "";
       return `<section${cls("quote", "quote-" + sec.variant)}><div class="wrap m"><blockquote>“${w("quote")}”</blockquote>${w("who") ? `<cite>${esc(w("who"))}</cite>` : ""}</div></section>`;

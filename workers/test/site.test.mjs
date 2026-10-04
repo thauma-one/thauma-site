@@ -777,5 +777,17 @@ check("videos: the buttons' style and alignment reach the widget; the newest vid
   assert(!/data-links=/.test(plain) && />Watch</.test(plain), "defaults");
 });
 
+check("a full-width photo: height and the part kept in view; whole is uncropped and never drifts", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  const ph = (height, focusY, variant = "drift") => ({ id: "p1", type: "photo", variant, height, focusY, photo: "https://thauma.one/media/p.jpg", words: { en: {} } });
+  d.pages[0].sections = [ph("short", 12)];
+  assert(/<section class="fullphoto h-short[^"]*" style="--fy:12%"[^>]*>[\s\S]*data-drift/.test(page(d)), "short, aimed high");
+  d.pages[0].sections = [ph("whole", 300)];
+  const w = page(d).match(/<section class="fullphoto[\s\S]*?<\/section>/)[0];
+  assert(/class="fullphoto h-whole[^"]*" style="--fy:100%"/.test(w) && !/data-drift/.test(w), "whole: clamped, no drift");
+  d.pages[0].sections = [ph("enormous", "x")];
+  assert(/class="fullphoto h-medium[^"]*" style="--fy:50%"/.test(page(d)), "defaults");
+});
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

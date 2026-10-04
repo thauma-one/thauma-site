@@ -715,7 +715,14 @@
     }
 
     if (state.sectab === 'photo') {
-      html += '<div class="ws-bigphoto">' + (s.photo ? '<img src="' + esc(s.photo) + '" alt="">' : '<span class="ws-nophoto">' + esc(tr('ws.noPhoto')) + '</span>') + '</div>' +
+      /* A full-width photo is cropped to a band: press the spot that must
+         stay in view (Chase, BACKLOG §3: "height cropping and positioning"). */
+      var aim = s.type === 'photo' && s.photo && (s.height || 'medium') !== 'whole';
+      var fy = typeof s.focusY === 'number' ? s.focusY : 50;
+      html += '<div class="ws-bigphoto' + (aim ? ' ws-aim' : '') + '"' + (aim ? ' data-sec-focus="' + i + '" title="' + esc(tr('ws.photoFocus')) + '"' : '') + '>' +
+        (s.photo ? '<img src="' + esc(s.photo) + '" alt="">' + (aim ? '<i class="ws-aimline" style="top:' + fy + '%"></i>' : '') : '<span class="ws-nophoto">' + esc(tr('ws.noPhoto')) + '</span>') + '</div>' +
+        (s.type === 'photo' ? '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.photoHeight')) + '</span>' +
+          chips('pheight:' + i, ['short', 'medium', 'tall', 'whole'], s.height || 'medium', function (v) { return tr('ws.photoHeight.' + v); }) + '</div>' : '') +
         '<div class="ws-sec-row"><label class="ghost-btn sm ws-file">' + esc(s.photo ? tr('ws.changePhoto') : tr('ws.choosePhoto')) +
           '<input type="file" accept="image/*" data-sec-photo="' + i + '" hidden></label>' +
           (s.photo ? '<button type="button" class="link-btn" data-sec-unphoto="' + i + '">' + esc(tr('ws.removePhoto')) + '</button>' : '') +
@@ -1538,6 +1545,13 @@
     if (d.itemAdd) { var sec = p.sections[+d.itemAdd]; sec.items = sec.items || []; sec.items.push(sec.type === 'cards' ? { words: {} } : { url: 'https://', photo: null, words: {} }); state.openItem = sec.items.length - 1; drawSections(); var ti = $('wsPages').querySelector('[data-item$=":title"]'); if (ti) ti.focus(); return; }
     if (d.itemUnphoto) { var up = d.itemUnphoto.split(':'); p.sections[+up[0]].items[+up[1]].photo = null; drawSections(); return changed(); }
     if (d.unfavicon !== undefined) { state.doc.design.favicon = null; drawDesign(); return changed(); }
+    /* Press the photo where it must stay in view. */
+    var aimBox = e.target.closest && e.target.closest('[data-sec-focus]');
+    if (aimBox) {
+      var r = aimBox.getBoundingClientRect();
+      p.sections[+aimBox.getAttribute('data-sec-focus')].focusY = Math.max(0, Math.min(100, Math.round((e.clientY - r.top) / r.height * 100)));
+      drawSections(); return changed();
+    }
     if (d.gotoTab) { var tb = document.querySelector('[data-ws-tab="' + d.gotoTab + '"]'); if (tb) tb.click(); return; }
     if (d.colorReset) { state.doc.design.colors[d.colorReset] = null; drawDesign(); return changed(); }
     if (d.footerMenu !== undefined) { state.doc.footer.menu = !state.doc.footer.menu; drawFooter(); return changed(); }
@@ -1580,6 +1594,7 @@
       if (name.indexOf('variant:') === 0) { p.sections[+name.slice(8)].variant = val; drawSections(); }
       else if (name.indexOf('raised:') === 0) { p.sections[+name.slice(7)].raised = val === 'raised'; drawSections(); }
       else if (name.indexOf('divider:') === 0) { p.sections[+name.slice(8)].divider = val === 'on'; drawSections(); }
+      else if (name.indexOf('pheight:') === 0) { p.sections[+name.slice(8)].height = val; drawSections(); }
       else if (name.indexOf('vtitle:') === 0) { p.sections[+name.slice(7)].titleFrom = val; drawSections(); }
       else if (name.indexOf('vlinks:') === 0) { p.sections[+name.slice(7)].linkStyle = val; drawSections(); }
       else if (name.indexOf('tier:') === 0) { var tk = name.slice(5).split(':'); p.sections[+tk[0]].items[+tk[1]].tier = val; drawSections(); }

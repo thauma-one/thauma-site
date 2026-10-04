@@ -568,6 +568,13 @@ function cleanSection(raw, langs) {
   }
   /* Videos (BACKLOG §3): the buttons under them, and whether the newest
      video's own title and date head the section. */
+  /* A full-width photo's band: how tall, and the part kept in view (0 top,
+     100 bottom). "whole" shows the photo uncropped. */
+  if (raw.type === "photo") {
+    s.height = ["short", "medium", "tall", "whole"].includes(raw.height) ? raw.height : "medium";
+    const fy = Number(raw.focusY);
+    s.focusY = Number.isFinite(fy) ? Math.max(0, Math.min(100, Math.round(fy))) : 50;
+  }
   if (raw.type === "videos") {
     s.linkStyle = ["outline", "subtle"].includes(raw.linkStyle) ? raw.linkStyle : "buttons";
     s.titleFrom = raw.titleFrom === "latest" ? "latest" : "words";

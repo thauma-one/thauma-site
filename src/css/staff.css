@@ -2820,3 +2820,6 @@ html.has-ai .ai-one{display:inline-flex;align-items:center;justify-content:cente
 /* A Custom Cards row's number, as the site draws it. */
 .ws-cnum{flex:none;width:22px;height:22px;border-radius:50%;background:var(--ws-acc,#1AE4FF);color:#0B0F15;
   display:inline-flex;align-items:center;justify-content:center;font:700 11px var(--font-body)}
+/* A full-width photo: press where it must stay in view; the line shows it. */
+.ws-bigphoto.ws-aim{position:relative;cursor:crosshair}
+.ws-aimline{position:absolute;left:0;right:0;height:2px;background:var(--ws-acc,#1AE4FF);box-shadow:0 0 0 1px rgba(0,0,0,.4);transform:translateY(-1px);pointer-events:none}
