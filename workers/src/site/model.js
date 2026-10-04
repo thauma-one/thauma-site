@@ -659,6 +659,29 @@ export function cleanDoc(raw, catalog) {
       cue: p.cue !== false,
       /* The picture a shared link shows; none means the page's first photo. */
       shareImage: safePhoto(p.shareImage),
+      /* The upload behind a cropped share picture, so editing starts from it. */
+      shareOrig: safePhoto(p.shareOrig),
+      /* SEARCH AND SHARING (the Advanced tab, 2026-10-04): a title and a
+         description per language when the owner writes them (else the
+         automatic ones), which picture a shared link shows — the page's name
+         card (made in the console, per language), its first photo, or a
+         picture of the owner's — and the made cards with what they were made
+         from, so an unchanged card is never made again. */
+      seo: (() => {
+        const o = p.seo && typeof p.seo === "object" ? p.seo : {};
+        const per = (x, n) => { const r = {}; for (const l of langs) { const v = str(x && x[l], n); if (v) r[l] = v; } return r; };
+        return { title: per(o.title, 70), desc: per(o.desc, 200),
+                 image: ["card", "photo", "custom"].includes(o.image) ? o.image : null };
+      })(),
+      shareCards: (() => {
+        const r = {};
+        for (const l of langs) {
+          const c = p.shareCards && p.shareCards[l];
+          const url = c && safePhoto(c.url);
+          if (url) r[l] = { url, sig: str(c.sig, 300) };
+        }
+        return r;
+      })(),
       label,
       sections: (Array.isArray(p.sections) ? p.sections : []).slice(0, 30).map((s) => cleanSection(s, langs)).filter(Boolean),
     };

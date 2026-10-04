@@ -369,6 +369,22 @@ await check("Navigation: the page-you-are-on look, its color, the line and the p
   eq(!!sent.filter((x) => x.action === "save").pop().draft.design.headerLinks, !was, "icons in the menu");
 });
 
+await check("Advanced: search and share previews, a title written over the automatic one, the picture choice", async () => {
+  const { w, d, sent, click } = await boot();
+  click(d.querySelector('[data-ws-tab="advanced"]'));
+  assert(!d.getElementById("wsAdvanced").hidden, "the Advanced panel");
+  assert(d.querySelector(".ws-serp-title") && d.querySelector(".ws-sc"), "both previews");
+  const t = d.querySelector("[data-adv-title]");
+  assert(t.placeholder.length > 0, "the automatic title as the placeholder");
+  t.value = "Chase Roush — production for churches";
+  t.dispatchEvent(new w.Event("input", { bubbles: true }));
+  click(d.querySelector('[data-chip="advpic"][data-value="photo"]'));
+  await settle(900);
+  const home = sent.filter((x) => x.action === "save").pop().draft.pages.find((p) => p.id === "home");
+  eq([home.seo.title.en, home.seo.image], ["Chase Roush — production for churches", "photo"], "saved");
+  assert(d.querySelector(".ws-serp-title").textContent.startsWith("Chase Roush — production"), "the preview follows");
+});
+
 await check("Links: a tap on an icon opens its box; other links are rows, one opened at a time", async () => {
   const { w, d, sent, click } = await boot();
   click(d.querySelector('[data-ws-tab="links"]'));

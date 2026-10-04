@@ -1063,7 +1063,10 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
   const socials = socialIcons + favicons;
   const foot = footer({ doc, lang, fallback, name, pages, href, label, socials, custom });
 
-  const title = pageId === "home" ? name : `${label(pageId)} · ${name}`;
+  const thePage = doc.pages.find((p) => p.id === pageId) || doc.pages[0];
+  const seo = thePage.seo || {};
+  /* What the owner wrote on the Advanced tab wins; otherwise automatic. */
+  const title = (seo.title && seo.title[lang]) || (pageId === "home" ? name : `${label(pageId)} · ${name}`);
   /* WHAT A SEARCH ENGINE OR A SHARED LINK SHOWS (BACKLOG §3, 2026-10-04):
      this page's own first words, else Home's; its own first photo (or the one
      chosen for sharing), else Home's, else the logo. Addresses are the
@@ -1079,10 +1082,16 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
     return "";
   };
   const clip = (t) => (t.length > 160 ? t.slice(0, 157).replace(/\s+\S*$/, "") + "…" : t);
-  const desc = clip(firstWords(thisPage) || firstWords(doc.pages[0]));
+  const desc = (seo.desc && seo.desc[lang]) || clip(firstWords(thisPage) || firstWords(doc.pages[0]));
   const firstPhoto = (pg) => ((pg && pg.sections) || []).map((s) => s.photo).find(Boolean) || null;
   const absolute = (u) => (!u ? null : /^https?:/.test(u) ? u : "https://thauma.one" + (u.startsWith("/") ? u : "/" + u));
-  const shareImage = absolute(thisPage.shareImage || firstPhoto(thisPage) || firstPhoto(doc.pages[0]) || (design.brand === "logo" && design.logo) || null);
+  /* The picture: the owner's own; the page's photo; or (the default) the
+     page's name card in this language — until one is made, the photo. */
+  const mode = seo.image || (thisPage.shareImage ? "custom" : "card");
+  const card = thisPage.shareCards && thisPage.shareCards[lang] && thisPage.shareCards[lang].url;
+  const fallbackPic = firstPhoto(thisPage) || firstPhoto(doc.pages[0]) || (design.brand === "logo" && design.logo) || null;
+  const shareImage = absolute(mode === "custom" && thisPage.shareImage ? thisPage.shareImage
+    : mode === "card" && card ? card : fallbackPic);
   const publicBase = site.subdomain ? `https://${site.subdomain}.thauma.one` : origin + base;
   const publicUrl = (id, l) => `${publicBase}/${l}/${id === "home" ? "" : id + "/"}`;
   const LOCALE = { en: "en_US", hr: "hr_HR", sr: "sr_RS", sl: "sl_SI", de: "de_DE", es: "es_ES" };

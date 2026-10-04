@@ -97,7 +97,7 @@
     $('wsLangB').value = state.langB || '';
     $('wsRefWrap').hidden = !others.length;
     /* Words are written on Pages, Links and Footer; Design and Settings have none. */
-    $('wsWriting').hidden = !(state.tab === 'pages' || state.tab === 'links' || state.tab === 'footer');
+    $('wsWriting').hidden = !(state.tab === 'pages' || state.tab === 'links' || state.tab === 'footer' || state.tab === 'advanced');
   }
   $('wsLangA').addEventListener('change', function () { state.langA = this.value; if (state.langB === state.langA) state.langB = null; fillPair(); draw(); });
   $('wsLangB').addEventListener('change', function () { state.langB = this.value; draw(); });
@@ -281,7 +281,8 @@
     return {
       design: JSON.stringify(d),
       nav: JSON.stringify(nav),
-      pages: JSON.stringify(doc.pages),
+      pages: JSON.stringify(doc.pages.map(function (p) { var q = Object.assign({}, p); delete q.seo; delete q.shareImage; delete q.shareCards; return q; })),
+      advanced: JSON.stringify(doc.pages.map(function (p) { return [p.seo, p.shareImage, p.shareCards]; })),
       links: JSON.stringify(doc.links),
       footer: JSON.stringify(doc.footer),
       settings: JSON.stringify([doc.languages, doc.fallback, doc.give]),
@@ -312,7 +313,11 @@
     $('wsDiscard').hidden = !state.body.site.published_at;
     $('wsBarText').textContent = state.body.site.published_at ? tr('ws.unpublished') : tr('ws.neverPublished');
   }
-  $('wsPublish').addEventListener('click', function () { act({ action: 'publish' }, tr('ws.published')); });
+  /* Publishing first brings the share cards up to date (Advanced tab). */
+  $('wsPublish').addEventListener('click', async function () {
+    try { await makeCards(); } catch (e) { toast(e.message, 'err'); return; }
+    act({ action: 'publish' }, tr('ws.published'));
+  });
   $('wsDiscard').addEventListener('click', async function () {
     var ok = window.StaffConfirm ? await window.StaffConfirm({ title: tr('ws.discardTitle'), confirm: tr('ms.discard'), cancel: tr('ms.cancel'), danger: true }) : true;
     if (ok) act({ action: 'discard' }, tr('toast.discarded'));
@@ -419,6 +424,7 @@
     if (state.tab === 'links') drawLinks();
     if (state.tab === 'footer') drawFooter();
     if (state.tab === 'nav') drawNav();
+    if (state.tab === 'advanced') drawAdvanced();
     if (state.tab === 'settings') drawSettings();
     /* The site beside whatever is being changed: the page being arranged, or
        Home for the look, the links and the footer. */
@@ -646,17 +652,7 @@
       (p.id === 'home' ? '<span class="ws-always">' + esc(tr('ws.always')) + '</span>' : sw('data-page-on="' + pi + '"', p.on, tr('ws.shown'))) +
       '</div>' +
       '<label class="ws-pagename"><span>' + esc(tr('ws.nameInMenu')) + '</span>' + refPage(p) +
-        '<input type="text" maxlength="40" data-page-label="' + pi + '" value="' + esc((p.label || {})[state.langA] || '') + '" placeholder="' + esc(builtInName(p.id, state.langA)) + '" lang="' + esc(state.langA) + '"></label>' +
-      /* The picture a shared link or a search result shows: the page's first
-         photo unless another is chosen (BACKLOG §3, 2026-10-04). */
-      (function () {
-        var auto = (p.sections.map(function (x) { return x.photo; }).filter(Boolean)[0]) || null, pic = p.shareImage || auto;
-        return '<div class="ws-sec-row ws-share"><span class="ws-lbl2">' + esc(tr('ws.sharePic')) + '</span>' +
-          (pic ? '<img class="ws-thumb" src="' + esc(pic) + '" alt="">' : '') +
-          '<span class="ws-small">' + esc(p.shareImage ? '' : tr('ws.sharePic.auto')) + '</span>' +
-          '<label class="ghost-btn sm ws-file">' + esc(tr('ws.sharePic.choose')) + '<input type="file" accept="image/*" data-page-share="' + pi + '" hidden></label>' +
-          (p.shareImage ? '<button type="button" class="link-btn" data-page-unshare="' + pi + '">' + esc(tr('ws.sharePic.auto')) + '</button>' : '') + '</div>';
-      })();
+        '<input type="text" maxlength="40" data-page-label="' + pi + '" value="' + esc((p.label || {})[state.langA] || '') + '" placeholder="' + esc(builtInName(p.id, state.langA)) + '" lang="' + esc(state.langA) + '"></label>';
 
     var n = p.sections.length;
     /* Room below an open section, so even the last one can rise to the top. */
@@ -1395,6 +1391,142 @@
     center: [[26,18,48,8,'l'],[40,38,20,10,'o'],[22,58,56,8,'t'],[30,76,40,6,'l']],
     columns: [[5,24,22,12,'t'],[34,24,16,6,'l'],[34,38,14,6,'l'],[56,24,16,6,'l'],[56,38,14,6,'l'],[78,24,16,12,'o'],[5,74,90,5,'l']],
   };
+  /* ---- Advanced: how each page looks in a search and when shared ------
+     (Chase, 2026-10-04: "a Meta editor in a new Advanced section … both the
+     mobile share where the meta photo is used and the google search where
+     the other text is used"). Everything is automatic until written over:
+     the title is "Page · Name", the description the page's first words, the
+     picture the page's NAME CARD — the ministry's name and the page's, in
+     the site's colors and type — made here in the browser. */
+  function advPage() {
+    var id = state.advPage || state.page || 'home';
+    return state.doc.pages.filter(function (x) { return x.id === id; })[0] || state.doc.pages[0];
+  }
+  function siteName() { return (state.body.owner && state.body.owner.name) || state.body.partner.display_name || ''; }
+  function autoTitle(p, l) { var nm = siteName(); return p.id === 'home' ? nm : pageLabel(p, l) + ' · ' + nm; }
+  function autoDesc(p, l) {
+    var pick = function (pg) {
+      for (var a = 0; a < pg.sections.length; a++) {
+        var w = (pg.sections[a].words || {})[l] || (pg.sections[a].words || {})[state.doc.fallback] || {};
+        var f = ['text', 'kicker', 'sub'];
+        for (var b = 0; b < f.length; b++) {
+          var t = String(w[f[b]] || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+          if (t.length > 20) return t.length > 160 ? t.slice(0, 157).replace(/\s+\S*$/, '') + '…' : t;
+        }
+      }
+      return '';
+    };
+    return pick(p) || pick(state.doc.pages[0]);
+  }
+  function firstPhotoOf(p) { return p.sections.map(function (x) { return x.photo; }).filter(Boolean)[0] || null; }
+  function shareMode(p) { var o = p.seo || {}; return o.image || (p.shareImage ? 'custom' : 'card'); }
+
+  /* The look a name card wears: the site's own ground, ink and accent. */
+  function cardLook() {
+    var d = state.doc.design, acc = siteAccent();
+    if (d.look === 'paper') return { bg: '#F6F2EA', fg: '#1A1C22', dim: '#5B5E66', acc: acc, font: 'Georgia, serif' };
+    if (d.look === 'bold') return { bg: acc, fg: '#041D24', dim: 'rgba(4,29,36,.7)', acc: '#041D24', font: 'Sora, system-ui' };
+    var bg = (d.look === 'custom' && d.colors && d.colors.background) || '#0A0D12';
+    var n = parseInt(bg.slice(1), 16), light = ((n >> 16) * 299 + (n >> 8 & 255) * 587 + (n & 255) * 114) / 1000 > 140;
+    return light ? { bg: bg, fg: '#15171C', dim: '#5B5E66', acc: acc, font: 'Sora, system-ui' }
+                 : { bg: bg, fg: '#EDF2F8', dim: '#9AA6B6', acc: acc, font: 'Sora, system-ui' };
+  }
+  function cardSig(p, l) { var k = cardLook(); return [siteName(), p.id === 'home' ? '' : pageLabel(p, l), k.bg, k.fg, k.acc, state.body.site.subdomain].join('|'); }
+  /* A 1200×630 card: the page's name light, the ministry's name bold, a short
+     line in the accent, the address small. */
+  async function makeCard(p, l) {
+    var k = cardLook(), fam = k.font.split(',')[0];
+    /* The console page itself does not load Sora, so the card brings it in
+       from the site's own font files (as main.css declares them), once. */
+    if (fam === 'Sora' && window.FontFace && !window.__cardFonts) {
+      var R = { latin: 'U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD',
+                'latin-ext': 'U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF' };
+      window.__cardFonts = Promise.all(Object.keys(R).reduce(function (all, sub) {
+        return all.concat([100, 600].map(function (wt) {
+          return new FontFace('Sora', 'url(/fonts/Sora-' + sub + '-v2.woff2)', { weight: String(wt), unicodeRange: R[sub] }).load().then(function (f) { document.fonts.add(f); });
+        }));
+      }, [])).catch(function () {});
+    }
+    try { await window.__cardFonts; await Promise.all([document.fonts.load('100 96px ' + fam), document.fonts.load('600 96px ' + fam)]); } catch (e) { /* system fonts */ }
+    var c = document.createElement('canvas'); c.width = 1200; c.height = 630;
+    var g = c.getContext && c.getContext('2d');
+    if (!g) return null;
+    g.fillStyle = k.bg; g.fillRect(0, 0, 1200, 630);
+    var glow = g.createRadialGradient(240, 120, 0, 240, 120, 760);
+    glow.addColorStop(0, k.acc + '55'); glow.addColorStop(1, k.acc + '00');
+    g.fillStyle = glow; g.fillRect(0, 0, 1200, 630);
+    var nm = siteName(), page = p.id === 'home' ? '' : pageLabel(p, l);
+    var fit = function (txt, weight, size, max) {
+      var z = size; do { g.font = weight + ' ' + z + 'px ' + k.font; z -= 4; } while (g.measureText(txt).width > max && z > 30); return z + 4;
+    };
+    g.textBaseline = 'alphabetic'; g.fillStyle = k.fg;
+    var y = 330;
+    if (page) { fit(page, 100, 104, 1040); g.fillText(page, 80, y); y += 104; fit(nm, 600, 72, 1040); g.fillText(nm, 80, y); }
+    else { fit(nm, 600, 112, 1040); g.fillText(nm, 80, y + 40); y += 60; }
+    g.fillStyle = k.acc; g.fillRect(80, y + 34, 120, 6);
+    g.fillStyle = k.dim; g.font = '500 30px ' + k.font;
+    g.fillText(state.body.site.subdomain + '.thauma.one', 80, 560);
+    return c;
+  }
+  /* Before publishing: every shown page's card in every language whose card
+     is missing or out of date. An unchanged card is never made again. */
+  async function makeCards() {
+    var todo = [];
+    state.doc.pages.forEach(function (p) {
+      if (!p.on || shareMode(p) !== 'card') return;
+      state.doc.languages.forEach(function (l) {
+        var have = (p.shareCards || {})[l];
+        if (!have || have.sig !== cardSig(p, l)) todo.push([p, l]);
+      });
+    });
+    if (!todo.length) return;
+    toast(tr('ws.adv.making'), 'ok');
+    for (var a = 0; a < todo.length; a++) {
+      var p = todo[a][0], l = todo[a][1];
+      var c = await makeCard(p, l);
+      if (!c) continue;
+      var blob = await new Promise(function (r) { c.toBlob(r, 'image/jpeg', 0.88); });
+      var res = await fetch('/api/admin/media?kind=partnersite', { method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'image/jpeg' }, body: blob });
+      var body = await res.json().catch(function () { return {}; });
+      if (!res.ok) throw new Error(body.error || tr('common.saveFailed'));
+      p.shareCards = p.shareCards || {};
+      p.shareCards[l] = { url: body.url, sig: cardSig(p, l) };
+    }
+    changed();
+  }
+
+  function drawAdvanced() {
+    var p = advPage(), l = state.langA, o = p.seo || (p.seo = { title: {}, desc: {}, image: null });
+    o.title = o.title || {}; o.desc = o.desc || {};
+    var t = o.title[l] || autoTitle(p, l), dsc = o.desc[l] || autoDesc(p, l), mode = shareMode(p);
+    var host = state.body.site.subdomain + '.thauma.one';
+    var html = '<div class="ws-head"><h2>' + esc(tr('ws.adv.title')) + '</h2>' +
+      '<label class="ws-pagepick"><select data-adv-page>' + state.doc.pages.filter(function (x) { return x.on; }).map(function (x) {
+        return '<option value="' + esc(x.id) + '"' + (x.id === p.id ? ' selected' : '') + '>' + esc(pageLabel(x, l)) + '</option>';
+      }).join('') + '</select></label></div>';
+    /* The two places it shows, side by side, as they will look. */
+    html += '<div class="ws-adv-previews">' +
+      '<div class="ws-serp"><span class="ws-lbl2">' + esc(tr('ws.adv.inSearch')) + '</span>' +
+        '<span class="ws-serp-url">' + esc(host) + (p.id === 'home' ? '' : ' › ' + esc(p.id)) + '</span>' +
+        '<b class="ws-serp-title">' + esc(t.length > 60 ? t.slice(0, 59) + '…' : t) + '</b>' +
+        '<span class="ws-serp-desc">' + esc(dsc) + '</span></div>' +
+      '<div class="ws-sharecard"><span class="ws-lbl2">' + esc(tr('ws.adv.inShare')) + '</span>' +
+        '<div class="ws-sc"><span class="ws-sc-pic" id="wsSharePic"></span><b>' + esc(t) + '</b><span>' + esc(host) + '</span></div></div></div>';
+    html += '<div class="ws-fields">' +
+      '<label class="fld ws-wide"><span>' + esc(tr('ws.adv.titleField')) + ' <small class="ws-count">' + (o.title[l] || '').length + ' / 60</small></span>' +
+        '<input type="text" maxlength="70" data-adv-title value="' + esc(o.title[l] || '') + '" placeholder="' + esc(autoTitle(p, l)) + '" lang="' + esc(l) + '"></label>' +
+      '<label class="fld ws-wide"><span>' + esc(tr('ws.adv.descField')) + ' <small class="ws-count">' + (o.desc[l] || '').length + ' / 160</small></span>' +
+        '<textarea rows="3" maxlength="200" data-adv-desc placeholder="' + esc(autoDesc(p, l)) + '" lang="' + esc(l) + '">' + esc(o.desc[l] || '') + '</textarea></label></div>';
+    html += '<div class="ws-rows">' + row(tr('ws.adv.picture'), chips('advpic', ['card', 'photo', 'custom'], mode, function (v) { return tr('ws.adv.picture.' + v); }) +
+      (mode === 'custom' ? '<label class="ghost-btn sm ws-file">' + esc(tr('ws.sharePic.choose')) + '<input type="file" accept="image/*" data-adv-upload hidden></label>' +
+        (p.shareImage && window.PhotoEditor ? '<button type="button" class="ghost-btn sm" data-adv-edit>' + esc(tr('pe.edit')) + '</button>' : '') : '')) + '</div>';
+    $('wsAdvanced').innerHTML = html;
+    /* The picture in the share preview: the card drawn live, or the photo. */
+    var box = $('wsSharePic');
+    if (mode === 'card') makeCard(p, l).then(function (c) { if (c) box.style.backgroundImage = 'url(' + c.toDataURL('image/jpeg', 0.8) + ')'; }).catch(function () {});
+    else { var pic = mode === 'custom' ? p.shareImage : firstPhotoOf(p) || firstPhotoOf(state.doc.pages[0]); if (pic) box.style.backgroundImage = 'url(' + pic + ')'; }
+  }
+
   /* ---- the Navigation tab (2026-10-04, from the approved mockup) ---- */
   function navOf(doc) {
     return doc.design.nav || (doc.design.nav = { current: 'lit', tint: 'white', line: 'subtle', phone: 'drop' });
@@ -1533,6 +1665,15 @@
       return changed();
     }
     if (t.dataset.give !== undefined) { state.doc.give = v.trim(); return changed(); }
+    if (t.dataset.advTitle !== undefined || t.dataset.advDesc !== undefined) {
+      var aq = advPage(); aq.seo = aq.seo || { title: {}, desc: {} };
+      var key = t.dataset.advTitle !== undefined ? 'title' : 'desc';
+      aq.seo[key] = aq.seo[key] || {};
+      if (v.trim()) aq.seo[key][state.langA] = v; else delete aq.seo[key][state.langA];
+      var cnt = t.closest('label') && t.closest('label').querySelector('.ws-count');
+      if (cnt) cnt.textContent = v.length + ' / ' + (key === 'title' ? 60 : 160);
+      return changed();
+    }
   });
 
   /* "sec:<i>" is a section's link; "item:<i>:<j>" is one card's. */
@@ -1553,6 +1694,8 @@
   $('wsRoot').addEventListener('change', async function (e) {
     var t = e.target, p = currentPage();
     if (t.dataset.pickPage !== undefined) { state.page = t.value; state.edit = null; drawPages(); refreshFrame(); return; }
+    if (t.dataset.advPage !== undefined) { state.advPage = t.value; drawAdvanced(); return; }
+    if (t.dataset.advUpload !== undefined) { var au = advPage(); return upload(t, function (url) { au.shareImage = url; au.shareOrig = null; au.seo = au.seo || {}; au.seo.image = 'custom'; drawAdvanced(); }); }
     /* A color settled on: the look cards redraw in it (not while dragging,
        which would close the picker under the pointer). */
     if (t.dataset.color) { drawDesign(); return; }
@@ -1578,7 +1721,6 @@
     }
     if (t.dataset.fallback !== undefined) { state.doc.fallback = t.value; return changed(); }
     if (t.dataset.secPhoto) return upload(t, function (url) { var ps = p.sections[+t.dataset.secPhoto]; ps.photo = url; ps.photoEdit = null; drawSections(); });
-    if (t.dataset.pageShare) return upload(t, function (url) { state.doc.pages[+t.dataset.pageShare].shareImage = url; drawPages(); });
     if (t.dataset.logo !== undefined) return upload(t, function (url) { state.doc.design.logo = url; drawDesign(); });
     if (t.dataset.favicon !== undefined) return upload(t, function (url) { state.doc.design.favicon = url; drawDesign(); }, 256);
   });
@@ -1619,7 +1761,17 @@
       if (got) { es.photoEdit = got; drawSections(); changed(); }
       return;
     }
-    if (d.pageUnshare) { state.doc.pages[+d.pageUnshare].shareImage = null; drawPages(); return changed(); }
+    if (d.advEdit !== undefined) {
+      var ae = advPage();
+      var orig2 = ae.shareOrig || ae.shareImage;
+      var got2 = await window.PhotoEditor.open(orig2, { purpose: 'share', accent: siteAccent() }).catch(function (err) { toast(err.message, 'err'); return null; });
+      if (!got2) return;
+      var blob2 = await window.PhotoEditor.exportBlob(orig2, got2, { max: 1200 });
+      var r2 = await fetch('/api/admin/media?kind=partnersite', { method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'image/jpeg' }, body: blob2 });
+      var b2 = await r2.json().catch(function () { return {}; });
+      if (!r2.ok) { toast(b2.error || tr('common.saveFailed'), 'err'); return; }
+      ae.shareOrig = orig2; ae.shareImage = b2.url; drawAdvanced(); return changed();
+    }
     if (d.itemAdd) { var sec = p.sections[+d.itemAdd]; sec.items = sec.items || []; sec.items.push(sec.type === 'cards' ? { words: {} } : { url: 'https://', photo: null, words: {} }); state.openItem = sec.items.length - 1; drawSections(); var ti = $('wsPages').querySelector('[data-item$=":title"]'); if (ti) ti.focus(); return; }
     if (d.itemUnphoto) { var up = d.itemUnphoto.split(':'); p.sections[+up[0]].items[+up[1]].photo = null; drawSections(); return changed(); }
     if (d.unfavicon !== undefined) { state.doc.design.favicon = null; drawDesign(); return changed(); }
@@ -1665,6 +1817,7 @@
       if (name.indexOf('variant:') === 0) { p.sections[+name.slice(8)].variant = val; drawSections(); }
       else if (name.indexOf('raised:') === 0) { p.sections[+name.slice(7)].raised = val === 'raised'; drawSections(); }
       else if (name.indexOf('divider:') === 0) { p.sections[+name.slice(8)].divider = val === 'on'; drawSections(); }
+      else if (name === 'advpic') { var ap = advPage(); ap.seo = ap.seo || { title: {}, desc: {} }; ap.seo.image = val; drawAdvanced(); }
       else if (name.indexOf('vpos:') === 0) { p.sections[+name.slice(5)].versePos = val; drawSections(); }
       else if (name.indexOf('talign:') === 0) { p.sections[+name.slice(7)].titleAlign = val; drawSections(); }
       else if (name.indexOf('tline:') === 0) { p.sections[+name.slice(6)].titleLine = val === 'on'; drawSections(); }

@@ -880,5 +880,18 @@ check("the photo editor's choices: a crop is a window onto the original; a point
   assert(!c.pages[0].sections[0].photoEdit, "junk dropped");
 });
 
+check("Advanced: a written title and description win; the name card is the default picture once made", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  const home = d.pages[0];
+  home.sections = [{ id: "h", type: "hero", variant: "beside", photo: "https://thauma.one/media/p.jpg", words: { en: { heading: "Hi", text: "Serving churches with production excellence." } } }];
+  const head = () => page(d, "home", "en", { site: { slug: "c", display_name: "Chase Roush", subdomain: "chaseroush" } }).match(/<head>[\s\S]*<\/head>/)[0];
+  assert(head().includes('og:image" content="https://thauma.one/media/p.jpg"'), "no card yet: the photo");
+  home.shareCards = { en: { url: "https://thauma.one/media/card-en.jpg", sig: "x" } };
+  assert(head().includes('og:image" content="https://thauma.one/media/card-en.jpg"'), "the card, once made");
+  home.seo = { title: { en: "Production for churches" }, desc: { en: "Written by hand." }, image: "photo" };
+  const h = head();
+  assert(h.includes("<title>Production for churches</title>") && h.includes('og:description" content="Written by hand."') && h.includes('og:image" content="https://thauma.one/media/p.jpg"'), "written wins; photo chosen");
+});
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
