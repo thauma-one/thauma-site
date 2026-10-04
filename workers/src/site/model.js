@@ -488,7 +488,11 @@ export function richClean(input, max = 6000) {
     }
     if (t === "span") {
       const at = (name) => { const x = new RegExp(name + '\\s*=\\s*(?:"([^"]*)"|\'([^\']*)\')', "i").exec(m[3]); return x ? decode(x[1] || x[2] || "") : ""; };
-      const sz = SIZE_NAMES.includes(at("data-sz")) ? at("data-sz") : "";
+      /* A named size, or any size chosen with − / + (Chase, 2026-10-04): a
+         multiple of the words around it, 0.5–3, to two places. */
+      const rawSz = at("data-sz");
+      const sz = SIZE_NAMES.includes(rawSz) ? rawSz
+        : /^\d(\.\d{1,2})?$/.test(rawSz || "") && +rawSz >= 0.5 && +rawSz <= 3 ? String(+rawSz) : "";
       const c = cleanColor(at("data-c")) || "";
       if (!sz && !c) { open.push("~span"); continue; }
       out += "<span" + (sz ? ' data-sz="' + sz + '"' : "") + (c ? ' data-c="' + c + '"' : "") + ">";

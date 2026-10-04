@@ -139,12 +139,13 @@ function toneVars(scheme) {
  */
 export function styledSpans(html) {
   return String(html || "").replace(/<span\b([^>]*)>/g, (m0, attrs) => {
-    const sz = /data-sz="([a-z]+)"/.exec(attrs), c = /data-c="([^"]+)"/.exec(attrs);
-    const cls = [];
-    let style = "";
+    const sz = /data-sz="([a-z]+|\d(?:\.\d{1,2})?)"/.exec(attrs), c = /data-c="([^"]+)"/.exec(attrs);
+    const cls = [], inl = [];
     if (sz && SIZE_NAMES.includes(sz[1])) cls.push("ts-" + sz[1]);
-    if (c && HEX_COLOR.test(c[1])) style = ` style="color:${c[1].toLowerCase()}"`;
+    else if (sz && +sz[1] >= 0.5 && +sz[1] <= 3) inl.push(`font-size:${+sz[1]}em`);
+    if (c && HEX_COLOR.test(c[1])) inl.push(`color:${c[1].toLowerCase()}`);
     else if (c && (c[1] === "accent" || c[1] === "accent2" || c[1] === "dim" || TONES[c[1]])) cls.push("tc-" + c[1]);
+    const style = inl.length ? ` style="${inl.join(";")}"` : "";
     return `<span${cls.length ? ` class="${cls.join(" ")}"` : ""}${style}>`;
   });
 }

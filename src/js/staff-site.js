@@ -689,6 +689,7 @@
       }).join('') +
       (n ? '' : '<button type="button" class="ws-addbtn" data-insert-at="0">+ ' + esc(tr('ws.addSection')) + '</button>') + '</div>';
     $('wsPages').innerHTML = html;
+    sizeOnScreen($('wsPages'));
     if (!canEdit()) [].forEach.call($('wsPages').querySelectorAll('[contenteditable]'), function (el) { el.setAttribute('contenteditable', 'false'); });
 
     var now = anchorAt != null && $('wsPages').querySelector('.ws-acc[data-si="' + anchorAt + '"]');
@@ -973,7 +974,7 @@
           if (/^(https?:\/\/|mailto:|page:[a-z]+$)/i.test(h)) out += '<a href="' + esc(h) + '">'; else tag = null;
         } else if (t === 'span') {
           var sz = c.getAttribute('data-sz'), cc = c.getAttribute('data-c'), at = '';
-          if (SIZES.indexOf(sz) !== -1) at += ' data-sz="' + sz + '"';
+          if (SIZES.indexOf(sz) !== -1 || isNumSize(sz)) at += ' data-sz="' + sz + '"';
           if (isTone(cc)) at += ' data-c="' + cc.toLowerCase() + '"';
           if (at) { out += '<span' + at + '>'; tag = 'span'; }
         } else if (tag) out += '<' + tag + '>';
@@ -990,6 +991,19 @@
      Mail composer uses (workers/src/lib/tones.js); the site draws them in its
      own colors, light or dark. */
   var SIZES = ['sm', 'lg', 'xl'];
+  /* Any size by − / + (Chase, 2026-10-04): a multiple of the words around
+     it, 0.5–3, stored as the number; the presets' own multiples. */
+  var SIZE_EM = { sm: 0.82, lg: 1.25, xl: 1.6 };
+  /* A chosen size shows at its size while editing (the stored words keep only
+     data-sz; the presets have their own CSS). */
+  function sizeOnScreen(root) {
+    [].forEach.call(root.querySelectorAll('span[data-sz]'), function (sp) {
+      var v = sp.getAttribute('data-sz');
+      sp.style.fontSize = isNumSize(v) ? v + 'em' : '';
+    });
+  }
+  function isNumSize(v) { return /^\d(\.\d{1,2})?$/.test(String(v || '')) && +v >= 0.5 && +v <= 3; }
+  function sizeEm(v) { return SIZE_EM[v] || (isNumSize(v) ? +v : 1); }
   var TONE_NAMES = ['accent', 'accent2', 'dim', 'red', 'green', 'blue', 'gold'];
   /* Swatches as a dark ground shows them, the console's own. */
   var TONE_SWATCH = { dim: '#9AA6B6', red: '#FF8A80', green: '#6FE3A6', blue: '#8DB8FF', gold: '#F2C14E' };
@@ -1073,7 +1087,10 @@
     '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg></button>' +
     '<div class="ws-fmt-row" data-fmt-row="size" hidden>' + [['', 'ml.cpSizeNormal'], ['sm', 'ml.cpSizeSm'], ['lg', 'ml.cpSizeLg'], ['xl', 'ml.cpSizeXl']].map(function (x) {
       return '<button type="button" data-fmt-sz="' + x[0] + '" class="ws-fmt-sz-' + (x[0] || 'n') + '" aria-pressed="false">' + esc(tr(x[1])) + '</button>';
-    }).join('') + '</div>' +
+    }).join('') +
+    '<span class="ws-fmt-step"><button type="button" data-fmt-step="-1" aria-label="' + esc(tr('ws.fmt.smaller')) + '" title="' + esc(tr('ws.fmt.smaller')) + '">−</button>' +
+    '<output data-fmt-szval>100%</output>' +
+    '<button type="button" data-fmt-step="1" aria-label="' + esc(tr('ws.fmt.larger')) + '" title="' + esc(tr('ws.fmt.larger')) + '">+</button></span></div>' +
     '<div class="ws-fmt-row" data-fmt-row="color" hidden>' + [''].concat(TONE_NAMES).map(function (c) {
       var key = 'ml.cpTone' + (c ? c.charAt(0).toUpperCase() + c.slice(1) : 'None');
       return '<button type="button" class="ws-fmt-tone" data-fmt-c="' + c + '" aria-pressed="false" aria-label="' + esc(tr(key)) + '" title="' + esc(tr(key)) + '"><i' +
@@ -1100,6 +1117,8 @@
   function showMarks(box) {
     var sz = markOf(box, 'data-sz'), c = markOf(box, 'data-c');
     [].forEach.call(fmt.querySelectorAll('[data-fmt-sz]'), function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-fmt-sz') === sz ? 'true' : 'false'); });
+    var szv = fmt.querySelector('[data-fmt-szval]');
+    if (szv) szv.textContent = Math.round(sizeEm(sz) * 100) + '%';
     [].forEach.call(fmt.querySelectorAll('[data-fmt-c]'), function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-fmt-c') === c ? 'true' : 'false'); });
     var any = /^#/.test(c), dot = fmt.querySelector('.ws-fmt-color i');
     fmt.querySelector('.ws-fmt-any').classList.toggle('is-on', any);
@@ -1156,13 +1175,23 @@
     fmtRow(null);
   });
   fmt.addEventListener('click', async function (e) {
-    var b = e.target.closest('[data-fmt], [data-fmt-sz], [data-fmt-c]'), box = boxOfSelection();
+    var b = e.target.closest('[data-fmt], [data-fmt-sz], [data-fmt-c], [data-fmt-step]'), box = boxOfSelection();
     if (!b || !box) return;
+    /* − / + : ten percent smaller or larger than the words are now. */
+    if (b.hasAttribute('data-fmt-step')) {
+      var next = Math.round(Math.max(0.5, Math.min(3, sizeEm(markOf(box, 'data-sz')) + 0.1 * +b.getAttribute('data-fmt-step'))) * 100) / 100;
+      var rs = markSelection(box, window.getSelection().getRangeAt(0), 'data-sz', next === 1 ? '' : String(next));
+      var sel2 = window.getSelection(); sel2.removeAllRanges(); sel2.addRange(rs);
+      sizeOnScreen(box);
+      showMarks(box);
+      return;
+    }
     if (b.hasAttribute('data-fmt-sz') || b.hasAttribute('data-fmt-c')) {
       var attr = b.hasAttribute('data-fmt-sz') ? 'data-sz' : 'data-c';
       var r = markSelection(box, window.getSelection().getRangeAt(0), attr, b.getAttribute(attr === 'data-sz' ? 'data-fmt-sz' : 'data-fmt-c'));
       var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
       fmtRow(null);
+      sizeOnScreen(box);
       showMarks(box);
       return;
     }

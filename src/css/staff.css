@@ -2873,3 +2873,7 @@ html.pe-open{overflow:hidden}
 .ws-sc span:last-child{display:block;padding:0 14px 12px;font-size:12px;color:#6b6b70}
 .ws-count{color:var(--dim);font-weight:400}
 .ws-pagepick select{font:inherit}
+/* − / + in the format bar's size row, with the size between them. */
+.ws-fmt-step{display:inline-flex;align-items:center;gap:2px;margin-left:6px;padding-left:8px;border-left:1px solid var(--line)}
+.ws-fmt-step button{min-width:30px;font-size:16px}
+.ws-fmt-step output{min-width:46px;text-align:center;font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums}
