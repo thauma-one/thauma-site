@@ -52,9 +52,10 @@
     prayer: { variants: ['list'], words: ['heading', 'text'], data: 'updates/#prayer', align: true },
     videos: { variants: ['stage'], words: ['heading', 'text'], data: 'updates/#videos', align: true },
     newsletters: { variants: ['latest', 'list'], words: ['heading', 'text'], data: 'mail/', align: true },
-    signup: { variants: ['band', 'card'], words: ['heading', 'text'], data: 'sharing/#signup' },
-    contact: { variants: ['form'], words: ['heading', 'text'], data: 'sharing/#contact', align: true },
-    give: { variants: ['band', 'card'], words: ['heading', 'text', 'button'] },
+    signup: { variants: ['band', 'card', 'split', 'open'], words: ['heading', 'text'], data: 'sharing/#signup' },
+    contact: { variants: ['form', 'split', 'wide', 'open'], words: ['heading', 'text'], data: 'sharing/#contact', align: true },
+    give: { variants: ['band', 'card', 'split', 'spotlight'], words: ['heading', 'text', 'button'] },
+    cards: { variants: ['attached', 'detached'], words: ['heading', 'text'], items: 'cards' },
     links: { variants: ['list', 'cards'], words: ['heading', 'text'], items: true, align: true },
   };
   /* Everything but the opening and a full-width photo can sit on a raised band. */
@@ -65,7 +66,7 @@
     if (type === 'header' && f === 'text') return tr('ws.f.below');
     return f === 'text' && (SECTIONS[type].data || type === 'links') && type !== 'signup' && type !== 'contact' ? tr('ws.f.subtitle') : tr('ws.f.' + f);
   }
-  var ORDER = ['hero', 'header', 'text', 'photoText', 'photo', 'quote', 'timeline', 'goals', 'prayer', 'videos', 'newsletters', 'signup', 'contact', 'give', 'links'];
+  var ORDER = ['hero', 'header', 'text', 'photoText', 'photo', 'quote', 'timeline', 'goals', 'prayer', 'videos', 'newsletters', 'signup', 'contact', 'give', 'cards', 'links'];
   var MOTION = {
     entrance: ['rise', 'fade', 'slide', 'zoom', 'none'], photos: ['drift', 'zoom', 'still'],
     headings: ['letters', 'words', 'plain'], buttons: ['lift', 'glow', 'plain'],
@@ -677,7 +678,7 @@
     var spec = SECTIONS[s.type], t = ['words'];
     if (spec.photo) t.push('photo');
     if (spec.buttons || spec.link === 'button' || spec.link === 'both' || s.type === 'give') t.push('buttons');
-    if (spec.items) t.push('links');
+    if (spec.items) t.push(spec.items === 'cards' ? 'cards' : 'links');
     /* Every section lines up (2026-10-03), so every section has a Look. */
     t.push('look');
     return t;
@@ -728,6 +729,21 @@
       }
       if (s.type === 'give' || s.link) html += field(i, 'button', w.button, src('button'), s.type);
       if (s.type === 'give') html += '<p class="ws-data">' + esc(tr('ws.data.give')) + '</p>';
+    }
+
+    if (state.sectab === 'cards') {
+      html += '<div class="ws-linkrows">' + (s.items || []).map(function (it, j) {
+        var t = (it.words || {})[state.langA] || {}, k = i + ':' + j, open = state.openItem === j;
+        var head = '<div class="ws-linkrow' + (open ? ' is-open' : '') + '">' +
+          (s.numbers !== false ? '<span class="ws-cnum">' + (j + 1) + '</span>' : '') +
+          '<b>' + esc(t.title || tr('ws.itemUntitled')) + '</b><span>' + esc(t.text || '') + '</span>' +
+          '<button type="button" class="link-btn" data-item-open="' + j + '">' + esc(open ? tr('ws.close') : tr('ws.edit')) + '</button>' +
+          '<button type="button" class="ws-icon del" data-item-remove="' + k + '" aria-label="' + esc(tr('ws.remove')) + '">✕</button></div>';
+        if (!open) return head;
+        return head + '<div class="ws-linkedit">' +
+          '<label class="fld"><span>' + esc(tr('ws.itemTitle')) + '</span><input type="text" data-item="' + k + ':title" value="' + esc(t.title || '') + '" placeholder="' + esc(ph('card', 'title')) + '" lang="' + esc(state.langA) + '"></label>' +
+          '<label class="fld"><span>' + esc(tr('ws.itemText')) + '</span><textarea rows="3" data-item="' + k + ':text" placeholder="' + esc(ph('card', 'text')) + '" lang="' + esc(state.langA) + '">' + esc(t.text || '') + '</textarea></label></div>';
+      }).join('') + '</div><button type="button" class="ghost-btn" data-item-add="' + i + '">+ ' + esc(tr('ws.addCard')) + '</button>';
     }
 
     if (state.sectab === 'links') {
@@ -783,6 +799,11 @@
           chips('topline:' + i, ['on', 'off'], s.topline === false ? 'off' : 'on', function (v) { return tr('ws.divider.' + v); }) + '</div>' +
           '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.divider')) + '</span>' +
           chips('divider:' + i, ['on', 'off'], s.divider === false ? 'off' : 'on', function (v) { return tr('ws.divider.' + v); }) + '</div>';
+      }
+      /* Custom Cards: numbered or not. */
+      if (s.type === 'cards') {
+        html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.numbers')) + '</span>' +
+          chips('numbers:' + i, ['on', 'off'], s.numbers === false ? 'off' : 'on', function (v) { return tr('ws.divider.' + v); }) + '</div>';
       }
       /* A verse's look, where a section can carry one. */
       if (s.type === 'text' || s.type === 'photoText') {
@@ -1082,6 +1103,7 @@
     contact: [[10,14,80,12,'l'],[10,34,80,12,'l'],[10,54,80,20,'l'],[10,80,20,10,'a']],
     give: [[10,20,60,12,'t'],[10,42,76,6,'l'],[10,54,70,6,'l'],[10,70,26,12,'a']],
     links: [[8,14,84,20,'l'],[8,40,84,20,'l'],[8,66,84,20,'l']],
+    cards: [[8,12,10,14,'a','50%'],[22,12,70,14,'l'],[12,30,2,10,'l'],[8,42,10,14,'a','50%'],[22,42,70,14,'l'],[12,60,2,10,'l'],[8,72,10,14,'a','50%'],[22,72,70,14,'l']],
   };
   function sketch(type) {
     return (SKETCH[type] || []).map(function (r) {
@@ -1114,11 +1136,12 @@
     if (spec.photo) s.photo = null;
     if (spec.buttons) s.buttons = ['give', 'stay'];
     if (spec.items) s.items = [];
+    if (spec.items === 'cards') s.numbers = true;
     /* Where it was asked for, and straight into it: a new section is one
        to be filled in. */
     var at = Math.min(state.insertAt == null ? 1e9 : state.insertAt, currentPage().sections.length);
     currentPage().sections.splice(at, 0, s);
-    state.edit = at; state.animate = at; state.sectab = spec.items ? 'links' : 'words'; state.openItem = null;
+    state.edit = at; state.animate = at; state.sectab = spec.items ? (spec.items === 'cards' ? 'cards' : 'links') : 'words'; state.openItem = null;
     closeAdd(); drawPages(); changed(); refreshFrame();
     var row = $('wsPages').querySelector('.ws-acc[data-si="' + at + '"]');
     if (row) row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
@@ -1494,7 +1517,7 @@
       return;
     }
     if (d.secUnphoto) { p.sections[+d.secUnphoto].photo = null; drawSections(); return changed(); }
-    if (d.itemAdd) { var sec = p.sections[+d.itemAdd]; sec.items = sec.items || []; sec.items.push({ url: 'https://', photo: null, words: {} }); state.openItem = sec.items.length - 1; drawSections(); var ti = $('wsPages').querySelector('[data-item$=":title"]'); if (ti) ti.focus(); return; }
+    if (d.itemAdd) { var sec = p.sections[+d.itemAdd]; sec.items = sec.items || []; sec.items.push(sec.type === 'cards' ? { words: {} } : { url: 'https://', photo: null, words: {} }); state.openItem = sec.items.length - 1; drawSections(); var ti = $('wsPages').querySelector('[data-item$=":title"]'); if (ti) ti.focus(); return; }
     if (d.itemUnphoto) { var up = d.itemUnphoto.split(':'); p.sections[+up[0]].items[+up[1]].photo = null; drawSections(); return changed(); }
     if (d.unfavicon !== undefined) { state.doc.design.favicon = null; drawDesign(); return changed(); }
     if (d.gotoTab) { var tb = document.querySelector('[data-ws-tab="' + d.gotoTab + '"]'); if (tb) tb.click(); return; }
@@ -1539,6 +1562,7 @@
       if (name.indexOf('variant:') === 0) { p.sections[+name.slice(8)].variant = val; drawSections(); }
       else if (name.indexOf('raised:') === 0) { p.sections[+name.slice(7)].raised = val === 'raised'; drawSections(); }
       else if (name.indexOf('divider:') === 0) { p.sections[+name.slice(8)].divider = val === 'on'; drawSections(); }
+      else if (name.indexOf('numbers:') === 0) { p.sections[+name.slice(8)].numbers = val === 'on'; drawSections(); }
       else if (name.indexOf('topline:') === 0) { p.sections[+name.slice(8)].topline = val === 'on'; drawSections(); }
       else if (name.indexOf('hbg:') === 0) { p.sections[+name.slice(4)].bg = val; drawSections(); }
       else if (name.indexOf('verse:') === 0) { p.sections[+name.slice(6)].verseStyle = val; drawSections(); }

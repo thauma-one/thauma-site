@@ -726,5 +726,31 @@ check("Give goes straight to the giving link only when there is one", () => {
   assert(/<a class="givebtn" href="[^"]*give\/?"/.test(page(d)) || !/class="givebtn"[^>]*target=/.test(page(d)), "no link: the Give page");
 });
 
+/* ---- card sections (2026-10-04) ---- */
+
+check("Custom Cards: numbered and joined when Attached, side by side when Detached; blank cards are not drawn", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  const card = (title, text) => ({ words: { en: { title, text } } });
+  d.pages[0].sections = [{ id: "c1", type: "cards", variant: "attached", numbers: true,
+    words: { en: { heading: "How we work" } }, items: [card("Reliable", "Always there."), card("", ""), card("Kind", "")] }];
+  let html = page(d);
+  assert(/<section[^>]*class="cards-attached[^"]*"[\s\S]*<ol class="ccards m numbered"><li><span class="cnum"[^>]*>1<\/span><div><h3>Reliable<\/h3><p>Always there\.<\/p><\/div><\/li><li><span class="cnum"[^>]*>2<\/span><div><h3>Kind<\/h3>/.test(html), "attached, numbered, blank skipped");
+  d.pages[0].sections[0].variant = "detached"; d.pages[0].sections[0].numbers = false;
+  html = page(d);
+  assert(/class="cards-detached[\s\S]*<ol class="ccards m">/.test(html) && !/class="cnum"/.test(html), "detached, no numbers");
+});
+
+check("the new form and Give styles draw; a site saved before keeps its old one", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en", give: "https://give.example/x" });
+  const sec = (type, variant) => ({ id: type + variant, type, variant, words: { en: { heading: "H", text: "T", button: "Give" } } });
+  for (const [type, variant, mark] of [["contact", "split", 'class="split"'], ["contact", "wide", "wideform"], ["contact", "open", "openform"],
+                                       ["signup", "split", 'class="split"'], ["signup", "open", "openform"],
+                                       ["give", "card", "givecard"], ["give", "split", "givepanel"], ["give", "spotlight", 'class="spot m"']]) {
+    d.pages[0].sections = [sec(type, variant)];
+    assert(page(d).includes(mark), `${type} ${variant}`);
+  }
+  eq(cleanDoc({ ...d, pages: [{ ...d.pages[0], sections: [sec("contact", "nonsense")] }] }, ["en"]).pages[0].sections[0].variant, "form", "unknown falls back");
+});
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

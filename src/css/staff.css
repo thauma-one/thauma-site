@@ -2812,3 +2812,6 @@ html.has-ai .ai-one{display:inline-flex;align-items:center;justify-content:cente
 .ws-phone-sample[data-phone="drop"] i{left:8px;right:8px;top:8px;height:28px}
 .ws-phone-sample[data-phone="full"] i{inset:8px}
 .ws-phone-sample[data-phone="drawer"] i{right:8px;top:8px;bottom:8px;width:44%}
+/* A Custom Cards row's number, as the site draws it. */
+.ws-cnum{flex:none;width:22px;height:22px;border-radius:50%;background:var(--ws-acc,#1AE4FF);color:#0B0F15;
+  display:inline-flex;align-items:center;justify-content:center;font:700 11px var(--font-body)}

@@ -124,7 +124,7 @@ await check("a row unfolds where it is, one at a time; a new section goes where 
   click(d.querySelector('[data-edit-sec="0"]'));
   eq(d.querySelectorAll(".ws-acc.is-open").length, 0, "pressed again, it folds");
   click(d.querySelector('[data-insert-at="1"]'));
-  eq(d.querySelectorAll("[data-add-type]").length, 15, "every kind offered");
+  eq(d.querySelectorAll("[data-add-type]").length, 16, "every kind offered");
   click(d.querySelector('[data-add-type="quote"]'));
   eq([...d.querySelectorAll(".ws-stile-words b")].map((n) => n.textContent), ["Hero", "A verse or a quote", "Photo and words"], "between the two");
   assert(d.querySelector('.ws-acc[data-si="1"]').classList.contains("is-open"), "and open");

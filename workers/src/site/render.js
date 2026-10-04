@@ -381,6 +381,40 @@ main section.raised .card{background:var(--bg)}
    with the boxes pushed left (Chase, 2026-10-01: "extra wide with left
    alignment of the boxes"). */
 .signcard{max-width:600px;margin:0 auto}
+/* Side by side: the words take a third, the form the rest (chaseroush.com's
+   contact page); the line under the words is the site's color. */
+.split{display:grid;grid-template-columns:1fr 1.6fr;gap:64px;align-items:start}
+.split .rule{margin:26px 0 0}
+.al-right .split{direction:rtl}.al-right .split>*{direction:ltr}
+.openform{max-width:720px;margin-top:28px}
+.wideform{max-width:820px;margin-top:28px}
+/* Give, as a card: the site's color along its top, the button beneath. */
+.givecard{max-width:760px;padding:52px 56px;border-top:3px solid var(--acc)}
+.givecard .lede{max-width:none}.givecard .btns{margin-top:28px}
+.al-center .givecard{margin:0 auto}.al-right .givecard{margin-left:auto}
+.gsplit{grid-template-columns:1.4fr 1fr;align-items:center}
+.givepanel{display:flex;flex-direction:column;align-items:center;gap:22px;padding:44px 32px;border-radius:18px;background:var(--panel);border:1px solid var(--line)}
+.givepanel .rule{margin:0}
+.btn.big{padding:16px 34px;font-size:17px}
+/* Spotlight: a block in the site's own color. */
+.spot{padding:64px 56px;border-radius:22px;background:var(--acc);color:var(--on-acc)}
+.spot .h,.spot .h b,.spot .lede{color:var(--on-acc)}
+.spot .btns{margin-top:28px}
+.spot .btn.solid{background:var(--on-acc);color:var(--acc);border-color:var(--on-acc)}
+/* Custom Cards (chaseroush.com's Mission). */
+.ccards{list-style:none;margin:36px 0 0;padding:0}
+.ccards li{display:flex;gap:20px;align-items:flex-start;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:22px 24px}
+.ccards h3{margin:2px 0 6px;font:600 19px var(--display);color:var(--fg)}
+.ccards p{margin:0;color:var(--dim);line-height:1.65}
+.cnum{flex:none;width:44px;height:44px;border-radius:50%;background:var(--acc);color:var(--on-acc);display:flex;align-items:center;justify-content:center;font:700 17px var(--body)}
+.cards-attached .ccards{max-width:800px;display:flex;flex-direction:column}
+.cards-attached .ccards.numbered li+li{position:relative;margin-top:32px}
+.cards-attached .ccards.numbered li+li::before{content:"";position:absolute;left:45px;top:-33px;width:2px;height:32px;background:var(--line)}
+.cards-attached .ccards:not(.numbered) li+li{margin-top:16px}
+.cards-detached .ccards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:22px}
+.cards-detached .ccards li{flex-direction:column;gap:14px}
+.al-center .cards-attached .ccards,.cards-attached.al-center .ccards{margin-left:auto;margin-right:auto}
+.al-right .cards-attached .ccards,.cards-attached.al-right .ccards{margin-left:auto}
 .signcard .signform{margin:22px auto 0;text-align:left}
 .news{list-style:none;margin:0;padding:0;display:grid;gap:10px}
 .news a{display:flex;justify-content:space-between;gap:20px;padding:18px 20px;background:var(--panel);border:1px solid var(--line);border-radius:12px;color:var(--fg);text-decoration:none}
@@ -478,6 +512,7 @@ html[data-pages="fade"]{view-transition-name:root}
 @media (prefers-reduced-motion:reduce){.m,.h .ch{opacity:1!important;transform:none!important;transition:none!important}
  .scrollcue,.cue-mouse em{animation:none}
  .kb img{animation:none!important}.progress{display:none}.btn{transition:none}}
+@media (max-width:820px){.split,.gsplit{grid-template-columns:1fr;gap:28px}.al-right .split{direction:ltr}.givecard,.spot{padding:36px 26px}}
 @media (max-width:820px){main section{padding:64px 0}.pt,.hero-beside .wrap,.hero-monogram .wrap{grid-template-columns:1fr;gap:28px}.pt .pic:has(img){position:static}.pt-right .pt .pic{order:0}
  .hero .wrap{padding:110px 0 64px}.hero-monogram .wrap{padding:100px 0 130px}.mono-pic img{max-height:240px}.card{padding:26px}}
 `;
@@ -709,13 +744,57 @@ function renderSection(sec, ctx) {
     }
     case "signup":
       ctx.needs.signup = true;
+      /* Words beside the form (chaseroush.com's contact page), or the form
+         straight on the page with no card of its own. */
+      if (sec.variant === "split") {
+        return `<section${cls("fsplit")}><div class="wrap"><div class="split"><div>${heading(w("heading"))}${sub}<span class="rule m" aria-hidden="true"></span></div>` +
+          `<div class="m"><div data-thauma-form data-lang="${esc(lang)}"${ctx.formLook(false, !!sec.raised)}></div></div></div></div></section>`;
+      }
+      if (sec.variant === "open") {
+        return `<section${cls()}><div class="wrap">${heading(w("heading"))}${sub}<div class="m formbox openform"><div data-thauma-form data-lang="${esc(lang)}"${ctx.formLook(true, !!sec.raised)}></div></div></div></section>`;
+      }
       return `<section${cls(sec.variant === "band" ? "band" : "")}><div class="wrap">${sec.variant === "card" ? '<div class="card signcard">' : '<div class="bandrow">'}<div>${heading(w("heading"))}${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}</div><div class="m${sec.variant === "card" ? " signform" : ""}" style="flex:1 1 360px;max-width:${sec.variant === "card" ? "100%" : "460px"}"><div data-thauma-form data-lang="${esc(lang)}"${ctx.formLook(sec.variant === "card", !!sec.raised)}></div></div></div></div></section>`;
     case "contact":
       ctx.needs.contact = true;
+      /* "The card is really skinny on a desktop" (Chase, 2026-10-03): Side
+         by side gives the form most of the width, as chaseroush.com does;
+         Wide widens the card; Open drops the card. Form stays the original. */
+      if (sec.variant === "split") {
+        return `<section${cls("fsplit csplit")}><div class="wrap"><div class="split"><div>${heading(w("heading"))}${sub}<span class="rule m" aria-hidden="true"></span></div>` +
+          `<div class="m"><div data-thauma-contact data-lang="${esc(lang)}"${ctx.formLook(false, !!sec.raised)}></div></div></div></div></section>`;
+      }
+      if (sec.variant === "wide" || sec.variant === "open") {
+        return `<section${cls()}><div class="wrap">${heading(w("heading"))}${sub}<div class="m formbox ${sec.variant === "wide" ? "wideform" : "openform"}"><div data-thauma-contact data-lang="${esc(lang)}"${ctx.formLook(sec.variant === "open", !!sec.raised)}></div></div></div></section>`;
+      }
       return `<section${cls()}><div class="wrap">${heading(w("heading"))}${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}<div class="m formbox" style="max-width:560px;margin-top:24px"><div data-thauma-contact data-lang="${esc(lang)}"${ctx.formLook(false, !!sec.raised)}></div></div></div></section>`;
-    case "give":
+    case "give": {
       if (!ctx.giveUrl) return "";
+      const giveBtn = (big) => `<a class="btn solid${big ? " big" : ""}" href="${esc(ctx.giveUrl)}">${esc(w("button") || word(lang, "giveBtn"))} →</a>`;
+      /* The card, redone (Chase, 2026-10-03: it "just doesn't look good"):
+         a panel with a line of the site's color along its top, the words
+         and then the button beneath them, not squeezed beside them. */
+      if (sec.variant === "card") {
+        return `<section${cls()}><div class="wrap"><div class="card givecard m">${heading(w("heading"))}${sub}<div class="btns">${giveBtn(true)}</div></div></div></section>`;
+      }
+      if (sec.variant === "split") {
+        return `<section${cls("fsplit")}><div class="wrap"><div class="split gsplit"><div>${heading(w("heading"))}${sub}</div>` +
+          `<div class="m givepanel"><span class="rule" aria-hidden="true"></span>${giveBtn(true)}</div></div></div></section>`;
+      }
+      if (sec.variant === "spotlight") {
+        return `<section${cls()}><div class="wrap"><div class="spot m">${heading(w("heading"))}${sub}<div class="btns">${giveBtn(true)}</div></div></div></section>`;
+      }
       return `<section${cls(sec.variant === "band" ? "band" : "")}><div class="wrap">${sec.variant === "card" ? '<div class="card">' : '<div class="bandrow">'}<div>${heading(w("heading"))}${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}</div><div class="btns m" style="margin:0"><a class="btn solid" href="${esc(ctx.giveUrl)}">${esc(w("button") || word(lang, "giveBtn"))} →</a></div></div></div></section>`;
+    }
+    case "cards": {
+      /* chaseroush.com's Mission: numbered cards joined by a line between
+         the numbers (Attached), or side by side as separate cards. */
+      const t = (it, f) => (it.words[lang] && it.words[lang][f]) || (it.words[fallback] && it.words[fallback][f]) || "";
+      const items = (sec.items || []).filter((it) => t(it, "title") || t(it, "text"));
+      if (!items.length) return "";
+      const num = sec.numbers !== false;
+      return `<section${cls("cards-" + sec.variant)}><div class="wrap">${heading(w("heading"))}${sub}<ol class="ccards m${num ? " numbered" : ""}">${items.map((it, i) =>
+        `<li>${num ? `<span class="cnum" aria-hidden="true">${i + 1}</span>` : ""}<div>${t(it, "title") ? `<h3>${esc(t(it, "title"))}</h3>` : ""}${t(it, "text") ? `<p>${inline(esc(t(it, "text")))}</p>` : ""}</div></li>`).join("")}</ol></div></section>`;
+    }
     case "links": {
       const items = (sec.items || []).map((it) => ({ ...it, href: ctx.linkHref(it.url) })).filter((it) => it.href);
       if (!items.length) return "";

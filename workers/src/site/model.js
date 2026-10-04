@@ -90,9 +90,20 @@ export const SECTIONS = {
   videos:    { variants: ["stage"], words: ["heading", "text"], align: true },
   /* latest: the newest one, and a small way to the rest (Chase, 2026-09-29). */
   newsletters: { variants: ["latest", "list"], words: ["heading", "text"], align: true },
-  signup:    { variants: ["band", "card"], words: ["heading", "text"] },
-  contact:   { variants: ["form"], words: ["heading", "text"], align: true },
-  give:      { variants: ["band", "card"], words: ["heading", "text", "button"] },
+  /* THE FORM AND GIVE STYLES (BACKLOG §3, 2026-10-04): Floating (a card of
+     its own) or Integrated (part of the page), each in a few shapes. The
+     first of each list is what a site saved before had, so nothing moves.
+       split      words on one side, the form or button on the other
+                  (chaseroush.com's contact page)
+       open       no card at all: the form sits on the page itself
+       wide       the contact card, wide enough for a desktop
+       spotlight  a block in the site's own color */
+  signup:    { variants: ["band", "card", "split", "open"], words: ["heading", "text"] },
+  contact:   { variants: ["form", "split", "wide", "open"], words: ["heading", "text"], align: true },
+  give:      { variants: ["band", "card", "split", "spotlight"], words: ["heading", "text", "button"] },
+  /* Cards a person writes (chaseroush.com's Mission): Attached, joined by a
+     line between their numbers, or Detached, side by side. */
+  cards:     { variants: ["attached", "detached"], words: ["heading", "text"], items: "cards" },
   links:     { variants: ["list", "cards"], words: ["heading", "text"], items: true, align: true },
 };
 /* EVERY SECTION LINES UP (BACKLOG §3, 2026-10-03: "Alignment for every
@@ -139,6 +150,9 @@ const PH = {
   contact:   { heading: ["contactThin", "contactBold"], text: "contactFill" },
   give:      { heading: ["giveThin", "giveBold"], text: "giveText", button: "giveBtn" },
   links:     { heading: ["resourcesThin", "resourcesBold"], text: "resourcesFill" },
+  cards:     { heading: ["cardsThin", "cardsBold"], text: "cardsFill" },
+  /* One of the Custom Cards. */
+  card:      { title: "cardTitle", text: "cardText" },
   /* A link card in a Links section. */
   item:      { title: "link1Title", text: "link1Text" },
 };
@@ -552,7 +566,14 @@ function cleanSection(raw, langs) {
   if (raw.type === "text" || raw.type === "photoText") {
     s.verseStyle = ["quote", "line", "mark"].includes(raw.verseStyle) ? raw.verseStyle : "quote";
   }
-  if (spec.items) {
+  if (spec.items === "cards") {
+    /* Written words only. A blank card is kept (it was just added and is
+       being typed into); the page simply does not draw it. */
+    s.numbers = raw.numbers !== false;
+    s.items = (Array.isArray(raw.items) ? raw.items : []).slice(0, 12).map((it) => ({
+      words: cleanWords(it && it.words, ["title", "text"], langs),
+    }));
+  } else if (spec.items) {
     /* A card may carry a picture, and may point at one of the site's own
        pages as well as anywhere else. */
     s.items = (Array.isArray(raw.items) ? raw.items : []).slice(0, 40).map((it) => ({
