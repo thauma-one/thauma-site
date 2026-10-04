@@ -1113,18 +1113,35 @@
     });
   }
   /* What the selection already wears, shown on the bar. */
-  function markOf(box, attr) {
+  /* The element the selection starts in. A range that starts BETWEEN nodes
+     (as one does right after a size is applied) names the parent and an
+     offset; the node at that offset is the one meant. */
+  function selElement() {
     var sel = window.getSelection();
-    if (!sel || !sel.rangeCount) return '';
-    var n = sel.anchorNode; n = n && (n.nodeType === 1 ? n : n.parentNode);
+    if (!sel || !sel.rangeCount) return null;
+    var r = sel.getRangeAt(0), n = r.startContainer;
+    if (n.nodeType === 1 && n.childNodes[r.startOffset]) n = n.childNodes[r.startOffset];
+    if (n.nodeType === 3 && r.startOffset >= n.length && n.nextSibling) n = n.nextSibling;
+    return n && (n.nodeType === 1 ? n : n.parentNode);
+  }
+  function markOf(box, attr) {
+    var n = selElement();
     var sp = n && n.closest ? n.closest('span[' + attr + ']') : null;
     return sp && box.contains(sp) ? sp.getAttribute(attr) : '';
+  }
+  /* The size the words are now, in px, whether chosen or inherited. */
+  function sizeNow(box) {
+    var px = sizePx(markOf(box, 'data-sz'));
+    if (px) return px;
+    var n = selElement();
+    var c = n && box.contains(n) ? parseFloat(getComputedStyle(n).fontSize) : 16;
+    return Math.round((c || 16) * 2) / 2;
   }
   function showMarks(box) {
     var sz = markOf(box, 'data-sz'), c = markOf(box, 'data-c');
     [].forEach.call(fmt.querySelectorAll('[data-fmt-sz]'), function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-fmt-sz') === sz ? 'true' : 'false'); });
     var szv = fmt.querySelector('[data-fmt-szval]');
-    if (szv && document.activeElement !== szv) szv.value = sizePx(sz) || '';
+    if (szv && document.activeElement !== szv) szv.value = sizeNow(box);
     [].forEach.call(fmt.querySelectorAll('[data-fmt-c]'), function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-fmt-c') === c ? 'true' : 'false'); });
     var any = /^#/.test(c), dot = fmt.querySelector('.ws-fmt-color i');
     fmt.querySelector('.ws-fmt-any').classList.toggle('is-on', any);
@@ -1139,9 +1156,17 @@
     var box = n && n.closest && n.closest('[data-rt]');
     return box && box.getAttribute('contenteditable') === 'true' ? box : null;
   }
+  var fmtWords = '';
   document.addEventListener('selectionchange', function () {
     var box = boxOfSelection();
     if (!box) { if (!fmt.contains(document.activeElement)) fmt.hidden = true; return; }
+    /* PINNED while a row of choices is open: the words change size under
+       it, and a bar that re-centred on them would jump with every press. */
+    var said = window.getSelection().toString();
+    var pinned = !fmt.hidden && said === fmtWords && fmt.querySelector('[data-fmt-row]:not([hidden])');
+    if (pinned) return showMarks(box);
+    fmtWords = said;
+    fmtRow(null);
     var r = window.getSelection().getRangeAt(0).getBoundingClientRect();
     fmt.hidden = false;
     fmt.style.top = (window.scrollY + r.top - fmt.offsetHeight - 8) + 'px';
@@ -1197,9 +1222,9 @@
   fmt.addEventListener('click', async function (e) {
     var b = e.target.closest('[data-fmt], [data-fmt-sz], [data-fmt-c], [data-fmt-step]'), box = boxOfSelection();
     if (!b || !box) return;
-    /* − / + : ten percent smaller or larger than the words are now. */
+    /* − / + : the next step on Word's ladder from the size the words are now. */
     if (b.hasAttribute('data-fmt-step')) {
-      var cur = sizePx(markOf(box, 'data-sz')) || 16, dir = +b.getAttribute('data-fmt-step');
+      var cur = sizeNow(box), dir = +b.getAttribute('data-fmt-step');
       var next = dir > 0 ? (LADDER.filter(function (n) { return n > cur; })[0] || Math.min(200, cur + 8))
                          : (LADDER.filter(function (n) { return n < cur; }).pop() || 4);
       var rs = markSelection(box, window.getSelection().getRangeAt(0), 'data-sz', next + 'px');
