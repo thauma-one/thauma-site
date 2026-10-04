@@ -852,5 +852,20 @@ check("a verse may sit before, between or after the paragraphs; a title may sit 
   assert(/<div class="pt">[\s\S]*<div><h2/.test(body({})), "with the words, by default");
 });
 
+check("sharing and search: each page's own words and picture, the real public address; none of it on a draft", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en", "hr"], fallback: "en" });
+  const about = d.pages.find((p) => p.id === "about"); about.on = true;
+  about.sections = [{ id: "a1", type: "photoText", variant: "left", photo: "/media/partnersite/x/p.webp", words: { en: { heading: "H", text: "I grew up surrounded by ministry, and it shaped everything." } } }];
+  const head = (extra) => page(d, "about", "en", { site: { slug: "chase-roush", display_name: "Chase Roush", subdomain: "chaseroush" }, ...extra }).match(/<head>[\s\S]*<\/head>/)[0];
+  const h = head();
+  assert(h.includes('<meta name="description" content="I grew up surrounded by ministry, and it shaped everything.">'), "this page's own words");
+  assert(h.includes('<link rel="canonical" href="https://chaseroush.thauma.one/en/about/">'), "canonical");
+  assert(h.includes('<meta property="og:image" content="https://thauma.one/media/partnersite/x/p.webp">'), "its first photo, as a full address");
+  assert(h.includes('hreflang="hr" href="https://chaseroush.thauma.one/hr/about/"') && h.includes('hreflang="x-default"'), "alternates, full");
+  about.shareImage = "https://thauma.one/media/partnersite/x/chosen.webp";
+  assert(head().includes('og:image" content="https://thauma.one/media/partnersite/x/chosen.webp"'), "the chosen picture wins");
+  assert(!/og:|canonical/.test(head({ draft: true })), "not on a draft");
+});
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

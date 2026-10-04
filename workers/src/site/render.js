@@ -1034,11 +1034,46 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
   const foot = footer({ doc, lang, fallback, name, pages, href, label, socials, custom });
 
   const title = pageId === "home" ? name : `${label(pageId)} · ${name}`;
-  const desc = (() => {
-    const hero = doc.pages[0].sections.find((s) => s.type === "hero");
-    return hero ? plainOf(wf(hero, lang, fallback, "text")) : "";
-  })();
-  const alternates = doc.languages.map((l) => `<link rel="alternate" hreflang="${esc(l)}" href="${esc(href(pageId, l))}">`).join("");
+  /* WHAT A SEARCH ENGINE OR A SHARED LINK SHOWS (BACKLOG §3, 2026-10-04):
+     this page's own first words, else Home's; its own first photo (or the one
+     chosen for sharing), else Home's, else the logo. Addresses are the
+     site's real public ones, whichever host is drawing the page. */
+  const thisPage = doc.pages.find((p) => p.id === pageId) || doc.pages[0];
+  const firstWords = (pg) => {
+    for (const s of (pg && pg.sections) || []) {
+      for (const f of ["text", "kicker", "sub"]) {
+        const t = plainOf(wf(s, lang, fallback, f) || "").replace(/\s+/g, " ").trim();
+        if (t.length > 20) return t;
+      }
+    }
+    return "";
+  };
+  const clip = (t) => (t.length > 160 ? t.slice(0, 157).replace(/\s+\S*$/, "") + "…" : t);
+  const desc = clip(firstWords(thisPage) || firstWords(doc.pages[0]));
+  const firstPhoto = (pg) => ((pg && pg.sections) || []).map((s) => s.photo).find(Boolean) || null;
+  const absolute = (u) => (!u ? null : /^https?:/.test(u) ? u : "https://thauma.one" + (u.startsWith("/") ? u : "/" + u));
+  const shareImage = absolute(thisPage.shareImage || firstPhoto(thisPage) || firstPhoto(doc.pages[0]) || (design.brand === "logo" && design.logo) || null);
+  const publicBase = site.subdomain ? `https://${site.subdomain}.thauma.one` : origin + base;
+  const publicUrl = (id, l) => `${publicBase}/${l}/${id === "home" ? "" : id + "/"}`;
+  const LOCALE = { en: "en_US", hr: "hr_HR", sr: "sr_RS", sl: "sl_SI", de: "de_DE", es: "es_ES" };
+  const social = draft ? "" : [
+    `<link rel="canonical" href="${esc(publicUrl(pageId, lang))}">`,
+    `<meta property="og:type" content="website">`,
+    `<meta property="og:site_name" content="${esc(name)}">`,
+    `<meta property="og:title" content="${esc(title)}">`,
+    desc ? `<meta property="og:description" content="${esc(desc)}">` : "",
+    `<meta property="og:url" content="${esc(publicUrl(pageId, lang))}">`,
+    `<meta property="og:locale" content="${esc(LOCALE[lang] || lang)}">`,
+    shareImage ? `<meta property="og:image" content="${esc(shareImage)}">` : "",
+    `<meta name="twitter:card" content="${shareImage ? "summary_large_image" : "summary"}">`,
+    `<meta name="twitter:title" content="${esc(title)}">`,
+    desc ? `<meta name="twitter:description" content="${esc(desc)}">` : "",
+    shareImage ? `<meta name="twitter:image" content="${esc(shareImage)}">` : "",
+  ].filter(Boolean).join("\n");
+  /* Full public addresses, as search engines require; drafts keep their own. */
+  const altHref = (l) => (draft ? href(pageId, l) : `${site.subdomain ? `https://${site.subdomain}.thauma.one` : origin + base}/${l}/${pageId === "home" ? "" : pageId + "/"}`);
+  const alternates = doc.languages.map((l) => `<link rel="alternate" hreflang="${esc(l)}" href="${esc(altHref(l))}">`).join("") +
+    (draft ? "" : `<link rel="alternate" hreflang="x-default" href="${esc(altHref(doc.fallback))}">`);
   const m = design.motion;
   const widgets = /data-thauma="/.test(body);
   /* WHEN THE MENU FOLDS INTO ITS BUTTON: when this site's own menu would no
@@ -1065,6 +1100,7 @@ ${design.faviconStyle === "photo" && design.favicon ? `<link rel="icon" href="${
 ${desc ? `<meta name="description" content="${esc(desc)}">` : ""}
 ${draft ? '<meta name="robots" content="noindex">' : ""}
 ${alternates}
+${social}
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?${FONTS[design.look]}&display=swap">
 <style>${css(L, design)}

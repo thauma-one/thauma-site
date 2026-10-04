@@ -640,6 +640,8 @@ export function cleanDoc(raw, catalog) {
          every page saved before keeps it. Which kind is still the site's
          one choice (Design › Motion › Scroll hint). */
       cue: p.cue !== false,
+      /* The picture a shared link shows; none means the page's first photo. */
+      shareImage: safePhoto(p.shareImage),
       label,
       sections: (Array.isArray(p.sections) ? p.sections : []).slice(0, 30).map((s) => cleanSection(s, langs)).filter(Boolean),
     };

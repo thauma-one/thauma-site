@@ -639,7 +639,17 @@
       (p.id === 'home' ? '<span class="ws-always">' + esc(tr('ws.always')) + '</span>' : sw('data-page-on="' + pi + '"', p.on, tr('ws.shown'))) +
       '</div>' +
       '<label class="ws-pagename"><span>' + esc(tr('ws.nameInMenu')) + '</span>' + refPage(p) +
-        '<input type="text" maxlength="40" data-page-label="' + pi + '" value="' + esc((p.label || {})[state.langA] || '') + '" placeholder="' + esc(builtInName(p.id, state.langA)) + '" lang="' + esc(state.langA) + '"></label>';
+        '<input type="text" maxlength="40" data-page-label="' + pi + '" value="' + esc((p.label || {})[state.langA] || '') + '" placeholder="' + esc(builtInName(p.id, state.langA)) + '" lang="' + esc(state.langA) + '"></label>' +
+      /* The picture a shared link or a search result shows: the page's first
+         photo unless another is chosen (BACKLOG §3, 2026-10-04). */
+      (function () {
+        var auto = (p.sections.map(function (x) { return x.photo; }).filter(Boolean)[0]) || null, pic = p.shareImage || auto;
+        return '<div class="ws-sec-row ws-share"><span class="ws-lbl2">' + esc(tr('ws.sharePic')) + '</span>' +
+          (pic ? '<img class="ws-thumb" src="' + esc(pic) + '" alt="">' : '') +
+          '<span class="ws-small">' + esc(p.shareImage ? '' : tr('ws.sharePic.auto')) + '</span>' +
+          '<label class="ghost-btn sm ws-file">' + esc(tr('ws.sharePic.choose')) + '<input type="file" accept="image/*" data-page-share="' + pi + '" hidden></label>' +
+          (p.shareImage ? '<button type="button" class="link-btn" data-page-unshare="' + pi + '">' + esc(tr('ws.sharePic.auto')) + '</button>' : '') + '</div>';
+      })();
 
     var n = p.sections.length;
     /* Room below an open section, so even the last one can rise to the top. */
@@ -1564,6 +1574,7 @@
     }
     if (t.dataset.fallback !== undefined) { state.doc.fallback = t.value; return changed(); }
     if (t.dataset.secPhoto) return upload(t, function (url) { p.sections[+t.dataset.secPhoto].photo = url; drawSections(); });
+    if (t.dataset.pageShare) return upload(t, function (url) { state.doc.pages[+t.dataset.pageShare].shareImage = url; drawPages(); });
     if (t.dataset.logo !== undefined) return upload(t, function (url) { state.doc.design.logo = url; drawDesign(); });
     if (t.dataset.favicon !== undefined) return upload(t, function (url) { state.doc.design.favicon = url; drawDesign(); }, 256);
   });
@@ -1598,6 +1609,7 @@
       return;
     }
     if (d.secUnphoto) { p.sections[+d.secUnphoto].photo = null; drawSections(); return changed(); }
+    if (d.pageUnshare) { state.doc.pages[+d.pageUnshare].shareImage = null; drawPages(); return changed(); }
     if (d.itemAdd) { var sec = p.sections[+d.itemAdd]; sec.items = sec.items || []; sec.items.push(sec.type === 'cards' ? { words: {} } : { url: 'https://', photo: null, words: {} }); state.openItem = sec.items.length - 1; drawSections(); var ti = $('wsPages').querySelector('[data-item$=":title"]'); if (ti) ti.focus(); return; }
     if (d.itemUnphoto) { var up = d.itemUnphoto.split(':'); p.sections[+up[0]].items[+up[1]].photo = null; drawSections(); return changed(); }
     if (d.unfavicon !== undefined) { state.doc.design.favicon = null; drawDesign(); return changed(); }
