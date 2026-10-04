@@ -407,8 +407,17 @@
     }
   }
 
+  /* The preview is a 1280px desktop shrunk to the pane's width (see the
+     .ws-preview-frame rule in staff.css). */
+  function fitFrame() {
+    var box = $('wsFrame').parentNode, w = box.clientWidth;
+    if (w) box.style.setProperty('--ws-scale', (w / 1280).toFixed(4));
+  }
+  if (window.ResizeObserver) new ResizeObserver(fitFrame).observe($('wsFrame').parentNode);
+
   function refreshFrame() {
     if ($('wsPreviewPane').hidden) return;
+    fitFrame();
     var s = state.body.site, lang = state.langA;
     var page = state.tab === 'pages' && state.page ? currentPage().id : 'home';
     var path = s.preview.replace(/\?draft$/, '') + lang + '/' + (page === 'home' ? '' : page + '/');

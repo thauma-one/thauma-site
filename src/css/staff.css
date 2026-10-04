@@ -2589,10 +2589,15 @@ html.has-ai .lang-ai{display:inline-block}
 .ws-preview[hidden]{display:none}
 .ws-preview-head{display:flex;justify-content:space-between;font-size:12px;color:var(--dim);text-transform:uppercase;letter-spacing:.14em}
 .ws-preview-frame{height:min(78vh,760px);overflow:hidden;border:1px solid var(--line);border-radius:6px;background:#000}
-.ws-preview-frame iframe{width:250%;height:250%;border:0;transform:scale(.4);transform-origin:0 0}
+/* ALWAYS A REAL DESKTOP, shrunk to fit (Chase, 2026-10-04: the preview was
+   "this weird hybrid between desktop and mobile"). It was 250% of the pane,
+   so a narrow pane gave the site ~1100px: below the width where a long menu
+   folds into the hamburger, above the phone layout. Now 1280px wide, scaled
+   by --ws-scale, which staff-site.js measures from the pane. */
+.ws-preview-frame iframe{width:1280px;height:calc(100% / var(--ws-scale,.4));border:0;transform:scale(var(--ws-scale,.4));transform-origin:0 0}
 /* The Footer tab shows the footer alone, so the frame is only as tall as one. */
 .ws-preview.only-foot .ws-preview-frame{height:170px}
-.ws-preview.only-foot .ws-preview-frame iframe{width:170%;height:170%;transform:scale(.5883)}
+
 .ws-add{max-width:980px;width:calc(100% - 32px)}
 .ws-add-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:16px}
 .ws-add-head h3{margin:0;font:100 22px var(--font-display)}.ws-add-head h3 b{font-weight:600}

@@ -324,10 +324,11 @@ ${COLOUR_JS}
       '.legend{display:flex;justify-content:center;flex-wrap:wrap;gap:12px 28px;' +
         'font-size:13px;color:var(--dim);margin-bottom:6px}' +
       '.lg{display:inline-flex;align-items:center;gap:9px}' +
-      '.lgd{width:13px;height:13px;border-radius:50%;flex:0 0 auto}' +
-      '.lgd.complete{background:var(--done);box-shadow:0 0 9px var(--glow-d)}' +
-      '.lgd.in_progress{background:var(--prog);box-shadow:0 0 9px var(--glow-p)}' +
-      '.lgd.upcoming{background:transparent;box-shadow:inset 0 0 0 2px var(--faint-p)}' +
+      /* Ringed like the timeline's own dots (chaseroush.com's legend). */
+      '.lgd{width:10px;height:10px;border-radius:50%;flex:0 0 auto;border:2px solid var(--bg);box-sizing:content-box}' +
+      '.lgd.complete{background:var(--done);box-shadow:0 0 0 2px var(--done),0 0 9px var(--glow-d)}' +
+      '.lgd.in_progress{background:var(--prog);box-shadow:0 0 0 2px var(--prog),0 0 9px var(--glow-p)}' +
+      '.lgd.upcoming{background:var(--bg);box-shadow:0 0 0 2px var(--faint-p)}' +
 
       /* ---- horizontal rail ---- */
       '.rail{display:none;position:relative;padding:112px 12px 124px}' +
@@ -389,14 +390,23 @@ ${COLOUR_JS}
         'opacity:.85;font-weight:500}' +
 
       /* ---- vertical column ---- */
-      '.col{position:relative;padding-left:36px}' +
-      '.col:before{content:"";position:absolute;left:9px;top:8px;bottom:8px;width:2px;' +
+      /* chaseroush.com's mobile timeline (Chase, 2026-10-04: "the timeline
+         design on mobile still doesn't match"): the line down the CENTER,
+         each step date | dot | title with a tick out to the title, and every
+         dot ringed in the page's color with a glow around it — the second
+         circle. In progress is larger and pulses; upcoming is a hollow ring.
+         The colored line carries a slow shimmer. */
+      '.col{position:relative;padding:8px 0}' +
+      '.col:before{content:"";position:absolute;left:50%;top:0;bottom:0;width:2px;transform:translateX(-50%);' +
         'border-radius:2px;background:linear-gradient(180deg,var(--faint-p),var(--faint-d))}' +
-      '.cfill{position:absolute;left:9px;top:8px;width:2px;border-radius:2px;height:0;' +
+      '.cfill{position:absolute;left:50%;top:0;width:2px;transform:translateX(-50%);border-radius:2px;height:0;overflow:hidden;' +
         'background:linear-gradient(180deg,var(--prog),var(--done));' +
-        'box-shadow:0 0 9px var(--glow-p);' +
+        'box-shadow:0 0 8px var(--glow-p),0 0 20px var(--faint-p);' +
         'transition:height 1.6s cubic-bezier(.16,1,.3,1)}' +
-      '.vnow{position:absolute;left:10px;width:9px;height:9px;border-radius:50%;' +
+      '.cfill:after{content:"";position:absolute;left:0;top:-100%;width:100%;height:60px;' +
+        'background:linear-gradient(180deg,transparent,rgba(255,255,255,.8),transparent);animation:cshim 3s ease-in-out infinite}' +
+      '@keyframes cshim{0%{top:-100%}100%{top:200%}}' +
+      '.vnow{position:absolute;left:50%;width:9px;height:9px;border-radius:50%;' +
         'background:#fff;transform:translate(-50%,-50%);z-index:4;' +
         'box-shadow:0 0 7px rgba(255,255,255,.9),0 0 14px var(--glow-p);' +
         'animation:vnowIn .8s cubic-bezier(.16,1,.3,1) .55s both,ndot 2s ease-in-out infinite}' +
@@ -404,27 +414,33 @@ ${COLOUR_JS}
       '@keyframes ndot{0%,100%{transform:translate(-50%,-50%) scale(1)}' +
         '50%{transform:translate(-50%,-50%) scale(1.35)}}' +
 
-      '.step{position:relative;display:block;width:100%;text-align:left;' +
-        'padding:0 0 26px}' +
-      '.step:last-child{padding-bottom:2px}' +
-      '.sdot{position:absolute;left:-36px;top:2px;width:19px;height:19px;' +
-        'border-radius:50%;border:3px solid;transition:transform .2s ease}' +
-      '.sdot.complete{background:var(--done);border-color:var(--done);' +
-        'box-shadow:0 0 13px var(--glow-d)}' +
-      '.sdot.in_progress{background:var(--prog);border-color:var(--prog);' +
-        'animation:glow 2s ease-in-out infinite}' +
-      '.sdot.upcoming{background:var(--bg);border-color:var(--faint-p)}' +
-      '.sdot.canceled{background:var(--bg);border-color:var(--line);opacity:.45}' +
+      '.step{position:relative;display:grid;width:100%;grid-template-columns:1fr 32px 1fr;' +
+        'grid-template-areas:"date dot title" "date dot pct";align-items:center;padding:16px 0;text-align:left;z-index:3}' +
+      '.sdot{grid-area:dot;justify-self:center;position:relative;border-radius:50%;' +
+        'width:14px;height:14px;border:3px solid var(--bg);box-sizing:content-box;transition:transform .25s ease,box-shadow .25s ease}' +
+      '.sdot.complete{background:var(--done);' +
+        'box-shadow:0 0 0 3px var(--bg),0 0 10px var(--done),0 0 20px var(--glow-d)}' +
+      '.sdot.in_progress{width:20px;height:20px;background:var(--prog);' +
+        'box-shadow:0 0 0 3px var(--bg),0 0 14px var(--prog),0 0 28px var(--glow-p);animation:cpulse 2.5s ease-in-out infinite}' +
+      '@keyframes cpulse{0%,100%{box-shadow:0 0 0 3px var(--bg),0 0 14px var(--prog),0 0 28px var(--glow-p)}' +
+        '50%{box-shadow:0 0 0 3px var(--bg),0 0 20px var(--prog),0 0 40px var(--glow-p)}}' +
+      '.sdot.upcoming{width:12px;height:12px;background:var(--bg);' +
+        'box-shadow:0 0 0 3px var(--bg),inset 0 0 0 2px var(--faint-p)}' +
+      '.sdot.canceled{background:var(--bg);box-shadow:0 0 0 3px var(--bg),inset 0 0 0 2px var(--line);opacity:.45}' +
       '.step:hover .sdot{transform:scale(1.15)}' +
       '.step.sel .sdot{transform:scale(1.25)}' +
       '.step:focus-visible{outline:2px solid var(--prog);outline-offset:3px;' +
         'border-radius:6px}' +
-      '.sdate{display:block;font-size:12px;color:var(--dim);font-weight:600;' +
-        'letter-spacing:.03em}' +
-      '.stitle{display:block;font-size:15.5px;font-weight:700;margin-top:2px}' +
+      '.sdate{grid-area:date;align-self:center;text-align:right;padding-right:12px;font-size:11px;color:var(--dim);font-weight:600;' +
+        'letter-spacing:.04em;text-transform:uppercase;line-height:1.25}' +
+      '.step.in_progress .sdate{color:var(--prog)}' +
+      '.stitle{grid-area:title;align-self:end;position:relative;padding-left:18px;font-size:15px;font-weight:600;line-height:1.3}' +
+      '.stitle:before{content:"";position:absolute;left:0;top:50%;width:14px;height:1px;background:var(--faint-p)}' +
+      '.step.in_progress .stitle{color:var(--prog)}' +
+      '.step.in_progress .stitle:before{background:var(--prog)}' +
       '.step.canceled .stitle{text-decoration:line-through;opacity:.6}' +
-      '.spct{display:block;margin-top:3px;font-size:13px;font-weight:700;' +
-        'color:var(--done-t);font-variant-numeric:tabular-nums}' +
+      '.spct{grid-area:pct;align-self:start;padding-left:18px;margin-top:3px;font-size:12px;font-weight:700;' +
+        'color:var(--done-t);font-variant-numeric:tabular-nums;letter-spacing:.03em}' +
 
       /* ---- the details panel ---- */
       /* The entrance and the exit are chaseroush.com's, to the frame: half a
@@ -547,7 +563,7 @@ ${COLOUR_JS}
         '.gright{text-align:left}' +
 
         '.stitle{font-size:15px}' +
-        '.sdate{font-size:11.5px}' +
+        '.sdate{font-size:11px}' +
       '}' +
 
       '.is-wide .rail{display:block}' +
@@ -631,7 +647,7 @@ ${COLOUR_JS}
 
       '@media(prefers-reduced-motion:reduce){' +
         '.gfill,.rfill,.cfill,.dfill,.kbarf{transition:none}' +
-        '.gfill:after,.rfill:after,.dfill:after{animation:none;display:none}' +
+        '.gfill:after,.rfill:after,.dfill:after,.cfill:after{animation:none;display:none}' +
         '.dot.in_progress,.sdot.in_progress,.nline,.vnow,.now,.detail{animation:none}' +
         '.gcard:hover{transform:none}' +
         '.vplay,.vlink,.vcard,.vhero .vthumb{transition:none}' +
@@ -948,21 +964,50 @@ ${COLOUR_JS}
       var panel = slot.firstChild;
       if (!panel) return;
 
-      if (immediate || reduced) {
+      /* Only an explicit true is "at once": the X passes its click event here,
+         which made every X-close skip the exit (Chase, 2026-10-04). */
+      if (immediate === true || reduced) {
         slot.textContent = '';
         if (typeof placeNow === 'function') placeNow();
         return;
       }
 
       panel.classList.add('leaving');
+      /* On a phone the space closes too, smoothly, whether the X or the
+         milestone was pressed (Chase, 2026-10-04) — and the colored line
+         moves with it rather than after it. */
+      var column = steps.some(function (st) { return st.offsetParent; });
+      if (column) {
+        slot.style.overflow = 'hidden';
+        slot.style.height = slot.offsetHeight + 'px';
+        void slot.offsetHeight;
+        slot.style.transition = 'height .4s cubic-bezier(.16,1,.3,1)';
+        slot.style.height = '0px';
+        follow(450);
+      }
       setTimeout(function () {
         /* Only if nothing has opened in the meantime — a fast second click
            must not have its new panel removed by the old one's timer. */
         if (slot.firstChild === panel) {
           slot.textContent = '';
+          slot.style.height = ''; slot.style.overflow = ''; slot.style.transition = '';
           if (typeof placeNow === 'function') placeNow();
         }
       }, 400);
+    }
+
+    /* THE COLORED LINE MOVES WITH THE PANELS, frame by frame, instead of
+       easing to its new length afterwards (its 1.6s ease is for the first
+       fill only). */
+    function follow(ms) {
+      if (typeof placeNow !== 'function' || !window.requestAnimationFrame) return;
+      var end = Date.now() + ms;
+      cfill.style.transition = 'none';
+      (function frame() {
+        placeNow();
+        if (Date.now() < end) requestAnimationFrame(frame);
+        else cfill.style.transition = '';
+      })();
     }
 
     function openDetail(i) {
@@ -1014,6 +1059,7 @@ ${COLOUR_JS}
         box.style.transition = 'max-height .45s cubic-bezier(.16,1,.3,1)';
         box.style.maxHeight = box.scrollHeight + 'px';
         if (ghost) ghost.style.height = '0px';
+        follow(520);
         setTimeout(function () {
           box.style.maxHeight = ''; box.style.overflow = ''; box.style.transition = '';
           if (ghost && ghost.parentNode) ghost.parentNode.removeChild(ghost);

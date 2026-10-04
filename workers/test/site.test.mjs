@@ -123,7 +123,9 @@ check("the menu lists the shown pages; a hidden page is not in it", () => {
   const html = page(d);
   assert(html.includes('href="/site/chaseroush/en/about/"'), "About linked");
   assert(!html.includes("/en/resources/"), "hidden Resources linked");
-  assert(html.includes('class="givebtn"'), "Give as the button");
+  /* To the Give page, Give is one of the pages (2026-10-04); a pill only
+     when it goes straight to the giving link. */
+  assert(/<nav class="nav"[^>]*>[\s\S]*<a href="\/site\/chaseroush\/en\/give\/">/.test(html) && !html.includes('class="givebtn"'), "Give as a page");
 });
 
 check("motion choices reach the page; widgets are the real ones, without their credit line", () => {
@@ -713,7 +715,7 @@ check("the chosen look reaches the page; hover lifts a name; the phone menu hold
   d.design.nav = { current: "grow", tint: "accent", line: "accent", phone: "full" };
   const html = page(d);
   assert(/data-navcur="grow" data-navtint="accent" data-navline="accent" data-navphone="full"/.test(html), "attributes");
-  assert(html.includes(".nav a:not(.givebtn):hover{color:var(--fg)}"), "hover");
+  assert(html.includes(".nav>a:not(.givebtn):hover{color:var(--fg)}"), "hover");
   assert(/<nav class="nav" id="sitenav">[\s\S]*<details class="navlang">[\s\S]*hreflang="hr"[\s\S]*<\/details><\/nav>/.test(html), "language inside the menu");
   assert(/class="menubtn burger"[^>]*aria-label=/.test(html), "a hamburger with a name");
 });
