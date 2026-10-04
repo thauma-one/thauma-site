@@ -579,7 +579,11 @@ function cleanSection(raw, langs) {
     s.items = (Array.isArray(raw.items) ? raw.items : []).slice(0, 40).map((it) => ({
       url: safeLink(it && it.url),
       photo: safePhoto(it && it.photo),
-      words: cleanWords(it && it.words, ["title", "text"], langs),
+      /* "type" is the small colored label at the card's corner; tier is how
+         big the card is (Chase, BACKLOG §3: "a link's card size shows its
+         importance"). Standard, the section's own style, is the default. */
+      words: cleanWords(it && it.words, ["title", "text", "type"], langs),
+      tier: ["big", "small"].includes(it && it.tier) ? it.tier : "std",
     })).filter((it) => it.url);
   }
   return s;

@@ -752,5 +752,17 @@ check("the new form and Give styles draw; a site saved before keeps its old one"
   eq(cleanDoc({ ...d, pages: [{ ...d.pages[0], sections: [sec("contact", "nonsense")] }] }, ["en"]).pages[0].sections[0].variant, "form", "unknown falls back");
 });
 
+check("links: Large, then Standard, then Small, each in order; a type label; Small has no picture", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  const it = (title, tier, type) => ({ url: "https://x.org/" + title, photo: "https://thauma.one/media/p.jpg", tier, words: { en: { title, type } } });
+  d.pages[0].sections = [{ id: "l1", type: "links", variant: "cards", words: { en: { heading: "R" } },
+    items: [it("A", "small"), it("B", "big", "Book"), it("C"), it("D", "big"), it("E", "bogus")] }];
+  const html = page(d);
+  const order = [...html.matchAll(/<b>([A-E])<\/b>/g)].map((m) => m[1]).join("");
+  eq(order, "BDCEA", "order");
+  assert(/<ul class="linklist m lt-big"><li><a [^>]*><em class="ltype">Book<\/em><span class="lpic">/.test(html), "label and picture on a large card");
+  assert(/<ul class="linklist m lt-small"><li><a [^>]*><b>A<\/b>/.test(html), "small: no picture");
+});
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

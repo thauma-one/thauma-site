@@ -423,8 +423,21 @@ main section.raised .card{background:var(--bg)}
 .links-cards .linklist{grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
 .linklist a{display:block;padding:20px 22px;background:var(--panel);border:1px solid var(--line);border-radius:14px;text-decoration:none;color:var(--fg)}
 .linklist a:hover{border-color:var(--acc)}.linklist b{display:block}.linklist span{color:var(--dim);font-size:15px}
-.linklist .lpic{display:block;aspect-ratio:16/10;margin:-20px -22px 16px;overflow:hidden;border-radius:13px 13px 0 0;background:var(--bg)}
-.linklist .lpic img{width:100%;height:100%;object-fit:cover;transition:transform .6s cubic-bezier(.16,1,.3,1)}.linklist a:hover .lpic img{transform:scale(1.04)}
+/* PICTURES KEPT QUIET (Chase: the photo "isn't subtle and distracts"): shown
+   whole on a plain panel, never cropped edge to edge or zoomed on hover. */
+.linklist .lpic{display:flex;align-items:center;justify-content:center;height:120px;margin:-20px -22px 16px;border-radius:13px 13px 0 0;background:var(--bg);border-bottom:1px solid var(--line)}
+.linklist .lpic img{max-width:100%;max-height:100%;object-fit:contain;padding:18px;box-sizing:border-box}
+/* Tiers and the type label (chaseroush.com Resources). */
+.linklist a{position:relative}
+/* The label sits level with the title, under any picture, and the title
+   leaves room for it. */
+.linklist a{--pich:0px}.linklist a:has(.lpic){--pich:136px}.lt-big a:has(.lpic){--pich:180px}
+.linklist a:has(.ltype) b{padding-right:88px}
+.ltype{position:absolute;top:calc(var(--pich) + 22px);right:20px;z-index:1;font:600 11px var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--acc);font-style:normal}
+.linklist.lt-big{grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:20px;margin-bottom:20px}
+.lt-big a{padding:24px 26px}.lt-big .lpic{height:160px;margin:-24px -26px 20px}.lt-big b{font-size:20px}
+.linklist.lt-small{grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-top:20px}
+.lt-small a{padding:14px 16px}.lt-small b{font-size:15px}.lt-small span{font-size:13px}
 .data .lede{margin-bottom:28px}
 .wanted{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;text-align:center;
   border:1.5px dashed var(--line);border-radius:inherit;color:var(--dim);font-size:14px;background:color-mix(in srgb,var(--fg) 4%,transparent)}
@@ -799,8 +812,16 @@ function renderSection(sec, ctx) {
       const items = (sec.items || []).map((it) => ({ ...it, href: ctx.linkHref(it.url) })).filter((it) => it.href);
       if (!items.length) return "";
       const t = (it, f) => (it.words[lang] && it.words[lang][f]) || (it.words[fallback] && it.words[fallback][f]) || "";
-      return `<section${cls("links-" + sec.variant)}><div class="wrap">${heading(w("heading"))}${sub}<ul class="linklist m">${items.map((it) =>
-        `<li><a href="${esc(it.href)}"${rel(it.href)}>${it.photo ? `<span class="lpic">${img(it.photo)}</span>` : ""}<b>${esc(t(it, "title") || it.href)}</b>${t(it, "text") ? `<span>${esc(t(it, "text"))}</span>` : ""}</a></li>`).join("")}</ul></div></section>`;
+      /* Large first, then the section's own style, then Small; each keeps
+         the owner's order. Small cards carry no picture. */
+      const card = (it, pic) => `<li><a href="${esc(it.href)}"${rel(it.href)}>${t(it, "type") ? `<em class="ltype">${esc(t(it, "type"))}</em>` : ""}` +
+        `${pic && it.photo ? `<span class="lpic">${img(it.photo)}</span>` : ""}<b>${esc(t(it, "title") || it.href)}</b>${t(it, "text") ? `<span>${esc(t(it, "text"))}</span>` : ""}</a></li>`;
+      const group = (tier, cls2, pic) => {
+        const g = items.filter((it) => (it.tier || "std") === tier);
+        return g.length ? `<ul class="linklist m${cls2}">${g.map((it) => card(it, pic)).join("")}</ul>` : "";
+      };
+      return `<section${cls("links-" + sec.variant)}><div class="wrap">${heading(w("heading"))}${sub}` +
+        `${group("big", " lt-big", true)}${group("std", "", true)}${group("small", " lt-small", false)}</div></section>`;
     }
     default:
       return "";

@@ -762,6 +762,9 @@
         return head + '<div class="ws-linkedit">' +
           '<label class="fld"><span>' + esc(tr('ws.itemTitle')) + '</span><input type="text" data-item="' + k + ':title" value="' + esc(t.title || '') + '" placeholder="' + esc(ph('item', 'title')) + '" lang="' + esc(state.langA) + '"></label>' +
           '<label class="fld"><span>' + esc(tr('ws.itemText')) + '</span><input type="text" data-item="' + k + ':text" value="' + esc(t.text || '') + '" placeholder="' + esc(ph('item', 'text')) + '" lang="' + esc(state.langA) + '"></label>' +
+          '<label class="fld"><span>' + esc(tr('ws.itemType')) + '</span><input type="text" maxlength="40" data-item="' + k + ':type" value="' + esc(t.type || '') + '" lang="' + esc(state.langA) + '"></label>' +
+          '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.tier')) + '</span>' +
+            chips('tier:' + k, ['big', 'std', 'small'], it.tier || 'std', function (v) { return tr('ws.tier.' + v); }) + '</div>' +
           '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.link.goesTo')) + '</span>' + linkPicker('item:' + k, it.url || 'https://', false) + '</div>' +
           '<div class="ws-sec-row">' + (it.photo ? '<img class="ws-thumb" src="' + esc(it.photo) + '" alt="">' : '') +
             '<label class="ghost-btn sm ws-file">' + esc(it.photo ? tr('ws.changePhoto') : tr('ws.choosePhoto')) + '<input type="file" accept="image/*" data-item-photo="' + k + '" hidden></label>' +
@@ -1562,6 +1565,7 @@
       if (name.indexOf('variant:') === 0) { p.sections[+name.slice(8)].variant = val; drawSections(); }
       else if (name.indexOf('raised:') === 0) { p.sections[+name.slice(7)].raised = val === 'raised'; drawSections(); }
       else if (name.indexOf('divider:') === 0) { p.sections[+name.slice(8)].divider = val === 'on'; drawSections(); }
+      else if (name.indexOf('tier:') === 0) { var tk = name.slice(5).split(':'); p.sections[+tk[0]].items[+tk[1]].tier = val; drawSections(); }
       else if (name.indexOf('numbers:') === 0) { p.sections[+name.slice(8)].numbers = val === 'on'; drawSections(); }
       else if (name.indexOf('topline:') === 0) { p.sections[+name.slice(8)].topline = val === 'on'; drawSections(); }
       else if (name.indexOf('hbg:') === 0) { p.sections[+name.slice(4)].bg = val; drawSections(); }
