@@ -3,7 +3,7 @@
  * Partner sites (0044): the document, the page, and the language
  *   node workers/test/site.test.mjs
  */
-import { subdomainFrom, validSubdomain, cleanDoc, starter, safeUrl, safePhoto, PAGES, SECTIONS, plainOf } from "../src/site/model.js";
+import { subdomainFrom, validSubdomain, cleanDoc, starter, safeUrl, safePhoto, PAGES, SECTIONS, plainOf, cleanLinkTarget } from "../src/site/model.js";
 import { renderPage, esc } from "../src/site/render.js";
 import { pickLang } from "../src/site/serve.js";
 import { removeSiteDns } from "../src/lib/site-dns.js";
@@ -804,6 +804,23 @@ check("own links: a page of the site first; a web address may be its site's icon
   const words = [...foot.matchAll(/<a href="[^"]*"[^>]*>(About me|Mission|Blog)<\/a>/g)].map((m) => m[1]);
   eq(words, ["About me", "Mission", "Blog"], "pages first, then the web");
   assert(/class="socials"[^>]*>[\s\S]*aria-label="YouTube"[\s\S]*<a class="favi" href="https:\/\/chaseroush\.com\/"[^>]*aria-label="chaseroush\.com"[^>]*><img src="https:\/\/thauma\.one\/embed\/v1\/icon\?d=chaseroush\.com"/.test(foot), "the icon, through Thauma, beside the socials");
+});
+
+check("clean links: socials, page names in any language and alphabet, Give, the owner's own links", () => {
+  const d = cleanDoc({ ...starter("full", { name: "Chase Roush", langs: ["en", "hr", "sr"], fallback: "en" }),
+    links: [{ kind: "youtube", url: "https://youtube.com/@x" }, { kind: "custom", url: "https://blog.example.org/", label: { en: "My Blog" } }] }, ["en", "hr", "sr"]);
+  d.pages.forEach((p) => { p.on = true; });
+  const go = (path, giving = "") => cleanLinkTarget(d, path.split("/").filter(Boolean), { base: "/s", giving });
+  eq(go("/YouTube"), "https://youtube.com/@x", "a social");
+  eq(go("/" + word("en", "about")), "/s/en/about/", "an English page name");
+  eq(go("/hr/" + word("hr", "give").toUpperCase()), "/s/hr/give/", "Croatian, any case");
+  eq(go("/sr/" + encodeURIComponent(word("sr", "give"))), "/s/sr/give/", "Cyrillic");
+  eq(go("/sr/" + word("hr", "give")), "/s/sr/give/", "the address's language wins");
+  eq(go("/my-blog"), "https://blog.example.org/", "the owner's own link");
+  eq(go("/Give", "https://give.example/"), "/s/en/give/", "Give: the page while it is on");
+  d.pages.find((p) => p.id === "give").on = false;
+  eq(go("/Give", "https://give.example/"), "https://give.example/", "Give: the giving link when there is no page");
+  eq(go("/nothing-here"), null, "nothing");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

@@ -696,3 +696,49 @@ export function cleanDoc(raw, catalog) {
     pages,
   };
 }
+
+/* ---------------------------------------------------------------------------
+   CLEAN LINKS (BACKLOG §3, 2026-10-04): chaseroush.thauma.one/YouTube goes to
+   the YouTube channel; /hr/Darivanje to the Croatian Give page; /Give to the
+   giving link. Words are compared without capitals, accents or spaces, in any
+   alphabet (Cyrillic included). Returns the address to send the visitor to,
+   or null for an ordinary "not found".
+   --------------------------------------------------------------------------- */
+const SOCIAL_WORDS = { youtube: ["youtube"], instagram: ["instagram", "insta"], facebook: ["facebook"], x: ["x", "twitter"],
+  tiktok: ["tiktok"], linkedin: ["linkedin"], spotify: ["spotify"], email: ["email", "mail"] };
+export const cleanWord = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "")
+  .replace(/[đĐ]/g, "d").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
+
+export function cleanLinkTarget(doc, segs, { base, q = "", giving = "" }) {
+  const lang = segs.length === 2 && doc.languages.includes(segs[0]) ? segs[0] : null;
+  if (segs.length !== (lang ? 2 : 1)) return null;
+  let raw = segs[segs.length - 1];
+  try { raw = decodeURIComponent(raw); } catch { /* keep as typed */ }
+  const want = cleanWord(raw);
+  if (!want) return null;
+  const langs = lang ? [lang, ...doc.languages.filter((l) => l !== lang)] : [doc.fallback, ...doc.languages.filter((l) => l !== doc.fallback)];
+  const pageUrl = (id, l) => `${base}/${l}/${id === "home" ? "" : id + "/"}${q}`;
+  const on = (id) => doc.pages.some((p) => p.id === id && p.on);
+
+  for (const k of doc.links.filter((x) => x.kind !== "custom")) {
+    if ((SOCIAL_WORDS[k.kind] || [k.kind]).includes(want)) return k.url;
+  }
+  const giveTo = giving || null;
+  for (const l of langs) {
+    for (const p of doc.pages) {
+      const name = (p.label && p.label[l]) || word(l, p.id);
+      if (cleanWord(name) !== want && cleanWord(p.id) !== want) continue;
+      if (p.id === "give" && giveTo && !on("give")) return giveTo;
+      /* The language in the address wins over the one whose name matched. */
+      if (on(p.id)) return pageUrl(p.id, lang || l);
+    }
+    if (giveTo && cleanWord(word(l, "giveBtn")) === want) return giveTo;
+    for (const k of doc.links.filter((x) => x.kind === "custom")) {
+      if (cleanWord(k.label && k.label[l]) !== want) continue;
+      if (k.url.startsWith("page:")) { const id = k.url.slice(5); return on(id) ? pageUrl(id, lang || l) : null; }
+      if (/^(https?:|mailto:)/.test(k.url)) return k.url;
+    }
+  }
+  if (cleanWord("give") === want && giveTo) return giveTo;
+  return null;
+}
