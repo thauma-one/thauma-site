@@ -505,5 +505,34 @@ check("the page draws them: named sizes and tones as classes in the site's shade
     "a site that follows the device has both shades");
 });
 
+/* ---- every section lines up (2026-10-03) ---- */
+
+check("a section never lined up keeps the look it had; a chosen one is kept", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  const mk = (type, variant, extra = {}) => ({ id: "x" + type + variant, type, variant, words: { en: {} }, ...extra });
+  d.pages[0].sections = [mk("text", "left"), mk("text", "center"), mk("signup", "card"), mk("signup", "band"),
+    mk("hero", "words"), mk("hero", "behind"), mk("goals", "cards"), mk("quote", "large"), mk("text", "left", { align: "right" }),
+    mk("give", "band", { align: "indent" }), mk("text", "left", { align: "sideways" })];
+  eq(cleanDoc(d, ["en"]).pages[0].sections.map((x) => x.align),
+    ["left", "center", "center", "left", "center", "left", "center", "left", "right", "indent", "left"], "aligns");
+});
+
+check("the page carries each section's alignment, and its buttons follow it", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  d.pages[0].sections = [
+    { id: "a1", type: "text", variant: "left", align: "right", link: "https://x.org/", words: { en: { heading: "H", text: "T", button: "Go" } } },
+    { id: "a2", type: "hero", variant: "behind", align: "center", words: { en: { heading: "Hi" } }, buttons: ["contact"] },
+    { id: "a3", type: "quote", variant: "large", align: "indent", words: { en: { quote: "Q" } } },
+  ];
+  const html = page(d);
+  assert(/<section class="al-right"><div class="wrap"><h2 class="h m">H<\/h2>[\s\S]*?<div class="btns m"><a class="btn solid" href="https:\/\/x\.org\/"/.test(html), "text section, right, with its button");
+  assert(/<section class="hero hero-behind al-center/.test(html), "the opening");
+  assert(/<section class="quote quote-large al-indent">/.test(html), "the quote");
+  for (const rule of [".al-right .btns{justify-content:flex-end}", ".al-center .btns{justify-content:center}",
+                      ".al-indent>.wrap", ".al-right .bandrow{flex-direction:row-reverse}"]) {
+    assert(html.includes(rule), "missing rule " + rule);
+  }
+});
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -223,7 +223,7 @@ ${L.heroFg ? `.hero-behind:not(.has-photo),.hero-words{color:${L.heroFg}}.hero-b
 .hero-behind:not(.has-photo) .btn.solid,.hero-words .btn.solid{background:${L.heroFg};color:${L.heroBg}}.hero-behind:not(.has-photo) .btn,.hero-words .btn{border-color:${L.heroFg};color:${L.heroFg}}` : ""}
 .hero-beside{align-items:center}.hero-beside .wrap{display:grid;grid-template-columns:1.1fr .9fr;gap:48px;align-items:center;padding:110px 0}
 .hero-beside .hero-media{display:none}.hero-beside .pic{aspect-ratio:4/5;border-radius:18px;overflow:hidden}.hero-beside .pic img{width:100%;height:100%;object-fit:cover}
-.hero-words{align-items:center;text-align:center;background:var(--herobg)}.hero-words .wrap{padding:130px 0 110px}.hero-words .lede{margin:0 auto}.hero-words .btns{justify-content:center}
+.hero-words{align-items:center;background:var(--herobg)}.hero-words .wrap{padding:130px 0 110px}
 /* the monogram opening — chaseroush.com's: initials behind the title, a short
    rule, a spaced line, a picture beside it, a cue to scroll */
 .hero-monogram{align-items:center;background:var(--herobg)}
@@ -285,8 +285,7 @@ main section.raised .card{background:var(--bg)}
 /* The sign-up card: as wide as a form wants, centered, not the whole column
    with the boxes pushed left (Chase, 2026-10-01: "extra wide with left
    alignment of the boxes"). */
-.signcard{max-width:600px;margin:0 auto;text-align:center}
-.signcard .lede{margin-left:auto;margin-right:auto}
+.signcard{max-width:600px;margin:0 auto}
 .signcard .signform{margin:22px auto 0;text-align:left}
 .news{list-style:none;margin:0;padding:0;display:grid;gap:10px}
 .news a{display:flex;justify-content:space-between;gap:20px;padding:18px 20px;background:var(--panel);border:1px solid var(--line);border-radius:12px;color:var(--fg);text-decoration:none}
@@ -308,6 +307,23 @@ main section.is-editing{outline:2px solid var(--acc);outline-offset:-2px}
 .al-center .h,.al-center .lede{text-align:center;margin-left:auto;margin-right:auto}
 .al-center [data-thauma],.al-center .news,.al-center .linklist,.al-center .formbox,.al-center .latest{margin-left:auto;margin-right:auto}
 .al-center .past{text-align:center}
+/* EVERY SECTION LINES UP (2026-10-03): left (as written), centered, right,
+   or indented. The WORDS follow, and so do the buttons, a flex row that
+   text-align alone never moves; a widget, list or form keeps its own inside
+   and only moves as a block. */
+.al-center :is(.kicker,.h,.lede,.prose,.spaced,.quote blockquote,cite,.caption,figcaption,.past){text-align:center}
+.al-center :is(.h,.lede,.prose p,.spaced,.quote blockquote,.rule){margin-left:auto;margin-right:auto}
+.al-center .btns{justify-content:center}
+.al-center .bandrow{flex-direction:column;text-align:center}
+.al-center .bandrow>*{width:100%}
+.al-right :is(.kicker,.h,.lede,.prose,.spaced,.quote blockquote,cite,.caption,figcaption,.past){text-align:right}
+.al-right :is(.h,.lede,.prose p,.spaced,.quote blockquote,.rule){margin-left:auto;margin-right:0}
+.al-right .btns{justify-content:flex-end}
+.al-right .bandrow{flex-direction:row-reverse}
+.al-right :is([data-thauma],.news,.linklist,.formbox,.latest){margin-left:auto;margin-right:0}
+.al-left .signcard{margin-left:0}.al-right .signcard{margin-right:0}
+.al-indent>.wrap,.al-indent>figure>figcaption{padding-left:clamp(20px,9vw,140px)}
+.al-indent .signcard{margin-left:0}
 .latest{display:block;max-width:720px;padding:28px 30px;background:var(--panel);border:1px solid var(--line);border-radius:16px;color:var(--fg);text-decoration:none}
 .latest:hover{border-color:var(--acc)}.latest small{color:var(--dim);font-size:13px}
 .latest b{display:block;font:var(--boldw) clamp(20px,2vw,26px)/1.25 var(--display);margin:6px 0 8px}.latest span{color:var(--dim)}
@@ -499,7 +515,7 @@ function renderSection(sec, ctx) {
       if (sec.variant === "monogram") {
         const initials = initialsOf(ctx.name);
         const h = heading(w("heading"), "h1");
-        return `<section class="hero hero-monogram"><div class="wrap"><div class="mono-words"><span class="mono-mark" aria-hidden="true">${esc(initials)}</span>` +
+        return `<section class="hero hero-monogram al-${sec.align || "left"}"><div class="wrap"><div class="mono-words"><span class="mono-mark" aria-hidden="true">${esc(initials)}</span>` +
           `${w("kicker") ? `<p class="kicker m">${esc(w("kicker"))}</p>` : ""}${h}<span class="rule m" aria-hidden="true"></span>` +
           `${w("text") ? `<p class="spaced m">${inline(w("text"))}</p>` : ""}${btns ? `<div class="btns m">${btns}</div>` : ""}</div>` +
           `${sec.photo ? `<div class="mono-pic m">${img(sec.photo)}</div>` : ctx.draft ? `<div class="pic m">${wanted()}</div>` : ""}</div>` +
@@ -508,14 +524,14 @@ function renderSection(sec, ctx) {
       const words = `${w("kicker") ? `<p class="kicker m">${esc(w("kicker"))}</p>` : ""}${heading(w("heading"), "h1")}` +
         `${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}${btns ? `<div class="btns m">${btns}</div>` : ""}`;
       if (sec.variant === "beside") {
-        return `<section class="hero hero-beside"><div class="wrap"><div>${words}</div>${sec.photo ? `<div class="pic m ${photoMotion === "zoom" ? "kb" : ""}">${img(sec.photo)}</div>` : ctx.draft ? `<div class="pic m">${wanted()}</div>` : ""}</div>${cue}</section>`;
+        return `<section class="hero hero-beside al-${sec.align || "left"}"><div class="wrap"><div>${words}</div>${sec.photo ? `<div class="pic m ${photoMotion === "zoom" ? "kb" : ""}">${img(sec.photo)}</div>` : ctx.draft ? `<div class="pic m">${wanted()}</div>` : ""}</div>${cue}</section>`;
       }
-      if (sec.variant === "words") return `<section class="hero hero-words"><div class="wrap">${words}</div>${cue}</section>`;
-      return `<section class="hero hero-behind${sec.photo ? " has-photo" : ""}"><div class="hero-media ${photoMotion === "zoom" ? "kb" : ""}"${photoMotion === "drift" ? " data-drift" : ""}>${img(sec.photo)}</div><div class="wrap">${words}</div>${cue}</section>`;
+      if (sec.variant === "words") return `<section class="hero hero-words al-${sec.align || "center"}"><div class="wrap">${words}</div>${cue}</section>`;
+      return `<section class="hero hero-behind al-${sec.align || "left"}${sec.photo ? " has-photo" : ""}"><div class="hero-media ${photoMotion === "zoom" ? "kb" : ""}"${photoMotion === "drift" ? " data-drift" : ""}>${img(sec.photo)}</div><div class="wrap">${words}</div>${cue}</section>`;
     }
     case "text":
       if (!w("heading") && !w("text")) return "";
-      return `<section${cls(sec.variant === "center" ? "text-center" : "")}><div class="wrap">${heading(w("heading"))}${prose(w("text"))}${to ? `<div class="btns m">${button()}</div>` : ""}</div></section>`;
+      return `<section${cls()}><div class="wrap">${heading(w("heading"))}${prose(w("text"))}${to ? `<div class="btns m">${button()}</div>` : ""}</div></section>`;
     case "photoText": {
       if (!sec.photo && !w("text") && !ctx.draft) return "";
       const pic = sec.photo ? img(sec.photo, plainOf(raw("heading"))) : wanted();
@@ -523,9 +539,9 @@ function renderSection(sec, ctx) {
     }
     case "photo":
       if (!sec.photo) {
-        return ctx.draft ? `<section class="fullphoto"><div class="frame">${wanted()}</div>${w("caption") ? `<p class="wrap caption">${esc(w("caption"))}</p>` : ""}</section>` : "";
+        return ctx.draft ? `<section class="fullphoto al-${sec.align || "left"}"><div class="frame">${wanted()}</div>${w("caption") ? `<p class="wrap caption">${esc(w("caption"))}</p>` : ""}</section>` : "";
       }
-      return `<section class="fullphoto"><figure style="margin:0"><div class="frame ${sec.variant === "zoom" ? "kb" : ""}"${sec.variant === "drift" ? " data-drift" : ""}>${pictured(img(sec.photo, w("caption")), w("caption") || word(lang, "more"))}</div>${w("caption") ? `<figcaption class="wrap">${esc(w("caption"))}</figcaption>` : ""}</figure></section>`;
+      return `<section class="fullphoto al-${sec.align || "left"}"><figure style="margin:0"><div class="frame ${sec.variant === "zoom" ? "kb" : ""}"${sec.variant === "drift" ? " data-drift" : ""}>${pictured(img(sec.photo, w("caption")), w("caption") || word(lang, "more"))}</div>${w("caption") ? `<figcaption class="wrap">${esc(w("caption"))}</figcaption>` : ""}</figure></section>`;
     case "quote":
       if (!w("quote")) return "";
       return `<section${cls("quote", "quote-" + sec.variant)}><div class="wrap m"><blockquote>“${w("quote")}”</blockquote>${w("who") ? `<cite>${esc(w("who"))}</cite>` : ""}</div></section>`;

@@ -637,12 +637,21 @@
   }
 
   /* One section, alone. Only the tabs it has something for. */
+  /* What a section looks like before anybody lines it up: the same rule as
+     the server's (site/model.js defaultAlign), so nothing moves. */
+  function defaultAlign(s) {
+    if (SECTIONS[s.type].align) return 'center';
+    if ((s.type === 'text' && s.variant === 'center') || (s.type === 'signup' && s.variant === 'card') ||
+        (s.type === 'hero' && s.variant === 'words')) return 'center';
+    return 'left';
+  }
   function tabsFor(s) {
     var spec = SECTIONS[s.type], t = ['words'];
     if (spec.photo) t.push('photo');
     if (spec.buttons || spec.link === 'button' || spec.link === 'both' || s.type === 'give') t.push('buttons');
     if (spec.items) t.push('links');
-    if (spec.variants.length > 1 || !FLAT[s.type] || spec.align) t.push('look');
+    /* Every section lines up (2026-10-03), so every section has a Look. */
+    t.push('look');
     return t;
   }
 
@@ -716,14 +725,13 @@
     }
 
     if (state.sectab === 'look') {
-      if (spec.variants.length > 1) {
+      /* A Words section's old Left / Centered layout IS its alignment now. */
+      if (spec.variants.length > 1 && s.type !== 'text') {
         html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.layout')) + '</span>' +
           chips('variant:' + i, spec.variants, s.variant, function (v) { return tr('ws.v.' + s.type + '.' + v); }) + '</div>';
       }
-      if (spec.align) {
-        html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.align')) + '</span>' +
-          chips('align:' + i, ['center', 'left'], s.align || 'center', function (v) { return tr('ws.align.' + v); }) + '</div>';
-      }
+      html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.align')) + '</span>' +
+        chips('align:' + i, ['left', 'center', 'right', 'indent'], s.align || defaultAlign(s), function (v) { return tr('ws.align.' + v); }) + '</div>';
       if (!FLAT[s.type]) {
         html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.bg')) + '</span>' +
           chips('raised:' + i, ['plain', 'raised'], s.raised ? 'raised' : 'plain', function (v) { return tr('ws.bg.' + v); }) + '</div>';
@@ -1036,6 +1044,7 @@
     var type = t.getAttribute('data-add-type'), spec = SECTIONS[type], words = {};
     state.doc.languages.forEach(function (l) { words[l] = {}; spec.words.forEach(function (f) { words[l][f] = ''; }); });
     var s = { id: uid(), type: type, variant: spec.variants[0], words: words };
+    s.align = defaultAlign(s);
     if (spec.photo) s.photo = null;
     if (spec.buttons) s.buttons = ['give', 'stay'];
     if (spec.items) s.items = [];

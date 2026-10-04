@@ -184,6 +184,20 @@ await check("words can take a size and a color, a quick pick or any color; a wor
   assert(box.querySelector('[data-c="#ff00aa"]').style.color, "a picked color shows in the box");
 });
 
+await check("every section lines up: left, centered, right or indented; a Words section has no second layout control", async () => {
+  const { d, sent, click, pages } = await boot();
+  pages();
+  click(d.querySelector('[data-open-page="mission"]'));
+  click(d.querySelector('[data-edit-sec="0"]'));            // the Mission page's Words section
+  click(d.querySelector('[data-sectab="look"]'));
+  eq([...d.querySelectorAll('[data-chip="align:0"]')].map((b) => b.dataset.value), ["left", "center", "right", "indent"], "choices");
+  eq(d.querySelector('[data-chip="align:0"][aria-pressed="true"]').dataset.value, "left", "as it was");
+  assert(!d.querySelector('[data-chip="variant:0"]'), "the old Left/Centered layout chips are gone for Words");
+  click(d.querySelector('[data-chip="align:0"][data-value="right"]'));
+  await settle(900);
+  eq(sent.filter((x) => x.action === "save").pop().draft.pages.filter((p) => p.id === "mission")[0].sections[0].align, "right", "saved");
+});
+
 await check("where a button goes: nothing, a page, or a web address — three plain choices", async () => {
   const { w, d, sent, click, pages } = await boot();
   pages();

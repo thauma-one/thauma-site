@@ -89,9 +89,23 @@ export const SECTIONS = {
   give:      { variants: ["band", "card"], words: ["heading", "text", "button"] },
   links:     { variants: ["list", "cards"], words: ["heading", "text"], items: true, align: true },
 };
-/* The ministry's widgets and lists sit centered unless the owner puts them
-   left (Chase, 2026-09-29: "the embed codes seem to be left aligned"). */
-export const ALIGNS = ["center", "left"];
+/* EVERY SECTION LINES UP (BACKLOG §3, 2026-10-03: "Alignment for every
+   section: left, right, center, indent. Buttons must follow their section's
+   alignment"). What a section gets when it has never been set is what it
+   already looked like, so no site moves:
+     - `align: true` above: the ministry's widgets and lists, centered
+       (Chase, 2026-09-29: "the embed codes seem to be left aligned");
+     - a Words section saved with the old Centered layout, the sign-up card,
+       and the opening in words alone: centered;
+     - everything else: left. */
+export const ALIGNS = ["left", "center", "right", "indent"];
+export function defaultAlign(type, variant) {
+  const spec = SECTIONS[type] || {};
+  if (spec.align) return "center";
+  if ((type === "text" && variant === "center") || (type === "signup" && variant === "card") ||
+      (type === "hero" && variant === "words")) return "center";
+  return "left";
+}
 const NOT_RAISED = new Set(["hero", "photo"]);
 
 /* ------------------------------------------------------- design, motion -- */
@@ -457,7 +471,7 @@ function cleanSection(raw, langs) {
   if (spec.link) s.link = safeLink(raw.link);
   if (spec.link === "both") s.photoLink = !!raw.photoLink;
   if (!NOT_RAISED.has(raw.type)) s.raised = !!raw.raised;
-  if (spec.align) s.align = pick(raw.align, ALIGNS);
+  s.align = ALIGNS.includes(raw.align) ? raw.align : defaultAlign(raw.type, s.variant);
   if (spec.buttons) {
     s.buttons = (Array.isArray(raw.buttons) ? raw.buttons : []).filter((b) => ["give", "stay", "contact"].includes(b)).slice(0, 2);
   }
