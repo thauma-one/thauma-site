@@ -103,10 +103,12 @@ preview always a real desktop; meta tags + sitemap + an Advanced tab (Google
 and share previews, title/description per language, name cards made at
 Publish); ONE photo editor (src/js/photo-editor.js, by purpose: site
 sections, hero, bands, email pictures, share pictures; non-destructive).
+R2 hygiene: readable upload names + Settings › Storage › Clean up
+(media-cleanup.js). Custom text sizes (− / +). Console loads Sora/Inter.
 Set aside by Chase for later: "Bold" and "Dot below" nav looks. Still open:
-R2 hygiene (deleting unused uploads; edited email pictures and remade cards
-leave old copies), footer options, Sharing vs Site Creator colors, moving
-Thauma's own photo tools (photo-crop.js, Website › Photos) onto the editor.
+footer options, Sharing vs Site Creator colors, moving Thauma's own photo
+tools (photo-crop.js, Website › Photos) onto the editor, Thauma's own
+newsletter folder in Storage (only partners have the panel).
 
 Chase: "the general interface for the Site Creator is really good!"
 
