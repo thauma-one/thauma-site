@@ -762,6 +762,42 @@ def t_editability_is_ownership_and_cannot_be_claimed():
     assert got == "Handbook", f"a staff member overwrote the organization's: {got}"
 
 
+def t_a_personal_resource_can_be_deleted():
+    """Personal resources keep partner_id NULL. resource_delete was called with
+    the CALLER's partner, which never matched one, so Delete did nothing
+    (Chase's review, 2026-10-03). The endpoint now passes the stored value."""
+    db, _ = _resource_world(fresh())
+    sql, names = _query("resource_delete")
+    a = {"id": "r_a", "partner_id": "p_chase"}
+    db.execute(sql, [a[n] for n in names])
+    assert db.execute("SELECT COUNT(*) FROM resources WHERE id='r_a'").fetchone()[0] == 1, \
+        "the caller's partner should not match a personal row"
+    a = {"id": "r_a", "partner_id": None}
+    db.execute(sql, [a[n] for n in names])
+    assert db.execute("SELECT COUNT(*) FROM resources WHERE id='r_a'").fetchone()[0] == 0, \
+        "the stored partner (NULL) should delete it"
+
+
+def t_where_it_goes_moves_a_resource_and_only_from_where_it_was():
+    """Personal -> the organization's, and back. The upsert never moves a row;
+    resource_move does, guarded by the ownership the endpoint just read."""
+    db, _ = _resource_world(fresh())
+    sql, names = _query("resource_move")
+
+    def move(old_owner, old_partner, new_owner, new_partner):
+        a = {"id": "r_a", "old_owner": old_owner, "old_partner": old_partner,
+             "new_owner": new_owner, "new_partner": new_partner, "now": NOW}
+        db.execute(sql, [a[n] for n in names])
+
+    move("u_b", None, None, "p_chase")              # stale: not B's
+    assert _shelves(db, "u_a").get("A's notes") == ("mine", 1), "moved from the wrong owner"
+    move("u_a", None, None, "p_chase")
+    assert _shelves(db, "u_b").get("A's notes") == ("institutional", 0), _shelves(db, "u_b")
+    move(None, "p_chase", "u_admin", None)
+    assert _shelves(db, "u_admin", is_admin=1).get("A's notes") == ("mine", 1)
+    assert "A's notes" not in _shelves(db, "u_b"), "back on a personal shelf, still visible"
+
+
 def t_a_shared_resource_is_readable_but_never_editable():
     db, _ = _resource_world(fresh())
     sql, names = _query("resource_share_add")
@@ -2343,6 +2379,8 @@ if __name__ == "__main__":
         ("a private shelf is private",                   t_a_persons_own_resources_are_not_visible_to_a_colleague),
         ("staff cannot edit the org's resources",        t_staff_may_not_edit_the_organisations_resources),
         ("editability is ownership, not a claim",        t_editability_is_ownership_and_cannot_be_claimed),
+        ("a personal resource can be deleted",           t_a_personal_resource_can_be_deleted),
+        ("where it goes moves a resource, from where it was", t_where_it_goes_moves_a_resource_and_only_from_where_it_was),
         ("shared is readable, never editable",           t_a_shared_resource_is_readable_but_never_editable),
         ("resharing works and records who",              t_resharing_is_allowed_and_records_who_passed_it_on),
         ("cannot share with the owner",                  t_a_resource_cannot_be_shared_with_its_own_owner),
