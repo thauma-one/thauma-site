@@ -57,7 +57,7 @@ import adminPublish from "./admin-publish.js";
 import adminMigrate from "./admin-migrate.js";
 import embed from "./embed.js";
 import embedIcon from "./embed-icon.js";
-import mediaCleanup from "./media-cleanup.js";
+import { cleanUnusedMedia, isCleanupHour } from "./media-cleanup.js";
 import staffEmbed from "./staff-embed.js";
 import adminActAs from "./admin-actas.js";
 import adminProfile from "./admin-profile.js";
@@ -416,8 +416,6 @@ const ROUTES = {
 
   // Uploads. GET /media/* is handled by prefix below, not here.
   "/api/admin/media": media,
-  /* A ministry's unused uploads, found and removed (media-cleanup.js). */
-  "/api/staff-media-cleanup": mediaCleanup,
 
   // THE ONLY ROUTE A CREDENTIAL OUTSIDE THAUMA CAN REACH. Key-authenticated,
   // public-safe by construction, versioned in the path so a breaking change
@@ -579,6 +577,18 @@ export default {
       if (!names.skipped) console.log(`site names: wildcard ${names.wildcard}; made ${names.made.join(", ") || "none"}`);
     } catch (err) {
       console.error("site names:", err.message);
+    }
+
+    /* UNUSED UPLOADS, once a day (media-cleanup.js). Automatic by design:
+       nobody manages storage by hand. Last, so it can never delay the two
+       jobs above. */
+    if (isCleanupHour(event.scheduledTime)) {
+      try {
+        const clean = await cleanUnusedMedia(env);
+        if (!clean.skipped) console.log("media cleanup:", JSON.stringify(clean.report));
+      } catch (err) {
+        console.error("media cleanup:", err.message);
+      }
     }
   },
 };

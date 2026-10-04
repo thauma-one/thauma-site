@@ -311,7 +311,7 @@
     try {
       var res = await fetch('/api/admin/media?kind=site', {
         method: 'PUT', credentials: 'same-origin',
-        headers: { 'Content-Type': shot.blob.type }, body: shot.blob
+        headers: { 'Content-Type': shot.blob.type, 'X-File-Name': String(file.name || state.on).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x20-\x7e]/g, '').slice(0, 80) }, body: shot.blob
       });
       var body = await res.json();
       if (!res.ok) throw new Error(body.error || tr('err.refused'));

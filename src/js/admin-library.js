@@ -482,10 +482,14 @@
 
   /* ------------------------------------------------------------- pictures */
 
-  async function putMedia(blob) {
+  /* name: what the file was called, so the stored copy is findable by eye
+     (media.js turns it into plain words in front of the fingerprint). */
+  async function putMedia(blob, name) {
+    var headers = { 'Content-Type': blob.type };
+    if (name) headers['X-File-Name'] = String(name).slice(0, 80);
     var res = await fetch('/api/admin/media?kind=library', {
       method: 'PUT', credentials: 'same-origin',
-      headers: { 'Content-Type': blob.type }, body: blob
+      headers: headers, body: blob
     });
     var body = await res.json();
     if (!res.ok) throw new Error(body.error || tr('err.refused', 'Refused.'));
@@ -506,6 +510,9 @@
     return await new Promise(function (r) { c.toBlob(r, 'image/webp', 0.85); });
   }
 
+  /* Header-safe: accents dropped (č → c), anything else non-ASCII removed. */
+  function baseName(n) { return String(n || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x20-\x7e]/g, '').replace(/\.[a-z0-9]{2,5}$/i, ''); }
+
   async function uploadPhoto(slot, file) {
     var status = slot.querySelector('[data-lib-shot-status]');
     var say = function (k, f) { if (status) status.textContent = tr(k, f); };
@@ -517,11 +524,11 @@
       var masterUrl = '';
       try {
         var full = await shrink(file, 2400);
-        if (full) masterUrl = (await putMedia(full)).url;
+        if (full) masterUrl = (await putMedia(full, baseName(file.name) + '-original')).url;
       } catch (e) { masterUrl = ''; }
 
       say('lib.uploading', 'Uploading…');
-      var body = await putMedia(shot ? shot.blob : await shrink(file, 1600));
+      var body = await putMedia(shot ? shot.blob : await shrink(file, 1600), baseName(file.name));
       setPhoto(slot, body.url, masterUrl);
       say('lib.photoReady', 'Picture added — press Save to keep it.');
     } catch (e) {
@@ -547,7 +554,7 @@
       var shot = await window.PhotoCrop.open(
         new File([blob], 'photo', { type: blob.type || 'image/webp' }), 'wide');
       if (!shot) { if (status) status.textContent = ''; return; }
-      var body = await putMedia(shot.blob);
+      var body = await putMedia(shot.blob, baseName(from.split('/').pop()).replace(/-?[0-9a-f]{16}$/, '').replace(/-original$/, ''));
       /* The master is NOT replaced — writing the new crop over it would make
          the next edit one-way again. */
       setPhoto(slot, body.url, master);
