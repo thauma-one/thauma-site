@@ -9,7 +9,7 @@
  */
 import { JSDOM } from "jsdom";
 import { readFileSync, existsSync } from "node:fs";
-import { starter, cleanDoc, word, PAGES } from "../workers/src/site/model.js";
+import { starter, cleanDoc, word, PAGES, placeholders } from "../workers/src/site/model.js";
 
 const PAGE = ["_site", "_site_next", "_site_prod"].map((d) => `${d}/staff/website/index.html`).find((f) => existsSync(f));
 
@@ -37,6 +37,7 @@ function answer({ edit = true, owner = true, published = false } = {}) {
     languages: [{ code: "en", name: "English", native_name: "English" }, { code: "hr", name: "Croatian", native_name: "Hrvatski" }],
     /* As staff-site.js builds it: the site's own page names per language. */
     page_names: Object.fromEntries(["en", "hr"].map((l) => [l, Object.fromEntries(PAGES.map((id) => [id, word(l, id)]))])),
+    placeholders: placeholders ? Object.fromEntries(["en", "hr"].map((l) => [l, placeholders(l, "Chase Roush")])) : undefined,
     theme: { accent: "#1AE4FF", accent2: "#25FFA1" },
     can: { edit, owner }, owner: { name: "Chase Roush" }, editors: [], requests: [], my_request: null,
   };
@@ -83,7 +84,7 @@ await check("a page opens to its sections as rows; All pages and the page menu l
   const { w, d, click, pages } = await boot();
   pages();
   click(d.querySelector('[data-open-page="home"]'));
-  eq([...d.querySelectorAll(".ws-stile-words b")].map((n) => n.textContent), ["Opening", "Photo and words"], "Home's sections");
+  eq([...d.querySelectorAll(".ws-stile-words b")].map((n) => n.textContent), ["Hero", "Photo and words"], "Home's sections");
   assert(/Follow the work of/.test(d.querySelector(".ws-stile-words span").textContent), "each with one line of its words");
   const pick = d.querySelector("[data-pick-page]");
   pick.value = "give";
@@ -125,8 +126,28 @@ await check("a row unfolds where it is, one at a time; a new section goes where 
   click(d.querySelector('[data-insert-at="1"]'));
   eq(d.querySelectorAll("[data-add-type]").length, 14, "every kind offered");
   click(d.querySelector('[data-add-type="quote"]'));
-  eq([...d.querySelectorAll(".ws-stile-words b")].map((n) => n.textContent), ["Opening", "A verse or a quote", "Photo and words"], "between the two");
+  eq([...d.querySelectorAll(".ws-stile-words b")].map((n) => n.textContent), ["Hero", "A verse or a quote", "Photo and words"], "between the two");
   assert(d.querySelector('.ws-acc[data-si="1"]').classList.contains("is-open"), "and open");
+});
+
+await check("a new section suggests words in the language being written, and saves none of them", async () => {
+  /* Chase, 2026-10-03: placeholder words in every language whenever a
+     section is added, for those unsure how to phrase things. */
+  const { w, d, sent, click, pages } = await boot();
+  pages();
+  const pick = d.getElementById("wsLangA");
+  pick.value = "hr";
+  pick.dispatchEvent(new w.Event("change", { bubbles: true }));
+  click(d.querySelector('[data-open-page="home"]'));
+  click(d.querySelector('[data-insert-at="1"]'));
+  click(d.querySelector('[data-add-type="text"]'));
+  const heading = d.querySelector('[data-rt="1:heading"]');
+  assert(heading, "the new section is not open");
+  eq(heading.getAttribute("data-ph"), word("hr", "aboutThin") + " " + word("hr", "aboutBold"), "its heading, in Croatian");
+  eq(d.querySelector('[data-rt="1:text"]').getAttribute("data-ph"), word("hr", "aboutFill"), "its words, in Croatian");
+  await settle(900);
+  const saved = sent.filter((x) => x.action === "save").pop().draft.pages[0].sections[1];
+  eq([saved.words.hr.heading, saved.words.hr.text], ["", ""], "nothing suggested was saved");
 });
 
 await check("one section at a time: only its tabs; formatted words saved clean", async () => {
@@ -165,6 +186,33 @@ await check("where a button goes: nothing, a page, or a web address — three pl
   box.dispatchEvent(new w.Event("input", { bubbles: true }));
   await settle(900);
   eq(sent.filter((x) => x.action === "save").pop().draft.pages[0].sections[1].link, "https://blog.example.org/", "saved");
+});
+
+await check("a button can jump to another section of the same page, picked by its name", async () => {
+  const { w, d, sent, click, pages } = await boot();
+  pages();
+  click(d.querySelector('[data-open-page="home"]'));
+  click(d.querySelector('[data-edit-sec="0"]'));
+  click(d.querySelector('[data-sectab="buttons"]'));
+  const kind = d.querySelector('[data-chip="linkkind:sec:0"][data-value="section"]');
+  assert(kind, "no way to pick a section");
+  click(kind);
+  const pick = d.querySelector('[data-link="sec:0"]');
+  const names = [...pick.options].map((o) => o.textContent);
+  eq(names.length, 1, "only the OTHER sections of this page");
+  assert(/^Photo and words · /.test(names[0]), `named by kind and heading: ${names[0]}`);
+  await settle(900);
+  const saved = sent.filter((x) => x.action === "save").pop().draft.pages[0].sections;
+  eq(saved[0].link, "section:" + saved[1].id, "saved as a jump to it");
+});
+
+await check("a footer link is on every page, so it offers no section to jump to", async () => {
+  const { d, click } = await boot();
+  click(d.querySelector('[data-ws-tab="links"]'));
+  click(d.querySelector("[data-custom-add]"));
+  const chips = [...d.querySelectorAll('[data-chip^="linkkind:custom"]')].map((c) => c.dataset.value);
+  assert(chips.includes("page") && chips.includes("url"), `the new link has no destination choices: ${chips}`);
+  assert(!chips.includes("section"), "a page-less link offered a section");
 });
 
 await check("a Links section: plain rows, one opened at a time", async () => {
@@ -250,12 +298,12 @@ await check("Undo steps back through changes; a reload opens where you left off"
   pages();
   click(d.querySelector('[data-open-page="home"]'));
   const order = () => [...d.querySelectorAll(".ws-stile-words b")].map((b) => b.textContent);
-  eq(order(), ["Opening", "Photo and words"], "as it starts");
+  eq(order(), ["Hero", "Photo and words"], "as it starts");
   click(d.querySelector('[data-sec-down="0"]'));
-  eq(order(), ["Photo and words", "Opening"], "moved");
+  eq(order(), ["Photo and words", "Hero"], "moved");
   assert(!d.getElementById("wsUndo").disabled, "Undo is offered");
   click(d.getElementById("wsUndo"));
-  eq(order(), ["Opening", "Photo and words"], "and back again");
+  eq(order(), ["Hero", "Photo and words"], "and back again");
   await settle(900);
   eq(sent.filter((x) => x.action === "save").pop().draft.pages[0].sections[0].type, "hero", "and saved that way");
   click(d.querySelector('[data-edit-sec="1"]'));

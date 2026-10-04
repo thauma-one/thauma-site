@@ -93,6 +93,46 @@ export const SECTIONS = {
 export const ALIGNS = ["center", "left"];
 const NOT_RAISED = new Set(["hero", "photo"]);
 
+/* PLACEHOLDERS (Chase, 2026-10-03: "Placeholder words in every language
+   whenever a section is added … It helps those who may not know how to
+   phrase some things"). What an empty field suggests in the editor, in the
+   language being written; never saved, never shown to a visitor. The same
+   site words a new site starts with, so every language Thauma adds (and
+   translates on the Translate page) suggests in that language with no code
+   change. A pair is a heading's light and bold halves; "@name" is the
+   ministry's name. */
+const PH = {
+  hero:      { kicker: "kickerFill", heading: ["heroThin", "@name"], text: "heroText", button: "more" },
+  text:      { heading: ["aboutThin", "aboutBold"], text: "aboutFill", button: "more" },
+  photoText: { heading: ["missionThin", "missionBold"], text: "missionFill", button: "more" },
+  photo:     { caption: "captionFill" },
+  quote:     { quote: "quoteFill", who: "quoteWho" },
+  timeline:  { heading: ["timelineThin", "timelineBold"], text: "timelineFill" },
+  goals:     { heading: ["goalsThin", "goalsBold"], text: "goalsFill" },
+  prayer:    { heading: ["prayerThin", "prayerBold"], text: "prayerFill" },
+  videos:    { heading: ["videosThin", "videosBold"], text: "videosFill" },
+  newsletters: { heading: ["newsThin", "newsBold"], text: "newsFill" },
+  signup:    { heading: ["signupThin", "signupBold"], text: "signupFill" },
+  contact:   { heading: ["contactThin", "contactBold"], text: "contactFill" },
+  give:      { heading: ["giveThin", "giveBold"], text: "giveText", button: "giveBtn" },
+  links:     { heading: ["resourcesThin", "resourcesBold"], text: "resourcesFill" },
+  /* A link card in a Links section. */
+  item:      { title: "link1Title", text: "link1Text" },
+};
+
+/** Every section's suggested words in one language, as plain text. */
+export function placeholders(lang, name) {
+  const out = {};
+  for (const [type, fields] of Object.entries(PH)) {
+    out[type] = {};
+    for (const [f, key] of Object.entries(fields)) {
+      const one = (k) => (k === "@name" ? String(name || "").trim() : word(lang, k));
+      out[type][f] = Array.isArray(key) ? key.map(one).filter(Boolean).join(" ") : one(key);
+    }
+  }
+  return out;
+}
+
 /* ------------------------------------------------------- design, motion -- */
 
 /* Three looks, each with its own type and shape; the colors are the
@@ -210,7 +250,7 @@ export function joinHeading(thin, bold) {
 export function starter(kind, { name, langs, fallback, give }) {
   const L = langs && langs.length ? langs : ["en"];
   const heroMap = { kicker: "=", thin: "heroThin", bold: "=" + name + ".", text: "heroText" };
-  const hero = (variant) => section("hero", variant, L, heroMap, { photo: null, buttons: ["give", "stay"] });
+  const hero = (variant) => section("hero", variant, L, heroMap, { photo: null, buttons: ["give", "stay"], divider: true });
   const pages = {};
   PAGES.forEach((p) => { pages[p] = { id: p, on: false, label: {}, sections: [] }; });
 
@@ -333,6 +373,9 @@ export function safeLink(u) {
   const s = str(u, 500);
   const m = /^page:([a-z]+)$/.exec(s);
   if (m) return PAGES.includes(m[1]) ? s : "";
+  /* A section of the same page (Chase, 2026-10-03: "Jump to section" for
+     buttons that point at the same page). Its id, as sections store it. */
+  if (/^section:[a-z0-9]{2,24}$/i.test(s)) return s;
   return safeUrl(s);
 }
 
@@ -445,6 +488,9 @@ function cleanSection(raw, langs) {
   if (spec.buttons) {
     s.buttons = (Array.isArray(raw.buttons) ? raw.buttons : []).filter((b) => ["give", "stay", "contact"].includes(b)).slice(0, 2);
   }
+  /* The hero's line under the title (render.js): kept only when it was
+     chosen, so a hero saved before the option renders as it always did. */
+  if (raw.type === "hero" && typeof raw.divider === "boolean") s.divider = raw.divider;
   if (spec.items) {
     /* A card may carry a picture, and may point at one of the site's own
        pages as well as anywhere else. */

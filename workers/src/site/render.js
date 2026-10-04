@@ -139,6 +139,10 @@ a{color:var(--ink)}img{max-width:100%;display:block}
 /* header */
 .top{position:sticky;top:0;z-index:30;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
 .top .wrap{display:flex;align-items:center;gap:28px;min-height:68px}
+/* A button that jumps to a section lands it under the sticky header,
+   gliding there only for a visitor who has not asked for less motion. */
+main section[id]{scroll-margin-top:68px}
+@media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
 .brand{font:var(--thin) 19px/1 var(--display);color:var(--fg);text-decoration:none;letter-spacing:.02em;white-space:nowrap}
 .brand b{font-weight:var(--boldw)}.brand img{height:36px;width:auto}
 .nav{display:flex;gap:22px;flex-wrap:wrap;margin-left:auto;align-items:center}
@@ -191,10 +195,10 @@ html[data-buttons="glow"] .btn:hover{box-shadow:0 0 0 6px color-mix(in srgb,var(
 .hero-behind .hero-media:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 20%,color-mix(in srgb,var(--bg) 88%,transparent) 88%)}
 .hero-behind.has-photo{color:#fff}.hero-behind.has-photo .lede{color:rgba(255,255,255,.86)}.hero-behind.has-photo .btn:not(.solid){color:#fff}
 ${L.heroFg ? `.hero-behind:not(.has-photo),.hero-words{color:${L.heroFg}}.hero-behind:not(.has-photo) .lede,.hero-words .lede{color:${L.heroFg};opacity:.85}.hero-behind:not(.has-photo) .kicker,.hero-words .kicker{color:${L.heroFg}}
-.hero-behind:not(.has-photo) .btn.solid,.hero-words .btn.solid{background:${L.heroFg};color:${L.heroBg}}.hero-behind:not(.has-photo) .btn,.hero-words .btn{border-color:${L.heroFg};color:${L.heroFg}}` : ""}
+.hero-behind:not(.has-photo) .btn.solid,.hero-words .btn.solid{background:${L.heroFg};color:${L.heroBg}}.hero-behind:not(.has-photo) .rule,.hero-words .rule{background:${L.heroFg}}.hero-behind:not(.has-photo) .btn,.hero-words .btn{border-color:${L.heroFg};color:${L.heroFg}}` : ""}
 .hero-beside{align-items:center}.hero-beside .wrap{display:grid;grid-template-columns:1.1fr .9fr;gap:48px;align-items:center;padding:110px 0}
 .hero-beside .hero-media{display:none}.hero-beside .pic{aspect-ratio:4/5;border-radius:18px;overflow:hidden}.hero-beside .pic img{width:100%;height:100%;object-fit:cover}
-.hero-words{align-items:center;text-align:center;background:var(--herobg)}.hero-words .wrap{padding:130px 0 110px}.hero-words .lede{margin:0 auto}.hero-words .btns{justify-content:center}
+.hero-words{align-items:center;text-align:center;background:var(--herobg)}.hero-words .wrap{padding:130px 0 110px}.hero-words .lede{margin:0 auto}.hero-words .btns{justify-content:center}.hero-words .rule{margin-left:auto;margin-right:auto}
 /* the monogram opening — chaseroush.com's: initials behind the title, a short
    rule, a spaced line, a picture beside it, a cue to scroll */
 .hero-monogram{align-items:center;background:var(--herobg)}
@@ -467,16 +471,23 @@ function renderSection(sec, ctx) {
       const cue = `<button type="button" class="scrollcue" aria-hidden="true" tabindex="-1"><i></i>` +
         `<svg class="cue-arrow" viewBox="0 0 24 24"><path d="M5 9l7 7 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>` +
         `<b class="cue-mouse"><em></em></b><span>${esc(word(lang, "scroll"))}</span></button>`;
+      /* THE LINE UNDER THE TITLE (Chase, 2026-10-03: "a splash of color",
+         chaseroush.com's .hero-divider): a short rule in the accent. The
+         monogram always had one, so it keeps it unless switched off; the
+         other layouts show it only when switched on — a site saved before
+         the option looks exactly as it did. New heroes start with it on. */
+      const lined = sec.variant === "monogram" ? sec.divider !== false : sec.divider === true;
+      const line = lined ? `<span class="rule m" aria-hidden="true"></span>` : "";
       if (sec.variant === "monogram") {
         const initials = initialsOf(ctx.name);
         const h = heading(w("heading"), "h1");
         return `<section class="hero hero-monogram"><div class="wrap"><div class="mono-words"><span class="mono-mark" aria-hidden="true">${esc(initials)}</span>` +
-          `${w("kicker") ? `<p class="kicker m">${esc(w("kicker"))}</p>` : ""}${h}<span class="rule m" aria-hidden="true"></span>` +
+          `${w("kicker") ? `<p class="kicker m">${esc(w("kicker"))}</p>` : ""}${h}${line}` +
           `${w("text") ? `<p class="spaced m">${inline(w("text"))}</p>` : ""}${btns ? `<div class="btns m">${btns}</div>` : ""}</div>` +
           `${sec.photo ? `<div class="mono-pic m">${img(sec.photo)}</div>` : ctx.draft ? `<div class="pic m">${wanted()}</div>` : ""}</div>` +
           `${cue}</section>`;
       }
-      const words = `${w("kicker") ? `<p class="kicker m">${esc(w("kicker"))}</p>` : ""}${heading(w("heading"), "h1")}` +
+      const words = `${w("kicker") ? `<p class="kicker m">${esc(w("kicker"))}</p>` : ""}${heading(w("heading"), "h1")}${line}` +
         `${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}${btns ? `<div class="btns m">${btns}</div>` : ""}`;
       if (sec.variant === "beside") {
         return `<section class="hero hero-beside"><div class="wrap"><div>${words}</div>${sec.photo ? `<div class="pic m ${photoMotion === "zoom" ? "kb" : ""}">${img(sec.photo)}</div>` : ctx.draft ? `<div class="pic m">${wanted()}</div>` : ""}</div>${cue}</section>`;
@@ -619,6 +630,9 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
     href, label, name: site.display_name || "",
     linkHref: (link) => {
       if (!link) return "";
+      /* A section of THIS page: its anchor, or nowhere once it is gone. */
+      const sec = /^section:([a-z0-9]{2,24})$/i.exec(link);
+      if (sec) return page.sections.some((s) => s.id === sec[1]) ? "#s-" + sec[1] : "";
       const m = /^page:([a-z]+)$/.exec(link);
       if (!m) return link;
       return pages.some((p) => p.id === m[1]) ? href(m[1]) : "";
@@ -628,15 +642,15 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
   /* In a preview every section is there, even one with nothing to show yet
      — a Links section with no links, goals before any are published — so
      the owner can see it was added (Chase, 2026-09-29: the Links section
-     "doesn't get added properly"). Each carries its id, for the editor to
-     scroll to the one being edited. Visitors see neither. */
+     "doesn't get added properly"). Visitors never see an empty one. Every
+     section carries its id: the editor scrolls to the one being edited, and
+     a button can jump to it (section:<id>). */
   const body = page.sections.map((s) => {
     const html = renderSection(s, ctx);
-    if (!draft) return html;
     if (!html) {
-      return `<section id="s-${esc(s.id)}" class="empty"><div class="wrap"><p>${esc(word(lang, "emptyPreview"))}</p></div></section>`;
+      return draft ? `<section id="s-${esc(s.id)}" class="empty"><div class="wrap"><p>${esc(word(lang, "emptyPreview"))}</p></div></section>` : "";
     }
-    return html.replace(/^<section/, `<section id="s-${esc(s.id)}"`);
+    return html.replace(/^<section([^>]*)>/, `<section$1 id="s-${esc(s.id)}">`);
   }).join("\n");
   const name = String(site.display_name || "").trim();
   const parts = name.split(/\s+/);
@@ -795,6 +809,10 @@ addEventListener('scroll',function(){if(!tick){tick=true;requestAnimationFrame(f
 document.addEventListener('click',function(e){[].forEach.call(document.querySelectorAll('details.langmenu[open]'),function(m){if(!m.contains(e.target))m.removeAttribute('open')})});
 document.addEventListener('keydown',function(e){if(e.key==='Escape')[].forEach.call(document.querySelectorAll('details.langmenu[open]'),function(m){m.removeAttribute('open')})});
 var cue=document.querySelector('.scrollcue');if(cue)cue.addEventListener('click',function(){var n=cue.closest('section').nextElementSibling;if(n)n.scrollIntoView({behavior:still?'auto':'smooth'})});
+document.addEventListener('click',function(e){var h=e.target.closest&&e.target.closest('[data-widget="roadmap"]');if(!h)return;
+ setTimeout(function(){var p=h.shadowRoot&&h.shadowRoot.querySelector('.detail:not(.leaving)'),s=h.closest('section'),t=s&&(s.querySelector('.h')||s);if(!p||!t)return;
+  var top=document.querySelector('.top'),off=(top?top.getBoundingClientRect().height:0)+12,need=p.getBoundingClientRect().bottom-(innerHeight-16),room=t.getBoundingClientRect().top-off;
+  var by=Math.min(need,room);if(by>0)scrollBy({top:by,behavior:still?'auto':'smooth'})},380)});
 })();`;
 
 /** The two pages a visitor can hit that are not a page: not there, and not yet. */

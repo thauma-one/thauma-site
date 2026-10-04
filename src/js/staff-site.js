@@ -483,11 +483,30 @@
      one thing that kind needs. (Chase, 2026-09-29, of the dropdown's
      "Another address…": "I don't know what that is there for.") A page that
      is switched off is still offered, marked; the link shows once it is on. */
+  /* The other sections of the page being edited, for a button that jumps
+     within it ("section:<id>"). Only a section's own links can: a footer or
+     custom link is on every page, so "this page" means nothing there. */
+  function jumpTargets(key) {
+    if (!/^(sec|item):/.test(key)) return [];
+    var self = currentPage().sections[+key.split(':')[1]];
+    return currentPage().sections.filter(function (x) { return x !== self; });
+  }
+  function sectionName(x) {
+    var w = (x.words && (x.words[state.langA] || x.words[state.doc.fallback])) || {};
+    var words = String(w.heading || w.quote || w.caption || '').replace(/<[^>]*>/g, '').trim();
+    return tr('ws.sec.' + x.type) + (words ? ' · ' + words : '');
+  }
   function linkPicker(key, value, allowNone) {
     var v = value || '';
-    var kind = !v ? 'none' : v.indexOf('page:') === 0 ? 'page' : 'url';
-    var kinds = (allowNone ? ['none'] : []).concat(['page', 'url']);
+    var kind = !v ? 'none' : v.indexOf('page:') === 0 ? 'page' : v.indexOf('section:') === 0 ? 'section' : 'url';
+    var targets = jumpTargets(key);
+    var kinds = (allowNone ? ['none'] : []).concat(['page'], targets.length || kind === 'section' ? ['section'] : [], ['url']);
     var html = chips('linkkind:' + key, kinds, kind, function (k) { return tr('ws.link.kind.' + k); });
+    if (kind === 'section') {
+      html += '<select data-link="' + esc(key) + '">' + targets.map(function (x) {
+        return '<option value="section:' + esc(x.id) + '"' + (v === 'section:' + x.id ? ' selected' : '') + '>' + esc(sectionName(x)) + '</option>';
+      }).join('') + '</select>';
+    }
     if (kind === 'page') {
       html += '<select data-link="' + esc(key) + '">' + state.doc.pages.map(function (p) {
         var name = pageLabel(p, state.langA);
@@ -689,7 +708,9 @@
     if (state.sectab === 'links') {
       html += '<div class="ws-linkrows">' + (s.items || []).map(function (it, j) {
         var t = (it.words || {})[state.langA] || {}, k = i + ':' + j, open = state.openItem === j;
-        var where = !it.url || it.url === 'https://' ? tr('ws.link.nowhere') : it.url.indexOf('page:') === 0
+        var jump = it.url && it.url.indexOf('section:') === 0 &&
+          currentPage().sections.filter(function (x) { return 'section:' + x.id === it.url; })[0];
+        var where = !it.url || it.url === 'https://' ? tr('ws.link.nowhere') : jump ? sectionName(jump) : it.url.indexOf('page:') === 0
           ? pageLabel(state.doc.pages.filter(function (x) { return 'page:' + x.id === it.url; })[0] || { id: it.url.slice(5) }, state.langA) : it.url.replace(/^https?:\/\//, '');
         var head = '<div class="ws-linkrow' + (open ? ' is-open' : '') + '">' +
           (it.photo ? '<img src="' + esc(it.photo) + '" alt="">' : '') +
@@ -698,8 +719,8 @@
           '<button type="button" class="ws-icon del" data-item-remove="' + k + '" aria-label="' + esc(tr('ws.remove')) + '">✕</button></div>';
         if (!open) return head;
         return head + '<div class="ws-linkedit">' +
-          '<label class="fld"><span>' + esc(tr('ws.itemTitle')) + '</span><input type="text" data-item="' + k + ':title" value="' + esc(t.title || '') + '" lang="' + esc(state.langA) + '"></label>' +
-          '<label class="fld"><span>' + esc(tr('ws.itemText')) + '</span><input type="text" data-item="' + k + ':text" value="' + esc(t.text || '') + '" lang="' + esc(state.langA) + '"></label>' +
+          '<label class="fld"><span>' + esc(tr('ws.itemTitle')) + '</span><input type="text" data-item="' + k + ':title" value="' + esc(t.title || '') + '" placeholder="' + esc(ph('item', 'title')) + '" lang="' + esc(state.langA) + '"></label>' +
+          '<label class="fld"><span>' + esc(tr('ws.itemText')) + '</span><input type="text" data-item="' + k + ':text" value="' + esc(t.text || '') + '" placeholder="' + esc(ph('item', 'text')) + '" lang="' + esc(state.langA) + '"></label>' +
           '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.link.goesTo')) + '</span>' + linkPicker('item:' + k, it.url || 'https://', false) + '</div>' +
           '<div class="ws-sec-row">' + (it.photo ? '<img class="ws-thumb" src="' + esc(it.photo) + '" alt="">' : '') +
             '<label class="ghost-btn sm ws-file">' + esc(it.photo ? tr('ws.changePhoto') : tr('ws.choosePhoto')) + '<input type="file" accept="image/*" data-item-photo="' + k + '" hidden></label>' +
@@ -717,6 +738,13 @@
         html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.align')) + '</span>' +
           chips('align:' + i, ['center', 'left'], s.align || 'center', function (v) { return tr('ws.align.' + v); }) + '</div>';
       }
+      /* The hero's line under the title (render.js). Unset, the monogram
+         shows it and the rest do not — exactly as before the option. */
+      if (s.type === 'hero') {
+        var lined = s.variant === 'monogram' ? s.divider !== false : s.divider === true;
+        html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.divider')) + '</span>' +
+          chips('divider:' + i, ['on', 'off'], lined ? 'on' : 'off', function (v) { return tr('ws.divider.' + v); }) + '</div>';
+      }
       if (!FLAT[s.type]) {
         html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.bg')) + '</span>' +
           chips('raised:' + i, ['plain', 'raised'], s.raised ? 'raised' : 'plain', function (v) { return tr('ws.bg.' + v); }) + '</div>';
@@ -731,18 +759,26 @@
   /* One field. Headings, words and quotes are formatted boxes (bold, italic,
      underline, links); the rest are plain. */
   var RICH = { heading: 1, text: 1, quote: 1 };
+  /* What an empty field suggests, in the language being written (the site's
+     words, from the server; model.js placeholders). Never saved. */
+  function ph(type, f) {
+    var all = state.body.placeholders || {}, l = all[state.langA] || all.en || {};
+    return (l[type] && l[type][f]) || '';
+  }
   function field(i, f, value, refWords, type) {
     var label = '<span>' + esc(fieldName(type, f)) + '</span>';
+    var hint = ph(type, f) || (f === 'button' ? tr('ws.readMore') : '');
     if (RICH[f]) {
       var b = state.langB, r = b && refWords && refWords[b];
       return '<div class="fld ws-rfld">' + label +
         (r ? '<small class="ms-ref" lang="' + esc(b) + '">' + inlineHtml(r) + '</small>' : '') +
-        '<div class="rt rt-' + f + '" contenteditable="true" role="textbox" aria-multiline="' + (f !== 'heading') + '" data-rt="' + i + ':' + f + '" lang="' + esc(state.langA) + '">' +
+        '<div class="rt rt-' + f + '" contenteditable="true" role="textbox" aria-multiline="' + (f !== 'heading') + '" data-rt="' + i + ':' + f + '"' +
+        (hint ? ' data-ph="' + esc(hint) + '" aria-placeholder="' + esc(hint) + '"' : '') + ' lang="' + esc(state.langA) + '">' +
         inlineHtml(value, true) + '</div></div>';
     }
     return '<label class="fld">' + label + ref(refWords) +
       '<input type="text" data-sec-word="' + i + ':' + f + '" value="' + esc(value || '') + '"' +
-      (f === 'button' ? ' placeholder="' + esc(tr('ws.readMore')) + '"' : '') + ' lang="' + esc(state.langA) + '"></label>';
+      (hint ? ' placeholder="' + esc(hint) + '"' : '') + ' lang="' + esc(state.langA) + '"></label>';
   }
   /* Stored formatted words back into a box: only the marks it may hold, links
      kept only inside the box being edited. */
@@ -876,6 +912,7 @@
     var type = t.getAttribute('data-add-type'), spec = SECTIONS[type], words = {};
     state.doc.languages.forEach(function (l) { words[l] = {}; spec.words.forEach(function (f) { words[l][f] = ''; }); });
     var s = { id: uid(), type: type, variant: spec.variants[0], words: words };
+    if (type === 'hero') s.divider = true;
     if (spec.photo) s.photo = null;
     if (spec.buttons) s.buttons = ['give', 'stay'];
     if (spec.items) s.items = [];
@@ -1266,11 +1303,14 @@
       var val = d.value, name = d.chip;
       if (name.indexOf('variant:') === 0) { p.sections[+name.slice(8)].variant = val; drawSections(); }
       else if (name.indexOf('raised:') === 0) { p.sections[+name.slice(7)].raised = val === 'raised'; drawSections(); }
+      else if (name.indexOf('divider:') === 0) { p.sections[+name.slice(8)].divider = val === 'on'; drawSections(); }
       else if (name.indexOf('align:') === 0) { p.sections[+name.slice(6)].align = val; drawSections(); }
       else if (name.indexOf('linkkind:') === 0) {
         var key = name.slice(9);
         var firstPage = (state.doc.pages.filter(function (x) { return x.on && x.id !== 'home'; })[0] || state.doc.pages[0]).id;
-        setLink(key, val === 'none' ? '' : val === 'page' ? 'page:' + firstPage : 'https://');
+        var firstSec = jumpTargets(key)[0];
+        setLink(key, val === 'none' ? '' : val === 'page' ? 'page:' + firstPage :
+          val === 'section' ? (firstSec ? 'section:' + firstSec.id : '') : 'https://');
         if (state.tab === 'links') drawLinks(); else drawSections();
         var box = val === 'url' && $('wsRoot').querySelector('[data-link-url="' + key + '"]');
         if (box) box.focus();

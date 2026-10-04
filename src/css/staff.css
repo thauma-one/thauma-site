@@ -2704,6 +2704,11 @@ html.has-ai .ai-one{display:inline-flex;align-items:center;justify-content:cente
 .rt-heading{font:100 22px/1.3 var(--font-display)}.rt-heading b{font-weight:600}
 .rt-text{min-height:96px}
 .rt[contenteditable="false"]{opacity:.7;cursor:default}
+/* The suggestion in an empty box, styled like a field's placeholder. A box
+   emptied by deleting keeps a lone <br>, which :empty does not match. */
+.rt[data-ph]:empty::before,.rt[data-ph]:has(>br:only-child)::before{content:attr(data-ph);
+  color:var(--dim);opacity:.55;pointer-events:none}
+.rt[data-ph]:has(>br:only-child)>br{display:none}
 .ws-rfld{display:flex;flex-direction:column;gap:6px}
 .ws-fmt{position:absolute;z-index:200;display:flex;background:#EDF2F8;border-radius:6px;box-shadow:0 10px 24px -8px rgba(0,0,0,.7);overflow:hidden}
 .ws-fmt[hidden]{display:none}

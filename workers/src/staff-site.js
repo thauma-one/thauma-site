@@ -33,7 +33,7 @@ import { createDb } from "./lib/db.js";
 import { json, readJson } from "./lib/store.js";
 import { partnerFor } from "./staff-milestones.js";
 import { ensureSiteDns, removeSiteDns } from "./lib/site-dns.js";
-import { cleanDoc, starter, subdomainFrom, validSubdomain, PAGES, word } from "./site/model.js";
+import { cleanDoc, starter, subdomainFrom, validSubdomain, PAGES, word, placeholders } from "./site/model.js";
 import { lookFor } from "./embed-colour.js";
 import { changedAnswer } from "./lib/fresh.js";
 
@@ -165,6 +165,10 @@ export default {
            Editing ⇄ Reference (Chase, 2026-10-03). */
         page_names: Object.fromEntries(catalog.map((l) =>
           [l.code, Object.fromEntries(PAGES.map((id) => [id, word(l.code, id)]))])),
+        /* What an empty field suggests, per language and section (model.js
+           placeholders): shown in the editor only, never saved. */
+        placeholders: Object.fromEntries(catalog.map((l) =>
+          [l.code, placeholders(l.code, partner.display_name)])),
         /* The ministry's colors (Sharing), which the site wears. */
         theme: { accent: theme.accent, accent2: theme.accent2 },
         can: { edit: isEditor, owner: isOwner },

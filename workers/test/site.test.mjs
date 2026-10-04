@@ -8,6 +8,7 @@ import { renderPage, esc } from "../src/site/render.js";
 import { pickLang } from "../src/site/serve.js";
 import { removeSiteDns } from "../src/lib/site-dns.js";
 import { word } from "../src/site/model.js";
+import * as MODEL from "../src/site/model.js";
 import { readFileSync } from "node:fs";
 
 let pass = 0, fail = 0;
@@ -231,7 +232,7 @@ check("the language menu is always a dropdown, by each language's own name, on a
 check("the opening fills the screen, with an arrow that bounces until the visitor scrolls", () => {
   const html = page(starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" }));
   assert(/\.hero\{[^}]*min-height:calc\(100svh - 69px\)/.test(html), "the whole first screen");
-  assert(/<section class="hero hero-behind[^"]*">[\s\S]*?<button type="button" class="scrollcue"/.test(html), "the arrow");
+  assert(/<section class="hero hero-behind[^"]*"[^>]*>[\s\S]*?<button type="button" class="scrollcue"/.test(html), "the arrow");
   assert(/@keyframes cue/.test(html) && /html\.scrolled \.scrollcue\{opacity:0/.test(html), "bouncing, and gone once scrolled");
   assert(/\.scrollcue,\.cue-mouse em\{animation:none\}/.test(html), "still, for anyone who asked for less motion");
   /* Design › Motion › Scroll hint picks which (Chase, 2026-10-01). */
@@ -252,8 +253,8 @@ check("the ministry's widgets sit centered unless put left; the newest newslette
   const d = blankWith([{ type: "newsletters", variant: "latest", words: { en: { bold: "News" } } },
                        { type: "timeline", align: "left", words: { en: { bold: "Road" } } }]);
   const html = page(d, "home", "en", { payload: { ...payload, milestones: [{ id: "m" }], mailings: mail } });
-  assert(/<section class="data al-center">/.test(html), "centered, by default");
-  assert(/<section class="data al-left">/.test(html), "left, when chosen");
+  assert(/<section class="data al-center"[^>]*>/.test(html), "centered, by default");
+  assert(/<section class="data al-left"[^>]*>/.test(html), "left, when chosen");
   assert(html.includes('<a class="latest m" href="https://thauma.one/archive/chase-roush/news/september/">'), "the newest");
   assert(!html.includes('href="https://thauma.one/archive/chase-roush/news/august/"'), "only the newest is linked");
   assert(html.includes('<a href="https://thauma.one/archive/chase-roush/news/" target="_blank" rel="noopener">See past newsletters</a>'), "the rest, at the list's archive");
@@ -476,6 +477,98 @@ check("a Band is a band, and Raised changes it, on Give and Sign-up, in every lo
       assert(bgs[1].band !== bgs[1].page, `${label}: the raised band is the page's color`);
     }
   }
+});
+
+/* ------------------------------------------------- the hero's line (2026-10-03) */
+
+check("a new site's hero has the accent line under its title; it can be hidden", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en", "hr"], fallback: "en" });
+  const hero = () => page(d).match(/<section class="hero[\s\S]*?<\/section>/)[0];
+  assert(/<h1[\s\S]*?<\/h1><span class="rule m"/.test(hero()), "no line right under the title");
+  d.pages[0].sections[0].divider = false;
+  assert(!/class="rule/.test(hero()), "hidden, and still there");
+});
+
+check("a hero saved before the option looks as it did: no line, except the monogram's own", () => {
+  for (const [variant, want] of [["behind", false], ["words", false], ["beside", false], ["monogram", true]]) {
+    const d = starter("full", { name: "Chase Roush", langs: ["en", "hr"], fallback: "en" });
+    const s = d.pages[0].sections[0];
+    delete s.divider; s.variant = variant;
+    const html = page(d).match(/<section class="hero[\s\S]*?<\/section>/)[0];
+    eq(/class="rule/.test(html), want, `${variant} without a saved choice`);
+  }
+  const d = starter("full", { name: "Chase Roush", langs: ["en", "hr"], fallback: "en" });
+  d.pages[0].sections[0].divider = "yes please";
+  eq("divider" in cleanDoc(d, ["en", "hr"]).pages[0].sections[0], false, "only a real yes or no is kept");
+});
+
+check("the line is centered on a centered hero, and wears the hero's own ink on a Bold look", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en", "hr"], fallback: "en" });
+  d.pages[0].sections[0].variant = "words";
+  const html = page(d);
+  assert(/\.hero-words \.rule\{margin-left:auto;margin-right:auto\}/.test(html), "not centered");
+  d.design.look = "bold";
+  assert(/\.hero-words \.rule\{background:/.test(page(d)), "an accent line on an accent background");
+});
+
+/* ---------------------------------------- jump to a section (2026-10-03) */
+
+check("a button can jump to a section of the same page, which a visitor's page can land on", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en", "hr"], fallback: "en" });
+  const [hero, second] = d.pages[0].sections;
+  eq(cleanDoc({ ...d, pages: d.pages.map((p, i) => i ? p : { ...p, sections: [{ ...hero, link: "section:" + second.id }, second] }) }, ["en", "hr"])
+    .pages[0].sections[0].link, "section:" + second.id, "kept on save");
+  eq(cleanDoc({ ...d, pages: d.pages.map((p, i) => i ? p : { ...p, sections: [{ ...hero, link: "section:<x>" }, second] }) }, ["en", "hr"])
+    .pages[0].sections[0].link, "", "a malformed one is dropped");
+  hero.link = "section:" + second.id; hero.words.en.button = "Read more";
+  const html = page(d);
+  assert(html.includes(`href="#s-${second.id}"`), "the button does not point at the section");
+  assert(new RegExp(`<section[^>]*id="s-${second.id}"`).test(html), "a VISITOR's page has no anchor to land on");
+  assert(/main section\[id\]\{scroll-margin-top:68px\}/.test(html), "it would land under the sticky header");
+  assert(/@media \(prefers-reduced-motion:no-preference\)\{html\{scroll-behavior:smooth\}\}/.test(html),
+    "smooth only for those who allow motion");
+});
+
+check("a jump to a section that is gone goes nowhere, and a page's sections never point at another page's", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en", "hr"], fallback: "en" });
+  d.pages[0].sections[0].link = "section:gone12";
+  assert(!/href="#s-gone12"/.test(page(d)), "a dead anchor");
+  const about = d.pages.find((p) => p.id === "about");
+  d.pages[0].sections[0].link = "section:" + about.sections[0].id;
+  assert(!page(d).includes(`#s-${about.sections[0].id}`), "jumped into another page");
+});
+
+check("opening a milestone scrolls just enough, never past the timeline's title", () => {
+  const html = page(starter("full", { name: "Chase Roush", langs: ["en", "hr"], fallback: "en" }));
+  assert(/closest\('\[data-widget="roadmap"\]'\)/.test(html), "the timeline is not watched");
+  assert(/by=Math\.min\(need,room\)/.test(html), "the scroll is not capped at the title");
+  assert(/behavior:still\?'auto':'smooth'\}\)\},380\)/.test(html), "it ignores reduced motion");
+});
+
+/* ---------------------------------------------------------- placeholders */
+
+check("every field of every section suggests words, in every language Thauma has", () => {
+  const { placeholders, builtInLangs } = MODEL;
+  assert(typeof placeholders === "function", "placeholders() is missing");
+  for (const lang of builtInLangs()) {
+    const P = placeholders(lang, "Chase Roush");
+    for (const [type, spec] of Object.entries(SECTIONS)) {
+      for (const f of spec.words) {
+        assert(P[type] && P[type][f], `${lang}: ${type}.${f} suggests nothing`);
+      }
+    }
+    assert(P.item.title && P.item.text, `${lang}: a link card suggests nothing`);
+  }
+});
+
+check("suggestions are in the language written, and the hero names the ministry", () => {
+  const { placeholders } = MODEL;
+  assert(typeof placeholders === "function", "placeholders() is missing");
+  const hr = placeholders("hr", "Chase Roush");
+  eq(hr.hero.heading, word("hr", "heroThin") + " Chase Roush", "hero heading, Croatian");
+  eq(hr.quote.quote, word("hr", "quoteFill"), "a quote, Croatian");
+  eq(hr.text.heading, word("hr", "aboutThin") + " " + word("hr", "aboutBold"), "a heading's two halves as one line");
+  assert(hr.prayer.text !== placeholders("en", "x").prayer.text, "prayer's words are not translated");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);
