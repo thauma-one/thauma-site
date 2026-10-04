@@ -147,6 +147,43 @@ await check("one section at a time: only its tabs; formatted words saved clean",
     "Serving <b>Croatia</b>\nchurches <i>well</i>", "bold, italic and lines kept; the rest gone");
 });
 
+await check("words can take a size and a color, a quick pick or any color; a word inside a colored phrase can change alone", async () => {
+  const { w, d, sent, click, pages } = await boot();
+  pages();
+  click(d.querySelector('[data-open-page="home"]'));
+  click(d.querySelector('[data-edit-sec="1"]'));
+  const box = d.querySelector('[data-rt="1:text"]');
+  box.innerHTML = "one two three";
+  const select = (node, a, b) => {
+    const r = d.createRange(); r.setStart(node, a); r.setEnd(node, b);
+    const sel = w.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+  };
+  const bar = (q) => d.querySelector(".ws-fmt " + q);
+  const saved = async () => { await settle(900); return sent.filter((x) => x.action === "save").pop().draft.pages[0].sections[1].words.en.text; };
+
+  select(box.firstChild, 4, 7);                       // "two"
+  click(bar('[data-fmt="color"]'));
+  assert(!bar('[data-fmt-row="color"]').hidden, "the color row opens");
+  click(bar('[data-fmt-c="red"]'));
+  eq(await saved(), 'one <span data-c="red">two</span> three', "a quick pick");
+
+  select(box.querySelector('[data-c="red"]').firstChild, 1, 2);   // the "w"
+  click(bar('[data-fmt-c="blue"]'));
+  eq(await saved(), 'one <span data-c="red">t</span><span data-c="blue">w</span><span data-c="red">o</span> three', "split out of the red");
+
+  select(box.lastChild, 1, 6);                        // "three"
+  click(bar('[data-fmt-sz="lg"]'));
+  eq(await saved(), 'one <span data-c="red">t</span><span data-c="blue">w</span><span data-c="red">o</span> <span data-sz="lg">three</span>', "a size");
+
+  select(box.firstChild, 0, 3);                       // "one"
+  const pick = bar("[data-fmt-any]");
+  pick.dispatchEvent(new w.MouseEvent("mousedown", { bubbles: true }));
+  pick.value = "#ff00aa";
+  pick.dispatchEvent(new w.Event("input", { bubbles: true }));
+  assert(/^<span data-c="#ff00aa">one<\/span>/.test(await saved()), "any color");
+  assert(box.querySelector('[data-c="#ff00aa"]').style.color, "a picked color shows in the box");
+});
+
 await check("where a button goes: nothing, a page, or a web address — three plain choices", async () => {
   const { w, d, sent, click, pages } = await boot();
   pages();

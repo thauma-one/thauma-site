@@ -478,5 +478,32 @@ check("a Band is a band, and Raised changes it, on Give and Sign-up, in every lo
   }
 });
 
+/* ---- sizes and colors within the words (2026-10-03) ---- */
+
+check("a size and a color may sit on any words; only names and #rrggbb are kept, never a style", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  d.pages[0].sections[1].words.en.text = 'A <span data-sz="lg" data-c="red">big red</span> <span data-c="#FF00AA"><b>pink</b></span> ' +
+    '<span style="color:red" data-c="url(x)">plain</span> <span data-sz="huge">also</span>';
+  const t = cleanDoc(d, ["en"]).pages[0].sections[1].words.en.text;
+  eq(t, 'A <span data-sz="lg" data-c="red">big red</span> <span data-c="#ff00aa"><b>pink</b></span> plain also', "stored");
+});
+
+check("the page draws them: named sizes and tones as classes in the site's shades, a picked color inline", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  d.pages[0].sections[1].words.en.text = 'A <span data-sz="lg" data-c="red">big red</span> <span data-c="#ff00aa">pink</span> <span data-c="accent">ours</span>';
+  const night = page(d);
+  assert(night.includes('<span class="ts-lg tc-red">big red</span>'), "size and tone classes");
+  assert(night.includes('<span style="color:#ff00aa">pink</span>'), "picked color inline");
+  assert(night.includes('<span class="tc-accent">ours</span>'), "the site's accent");
+  assert(!/data-c=|data-sz=/.test(night.replace(/<script[\s\S]*?<\/script>/g, "")), "the stored meaning never reaches the page");
+  assert(/--t-red:#FF8A80/.test(night), "a dark site gets the dark-ground shade");
+  d.design.look = "paper";
+  assert(/--t-red:#B42318/.test(page(d)), "a light site gets the light-ground shade");
+  d.design.look = "custom"; d.design.mode = "auto"; d.design.colors = { background: "#FFFFFF", accent: "#1AE4FF" };
+  const auto = page(d);
+  assert(/--t-red:#B42318/.test(auto) && /prefers-color-scheme:dark[^}]*--t-red:#FF8A80/.test(auto),
+    "a site that follows the device has both shades");
+});
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

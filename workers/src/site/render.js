@@ -18,6 +18,7 @@
  * of it switched off for anyone whose device asks for less motion.
  */
 import { word, SECTIONS, plainOf } from "./model.js";
+import { TONES, HEX_COLOR, SIZE_NAMES } from "../lib/tones.js";
 import { readable, onColor, alpha, luminance, companion, hexToHsl, hslToHex } from "../embed-colour.js";
 
 export function esc(s) {
@@ -125,12 +126,35 @@ function bands(P) {
   return `--band:${mix(P.bg, P.acc, 0.1)};--band2:${mix(P.panel, P.acc, 0.18)};`;
 }
 
+/* The quick-pick text colors (lib/tones.js) as variables: each in the shade
+   made for this ground, light or dark. */
+function toneVars(scheme) {
+  return Object.entries(TONES).map(([k, v]) => `--t-${k}:${v[scheme === "dark" ? 1 : 0]};`).join("");
+}
+
+/**
+ * A formatted field's size and color spans (stored as meaning by
+ * model.richClean) as the page draws them: a named size or tone as a class,
+ * a picked #rrggbb inline. Nothing else of the attribute survives.
+ */
+export function styledSpans(html) {
+  return String(html || "").replace(/<span\b([^>]*)>/g, (m0, attrs) => {
+    const sz = /data-sz="([a-z]+)"/.exec(attrs), c = /data-c="([^"]+)"/.exec(attrs);
+    const cls = [];
+    let style = "";
+    if (sz && SIZE_NAMES.includes(sz[1])) cls.push("ts-" + sz[1]);
+    if (c && HEX_COLOR.test(c[1])) style = ` style="color:${c[1].toLowerCase()}"`;
+    else if (c && (c[1] === "accent" || c[1] === "dim" || TONES[c[1]])) cls.push("tc-" + c[1]);
+    return `<span${cls.length ? ` class="${cls.join(" ")}"` : ""}${style}>`;
+  });
+}
+
 function css(L, design) {
   return `
 :root{--bg:${L.bg};--panel:${L.panel};--fg:${L.fg};--dim:${L.dim};--line:${L.line};--acc:${L.acc};--acc2:${L.acc2};--ink:${L.ink};--on-acc:${L.onAcc};--herobg:${L.heroBg};${bands(L)}
---display:${L.display};--body:${L.body};--thin:${L.thin};--boldw:${L.boldW};color-scheme:${L.scheme}}
+--display:${L.display};--body:${L.body};--thin:${L.thin};--boldw:${L.boldW};${toneVars(L.scheme)}color-scheme:${L.scheme}}
 ${L.alt ? `@media (prefers-color-scheme:dark){:root{--bg:${L.alt.bg};--panel:${L.alt.panel};--fg:${L.alt.fg};--dim:${L.alt.dim};--line:${L.alt.line};` +
-  `--acc:${L.alt.acc};--acc2:${L.alt.acc2};--ink:${L.alt.ink};--on-acc:${L.alt.onAcc};--herobg:${L.alt.heroBg};${bands(L.alt)}color-scheme:dark}}` : ""}
+  `--acc:${L.alt.acc};--acc2:${L.alt.acc2};--ink:${L.alt.ink};--on-acc:${L.alt.onAcc};--herobg:${L.alt.heroBg};${bands(L.alt)}${toneVars("dark")}color-scheme:dark}}` : ""}
 *{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--fg);font:400 17px/1.65 var(--body);-webkit-font-smoothing:antialiased}
 a{color:var(--ink)}img{max-width:100%;display:block}
@@ -173,6 +197,11 @@ main section{padding:88px 0}
 main section + section{border-top:1px solid var(--line)}
 .h{font:var(--thin) clamp(30px,4.4vw,52px)/1.1 var(--display);margin:0 0 20px;letter-spacing:-.01em}
 .h b{font-weight:var(--boldw)}
+/* Sizes and colors within formatted words (Chase, 2026-10-03), relative to
+   the words around them, so a large word in a heading is larger still. */
+.ts-sm{font-size:.82em}.ts-lg{font-size:1.25em}.ts-xl{font-size:1.6em}
+.tc-accent{color:var(--ink)}.tc-dim{color:var(--dim)}
+${Object.keys(TONES).map((k) => `.tc-${k}{color:var(--t-${k})}`).join("")}
 .kicker{font:600 12px var(--body);letter-spacing:.28em;text-transform:uppercase;color:var(--ink);margin:0 0 16px}
 .lede{font-size:clamp(17px,1.6vw,20px);color:var(--dim);max-width:60ch;margin:0}
 .prose p{margin:0 0 1em;max-width:68ch}.prose p:last-child{margin-bottom:0}
@@ -423,7 +452,7 @@ const rel = (href) => (/^https?:/.test(href) ? ' rel="noopener"' : "");
 function renderSection(sec, ctx) {
   const { lang, fallback } = ctx;
   const raw = (f) => wf(sec, lang, fallback, f);
-  const rich = (x) => String(x || "").replace(/href="page:([a-z]+)"/g, (m0, id) => `href="${esc(ctx.linkHref("page:" + id) || "#")}"`);
+  const rich = (x) => styledSpans(String(x || "").replace(/href="page:([a-z]+)"/g, (m0, id) => `href="${esc(ctx.linkHref("page:" + id) || "#")}"`));
   /* Formatted fields come out ready for the page; plain ones are escaped where used. */
   const w = (f) => (f === "heading" || f === "quote") ? rich(raw(f)).replace(/\n/g, "<br>") : f === "text" ? rich(raw(f)) : raw(f);
   const inline = (x) => String(x || "").replace(/\n/g, "<br>");

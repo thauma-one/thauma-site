@@ -55,6 +55,8 @@
 /* Tags a newsletter may contain. Everything else is unwrapped — its CONTENT is
    kept and its tag discarded — rather than deleted, because silently losing a
    paragraph somebody wrote is worse than losing its styling. */
+import { TONES, isColor, HEX_COLOR } from "./tones.js";
+
 const KEEP = new Set([
   "p", "br", "strong", "em", "u", "s",
   "h2", "h3",
@@ -86,19 +88,10 @@ const SIZES = { sm: "13.5px", lg: "19px", xl: "23px" };
 /* A FEW TONES BESIDES THE BRAND, each with a light-email and a dark-email
    shade, so a colored word stays readable on either card (both pass 4.5:1).
    Still a fixed palette, not a picker: the reason above has not changed. */
-const TONES = {
-  red:   ["#B42318", "#FF8A80"],
-  green: ["#1B7F4B", "#6FE3A6"],
-  blue:  ["#1D5FC2", "#8DB8FF"],
-  gold:  ["#9A5B00", "#F2C14E"],
-};
-const COLORS = new Set(["accent", "dim", ...Object.keys(TONES)]);
-/* ANY COLOR TOO (Chase, 2026-10-03: "a full palette, with a few
-   predetermined quick picks"). The named tones above are the quick picks and
-   keep their light/dark shades; a picked color is a plain #rrggbb, checked by
-   shape here and written inline as is. */
-const HEX = /^#[0-9a-f]{6}$/i;
-const isColor = (v) => COLORS.has(v) || HEX.test(v);
+/* The tones themselves, and ANY #rrggbb besides them (Chase, 2026-10-03: "a
+   full palette, with a few predetermined quick picks"), live in lib/tones.js
+   so the Site Creator means the same by a color name. */
+const HEX = HEX_COLOR;
 
 /* PERSONAL WORDS: a span naming a variable, filled per recipient by render().
    The span's own text is only the editor's label and never reaches a reader;
