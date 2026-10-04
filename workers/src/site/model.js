@@ -27,6 +27,7 @@
    partner site speaks without anybody changing this code. A word a
    language has not been given yet is its English one. */
 import { wordsFor as sharedWords } from "../lib/mail-i18n.js";
+import { cleanColor, SIZE_NAMES } from "../lib/tones.js";
 
 let WORDS = null;
 function words() {
@@ -88,9 +89,23 @@ export const SECTIONS = {
   give:      { variants: ["band", "card"], words: ["heading", "text", "button"] },
   links:     { variants: ["list", "cards"], words: ["heading", "text"], items: true, align: true },
 };
-/* The ministry's widgets and lists sit centered unless the owner puts them
-   left (Chase, 2026-09-29: "the embed codes seem to be left aligned"). */
-export const ALIGNS = ["center", "left"];
+/* EVERY SECTION LINES UP (BACKLOG §3, 2026-10-03: "Alignment for every
+   section: left, right, center, indent. Buttons must follow their section's
+   alignment"). What a section gets when it has never been set is what it
+   already looked like, so no site moves:
+     - `align: true` above: the ministry's widgets and lists, centered
+       (Chase, 2026-09-29: "the embed codes seem to be left aligned");
+     - a Words section saved with the old Centered layout, the sign-up card,
+       and the opening in words alone: centered;
+     - everything else: left. */
+export const ALIGNS = ["left", "center", "right", "indent"];
+export function defaultAlign(type, variant) {
+  const spec = SECTIONS[type] || {};
+  if (spec.align) return "center";
+  if ((type === "text" && variant === "center") || (type === "signup" && variant === "card") ||
+      (type === "hero" && variant === "words")) return "center";
+  return "left";
+}
 const NOT_RAISED = new Set(["hero", "photo"]);
 
 /* PLACEHOLDERS (Chase, 2026-10-03: "Placeholder words in every language
@@ -394,8 +409,10 @@ const WORD_MAX = { kicker: 80, heading: 400, text: 6000, quote: 900, who: 120, c
 /* ------------------------------------------------------ formatted words -- */
 
 /* Bold, italic, underline and links (Chase, 2026-09-29: "options for text
-   bolding, underlining, and italicizing"). These fields keep them; every
-   other word stays plain text. */
+   bolding, underlining, and italicizing"), and since 2026-10-03 a size and a
+   color on any run of words ("different sizes and colors WITHIN one text
+   box"): <span data-sz data-c>, the same names the Mail composer stores
+   (lib/tones.js). These fields keep them; every other word stays plain. */
 export const RICH = new Set(["heading", "text", "quote"]);
 
 const ENT = { amp: "&", lt: "<", gt: ">", quot: '"', "#39": "'", apos: "'", nbsp: " " };
@@ -403,8 +420,9 @@ const decode = (t) => t.replace(/&(amp|lt|gt|quot|#39|apos|nbsp);/g, (_, e) => E
   .replace(/&#(\d{1,6});/g, (_, n) => String.fromCodePoint(Math.min(+n, 0x10ffff)));
 
 /**
- * Formatted words as they may be stored: only <b>, <i>, <u> and <a href>
- * (an address safeLink allows), every tag closed, all other text escaped,
+ * Formatted words as they may be stored: only <b>, <i>, <u>, <a href> (an
+ * address safeLink allows) and <span data-sz data-c> (a size and a color
+ * lib/tones.js allows), every tag closed, all other text escaped,
  * line breaks as "\n". Whatever a browser's editable box produces — <div>
  * per line, <strong>, <span style>, pasted pages — comes out as that. This
  * is the only way formatting reaches a page strangers read; the renderer
@@ -416,7 +434,7 @@ export function richClean(input, max = 6000) {
   s = s.replace(/<(script|style|template|noscript)[\s\S]*?<\/\1\s*>/gi, "");
   /* Blocks become line breaks. */
   s = s.replace(/<br\s*\/?>/gi, "\n").replace(/<\/(div|p|li|h[1-6]|blockquote)\s*>/gi, "\n");
-  const MAP = { b: "b", strong: "b", i: "i", em: "i", u: "u", a: "a" };
+  const MAP = { b: "b", strong: "b", i: "i", em: "i", u: "u", a: "a", span: "span" };
   const TAG = /<(\/?)([a-zA-Z][a-zA-Z0-9]*)([^>]*)>/g;
   let out = "", last = 0, m;
   const open = [];
@@ -427,8 +445,20 @@ export function richClean(input, max = 6000) {
     const t = MAP[m[2].toLowerCase()];
     if (!t) continue;
     if (m[1]) {
-      const k = open.lastIndexOf(t);
-      if (k !== -1) { for (let j = open.length - 1; j >= k; j--) out += "</" + open[j] + ">"; open.splice(k); }
+      /* A span that carried nothing usable was not written, but its close
+         still belongs to it ("~span"), not to the real span outside. */
+      let k = open.lastIndexOf(t);
+      if (t === "span") k = Math.max(k, open.lastIndexOf("~span"));
+      if (k !== -1) { for (let j = open.length - 1; j >= k; j--) if (open[j][0] !== "~") out += "</" + open[j].replace(/ .*/, "") + ">"; open.splice(k); }
+      continue;
+    }
+    if (t === "span") {
+      const at = (name) => { const x = new RegExp(name + '\\s*=\\s*(?:"([^"]*)"|\'([^\']*)\')', "i").exec(m[3]); return x ? decode(x[1] || x[2] || "") : ""; };
+      const sz = SIZE_NAMES.includes(at("data-sz")) ? at("data-sz") : "";
+      const c = cleanColor(at("data-c")) || "";
+      if (!sz && !c) { open.push("~span"); continue; }
+      out += "<span" + (sz ? ' data-sz="' + sz + '"' : "") + (c ? ' data-c="' + c + '"' : "") + ">";
+      open.push("span");
       continue;
     }
     if (t === "a") {
@@ -443,10 +473,10 @@ export function richClean(input, max = 6000) {
     open.push(t);
   }
   out += text(s.slice(last));
-  for (let j = open.length - 1; j >= 0; j--) out += "</" + open[j] + ">";
+  for (let j = open.length - 1; j >= 0; j--) if (open[j][0] !== "~") out += "</" + open[j] + ">";
   /* Empty marks and runs of blank lines go; so does anything too long,
      measured without its tags and cut as plain words. */
-  out = out.replace(/<(b|i|u)><\/\1>/g, "").replace(/\n{3,}/g, "\n\n").replace(/^\s+|\s+$/g, "");
+  out = out.replace(/<(b|i|u)><\/\1>|<span[^>]*><\/span>/g, "").replace(/\n{3,}/g, "\n\n").replace(/^\s+|\s+$/g, "");
   if (out.replace(/<[^>]+>/g, "").length > max) out = escHtml(decode(out.replace(/<[^>]+>/g, "")).slice(0, max));
   return out;
 }
@@ -484,7 +514,7 @@ function cleanSection(raw, langs) {
   if (spec.link) s.link = safeLink(raw.link);
   if (spec.link === "both") s.photoLink = !!raw.photoLink;
   if (!NOT_RAISED.has(raw.type)) s.raised = !!raw.raised;
-  if (spec.align) s.align = pick(raw.align, ALIGNS);
+  s.align = ALIGNS.includes(raw.align) ? raw.align : defaultAlign(raw.type, s.variant);
   if (spec.buttons) {
     s.buttons = (Array.isArray(raw.buttons) ? raw.buttons : []).filter((b) => ["give", "stay", "contact"].includes(b)).slice(0, 2);
   }
@@ -529,6 +559,11 @@ export function cleanDoc(raw, catalog) {
     return {
       id,
       on: id === "home" ? true : !!p.on,
+      /* The opening's scroll indicator, per page (2026-10-03: "A 'Show
+         scroll indicator' option per page"). Shown unless switched off, so
+         every page saved before keeps it. Which kind is still the site's
+         one choice (Design › Motion › Scroll hint). */
+      cue: p.cue !== false,
       label,
       sections: (Array.isArray(p.sections) ? p.sections : []).slice(0, 30).map((s) => cleanSection(s, langs)).filter(Boolean),
     };

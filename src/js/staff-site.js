@@ -373,7 +373,14 @@
     if (p.sectab) state.sectab = p.sectab;
   }
 
+  /* The site's own accent (Custom's, else the ministry's), so "Brand color"
+     shows in the boxes and the bar as the site will draw it. */
+  function siteAccent() {
+    var d = state.doc && state.doc.design, th = state.body && state.body.theme;
+    return (d && d.colors && d.colors.accent) || (th && th.accent) || '#1AE4FF';
+  }
   function draw() {
+    document.documentElement.style.setProperty('--ws-acc', siteAccent());
     keepPlace();
     if (state.tab === 'pages') drawPages();
     if (state.tab === 'design') drawDesign();
@@ -649,12 +656,21 @@
   }
 
   /* One section, alone. Only the tabs it has something for. */
+  /* What a section looks like before anybody lines it up: the same rule as
+     the server's (site/model.js defaultAlign), so nothing moves. */
+  function defaultAlign(s) {
+    if (SECTIONS[s.type].align) return 'center';
+    if ((s.type === 'text' && s.variant === 'center') || (s.type === 'signup' && s.variant === 'card') ||
+        (s.type === 'hero' && s.variant === 'words')) return 'center';
+    return 'left';
+  }
   function tabsFor(s) {
     var spec = SECTIONS[s.type], t = ['words'];
     if (spec.photo) t.push('photo');
     if (spec.buttons || spec.link === 'button' || spec.link === 'both' || s.type === 'give') t.push('buttons');
     if (spec.items) t.push('links');
-    if (spec.variants.length > 1 || !FLAT[s.type] || spec.align) t.push('look');
+    /* Every section lines up (2026-10-03), so every section has a Look. */
+    t.push('look');
     return t;
   }
 
@@ -730,13 +746,18 @@
     }
 
     if (state.sectab === 'look') {
-      if (spec.variants.length > 1) {
+      /* A Words section's old Left / Centered layout IS its alignment now. */
+      if (spec.variants.length > 1 && s.type !== 'text') {
         html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.layout')) + '</span>' +
           chips('variant:' + i, spec.variants, s.variant, function (v) { return tr('ws.v.' + s.type + '.' + v); }) + '</div>';
       }
-      if (spec.align) {
-        html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.align')) + '</span>' +
-          chips('align:' + i, ['center', 'left'], s.align || 'center', function (v) { return tr('ws.align.' + v); }) + '</div>';
+      html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.align')) + '</span>' +
+        chips('align:' + i, ['left', 'center', 'right', 'indent'], s.align || defaultAlign(s), function (v) { return tr('ws.align.' + v); }) + '</div>';
+      /* The opening's scroll indicator, for this page. Stored on the page;
+         offered here, where it shows. Not offered while the site's Scroll
+         hint is None: there would be nothing to show. */
+      if (s.type === 'hero' && (state.doc.design.motion || {}).cue !== 'none') {
+        html += '<div class="ws-field">' + sw('data-page-cue="' + state.doc.pages.indexOf(p) + '"', p.cue !== false, tr('ws.cueOnPage')) + '</div>';
       }
       /* The hero's line under the title (render.js). Unset, the monogram
          shows it and the rest do not — exactly as before the option. */
@@ -783,8 +804,11 @@
   /* Stored formatted words back into a box: only the marks it may hold, links
      kept only inside the box being edited. */
   function inlineHtml(v, withLinks) {
-    var out = String(v || '').replace(/<(?!\/?(b|i|u)>)(?!a href="[^"]*">)(?!\/a>)[^>]*>/g, '');
+    var out = String(v || '').replace(/<(?!\/?(b|i|u)>)(?!a href="[^"]*">)(?!\/a>)(?!span( data-(sz|c)="[^"]*")+>)(?!\/span>)[^>]*>/g, '');
     if (!withLinks) out = out.replace(/<\/?a[^>]*>/g, '');
+    /* A picked color has no class to wear; it is painted where it is shown.
+       richFrom reads data-c, never the paint. */
+    out = out.replace(/<span([^>]*) data-c="(#[0-9a-f]{6})"([^>]*)>/gi, '<span$1 data-c="$2"$3 style="color:$2">');
     return out.replace(/\n/g, '<br>');
   }
   /* A box's contents as they are stored: what a browser's editable box makes
@@ -805,12 +829,88 @@
         if (tag === 'a') {
           var h = c.getAttribute('href') || '';
           if (/^(https?:\/\/|mailto:|page:[a-z]+$)/i.test(h)) out += '<a href="' + esc(h) + '">'; else tag = null;
+        } else if (t === 'span') {
+          var sz = c.getAttribute('data-sz'), cc = c.getAttribute('data-c'), at = '';
+          if (SIZES.indexOf(sz) !== -1) at += ' data-sz="' + sz + '"';
+          if (isTone(cc)) at += ' data-c="' + cc.toLowerCase() + '"';
+          if (at) { out += '<span' + at + '>'; tag = 'span'; }
         } else if (tag) out += '<' + tag + '>';
         walk(c);
         if (tag) out += '</' + tag + '>';
       }
     })(el);
-    return out.replace(/<(b|i|u)><\/\1>/g, '').replace(/\n{3,}/g, '\n\n').replace(/^\s+|\s+$/g, '');
+    return out.replace(/<(b|i|u)><\/\1>|<span[^>]*><\/span>/g, '').replace(/\n{3,}/g, '\n\n').replace(/^\s+|\s+$/g, '');
+  }
+
+  /* SIZE AND COLOR WITHIN THE WORDS (Chase, 2026-10-03: "different sizes and
+     colors WITHIN one text box"; "a full palette, with a few predetermined
+     quick picks"). Stored as meaning, <span data-sz data-c>, the names the
+     Mail composer uses (workers/src/lib/tones.js); the site draws them in its
+     own colors, light or dark. */
+  var SIZES = ['sm', 'lg', 'xl'];
+  var TONE_NAMES = ['accent', 'dim', 'red', 'green', 'blue', 'gold'];
+  /* Swatches as a dark ground shows them, the console's own. */
+  var TONE_SWATCH = { dim: '#9AA6B6', red: '#FF8A80', green: '#6FE3A6', blue: '#8DB8FF', gold: '#F2C14E' };
+  function isTone(c) { return TONE_NAMES.indexOf(c) !== -1 || /^#[0-9a-f]{6}$/i.test(String(c || '')); }
+
+  /**
+   * Give the selected words a size or a color (attr data-sz / data-c), or
+   * take it away (value ""). Words wholly inside a span that already has one
+   * are split out of it, so one word of a red phrase can turn blue and keep
+   * the rest of what it wore. Returns a range over the words, to select.
+   */
+  function applyMark(box, range, attr, value) {
+    var anc = range.commonAncestorContainer;
+    anc = anc.nodeType === 1 ? anc : anc.parentNode;
+    var outer = anc && anc.closest ? anc.closest('span[' + attr + ']') : null;
+    if (outer && !box.contains(outer)) outer = null;
+    var set = function (el, v) {
+      if (v) el.setAttribute(attr, v); else el.removeAttribute(attr);
+      if (attr === 'data-c') el.style.color = /^#/.test(v || '') ? v : '';
+      if (!el.getAttribute('style')) el.removeAttribute('style');
+    };
+    var marked = function (el) { return el.hasAttribute('data-sz') || el.hasAttribute('data-c'); };
+    var strip = function (root) {
+      [].slice.call(root.querySelectorAll('span[' + attr + ']')).forEach(function (sp) {
+        set(sp, '');
+        if (!marked(sp)) { while (sp.firstChild) sp.parentNode.insertBefore(sp.firstChild, sp); sp.parentNode.removeChild(sp); }
+      });
+    };
+    var out = document.createRange();
+    if (outer) {
+      /* The words before and after the selection keep the old value, each in
+         a copy of the span; the span itself becomes the selected words. */
+      var tailR = document.createRange();
+      tailR.setStart(range.endContainer, range.endOffset); tailR.setEnd(outer, outer.childNodes.length);
+      var tail = outer.cloneNode(false); tail.appendChild(tailR.extractContents());
+      var headR = document.createRange();
+      headR.setStart(outer, 0); headR.setEnd(range.startContainer, range.startOffset);
+      var head = outer.cloneNode(false); head.appendChild(headR.extractContents());
+      if (head.textContent) outer.parentNode.insertBefore(head, outer);
+      if (tail.textContent) outer.parentNode.insertBefore(tail, outer.nextSibling);
+      strip(outer);
+      set(outer, value);
+      if (marked(outer)) { out.selectNodeContents(outer); return out; }
+      var first = outer.firstChild, last = outer.lastChild;
+      while (outer.firstChild) outer.parentNode.insertBefore(outer.firstChild, outer);
+      outer.parentNode.removeChild(outer);
+      if (first) { out.setStartBefore(first); out.setEndAfter(last); }
+      return out;
+    }
+    var frag = range.extractContents();
+    strip(frag);
+    if (value) {
+      var w = document.createElement('span');
+      set(w, value);
+      w.appendChild(frag);
+      range.insertNode(w);
+      out.selectNodeContents(w);
+    } else {
+      var f0 = frag.firstChild, f1 = frag.lastChild;
+      range.insertNode(frag);
+      if (f0) { out.setStartBefore(f0); out.setEndAfter(f1); }
+    }
+    return out;
   }
 
   /* ---- the formatting bar ------------------------------------------------ */
@@ -824,9 +924,47 @@
   fmt.hidden = true;
   fmt.innerHTML = [['bold', 'B'], ['italic', 'I'], ['underline', 'U']].map(function (x) {
     return '<button type="button" data-fmt="' + x[0] + '" class="ws-fmt-' + x[0] + '" aria-label="' + esc(tr('ws.fmt.' + x[0])) + '" title="' + esc(tr('ws.fmt.' + x[0])) + '">' + x[1] + '</button>';
-  }).join('') + '<button type="button" data-fmt="link" aria-label="' + esc(tr('ws.fmt.link')) + '" title="' + esc(tr('ws.fmt.link')) + '">' +
-    '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg></button>';
+  }).join('') +
+    '<button type="button" data-fmt="size" class="ws-fmt-size" aria-expanded="false" aria-label="' + esc(tr('ml.cpSize')) + '" title="' + esc(tr('ml.cpSize')) + '">Aa</button>' +
+    '<button type="button" data-fmt="color" class="ws-fmt-color" aria-expanded="false" aria-label="' + esc(tr('ml.cpColor')) + '" title="' + esc(tr('ml.cpColor')) + '"><i class="is-none"></i></button>' +
+    '<button type="button" data-fmt="link" aria-label="' + esc(tr('ws.fmt.link')) + '" title="' + esc(tr('ws.fmt.link')) + '">' +
+    '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg></button>' +
+    '<div class="ws-fmt-row" data-fmt-row="size" hidden>' + [['', 'ml.cpSizeNormal'], ['sm', 'ml.cpSizeSm'], ['lg', 'ml.cpSizeLg'], ['xl', 'ml.cpSizeXl']].map(function (x) {
+      return '<button type="button" data-fmt-sz="' + x[0] + '" class="ws-fmt-sz-' + (x[0] || 'n') + '" aria-pressed="false">' + esc(tr(x[1])) + '</button>';
+    }).join('') + '</div>' +
+    '<div class="ws-fmt-row" data-fmt-row="color" hidden>' + [''].concat(TONE_NAMES).map(function (c) {
+      var key = 'ml.cpTone' + (c ? c.charAt(0).toUpperCase() + c.slice(1) : 'None');
+      return '<button type="button" class="ws-fmt-tone" data-fmt-c="' + c + '" aria-pressed="false" aria-label="' + esc(tr(key)) + '" title="' + esc(tr(key)) + '"><i' +
+        (TONE_SWATCH[c] ? ' style="background:' + TONE_SWATCH[c] + '"' : '') + '></i></button>';
+    }).join('') +
+    '<label class="ws-fmt-tone ws-fmt-any" title="' + esc(tr('ml.cpToneAny')) + '"><input type="color" value="#3366cc" data-fmt-any aria-label="' + esc(tr('ml.cpToneAny')) + '"></label></div>';
   document.body.appendChild(fmt);
+  function fmtRow(which) {
+    [].forEach.call(fmt.querySelectorAll('[data-fmt-row]'), function (r) {
+      var open = r.getAttribute('data-fmt-row') === which && r.hidden;
+      r.hidden = !open;
+      var b = fmt.querySelector('[data-fmt="' + r.getAttribute('data-fmt-row') + '"]');
+      if (b) b.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+  }
+  /* What the selection already wears, shown on the bar. */
+  function markOf(box, attr) {
+    var sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return '';
+    var n = sel.anchorNode; n = n && (n.nodeType === 1 ? n : n.parentNode);
+    var sp = n && n.closest ? n.closest('span[' + attr + ']') : null;
+    return sp && box.contains(sp) ? sp.getAttribute(attr) : '';
+  }
+  function showMarks(box) {
+    var sz = markOf(box, 'data-sz'), c = markOf(box, 'data-c');
+    [].forEach.call(fmt.querySelectorAll('[data-fmt-sz]'), function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-fmt-sz') === sz ? 'true' : 'false'); });
+    [].forEach.call(fmt.querySelectorAll('[data-fmt-c]'), function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-fmt-c') === c ? 'true' : 'false'); });
+    var any = /^#/.test(c), dot = fmt.querySelector('.ws-fmt-color i');
+    fmt.querySelector('.ws-fmt-any').classList.toggle('is-on', any);
+    if (any) fmt.querySelector('[data-fmt-any]').value = c;
+    dot.style.background = any ? c : TONE_SWATCH[c] || (c === 'accent' ? 'var(--ws-acc)' : '');
+    dot.classList.toggle('is-none', !c);
+  }
   function boxOfSelection() {
     var sel = window.getSelection();
     if (!sel || !sel.rangeCount || sel.isCollapsed) return null;
@@ -843,15 +981,51 @@
     fmt.style.left = Math.max(8, window.scrollX + r.left + r.width / 2 - fmt.offsetWidth / 2) + 'px';
     [].forEach.call(fmt.querySelectorAll('[data-fmt]'), function (b) {
       var c = b.getAttribute('data-fmt');
-      if (c !== 'link') b.setAttribute('aria-pressed', document.queryCommandState(c) ? 'true' : 'false');
+      if (c === 'bold' || c === 'italic' || c === 'underline') b.setAttribute('aria-pressed', document.queryCommandState(c) ? 'true' : 'false');
     });
+    showMarks(box);
   });
-  /* Keep the selection: a press on the bar must not take focus from the box. */
-  fmt.addEventListener('mousedown', function (e) { e.preventDefault(); });
+  /* Keep the selection: a press on the bar must not take focus from the box.
+     Except the color picker, which needs focus to open; the selection is
+     kept aside for it instead. */
+  var anyAt = null;
+  fmt.addEventListener('mousedown', function (e) {
+    if (e.target.closest('[data-fmt-any], .ws-fmt-any')) {
+      var box = boxOfSelection();
+      anyAt = box ? { box: box, range: window.getSelection().getRangeAt(0).cloneRange() } : null;
+      return;
+    }
+    e.preventDefault();
+  });
+  function markSelection(box, range, attr, value) {
+    var r = applyMark(box, range, attr, value);
+    box.dispatchEvent(new Event('input', { bubbles: true }));
+    return r;
+  }
+  fmt.querySelector('[data-fmt-any]').addEventListener('input', function () {
+    if (!anyAt) return;
+    anyAt.range = markSelection(anyAt.box, anyAt.range, 'data-c', this.value.toLowerCase());
+  });
+  fmt.querySelector('[data-fmt-any]').addEventListener('change', function () {
+    if (!anyAt) return;
+    anyAt.box.focus();
+    var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(anyAt.range);
+    anyAt = null;
+    fmtRow(null);
+  });
   fmt.addEventListener('click', async function (e) {
-    var b = e.target.closest('[data-fmt]'), box = boxOfSelection();
+    var b = e.target.closest('[data-fmt], [data-fmt-sz], [data-fmt-c]'), box = boxOfSelection();
     if (!b || !box) return;
+    if (b.hasAttribute('data-fmt-sz') || b.hasAttribute('data-fmt-c')) {
+      var attr = b.hasAttribute('data-fmt-sz') ? 'data-sz' : 'data-c';
+      var r = markSelection(box, window.getSelection().getRangeAt(0), attr, b.getAttribute(attr === 'data-sz' ? 'data-fmt-sz' : 'data-fmt-c'));
+      var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+      fmtRow(null);
+      showMarks(box);
+      return;
+    }
     var c = b.getAttribute('data-fmt');
+    if (c === 'size' || c === 'color') { fmtRow(c); return; }
     if (c === 'link') {
       var range = window.getSelection().getRangeAt(0).cloneRange();
       var url = window.StaffPrompt ? await window.StaffPrompt({ title: tr('ws.fmt.linkAsk'), label: tr('ws.fmt.linkLabel'),
@@ -913,6 +1087,7 @@
     state.doc.languages.forEach(function (l) { words[l] = {}; spec.words.forEach(function (f) { words[l][f] = ''; }); });
     var s = { id: uid(), type: type, variant: spec.variants[0], words: words };
     if (type === 'hero') s.divider = true;
+    s.align = defaultAlign(s);
     if (spec.photo) s.photo = null;
     if (spec.buttons) s.buttons = ['give', 'stay'];
     if (spec.items) s.items = [];
@@ -1297,6 +1472,11 @@
     if (d.socialRemove) {
       state.doc.links = state.doc.links.filter(function (l) { return l.kind !== d.socialRemove; });
       state.openSocial = null; drawLinks(); return changed();
+    }
+    if (d.pageCue !== undefined) {
+      var pc = state.doc.pages[+d.pageCue];
+      pc.cue = pc.cue === false;
+      drawSections(); return changed();
     }
     if (d.headerLinks !== undefined) { state.doc.design.headerLinks = !state.doc.design.headerLinks; drawLinks(); return changed(); }
     if (d.chip) {

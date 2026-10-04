@@ -168,6 +168,74 @@ await check("one section at a time: only its tabs; formatted words saved clean",
     "Serving <b>Croatia</b>\nchurches <i>well</i>", "bold, italic and lines kept; the rest gone");
 });
 
+await check("words can take a size and a color, a quick pick or any color; a word inside a colored phrase can change alone", async () => {
+  const { w, d, sent, click, pages } = await boot();
+  pages();
+  click(d.querySelector('[data-open-page="home"]'));
+  click(d.querySelector('[data-edit-sec="1"]'));
+  const box = d.querySelector('[data-rt="1:text"]');
+  box.innerHTML = "one two three";
+  const select = (node, a, b) => {
+    const r = d.createRange(); r.setStart(node, a); r.setEnd(node, b);
+    const sel = w.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+  };
+  const bar = (q) => d.querySelector(".ws-fmt " + q);
+  const saved = async () => { await settle(900); return sent.filter((x) => x.action === "save").pop().draft.pages[0].sections[1].words.en.text; };
+
+  select(box.firstChild, 4, 7);                       // "two"
+  click(bar('[data-fmt="color"]'));
+  assert(!bar('[data-fmt-row="color"]').hidden, "the color row opens");
+  click(bar('[data-fmt-c="red"]'));
+  eq(await saved(), 'one <span data-c="red">two</span> three', "a quick pick");
+
+  select(box.querySelector('[data-c="red"]').firstChild, 1, 2);   // the "w"
+  click(bar('[data-fmt-c="blue"]'));
+  eq(await saved(), 'one <span data-c="red">t</span><span data-c="blue">w</span><span data-c="red">o</span> three', "split out of the red");
+
+  select(box.lastChild, 1, 6);                        // "three"
+  click(bar('[data-fmt-sz="lg"]'));
+  eq(await saved(), 'one <span data-c="red">t</span><span data-c="blue">w</span><span data-c="red">o</span> <span data-sz="lg">three</span>', "a size");
+
+  select(box.firstChild, 0, 3);                       // "one"
+  const pick = bar("[data-fmt-any]");
+  pick.dispatchEvent(new w.MouseEvent("mousedown", { bubbles: true }));
+  pick.value = "#ff00aa";
+  pick.dispatchEvent(new w.Event("input", { bubbles: true }));
+  assert(/^<span data-c="#ff00aa">one<\/span>/.test(await saved()), "any color");
+  assert(box.querySelector('[data-c="#ff00aa"]').style.color, "a picked color shows in the box");
+});
+
+await check("every section lines up: left, centered, right or indented; a Words section has no second layout control", async () => {
+  const { d, sent, click, pages } = await boot();
+  pages();
+  click(d.querySelector('[data-open-page="mission"]'));
+  click(d.querySelector('[data-edit-sec="0"]'));            // the Mission page's Words section
+  click(d.querySelector('[data-sectab="look"]'));
+  eq([...d.querySelectorAll('[data-chip="align:0"]')].map((b) => b.dataset.value), ["left", "center", "right", "indent"], "choices");
+  eq(d.querySelector('[data-chip="align:0"][aria-pressed="true"]').dataset.value, "left", "as it was");
+  assert(!d.querySelector('[data-chip="variant:0"]'), "the old Left/Centered layout chips are gone for Words");
+  click(d.querySelector('[data-chip="align:0"][data-value="right"]'));
+  await settle(900);
+  eq(sent.filter((x) => x.action === "save").pop().draft.pages.filter((p) => p.id === "mission")[0].sections[0].align, "right", "saved");
+});
+
+await check("the opening's Look has this page's scroll indicator switch; off saves on the page", async () => {
+  const { d, sent, click, pages } = await boot();
+  pages();
+  click(d.querySelector('[data-open-page="home"]'));
+  click(d.querySelector('[data-edit-sec="0"]'));            // Home's opening
+  click(d.querySelector('[data-sectab="look"]'));
+  const cue = d.querySelector('[data-page-cue]');
+  assert(cue && cue.getAttribute("aria-checked") === "true", "a switch, on");
+  click(cue);
+  await settle(900);
+  eq(sent.filter((x) => x.action === "save").pop().draft.pages[0].cue, false, "saved off on Home");
+  assert(d.querySelector('[data-page-cue]').getAttribute("aria-checked") === "false", "shown off");
+  click(d.querySelector('[data-edit-sec="1"]'));
+  click(d.querySelector('[data-sectab="look"]'));
+  assert(!d.querySelector('[data-page-cue]'), "not on a section that has no indicator");
+});
+
 await check("where a button goes: nothing, a page, or a web address — three plain choices", async () => {
   const { w, d, sent, click, pages } = await boot();
   pages();

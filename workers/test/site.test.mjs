@@ -506,7 +506,10 @@ check("the line is centered on a centered hero, and wears the hero's own ink on 
   const d = starter("full", { name: "Chase Roush", langs: ["en", "hr"], fallback: "en" });
   d.pages[0].sections[0].variant = "words";
   const html = page(d);
-  assert(/\.hero-words \.rule\{margin-left:auto;margin-right:auto\}/.test(html), "not centered");
+  /* Centering comes from the section's alignment (al-center), which also
+     centers the line. */
+  assert(/<section[^>]*class="hero hero-words al-center/.test(html) &&
+         /\.al-center :is\([^)]*\.rule\)\{margin-left:auto;margin-right:auto\}/.test(html), "not centered");
   d.design.look = "bold";
   assert(/\.hero-words \.rule\{background:/.test(page(d)), "an accent line on an accent background");
 });
@@ -569,6 +572,71 @@ check("suggestions are in the language written, and the hero names the ministry"
   eq(hr.quote.quote, word("hr", "quoteFill"), "a quote, Croatian");
   eq(hr.text.heading, word("hr", "aboutThin") + " " + word("hr", "aboutBold"), "a heading's two halves as one line");
   assert(hr.prayer.text !== placeholders("en", "x").prayer.text, "prayer's words are not translated");
+});
+
+/* ---- sizes and colors within the words (2026-10-03) ---- */
+
+check("a size and a color may sit on any words; only names and #rrggbb are kept, never a style", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  d.pages[0].sections[1].words.en.text = 'A <span data-sz="lg" data-c="red">big red</span> <span data-c="#FF00AA"><b>pink</b></span> ' +
+    '<span style="color:red" data-c="url(x)">plain</span> <span data-sz="huge">also</span>';
+  const t = cleanDoc(d, ["en"]).pages[0].sections[1].words.en.text;
+  eq(t, 'A <span data-sz="lg" data-c="red">big red</span> <span data-c="#ff00aa"><b>pink</b></span> plain also', "stored");
+});
+
+check("the page draws them: named sizes and tones as classes in the site's shades, a picked color inline", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  d.pages[0].sections[1].words.en.text = 'A <span data-sz="lg" data-c="red">big red</span> <span data-c="#ff00aa">pink</span> <span data-c="accent">ours</span>';
+  const night = page(d);
+  assert(night.includes('<span class="ts-lg tc-red">big red</span>'), "size and tone classes");
+  assert(night.includes('<span style="color:#ff00aa">pink</span>'), "picked color inline");
+  assert(night.includes('<span class="tc-accent">ours</span>'), "the site's accent");
+  assert(!/data-c=|data-sz=/.test(night.replace(/<script[\s\S]*?<\/script>/g, "")), "the stored meaning never reaches the page");
+  assert(/--t-red:#FF8A80/.test(night), "a dark site gets the dark-ground shade");
+  d.design.look = "paper";
+  assert(/--t-red:#B42318/.test(page(d)), "a light site gets the light-ground shade");
+  d.design.look = "custom"; d.design.mode = "auto"; d.design.colors = { background: "#FFFFFF", accent: "#1AE4FF" };
+  const auto = page(d);
+  assert(/--t-red:#B42318/.test(auto) && /prefers-color-scheme:dark[^}]*--t-red:#FF8A80/.test(auto),
+    "a site that follows the device has both shades");
+});
+
+/* ---- every section lines up (2026-10-03) ---- */
+
+check("a section never lined up keeps the look it had; a chosen one is kept", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  const mk = (type, variant, extra = {}) => ({ id: "x" + type + variant, type, variant, words: { en: {} }, ...extra });
+  d.pages[0].sections = [mk("text", "left"), mk("text", "center"), mk("signup", "card"), mk("signup", "band"),
+    mk("hero", "words"), mk("hero", "behind"), mk("goals", "cards"), mk("quote", "large"), mk("text", "left", { align: "right" }),
+    mk("give", "band", { align: "indent" }), mk("text", "left", { align: "sideways" })];
+  eq(cleanDoc(d, ["en"]).pages[0].sections.map((x) => x.align),
+    ["left", "center", "center", "left", "center", "left", "center", "left", "right", "indent", "left"], "aligns");
+});
+
+check("the page carries each section's alignment, and its buttons follow it", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  d.pages[0].sections = [
+    { id: "a1", type: "text", variant: "left", align: "right", link: "https://x.org/", words: { en: { heading: "H", text: "T", button: "Go" } } },
+    { id: "a2", type: "hero", variant: "behind", align: "center", words: { en: { heading: "Hi" } }, buttons: ["contact"] },
+    { id: "a3", type: "quote", variant: "large", align: "indent", words: { en: { quote: "Q" } } },
+  ];
+  const html = page(d);
+  assert(/<section[^>]*class="al-right"[^>]*><div class="wrap"><h2 class="h m">H<\/h2>[\s\S]*?<div class="btns m"><a class="btn solid" href="https:\/\/x\.org\/"/.test(html), "text section, right, with its button");
+  assert(/<section class="hero hero-behind al-center/.test(html), "the opening");
+  assert(/<section[^>]*class="quote quote-large al-indent"[^>]*>/.test(html), "the quote");
+  for (const rule of [".al-right .btns{justify-content:flex-end}", ".al-center .btns{justify-content:center}",
+                      ".al-indent>.wrap", ".al-right .bandrow{flex-direction:row-reverse}"]) {
+    assert(html.includes(rule), "missing rule " + rule);
+  }
+});
+
+check("a page may hide the opening's scroll indicator; every page shows it until told not to", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  eq(cleanDoc(d, ["en"]).pages.map((p) => p.cue), d.pages.map(() => true), "on by default");
+  assert(page(d).includes('class="scrollcue"'), "Home shows it");
+  d.pages[0].cue = false;
+  eq(cleanDoc(d, ["en"]).pages[0].cue, false, "kept off");
+  assert(!page(d).includes('class="scrollcue"'), "Home hides it");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

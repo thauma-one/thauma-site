@@ -18,6 +18,7 @@
  * of it switched off for anyone whose device asks for less motion.
  */
 import { word, SECTIONS, plainOf } from "./model.js";
+import { TONES, HEX_COLOR, SIZE_NAMES } from "../lib/tones.js";
 import { readable, onColor, alpha, luminance, companion, hexToHsl, hslToHex } from "../embed-colour.js";
 
 export function esc(s) {
@@ -125,12 +126,35 @@ function bands(P) {
   return `--band:${mix(P.bg, P.acc, 0.1)};--band2:${mix(P.panel, P.acc, 0.18)};`;
 }
 
+/* The quick-pick text colors (lib/tones.js) as variables: each in the shade
+   made for this ground, light or dark. */
+function toneVars(scheme) {
+  return Object.entries(TONES).map(([k, v]) => `--t-${k}:${v[scheme === "dark" ? 1 : 0]};`).join("");
+}
+
+/**
+ * A formatted field's size and color spans (stored as meaning by
+ * model.richClean) as the page draws them: a named size or tone as a class,
+ * a picked #rrggbb inline. Nothing else of the attribute survives.
+ */
+export function styledSpans(html) {
+  return String(html || "").replace(/<span\b([^>]*)>/g, (m0, attrs) => {
+    const sz = /data-sz="([a-z]+)"/.exec(attrs), c = /data-c="([^"]+)"/.exec(attrs);
+    const cls = [];
+    let style = "";
+    if (sz && SIZE_NAMES.includes(sz[1])) cls.push("ts-" + sz[1]);
+    if (c && HEX_COLOR.test(c[1])) style = ` style="color:${c[1].toLowerCase()}"`;
+    else if (c && (c[1] === "accent" || c[1] === "dim" || TONES[c[1]])) cls.push("tc-" + c[1]);
+    return `<span${cls.length ? ` class="${cls.join(" ")}"` : ""}${style}>`;
+  });
+}
+
 function css(L, design) {
   return `
 :root{--bg:${L.bg};--panel:${L.panel};--fg:${L.fg};--dim:${L.dim};--line:${L.line};--acc:${L.acc};--acc2:${L.acc2};--ink:${L.ink};--on-acc:${L.onAcc};--herobg:${L.heroBg};${bands(L)}
---display:${L.display};--body:${L.body};--thin:${L.thin};--boldw:${L.boldW};color-scheme:${L.scheme}}
+--display:${L.display};--body:${L.body};--thin:${L.thin};--boldw:${L.boldW};${toneVars(L.scheme)}color-scheme:${L.scheme}}
 ${L.alt ? `@media (prefers-color-scheme:dark){:root{--bg:${L.alt.bg};--panel:${L.alt.panel};--fg:${L.alt.fg};--dim:${L.alt.dim};--line:${L.alt.line};` +
-  `--acc:${L.alt.acc};--acc2:${L.alt.acc2};--ink:${L.alt.ink};--on-acc:${L.alt.onAcc};--herobg:${L.alt.heroBg};${bands(L.alt)}color-scheme:dark}}` : ""}
+  `--acc:${L.alt.acc};--acc2:${L.alt.acc2};--ink:${L.alt.ink};--on-acc:${L.alt.onAcc};--herobg:${L.alt.heroBg};${bands(L.alt)}${toneVars("dark")}color-scheme:dark}}` : ""}
 *{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--fg);font:400 17px/1.65 var(--body);-webkit-font-smoothing:antialiased}
 a{color:var(--ink)}img{max-width:100%;display:block}
@@ -177,6 +201,11 @@ main section{padding:88px 0}
 main section + section{border-top:1px solid var(--line)}
 .h{font:var(--thin) clamp(30px,4.4vw,52px)/1.1 var(--display);margin:0 0 20px;letter-spacing:-.01em}
 .h b{font-weight:var(--boldw)}
+/* Sizes and colors within formatted words (Chase, 2026-10-03), relative to
+   the words around them, so a large word in a heading is larger still. */
+.ts-sm{font-size:.82em}.ts-lg{font-size:1.25em}.ts-xl{font-size:1.6em}
+.tc-accent{color:var(--ink)}.tc-dim{color:var(--dim)}
+${Object.keys(TONES).map((k) => `.tc-${k}{color:var(--t-${k})}`).join("")}
 .kicker{font:600 12px var(--body);letter-spacing:.28em;text-transform:uppercase;color:var(--ink);margin:0 0 16px}
 .lede{font-size:clamp(17px,1.6vw,20px);color:var(--dim);max-width:60ch;margin:0}
 .prose p{margin:0 0 1em;max-width:68ch}.prose p:last-child{margin-bottom:0}
@@ -198,7 +227,7 @@ ${L.heroFg ? `.hero-behind:not(.has-photo),.hero-words{color:${L.heroFg}}.hero-b
 .hero-behind:not(.has-photo) .btn.solid,.hero-words .btn.solid{background:${L.heroFg};color:${L.heroBg}}.hero-behind:not(.has-photo) .rule,.hero-words .rule{background:${L.heroFg}}.hero-behind:not(.has-photo) .btn,.hero-words .btn{border-color:${L.heroFg};color:${L.heroFg}}` : ""}
 .hero-beside{align-items:center}.hero-beside .wrap{display:grid;grid-template-columns:1.1fr .9fr;gap:48px;align-items:center;padding:110px 0}
 .hero-beside .hero-media{display:none}.hero-beside .pic{aspect-ratio:4/5;border-radius:18px;overflow:hidden}.hero-beside .pic img{width:100%;height:100%;object-fit:cover}
-.hero-words{align-items:center;text-align:center;background:var(--herobg)}.hero-words .wrap{padding:130px 0 110px}.hero-words .lede{margin:0 auto}.hero-words .btns{justify-content:center}.hero-words .rule{margin-left:auto;margin-right:auto}
+.hero-words{align-items:center;background:var(--herobg)}.hero-words .wrap{padding:130px 0 110px}
 /* the monogram opening — chaseroush.com's: initials behind the title, a short
    rule, a spaced line, a picture beside it, a cue to scroll */
 .hero-monogram{align-items:center;background:var(--herobg)}
@@ -260,8 +289,7 @@ main section.raised .card{background:var(--bg)}
 /* The sign-up card: as wide as a form wants, centered, not the whole column
    with the boxes pushed left (Chase, 2026-10-01: "extra wide with left
    alignment of the boxes"). */
-.signcard{max-width:600px;margin:0 auto;text-align:center}
-.signcard .lede{margin-left:auto;margin-right:auto}
+.signcard{max-width:600px;margin:0 auto}
 .signcard .signform{margin:22px auto 0;text-align:left}
 .news{list-style:none;margin:0;padding:0;display:grid;gap:10px}
 .news a{display:flex;justify-content:space-between;gap:20px;padding:18px 20px;background:var(--panel);border:1px solid var(--line);border-radius:12px;color:var(--fg);text-decoration:none}
@@ -283,6 +311,23 @@ main section.is-editing{outline:2px solid var(--acc);outline-offset:-2px}
 .al-center .h,.al-center .lede{text-align:center;margin-left:auto;margin-right:auto}
 .al-center [data-thauma],.al-center .news,.al-center .linklist,.al-center .formbox,.al-center .latest{margin-left:auto;margin-right:auto}
 .al-center .past{text-align:center}
+/* EVERY SECTION LINES UP (2026-10-03): left (as written), centered, right,
+   or indented. The WORDS follow, and so do the buttons, a flex row that
+   text-align alone never moves; a widget, list or form keeps its own inside
+   and only moves as a block. */
+.al-center :is(.kicker,.h,.lede,.prose,.spaced,.quote blockquote,cite,.caption,figcaption,.past){text-align:center}
+.al-center :is(.h,.lede,.prose p,.spaced,.quote blockquote,.rule){margin-left:auto;margin-right:auto}
+.al-center .btns{justify-content:center}
+.al-center .bandrow{flex-direction:column;text-align:center}
+.al-center .bandrow>*{width:100%}
+.al-right :is(.kicker,.h,.lede,.prose,.spaced,.quote blockquote,cite,.caption,figcaption,.past){text-align:right}
+.al-right :is(.h,.lede,.prose p,.spaced,.quote blockquote,.rule){margin-left:auto;margin-right:0}
+.al-right .btns{justify-content:flex-end}
+.al-right .bandrow{flex-direction:row-reverse}
+.al-right :is([data-thauma],.news,.linklist,.formbox,.latest){margin-left:auto;margin-right:0}
+.al-left .signcard{margin-left:0}.al-right .signcard{margin-right:0}
+.al-indent>.wrap,.al-indent>figure>figcaption{padding-left:clamp(20px,9vw,140px)}
+.al-indent .signcard{margin-left:0}
 .latest{display:block;max-width:720px;padding:28px 30px;background:var(--panel);border:1px solid var(--line);border-radius:16px;color:var(--fg);text-decoration:none}
 .latest:hover{border-color:var(--acc)}.latest small{color:var(--dim);font-size:13px}
 .latest b{display:block;font:var(--boldw) clamp(20px,2vw,26px)/1.25 var(--display);margin:6px 0 8px}.latest span{color:var(--dim)}
@@ -427,7 +472,7 @@ const rel = (href) => (/^https?:/.test(href) ? ' rel="noopener"' : "");
 function renderSection(sec, ctx) {
   const { lang, fallback } = ctx;
   const raw = (f) => wf(sec, lang, fallback, f);
-  const rich = (x) => String(x || "").replace(/href="page:([a-z]+)"/g, (m0, id) => `href="${esc(ctx.linkHref("page:" + id) || "#")}"`);
+  const rich = (x) => styledSpans(String(x || "").replace(/href="page:([a-z]+)"/g, (m0, id) => `href="${esc(ctx.linkHref("page:" + id) || "#")}"`));
   /* Formatted fields come out ready for the page; plain ones are escaped where used. */
   const w = (f) => (f === "heading" || f === "quote") ? rich(raw(f)).replace(/\n/g, "<br>") : f === "text" ? rich(raw(f)) : raw(f);
   const inline = (x) => String(x || "").replace(/\n/g, "<br>");
@@ -468,7 +513,7 @@ function renderSection(sec, ctx) {
          page to get a feel for what I'm actually wanting"): a short line in
          the accent over the word "Scroll", the two bobbing together. */
       /* Every kind is in the markup; html[data-cue] (Design › Motion) shows one. */
-      const cue = `<button type="button" class="scrollcue" aria-hidden="true" tabindex="-1"><i></i>` +
+      const cue = !ctx.cueOn ? "" : `<button type="button" class="scrollcue" aria-hidden="true" tabindex="-1"><i></i>` +
         `<svg class="cue-arrow" viewBox="0 0 24 24"><path d="M5 9l7 7 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>` +
         `<b class="cue-mouse"><em></em></b><span>${esc(word(lang, "scroll"))}</span></button>`;
       /* THE LINE UNDER THE TITLE (Chase, 2026-10-03: "a splash of color",
@@ -481,7 +526,7 @@ function renderSection(sec, ctx) {
       if (sec.variant === "monogram") {
         const initials = initialsOf(ctx.name);
         const h = heading(w("heading"), "h1");
-        return `<section class="hero hero-monogram"><div class="wrap"><div class="mono-words"><span class="mono-mark" aria-hidden="true">${esc(initials)}</span>` +
+        return `<section class="hero hero-monogram al-${sec.align || "left"}"><div class="wrap"><div class="mono-words"><span class="mono-mark" aria-hidden="true">${esc(initials)}</span>` +
           `${w("kicker") ? `<p class="kicker m">${esc(w("kicker"))}</p>` : ""}${h}${line}` +
           `${w("text") ? `<p class="spaced m">${inline(w("text"))}</p>` : ""}${btns ? `<div class="btns m">${btns}</div>` : ""}</div>` +
           `${sec.photo ? `<div class="mono-pic m">${img(sec.photo)}</div>` : ctx.draft ? `<div class="pic m">${wanted()}</div>` : ""}</div>` +
@@ -490,14 +535,14 @@ function renderSection(sec, ctx) {
       const words = `${w("kicker") ? `<p class="kicker m">${esc(w("kicker"))}</p>` : ""}${heading(w("heading"), "h1")}${line}` +
         `${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}${btns ? `<div class="btns m">${btns}</div>` : ""}`;
       if (sec.variant === "beside") {
-        return `<section class="hero hero-beside"><div class="wrap"><div>${words}</div>${sec.photo ? `<div class="pic m ${photoMotion === "zoom" ? "kb" : ""}">${img(sec.photo)}</div>` : ctx.draft ? `<div class="pic m">${wanted()}</div>` : ""}</div>${cue}</section>`;
+        return `<section class="hero hero-beside al-${sec.align || "left"}"><div class="wrap"><div>${words}</div>${sec.photo ? `<div class="pic m ${photoMotion === "zoom" ? "kb" : ""}">${img(sec.photo)}</div>` : ctx.draft ? `<div class="pic m">${wanted()}</div>` : ""}</div>${cue}</section>`;
       }
-      if (sec.variant === "words") return `<section class="hero hero-words"><div class="wrap">${words}</div>${cue}</section>`;
-      return `<section class="hero hero-behind${sec.photo ? " has-photo" : ""}"><div class="hero-media ${photoMotion === "zoom" ? "kb" : ""}"${photoMotion === "drift" ? " data-drift" : ""}>${img(sec.photo)}</div><div class="wrap">${words}</div>${cue}</section>`;
+      if (sec.variant === "words") return `<section class="hero hero-words al-${sec.align || "center"}"><div class="wrap">${words}</div>${cue}</section>`;
+      return `<section class="hero hero-behind al-${sec.align || "left"}${sec.photo ? " has-photo" : ""}"><div class="hero-media ${photoMotion === "zoom" ? "kb" : ""}"${photoMotion === "drift" ? " data-drift" : ""}>${img(sec.photo)}</div><div class="wrap">${words}</div>${cue}</section>`;
     }
     case "text":
       if (!w("heading") && !w("text")) return "";
-      return `<section${cls(sec.variant === "center" ? "text-center" : "")}><div class="wrap">${heading(w("heading"))}${prose(w("text"))}${to ? `<div class="btns m">${button()}</div>` : ""}</div></section>`;
+      return `<section${cls()}><div class="wrap">${heading(w("heading"))}${prose(w("text"))}${to ? `<div class="btns m">${button()}</div>` : ""}</div></section>`;
     case "photoText": {
       if (!sec.photo && !w("text") && !ctx.draft) return "";
       const pic = sec.photo ? img(sec.photo, plainOf(raw("heading"))) : wanted();
@@ -505,9 +550,9 @@ function renderSection(sec, ctx) {
     }
     case "photo":
       if (!sec.photo) {
-        return ctx.draft ? `<section class="fullphoto"><div class="frame">${wanted()}</div>${w("caption") ? `<p class="wrap caption">${esc(w("caption"))}</p>` : ""}</section>` : "";
+        return ctx.draft ? `<section class="fullphoto al-${sec.align || "left"}"><div class="frame">${wanted()}</div>${w("caption") ? `<p class="wrap caption">${esc(w("caption"))}</p>` : ""}</section>` : "";
       }
-      return `<section class="fullphoto"><figure style="margin:0"><div class="frame ${sec.variant === "zoom" ? "kb" : ""}"${sec.variant === "drift" ? " data-drift" : ""}>${pictured(img(sec.photo, w("caption")), w("caption") || word(lang, "more"))}</div>${w("caption") ? `<figcaption class="wrap">${esc(w("caption"))}</figcaption>` : ""}</figure></section>`;
+      return `<section class="fullphoto al-${sec.align || "left"}"><figure style="margin:0"><div class="frame ${sec.variant === "zoom" ? "kb" : ""}"${sec.variant === "drift" ? " data-drift" : ""}>${pictured(img(sec.photo, w("caption")), w("caption") || word(lang, "more"))}</div>${w("caption") ? `<figcaption class="wrap">${esc(w("caption"))}</figcaption>` : ""}</figure></section>`;
     case "quote":
       if (!w("quote")) return "";
       return `<section${cls("quote", "quote-" + sec.variant)}><div class="wrap m"><blockquote>“${w("quote")}”</blockquote>${w("who") ? `<cite>${esc(w("who"))}</cite>` : ""}</div></section>`;
@@ -588,6 +633,8 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
   const href = (id, l = lang) => `${base}/${l}/${id === "home" ? "" : id + "/"}${draft ? "?draft" : ""}`;
   const ctx = {
     lang, fallback, design, slug: site.slug, payload, needs: {}, draft,
+    /* This page's own say over the opening's scroll indicator. */
+    cueOn: !page || page.cue !== false,
     /* Widgets follow the page: light, dark, or — a Custom site that follows
        the visitor's device — the device too. */
     widgetTheme: L.alt ? "auto" : L.scheme === "dark" ? "dark" : "light",
