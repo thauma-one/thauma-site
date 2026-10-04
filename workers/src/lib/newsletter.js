@@ -81,8 +81,24 @@ const KEEP = new Set([
  * an accent that fights the ministry's own. `accent` resolves to whatever the
  * partner chose, so it is right by construction.
  */
-const SIZES = { sm: "13.5px", lg: "19px" };
-const COLORS = new Set(["accent", "dim"]);
+const SIZES = { sm: "13.5px", lg: "19px", xl: "23px" };
+
+/* A FEW TONES BESIDES THE BRAND, each with a light-email and a dark-email
+   shade, so a colored word stays readable on either card (both pass 4.5:1).
+   Still a fixed palette, not a picker: the reason above has not changed. */
+const TONES = {
+  red:   ["#B42318", "#FF8A80"],
+  green: ["#1B7F4B", "#6FE3A6"],
+  blue:  ["#1D5FC2", "#8DB8FF"],
+  gold:  ["#9A5B00", "#F2C14E"],
+};
+const COLORS = new Set(["accent", "dim", ...Object.keys(TONES)]);
+
+/* PERSONAL WORDS: a span naming a variable, filled per recipient by render().
+   The span's own text is only the editor's label and never reaches a reader;
+   `data-fallback` is what a subscriber without a name gets, and what the
+   public archive always shows. */
+const VARS = new Set(["first_name", "name"]);
 
 /* Tags whose CONTENT goes too. Script and style carry no prose, and keeping
    the text inside a <style> would paste CSS into the middle of a sentence. */
@@ -91,7 +107,8 @@ const DROP_WHOLE = new Set(["script", "style", "head", "title", "meta", "link", 
 /* What each surviving tag may carry. Anything not listed is dropped — that
    includes every style, class and id, which is what keeps a paste from
    bringing another website's appearance along. */
-const ATTRS = { a: ["href"], img: ["src", "alt"], span: ["data-sz", "data-c"] };
+const ATTRS = { a: ["href"], img: ["src", "alt"],
+                span: ["data-sz", "data-c", "data-var", "data-fallback"] };
 
 export function escapeHtml(s) {
   return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => (
@@ -189,13 +206,25 @@ export function sanitise(html) {
 
     const selfClosing = name === "br" || name === "img" || name === "hr";
     let attrs = "";
+    let hasVar = false;
     for (const key of ATTRS[name] || []) {
       const m = new RegExp(key + '\\s*=\\s*"([^"]*)"', "i").exec(raw) ||
                 new RegExp(key + "\\s*=\\s*'([^']*)'", "i").exec(raw);
       if (!m) continue;
-      let value = m[1];
+      /* DECODED FIRST. An attribute in HTML source is entity-encoded — the
+         editor writes ?a=1&amp;b=2 — and escaping that again stored
+         &amp;amp;, so every link with an & in it went somewhere else. */
+      let value = unescapeHtml(m[1]);
       if (key === "data-sz" && !SIZES[value]) continue;
       if (key === "data-c" && !COLORS.has(value)) continue;
+      if (key === "data-var") {
+        if (!VARS.has(value)) continue;
+        hasVar = true;
+      }
+      if (key === "data-fallback") {
+        if (!hasVar) continue;
+        value = value.replace(/[\x00-\x1f\x7f]/g, " ").trim().slice(0, 40);
+      }
       if (key === "href") {
         value = safeUrl(value);
         if (!value) continue;
@@ -269,7 +298,7 @@ const SERIF = "Georgia,Cambria,'Times New Roman',serif";
 /* Inline styles per tag. Applied on the way out rather than stored, so
    restyling every newsletter ever sent is a change here — and an archived
    mailing is re-rendered from the same source the email came from. */
-function inlineStyles(html, accent, ink, dim, line) {
+function inlineStyles(html, accent, ink, dim, line, dark = false) {
   const S = {
     p: `margin:0 0 16px;font-size:16px;line-height:1.6;color:${ink}`,
     h2: `margin:28px 0 12px;font-family:${SERIF};font-size:23px;line-height:1.3;` +
@@ -303,6 +332,7 @@ function inlineStyles(html, accent, ink, dim, line) {
       if (sz && S.__sizes[sz[1]]) bits.push("font-size:" + S.__sizes[sz[1]]);
       if (c && c[1] === "accent") bits.push("color:" + accent);
       if (c && c[1] === "dim") bits.push("color:" + dim);
+      if (c && TONES[c[1]]) bits.push("color:" + TONES[c[1]][dark ? 1 : 0]);
       return bits.length ? `<span style="${bits.join(";")}">` : m;
     }
 
@@ -312,11 +342,36 @@ function inlineStyles(html, accent, ink, dim, line) {
   });
 }
 
+const unescapeHtml = (v) => String(v)
+  .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"')
+  .replace(/&#39;/g, "'").replace(/&amp;/g, "&");
+
+/**
+ * Replace each variable span with the recipient's words, escaped.
+ *
+ * `name` is the subscriber's name as stored (may be null). first_name is its
+ * first word. With no name the span's own fallback is used, and with no
+ * fallback the span simply disappears — never its editor label.
+ */
+export function fillVariables(html, name) {
+  const full = String(name || "").replace(/\s+/g, " ").trim();
+  return String(html || "").replace(
+    /<span\b([^>]*\bdata-var="([a-z_]+)"[^>]*)>[\s\S]*?<\/span>/g,
+    (m, attrs, v) => {
+      const fb = /data-fallback="([^"]*)"/.exec(attrs);
+      const word = !full ? (fb ? unescapeHtml(fb[1]) : "")
+        : v === "first_name" ? full.split(" ")[0] : full;
+      return escapeHtml(word);
+    });
+}
+
 /**
  * The whole email.
  *
  * @param body      already sanitised HTML
  * @param opts.unsubscribeUrl  REQUIRED for a real send. See the note below.
+ * @param opts.recipientName   the subscriber's name, for variables; null on
+ *                             the archive and the size measure (fallbacks).
  */
 export function render(body, opts = {}) {
   const accent = /^#[0-9a-fA-F]{6}$/.test(String(opts.accent || "")) ? opts.accent : "#6D4AFF";
@@ -332,7 +387,10 @@ export function render(body, opts = {}) {
   const line = dark ? "#2a2a36" : "#e6e6ee";
 
   const mediaOrigin = String(opts.mediaOrigin || MEDIA_ORIGIN).replace(/\/+$/, "");
-  const styled = inlineStyles(body, accent, ink, dim, line)
+  /* Personal words first, so nothing below ever sees a variable: a send
+     passes the recipient's name, everything else (the archive, the size
+     measure) gets each variable's fallback. */
+  const styled = inlineStyles(fillVariables(body, opts.recipientName), accent, ink, dim, line, dark)
     .replace(/(<img\b[^>]*\ssrc=")(\/media\/)/gi, `$1${mediaOrigin}$2`);
   const title = escapeHtml(opts.subject || "");
 

@@ -22,7 +22,7 @@ import { createDb } from "./lib/db.js";
 import { requireAccess } from "./lib/access.js";
 import { resolveActor, withActing } from "./lib/actas.js";
 import { json, readJson } from "./lib/store.js";
-import { sanitise, render, toText, plainLine, tooBig, sizeOf } from "./lib/newsletter.js";
+import { sanitise, render, toText, plainLine, tooBig, sizeOf, fillVariables } from "./lib/newsletter.js";
 import { unsubscribeUrl } from "./lib/unsub.js";
 import { sendMail, listConfirmEmail, testInboxEmail } from "./lib/mail.js";
 import { linkParams } from "./lib/signed-link.js";
@@ -281,12 +281,17 @@ async function messageFor(env, { built, list, sub, origin, theme, archiveUrl, at
     mode: theme && theme.mode,
     unsubscribeUrl: unsubscribe,
     archiveUrl,
+    recipientName: sub.name || null,
   });
+  /* The plain part personalized the same way: the stored body_text holds the
+     editor's label where a variable sits, which nobody may read. */
+  const text = /data-var="/.test(built.html)
+    ? toText(fillVariables(built.html, sub.name || null)) : (built.text || "");
   return {
     to: sub.email,
     subject: built.subject,
     html: body,
-    text: (built.text || "") + "\n\n—\n" + list.name +
+    text: text + "\n\n—\n" + list.name +
           "\nUnsubscribe: " + unsubscribe,
     from: `${list.from_name} <${list.from_email}>`,
     replyTo: list.reply_to || undefined,
@@ -960,7 +965,8 @@ const api = {
            would fail to show. */
         const msg = await messageFor(env, {
           built, list, origin,
-          sub: { id: "test-" + ((actor.me && actor.me.user_id) || "x"), email: testTo },
+          sub: { id: "test-" + ((actor.me && actor.me.user_id) || "x"), email: testTo,
+                 name: (s.me && s.me.user_name) || null },
           theme: look ? { accent: look.embed_accent, mode: look.embed_theme } : null,
           attachments: await loadAttachments(env,
             await db.query("mailing_attachments_for", { mailing_id: m.id })),

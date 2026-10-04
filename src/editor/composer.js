@@ -66,6 +66,66 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
     element: mount,
     toolbar: document.querySelector(".cp-tools"),
     onChange: () => { markDirty(); measureSoon(); },
+    varLabels: { first_name: tr("ml.cpVarFirst"), name: tr("ml.cpVarFull") },
+    onRefresh: (ed) => showChoices(ed),
+  });
+
+  /* ---- size, color, link, name: one row under the toolbar --------------
+     Each opens a row of choices instead of a dialog or a prompt, and the
+     size and color buttons show what the cursor is in now. */
+  const ROWS = { size: "cpSizeRow", color: "cpColorRow", link: "cpLinkRow", variable: "cpVarRow" };
+
+  function showChoices(ed) {
+    const sz = ed.getAttributes("size").sz || "";
+    const tone = ed.getAttributes("tone").c || "";
+    document.querySelectorAll("#cpSizeRow [data-size]").forEach((b) => {
+      b.setAttribute("aria-pressed", b.dataset.size === sz ? "true" : "false");
+    });
+    document.querySelectorAll("#cpColorRow [data-tone]").forEach((b) => {
+      b.setAttribute("aria-pressed", b.dataset.tone === tone ? "true" : "false");
+    });
+    const sizeBtn = document.querySelector('.cp-tools [data-cmd="size"]');
+    if (sizeBtn) sizeBtn.dataset.sz = sz;
+    const colorBtn = document.querySelector('.cp-tools [data-cmd="color"]');
+    if (colorBtn) colorBtn.dataset.tone = tone;
+  }
+
+  function openRow(which) {
+    for (const [cmd, id] of Object.entries(ROWS)) {
+      const open = cmd === which && $(id).hidden;
+      $(id).hidden = !open;
+      const b = document.querySelector(`.cp-tools [data-cmd="${cmd}"]`);
+      if (b) b.setAttribute("aria-expanded", open ? "true" : "false");
+    }
+    if (which === "link" && !$("cpLinkRow").hidden) {
+      const href = editor.getAttributes("link").href || "";
+      $("cpLinkUrl").value = href;
+      $("cpLinkRemove").hidden = !href;
+      $("cpLinkUrl").focus();
+    }
+    if (which === "variable" && !$("cpVarRow").hidden && !$("cpVarFallback").value) {
+      $("cpVarFallback").value = tr("ml.cpVarDefault");
+    }
+  }
+  const closeRows = () => openRow(null);
+
+  $("cpSizeRow").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-size]");
+    if (!b) return;
+    editor.chain().focus().setFontSize(b.dataset.size || null).run();
+    closeRows();
+  });
+  $("cpColorRow").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-tone]");
+    if (!b) return;
+    editor.chain().focus().setTone(b.dataset.tone || null).run();
+    closeRows();
+  });
+  $("cpVarRow").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-var]");
+    if (!b) return;
+    editor.chain().focus().insertVariable(b.dataset.var, $("cpVarFallback").value.trim()).run();
+    closeRows();
   });
 
   /* ---- loading -------------------------------------------------------- */
@@ -154,16 +214,31 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
 
   /* ---- links and pictures --------------------------------------------- */
 
-  function linkPressed() {
-    if (editor.isActive("link")) return applyLink(editor, null);
-    const current = editor.getAttributes("link").href || "https://";
-    const href = window.prompt(tr("ml.cpLinkPrompt"), current);
-    if (href === null) return;
-    if (!href.trim()) return applyLink(editor, null);
-    if (!/^(https?:\/\/|mailto:)/i.test(href)) { toast(tr("ml.cpLinkBad"), "bad"); return; }
-    applyLink(editor, href.trim());
+  /* A real field, not window.prompt: it shows the link already there, can
+     edit or remove it, and refuses what the server would strip. A bare
+     address gets https:// and one with an @ becomes mailto:. */
+  function linkApply() {
+    let href = $("cpLinkUrl").value.trim();
+    if (!href) { applyLink(editor, null); closeRows(); return; }
+    if (!/^[a-z][a-z0-9+.-]*:/i.test(href)) {
+      href = /^[^\s/@]+@[^\s@]+\.[^\s@]+$/.test(href) ? "mailto:" + href : "https://" + href;
+    }
+    if (!/^(https?:\/\/[^\s]+|mailto:[^\s]+)$/i.test(href)) { toast(tr("ml.cpLinkBad"), "bad"); return; }
+    applyLink(editor, href);
+    closeRows();
     markDirty(); measureSoon();
   }
+  function linkRemove() {
+    applyLink(editor, null);
+    closeRows();
+    markDirty(); measureSoon();
+  }
+  $("cpLinkApply").addEventListener("click", linkApply);
+  $("cpLinkRemove").addEventListener("click", linkRemove);
+  $("cpLinkUrl").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); linkApply(); }
+    if (e.key === "Escape") { e.preventDefault(); closeRows(); editor.commands.focus(); }
+  });
 
   /* UPLOADED AND LINKED, never embedded. A base64 image inside the HTML is the
      fastest way past Gmail's ~102KB clipping limit — one paste turns a 40KB
@@ -563,8 +638,8 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
     const b = e.target.closest("[data-cmd]");
     if (!b) return;
     e.preventDefault();
-    if (b.dataset.cmd === "link") return linkPressed();
-    if (b.dataset.cmd === "image") return pickImage();
+    if (b.dataset.cmd === "image") { closeRows(); return pickImage(); }
+    if (ROWS[b.dataset.cmd]) return openRow(b.dataset.cmd);
   });
 
   $("cpFileList").addEventListener("click", (e) => {

@@ -243,23 +243,96 @@ await check("the brand color is stored as INTENT, not as a color value", async (
      message the moment a draft was copied, and would survive a rebrand as a
      stale color nobody can find. The server resolves the mark at render time
      against whatever that ministry currently uses. */
-  const { editor, D } = ctx;
+  /* Through the color row now (2026-10-03): brand plus a few named tones. */
+  const { editor, D, w } = ctx;
+  const press = (el) => el.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
   editor.chain().focus().clearContent().insertContent("Zagreb").run();
-  editor.chain().focus().selectAll().toggleAccent().run();
+  editor.commands.selectAll();
+  press(D.querySelector('.cp-tools [data-cmd="color"]'));
+  assert(!D.getElementById("cpColorRow").hidden, "the color row did not open");
+  press(D.querySelector('#cpColorRow [data-tone="accent"]'));
   await settle();
-  eq(lit(D, "accent"), "true", "the accent button should be lit");
-  const html = editor.getHTML();
+  editor.commands.selectAll();
+  await settle();
+  eq(D.querySelector('#cpColorRow [data-tone="accent"]').getAttribute("aria-pressed"), "true",
+     "the brand swatch should show as chosen");
+  let html = editor.getHTML();
   assert(/data-c="accent"/.test(html), `expected a data-c mark: ${html}`);
   assert(!/#[0-9a-fA-F]{6}/.test(html), `a literal color leaked in: ${html}`);
+  editor.chain().focus().selectAll().setTone("green").run();
+  html = editor.getHTML();
+  assert(/data-c="green"/.test(html) && !/data-c="accent"/.test(html), `one tone at a time: ${html}`);
 });
 
-await check("the two sizes round-trip as data-sz", async () => {
-  const { editor, D } = ctx;
+await check("the sizes round-trip as data-sz, and the size row shows the current one", async () => {
+  const { editor, D, w } = ctx;
+  const press = (el) => el.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
   editor.chain().focus().clearContent().insertContent("Big").run();
-  editor.chain().focus().selectAll().setSize("lg").run();
+  editor.commands.selectAll();
+  press(D.querySelector('.cp-tools [data-cmd="size"]'));
+  press(D.querySelector('#cpSizeRow [data-size="xl"]'));
   await settle();
-  eq(lit(D, "larger"), "true", "the larger button should be lit");
-  assert(/data-sz="lg"/.test(editor.getHTML()), `expected data-sz: ${editor.getHTML()}`);
+  assert(/data-sz="xl"/.test(editor.getHTML()), `expected data-sz: ${editor.getHTML()}`);
+  editor.commands.selectAll();
+  await settle();
+  eq(D.querySelector('#cpSizeRow [data-size="xl"]').getAttribute("aria-pressed"), "true",
+     "Extra large should show as chosen");
+  editor.chain().focus().selectAll().setFontSize(null).run();
+  assert(!/data-sz/.test(editor.getHTML()), "Normal should clear the size");
+});
+
+await check("Ctrl+B with nothing selected lights Bold before anything is typed", async () => {
+  /* The stored-mark case: no content or selection changes, only a
+     transaction. Chase: "Cmd/Ctrl+B lights the Bold button (it only lights
+     when pressed)". */
+  const { editor, D, w } = ctx;
+  editor.chain().focus().clearContent().insertContent("plain ").run();
+  await settle();
+  eq(lit(D, "bold"), "false", "Bold should start dark");
+  editor.view.dom.dispatchEvent(new w.KeyboardEvent("keydown",
+    { key: "b", code: "KeyB", ctrlKey: true, bubbles: true, cancelable: true }));
+  await settle();
+  eq(lit(D, "bold"), "true", "Bold should light from the shortcut alone");
+  editor.view.dom.dispatchEvent(new w.KeyboardEvent("keydown",
+    { key: "i", code: "KeyI", ctrlKey: true, bubbles: true, cancelable: true }));
+  await settle();
+  eq(lit(D, "italic"), "true", "Italic too");
+});
+
+await check("the link row adds, shows, edits and removes a link (no prompt)", async () => {
+  const { editor, D, w } = ctx;
+  const press = (el) => el.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+  editor.chain().focus().clearContent().insertContent("Thauma").run();
+  editor.commands.selectAll();
+  press(D.querySelector('.cp-tools [data-cmd="link"]'));
+  assert(!D.getElementById("cpLinkRow").hidden, "the link row did not open");
+  D.getElementById("cpLinkUrl").value = "thauma.one/give?a=1&b=2";
+  press(D.getElementById("cpLinkApply"));
+  let html = editor.getHTML();
+  assert(/href="https:\/\/thauma\.one\/give\?a=1&amp;b=2"/.test(html), `bare address not completed: ${html}`);
+  editor.commands.selectAll();
+  press(D.querySelector('.cp-tools [data-cmd="link"]'));
+  eq(D.getElementById("cpLinkUrl").value, "https://thauma.one/give?a=1&b=2", "the row shows the link");
+  assert(!D.getElementById("cpLinkRemove").hidden, "Remove link should be offered");
+  press(D.getElementById("cpLinkRemove"));
+  assert(!/<a /.test(editor.getHTML()), `link not removed: ${editor.getHTML()}`);
+});
+
+await check("a name chip saves as a variable the sanitiser keeps", async () => {
+  const { sanitise } = await import("../workers/src/lib/newsletter.js");
+  const { editor, D, w } = ctx;
+  const press = (el) => el.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+  editor.chain().focus().clearContent().insertContent("Hi ").run();
+  press(D.querySelector('.cp-tools [data-cmd="variable"]'));
+  D.getElementById("cpVarFallback").value = "friend";
+  press(D.querySelector('#cpVarRow [data-var="first_name"]'));
+  const html = editor.getHTML();
+  assert(/<span data-var="first_name" data-fallback="friend"[^>]*>[^<]+<\/span>/.test(html),
+    `no variable: ${html}`);
+  const kept = sanitise(html);
+  assert(/data-var="first_name" data-fallback="friend"/.test(kept), `lost on save: ${kept}`);
+  editor.commands.setContent(kept);
+  assert(/data-var="first_name"/.test(editor.getHTML()), "a saved draft did not reopen with it");
 });
 
 await check("what the editor emits is what the sanitiser keeps", async () => {

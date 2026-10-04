@@ -16,6 +16,8 @@
  */
 import { sanitise, render, toText, plainLine, escapeHtml,
          tooBig, sizeOf } from "../src/lib/newsletter.js";
+/* Namespace too, so a missing export fails one check rather than the file. */
+import * as NL from "../src/lib/newsletter.js";
 
 let pass = 0, fail = 0;
 const check = (name, fn) => {
@@ -365,6 +367,50 @@ check("in the email the picture points at the live site, which readers can reach
   const html = render(sanitise('<img src="/media/newsletter/x/a.jpg">'), OPTS);
   assert(html.includes('src="https://thauma.one/media/newsletter/x/a.jpg"'), "not absolute");
   assert(!/src="\/media\//.test(html), "a relative src reached the email");
+});
+
+/* ---- the composer's palette, sizes and personal words (2026-10-03) ---- */
+
+check("a link keeps its & (it was stored as &amp;amp;, a different address)", () => {
+  const out = sanitise('<p><a href="https://x.org/?a=1&amp;b=2">x</a></p>');
+  eq(out, '<p><a href="https://x.org/?a=1&amp;b=2">x</a></p>', "sanitised");
+  eq(sanitise(out), out, "sanitising twice changes nothing");
+});
+
+check("the palette tones and the extra-large size survive and render per light/dark", () => {
+  const s = sanitise('<p><span data-c="red">r</span> <span data-c="green">g</span> ' +
+                     '<span data-c="pink">p</span> <span data-sz="xl">big</span></p>');
+  assert(s.includes('data-c="red"') && s.includes('data-c="green"'), "tones dropped: " + s);
+  assert(!s.includes("pink"), "an unknown color survived");
+  assert(s.includes('data-sz="xl"'), "xl dropped");
+  const light = render(s, { subject: "x", unsubscribeUrl: "u" });
+  const dark = render(s, { subject: "x", unsubscribeUrl: "u", mode: "dark" });
+  assert(/<span style="color:#B42318">r/.test(light), "red on a light email");
+  assert(/<span style="color:#FF8A80">r/.test(dark), "red on a dark email");
+  assert(/<span style="font-size:23px">big/.test(light), "xl size");
+});
+
+check("a name variable survives saving; unknown ones and stray fallbacks do not", () => {
+  const s = sanitise('<p>Hi <span data-var="first_name" data-fallback="friend">First name</span>' +
+                     ' <span data-var="password" data-fallback="x">X</span>' +
+                     ' <span data-fallback="y">Y</span></p>');
+  assert(s.includes('<span data-var="first_name" data-fallback="friend">First name</span>'),
+    "variable lost: " + s);
+  assert(!s.includes("password") && !s.includes('data-fallback="x"') &&
+         !s.includes('data-fallback="y"'), "something unknown survived: " + s);
+});
+
+check("each reader gets their own name, escaped; no name gets the fallback; never the label", () => {
+  assert(typeof NL.fillVariables === "function", "fillVariables is missing");
+  const s = sanitise('<p>Hi <span data-var="first_name" data-fallback="friend">First name</span>, ' +
+                     '<span data-var="name">Name</span>.</p>');
+  eq(NL.fillVariables(s, "Ana <b>Marić</b>"), "<p>Hi Ana, Ana &lt;b&gt;Marić&lt;/b&gt;.</p>", "named");
+  eq(NL.fillVariables(s, null), "<p>Hi friend, .</p>", "unnamed");
+  const sent = render(s, { subject: "x", unsubscribeUrl: "u", recipientName: "Ivo Ivić" });
+  assert(sent.includes("Hi Ivo, Ivo Ivić."), "render did not fill");
+  const archive = render(s, { subject: "x" });
+  assert(archive.includes("Hi friend") && !/First name|data-var/.test(archive),
+    "the archive shows a label or a variable");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

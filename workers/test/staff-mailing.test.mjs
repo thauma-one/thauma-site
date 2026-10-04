@@ -558,7 +558,8 @@ await check("the sign-up form keeps no after-sending words (the contact form doe
 
 /* The live site, 2026-10: two mailings crashed after the claim, stayed at
    'sending' forever, and the console said only "(500)". */
-function crashingSendEnv({ crash = true, roles = "staff" } = {}) {
+function crashingSendEnv({ crash = true, roles = "staff", bodyHtml = "<p>Hi</p>",
+                          people = [{ id: "sb_1", email: "a@b.one", name: "A" }] } = {}) {
   const env = envWith(roles);
   env.SIGNUP_SALT = "s".repeat(32);
   const sqlOf = (name) => QUERIES[name].replace(/:[a-z_][a-z0-9_]*/gi, "?");
@@ -570,11 +571,11 @@ function crashingSendEnv({ crash = true, roles = "staff" } = {}) {
       if (sql === sqlOf("mailing_unstart")) { status = "draft"; return { results: [] }; }
       if (sql === sqlOf("mailing_one")) {
         return { results: [{ id: "mg_1", list_id: "ml_1", partner_id: "p_chase", status,
-                             subject: "Hello", body_html: "<p>Hi</p>", body_text: "Hi" }] };
+                             subject: "Hello", body_html: bodyHtml, body_text: "Hi" }] };
       }
       if (sql === sqlOf("subscribers_to_send_count")) return { results: [{ n: 1 }] };
       if (sql === sqlOf("subscribers_to_send")) {
-        return { results: [{ id: "sb_1", email: "a@b.one", name: "A" }] };
+        return { results: people };
       }
       if (crash && sql === sqlOf("partner_settings")) throw new Error("boom in partner_settings");
       return null;
@@ -604,8 +605,8 @@ await check("a send that breaks before anything left goes back to draft, and say
 /* The 500 itself (2026-08-24 → 10-03): buildMailing answers { value }, and
    both buttons read the message off the wrapper — so the body was undefined
    and render() threw. The mocks above never reached a real render. */
-async function sendsThrough(action) {
-  const { env } = crashingSendEnv({ crash: false });
+async function sendsThrough(action, opts = {}) {
+  const { env } = crashingSendEnv({ crash: false, ...opts });
   env.RESEND_API_KEY = "re_test";
   const out = [];
   const before = globalThis.fetch;
@@ -723,6 +724,28 @@ await check("one of Thauma's own lists attaches into the organization's folder",
   eq(res.status, 200, "status");
   const { file } = await res.json();
   assert(file.object_key.startsWith("attachments/org/"), `key ${file.object_key}`);
+});
+
+await check("Send fills each person's name, and the fallback for someone without one", async () => {
+  const body = '<p>Hi <span data-var="first_name" data-fallback="friend">First name</span>!</p>';
+  const { res, out } = await sendsThrough("mailing-send", { bodyHtml: body, people: [
+    { id: "sb_1", email: "ana@x.one", name: "Ana <b>Marić" },
+    { id: "sb_2", email: "nn@x.one", name: null },
+  ] });
+  eq(res.status, 200, "status");
+  eq(out.length, 2, "messages");
+  assert(out[0].html.includes("Hi Ana!") && out[0].text.includes("Hi Ana!"), "Ana's copy");
+  assert(out[1].html.includes("Hi friend!") && out[1].text.includes("Hi friend!"), "the unnamed copy");
+  for (const m of out) {
+    assert(!/First name|data-var/.test(m.html + m.text), "the editor's label reached a reader");
+  }
+});
+
+await check("Send me a test fills in the tester's own name", async () => {
+  const body = '<p>Hi <span data-var="first_name" data-fallback="friend">First name</span>!</p>';
+  const { res, out } = await sendsThrough("mailing-test", { bodyHtml: body });
+  eq(res.status, 200, "status");
+  assert(out[0].html.includes("Hi Chase!"), "tester's name missing");
 });
 
 await check("any other failure answers with its message, not a bare 500", async () => {
