@@ -827,6 +827,11 @@ await check("the site is made on first opening, its address from the name", asyn
     assert(called(db, "partner_site_create")[0].args.includes("mirapetrovic"), "the address from the name");
     eq(body.site.subdomain, "mirapetrovic", "answered");
     eq([body.can.edit, body.can.owner], [true, true], "the owner edits");
+    /* Each language's built-in page names, so the editor's page names
+       follow Editing ⇄ Reference (Chase, 2026-10-03). */
+    const { word } = await import("../src/site/model.js");
+    eq([body.page_names && body.page_names.sr && body.page_names.sr.about, body.page_names.en.about],
+       [word("sr", "about"), word("en", "about")], "page names per language");
   } finally { EXTRA = {}; }
 });
 

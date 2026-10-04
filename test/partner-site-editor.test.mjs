@@ -9,7 +9,7 @@
  */
 import { JSDOM } from "jsdom";
 import { readFileSync, existsSync } from "node:fs";
-import { starter, cleanDoc } from "../workers/src/site/model.js";
+import { starter, cleanDoc, word, PAGES } from "../workers/src/site/model.js";
 
 const PAGE = ["_site", "_site_next", "_site_prod"].map((d) => `${d}/staff/website/index.html`).find((f) => existsSync(f));
 
@@ -35,6 +35,8 @@ function answer({ edit = true, owner = true, published = false } = {}) {
             enabled: false, published_at: null, unpublished: true, dns: null },
     draft,
     languages: [{ code: "en", name: "English", native_name: "English" }, { code: "hr", name: "Croatian", native_name: "Hrvatski" }],
+    /* As staff-site.js builds it: the site's own page names per language. */
+    page_names: Object.fromEntries(["en", "hr"].map((l) => [l, Object.fromEntries(PAGES.map((id) => [id, word(l, id)]))])),
     theme: { accent: "#1AE4FF", accent2: "#25FFA1" },
     can: { edit, owner }, owner: { name: "Chase Roush" }, editors: [], requests: [], my_request: null,
   };
@@ -89,6 +91,25 @@ await check("a page opens to its sections as rows; All pages and the page menu l
   eq(d.querySelector("[data-pick-page]").value, "give", "straight to another page");
   click(d.querySelector("[data-all-pages]"));
   assert(d.querySelector(".ws-plist"), "back to all pages");
+});
+
+await check("page names follow Editing, and Reference shows that language's name (Chase, 2026-10-03)", async () => {
+  /* They showed the CONSOLE's word whatever was being edited, and nothing
+     under Reference unless a page had been renamed. */
+  const { w, d, click, pages } = await boot();
+  pages();
+  const pick = d.getElementById("wsLangA");
+  pick.value = "hr";
+  pick.dispatchEvent(new w.Event("change", { bubbles: true }));
+  const rows = [...d.querySelectorAll(".ws-prow b")].map((b) => b.textContent);
+  eq(rows.slice(0, 2), [word("hr", "home"), word("hr", "about")], "the list, editing Croatian");
+  click(d.querySelector('[data-open-page="about"]'));
+  eq(d.querySelector("[data-page-label]").placeholder, word("hr", "about"), "the name box, editing Croatian");
+  const refLine = d.querySelector(".ws-pagename .ms-ref");
+  assert(refLine, "no Reference line for a page that was never renamed");
+  eq([refLine.textContent, refLine.lang], [word("en", "about"), "en"], "Reference");
+  const opt = [...d.querySelectorAll("[data-pick-page] option")].find((o) => o.value === "about");
+  eq(opt.textContent, word("hr", "about"), "the page menu");
 });
 
 await check("a row unfolds where it is, one at a time; a new section goes where asked and opens", async () => {
