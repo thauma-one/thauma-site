@@ -823,5 +823,21 @@ check("clean links: socials, page names in any language and alphabet, Give, the 
   eq(go("/nothing-here"), null, "nothing");
 });
 
+check("Give to the Give page sits where the Pages list puts it", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  const gi = d.pages.findIndex((p) => p.id === "give");
+  const [g] = d.pages.splice(gi, 1); g.on = true; d.pages.splice(2, 0, g);
+  const nav = page(d).match(/<nav class="nav"[^>]*>([\s\S]*?)<\/nav>/)[1];
+  const ids = [...nav.matchAll(/href="\/site\/chaseroush\/en\/([a-z]*)\/?"/g)].map((m) => m[1] || "home");
+  eq(ids.indexOf("give"), d.pages.filter((p) => p.on).findIndex((p) => p.id === "give"), "in its place");
+});
+
+check("the second color is a quick pick on a site too", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  d.pages[0].sections = [{ id: "t1", type: "text", variant: "left", words: { en: { heading: "H", text: '<span data-c="accent2">two</span>' } } }];
+  const html = page(d);
+  assert(/<span class="tc-accent2">two<\/span>/.test(html) && html.includes(".tc-accent2{color:var(--acc2)}"), "drawn in --acc2");
+});
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

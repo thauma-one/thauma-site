@@ -387,8 +387,25 @@
     var d = state.doc && state.doc.design, th = state.body && state.body.theme;
     return (d && d.colors && d.colors.accent) || (th && th.accent) || '#1AE4FF';
   }
+  /* The site's second color, as render.js derives it: Custom's accent turned
+     33 degrees back, else the ministry's own second color. */
+  function siteAccent2() {
+    var d = state.doc && state.doc.design, th = state.body && state.body.theme;
+    if (d && d.colors && d.colors.accent) return turnHue(d.colors.accent, -33);
+    return (th && th.accent2) || turnHue(siteAccent(), -33);
+  }
+  function turnHue(hex, deg) {
+    var n = parseInt(String(hex).slice(1), 16), r = (n >> 16) / 255, g = (n >> 8 & 255) / 255, b = (n & 255) / 255;
+    var mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d0 = mx - mn, h = 0, s = 0;
+    if (d0) { s = d0 / (1 - Math.abs(2 * l - 1)); h = mx === r ? ((g - b) / d0) % 6 : mx === g ? (b - r) / d0 + 2 : (r - g) / d0 + 4; h *= 60; }
+    h = ((h + deg) % 360 + 360) % 360;
+    var c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = l - c / 2;
+    var rgb = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+    return '#' + rgb.map(function (v) { return ('0' + Math.round((v + m) * 255).toString(16)).slice(-2); }).join('');
+  }
   function draw() {
     document.documentElement.style.setProperty('--ws-acc', siteAccent());
+    document.documentElement.style.setProperty('--ws-acc2', siteAccent2());
     keepPlace();
     if (state.tab === 'pages') drawPages();
     if (state.tab === 'design') drawDesign();
@@ -436,6 +453,19 @@
   }
 
   $('wsFrame').addEventListener('load', function () {
+    /* THE EDITOR FOLLOWS THE PREVIEW (Chase, 2026-10-04): a page opened by
+       clicking inside the preview becomes the page being edited, so the two
+       never show different pages. Same origin, so its address is readable. */
+    try {
+      var m = this.contentWindow.location.pathname.match(/\/site\/[^/]+\/([a-z-]+)\/(?:([a-z0-9-]+)\/)?$/);
+      var seen = m && (m[2] || 'home');
+      var cur = state.page ? currentPage().id : 'home';
+      if (seen && seen !== cur && state.doc.pages.some(function (x) { return x.id === seen; })) {
+        state.page = seen; state.edit = null;
+        if (state.tab === 'pages') drawPages();
+        $('wsPreviewPath').textContent = '/' + m[1] + '/' + (seen === 'home' ? '' : seen + '/');
+      }
+    } catch (e) { /* another origin: nothing to follow */ }
     /* THE FOOTER PREVIEW IS AS TALL AS THE FOOTER (Chase, 2026-10-01: the
        small print "doesn't show up on the preview for Split view"). It was a
        fixed 170px of a scaled frame, which cut off whatever wrapped below
@@ -917,7 +947,7 @@
      Mail composer uses (workers/src/lib/tones.js); the site draws them in its
      own colors, light or dark. */
   var SIZES = ['sm', 'lg', 'xl'];
-  var TONE_NAMES = ['accent', 'dim', 'red', 'green', 'blue', 'gold'];
+  var TONE_NAMES = ['accent', 'accent2', 'dim', 'red', 'green', 'blue', 'gold'];
   /* Swatches as a dark ground shows them, the console's own. */
   var TONE_SWATCH = { dim: '#9AA6B6', red: '#FF8A80', green: '#6FE3A6', blue: '#8DB8FF', gold: '#F2C14E' };
   function isTone(c) { return TONE_NAMES.indexOf(c) !== -1 || /^#[0-9a-f]{6}$/i.test(String(c || '')); }
@@ -1004,7 +1034,7 @@
     '<div class="ws-fmt-row" data-fmt-row="color" hidden>' + [''].concat(TONE_NAMES).map(function (c) {
       var key = 'ml.cpTone' + (c ? c.charAt(0).toUpperCase() + c.slice(1) : 'None');
       return '<button type="button" class="ws-fmt-tone" data-fmt-c="' + c + '" aria-pressed="false" aria-label="' + esc(tr(key)) + '" title="' + esc(tr(key)) + '"><i' +
-        (TONE_SWATCH[c] ? ' style="background:' + TONE_SWATCH[c] + '"' : '') + '></i></button>';
+        (TONE_SWATCH[c] ? ' style="background:' + TONE_SWATCH[c] + '"' : c === 'accent2' ? ' style="background:var(--ws-acc2)"' : '') + '></i></button>';
     }).join('') +
     '<label class="ws-fmt-tone ws-fmt-any" title="' + esc(tr('ml.cpToneAny')) + '"><input type="color" value="#3366cc" data-fmt-any aria-label="' + esc(tr('ml.cpToneAny')) + '"></label></div>';
   document.body.appendChild(fmt);
@@ -1031,7 +1061,7 @@
     var any = /^#/.test(c), dot = fmt.querySelector('.ws-fmt-color i');
     fmt.querySelector('.ws-fmt-any').classList.toggle('is-on', any);
     if (any) fmt.querySelector('[data-fmt-any]').value = c;
-    dot.style.background = any ? c : TONE_SWATCH[c] || (c === 'accent' ? 'var(--ws-acc)' : '');
+    dot.style.background = any ? c : TONE_SWATCH[c] || (c === 'accent' ? 'var(--ws-acc)' : c === 'accent2' ? 'var(--ws-acc2)' : '');
     dot.classList.toggle('is-none', !c);
   }
   function boxOfSelection() {

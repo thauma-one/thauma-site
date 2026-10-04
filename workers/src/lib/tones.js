@@ -23,7 +23,10 @@ export const TONES = {
   blue:  ["#1D5FC2", "#8DB8FF"],
   gold:  ["#9A5B00", "#F2C14E"],
 };
-export const COLOR_NAMES = ["accent", "dim", ...Object.keys(TONES)];
+/* "accent2" is the design's second color — the accent turned round the wheel
+   (33, 120 or 180 degrees, or the owner's own), always a quick pick beside the
+   accent (Chase, 2026-10-04). */
+export const COLOR_NAMES = ["accent", "accent2", "dim", ...Object.keys(TONES)];
 export const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 
 /** A color a person may store: a quick pick's name or any #rrggbb. */

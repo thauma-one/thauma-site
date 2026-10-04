@@ -30,6 +30,7 @@ import { siteOrigin } from "./lib/origin.js";
 import { topicLabels, cleanLabels } from "./lib/topics.js";
 import { changedSince, changedAnswer } from "./lib/fresh.js";
 import { readTexts, cleanTexts } from "./lib/texts.js";
+import { lookFor } from "./embed-colour.js";
 
 const MAX = { name: 120, slug: 60, desc: 400, from_name: 80, email: 200 };
 
@@ -278,6 +279,7 @@ async function messageFor(env, { built, list, sub, origin, theme, archiveUrl, at
     fromName: list.from_name,
     listName: list.name,
     accent: theme && theme.accent,
+    accent2: theme && theme.accent2,
     mode: theme && theme.mode,
     unsubscribeUrl: unsubscribe,
     archiveUrl,
@@ -967,7 +969,7 @@ const api = {
           built, list, origin,
           sub: { id: "test-" + ((actor.me && actor.me.user_id) || "x"), email: testTo,
                  name: (s.me && s.me.user_name) || null },
-          theme: look ? { accent: look.embed_accent, mode: look.embed_theme } : null,
+          theme: look ? { accent: look.embed_accent, accent2: lookFor(look).accent2, mode: look.embed_theme } : null,
           attachments: await loadAttachments(env,
             await db.query("mailing_attachments_for", { mailing_id: m.id })),
         });
@@ -1050,7 +1052,7 @@ const api = {
 
           const look = partnerId
             ? await db.queryOne("partner_settings", { partner_id: partnerId }) : null;
-          const theme = look ? { accent: look.embed_accent, mode: look.embed_theme } : null;
+          const theme = look ? { accent: look.embed_accent, accent2: lookFor(look).accent2, mode: look.embed_theme } : null;
           /* Loaded ONCE for the whole send. Reading the same file per recipient
              would be a hundred fetches of one object and, at any real list size,
              more time than the request has. */

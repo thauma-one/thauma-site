@@ -144,7 +144,7 @@ export function styledSpans(html) {
     let style = "";
     if (sz && SIZE_NAMES.includes(sz[1])) cls.push("ts-" + sz[1]);
     if (c && HEX_COLOR.test(c[1])) style = ` style="color:${c[1].toLowerCase()}"`;
-    else if (c && (c[1] === "accent" || c[1] === "dim" || TONES[c[1]])) cls.push("tc-" + c[1]);
+    else if (c && (c[1] === "accent" || c[1] === "accent2" || c[1] === "dim" || TONES[c[1]])) cls.push("tc-" + c[1]);
     return `<span${cls.length ? ` class="${cls.join(" ")}"` : ""}${style}>`;
   });
 }
@@ -252,7 +252,7 @@ main section + section{border-top:1px solid var(--line)}
 /* Sizes and colors within formatted words (Chase, 2026-10-03), relative to
    the words around them, so a large word in a heading is larger still. */
 .ts-sm{font-size:.82em}.ts-lg{font-size:1.25em}.ts-xl{font-size:1.6em}
-.tc-accent{color:var(--ink)}.tc-dim{color:var(--dim)}
+.tc-accent{color:var(--ink)}.tc-accent2{color:var(--acc2)}.tc-dim{color:var(--dim)}
 ${Object.keys(TONES).map((k) => `.tc-${k}{color:var(--t-${k})}`).join("")}
 .kicker{font:600 12px var(--body);letter-spacing:.28em;text-transform:uppercase;color:var(--ink);margin:0 0 16px}
 .lede{font-size:clamp(17px,1.6vw,20px);color:var(--dim);max-width:60ch;margin:0}
@@ -962,17 +962,14 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
     ? `<img src="${esc(design.logo)}" alt="${esc(name)}">`
     : `${esc(parts[0] || "")}${parts.length > 1 ? " <b>" + esc(parts.slice(1).join(" ")) + "</b>" : ""}`;
 
-  const nav = pages.filter((p) => p.id !== "give").map((p) =>
-    `<a href="${esc(href(p.id))}"${p.id === pageId ? ' aria-current="page"' : ""}>${esc(label(p.id))}</a>`).join("");
-  /* Give opens the Give page, or (Navigation tab) goes straight to the giving
-     link in a new tab — only when there is one. */
+  /* Give opens the Give page — then it is one of the pages, in its place in
+     the Pages list and drawn like them (Chase, 2026-10-04) — or (Navigation
+     tab) goes straight to the giving link in a new tab, as the one pill at
+     the end, only when there is a link. */
   const giveOut = design.giveTo === "link" && doc.give;
-  const give = ctx.pageOn("give") || giveOut
-    ? giveOut ? `<a class="givebtn" href="${esc(doc.give)}" target="_blank" rel="noopener">${esc(label("give"))}</a>`
-      /* To the Give page it is one of the pages, drawn like them (Chase,
-         2026-10-04); only the straight-to-giving link stands out. */
-      : `<a href="${esc(href("give"))}"${pageId === "give" ? ' aria-current="page"' : ""}>${esc(label("give"))}</a>`
-    : "";
+  const nav = pages.filter((p) => !(giveOut && p.id === "give")).map((p) =>
+    `<a href="${esc(href(p.id))}"${p.id === pageId ? ' aria-current="page"' : ""}>${esc(label(p.id))}</a>`).join("");
+  const give = giveOut ? `<a class="givebtn" href="${esc(doc.give)}" target="_blank" rel="noopener">${esc(label("give"))}</a>` : "";
   /* THE LANGUAGE MENU IS ALWAYS A DROPDOWN (Chase, 2026-09-29: "Language
      selection should maintain the dropdown menu regardless"): the current
      language's code, opening to every language by its own name. Outside the

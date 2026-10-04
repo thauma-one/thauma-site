@@ -64,7 +64,7 @@ import Image from "@tiptap/extension-image";
    existing draft keeps its color. Must match COLORS in newsletter.js.
    Those are the QUICK PICKS; any #rrggbb is accepted too (Chase, 2026-10-03:
    "a full palette, with a few predetermined quick picks"). */
-export const TONES = ["accent", "dim", "red", "green", "blue", "gold"];
+export const TONES = ["accent", "accent2", "dim", "red", "green", "blue", "gold"];
 export const isTone = (c) => TONES.includes(c) || /^#[0-9a-f]{6}$/i.test(String(c || ""));
 
 const Tone = Mark.create({

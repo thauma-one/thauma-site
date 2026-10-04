@@ -1427,11 +1427,12 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
   border:1px solid rgba(255,255,255,.2);background:currentColor}
 .cp-tone[data-tone=""] span{background:linear-gradient(135deg,transparent 45%,var(--dim,#8a93a3) 46% 54%,transparent 55%)}
 .cp-tone[data-tone="accent"],.cp-swatch[data-tone="accent"] span{color:var(--voice-tech)}
+.cp-tone[data-tone="accent2"],.cp-swatch[data-tone="accent2"] span{color:var(--voice-ministry,#5CF2C4)}
 [data-tone="dim"]{color:#9a9aad} [data-tone="red"]{color:#FF8A80}
 [data-tone="green"]{color:#6FE3A6} [data-tone="blue"]{color:#8DB8FF} [data-tone="gold"]{color:#F2C14E}
 .cp-row>.cp-tone[aria-pressed="true"]{background:var(--line)}
 .cp-row>.cp-tone[aria-pressed="true"] span{outline:2px solid var(--text);outline-offset:2px}
-.cp-swatch[data-tone]:not([data-tone=""]):not([data-tone="accent"]) span{background:currentColor}
+.cp-swatch[data-tone]:not([data-tone=""]):not([data-tone="accent"]):not([data-tone="accent2"]) span{background:currentColor}
 /* ANY COLOR: the browser's own picker, drawn as one more swatch. Its well is
    a rainbow until a color is picked, then that color. */
 .cp-tone-any{display:inline-flex;align-items:center;cursor:pointer;position:relative}

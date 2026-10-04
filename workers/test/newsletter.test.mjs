@@ -421,5 +421,12 @@ check("each reader gets their own name, escaped; no name drops it and its space;
     "the archive shows a label or a variable");
 });
 
+check("the design's second color is a quick pick, drawn in the ministry's own second color", () => {
+  const s = sanitise('<p><span data-c="accent2">two</span></p>');
+  assert(s.includes('data-c="accent2"'), "kept on save: " + s);
+  const out = render(s, { subject: "x", unsubscribeUrl: "u", accent: "#FD5812", accent2: "#FD124D" });
+  assert(out.includes('<span style="color:#FD124D">two</span>'), "inlined in the second color");
+});
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
