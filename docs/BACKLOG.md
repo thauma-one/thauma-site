@@ -99,9 +99,14 @@ Cards; Sign-up/Contact/Give styles; Links tiers, type label, quieter
 pictures; Videos button styles + newest video as title; phone timeline
 (chaseroush.com design, smooth open/close/X, line in sync); full-width photo
 height + press-to-aim; Links tab smart order + site icons; clean links;
-preview always a real desktop. Set aside by Chase for later: "Bold" and
-"Dot below" nav looks. Still open below: meta tags, photo editor, R2 hygiene,
-footer options, Sharing vs Site Creator colors.
+preview always a real desktop; meta tags + sitemap + an Advanced tab (Google
+and share previews, title/description per language, name cards made at
+Publish); ONE photo editor (src/js/photo-editor.js, by purpose: site
+sections, hero, bands, email pictures, share pictures; non-destructive).
+Set aside by Chase for later: "Bold" and "Dot below" nav looks. Still open:
+R2 hygiene (deleting unused uploads; edited email pictures and remade cards
+leave old copies), footer options, Sharing vs Site Creator colors, moving
+Thauma's own photo tools (photo-crop.js, Website › Photos) onto the editor.
 
 Chase: "the general interface for the Site Creator is really good!"
 
