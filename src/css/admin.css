@@ -1306,3 +1306,26 @@ body:has(.web-panel:not([hidden]) .ms-savebar:not([hidden])) .web-bar{display:no
 .web-bar .web-bar-count a{color:inherit;text-decoration:underline;margin-left:6px}
 @keyframes web-build{50%{opacity:.25}}
 @media (prefers-reduced-motion:reduce){.web-bar.is-building .ms-dirty-dot{animation:none}}
+/* The build's stages while it runs, ticked off as GitHub reports each step
+   (Chase, 2026-10-03: "so it doesn't feel like 3 minutes where nothing is
+   happening"). Done is seafoam with a tick, running pulses in the technical
+   voice, failed is red; not reached yet stays dim. */
+.web-bar-stages{display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px;margin:0;padding:0;
+  list-style:none;font-size:12.5px;color:var(--dim)}
+.web-bar-stages[hidden]{display:none}
+.web-bar-stages li{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.web-bar-stages li::before{content:"";width:7px;height:7px;border-radius:50%;
+  border:1px solid currentColor;box-sizing:border-box}
+.web-bar-stages li.is-done{color:var(--ok)}
+.web-bar-stages li.is-done::before{content:"\2713";width:auto;height:auto;border:0;font-size:11px}
+.web-bar-stages li.is-running{color:var(--text)}
+.web-bar-stages li.is-running::before{background:var(--voice-tech);border-color:var(--voice-tech);
+  animation:web-build 1.2s cubic-bezier(.55,.05,.45,.95) infinite}
+.web-bar-stages li.is-failed{color:var(--crit)}
+.web-bar-stages li.is-failed::before{background:var(--crit);border-color:var(--crit)}
+.web-bar-stages li.is-skipped{opacity:.45;text-decoration:line-through}
+@media (prefers-reduced-motion:reduce){.web-bar-stages li.is-running::before{animation:none}}
+/* A phone has room for one: the stage that is running, or the one that failed. */
+@media (max-width:640px){
+  .web-bar-stages li:not(.is-running):not(.is-failed){display:none}
+}

@@ -596,8 +596,30 @@ export async function latestRun(env, workflowFile, fetchImpl = fetch) {
   if (!res.ok) return { error: await githubError(res), status: 502 };
   const run = ((await res.json()).workflow_runs || [])[0];
   if (!run) return { never: true };
-  return { status: run.status, conclusion: run.conclusion, sha: run.head_sha,
+  return { id: run.id, status: run.status, conclusion: run.conclusion, sha: run.head_sha,
            started: run.created_at, url: run.html_url };
+}
+
+/**
+ * The jobs of one run, each with its STEPS and their status — what the
+ * Publish bar ticks off while a build runs (Chase, 2026-10-03: "so it doesn't
+ * feel like 3 minutes where nothing is happening"). GitHub lists every step
+ * of a running job, the ones not reached yet as "pending", so the bar knows
+ * the whole list from the start. Read under the App's Actions permission,
+ * the same one latestRun uses.
+ */
+export async function runJobs(env, runId, fetchImpl = fetch) {
+  const cfg = githubConfig(env);
+  if (cfg.error) return { error: cfg.error, status: 500 };
+  const h = await headers(env, fetchImpl);
+  if (h.error) return { error: h.error, status: 500 };
+  const res = await fetchImpl(`${API}/repos/${cfg.repo}/actions/runs/` +
+    `${encodeURIComponent(runId)}/jobs?per_page=10`, { headers: h.headers });
+  if (!res.ok) return { error: await githubError(res), status: 502 };
+  return { jobs: ((await res.json()).jobs || []).map((j) => ({
+    name: j.name, status: j.status, conclusion: j.conclusion,
+    steps: (j.steps || []).map((s) => ({ name: s.name, status: s.status, conclusion: s.conclusion })),
+  })) };
 }
 
 /**

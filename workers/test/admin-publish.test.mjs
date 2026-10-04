@@ -116,10 +116,24 @@ function stubGitHub({ ahead = 2, files = [], lastProdSha = "live000",
         return new Response(JSON.stringify({ workflow_runs: [] }), { status: 200 });
       }
       return new Response(JSON.stringify({ workflow_runs: [{
+        id: isProd ? 901 : 902, status: "in_progress", conclusion: null,
+        created_at: "2026-10-03T23:00:00Z",
         head_sha: isProd ? lastProdSha : previewSha,
         updated_at: "2026-08-16T10:00:00Z",
         html_url: "https://gh/run", run_number: 7,
       }] }), { status: 200 });
+    }
+
+    /* A run's jobs and steps (the bar's live checklist). */
+    const jobsOf = u.match(/\/actions\/runs\/(\d+)\/jobs/);
+    if (jobsOf) {
+      return new Response(JSON.stringify({ jobs: [{ name: "deploy", status: "in_progress", conclusion: null,
+        steps: [
+          { name: "Build", status: "completed", conclusion: "success" },
+          { name: "Test · csv", status: "completed", conclusion: "success" },
+          { name: "Test · workers/access", status: "in_progress", conclusion: null },
+          { name: "Deploy", status: "pending", conclusion: null },
+        ] }] }), { status: 200 });
     }
 
     if (u.includes("/actions/workflows/") && u.endsWith("/dispatches")) {
@@ -512,6 +526,36 @@ await check("what is waiting is measured against dev, which is what Publish ship
     await handler.fetch(req("GET"), envWith("admin"));
     const cmp = g.find((c) => c.url.includes("/compare/"));
     assert(/live000\.\.\.dev$/.test(decodeURIComponent(cmp.url)), "compared against " + cmp.url);
+  } finally { g.restore(); }
+});
+
+/* ------------------------- the build, step by step ----------------------- */
+
+const progressReq = (which) => new Request("https://x/api/admin/publish?progress=" + which, {
+  headers: { "Cf-Access-Jwt-Assertion": TOKEN } });
+
+await check("?progress follows the RIGHT workflow's newest run, step by step", async () => {
+  for (const [which, file, id] of [["publish", "deploy.yml", 901], ["preview", "deploy-staging.yml", 902]]) {
+    const g = stubGitHub();
+    try {
+      const res = await handler.fetch(progressReq(which), envWith("admin"));
+      eq(res.status, 200, which + " status");
+      const b = await res.json();
+      assert(g.some((c) => c.url.includes(`/workflows/${file}/runs?per_page=1`)), which + " asked the wrong workflow");
+      assert(g.some((c) => c.url.includes(`/actions/runs/${id}/jobs`)), which + " never read the run's steps");
+      eq(b.tests, { total: 2, passed: 1, running: "workers/access" }, which + " tests");
+      eq(b.stages.find((st) => st.key === "build").state, "done", which + " build");
+      assert(!JSON.stringify(b).includes('"t"'), "the token must not reach the page");
+    } finally { g.restore(); }
+  }
+});
+
+await check("?progress is administrators only, like the rest of publishing", async () => {
+  const g = stubGitHub();
+  try {
+    const res = await handler.fetch(progressReq("publish"), envWith("staff"));
+    eq(res.status, 403, "status");
+    assert(!g.some((c) => c.url.includes("/jobs")), "read GitHub for a non-admin");
   } finally { g.restore(); }
 });
 
