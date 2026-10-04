@@ -113,12 +113,24 @@ function baseLook(look, theme) {
     heroBg: `radial-gradient(120% 90% at 20% 10%, ${alpha(acc, .35)}, transparent 60%), radial-gradient(90% 80% at 90% 90%, ${alpha(acc2, .28)}, transparent 60%), #0A0D12` };
 }
 
+/* A BAND'S TWO COLORS (Chase, 2026-10-03). A Give or Sign-up band painted
+   --panel, a 4-7% step that barely showed, and Raised painted the same
+   --panel, so it changed nothing. A band is the page tinted with the
+   ministry's accent; raised, the panel tinted more. */
+const HEX = /^#[0-9A-Fa-f]{6}$/;
+function bands(P) {
+  if (!HEX.test(P.acc || "") || !HEX.test(P.bg || "") || !HEX.test(P.panel || "")) {
+    return `--band:${P.panel};--band2:${P.panel};`;
+  }
+  return `--band:${mix(P.bg, P.acc, 0.1)};--band2:${mix(P.panel, P.acc, 0.18)};`;
+}
+
 function css(L, design) {
   return `
-:root{--bg:${L.bg};--panel:${L.panel};--fg:${L.fg};--dim:${L.dim};--line:${L.line};--acc:${L.acc};--acc2:${L.acc2};--ink:${L.ink};--on-acc:${L.onAcc};--herobg:${L.heroBg};
+:root{--bg:${L.bg};--panel:${L.panel};--fg:${L.fg};--dim:${L.dim};--line:${L.line};--acc:${L.acc};--acc2:${L.acc2};--ink:${L.ink};--on-acc:${L.onAcc};--herobg:${L.heroBg};${bands(L)}
 --display:${L.display};--body:${L.body};--thin:${L.thin};--boldw:${L.boldW};color-scheme:${L.scheme}}
 ${L.alt ? `@media (prefers-color-scheme:dark){:root{--bg:${L.alt.bg};--panel:${L.alt.panel};--fg:${L.alt.fg};--dim:${L.alt.dim};--line:${L.alt.line};` +
-  `--acc:${L.alt.acc};--acc2:${L.alt.acc2};--ink:${L.alt.ink};--on-acc:${L.alt.onAcc};--herobg:${L.alt.heroBg};color-scheme:dark}}` : ""}
+  `--acc:${L.alt.acc};--acc2:${L.alt.acc2};--ink:${L.alt.ink};--on-acc:${L.alt.onAcc};--herobg:${L.alt.heroBg};${bands(L.alt)}color-scheme:dark}}` : ""}
 *{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--fg);font:400 17px/1.65 var(--body);-webkit-font-smoothing:antialiased}
 a{color:var(--ink)}img{max-width:100%;display:block}
@@ -221,6 +233,9 @@ main section.raised + section{border-top-color:transparent}
 .piclink:hover img{transform:scale(1.03)}.piclink:focus-visible{outline:2px solid var(--acc);outline-offset:4px}
 /* text, photo and words */
 .text-center{text-align:center}.text-center .prose p{margin-left:auto;margin-right:auto}
+/* The button row is a flex box; text-align does not move it (Chase,
+   2026-10-03: the button stayed left under centered words). */
+.text-center .btns{justify-content:center}
 .pt{display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center}
 .pt-right .pt .pic{order:2}.pt-above .pt{grid-template-columns:1fr}
 .pic{border-radius:16px;overflow:hidden;position:relative;background:var(--panel)}.pt .pic{aspect-ratio:4/3}
@@ -232,7 +247,7 @@ main section.raised + section{border-top-color:transparent}
 .quote-quiet blockquote{font-size:clamp(20px,2.2vw,28px);max-width:40ch}
 .quote cite{display:block;margin-top:18px;font:600 13px var(--body);letter-spacing:.2em;text-transform:uppercase;color:var(--ink);font-style:normal}
 /* bands */
-.band{background:var(--panel)}
+.band{background-color:var(--band)}main section.raised.band{background-color:var(--band2)}
 .bandrow{display:flex;gap:40px;align-items:center;justify-content:space-between;flex-wrap:wrap}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:40px}
 /* On a raised band (the card color) a card takes the page color instead, so
@@ -284,7 +299,10 @@ main section.is-editing{outline:2px solid var(--acc);outline-offset:-2px}
 .foot .words{display:flex;gap:10px 32px;flex-wrap:wrap}
 .foot-center .wrap{flex-direction:column;align-items:center;text-align:center;gap:22px}
 .foot-center .words,.foot-center .menu,.foot-center .socials{justify-content:center}
-.foot-center .tagline{font:600 13px var(--body);letter-spacing:.2em;text-transform:uppercase;color:var(--dim)}
+/* No color here: the tagline's own choice (Standard / Subtle / Accent) sets
+   it. This rule's var(--dim), equal in weight and later, made Standard look
+   exactly like Subtle on Center (Chase, 2026-10-03). */
+.foot-center .tagline{font:600 13px var(--body);letter-spacing:.2em;text-transform:uppercase}
 .foot-center .small{margin:0 auto}
 /* Columns: only the columns that have something, spread across; the pages
    as a two-column grid rather than a long list; then a bar under a rule for
