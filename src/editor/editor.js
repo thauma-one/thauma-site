@@ -42,7 +42,7 @@
  * in a quieter voice.
  * ============================================================================
  */
-import { Editor, Mark, mergeAttributes } from "@tiptap/core";
+import { Editor, Mark, Node, mergeAttributes } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
 
@@ -58,14 +58,70 @@ import Image from "@tiptap/extension-image";
  * It also matches what the sanitiser already keeps: `<span data-c="accent">`
  * is in newsletter.js's allow-list, so this survives the round trip untouched.
  */
-const Accent = Mark.create({
-  name: "accent",
-  parseHTML() { return [{ tag: 'span[data-c="accent"]' }]; },
-  renderHTML({ HTMLAttributes }) {
-    return ["span", mergeAttributes(HTMLAttributes, { "data-c": "accent" }), 0];
+/* THE PALETTE (2026-10-03): the brand color plus a few tones, still stored as
+   a NAME (`data-c`) that newsletter.js resolves per light or dark email. The
+   old Accent mark's `<span data-c="accent">` parses into this one, so every
+   existing draft keeps its color. Must match COLORS in newsletter.js.
+   Those are the QUICK PICKS; any #rrggbb is accepted too (Chase, 2026-10-03:
+   "a full palette, with a few predetermined quick picks"). */
+export const TONES = ["accent", "dim", "red", "green", "blue", "gold"];
+export const isTone = (c) => TONES.includes(c) || /^#[0-9a-f]{6}$/i.test(String(c || ""));
+
+const Tone = Mark.create({
+  name: "tone",
+  addAttributes() {
+    return {
+      c: {
+        default: null,
+        parseHTML: (el) => el.getAttribute("data-c"),
+        renderHTML: (attrs) => (attrs.c ? { "data-c": attrs.c } : {}),
+      },
+    };
   },
+  parseHTML() {
+    return [{ tag: "span[data-c]", getAttrs: (el) => (isTone(el.getAttribute("data-c")) ? null : false) }];
+  },
+  renderHTML({ HTMLAttributes }) { return ["span", mergeAttributes(HTMLAttributes), 0]; },
   addCommands() {
-    return { toggleAccent: () => ({ commands }) => commands.toggleMark(this.name) };
+    return {
+      /* null clears; one tone at a time, replaced rather than nested. */
+      setTone: (c) => ({ commands }) => (c ? commands.setMark("tone", { c }) : commands.unsetMark("tone")),
+    };
+  },
+});
+
+/* A PERSONAL WORD (2026-10-03): the recipient's first or full name, filled
+   per person by the server (fillVariables in newsletter.js). An atom, so it
+   is moved and deleted as one piece and its label can't be half-edited. The
+   label inside is the editor's only; a reader gets the name, or nothing. */
+export const VARIABLES = ["first_name", "name"];
+
+const Variable = Node.create({
+  name: "variable",
+  group: "inline",
+  inline: true,
+  atom: true,
+  selectable: true,
+  addOptions() { return { labels: { first_name: "First name", name: "Name" } }; },
+  addAttributes() {
+    return {
+      v: { default: "first_name", parseHTML: (el) => el.getAttribute("data-var"),
+           renderHTML: (a) => ({ "data-var": a.v }) },
+    };
+  },
+  parseHTML() {
+    return [{ tag: "span[data-var]", getAttrs: (el) => (VARIABLES.includes(el.getAttribute("data-var")) ? null : false) }];
+  },
+  renderHTML({ node, HTMLAttributes }) {
+    return ["span", mergeAttributes(HTMLAttributes, { class: "cp-var" }),
+            this.options.labels[node.attrs.v] || node.attrs.v];
+  },
+  renderText({ node }) { return this.options.labels[node.attrs.v] || node.attrs.v; },
+  addCommands() {
+    return {
+      insertVariable: (v) => ({ commands }) =>
+        commands.insertContent({ type: this.name, attrs: { v } }),
+    };
   },
 });
 
@@ -103,6 +159,10 @@ const Size = Mark.create({
           ? commands.unsetMark("size")
           : commands.setMark("size", { sz })
       ),
+      /* The size menu: a choice rather than a toggle; null is Normal. */
+      setFontSize: (sz) => ({ commands }) => (
+        sz ? commands.setMark("size", { sz }) : commands.unsetMark("size")
+      ),
     };
   },
 });
@@ -115,7 +175,6 @@ export const TOOLS = {
   italic:    { run: (c) => c.toggleItalic(),               on: (e) => e.isActive("italic") },
   underline: { run: (c) => c.toggleUnderline(),            on: (e) => e.isActive("underline") },
   strike:    { run: (c) => c.toggleStrike(),               on: (e) => e.isActive("strike") },
-  accent:    { run: (c) => c.toggleAccent(),               on: (e) => e.isActive("accent") },
   larger:    { run: (c) => c.setSize("lg"),                on: (e) => e.isActive("size", { sz: "lg" }) },
   smaller:   { run: (c) => c.setSize("sm"),                on: (e) => e.isActive("size", { sz: "sm" }) },
   h2:        { run: (c) => c.toggleHeading({ level: 2 }),  on: (e) => e.isActive("heading", { level: 2 }) },
@@ -136,6 +195,9 @@ export const TOOLS = {
  */
 export function createEditor(opts) {
   const buttons = Array.from(opts.toolbar.querySelectorAll("[data-tool]"));
+  /* Transactions can fire while the Editor below is still being built, before
+     the `editor` binding exists; refresh waits for it. */
+  let ready = false;
 
   const editor = new Editor({
     element: opts.element,
@@ -158,8 +220,9 @@ export function createEditor(opts) {
         },
       }),
       Image.configure({ inline: false, allowBase64: false }),
-      Accent,
+      Tone,
       Size,
+      Variable.configure({ labels: opts.varLabels || { first_name: "First name", name: "Name" } }),
     ],
 
     /* BOTH OF THESE, and that is the whole fix.
@@ -171,7 +234,14 @@ export function createEditor(opts) {
     onSelectionUpdate: () => refresh(),
     onFocus: () => refresh(),
     onBlur: () => refresh(),
+    /* AND THIS ONE (2026-10-03). Ctrl/Cmd+B with nothing selected changes
+       neither the content nor the selection, only the STORED marks — the
+       formatting the next typed letter will get. That is a transaction and
+       nothing else, so Bold stayed dark until something was typed. A button
+       press hid the bug: its .focus() fires onFocus. */
+    onTransaction: () => { if (ready) refresh(); },
   });
+  ready = true;
 
   function refresh() {
     for (const b of buttons) {
@@ -187,6 +257,8 @@ export function createEditor(opts) {
       linkBtn.setAttribute("aria-pressed", linked ? "true" : "false");
       linkBtn.classList.toggle("is-on", linked);
     }
+    /* The size and color menus show the current choice (composer.js). */
+    if (opts.onRefresh) opts.onRefresh(editor);
   }
 
   opts.toolbar.addEventListener("click", (e) => {

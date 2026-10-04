@@ -405,5 +405,78 @@ check("a preview shows where a photo will go; visitors see no such thing", () =>
   assert(!page(d, "about").includes('class="wanted"') && !page(d, "mission").includes('class="wanted"'), "not on the real site");
 });
 
+/* COMPUTED, not grepped: which rule wins is a matter of specificity and
+   order, so the page is loaded into a DOM and the browser's answer read. */
+const { JSDOM } = await import("jsdom");
+const styleOf = (html, sel) => {
+  const w = new JSDOM(html).window;
+  const el = w.document.querySelector(sel);
+  return el ? w.getComputedStyle(el) : null;
+};
+
+check("the footer's tagline colors differ in every layout (Standard was Subtle on Center)", () => {
+  /* Chase's review, 2026-10-03; his site uses Center. `.foot-center .tagline`
+     set var(--dim) with the same specificity as Standard's rule, later in
+     the sheet, so Standard rendered exactly like Subtle. */
+  for (const layout of ["split", "center", "columns"]) {
+    const colors = ["plain", "subtle", "accent"].map((tagline) => {
+      const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+      d.footer = { ...d.footer, layout, tagline, words: { en: { tagline: "All of Me", small: "" } } };
+      const st = styleOf(page(d), ".foot .tagline");
+      assert(st, `${layout}: no tagline rendered`);
+      return st.color;
+    });
+    eq(new Set(colors).size, 3, `${layout}: Standard, Subtle and Accent (${colors.join(" / ")})`);
+  }
+});
+
+check("a Words section's button follows its alignment", () => {
+  /* Chase's review, 2026-10-03: centered words, button left behind. The
+     button row is a flex box, and text-align does not move flex items. */
+  for (const [variant, want] of [["center", "center"], ["left", "normal"]]) {
+    const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+    d.pages[0].sections = [{ id: "s1", type: "text", variant, link: "page:give",
+      words: { en: { heading: "Hello", text: "Words.", button: "Give" } } }];
+    const st = styleOf(page(d), "main section .btns");
+    assert(st, `${variant}: no button rendered`);
+    eq(st.justifyContent || "normal", want, `${variant}: the button row`);
+  }
+});
+
+check("a Band is a band, and Raised changes it, on Give and Sign-up, in every look", () => {
+  /* Chase's review, 2026-10-03: Raised looked the same as Plain on the band
+     layouts (both painted --panel), and Give's Band barely changed the
+     background (--panel is a 7% step on a dark custom look). */
+  const rootVar = (html, name) => {
+    const m = html.match(new RegExp(":root\\{[^}]*--" + name + ":(#[0-9A-Fa-f]{6})"));
+    return m && m[1].toUpperCase();
+  };
+  const resolve = (html, v) => {
+    const m = /^var\(--([a-z0-9-]+)\)$/.exec(v || "");
+    return m ? rootVar(html, m[1]) : v;
+  };
+  const looks = [{ look: "night" }, { look: "paper" }, { look: "bold" },
+    { look: "custom", mode: "dark", colors: { background: "#0D0D0D", accent: "#FD5812" } }];
+  for (const design of looks) {
+    for (const type of ["give", "signup"]) {
+      const bgs = [false, true].map((raised) => {
+        const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+        Object.assign(d.design, design);
+        d.pages[0].sections = [{ id: "s1", type, variant: "band", raised,
+          words: { en: { heading: "Hi", text: "", button: "" } } }];
+        const html = renderPage({ doc: cleanDoc(d, ["en"]), site: { slug: "c", display_name: "C", giving_url: "https://give.example/" },
+          payload, theme: payload.theme, lang: "en", pageId: "home", base: "/site/c", origin: "https://thauma.one", draft: false });
+        const st = styleOf(html, "main section");
+        return { band: resolve(html, st.backgroundColor), page: rootVar(html, "bg") };
+      });
+      const label = `${design.look} ${type}`;
+      assert(bgs[0].band && bgs[1].band, `${label}: no band color (${JSON.stringify(bgs)})`);
+      assert(bgs[0].band !== bgs[0].page, `${label}: the band is the page's color`);
+      assert(bgs[1].band !== bgs[0].band, `${label}: Raised changed nothing (${bgs[0].band})`);
+      assert(bgs[1].band !== bgs[1].page, `${label}: the raised band is the page's color`);
+    }
+  }
+});
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

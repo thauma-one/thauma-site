@@ -65,6 +65,7 @@ import adminTranslationNotes from "./admin-translation-notes.js";
 import adminTranslate from "./admin-translate.js";
 import confirmAccount from "./confirm-account.js";
 import confirmEmail from "./confirm-email.js";
+import confirmTestInbox from "./confirm-test-inbox.js";
 import staffAccount from "./staff-account.js";
 import media, { serve as serveMedia } from "./media.js";
 import { createDb, partnerSnapshot, assertPublicSafe } from "./lib/db.js";
@@ -347,6 +348,10 @@ const ROUTES = {
      inbox, possibly on a device that has never signed in. See
      confirm-email.js. */
   "/confirm-email": confirmEmail,
+
+  /* Proving the inbox a person's tests go to (0048). Public for the same
+     reason as the line above; see confirm-test-inbox.js. */
+  "/confirm-test-inbox": confirmTestInbox,
 
   /* Starting one. Authenticated, and it deliberately ignores "acting as" —
      changing who you are is not something done on somebody's behalf. */

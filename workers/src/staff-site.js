@@ -33,7 +33,7 @@ import { createDb } from "./lib/db.js";
 import { json, readJson } from "./lib/store.js";
 import { partnerFor } from "./staff-milestones.js";
 import { ensureSiteDns, removeSiteDns } from "./lib/site-dns.js";
-import { cleanDoc, starter, subdomainFrom, validSubdomain } from "./site/model.js";
+import { cleanDoc, starter, subdomainFrom, validSubdomain, PAGES, word } from "./site/model.js";
 import { lookFor } from "./embed-colour.js";
 import { changedAnswer } from "./lib/fresh.js";
 
@@ -159,6 +159,12 @@ export default {
            working copy differs from it (Chase, 2026-09-29: the yellow dot). */
         published: fresh.published ? cleanDoc(JSON.parse(fresh.published), catalog.map((l) => l.code)) : null,
         languages: catalog.map((l) => ({ code: l.code, name: l.name, native_name: l.native_name })),
+        /* Each page's built-in name in each language, as the site itself
+           names a page the owner has not renamed (render.js label()). The
+           editor showed the CONSOLE's word instead, so page names ignored
+           Editing ⇄ Reference (Chase, 2026-10-03). */
+        page_names: Object.fromEntries(catalog.map((l) =>
+          [l.code, Object.fromEntries(PAGES.map((id) => [id, word(l.code, id)]))])),
         /* The ministry's colors (Sharing), which the site wears. */
         theme: { accent: theme.accent, accent2: theme.accent2 },
         can: { edit: isEditor, owner: isOwner },

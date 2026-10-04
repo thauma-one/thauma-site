@@ -37,12 +37,18 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
 
   const cp = {
     lists: [], mailings: [], attachments: [],
+    you: null, testInbox: null,
     listId: null, id: null,
     savedHtml: "", savedSubject: "", savedPreheader: "", dirty: false,
     /* The draft as the SERVER last gave it — what is stored, cleaned — for a
        save to be compared against (workers/src/lib/fresh.js). */
     base: null,
   };
+  /* The save that is out, if any, and the pending autosave. Up here because
+     the editor's change handler reaches them from the moment it exists. */
+  let saving = null;
+  let autoTimer = null;
+  const AUTOSAVE_MS = 3000;
 
   /* The composer shares the mailing page's scope switch: whose lists these are
      is one decision for the whole screen, not one per panel. */
@@ -60,6 +66,75 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
     element: mount,
     toolbar: document.querySelector(".cp-tools"),
     onChange: () => { markDirty(); measureSoon(); },
+    varLabels: { first_name: tr("ml.cpVarFirst"), name: tr("ml.cpVarFull") },
+    onRefresh: (ed) => showChoices(ed),
+  });
+
+  /* ---- size, color, link, name: one row under the toolbar --------------
+     Each opens a row of choices instead of a dialog or a prompt, and the
+     size and color buttons show what the cursor is in now. */
+  const ROWS = { size: "cpSizeRow", color: "cpColorRow", link: "cpLinkRow", variable: "cpVarRow" };
+
+  function showChoices(ed) {
+    const sz = ed.getAttributes("size").sz || "";
+    const tone = ed.getAttributes("tone").c || "";
+    document.querySelectorAll("#cpSizeRow [data-size]").forEach((b) => {
+      b.setAttribute("aria-pressed", b.dataset.size === sz ? "true" : "false");
+    });
+    document.querySelectorAll("#cpColorRow [data-tone]").forEach((b) => {
+      b.setAttribute("aria-pressed", b.dataset.tone === tone ? "true" : "false");
+    });
+    /* A picked color shows in the picker, which reads as chosen. */
+    const anyColor = /^#[0-9a-f]{6}$/i.test(tone);
+    $("cpColorAny").closest(".cp-tone-any").classList.toggle("is-on", anyColor);
+    if (anyColor) $("cpColorAny").value = tone;
+    const sizeBtn = document.querySelector('.cp-tools [data-cmd="size"]');
+    if (sizeBtn) sizeBtn.dataset.sz = sz;
+    const colorBtn = document.querySelector('.cp-tools [data-cmd="color"]');
+    if (colorBtn) {
+      colorBtn.dataset.tone = anyColor ? "any" : tone;
+      colorBtn.style.setProperty("--any", anyColor ? tone : "");
+    }
+  }
+
+  function openRow(which) {
+    for (const [cmd, id] of Object.entries(ROWS)) {
+      const open = cmd === which && $(id).hidden;
+      $(id).hidden = !open;
+      const b = document.querySelector(`.cp-tools [data-cmd="${cmd}"]`);
+      if (b) b.setAttribute("aria-expanded", open ? "true" : "false");
+    }
+    if (which === "link" && !$("cpLinkRow").hidden) {
+      const href = editor.getAttributes("link").href || "";
+      $("cpLinkUrl").value = href;
+      $("cpLinkRemove").hidden = !href;
+      $("cpLinkUrl").focus();
+    }
+  }
+  const closeRows = () => openRow(null);
+
+  $("cpSizeRow").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-size]");
+    if (!b) return;
+    editor.chain().focus().setFontSize(b.dataset.size || null).run();
+    closeRows();
+  });
+  $("cpColorRow").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-tone]");
+    if (!b) return;
+    editor.chain().focus().setTone(b.dataset.tone || null).run();
+    closeRows();
+  });
+  /* "input" follows the picker live; the row stays open until "change". */
+  $("cpColorAny").addEventListener("input", (e) => {
+    editor.chain().setTone(e.target.value.toLowerCase()).run();
+  });
+  $("cpColorAny").addEventListener("change", () => { editor.commands.focus(); closeRows(); });
+  $("cpVarRow").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-var]");
+    if (!b) return;
+    editor.chain().focus().insertVariable(b.dataset.var).run();
+    closeRows();
   });
 
   /* ---- loading -------------------------------------------------------- */
@@ -78,7 +153,10 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
 
     cp.lists = body.lists || [];
     cp.mailings = body.mailings || [];
+    cp.you = body.you || null;
+    cp.testInbox = body.test_inbox || null;
     renderPickers();
+    renderTestTo();
     /* The page around this shows the drafts waiting and what has gone out;
        both just changed if this load follows a save or a send. */
     if (window.StaffMailing && window.StaffMailing.changed) window.StaffMailing.changed(body);
@@ -140,20 +218,36 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
       $("cpSubject").value !== cp.savedSubject ||
       $("cpPreheader").value !== cp.savedPreheader;
     setState(cp.dirty ? tr("ml.cpUnsaved") : "");
+    if (cp.dirty) autosaveSoon(); else clearTimeout(autoTimer);
   }
 
   /* ---- links and pictures --------------------------------------------- */
 
-  function linkPressed() {
-    if (editor.isActive("link")) return applyLink(editor, null);
-    const current = editor.getAttributes("link").href || "https://";
-    const href = window.prompt(tr("ml.cpLinkPrompt"), current);
-    if (href === null) return;
-    if (!href.trim()) return applyLink(editor, null);
-    if (!/^(https?:\/\/|mailto:)/i.test(href)) { toast(tr("ml.cpLinkBad"), "bad"); return; }
-    applyLink(editor, href.trim());
+  /* A real field, not window.prompt: it shows the link already there, can
+     edit or remove it, and refuses what the server would strip. A bare
+     address gets https:// and one with an @ becomes mailto:. */
+  function linkApply() {
+    let href = $("cpLinkUrl").value.trim();
+    if (!href) { applyLink(editor, null); closeRows(); return; }
+    if (!/^[a-z][a-z0-9+.-]*:/i.test(href)) {
+      href = /^[^\s/@]+@[^\s@]+\.[^\s@]+$/.test(href) ? "mailto:" + href : "https://" + href;
+    }
+    if (!/^(https?:\/\/[^\s]+|mailto:[^\s]+)$/i.test(href)) { toast(tr("ml.cpLinkBad"), "bad"); return; }
+    applyLink(editor, href);
+    closeRows();
     markDirty(); measureSoon();
   }
+  function linkRemove() {
+    applyLink(editor, null);
+    closeRows();
+    markDirty(); measureSoon();
+  }
+  $("cpLinkApply").addEventListener("click", linkApply);
+  $("cpLinkRemove").addEventListener("click", linkRemove);
+  $("cpLinkUrl").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); linkApply(); }
+    if (e.key === "Escape") { e.preventDefault(); closeRows(); editor.commands.focus(); }
+  });
 
   /* UPLOADED AND LINKED, never embedded. A base64 image inside the HTML is the
      fastest way past Gmail's ~102KB clipping limit — one paste turns a 40KB
@@ -226,8 +320,10 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
       if (!file) return;
       setState(tr("ml.cpUploading"));
       try {
+        /* url(), so a file for one of Thauma's own lists lands in the
+           organization's folder — the folder its save will accept. */
         const res = await fetch(
-          "/api/staff-mailing?attach=" + encodeURIComponent(file.name), {
+          url("attach=" + encodeURIComponent(file.name)), {
             method: "PUT", credentials: "same-origin",
             headers: { "Content-Type": file.type || "application/octet-stream" },
             body: file,
@@ -245,14 +341,14 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
 
   /* ---- saving --------------------------------------------------------- */
 
-  async function post(payload) {
+  async function post(payload, opts) {
     let res, body;
     try {
-      res = await fetch(url(), {
+      res = await fetch(url(), Object.assign({
         method: "POST", credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-      });
+      }, opts || {}));
       body = await res.json().catch(() => ({}));
     } catch (e) { return { error: tr("err.unreachable") + " " + e.message }; }
     if (res.status === 409 && body.changed) return { changed: body };
@@ -260,11 +356,32 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
     return body;
   }
 
-  async function save(quiet) {
-    if (!$("cpSubject").value.trim()) {
+  /* Anything somebody would mind losing: a subject, a word, a picture, a
+     file. A draft with none of those is not worth a row. */
+  function hasWords() {
+    return !!$("cpSubject").value.trim() || !editor.isEmpty || cp.attachments.length > 0;
+  }
+
+  /* ONE SAVE AT A TIME. Autosave, Save, Back and Send can all ask at once;
+     two posts for a NEW draft would make two drafts, because the first has
+     not yet told this page its id. A second ask waits for the first and then
+     saves only if something is still unsaved. */
+
+  async function save(quiet, opts) {
+    if (saving) {
+      await saving;
+      if (!cp.dirty && cp.id) return cp.mailings.filter((m) => m.id === cp.id)[0] || {};
+    }
+    if (!hasWords()) {
       if (!quiet) toast(tr("ml.cpNeedSubject"), "bad");
       return null;
     }
+    saving = saveNow(quiet, opts);
+    try { return await saving; } finally { saving = null; }
+  }
+
+  async function saveNow(quiet, opts) {
+    clearTimeout(autoTimer);
     setState(tr("common.saving"));
     /* LAYER A HANDS OVER ITS RICH CONTENT AND STOPS THERE. Turning it into
        email-safe HTML happens on the server, not here: the server has to
@@ -276,10 +393,12 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
       action: "mailing-save", id: cp.id || undefined, list_id: cp.listId,
       subject: $("cpSubject").value, preheader: $("cpPreheader").value,
       body_html: editor.getHTML(),
-      attachments: cp.attachments,
+      attachments: cp.attachments.slice(),
       base: cp.id ? cp.base : undefined,
     };
-    let body = await post(payload);
+    const wasNew = !cp.id;
+    const before = cp.mailings.filter((m) => m.id === cp.id)[0];
+    let body = await post(payload, opts);
     /* Saved by someone else since this draft opened: ask. Saving mine sends
        it again with overwrite; keeping theirs opens their version. */
     if (body.changed) {
@@ -290,22 +409,59 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
         openDraft(id);
         return null;
       }
-      body = await post(Object.assign({}, payload, { overwrite: true }));
+      body = await post(Object.assign({}, payload, { overwrite: true }), opts);
     }
-    if (body.error) { setState(""); toast(body.error, "bad"); return null; }
+    if (body.error) {
+      setState("");
+      toast(body.error, "bad");
+      return null;
+    }
     const m = body.mailing;
     cp.base = { subject: m.subject, preheader: m.preheader, body_html: m.body_html };
+    cp.id = m.id;
 
-    cp.id = body.mailing.id;
-    cp.savedHtml = editor.getHTML();
-    cp.savedSubject = $("cpSubject").value;
-    cp.savedPreheader = $("cpPreheader").value;
-    cp.dirty = false;
-    setState(tr("ml.cpSaved"));
-    await load(cp.listId);
+    /* WHAT WAS SENT is what is saved — not what the editor holds now. Words
+       typed while the request was out are still unsaved, and stay marked so;
+       reading the editor here would call them saved and drop them. */
+    cp.savedHtml = payload.body_html;
+    cp.savedSubject = payload.subject;
+    cp.savedPreheader = payload.preheader;
+    markDirty();
+    if (!cp.dirty) setState(tr("ml.cpSaved"));
+
+    /* The draft list on this page holds the body each draft reopens with, so
+       it is updated here rather than left to the next load. */
+    const row = Object.assign({}, m, { status: "draft" });
+    const at = cp.mailings.findIndex((x) => x.id === m.id);
+    if (at === -1) cp.mailings.unshift(row); else cp.mailings[at] = row;
+    renderPickers();
     $("cpDraft").value = cp.id;
+
+    /* The page's Drafts card and counts change only when a draft appears or
+       is renamed; a reload for every pause in typing would be a request for
+       nothing. */
+    if (!quiet || wasNew || !before || before.subject !== m.subject) await load(cp.listId);
     measure();
-    return body.mailing;
+    if (cp.dirty) autosaveSoon();
+    return m;
+  }
+
+  /* AUTOSAVE, quietly, a few seconds after the typing stops. Never two at
+     once: save() queues behind one that is out. */
+  function autosaveSoon() {
+    clearTimeout(autoTimer);
+    autoTimer = setTimeout(() => {
+      if (cp.dirty && hasWords()) save(true);
+    }, AUTOSAVE_MS);
+  }
+
+  /* LEAVING NEVER LOSES WORDS. Back, New, another draft, another list: each
+     saves what is on screen first. True when it is safe to move on. */
+  async function flush() {
+    clearTimeout(autoTimer);
+    if (saving) await saving;
+    if (!cp.dirty || !hasWords()) return true;
+    return !!(await save(true));
   }
 
   /* ---- how heavy is it -------------------------------------------------
@@ -339,6 +495,34 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
     el.textContent = (body.bytes / 1024).toFixed(1) + " KB";
     el.className = "cp-size" + (body.tooBig ? " is-over" : "");
     el.title = body.tooBig || tr("ml.cpSizeOk");
+  }
+
+  /* ---- where a test goes (0048) ---------------------------------------
+     The address is shown beside the button and pressing it changes it. A
+     new inbox is proven by a link first; until then tests keep going to the
+     sign-in address, and the new one shows as waiting. */
+  function renderTestTo() {
+    const el = $("cpTestTo");
+    if (!el) return;
+    const signIn = cp.you ? cp.you.email : "";
+    const ti = cp.testInbox;
+    el.textContent = ti ? ti.email : signIn;
+    el.classList.toggle("is-waiting", !!(ti && !ti.confirmed));
+    el.title = ti && !ti.confirmed ? tr("ml.cpTestWaiting") : tr("ml.cpTestTo");
+    $("cpTestReset").hidden = !ti;
+    $("cpTestEmail").placeholder = signIn;
+  }
+
+  async function chooseTestInbox(clear) {
+    const email = $("cpTestEmail").value.trim();
+    if (!clear && !email) return;
+    const body = await post(clear ? { action: "test-inbox-clear" }
+                                  : { action: "test-inbox", email });
+    if (body.error) { toast(body.error, "bad"); return; }
+    cp.testInbox = body.test_inbox || null;
+    $("cpTestBox").hidden = true;
+    renderTestTo();
+    if (cp.testInbox) toast(tr("ml.cpTestLinkSent").replace("{email}", cp.testInbox.email), "ok");
   }
 
   /* ---- sending -------------------------------------------------------- */
@@ -410,16 +594,48 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
 
   /* ---- wiring --------------------------------------------------------- */
 
+  /* "SENDING TO" MOVES THIS DRAFT. Changing it used to start an empty one on
+     the other list and drop what was written. Now the words go with it; with
+     nothing written, the other list simply opens. */
   $("cpList").addEventListener("change", async function () {
-    cp.listId = this.value; cp.id = null;
-    await load(cp.listId); openDraft(null);
+    const to = this.value, from = cp.listId;
+    if (saving) await saving;
+    if (!hasWords()) {
+      cp.listId = to; cp.id = null;
+      await load(cp.listId); openDraft(null);
+      return;
+    }
+    cp.listId = to;
+    if (!(await save(true))) { cp.listId = from; this.value = from; return; }
+    const id = cp.id;
+    await load(cp.listId);
+    openDraft(id);
   });
-  $("cpDraft").addEventListener("change", function () { openDraft(this.value || null); });
-  $("cpNew").addEventListener("click", () => {
-    cp.id = null; openDraft(null); $("cpSubject").focus();
+  $("cpDraft").addEventListener("change", async function () {
+    const want = this.value || null;
+    if (!(await flush())) { this.value = cp.id || ""; return; }
+    openDraft(want);
+  });
+  $("cpNew").addEventListener("click", async () => {
+    if (!(await flush())) return;
+    openDraft(null); $("cpSubject").focus();
   });
   $("cpSave").addEventListener("click", () => save());
   $("cpTest").addEventListener("click", function () { test(this); });
+  $("cpTestTo").addEventListener("click", function () {
+    const box = $("cpTestBox");
+    box.hidden = !box.hidden;
+    if (!box.hidden) {
+      $("cpTestEmail").value = cp.testInbox ? cp.testInbox.email : "";
+      $("cpTestEmail").focus();
+    }
+  });
+  $("cpTestLink").addEventListener("click", () => chooseTestInbox(false));
+  $("cpTestReset").addEventListener("click", () => chooseTestInbox(true));
+  $("cpTestEmail").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); chooseTestInbox(false); }
+    if (e.key === "Escape") { $("cpTestBox").hidden = true; }
+  });
   $("cpSend").addEventListener("click", function () { send(this); });
   $("cpDelete").addEventListener("click", function () { remove(this); });
   $("cpAttach").addEventListener("click", pickAttachment);
@@ -431,8 +647,8 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
     const b = e.target.closest("[data-cmd]");
     if (!b) return;
     e.preventDefault();
-    if (b.dataset.cmd === "link") return linkPressed();
-    if (b.dataset.cmd === "image") return pickImage();
+    if (b.dataset.cmd === "image") { closeRows(); return pickImage(); }
+    if (ROWS[b.dataset.cmd]) return openRow(b.dataset.cmd);
   });
 
   $("cpFileList").addEventListener("click", (e) => {
@@ -460,11 +676,11 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
      could be reached from outside. A debugging surface that makes the hard
      thing checkable is worth more than the tidiness of hiding it. */
   /* WRITE AND DRAFTS, from the Mail page's first card (board 10). Write
-     starts a new mailing to the list on screen — unless words are already
-     waiting unsaved here, which it leaves alone. Drafts opens the newest one,
-     on a list that has some, with the picker ready for the rest. */
+     starts a new mailing to the list on screen. Drafts opens the newest one,
+     on a list that has some, with the picker ready for the rest. Whatever was
+     on screen is saved first — leaving never discards (Chase, 2026-10-03). */
   async function write(listId) {
-    if (cp.dirty) return;
+    if (!(await flush())) return;
     /* Loaded with its mailings every time, so the drafts picker is filled —
        the first load of the page asks for no list's mailings at all. */
     cp.listId = listId || cp.listId || (cp.lists[0] && cp.lists[0].id) || null;
@@ -472,8 +688,16 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
     openDraft(null);
     $("cpSubject").focus();
   }
+  /* One draft, from the Mail page's Drafts card. */
+  async function open(listId, id) {
+    if (!(await flush())) return;
+    cp.listId = listId;
+    await load(cp.listId);
+    openDraft(id);
+    $("cpSubject").focus();
+  }
   async function drafts() {
-    if (cp.dirty) return;
+    if (!(await flush())) return;
     const has = (l) => l && l.drafts > 0;
     const mine = cp.lists.filter((l) => l.id === cp.listId)[0];
     const list = has(mine) ? mine : cp.lists.filter(has)[0];
@@ -484,6 +708,16 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
     $("cpDraft").focus();
   }
 
-  window.StaffComposer = { reload: () => load(cp.listId), write, drafts, editor };
+  /* A tab put away or a phone locked is often the last moment this page
+     gets: save then, on a request that outlives the page. keepalive caps a
+     body at 64KB, so a very long draft may miss this one — beforeunload
+     still asks before anything is lost. */
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden" && cp.dirty && hasWords() && !saving) {
+      save(true, { keepalive: true });
+    }
+  });
+
+  window.StaffComposer = { reload: () => load(cp.listId), write, drafts, open, flush, editor };
   load(null).then(() => openDraft(null));
 })();

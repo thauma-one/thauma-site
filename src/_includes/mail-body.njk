@@ -18,6 +18,13 @@
     <button type="button" class="solid-btn" id="mlWrite" data-i18n="ml.writeBtn">Write</button>
   </div>
 
+  {#- WHAT IS WAITING, every list together, newest first, in Sent's shape.
+     A row reopens that draft. Drafts leave only by Delete or by being sent. -#}
+  <section class="ml-sentall ml-draftsall" id="mlDraftsAll" hidden>
+    <span class="sh-lbl" data-i18n="ml.draftsAll">Drafts</span>
+    <div class="ml-sentall-rows" id="mlDraftRows"></div>
+  </section>
+
   {#- WHAT HAS GONE OUT, every list together, newest first. A sent mailing is
      a record: its row opens the public copy where the list publishes one. -#}
   <section class="ml-sentall" id="mlSentAll" hidden>
@@ -51,11 +58,11 @@
        afterwards, like everything else about them. -#}
     <div class="ml-findadd">
       <input type="search" id="subsQ" class="subs-q"
-             data-i18n-attr="placeholder:ml.subsSearch,aria-label:ml.subsSearch" aria-label="Search a name or address"
+             data-i18n-attr="placeholder:ml.subsSearch, aria-label:ml.subsSearch" aria-label="Search a name or address"
              placeholder="Search a name or address">
       <form class="ml-add" id="mlAddPerson">
         <input type="email" id="mlNewEmail" maxlength="200" required
-               data-i18n-attr="placeholder:ml.addAnEmail,aria-label:ml.addAnEmail"
+               data-i18n-attr="placeholder:ml.addAnEmail, aria-label:ml.addAnEmail"
                aria-label="Add an email address" placeholder="Add an email address">
         <button type="submit" class="ghost-btn" data-i18n="ml.addPerson">Add</button>
       </form>
@@ -96,7 +103,7 @@
       <div id="subsTagList"></div>
       <form class="subs-tag-add" id="subsTagAdd">
         <input type="text" id="subsTagName" maxlength="60"
-               data-i18n-attr="placeholder:ml.tagName,aria-label:ml.tagName" aria-label="Home church" placeholder="Home church">
+               data-i18n-attr="placeholder:ml.tagName, aria-label:ml.tagName" aria-label="Home church" placeholder="Home church">
         <button type="submit" class="ghost-btn" data-i18n="ml.tagAdd">Add tag</button>
       </form>
     </div>
@@ -328,16 +335,14 @@
           <button type="button" data-tool="strike" aria-pressed="false" title="Strikethrough"><s>S</s></button>
 
           <span class="cp-tools-sep"></span>
-          <button type="button" data-tool="larger" aria-pressed="false" title="Larger">A&#8593;</button>
-          <button type="button" data-tool="smaller" aria-pressed="false" title="Smaller">A&#8595;</button>
-          {#- The ministry's own accent, stored as intent rather than as a
-             color value — so it stays right after a rebrand, and a draft
-             copied between ministries is not wearing the wrong one. -#}
-          {#- The only button in this toolbar with nothing inside it: the others
-             are named by the letter they show (B, I, U, S). A title alone is
-             an unreliable accessible name, so this one says it outright. -#}
-          <button type="button" data-tool="accent" aria-pressed="false"
-                  title="Brand color" aria-label="Brand color"
+          {#- Size and color each open a row of choices under the toolbar; the
+             button shows the current one. Colors are stored as names, the
+             ministry's own accent first, so a rebrand recolors them. -#}
+          <button type="button" data-cmd="size" aria-expanded="false" aria-controls="cpSizeRow"
+                  data-i18n-attr="title:ml.cpSize, aria-label:ml.cpSize" title="Text size" aria-label="Text size"
+                  class="cp-size-btn">Aa</button>
+          <button type="button" data-cmd="color" aria-expanded="false" aria-controls="cpColorRow"
+                  data-i18n-attr="title:ml.cpColor, aria-label:ml.cpColor" title="Text color" aria-label="Text color"
                   class="cp-swatch"><span></span></button>
 
           <span class="cp-tools-sep"></span>
@@ -348,9 +353,42 @@
           <button type="button" data-tool="quote" aria-pressed="false" title="Quote">&rdquo;</button>
 
           <span class="cp-tools-sep"></span>
-          <button type="button" data-cmd="link" aria-pressed="false" title="Link">&#128279;</button>
+          <button type="button" data-cmd="link" aria-pressed="false" aria-expanded="false" aria-controls="cpLinkRow" title="Link">&#128279;</button>
           <button type="button" data-cmd="image" title="Picture in the message">&#128247;</button>
           <button type="button" data-tool="rule" title="Divider">&mdash;</button>
+          <button type="button" data-cmd="variable" aria-expanded="false" aria-controls="cpVarRow"
+                  data-i18n-attr="title:ml.cpVar, aria-label:ml.cpVar" title="Their name" aria-label="Their name">&#128100;</button>
+        </div>
+
+        {#- One row at a time opens here, under the toolbar. -#}
+        <div class="cp-row" id="cpSizeRow" hidden role="group" data-i18n-attr="aria-label:ml.cpSize" aria-label="Text size">
+          <button type="button" data-size="sm" data-sz="sm" data-i18n="ml.cpSizeSm">Small</button>
+          <button type="button" data-size="" data-i18n="ml.cpSizeNormal">Normal</button>
+          <button type="button" data-size="lg" data-sz="lg" data-i18n="ml.cpSizeLg">Large</button>
+          <button type="button" data-size="xl" data-sz="xl" data-i18n="ml.cpSizeXl">Extra large</button>
+        </div>
+        <div class="cp-row" id="cpColorRow" hidden role="group" data-i18n-attr="aria-label:ml.cpColor" aria-label="Text color">
+          <button type="button" class="cp-tone" data-tone="" data-i18n-attr="title:ml.cpToneNone, aria-label:ml.cpToneNone" title="No color" aria-label="No color"><span></span></button>
+          <button type="button" class="cp-tone" data-tone="accent" data-i18n-attr="title:ml.cpToneAccent, aria-label:ml.cpToneAccent" title="Brand color" aria-label="Brand color"><span></span></button>
+          <button type="button" class="cp-tone" data-tone="dim" data-i18n-attr="title:ml.cpToneDim, aria-label:ml.cpToneDim" title="Gray" aria-label="Gray"><span></span></button>
+          <button type="button" class="cp-tone" data-tone="red" data-i18n-attr="title:ml.cpToneRed, aria-label:ml.cpToneRed" title="Red" aria-label="Red"><span></span></button>
+          <button type="button" class="cp-tone" data-tone="green" data-i18n-attr="title:ml.cpToneGreen, aria-label:ml.cpToneGreen" title="Green" aria-label="Green"><span></span></button>
+          <button type="button" class="cp-tone" data-tone="blue" data-i18n-attr="title:ml.cpToneBlue, aria-label:ml.cpToneBlue" title="Blue" aria-label="Blue"><span></span></button>
+          <button type="button" class="cp-tone" data-tone="gold" data-i18n-attr="title:ml.cpToneGold, aria-label:ml.cpToneGold" title="Gold" aria-label="Gold"><span></span></button>
+          <label class="cp-tone cp-tone-any" data-i18n-attr="title:ml.cpToneAny" title="Any color">
+            <input type="color" id="cpColorAny" value="#3366cc"
+                   data-i18n-attr="aria-label:ml.cpToneAny" aria-label="Any color">
+          </label>
+        </div>
+        <div class="cp-row" id="cpLinkRow" hidden>
+          <input type="url" id="cpLinkUrl" inputmode="url" autocomplete="url" placeholder="https://"
+                 data-i18n-attr="aria-label:ml.cpLinkAddr" aria-label="Link address">
+          <button type="button" class="ghost-btn" id="cpLinkApply" data-i18n="ml.cpLinkApply">Link</button>
+          <button type="button" class="ghost-btn" id="cpLinkRemove" data-i18n="ml.cpLinkRemove" hidden>Remove link</button>
+        </div>
+        <div class="cp-row" id="cpVarRow" hidden>
+          <button type="button" class="ghost-btn" data-var="first_name" data-i18n="ml.cpVarFirst">First name</button>
+          <button type="button" class="ghost-btn" data-var="name" data-i18n="ml.cpVarFull">Full name</button>
         </div>
 
         <div id="cpBody" class="cp-body"></div>
@@ -371,6 +409,19 @@
         <button type="button" class="solid-btn cp-send" id="cpSend" data-i18n="ml.cpSend">Send</button>
         <button type="button" class="ghost-btn" id="cpSave" data-i18n="ml.cpSave">Save draft</button>
         <button type="button" class="ghost-btn" id="cpTest" data-i18n="ml.cpTest">Send me a test</button>
+        {#- Where the test goes (0048). The sign-in address may be a forward,
+            and Gmail files forwarded tests as spam; a second inbox is proven
+            by a link before any test goes there. -#}
+        <span class="cp-testto">
+          <button type="button" class="cp-testto-addr" id="cpTestTo"
+                  data-i18n-attr="title:ml.cpTestTo" title="Tests go to"></button>
+          <span class="cp-testto-box" id="cpTestBox" hidden>
+            <input type="email" id="cpTestEmail" autocomplete="email"
+                   data-i18n-attr="aria-label:ml.cpTestTo" aria-label="Tests go to">
+            <button type="button" class="ghost-btn" id="cpTestLink" data-i18n="ml.cpTestSendLink">Send confirm link</button>
+            <button type="button" class="ghost-btn" id="cpTestReset" data-i18n="ml.cpTestUseSignIn" hidden>Use my sign-in address</button>
+          </span>
+        </span>
         <span class="cp-actions-gap"></span>
         <button type="button" class="cp-icon" id="cpAttach"
                 data-i18n-attr="title:ml.cpAttach" title="Attach a file">&#128206;</button>

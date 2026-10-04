@@ -49,3 +49,6 @@ presentation/dist/
 # The README is kept so a fresh clone has the folder and the how-to.
 screenshots/*
 !screenshots/README.md
+
+# Claude Code agent worktrees: temporary checkouts, never content.
+/.claude/worktrees/

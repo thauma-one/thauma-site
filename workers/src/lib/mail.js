@@ -71,7 +71,7 @@ const esc = (s) =>
  * invert it; saying "dark light" tells them it is deliberate and to leave it
  * be. Every text color is set explicitly for the ones that ignore that.
  */
-export function shell({ heading, rows, footer, origin }) {
+export function shell({ heading, rows, footer = "", origin }) {
   /* WHERE THE BAND IMAGE IS FETCHED FROM. The sending deployment's own origin,
      so a message from staging shows staging's copy and one from production
      shows production's. Falling back to the live site means an environment
@@ -110,14 +110,15 @@ export function shell({ heading, rows, footer, origin }) {
         ${Array.isArray(rows) ? rows.join("") : rows}
       </td></tr>
     </table>
-
+${/* NO FOOTER, NO ROW. A list confirmation passes none, and the template
+     printed the word "undefined" under every one sent. */ footer ? `
     <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"
            style="width:100%;max-width:600px;">
       <tr><td style="padding:20px 32px 18px 32px;font-family:Helvetica,Arial,sans-serif;
                      font-size:12px;line-height:1.6;color:#6f7c8c;">
         ${footer}
       </td></tr>
-    </table>
+    </table>` : ""}
   </td></tr>
 </table>
 </body></html>`;
@@ -226,6 +227,49 @@ export async function sendMail(env, { to, subject, html, text, replyTo, from: fr
 
    So it says what to do if that happens, and names who to ask.
    --------------------------------------------------------------------------- */
+
+/**
+ * Proving a TEST INBOX (0048): the address a person's "Send me a test" goes to
+ * instead of their sign-in address. Sent to that address only; the link is
+ * the proof they can read it. English, like the other account emails.
+ */
+export function testInboxEmail({ name, origin, signInEmail, confirmUrl }) {
+  const greeting = name ? `Hi ${esc(name)},` : "Hello,";
+  const rows =
+    h1("Send your tests here?") +
+    p(greeting) +
+    p(`The Thauma console signed in as ` +
+      `<strong style="color:#FFFFFF;">${esc(signInEmail)}</strong> asked to send ` +
+      `its newsletter tests to this inbox.`) +
+    button(confirmUrl, "Yes, send tests here") +
+    p(`<span style="color:#93a1b2;font-size:14px;">This link is good for ` +
+      `seven days. If this was not you, ignore this message and nothing will ` +
+      `be sent here.</span>`);
+  const footer =
+    `You are receiving this because this address was entered as a test inbox ` +
+    `in the Thauma console.`;
+  const text = [
+    "Send your tests here?",
+    "",
+    name ? `Hi ${name},` : "Hello,",
+    "",
+    `The Thauma console signed in as ${signInEmail} asked to send its`,
+    "newsletter tests to this inbox.",
+    "",
+    `Yes, send tests here: ${confirmUrl}`,
+    "",
+    "This link is good for seven days. If this was not you, ignore this",
+    "message and nothing will be sent here.",
+    "",
+    "--",
+    footer,
+  ].join("\n");
+  return {
+    subject: "Send your Thauma tests here?",
+    html: shell({ heading: "Send your tests here?", rows, footer, origin }),
+    text,
+  };
+}
 
 /**
  * Confirming a NEW address, sent to the new address and nowhere else.

@@ -13,7 +13,7 @@
  * operationally: a failed send must report rather than throw, because the
  * account it belongs to has already been created.
  */
-import { shell, button, p, h1, sendMail, inviteEmail } from "../src/lib/mail.js";
+import { shell, button, p, h1, sendMail, inviteEmail, listConfirmEmail } from "../src/lib/mail.js";
 
 let pass = 0, fail = 0;
 async function check(name, fn) {
@@ -189,6 +189,14 @@ await check("no API key is reported, not silently skipped", async () => {
   const r = await sendMail({}, { to: "a@b.c", subject: "S", html: "h", text: "h" });
   eq(r.ok, false, "ok");
   assert(/RESEND_API_KEY/.test(r.error), "must name the missing variable");
+});
+
+await check("a list confirmation has no stray \"undefined\" (it passes no footer)", async () => {
+  /* Seen in every confirmation sent from the live site until 2026-10-03. */
+  const m = listConfirmEmail({ name: "Ana", listName: "Prayer", fromName: "Chase Roush",
+                               confirmUrl: "https://thauma.one/confirm?t=x", origin: "https://thauma.one" });
+  assert(!/undefined/.test(m.html), "the html says undefined");
+  assert(!/undefined/.test(m.text), "the text says undefined");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "d19360010da20e74";
+export const SOURCE_DIGEST = "98883c5b1d3d4239";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -469,6 +469,8 @@ ON CONFLICT(mailing_id, subscriber_id) DO UPDATE SET
   mailing_recipient_result: `UPDATE mailing_recipients
 SET status = :status, provider_id = :provider_id, error = :error, updated_at = :now
 WHERE mailing_id = :mailing_id AND subscriber_id = :subscriber_id;`,
+  mailing_recipients_clear_pending: `DELETE FROM mailing_recipients
+WHERE mailing_id = :mailing_id AND status = 'pending';`,
   mailing_start: `UPDATE mailings
 SET status = 'sending', started_at = :now, slug = :slug
 WHERE id = :id AND partner_id IS :partner_id AND status = 'draft';`,
@@ -487,17 +489,30 @@ GROUP BY t.id;`,
 FROM mailing_tags t
 WHERE t.partner_id IS :partner_id
 ORDER BY t.sort_order, t.name COLLATE NOCASE;`,
+  mailing_unstart: `UPDATE mailings
+SET status = 'draft', started_at = NULL, slug = NULL
+WHERE id = :id AND partner_id IS :partner_id AND status = 'sending'
+  AND COALESCE(sent_count, 0) = 0;`,
   mailing_upsert: `INSERT INTO mailings (id, list_id, partner_id, subject, preheader,
                       body_md, body_html, body_text, status, created_by, created_at)
 VALUES (:id, :list_id, :partner_id, :subject, :preheader,
         :body_md, :body_html, :body_text, 'draft', :created_by, :now)
 ON CONFLICT(id) DO UPDATE SET
+  list_id = excluded.list_id,
   subject = excluded.subject,
   preheader = excluded.preheader,
   body_md = excluded.body_md,
   body_html = excluded.body_html,
   body_text = excluded.body_text
-WHERE mailings.status = 'draft';`,
+WHERE mailings.status = 'draft'
+  AND mailings.partner_id IS excluded.partner_id;`,
+  mailings_drafts_for_list: `SELECT m.id, m.subject, m.created_at
+  FROM mailings m
+  JOIN mailing_lists l ON l.id = m.list_id
+ WHERE m.list_id = :list_id AND l.partner_id IS :partner_id
+   AND m.status = 'draft'
+ ORDER BY m.created_at DESC
+ LIMIT 100;`,
   mailings_for_list: `SELECT m.id, m.list_id, m.subject, m.preheader, m.status, m.slug,
        m.sent_count, m.created_at, m.started_at, m.finished_at,
        CASE WHEN m.status = 'draft' THEN m.body_html END AS body_html,
@@ -862,11 +877,15 @@ LIMIT 1;`,
 VALUES (:resource_id, :audience, :partner_id, :can_edit, :shared_by, :now)
 ON CONFLICT(resource_id, audience) DO UPDATE SET
   can_edit = excluded.can_edit, partner_id = excluded.partner_id;`,
+  resource_group_shares_clear: `DELETE FROM resource_group_shares WHERE resource_id = :resource_id;`,
   resource_group_shares_for: `SELECT g.audience, g.partner_id, p.display_name AS partner_name, g.can_edit, g.shared_at
   FROM resource_group_shares g
   LEFT JOIN partners p ON p.id = g.partner_id
  WHERE g.resource_id = :resource_id
  ORDER BY g.audience;`,
+  resource_move: `UPDATE resources
+SET owner_user_id = :new_owner, partner_id = :new_partner, updated_at = :now
+WHERE id = :id AND owner_user_id IS :old_owner AND partner_id IS :old_partner;`,
   resource_owner: `SELECT id, owner_user_id, partner_id, updated_at FROM resources WHERE id = :id;`,
   resource_share_add: `INSERT INTO resource_shares (resource_id, user_id, shared_by, shared_at, can_edit)
 VALUES (:resource_id, :user_id, :shared_by, :now, :can_edit)
@@ -879,6 +898,7 @@ ON CONFLICT(resource_id, user_id) DO UPDATE SET can_edit = excluded.can_edit;`,
   JOIN users u ON u.id = sh.user_id
  WHERE sh.resource_id = :resource_id
  ORDER BY u.name COLLATE NOCASE;`,
+  resource_shares_clear: `DELETE FROM resource_shares WHERE resource_id = :resource_id;`,
   resource_upsert: `INSERT INTO resources
   (id, partner_id, owner_user_id, title, description, link, photo, visibility,
    created_by, created_at, updated_at)
@@ -1130,6 +1150,14 @@ ORDER BY s.subscribed_at
 LIMIT :limit OFFSET :offset;`,
   subscribers_to_send_count: `SELECT COUNT(*) AS n FROM subscribers
 WHERE list_id = :list_id AND partner_id IS :partner_id AND status = 'subscribed';`,
+  test_inbox_clear: `DELETE FROM test_inboxes WHERE user_id = :user_id;`,
+  test_inbox_confirm: `UPDATE test_inboxes SET confirmed_at = :now
+WHERE user_id = :user_id AND email = :email;`,
+  test_inbox_for_user: `SELECT email, confirmed_at FROM test_inboxes WHERE user_id = :user_id;`,
+  test_inbox_request: `INSERT INTO test_inboxes (user_id, email, created_at, confirmed_at)
+VALUES (:user_id, :email, :now, NULL)
+ON CONFLICT(user_id) DO UPDATE SET
+  email = excluded.email, created_at = excluded.created_at, confirmed_at = NULL;`,
   translation_glossary_add: `INSERT INTO translation_glossary (id, lang, source, target, created_at, updated_at, updated_by)
 VALUES (:id, :lang, :source, :target, :now, :now, :user_id)
 ON CONFLICT(lang, source) DO UPDATE SET

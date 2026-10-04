@@ -1206,7 +1206,32 @@ WHERE resources.owner_user_id IS :owner_user_id
 
 
 -- name: resource_delete
+-- :partner_id is the STORED row's (personal resources keep NULL there), read
+-- by the endpoint after it has checked who may delete. Passing the caller's
+-- partner instead never matched a personal resource, so deleting one did
+-- nothing (fixed 2026-10-03).
 DELETE FROM resources WHERE id = :id AND partner_id IS :partner_id;
+
+
+-- name: resource_move
+-- "Where it goes", changed on a saved resource: personal (owner, no partner)
+-- or the organization's (no owner, a partner). resource_upsert never moves a
+-- row (its guard keeps ownership as it was), so this is the one place that
+-- does, and only from the ownership the endpoint just checked.
+UPDATE resources
+SET owner_user_id = :new_owner, partner_id = :new_partner, updated_at = :now
+WHERE id = :id AND owner_user_id IS :old_owner AND partner_id IS :old_partner;
+
+
+-- name: resource_shares_clear
+-- On the organization's shelf a share means nothing: everyone with the level
+-- reads it, and only the owner shares. Cleared when a resource moves there,
+-- so moving it back does not resurrect stale shares.
+DELETE FROM resource_shares WHERE resource_id = :resource_id;
+
+
+-- name: resource_group_shares_clear
+DELETE FROM resource_group_shares WHERE resource_id = :resource_id;
 
 
 -- ============================================================================
@@ -1912,6 +1937,9 @@ INSERT INTO mailings (id, list_id, partner_id, subject, preheader,
 VALUES (:id, :list_id, :partner_id, :subject, :preheader,
         :body_md, :body_html, :body_text, 'draft', :created_by, :now)
 ON CONFLICT(id) DO UPDATE SET
+  -- The list moves with the "Sending to" picker: a draft goes where it says.
+  -- The Worker has already found that list under the caller's partner.
+  list_id = excluded.list_id,
   subject = excluded.subject,
   preheader = excluded.preheader,
   body_md = excluded.body_md,
@@ -1919,7 +1947,10 @@ ON CONFLICT(id) DO UPDATE SET
   body_text = excluded.body_text
 -- A sent mailing is a RECORD. Editing one would rewrite what people were told
 -- they received, and the archive would stop matching the inbox.
-WHERE mailings.status = 'draft';
+-- And only the caller's own: an id is not a key, and without this a draft
+-- id from another ministry would be overwritten before the read-back refused.
+WHERE mailings.status = 'draft'
+  AND mailings.partner_id IS excluded.partner_id;
 
 
 -- name: mailing_delete
@@ -1941,6 +1972,22 @@ WHERE id = :id AND partner_id IS :partner_id AND status = 'draft';
 UPDATE mailings
 SET status = :status, finished_at = :now, sent_count = :sent_count
 WHERE id = :id AND partner_id IS :partner_id;
+
+
+-- name: mailing_unstart
+-- A send that broke before a single message left goes BACK TO DRAFT. Left at
+-- 'sending' it could never be sent, edited or deleted again — every one of
+-- those refuses a mailing that is not a draft.
+UPDATE mailings
+SET status = 'draft', started_at = NULL, slug = NULL
+WHERE id = :id AND partner_id IS :partner_id AND status = 'sending'
+  AND COALESCE(sent_count, 0) = 0;
+
+
+-- name: mailing_recipients_clear_pending
+-- The rows written before a send that then never happened.
+DELETE FROM mailing_recipients
+WHERE mailing_id = :mailing_id AND status = 'pending';
 
 
 -- name: mailing_recipient_add
@@ -2599,6 +2646,18 @@ SELECT m.id, m.slug, m.subject, m.status, m.finished_at, m.sent_count
  LIMIT 100;
 
 
+-- name: mailings_drafts_for_list
+-- Mail's Drafts card: every draft waiting, to reopen one. Subjects only — the
+-- body comes with the composer's own load, for the one that is opened.
+SELECT m.id, m.subject, m.created_at
+  FROM mailings m
+  JOIN mailing_lists l ON l.id = m.list_id
+ WHERE m.list_id = :list_id AND l.partner_id IS :partner_id
+   AND m.status = 'draft'
+ ORDER BY m.created_at DESC
+ LIMIT 100;
+
+
 -- ===========================================================================
 -- THE SUPPORTER DIALOG — one person, on purpose
 -- ===========================================================================
@@ -3050,3 +3109,31 @@ UPDATE ai_usage SET neurons = MAX(0, neurons - :est + :actual) WHERE day = :day;
 
 -- name: ai_usage_today
 SELECT neurons, calls FROM ai_usage WHERE day = :day;
+
+
+-- ===========================================================================
+-- TEST INBOXES (0048) — where a person's "Send me a test" goes
+-- ===========================================================================
+
+-- name: test_inbox_for_user
+SELECT email, confirmed_at FROM test_inboxes WHERE user_id = :user_id;
+
+
+-- name: test_inbox_request
+-- Asking again, or for a different address, starts over: unconfirmed until
+-- the new link is followed.
+INSERT INTO test_inboxes (user_id, email, created_at, confirmed_at)
+VALUES (:user_id, :email, :now, NULL)
+ON CONFLICT(user_id) DO UPDATE SET
+  email = excluded.email, created_at = excluded.created_at, confirmed_at = NULL;
+
+
+-- name: test_inbox_confirm
+-- The address is in the WHERE: a link for an address since replaced
+-- confirms nothing.
+UPDATE test_inboxes SET confirmed_at = :now
+WHERE user_id = :user_id AND email = :email;
+
+
+-- name: test_inbox_clear
+DELETE FROM test_inboxes WHERE user_id = :user_id;

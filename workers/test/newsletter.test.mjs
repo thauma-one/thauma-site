@@ -16,6 +16,8 @@
  */
 import { sanitise, render, toText, plainLine, escapeHtml,
          tooBig, sizeOf } from "../src/lib/newsletter.js";
+/* Namespace too, so a missing export fails one check rather than the file. */
+import * as NL from "../src/lib/newsletter.js";
 
 let pass = 0, fail = 0;
 const check = (name, fn) => {
@@ -119,7 +121,7 @@ check("a span may carry a size or a brand color, and nothing else", () => {
 check("an invented size or color is dropped, keeping the words", () => {
   for (const [html, what] of [
     ['<p><span data-sz="huge">x</span></p>', "an invented size"],
-    ['<p><span data-c="#ff0000">x</span></p>', "an arbitrary color"],
+    ['<p><span data-c="tomato">x</span></p>', "an invented color name"],
     ['<p><span style="color:red">x</span></p>', "a pasted style attribute"],
   ]) {
     const out = sanitise(html);
@@ -338,6 +340,85 @@ check("a subject cannot carry markup or newlines", () => {
 
 check("escapeHtml covers the characters that matter", () => {
   eq(escapeHtml(`<>&"'`), "&lt;&gt;&amp;&quot;&#39;", "all five");
+});
+
+/* ---- pictures uploaded from the composer (2026-10-03) ----
+   The upload answers a /media/ PATH. safeUrl admitted only http(s), so every
+   save stripped the src and the draft came back as a bare <img>. */
+
+check("an uploaded picture's /media/ path survives a save", () => {
+  const out = sanitise('<p>a</p><img src="/media/newsletter/chase-roush/0a1b2c3d.jpg" alt="Team">');
+  assert(out.includes('src="/media/newsletter/chase-roush/0a1b2c3d.jpg"'), `src lost: ${out}`);
+  assert(out.includes('alt="Team"'), "alt lost");
+});
+
+check("only the bucket's own paths pass, nothing that climbs or wanders", () => {
+  for (const bad of ["/media/../admin", "/admin/x.jpg", "//evil.test/x.jpg", "/media/a b.jpg"]) {
+    const out = sanitise(`<img src="${bad}">`);
+    assert(!/src=/.test(out), `${bad} survived: ${out}`);
+  }
+});
+
+check("a picture whose address was refused is dropped, not left as an empty box", () => {
+  eq(sanitise('<p>a</p><img src="javascript:alert(1)"><img>'), "<p>a</p>", "html");
+});
+
+check("in the email the picture points at the live site, which readers can reach", () => {
+  const html = render(sanitise('<img src="/media/newsletter/x/a.jpg">'), OPTS);
+  assert(html.includes('src="https://thauma.one/media/newsletter/x/a.jpg"'), "not absolute");
+  assert(!/src="\/media\//.test(html), "a relative src reached the email");
+});
+
+/* ---- the composer's palette, sizes and personal words (2026-10-03) ---- */
+
+check("a link keeps its & (it was stored as &amp;amp;, a different address)", () => {
+  const out = sanitise('<p><a href="https://x.org/?a=1&amp;b=2">x</a></p>');
+  eq(out, '<p><a href="https://x.org/?a=1&amp;b=2">x</a></p>', "sanitised");
+  eq(sanitise(out), out, "sanitising twice changes nothing");
+});
+
+check("the palette tones and the extra-large size survive and render per light/dark", () => {
+  const s = sanitise('<p><span data-c="red">r</span> <span data-c="green">g</span> ' +
+                     '<span data-c="pink">p</span> <span data-sz="xl">big</span></p>');
+  assert(s.includes('data-c="red"') && s.includes('data-c="green"'), "tones dropped: " + s);
+  assert(!s.includes("pink"), "an unknown color survived");
+  assert(s.includes('data-sz="xl"'), "xl dropped");
+  const light = render(s, { subject: "x", unsubscribeUrl: "u" });
+  const dark = render(s, { subject: "x", unsubscribeUrl: "u", mode: "dark" });
+  assert(/<span style="color:#B42318">r/.test(light), "red on a light email");
+  assert(/<span style="color:#FF8A80">r/.test(dark), "red on a dark email");
+  assert(/<span style="font-size:23px">big/.test(light), "xl size");
+});
+
+check("a name variable survives saving; unknown ones and fallbacks do not", () => {
+  const s = sanitise('<p>Hi <span data-var="first_name" data-fallback="friend">First name</span>' +
+                     ' <span data-var="password">X</span></p>');
+  assert(s.includes('<span data-var="first_name">First name</span>'), "variable lost: " + s);
+  assert(!s.includes("password") && !s.includes("data-fallback"),
+    "something unknown survived: " + s);
+});
+
+check("any #rrggbb color is kept and inlined; anything else is dropped", () => {
+  const s = sanitise('<p><span data-c="#FF00aa">a</span><span data-c="red">b</span>' +
+                     '<span data-c="url(x)">c</span><span data-c="#fff">d</span></p>');
+  assert(s.includes('<span data-c="#ff00aa">a</span>') && s.includes('<span data-c="red">b</span>'),
+    "a color was lost: " + s);
+  assert(!/url\(|#fff"/.test(s), "a bad color survived: " + s);
+  const out = render(s, { subject: "x", unsubscribeUrl: "u" });
+  assert(out.includes('<span style="color:#ff00aa">a</span>'), "picked color not inlined");
+});
+
+check("each reader gets their own name, escaped; no name drops it and its space; never the label", () => {
+  assert(typeof NL.fillVariables === "function", "fillVariables is missing");
+  const s = sanitise('<p>Hi <span data-var="first_name" data-fallback="friend">First name</span>, ' +
+                     '<span data-var="name">Name</span>.</p>');
+  eq(NL.fillVariables(s, "Ana <b>Marić</b>"), "<p>Hi Ana, Ana &lt;b&gt;Marić&lt;/b&gt;.</p>", "named");
+  eq(NL.fillVariables(s, null), "<p>Hi,.</p>", "unnamed");
+  const sent = render(s, { subject: "x", unsubscribeUrl: "u", recipientName: "Ivo Ivić" });
+  assert(sent.includes("Hi Ivo, Ivo Ivić."), "render did not fill");
+  const archive = render(s, { subject: "x" });
+  assert(archive.includes("Hi,") && !/First name|data-var/.test(archive),
+    "the archive shows a label or a variable");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

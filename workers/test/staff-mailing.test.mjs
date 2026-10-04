@@ -16,6 +16,8 @@
  * the caller's own.
  */
 import handler, { cleanList, slugify } from "../src/staff-mailing.js";
+import confirmTestInbox from "../src/confirm-test-inbox.js";
+import { linkParams } from "../src/lib/signed-link.js";
 /* The generated SQL, so the tests below assert on what the Worker actually
    runs rather than on a copy of it in a string here. */
 import { QUERIES } from "../src/lib/db.js";
@@ -301,6 +303,44 @@ await check("a draft saved by someone else meanwhile is not overwritten — comp
   assert(ran.includes("mailing_upsert"), "unchanged since it opened — it must save");
 });
 
+/* Leaving the composer saves (Chase, 2026-10-03: drafts are deleted only by
+   hand). Words written before a subject is chosen are kept; Send and Test
+   still refuse a mailing without one (buildMailing). */
+await check("a draft with words and no subject yet is saved", async () => {
+  const rows = { mailing_list_one: [{ id: "ml_1", slug: "news", name: "News" }],
+                 mailing_one: [{ id: "mg_1", list_id: "ml_1", status: "draft", subject: "", body_html: "<p>Words</p>" }] };
+  const { env, ran } = stubbed(rows);
+  const res = await handler.fetch(req("POST", { body: { action: "mailing-save", list_id: "ml_1",
+    subject: "", body_html: "<p>Words first</p>" } }), env);
+  eq(res.status, 200, "status");
+  assert(ran.includes("mailing_upsert"), "not written");
+});
+
+await check("a draft with nothing in it at all is refused, not stored", async () => {
+  const { env, ran } = stubbed({ mailing_list_one: [{ id: "ml_1", slug: "news", name: "News" }] });
+  const res = await handler.fetch(req("POST", { body: { action: "mailing-save", list_id: "ml_1",
+    subject: "  ", body_html: "<p></p>" } }), env);
+  eq(res.status, 400, "status");
+  assert(!ran.includes("mailing_upsert"), "an empty draft was written");
+});
+
+await check("a draft's save can move it to another list, and only ever touches the caller's own", () => {
+  const sql = QUERIES.mailing_upsert;
+  assert(/list_id\s*=\s*excluded\.list_id/.test(sql), "the list does not move with Sending to");
+  assert(/mailings\.partner_id IS excluded\.partner_id/.test(sql),
+    "an id from another ministry would be overwritten before the read-back refused it");
+});
+
+await check("Mail's lists carry their drafts, for the Drafts card", async () => {
+  const env = envWith("staff");
+  const res = await handler.fetch(req("GET"), env);
+  const body = await res.json();
+  assert(Array.isArray(body.lists) && body.lists.length, "no lists");
+  assert(Array.isArray(body.lists[0].draft_rows), "a list has no draft_rows");
+  assert(env.calls.some((c) => c.sql === QUERIES.mailings_drafts_for_list.replace(/:[a-z_][a-z0-9_]*/gi, "?")),
+    "mailings_drafts_for_list was not asked");
+});
+
 await check("the contact form's settings saved by someone else meanwhile are not overwritten", async () => {
   const rows = { contact_form_for_partner: [{ deliver_to: "theirs@thauma.one", is_open: 1, updated_at: "2026-09-30T10:00:00.000Z" }] };
   let { env, ran } = stubbed(rows);
@@ -360,11 +400,13 @@ await check("a bounced address can be set back to subscribed", async () => {
   eq(res.status, 200, "an address that starts working again must have a way back");
 });
 
-await check("only GET, POST and DELETE are allowed", async () => {
-  for (const m of ["PUT", "PATCH"]) {
-    const res = await handler.fetch(req(m, { body: {} }), envWith("staff"));
-    eq(res.status, 405, `${m} status`);
-  }
+await check("only GET, POST, DELETE, and PUT for an attachment are allowed", async () => {
+  /* PUT was in this list until 2026-10-03, which is how the attachment
+     button's "Method not allowed" passed every test. */
+  const res = await handler.fetch(req("PATCH", { body: {} }), envWith("staff"));
+  eq(res.status, 405, "PATCH status");
+  const put = await handler.fetch(req("PUT", { body: {} }), envWith("staff"));
+  eq(put.status, 400, "PUT with nothing to attach");
 });
 
 /* --------------------- a bigger subscriber list ------------------------ */
@@ -510,6 +552,317 @@ await check("the sign-up form keeps no after-sending words (the contact form doe
     words: { en: { heading: "Join", thanks: "ignored" } } } }), env);
   const ins = byName(env, "form_word_insert");
   assert(!ins[0].params.includes("ignored"), "thanks stored on the sign-up form");
+});
+
+/* ------------------------- a send that breaks --------------------------- */
+
+/* The live site, 2026-10: two mailings crashed after the claim, stayed at
+   'sending' forever, and the console said only "(500)". */
+function crashingSendEnv({ crash = true, roles = "staff", bodyHtml = "<p>Hi</p>",
+                          people = [{ id: "sb_1", email: "a@b.one", name: "A" }] } = {}) {
+  const env = envWith(roles);
+  env.SIGNUP_SALT = "s".repeat(32);
+  const sqlOf = (name) => QUERIES[name].replace(/:[a-z_][a-z0-9_]*/gi, "?");
+  let status = "draft";
+  const inner = env.DB.prepare;
+  env.DB.prepare = (sql) => {
+    const answer = async () => {
+      if (sql === sqlOf("mailing_start")) { status = "sending"; return { results: [] }; }
+      if (sql === sqlOf("mailing_unstart")) { status = "draft"; return { results: [] }; }
+      if (sql === sqlOf("mailing_one")) {
+        return { results: [{ id: "mg_1", list_id: "ml_1", partner_id: "p_chase", status,
+                             subject: "Hello", body_html: bodyHtml, body_text: "Hi" }] };
+      }
+      if (sql === sqlOf("subscribers_to_send_count")) return { results: [{ n: 1 }] };
+      if (sql === sqlOf("subscribers_to_send")) {
+        return { results: people };
+      }
+      if (crash && sql === sqlOf("partner_settings")) throw new Error("boom in partner_settings");
+      return null;
+    };
+    const stmt = inner(sql);
+    const run = async () => {
+      const mine = await answer();
+      if (!mine) return stmt.all();             // the inner mock records it
+      env.calls.push({ sql, params: env._lastParams });
+      return mine;
+    };
+    return { bind(...args) { env._lastParams = args; return { all: run, run }; }, all: run, run };
+  };
+  return { env, status: () => status };
+}
+
+await check("a send that breaks before anything left goes back to draft, and says why", async () => {
+  const { env, status } = crashingSendEnv();
+  const res = await handler.fetch(req("POST", { body: { action: "mailing-send", id: "mg_1" } }), env);
+  eq(res.status, 500, "status");
+  const body = await res.json();
+  assert(/boom in partner_settings/.test(body.error || ""), `error should name the cause, got ${JSON.stringify(body)}`);
+  eq(status(), "draft", "mailing status after the crash");
+  eq(byName(env, "mailing_recipients_clear_pending").length, 1, "pending rows cleared");
+});
+
+/* The 500 itself (2026-08-24 → 10-03): buildMailing answers { value }, and
+   both buttons read the message off the wrapper — so the body was undefined
+   and render() threw. The mocks above never reached a real render. */
+async function sendsThrough(action, opts = {}) {
+  const { env } = crashingSendEnv({ crash: false, ...opts });
+  env.RESEND_API_KEY = "re_test";
+  const out = [];
+  const before = globalThis.fetch;
+  globalThis.fetch = async (url, init) => {
+    if (String(url).includes("api.resend.com")) {
+      out.push(JSON.parse(init.body));
+      return new Response(JSON.stringify({ id: "re_1" }), { status: 200 });
+    }
+    return before(url, init);
+  };
+  try {
+    const res = await handler.fetch(req("POST", { body: { action, id: "mg_1" } }), env);
+    return { res, out, env };
+  } finally { globalThis.fetch = before; }
+}
+
+await check("Send me a test delivers the mailing's own subject and words", async () => {
+  const { res, out } = await sendsThrough("mailing-test");
+  eq(res.status, 200, "status");
+  eq(out.length, 1, "messages handed to Resend");
+  eq(out[0].subject, "[TEST] Hello", "subject");
+  assert(out[0].html.includes("Hi"), "the body is missing from the html");
+  assert(!/undefined/.test(out[0].html + out[0].text), "undefined in the message");
+});
+
+await check("Send delivers it, and the mailing gets a slug from its subject", async () => {
+  const { res, out, env } = await sendsThrough("mailing-send");
+  eq(res.status, 200, "status");
+  eq(out.length, 1, "messages handed to Resend");
+  eq(out[0].subject, "Hello", "subject");
+  const start = byName(env, "mailing_start");
+  assert(start.length === 1 && start[0].params.includes("hello"),
+    `slug should be "hello", bound ${JSON.stringify(start.map((c) => c.params))}`);
+});
+
+/* ---- attachments (2026-10-03: the button answered "Method not allowed") ---- */
+
+function attachEnv(roles = "staff") {
+  const { env } = crashingSendEnv({ crash: false, roles });
+  const bucket = new Map();
+  env.MEDIA = {
+    async put(key, bytes, opts) { bucket.set(key, { bytes, opts }); },
+    async head(key) { const o = bucket.get(key); return o ? { size: o.bytes.length } : null; },
+    async get() { return null; },
+  };
+  return { env, bucket };
+}
+const upload = (env, name, bytes, query = "") => handler.fetch(new Request(
+  `https://x/api/staff-mailing?${query}attach=${encodeURIComponent(name)}`, {
+    method: "PUT", body: bytes,
+    headers: { "Content-Type": "application/octet-stream", "Cf-Access-Jwt-Assertion": TOKEN },
+  }), env);
+const saveWith = (env, attachments) => handler.fetch(req("POST", { body: {
+  action: "mailing-save", id: "mg_1", list_id: "ml_1", subject: "Hello",
+  body_html: "<p>Hi</p>", attachments } }), env);
+
+await check("an attachment uploads into the caller's own folder and comes back in the draft's shape", async () => {
+  const { env, bucket } = attachEnv();
+  const res = await upload(env, "Prayer letter.pdf", new Uint8Array([37, 80, 68, 70]));
+  eq(res.status, 200, "status");
+  const { file } = await res.json();
+  assert(/^attachments\/p_chase\/[0-9a-f]{16}-Prayer-letter\.pdf$/.test(file.object_key),
+    `key ${file.object_key}`);
+  eq([file.filename, file.content_type, file.bytes], ["Prayer letter.pdf", "application/pdf", 4], "fields");
+  assert(bucket.has(file.object_key), "not stored");
+});
+
+await check("a file type mail filters distrust is refused before it is stored", async () => {
+  const { env, bucket } = attachEnv();
+  for (const name of ["setup.exe", "page.html", "photos.zip", "noextension"]) {
+    const res = await upload(env, name, new Uint8Array([1]));
+    eq(res.status, 415, name);
+  }
+  eq(bucket.size, 0, "nothing stored");
+});
+
+await check("a file over 5MB is refused", async () => {
+  const { env, bucket } = attachEnv();
+  const res = await upload(env, "big.pdf", new Uint8Array(5 * 1024 * 1024 + 1));
+  eq(res.status, 413, "status");
+  eq(bucket.size, 0, "nothing stored");
+});
+
+await check("saving keeps only keys from the caller's own folder, sized by the bucket", async () => {
+  const { env } = attachEnv();
+  const { file } = await (await upload(env, "a.pdf", new Uint8Array(1000))).json();
+  const res = await saveWith(env, [
+    { ...file, bytes: 1 },                                     // the page lies about the size
+    { object_key: "attachments/p_mira/aaaa-theirs.pdf", filename: "theirs.pdf", bytes: 5 },
+    { object_key: "attachments/p_chase/never-uploaded.pdf", filename: "ghost.pdf", bytes: 5 },
+  ]);
+  eq(res.status, 200, "status");
+  const added = byName(env, "mailing_attachment_add");
+  eq(added.length, 1, "attachments recorded");
+  assert(added[0].params.includes(file.object_key), "own file missing");
+  assert(added[0].params.includes(1000), "size should come from the bucket");
+});
+
+await check("a mailing over 10MB of attachments is refused and keeps what it had", async () => {
+  const { env } = attachEnv();
+  const files = [];
+  for (let i = 0; i < 3; i++) {
+    files.push((await (await upload(env, `f${i}.pdf`, new Uint8Array(4 * 1024 * 1024))).json()).file);
+  }
+  const res = await saveWith(env, files);
+  eq(res.status, 413, "status");
+  eq(byName(env, "mailing_attachment_clear").length, 0, "the old list was cleared anyway");
+});
+
+await check("one of Thauma's own lists attaches into the organization's folder", async () => {
+  /* The composer used to upload without the scope, so the file landed in the
+     signed-in person's partner folder and the organization's save refused it. */
+  const { env } = attachEnv("admin,staff");
+  const res = await upload(env, "a.pdf", new Uint8Array([1]), "scope=organization&");
+  eq(res.status, 200, "status");
+  const { file } = await res.json();
+  assert(file.object_key.startsWith("attachments/org/"), `key ${file.object_key}`);
+});
+
+await check("Send fills each person's name; someone without one just gets \"Hi!\"", async () => {
+  const body = '<p>Hi <span data-var="first_name">First name</span>!</p>';
+  const { res, out } = await sendsThrough("mailing-send", { bodyHtml: body, people: [
+    { id: "sb_1", email: "ana@x.one", name: "Ana <b>Marić" },
+    { id: "sb_2", email: "nn@x.one", name: null },
+  ] });
+  eq(res.status, 200, "status");
+  eq(out.length, 2, "messages");
+  assert(out[0].html.includes("Hi Ana!") && out[0].text.includes("Hi Ana!"), "Ana's copy");
+  assert(out[1].html.includes("Hi!") && out[1].text.includes("Hi!"), "the unnamed copy");
+  for (const m of out) {
+    assert(!/First name|data-var/.test(m.html + m.text), "the editor's label reached a reader");
+  }
+});
+
+await check("Send me a test fills in the tester's own name", async () => {
+  const body = '<p>Hi <span data-var="first_name">First name</span>!</p>';
+  const { res, out } = await sendsThrough("mailing-test", { bodyHtml: body });
+  eq(res.status, 200, "status");
+  assert(out[0].html.includes("Hi Chase!"), "tester's name missing");
+});
+
+await check("any other failure answers with its message, not a bare 500", async () => {
+  const env = envWith("staff");
+  const inner = env.DB.prepare;
+  env.DB.prepare = (sql) => {
+    if (/FROM mailing_lists/i.test(sql)) throw new Error("no such column: x");
+    return inner(sql);
+  };
+  const res = await handler.fetch(req("GET"), env);
+  eq(res.status, 500, "status");
+  assert(/no such column: x/.test((await res.json()).error || ""), "message missing");
+});
+
+await check("a saved mailing records WHO wrote it", async () => {
+  /* The actor carries the user at actor.me.user_id; actor.user_id does not
+     exist, so every mailing was saved with created_by NULL until 2026-10-03. */
+  const env = envWith("staff");
+  await handler.fetch(req("POST", { body: { action: "mailing-save", list_id: "ml_1",
+    subject: "Hi", body_html: "<p>x</p>" } }), env);
+  const up = byName(env, "mailing_upsert");
+  assert(up.length === 1 && up[0].params.includes("u_1"),
+    `created_by should be u_1, bound ${JSON.stringify(up.map((c) => c.params))}`);
+});
+
+/* ------------------------ the test inbox (0048) ------------------------ */
+
+/* An env whose test_inboxes row is `inbox` (or whose table is missing). */
+function inboxEnv({ inbox = null, missing = false } = {}) {
+  const { env } = crashingSendEnv({ crash: false });
+  env.RESEND_API_KEY = "re_test";
+  env.MAIL_FROM = "Thauma <noreply@thauma.one>";
+  const sqlOf = (name) => QUERIES[name].replace(/:[a-z_][a-z0-9_]*/gi, "?");
+  const inner = env.DB.prepare;
+  env.DB.prepare = (sql) => {
+    if (sql === sqlOf("test_inbox_for_user")) {
+      const run = async () => {
+        if (missing) throw new Error("no such table: test_inboxes");
+        env.calls.push({ sql, params: env._lastParams });
+        return { results: inbox ? [inbox] : [] };
+      };
+      return { bind(...a) { env._lastParams = a; return { all: run, run }; }, all: run, run };
+    }
+    return inner(sql);
+  };
+  return env;
+}
+async function withResend(fn) {
+  const out = [];
+  const before = globalThis.fetch;
+  globalThis.fetch = async (url, init) => {
+    if (String(url).includes("api.resend.com")) {
+      out.push(JSON.parse(init.body));
+      return new Response(JSON.stringify({ id: "re_1" }), { status: 200 });
+    }
+    return before(url, init);
+  };
+  try { return { res: await fn(), out }; } finally { globalThis.fetch = before; }
+}
+
+await check("asking for a test inbox sends a signed link TO that inbox and stores it unconfirmed", async () => {
+  const env = inboxEnv();
+  const { res, out } = await withResend(() => handler.fetch(
+    req("POST", { body: { action: "test-inbox", email: "Me@Gmail.com" } }), env));
+  eq(res.status, 200, "status");
+  eq((await res.json()).test_inbox, { email: "me@gmail.com", confirmed: false }, "answer");
+  eq(out.length, 1, "emails sent");
+  eq(out[0].to, ["me@gmail.com"], "sent to the new inbox only");
+  assert(/\/confirm-test-inbox\?u=u_1%7Cme%40gmail\.com&e=\d+&t=[0-9a-f]+/.test(out[0].text),
+    "the link names the account and the address");
+  const req0 = byName(env, "test_inbox_request");
+  assert(req0.length === 1 && req0[0].params.includes("me@gmail.com"), "row not stored");
+});
+
+await check("Send me a test goes to a CONFIRMED test inbox", async () => {
+  const env = inboxEnv({ inbox: { email: "me@gmail.com", confirmed_at: "2026-10-03T00:00:00Z" } });
+  const { res, out } = await withResend(() => handler.fetch(
+    req("POST", { body: { action: "mailing-test", id: "mg_1" } }), env));
+  eq(res.status, 200, "status");
+  eq(out[0].to, ["me@gmail.com"], "recipient");
+});
+
+await check("an UNCONFIRMED inbox, or no table yet, leaves tests on the sign-in address", async () => {
+  for (const env of [inboxEnv({ inbox: { email: "me@gmail.com", confirmed_at: null } }),
+                     inboxEnv({ missing: true })]) {
+    const { res, out } = await withResend(() => handler.fetch(
+      req("POST", { body: { action: "mailing-test", id: "mg_1" } }), env));
+    eq(res.status, 200, "status");
+    eq(out[0].to, ["chase@thauma.one"], "recipient");
+  }
+});
+
+await check("the confirm link confirms exactly the address it names", async () => {
+  const SALT = "s".repeat(32);
+  const calls = [];
+  const row = { email: "me@gmail.com", confirmed_at: null };
+  const sqlOf = (name) => QUERIES[name].replace(/:[a-z_][a-z0-9_]*/gi, "?");
+  const env = { SIGNUP_SALT: SALT, DB: { prepare(sql) {
+    let args = [];
+    const run = async () => { calls.push({ sql, args });
+      return { results: sql === sqlOf("test_inbox_for_user") ? [row] : [] }; };
+    return { bind(...a) { args = a; return { all: run, run }; }, all: run, run };
+  } } };
+  const good = await linkParams(env, "test-inbox", "u_1|me@gmail.com");
+  const ok = await confirmTestInbox.fetch(new Request("https://x/confirm-test-inbox?" + good), env);
+  eq(ok.status, 200, "good link");
+  assert(calls.some((c) => c.sql === sqlOf("test_inbox_confirm")), "not confirmed");
+
+  calls.length = 0;
+  const other = await linkParams(env, "test-inbox", "u_1|someone@else.com");
+  const no = await confirmTestInbox.fetch(new Request("https://x/confirm-test-inbox?" + other), env);
+  eq(no.status, 400, "a link for a replaced address");
+  assert(!calls.some((c) => c.sql === sqlOf("test_inbox_confirm")), "confirmed the wrong address");
+
+  const forged = good.replace(/t=[0-9a-f]+/, "t=" + "0".repeat(40));
+  eq((await confirmTestInbox.fetch(new Request("https://x/confirm-test-inbox?" + forged), env)).status,
+     400, "a forged signature");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

@@ -249,6 +249,12 @@ Later:
     come from the site; the powers should be spectacular. Still to design.
 - **Cue Stack** (4 lanes): top to bottom, rhythm-style.
 - **Truck Pack:** the Tetris-lite version of Load Out.
+- **Signal Run** (working name; Chase, 2026-10-01): an endless runner like
+  Subway Surfers. Chase's first idea is voltage running down a mic cable.
+  His preferred one ("this may be more fun") is a DMX signal travelling to
+  a light. A third version: a stagehand running snacks to the talent in the
+  green room. Not started: idea only, at Chase's word ("Add it to the list.
+  Don't work on it").
 
 ## 5. Revision log
 

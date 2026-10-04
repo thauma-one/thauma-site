@@ -22,15 +22,57 @@ import { createDb } from "./lib/db.js";
 import { requireAccess } from "./lib/access.js";
 import { resolveActor, withActing } from "./lib/actas.js";
 import { json, readJson } from "./lib/store.js";
-import { sanitise, render, toText, plainLine, tooBig, sizeOf } from "./lib/newsletter.js";
+import { sanitise, render, toText, plainLine, tooBig, sizeOf, fillVariables } from "./lib/newsletter.js";
 import { unsubscribeUrl } from "./lib/unsub.js";
-import { sendMail, listConfirmEmail } from "./lib/mail.js";
+import { sendMail, listConfirmEmail, testInboxEmail } from "./lib/mail.js";
+import { linkParams } from "./lib/signed-link.js";
 import { siteOrigin } from "./lib/origin.js";
 import { topicLabels, cleanLabels } from "./lib/topics.js";
 import { changedSince, changedAnswer } from "./lib/fresh.js";
 import { readTexts, cleanTexts } from "./lib/texts.js";
 
 const MAX = { name: 120, slug: 60, desc: 400, from_name: 80, email: 200 };
+
+/* ATTACHMENTS. Resend takes about 40MB per message AFTER base64, which adds a
+   third, and every copy of a newsletter carries the files in full — so the
+   caps sit well under that: 5MB a file (mailing-save already clamped to it)
+   and 10MB a mailing. A bigger file belongs behind a link. */
+export const ATTACH_FILE_MAX = 5 * 1024 * 1024;
+export const ATTACH_TOTAL_MAX = 10 * 1024 * 1024;
+
+/* WHAT MAY BE ATTACHED, by extension, and the type is ours rather than the
+   browser's. Documents, sheets, slides, pictures, audio. No archives and
+   nothing executable or scriptable: those are what mail filters exist to
+   catch, and one of them would mark the whole list's mail as dangerous. */
+const ATTACH_TYPES = {
+  pdf: "application/pdf",
+  doc: "application/msword",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  xls: "application/vnd.ms-excel",
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  ppt: "application/vnd.ms-powerpoint",
+  pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  odt: "application/vnd.oasis.opendocument.text",
+  ods: "application/vnd.oasis.opendocument.spreadsheet",
+  odp: "application/vnd.oasis.opendocument.presentation",
+  rtf: "application/rtf", txt: "text/plain", csv: "text/csv",
+  jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", gif: "image/gif",
+  webp: "image/webp", heic: "image/heic",
+  mp3: "audio/mpeg", m4a: "audio/mp4",
+};
+
+/* The ONE folder a caller may attach from. From the scope the sign-in
+   resolved, never from the request: a key naming another ministry's folder
+   would otherwise attach their file to this ministry's newsletter. */
+const attachPrefix = (partnerId) => `attachments/${partnerId || "org"}/`;
+
+/* A filename as it will appear in somebody's inbox: no path, no control
+   characters, nothing a mail client would misread. */
+function attachName(raw) {
+  const base = String(raw || "").split(/[\\/]/).pop()
+    .replace(/[\x00-\x1f\x7f"<>|:*?]/g, "").replace(/\s+/g, " ").trim();
+  return base.slice(-120) || null;
+}
 const PAGE = 100;
 
 const newId = (p) => p + "_" + crypto.randomUUID().replace(/-/g, "").slice(0, 20);
@@ -161,6 +203,15 @@ async function withAttachments(db, listId, partnerId) {
   return rows;
 }
 
+/* A person's proven test inbox (0048), or null. TOLERANT of the table not
+   existing: dev runs this code the moment it is saved, before the migration
+   is applied, and a test must still go to the sign-in address meanwhile. */
+async function testInboxOf(db, userId) {
+  if (!userId) return null;
+  try { return await db.queryOne("test_inbox_for_user", { user_id: userId }); }
+  catch { return null; }
+}
+
 /** Everything a message needs, or the reason it cannot go. */
 async function buildMailing(db, env, { mailing, list, origin }) {
   const subject = plainLine(mailing.subject, 200);
@@ -230,12 +281,17 @@ async function messageFor(env, { built, list, sub, origin, theme, archiveUrl, at
     mode: theme && theme.mode,
     unsubscribeUrl: unsubscribe,
     archiveUrl,
+    recipientName: sub.name || null,
   });
+  /* The plain part personalized the same way: the stored body_text holds the
+     editor's label where a variable sits, which nobody may read. */
+  const text = /data-var="/.test(built.html)
+    ? toText(fillVariables(built.html, sub.name || null)) : (built.text || "");
   return {
     to: sub.email,
     subject: built.subject,
     html: body,
-    text: (built.text || "") + "\n\n—\n" + list.name +
+    text: text + "\n\n—\n" + list.name +
           "\nUnsubscribe: " + unsubscribe,
     from: `${list.from_name} <${list.from_email}>`,
     replyTo: list.reply_to || undefined,
@@ -298,8 +354,22 @@ export function cleanList(body, existingSlug, allowed) {
 /* A reason's other languages, as an object rather than the stored JSON. */
 const withLabels = (rows) => rows.map((t) => ({ ...t, labels: topicLabels(t) }));
 
-export default {
+/* EVERY FAILURE ANSWERS IN WORDS. An uncaught exception reaches the console
+   as a bare 500 with no body, so the only message anybody saw was "The server
+   refused the request (500)" — and on the live site, where nobody here can
+   read the log, that was the whole investigation. The message is for signed-in
+   staff and names the code's own failure, never a subscriber's data. */
+const api = {
   async fetch(request, env) {
+    try {
+      return await api.handle(request, env);
+    } catch (e) {
+      console.error("staff-mailing", request.method, e && e.stack || e);
+      return json({ error: "The mail service failed: " + (e && e.message || e) }, 500);
+    }
+  },
+
+  async handle(request, env) {
     const s = await scopeFor(request, env);
     if (s.denied) return s.denied;
 
@@ -417,8 +487,11 @@ export default {
         partnerId ? db.queryOne("partner_settings", { partner_id: partnerId }) : null,
       ]);
 
+      const inbox = await testInboxOf(db, s.me && s.me.user_id);
       return json(withActing({
         you: { email: actor.email, name: (s.me && s.me.user_name) || null, roles: myRoles },
+        /* Where "Send me a test" goes: this address once proven, else `you`. */
+        test_inbox: inbox ? { email: inbox.email, confirmed: !!inbox.confirmed_at } : null,
         scope: s.isOrg ? "organization" : "partner",
         /* So the console can offer the switch only to people who have it,
            rather than showing a control that answers 403. */
@@ -446,6 +519,9 @@ export default {
           ...l,
           texts: readTexts(l.texts),
           sent: await db.query("mailings_sent_for_list",
+            { list_id: l.id, partner_id: partnerId }),
+          /* Mail's Drafts card, beside Sent: what is waiting, to reopen. */
+          draft_rows: await db.query("mailings_drafts_for_list",
             { list_id: l.id, partner_id: partnerId }),
         }))),
         /* Each tag carries how many people wear it, so deleting one can say
@@ -575,7 +651,7 @@ export default {
            answerable afterwards. */
         await db.query("audit_write", {
           id: crypto.randomUUID(), now,
-          user_id: actor.user_id || null, partner_id: partnerId,
+          user_id: (actor.me && actor.me.user_id) || null, partner_id: partnerId,
           action: "subscribers." + what, entity: "subscribers",
           entity_id: String(ids.length), detail: JSON.stringify({ count: ids.length }),
         }).catch(() => {});
@@ -725,8 +801,14 @@ export default {
           { id: clean(body.list_id, 60), partner_id: partnerId });
         if (!list) return json({ error: "No such list." }, 404);
 
+        /* A DRAFT MAY HAVE NO SUBJECT YET. Leaving the composer saves what is
+           there (Chase, 2026-10-03: "drafts deleted only by hand"), and words
+           written before a subject is chosen are still somebody's words.
+           Sending is where a subject is required: buildMailing refuses one
+           without, for Test and Send alike. Something must be there, though —
+           an empty draft is not worth a row. */
         const subject = plainLine(body.subject, 200);
-        if (!subject) return json({ error: "A mailing needs a subject." }, 400);
+        const hasWords = (h) => /<img\b/i.test(h) || toText(h).trim() !== "";
 
         /* LAYER B, AND IT LIVES HERE RATHER THAN IN THE BROWSER.
            The composer hands over the editor's rich HTML and stops. Turning
@@ -737,6 +819,9 @@ export default {
            injected per message. Converting in the browser would mean three
            implementations of one thing, two of which nobody ever receives. */
         const html = sanitise(body.body_html || "");
+        if (!subject && !hasWords(html)) {
+          return json({ error: "There is nothing to save yet." }, 400);
+        }
         const id = clean(body.id, 60) || newId("mg");
 
         /* Saved by someone else since this composer opened it (lib/fresh.js).
@@ -754,7 +839,7 @@ export default {
           id, list_id: list.id, partner_id: partnerId,
           subject, preheader: plainLine(body.preheader, 160) || null,
           body_md: null, body_html: html, body_text: toText(html),
-          created_by: actor.user_id || null, now,
+          created_by: (actor.me && actor.me.user_id) || null, now,
         });
         const saved = await db.queryOne("mailing_one", { id, partner_id: partnerId });
         if (!saved) return json({ error: "That mailing has already been sent." }, 409);
@@ -763,20 +848,39 @@ export default {
            so removing one is a matter of not sending it — which is exactly
            what the delete button does. Cheap at this size, and there is no
            second code path that could disagree with the first. */
-        await db.query("mailing_attachment_clear", { mailing_id: id });
         const files = Array.isArray(body.attachments) ? body.attachments.slice(0, 10) : [];
-        let n = 0;
+        const keep = [];
+        let total = 0;
         for (const f of files) {
-          const key = clean(f.object_key, 200);
-          /* The key has to be one this endpoint issued. Without this check a
-             caller could name any object in the bucket and have it attached to
-             a mailing going to a hundred people. */
-          if (!key || !/^attachments\//.test(key)) continue;
+          const key = clean(f && f.object_key, 200);
+          /* The key has to be one this endpoint issued TO THIS CALLER. Without
+             the folder check a caller could name any object in the bucket —
+             another ministry's attachment included — and have it sent to a
+             hundred people. */
+          if (!key || !key.startsWith(attachPrefix(partnerId)) || key.includes("..")) continue;
+          /* The size from the bucket, not from the page: the page's number is
+             the caller's word, and the cap exists because of the real one. A
+             key with nothing behind it is dropped rather than sent empty. */
+          const head = env.MEDIA ? await env.MEDIA.head(key) : null;
+          if (env.MEDIA && !head) continue;
+          const size = head ? head.size : Math.max(0, Number(f.bytes) || 0);
+          total += size;
+          keep.push({ key, size, f });
+        }
+        /* Refused BEFORE the old list is cleared, so the draft keeps the
+           attachments it had. */
+        if (total > ATTACH_TOTAL_MAX) {
+          return json({ error: `The attachments come to ${(total / 1048576).toFixed(1)}MB. ` +
+                               `A mailing can carry ${ATTACH_TOTAL_MAX / 1048576}MB at most.` }, 413);
+        }
+        await db.query("mailing_attachment_clear", { mailing_id: id });
+        let n = 0;
+        for (const { key, size, f } of keep) {
           await db.query("mailing_attachment_add", {
             id: newId("at"), mailing_id: id,
-            filename: clean(f.filename, 160) || "file",
+            filename: attachName(f.filename) || "file",
             content_type: clean(f.content_type, 120) || "application/octet-stream",
-            bytes: Math.max(0, Math.min(Number(f.bytes) || 0, 5 * 1024 * 1024)),
+            bytes: Math.min(size, ATTACH_FILE_MAX),
             object_key: key, sort_order: n++, now,
           });
         }
@@ -790,6 +894,40 @@ export default {
         return json({ ok: true });
       }
 
+      /* ---- the inbox tests go to (0048) ----
+         One address besides the sign-in one, PROVEN by a link sent to it
+         before any test goes there — otherwise this box would send unsent
+         newsletters to anybody, called a test. Choosing the sign-in address
+         again simply removes the extra one. */
+      if (body.action === "test-inbox" || body.action === "test-inbox-clear") {
+        const uid = s.me && s.me.user_id;
+        if (!uid) return json({ error: "This account has no id." }, 403);
+        const email = String(body.email || "").trim().toLowerCase();
+        if (body.action === "test-inbox-clear" || email === String(actor.email).toLowerCase()) {
+          await db.query("test_inbox_clear", { user_id: uid });
+          return json({ ok: true, test_inbox: null });
+        }
+        if (!EMAIL_RE.test(email)) {
+          return json({ error: "That does not look like an email address." }, 400);
+        }
+        /* One link a minute per person, so the button cannot be used to fill
+           somebody's inbox. */
+        const prior = await testInboxOf(db, uid);
+        if (prior && !prior.confirmed_at && String(prior.email).toLowerCase() === email &&
+            Date.now() - Date.parse(prior.created_at) < 60000) {
+          return json({ error: "A link was just sent there. Give it a minute." }, 429);
+        }
+        await db.query("test_inbox_request", { user_id: uid, email, now });
+        const origin = siteOrigin(env, request);
+        const confirmUrl = `${origin}/confirm-test-inbox?` +
+          await linkParams(env, "test-inbox", `${uid}|${email}`);
+        const mail = testInboxEmail({ name: s.me.user_name, origin,
+                                      signInEmail: actor.email, confirmUrl });
+        const sent = await sendMail(env, { to: email, ...mail });
+        if (!sent.ok) return json({ error: sent.error }, 502);
+        return json({ ok: true, test_inbox: { email, confirmed: false } });
+      }
+
       /* ---- a test to yourself ----
          To the SIGNED-IN ADDRESS and nowhere else. A free-text "send test to"
          box is a way to send a newsletter to anybody while it is still called
@@ -799,13 +937,21 @@ export default {
         const m = await db.queryOne("mailing_one",
           { id: clean(body.id, 60), partner_id: partnerId });
         if (!m) return json({ error: "No such mailing." }, 404);
+        /* The proven test inbox if there is one (0048): the sign-in address
+           may be a forward, and Gmail files forwarded tests as spam. */
+        const inbox = await testInboxOf(db, s.me && s.me.user_id);
+        const testTo = inbox && inbox.confirmed_at ? inbox.email : actor.email;
         const list = await db.queryOne("mailing_list_one",
           { id: m.list_id, partner_id: partnerId });
         if (!list) return json({ error: "No such list." }, 404);
 
         const origin = siteOrigin(env, request);
-        const built = await buildMailing(db, env, { mailing: m, list, origin });
-        if (built.error) return json({ error: built.error }, 400);
+        /* { value } or { error } — the message itself is .value. Read as if
+           it were the message, from 2026-08-24 until 2026-10-03: every test
+           and every send rendered `undefined` and died with a 500. */
+        const prepared = await buildMailing(db, env, { mailing: m, list, origin });
+        if (prepared.error) return json({ error: prepared.error }, 400);
+        const built = prepared.value;
 
         const look = partnerId
           ? await db.queryOne("partner_settings", { partner_id: partnerId }) : null;
@@ -819,7 +965,8 @@ export default {
            would fail to show. */
         const msg = await messageFor(env, {
           built, list, origin,
-          sub: { id: "test-" + (actor.user_id || "x"), email: actor.email },
+          sub: { id: "test-" + ((actor.me && actor.me.user_id) || "x"), email: testTo,
+                 name: (s.me && s.me.user_name) || null },
           theme: look ? { accent: look.embed_accent, mode: look.embed_theme } : null,
           attachments: await loadAttachments(env,
             await db.query("mailing_attachments_for", { mailing_id: m.id })),
@@ -827,7 +974,7 @@ export default {
         msg.subject = "[TEST] " + msg.subject;
 
         const sent = await sendMail(env, msg);
-        return json({ ok: sent.ok === true, to: actor.email,
+        return json({ ok: sent.ok === true, to: testTo,
                       error: sent.ok ? undefined : sent.error },
                     sent.ok ? 200 : 502);
       }
@@ -845,8 +992,12 @@ export default {
         if (!list) return json({ error: "No such list." }, 404);
 
         const origin = siteOrigin(env, request);
-        const built = await buildMailing(db, env, { mailing: m, list, origin });
-        if (built.error) return json({ error: built.error }, 400);
+        /* { value } or { error } — the message itself is .value. Read as if
+           it were the message, from 2026-08-24 until 2026-10-03: every test
+           and every send rendered `undefined` and died with a 500. */
+        const prepared = await buildMailing(db, env, { mailing: m, list, origin });
+        if (prepared.error) return json({ error: prepared.error }, 400);
+        const built = prepared.value;
 
         const total = await db.queryOne("subscribers_to_send_count",
           { list_id: list.id, partner_id: partnerId });
@@ -877,55 +1028,74 @@ export default {
           return json({ error: "That mailing is already going out." }, 409);
         }
 
-        const people = await db.query("subscribers_to_send",
-          { list_id: list.id, partner_id: partnerId, limit: 500, offset: 0 });
-
-        // Written down BEFORE anything leaves, so a crash mid-send still
-        // leaves a record of who was meant to be reached.
-        for (const sub of people) {
-          await db.query("mailing_recipient_add", {
-            mailing_id: id, subscriber_id: sub.id, email: sub.email,
-            status: "pending", now,
-          });
-        }
-
-        const look = partnerId
-          ? await db.queryOne("partner_settings", { partner_id: partnerId }) : null;
-        const theme = look ? { accent: look.embed_accent, mode: look.embed_theme } : null;
-        /* Loaded ONCE for the whole send. Reading the same file per recipient
-           would be a hundred fetches of one object and, at any real list size,
-           more time than the request has. */
-        const files = await loadAttachments(env,
-          await db.query("mailing_attachments_for", { mailing_id: id }));
-
-        const archiveUrl = list.archive_public
-          ? `${origin}/archive/${s.partner ? s.partner.slug : "thauma"}/${list.slug}/${slug}`
-          : null;
-
-        /* ONE MESSAGE PER PERSON, deliberately not a batch. Each carries its
-           own unsubscribe link, and a shared one would remove whoever pressed
-           it from somebody else's row. */
+        /* A CRASH PAST THIS POINT MUST NOT STRAND THE MAILING. The claim
+           above moved it to 'sending', and every action refuses a mailing
+           that is not a draft — so an exception here once left two mailings
+           that could never be sent, edited or deleted, and the console said
+           only "500". If nothing left yet, it goes back to draft; either way
+           the answer says what broke. */
         let sent = 0, failed = 0;
-        for (const sub of people) {
-          const msg = await messageFor(env,
-            { built, list, sub, origin, theme, archiveUrl, attachments: files });
-          const r = await sendMail(env, msg);
-          if (r.ok) sent++; else failed++;
-          await db.query("mailing_recipient_result", {
-            mailing_id: id, subscriber_id: sub.id,
-            status: r.ok ? "sent" : "failed",
-            provider_id: r.id || null,
-            error: r.ok ? null : String(r.error || "").slice(0, 300), now,
-          });
-        }
+        try {
+          const people = await db.query("subscribers_to_send",
+            { list_id: list.id, partner_id: partnerId, limit: 500, offset: 0 });
 
-        await db.query("mailing_finish", {
-          id, partner_id: partnerId,
-          status: sent > 0 ? "sent" : "failed",
-          sent_count: sent, now,
-        });
-        return json({ ok: sent > 0, sent, failed, total: people.length,
-                      mailing: await db.queryOne("mailing_one", { id, partner_id: partnerId }) });
+          // Written down BEFORE anything leaves, so a crash mid-send still
+          // leaves a record of who was meant to be reached.
+          for (const sub of people) {
+            await db.query("mailing_recipient_add", {
+              mailing_id: id, subscriber_id: sub.id, email: sub.email,
+              status: "pending", now,
+            });
+          }
+
+          const look = partnerId
+            ? await db.queryOne("partner_settings", { partner_id: partnerId }) : null;
+          const theme = look ? { accent: look.embed_accent, mode: look.embed_theme } : null;
+          /* Loaded ONCE for the whole send. Reading the same file per recipient
+             would be a hundred fetches of one object and, at any real list size,
+             more time than the request has. */
+          const files = await loadAttachments(env,
+            await db.query("mailing_attachments_for", { mailing_id: id }));
+
+          const archiveUrl = list.archive_public
+            ? `${origin}/archive/${s.partner ? s.partner.slug : "thauma"}/${list.slug}/${slug}`
+            : null;
+
+          /* ONE MESSAGE PER PERSON, deliberately not a batch. Each carries its
+             own unsubscribe link, and a shared one would remove whoever pressed
+             it from somebody else's row. */
+          for (const sub of people) {
+            const msg = await messageFor(env,
+              { built, list, sub, origin, theme, archiveUrl, attachments: files });
+            const r = await sendMail(env, msg);
+            if (r.ok) sent++; else failed++;
+            await db.query("mailing_recipient_result", {
+              mailing_id: id, subscriber_id: sub.id,
+              status: r.ok ? "sent" : "failed",
+              provider_id: r.id || null,
+              error: r.ok ? null : String(r.error || "").slice(0, 300), now,
+            });
+          }
+
+          await db.query("mailing_finish", {
+            id, partner_id: partnerId,
+            status: sent > 0 ? "sent" : "failed",
+            sent_count: sent, now,
+          });
+          return json({ ok: sent > 0, sent, failed, total: people.length,
+                        mailing: await db.queryOne("mailing_one", { id, partner_id: partnerId }) });
+        } catch (e) {
+          console.error("mailing-send", id, e && e.stack || e);
+          if (sent === 0) {
+            await db.query("mailing_recipients_clear_pending", { mailing_id: id });
+            await db.query("mailing_unstart", { id, partner_id: partnerId });
+          } else {
+            await db.query("mailing_finish",
+              { id, partner_id: partnerId, status: "sent", sent_count: sent, now });
+          }
+          return json({ error: `Sending stopped after ${sent}: ${e && e.message || e}`,
+                        sent, failed }, 500);
+        }
       }
 
       /* ---- the contact form ----
@@ -1159,6 +1329,49 @@ export default {
       return json({ ok: true, list: { ...saved, texts: readTexts(saved.texts) } });
     }
 
+    /* ------------------------------------------------------------ PUT */
+    /* AN ATTACHMENT, uploaded the moment it is picked. The composer sends the
+       raw file to ?attach=<its name> and keeps what comes back in the draft;
+       mailing-save then records it and the send reads it from the bucket.
+       Until 2026-10-03 this half did not exist and the button answered
+       "Method not allowed". */
+    if (request.method === "PUT") {
+      if (!url.searchParams.has("attach")) return json({ error: "Upload what?" }, 400);
+      if (!env.MEDIA) return json({ error: "No file store is bound to this deploy." }, 500);
+
+      const filename = attachName(url.searchParams.get("attach"));
+      if (!filename) return json({ error: "That file has no name." }, 400);
+      const ext = (filename.match(/\.([A-Za-z0-9]{1,5})$/) || [])[1];
+      const type = ext && ATTACH_TYPES[ext.toLowerCase()];
+      if (!type) {
+        return json({ error: `${filename} cannot be attached. Send a PDF, a document, ` +
+                             `a spreadsheet, slides, a picture or audio.` }, 415);
+      }
+
+      /* Refused on the declared length before reading, then again on what
+         actually arrived: the header is the caller's word. */
+      const tooBigFile = (n) => json({
+        error: `${filename} is ${(n / 1048576).toFixed(1)}MB. ` +
+               `A file can be ${ATTACH_FILE_MAX / 1048576}MB at most.` }, 413);
+      const declared = Number(request.headers.get("Content-Length") || 0);
+      if (declared > ATTACH_FILE_MAX) return tooBigFile(declared);
+      const bytes = new Uint8Array(await request.arrayBuffer());
+      if (!bytes.length) return json({ error: `${filename} is empty.` }, 400);
+      if (bytes.length > ATTACH_FILE_MAX) return tooBigFile(bytes.length);
+
+      /* A random part, so a key cannot be guessed, and the name kept readable
+         for whoever opens the bucket. */
+      const safe = filename.replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "file";
+      const object_key = attachPrefix(partnerId) +
+        crypto.randomUUID().replace(/-/g, "").slice(0, 16) + "-" + safe;
+      await env.MEDIA.put(object_key, bytes, {
+        httpMetadata: { contentType: type },
+        customMetadata: { uploadedBy: actor.email || "", uploadedAt: now, filename },
+      });
+      return json({ ok: true,
+                    file: { object_key, filename, content_type: type, bytes: bytes.length } });
+    }
+
     /* --------------------------------------------------------- DELETE */
     if (request.method === "DELETE") {
       const body = await readJson(request);
@@ -1181,3 +1394,5 @@ export default {
                 { Allow: "GET, POST, PUT, DELETE" });
   },
 };
+
+export default api;

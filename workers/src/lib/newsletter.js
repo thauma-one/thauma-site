@@ -81,8 +81,31 @@ const KEEP = new Set([
  * an accent that fights the ministry's own. `accent` resolves to whatever the
  * partner chose, so it is right by construction.
  */
-const SIZES = { sm: "13.5px", lg: "19px" };
-const COLORS = new Set(["accent", "dim"]);
+const SIZES = { sm: "13.5px", lg: "19px", xl: "23px" };
+
+/* A FEW TONES BESIDES THE BRAND, each with a light-email and a dark-email
+   shade, so a colored word stays readable on either card (both pass 4.5:1).
+   Still a fixed palette, not a picker: the reason above has not changed. */
+const TONES = {
+  red:   ["#B42318", "#FF8A80"],
+  green: ["#1B7F4B", "#6FE3A6"],
+  blue:  ["#1D5FC2", "#8DB8FF"],
+  gold:  ["#9A5B00", "#F2C14E"],
+};
+const COLORS = new Set(["accent", "dim", ...Object.keys(TONES)]);
+/* ANY COLOR TOO (Chase, 2026-10-03: "a full palette, with a few
+   predetermined quick picks"). The named tones above are the quick picks and
+   keep their light/dark shades; a picked color is a plain #rrggbb, checked by
+   shape here and written inline as is. */
+const HEX = /^#[0-9a-f]{6}$/i;
+const isColor = (v) => COLORS.has(v) || HEX.test(v);
+
+/* PERSONAL WORDS: a span naming a variable, filled per recipient by render().
+   The span's own text is only the editor's label and never reaches a reader;
+   A subscriber without a name gets NOTHING there (Chase, 2026-10-03: "just
+   remove the variable so it just says Hi"), and neither does the public
+   archive. */
+const VARS = new Set(["first_name", "name"]);
 
 /* Tags whose CONTENT goes too. Script and style carry no prose, and keeping
    the text inside a <style> would paste CSS into the middle of a sentence. */
@@ -91,7 +114,8 @@ const DROP_WHOLE = new Set(["script", "style", "head", "title", "meta", "link", 
 /* What each surviving tag may carry. Anything not listed is dropped — that
    includes every style, class and id, which is what keeps a paste from
    bringing another website's appearance along. */
-const ATTRS = { a: ["href"], img: ["src", "alt"], span: ["data-sz", "data-c"] };
+const ATTRS = { a: ["href"], img: ["src", "alt"],
+                span: ["data-sz", "data-c", "data-var"] };
 
 export function escapeHtml(s) {
   return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => (
@@ -105,6 +129,26 @@ function safeUrl(raw) {
   if (/^(https?:\/\/|mailto:)/i.test(v)) return v;
   return null;
 }
+
+/* A PICTURE UPLOADED FROM THE COMPOSER. /api/admin/media answers a path,
+   "/media/newsletter/<partner>/<hash>.jpg", and safeUrl above — which only
+   admits http(s) — dropped it on every save: the draft came back as a bare
+   <img>, which is the "pictures are not saved" bug. Kept as a path, because
+   the console and the public archive are served from the same Worker and
+   resolve it themselves; render() makes it absolute for the email, where
+   there is no page to be relative to. Only that one shape: no "..", no
+   other directory, nothing that could point anywhere but the bucket. */
+const MEDIA_PATH = /^\/media\/[A-Za-z0-9._\/-]{1,200}$/;
+function mediaPath(raw) {
+  const v = String(raw || "").trim();
+  return MEDIA_PATH.test(v) && !v.includes("..") ? v : null;
+}
+
+/* Where a mail client fetches an uploaded picture from. Every host shares one
+   bucket and the live site serves /media/ to anybody, while dev.thauma.one
+   sits behind a login no reader has — so a message sent from dev must still
+   point at the live address. Same default as embed.js publicOrigin. */
+const MEDIA_ORIGIN = "https://thauma.one";
 
 /**
  * Reduce arbitrary editor HTML to the KEEP set.
@@ -173,11 +217,22 @@ export function sanitise(html) {
       const m = new RegExp(key + '\\s*=\\s*"([^"]*)"', "i").exec(raw) ||
                 new RegExp(key + "\\s*=\\s*'([^']*)'", "i").exec(raw);
       if (!m) continue;
-      let value = m[1];
+      /* DECODED FIRST. An attribute in HTML source is entity-encoded — the
+         editor writes ?a=1&amp;b=2 — and escaping that again stored
+         &amp;amp;, so every link with an & in it went somewhere else. */
+      let value = unescapeHtml(m[1]);
       if (key === "data-sz" && !SIZES[value]) continue;
-      if (key === "data-c" && !COLORS.has(value)) continue;
-      if (key === "href" || key === "src") {
+      if (key === "data-c") {
+        if (!isColor(value)) continue;
+        if (HEX.test(value)) value = value.toLowerCase();
+      }
+      if (key === "data-var" && !VARS.has(value)) continue;
+      if (key === "href") {
         value = safeUrl(value);
+        if (!value) continue;
+      }
+      if (key === "src") {
+        value = safeUrl(value) || mediaPath(value);
         if (!value) continue;
       }
       /* A data: URI never reaches safeUrl, which only admits http(s) and
@@ -192,6 +247,9 @@ export function sanitise(html) {
        color is doing nothing at all — and pastes are full of them. */
     if (name === "a" && !attrs) continue;
     if (name === "span" && !attrs) continue;
+    /* A picture whose address was refused is nothing at all; kept, it is an
+       empty box in Outlook and a broken-image icon everywhere else. */
+    if (name === "img" && !/ src="/.test(attrs)) continue;
 
     if (selfClosing) { out += "<" + name + attrs + ">"; continue; }
     out += "<" + name + attrs + ">";
@@ -242,7 +300,7 @@ const SERIF = "Georgia,Cambria,'Times New Roman',serif";
 /* Inline styles per tag. Applied on the way out rather than stored, so
    restyling every newsletter ever sent is a change here — and an archived
    mailing is re-rendered from the same source the email came from. */
-function inlineStyles(html, accent, ink, dim, line) {
+function inlineStyles(html, accent, ink, dim, line, dark = false) {
   const S = {
     p: `margin:0 0 16px;font-size:16px;line-height:1.6;color:${ink}`,
     h2: `margin:28px 0 12px;font-family:${SERIF};font-size:23px;line-height:1.3;` +
@@ -276,6 +334,8 @@ function inlineStyles(html, accent, ink, dim, line) {
       if (sz && S.__sizes[sz[1]]) bits.push("font-size:" + S.__sizes[sz[1]]);
       if (c && c[1] === "accent") bits.push("color:" + accent);
       if (c && c[1] === "dim") bits.push("color:" + dim);
+      if (c && TONES[c[1]]) bits.push("color:" + TONES[c[1]][dark ? 1 : 0]);
+      if (c && HEX.test(c[1])) bits.push("color:" + c[1]);
       return bits.length ? `<span style="${bits.join(";")}">` : m;
     }
 
@@ -285,11 +345,33 @@ function inlineStyles(html, accent, ink, dim, line) {
   });
 }
 
+const unescapeHtml = (v) => String(v)
+  .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"')
+  .replace(/&#39;/g, "'").replace(/&amp;/g, "&");
+
+/**
+ * Replace each variable span with the recipient's words, escaped.
+ *
+ * `name` is the subscriber's name as stored (may be null). first_name is its
+ * first word. With no name the span disappears, and so does ONE space before
+ * it, so "Hi {first name}," reads "Hi," — never its editor label.
+ */
+export function fillVariables(html, name) {
+  const full = String(name || "").replace(/\s+/g, " ").trim();
+  return String(html || "").replace(
+    /<span\b([^>]*\bdata-var="([a-z_]+)"[^>]*)>[\s\S]*?<\/span>/g,
+    (m, attrs, v) => (!full ? "\u0000"
+      : escapeHtml(v === "first_name" ? full.split(" ")[0] : full)))
+    .replace(/(?: |&nbsp;|\u00a0)?\u0000/g, "");
+}
+
 /**
  * The whole email.
  *
  * @param body      already sanitised HTML
  * @param opts.unsubscribeUrl  REQUIRED for a real send. See the note below.
+ * @param opts.recipientName   the subscriber's name, for variables; null on
+ *                             the archive and the size measure (fallbacks).
  */
 export function render(body, opts = {}) {
   const accent = /^#[0-9a-fA-F]{6}$/.test(String(opts.accent || "")) ? opts.accent : "#6D4AFF";
@@ -304,7 +386,12 @@ export function render(body, opts = {}) {
   const dim  = dark ? "#9a9aad" : "#5c5c6b";
   const line = dark ? "#2a2a36" : "#e6e6ee";
 
-  const styled = inlineStyles(body, accent, ink, dim, line);
+  const mediaOrigin = String(opts.mediaOrigin || MEDIA_ORIGIN).replace(/\/+$/, "");
+  /* Personal words first, so nothing below ever sees a variable: a send
+     passes the recipient's name, everything else (the archive, the size
+     measure) gets each variable's fallback. */
+  const styled = inlineStyles(fillVariables(body, opts.recipientName), accent, ink, dim, line, dark)
+    .replace(/(<img\b[^>]*\ssrc=")(\/media\/)/gi, `$1${mediaOrigin}$2`);
   const title = escapeHtml(opts.subject || "");
 
   /* THE PREHEADER. Hidden, and followed by enough blank characters to stop the

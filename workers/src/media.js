@@ -62,6 +62,11 @@ export async function serve(request, env, key) {
   if (!/^[A-Za-z0-9._/-]{1,200}$/.test(key) || key.includes("..")) {
     return new Response("Not found", { status: 404 });
   }
+  /* MAIL ATTACHMENTS ARE NOT PUBLISHED. They travel inside the message, read
+     through the binding by the send (staff-mailing.js loadAttachments); a
+     prayer list's file must not also be a public URL for anyone holding the
+     key. Answered exactly like a key that does not exist. */
+  if (key.startsWith("attachments/")) return new Response("Not found", { status: 404 });
 
   const obj = await env.MEDIA.get(key);
   if (!obj) return new Response("Not found", { status: 404 });
