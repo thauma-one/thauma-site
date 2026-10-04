@@ -362,6 +362,11 @@ await check("Navigation: the page-you-are-on look, its color, the line and the p
   await settle(900);
   const draft = sent.filter((x) => x.action === "save").pop().draft;
   eq(draft.design.nav, { current: "under", tint: "accent", line: "accent", phone: "drawer" }, "saved");
+  /* The menu's social icons live here now (were "Also show them at the top"). */
+  const was = !!draft.design.headerLinks;
+  click(d.querySelector('#wsNav [data-header-links]'));
+  await settle(900);
+  eq(!!sent.filter((x) => x.action === "save").pop().draft.design.headerLinks, !was, "icons in the menu");
 });
 
 await check("Links: a tap on an icon opens its box; other links are rows, one opened at a time", async () => {

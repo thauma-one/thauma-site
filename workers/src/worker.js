@@ -56,6 +56,7 @@ import adminLibrary from "./admin-library.js";
 import adminPublish from "./admin-publish.js";
 import adminMigrate from "./admin-migrate.js";
 import embed from "./embed.js";
+import embedIcon from "./embed-icon.js";
 import staffEmbed from "./staff-embed.js";
 import adminActAs from "./admin-actas.js";
 import adminProfile from "./admin-profile.js";
@@ -499,6 +500,7 @@ export default {
       return contact.fetch(request, env, contactPath[1], contactPath[2]);
     }
 
+    if (url.pathname === "/embed/v1/icon") return embedIcon.fetch(request, env, ctx);
     if (url.pathname.startsWith("/embed/v1/")) return embed.fetch(request, env, ctx);
 
     /* Past newsletters, linked from the footer of every mailing. Only lists

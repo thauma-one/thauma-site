@@ -520,6 +520,9 @@ main section.is-editing{outline:2px solid var(--acc);outline-offset:-2px}
 @media (max-width:820px){.foot .col.end{align-items:flex-start}}
 .socials{display:flex;gap:12px;flex-wrap:wrap}.socials a{display:inline-flex;width:40px;height:40px;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:50%;color:var(--fg)}
 .socials a:hover{border-color:var(--acc);color:var(--ink)}.socials svg{width:18px;height:18px}
+/* A site's own icon, quieted to sit with the line icons; full color on hover. */
+.socials .favi img{width:18px;height:18px;border-radius:4px;filter:grayscale(1);opacity:.8;transition:filter .2s,opacity .2s}
+.socials .favi:hover img{filter:none;opacity:1}
 .customlinks{display:flex;gap:16px;flex-wrap:wrap}.customlinks a{color:var(--fg)}
 .powered{font-size:12px;opacity:.7}
 body.only-foot .foot{border-top:0}
@@ -988,11 +991,21 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
       `<ul>${doc.languages.map((l) =>
         `<li><a href="${esc(href(pageId, l))}" hreflang="${esc(l)}" lang="${esc(l)}"${l === lang ? ' aria-current="true"' : ""}>${esc(langNames[l] || l.toUpperCase())}</a></li>`).join("")}</ul></details>`
     : "";
-  const socials = doc.links.filter((k) => k.kind !== "custom").map((k) =>
+  const socialIcons = doc.links.filter((k) => k.kind !== "custom").map((k) =>
     `<a href="${esc(k.url)}" aria-label="${esc(SOCIAL_NAME[k.kind])}" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k.kind]}</svg></a>`).join("");
   /* The owner's own links may point at a page of the site, as a section's can. */
-  const custom = doc.links.filter((k) => k.kind === "custom").map((k) => ({ ...k, href: ctx.linkHref(k.url) })).filter((k) => k.href).map((k) =>
-    `<a href="${esc(k.href)}"${rel(k.href)}>${esc(k.label[lang] || k.label[fallback] || k.href)}</a>`).join("");
+  /* SMART ORDER: a page of the site first, then the web; a web address shown
+     as its site's icon joins the social icons. The icon comes through
+     Thauma (embed/v1/icon), so a visitor never calls a third party. */
+  const own = doc.links.filter((k) => k.kind === "custom").map((k) => ({ ...k, href: ctx.linkHref(k.url) })).filter((k) => k.href);
+  const nameOf = (k) => k.label[lang] || k.label[fallback] || k.href;
+  const custom = [...own.filter((k) => k.url.startsWith("page:")), ...own.filter((k) => !k.url.startsWith("page:") && !k.icon)].map((k) =>
+    `<a href="${esc(k.href)}"${rel(k.href)}>${esc(nameOf(k))}</a>`).join("");
+  const favicons = own.filter((k) => k.icon).map((k) => {
+    let host = ""; try { host = new URL(k.href).hostname; } catch { /* not a web address */ }
+    return host ? `<a class="favi" href="${esc(k.href)}"${rel(k.href)} aria-label="${esc(nameOf(k))}" title="${esc(nameOf(k))}"><img src="${esc(origin)}/embed/v1/icon?d=${esc(encodeURIComponent(host))}" alt="" width="18" height="18" loading="lazy"></a>` : "";
+  }).join("");
+  const socials = socialIcons + favicons;
   const foot = footer({ doc, lang, fallback, name, pages, href, label, socials, custom });
 
   const title = pageId === "home" ? name : `${label(pageId)} · ${name}`;
@@ -1014,7 +1027,7 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
     inMenu.reduce((n, p) => n + chars(label(p.id)) + 22, 0) +
     (ctx.pageOn("give") ? chars(label("give")) + 60 : 0) +
     (doc.languages.length > 1 ? 96 : 0) +
-    (design.headerLinks ? doc.links.filter((k) => k.kind !== "custom").length * 52 : 0) + 72;
+    (design.headerLinks ? doc.links.filter((k) => k.kind !== "custom" || k.icon).length * 52 : 0) + 72;
   const fold = design.menu === "center" ? 820 : Math.max(820, Math.ceil(menuW / 10) * 10);
 
   const out = `<!doctype html>

@@ -277,12 +277,12 @@
      2026-09-29) — on every tab, not only the one being edited. */
   function areas(doc) {
     var d = JSON.parse(JSON.stringify(doc.design)); var head = d.headerLinks; delete d.headerLinks;
-    var nav = [d.nav, d.giveTo]; delete d.nav; delete d.giveTo;
+    var nav = [d.nav, d.giveTo, head]; delete d.nav; delete d.giveTo;
     return {
       design: JSON.stringify(d),
       nav: JSON.stringify(nav),
       pages: JSON.stringify(doc.pages),
-      links: JSON.stringify([doc.links, head]),
+      links: JSON.stringify(doc.links),
       footer: JSON.stringify(doc.footer),
       settings: JSON.stringify([doc.languages, doc.fallback, doc.give]),
     };
@@ -1305,12 +1305,14 @@
         return row1 + '<div class="ws-linkedit">' +
           '<label class="fld"><span>' + esc(tr('ws.linkName')) + '</span>' + ref(x.l.label) +
             '<input type="text" maxlength="40" data-custom-label="' + x.i + '" value="' + esc((x.l.label || {})[state.langA] || '') + '" lang="' + esc(state.langA) + '"></label>' +
-          '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.link.goesTo')) + '</span>' + linkPicker('custom:' + x.i, u || 'https://', false) + '</div></div>';
+          '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.link.goesTo')) + '</span>' + linkPicker('custom:' + x.i, u || 'https://', false) + '</div>' +
+          /* A web address may show as its site's icon, beside the social icons. */
+          (/^https?:\/\/[^/]+\.[^/]+/.test(u) ? '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.showAs')) + '</span>' +
+            chips('cshow:' + x.i, ['words', 'icon'], x.l.icon ? 'icon' : 'words', function (v) { return tr('ws.showAs.' + v); }) + '</div>' : '') + '</div>';
       }).join('') + '</div>';
     } else {
       html += '<p class="ws-small">' + esc(tr('ws.noCustom')) + '</p>';
     }
-    html += '<div class="ws-rows ws-attop">' + row(tr('ws.atTop'), sw('data-header-links', state.doc.design.headerLinks, '')) + '</div>';
     /* WHERE THE GIVE BUTTONS GO — a link, so it lives with the links (Chase,
        2026-09-29). Empty, it is the ministry's own giving link, shown in the
        box so it is plain which one that is. */
@@ -1357,6 +1359,9 @@
       ? chips('giveTo', ['page', 'link'], d.giveTo || 'page', function (v) { return tr('ws.nav.give.' + v); })
       : chips('giveTo', ['page'], 'page', function (v) { return tr('ws.nav.give.' + v); }) +
         '<button type="button" class="ghost-btn sm" data-goto-tab="settings">' + esc(tr('ws.nav.addGive')) + ' →</button>') + '</div>';
+    /* The social icons in the menu too — here, with the rest of the menu
+       (it was "Also show them at the top" on the Links tab). */
+    html += '<div class="ws-rows">' + row(tr('ws.nav.icons'), sw('data-header-links', d.headerLinks, '')) + '</div>';
     $('wsNav').innerHTML = html;
   }
 
@@ -1588,12 +1593,13 @@
       pc.cue = pc.cue === false;
       drawSections(); return changed();
     }
-    if (d.headerLinks !== undefined) { state.doc.design.headerLinks = !state.doc.design.headerLinks; drawLinks(); return changed(); }
+    if (d.headerLinks !== undefined) { state.doc.design.headerLinks = !state.doc.design.headerLinks; drawNav(); return changed(); }
     if (d.chip) {
       var val = d.value, name = d.chip;
       if (name.indexOf('variant:') === 0) { p.sections[+name.slice(8)].variant = val; drawSections(); }
       else if (name.indexOf('raised:') === 0) { p.sections[+name.slice(7)].raised = val === 'raised'; drawSections(); }
       else if (name.indexOf('divider:') === 0) { p.sections[+name.slice(8)].divider = val === 'on'; drawSections(); }
+      else if (name.indexOf('cshow:') === 0) { state.doc.links[+name.slice(6)].icon = val === 'icon'; drawLinks(); }
       else if (name.indexOf('pheight:') === 0) { p.sections[+name.slice(8)].height = val; drawSections(); }
       else if (name.indexOf('vtitle:') === 0) { p.sections[+name.slice(7)].titleFrom = val; drawSections(); }
       else if (name.indexOf('vlinks:') === 0) { p.sections[+name.slice(7)].linkStyle = val; drawSections(); }

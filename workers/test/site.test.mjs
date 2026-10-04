@@ -789,5 +789,22 @@ check("a full-width photo: height and the part kept in view; whole is uncropped 
   assert(/class="fullphoto h-medium[^"]*" style="--fy:50%"/.test(page(d)), "defaults");
 });
 
+check("own links: a page of the site first; a web address may be its site's icon, beside the social icons", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  d.links = [
+    { kind: "custom", url: "https://blog.example.org/x", label: { en: "Blog" } },
+    { kind: "custom", url: "page:about", label: { en: "About me" } },
+    { kind: "custom", url: "https://chaseroush.com/", label: { en: "chaseroush.com" }, icon: true },
+    { kind: "custom", url: "page:mission", label: { en: "Mission" }, icon: true },
+    { kind: "youtube", url: "https://youtube.com/@x" },
+  ];
+  const c = cleanDoc(d, ["en"]);
+  eq(c.links.map((k) => !!k.icon), [false, false, true, false, false], "only a web address can be an icon");
+  const foot = page(d).match(/<footer[\s\S]*<\/footer>/)[0];
+  const words = [...foot.matchAll(/<a href="[^"]*"[^>]*>(About me|Mission|Blog)<\/a>/g)].map((m) => m[1]);
+  eq(words, ["About me", "Mission", "Blog"], "pages first, then the web");
+  assert(/class="socials"[^>]*>[\s\S]*aria-label="YouTube"[\s\S]*<a class="favi" href="https:\/\/chaseroush\.com\/"[^>]*aria-label="chaseroush\.com"[^>]*><img src="https:\/\/thauma\.one\/embed\/v1\/icon\?d=chaseroush\.com"/.test(foot), "the icon, through Thauma, beside the socials");
+});
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

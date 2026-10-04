@@ -648,7 +648,10 @@ export function cleanDoc(raw, catalog) {
     }
     const label = {};
     if (kind === "custom") for (const l of langs) { const v = str(k.label && k.label[l], 40); if (v) label[l] = v; }
-    return { kind, url, label };
+    /* A web address may be shown as its site's own icon, beside the social
+       icons (BACKLOG §3 "smart order"). A page of the site is always words. */
+    const icon = kind === "custom" && !!(k && k.icon) && /^https?:\/\//.test(url);
+    return icon ? { kind, url, label, icon } : { kind, url, label };
   }).filter((k) => k.url);
 
   const f = d.footer && typeof d.footer === "object" ? d.footer : {};
