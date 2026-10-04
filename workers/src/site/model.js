@@ -491,7 +491,9 @@ export function richClean(input, max = 6000) {
       /* A named size, or any size chosen with − / + (Chase, 2026-10-04): a
          multiple of the words around it, 0.5–3, to two places. */
       const rawSz = at("data-sz");
+      const px = /^(\d{1,3}(?:\.5)?)px$/.exec(rawSz || "");
       const sz = SIZE_NAMES.includes(rawSz) ? rawSz
+        : px && +px[1] >= 4 && +px[1] <= 200 ? +px[1] + "px"
         : /^\d(\.\d{1,2})?$/.test(rawSz || "") && +rawSz >= 0.5 && +rawSz <= 3 ? String(+rawSz) : "";
       const c = cleanColor(at("data-c")) || "";
       if (!sz && !c) { open.push("~span"); continue; }

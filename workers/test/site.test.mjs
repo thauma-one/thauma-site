@@ -893,12 +893,14 @@ check("Advanced: a written title and description win; the name card is the defau
   assert(h.includes("<title>Production for churches</title>") && h.includes('og:description" content="Written by hand."') && h.includes('og:image" content="https://thauma.one/media/p.jpg"'), "written wins; photo chosen");
 });
 
-check("any text size by − / +: a multiple 0.5–3 is kept and drawn; anything else is dropped", () => {
+check("any text size like Word: 4–200px kept and drawn; the first version's multiples still read; anything else dropped", () => {
   const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
   d.pages[0].sections = [{ id: "t1", type: "text", variant: "left", words: { en: { heading: "H",
-    text: '<span data-sz="1.35">big</span> <span data-sz="9">huge</span> <span data-sz="lg" data-c="#ff00aa">both</span>' } } }];
+    text: '<span data-sz="1.35">big</span> <span data-sz="9">huge</span> <span data-sz="lg" data-c="#ff00aa">both</span> <span data-sz="5px">tiny</span> <span data-sz="2px">gone</span>' } } }];
   const html = page(d);
-  assert(html.includes('<span style="font-size:1.35em">big</span>'), "a chosen size");
+  assert(html.includes('<span style="font-size:1.35em">big</span>'), "a multiple, still");
+  assert(html.includes('<span style="font-size:5px">tiny</span>'), "a size in px");
+  assert(!/font-size:2px|data-sz="2px"/.test(html), "below 4px survived");
   assert(!/font-size:9em|data-sz="9"/.test(html), "an out-of-range size survived");
   assert(html.includes('<span class="ts-lg" style="color:#ff00aa">both</span>'), "a preset with a picked color");
 });

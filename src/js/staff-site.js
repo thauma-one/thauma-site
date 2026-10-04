@@ -992,19 +992,24 @@
      Mail composer uses (workers/src/lib/tones.js); the site draws them in its
      own colors, light or dark. */
   var SIZES = ['sm', 'lg', 'xl'];
-  /* Any size by − / + (Chase, 2026-10-04): a multiple of the words around
-     it, 0.5–3, stored as the number; the presets' own multiples. */
-  var SIZE_EM = { sm: 0.82, lg: 1.25, xl: 1.6 };
+  /* Like Word (Chase, 2026-10-04: "in font size like Word and not percentage
+     based … the ability to go really really small"): a size in pixels, typed
+     or stepped through Word's ladder, stored as data-sz="14px". The first
+     version's multiples (data-sz="1.35") still read. */
+  var LADDER = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 18, 20, 24, 28, 32, 36, 40, 48, 56, 64, 72, 96];
+  function sizePx(v) { return /^\d{1,3}(\.5)?px$/.test(String(v || '')) ? +String(v).slice(0, -2) : null; }
   /* A chosen size shows at its size while editing (the stored words keep only
      data-sz; the presets have their own CSS). */
   function sizeOnScreen(root) {
     [].forEach.call(root.querySelectorAll('span[data-sz]'), function (sp) {
       var v = sp.getAttribute('data-sz');
-      sp.style.fontSize = isNumSize(v) ? v + 'em' : '';
+      sp.style.fontSize = sizePx(v) ? v : isNumSize(v) ? v + 'em' : '';
     });
   }
-  function isNumSize(v) { return /^\d(\.\d{1,2})?$/.test(String(v || '')) && +v >= 0.5 && +v <= 3; }
-  function sizeEm(v) { return SIZE_EM[v] || (isNumSize(v) ? +v : 1); }
+  function isNumSize(v) {
+    var px = sizePx(v);
+    return px ? px >= 4 && px <= 200 : /^\d(\.\d{1,2})?$/.test(String(v || '')) && +v >= 0.5 && +v <= 3;
+  }
   var TONE_NAMES = ['accent', 'accent2', 'dim', 'red', 'green', 'blue', 'gold'];
   /* Swatches as a dark ground shows them, the console's own. */
   var TONE_SWATCH = { dim: '#9AA6B6', red: '#FF8A80', green: '#6FE3A6', blue: '#8DB8FF', gold: '#F2C14E' };
@@ -1090,7 +1095,7 @@
       return '<button type="button" data-fmt-sz="' + x[0] + '" class="ws-fmt-sz-' + (x[0] || 'n') + '" aria-pressed="false">' + esc(tr(x[1])) + '</button>';
     }).join('') +
     '<span class="ws-fmt-step"><button type="button" data-fmt-step="-1" aria-label="' + esc(tr('ws.fmt.smaller')) + '" title="' + esc(tr('ws.fmt.smaller')) + '">−</button>' +
-    '<output data-fmt-szval>100%</output>' +
+    '<input type="number" min="4" max="200" step="1" data-fmt-szval placeholder="16" aria-label="' + esc(tr('ml.cpSize')) + '">' +
     '<button type="button" data-fmt-step="1" aria-label="' + esc(tr('ws.fmt.larger')) + '" title="' + esc(tr('ws.fmt.larger')) + '">+</button></span></div>' +
     '<div class="ws-fmt-row" data-fmt-row="color" hidden>' + [''].concat(TONE_NAMES).map(function (c) {
       var key = 'ml.cpTone' + (c ? c.charAt(0).toUpperCase() + c.slice(1) : 'None');
@@ -1119,7 +1124,7 @@
     var sz = markOf(box, 'data-sz'), c = markOf(box, 'data-c');
     [].forEach.call(fmt.querySelectorAll('[data-fmt-sz]'), function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-fmt-sz') === sz ? 'true' : 'false'); });
     var szv = fmt.querySelector('[data-fmt-szval]');
-    if (szv) szv.textContent = Math.round(sizeEm(sz) * 100) + '%';
+    if (szv && document.activeElement !== szv) szv.value = sizePx(sz) || '';
     [].forEach.call(fmt.querySelectorAll('[data-fmt-c]'), function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-fmt-c') === c ? 'true' : 'false'); });
     var any = /^#/.test(c), dot = fmt.querySelector('.ws-fmt-color i');
     fmt.querySelector('.ws-fmt-any').classList.toggle('is-on', any);
@@ -1152,7 +1157,7 @@
      kept aside for it instead. */
   var anyAt = null;
   fmt.addEventListener('mousedown', function (e) {
-    if (e.target.closest('[data-fmt-any], .ws-fmt-any')) {
+    if (e.target.closest('[data-fmt-any], .ws-fmt-any, [data-fmt-szval]')) {
       var box = boxOfSelection();
       anyAt = box ? { box: box, range: window.getSelection().getRangeAt(0).cloneRange() } : null;
       return;
@@ -1168,6 +1173,20 @@
     if (!anyAt) return;
     anyAt.range = markSelection(anyAt.box, anyAt.range, 'data-c', this.value.toLowerCase());
   });
+  /* A typed size: applied as it is typed, the words kept selected. */
+  fmt.querySelector('[data-fmt-szval]').addEventListener('input', function () {
+    var n = Math.round(+this.value * 2) / 2;
+    if (!anyAt || !(n >= 4 && n <= 200)) return;
+    anyAt.range = markSelection(anyAt.box, anyAt.range, 'data-sz', n + 'px');
+    sizeOnScreen(anyAt.box);
+  });
+  fmt.querySelector('[data-fmt-szval]').addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' || !anyAt) return;
+    e.preventDefault();
+    anyAt.box.focus();
+    var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(anyAt.range);
+    anyAt = null;
+  });
   fmt.querySelector('[data-fmt-any]').addEventListener('change', function () {
     if (!anyAt) return;
     anyAt.box.focus();
@@ -1180,8 +1199,10 @@
     if (!b || !box) return;
     /* − / + : ten percent smaller or larger than the words are now. */
     if (b.hasAttribute('data-fmt-step')) {
-      var next = Math.round(Math.max(0.5, Math.min(3, sizeEm(markOf(box, 'data-sz')) + 0.1 * +b.getAttribute('data-fmt-step'))) * 100) / 100;
-      var rs = markSelection(box, window.getSelection().getRangeAt(0), 'data-sz', next === 1 ? '' : String(next));
+      var cur = sizePx(markOf(box, 'data-sz')) || 16, dir = +b.getAttribute('data-fmt-step');
+      var next = dir > 0 ? (LADDER.filter(function (n) { return n > cur; })[0] || Math.min(200, cur + 8))
+                         : (LADDER.filter(function (n) { return n < cur; }).pop() || 4);
+      var rs = markSelection(box, window.getSelection().getRangeAt(0), 'data-sz', next + 'px');
       var sel2 = window.getSelection(); sel2.removeAllRanges(); sel2.addRange(rs);
       sizeOnScreen(box);
       showMarks(box);

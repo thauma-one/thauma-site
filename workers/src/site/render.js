@@ -139,9 +139,10 @@ function toneVars(scheme) {
  */
 export function styledSpans(html) {
   return String(html || "").replace(/<span\b([^>]*)>/g, (m0, attrs) => {
-    const sz = /data-sz="([a-z]+|\d(?:\.\d{1,2})?)"/.exec(attrs), c = /data-c="([^"]+)"/.exec(attrs);
+    const sz = /data-sz="([a-z]+|\d(?:\.\d{1,2})?|\d{1,3}(?:\.5)?px)"/.exec(attrs), c = /data-c="([^"]+)"/.exec(attrs);
     const cls = [], inl = [];
     if (sz && SIZE_NAMES.includes(sz[1])) cls.push("ts-" + sz[1]);
+    else if (sz && /px$/.test(sz[1]) && +sz[1].slice(0, -2) >= 4 && +sz[1].slice(0, -2) <= 200) inl.push(`font-size:${+sz[1].slice(0, -2)}px`);
     else if (sz && +sz[1] >= 0.5 && +sz[1] <= 3) inl.push(`font-size:${+sz[1]}em`);
     if (c && HEX_COLOR.test(c[1])) inl.push(`color:${c[1].toLowerCase()}`);
     else if (c && (c[1] === "accent" || c[1] === "accent2" || c[1] === "dim" || TONES[c[1]])) cls.push("tc-" + c[1]);
