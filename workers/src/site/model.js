@@ -586,14 +586,16 @@ function cleanSection(raw, langs) {
     const e = raw.photoEdit, n = (v, a, b) => (Number.isFinite(+v) ? Math.max(a, Math.min(b, +v)) : null);
     if (e.w != null) {
       const c = { x: n(e.x, 0, 1), y: n(e.y, 0, 1), w: n(e.w, 0.02, 1), h: n(e.h, 0.02, 1), ar: n(e.ar, 0.1, 10) };
+      const dk = n(e.darken, 0, 0.8);
       if (Object.values(c).every((v) => v !== null)) {
         if (["square", "soft", "round"].includes(e.corners)) c.corners = e.corners;
+        if (dk) c.darken = dk;
         /* A border: a width and a color (the site's two by name, or any). The
            first version's "thin" / "accent" still read. */
         if (["thin", "accent"].includes(e.border)) c.border = e.border;
         else if (e.border && typeof e.border === "object") {
-          const bw = n(e.border.w, 0, 24), bc = String(e.border.c || "");
-          if (bw && (bc === "accent" || bc === "accent2" || /^#[0-9a-f]{6}$/i.test(bc))) c.border = { w: Math.round(bw), c: bc.toLowerCase() };
+          const bw = n(e.border.w, 0, 40), bc = String(e.border.c || "");
+          if (bw && (bc === "subtle" || bc === "accent" || bc === "accent2" || /^#[0-9a-f]{6}$/i.test(bc))) c.border = { w: Math.round(bw * 2) / 2, c: bc.toLowerCase() };
         }
         s.photoEdit = c;
       }

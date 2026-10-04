@@ -474,6 +474,9 @@ main section.raised .card{background:var(--bg)}
 .fullphoto img{object-position:50% var(--fy,50%)}
 .fullphoto.h-short .frame{height:min(42vh,380px)}.fullphoto.h-tall .frame{height:min(92vh,880px)}
 .fullphoto.h-whole .frame{height:auto}.fullphoto.h-whole img{position:static;height:auto;top:0}
+/* A cropped band takes the crop's shape, edge to edge. */
+.fullphoto .frame:has(> .pe-crop),.fullphoto .frame:has(> a > .pe-crop){height:auto}
+.fullphoto .pe-crop img{top:auto}
 .fullphoto .caption{font-size:13px;color:var(--dim);padding:10px 24px;margin:0}
 main section.empty{padding:40px 0}.empty p{margin:0;padding:22px;border:1px dashed var(--line);border-radius:12px;color:var(--dim);text-align:center;font-size:14px}
 main section.is-editing{outline:2px solid var(--acc);outline-offset:-2px}
@@ -649,9 +652,10 @@ function edited(src, e, alt = "") {
   if (e && e.w) {
     const b = e.border && typeof e.border === "object" ? e.border : null;
     const cls = `pe-crop${e.corners ? " pe-" + e.corners : ""}${typeof e.border === "string" ? " pe-b-" + e.border : ""}`;
-    const ring = b ? `;box-shadow:0 0 0 ${+b.w}px ${b.c === "accent" ? "var(--acc)" : b.c === "accent2" ? "var(--acc2)" : esc(b.c)}` : "";
+    const ring = b ? `;box-shadow:0 0 0 ${+b.w}px ${b.c === "subtle" ? "var(--line)" : b.c === "accent" ? "var(--acc)" : b.c === "accent2" ? "var(--acc2)" : esc(b.c)}` : "";
     return `<span class="${cls}" style="aspect-ratio:${+e.ar}${ring}"><img src="${esc(src)}" alt="${esc(alt)}" loading="lazy" ` +
-      `style="width:${+(100 / e.w).toFixed(3)}%;height:auto;left:${+(-e.x / e.w * 100).toFixed(3)}%;top:${+(-e.y / e.h * 100).toFixed(3)}%"></span>`;
+      `style="width:${+(100 / e.w).toFixed(3)}%;height:auto;left:${+(-e.x / e.w * 100).toFixed(3)}%;top:${+(-e.y / e.h * 100).toFixed(3)}%">` +
+      (e.darken ? `<i class="pe-dark" style="opacity:${+e.darken}"></i>` : "") + `</span>`;
   }
   if (e && e.fx != null) {
     return `<img src="${esc(src)}" alt="${esc(alt)}" loading="lazy" style="object-position:${+e.fx}% ${+e.fy}%;scale:${+e.zoom};transform-origin:${+e.fx}% ${+e.fy}%">` +
@@ -802,7 +806,7 @@ function renderSection(sec, ctx) {
       if (!sec.photo) {
         return ctx.draft ? `<section class="fullphoto al-${sec.align || "left"}"><div class="frame">${wanted()}</div>${w("caption") ? `<p class="wrap caption">${esc(w("caption"))}</p>` : ""}</section>` : "";
       }
-      return `<section class="fullphoto h-${esc(sec.height || "medium")} al-${sec.align || "left"}" style="--fy:${Number.isFinite(sec.focusY) ? sec.focusY : 50}%"><figure style="margin:0"><div class="frame ${sec.variant === "zoom" ? "kb" : ""}"${sec.variant === "drift" && sec.height !== "whole" ? " data-drift" : ""}>${pictured(edited(sec.photo, sec.photoEdit, w("caption")), w("caption") || word(lang, "more"))}</div>${w("caption") ? `<figcaption class="wrap">${esc(w("caption"))}</figcaption>` : ""}</figure></section>`;
+      return `<section class="fullphoto h-${esc(sec.height || "medium")} al-${sec.align || "left"}" style="--fy:${Number.isFinite(sec.focusY) ? sec.focusY : 50}%"><figure style="margin:0"><div class="frame ${sec.variant === "zoom" ? "kb" : ""}"${sec.variant === "drift" && sec.height !== "whole" && !(sec.photoEdit && sec.photoEdit.w) ? " data-drift" : ""}>${pictured(edited(sec.photo, sec.photoEdit, w("caption")), w("caption") || word(lang, "more"))}</div>${w("caption") ? `<figcaption class="wrap">${esc(w("caption"))}</figcaption>` : ""}</figure></section>`;
     case "quote":
       if (!w("quote")) return "";
       return `<section${cls("quote", "quote-" + sec.variant)}><div class="wrap m"><blockquote>“${w("quote")}”</blockquote>${w("who") ? `<cite>${esc(w("who"))}</cite>` : ""}</div></section>`;

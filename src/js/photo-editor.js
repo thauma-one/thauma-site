@@ -43,7 +43,9 @@
   var PURPOSES = {
     section:    { mode: 'crop', shapes: ['original', 'free', 'square', 'portrait', 'landscape', 'wide'], corners: true, border: true },
     framed:     { mode: 'crop', shapes: ['portrait'], corners: true, border: true },
-    band:       { mode: 'focus', darken: true, window: 16 / 6 },
+    /* A full-width band takes the shape of its crop (Chase, 2026-10-04: "I
+       still don't have free controls for the Full Width Photo section"). */
+    band:       { mode: 'crop', shapes: ['free', 'wide', 'share', 'landscape'], darken: true },
     background: { mode: 'focus', darken: true, window: 16 / 9 },
     mail:       { mode: 'crop', shapes: ['original', 'free', 'wide', 'landscape', 'square', 'portrait'], max: 1200 },
     share:      { mode: 'crop', shapes: ['share', 'free'], max: 1200 }
@@ -80,7 +82,7 @@
     return { x: (1 - w) / 2, y: (1 - h) / 2, w: w, h: h };
   }
   /* A border's color as CSS: the site's own two colors by name, or a hex. */
-  function borderColor(c, accent, accent2) { return c === 'accent2' ? accent2 : c === 'accent' || !c ? accent : c; }
+  function borderColor(c, accent, accent2) { return c === 'subtle' ? 'rgba(255,255,255,.28)' : c === 'accent2' ? accent2 : c === 'accent' || !c ? accent : c; }
 
   /* ----------------------------------------------------------------- open */
   /**
@@ -132,7 +134,9 @@
     var pic = el('img', 'pe-img');
     pic.src = img.src; pic.alt = ''; pic.draggable = false;
     var win = el('div', 'pe-win');
-    if (P.mode === 'crop') ['nw', 'ne', 'sw', 'se'].forEach(function (c) { var hd = el('span', 'pe-h pe-' + c); hd.dataset.h = c; win.appendChild(hd); });
+    var canFree = P.mode === 'crop' && P.shapes.indexOf('free') !== -1;
+    /* Corners, and the four edges where the shape may be free. */
+    if (P.mode === 'crop') ['nw', 'ne', 'sw', 'se'].concat(canFree ? ['n', 's', 'e', 'w'] : []).forEach(function (c) { var hd = el('span', 'pe-h pe-' + c); hd.dataset.h = c; win.appendChild(hd); });
     else win.appendChild(el('span', 'pe-dot'));
     stage.appendChild(pic); stage.appendChild(win);
 
@@ -175,8 +179,9 @@
       return s;
     }
 
+    var shapeChips = null;
     if (P.mode === 'crop' && P.shapes.length > 1) {
-      chips(t('pe.shape', 'Shape'), P.shapes.map(function (s) { return [s, t('pe.shape.' + s, s)]; }), v.shape, function (s) {
+      shapeChips = chips(t('pe.shape', 'Shape'), P.shapes.map(function (s) { return [s, t('pe.shape.' + s, s)]; }), v.shape, function (s) {
         v.shape = s;
         var ar = ratio(s, W, H);
         if (ar) {
@@ -191,18 +196,33 @@
     if (P.darken) slider(t('pe.darken', 'Darken'), 0, 0.7, 0.01, v.darken, function (d) { v.darken = d; draw(); });
     if (P.corners) chips(t('pe.corners', 'Corners'), [['square', t('pe.corners.square', 'Square')], ['soft', t('pe.corners.soft', 'Soft')], ['round', t('pe.corners.round', 'Round')]], v.corners, function (c) { v.corners = c; draw(); });
     if (P.border) {
-      slider(t('pe.border', 'Border'), 0, 16, 1, v.bw, function (w) { v.bw = w; draw(); });
-      /* The same color choice as the text: the site's two colors first. */
+      /* Width as Photoshop shows it: − [px] +, half pixels allowed. */
+      var brow = el('div', 'pe-row');
+      brow.appendChild(el('span', 'pe-lbl', t('pe.border', 'Border')));
+      var step = el('div', 'pe-step');
+      var minus = el('button', 'pe-chip', '−'), plus = el('button', 'pe-chip', '+'), num = el('input'), unit = el('span', 'pe-unit', 'px');
+      minus.type = plus.type = 'button';
+      minus.setAttribute('aria-label', t('ws.fmt.smaller', 'Smaller')); plus.setAttribute('aria-label', t('ws.fmt.larger', 'Larger'));
+      num.type = 'number'; num.min = '0'; num.max = '40'; num.step = '0.5'; num.value = v.bw; num.setAttribute('aria-label', t('pe.border', 'Border'));
+      var setW = function (w) { v.bw = Math.max(0, Math.min(40, Math.round(w * 2) / 2)); num.value = v.bw; draw(); };
+      minus.addEventListener('click', function () { setW(v.bw - 0.5); });
+      plus.addEventListener('click', function () { setW(v.bw + 0.5); });
+      num.addEventListener('input', function () { if (num.value !== '') setW(+num.value); });
+      [minus, num, unit, plus].forEach(function (n) { step.appendChild(n); });
+      brow.appendChild(step); side.appendChild(brow);
+      /* The same color choice as the text: quiet, the site's two colors,
+         white, black, any. */
       var g2 = chips(t('pe.borderColor', 'Border color'), [
+        ['subtle', t('pe.subtle', 'Subtle'), 'rgba(255,255,255,.28)'],
         ['accent', t('ml.cpToneAccent', 'Brand color'), accent], ['accent2', t('ml.cpToneAccent2', 'Second color'), accent2],
         ['#ffffff', t('pe.white', 'White'), '#ffffff'], ['#000000', t('pe.black', 'Black'), '#000000']
-      ], v.bc, function (c) { v.bc = c; if (!v.bw) v.bw = 3; draw(); });
+      ], v.bc, function (c) { v.bc = c; if (!v.bw) setW(2); else draw(); });
       var any = el('label', 'pe-chip pe-any');
       any.title = t('ml.cpToneAny', 'Any color');
       var pick = el('input'); pick.type = 'color'; pick.value = /^#/.test(v.bc) ? v.bc : '#3366cc';
       pick.setAttribute('aria-label', t('ml.cpToneAny', 'Any color'));
       pick.addEventListener('input', function () {
-        v.bc = pick.value; if (!v.bw) v.bw = 3;
+        v.bc = pick.value; if (!v.bw) setW(2);
         [].forEach.call(g2.querySelectorAll('.pe-chip'), function (c) { c.setAttribute('aria-pressed', 'false'); });
         draw();
       });
@@ -225,7 +245,7 @@
     /* ---- drawing ---- */
     function draw() {
       var sw = pic.clientWidth, sh = pic.clientHeight;
-      var PW = 300, PH = 220, ar;
+      var PW = 280, PH = 170, ar;
       if (P.mode === 'crop') {
         win.style.left = v.x * sw + 'px'; win.style.top = v.y * sh + 'px';
         win.style.width = v.w * sw + 'px'; win.style.height = v.h * sh + 'px';
@@ -289,6 +309,11 @@
         v.fx = clamp(p.x * 100, 0, 100); v.fy = clamp(p.y * 100, 0, 100); draw();
         drag = { focus: true };
       } else if (e.target.dataset.h) {
+        /* Dragging a handle means "this shape, by hand": Free, where allowed. */
+        if (canFree && v.shape !== 'free') {
+          v.shape = 'free';
+          if (shapeChips) [].forEach.call(shapeChips.querySelectorAll('.pe-chip'), function (c, i) { c.setAttribute('aria-pressed', P.shapes[i] === 'free' ? 'true' : 'false'); });
+        }
         drag = { h: e.target.dataset.h, s: p, r: { x: v.x, y: v.y, w: v.w, h: v.h } };
       } else if (e.target === win) {
         drag = { move: true, s: p, r: { x: v.x, y: v.y, w: v.w, h: v.h } };
@@ -303,6 +328,15 @@
       var dx = p.x - drag.s.x, dy = p.y - drag.s.y, r = drag.r;
       if (drag.move) {
         v.x = clamp(r.x + dx, 0, 1 - r.w); v.y = clamp(r.y + dy, 0, 1 - r.h);
+        return draw();
+      }
+      /* An edge: only that side moves. */
+      if (drag.h.length === 1) {
+        var hh = drag.h;
+        if (hh === 'w') { var nx2 = clamp(r.x + dx, 0, r.x + r.w - 0.05); v.x = nx2; v.w = r.x + r.w - nx2; }
+        if (hh === 'e') { v.w = clamp(r.w + dx, 0.05, 1 - r.x); }
+        if (hh === 'n') { var ny2 = clamp(r.y + dy, 0, r.y + r.h - 0.05); v.y = ny2; v.h = r.y + r.h - ny2; }
+        if (hh === 's') { v.h = clamp(r.h + dy, 0.05, 1 - r.y); }
         return draw();
       }
       /* A corner: the opposite corner stays put; a fixed shape keeps its

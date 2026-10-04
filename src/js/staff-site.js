@@ -772,7 +772,8 @@
 
     if (state.sectab === 'photo') {
       html += '<div class="ws-bigphoto">' + (s.photo ? '<img src="' + esc(s.photo) + '" alt="">' : '<span class="ws-nophoto">' + esc(tr('ws.noPhoto')) + '</span>') + '</div>' +
-        (s.type === 'photo' ? '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.photoHeight')) + '</span>' +
+        /* A crop decides a band's shape itself; the heights are for an uncropped one. */
+        (s.type === 'photo' && !(s.photoEdit && s.photoEdit.w) ? '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.photoHeight')) + '</span>' +
           chips('pheight:' + i, ['short', 'medium', 'tall', 'whole'], s.height || 'medium', function (v) { return tr('ws.photoHeight.' + v); }) + '</div>' : '') +
         '<div class="ws-sec-row"><label class="ghost-btn sm ws-file">' + esc(s.photo ? tr('ws.changePhoto') : tr('ws.choosePhoto')) +
           '<input type="file" accept="image/*" data-sec-photo="' + i + '" hidden></label>' +
