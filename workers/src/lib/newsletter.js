@@ -93,11 +93,18 @@ const TONES = {
   gold:  ["#9A5B00", "#F2C14E"],
 };
 const COLORS = new Set(["accent", "dim", ...Object.keys(TONES)]);
+/* ANY COLOR TOO (Chase, 2026-10-03: "a full palette, with a few
+   predetermined quick picks"). The named tones above are the quick picks and
+   keep their light/dark shades; a picked color is a plain #rrggbb, checked by
+   shape here and written inline as is. */
+const HEX = /^#[0-9a-f]{6}$/i;
+const isColor = (v) => COLORS.has(v) || HEX.test(v);
 
 /* PERSONAL WORDS: a span naming a variable, filled per recipient by render().
    The span's own text is only the editor's label and never reaches a reader;
-   `data-fallback` is what a subscriber without a name gets, and what the
-   public archive always shows. */
+   A subscriber without a name gets NOTHING there (Chase, 2026-10-03: "just
+   remove the variable so it just says Hi"), and neither does the public
+   archive. */
 const VARS = new Set(["first_name", "name"]);
 
 /* Tags whose CONTENT goes too. Script and style carry no prose, and keeping
@@ -108,7 +115,7 @@ const DROP_WHOLE = new Set(["script", "style", "head", "title", "meta", "link", 
    includes every style, class and id, which is what keeps a paste from
    bringing another website's appearance along. */
 const ATTRS = { a: ["href"], img: ["src", "alt"],
-                span: ["data-sz", "data-c", "data-var", "data-fallback"] };
+                span: ["data-sz", "data-c", "data-var"] };
 
 export function escapeHtml(s) {
   return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => (
@@ -206,7 +213,6 @@ export function sanitise(html) {
 
     const selfClosing = name === "br" || name === "img" || name === "hr";
     let attrs = "";
-    let hasVar = false;
     for (const key of ATTRS[name] || []) {
       const m = new RegExp(key + '\\s*=\\s*"([^"]*)"', "i").exec(raw) ||
                 new RegExp(key + "\\s*=\\s*'([^']*)'", "i").exec(raw);
@@ -216,15 +222,11 @@ export function sanitise(html) {
          &amp;amp;, so every link with an & in it went somewhere else. */
       let value = unescapeHtml(m[1]);
       if (key === "data-sz" && !SIZES[value]) continue;
-      if (key === "data-c" && !COLORS.has(value)) continue;
-      if (key === "data-var") {
-        if (!VARS.has(value)) continue;
-        hasVar = true;
+      if (key === "data-c") {
+        if (!isColor(value)) continue;
+        if (HEX.test(value)) value = value.toLowerCase();
       }
-      if (key === "data-fallback") {
-        if (!hasVar) continue;
-        value = value.replace(/[\x00-\x1f\x7f]/g, " ").trim().slice(0, 40);
-      }
+      if (key === "data-var" && !VARS.has(value)) continue;
       if (key === "href") {
         value = safeUrl(value);
         if (!value) continue;
@@ -333,6 +335,7 @@ function inlineStyles(html, accent, ink, dim, line, dark = false) {
       if (c && c[1] === "accent") bits.push("color:" + accent);
       if (c && c[1] === "dim") bits.push("color:" + dim);
       if (c && TONES[c[1]]) bits.push("color:" + TONES[c[1]][dark ? 1 : 0]);
+      if (c && HEX.test(c[1])) bits.push("color:" + c[1]);
       return bits.length ? `<span style="${bits.join(";")}">` : m;
     }
 
@@ -350,19 +353,16 @@ const unescapeHtml = (v) => String(v)
  * Replace each variable span with the recipient's words, escaped.
  *
  * `name` is the subscriber's name as stored (may be null). first_name is its
- * first word. With no name the span's own fallback is used, and with no
- * fallback the span simply disappears — never its editor label.
+ * first word. With no name the span disappears, and so does ONE space before
+ * it, so "Hi {first name}," reads "Hi," — never its editor label.
  */
 export function fillVariables(html, name) {
   const full = String(name || "").replace(/\s+/g, " ").trim();
   return String(html || "").replace(
     /<span\b([^>]*\bdata-var="([a-z_]+)"[^>]*)>[\s\S]*?<\/span>/g,
-    (m, attrs, v) => {
-      const fb = /data-fallback="([^"]*)"/.exec(attrs);
-      const word = !full ? (fb ? unescapeHtml(fb[1]) : "")
-        : v === "first_name" ? full.split(" ")[0] : full;
-      return escapeHtml(word);
-    });
+    (m, attrs, v) => (!full ? "\u0000"
+      : escapeHtml(v === "first_name" ? full.split(" ")[0] : full)))
+    .replace(/(?: |&nbsp;|\u00a0)?\u0000/g, "");
 }
 
 /**

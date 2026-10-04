@@ -318,19 +318,30 @@ await check("the link row adds, shows, edits and removes a link (no prompt)", as
   assert(!/<a /.test(editor.getHTML()), `link not removed: ${editor.getHTML()}`);
 });
 
+await check("the any-color picker colors the selection with that exact color", async () => {
+  const { sanitise } = await import("../workers/src/lib/newsletter.js");
+  const { editor, D, w } = ctx;
+  editor.chain().focus().clearContent().insertContent("pink").selectAll().run();
+  const pick = D.getElementById("cpColorAny");
+  pick.value = "#ff00aa";
+  pick.dispatchEvent(new w.Event("input", { bubbles: true }));
+  const html = editor.getHTML();
+  assert(/<span data-c="#ff00aa">pink<\/span>/.test(html), `not colored: ${html}`);
+  assert(/data-c="#ff00aa"/.test(sanitise(html)), "lost on save");
+});
+
 await check("a name chip saves as a variable the sanitiser keeps", async () => {
   const { sanitise } = await import("../workers/src/lib/newsletter.js");
   const { editor, D, w } = ctx;
   const press = (el) => el.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
   editor.chain().focus().clearContent().insertContent("Hi ").run();
   press(D.querySelector('.cp-tools [data-cmd="variable"]'));
-  D.getElementById("cpVarFallback").value = "friend";
   press(D.querySelector('#cpVarRow [data-var="first_name"]'));
   const html = editor.getHTML();
-  assert(/<span data-var="first_name" data-fallback="friend"[^>]*>[^<]+<\/span>/.test(html),
+  assert(/<span data-var="first_name"[^>]*>[^<]+<\/span>/.test(html) && !/data-fallback/.test(html),
     `no variable: ${html}`);
   const kept = sanitise(html);
-  assert(/data-var="first_name" data-fallback="friend"/.test(kept), `lost on save: ${kept}`);
+  assert(/data-var="first_name"/.test(kept), `lost on save: ${kept}`);
   editor.commands.setContent(kept);
   assert(/data-var="first_name"/.test(editor.getHTML()), "a saved draft did not reopen with it");
 });

@@ -84,10 +84,17 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
     document.querySelectorAll("#cpColorRow [data-tone]").forEach((b) => {
       b.setAttribute("aria-pressed", b.dataset.tone === tone ? "true" : "false");
     });
+    /* A picked color shows in the picker, which reads as chosen. */
+    const anyColor = /^#[0-9a-f]{6}$/i.test(tone);
+    $("cpColorAny").closest(".cp-tone-any").classList.toggle("is-on", anyColor);
+    if (anyColor) $("cpColorAny").value = tone;
     const sizeBtn = document.querySelector('.cp-tools [data-cmd="size"]');
     if (sizeBtn) sizeBtn.dataset.sz = sz;
     const colorBtn = document.querySelector('.cp-tools [data-cmd="color"]');
-    if (colorBtn) colorBtn.dataset.tone = tone;
+    if (colorBtn) {
+      colorBtn.dataset.tone = anyColor ? "any" : tone;
+      colorBtn.style.setProperty("--any", anyColor ? tone : "");
+    }
   }
 
   function openRow(which) {
@@ -102,9 +109,6 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
       $("cpLinkUrl").value = href;
       $("cpLinkRemove").hidden = !href;
       $("cpLinkUrl").focus();
-    }
-    if (which === "variable" && !$("cpVarRow").hidden && !$("cpVarFallback").value) {
-      $("cpVarFallback").value = tr("ml.cpVarDefault");
     }
   }
   const closeRows = () => openRow(null);
@@ -121,10 +125,15 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
     editor.chain().focus().setTone(b.dataset.tone || null).run();
     closeRows();
   });
+  /* "input" follows the picker live; the row stays open until "change". */
+  $("cpColorAny").addEventListener("input", (e) => {
+    editor.chain().setTone(e.target.value.toLowerCase()).run();
+  });
+  $("cpColorAny").addEventListener("change", () => { editor.commands.focus(); closeRows(); });
   $("cpVarRow").addEventListener("click", (e) => {
     const b = e.target.closest("[data-var]");
     if (!b) return;
-    editor.chain().focus().insertVariable(b.dataset.var, $("cpVarFallback").value.trim()).run();
+    editor.chain().focus().insertVariable(b.dataset.var).run();
     closeRows();
   });
 

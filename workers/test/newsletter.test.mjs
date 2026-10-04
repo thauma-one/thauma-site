@@ -121,7 +121,7 @@ check("a span may carry a size or a brand color, and nothing else", () => {
 check("an invented size or color is dropped, keeping the words", () => {
   for (const [html, what] of [
     ['<p><span data-sz="huge">x</span></p>', "an invented size"],
-    ['<p><span data-c="#ff0000">x</span></p>', "an arbitrary color"],
+    ['<p><span data-c="tomato">x</span></p>', "an invented color name"],
     ['<p><span style="color:red">x</span></p>', "a pasted style attribute"],
   ]) {
     const out = sanitise(html);
@@ -390,26 +390,34 @@ check("the palette tones and the extra-large size survive and render per light/d
   assert(/<span style="font-size:23px">big/.test(light), "xl size");
 });
 
-check("a name variable survives saving; unknown ones and stray fallbacks do not", () => {
+check("a name variable survives saving; unknown ones and fallbacks do not", () => {
   const s = sanitise('<p>Hi <span data-var="first_name" data-fallback="friend">First name</span>' +
-                     ' <span data-var="password" data-fallback="x">X</span>' +
-                     ' <span data-fallback="y">Y</span></p>');
-  assert(s.includes('<span data-var="first_name" data-fallback="friend">First name</span>'),
-    "variable lost: " + s);
-  assert(!s.includes("password") && !s.includes('data-fallback="x"') &&
-         !s.includes('data-fallback="y"'), "something unknown survived: " + s);
+                     ' <span data-var="password">X</span></p>');
+  assert(s.includes('<span data-var="first_name">First name</span>'), "variable lost: " + s);
+  assert(!s.includes("password") && !s.includes("data-fallback"),
+    "something unknown survived: " + s);
 });
 
-check("each reader gets their own name, escaped; no name gets the fallback; never the label", () => {
+check("any #rrggbb color is kept and inlined; anything else is dropped", () => {
+  const s = sanitise('<p><span data-c="#FF00aa">a</span><span data-c="red">b</span>' +
+                     '<span data-c="url(x)">c</span><span data-c="#fff">d</span></p>');
+  assert(s.includes('<span data-c="#ff00aa">a</span>') && s.includes('<span data-c="red">b</span>'),
+    "a color was lost: " + s);
+  assert(!/url\(|#fff"/.test(s), "a bad color survived: " + s);
+  const out = render(s, { subject: "x", unsubscribeUrl: "u" });
+  assert(out.includes('<span style="color:#ff00aa">a</span>'), "picked color not inlined");
+});
+
+check("each reader gets their own name, escaped; no name drops it and its space; never the label", () => {
   assert(typeof NL.fillVariables === "function", "fillVariables is missing");
   const s = sanitise('<p>Hi <span data-var="first_name" data-fallback="friend">First name</span>, ' +
                      '<span data-var="name">Name</span>.</p>');
   eq(NL.fillVariables(s, "Ana <b>Marić</b>"), "<p>Hi Ana, Ana &lt;b&gt;Marić&lt;/b&gt;.</p>", "named");
-  eq(NL.fillVariables(s, null), "<p>Hi friend, .</p>", "unnamed");
+  eq(NL.fillVariables(s, null), "<p>Hi,.</p>", "unnamed");
   const sent = render(s, { subject: "x", unsubscribeUrl: "u", recipientName: "Ivo Ivić" });
   assert(sent.includes("Hi Ivo, Ivo Ivić."), "render did not fill");
   const archive = render(s, { subject: "x" });
-  assert(archive.includes("Hi friend") && !/First name|data-var/.test(archive),
+  assert(archive.includes("Hi,") && !/First name|data-var/.test(archive),
     "the archive shows a label or a variable");
 });
 

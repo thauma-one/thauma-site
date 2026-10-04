@@ -726,8 +726,8 @@ await check("one of Thauma's own lists attaches into the organization's folder",
   assert(file.object_key.startsWith("attachments/org/"), `key ${file.object_key}`);
 });
 
-await check("Send fills each person's name, and the fallback for someone without one", async () => {
-  const body = '<p>Hi <span data-var="first_name" data-fallback="friend">First name</span>!</p>';
+await check("Send fills each person's name; someone without one just gets \"Hi!\"", async () => {
+  const body = '<p>Hi <span data-var="first_name">First name</span>!</p>';
   const { res, out } = await sendsThrough("mailing-send", { bodyHtml: body, people: [
     { id: "sb_1", email: "ana@x.one", name: "Ana <b>Marić" },
     { id: "sb_2", email: "nn@x.one", name: null },
@@ -735,14 +735,14 @@ await check("Send fills each person's name, and the fallback for someone without
   eq(res.status, 200, "status");
   eq(out.length, 2, "messages");
   assert(out[0].html.includes("Hi Ana!") && out[0].text.includes("Hi Ana!"), "Ana's copy");
-  assert(out[1].html.includes("Hi friend!") && out[1].text.includes("Hi friend!"), "the unnamed copy");
+  assert(out[1].html.includes("Hi!") && out[1].text.includes("Hi!"), "the unnamed copy");
   for (const m of out) {
     assert(!/First name|data-var/.test(m.html + m.text), "the editor's label reached a reader");
   }
 });
 
 await check("Send me a test fills in the tester's own name", async () => {
-  const body = '<p>Hi <span data-var="first_name" data-fallback="friend">First name</span>!</p>';
+  const body = '<p>Hi <span data-var="first_name">First name</span>!</p>';
   const { res, out } = await sendsThrough("mailing-test", { bodyHtml: body });
   eq(res.status, 200, "status");
   assert(out[0].html.includes("Hi Chase!"), "tester's name missing");

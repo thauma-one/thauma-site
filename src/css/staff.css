@@ -1432,6 +1432,19 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
 .cp-row>.cp-tone[aria-pressed="true"]{background:var(--line)}
 .cp-row>.cp-tone[aria-pressed="true"] span{outline:2px solid var(--text);outline-offset:2px}
 .cp-swatch[data-tone]:not([data-tone=""]):not([data-tone="accent"]) span{background:currentColor}
+/* ANY COLOR: the browser's own picker, drawn as one more swatch. Its well is
+   a rainbow until a color is picked, then that color. */
+.cp-tone-any{display:inline-flex;align-items:center;cursor:pointer;position:relative}
+.cp-tone-any input{width:18px;height:18px;padding:0;border:1px solid rgba(255,255,255,.2);
+  border-radius:50%;background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red);
+  cursor:pointer;-webkit-appearance:none;appearance:none;overflow:hidden}
+.cp-tone-any input::-webkit-color-swatch-wrapper{padding:0}
+.cp-tone-any input::-webkit-color-swatch{border:0;border-radius:50%;opacity:0}
+.cp-tone-any input::-moz-color-swatch{border:0;border-radius:50%;opacity:0}
+.cp-tone-any.is-on input::-webkit-color-swatch{opacity:1}
+.cp-tone-any.is-on input::-moz-color-swatch{opacity:1}
+.cp-tone-any.is-on input{outline:2px solid var(--text);outline-offset:2px}
+.cp-swatch[data-tone="any"] span{background:var(--any)}
 
 /* ---- the writing surface ---- */
 .cp-body{min-height:400px;max-height:64vh;overflow-y:auto;padding:24px 28px;

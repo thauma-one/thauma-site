@@ -375,6 +375,10 @@
           <button type="button" class="cp-tone" data-tone="green" data-i18n-attr="title:ml.cpToneGreen, aria-label:ml.cpToneGreen" title="Green" aria-label="Green"><span></span></button>
           <button type="button" class="cp-tone" data-tone="blue" data-i18n-attr="title:ml.cpToneBlue, aria-label:ml.cpToneBlue" title="Blue" aria-label="Blue"><span></span></button>
           <button type="button" class="cp-tone" data-tone="gold" data-i18n-attr="title:ml.cpToneGold, aria-label:ml.cpToneGold" title="Gold" aria-label="Gold"><span></span></button>
+          <label class="cp-tone cp-tone-any" data-i18n-attr="title:ml.cpToneAny" title="Any color">
+            <input type="color" id="cpColorAny" value="#3366cc"
+                   data-i18n-attr="aria-label:ml.cpToneAny" aria-label="Any color">
+          </label>
         </div>
         <div class="cp-row" id="cpLinkRow" hidden>
           <input type="url" id="cpLinkUrl" inputmode="url" autocomplete="url" placeholder="https://"
@@ -385,10 +389,6 @@
         <div class="cp-row" id="cpVarRow" hidden>
           <button type="button" class="ghost-btn" data-var="first_name" data-i18n="ml.cpVarFirst">First name</button>
           <button type="button" class="ghost-btn" data-var="name" data-i18n="ml.cpVarFull">Full name</button>
-          <label class="cp-row-field">
-            <span data-i18n="ml.cpVarFallback">If there is no name</span>
-            <input type="text" id="cpVarFallback" maxlength="40">
-          </label>
         </div>
 
         <div id="cpBody" class="cp-body"></div>

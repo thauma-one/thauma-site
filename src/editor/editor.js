@@ -61,8 +61,11 @@ import Image from "@tiptap/extension-image";
 /* THE PALETTE (2026-10-03): the brand color plus a few tones, still stored as
    a NAME (`data-c`) that newsletter.js resolves per light or dark email. The
    old Accent mark's `<span data-c="accent">` parses into this one, so every
-   existing draft keeps its color. Must match COLORS in newsletter.js. */
+   existing draft keeps its color. Must match COLORS in newsletter.js.
+   Those are the QUICK PICKS; any #rrggbb is accepted too (Chase, 2026-10-03:
+   "a full palette, with a few predetermined quick picks"). */
 export const TONES = ["accent", "dim", "red", "green", "blue", "gold"];
+export const isTone = (c) => TONES.includes(c) || /^#[0-9a-f]{6}$/i.test(String(c || ""));
 
 const Tone = Mark.create({
   name: "tone",
@@ -76,7 +79,7 @@ const Tone = Mark.create({
     };
   },
   parseHTML() {
-    return [{ tag: "span[data-c]", getAttrs: (el) => (TONES.includes(el.getAttribute("data-c")) ? null : false) }];
+    return [{ tag: "span[data-c]", getAttrs: (el) => (isTone(el.getAttribute("data-c")) ? null : false) }];
   },
   renderHTML({ HTMLAttributes }) { return ["span", mergeAttributes(HTMLAttributes), 0]; },
   addCommands() {
@@ -90,7 +93,7 @@ const Tone = Mark.create({
 /* A PERSONAL WORD (2026-10-03): the recipient's first or full name, filled
    per person by the server (fillVariables in newsletter.js). An atom, so it
    is moved and deleted as one piece and its label can't be half-edited. The
-   label inside is the editor's only; a reader gets the name or the fallback. */
+   label inside is the editor's only; a reader gets the name, or nothing. */
 export const VARIABLES = ["first_name", "name"];
 
 const Variable = Node.create({
@@ -104,8 +107,6 @@ const Variable = Node.create({
     return {
       v: { default: "first_name", parseHTML: (el) => el.getAttribute("data-var"),
            renderHTML: (a) => ({ "data-var": a.v }) },
-      fallback: { default: "", parseHTML: (el) => el.getAttribute("data-fallback") || "",
-                  renderHTML: (a) => (a.fallback ? { "data-fallback": a.fallback } : {}) },
     };
   },
   parseHTML() {
@@ -118,8 +119,8 @@ const Variable = Node.create({
   renderText({ node }) { return this.options.labels[node.attrs.v] || node.attrs.v; },
   addCommands() {
     return {
-      insertVariable: (v, fallback) => ({ commands }) =>
-        commands.insertContent({ type: this.name, attrs: { v, fallback: fallback || "" } }),
+      insertVariable: (v) => ({ commands }) =>
+        commands.insertContent({ type: this.name, attrs: { v } }),
     };
   },
 });
