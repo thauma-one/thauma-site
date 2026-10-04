@@ -250,7 +250,7 @@ export function joinHeading(thin, bold) {
 export function starter(kind, { name, langs, fallback, give }) {
   const L = langs && langs.length ? langs : ["en"];
   const heroMap = { kicker: "=", thin: "heroThin", bold: "=" + name + ".", text: "heroText" };
-  const hero = (variant) => section("hero", variant, L, heroMap, { photo: null, buttons: ["give", "stay"] });
+  const hero = (variant) => section("hero", variant, L, heroMap, { photo: null, buttons: ["give", "stay"], divider: true });
   const pages = {};
   PAGES.forEach((p) => { pages[p] = { id: p, on: false, label: {}, sections: [] }; });
 
@@ -485,6 +485,9 @@ function cleanSection(raw, langs) {
   if (spec.buttons) {
     s.buttons = (Array.isArray(raw.buttons) ? raw.buttons : []).filter((b) => ["give", "stay", "contact"].includes(b)).slice(0, 2);
   }
+  /* The hero's line under the title (render.js): kept only when it was
+     chosen, so a hero saved before the option renders as it always did. */
+  if (raw.type === "hero" && typeof raw.divider === "boolean") s.divider = raw.divider;
   if (spec.items) {
     /* A card may carry a picture, and may point at one of the site's own
        pages as well as anywhere else. */

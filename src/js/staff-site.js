@@ -717,6 +717,13 @@
         html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.align')) + '</span>' +
           chips('align:' + i, ['center', 'left'], s.align || 'center', function (v) { return tr('ws.align.' + v); }) + '</div>';
       }
+      /* The hero's line under the title (render.js). Unset, the monogram
+         shows it and the rest do not — exactly as before the option. */
+      if (s.type === 'hero') {
+        var lined = s.variant === 'monogram' ? s.divider !== false : s.divider === true;
+        html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.divider')) + '</span>' +
+          chips('divider:' + i, ['on', 'off'], lined ? 'on' : 'off', function (v) { return tr('ws.divider.' + v); }) + '</div>';
+      }
       if (!FLAT[s.type]) {
         html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.bg')) + '</span>' +
           chips('raised:' + i, ['plain', 'raised'], s.raised ? 'raised' : 'plain', function (v) { return tr('ws.bg.' + v); }) + '</div>';
@@ -884,6 +891,7 @@
     var type = t.getAttribute('data-add-type'), spec = SECTIONS[type], words = {};
     state.doc.languages.forEach(function (l) { words[l] = {}; spec.words.forEach(function (f) { words[l][f] = ''; }); });
     var s = { id: uid(), type: type, variant: spec.variants[0], words: words };
+    if (type === 'hero') s.divider = true;
     if (spec.photo) s.photo = null;
     if (spec.buttons) s.buttons = ['give', 'stay'];
     if (spec.items) s.items = [];
@@ -1274,6 +1282,7 @@
       var val = d.value, name = d.chip;
       if (name.indexOf('variant:') === 0) { p.sections[+name.slice(8)].variant = val; drawSections(); }
       else if (name.indexOf('raised:') === 0) { p.sections[+name.slice(7)].raised = val === 'raised'; drawSections(); }
+      else if (name.indexOf('divider:') === 0) { p.sections[+name.slice(8)].divider = val === 'on'; drawSections(); }
       else if (name.indexOf('align:') === 0) { p.sections[+name.slice(6)].align = val; drawSections(); }
       else if (name.indexOf('linkkind:') === 0) {
         var key = name.slice(9);

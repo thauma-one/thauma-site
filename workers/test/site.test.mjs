@@ -479,6 +479,38 @@ check("a Band is a band, and Raised changes it, on Give and Sign-up, in every lo
   }
 });
 
+/* ------------------------------------------------- the hero's line (2026-10-03) */
+
+check("a new site's hero has the accent line under its title; it can be hidden", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en", "hr"], fallback: "en" });
+  const hero = () => page(d).match(/<section class="hero[\s\S]*?<\/section>/)[0];
+  assert(/<h1[\s\S]*?<\/h1><span class="rule m"/.test(hero()), "no line right under the title");
+  d.pages[0].sections[0].divider = false;
+  assert(!/class="rule/.test(hero()), "hidden, and still there");
+});
+
+check("a hero saved before the option looks as it did: no line, except the monogram's own", () => {
+  for (const [variant, want] of [["behind", false], ["words", false], ["beside", false], ["monogram", true]]) {
+    const d = starter("full", { name: "Chase Roush", langs: ["en", "hr"], fallback: "en" });
+    const s = d.pages[0].sections[0];
+    delete s.divider; s.variant = variant;
+    const html = page(d).match(/<section class="hero[\s\S]*?<\/section>/)[0];
+    eq(/class="rule/.test(html), want, `${variant} without a saved choice`);
+  }
+  const d = starter("full", { name: "Chase Roush", langs: ["en", "hr"], fallback: "en" });
+  d.pages[0].sections[0].divider = "yes please";
+  eq("divider" in cleanDoc(d, ["en", "hr"]).pages[0].sections[0], false, "only a real yes or no is kept");
+});
+
+check("the line is centered on a centered hero, and wears the hero's own ink on a Bold look", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en", "hr"], fallback: "en" });
+  d.pages[0].sections[0].variant = "words";
+  const html = page(d);
+  assert(/\.hero-words \.rule\{margin-left:auto;margin-right:auto\}/.test(html), "not centered");
+  d.design.look = "bold";
+  assert(/\.hero-words \.rule\{background:/.test(page(d)), "an accent line on an accent background");
+});
+
 /* ---------------------------------------------------------- placeholders */
 
 check("every field of every section suggests words, in every language Thauma has", () => {

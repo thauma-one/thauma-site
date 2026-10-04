@@ -84,7 +84,7 @@ await check("a page opens to its sections as rows; All pages and the page menu l
   const { w, d, click, pages } = await boot();
   pages();
   click(d.querySelector('[data-open-page="home"]'));
-  eq([...d.querySelectorAll(".ws-stile-words b")].map((n) => n.textContent), ["Opening", "Photo and words"], "Home's sections");
+  eq([...d.querySelectorAll(".ws-stile-words b")].map((n) => n.textContent), ["Hero", "Photo and words"], "Home's sections");
   assert(/Follow the work of/.test(d.querySelector(".ws-stile-words span").textContent), "each with one line of its words");
   const pick = d.querySelector("[data-pick-page]");
   pick.value = "give";
@@ -126,7 +126,7 @@ await check("a row unfolds where it is, one at a time; a new section goes where 
   click(d.querySelector('[data-insert-at="1"]'));
   eq(d.querySelectorAll("[data-add-type]").length, 14, "every kind offered");
   click(d.querySelector('[data-add-type="quote"]'));
-  eq([...d.querySelectorAll(".ws-stile-words b")].map((n) => n.textContent), ["Opening", "A verse or a quote", "Photo and words"], "between the two");
+  eq([...d.querySelectorAll(".ws-stile-words b")].map((n) => n.textContent), ["Hero", "A verse or a quote", "Photo and words"], "between the two");
   assert(d.querySelector('.ws-acc[data-si="1"]').classList.contains("is-open"), "and open");
 });
 
@@ -271,12 +271,12 @@ await check("Undo steps back through changes; a reload opens where you left off"
   pages();
   click(d.querySelector('[data-open-page="home"]'));
   const order = () => [...d.querySelectorAll(".ws-stile-words b")].map((b) => b.textContent);
-  eq(order(), ["Opening", "Photo and words"], "as it starts");
+  eq(order(), ["Hero", "Photo and words"], "as it starts");
   click(d.querySelector('[data-sec-down="0"]'));
-  eq(order(), ["Photo and words", "Opening"], "moved");
+  eq(order(), ["Photo and words", "Hero"], "moved");
   assert(!d.getElementById("wsUndo").disabled, "Undo is offered");
   click(d.getElementById("wsUndo"));
-  eq(order(), ["Opening", "Photo and words"], "and back again");
+  eq(order(), ["Hero", "Photo and words"], "and back again");
   await settle(900);
   eq(sent.filter((x) => x.action === "save").pop().draft.pages[0].sections[0].type, "hero", "and saved that way");
   click(d.querySelector('[data-edit-sec="1"]'));
