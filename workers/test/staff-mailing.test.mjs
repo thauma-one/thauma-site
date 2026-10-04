@@ -865,5 +865,29 @@ await check("the confirm link confirms exactly the address it names", async () =
      400, "a forged signature");
 });
 
+await check("deleting a draft takes its pictures and attachments with it, unless something else uses them", async () => {
+  const env = envWith("staff", { partners: [{ id: "p_chase", slug: "chase-roush", display_name: "Chase" }] });
+  const deleted = [];
+  env.MEDIA = { async delete(k) { deleted.push(k); } };
+  const prepare = env.DB.prepare;
+  env.DB.prepare = (sql) => {
+    if (/attachment_keys/.test(sql)) {
+      const row = { body_html: '<img src="/media/newsletter/chase-roush/only-here-aaaa.jpg"><img src="/media/newsletter/chase-roush/shared-bbbb.jpg">',
+                    body_md: "", attachment_keys: "attachments/p_chase/flyer-cccc.pdf" };
+      const st = { bind() { return st; }, all: async () => ({ results: [row] }), run: async () => ({ results: [row] }) };
+      return st;
+    }
+    if (/SELECT body_html, body_md FROM mailings/.test(sql)) {
+      const st = { bind() { return st; }, all: async () => ({ results: [{ body_html: '<img src="/media/newsletter/chase-roush/shared-bbbb.jpg">' }] }) };
+      st.run = st.all;
+      return st;
+    }
+    return prepare(sql);
+  };
+  const res = await handler.fetch(req("POST", { body: { action: "mailing-delete", id: "mg_1" } }), env);
+  eq(res.status, 200, "status");
+  eq(deleted.sort(), ["attachments/p_chase/flyer-cccc.pdf", "newsletter/chase-roush/only-here-aaaa.jpg"], "deleted");
+});
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

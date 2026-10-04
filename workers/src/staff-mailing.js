@@ -28,6 +28,7 @@ import { sendMail, listConfirmEmail, testInboxEmail } from "./lib/mail.js";
 import { linkParams } from "./lib/signed-link.js";
 import { siteOrigin } from "./lib/origin.js";
 import { topicLabels, cleanLabels } from "./lib/topics.js";
+import { releaseMedia } from "./media-cleanup.js";
 import { changedSince, changedAnswer } from "./lib/fresh.js";
 import { readTexts, cleanTexts } from "./lib/texts.js";
 import { lookFor } from "./embed-colour.js";
@@ -891,8 +892,19 @@ const api = {
       }
 
       if (body.action === "mailing-delete") {
+        /* Its pictures and attachments go with it, unless something else
+           uses them (media-cleanup.js re-checks). A draft has no undo once
+           deleted, so this is the end of its editing. */
+        const was = await db.queryOne("mailing_media", { id: clean(body.id, 60), partner_id: partnerId });
         await db.query("mailing_delete",
           { id: clean(body.id, 60), partner_id: partnerId });
+        if (was) {
+          const keys = [...String(`${was.body_html || ""}\n${was.body_md || ""}`).matchAll(/\/media\/([A-Za-z0-9._\/-]+)/g)].map((m) => m[1])
+            .concat(String(was.attachment_keys || "").split("\n"));
+          const prefixes = partnerId ? [`newsletter/${s.partner.slug}/`, attachPrefix(partnerId)]
+            : ["newsletter/thauma/", attachPrefix(null), ...(await db.query("partners_for_user", { email: actor.email })).map((p) => `newsletter/${p.slug}/`).slice(0, 1)];
+          await releaseMedia(env, db, keys, prefixes).catch((e) => console.error("mailing media release:", e.message));
+        }
         return json({ ok: true });
       }
 

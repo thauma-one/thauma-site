@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "6e4263517722a72f";
+export const SOURCE_DIGEST = "72beff9b0c83a2c1";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -458,6 +458,10 @@ WHERE mailing_lists.partner_id IS :partner_id;`,
 FROM mailing_lists l
 WHERE l.partner_id IS :partner_id AND l.archived_at IS NULL
 ORDER BY l.name COLLATE NOCASE;`,
+  mailing_media: `SELECT m.body_html, m.body_md,
+       (SELECT group_concat(a.object_key, char(10)) FROM mailing_attachments a WHERE a.mailing_id = m.id) AS attachment_keys
+FROM mailings m
+WHERE m.id = :id AND m.partner_id IS :partner_id AND m.status = 'draft';`,
   mailing_one: `SELECT id, list_id, partner_id, subject, preheader, body_md, body_html, body_text,
        status, slug, sent_count, created_at, started_at, finished_at
 FROM mailings
@@ -529,9 +533,10 @@ ORDER BY CASE m.status WHEN 'draft' THEN 0 ELSE 1 END,
    AND m.status = 'sent'
  ORDER BY m.finished_at DESC
  LIMIT 100;`,
-  media_refs_attachments: `SELECT a.object_key FROM mailing_attachments a JOIN mailings m ON m.id = a.mailing_id
-WHERE m.partner_id IS :partner_id;`,
-  media_refs_mailings: `SELECT body_html FROM mailings WHERE partner_id IS :partner_id;`,
+  media_refs_attachments: `SELECT object_key FROM mailing_attachments;`,
+  media_refs_mailings: `SELECT body_html, body_md FROM mailings;`,
+  media_refs_resources: `SELECT photo FROM resources WHERE photo IS NOT NULL;`,
+  media_refs_sites: `SELECT draft, published FROM partner_sites;`,
   milestone_delete: `DELETE FROM milestones WHERE id = :id AND partner_id = :partner_id;`,
   milestone_reorder: `UPDATE milestones SET sort_order = :sort_order, updated_at = :now
 WHERE id = :id AND partner_id = :partner_id;`,

@@ -3144,12 +3144,34 @@ DELETE FROM test_inboxes WHERE user_id = :user_id;
 -- unused ones can be found and removed (workers/src/media-cleanup.js).
 -- ===========================================================================
 
+-- WHAT STILL USES A FILE is asked of EVERYTHING, not one ministry: an
+-- admin attached to a partner writes Thauma's own mail with pictures in that
+-- partner's folder (media.js picks the folder by person), so a per-owner
+-- check would call those pictures unused. Keys are unique; a wider check is
+-- only ever safer.
+
+-- name: media_refs_sites
+SELECT draft, published FROM partner_sites;
+
+
 -- name: media_refs_mailings
 -- Every mailing's words, drafts and sent alike: a sent newsletter's pictures
 -- stay as long as its archive does.
-SELECT body_html FROM mailings WHERE partner_id IS :partner_id;
+SELECT body_html, body_md FROM mailings;
 
 
 -- name: media_refs_attachments
-SELECT a.object_key FROM mailing_attachments a JOIN mailings m ON m.id = a.mailing_id
-WHERE m.partner_id IS :partner_id;
+SELECT object_key FROM mailing_attachments;
+
+
+-- name: media_refs_resources
+SELECT photo FROM resources WHERE photo IS NOT NULL;
+
+
+-- name: mailing_media
+-- One draft's words and attachments, read just before it is deleted so the
+-- files only it used can go with it.
+SELECT m.body_html, m.body_md,
+       (SELECT group_concat(a.object_key, char(10)) FROM mailing_attachments a WHERE a.mailing_id = m.id) AS attachment_keys
+FROM mailings m
+WHERE m.id = :id AND m.partner_id IS :partner_id AND m.status = 'draft';

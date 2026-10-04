@@ -25,8 +25,10 @@ const settle = (ms = 150) => new Promise((r) => setTimeout(r, ms));
 console.log("Website editor\n");
 if (!PAGE) { console.log("  SKIP  no build — run eleventy first."); process.exit(1); }
 
-function answer({ edit = true, owner = true, published = false } = {}) {
+function answer(opts = {}) {
+  const { edit = true, owner = true, published = false } = opts;
   const draft = cleanDoc(starter("full", { name: "Chase Roush", langs: ["en", "hr"], fallback: "en" }), ["en", "hr"]);
+  if (opts.photo) draft.pages.find((p) => p.id === "home").sections[1].photo = opts.photo;
   return {
     published: published ? JSON.parse(JSON.stringify(draft)) : null,
     you: { email: "c@t.one", name: "Chase Roush", roles: ["partner", "staff"] },
@@ -456,6 +458,22 @@ await check("somebody not allowed sees it all, changes nothing, and can ask", as
   assert(d.getElementById("wsOn").hidden, "no on/off switch");
   assert([...d.querySelectorAll(".ws-panel input")].every((i) => i.disabled), "fields switched off");
   assert(d.getElementById("wsBar").hidden, "no Publish bar");
+});
+
+await check("a replaced photo is handed back when the page closes, not when it is saved (Undo can still bring it back)", async () => {
+  const OLDPIC = "/media/partnersite/chase-roush/old-photo-aaaa.webp";
+  const { w, d, sent, click, pages } = await boot({ photo: OLDPIC });
+  pages();
+  click(d.querySelector('[data-open-page="home"]'));
+  click(d.querySelector('[data-edit-sec="1"]'));
+  click(d.querySelector('[data-sectab="photo"]'));
+  click(d.querySelector('[data-sec-unphoto="1"]'));
+  await settle(900);
+  assert(sent.some((b) => b.action === "save"), "the change saved");
+  assert(!sent.some((b) => b.keys), "nothing handed back while the page is open");
+  w.dispatchEvent(new w.Event("pagehide"));
+  await settle(50);
+  eq(sent.filter((b) => b.keys).map((b) => b.keys), [["partnersite/chase-roush/old-photo-aaaa.webp"]], "handed back on close");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

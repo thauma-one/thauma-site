@@ -121,6 +121,7 @@
     state.saving = true;
     try {
       var body;
+      noteMedia(JSON.stringify(state.doc));
       try { body = await send({ action: 'save', draft: state.doc, base: state.base }); }
       catch (e) {
         /* Someone else saved this site since it loaded (workers/src/lib/
@@ -180,9 +181,35 @@
     apply(body);
   }
 
+  /* FILES THIS VISIT HAS SEEN (media-cleanup.js). A replaced photo stays in
+     storage while the page is open, because Undo can bring it back. When the
+     page closes, the ones the site no longer uses are handed back; the server
+     deletes them only if no site or mailing anywhere still names them. An
+     upload never saved is handed back too; a closed laptop that sends
+     nothing is caught by the daily sweep. */
+  var seenMedia = {};
+  function noteMedia(text) {
+    String(text || '').replace(/\/media\/((?:partnersite|newsletter)\/[A-Za-z0-9._\/-]+)/g, function (_, k) { seenMedia[k] = 1; return _; });
+  }
+  window.addEventListener('pagehide', function () {
+    if (!state.doc) return;
+    var now = JSON.stringify(state.doc);
+    var gone = Object.keys(seenMedia).filter(function (k) { return now.indexOf(k) < 0; });
+    seenMedia = {};
+    if (!gone.length) return;
+    try {
+      fetch('/api/staff-media-release', { method: 'POST', keepalive: true, credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ keys: gone }) }).catch(function () {});
+    } catch (e) { /* the page is going; the sweep will have it */ }
+  });
+  /* Back from the browser's memory: Undo would reach files already handed
+     back, so the page starts again from the server. */
+  window.addEventListener('pageshow', function (e) { if (e.persisted) location.reload(); });
+
   function apply(body) {
     state.body = body;
     state.doc = body.draft;
+    noteMedia(JSON.stringify(body.draft)); noteMedia(JSON.stringify(body.published));
     /* the draft as the server holds it, for a save to be compared against */
     state.base = JSON.parse(JSON.stringify(body.draft));
     if (state.page && !state.doc.pages.some(function (p) { return p.id === state.page; })) state.page = null;
@@ -1161,7 +1188,7 @@
     var box = boxOfSelection();
     if (!box) { if (!fmt.contains(document.activeElement)) fmt.hidden = true; return; }
     /* PINNED while a row of choices is open: the words change size under
-       it, and a bar that re-centred on them would jump with every press. */
+       it, and a bar that re-centered on them would jump with every press. */
     var said = window.getSelection().toString();
     var pinned = !fmt.hidden && said === fmtWords && fmt.querySelector('[data-fmt-row]:not([hidden])');
     if (pinned) return showMarks(box);
@@ -1580,6 +1607,7 @@
       var body = await res.json().catch(function () { return {}; });
       if (!res.ok) throw new Error(body.error || tr('common.saveFailed'));
       p.shareCards = p.shareCards || {};
+      noteMedia(body.url);
       p.shareCards[l] = { url: body.url, sig: cardSig(p, l) };
     }
     changed();
@@ -1599,6 +1627,7 @@
       var r2 = await fetch('/api/admin/media?kind=partnersite', { method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'image/jpeg', 'X-File-Name': 'share-' + ae.id }, body: blob2 });
       var b2 = await r2.json().catch(function () { return {}; });
       if (!r2.ok) throw new Error(b2.error || tr('common.saveFailed'));
+      noteMedia(b2.url);
       ae.shareOrig = orig2; ae.shareImage = b2.url; drawAdvanced(); changed();
     } catch (err) { toast(err.message, 'err'); }
   }
@@ -1986,6 +2015,7 @@
         headers: { 'Content-Type': 'image/webp', 'X-File-Name': fileName(file.name) }, body: blob });
       var body = await res.json();
       if (!res.ok) throw new Error(body.error || tr('common.saveFailed'));
+      noteMedia(body.url);
       done(body.url);
       changed();
     } catch (err) {

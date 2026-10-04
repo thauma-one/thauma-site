@@ -57,7 +57,7 @@ import adminPublish from "./admin-publish.js";
 import adminMigrate from "./admin-migrate.js";
 import embed from "./embed.js";
 import embedIcon from "./embed-icon.js";
-import { cleanUnusedMedia, isCleanupHour } from "./media-cleanup.js";
+import mediaRelease, { cleanUnusedMedia, isCleanupHour } from "./media-cleanup.js";
 import staffEmbed from "./staff-embed.js";
 import adminActAs from "./admin-actas.js";
 import adminProfile from "./admin-profile.js";
@@ -415,6 +415,8 @@ const ROUTES = {
   "/api/admin/translate": adminTranslate,
 
   // Uploads. GET /media/* is handled by prefix below, not here.
+  /* An editor closing hands back the files it replaced (media-cleanup.js). */
+  "/api/staff-media-release": mediaRelease,
   "/api/admin/media": media,
 
   // THE ONLY ROUTE A CREDENTIAL OUTSIDE THAUMA CAN REACH. Key-authenticated,
