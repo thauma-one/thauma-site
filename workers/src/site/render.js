@@ -270,6 +270,9 @@ main section.raised + section{border-top-color:transparent}
    2026-10-03: the button stayed left under centered words). */
 .text-center .btns{justify-content:center}
 .pt{display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center}
+/* A photo beside LONG words starts at their top and stays in view while they
+   scroll past, rather than floating in the middle of a tall gap. */
+.pt:has(.pic img){align-items:start}.pt .pic:has(img){position:sticky;top:96px}
 .pt-right .pt .pic{order:2}.pt-above .pt{grid-template-columns:1fr}
 .pic{border-radius:16px;overflow:hidden;position:relative;background:var(--panel)}.pt .pic{aspect-ratio:4/3}
 .pic img{width:100%;height:100%;object-fit:cover}
@@ -438,7 +441,7 @@ html[data-pages="fade"]{view-transition-name:root}
 @media (prefers-reduced-motion:reduce){.m,.h .ch{opacity:1!important;transform:none!important;transition:none!important}
  .scrollcue,.cue-mouse em{animation:none}
  .kb img{animation:none!important}.progress{display:none}.btn{transition:none}}
-@media (max-width:820px){main section{padding:64px 0}.pt,.hero-beside .wrap,.hero-monogram .wrap{grid-template-columns:1fr;gap:28px}.pt-right .pt .pic{order:0}
+@media (max-width:820px){main section{padding:64px 0}.pt,.hero-beside .wrap,.hero-monogram .wrap{grid-template-columns:1fr;gap:28px}.pt .pic:has(img){position:static}.pt-right .pt .pic{order:0}
  .hero .wrap{padding:110px 0 64px}.hero-monogram .wrap{padding:100px 0 130px}.mono-pic img{max-height:240px}.card{padding:26px}}
 `;
 }
