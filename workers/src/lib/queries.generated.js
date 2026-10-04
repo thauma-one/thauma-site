@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "5db997a988b82902";
+export const SOURCE_DIGEST = "98883c5b1d3d4239";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -877,11 +877,15 @@ LIMIT 1;`,
 VALUES (:resource_id, :audience, :partner_id, :can_edit, :shared_by, :now)
 ON CONFLICT(resource_id, audience) DO UPDATE SET
   can_edit = excluded.can_edit, partner_id = excluded.partner_id;`,
+  resource_group_shares_clear: `DELETE FROM resource_group_shares WHERE resource_id = :resource_id;`,
   resource_group_shares_for: `SELECT g.audience, g.partner_id, p.display_name AS partner_name, g.can_edit, g.shared_at
   FROM resource_group_shares g
   LEFT JOIN partners p ON p.id = g.partner_id
  WHERE g.resource_id = :resource_id
  ORDER BY g.audience;`,
+  resource_move: `UPDATE resources
+SET owner_user_id = :new_owner, partner_id = :new_partner, updated_at = :now
+WHERE id = :id AND owner_user_id IS :old_owner AND partner_id IS :old_partner;`,
   resource_owner: `SELECT id, owner_user_id, partner_id, updated_at FROM resources WHERE id = :id;`,
   resource_share_add: `INSERT INTO resource_shares (resource_id, user_id, shared_by, shared_at, can_edit)
 VALUES (:resource_id, :user_id, :shared_by, :now, :can_edit)
@@ -894,6 +898,7 @@ ON CONFLICT(resource_id, user_id) DO UPDATE SET can_edit = excluded.can_edit;`,
   JOIN users u ON u.id = sh.user_id
  WHERE sh.resource_id = :resource_id
  ORDER BY u.name COLLATE NOCASE;`,
+  resource_shares_clear: `DELETE FROM resource_shares WHERE resource_id = :resource_id;`,
   resource_upsert: `INSERT INTO resources
   (id, partner_id, owner_user_id, title, description, link, photo, visibility,
    created_by, created_at, updated_at)

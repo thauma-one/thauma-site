@@ -582,6 +582,77 @@ await check("someone it was shared with as Can edit may save it, and it stays th
   } finally { EXTRA = {}; }
 });
 
+/* Chase's review, 2026-10-03: "Where it goes" could not be changed once a
+   resource was saved, and personal resources could not be deleted. */
+const resArgs = (db, q) => {
+  const a = argsOf(db, q);
+  if (!a) return null;
+  const names = [...QUERIES[q].matchAll(/:([a-z_][a-z0-9_]*)/g)].map((m) => m[1]);
+  return Object.fromEntries(names.map((n, i) => [n, a[i]]));
+};
+const delReq = (path, token = MIRA) => new Request("https://dev.thauma.one" + path, {
+  method: "DELETE", headers: { "Cf-Access-Jwt-Assertion": token } });
+
+await check("a personal resource is deleted by its owner (the stored partner, NULL, is matched)", async () => {
+  EXTRA = { resource_owner: [{ id: "r_m", owner_user_id: "u_mira", partner_id: null }] };
+  try {
+    const db = makeDb();
+    const res = await staffData.fetch(delReq("/api/staff-data?kind=resource&id=r_m"), env(db));
+    eq(res.status, 200, "status");
+    eq(resArgs(db, "resource_delete"), { id: "r_m", partner_id: null }, "deleted by the stored row");
+  } finally { EXTRA = {}; }
+});
+
+await check("an administrator moves their own resource to the organization's shelf, shares cleared", async () => {
+  EXTRA = { resource_owner: [{ id: "r_b", owner_user_id: "u_boss", partner_id: null }] };
+  try {
+    const db = makeDb();
+    const res = await staffData.fetch(post("/api/staff-data",
+      { kind: "resource", id: "r_b", title: "Guide", shelf: "institutional" }, BOSS), env(db));
+    eq(res.status, 200, "status");
+    const up = resArgs(db, "resource_upsert");
+    eq([up.owner_user_id, up.partner_id], ["u_boss", null], "saved where it was first");
+    const mv = resArgs(db, "resource_move");
+    eq([mv.old_owner, mv.old_partner, mv.new_owner, mv.new_partner],
+       ["u_boss", null, null, "p_mira"], "moved");
+    assert(argsOf(db, "resource_shares_clear") && argsOf(db, "resource_group_shares_clear"), "shares kept");
+  } finally { EXTRA = {}; }
+});
+
+await check("an administrator moves the organization's resource to their own shelf", async () => {
+  EXTRA = { resource_owner: [{ id: "r_o", owner_user_id: null, partner_id: "p_mira" }] };
+  try {
+    const db = makeDb();
+    const res = await staffData.fetch(post("/api/staff-data",
+      { kind: "resource", id: "r_o", title: "Guide", shelf: "mine" }, BOSS), env(db));
+    eq(res.status, 200, "status");
+    const mv = resArgs(db, "resource_move");
+    eq([mv.old_owner, mv.old_partner, mv.new_owner, mv.new_partner],
+       [null, "p_mira", "u_boss", null], "moved");
+    assert(!argsOf(db, "resource_shares_clear"), "a personal move needs no clearing");
+  } finally { EXTRA = {}; }
+});
+
+await check("no move without a shelf, for a Can edit sharer, or for staff to the organization", async () => {
+  try {
+    EXTRA = { resource_owner: [{ id: "r_o", owner_user_id: null, partner_id: "p_mira" }] };
+    let db = makeDb();
+    eq((await staffData.fetch(post("/api/staff-data", { kind: "resource", id: "r_o", title: "T" }, BOSS), env(db))).status, 200, "plain save");
+    assert(!argsOf(db, "resource_move"), "a save that says nothing moved it");
+
+    EXTRA = { resource_owner: [{ id: "r_x", owner_user_id: "u_other", partner_id: null }],
+              resource_can_edit_shared: [{ ok: 1 }] };
+    db = makeDb();
+    eq((await staffData.fetch(post("/api/staff-data", { kind: "resource", id: "r_x", title: "T", shelf: "mine" }, BOSS), env(db))).status, 200, "editor's save");
+    assert(!argsOf(db, "resource_move"), "a Can edit sharer took it");
+
+    EXTRA = { resource_owner: [{ id: "r_m", owner_user_id: "u_mira", partner_id: null }] };
+    db = makeDb();
+    eq((await staffData.fetch(post("/api/staff-data", { kind: "resource", id: "r_m", title: "T", shelf: "institutional" }), env(db))).status, 403, "staff to the organization");
+    assert(!argsOf(db, "resource_move"), "staff moved it");
+  } finally { EXTRA = {}; }
+});
+
 await check("a directory card or resource someone else saved meanwhile is not overwritten", async () => {
   EXTRA = {
     directory_for_partner: [{ id: "dc_m1", name: "Pastor Dragan", role: "Home church", emails: "[]", phones: "[]",
@@ -756,6 +827,11 @@ await check("the site is made on first opening, its address from the name", asyn
     assert(called(db, "partner_site_create")[0].args.includes("mirapetrovic"), "the address from the name");
     eq(body.site.subdomain, "mirapetrovic", "answered");
     eq([body.can.edit, body.can.owner], [true, true], "the owner edits");
+    /* Each language's built-in page names, so the editor's page names
+       follow Editing ⇄ Reference (Chase, 2026-10-03). */
+    const { word } = await import("../src/site/model.js");
+    eq([body.page_names && body.page_names.sr && body.page_names.sr.about, body.page_names.en.about],
+       [word("sr", "about"), word("en", "about")], "page names per language");
   } finally { EXTRA = {}; }
 });
 

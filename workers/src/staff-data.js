@@ -284,6 +284,8 @@ export default {
            belong to whoever is editing it — or to the organization, with an
            administrator asking. */
         let keepOwner = owner_user_id;
+        let keepPartner = owner_user_id ? null : partner_id;
+        let moveTo = null;
         if (body.id) {
           const existing = await db.queryOne("resource_owner", { id: body.id });
           if (!existing) return json({ error: "No such resource." }, 404);
@@ -310,11 +312,26 @@ export default {
                   "your own.",
             }, 403);
           }
+          /* SAVED WHERE IT IS, under the stored owner and partner; the
+             upsert's guard refuses anything else. "Where it goes" is a MOVE,
+             done after, and only by whoever may move it: the owner of a
+             personal one (to the organization: administrators only, checked
+             above), or an administrator for the organization's. Never a
+             "Can edit" sharer — it stays the owner's. A save that does not
+             say where leaves it where it is. */
+          keepOwner = existing.owner_user_id;
+          keepPartner = existing.partner_id;
+          if (!editor && (body.shelf === "institutional" || body.shelf === "mine")) {
+            const toOwner = body.shelf === "institutional" ? null : user_id;
+            if (toOwner !== existing.owner_user_id) {
+              moveTo = { owner: toOwner, partner: toOwner ? null : partner_id };
+            }
+          }
         }
 
         const id = body.id || newId("rs");
         await db.query("resource_upsert", {
-          id, partner_id: keepOwner ? null : partner_id,
+          id, partner_id: keepPartner,
           owner_user_id: keepOwner, title,
           description: str(body.description, 4000),
           link: safeLink(body.link),
@@ -323,6 +340,16 @@ export default {
           created_by: user_id,
           now,
         });
+        if (moveTo) {
+          await db.query("resource_move", {
+            id, new_owner: moveTo.owner, new_partner: moveTo.partner,
+            old_owner: keepOwner, old_partner: keepPartner, now,
+          });
+          if (moveTo.owner === null) {
+            await db.query("resource_shares_clear", { resource_id: id });
+            await db.query("resource_group_shares_clear", { resource_id: id });
+          }
+        }
         const resources = await db.query("resources_visible", { partner_id, levels, user_id, is_admin: isAdmin ? 1 : 0 });
         return json({ resources });
       }
@@ -428,7 +455,9 @@ export default {
               : "That resource belongs to somebody else.",
           }, 403);
         }
-        await db.query("resource_delete", { id, partner_id });
+        /* The STORED row's partner: a personal resource has none, and the
+           caller's never matched it, so deleting one did nothing. */
+        await db.query("resource_delete", { id, partner_id: existing.partner_id });
         const resources = await db.query("resources_visible", { partner_id, levels, user_id, is_admin: isAdmin ? 1 : 0 });
         return json({ resources });
       }

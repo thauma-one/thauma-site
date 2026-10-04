@@ -1206,7 +1206,32 @@ WHERE resources.owner_user_id IS :owner_user_id
 
 
 -- name: resource_delete
+-- :partner_id is the STORED row's (personal resources keep NULL there), read
+-- by the endpoint after it has checked who may delete. Passing the caller's
+-- partner instead never matched a personal resource, so deleting one did
+-- nothing (fixed 2026-10-03).
 DELETE FROM resources WHERE id = :id AND partner_id IS :partner_id;
+
+
+-- name: resource_move
+-- "Where it goes", changed on a saved resource: personal (owner, no partner)
+-- or the organization's (no owner, a partner). resource_upsert never moves a
+-- row (its guard keeps ownership as it was), so this is the one place that
+-- does, and only from the ownership the endpoint just checked.
+UPDATE resources
+SET owner_user_id = :new_owner, partner_id = :new_partner, updated_at = :now
+WHERE id = :id AND owner_user_id IS :old_owner AND partner_id IS :old_partner;
+
+
+-- name: resource_shares_clear
+-- On the organization's shelf a share means nothing: everyone with the level
+-- reads it, and only the owner shares. Cleared when a resource moves there,
+-- so moving it back does not resurrect stale shares.
+DELETE FROM resource_shares WHERE resource_id = :resource_id;
+
+
+-- name: resource_group_shares_clear
+DELETE FROM resource_group_shares WHERE resource_id = :resource_id;
 
 
 -- ============================================================================

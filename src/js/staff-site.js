@@ -462,8 +462,21 @@
     var b = state.langB, v = b && words && words[b];
     return v ? '<small class="ms-ref" lang="' + esc(b) + '">' + esc(v) + '</small>' : '';
   }
+  /* A page's name IN THE LANGUAGE ASKED: the owner's own, else the name the
+     site gives it in that language (page_names, from the server) — never the
+     console's word, which ignored Editing ⇄ Reference (Chase, 2026-10-03). */
+  function builtInName(id, lang) {
+    var n = state.body.page_names && state.body.page_names[lang];
+    return (n && n[id]) || tr('ws.page.' + id);
+  }
   function pageLabel(p, lang) {
-    return (p.label && p.label[lang]) || tr('ws.page.' + p.id);
+    return (p.label && p.label[lang]) || builtInName(p.id, lang);
+  }
+  /* The Reference line under a page's name: what that language's visitors
+     read in the menu, renamed or not. */
+  function refPage(p) {
+    var b = state.langB;
+    return b ? '<small class="ms-ref" lang="' + esc(b) + '">' + esc(pageLabel(p, b)) + '</small>' : '';
   }
   /* WHERE SOMETHING SENDS A VISITOR: first what kind — nothing, one of the
      site's pages, or a web address — as three plain choices; then only the
@@ -551,8 +564,8 @@
         }).join('') + '</select></label>' +
       (p.id === 'home' ? '<span class="ws-always">' + esc(tr('ws.always')) + '</span>' : sw('data-page-on="' + pi + '"', p.on, tr('ws.shown'))) +
       '</div>' +
-      '<label class="ws-pagename"><span>' + esc(tr('ws.nameInMenu')) + '</span>' + ref(p.label) +
-        '<input type="text" maxlength="40" data-page-label="' + pi + '" value="' + esc((p.label || {})[state.langA] || '') + '" placeholder="' + esc(tr('ws.page.' + p.id)) + '" lang="' + esc(state.langA) + '"></label>';
+      '<label class="ws-pagename"><span>' + esc(tr('ws.nameInMenu')) + '</span>' + refPage(p) +
+        '<input type="text" maxlength="40" data-page-label="' + pi + '" value="' + esc((p.label || {})[state.langA] || '') + '" placeholder="' + esc(builtInName(p.id, state.langA)) + '" lang="' + esc(state.langA) + '"></label>';
 
     var n = p.sections.length;
     /* Room below an open section, so even the last one can rise to the top. */

@@ -273,6 +273,8 @@ await check("every real query converts with its documented params", async () => 
     photo_master: null, bio_photo_master: null,
     file_synced_at: null, file_error: null,
     visibility: "staff", created_by: "u_chase", levels: "staff",
+    // a resource changing shelves (resource_move)
+    old_owner: "u_chase", old_partner: null, new_owner: null, new_partner: "p_chase",
     // administration
     user_id: "u_1", role: "admin", granted_by: "u_1", status: "active",
     slug: "a-partner", display_name: "A Partner",
