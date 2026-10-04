@@ -613,6 +613,15 @@ ${COLOUR_JS}
       '.vlink.is-first{background:var(--prog);color:var(--on-prog);box-shadow:0 8px 22px -10px var(--glow-p)}' +
       '.vlink.is-first:hover{background:var(--prog);box-shadow:0 10px 26px -8px var(--glow-p)}' +
       '.varrow{font-size:15px;line-height:1}' +
+      /* THE RAIL'S STYLE AND PLACE, from the page around it (data-links,
+         data-links-align): Outlined drops the filled first button; Subtle
+         is words and an arrow, as chaseroush.com's updates page does. */
+      '.vlinks.is-outline .vlink.is-first{background:none;color:var(--fg);box-shadow:none}' +
+      '.vlinks.is-subtle{gap:6px 26px}' +
+      '.vlinks.is-subtle .vlink{border:0;padding:4px 0;border-radius:0;background:none;box-shadow:none;color:var(--fg);font-weight:600}' +
+      '.vlinks.is-subtle .vlink:hover{background:none;transform:none;text-decoration:underline;text-underline-offset:4px}' +
+      '.vlinks.is-subtle .varrow{color:var(--prog)}' +
+      '.vlinks.al-center{justify-content:center}.vlinks.al-right{justify-content:flex-end}' +
 
       '.foot{margin-top:20px;padding-top:12px;border-top:1px solid var(--line);' +
         'font-size:12px;color:var(--dim)}' +
@@ -1306,13 +1315,13 @@ ${COLOUR_JS}
      and https before storing it, and this refuses it again before it becomes
      an href — because a row could predate that check, and a javascript: URL
      in a link on somebody else's website is script execution on their page. */
-  function linkRail(links) {
+  function linkRail(links, railStyle, railAlign) {
     var usable = (links || []).filter(function (l) {
       return l && l.label && /^https?:\/\//i.test(String(l.url || ''));
     });
     if (!usable.length) return null;
 
-    var rail = el('div', 'vlinks');
+    var rail = el('div', 'vlinks' + (railStyle ? ' is-' + railStyle : '') + (railAlign ? ' al-' + railAlign : ''));
     usable.forEach(function (l, i) {
       var a = el('a', 'vlink' + (i === 0 ? ' is-first' : ''));
       a.appendChild(el('span', null, l.label));
@@ -1424,7 +1433,9 @@ ${COLOUR_JS}
       body = prayerCards(data.prayer || [], lang);
     } else if (kind === 'videos') {
       body = videoCards(data.videos || [], lang);
-      var rail = linkRail(data.video_links);
+      var rs = node.getAttribute('data-links'), ra = node.getAttribute('data-links-align');
+      var rail = linkRail(data.video_links, rs === 'outline' || rs === 'subtle' ? rs : '',
+                          ra === 'center' || ra === 'right' ? ra : '');
       /* The rail shows even with no videos: a channel that has not posted yet
          is exactly when "subscribe" is worth offering. */
       if (rail) {

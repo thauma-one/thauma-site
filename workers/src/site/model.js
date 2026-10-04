@@ -566,6 +566,12 @@ function cleanSection(raw, langs) {
   if (raw.type === "text" || raw.type === "photoText") {
     s.verseStyle = ["quote", "line", "mark"].includes(raw.verseStyle) ? raw.verseStyle : "quote";
   }
+  /* Videos (BACKLOG §3): the buttons under them, and whether the newest
+     video's own title and date head the section. */
+  if (raw.type === "videos") {
+    s.linkStyle = ["outline", "subtle"].includes(raw.linkStyle) ? raw.linkStyle : "buttons";
+    s.titleFrom = raw.titleFrom === "latest" ? "latest" : "words";
+  }
   if (spec.items === "cards") {
     /* Written words only. A blank card is kept (it was just added and is
        being typed into); the page simply does not draw it. */

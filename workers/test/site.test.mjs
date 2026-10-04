@@ -764,5 +764,16 @@ check("links: Large, then Standard, then Small, each in order; a type label; Sma
   assert(/<ul class="linklist m lt-small"><li><a [^>]*><b>A<\/b>/.test(html), "small: no picture");
 });
 
+check("videos: the buttons' style and alignment reach the widget; the newest video may head the section", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  d.pages[0].sections = [{ id: "v1", type: "videos", variant: "stage", align: "center", linkStyle: "subtle", titleFrom: "latest", words: { en: { heading: "Watch" } } }];
+  const html = page(d, "home", "en", { payload: { ...payload, videos: [{ video_id: "x", title: "Easter <live>", published_at: "2026-04-05" }] } });
+  assert(/data-widget="videos"[^>]*data-links="subtle" data-links-align="center"/.test(html), "options");
+  assert(/<p class="kicker m"><time datetime="2026-04-05" data-local>April 5, 2026<\/time><\/p><h2 class="h m">Easter &lt;live&gt;<\/h2>/.test(html), "latest title, escaped, with its date");
+  d.pages[0].sections[0].titleFrom = "nonsense"; d.pages[0].sections[0].linkStyle = "x";
+  const plain = page(d, "home", "en", { payload: { ...payload, videos: [{ video_id: "x", title: "T", published_at: "2026-04-05" }] } });
+  assert(!/data-links=/.test(plain) && />Watch</.test(plain), "defaults");
+});
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

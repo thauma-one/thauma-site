@@ -738,7 +738,22 @@ function renderSection(sec, ctx) {
       return `<section${cls("data")}><div class="wrap">${heading(w("heading"))}${sub}${widget("prayer")}</div></section>`;
     case "videos":
       if (!(ctx.payload.videos || []).length && !(ctx.payload.video_links || []).length) return "";
-      return `<section${cls("data")}><div class="wrap">${heading(w("heading"))}${sub}${widget("videos")}</div></section>`;
+    {
+      /* The buttons follow the section's alignment and chosen style; the
+         heading may be the newest video's title, its date above it. */
+      const al = sec.align === "center" || sec.align === "right" ? sec.align : "";
+      const extra = `${sec.linkStyle && sec.linkStyle !== "buttons" ? ` data-links="${esc(sec.linkStyle)}"` : ""}${al ? ` data-links-align="${al}"` : ""}`;
+      const v = (ctx.payload.videos || [])[0];
+      let head = heading(w("heading"));
+      if (sec.titleFrom === "latest" && v && v.title) {
+        let when = "";
+        try { when = new Date(v.published_at).toLocaleDateString(lang, { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }); } catch { /* no date */ }
+        /* The visitor's own day, as the video card below shows it: written
+           in UTC here, then re-read in the browser's time zone. */
+        head = `${when ? `<p class="kicker m"><time datetime="${esc(v.published_at)}" data-local>${esc(when)}</time></p>` : ""}<h2 class="h m">${esc(v.title)}</h2>`;
+      }
+      return `<section${cls("data")}><div class="wrap">${head}${sub}${widget("videos", extra)}</div></section>`;
+    }
     case "newsletters": {
       const list = (ctx.payload.mailings || []).filter((m) => m.url).slice(0, 12);
       if (!list.length) return "";
@@ -1073,6 +1088,7 @@ function footer({ doc, lang, fallback, name, pages, href, label, socials, custom
    dependencies, and it does nothing at all for reduced motion. */
 const MOTION_JS = `(function(){
 var d=document.documentElement,b=document.querySelector('.menubtn');
+[].forEach.call(document.querySelectorAll('time[data-local]'),function(t){try{var x=new Date(t.dateTime);if(!isNaN(x))t.textContent=x.toLocaleDateString(d.lang,{day:'numeric',month:'long',year:'numeric'})}catch(e){}});
 if(b)b.addEventListener('click',function(){var o=d.classList.toggle('menu-open');b.setAttribute('aria-expanded',o)});
 var still=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
 var hs=d.getAttribute('data-headings');
