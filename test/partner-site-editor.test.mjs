@@ -198,6 +198,23 @@ await check("every section lines up: left, centered, right or indented; a Words 
   eq(sent.filter((x) => x.action === "save").pop().draft.pages.filter((p) => p.id === "mission")[0].sections[0].align, "right", "saved");
 });
 
+await check("the opening's Look has this page's scroll indicator switch; off saves on the page", async () => {
+  const { d, sent, click, pages } = await boot();
+  pages();
+  click(d.querySelector('[data-open-page="home"]'));
+  click(d.querySelector('[data-edit-sec="0"]'));            // Home's opening
+  click(d.querySelector('[data-sectab="look"]'));
+  const cue = d.querySelector('[data-page-cue]');
+  assert(cue && cue.getAttribute("aria-checked") === "true", "a switch, on");
+  click(cue);
+  await settle(900);
+  eq(sent.filter((x) => x.action === "save").pop().draft.pages[0].cue, false, "saved off on Home");
+  assert(d.querySelector('[data-page-cue]').getAttribute("aria-checked") === "false", "shown off");
+  click(d.querySelector('[data-edit-sec="1"]'));
+  click(d.querySelector('[data-sectab="look"]'));
+  assert(!d.querySelector('[data-page-cue]'), "not on a section that has no indicator");
+});
+
 await check("where a button goes: nothing, a page, or a web address — three plain choices", async () => {
   const { w, d, sent, click, pages } = await boot();
   pages();

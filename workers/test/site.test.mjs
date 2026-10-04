@@ -534,5 +534,14 @@ check("the page carries each section's alignment, and its buttons follow it", ()
   }
 });
 
+check("a page may hide the opening's scroll indicator; every page shows it until told not to", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  eq(cleanDoc(d, ["en"]).pages.map((p) => p.cue), d.pages.map(() => true), "on by default");
+  assert(page(d).includes('class="scrollcue"'), "Home shows it");
+  d.pages[0].cue = false;
+  eq(cleanDoc(d, ["en"]).pages[0].cue, false, "kept off");
+  assert(!page(d).includes('class="scrollcue"'), "Home hides it");
+});
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

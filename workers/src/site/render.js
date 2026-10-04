@@ -509,7 +509,7 @@ function renderSection(sec, ctx) {
          page to get a feel for what I'm actually wanting"): a short line in
          the accent over the word "Scroll", the two bobbing together. */
       /* Every kind is in the markup; html[data-cue] (Design › Motion) shows one. */
-      const cue = `<button type="button" class="scrollcue" aria-hidden="true" tabindex="-1"><i></i>` +
+      const cue = !ctx.cueOn ? "" : `<button type="button" class="scrollcue" aria-hidden="true" tabindex="-1"><i></i>` +
         `<svg class="cue-arrow" viewBox="0 0 24 24"><path d="M5 9l7 7 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>` +
         `<b class="cue-mouse"><em></em></b><span>${esc(word(lang, "scroll"))}</span></button>`;
       if (sec.variant === "monogram") {
@@ -622,6 +622,8 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
   const href = (id, l = lang) => `${base}/${l}/${id === "home" ? "" : id + "/"}${draft ? "?draft" : ""}`;
   const ctx = {
     lang, fallback, design, slug: site.slug, payload, needs: {}, draft,
+    /* This page's own say over the opening's scroll indicator. */
+    cueOn: !page || page.cue !== false,
     /* Widgets follow the page: light, dark, or — a Custom site that follows
        the visitor's device — the device too. */
     widgetTheme: L.alt ? "auto" : L.scheme === "dark" ? "dark" : "light",

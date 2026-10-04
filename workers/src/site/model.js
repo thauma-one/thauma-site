@@ -513,6 +513,11 @@ export function cleanDoc(raw, catalog) {
     return {
       id,
       on: id === "home" ? true : !!p.on,
+      /* The opening's scroll indicator, per page (2026-10-03: "A 'Show
+         scroll indicator' option per page"). Shown unless switched off, so
+         every page saved before keeps it. Which kind is still the site's
+         one choice (Design › Motion › Scroll hint). */
+      cue: p.cue !== false,
       label,
       sections: (Array.isArray(p.sections) ? p.sections : []).slice(0, 30).map((s) => cleanSection(s, langs)).filter(Boolean),
     };

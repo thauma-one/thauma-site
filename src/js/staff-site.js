@@ -732,6 +732,12 @@
       }
       html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.align')) + '</span>' +
         chips('align:' + i, ['left', 'center', 'right', 'indent'], s.align || defaultAlign(s), function (v) { return tr('ws.align.' + v); }) + '</div>';
+      /* The opening's scroll indicator, for this page. Stored on the page;
+         offered here, where it shows. Not offered while the site's Scroll
+         hint is None: there would be nothing to show. */
+      if (s.type === 'hero' && (state.doc.design.motion || {}).cue !== 'none') {
+        html += '<div class="ws-field">' + sw('data-page-cue="' + state.doc.pages.indexOf(p) + '"', p.cue !== false, tr('ws.cueOnPage')) + '</div>';
+      }
       if (!FLAT[s.type]) {
         html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.bg')) + '</span>' +
           chips('raised:' + i, ['plain', 'raised'], s.raised ? 'raised' : 'plain', function (v) { return tr('ws.bg.' + v); }) + '</div>';
@@ -1429,6 +1435,11 @@
     if (d.socialRemove) {
       state.doc.links = state.doc.links.filter(function (l) { return l.kind !== d.socialRemove; });
       state.openSocial = null; drawLinks(); return changed();
+    }
+    if (d.pageCue !== undefined) {
+      var pc = state.doc.pages[+d.pageCue];
+      pc.cue = pc.cue === false;
+      drawSections(); return changed();
     }
     if (d.headerLinks !== undefined) { state.doc.design.headerLinks = !state.doc.design.headerLinks; drawLinks(); return changed(); }
     if (d.chip) {
