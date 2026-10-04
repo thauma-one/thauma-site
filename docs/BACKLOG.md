@@ -88,6 +88,21 @@ in the 2026-10-03 session; start a fresh one.
 
 ## 3. Site Creator
 
+**Done on dev 2026-10-03/04 (not yet published):** text size/color in a box;
+alignment for every section; per-page scroll indicator; placeholder words;
+Opening → Hero with an accent line; jump-to-section; Header section; verses
+(3 looks); Photo and Words (wrap, uncropped portraits, transparent PNGs);
+Navigation tab (current-page looks incl. thauma.one's pinging underline,
+White/Your color, line under the menu, phone drop-down/full/drawer with the
+language inside, Give page vs giving link, social icons in the menu); Custom
+Cards; Sign-up/Contact/Give styles; Links tiers, type label, quieter
+pictures; Videos button styles + newest video as title; phone timeline
+(chaseroush.com design, smooth open/close/X, line in sync); full-width photo
+height + press-to-aim; Links tab smart order + site icons; clean links;
+preview always a real desktop. Set aside by Chase for later: "Bold" and
+"Dot below" nav looks. Still open below: meta tags, photo editor, R2 hygiene,
+footer options, Sharing vs Site Creator colors.
+
 Chase: "the general interface for the Site Creator is really good!"
 
 ### Everywhere
