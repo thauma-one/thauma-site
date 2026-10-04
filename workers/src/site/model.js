@@ -373,6 +373,9 @@ export function safeLink(u) {
   const s = str(u, 500);
   const m = /^page:([a-z]+)$/.exec(s);
   if (m) return PAGES.includes(m[1]) ? s : "";
+  /* A section of the same page (Chase, 2026-10-03: "Jump to section" for
+     buttons that point at the same page). Its id, as sections store it. */
+  if (/^section:[a-z0-9]{2,24}$/i.test(s)) return s;
   return safeUrl(s);
 }
 

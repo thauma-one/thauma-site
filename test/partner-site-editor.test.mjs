@@ -188,6 +188,33 @@ await check("where a button goes: nothing, a page, or a web address — three pl
   eq(sent.filter((x) => x.action === "save").pop().draft.pages[0].sections[1].link, "https://blog.example.org/", "saved");
 });
 
+await check("a button can jump to another section of the same page, picked by its name", async () => {
+  const { w, d, sent, click, pages } = await boot();
+  pages();
+  click(d.querySelector('[data-open-page="home"]'));
+  click(d.querySelector('[data-edit-sec="0"]'));
+  click(d.querySelector('[data-sectab="buttons"]'));
+  const kind = d.querySelector('[data-chip="linkkind:sec:0"][data-value="section"]');
+  assert(kind, "no way to pick a section");
+  click(kind);
+  const pick = d.querySelector('[data-link="sec:0"]');
+  const names = [...pick.options].map((o) => o.textContent);
+  eq(names.length, 1, "only the OTHER sections of this page");
+  assert(/^Photo and words · /.test(names[0]), `named by kind and heading: ${names[0]}`);
+  await settle(900);
+  const saved = sent.filter((x) => x.action === "save").pop().draft.pages[0].sections;
+  eq(saved[0].link, "section:" + saved[1].id, "saved as a jump to it");
+});
+
+await check("a footer link is on every page, so it offers no section to jump to", async () => {
+  const { d, click } = await boot();
+  click(d.querySelector('[data-ws-tab="links"]'));
+  click(d.querySelector("[data-custom-add]"));
+  const chips = [...d.querySelectorAll('[data-chip^="linkkind:custom"]')].map((c) => c.dataset.value);
+  assert(chips.includes("page") && chips.includes("url"), `the new link has no destination choices: ${chips}`);
+  assert(!chips.includes("section"), "a page-less link offered a section");
+});
+
 await check("a Links section: plain rows, one opened at a time", async () => {
   const { w, d, sent, click, pages } = await boot();
   pages();

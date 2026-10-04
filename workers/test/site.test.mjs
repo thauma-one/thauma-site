@@ -232,7 +232,7 @@ check("the language menu is always a dropdown, by each language's own name, on a
 check("the opening fills the screen, with an arrow that bounces until the visitor scrolls", () => {
   const html = page(starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" }));
   assert(/\.hero\{[^}]*min-height:calc\(100svh - 69px\)/.test(html), "the whole first screen");
-  assert(/<section class="hero hero-behind[^"]*">[\s\S]*?<button type="button" class="scrollcue"/.test(html), "the arrow");
+  assert(/<section class="hero hero-behind[^"]*"[^>]*>[\s\S]*?<button type="button" class="scrollcue"/.test(html), "the arrow");
   assert(/@keyframes cue/.test(html) && /html\.scrolled \.scrollcue\{opacity:0/.test(html), "bouncing, and gone once scrolled");
   assert(/\.scrollcue,\.cue-mouse em\{animation:none\}/.test(html), "still, for anyone who asked for less motion");
   /* Design › Motion › Scroll hint picks which (Chase, 2026-10-01). */
@@ -253,8 +253,8 @@ check("the ministry's widgets sit centered unless put left; the newest newslette
   const d = blankWith([{ type: "newsletters", variant: "latest", words: { en: { bold: "News" } } },
                        { type: "timeline", align: "left", words: { en: { bold: "Road" } } }]);
   const html = page(d, "home", "en", { payload: { ...payload, milestones: [{ id: "m" }], mailings: mail } });
-  assert(/<section class="data al-center">/.test(html), "centered, by default");
-  assert(/<section class="data al-left">/.test(html), "left, when chosen");
+  assert(/<section class="data al-center"[^>]*>/.test(html), "centered, by default");
+  assert(/<section class="data al-left"[^>]*>/.test(html), "left, when chosen");
   assert(html.includes('<a class="latest m" href="https://thauma.one/archive/chase-roush/news/september/">'), "the newest");
   assert(!html.includes('href="https://thauma.one/archive/chase-roush/news/august/"'), "only the newest is linked");
   assert(html.includes('<a href="https://thauma.one/archive/chase-roush/news/" target="_blank" rel="noopener">See past newsletters</a>'), "the rest, at the list's archive");
@@ -509,6 +509,40 @@ check("the line is centered on a centered hero, and wears the hero's own ink on 
   assert(/\.hero-words \.rule\{margin-left:auto;margin-right:auto\}/.test(html), "not centered");
   d.design.look = "bold";
   assert(/\.hero-words \.rule\{background:/.test(page(d)), "an accent line on an accent background");
+});
+
+/* ---------------------------------------- jump to a section (2026-10-03) */
+
+check("a button can jump to a section of the same page, which a visitor's page can land on", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en", "hr"], fallback: "en" });
+  const [hero, second] = d.pages[0].sections;
+  eq(cleanDoc({ ...d, pages: d.pages.map((p, i) => i ? p : { ...p, sections: [{ ...hero, link: "section:" + second.id }, second] }) }, ["en", "hr"])
+    .pages[0].sections[0].link, "section:" + second.id, "kept on save");
+  eq(cleanDoc({ ...d, pages: d.pages.map((p, i) => i ? p : { ...p, sections: [{ ...hero, link: "section:<x>" }, second] }) }, ["en", "hr"])
+    .pages[0].sections[0].link, "", "a malformed one is dropped");
+  hero.link = "section:" + second.id; hero.words.en.button = "Read more";
+  const html = page(d);
+  assert(html.includes(`href="#s-${second.id}"`), "the button does not point at the section");
+  assert(new RegExp(`<section[^>]*id="s-${second.id}"`).test(html), "a VISITOR's page has no anchor to land on");
+  assert(/main section\[id\]\{scroll-margin-top:68px\}/.test(html), "it would land under the sticky header");
+  assert(/@media \(prefers-reduced-motion:no-preference\)\{html\{scroll-behavior:smooth\}\}/.test(html),
+    "smooth only for those who allow motion");
+});
+
+check("a jump to a section that is gone goes nowhere, and a page's sections never point at another page's", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en", "hr"], fallback: "en" });
+  d.pages[0].sections[0].link = "section:gone12";
+  assert(!/href="#s-gone12"/.test(page(d)), "a dead anchor");
+  const about = d.pages.find((p) => p.id === "about");
+  d.pages[0].sections[0].link = "section:" + about.sections[0].id;
+  assert(!page(d).includes(`#s-${about.sections[0].id}`), "jumped into another page");
+});
+
+check("opening a milestone scrolls just enough, never past the timeline's title", () => {
+  const html = page(starter("full", { name: "Chase Roush", langs: ["en", "hr"], fallback: "en" }));
+  assert(/closest\('\[data-widget="roadmap"\]'\)/.test(html), "the timeline is not watched");
+  assert(/by=Math\.min\(need,room\)/.test(html), "the scroll is not capped at the title");
+  assert(/behavior:still\?'auto':'smooth'\}\)\},380\)/.test(html), "it ignores reduced motion");
 });
 
 /* ---------------------------------------------------------- placeholders */

@@ -483,11 +483,30 @@
      one thing that kind needs. (Chase, 2026-09-29, of the dropdown's
      "Another address…": "I don't know what that is there for.") A page that
      is switched off is still offered, marked; the link shows once it is on. */
+  /* The other sections of the page being edited, for a button that jumps
+     within it ("section:<id>"). Only a section's own links can: a footer or
+     custom link is on every page, so "this page" means nothing there. */
+  function jumpTargets(key) {
+    if (!/^(sec|item):/.test(key)) return [];
+    var self = currentPage().sections[+key.split(':')[1]];
+    return currentPage().sections.filter(function (x) { return x !== self; });
+  }
+  function sectionName(x) {
+    var w = (x.words && (x.words[state.langA] || x.words[state.doc.fallback])) || {};
+    var words = String(w.heading || w.quote || w.caption || '').replace(/<[^>]*>/g, '').trim();
+    return tr('ws.sec.' + x.type) + (words ? ' · ' + words : '');
+  }
   function linkPicker(key, value, allowNone) {
     var v = value || '';
-    var kind = !v ? 'none' : v.indexOf('page:') === 0 ? 'page' : 'url';
-    var kinds = (allowNone ? ['none'] : []).concat(['page', 'url']);
+    var kind = !v ? 'none' : v.indexOf('page:') === 0 ? 'page' : v.indexOf('section:') === 0 ? 'section' : 'url';
+    var targets = jumpTargets(key);
+    var kinds = (allowNone ? ['none'] : []).concat(['page'], targets.length || kind === 'section' ? ['section'] : [], ['url']);
     var html = chips('linkkind:' + key, kinds, kind, function (k) { return tr('ws.link.kind.' + k); });
+    if (kind === 'section') {
+      html += '<select data-link="' + esc(key) + '">' + targets.map(function (x) {
+        return '<option value="section:' + esc(x.id) + '"' + (v === 'section:' + x.id ? ' selected' : '') + '>' + esc(sectionName(x)) + '</option>';
+      }).join('') + '</select>';
+    }
     if (kind === 'page') {
       html += '<select data-link="' + esc(key) + '">' + state.doc.pages.map(function (p) {
         var name = pageLabel(p, state.langA);
@@ -689,7 +708,9 @@
     if (state.sectab === 'links') {
       html += '<div class="ws-linkrows">' + (s.items || []).map(function (it, j) {
         var t = (it.words || {})[state.langA] || {}, k = i + ':' + j, open = state.openItem === j;
-        var where = !it.url || it.url === 'https://' ? tr('ws.link.nowhere') : it.url.indexOf('page:') === 0
+        var jump = it.url && it.url.indexOf('section:') === 0 &&
+          currentPage().sections.filter(function (x) { return 'section:' + x.id === it.url; })[0];
+        var where = !it.url || it.url === 'https://' ? tr('ws.link.nowhere') : jump ? sectionName(jump) : it.url.indexOf('page:') === 0
           ? pageLabel(state.doc.pages.filter(function (x) { return 'page:' + x.id === it.url; })[0] || { id: it.url.slice(5) }, state.langA) : it.url.replace(/^https?:\/\//, '');
         var head = '<div class="ws-linkrow' + (open ? ' is-open' : '') + '">' +
           (it.photo ? '<img src="' + esc(it.photo) + '" alt="">' : '') +
@@ -1287,7 +1308,9 @@
       else if (name.indexOf('linkkind:') === 0) {
         var key = name.slice(9);
         var firstPage = (state.doc.pages.filter(function (x) { return x.on && x.id !== 'home'; })[0] || state.doc.pages[0]).id;
-        setLink(key, val === 'none' ? '' : val === 'page' ? 'page:' + firstPage : 'https://');
+        var firstSec = jumpTargets(key)[0];
+        setLink(key, val === 'none' ? '' : val === 'page' ? 'page:' + firstPage :
+          val === 'section' ? (firstSec ? 'section:' + firstSec.id : '') : 'https://');
         if (state.tab === 'links') drawLinks(); else drawSections();
         var box = val === 'url' && $('wsRoot').querySelector('[data-link-url="' + key + '"]');
         if (box) box.focus();
