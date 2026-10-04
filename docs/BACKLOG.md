@@ -57,6 +57,25 @@ in the 2026-10-03 session; start a fresh one.
 - **DESIGN Subscribe / confirm / unsubscribe pages:** "just so plain and
   boring compared to the rest of the site." Match the brand everywhere.
 - **DESIGN Tags management:** "not user friendly."
+- **BUG Links in emails point at whichever site sent them** (found
+  2026-10-03). "Here We Go!" went out from dev with a dev.thauma.one
+  unsubscribe link: it works only while the Pi is on. Pointing every link at
+  thauma.one is NOT enough on its own: unsubscribe links are signed with
+  SIGNUP_SALT, and dev and staging sign with DIFFERENT keys (the same
+  subscriber got t=6fdef5df… from staging and t=bd4f0c25… from dev), so live
+  would refuse a dev-signed link. Fix: one SIGNUP_SALT on all three (set in
+  the Cloudflare dashboard for thauma and thauma-production, and in the Pi's
+  .dev.vars), THEN build every subscriber-facing link from thauma.one.
+  Changing the salt voids links already sent (today only Chase's tests) and
+  pending account/address/test-inbox links. Pictures already use thauma.one.
+- **BUG Tests and real sends still land in Gmail spam** (2026-10-03),
+  even to a proven Gmail test inbox. Confirmations from the same address
+  reach the inbox. Ruled out: SPF/DKIM present on both domains, DMARC p=none
+  on thauma.one, Resend reports "delivered". Seen so far: Gmail's reason is
+  "similar to messages that were identified as spam in the past"; the
+  newsletter template adds List-Unsubscribe headers and ~180 invisible
+  preheader characters that the confirmation template lacks; links point at
+  dev/next. Chase deferred this until after the Site Creator work.
 - **BUILD Opens and bounces,** with good UX. Note: 0016 has opened_at and
   click columns but no code writes them. Resend webhooks are the likely
   source; decide how much to show.
