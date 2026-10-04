@@ -103,15 +103,18 @@ preview always a real desktop; meta tags + sitemap + an Advanced tab (Google
 and share previews, title/description per language, name cards made at
 Publish); ONE photo editor (src/js/photo-editor.js, by purpose: site
 sections, hero, bands, email pictures, share pictures; non-destructive).
-R2 hygiene: readable upload names everywhere; unused uploads removed
-automatically once a day (media-cleanup.js on the cron, partners AND
-Thauma's mail folders, 30-day grace, no button: Chase wants storage
-managed by the system, never by a person). Text sizes in px like Word
+R2 hygiene: readable upload names everywhere; no button (Chase: storage
+is managed by the system, never by a person). A replaced picture is
+released when its editing ends (page closed, other draft opened, draft
+deleted; never at the save, because of Undo) and deleted if nothing
+anywhere names it; a daily sweep removes anything unused for 30 days
+(media-cleanup.js). Text sizes in px like Word
 (4–200, − / + or typed). Console loads Sora/Inter.
 Set aside by Chase for later: "Bold" and "Dot below" nav looks. Still open:
 footer options, Sharing vs Site Creator colors, moving Thauma's own photo
 tools (photo-crop.js, Website › Photos) onto the editor, Thauma's four
-page photos into R2 (the Pi token gets 403 on R2 writes; needs R2 Edit).
+page photos now in R2 (site/…, dfefacc); the old src/img copies and
+the stray _site_devtest/ build are for Chase to delete.
 
 Chase: "the general interface for the Site Creator is really good!"
 
@@ -202,7 +205,8 @@ Chase: "the general interface for the Site Creator is really good!"
   puts the social icons in the header menu).
 
 ### Footer
-- **BUG Standard and Subtle tagline colors look the same.**
+- Standard and Subtle tagline colors looked the same on Center: FIXED
+  2026-10-03 (render.js .foot-center .tagline no longer sets a color).
 - More footer options later ("We will need to edit the options of the
   footer some more in the future").
 
@@ -224,9 +228,7 @@ Chase: "the general interface for the Site Creator is really good!"
   - delete unused uploads, including those in drafts never published;
   - keep the original for re-editing, but never pile up edits;
   - readable object names. (DONE on dev, automatic daily cleanup.)
-  - Thauma's four page photos are repo files (src/img/home-worship-stage
-    and three others), not R2. Move to R2 site/ and point site.json at
-    /media/... once the Pi's token can write R2.
+  - Thauma's four page photos: DONE, in R2 under site/.
 
 ### Tabled (said "later")
 - The Sharing page's color picker in the Site Creator.
