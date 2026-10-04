@@ -839,5 +839,18 @@ check("the second color is a quick pick on a site too", () => {
   assert(/<span class="tc-accent2">two<\/span>/.test(html) && html.includes(".tc-accent2{color:var(--acc2)}"), "drawn in --acc2");
 });
 
+check("a verse may sit before, between or after the paragraphs; a title may sit above the photo, aligned, with a line", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  const sec = (extra) => ({ id: "s1", type: "photoText", variant: "left", photo: "https://thauma.one/media/p.jpg",
+    words: { en: { heading: "H", text: "One.\n\nTwo.\n\nThree.", verse: "V" } }, ...extra });
+  const body = (extra) => { d.pages[0].sections = [sec(extra)]; return page(d).match(/<section[^>]*id="s-s1"[\s\S]*?<\/section>/)[0]; };
+  assert(/<p>One\.<\/p><\/div><figure class="verse[\s\S]*<p>Two\.<\/p><p>Three\.<\/p>/.test(body({ versePos: "p1" })), "after paragraph 1");
+  assert(/<figure class="verse[\s\S]*<p>One\./.test(body({ versePos: "start" })), "before");
+  assert(/<p>Three\.<\/p><\/div><figure class="verse/.test(body({})), "after, by default");
+  const above = body({ titleInline: false, titleAlign: "center", titleLine: true });
+  assert(/<div class="wrap"><div class="th th-center"><h2[^>]*>[\s\S]*?<\/h2><span class="rule m"[^>]*><\/span><\/div><div class="pt">/.test(above), "above, centered, lined");
+  assert(/<div class="pt">[\s\S]*<div><h2/.test(body({})), "with the words, by default");
+});
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

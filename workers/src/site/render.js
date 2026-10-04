@@ -348,6 +348,11 @@ main section.raised + section{border-top-color:transparent}
 .quote cite{display:block;margin-top:18px;font:600 13px var(--body);letter-spacing:.2em;text-transform:uppercase;color:var(--ink);font-style:normal}
 /* a verse inside Words or Photo and words, in three looks */
 .verse{margin:28px 0}
+/* A title's own alignment and its line (2026-10-04). */
+.th-left{text-align:left}.th-left .h{margin-left:0;margin-right:auto}.th-left .rule{margin:14px auto 26px 0}
+.th-center{text-align:center}.th-center .h{margin-left:auto;margin-right:auto}.th-center .rule{margin:14px auto 26px}
+.th-right{text-align:right}.th-right .h{margin-left:auto;margin-right:0}.th-right .rule{margin:14px 0 26px auto}
+.wrap>.th,.wrap>.h+.rule{margin-bottom:8px}
 .verse blockquote{margin:0}
 .verse figcaption{margin-top:12px;font:600 12px var(--body);letter-spacing:.2em;text-transform:uppercase;color:var(--ink)}
 .verse-quote blockquote{font:var(--thin) clamp(22px,2.6vw,32px)/1.3 var(--display);max-width:32ch}
@@ -643,6 +648,25 @@ function renderSection(sec, ctx) {
     return `<figure class="verse verse-${st} m">${st === "mark" ? `<span class="verse-glyph" aria-hidden="true">“</span>` : ""}` +
       `<blockquote>${text}</blockquote>${raw("verseRef") ? `<figcaption>${esc(w("verseRef"))}</figcaption>` : ""}</figure>`;
   };
+  /* The words with the verse among them (Chase, 2026-10-04: "how do we
+     implement a verse that is in the middle of the section"): before them,
+     after paragraph n, or after them all (the default). */
+  const words = (text) => {
+    const v = verse();
+    if (!v) return prose(text);
+    const paras = text ? text.split(/\n{2,}/) : [];
+    const at = sec.versePos === "start" ? 0 : /^p\d+$/.test(sec.versePos || "") ? Math.min(+sec.versePos.slice(1), paras.length) : paras.length;
+    const part = (a) => (a.length ? `<div class="prose m">${a.map((p) => `<p>${p}</p>`).join("")}</div>` : "");
+    return part(paras.slice(0, at)) + v + part(paras.slice(at));
+  };
+  /* The title of a Words or Words-and-Photo section: its own alignment and,
+     if asked, a short line in the site's color beneath it. */
+  const head = () => {
+    const h = heading(w("heading"));
+    if (!h) return "";
+    const line = sec.titleLine ? `<span class="rule m" aria-hidden="true"></span>` : "";
+    return sec.titleAlign ? `<div class="th th-${sec.titleAlign}">${h}${line}</div>` : h + line;
+  };
   const inline = (x) => String(x || "").replace(/\n/g, "<br>");
   const photoMotion = ctx.design.motion.photos;
   /* Where this section sends a visitor: "" when nowhere, or when the page it
@@ -725,17 +749,21 @@ function renderSection(sec, ctx) {
     }
     case "text":
       if (!w("heading") && !w("text") && !w("verse")) return "";
-      return `<section${cls()}><div class="wrap">${heading(w("heading"))}${prose(w("text"))}${verse()}${to ? `<div class="btns m">${button()}</div>` : ""}</div></section>`;
+      return `<section${cls()}><div class="wrap">${head()}${words(w("text"))}${to ? `<div class="btns m">${button()}</div>` : ""}</div></section>`;
     case "photoText": {
       if (!sec.photo && !w("text") && !ctx.draft) return "";
       const pic = sec.photo ? img(sec.photo, plainOf(raw("heading"))) : wanted();
       const frame = sec.photo || ctx.draft ? `<div class="pic m ${photoMotion === "zoom" && sec.photo ? "kb" : ""}">${sec.photo && sec.photoLink ? pictured(pic, btnWords) : pic}</div>` : "";
       /* WRAPPED (chaseroush.com's About): the photo floats and the words
          flow around it; on a phone it sits above them, full width. */
-      if (sec.variant === "wrapLeft" || sec.variant === "wrapRight") {
-        return `<section${cls("pt-wrap", "pt-" + sec.variant)}><div class="wrap">${heading(w("heading"))}<div class="ptw">${frame}${prose(w("text"))}${verse()}</div>${to ? `<div class="btns m">${button()}</div>` : ""}</div></section>`;
+      /* The title WITH the words (beside the photo, chaseroush.com's About)
+         or ABOVE everything; wrapped layouts have always had it above. */
+      const wrapped = sec.variant === "wrapLeft" || sec.variant === "wrapRight";
+      const withWords = typeof sec.titleInline === "boolean" ? sec.titleInline : !wrapped;
+      if (wrapped) {
+        return `<section${cls("pt-wrap", "pt-" + sec.variant)}><div class="wrap">${withWords ? "" : head()}<div class="ptw">${frame}${withWords ? head() : ""}${words(w("text"))}</div>${to ? `<div class="btns m">${button()}</div>` : ""}</div></section>`;
       }
-      return `<section${cls("pt-" + sec.variant)}><div class="wrap pt">${frame}<div>${heading(w("heading"))}${prose(w("text"))}${verse()}${to ? `<div class="btns m">${button()}</div>` : ""}</div></div></section>`;
+      return `<section${cls("pt-" + sec.variant)}><div class="wrap">${withWords ? "" : head()}<div class="pt">${frame}<div>${withWords ? head() : ""}${words(w("text"))}${to ? `<div class="btns m">${button()}</div>` : ""}</div></div></div></section>`;
     }
     case "photo":
       if (!sec.photo) {

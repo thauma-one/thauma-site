@@ -565,6 +565,13 @@ function cleanSection(raw, langs) {
   /* A verse inside Words or Photo and words: its look. */
   if (raw.type === "text" || raw.type === "photoText") {
     s.verseStyle = ["quote", "line", "mark"].includes(raw.verseStyle) ? raw.verseStyle : "quote";
+    /* Where the verse sits, the title's own alignment and line, and (photo
+       sections) whether the title sits with the words or above everything.
+       Unset keeps what every section already looked like. */
+    s.versePos = /^(start|end|p\d{1,2})$/.test(raw.versePos || "") ? raw.versePos : "end";
+    s.titleAlign = ["left", "center", "right"].includes(raw.titleAlign) ? raw.titleAlign : null;
+    s.titleLine = raw.titleLine === true;
+    if (raw.type === "photoText" && typeof raw.titleInline === "boolean") s.titleInline = raw.titleInline;
   }
   /* Videos (BACKLOG §3): the buttons under them, and whether the newest
      video's own title and date head the section. */

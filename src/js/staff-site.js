@@ -864,6 +864,27 @@
       if (s.type === 'text' || s.type === 'photoText') {
         html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.verseStyle')) + '</span>' +
           chips('verse:' + i, ['quote', 'line', 'mark'], s.verseStyle || 'quote', function (v) { return tr('ws.verseStyle.' + v); }) + '</div>';
+        /* Where the verse goes: before, after any paragraph written so far,
+           or after them all. */
+        var paras = String(((s.words || {})[state.langA] || {}).text || '').split(/\n{2,}/).filter(function (x) { return x.trim(); }).length;
+        var spots = ['start'];
+        for (var pn = 1; pn < paras; pn++) spots.push('p' + pn);
+        spots.push('end');
+        html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.versePos')) + '</span>' +
+          chips('vpos:' + i, spots, spots.indexOf(s.versePos) !== -1 ? s.versePos : 'end', function (v) {
+            return v === 'start' || v === 'end' ? tr('ws.versePos.' + v) : tr('ws.versePos.p').replace('{n}', v.slice(1));
+          }) + '</div>';
+        var tA = s.titleAlign || (s.align === 'center' || s.align === 'right' ? s.align : 'left');
+        html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.titleAlign')) + '</span>' +
+          chips('talign:' + i, ['left', 'center', 'right'], tA, function (v) { return tr('ws.titleAlign.' + v); }) + '</div>' +
+          '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.divider')) + '</span>' +
+          chips('tline:' + i, ['on', 'off'], s.titleLine ? 'on' : 'off', function (v) { return tr('ws.divider.' + v); }) + '</div>';
+        if (s.type === 'photoText') {
+          var wrapped = s.variant === 'wrapLeft' || s.variant === 'wrapRight';
+          var withW = typeof s.titleInline === 'boolean' ? s.titleInline : !wrapped;
+          html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.titlePlace')) + '</span>' +
+            chips('tinline:' + i, ['with', 'above'], withW ? 'with' : 'above', function (v) { return tr('ws.titlePlace.' + v); }) + '</div>';
+        }
       }
       if (!FLAT[s.type]) {
         html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.bg')) + '</span>' +
@@ -1629,6 +1650,10 @@
       if (name.indexOf('variant:') === 0) { p.sections[+name.slice(8)].variant = val; drawSections(); }
       else if (name.indexOf('raised:') === 0) { p.sections[+name.slice(7)].raised = val === 'raised'; drawSections(); }
       else if (name.indexOf('divider:') === 0) { p.sections[+name.slice(8)].divider = val === 'on'; drawSections(); }
+      else if (name.indexOf('vpos:') === 0) { p.sections[+name.slice(5)].versePos = val; drawSections(); }
+      else if (name.indexOf('talign:') === 0) { p.sections[+name.slice(7)].titleAlign = val; drawSections(); }
+      else if (name.indexOf('tline:') === 0) { p.sections[+name.slice(6)].titleLine = val === 'on'; drawSections(); }
+      else if (name.indexOf('tinline:') === 0) { p.sections[+name.slice(8)].titleInline = val === 'with'; drawSections(); }
       else if (name.indexOf('cshow:') === 0) { state.doc.links[+name.slice(6)].icon = val === 'icon'; drawLinks(); }
       else if (name.indexOf('pheight:') === 0) { p.sections[+name.slice(8)].height = val; drawSections(); }
       else if (name.indexOf('vtitle:') === 0) { p.sections[+name.slice(7)].titleFrom = val; drawSections(); }
