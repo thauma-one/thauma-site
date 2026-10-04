@@ -151,7 +151,9 @@
       "link2Text": "Add as many links as you like, or remove these.",
       "taglineFill": "A few words that sum up the work",
       "smallFill": "Small print goes here — a registration number, or how gifts are received.",
-      "photoWanted": "Your photo goes here"
+      "photoWanted": "Your photo goes here",
+      "kickerFill": "Serving in the Balkans",
+      "prayerFill": "Where we need your prayer this season."
     }
   },
   "hr": {
@@ -306,7 +308,9 @@
       "link2Text": "Dodajte onoliko poveznica koliko želite ili uklonite ove.",
       "taglineFill": "Nekoliko riječi koje sažimaju ovaj rad",
       "smallFill": "Sitni tisak ide ovdje — matični broj ili kako se primaju darovi.",
-      "photoWanted": "Ovdje ide vaša fotografija"
+      "photoWanted": "Ovdje ide vaša fotografija",
+      "kickerFill": "Služimo na Balkanu",
+      "prayerFill": "Gdje nam je ove sezone potrebna vaša molitva."
     }
   },
   "sr": {
@@ -461,7 +465,9 @@
       "link2Text": "Додајте онолико повезница колико желите или уклоните ове.",
       "taglineFill": "Неколико ријечи које сажимају овај рад",
       "smallFill": "Ситни тисак иде овдје — матични број или како се примају дарови.",
-      "photoWanted": "Овдје иде ваша фотографија"
+      "photoWanted": "Овдје иде ваша фотографија",
+      "kickerFill": "Служимо на Балкану",
+      "prayerFill": "Гдје нам је ове сезоне потребна ваша молитва."
     }
   },
   "sl": {
@@ -616,7 +622,9 @@
       "link2Text": "Dodajte poljubno število povezav ali te odstranite.",
       "taglineFill": "Nekaj besed, ki povzamejo delo",
       "smallFill": "Tukaj je drobni tisk — matična številka ali kako se sprejemajo darovi.",
-      "photoWanted": "Tukaj bo vaša fotografija"
+      "photoWanted": "Tukaj bo vaša fotografija",
+      "kickerFill": "Služimo na Balkanu",
+      "prayerFill": "Kje to obdobje potrebujemo vašo molitev."
     }
   }
 }

@@ -9,7 +9,7 @@
  */
 import { JSDOM } from "jsdom";
 import { readFileSync, existsSync } from "node:fs";
-import { starter, cleanDoc, word, PAGES } from "../workers/src/site/model.js";
+import { starter, cleanDoc, word, PAGES, placeholders } from "../workers/src/site/model.js";
 
 const PAGE = ["_site", "_site_next", "_site_prod"].map((d) => `${d}/staff/website/index.html`).find((f) => existsSync(f));
 
@@ -37,6 +37,7 @@ function answer({ edit = true, owner = true, published = false } = {}) {
     languages: [{ code: "en", name: "English", native_name: "English" }, { code: "hr", name: "Croatian", native_name: "Hrvatski" }],
     /* As staff-site.js builds it: the site's own page names per language. */
     page_names: Object.fromEntries(["en", "hr"].map((l) => [l, Object.fromEntries(PAGES.map((id) => [id, word(l, id)]))])),
+    placeholders: placeholders ? Object.fromEntries(["en", "hr"].map((l) => [l, placeholders(l, "Chase Roush")])) : undefined,
     theme: { accent: "#1AE4FF", accent2: "#25FFA1" },
     can: { edit, owner }, owner: { name: "Chase Roush" }, editors: [], requests: [], my_request: null,
   };
@@ -127,6 +128,26 @@ await check("a row unfolds where it is, one at a time; a new section goes where 
   click(d.querySelector('[data-add-type="quote"]'));
   eq([...d.querySelectorAll(".ws-stile-words b")].map((n) => n.textContent), ["Opening", "A verse or a quote", "Photo and words"], "between the two");
   assert(d.querySelector('.ws-acc[data-si="1"]').classList.contains("is-open"), "and open");
+});
+
+await check("a new section suggests words in the language being written, and saves none of them", async () => {
+  /* Chase, 2026-10-03: placeholder words in every language whenever a
+     section is added, for those unsure how to phrase things. */
+  const { w, d, sent, click, pages } = await boot();
+  pages();
+  const pick = d.getElementById("wsLangA");
+  pick.value = "hr";
+  pick.dispatchEvent(new w.Event("change", { bubbles: true }));
+  click(d.querySelector('[data-open-page="home"]'));
+  click(d.querySelector('[data-insert-at="1"]'));
+  click(d.querySelector('[data-add-type="text"]'));
+  const heading = d.querySelector('[data-rt="1:heading"]');
+  assert(heading, "the new section is not open");
+  eq(heading.getAttribute("data-ph"), word("hr", "aboutThin") + " " + word("hr", "aboutBold"), "its heading, in Croatian");
+  eq(d.querySelector('[data-rt="1:text"]').getAttribute("data-ph"), word("hr", "aboutFill"), "its words, in Croatian");
+  await settle(900);
+  const saved = sent.filter((x) => x.action === "save").pop().draft.pages[0].sections[1];
+  eq([saved.words.hr.heading, saved.words.hr.text], ["", ""], "nothing suggested was saved");
 });
 
 await check("one section at a time: only its tabs; formatted words saved clean", async () => {

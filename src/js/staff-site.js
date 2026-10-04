@@ -698,8 +698,8 @@
           '<button type="button" class="ws-icon del" data-item-remove="' + k + '" aria-label="' + esc(tr('ws.remove')) + '">✕</button></div>';
         if (!open) return head;
         return head + '<div class="ws-linkedit">' +
-          '<label class="fld"><span>' + esc(tr('ws.itemTitle')) + '</span><input type="text" data-item="' + k + ':title" value="' + esc(t.title || '') + '" lang="' + esc(state.langA) + '"></label>' +
-          '<label class="fld"><span>' + esc(tr('ws.itemText')) + '</span><input type="text" data-item="' + k + ':text" value="' + esc(t.text || '') + '" lang="' + esc(state.langA) + '"></label>' +
+          '<label class="fld"><span>' + esc(tr('ws.itemTitle')) + '</span><input type="text" data-item="' + k + ':title" value="' + esc(t.title || '') + '" placeholder="' + esc(ph('item', 'title')) + '" lang="' + esc(state.langA) + '"></label>' +
+          '<label class="fld"><span>' + esc(tr('ws.itemText')) + '</span><input type="text" data-item="' + k + ':text" value="' + esc(t.text || '') + '" placeholder="' + esc(ph('item', 'text')) + '" lang="' + esc(state.langA) + '"></label>' +
           '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.link.goesTo')) + '</span>' + linkPicker('item:' + k, it.url || 'https://', false) + '</div>' +
           '<div class="ws-sec-row">' + (it.photo ? '<img class="ws-thumb" src="' + esc(it.photo) + '" alt="">' : '') +
             '<label class="ghost-btn sm ws-file">' + esc(it.photo ? tr('ws.changePhoto') : tr('ws.choosePhoto')) + '<input type="file" accept="image/*" data-item-photo="' + k + '" hidden></label>' +
@@ -731,18 +731,26 @@
   /* One field. Headings, words and quotes are formatted boxes (bold, italic,
      underline, links); the rest are plain. */
   var RICH = { heading: 1, text: 1, quote: 1 };
+  /* What an empty field suggests, in the language being written (the site's
+     words, from the server; model.js placeholders). Never saved. */
+  function ph(type, f) {
+    var all = state.body.placeholders || {}, l = all[state.langA] || all.en || {};
+    return (l[type] && l[type][f]) || '';
+  }
   function field(i, f, value, refWords, type) {
     var label = '<span>' + esc(fieldName(type, f)) + '</span>';
+    var hint = ph(type, f) || (f === 'button' ? tr('ws.readMore') : '');
     if (RICH[f]) {
       var b = state.langB, r = b && refWords && refWords[b];
       return '<div class="fld ws-rfld">' + label +
         (r ? '<small class="ms-ref" lang="' + esc(b) + '">' + inlineHtml(r) + '</small>' : '') +
-        '<div class="rt rt-' + f + '" contenteditable="true" role="textbox" aria-multiline="' + (f !== 'heading') + '" data-rt="' + i + ':' + f + '" lang="' + esc(state.langA) + '">' +
+        '<div class="rt rt-' + f + '" contenteditable="true" role="textbox" aria-multiline="' + (f !== 'heading') + '" data-rt="' + i + ':' + f + '"' +
+        (hint ? ' data-ph="' + esc(hint) + '" aria-placeholder="' + esc(hint) + '"' : '') + ' lang="' + esc(state.langA) + '">' +
         inlineHtml(value, true) + '</div></div>';
     }
     return '<label class="fld">' + label + ref(refWords) +
       '<input type="text" data-sec-word="' + i + ':' + f + '" value="' + esc(value || '') + '"' +
-      (f === 'button' ? ' placeholder="' + esc(tr('ws.readMore')) + '"' : '') + ' lang="' + esc(state.langA) + '"></label>';
+      (hint ? ' placeholder="' + esc(hint) + '"' : '') + ' lang="' + esc(state.langA) + '"></label>';
   }
   /* Stored formatted words back into a box: only the marks it may hold, links
      kept only inside the box being edited. */

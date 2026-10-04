@@ -8,6 +8,7 @@ import { renderPage, esc } from "../src/site/render.js";
 import { pickLang } from "../src/site/serve.js";
 import { removeSiteDns } from "../src/lib/site-dns.js";
 import { word } from "../src/site/model.js";
+import * as MODEL from "../src/site/model.js";
 import { readFileSync } from "node:fs";
 
 let pass = 0, fail = 0;
@@ -476,6 +477,32 @@ check("a Band is a band, and Raised changes it, on Give and Sign-up, in every lo
       assert(bgs[1].band !== bgs[1].page, `${label}: the raised band is the page's color`);
     }
   }
+});
+
+/* ---------------------------------------------------------- placeholders */
+
+check("every field of every section suggests words, in every language Thauma has", () => {
+  const { placeholders, builtInLangs } = MODEL;
+  assert(typeof placeholders === "function", "placeholders() is missing");
+  for (const lang of builtInLangs()) {
+    const P = placeholders(lang, "Chase Roush");
+    for (const [type, spec] of Object.entries(SECTIONS)) {
+      for (const f of spec.words) {
+        assert(P[type] && P[type][f], `${lang}: ${type}.${f} suggests nothing`);
+      }
+    }
+    assert(P.item.title && P.item.text, `${lang}: a link card suggests nothing`);
+  }
+});
+
+check("suggestions are in the language written, and the hero names the ministry", () => {
+  const { placeholders } = MODEL;
+  assert(typeof placeholders === "function", "placeholders() is missing");
+  const hr = placeholders("hr", "Chase Roush");
+  eq(hr.hero.heading, word("hr", "heroThin") + " Chase Roush", "hero heading, Croatian");
+  eq(hr.quote.quote, word("hr", "quoteFill"), "a quote, Croatian");
+  eq(hr.text.heading, word("hr", "aboutThin") + " " + word("hr", "aboutBold"), "a heading's two halves as one line");
+  assert(hr.prayer.text !== placeholders("en", "x").prayer.text, "prayer's words are not translated");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);
