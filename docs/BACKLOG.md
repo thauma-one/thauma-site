@@ -103,12 +103,15 @@ preview always a real desktop; meta tags + sitemap + an Advanced tab (Google
 and share previews, title/description per language, name cards made at
 Publish); ONE photo editor (src/js/photo-editor.js, by purpose: site
 sections, hero, bands, email pictures, share pictures; non-destructive).
-R2 hygiene: readable upload names + Settings › Storage › Clean up
-(media-cleanup.js). Custom text sizes (− / +). Console loads Sora/Inter.
+R2 hygiene: readable upload names everywhere; unused uploads removed
+automatically once a day (media-cleanup.js on the cron, partners AND
+Thauma's mail folders, 30-day grace, no button: Chase wants storage
+managed by the system, never by a person). Text sizes in px like Word
+(4–200, − / + or typed). Console loads Sora/Inter.
 Set aside by Chase for later: "Bold" and "Dot below" nav looks. Still open:
 footer options, Sharing vs Site Creator colors, moving Thauma's own photo
-tools (photo-crop.js, Website › Photos) onto the editor, Thauma's own
-newsletter folder in Storage (only partners have the panel).
+tools (photo-crop.js, Website › Photos) onto the editor, Thauma's four
+page photos into R2 (the Pi token gets 403 on R2 writes; needs R2 Edit).
 
 Chase: "the general interface for the Site Creator is really good!"
 
@@ -220,8 +223,10 @@ Chase: "the general interface for the Site Creator is really good!"
 - **BUILD R2 hygiene:**
   - delete unused uploads, including those in drafts never published;
   - keep the original for re-editing, but never pile up edits;
-  - readable object names.
-  - Chase cannot find the Thauma site's four page photos in R2.
+  - readable object names. (DONE on dev, automatic daily cleanup.)
+  - Thauma's four page photos are repo files (src/img/home-worship-stage
+    and three others), not R2. Move to R2 site/ and point site.json at
+    /media/... once the Pi's token can write R2.
 
 ### Tabled (said "later")
 - The Sharing page's color picker in the Site Creator.
