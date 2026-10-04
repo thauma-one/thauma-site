@@ -22,12 +22,17 @@ const settle = (ms = 120) => new Promise((r) => setTimeout(r, ms));
 console.log("publishing says what happened\n");
 if (!PAGE) { console.log("  SKIP  no build — run eleventy first."); process.exit(1); }
 
-async function boot(runs, extra = {}) {
+async function boot(runs, extra = {}, progress = []) {
   const dom = new JSDOM(readFileSync(PAGE, "utf8"), { runScripts: "outside-only", pretendToBeVisual: true, url: "https://dev.thauma.one/admin/website/" });
   const w = dom.window;
-  let n = 0;
+  let n = 0, pn = 0;
   w.fetch = async (url, opts = {}) => {
     url = String(url);
+    /* The build's steps (GET ?progress), scripted one answer per call. */
+    if (url.includes("/api/admin/publish?progress=")) {
+      const p = progress[Math.min(pn++, progress.length - 1)] || { run: null };
+      return { ok: true, status: 200, text: async () => JSON.stringify(p), json: async () => p };
+    }
     if (url.includes("/api/admin/publish")) {
       if (opts.method === "POST") return { ok: true, status: 200, text: async () => JSON.stringify({ ok: true, action: "publish", started: true }), json: async () => ({ ok: true }) };
       const latest = runs[Math.min(n++, runs.length - 1)];
@@ -90,6 +95,56 @@ await check("when live's edits could not reach dev, the page says so, with where
   assert(box.querySelector('a[href="https://x/sync/9"]'), "linked to the run");
   const fine = await boot([done], { sync: { failed: false, at: "2026-09-30T10:00:00Z", url: "https://x/sync/9" } });
   assert(!fine.d.querySelector("#pState .p-sync-stuck"), "no warning when the sync is healthy");
+});
+
+/* ---- the build, stage by stage (Chase, 2026-10-03) ---- */
+const KEYS = ["ready", "build", "tests", "database", "deploy", "verify", "live"];
+const prog = (states, tests, more = {}) => ({
+  run: { status: "in_progress", conclusion: null, started: now(), url: "https://x/run/3" },
+  queued: false, stages: KEYS.map((key, i) => ({ key, state: states[i] })), tests, failed: null, ...more });
+const items = (d) => [...d.querySelectorAll("#pStages li")].map((li) => [li.className, li.textContent]);
+
+await check("while a build runs, the bar ticks off its stages and counts the tests", async () => {
+  const { d } = await boot([
+    { status: "completed", conclusion: "success", started: "2026-09-29T23:30:41Z" },
+    { status: "in_progress", conclusion: null, started: now(), url: "https://x/run/3" },
+  ], {}, [prog(["done", "done", "running", "waiting", "waiting", "waiting", "waiting"],
+               { total: 71, passed: 12, running: "csv" })]);
+  d.getElementById("pReview").click(); await settle();
+  d.getElementById("pPublish").click(); await settle(300);
+  assert(!d.getElementById("pStages").hidden, "the stages show");
+  const li = items(d);
+  assert(li.length === 7, `seven stages, got ${li.length}`);
+  assert(li[1][0] === "is-done" && li[1][1] === "Build", "build ticked off");
+  assert(li[2][0] === "is-running" && li[2][1] === "Tests 12 of 71", `the test count, got ${JSON.stringify(li[2])}`);
+  assert(li[6][0] === "is-waiting" && li[6][1] === "Live", "live is last, not reached");
+});
+
+await check("a failed test file is named, and the stages stay to show where it stopped", async () => {
+  const failed = prog(["done", "done", "failed", "skipped", "skipped", "skipped", "waiting"],
+    { total: 71, passed: 30, running: null },
+    { run: { status: "completed", conclusion: "failure", started: now(), url: "https://x/run/4" },
+      failed: { stage: "tests", step: "csv", test: true } });
+  /* The page loads, the review re-reads (still the old run), and only after
+     Publish does the newest run become this one, failed. */
+  const old = { status: "completed", conclusion: "success", started: "2026-09-29T23:30:41Z" };
+  const { d } = await boot([old, old,
+    { status: "completed", conclusion: "failure", started: now(), url: "https://x/run/4" },
+  ], {}, [failed]);
+  d.getElementById("pReview").click(); await settle();
+  d.getElementById("pPublish").click(); await settle(400);
+  assert(d.getElementById("pBar").classList.contains("is-failed"), "failed");
+  assert(/Stopped at csv/.test(d.getElementById("pBarCount").textContent), "names the file: " + d.getElementById("pBarCount").textContent);
+  assert(!d.getElementById("pStages").hidden && items(d)[2][0] === "is-failed", "the stages stay, tests red");
+});
+
+await check("a reload in the middle of a deploy picks the build up", async () => {
+  const { d } = await boot([{ status: "in_progress", conclusion: null, started: now(), url: "https://x/run/5" }],
+    {}, [prog(["done", "running", "waiting", "waiting", "waiting", "waiting", "waiting"],
+              { total: 71, passed: 0, running: null })]);
+  await settle(300);
+  assert(d.getElementById("pBar").classList.contains("is-building"), "the bar says it is building");
+  assert(!d.getElementById("pStages").hidden && items(d)[1][0] === "is-running", "and shows where");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

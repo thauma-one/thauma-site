@@ -125,7 +125,7 @@
 
     state = body;
     $('pRoot').hidden = false;
-    try { render(); }
+    try { render(); resumeFollowing(); }
     catch (e) {
       if (window.StaffProblem) window.StaffProblem(tr('err.renderFailed') + ': ' + e.message, null);
       console.error('publish render failed:', e);
@@ -445,6 +445,7 @@
   function followBuild() {
     var el = $('pBarCount'), bar = $('pBar');
     bar.classList.remove('is-building', 'is-done', 'is-failed');
+    renderStages();
     if (!pending) {
       if (lastWord) { bar.classList.add(lastWord.cls); el.innerHTML = lastWord.html; }
       return;
@@ -455,30 +456,97 @@
     if (mine && run.status === 'completed') {
       var ok = run.conclusion === 'success';
       var said = ok ? fill(pending.action === 'publish' ? 'pub.nowLive' : 'pub.nowPreview', { site: site }) : tr('pub.buildFailed');
+      var stopped = !ok && prog && prog.failed ? ' ' + esc(fill('pub.stStopped', { step: prog.failed.step })) : '';
       lastWord = {
         cls: ok ? 'is-done' : 'is-failed',
-        html: esc(said) + (ok
+        html: esc(said) + stopped + (ok
           ? ' <a href="https://' + esc(site) + '/" target="_blank" rel="noopener">' + esc(tr('pub.open')) + ' ↗</a>'
           : ' <a href="' + esc(run.url) + '" target="_blank" rel="noopener">' + esc(tr('pub.whatHappened')) + ' ↗</a>'),
       };
-      pending = null; clearInterval(poll); poll = null;
+      stopFollowing(ok);
       toast(said, ok ? 'ok' : 'err');
       return followBuild();
     }
     if (Date.now() - pending.since > 15 * 60 * 1000) {
-      pending = null; clearInterval(poll); poll = null;
+      stopFollowing(true);
       lastWord = { cls: 'is-failed', html: esc(tr('pub.tooLong')) };
       return followBuild();
     }
     bar.classList.add('is-building');
     el.textContent = fill(pending.action === 'publish' ? 'pub.buildingLive' : 'pub.buildingPreview', { site: site });
   }
-  function startFollowing(action) {
-    pending = { action: action, since: Date.now() };
-    lastWord = null;
-    clearInterval(poll);
+  /* `since` is now for a build just asked for, or the run's own start when
+     the page finds one already running (resumeFollowing): a reload in the
+     middle of a deploy picks it up instead of going quiet. */
+  function startFollowing(action, since) {
+    pending = { action: action, since: since || Date.now() };
+    lastWord = null; prog = null;
+    clearInterval(poll); clearInterval(progTimer);
     poll = setInterval(function () { if (!busy) load(); }, 15000);
+    progTimer = setInterval(loadProgress, 4000);
+    loadProgress();
     followBuild();
+  }
+  /* `clear` drops the checklist; a failed build keeps it, so it shows where
+     it stopped. */
+  function stopFollowing(clear) {
+    pending = null;
+    clearInterval(poll); poll = null;
+    clearInterval(progTimer); progTimer = null;
+    if (clear) prog = null;
+  }
+  function resumeFollowing() {
+    if (pending || !state || !state.latest) return;
+    [['live', 'publish'], ['preview', 'preview']].forEach(function (k) {
+      var r = state.latest[k[0]];
+      if (!pending && r && r.status && r.status !== 'completed' &&
+          Date.now() - Date.parse(r.started) < 15 * 60 * 1000) {
+        startFollowing(k[1], Date.parse(r.started));
+      }
+    });
+  }
+
+  /* ---- the build, stage by stage ----------------------------------------
+     Chase, 2026-10-03: "can we add where the checks are so it doesn't feel
+     like 3 minutes where nothing is happening? Or at least how many of the
+     tests passed?" Every 4 seconds while a build runs, the run's steps
+     (GET ?progress, lib/build-progress.js): each stage ticks off as it is
+     reported, and the tests count up, one step per test file. */
+  var prog = null, progTimer = null;
+  var STAGE_WORD = { ready: 'pub.stReady', build: 'pub.stBuild', tests: 'pub.stTests',
+    database: 'pub.stDatabase', deploy: 'pub.stDeploy', verify: 'pub.stVerify', live: 'pub.stLive' };
+  async function loadProgress() {
+    if (!pending) return;
+    var asked = pending, p;
+    try {
+      var res = await fetch(API + '?progress=' + asked.action, { credentials: 'same-origin', cache: 'no-store' });
+      if (!res.ok) return;
+      p = await res.json();
+    } catch (e) { return; }
+    if (pending !== asked) return;
+    /* Until the run just asked for is registered, the newest run is the
+       PREVIOUS one, finished — not this build. */
+    var mine = p.run && Date.parse(p.run.started) >= asked.since - 90000;
+    prog = mine ? p : { queued: true };
+    renderStages();
+    // Finished: the bar's last word comes from the full status, now.
+    if (mine && p.run.status === 'completed' && !busy) load();
+  }
+  function renderStages() {
+    var ol = $('pStages');
+    var show = !!prog && (!!pending || (!!lastWord && lastWord.cls === 'is-failed' && !!prog.stages));
+    ol.hidden = !show;
+    if (!show) { ol.innerHTML = ''; return; }
+    if (prog.queued) {
+      ol.innerHTML = '<li class="is-running">' + esc(tr('pub.stQueued')) + '</li>';
+      return;
+    }
+    ol.innerHTML = prog.stages.map(function (st) {
+      var label = st.key === 'tests' && prog.tests.total
+        ? fill('pub.stTestsCount', { n: prog.tests.passed, total: prog.tests.total })
+        : tr(STAGE_WORD[st.key]);
+      return '<li class="is-' + st.state + '">' + esc(label) + '</li>';
+    }).join('');
   }
 
   /* ---- the two actions ------------------------------------------------ */

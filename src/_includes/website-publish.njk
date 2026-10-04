@@ -18,6 +18,9 @@
 <div class="web-bar" id="pBar" role="status" hidden>
   <span class="ms-dirty-dot" aria-hidden="true"></span>
   <span class="web-bar-count" id="pBarCount"></span>
+  {#- While a build runs: its stages, ticked off as GitHub reports them
+      (admin-publish.js followProgress). -#}
+  <ol class="web-bar-stages" id="pStages" hidden></ol>
   <button type="button" class="ghost-btn" id="pPreview" data-i18n="pub.previewSite">Preview site</button>
   <button type="button" class="solid-btn" id="pReview" aria-expanded="false" aria-controls="pReviewPanel"
           data-i18n="pub.review">Review and publish</button>

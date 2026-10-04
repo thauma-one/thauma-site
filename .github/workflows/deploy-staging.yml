@@ -55,27 +55,189 @@ jobs:
       - name: Build
         run: npx @11ty/eleventy --output=_site_next
 
-      - name: Test
-        run: |
-          node test/visibility.test.mjs
-          node test/csv.test.mjs
-          python3 db/test_schema.py
-          node test/composer-toolbar.test.mjs
-          node test/mailing-preview.test.mjs
-          node test/videos-console.test.mjs
-          node test/console-nav.test.mjs
-          node test/console-banner.test.mjs
-          node test/mailing-views.test.mjs
-          node test/mail-drafts.test.mjs
-          node test/photo-crop.test.mjs
-          node test/us-english.test.mjs
-          node test/profile-save.test.mjs
-          node test/contact-page.test.mjs
-          node test/library.test.mjs
-          node test/events-page.test.mjs
-          node test/presentation.test.mjs
-          node test/admin-console.test.mjs
-          cd workers && npm test
+      # One step per test file, so the Publish bar can count them as they
+      # pass; see deploy/test-steps.mjs.
+      # ---- TEST STEPS: written by `node deploy/test-steps.mjs`, do not edit by hand ----
+      - name: Test · visibility
+        run: node test/visibility.test.mjs
+      - name: Test · csv
+        run: node test/csv.test.mjs
+      - name: Test · composer-toolbar
+        run: node test/composer-toolbar.test.mjs
+      - name: Test · mailing-preview
+        run: node test/mailing-preview.test.mjs
+      - name: Test · videos-console
+        run: node test/videos-console.test.mjs
+      - name: Test · console-nav
+        run: node test/console-nav.test.mjs
+      - name: Test · console-banner
+        run: node test/console-banner.test.mjs
+      - name: Test · mailing-views
+        run: node test/mailing-views.test.mjs
+      - name: Test · mail-drafts
+        run: node test/mail-drafts.test.mjs
+      - name: Test · photo-crop
+        run: node test/photo-crop.test.mjs
+      - name: Test · us-english
+        run: node test/us-english.test.mjs
+      - name: Test · profile-save
+        run: node test/profile-save.test.mjs
+      - name: Test · contact-page
+        run: node test/contact-page.test.mjs
+      - name: Test · library
+        run: node test/library.test.mjs
+      - name: Test · events-page
+        run: node test/events-page.test.mjs
+      - name: Test · presentation
+        run: node test/presentation.test.mjs
+      - name: Test · admin-console
+        run: node test/admin-console.test.mjs
+      - name: Test · deploy-test-steps
+        run: node test/deploy-test-steps.test.mjs
+      - name: Test · database schema
+        run: python3 db/test_schema.py
+      - name: Test · workers/access-group
+        working-directory: workers
+        run: node test/access-group.test.mjs
+      - name: Test · workers/access
+        working-directory: workers
+        run: node test/access.test.mjs
+      - name: Test · workers/actas
+        working-directory: workers
+        run: node test/actas.test.mjs
+      - name: Test · workers/admin-content
+        working-directory: workers
+        run: node test/admin-content.test.mjs
+      - name: Test · workers/admin-library
+        working-directory: workers
+        run: node test/admin-library.test.mjs
+      - name: Test · workers/admin-migrate
+        working-directory: workers
+        run: node test/admin-migrate.test.mjs
+      - name: Test · workers/admin-profile
+        working-directory: workers
+        run: node test/admin-profile.test.mjs
+      - name: Test · workers/admin-publish
+        working-directory: workers
+        run: node test/admin-publish.test.mjs
+      - name: Test · workers/admin
+        working-directory: workers
+        run: node test/admin.test.mjs
+      - name: Test · workers/ai-usage
+        working-directory: workers
+        run: node test/ai-usage.test.mjs
+      - name: Test · workers/build-progress
+        working-directory: workers
+        run: node test/build-progress.test.mjs
+      - name: Test · workers/carry
+        working-directory: workers
+        run: node test/carry.test.mjs
+      - name: Test · workers/confirm-account
+        working-directory: workers
+        run: node test/confirm-account.test.mjs
+      - name: Test · workers/contact-form
+        working-directory: workers
+        run: node test/contact-form.test.mjs
+      - name: Test · workers/contact
+        working-directory: workers
+        run: node test/contact.test.mjs
+      - name: Test · workers/db
+        working-directory: workers
+        run: node test/db.test.mjs
+      - name: Test · workers/dbsync
+        working-directory: workers
+        run: node test/dbsync.test.mjs
+      - name: Test · workers/email-change
+        working-directory: workers
+        run: node test/email-change.test.mjs
+      - name: Test · workers/embed-colour
+        working-directory: workers
+        run: node test/embed-colour.test.mjs
+      - name: Test · workers/embed-render
+        working-directory: workers
+        run: node test/embed-render.test.mjs
+      - name: Test · workers/embed
+        working-directory: workers
+        run: node test/embed.test.mjs
+      - name: Test · workers/form-language
+        working-directory: workers
+        run: node test/form-language.test.mjs
+      - name: Test · workers/functions
+        working-directory: workers
+        run: node test/functions.test.mjs
+      - name: Test · workers/github
+        working-directory: workers
+        run: node test/github.test.mjs
+      - name: Test · workers/lang-redirect
+        working-directory: workers
+        run: node test/lang-redirect.test.mjs
+      - name: Test · workers/mail-i18n
+        working-directory: workers
+        run: node test/mail-i18n.test.mjs
+      - name: Test · workers/mail
+        working-directory: workers
+        run: node test/mail.test.mjs
+      - name: Test · workers/media
+        working-directory: workers
+        run: node test/media.test.mjs
+      - name: Test · workers/newsletter
+        working-directory: workers
+        run: node test/newsletter.test.mjs
+      - name: Test · workers/nopii
+        working-directory: workers
+        run: node test/nopii.test.mjs
+      - name: Test · workers/org-separation
+        working-directory: workers
+        run: node test/org-separation.test.mjs
+      - name: Test · workers/origin
+        working-directory: workers
+        run: node test/origin.test.mjs
+      - name: Test · workers/partner-api
+        working-directory: workers
+        run: node test/partner-api.test.mjs
+      - name: Test · workers/signup
+        working-directory: workers
+        run: node test/signup.test.mjs
+      - name: Test · workers/site
+        working-directory: workers
+        run: node test/site.test.mjs
+      - name: Test · workers/sqlsplit
+        working-directory: workers
+        run: node test/sqlsplit.test.mjs
+      - name: Test · workers/staff-happy-path
+        working-directory: workers
+        run: node test/staff-happy-path.test.mjs
+      - name: Test · workers/staff-mailing
+        working-directory: workers
+        run: node test/staff-mailing.test.mjs
+      - name: Test · workers/staff-milestones
+        working-directory: workers
+        run: node test/staff-milestones.test.mjs
+      - name: Test · workers/staff-stewardship
+        working-directory: workers
+        run: node test/staff-stewardship.test.mjs
+      - name: Test · workers/topics
+        working-directory: workers
+        run: node test/topics.test.mjs
+      - name: Test · workers/translate-ai
+        working-directory: workers
+        run: node test/translate-ai.test.mjs
+      - name: Test · workers/translate
+        working-directory: workers
+        run: node test/translate.test.mjs
+      - name: Test · workers/translation-notes
+        working-directory: workers
+        run: node test/translation-notes.test.mjs
+      - name: Test · workers/unsubscribe
+        working-directory: workers
+        run: node test/unsubscribe.test.mjs
+      - name: Test · workers/videos
+        working-directory: workers
+        run: node test/videos.test.mjs
+      - name: Test · workers/widgets-run
+        working-directory: workers
+        run: node test/widgets-run.test.mjs
+      # ---- END TEST STEPS ----
 
       # CHECK, DON'T APPLY. Staging shares live's database since 2026-09-29
       # (wrangler.toml, ONE DATABASE), so a migration here is a migration to

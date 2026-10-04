@@ -37,8 +37,9 @@ import { createDb } from "./lib/db.js";
 import { pendingMigrations } from "./admin-migrate.js";
 import { requireAccess } from "./lib/access.js";
 import { json, readJson } from "./lib/store.js";
-import { compareBranches, dispatchWorkflow, lastSuccessfulRun, latestRun, mergeBranch, refSha, githubConfig }
+import { compareBranches, dispatchWorkflow, lastSuccessfulRun, latestRun, mergeBranch, refSha, githubConfig, runJobs }
   from "./lib/github.js";
+import { summarize } from "./lib/build-progress.js";
 import { carry, carryConfig } from "./lib/carry.js";
 
 const CONFIRM_WORD = "PUBLISH";
@@ -120,11 +121,30 @@ export default {
       return json({ error: cfg.error, configured: false }, 500);
     }
 
-    if (request.method === "GET") return status(env);
+    if (request.method === "GET") {
+      const which = new URL(request.url).searchParams.get("progress");
+      if (which) return progress(env, which === "preview" ? "preview" : "publish");
+      return status(env);
+    }
     if (request.method === "POST") return act(request, env, db, user, me);
     return json({ error: `${request.method} is not supported here.` }, 405);
   },
 };
+
+/* ------------------------------- progress -------------------------------
+   GET ?progress=publish|preview — the newest run of that workflow, as the
+   stages and test count the bar ticks off (lib/build-progress.js). Light on
+   purpose: two GitHub reads, polled every few seconds while a build runs,
+   instead of the whole status (compare, refs) every fifteen. Admin-only like
+   everything here; the GitHub token never leaves the Worker. */
+async function progress(env, action) {
+  const run = await latestRun(env, action === "preview" ? STAGING_WORKFLOW : PROD_WORKFLOW);
+  if (run.error) return json({ error: run.error }, run.status || 502);
+  if (run.never) return json({ run: null });
+  const jobs = await runJobs(env, run.id);
+  if (jobs.error) return json({ error: jobs.error }, jobs.status || 502);
+  return json(summarize(run, jobs.jobs));
+}
 
 /* -------------------------------- status -------------------------------- */
 
