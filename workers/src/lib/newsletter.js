@@ -107,7 +107,7 @@ const DROP_WHOLE = new Set(["script", "style", "head", "title", "meta", "link", 
 /* What each surviving tag may carry. Anything not listed is dropped — that
    includes every style, class and id, which is what keeps a paste from
    bringing another website's appearance along. */
-const ATTRS = { a: ["href"], img: ["src", "alt"],
+const ATTRS = { a: ["href"], img: ["src", "alt", "data-orig"],
                 span: ["data-sz", "data-c", "data-var"] };
 
 export function escapeHtml(s) {
@@ -226,6 +226,12 @@ export function sanitise(html) {
       }
       if (key === "src") {
         value = safeUrl(value) || mediaPath(value);
+        if (!value) continue;
+      }
+      /* The original behind an edited picture: only ever one of our own
+         uploads, never an address from elsewhere. */
+      if (key === "data-orig") {
+        value = mediaPath(value);
         if (!value) continue;
       }
       /* A data: URI never reaches safeUrl, which only admits http(s) and

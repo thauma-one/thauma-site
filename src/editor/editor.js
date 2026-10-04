@@ -219,7 +219,15 @@ export function createEditor(opts) {
           HTMLAttributes: { rel: "noopener", target: "_blank" },
         },
       }),
-      Image.configure({ inline: false, allowBase64: false }),
+      /* A picture remembers its ORIGINAL (data-orig) once the photo editor
+         has made a cropped copy, so editing again starts from the original. */
+      Image.extend({
+        addAttributes() {
+          return { ...this.parent?.(), orig: { default: null,
+            parseHTML: (el) => el.getAttribute("data-orig"),
+            renderHTML: (a) => (a.orig ? { "data-orig": a.orig } : {}) } };
+        },
+      }).configure({ inline: false, allowBase64: false }),
       Tone,
       Size,
       Variable.configure({ labels: opts.varLabels || { first_name: "First name", name: "Name" } }),
@@ -252,6 +260,9 @@ export function createEditor(opts) {
       b.classList.toggle("is-on", on);
     }
     const linked = editor.isActive("link");
+    /* Edit picture is live only while a picture is selected. */
+    const picBtn = opts.toolbar.querySelector('[data-cmd="editimage"]');
+    if (picBtn) picBtn.disabled = !editor.isActive("image");
     const linkBtn = opts.toolbar.querySelector('[data-cmd="link"]');
     if (linkBtn) {
       linkBtn.setAttribute("aria-pressed", linked ? "true" : "false");

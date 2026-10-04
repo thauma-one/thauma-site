@@ -330,6 +330,20 @@ await check("the any-color picker colors the selection with that exact color", a
   assert(/data-c="#ff00aa"/.test(sanitise(html)), "lost on save");
 });
 
+await check("Edit picture is live only while a picture is selected; a picture keeps its original", async () => {
+  const { editor, D } = ctx;
+  const btn = D.querySelector('.cp-tools [data-cmd="editimage"]');
+  assert(btn, "no Edit picture button");
+  editor.chain().focus().clearContent().insertContent("words").run();
+  assert(btn.disabled, "live without a picture");
+  editor.commands.setContent('<p>a</p><img src="/media/newsletter/p/cut.jpg" data-orig="/media/newsletter/p/orig.jpg">');
+  let pos = null;
+  editor.state.doc.descendants((n, p) => { if (n.type.name === "image" && pos === null) pos = p; });
+  editor.commands.setNodeSelection(pos);
+  assert(!btn.disabled, "not live on a selected picture");
+  assert(/data-orig="\/media\/newsletter\/p\/orig\.jpg"/.test(editor.getHTML()), "the original was lost");
+});
+
 await check("a name chip saves as a variable the sanitiser keeps", async () => {
   const { sanitise } = await import("../workers/src/lib/newsletter.js");
   const { editor, D, w } = ctx;

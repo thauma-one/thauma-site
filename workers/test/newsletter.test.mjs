@@ -428,5 +428,12 @@ check("the design's second color is a quick pick, drawn in the ministry's own se
   assert(out.includes('<span style="color:#FD124D">two</span>'), "inlined in the second color");
 });
 
+check("an edited picture keeps its original, but only one of our own uploads", () => {
+  const ok = sanitise('<img src="/media/newsletter/p/cut.jpg" data-orig="/media/newsletter/p/orig.jpg">');
+  assert(ok.includes('data-orig="/media/newsletter/p/orig.jpg"'), "kept: " + ok);
+  const no = sanitise('<img src="/media/newsletter/p/cut.jpg" data-orig="https://evil.example/x.jpg">');
+  assert(!no.includes("data-orig"), "an outside address was kept: " + no);
+});
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -291,6 +291,31 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
     input.click();
   }
 
+  /* THE PHOTO EDITOR, for a picture in the message (photo-editor.js, the
+     same editor as the Site Creator's). A mail client cannot apply settings,
+     so the result is real pixels: exported at email size, uploaded, and put
+     in place of the picture — which keeps its ORIGINAL in data-orig, so
+     editing again starts from the original rather than from a crop. */
+  async function editImage() {
+    if (!window.PhotoEditor || !editor.isActive("image")) return;
+    const a = editor.getAttributes("image");
+    const orig = a.orig || a.src;
+    try {
+      const v = await window.PhotoEditor.open(orig, { purpose: "mail" });
+      if (!v) return;
+      setState(tr("ml.cpUploading"));
+      const blob = await window.PhotoEditor.exportBlob(orig, v, { max: 1200 });
+      const res = await fetch("/api/admin/media?kind=newsletter", {
+        method: "POST", credentials: "same-origin", headers: { "Content-Type": blob.type }, body: blob,
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || `failed (${res.status})`);
+      editor.chain().focus().updateAttributes("image", { src: body.url, orig }).run();
+      markDirty(); measureSoon();
+      setState("");
+    } catch (e) { setState(""); toast(e.message, "bad"); }
+  }
+
   /* ---- attachments ----------------------------------------------------
      A DIFFERENT MECHANISM FROM AN INLINE PICTURE, and conflating the two is
      the usual mistake. A picture is fetched by the reader's mail client from a
@@ -648,6 +673,7 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
     if (!b) return;
     e.preventDefault();
     if (b.dataset.cmd === "image") { closeRows(); return pickImage(); }
+    if (b.dataset.cmd === "editimage") { closeRows(); return editImage(); }
     if (ROWS[b.dataset.cmd]) return openRow(b.dataset.cmd);
   });
 
