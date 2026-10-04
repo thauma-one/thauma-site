@@ -967,6 +967,24 @@ ${COLOUR_JS}
 
     function openDetail(i) {
       if (open === i) { closeDetail(); return; }
+      /* ON A PHONE, ONE SMOOTH MOTION (Chase: the timeline "jumps around
+         when a milestone is pressed" — match chaseroush.com). Measured
+         2026-10-04: with a panel open, pressing a step further down threw it
+         459px up the screen in one frame as the old panel vanished. As
+         chaseroush.com does: swap at once, then glide the pressed step to just
+         under the site's header while its panel grows open beneath it. */
+      var tapped = steps[i] && steps[i].offsetParent ? steps[i] : null;
+      var calm = still || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+      /* The old panel SHRINKS AWAY instead of vanishing: its content moves
+         into a holder left where it was, which collapses while the new one
+         grows. A vanishing panel is what threw the pressed step up the screen. */
+      var ghost = null;
+      if (tapped && !calm && open !== -1 && slot.firstChild) {
+        ghost = document.createElement('div');
+        ghost.style.cssText = 'overflow:hidden;height:' + slot.offsetHeight + 'px;transition:height .45s cubic-bezier(.16,1,.3,1)';
+        while (slot.firstChild) ghost.appendChild(slot.firstChild);
+        slot.parentNode.insertBefore(ghost, slot);
+      }
       open = i;
       /* Replacing one panel with another swaps immediately: animating the old
          one out while the new one comes in puts two overlapping panels in the
@@ -983,6 +1001,30 @@ ${COLOUR_JS}
       placeSlot(i);
       slot.appendChild(detailPanel(rows[i], kids, lang, closeDetail));
       if (typeof placeNow === 'function') placeNow();
+      if (tapped) glideTo(tapped, slot, ghost, calm);
+    }
+
+    function glideTo(step, box, ghost, calm) {
+      /* Where the step will be once the old panel above it (if any) is gone. */
+      var above = ghost && (ghost.compareDocumentPosition(step) & 4 /* FOLLOWING */) ? ghost.offsetHeight : 0;
+      if (!calm) {
+        box.style.overflow = 'hidden';
+        box.style.maxHeight = '0px';
+        void box.offsetHeight;
+        box.style.transition = 'max-height .45s cubic-bezier(.16,1,.3,1)';
+        box.style.maxHeight = box.scrollHeight + 'px';
+        if (ghost) ghost.style.height = '0px';
+        setTimeout(function () {
+          box.style.maxHeight = ''; box.style.overflow = ''; box.style.transition = '';
+          if (ghost && ghost.parentNode) ghost.parentNode.removeChild(ghost);
+          if (typeof placeNow === 'function') placeNow();
+        }, 500);
+      }
+      /* The site's own sticky header, whichever site this is embedded in. */
+      var head = document.querySelector('header.top, .main-nav, header');
+      var under = head ? Math.max(0, head.getBoundingClientRect().bottom) : 0;
+      var by = step.getBoundingClientRect().top - above - under - 16;
+      if (Math.abs(by) > 2 && window.scrollBy) window.scrollBy({ top: by, behavior: calm ? 'auto' : 'smooth' });
     }
 
     /* THE PANEL OPENS WHERE IT WAS ASKED FOR.
