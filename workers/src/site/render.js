@@ -196,6 +196,43 @@ html.menu-open .nav{display:flex;position:absolute;left:0;right:0;top:100%;flex-
 html[data-menu="center"] .top .wrap{position:relative}
 html[data-menu="center"] .top .langmenu{position:absolute;right:0;top:16px}
 @media (max-width:820px){html[data-menu="center"] .top .langmenu{position:static}}
+/* THE NAVIGATION TAB (2026-10-04). The page you are on, its color, the line
+   under the bar, the phone menu. Hover always lifts a name to the text color. */
+html{--navtint:var(--fg)}html[data-navtint="accent"]{--navtint:var(--acc)}
+.nav a[aria-current]:not(.givebtn){color:var(--navtint)}
+html[data-navcur="under"] .nav a[aria-current]:not(.givebtn){border-bottom:2px solid var(--navtint);padding-bottom:2px}
+html[data-navcur="grow"] .nav a[aria-current]:not(.givebtn){color:var(--fg);position:relative}
+html[data-navcur="grow"] .nav a[aria-current]:not(.givebtn)::after{content:"";position:absolute;left:0;right:0;bottom:-6px;height:2px;background:var(--navtint);transform-origin:left}
+html[data-navcur="pill"] .nav a[aria-current]:not(.givebtn){color:var(--fg);background:color-mix(in srgb,var(--navtint) 18%,transparent);padding:6px 12px;margin:-6px -12px;border-radius:999px}
+.nav a:not(.givebtn):hover{color:var(--fg)}
+html[data-navline="none"] .top{border-bottom-color:transparent}
+html[data-navline="accent"] .top{border-bottom:2px solid var(--acc)}
+.menubtn.burger{border:0;padding:10px;border-radius:8px;line-height:0}
+.burger i{display:block;width:20px;height:2px;background:currentColor;border-radius:2px;transition:transform .25s,opacity .2s}
+.burger i+i{margin-top:5px}
+html.menu-open .burger i:nth-child(1){transform:translateY(7px) rotate(45deg)}
+html.menu-open .burger i:nth-child(2){opacity:0}
+html.menu-open .burger i:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
+html[data-navphone="full"].menu-open .nav{height:calc(100dvh - 100%);box-sizing:border-box;justify-content:safe center;align-items:center;gap:16px;border:0;flex-wrap:nowrap;overflow-y:auto}
+html[data-navphone="full"] .navlang{text-align:center}html[data-navphone="full"] .navlang summary{justify-content:center}
+html[data-navphone="full"].menu-open .nav a{font-size:22px}
+html[data-navphone="drawer"].menu-open .nav{left:auto;width:min(80vw,320px);height:calc(100dvh - 100%);box-sizing:border-box;border-bottom:0;border-left:1px solid var(--line);flex-wrap:nowrap;overflow-y:auto}
+html[data-navphone="drawer"].menu-open .top::after{content:"";position:absolute;top:100%;left:0;right:0;height:calc(100dvh - 100%);background:rgba(0,0,0,.5);z-index:-1}
+.navlang{display:none}
+.navlang summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:10px;color:var(--fg);font-size:15px}
+.navlang summary::-webkit-details-marker{display:none}
+.navlang summary svg{width:10px;height:6px;transition:transform .2s}.navlang[open] summary svg{transform:rotate(180deg)}
+.navlang ul{list-style:none;margin:12px 0 0;padding:0 0 0 14px;border-left:2px solid color-mix(in srgb,var(--acc) 60%,transparent);display:flex;flex-direction:column;gap:10px}
+.navlang a{color:var(--fg);text-decoration:none}.navlang a[aria-current]{color:var(--acc)}
+html[data-navphone="full"] .navlang ul{border-left:0;padding:0;align-items:center}
+@media (prefers-reduced-motion:no-preference){
+ html[data-navcur="grow"] .nav a[aria-current]:not(.givebtn)::after{animation:navgrow .6s cubic-bezier(.55,.05,.45,.95) .2s both}
+ html.menu-open:not([data-navphone="drawer"]) .nav{animation:navunfurl .45s cubic-bezier(.16,1,.3,1) both}
+ html[data-navphone="drawer"].menu-open .nav{animation:navslide .4s cubic-bezier(.16,1,.3,1) both}
+ .navlang[open] ul{animation:navunfurl .35s cubic-bezier(.16,1,.3,1) both}}
+@keyframes navgrow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes navunfurl{from{clip-path:inset(0 0 100% 0)}to{clip-path:inset(0 0 0 0)}}
+@keyframes navslide{from{transform:translateX(100%)}to{transform:translateX(0)}}
 /* sections */
 main section{padding:88px 0}
 main section + section{border-top:1px solid var(--line)}
@@ -708,6 +745,7 @@ function renderSection(sec, ctx) {
 export function renderPage({ doc, site, payload, theme, lang, pageId, base, origin, draft, only = null, langNames = {} }) {
   const fallback = doc.fallback;
   const design = doc.design;
+  const navOpt = design.nav || {};
   const L = looks(design.look, theme, design.colors || {}, design.mode);
   const pages = doc.pages.filter((p) => p.on);
   const page = doc.pages.find((p) => p.id === pageId);
@@ -793,7 +831,13 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
 
   const nav = pages.filter((p) => p.id !== "give").map((p) =>
     `<a href="${esc(href(p.id))}"${p.id === pageId ? ' aria-current="page"' : ""}>${esc(label(p.id))}</a>`).join("");
-  const give = ctx.pageOn("give") ? `<a class="givebtn" href="${esc(href("give"))}"${pageId === "give" ? ' aria-current="page"' : ""}>${esc(label("give"))}</a>` : "";
+  /* Give opens the Give page, or (Navigation tab) goes straight to the giving
+     link in a new tab — only when there is one. */
+  const giveOut = design.giveTo === "link" && doc.give;
+  const give = ctx.pageOn("give") || giveOut
+    ? giveOut ? `<a class="givebtn" href="${esc(doc.give)}" target="_blank" rel="noopener">${esc(label("give"))}</a>`
+      : `<a class="givebtn" href="${esc(href("give"))}"${pageId === "give" ? ' aria-current="page"' : ""}>${esc(label("give"))}</a>`
+    : "";
   /* THE LANGUAGE MENU IS ALWAYS A DROPDOWN (Chase, 2026-09-29: "Language
      selection should maintain the dropdown menu regardless"): the current
      language's code, opening to every language by its own name. Outside the
@@ -802,6 +846,13 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
   const langMenu = (up) => doc.languages.length > 1
     ? `<details class="langmenu${up ? " up" : ""}"><summary aria-label="${esc(word(lang, "lang"))}">` +
       `<span>${esc(lang.toUpperCase())}</span><svg viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></summary>` +
+      `<ul>${doc.languages.map((l) =>
+        `<li><a href="${esc(href(pageId, l))}" hreflang="${esc(l)}" lang="${esc(l)}"${l === lang ? ' aria-current="true"' : ""}>${esc(langNames[l] || l.toUpperCase())}</a></li>`).join("")}</ul></details>`
+    : "";
+  /* On a phone the language is a dropdown INSIDE the menu (Chase,
+     2026-10-04); the header's own language menu hides there. */
+  const navLang = doc.languages.length > 1
+    ? `<details class="navlang"><summary>${esc(word(lang, "lang"))} · ${esc(langNames[lang] || lang.toUpperCase())}<svg viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></summary>` +
       `<ul>${doc.languages.map((l) =>
         `<li><a href="${esc(href(pageId, l))}" hreflang="${esc(l)}" lang="${esc(l)}"${l === lang ? ' aria-current="true"' : ""}>${esc(langNames[l] || l.toUpperCase())}</a></li>`).join("")}</ul></details>`
     : "";
@@ -835,7 +886,7 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
   const fold = design.menu === "center" ? 820 : Math.max(820, Math.ceil(menuW / 10) * 10);
 
   const out = `<!doctype html>
-<html lang="${esc(lang)}" data-menu="${esc(design.menu)}" data-entrance="${esc(m.entrance)}" data-photos="${esc(m.photos)}" data-headings="${esc(m.headings)}" data-buttons="${esc(m.buttons)}" data-pages="${esc(m.pages)}" data-progress="${esc(m.progress)}" data-cue="${esc(m.cue)}">
+<html lang="${esc(lang)}" data-menu="${esc(design.menu)}" data-navcur="${esc(navOpt.current || "lit")}" data-navtint="${esc(navOpt.tint || "white")}" data-navline="${esc(navOpt.line || "subtle")}" data-navphone="${esc(navOpt.phone || "drop")}" data-entrance="${esc(m.entrance)}" data-photos="${esc(m.photos)}" data-headings="${esc(m.headings)}" data-buttons="${esc(m.buttons)}" data-pages="${esc(m.pages)}" data-progress="${esc(m.progress)}" data-cue="${esc(m.cue)}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -847,7 +898,7 @@ ${alternates}
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?${FONTS[design.look]}&display=swap">
 <style>${css(L, design)}
-@media (max-width:${fold}px){.menubtn{display:inline-block}.nav{display:none}.top .wrap{flex-direction:row!important;padding:0!important}}</style>
+@media (max-width:${fold}px){.menubtn{display:inline-block}.nav{display:none}.top .wrap{flex-direction:row!important;padding:0!important}.top .wrap>.langmenu{display:none}html.menu-open .nav .navlang{display:block;width:100%}}</style>
 </head>
 <body${only ? ' class="only-foot"' : ""}>
 ${only === "footer" ? foot : `<a class="skip" href="#main">${esc(label(pageId))}</a>
@@ -855,8 +906,8 @@ ${only === "footer" ? foot : `<a class="skip" href="#main">${esc(label(pageId))}
 ${draft ? `<div style="background:#F5B845;color:#1a1200;font:600 13px system-ui;padding:8px 16px;text-align:center">Preview — not published yet</div>` : ""}
 <header class="top"><div class="wrap">
 <a class="brand" href="${esc(href("home"))}">${brand}</a>
-<button class="menubtn" type="button" aria-expanded="false" aria-controls="sitenav">${esc(word(lang, "menu"))}</button>
-<nav class="nav" id="sitenav">${nav}${give}${design.headerLinks && socials ? `<span class="socials headlinks">${socials}</span>` : ""}</nav>
+<button class="menubtn burger" type="button" aria-expanded="false" aria-controls="sitenav" aria-label="${esc(word(lang, "menu"))}"><i></i><i></i><i></i></button>
+<nav class="nav" id="sitenav">${nav}${give}${design.headerLinks && socials ? `<span class="socials headlinks">${socials}</span>` : ""}${navLang}</nav>
 ${langMenu(false)}
 </div></header>
 <main id="main">

@@ -173,6 +173,17 @@ export const LOOKS = ["night", "paper", "bold", "custom"];
 export const MODES = ["auto", "dark", "light"];
 const HEX_RE = /^#[0-9a-fA-F]{6}$/;
 export const MENUS = ["top", "center", "button"];
+/* THE NAVIGATION TAB (Chase, 2026-10-04, from the approved mockup). Defaults
+   are what every site already looked like: the current page lit in plain
+   white, the thin line under the bar, the drop-down on phones, Give to the
+   Give page. "Bold" and "Dot below" were tried and set aside for later. */
+export const NAV = {
+  current: ["lit", "under", "grow", "pill"],
+  tint: ["white", "accent"],
+  line: ["subtle", "none", "accent"],
+  phone: ["drop", "full", "drawer"],
+};
+export const GIVE_TO = ["page", "link"];
 /* Chase, 2026-09-29: "I'd like a few more animation tools available". Each is
    one choice, each respected only where the visitor has not asked their
    device for less motion. */
@@ -336,6 +347,7 @@ export function starter(kind, { name, langs, fallback, give }) {
        sections rise in, photos still, headings all at once, buttons lift,
        pages fade, no scroll line. */
     design: { look: "night", menu: "top", brand: "name", logo: null, favicon: null, headerLinks: false,
+              nav: { current: "lit", tint: "white", line: "subtle", phone: "drop" }, giveTo: "page",
               colors: { background: null, accent: null },
               motion: { entrance: "rise", photos: "still", headings: "plain", buttons: "lift", pages: "fade", progress: "off" } },
     links: [],
@@ -626,6 +638,9 @@ export function cleanDoc(raw, catalog) {
       faviconStyle: FAVICON_STYLES.includes(design.faviconStyle) ? design.faviconStyle
         : safePhoto(design.favicon) ? "photo" : "filled",
       headerLinks: !!design.headerLinks,
+      nav: Object.fromEntries(Object.entries(NAV).map(([k, opts]) =>
+        [k, pick((design.nav || {})[k], opts)])),
+      giveTo: pick(design.giveTo, GIVE_TO),
       /* The owner's own colors (the Custom look), or null for a dark ground
          and the ministry's accent. Everything else is worked out from these. */
       mode: pick(design.mode, MODES),

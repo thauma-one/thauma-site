@@ -349,6 +349,21 @@ await check("the footer: a layout picked, a tagline written", async () => {
   eq([f.layout, f.words.en.tagline], ["center", "All of me for all of Him"], "saved");
 });
 
+await check("Navigation: the page-you-are-on look, its color, the line and the phone menu are saved", async () => {
+  const { d, sent, click } = await boot();
+  click(d.querySelector('[data-ws-tab="nav"]'));
+  assert(!d.getElementById("wsNav").hidden, "the Navigation panel");
+  assert(!d.getElementById("wsPreviewPane").hidden, "with the site beside it");
+  assert(d.querySelectorAll('#wsNav .ws-look[data-chip="nav:current"]').length === 4, "four looks");
+  click(d.querySelector('[data-chip="nav:current"][data-value="under"]'));
+  click(d.querySelector('[data-chip="nav:tint"][data-value="accent"]'));
+  click(d.querySelector('[data-chip="nav:line"][data-value="accent"]'));
+  click(d.querySelector('[data-chip="nav:phone"][data-value="drawer"]'));
+  await settle(900);
+  const draft = sent.filter((x) => x.action === "save").pop().draft;
+  eq(draft.design.nav, { current: "under", tint: "accent", line: "accent", phone: "drawer" }, "saved");
+});
+
 await check("Links: a tap on an icon opens its box; other links are rows, one opened at a time", async () => {
   const { w, d, sent, click } = await boot();
   click(d.querySelector('[data-ws-tab="links"]'));

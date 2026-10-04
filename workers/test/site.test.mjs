@@ -696,5 +696,35 @@ check("photo and words: words can flow around the photo, and a photo is never cr
     "the whole photo shows");
 });
 
+/* ---- the Navigation tab (2026-10-04) ---- */
+
+check("navigation defaults keep every site as it was; junk falls back to them", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en", "hr"], fallback: "en" });
+  delete d.design.nav;
+  const c = cleanDoc({ ...d, design: { ...d.design, nav: { current: "dot", tint: "red", line: "x", phone: "y" }, giveTo: "?" } }, ["en", "hr"]);
+  eq(c.design.nav, { current: "lit", tint: "white", line: "subtle", phone: "drop" }, "defaults");
+  eq(c.design.giveTo, "page", "give");
+  const html = page(d);
+  assert(/data-navcur="lit" data-navtint="white" data-navline="subtle" data-navphone="drop"/.test(html), "attributes");
+});
+
+check("the chosen look reaches the page; hover lifts a name; the phone menu holds a language dropdown", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en", "hr"], fallback: "en" });
+  d.design.nav = { current: "grow", tint: "accent", line: "accent", phone: "full" };
+  const html = page(d);
+  assert(/data-navcur="grow" data-navtint="accent" data-navline="accent" data-navphone="full"/.test(html), "attributes");
+  assert(html.includes(".nav a:not(.givebtn):hover{color:var(--fg)}"), "hover");
+  assert(/<nav class="nav" id="sitenav">[\s\S]*<details class="navlang">[\s\S]*hreflang="hr"[\s\S]*<\/details><\/nav>/.test(html), "language inside the menu");
+  assert(/class="menubtn burger"[^>]*aria-label=/.test(html), "a hamburger with a name");
+});
+
+check("Give goes straight to the giving link only when there is one", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en", give: "https://give.example/chase" });
+  d.design.giveTo = "link";
+  assert(/<a class="givebtn" href="https:\/\/give\.example\/chase" target="_blank" rel="noopener">/.test(page(d)), "to the link");
+  d.give = "";
+  assert(/<a class="givebtn" href="[^"]*give\/?"/.test(page(d)) || !/class="givebtn"[^>]*target=/.test(page(d)), "no link: the Give page");
+});
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -2795,3 +2795,20 @@ html.has-ai .ai-one{display:inline-flex;align-items:center;justify-content:cente
 .ws-head-row{display:flex;align-items:center;justify-content:space-between;margin-top:26px}
 .ws-attop{margin-top:20px}
 .ws-stack.has-open{padding-bottom:55vh}
+
+/* ---- Navigation tab samples (2026-10-04) ----
+   The page you are on, drawn the way the site draws it; "Its color" switches
+   the sample between white and the site's accent (--ws-acc). */
+.ws-navs{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+.ws-navs{--nav-tint:var(--ws-acc,#1AE4FF)}.ws-navs[data-tint="white"]{--nav-tint:#FFFFFF}
+.ws-nav-sample{display:flex;gap:12px;align-items:center;height:56px;padding:0 14px;background:#0D0D0D;color:#9A9A9A;font-size:12px}
+.ws-nav-sample .on{color:var(--nav-tint);position:relative}
+.ws-nav-sample[data-cur="under"] .on{border-bottom:2px solid var(--nav-tint);padding-bottom:2px}
+.ws-nav-sample[data-cur="grow"] .on{color:#EDEDED}
+.ws-nav-sample[data-cur="grow"] .on::after{content:"";position:absolute;left:0;right:0;bottom:-5px;height:2px;background:var(--nav-tint)}
+.ws-nav-sample[data-cur="pill"] .on{color:#EDEDED;background:color-mix(in srgb,var(--nav-tint) 18%,transparent);padding:4px 9px;margin:-4px -9px;border-radius:999px}
+.ws-phone-sample{display:block;position:relative;height:56px;background:#0D0D0D}
+.ws-phone-sample i{position:absolute;background:#2A2A2A;border-radius:3px}
+.ws-phone-sample[data-phone="drop"] i{left:8px;right:8px;top:8px;height:28px}
+.ws-phone-sample[data-phone="full"] i{inset:8px}
+.ws-phone-sample[data-phone="drawer"] i{right:8px;top:8px;bottom:8px;width:44%}

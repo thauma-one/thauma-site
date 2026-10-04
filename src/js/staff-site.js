@@ -276,8 +276,10 @@
      2026-09-29) — on every tab, not only the one being edited. */
   function areas(doc) {
     var d = JSON.parse(JSON.stringify(doc.design)); var head = d.headerLinks; delete d.headerLinks;
+    var nav = [d.nav, d.giveTo]; delete d.nav; delete d.giveTo;
     return {
       design: JSON.stringify(d),
+      nav: JSON.stringify(nav),
       pages: JSON.stringify(doc.pages),
       links: JSON.stringify([doc.links, head]),
       footer: JSON.stringify(doc.footer),
@@ -391,10 +393,11 @@
     if (state.tab === 'design') drawDesign();
     if (state.tab === 'links') drawLinks();
     if (state.tab === 'footer') drawFooter();
+    if (state.tab === 'nav') drawNav();
     if (state.tab === 'settings') drawSettings();
     /* The site beside whatever is being changed: the page being arranged, or
        Home for the look, the links and the footer. */
-    var showFrame = state.tab === 'pages' || state.tab === 'design' || state.tab === 'links' || state.tab === 'footer';
+    var showFrame = state.tab === 'pages' || state.tab === 'design' || state.tab === 'links' || state.tab === 'footer' || state.tab === 'nav';
     $('wsPreviewPane').hidden = !showFrame;
     $('wsRoot').classList.toggle('with-preview', showFrame);
     if (showFrame) refreshFrame();
@@ -1277,6 +1280,38 @@
     center: [[26,18,48,8,'l'],[40,38,20,10,'o'],[22,58,56,8,'t'],[30,76,40,6,'l']],
     columns: [[5,24,22,12,'t'],[34,24,16,6,'l'],[34,38,14,6,'l'],[56,24,16,6,'l'],[56,38,14,6,'l'],[78,24,16,12,'o'],[5,74,90,5,'l']],
   };
+  /* ---- the Navigation tab (2026-10-04, from the approved mockup) ---- */
+  function navOf(doc) {
+    return doc.design.nav || (doc.design.nav = { current: 'lit', tint: 'white', line: 'subtle', phone: 'drop' });
+  }
+  function drawNav() {
+    var n = navOf(state.doc), d = state.doc.design;
+    var look = function (group, k, on, sample) {
+      return '<button type="button" class="ws-look" data-chip="nav:' + group + '" data-value="' + k + '" aria-pressed="' + on + '">' + sample +
+        '<span class="ws-look-cap"><b>' + esc(tr('ws.nav.' + (group === 'current' ? 'cur' : group) + '.' + k)) + '</b><span>' +
+        esc(tr('ws.nav.' + (group === 'current' ? 'cur' : group) + '.' + k + '.what')) + '</span></span></button>';
+    };
+    var html = '<div class="ws-head"><h2>' + esc(tr('ws.nav.current')) + '</h2></div><div class="ws-looks ws-navs" data-tint="' + esc(n.tint) + '">' +
+      ['lit', 'under', 'grow', 'pill'].map(function (k) {
+        return look('current', k, n.current === k, '<span class="ws-nav-sample" data-cur="' + k + '" aria-hidden="true"><span>' +
+          esc(tr('ws.page.about')) + '</span><span class="on">' + esc(tr('ws.page.mission')) + '</span><span>' + esc(tr('ws.page.timeline')) + '</span></span>');
+      }).join('') + '</div>';
+    html += '<div class="ws-rows">' +
+      row(tr('ws.nav.tint'), chips('nav:tint', ['accent', 'white'], n.tint, function (v) { return tr('ws.nav.tint.' + v); })) +
+      row(tr('ws.nav.line'), chips('nav:line', ['none', 'subtle', 'accent'], n.line, function (v) { return tr('ws.nav.line.' + v); })) +
+      '</div>';
+    html += '<div class="ws-head"><h2>' + esc(tr('ws.nav.phone')) + '</h2></div><div class="ws-looks ws-navs">' +
+      ['drop', 'full', 'drawer'].map(function (k) {
+        return look('phone', k, n.phone === k, '<span class="ws-phone-sample" data-phone="' + k + '" aria-hidden="true"><i></i></span>');
+      }).join('') + '</div>';
+    /* Straight to the giving link only when there is one to go to. */
+    html += '<div class="ws-rows">' + row(tr('ws.nav.give'), state.doc.give
+      ? chips('giveTo', ['page', 'link'], d.giveTo || 'page', function (v) { return tr('ws.nav.give.' + v); })
+      : chips('giveTo', ['page'], 'page', function (v) { return tr('ws.nav.give.' + v); }) +
+        '<button type="button" class="ghost-btn sm" data-goto-tab="settings">' + esc(tr('ws.nav.addGive')) + ' →</button>') + '</div>';
+    $('wsNav').innerHTML = html;
+  }
+
   function drawFooter() {
     var f = state.doc.footer || (state.doc.footer = { layout: 'split', menu: false, socials: 'icons', words: {} });
     var w = (f.words || {})[state.langA] || {};
@@ -1519,6 +1554,8 @@
         if (box) box.focus();
       }
       else if (name.indexOf('footer:') === 0) { state.doc.footer[name.slice(7)] = val; drawFooter(); }
+      else if (name.indexOf('nav:') === 0) { navOf(state.doc)[name.slice(4)] = val; drawNav(); }
+      else if (name === 'giveTo') { state.doc.design.giveTo = val; drawNav(); }
       else if (name.indexOf('motion:') === 0) { state.doc.design.motion[name.slice(7)] = val; drawDesign(); }
       else if (name === 'look' || name === 'menu' || name === 'brand' || name === 'mode' || name === 'faviconStyle') { state.doc.design[name] = val; drawDesign(); }
       return changed();
