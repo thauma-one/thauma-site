@@ -15,6 +15,12 @@
    one tapes down the oldest half of the cable for a while, and taped
    cable is safe for them to walk over and for you to cross.
 
+   ROUND 4 (Chase, 2026-10-05: "still needs a bit of help. It feels too
+   easy"): quicker from the start (0.15s a step, to 0.07); the stage fills
+   up — every third piece of gear plugged leaves a monitor wedge or a mic
+   stand behind, for good, and touching one ends the run; the worship
+   leader crosses more often (every 6–13s, was 8–16) and faster.
+
    D-pad: arrows / WASD, the strip of four buttons on a touch screen, or
    a swipe.
    ===================================================================== */
@@ -40,9 +46,9 @@
       var y0 = ROWS - 5;
       var cable = [{ x: 7, y: y0 }, { x: 7, y: y0 + 1 }, { x: 7, y: y0 + 2 }, { x: 7, y: y0 + 3 }];
       var dir = 'up', queue = [], grow = 0;
-      var tick = 0, every = .18, plugged = 0, score = 0, lastHead = null;
+      var tick = 0, every = .15, plugged = 0, score = 0, lastHead = null, props = [];
       var gear = null, tape = null, taped = 0, tapeUntil = 0;
-      var leader = null, nextLeader = 14, time = 0;
+      var leader = null, nextLeader = 11, time = 0;
       var dead = false;
       /* Nothing moves until the first direction: a run that starts on its own
          is over before the player has found the cable (seen in play). */
@@ -50,6 +56,7 @@
 
       function free(x, y) {
         return !cable.some(function (s) { return s.x === x && s.y === y; }) &&
+          !props.some(function (p) { return p.x === x && p.y === y; }) &&
           !(gear && gear.x === x && gear.y === y) && !(tape && tape.x === x && tape.y === y);
       }
       function place(kind) {
@@ -81,6 +88,7 @@
         var hitAt = -1;
         for (var i = 0; i < cable.length - (grow ? 0 : 1); i++) if (cable[i].x === nx && cable[i].y === ny) { hitAt = i; break; }
         if (hitAt >= 0 && !isTaped(hitAt)) return crash('cablerun_crash');
+        if (props.some(function (p) { return p.x === nx && p.y === ny; })) return crash('cablerun_crash');
         cable.unshift({ x: nx, y: ny });
         if (grow) grow--; else cable.pop();
 
@@ -92,7 +100,15 @@
              but gently (Chase, 2026-10-05: "ease you into games"): 0.18s a
              step to start, 0.075 at the fastest, which takes ~35 pieces
              (was 0.16 → 0.058 by ~28) */
-          every = Math.max(.075, .18 - (cable.length - 4) * .003);
+          every = Math.max(.07, .15 - (cable.length - 4) * .0035);
+          /* every third plug, the stage gets a little more crowded: a
+             wedge or a stand, never right in front of the plug */
+          if (plugged % 3 === 0) {
+            for (var tries = 0; tries < 60; tries++) {
+              var pr = place(Math.random() < .5 ? 'wedge' : 'stand');
+              if (pr && Math.abs(pr.x - nx) + Math.abs(pr.y - ny) > 4) { props.push(pr); break; }
+            }
+          }
           if (plugged % 5 === 0) ctx.quip('jokes_cablerun_plug', { mood: 'good' });
           gear = place(GEAR[rnd(3)]);
           if (!tape && plugged % 4 === 0) tape = place('tape');
@@ -114,18 +130,18 @@
         nextLeader -= dt;
         if (!leader && nextLeader <= 0) {
           var row = 2 + rnd(ROWS - 4), fromLeft = Math.random() < .5;
-          leader = { row: row, x: fromLeft ? -1 : COLS, dir: fromLeft ? 1 : -1, warn: 2.2 };
+          leader = { row: row, x: fromLeft ? -1 : COLS, dir: fromLeft ? 1 : -1, warn: 1.9 };
           ctx.say(words('cablerun_leader'), { tag: 'SM' }); ctx.sfx('zap');
         }
         if (leader) {
           if (leader.warn > 0) leader.warn -= dt;
           else {
-            leader.x += leader.dir * dt * 3.2;
+            leader.x += leader.dir * dt * (3.6 + Math.min(1.6, plugged * .06));
             var cx = Math.round(leader.x);
             for (var i = 0; i < cable.length; i++) {
               if (cable[i].y === leader.row && cable[i].x === cx && !isTaped(i)) return crash('cablerun_trip');
             }
-            if (leader.x < -2 || leader.x > COLS + 1) { leader = null; nextLeader = Math.max(8, 16 - plugged * .3); }
+            if (leader.x < -2 || leader.x > COLS + 1) { leader = null; nextLeader = Math.max(6, 13 - plugged * .35); }
           }
         }
 
@@ -150,6 +166,7 @@
           g.fillStyle = 'rgba(255,181,71,' + (.08 + .08 * Math.sin(time * 14)).toFixed(3) + ')';
           g.fillRect(0, leader.row * C, W, C);
         }
+        props.forEach(function (p) { drawProp(g, p); });
         if (gear) drawGear(g, gear);
         if (tape) drawTape(g, tape);
         drawCable(g);
@@ -215,6 +232,21 @@
           g.quadraticCurveTo(P[i].x, P[i].y, mx, my);
         }
         if (P.length > 1) g.lineTo(P[P.length - 1].x, P[P.length - 1].y);
+      }
+      /* what the stage fills up with: a monitor wedge, a mic stand */
+      function drawProp(g, p) {
+        var x = p.x * C, y = p.y * C;
+        g.fillStyle = 'rgba(255,90,110,.12)'; g.fillRect(x, y, C, C);
+        if (p.kind === 'wedge') {
+          g.fillStyle = '#1b2130'; g.beginPath(); g.moveTo(x + 2, y + C - 3); g.lineTo(x + C - 2, y + C - 3); g.lineTo(x + C - 5, y + 5); g.lineTo(x + 5, y + 9); g.closePath(); g.fill();
+          g.fillStyle = '#0b0e14'; g.beginPath(); g.arc(x + C / 2, y + C / 2 + 2, 5, 0, 7); g.fill();
+          g.strokeStyle = '#59647a'; g.lineWidth = 1; g.stroke();
+        } else {
+          g.strokeStyle = '#8f99a8'; g.lineWidth = 2; g.beginPath();
+          g.moveTo(x + C / 2, y + 4); g.lineTo(x + C / 2, y + C - 6); g.moveTo(x + C / 2, y + C - 6); g.lineTo(x + 4, y + C - 2); g.moveTo(x + C / 2, y + C - 6); g.lineTo(x + C - 4, y + C - 2);
+          g.stroke(); g.fillStyle = '#3a4456'; g.fillRect(x + C / 2 - 2, y + 2, 4, 6);
+        }
+        g.strokeStyle = 'rgba(255,90,110,.55)'; g.lineWidth = 1; g.strokeRect(x + .5, y + .5, C - 1, C - 1);
       }
       function drawGear(g, it) {
         var x = cx(it), y = cy(it), pulse = 1.35 + Math.sin(time * 5) * .08;
