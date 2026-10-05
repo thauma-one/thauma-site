@@ -798,66 +798,6 @@
     toast(fill('ml.bulkDone', { n: body.count }), 'ok');
   }
 
-  /* ---- the email look (lib/email-look.js) ----------------------------
-     Chase, 2026-10-04: "each ministry's email should be built from the
-     site's design, but an email designer may be good too … complete
-     transparency as to what they have access to." Every choice is shown;
-     while following the website they show what the website gives, and
-     changing any one makes the look the ministry's own from then on (the
-     photo editor's "drag a corner and it is Free"). Each change saves at
-     once and redraws the preview with the newest update's own words. */
-  var look = { open: false, data: null };
-  function lookChips(key, values, on, label, disabled) {
-    return '<div class="ml-look-row"><span class="sh-lbl">' + esc(tr('ml.look.' + key)) + '</span><div class="ml-look-chips">' +
-      values.map(function (v) {
-        return '<button type="button" class="ml-look-chip" data-look-k="' + key + '" data-look-v="' + esc(String(v)) + '"' +
-          ' aria-pressed="' + (String(on) === String(v)) + '"' + (disabled ? ' disabled' : '') + '>' + esc(label(v)) + '</button>';
-      }).join('') + '</div></div>';
-  }
-  function renderLook() {
-    var d = look.data;
-    if (!d) return;
-    var c = d.choice, site = d.has_site;
-    var onOff = function (v) { return tr(v === 'true' || v === true ? 'ml.look.on' : 'ml.look.off'); };
-    $('mlLookControls').innerHTML =
-      (site ? lookChips('follow', ['true', 'false'], String(c.follow), function (v) { return tr(v === 'true' ? 'ml.look.followSite' : 'ml.look.own'); }) : '') +
-      '<div class="ml-look-row"><span class="sh-lbl">' + esc(tr('ml.look.colors')) + '</span><span class="ml-look-colors">' +
-        '<i style="background:' + esc(d.accent) + '"></i><i style="background:' + esc(d.accent2) + '"></i>' +
-        '<a href="/staff/sharing/">' + esc(tr('ml.look.colorsWhere')) + '</a></span></div>' +
-      lookChips('mode', ['light', 'dark'], c.mode, function (v) { return tr('ml.look.mode.' + v); }) +
-      lookChips('font', site ? ['site', 'sans', 'serif'] : ['sans', 'serif'], site ? c.font : (c.font === 'site' ? 'sans' : c.font), function (v) { return tr('ml.look.font.' + v); }) +
-      lookChips('header', d.has_logo ? ['name', 'logo', 'none'] : ['name', 'none'], c.header, function (v) { return tr('ml.look.header.' + v); }) +
-      lookChips('corners', ['square', 'soft', 'round'], c.corners, function (v) { return tr('ml.look.corners.' + v); }) +
-      lookChips('bar', ['true', 'false'], String(c.bar), onOff) +
-      (site ? lookChips('footer', ['true', 'false'], String(c.footer), onOff) + lookChips('site', ['true', 'false'], String(c.site), onOff) : '');
-  }
-  async function loadLook(change) {
-    var body = await postJson(change ? { action: 'email-look', look: change } : { action: 'email-look' });
-    if (body.error) { toast(body.error, 'bad'); return; }
-    look.data = body.email_look;
-    renderLook();
-    $('mlLookFrame').srcdoc = body.preview || '';
-  }
-  $('mlLookBtn').addEventListener('click', function () {
-    look.open = !look.open;
-    $('mlLook').hidden = !look.open;
-    this.setAttribute('aria-expanded', look.open ? 'true' : 'false');
-    this.classList.toggle('is-on', look.open);
-    if (look.open) loadLook(null);
-  });
-  $('mlLookControls').addEventListener('click', function (e) {
-    var b = e.target.closest('[data-look-k]');
-    if (!b || !look.data || b.getAttribute('aria-pressed') === 'true') return;
-    var k = b.dataset.lookK, v = b.dataset.lookV;
-    var next = Object.assign({}, look.data.choice);
-    if (k === 'follow') { next.follow = v === 'true'; }
-    else {
-      next.follow = false;
-      next[k] = v === 'true' ? true : v === 'false' ? false : v;
-    }
-    loadLook(next);
-  });
-
   /* ---- tags -----------------------------------------------------------
      THE MINISTRY'S OWN, shared by every list. Managed from the subscriber
      screen because that is where they are used, and deliberately not inside a
@@ -1061,7 +1001,6 @@
     state.senders = body.senders || [];
     state.mayTheme = !!body.may_theme;
     state.partnerSlug = (body.partner && body.partner.slug) || '';
-    $('mlLookBtn').hidden = state.scope === 'organization';
     renderSentAll();
     renderDraftsAll();
 

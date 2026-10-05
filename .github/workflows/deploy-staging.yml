@@ -78,8 +78,6 @@ jobs:
         run: node test/mail-drafts.test.mjs
       - name: Test · mail-tags
         run: node test/mail-tags.test.mjs
-      - name: Test · mail-look
-        run: node test/mail-look.test.mjs
       - name: Test · photo-crop
         run: node test/photo-crop.test.mjs
       - name: Test · us-english
@@ -154,9 +152,6 @@ jobs:
       - name: Test · workers/email-change
         working-directory: workers
         run: node test/email-change.test.mjs
-      - name: Test · workers/email-look
-        working-directory: workers
-        run: node test/email-look.test.mjs
       - name: Test · workers/embed-colour
         working-directory: workers
         run: node test/embed-colour.test.mjs
@@ -178,6 +173,9 @@ jobs:
       - name: Test · workers/lang-redirect
         working-directory: workers
         run: node test/lang-redirect.test.mjs
+      - name: Test · workers/mail-brand
+        working-directory: workers
+        run: node test/mail-brand.test.mjs
       - name: Test · workers/mail-i18n
         working-directory: workers
         run: node test/mail-i18n.test.mjs

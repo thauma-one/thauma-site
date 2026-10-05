@@ -29,7 +29,8 @@ import { linkParams } from "./lib/signed-link.js";
 import { siteOrigin } from "./lib/origin.js";
 import { topicLabels, cleanLabels } from "./lib/topics.js";
 import { releaseMedia } from "./media-cleanup.js";
-import { lookForMail, cleanEmailLook } from "./lib/email-look.js";
+import { brandForMail } from "./lib/mail-brand.js";
+import { t as mailWord } from "./lib/mail-i18n.js";
 import { changedSince, changedAnswer } from "./lib/fresh.js";
 import { readTexts, cleanTexts } from "./lib/texts.js";
 import { lookFor } from "./embed-colour.js";
@@ -238,12 +239,12 @@ async function buildMailing(db, env, { mailing, list, origin }) {
      after it can fail to render at all. Checked on the FULL rendered email
      rather than on what was typed, because the shell, the inline styles and
      the Outlook block all count toward the limit. */
-  /* The ministry's email look (lib/email-look.js), worked out once per send
-     and carried with what was built, so the size measure, the test and
-     every message wear the same one. */
-  const look = await lookForMail(db, mailing.partner_id || list.partner_id || null);
+  /* A partner's mail is Thauma's, rebranded (lib/mail-brand.js): worked out
+     once per send and carried with what was built, so the size measure, the
+     test and every message wear the same colors and credit. */
+  const brand = await brandForMail(db, mailing.partner_id || list.partner_id || null);
   const sample = render(html, {
-    look,
+    ...brandOpts(brand),
     subject, preheader, fromName: list.from_name, listName: list.name,
     unsubscribeUrl: `${origin}/unsubscribe?s=x&t=` + "0".repeat(32),
     archiveUrl: list.archive_public ? `${origin}/archive/x/y/z` : null,
@@ -251,7 +252,7 @@ async function buildMailing(db, env, { mailing, list, origin }) {
   const big = tooBig(sample);
   if (big) return { error: big };
 
-  return { value: { subject, html, preheader, look,
+  return { value: { subject, html, preheader, brand,
                     text: mailing.body_text || toText(html),
                     bytes: sizeOf(sample) } };
 }
@@ -277,11 +278,17 @@ async function loadAttachments(env, rows) {
   return out;
 }
 
+/* What a partner's brand changes in Thauma's newsletter (render()): the
+   colors, and a line crediting Thauma. Spread AFTER any older theme, so the
+   brand's colors win; null (Thauma's own lists) changes nothing. */
+function brandOpts(brand) {
+  return brand ? { accent: brand.accent, accent2: brand.accent2, mode: brand.mode, credit: mailWord(null, "brand.note") } : {};
+}
+
 /** One message, addressed to one person. */
 async function messageFor(env, { built, list, sub, origin, theme, archiveUrl, attachments }) {
   const unsubscribe = await unsubscribeUrl(env, origin, sub.id);
   const body = render(built.html, {
-    look: built.look || null,
     subject: built.subject,
     preheader: built.preheader,
     fromName: list.from_name,
@@ -289,6 +296,7 @@ async function messageFor(env, { built, list, sub, origin, theme, archiveUrl, at
     accent: theme && theme.accent,
     accent2: theme && theme.accent2,
     mode: theme && theme.mode,
+    ...brandOpts(built.brand),
     unsubscribeUrl: unsubscribe,
     archiveUrl,
     recipientName: sub.name || null,
@@ -461,7 +469,7 @@ const api = {
         const look = partnerId
           ? await db.queryOne("partner_settings", { partner_id: partnerId }) : null;
         const previewHtml = render(m.body_html || "", {
-            look: await lookForMail(db, partnerId),
+            ...brandOpts(await brandForMail(db, partnerId)),
             subject: m.subject,
             preheader: m.preheader,
             fromName: list ? list.from_name : "",
@@ -741,7 +749,7 @@ const api = {
           listName: list.name,
           fromName: list.from_name, origin,
           confirmUrl: `${origin}/confirm?t=${token}`,
-          look: await lookForMail(db, partnerId),
+          brand: await brandForMail(db, partnerId),
         });
         const sent = await sendMail(env, {
           to: email,
@@ -795,7 +803,7 @@ const api = {
         const mail = listConfirmEmail({
           name: sub.name, listName: sub.list_name, fromName: sub.from_name, origin,
           confirmUrl: `${origin}/confirm?t=${token}`,
-          look: await lookForMail(db, partnerId),
+          brand: await brandForMail(db, partnerId),
         });
         const sent = await sendMail(env, {
           to: sub.email, subject: mail.subject, html: mail.html, text: mail.text,
@@ -902,36 +910,6 @@ const api = {
         }
         saved.attachments = await db.query("mailing_attachments_for", { mailing_id: id });
         return json({ ok: true, mailing: saved });
-      }
-
-      /* ---- the ministry's email look (0050, lib/email-look.js) ----
-         Chase: "each ministry's email should be built from the site's
-         design, but an email designer may be good too … complete
-         transparency as to what they have access to." With `look`, the
-         choices are saved at once (as Design's colors are); without, they
-         are only read. Either way the answer carries the look as the
-         designer shows it and a preview drawn with the ministry's newest
-         words. Thauma's own lists keep the plain email: no designer. */
-      if (body.action === "email-look") {
-        if (!partnerId) return json({ error: "Thauma's own email is not designed here." }, 400);
-        if (body.look && typeof body.look === "object") {
-          try {
-            await db.query("partner_email_look_set", { partner_id: partnerId, now,
-              email_look: JSON.stringify(cleanEmailLook(body.look)) });
-          } catch {
-            return json({ error: "The database needs updating first (Review and publish › Apply changes)." }, 409);
-          }
-        }
-        const look = await lookForMail(db, partnerId);
-        const latest = await db.queryOne("mailing_latest_for_partner", { partner_id: partnerId });
-        const list = (await db.query("mailing_lists_for_partner", { partner_id: partnerId }).catch(() => []))[0] || {};
-        const preview = render(latest ? latest.body_html : "<p>Hello,</p><p>This is how your updates will look.</p>", {
-          look, subject: latest ? latest.subject : "Your next update", preheader: null,
-          fromName: list.from_name || (s.partner && s.partner.display_name) || "", listName: list.name || "",
-          unsubscribeUrl: "#", archiveUrl: null,
-        });
-        return json({ ok: true, preview, email_look: { choice: look.choice, has_site: look.hasSite, has_logo: look.hasLogo,
-          accent: look.accent, accent2: look.accent2 } });
       }
 
       if (body.action === "mailing-delete") {
@@ -1330,7 +1308,7 @@ const api = {
              { list, token } and sent a confirmation with no link in it and
              "undefined" where the list's name goes. */
           ...listConfirmEmail({ name: name || null, listName: list.name, fromName: list.from_name, origin,
-                                confirmUrl: `${origin}/confirm?t=${token}`, look: await lookForMail(db, partnerId) }),
+                                confirmUrl: `${origin}/confirm?t=${token}`, brand: await brandForMail(db, partnerId) }),
           from: `${list.from_name} <${list.from_email}>`,
           replyTo: list.reply_to || undefined,
         });

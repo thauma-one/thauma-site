@@ -32,7 +32,6 @@
 const RESEND = "https://api.resend.com/emails";
 
 import { t } from "./mail-i18n.js";
-import { render } from "./newsletter.js";
 
 const esc = (s) =>
   String(s == null ? "" : s).replace(/[&<>"']/g, (c) =>
@@ -72,7 +71,7 @@ const esc = (s) =>
  * invert it; saying "dark light" tells them it is deliberate and to leave it
  * be. Every text color is set explicitly for the ones that ignore that.
  */
-export function shell({ heading, rows, footer = "", origin }) {
+export function shell({ heading, rows, footer = "", origin, brand = null }) {
   /* WHERE THE BAND IMAGE IS FETCHED FROM. The sending deployment's own origin,
      so a message from staging shows staging's copy and one from production
      shows production's. Falling back to the live site means an environment
@@ -95,13 +94,13 @@ export function shell({ heading, rows, footer = "", origin }) {
     <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"
            style="width:100%;max-width:600px;">
 
-      <tr><td bgcolor="#070A10" align="left"
+      ${brand ? brandBand(brand) : `<tr><td bgcolor="#070A10" align="left"
               style="background:#070A10;font-size:0;line-height:0;">
         <img src="${base}/img/email-band.png" width="600" alt="THAUMA"
              style="display:block;width:100%;max-width:600px;height:auto;border:0;
                     font-family:Helvetica,Arial,sans-serif;font-size:22px;
                     letter-spacing:10px;color:#EDF2F8;">
-      </td></tr>
+      </td></tr>`}
 
       <tr><td bgcolor="#10161F"
               style="background:#10161F;padding:30px 32px;
@@ -125,14 +124,29 @@ ${/* NO FOOTER, NO ROW. A list confirmation passes none, and the template
 </body></html>`;
 }
 
+/* THE BAND, REBRANDED (lib/mail-brand.js; Chase: "change the name Thauma to
+   their First and Last name"). Thauma's band is an image with THAUMA drawn
+   in it; a partner's is the same shape in live text — the name spaced wide
+   and thin on the same night ground, over a line in the ministry's color —
+   so it needs no image per ministry and reads with images off. */
+function brandBand(brand) {
+  const name = esc(String(brand.name || "").toUpperCase());
+  return `<tr><td bgcolor="#070A10" align="left"
+              style="background:#070A10;padding:46px 34px 44px;font-family:Helvetica,Arial,sans-serif;
+                     font-size:24px;line-height:1.2;font-weight:200;letter-spacing:10px;color:#EDF2F8;">${name}</td></tr>
+      <tr><td bgcolor="${brand.accent}" style="background:${brand.accent};height:4px;font-size:0;line-height:0;">&nbsp;</td></tr>`;
+}
+
 /** A primary action. A table, not an <a> with padding — Outlook ignores the padding. */
-export function button(href, label) {
+export function button(href, label, color = "#2FD8FF") {
+  const ink = /^#[0-9a-f]{6}$/i.test(color) && (() => { const n = parseInt(color.slice(1), 16);
+    return ((n >> 16) * 299 + ((n >> 8) & 255) * 587 + (n & 255) * 114) / 1000 > 150; })() ? "#06110c" : "#FFFFFF";
   return `<table role="presentation" cellpadding="0" cellspacing="0" border="0"
                  style="margin:22px 0;"><tr>
-    <td align="center" bgcolor="#2FD8FF" style="background:#2FD8FF;border-radius:6px;">
+    <td align="center" bgcolor="${color}" style="background:${color};border-radius:6px;">
       <a href="${esc(href)}" style="display:inline-block;padding:14px 28px;
          font-family:Helvetica,Arial,sans-serif;font-size:15px;font-weight:bold;
-         color:#06110c;text-decoration:none;border-radius:6px;">${esc(label)}</a>
+         color:${ink};text-decoration:none;border-radius:6px;">${esc(label)}</a>
     </td></tr></table>`;
 }
 
@@ -548,28 +562,17 @@ export function contactReceiptEmail({ name, ministry, topic, subject, message,
   };
 }
 
-export function listConfirmEmail({ name, listName, confirmUrl, fromName, origin, lang, look = null }) {
+export function listConfirmEmail({ name, listName, confirmUrl, fromName, origin, lang, brand = null }) {
   /* THE SUBSCRIBER'S OWN LANGUAGE, from the page they signed up on. Null when
      nothing said — t() falls back to English one key at a time, so a
      half-finished translation degrades to a mixed message rather than a
      blank. */
   const T = (k, v) => t(lang, k, v);
   const hello = name ? T("confirm.hello", { name }) : T("confirm.helloAnon");
-  /* A MINISTRY'S LIST IS CONFIRMED IN THE MINISTRY'S LOOK (BACKLOG §1: it
-     came "branded THAUMA for Chase Roush's list"): its email look — name or
-     logo, colors, fonts — with a small Thauma note at the foot, as its site
-     carries. Thauma's own lists keep Thauma's shell below. */
-  if (look) {
-    return {
-      subject: T("confirm.subject", { list: listName }),
-      text: [hello, "", T("confirm.body", { list: listName, from: fromName }).replace(/<\/?b>/g, ""), "", confirmUrl, "", T("confirm.ignore")].join("\n"),
-      html: render(`<p>${esc(hello)}</p><p>${T("confirm.body", { list: esc(listName), from: esc(fromName) })}</p>`, {
-        look, lang: lang || "en", subject: T("confirm.heading"), fromName: look.name || fromName, listName: "",
-        action: { url: confirmUrl, label: T("confirm.button"), after: `<p>${T("confirm.ignore")}</p>` },
-        note: T("brand.note"),
-      }),
-    };
-  }
+  /* A PARTNER'S LIST: Thauma's confirmation, rebranded (lib/mail-brand.js) —
+     their name in the band, their color on the button, and a line at the
+     foot crediting Thauma. BACKLOG §1: it came "branded THAUMA for Chase
+     Roush's list". */
   return {
     subject: T("confirm.subject", { list: listName }),
     text: [
@@ -581,6 +584,8 @@ export function listConfirmEmail({ name, listName, confirmUrl, fromName, origin,
     html: shell({
       heading: T("confirm.heading"),
       origin,
+      brand,
+      footer: brand ? esc(T("brand.note")) : "",
       /* p() rather than a bare <p>, so the color is stated. On a dark ground
          an inherited color is one client's reset away from black on black,
          and #666 — which the refusal line used to set — is unreadable on it. */
@@ -590,7 +595,7 @@ export function listConfirmEmail({ name, listName, confirmUrl, fromName, origin,
            escaped first, which is the only part a person supplied. */
         p(T("confirm.body", { list: esc(listName), from: esc(fromName) })
             .replace("<b>", '<b style="color:#FFFFFF;">')),
-        button(confirmUrl, T("confirm.button")),
+        button(confirmUrl, T("confirm.button"), brand ? brand.accent : undefined),
         /* The refusal path stated plainly. Somebody who did not ask for this
            should not have to do anything, and should be told so — an email
            that only offers a "yes" reads as a trick. */

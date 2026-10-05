@@ -14,17 +14,9 @@
       <div class="ml-hero-title" data-i18n="ml.write">Write an update</div>
       <div class="ml-hero-to" id="mlHeroTo"></div>
     </div>
-    <button type="button" class="ghost-btn" id="mlLookBtn" aria-expanded="false" hidden data-i18n="ml.look">Email look</button>
     <button type="button" class="ghost-btn" id="mlDrafts" hidden></button>
     <button type="button" class="solid-btn" id="mlWrite" data-i18n="ml.writeBtn">Write</button>
   </div>
-  {#- THE EMAIL LOOK (lib/email-look.js): the website's, or the ministry's
-     own choices — every one visible, with the newest update drawn in it. -#}
-  <section class="ml-look" id="mlLook" hidden>
-    <div class="ml-look-controls" id="mlLookControls"></div>
-    <iframe class="ml-look-frame" id="mlLookFrame" title="Email preview" sandbox=""></iframe>
-  </section>
-
   {#- WHAT IS WAITING, every list together, newest first, in Sent's shape.
      A row reopens that draft. Drafts leave only by Delete or by being sent. -#}
   <section class="ml-sentall ml-draftsall" id="mlDraftsAll" hidden>

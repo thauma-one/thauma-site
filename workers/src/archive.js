@@ -22,7 +22,8 @@
  * archive cannot drift from what landed in the inbox — and a fix to the
  * renderer reaches every past mailing at once.
  */
-import { lookForMail } from "./lib/email-look.js";
+import { brandForMail } from "./lib/mail-brand.js";
+import { t } from "./lib/mail-i18n.js";
 import { createDb } from "./lib/db.js";
 import { render, escapeHtml } from "./lib/newsletter.js";
 
@@ -100,15 +101,17 @@ export default {
     /* Rendered through the SAME function the email used, so the page cannot
        drift from the inbox. No unsubscribe link: this is a web page, and the
        reader may never have been subscribed at all. */
+    const brand = await brandForMail(db, m.partner_id).catch(() => null);
     const html = render(m.body_html || "", {
-      /* The ministry's email look, as the inbox had it (lib/email-look.js). */
-      look: await lookForMail(db, m.partner_id).catch(() => null),
       subject: m.subject,
       preheader: null,
       fromName: m.from_name || m.display_name,
       listName: m.list_name,
       accent: m.embed_accent,
       mode: m.embed_theme === "dark" ? "dark" : "light",
+      /* As the inbox had it: the ministry's colors and the Thauma credit
+         (lib/mail-brand.js). */
+      ...(brand ? { accent: brand.accent, accent2: brand.accent2, mode: brand.mode, credit: t(null, "brand.note") } : {}),
     });
     return new Response(html, { headers: HEADERS });
   },

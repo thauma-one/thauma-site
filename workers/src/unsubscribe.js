@@ -29,8 +29,8 @@
 import { createDb } from "./lib/db.js";
 import { verify } from "./lib/unsub.js";
 import { t } from "./lib/mail-i18n.js";
-import { lookForMail } from "./lib/email-look.js";
-import { brandPage } from "./lib/brand-page.js";
+import { brandForMail } from "./lib/mail-brand.js";
+import { page } from "./lib/public-page.js";
 
 const HEADERS = {
   "Content-Type": "text/html; charset=utf-8",
@@ -38,40 +38,6 @@ const HEADERS = {
   // Nothing here should ever be indexed or previewed by a crawler.
   "X-Robots-Tag": "noindex, nofollow",
 };
-
-/* THE ACCENT WAS #6D4AFF — a purple that belongs to nothing here. It is the
-   fallback an EMBED uses when a partner has never chosen a color (see
-   DEFAULT_ACCENT in embed.js), and it arrived here as a default nobody
-   revisited. This page is Thauma's own, not a partner's, so it wears Thauma's
-   cyan and Thauma's near-black rather than a stranger's placeholder. */
-function page(title, body, accent = "#2FD8FF", lang = null) {
-  /* The lang attribute matters here beyond politeness: it is what tells a
-     screen reader which voice to use, and a browser whether to offer a
-     translation it does not need. */
-  return `<!doctype html><html lang="${lang || "en"}"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="robots" content="noindex">
-<title>${title}</title>
-<style>
-  /* The site's own ground, not a generic dark. Light mode stays light — this
-     page is often opened from a mail client on a phone in either. */
-  :root{color-scheme:light dark;--bg:#f4f5f8;--card:#fff;--ink:#12121a;--dim:#5c5c6b;--line:#e6e6ee}
-  @media(prefers-color-scheme:dark){
-    :root{--bg:#070A10;--card:#10161F;--ink:#EDF2F8;--dim:#9AA6B6;--line:#1c2531}}
-  body{margin:0;min-height:100vh;display:grid;place-items:center;background:var(--bg);
-    color:var(--ink);font:16px/1.6 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,
-    Helvetica,Arial,sans-serif;padding:24px}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;
-    padding:34px 38px;max-width:30rem;text-align:center}
-  .bar{height:4px;background:${accent};border-radius:2px;margin:-34px -38px 26px}
-  h1{margin:0 0 12px;font:700 23px/1.3 Georgia,Cambria,'Times New Roman',serif}
-  p{margin:0 0 10px;color:var(--dim);font-size:15px}
-  p:last-child{margin-bottom:0}
-  .undo{display:inline-block;margin-top:6px;color:var(--ink);font-size:14px;
-    text-decoration:none;border-bottom:1px solid ${accent};padding-bottom:1px}
-</style></head>
-<body><div class="card"><div class="bar"></div>${body}</div></body></html>`;
-}
 
 /* Built per request, never as a module constant. A Response body can be read
    once, so a shared one serves the first visitor and an empty page to everyone
@@ -88,26 +54,25 @@ function page(title, body, accent = "#2FD8FF", lang = null) {
    One click out, one click back. A person who unsubscribed by accident should
    not have to find the ministry's website and sign up again — which also means
    confirming by email a second time to fix a mis-click. */
-/* IN THE MINISTRY'S LOOK (lib/brand-page.js) only once the link has been
-   verified and the person found — before that, every answer is the same
-   plain page, so an invented link learns nothing about whose list it names. */
-const shown = (title, body, lang, look) => new Response(look
-  ? brandPage({ look, title, body: body.replace(/class="undo"/g, 'class="act"'), lang: lang || "en", name: look.name, note: t(lang, "brand.note") })
-  : page(title, body, undefined, lang), { headers: HEADERS });
+/* A partner's list: the same page in its color and name (lib/mail-brand.js),
+   only once the link has been verified and the person found — before that,
+   every answer is Thauma's plain page, so an invented link learns nothing
+   about whose list it names. */
+const shown = (title, body, lang, brand) => new Response(page(title, body, undefined, lang, brand), { headers: HEADERS });
 
-const DONE = (id = "", token = "", lang = null, look = null) => shown(t(lang, "unsub.title"),
+const DONE = (id = "", token = "", lang = null, brand = null) => shown(t(lang, "unsub.title"),
   `<h1>${t(lang, "unsub.heading")}</h1>` +
   `<p>${t(lang, "unsub.body")}</p>` +
   `<p><a class="undo" href="/unsubscribe?s=${encodeURIComponent(id)}` +
-  `&t=${encodeURIComponent(token)}&undo=1">${t(lang, "unsub.undo")}</a></p>`, lang, look);
+  `&t=${encodeURIComponent(token)}&undo=1">${t(lang, "unsub.undo")}</a></p>`, lang, brand);
 
 /* After an undo. It offers the way out again, because somebody who has just
    pressed two buttons in a row may well have meant the first one. */
-const BACK = (id = "", token = "", lang = null, look = null) => shown(t(lang, "back.title"),
+const BACK = (id = "", token = "", lang = null, brand = null) => shown(t(lang, "back.title"),
   `<h1>${t(lang, "back.heading")}</h1>` +
   `<p>${t(lang, "back.body")}</p>` +
   `<p><a class="undo" href="/unsubscribe?s=${encodeURIComponent(id)}` +
-  `&t=${encodeURIComponent(token)}">${t(lang, "back.undo")}</a></p>`, lang, look);
+  `&t=${encodeURIComponent(token)}">${t(lang, "back.undo")}</a></p>`, lang, brand);
 
 export default {
   async fetch(request, env) {
@@ -143,14 +108,14 @@ export default {
        was recorded, and for them t() answers in English — which is what this
        page did for everybody until now. */
     const lang = sub.lang || null;
-    const look = sub.partner_id ? await lookForMail(db, sub.partner_id).catch(() => null) : null;
+    const brand = sub.partner_id ? await brandForMail(db, sub.partner_id).catch(() => null) : null;
 
     if (undo) {
       /* The statement itself only matches 'unsubscribed', so an old link
          cannot revive somebody who has since bounced or promote a sign-up
          that was never confirmed. */
       await db.query("subscriber_resubscribe_by_id", { id });
-      return BACK(id, token, lang, look);
+      return BACK(id, token, lang, brand);
     }
 
     // Already gone is a success. Saying "you were not subscribed" would be
@@ -159,6 +124,6 @@ export default {
       await db.query("subscriber_unsubscribe_by_id",
         { id, now: new Date().toISOString() });
     }
-    return DONE(id, token, lang, look);
+    return DONE(id, token, lang, brand);
   },
 };

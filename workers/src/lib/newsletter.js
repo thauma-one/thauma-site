@@ -299,12 +299,12 @@ const SERIF = "Georgia,Cambria,'Times New Roman',serif";
 /* Inline styles per tag. Applied on the way out rather than stored, so
    restyling every newsletter ever sent is a change here — and an archived
    mailing is re-rendered from the same source the email came from. */
-function inlineStyles(html, accent, ink, dim, line, dark = false, accent2 = accent, headFont = SERIF) {
+function inlineStyles(html, accent, ink, dim, line, dark = false, accent2 = accent) {
   const S = {
     p: `margin:0 0 16px;font-size:16px;line-height:1.6;color:${ink}`,
-    h2: `margin:28px 0 12px;font-family:${headFont};font-size:23px;line-height:1.3;` +
+    h2: `margin:28px 0 12px;font-family:${SERIF};font-size:23px;line-height:1.3;` +
         `font-weight:700;color:${ink}`,
-    h3: `margin:24px 0 10px;font-family:${headFont};font-size:19px;line-height:1.35;` +
+    h3: `margin:24px 0 10px;font-family:${SERIF};font-size:19px;line-height:1.35;` +
         `font-weight:700;color:${ink}`,
     ul: `margin:0 0 16px;padding-left:22px;font-size:16px;line-height:1.6;color:${ink}`,
     ol: `margin:0 0 16px;padding-left:22px;font-size:16px;line-height:1.6;color:${ink}`,
@@ -372,34 +372,28 @@ export function fillVariables(html, name) {
  * @param opts.unsubscribeUrl  REQUIRED for a real send. See the note below.
  * @param opts.recipientName   the subscriber's name, for variables; null on
  *                             the archive and the size measure (fallbacks).
+ * @param opts.credit          a partner ministry's line crediting Thauma
+ *                             ("A Thauma ministry"); Thauma's own mail, none.
  */
 export function render(body, opts = {}) {
-  /* THE LOOK (lib/email-look.js): the ministry's website's, or what its
-     email designer chose. Without one, the plain light or dark email this
-     always drew, in the ministry's colors. */
-  const L = opts.look || null;
-  const accent = L ? L.accent : /^#[0-9a-fA-F]{6}$/.test(String(opts.accent || "")) ? opts.accent : "#6D4AFF";
-  const accent2 = L ? L.accent2 : /^#[0-9a-fA-F]{6}$/.test(String(opts.accent2 || "")) ? opts.accent2 : accent;
-  const dark = L ? L.mode === "dark" : opts.mode === "dark";
+  const accent = /^#[0-9a-fA-F]{6}$/.test(String(opts.accent || "")) ? opts.accent : "#6D4AFF";
+  const accent2 = /^#[0-9a-fA-F]{6}$/.test(String(opts.accent2 || "")) ? opts.accent2 : accent;
+  const dark = opts.mode === "dark";
 
   /* Fixed, not theme-aware. An email cannot ask what the reader prefers, and a
      client that inverts a light email does a better job than one asked to
      render a dark one it did not expect. Light unless somebody asks. */
-  const bg   = L ? L.bg : dark ? "#15151c" : "#f4f5f8";
-  const card = L ? L.card : dark ? "#1c1c25" : "#ffffff";
-  const ink  = L ? L.ink : dark ? "#f2f2f7" : "#1a1a22";
-  const dim  = L ? L.dim : dark ? "#9a9aad" : "#5c5c6b";
-  const line = L ? L.line : dark ? "#2a2a36" : "#e6e6ee";
-  const headFont = L ? L.headFont : SERIF;
-  const bodyFont = L ? L.bodyFont : FONT;
-  const radius = !L ? 10 : L.corners === "square" ? 0 : L.corners === "round" ? 20 : 10;
-  const bar = !L || L.bar;
+  const bg   = dark ? "#15151c" : "#f4f5f8";
+  const card = dark ? "#1c1c25" : "#ffffff";
+  const ink  = dark ? "#f2f2f7" : "#1a1a22";
+  const dim  = dark ? "#9a9aad" : "#5c5c6b";
+  const line = dark ? "#2a2a36" : "#e6e6ee";
 
   const mediaOrigin = String(opts.mediaOrigin || MEDIA_ORIGIN).replace(/\/+$/, "");
   /* Personal words first, so nothing below ever sees a variable: a send
      passes the recipient's name, everything else (the archive, the size
      measure) gets each variable's fallback. */
-  const styled = inlineStyles(fillVariables(body, opts.recipientName), accent, ink, dim, line, dark, accent2, headFont)
+  const styled = inlineStyles(fillVariables(body, opts.recipientName), accent, ink, dim, line, dark, accent2)
     .replace(/(<img\b[^>]*\ssrc=")(\/media\/)/gi, `$1${mediaOrigin}$2`);
   const title = escapeHtml(opts.subject || "");
 
@@ -414,7 +408,7 @@ export function render(body, opts = {}) {
 
   const archive = opts.archiveUrl
     ? `<a href="${escapeHtml(opts.archiveUrl)}" style="color:${dim};text-decoration:underline">` +
-      "View this in your browser</a>"
+      "View this in your browser</a> &nbsp;·&nbsp; "
     : "";
 
   /* NO UNSUBSCRIBE LINK MEANS NO SEND — enforced by the caller, stated here.
@@ -424,40 +418,6 @@ export function render(body, opts = {}) {
     ? `<a href="${escapeHtml(opts.unsubscribeUrl)}" style="color:${dim};text-decoration:underline">` +
       "Unsubscribe</a>"
     : "";
-
-  /* THE TOP: the ministry's logo, its name, or nothing (the designer's
-     "Header"), then the subject. A logo is an <img> from thauma.one with
-     its name as the alt text, so an email with images off still says who
-     it is from. */
-  const fromName = escapeHtml(opts.fromName || "");
-  const logoSrc = L && L.header === "logo" && L.logo
-    ? (/^\/media\//.test(L.logo) ? mediaOrigin + L.logo : /^https:\/\//.test(L.logo) ? L.logo : "") : "";
-  const masthead = logoSrc
-    ? `<img src="${escapeHtml(logoSrc)}" alt="${fromName}" height="40" style="display:block;height:40px;width:auto;max-width:240px;border:0">`
-    : L && L.header === "none" ? ""
-    : `<p style="margin:0;font-family:${bodyFont};font-size:12px;letter-spacing:.08em;
-                  text-transform:uppercase;color:${dim};font-weight:600">${fromName}</p>`;
-  /* The website's own last words (its footer's tagline and small print) and
-     a way to it, when the look includes them. */
-  const footWords = L && L.footer && (L.tagline || L.small)
-    ? (L.tagline ? `<p style="margin:0 0 6px;color:${ink};font-size:14px">${escapeHtml(L.tagline)}</p>` : "") +
-      (L.small ? `<p style="margin:0 0 12px;color:${dim}">${escapeHtml(L.small).replace(/\n/g, "<br>")}</p>` : "")
-    : "";
-  const siteLink = L && L.siteUrl
-    ? `<a href="${escapeHtml(L.siteUrl)}" style="color:${accent};text-decoration:underline">${escapeHtml(L.siteUrl.replace(/^https?:\/\//, "").replace(/\/$/, ""))}</a>`
-    : "";
-  /* ONE BUTTON, for a message that asks for one thing (a confirmation):
-     a bulletproof table cell in the accent, then whatever follows it. */
-  const action = opts.action && opts.action.url
-    ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:6px 0 20px"><tr>` +
-      `<td bgcolor="${accent}" style="background:${accent};border-radius:${Math.min(radius, 8)}px">` +
-      `<a href="${escapeHtml(opts.action.url)}" style="display:inline-block;padding:13px 26px;font-family:${bodyFont};` +
-      `font-size:15px;font-weight:700;color:${L ? L.onAccent : "#ffffff"};text-decoration:none">${escapeHtml(opts.action.label || "")}</a>` +
-      `</td></tr></table>` + (opts.action.after ? inlineStyles(opts.action.after, accent, ink, dim, line, dark, accent2, headFont) : "")
-    : "";
-  /* The site's web fonts, for the clients that load them (Apple Mail, iOS);
-     everyone else reads the stacks named after them. */
-  const fontLink = L && L.fontsUrl ? `<link href="${escapeHtml(L.fontsUrl)}" rel="stylesheet">` : "";
 
   /* MSO CONDITIONALS. Outlook desktop is a Word rendering engine wearing a
      mail client, and it is disproportionately common among the people a
@@ -508,7 +468,6 @@ export function render(body, opts = {}) {
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="x-apple-disable-message-reformatting">
 <title>${title}</title>
-${fontLink}
 ${mso}
 ${media}
 </head>
@@ -521,26 +480,27 @@ ${pre}
     <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"
            class="w"
            style="width:600px;max-width:100%;background:${card};border:1px solid ${line};
-                  border-radius:${radius}px;overflow:hidden">
+                  border-radius:10px;overflow:hidden">
 
-      ${bar ? `<tr><td style="height:4px;background:${accent};font-size:0;line-height:0">&nbsp;</td></tr>` : ""}
+      <tr><td style="height:4px;background:${accent};font-size:0;line-height:0">&nbsp;</td></tr>
 
       <tr><td class="pad" style="padding:32px 36px 8px">
-        ${masthead}
-        <h1 class="h1" style="margin:10px 0 0;font-family:${headFont};font-size:27px;line-height:1.25;
+        <p style="margin:0;font-family:${FONT};font-size:12px;letter-spacing:.08em;
+                  text-transform:uppercase;color:${dim};font-weight:600">
+          ${escapeHtml(opts.fromName || "")}</p>
+        <h1 class="h1" style="margin:10px 0 0;font-family:${SERIF};font-size:27px;line-height:1.25;
                    font-weight:700;color:${ink}">${title}</h1>
       </td></tr>
 
-      <tr><td class="pad" style="padding:20px 36px 30px;font-family:${bodyFont}">
-        ${styled}${action}
+      <tr><td class="pad" style="padding:20px 36px 30px;font-family:${FONT}">
+        ${styled}
       </td></tr>
 
       <tr><td class="pad" style="padding:20px 36px 28px;border-top:1px solid ${line};
-                     font-family:${bodyFont};font-size:12.5px;line-height:1.6;color:${dim}">
-        ${footWords}
+                     font-family:${FONT};font-size:12.5px;line-height:1.6;color:${dim}">
         <p style="margin:0 0 8px;color:${dim}">${escapeHtml(opts.listName || "")}</p>
-        <p style="margin:0;color:${dim}">${[siteLink, archive, unsub].filter(Boolean).join(" &nbsp;·&nbsp; ")}</p>
-        ${opts.note ? `<p style="margin:10px 0 0;color:${dim};font-size:11.5px">${escapeHtml(opts.note)}</p>` : ""}
+        <p style="margin:0;color:${dim}">${archive}${unsub}</p>
+        ${opts.credit ? `<p style="margin:10px 0 0;color:${dim};font-size:11.5px">${escapeHtml(opts.credit)}</p>` : ""}
       </td></tr>
 
     </table>
