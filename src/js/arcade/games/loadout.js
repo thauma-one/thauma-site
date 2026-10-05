@@ -31,7 +31,10 @@
   var DECK_Y = 548;                       /* the stage's top, on screen, before the camera climbs */
   var DECK_W = 216;                       /* narrow enough to fall off */
   var TRUSS_Y = 46;
-  var STEP = 1 / 60;
+  /* 120 steps a second with more solver passes (round 4: "make sure the
+     stack doesn't jitter from the weight" — a heavy case on light ones
+     shivered at 60 steps and 3 position passes) */
+  var STEP = 1 / 120;
 
   /* The cases (Chase, 2026-10-04: "Those are good cases. Weight is lbs"),
      at their real weights, each one a little different from the last (a
@@ -89,10 +92,19 @@
 
       /* Landings: the jolt follows weight × closing speed. */
       world.on('post-solve', function (contact, impulse) {
-        var n = impulse.normalImpulses[0] || 0;
+        var n = impulse.normalImpulses[0] || 0, impact = false;
         /* a falling case that touches anything has landed: the next may drop */
-        falling.forEach(function (r) { if (contact.getFixtureA().getBody() === r.body || contact.getFixtureB().getBody() === r.body) r.landed = true; });
-        if (n > 6) {
+        falling.forEach(function (r) {
+          if (r.landed || (contact.getFixtureA().getBody() !== r.body && contact.getFixtureB().getBody() !== r.body)) return;
+          r.landed = true; impact = true;
+        });
+        /* Only a LANDING jolts the camera (round 4: "make sure the stack
+           doesn't jitter from the weight"). This fired on every contact
+           above the threshold, and a tall stack's own weight presses its
+           lowest cases that hard on every step while it is awake, so the
+           screen shook, puffed and thudded for as long as the tower
+           settled — worse the heavier it got. */
+        if (impact && n > 6) {
           ctx.shake(Math.min(9, n / 7));
           if (n > 12 && time - lastThud > .12) { lastThud = time; ctx.sfx('thud', { vol: Math.min(1, n / 60) }); }
           var m = contact.getWorldManifold(null);
@@ -112,7 +124,7 @@
       function hookState() {
         var t = hook.t;
         var chain = 58 + t.kg * .28;
-        var swing = .2 * (22 / (t.kg + 22));
+        var swing = .28 * (22 / (t.kg + 22)) + .02 * Math.min(1, placed / 15);   /* a wider swing, wider as the tower grows */
         var ang = Math.sin(time * (2.4 - t.kg / 120) + hook.phase) * swing;
         var hx = motorX, hy = TRUSS_Y + 14;
         var cx = hx + Math.sin(ang) * (chain + t.h / 2), cy = hy + Math.cos(ang) * (chain + t.h / 2);
@@ -123,7 +135,7 @@
       function motorSpeed() {
         /* the first version's pace (Chase, 2026-10-05: "everything
            progresses too fast … ease you into games") */
-        return (58 + Math.min(placed, 20) * 5) * (1 / (1 + hook.t.kg / 90));
+        return (62 + Math.min(placed, 24) * 6) * (1 / (1 + hook.t.kg / 90));
       }
       /* Is everything on the stage still? A case dropped on a tower that is
          still moving lands for fewer points (Chase: "allow a drop before
@@ -145,10 +157,12 @@
           position: pl.Vec2(h.cx / S, (DECK_Y + cam - h.cy) / S),
           angle: -h.ang,
           linearVelocity: pl.Vec2(motorDir * motorSpeed() / S, 0),
-          angularVelocity: 0
+          angularVelocity: 0,
+          /* a little damping: a settled stack stays settled */
+          linearDamping: .05, angularDamping: .35
         });
         body.createFixture(new pl.Box(t.w / 2 / S, t.h / 2 / S), {
-          density: t.kg / ((t.w / S) * (t.h / S)) / 22, friction: .78, restitution: .02
+          density: t.kg / ((t.w / S) * (t.h / S)) / 22, friction: .62, restitution: .02   /* less grip than .78 (round 4: "the physics feel easier") */
         });
         var rec = { body: body, t: t, lost: false, settle: 0, rushed: !steady() || falling.length > 0 };
         bodies.push(rec);
@@ -182,7 +196,7 @@
         if (motorX < edge) { motorX = edge; motorDir = 1; }
 
         acc += dt;
-        while (acc >= STEP) { world.step(STEP, 8, 3); acc -= STEP; }
+        while (acc >= STEP) { world.step(STEP, 10, 8); acc -= STEP; }
 
         /* a case off the stage is a spare gone */
         bodies.forEach(function (r) {
@@ -220,10 +234,13 @@
         /* The view climbs with the tower, so its top stays mid-screen. The
            camera only: the deck and every case stay exactly where the
            physics has them (BACKLOG §4: "lowering the platform must not
-           touch the physics"), and it moves only while nothing is falling,
-           so a climbing view is never mistaken for the tower sliding. */
+           touch the physics"). */
+        /* It follows at once now (round 4: "when the stack gets high, we
+           need the tower to lower immediately and not wait since some
+           people will drop the next piece immediately") — quickly, and
+           whether or not something is falling. */
         camGoal = Math.max(0, top - 250);
-        if (!falling.length) cam += (camGoal - cam) * Math.min(1, dt * 2);
+        cam += (camGoal - cam) * Math.min(1, dt * 7);
         pops.forEach(function (q) { q.life -= dt; q.wy += dt * .9; });
         pops = pops.filter(function (q) { return q.life > 0; });
 
