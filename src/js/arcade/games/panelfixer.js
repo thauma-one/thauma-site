@@ -24,6 +24,30 @@
    rolls along the floor; a ball that lands in it is thrown again free.
 
    Ten balls a wall. Out of balls with panels still broken, and it's over.
+
+   ROUND 3 (Chase, 2026-10-05: "figure out some way to make it easier to
+   hit the panels in the middle. And add some special power up systems.
+   The potential is there, but is wildly missed … the scoring goes up
+   wildly fast while holding the ball, which is a bug"):
+   - The bug: the aim preview tested its path with the real collide(),
+     which scores a hit once its fake panel's hitAt was 0.12s in the past —
+     i.e. after the first 99 seconds of play, every frame of aiming paid
+     10. The preview now asks a pure geometry question (touches()).
+   - The ball goes WHERE YOU POINT: a finger or the mouse picks a spot,
+     and the throw is solved so its arc passes through it (the direct
+     solution of the projectile equation), not merely aimed toward it.
+   - Every wall keeps a CHUTE down its middle (no panels in the centre
+     strip of its top half), so a straight drop reaches the middle.
+   - Slower, so it can be followed: speed 470 → 400, gravity 520 → 430.
+     The first wall breaks 6 panels, then 2 more a wall up to 45%.
+   - POWERS, each a green panel with its own drawn icon, three a wall:
+     MULTI (two more balls), ZAP (lightning to the 3 nearest broken), GUIDE
+     (the whole path for 3 throws), FIRE (burns through), BEACH BALL (this
+     ball and the next, twice the size), MAGNET (this ball and the next
+     curve toward broken panels), TEST PATTERN (every broken panel in that row lights).
+   - CREW CALL, the second system: every fix fills the tech's meter;
+     full, the next throw brings two crew onto the truss ends who throw
+     with them, each at the broken panel nearest the middle.
    ===================================================================== */
 (function () {
   'use strict';
@@ -34,9 +58,10 @@
   var LX = W / 2, LY = 104;                 /* where the ball leaves the hand */
   var TOPF = 150, BOTF = 540, FLOOR = 606;
   var PW = 28, PH = 18, R = 6;
-  var G = 520, SPEED = 470, REST = .72;
+  var G = 430, SPEED = 400, REST = .72;
   var BALLS = 10;
-  var POWERS = ['multi', 'zap', 'guide', 'fire'];
+  var POWERS = ['multi', 'zap', 'guide', 'fire', 'big', 'magnet', 'pattern'];
+  var CREW = 12;                            /* fixes to fill the crew meter */
 
   function rnd(a, b) { return a + Math.random() * (b - a); }
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
@@ -111,8 +136,9 @@
     quipAt: .205,
     create: function (ctx) {
       var words = ctx.words;
-      var panels = [], balls = [], sparks = [], pops = [], arcs = [], confetti = [];
+      var panels = [], balls = [], sparks = [], pops = [], arcs = [], confetti = [], sweeps = [];
       var level = 0, left = BALLS, score = 0, total = 0, fixedThisShot = 0, guide = 0;
+      var crew = 0, crewOn = false, crewT = 0, nextBig = false, nextMagnet = false;
       var aim = 0, aimFrom = null, time = 0, slow = 0, showtime = 0;
       var state = 'aim';               /* aim | windup | flight | show | done */
       var windup = 0, mood = 'idle', moodT = 0, thrown = false;
@@ -127,16 +153,21 @@
 
       function nextWall() {
         level++;
-        var spots = LAYOUTS[(level - 1) % LAYOUTS.length]();
+        /* the chute: the centre strip of the top half stays open */
+        var spots = LAYOUTS[(level - 1) % LAYOUTS.length]().filter(function (s) {
+          return !(Math.abs(s.x - W / 2) < 24 && s.y < (TOPF + BOTF) / 2 - 10);
+        });
         picture = PICTURES[(level - 1) % PICTURES.length];
         panels = spots.map(function (s) {
           var u = clamp((s.x - 14) / (W - 28), 0, 1), v = clamp((s.y - TOPF) / (BOTF - TOPF), 0, 1);
           return { x: s.x, y: s.y, u: u, v: v, col: picture(u, v), state: 'ok', hitAt: -9, fixedAt: -9, fault: null };
         });
         /* the broken ones, spread across the wall, then two green */
-        var n = Math.min(Math.floor(panels.length * .45), 9 + level * 2), order = panels.slice().sort(function () { return Math.random() - .5; });
+        var n = Math.min(Math.floor(panels.length * .45), 4 + level * 2), order = panels.slice().sort(function () { return Math.random() - .5; });
         for (var i = 0; i < n; i++) { order[i].state = 'broken'; order[i].fault = ['dead', 'flicker', 'tint'][i % 3]; }
-        for (var k = n; k < n + 2 && k < order.length; k++) { order[k].state = 'power'; order[k].power = POWERS[Math.floor(Math.random() * POWERS.length)]; }
+        /* three powers, never two the same on one wall */
+        var kinds = POWERS.slice().sort(function () { return Math.random() - .5; });
+        for (var k = n; k < n + 3 && k < order.length; k++) { order[k].state = 'power'; order[k].power = kinds[k - n]; }
         total = n; left = BALLS; state = 'aim'; mood = 'idle'; showtime = 0;
         ctx.say(words('panelfixer_wall') + ' ' + level, { tag: 'LD' });
       }
@@ -144,6 +175,17 @@
 
       /* ------------------------------------------------------- throwing */
       function dirOf(a) { return { x: Math.sin(a), y: Math.cos(a) }; }
+      /* The angle (from straight down) whose arc, thrown at speed v from
+         (x0,y0), passes through (tx,ty): the direct one of the two
+         projectile solutions; straight at it when it cannot be reached. */
+      function solve(x0, y0, tx, ty, v) {
+        var X = tx - x0, Y = ty - y0, ax = Math.abs(X);
+        if (ax < 1) return 0;
+        var up = -Y, disc = v * v * v * v - G * (G * ax * ax + 2 * up * v * v);
+        if (disc < 0) return clamp(Math.atan2(X, Math.max(8, Y)), -1.38, 1.38);
+        var th = Math.atan((v * v - Math.sqrt(disc)) / (G * ax));
+        return clamp(Math.atan2((X < 0 ? -1 : 1) * Math.cos(th), -Math.sin(th)), -1.38, 1.38);
+      }
       function throwNow() {
         if (state !== 'aim' || left <= 0) return;
         state = 'windup'; windup = .22; mood = 'throw'; thrown = true;
@@ -151,10 +193,28 @@
       }
       function launch() {
         var d = dirOf(aim);
-        balls.push({ x: LX + d.x * 10, y: LY + d.y * 10, vx: d.x * SPEED, vy: d.y * SPEED, slowT: 0, fire: 0, bounces: 0 });
+        balls.push({ x: LX + d.x * 10, y: LY + d.y * 10, vx: d.x * SPEED, vy: d.y * SPEED, slowT: 0, fire: 0, bounces: 0,
+          r: nextBig ? R * 2.2 : R, magnet: nextMagnet ? 1 : 0 });
+        nextBig = nextMagnet = false;
         left--; fixedThisShot = 0; state = 'flight';
         ctx.sfx('jump');
         if (guide > 0) guide--;
+        /* CREW CALL: two more throws from the truss ends, each at the
+           broken panel nearest the middle that it can reach */
+        if (crew >= CREW) {
+          crew = 0; crewOn = true; crewT = 0;
+          ctx.say('[SM] ' + words('panelfixer_crew'), { mood: 'good' });
+          [[18, 58], [W - 18, 58]].forEach(function (o, i) {
+            var t = panels.filter(function (p) { return p.state === 'broken'; })
+              .sort(function (a, c) { return Math.hypot(a.x - W / 2, a.y - (TOPF + BOTF) / 2) - Math.hypot(c.x - W / 2, c.y - (TOPF + BOTF) / 2); })[i] ||
+              { x: W / 2, y: (TOPF + BOTF) / 2 };
+            setTimeout(function () {
+              var a = solve(o[0], o[1], t.x, t.y, SPEED * .9), dd = dirOf(a);
+              balls.push({ x: o[0], y: o[1], vx: dd.x * SPEED * .9, vy: dd.y * SPEED * .9, slowT: 0, fire: 0, bounces: 0, r: R, magnet: 0, crew: true });
+              ctx.sfx('jump');
+            }, 260 + i * 180);
+          });
+        }
       }
 
       /* ------------------------------------------------------- the ball */
@@ -171,6 +231,7 @@
         p.state = 'ok'; p.fixedAt = time; p.fault = null;
         var gain = 100 * mult();
         score += gain; ctx.score(score); fixedThisShot++;
+        if (crew < CREW) { crew++; if (crew === CREW) { ctx.sfx('powerup'); pops.push({ x: W / 2, y: 132, text: words('panelfixer_crew').toUpperCase() + '!', col: '#FFB547', life: 1.8 }); ctx.say('[SM] ' + words('panelfixer_crew_ready'), { mood: 'good' }); } }
         pops.push({ x: p.x, y: p.y - 14, text: '+' + gain, col: '#5CF2C4', life: 1 });
         for (var i = 0; i < 12; i++) sparks.push({ x: p.x, y: p.y, vx: rnd(-120, 120), vy: rnd(-140, 60), life: .55, c: p.col });
         ctx.shake(1.5);
@@ -188,29 +249,53 @@
         }
         if (name === 'guide') guide = 3;
         if (name === 'fire') b.fire = 2.2;
+        if (name === 'big') { b.r = R * 2.2; nextBig = true; }
+        if (name === 'magnet') { b.magnet = 1; nextMagnet = true; }
+        if (name === 'pattern') {
+          var row = panels.filter(function (q) { return q.state === 'broken' && Math.abs(q.y - p.y) < 14; });
+          if (!row.length) row = panels.filter(function (q) { return q.state === 'broken'; })
+            .sort(function (a, c) { return Math.abs(a.y - p.y) - Math.abs(c.y - p.y); }).slice(0, 2);
+          row.sort(function (a, c) { return Math.abs(a.x - p.x) - Math.abs(c.x - p.x); })
+            .forEach(function (q, i) { setTimeout(function () { if (q.state === 'broken') fix(q); }, 90 * (i + 1)); });
+          sweeps.push({ y: p.y, life: .7 });
+          ctx.sfx('zap');
+        }
       }
       /* the circle against a panel's rectangle: push out, bounce */
       function collide(b, p) {
         var hx = PW / 2, hy = PH / 2;
         var cx = clamp(b.x, p.x - hx, p.x + hx), cy = clamp(b.y, p.y - hy, p.y + hy);
-        var dx = b.x - cx, dy = b.y - cy, d = Math.hypot(dx, dy);
-        if (d >= R) return false;
+        var dx = b.x - cx, dy = b.y - cy, d = Math.hypot(dx, dy), br = b.r || R;
+        if (d >= br) return false;
         if (b.fire > 0) { if (p.state !== 'ok' || time - p.hitAt > .3) hitPanel(p, b); return false; }
         if (d < .001) { dx = 0; dy = -1; d = 1; }
         var nx = dx / d, ny = dy / d;
-        b.x = cx + nx * R; b.y = cy + ny * R;
+        b.x = cx + nx * br; b.y = cy + ny * br;
         var vn = b.vx * nx + b.vy * ny;
         if (vn < 0) { b.vx -= (1 + REST) * vn * nx; b.vy -= (1 + REST) * vn * ny; }
         b.bounces++;
         if (time - p.hitAt > .12) hitPanel(p, b);
         return true;
       }
+      /* geometry only: would a ball at (x,y) touch panel p? (the preview's
+         question — it must never score) */
+      function touches(x, y, p, br) {
+        var cx = clamp(x, p.x - PW / 2, p.x + PW / 2), cy = clamp(y, p.y - PH / 2, p.y + PH / 2);
+        return Math.hypot(x - cx, y - cy) < br;
+      }
       function stepBall(b, dt) {
         b.vy += G * dt;
         b.x += b.vx * dt; b.y += b.vy * dt;
         if (b.fire > 0) b.fire -= dt;
-        if (b.x < R) { b.x = R; b.vx = Math.abs(b.vx) * .9; }
-        if (b.x > W - R) { b.x = W - R; b.vx = -Math.abs(b.vx) * .9; }
+        var br = b.r || R;
+        if (b.x < br) { b.x = br; b.vx = Math.abs(b.vx) * .9; }
+        if (b.x > W - br) { b.x = W - br; b.vx = -Math.abs(b.vx) * .9; }
+        /* MAGNET: a gentle pull toward the nearest broken panel */
+        if (b.magnet) {
+          var near = null, nd = 1e9;
+          panels.forEach(function (q) { if (q.state === 'broken') { var dd = Math.hypot(q.x - b.x, q.y - b.y); if (dd < nd) { nd = dd; near = q; } } });
+          if (near && nd < 170) { b.vx += (near.x - b.x) / nd * 330 * dt; b.vy += (near.y - b.y) / nd * 330 * dt; }
+        }
         for (var i = 0; i < panels.length; i++) collide(b, panels[i]);
         /* a ball stuck on a ledge gets a nudge, as Peggle's do */
         if (Math.hypot(b.vx, b.vy) < 40) { b.slowT += dt; if (b.slowT > 1.2) { b.vy = 200; b.vx = rnd(-120, 120); b.slowT = 0; } } else b.slowT = 0;
@@ -238,7 +323,7 @@
         time += dt; moodT += dt;
         var sdt = slow > 0 ? dt * .28 : dt;
         if (slow > 0) slow -= dt;
-        bucket.x += bucket.dir * (70 + level * 6) * dt;
+        bucket.x += bucket.dir * (42 + level * 7) * dt;
         if (bucket.x > W - 40) { bucket.x = W - 40; bucket.dir = -1; }
         if (bucket.x < 40) { bucket.x = 40; bucket.dir = 1; }
 
@@ -265,6 +350,8 @@
         pops.forEach(function (p) { p.y -= 22 * dt; p.life -= dt; });
         pops = pops.filter(function (p) { return p.life > 0; });
         arcs.forEach(function (a) { a.life -= dt; }); arcs = arcs.filter(function (a) { return a.life > 0; });
+        sweeps.forEach(function (a) { a.life -= dt; }); sweeps = sweeps.filter(function (a) { return a.life > 0; });
+        if (crewOn) { crewT += dt; if (crewT > 3.2 && state !== 'flight') crewOn = false; }
         confetti.forEach(function (c) { c.x += c.vx * dt; c.y += c.vy * dt; c.r += dt * 6; c.life -= dt; });
         confetti = confetti.filter(function (c) { return c.life > 0 && c.y < H + 10; });
       }
@@ -296,16 +383,30 @@
           for (var k = 1; k < 6; k++) g.lineTo(a.x1 + (a.x2 - a.x1) * k / 6 + rnd(-6, 6), a.y1 + (a.y2 - a.y1) * k / 6 + rnd(-6, 6));
           g.lineTo(a.x2, a.y2); g.stroke();
         });
+        sweeps.forEach(function (a) {
+          g.fillStyle = 'rgba(255,255,255,' + (a.life * .5).toFixed(2) + ')'; g.fillRect(6, a.y - 12, W - 12, 24);
+        });
         if (state === 'aim') preview(g);
         balls.forEach(function (b) {
-          if (b.fire > 0) { g.fillStyle = 'rgba(255,140,40,.45)'; g.beginPath(); g.arc(b.x, b.y, R + 5, 0, 7); g.fill(); }
-          g.fillStyle = '#d8f55a'; g.beginPath(); g.arc(b.x, b.y, R, 0, 7); g.fill();
-          g.strokeStyle = 'rgba(255,255,255,.75)'; g.lineWidth = 1; g.beginPath(); g.arc(b.x - 2, b.y, R * .8, -1, 1); g.stroke();
+          var br = b.r || R;
+          if (b.fire > 0) { g.fillStyle = 'rgba(255,140,40,.45)'; g.beginPath(); g.arc(b.x, b.y, br + 5, 0, 7); g.fill(); }
+          if (b.magnet) { g.strokeStyle = 'rgba(255,79,216,' + (.4 + .3 * Math.sin(time * 14)).toFixed(2) + ')'; g.lineWidth = 2; g.beginPath(); g.arc(b.x, b.y, br + 4, 0, 7); g.stroke(); }
+          if (br > R) {
+            /* the beach ball: panels of colour */
+            ['#FF4FD8', '#2FD8FF', '#FFB547', '#5CF2C4'].forEach(function (c, k) {
+              g.fillStyle = c; g.beginPath(); g.moveTo(b.x, b.y); g.arc(b.x, b.y, br, k * Math.PI / 2 + time * 3, (k + 1) * Math.PI / 2 + time * 3); g.fill();
+            });
+            g.fillStyle = '#fff'; g.beginPath(); g.arc(b.x, b.y, br * .25, 0, 7); g.fill();
+          } else {
+            g.fillStyle = '#d8f55a'; g.beginPath(); g.arc(b.x, b.y, br, 0, 7); g.fill();
+            g.strokeStyle = 'rgba(255,255,255,.75)'; g.lineWidth = 1; g.beginPath(); g.arc(b.x - 2, b.y, br * .8, -1, 1); g.stroke();
+          }
         });
         sparks.forEach(function (p) { g.globalAlpha = Math.min(1, p.life * 2); g.fillStyle = p.c; g.fillRect(p.x, p.y, 2.5, 2.5); });
         g.globalAlpha = 1;
         rig(g);
         tech(g);
+        if (crewOn) { crewMate(g, 18, 1); crewMate(g, W - 18, -1); }
         confetti.forEach(function (c) { g.save(); g.translate(c.x, c.y); g.rotate(c.r); g.fillStyle = c.c; g.globalAlpha = Math.min(1, c.life); g.fillRect(-3, -1.5, 6, 3); g.restore(); });
         g.globalAlpha = 1;
         pops.forEach(function (p) {
@@ -335,7 +436,7 @@
           g.fillStyle = p.col; g.globalAlpha = state === 'show' ? 1 : .62; g.fillRect(x, y, PW, PH); g.globalAlpha = 1;
           if (p.state === 'power') {
             g.fillStyle = 'rgba(92,242,196,' + (.55 + .35 * Math.sin(time * 5)).toFixed(2) + ')'; g.fillRect(x, y, PW, PH);
-            g.fillStyle = '#0b0e14'; g.font = '700 11px Sora, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('⚡', p.x, p.y + 1);
+            icon(g, p.power, p.x, p.y);
           }
         }
         /* the LED pixel grid on every panel */
@@ -348,23 +449,23 @@
       /* the path the throw will take: the first stretch, or with GUIDE the
          whole way through the first two bounces */
       function preview(g) {
-        var d = dirOf(aim), b = { x: LX + d.x * 10, y: LY + d.y * 10, vx: d.x * SPEED, vy: d.y * SPEED }, bounces = 0, limit = guide > 0 ? 2 : 0;
-        g.fillStyle = guide > 0 ? 'rgba(92,242,196,.75)' : 'rgba(216,245,90,.6)';
-        for (var t = 0; t < (guide > 0 ? 3 : .55); t += 1 / 60) {
+        var d = dirOf(aim), b = { x: LX + d.x * 10, y: LY + d.y * 10, vx: d.x * SPEED, vy: d.y * SPEED }, bounces = 0, limit = guide > 0 ? 3 : 0;
+        var br = nextBig ? R * 2.2 : R;
+        g.fillStyle = guide > 0 ? 'rgba(92,242,196,.8)' : 'rgba(216,245,90,.7)';
+        for (var t = 0, f = 0; t < (guide > 0 ? 3.2 : 1.6); t += 1 / 60, f++) {
           b.vy += G / 60; b.x += b.vx / 60; b.y += b.vy / 60;
-          if (b.x < R || b.x > W - R) { b.vx = -b.vx; b.x = clamp(b.x, R, W - R); }
-          var hit = false;
-          for (var i = 0; i < panels.length; i++) if (collide({ x: b.x, y: b.y, vx: b.vx, vy: b.vy, fire: 0, bounces: 0 }, { x: panels[i].x, y: panels[i].y, hitAt: 99, state: 'x' })) { hit = true; break; }
-          if (hit) {
-            if (bounces++ >= limit) { g.beginPath(); g.arc(b.x, b.y, 4, 0, 7); g.fill(); break; }
-            /* bounce the preview the same way */
-            var p = panels.reduce(function (m, q) { return Math.hypot(q.x - b.x, q.y - b.y) < Math.hypot(m.x - b.x, m.y - b.y) ? q : m; });
+          if (b.x < br || b.x > W - br) { b.vx = -b.vx; b.x = clamp(b.x, br, W - br); }
+          var p = null;
+          for (var i = 0; i < panels.length; i++) if (touches(b.x, b.y, panels[i], br)) { p = panels[i]; break; }
+          if (p) {
+            /* where the throw first lands: a ring on that panel */
+            if (bounces++ >= limit) { g.strokeStyle = g.fillStyle; g.lineWidth = 2; g.beginPath(); g.arc(b.x, b.y, br + 2, 0, 7); g.stroke(); break; }
             var cx = clamp(b.x, p.x - PW / 2, p.x + PW / 2), cy = clamp(b.y, p.y - PH / 2, p.y + PH / 2), dx = b.x - cx, dy = b.y - cy, dd = Math.hypot(dx, dy) || 1;
             var nx = dx / dd, ny = dy / dd, vn = b.vx * nx + b.vy * ny;
-            b.x = cx + nx * R; b.y = cy + ny * R;
+            b.x = cx + nx * br; b.y = cy + ny * br;
             if (vn < 0) { b.vx -= (1 + REST) * vn * nx; b.vy -= (1 + REST) * vn * ny; }
           }
-          if (Math.round(t * 60) % 3 === 0) { g.beginPath(); g.arc(b.x, b.y, 2, 0, 7); g.fill(); }
+          if (f % 3 === 0) { g.beginPath(); g.arc(b.x, b.y, 2, 0, 7); g.fill(); }
           if (b.y > FLOOR) break;
         }
       }
@@ -457,6 +558,36 @@
         var m = mult();
         g.fillStyle = m >= 5 ? '#FF4FD8' : m >= 3 ? '#FFB547' : m >= 2 ? '#5CF2C4' : 'rgba(138,150,166,.9)';
         g.font = '700 14px Sora, sans-serif'; g.fillText('×' + m, W - 12, 62);
+        /* the crew meter, under the multiplier */
+        var full = crew >= CREW;
+        g.font = '600 9px Inter, sans-serif'; g.fillStyle = full ? '#FFB547' : 'rgba(138,150,166,.9)';
+        g.fillText(words('panelfixer_crew').toUpperCase(), W - 12, 82);
+        g.fillStyle = 'rgba(255,255,255,.08)'; g.fillRect(W - 82, 95, 70, 5);
+        g.fillStyle = full ? (Math.sin(time * 8) > 0 ? '#FFB547' : '#ffd38a') : '#FFB547'; g.fillRect(W - 82, 95, 70 * crew / CREW, 5);
+      }
+      /* each power's own mark, drawn, so the wall can be read at a glance */
+      function icon(g, name, x, y) {
+        g.save(); g.translate(x, y); g.fillStyle = '#0b0e14'; g.strokeStyle = '#0b0e14'; g.lineWidth = 2; g.lineCap = 'round';
+        g.beginPath();
+        if (name === 'multi') { [-6, 0, 6].forEach(function (k) { g.moveTo(k + 2.4, 0); g.arc(k, 0, 2.4, 0, 7); }); g.fill(); }
+        else if (name === 'zap') { g.moveTo(2, -7); g.lineTo(-3, 1); g.lineTo(1, 1); g.lineTo(-2, 7); g.lineTo(4, -1); g.lineTo(0, -1); g.closePath(); g.fill(); }
+        else if (name === 'guide') { for (var k = 0; k < 4; k++) { g.moveTo(-8 + k * 5 + 1.2, -3 + k * k * .9); g.arc(-8 + k * 5, -3 + k * k * .9, 1.2, 0, 7); } g.fill(); }
+        else if (name === 'fire') { g.moveTo(0, -7); g.quadraticCurveTo(6, -1, 4, 4); g.quadraticCurveTo(0, 8, -4, 4); g.quadraticCurveTo(-6, -1, 0, -7); g.fill(); }
+        else if (name === 'big') { g.arc(0, 0, 6, 0, 7); g.stroke(); g.beginPath(); g.moveTo(-6, 0); g.lineTo(6, 0); g.moveTo(0, -6); g.lineTo(0, 6); g.lineWidth = 1.2; g.stroke(); }
+        else if (name === 'magnet') { g.arc(0, -1, 5, Math.PI, 0); g.moveTo(5, -1); g.lineTo(5, 5); g.moveTo(-5, -1); g.lineTo(-5, 5); g.lineWidth = 3; g.stroke(); }
+        else if (name === 'pattern') { for (var j = 0; j < 4; j++) g.rect(-9 + j * 4.6, -5, 3.4, 10); g.fill(); }
+        g.restore();
+      }
+      /* a crew member on the truss end, arm over, for a crew call */
+      function crewMate(g, x, side) {
+        var y = 58, k = Math.min(1, crewT * 3), arm = crewT < .7 ? -1 : .6;
+        g.save(); g.globalAlpha = k; g.lineCap = 'round';
+        g.fillStyle = '#151a24'; g.fillRect(x - 6, y - 4, 12, 16);
+        g.fillStyle = '#FFB547'; g.fillRect(x - 6, y + 8, 12, 2);
+        g.strokeStyle = '#e2b48f'; g.lineWidth = 3; g.beginPath(); g.moveTo(x + side * 5, y); g.lineTo(x + side * 13, y + arm * 10); g.stroke();
+        g.fillStyle = '#e2b48f'; g.beginPath(); g.arc(x, y - 10, 6, 0, 7); g.fill();
+        g.fillStyle = '#FFB547'; g.beginPath(); g.arc(x, y - 12, 6.5, Math.PI, 0); g.fill();   /* a hard hat */
+        g.restore();
       }
       function roundRect(g, x, y, w, h, r) {
         g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r);
@@ -469,7 +600,7 @@
         /* a finger or the mouse aims from the hand toward it; letting go throws */
         point: function (phase, px, py) {
           if (state !== 'aim') return;
-          if (phase === 'down' || phase === 'move' || phase === 'hover') aim = clamp(Math.atan2(px - LX, Math.max(8, py - LY)), -1.38, 1.38);
+          if (phase === 'down' || phase === 'move' || phase === 'hover') aim = py > LY + 6 ? solve(LX, LY, px, py, SPEED) : clamp(Math.atan2(px - LX, 8), -1.38, 1.38);
           if (phase === 'down') aimFrom = { x: px, y: py };
           if (phase === 'up' && aimFrom) { aimFrom = null; throwNow(); }
           if (phase === 'cancel') aimFrom = null;

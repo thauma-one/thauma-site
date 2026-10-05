@@ -602,6 +602,11 @@
     ],
     "jokes_cuestack_combo": [
       "[SM] Педесет чистих знакова. Нека нетко донесе каву овом водитељу."
-    ]
+    ],
+    "panelfixer_big": "Лопта за плажу",
+    "panelfixer_magnet": "Магнет",
+    "panelfixer_pattern": "Тестна слика",
+    "panelfixer_crew": "Позив екипи",
+    "panelfixer_crew_ready": "Екипа спремна: сљедеће бацање доводи помоћ"
   }
 }

@@ -602,6 +602,11 @@
     ],
     "jokes_cuestack_combo": [
       "[SM] Fifty cues clean. Somebody get this caller a coffee."
-    ]
+    ],
+    "panelfixer_big": "Beach ball",
+    "panelfixer_magnet": "Magnet",
+    "panelfixer_pattern": "Test pattern",
+    "panelfixer_crew": "Crew call",
+    "panelfixer_crew_ready": "Crew call ready: next throw brings help"
   }
 }
