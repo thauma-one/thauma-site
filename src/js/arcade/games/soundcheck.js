@@ -25,10 +25,15 @@
    THE dB METER does something now: every return fills it, and full, your
    next return is a SMASH. FOH has one too.
 
-   THE STICK (play.js 'stick'): on a phone, a fader under the field to
-   drag — how far is how fast — so the finger never covers the play; on a
-   desktop ← → ease to full. The field is shorter on a phone for the same
-   reason.
+   THE CONTROLS: on a desktop ← → ease to full (play.js 'stick'); on a
+   phone, two arrow buttons under the field (Chase, 2026-10-05, after the
+   drag fader), which drive the same stick, so the finger never covers the
+   play. The field is shorter on a phone for the same reason.
+
+   THE PACE (round 3): the ball starts at 215 and tops out at 540; the
+   capsules come one at a time, 7-11s apart, the first after 9s, and their
+   families arrive in turn — helpers, then hexes, then trick throws, then
+   the bad ones — so each is learned before the next.
    ===================================================================== */
 (function () {
   'use strict';
@@ -36,7 +41,10 @@
   if (!A) return;
 
   var W = 360, PW = 74, PH = 12, R = 6;
-  var BASE = 270, TOP = 790, GROW = 1.07;
+  /* Round 3 (Chase, 2026-10-05: "it's hard to process what's going on
+     with the speed of the ball"): it starts slower, speeds up a little
+     each return, and tops out well below where it did (270/790/1.07). */
+  var BASE = 215, TOP = 540, GROW = 1.035;
   var MATCH = 5, SPEED = 470, BAND = 14;
 
   /* THE POWERS. kind: good (helps whoever catches it), hex (aimed at the
@@ -78,7 +86,11 @@
 
   A.games.soundcheck = {
     size: function (o) { return { w: W, h: o && o.touch ? 560 : 640 }; },
-    controls: 'stick',
+    /* a phone gets two arrow buttons (Chase, 2026-10-05: "on mobile, just
+       make it a left right arrow control system"); a keyboard keeps ← →
+       easing to full, which is the same stick underneath */
+    controls: function (o) { return o && o.touch ? 'dpad' : 'stick'; },
+    padStart: ['left', 'right'],
     speaker: 'FOH',
     quipAt: .4,
     create: function (ctx) {
@@ -89,7 +101,7 @@
       var foh = { x: W / 2, fx: {}, meter: 0, smash: false, id: 'foh', goal: W / 2, plan: null };
       var balls = [], caps = [], sparks = [], hist = [];
       var hits = 0, rally = 0, mine = 0, theirs = 0, caught = 0, wait = 1.1, serveTo = 1;
-      var time = 0, nextCap = 2.5, flashT = 0, banner = null;
+      var time = 0, nextCap = 9, flashT = 0, banner = null, spawned = 0;
 
       function other(p) { return p === you ? foh : you; }
       function width(p) {
@@ -122,11 +134,11 @@
       /* A return: where it met the fader sets the angle, as in every Pong. */
       function bounce(b, p, dir) {
         var off = clamp((b.x - p.x) / (width(p) / 2), -1, 1);
-        b.speed = Math.min(TOP, Math.max(BASE, b.fx === 'moon' || b.fx === 'sleeper' || b.fx === 'stopgo' ? b.base || b.speed : b.speed) * GROW + (rally % 4 === 3 ? 25 : 0));
+        b.speed = Math.min(TOP, Math.max(BASE, b.fx === 'moon' || b.fx === 'sleeper' || b.fx === 'stopgo' ? b.base || b.speed : b.speed) * GROW + (rally % 5 === 4 ? 12 : 0));
         b.fx = null; b.t = 0; b.owner = p; b.smash = false; b.zigged = false;
         /* the meter: full, and this return is a smash */
         p.meter = Math.min(1, p.meter + (p.fx.meterup > 0 ? .22 : .13));
-        if (p.meter >= 1) { p.meter = 0; b.smash = true; b.speed = Math.min(TOP * 1.25, b.speed * 1.45); ctx.shake(5); ctx.sfx('boom'); if (p === you) ctx.say(words('soundcheck_smash'), { mood: 'good', tag: 'FOH' }); }
+        if (p.meter >= 1) { p.meter = 0; b.smash = true; b.speed = Math.min(TOP * 1.2, b.speed * 1.3); ctx.shake(5); ctx.sfx('boom'); if (p === you) ctx.say(words('soundcheck_smash'), { mood: 'good', tag: 'FOH' }); }
         setVel(b, off * 1.05, dir);
         for (var i = 0; i < 10; i++) sparks.push({ x: b.x, y: b.y, vx: rnd(-90, 90), vy: dir * rnd(0, 120), life: .4, c: b.smash ? '#FFB547' : '#8FEBFF' });
         if (b.speed > 500) ctx.shake(1.5 + (b.speed - 500) / 110);
@@ -135,9 +147,14 @@
 
       /* ------------------------------------------------- the powers */
       function spawnCap() {
-        var name = NAMES[Math.floor(Math.random() * NAMES.length)];
+        /* the kinds arrive one family at a time, so each can be learned:
+           helpers first, then hexes, then the silly throws, then the bad */
+        var kinds = spawned < 3 ? ['good'] : spawned < 6 ? ['good', 'hex'] : spawned < 9 ? ['good', 'hex', 'trick'] : ['good', 'hex', 'trick', 'bad'];
+        var pool = NAMES.filter(function (n) { return kinds.indexOf(POWERS[n].kind) >= 0; });
+        var name = pool[Math.floor(Math.random() * pool.length)];
+        spawned++;
         var left = Math.random() < .5;
-        caps.push({ name: name, x: left ? -16 : W + 16, y: rnd(MID - H * .18, MID + H * .18), vx: (left ? 1 : -1) * rnd(34, 62), born: time });
+        caps.push({ name: name, x: left ? -16 : W + 16, y: rnd(MID - H * .18, MID + H * .18), vx: (left ? 1 : -1) * rnd(26, 42), born: time });
       }
       function grant(name, p) {
         var P = POWERS[name], q = other(p);
@@ -158,7 +175,7 @@
           var b = trickBall;
           if (!b) return;
           b.fx = name; b.t = 0;
-          if (name === 'fast') b.speed = Math.min(TOP * 1.2, b.speed * 1.5), setVel(b, Math.atan2(b.vx, Math.abs(b.vy)), b.vy > 0 ? 1 : -1);
+          if (name === 'fast') b.speed = Math.min(TOP * 1.15, b.speed * 1.3), setVel(b, Math.atan2(b.vx, Math.abs(b.vy)), b.vy > 0 ? 1 : -1);
           if (name === 'split') {
             [-.38, .38].forEach(function (d) {
               var ang = Math.atan2(b.vx, Math.abs(b.vy)) + d, n = newBall(b.x, b.y, 0, 0, b.owner);
@@ -235,7 +252,8 @@
 
         if (mode === 'modern') {
           nextCap -= dt;
-          if (nextCap <= 0 && caps.length < 3) { spawnCap(); nextCap = rnd(2.6, 4.6); }
+          /* one at a time, with room to breathe between (was every 2.6-4.6s, three at once) */
+          if (nextCap <= 0 && !caps.length) { spawnCap(); nextCap = rnd(7, 11); }
           caps.forEach(function (c) { c.x += c.vx * dt; c.y += Math.sin((time - c.born) * 2) * 8 * dt; });
           caps = caps.filter(function (c) { return c.x > -30 && c.x < W + 30; });
         }

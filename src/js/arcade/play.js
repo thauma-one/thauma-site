@@ -87,7 +87,9 @@
     var reduced = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
     var touch = window.matchMedia && matchMedia('(hover: none)').matches;
     var size = typeof game.size === 'function' ? game.size({ touch: touch }) : game.size;
-    var W = size.w, H = size.h, scheme = game.controls;
+    var W = size.w, H = size.h;
+    /* a game may play differently on a phone (Soundcheck: arrows, not the fader) */
+    var scheme = typeof game.controls === 'function' ? game.controls({ touch: touch }) : game.controls;
     /* The cabinet, where there is room for it and a keyboard to play with. */
     var framed = !touch && window.matchMedia && matchMedia('(min-width: 900px) and (min-height: 600px)').matches;
 
@@ -345,12 +347,14 @@
       /* Which d-pad buttons a phone shows (Follow Spot gains its tilt). */
       pad: function (list) {
         el.querySelectorAll('.arc-pad button').forEach(function (b) { b.hidden = list.indexOf(b.dataset.dir) < 0; });
+        /* the buttons shown share the row: two arrows are two halves */
+        var pad = el.querySelector('.arc-pad'); if (pad) pad.style.setProperty('--n', list.length);
       },
       /* The stick: a finger's fader, or the arrow keys easing toward full. */
       stick: function () { return stickId !== null ? stickV : stickKeys; },
       over: function () { finish(); }
     };
-    if (game.padStart) ctx.pad(game.padStart);
+    if (game.padStart) ctx.pad(typeof game.padStart === 'function' ? game.padStart({ touch: touch }) : game.padStart);
 
     function start(short) {
       if (run && run.stop) run.stop();

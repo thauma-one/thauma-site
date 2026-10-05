@@ -201,10 +201,11 @@
 .arc-ready.is-go em{font-size:34px;color:var(--c,var(--ar-amber));animation:arc-go .45s var(--unfurl) both}
 @keyframes arc-ready-in{0%{opacity:0;scale:1.4;filter:blur(6px)}100%{opacity:1;scale:1;filter:none}}
 @keyframes arc-go{0%{scale:.4;opacity:0}60%{scale:1.25;opacity:1}100%{scale:1}}
-.arc-pad{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:10px 12px 14px}
+.arc-pad{display:grid;grid-template-columns:repeat(var(--n,4),1fr);gap:8px;padding:10px 12px 14px}
 .arc-pad button{height:64px;border-radius:14px;display:grid;place-items:center;color:var(--ar-ink);
   background:linear-gradient(180deg,#161d2c,#0f1522);box-shadow:inset 0 0 0 1px var(--ar-edge);touch-action:none}
 .arc-pad button[hidden]{display:none}
+.arc-pad[style*="--n: 2"] button{height:76px}
 .arc-pad button:active{background:color-mix(in srgb,var(--c,var(--ar-foam)) 22%,#0f1522)}
 .arc-pad svg{width:22px;height:22px}
 /* a true d-pad, a cross (Cable Run: "a true d-pad shape") */
