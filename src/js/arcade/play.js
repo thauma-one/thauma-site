@@ -82,6 +82,25 @@
     });
   }
 
+  /* THE FUNNIEST LINES, per game (Chase, 2026-10-05: "they overlay over
+     the game themselves and block the screen. How about we just make a joke
+     when the game is over. Note the funniest ones and have those come up!").
+     During play a joke is only remembered; the game-over card shows the best
+     line for the last thing that happened (the crash, the sheep, the late
+     coffee), or any of the game's best when nothing on this list did.
+     [key, [indexes into that key's list]] */
+  var BEST = {
+    loadout: [['jokes_loadout_lost', [1, 2, 3]], ['jokes_loadout_heavy', [1, 2]], ['jokes_loadout_tall', [0, 1]], ['jokes_loadout_steady', [0]]],
+    soundcheck: [['jokes_soundcheck_miss', [1, 3, 4, 5]], ['jokes_soundcheck_rally', [0, 1]], ['jokes_soundcheck_win', [0]], ['jokes_soundcheck_power', [1]]],
+    cablerun: [['jokes_cablerun_crash', [0, 2]], ['jokes_cablerun_trip', [0, 2]], ['jokes_cablerun_plug', [1]], ['jokes_cablerun_tape', [1]]],
+    panelfixer: [['jokes_panelfixer_miss', [0, 1, 2]], ['jokes_panelfixer_last', [0, 1]], ['jokes_panelfixer_great', [0]], ['jokes_panelfixer_showtime', [1]]],
+    stagerunner: [['jokes_stagerunner_crash', [1, 2]], ['jokes_stagerunner_late', [0, 2]], ['jokes_stagerunner_deliver', [0, 1, 2]], ['jokes_stagerunner_stumble', [1]], ['jokes_stagerunner_power', [1]]],
+    goldenhour: [['jokes_goldenhour_crash', [0, 2]], ['jokes_goldenhour_banner', [0, 1, 2]], ['jokes_goldenhour_trick', [1]], ['jokes_goldenhour_ball', [1]]],
+    followspot: [['jokes_followspot_sheep', [0, 1, 3]], ['jokes_followspot_moth', [0, 2]], ['jokes_followspot_fog', [0, 1]], ['jokes_followspot_dark', [0, 1]], ['jokes_followspot_lost', [0, 1]], ['jokes_followspot_stunt', [0]]],
+    strike: [['jokes_strike_drop', [0, 1]], ['jokes_strike_wild', [0, 1]], ['jokes_strike_clear', [0]]],
+    cuestack: [['jokes_cuestack_miss', [0, 1]], ['jokes_cuestack_combo', [0]], ['jokes_cuestack_show', [0]]]
+  };
+
   function screen(game, opts, done) {
     var w = opts.words, id = opts.id;
     var reduced = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -286,7 +305,22 @@
     }
 
     /* ---- the radio: jokes and calls, in a banner that can be read ---- */
-    var quipUntil = 0, quipLast = {}, quipTimer = 0;
+    var quipTimer = 0, heard = [];
+    /* the line for the game-over card: the best one for the most recent
+       thing that happened, else any of this game's best */
+    function overJoke() {
+      var best = BEST[id] || [], pool = [];
+      for (var i = heard.length - 1; i >= 0 && !pool.length; i--) {
+        best.forEach(function (b) { if (b[0] === heard[i]) b[1].forEach(function (n) { pool.push([b[0], n]); }); });
+      }
+      if (!pool.length) best.forEach(function (b) { b[1].forEach(function (n) { pool.push([b[0], n]); }); });
+      if (!pool.length) return null;
+      var pick = pool[Math.floor(Math.random() * pool.length)], list = w(pick[0]);
+      var line = Array.isArray(list) ? list[pick[1]] : null;
+      if (!line) return null;
+      var m = /^\[([^\]]{1,10})\]\s*/.exec(line);
+      return m ? { tag: m[1], text: line.slice(m[0].length) } : { tag: game.speaker || 'SM', text: line };
+    }
     function showLine(text, opts) {
       opts = opts || {};
       if (!text) return;
@@ -301,21 +335,11 @@
       quipEl.classList.remove('is-shown', 'is-good', 'is-bad'); void quipEl.offsetWidth;
       quipEl.classList.add('is-shown');
       if (opts.mood) quipEl.classList.add('is-' + opts.mood);
-      var ms = Math.max(3600, Math.min(6500, 1800 + text.length * 55));
+      /* a call, not a joke: compact and brief, so it never sits over the play */
+      quipEl.classList.add('is-call');
+      var ms = Math.max(2200, Math.min(3600, 1200 + text.length * 40));
       quipEl.style.setProperty('--quip-ms', ms + 'ms');
-      quipUntil = performance.now() + ms;
       clearTimeout(quipTimer); quipTimer = setTimeout(function () { quipEl.classList.remove('is-shown'); }, ms);
-    }
-    function pickFrom(key, list) {
-      /* round-robin through a shuffled list, so a joke is not heard twice
-         before the others have had their turn */
-      var st = quipLast[key];
-      if (!st || !st.left.length) {
-        st = quipLast[key] = { left: list.slice().sort(function () { return Math.random() - .5; }), prev: st && st.prev };
-        if (st.left.length > 1 && st.left[0] === st.prev) st.left.push(st.left.shift());
-      }
-      st.prev = st.left.shift();
-      return st.prev;
     }
 
     /* ---- the context a game gets ---- */
@@ -333,15 +357,10 @@
       /* A JOKE: one of words(key)'s list, when the radio is free (or
          `force`), at most every few seconds, and only `chance` of the time —
          a joke on every event is no joke. { mood: 'good' | 'bad', at } */
-      quip: function (key, o) {
-        o = o || {};
-        var now = performance.now();
-        if (!o.force && now < quipUntil + 900) return false;
-        if (o.chance != null && Math.random() > o.chance) return false;
-        var list = w(key);
-        if (!Array.isArray(list) || !list.length) return false;
-        showLine(pickFrom(key, list), o);
-        return true;
+      quip: function (key) {
+        /* remembered for the game-over card, never shown over the play */
+        heard = heard.filter(function (k) { return k !== key; }); heard.push(key);
+        return false;
       },
       sfx: function (name, o) { var S = snd(); if (S) S.sfx(name, o); },
       /* Which d-pad buttons a phone shows (Follow Spot gains its tilt). */
@@ -358,7 +377,7 @@
 
     function start(short) {
       if (run && run.stop) run.stop();
-      over = false; paused = false; saved = false; overEl.hidden = true; overEl.innerHTML = '';
+      over = false; paused = false; saved = false; overEl.hidden = true; overEl.innerHTML = ''; heard = [];
       ctx.best = best(id); bestEl.textContent = ctx.best;
       ctx.score(0);
       run = game.create(ctx);
@@ -434,6 +453,7 @@
       overEl.hidden = false;
       overEl.innerHTML = '<div class="arc-card"><h3>' + esc(w('over_title')) + '</h3>' +
         '<div class="arc-final"><b>' + score + '</b>' + (isBest ? '<span>' + esc(w('newbest_label')) + '</span>' : '') + '</div>' +
+        (function () { var j = overJoke(); return j ? '<p class="arc-joke"><b>' + esc(j.tag) + '</b><span>' + esc(j.text) + '</span></p>' : ''; })() +
         '<div class="arc-initials" hidden></div><ol class="arc-board"></ol>' +
         '<div class="arc-btns"><button type="button" class="arc-btn is-main" data-act="again">' + esc(w('again_label')) + '</button>' +
         '<button type="button" class="arc-btn" data-act="menu">' + esc(w('menu_label')) + '</button></div></div>';

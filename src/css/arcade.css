@@ -183,6 +183,11 @@
   box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--c,var(--ar-amber)) 75%,transparent),0 12px 34px -12px rgba(0,0,0,.9),0 0 28px -8px color-mix(in srgb,var(--c,var(--ar-amber)) 60%,transparent);
   opacity:0;visibility:hidden}
 .arc-quip.is-low{top:auto;bottom:12px}
+/* a call (round 4): jokes wait for the game-over card, so what remains on
+   the radio is short — a wall number, an errand, "use your tilt" — and is
+   shown small and brief */
+.arc-quip.is-call{gap:7px;padding:6px 10px 6px 6px;border-radius:10px;font-size:12px;background:rgba(8,10,16,.82);max-width:min(86%,340px)}
+.arc-quip.is-call b{padding:3px 5px;font-size:9px}
 .arc-quip b{flex:none;margin-top:1px;padding:4px 7px;border-radius:6px;font:700 10px/1 'Sora',sans-serif;letter-spacing:.12em;
   background:var(--c,var(--ar-amber));color:#0b0e14}
 .arc-quip.is-good b{background:var(--ar-foam)}.arc-quip.is-bad b{background:var(--ar-red)}
@@ -231,17 +236,21 @@
 .arc-cabinet{position:relative;flex:1;min-height:0;display:flex;flex-direction:column}
 .arc-bezel{position:relative;flex:1;min-height:0;display:flex}
 .arc-bezel .arc-stage{flex:1}
-.has-frame .arc-cabinet{width:min(100%,max(440px,calc((100vh - 270px) * var(--ar,.6) + 80px)));margin:0 auto 14px;padding:0 22px;border-radius:22px 22px 10px 10px;
-  background:linear-gradient(90deg,#0c111b,#151c2b 12%,#121826 88%,#0c111b);box-shadow:inset 0 0 0 1px var(--ar-edge),0 40px 90px -40px rgba(0,0,0,.95),0 0 60px -20px color-mix(in srgb,var(--c) 35%,transparent)}
-.has-frame .arc-marquee{height:58px;margin:14px 0 12px;border-radius:12px 12px 4px 4px;display:flex;align-items:center;justify-content:center;
-  background:radial-gradient(120% 160% at 50% 0%,color-mix(in srgb,var(--c) 32%,transparent),transparent 70%),#080b12;box-shadow:inset 0 -2px 0 color-mix(in srgb,var(--c) 40%,transparent)}
-.has-frame .arc-marquee span{font:600 22px/1 'Sora',sans-serif;letter-spacing:.28em;padding-left:.28em;text-transform:uppercase;color:var(--c);
-  text-shadow:0 0 16px color-mix(in srgb,var(--c) 80%,transparent);animation:arc-marquee 3.2s ease-in-out infinite}
-@keyframes arc-marquee{50%{text-shadow:0 0 26px color-mix(in srgb,var(--c) 95%,transparent),0 0 4px #fff}}
-.has-frame .arc-bezel{padding:14px;border-radius:16px;background:#05070b;box-shadow:inset 0 0 0 2px #1d2433,inset 0 0 30px rgba(0,0,0,.9)}
-.has-frame .arc-stage canvas{border-radius:10px}
-.has-frame .arc-deck{height:62px;margin:12px -10px 0;border-radius:6px 6px 10px 10px;display:flex;align-items:center;justify-content:center;gap:26px;
-  background:linear-gradient(180deg,#1d2537,#121826);box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}
+/* THE CABINET, quieter (Chase, 2026-10-05: "I like the overlay of the
+   arcade while in each game, but lets make it less in your face. The game
+   screens are too small"): a thin marquee strip, a slim bezel and deck, no
+   pulsing glow, ~100px more height for the screen. */
+.has-frame .arc-cabinet{width:min(100%,max(440px,calc((100vh - 170px) * var(--ar,.6) + 40px)));margin:0 auto 8px;padding:0 10px;border-radius:16px 16px 8px 8px;
+  background:linear-gradient(90deg,#0b0f17,#10151f 12%,#0f1420 88%,#0b0f17);box-shadow:inset 0 0 0 1px var(--ar-edge),0 30px 70px -40px rgba(0,0,0,.9),0 0 40px -24px color-mix(in srgb,var(--c) 25%,transparent)}
+.has-frame .arc-marquee{height:28px;margin:6px 0;border-radius:8px 8px 3px 3px;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(120% 160% at 50% 0%,color-mix(in srgb,var(--c) 16%,transparent),transparent 70%),#080b12;box-shadow:inset 0 -1px 0 color-mix(in srgb,var(--c) 30%,transparent)}
+.has-frame .arc-marquee span{font:600 12px/1 'Sora',sans-serif;letter-spacing:.32em;padding-left:.32em;text-transform:uppercase;color:color-mix(in srgb,var(--c) 85%,#fff);
+  text-shadow:0 0 10px color-mix(in srgb,var(--c) 55%,transparent)}
+.has-frame .arc-bezel{padding:6px;border-radius:12px;background:#05070b;box-shadow:inset 0 0 0 1px #1a2030,inset 0 0 20px rgba(0,0,0,.9)}
+.has-frame .arc-stage canvas{border-radius:8px}
+.has-frame .arc-deck{height:34px;margin:6px -4px 0;border-radius:4px 4px 8px 8px;display:flex;align-items:center;justify-content:center;gap:20px;
+  background:linear-gradient(180deg,#151c2a,#0f1420);box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}
+.has-frame .deck-stick{transform:scale(.7)}.has-frame .deck-btn{width:14px;height:14px}
 .deck-stick{position:relative;width:12px;height:28px;border-radius:6px;background:linear-gradient(90deg,#3a4558,#1b2231);transform-origin:50% 100%;transition:rotate .08s,translate .08s}
 .deck-stick::before{content:"";position:absolute;left:50%;top:-12px;width:20px;height:20px;margin-left:-10px;border-radius:50%;background:var(--ar-red);box-shadow:0 0 12px rgba(255,90,110,.6)}
 .deck-btns{display:flex;gap:12px}
@@ -259,6 +268,10 @@
 .arc-final b{display:block;font:600 52px/1 'Sora',sans-serif;color:var(--c,var(--ar-amber));font-variant-numeric:tabular-nums;
   text-shadow:0 0 22px color-mix(in srgb,var(--c,var(--ar-amber)) 55%,transparent)}
 .arc-final span{display:inline-block;margin-top:8px;font-size:11px;letter-spacing:.18em;text-transform:uppercase;font-weight:600;color:var(--ar-amber)}
+/* the joke, on the game-over card */
+.arc-joke{display:flex;gap:9px;align-items:flex-start;margin:16px 0 0;padding:11px 12px;border-radius:12px;text-align:left;
+  background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px var(--ar-edge);font:500 14px/1.4 'Inter',system-ui,sans-serif;color:var(--ar-ink)}
+.arc-joke b{flex:none;margin-top:1px;padding:3px 6px;border-radius:6px;font:700 9px/1 'Sora',sans-serif;letter-spacing:.12em;background:var(--c,var(--ar-amber));color:#0b0e14}
 .arc-card .arc-board{margin-top:16px;flex-direction:column;align-items:stretch;gap:4px;display:flex}
 .arc-card .arc-board li{display:flex;justify-content:space-between;gap:10px;color:var(--ar-dim)}
 .arc-card .arc-board li i{font-style:normal;width:18px;text-align:left;opacity:.6}
