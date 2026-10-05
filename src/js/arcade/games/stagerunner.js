@@ -26,9 +26,18 @@
    hand out: run the lane beside them for a HIGH FIVE.
 
    THE PM. Stumble — clip a cable ramp, a wet floor, the side of a case —
-   and the production manager is right behind you, clipboard up. Stumble
-   again before they give up, and you're caught. Hit something head on and
-   it's over, unless you are riding a road case (it takes the hit).
+   and the production manager is right behind you, clipboard up, and you
+   lose speed. They never catch you (round 4: "Caught by the PM isn't
+   needed"). Hit something head on and it's over, unless you are riding a
+   road case (it takes the hit).
+
+   READING THE WAY (round 4: "the obstacles are still too hard to
+   understand what is needed to be done. I lost because I thought I could
+   go up"): a painted floor arrow before each thing says what to do —
+   yellow ↑ jump (a case, a cable ramp, a wet floor), blue ↓ slide (the low
+   truss), red ⇆ dodge (a stack, the tug) — and what cannot be jumped has
+   a red edge. A single case can be landed on and run along, as a train
+   can in Subway Surfers.
 
    PICKS (guitar picks) everywhere; four powers: the HEADSET pulls picks
    to you, CASE SURF rides a road case, SPRING SHOES jump higher, ALL
@@ -140,8 +149,9 @@
         }
         /* the crew along the walls; now and then one wants a high five */
         if (Math.random() < .55) {
-          var side = Math.random() < .5 ? -1 : 1, five = d > 40 && Math.random() < .35;
-          add({ kind: 'crew', side: side, lane: side < 0 ? 0 : 2, z: z + rnd(0, len), len: .4, five: five, shirt: pickOf(SHIRTS), cup: Math.random() < .3, ph: rnd(0, 6) });
+          var side = Math.random() < .5 ? -1 : 1, five = d > 40 && Math.random() < .6;
+          add({ kind: 'crew', side: side, lane: side < 0 ? 0 : 2, z: z + rnd(0, len), len: .4, five: five, shirt: pickOf(SHIRTS), cup: Math.random() < .3, ph: rnd(0, 6),
+                who: pickOf(['crew', 'crew', 'drums', 'pm', 'pastor', 'kid', 'singer']) });
         }
         /* the errand: the thing someone needs, or the door to bring it to */
         if (!mission && d > nextMission) {
@@ -184,6 +194,8 @@
           if (o.lane !== lane || o.z > .3 || o.z + o.len < -.3) return;
           if (o.kind === 'ramp') gnd = Math.max(gnd, clamp((-o.z) / o.len, 0, 1) * .72);
           if (o.kind === 'riser') gnd = Math.max(gnd, .72);
+          /* the top of a single case is somewhere to run, once you are on it */
+          if (o.kind === 'case' && me.y >= .45) gnd = Math.max(gnd, .58);
         });
         return gnd;
       }
@@ -192,14 +204,8 @@
         if (dead) return;
         ctx.shake(3); ctx.sfx('whiff');
         speed = Math.max(7.5, speed * .85);
-        if (pm > 0) return caught();
         pm = 6; stumbles++;
         ctx.quip('jokes_stagerunner_stumble', { mood: 'bad', chance: .5 });
-      }
-      function caught() {
-        dead = true; ctx.sfx('crash');
-        ctx.say(words('stagerunner_caught'), { mood: 'bad', tag: 'PM' });
-        setTimeout(function () { ctx.over(); }, 1100);
       }
       function crash() {
         if (me.onCase > 0) {
@@ -282,13 +288,16 @@
               if (o.power === 'case') me.onCase = 14;
               if (o.power === 'shoes') me.shoes = 10;
               if (o.power === 'pass') me.pass = 15;
-              banner = { text: words('stagerunner_p_' + o.power).toUpperCase(), t: 1.6, good: true };
+              banner = { text: words('stagerunner_p_' + o.power).toUpperCase(), sub: words('stagerunner_d_' + o.power), t: 2.4, good: true };
               ctx.quip('jokes_stagerunner_power', { mood: 'good', chance: .5 });
               break;
             case 'cable': case 'wet':
               if (me.y < .22 && me.onCase <= 0) { o.hit = true; stumble(); }
               break;
-            case 'case': case 'stack': case 'cart':
+            case 'case':
+              if (me.y < .45) { o.hit = true; crash(); }
+              break;
+            case 'stack': case 'cart':
               if (me.y < topOf(o) - .05) { o.hit = true; crash(); }
               break;
             case 'truss':
@@ -347,6 +356,7 @@
         g.fillStyle = glow; g.fillRect(0, HOR - 120, W, 240);
         /* everything, far to near */
         var list = things.slice().sort(function (a, b) { return b.z - a.z; });
+        list.forEach(function (o) { if (SIGN[o.kind] && !o.hit) floorSign(g, o); });
         var drewMe = false;
         list.forEach(function (o) {
           if (!drewMe && o.z < -.1) { runner(g); drewMe = true; }
@@ -524,6 +534,8 @@
             if (f1) roadcase(g, f1, o.col || '#FF5A6E');
             var f2 = box3(g, x, 1.0, 2.0, o.z, o.z + o.len, .4, '#2c3240', '#404a5e', '#1d222d');
             if (f2) roadcase(g, f2, '#9B7BFF');
+            /* too tall to jump: a red edge says go round */
+            if (f1 && f2) { g.strokeStyle = '#FF5A6E'; g.shadowColor = '#FF5A6E'; g.shadowBlur = 10; g.lineWidth = Math.max(1.5, f1.k * .025); g.strokeRect(f2.x - 1, f2.y - 1, f2.w + 2, f1.y + f1.h - f2.y + 2); g.shadowBlur = 0; }
             break;
           }
           case 'truss': {
@@ -621,15 +633,38 @@
             break;
           }
           case 'power': {
-            p = proj(x, .55 + Math.sin(time * 4) * .06, o.z); if (!p) break;
-            g.fillStyle = 'rgba(155,123,255,.35)'; g.beginPath(); g.arc(p.x, p.y, p.k * .3, 0, 7); g.fill();
-            g.strokeStyle = '#9B7BFF'; g.lineWidth = Math.max(1.5, p.k * .03); g.stroke();
-            powerIcon(g, o.power, p.x, p.y, p.k * .022);
+            /* a power is not a pick: bigger, a turning ring, a beam from
+               above, and its name under it */
+            p = proj(x, .7 + Math.sin(time * 4) * .06, o.z); if (!p) break;
+            var pb = proj(x, 3, o.z); if (pb) { g.fillStyle = 'rgba(155,123,255,.16)'; g.fillRect(p.x - p.k * .08, pb.y, p.k * .16, p.y - pb.y); }
+            g.fillStyle = 'rgba(155,123,255,.45)'; g.beginPath(); g.arc(p.x, p.y, p.k * .38, 0, 7); g.fill();
+            g.strokeStyle = '#C9B8FF'; g.lineWidth = Math.max(1.5, p.k * .03);
+            g.beginPath(); g.arc(p.x, p.y, p.k * .46, time * 3, time * 3 + 4.4); g.stroke();
+            powerIcon(g, o.power, p.x, p.y, p.k * .03);
+            g.fillStyle = '#EDF2F8'; g.font = '700 ' + Math.max(8, p.k * .12).toFixed(0) + 'px Sora, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'top';
+            g.fillText(words('stagerunner_p_' + o.power).toUpperCase(), p.x, p.y + p.k * .52);
             break;
           }
           case 'door': door(g, o); break;
           case 'crew': crewDraw(g, o); break;
         }
+      }
+      /* WHAT TO DO, painted on the floor before each thing */
+      var SIGN = { case: 'jump', cable: 'jump', wet: 'jump', truss: 'slide', stack: 'dodge', cart: 'dodge' };
+      var SIGNCOL = { jump: '#FFD34A', slide: '#2FD8FF', dodge: '#FF5A6E' };
+      function floorSign(g, o) {
+        var kind = SIGN[o.kind], z = o.z - 2.4, x = laneX(o.lane);
+        if (z < -1 || z > 34) return;
+        var P = function (dx, dz) { return proj(x + dx, .01, z + dz); };
+        var pts2;
+        if (kind === 'jump') pts2 = [[0, 1.1], [.3, .55], [.12, .55], [.12, 0], [-.12, 0], [-.12, .55], [-.3, .55]];
+        else if (kind === 'slide') pts2 = [[0, 0], [.3, .55], [.12, .55], [.12, 1.1], [-.12, 1.1], [-.12, .55], [-.3, .55]];
+        else pts2 = [[-.34, .55], [-.14, .85], [-.14, .65], [.14, .65], [.14, .85], [.34, .55], [.14, .25], [.14, .45], [-.14, .45], [-.14, .25]];
+        var q = pts2.map(function (v) { return P(v[0], v[1]); });
+        if (q.some(function (v) { return !v; })) return;
+        g.globalAlpha = .8 * fogA(z); g.fillStyle = SIGNCOL[kind];
+        g.beginPath(); q.forEach(function (v, i) { if (i) g.lineTo(v.x, v.y); else g.moveTo(v.x, v.y); }); g.closePath(); g.fill();
+        g.globalAlpha = 1;
       }
       function roadcase(g, f, tape) {
         var k = f.k;
@@ -708,14 +743,23 @@
       }
       /* the crew on the walls, waving you past; one with a hand out wants a high five */
       function crewDraw(g, o) {
-        var x = o.side * 1.52, pp = proj(x, 0, o.z); if (!pp) return;
-        var u = pp.k / 100, wave = Math.sin(time * 8 + o.ph);
+        /* they pop out from the wall as you come (round 4: "band members,
+           PMs, and other people randomly pop out of the sides and give you
+           a high five") */
+        var out = clamp((16 - o.z) / 5, 0, 1), x = o.side * (1.78 - .3 * out * out * (3 - 2 * out)), pp = proj(x, 0, o.z); if (!pp) return;
+        var u = pp.k / 100 * (o.who === 'kid' ? .72 : 1), wave = Math.sin(time * 8 + o.ph);
+        var SH = { crew: o.shirt, drums: '#3b2b42', pm: '#39445a', pastor: '#1c2330', kid: '#5CF2C4', singer: '#FF4FD8' };
+        var LABEL = { crew: 'CREW', drums: 'BAND', pm: 'PM', pastor: '', kid: '', singer: '' };
         g.save(); g.translate(pp.x, pp.y);
         g.fillStyle = 'rgba(0,0,0,.3)'; g.beginPath(); g.ellipse(0, 0, 14 * u, 4 * u, 0, 0, 7); g.fill();
         g.strokeStyle = '#1c2330'; g.lineWidth = 8 * u; g.lineCap = 'round';
         g.beginPath(); g.moveTo(-5 * u, -44 * u); g.lineTo(-6 * u, 0); g.moveTo(5 * u, -44 * u); g.lineTo(6 * u, 0); g.stroke();
-        g.fillStyle = o.shirt; roundRect(g, -12 * u, -84 * u, 24 * u, 42 * u, 6 * u); g.fill();
-        g.fillStyle = '#EDF2F8'; g.font = '700 ' + (6 * u).toFixed(1) + 'px Sora, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('CREW', 0, -70 * u);
+        g.fillStyle = SH[o.who || 'crew']; roundRect(g, -12 * u, -84 * u, 24 * u, 42 * u, 6 * u); g.fill();
+        if (o.who === 'pastor') { g.fillStyle = '#fff'; g.fillRect(-2 * u, -84 * u, 4 * u, 4 * u); }
+        g.fillStyle = '#EDF2F8'; g.font = '700 ' + (6 * u).toFixed(1) + 'px Sora, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(LABEL[o.who || 'crew'], 0, -70 * u);
+        if (o.who === 'pm') { g.fillStyle = '#c9a26b'; g.fillRect(-o.side * 14 * u, -66 * u, 10 * u, 13 * u); }
+        if (o.who === 'drums') { g.strokeStyle = '#e8c48a'; g.lineWidth = 2 * u; g.beginPath(); g.moveTo(o.side * 14 * u, -56 * u); g.lineTo(o.side * 24 * u, -70 * u); g.stroke(); }
+        if (o.who === 'singer') { g.fillStyle = '#c9d1dc'; g.fillRect(o.side * 13 * u, -66 * u, 3 * u, 9 * u); }
         g.strokeStyle = '#d9a37e'; g.lineWidth = 5.5 * u; g.beginPath();
         var toward = -o.side;
         if (o.five && !o.slapped) { g.moveTo(toward * 11 * u, -78 * u); g.lineTo(toward * 30 * u, -92 * u); }
@@ -727,7 +771,8 @@
         if (o.cup) { g.fillStyle = '#EDF2F8'; g.fillRect(-toward * 17 * u, -58 * u, 6 * u, 8 * u); }
         g.fillStyle = '#d9a37e'; g.beginPath(); g.arc(0, -96 * u, 10 * u, 0, 7); g.fill();
         g.fillStyle = '#3b2a20'; g.beginPath(); g.arc(0, -99 * u, 10 * u, Math.PI, 0); g.fill();
-        g.strokeStyle = '#2FD8FF'; g.lineWidth = 2 * u; g.beginPath(); g.arc(0, -96 * u, 12 * u, Math.PI * 1.1, Math.PI * 1.9); g.stroke();
+        if (o.who === 'crew' || o.who === 'pm') { g.strokeStyle = '#2FD8FF'; g.lineWidth = 2 * u; g.beginPath(); g.arc(0, -96 * u, 12 * u, Math.PI * 1.1, Math.PI * 1.9); g.stroke(); }
+        if (o.who === 'kid') { g.fillStyle = '#FFB547'; g.fillRect(-10 * u, -104 * u, 20 * u, 4 * u); }
         g.restore();
       }
 
@@ -859,19 +904,24 @@
           g.fillStyle = left > .5 ? '#5CF2C4' : left > .25 ? '#FFB547' : '#FF5A6E'; g.fillRect(bx + 32, by + 29, 90 * left, 5);
         }
         /* powers running */
-        var px = 12;
+        /* powers running: each with its name and its time left */
+        var py = 90;
         [['magnet', 'headset', 10], ['onCase', 'case', 14], ['shoes', 'shoes', 10], ['pass', 'pass', 15]].forEach(function (pw) {
           if (me[pw[0]] <= 0) return;
-          g.fillStyle = 'rgba(155,123,255,.35)'; g.beginPath(); g.arc(px + 10, 90, 10, 0, 7); g.fill();
-          powerIcon(g, pw[1], px + 10, 90, .8);
-          g.fillStyle = 'rgba(255,255,255,.1)'; g.fillRect(px, 104, 20, 3); g.fillStyle = '#9B7BFF'; g.fillRect(px, 104, 20 * me[pw[0]] / pw[2], 3);
-          px += 28;
+          g.fillStyle = 'rgba(155,123,255,.4)'; g.beginPath(); g.arc(22, py, 10, 0, 7); g.fill();
+          powerIcon(g, pw[1], 22, py, .8);
+          g.fillStyle = '#EDF2F8'; g.font = '700 8px Sora, sans-serif'; g.textAlign = 'left'; g.textBaseline = 'middle';
+          g.fillText(words('stagerunner_p_' + pw[1]).toUpperCase(), 36, py - 3);
+          g.fillStyle = 'rgba(255,255,255,.1)'; g.fillRect(36, py + 4, 46, 3); g.fillStyle = '#9B7BFF'; g.fillRect(36, py + 4, 46 * me[pw[0]] / pw[2], 3);
+          py += 26;
         });
         if (banner) {
           g.globalAlpha = Math.min(1, banner.t * 2);
           g.font = '700 20px Sora, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
           g.fillStyle = banner.good ? '#5CF2C4' : '#FF5A6E'; g.shadowColor = g.fillStyle; g.shadowBlur = 16;
-          g.fillText(banner.text, W / 2, HOR - 70); g.shadowBlur = 0; g.globalAlpha = 1;
+          g.fillText(banner.text, W / 2, HOR - 70); g.shadowBlur = 0;
+          if (banner.sub) { g.font = '600 12px Inter, sans-serif'; g.fillStyle = '#EDF2F8'; g.fillText(banner.sub, W / 2, HOR - 46); }
+          g.globalAlpha = 1;
         }
         /* thanks and high fives, floating up from the runner */
         var rp = proj(me.x, me.y, 0);

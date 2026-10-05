@@ -459,7 +459,6 @@
     "stagerunner_deliver": "У зелену собу!",
     "stagerunner_delivered": "Достављено!",
     "stagerunner_late": "Преспоро!",
-    "stagerunner_caught": "PM те ухватио!",
     "stagerunner_greenroom": "Зелена соба",
     "stagerunner_zone_backstage": "Иза позорнице",
     "stagerunner_zone_stage": "На позорници",
@@ -665,6 +664,10 @@
     "soundcheck_d_zigzag": "лопта на пола пута скреће натраг",
     "soundcheck_d_squiggle": "лопта вијуга цијелим путем",
     "soundcheck_d_butter": "њихов фадер клизи као по леду",
-    "soundcheck_d_blackout": "свјетла се на тренутак гасе"
+    "soundcheck_d_blackout": "свјетла се на тренутак гасе",
+    "stagerunner_d_headset": "Трзалице лете к теби",
+    "stagerunner_d_case": "Вози се на ковчегу: он прима један ударац",
+    "stagerunner_d_shoes": "Скачеш пуно више",
+    "stagerunner_d_pass": "Свака трзалица вриједи двоструко"
   }
 }

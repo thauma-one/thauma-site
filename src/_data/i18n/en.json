@@ -459,7 +459,6 @@
     "stagerunner_deliver": "Green room!",
     "stagerunner_delivered": "Delivered!",
     "stagerunner_late": "Too slow!",
-    "stagerunner_caught": "Caught by the PM!",
     "stagerunner_greenroom": "Green room",
     "stagerunner_zone_backstage": "Backstage",
     "stagerunner_zone_stage": "On stage",
@@ -665,6 +664,10 @@
     "soundcheck_d_zigzag": "the ball turns back halfway",
     "soundcheck_d_squiggle": "the ball wiggles all the way",
     "soundcheck_d_butter": "their fader slides like on ice",
-    "soundcheck_d_blackout": "the lights go out for a moment"
+    "soundcheck_d_blackout": "the lights go out for a moment",
+    "stagerunner_d_headset": "Picks fly to you",
+    "stagerunner_d_case": "Ride a road case: it takes one hit",
+    "stagerunner_d_shoes": "Jump much higher",
+    "stagerunner_d_pass": "Every pick counts double"
   }
 }

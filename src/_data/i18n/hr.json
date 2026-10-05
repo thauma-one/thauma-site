@@ -459,7 +459,6 @@
     "stagerunner_deliver": "U zelenu sobu!",
     "stagerunner_delivered": "Dostavljeno!",
     "stagerunner_late": "Presporo!",
-    "stagerunner_caught": "PM te uhvatio!",
     "stagerunner_greenroom": "Zelena soba",
     "stagerunner_zone_backstage": "Iza pozornice",
     "stagerunner_zone_stage": "Na pozornici",
@@ -665,6 +664,10 @@
     "soundcheck_d_zigzag": "lopta na pola puta skreće natrag",
     "soundcheck_d_squiggle": "lopta vijuga cijelim putem",
     "soundcheck_d_butter": "njihov fader klizi kao po ledu",
-    "soundcheck_d_blackout": "svjetla se na trenutak gase"
+    "soundcheck_d_blackout": "svjetla se na trenutak gase",
+    "stagerunner_d_headset": "Trzalice lete k tebi",
+    "stagerunner_d_case": "Vozi se na kovčegu: on prima jedan udarac",
+    "stagerunner_d_shoes": "Skačeš puno više",
+    "stagerunner_d_pass": "Svaka trzalica vrijedi dvostruko"
   }
 }
