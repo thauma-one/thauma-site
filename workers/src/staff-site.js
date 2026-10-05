@@ -174,6 +174,9 @@ export default {
         theme: { accent: theme.accent, accent2: theme.accent2,
                  pair: { accent: theme.accent, accent2: (face && face.embed_accent2) || null,
                          turn: face && face.embed_turn != null ? face.embed_turn : null } },
+        /* Saved versions (0049), or null while the table does not exist yet:
+           dev runs this code before the migration is applied. */
+        saves: await db.query("site_saves_for", { partner_id: partner.id }).catch(() => null),
         can: { edit: isEditor, owner: isOwner },
         owner: owner ? { name: owner.name } : null,
         editors: isOwner ? editors : editors.map((e) => ({ user_id: e.user_id, name: e.name })),
@@ -217,6 +220,37 @@ export default {
     if (action === "publish") {
       if (!isEditor) return onlyEditors();
       await db.query("partner_site_publish", { partner_id: partner.id, user_id: me.user_id, now });
+      /* EVERY LIVE VERSION CAN BE HAD BACK (0049): a save of what was just
+         published, the newest ten kept. Never in the way of publishing. */
+      try {
+        await db.query("site_save_add", { id: "sv_" + crypto.randomUUID().replace(/-/g, "").slice(0, 20), partner_id: partner.id,
+          name: "Published", kind: "published", doc: row.draft, now, created_by: me.user_name || user.email });
+        await db.query("site_saves_trim", { partner_id: partner.id, kind: "published", keep: 10 });
+      } catch (err) { console.error("site save on publish:", err.message); }
+      return answer();
+    }
+    /* SAVED VERSIONS (0049, Chase: "go back to a design they liked"). A save
+       is the working copy as stored now; opening one hands its copy back to
+       the editor, which puts it in place through its ordinary save, so Undo
+       steps back from it and visitors see nothing until Publish. */
+    if (action === "version-save") {
+      if (!isEditor) return onlyEditors();
+      const name = String(body.name || "").replace(/\s+/g, " ").trim().slice(0, 80);
+      if (!name) return json({ error: "A saved version needs a name." }, 400);
+      await db.query("site_save_add", { id: "sv_" + crypto.randomUUID().replace(/-/g, "").slice(0, 20), partner_id: partner.id,
+        name, kind: "manual", doc: row.draft, now, created_by: me.user_name || user.email });
+      await db.query("site_saves_trim", { partner_id: partner.id, kind: "manual", keep: 30 });
+      return answer();
+    }
+    if (action === "version-open") {
+      if (!isEditor) return onlyEditors();
+      const v = await db.queryOne("site_save_get", { id: String(body.id || ""), partner_id: partner.id });
+      if (!v) return json({ error: "That saved version is gone." }, 404);
+      return json({ ok: true, name: v.name, draft: cleanDoc(JSON.parse(v.doc), (await catalogOf(db)).map((l) => l.code)) });
+    }
+    if (action === "version-delete") {
+      if (!isEditor) return onlyEditors();
+      await db.query("site_save_delete", { id: String(body.id || ""), partner_id: partner.id });
       return answer();
     }
     /* THE MINISTRY'S COLORS, from Design (Chase, 2026-10-04: Sharing and the

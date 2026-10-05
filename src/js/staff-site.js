@@ -1744,6 +1744,62 @@
       ae.shareOrig = orig2; ae.shareImage = b2.url; drawAdvanced(); changed();
     } catch (err) { toast(err.message, 'err'); }
   }
+  /* ---- saved versions (0049) -------------------------------------------
+     Chase, 2026-10-04: "a Site save state, so people can play around with
+     the design, yet go back to a design they liked". Named saves, plus one
+     made at every Publish. Bringing one back goes through the ordinary
+     save, so Undo steps back from it and visitors see it only on Publish.
+     Hidden until the database has the table (dev runs before migrations). */
+  function versionsHtml() {
+    var list = state.body.saves;
+    if (!Array.isArray(list) || !canEdit()) return '';
+    var when = function (iso) { try { return new Date(iso).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }); } catch (e) { return iso; } };
+    return '<div class="ws-head"><h2>' + esc(tr('ws.ver.title')) + '</h2></div>' +
+      '<form class="ws-vsave" data-vsave><input type="text" maxlength="80" data-vname placeholder="' + esc(tr('ws.ver.name')) + '" aria-label="' + esc(tr('ws.ver.title')) + '">' +
+        '<button type="submit" class="ghost-btn sm">' + esc(tr('ws.ver.save')) + '</button></form>' +
+      '<div class="ws-vlist">' + (list.length ? list.map(function (v) {
+        var name = v.kind === 'published' ? tr('ws.ver.published') : v.name;
+        return '<div class="ws-vrow' + (v.kind === 'published' ? ' is-pub' : '') + '"><span class="ws-vname"><b>' + esc(name) + '</b>' +
+            '<small>' + esc(when(v.created_at) + (v.created_by ? ' · ' + v.created_by : '')) + '</small></span>' +
+          '<button type="button" class="ghost-btn sm" data-vopen="' + esc(v.id) + '" data-vlabel="' + esc(name) + '">' + esc(tr('ws.ver.open')) + '</button>' +
+          '<button type="button" class="link-btn" data-vdel="' + esc(v.id) + '" data-vlabel="' + esc(name) + '">' + esc(tr('ms.delete')) + '</button></div>';
+      }).join('') : '<span class="ws-small">' + esc(tr('ws.ver.none')) + '</span>') + '</div>';
+  }
+  $('wsAdvanced').addEventListener('submit', async function (e) {
+    var f = e.target.closest('[data-vsave]');
+    if (!f) return;
+    e.preventDefault();
+    var name = f.querySelector('[data-vname]').value.trim();
+    if (!name) { f.querySelector('[data-vname]').focus(); return; }
+    /* What is on screen, not the last autosave. */
+    if (state.timer_pending) { clearTimeout(state.timer); state.timer_pending = false; await save(); }
+    try { var body = await send({ action: 'version-save', name: name }); state.body.saves = body.saves; drawAdvanced(); toast(tr('ws.ver.saved'), 'ok'); }
+    catch (err) { toast(err.message, 'err'); }
+  });
+  $('wsAdvanced').addEventListener('click', async function (e) {
+    var o = e.target.closest('[data-vopen]'), x = e.target.closest('[data-vdel]');
+    if (o) {
+      var ok = window.StaffConfirm ? await window.StaffConfirm({ title: fill('ws.ver.openAsk', { name: o.dataset.vlabel }), body: tr('ws.ver.openBody'),
+        confirm: tr('ws.ver.open'), cancel: tr('ms.cancel') }) : true;
+      if (!ok) return;
+      try {
+        var got = await send({ action: 'version-open', id: o.dataset.vopen });
+        state.doc = got.draft;
+        fillPair(); draw(); drawDots();
+        changed(true);
+        toast(fill('ws.ver.opened', { name: o.dataset.vlabel }), 'ok');
+      } catch (err) { toast(err.message, 'err'); }
+      return;
+    }
+    if (x) {
+      var sure = window.StaffConfirm ? await window.StaffConfirm({ title: fill('ws.ver.deleteAsk', { name: x.dataset.vlabel }),
+        confirm: tr('ms.delete'), cancel: tr('ms.cancel'), danger: true }) : true;
+      if (!sure) return;
+      try { var b = await send({ action: 'version-delete', id: x.dataset.vdel }); state.body.saves = b.saves; drawAdvanced(); }
+      catch (err) { toast(err.message, 'err'); }
+    }
+  });
+
   function drawAdvanced() {
     var p = advPage(), l = state.langA, o = p.seo || (p.seo = { title: {}, desc: {}, image: null });
     o.title = o.title || {}; o.desc = o.desc || {};
@@ -1769,6 +1825,7 @@
     html += '<div class="ws-rows">' + row(tr('ws.adv.picture'), chips('advpic', ['card', 'photo', 'custom', 'none'], mode, function (v) { return tr('ws.adv.picture.' + v); }) +
       (mode === 'custom' ? '<label class="ghost-btn sm ws-file">' + esc(tr('ws.sharePic.choose')) + '<input type="file" accept="image/*" data-adv-upload hidden></label>' +
         (p.shareImage && window.PhotoEditor ? '<button type="button" class="ghost-btn sm" data-adv-edit>' + esc(tr('pe.edit')) + '</button>' : '') : '')) + '</div>';
+    html += versionsHtml();
     $('wsAdvanced').innerHTML = html;
     /* The picture in the share preview: the card drawn live, or the photo. */
     var box = $('wsSharePic');

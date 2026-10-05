@@ -43,6 +43,7 @@ function answer(opts = {}) {
     page_names: Object.fromEntries(["en", "hr"].map((l) => [l, Object.fromEntries(PAGES.map((id) => [id, word(l, id)]))])),
     placeholders: placeholders ? Object.fromEntries(["en", "hr"].map((l) => [l, placeholders(l, "Chase Roush")])) : undefined,
     theme: { accent: "#1AE4FF", accent2: "#25FFA1" },
+    saves: opts.saves,
     can: { edit, owner }, owner: { name: "Chase Roush" }, editors: [], requests: [], my_request: null,
   };
 }
@@ -492,6 +493,32 @@ await check("the verse's place is chosen under the verse, by the words it follow
   await settle(900);
   const saved = sent.filter((b) => b.action === "save").pop();
   eq(saved.draft.pages.find((p) => p.id === "home").sections[1].versePos, "p1", "saved as after the first paragraph");
+});
+
+await check("Advanced: a version is saved by name, and bringing one back puts it in the working copy", async () => {
+  const { w, d, sent, click } = await boot({ saves: [
+    { id: "sv_1", name: "Before the new colors", kind: "manual", created_at: "2026-10-04T10:00:00Z", created_by: "Chase Roush" },
+    { id: "sv_2", name: "Published", kind: "published", created_at: "2026-10-03T10:00:00Z", created_by: "Chase Roush" }] });
+  w.StaffConfirm = async () => true;
+  click(d.querySelector('[data-ws-tab="advanced"]'));
+  const rows = [...d.querySelectorAll(".ws-vrow b")].map((b) => b.textContent);
+  eq(rows, ["Before the new colors", "Published"], "the list");
+  const f = d.querySelector("[data-vsave]");
+  f.querySelector("[data-vname]").value = "Summer look";
+  f.dispatchEvent(new w.Event("submit", { bubbles: true, cancelable: true }));
+  await settle(50);
+  eq(sent.filter((b) => b.action === "version-save").map((b) => b.name), ["Summer look"], "saved by name");
+  click(d.querySelector('[data-vopen="sv_1"]'));
+  await settle(900);
+  assert(sent.some((b) => b.action === "version-open" && b.id === "sv_1"), "asked for it");
+  assert(sent.some((b) => b.action === "save"), "then saved as the working copy, through the ordinary save");
+  assert(!d.getElementById("wsUndo").disabled, "and Undo can step back from it");
+});
+
+await check("Advanced: no Saved versions until the database has them", async () => {
+  const { d, click } = await boot({});
+  click(d.querySelector('[data-ws-tab="advanced"]'));
+  assert(!d.querySelector("[data-vsave]"), "hidden while saves is missing");
 });
 
 await check("a replaced photo is handed back when the page closes, not when it is saved (Undo can still bring it back)", async () => {

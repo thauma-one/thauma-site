@@ -3250,3 +3250,37 @@ INSERT INTO mailing_links (id, mailing_id, url, clicks, created_at) VALUES (:id,
 -- it again until somebody sets it back on the subscriber's row.
 UPDATE subscribers SET status = 'bounced', updated_at = :now
 WHERE id = :id AND status = 'subscribed';
+
+
+-- ===========================================================================
+-- SAVED VERSIONS OF A MINISTRY'S SITE (0049) — Advanced › Saved versions.
+-- ===========================================================================
+
+-- name: site_saves_for
+SELECT id, name, kind, created_at, created_by
+  FROM partner_site_saves
+ WHERE partner_id = :partner_id
+ ORDER BY created_at DESC;
+
+
+-- name: site_save_get
+SELECT id, name, kind, doc, created_at FROM partner_site_saves
+ WHERE id = :id AND partner_id = :partner_id;
+
+
+-- name: site_save_add
+INSERT INTO partner_site_saves (id, partner_id, name, kind, doc, created_at, created_by)
+VALUES (:id, :partner_id, :name, :kind, :doc, :now, :created_by);
+
+
+-- name: site_save_delete
+DELETE FROM partner_site_saves WHERE id = :id AND partner_id = :partner_id;
+
+
+-- name: site_saves_trim
+-- Keeps the newest :keep of one kind; the rest go.
+DELETE FROM partner_site_saves
+ WHERE partner_id = :partner_id AND kind = :kind
+   AND id NOT IN (SELECT id FROM partner_site_saves
+                   WHERE partner_id = :partner_id AND kind = :kind
+                   ORDER BY created_at DESC LIMIT :keep);

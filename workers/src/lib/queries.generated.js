@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "2cd48ed202e95d65";
+export const SOURCE_DIGEST = "5ecfa3f851dacb4f";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -987,6 +987,20 @@ VALUES (:ip_hash, :list_id, :at, :outcome);`,
   signup_attempts_prune: `DELETE FROM signup_attempts WHERE at < :before;`,
   signup_attempts_recent: `SELECT COUNT(*) AS n FROM signup_attempts
  WHERE ip_hash = :ip_hash AND at > :since;`,
+  site_save_add: `INSERT INTO partner_site_saves (id, partner_id, name, kind, doc, created_at, created_by)
+VALUES (:id, :partner_id, :name, :kind, :doc, :now, :created_by);`,
+  site_save_delete: `DELETE FROM partner_site_saves WHERE id = :id AND partner_id = :partner_id;`,
+  site_save_get: `SELECT id, name, kind, doc, created_at FROM partner_site_saves
+ WHERE id = :id AND partner_id = :partner_id;`,
+  site_saves_for: `SELECT id, name, kind, created_at, created_by
+  FROM partner_site_saves
+ WHERE partner_id = :partner_id
+ ORDER BY created_at DESC;`,
+  site_saves_trim: `DELETE FROM partner_site_saves
+ WHERE partner_id = :partner_id AND kind = :kind
+   AND id NOT IN (SELECT id FROM partner_site_saves
+                   WHERE partner_id = :partner_id AND kind = :kind
+                   ORDER BY created_at DESC LIMIT :keep);`,
   staff_profile_delete: `DELETE FROM staff_profiles WHERE user_id = :user_id;`,
   staff_profile_file_state: `UPDATE staff_profiles
    SET file_synced_at = :file_synced_at,
