@@ -318,7 +318,13 @@ check("Chase, 2026-10-01: a social link may be just the handle; the footers fill
   const html = page(d);
   /* The small print had max-width:80ch, which kept it beside the columns. */
   assert(/\.foot \.small\{flex:1 0 100%;[^}]*max-width:none/.test(html), "the small print takes its own row");
-  assert(/<div class="cols">[\s\S]*?<\/div><div class="bar"><p class="small">S<\/p><span class="powered">/.test(html), "columns: the columns, then a bar for the small print and the credit");
+  /* The small print right under the tagline (Chase, 2026-10-04); the bar keeps the credit. */
+  assert(/<div class="cols"><div class="col"><p class="tagline[^"]*">T<\/p><p class="small">S<\/p><\/div>/.test(html), "columns: the small print under the tagline");
+  assert(/<div class="bar"><span class="powered">/.test(html), "then a bar for the credit");
+  d.footer = { layout: "split", menu: true, socials: "icons", words: { en: { tagline: "T", small: "S" } } };
+  assert(/<div class="col"><p class="tagline[^"]*">T<\/p><p class="small">S<\/p>/.test(page(d)), "split: the small print under the tagline too");
+  d.footer = { layout: "columns", menu: true, socials: "icons", words: { en: { small: "S" } } };
+  assert(/<div class="bar"><p class="small">S<\/p><span class="powered">/.test(page(d)), "no tagline: the small print stays in the bar");
   assert(/\.foot-columns \.menu\{display:grid;grid-template-columns:repeat\(2,auto\)/.test(html), "the pages in two columns, not a long list");
 });
 

@@ -538,6 +538,8 @@ main section.is-editing{outline:2px solid var(--acc);outline-offset:-2px}
 .foot-columns .words{flex-direction:column;gap:10px}
 .foot-columns .bar{display:flex;gap:12px 24px;flex-wrap:wrap;justify-content:space-between;align-items:baseline;margin-top:40px;padding-top:20px;border-top:1px solid var(--line)}
 .foot-columns .bar .small{flex:1 1 320px}
+/* Under the tagline: a line of its own in the column, close to it. */
+.foot .col .small{flex:none;margin-top:-6px}
 @media (max-width:820px){.foot .col.end{align-items:flex-start}}
 .socials{display:flex;gap:12px;flex-wrap:wrap}.socials a{display:inline-flex;width:40px;height:40px;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:50%;color:var(--fg)}
 .socials a:hover{border-color:var(--acc);color:var(--ink)}.socials svg{width:18px;height:18px}
@@ -1213,11 +1215,13 @@ function footer({ doc, lang, fallback, name, pages, href, label, socials, custom
   if (F.layout === "center") {
     inner = `${menu}${words}${icons}${tagline}${small}${credit}`;
   } else if (F.layout === "columns") {
-    const cols = [tagline, menu, words].filter(Boolean).map((x) => `<div class="col">${x}</div>`).join("") +
+    /* The small print right under the tagline, as on Center (Chase,
+       2026-10-04); in the bar only when there is no tagline to sit under. */
+    const cols = [tagline && tagline + small, menu, words].filter(Boolean).map((x) => `<div class="col">${x}</div>`).join("") +
       (icons ? `<div class="col end">${icons}</div>` : "");
-    inner = `<div class="cols">${cols}</div><div class="bar">${small}${credit}</div>`;
+    inner = `<div class="cols">${cols}</div><div class="bar">${tagline ? "" : small}${credit}</div>`;
   } else {
-    inner = `<div class="col">${tagline}${menu}${words}</div><div class="col end">${icons}${credit}</div>${small}`;
+    inner = `<div class="col">${tagline}${tagline ? small : ""}${menu}${words}</div><div class="col end">${icons}${credit}</div>${tagline ? "" : small}`;
   }
   return `<footer class="foot foot-${esc(F.layout)}"><div class="wrap">${inner}</div></footer>`;
 }

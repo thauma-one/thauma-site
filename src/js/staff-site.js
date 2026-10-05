@@ -434,6 +434,25 @@
     drawSections(); changed();
   }
   /* What the photo editor may do for this section's frame. */
+  /* THE PHOTO AS VISITORS WILL SEE IT: crop, corners, border, darkening or
+     focus and zoom, drawn the way render.js edited() draws them. The raw
+     upload in a fixed box looked like the edits had not been kept (Chase,
+     2026-10-04). */
+  function editedPhoto(src, e) {
+    if (e && e.w) {
+      var b = e.border && typeof e.border === 'object' ? e.border : null;
+      var ring = b && +b.w ? ';box-shadow:0 0 0 ' + (+b.w) + 'px ' + (b.c === 'subtle' ? 'rgba(255,255,255,.28)' : b.c === 'accent' ? 'var(--ws-acc)' : b.c === 'accent2' ? 'var(--ws-acc2)' : esc(b.c)) : '';
+      var radius = e.corners === 'round' ? 28 : e.corners === 'square' ? 0 : 12;
+      return '<div class="ws-bigphoto is-crop" style="aspect-ratio:' + (+e.ar) + ';width:min(100%,420px,' + Math.round(340 * e.ar) + 'px);border-radius:' + radius + 'px' + ring + '">' +
+        '<img src="' + esc(src) + '" alt="" style="width:' + (100 / e.w).toFixed(3) + '%;left:' + (-e.x / e.w * 100).toFixed(3) + '%;top:' + (-e.y / e.h * 100).toFixed(3) + '%">' +
+        (e.darken ? '<i style="opacity:' + (+e.darken) + '"></i>' : '') + '</div>';
+    }
+    if (e && e.fx != null) {
+      return '<div class="ws-bigphoto"><img src="' + esc(src) + '" alt="" style="object-position:' + (+e.fx) + '% ' + (+e.fy) + '%;scale:' + (+e.zoom || 1) +
+        ';transform-origin:' + (+e.fx) + '% ' + (+e.fy) + '%">' + (e.darken ? '<i style="opacity:' + (+e.darken) + '"></i>' : '') + '</div>';
+    }
+    return '<div class="ws-bigphoto"><img src="' + esc(src) + '" alt=""></div>';
+  }
   function photoPurpose(sec) {
     if (sec.type === 'photoText') return 'section';
     if (sec.type === 'photo') return 'band';
@@ -798,7 +817,7 @@
     }
 
     if (state.sectab === 'photo') {
-      html += '<div class="ws-bigphoto">' + (s.photo ? '<img src="' + esc(s.photo) + '" alt="">' : '<span class="ws-nophoto">' + esc(tr('ws.noPhoto')) + '</span>') + '</div>' +
+      html += (s.photo ? editedPhoto(s.photo, s.photoEdit) : '<div class="ws-bigphoto"><span class="ws-nophoto">' + esc(tr('ws.noPhoto')) + '</span></div>') +
         /* A crop decides a band's shape itself; the heights are for an uncropped one. */
         (s.type === 'photo' && !(s.photoEdit && s.photoEdit.w) ? '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.photoHeight')) + '</span>' +
           chips('pheight:' + i, ['short', 'medium', 'tall', 'whole'], s.height || 'medium', function (v) { return tr('ws.photoHeight.' + v); }) + '</div>' : '') +
@@ -1131,6 +1150,15 @@
     }).join('') +
     '<label class="ws-fmt-tone ws-fmt-any" title="' + esc(tr('ml.cpToneAny')) + '"><input type="color" value="#3366cc" data-fmt-any aria-label="' + esc(tr('ml.cpToneAny')) + '"></label></div>';
   document.body.appendChild(fmt);
+  /* ABOVE THE WORDS, BY ITS BOTTOM EDGE. Opening a row of choices makes the
+     bar taller; placed by its top it grew down over the words being changed
+     (Chase, 2026-10-04). Below them only when there is no room above. */
+  var fmtAt = null;
+  function placeFmt() {
+    if (!fmtAt) return;
+    var top = fmtAt.top - fmt.offsetHeight - 8;
+    fmt.style.top = (top < window.scrollY + 8 ? fmtAt.bottom + 8 : top) + 'px';
+  }
   function fmtRow(which) {
     [].forEach.call(fmt.querySelectorAll('[data-fmt-row]'), function (r) {
       var open = r.getAttribute('data-fmt-row') === which && r.hidden;
@@ -1138,6 +1166,7 @@
       var b = fmt.querySelector('[data-fmt="' + r.getAttribute('data-fmt-row') + '"]');
       if (b) b.setAttribute('aria-expanded', open ? 'true' : 'false');
     });
+    if (!fmt.hidden) placeFmt();
   }
   /* What the selection already wears, shown on the bar. */
   /* The element the selection starts in. A range that starts BETWEEN nodes
@@ -1196,7 +1225,8 @@
     fmtRow(null);
     var r = window.getSelection().getRangeAt(0).getBoundingClientRect();
     fmt.hidden = false;
-    fmt.style.top = (window.scrollY + r.top - fmt.offsetHeight - 8) + 'px';
+    fmtAt = { top: window.scrollY + r.top, bottom: window.scrollY + r.bottom };
+    placeFmt();
     fmt.style.left = Math.max(8, window.scrollX + r.left + r.width / 2 - fmt.offsetWidth / 2) + 'px';
     [].forEach.call(fmt.querySelectorAll('[data-fmt]'), function (b) {
       var c = b.getAttribute('data-fmt');
