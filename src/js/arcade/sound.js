@@ -368,12 +368,52 @@
     newbest: function (at) { seq(at, ['C6', 'C6', 'C6', 'G6', 'E6', 'G6', 'C7'], { wave: .25, gap: .09, len: .1, vol: .11 }); }
   };
 
+  /* ------------------------------------------------------ waking it up */
+  /* Phones only let sound start inside a touch (Chase, 2026-10-05: "The
+     music also didn't work on mobile"). So every touch, click or key,
+     while the sound is on, wakes the audio inside that very gesture — a
+     resume plus one silent sample, which is what iOS counts. And an
+     iPhone's silent switch mutes Web Audio unless the page says it is
+     playing media: audioSession 'playback' where Safari has it (17+), and
+     before that the old way, a silent <audio> loop, which moves the page
+     onto the media channel. Coming back to the tab (iOS leaves it
+     'interrupted' after a call or a lock) wakes it too. */
+  var silent = null;
+  function silentLoop() {
+    if (silent || navigator.audioSession || !/iP(hone|ad|od)|Macintosh/.test(navigator.userAgent) || !('ontouchend' in document)) return;
+    var n = 2205, b = new ArrayBuffer(44 + n * 2), v = new DataView(b);
+    var w = function (o, str) { for (var i = 0; i < str.length; i++) v.setUint8(o + i, str.charCodeAt(i)); };
+    w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true);
+    v.setUint16(22, 1, true); v.setUint32(24, 22050, true); v.setUint32(28, 44100, true); v.setUint16(32, 2, true);
+    v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, n * 2, true);
+    silent = document.createElement('audio');
+    silent.setAttribute('x-webkit-airplay', 'deny'); silent.preload = 'auto'; silent.loop = true;
+    silent.src = URL.createObjectURL(new Blob([b], { type: 'audio/wav' }));
+  }
+  function wake() {
+    if (!on || !audio()) return;
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) { /* older Safari */ }
+    silentLoop();
+    if (silent && silent.paused) { var pr = silent.play(); if (pr && pr.catch) pr.catch(function () {}); }
+    if (ac.state !== 'running') ac.resume();
+    var src = ac.createBufferSource();
+    src.buffer = ac.createBuffer(1, 1, 22050); src.connect(ac.destination); src.start(0);
+  }
+  ['pointerdown', 'touchend', 'click', 'keydown'].forEach(function (ev) {
+    window.addEventListener(ev, function () { if (on && (!ac || ac.state !== 'running' || (silent && silent.paused))) wake(); }, { capture: true, passive: true });
+  });
+  document.addEventListener('visibilitychange', function () {
+    if (!ac || !on) return;
+    if (document.hidden) { if (silent) silent.pause(); }
+    else if (ac.state !== 'running') ac.resume();
+  });
+
   /* ---------------------------------------------------------- the API */
   function set(v) {
     on = !!v;
     try { localStorage.setItem(KEY, on ? '1' : '0'); } catch (e) { /* private mode */ }
-    if (on) { if (audio() && ac.state === 'suspended') ac.resume(); startTune(want); }
-    else { stopTune(); if (ac && ac.state === 'running') ac.suspend(); }
+    if (on) { wake(); startTune(want); }
+    else { stopTune(); if (silent) silent.pause(); if (ac && ac.state === 'running') ac.suspend(); }
     listeners.forEach(function (fn) { fn(on); });
   }
 
@@ -389,7 +429,7 @@
     },
     sfx: function (name, o) {
       if (!on || !SFX[name] || !audio()) return;
-      if (ac.state === 'suspended') ac.resume();
+      if (ac.state !== 'running') ac.resume();
       SFX[name](ac.currentTime + .01, o);
     },
     duck: function (d) {
