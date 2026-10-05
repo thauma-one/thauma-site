@@ -278,7 +278,7 @@
     "followspot_title": "Follow Spot",
     "followspot_line": "Држи их у свјетлу. Одабери кога.",
     "strike_title": "Strike",
-    "strike_line": "Сложи ријеч. Гледај како подивља.",
+    "strike_line": "Разбиј зид. Ухвати пиротехнику.",
     "cuestack_title": "Cue Stack",
     "cuestack_line": "Расвјета, звук, видео, пиротехника: КРЕНИ.",
     "paused_label": "Пауза",
@@ -537,29 +537,12 @@
       "[DIR] Још један промашај и мијењаш батерије у микрофонима.",
       "[DIR] Радо бих видио извођача. Било који дио."
     ],
-    "strike_words": [
-      "THAUMA",
-      "МИСИЈА",
-      "СЛАВЉЕ",
-      "СРБИЈА",
-      "ПАРТНЕР",
-      "СВЈЕТЛО",
-      "ПОЗОРНИЦА",
-      "ЗВУК",
-      "ДАРУЈ",
-      "ЦРКВА"
-    ],
-    "strike_word": "Сложи",
     "strike_level": "Сет",
     "strike_pyro": "Пиротехника!",
     "strike_laser": "Ласерски шоу!",
     "strike_confetti": "Топ за конфете!",
     "strike_bass": "Басс дроп!",
     "strike_encore": "Бис!",
-    "jokes_strike_typo": [
-      "[PYRO] Правопис је важан. Питај било који црквени билтен.",
-      "[PYRO] Не пише се тако. Провјерио сам."
-    ],
     "jokes_strike_wild": [
       "[PYRO] Ватрогасни инспектор ово неће вољети.",
       "[PYRO] Одмакните се! Нитко ми није рекао да имамо толики буџет."
@@ -678,6 +661,8 @@
     "followspot_s_kneeslide": "Клизање на кољенима!",
     "followspot_s_worm": "Црв!",
     "followspot_s_pose": "Поза!",
-    "followspot_s_climb": "Уз љестве!"
+    "followspot_s_climb": "Уз љестве!",
+    "strike_wide": "Шири фадер",
+    "strike_multi": "Више лоптица"
   }
 }

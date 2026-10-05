@@ -278,7 +278,7 @@
     "followspot_title": "Follow Spot",
     "followspot_line": "Drži ih u svjetlu. Odaberi koga.",
     "strike_title": "Strike",
-    "strike_line": "Složi riječ. Gledaj kako podivlja.",
+    "strike_line": "Razbij zid. Uhvati pirotehniku.",
     "cuestack_title": "Cue Stack",
     "cuestack_line": "Rasvjeta, zvuk, video, pirotehnika: KRENI.",
     "paused_label": "Pauza",
@@ -537,29 +537,12 @@
       "[DIR] Još jedan promašaj i mijenjaš baterije u mikrofonima.",
       "[DIR] Rado bih vidio izvođača. Bilo koji dio."
     ],
-    "strike_words": [
-      "THAUMA",
-      "MISIJA",
-      "SLAVLJE",
-      "HRVATSKA",
-      "PARTNER",
-      "SVJETLO",
-      "POZORNICA",
-      "ZVUK",
-      "DARUJ",
-      "CRKVA"
-    ],
-    "strike_word": "Složi",
     "strike_level": "Set",
     "strike_pyro": "Pirotehnika!",
     "strike_laser": "Laserski šou!",
     "strike_confetti": "Top za konfete!",
     "strike_bass": "Bass drop!",
     "strike_encore": "Bis!",
-    "jokes_strike_typo": [
-      "[PYRO] Pravopis je važan. Pitaj bilo koji crkveni bilten.",
-      "[PYRO] Ne piše se tako. Provjerio sam."
-    ],
     "jokes_strike_wild": [
       "[PYRO] Vatrogasni inspektor ovo neće voljeti.",
       "[PYRO] Odmaknite se! Nitko mi nije rekao da imamo toliki budžet."
@@ -678,6 +661,8 @@
     "followspot_s_kneeslide": "Klizanje na koljenima!",
     "followspot_s_worm": "Crv!",
     "followspot_s_pose": "Poza!",
-    "followspot_s_climb": "Uz ljestve!"
+    "followspot_s_climb": "Uz ljestve!",
+    "strike_wide": "Širi fader",
+    "strike_multi": "Više loptica"
   }
 }

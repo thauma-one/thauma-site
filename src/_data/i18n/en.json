@@ -278,7 +278,7 @@
     "followspot_title": "Follow Spot",
     "followspot_line": "Keep them in the light. Pick who.",
     "strike_title": "Strike",
-    "strike_line": "Spell the word. Watch it go wild.",
+    "strike_line": "Break the wall. Catch the pyro.",
     "cuestack_title": "Cue Stack",
     "cuestack_line": "Lights, sound, video, pyro: GO.",
     "paused_label": "Paused",
@@ -537,29 +537,12 @@
       "[DIR] One more miss and you're on mic batteries.",
       "[DIR] I'd love to see the performer. Any part of them."
     ],
-    "strike_words": [
-      "THAUMA",
-      "MISSION",
-      "WORSHIP",
-      "CROATIA",
-      "PARTNER",
-      "LIGHTS",
-      "STAGE",
-      "SOUND",
-      "GIVE",
-      "CHURCH"
-    ],
-    "strike_word": "Spell",
     "strike_level": "Set",
     "strike_pyro": "Pyro!",
     "strike_laser": "Laser show!",
     "strike_confetti": "Confetti cannon!",
     "strike_bass": "Bass drop!",
     "strike_encore": "Encore!",
-    "jokes_strike_typo": [
-      "[PYRO] Spelling counts. Ask any church bulletin.",
-      "[PYRO] That's not how you spell it. I checked."
-    ],
     "jokes_strike_wild": [
       "[PYRO] The fire marshal is not going to love this.",
       "[PYRO] Stand back! Nobody told me we had this much budget."
@@ -678,6 +661,8 @@
     "followspot_s_kneeslide": "Knee slide!",
     "followspot_s_worm": "The worm!",
     "followspot_s_pose": "Strike a pose!",
-    "followspot_s_climb": "Up the ladder!"
+    "followspot_s_climb": "Up the ladder!",
+    "strike_wide": "Wide fader",
+    "strike_multi": "Multiball"
   }
 }

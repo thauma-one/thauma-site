@@ -278,7 +278,7 @@
     "followspot_title": "Follow Spot",
     "followspot_line": "Drži jih v svetlobi. Izberi koga.",
     "strike_title": "Strike",
-    "strike_line": "Sestavi besedo. Glej, kako podivja.",
+    "strike_line": "Razbij steno. Ujemi pirotehniko.",
     "cuestack_title": "Cue Stack",
     "cuestack_line": "Luči, zvok, video, pirotehnika: ZDAJ.",
     "paused_label": "Premor",
@@ -537,29 +537,12 @@
       "[DIR] Še en zgrešek in menjaš baterije v mikrofonih.",
       "[DIR] Rad bi videl nastopajočega. Katerikoli del."
     ],
-    "strike_words": [
-      "THAUMA",
-      "MISIJON",
-      "ČEŠČENJE",
-      "HRVAŠKA",
-      "PARTNER",
-      "LUČI",
-      "ODER",
-      "ZVOK",
-      "DARUJ",
-      "CERKEV"
-    ],
-    "strike_word": "Sestavi",
     "strike_level": "Set",
     "strike_pyro": "Pirotehnika!",
     "strike_laser": "Laserski šov!",
     "strike_confetti": "Top za konfete!",
     "strike_bass": "Bass drop!",
     "strike_encore": "Dodatek!",
-    "jokes_strike_typo": [
-      "[PYRO] Črkovanje šteje. Vprašaj katerikoli župnijski list.",
-      "[PYRO] Ne piše se tako. Preveril sem."
-    ],
     "jokes_strike_wild": [
       "[PYRO] Gasilski inšpektor tega ne bo vesel.",
       "[PYRO] Umaknite se! Nihče mi ni povedal, da imamo tolikšen proračun."
@@ -678,6 +661,8 @@
     "followspot_s_kneeslide": "Drsenje po kolenih!",
     "followspot_s_worm": "Črv!",
     "followspot_s_pose": "Poza!",
-    "followspot_s_climb": "Po lestvah!"
+    "followspot_s_climb": "Po lestvah!",
+    "strike_wide": "Širši drsnik",
+    "strike_multi": "Več žogic"
   }
 }

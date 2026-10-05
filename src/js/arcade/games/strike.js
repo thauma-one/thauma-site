@@ -1,18 +1,22 @@
 /* =====================================================================
-   Strike — spell it, and the show goes wild (ARCADE-SPEC.md §4)
+   Strike — break the wall, and the show goes wild (ARCADE-SPEC.md §4)
    =====================================================================
    Chase, 2026-09-30: brick breaker where every brick is a letter;
    "spelling the target word in order, in a row, triggers a rare super
    power … Those words don't really have anything to do with the site …
    those power ups are tame. I want something WILD!"
 
-   The bricks are letters. The word to spell is across the top — a word
-   from the site (THAUMA, MISSION, WORSHIP, CROATIA …). Break its letters
-   in order, without a wrong one between, and the strike goes off: PYRO up
-   every column, a LASER SHOW cutting the wall, the CONFETTI CANNON's two
-   dozen balls, a BASS DROP that shakes every brick loose, or the ENCORE
-   ball, three times the size. A wrong letter breaks the chain; the bricks
-   with the letter you need shimmer.
+   ROUND 4 (Chase, 2026-10-05: "Let's just lean into the brick breaker
+   aspect. Spelling seems to be too hard, but we should still have those
+   crazy powerful power ups"): no spelling. A brick breaker on an LED
+   wall, a new pattern every set, armored bricks (road cases) that take
+   two or three hits, and bricks that drop CAPSULES — catch one with the
+   fader for its power, each labelled with its name:
+     WIDE (a wider fader) · MULTIBALL (two more balls)
+     PYRO (flame up every column) · LASER SHOW (lasers cut the wall)
+     CONFETTI CANNON (two dozen little balls) · BASS DROP (every brick takes
+     a hit, three times) · ENCORE (the ball three times the size, going
+     straight through)
 
    The stick (play.js): drag the fader under the play area on a phone,
    ← → on a desktop. Space (or a tap) serves.
@@ -24,6 +28,9 @@
 
   var W = 360, BW = 42, BH = 20, COLS = 8, R = 5;
   var WILD = ['pyro', 'laser', 'confetti', 'bass', 'encore'];
+  /* what a capsule can hold: the two helpers more often than the wild five */
+  var DROPS = ['wide', 'wide', 'multi', 'multi', 'pyro', 'laser', 'confetti', 'bass', 'encore'];
+  var DROPCOL = { wide: '#5CF2C4', multi: '#2FD8FF', pyro: '#FF5A6E', laser: '#FF4FD8', confetti: '#FFD34A', bass: '#9B7BFF', encore: '#FFB547' };
 
   function rnd(a, b) { return a + Math.random() * (b - a); }
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
@@ -37,30 +44,32 @@
     quipAt: .13,
     create: function (ctx) {
       var words = ctx.words, H = ctx.H, PY = H - 36;
-      var list = (function () { var l = words('strike_words'); return Array.isArray(l) && l.length ? l : ['THAUMA']; })();
-      var word = [], progress = 0, wi = Math.floor(Math.random() * list.length);
       var bricks = [], balls = [], drops = [], fx = [], sparks = [], pops = [];
       var pad = { x: W / 2, w: 74, wide: 0 }, lives = 3, level = 0, score = 0, time = 0, serveT = 1.2, wildT = 0, wildName = null;
 
-      function newWord() { wi = (wi + 1) % list.length; word = Array.from(String(list[wi]).toUpperCase()); progress = 0; }
+      /* the wall, set by set: a pattern to clear (a full wall, a pyramid,
+         a checkerboard, a heart, arches, stripes), more rows and more
+         armor as the sets go */
+      var PATTERNS = [
+        function (r, c) { return true; },
+        function (r, c) { return Math.abs(c - 3.5) <= r * .7 + .5; },
+        function (r, c) { return (r + c) % 2 === 0; },
+        function (r, c) { var x = (c - 3.5) / 3.6, y = (2.8 - r) / 3; return Math.pow(x * x + y * y - 1, 3) - x * x * y * y * y < 0; },
+        function (r, c) { return r < 2 || c % 3 !== 1; },
+        function (r, c) { return r % 2 === 0 || c === 0 || c === 7; }
+      ];
       function nextLevel() {
         level++;
-        newWord();
         bricks = [];
-        var rows = Math.min(8, 4 + level), pool = word.concat(word, word);
-        var filler = Array.from('AEIOUNRSTLMCDPGBHKV');
-        var cells = [];
+        var rows = Math.min(8, 4 + Math.floor(level / 2)), pat = PATTERNS[(level - 1) % PATTERNS.length];
         for (var r = 0; r < rows; r++) for (var c = 0; c < COLS; c++) {
-          if ((r + c + level) % 9 === 0 && level > 1) continue;
-          cells.push({ r: r, c: c });
+          if (!pat(r, c)) continue;
+          var armor = level > 1 && Math.random() < Math.min(.3, .06 * level) ? (level > 3 && Math.random() < .3 ? 3 : 2) : 1;
+          bricks.push({ x: 12 + c * BW + BW / 2 - 6, y: 96 + r * (BH + 4), hp: armor, max: armor, row: r, hitT: -9 });
         }
-        cells.sort(function () { return Math.random() - .5; });
-        cells.forEach(function (cell, i) {
-          var letter = i < pool.length ? pool[i] : filler[Math.floor(Math.random() * filler.length)];
-          bricks.push({ x: 12 + cell.c * BW + BW / 2 - 6, y: 96 + cell.r * (BH + 4), ch: letter, hp: level > 2 && Math.random() < .12 ? 2 : 1, row: cell.r, hitT: -9 });
-        });
+        if (!bricks.length) return nextLevel();
         balls = []; serve();
-        ctx.say(words('strike_word') + ': ' + word.join(''), { tag: 'PYRO' });
+        ctx.say(words('strike_level') + ' ' + level, { tag: 'PYRO' });
       }
       function serve() { balls.push({ x: pad.x, y: PY - 12, vx: 0, vy: 0, speed: 255 + level * 14, stuck: true, big: false }); serveT = 1.2; }
       function launch(b) { var a = rnd(-.5, .5); b.vx = Math.sin(a) * b.speed; b.vy = -Math.cos(a) * b.speed; b.stuck = false; ctx.sfx('hit'); }
@@ -68,30 +77,21 @@
       /* --------------------------------------------------- the letters */
       function hit(br, b) {
         br.hp--; br.hitT = time;
-        score += 10;
-        var need = word[progress];
-        if (br.ch === need) {
-          progress++; score += 40 * progress; ctx.sfx('good');
-          pops.push({ x: br.x, y: br.y - 10, text: br.ch, col: '#5CF2C4', life: .9 });
-          if (progress >= word.length) wild();
-        } else if (progress > 0) {
-          progress = br.ch === word[0] ? 1 : 0; ctx.sfx('whiff');
-          pops.push({ x: br.x, y: br.y - 10, text: '✕', col: '#FF5A6E', life: .7 });
-          if (Math.random() < .25) ctx.quip('jokes_strike_typo', { mood: 'bad' });
-        } else if (br.ch === word[0]) { progress = 1; ctx.sfx('good'); }
+        score += 10; ctx.sfx(br.hp > 0 ? 'wall' : 'good');
         if (br.hp <= 0) {
-          br.dead = true;
+          br.dead = true; score += 10 * br.max;
           for (var i = 0; i < 8; i++) sparks.push({ x: br.x, y: br.y, vx: rnd(-120, 120), vy: rnd(-120, 60), life: .45, c: colorOf(br) });
-          if (Math.random() < .07) drops.push({ x: br.x, y: br.y, kind: Math.random() < .5 ? 'wide' : 'multi' });
+          /* a capsule, now and then: catch it with the fader */
+          if (Math.random() < .13) drops.push({ x: br.x, y: br.y, kind: DROPS[Math.floor(Math.random() * DROPS.length)] });
         }
         ctx.score(score);
       }
       function colorOf(br) { return ['#FF5A6E', '#FFB547', '#9B7BFF', '#2FD8FF', '#5CF2C4', '#FF4FD8', '#FFD34A', '#8FEBFF'][br.row % 8]; }
 
       /* ------------------------------------------------ the WILD powers */
-      function wild() {
-        wildName = WILD[Math.floor(Math.random() * WILD.length)]; wildT = 3;
-        score += 1000; ctx.score(score);
+      function wild(name) {
+        wildName = name; wildT = 2.2;
+        score += 100; ctx.score(score);
         ctx.sfx('boom'); ctx.shake(8);
         ctx.say('[PYRO] ' + words('strike_' + wildName), { mood: 'good' });
         ctx.quip('jokes_strike_wild', { mood: 'good', force: false });
@@ -100,7 +100,6 @@
         if (wildName === 'confetti') for (var j = 0; j < 24; j++) { var a = rnd(-1.2, 1.2); balls.push({ x: pad.x, y: PY - 14, vx: Math.sin(a) * 380, vy: -Math.cos(a) * 380, speed: 380, confetti: 6, hue: j * 15 }); }
         if (wildName === 'bass') fx.push({ kind: 'bass', t: 0, drops: 0 });
         if (wildName === 'encore') balls.forEach(function (b) { b.big = 8; });
-        newWord();
       }
       function runFx(dt) {
         fx.forEach(function (f) {
@@ -160,13 +159,14 @@
           serve();
         }
         drops.forEach(function (d) {
-          d.y += 140 * dt;
+          d.y += 120 * dt;
           if (d.y > PY - 8 && d.y < PY + 8 && Math.abs(d.x - pad.x) < pad.w / 2 + 8) {
             d.got = true; ctx.sfx('powerup');
-            if (d.kind === 'wide') pad.wide = 12;
-            else balls.filter(function (b) { return !b.confetti; }).slice(0, 1).forEach(function (b) {
+            if (d.kind === 'wide') { pad.wide = 12; wildName = 'wide'; wildT = 1.4; }
+            else if (d.kind === 'multi') { wildName = 'multi'; wildT = 1.4; balls.filter(function (b) { return !b.confetti; }).slice(0, 1).forEach(function (b) {
               [-.4, .4].forEach(function (a) { balls.push({ x: b.x, y: b.y, vx: Math.sin(a) * b.speed, vy: -Math.cos(a) * b.speed, speed: b.speed }); });
-            });
+            }); }
+            else wild(d.kind);
           }
         });
         drops = drops.filter(function (d) { return !d.got && d.y < H + 10; });
@@ -248,13 +248,15 @@
         for (var tx = 0; tx < W; tx += 10) { g.moveTo(tx, 58); g.lineTo(tx + 5, 66); g.lineTo(tx + 10, 58); } g.stroke();
         for (var c = 0; c < 6; c++) { g.fillStyle = '#1b2130'; g.fillRect(24 + c * 60, 64, 12, 9); }
         g.fillStyle = 'rgba(255,90,110,.18)'; g.fillRect(0, PY + 12, W, 1.5);
-        wordBar(g);
         fx.forEach(function (f) { drawFx(g, f); });
         bricks.forEach(function (br) { brick(g, br); });
+        /* a capsule: a lit pill with its name on it, so it is clear what
+           catching it will do */
         drops.forEach(function (d) {
-          var dc = d.kind === 'wide' ? '#5CF2C4' : '#FFB547';
-          g.fillStyle = dc; g.shadowColor = dc; g.shadowBlur = 10; round(g, d.x - 13, d.y - 7, 26, 14, 7); g.fill(); g.shadowBlur = 0;
-          g.fillStyle = '#0b0e14'; g.font = '700 9px Sora, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(d.kind === 'wide' ? '⟷' : '⋔', d.x, d.y + 1);
+          var dc = DROPCOL[d.kind], name = words('strike_' + d.kind).toUpperCase();
+          g.font = '700 9px Sora, sans-serif'; var tw = Math.max(40, g.measureText(name).width + 16);
+          g.fillStyle = dc; g.shadowColor = dc; g.shadowBlur = 12; round(g, d.x - tw / 2, d.y - 8, tw, 16, 8); g.fill(); g.shadowBlur = 0;
+          g.fillStyle = '#0b0e14'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(name, d.x, d.y + 1);
         });
         balls.forEach(function (b) {
           var r = b.big ? R * 3 : R, col = b.confetti ? 'hsl(' + b.hue + ',90%,65%)' : b.big ? '#FFB547' : '#ffffff';
@@ -292,32 +294,22 @@
         g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r);
         g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath();
       }
-      function wordBar(g) {
-        var n = word.length, bw = Math.min(30, (W - 40) / n), x0 = W / 2 - n * bw / 2;
-        g.fillStyle = 'rgba(138,150,166,.8)'; g.font = '600 8px Inter, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'top';
-        g.fillText(words('strike_word').toUpperCase(), W / 2, 10);
-        word.forEach(function (ch, i) {
-          var x = x0 + i * bw, done = i < progress, next = i === progress;
-          g.fillStyle = done ? '#5CF2C4' : next ? 'rgba(255,181,71,' + (.35 + .25 * Math.sin(time * 6)) + ')' : 'rgba(255,255,255,.06)';
-          g.fillRect(x + 2, 24, bw - 4, 28);
-          g.fillStyle = done ? '#0b0e14' : '#EDF2F8'; g.font = '700 15px Sora, sans-serif'; g.textBaseline = 'middle';
-          g.fillText(ch, x + bw / 2, 38);
-        });
-      }
       /* a brick is a lit LED tile: rounded, a highlight along its top, a
          shade along its foot; the next letter you need breathes and glows */
       function brick(g, br) {
-        var need = word[progress] === br.ch, x = br.x - BW / 2 + 1, y = br.y - BH / 2;
+        var x = br.x - BW / 2 + 1, y = br.y - BH / 2;
         var col = colorOf(br), flash = time - br.hitT < .1;
-        if (need) { g.shadowColor = col; g.shadowBlur = 10 + 6 * Math.sin(time * 8 + br.x); }
-        g.fillStyle = flash ? '#fff' : col; g.globalAlpha = br.hp > 1 ? 1 : .9;
-        round(g, x, y, BW - 2, BH, 4); g.fill(); g.globalAlpha = 1; g.shadowBlur = 0;
-        g.fillStyle = 'rgba(255,255,255,.28)'; g.fillRect(x + 3, y + 2, BW - 8, 2);
-        g.fillStyle = 'rgba(0,0,0,.22)'; g.fillRect(x + 2, y + BH - 4, BW - 6, 3);
-        if (br.hp > 1) { g.strokeStyle = '#EDF2F8'; g.lineWidth = 1.6; round(g, x + 1.5, y + 1.5, BW - 5, BH - 3, 3); g.stroke(); }
-        if (need) { g.fillStyle = 'rgba(255,255,255,' + (.15 + .15 * Math.sin(time * 8 + br.x)) + ')'; round(g, x, y, BW - 2, BH, 4); g.fill(); }
-        g.fillStyle = '#0b0e14'; g.font = '700 12px Sora, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-        g.fillText(br.ch, br.x, br.y + 1);
+        g.fillStyle = flash ? '#fff' : br.max > 1 ? '#2b3242' : col;
+        round(g, x, y, BW - 2, BH, 4); g.fill();
+        if (br.max > 1) {
+          /* armor: a road case, its corners and a light per hit left */
+          g.strokeStyle = '#c9d1dc'; g.lineWidth = 1.5; round(g, x + 1, y + 1, BW - 4, BH - 2, 3); g.stroke();
+          for (var k = 0; k < br.hp; k++) { g.fillStyle = col; g.beginPath(); g.arc(br.x - (br.hp - 1) * 5 + k * 10, br.y, 3, 0, 7); g.fill(); }
+        } else {
+          g.fillStyle = 'rgba(255,255,255,.28)'; g.fillRect(x + 3, y + 2, BW - 8, 2);
+          g.fillStyle = 'rgba(0,0,0,.22)'; g.fillRect(x + 2, y + BH - 4, BW - 6, 3);
+          g.fillStyle = 'rgba(0,0,0,.18)'; for (var gx = x + 5; gx < x + BW - 4; gx += 5) g.fillRect(gx, y + 4, 1, BH - 8);
+        }
       }
       function drawFx(g, f) {
         if (f.t < 0) return;
