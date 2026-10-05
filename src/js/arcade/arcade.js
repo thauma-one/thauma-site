@@ -97,19 +97,24 @@
       g.fillStyle = '#EDF2F8'; g.fillRect(Math.max(4, Math.min(w - 40, bx - 18 + Math.sin(t * 4) * 12)), h - 15, 36, 5);
       g.strokeStyle = 'rgba(237,242,248,.15)'; g.setLineDash([4, 5]); g.beginPath(); g.moveTo(0, h / 2); g.lineTo(w, h / 2); g.stroke(); g.setLineDash([]);
     },
+    /* Panel Fixer: the tech on the lift, a ball bouncing down through the
+       wall's panels, the broken ones lighting as it finds them. */
     panelfixer: function (g, w, h, t, col) {
-      var cols = 6, rows = 7, pw = (w * .58) / cols, ph = (h * .7) / rows, x0 = w * .36, y0 = h * .12;
-      for (var r = 0; r < rows; r++) for (var c = 0; c < cols; c++) {
-        var dead = (r * 7 + c * 3) % 11 === 0, flick = (r + c) % 9 === 0 && Math.sin(t * 9 + r) > .3;
-        var hue = ['#2FD8FF', '#5CF2C4', '#9B7BFF', '#FF4FD8'][(r + c + Math.floor(t)) % 4];
-        g.fillStyle = dead ? '#141a26' : flick ? '#FFB547' : hue;
-        g.globalAlpha = dead ? 1 : .55 + .35 * Math.sin(t * 2 + r * .6 + c * .4);
-        g.fillRect(x0 + c * pw + 1, y0 + r * ph + 1, pw - 2, ph - 2);
+      g.fillStyle = '#05070b'; g.fillRect(6, 44, w - 12, h - 70);
+      var k = 0;
+      for (var r = 0; r < 6; r++) for (var c = 0; c < 5; c++) {
+        var x = 18 + c * 28 + (r % 2) * 12, y = 58 + r * 20, broken = (r * 5 + c) % 7 === 3, lit = broken && ((t * 1.3) % 6) > r;
+        g.fillStyle = broken && !lit ? '#11151d' : 'hsl(' + (200 + r * 25 + c * 6) + ',80%,' + (lit ? 62 : 44) + '%)';
+        g.fillRect(x, y, 16, 9);
+        if (broken && !lit) { g.fillStyle = '#FF5A6E'; g.fillRect(x, y, 3, 3); }
+        k++;
       }
-      g.globalAlpha = 1;
-      g.fillStyle = '#8A96A6'; g.fillRect(12, h - 44, 8, 28); g.beginPath(); g.arc(16, h - 50, 6, 0, 7); g.fill();
-      var p = (t * .6) % 1, bx = 22 + p * (x0 + pw * 2 - 22), by = h - 46 - Math.sin(p * Math.PI) * h * .55;
-      g.fillStyle = '#d8f55a'; g.beginPath(); g.arc(bx, by, 4, 0, 7); g.fill();
+      var p = (t * .35) % 1, bx = w / 2 + Math.sin(p * 14) * 40 * p, by = 40 + p * (h - 60);
+      g.fillStyle = '#d8f55a'; g.beginPath(); g.arc(bx, by, 3.5, 0, 7); g.fill();
+      g.fillStyle = col; g.fillRect(w / 2 - 14, 30, 28, 3);
+      g.fillStyle = '#e2b48f'; g.beginPath(); g.arc(w / 2, 18, 4, 0, 7); g.fill();
+      g.fillStyle = '#151a24'; g.fillRect(w / 2 - 4, 22, 8, 8);
+      g.fillStyle = '#1b2230'; g.fillRect(w / 2 - 18 + Math.sin(t) * 30, h - 22, 36, 8);
     },
     cablerun: function (g, w, h, t, col) {
       var n = 26, pts = [];

@@ -257,7 +257,11 @@ Chase: "the general interface for the Site Creator is really good!"
 - About page shows only the quote. Fill "Who we are" from the Thauma team
   profile? (asked, unanswered).
 
-## 4. Arcade (extras, "not imperative at this time")
+## 4. Arcade
+**DONE on dev (2026-10-05, see ARCADE-SPEC.md revision log):** every note
+below, plus Stage Runner, Golden Hour, Follow Spot, Strike and Cue Stack,
+music (off by default), the coin-and-dive way in, and 85 jokes. Still for
+Chase: play it, and a native check of the hr/sr/sl jokes.
 
 ### Everywhere
 - **Same feel on mobile and desktop,** only different controls:

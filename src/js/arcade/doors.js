@@ -13,6 +13,7 @@
      404         the error's own numeral: one press. The original door.
      Konami      ↑ ↑ ↓ ↓ ← → ← → B A, then Enter, anywhere.
      "thauma"    typed anywhere: the page's own letters light up.
+     joystick    the faint icon in the footer's corner: one press.
 
    Every door drives the same four stages of failure, and every door heals
    if you stop partway: the page snaps back and the count starts over.
@@ -45,6 +46,10 @@
   /* Straight to the arcade's own address: nothing to break. */
   if (document.body.classList.contains('arcade-page')) {
     A.loadArcade().then(function (arc) { arc.mount({ direct: true }); });
+    /* back here with the browser's Back, after leaving: switch it on again */
+    window.addEventListener('pageshow', function (e) {
+      if (e.persisted && !document.getElementById('arcade')) A.loadArcade().then(function (arc) { arc.mount({ direct: true }); });
+    });
     return;
   }
 
@@ -115,6 +120,23 @@
         });
       });
     });
+
+    /* ---- the joystick in the footer's corner: one press ---------------- */
+    /* A slightly less invisible door (Chase, 2026-10-04: "a subtle icon in
+       the footer's corner, without hurting the formal feel"): faint, the
+       page's own gray, lit only by a hover. */
+    var tpl = document.getElementById('arc-icon-tpl'), corner = document.querySelector('footer .foot-right');
+    if (tpl && corner && !corner.querySelector('.arc-icon')) {
+      var st = document.createElement('style');
+      st.textContent = '.arc-icon{display:inline-grid;place-items:center;width:24px;height:24px;margin-left:14px;padding:0;vertical-align:middle;' +
+        'color:var(--dim,#8A96A6);opacity:.26;background:none;border:0;cursor:pointer;transition:opacity .4s,color .4s}' +
+        '.arc-icon:hover,.arc-icon:focus-visible{opacity:1;color:var(--blue,#2FD8FF)}' +
+        '@media (prefers-reduced-motion:reduce){.arc-icon{transition:none}}';
+      document.head.appendChild(st);
+      var icon = tpl.content.firstElementChild.cloneNode(true);
+      corner.appendChild(icon);
+      icon.addEventListener('click', function () { enter('icon', { first: icon }); });
+    }
 
     /* ---- THAUMA, the big wordmark (landing page and home) ------------- */
     Array.prototype.forEach.call(document.querySelectorAll('.wordmark'), function (mark) {

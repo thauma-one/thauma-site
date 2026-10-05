@@ -143,7 +143,12 @@
         sky = (sky + dt / 45) % SKY.length;            /* a whole evening every few minutes */
         generate(me.x + 1600);
         if (!started) return;
-        if (me.crashed) { me.vx *= Math.pow(.2, dt); me.vy += G * dt; me.x += me.vx * dt; me.y += me.vy * dt; var gy = heightAt(me.x); if (gy !== null && me.y > gy) { me.y = gy; me.vy = 0; } return; }
+        if (me.crashed) {
+          me.vx *= Math.pow(.2, dt); me.vy += G * dt; me.x += me.vx * dt; me.y += me.vy * dt;
+          var gy = heightAt(me.x); if (gy !== null && me.y > gy) { me.y = gy; me.vy = 0; }
+          camX += (me.x - W * .32 - camX) * Math.min(1, dt * 4); camY += (me.y - H * .56 - camY) * Math.min(1, dt * 3);
+          return;
+        }
 
         var steps = 3, h = dt / steps;
         for (var k = 0; k < steps; k++) stepMe(h);
@@ -235,7 +240,8 @@
           if (me.x < r2.x0 || me.x > r2.x1 || me.vy < 0) continue;
           var ry = railY(r2, me.x);
           if (ry !== null && me.y >= ry && me.y - me.vy * dt <= ry + 4) {
-            if (Math.abs(wrap(me.ang - Math.atan(r2.slope))) > .75) return crash();
+            /* a cable only catches a rider who is upright; mid-flip, you go past it */
+            if (Math.abs(wrap(me.ang - Math.atan(r2.slope))) > .75) continue;
             me.rail = r2; me.y = ry; landed(true); return;
           }
         }
@@ -418,17 +424,18 @@
         if (magnet > 0) { g.strokeStyle = 'rgba(255,214,120,.35)'; g.beginPath(); g.arc(x, y - 16, 28 + Math.sin(time * 8) * 3, 0, 7); g.stroke(); }
       }
       function hud(g, night) {
-        g.font = '600 10px Inter, sans-serif'; g.textAlign = 'left'; g.textBaseline = 'top';
-        g.fillStyle = night > .5 ? 'rgba(220,226,240,.9)' : 'rgba(40,24,40,.85)';
-        g.fillText(Math.floor(dist) + ' M', 12, 12);
-        g.fillText('| ' + glow, 12, 26);
-        if (combo > 1) { g.fillStyle = '#FFD34A'; g.font = '700 14px Sora, sans-serif'; g.fillText('×' + combo, 12, 42); }
+        g.font = '700 14px Sora, sans-serif'; g.textAlign = 'left'; g.textBaseline = 'top';
+        g.fillStyle = night > .5 ? 'rgba(220,226,240,.92)' : 'rgba(40,24,40,.88)';
+        g.fillText(Math.floor(dist) + ' M', 14, 12);
+        g.fillStyle = '#5CF2C4'; g.fillRect(14, 34, 4, 12); g.fillStyle = night > .5 ? 'rgba(220,226,240,.92)' : 'rgba(40,24,40,.88)';
+        g.fillText(String(glow), 24, 32);
+        if (combo > 1) { g.fillStyle = '#FFD34A'; g.font = '700 18px Sora, sans-serif'; g.fillText('×' + combo, 14, 54); }
         if (banner) {
-          g.globalAlpha = Math.min(1, banner.t * 2); g.font = '700 18px Sora, sans-serif'; g.textAlign = 'center';
+          g.globalAlpha = Math.min(1, banner.t * 2); g.font = '700 22px Sora, sans-serif'; g.textAlign = 'center';
           g.fillStyle = '#FFF4D6'; g.shadowColor = '#FFB547'; g.shadowBlur = 12; g.fillText(banner.text, W / 2, 60); g.shadowBlur = 0; g.globalAlpha = 1;
         }
         if (!started) {
-          g.fillStyle = night > .5 ? '#EDF2F8' : '#2a1426'; g.font = '600 13px Inter, sans-serif'; g.textAlign = 'center';
+          g.fillStyle = night > .5 ? '#EDF2F8' : '#2a1426'; g.font = '600 17px Inter, sans-serif'; g.textAlign = 'center';
           g.fillText(words('goldenhour_hint'), W / 2, H * .3);
         }
       }

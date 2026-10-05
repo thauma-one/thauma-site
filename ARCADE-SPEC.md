@@ -4,13 +4,10 @@ A living document: append and revise, don't rediscover. Replaces
 GAME-SPEC.md (the single hidden Flappy-style game, retired 2026-09-29; its
 full history is in git).
 
-**Status (2026-09-30):**
-- **Built:** the ways in, the failure engine, the arcade shell, the game
-  runtime, and Load Out.
-- **The launch four are all built:** Load Out, Soundcheck, Panel Fixer and
-  Cable Run.
-- **Not built yet:** the three "Out of order" cabinets (Follow Spot,
-  Strike, Cue Stack).
+**Status (2026-10-05):**
+- **Nine cabinets, all playable:** Load Out, Soundcheck, Panel Fixer,
+  Cable Run, Stage Runner, Golden Hour, Follow Spot, Strike, Cue Stack.
+- **Music and sound** (sound.js): synthesized, off by default.
 - **Release:** switched ON for dev and OFF for the live site
   (`site.json › visibility.sections.arcade`, or Website › Settings). Turn
   it on for live only once the games are worth finding.
@@ -272,3 +269,42 @@ Later:
   - Verified in headless Chromium at 1280×800 and 390×844 (touch) on the
     dev server, stage by stage, including the round trip back to the page
     and reduced motion.
+- 2026-10-04/05: Chase's full round of notes, and the rest of the arcade.
+  - **The way in:** a coin into the cabinet's door (B5→E6), CREDIT 1, the
+    start jingle, a dive into the screen, then PLAYER 1 · title · READY ·
+    GO (about 3s; 1s on Again). Desktop games sit in a cabinet sized to
+    their shape (marquee, bezel, a deck that moves with the keys).
+  - **sound.js:** Web Audio only, no files. Pulse leads doubled and
+    echoed, triangle bass + sine, noise drums; ten loops (menu and one per
+    game) written as chords + melody in the file; ~30 effects. One switch
+    (top right, or M), OFF by default, remembered. `beat()` gives Cue
+    Stack the tune's clock.
+  - **The radio (play.js ctx.quip):** 85 jokes in `jokes_<game>_<event>`
+    lists (en/hr/sl written, sr from hr), a speaker tag in [brackets], shown
+    3.6–6.5s by length, round-robin, placed per game (`quipAt`) where it
+    covers no play. Jokes need native speakers to check, as before.
+  - **Controls:** tap with hold (`release`), stick (a fader to drag on a
+    phone), aim (drag + let go), lanes (D F J K / four pads), swipe-only
+    and cross d-pads, `ctx.pad()` per game. Frame time 0–0.1s; no zoom,
+    magnifier or selection while playing.
+  - **Load Out:** faster; drops before the tower settles score less
+    (RUSHED 30 / STEADY 100); mic case, amp rack, LED panels, cable trunk,
+    lighting, speaker in lbs (±12%); weight lights; camera moves only
+    between drops.
+  - **Soundcheck:** CLASSIC / MODERN; 22 powers in four kinds (good, hex,
+    trick = the meme throws, bad); FOH plans its return line by the
+    capsules' worth (imperfectly); the dB meter charges a SMASH.
+  - **Panel Fixer:** rebuilt Peggle-style on an LED wall that is a
+    picture; broken panels are the targets, green ones powers (spare
+    balls, power cycle, laser guide, hot ball), a catch case, SHOWTIME;
+    the tech is animated with moods.
+  - **Cable Run:** speeds with length, early turns, gliding head, cross pad.
+  - **New:** Stage Runner (Subway Surfers: the stage manager's errands,
+    the PM chasing), Golden Hour (Alto-like festival hills, day/night),
+    Follow Spot, Strike (spell for WILD powers), Cue Stack (rhythm).
+  - **Doors:** stage 1 is one blink now; 2 noticeable; 3 adds red/cyan
+    text and the picture lurching; 4 tears whole sections in bands. A
+    faint joystick in the footer's corner is a one-press door. A page
+    that comes back from the browser's memory after the closed page's
+    hand-off rebuilds itself (the fall reversed).
+
