@@ -56,7 +56,9 @@ in the 2026-10-03 session; start a fresh one.
   their site's design and kept up to date, or an email style designer.
 - **DESIGN Subscribe / confirm / unsubscribe pages:** "just so plain and
   boring compared to the rest of the site." Match the brand everywhere.
-- **DESIGN Tags management:** "not user friendly."
+- ~~**DESIGN Tags management:** "not user friendly."~~ DONE on dev (13bff11):
+  chips on each subscriber row, + to add or create, × to remove, press to
+  filter.
 - **BUG Links in emails point at whichever site sent them** (found
   2026-10-03). "Here We Go!" went out from dev with a dev.thauma.one
   unsubscribe link: it works only while the Pi is on. Pointing every link at
@@ -76,9 +78,15 @@ in the 2026-10-03 session; start a fresh one.
   newsletter template adds List-Unsubscribe headers and ~180 invisible
   preheader characters that the confirmation template lacks; links point at
   dev/next. Chase deferred this until after the Site Creator work.
-- **BUILD Opens and bounces,** with good UX. Note: 0016 has opened_at and
-  click columns but no code writes them. Resend webhooks are the likely
-  source; decide how much to show.
+- **Opens and bounces: BUILT on dev (1215533), NOT SWITCHED ON.**
+  /api/resend-webhook (signed) records bounces (permanent → subscriber
+  bounced), complaints (→ unsubscribed), opens, clicks; Sent rows show
+  "· 2 bounced · 5 opened · 3 clicked". To switch on AFTER publishing:
+  create the Resend webhook for https://thauma.one/api/resend-webhook
+  (bounced, complained, opened, clicked) and set its whsec_ secret as
+  RESEND_WEBHOOK_SECRET on thauma-production and thauma (and the Pi's
+  dev vars). Open/click tracking is OFF on both sending domains — decide
+  with the spam fix (pixel + rewritten links).
 
 ## 2. Staff Resources
 
@@ -111,8 +119,12 @@ anywhere names it; a daily sweep removes anything unused for 30 days
 (media-cleanup.js). Text sizes in px like Word
 (4–200, − / + or typed). Console loads Sora/Inter.
 Set aside by Chase for later: "Bold" and "Dot below" nav looks. Still open:
-footer options, Sharing vs Site Creator colors, moving Thauma's own photo
-tools (photo-crop.js, Website › Photos) onto the editor, Thauma's four
+Footer: small print under the tagline (Split, Columns), Background /
+Line above / Room options. Colors: ONE ministry pair shared with
+Sharing, same picker (color-pair.js), saved at once; a site's old own
+accent is kept until changed. Thauma's uploads use the one photo editor
+(photo-crop.js is now an adapter); Website › Photos' framing window
+stays (it models the parallax drift). Thauma's four
 page photos now in R2 (site/…, dfefacc); the old src/img copies and
 the stray _site_devtest/ build are for Chase to delete.
 
