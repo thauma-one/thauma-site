@@ -1393,7 +1393,7 @@
     /* THE PRESETS WEAR THEIR OWN COLORS (and the ministry's accent); only
        Custom wears the owner's — as a dark and a light half, since that is
        what it makes (Chase, 2026-09-29). */
-    var cBg = col.background || '#15171C', cAcc = col.accent || th.accent;
+    var pair = colorPair(), cBg = col.background || '#15171C', cAcc = pair.accent;
     var html = '<div class="ws-head"><h2>' + esc(tr('ws.look')) + '</h2></div><div class="ws-looks">' + LOOKS.map(function (l) {
       var sample;
       if (l === 'custom') {
@@ -1405,19 +1405,21 @@
           '<span style="background:' + lt + ';color:#15171C"><span class="ws-look-name">' + esc(name.split(' ')[0]) + '</span>' +
             '<span class="ws-look-btn" style="background:' + cAcc + ';color:#fff">' + esc(tr('ws.btn.give')) + '</span></span></span>';
       } else {
-        var bg = l === 'bold' ? 'background:' + th.accent + ';' : '';
-        var btn = 'background:' + (l === 'bold' ? '#041D24' : th.accent) + ';color:' + (l === 'bold' ? th.accent : '#06110c');
+        var bg = l === 'bold' ? 'background:' + cAcc + ';' : '';
+        var btn = 'background:' + (l === 'bold' ? '#041D24' : cAcc) + ';color:' + (l === 'bold' ? cAcc : '#06110c');
         sample = '<span class="ws-look-sample" style="' + bg + LOOK_SAMPLE[l] + '"><span class="ws-look-name">' + esc(name) + '</span>' +
           '<span class="ws-look-btn" style="' + btn + '">' + esc(tr('ws.btn.give')) + '</span></span>';
       }
       return '<button type="button" class="ws-look" data-chip="look" data-value="' + l + '" aria-pressed="' + (d.look === l) + '">' + sample +
         '<span class="ws-look-cap"><b>' + esc(tr('ws.look.' + l)) + '</b><span>' + esc(tr('ws.look.' + l + '.what')) + '</span></span></button>';
     }).join('') + '</div>';
+    /* The ministry's colors, which every look wears: the Sharing page's
+       picker and the Sharing page's colors (color-pair.js). */
+    html += '<div data-colors-slot></div>';
     /* Custom's own settings, under it, only while it is chosen. */
     if (d.look === 'custom') {
       html += '<div class="ws-rows ws-custom">' +
         row(tr('ws.bgColor'), colorPick('background', col.background, '#15171C')) +
-        row(tr('ws.accentColor'), colorPick('accent', col.accent, th.accent)) +
         row(tr('ws.mode'), chips('mode', ['auto', 'dark', 'light'], d.mode || 'auto', function (v) { return tr('ws.mode.' + v); })) +
         '</div>';
     }
@@ -1443,6 +1445,71 @@
         return row(tr('ws.m.' + k), chips('motion:' + k, MOTION[k], d.motion[k], function (v) { return tr('ws.m.' + k + '.' + v); }));
       }).join('') + '</div>';
     $('wsDesign').innerHTML = html;
+    $('wsDesign').querySelector('[data-colors-slot]').replaceWith(colorsBox());
+  }
+
+  /* ---- the ministry's colors (color-pair.js) ---------------------------
+     ONE PAIR, shared with the Sharing page (Chase, 2026-10-04: "maybe those
+     colors should stay in sync … using the same color selection design").
+     Saved at once, as on Sharing, so never part of a draft: a change shows
+     on the site, the embeds and the Sharing page together. A site that
+     chose its own accent before keeps it, shown here, until the first
+     change here makes the two one. The box is built once and moved into
+     each redraw, so a drag on the wheel survives the tab redrawing. */
+  var colors = { box: null, pair: null, open: false, dirty: false, timer: null, dragging: false, redraw: false };
+  function colorPair() {
+    var d = state.doc.design, th = state.body.theme || {};
+    if (d.colors && d.colors.accent) return { accent: String(d.colors.accent).toUpperCase(), accent2: null, turn: null };
+    var p = th.pair || { accent: th.accent || '#1AE4FF' };
+    return { accent: p.accent, accent2: p.accent2 || null, turn: p.turn == null ? null : p.turn };
+  }
+  function colorsBox() {
+    if (!colors.box) {
+      var b = colors.box = document.createElement('div');
+      b.className = 'sh-colors ws-colors';
+      b.innerHTML = '<button type="button" class="sh-colors-head" data-colors-toggle aria-expanded="false">' +
+        '<span class="sh-lbl">' + esc(tr('sh.colors')) + '</span><span class="sh-pair"></span><span class="sh-chev" aria-hidden="true"></span></button>' +
+        '<div class="sh-picker is-stacked" hidden></div>';
+      b.querySelector('[data-colors-toggle]').addEventListener('click', function () { colors.open = !colors.open; paintColors(); });
+      window.ColorPair.wire(b.querySelector('.sh-picker'), { target: function () { return colors.pair; }, editable: canEdit, changed: colorsChanged });
+      b.addEventListener('pointerdown', function () { colors.dragging = true; });
+      window.addEventListener('pointerup', function () {
+        if (!colors.dragging) return;
+        colors.dragging = false;
+        if (colors.redraw) { colors.redraw = false; drawDesign(); }
+      });
+    }
+    if (!colors.dirty) colors.pair = colorPair();
+    paintColors();
+    return colors.box;
+  }
+  function paintColors() {
+    var b = colors.box, p = colors.pair, second = window.ColorPair.secondOf(p), pk = b.querySelector('.sh-picker');
+    b.querySelector('.sh-pair').innerHTML = '<span class="sh-sw" style="background:' + esc(p.accent) + '"></span>' +
+      '<span class="sh-sw" style="background:' + esc(second) + '"></span><span class="sh-hexes">' + esc(p.accent + ' · ' + second) + '</span>';
+    b.classList.toggle('is-open', colors.open);
+    b.querySelector('[data-colors-toggle]').setAttribute('aria-expanded', colors.open ? 'true' : 'false');
+    pk.hidden = !colors.open;
+    if (colors.open) window.ColorPair.paint(pk, 'site', p, canEdit());
+  }
+  function colorsChanged() {
+    colors.dirty = true;
+    paintColors();
+    clearTimeout(colors.timer);
+    colors.timer = setTimeout(saveColors, 500);
+  }
+  async function saveColors() {
+    var sent = JSON.stringify(colors.pair), body;
+    try { body = await send({ action: 'colors', colors: colors.pair }); }
+    catch (e) { toast(e.message, 'err'); return; }
+    if (JSON.stringify(colors.pair) === sent) colors.dirty = false;
+    /* The server let go of the site's own accent in both copies. */
+    state.body.theme = body.theme;
+    state.body.published = body.published;
+    state.base = body.draft;
+    if (state.doc.design.colors) state.doc.design.colors.accent = null;
+    refreshFrame();
+    if (colors.dragging) colors.redraw = true; else drawDesign();
   }
 
   function dark(hex) {

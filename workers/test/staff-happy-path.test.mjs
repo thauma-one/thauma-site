@@ -835,6 +835,26 @@ await check("the site is made on first opening, its address from the name", asyn
   } finally { EXTRA = {}; }
 });
 
+await check("Design's colors are the ministry's: saved to the partner, and the site lets go of its own accent in both copies", async () => {
+  const row = SITE_ROW();
+  const own = JSON.parse(row.draft); own.design.look = "custom"; own.design.colors = { background: "#0D0D0D", accent: "#FD5812" };
+  row.draft = JSON.stringify(own); row.published = JSON.stringify(own);
+  EXTRA = { partner_site_get: [row] };
+  try {
+    const db = makeDb();
+    const res = await staffSite.fetch(post("/api/staff-site", { action: "colors", colors: { accent: "#2266dd", accent2: null, turn: 120 } }), env(db));
+    eq(res.status, 200, "saved");
+    eq(called(db, "partner_colors_set")[0].args.slice(0, 3), ["#2266DD", null, 120], "the pair, as stored");
+    const docs = called(db, "partner_site_docs_set")[0].args.filter((a) => typeof a === "string" && a.startsWith("{"));
+    eq(docs.map((x) => JSON.parse(x).design.colors), [{ background: "#0D0D0D", accent: null }, { background: "#0D0D0D", accent: null }], "own accent gone, background kept");
+    eq((await staffSite.fetch(post("/api/staff-site", { action: "colors", colors: { accent: "red" } }), env(makeDb()))).status, 400, "not a color");
+  } finally { EXTRA = {}; }
+  EXTRA = { partner_site_get: [SITE_ROW()], partners_for_user: [{ ...PARTNER, access_role: "assist" }] };
+  try {
+    eq((await staffSite.fetch(post("/api/staff-site", { action: "colors", colors: { accent: "#2266DD" } }), env(makeDb()))).status, 403, "only the site's editors");
+  } finally { EXTRA = {}; }
+});
+
 await check("someone on the team who is not the owner sees it, cannot change it, and may ask", async () => {
   EXTRA = { partner_site_get: [SITE_ROW()], partners_for_user: [{ ...PARTNER, access_role: "assist" }] };
   try {

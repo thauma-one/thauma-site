@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "72beff9b0c83a2c1";
+export const SOURCE_DIGEST = "74eaf378da636547";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -574,6 +574,9 @@ WHERE milestones.partner_id = :partner_id;`,
 FROM milestones
 WHERE partner_id = :partner_id
 ORDER BY (actual_date IS NULL), actual_date ASC, sort_order ASC;`,
+  partner_colors_set: `UPDATE partners
+   SET embed_accent = :embed_accent, embed_accent2 = :embed_accent2, embed_turn = :embed_turn, updated_at = :now
+ WHERE id = :partner_id;`,
   partner_for_site: `SELECT id, slug, display_name, giving_url, embed_accent, embed_accent2, embed_theme, embed_turn,
        timeline_start, timeline_end,
        embed_roadmap, embed_goal, embed_prayer, embed_videos
@@ -641,6 +644,7 @@ VALUES (:partner_id, :subdomain, 0, :draft, :now, :now);`,
   partner_site_delete: `DELETE FROM partner_sites WHERE partner_id = :partner_id;`,
   partner_site_discard: `UPDATE partner_sites SET draft = published, updated_at = :now
  WHERE partner_id = :partner_id AND published IS NOT NULL;`,
+  partner_site_docs_set: `UPDATE partner_sites SET draft = :draft, published = :published WHERE partner_id = :partner_id;`,
   partner_site_editor_add: `INSERT OR IGNORE INTO partner_site_editors (partner_id, user_id, granted_by, granted_at)
 VALUES (:partner_id, :user_id, :granted_by, :now);`,
   partner_site_editor_remove: `DELETE FROM partner_site_editors WHERE partner_id = :partner_id AND user_id = :user_id;`,

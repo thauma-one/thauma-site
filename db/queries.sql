@@ -2933,6 +2933,22 @@ UPDATE partner_sites
  WHERE partner_id = :partner_id;
 
 
+-- name: partner_colors_set
+-- The ministry's two colors, from the Site Creator's Design tab. The same
+-- columns the Sharing page's embed save writes, and only these: the embed
+-- switches stay where they are (that panel is administrator-only; a color
+-- is a look, not a publication decision).
+UPDATE partners
+   SET embed_accent = :embed_accent, embed_accent2 = :embed_accent2, embed_turn = :embed_turn, updated_at = :now
+ WHERE id = :partner_id;
+
+
+-- name: partner_site_docs_set
+-- The working copy and the live copy together, when a change belongs to
+-- neither alone (the site letting go of its own accent for the ministry's).
+UPDATE partner_sites SET draft = :draft, published = :published WHERE partner_id = :partner_id;
+
+
 -- name: partner_site_discard
 -- Back to what visitors see. Nothing to go back to before a first Publish.
 UPDATE partner_sites SET draft = published, updated_at = :now

@@ -28,6 +28,7 @@ if (!PAGE) { console.log("  SKIP  no build — run eleventy first."); process.ex
 function answer(opts = {}) {
   const { edit = true, owner = true, published = false } = opts;
   const draft = cleanDoc(starter("full", { name: "Chase Roush", langs: ["en", "hr"], fallback: "en" }), ["en", "hr"]);
+  if (opts.ownAccent) { draft.design.look = "custom"; draft.design.colors = { background: "#0D0D0D", accent: opts.ownAccent }; }
   if (opts.photo) draft.pages.find((p) => p.id === "home").sections[1].photo = opts.photo;
   return {
     published: published ? JSON.parse(JSON.stringify(draft)) : null,
@@ -62,7 +63,7 @@ async function boot(opts = {}) {
   w.scrollTo = () => {};
   w.scrollBy = () => {};
   w.HTMLElement.prototype.scrollIntoView = () => {};
-  for (const f of ["staff-i18n.js", "staff.js", "staff-site.js"]) w.eval(readFileSync("src/js/" + f, "utf8"));
+  for (const f of ["staff-i18n.js", "staff.js", "color-pair.js", "staff-site.js"]) w.eval(readFileSync("src/js/" + f, "utf8"));
   w.StaffToast = () => {};
   await settle(200);
   const d = w.document;
@@ -458,6 +459,23 @@ await check("somebody not allowed sees it all, changes nothing, and can ask", as
   assert(d.getElementById("wsOn").hidden, "no on/off switch");
   assert([...d.querySelectorAll(".ws-panel input")].every((i) => i.disabled), "fields switched off");
   assert(d.getElementById("wsBar").hidden, "no Publish bar");
+});
+
+await check("Design: the ministry's colors with the Sharing page's picker; a change saves them at once, not in the draft", async () => {
+  const { w, d, sent, click } = await boot({ ownAccent: "#FD5812" });
+  const box = d.querySelector("#wsDesign .ws-colors");
+  assert(box, "the colors box is on Design");
+  assert(box.querySelector(".sh-hexes").textContent.startsWith("#FD5812"), "a site's own accent is what it shows until changed");
+  click(box.querySelector("[data-colors-toggle]"));
+  const hex = box.querySelector('.sh-picker [data-hex="1"]');
+  assert(hex, "the wheel opened, with its hex box");
+  hex.value = "#2266DD";
+  hex.dispatchEvent(new w.Event("input", { bubbles: true }));
+  await settle(700);
+  const saved = sent.filter((b) => b.action === "colors");
+  eq(saved.length, 1, "one colors save");
+  eq(saved[0].colors.accent, "#2266DD", "the new first color");
+  assert(!sent.some((b) => b.action === "save"), "not a draft save");
 });
 
 await check("a replaced photo is handed back when the page closes, not when it is saved (Undo can still bring it back)", async () => {

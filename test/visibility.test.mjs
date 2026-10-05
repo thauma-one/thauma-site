@@ -542,7 +542,8 @@ check("the color derivation is the SAME in all three copies", () => {
   const bodies = [
     ["embed-colour.js", maths.slice(0, split)],
     ["COLOUR_JS", maths.slice(split)],
-    ["staff-sharing.js", read("../src/js/staff-sharing.js")],
+    /* The console's copy moved to color-pair.js (shared by Sharing and the Site Creator). */
+    ["color-pair.js", read("../src/js/color-pair.js")],
   ].map(([name, src]) => {
     /* The default turn and the gray fallback are the whole algorithm; the
        rest is hex/HSL plumbing that would be caught by any of the value tests. */
