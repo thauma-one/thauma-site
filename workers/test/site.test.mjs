@@ -714,11 +714,21 @@ check("photo and words: words can flow around the photo, and a photo is never cr
 check("navigation defaults keep every site as it was; junk falls back to them", () => {
   const d = starter("full", { name: "Chase Roush", langs: ["en", "hr"], fallback: "en" });
   delete d.design.nav;
-  const c = cleanDoc({ ...d, design: { ...d.design, nav: { current: "dot", tint: "red", line: "x", phone: "y" }, giveTo: "?" } }, ["en", "hr"]);
+  const c = cleanDoc({ ...d, design: { ...d.design, nav: { current: "sparkle", tint: "red", line: "x", phone: "y" }, giveTo: "?" } }, ["en", "hr"]);
   eq(c.design.nav, { current: "lit", tint: "white", line: "subtle", phone: "drop" }, "defaults");
   eq(c.design.giveTo, "page", "give");
   const html = page(d);
   assert(/data-navcur="lit" data-navtint="white" data-navline="subtle" data-navphone="drop"/.test(html), "attributes");
+});
+
+check("Bold and Dot below reach the page", () => {
+  for (const cur of ["bold", "dot"]) {
+    const d = starter("full", { name: "Chase Roush", langs: ["en", "hr"], fallback: "en" });
+    d.design.nav = { current: cur, tint: "accent", line: "subtle", phone: "drop" };
+    const html = page(d);
+    assert(html.includes(`data-navcur="${cur}"`), cur + " attribute");
+    assert(html.includes(`html[data-navcur="${cur}"] .nav>a[aria-current]`), cur + " has its style");
+  }
 });
 
 check("the chosen look reaches the page; hover lifts a name; the phone menu holds a language dropdown", () => {

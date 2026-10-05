@@ -36,7 +36,7 @@
    - The ball goes WHERE YOU POINT: a finger or the mouse picks a spot,
      and the throw is solved so its arc passes through it (the direct
      solution of the projectile equation), not merely aimed toward it.
-   - Every wall keeps a CHUTE down its middle (no panels in the centre
+   - Every wall keeps a CHUTE down its middle (no panels in the center
      strip of its top half), so a straight drop reaches the middle.
    - Slower, so it can be followed: speed 470 → 400, gravity 520 → 430.
      The first wall breaks 6 panels, then 2 more a wall up to 45%.
@@ -153,7 +153,7 @@
 
       function nextWall() {
         level++;
-        /* the chute: the centre strip of the top half stays open */
+        /* the chute: the center strip of the top half stays open */
         var spots = LAYOUTS[(level - 1) % LAYOUTS.length]().filter(function (s) {
           return !(Math.abs(s.x - W / 2) < 24 && s.y < (TOPF + BOTF) / 2 - 10);
         });
@@ -392,7 +392,7 @@
           if (b.fire > 0) { g.fillStyle = 'rgba(255,140,40,.45)'; g.beginPath(); g.arc(b.x, b.y, br + 5, 0, 7); g.fill(); }
           if (b.magnet) { g.strokeStyle = 'rgba(255,79,216,' + (.4 + .3 * Math.sin(time * 14)).toFixed(2) + ')'; g.lineWidth = 2; g.beginPath(); g.arc(b.x, b.y, br + 4, 0, 7); g.stroke(); }
           if (br > R) {
-            /* the beach ball: panels of colour */
+            /* the beach ball: panels of color */
             ['#FF4FD8', '#2FD8FF', '#FFB547', '#5CF2C4'].forEach(function (c, k) {
               g.fillStyle = c; g.beginPath(); g.moveTo(b.x, b.y); g.arc(b.x, b.y, br, k * Math.PI / 2 + time * 3, (k + 1) * Math.PI / 2 + time * 3); g.fill();
             });

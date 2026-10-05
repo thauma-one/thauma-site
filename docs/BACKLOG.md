@@ -74,6 +74,11 @@ in the 2026-10-03 session; start a fresh one.
   .dev.vars), THEN build every subscriber-facing link from thauma.one.
   Changing the salt voids links already sent (today only Chase's tests) and
   pending account/address/test-inbox links. Pictures already use thauma.one.
+  **Code side DONE on dev (003f6c5):** every subscriber link (confirm,
+  unsubscribe, List-Unsubscribe, archive) is built from
+  lib/origin.js subscriberOrigin() — SUBSCRIBER_ORIGIN if set, else as
+  before. After the salt is one on all three: add SUBSCRIBER_ORIGIN =
+  "https://thauma.one" to [vars] and [env.dev.vars] in wrangler.toml.
 - **BUG Tests and real sends still land in Gmail spam** (2026-10-03),
   even to a proven Gmail test inbox. Confirmations from the same address
   reach the inbox. Ruled out: SPF/DKIM present on both domains, DMARC p=none
@@ -82,6 +87,10 @@ in the 2026-10-03 session; start a fresh one.
   newsletter template adds List-Unsubscribe headers and ~180 invisible
   preheader characters that the confirmation template lacks; links point at
   dev/next. Chase deferred this until after the Site Creator work.
+  **Tried on dev (003f6c5), unproven:** the preheader padding is now the
+  plain &zwnj;&nbsp; pair ×24 instead of 240 figure spaces / BOMs /
+  combining joiners. The other difference (links on dev/next) goes with
+  the item above.
 - **Opens and bounces: BUILT on dev (1215533), NOT SWITCHED ON.**
   /api/resend-webhook (signed) records bounces (permanent → subscriber
   bounced), complaints (→ unsubscribed), opens, clicks; Sent rows show
@@ -122,7 +131,7 @@ deleted; never at the save, because of Undo) and deleted if nothing
 anywhere names it; a daily sweep removes anything unused for 30 days
 (media-cleanup.js). Text sizes in px like Word
 (4–200, − / + or typed). Console loads Sora/Inter.
-Set aside by Chase for later: "Bold" and "Dot below" nav looks. Still open:
+"Bold" and "Dot below" nav looks: added back on dev (2026-10-05). Still open:
 Footer: small print under the tagline (Split, Columns), Background /
 Line above / Room options. Colors: ONE ministry pair shared with
 Sharing, same picker (color-pair.js), saved at once; a site's old own
@@ -260,8 +269,13 @@ Chase: "the general interface for the Site Creator is really good!"
 ## 4. Arcade
 **DONE on dev (2026-10-05, see ARCADE-SPEC.md revision log):** every note
 below, plus Stage Runner, Golden Hour, Follow Spot, Strike and Cue Stack,
-music (off by default), the coin-and-dive way in, and 85 jokes. Still for
-Chase: play it, and a native check of the hr/sr/sl jokes.
+music (off by default), the coin-and-dive way in, and 85 jokes.
+**Round 3 DONE on dev (2026-10-05):** Chase's play-through notes — pace
+eased in every game, letter-led door glitches, phone audio wake-up, phone
+arrows (Soundcheck, Strike) and cross (Follow Spot), Load Out's physics
+and scoring restored, Panel Fixer's aiming-score bug and powers, Golden
+Hour and Stage Runner reworked. Still for Chase: play it again (and the
+music on a phone), and a native check of the hr/sr/sl jokes.
 
 ### Everywhere
 - **Same feel on mobile and desktop,** only different controls:

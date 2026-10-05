@@ -71,7 +71,7 @@
     { top: '#1a2340', mid: '#4f5f8a', low: '#e8a98a', hill: '#202439', far: '#3c4566', sun: '#fff1c9', edge: '#c9a2a2' },
     { top: '#3d7cc9', mid: '#8fc0e8', low: '#f2e6c8', hill: '#3b5a48', far: '#6f8fa0', sun: '#fffbe8', edge: '#e9f0d8' }
   ];
-  /* the rider's colours: a hi-vis crew jacket reads against every sky */
+  /* the rider's colors: a hi-vis crew jacket reads against every sky */
   var JACKET = '#FFB547', PANTS = '#1b2030', SKIN = '#e2b48f', BEANIE = '#FF5A6E', SCARF = '#2FD8FF';
 
   A.games.goldenhour = {

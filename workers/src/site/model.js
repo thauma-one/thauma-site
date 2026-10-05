@@ -190,9 +190,10 @@ export const MENUS = ["top", "center", "button"];
 /* THE NAVIGATION TAB (Chase, 2026-10-04, from the approved mockup). Defaults
    are what every site already looked like: the current page lit in plain
    white, the thin line under the bar, the drop-down on phones, Give to the
-   Give page. "Bold" and "Dot below" were tried and set aside for later. */
+   Give page. "Bold" and "Dot below" were tried, set aside, and added back
+   (2026-10-05, the last of Chase's list). */
 export const NAV = {
-  current: ["lit", "under", "grow", "pill"],
+  current: ["lit", "under", "grow", "pill", "bold", "dot"],
   tint: ["white", "accent"],
   line: ["subtle", "none", "accent"],
   phone: ["drop", "full", "drawer"],

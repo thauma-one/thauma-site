@@ -359,7 +359,7 @@ await check("Navigation: the page-you-are-on look, its color, the line and the p
   click(d.querySelector('[data-ws-tab="nav"]'));
   assert(!d.getElementById("wsNav").hidden, "the Navigation panel");
   assert(!d.getElementById("wsPreviewPane").hidden, "with the site beside it");
-  assert(d.querySelectorAll('#wsNav .ws-look[data-chip="nav:current"]').length === 4, "four looks");
+  assert(d.querySelectorAll('#wsNav .ws-look[data-chip="nav:current"]').length === 6, "six looks");
   click(d.querySelector('[data-chip="nav:current"][data-value="under"]'));
   click(d.querySelector('[data-chip="nav:tint"][data-value="accent"]'));
   click(d.querySelector('[data-chip="nav:line"][data-value="accent"]'));
@@ -509,7 +509,9 @@ await check("Advanced: a version is saved by name, and bringing one back puts it
   await settle(50);
   eq(sent.filter((b) => b.action === "version-save").map((b) => b.name), ["Summer look"], "saved by name");
   click(d.querySelector('[data-vopen="sv_1"]'));
-  await settle(900);
+  /* the save is debounced (650ms) behind a fetch; on a busy machine a fixed
+     wait was not always enough, so wait for it, up to 4s */
+  for (let i = 0; i < 40 && !sent.some((b) => b.action === "save"); i++) await settle(100);
   assert(sent.some((b) => b.action === "version-open" && b.id === "sv_1"), "asked for it");
   assert(sent.some((b) => b.action === "save"), "then saved as the working copy, through the ordinary save");
   assert(!d.getElementById("wsUndo").disabled, "and Undo can step back from it");

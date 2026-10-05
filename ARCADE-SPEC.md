@@ -308,3 +308,45 @@ Later:
     that comes back from the browser's memory after the closed page's
     hand-off rebuilds itself (the fall reversed).
 
+- 2026-10-05, round 3: Chase played it. "Everything progresses too fast …
+  ease you into games and pace them … Give things time to breath. But also,
+  work on the graphics some more too."
+  - **The way in:** the letters lead again (he preferred the lettering
+    glitching to the overlays). A JOLT throws one real letter far off its
+    line for three frames (big, skewed, red/cyan, sometimes the wrong
+    character) and back. Stage 1: two letters of a big word jolt, one
+    aftershock. 2: slips, misfires, jolts every 1.1s. 3: the voice swap,
+    jolts in bunches, a big word slices for 170ms. 4: photos tear, a section
+    slices every 1.3s. The whole-page hue flicker and constant color/band
+    overlays are gone.
+  - **Sound on phones:** every touch wakes the audio inside the gesture;
+    audioSession 'playback' (or a silent <audio> loop) past the iPhone's
+    silent switch; resume from 'interrupted'. Not tested on a phone here.
+  - **Pace, every game:** Soundcheck 215→540 (was 270→790), powers one at
+    a time 7–11s apart, families introduced in turn; Load Out back to the
+    first version's physics (kg 12–120, motor 58+5/case, 0.45s) with lb
+    stencils, height scoring (+10 a steady drop); Panel Fixer slower ball,
+    6 broken on wall 1; Cable Run 0.18→0.075s; Strike 255→520; Cue Stack a
+    new pattern every 7 bars; Follow Spot in four acts; Stage Runner
+    8.5→20, teaching one obstacle at a time; Golden Hour top speed 470→620
+    over 3 km, features further apart.
+  - **Phones:** Soundcheck and Strike take two arrow buttons (no drag
+    fader); Follow Spot a d-pad cross whose up/down arrive with "tilt".
+  - **Panel Fixer:** the score-while-aiming bug (the preview called the
+    real collide()) fixed; the ball goes where you point (solved arc); a
+    chute down the middle; seven drawn powers; CREW CALL brings two crew
+    who throw at the middle.
+  - **Golden Hour:** an opening that pulls the lid off a road case; the lid
+    drawn as one (ball corners, extrusion, handle); a fully animated rider
+    (crouch, pop, tuck, grab, squash, grind, a tumble apart on a crash);
+    taped, lit, glowing obstacles; ramps; BALLOONS (hover) and BANNER
+    (wingsuit) with the HEADLAMP and HARD HAT; clouds, mist, pines, string
+    lights.
+  - **Stage Runner:** errands from the talent, drummer, pastor and kids'
+    choir, carried overhead to the green room where they wait and say
+    thanks; crew who wave and high-five; the runner from behind (CREW on
+    the back) with a run cycle, a tucked jump, a slide; yellow-jacket
+    cable ramps, a lit tug, hazard-taped truss; a dressed venue.
+  - **Follow Spot:** WELCOME / WORSHIP / THE MESSAGE / ONE MORE SONG; a
+    sheep (the sermon illustration), a moth in the beam, the fog machine.
+  - **Strike:** a stage behind the letters, LED-tile bricks, a ball trail.

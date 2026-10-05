@@ -2827,6 +2827,9 @@ html.has-ai .ai-one{display:inline-flex;align-items:center;justify-content:cente
 .ws-nav-sample[data-cur="grow"] .on{color:#EDEDED}
 .ws-nav-sample[data-cur="grow"] .on::after{content:"";position:absolute;left:0;right:0;bottom:-5px;height:2px;background:var(--nav-tint)}
 .ws-nav-sample[data-cur="pill"] .on{color:#EDEDED;background:color-mix(in srgb,var(--nav-tint) 18%,transparent);padding:4px 9px;margin:-4px -9px;border-radius:999px}
+.ws-nav-sample[data-cur="bold"] .on{font-weight:700}
+.ws-nav-sample[data-cur="dot"] .on{color:#EDEDED}
+.ws-nav-sample[data-cur="dot"] .on::after{content:"";position:absolute;left:50%;bottom:-8px;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:var(--nav-tint)}
 .ws-phone-sample{display:block;position:relative;height:56px;background:#0D0D0D}
 .ws-phone-sample i{position:absolute;background:#2A2A2A;border-radius:3px}
 .ws-phone-sample[data-phone="drop"] i{left:8px;right:8px;top:8px;height:28px}

@@ -218,14 +218,14 @@
       function draw(g) {
         g.fillStyle = '#05060a'; g.fillRect(-20, -20, W + 40, H + 40);
         var wc = (who ? cur() : ACTS[0]).wall.join(',');
-        /* the LED wall upstage, glowing the act's colour, slowly breathing */
+        /* the LED wall upstage, glowing the act's color, slowly breathing */
         var led = g.createLinearGradient(0, 80, 0, DECK);
         led.addColorStop(0, 'rgba(' + wc + ',' + (.1 + .04 * Math.sin(time * .8)).toFixed(3) + ')'); led.addColorStop(1, 'rgba(' + wc + ',.02)');
         g.fillStyle = led; g.fillRect(24, 84, W - 48, DECK - 120);
         g.fillStyle = 'rgba(0,0,0,.35)';
         for (var lx = 24; lx < W - 24; lx += 6) g.fillRect(lx, 84, 1, DECK - 120);
         for (var ly = 84; ly < DECK - 36; ly += 6) g.fillRect(24, ly, W - 48, 1);
-        /* the truss and its lights, each a soft beam in the act's colour */
+        /* the truss and its lights, each a soft beam in the act's color */
         g.strokeStyle = '#1f2533'; g.lineWidth = 1.5; g.beginPath();
         for (var x = 0; x <= W; x += 16) { g.moveTo(x, 60); g.lineTo(x + 8, 72); g.lineTo(x + 16, 60); } g.moveTo(0, 60); g.lineTo(W, 60); g.moveTo(0, 72); g.lineTo(W, 72); g.stroke();
         g.save(); g.globalCompositeOperation = 'lighter';
@@ -295,7 +295,7 @@
         else { g.moveTo(-3, -18); g.lineTo(-3 + walk * 6, 0); g.moveTo(3, -18); g.lineTo(3 - walk * 6, 0); }
         g.stroke();
         g.fillStyle = '#0d0f15'; g.fillRect(air ? -4 : -6 + walk * 6, air ? -4 : -2, 6, 3); g.fillRect(air ? 2 : 1 - walk * 6, air ? -5 : -2, 6, 3);   /* shoes */
-        /* body: a shirt in their colour, rounded shoulders */
+        /* body: a shirt in their color, rounded shoulders */
         g.fillStyle = who.col; g.beginPath(); g.moveTo(-8, -18); g.lineTo(-9, -38); g.quadraticCurveTo(0, -44, 9, -38); g.lineTo(8, -18); g.closePath(); g.fill();
         if (who.key === 'pastor') { g.fillStyle = '#0d1018'; g.beginPath(); g.moveTo(-9, -38); g.lineTo(-3, -38); g.lineTo(-6, -18); g.lineTo(-8, -18); g.closePath(); g.moveTo(9, -38); g.lineTo(3, -38); g.lineTo(6, -18); g.lineTo(8, -18); g.closePath(); g.fill(); }  /* a blazer */
         /* arms */

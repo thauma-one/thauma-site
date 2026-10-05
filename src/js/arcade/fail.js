@@ -20,7 +20,7 @@
    worse"): two letters jolt for three frames; then letters slip and stay,
    links drift, the jolts keep coming; then the voices swap and the jolts
    bunch up, split red and cyan, a big word slicing now and then; then the
-   photos tear and whole sections slice for a few frames. Tearing and colour
+   photos tear and whole sections slice for a few frames. Tearing and color
    split ride along as short bursts; nothing filters the whole page.
    A door calls progress(door, 1..4); each
    stage adds to the ones before it. Stop, and the page HEALS: everything

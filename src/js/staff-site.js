@@ -1855,7 +1855,7 @@
         esc(tr('ws.nav.' + (group === 'current' ? 'cur' : group) + '.' + k + '.what')) + '</span></span></button>';
     };
     var html = '<div class="ws-head"><h2>' + esc(tr('ws.nav.current')) + '</h2></div><div class="ws-looks ws-navs" data-tint="' + esc(n.tint) + '">' +
-      ['lit', 'under', 'grow', 'pill'].map(function (k) {
+      ['lit', 'under', 'grow', 'pill', 'bold', 'dot'].map(function (k) {
         return look('current', k, n.current === k, '<span class="ws-nav-sample" data-cur="' + k + '" aria-hidden="true"><span>' +
           esc(tr('ws.page.about')) + '</span><span class="on">' + esc(tr('ws.page.mission')) + '</span><span>' + esc(tr('ws.page.timeline')) + '</span></span>');
       }).join('') + '</div>';

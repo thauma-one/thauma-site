@@ -219,7 +219,7 @@
       /* -------------------------------------------------------- drawing */
       function draw(g) {
         /* the stage: a dark house, an LED wall behind the letters breathing
-           slowly through the colours, a truss of PAR cans whose soft beams
+           slowly through the colors, a truss of PAR cans whose soft beams
            sweep, and the stage floor's lit edge under the fader */
         var bg = g.createLinearGradient(0, 0, 0, H);
         bg.addColorStop(0, '#0a0b14'); bg.addColorStop(1, '#120a18');
