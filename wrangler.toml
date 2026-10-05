@@ -189,6 +189,11 @@ AI_DAILY_NEURONS = "1500"
 # sent from dev pointed at staging — a different database and a different
 # signing salt, so they could not have worked. See workers/src/lib/origin.js.
 SITE_ORIGIN = "https://next.thauma.one"
+# Links a SUBSCRIBER keeps (confirm, unsubscribe, archive) always point at the
+# live site, whichever deployment sent them: all three share one SIGNUP_SALT
+# since 2026-10-05, so live verifies a link dev or staging signed. See
+# workers/src/lib/origin.js subscriberOrigin().
+SUBSCRIBER_ORIGIN = "https://thauma.one"
 
 # CLOUDFLARE ACCESS — the other door.
 #
@@ -408,6 +413,11 @@ AI_DAILY_NEURONS = "1500"
 # sent from dev pointed at staging — a different database and a different
 # signing salt, so they could not have worked. See workers/src/lib/origin.js.
 SITE_ORIGIN = "https://dev.thauma.one"
+# Links a SUBSCRIBER keeps (confirm, unsubscribe, archive) always point at the
+# live site, whichever deployment sent them: all three share one SIGNUP_SALT
+# since 2026-10-05, so live verifies a link dev or staging signed. See
+# workers/src/lib/origin.js subscriberOrigin().
+SUBSCRIBER_ORIGIN = "https://thauma.one"
 
 # See the note on ACCESS_ACCOUNT_ID in the top-level [vars]. Repeated because
 # a named environment does not inherit vars from it.
@@ -597,6 +607,11 @@ AI_DAILY_NEURONS = "6000"
 # sent from dev pointed at staging — a different database and a different
 # signing salt, so they could not have worked. See workers/src/lib/origin.js.
 SITE_ORIGIN = "https://thauma.one"
+# Links a SUBSCRIBER keeps (confirm, unsubscribe, archive) always point at the
+# live site, whichever deployment sent them: all three share one SIGNUP_SALT
+# since 2026-10-05, so live verifies a link dev or staging signed. See
+# workers/src/lib/origin.js subscriberOrigin().
+SUBSCRIBER_ORIGIN = "https://thauma.one"
 # Partner sites answer at their own <name>.thauma.one (the route above). Off
 # on dev and staging, where a site is opened at /site/<name>/ instead.
 SITE_WILDCARD = "1"

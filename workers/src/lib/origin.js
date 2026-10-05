@@ -47,13 +47,12 @@ export function siteOrigin(env, request) {
  * them", 2026-10-03). So these links can be pointed at the live site with
  * SUBSCRIBER_ORIGIN, per environment, in wrangler.toml.
  *
- * NOT SET ANYWHERE YET, ON PURPOSE. Unsubscribe links are signed with
- * SIGNUP_SALT (lib/unsub.js), and dev and staging sign with different keys
- * from live, so live would refuse a dev-signed link. Only once all three
- * share one SIGNUP_SALT can dev and staging set SUBSCRIBER_ORIGIN =
- * "https://thauma.one". Confirmation tokens live in the shared database
- * and verify anywhere already. Until then this is siteOrigin(), exactly as
- * before. Staff-facing links (invites, test inboxes, address changes) stay
+ * SET TO https://thauma.one ON ALL THREE (2026-10-05), which is safe only
+ * because all three now share one SIGNUP_SALT: unsubscribe links are signed
+ * with it (lib/unsub.js), so live verifies a link dev signed. If the salts
+ * ever differ again, take SUBSCRIBER_ORIGIN off dev and staging first.
+ * Confirmation tokens live in the shared database and verify anywhere.
+ * Unset, this is siteOrigin(). Staff-facing links (invites, test inboxes, address changes) stay
  * on siteOrigin(): those belong to the console that sent them.
  */
 export function subscriberOrigin(env, request) {

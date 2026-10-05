@@ -77,8 +77,10 @@ in the 2026-10-03 session; start a fresh one.
   **Code side DONE on dev (003f6c5):** every subscriber link (confirm,
   unsubscribe, List-Unsubscribe, archive) is built from
   lib/origin.js subscriberOrigin() — SUBSCRIBER_ORIGIN if set, else as
-  before. After the salt is one on all three: add SUBSCRIBER_ORIGIN =
-  "https://thauma.one" to [vars] and [env.dev.vars] in wrangler.toml.
+  before. **Switched on 2026-10-05:** Chase set one SIGNUP_SALT on all
+  three (and RESEND_WEBHOOK_SECRET on both workers); SUBSCRIBER_ORIGIN =
+  "https://thauma.one" in all three envs. To prove end to end: subscribe
+  a real address from dev, send to it from dev, press its unsubscribe.
 - **BUG Tests and real sends still land in Gmail spam** (2026-10-03),
   even to a proven Gmail test inbox. Confirmations from the same address
   reach the inbox. Ruled out: SPF/DKIM present on both domains, DMARC p=none
