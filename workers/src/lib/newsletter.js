@@ -399,11 +399,18 @@ export function render(body, opts = {}) {
 
   /* THE PREHEADER. Hidden, and followed by enough blank characters to stop the
      client filling the rest of the preview with the first words of the body.
-     Every serious sender does this; it looks like a hack because it is one. */
+     Every serious sender does this; it looks like a hack because it is one.
+     KEPT SHORT AND PLAIN (2026-10-05, BACKLOG "Tests and real sends still
+     land in Gmail spam"): it was 240 characters of figure spaces, byte-order
+     marks and combining joiners — invisible-character runs are one of the
+     things spam filters score as hiding text, and the confirmation email,
+     which reaches the inbox, has none. Now the common &zwnj;&nbsp; pair, 24
+     times: enough for the preview, nothing exotic. A guess, not a proven
+     cause; see BACKLOG. */
   const pre = opts.preheader
     ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;` +
       `mso-hide:all">${escapeHtml(opts.preheader)}` +
-      "&#8199;&#65279;&#847; ".repeat(60) + "</div>"
+      "&zwnj;&nbsp;".repeat(24) + "</div>"
     : "";
 
   const archive = opts.archiveUrl

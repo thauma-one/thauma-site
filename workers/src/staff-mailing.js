@@ -26,7 +26,7 @@ import { sanitise, render, toText, plainLine, tooBig, sizeOf, fillVariables } fr
 import { unsubscribeUrl } from "./lib/unsub.js";
 import { sendMail, listConfirmEmail, testInboxEmail } from "./lib/mail.js";
 import { linkParams } from "./lib/signed-link.js";
-import { siteOrigin } from "./lib/origin.js";
+import { siteOrigin, subscriberOrigin } from "./lib/origin.js";
 import { topicLabels, cleanLabels } from "./lib/topics.js";
 import { releaseMedia } from "./media-cleanup.js";
 import { brandForMail } from "./lib/mail-brand.js";
@@ -286,8 +286,9 @@ function brandOpts(brand) {
 }
 
 /** One message, addressed to one person. */
-async function messageFor(env, { built, list, sub, origin, theme, archiveUrl, attachments }) {
-  const unsubscribe = await unsubscribeUrl(env, origin, sub.id);
+async function messageFor(env, { built, list, sub, origin, links, theme, archiveUrl, attachments }) {
+  /* links: where the subscriber's own links point (lib/origin.js subscriberOrigin) */
+  const unsubscribe = await unsubscribeUrl(env, links || origin, sub.id);
   const body = render(built.html, {
     subject: built.subject,
     preheader: built.preheader,
@@ -748,7 +749,7 @@ const api = {
           name: clean(body.name, MAX.name),
           listName: list.name,
           fromName: list.from_name, origin,
-          confirmUrl: `${origin}/confirm?t=${token}`,
+          confirmUrl: `${subscriberOrigin(env, request)}/confirm?t=${token}`,
           brand: await brandForMail(db, partnerId),
         });
         const sent = await sendMail(env, {
@@ -802,7 +803,7 @@ const api = {
         const origin = siteOrigin(env, request);
         const mail = listConfirmEmail({
           name: sub.name, listName: sub.list_name, fromName: sub.from_name, origin,
-          confirmUrl: `${origin}/confirm?t=${token}`,
+          confirmUrl: `${subscriberOrigin(env, request)}/confirm?t=${token}`,
           brand: await brandForMail(db, partnerId),
         });
         const sent = await sendMail(env, {
@@ -999,7 +1000,7 @@ const api = {
            it was for — seeing what actually arrives — is exactly what it
            would fail to show. */
         const msg = await messageFor(env, {
-          built, list, origin,
+          built, list, origin, links: subscriberOrigin(env, request),
           sub: { id: "test-" + ((actor.me && actor.me.user_id) || "x"), email: testTo,
                  name: (s.me && s.me.user_name) || null },
           theme: look ? { accent: look.embed_accent, accent2: lookFor(look).accent2, mode: look.embed_theme } : null,
@@ -1093,7 +1094,7 @@ const api = {
             await db.query("mailing_attachments_for", { mailing_id: id }));
 
           const archiveUrl = list.archive_public
-            ? `${origin}/archive/${s.partner ? s.partner.slug : "thauma"}/${list.slug}/${slug}`
+            ? `${subscriberOrigin(env, request)}/archive/${s.partner ? s.partner.slug : "thauma"}/${list.slug}/${slug}`
             : null;
 
           /* ONE MESSAGE PER PERSON, deliberately not a batch. Each carries its
@@ -1101,7 +1102,7 @@ const api = {
              it from somebody else's row. */
           for (const sub of people) {
             const msg = await messageFor(env,
-              { built, list, sub, origin, theme, archiveUrl, attachments: files });
+              { built, list, sub, origin, links: subscriberOrigin(env, request), theme, archiveUrl, attachments: files });
             const r = await sendMail(env, msg);
             if (r.ok) sent++; else failed++;
             await db.query("mailing_recipient_result", {
@@ -1308,7 +1309,7 @@ const api = {
              { list, token } and sent a confirmation with no link in it and
              "undefined" where the list's name goes. */
           ...listConfirmEmail({ name: name || null, listName: list.name, fromName: list.from_name, origin,
-                                confirmUrl: `${origin}/confirm?t=${token}`, brand: await brandForMail(db, partnerId) }),
+                                confirmUrl: `${subscriberOrigin(env, request)}/confirm?t=${token}`, brand: await brandForMail(db, partnerId) }),
           from: `${list.from_name} <${list.from_email}>`,
           replyTo: list.reply_to || undefined,
         });

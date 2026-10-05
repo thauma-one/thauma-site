@@ -46,7 +46,7 @@ import { detectLang } from "./contact-form.js";
 import { COLOUR_JS, rowLook } from "./embed-colour.js";
 import { escapeHtml, palette, formStyles, LIGHT, DARK, BEHAVIOUR_JS, WORDS_JS, LOOK_JS } from "./lib/embed-form.js";
 import { t, wordsFor } from "./lib/mail-i18n.js";
-import { siteOrigin } from "./lib/origin.js";
+import { siteOrigin, subscriberOrigin } from "./lib/origin.js";
 import { isOrgSlug } from "./lib/org.js";
 import { readTexts, textIn } from "./lib/texts.js";
 
@@ -528,7 +528,7 @@ export default {
         : joined.slice(0, -1).map((l) => textIn(l, "name", lang, l.name)).join(", ") + " and " +
           textIn(joined[joined.length - 1], "name", lang, joined[joined.length - 1].name),
       fromName: joined[0].from_name, origin, lang,
-      confirmUrl: `${origin}/confirm?t=${token}`,
+      confirmUrl: `${subscriberOrigin(env, request)}/confirm?t=${token}`,
       /* Thauma's confirmation, rebranded to the ministry (lib/mail-brand.js). */
       brand: joined[0].partner_id ? await brandForMail(db, joined[0].partner_id).catch(() => null) : null,
     });
