@@ -40,7 +40,7 @@
       var y0 = ROWS - 5;
       var cable = [{ x: 7, y: y0 }, { x: 7, y: y0 + 1 }, { x: 7, y: y0 + 2 }, { x: 7, y: y0 + 3 }];
       var dir = 'up', queue = [], grow = 0;
-      var tick = 0, every = .16, plugged = 0, score = 0, lastHead = null;
+      var tick = 0, every = .18, plugged = 0, score = 0, lastHead = null;
       var gear = null, tape = null, taped = 0, tapeUntil = 0;
       var leader = null, nextLeader = 14, time = 0;
       var dead = false;
@@ -88,8 +88,11 @@
           plugged++; grow += 2;
           score += 10 + cable.length; ctx.score(score);
           ctx.sfx('collect');
-          /* faster as it grows (BACKLOG §4: "speed up as the cable grows") */
-          every = Math.max(.058, .16 - (cable.length - 4) * .0042);
+          /* faster as it grows (BACKLOG §4: "speed up as the cable grows"),
+             but gently (Chase, 2026-10-05: "ease you into games"): 0.18s a
+             step to start, 0.075 at the fastest, which takes ~35 pieces
+             (was 0.16 → 0.058 by ~28) */
+          every = Math.max(.075, .18 - (cable.length - 4) * .003);
           if (plugged % 5 === 0) ctx.quip('jokes_cablerun_plug', { mood: 'good' });
           gear = place(GEAR[rnd(3)]);
           if (!tape && plugged % 4 === 0) tape = place('tape');

@@ -30,7 +30,9 @@
 
   A.games.strike = {
     size: function (o) { return { w: W, h: o && o.touch ? 540 : 600 }; },
-    controls: 'stick',
+    /* a phone gets two arrows, as Soundcheck does (Chase, 2026-10-05) */
+    controls: function (o) { return o && o.touch ? 'dpad' : 'stick'; },
+    padStart: ['left', 'right'],
     speaker: 'PYRO',
     quipAt: .13,
     create: function (ctx) {
@@ -60,7 +62,7 @@
         balls = []; serve();
         ctx.say(words('strike_word') + ': ' + word.join(''), { tag: 'PYRO' });
       }
-      function serve() { balls.push({ x: pad.x, y: PY - 12, vx: 0, vy: 0, speed: 300 + level * 18, stuck: true, big: false }); serveT = 1.2; }
+      function serve() { balls.push({ x: pad.x, y: PY - 12, vx: 0, vy: 0, speed: 255 + level * 14, stuck: true, big: false }); serveT = 1.2; }
       function launch(b) { var a = rnd(-.5, .5); b.vx = Math.sin(a) * b.speed; b.vy = -Math.cos(a) * b.speed; b.stuck = false; ctx.sfx('hit'); }
 
       /* --------------------------------------------------- the letters */
@@ -150,6 +152,7 @@
         var n = Math.max(1, Math.ceil(dt * 700 / 5));
         for (var k = 0; k < n; k++) balls.forEach(function (b) { step(b, dt / n); });
         balls = balls.filter(function (b) { return !b.gone; });
+        balls.forEach(function (b) { if (b.stuck) { b.trail = []; return; } (b.trail = b.trail || []).push({ x: b.x, y: b.y }); if (b.trail.length > 7) b.trail.shift(); });
         if (!balls.some(function (b) { return !b.confetti; })) {
           lives--; ctx.sfx('miss'); ctx.shake(5);
           ctx.quip('jokes_strike_drop', { mood: 'bad', force: true });
@@ -193,7 +196,7 @@
         /* the paddle: where it lands sets the angle */
         if (b.vy > 0 && b.y + r >= PY - 5 && b.y < PY + 6 && Math.abs(b.x - pad.x) < pad.w / 2 + r) {
           var off = clamp((b.x - pad.x) / (pad.w / 2), -1, 1), a = off * 1.05;
-          b.speed = Math.min(620, (b.speed || 300) * 1.012);
+          b.speed = Math.min(520, (b.speed || 255) * 1.008);   /* gentler (round 3: was ×1.012 to 620) */
           b.vx = Math.sin(a) * b.speed; b.vy = -Math.cos(a) * b.speed; b.y = PY - 5 - r;
           ctx.sfx('hit');
         }
@@ -215,25 +218,63 @@
 
       /* -------------------------------------------------------- drawing */
       function draw(g) {
-        g.fillStyle = '#08090f'; g.fillRect(-20, -20, W + 40, H + 40);
-        /* a stage backdrop: faint light rig */
-        for (var i = 0; i < 6; i++) { g.fillStyle = 'rgba(255,255,255,.025)'; g.fillRect(20 + i * 60, 64, 2, H - 64); }
+        /* the stage: a dark house, an LED wall behind the letters breathing
+           slowly through the colours, a truss of PAR cans whose soft beams
+           sweep, and the stage floor's lit edge under the fader */
+        var bg = g.createLinearGradient(0, 0, 0, H);
+        bg.addColorStop(0, '#0a0b14'); bg.addColorStop(1, '#120a18');
+        g.fillStyle = bg; g.fillRect(-20, -20, W + 40, H + 40);
+        var hue = (time * 12) % 360;
+        var led = g.createLinearGradient(0, 70, W, 300);
+        led.addColorStop(0, 'hsla(' + hue + ',70%,45%,.10)'); led.addColorStop(1, 'hsla(' + ((hue + 140) % 360) + ',70%,45%,.10)');
+        g.fillStyle = led; g.fillRect(6, 70, W - 12, 290);
+        g.fillStyle = 'rgba(0,0,0,.4)';
+        for (var lx = 6; lx < W - 6; lx += 6) g.fillRect(lx, 70, 1, 290);
+        for (var ly = 70; ly < 360; ly += 6) g.fillRect(6, ly, W - 12, 1);
+        var fade = g.createLinearGradient(0, 290, 0, 362);
+        fade.addColorStop(0, 'rgba(15,10,22,0)'); fade.addColorStop(1, 'rgba(15,10,22,1)');
+        g.fillStyle = fade; g.fillRect(0, 290, W, 72);
+        g.save(); g.globalCompositeOperation = 'lighter';
+        for (var i = 0; i < 6; i++) {
+          var parX = 30 + i * 60, a = Math.sin(time * .6 + i * 1.1) * .35, bh = ['190,75%', '300,80%', '45,90%', '160,75%', '220,80%', '330,80%'][i];
+          g.save(); g.translate(parX, 66); g.rotate(a);
+          var gr = g.createLinearGradient(0, 0, 0, H - 80);
+          gr.addColorStop(0, 'hsla(' + bh + ',65%,.16)'); gr.addColorStop(1, 'hsla(' + bh + ',65%,0)');
+          g.fillStyle = gr; g.beginPath(); g.moveTo(-3, 0); g.lineTo(3, 0); g.lineTo(46, H - 80); g.lineTo(-46, H - 80); g.closePath(); g.fill();
+          g.restore();
+        }
+        g.restore();
+        g.strokeStyle = '#2a3142'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(0, 58); g.lineTo(W, 58); g.moveTo(0, 66); g.lineTo(W, 66);
+        for (var tx = 0; tx < W; tx += 10) { g.moveTo(tx, 58); g.lineTo(tx + 5, 66); g.lineTo(tx + 10, 58); } g.stroke();
+        for (var c = 0; c < 6; c++) { g.fillStyle = '#1b2130'; g.fillRect(24 + c * 60, 64, 12, 9); }
+        g.fillStyle = 'rgba(255,90,110,.18)'; g.fillRect(0, PY + 12, W, 1.5);
         wordBar(g);
         fx.forEach(function (f) { drawFx(g, f); });
         bricks.forEach(function (br) { brick(g, br); });
         drops.forEach(function (d) {
-          g.fillStyle = d.kind === 'wide' ? '#5CF2C4' : '#FFB547'; g.fillRect(d.x - 12, d.y - 6, 24, 12);
+          var dc = d.kind === 'wide' ? '#5CF2C4' : '#FFB547';
+          g.fillStyle = dc; g.shadowColor = dc; g.shadowBlur = 10; round(g, d.x - 13, d.y - 7, 26, 14, 7); g.fill(); g.shadowBlur = 0;
           g.fillStyle = '#0b0e14'; g.font = '700 9px Sora, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(d.kind === 'wide' ? '⟷' : '⋔', d.x, d.y + 1);
         });
         balls.forEach(function (b) {
-          var r = b.big ? R * 3 : R;
-          g.fillStyle = b.confetti ? 'hsl(' + b.hue + ',90%,65%)' : b.big ? '#FFB547' : '#fff';
-          if (b.big) { g.shadowColor = '#FFB547'; g.shadowBlur = 18; }
+          var r = b.big ? R * 3 : R, col = b.confetti ? 'hsl(' + b.hue + ',90%,65%)' : b.big ? '#FFB547' : '#ffffff';
+          /* a short trail, so its path can be read at speed */
+          (b.trail || []).forEach(function (t, i, all) {
+            g.globalAlpha = (i + 1) / all.length * .35; g.fillStyle = col;
+            g.beginPath(); g.arc(t.x, t.y, r * (.4 + .6 * (i + 1) / all.length), 0, 7); g.fill();
+          });
+          g.globalAlpha = 1;
+          g.fillStyle = col; g.shadowColor = b.big ? '#FFB547' : 'rgba(180,230,255,.9)'; g.shadowBlur = b.big ? 18 : 10;
           g.beginPath(); g.arc(b.x, b.y, r, 0, 7); g.fill(); g.shadowBlur = 0;
         });
-        /* the fader */
-        g.fillStyle = '#1b2231'; g.fillRect(pad.x - pad.w / 2, PY - 5, pad.w, 10);
-        g.fillStyle = '#FF5A6E'; g.shadowColor = '#FF5A6E'; g.shadowBlur = 10; g.fillRect(pad.x - pad.w / 2 + 6, PY - 1, pad.w - 12, 2); g.shadowBlur = 0;
+        /* the fader: a ridged cap with its channel's light */
+        var px = pad.x - pad.w / 2;
+        g.fillStyle = 'rgba(255,90,110,.18)'; g.beginPath(); g.ellipse(pad.x, PY + 9, pad.w * .55, 5, 0, 0, 7); g.fill();
+        var cap = g.createLinearGradient(0, PY - 7, 0, PY + 7);
+        cap.addColorStop(0, '#3a4456'); cap.addColorStop(1, '#151a24');
+        g.fillStyle = cap; round(g, px, PY - 7, pad.w, 14, 4); g.fill();
+        g.fillStyle = 'rgba(255,255,255,.12)'; for (var rx = px + 8; rx < px + pad.w - 6; rx += 6) g.fillRect(rx, PY - 5, 1, 4);
+        g.fillStyle = '#FF5A6E'; g.shadowColor = '#FF5A6E'; g.shadowBlur = 12; g.fillRect(px + 6, PY + 1, pad.w - 12, 2.5); g.shadowBlur = 0;
         sparks.forEach(function (p) { g.globalAlpha = Math.min(1, p.life * 2); g.fillStyle = p.c; g.fillRect(p.x, p.y, 2.5, 2.5); });
         g.globalAlpha = 1;
         pops.forEach(function (p) { g.globalAlpha = Math.min(1, p.life * 2); g.fillStyle = p.col; g.font = '700 14px Sora, sans-serif'; g.textAlign = 'center'; g.fillText(p.text, p.x, p.y); });
@@ -247,6 +288,10 @@
         g.fillStyle = 'rgba(138,150,166,.8)'; g.font = '600 9px Inter, sans-serif'; g.textAlign = 'left'; g.textBaseline = 'middle';
         g.fillText(words('strike_level').toUpperCase() + ' ' + level, 12, H - 12);
       }
+      function round(g, x, y, w, h, r) {
+        g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r);
+        g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath();
+      }
       function wordBar(g) {
         var n = word.length, bw = Math.min(30, (W - 40) / n), x0 = W / 2 - n * bw / 2;
         g.fillStyle = 'rgba(138,150,166,.8)'; g.font = '600 8px Inter, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'top';
@@ -259,13 +304,18 @@
           g.fillText(ch, x + bw / 2, 38);
         });
       }
+      /* a brick is a lit LED tile: rounded, a highlight along its top, a
+         shade along its foot; the next letter you need breathes and glows */
       function brick(g, br) {
         var need = word[progress] === br.ch, x = br.x - BW / 2 + 1, y = br.y - BH / 2;
         var col = colorOf(br), flash = time - br.hitT < .1;
-        g.fillStyle = flash ? '#fff' : col; g.globalAlpha = br.hp > 1 ? 1 : .88;
-        g.fillRect(x, y, BW - 2, BH); g.globalAlpha = 1;
-        if (br.hp > 1) { g.strokeStyle = '#c9d1dc'; g.lineWidth = 2; g.strokeRect(x + 1, y + 1, BW - 4, BH - 2); }
-        if (need) { g.fillStyle = 'rgba(255,255,255,' + (.18 + .18 * Math.sin(time * 8 + br.x)) + ')'; g.fillRect(x, y, BW - 2, BH); }
+        if (need) { g.shadowColor = col; g.shadowBlur = 10 + 6 * Math.sin(time * 8 + br.x); }
+        g.fillStyle = flash ? '#fff' : col; g.globalAlpha = br.hp > 1 ? 1 : .9;
+        round(g, x, y, BW - 2, BH, 4); g.fill(); g.globalAlpha = 1; g.shadowBlur = 0;
+        g.fillStyle = 'rgba(255,255,255,.28)'; g.fillRect(x + 3, y + 2, BW - 8, 2);
+        g.fillStyle = 'rgba(0,0,0,.22)'; g.fillRect(x + 2, y + BH - 4, BW - 6, 3);
+        if (br.hp > 1) { g.strokeStyle = '#EDF2F8'; g.lineWidth = 1.6; round(g, x + 1.5, y + 1.5, BW - 5, BH - 3, 3); g.stroke(); }
+        if (need) { g.fillStyle = 'rgba(255,255,255,' + (.15 + .15 * Math.sin(time * 8 + br.x)) + ')'; round(g, x, y, BW - 2, BH, 4); g.fill(); }
         g.fillStyle = '#0b0e14'; g.font = '700 12px Sora, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
         g.fillText(br.ch, br.x, br.y + 1);
       }

@@ -44,6 +44,7 @@
          the show goes on; never two cues on one lane closer than a half
          beat, never more than two at once. */
       var PAT = [
+        [[0, 1], [2, 2]],
         [[0, 0], [1, 1], [2, 2], [3, 3]],
         [[0, 0], [2, 1], [1, 2], [3, 3], [3.5, 2]],
         [[0, 0], [0, 3], [1, 1], [2, 2], [2.5, 1], [3, 0]],
@@ -55,7 +56,7 @@
       ];
       function chart(toBeat) {
         while (chartTo < toBeat) {
-          var bar = Math.floor(chartTo / 4), lvl = Math.min(PAT.length - 1, Math.floor(bar / 4));
+          var bar = Math.floor(chartTo / 4), lvl = Math.min(PAT.length - 1, Math.floor(bar / 7));   /* a new pattern every 7 bars (was 4): ~13s at 128 BPM */
           var p = PAT[Math.floor(Math.random() * (lvl + 1)) + (bar % 8 === 7 ? 0 : 0)];
           if (bar < 2) { chartTo += 4; continue; }                /* two bars to listen first */
           var shift = Math.floor(Math.random() * 4);
