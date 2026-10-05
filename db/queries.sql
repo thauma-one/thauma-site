@@ -518,7 +518,10 @@ SELECT
   s.subscribed_at, s.confirmed_at, s.unsubscribed_at,
   (SELECT GROUP_CONCAT(t.name, ', ')
      FROM subscriber_tags st JOIN mailing_tags t ON t.id = st.tag_id
-    WHERE st.subscriber_id = s.id) AS tags
+    WHERE st.subscriber_id = s.id) AS tags,
+  -- The same tags by id, for the row's chips (tag ids carry no comma).
+  (SELECT GROUP_CONCAT(st.tag_id, ',')
+     FROM subscriber_tags st WHERE st.subscriber_id = s.id) AS tag_ids
 FROM subscribers s
 JOIN mailing_lists l ON l.id = s.list_id
 WHERE s.list_id = :list_id AND l.partner_id IS :partner_id

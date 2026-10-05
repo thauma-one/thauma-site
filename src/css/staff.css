@@ -1623,7 +1623,7 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
 .subs-email{display:block;color:var(--text);overflow-wrap:anywhere}
 .subs-name{display:block;color:var(--dim,#8a93a3);font-size:11.5px;margin-top:1px}
 .subs-when{color:var(--dim,#8a93a3);font-variant-numeric:tabular-nums;white-space:nowrap}
-.subs-tags{color:var(--dim,#8a93a3);font-size:12px}
+.subs-tagcell{color:var(--dim,#8a93a3);font-size:12px}
 .subs-empty{padding:26px 12px;text-align:center;color:var(--dim,#8a93a3)}
 
 /* A dot rather than a colored word: at twenty-five rows the eye finds a
@@ -1664,7 +1664,8 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
   clip:rect(0 0 0 0);white-space:nowrap;border:0}
 
 @media (max-width:760px){
-  .subs-tags,.subs th:nth-child(4){display:none}
+  /* Joined goes on a phone; the tags stay, since they are edited here. */
+  .subs th:nth-child(4),.subs td.subs-when{display:none}
   .subs-range{margin-left:0;width:100%}
 }
 
@@ -1677,6 +1678,20 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
   border-radius:var(--radius);background:var(--bg2)}
 .subs-tags .hint{display:block;margin-bottom:12px;line-height:1.5;max-width:66ch}
 .subs-tag{display:flex;align-items:center;gap:12px;margin-bottom:7px}
+/* One person's tags as chips on their row (staff-mailing.js tagChips):
+   the name filters, × takes it off, + offers the rest or makes a new one. */
+.subs-chips{display:flex;flex-wrap:wrap;align-items:center;gap:5px}
+.subs-chip{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:999px;background:var(--bg2)}
+.subs-chip-name{padding:3px 4px 3px 10px;font-size:12px;color:var(--text);background:none;border:0;cursor:pointer}
+.subs-chip-name:hover{color:var(--voice-tech)}
+.subs-chip-x{padding:3px 8px 3px 4px;font-size:13px;line-height:1;color:var(--dim);background:none;border:0;cursor:pointer}
+.subs-chip-x:hover{color:var(--text)}
+.subs-chip-plus{inline-size:24px;block-size:24px;border:1px dashed var(--line);border-radius:50%;color:var(--dim);background:none;cursor:pointer;font-size:14px;line-height:1}
+.subs-chip-plus:hover{border-color:var(--voice-tech);color:var(--voice-tech)}
+.subs-tagpop{position:absolute;z-index:300;display:flex;flex-wrap:wrap;gap:6px;max-width:300px;padding:10px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 12px 28px -10px rgba(0,0,0,.7)}
+.subs-tagpop .subs-chip-name{padding:4px 11px;border:1px solid var(--line);border-radius:999px}
+.subs-tagpop form{flex:1 1 100%}
+.subs-tagpop input{width:100%;font-size:13px;padding:6px 9px}
 .subs-tag-name{flex:0 1 240px;min-width:0;font-size:13px;padding:6px 9px}
 .subs-tag-n{flex:1;font-size:11px;color:var(--dim);font-variant-numeric:tabular-nums}
 .subs-tag .del{background:none;border:0;color:var(--dim);font-size:17px;line-height:1;
@@ -1690,14 +1705,6 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
 
 /* In the edit row, as ticks rather than a second screen — the person is right
    there and tagging them is one of the two things this row is for. */
-.subs-edit-tags{flex:1 1 100%;display:flex;align-items:center;gap:12px;flex-wrap:wrap;
-  padding-top:4px}
-.subs-edit-tags>span{font-size:10px;font-family:var(--font-display);
-  font-weight:var(--w-bold);letter-spacing:var(--ls-caps);text-transform:uppercase;
-  color:var(--dim)}
-.subs-edit-tag{display:flex;align-items:center;gap:6px;font-size:12.5px;
-  color:var(--text);cursor:pointer}
-.subs-edit-tag input{width:14px;height:14px;accent-color:var(--voice-tech);cursor:pointer}
 
 /* ---- acting on many at once ----
    The bar appears only when something is selected, so a row of destructive

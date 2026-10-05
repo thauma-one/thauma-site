@@ -683,7 +683,10 @@ const api = {
         }
         return json({ ok: true,
                       tags: await db.query("subscriber_tags_for",
-                                           { subscriber_id: id, partner_id: partnerId }) });
+                                           { subscriber_id: id, partner_id: partnerId }),
+                      /* Every tag with its new count, for the filter and
+                         the manager beside the list. */
+                      all_tags: await db.query("mailing_tags_for_partner", { partner_id: partnerId }) });
       }
 
       /* ADDING SOMEBODY BY HAND STILL CONFIRMS.

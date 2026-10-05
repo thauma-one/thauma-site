@@ -123,6 +123,8 @@ jobs:
         run: node test/mailing-views.test.mjs
       - name: Test · mail-drafts
         run: node test/mail-drafts.test.mjs
+      - name: Test · mail-tags
+        run: node test/mail-tags.test.mjs
       - name: Test · photo-crop
         run: node test/photo-crop.test.mjs
       - name: Test · us-english

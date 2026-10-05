@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "423accf550136dad";
+export const SOURCE_DIGEST = "2cd48ed202e95d65";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -1147,7 +1147,9 @@ WHERE tag_id = :tag_id
   s.subscribed_at, s.confirmed_at, s.unsubscribed_at,
   (SELECT GROUP_CONCAT(t.name, ', ')
      FROM subscriber_tags st JOIN mailing_tags t ON t.id = st.tag_id
-    WHERE st.subscriber_id = s.id) AS tags
+    WHERE st.subscriber_id = s.id) AS tags,
+  (SELECT GROUP_CONCAT(st.tag_id, ',')
+     FROM subscriber_tags st WHERE st.subscriber_id = s.id) AS tag_ids
 FROM subscribers s
 JOIN mailing_lists l ON l.id = s.list_id
 WHERE s.list_id = :list_id AND l.partner_id IS :partner_id
