@@ -81,7 +81,9 @@
 <script src="/js/staff-i18n.js?v={{ "/js/staff-i18n.js" | v }}"></script>
 <script src="/js/staff.js?v={{ "/js/staff.js" | v }}"></script>
 <script src="/js/console-translate.js?v={{ "/js/console-translate.js" | v }}"></script>
-{#- Before admin.js, which calls it the moment somebody picks a file. -#}
+{#- Before admin.js, which calls it the moment somebody picks a file; the
+   cropper opens the one photo editor, so that comes first. -#}
+<script src="/js/photo-editor.js?v={{ "/js/photo-editor.js" | v }}"></script>
 <script src="/js/photo-crop.js?v={{ "/js/photo-crop.js" | v }}"></script>
 <script src="/js/admin.js?v={{ "/js/admin.js" | v }}"></script>
 {#- Page-specific behavior, loaded only where it is used. admin.js is the
@@ -100,7 +102,6 @@
 <script src="/js/{{ f }}.js?v={{ ("/js/" + f + ".js") | v }}"></script>{% endfor %}
 {#- Thauma's Mail tab writes with the same composer as the staff Mail page,
    after staff-mailing.js, which it reads (see staff.njk). -#}
-<script src="/js/photo-editor.js?v={{ "/js/photo-editor.js" | v }}"></script>
 <script defer src="/js/composer.bundle.js?v={{ "/js/composer.bundle.js" | v }}"></script>{% endif %}
 </body>
 </html>

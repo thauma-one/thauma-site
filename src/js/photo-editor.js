@@ -36,7 +36,7 @@
   'use strict';
 
   var SHAPES = {
-    free: null, original: 'own', square: 1, portrait: 4 / 5, tall: 2 / 3, landscape: 4 / 3, wide: 16 / 9, share: 1.91
+    free: null, original: 'own', square: 1, portrait: 4 / 5, tall: 2 / 3, landscape: 4 / 3, wide: 16 / 9, share: 1.91, cinema: 21 / 9
   };
   /* WHAT EACH PLACE MAY DO. `shapes` lists the shapes offered (the first is
      the default); the flags switch controls on. */
@@ -48,7 +48,15 @@
     band:       { mode: 'crop', shapes: ['free', 'wide', 'share', 'landscape'], darken: true },
     background: { mode: 'focus', darken: true, window: 16 / 9 },
     mail:       { mode: 'crop', shapes: ['original', 'free', 'wide', 'landscape', 'square', 'portrait'], max: 1200 },
-    share:      { mode: 'crop', shapes: ['share', 'free'], max: 1200 }
+    share:      { mode: 'crop', shapes: ['share', 'free'], max: 1200 },
+    /* THAUMA'S OWN FRAMES (photo-crop.js FRAMES), which are cropped to pixels
+       before upload: the team card, a bio photo, the home band, a library
+       picture, a Website › Photos picture. */
+    team:       { mode: 'crop', shapes: ['square'] },
+    bio:        { mode: 'crop', shapes: ['original', 'free', 'square', 'portrait', 'tall', 'landscape', 'wide'] },
+    home:       { mode: 'crop', shapes: ['cinema'] },
+    wide:       { mode: 'crop', shapes: ['wide'] },
+    site:       { mode: 'crop', shapes: ['original', 'free'] }
   };
 
   var t = function (key, fallback) {
@@ -251,7 +259,8 @@
         win.style.width = v.w * sw + 'px'; win.style.height = v.h * sh + 'px';
         ar = (v.w * W) / (v.h * H);
         prevImg.style.cssText = 'position:absolute;max-width:none;width:' + (100 / v.w) + '%;left:' + (-v.x / v.w * 100) + '%;top:' + (-v.y / v.h * 100) + '%';
-        prev.style.borderRadius = v.corners === 'round' ? '24px' : v.corners === 'soft' ? '10px' : '0';
+        /* Square where this place offers no corners: the Result is what is kept. */
+        prev.style.borderRadius = !P.corners ? '0' : v.corners === 'round' ? '24px' : v.corners === 'soft' ? '10px' : '0';
         prev.style.boxShadow = P.border && v.bw ? '0 0 0 ' + v.bw + 'px ' + borderColor(v.bc, accent, accent2) : 'none';
       } else {
         ar = P.window;

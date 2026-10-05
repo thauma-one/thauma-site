@@ -23,6 +23,7 @@ const check = (name, fn) => {
   catch (e) { console.log(`  FAIL  ${name}\n          ${e.message}`); fail++; }
 };
 const assert = (c, m) => { if (!c) throw new Error(m); };
+const eqLen = (a, n, m) => assert(a.length === n, `${m} — got ${a.length}`);
 const near = (a, b, eps, m) => assert(Math.abs(a - b) < eps, `${m} — got ${a}, want ~${b}`);
 
 console.log("the photo cropper\n");
@@ -74,21 +75,39 @@ check("a wide frame is not capped by its longest edge alone", () => {
 });
 
 /* -------------------------------------------------------- the choices offered */
+/* The choosing is photo-editor.js's (one editor for the whole console); each
+   frame names the editor purpose it opens with. */
+const pe = w.document.createElement("script");
+pe.textContent = readFileSync("src/js/photo-editor.js", "utf8");
+w.document.body.appendChild(pe);
+const PE = w.PhotoEditor;
 
-check("the offered shapes stay inside the bounds the build enforces", () => {
-  /* src/_data/team.js clamps a measured aspect to 0.4–2.5. Offering a shape
-     outside that would let somebody pick one the page then refuses. */
-  for (const c of PC.CHOICES) {
-    if (c.aspect == null) continue;
-    assert(c.aspect >= 0.4 && c.aspect <= 2.5,
-      `"${c.label}" is ${c.aspect}, outside the 0.4–2.5 the build allows`);
+check("every frame opens the shared editor with a purpose it knows", () => {
+  for (const k of Object.keys(PC.FRAMES)) {
+    const p = PC.PURPOSE[k];
+    assert(p && PE.PURPOSES[p], `frame "${k}" has no editor purpose`);
   }
 });
 
-check("the shapes are named, not numeric", () => {
-  for (const c of PC.CHOICES) {
-    assert(c.label && /[a-z]/i.test(c.label), `${c.id} has no readable label`);
+check("a fixed frame offers only its own shape, matching the frame", () => {
+  for (const [k, f] of Object.entries(PC.FRAMES)) {
+    if (f.aspect == null) continue;
+    const shapes = PE.PURPOSES[PC.PURPOSE[k]].shapes;
+    eqLen(shapes, 1, `${k} offers more than its one shape`);
+    near(PE.SHAPES[shapes[0]], f.aspect, 0.001, `${k}'s shape does not match the frame`);
   }
+});
+
+check("the offered shapes stay inside the bounds the build enforces", () => {
+  /* src/_data/team.js clamps a measured aspect to 0.4–2.5. Offering a shape
+     outside that would let somebody pick one the page then refuses; a free
+     one is trimmed into them when the pixels are made. */
+  for (const s of PE.PURPOSES.bio.shapes) {
+    const a = PE.SHAPES[s];
+    if (a == null || a === "own") continue;
+    assert(a >= 0.4 && a <= 2.5, `"${s}" is ${a}, outside the 0.4–2.5 the build allows`);
+  }
+  assert(/clampFree\(w \/ h\)/.test(src), "a free crop is not held inside the bounds");
 });
 
 /* ------------------------------------------------------ carrying the shape */
