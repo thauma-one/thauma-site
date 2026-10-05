@@ -458,7 +458,6 @@
       "[SM] Равно у ковчег!",
       "[A2] То иде у најбоље тренутке."
     ],
-    "stagerunner_wants": "Извођач жели:",
     "stagerunner_item_coffee": "Каву",
     "stagerunner_item_batteries": "АА батерије",
     "stagerunner_item_setlist": "Попис пјесама",
@@ -637,6 +636,20 @@
       "[SM] Је ли то наш транспарент? То је био наш транспарент.",
       "[LX] Видљивост спонзора никад није била већа.",
       "[PM] Молим вратите транспарент у једном комаду. Или барем у неколико великих."
+    ],
+    "stagerunner_who_talent": "Извођачу треба:",
+    "stagerunner_who_drums": "Бубњару треба:",
+    "stagerunner_who_pastor": "Пастору треба:",
+    "stagerunner_who_kids": "Дјечјем збору треба:",
+    "stagerunner_item_sticks": "Палице за бубањ",
+    "stagerunner_item_clicker": "Даљински за слајдове",
+    "stagerunner_item_juice": "Сокићи",
+    "stagerunner_highfive": "Дај пет!",
+    "stagerunner_thanks": [
+      "Хвала ти!",
+      "Спасио си ме!",
+      "Бог те благословио!",
+      "Легенда!"
     ]
   }
 }

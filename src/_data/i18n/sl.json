@@ -458,7 +458,6 @@
       "[SM] Naravnost v kovček!",
       "[A2] To gre med najboljše trenutke."
     ],
-    "stagerunner_wants": "Nastopajoči želi:",
     "stagerunner_item_coffee": "Kavo",
     "stagerunner_item_batteries": "AA baterije",
     "stagerunner_item_setlist": "Seznam pesmi",
@@ -637,6 +636,20 @@
       "[SM] Je to naš transparent? To je bil naš transparent.",
       "[LX] Vidnost sponzorja še nikoli ni bila večja.",
       "[PM] Prosim, vrnite transparent v enem kosu. Ali vsaj v nekaj velikih."
+    ],
+    "stagerunner_who_talent": "Nastopajoči potrebuje:",
+    "stagerunner_who_drums": "Bobnar potrebuje:",
+    "stagerunner_who_pastor": "Pastor potrebuje:",
+    "stagerunner_who_kids": "Otroški zbor potrebuje:",
+    "stagerunner_item_sticks": "Bobnarske palice",
+    "stagerunner_item_clicker": "Daljinec za prosojnice",
+    "stagerunner_item_juice": "Sokci",
+    "stagerunner_highfive": "Daj pet!",
+    "stagerunner_thanks": [
+      "Hvala ti!",
+      "Rešil si me!",
+      "Bog te blagoslovi!",
+      "Legenda!"
     ]
   }
 }

@@ -458,7 +458,6 @@
       "[SM] Nothing but road case!",
       "[A2] Put that on the highlight reel."
     ],
-    "stagerunner_wants": "The talent wants:",
     "stagerunner_item_coffee": "Coffee",
     "stagerunner_item_batteries": "AA batteries",
     "stagerunner_item_setlist": "The setlist",
@@ -637,6 +636,20 @@
       "[SM] Is that our banner? That was our banner.",
       "[LX] Sponsor visibility has never been higher.",
       "[PM] Please return the banner in one piece. Or at least in a few large pieces."
+    ],
+    "stagerunner_who_talent": "The talent needs:",
+    "stagerunner_who_drums": "The drummer needs:",
+    "stagerunner_who_pastor": "The pastor needs:",
+    "stagerunner_who_kids": "The kids' choir needs:",
+    "stagerunner_item_sticks": "Drumsticks",
+    "stagerunner_item_clicker": "The slide clicker",
+    "stagerunner_item_juice": "Juice boxes",
+    "stagerunner_highfive": "High five!",
+    "stagerunner_thanks": [
+      "Thank you!",
+      "You're a lifesaver!",
+      "Bless you!",
+      "Legend!"
     ]
   }
 }
