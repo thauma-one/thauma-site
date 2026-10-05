@@ -13,11 +13,16 @@
    screen itself switching off like an old CRT — because by then there is
    no page left to act on.
 
-   FOUR STAGES, then the collapse, escalating fast (Chase, 2026-10-03:
-   "1st: did I just see something? 2nd: noticeable; then Woah!"): one
-   blink; slipping letters and drifting links; the voices swapping, the big
-   words splitting into red and cyan, the picture lurching; then tearing —
-   the photos and whole sections sliding in bands. A door calls progress(door, 1..4); each
+   FOUR STAGES, then the collapse. The LETTERS lead (Chase, 2026-10-05: "I
+   like the page lettering glitching out more than the overlays … the first
+   press subtle yes, but clear that something was happening. Like a letter
+   or 2 goes way out of whack for a couple frames … then progressively
+   worse"): two letters jolt for three frames; then letters slip and stay,
+   links drift, the jolts keep coming; then the voices swap and the jolts
+   bunch up, split red and cyan, a big word slicing now and then; then the
+   photos tear and whole sections slice for a few frames. Tearing and colour
+   split ride along as short bursts; nothing filters the whole page.
+   A door calls progress(door, 1..4); each
    stage adds to the ones before it. Stop, and the page HEALS: everything
    snaps back after a moment, which is what keeps it from overstaying ("some
    elements are up long enough … to not be worth it") and makes the site feel
@@ -42,17 +47,6 @@
     '24%{clip-path:inset(0 0 0 0);translate:0 0}30%{clip-path:inset(33% 0 41% 0);translate:-6px 0}',
     '64%{clip-path:inset(71% 0 4% 0);translate:7px 0}70%{clip-path:inset(0 0 0 0);translate:0 0}}',
     '.arc-tear{animation:arc-tear 1.1s steps(1,end) infinite}',
-    /* RGB DRIFT: the page's own big words split into their red and cyan, jittering */
-    '@keyframes arc-rgb{0%,100%{text-shadow:2px 0 rgba(255,40,90,.8),-2px 0 rgba(0,230,255,.8)}33%{text-shadow:-3px 1px rgba(255,40,90,.8),3px -1px rgba(0,230,255,.8)}66%{text-shadow:1px -1px rgba(255,40,90,.8),-1px 2px rgba(0,230,255,.8)}}',
-    '.arc-rgb{animation:arc-rgb .16s steps(1,end) infinite}',
-    '.arc-rgb2{animation:arc-rgb .09s steps(1,end) infinite;letter-spacing:.02em}',
-    /* THE PICTURE GIVES: the whole page's colors lurch for a frame */
-    'html.arc-flick{filter:hue-rotate(38deg) saturate(1.7) contrast(1.15)}',
-    'html.arc-flick2{filter:invert(.08) hue-rotate(-60deg) saturate(2)}',
-    /* SCREEN TEARING: a section of the page slips sideways in bands */
-    '@keyframes arc-band{0%,55%,100%{clip-path:inset(0 0 0 0);translate:0 0}5%{clip-path:inset(20% 0 62% 0);translate:18px 0}10%{clip-path:inset(48% 0 30% 0);translate:-24px 0}',
-    '15%{clip-path:inset(0 0 0 0);translate:0 0}60%{clip-path:inset(70% 0 8% 0);translate:-14px 0}66%{clip-path:inset(8% 0 80% 0);translate:22px 0}}',
-    '.arc-band{animation:arc-band .85s steps(1,end) infinite}',
     '.arc-lit{color:var(--blue-hi,#8FEBFF);text-shadow:0 0 .5em rgba(47,216,255,.75);transition:color .3s,text-shadow .3s}',
     'html.arc-off{background:#07090E!important;overflow:hidden!important}',
     'html.arc-off body{visibility:hidden}',
@@ -164,6 +158,41 @@
     function every(ms, fn) { var id = setInterval(fn, ms); tickers.push(id); return id; }
     var GLYPHS = '#%&@$*?!/\\<>[]{}=+~^0123456789';
 
+    var BIG = '.wordmark,.dict-word,main h1,main h2,.hero-line';
+    var SECTIONS = 'main > section, main > header, header.hero, main .wrap > section';
+    function chars() { return Array.prototype.slice.call(document.querySelectorAll('.arc-ch')); }
+    function anyChar() { var cs = chars(); return cs[Math.floor(Math.random() * cs.length)]; }
+    function later(ms, fn) { var id = setTimeout(function () { if (level) fn(); }, ms); tickers.push(id); }
+    /* A JOLT: one real letter thrown far off its line for three frames —
+       big, skewed, split into red and cyan, maybe the wrong character —
+       then exactly back. An animation, so nothing is left on the letter. */
+    function jolt(c, k) {
+      if (!c || !c.animate) return;
+      var r = function () { return (Math.random() < .5 ? -1 : 1) * rnd(.5, 1); };
+      var f = function (x) {
+        var dx = r() * 22 * k, dy = r() * 14 * k, sc = 1 + rnd(.2, .8) * k, sk = r() * 18 * k;
+        return { transform: 'translate(' + dx.toFixed(1) + 'px,' + dy.toFixed(1) + 'px) scale(' + sc.toFixed(2) + ') skewX(' + sk.toFixed(1) + 'deg)',
+          textShadow: (3 * k).toFixed(1) + 'px 0 rgba(255,40,90,.85),' + (-3 * k).toFixed(1) + 'px 0 rgba(0,230,255,.85)', easing: 'step-end', offset: x };
+      };
+      c.animate([f(0), f(.34), f(.67), { transform: 'none', textShadow: 'none', offset: 1 }], { duration: 70 + 40 * k });
+      if (Math.random() < .5 && c.dataset.c) {
+        c.textContent = GLYPHS[Math.floor(Math.random() * GLYPHS.length)];
+        setTimeout(function () { if (c.isConnected) c.textContent = c.dataset.c; }, 60 + 30 * k);
+      }
+    }
+    /* A SLICE: an element tears into bands that jump sideways for a few
+       frames, then snaps whole. */
+    function slice(el, k) {
+      if (!el.animate) return;
+      var fr = [];
+      for (var i = 0; i < 4; i++) {
+        var t = rnd(0, 70), h = rnd(8, 26);
+        fr.push({ clipPath: 'inset(' + t.toFixed(0) + '% 0 ' + Math.max(0, 100 - t - h).toFixed(0) + '% 0)', translate: (rnd(-1, 1) * 26 * k).toFixed(0) + 'px 0', easing: 'step-end', offset: i / 4 });
+      }
+      fr.push({ clipPath: 'inset(0 0 0 0)', translate: '0 0', offset: 1 });
+      el.animate(fr, { duration: 170 });
+    }
+
     /* One letter rolls, like the page wheel: the old one leaves upward and
        the new one arrives from below. Used for the doors' own words too. */
     function rollChar(span, to, ms) {
@@ -177,42 +206,40 @@
 
     /* ----------------------------------------------------------- stages */
     var STAGES = [null,
-      /* 1 — DID I JUST SEE SOMETHING? (Chase, 2026-10-03: subtler than it
-         was.) One letter misfires for a blink, one slips a pixel, and then
-         nothing — easy to doubt, which is the point. */
+      /* 1 — SOMETHING HAPPENED. (Chase, 2026-10-05: "the first press …
+         subtle yes, but clear that something was happening. Like a letter or
+         2 goes way out of whack for a couple frames".) Two letters jolt far
+         off their line for three frames, then one small aftershock; nothing
+         stays moved. */
       function () {
-        var el = pick(visible(WORDS).filter(plain), 1)[0];
+        var el = pick(visible(BIG).filter(plain), 1)[0] || pick(visible(WORDS).filter(plain), 1)[0];
         if (!el) return;
-        var cs = split(el), c = cs[Math.floor(Math.random() * cs.length)], d = cs[Math.floor(Math.random() * cs.length)];
-        if (c) { var was = c.dataset.c; c.textContent = GLYPHS[Math.floor(Math.random() * GLYPHS.length)]; setTimeout(function () { if (c.isConnected) c.textContent = was; }, 110); }
-        if (d) nudge(d, 0, rnd(-1.2, 1.2), 0);
+        pick(split(el), 2).forEach(function (c) { jolt(c, 1); });
+        later(430, function () { var c = pick(split(el), 1)[0]; if (c) jolt(c, .45); });
       },
-      /* 2 — NOTICEABLE. Real letters slip off the line, links drift out of
-         it, letters misfire to the wrong character and back, something looks
-         pressed that nobody touched. */
+      /* 2 — WORSE. Letters slip off the line and stay there, links drift,
+         letters misfire to the wrong character, a button looks pressed that
+         nobody touched, and the jolts keep coming. */
       function () {
         pick(visible(WORDS).filter(plain), 3).forEach(function (el) {
-          split(el).forEach(function (c) { if (Math.random() < .16) nudge(c, rnd(-1, 1), rnd(-2.5, 2.5), rnd(-4, 4)); });
-        });
-        every(700, function () {
-          var cs = document.querySelectorAll('.arc-ch'); if (!cs.length) return;
-          var c = cs[Math.floor(Math.random() * cs.length)];
-          nudge(c, rnd(-1.5, 1.5), rnd(-3, 3), rnd(-6, 6));
+          split(el).forEach(function (c) { if (Math.random() < .14) nudge(c, rnd(-1, 1), rnd(-2.5, 2.5), rnd(-4, 4)); });
         });
         visible(LINKS).forEach(function (el) { if (Math.random() < .6) nudge(el, rnd(-4, 4), rnd(-3, 3), rnd(-1.5, 1.5)); });
-        every(240, function () {
-          var cs = document.querySelectorAll('.arc-ch'); if (!cs.length) return;
-          var c = cs[Math.floor(Math.random() * cs.length)], was = c.dataset.c;
+        every(320, function () {
+          var c = anyChar(); if (!c) return;
+          var was = c.dataset.c;
           c.textContent = GLYPHS[Math.floor(Math.random() * GLYPHS.length)];
           setTimeout(function () { if (level) c.textContent = was; }, 110);
         });
+        every(1100, function () { pick(chars(), 1 + (Math.random() < .5)).forEach(function (c) { jolt(c, .8); }); });
         var b = pick(visible('.btn,.give-btn'), 1)[0];
         if (b) { remember(b); b.classList.add('arc-pressed'); moved.add(b); }
       },
       /* 3 — THE WRONG VOICE. Blue and seafoam trade places across the whole
          site for a beat (the two-voice split is the site's grammar, so this
-         reads as the page misspeaking), and headings stutter between their
-         thin and bold weights. */
+         reads as the page misspeaking), headings stutter between their thin
+         and bold weights, and the jolts come in bunches, split red and cyan.
+         A big word slips sideways in slices now and then. */
       function () {
         var cs = getComputedStyle(root), real = {};
         TOKENS.forEach(function (p) { real[p[0]] = cs.getPropertyValue(p[0]); real[p[1]] = cs.getPropertyValue(p[1]); });
@@ -223,34 +250,22 @@
           });
         }
         [0, 130, 300, 420].forEach(function (t, i) { setTimeout(function () { if (level >= 3) swap(i % 2 === 0); }, t); });
-        every(1300, function () { swap(true); setTimeout(function () { swap(false); }, 90 + Math.random() * 120); });
-        every(170, function () {
-          var cs2 = document.querySelectorAll('.arc-ch'); if (!cs2.length) return;
-          var c = cs2[Math.floor(Math.random() * cs2.length)];
-          c.style.fontWeight = c.style.fontWeight ? '' : '600';
-        });
+        every(1500, function () { swap(true); setTimeout(function () { swap(false); }, 90 + Math.random() * 120); });
+        every(170, function () { var c = anyChar(); if (c) c.style.fontWeight = c.style.fontWeight ? '' : '600'; });
         swap.real = real; STAGES.swap = swap;
-        /* WOAH: the big words split into red and cyan, and the whole
-           picture lurches now and then */
-        pick(visible(WORDS), 4).forEach(function (el) { remember(el); el.classList.add('arc-rgb'); });
-        every(900, function () {
-          root.classList.add('arc-flick');
-          setTimeout(function () { root.classList.remove('arc-flick'); }, 60 + Math.random() * 70);
-        });
+        every(650, function () { pick(chars(), 2 + Math.floor(Math.random() * 3)).forEach(function (c) { jolt(c, 1.1); }); });
+        every(1900, function () { var w = pick(visible(BIG), 1)[0]; if (w) slice(w, 1); });
       },
-      /* 4 — TEARING. The page's own pictures and biggest words are sliced
-         into bands that jump sideways. */
+      /* 4 — TEARING. The page's own pictures slice into bands that jump
+         sideways, links come loose, whole sections tear for a few frames,
+         and the letters barely stay put. */
       function () {
         pick(visible(MEDIA).filter(function (el) { return !spared.has(el); }), 4).forEach(function (el) { remember(el); el.classList.add('arc-tear'); el.style.animationDelay = (-Math.random()).toFixed(2) + 's'; torn.add(el); });
         visible(LINKS).forEach(function (el) { nudge(el, rnd(-9, 9), rnd(-6, 6), rnd(-4, 4)); });
-        /* SCREEN TEARING: whole sections slip in bands; the color split
-           goes faster; the picture gives more often */
-        pick(visible('main > section, main > header, header.hero, main .wrap > section').filter(function (el) { return !spared.has(el) && !el.contains(Array.from(spared)[0] || null); }), 2)
-          .forEach(function (el) { remember(el); el.classList.add('arc-band'); el.style.animationDelay = (-Math.random()).toFixed(2) + 's'; torn.add(el); });
-        document.querySelectorAll('.arc-rgb').forEach(function (el) { el.classList.add('arc-rgb2'); });
-        every(520, function () {
-          root.classList.add(Math.random() < .5 ? 'arc-flick' : 'arc-flick2');
-          setTimeout(function () { root.classList.remove('arc-flick', 'arc-flick2'); }, 50 + Math.random() * 60);
+        every(300, function () { pick(chars(), 2 + Math.floor(Math.random() * 4)).forEach(function (c) { jolt(c, 1.3); }); });
+        every(1300, function () {
+          var sec = pick(visible(SECTIONS).filter(function (el) { return !spared.has(el) && !el.contains(Array.from(spared)[0] || null); }), 1)[0];
+          if (sec) slice(sec, .6);
         });
       }
     ];
@@ -269,9 +284,7 @@
       clearTimeout(healTimer);
       tickers.forEach(clearInterval); tickers = [];
       if (STAGES.swap) { STAGES.swap(false); STAGES.swap = null; }
-      torn.forEach(function (el) { el.classList.remove('arc-tear', 'arc-band'); el.style.animationDelay = ''; }); torn.clear();
-      root.classList.remove('arc-flick', 'arc-flick2');
-      document.querySelectorAll('.arc-rgb').forEach(function (el) { el.classList.remove('arc-rgb', 'arc-rgb2'); });
+      torn.forEach(function (el) { el.classList.remove('arc-tear'); el.style.animationDelay = ''; }); torn.clear();
       root.classList.add('arc-healing');
       moved.forEach(function (el) { el.style.translate = ''; el.style.rotate = ''; el.classList.remove('arc-pressed'); });
       var finish = function () {
@@ -405,10 +418,8 @@
       return ramp.reduce(function (p, k) {
         return p.then(function () { level = k; STAGES[k](); return new Promise(function (res) { setTimeout(res, 170); }); });
       }, Promise.resolve()).then(function () {
-        torn.forEach(function (el) { el.classList.remove('arc-tear', 'arc-band'); }); torn.clear();
+        torn.forEach(function (el) { el.classList.remove('arc-tear'); }); torn.clear();
         tickers.forEach(clearInterval); tickers = [];
-        root.classList.remove('arc-flick', 'arc-flick2');
-        document.querySelectorAll('.arc-rgb').forEach(function (el) { el.classList.remove('arc-rgb', 'arc-rgb2'); });
         if (STAGES.swap) { STAGES.swap(false); STAGES.swap = null; }
         var kept = opts.word ? converge(opts.word) : 0;
         return new Promise(function (res) { setTimeout(res, kept ? 1000 : 200); });
