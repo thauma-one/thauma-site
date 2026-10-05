@@ -10,7 +10,7 @@
    Real physics (Planck.js, a port of Box2D): weight, friction and
    momentum decide whether the tower holds or leans or goes. Three spare
    cases; each one that falls off the stage costs one. The score is the
-   tower's best height, in centimeters.
+   tower's best height, in centimeters, plus 10 for each steady drop.
 
    WEIGHT YOU CAN SEE, six ways at once, so no one has to read to know:
      · a weight light on the case and on the motor: green light, amber,
@@ -55,11 +55,17 @@
     var pool = n < 3 ? [0, 1, 1, 2] : n < 8 ? [0, 1, 2, 3, 4] : [1, 2, 3, 4, 5, 5];
     var t = CASES[pool[Math.floor(Math.random() * pool.length)]];
     var lb = Math.round(t.lb * rnd(.88, 1.12) / 5) * 5;
-    return Object.assign({}, t, { lb: lb, kg: lb * .4536 });
+    /* The stencil says the real pounds; the PHYSICS keeps the first
+       version's 12-120 range (Chase, 2026-10-05: "the physics feel
+       different for some reason" — real pounds made every case 1.2-1.4x
+       heavier than the light ones it lands on, and lengthened every
+       chain). */
+    return Object.assign({}, t, { lb: lb, kg: 12 + (lb - 38) / (310 - 38) * 108 });
   }
 
   A.games.loadout = {
     size: { w: W, h: H },
+    quipAt: .3,                           /* between the hook and the tower's top, clear of SPARES */
     controls: 'tap',
     needs: ['planck'],
     create: function (ctx) {
@@ -73,7 +79,7 @@
       deck.createFixture(new pl.Box(DECK_W / 2 / S, .4), { friction: .9 });
 
       var bodies = [];                    /* cases in the world: { body, t } */
-      var spares = 3, placed = 0, bestCm = 0, bonus = 0, nextTall = 200;
+      var spares = 3, placed = 0, bestCm = 0, bonus = 0, nextTall = 450;   /* bonus: a little, for steady drops */
       var pops = [];                      /* "+100 STEADY" as it floats up */
       var cam = 0, camGoal = 0;           /* how far the view has climbed, px */
       var time = 0, acc = 0, motorX = W / 2, motorDir = 1;
@@ -84,6 +90,8 @@
       /* Landings: the jolt follows weight × closing speed. */
       world.on('post-solve', function (contact, impulse) {
         var n = impulse.normalImpulses[0] || 0;
+        /* a falling case that touches anything has landed: the next may drop */
+        falling.forEach(function (r) { if (contact.getFixtureA().getBody() === r.body || contact.getFixtureB().getBody() === r.body) r.landed = true; });
         if (n > 6) {
           ctx.shake(Math.min(9, n / 7));
           if (n > 12 && time - lastThud > .12) { lastThud = time; ctx.sfx('thud', { vol: Math.min(1, n / 60) }); }
@@ -113,7 +121,9 @@
       /* faster than it was (BACKLOG §4: "faster pace"), and faster still as
          the tower grows; heavy cases still slow the motor */
       function motorSpeed() {
-        return (92 + Math.min(placed, 24) * 6) * (1 / (1 + hook.t.kg / 140));
+        /* the first version's pace (Chase, 2026-10-05: "everything
+           progresses too fast … ease you into games") */
+        return (58 + Math.min(placed, 20) * 5) * (1 / (1 + hook.t.kg / 90));
       }
       /* Is everything on the stage still? A case dropped on a tower that is
          still moving lands for fewer points (Chase: "allow a drop before
@@ -127,7 +137,9 @@
       }
 
       function drop() {
-        if (cooldown > 0 || spares <= 0) return;
+        /* one case in the air at a time; a drop onto a tower still
+           wobbling is allowed, as a rushed one */
+        if (cooldown > 0 || spares <= 0 || falling.some(function (r) { return !r.landed; })) return;
         var t = hook.t, h = hookState();
         var body = world.createDynamicBody({
           position: pl.Vec2(h.cx / S, (DECK_Y + cam - h.cy) / S),
@@ -144,7 +156,7 @@
         ctx.sfx('drop');
         hook.t = nextCase(placed + 1); hook.phase = rnd(0, 6);
         if (tier(hook.t.lb) === 2) ctx.quip('jokes_loadout_heavy', { chance: .45 });
-        cooldown = .28;
+        cooldown = .45;
       }
 
       function towerTopPx() {
@@ -193,9 +205,9 @@
           if (Math.hypot(v.x, v.y) < .12 && Math.abs(av) < .2) r.settle += dt; else r.settle = 0;
           if (r.settle < .3 && r.body.isAwake()) return true;
           placed++;
-          var p = r.body.getPosition(), gain = r.rushed ? 30 : 100;
+          var p = r.body.getPosition(), gain = r.rushed ? 0 : 10;
           bonus += gain;
-          pops.push({ x: p.x * S, wy: p.y, text: '+' + gain + ' ' + words(r.rushed ? 'loadout_rushed' : 'loadout_steady'), good: !r.rushed, life: 1.3 });
+          pops.push({ x: p.x * S, wy: p.y, text: (gain ? '+' + gain + ' ' : '') + words(r.rushed ? 'loadout_rushed' : 'loadout_steady'), good: !r.rushed, life: 1.3 });
           ctx.sfx(r.rushed ? 'hit' : 'point');
           if (lastTop && Math.abs(p.x - lastTop.x) * S < 5) ctx.quip('jokes_loadout_steady', { mood: 'good', chance: .5 });
           lastTop = { x: p.x };
@@ -204,7 +216,7 @@
         var top = towerTopPx();
         bestCm = Math.max(bestCm, Math.round(top / S * 100));
         ctx.score(bestCm + bonus);
-        if (bestCm >= nextTall) { nextTall += 200; ctx.quip('jokes_loadout_tall', { mood: 'good' }); }
+        if (bestCm >= nextTall) { nextTall += 350; ctx.quip('jokes_loadout_tall', { mood: 'good' }); }
         /* The view climbs with the tower, so its top stays mid-screen. The
            camera only: the deck and every case stay exactly where the
            physics has them (BACKLOG §4: "lowering the platform must not
