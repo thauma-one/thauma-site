@@ -64,7 +64,7 @@ import Image from "@tiptap/extension-image";
    existing draft keeps its color. Must match COLORS in newsletter.js.
    Those are the QUICK PICKS; any #rrggbb is accepted too (Chase, 2026-10-03:
    "a full palette, with a few predetermined quick picks"). */
-export const TONES = ["accent", "dim", "red", "green", "blue", "gold"];
+export const TONES = ["accent", "accent2", "dim", "red", "green", "blue", "gold"];
 export const isTone = (c) => TONES.includes(c) || /^#[0-9a-f]{6}$/i.test(String(c || ""));
 
 const Tone = Mark.create({
@@ -219,7 +219,15 @@ export function createEditor(opts) {
           HTMLAttributes: { rel: "noopener", target: "_blank" },
         },
       }),
-      Image.configure({ inline: false, allowBase64: false }),
+      /* A picture remembers its ORIGINAL (data-orig) once the photo editor
+         has made a cropped copy, so editing again starts from the original. */
+      Image.extend({
+        addAttributes() {
+          return { ...this.parent?.(), orig: { default: null,
+            parseHTML: (el) => el.getAttribute("data-orig"),
+            renderHTML: (a) => (a.orig ? { "data-orig": a.orig } : {}) } };
+        },
+      }).configure({ inline: false, allowBase64: false }),
       Tone,
       Size,
       Variable.configure({ labels: opts.varLabels || { first_name: "First name", name: "Name" } }),
@@ -252,6 +260,9 @@ export function createEditor(opts) {
       b.classList.toggle("is-on", on);
     }
     const linked = editor.isActive("link");
+    /* Edit picture is live only while a picture is selected. */
+    const picBtn = opts.toolbar.querySelector('[data-cmd="editimage"]');
+    if (picBtn) picBtn.disabled = !editor.isActive("image");
     const linkBtn = opts.toolbar.querySelector('[data-cmd="link"]');
     if (linkBtn) {
       linkBtn.setAttribute("aria-pressed", linked ? "true" : "false");

@@ -288,7 +288,7 @@ await check("every real query converts with its documented params", async () => 
     // sharing a resource with a group (0043)
     audience: "team", can_edit: 0,
     // a partner site (0044)
-    subdomain: "chaseroush", enabled: 1, dns_state: "ready", draft: "{}",
+    subdomain: "chaseroush", enabled: 1, dns_state: "ready", draft: "{}", published: "{}",
     day: "2026-09-29", est: 12.5, cap: 1500, actual: 3.2,
     // the language catalog
     code: "sl", native_name: "slovenščina",
@@ -367,6 +367,9 @@ await check("every real query converts with its documented params", async () => 
   // Queries with nothing to scope by. languages_all is the organization's
   // catalog; the admin ones are unscoped BY DESIGN — see admin.test.mjs.
   const NO_PARAMS = new Set(["languages_all", "admin_users", "admin_partners", "partner_site_all", "partner_site_needing_dns",
+                             // What still names a stored file is asked of
+                             // everything (media-cleanup.js): keys are unique.
+                             "media_refs_sites", "media_refs_mailings", "media_refs_attachments", "media_refs_resources",
                              // Translation notes are organization-wide and
                              // never about a person or a partner: the whole
                              // set is the answer. The endpoint checks roles.

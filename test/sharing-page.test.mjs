@@ -88,7 +88,7 @@ async function boot({ hash = "", admin = true } = {}) {
   w.StaffActing = () => {}; w.StaffIdentity = () => {};
   w.console.error = () => {};
   w.scrollTo = () => {};
-  for (const f of ["staff-i18n.js", "staff.js", "staff-sharing.js"]) {
+  for (const f of ["staff-i18n.js", "staff.js", "color-pair.js", "staff-sharing.js"]) {
     w.eval(readFileSync("src/js/" + f, "utf8"));
   }
   w.StaffToast = () => {};
@@ -307,6 +307,7 @@ await check("Sharing is the ministry's alone; Thauma's forms are in Website › 
   const w = dom.window;
   w.__loc = { search: w.location.search, hash: w.location.hash, pathname: w.location.pathname,
               replace: (u) => { went = u; } };
+  w.eval(readFileSync("src/js/color-pair.js", "utf8"));
   w.eval("(function (location) {" + readFileSync("src/js/staff-sharing.js", "utf8") + "\n})(window.__loc);");
   eq(went, "/admin/website/forms/", "an old link to Thauma's forms");
 });

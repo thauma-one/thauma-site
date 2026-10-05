@@ -76,6 +76,8 @@ jobs:
         run: node test/mailing-views.test.mjs
       - name: Test · mail-drafts
         run: node test/mail-drafts.test.mjs
+      - name: Test · mail-tags
+        run: node test/mail-tags.test.mjs
       - name: Test · photo-crop
         run: node test/photo-crop.test.mjs
       - name: Test · us-english
@@ -177,6 +179,9 @@ jobs:
       - name: Test · workers/mail
         working-directory: workers
         run: node test/mail.test.mjs
+      - name: Test · workers/media-cleanup
+        working-directory: workers
+        run: node test/media-cleanup.test.mjs
       - name: Test · workers/media
         working-directory: workers
         run: node test/media.test.mjs
@@ -195,6 +200,9 @@ jobs:
       - name: Test · workers/partner-api
         working-directory: workers
         run: node test/partner-api.test.mjs
+      - name: Test · workers/resend-webhook
+        working-directory: workers
+        run: node test/resend-webhook.test.mjs
       - name: Test · workers/signup
         working-directory: workers
         run: node test/signup.test.mjs

@@ -33,8 +33,8 @@ import { createDb } from "./lib/db.js";
 import { json, readJson } from "./lib/store.js";
 import { partnerFor } from "./staff-milestones.js";
 import { ensureSiteDns, removeSiteDns } from "./lib/site-dns.js";
-import { cleanDoc, starter, subdomainFrom, validSubdomain, PAGES, word } from "./site/model.js";
-import { lookFor } from "./embed-colour.js";
+import { cleanDoc, starter, subdomainFrom, validSubdomain, PAGES, word, placeholders } from "./site/model.js";
+import { lookFor, TURNS } from "./embed-colour.js";
 import { changedAnswer } from "./lib/fresh.js";
 
 const MAX_DRAFT = 400000;
@@ -165,8 +165,15 @@ export default {
            Editing ⇄ Reference (Chase, 2026-10-03). */
         page_names: Object.fromEntries(catalog.map((l) =>
           [l.code, Object.fromEntries(PAGES.map((id) => [id, word(l.code, id)]))])),
-        /* The ministry's colors (Sharing), which the site wears. */
-        theme: { accent: theme.accent, accent2: theme.accent2 },
+        /* What an empty field suggests, per language and section (model.js
+           placeholders): shown in the editor only, never saved. */
+        placeholders: Object.fromEntries(catalog.map((l) =>
+          [l.code, placeholders(l.code, partner.display_name)])),
+        /* The ministry's colors (Sharing), which the site wears; `pair` as
+           stored, for the shared picker (color-pair.js). */
+        theme: { accent: theme.accent, accent2: theme.accent2,
+                 pair: { accent: theme.accent, accent2: (face && face.embed_accent2) || null,
+                         turn: face && face.embed_turn != null ? face.embed_turn : null } },
         can: { edit: isEditor, owner: isOwner },
         owner: owner ? { name: owner.name } : null,
         editors: isOwner ? editors : editors.map((e) => ({ user_id: e.user_id, name: e.name })),
@@ -210,6 +217,33 @@ export default {
     if (action === "publish") {
       if (!isEditor) return onlyEditors();
       await db.query("partner_site_publish", { partner_id: partner.id, user_id: me.user_id, now });
+      return answer();
+    }
+    /* THE MINISTRY'S COLORS, from Design (Chase, 2026-10-04: Sharing and the
+       Site Creator should "stay in sync"). One pair, the Sharing page's,
+       saved at once like there, so it is never part of a draft. The site's
+       own accent, kept from before, goes from both copies: from now on the
+       site wears the ministry's. */
+    if (action === "colors") {
+      if (!isEditor) return onlyEditors();
+      const c = body.colors || {};
+      const hex = (v) => (v == null || v === "" ? null : /^#[0-9a-fA-F]{6}$/.test(String(v)) ? String(v).toUpperCase() : undefined);
+      const accent = hex(c.accent), accent2 = hex(c.accent2);
+      if (!accent || accent2 === undefined) return json({ error: "A color must be a six-digit hex code, like #6D4AFF." }, 400);
+      const turn = c.turn == null || accent2 ? null : TURNS.includes(Number(c.turn)) && Number(c.turn) !== -33 ? Number(c.turn) : null;
+      await db.query("partner_colors_set", { partner_id: partner.id, embed_accent: accent, embed_accent2: accent2, embed_turn: turn, now });
+      const follow = (raw) => {
+        if (!raw) return raw;
+        const d = JSON.parse(raw);
+        if (d.design && d.design.colors && d.design.colors.accent) d.design.colors.accent = null;
+        return JSON.stringify(d);
+      };
+      await db.query("partner_site_docs_set", { partner_id: partner.id, draft: follow(row.draft), published: follow(row.published) });
+      await db.query("audit_write", {
+        id: "a_" + crypto.randomUUID().replace(/-/g, "").slice(0, 20), now, user_id: actor.email || user.email,
+        partner_id: partner.id, action: "update", entity: "partner.embed", entity_id: partner.id,
+        detail: JSON.stringify({ accent, accent2, turn, from: "site" }),
+      }).catch(() => {});
       return answer();
     }
     if (action === "discard") {

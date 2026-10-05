@@ -1427,11 +1427,12 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
   border:1px solid rgba(255,255,255,.2);background:currentColor}
 .cp-tone[data-tone=""] span{background:linear-gradient(135deg,transparent 45%,var(--dim,#8a93a3) 46% 54%,transparent 55%)}
 .cp-tone[data-tone="accent"],.cp-swatch[data-tone="accent"] span{color:var(--voice-tech)}
+.cp-tone[data-tone="accent2"],.cp-swatch[data-tone="accent2"] span{color:var(--voice-ministry,#5CF2C4)}
 [data-tone="dim"]{color:#9a9aad} [data-tone="red"]{color:#FF8A80}
 [data-tone="green"]{color:#6FE3A6} [data-tone="blue"]{color:#8DB8FF} [data-tone="gold"]{color:#F2C14E}
 .cp-row>.cp-tone[aria-pressed="true"]{background:var(--line)}
 .cp-row>.cp-tone[aria-pressed="true"] span{outline:2px solid var(--text);outline-offset:2px}
-.cp-swatch[data-tone]:not([data-tone=""]):not([data-tone="accent"]) span{background:currentColor}
+.cp-swatch[data-tone]:not([data-tone=""]):not([data-tone="accent"]):not([data-tone="accent2"]) span{background:currentColor}
 /* ANY COLOR: the browser's own picker, drawn as one more swatch. Its well is
    a rainbow until a color is picked, then that color. */
 .cp-tone-any{display:inline-flex;align-items:center;cursor:pointer;position:relative}
@@ -1622,7 +1623,7 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
 .subs-email{display:block;color:var(--text);overflow-wrap:anywhere}
 .subs-name{display:block;color:var(--dim,#8a93a3);font-size:11.5px;margin-top:1px}
 .subs-when{color:var(--dim,#8a93a3);font-variant-numeric:tabular-nums;white-space:nowrap}
-.subs-tags{color:var(--dim,#8a93a3);font-size:12px}
+.subs-tagcell{color:var(--dim,#8a93a3);font-size:12px}
 .subs-empty{padding:26px 12px;text-align:center;color:var(--dim,#8a93a3)}
 
 /* A dot rather than a colored word: at twenty-five rows the eye finds a
@@ -1663,7 +1664,8 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
   clip:rect(0 0 0 0);white-space:nowrap;border:0}
 
 @media (max-width:760px){
-  .subs-tags,.subs th:nth-child(4){display:none}
+  /* Joined goes on a phone; the tags stay, since they are edited here. */
+  .subs th:nth-child(4),.subs td.subs-when{display:none}
   .subs-range{margin-left:0;width:100%}
 }
 
@@ -1676,6 +1678,20 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
   border-radius:var(--radius);background:var(--bg2)}
 .subs-tags .hint{display:block;margin-bottom:12px;line-height:1.5;max-width:66ch}
 .subs-tag{display:flex;align-items:center;gap:12px;margin-bottom:7px}
+/* One person's tags as chips on their row (staff-mailing.js tagChips):
+   the name filters, × takes it off, + offers the rest or makes a new one. */
+.subs-chips{display:flex;flex-wrap:wrap;align-items:center;gap:5px}
+.subs-chip{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:999px;background:var(--bg2)}
+.subs-chip-name{padding:3px 4px 3px 10px;font-size:12px;color:var(--text);background:none;border:0;cursor:pointer}
+.subs-chip-name:hover{color:var(--voice-tech)}
+.subs-chip-x{padding:3px 8px 3px 4px;font-size:13px;line-height:1;color:var(--dim);background:none;border:0;cursor:pointer}
+.subs-chip-x:hover{color:var(--text)}
+.subs-chip-plus{inline-size:24px;block-size:24px;border:1px dashed var(--line);border-radius:50%;color:var(--dim);background:none;cursor:pointer;font-size:14px;line-height:1}
+.subs-chip-plus:hover{border-color:var(--voice-tech);color:var(--voice-tech)}
+.subs-tagpop{position:absolute;z-index:300;display:flex;flex-wrap:wrap;gap:6px;max-width:300px;padding:10px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 12px 28px -10px rgba(0,0,0,.7)}
+.subs-tagpop .subs-chip-name{padding:4px 11px;border:1px solid var(--line);border-radius:999px}
+.subs-tagpop form{flex:1 1 100%}
+.subs-tagpop input{width:100%;font-size:13px;padding:6px 9px}
 .subs-tag-name{flex:0 1 240px;min-width:0;font-size:13px;padding:6px 9px}
 .subs-tag-n{flex:1;font-size:11px;color:var(--dim);font-variant-numeric:tabular-nums}
 .subs-tag .del{background:none;border:0;color:var(--dim);font-size:17px;line-height:1;
@@ -1689,14 +1705,6 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
 
 /* In the edit row, as ticks rather than a second screen — the person is right
    there and tagging them is one of the two things this row is for. */
-.subs-edit-tags{flex:1 1 100%;display:flex;align-items:center;gap:12px;flex-wrap:wrap;
-  padding-top:4px}
-.subs-edit-tags>span{font-size:10px;font-family:var(--font-display);
-  font-weight:var(--w-bold);letter-spacing:var(--ls-caps);text-transform:uppercase;
-  color:var(--dim)}
-.subs-edit-tag{display:flex;align-items:center;gap:6px;font-size:12.5px;
-  color:var(--text);cursor:pointer}
-.subs-edit-tag input{width:14px;height:14px;accent-color:var(--voice-tech);cursor:pointer}
 
 /* ---- acting on many at once ----
    The bar appears only when something is selected, so a row of destructive
@@ -2589,10 +2597,15 @@ html.has-ai .lang-ai{display:inline-block}
 .ws-preview[hidden]{display:none}
 .ws-preview-head{display:flex;justify-content:space-between;font-size:12px;color:var(--dim);text-transform:uppercase;letter-spacing:.14em}
 .ws-preview-frame{height:min(78vh,760px);overflow:hidden;border:1px solid var(--line);border-radius:6px;background:#000}
-.ws-preview-frame iframe{width:250%;height:250%;border:0;transform:scale(.4);transform-origin:0 0}
+/* ALWAYS A REAL DESKTOP, shrunk to fit (Chase, 2026-10-04: the preview was
+   "this weird hybrid between desktop and mobile"). It was 250% of the pane,
+   so a narrow pane gave the site ~1100px: below the width where a long menu
+   folds into the hamburger, above the phone layout. Now 1280px wide, scaled
+   by --ws-scale, which staff-site.js measures from the pane. */
+.ws-preview-frame iframe{width:1280px;height:calc(100% / var(--ws-scale,.4));border:0;transform:scale(var(--ws-scale,.4));transform-origin:0 0}
 /* The Footer tab shows the footer alone, so the frame is only as tall as one. */
 .ws-preview.only-foot .ws-preview-frame{height:170px}
-.ws-preview.only-foot .ws-preview-frame iframe{width:170%;height:170%;transform:scale(.5883)}
+
 .ws-add{max-width:980px;width:calc(100% - 32px)}
 .ws-add-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:16px}
 .ws-add-head h3{margin:0;font:100 22px var(--font-display)}.ws-add-head h3 b{font-weight:600}
@@ -2685,6 +2698,12 @@ html.has-ai .ai-one{display:inline-flex;align-items:center;justify-content:cente
 .ws-checks{display:flex;gap:16px;flex-wrap:wrap}
 .ws-bigphoto{max-width:420px;aspect-ratio:16/10;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;display:flex;align-items:center;justify-content:center;background:var(--bg)}
 .ws-bigphoto img{width:100%;height:100%;object-fit:cover}
+.ws-bigphoto{position:relative}
+.ws-bigphoto>i{position:absolute;inset:0;background:#000;pointer-events:none}
+/* A crop: the box takes the crop's shape and the photo is placed in it, as
+   on the site (render.js .pe-crop); capped so a tall crop stays on screen. */
+.ws-bigphoto.is-crop{display:block;border:0;overflow:hidden;max-width:none}
+.ws-bigphoto.is-crop img{position:absolute;height:auto;max-width:none;object-fit:fill}
 .ws-linkrows{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--radius);background:var(--panel)}
 .ws-linkrow{display:flex;align-items:center;gap:12px;padding:12px 14px;border-top:1px solid var(--line)}
 .ws-linkrow:first-child{border-top:0}
@@ -2704,6 +2723,11 @@ html.has-ai .ai-one{display:inline-flex;align-items:center;justify-content:cente
 .rt-heading{font:100 22px/1.3 var(--font-display)}.rt-heading b{font-weight:600}
 .rt-text{min-height:96px}
 .rt[contenteditable="false"]{opacity:.7;cursor:default}
+/* The suggestion in an empty box, styled like a field's placeholder. A box
+   emptied by deleting keeps a lone <br>, which :empty does not match. */
+.rt[data-ph]:empty::before,.rt[data-ph]:has(>br:only-child)::before{content:attr(data-ph);
+  color:var(--dim);opacity:.55;pointer-events:none}
+.rt[data-ph]:has(>br:only-child)>br{display:none}
 .ws-rfld{display:flex;flex-direction:column;gap:6px}
 .ws-fmt{position:absolute;z-index:200;display:flex;background:#EDF2F8;border-radius:6px;box-shadow:0 10px 24px -8px rgba(0,0,0,.7);overflow:hidden}
 .ws-fmt[hidden]{display:none}
@@ -2712,6 +2736,31 @@ html.has-ai .ai-one{display:inline-flex;align-items:center;justify-content:cente
 .ws-fmt button[aria-pressed="true"]{background:var(--voice-tech)}
 .ws-fmt .ws-fmt-italic{font:italic 500 15px Georgia,serif}.ws-fmt .ws-fmt-underline{text-decoration:underline}
 .ws-fmt button[data-fmt="link"]{border-left:1px solid rgba(0,0,0,.12)}
+/* Size and color (2026-10-03): each opens a row of choices under the bar. */
+.ws-fmt{flex-wrap:wrap;max-width:320px}
+.ws-fmt .ws-fmt-size{border-left:1px solid rgba(0,0,0,.12);font:600 13px var(--font-body)}
+.ws-fmt .ws-fmt-color i{display:block;width:14px;height:14px;border-radius:50%;border:1px solid rgba(0,0,0,.25);background:#0B0F15}
+.ws-fmt .ws-fmt-color i.is-none{background:linear-gradient(135deg,transparent 45%,#5B6573 46% 54%,transparent 55%)}
+.ws-fmt button[aria-expanded="true"]{background:rgba(0,0,0,.1)}
+.ws-fmt-row{flex:1 0 100%;display:flex;flex-wrap:wrap;gap:2px;padding:4px;border-top:1px solid rgba(0,0,0,.12)}
+.ws-fmt-row[hidden]{display:none}
+.ws-fmt-row button{width:auto;padding:0 10px;font-weight:500}
+.ws-fmt-row .ws-fmt-sz-sm{font-size:12px}.ws-fmt-row .ws-fmt-sz-lg{font-size:16px}.ws-fmt-row .ws-fmt-sz-xl{font-size:19px}
+.ws-fmt .ws-fmt-tone{width:30px;padding:0;display:flex;align-items:center;justify-content:center;cursor:pointer;height:34px}
+.ws-fmt .ws-fmt-tone i{display:block;width:16px;height:16px;border-radius:50%;border:1px solid rgba(0,0,0,.25);background:#0B0F15}
+.ws-fmt .ws-fmt-tone[data-fmt-c=""] i{background:linear-gradient(135deg,transparent 45%,#5B6573 46% 54%,transparent 55%)}
+.ws-fmt .ws-fmt-tone[data-fmt-c="accent"] i{background:var(--ws-acc,var(--voice-tech))}
+.ws-fmt .ws-fmt-tone[aria-pressed="true"] i,.ws-fmt-any.is-on input{outline:2px solid #0B0F15;outline-offset:2px}
+.ws-fmt-any input{width:18px;height:18px;padding:0;border:1px solid rgba(0,0,0,.25);border-radius:50%;cursor:pointer;
+  background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red);-webkit-appearance:none;appearance:none;overflow:hidden}
+.ws-fmt-any input::-webkit-color-swatch-wrapper{padding:0}
+.ws-fmt-any input::-webkit-color-swatch{border:0;border-radius:50%;opacity:0}
+.ws-fmt-any input::-moz-color-swatch{border:0;border-radius:50%;opacity:0}
+.ws-fmt-any.is-on input::-webkit-color-swatch,.ws-fmt-any.is-on input::-moz-color-swatch{opacity:1}
+/* In the boxes, words wear their size and color as the site will. */
+.rt [data-sz="sm"]{font-size:.82em}.rt [data-sz="lg"]{font-size:1.25em}.rt [data-sz="xl"]{font-size:1.6em}
+.rt [data-c="accent"]{color:var(--ws-acc,var(--voice-tech))}.rt [data-c="dim"]{color:#9AA6B6}.rt [data-c="red"]{color:#FF8A80}
+.rt [data-c="green"]{color:#6FE3A6}.rt [data-c="blue"]{color:#8DB8FF}.rt [data-c="gold"]{color:#F2C14E}
 @media (max-width:760px){.ws-sketch.ws-sketch-sm{width:84px;height:48px}}
 /* Inside a stacked field the link picker is a row, not a 320px-tall column. */
 .ws-field .ws-link{flex:0 0 auto;align-items:center}
@@ -2763,5 +2812,96 @@ html.has-ai .ai-one{display:inline-flex;align-items:center;justify-content:cente
 .ws-socbox b{font-weight:600;min-width:80px}.ws-socbox input{flex:1 1 auto;min-width:0}
 .ws-soc-hint{margin:10px 0 0}
 .ws-head-row{display:flex;align-items:center;justify-content:space-between;margin-top:26px}
-.ws-attop{margin-top:20px}
 .ws-stack.has-open{padding-bottom:55vh}
+
+/* ---- Navigation tab samples (2026-10-04) ----
+   The page you are on, drawn the way the site draws it; "Its color" switches
+   the sample between white and the site's accent (--ws-acc). */
+.ws-navs{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+.ws-navs{--nav-tint:var(--ws-acc,#1AE4FF)}.ws-navs[data-tint="white"]{--nav-tint:#FFFFFF}
+.ws-nav-sample{display:flex;gap:12px;align-items:center;height:56px;padding:0 14px;background:#0D0D0D;color:#9A9A9A;font-size:12px}
+.ws-nav-sample .on{color:var(--nav-tint);position:relative}
+.ws-nav-sample[data-cur="under"] .on{border-bottom:2px solid var(--nav-tint);padding-bottom:2px}
+.ws-nav-sample[data-cur="grow"] .on{color:#EDEDED}
+.ws-nav-sample[data-cur="grow"] .on::after{content:"";position:absolute;left:0;right:0;bottom:-5px;height:2px;background:var(--nav-tint)}
+.ws-nav-sample[data-cur="pill"] .on{color:#EDEDED;background:color-mix(in srgb,var(--nav-tint) 18%,transparent);padding:4px 9px;margin:-4px -9px;border-radius:999px}
+.ws-phone-sample{display:block;position:relative;height:56px;background:#0D0D0D}
+.ws-phone-sample i{position:absolute;background:#2A2A2A;border-radius:3px}
+.ws-phone-sample[data-phone="drop"] i{left:8px;right:8px;top:8px;height:28px}
+.ws-phone-sample[data-phone="full"] i{inset:8px}
+.ws-phone-sample[data-phone="drawer"] i{right:8px;top:8px;bottom:8px;width:44%}
+/* A Custom Cards row's number, as the site draws it. */
+.ws-cnum{flex:none;width:22px;height:22px;border-radius:50%;background:var(--ws-acc,#1AE4FF);color:#0B0F15;
+  display:inline-flex;align-items:center;justify-content:center;font:700 11px var(--font-body)}
+
+/* ---- the photo editor (photo-editor.js, 2026-10-04) ----
+   A dialog that fits the screen: the photo as large as it can be beside a
+   quiet column of controls that scrolls on its own, the actions along the
+   foot. On a phone they stack. */
+html.pe-open{overflow:hidden}
+.pe-back{position:fixed;inset:0;z-index:200;background:rgba(5,8,12,.82);display:flex;align-items:center;justify-content:center;padding:16px}
+.pe{display:flex;flex-direction:column;width:min(1080px,100%);max-height:calc(100dvh - 32px);background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:0 30px 80px rgba(0,0,0,.5);overflow:hidden}
+.pe-head{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-bottom:1px solid var(--line)}
+.pe-head h3{margin:0;font:var(--w-hair,200) 19px var(--font-display)}
+.pe-x{background:none;border:0;color:var(--dim);font-size:26px;line-height:1;cursor:pointer;padding:2px 6px}.pe-x:hover{color:var(--text)}
+.pe-body{display:flex;gap:24px;padding:18px 20px;min-height:0;flex:1 1 auto}
+.pe-stage{position:relative;flex:0 0 auto;align-self:center;margin:0 auto;touch-action:none;user-select:none;line-height:0}
+.pe-img{display:block;max-width:min(680px,calc(100vw - 440px));max-height:calc(100dvh - 190px);-webkit-user-drag:none;pointer-events:none;border-radius:4px}
+.pe-win{position:absolute;box-shadow:0 0 0 9999px rgba(0,0,0,.6);outline:1.5px solid var(--voice-tech);cursor:move}
+.pe-stage{overflow:hidden;border-radius:4px}
+.pe-h{position:absolute;width:16px;height:16px;background:var(--voice-tech);border:3px solid #0B0F15;border-radius:50%}
+.pe-nw{left:-8px;top:-8px;cursor:nwse-resize}.pe-ne{right:-8px;top:-8px;cursor:nesw-resize}
+.pe-sw{left:-8px;bottom:-8px;cursor:nesw-resize}.pe-se{right:-8px;bottom:-8px;cursor:nwse-resize}
+.pe-n,.pe-s{left:50%;width:30px;height:8px;margin-left:-15px;border-radius:4px;border-width:2px;cursor:ns-resize}
+.pe-n{top:-4px}.pe-s{bottom:-4px}
+.pe-e,.pe-w{top:50%;width:8px;height:30px;margin-top:-15px;border-radius:4px;border-width:2px;cursor:ew-resize}
+.pe-e{right:-4px}.pe-w{left:-4px}
+.pe-dot{position:absolute;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;background:var(--voice-tech);box-shadow:0 0 0 3px rgba(0,0,0,.5);pointer-events:none}
+.pe-side{flex:0 0 280px;display:flex;flex-direction:column;gap:16px;overflow-y:auto;max-height:calc(100dvh - 180px);padding-right:4px}
+.pe-prevwrap{display:flex;align-items:center;justify-content:center;height:170px}
+.pe-prev{position:relative;overflow:hidden;background:#000}
+.pe-prev img{display:block}.pe-shade{position:absolute;inset:0;pointer-events:none}
+.pe-row{display:flex;flex-direction:column;gap:7px}
+.pe-lbl{font-size:11px;color:var(--dim);letter-spacing:.08em}
+.pe-chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.pe-chip{font:inherit;font-size:13px;padding:5px 11px;border-radius:999px;border:1px solid var(--line);background:none;color:var(--text);cursor:pointer}
+.pe-chip[aria-pressed="true"]{border-color:var(--voice-tech);background:rgba(47,216,255,.12)}
+.pe-swatch{width:24px;height:24px;padding:0;background:var(--sw)}
+.pe-swatch[aria-pressed="true"]{background:var(--sw);box-shadow:0 0 0 2px var(--panel),0 0 0 4px var(--voice-tech)}
+.pe-any{position:relative;width:24px;height:24px;padding:0;overflow:hidden;background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red)}
+.pe-any input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.pe-step{display:flex;align-items:center;gap:6px}
+.pe-step .pe-chip{width:30px;height:30px;padding:0;font-size:16px;line-height:1}
+.pe-step input{width:58px;font:inherit;font-size:13px;text-align:center;padding:5px;border:1px solid var(--line);border-radius:6px;background:none;color:var(--text)}
+.pe-unit{font-size:12px;color:var(--dim)}
+.pe-row input[type=range]{width:100%;accent-color:var(--voice-tech)}
+.pe-acts{display:flex;gap:8px;align-items:center;padding:12px 20px;border-top:1px solid var(--line)}
+.pe-remove{margin-right:auto;color:var(--crit,#FF5A6E)}
+.pe-acts .ghost-btn:first-of-type{margin-left:auto}
+.pe-remove + .ghost-btn{margin-left:0}
+@media (max-width:760px){.pe-body{flex-direction:column;overflow-y:auto}.pe-stage{flex-shrink:0}.pe-img{max-width:calc(100vw - 72px);max-height:46dvh}
+  .pe-side{flex:none;max-height:none;overflow:visible}
+  .pe-acts{flex-wrap:wrap}.pe-remove{flex-basis:100%;margin:0 0 4px}.pe-acts .ghost-btn:first-of-type{margin-left:0}.pe-acts .solid-btn{margin-left:auto}}
+
+/* ---- Advanced: search and sharing previews (2026-10-04) ---- */
+.ws-adv-previews{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;margin-bottom:18px}
+.ws-serp{display:flex;flex-direction:column;gap:4px;padding:16px 18px;background:#fff;border-radius:10px;color:#202124;font-family:Arial,sans-serif}
+.ws-serp .ws-lbl2{color:#70757a}
+.ws-serp-url{font-size:13px;color:#202124}
+.ws-serp-title{font-size:19px;font-weight:400;color:#1a0dab;line-height:1.3}
+.ws-serp-desc{font-size:14px;color:#4d5156;line-height:1.55;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ws-sharecard{display:flex;flex-direction:column;gap:6px}
+.ws-sc{max-width:340px;border-radius:16px;overflow:hidden;background:#E9E9EB;color:#111;font-family:-apple-system,system-ui,sans-serif}
+.ws-sc-pic{display:block;aspect-ratio:1.91;background:#ccc center/cover no-repeat}
+.ws-sc b{display:block;padding:10px 14px 2px;font-size:14px;line-height:1.3}
+.ws-sc span:last-child{display:block;padding:0 14px 12px;font-size:12px;color:#6b6b70}
+.ws-count{color:var(--dim);font-weight:400}
+.ws-pagepick select{font:inherit}
+/* − / + in the format bar's size row, with the size between them. */
+.ws-fmt-step{display:inline-flex;align-items:center;gap:2px;margin-left:6px;padding-left:8px;border-left:1px solid var(--line)}
+.ws-fmt-step button{min-width:30px;font-size:16px}
+.ws-fmt-step input{width:52px;text-align:center;font:600 14px var(--font-body);padding:4px;border:1px solid rgba(0,0,0,.25);border-radius:6px;background:#fff;color:#0B0F15;-moz-appearance:textfield}
+.ws-fmt-step input:focus{outline:2px solid var(--voice-tech);outline-offset:0}
+.ws-fmt-step input::-webkit-inner-spin-button{display:none}
+/* A sent newsletter's bounced copies (resend-webhook.js). */
+.ml-bounced{font-weight:600;color:var(--warn)}

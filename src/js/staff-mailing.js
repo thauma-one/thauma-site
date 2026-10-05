@@ -160,7 +160,12 @@
         : null;
       var meta = esc(l.name) + ' · ' +
         esc(m.finished_at ? new Date(m.finished_at).toLocaleDateString() : '') +
-        (m.sent_count ? ' · ' + esc(fill('ml.sentTo', { n: m.sent_count })) : '');
+        (m.sent_count ? ' · ' + esc(fill('ml.sentTo', { n: m.sent_count })) : '') +
+        /* What became of the copies (resend-webhook.js), only what happened:
+           a bounce in the warning color, opens and clicks once tracked. */
+        (m.bounced ? ' · <b class="ml-bounced">' + esc(fill('ml.bounced', { n: m.bounced })) + '</b>' : '') +
+        (m.opened ? ' · ' + esc(fill('ml.opened', { n: m.opened })) : '') +
+        (m.clicked ? ' · ' + esc(fill('ml.clicked', { n: m.clicked })) : '');
       var inner = '<span class="ml-sentall-subject">' + esc(m.subject) + '</span>' +
         '<span class="ml-sentall-meta">' + meta +
           (link ? '' : ' · <i>' + esc(tr('ml.notPublished')) + '</i>') + '</span>';
@@ -605,7 +610,7 @@
         '<td><span class="subs-dot s-' + esc(s.status) + '"></span>' +
           esc(tr('ml.status.' + s.status)) + '</td>' +
         '<td class="subs-when">' + esc((s.subscribed_at || '').slice(0, 10)) + '</td>' +
-        '<td class="subs-tags">' + esc(s.tags || '') + '</td>' +
+        '<td class="subs-tagcell">' + tagChips(s) + '</td>' +
         '<td class="subs-acts">' +
           '<button type="button" class="subs-ico" data-editsub="' + esc(s.id) + '" ' +
             'title="' + esc(tr('ml.edit')) + '" aria-label="' +
@@ -638,6 +643,80 @@
     if (window.StaffI18n) window.StaffI18n.apply($('mlSubscribers'));
     renderBulk();
   }
+
+  /* ---- one person's tags, on their row --------------------------------
+     CHIPS, NOT A FORM (BACKLOG §1, tags "not user friendly"). Tagging one
+     person used to mean the pencil, a row of checkboxes and Save — and a
+     tag had to be made first in another panel. Now: a tag is a chip; its ×
+     takes it off; pressing it shows everyone with it; + offers the others
+     and makes a new one from what is typed. Each change saves at once. */
+  function tagIdsOf(s) { return String(s.tag_ids || '').split(',').filter(Boolean); }
+  function tagById(id) { return (state.tags || []).filter(function (t) { return t.id === id; })[0]; }
+  function tagChips(s) {
+    return '<span class="subs-chips">' + tagIdsOf(s).map(function (id) {
+      var t = tagById(id);
+      if (!t) return '';
+      return '<span class="subs-chip"><button type="button" class="subs-chip-name" data-tag-filter="' + esc(id) + '"' +
+          ' title="' + esc(fill('ml.tagFilterBy', { name: t.name })) + '">' + esc(t.name) + '</button>' +
+        '<button type="button" class="subs-chip-x" data-tag-off="' + esc(s.id) + ':' + esc(id) + '"' +
+          ' aria-label="' + esc(fill('ml.tagOff', { name: t.name })) + '">×</button></span>';
+    }).join('') +
+      '<button type="button" class="subs-chip-plus" data-tag-plus="' + esc(s.id) + '"' +
+        ' aria-label="' + esc(tr('ml.tagOn')) + '" title="' + esc(tr('ml.tagOn')) + '">+</button></span>';
+  }
+  async function setTags(subId, ids) {
+    var body = await postJson({ action: 'subscriber-tags', id: subId, tags: ids });
+    if (body.error) { toast(body.error, 'bad'); return; }
+    var sub = state.subscribers.filter(function (x) { return x.id === subId; })[0];
+    if (sub) {
+      sub.tag_ids = (body.tags || []).map(function (t) { return t.id; }).join(',');
+      var cell = document.querySelector('[data-subrow="' + subId + '"] .subs-tagcell');
+      if (cell) cell.innerHTML = tagChips(sub);
+    }
+    /* The counts beside each tag in the filter and the manager. */
+    if (body.all_tags) { state.tags = body.all_tags; renderTags(); }
+  }
+  var tagPop = null;
+  function closeTagPop() { if (tagPop) { tagPop.remove(); tagPop = null; } }
+  function openTagPop(btn, subId) {
+    closeTagPop();
+    var sub = state.subscribers.filter(function (x) { return x.id === subId; })[0];
+    if (!sub) return;
+    var have = tagIdsOf(sub);
+    tagPop = document.createElement('div');
+    tagPop.className = 'subs-tagpop';
+    tagPop.innerHTML = (state.tags || []).filter(function (t) { return have.indexOf(t.id) < 0; }).map(function (t) {
+      return '<button type="button" class="subs-chip-name" data-tag-on="' + esc(t.id) + '">' + esc(t.name) + '</button>';
+    }).join('') +
+      '<form data-tag-new><input type="text" maxlength="60" placeholder="' + esc(tr('ml.tagNew')) + '" aria-label="' + esc(tr('ml.tagNew')) + '"></form>';
+    document.body.appendChild(tagPop);
+    var r = btn.getBoundingClientRect();
+    tagPop.style.top = (window.scrollY + r.bottom + 6) + 'px';
+    tagPop.style.left = Math.max(8, Math.min(window.scrollX + r.left, window.scrollX + document.documentElement.clientWidth - tagPop.offsetWidth - 8)) + 'px';
+    tagPop.addEventListener('click', function (e) {
+      var on = e.target.closest('[data-tag-on]');
+      if (!on) return;
+      closeTagPop();
+      setTags(subId, have.concat(on.dataset.tagOn));
+    });
+    tagPop.querySelector('[data-tag-new]').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      var name = this.querySelector('input').value.trim();
+      if (!name) return;
+      var made = (state.tags || []).filter(function (t) { return t.name.toLowerCase() === name.toLowerCase(); })[0];
+      if (!made) {
+        if (!(await saveTag(null, name))) return;
+        made = (state.tags || []).filter(function (t) { return t.name.toLowerCase() === name.toLowerCase(); })[0];
+      }
+      closeTagPop();
+      if (made && have.indexOf(made.id) < 0) setTags(subId, have.concat(made.id));
+    });
+    tagPop.querySelector('input').focus();
+  }
+  document.addEventListener('mousedown', function (e) {
+    if (tagPop && !tagPop.contains(e.target) && !e.target.closest('[data-tag-plus]')) closeTagPop();
+  });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeTagPop(); });
 
   /* ---- acting on many at once ----------------------------------------
      The bar appears only when something is selected. A row of destructive
@@ -803,17 +882,6 @@
         '<label><span data-i18n="ml.editEmail">Email address</span>' +
           '<input type="email" data-edit="email" maxlength="200" required value="' +
             esc(sub.email) + '"></label>' +
-        ((state.tags || []).length
-          ? '<div class="subs-edit-tags"><span data-i18n="ml.editTags">Tags</span>' +
-              state.tags.map(function (t) {
-                var on = (sub.tags || '').split(', ').indexOf(t.name) >= 0;
-                return '<label class="subs-edit-tag">' +
-                  '<input type="checkbox" data-edit-tag="' + esc(t.id) + '"' +
-                    (on ? ' checked' : '') + '>' +
-                  '<span>' + esc(t.name) + '</span></label>';
-              }).join('') +
-            '</div>'
-          : '') +
         '<button type="submit" class="solid-btn" data-i18n="ml.editSave">Save</button>' +
         '<button type="button" class="ghost-btn" data-edit-cancel="1" ' +
           'data-i18n="ms.cancel">Cancel</button>' +
@@ -832,14 +900,7 @@
     var body = await postJson({ action: 'subscriber-edit', id: id, name: name, email: email });
     if (body.error) { toast(body.error, 'bad'); return; }
 
-    /* Sent separately because they are a different kind of change: a tag is
-       something the ministry records ABOUT somebody, not something the person
-       agreed to — so it never touches their confirmation the way an address
-       change does. */
-    var picked = [].slice.call(row.querySelectorAll('[data-edit-tag]:checked'))
-      .map(function (i) { return i.dataset.editTag; });
-    var tagged = await postJson({ action: 'subscriber-tags', id: id, tags: picked });
-    if (tagged.error) toast(tagged.error, 'bad');
+    /* Tags are not here: they are chips on the row and save on their own. */
 
     if (body.reconfirm) {
       toast(body.sent
@@ -1220,6 +1281,17 @@
   });
 
   $('mlSubscribers').addEventListener('click', async function (e) {
+    var plus = e.target.closest('[data-tag-plus]');
+    if (plus) return tagPop ? closeTagPop() : openTagPop(plus, plus.dataset.tagPlus);
+    var off = e.target.closest('[data-tag-off]');
+    if (off) {
+      var parts = off.dataset.tagOff.split(':');
+      var who = state.subscribers.filter(function (x) { return x.id === parts[0]; })[0];
+      if (who) setTags(who.id, tagIdsOf(who).filter(function (t) { return t !== parts[1]; }));
+      return;
+    }
+    var by = e.target.closest('[data-tag-filter]');
+    if (by) { state.subsTag = by.dataset.tagFilter; state.subsPage = 0; $('subsTag').value = state.subsTag; return reloadPeople(); }
     var ed = e.target.closest('[data-editsub]');
     if (ed) return editRow(ed.dataset.editsub);
     if (e.target.closest('[data-edit-cancel]')) return renderPeople();

@@ -21,6 +21,7 @@
 
    So the recipient row is a list picker, and the count beside it is real.
    ============================================================ */
+import { EditorState } from "@tiptap/pm/state";
 import { createEditor, applyLink, insertImage } from "./editor.js";
 
 (function () {
@@ -189,7 +190,28 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
 
   }
 
+  /* FILES THIS DRAFT HAS SEEN (media-cleanup.js). A picture replaced or an
+     attachment dropped stays in storage while the draft is open, because the
+     editor's undo can bring it back. When the draft is left (another opened,
+     or the page closed) the ones it no longer uses are handed back; the
+     server deletes them only if no mailing or site anywhere still names them. */
+  const seen = new Set();
+  const note = (text) => { for (const m of String(text || "").matchAll(/\/media\/((?:newsletter|attachments|partnersite)\/[A-Za-z0-9._\/-]+)/g)) seen.add(m[1]); };
+  function releaseSeen() {
+    const now = editor.getHTML() + "\n" + cp.attachments.map((a) => a.object_key).join("\n");
+    const gone = [...seen].filter((k) => !now.includes(k));
+    seen.clear();
+    if (!gone.length) return;
+    fetch("/api/staff-media-release", { method: "POST", keepalive: true, credentials: "same-origin",
+      headers: { "Content-Type": "application/json" }, body: JSON.stringify({ keys: gone }) }).catch(() => {});
+  }
+  window.addEventListener("pagehide", releaseSeen);
+  /* Back to this page from the browser's memory: its undo would reach files
+     already handed back, so it starts fresh from the server. */
+  window.addEventListener("pageshow", (e) => { if (e.persisted) location.reload(); });
+
   function openDraft(id) {
+    releaseSeen();
     const m = cp.mailings.filter((x) => x.id === id)[0];
     cp.id = m ? m.id : null;
     $("cpSubject").value = m ? (m.subject || "") : "";
@@ -198,8 +220,15 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
     /* `false` so loading a draft is not recorded as an edit — otherwise every
        draft is dirty the moment it opens and the unsaved warning cries wolf. */
     editor.commands.setContent(m ? (m.body_html || "") : "", false);
+    /* A FRESH UNDO HISTORY per draft. Loading is otherwise an undoable step,
+       so Undo in one draft reached back into the last one, and to pictures
+       already handed back above. */
+    const st = editor.state;
+    editor.view.updateState(EditorState.create({ doc: st.doc, plugins: st.plugins, selection: st.selection }));
 
     cp.attachments = (m && m.attachments) || [];
+    note(m && m.body_html);
+    cp.attachments.forEach((a) => seen.add(a.object_key));
     cp.base = m ? { subject: m.subject, preheader: m.preheader, body_html: m.body_html } : null;
     cp.savedHtml = editor.getHTML();
     cp.savedSubject = $("cpSubject").value;
@@ -279,16 +308,48 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
         const blob = await shrink(file, 1200);
         const res = await fetch("/api/admin/media?kind=newsletter", {
           method: "POST", credentials: "same-origin",
-          headers: { "Content-Type": blob.type }, body: blob,
+          headers: { "Content-Type": blob.type, "X-File-Name": String(file.name || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\x20-\x7e]/g, "").slice(0, 80) }, body: blob,
         });
         const body = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(body.error || `failed (${res.status})`);
         insertImage(editor, body.url);
+        note(body.url);
         markDirty(); measureSoon();
         setState("");
+        /* Chosen, then straight into the editor (one step, not two). */
+        let at = null;
+        editor.state.doc.descendants((n, pos) => { if (n.type.name === "image" && n.attrs.src === body.url) at = pos; });
+        if (at !== null) { editor.commands.setNodeSelection(at); editImage(); }
       } catch (e) { setState(""); toast(e.message, "bad"); }
     });
     input.click();
+  }
+
+  /* THE PHOTO EDITOR, for a picture in the message (photo-editor.js, the
+     same editor as the Site Creator's). A mail client cannot apply settings,
+     so the result is real pixels: exported at email size, uploaded, and put
+     in place of the picture — which keeps its ORIGINAL in data-orig, so
+     editing again starts from the original rather than from a crop. */
+  async function editImage() {
+    if (!window.PhotoEditor || !editor.isActive("image")) return;
+    const a = editor.getAttributes("image");
+    const orig = a.orig || a.src;
+    try {
+      const v = await window.PhotoEditor.open(orig, { purpose: "mail", removable: true });
+      if (!v) return;
+      if (v.remove) { editor.chain().focus().deleteSelection().run(); markDirty(); measureSoon(); return; }
+      setState(tr("ml.cpUploading"));
+      const blob = await window.PhotoEditor.exportBlob(orig, v, { max: 1200 });
+      const res = await fetch("/api/admin/media?kind=newsletter", {
+        method: "POST", credentials: "same-origin", headers: { "Content-Type": blob.type, "X-File-Name": (orig.split("/").pop() || "").replace(/-?[0-9a-f]{16}\.[a-z]+$/, "") + "-edit" }, body: blob,
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || `failed (${res.status})`);
+      editor.chain().focus().updateAttributes("image", { src: body.url, orig }).run();
+      note(body.url);
+      markDirty(); measureSoon();
+      setState("");
+    } catch (e) { setState(""); toast(e.message, "bad"); }
   }
 
   /* ---- attachments ----------------------------------------------------
@@ -331,6 +392,7 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
         const body = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(body.error || `failed (${res.status})`);
         cp.attachments.push(body.file);
+        seen.add(body.file.object_key);
         renderAttachments();
         markDirty();
         setState("");
@@ -648,6 +710,7 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
     if (!b) return;
     e.preventDefault();
     if (b.dataset.cmd === "image") { closeRows(); return pickImage(); }
+    if (b.dataset.cmd === "editimage") { closeRows(); return editImage(); }
     if (ROWS[b.dataset.cmd]) return openRow(b.dataset.cmd);
   });
 

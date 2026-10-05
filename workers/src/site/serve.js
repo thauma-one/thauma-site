@@ -23,7 +23,7 @@ import { resolveActor } from "../lib/actas.js";
 import { embedPayload } from "../embed.js";
 import { assertNoPersonalData } from "../lib/nopii.js";
 import { siteOrigin } from "../lib/origin.js";
-import { cleanDoc, PAGES, word, builtInLangs } from "./model.js";
+import { cleanDoc, PAGES, word, builtInLangs, cleanLinkTarget } from "./model.js";
 import { renderPage, simplePage } from "./render.js";
 
 const escHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -198,11 +198,31 @@ export async function serveSite(request, env, { sub, rest, base, draft = false }
 
   const url = new URL(request.url);
   const q = draft ? "?draft" : "";
+  /* FOR SEARCH ENGINES (BACKLOG §3, 2026-10-04): every shown page in every
+     language, at the site's real public address, and a robots.txt naming it.
+     Not for previews. */
+  if (!draft && (rest === "/sitemap.xml" || rest === "/robots.txt")) {
+    const pub = row.subdomain ? `https://${row.subdomain}.thauma.one` : url.origin + base;
+    if (rest === "/robots.txt") {
+      return new Response(`User-agent: *\nAllow: /\nSitemap: ${pub}/sitemap.xml\n`, { headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "public, max-age=3600" } });
+    }
+    const at = (id, l) => `${pub}/${l}/${id === "home" ? "" : id + "/"}`;
+    const x = (t) => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
+    const urls = doc.pages.filter((p) => p.on).flatMap((p) => doc.languages.map((l) =>
+      `<url><loc>${x(at(p.id, l))}</loc>${doc.languages.map((o2) => `<xhtml:link rel="alternate" hreflang="${x(o2)}" href="${x(at(p.id, o2))}"/>`).join("")}</url>`));
+    return new Response(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${urls.join("\n")}\n</urlset>\n`,
+      { headers: { "Content-Type": "application/xml; charset=utf-8", "Cache-Control": "public, max-age=3600" } });
+  }
   const parts = rest.replace(/^\/+|\/+$/g, "").split("/").filter(Boolean);
   if (!parts.length) {
     const lang = pickLang(request.headers.get("Accept-Language"), doc.languages, doc.fallback);
     return new Response(null, { status: 302, headers: { Location: `${base}/${lang}/${q}`, "Vary": "Accept-Language" } });
   }
+  /* A clean link — /YouTube, /hr/Darivanje — before anything is "not found". */
+  const clean = (parts.length === 1 && !doc.languages.includes(parts[0])) ||
+    (parts.length === 2 && doc.languages.includes(parts[0]) && !doc.pages.some((p) => p.id === parts[1]))
+    ? cleanLinkTarget(doc, parts, { base, q, giving: doc.give || row.giving_url || "" }) : null;
+  if (clean) return new Response(null, { status: 302, headers: { Location: clean, "Cache-Control": "no-store" } });
   const lang = parts[0];
   if (!doc.languages.includes(lang)) {
     /* An address in a language the site does not publish: the same page in

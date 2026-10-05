@@ -42,8 +42,9 @@
   /* What each kind of section is made of — the same list as site/model.js. */
   var SECTIONS = {
     hero: { variants: ['behind', 'beside', 'words', 'monogram'], words: ['kicker', 'heading', 'text', 'button'], photo: true, buttons: true, link: 'button' },
-    text: { variants: ['left', 'center'], words: ['heading', 'text', 'button'], link: 'button' },
-    photoText: { variants: ['left', 'right', 'above'], words: ['heading', 'text', 'button'], photo: true, link: 'both' },
+    header: { variants: ['watermark', 'plain'], words: ['label', 'heading', 'text', 'mark'] },
+    text: { variants: ['left', 'center'], words: ['heading', 'text', 'verse', 'verseRef', 'button'], link: 'button' },
+    photoText: { variants: ['left', 'right', 'above', 'wrapLeft', 'wrapRight'], words: ['heading', 'text', 'verse', 'verseRef', 'button'], photo: true, link: 'both' },
     photo: { variants: ['drift', 'still', 'zoom'], words: ['caption'], photo: true, link: 'photo' },
     quote: { variants: ['large', 'quiet'], words: ['quote', 'who'] },
     timeline: { variants: ['condensed', 'full'], words: ['heading', 'text'], data: 'updates/#milestones', align: true },
@@ -51,16 +52,21 @@
     prayer: { variants: ['list'], words: ['heading', 'text'], data: 'updates/#prayer', align: true },
     videos: { variants: ['stage'], words: ['heading', 'text'], data: 'updates/#videos', align: true },
     newsletters: { variants: ['latest', 'list'], words: ['heading', 'text'], data: 'mail/', align: true },
-    signup: { variants: ['band', 'card'], words: ['heading', 'text'], data: 'sharing/#signup' },
-    contact: { variants: ['form'], words: ['heading', 'text'], data: 'sharing/#contact', align: true },
-    give: { variants: ['band', 'card'], words: ['heading', 'text', 'button'] },
+    signup: { variants: ['band', 'card', 'split', 'open'], words: ['heading', 'text'], data: 'sharing/#signup' },
+    contact: { variants: ['form', 'split', 'wide', 'open'], words: ['heading', 'text'], data: 'sharing/#contact', align: true },
+    give: { variants: ['band', 'card', 'split', 'spotlight'], words: ['heading', 'text', 'button'] },
+    cards: { variants: ['attached', 'detached'], words: ['heading', 'text'], items: 'cards' },
     links: { variants: ['list', 'cards'], words: ['heading', 'text'], items: true, align: true },
   };
   /* Everything but the opening and a full-width photo can sit on a raised band. */
-  var FLAT = { hero: 1, photo: 1 };
-  /* On a section of the ministry's data, "text" is the line under the heading. */
-  function fieldName(type, f) { return f === 'text' && (SECTIONS[type].data || type === 'links') && type !== 'signup' && type !== 'contact' ? tr('ws.f.subtitle') : tr('ws.f.' + f); }
-  var ORDER = ['hero', 'text', 'photoText', 'photo', 'quote', 'timeline', 'goals', 'prayer', 'videos', 'newsletters', 'signup', 'contact', 'give', 'links'];
+  var FLAT = { hero: 1, photo: 1, header: 1 };
+  /* On a section of the ministry's data, "text" is the line under the heading;
+     on a header it is the small print below the title. */
+  function fieldName(type, f) {
+    if (type === 'header' && f === 'text') return tr('ws.f.below');
+    return f === 'text' && (SECTIONS[type].data || type === 'links') && type !== 'signup' && type !== 'contact' ? tr('ws.f.subtitle') : tr('ws.f.' + f);
+  }
+  var ORDER = ['hero', 'header', 'text', 'photoText', 'photo', 'quote', 'timeline', 'goals', 'prayer', 'videos', 'newsletters', 'signup', 'contact', 'give', 'cards', 'links'];
   var MOTION = {
     entrance: ['rise', 'fade', 'slide', 'zoom', 'none'], photos: ['drift', 'zoom', 'still'],
     headings: ['letters', 'words', 'plain'], buttons: ['lift', 'glow', 'plain'],
@@ -91,7 +97,7 @@
     $('wsLangB').value = state.langB || '';
     $('wsRefWrap').hidden = !others.length;
     /* Words are written on Pages, Links and Footer; Design and Settings have none. */
-    $('wsWriting').hidden = !(state.tab === 'pages' || state.tab === 'links' || state.tab === 'footer');
+    $('wsWriting').hidden = !(state.tab === 'pages' || state.tab === 'links' || state.tab === 'footer' || state.tab === 'advanced');
   }
   $('wsLangA').addEventListener('change', function () { state.langA = this.value; if (state.langB === state.langA) state.langB = null; fillPair(); draw(); });
   $('wsLangB').addEventListener('change', function () { state.langB = this.value; draw(); });
@@ -115,6 +121,7 @@
     state.saving = true;
     try {
       var body;
+      noteMedia(JSON.stringify(state.doc));
       try { body = await send({ action: 'save', draft: state.doc, base: state.base }); }
       catch (e) {
         /* Someone else saved this site since it loaded (workers/src/lib/
@@ -174,9 +181,35 @@
     apply(body);
   }
 
+  /* FILES THIS VISIT HAS SEEN (media-cleanup.js). A replaced photo stays in
+     storage while the page is open, because Undo can bring it back. When the
+     page closes, the ones the site no longer uses are handed back; the server
+     deletes them only if no site or mailing anywhere still names them. An
+     upload never saved is handed back too; a closed laptop that sends
+     nothing is caught by the daily sweep. */
+  var seenMedia = {};
+  function noteMedia(text) {
+    String(text || '').replace(/\/media\/((?:partnersite|newsletter)\/[A-Za-z0-9._\/-]+)/g, function (_, k) { seenMedia[k] = 1; return _; });
+  }
+  window.addEventListener('pagehide', function () {
+    if (!state.doc) return;
+    var now = JSON.stringify(state.doc);
+    var gone = Object.keys(seenMedia).filter(function (k) { return now.indexOf(k) < 0; });
+    seenMedia = {};
+    if (!gone.length) return;
+    try {
+      fetch('/api/staff-media-release', { method: 'POST', keepalive: true, credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ keys: gone }) }).catch(function () {});
+    } catch (e) { /* the page is going; the sweep will have it */ }
+  });
+  /* Back from the browser's memory: Undo would reach files already handed
+     back, so the page starts again from the server. */
+  window.addEventListener('pageshow', function (e) { if (e.persisted) location.reload(); });
+
   function apply(body) {
     state.body = body;
     state.doc = body.draft;
+    noteMedia(JSON.stringify(body.draft)); noteMedia(JSON.stringify(body.published));
     /* the draft as the server holds it, for a save to be compared against */
     state.base = JSON.parse(JSON.stringify(body.draft));
     if (state.page && !state.doc.pages.some(function (p) { return p.id === state.page; })) state.page = null;
@@ -271,10 +304,13 @@
      2026-09-29) — on every tab, not only the one being edited. */
   function areas(doc) {
     var d = JSON.parse(JSON.stringify(doc.design)); var head = d.headerLinks; delete d.headerLinks;
+    var nav = [d.nav, d.giveTo, head]; delete d.nav; delete d.giveTo;
     return {
       design: JSON.stringify(d),
-      pages: JSON.stringify(doc.pages),
-      links: JSON.stringify([doc.links, head]),
+      nav: JSON.stringify(nav),
+      pages: JSON.stringify(doc.pages.map(function (p) { var q = Object.assign({}, p); delete q.seo; delete q.shareImage; delete q.shareCards; return q; })),
+      advanced: JSON.stringify(doc.pages.map(function (p) { return [p.seo, p.shareImage, p.shareCards]; })),
+      links: JSON.stringify(doc.links),
       footer: JSON.stringify(doc.footer),
       settings: JSON.stringify([doc.languages, doc.fallback, doc.give]),
     };
@@ -304,7 +340,11 @@
     $('wsDiscard').hidden = !state.body.site.published_at;
     $('wsBarText').textContent = state.body.site.published_at ? tr('ws.unpublished') : tr('ws.neverPublished');
   }
-  $('wsPublish').addEventListener('click', function () { act({ action: 'publish' }, tr('ws.published')); });
+  /* Publishing first brings the share cards up to date (Advanced tab). */
+  $('wsPublish').addEventListener('click', async function () {
+    try { await makeCards(); } catch (e) { toast(e.message, 'err'); return; }
+    act({ action: 'publish' }, tr('ws.published'));
+  });
   $('wsDiscard').addEventListener('click', async function () {
     var ok = window.StaffConfirm ? await window.StaffConfirm({ title: tr('ws.discardTitle'), confirm: tr('ms.discard'), cancel: tr('ms.cancel'), danger: true }) : true;
     if (ok) act({ action: 'discard' }, tr('toast.discarded'));
@@ -373,16 +413,80 @@
     if (p.sectab) state.sectab = p.sectab;
   }
 
+  /* The site's own accent (Custom's, else the ministry's), so "Brand color"
+     shows in the boxes and the bar as the site will draw it. */
+  function siteAccent() {
+    var d = state.doc && state.doc.design, th = state.body && state.body.theme;
+    return (d && d.colors && d.colors.accent) || (th && th.accent) || '#1AE4FF';
+  }
+  /* The site's second color, as render.js derives it: Custom's accent turned
+     33 degrees back, else the ministry's own second color. */
+  /* The one photo editor on a section's photo; removing the photo there
+     removes it from the section. */
+  async function editSectionPhoto(sec) {
+    var purpose = photoPurpose(sec);
+    if (!sec.photo || !purpose || !window.PhotoEditor) return;
+    var got = await window.PhotoEditor.open(sec.photo, { purpose: purpose, value: sec.photoEdit, accent: siteAccent(), accent2: siteAccent2(), removable: true })
+      .catch(function (err) { toast(err.message, 'err'); return null; });
+    if (!got) return;
+    if (got.remove) { sec.photo = null; sec.photoEdit = null; }
+    else sec.photoEdit = got;
+    drawSections(); changed();
+  }
+  /* What the photo editor may do for this section's frame. */
+  /* THE PHOTO AS VISITORS WILL SEE IT: crop, corners, border, darkening or
+     focus and zoom, drawn the way render.js edited() draws them. The raw
+     upload in a fixed box looked like the edits had not been kept (Chase,
+     2026-10-04). */
+  function editedPhoto(src, e) {
+    if (e && e.w) {
+      var b = e.border && typeof e.border === 'object' ? e.border : null;
+      var ring = b && +b.w ? ';box-shadow:0 0 0 ' + (+b.w) + 'px ' + (b.c === 'subtle' ? 'rgba(255,255,255,.28)' : b.c === 'accent' ? 'var(--ws-acc)' : b.c === 'accent2' ? 'var(--ws-acc2)' : esc(b.c)) : '';
+      var radius = e.corners === 'round' ? 28 : e.corners === 'square' ? 0 : 12;
+      return '<div class="ws-bigphoto is-crop" style="aspect-ratio:' + (+e.ar) + ';width:min(100%,420px,' + Math.round(340 * e.ar) + 'px);border-radius:' + radius + 'px' + ring + '">' +
+        '<img src="' + esc(src) + '" alt="" style="width:' + (100 / e.w).toFixed(3) + '%;left:' + (-e.x / e.w * 100).toFixed(3) + '%;top:' + (-e.y / e.h * 100).toFixed(3) + '%">' +
+        (e.darken ? '<i style="opacity:' + (+e.darken) + '"></i>' : '') + '</div>';
+    }
+    if (e && e.fx != null) {
+      return '<div class="ws-bigphoto"><img src="' + esc(src) + '" alt="" style="object-position:' + (+e.fx) + '% ' + (+e.fy) + '%;scale:' + (+e.zoom || 1) +
+        ';transform-origin:' + (+e.fx) + '% ' + (+e.fy) + '%">' + (e.darken ? '<i style="opacity:' + (+e.darken) + '"></i>' : '') + '</div>';
+    }
+    return '<div class="ws-bigphoto"><img src="' + esc(src) + '" alt=""></div>';
+  }
+  function photoPurpose(sec) {
+    if (sec.type === 'photoText') return 'section';
+    if (sec.type === 'photo') return 'band';
+    if (sec.type === 'hero') return sec.variant === 'behind' ? 'background' : sec.variant === 'words' ? null : 'framed';
+    return null;
+  }
+  function siteAccent2() {
+    var d = state.doc && state.doc.design, th = state.body && state.body.theme;
+    if (d && d.colors && d.colors.accent) return turnHue(d.colors.accent, -33);
+    return (th && th.accent2) || turnHue(siteAccent(), -33);
+  }
+  function turnHue(hex, deg) {
+    var n = parseInt(String(hex).slice(1), 16), r = (n >> 16) / 255, g = (n >> 8 & 255) / 255, b = (n & 255) / 255;
+    var mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d0 = mx - mn, h = 0, s = 0;
+    if (d0) { s = d0 / (1 - Math.abs(2 * l - 1)); h = mx === r ? ((g - b) / d0) % 6 : mx === g ? (b - r) / d0 + 2 : (r - g) / d0 + 4; h *= 60; }
+    h = ((h + deg) % 360 + 360) % 360;
+    var c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = l - c / 2;
+    var rgb = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+    return '#' + rgb.map(function (v) { return ('0' + Math.round((v + m) * 255).toString(16)).slice(-2); }).join('');
+  }
   function draw() {
+    document.documentElement.style.setProperty('--ws-acc', siteAccent());
+    document.documentElement.style.setProperty('--ws-acc2', siteAccent2());
     keepPlace();
     if (state.tab === 'pages') drawPages();
     if (state.tab === 'design') drawDesign();
     if (state.tab === 'links') drawLinks();
     if (state.tab === 'footer') drawFooter();
+    if (state.tab === 'nav') drawNav();
+    if (state.tab === 'advanced') drawAdvanced();
     if (state.tab === 'settings') drawSettings();
     /* The site beside whatever is being changed: the page being arranged, or
        Home for the look, the links and the footer. */
-    var showFrame = state.tab === 'pages' || state.tab === 'design' || state.tab === 'links' || state.tab === 'footer';
+    var showFrame = state.tab === 'pages' || state.tab === 'design' || state.tab === 'links' || state.tab === 'footer' || state.tab === 'nav';
     $('wsPreviewPane').hidden = !showFrame;
     $('wsRoot').classList.toggle('with-preview', showFrame);
     if (showFrame) refreshFrame();
@@ -391,8 +495,17 @@
     }
   }
 
+  /* The preview is a 1280px desktop shrunk to the pane's width (see the
+     .ws-preview-frame rule in staff.css). */
+  function fitFrame() {
+    var box = $('wsFrame').parentNode, w = box.clientWidth;
+    if (w) box.style.setProperty('--ws-scale', (w / 1280).toFixed(4));
+  }
+  if (window.ResizeObserver) new ResizeObserver(fitFrame).observe($('wsFrame').parentNode);
+
   function refreshFrame() {
     if ($('wsPreviewPane').hidden) return;
+    fitFrame();
     var s = state.body.site, lang = state.langA;
     var page = state.tab === 'pages' && state.page ? currentPage().id : 'home';
     var path = s.preview.replace(/\?draft$/, '') + lang + '/' + (page === 'home' ? '' : page + '/');
@@ -411,6 +524,19 @@
   }
 
   $('wsFrame').addEventListener('load', function () {
+    /* THE EDITOR FOLLOWS THE PREVIEW (Chase, 2026-10-04): a page opened by
+       clicking inside the preview becomes the page being edited, so the two
+       never show different pages. Same origin, so its address is readable. */
+    try {
+      var m = this.contentWindow.location.pathname.match(/\/site\/[^/]+\/([a-z-]+)\/(?:([a-z0-9-]+)\/)?$/);
+      var seen = m && (m[2] || 'home');
+      var cur = state.page ? currentPage().id : 'home';
+      if (seen && seen !== cur && state.doc.pages.some(function (x) { return x.id === seen; })) {
+        state.page = seen; state.edit = null;
+        if (state.tab === 'pages') drawPages();
+        $('wsPreviewPath').textContent = '/' + m[1] + '/' + (seen === 'home' ? '' : seen + '/');
+      }
+    } catch (e) { /* another origin: nothing to follow */ }
     /* THE FOOTER PREVIEW IS AS TALL AS THE FOOTER (Chase, 2026-10-01: the
        small print "doesn't show up on the preview for Split view"). It was a
        fixed 170px of a scaled frame, which cut off whatever wrapped below
@@ -483,11 +609,30 @@
      one thing that kind needs. (Chase, 2026-09-29, of the dropdown's
      "Another address…": "I don't know what that is there for.") A page that
      is switched off is still offered, marked; the link shows once it is on. */
+  /* The other sections of the page being edited, for a button that jumps
+     within it ("section:<id>"). Only a section's own links can: a footer or
+     custom link is on every page, so "this page" means nothing there. */
+  function jumpTargets(key) {
+    if (!/^(sec|item):/.test(key)) return [];
+    var self = currentPage().sections[+key.split(':')[1]];
+    return currentPage().sections.filter(function (x) { return x !== self; });
+  }
+  function sectionName(x) {
+    var w = (x.words && (x.words[state.langA] || x.words[state.doc.fallback])) || {};
+    var words = String(w.heading || w.quote || w.caption || '').replace(/<[^>]*>/g, '').trim();
+    return tr('ws.sec.' + x.type) + (words ? ' · ' + words : '');
+  }
   function linkPicker(key, value, allowNone) {
     var v = value || '';
-    var kind = !v ? 'none' : v.indexOf('page:') === 0 ? 'page' : 'url';
-    var kinds = (allowNone ? ['none'] : []).concat(['page', 'url']);
+    var kind = !v ? 'none' : v.indexOf('page:') === 0 ? 'page' : v.indexOf('section:') === 0 ? 'section' : 'url';
+    var targets = jumpTargets(key);
+    var kinds = (allowNone ? ['none'] : []).concat(['page'], targets.length || kind === 'section' ? ['section'] : [], ['url']);
     var html = chips('linkkind:' + key, kinds, kind, function (k) { return tr('ws.link.kind.' + k); });
+    if (kind === 'section') {
+      html += '<select data-link="' + esc(key) + '">' + targets.map(function (x) {
+        return '<option value="section:' + esc(x.id) + '"' + (v === 'section:' + x.id ? ' selected' : '') + '>' + esc(sectionName(x)) + '</option>';
+      }).join('') + '</select>';
+    }
     if (kind === 'page') {
       html += '<select data-link="' + esc(key) + '">' + state.doc.pages.map(function (p) {
         var name = pageLabel(p, state.langA);
@@ -569,7 +714,8 @@
 
     var n = p.sections.length;
     /* Room below an open section, so even the last one can rise to the top. */
-    html += '<div class="ws-stack' + (state.edit != null ? ' has-open' : '') + '">' + (n ? '' : '<p class="empty">' + esc(tr('ws.noSections')) + '</p>') +
+    /* A place above the first section too: a Header belongs at the top. */
+    html += '<div class="ws-stack' + (state.edit != null ? ' has-open' : '') + '">' + (n ? '<button type="button" class="ws-insert" data-insert-at="0">+ ' + esc(tr('ws.addHere')) + '</button>' : '<p class="empty">' + esc(tr('ws.noSections')) + '</p>') +
       p.sections.map(function (x, i) {
         var open = state.edit === i;
         return '<article class="ws-acc' + (open ? ' is-open' + (state.animate === i ? ' is-entering' : '') : '') + '" data-si="' + i + '">' +
@@ -589,6 +735,7 @@
       }).join('') +
       (n ? '' : '<button type="button" class="ws-addbtn" data-insert-at="0">+ ' + esc(tr('ws.addSection')) + '</button>') + '</div>';
     $('wsPages').innerHTML = html;
+    sizeOnScreen($('wsPages'));
     if (!canEdit()) [].forEach.call($('wsPages').querySelectorAll('[contenteditable]'), function (el) { el.setAttribute('contenteditable', 'false'); });
 
     var now = anchorAt != null && $('wsPages').querySelector('.ws-acc[data-si="' + anchorAt + '"]');
@@ -630,12 +777,21 @@
   }
 
   /* One section, alone. Only the tabs it has something for. */
+  /* What a section looks like before anybody lines it up: the same rule as
+     the server's (site/model.js defaultAlign), so nothing moves. */
+  function defaultAlign(s) {
+    if (SECTIONS[s.type].align) return 'center';
+    if ((s.type === 'text' && s.variant === 'center') || (s.type === 'signup' && s.variant === 'card') ||
+        (s.type === 'hero' && s.variant === 'words')) return 'center';
+    return 'left';
+  }
   function tabsFor(s) {
     var spec = SECTIONS[s.type], t = ['words'];
     if (spec.photo) t.push('photo');
     if (spec.buttons || spec.link === 'button' || spec.link === 'both' || s.type === 'give') t.push('buttons');
-    if (spec.items) t.push('links');
-    if (spec.variants.length > 1 || !FLAT[s.type] || spec.align) t.push('look');
+    if (spec.items) t.push(spec.items === 'cards' ? 'cards' : 'links');
+    /* Every section lines up (2026-10-03), so every section has a Look. */
+    t.push('look');
     return t;
   }
 
@@ -661,9 +817,14 @@
     }
 
     if (state.sectab === 'photo') {
-      html += '<div class="ws-bigphoto">' + (s.photo ? '<img src="' + esc(s.photo) + '" alt="">' : '<span class="ws-nophoto">' + esc(tr('ws.noPhoto')) + '</span>') + '</div>' +
+      html += (s.photo ? editedPhoto(s.photo, s.photoEdit) : '<div class="ws-bigphoto"><span class="ws-nophoto">' + esc(tr('ws.noPhoto')) + '</span></div>') +
+        /* A crop decides a band's shape itself; the heights are for an uncropped one. */
+        (s.type === 'photo' && !(s.photoEdit && s.photoEdit.w) ? '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.photoHeight')) + '</span>' +
+          chips('pheight:' + i, ['short', 'medium', 'tall', 'whole'], s.height || 'medium', function (v) { return tr('ws.photoHeight.' + v); }) + '</div>' : '') +
         '<div class="ws-sec-row"><label class="ghost-btn sm ws-file">' + esc(s.photo ? tr('ws.changePhoto') : tr('ws.choosePhoto')) +
           '<input type="file" accept="image/*" data-sec-photo="' + i + '" hidden></label>' +
+          /* The one photo editor, for what this frame needs (photo-editor.js). */
+          (s.photo && window.PhotoEditor && photoPurpose(s) ? '<button type="button" class="ghost-btn sm" data-sec-edit="' + i + '">' + esc(tr('pe.edit')) + '</button>' : '') +
           (s.photo ? '<button type="button" class="link-btn" data-sec-unphoto="' + i + '">' + esc(tr('ws.removePhoto')) + '</button>' : '') +
           '<span class="hint"></span></div>';
       if (spec.link === 'photo') html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.link.photo')) + '</span>' + linkPicker('sec:' + i, s.link, true) + '</div>';
@@ -686,10 +847,27 @@
       if (s.type === 'give') html += '<p class="ws-data">' + esc(tr('ws.data.give')) + '</p>';
     }
 
+    if (state.sectab === 'cards') {
+      html += '<div class="ws-linkrows">' + (s.items || []).map(function (it, j) {
+        var t = (it.words || {})[state.langA] || {}, k = i + ':' + j, open = state.openItem === j;
+        var head = '<div class="ws-linkrow' + (open ? ' is-open' : '') + '">' +
+          (s.numbers !== false ? '<span class="ws-cnum">' + (j + 1) + '</span>' : '') +
+          '<b>' + esc(t.title || tr('ws.itemUntitled')) + '</b><span>' + esc(t.text || '') + '</span>' +
+          '<button type="button" class="link-btn" data-item-open="' + j + '">' + esc(open ? tr('ws.close') : tr('ws.edit')) + '</button>' +
+          '<button type="button" class="ws-icon del" data-item-remove="' + k + '" aria-label="' + esc(tr('ws.remove')) + '">✕</button></div>';
+        if (!open) return head;
+        return head + '<div class="ws-linkedit">' +
+          '<label class="fld"><span>' + esc(tr('ws.itemTitle')) + '</span><input type="text" data-item="' + k + ':title" value="' + esc(t.title || '') + '" placeholder="' + esc(ph('card', 'title')) + '" lang="' + esc(state.langA) + '"></label>' +
+          '<label class="fld"><span>' + esc(tr('ws.itemText')) + '</span><textarea rows="3" data-item="' + k + ':text" placeholder="' + esc(ph('card', 'text')) + '" lang="' + esc(state.langA) + '">' + esc(t.text || '') + '</textarea></label></div>';
+      }).join('') + '</div><button type="button" class="ghost-btn" data-item-add="' + i + '">+ ' + esc(tr('ws.addCard')) + '</button>';
+    }
+
     if (state.sectab === 'links') {
       html += '<div class="ws-linkrows">' + (s.items || []).map(function (it, j) {
         var t = (it.words || {})[state.langA] || {}, k = i + ':' + j, open = state.openItem === j;
-        var where = !it.url || it.url === 'https://' ? tr('ws.link.nowhere') : it.url.indexOf('page:') === 0
+        var jump = it.url && it.url.indexOf('section:') === 0 &&
+          currentPage().sections.filter(function (x) { return 'section:' + x.id === it.url; })[0];
+        var where = !it.url || it.url === 'https://' ? tr('ws.link.nowhere') : jump ? sectionName(jump) : it.url.indexOf('page:') === 0
           ? pageLabel(state.doc.pages.filter(function (x) { return 'page:' + x.id === it.url; })[0] || { id: it.url.slice(5) }, state.langA) : it.url.replace(/^https?:\/\//, '');
         var head = '<div class="ws-linkrow' + (open ? ' is-open' : '') + '">' +
           (it.photo ? '<img src="' + esc(it.photo) + '" alt="">' : '') +
@@ -698,8 +876,11 @@
           '<button type="button" class="ws-icon del" data-item-remove="' + k + '" aria-label="' + esc(tr('ws.remove')) + '">✕</button></div>';
         if (!open) return head;
         return head + '<div class="ws-linkedit">' +
-          '<label class="fld"><span>' + esc(tr('ws.itemTitle')) + '</span><input type="text" data-item="' + k + ':title" value="' + esc(t.title || '') + '" lang="' + esc(state.langA) + '"></label>' +
-          '<label class="fld"><span>' + esc(tr('ws.itemText')) + '</span><input type="text" data-item="' + k + ':text" value="' + esc(t.text || '') + '" lang="' + esc(state.langA) + '"></label>' +
+          '<label class="fld"><span>' + esc(tr('ws.itemTitle')) + '</span><input type="text" data-item="' + k + ':title" value="' + esc(t.title || '') + '" placeholder="' + esc(ph('item', 'title')) + '" lang="' + esc(state.langA) + '"></label>' +
+          '<label class="fld"><span>' + esc(tr('ws.itemText')) + '</span><input type="text" data-item="' + k + ':text" value="' + esc(t.text || '') + '" placeholder="' + esc(ph('item', 'text')) + '" lang="' + esc(state.langA) + '"></label>' +
+          '<label class="fld"><span>' + esc(tr('ws.itemType')) + '</span><input type="text" maxlength="40" data-item="' + k + ':type" value="' + esc(t.type || '') + '" lang="' + esc(state.langA) + '"></label>' +
+          '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.tier')) + '</span>' +
+            chips('tier:' + k, ['big', 'std', 'small'], it.tier || 'std', function (v) { return tr('ws.tier.' + v); }) + '</div>' +
           '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.link.goesTo')) + '</span>' + linkPicker('item:' + k, it.url || 'https://', false) + '</div>' +
           '<div class="ws-sec-row">' + (it.photo ? '<img class="ws-thumb" src="' + esc(it.photo) + '" alt="">' : '') +
             '<label class="ghost-btn sm ws-file">' + esc(it.photo ? tr('ws.changePhoto') : tr('ws.choosePhoto')) + '<input type="file" accept="image/*" data-item-photo="' + k + '" hidden></label>' +
@@ -709,13 +890,71 @@
     }
 
     if (state.sectab === 'look') {
-      if (spec.variants.length > 1) {
+      /* A Words section's old Left / Centered layout IS its alignment now. */
+      if (spec.variants.length > 1 && s.type !== 'text') {
         html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.layout')) + '</span>' +
           chips('variant:' + i, spec.variants, s.variant, function (v) { return tr('ws.v.' + s.type + '.' + v); }) + '</div>';
       }
-      if (spec.align) {
-        html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.align')) + '</span>' +
-          chips('align:' + i, ['center', 'left'], s.align || 'center', function (v) { return tr('ws.align.' + v); }) + '</div>';
+      html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.align')) + '</span>' +
+        chips('align:' + i, ['left', 'center', 'right', 'indent'], s.align || defaultAlign(s), function (v) { return tr('ws.align.' + v); }) + '</div>';
+      /* The opening's scroll indicator, for this page. Stored on the page;
+         offered here, where it shows. Not offered while the site's Scroll
+         hint is None: there would be nothing to show. */
+      if (s.type === 'hero' && (state.doc.design.motion || {}).cue !== 'none') {
+        html += '<div class="ws-field">' + sw('data-page-cue="' + state.doc.pages.indexOf(p) + '"', p.cue !== false, tr('ws.cueOnPage')) + '</div>';
+      }
+      /* The hero's line under the title (render.js). Unset, the monogram
+         shows it and the rest do not — exactly as before the option. */
+      if (s.type === 'hero') {
+        var lined = s.variant === 'monogram' ? s.divider !== false : s.divider === true;
+        html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.divider')) + '</span>' +
+          chips('divider:' + i, ['on', 'off'], lined ? 'on' : 'off', function (v) { return tr('ws.divider.' + v); }) + '</div>';
+      }
+      /* The header's own looks (render.js .phead). */
+      if (s.type === 'header') {
+        html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.bg')) + '</span>' +
+          chips('hbg:' + i, ['plain', 'raised', 'tint', 'accent'], s.bg || 'plain', function (v) { return tr('ws.bg.' + v); }) + '</div>' +
+          '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.topline')) + '</span>' +
+          chips('topline:' + i, ['on', 'off'], s.topline === false ? 'off' : 'on', function (v) { return tr('ws.divider.' + v); }) + '</div>' +
+          '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.divider')) + '</span>' +
+          chips('divider:' + i, ['on', 'off'], s.divider === false ? 'off' : 'on', function (v) { return tr('ws.divider.' + v); }) + '</div>';
+      }
+      /* Custom Cards: numbered or not. */
+      if (s.type === 'videos') {
+        html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.vTitle')) + '</span>' +
+          chips('vtitle:' + i, ['words', 'latest'], s.titleFrom || 'words', function (v) { return tr('ws.vTitle.' + v); }) + '</div>' +
+          '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.vLinks')) + '</span>' +
+          chips('vlinks:' + i, ['buttons', 'outline', 'subtle'], s.linkStyle || 'buttons', function (v) { return tr('ws.vLinks.' + v); }) + '</div>';
+      }
+      if (s.type === 'cards') {
+        html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.numbers')) + '</span>' +
+          chips('numbers:' + i, ['on', 'off'], s.numbers === false ? 'off' : 'on', function (v) { return tr('ws.divider.' + v); }) + '</div>';
+      }
+      /* A verse's look, where a section can carry one. */
+      if (s.type === 'text' || s.type === 'photoText') {
+        html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.verseStyle')) + '</span>' +
+          chips('verse:' + i, ['quote', 'line', 'mark'], s.verseStyle || 'quote', function (v) { return tr('ws.verseStyle.' + v); }) + '</div>';
+        /* Where the verse goes: before, after any paragraph written so far,
+           or after them all. */
+        var paras = String(((s.words || {})[state.langA] || {}).text || '').split(/\n{2,}/).filter(function (x) { return x.trim(); }).length;
+        var spots = ['start'];
+        for (var pn = 1; pn < paras; pn++) spots.push('p' + pn);
+        spots.push('end');
+        html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.versePos')) + '</span>' +
+          chips('vpos:' + i, spots, spots.indexOf(s.versePos) !== -1 ? s.versePos : 'end', function (v) {
+            return v === 'start' || v === 'end' ? tr('ws.versePos.' + v) : tr('ws.versePos.p').replace('{n}', v.slice(1));
+          }) + '</div>';
+        var tA = s.titleAlign || (s.align === 'center' || s.align === 'right' ? s.align : 'left');
+        html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.titleAlign')) + '</span>' +
+          chips('talign:' + i, ['left', 'center', 'right'], tA, function (v) { return tr('ws.titleAlign.' + v); }) + '</div>' +
+          '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.divider')) + '</span>' +
+          chips('tline:' + i, ['on', 'off'], s.titleLine ? 'on' : 'off', function (v) { return tr('ws.divider.' + v); }) + '</div>';
+        if (s.type === 'photoText') {
+          var wrapped = s.variant === 'wrapLeft' || s.variant === 'wrapRight';
+          var withW = typeof s.titleInline === 'boolean' ? s.titleInline : !wrapped;
+          html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.titlePlace')) + '</span>' +
+            chips('tinline:' + i, ['with', 'above'], withW ? 'with' : 'above', function (v) { return tr('ws.titlePlace.' + v); }) + '</div>';
+        }
       }
       if (!FLAT[s.type]) {
         html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.bg')) + '</span>' +
@@ -730,25 +969,36 @@
 
   /* One field. Headings, words and quotes are formatted boxes (bold, italic,
      underline, links); the rest are plain. */
-  var RICH = { heading: 1, text: 1, quote: 1 };
+  var RICH = { heading: 1, text: 1, quote: 1, verse: 1 };
+  /* What an empty field suggests, in the language being written (the site's
+     words, from the server; model.js placeholders). Never saved. */
+  function ph(type, f) {
+    var all = state.body.placeholders || {}, l = all[state.langA] || all.en || {};
+    return (l[type] && l[type][f]) || '';
+  }
   function field(i, f, value, refWords, type) {
     var label = '<span>' + esc(fieldName(type, f)) + '</span>';
+    var hint = ph(type, f) || (f === 'button' ? tr('ws.readMore') : '');
     if (RICH[f]) {
       var b = state.langB, r = b && refWords && refWords[b];
       return '<div class="fld ws-rfld">' + label +
         (r ? '<small class="ms-ref" lang="' + esc(b) + '">' + inlineHtml(r) + '</small>' : '') +
-        '<div class="rt rt-' + f + '" contenteditable="true" role="textbox" aria-multiline="' + (f !== 'heading') + '" data-rt="' + i + ':' + f + '" lang="' + esc(state.langA) + '">' +
+        '<div class="rt rt-' + f + '" contenteditable="true" role="textbox" aria-multiline="' + (f !== 'heading') + '" data-rt="' + i + ':' + f + '"' +
+        (hint ? ' data-ph="' + esc(hint) + '" aria-placeholder="' + esc(hint) + '"' : '') + ' lang="' + esc(state.langA) + '">' +
         inlineHtml(value, true) + '</div></div>';
     }
     return '<label class="fld">' + label + ref(refWords) +
       '<input type="text" data-sec-word="' + i + ':' + f + '" value="' + esc(value || '') + '"' +
-      (f === 'button' ? ' placeholder="' + esc(tr('ws.readMore')) + '"' : '') + ' lang="' + esc(state.langA) + '"></label>';
+      (hint ? ' placeholder="' + esc(hint) + '"' : '') + ' lang="' + esc(state.langA) + '"></label>';
   }
   /* Stored formatted words back into a box: only the marks it may hold, links
      kept only inside the box being edited. */
   function inlineHtml(v, withLinks) {
-    var out = String(v || '').replace(/<(?!\/?(b|i|u)>)(?!a href="[^"]*">)(?!\/a>)[^>]*>/g, '');
+    var out = String(v || '').replace(/<(?!\/?(b|i|u)>)(?!a href="[^"]*">)(?!\/a>)(?!span( data-(sz|c)="[^"]*")+>)(?!\/span>)[^>]*>/g, '');
     if (!withLinks) out = out.replace(/<\/?a[^>]*>/g, '');
+    /* A picked color has no class to wear; it is painted where it is shown.
+       richFrom reads data-c, never the paint. */
+    out = out.replace(/<span([^>]*) data-c="(#[0-9a-f]{6})"([^>]*)>/gi, '<span$1 data-c="$2"$3 style="color:$2">');
     return out.replace(/\n/g, '<br>');
   }
   /* A box's contents as they are stored: what a browser's editable box makes
@@ -769,12 +1019,106 @@
         if (tag === 'a') {
           var h = c.getAttribute('href') || '';
           if (/^(https?:\/\/|mailto:|page:[a-z]+$)/i.test(h)) out += '<a href="' + esc(h) + '">'; else tag = null;
+        } else if (t === 'span') {
+          var sz = c.getAttribute('data-sz'), cc = c.getAttribute('data-c'), at = '';
+          if (SIZES.indexOf(sz) !== -1 || isNumSize(sz)) at += ' data-sz="' + sz + '"';
+          if (isTone(cc)) at += ' data-c="' + cc.toLowerCase() + '"';
+          if (at) { out += '<span' + at + '>'; tag = 'span'; }
         } else if (tag) out += '<' + tag + '>';
         walk(c);
         if (tag) out += '</' + tag + '>';
       }
     })(el);
-    return out.replace(/<(b|i|u)><\/\1>/g, '').replace(/\n{3,}/g, '\n\n').replace(/^\s+|\s+$/g, '');
+    return out.replace(/<(b|i|u)><\/\1>|<span[^>]*><\/span>/g, '').replace(/\n{3,}/g, '\n\n').replace(/^\s+|\s+$/g, '');
+  }
+
+  /* SIZE AND COLOR WITHIN THE WORDS (Chase, 2026-10-03: "different sizes and
+     colors WITHIN one text box"; "a full palette, with a few predetermined
+     quick picks"). Stored as meaning, <span data-sz data-c>, the names the
+     Mail composer uses (workers/src/lib/tones.js); the site draws them in its
+     own colors, light or dark. */
+  var SIZES = ['sm', 'lg', 'xl'];
+  /* Like Word (Chase, 2026-10-04: "in font size like Word and not percentage
+     based … the ability to go really really small"): a size in pixels, typed
+     or stepped through Word's ladder, stored as data-sz="14px". The first
+     version's multiples (data-sz="1.35") still read. */
+  var LADDER = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 18, 20, 24, 28, 32, 36, 40, 48, 56, 64, 72, 96];
+  function sizePx(v) { return /^\d{1,3}(\.5)?px$/.test(String(v || '')) ? +String(v).slice(0, -2) : null; }
+  /* A chosen size shows at its size while editing (the stored words keep only
+     data-sz; the presets have their own CSS). */
+  function sizeOnScreen(root) {
+    [].forEach.call(root.querySelectorAll('span[data-sz]'), function (sp) {
+      var v = sp.getAttribute('data-sz');
+      sp.style.fontSize = sizePx(v) ? v : isNumSize(v) ? v + 'em' : '';
+    });
+  }
+  function isNumSize(v) {
+    var px = sizePx(v);
+    return px ? px >= 4 && px <= 200 : /^\d(\.\d{1,2})?$/.test(String(v || '')) && +v >= 0.5 && +v <= 3;
+  }
+  var TONE_NAMES = ['accent', 'accent2', 'dim', 'red', 'green', 'blue', 'gold'];
+  /* Swatches as a dark ground shows them, the console's own. */
+  var TONE_SWATCH = { dim: '#9AA6B6', red: '#FF8A80', green: '#6FE3A6', blue: '#8DB8FF', gold: '#F2C14E' };
+  function isTone(c) { return TONE_NAMES.indexOf(c) !== -1 || /^#[0-9a-f]{6}$/i.test(String(c || '')); }
+
+  /**
+   * Give the selected words a size or a color (attr data-sz / data-c), or
+   * take it away (value ""). Words wholly inside a span that already has one
+   * are split out of it, so one word of a red phrase can turn blue and keep
+   * the rest of what it wore. Returns a range over the words, to select.
+   */
+  function applyMark(box, range, attr, value) {
+    var anc = range.commonAncestorContainer;
+    anc = anc.nodeType === 1 ? anc : anc.parentNode;
+    var outer = anc && anc.closest ? anc.closest('span[' + attr + ']') : null;
+    if (outer && !box.contains(outer)) outer = null;
+    var set = function (el, v) {
+      if (v) el.setAttribute(attr, v); else el.removeAttribute(attr);
+      if (attr === 'data-c') el.style.color = /^#/.test(v || '') ? v : '';
+      if (!el.getAttribute('style')) el.removeAttribute('style');
+    };
+    var marked = function (el) { return el.hasAttribute('data-sz') || el.hasAttribute('data-c'); };
+    var strip = function (root) {
+      [].slice.call(root.querySelectorAll('span[' + attr + ']')).forEach(function (sp) {
+        set(sp, '');
+        if (!marked(sp)) { while (sp.firstChild) sp.parentNode.insertBefore(sp.firstChild, sp); sp.parentNode.removeChild(sp); }
+      });
+    };
+    var out = document.createRange();
+    if (outer) {
+      /* The words before and after the selection keep the old value, each in
+         a copy of the span; the span itself becomes the selected words. */
+      var tailR = document.createRange();
+      tailR.setStart(range.endContainer, range.endOffset); tailR.setEnd(outer, outer.childNodes.length);
+      var tail = outer.cloneNode(false); tail.appendChild(tailR.extractContents());
+      var headR = document.createRange();
+      headR.setStart(outer, 0); headR.setEnd(range.startContainer, range.startOffset);
+      var head = outer.cloneNode(false); head.appendChild(headR.extractContents());
+      if (head.textContent) outer.parentNode.insertBefore(head, outer);
+      if (tail.textContent) outer.parentNode.insertBefore(tail, outer.nextSibling);
+      strip(outer);
+      set(outer, value);
+      if (marked(outer)) { out.selectNodeContents(outer); return out; }
+      var first = outer.firstChild, last = outer.lastChild;
+      while (outer.firstChild) outer.parentNode.insertBefore(outer.firstChild, outer);
+      outer.parentNode.removeChild(outer);
+      if (first) { out.setStartBefore(first); out.setEndAfter(last); }
+      return out;
+    }
+    var frag = range.extractContents();
+    strip(frag);
+    if (value) {
+      var w = document.createElement('span');
+      set(w, value);
+      w.appendChild(frag);
+      range.insertNode(w);
+      out.selectNodeContents(w);
+    } else {
+      var f0 = frag.firstChild, f1 = frag.lastChild;
+      range.insertNode(frag);
+      if (f0) { out.setStartBefore(f0); out.setEndAfter(f1); }
+    }
+    return out;
   }
 
   /* ---- the formatting bar ------------------------------------------------ */
@@ -788,9 +1132,79 @@
   fmt.hidden = true;
   fmt.innerHTML = [['bold', 'B'], ['italic', 'I'], ['underline', 'U']].map(function (x) {
     return '<button type="button" data-fmt="' + x[0] + '" class="ws-fmt-' + x[0] + '" aria-label="' + esc(tr('ws.fmt.' + x[0])) + '" title="' + esc(tr('ws.fmt.' + x[0])) + '">' + x[1] + '</button>';
-  }).join('') + '<button type="button" data-fmt="link" aria-label="' + esc(tr('ws.fmt.link')) + '" title="' + esc(tr('ws.fmt.link')) + '">' +
-    '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg></button>';
+  }).join('') +
+    '<button type="button" data-fmt="size" class="ws-fmt-size" aria-expanded="false" aria-label="' + esc(tr('ml.cpSize')) + '" title="' + esc(tr('ml.cpSize')) + '">Aa</button>' +
+    '<button type="button" data-fmt="color" class="ws-fmt-color" aria-expanded="false" aria-label="' + esc(tr('ml.cpColor')) + '" title="' + esc(tr('ml.cpColor')) + '"><i class="is-none"></i></button>' +
+    '<button type="button" data-fmt="link" aria-label="' + esc(tr('ws.fmt.link')) + '" title="' + esc(tr('ws.fmt.link')) + '">' +
+    '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg></button>' +
+    '<div class="ws-fmt-row" data-fmt-row="size" hidden>' + [['', 'ml.cpSizeNormal'], ['sm', 'ml.cpSizeSm'], ['lg', 'ml.cpSizeLg'], ['xl', 'ml.cpSizeXl']].map(function (x) {
+      return '<button type="button" data-fmt-sz="' + x[0] + '" class="ws-fmt-sz-' + (x[0] || 'n') + '" aria-pressed="false">' + esc(tr(x[1])) + '</button>';
+    }).join('') +
+    '<span class="ws-fmt-step"><button type="button" data-fmt-step="-1" aria-label="' + esc(tr('ws.fmt.smaller')) + '" title="' + esc(tr('ws.fmt.smaller')) + '">−</button>' +
+    '<input type="number" min="4" max="200" step="1" data-fmt-szval placeholder="16" aria-label="' + esc(tr('ml.cpSize')) + '">' +
+    '<button type="button" data-fmt-step="1" aria-label="' + esc(tr('ws.fmt.larger')) + '" title="' + esc(tr('ws.fmt.larger')) + '">+</button></span></div>' +
+    '<div class="ws-fmt-row" data-fmt-row="color" hidden>' + [''].concat(TONE_NAMES).map(function (c) {
+      var key = 'ml.cpTone' + (c ? c.charAt(0).toUpperCase() + c.slice(1) : 'None');
+      return '<button type="button" class="ws-fmt-tone" data-fmt-c="' + c + '" aria-pressed="false" aria-label="' + esc(tr(key)) + '" title="' + esc(tr(key)) + '"><i' +
+        (TONE_SWATCH[c] ? ' style="background:' + TONE_SWATCH[c] + '"' : c === 'accent2' ? ' style="background:var(--ws-acc2)"' : '') + '></i></button>';
+    }).join('') +
+    '<label class="ws-fmt-tone ws-fmt-any" title="' + esc(tr('ml.cpToneAny')) + '"><input type="color" value="#3366cc" data-fmt-any aria-label="' + esc(tr('ml.cpToneAny')) + '"></label></div>';
   document.body.appendChild(fmt);
+  /* ABOVE THE WORDS, BY ITS BOTTOM EDGE. Opening a row of choices makes the
+     bar taller; placed by its top it grew down over the words being changed
+     (Chase, 2026-10-04). Below them only when there is no room above. */
+  var fmtAt = null;
+  function placeFmt() {
+    if (!fmtAt) return;
+    var top = fmtAt.top - fmt.offsetHeight - 8;
+    fmt.style.top = (top < window.scrollY + 8 ? fmtAt.bottom + 8 : top) + 'px';
+  }
+  function fmtRow(which) {
+    [].forEach.call(fmt.querySelectorAll('[data-fmt-row]'), function (r) {
+      var open = r.getAttribute('data-fmt-row') === which && r.hidden;
+      r.hidden = !open;
+      var b = fmt.querySelector('[data-fmt="' + r.getAttribute('data-fmt-row') + '"]');
+      if (b) b.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+    if (!fmt.hidden) placeFmt();
+  }
+  /* What the selection already wears, shown on the bar. */
+  /* The element the selection starts in. A range that starts BETWEEN nodes
+     (as one does right after a size is applied) names the parent and an
+     offset; the node at that offset is the one meant. */
+  function selElement() {
+    var sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return null;
+    var r = sel.getRangeAt(0), n = r.startContainer;
+    if (n.nodeType === 1 && n.childNodes[r.startOffset]) n = n.childNodes[r.startOffset];
+    if (n.nodeType === 3 && r.startOffset >= n.length && n.nextSibling) n = n.nextSibling;
+    return n && (n.nodeType === 1 ? n : n.parentNode);
+  }
+  function markOf(box, attr) {
+    var n = selElement();
+    var sp = n && n.closest ? n.closest('span[' + attr + ']') : null;
+    return sp && box.contains(sp) ? sp.getAttribute(attr) : '';
+  }
+  /* The size the words are now, in px, whether chosen or inherited. */
+  function sizeNow(box) {
+    var px = sizePx(markOf(box, 'data-sz'));
+    if (px) return px;
+    var n = selElement();
+    var c = n && box.contains(n) ? parseFloat(getComputedStyle(n).fontSize) : 16;
+    return Math.round((c || 16) * 2) / 2;
+  }
+  function showMarks(box) {
+    var sz = markOf(box, 'data-sz'), c = markOf(box, 'data-c');
+    [].forEach.call(fmt.querySelectorAll('[data-fmt-sz]'), function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-fmt-sz') === sz ? 'true' : 'false'); });
+    var szv = fmt.querySelector('[data-fmt-szval]');
+    if (szv && document.activeElement !== szv) szv.value = sizeNow(box);
+    [].forEach.call(fmt.querySelectorAll('[data-fmt-c]'), function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-fmt-c') === c ? 'true' : 'false'); });
+    var any = /^#/.test(c), dot = fmt.querySelector('.ws-fmt-color i');
+    fmt.querySelector('.ws-fmt-any').classList.toggle('is-on', any);
+    if (any) fmt.querySelector('[data-fmt-any]').value = c;
+    dot.style.background = any ? c : TONE_SWATCH[c] || (c === 'accent' ? 'var(--ws-acc)' : c === 'accent2' ? 'var(--ws-acc2)' : '');
+    dot.classList.toggle('is-none', !c);
+  }
   function boxOfSelection() {
     var sel = window.getSelection();
     if (!sel || !sel.rangeCount || sel.isCollapsed) return null;
@@ -798,24 +1212,95 @@
     var box = n && n.closest && n.closest('[data-rt]');
     return box && box.getAttribute('contenteditable') === 'true' ? box : null;
   }
+  var fmtWords = '';
   document.addEventListener('selectionchange', function () {
     var box = boxOfSelection();
     if (!box) { if (!fmt.contains(document.activeElement)) fmt.hidden = true; return; }
+    /* PINNED while a row of choices is open: the words change size under
+       it, and a bar that re-centered on them would jump with every press. */
+    var said = window.getSelection().toString();
+    var pinned = !fmt.hidden && said === fmtWords && fmt.querySelector('[data-fmt-row]:not([hidden])');
+    if (pinned) return showMarks(box);
+    fmtWords = said;
+    fmtRow(null);
     var r = window.getSelection().getRangeAt(0).getBoundingClientRect();
     fmt.hidden = false;
-    fmt.style.top = (window.scrollY + r.top - fmt.offsetHeight - 8) + 'px';
+    fmtAt = { top: window.scrollY + r.top, bottom: window.scrollY + r.bottom };
+    placeFmt();
     fmt.style.left = Math.max(8, window.scrollX + r.left + r.width / 2 - fmt.offsetWidth / 2) + 'px';
     [].forEach.call(fmt.querySelectorAll('[data-fmt]'), function (b) {
       var c = b.getAttribute('data-fmt');
-      if (c !== 'link') b.setAttribute('aria-pressed', document.queryCommandState(c) ? 'true' : 'false');
+      if (c === 'bold' || c === 'italic' || c === 'underline') b.setAttribute('aria-pressed', document.queryCommandState(c) ? 'true' : 'false');
     });
+    showMarks(box);
   });
-  /* Keep the selection: a press on the bar must not take focus from the box. */
-  fmt.addEventListener('mousedown', function (e) { e.preventDefault(); });
+  /* Keep the selection: a press on the bar must not take focus from the box.
+     Except the color picker, which needs focus to open; the selection is
+     kept aside for it instead. */
+  var anyAt = null;
+  fmt.addEventListener('mousedown', function (e) {
+    if (e.target.closest('[data-fmt-any], .ws-fmt-any, [data-fmt-szval]')) {
+      var box = boxOfSelection();
+      anyAt = box ? { box: box, range: window.getSelection().getRangeAt(0).cloneRange() } : null;
+      return;
+    }
+    e.preventDefault();
+  });
+  function markSelection(box, range, attr, value) {
+    var r = applyMark(box, range, attr, value);
+    box.dispatchEvent(new Event('input', { bubbles: true }));
+    return r;
+  }
+  fmt.querySelector('[data-fmt-any]').addEventListener('input', function () {
+    if (!anyAt) return;
+    anyAt.range = markSelection(anyAt.box, anyAt.range, 'data-c', this.value.toLowerCase());
+  });
+  /* A typed size: applied as it is typed, the words kept selected. */
+  fmt.querySelector('[data-fmt-szval]').addEventListener('input', function () {
+    var n = Math.round(+this.value * 2) / 2;
+    if (!anyAt || !(n >= 4 && n <= 200)) return;
+    anyAt.range = markSelection(anyAt.box, anyAt.range, 'data-sz', n + 'px');
+    sizeOnScreen(anyAt.box);
+  });
+  fmt.querySelector('[data-fmt-szval]').addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' || !anyAt) return;
+    e.preventDefault();
+    anyAt.box.focus();
+    var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(anyAt.range);
+    anyAt = null;
+  });
+  fmt.querySelector('[data-fmt-any]').addEventListener('change', function () {
+    if (!anyAt) return;
+    anyAt.box.focus();
+    var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(anyAt.range);
+    anyAt = null;
+    fmtRow(null);
+  });
   fmt.addEventListener('click', async function (e) {
-    var b = e.target.closest('[data-fmt]'), box = boxOfSelection();
+    var b = e.target.closest('[data-fmt], [data-fmt-sz], [data-fmt-c], [data-fmt-step]'), box = boxOfSelection();
     if (!b || !box) return;
+    /* − / + : the next step on Word's ladder from the size the words are now. */
+    if (b.hasAttribute('data-fmt-step')) {
+      var cur = sizeNow(box), dir = +b.getAttribute('data-fmt-step');
+      var next = dir > 0 ? (LADDER.filter(function (n) { return n > cur; })[0] || Math.min(200, cur + 8))
+                         : (LADDER.filter(function (n) { return n < cur; }).pop() || 4);
+      var rs = markSelection(box, window.getSelection().getRangeAt(0), 'data-sz', next + 'px');
+      var sel2 = window.getSelection(); sel2.removeAllRanges(); sel2.addRange(rs);
+      sizeOnScreen(box);
+      showMarks(box);
+      return;
+    }
+    if (b.hasAttribute('data-fmt-sz') || b.hasAttribute('data-fmt-c')) {
+      var attr = b.hasAttribute('data-fmt-sz') ? 'data-sz' : 'data-c';
+      var r = markSelection(box, window.getSelection().getRangeAt(0), attr, b.getAttribute(attr === 'data-sz' ? 'data-fmt-sz' : 'data-fmt-c'));
+      var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+      fmtRow(null);
+      sizeOnScreen(box);
+      showMarks(box);
+      return;
+    }
     var c = b.getAttribute('data-fmt');
+    if (c === 'size' || c === 'color') { fmtRow(c); return; }
     if (c === 'link') {
       var range = window.getSelection().getRangeAt(0).cloneRange();
       var url = window.StaffPrompt ? await window.StaffPrompt({ title: tr('ws.fmt.linkAsk'), label: tr('ws.fmt.linkLabel'),
@@ -849,6 +1334,7 @@
     contact: [[10,14,80,12,'l'],[10,34,80,12,'l'],[10,54,80,20,'l'],[10,80,20,10,'a']],
     give: [[10,20,60,12,'t'],[10,42,76,6,'l'],[10,54,70,6,'l'],[10,70,26,12,'a']],
     links: [[8,14,84,20,'l'],[8,40,84,20,'l'],[8,66,84,20,'l']],
+    cards: [[8,12,10,14,'a','50%'],[22,12,70,14,'l'],[12,30,2,10,'l'],[8,42,10,14,'a','50%'],[22,42,70,14,'l'],[12,60,2,10,'l'],[8,72,10,14,'a','50%'],[22,72,70,14,'l']],
   };
   function sketch(type) {
     return (SKETCH[type] || []).map(function (r) {
@@ -876,14 +1362,17 @@
     var type = t.getAttribute('data-add-type'), spec = SECTIONS[type], words = {};
     state.doc.languages.forEach(function (l) { words[l] = {}; spec.words.forEach(function (f) { words[l][f] = ''; }); });
     var s = { id: uid(), type: type, variant: spec.variants[0], words: words };
+    if (type === 'hero') s.divider = true;
+    s.align = defaultAlign(s);
     if (spec.photo) s.photo = null;
     if (spec.buttons) s.buttons = ['give', 'stay'];
     if (spec.items) s.items = [];
+    if (spec.items === 'cards') s.numbers = true;
     /* Where it was asked for, and straight into it: a new section is one
        to be filled in. */
     var at = Math.min(state.insertAt == null ? 1e9 : state.insertAt, currentPage().sections.length);
     currentPage().sections.splice(at, 0, s);
-    state.edit = at; state.animate = at; state.sectab = spec.items ? 'links' : 'words'; state.openItem = null;
+    state.edit = at; state.animate = at; state.sectab = spec.items ? (spec.items === 'cards' ? 'cards' : 'links') : 'words'; state.openItem = null;
     closeAdd(); drawPages(); changed(); refreshFrame();
     var row = $('wsPages').querySelector('.ws-acc[data-si="' + at + '"]');
     if (row) row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
@@ -904,7 +1393,7 @@
     /* THE PRESETS WEAR THEIR OWN COLORS (and the ministry's accent); only
        Custom wears the owner's — as a dark and a light half, since that is
        what it makes (Chase, 2026-09-29). */
-    var cBg = col.background || '#15171C', cAcc = col.accent || th.accent;
+    var pair = colorPair(), cBg = col.background || '#15171C', cAcc = pair.accent;
     var html = '<div class="ws-head"><h2>' + esc(tr('ws.look')) + '</h2></div><div class="ws-looks">' + LOOKS.map(function (l) {
       var sample;
       if (l === 'custom') {
@@ -916,19 +1405,21 @@
           '<span style="background:' + lt + ';color:#15171C"><span class="ws-look-name">' + esc(name.split(' ')[0]) + '</span>' +
             '<span class="ws-look-btn" style="background:' + cAcc + ';color:#fff">' + esc(tr('ws.btn.give')) + '</span></span></span>';
       } else {
-        var bg = l === 'bold' ? 'background:' + th.accent + ';' : '';
-        var btn = 'background:' + (l === 'bold' ? '#041D24' : th.accent) + ';color:' + (l === 'bold' ? th.accent : '#06110c');
+        var bg = l === 'bold' ? 'background:' + cAcc + ';' : '';
+        var btn = 'background:' + (l === 'bold' ? '#041D24' : cAcc) + ';color:' + (l === 'bold' ? cAcc : '#06110c');
         sample = '<span class="ws-look-sample" style="' + bg + LOOK_SAMPLE[l] + '"><span class="ws-look-name">' + esc(name) + '</span>' +
           '<span class="ws-look-btn" style="' + btn + '">' + esc(tr('ws.btn.give')) + '</span></span>';
       }
       return '<button type="button" class="ws-look" data-chip="look" data-value="' + l + '" aria-pressed="' + (d.look === l) + '">' + sample +
         '<span class="ws-look-cap"><b>' + esc(tr('ws.look.' + l)) + '</b><span>' + esc(tr('ws.look.' + l + '.what')) + '</span></span></button>';
     }).join('') + '</div>';
+    /* The ministry's colors, which every look wears: the Sharing page's
+       picker and the Sharing page's colors (color-pair.js). */
+    html += '<div data-colors-slot></div>';
     /* Custom's own settings, under it, only while it is chosen. */
     if (d.look === 'custom') {
       html += '<div class="ws-rows ws-custom">' +
         row(tr('ws.bgColor'), colorPick('background', col.background, '#15171C')) +
-        row(tr('ws.accentColor'), colorPick('accent', col.accent, th.accent)) +
         row(tr('ws.mode'), chips('mode', ['auto', 'dark', 'light'], d.mode || 'auto', function (v) { return tr('ws.mode.' + v); })) +
         '</div>';
     }
@@ -954,6 +1445,71 @@
         return row(tr('ws.m.' + k), chips('motion:' + k, MOTION[k], d.motion[k], function (v) { return tr('ws.m.' + k + '.' + v); }));
       }).join('') + '</div>';
     $('wsDesign').innerHTML = html;
+    $('wsDesign').querySelector('[data-colors-slot]').replaceWith(colorsBox());
+  }
+
+  /* ---- the ministry's colors (color-pair.js) ---------------------------
+     ONE PAIR, shared with the Sharing page (Chase, 2026-10-04: "maybe those
+     colors should stay in sync … using the same color selection design").
+     Saved at once, as on Sharing, so never part of a draft: a change shows
+     on the site, the embeds and the Sharing page together. A site that
+     chose its own accent before keeps it, shown here, until the first
+     change here makes the two one. The box is built once and moved into
+     each redraw, so a drag on the wheel survives the tab redrawing. */
+  var colors = { box: null, pair: null, open: false, dirty: false, timer: null, dragging: false, redraw: false };
+  function colorPair() {
+    var d = state.doc.design, th = state.body.theme || {};
+    if (d.colors && d.colors.accent) return { accent: String(d.colors.accent).toUpperCase(), accent2: null, turn: null };
+    var p = th.pair || { accent: th.accent || '#1AE4FF' };
+    return { accent: p.accent, accent2: p.accent2 || null, turn: p.turn == null ? null : p.turn };
+  }
+  function colorsBox() {
+    if (!colors.box) {
+      var b = colors.box = document.createElement('div');
+      b.className = 'sh-colors ws-colors';
+      b.innerHTML = '<button type="button" class="sh-colors-head" data-colors-toggle aria-expanded="false">' +
+        '<span class="sh-lbl">' + esc(tr('sh.colors')) + '</span><span class="sh-pair"></span><span class="sh-chev" aria-hidden="true"></span></button>' +
+        '<div class="sh-picker is-stacked" hidden></div>';
+      b.querySelector('[data-colors-toggle]').addEventListener('click', function () { colors.open = !colors.open; paintColors(); });
+      window.ColorPair.wire(b.querySelector('.sh-picker'), { target: function () { return colors.pair; }, editable: canEdit, changed: colorsChanged });
+      b.addEventListener('pointerdown', function () { colors.dragging = true; });
+      window.addEventListener('pointerup', function () {
+        if (!colors.dragging) return;
+        colors.dragging = false;
+        if (colors.redraw) { colors.redraw = false; drawDesign(); }
+      });
+    }
+    if (!colors.dirty) colors.pair = colorPair();
+    paintColors();
+    return colors.box;
+  }
+  function paintColors() {
+    var b = colors.box, p = colors.pair, second = window.ColorPair.secondOf(p), pk = b.querySelector('.sh-picker');
+    b.querySelector('.sh-pair').innerHTML = '<span class="sh-sw" style="background:' + esc(p.accent) + '"></span>' +
+      '<span class="sh-sw" style="background:' + esc(second) + '"></span><span class="sh-hexes">' + esc(p.accent + ' · ' + second) + '</span>';
+    b.classList.toggle('is-open', colors.open);
+    b.querySelector('[data-colors-toggle]').setAttribute('aria-expanded', colors.open ? 'true' : 'false');
+    pk.hidden = !colors.open;
+    if (colors.open) window.ColorPair.paint(pk, 'site', p, canEdit());
+  }
+  function colorsChanged() {
+    colors.dirty = true;
+    paintColors();
+    clearTimeout(colors.timer);
+    colors.timer = setTimeout(saveColors, 500);
+  }
+  async function saveColors() {
+    var sent = JSON.stringify(colors.pair), body;
+    try { body = await send({ action: 'colors', colors: colors.pair }); }
+    catch (e) { toast(e.message, 'err'); return; }
+    if (JSON.stringify(colors.pair) === sent) colors.dirty = false;
+    /* The server let go of the site's own accent in both copies. */
+    state.body.theme = body.theme;
+    state.body.published = body.published;
+    state.base = body.draft;
+    if (state.doc.design.colors) state.doc.design.colors.accent = null;
+    refreshFrame();
+    if (colors.dragging) colors.redraw = true; else drawDesign();
   }
 
   function dark(hex) {
@@ -1022,12 +1578,14 @@
         return row1 + '<div class="ws-linkedit">' +
           '<label class="fld"><span>' + esc(tr('ws.linkName')) + '</span>' + ref(x.l.label) +
             '<input type="text" maxlength="40" data-custom-label="' + x.i + '" value="' + esc((x.l.label || {})[state.langA] || '') + '" lang="' + esc(state.langA) + '"></label>' +
-          '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.link.goesTo')) + '</span>' + linkPicker('custom:' + x.i, u || 'https://', false) + '</div></div>';
+          '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.link.goesTo')) + '</span>' + linkPicker('custom:' + x.i, u || 'https://', false) + '</div>' +
+          /* A web address may show as its site's icon, beside the social icons. */
+          (/^https?:\/\/[^/]+\.[^/]+/.test(u) ? '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.showAs')) + '</span>' +
+            chips('cshow:' + x.i, ['words', 'icon'], x.l.icon ? 'icon' : 'words', function (v) { return tr('ws.showAs.' + v); }) + '</div>' : '') + '</div>';
       }).join('') + '</div>';
     } else {
       html += '<p class="ws-small">' + esc(tr('ws.noCustom')) + '</p>';
     }
-    html += '<div class="ws-rows ws-attop">' + row(tr('ws.atTop'), sw('data-header-links', state.doc.design.headerLinks, '')) + '</div>';
     /* WHERE THE GIVE BUTTONS GO — a link, so it lives with the links (Chase,
        2026-09-29). Empty, it is the ministry's own giving link, shown in the
        box so it is plain which one that is. */
@@ -1045,6 +1603,208 @@
     center: [[26,18,48,8,'l'],[40,38,20,10,'o'],[22,58,56,8,'t'],[30,76,40,6,'l']],
     columns: [[5,24,22,12,'t'],[34,24,16,6,'l'],[34,38,14,6,'l'],[56,24,16,6,'l'],[56,38,14,6,'l'],[78,24,16,12,'o'],[5,74,90,5,'l']],
   };
+  /* ---- Advanced: how each page looks in a search and when shared ------
+     (Chase, 2026-10-04: "a Meta editor in a new Advanced section … both the
+     mobile share where the meta photo is used and the google search where
+     the other text is used"). Everything is automatic until written over:
+     the title is "Page · Name", the description the page's first words, the
+     picture the page's NAME CARD — the ministry's name and the page's, in
+     the site's colors and type — made here in the browser. */
+  function advPage() {
+    var id = state.advPage || state.page || 'home';
+    return state.doc.pages.filter(function (x) { return x.id === id; })[0] || state.doc.pages[0];
+  }
+  /* The ministry's name, as the site itself shows it — not the account that
+     owns the site (that read "Thauma Master Account"). */
+  function siteName() { return state.body.partner.display_name || (state.body.owner && state.body.owner.name) || ''; }
+  function autoTitle(p, l) { var nm = siteName(); return p.id === 'home' ? nm : pageLabel(p, l) + ' · ' + nm; }
+  function autoDesc(p, l) {
+    var pick = function (pg) {
+      for (var a = 0; a < pg.sections.length; a++) {
+        var w = (pg.sections[a].words || {})[l] || (pg.sections[a].words || {})[state.doc.fallback] || {};
+        var f = ['text', 'kicker', 'sub'];
+        for (var b = 0; b < f.length; b++) {
+          var t = String(w[f[b]] || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+          if (t.length > 20) return t.length > 160 ? t.slice(0, 157).replace(/\s+\S*$/, '') + '…' : t;
+        }
+      }
+      return '';
+    };
+    return pick(p) || pick(state.doc.pages[0]);
+  }
+  function firstPhotoOf(p) { return p.sections.map(function (x) { return x.photo; }).filter(Boolean)[0] || null; }
+  function shareMode(p) { var o = p.seo || {}; return o.image || (p.shareImage ? 'custom' : 'card'); }
+
+  /* The look a name card wears: the site's own ground, ink and accent. */
+  function cardLook() {
+    var d = state.doc.design, acc = siteAccent();
+    if (d.look === 'paper') return { bg: '#F6F2EA', fg: '#1A1C22', dim: '#5B5E66', acc: acc, font: 'Georgia, serif' };
+    if (d.look === 'bold') return { bg: acc, fg: '#041D24', dim: 'rgba(4,29,36,.7)', acc: '#041D24', font: 'Sora, system-ui' };
+    var bg = (d.look === 'custom' && d.colors && d.colors.background) || '#0A0D12';
+    var n = parseInt(bg.slice(1), 16), light = ((n >> 16) * 299 + (n >> 8 & 255) * 587 + (n & 255) * 114) / 1000 > 140;
+    return light ? { bg: bg, fg: '#15171C', dim: '#5B5E66', acc: acc, font: 'Sora, system-ui' }
+                 : { bg: bg, fg: '#EDF2F8', dim: '#9AA6B6', acc: acc, font: 'Sora, system-ui' };
+  }
+  function cardSig(p, l) { var k = cardLook(); return [siteName(), p.id === 'home' ? '' : pageLabel(p, l), k.bg, k.fg, k.acc, state.body.site.subdomain].join('|'); }
+  /* A 1200×630 card: the page's name light, the ministry's name bold, a short
+     line in the accent, the address small. */
+  async function makeCard(p, l) {
+    var k = cardLook(), fam = k.font.split(',')[0];
+    /* The console page itself does not load Sora, so the card brings it in
+       from the site's own font files (as main.css declares them), once. */
+    if (fam === 'Sora' && window.FontFace && !window.__cardFonts) {
+      var R = { latin: 'U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD',
+                'latin-ext': 'U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF' };
+      window.__cardFonts = Promise.all(Object.keys(R).reduce(function (all, sub) {
+        return all.concat([100, 600].map(function (wt) {
+          return new FontFace('Sora', 'url(/fonts/Sora-' + sub + '-v2.woff2)', { weight: String(wt), unicodeRange: R[sub] }).load().then(function (f) { document.fonts.add(f); });
+        }));
+      }, [])).catch(function () {});
+    }
+    try { await window.__cardFonts; await Promise.all([document.fonts.load('100 96px ' + fam), document.fonts.load('600 96px ' + fam)]); } catch (e) { /* system fonts */ }
+    var c = document.createElement('canvas'); c.width = 1200; c.height = 630;
+    var g = c.getContext && c.getContext('2d');
+    if (!g) return null;
+    g.fillStyle = k.bg; g.fillRect(0, 0, 1200, 630);
+    var glow = g.createRadialGradient(240, 120, 0, 240, 120, 760);
+    glow.addColorStop(0, k.acc + '55'); glow.addColorStop(1, k.acc + '00');
+    g.fillStyle = glow; g.fillRect(0, 0, 1200, 630);
+    var nm = siteName(), page = p.id === 'home' ? '' : pageLabel(p, l);
+    var fit = function (txt, weight, size, max) {
+      var z = size; do { g.font = weight + ' ' + z + 'px ' + k.font; z -= 4; } while (g.measureText(txt).width > max && z > 30); return z + 4;
+    };
+    g.textBaseline = 'alphabetic'; g.fillStyle = k.fg;
+    var y = 330;
+    if (page) { fit(page, 100, 104, 1040); g.fillText(page, 80, y); y += 104; fit(nm, 600, 72, 1040); g.fillText(nm, 80, y); }
+    else { fit(nm, 600, 112, 1040); g.fillText(nm, 80, y + 40); y += 60; }
+    g.fillStyle = k.acc; g.fillRect(80, y + 34, 120, 6);
+    g.fillStyle = k.dim; g.font = '500 30px ' + k.font;
+    g.fillText(state.body.site.subdomain + '.thauma.one', 80, 560);
+    return c;
+  }
+  /* Before publishing: every shown page's card in every language whose card
+     is missing or out of date. An unchanged card is never made again. */
+  async function makeCards() {
+    var todo = [];
+    state.doc.pages.forEach(function (p) {
+      if (!p.on || shareMode(p) !== 'card') return;
+      state.doc.languages.forEach(function (l) {
+        var have = (p.shareCards || {})[l];
+        if (!have || have.sig !== cardSig(p, l)) todo.push([p, l]);
+      });
+    });
+    if (!todo.length) return;
+    toast(tr('ws.adv.making'), 'ok');
+    for (var a = 0; a < todo.length; a++) {
+      var p = todo[a][0], l = todo[a][1];
+      var c = await makeCard(p, l);
+      if (!c) continue;
+      var blob = await new Promise(function (r) { c.toBlob(r, 'image/jpeg', 0.88); });
+      var res = await fetch('/api/admin/media?kind=partnersite', { method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'image/jpeg', 'X-File-Name': 'share-card-' + p.id + '-' + l }, body: blob });
+      var body = await res.json().catch(function () { return {}; });
+      if (!res.ok) throw new Error(body.error || tr('common.saveFailed'));
+      p.shareCards = p.shareCards || {};
+      noteMedia(body.url);
+      p.shareCards[l] = { url: body.url, sig: cardSig(p, l) };
+    }
+    changed();
+  }
+
+  /* A share picture through the photo editor: the share shape or free, then
+     real pixels (a social app cannot apply settings), its original kept. */
+  async function editSharePicture(ae) {
+    var orig2 = ae.shareOrig || ae.shareImage;
+    if (!orig2 || !window.PhotoEditor) return;
+    var got2 = await window.PhotoEditor.open(orig2, { purpose: 'share', accent: siteAccent(), accent2: siteAccent2(), removable: true })
+      .catch(function (err) { toast(err.message, 'err'); return null; });
+    if (!got2) return;
+    if (got2.remove) { ae.shareImage = null; ae.shareOrig = null; ae.seo = ae.seo || {}; ae.seo.image = 'card'; drawAdvanced(); return changed(); }
+    try {
+      var blob2 = await window.PhotoEditor.exportBlob(orig2, got2, { max: 1200 });
+      var r2 = await fetch('/api/admin/media?kind=partnersite', { method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'image/jpeg', 'X-File-Name': 'share-' + ae.id }, body: blob2 });
+      var b2 = await r2.json().catch(function () { return {}; });
+      if (!r2.ok) throw new Error(b2.error || tr('common.saveFailed'));
+      noteMedia(b2.url);
+      ae.shareOrig = orig2; ae.shareImage = b2.url; drawAdvanced(); changed();
+    } catch (err) { toast(err.message, 'err'); }
+  }
+  function drawAdvanced() {
+    var p = advPage(), l = state.langA, o = p.seo || (p.seo = { title: {}, desc: {}, image: null });
+    o.title = o.title || {}; o.desc = o.desc || {};
+    var t = o.title[l] || autoTitle(p, l), dsc = o.desc[l] || autoDesc(p, l), mode = shareMode(p);
+    var host = state.body.site.subdomain + '.thauma.one';
+    var html = '<div class="ws-head"><h2>' + esc(tr('ws.adv.title')) + '</h2>' +
+      '<label class="ws-pagepick"><select data-adv-page>' + state.doc.pages.filter(function (x) { return x.on; }).map(function (x) {
+        return '<option value="' + esc(x.id) + '"' + (x.id === p.id ? ' selected' : '') + '>' + esc(pageLabel(x, l)) + '</option>';
+      }).join('') + '</select></label></div>';
+    /* The two places it shows, side by side, as they will look. */
+    html += '<div class="ws-adv-previews">' +
+      '<div class="ws-serp"><span class="ws-lbl2">' + esc(tr('ws.adv.inSearch')) + '</span>' +
+        '<span class="ws-serp-url">' + esc(host) + (p.id === 'home' ? '' : ' › ' + esc(p.id)) + '</span>' +
+        '<b class="ws-serp-title">' + esc(t.length > 60 ? t.slice(0, 59) + '…' : t) + '</b>' +
+        '<span class="ws-serp-desc">' + esc(dsc) + '</span></div>' +
+      '<div class="ws-sharecard"><span class="ws-lbl2">' + esc(tr('ws.adv.inShare')) + '</span>' +
+        '<div class="ws-sc"><span class="ws-sc-pic" id="wsSharePic"></span><b>' + esc(t) + '</b><span>' + esc(host) + '</span></div></div></div>';
+    html += '<div class="ws-fields">' +
+      '<label class="fld ws-wide"><span>' + esc(tr('ws.adv.titleField')) + ' <small class="ws-count">' + (o.title[l] || '').length + ' / 60</small></span>' +
+        '<input type="text" maxlength="70" data-adv-title value="' + esc(o.title[l] || '') + '" placeholder="' + esc(autoTitle(p, l)) + '" lang="' + esc(l) + '"></label>' +
+      '<label class="fld ws-wide"><span>' + esc(tr('ws.adv.descField')) + ' <small class="ws-count">' + (o.desc[l] || '').length + ' / 160</small></span>' +
+        '<textarea rows="3" maxlength="200" data-adv-desc placeholder="' + esc(autoDesc(p, l)) + '" lang="' + esc(l) + '">' + esc(o.desc[l] || '') + '</textarea></label></div>';
+    html += '<div class="ws-rows">' + row(tr('ws.adv.picture'), chips('advpic', ['card', 'photo', 'custom', 'none'], mode, function (v) { return tr('ws.adv.picture.' + v); }) +
+      (mode === 'custom' ? '<label class="ghost-btn sm ws-file">' + esc(tr('ws.sharePic.choose')) + '<input type="file" accept="image/*" data-adv-upload hidden></label>' +
+        (p.shareImage && window.PhotoEditor ? '<button type="button" class="ghost-btn sm" data-adv-edit>' + esc(tr('pe.edit')) + '</button>' : '') : '')) + '</div>';
+    $('wsAdvanced').innerHTML = html;
+    /* The picture in the share preview: the card drawn live, or the photo. */
+    var box = $('wsSharePic');
+    if (mode === 'card') makeCard(p, l).then(function (c) { if (c) box.style.backgroundImage = 'url(' + c.toDataURL('image/jpeg', 0.8) + ')'; }).catch(function () {});
+    else if (mode !== 'none') {
+      var pic = mode === 'custom' ? p.shareImage : firstPhotoOf(p) || firstPhotoOf(state.doc.pages[0]);
+      if (pic) {
+        box.style.backgroundImage = 'url(' + pic + ')';
+        /* As tall as the picture is, within what apps show (3:4 to 1.91:1). */
+        var im = new Image();
+        im.onload = function () { box.style.aspectRatio = String(Math.max(0.75, Math.min(1.91, im.naturalWidth / im.naturalHeight))); };
+        im.src = pic;
+      }
+    }
+    else box.hidden = true;
+  }
+
+  /* ---- the Navigation tab (2026-10-04, from the approved mockup) ---- */
+  function navOf(doc) {
+    return doc.design.nav || (doc.design.nav = { current: 'lit', tint: 'white', line: 'subtle', phone: 'drop' });
+  }
+  function drawNav() {
+    var n = navOf(state.doc), d = state.doc.design;
+    var look = function (group, k, on, sample) {
+      return '<button type="button" class="ws-look" data-chip="nav:' + group + '" data-value="' + k + '" aria-pressed="' + on + '">' + sample +
+        '<span class="ws-look-cap"><b>' + esc(tr('ws.nav.' + (group === 'current' ? 'cur' : group) + '.' + k)) + '</b><span>' +
+        esc(tr('ws.nav.' + (group === 'current' ? 'cur' : group) + '.' + k + '.what')) + '</span></span></button>';
+    };
+    var html = '<div class="ws-head"><h2>' + esc(tr('ws.nav.current')) + '</h2></div><div class="ws-looks ws-navs" data-tint="' + esc(n.tint) + '">' +
+      ['lit', 'under', 'grow', 'pill'].map(function (k) {
+        return look('current', k, n.current === k, '<span class="ws-nav-sample" data-cur="' + k + '" aria-hidden="true"><span>' +
+          esc(tr('ws.page.about')) + '</span><span class="on">' + esc(tr('ws.page.mission')) + '</span><span>' + esc(tr('ws.page.timeline')) + '</span></span>');
+      }).join('') + '</div>';
+    html += '<div class="ws-rows">' +
+      row(tr('ws.nav.tint'), chips('nav:tint', ['accent', 'white'], n.tint, function (v) { return tr('ws.nav.tint.' + v); })) +
+      row(tr('ws.nav.line'), chips('nav:line', ['none', 'subtle', 'accent'], n.line, function (v) { return tr('ws.nav.line.' + v); })) +
+      '</div>';
+    html += '<div class="ws-head"><h2>' + esc(tr('ws.nav.phone')) + '</h2></div><div class="ws-looks ws-navs">' +
+      ['drop', 'full', 'drawer'].map(function (k) {
+        return look('phone', k, n.phone === k, '<span class="ws-phone-sample" data-phone="' + k + '" aria-hidden="true"><i></i></span>');
+      }).join('') + '</div>';
+    /* Straight to the giving link only when there is one to go to. */
+    html += '<div class="ws-rows">' + row(tr('ws.nav.give'), state.doc.give
+      ? chips('giveTo', ['page', 'link'], d.giveTo || 'page', function (v) { return tr('ws.nav.give.' + v); })
+      : chips('giveTo', ['page'], 'page', function (v) { return tr('ws.nav.give.' + v); }) +
+        '<button type="button" class="ghost-btn sm" data-goto-tab="settings">' + esc(tr('ws.nav.addGive')) + ' →</button>') + '</div>';
+    /* The social icons in the menu too — here, with the rest of the menu
+       (it was "Also show them at the top" on the Links tab). */
+    html += '<div class="ws-rows">' + row(tr('ws.nav.icons'), sw('data-header-links', d.headerLinks, '')) + '</div>';
+    $('wsNav').innerHTML = html;
+  }
+
   function drawFooter() {
     var f = state.doc.footer || (state.doc.footer = { layout: 'split', menu: false, socials: 'icons', words: {} });
     var w = (f.words || {})[state.langA] || {};
@@ -1072,6 +1832,10 @@
       row(tr('ws.footer.socials'), chips('footer:socials', ['icons', 'words'], f.socials, function (v) { return tr('ws.footer.socials.' + v); })) +
       /* The tagline's color (Chase, 2026-10-01): as now, quieter, or the accent. */
       row(tr('ws.footer.taglineColor'), chips('footer:tagline', ['plain', 'subtle', 'accent'], f.tagline || 'plain', function (v) { return tr('ws.footer.tagline.' + v); })) +
+      /* Its ground, the line above it, its room (Chase, 2026-10-04). */
+      row(tr('ws.footer.ground'), chips('footer:ground', ['page', 'raised', 'tint'], f.ground || 'page', function (v) { return tr('ws.footer.ground.' + v); })) +
+      row(tr('ws.footer.line'), sw('data-footer-line', f.line !== false, '')) +
+      row(tr('ws.footer.space'), chips('footer:space', ['compact', 'regular', 'roomy'], f.space || 'regular', function (v) { return tr('ws.footer.space.' + v); })) +
       '</div><div class="ws-fields">' +
       '<label class="fld ws-wide"><span>' + esc(tr('ws.footer.tagline')) + '</span>' + ref(src('tagline')) +
         '<input type="text" maxlength="120" data-footer-word="tagline" value="' + esc(w.tagline || '') + '" lang="' + esc(state.langA) + '"></label>' +
@@ -1114,7 +1878,6 @@
       }).join('') + '</div>';
     $('wsSettings').innerHTML = html;
   }
-
   /* ---- every change ---------------------------------------------------- */
 
   function words(obj, lang) { obj.words = obj.words || {}; obj.words[lang] = obj.words[lang] || {}; return obj.words[lang]; }
@@ -1148,6 +1911,15 @@
       return changed();
     }
     if (t.dataset.give !== undefined) { state.doc.give = v.trim(); return changed(); }
+    if (t.dataset.advTitle !== undefined || t.dataset.advDesc !== undefined) {
+      var aq = advPage(); aq.seo = aq.seo || { title: {}, desc: {} };
+      var key = t.dataset.advTitle !== undefined ? 'title' : 'desc';
+      aq.seo[key] = aq.seo[key] || {};
+      if (v.trim()) aq.seo[key][state.langA] = v; else delete aq.seo[key][state.langA];
+      var cnt = t.closest('label') && t.closest('label').querySelector('.ws-count');
+      if (cnt) cnt.textContent = v.length + ' / ' + (key === 'title' ? 60 : 160);
+      return changed();
+    }
   });
 
   /* "sec:<i>" is a section's link; "item:<i>:<j>" is one card's. */
@@ -1168,6 +1940,8 @@
   $('wsRoot').addEventListener('change', async function (e) {
     var t = e.target, p = currentPage();
     if (t.dataset.pickPage !== undefined) { state.page = t.value; state.edit = null; drawPages(); refreshFrame(); return; }
+    if (t.dataset.advPage !== undefined) { state.advPage = t.value; drawAdvanced(); return; }
+    if (t.dataset.advUpload !== undefined) { var au = advPage(); return upload(t, function (url) { au.shareImage = url; au.shareOrig = null; au.seo = au.seo || {}; au.seo.image = 'custom'; drawAdvanced(); editSharePicture(au); }); }
     /* A color settled on: the look cards redraw in it (not while dragging,
        which would close the picker under the pointer). */
     if (t.dataset.color) { drawDesign(); return; }
@@ -1192,7 +1966,9 @@
       fillPair(); drawSettings(); return changed();
     }
     if (t.dataset.fallback !== undefined) { state.doc.fallback = t.value; return changed(); }
-    if (t.dataset.secPhoto) return upload(t, function (url) { p.sections[+t.dataset.secPhoto].photo = url; drawSections(); });
+    /* Chosen, then straight into the editor: one step, not two (Chase,
+       2026-10-04). Canceling keeps the photo as it came. */
+    if (t.dataset.secPhoto) return upload(t, function (url) { var ps = p.sections[+t.dataset.secPhoto]; ps.photo = url; ps.photoEdit = null; drawSections(); editSectionPhoto(ps); });
     if (t.dataset.logo !== undefined) return upload(t, function (url) { state.doc.design.logo = url; drawDesign(); });
     if (t.dataset.favicon !== undefined) return upload(t, function (url) { state.doc.design.favicon = url; drawDesign(); }, 256);
   });
@@ -1226,13 +2002,16 @@
       if (ok) { p.sections.splice(+d.secRemove, 1); state.edit = null; drawSections(); changed(); }
       return;
     }
-    if (d.secUnphoto) { p.sections[+d.secUnphoto].photo = null; drawSections(); return changed(); }
-    if (d.itemAdd) { var sec = p.sections[+d.itemAdd]; sec.items = sec.items || []; sec.items.push({ url: 'https://', photo: null, words: {} }); state.openItem = sec.items.length - 1; drawSections(); var ti = $('wsPages').querySelector('[data-item$=":title"]'); if (ti) ti.focus(); return; }
+    if (d.secUnphoto) { p.sections[+d.secUnphoto].photo = null; p.sections[+d.secUnphoto].photoEdit = null; drawSections(); return changed(); }
+    if (d.secEdit) return editSectionPhoto(p.sections[+d.secEdit]);
+    if (d.advEdit !== undefined) return editSharePicture(advPage());
+    if (d.itemAdd) { var sec = p.sections[+d.itemAdd]; sec.items = sec.items || []; sec.items.push(sec.type === 'cards' ? { words: {} } : { url: 'https://', photo: null, words: {} }); state.openItem = sec.items.length - 1; drawSections(); var ti = $('wsPages').querySelector('[data-item$=":title"]'); if (ti) ti.focus(); return; }
     if (d.itemUnphoto) { var up = d.itemUnphoto.split(':'); p.sections[+up[0]].items[+up[1]].photo = null; drawSections(); return changed(); }
     if (d.unfavicon !== undefined) { state.doc.design.favicon = null; drawDesign(); return changed(); }
     if (d.gotoTab) { var tb = document.querySelector('[data-ws-tab="' + d.gotoTab + '"]'); if (tb) tb.click(); return; }
     if (d.colorReset) { state.doc.design.colors[d.colorReset] = null; drawDesign(); return changed(); }
     if (d.footerMenu !== undefined) { state.doc.footer.menu = !state.doc.footer.menu; drawFooter(); return changed(); }
+    if (d.footerLine !== undefined) { state.doc.footer.line = state.doc.footer.line === false; drawFooter(); return changed(); }
     if (d.itemRemove) { var r = d.itemRemove.split(':'); p.sections[+r[0]].items.splice(+r[1], 1); state.openItem = null; drawSections(); return changed(); }
     if (d.customAdd !== undefined) {
       state.doc.links.push({ kind: 'custom', url: 'https://', label: {} });
@@ -1261,21 +2040,45 @@
       state.doc.links = state.doc.links.filter(function (l) { return l.kind !== d.socialRemove; });
       state.openSocial = null; drawLinks(); return changed();
     }
-    if (d.headerLinks !== undefined) { state.doc.design.headerLinks = !state.doc.design.headerLinks; drawLinks(); return changed(); }
+    if (d.pageCue !== undefined) {
+      var pc = state.doc.pages[+d.pageCue];
+      pc.cue = pc.cue === false;
+      drawSections(); return changed();
+    }
+    if (d.headerLinks !== undefined) { state.doc.design.headerLinks = !state.doc.design.headerLinks; drawNav(); return changed(); }
     if (d.chip) {
       var val = d.value, name = d.chip;
       if (name.indexOf('variant:') === 0) { p.sections[+name.slice(8)].variant = val; drawSections(); }
       else if (name.indexOf('raised:') === 0) { p.sections[+name.slice(7)].raised = val === 'raised'; drawSections(); }
+      else if (name.indexOf('divider:') === 0) { p.sections[+name.slice(8)].divider = val === 'on'; drawSections(); }
+      else if (name === 'advpic') { var ap = advPage(); ap.seo = ap.seo || { title: {}, desc: {} }; ap.seo.image = val; drawAdvanced(); }
+      else if (name.indexOf('vpos:') === 0) { p.sections[+name.slice(5)].versePos = val; drawSections(); }
+      else if (name.indexOf('talign:') === 0) { p.sections[+name.slice(7)].titleAlign = val; drawSections(); }
+      else if (name.indexOf('tline:') === 0) { p.sections[+name.slice(6)].titleLine = val === 'on'; drawSections(); }
+      else if (name.indexOf('tinline:') === 0) { p.sections[+name.slice(8)].titleInline = val === 'with'; drawSections(); }
+      else if (name.indexOf('cshow:') === 0) { state.doc.links[+name.slice(6)].icon = val === 'icon'; drawLinks(); }
+      else if (name.indexOf('pheight:') === 0) { p.sections[+name.slice(8)].height = val; drawSections(); }
+      else if (name.indexOf('vtitle:') === 0) { p.sections[+name.slice(7)].titleFrom = val; drawSections(); }
+      else if (name.indexOf('vlinks:') === 0) { p.sections[+name.slice(7)].linkStyle = val; drawSections(); }
+      else if (name.indexOf('tier:') === 0) { var tk = name.slice(5).split(':'); p.sections[+tk[0]].items[+tk[1]].tier = val; drawSections(); }
+      else if (name.indexOf('numbers:') === 0) { p.sections[+name.slice(8)].numbers = val === 'on'; drawSections(); }
+      else if (name.indexOf('topline:') === 0) { p.sections[+name.slice(8)].topline = val === 'on'; drawSections(); }
+      else if (name.indexOf('hbg:') === 0) { p.sections[+name.slice(4)].bg = val; drawSections(); }
+      else if (name.indexOf('verse:') === 0) { p.sections[+name.slice(6)].verseStyle = val; drawSections(); }
       else if (name.indexOf('align:') === 0) { p.sections[+name.slice(6)].align = val; drawSections(); }
       else if (name.indexOf('linkkind:') === 0) {
         var key = name.slice(9);
         var firstPage = (state.doc.pages.filter(function (x) { return x.on && x.id !== 'home'; })[0] || state.doc.pages[0]).id;
-        setLink(key, val === 'none' ? '' : val === 'page' ? 'page:' + firstPage : 'https://');
+        var firstSec = jumpTargets(key)[0];
+        setLink(key, val === 'none' ? '' : val === 'page' ? 'page:' + firstPage :
+          val === 'section' ? (firstSec ? 'section:' + firstSec.id : '') : 'https://');
         if (state.tab === 'links') drawLinks(); else drawSections();
         var box = val === 'url' && $('wsRoot').querySelector('[data-link-url="' + key + '"]');
         if (box) box.focus();
       }
       else if (name.indexOf('footer:') === 0) { state.doc.footer[name.slice(7)] = val; drawFooter(); }
+      else if (name.indexOf('nav:') === 0) { navOf(state.doc)[name.slice(4)] = val; drawNav(); }
+      else if (name === 'giveTo') { state.doc.design.giveTo = val; drawNav(); }
       else if (name.indexOf('motion:') === 0) { state.doc.design.motion[name.slice(7)] = val; drawDesign(); }
       else if (name === 'look' || name === 'menu' || name === 'brand' || name === 'mode' || name === 'faviconStyle') { state.doc.design[name] = val; drawDesign(); }
       return changed();
@@ -1291,6 +2094,9 @@
     if (d.revoke) return act({ action: 'revoke', user_id: d.revoke });
   });
 
+  /* A header carries plain words only: the name without its ending, and
+     nothing a header could not hold. The server makes it readable. */
+  function fileName(n) { return String(n || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x20-\x7e]/g, '').slice(0, 80); }
   /* A picture: made smaller and WebP in the browser, then stored with the
      ministry's other pictures. */
   async function upload(input, done, max) {
@@ -1308,9 +2114,10 @@
       c.getContext('2d').drawImage(bitmap, 0, 0, c.width, c.height);
       var blob = await new Promise(function (r) { c.toBlob(r, 'image/webp', 0.84); });
       var res = await fetch('/api/admin/media?kind=partnersite', { method: 'PUT', credentials: 'same-origin',
-        headers: { 'Content-Type': 'image/webp' }, body: blob });
+        headers: { 'Content-Type': 'image/webp', 'X-File-Name': fileName(file.name) }, body: blob });
       var body = await res.json();
       if (!res.ok) throw new Error(body.error || tr('common.saveFailed'));
+      noteMedia(body.url);
       done(body.url);
       changed();
     } catch (err) {

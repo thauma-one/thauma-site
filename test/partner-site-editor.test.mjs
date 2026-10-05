@@ -9,7 +9,7 @@
  */
 import { JSDOM } from "jsdom";
 import { readFileSync, existsSync } from "node:fs";
-import { starter, cleanDoc, word, PAGES } from "../workers/src/site/model.js";
+import { starter, cleanDoc, word, PAGES, placeholders } from "../workers/src/site/model.js";
 
 const PAGE = ["_site", "_site_next", "_site_prod"].map((d) => `${d}/staff/website/index.html`).find((f) => existsSync(f));
 
@@ -25,8 +25,11 @@ const settle = (ms = 150) => new Promise((r) => setTimeout(r, ms));
 console.log("Website editor\n");
 if (!PAGE) { console.log("  SKIP  no build — run eleventy first."); process.exit(1); }
 
-function answer({ edit = true, owner = true, published = false } = {}) {
+function answer(opts = {}) {
+  const { edit = true, owner = true, published = false } = opts;
   const draft = cleanDoc(starter("full", { name: "Chase Roush", langs: ["en", "hr"], fallback: "en" }), ["en", "hr"]);
+  if (opts.ownAccent) { draft.design.look = "custom"; draft.design.colors = { background: "#0D0D0D", accent: opts.ownAccent }; }
+  if (opts.photo) draft.pages.find((p) => p.id === "home").sections[1].photo = opts.photo;
   return {
     published: published ? JSON.parse(JSON.stringify(draft)) : null,
     you: { email: "c@t.one", name: "Chase Roush", roles: ["partner", "staff"] },
@@ -37,6 +40,7 @@ function answer({ edit = true, owner = true, published = false } = {}) {
     languages: [{ code: "en", name: "English", native_name: "English" }, { code: "hr", name: "Croatian", native_name: "Hrvatski" }],
     /* As staff-site.js builds it: the site's own page names per language. */
     page_names: Object.fromEntries(["en", "hr"].map((l) => [l, Object.fromEntries(PAGES.map((id) => [id, word(l, id)]))])),
+    placeholders: placeholders ? Object.fromEntries(["en", "hr"].map((l) => [l, placeholders(l, "Chase Roush")])) : undefined,
     theme: { accent: "#1AE4FF", accent2: "#25FFA1" },
     can: { edit, owner }, owner: { name: "Chase Roush" }, editors: [], requests: [], my_request: null,
   };
@@ -59,7 +63,7 @@ async function boot(opts = {}) {
   w.scrollTo = () => {};
   w.scrollBy = () => {};
   w.HTMLElement.prototype.scrollIntoView = () => {};
-  for (const f of ["staff-i18n.js", "staff.js", "staff-site.js"]) w.eval(readFileSync("src/js/" + f, "utf8"));
+  for (const f of ["staff-i18n.js", "staff.js", "color-pair.js", "staff-site.js"]) w.eval(readFileSync("src/js/" + f, "utf8"));
   w.StaffToast = () => {};
   await settle(200);
   const d = w.document;
@@ -83,7 +87,7 @@ await check("a page opens to its sections as rows; All pages and the page menu l
   const { w, d, click, pages } = await boot();
   pages();
   click(d.querySelector('[data-open-page="home"]'));
-  eq([...d.querySelectorAll(".ws-stile-words b")].map((n) => n.textContent), ["Opening", "Photo and words"], "Home's sections");
+  eq([...d.querySelectorAll(".ws-stile-words b")].map((n) => n.textContent), ["Hero", "Photo and words"], "Home's sections");
   assert(/Follow the work of/.test(d.querySelector(".ws-stile-words span").textContent), "each with one line of its words");
   const pick = d.querySelector("[data-pick-page]");
   pick.value = "give";
@@ -123,10 +127,30 @@ await check("a row unfolds where it is, one at a time; a new section goes where 
   click(d.querySelector('[data-edit-sec="0"]'));
   eq(d.querySelectorAll(".ws-acc.is-open").length, 0, "pressed again, it folds");
   click(d.querySelector('[data-insert-at="1"]'));
-  eq(d.querySelectorAll("[data-add-type]").length, 14, "every kind offered");
+  eq(d.querySelectorAll("[data-add-type]").length, 16, "every kind offered");
   click(d.querySelector('[data-add-type="quote"]'));
-  eq([...d.querySelectorAll(".ws-stile-words b")].map((n) => n.textContent), ["Opening", "A verse or a quote", "Photo and words"], "between the two");
+  eq([...d.querySelectorAll(".ws-stile-words b")].map((n) => n.textContent), ["Hero", "A verse or a quote", "Photo and words"], "between the two");
   assert(d.querySelector('.ws-acc[data-si="1"]').classList.contains("is-open"), "and open");
+});
+
+await check("a new section suggests words in the language being written, and saves none of them", async () => {
+  /* Chase, 2026-10-03: placeholder words in every language whenever a
+     section is added, for those unsure how to phrase things. */
+  const { w, d, sent, click, pages } = await boot();
+  pages();
+  const pick = d.getElementById("wsLangA");
+  pick.value = "hr";
+  pick.dispatchEvent(new w.Event("change", { bubbles: true }));
+  click(d.querySelector('[data-open-page="home"]'));
+  click(d.querySelector('[data-insert-at="1"]'));
+  click(d.querySelector('[data-add-type="text"]'));
+  const heading = d.querySelector('[data-rt="1:heading"]');
+  assert(heading, "the new section is not open");
+  eq(heading.getAttribute("data-ph"), word("hr", "aboutThin") + " " + word("hr", "aboutBold"), "its heading, in Croatian");
+  eq(d.querySelector('[data-rt="1:text"]').getAttribute("data-ph"), word("hr", "aboutFill"), "its words, in Croatian");
+  await settle(900);
+  const saved = sent.filter((x) => x.action === "save").pop().draft.pages[0].sections[1];
+  eq([saved.words.hr.heading, saved.words.hr.text], ["", ""], "nothing suggested was saved");
 });
 
 await check("one section at a time: only its tabs; formatted words saved clean", async () => {
@@ -147,6 +171,95 @@ await check("one section at a time: only its tabs; formatted words saved clean",
     "Serving <b>Croatia</b>\nchurches <i>well</i>", "bold, italic and lines kept; the rest gone");
 });
 
+await check("words can take a size and a color, a quick pick or any color; a word inside a colored phrase can change alone", async () => {
+  const { w, d, sent, click, pages } = await boot();
+  pages();
+  click(d.querySelector('[data-open-page="home"]'));
+  click(d.querySelector('[data-edit-sec="1"]'));
+  const box = d.querySelector('[data-rt="1:text"]');
+  box.innerHTML = "one two three";
+  const select = (node, a, b) => {
+    const r = d.createRange(); r.setStart(node, a); r.setEnd(node, b);
+    const sel = w.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+  };
+  const bar = (q) => d.querySelector(".ws-fmt " + q);
+  const saved = async () => { await settle(900); return sent.filter((x) => x.action === "save").pop().draft.pages[0].sections[1].words.en.text; };
+
+  select(box.firstChild, 4, 7);                       // "two"
+  click(bar('[data-fmt="color"]'));
+  assert(!bar('[data-fmt-row="color"]').hidden, "the color row opens");
+  click(bar('[data-fmt-c="red"]'));
+  eq(await saved(), 'one <span data-c="red">two</span> three', "a quick pick");
+
+  select(box.querySelector('[data-c="red"]').firstChild, 1, 2);   // the "w"
+  click(bar('[data-fmt-c="blue"]'));
+  eq(await saved(), 'one <span data-c="red">t</span><span data-c="blue">w</span><span data-c="red">o</span> three', "split out of the red");
+
+  select(box.lastChild, 1, 6);                        // "three"
+  click(bar('[data-fmt-sz="lg"]'));
+  eq(await saved(), 'one <span data-c="red">t</span><span data-c="blue">w</span><span data-c="red">o</span> <span data-sz="lg">three</span>', "a size");
+
+  select(box.firstChild, 0, 3);                       // "one"
+  const pick = bar("[data-fmt-any]");
+  pick.dispatchEvent(new w.MouseEvent("mousedown", { bubbles: true }));
+  pick.value = "#ff00aa";
+  pick.dispatchEvent(new w.Event("input", { bubbles: true }));
+  assert(/^<span data-c="#ff00aa">one<\/span>/.test(await saved()), "any color");
+  assert(box.querySelector('[data-c="#ff00aa"]').style.color, "a picked color shows in the box");
+});
+
+await check("every section lines up: left, centered, right or indented; a Words section has no second layout control", async () => {
+  const { d, sent, click, pages } = await boot();
+  pages();
+  click(d.querySelector('[data-open-page="mission"]'));
+  click(d.querySelector('[data-edit-sec="0"]'));            // the Mission page's Words section
+  click(d.querySelector('[data-sectab="look"]'));
+  eq([...d.querySelectorAll('[data-chip="align:0"]')].map((b) => b.dataset.value), ["left", "center", "right", "indent"], "choices");
+  eq(d.querySelector('[data-chip="align:0"][aria-pressed="true"]').dataset.value, "left", "as it was");
+  assert(!d.querySelector('[data-chip="variant:0"]'), "the old Left/Centered layout chips are gone for Words");
+  click(d.querySelector('[data-chip="align:0"][data-value="right"]'));
+  await settle(900);
+  eq(sent.filter((x) => x.action === "save").pop().draft.pages.filter((p) => p.id === "mission")[0].sections[0].align, "right", "saved");
+});
+
+await check("a header can be added; its Look has background, top line and title line; a verse has its own look", async () => {
+  const { d, sent, click, pages } = await boot();
+  pages();
+  click(d.querySelector('[data-open-page="mission"]'));
+  click(d.querySelector('[data-insert-at="0"]'));
+  click(d.querySelector('[data-add-type="header"]'));
+  assert(d.querySelector('[data-rt="0:heading"]'), "the new header is not open");
+  click(d.querySelector('[data-sectab="look"]'));
+  eq([...d.querySelectorAll('[data-chip="hbg:0"]')].map((b) => b.dataset.value), ["plain", "raised", "tint", "accent"], "backgrounds");
+  assert(!d.querySelector('[data-chip="raised:0"]'), "no second background control");
+  click(d.querySelector('[data-chip="hbg:0"][data-value="tint"]'));
+  click(d.querySelector('[data-chip="topline:0"][data-value="off"]'));
+  await settle(900);
+  const s = sent.filter((x) => x.action === "save").pop().draft.pages.filter((p) => p.id === "mission")[0].sections;
+  eq([s[0].type, s[0].bg, s[0].topline], ["header", "tint", false], "saved");
+
+  click(d.querySelector('[data-edit-sec="1"]'));            // the Words section, now second
+  click(d.querySelector('[data-sectab="look"]'));
+  eq([...d.querySelectorAll('[data-chip="verse:1"]')].map((b) => b.dataset.value), ["quote", "line", "mark"], "verse looks");
+});
+
+await check("the opening's Look has this page's scroll indicator switch; off saves on the page", async () => {
+  const { d, sent, click, pages } = await boot();
+  pages();
+  click(d.querySelector('[data-open-page="home"]'));
+  click(d.querySelector('[data-edit-sec="0"]'));            // Home's opening
+  click(d.querySelector('[data-sectab="look"]'));
+  const cue = d.querySelector('[data-page-cue]');
+  assert(cue && cue.getAttribute("aria-checked") === "true", "a switch, on");
+  click(cue);
+  await settle(900);
+  eq(sent.filter((x) => x.action === "save").pop().draft.pages[0].cue, false, "saved off on Home");
+  assert(d.querySelector('[data-page-cue]').getAttribute("aria-checked") === "false", "shown off");
+  click(d.querySelector('[data-edit-sec="1"]'));
+  click(d.querySelector('[data-sectab="look"]'));
+  assert(!d.querySelector('[data-page-cue]'), "not on a section that has no indicator");
+});
+
 await check("where a button goes: nothing, a page, or a web address — three plain choices", async () => {
   const { w, d, sent, click, pages } = await boot();
   pages();
@@ -165,6 +278,33 @@ await check("where a button goes: nothing, a page, or a web address — three pl
   box.dispatchEvent(new w.Event("input", { bubbles: true }));
   await settle(900);
   eq(sent.filter((x) => x.action === "save").pop().draft.pages[0].sections[1].link, "https://blog.example.org/", "saved");
+});
+
+await check("a button can jump to another section of the same page, picked by its name", async () => {
+  const { w, d, sent, click, pages } = await boot();
+  pages();
+  click(d.querySelector('[data-open-page="home"]'));
+  click(d.querySelector('[data-edit-sec="0"]'));
+  click(d.querySelector('[data-sectab="buttons"]'));
+  const kind = d.querySelector('[data-chip="linkkind:sec:0"][data-value="section"]');
+  assert(kind, "no way to pick a section");
+  click(kind);
+  const pick = d.querySelector('[data-link="sec:0"]');
+  const names = [...pick.options].map((o) => o.textContent);
+  eq(names.length, 1, "only the OTHER sections of this page");
+  assert(/^Photo and words · /.test(names[0]), `named by kind and heading: ${names[0]}`);
+  await settle(900);
+  const saved = sent.filter((x) => x.action === "save").pop().draft.pages[0].sections;
+  eq(saved[0].link, "section:" + saved[1].id, "saved as a jump to it");
+});
+
+await check("a footer link is on every page, so it offers no section to jump to", async () => {
+  const { d, click } = await boot();
+  click(d.querySelector('[data-ws-tab="links"]'));
+  click(d.querySelector("[data-custom-add]"));
+  const chips = [...d.querySelectorAll('[data-chip^="linkkind:custom"]')].map((c) => c.dataset.value);
+  assert(chips.includes("page") && chips.includes("url"), `the new link has no destination choices: ${chips}`);
+  assert(!chips.includes("section"), "a page-less link offered a section");
 });
 
 await check("a Links section: plain rows, one opened at a time", async () => {
@@ -212,6 +352,42 @@ await check("the footer: a layout picked, a tagline written", async () => {
   eq([f.layout, f.words.en.tagline], ["center", "All of me for all of Him"], "saved");
 });
 
+await check("Navigation: the page-you-are-on look, its color, the line and the phone menu are saved", async () => {
+  const { d, sent, click } = await boot();
+  click(d.querySelector('[data-ws-tab="nav"]'));
+  assert(!d.getElementById("wsNav").hidden, "the Navigation panel");
+  assert(!d.getElementById("wsPreviewPane").hidden, "with the site beside it");
+  assert(d.querySelectorAll('#wsNav .ws-look[data-chip="nav:current"]').length === 4, "four looks");
+  click(d.querySelector('[data-chip="nav:current"][data-value="under"]'));
+  click(d.querySelector('[data-chip="nav:tint"][data-value="accent"]'));
+  click(d.querySelector('[data-chip="nav:line"][data-value="accent"]'));
+  click(d.querySelector('[data-chip="nav:phone"][data-value="drawer"]'));
+  await settle(900);
+  const draft = sent.filter((x) => x.action === "save").pop().draft;
+  eq(draft.design.nav, { current: "under", tint: "accent", line: "accent", phone: "drawer" }, "saved");
+  /* The menu's social icons live here now (were "Also show them at the top"). */
+  const was = !!draft.design.headerLinks;
+  click(d.querySelector('#wsNav [data-header-links]'));
+  await settle(900);
+  eq(!!sent.filter((x) => x.action === "save").pop().draft.design.headerLinks, !was, "icons in the menu");
+});
+
+await check("Advanced: search and share previews, a title written over the automatic one, the picture choice", async () => {
+  const { w, d, sent, click } = await boot();
+  click(d.querySelector('[data-ws-tab="advanced"]'));
+  assert(!d.getElementById("wsAdvanced").hidden, "the Advanced panel");
+  assert(d.querySelector(".ws-serp-title") && d.querySelector(".ws-sc"), "both previews");
+  const t = d.querySelector("[data-adv-title]");
+  assert(t.placeholder.length > 0, "the automatic title as the placeholder");
+  t.value = "Chase Roush — production for churches";
+  t.dispatchEvent(new w.Event("input", { bubbles: true }));
+  click(d.querySelector('[data-chip="advpic"][data-value="photo"]'));
+  await settle(900);
+  const home = sent.filter((x) => x.action === "save").pop().draft.pages.find((p) => p.id === "home");
+  eq([home.seo.title.en, home.seo.image], ["Chase Roush — production for churches", "photo"], "saved");
+  assert(d.querySelector(".ws-serp-title").textContent.startsWith("Chase Roush — production"), "the preview follows");
+});
+
 await check("Links: a tap on an icon opens its box; other links are rows, one opened at a time", async () => {
   const { w, d, sent, click } = await boot();
   click(d.querySelector('[data-ws-tab="links"]'));
@@ -250,12 +426,12 @@ await check("Undo steps back through changes; a reload opens where you left off"
   pages();
   click(d.querySelector('[data-open-page="home"]'));
   const order = () => [...d.querySelectorAll(".ws-stile-words b")].map((b) => b.textContent);
-  eq(order(), ["Opening", "Photo and words"], "as it starts");
+  eq(order(), ["Hero", "Photo and words"], "as it starts");
   click(d.querySelector('[data-sec-down="0"]'));
-  eq(order(), ["Photo and words", "Opening"], "moved");
+  eq(order(), ["Photo and words", "Hero"], "moved");
   assert(!d.getElementById("wsUndo").disabled, "Undo is offered");
   click(d.getElementById("wsUndo"));
-  eq(order(), ["Opening", "Photo and words"], "and back again");
+  eq(order(), ["Hero", "Photo and words"], "and back again");
   await settle(900);
   eq(sent.filter((x) => x.action === "save").pop().draft.pages[0].sections[0].type, "hero", "and saved that way");
   click(d.querySelector('[data-edit-sec="1"]'));
@@ -283,6 +459,39 @@ await check("somebody not allowed sees it all, changes nothing, and can ask", as
   assert(d.getElementById("wsOn").hidden, "no on/off switch");
   assert([...d.querySelectorAll(".ws-panel input")].every((i) => i.disabled), "fields switched off");
   assert(d.getElementById("wsBar").hidden, "no Publish bar");
+});
+
+await check("Design: the ministry's colors with the Sharing page's picker; a change saves them at once, not in the draft", async () => {
+  const { w, d, sent, click } = await boot({ ownAccent: "#FD5812" });
+  const box = d.querySelector("#wsDesign .ws-colors");
+  assert(box, "the colors box is on Design");
+  assert(box.querySelector(".sh-hexes").textContent.startsWith("#FD5812"), "a site's own accent is what it shows until changed");
+  click(box.querySelector("[data-colors-toggle]"));
+  const hex = box.querySelector('.sh-picker [data-hex="1"]');
+  assert(hex, "the wheel opened, with its hex box");
+  hex.value = "#2266DD";
+  hex.dispatchEvent(new w.Event("input", { bubbles: true }));
+  await settle(700);
+  const saved = sent.filter((b) => b.action === "colors");
+  eq(saved.length, 1, "one colors save");
+  eq(saved[0].colors.accent, "#2266DD", "the new first color");
+  assert(!sent.some((b) => b.action === "save"), "not a draft save");
+});
+
+await check("a replaced photo is handed back when the page closes, not when it is saved (Undo can still bring it back)", async () => {
+  const OLDPIC = "/media/partnersite/chase-roush/old-photo-aaaa.webp";
+  const { w, d, sent, click, pages } = await boot({ photo: OLDPIC });
+  pages();
+  click(d.querySelector('[data-open-page="home"]'));
+  click(d.querySelector('[data-edit-sec="1"]'));
+  click(d.querySelector('[data-sectab="photo"]'));
+  click(d.querySelector('[data-sec-unphoto="1"]'));
+  await settle(900);
+  assert(sent.some((b) => b.action === "save"), "the change saved");
+  assert(!sent.some((b) => b.keys), "nothing handed back while the page is open");
+  w.dispatchEvent(new w.Event("pagehide"));
+  await settle(50);
+  eq(sent.filter((b) => b.keys).map((b) => b.keys), [["partnersite/chase-roush/old-photo-aaaa.webp"]], "handed back on close");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

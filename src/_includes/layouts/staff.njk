@@ -92,7 +92,11 @@
 {% if staffPage == "stewardship" or staffPage == "index" %}<script src="/js/staff-stewardship.js?v={{ "/js/staff-stewardship.js" | v }}"></script>{% endif %}
 {% if staffPage == "activity" %}<script src="/js/activity.js?v={{ "/js/activity.js" | v }}"></script>{% endif %}
 {% if staffPage == "settings" %}<script src="/js/staff-settings.js?v={{ "/js/staff-settings.js" | v }}"></script>{% endif %}
+{#- The color wheel, shared by Sharing and the Site Creator (color-pair.js). -#}
+{% if staffPage == "sharing" or staffPage == "website" %}<script src="/js/color-pair.js?v={{ "/js/color-pair.js" | v }}"></script>{% endif %}
 {% if staffPage == "sharing" %}<script src="/js/staff-sharing.js?v={{ "/js/staff-sharing.js" | v }}"></script>{% endif %}
+{#- The one photo editor (photo-editor.js), for every place a photo goes. -#}
+<script src="/js/photo-editor.js?v={{ "/js/photo-editor.js" | v }}"></script>
 {% if staffPage == "website" %}<script src="/js/staff-site.js?v={{ "/js/staff-site.js" | v }}"></script>{% endif %}
 {#- The preview beside the editing, on the page that AUTHORS what it
    shows; sharing, colors and code are on Sharing. -#}

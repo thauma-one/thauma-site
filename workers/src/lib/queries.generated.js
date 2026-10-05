@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "98883c5b1d3d4239";
+export const SOURCE_DIGEST = "2cd48ed202e95d65";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -408,6 +408,9 @@ WHERE id = :id AND partner_id IS :partner_id AND status = 'draft';`,
   mailing_finish: `UPDATE mailings
 SET status = :status, finished_at = :now, sent_count = :sent_count
 WHERE id = :id AND partner_id IS :partner_id;`,
+  mailing_link_add: `INSERT INTO mailing_links (id, mailing_id, url, clicks, created_at) VALUES (:id, :mailing_id, :url, 1, :now);`,
+  mailing_link_count: `UPDATE mailing_links SET clicks = clicks + 1 WHERE id = :id;`,
+  mailing_link_find: `SELECT id FROM mailing_links WHERE mailing_id = :mailing_id AND url = :url;`,
   mailing_list_archive: `UPDATE mailing_lists
 SET archived_at = :now, updated_at = :now
 WHERE id = :id AND partner_id IS :partner_id;`,
@@ -458,6 +461,10 @@ WHERE mailing_lists.partner_id IS :partner_id;`,
 FROM mailing_lists l
 WHERE l.partner_id IS :partner_id AND l.archived_at IS NULL
 ORDER BY l.name COLLATE NOCASE;`,
+  mailing_media: `SELECT m.body_html, m.body_md,
+       (SELECT group_concat(a.object_key, char(10)) FROM mailing_attachments a WHERE a.mailing_id = m.id) AS attachment_keys
+FROM mailings m
+WHERE m.id = :id AND m.partner_id IS :partner_id AND m.status = 'draft';`,
   mailing_one: `SELECT id, list_id, partner_id, subject, preheader, body_md, body_html, body_text,
        status, slug, sent_count, created_at, started_at, finished_at
 FROM mailings
@@ -522,13 +529,20 @@ FROM mailings m
 WHERE m.list_id = :list_id AND m.partner_id IS :partner_id
 ORDER BY CASE m.status WHEN 'draft' THEN 0 ELSE 1 END,
          COALESCE(m.finished_at, m.created_at) DESC;`,
-  mailings_sent_for_list: `SELECT m.id, m.slug, m.subject, m.status, m.finished_at, m.sent_count
+  mailings_sent_for_list: `SELECT m.id, m.slug, m.subject, m.status, m.finished_at, m.sent_count,
+       (SELECT COUNT(*) FROM mailing_recipients r WHERE r.mailing_id = m.id AND r.status = 'bounced') AS bounced,
+       (SELECT COUNT(*) FROM mailing_recipients r WHERE r.mailing_id = m.id AND r.opened_at IS NOT NULL) AS opened,
+       (SELECT COUNT(*) FROM mailing_recipients r WHERE r.mailing_id = m.id AND r.clicked_at IS NOT NULL) AS clicked
   FROM mailings m
   JOIN mailing_lists l ON l.id = m.list_id
  WHERE m.list_id = :list_id AND l.partner_id IS :partner_id
    AND m.status = 'sent'
  ORDER BY m.finished_at DESC
  LIMIT 100;`,
+  media_refs_attachments: `SELECT object_key FROM mailing_attachments;`,
+  media_refs_mailings: `SELECT body_html, body_md FROM mailings;`,
+  media_refs_resources: `SELECT photo FROM resources WHERE photo IS NOT NULL;`,
+  media_refs_sites: `SELECT draft, published FROM partner_sites;`,
   milestone_delete: `DELETE FROM milestones WHERE id = :id AND partner_id = :partner_id;`,
   milestone_reorder: `UPDATE milestones SET sort_order = :sort_order, updated_at = :now
 WHERE id = :id AND partner_id = :partner_id;`,
@@ -566,6 +580,9 @@ WHERE milestones.partner_id = :partner_id;`,
 FROM milestones
 WHERE partner_id = :partner_id
 ORDER BY (actual_date IS NULL), actual_date ASC, sort_order ASC;`,
+  partner_colors_set: `UPDATE partners
+   SET embed_accent = :embed_accent, embed_accent2 = :embed_accent2, embed_turn = :embed_turn, updated_at = :now
+ WHERE id = :partner_id;`,
   partner_for_site: `SELECT id, slug, display_name, giving_url, embed_accent, embed_accent2, embed_theme, embed_turn,
        timeline_start, timeline_end,
        embed_roadmap, embed_goal, embed_prayer, embed_videos
@@ -633,6 +650,7 @@ VALUES (:partner_id, :subdomain, 0, :draft, :now, :now);`,
   partner_site_delete: `DELETE FROM partner_sites WHERE partner_id = :partner_id;`,
   partner_site_discard: `UPDATE partner_sites SET draft = published, updated_at = :now
  WHERE partner_id = :partner_id AND published IS NOT NULL;`,
+  partner_site_docs_set: `UPDATE partner_sites SET draft = :draft, published = :published WHERE partner_id = :partner_id;`,
   partner_site_editor_add: `INSERT OR IGNORE INTO partner_site_editors (partner_id, user_id, granted_by, granted_at)
 VALUES (:partner_id, :user_id, :granted_by, :now);`,
   partner_site_editor_remove: `DELETE FROM partner_site_editors WHERE partner_id = :partner_id AND user_id = :user_id;`,
@@ -862,6 +880,16 @@ WHERE t.partner_id = :partner_id
  ORDER BY v.published_at DESC
  LIMIT COALESCE(
    (SELECT max_items FROM video_sources WHERE partner_id IS :partner_id), 0);`,
+  recipient_bounced: `UPDATE mailing_recipients SET status = 'bounced', error = :error, updated_at = :now
+WHERE provider_id = :provider_id;`,
+  recipient_by_provider: `SELECT mailing_id, subscriber_id, status FROM mailing_recipients WHERE provider_id = :provider_id;`,
+  recipient_clicked: `UPDATE mailing_recipients
+   SET clicked_at = COALESCE(clicked_at, :now), last_click_at = :now, click_count = click_count + 1
+ WHERE provider_id = :provider_id;`,
+  recipient_complained: `UPDATE mailing_recipients SET error = 'Marked as spam by the recipient', updated_at = :now
+WHERE provider_id = :provider_id;`,
+  recipient_opened: `UPDATE mailing_recipients SET opened_at = COALESCE(opened_at, :now)
+WHERE provider_id = :provider_id;`,
   resource_can_edit_shared: `SELECT 1 AS ok FROM resource_shares
  WHERE resource_id = :id AND user_id = :user_id AND can_edit = 1
 UNION ALL
@@ -1019,6 +1047,8 @@ SELECT :id, l.id, l.partner_id, :email, :name, 'pending', :token, :source, :lang
        :now, :now
   FROM mailing_lists l
  WHERE l.id = :list_id AND l.partner_id IS :partner_id;`,
+  subscriber_bounced: `UPDATE subscribers SET status = 'bounced', updated_at = :now
+WHERE id = :id AND status = 'subscribed';`,
   subscriber_by_id_public: `SELECT id, list_id, partner_id, email, status, lang FROM subscribers WHERE id = :id;`,
   subscriber_by_token: `SELECT s.id, s.email, s.name, s.status, s.list_id,
        l.name AS list_name, l.slug AS list_slug
@@ -1117,7 +1147,9 @@ WHERE tag_id = :tag_id
   s.subscribed_at, s.confirmed_at, s.unsubscribed_at,
   (SELECT GROUP_CONCAT(t.name, ', ')
      FROM subscriber_tags st JOIN mailing_tags t ON t.id = st.tag_id
-    WHERE st.subscriber_id = s.id) AS tags
+    WHERE st.subscriber_id = s.id) AS tags,
+  (SELECT GROUP_CONCAT(st.tag_id, ',')
+     FROM subscriber_tags st WHERE st.subscriber_id = s.id) AS tag_ids
 FROM subscribers s
 JOIN mailing_lists l ON l.id = s.list_id
 WHERE s.list_id = :list_id AND l.partner_id IS :partner_id

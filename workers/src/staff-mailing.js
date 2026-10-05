@@ -28,8 +28,10 @@ import { sendMail, listConfirmEmail, testInboxEmail } from "./lib/mail.js";
 import { linkParams } from "./lib/signed-link.js";
 import { siteOrigin } from "./lib/origin.js";
 import { topicLabels, cleanLabels } from "./lib/topics.js";
+import { releaseMedia } from "./media-cleanup.js";
 import { changedSince, changedAnswer } from "./lib/fresh.js";
 import { readTexts, cleanTexts } from "./lib/texts.js";
+import { lookFor } from "./embed-colour.js";
 
 const MAX = { name: 120, slug: 60, desc: 400, from_name: 80, email: 200 };
 
@@ -278,6 +280,7 @@ async function messageFor(env, { built, list, sub, origin, theme, archiveUrl, at
     fromName: list.from_name,
     listName: list.name,
     accent: theme && theme.accent,
+    accent2: theme && theme.accent2,
     mode: theme && theme.mode,
     unsubscribeUrl: unsubscribe,
     archiveUrl,
@@ -680,7 +683,10 @@ const api = {
         }
         return json({ ok: true,
                       tags: await db.query("subscriber_tags_for",
-                                           { subscriber_id: id, partner_id: partnerId }) });
+                                           { subscriber_id: id, partner_id: partnerId }),
+                      /* Every tag with its new count, for the filter and
+                         the manager beside the list. */
+                      all_tags: await db.query("mailing_tags_for_partner", { partner_id: partnerId }) });
       }
 
       /* ADDING SOMEBODY BY HAND STILL CONFIRMS.
@@ -889,8 +895,19 @@ const api = {
       }
 
       if (body.action === "mailing-delete") {
+        /* Its pictures and attachments go with it, unless something else
+           uses them (media-cleanup.js re-checks). A draft has no undo once
+           deleted, so this is the end of its editing. */
+        const was = await db.queryOne("mailing_media", { id: clean(body.id, 60), partner_id: partnerId });
         await db.query("mailing_delete",
           { id: clean(body.id, 60), partner_id: partnerId });
+        if (was) {
+          const keys = [...String(`${was.body_html || ""}\n${was.body_md || ""}`).matchAll(/\/media\/([A-Za-z0-9._\/-]+)/g)].map((m) => m[1])
+            .concat(String(was.attachment_keys || "").split("\n"));
+          const prefixes = partnerId ? [`newsletter/${s.partner.slug}/`, attachPrefix(partnerId)]
+            : ["newsletter/thauma/", attachPrefix(null), ...(await db.query("partners_for_user", { email: actor.email })).map((p) => `newsletter/${p.slug}/`).slice(0, 1)];
+          await releaseMedia(env, db, keys, prefixes).catch((e) => console.error("mailing media release:", e.message));
+        }
         return json({ ok: true });
       }
 
@@ -967,7 +984,7 @@ const api = {
           built, list, origin,
           sub: { id: "test-" + ((actor.me && actor.me.user_id) || "x"), email: testTo,
                  name: (s.me && s.me.user_name) || null },
-          theme: look ? { accent: look.embed_accent, mode: look.embed_theme } : null,
+          theme: look ? { accent: look.embed_accent, accent2: lookFor(look).accent2, mode: look.embed_theme } : null,
           attachments: await loadAttachments(env,
             await db.query("mailing_attachments_for", { mailing_id: m.id })),
         });
@@ -1050,7 +1067,7 @@ const api = {
 
           const look = partnerId
             ? await db.queryOne("partner_settings", { partner_id: partnerId }) : null;
-          const theme = look ? { accent: look.embed_accent, mode: look.embed_theme } : null;
+          const theme = look ? { accent: look.embed_accent, accent2: lookFor(look).accent2, mode: look.embed_theme } : null;
           /* Loaded ONCE for the whole send. Reading the same file per recipient
              would be a hundred fetches of one object and, at any real list size,
              more time than the request has. */

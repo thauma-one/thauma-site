@@ -27,6 +27,7 @@
    partner site speaks without anybody changing this code. A word a
    language has not been given yet is its English one. */
 import { wordsFor as sharedWords } from "../lib/mail-i18n.js";
+import { cleanColor, SIZE_NAMES } from "../lib/tones.js";
 
 let WORDS = null;
 function words() {
@@ -73,8 +74,14 @@ export const PAGES_ON = ["home", "about", "mission", "updates", "give", "stay", 
    band (`raised`), the way chaseroush.com sets its Mission apart. */
 export const SECTIONS = {
   hero:      { variants: ["behind", "beside", "words", "monogram"], words: ["kicker", "heading", "text", "button"], photo: true, buttons: true, link: "button" },
-  text:      { variants: ["left", "center"], words: ["heading", "text", "button"], link: "button" },
-  photoText: { variants: ["left", "right", "above"], words: ["heading", "text", "button"], photo: true, link: "both" },
+  /* A page's title area (BACKLOG §3, 2026-10-03: headers "should offer some
+     of the most creativity and versatility"): small print above and below
+     the title, and a watermark whose words may differ from the page's name,
+     as on chaseroush.com's page headers. */
+  header:    { variants: ["watermark", "plain"], words: ["label", "heading", "text", "mark"] },
+  text:      { variants: ["left", "center"], words: ["heading", "text", "verse", "verseRef", "button"], link: "button" },
+  /* wrapLeft / wrapRight: the words flow around the photo, chaseroush.com's About. */
+  photoText: { variants: ["left", "right", "above", "wrapLeft", "wrapRight"], words: ["heading", "text", "verse", "verseRef", "button"], photo: true, link: "both" },
   photo:     { variants: ["drift", "still", "zoom"], words: ["caption"], photo: true, link: "photo" },
   quote:     { variants: ["large", "quiet"], words: ["quote", "who"] },
   timeline:  { variants: ["condensed", "full"], words: ["heading", "text"], align: true },
@@ -83,15 +90,85 @@ export const SECTIONS = {
   videos:    { variants: ["stage"], words: ["heading", "text"], align: true },
   /* latest: the newest one, and a small way to the rest (Chase, 2026-09-29). */
   newsletters: { variants: ["latest", "list"], words: ["heading", "text"], align: true },
-  signup:    { variants: ["band", "card"], words: ["heading", "text"] },
-  contact:   { variants: ["form"], words: ["heading", "text"], align: true },
-  give:      { variants: ["band", "card"], words: ["heading", "text", "button"] },
+  /* THE FORM AND GIVE STYLES (BACKLOG §3, 2026-10-04): Floating (a card of
+     its own) or Integrated (part of the page), each in a few shapes. The
+     first of each list is what a site saved before had, so nothing moves.
+       split      words on one side, the form or button on the other
+                  (chaseroush.com's contact page)
+       open       no card at all: the form sits on the page itself
+       wide       the contact card, wide enough for a desktop
+       spotlight  a block in the site's own color */
+  signup:    { variants: ["band", "card", "split", "open"], words: ["heading", "text"] },
+  contact:   { variants: ["form", "split", "wide", "open"], words: ["heading", "text"], align: true },
+  give:      { variants: ["band", "card", "split", "spotlight"], words: ["heading", "text", "button"] },
+  /* Cards a person writes (chaseroush.com's Mission): Attached, joined by a
+     line between their numbers, or Detached, side by side. */
+  cards:     { variants: ["attached", "detached"], words: ["heading", "text"], items: "cards" },
   links:     { variants: ["list", "cards"], words: ["heading", "text"], items: true, align: true },
 };
-/* The ministry's widgets and lists sit centered unless the owner puts them
-   left (Chase, 2026-09-29: "the embed codes seem to be left aligned"). */
-export const ALIGNS = ["center", "left"];
-const NOT_RAISED = new Set(["hero", "photo"]);
+/* EVERY SECTION LINES UP (BACKLOG §3, 2026-10-03: "Alignment for every
+   section: left, right, center, indent. Buttons must follow their section's
+   alignment"). What a section gets when it has never been set is what it
+   already looked like, so no site moves:
+     - `align: true` above: the ministry's widgets and lists, centered
+       (Chase, 2026-09-29: "the embed codes seem to be left aligned");
+     - a Words section saved with the old Centered layout, the sign-up card,
+       and the opening in words alone: centered;
+     - everything else: left. */
+export const ALIGNS = ["left", "center", "right", "indent"];
+export function defaultAlign(type, variant) {
+  const spec = SECTIONS[type] || {};
+  if (spec.align) return "center";
+  if ((type === "text" && variant === "center") || (type === "signup" && variant === "card") ||
+      (type === "hero" && variant === "words")) return "center";
+  return "left";
+}
+/* The header has its own Background choice (bg), which includes raised. */
+const NOT_RAISED = new Set(["hero", "photo", "header"]);
+
+/* PLACEHOLDERS (Chase, 2026-10-03: "Placeholder words in every language
+   whenever a section is added … It helps those who may not know how to
+   phrase some things"). What an empty field suggests in the editor, in the
+   language being written; never saved, never shown to a visitor. The same
+   site words a new site starts with, so every language Thauma adds (and
+   translates on the Translate page) suggests in that language with no code
+   change. A pair is a heading's light and bold halves; "@name" is the
+   ministry's name. */
+const PH = {
+  hero:      { kicker: "kickerFill", heading: ["heroThin", "@name"], text: "heroText", button: "more" },
+  header:    { label: "headerLabel", heading: ["aboutThin", "aboutBold"], text: "headerSub", mark: "headerMark" },
+  text:      { heading: ["aboutThin", "aboutBold"], text: "aboutFill", verse: "quoteFill", verseRef: "quoteWho", button: "more" },
+  photoText: { heading: ["missionThin", "missionBold"], text: "missionFill", verse: "quoteFill", verseRef: "quoteWho", button: "more" },
+  photo:     { caption: "captionFill" },
+  quote:     { quote: "quoteFill", who: "quoteWho" },
+  timeline:  { heading: ["timelineThin", "timelineBold"], text: "timelineFill" },
+  goals:     { heading: ["goalsThin", "goalsBold"], text: "goalsFill" },
+  prayer:    { heading: ["prayerThin", "prayerBold"], text: "prayerFill" },
+  videos:    { heading: ["videosThin", "videosBold"], text: "videosFill" },
+  newsletters: { heading: ["newsThin", "newsBold"], text: "newsFill" },
+  signup:    { heading: ["signupThin", "signupBold"], text: "signupFill" },
+  contact:   { heading: ["contactThin", "contactBold"], text: "contactFill" },
+  give:      { heading: ["giveThin", "giveBold"], text: "giveText", button: "giveBtn" },
+  links:     { heading: ["resourcesThin", "resourcesBold"], text: "resourcesFill" },
+  cards:     { heading: ["cardsThin", "cardsBold"], text: "cardsFill" },
+  /* One of the Custom Cards. */
+  card:      { title: "cardTitle", text: "cardText" },
+  /* A link card in a Links section. */
+  item:      { title: "link1Title", text: "link1Text" },
+};
+
+/** Every section's suggested words in one language, as plain text. */
+export function placeholders(lang, name) {
+  const out = {};
+  for (const [type, fields] of Object.entries(PH)) {
+    out[type] = {};
+    for (const [f, key] of Object.entries(fields)) {
+      const one = (k) => (k === "@name" ? String(name || "").trim() : word(lang, k));
+      out[type][f] = Array.isArray(key) ? key.map(one).filter(Boolean).join(" ") : one(key);
+    }
+  }
+  return out;
+}
 
 /* ------------------------------------------------------- design, motion -- */
 
@@ -110,6 +187,17 @@ export const LOOKS = ["night", "paper", "bold", "custom"];
 export const MODES = ["auto", "dark", "light"];
 const HEX_RE = /^#[0-9a-fA-F]{6}$/;
 export const MENUS = ["top", "center", "button"];
+/* THE NAVIGATION TAB (Chase, 2026-10-04, from the approved mockup). Defaults
+   are what every site already looked like: the current page lit in plain
+   white, the thin line under the bar, the drop-down on phones, Give to the
+   Give page. "Bold" and "Dot below" were tried and set aside for later. */
+export const NAV = {
+  current: ["lit", "under", "grow", "pill"],
+  tint: ["white", "accent"],
+  line: ["subtle", "none", "accent"],
+  phone: ["drop", "full", "drawer"],
+};
+export const GIVE_TO = ["page", "link"];
 /* Chase, 2026-09-29: "I'd like a few more animation tools available". Each is
    one choice, each respected only where the visitor has not asked their
    device for less motion. */
@@ -139,6 +227,10 @@ export const SOCIAL_STYLES = ["icons", "words"];
 /* The tagline's color (Chase, 2026-10-01): as it was, quieter, or in the
    site's accent. */
 export const TAGLINE_STYLES = ["plain", "subtle", "accent"];
+/* More ways to dress the footer (Chase, 2026-10-04: "more options for
+   customization"): its ground, the line above it, and how much room. */
+export const FOOT_GROUNDS = ["page", "raised", "tint"];
+export const FOOT_SPACES = ["regular", "compact", "roomy"];
 /* The tab icon (Chase, 2026-10-01: "Let the options be Filled, Letters, and
    Photo"): the initials on an accent tile, accent initials on the site's
    background, or the owner's picture. */
@@ -210,7 +302,7 @@ export function joinHeading(thin, bold) {
 export function starter(kind, { name, langs, fallback, give }) {
   const L = langs && langs.length ? langs : ["en"];
   const heroMap = { kicker: "=", thin: "heroThin", bold: "=" + name + ".", text: "heroText" };
-  const hero = (variant) => section("hero", variant, L, heroMap, { photo: null, buttons: ["give", "stay"] });
+  const hero = (variant) => section("hero", variant, L, heroMap, { photo: null, buttons: ["give", "stay"], divider: true });
   const pages = {};
   PAGES.forEach((p) => { pages[p] = { id: p, on: false, label: {}, sections: [] }; });
 
@@ -273,6 +365,7 @@ export function starter(kind, { name, langs, fallback, give }) {
        sections rise in, photos still, headings all at once, buttons lift,
        pages fade, no scroll line. */
     design: { look: "night", menu: "top", brand: "name", logo: null, favicon: null, headerLinks: false,
+              nav: { current: "lit", tint: "white", line: "subtle", phone: "drop" }, giveTo: "page",
               colors: { background: null, accent: null },
               motion: { entrance: "rise", photos: "still", headings: "plain", buttons: "lift", pages: "fade", progress: "off" } },
     links: [],
@@ -333,6 +426,9 @@ export function safeLink(u) {
   const s = str(u, 500);
   const m = /^page:([a-z]+)$/.exec(s);
   if (m) return PAGES.includes(m[1]) ? s : "";
+  /* A section of the same page (Chase, 2026-10-03: "Jump to section" for
+     buttons that point at the same page). Its id, as sections store it. */
+  if (/^section:[a-z0-9]{2,24}$/i.test(s)) return s;
   return safeUrl(s);
 }
 
@@ -346,22 +442,25 @@ export function safePhoto(u) {
 }
 
 const WORD_MAX = { kicker: 80, heading: 400, text: 6000, quote: 900, who: 120, caption: 200, button: 40,
-  tagline: 120, small: 400 };
+  tagline: 120, small: 400, label: 80, mark: 40, verse: 900, verseRef: 120 };
 
 /* ------------------------------------------------------ formatted words -- */
 
 /* Bold, italic, underline and links (Chase, 2026-09-29: "options for text
-   bolding, underlining, and italicizing"). These fields keep them; every
-   other word stays plain text. */
-export const RICH = new Set(["heading", "text", "quote"]);
+   bolding, underlining, and italicizing"), and since 2026-10-03 a size and a
+   color on any run of words ("different sizes and colors WITHIN one text
+   box"): <span data-sz data-c>, the same names the Mail composer stores
+   (lib/tones.js). These fields keep them; every other word stays plain. */
+export const RICH = new Set(["heading", "text", "quote", "verse"]);
 
 const ENT = { amp: "&", lt: "<", gt: ">", quot: '"', "#39": "'", apos: "'", nbsp: " " };
 const decode = (t) => t.replace(/&(amp|lt|gt|quot|#39|apos|nbsp);/g, (_, e) => ENT[e])
   .replace(/&#(\d{1,6});/g, (_, n) => String.fromCodePoint(Math.min(+n, 0x10ffff)));
 
 /**
- * Formatted words as they may be stored: only <b>, <i>, <u> and <a href>
- * (an address safeLink allows), every tag closed, all other text escaped,
+ * Formatted words as they may be stored: only <b>, <i>, <u>, <a href> (an
+ * address safeLink allows) and <span data-sz data-c> (a size and a color
+ * lib/tones.js allows), every tag closed, all other text escaped,
  * line breaks as "\n". Whatever a browser's editable box produces — <div>
  * per line, <strong>, <span style>, pasted pages — comes out as that. This
  * is the only way formatting reaches a page strangers read; the renderer
@@ -373,7 +472,7 @@ export function richClean(input, max = 6000) {
   s = s.replace(/<(script|style|template|noscript)[\s\S]*?<\/\1\s*>/gi, "");
   /* Blocks become line breaks. */
   s = s.replace(/<br\s*\/?>/gi, "\n").replace(/<\/(div|p|li|h[1-6]|blockquote)\s*>/gi, "\n");
-  const MAP = { b: "b", strong: "b", i: "i", em: "i", u: "u", a: "a" };
+  const MAP = { b: "b", strong: "b", i: "i", em: "i", u: "u", a: "a", span: "span" };
   const TAG = /<(\/?)([a-zA-Z][a-zA-Z0-9]*)([^>]*)>/g;
   let out = "", last = 0, m;
   const open = [];
@@ -384,8 +483,26 @@ export function richClean(input, max = 6000) {
     const t = MAP[m[2].toLowerCase()];
     if (!t) continue;
     if (m[1]) {
-      const k = open.lastIndexOf(t);
-      if (k !== -1) { for (let j = open.length - 1; j >= k; j--) out += "</" + open[j] + ">"; open.splice(k); }
+      /* A span that carried nothing usable was not written, but its close
+         still belongs to it ("~span"), not to the real span outside. */
+      let k = open.lastIndexOf(t);
+      if (t === "span") k = Math.max(k, open.lastIndexOf("~span"));
+      if (k !== -1) { for (let j = open.length - 1; j >= k; j--) if (open[j][0] !== "~") out += "</" + open[j].replace(/ .*/, "") + ">"; open.splice(k); }
+      continue;
+    }
+    if (t === "span") {
+      const at = (name) => { const x = new RegExp(name + '\\s*=\\s*(?:"([^"]*)"|\'([^\']*)\')', "i").exec(m[3]); return x ? decode(x[1] || x[2] || "") : ""; };
+      /* A named size, or any size chosen with − / + (Chase, 2026-10-04): a
+         multiple of the words around it, 0.5–3, to two places. */
+      const rawSz = at("data-sz");
+      const px = /^(\d{1,3}(?:\.5)?)px$/.exec(rawSz || "");
+      const sz = SIZE_NAMES.includes(rawSz) ? rawSz
+        : px && +px[1] >= 4 && +px[1] <= 200 ? +px[1] + "px"
+        : /^\d(\.\d{1,2})?$/.test(rawSz || "") && +rawSz >= 0.5 && +rawSz <= 3 ? String(+rawSz) : "";
+      const c = cleanColor(at("data-c")) || "";
+      if (!sz && !c) { open.push("~span"); continue; }
+      out += "<span" + (sz ? ' data-sz="' + sz + '"' : "") + (c ? ' data-c="' + c + '"' : "") + ">";
+      open.push("span");
       continue;
     }
     if (t === "a") {
@@ -400,10 +517,10 @@ export function richClean(input, max = 6000) {
     open.push(t);
   }
   out += text(s.slice(last));
-  for (let j = open.length - 1; j >= 0; j--) out += "</" + open[j] + ">";
+  for (let j = open.length - 1; j >= 0; j--) if (open[j][0] !== "~") out += "</" + open[j] + ">";
   /* Empty marks and runs of blank lines go; so does anything too long,
      measured without its tags and cut as plain words. */
-  out = out.replace(/<(b|i|u)><\/\1>/g, "").replace(/\n{3,}/g, "\n\n").replace(/^\s+|\s+$/g, "");
+  out = out.replace(/<(b|i|u)><\/\1>|<span[^>]*><\/span>/g, "").replace(/\n{3,}/g, "\n\n").replace(/^\s+|\s+$/g, "");
   if (out.replace(/<[^>]+>/g, "").length > max) out = escHtml(decode(out.replace(/<[^>]+>/g, "")).slice(0, max));
   return out;
 }
@@ -441,17 +558,87 @@ function cleanSection(raw, langs) {
   if (spec.link) s.link = safeLink(raw.link);
   if (spec.link === "both") s.photoLink = !!raw.photoLink;
   if (!NOT_RAISED.has(raw.type)) s.raised = !!raw.raised;
-  if (spec.align) s.align = pick(raw.align, ALIGNS);
+  s.align = ALIGNS.includes(raw.align) ? raw.align : defaultAlign(raw.type, s.variant);
   if (spec.buttons) {
     s.buttons = (Array.isArray(raw.buttons) ? raw.buttons : []).filter((b) => ["give", "stay", "contact"].includes(b)).slice(0, 2);
   }
-  if (spec.items) {
+  /* The hero's line under the title (render.js): kept only when it was
+     chosen, so a hero saved before the option renders as it always did. */
+  if (raw.type === "hero" && typeof raw.divider === "boolean") s.divider = raw.divider;
+  /* The header (render.js): its background, the line along its top and the
+     line under its title. Absent means the default look. */
+  if (raw.type === "header") {
+    s.bg = ["plain", "raised", "tint", "accent"].includes(raw.bg) ? raw.bg : "plain";
+    s.topline = raw.topline !== false;
+    s.divider = raw.divider !== false;
+  }
+  /* A verse inside Words or Photo and words: its look. */
+  if (raw.type === "text" || raw.type === "photoText") {
+    s.verseStyle = ["quote", "line", "mark"].includes(raw.verseStyle) ? raw.verseStyle : "quote";
+    /* Where the verse sits, the title's own alignment and line, and (photo
+       sections) whether the title sits with the words or above everything.
+       Unset keeps what every section already looked like. */
+    s.versePos = /^(start|end|p\d{1,2})$/.test(raw.versePos || "") ? raw.versePos : "end";
+    s.titleAlign = ["left", "center", "right"].includes(raw.titleAlign) ? raw.titleAlign : null;
+    s.titleLine = raw.titleLine === true;
+    if (raw.type === "photoText" && typeof raw.titleInline === "boolean") s.titleInline = raw.titleInline;
+  }
+  /* Videos (BACKLOG §3): the buttons under them, and whether the newest
+     video's own title and date head the section. */
+  /* THE PHOTO EDITOR'S CHOICES (src/js/photo-editor.js): never new pixels,
+     only how the original is shown — a crop window with its corners and
+     border, or a point, zoom and darkening for frames that change shape. */
+  if (raw.photoEdit && typeof raw.photoEdit === "object" && s.photo) {
+    const e = raw.photoEdit, n = (v, a, b) => (Number.isFinite(+v) ? Math.max(a, Math.min(b, +v)) : null);
+    if (e.w != null) {
+      const c = { x: n(e.x, 0, 1), y: n(e.y, 0, 1), w: n(e.w, 0.02, 1), h: n(e.h, 0.02, 1), ar: n(e.ar, 0.1, 10) };
+      const dk = n(e.darken, 0, 0.8);
+      if (Object.values(c).every((v) => v !== null)) {
+        if (["square", "soft", "round"].includes(e.corners)) c.corners = e.corners;
+        if (dk) c.darken = dk;
+        /* A border: a width and a color (the site's two by name, or any). The
+           first version's "thin" / "accent" still read. */
+        if (["thin", "accent"].includes(e.border)) c.border = e.border;
+        else if (e.border && typeof e.border === "object") {
+          const bw = n(e.border.w, 0, 40), bc = String(e.border.c || "");
+          if (bw && (bc === "subtle" || bc === "accent" || bc === "accent2" || /^#[0-9a-f]{6}$/i.test(bc))) c.border = { w: Math.round(bw * 2) / 2, c: bc.toLowerCase() };
+        }
+        s.photoEdit = c;
+      }
+    } else if (e.fx != null) {
+      const f = { fx: n(e.fx, 0, 100), fy: n(e.fy, 0, 100), zoom: n(e.zoom, 1, 3), darken: n(e.darken, 0, 0.8) ?? 0 };
+      if (f.fx !== null && f.fy !== null && f.zoom !== null) s.photoEdit = f;
+    }
+  }
+  /* A full-width photo's band: how tall, and the part kept in view (0 top,
+     100 bottom). "whole" shows the photo uncropped. */
+  if (raw.type === "photo") {
+    s.height = ["short", "medium", "tall", "whole"].includes(raw.height) ? raw.height : "medium";
+    const fy = Number(raw.focusY);
+    s.focusY = Number.isFinite(fy) ? Math.max(0, Math.min(100, Math.round(fy))) : 50;
+  }
+  if (raw.type === "videos") {
+    s.linkStyle = ["outline", "subtle"].includes(raw.linkStyle) ? raw.linkStyle : "buttons";
+    s.titleFrom = raw.titleFrom === "latest" ? "latest" : "words";
+  }
+  if (spec.items === "cards") {
+    /* Written words only. A blank card is kept (it was just added and is
+       being typed into); the page simply does not draw it. */
+    s.numbers = raw.numbers !== false;
+    s.items = (Array.isArray(raw.items) ? raw.items : []).slice(0, 12).map((it) => ({
+      words: cleanWords(it && it.words, ["title", "text"], langs),
+    }));
+  } else if (spec.items) {
     /* A card may carry a picture, and may point at one of the site's own
        pages as well as anywhere else. */
     s.items = (Array.isArray(raw.items) ? raw.items : []).slice(0, 40).map((it) => ({
       url: safeLink(it && it.url),
       photo: safePhoto(it && it.photo),
-      words: cleanWords(it && it.words, ["title", "text"], langs),
+      /* "type" is the small colored label at the card's corner; tier is how
+         big the card is (Chase, BACKLOG §3: "a link's card size shows its
+         importance"). Standard, the section's own style, is the default. */
+      words: cleanWords(it && it.words, ["title", "text", "type"], langs),
+      tier: ["big", "small"].includes(it && it.tier) ? it.tier : "std",
     })).filter((it) => it.url);
   }
   return s;
@@ -483,6 +670,36 @@ export function cleanDoc(raw, catalog) {
     return {
       id,
       on: id === "home" ? true : !!p.on,
+      /* The opening's scroll indicator, per page (2026-10-03: "A 'Show
+         scroll indicator' option per page"). Shown unless switched off, so
+         every page saved before keeps it. Which kind is still the site's
+         one choice (Design › Motion › Scroll hint). */
+      cue: p.cue !== false,
+      /* The picture a shared link shows; none means the page's first photo. */
+      shareImage: safePhoto(p.shareImage),
+      /* The upload behind a cropped share picture, so editing starts from it. */
+      shareOrig: safePhoto(p.shareOrig),
+      /* SEARCH AND SHARING (the Advanced tab, 2026-10-04): a title and a
+         description per language when the owner writes them (else the
+         automatic ones), which picture a shared link shows — the page's name
+         card (made in the console, per language), its first photo, or a
+         picture of the owner's — and the made cards with what they were made
+         from, so an unchanged card is never made again. */
+      seo: (() => {
+        const o = p.seo && typeof p.seo === "object" ? p.seo : {};
+        const per = (x, n) => { const r = {}; for (const l of langs) { const v = str(x && x[l], n); if (v) r[l] = v; } return r; };
+        return { title: per(o.title, 70), desc: per(o.desc, 200),
+                 image: ["card", "photo", "custom", "none"].includes(o.image) ? o.image : null };
+      })(),
+      shareCards: (() => {
+        const r = {};
+        for (const l of langs) {
+          const c = p.shareCards && p.shareCards[l];
+          const url = c && safePhoto(c.url);
+          if (url) r[l] = { url, sig: str(c.sig, 300) };
+        }
+        return r;
+      })(),
       label,
       sections: (Array.isArray(p.sections) ? p.sections : []).slice(0, 30).map((s) => cleanSection(s, langs)).filter(Boolean),
     };
@@ -498,7 +715,10 @@ export function cleanDoc(raw, catalog) {
     }
     const label = {};
     if (kind === "custom") for (const l of langs) { const v = str(k.label && k.label[l], 40); if (v) label[l] = v; }
-    return { kind, url, label };
+    /* A web address may be shown as its site's own icon, beside the social
+       icons (BACKLOG §3 "smart order"). A page of the site is always words. */
+    const icon = kind === "custom" && !!(k && k.icon) && /^https?:\/\//.test(url);
+    return icon ? { kind, url, label, icon } : { kind, url, label };
   }).filter((k) => k.url);
 
   const f = d.footer && typeof d.footer === "object" ? d.footer : {};
@@ -507,6 +727,9 @@ export function cleanDoc(raw, catalog) {
     menu: !!f.menu,
     socials: pick(f.socials, SOCIAL_STYLES),
     tagline: pick(f.tagline, TAGLINE_STYLES),
+    ground: pick(f.ground, FOOT_GROUNDS),
+    line: f.line !== false,
+    space: pick(f.space, FOOT_SPACES),
     words: cleanWords(f.words, ["tagline", "small"], langs),
   };
 
@@ -526,6 +749,9 @@ export function cleanDoc(raw, catalog) {
       faviconStyle: FAVICON_STYLES.includes(design.faviconStyle) ? design.faviconStyle
         : safePhoto(design.favicon) ? "photo" : "filled",
       headerLinks: !!design.headerLinks,
+      nav: Object.fromEntries(Object.entries(NAV).map(([k, opts]) =>
+        [k, pick((design.nav || {})[k], opts)])),
+      giveTo: pick(design.giveTo, GIVE_TO),
       /* The owner's own colors (the Custom look), or null for a dark ground
          and the ministry's accent. Everything else is worked out from these. */
       mode: pick(design.mode, MODES),
@@ -539,4 +765,50 @@ export function cleanDoc(raw, catalog) {
     footer,
     pages,
   };
+}
+
+/* ---------------------------------------------------------------------------
+   CLEAN LINKS (BACKLOG §3, 2026-10-04): chaseroush.thauma.one/YouTube goes to
+   the YouTube channel; /hr/Darivanje to the Croatian Give page; /Give to the
+   giving link. Words are compared without capitals, accents or spaces, in any
+   alphabet (Cyrillic included). Returns the address to send the visitor to,
+   or null for an ordinary "not found".
+   --------------------------------------------------------------------------- */
+const SOCIAL_WORDS = { youtube: ["youtube"], instagram: ["instagram", "insta"], facebook: ["facebook"], x: ["x", "twitter"],
+  tiktok: ["tiktok"], linkedin: ["linkedin"], spotify: ["spotify"], email: ["email", "mail"] };
+export const cleanWord = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "")
+  .replace(/[đĐ]/g, "d").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
+
+export function cleanLinkTarget(doc, segs, { base, q = "", giving = "" }) {
+  const lang = segs.length === 2 && doc.languages.includes(segs[0]) ? segs[0] : null;
+  if (segs.length !== (lang ? 2 : 1)) return null;
+  let raw = segs[segs.length - 1];
+  try { raw = decodeURIComponent(raw); } catch { /* keep as typed */ }
+  const want = cleanWord(raw);
+  if (!want) return null;
+  const langs = lang ? [lang, ...doc.languages.filter((l) => l !== lang)] : [doc.fallback, ...doc.languages.filter((l) => l !== doc.fallback)];
+  const pageUrl = (id, l) => `${base}/${l}/${id === "home" ? "" : id + "/"}${q}`;
+  const on = (id) => doc.pages.some((p) => p.id === id && p.on);
+
+  for (const k of doc.links.filter((x) => x.kind !== "custom")) {
+    if ((SOCIAL_WORDS[k.kind] || [k.kind]).includes(want)) return k.url;
+  }
+  const giveTo = giving || null;
+  for (const l of langs) {
+    for (const p of doc.pages) {
+      const name = (p.label && p.label[l]) || word(l, p.id);
+      if (cleanWord(name) !== want && cleanWord(p.id) !== want) continue;
+      if (p.id === "give" && giveTo && !on("give")) return giveTo;
+      /* The language in the address wins over the one whose name matched. */
+      if (on(p.id)) return pageUrl(p.id, lang || l);
+    }
+    if (giveTo && cleanWord(word(l, "giveBtn")) === want) return giveTo;
+    for (const k of doc.links.filter((x) => x.kind === "custom")) {
+      if (cleanWord(k.label && k.label[l]) !== want) continue;
+      if (k.url.startsWith("page:")) { const id = k.url.slice(5); return on(id) ? pageUrl(id, lang || l) : null; }
+      if (/^(https?:|mailto:)/.test(k.url)) return k.url;
+    }
+  }
+  if (cleanWord("give") === want && giveTo) return giveTo;
+  return null;
 }

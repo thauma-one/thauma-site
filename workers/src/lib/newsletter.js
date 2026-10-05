@@ -55,6 +55,8 @@
 /* Tags a newsletter may contain. Everything else is unwrapped — its CONTENT is
    kept and its tag discarded — rather than deleted, because silently losing a
    paragraph somebody wrote is worse than losing its styling. */
+import { TONES, isColor, HEX_COLOR } from "./tones.js";
+
 const KEEP = new Set([
   "p", "br", "strong", "em", "u", "s",
   "h2", "h3",
@@ -86,19 +88,10 @@ const SIZES = { sm: "13.5px", lg: "19px", xl: "23px" };
 /* A FEW TONES BESIDES THE BRAND, each with a light-email and a dark-email
    shade, so a colored word stays readable on either card (both pass 4.5:1).
    Still a fixed palette, not a picker: the reason above has not changed. */
-const TONES = {
-  red:   ["#B42318", "#FF8A80"],
-  green: ["#1B7F4B", "#6FE3A6"],
-  blue:  ["#1D5FC2", "#8DB8FF"],
-  gold:  ["#9A5B00", "#F2C14E"],
-};
-const COLORS = new Set(["accent", "dim", ...Object.keys(TONES)]);
-/* ANY COLOR TOO (Chase, 2026-10-03: "a full palette, with a few
-   predetermined quick picks"). The named tones above are the quick picks and
-   keep their light/dark shades; a picked color is a plain #rrggbb, checked by
-   shape here and written inline as is. */
-const HEX = /^#[0-9a-f]{6}$/i;
-const isColor = (v) => COLORS.has(v) || HEX.test(v);
+/* The tones themselves, and ANY #rrggbb besides them (Chase, 2026-10-03: "a
+   full palette, with a few predetermined quick picks"), live in lib/tones.js
+   so the Site Creator means the same by a color name. */
+const HEX = HEX_COLOR;
 
 /* PERSONAL WORDS: a span naming a variable, filled per recipient by render().
    The span's own text is only the editor's label and never reaches a reader;
@@ -114,7 +107,7 @@ const DROP_WHOLE = new Set(["script", "style", "head", "title", "meta", "link", 
 /* What each surviving tag may carry. Anything not listed is dropped — that
    includes every style, class and id, which is what keeps a paste from
    bringing another website's appearance along. */
-const ATTRS = { a: ["href"], img: ["src", "alt"],
+const ATTRS = { a: ["href"], img: ["src", "alt", "data-orig"],
                 span: ["data-sz", "data-c", "data-var"] };
 
 export function escapeHtml(s) {
@@ -235,6 +228,12 @@ export function sanitise(html) {
         value = safeUrl(value) || mediaPath(value);
         if (!value) continue;
       }
+      /* The original behind an edited picture: only ever one of our own
+         uploads, never an address from elsewhere. */
+      if (key === "data-orig") {
+        value = mediaPath(value);
+        if (!value) continue;
+      }
       /* A data: URI never reaches safeUrl, which only admits http(s) and
          mailto — so a pasted base64 image is already dropped above. Stated
          here because it is the single likeliest way to blow Gmail's clipping
@@ -300,7 +299,7 @@ const SERIF = "Georgia,Cambria,'Times New Roman',serif";
 /* Inline styles per tag. Applied on the way out rather than stored, so
    restyling every newsletter ever sent is a change here — and an archived
    mailing is re-rendered from the same source the email came from. */
-function inlineStyles(html, accent, ink, dim, line, dark = false) {
+function inlineStyles(html, accent, ink, dim, line, dark = false, accent2 = accent) {
   const S = {
     p: `margin:0 0 16px;font-size:16px;line-height:1.6;color:${ink}`,
     h2: `margin:28px 0 12px;font-family:${SERIF};font-size:23px;line-height:1.3;` +
@@ -333,6 +332,7 @@ function inlineStyles(html, accent, ink, dim, line, dark = false) {
       const bits = [];
       if (sz && S.__sizes[sz[1]]) bits.push("font-size:" + S.__sizes[sz[1]]);
       if (c && c[1] === "accent") bits.push("color:" + accent);
+      if (c && c[1] === "accent2") bits.push("color:" + accent2);
       if (c && c[1] === "dim") bits.push("color:" + dim);
       if (c && TONES[c[1]]) bits.push("color:" + TONES[c[1]][dark ? 1 : 0]);
       if (c && HEX.test(c[1])) bits.push("color:" + c[1]);
@@ -375,6 +375,7 @@ export function fillVariables(html, name) {
  */
 export function render(body, opts = {}) {
   const accent = /^#[0-9a-fA-F]{6}$/.test(String(opts.accent || "")) ? opts.accent : "#6D4AFF";
+  const accent2 = /^#[0-9a-fA-F]{6}$/.test(String(opts.accent2 || "")) ? opts.accent2 : accent;
   const dark = opts.mode === "dark";
 
   /* Fixed, not theme-aware. An email cannot ask what the reader prefers, and a
@@ -390,7 +391,7 @@ export function render(body, opts = {}) {
   /* Personal words first, so nothing below ever sees a variable: a send
      passes the recipient's name, everything else (the archive, the size
      measure) gets each variable's fallback. */
-  const styled = inlineStyles(fillVariables(body, opts.recipientName), accent, ink, dim, line, dark)
+  const styled = inlineStyles(fillVariables(body, opts.recipientName), accent, ink, dim, line, dark, accent2)
     .replace(/(<img\b[^>]*\ssrc=")(\/media\/)/gi, `$1${mediaOrigin}$2`);
   const title = escapeHtml(opts.subject || "");
 
