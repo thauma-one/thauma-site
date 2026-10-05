@@ -51,35 +51,40 @@
      other one), trick (a meme throw: the ball does something silly on its
      way to the other one), bad (bites whoever catches it). `t` is how long
      a fader effect lasts. `v` is how much the computer wants it. */
+  /* Round 4 (Chase, 2026-10-05: "Some of the power ups feel too similar or
+     I didn't know what to do"): fourteen, each doing one clearly different
+     thing, each capsule labelled, each catch saying what it did. Gone: the
+     ones that looked like another (tornado, banana, moon, count-in, sleepy,
+     gain boost, haze, unplugged); BUTTERFINGERS is now ice, not a second
+     Tiny fader. The trick balls are the five Chase asked for: fast,
+     invisible, split, double bounce, squiggle. */
   var POWERS = {
     wide:     { kind: 'good',  t: 10, v: 2 },
-    magnet:   { kind: 'good',  t: 8,  v: 2 },
     shield:   { kind: 'good',  t: 0,  v: 3 },
     slowmo:   { kind: 'good',  t: 8,  v: 2 },
-    meterup:  { kind: 'good',  t: 0,  v: 1 },
+    magnet:   { kind: 'good',  t: 8,  v: 2 },
     tiny:     { kind: 'hex',   t: 9,  v: 2 },
-    mute:     { kind: 'hex',   t: 1.5, v: 3 },
     flip:     { kind: 'hex',   t: 6,  v: 3 },
-    haze:     { kind: 'hex',   t: 6,  v: 2 },
-    fast:     { kind: 'trick', v: 1 },
-    ghost:    { kind: 'trick', v: 2 },
+    mute:     { kind: 'hex',   t: 1.5, v: 3 },
     split:    { kind: 'trick', v: 2 },
+    ghost:    { kind: 'trick', v: 2 },
+    fast:     { kind: 'trick', v: 1 },
     zigzag:   { kind: 'trick', v: 2 },
     squiggle: { kind: 'trick', v: 1 },
-    banana:   { kind: 'trick', v: 1 },
-    stopgo:   { kind: 'trick', v: 2 },
-    tornado:  { kind: 'trick', v: 1 },
-    moon:     { kind: 'trick', v: 1 },
-    sleeper:  { kind: 'trick', v: 2 },
-    unplug:   { kind: 'bad',   t: 1.4, v: -3 },
-    butter:   { kind: 'bad',   t: 8,  v: -3 },
-    blackout: { kind: 'bad',   t: 2.2, v: -2 }
+    butter:   { kind: 'bad',   t: 7,  v: -3 },
+    blackout: { kind: 'bad',   t: 2,  v: -2 }
+  };
+  /* HOW HARD: FOH's reach, how often it plans its return, how far off it
+     lands, and the ball's pace */
+  var DIFF = {
+    easy:   { reach: 170, grow: 9,  smart: .3,  miss: 1.9, pace: .88, col: '#5CF2C4' },
+    normal: { reach: 230, grow: 17, smart: .62, miss: 1,   pace: 1,   col: '#FFB547' },
+    hard:   { reach: 320, grow: 22, smart: .92, miss: .45, pace: 1.1, col: '#FF5A6E' }
   };
   var NAMES = Object.keys(POWERS);
   var KIND = { good: '#5CF2C4', hex: '#9B7BFF', trick: '#FFB547', bad: '#FF5A6E' };
-  var GLYPH = { wide: '⟷', magnet: 'U', shield: '▣', slowmo: '◷', meterup: '▲', tiny: '·', mute: 'M', flip: '⇄', haze: '≋',
-    fast: '»', ghost: '?', split: '⋔', zigzag: 'Z', squiggle: '∿', banana: ')', stopgo: '‖', tornado: '@', moon: '☾', sleeper: 'z',
-    unplug: '⏚', butter: '~', blackout: '●' };
+  var GLYPH = { wide: '⟷', magnet: 'U', shield: '▣', slowmo: '◷', tiny: '·', mute: 'M', flip: '⇄',
+    fast: '»', ghost: '?', split: '⋔', zigzag: 'Z', squiggle: '∿', butter: '~', blackout: '●' };
 
   function rnd(a, b) { return a + Math.random() * (b - a); }
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
@@ -97,18 +102,19 @@
       var words = ctx.words, H = ctx.H;
       var YOU_Y = H - 46, FOH_Y = 50, MID = H / 2;
       var mode = null;                                   /* 'classic' | 'modern' once chosen */
+      var level = null, D = DIFF.normal;                  /* how hard, once chosen */
+      var awaiting = false;                              /* a point is over: the next serve waits for you */
       var you = { x: W / 2, v: 0, fx: {}, meter: 0, smash: false, id: 'you' };
       var foh = { x: W / 2, fx: {}, meter: 0, smash: false, id: 'foh', goal: W / 2, plan: null };
       var balls = [], caps = [], sparks = [], hist = [];
       var hits = 0, rally = 0, mine = 0, theirs = 0, caught = 0, wait = 1.1, serveTo = 1;
-      var time = 0, nextCap = 9, flashT = 0, banner = null, spawned = 0;
+      var time = 0, nextCap = 9, flashT = 0, banner = null, spawned = 0, firstServe = true;
 
       function other(p) { return p === you ? foh : you; }
       function width(p) {
         var k = 1;
         if (p.fx.wide > 0) k *= 1.6;
         if (p.fx.tiny > 0) k *= .58;
-        if (p.fx.butter > 0) k *= .58;
         return PW * k;
       }
 
@@ -122,7 +128,7 @@
       function serve() {
         var ang = (Math.random() - .5) * .9;
         balls = [];
-        newBall(W / 2, MID, Math.sin(ang) * BASE, Math.cos(ang) * BASE * serveTo, serveTo > 0 ? foh : you);
+        newBall(W / 2, MID, Math.sin(ang) * BASE * D.pace, Math.cos(ang) * BASE * D.pace * serveTo, serveTo > 0 ? foh : you);
         rally = 0;
         ctx.sfx('hit');
         if (serveTo > 0) ctx.say(words('soundcheck_serve'));
@@ -134,10 +140,10 @@
       /* A return: where it met the fader sets the angle, as in every Pong. */
       function bounce(b, p, dir) {
         var off = clamp((b.x - p.x) / (width(p) / 2), -1, 1);
-        b.speed = Math.min(TOP, Math.max(BASE, b.fx === 'moon' || b.fx === 'sleeper' || b.fx === 'stopgo' ? b.base || b.speed : b.speed) * GROW + (rally % 5 === 4 ? 12 : 0));
+        b.speed = Math.min(TOP * D.pace, Math.max(BASE * D.pace, b.speed) * GROW + (rally % 5 === 4 ? 12 : 0));
         b.fx = null; b.t = 0; b.owner = p; b.smash = false; b.zigged = false;
         /* the meter: full, and this return is a smash */
-        p.meter = Math.min(1, p.meter + (p.fx.meterup > 0 ? .22 : .13));
+        p.meter = Math.min(1, p.meter + .13);
         if (p.meter >= 1) { p.meter = 0; b.smash = true; b.speed = Math.min(TOP * 1.2, b.speed * 1.3); ctx.shake(5); ctx.sfx('boom'); if (p === you) ctx.say(words('soundcheck_smash'), { mood: 'good', tag: 'FOH' }); }
         setVel(b, off * 1.05, dir);
         for (var i = 0; i < 10; i++) sparks.push({ x: b.x, y: b.y, vx: rnd(-90, 90), vy: dir * rnd(0, 120), life: .4, c: b.smash ? '#FFB547' : '#8FEBFF' });
@@ -163,10 +169,10 @@
         var good = P.kind === 'good' || P.kind === 'hex' || P.kind === 'trick';
         ctx.sfx(P.kind === 'bad' ? 'powerdown' : 'powerup');
         banner = { name: name, who: p, t: 1.6 };
-        ctx.say('[FX] ' + words('soundcheck_p_' + name) + ' · ' + words(p === you ? 'soundcheck_you' : 'soundcheck_foh'), { mood: (p === you) === good ? 'good' : 'bad' });
+        /* what it did, in words: the name, who it landed on, and what it means */
+        ctx.say('[' + (p === you ? words('soundcheck_you') : words('soundcheck_foh')).toUpperCase() + '] ' + words('soundcheck_p_' + name) + ': ' + words('soundcheck_d_' + name), { mood: (p === you) === good ? 'good' : 'bad' });
         if (P.kind === 'good') {
           if (name === 'shield') p.fx.shield = 1;
-          else if (name === 'meterup') p.meter = Math.min(.99, p.meter + .5);
           else p.fx[name] = P.t;
         } else if (P.kind === 'hex') q.fx[name] = P.t;
         else if (P.kind === 'bad') { if (name === 'blackout') flashT = P.t; else p.fx[name] = P.t; }
@@ -182,10 +188,6 @@
               n.speed = b.speed; n.extra = true; setVel(n, ang, b.vy > 0 ? 1 : -1);
             });
           }
-          if (name === 'moon' || name === 'sleeper' || name === 'stopgo') b.base = b.speed;
-          if (name === 'moon') { b.speed *= .5; setVel(b, Math.atan2(b.vx, Math.abs(b.vy)), b.vy > 0 ? 1 : -1); }
-          if (name === 'banana') b.curve = b.vx > 0 ? -1 : 1;
-          if (name === 'tornado') { b.cx = b.x; b.cy = b.y; }
           if (name === 'zigzag') { b.zigAt = b.y + (b.vy > 0 ? 1 : -1) * Math.abs((b.vy > 0 ? YOU_Y : FOH_Y) - b.y) * .45; b.zigged = false; }
         }
         if (Math.random() < .35) ctx.quip('jokes_soundcheck_power', { mood: (p === you) === good ? 'good' : 'bad' });
@@ -206,7 +208,7 @@
          you. Not always: some returns it just gets back. */
       function plan(b) {
         var land = landing(b, FOH_Y + PH);
-        var smart = Math.random() < Math.min(.82, .5 + rally * .025);
+        var smart = Math.random() < Math.min(.95, D.smart + rally * .02);
         var best = 0, bestV = -1e9, sp = Math.min(TOP, b.speed * GROW);
         for (var off = -.85; off <= .86; off += .17) {
           var ang = off * 1.05, vx = Math.sin(ang) * sp, vy = Math.cos(ang) * sp, v = 0;
@@ -221,22 +223,29 @@
           if (v > bestV) { bestV = v; best = off; }
         }
         if (!smart) best = rnd(-.6, .6);
-        var miss = rnd(-1, 1) * Math.max(6, 30 - rally * 1.4) * (foh.fx.haze > 0 || flashT > 0 ? 2.2 : 1);
+        var miss = rnd(-1, 1) * Math.max(6, 30 - rally * 1.4) * D.miss * (flashT > 0 ? 2.2 : 1);
         return land - best * width(foh) / 2 + miss;
       }
 
+      /* Where a ball will REALLY cross FOH's line: a copy of it run forward
+         through the same motion — so a squiggle, a double bounce or the
+         magnet's pull are followed, not guessed at from a straight line
+         (round 4: "the AI didn't seem to know what to do with these power
+         ups"). */
+      function predict(b) {
+        var c = { x: b.x, y: b.y, vx: b.vx, vy: b.vy, speed: b.speed, fx: b.fx, t: b.t, zigAt: b.zigAt, zigged: b.zigged, sim: true };
+        for (var k = 0; k < 480 && c.y > FOH_Y + PH; k++) motion(c, 1 / 120);
+        return c.x;
+      }
       function score() { return hits + mine * 10 + caught * 5; }
-      function choose(m) { if (mode) return; mode = m; ctx.sfx('go'); ctx.say(words('soundcheck_' + m)); }
+      function choose(m) { if (mode) return; mode = m; ctx.sfx('go'); }
+      function chooseLevel(l) { if (!mode || level) return; level = l; D = DIFF[l]; ctx.sfx('go'); ctx.say(words('soundcheck_' + mode) + ' · ' + words('diff_' + l)); }
+      var LEVELS = ['easy', 'normal', 'hard'];
 
       /* ------------------------------------------------------ update */
       function update(dt) {
         time += dt;
-        if (!mode) {
-          /* the stick chooses too: push it to a side */
-          var sv = ctx.stick();
-          if (Math.abs(sv) > .55) choose(sv < 0 ? 'classic' : 'modern');
-          return;
-        }
+        if (!mode || !level) return;
         /* effects run down */
         [you, foh].forEach(function (p) { Object.keys(p.fx).forEach(function (k) { if (k !== 'shield' && p.fx[k] > 0) p.fx[k] -= dt; }); });
         flashT = Math.max(0, flashT - dt);
@@ -245,8 +254,10 @@
         /* your fader: the stick sets its speed, straight away */
         var s = ctx.stick();
         if (you.fx.flip > 0) s = -s;
-        if (you.fx.mute > 0 || you.fx.unplug > 0) s = 0;
-        you.v = s * SPEED;
+        if (you.fx.mute > 0) s = 0;
+        /* butterfingers: the fader slides as if on ice */
+        if (you.fx.butter > 0) you.v += (s * SPEED - you.v) * Math.min(1, dt * 1.6);
+        else you.v = s * SPEED;
         var hw = width(you) / 2;
         you.x = clamp(you.x + you.v * dt, hw, W - hw);
 
@@ -258,10 +269,12 @@
           caps = caps.filter(function (c) { return c.x > -30 && c.x < W + 30; });
         }
 
-        if (wait > 0) { wait -= dt; if (wait <= 0) serve(); moveFoh(dt, null); tick(dt); return; }
+        if (wait > 0) { wait -= dt; if (wait <= 0) { if (firstServe) { firstServe = false; serve(); } else awaiting = true; } moveFoh(dt, null); tick(dt); return; }
+        if (awaiting) { moveFoh(dt, null); tick(dt); return; }
 
         /* FOH */
-        var coming = balls.filter(function (b) { return b.vy < 0; }).sort(function (a, b) { return a.y - b.y; })[0];
+        /* the ball that will reach FOH first, not merely the nearest */
+        var coming = balls.filter(function (b) { return b.vy < 0 && !b.gone; }).sort(function (a, b) { return (a.y - FOH_Y) / -a.vy - (b.y - FOH_Y) / -b.vy; })[0];
         moveFoh(dt, coming);
 
         /* the balls: small steps, the fast ones are fast */
@@ -289,14 +302,18 @@
         sparks = sparks.filter(function (p) { return p.life > 0; });
       }
       function moveFoh(dt, b) {
-        if (foh.fx.mute > 0 || foh.fx.unplug > 0) return;
-        var reach = Math.min(600, 230 + rally * 18 + mine * 22);
+        if (foh.fx.mute > 0) return;
+        var reach = Math.min(620, D.reach + rally * D.grow + mine * 20) * (foh.fx.butter > 0 ? .55 : 1);
         if (b) {
           if (!b.plan || b.planFor !== b.t0) { b.plan = plan(b); b.planFor = b.t0; }
-          /* a ghost, the haze, a blackout: FOH squints at where it was */
-          var late = b.fx === 'ghost' || foh.fx.haze > 0 || flashT > 0;
-          foh.goal = late ? b.plan + Math.sin(time * 3) * 22 : b.plan;
-          if (b.fx && b.fx !== 'fast' && b.fx !== 'ghost') foh.goal = landing(b, FOH_Y) + Math.sin(time * 2) * 10;
+          /* a ghost or a blackout: FOH squints at where it was */
+          var late = b.fx === 'ghost' || flashT > 0;
+          /* a curving ball: re-aimed at where it will really arrive, a few
+             times a second, keeping the planned offset */
+          var curves = b.fx === 'zigzag' || b.fx === 'squiggle' || foh.fx.magnet > 0;
+          if (curves && (!b.predAt || time - b.predAt > .2)) { b.predAt = time; b.pred = predict(b) + (b.plan - landing(b, FOH_Y + PH)); }
+          var aim = curves && b.pred != null ? b.pred : b.plan;
+          foh.goal = late ? aim + Math.sin(time * 3) * 22 : aim;
         } else foh.goal = W / 2 + Math.sin(time * .9) * 30;
         var d = foh.goal - foh.x;
         if (foh.fx.flip > 0) d = -d * .7;
@@ -305,52 +322,32 @@
         foh.x = clamp(foh.x, hw, W - hw);
       }
 
-      function stepBall(b, dt) {
+      /* how a ball moves — its trick, the helpers on the side it is on, the
+         walls — with nothing else: the computer runs copies of it */
+      function motion(b, dt) {
         b.t += dt;
-        var dir = b.vy > 0 ? 1 : -1, home = dir > 0 ? you : foh;
-        var mult = 1;
-        /* the tricks */
+        var dir = b.vy > 0 ? 1 : -1, home = dir > 0 ? you : foh, mult = 1;
         if (b.fx === 'squiggle') b.x += Math.cos(b.t * 13) * 260 * dt;
-        if (b.fx === 'banana') { b.vx += b.curve * 520 * dt; }
-        if (b.fx === 'zigzag' && !b.zigged && (dir > 0 ? b.y > b.zigAt : b.y < b.zigAt)) { b.zigged = true; b.vx = -b.vx * 1.15; ctx.sfx('zap'); }
-        if (b.fx === 'stopgo') {
-          var crossing = Math.abs(b.y - MID) < 6 && !b.stopped;
-          if (crossing) { b.stopped = .75; b.held = { vx: b.vx, vy: b.vy }; }
-          if (b.stopped > 0) {
-            b.stopped -= dt;
-            b.x += Math.sin(b.t * 60) * .6;
-            if (b.stopped <= 0) { b.stopped = -1; b.speed = Math.min(TOP * 1.3, b.base * 1.7); setVel(b, Math.atan2(b.held.vx, Math.abs(b.held.vy)), dir); ctx.sfx('zap'); }
-            return;
-          }
-        }
-        if (b.fx === 'sleeper') {
-          var frac = Math.abs(b.y - (dir > 0 ? FOH_Y : YOU_Y)) / (YOU_Y - FOH_Y);
-          mult = frac < .5 ? Math.max(.12, 1 - frac * 1.8) : (b.woke || (b.woke = (ctx.sfx('zap'), true)), 1.9);
-        }
-        if (b.fx === 'tornado') {
-          b.cx += b.vx * dt; b.cy += b.vy * dt;
-          if (b.cx < R + 20) { b.cx = R + 20; b.vx = Math.abs(b.vx); }
-          if (b.cx > W - R - 20) { b.cx = W - R - 20; b.vx = -Math.abs(b.vx); }
-          b.x = b.cx + Math.cos(b.t * 11) * 20; b.y = b.cy + Math.sin(b.t * 11) * 20;
-        } else {
-          /* slow-mo and the magnet help whoever has them, on their own side */
-          if (home.fx.slowmo > 0 && (dir > 0 ? b.y > MID : b.y < MID)) mult *= .62;
-          if (home.fx.magnet > 0 && (dir > 0 ? b.y > MID : b.y < MID)) b.vx += clamp(home.x - b.x, -1, 1) * 420 * dt;
-          b.x += b.vx * dt * mult; b.y += b.vy * dt * mult;
-        }
-        if (b.x < R) { b.x = R; b.vx = Math.abs(b.vx); if (b.fx === 'banana') b.curve = 1; ctx.sfx('wall'); }
-        if (b.x > W - R) { b.x = W - R; b.vx = -Math.abs(b.vx); if (b.fx === 'banana') b.curve = -1; ctx.sfx('wall'); }
+        if (b.fx === 'zigzag' && !b.zigged && (dir > 0 ? b.y > b.zigAt : b.y < b.zigAt)) { b.zigged = true; b.vx = -b.vx * 1.15; if (!b.sim) ctx.sfx('zap'); }
+        if (home.fx.slowmo > 0 && (dir > 0 ? b.y > MID : b.y < MID)) mult *= .62;
+        if (home.fx.magnet > 0 && (dir > 0 ? b.y > MID : b.y < MID)) b.vx += clamp(home.x - b.x, -1, 1) * 420 * dt;
+        b.x += b.vx * dt * mult; b.y += b.vy * dt * mult;
+        if (b.x < R) { b.x = R; b.vx = Math.abs(b.vx); if (!b.sim) ctx.sfx('wall'); }
+        if (b.x > W - R) { b.x = W - R; b.vx = -Math.abs(b.vx); if (!b.sim) ctx.sfx('wall'); }
+      }
+      function stepBall(b, dt) {
+        motion(b, dt);
 
         /* the faders */
         if (b.vy > 0 && b.y + R >= YOU_Y - PH / 2 && b.y < YOU_Y + PH && Math.abs(b.x - you.x) <= width(you) / 2 + R) {
-          b.y = YOU_Y - PH / 2 - R; if (b.fx === 'tornado') b.cy = b.y;
+          b.y = YOU_Y - PH / 2 - R;
           bounce(b, you, -1); b.t0 = time;
           hits++; rally++;
           ctx.score(score());
           if (rally % 7 === 0) ctx.quip('jokes_soundcheck_rally', { mood: 'good' });
           if (b.extra) b.gone = true;
         } else if (b.vy < 0 && b.y - R <= FOH_Y + PH / 2 && b.y > FOH_Y - PH && Math.abs(b.x - foh.x) <= width(foh) / 2 + R) {
-          b.y = FOH_Y + PH / 2 + R; if (b.fx === 'tornado') b.cy = b.y;
+          b.y = FOH_Y + PH / 2 + R;
           bounce(b, foh, 1); b.t0 = time;
           if (b.extra) b.gone = true;
         }
@@ -379,7 +376,7 @@
           ctx.quip('jokes_soundcheck_win', { mood: 'good', force: true });
           serveTo = -1;
         }
-        wait = 1.6;
+        wait = .7;
       }
 
       /* ------------------------------------------------------ drawing */
@@ -394,6 +391,9 @@
         g.beginPath(); g.moveTo(0, MID); g.lineTo(W, MID); g.stroke(); g.setLineDash([]);
 
         if (!mode) return pick(g);
+        if (!level) return ctx.cards(g, words('diff_pick'), LEVELS.map(function (l, i) {
+          return { title: words('diff_' + l), line: words('diff_' + l + '_line'), key: ['←', '↑', '→'][i], col: DIFF[l].col };
+        }), time);
 
         meter(g, you, 10, '#2FD8FF'); meter(g, foh, W - 16, '#FF4FD8');
         tally(g);
@@ -407,9 +407,7 @@
         sparks.forEach(function (s) { g.globalAlpha = Math.min(1, s.life * 2); g.fillStyle = s.c || '#8FEBFF'; g.fillRect(s.x, s.y, 2, 2); });
         g.globalAlpha = 1;
 
-        /* the haze and the blackout: over whoever's half it is */
-        if (you.fx.haze > 0) haze(g, MID, H);
-        if (foh.fx.haze > 0) haze(g, 0, MID);
+        /* the blackout */
         if (flashT > 0) { g.fillStyle = 'rgba(0,0,0,' + Math.min(.92, flashT * 2) + ')'; g.fillRect(0, 0, W, H); balls.forEach(function (b) { g.fillStyle = 'rgba(255,255,255,.25)'; g.beginPath(); g.arc(b.x, b.y, 3, 0, 7); g.fill(); }); }
 
         /* the stick, shown on a desktop too: which way and how fast */
@@ -417,6 +415,10 @@
           var s = ctx.stick();
           g.fillStyle = 'rgba(255,255,255,.06)'; g.fillRect(W / 2 - 60, H - 14, 120, 4);
           g.fillStyle = '#2FD8FF'; g.fillRect(W / 2 + Math.min(0, s * 60), H - 14, Math.abs(s) * 60, 4);
+        }
+        if (awaiting) {
+          g.fillStyle = 'rgba(237,242,248,' + (.55 + .35 * Math.sin(time * 5)).toFixed(2) + ')'; g.font = '700 13px Sora, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+          g.fillText(words(ctx.touch ? 'soundcheck_serve_touch' : 'soundcheck_serve_keys').toUpperCase(), W / 2, serveTo > 0 ? MID - 34 : MID + 34);
         }
         if (banner) {
           g.globalAlpha = Math.min(1, banner.t * 2);
@@ -464,12 +466,9 @@
           return;
         }
         var size = R;
-        if (b.fx === 'moon') { var f = Math.sin(clamp(Math.abs(b.y - MID) / (H / 2), 0, 1) * Math.PI / 2); size = R * (2.4 - f * 1.4); g.fillStyle = 'rgba(0,0,0,.35)'; g.beginPath(); g.ellipse(b.x + 8, b.y + 10, size, size * .6, 0, 0, 7); g.fill(); }
         g.shadowColor = col; g.shadowBlur = b.smash ? 22 : 14;
         g.fillStyle = col; g.fillRect(b.x - size, b.y - size, size * 2, size * 2);
         g.shadowBlur = 0;
-        if (b.fx === 'sleeper' && !b.woke) { g.fillStyle = '#EDF2F8'; g.font = '600 10px Sora, sans-serif'; g.fillText('z', b.x + 9, b.y - 9 - Math.sin(b.t * 3) * 3); g.fillText('Z', b.x + 15, b.y - 17 - Math.sin(b.t * 3 + 1) * 3); }
-        if (b.fx === 'stopgo' && b.stopped > 0) { g.fillStyle = '#FFB547'; g.font = '700 11px Sora, sans-serif'; g.textAlign = 'center'; g.fillText(['1', '2', '1-2-3-4!'][Math.min(2, Math.floor((.75 - b.stopped) / .25))], b.x, b.y - 16); }
       }
       function capsule(g, c) {
         var P = POWERS[c.name], col = KIND[P.kind], pulse = 1 + Math.sin((time - c.born) * 6) * .06;
@@ -478,25 +477,20 @@
         g.strokeStyle = col; g.lineWidth = 2; g.shadowColor = col; g.shadowBlur = 10; g.stroke(); g.shadowBlur = 0;
         g.fillStyle = col; g.font = '700 13px Sora, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
         g.fillText(GLYPH[c.name] || '?', 0, 1);
+        /* its name under it, so it can be read before it is caught */
+        g.font = '700 8px Sora, sans-serif'; g.fillStyle = col; g.fillText(words('soundcheck_p_' + c.name).toUpperCase(), 0, BAND + 9);
         g.restore();
-      }
-      function haze(g, y0, y1) {
-        for (var i = 0; i < 5; i++) {
-          var y = y0 + (y1 - y0) * ((i + .5) / 5) + Math.sin(time * .8 + i) * 14;
-          var gr = g.createRadialGradient(W / 2 + Math.sin(time * .5 + i * 2) * 90, y, 10, W / 2, y, 220);
-          gr.addColorStop(0, 'rgba(200,205,225,.38)'); gr.addColorStop(1, 'rgba(200,205,225,0)');
-          g.fillStyle = gr; g.fillRect(0, y0, W, y1 - y0);
-        }
       }
       function fader(g, p, y, col) {
         var w = width(p), x = p.x;
-        var frozen = p.fx.mute > 0 || p.fx.unplug > 0;
+        var frozen = p.fx.mute > 0;
         g.fillStyle = '#1b2231'; roundRect(g, x - w / 2, y - PH / 2, w, PH, 4); g.fill();
         g.fillStyle = 'rgba(255,255,255,.1)'; g.fillRect(x - w / 2 + 3, y - PH / 2 + 2, w - 6, 2);
         g.fillStyle = frozen ? '#8A96A6' : col; g.shadowColor = col; g.shadowBlur = frozen ? 0 : 10;
         g.fillRect(x - w / 2 + 6, y - 1, w - 12, 2);
         g.shadowBlur = 0;
         if (p.fx.shield) { g.strokeStyle = '#5CF2C4'; g.lineWidth = 2; g.setLineDash([4, 4]); g.beginPath(); g.moveTo(0, p === you ? H - 6 : 6); g.lineTo(W, p === you ? H - 6 : 6); g.stroke(); g.setLineDash([]); }
+        if (p.fx.butter > 0) { g.fillStyle = 'rgba(180,230,255,.35)'; g.fillRect(x - w / 2 - 4, y + PH / 2, w + 8, 3); }
         if (p.fx.flip > 0) { g.fillStyle = '#9B7BFF'; g.font = '700 10px Sora, sans-serif'; g.textAlign = 'center'; g.fillText('⇄', x, y + (p === you ? 16 : -14)); }
         if (frozen) { g.fillStyle = '#8A96A6'; g.font = '700 9px Sora, sans-serif'; g.textAlign = 'center'; g.fillText(words('soundcheck_muted').toUpperCase(), x, y + (p === you ? 16 : -14)); }
       }
@@ -528,9 +522,16 @@
       return {
         update: update, draw: draw,
         press: function (d) {
-          if (mode) return;
-          if (d === 'left' || d === 'right') choose(d === 'left' ? 'classic' : 'modern');
-          if (d === 'go') choose('modern');
+          if (!mode) { if (d === 'left' || d === 'right') choose(d === 'left' ? 'classic' : 'modern'); else if (d === 'go') choose('modern'); return; }
+          if (!level) { chooseLevel(d === 'left' ? 'easy' : d === 'right' ? 'hard' : 'normal'); return; }
+          if (awaiting && (d === 'left' || d === 'right' || d === 'up' || d === 'down' || d === 'go' || d === 'tap')) { awaiting = false; serve(); }
+        },
+        /* a tap: on a card, or anywhere to serve */
+        tapAt: function (x, y) {
+          if (!mode) { choose(x < W / 2 ? 'classic' : 'modern'); return true; }
+          if (!level) { var i = ctx.cardAt(x, y); if (i >= 0) { chooseLevel(LEVELS[i]); return true; } return false; }
+          if (awaiting) { awaiting = false; serve(); return true; }
+          return false;
         },
         stop: function () { balls = []; }
       };

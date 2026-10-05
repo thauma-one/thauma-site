@@ -211,6 +211,9 @@
         if (!held[dir] && !e.repeat) press(dir);
         held[dir] = true;
       }
+      /* ↑ ↓ in a game that does not steer with them still reach it as a
+         press: a menu's middle card, a serve */
+      else if (dir) { e.preventDefault(); if (!e.repeat) press(dir); }
     }
     function onKeyUp(e) {
       e.stopPropagation();
@@ -246,6 +249,12 @@
       if (stillMashing()) { e.preventDefault(); return; }
       if (e.target.closest('.arc-hud,.arc-over')) return;
       e.preventDefault();
+      /* a tap on the picture itself, for a game's own menus (difficulty
+         cards): any scheme, if the game asks for it and takes it */
+      if (e.target === canvas && live() && run.tapAt) {
+        var cr = canvas.getBoundingClientRect();
+        if (run.tapAt((e.clientX - cr.left) / scale, (e.clientY - cr.top) / scale)) return;
+      }
       var padBtn = e.target.closest('.arc-pad button'), lane = e.target.closest('[data-lane]');
       if (scheme === 'stick' && e.target.closest('.arc-stickbar')) {
         stickId = e.pointerId; stickEl.classList.add('is-held'); stickAt(e.clientX);
@@ -344,6 +353,7 @@
 
     /* ---- the context a game gets ---- */
     var score = 0;
+    var cardRects = [];
     var ctx = {
       W: W, H: H, held: held, reduced: reduced, touch: touch, words: w, best: best(id),
       score: function (n) { score = Math.max(0, Math.floor(n)); scoreEl.textContent = score; },
@@ -363,6 +373,34 @@
         return false;
       },
       sfx: function (name, o) { var S = snd(); if (S) S.sfx(name, o); },
+      /* A game's own choice screen (difficulty, mode): a heading and two
+         to four cards side by side, each { title, line, key, col }. Drawn
+         the same in every game; cardAt(x, y) says which one a tap hit. */
+      cards: function (g, heading, list, t) {
+        var n = list.length, gap = 10, cw = Math.min(150, (W - 28 - gap * (n - 1)) / n), ch = Math.min(230, H * .42);
+        var x0 = (W - (cw * n + gap * (n - 1))) / 2, y0 = H / 2 - ch / 2;
+        g.fillStyle = 'rgba(5,7,12,.72)'; g.fillRect(0, 0, W, H);
+        g.fillStyle = '#EDF2F8'; g.font = '700 16px Sora, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+        g.fillText(String(heading).toUpperCase(), W / 2, y0 - 34);
+        cardRects = [];
+        list.forEach(function (c, i) {
+          var x = x0 + i * (cw + gap), on = Math.sin((t || 0) * 4 + i * 2) > 0;
+          cardRects.push({ x: x, y: y0, w: cw, h: ch });
+          g.fillStyle = 'rgba(12,16,26,.96)'; g.fillRect(x, y0, cw, ch);
+          g.strokeStyle = c.col; g.lineWidth = on ? 2 : 1; g.strokeRect(x + .5, y0 + .5, cw - 1, ch - 1);
+          g.fillStyle = c.col; g.font = '700 ' + (cw < 100 ? 12 : 15) + 'px Sora, sans-serif'; g.textAlign = 'center';
+          g.fillText(String(c.title).toUpperCase(), x + cw / 2, y0 + 30);
+          g.fillStyle = 'rgba(237,242,248,.8)'; g.font = '500 11px Inter, sans-serif';
+          var words2 = String(c.line || '').split(' '), line = '', yy = y0 + 64;
+          words2.forEach(function (wd) { var tst = line ? line + ' ' + wd : wd; if (g.measureText(tst).width > cw - 16 && line) { g.fillText(line, x + cw / 2, yy); line = wd; yy += 15; } else line = tst; });
+          g.fillText(line, x + cw / 2, yy);
+          if (c.key) { g.fillStyle = c.col; g.font = '700 20px Sora, sans-serif'; g.fillText(c.key, x + cw / 2, y0 + ch - 28); }
+        });
+      },
+      cardAt: function (x, y) {
+        for (var i = 0; i < cardRects.length; i++) { var r = cardRects[i]; if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) return i; }
+        return -1;
+      },
       /* Which d-pad buttons a phone shows (Follow Spot gains its tilt). */
       pad: function (list) {
         el.querySelectorAll('.arc-pad button').forEach(function (b) { b.hidden = list.indexOf(b.dataset.dir) < 0; });
