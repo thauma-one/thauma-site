@@ -230,7 +230,7 @@
           if (Math.hypot(p.x - me.x, p.y - (me.y - 16)) < 28) {
             if (p.kind === 'hat') hat = 1; else { active = p.kind; activeT = POWER_T[p.kind]; }
             ctx.sfx('powerup');
-            banner = { text: words('goldenhour_p_' + p.kind).toUpperCase(), sub: p.kind === 'balloon' || p.kind === 'banner' ? words('goldenhour_p_' + p.kind + '_how') : '', t: 2.2 };
+            banner = { text: words('goldenhour_p_' + p.kind).toUpperCase(), sub: words('goldenhour_p_' + p.kind + '_how'), t: 2.4 };
             if (p.kind === 'banner') ctx.quip('jokes_goldenhour_banner', { chance: .7 });
             return false;
           }
@@ -298,6 +298,16 @@
         var turn = holding && active !== 'banner' ? -6.4 : 0;
         if (active === 'banner') me.ang += wrap(-.15 - me.ang) * Math.min(1, dt * 6);
         me.ang += turn * dt; me.spin += turn * dt;
+        /* LET GO MID-FLIP and the rider slowly rights themself toward the
+           slope below (round 4: "have the physic engine slowly start to
+           bring you back to nominal orientation if you let go in the middle
+           of a flip") — the shorter way round, ~3.2 rad/s, so a half-flip
+           released early can still land. Only holding counts as flipping. */
+        if (!holding && active !== 'banner') {
+          var below = groundAt(me.x + me.vx * .25), want = below === null ? 0 : slopeAt(me.x + me.vx * .25);
+          var off = wrap(want - me.ang), stepA = 3.2 * dt;
+          me.ang += Math.abs(off) < stepA ? off : (off > 0 ? stepA : -stepA);
+        }
         hitCases();
         /* a cable underneath: land on it to grind */
         for (var i = 0; i < rails.length; i++) {
@@ -597,6 +607,14 @@
       function power(g, p) {
         if (p.y === null) return;
         var x = p.x - camX, y = p.y - camY + Math.sin(time * 4) * 3;
+        /* a power is not a glow stick: a beam of light down to it, a big
+           orb, a turning ring, and its name */
+        var bm = g.createLinearGradient(0, y - 120, 0, y);
+        bm.addColorStop(0, 'rgba(255,224,140,0)'); bm.addColorStop(1, 'rgba(255,224,140,.28)');
+        g.fillStyle = bm; g.fillRect(x - 6, y - 120, 12, 120);
+        g.strokeStyle = 'rgba(255,224,140,.85)'; g.lineWidth = 2; g.beginPath(); g.arc(x, y, 19, time * 3, time * 3 + 4.4); g.stroke();
+        g.fillStyle = '#FFF4D6'; g.font = '700 9px Sora, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'top';
+        g.fillText(words('goldenhour_p_' + p.kind).toUpperCase(), x, y + 24);
         var gl = g.createRadialGradient(x, y, 2, x, y, 26);
         gl.addColorStop(0, 'rgba(255,240,200,.55)'); gl.addColorStop(1, 'rgba(255,240,200,0)');
         g.fillStyle = gl; g.fillRect(x - 26, y - 26, 52, 52);
