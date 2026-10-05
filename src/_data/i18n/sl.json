@@ -628,6 +628,15 @@
       "[DIR] Kdo se je dotaknil meglenega stroja? Kdo se ga je dotaknil?",
       "[SM] Megla je vklopljena. Prva vrsta ne vidi več prve vrste.",
       "[DIR] Super, oblak je. Osvetli tistega, ki je v oblaku."
+    ],
+    "goldenhour_p_balloon": "Baloni",
+    "goldenhour_p_banner": "Transparent",
+    "goldenhour_p_balloon_how": "Drži v zraku, da lebdiš",
+    "goldenhour_p_banner_how": "Drži za vzpon, spusti za drsenje",
+    "jokes_goldenhour_banner": [
+      "[SM] Je to naš transparent? To je bil naš transparent.",
+      "[LX] Vidnost sponzorja še nikoli ni bila večja.",
+      "[PM] Prosim, vrnite transparent v enem kosu. Ali vsaj v nekaj velikih."
     ]
   }
 }

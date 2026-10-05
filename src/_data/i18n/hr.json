@@ -628,6 +628,15 @@
       "[DIR] Tko je dirao stroj za maglu? Tko je dirao stroj za maglu?",
       "[SM] Magla je upaljena. Prvi red više ne vidi prvi red.",
       "[DIR] Super, sad je oblak. Osvijetli onoga tko je u oblaku."
+    ],
+    "goldenhour_p_balloon": "Baloni",
+    "goldenhour_p_banner": "Transparent",
+    "goldenhour_p_balloon_how": "Drži u zraku da lebdiš",
+    "goldenhour_p_banner_how": "Drži za uspon, pusti za klizanje",
+    "jokes_goldenhour_banner": [
+      "[SM] Je li to naš transparent? To je bio naš transparent.",
+      "[LX] Vidljivost sponzora nikad nije bila veća.",
+      "[PM] Molim vratite transparent u jednom komadu. Ili barem u nekoliko velikih."
     ]
   }
 }

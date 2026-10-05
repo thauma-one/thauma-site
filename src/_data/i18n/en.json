@@ -628,6 +628,15 @@
       "[DIR] Who touched the hazer? Who touched the hazer?",
       "[SM] Fog's on. The front row can no longer see the front row.",
       "[DIR] Great, it's a cloud. Light whoever's in the cloud."
+    ],
+    "goldenhour_p_balloon": "Balloons",
+    "goldenhour_p_banner": "Banner",
+    "goldenhour_p_balloon_how": "Hold in the air to float",
+    "goldenhour_p_banner_how": "Hold to climb, let go to glide",
+    "jokes_goldenhour_banner": [
+      "[SM] Is that our banner? That was our banner.",
+      "[LX] Sponsor visibility has never been higher.",
+      "[PM] Please return the banner in one piece. Or at least in a few large pieces."
     ]
   }
 }
