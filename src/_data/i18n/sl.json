@@ -607,6 +607,27 @@
     "panelfixer_magnet": "Magnet",
     "panelfixer_pattern": "Testna slika",
     "panelfixer_crew": "Klic ekipi",
-    "panelfixer_crew_ready": "Ekipa pripravljena: naslednji met pripelje pomoč"
+    "panelfixer_crew_ready": "Ekipa pripravljena: naslednji met pripelje pomoč",
+    "followspot_baa": "Bee!",
+    "followspot_act_welcome": "Dobrodošlica",
+    "followspot_act_worship": "Čaščenje",
+    "followspot_act_message": "Pridiga",
+    "followspot_act_encore": "Še ena pesem",
+    "jokes_followspot_sheep": [
+      "[DIR] To je ovca. Osvetljuješ ovco.",
+      "[DIR] Ovca je ponazoritev v pridigi. Ni pridiga.",
+      "[PASTOR] Lepo. Zdaj pa tistega z mikrofonom, prosim.",
+      "[DIR] Devetindevetdeset v staji, ena v mojem reflektorju."
+    ],
+    "jokes_followspot_moth": [
+      "[DIR] Je to vešča? To je vešča. Na platnu je. Ogromna je.",
+      "[LD] Vešča je našla najsvetlejšo stvar v dvorani. Spoštovanje.",
+      "[DIR] Nihče naj se ne premakne. Morda bo raje sledila pastorju."
+    ],
+    "jokes_followspot_fog": [
+      "[DIR] Kdo se je dotaknil meglenega stroja? Kdo se ga je dotaknil?",
+      "[SM] Megla je vklopljena. Prva vrsta ne vidi več prve vrste.",
+      "[DIR] Super, oblak je. Osvetli tistega, ki je v oblaku."
+    ]
   }
 }

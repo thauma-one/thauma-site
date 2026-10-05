@@ -607,6 +607,27 @@
     "panelfixer_magnet": "Magnet",
     "panelfixer_pattern": "Testna slika",
     "panelfixer_crew": "Poziv ekipi",
-    "panelfixer_crew_ready": "Ekipa spremna: sljedeće bacanje dovodi pomoć"
+    "panelfixer_crew_ready": "Ekipa spremna: sljedeće bacanje dovodi pomoć",
+    "followspot_baa": "Bee!",
+    "followspot_act_welcome": "Dobrodošlica",
+    "followspot_act_worship": "Slavljenje",
+    "followspot_act_message": "Propovijed",
+    "followspot_act_encore": "Još jedna pjesma",
+    "jokes_followspot_sheep": [
+      "[DIR] To je ovca. Osvjetljavaš ovcu.",
+      "[DIR] Ovca je primjer u propovijedi. Nije propovijed.",
+      "[PASTOR] Divno. A sad onoga s mikrofonom, molim.",
+      "[DIR] Devedeset i devet u toru, jedna u mom reflektoru."
+    ],
+    "jokes_followspot_moth": [
+      "[DIR] Je li to moljac? To je moljac. Na platnu je. Ogroman je.",
+      "[LD] Moljac je našao najsjajniju stvar u dvorani. Svaka čast.",
+      "[DIR] Nitko se ne miči. Možda će umjesto tebe pratiti pastora."
+    ],
+    "jokes_followspot_fog": [
+      "[DIR] Tko je dirao stroj za maglu? Tko je dirao stroj za maglu?",
+      "[SM] Magla je upaljena. Prvi red više ne vidi prvi red.",
+      "[DIR] Super, sad je oblak. Osvijetli onoga tko je u oblaku."
+    ]
   }
 }

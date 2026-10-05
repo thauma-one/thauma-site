@@ -4,7 +4,8 @@
    Chase, 2026-09-30: "looks like one-dimensional spotlight tracking until
    the director says 'use your tilt'. Then it's 2D, with backflips, stage
    dives and hiding behind other people. The performer you pick is the
-   difficulty." And 2026-10-04: build the out-of-order ones too.
+   difficulty." And 2026-10-05: "Make it enjoyable with good progression,
+   but throw in some funny things. (And give it d pad control layout)".
 
    You run the follow spot from the booth. Pick who you are lighting —
    the PASTOR walks and talks, the WORSHIP LEADER roams, the YOUTH PASTOR
@@ -12,10 +13,22 @@
    points run, faster the longer you hold it; off target, the director's
    patience runs out instead.
 
-   ← → pan. Then, when the director calls it, ↑ ↓ tilt too: they jump,
-   climb the risers, backflip, dive into the crowd, and hide behind the
-   band (keep the light where they will come out). The iris closes as the
-   night goes on.
+   THE SERVICE, in four acts, so it eases in (round 3):
+     WELCOME   pan only. They stroll; nothing sudden for the first 8s.
+     WORSHIP   the director calls "use your tilt": ↑ ↓ arrive (on a phone
+               the cross's top and bottom appear). Jumps, the riser, hiding
+               behind the band.
+     MESSAGE   backflips and, for the two who would, a stage dive and a
+               crowd surf.
+     ONE MORE SONG  everything, a little faster, the iris closing.
+   Speed, iris and patience all ramp gently across the acts (they ramped
+   at three times this rate before).
+
+   THE FUNNY THINGS (one every 12-20s, from the first act):
+     a SHEEP wanders on — the pastor's sermon illustration — and is very
+       easy to light instead (the director has notes);
+     a MOTH finds your beam and will not leave it;
+     the FOG MACHINE goes off: outside your light, everyone is a shadow.
    ===================================================================== */
 (function () {
   'use strict';
@@ -25,9 +38,16 @@
   var W = 400, H = 560;
   var DECK = 400, CROWD = 470;
   var WHO = [
-    { key: 'pastor',  speed: 52,  wander: .25, stunts: .2, col: '#2FD8FF' },
-    { key: 'leader',  speed: 88,  wander: .5,  stunts: .55, col: '#5CF2C4' },
-    { key: 'youth',   speed: 135, wander: .9,  stunts: 1,   col: '#FF4FD8' }
+    { key: 'pastor',  speed: 46,  wander: .25, stunts: .35, col: '#2FD8FF', skin: '#e2b48f', hair: '#6d6d72' },
+    { key: 'leader',  speed: 72,  wander: .5,  stunts: .6,  col: '#5CF2C4', skin: '#c68e6a', hair: '#2a1d16' },
+    { key: 'youth',   speed: 104, wander: .9,  stunts: 1,   col: '#FF4FD8', skin: '#efc29b', hair: '#FFB547' }
+  ];
+  /* the acts: when each starts (s), what the LED wall glows, what may happen */
+  var ACTS = [
+    { key: 'welcome', at: 0,  wall: [47, 216, 255],  stunts: [] },
+    { key: 'worship', at: 20, wall: [155, 123, 255], stunts: ['jump', 'climb', 'hide'] },
+    { key: 'message', at: 55, wall: [255, 181, 71],  stunts: ['jump', 'climb', 'hide', 'flip', 'dive'] },
+    { key: 'encore',  at: 95, wall: [255, 79, 216],  stunts: ['jump', 'climb', 'hide', 'flip', 'dive', 'flip'] }
   ];
 
   function rnd(a, b) { return a + Math.random() * (b - a); }
@@ -36,35 +56,44 @@
   A.games.followspot = {
     size: { w: W, h: H },
     controls: 'dpad',
+    pad: 'cross',
     padStart: ['left', 'up', 'right'],
     speaker: 'DIR',
     quipAt: .1,
     create: function (ctx) {
       var words = ctx.words;
-      var who = null, tilt = false, time = 0, played = 0, score = 0, streak = 0, patience = 1;
-      var spot = { x: W / 2, y: DECK - 50, vx: 0, vy: 0, r: 46 };
-      var p = { x: W / 2, y: DECK, vy: 0, goal: W / 2, act: 'walk', t: 0, dir: 1, flip: 0, hidden: false, ground: DECK, pose: 0 };
-      var band = [{ x: 80, h: 64, kind: 'bass' }, { x: 320, h: 70, kind: 'guitar' }, { x: 200, h: 58, kind: 'drums' }];
+      var who = null, tilt = false, time = 0, played = 0, score = 0, streak = 0, patience = 1, act = 0;
+      var spot = { x: W / 2, y: DECK - 50, vx: 0, vy: 0, r: 48 };
+      var p = { x: W / 2, y: DECK, vy: 0, goal: W / 2, act: 'walk', t: 0, dir: 1, flip: 0, hidden: false, ground: DECK };
+      var band = [{ x: 80, h: 64, kind: 'bass', col: '#3a3350' }, { x: 320, h: 70, kind: 'guitar', col: '#38304a' }, { x: 200, h: 58, kind: 'drums', col: '#2c2740' }];
       var risers = [{ x0: 150, x1: 250, y: DECK - 40 }];
-      var crowd = [], beams = [], pops = [], nextStunt = 6, onT = 0;
-      for (var i = 0; i < 46; i++) crowd.push({ x: i * 9 + rnd(-3, 3), h: rnd(16, 28), ph: rnd(0, 6) });
+      var crowd = [], pops = [], nextStunt = 8, gagIn = 12, sheep = null, moth = null, fog = 0, offBy = 0;
+      for (var i = 0; i < 46; i++) crowd.push({ x: i * 9 + rnd(-3, 3), h: rnd(16, 28), ph: rnd(0, 6), phone: Math.random() < .3 });
 
       function choose(i) {
         if (who) return;
         who = WHO[i]; ctx.sfx('go'); ctx.pad(['left', 'right']);
         ctx.say(words('followspot_' + who.key + '_line'), { tag: 'DIR' });
       }
+      function cur() { return ACTS[act]; }
 
       /* ---- the performer's mind ---- */
       function think(dt) {
         p.t += dt;
         nextStunt -= dt * who.stunts;
         if (p.act === 'walk') {
-          if (Math.abs(p.goal - p.x) < 6 || p.t > 3.5) { p.goal = clamp(p.x + rnd(-1, 1) * 220 * (.4 + who.wander), 30, W - 30); p.t = 0; }
-          if (nextStunt <= 0 && tilt) startStunt();
-          else if (nextStunt <= 0) { nextStunt = rnd(4, 8); p.act = 'dash'; p.t = 0; p.goal = p.x < W / 2 ? W - 40 : 40; }
+          if (Math.abs(p.goal - p.x) < 6 || p.t > 3.8) {
+            /* a pause to talk, now and then, before the next stroll */
+            if (Math.random() < .35) { p.act = 'talk'; p.t = 0; }
+            else { p.goal = clamp(p.x + rnd(-1, 1) * 200 * (.4 + who.wander), 30, W - 30); p.t = 0; }
+          }
+          if (nextStunt <= 0 && cur().stunts.length && tilt) startStunt();
+          else if (nextStunt <= 0 && played > 8) { nextStunt = rnd(6, 10); p.act = 'dash'; p.t = 0; p.goal = p.x < W / 2 ? W - 40 : 40; }
+          else if (nextStunt <= 0) nextStunt = 3;
         }
-        var sp = who.speed * (1 + played / 90) * (p.act === 'dash' ? 2.1 : 1);
+        if (p.act === 'talk' && p.t > rnd(1.2, 2.2)) { p.act = 'walk'; p.t = 0; p.goal = clamp(p.x + rnd(-1, 1) * 160, 30, W - 30); }
+        /* the pace builds across the service (was 1 + played/90) */
+        var sp = who.speed * (1 + Math.min(played, 150) / 260) * (p.act === 'dash' ? 1.9 : 1);
         if (p.act === 'walk' || p.act === 'dash' || p.act === 'hide') {
           var d = p.goal - p.x; p.dir = d > 0 ? 1 : -1;
           p.x += clamp(d, -sp * dt, sp * dt);
@@ -91,48 +120,92 @@
         else p.y = p.ground;
       }
       function startStunt() {
-        nextStunt = rnd(3, 6) / Math.max(.4, who.stunts);
-        var r = Math.random();
-        if (r < .25) { p.act = 'jump'; p.vy = -460; }
-        else if (r < .45) { p.act = 'flip'; p.vy = -560; ctx.quip('jokes_followspot_stunt', { chance: .5 }); }
-        else if (r < .6 && who.stunts > .5) { p.act = 'dive'; p.vy = -380; p.dir = p.x < W / 2 ? 1 : -1; ctx.say(words('followspot_dive'), { tag: 'DIR' }); }
-        else if (r < .8) { var b = band[Math.floor(Math.random() * band.length)]; p.act = 'hide'; p.goal = b.x; p.t = 0; }
+        nextStunt = rnd(4, 7) / Math.max(.4, who.stunts) * (act >= 3 ? .75 : 1);
+        var list = cur().stunts.filter(function (s) { return s !== 'dive' || who.stunts > .5; });
+        var s = list[Math.floor(Math.random() * list.length)];
+        if (s === 'jump') { p.act = 'jump'; p.vy = -440; }
+        else if (s === 'flip') { p.act = 'flip'; p.vy = -560; ctx.quip('jokes_followspot_stunt', { chance: .5 }); }
+        else if (s === 'dive') { p.act = 'dive'; p.vy = -380; p.dir = p.x < W / 2 ? 1 : -1; ctx.say(words('followspot_dive'), { tag: 'DIR' }); }
+        else if (s === 'hide') { var b = band[Math.floor(Math.random() * band.length)]; p.act = 'hide'; p.goal = b.x; }
         else { p.act = 'climb'; p.vy = -420; p.dir = p.x < 200 ? 1 : -1; }
         p.t = 0;
       }
       function land() { ctx.sfx('thud', { vol: .2 }); }
+
+      /* ---- the funny things ---- */
+      function gag() {
+        var pool = ['sheep'];
+        if (act >= 1) pool.push('moth', 'fog');
+        var g2 = pool[Math.floor(Math.random() * pool.length)];
+        if (g2 === 'sheep' && !sheep) { var from = Math.random() < .5 ? -1 : 1; sheep = { x: from < 0 ? -30 : W + 30, dir: -from, t: 0, lit: 0, told: false, baa: 1.5 }; }
+        else if (g2 === 'moth' && !moth) { moth = { x: spot.x + 60, y: spot.y - 50, t: 0, a: 0 }; ctx.quip('jokes_followspot_moth', { force: true }); }
+        else if (g2 === 'fog' && fog <= 0) { fog = 9; ctx.sfx('slide'); ctx.quip('jokes_followspot_fog', { force: true }); }
+      }
+      function gags(dt, on) {
+        gagIn -= dt;
+        if (gagIn <= 0) { gagIn = rnd(12, 20); gag(); }
+        if (sheep) {
+          sheep.t += dt; sheep.x += sheep.dir * 34 * dt;
+          sheep.baa -= dt; if (sheep.baa <= 0) { sheep.baa = rnd(2.5, 4); pops.push({ x: sheep.x, y: DECK - 40, text: words('followspot_baa'), life: 1.1, col: '#EDF2F8' }); }
+          /* lit instead of the one you are meant to be lighting */
+          if (!on && Math.hypot(sheep.x - spot.x, DECK - 14 - spot.y) < spot.r + 4) {
+            sheep.lit += dt;
+            if (sheep.lit > .5 && !sheep.told) { sheep.told = true; ctx.quip('jokes_followspot_sheep', { force: true, mood: 'bad' }); }
+          }
+          if (sheep.x < -40 || sheep.x > W + 40) sheep = null;
+        }
+        if (moth) {
+          /* it loves your light: it circles the middle of it, erratically */
+          moth.t += dt; moth.a += dt * rnd(4, 9);
+          var tx = spot.x + Math.cos(moth.a) * spot.r * .5, ty = spot.y + Math.sin(moth.a * 1.3) * spot.r * .4;
+          moth.x += (tx - moth.x) * Math.min(1, dt * 3) + rnd(-40, 40) * dt; moth.y += (ty - moth.y) * Math.min(1, dt * 3) + rnd(-40, 40) * dt;
+          if (moth.t > 9) { moth.y -= 120 * dt * (moth.t - 9) * 3; if (moth.t > 10.5) moth = null; }
+        }
+        if (fog > 0) fog -= dt;
+      }
 
       /* ---- your light ---- */
       function update(dt) {
         time += dt;
         if (!who) return;
         played += dt;
-        if (!tilt && played > 22) {
-          tilt = true; ctx.pad(['left', 'up', 'down', 'right']);
-          ctx.say(words('followspot_tilt'), { tag: 'DIR', mood: 'good', at: 'bottom' });
-          ctx.sfx('zap');
+        /* the acts */
+        while (act < ACTS.length - 1 && played >= ACTS[act + 1].at) {
+          act++;
+          pops.push({ x: W / 2, y: 120, text: words('followspot_act_' + ACTS[act].key), life: 2.4, col: 'rgb(' + ACTS[act].wall.join(',') + ')', big: true });
+          ctx.sfx('combo');
+          if (act === 1 && !tilt) {
+            tilt = true; ctx.pad(['left', 'up', 'down', 'right']);
+            ctx.say(words('followspot_tilt'), { tag: 'DIR', mood: 'good', at: 'bottom' });
+            ctx.sfx('zap'); nextStunt = 4;
+          }
         }
         think(dt);
         var ax = (ctx.held.right ? 1 : 0) - (ctx.held.left ? 1 : 0), ay = tilt ? (ctx.held.down ? 1 : 0) - (ctx.held.up ? 1 : 0) : 0;
-        spot.vx = spot.vx + (ax * 290 - spot.vx) * Math.min(1, dt * 9);
-        spot.vy = spot.vy + (ay * 260 - spot.vy) * Math.min(1, dt * 9);
+        spot.vx = spot.vx + (ax * 270 - spot.vx) * Math.min(1, dt * 9);
+        spot.vy = spot.vy + (ay * 240 - spot.vy) * Math.min(1, dt * 9);
         spot.x = clamp(spot.x + spot.vx * dt, 20, W - 20);
         if (tilt) spot.y = clamp(spot.y + spot.vy * dt, 140, CROWD + 20);
-        spot.r = Math.max(24, 46 - played * .12);
+        /* the iris closes, slowly (was 0.12px a second, to 24) */
+        spot.r = Math.max(30, 48 - played * .05);
 
         /* on them? the head and body count, not just the feet */
-        var cy = p.y - 30, on = Math.hypot(p.x - spot.x, cy - spot.y) < spot.r + 6;
+        var cy = p.y - 30, on = Math.hypot(p.x - spot.x, cy - spot.y) < spot.r + 8;
         if (p.hidden) on = Math.abs(p.x - spot.x) < spot.r;           /* where they will come out */
+        gags(dt, on);
         if (on) {
-          onT += dt; streak += dt;
+          offBy = 0;
+          streak += dt;
           var m = streak > 8 ? 4 : streak > 4 ? 3 : streak > 2 ? 2 : 1;
           score += dt * 30 * m * (1 + WHO.indexOf(who) * .5);
-          patience = Math.min(1, patience + dt * .08);
+          patience = Math.min(1, patience + dt * .1);
           if ((p.act === 'flip' || p.act === 'surf') && !p.nailed) { p.nailed = true; score += 150; pops.push({ x: p.x, y: p.y - 70, text: words('followspot_nailed'), life: 1.4 }); ctx.sfx('combo'); }
         } else {
+          offBy += dt;
           if (streak > 6) ctx.quip('jokes_followspot_lost', { mood: 'bad', chance: .6 });
           streak = 0;
-          patience -= dt * (.11 + played / 900);
+          /* a moment's grace, then the director notices (was .11 + played/900, at once) */
+          if (offBy > .4) patience -= dt * (.08 + Math.min(played, 150) / 1500);
           if (patience <= 0) { patience = 0; ctx.say(words('followspot_fired'), { tag: 'DIR', mood: 'bad' }); ctx.sfx('gameover'); who = null; setTimeout(function () { ctx.over(); }, 1000); return; }
           if (patience < .3 && Math.random() < dt * .4) ctx.quip('jokes_followspot_dark', { mood: 'bad' });
         }
@@ -144,33 +217,55 @@
       /* ------------------------------------------------------ drawing */
       function draw(g) {
         g.fillStyle = '#05060a'; g.fillRect(-20, -20, W + 40, H + 40);
-        /* the stage: back wall truss, the deck, the risers */
+        var wc = (who ? cur() : ACTS[0]).wall.join(',');
+        /* the LED wall upstage, glowing the act's colour, slowly breathing */
+        var led = g.createLinearGradient(0, 80, 0, DECK);
+        led.addColorStop(0, 'rgba(' + wc + ',' + (.1 + .04 * Math.sin(time * .8)).toFixed(3) + ')'); led.addColorStop(1, 'rgba(' + wc + ',.02)');
+        g.fillStyle = led; g.fillRect(24, 84, W - 48, DECK - 120);
+        g.fillStyle = 'rgba(0,0,0,.35)';
+        for (var lx = 24; lx < W - 24; lx += 6) g.fillRect(lx, 84, 1, DECK - 120);
+        for (var ly = 84; ly < DECK - 36; ly += 6) g.fillRect(24, ly, W - 48, 1);
+        /* the truss and its lights, each a soft beam in the act's colour */
         g.strokeStyle = '#1f2533'; g.lineWidth = 1.5; g.beginPath();
         for (var x = 0; x <= W; x += 16) { g.moveTo(x, 60); g.lineTo(x + 8, 72); g.lineTo(x + 16, 60); } g.moveTo(0, 60); g.lineTo(W, 60); g.moveTo(0, 72); g.lineTo(W, 72); g.stroke();
-        /* stage wash, dim: the spot is what you see by */
-        var wash = g.createLinearGradient(0, 80, 0, DECK);
-        wash.addColorStop(0, 'rgba(60,40,90,.12)'); wash.addColorStop(1, 'rgba(40,30,60,.3)');
-        g.fillStyle = wash; g.fillRect(0, 80, W, DECK - 80);
+        g.save(); g.globalCompositeOperation = 'lighter';
+        [60, 150, 250, 340].forEach(function (fx, k) {
+          var sw = Math.sin(time * .7 + k * 1.7) * 40, bm = g.createLinearGradient(fx, 74, fx + sw, DECK);
+          bm.addColorStop(0, 'rgba(' + wc + ',.16)'); bm.addColorStop(1, 'rgba(' + wc + ',0)');
+          g.fillStyle = bm; g.beginPath(); g.moveTo(fx - 3, 76); g.lineTo(fx + 3, 76); g.lineTo(fx + sw + 30, DECK); g.lineTo(fx + sw - 30, DECK); g.closePath(); g.fill();
+        });
+        g.restore();
+        [60, 150, 250, 340].forEach(function (fx) { g.fillStyle = '#2a3142'; g.fillRect(fx - 5, 72, 10, 7); });
+        /* the deck and the riser */
         g.fillStyle = '#12101a'; g.fillRect(0, DECK, W, 26);
         g.fillStyle = 'rgba(255,181,71,.35)'; g.fillRect(0, DECK, W, 2);
         risers.forEach(function (r) { g.fillStyle = '#1a1724'; g.fillRect(r.x0, r.y, r.x1 - r.x0, DECK - r.y); g.fillStyle = 'rgba(255,181,71,.3)'; g.fillRect(r.x0, r.y, r.x1 - r.x0, 2); });
         band.forEach(function (b) { if (b.kind === 'drums') musician(g, b, true); });
+        if (sheep) sheepDraw(g);
         if (who) performer(g);
         band.forEach(function (b) { if (b.kind !== 'drums') musician(g, b, false); });
+        if (fog > 0) fogDraw(g);
         /* the light: beam from the booth, the pool on stage */
         if (who) light(g);
+        if (moth) mothDraw(g);
         crowdDraw(g);
         if (!who) return pick(g);
         hud(g);
-        pops.forEach(function (q) { g.globalAlpha = Math.min(1, q.life * 2); g.fillStyle = '#FFB547'; g.font = '700 13px Sora, sans-serif'; g.textAlign = 'center'; g.fillText(q.text.toUpperCase(), q.x, q.y); });
+        pops.forEach(function (q) {
+          g.globalAlpha = Math.min(1, q.life * 2); g.fillStyle = q.col || '#FFB547';
+          g.font = (q.big ? '700 20px' : '700 13px') + ' Sora, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+          g.fillText(q.text.toUpperCase(), clamp(q.x, 60, W - 60), q.y);
+        });
         g.globalAlpha = 1;
       }
       function light(g) {
         var bx = W / 2, by = H + 40;
         g.save();
         g.globalCompositeOperation = 'lighter';
+        /* the beam shows more in fog, as a real one does */
+        var k = fog > 0 ? 2.4 : 1;
         var beam = g.createLinearGradient(bx, by, spot.x, spot.y);
-        beam.addColorStop(0, 'rgba(255,245,220,.02)'); beam.addColorStop(1, 'rgba(255,245,220,.10)');
+        beam.addColorStop(0, 'rgba(255,245,220,' + (.02 * k).toFixed(3) + ')'); beam.addColorStop(1, 'rgba(255,245,220,' + (.1 * k).toFixed(3) + ')');
         g.fillStyle = beam; g.beginPath(); g.moveTo(bx - 6, by); g.lineTo(bx + 6, by); g.lineTo(spot.x + spot.r, spot.y); g.lineTo(spot.x - spot.r, spot.y); g.closePath(); g.fill();
         var gr = g.createRadialGradient(spot.x, spot.y, 2, spot.x, spot.y, spot.r * 1.15);
         var gel = streak > 8 ? '255,180,230' : streak > 4 ? '200,240,255' : '255,245,220';
@@ -179,39 +274,111 @@
         g.restore();
       }
       function performer(g) {
-        if (p.hidden) return;
+        if (p.hidden) {
+          /* a hand waving from behind the band member, to be found */
+          var b = band.filter(function (q) { return Math.abs(q.x - p.x) < 20; })[0];
+          if (b) { g.strokeStyle = who.skin; g.lineWidth = 3; g.lineCap = 'round'; var wv = Math.sin(time * 9) * 4; g.beginPath(); g.moveTo(b.x + 10, DECK - b.h + 4); g.lineTo(b.x + 15 + wv, DECK - b.h - 8); g.stroke(); }
+          return;
+        }
         var x = p.x, y = p.y, lit = Math.hypot(x - spot.x, y - 30 - spot.y) < spot.r + 10;
-        g.save(); g.translate(x, y - 22); g.rotate(p.flip * (p.dir || 1)); g.translate(0, 22);
-        g.globalAlpha = lit ? 1 : .45;
-        var walk = Math.sin(time * 10) * (p.act === 'walk' || p.act === 'dash' ? 1 : .2);
-        g.strokeStyle = '#1c1f2b'; g.lineWidth = 5; g.lineCap = 'round';
-        g.beginPath(); g.moveTo(-3, -18); g.lineTo(-3 + walk * 6, 0); g.moveTo(3, -18); g.lineTo(3 - walk * 6, 0); g.stroke();
-        g.fillStyle = who.col; g.fillRect(-8, -42, 16, 25);
-        g.strokeStyle = '#e2b48f'; g.lineWidth = 3.5;
-        var up = p.act === 'jump' || p.act === 'flip' || p.act === 'surf';
-        g.beginPath(); g.moveTo(-7, -38); g.lineTo(up ? -14 : -12, up ? -54 : -24); g.moveTo(7, -38); g.lineTo(up ? 14 : 12, up ? -54 : -28); g.stroke();
-        if (who.key !== 'pastor' && !up) { g.fillStyle = '#c9d1dc'; g.fillRect(11, -32, 2, 8); }       /* a mic */
-        else if (who.key === 'pastor') { g.fillStyle = '#6b4226'; g.fillRect(-14, -30, 8, 10); }        /* a Bible */
-        g.fillStyle = '#e2b48f'; g.beginPath(); g.arc(0, -50, 7, 0, 7); g.fill();
-        g.fillStyle = who.key === 'youth' ? '#FFB547' : '#3b2a20'; g.beginPath(); g.arc(0, -53, 7, Math.PI, 0); g.fill();
+        g.save(); g.translate(x, y - 22);
+        if (p.act === 'surf') g.rotate(-Math.PI / 2 * p.dir);
+        else g.rotate(p.flip * (p.dir || 1));
+        g.translate(0, 22);
+        g.globalAlpha = lit ? 1 : fog > 0 ? .18 : .45;
+        var moving = p.act === 'walk' || p.act === 'dash', walk = Math.sin(time * (p.act === 'dash' ? 16 : 10)) * (moving ? 1 : .1);
+        var air = p.act === 'jump' || p.act === 'flip' || p.act === 'climb';
+        /* legs: a stride, or tucked in the air */
+        g.lineCap = 'round'; g.strokeStyle = '#1c1f2b'; g.lineWidth = 5;
+        g.beginPath();
+        if (air) { g.moveTo(-3, -18); g.lineTo(-7, -9); g.lineTo(-2, -2); g.moveTo(3, -18); g.lineTo(8, -10); g.lineTo(4, -3); }
+        else { g.moveTo(-3, -18); g.lineTo(-3 + walk * 6, 0); g.moveTo(3, -18); g.lineTo(3 - walk * 6, 0); }
+        g.stroke();
+        g.fillStyle = '#0d0f15'; g.fillRect(air ? -4 : -6 + walk * 6, air ? -4 : -2, 6, 3); g.fillRect(air ? 2 : 1 - walk * 6, air ? -5 : -2, 6, 3);   /* shoes */
+        /* body: a shirt in their colour, rounded shoulders */
+        g.fillStyle = who.col; g.beginPath(); g.moveTo(-8, -18); g.lineTo(-9, -38); g.quadraticCurveTo(0, -44, 9, -38); g.lineTo(8, -18); g.closePath(); g.fill();
+        if (who.key === 'pastor') { g.fillStyle = '#0d1018'; g.beginPath(); g.moveTo(-9, -38); g.lineTo(-3, -38); g.lineTo(-6, -18); g.lineTo(-8, -18); g.closePath(); g.moveTo(9, -38); g.lineTo(3, -38); g.lineTo(6, -18); g.lineTo(8, -18); g.closePath(); g.fill(); }  /* a blazer */
+        /* arms */
+        g.strokeStyle = who.skin; g.lineWidth = 3.5;
+        var up = air || p.act === 'surf', talk = p.act === 'talk', sw = Math.sin(time * 10) * (moving ? 5 : 0);
+        g.beginPath();
+        if (up) { g.moveTo(-7, -38); g.lineTo(-15, -56); g.moveTo(7, -38); g.lineTo(15, -56); }
+        else if (who.key === 'pastor') {
+          g.moveTo(-7, -37); g.lineTo(-12, -26);                                   /* holding the Bible */
+          var gx = talk ? 16 + Math.sin(time * 5) * 3 : 11 + sw, gy = talk ? -46 + Math.sin(time * 5) * 4 : -22;
+          g.moveTo(7, -37); g.lineTo(gx, gy);                                       /* and making the point */
+        } else {
+          g.moveTo(-7, -37); g.lineTo(-11 - sw * .5, talk ? -48 : -22);
+          g.moveTo(7, -37); g.lineTo(5, -46);                                       /* mic to the mouth */
+        }
+        g.stroke();
+        if (!up && who.key === 'pastor') { g.fillStyle = '#5a3720'; g.fillRect(-17, -30, 9, 11); g.fillStyle = '#d9c38f'; g.fillRect(-16, -29, 1, 9); }
+        else if (!up) { g.fillStyle = '#c9d1dc'; g.fillRect(3, -50, 3, 7); g.fillStyle = '#3a4456'; g.beginPath(); g.arc(4.5, -51, 2.6, 0, 7); g.fill(); }
+        /* head, hair */
+        g.fillStyle = who.skin; g.beginPath(); g.arc(0, -50, 7, 0, 7); g.fill();
+        g.fillStyle = who.hair; g.beginPath(); g.arc(0, -53, 7, Math.PI, 0); g.fill();
+        if (who.key === 'youth') { g.fillRect(-7, -56, 14, 3); g.fillRect(-1, -57, 11, 3); }       /* a cap, backwards */
+        g.fillStyle = '#10131a'; g.fillRect(p.dir > 0 ? 1 : -4, -51, 2, 2); g.fillRect(p.dir > 0 ? 4 : -1, -51, 2, 2);
         g.restore(); g.globalAlpha = 1;
       }
       function musician(g, b, back) {
         var y = back ? DECK - 30 : DECK, sw = Math.sin(time * 3 + b.x) * 2;
-        g.fillStyle = back ? '#151320' : '#1b1826';
-        if (b.kind === 'drums') { g.fillRect(b.x - 34, y - 6, 68, 36); g.beginPath(); g.arc(b.x, y + 12, 14, 0, 7); g.fillStyle = '#211d2e'; g.fill(); }
-        g.fillStyle = back ? '#151320' : '#1d1a29';
+        if (b.kind === 'drums') {
+          g.fillStyle = '#211d2e'; g.fillRect(b.x - 34, y - 6, 68, 36);
+          g.fillStyle = '#2b2540'; g.beginPath(); g.arc(b.x, y + 12, 14, 0, 7); g.fill();
+          g.strokeStyle = 'rgba(255,181,71,.5)'; g.lineWidth = 2; g.beginPath(); g.ellipse(b.x - 26, y - 10, 10, 2.5, 0, 0, 7); g.ellipse(b.x + 26, y - 14, 10, 2.5, 0, 0, 7); g.stroke();
+        }
+        g.fillStyle = b.col;
         g.fillRect(b.x - 9, y - b.h + 16 + sw, 18, b.h - 16);
         g.beginPath(); g.arc(b.x, y - b.h + 8 + sw, 8, 0, 7); g.fill();
-        if (b.kind !== 'drums') { g.strokeStyle = '#2a2638'; g.lineWidth = 4; g.beginPath(); g.moveTo(b.x - 18, y - 28 + sw); g.lineTo(b.x + 16, y - 44 + sw); g.stroke(); }
+        if (b.kind !== 'drums') { g.strokeStyle = '#4b4363'; g.lineWidth = 4; g.beginPath(); g.moveTo(b.x - 18, y - 28 + sw); g.lineTo(b.x + 16, y - 44 + sw); g.stroke(); }
+        else { g.strokeStyle = '#4b4363'; g.lineWidth = 2; var hit = Math.abs(Math.sin(time * 6)) * 8; g.beginPath(); g.moveTo(b.x - 8, y - b.h + 26); g.lineTo(b.x - 22, y - 14 - hit); g.moveTo(b.x + 8, y - b.h + 26); g.lineTo(b.x + 22, y - 18 - (8 - hit)); g.stroke(); }
+      }
+      function sheepDraw(g) {
+        var x = sheep.x, y = DECK, step = Math.sin(sheep.t * 8) * 2, lit = Math.hypot(x - spot.x, y - 14 - spot.y) < spot.r + 4;
+        g.save(); g.globalAlpha = lit ? 1 : fog > 0 ? .25 : .55;
+        g.fillStyle = '#1c1f2b'; g.fillRect(x - 9, y - 9 + step * .5, 3, 9); g.fillRect(x + 6, y - 9 - step * .5, 3, 9);
+        g.fillStyle = '#EDF2F8';
+        [[-8, -16], [0, -19], [8, -16], [-4, -12], [5, -12]].forEach(function (c) { g.beginPath(); g.arc(x + c[0], y + c[1], 7, 0, 7); g.fill(); });
+        g.fillStyle = '#4a4250'; g.beginPath(); g.ellipse(x + sheep.dir * 15, y - 18, 5, 6, sheep.dir * .3, 0, 7); g.fill();
+        g.beginPath(); g.ellipse(x + sheep.dir * 11, y - 22, 4, 1.8, sheep.dir * -.6, 0, 7); g.fill();          /* an ear */
+        g.fillStyle = '#fff'; g.fillRect(x + sheep.dir * 16 - 1, y - 20, 2, 2);
+        g.restore();
+      }
+      function mothDraw(g) {
+        var f = Math.abs(Math.sin(moth.t * 30));
+        g.fillStyle = '#c9c2b0';
+        g.beginPath(); g.ellipse(moth.x - 3, moth.y, 4, 2 + f * 2.5, -.5, 0, 7); g.ellipse(moth.x + 3, moth.y, 4, 2 + f * 2.5, .5, 0, 7); g.fill();
+        /* its shadow, huge, on the LED wall: the real joke */
+        g.fillStyle = 'rgba(0,0,0,.25)'; g.beginPath(); g.ellipse(moth.x * .8 + 40, 170, 18, 6 + f * 10, -.4, 0, 7); g.ellipse(moth.x * .8 + 70, 170, 18, 6 + f * 10, .4, 0, 7); g.fill();
+      }
+      function fogDraw(g) {
+        var a = Math.min(1, fog / 1.5, (9 - fog) / 1.5) * .5;
+        for (var k = 0; k < 4; k++) {
+          var fy = DECK - 30 - k * 26, fx = ((time * (14 + k * 6)) % (W + 200)) - 100;
+          var fg = g.createRadialGradient(fx, fy, 10, fx, fy, 160);
+          fg.addColorStop(0, 'rgba(180,190,210,' + (a * .5).toFixed(3) + ')'); fg.addColorStop(1, 'rgba(180,190,210,0)');
+          g.fillStyle = fg; g.fillRect(0, fy - 60, W, 120);
+          fx = W - fx; fg = g.createRadialGradient(fx, fy + 10, 10, fx, fy + 10, 140);
+          fg.addColorStop(0, 'rgba(180,190,210,' + (a * .4).toFixed(3) + ')'); fg.addColorStop(1, 'rgba(180,190,210,0)');
+          g.fillStyle = fg; g.fillRect(0, fy - 50, W, 120);
+        }
       }
       function crowdDraw(g) {
         g.fillStyle = '#07070c'; g.fillRect(0, CROWD, W, H - CROWD);
+        var hands = act === 1 || act === 3;
         crowd.forEach(function (c) {
           var up = Math.max(0, Math.sin(time * 4 + c.ph)) * 6;
           g.fillStyle = '#0d0c14'; g.fillRect(c.x, CROWD - c.h + 20, 8, c.h + 10);
           g.beginPath(); g.arc(c.x + 4, CROWD - c.h + 16, 5, 0, 7); g.fill();
-          if (c.ph > 4) g.fillRect(c.x + 1, CROWD - c.h - 4 - up, 2, 14);
+          if (hands && c.ph > 3.5) g.fillRect(c.x + 1, CROWD - c.h - 4 - up, 2, 14);
+          /* phone lights during the songs, swaying */
+          if (hands && c.phone && who) {
+            var sx = c.x + 3 + Math.sin(time * 1.6 + c.ph) * 4;
+            g.fillStyle = 'rgba(255,250,235,.85)'; g.fillRect(sx, CROWD - c.h - 10, 2, 3);
+            g.fillStyle = 'rgba(255,250,235,.06)'; g.beginPath(); g.arc(sx + 1, CROWD - c.h - 9, 4, 0, 7); g.fill();
+            g.fillStyle = '#0d0c14';
+          }
         });
       }
       function pick(g) {
@@ -225,7 +392,8 @@
           g.fillStyle = w2.col; g.font = '700 12px Sora, sans-serif'; g.fillText(words('followspot_' + w2.key).toUpperCase(), x + 54, y + 26);
           g.fillStyle = 'rgba(237,242,248,.6)'; g.font = '500 10px Inter, sans-serif';
           g.fillText('★'.repeat(i + 1), x + 54, y + 48);
-          g.fillStyle = w2.col; g.fillRect(x + 46, y + 80, 16, 30); g.fillStyle = '#e2b48f'; g.beginPath(); g.arc(x + 54, y + 72, 8, 0, 7); g.fill();
+          g.fillStyle = w2.col; g.fillRect(x + 46, y + 80, 16, 30); g.fillStyle = w2.skin; g.beginPath(); g.arc(x + 54, y + 72, 8, 0, 7); g.fill();
+          g.fillStyle = w2.hair; g.beginPath(); g.arc(x + 54, y + 69, 8, Math.PI, 0); g.fill();
           g.fillStyle = w2.col; g.font = '700 22px Sora, sans-serif'; g.fillText(['←', '↑', '→'][i], x + 54, y + 160);
         });
       }
@@ -234,6 +402,9 @@
         g.fillStyle = 'rgba(138,150,166,.9)'; g.fillText(words('followspot_patience').toUpperCase(), 12, 12);
         g.fillStyle = 'rgba(255,255,255,.08)'; g.fillRect(12, 26, 110, 6);
         g.fillStyle = patience > .5 ? '#5CF2C4' : patience > .25 ? '#FFB547' : '#FF5A6E'; g.fillRect(12, 26, 110 * patience, 6);
+        /* which part of the service */
+        g.textAlign = 'center'; g.fillStyle = 'rgba(' + cur().wall.join(',') + ',.85)';
+        g.fillText(words('followspot_act_' + cur().key).toUpperCase(), W / 2, 12);
         var m = streak > 8 ? 4 : streak > 4 ? 3 : streak > 2 ? 2 : 1;
         if (m > 1) { g.textAlign = 'right'; g.fillStyle = '#FFB547'; g.font = '700 14px Sora, sans-serif'; g.fillText('×' + m, W - 12, 12); }
         if (!tilt) { g.textAlign = 'right'; g.fillStyle = 'rgba(138,150,166,.7)'; g.font = '600 9px Inter, sans-serif'; g.fillText(words('followspot_pan').toUpperCase(), W - 12, 32); }

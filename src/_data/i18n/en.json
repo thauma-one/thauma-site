@@ -607,6 +607,27 @@
     "panelfixer_magnet": "Magnet",
     "panelfixer_pattern": "Test pattern",
     "panelfixer_crew": "Crew call",
-    "panelfixer_crew_ready": "Crew call ready: next throw brings help"
+    "panelfixer_crew_ready": "Crew call ready: next throw brings help",
+    "followspot_baa": "Baa!",
+    "followspot_act_welcome": "Welcome",
+    "followspot_act_worship": "Worship",
+    "followspot_act_message": "The message",
+    "followspot_act_encore": "One more song",
+    "jokes_followspot_sheep": [
+      "[DIR] That is a sheep. You are lighting a sheep.",
+      "[DIR] The sheep is the sermon illustration. It is not the sermon.",
+      "[PASTOR] Lovely. Now the one with the microphone, please.",
+      "[DIR] Ninety-nine in the fold, one in my follow spot."
+    ],
+    "jokes_followspot_moth": [
+      "[DIR] Is that a moth? That's a moth. It's on the screen. It's huge.",
+      "[LD] The moth has found the brightest thing in the room. Respect.",
+      "[DIR] Nobody move. Maybe it will follow the pastor instead."
+    ],
+    "jokes_followspot_fog": [
+      "[DIR] Who touched the hazer? Who touched the hazer?",
+      "[SM] Fog's on. The front row can no longer see the front row.",
+      "[DIR] Great, it's a cloud. Light whoever's in the cloud."
+    ]
   }
 }
