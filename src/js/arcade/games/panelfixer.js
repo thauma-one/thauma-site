@@ -139,6 +139,7 @@
       var panels = [], balls = [], sparks = [], pops = [], arcs = [], confetti = [], sweeps = [];
       var level = 0, left = BALLS, score = 0, total = 0, fixedThisShot = 0, guide = 0;
       var crew = 0, crewOn = false, crewT = 0, nextBig = false, nextMagnet = false;
+      var revealed = [], litThisShot = 0, shotT = 0, aimTarget = 0;
       var aim = 0, aimFrom = null, time = 0, slow = 0, showtime = 0;
       var state = 'aim';               /* aim | windup | flight | show | done */
       var windup = 0, mood = 'idle', moodT = 0, thrown = false;
@@ -168,7 +169,7 @@
         /* three powers, never two the same on one wall */
         var kinds = POWERS.slice().sort(function () { return Math.random() - .5; });
         for (var k = n; k < n + 3 && k < order.length; k++) { order[k].state = 'power'; order[k].power = kinds[k - n]; }
-        total = n; left = BALLS; state = 'aim'; mood = 'idle'; showtime = 0;
+        total = n; left = BALLS; state = 'aim'; mood = 'idle'; showtime = 0; revealed = [];
         ctx.say(words('panelfixer_wall') + ' ' + level, { tag: 'LD' });
       }
       nextWall();
@@ -196,7 +197,7 @@
         balls.push({ x: LX + d.x * 10, y: LY + d.y * 10, vx: d.x * SPEED, vy: d.y * SPEED, slowT: 0, fire: 0, bounces: 0,
           r: nextBig ? R * 2.2 : R, magnet: nextMagnet ? 1 : 0 });
         nextBig = nextMagnet = false;
-        left--; fixedThisShot = 0; state = 'flight';
+        left--; fixedThisShot = 0; litThisShot = 0; shotT = 0; state = 'flight';
         ctx.sfx('jump');
         if (guide > 0) guide--;
         /* CREW CALL: two more throws from the truss ends, each at the
@@ -218,14 +219,30 @@
       }
 
       /* ------------------------------------------------------- the ball */
+      /* PEGGLE'S WAY (round 4, Chase: "Maybe we make it more Peggle like
+         instead so that the panels disappear?"): a panel the ball hits
+         lights up and scores once; when the shot is over, every lit panel
+         drops out of the wall, and the picture shows through where it hung.
+         A lit panel still bounces the ball until then. */
       function hitPanel(p, b) {
         p.hitAt = time;
+        if (p.lit) { ctx.sfx('wall'); return; }
+        p.lit = true; p.litAt = time; litThisShot++;
         ctx.sfx(p.state === 'broken' ? 'fix' : p.state === 'power' ? 'powerup' : 'wall');
         if (p.state === 'broken') fix(p);
         else if (p.state === 'power') {
           p.state = 'ok';
           power(p.power, p, b);
-        } else { score += 10; ctx.score(score); }
+        } else { var g0 = 10 * mult(); score += g0; ctx.score(score); pops.push({ x: p.x, y: p.y - 12, text: '+' + g0, col: '#8FEBFF', life: .7 }); }
+      }
+      /* the shot is over (or stuck): the lit panels drop out */
+      function clearLit(only) {
+        panels = panels.filter(function (p) {
+          if (!p.lit || (only && only.indexOf(p) < 0)) return true;
+          revealed.push({ x: p.x, y: p.y, col: p.col, at: time });
+          for (var i = 0; i < 5; i++) sparks.push({ x: p.x + rnd(-10, 10), y: p.y, vx: rnd(-40, 40), vy: rnd(20, 120), life: .5, c: p.col });
+          return false;
+        });
       }
       function fix(p) {
         p.state = 'ok'; p.fixedAt = time; p.fault = null;
@@ -298,7 +315,17 @@
         }
         for (var i = 0; i < panels.length; i++) collide(b, panels[i]);
         /* a ball stuck on a ledge gets a nudge, as Peggle's do */
-        if (Math.hypot(b.vx, b.vy) < 40) { b.slowT += dt; if (b.slowT > 1.2) { b.vy = 200; b.vx = rnd(-120, 120); b.slowT = 0; } } else b.slowT = 0;
+        /* a ball that has stopped on a ledge: the panels under it go
+           (round 4: "if a ball gets stuck, the panel disappears instead") */
+        if (Math.hypot(b.vx, b.vy) < 40) {
+          b.slowT += dt;
+          if (b.slowT > 1) {
+            b.slowT = 0;
+            var under = panels.filter(function (q) { return touches(b.x, b.y, q, (b.r || R) + 8); });
+            under.forEach(function (q) { q.lit = true; });
+            if (under.length) clearLit(under); else { b.vy = 200; b.vx = rnd(-120, 120); }
+          }
+        } else b.slowT = 0;
         /* the road case on the floor: a catch is a free ball */
         if (!b.caught && b.y > FLOOR - 26 && b.y < FLOOR - 8 && Math.abs(b.x - bucket.x) < 32 && b.vy > 0) {
           b.caught = true; b.out = true; left++;
@@ -310,6 +337,7 @@
 
       /* ------------------------------------------------------ SHOWTIME */
       function startShow() {
+        clearLit();
         state = 'show'; slow = 1.3; showtime = 3.4; mood = 'dance';
         ctx.sfx('cheer');
         ctx.quip('jokes_panelfixer_showtime', { mood: 'good', force: true });
@@ -329,11 +357,14 @@
 
         if (state === 'aim') {
           var turn = (ctx.held.right ? 1 : 0) - (ctx.held.left ? 1 : 0);
-          aim = clamp(aim - turn * 1.5 * dt, -1.38, 1.38);
+          if (turn) aimTarget = clamp(aimTarget - turn * 1.5 * dt, -1.38, 1.38);
+          /* the aim eases to where it is pointed, so the line never jumps */
+          aim += (aimTarget - aim) * Math.min(1, dt * 18);
           if (left === 1 && mood !== 'nervous') { mood = 'nervous'; ctx.quip('jokes_panelfixer_last', { mood: 'bad', chance: .8 }); }
         }
         if (state === 'windup') { windup -= dt; if (windup <= 0) { launch(); mood = 'follow'; moodT = 0; } }
 
+        if (state === 'flight') { shotT += dt; if (shotT > 10) { shotT = 0; clearLit(); } }
         if (balls.length) {
           var steps = Math.ceil(sdt * 900 / 6) || 1;
           for (var s = 0; s < steps; s++) balls.forEach(function (b) { if (!b.out) stepBall(b, sdt / steps); });
@@ -356,6 +387,7 @@
         confetti = confetti.filter(function (c) { return c.life > 0 && c.y < H + 10; });
       }
       function endShot() {
+        clearLit();
         if (state === 'show') return;
         if (fixedThisShot >= 4) { mood = 'cheer'; moodT = 0; ctx.quip('jokes_panelfixer_great', { mood: 'good' }); pops.push({ x: W / 2, y: 132, text: fixedThisShot + ' ' + words('panelfixer_fixed').toUpperCase(), col: '#5CF2C4', life: 1.6 }); }
         else if (fixedThisShot === 0) { mood = 'facepalm'; moodT = 0; ctx.quip('jokes_panelfixer_miss', { mood: 'bad', chance: .7 }); }
@@ -372,6 +404,21 @@
         /* the wall's frame: the LED wall the panels hang in */
         g.fillStyle = '#05070b'; g.fillRect(6, TOPF - 22, W - 12, BOTF - TOPF + 44);
         g.strokeStyle = '#1e2636'; g.lineWidth = 2; g.strokeRect(6, TOPF - 22, W - 12, BOTF - TOPF + 44);
+        /* the picture the wall is meant to show, faint, and lit wherever a
+           panel has been cleared */
+        for (var py0 = TOPF - 16; py0 < BOTF + 16; py0 += 16) for (var px0 = 10; px0 < W - 10; px0 += 16) {
+          g.fillStyle = picture(clamp((px0 - 14) / (W - 28), 0, 1), clamp((py0 - TOPF) / (BOTF - TOPF), 0, 1));
+          g.globalAlpha = state === 'show' ? .9 : .07; g.fillRect(px0, py0, 15, 15);
+        }
+        g.globalAlpha = 1;
+        revealed.forEach(function (r) {
+          var k = Math.min(1, (time - r.at) * 4);
+          /* a soft glow, not a tile, so nobody mistakes it for a panel */
+          var rg = g.createRadialGradient(r.x, r.y, 2, r.x, r.y, 30);
+          rg.addColorStop(0, r.col); rg.addColorStop(1, 'rgba(0,0,0,0)');
+          g.globalAlpha = .45 * k; g.fillStyle = rg; g.fillRect(r.x - 30, r.y - 30, 60, 60);
+        });
+        g.globalAlpha = 1;
         /* the floor, and the road case on it */
         g.fillStyle = '#10151f'; g.fillRect(0, FLOOR, W, H - FLOOR);
         g.fillStyle = 'rgba(255,181,71,.5)'; g.fillRect(0, FLOOR, W, 2);
@@ -444,6 +491,7 @@
         for (var gx = 4; gx < PW; gx += 4) g.fillRect(x + gx, y, 1, PH);
         for (var gy = 4; gy < PH; gy += 4) g.fillRect(x, y + gy, PW, 1);
         if (flash) { g.fillStyle = 'rgba(255,255,255,.55)'; g.fillRect(x, y, PW, PH); }
+        if (p.lit) { g.strokeStyle = '#ffffff'; g.lineWidth = 2; g.shadowColor = '#ffffff'; g.shadowBlur = 10; g.strokeRect(x - 1, y - 1, PW + 2, PH + 2); g.shadowBlur = 0; }
         if (fixedGlow) { g.strokeStyle = 'rgba(92,242,196,' + (.6 - (time - p.fixedAt)).toFixed(2) + ')'; g.lineWidth = 3; g.strokeRect(x - 2, y - 2, PW + 4, PH + 4); }
       }
       /* the path the throw will take: the first stretch, or with GUIDE the
@@ -600,7 +648,7 @@
         /* a finger or the mouse aims from the hand toward it; letting go throws */
         point: function (phase, px, py) {
           if (state !== 'aim') return;
-          if (phase === 'down' || phase === 'move' || phase === 'hover') aim = py > LY + 6 ? solve(LX, LY, px, py, SPEED) : clamp(Math.atan2(px - LX, 8), -1.38, 1.38);
+          if (phase === 'down' || phase === 'move' || phase === 'hover') aimTarget = py > LY + 20 ? solve(LX, LY, px, py, SPEED) : clamp((px - LX) / (W / 2) * 1.38, -1.38, 1.38);
           if (phase === 'down') aimFrom = { x: px, y: py };
           if (phase === 'up' && aimFrom) { aimFrom = null; throwNow(); }
           if (phase === 'cancel') aimFrom = null;
