@@ -38,7 +38,8 @@ in the 2026-10-03 session; start a fresh one.
 - **BUG Pictures in a draft are not saved** (the text is).
 - **BUG Back deletes the draft.** Wanted: autosave; drafts deleted only by
   hand or once sent; a list of drafts to reopen.
-- **BUG Confirmation email:**
+- **BUG Confirmation email:** branding DONE on dev (6ddeeb9): a ministry's
+  confirmation is in its own email look with "Powered by Thauma".
   - ~~a small "undefined" at the bottom~~ FIXED on dev (a37d63e);
   - a download button on the banner image;
   - branded THAUMA for Chase Roush's list. It must be the ministry's brand,
@@ -50,11 +51,14 @@ in the 2026-10-03 session; start a fresh one.
   - a link editor;
   - the photo editor (see §4);
   - variables such as the recipient's name.
-- **DESIGN Email look:** make it feel like a real email rather than a box
+- **Email look: DONE on dev (9532d1d)** — follows the published website,
+  with a designer (Mail › Email look); needs migration 0050 applied for
+  the designer to save. Was: make it feel like a real email rather than a box
   on a dark background. Must hold up in Gmail, Apple Mail and Outlook, on
   desktop and mobile. Per ministry, not Thauma's look: either derived from
   their site's design and kept up to date, or an email style designer.
-- **DESIGN Subscribe / confirm / unsubscribe pages:** "just so plain and
+- **Confirm / unsubscribe pages: DONE on dev (6ddeeb9)** in the ministry's
+  look after the link verifies. Was: "just so plain and
   boring compared to the rest of the site." Match the brand everywhere.
 - ~~**DESIGN Tags management:** "not user friendly."~~ DONE on dev (13bff11):
   chips on each subscriber row, + to add or create, × to remove, press to
@@ -127,6 +131,10 @@ accent is kept until changed. Thauma's uploads use the one photo editor
 stays (it models the parallax drift). Thauma's four
 page photos now in R2 (site/…, dfefacc); the old src/img copies and
 the stray _site_devtest/ build are for Chase to delete.
+
+Also on dev (2026-10-04): verse placement on the Words tab, named by the
+words it follows; Photo tab preview frames like the site; Advanced ›
+Saved versions (migration 0049, apply it).
 
 Chase: "the general interface for the Site Creator is really good!"
 
