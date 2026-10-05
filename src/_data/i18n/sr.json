@@ -272,64 +272,36 @@
     "soundcheck_title": "Soundcheck",
     "soundcheck_line": "Један-два, један-два. Држи лопту у игри.",
     "panelfixer_title": "Panel Fixer",
-    "panelfixer_line": "Службени поправак LED зида: тениска лоптица.",
+    "panelfixer_line": "Одбиј тениска лоптица кроз LED зид. Поправи све.",
     "cablerun_title": "Cable Run",
     "cablerun_line": "Развуци кабел. Не спотакни бенд.",
     "followspot_title": "Follow Spot",
-    "followspot_line": "Држи их у свјетлу. Неће ти бити лако.",
+    "followspot_line": "Држи их у свјетлу. Одабери кога.",
     "strike_title": "Strike",
-    "strike_line": "Растави сцену, циглу по циглу.",
+    "strike_line": "Сложи ријеч. Гледај како подивља.",
     "cuestack_title": "Cue Stack",
-    "cuestack_line": "Позор… САД.",
+    "cuestack_line": "Расвјета, звук, видео, пиротехника: КРЕНИ.",
     "paused_label": "Пауза",
     "resume_label": "Настави",
     "newbest_label": "Нови рекорд!",
     "saving_label": "Спремање…",
     "loadout_height": "Висина",
     "loadout_spares": "Резерве",
-    "loadout_amp": "ПОЈАЧАЛА",
-    "loadout_cable": "КАБЕЛИ",
-    "loadout_mics": "МИКРОФОНИ",
-    "loadout_lights": "РАСВЈЕТА",
-    "loadout_drums": "БУБЊЕВИ",
-    "loadout_sub": "SUB",
+    "loadout_amp": "Сталак појачала",
+    "loadout_cable": "Кабелски ковчег",
+    "loadout_lights": "Расвјета",
     "loadout_lost": [
       "То ти иде од плаће.",
       "Тко је ово пакирао?",
       "Бубњар ово неће вољети.",
       "Гравитација: и даље непоражена."
     ],
-    "loadout_nice": [
-      "Чисто.",
-      "Пакирање као у Tetrisu.",
-      "Шеф екипе кимне. Једном."
-    ],
-    "loadout_heavy": [
-      "За двије особе.",
-      "Дижи ногама.",
-      "Зовите сценске раднике."
-    ],
     "soundcheck_you": "Ти",
     "soundcheck_foh": "FOH",
-    "soundcheck_gain": "Појачање",
     "soundcheck_serve": [
       "Проба, један-два.",
       "Ради ли ово?",
       "Тест, тест."
-    ],
-    "soundcheck_rally": [
-      "Још мало појачања.",
-      "Сприједа звучи добро.",
-      "Може више мене у монитору?"
-    ],
-    "soundcheck_miss": [
-      "Сигнал је пао.",
-      "Нетко је извукао кабел.",
-      "То је муте."
-    ],
-    "soundcheck_win": [
-      "Тонац је то промашио.",
-      "Провјера линије: прошла."
     ],
     "cablerun_crash": [
       "То је опасност од спотицања.",
@@ -349,24 +321,287 @@
       "Водитељ хвале пролази!",
       "Пази, водитељ хвале."
     ],
-    "panelfixer_round": "Рунда",
     "panelfixer_throws": "Бацања",
-    "panelfixer_fix": [
-      "Поновно сјело.",
-      "Сигнал се вратио.",
-      "То је службени поправак."
+    "sound_label": "Звук",
+    "credit_label": "Кредит 1",
+    "player_label": "Играч 1",
+    "ready_label": "Спреман?",
+    "go_label": "Крени!",
+    "stick_hint": "Повуци фадер · ← →",
+    "lanes_hint": "D F J K · ← ↓ ↑ →",
+    "aim_hint": "Повуци за циљање · пусти за бацање",
+    "stagerunner_title": "Stage Runner",
+    "stagerunner_line": "Извођач нешто треба. Трчи.",
+    "goldenhour_title": "Golden Hour",
+    "goldenhour_line": "Након постављања, низ брежуљке фестивала.",
+    "loadout_mic": "Микрофони",
+    "loadout_led": "LED панели",
+    "loadout_speaker": "Звучник",
+    "loadout_steady": "Мирно",
+    "loadout_rushed": "На брзину",
+    "jokes_loadout_lost": [
+      "[SM] То ти иде од плаће.",
+      "[A2] Гравитација: још увијек непоражена.",
+      "[PM] Написат ћу 'виша сила' у записник о штети.",
+      "[DRUMS] Је ли то био мој бубањ? Реци да није био мој бубањ."
     ],
-    "panelfixer_oops": [
-      "Тај је био у реду.",
-      "Покварио си исправан."
+    "jokes_loadout_heavy": [
+      "[CREW] Дижи ногама. И молитвом.",
+      "[SM] Тај ковчег тежи више од биљешки за проповијед.",
+      "[A2] Тко је спакирао куглу за куглање у звучник?"
     ],
-    "panelfixer_bank": [
-      "Од траверзе!",
-      "Одбијанац!"
+    "jokes_loadout_steady": [
+      "[SM] Тетрис првак утоварне рампе.",
+      "[PM] Е ТАКО се пакира камион."
     ],
-    "panelfixer_clear": [
-      "Зид је чист. Врата за пет минута.",
-      "Изгледа сјајно из задњег реда."
+    "jokes_loadout_tall": [
+      "[SM] Требат ће нам виши камион.",
+      "[LD] Могу ли објесити рефлектор на то?"
+    ],
+    "soundcheck_smash": "Ово је био смеч!",
+    "soundcheck_muted": "Утишан",
+    "soundcheck_classic": "Класично",
+    "soundcheck_modern": "Модерно",
+    "soundcheck_classic_line": "Само ти, FOH и лоптица.",
+    "soundcheck_modern_line": "Појачања за обоје. Нека гризу.",
+    "soundcheck_p_wide": "Широки фадер",
+    "soundcheck_p_magnet": "Магнет за микрофон",
+    "soundcheck_p_shield": "Лимитер",
+    "soundcheck_p_slowmo": "Успорено",
+    "soundcheck_p_meterup": "Појачање гаина",
+    "soundcheck_p_tiny": "Мини фадер",
+    "soundcheck_p_mute": "Утишано",
+    "soundcheck_p_flip": "Обрнута фаза",
+    "soundcheck_p_haze": "Машина за маглу",
+    "soundcheck_p_fast": "Брза лопта",
+    "soundcheck_p_ghost": "Лопта дух",
+    "soundcheck_p_split": "Подијељена лопта",
+    "soundcheck_p_zigzag": "Двоструки одскок",
+    "soundcheck_p_squiggle": "Вијугава лопта",
+    "soundcheck_p_banana": "Лопта банана",
+    "soundcheck_p_stopgo": "Одбројавање",
+    "soundcheck_p_tornado": "Лопта торнадо",
+    "soundcheck_p_moon": "Мјесечева лопта",
+    "soundcheck_p_sleeper": "Поспана лопта",
+    "soundcheck_p_unplug": "Ископчано",
+    "soundcheck_p_butter": "Клизаве руке",
+    "soundcheck_p_blackout": "Мрак",
+    "jokes_soundcheck_miss": [
+      "[FOH] Проба, један, два… не, то је био промашај.",
+      "[FOH] Је ли ти фадер уопће укључен?",
+      "[A2] Окривит ћу бежичне фреквенције.",
+      "[FOH] Храбра стратегија, пустити ту лопту.",
+      "[WL] Може више мене у монитору? И можда лопту?",
+      "[FOH] То ми у послу зовемо мртви зрак."
+    ],
+    "jokes_soundcheck_win": [
+      "[FOH] Добро, добро. Тко те научио миксати?",
+      "[A2] Нека нетко то отисне на мајицу.",
+      "[FOH] Ово иде у мој најбољи исјечак."
+    ],
+    "jokes_soundcheck_power": [
+      "[FOH] Тога нема на плану позорнице.",
+      "[A2] Виђао сам и чудније ствари на кампу младих.",
+      "[FOH] Нетко ми је дирао поставке."
+    ],
+    "jokes_soundcheck_rally": [
+      "[FOH] Ова измјена је дужа од обавијести.",
+      "[A2] Нека нетко каже пастору да каснимо."
+    ],
+    "jokes_cablerun_crash": [
+      "[A2] То није кабел, то су шпагети.",
+      "[SM] Уређење каблова: никакво.",
+      "[A2] Ово ћу распетљавати до Божића."
+    ],
+    "jokes_cablerun_trip": [
+      "[SM] Водитељ слављења је добро. Његов понос мање.",
+      "[SM] Гаффер трака постоји с разлогом.",
+      "[PM] Записујем под опасност од спотицања. Опет."
+    ],
+    "jokes_cablerun_plug": [
+      "[A2] Погледај како сигнал тече. Прекрасно.",
+      "[FOH] Сви улази зелени. Могао бих заплакати."
+    ],
+    "jokes_cablerun_tape": [
+      "[A2] Гаффер трака: права кичма продукције уживо.",
+      "[SM] Ако се миче, а не би смјело, залијепи га."
+    ],
+    "panelfixer_wall": "Зид",
+    "panelfixer_broken": "Покварено",
+    "panelfixer_free": "Бесплатна лоптица!",
+    "panelfixer_showtime": "На сцену!",
+    "panelfixer_fixed": "поправљено",
+    "panelfixer_multi": "Резервне лоптице",
+    "panelfixer_zap": "Поновно покретање",
+    "panelfixer_guide": "Ласерски водич",
+    "panelfixer_fire": "Врућа лоптица",
+    "panelfixer_hint": "← → за циљање · размакница за бацање · или повуци и пусти",
+    "panelfixer_hint_touch": "Повуци за циљање · пусти за бацање",
+    "jokes_panelfixer_miss": [
+      "[LD] Зид је то видио. Зид те осуђује.",
+      "[LD] Јеси ли га пробао угасити и упалити?",
+      "[VIDEO] Тај панел још показује плави екран туге."
+    ],
+    "jokes_panelfixer_great": [
+      "[LD] Године факултета, а тениска лоптица опет побјеђује.",
+      "[VIDEO] Зид је излијечен. Алелуја."
+    ],
+    "jokes_panelfixer_last": [
+      "[LD] Задња лоптица. Без притиска. Само цијело богослужје.",
+      "[SM] Врата се отварају за пет минута. Само кажем."
+    ],
+    "jokes_panelfixer_showtime": [
+      "[LD] Свјетла, зид, акција! На сцену!",
+      "[VIDEO] Слика је оштрија од пасторове изглачане кошуље."
+    ],
+    "jokes_panelfixer_free": [
+      "[SM] Равно у ковчег!",
+      "[A2] То иде у најбоље тренутке."
+    ],
+    "stagerunner_wants": "Извођач жели:",
+    "stagerunner_item_coffee": "Каву",
+    "stagerunner_item_batteries": "АА батерије",
+    "stagerunner_item_setlist": "Попис пјесама",
+    "stagerunner_item_water": "Воду",
+    "stagerunner_item_tape": "Гаффер траку",
+    "stagerunner_item_snack": "Грицкалице из уговора",
+    "stagerunner_deliver": "У зелену собу!",
+    "stagerunner_delivered": "Достављено!",
+    "stagerunner_late": "Преспоро!",
+    "stagerunner_caught": "PM те ухватио!",
+    "stagerunner_greenroom": "Зелена соба",
+    "stagerunner_zone_backstage": "Иза позорнице",
+    "stagerunner_zone_stage": "На позорници",
+    "stagerunner_zone_dock": "Утоварна рампа",
+    "stagerunner_zone_arena": "Дворана",
+    "stagerunner_p_headset": "Слушалице",
+    "stagerunner_p_case": "Сурфање на ковчегу",
+    "stagerunner_p_shoes": "Опруге у тенисицама",
+    "stagerunner_p_pass": "Пуни приступ",
+    "stagerunner_p_case_gone": "Ковчег је примио ударац!",
+    "stagerunner_hint": "← → траке · ↑ скок · ↓ клизање",
+    "stagerunner_hint_touch": "Повуци: траке, скок, клизање",
+    "jokes_stagerunner_crash": [
+      "[PM] Јеси ли управо ударио у ковчег пуном брзином? У радно вријеме?",
+      "[TALENT] Зато сам и тражио другог водитеља позорнице.",
+      "[SM] Биљешка: ковчези се не мичу. Ја се мичем."
+    ],
+    "jokes_stagerunner_stumble": [
+      "[PM] Хеј! Ходај, не трчи! …Заправо, трчи.",
+      "[SM] Добро сам! Све је добро! Све је на папиру!",
+      "[PM] Одмах сам иза тебе. С подлошком."
+    ],
+    "jokes_stagerunner_deliver": [
+      "[TALENT] Напокон. Јеси ли извадио зелене?",
+      "[TALENT] Савршена температура. Можеш остати на турнеји.",
+      "[SM] Достављено с једанаест секунди вишка. Жива легенда."
+    ],
+    "jokes_stagerunner_late": [
+      "[TALENT] Само ћу сједити овдје. У тишини. И размишљати о овоме.",
+      "[TALENT] То сам тражио још на прошлој турнеји.",
+      "[PM] Извођач се сада упјевава. Тј. вришти."
+    ],
+    "jokes_stagerunner_power": [
+      "[SM] Никад не подцјењуј водитеља позорнице са слушалицама.",
+      "[A2] Тко год је измислио сурфање на ковчегу, заслужује повишицу."
+    ],
+    "goldenhour_ball": "Лопта враћена!",
+    "goldenhour_flip": "Салто",
+    "goldenhour_hint": "Додир за скок · држи за салто",
+    "goldenhour_p_magnet": "Чеона лампа",
+    "goldenhour_p_hat": "Кацига",
+    "goldenhour_p_hat_used": "Кацига те спасила!",
+    "jokes_goldenhour_crash": [
+      "[LX] Златни сат, упознај пад на нос.",
+      "[SM] Назват ћемо то драматичним изласком.",
+      "[LX] Залазак је био прекрасан све до тог тренутка."
+    ],
+    "jokes_goldenhour_trick": [
+      "[LX] Нека нетко то стави на велики екран!",
+      "[SM] Показивање у радно вријеме. Свиђа ми се."
+    ],
+    "jokes_goldenhour_ball": [
+      "[CROWD] Хеј, то је наша лопта! Хвала!",
+      "[LX] Враћање изгубљених ствари при шездесет на сат."
+    ],
+    "followspot_pastor": "Пастор",
+    "followspot_leader": "Водитељ слављења",
+    "followspot_youth": "Пастор младих",
+    "followspot_pastor_line": "Хода и прича. Добар почетак.",
+    "followspot_leader_line": "Шета по позорници. Пази на бридге.",
+    "followspot_youth_line": "Свугдје одједном. Сретно.",
+    "followspot_tilt": "Користи и нагиб!",
+    "followspot_dive": "Скок у публику! Прати их!",
+    "followspot_nailed": "Погођено",
+    "followspot_fired": "Скинут си с рефлектора.",
+    "followspot_pick": "Кога освјетљаваш?",
+    "followspot_patience": "Стрпљење редатеља",
+    "followspot_pan": "За сада само лијево-десно",
+    "jokes_followspot_stunt": [
+      "[DIR] Је ли управо направио салто? За вријеме проповиједи?",
+      "[DIR] Нитко ми није рекао да ће бити акробација."
+    ],
+    "jokes_followspot_lost": [
+      "[DIR] Рефлектор, овдје је. Не, онај други овдје.",
+      "[DIR] Прекрасан кадар празне позорнице."
+    ],
+    "jokes_followspot_dark": [
+      "[DIR] Још један промашај и мијењаш батерије у микрофонима.",
+      "[DIR] Радо бих видио извођача. Било који дио."
+    ],
+    "strike_words": [
+      "THAUMA",
+      "МИСИЈА",
+      "СЛАВЉЕ",
+      "СРБИЈА",
+      "ПАРТНЕР",
+      "СВЈЕТЛО",
+      "ПОЗОРНИЦА",
+      "ЗВУК",
+      "ДАРУЈ",
+      "ЦРКВА"
+    ],
+    "strike_word": "Сложи",
+    "strike_level": "Сет",
+    "strike_pyro": "Пиротехника!",
+    "strike_laser": "Ласерски шоу!",
+    "strike_confetti": "Топ за конфете!",
+    "strike_bass": "Басс дроп!",
+    "strike_encore": "Бис!",
+    "jokes_strike_typo": [
+      "[PYRO] Правопис је важан. Питај било који црквени билтен.",
+      "[PYRO] Не пише се тако. Провјерио сам."
+    ],
+    "jokes_strike_wild": [
+      "[PYRO] Ватрогасни инспектор ово неће вољети.",
+      "[PYRO] Одмакните се! Нитко ми није рекао да имамо толики буџет."
+    ],
+    "jokes_strike_drop": [
+      "[PYRO] Испала. Као бас, само тужније.",
+      "[PYRO] Лопта је напустила зграду."
+    ],
+    "jokes_strike_clear": [
+      "[PYRO] Зид је пао. Сљедећи сет!"
+    ],
+    "cuestack_lights": "Расвјета",
+    "cuestack_sound": "Звук",
+    "cuestack_video": "Видео",
+    "cuestack_pyro": "Пиро",
+    "cuestack_perfect": "Савршено",
+    "cuestack_good": "Добро",
+    "cuestack_miss": "Промашај",
+    "cuestack_house": "Публика",
+    "cuestack_combo": "заредом",
+    "jokes_cuestack_show": [
+      "[SM] Припремите све. Најбоља представа овај тједан.",
+      "[SM] Расвјета, звук, видео, пиро: КРЕНИ. Погледај нас."
+    ],
+    "jokes_cuestack_miss": [
+      "[SM] Овај, видео? Видео је отишао на чувар заслона.",
+      "[SM] Нека нетко покрене знак. Било који."
+    ],
+    "jokes_cuestack_combo": [
+      "[SM] Педесет чистих знакова. Нека нетко донесе каву овом водитељу."
     ]
   }
 }

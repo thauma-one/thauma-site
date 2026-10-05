@@ -19,15 +19,18 @@
   'use strict';
 
   /* The launch four (Chase, 2026-09-29: "You can start with the four"),
-     then the three still in the workshop. */
+     the three that were in the workshop, and the two Chase asked for on
+     2026-10-04 (Stage Runner, and Golden Hour, after Alto's Adventure). */
   var CABINETS = [
-    { id: 'loadout',    controls: 'tap',    c: '--ar-amber',  ready: true },
-    { id: 'soundcheck', controls: 'toggle', c: '--ar-blue',   ready: true },
-    { id: 'panelfixer', controls: 'tap',    c: '--ar-magenta', ready: true },
-    { id: 'cablerun',   controls: 'dpad',   c: '--ar-foam',   ready: true },
-    { id: 'followspot', controls: 'toggle', c: '--ar-violet', broken: true },
-    { id: 'strike',     controls: 'toggle', c: '--ar-red',    broken: true },
-    { id: 'cuestack',   controls: 'dpad',   c: '--ar-blue',   broken: true }
+    { id: 'loadout',     controls: 'tap',    c: '--ar-amber',   ready: true },
+    { id: 'soundcheck',  controls: 'stick',  c: '--ar-blue',    ready: true },
+    { id: 'panelfixer',  controls: 'aim',    c: '--ar-magenta', ready: true },
+    { id: 'cablerun',    controls: 'dpad',   c: '--ar-foam',    ready: true },
+    { id: 'stagerunner', controls: 'dpad',   c: '--ar-red',     ready: true },
+    { id: 'goldenhour',  controls: 'tap',    c: '--ar-amber',   ready: true },
+    { id: 'followspot',  controls: 'dpad',   c: '--ar-violet',  ready: true },
+    { id: 'strike',      controls: 'stick',  c: '--ar-red',     ready: true },
+    { id: 'cuestack',    controls: 'lanes',  c: '--ar-blue',    ready: true }
   ];
   var EASE = 'cubic-bezier(.55,.05,.45,.95)';
   var BEST = 'thauma.arcade.best.';
@@ -120,10 +123,85 @@
       var gx = w * (.25 + .5 * ((Math.floor(t / 3) * 37) % 10) / 10), gy = h * (.3 + .4 * ((Math.floor(t / 3) * 53) % 10) / 10);
       g.fillStyle = '#FFB547'; g.fillRect(gx - 5, gy - 5, 10, 10);
     },
-    broken: function (g, w, h) {
-      var img = g.createImageData(w, h), d = img.data;
-      for (var i = 0; i < d.length; i += 4) { var v = Math.random() * 90; d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = 255; }
-      g.putImageData(img, 0, 0);
+    /* Stage Runner: three lanes running away into the venue, the stage
+       manager running down the middle, cases coming. */
+    stagerunner: function (g, w, h, t, col) {
+      var hy = h * .3, cx = w / 2;
+      var sky = g.createLinearGradient(0, 0, 0, hy); sky.addColorStop(0, '#120a1c'); sky.addColorStop(1, '#2a1030');
+      g.fillStyle = sky; g.fillRect(0, 0, w, hy);
+      g.fillStyle = '#0d1018'; g.beginPath(); g.moveTo(cx - 8, hy); g.lineTo(cx + 8, hy); g.lineTo(w + 30, h); g.lineTo(-30, h); g.closePath(); g.fill();
+      g.strokeStyle = 'rgba(255,181,71,.5)'; g.lineWidth = 1;
+      [-1, 1].forEach(function (k) { g.beginPath(); g.moveTo(cx + k * 2.7, hy); g.lineTo(cx + k * w * .22, h); g.stroke(); });
+      for (var i = 0; i < 6; i++) {
+        var z = ((i / 6) + t * .9) % 1, y = hy + (h - hy) * z * z;
+        g.fillStyle = 'rgba(255,255,255,' + (.05 + .12 * z) + ')'; g.fillRect(cx - (8 + w * .55 * z * z), y, (16 + w * 1.1 * z * z), 1);
+      }
+      for (var j = 0; j < 3; j++) {
+        var zz = ((j / 3) + t * .5) % 1, sc = .15 + zz * zz * 1.2, lane = [-1, 0, 1][(j * 2 + Math.floor(t * .5 + j)) % 3];
+        var yy = hy + (h - hy) * zz * zz;
+        box(g, cx + lane * w * .27 * zz * zz - 14 * sc, yy - 18 * sc, 28 * sc, 18 * sc, j % 2 ? col : '#39445a');
+      }
+      var bob = Math.abs(Math.sin(t * 12)) * 4, rx = cx + Math.sin(t * 1.3) * w * .2;
+      g.fillStyle = '#EDF2F8'; g.beginPath(); g.arc(rx, h - 52 - bob, 6, 0, 7); g.fill();
+      g.fillStyle = '#1b2231'; g.fillRect(rx - 7, h - 46 - bob, 14, 18);
+      g.strokeStyle = col; g.lineWidth = 2; g.beginPath(); g.arc(rx, h - 53 - bob, 7.5, Math.PI * 1.1, Math.PI * 1.9); g.stroke();
+      g.fillStyle = '#1b2231'; g.fillRect(rx - 6 + Math.sin(t * 12) * 3, h - 28 - bob, 4, 14); g.fillRect(rx + 2 - Math.sin(t * 12) * 3, h - 28 - bob, 4, 14);
+    },
+    /* Golden Hour: a road case on a long sunset hill, the stage far off. */
+    goldenhour: function (g, w, h, t) {
+      var sky = g.createLinearGradient(0, 0, 0, h); sky.addColorStop(0, '#2b1a4a'); sky.addColorStop(.55, '#e8765a'); sky.addColorStop(1, '#ffc27a');
+      g.fillStyle = sky; g.fillRect(0, 0, w, h);
+      g.fillStyle = 'rgba(255,240,200,.9)'; g.beginPath(); g.arc(w * .72, h * .46, 16, 0, 7); g.fill();
+      g.fillStyle = 'rgba(70,30,60,.55)';
+      g.beginPath(); g.moveTo(0, h * .62); for (var x = 0; x <= w; x += 8) g.lineTo(x, h * .6 + Math.sin(x * .03 + t * .2) * 10); g.lineTo(w, h); g.lineTo(0, h); g.fill();
+      g.fillStyle = 'rgba(40,16,40,.9)'; g.fillRect(w * .2, h * .52, 22, 10); g.fillRect(w * .2 + 2, h * .45, 2, 8); g.fillRect(w * .2 + 18, h * .45, 2, 8);
+      var off = t * 60, ground = function (x) { return h * .78 + Math.sin((x + off) * .022) * 16 + Math.sin((x + off) * .009) * 10; };
+      g.fillStyle = '#2a1426'; g.beginPath(); g.moveTo(0, h); for (var x2 = 0; x2 <= w; x2 += 4) g.lineTo(x2, ground(x2)); g.lineTo(w, h); g.fill();
+      var px = w * .42, py = ground(px), ang = Math.atan2(ground(px + 4) - ground(px - 4), 8);
+      g.save(); g.translate(px, py - 4); g.rotate(ang);
+      g.fillStyle = '#121620'; g.fillRect(-12, -6, 24, 7); g.fillStyle = '#FFB547'; g.fillRect(-12, -1, 24, 2);
+      g.fillStyle = '#121620'; g.beginPath(); g.arc(0, -15, 4, 0, 7); g.fill(); g.fillRect(-3, -12, 6, 7);
+      g.restore();
+    },
+    /* Follow Spot: the light finding the performer. */
+    followspot: function (g, w, h, t, col) {
+      g.fillStyle = '#05060a'; g.fillRect(0, 0, w, h);
+      g.fillStyle = '#14101c'; g.fillRect(0, h * .78, w, h * .22);
+      var px = w / 2 + Math.sin(t * 1.4) * w * .32 + Math.sin(t * 3.1) * 10, sx = w / 2 + Math.sin(t * 1.4 - .35) * w * .32;
+      var gr = g.createRadialGradient(sx, h * .66, 2, sx, h * .66, 34);
+      gr.addColorStop(0, 'rgba(255,245,220,.75)'); gr.addColorStop(1, 'rgba(255,245,220,0)');
+      g.fillStyle = 'rgba(255,245,220,.06)'; g.beginPath(); g.moveTo(w / 2 - 4, 0); g.lineTo(w / 2 + 4, 0); g.lineTo(sx + 30, h * .66); g.lineTo(sx - 30, h * .66); g.closePath(); g.fill();
+      g.fillStyle = gr; g.beginPath(); g.ellipse(sx, h * .7, 34, 30, 0, 0, 7); g.fill();
+      g.fillStyle = col; g.beginPath(); g.arc(px, h * .6, 5, 0, 7); g.fill(); g.fillRect(px - 5, h * .62, 10, 16);
+      g.fillRect(px - 5, h * .72, 4, 10); g.fillRect(px + 1, h * .72, 4, 10);
+    },
+    /* Strike: letter bricks, and the ball. */
+    strike: function (g, w, h, t, col) {
+      g.fillStyle = '#0a0b12'; g.fillRect(0, 0, w, h);
+      var word = 'THAUMAGIVE', bw = (w - 16) / 5;
+      for (var r = 0; r < 4; r++) for (var c = 0; c < 5; c++) {
+        if ((r * 5 + c + Math.floor(t * .7)) % 7 === 0) continue;
+        g.fillStyle = ['#FF5A6E', '#FFB547', '#9B7BFF', '#2FD8FF'][r];
+        g.fillRect(8 + c * bw + 1, 16 + r * 18, bw - 2, 15);
+        g.fillStyle = '#0a0b12'; g.font = '600 9px Sora, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+        g.fillText(word[(r * 5 + c) % word.length], 8 + c * bw + bw / 2, 16 + r * 18 + 8);
+      }
+      var bx = w / 2 + Math.sin(t * 2.3) * w * .38, by = h * .55 + Math.sin(t * 3.7) * h * .25;
+      g.fillStyle = '#fff'; g.beginPath(); g.arc(bx, by, 3.5, 0, 7); g.fill();
+      g.fillStyle = col; g.fillRect(Math.max(4, Math.min(w - 44, bx - 20)), h - 16, 40, 5);
+    },
+    /* Cue Stack: four lanes, cues falling to the line. */
+    cuestack: function (g, w, h, t, col) {
+      g.fillStyle = '#070912'; g.fillRect(0, 0, w, h);
+      var lw = w / 4, cols = ['#FF4FD8', '#2FD8FF', '#5CF2C4', '#FFB547'];
+      for (var l = 0; l < 4; l++) { g.fillStyle = l % 2 ? 'rgba(255,255,255,.03)' : 'rgba(255,255,255,.015)'; g.fillRect(l * lw, 0, lw, h); }
+      g.fillStyle = 'rgba(255,255,255,.35)'; g.fillRect(0, h - 30, w, 2);
+      for (var k = 0; k < 10; k++) {
+        var lane = (k * 7 + 3) % 4, y = ((k / 10) + t * .55) % 1 * (h + 20) - 20;
+        g.fillStyle = cols[lane]; g.fillRect(lane * lw + 5, y, lw - 10, 8);
+      }
+      var beat = (t * 2) % 1;
+      g.fillStyle = 'rgba(255,255,255,' + (.25 * (1 - beat)) + ')'; g.fillRect(0, h - 36, w, 14);
     }
   };
   function box(g, x, y, w, h, col) {
@@ -136,7 +214,7 @@
   function mount(opts) {
     if (open) return Promise.resolve();
     opts = opts || {};
-    return Promise.all([css(), words()]).then(function (res) {
+    return Promise.all([css(), words(), script('sound', '/js/arcade/sound.js').catch(function () {})]).then(function (res) {
       var all = res[1], L = lang(all), W = all[L] || all.en || {};
       var w = function (k) { return W[k] || (all.en && all.en[k]) || ''; };
       var reduced = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -150,24 +228,39 @@
         '<header class="arc-top">' +
           '<button class="arc-back" type="button"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M10 3 5 8l5 5"/></svg><span>' + esc(w('back_label')) + '</span></button>' +
           '<div class="arc-logo"><b>THAUMA</b><span>' + esc(w('title')).toUpperCase() + '</span></div>' +
-          '<span class="arc-spacer"></span>' +
+          /* the one switch for music and sound, off until it is turned on (M) */
+          '<button class="arc-sound" type="button" aria-pressed="false" aria-label="' + esc(w('sound_label')) + '">' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' +
+            '<path d="M4 9h4l5-4v14l-5-4H4z"/><path class="on" d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/><path class="off" d="M17 9l5 6M22 9l-5 6"/></svg>' +
+            '<span>' + esc(w('sound_label')) + '</span></button>' +
         '</header>' +
-        '<div class="arc-floor"><div class="arc-row">' + CABINETS.map(function (c) {
+        '<div class="arc-floor"><div class="arc-zoom"><div class="arc-row">' + CABINETS.map(function (c) {
           return '<div class="cab" data-id="' + c.id + '" style="--c:var(' + c.c + ')">' +
             '<div class="cab-body">' +
               '<div class="cab-marquee">' + esc(w(c.id + '_title')) + '</div>' +
               '<div class="cab-screen"><canvas></canvas><div class="cab-flash"></div>' +
-                (c.broken ? '<div class="cab-tape">' + esc(w('broken_label')) + '</div>' : '') + '</div>' +
+                '</div>' +
               '<div class="cab-panel"><i class="cab-stick"></i><i class="cab-btn"></i><i class="cab-btn"></i></div>' +
+              '<div class="cab-door"><i class="cab-slot"></i><i class="cab-coin"></i></div>' +
             '</div><div class="cab-base"></div></div>';
-        }).join('') + '</div></div>' +
+        }).join('') + '</div></div></div>' +
         '<div class="arc-info" aria-live="polite"><h2 class="arc-title"></h2><p class="arc-line"></p><div class="arc-meta"></div><ol class="arc-board"></ol></div>' +
         '<div class="arc-hint"><span class="pulse">' + esc(w(touch ? 'pick_touch_hint' : 'pick_hint')) + '</span></div>';
       document.body.appendChild(el);
       if (!reduced) el.classList.add('is-on');
       el.focus({ preventScroll: true });
 
-      var row = el.querySelector('.arc-row'), floor = el.querySelector('.arc-floor');
+      /* ---- sound: the switch, and the menu's tune ---- */
+      var S = window.ThaumaSound, soundBtn = el.querySelector('.arc-sound');
+      function soundShown(isOn) { soundBtn.setAttribute('aria-pressed', isOn ? 'true' : 'false'); soundBtn.classList.toggle('is-on', isOn); }
+      if (S) {
+        soundShown(S.on); S.onChange(function (v) { if (document.body.contains(soundBtn)) soundShown(v); });
+        S.music('menu');
+        soundBtn.addEventListener('click', function () { S.toggle(); });
+      } else soundBtn.hidden = true;
+      function sfx(n) { if (S) S.sfx(n); }
+
+      var row = el.querySelector('.arc-row'), floor = el.querySelector('.arc-floor'), zoom = el.querySelector('.arc-zoom');
       var cabs = Array.prototype.slice.call(el.querySelectorAll('.cab'));
       var title = el.querySelector('.arc-title'), line = el.querySelector('.arc-line');
       var meta = el.querySelector('.arc-meta'), board = el.querySelector('.arc-board');
@@ -193,15 +286,14 @@
         rollTitle(w(c.id + '_title'));
         line.textContent = w(c.id + '_line');
         var chips = '<span class="arc-chip">' + esc(w(c.controls + '_hint')) + '</span>';
-        if (c.broken) chips += '<span class="arc-chip is-soon">' + esc(w('broken_label')) + '</span>';
-        else if (!ready) chips += '<span class="arc-chip is-soon">' + esc(w('soon_label')) + '</span>';
+        if (!ready) chips += '<span class="arc-chip is-soon">' + esc(w('soon_label')) + '</span>';
         else chips += '<span class="arc-chip" style="--c:var(' + c.c + ')">' + esc(w('best_label')) + ' <b>' + best(c.id) + '</b></span>';
         meta.innerHTML = chips;
         showBoard(c);
       }
       function showBoard(c) {
         board.innerHTML = '';
-        if (c.broken || !c.ready) return;
+        if (!c.ready) return;
         var paint = function (list) {
           if (CABINETS[sel] !== c) return;
           board.innerHTML = list.length
@@ -216,7 +308,7 @@
         if (i === sel && cabs[i].classList.contains('is-sel')) return;
         cabs[sel].classList.remove('is-sel');
         sel = i; cabs[sel].classList.add('is-sel');
-        place(); describe();
+        place(); describe(); sfx('move');
       }
       function flash(cab, text) {
         var f = cab.querySelector('.cab-flash');
@@ -228,20 +320,48 @@
       function play() {
         var c = CABINETS[sel], cab = cabs[sel];
         if (playing) return;
-        if (c.broken) return flash(cab, w('broken_label'));
         if (!c.ready) return flash(cab, w('soon_label'));
         /* A game takes the whole arcade screen until Menu (play.js). */
         playing = true;
-        Promise.all([script('play', '/js/arcade/play.js'), script(c.id, '/js/arcade/games/' + c.id + '.js')])
+        var loaded = Promise.all([script('play', '/js/arcade/play.js'), script(c.id, '/js/arcade/games/' + c.id + '.js')]);
+        /* THE WAY IN (Chase, 2026-10-04: a coin, then the screen, 2–3
+           seconds): a coin drops into the cabinet's door with the two
+           notes every arcade has, the screen says CREDIT 1, and the view
+           dives into the cabinet's screen until it is the whole screen. */
+        entrance(cab).then(function () { return loaded; })
           .then(function () {
             return window.ThaumaPlay.run(games[c.id], {
-              root: el, id: c.id, words: w,
+              root: el, id: c.id, words: w, color: 'var(' + c.c + ')',
               board: function () { return boardFor(c.id); },
               submit: function (name, score) { return submit(c.id, name, score); }
             });
           })
-          .then(function () { playing = false; describe(); el.focus({ preventScroll: true }); },
-                function () { playing = false; flash(cab, w('broken_label')); });
+          .then(function () { playing = false; exitZoom(); describe(); el.focus({ preventScroll: true }); },
+                function () { playing = false; exitZoom(); flash(cab, w('broken_label')); });
+      }
+      function entrance(cab) {
+        sfx('coin');
+        if (reduced) return new Promise(function (res) { setTimeout(res, 200); });
+        cab.classList.add('is-coin');
+        var f = cab.querySelector('.cab-flash');
+        setTimeout(function () { f.textContent = w('credit_label'); f.classList.add('is-shown'); sfx('start'); }, 420);
+        return new Promise(function (res) {
+          setTimeout(function () {
+            /* the cabinet's screen, grown to the size of this one */
+            var r = cab.querySelector('.cab-screen').getBoundingClientRect(), z = zoom.getBoundingClientRect();
+            var k = Math.max(innerWidth / r.width, innerHeight / r.height) * 1.08;
+            var cx = r.left + r.width / 2 - z.left, cy = r.top + r.height / 2 - z.top;
+            zoom.style.transformOrigin = cx + 'px ' + cy + 'px';
+            zoom.style.transform = 'translate(' + (innerWidth / 2 - (r.left + r.width / 2)) + 'px,' + (innerHeight / 2 - (r.top + r.height / 2)) + 'px) scale(' + k + ')';
+            el.classList.add('is-diving');
+            setTimeout(res, 950);
+          }, 900);
+        });
+      }
+      function exitZoom() {
+        cabs.forEach(function (cb) { cb.classList.remove('is-coin'); var f = cb.querySelector('.cab-flash'); f.classList.remove('is-shown'); });
+        el.classList.remove('is-diving');
+        zoom.style.transform = ''; 
       }
       function boardFor(id) {
         if (boards[id]) return Promise.resolve(boards[id]);
@@ -273,7 +393,7 @@
           if (Math.abs(i - sel) > 1 && t > .1) return;
           var c = CABINETS[i];
           s.g.clearRect(0, 0, s.W, s.H);
-          (c.broken ? ATTRACT.broken : ATTRACT[c.id])(s.g, s.W, s.H, reduced ? 1 : t, s.col);
+          ATTRACT[c.id](s.g, s.W, s.H, reduced ? 1 : t, s.col);
         });
       }
       raf = requestAnimationFrame(frame);
@@ -286,6 +406,7 @@
         else if (k === 'ArrowRight' || k === 'd' || k === 'D') { choose(sel + 1); e.preventDefault(); }
         else if (k === 'Enter' || k === ' ') { play(); e.preventDefault(); }
         else if (k === 'Escape' || k === 'Backspace') { leave(); e.preventDefault(); }
+        else if (k === 'm' || k === 'M') { if (S) S.toggle(); }
         e.stopPropagation();
       }
       document.addEventListener('keydown', onKey, true);
@@ -322,6 +443,7 @@
         if (closing) return;
         closing = true;
         cancelAnimationFrame(raf);
+        if (S) S.music(null);
         document.removeEventListener('keydown', onKey, true);
         window.removeEventListener('popstate', onPop);
         window.removeEventListener('resize', place);

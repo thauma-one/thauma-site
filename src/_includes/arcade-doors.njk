@@ -10,11 +10,12 @@
 <script>window.THAUMA_ARCADE = { v: {
   doors: "{{ '/js/arcade/doors.js' | v }}", fail: "{{ '/js/arcade/fail.js' | v }}",
   arcade: "{{ '/js/arcade/arcade.js' | v }}", css: "{{ '/css/arcade.css' | v }}",
-  play: "{{ '/js/arcade/play.js' | v }}", games: { loadout: "{{ '/js/arcade/games/loadout.js' | v }}",
-    soundcheck: "{{ '/js/arcade/games/soundcheck.js' | v }}",
-    cablerun: "{{ '/js/arcade/games/cablerun.js' | v }}",
-    panelfixer: "{{ '/js/arcade/games/panelfixer.js' | v }}" },
+  play: "{{ '/js/arcade/play.js' | v }}", sound: "{{ '/js/arcade/sound.js' | v }}",
+  games: {
+    {%- for gid in ['loadout', 'soundcheck', 'panelfixer', 'cablerun', 'stagerunner', 'goldenhour', 'followspot', 'strike', 'cuestack'] %}
+    {{ gid }}: "{{ ('/js/arcade/games/' + gid + '.js') | v }}",
+    {%- endfor %} },
   vendor: { planck: "1.5.0" },
-  words: "{{ '/_data/i18n/en.json' | v }}{{ '/_data/i18n/hr.json' | v }}" } };</script>
+  words: "{{ '/_data/i18n/en.json' | v }}{{ '/_data/i18n/hr.json' | v }}{{ '/_data/i18n/sr.json' | v }}{{ '/_data/i18n/sl.json' | v }}" } };</script>
 <script src="/js/arcade/doors.js?v={{ '/js/arcade/doors.js' | v }}" defer></script>
 {%- endif %}

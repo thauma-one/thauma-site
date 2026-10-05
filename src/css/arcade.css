@@ -61,7 +61,13 @@
   background:linear-gradient(90deg,var(--ar-blue),var(--ar-magenta) 55%,var(--ar-amber));-webkit-background-clip:text;background-clip:text;color:transparent;
   filter:drop-shadow(0 0 14px rgba(255,79,216,.35))}
 .arc-spacer{width:120px}
-@media (max-width:640px){ .arc-back span{display:none} .arc-spacer{width:40px} }
+/* the sound switch: off until turned on (Chase, 2026-10-04) */
+.arc-sound{display:inline-flex;align-items:center;gap:8px;padding:10px 4px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;color:var(--ar-dim);transition:color .2s}
+.arc-sound svg{width:20px;height:20px}
+.arc-sound .on{display:none}.arc-sound.is-on .on{display:inline}.arc-sound.is-on .off{display:none}
+.arc-sound.is-on{color:var(--ar-amber)}
+.arc-sound:hover{color:var(--ar-ink)}
+@media (max-width:640px){ .arc-back span,.arc-sound span{display:none} .arc-spacer{width:40px} }
 
 /* ---- the row of cabinets --------------------------------------------- */
 /* Swipes are the menu's, not the browser's (a claimed pan cancels the pointer). */
@@ -71,6 +77,7 @@
     repeating-linear-gradient(90deg,transparent 0 58px,rgba(155,123,255,.10) 58px 59px);
   transform:perspective(420px) rotateX(58deg);transform-origin:50% 100%;
   -webkit-mask-image:linear-gradient(0deg,transparent,#000 45%);mask-image:linear-gradient(0deg,transparent,#000 45%)}
+.arc-zoom{position:relative;transition:transform .95s cubic-bezier(.6,0,.85,.45);will-change:transform}
 .arc-row{position:relative;display:flex;align-items:flex-end;gap:clamp(18px,4vw,46px);
   transition:transform .55s var(--unfurl);will-change:transform;padding:0 50vw}
 .cab{--c:var(--ar-blue);position:relative;flex:0 0 auto;width:clamp(140px,min(44vw,30vh),236px);
@@ -107,6 +114,18 @@
 .cab-btn{width:14px;height:14px;border-radius:50%;margin-top:14px;background:var(--c);box-shadow:0 0 12px color-mix(in srgb,var(--c) 70%,transparent),inset 0 -2px 0 rgba(0,0,0,.3)}
 .cab-btn + .cab-btn{background:var(--ar-ink);box-shadow:inset 0 -2px 0 rgba(0,0,0,.3)}
 .cab-base{height:16px;margin:0 -2px;border-radius:0 0 6px 6px;background:#0a0e16;box-shadow:inset 0 1px 0 var(--ar-edge)}
+/* the coin door, and the coin that goes into it */
+.cab-door{position:relative;height:26px;margin:0 -10px;display:flex;justify-content:center;align-items:center;background:#0e131d;box-shadow:inset 0 1px 0 var(--ar-edge)}
+.cab-slot{width:4px;height:13px;border-radius:2px;background:#05070b;box-shadow:0 0 0 3px #1d2534,0 0 10px color-mix(in srgb,var(--c) 45%,transparent)}
+.cab.is-sel .cab-slot{box-shadow:0 0 0 3px #232c3e,0 0 14px color-mix(in srgb,var(--c) 80%,transparent);animation:arc-blink 1.2s steps(1,end) infinite}
+.cab-coin{position:absolute;left:50%;top:-60px;width:16px;height:16px;margin-left:-8px;border-radius:50%;opacity:0;
+  background:radial-gradient(circle at 35% 35%,#fff3c4,#ffc94a 45%,#b8801b);box-shadow:0 0 12px rgba(255,201,74,.8)}
+.cab.is-coin .cab-coin{animation:arc-coin .5s cubic-bezier(.5,0,.9,.4) both}
+@keyframes arc-coin{0%{opacity:1;transform:translateY(-120px) rotateY(0)}70%{opacity:1;transform:translateY(0) rotateY(540deg) scaleX(.2)}100%{opacity:0;transform:translateY(64px) scaleX(.15)}}
+/* the dive into the chosen screen */
+#arcade.is-diving .arc-info,#arcade.is-diving .arc-hint,#arcade.is-diving .arc-top{opacity:0;transition:opacity .4s}
+#arcade.is-diving .cab:not(.is-sel){opacity:0;transition:opacity .4s}
+#arcade.is-diving .cab-flash{background:#fff;color:#fff;transition:background .5s .55s,opacity .2s}
 
 /* ---- what the chosen cabinet is ---------------------------------------- */
 .arc-info{position:relative;z-index:3;text-align:center;padding:0 16px 8px;min-height:176px}
@@ -155,16 +174,80 @@
 .arc-pause:hover{color:var(--ar-ink)}
 .arc-stage{position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
 .arc-stage canvas{display:block;border-radius:8px;box-shadow:0 0 0 1px var(--ar-edge),0 30px 80px -40px rgba(0,0,0,.9)}
-.arc-toast{position:absolute;left:50%;top:14px;transform:translateX(-50%);max-width:min(92%,420px);padding:8px 14px;border-radius:999px;
-  background:rgba(7,9,14,.8);box-shadow:inset 0 0 0 1px var(--ar-edge);font-size:13px;color:var(--ar-ink);text-align:center;
-  opacity:0;pointer-events:none}
-.arc-toast.is-shown{animation:arc-toast 2.6s var(--ease) both}
-@keyframes arc-toast{0%{opacity:0;translate:0 -6px}10%,78%{opacity:1;translate:0 0}100%{opacity:0;translate:0 -4px}}
+/* THE RADIO (play.js quip): jokes and calls, in a banner that stays long
+   enough to read, stands out from the game, and never takes a touch
+   (Chase, 2026-10-04: "They didn't stay up long and didn't stand out"). */
+.arc-quip{position:absolute;left:50%;top:12px;z-index:2;transform:translateX(-50%);width:max-content;max-width:min(94%,440px);
+  display:flex;align-items:flex-start;gap:10px;padding:10px 14px 11px 10px;border-radius:14px;pointer-events:none;
+  background:rgba(8,10,16,.93);color:#fff;font:600 14px/1.38 'Inter',system-ui,sans-serif;text-align:left;
+  box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--c,var(--ar-amber)) 75%,transparent),0 12px 34px -12px rgba(0,0,0,.9),0 0 28px -8px color-mix(in srgb,var(--c,var(--ar-amber)) 60%,transparent);
+  opacity:0;visibility:hidden}
+.arc-quip.is-low{top:auto;bottom:12px}
+.arc-quip b{flex:none;margin-top:1px;padding:4px 7px;border-radius:6px;font:700 10px/1 'Sora',sans-serif;letter-spacing:.12em;
+  background:var(--c,var(--ar-amber));color:#0b0e14}
+.arc-quip.is-good b{background:var(--ar-foam)}.arc-quip.is-bad b{background:var(--ar-red)}
+.arc-quip.is-shown{visibility:visible;animation:arc-quip var(--quip-ms,4200ms) both}
+@keyframes arc-quip{0%{opacity:0;translate:0 -14px;scale:.94}6%{opacity:1;translate:0 2px;scale:1.02}10%{translate:0 0;scale:1}90%{opacity:1;translate:0 0}100%{opacity:0;translate:0 -6px}}
+.arc-quip.is-low.is-shown{animation-name:arc-quip-low}
+@keyframes arc-quip-low{0%{opacity:0;translate:0 14px;scale:.94}6%{opacity:1;translate:0 -2px;scale:1.02}10%{translate:0 0;scale:1}90%{opacity:1}100%{opacity:0;translate:0 6px}}
+/* PLAYER 1 · the game · READY · GO */
+.arc-ready{position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;pointer-events:none;
+  background:radial-gradient(60% 40% at 50% 50%,rgba(7,9,14,.85),rgba(7,9,14,.55));text-align:center}
+.arc-ready[hidden]{display:none}
+.arc-ready small{font:600 11px/1 'Sora',sans-serif;letter-spacing:.3em;color:var(--ar-dim);animation:arc-blink .5s steps(1,end) infinite}
+.arc-ready b{font:600 clamp(26px,6vw,44px)/1.05 'Sora',sans-serif;letter-spacing:.06em;color:var(--c,var(--ar-amber));
+  text-shadow:0 0 22px color-mix(in srgb,var(--c,var(--ar-amber)) 70%,transparent);animation:arc-ready-in .5s var(--unfurl) both}
+.arc-ready em{font:600 15px/1 'Sora',sans-serif;font-style:normal;letter-spacing:.32em;color:#fff}
+.arc-ready.is-go em{font-size:34px;color:var(--c,var(--ar-amber));animation:arc-go .45s var(--unfurl) both}
+@keyframes arc-ready-in{0%{opacity:0;scale:1.4;filter:blur(6px)}100%{opacity:1;scale:1;filter:none}}
+@keyframes arc-go{0%{scale:.4;opacity:0}60%{scale:1.25;opacity:1}100%{scale:1}}
 .arc-pad{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:10px 12px 14px}
 .arc-pad button{height:64px;border-radius:14px;display:grid;place-items:center;color:var(--ar-ink);
-  background:linear-gradient(180deg,#161d2c,#0f1522);box-shadow:inset 0 0 0 1px var(--ar-edge)}
+  background:linear-gradient(180deg,#161d2c,#0f1522);box-shadow:inset 0 0 0 1px var(--ar-edge);touch-action:none}
+.arc-pad button[hidden]{display:none}
 .arc-pad button:active{background:color-mix(in srgb,var(--c,var(--ar-foam)) 22%,#0f1522)}
 .arc-pad svg{width:22px;height:22px}
+/* a true d-pad, a cross (Cable Run: "a true d-pad shape") */
+.arc-pad.is-cross{grid-template-columns:repeat(3,64px);grid-template-rows:repeat(3,58px);gap:4px;justify-content:center;padding:6px 12px 12px}
+.arc-pad.is-cross .pad-up{grid-area:1/2}.arc-pad.is-cross .pad-left{grid-area:2/1}.arc-pad.is-cross .pad-right{grid-area:2/3}.arc-pad.is-cross .pad-down{grid-area:3/2}
+.arc-pad.is-cross button{height:auto;border-radius:12px}
+/* the stick: drag the knob, how far is how fast */
+.arc-stickbar{position:relative;height:74px;margin:6px 16px 14px;border-radius:37px;touch-action:none;
+  background:linear-gradient(180deg,#121826,#0c111b);box-shadow:inset 0 0 0 1px var(--ar-edge),inset 0 6px 14px rgba(0,0,0,.5)}
+.stick-track{position:absolute;left:30px;right:30px;top:50%;height:4px;margin-top:-2px;border-radius:2px;
+  background:linear-gradient(90deg,color-mix(in srgb,var(--c) 60%,transparent),rgba(255,255,255,.08) 45% 55%,color-mix(in srgb,var(--c) 60%,transparent))}
+.stick-knob{position:absolute;left:50%;top:50%;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,#3a4559,#1a2130);box-shadow:0 0 0 2px color-mix(in srgb,var(--c) 70%,transparent),0 6px 16px rgba(0,0,0,.6);
+  transition:translate .12s var(--ease)}
+.arc-stickbar.is-held .stick-knob{transition:none;box-shadow:0 0 0 2px var(--c),0 0 22px color-mix(in srgb,var(--c) 60%,transparent)}
+/* four lanes (Cue Stack) */
+.arc-lanes{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:8px 10px 14px}
+.arc-lanes button{height:78px;border-radius:12px;touch-action:none;background:linear-gradient(180deg,#141b29,#0d121c);box-shadow:inset 0 0 0 1px var(--ar-edge)}
+.arc-lanes button:nth-child(1){--l:#FF4FD8}.arc-lanes button:nth-child(2){--l:#2FD8FF}.arc-lanes button:nth-child(3){--l:#5CF2C4}.arc-lanes button:nth-child(4){--l:#FFB547}
+.arc-lanes button{box-shadow:inset 0 0 0 1px var(--ar-edge),inset 0 -4px 0 var(--l)}
+.arc-lanes button.is-on{background:color-mix(in srgb,var(--l) 35%,#0d121c)}
+/* THE CABINET (desktop): marquee, bezel, deck */
+.arc-cabinet{position:relative;flex:1;min-height:0;display:flex;flex-direction:column}
+.arc-bezel{position:relative;flex:1;min-height:0;display:flex}
+.arc-bezel .arc-stage{flex:1}
+.has-frame .arc-cabinet{width:min(100%,max(440px,calc((100vh - 270px) * var(--ar,.6) + 80px)));margin:0 auto 14px;padding:0 22px;border-radius:22px 22px 10px 10px;
+  background:linear-gradient(90deg,#0c111b,#151c2b 12%,#121826 88%,#0c111b);box-shadow:inset 0 0 0 1px var(--ar-edge),0 40px 90px -40px rgba(0,0,0,.95),0 0 60px -20px color-mix(in srgb,var(--c) 35%,transparent)}
+.has-frame .arc-marquee{height:58px;margin:14px 0 12px;border-radius:12px 12px 4px 4px;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(120% 160% at 50% 0%,color-mix(in srgb,var(--c) 32%,transparent),transparent 70%),#080b12;box-shadow:inset 0 -2px 0 color-mix(in srgb,var(--c) 40%,transparent)}
+.has-frame .arc-marquee span{font:600 22px/1 'Sora',sans-serif;letter-spacing:.28em;padding-left:.28em;text-transform:uppercase;color:var(--c);
+  text-shadow:0 0 16px color-mix(in srgb,var(--c) 80%,transparent);animation:arc-marquee 3.2s ease-in-out infinite}
+@keyframes arc-marquee{50%{text-shadow:0 0 26px color-mix(in srgb,var(--c) 95%,transparent),0 0 4px #fff}}
+.has-frame .arc-bezel{padding:14px;border-radius:16px;background:#05070b;box-shadow:inset 0 0 0 2px #1d2433,inset 0 0 30px rgba(0,0,0,.9)}
+.has-frame .arc-stage canvas{border-radius:10px}
+.has-frame .arc-deck{height:62px;margin:12px -10px 0;border-radius:6px 6px 10px 10px;display:flex;align-items:center;justify-content:center;gap:26px;
+  background:linear-gradient(180deg,#1d2537,#121826);box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}
+.deck-stick{position:relative;width:12px;height:28px;border-radius:6px;background:linear-gradient(90deg,#3a4558,#1b2231);transform-origin:50% 100%;transition:rotate .08s,translate .08s}
+.deck-stick::before{content:"";position:absolute;left:50%;top:-12px;width:20px;height:20px;margin-left:-10px;border-radius:50%;background:var(--ar-red);box-shadow:0 0 12px rgba(255,90,110,.6)}
+.deck-btns{display:flex;gap:12px}
+.deck-btn{width:20px;height:20px;border-radius:50%;background:var(--c);box-shadow:0 0 12px color-mix(in srgb,var(--c) 70%,transparent),inset 0 -3px 0 rgba(0,0,0,.35);transition:transform .06s}
+.deck-btn + .deck-btn{background:var(--ar-ink)}
+.deck-btn.is-on{transform:translateY(2px) scale(.92);box-shadow:0 0 22px var(--c),inset 0 2px 0 rgba(0,0,0,.35)}
+.deck-hint{font-size:10px;letter-spacing:.16em;text-transform:uppercase;font-weight:600;color:var(--ar-dim)}
 .arc-over{position:absolute;inset:0;z-index:3;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(7,9,14,.72);
   backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
 .arc-over[hidden]{display:none}
@@ -195,4 +278,10 @@
 .arc-slot button{width:44px;height:30px;display:grid;place-items:center;color:var(--ar-dim)}
 .arc-slot button svg{width:14px;height:14px}
 .arc-slot b{font:600 34px/1 'Sora',sans-serif;width:44px;text-align:center;color:var(--ar-ink)}
-@media (prefers-reduced-motion:reduce){ .arc-play{transition:none} .arc-toast.is-shown{animation:none;opacity:1} }
+/* no zoom, no magnifier, no selecting while playing (BACKLOG §4) */
+.arc-play,.arc-play *{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+.arc-play canvas{touch-action:none}
+@media (prefers-reduced-motion:reduce){
+  .arc-play{transition:none} .arc-quip.is-shown{animation:none;opacity:1} .arc-zoom{transition:none}
+  .arc-ready b,.arc-ready.is-go em,.has-frame .arc-marquee span{animation:none}
+}

@@ -23,8 +23,8 @@
   var A = window.ThaumaArcade;
   if (!A) return;
 
-  var C = 24, COLS = 15, ROWS = 22;
-  var W = C * COLS, H = C * ROWS;
+  /* A shorter stage on a phone, so the d-pad fits under it (BACKLOG §4). */
+  var C = 24, COLS = 15, W = C * COLS;
   var DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
   var GEAR = ['mic', 'di', 'iem'];
   var TAPE_FOR = 9;             /* seconds a taping lasts */
@@ -32,13 +32,15 @@
   function rnd(n) { return Math.floor(Math.random() * n); }
 
   A.games.cablerun = {
-    size: { w: W, h: H },
+    size: function (o) { return { w: W, h: C * (o && o.touch ? 17 : 22) }; },
     controls: 'dpad',
+    pad: 'cross',
     create: function (ctx) {
-      var words = ctx.words;
-      var cable = [{ x: 7, y: 15 }, { x: 7, y: 16 }, { x: 7, y: 17 }, { x: 7, y: 18 }];
+      var words = ctx.words, ROWS = Math.round(ctx.H / C), H = ctx.H;
+      var y0 = ROWS - 5;
+      var cable = [{ x: 7, y: y0 }, { x: 7, y: y0 + 1 }, { x: 7, y: y0 + 2 }, { x: 7, y: y0 + 3 }];
       var dir = 'up', queue = [], grow = 0;
-      var tick = 0, every = .15, plugged = 0, score = 0;
+      var tick = 0, every = .16, plugged = 0, score = 0, lastHead = null;
       var gear = null, tape = null, taped = 0, tapeUntil = 0;
       var leader = null, nextLeader = 14, time = 0;
       var dead = false;
@@ -64,13 +66,15 @@
 
       function crash(lines) {
         if (dead) return;
-        dead = true; ctx.shake(6); ctx.say(words(lines));
-        setTimeout(function () { ctx.over(); }, 700);
+        dead = true; ctx.shake(6); ctx.sfx('crash');
+        if (!ctx.quip('jokes_' + lines, { mood: 'bad', force: true })) ctx.say(words(lines), { mood: 'bad' });
+        setTimeout(function () { ctx.over(); }, 900);
       }
 
       function step() {
         if (queue.length) dir = queue.shift();
         var d = DIRS[dir], head = cable[0];
+        lastHead = { x: head.x, y: head.y };
         var nx = head.x + d[0], ny = head.y + d[1];
         if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) return crash('cablerun_crash');
         /* the tail moves out of the way this step, so its cell is free */
@@ -83,13 +87,17 @@
         if (gear && gear.x === nx && gear.y === ny) {
           plugged++; grow += 2;
           score += 10 + cable.length; ctx.score(score);
-          every = Math.max(.075, .15 - plugged * .004);
+          ctx.sfx('collect');
+          /* faster as it grows (BACKLOG §4: "speed up as the cable grows") */
+          every = Math.max(.058, .16 - (cable.length - 4) * .0042);
+          if (plugged % 5 === 0) ctx.quip('jokes_cablerun_plug', { mood: 'good' });
           gear = place(GEAR[rnd(3)]);
           if (!tape && plugged % 4 === 0) tape = place('tape');
         }
         if (tape && tape.x === nx && tape.y === ny) {
           taped = Math.ceil(cable.length / 2); tapeUntil = time + TAPE_FOR;
-          tape = null; ctx.say(words('cablerun_tape'));
+          tape = null; ctx.sfx('powerup');
+          if (!ctx.quip('jokes_cablerun_tape', { mood: 'good' })) ctx.say(words('cablerun_tape'));
         }
       }
 
@@ -104,7 +112,7 @@
         if (!leader && nextLeader <= 0) {
           var row = 2 + rnd(ROWS - 4), fromLeft = Math.random() < .5;
           leader = { row: row, x: fromLeft ? -1 : COLS, dir: fromLeft ? 1 : -1, warn: 2.2 };
-          ctx.say(words('cablerun_leader'));
+          ctx.say(words('cablerun_leader'), { tag: 'SM' }); ctx.sfx('zap');
         }
         if (leader) {
           if (leader.warn > 0) leader.warn -= dt;
@@ -121,6 +129,8 @@
         tick += dt;
         while (tick >= every && !dead) { tick -= every; step(); }
       }
+      /* how far the head is through its cell, for drawing it gliding */
+      function glide() { return started && !dead ? Math.min(1, tick / every) : 1; }
 
       /* ------------------------------------------------------ drawing */
       function draw(g) {
@@ -156,6 +166,17 @@
 
       function cx(c) { return c.x * C + C / 2; }
       function cy(c) { return c.y * C + C / 2; }
+      /* THE HEAD GLIDES, cell to cell, and the tail with it: the grid
+         stays Snake's, but it moves like something alive rather than in
+         jumps (BACKLOG §4: "doesn't feel like snake"). */
+      function pts() {
+        var k = glide(), out = cable.map(function (c) { return { x: cx(c), y: cy(c) }; });
+        if (k < 1 && cable.length > 1) {
+          var h = cable[0], prev = cable[1];
+          out[0] = { x: cx(prev) + (cx(h) - cx(prev)) * (.5 + k * .5), y: cy(prev) + (cy(h) - cy(prev)) * (.5 + k * .5) };
+        }
+        return out;
+      }
       function drawCable(g) {
         g.lineCap = 'round'; g.lineJoin = 'round';
         /* dark on a dark stage vanished in play: a lighter jacket and a sheen */
@@ -172,8 +193,8 @@
           g.fillRect(cx(cable[i]) - 9, cy(cable[i]) - 5, 18, 10);
         }
         /* the connector at the head, the plug at the tail */
-        var h = cable[0], d = DIRS[dir];
-        g.save(); g.translate(cx(h), cy(h)); g.rotate(Math.atan2(d[1], d[0]));
+        var P = pts(), d = DIRS[dir];
+        g.save(); g.translate(P[0].x, P[0].y); g.rotate(Math.atan2(d[1], d[0]));
         g.fillStyle = '#c9d1dc'; g.fillRect(-6, -7, 14, 14);
         g.fillStyle = '#10131a'; [[-3, 0], [3, -3], [3, 3]].forEach(function (p) { g.beginPath(); g.arc(p[0] + 2, p[1], 1.6, 0, 7); g.fill(); });
         g.restore();
@@ -182,11 +203,15 @@
       }
       function path(g) {
         g.beginPath();
-        cable.forEach(function (c, i) {
-          /* a little slack between cells so it reads as cable, not blocks */
-          var sag = i % 2 ? 1.2 : -1.2;
-          if (i) g.lineTo(cx(c) + sag * .3, cy(c) + sag); else g.moveTo(cx(c), cy(c));
-        });
+        /* a curve through the cells, with a little slack, so it reads as
+           cable rather than blocks */
+        var P = pts();
+        g.moveTo(P[0].x, P[0].y);
+        for (var i = 1; i < P.length - 1; i++) {
+          var mx = (P[i].x + P[i + 1].x) / 2, my = (P[i].y + P[i + 1].y) / 2 + (i % 2 ? 1 : -1);
+          g.quadraticCurveTo(P[i].x, P[i].y, mx, my);
+        }
+        if (P.length > 1) g.lineTo(P[P.length - 1].x, P[P.length - 1].y);
       }
       function drawGear(g, it) {
         var x = cx(it), y = cy(it), pulse = 1.35 + Math.sin(time * 5) * .08;
@@ -228,7 +253,12 @@
           if (!started) { started = true; if (d !== 'down') dir = d; return; }
           var last = queue.length ? queue[queue.length - 1] : dir;
           var opposite = { up: 'down', down: 'up', left: 'right', right: 'left' }[last];
-          if (d !== last && d !== opposite && queue.length < 2) queue.push(d);
+          if (d !== last && d !== opposite && queue.length < 2) {
+            queue.push(d);
+            /* NO WAITING FOR THE BEAT (BACKLOG §4: "a slight input delay"):
+               a turn pressed past the middle of a step happens now. */
+            if (queue.length === 1 && tick > every * .45 && !dead) { tick = 0; step(); }
+          }
         },
         stop: function () { dead = true; }
       };

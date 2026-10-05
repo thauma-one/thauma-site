@@ -2,24 +2,28 @@
    Panel Fixer — the official LED wall fix (ARCADE-SPEC.md §4)
    =====================================================================
    Chase, 2026-09-29: "throwing a tennis ball at the wall is an official
-   troubleshooting technique … You have a guy on the left side of the
-   screen throwing a ball to the right side to try and 'fix' the LED wall.
-   We could mark locations that are 'not working properly' and have them
-   aim the shots" … "Dart style for panel fixer is good."
+   troubleshooting technique." And 2026-10-04, after the darts version:
+   "it needs a lot of work … Peggle isn't a bad inspiration in general for
+   how to make it entertaining. But we need to keep the LED aspect of it.
+   And put more work into the person throwing the ball! It was very
+   boring."
 
-   The wall stands on the right, a column of panels; some are dead,
-   flickering or the wrong color. Tap to lock the angle as it sweeps, tap
-   again to lock the power as the meter pulses, and the ball flies on a
-   real arc — a short dotted stretch of it shows while you aim. A broken
-   panel it hits is reseated; a working one is knocked out. Off the truss
-   overhead and then into a broken panel is a bank shot.
+   THE WALL is a field of LED panels, and the ball bounces through them
+   like Peggle's pegs. Each panel is one pixel of a picture the wall is
+   meant to be showing; the BROKEN ones (dark, flickering, the wrong
+   color, a red flag in the corner) are holes in it. Hit a broken panel and
+   it is reseated — its piece of the picture lights up. Fix them all and
+   it's SHOWTIME: the slow-motion last hit, the whole picture, and a bonus
+   for every ball left. Working panels just bounce the ball (and pay a
+   little); GREEN panels hold a power.
 
-   Each round has its broken panels and a budget of throws. Clear the wall
-   and the throws left over are points; run out with panels still broken
-   and it's over. Fixes in a row multiply; from round four, working panels
-   start to fail on their own.
+   THE TECH stands on a scissor lift above the wall with a tennis ball:
+   drag to aim (the first stretch of the path shows), let go to throw — or
+   ← → and Space. They lean into the aim, wind up, throw, then cheer,
+   facepalm, sweat on the last ball, and dance at SHOWTIME. A road case
+   rolls along the floor; a ball that lands in it is thrown again free.
 
-   Tap: tap anywhere, or Space.
+   Ten balls a wall. Out of balls with panels still broken, and it's over.
    ===================================================================== */
 (function () {
   'use strict';
@@ -27,221 +31,451 @@
   if (!A) return;
 
   var W = 360, H = 640;
-  var FLOOR = 600, CEIL = 34;
-  var WALL_X = 262, WALL_TOP = 64, ROWS = 10, PANEL = 52;
-  var HAND = { x: 58, y: 548 };
-  var G = 900, R = 6.5;
-  var FAULTS = ['dead', 'flicker', 'tint'];
+  var LX = W / 2, LY = 104;                 /* where the ball leaves the hand */
+  var TOPF = 150, BOTF = 540, FLOOR = 606;
+  var PW = 28, PH = 18, R = 6;
+  var G = 520, SPEED = 470, REST = .72;
+  var BALLS = 10;
+  var POWERS = ['multi', 'zap', 'guide', 'fire'];
 
   function rnd(a, b) { return a + Math.random() * (b - a); }
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+  /* ---------------------------------------------- walls and pictures */
+  /* Where the panels go, wall by wall. Every shape keeps a ball's width
+     between panels. */
+  var LAYOUTS = [
+    function arches() {
+      var out = [];
+      for (var r = 0; r < 5; r++) {
+        var y = TOPF + 40 + r * 72, n = 7 + (r % 2);
+        for (var i = 0; i < n; i++) {
+          var u = (i + .5) / n, x = 26 + u * (W - 52);
+          out.push({ x: x, y: y + Math.sin(u * Math.PI) * -26 });
+        }
+      }
+      return out;
+    },
+    function diamond() {
+      var out = [], cy = (TOPF + BOTF) / 2;
+      for (var r = -5; r <= 5; r++) {
+        var n = 6 - Math.abs(r), y = cy + r * 34;
+        for (var i = 0; i < n; i++) out.push({ x: W / 2 + (i - (n - 1) / 2) * 52, y: y });
+      }
+      return out;
+    },
+    function rings() {
+      var out = [];
+      [[W / 2, 270, 92, 12], [W / 2, 270, 40, 6], [W / 2 - 92, 450, 50, 7], [W / 2 + 92, 450, 50, 7]].forEach(function (c) {
+        for (var i = 0; i < c[3]; i++) { var a = i / c[3] * Math.PI * 2; out.push({ x: c[0] + Math.cos(a) * c[2], y: c[1] + Math.sin(a) * c[2] * .85 }); }
+      });
+      return out;
+    },
+    function wall() {
+      /* a real LED wall: a block of panels, with gaps where cabinets are out */
+      var out = [];
+      for (var r = 0; r < 8; r++) for (var c = 0; c < 7; c++) {
+        if ((r * 3 + c * 5) % 7 === 0) continue;
+        out.push({ x: 40 + c * 47 + (r % 2) * 10, y: TOPF + 28 + r * 46 });
+      }
+      return out;
+    },
+    function zigzag() {
+      var out = [];
+      for (var c = 0; c < 6; c++) for (var k = 0; k < 7; k++) {
+        out.push({ x: 34 + c * 58 + (k % 2 ? 18 : 0), y: TOPF + 20 + k * 54 + (c % 2) * 22 });
+      }
+      return out;
+    }
+  ];
+  /* What the wall is meant to show: a color for every place on it. */
+  var PICTURES = [
+    function sunset(u, v) { return 'hsl(' + (20 + v * 300) + ',85%,' + (58 - v * 18) + '%)'; },
+    function cross(u, v) { var on = Math.abs(u - .5) < .1 || Math.abs(v - .38) < .08; return on ? 'hsl(45,100%,70%)' : 'hsl(' + (215 + v * 40) + ',75%,' + (30 + u * 12) + '%)'; },
+    function heart(u, v) {
+      var x = (u - .5) * 2.4, y = (.45 - v) * 2.4, h = Math.pow(x * x + y * y - 1, 3) - x * x * y * y * y;
+      return h < 0 ? 'hsl(340,90%,62%)' : 'hsl(' + (250 + u * 30) + ',60%,26%)';
+    },
+    function waves(u, v) { var w = Math.sin(u * 9 + v * 4) * .5 + .5; return 'hsl(' + (180 + w * 70) + ',85%,' + (40 + w * 20) + '%)'; },
+    function thauma(u, v) {
+      /* a T, Thauma's own blue and seafoam */
+      var on = (v < .3 && Math.abs(u - .5) < .38) || (Math.abs(u - .5) < .1 && v < .9);
+      return on ? (v < .5 ? '#2FD8FF' : '#5CF2C4') : 'hsl(225,40%,' + (14 + v * 10) + '%)';
+    }
+  ];
 
   A.games.panelfixer = {
     size: { w: W, h: H },
-    controls: 'tap',
+    controls: 'aim',
+    speaker: 'LD',
+    quipAt: .205,
     create: function (ctx) {
       var words = ctx.words;
-      var panels = [];
-      for (var i = 0; i < ROWS; i++) panels.push({ fault: null, fixedAt: -9, hitAt: -9 });
-      var round = 0, throws = 0, streak = 0, score = 0;
-      var phase = 'angle', angle = 0, power = 0, clock = 0, time = 0;
-      var ball = null, banked = false, trail = [], sparks = [];
-      var failTimer = 0, betweenRounds = 0;
+      var panels = [], balls = [], sparks = [], pops = [], arcs = [], confetti = [];
+      var level = 0, left = BALLS, score = 0, total = 0, fixedThisShot = 0, guide = 0;
+      var aim = 0, aimFrom = null, time = 0, slow = 0, showtime = 0;
+      var state = 'aim';               /* aim | windup | flight | show | done */
+      var windup = 0, mood = 'idle', moodT = 0, thrown = false;
+      var bucket = { x: W / 2, dir: 1 };
+      var picture = PICTURES[0];
 
-      function broken() { return panels.filter(function (p) { return p.fault; }).length; }
-      function breakSome(n) {
-        var ok = panels.map(function (p, i) { return p.fault ? -1 : i; }).filter(function (i) { return i >= 0; });
-        for (var k = 0; k < n && ok.length; k++) {
-          var i = ok.splice(Math.floor(Math.random() * ok.length), 1)[0];
-          panels[i].fault = FAULTS[Math.floor(Math.random() * FAULTS.length)];
-        }
-      }
-      function nextRound() {
-        round++;
-        breakSome(Math.min(2 + round, 7));
-        throws = broken() + 3;
-        failTimer = rnd(6, 10);
-        phase = 'angle'; clock = 0;
-      }
-      nextRound();
-
-      /* Ranges from a simulation of every angle × power (2026-09-30): the
-         first ones reached only the lower six panels and never the truss.
-         These reach every row — the top ones hardest — and allow the odd
-         bank shot. */
-      function angleNow() { return .25 + 1.2 * .5 * (1 + Math.sin(clock * 2.1 - Math.PI / 2)); }   /* 0.25 to 1.45 rad */
-      function powerNow() { return .5 * (1 + Math.sin(clock * 3.3 - Math.PI / 2)); }
-      function speedFor(p) { return 450 + p * 650; }
-
-      function press() {
-        if (betweenRounds > 0 || ball) return;
-        if (phase === 'angle') { angle = angleNow(); phase = 'power'; clock = 0; return; }
-        if (phase === 'power') {
-          power = powerNow();
-          var v = speedFor(power);
-          ball = { x: HAND.x, y: HAND.y, vx: Math.cos(angle) * v, vy: -Math.sin(angle) * v };
-          banked = false; trail = []; throws--; phase = 'flight';
-        }
+      function brokenLeft() { return panels.filter(function (p) { return p.state === 'broken'; }).length; }
+      function mult() {
+        var f = 1 - brokenLeft() / Math.max(1, total);
+        return f >= .9 ? 5 : f >= .75 ? 3 : f >= .5 ? 2 : 1;
       }
 
-      function land(missed) {
-        ball = null;
-        if (missed) streak = 0;
-        if (!broken()) {
-          score += 150 + throws * 60; ctx.score(score);
-          ctx.say(words('panelfixer_clear'));
-          betweenRounds = 1.6;
-          return;
-        }
-        if (throws <= 0) { setTimeout(function () { ctx.over(); }, 500); phase = 'done'; return; }
-        phase = 'angle'; clock = 0;
+      function nextWall() {
+        level++;
+        var spots = LAYOUTS[(level - 1) % LAYOUTS.length]();
+        picture = PICTURES[(level - 1) % PICTURES.length];
+        panels = spots.map(function (s) {
+          var u = clamp((s.x - 14) / (W - 28), 0, 1), v = clamp((s.y - TOPF) / (BOTF - TOPF), 0, 1);
+          return { x: s.x, y: s.y, u: u, v: v, col: picture(u, v), state: 'ok', hitAt: -9, fixedAt: -9, fault: null };
+        });
+        /* the broken ones, spread across the wall, then two green */
+        var n = Math.min(Math.floor(panels.length * .45), 9 + level * 2), order = panels.slice().sort(function () { return Math.random() - .5; });
+        for (var i = 0; i < n; i++) { order[i].state = 'broken'; order[i].fault = ['dead', 'flicker', 'tint'][i % 3]; }
+        for (var k = n; k < n + 2 && k < order.length; k++) { order[k].state = 'power'; order[k].power = POWERS[Math.floor(Math.random() * POWERS.length)]; }
+        total = n; left = BALLS; state = 'aim'; mood = 'idle'; showtime = 0;
+        ctx.say(words('panelfixer_wall') + ' ' + level, { tag: 'LD' });
+      }
+      nextWall();
+
+      /* ------------------------------------------------------- throwing */
+      function dirOf(a) { return { x: Math.sin(a), y: Math.cos(a) }; }
+      function throwNow() {
+        if (state !== 'aim' || left <= 0) return;
+        state = 'windup'; windup = .22; mood = 'throw'; thrown = true;
+        ctx.sfx('flip');
+      }
+      function launch() {
+        var d = dirOf(aim);
+        balls.push({ x: LX + d.x * 10, y: LY + d.y * 10, vx: d.x * SPEED, vy: d.y * SPEED, slowT: 0, fire: 0, bounces: 0 });
+        left--; fixedThisShot = 0; state = 'flight';
+        ctx.sfx('jump');
+        if (guide > 0) guide--;
       }
 
-      function hitPanel(row) {
-        var p = panels[row];
+      /* ------------------------------------------------------- the ball */
+      function hitPanel(p, b) {
         p.hitAt = time;
-        for (var i = 0; i < 12; i++) sparks.push({ x: WALL_X, y: WALL_TOP + row * PANEL + PANEL / 2, vx: rnd(-160, -20), vy: rnd(-120, 120), life: .5 });
-        if (p.fault) {
-          p.fault = null; p.fixedAt = time; streak++;
-          var gain = 100 * Math.min(streak, 5) + (banked ? 150 : 0);
-          score += gain; ctx.score(score);
-          ctx.say(words(banked ? 'panelfixer_bank' : 'panelfixer_fix'));
-          ctx.shake(2);
-        } else {
-          p.fault = 'dead'; streak = 0; score = Math.max(0, score - 50); ctx.score(score);
-          ctx.say(words('panelfixer_oops'));
-          ctx.shake(4);
+        ctx.sfx(p.state === 'broken' ? 'fix' : p.state === 'power' ? 'powerup' : 'wall');
+        if (p.state === 'broken') fix(p);
+        else if (p.state === 'power') {
+          p.state = 'ok';
+          power(p.power, p, b);
+        } else { score += 10; ctx.score(score); }
+      }
+      function fix(p) {
+        p.state = 'ok'; p.fixedAt = time; p.fault = null;
+        var gain = 100 * mult();
+        score += gain; ctx.score(score); fixedThisShot++;
+        pops.push({ x: p.x, y: p.y - 14, text: '+' + gain, col: '#5CF2C4', life: 1 });
+        for (var i = 0; i < 12; i++) sparks.push({ x: p.x, y: p.y, vx: rnd(-120, 120), vy: rnd(-140, 60), life: .55, c: p.col });
+        ctx.shake(1.5);
+        if (!brokenLeft()) startShow();
+      }
+      function power(name, p, b) {
+        pops.push({ x: p.x, y: p.y - 16, text: words('panelfixer_' + name).toUpperCase(), col: '#5CF2C4', life: 1.4 });
+        ctx.say('[LD] ' + words('panelfixer_' + name), { mood: 'good' });
+        if (name === 'multi') [-1, 1].forEach(function (k) { balls.push({ x: b.x, y: b.y, vx: k * 160 + b.vx * .3, vy: -120, slowT: 0, fire: 0, bounces: 0 }); });
+        if (name === 'zap') {
+          panels.filter(function (q) { return q.state === 'broken'; })
+            .sort(function (a, c) { return Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(c.x - p.x, c.y - p.y); })
+            .slice(0, 3).forEach(function (q, i) { arcs.push({ x1: p.x, y1: p.y, x2: q.x, y2: q.y, life: .5 }); setTimeout(function () { if (q.state === 'broken') fix(q); }, 120 * (i + 1)); });
+          ctx.sfx('zap');
         }
+        if (name === 'guide') guide = 3;
+        if (name === 'fire') b.fire = 2.2;
+      }
+      /* the circle against a panel's rectangle: push out, bounce */
+      function collide(b, p) {
+        var hx = PW / 2, hy = PH / 2;
+        var cx = clamp(b.x, p.x - hx, p.x + hx), cy = clamp(b.y, p.y - hy, p.y + hy);
+        var dx = b.x - cx, dy = b.y - cy, d = Math.hypot(dx, dy);
+        if (d >= R) return false;
+        if (b.fire > 0) { if (p.state !== 'ok' || time - p.hitAt > .3) hitPanel(p, b); return false; }
+        if (d < .001) { dx = 0; dy = -1; d = 1; }
+        var nx = dx / d, ny = dy / d;
+        b.x = cx + nx * R; b.y = cy + ny * R;
+        var vn = b.vx * nx + b.vy * ny;
+        if (vn < 0) { b.vx -= (1 + REST) * vn * nx; b.vy -= (1 + REST) * vn * ny; }
+        b.bounces++;
+        if (time - p.hitAt > .12) hitPanel(p, b);
+        return true;
+      }
+      function stepBall(b, dt) {
+        b.vy += G * dt;
+        b.x += b.vx * dt; b.y += b.vy * dt;
+        if (b.fire > 0) b.fire -= dt;
+        if (b.x < R) { b.x = R; b.vx = Math.abs(b.vx) * .9; }
+        if (b.x > W - R) { b.x = W - R; b.vx = -Math.abs(b.vx) * .9; }
+        for (var i = 0; i < panels.length; i++) collide(b, panels[i]);
+        /* a ball stuck on a ledge gets a nudge, as Peggle's do */
+        if (Math.hypot(b.vx, b.vy) < 40) { b.slowT += dt; if (b.slowT > 1.2) { b.vy = 200; b.vx = rnd(-120, 120); b.slowT = 0; } } else b.slowT = 0;
+        /* the road case on the floor: a catch is a free ball */
+        if (!b.caught && b.y > FLOOR - 26 && b.y < FLOOR - 8 && Math.abs(b.x - bucket.x) < 32 && b.vy > 0) {
+          b.caught = true; b.out = true; left++;
+          pops.push({ x: bucket.x, y: FLOOR - 44, text: words('panelfixer_free').toUpperCase(), col: '#FFB547', life: 1.4 });
+          ctx.sfx('combo'); ctx.quip('jokes_panelfixer_free', { mood: 'good', chance: .6 });
+        }
+        if (b.y > H + 12) b.out = true;
       }
 
+      /* ------------------------------------------------------ SHOWTIME */
+      function startShow() {
+        state = 'show'; slow = 1.3; showtime = 3.4; mood = 'dance';
+        ctx.sfx('cheer');
+        ctx.quip('jokes_panelfixer_showtime', { mood: 'good', force: true });
+        var bonus = left * 200; score += bonus; ctx.score(score);
+        pops.push({ x: W / 2, y: TOPF + 60, text: words('panelfixer_showtime').toUpperCase() + (bonus ? '  +' + bonus : ''), col: '#FFB547', life: 3, big: true });
+        for (var i = 0; i < 90; i++) confetti.push({ x: rnd(0, W), y: rnd(-120, 0), vx: rnd(-30, 30), vy: rnd(60, 160), r: rnd(0, 6), c: ['#FF4FD8', '#2FD8FF', '#5CF2C4', '#FFB547'][i % 4], life: 3.4 });
+      }
+
+      /* -------------------------------------------------------- update */
       function update(dt) {
-        time += dt; clock += dt;
-        if (betweenRounds > 0) { betweenRounds -= dt; if (betweenRounds <= 0) nextRound(); }
-        /* from round four the wall starts to fail by itself */
-        if (round >= 4 && phase !== 'done') {
-          failTimer -= dt;
-          if (failTimer <= 0) { breakSome(1); failTimer = rnd(7, 11); }
+        time += dt; moodT += dt;
+        var sdt = slow > 0 ? dt * .28 : dt;
+        if (slow > 0) slow -= dt;
+        bucket.x += bucket.dir * (70 + level * 6) * dt;
+        if (bucket.x > W - 40) { bucket.x = W - 40; bucket.dir = -1; }
+        if (bucket.x < 40) { bucket.x = 40; bucket.dir = 1; }
+
+        if (state === 'aim') {
+          var turn = (ctx.held.right ? 1 : 0) - (ctx.held.left ? 1 : 0);
+          aim = clamp(aim - turn * 1.5 * dt, -1.38, 1.38);
+          if (left === 1 && mood !== 'nervous') { mood = 'nervous'; ctx.quip('jokes_panelfixer_last', { mood: 'bad', chance: .8 }); }
         }
-        if (ball) {
-          /* a few small steps a frame: the ball is fast, the panels are not thick */
-          var n = 4, h = dt / n;
-          for (var s = 0; s < n && ball; s++) {
-            ball.vy += G * h; ball.x += ball.vx * h; ball.y += ball.vy * h;
-            if (ball.y - R < CEIL && ball.vy < 0) { ball.y = CEIL + R; ball.vy = Math.abs(ball.vy) * .7; banked = true; ctx.shake(1.5); }
-            if (ball.x + R >= WALL_X && ball.vx > 0) {
-              var row = Math.floor((ball.y - WALL_TOP) / PANEL);
-              if (row >= 0 && row < ROWS) {
-                hitPanel(row);
-                ball.x = WALL_X - R; ball.vx = -Math.abs(ball.vx) * .35; ball.vy *= .5;
-                ball.hit = true;
-              } else if (ball.y > FLOOR - 8) { ball.x = WALL_X - R; ball.vx = -Math.abs(ball.vx) * .3; }
-            }
-            if (ball.y + R >= FLOOR || ball.x < -20) { var missed = !ball.hit; land(missed); }
-          }
-          if (ball) { trail.push({ x: ball.x, y: ball.y }); if (trail.length > 14) trail.shift(); }
+        if (state === 'windup') { windup -= dt; if (windup <= 0) { launch(); mood = 'follow'; moodT = 0; } }
+
+        if (balls.length) {
+          var steps = Math.ceil(sdt * 900 / 6) || 1;
+          for (var s = 0; s < steps; s++) balls.forEach(function (b) { if (!b.out) stepBall(b, sdt / steps); });
+          balls = balls.filter(function (b) { return !b.out; });
+          if (!balls.length && state === 'flight') endShot();
         }
-        sparks.forEach(function (p) { p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; });
+        if (state === 'show') {
+          balls.forEach(function (b) { b.out = true; });
+          showtime -= dt;
+          if (showtime <= 0) { balls = []; nextWall(); }
+        }
+        sparks.forEach(function (p) { p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 200 * dt; p.life -= dt; });
         sparks = sparks.filter(function (p) { return p.life > 0; });
+        pops.forEach(function (p) { p.y -= 22 * dt; p.life -= dt; });
+        pops = pops.filter(function (p) { return p.life > 0; });
+        arcs.forEach(function (a) { a.life -= dt; }); arcs = arcs.filter(function (a) { return a.life > 0; });
+        confetti.forEach(function (c) { c.x += c.vx * dt; c.y += c.vy * dt; c.r += dt * 6; c.life -= dt; });
+        confetti = confetti.filter(function (c) { return c.life > 0 && c.y < H + 10; });
+      }
+      function endShot() {
+        if (state === 'show') return;
+        if (fixedThisShot >= 4) { mood = 'cheer'; moodT = 0; ctx.quip('jokes_panelfixer_great', { mood: 'good' }); pops.push({ x: W / 2, y: 132, text: fixedThisShot + ' ' + words('panelfixer_fixed').toUpperCase(), col: '#5CF2C4', life: 1.6 }); }
+        else if (fixedThisShot === 0) { mood = 'facepalm'; moodT = 0; ctx.quip('jokes_panelfixer_miss', { mood: 'bad', chance: .7 }); }
+        else { mood = fixedThisShot >= 2 ? 'cheer' : 'idle'; moodT = 0; }
+        if (left <= 0) { state = 'done'; mood = 'facepalm'; setTimeout(function () { ctx.over(); }, 1100); return; }
+        state = 'aim';
       }
 
-      /* ------------------------------------------------------ drawing */
+      /* ------------------------------------------------------- drawing */
       function draw(g) {
         var bg = g.createLinearGradient(0, 0, 0, H);
         bg.addColorStop(0, '#0b1020'); bg.addColorStop(1, '#07090e');
         g.fillStyle = bg; g.fillRect(-20, -20, W + 40, H + 40);
-        /* the truss overhead, and the floor */
-        g.strokeStyle = '#3a4456'; g.lineWidth = 1.5;
-        g.beginPath(); g.moveTo(0, CEIL - 12); g.lineTo(W, CEIL - 12); g.moveTo(0, CEIL); g.lineTo(W, CEIL);
-        for (var x = 0; x <= W; x += 14) { g.moveTo(x, CEIL - 12); g.lineTo(x + 7, CEIL); g.lineTo(x + 14, CEIL - 12); }
-        g.stroke();
+        /* the wall's frame: the LED wall the panels hang in */
+        g.fillStyle = '#05070b'; g.fillRect(6, TOPF - 22, W - 12, BOTF - TOPF + 44);
+        g.strokeStyle = '#1e2636'; g.lineWidth = 2; g.strokeRect(6, TOPF - 22, W - 12, BOTF - TOPF + 44);
+        /* the floor, and the road case on it */
         g.fillStyle = '#10151f'; g.fillRect(0, FLOOR, W, H - FLOOR);
         g.fillStyle = 'rgba(255,181,71,.5)'; g.fillRect(0, FLOOR, W, 2);
+        catchCase(g);
 
-        wall(g);
-        tech(g);
-        aim(g);
-
-        trail.forEach(function (p, i) { g.fillStyle = 'rgba(216,245,90,' + (i / trail.length * .3).toFixed(2) + ')'; g.beginPath(); g.arc(p.x, p.y, R * .7, 0, 7); g.fill(); });
-        if (ball) { g.fillStyle = '#d8f55a'; g.beginPath(); g.arc(ball.x, ball.y, R, 0, 7); g.fill();
-          g.strokeStyle = 'rgba(255,255,255,.7)'; g.lineWidth = 1; g.beginPath(); g.arc(ball.x - 2, ball.y, R * .8, -1, 1); g.stroke(); }
-        sparks.forEach(function (p) { g.fillStyle = 'rgba(143,235,255,' + (p.life * 1.8).toFixed(2) + ')'; g.fillRect(p.x, p.y, 2, 2); });
-        hud(g);
-      }
-
-      /* The wall: a column of panels, the working ones playing one moving
-         picture between them, the broken ones each broken their own way. */
-      function wall(g) {
-        g.fillStyle = '#05070b'; g.fillRect(WALL_X - 4, WALL_TOP - 4, W - WALL_X + 8, ROWS * PANEL + 8);
-        panels.forEach(function (p, i) {
-          var y = WALL_TOP + i * PANEL, w = W - WALL_X - 6;
-          var t = time * .6 + i * .18;
-          if (!p.fault) {
-            var gr = g.createLinearGradient(WALL_X, y, WALL_X + w, y + PANEL);
-            gr.addColorStop(0, 'hsl(' + (190 + 40 * Math.sin(t)) + ',85%,' + (38 + 8 * Math.sin(t * 1.7)) + '%)');
-            gr.addColorStop(1, 'hsl(' + (260 + 30 * Math.sin(t * .8)) + ',70%,34%)');
-            g.fillStyle = gr;
-          } else if (p.fault === 'dead') {
-            g.fillStyle = '#0b0e14';
-          } else if (p.fault === 'flicker') {
-            g.fillStyle = Math.sin(time * 37 + i) > .2 ? '#0b0e14' : 'hsl(' + (200 + 40 * Math.sin(t)) + ',80%,42%)';
-          } else {
-            g.fillStyle = 'hsl(310,90%,' + (40 + 6 * Math.sin(time * 5)) + '%)';
-          }
-          g.fillRect(WALL_X, y + 1, w, PANEL - 2);
-          if (p.fault === 'tint' || p.fault === 'flicker') {
-            g.fillStyle = 'rgba(0,0,0,.35)';
-            for (var k = 0; k < 3; k++) g.fillRect(WALL_X, y + 4 + ((time * 60 + k * 17 + i * 9) % (PANEL - 8)), w, 2);
-          }
-          if (p.fault) {
-            /* the mark: a corner flag so broken panels can be found at a glance */
-            g.fillStyle = Math.sin(time * 6) > 0 ? '#FF5A6E' : '#8a2432';
-            g.beginPath(); g.moveTo(WALL_X, y + 2); g.lineTo(WALL_X + 12, y + 2); g.lineTo(WALL_X, y + 14); g.closePath(); g.fill();
-          }
-          if (time - p.fixedAt < .5) { g.fillStyle = 'rgba(92,242,196,' + (.5 - (time - p.fixedAt)).toFixed(2) + ')'; g.fillRect(WALL_X, y + 1, w, PANEL - 2); }
-          g.fillStyle = 'rgba(0,0,0,.5)'; g.fillRect(WALL_X, y, w, 1);
+        panels.forEach(function (p) { panel(g, p); });
+        arcs.forEach(function (a) {
+          g.strokeStyle = 'rgba(160,240,255,' + (a.life * 2).toFixed(2) + ')'; g.lineWidth = 2; g.beginPath(); g.moveTo(a.x1, a.y1);
+          for (var k = 1; k < 6; k++) g.lineTo(a.x1 + (a.x2 - a.x1) * k / 6 + rnd(-6, 6), a.y1 + (a.y2 - a.y1) * k / 6 + rnd(-6, 6));
+          g.lineTo(a.x2, a.y2); g.stroke();
         });
-      }
-      function tech(g) {
-        var x = HAND.x - 16, y = FLOOR;
-        g.fillStyle = '#2FD8FF'; g.globalAlpha = .9;
-        g.beginPath(); g.arc(x, y - 58, 8, 0, 7); g.fill();               /* head */
-        g.fillRect(x - 7, y - 49, 14, 26);                                 /* body */
-        g.fillRect(x - 7, y - 23, 5, 23); g.fillRect(x + 2, y - 23, 5, 23); /* legs */
-        g.save(); g.translate(x + 5, y - 46); g.rotate(-(phase === 'flight' ? .4 : angle || .8));   /* the throwing arm */
-        g.fillRect(0, -2.5, 22, 5); g.restore();
+        if (state === 'aim') preview(g);
+        balls.forEach(function (b) {
+          if (b.fire > 0) { g.fillStyle = 'rgba(255,140,40,.45)'; g.beginPath(); g.arc(b.x, b.y, R + 5, 0, 7); g.fill(); }
+          g.fillStyle = '#d8f55a'; g.beginPath(); g.arc(b.x, b.y, R, 0, 7); g.fill();
+          g.strokeStyle = 'rgba(255,255,255,.75)'; g.lineWidth = 1; g.beginPath(); g.arc(b.x - 2, b.y, R * .8, -1, 1); g.stroke();
+        });
+        sparks.forEach(function (p) { g.globalAlpha = Math.min(1, p.life * 2); g.fillStyle = p.c; g.fillRect(p.x, p.y, 2.5, 2.5); });
         g.globalAlpha = 1;
-        if (!ball && phase !== 'done') { g.fillStyle = '#d8f55a'; g.beginPath(); g.arc(HAND.x, HAND.y, R, 0, 7); g.fill(); }
-      }
-      /* The aim: a line while the angle sweeps; the first stretch of the
-         real arc while the power pulses. */
-      function aim(g) {
-        if (ball || betweenRounds > 0 || phase === 'done') return;
-        var a = phase === 'angle' ? angleNow() : angle;
-        if (phase === 'angle') {
-          g.strokeStyle = 'rgba(216,245,90,.55)'; g.lineWidth = 2; g.setLineDash([2, 6]);
-          g.beginPath(); g.moveTo(HAND.x, HAND.y); g.lineTo(HAND.x + Math.cos(a) * 90, HAND.y - Math.sin(a) * 90); g.stroke(); g.setLineDash([]);
-        } else {
-          var v = speedFor(powerNow()), vx = Math.cos(a) * v, vy = -Math.sin(a) * v;
-          g.fillStyle = 'rgba(216,245,90,.6)';
-          for (var t = .04; t < .3; t += .04) {
-            var px = HAND.x + vx * t, py = HAND.y + vy * t + G * t * t / 2;
-            g.beginPath(); g.arc(px, py, 2, 0, 7); g.fill();
-          }
-          /* the power meter */
-          var p = powerNow();
-          g.fillStyle = 'rgba(255,255,255,.08)'; g.fillRect(14, 470, 8, 110);
-          g.fillStyle = p > .8 ? '#FF5A6E' : p > .5 ? '#FFB547' : '#5CF2C4';
-          g.fillRect(14, 470 + 110 * (1 - p), 8, 110 * p);
+        rig(g);
+        tech(g);
+        confetti.forEach(function (c) { g.save(); g.translate(c.x, c.y); g.rotate(c.r); g.fillStyle = c.c; g.globalAlpha = Math.min(1, c.life); g.fillRect(-3, -1.5, 6, 3); g.restore(); });
+        g.globalAlpha = 1;
+        pops.forEach(function (p) {
+          g.globalAlpha = Math.min(1, p.life * 1.5); g.fillStyle = p.col;
+          g.font = (p.big ? '700 22px' : '700 12px') + ' Sora, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+          if (p.big) { g.shadowColor = p.col; g.shadowBlur = 18; }
+          g.fillText(p.text, clamp(p.x, 60, W - 60), p.y); g.shadowBlur = 0;
+        });
+        g.globalAlpha = 1;
+        hud(g);
+        if (!thrown && state === 'aim') {
+          g.fillStyle = 'rgba(237,242,248,' + (.55 + .3 * Math.sin(time * 4)).toFixed(2) + ')';
+          g.font = '600 11px Inter, sans-serif'; g.textAlign = 'center';
+          g.fillText(words(ctx.touch ? 'panelfixer_hint_touch' : 'panelfixer_hint'), W / 2, BOTF + 44);
         }
+      }
+      function panel(g, p) {
+        var x = p.x - PW / 2, y = p.y - PH / 2, flash = time - p.hitAt < .15, fixedGlow = time - p.fixedAt < .6;
+        g.fillStyle = '#0b0e14'; g.fillRect(x - 1, y - 1, PW + 2, PH + 2);
+        if (p.state === 'broken') {
+          var on = p.fault === 'flicker' ? Math.sin(time * 37 + p.x) > .3 : p.fault === 'tint';
+          g.fillStyle = p.fault === 'tint' ? 'hsl(310,90%,45%)' : on ? p.col : '#0d1119';
+          g.fillRect(x, y, PW, PH);
+          g.fillStyle = Math.sin(time * 6 + p.y) > 0 ? '#FF5A6E' : '#8a2432';
+          g.beginPath(); g.moveTo(x, y); g.lineTo(x + 9, y); g.lineTo(x, y + 9); g.closePath(); g.fill();
+        } else {
+          g.fillStyle = p.col; g.globalAlpha = state === 'show' ? 1 : .62; g.fillRect(x, y, PW, PH); g.globalAlpha = 1;
+          if (p.state === 'power') {
+            g.fillStyle = 'rgba(92,242,196,' + (.55 + .35 * Math.sin(time * 5)).toFixed(2) + ')'; g.fillRect(x, y, PW, PH);
+            g.fillStyle = '#0b0e14'; g.font = '700 11px Sora, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('⚡', p.x, p.y + 1);
+          }
+        }
+        /* the LED pixel grid on every panel */
+        g.fillStyle = 'rgba(0,0,0,.28)';
+        for (var gx = 4; gx < PW; gx += 4) g.fillRect(x + gx, y, 1, PH);
+        for (var gy = 4; gy < PH; gy += 4) g.fillRect(x, y + gy, PW, 1);
+        if (flash) { g.fillStyle = 'rgba(255,255,255,.55)'; g.fillRect(x, y, PW, PH); }
+        if (fixedGlow) { g.strokeStyle = 'rgba(92,242,196,' + (.6 - (time - p.fixedAt)).toFixed(2) + ')'; g.lineWidth = 3; g.strokeRect(x - 2, y - 2, PW + 4, PH + 4); }
+      }
+      /* the path the throw will take: the first stretch, or with GUIDE the
+         whole way through the first two bounces */
+      function preview(g) {
+        var d = dirOf(aim), b = { x: LX + d.x * 10, y: LY + d.y * 10, vx: d.x * SPEED, vy: d.y * SPEED }, bounces = 0, limit = guide > 0 ? 2 : 0;
+        g.fillStyle = guide > 0 ? 'rgba(92,242,196,.75)' : 'rgba(216,245,90,.6)';
+        for (var t = 0; t < (guide > 0 ? 3 : .55); t += 1 / 60) {
+          b.vy += G / 60; b.x += b.vx / 60; b.y += b.vy / 60;
+          if (b.x < R || b.x > W - R) { b.vx = -b.vx; b.x = clamp(b.x, R, W - R); }
+          var hit = false;
+          for (var i = 0; i < panels.length; i++) if (collide({ x: b.x, y: b.y, vx: b.vx, vy: b.vy, fire: 0, bounces: 0 }, { x: panels[i].x, y: panels[i].y, hitAt: 99, state: 'x' })) { hit = true; break; }
+          if (hit) {
+            if (bounces++ >= limit) { g.beginPath(); g.arc(b.x, b.y, 4, 0, 7); g.fill(); break; }
+            /* bounce the preview the same way */
+            var p = panels.reduce(function (m, q) { return Math.hypot(q.x - b.x, q.y - b.y) < Math.hypot(m.x - b.x, m.y - b.y) ? q : m; });
+            var cx = clamp(b.x, p.x - PW / 2, p.x + PW / 2), cy = clamp(b.y, p.y - PH / 2, p.y + PH / 2), dx = b.x - cx, dy = b.y - cy, dd = Math.hypot(dx, dy) || 1;
+            var nx = dx / dd, ny = dy / dd, vn = b.vx * nx + b.vy * ny;
+            b.x = cx + nx * R; b.y = cy + ny * R;
+            if (vn < 0) { b.vx -= (1 + REST) * vn * nx; b.vy -= (1 + REST) * vn * ny; }
+          }
+          if (Math.round(t * 60) % 3 === 0) { g.beginPath(); g.arc(b.x, b.y, 2, 0, 7); g.fill(); }
+          if (b.y > FLOOR) break;
+        }
+      }
+      function catchCase(g) {
+        var x = bucket.x, y = FLOOR - 22;
+        g.fillStyle = '#1b2230'; g.fillRect(x - 32, y, 64, 20);
+        g.fillStyle = '#0a0d14'; g.fillRect(x - 28, y + 3, 56, 7);
+        g.strokeStyle = '#8f99a8'; g.lineWidth = 2; g.strokeRect(x - 32, y, 64, 20);
+        g.fillStyle = '#FFB547'; g.fillRect(x - 32, y + 15, 64, 3);
+        g.fillStyle = '#c9d1dc'; [x - 24, x + 24].forEach(function (wx) { g.beginPath(); g.arc(wx, FLOOR - 1, 3.5, 0, 7); g.fill(); });
+      }
+      /* the truss and the scissor lift the tech stands on */
+      function rig(g) {
+        g.strokeStyle = '#3a4456'; g.lineWidth = 1.5;
+        g.beginPath(); g.moveTo(0, 22); g.lineTo(W, 22); g.moveTo(0, 34); g.lineTo(W, 34);
+        for (var x = 0; x <= W; x += 14) { g.moveTo(x, 22); g.lineTo(x + 7, 34); g.lineTo(x + 14, 22); }
+        g.stroke();
+        var py = 118;
+        g.fillStyle = '#1b2230'; g.fillRect(LX - 38, py, 76, 6);
+        g.strokeStyle = '#FFB547'; g.lineWidth = 2;
+        g.beginPath(); g.moveTo(LX - 38, py); g.lineTo(LX - 38, py - 22); g.lineTo(LX + 38, py - 22); g.lineTo(LX + 38, py); g.stroke();
+        g.strokeStyle = '#59647a'; g.lineWidth = 2;
+        g.beginPath(); for (var k = 0; k < 2; k++) { var y0 = py + 6 + k * 12; g.moveTo(LX - 26, y0); g.lineTo(LX + 26, y0 + 12); g.moveTo(LX + 26, y0); g.lineTo(LX - 26, y0 + 12); } g.stroke();
+      }
+      /* THE TECH (Chase: "put more work into the person throwing the
+         ball"): a body that leans into the aim, an arm that follows it, a
+         face that reacts. */
+      function tech(g) {
+        var x = LX, feet = 116, t = time;
+        var bob = Math.sin(t * 2.2) * 1.2, lean = state === 'aim' ? aim * 4 : 0, jump = 0, arms = 'aim';
+        if (mood === 'cheer' && moodT < 1.6) { jump = -Math.abs(Math.sin(moodT * 9)) * 6; arms = 'up'; }
+        if (mood === 'dance') { jump = -Math.abs(Math.sin(t * 10)) * 5; lean = Math.sin(t * 5) * 5; arms = Math.sin(t * 5) > 0 ? 'up' : 'wave'; }
+        if (mood === 'facepalm' && moodT < 1.8) arms = 'palm';
+        if (state === 'windup') { lean = -aim * 3 - 3; arms = 'back'; }
+        if (mood === 'follow' && moodT < .35) arms = 'through';
+        var hy = feet - 42 + bob + jump, hx = x + lean;
+        g.lineCap = 'round';
+        /* legs */
+        g.strokeStyle = '#1c2330'; g.lineWidth = 5;
+        g.beginPath(); g.moveTo(x - 4, feet - 16 + jump); g.lineTo(x - 5, feet); g.moveTo(x + 4, feet - 16 + jump); g.lineTo(x + 5, feet); g.stroke();
+        /* body: black tee, tool belt */
+        g.fillStyle = '#151a24'; roundRect(g, hx - 8, hy + 8, 16, 20, 4); g.fill();
+        g.fillStyle = '#FFB547'; g.fillRect(hx - 8, hy + 23, 16, 3);
+        g.fillStyle = '#8f99a8'; g.fillRect(hx + 3, hy + 26, 3, 5);
+        /* arms */
+        g.strokeStyle = '#e2b48f'; g.lineWidth = 3.5;
+        var sh = { x: hx + 6, y: hy + 12 }, sh2 = { x: hx - 6, y: hy + 12 };
+        var d = dirOf(aim), hand;
+        if (arms === 'aim') hand = { x: sh.x + d.x * 13, y: sh.y + d.y * 13 };
+        else if (arms === 'back') hand = { x: sh.x - d.x * 10, y: sh.y - 10 };
+        else if (arms === 'through') hand = { x: sh.x + d.x * 16, y: sh.y + d.y * 16 };
+        else if (arms === 'up') hand = { x: sh.x + 6, y: sh.y - 16 };
+        else if (arms === 'wave') hand = { x: sh.x + 12, y: sh.y - 8 };
+        else hand = { x: hx + 2, y: hy - 2 };   /* palm on face */
+        g.beginPath(); g.moveTo(sh.x, sh.y); g.lineTo(hand.x, hand.y); g.stroke();
+        var other = arms === 'up' || arms === 'wave' ? { x: sh2.x - 6, y: sh2.y - 16 } : arms === 'palm' ? { x: sh2.x - 4, y: sh2.y + 10 } : { x: sh2.x - 4, y: sh2.y + 12 };
+        g.beginPath(); g.moveTo(sh2.x, sh2.y); g.lineTo(other.x, other.y); g.stroke();
+        /* the ball in hand, until it is thrown */
+        if ((state === 'aim' || state === 'windup') && left > 0) { g.fillStyle = '#d8f55a'; g.beginPath(); g.arc(hand.x, hand.y, 4.5, 0, 7); g.fill(); }
+        /* head, hair, headset */
+        g.fillStyle = '#e2b48f'; g.beginPath(); g.arc(hx, hy, 8, 0, 7); g.fill();
+        g.fillStyle = '#3b2a20'; g.beginPath(); g.arc(hx, hy - 3, 8, Math.PI * 1.05, Math.PI * 1.95); g.fill();
+        g.strokeStyle = '#2FD8FF'; g.lineWidth = 1.5; g.beginPath(); g.arc(hx, hy, 9.5, Math.PI * 1.1, Math.PI * 1.9); g.stroke();
+        g.beginPath(); g.moveTo(hx - 8, hy + 1); g.lineTo(hx - 4, hy + 6); g.stroke();
+        /* the face says how it went */
+        g.fillStyle = '#10131a'; g.strokeStyle = '#10131a'; g.lineWidth = 1.3;
+        var ex = state === 'aim' ? d.x * 2 : 0, ey = state === 'aim' ? clamp(d.y, 0, 1) * 1.5 : 0;
+        if (arms !== 'palm') { g.fillRect(hx - 4 + ex, hy - 1 + ey, 2, 2); g.fillRect(hx + 2 + ex, hy - 1 + ey, 2, 2); }
+        g.beginPath();
+        if (mood === 'cheer' || mood === 'dance') g.arc(hx, hy + 3, 3, .1, Math.PI - .1);
+        else if (mood === 'facepalm') g.arc(hx, hy + 6, 2.5, Math.PI + .3, -.3);
+        else if (mood === 'nervous') { g.moveTo(hx - 3, hy + 4); g.lineTo(hx - 1, hy + 3); g.lineTo(hx + 1, hy + 4); g.lineTo(hx + 3, hy + 3); }
+        else if (state === 'windup' || state === 'aim') { g.moveTo(hx - 2, hy + 4); g.lineTo(hx + 2, hy + 4); }
+        else g.arc(hx, hy + 3, 2.5, .3, Math.PI - .3);
+        g.stroke();
+        if (mood === 'nervous') { g.fillStyle = '#8FEBFF'; g.beginPath(); g.ellipse(hx + 9, hy - 3 + (t * 12 % 6), 1.6, 2.4, 0, 0, 7); g.fill(); }
       }
       function hud(g) {
         g.font = '600 9px Inter, sans-serif'; g.textBaseline = 'top'; g.textAlign = 'left';
-        g.fillStyle = 'rgba(138,150,166,.85)';
-        g.fillText(words('panelfixer_round').toUpperCase() + ' ' + round, 12, 48);
-        g.fillText(words('panelfixer_throws').toUpperCase() + ' ' + Math.max(0, throws), 12, 62);
-        if (streak > 1) { g.fillStyle = '#FF4FD8'; g.fillText('×' + Math.min(streak, 5), 12, 76); }
+        g.fillStyle = 'rgba(138,150,166,.9)';
+        g.fillText(words('panelfixer_wall').toUpperCase() + ' ' + level, 12, 48);
+        g.fillText(words('panelfixer_throws').toUpperCase(), 12, 64);
+        for (var i = 0; i < BALLS + 4; i++) {
+          if (i >= left && i >= BALLS) break;
+          g.fillStyle = i < left ? '#d8f55a' : 'rgba(255,255,255,.08)';
+          g.beginPath(); g.arc(16 + (i % 7) * 11, 82 + Math.floor(i / 7) * 11, 4, 0, 7); g.fill();
+        }
+        g.textAlign = 'right'; g.fillStyle = 'rgba(138,150,166,.9)';
+        g.fillText(words('panelfixer_broken').toUpperCase() + ' ' + brokenLeft(), W - 12, 48);
+        var m = mult();
+        g.fillStyle = m >= 5 ? '#FF4FD8' : m >= 3 ? '#FFB547' : m >= 2 ? '#5CF2C4' : 'rgba(138,150,166,.9)';
+        g.font = '700 14px Sora, sans-serif'; g.fillText('×' + m, W - 12, 62);
+      }
+      function roundRect(g, x, y, w, h, r) {
+        g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r);
+        g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath();
       }
 
-      return { update: update, draw: draw, press: function () { press(); }, stop: function () {} };
+      return {
+        update: update, draw: draw,
+        press: function (d) { if (d === 'go') throwNow(); },
+        /* a finger or the mouse aims from the hand toward it; letting go throws */
+        point: function (phase, px, py) {
+          if (state !== 'aim') return;
+          if (phase === 'down' || phase === 'move' || phase === 'hover') aim = clamp(Math.atan2(px - LX, Math.max(8, py - LY)), -1.38, 1.38);
+          if (phase === 'down') aimFrom = { x: px, y: py };
+          if (phase === 'up' && aimFrom) { aimFrom = null; throwNow(); }
+          if (phase === 'cancel') aimFrom = null;
+        },
+        stop: function () { balls = []; }
+      };
     }
   };
 })();
