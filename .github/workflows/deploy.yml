@@ -245,6 +245,9 @@ jobs:
       - name: Test · workers/partner-api
         working-directory: workers
         run: node test/partner-api.test.mjs
+      - name: Test · workers/resend-webhook
+        working-directory: workers
+        run: node test/resend-webhook.test.mjs
       - name: Test · workers/signup
         working-directory: workers
         run: node test/signup.test.mjs

@@ -57,6 +57,7 @@ import adminPublish from "./admin-publish.js";
 import adminMigrate from "./admin-migrate.js";
 import embed from "./embed.js";
 import embedIcon from "./embed-icon.js";
+import resendWebhook from "./resend-webhook.js";
 import mediaRelease, { cleanUnusedMedia, isCleanupHour } from "./media-cleanup.js";
 import staffEmbed from "./staff-embed.js";
 import adminActAs from "./admin-actas.js";
@@ -415,6 +416,8 @@ const ROUTES = {
   "/api/admin/translate": adminTranslate,
 
   // Uploads. GET /media/* is handled by prefix below, not here.
+  /* Resend reporting bounces, complaints, opens and clicks (signed). */
+  "/api/resend-webhook": resendWebhook,
   /* An editor closing hands back the files it replaced (media-cleanup.js). */
   "/api/staff-media-release": mediaRelease,
   "/api/admin/media": media,

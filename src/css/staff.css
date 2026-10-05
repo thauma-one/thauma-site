@@ -2896,3 +2896,5 @@ html.pe-open{overflow:hidden}
 .ws-fmt-step input{width:52px;text-align:center;font:600 14px var(--font-body);padding:4px;border:1px solid rgba(0,0,0,.25);border-radius:6px;background:#fff;color:#0B0F15;-moz-appearance:textfield}
 .ws-fmt-step input:focus{outline:2px solid var(--voice-tech);outline-offset:0}
 .ws-fmt-step input::-webkit-inner-spin-button{display:none}
+/* A sent newsletter's bounced copies (resend-webhook.js). */
+.ml-bounced{font-weight:600;color:var(--warn)}

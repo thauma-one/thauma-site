@@ -160,7 +160,12 @@
         : null;
       var meta = esc(l.name) + ' · ' +
         esc(m.finished_at ? new Date(m.finished_at).toLocaleDateString() : '') +
-        (m.sent_count ? ' · ' + esc(fill('ml.sentTo', { n: m.sent_count })) : '');
+        (m.sent_count ? ' · ' + esc(fill('ml.sentTo', { n: m.sent_count })) : '') +
+        /* What became of the copies (resend-webhook.js), only what happened:
+           a bounce in the warning color, opens and clicks once tracked. */
+        (m.bounced ? ' · <b class="ml-bounced">' + esc(fill('ml.bounced', { n: m.bounced })) + '</b>' : '') +
+        (m.opened ? ' · ' + esc(fill('ml.opened', { n: m.opened })) : '') +
+        (m.clicked ? ' · ' + esc(fill('ml.clicked', { n: m.clicked })) : '');
       var inner = '<span class="ml-sentall-subject">' + esc(m.subject) + '</span>' +
         '<span class="ml-sentall-meta">' + meta +
           (link ? '' : ' · <i>' + esc(tr('ml.notPublished')) + '</i>') + '</span>';

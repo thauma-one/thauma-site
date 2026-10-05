@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "74eaf378da636547";
+export const SOURCE_DIGEST = "423accf550136dad";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -408,6 +408,9 @@ WHERE id = :id AND partner_id IS :partner_id AND status = 'draft';`,
   mailing_finish: `UPDATE mailings
 SET status = :status, finished_at = :now, sent_count = :sent_count
 WHERE id = :id AND partner_id IS :partner_id;`,
+  mailing_link_add: `INSERT INTO mailing_links (id, mailing_id, url, clicks, created_at) VALUES (:id, :mailing_id, :url, 1, :now);`,
+  mailing_link_count: `UPDATE mailing_links SET clicks = clicks + 1 WHERE id = :id;`,
+  mailing_link_find: `SELECT id FROM mailing_links WHERE mailing_id = :mailing_id AND url = :url;`,
   mailing_list_archive: `UPDATE mailing_lists
 SET archived_at = :now, updated_at = :now
 WHERE id = :id AND partner_id IS :partner_id;`,
@@ -526,7 +529,10 @@ FROM mailings m
 WHERE m.list_id = :list_id AND m.partner_id IS :partner_id
 ORDER BY CASE m.status WHEN 'draft' THEN 0 ELSE 1 END,
          COALESCE(m.finished_at, m.created_at) DESC;`,
-  mailings_sent_for_list: `SELECT m.id, m.slug, m.subject, m.status, m.finished_at, m.sent_count
+  mailings_sent_for_list: `SELECT m.id, m.slug, m.subject, m.status, m.finished_at, m.sent_count,
+       (SELECT COUNT(*) FROM mailing_recipients r WHERE r.mailing_id = m.id AND r.status = 'bounced') AS bounced,
+       (SELECT COUNT(*) FROM mailing_recipients r WHERE r.mailing_id = m.id AND r.opened_at IS NOT NULL) AS opened,
+       (SELECT COUNT(*) FROM mailing_recipients r WHERE r.mailing_id = m.id AND r.clicked_at IS NOT NULL) AS clicked
   FROM mailings m
   JOIN mailing_lists l ON l.id = m.list_id
  WHERE m.list_id = :list_id AND l.partner_id IS :partner_id
@@ -874,6 +880,16 @@ WHERE t.partner_id = :partner_id
  ORDER BY v.published_at DESC
  LIMIT COALESCE(
    (SELECT max_items FROM video_sources WHERE partner_id IS :partner_id), 0);`,
+  recipient_bounced: `UPDATE mailing_recipients SET status = 'bounced', error = :error, updated_at = :now
+WHERE provider_id = :provider_id;`,
+  recipient_by_provider: `SELECT mailing_id, subscriber_id, status FROM mailing_recipients WHERE provider_id = :provider_id;`,
+  recipient_clicked: `UPDATE mailing_recipients
+   SET clicked_at = COALESCE(clicked_at, :now), last_click_at = :now, click_count = click_count + 1
+ WHERE provider_id = :provider_id;`,
+  recipient_complained: `UPDATE mailing_recipients SET error = 'Marked as spam by the recipient', updated_at = :now
+WHERE provider_id = :provider_id;`,
+  recipient_opened: `UPDATE mailing_recipients SET opened_at = COALESCE(opened_at, :now)
+WHERE provider_id = :provider_id;`,
   resource_can_edit_shared: `SELECT 1 AS ok FROM resource_shares
  WHERE resource_id = :id AND user_id = :user_id AND can_edit = 1
 UNION ALL
@@ -1031,6 +1047,8 @@ SELECT :id, l.id, l.partner_id, :email, :name, 'pending', :token, :source, :lang
        :now, :now
   FROM mailing_lists l
  WHERE l.id = :list_id AND l.partner_id IS :partner_id;`,
+  subscriber_bounced: `UPDATE subscribers SET status = 'bounced', updated_at = :now
+WHERE id = :id AND status = 'subscribed';`,
   subscriber_by_id_public: `SELECT id, list_id, partner_id, email, status, lang FROM subscribers WHERE id = :id;`,
   subscriber_by_token: `SELECT s.id, s.email, s.name, s.status, s.list_id,
        l.name AS list_name, l.slug AS list_slug

@@ -2637,7 +2637,12 @@ SELECT m.slug, m.subject, m.preheader, m.finished_at AS sent_at,
 -- what it needs to build the public address of each. Not gated on
 -- archive_public — a partner may look at their own history whether or not it
 -- is published, and the screen says which state it is in.
-SELECT m.id, m.slug, m.subject, m.status, m.finished_at, m.sent_count
+-- With what happened to the copies (resend-webhook.js): bounced, and opened
+-- and clicked once the sending domain tracks them.
+SELECT m.id, m.slug, m.subject, m.status, m.finished_at, m.sent_count,
+       (SELECT COUNT(*) FROM mailing_recipients r WHERE r.mailing_id = m.id AND r.status = 'bounced') AS bounced,
+       (SELECT COUNT(*) FROM mailing_recipients r WHERE r.mailing_id = m.id AND r.opened_at IS NOT NULL) AS opened,
+       (SELECT COUNT(*) FROM mailing_recipients r WHERE r.mailing_id = m.id AND r.clicked_at IS NOT NULL) AS clicked
   FROM mailings m
   JOIN mailing_lists l ON l.id = m.list_id
  WHERE m.list_id = :list_id AND l.partner_id IS :partner_id
@@ -3191,3 +3196,54 @@ SELECT m.body_html, m.body_md,
        (SELECT group_concat(a.object_key, char(10)) FROM mailing_attachments a WHERE a.mailing_id = m.id) AS attachment_keys
 FROM mailings m
 WHERE m.id = :id AND m.partner_id IS :partner_id AND m.status = 'draft';
+
+
+-- ===========================================================================
+-- WHAT HAPPENED TO A SENT COPY (2026-10-04) — Resend's webhook reports
+-- bounces, spam complaints, opens and clicks by its own message id, which
+-- the send stored on the recipient's row (provider_id). workers/src/
+-- resend-webhook.js. Ids are Resend's, unique across every ministry.
+-- ===========================================================================
+
+-- name: recipient_by_provider
+SELECT mailing_id, subscriber_id, status FROM mailing_recipients WHERE provider_id = :provider_id;
+
+
+-- name: recipient_bounced
+UPDATE mailing_recipients SET status = 'bounced', error = :error, updated_at = :now
+WHERE provider_id = :provider_id;
+
+
+-- name: recipient_complained
+UPDATE mailing_recipients SET error = 'Marked as spam by the recipient', updated_at = :now
+WHERE provider_id = :provider_id;
+
+
+-- name: recipient_opened
+UPDATE mailing_recipients SET opened_at = COALESCE(opened_at, :now)
+WHERE provider_id = :provider_id;
+
+
+-- name: recipient_clicked
+UPDATE mailing_recipients
+   SET clicked_at = COALESCE(clicked_at, :now), last_click_at = :now, click_count = click_count + 1
+ WHERE provider_id = :provider_id;
+
+
+-- name: mailing_link_find
+SELECT id FROM mailing_links WHERE mailing_id = :mailing_id AND url = :url;
+
+
+-- name: mailing_link_count
+UPDATE mailing_links SET clicks = clicks + 1 WHERE id = :id;
+
+
+-- name: mailing_link_add
+INSERT INTO mailing_links (id, mailing_id, url, clicks, created_at) VALUES (:id, :mailing_id, :url, 1, :now);
+
+
+-- name: subscriber_bounced
+-- A PERMANENT bounce only: the address does not exist. Nothing is sent to
+-- it again until somebody sets it back on the subscriber's row.
+UPDATE subscribers SET status = 'bounced', updated_at = :now
+WHERE id = :id AND status = 'subscribed';
