@@ -763,8 +763,8 @@ SELECT s.id, s.email, s.name, s.status, s.confirm_token, s.list_id,
 -- asked for a newsletter and a prayer list gets ONE email rather than two —
 -- and confirms both with one click, which is what they thought they were
 -- doing when they ticked two boxes.
-SELECT s.id, s.email, s.name, s.status, s.list_id,
-       l.name AS list_name, l.slug AS list_slug
+SELECT s.id, s.email, s.name, s.status, s.list_id, s.partner_id, s.lang,
+       l.name AS list_name, l.slug AS list_slug, l.from_name
   FROM subscribers s
   JOIN mailing_lists l ON l.id = s.list_id
  WHERE s.confirm_token = :token AND s.status = 'pending'

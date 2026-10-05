@@ -32,6 +32,7 @@
 const RESEND = "https://api.resend.com/emails";
 
 import { t } from "./mail-i18n.js";
+import { render } from "./newsletter.js";
 
 const esc = (s) =>
   String(s == null ? "" : s).replace(/[&<>"']/g, (c) =>
@@ -547,13 +548,28 @@ export function contactReceiptEmail({ name, ministry, topic, subject, message,
   };
 }
 
-export function listConfirmEmail({ name, listName, confirmUrl, fromName, origin, lang }) {
+export function listConfirmEmail({ name, listName, confirmUrl, fromName, origin, lang, look = null }) {
   /* THE SUBSCRIBER'S OWN LANGUAGE, from the page they signed up on. Null when
      nothing said — t() falls back to English one key at a time, so a
      half-finished translation degrades to a mixed message rather than a
      blank. */
   const T = (k, v) => t(lang, k, v);
   const hello = name ? T("confirm.hello", { name }) : T("confirm.helloAnon");
+  /* A MINISTRY'S LIST IS CONFIRMED IN THE MINISTRY'S LOOK (BACKLOG §1: it
+     came "branded THAUMA for Chase Roush's list"): its email look — name or
+     logo, colors, fonts — with a small Thauma note at the foot, as its site
+     carries. Thauma's own lists keep Thauma's shell below. */
+  if (look) {
+    return {
+      subject: T("confirm.subject", { list: listName }),
+      text: [hello, "", T("confirm.body", { list: listName, from: fromName }).replace(/<\/?b>/g, ""), "", confirmUrl, "", T("confirm.ignore")].join("\n"),
+      html: render(`<p>${esc(hello)}</p><p>${T("confirm.body", { list: esc(listName), from: esc(fromName) })}</p>`, {
+        look, lang: lang || "en", subject: T("confirm.heading"), fromName: look.name || fromName, listName: "",
+        action: { url: confirmUrl, label: T("confirm.button"), after: `<p>${T("confirm.ignore")}</p>` },
+        note: T("brand.note"),
+      }),
+    };
+  }
   return {
     subject: T("confirm.subject", { list: listName }),
     text: [

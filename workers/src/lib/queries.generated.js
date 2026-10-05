@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "efc94209cf14ffd9";
+export const SOURCE_DIGEST = "1bbce4a794a8ddfd";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -1069,8 +1069,8 @@ SELECT :id, l.id, l.partner_id, :email, :name, 'pending', :token, :source, :lang
   subscriber_bounced: `UPDATE subscribers SET status = 'bounced', updated_at = :now
 WHERE id = :id AND status = 'subscribed';`,
   subscriber_by_id_public: `SELECT id, list_id, partner_id, email, status, lang FROM subscribers WHERE id = :id;`,
-  subscriber_by_token: `SELECT s.id, s.email, s.name, s.status, s.list_id,
-       l.name AS list_name, l.slug AS list_slug
+  subscriber_by_token: `SELECT s.id, s.email, s.name, s.status, s.list_id, s.partner_id, s.lang,
+       l.name AS list_name, l.slug AS list_slug, l.from_name
   FROM subscribers s
   JOIN mailing_lists l ON l.id = s.list_id
  WHERE s.confirm_token = :token AND s.status = 'pending'

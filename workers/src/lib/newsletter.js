@@ -414,7 +414,7 @@ export function render(body, opts = {}) {
 
   const archive = opts.archiveUrl
     ? `<a href="${escapeHtml(opts.archiveUrl)}" style="color:${dim};text-decoration:underline">` +
-      "View this in your browser</a> &nbsp;·&nbsp; "
+      "View this in your browser</a>"
     : "";
 
   /* NO UNSUBSCRIBE LINK MEANS NO SEND — enforced by the caller, stated here.
@@ -444,7 +444,16 @@ export function render(body, opts = {}) {
       (L.small ? `<p style="margin:0 0 12px;color:${dim}">${escapeHtml(L.small).replace(/\n/g, "<br>")}</p>` : "")
     : "";
   const siteLink = L && L.siteUrl
-    ? `<a href="${escapeHtml(L.siteUrl)}" style="color:${accent};text-decoration:underline">${escapeHtml(L.siteUrl.replace(/^https?:\/\//, "").replace(/\/$/, ""))}</a> &nbsp;·&nbsp; `
+    ? `<a href="${escapeHtml(L.siteUrl)}" style="color:${accent};text-decoration:underline">${escapeHtml(L.siteUrl.replace(/^https?:\/\//, "").replace(/\/$/, ""))}</a>`
+    : "";
+  /* ONE BUTTON, for a message that asks for one thing (a confirmation):
+     a bulletproof table cell in the accent, then whatever follows it. */
+  const action = opts.action && opts.action.url
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:6px 0 20px"><tr>` +
+      `<td bgcolor="${accent}" style="background:${accent};border-radius:${Math.min(radius, 8)}px">` +
+      `<a href="${escapeHtml(opts.action.url)}" style="display:inline-block;padding:13px 26px;font-family:${bodyFont};` +
+      `font-size:15px;font-weight:700;color:${L ? L.onAccent : "#ffffff"};text-decoration:none">${escapeHtml(opts.action.label || "")}</a>` +
+      `</td></tr></table>` + (opts.action.after ? inlineStyles(opts.action.after, accent, ink, dim, line, dark, accent2, headFont) : "")
     : "";
   /* The site's web fonts, for the clients that load them (Apple Mail, iOS);
      everyone else reads the stacks named after them. */
@@ -523,14 +532,15 @@ ${pre}
       </td></tr>
 
       <tr><td class="pad" style="padding:20px 36px 30px;font-family:${bodyFont}">
-        ${styled}
+        ${styled}${action}
       </td></tr>
 
       <tr><td class="pad" style="padding:20px 36px 28px;border-top:1px solid ${line};
                      font-family:${bodyFont};font-size:12.5px;line-height:1.6;color:${dim}">
         ${footWords}
         <p style="margin:0 0 8px;color:${dim}">${escapeHtml(opts.listName || "")}</p>
-        <p style="margin:0;color:${dim}">${siteLink}${archive}${unsub}</p>
+        <p style="margin:0;color:${dim}">${[siteLink, archive, unsub].filter(Boolean).join(" &nbsp;·&nbsp; ")}</p>
+        ${opts.note ? `<p style="margin:10px 0 0;color:${dim};font-size:11.5px">${escapeHtml(opts.note)}</p>` : ""}
       </td></tr>
 
     </table>

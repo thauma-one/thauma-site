@@ -24,6 +24,9 @@
  * row and says the same thing as the first.
  */
 import { createDb } from "./lib/db.js";
+import { t } from "./lib/mail-i18n.js";
+import { lookForMail } from "./lib/email-look.js";
+import { brandPage } from "./lib/brand-page.js";
 
 const page = (title, body, status = 200) =>
   new Response(
@@ -85,15 +88,25 @@ export default {
     const esc = (v) => String(v == null ? "" : v)
       .replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;",
                                      '"': "&quot;", "'": "&#39;" }[c]));
+    /* In the language they signed up in (emailsAndForms.json "confirmed"). */
+    const lang = subs[0].lang || null;
     const names = subs.map((s) => esc(s.list_name));
     const listed = names.length === 1
       ? names[0]
-      : names.slice(0, -1).join(", ") + " and " + names[names.length - 1];
+      : names.slice(0, -1).join(", ") + " " + t(lang, "confirmed.and") + " " + names[names.length - 1];
+    const body = `<h1>${esc(t(lang, "confirmed.heading"))}</h1>` +
+      `<p>${t(lang, "confirmed.body", { lists: listed })}</p>` +
+      `<p>${esc(t(lang, "confirmed.stop"))}</p>`;
 
-    return page("Subscribed",
-      `<h1>You are subscribed</h1>
-       <p>You will now receive <b>${listed}</b>.</p>
-       <p>Every message includes a link to stop, and it works without signing
-          in to anything.</p>`);
+    /* IN THE MINISTRY'S OWN LOOK (lib/brand-page.js), now that the token has
+       proved this is a real sign-up: the same look as its emails and site.
+       Thauma's own lists keep the plain page. */
+    const look = subs[0].partner_id ? await lookForMail(db, subs[0].partner_id).catch(() => null) : null;
+    if (look) {
+      return new Response(brandPage({ look, title: t(lang, "confirmed.title"), body, lang: lang || "en",
+        name: look.name || subs[0].from_name || "", note: t(lang, "brand.note") }),
+        { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
+    }
+    return page(esc(t(lang, "confirmed.title")), body);
   },
 };

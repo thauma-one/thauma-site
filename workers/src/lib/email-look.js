@@ -169,5 +169,7 @@ export async function lookForMail(db, partnerId, { lang } = {}) {
   } catch { saved = null; }
   /* The live address, whatever deploy is sending: the reader is real. */
   const siteUrl = doc && site.subdomain ? `https://${site.subdomain}.thauma.one/` : null;
-  return emailLook({ doc, theme: { accent: pair.accent, accent2: pair.accent2, mode: face.embed_theme }, saved, siteUrl, lang });
+  const look = emailLook({ doc, theme: { accent: pair.accent, accent2: pair.accent2, mode: face.embed_theme }, saved, siteUrl, lang });
+  look.name = face.display_name || "";
+  return look;
 }

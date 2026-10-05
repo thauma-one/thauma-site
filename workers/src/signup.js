@@ -39,6 +39,7 @@
  * and send a confirmation. That is what makes it safe to leave open.
  */
 import { createDb } from "./lib/db.js";
+import { lookForMail } from "./lib/email-look.js";
 import { json } from "./lib/store.js";
 import { sendMail, listConfirmEmail } from "./lib/mail.js";
 import { detectLang } from "./contact-form.js";
@@ -528,6 +529,8 @@ export default {
           textIn(joined[joined.length - 1], "name", lang, joined[joined.length - 1].name),
       fromName: joined[0].from_name, origin, lang,
       confirmUrl: `${origin}/confirm?t=${token}`,
+      /* The ministry's own look (lib/email-look.js); Thauma's lists, none. */
+      look: joined[0].partner_id ? await lookForMail(db, joined[0].partner_id, { lang }).catch(() => null) : null,
     });
     await sendMail(env, {
       to: email, subject: mail.subject, html: mail.html, text: mail.text,

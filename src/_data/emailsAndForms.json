@@ -162,6 +162,16 @@
       "cardsFill": "What guides every decision.",
       "cardTitle": "Reliability",
       "cardText": "A few words about what this means and why it matters."
+    },
+    "brand": {
+      "note": "Powered by Thauma"
+    },
+    "confirmed": {
+      "title": "Subscribed",
+      "heading": "You are subscribed",
+      "body": "You will now receive <b>{lists}</b>.",
+      "stop": "Every message includes a link to stop, and it works without signing in to anything.",
+      "and": "and"
     }
   },
   "hr": {
@@ -327,6 +337,16 @@
       "cardsFill": "Što vodi svaku odluku.",
       "cardTitle": "Pouzdanost",
       "cardText": "Nekoliko riječi o tome što to znači i zašto je važno."
+    },
+    "brand": {
+      "note": "Pokreće Thauma"
+    },
+    "confirmed": {
+      "title": "Pretplaćeni ste",
+      "heading": "Pretplaćeni ste",
+      "body": "Od sada ćete primati <b>{lists}</b>.",
+      "stop": "Svaka poruka ima poveznicu za odjavu, koja radi bez prijave.",
+      "and": "i"
     }
   },
   "sr": {
@@ -492,6 +512,16 @@
       "cardsFill": "Што води сваку одлуку.",
       "cardTitle": "Поузданост",
       "cardText": "Неколико ријечи о томе што то значи и зашто је важно."
+    },
+    "brand": {
+      "note": "Покреће Таума"
+    },
+    "confirmed": {
+      "title": "Претплаћени сте",
+      "heading": "Претплаћени сте",
+      "body": "Од сада ћете примати <b>{lists}</b>.",
+      "stop": "Свака порука има везу за одјаву, која ради без пријаве.",
+      "and": "и"
     }
   },
   "sl": {
@@ -657,6 +687,16 @@
       "cardsFill": "Kaj vodi vsako odločitev.",
       "cardTitle": "Zanesljivost",
       "cardText": "Nekaj besed o tem, kaj to pomeni in zakaj je pomembno."
+    },
+    "brand": {
+      "note": "Poganja Thauma"
+    },
+    "confirmed": {
+      "title": "Naročeni ste",
+      "heading": "Naročeni ste",
+      "body": "Odslej boste prejemali <b>{lists}</b>.",
+      "stop": "Vsako sporočilo ima povezavo za odjavo, ki deluje brez prijave.",
+      "and": "in"
     }
   }
 }

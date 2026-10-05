@@ -741,6 +741,7 @@ const api = {
           listName: list.name,
           fromName: list.from_name, origin,
           confirmUrl: `${origin}/confirm?t=${token}`,
+          look: await lookForMail(db, partnerId),
         });
         const sent = await sendMail(env, {
           to: email,
@@ -794,6 +795,7 @@ const api = {
         const mail = listConfirmEmail({
           name: sub.name, listName: sub.list_name, fromName: sub.from_name, origin,
           confirmUrl: `${origin}/confirm?t=${token}`,
+          look: await lookForMail(db, partnerId),
         });
         const sent = await sendMail(env, {
           to: sub.email, subject: mail.subject, html: mail.html, text: mail.text,
@@ -1324,7 +1326,11 @@ const api = {
         const origin = siteOrigin(env, request);
         const sent = await sendMail(env, {
           to: email,
-          ...listConfirmEmail({ list, token, origin, name: name || null }),
+          /* Named arguments, as listConfirmEmail takes them: this passed
+             { list, token } and sent a confirmation with no link in it and
+             "undefined" where the list's name goes. */
+          ...listConfirmEmail({ name: name || null, listName: list.name, fromName: list.from_name, origin,
+                                confirmUrl: `${origin}/confirm?t=${token}`, look: await lookForMail(db, partnerId) }),
           from: `${list.from_name} <${list.from_email}>`,
           replyTo: list.reply_to || undefined,
         });

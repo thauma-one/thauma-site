@@ -10,6 +10,8 @@
 import { emailLook, cleanEmailLook } from "../src/lib/email-look.js";
 import { render } from "../src/lib/newsletter.js";
 import { starter, cleanDoc } from "../src/site/model.js";
+import { listConfirmEmail } from "../src/lib/mail.js";
+import { brandPage } from "../src/lib/brand-page.js";
 
 let pass = 0, fail = 0;
 async function check(name, fn) {
@@ -77,6 +79,26 @@ await check("no website: the plain email in the ministry's colors, and follow ca
 await check("saved values are cleaned: anything odd means a default", async () => {
   eq(cleanEmailLook({ mode: "neon", font: "comic", header: "banner", corners: 9, bar: "yes" }),
      { follow: true, mode: "light", font: "site", header: "name", corners: "soft", bar: true, footer: true, site: true }, "cleaned");
+});
+
+await check("a ministry's list is confirmed in its own look, with a Thauma note — not the THAUMA band", async () => {
+  const look = { ...emailLook({ doc: site({ look: "night" }), theme: THEME }), name: "Chase Roush" };
+  const m = listConfirmEmail({ name: "Ana", listName: "Newsletter", fromName: "Chase Roush", origin: "https://thauma.one",
+    confirmUrl: "https://thauma.one/confirm?t=abc", lang: "en", look });
+  assert(!/email-band\.png|alt="THAUMA"/.test(m.html), "no Thauma band");
+  assert(/CHASE ROUSH|>\s*Chase Roush<\/p>/i.test(m.html), "the ministry's name at the top");
+  assert(/<a href="https:\/\/thauma\.one\/confirm\?t=abc"[^>]*>[^<]+<\/a>/.test(m.html), "the button links to the confirmation");
+  assert(/Powered by Thauma/.test(m.html), "the small Thauma note");
+  assert(m.html.includes(look.bg), "the site's own ground");
+  const plain = listConfirmEmail({ name: "Ana", listName: "News", fromName: "Thauma", origin: "https://thauma.one", confirmUrl: "https://thauma.one/confirm?t=x", lang: "en" });
+  assert(/email-band\.png/.test(plain.html), "Thauma's own lists keep Thauma's shell");
+});
+
+await check("the confirm and unsubscribe pages wear the same look", async () => {
+  const look = { ...emailLook({ doc: site({ look: "paper" }), theme: THEME, siteUrl: "https://chaseroush.thauma.one/" }), name: "Chase Roush" };
+  const html = brandPage({ look, title: "Subscribed", body: "<h1>You are subscribed</h1>", name: "Chase Roush", note: "Powered by Thauma" });
+  assert(html.includes(`background:${look.bg}`) && /Fraunces/.test(html), "Paper's ground and fonts");
+  assert(/chaseroush\.thauma\.one/.test(html), "a way to the site");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

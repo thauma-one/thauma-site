@@ -29,6 +29,8 @@
 import { createDb } from "./lib/db.js";
 import { verify } from "./lib/unsub.js";
 import { t } from "./lib/mail-i18n.js";
+import { lookForMail } from "./lib/email-look.js";
+import { brandPage } from "./lib/brand-page.js";
 
 const HEADERS = {
   "Content-Type": "text/html; charset=utf-8",
@@ -86,21 +88,26 @@ function page(title, body, accent = "#2FD8FF", lang = null) {
    One click out, one click back. A person who unsubscribed by accident should
    not have to find the ministry's website and sign up again — which also means
    confirming by email a second time to fix a mis-click. */
-const DONE = (id = "", token = "", lang = null) => new Response(page(t(lang, "unsub.title"),
+/* IN THE MINISTRY'S LOOK (lib/brand-page.js) only once the link has been
+   verified and the person found — before that, every answer is the same
+   plain page, so an invented link learns nothing about whose list it names. */
+const shown = (title, body, lang, look) => new Response(look
+  ? brandPage({ look, title, body: body.replace(/class="undo"/g, 'class="act"'), lang: lang || "en", name: look.name, note: t(lang, "brand.note") })
+  : page(title, body, undefined, lang), { headers: HEADERS });
+
+const DONE = (id = "", token = "", lang = null, look = null) => shown(t(lang, "unsub.title"),
   `<h1>${t(lang, "unsub.heading")}</h1>` +
   `<p>${t(lang, "unsub.body")}</p>` +
   `<p><a class="undo" href="/unsubscribe?s=${encodeURIComponent(id)}` +
-  `&t=${encodeURIComponent(token)}&undo=1">${t(lang, "unsub.undo")}</a></p>`, undefined, lang),
-  { headers: HEADERS });
+  `&t=${encodeURIComponent(token)}&undo=1">${t(lang, "unsub.undo")}</a></p>`, lang, look);
 
 /* After an undo. It offers the way out again, because somebody who has just
    pressed two buttons in a row may well have meant the first one. */
-const BACK = (id = "", token = "", lang = null) => new Response(page(t(lang, "back.title"),
+const BACK = (id = "", token = "", lang = null, look = null) => shown(t(lang, "back.title"),
   `<h1>${t(lang, "back.heading")}</h1>` +
   `<p>${t(lang, "back.body")}</p>` +
   `<p><a class="undo" href="/unsubscribe?s=${encodeURIComponent(id)}` +
-  `&t=${encodeURIComponent(token)}">${t(lang, "back.undo")}</a></p>`, undefined, lang),
-  { headers: HEADERS });
+  `&t=${encodeURIComponent(token)}">${t(lang, "back.undo")}</a></p>`, lang, look);
 
 export default {
   async fetch(request, env) {
@@ -136,13 +143,14 @@ export default {
        was recorded, and for them t() answers in English — which is what this
        page did for everybody until now. */
     const lang = sub.lang || null;
+    const look = sub.partner_id ? await lookForMail(db, sub.partner_id).catch(() => null) : null;
 
     if (undo) {
       /* The statement itself only matches 'unsubscribed', so an old link
          cannot revive somebody who has since bounced or promote a sign-up
          that was never confirmed. */
       await db.query("subscriber_resubscribe_by_id", { id });
-      return BACK(id, token, lang);
+      return BACK(id, token, lang, look);
     }
 
     // Already gone is a success. Saying "you were not subscribed" would be
@@ -151,6 +159,6 @@ export default {
       await db.query("subscriber_unsubscribe_by_id",
         { id, now: new Date().toISOString() });
     }
-    return DONE(id, token, lang);
+    return DONE(id, token, lang, look);
   },
 };
