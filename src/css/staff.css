@@ -2918,3 +2918,20 @@ html.pe-open{overflow:hidden}
 .ws-vname b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ws-vname small{color:var(--dim);font-size:12px}
 .ws-vrow.is-pub .ws-vname b{color:var(--dim);font-weight:500}
+/* The email look (staff-mailing.js renderLook): every choice beside the
+   newest update drawn in it. */
+.ml-hero .ghost-btn.is-on{border-color:var(--voice-tech);color:var(--text)}
+.ml-look{display:grid;grid-template-columns:minmax(260px,340px) 1fr;gap:22px;margin:-10px 0 26px;padding:20px;border:1px solid var(--line);border-radius:var(--radius);background:var(--panel)}
+.ml-look[hidden]{display:none}
+.ml-look-controls{display:flex;flex-direction:column;gap:14px}
+.ml-look-row{display:flex;flex-direction:column;gap:7px}
+.ml-look-chips{display:flex;flex-wrap:wrap;gap:6px}
+.ml-look-chip{padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:none;color:var(--dim);font:500 13px var(--font-body);cursor:pointer}
+.ml-look-chip:hover{color:var(--text)}
+.ml-look-chip[aria-pressed="true"]{border-color:var(--voice-tech);color:var(--text);background:var(--voice-tech-dim)}
+.ml-look-colors{display:flex;align-items:center;gap:6px;font-size:13px}
+.ml-look-colors i{width:20px;height:20px;border-radius:50%;border:2px solid rgba(255,255,255,.8)}
+.ml-look-colors i+i{margin-left:-10px}
+.ml-look-colors a{margin-left:8px;color:var(--dim)}
+.ml-look-frame{width:100%;min-height:640px;border:1px solid var(--line);border-radius:var(--radius);background:#fff}
+@media (max-width:860px){.ml-look{grid-template-columns:1fr}.ml-look-frame{min-height:520px}}

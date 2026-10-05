@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "5ecfa3f851dacb4f";
+export const SOURCE_DIGEST = "efc94209cf14ffd9";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -408,6 +408,9 @@ WHERE id = :id AND partner_id IS :partner_id AND status = 'draft';`,
   mailing_finish: `UPDATE mailings
 SET status = :status, finished_at = :now, sent_count = :sent_count
 WHERE id = :id AND partner_id IS :partner_id;`,
+  mailing_latest_for_partner: `SELECT subject, preheader, body_html FROM mailings
+WHERE partner_id IS :partner_id AND body_html IS NOT NULL AND body_html != ''
+ORDER BY created_at DESC LIMIT 1;`,
   mailing_link_add: `INSERT INTO mailing_links (id, mailing_id, url, clicks, created_at) VALUES (:id, :mailing_id, :url, 1, :now);`,
   mailing_link_count: `UPDATE mailing_links SET clicks = clicks + 1 WHERE id = :id;`,
   mailing_link_find: `SELECT id FROM mailing_links WHERE mailing_id = :mailing_id AND url = :url;`,
@@ -583,6 +586,8 @@ ORDER BY (actual_date IS NULL), actual_date ASC, sort_order ASC;`,
   partner_colors_set: `UPDATE partners
    SET embed_accent = :embed_accent, embed_accent2 = :embed_accent2, embed_turn = :embed_turn, updated_at = :now
  WHERE id = :partner_id;`,
+  partner_email_look: `SELECT email_look FROM partners WHERE id = :partner_id;`,
+  partner_email_look_set: `UPDATE partners SET email_look = :email_look, updated_at = :now WHERE id = :partner_id;`,
   partner_for_site: `SELECT id, slug, display_name, giving_url, embed_accent, embed_accent2, embed_theme, embed_turn,
        timeline_start, timeline_end,
        embed_roadmap, embed_goal, embed_prayer, embed_videos
@@ -759,7 +764,7 @@ ORDER BY m.finished_at DESC
 LIMIT 50;`,
   public_archive_one: `SELECT m.subject, m.preheader, m.body_html, m.finished_at,
        l.name AS list_name, l.from_name,
-       p.display_name, p.embed_accent, p.embed_theme
+       p.id AS partner_id, p.display_name, p.embed_accent, p.embed_theme
 FROM mailings m
 JOIN mailing_lists l ON l.id = m.list_id
 JOIN partners p ON p.slug = :partner_slug AND l.partner_id IS p.id

@@ -2063,7 +2063,7 @@ LIMIT 50;
 -- name: public_archive_one
 SELECT m.subject, m.preheader, m.body_html, m.finished_at,
        l.name AS list_name, l.from_name,
-       p.display_name, p.embed_accent, p.embed_theme
+       p.id AS partner_id, p.display_name, p.embed_accent, p.embed_theme
 FROM mailings m
 JOIN mailing_lists l ON l.id = m.list_id
 JOIN partners p ON p.slug = :partner_slug AND l.partner_id IS p.id
@@ -3284,3 +3284,24 @@ DELETE FROM partner_site_saves
    AND id NOT IN (SELECT id FROM partner_site_saves
                    WHERE partner_id = :partner_id AND kind = :kind
                    ORDER BY created_at DESC LIMIT :keep);
+
+
+-- ===========================================================================
+-- A MINISTRY'S EMAIL LOOK (0050) — lib/email-look.js. Read on its own so a
+-- deploy whose database lacks the column still sends (the caller catches).
+-- ===========================================================================
+
+-- name: partner_email_look
+SELECT email_look FROM partners WHERE id = :partner_id;
+
+
+-- name: partner_email_look_set
+UPDATE partners SET email_look = :email_look, updated_at = :now WHERE id = :partner_id;
+
+
+-- name: mailing_latest_for_partner
+-- The newest thing a ministry wrote, to preview its email look with its own
+-- words rather than a sample.
+SELECT subject, preheader, body_html FROM mailings
+WHERE partner_id IS :partner_id AND body_html IS NOT NULL AND body_html != ''
+ORDER BY created_at DESC LIMIT 1;

@@ -22,6 +22,7 @@
  * archive cannot drift from what landed in the inbox — and a fix to the
  * renderer reaches every past mailing at once.
  */
+import { lookForMail } from "./lib/email-look.js";
 import { createDb } from "./lib/db.js";
 import { render, escapeHtml } from "./lib/newsletter.js";
 
@@ -100,6 +101,8 @@ export default {
        drift from the inbox. No unsubscribe link: this is a web page, and the
        reader may never have been subscribed at all. */
     const html = render(m.body_html || "", {
+      /* The ministry's email look, as the inbox had it (lib/email-look.js). */
+      look: await lookForMail(db, m.partner_id).catch(() => null),
       subject: m.subject,
       preheader: null,
       fromName: m.from_name || m.display_name,

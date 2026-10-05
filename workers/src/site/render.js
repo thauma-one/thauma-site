@@ -28,7 +28,7 @@ export function esc(s) {
 
 /* ----------------------------------------------------------------- looks -- */
 
-const FONTS = {
+export const FONTS = {
   night: "family=Sora:wght@100;300;600&family=Inter:wght@300;400;600",
   paper: "family=Fraunces:opsz,wght@9..144,300;9..144,600&family=Manrope:wght@400;600;700",
   bold: "family=Manrope:wght@400;600;800",
@@ -74,7 +74,7 @@ function paletteFrom(bg, accent, accent2) {
  * other the same hue at the opposite end. `alt` carries the dark one when
  * visitors see whatever their device prefers.
  */
-function looks(lookName, theme, colors = {}, mode = "auto") {
+export function looks(lookName, theme, colors = {}, mode = "auto") {
   if (lookName !== "custom") return baseLook(lookName, theme);
   const accent = colors.accent || theme.accent;
   const accent2 = colors.accent ? companion(colors.accent, -33) : theme.accent2;
