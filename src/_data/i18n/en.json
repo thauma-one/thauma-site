@@ -520,13 +520,11 @@
     "followspot_pastor_line": "Walks and talks. A good place to start.",
     "followspot_leader_line": "Roams the stage. Watch the bridge.",
     "followspot_youth_line": "Everywhere at once. Good luck.",
-    "followspot_tilt": "Use your tilt!",
     "followspot_dive": "Stage dive! Follow them!",
     "followspot_nailed": "Nailed it",
     "followspot_fired": "You're off the spot.",
     "followspot_pick": "Who are you lighting?",
     "followspot_patience": "Director's patience",
-    "followspot_pan": "Pan only, for now",
     "jokes_followspot_stunt": [
       "[DIR] Did they just backflip? During the sermon?",
       "[DIR] Nobody told me there'd be acrobatics."
@@ -670,6 +668,16 @@
     "stagerunner_d_shoes": "Jump much higher",
     "stagerunner_d_pass": "Every pick counts double",
     "goldenhour_p_magnet_how": "Glow sticks come to you",
-    "goldenhour_p_hat_how": "One crash forgiven"
+    "goldenhour_p_hat_how": "One crash forgiven",
+    "followspot_kid": "The kid",
+    "followspot_kid_line": "The lead in the kids' musical. Two juice boxes in.",
+    "followspot_s_flip": "Backflip!",
+    "followspot_s_cartwheel": "Cartwheel!",
+    "followspot_s_moonwalk": "Moonwalk!",
+    "followspot_s_crawl": "Army crawl!",
+    "followspot_s_kneeslide": "Knee slide!",
+    "followspot_s_worm": "The worm!",
+    "followspot_s_pose": "Strike a pose!",
+    "followspot_s_climb": "Up the ladder!"
   }
 }

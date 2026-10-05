@@ -388,8 +388,12 @@
           cardRects.push({ x: x, y: y0, w: cw, h: ch });
           g.fillStyle = 'rgba(12,16,26,.96)'; g.fillRect(x, y0, cw, ch);
           g.strokeStyle = c.col; g.lineWidth = on ? 2 : 1; g.strokeRect(x + .5, y0 + .5, cw - 1, ch - 1);
-          g.fillStyle = c.col; g.font = '700 ' + (cw < 100 ? 12 : 15) + 'px Sora, sans-serif'; g.textAlign = 'center';
-          g.fillText(String(c.title).toUpperCase(), x + cw / 2, y0 + 30);
+          /* the title shrinks until it fits the card */
+          var tt = String(c.title).toUpperCase(), fs = 15;
+          g.font = '700 ' + fs + 'px Sora, sans-serif';
+          while (fs > 8 && g.measureText(tt).width > cw - 10) { fs--; g.font = '700 ' + fs + 'px Sora, sans-serif'; }
+          g.fillStyle = c.col; g.textAlign = 'center';
+          g.fillText(tt, x + cw / 2, y0 + 30);
           g.fillStyle = 'rgba(237,242,248,.8)'; g.font = '500 11px Inter, sans-serif';
           var words2 = String(c.line || '').split(' '), line = '', yy = y0 + 64;
           words2.forEach(function (wd) { var tst = line ? line + ' ' + wd : wd; if (g.measureText(tst).width > cw - 16 && line) { g.fillText(line, x + cw / 2, yy); line = wd; yy += 15; } else line = tst; });

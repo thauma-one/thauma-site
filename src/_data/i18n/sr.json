@@ -520,13 +520,11 @@
     "followspot_pastor_line": "Хода и прича. Добар почетак.",
     "followspot_leader_line": "Шета по позорници. Пази на бридге.",
     "followspot_youth_line": "Свугдје одједном. Сретно.",
-    "followspot_tilt": "Користи и нагиб!",
     "followspot_dive": "Скок у публику! Прати их!",
     "followspot_nailed": "Погођено",
     "followspot_fired": "Скинут си с рефлектора.",
     "followspot_pick": "Кога освјетљаваш?",
     "followspot_patience": "Стрпљење редатеља",
-    "followspot_pan": "За сада само лијево-десно",
     "jokes_followspot_stunt": [
       "[DIR] Је ли управо направио салто? За вријеме проповиједи?",
       "[DIR] Нитко ми није рекао да ће бити акробација."
@@ -670,6 +668,16 @@
     "stagerunner_d_shoes": "Скачеш пуно више",
     "stagerunner_d_pass": "Свака трзалица вриједи двоструко",
     "goldenhour_p_magnet_how": "Свјетлећи штапићи долазе к теби",
-    "goldenhour_p_hat_how": "Један пад ти је опроштен"
+    "goldenhour_p_hat_how": "Један пад ти је опроштен",
+    "followspot_kid": "Дијете",
+    "followspot_kid_line": "Главна улога у дјечјем мјузиклу. Већ два сокића.",
+    "followspot_s_flip": "Салто унатраг!",
+    "followspot_s_cartwheel": "Звијезда!",
+    "followspot_s_moonwalk": "Мјесечев ход!",
+    "followspot_s_crawl": "Пузање!",
+    "followspot_s_kneeslide": "Клизање на кољенима!",
+    "followspot_s_worm": "Црв!",
+    "followspot_s_pose": "Поза!",
+    "followspot_s_climb": "Уз љестве!"
   }
 }

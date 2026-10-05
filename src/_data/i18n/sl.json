@@ -520,13 +520,11 @@
     "followspot_pastor_line": "Hodi in govori. Dober začetek.",
     "followspot_leader_line": "Se sprehaja po odru. Pazi na mostiček.",
     "followspot_youth_line": "Povsod hkrati. Srečno.",
-    "followspot_tilt": "Uporabi še nagib!",
     "followspot_dive": "Skok v publiko! Sledi!",
     "followspot_nailed": "Zadeto",
     "followspot_fired": "Odstavljen si od reflektorja.",
     "followspot_pick": "Koga osvetljuješ?",
     "followspot_patience": "Potrpežljivost režiserja",
-    "followspot_pan": "Za zdaj samo levo-desno",
     "jokes_followspot_stunt": [
       "[DIR] Je ravnokar naredil salto? Med pridigo?",
       "[DIR] Nihče mi ni povedal, da bodo akrobacije."
@@ -670,6 +668,16 @@
     "stagerunner_d_shoes": "Skočiš veliko višje",
     "stagerunner_d_pass": "Vsaka trzalica šteje dvojno",
     "goldenhour_p_magnet_how": "Svetleče palčke pridejo k tebi",
-    "goldenhour_p_hat_how": "En padec ti je odpuščen"
+    "goldenhour_p_hat_how": "En padec ti je odpuščen",
+    "followspot_kid": "Otrok",
+    "followspot_kid_line": "Glavna vloga v otroškem muzikalu. Že dva sokca.",
+    "followspot_s_flip": "Salto nazaj!",
+    "followspot_s_cartwheel": "Premet!",
+    "followspot_s_moonwalk": "Lunin hod!",
+    "followspot_s_crawl": "Plazenje!",
+    "followspot_s_kneeslide": "Drsenje po kolenih!",
+    "followspot_s_worm": "Črv!",
+    "followspot_s_pose": "Poza!",
+    "followspot_s_climb": "Po lestvah!"
   }
 }
