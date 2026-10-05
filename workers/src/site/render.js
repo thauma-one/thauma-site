@@ -511,6 +511,10 @@ main section.is-editing{outline:2px solid var(--acc);outline-offset:-2px}
 .foot{border-top:1px solid var(--line);padding:48px 0 60px;color:var(--dim);font-size:14px}
 .foot .wrap{display:flex;gap:28px;flex-wrap:wrap;justify-content:space-between;align-items:flex-start}
 .foot .col{display:flex;flex-direction:column;gap:14px}.foot .col.end{align-items:flex-end}
+.foot-on-raised{background:var(--panel)}
+.foot-on-tint{background:linear-gradient(180deg,color-mix(in srgb,var(--acc) 10%,var(--bg)),color-mix(in srgb,var(--acc2) 7%,var(--bg)))}
+.foot-noline{border-top:0}
+.foot-compact{padding:28px 0 34px}.foot-roomy{padding:80px 0 96px}
 .foot .tagline{margin:0;color:var(--fg)}
 .foot .tagline.tagline-subtle{color:var(--dim)}.foot .tagline.tagline-accent{color:var(--ink)}
 /* Its own row, the whole width. It had max-width:80ch, which capped the
@@ -1223,7 +1227,9 @@ function footer({ doc, lang, fallback, name, pages, href, label, socials, custom
   } else {
     inner = `<div class="col">${tagline}${tagline ? small : ""}${menu}${words}</div><div class="col end">${icons}${credit}</div>${tagline ? "" : small}`;
   }
-  return `<footer class="foot foot-${esc(F.layout)}"><div class="wrap">${inner}</div></footer>`;
+  const dress = [F.ground && F.ground !== "page" ? `foot-on-${F.ground}` : "", F.line === false ? "foot-noline" : "",
+    F.space && F.space !== "regular" ? `foot-${F.space}` : ""].filter(Boolean).map((c) => " " + esc(c)).join("");
+  return `<footer class="foot foot-${esc(F.layout)}${dress}"><div class="wrap">${inner}</div></footer>`;
 }
 
 /* The motion script: menu, entrances, headings, drift, progress. Small, no

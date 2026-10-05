@@ -325,6 +325,11 @@ check("Chase, 2026-10-01: a social link may be just the handle; the footers fill
   assert(/<div class="col"><p class="tagline[^"]*">T<\/p><p class="small">S<\/p>/.test(page(d)), "split: the small print under the tagline too");
   d.footer = { layout: "columns", menu: true, socials: "icons", words: { en: { small: "S" } } };
   assert(/<div class="bar"><p class="small">S<\/p><span class="powered">/.test(page(d)), "no tagline: the small print stays in the bar");
+  /* Its ground, line and room (Chase, 2026-10-04: "more options"). */
+  d.footer = { layout: "split", ground: "tint", line: false, space: "compact", words: { en: { tagline: "T" } } };
+  assert(/<footer class="foot foot-split foot-on-tint foot-noline foot-compact">/.test(page(d)), "tint, no line, compact");
+  d.footer = { layout: "split", ground: "nonsense", space: "huge", words: {} };
+  assert(/<footer class="foot foot-split">/.test(page(d)), "unknown values fall back to the plain footer");
   assert(/\.foot-columns \.menu\{display:grid;grid-template-columns:repeat\(2,auto\)/.test(html), "the pages in two columns, not a long list");
 });
 

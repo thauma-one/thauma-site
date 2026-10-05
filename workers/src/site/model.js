@@ -227,6 +227,10 @@ export const SOCIAL_STYLES = ["icons", "words"];
 /* The tagline's color (Chase, 2026-10-01): as it was, quieter, or in the
    site's accent. */
 export const TAGLINE_STYLES = ["plain", "subtle", "accent"];
+/* More ways to dress the footer (Chase, 2026-10-04: "more options for
+   customization"): its ground, the line above it, and how much room. */
+export const FOOT_GROUNDS = ["page", "raised", "tint"];
+export const FOOT_SPACES = ["regular", "compact", "roomy"];
 /* The tab icon (Chase, 2026-10-01: "Let the options be Filled, Letters, and
    Photo"): the initials on an accent tile, accent initials on the site's
    background, or the owner's picture. */
@@ -723,6 +727,9 @@ export function cleanDoc(raw, catalog) {
     menu: !!f.menu,
     socials: pick(f.socials, SOCIAL_STYLES),
     tagline: pick(f.tagline, TAGLINE_STYLES),
+    ground: pick(f.ground, FOOT_GROUNDS),
+    line: f.line !== false,
+    space: pick(f.space, FOOT_SPACES),
     words: cleanWords(f.words, ["tagline", "small"], langs),
   };
 

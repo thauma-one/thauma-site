@@ -1832,6 +1832,10 @@
       row(tr('ws.footer.socials'), chips('footer:socials', ['icons', 'words'], f.socials, function (v) { return tr('ws.footer.socials.' + v); })) +
       /* The tagline's color (Chase, 2026-10-01): as now, quieter, or the accent. */
       row(tr('ws.footer.taglineColor'), chips('footer:tagline', ['plain', 'subtle', 'accent'], f.tagline || 'plain', function (v) { return tr('ws.footer.tagline.' + v); })) +
+      /* Its ground, the line above it, its room (Chase, 2026-10-04). */
+      row(tr('ws.footer.ground'), chips('footer:ground', ['page', 'raised', 'tint'], f.ground || 'page', function (v) { return tr('ws.footer.ground.' + v); })) +
+      row(tr('ws.footer.line'), sw('data-footer-line', f.line !== false, '')) +
+      row(tr('ws.footer.space'), chips('footer:space', ['compact', 'regular', 'roomy'], f.space || 'regular', function (v) { return tr('ws.footer.space.' + v); })) +
       '</div><div class="ws-fields">' +
       '<label class="fld ws-wide"><span>' + esc(tr('ws.footer.tagline')) + '</span>' + ref(src('tagline')) +
         '<input type="text" maxlength="120" data-footer-word="tagline" value="' + esc(w.tagline || '') + '" lang="' + esc(state.langA) + '"></label>' +
@@ -2007,6 +2011,7 @@
     if (d.gotoTab) { var tb = document.querySelector('[data-ws-tab="' + d.gotoTab + '"]'); if (tb) tb.click(); return; }
     if (d.colorReset) { state.doc.design.colors[d.colorReset] = null; drawDesign(); return changed(); }
     if (d.footerMenu !== undefined) { state.doc.footer.menu = !state.doc.footer.menu; drawFooter(); return changed(); }
+    if (d.footerLine !== undefined) { state.doc.footer.line = state.doc.footer.line === false; drawFooter(); return changed(); }
     if (d.itemRemove) { var r = d.itemRemove.split(':'); p.sections[+r[0]].items.splice(+r[1], 1); state.openItem = null; drawSections(); return changed(); }
     if (d.customAdd !== undefined) {
       state.doc.links.push({ kind: 'custom', url: 'https://', label: {} });
