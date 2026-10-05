@@ -438,7 +438,7 @@
      focus and zoom, drawn the way render.js edited() draws them. The raw
      upload in a fixed box looked like the edits had not been kept (Chase,
      2026-10-04). */
-  function editedPhoto(src, e) {
+  function editedPhoto(src, e, frame) {
     if (e && e.w) {
       var b = e.border && typeof e.border === 'object' ? e.border : null;
       var ring = b && +b.w ? ';box-shadow:0 0 0 ' + (+b.w) + 'px ' + (b.c === 'subtle' ? 'rgba(255,255,255,.28)' : b.c === 'accent' ? 'var(--ws-acc)' : b.c === 'accent2' ? 'var(--ws-acc2)' : esc(b.c)) : '';
@@ -451,7 +451,12 @@
       return '<div class="ws-bigphoto"><img src="' + esc(src) + '" alt="" style="object-position:' + (+e.fx) + '% ' + (+e.fy) + '%;scale:' + (+e.zoom || 1) +
         ';transform-origin:' + (+e.fx) + '% ' + (+e.fy) + '%">' + (e.darken ? '<i style="opacity:' + (+e.darken) + '"></i>' : '') + '</div>';
     }
-    return '<div class="ws-bigphoto"><img src="' + esc(src) + '" alt=""></div>';
+    /* No edit: the frame the site gives it. Photo and words and a band show
+       the WHOLE photo at its own shape (a portrait stays a portrait — a
+       16:10 box cut off its top and bottom, Chase, 2026-10-04); a hero
+       beside the words is a 4:5 window, behind them a wide one. */
+    if (!frame) return '<div class="ws-bigphoto is-whole"><img src="' + esc(src) + '" alt=""></div>';
+    return '<div class="ws-bigphoto" style="aspect-ratio:' + frame + ';max-width:' + Math.round(340 * Math.min(frame, 420 / 340)) + 'px"><img src="' + esc(src) + '" alt=""></div>';
   }
   function photoPurpose(sec) {
     if (sec.type === 'photoText') return 'section';
@@ -795,6 +800,26 @@
     return t;
   }
 
+  /* WHERE THE VERSE GOES, right under it (Chase, 2026-10-04: "what do we
+     do when there is a verse in the middle of a text box?"). It was on the
+     Look tab as "After paragraph 2", which nobody found. Here each place is
+     named by the words it follows, so choosing one is choosing a spot in the
+     text: before it all, after "I grew up surrounded…", …, at the end. */
+  function versePlace(s, i, w) {
+    var paras = String(w.text || '').split(/\n{2,}/).filter(function (x) { return x.trim(); });
+    var spots = ['start'];
+    for (var pn = 1; pn < paras.length; pn++) spots.push('p' + pn);
+    spots.push('end');
+    var opening = function (html) {
+      var t = String(html).replace(/<[^>]+>/g, ' ').replace(/&[a-z#0-9]+;/gi, ' ').replace(/\s+/g, ' ').trim().split(' ');
+      return t.slice(0, 4).join(' ') + (t.length > 4 ? '…' : '');
+    };
+    return '<div class="ws-field ws-verseplace"><span class="ws-lbl2">' + esc(tr('ws.versePos')) + '</span>' +
+      chips('vpos:' + i, spots, spots.indexOf(s.versePos) !== -1 ? s.versePos : 'end', function (v) {
+        return v === 'start' || v === 'end' ? tr('ws.versePos.' + v) : fill('ws.versePos.after', { words: opening(paras[+v.slice(1) - 1]) });
+      }) + '</div>';
+  }
+
   function panelHtml(p, i) {
     var s = p.sections[i], spec = SECTIONS[s.type], tabs = tabsFor(s);
     if (tabs.indexOf(state.sectab) === -1) state.sectab = 'words';
@@ -812,12 +837,13 @@
           return;
         }
         html += field(i, f, w[f], src(f), s.type);
+        if (f === 'verseRef') html += versePlace(s, i, w);
       });
       if (spec.data) html += '<p class="ws-data">' + esc(tr('ws.data.' + s.type)) + ' <a href="/staff/' + spec.data + '">' + esc(tr('ws.editThere')) + ' →</a></p>';
     }
 
     if (state.sectab === 'photo') {
-      html += (s.photo ? editedPhoto(s.photo, s.photoEdit) : '<div class="ws-bigphoto"><span class="ws-nophoto">' + esc(tr('ws.noPhoto')) + '</span></div>') +
+      html += (s.photo ? editedPhoto(s.photo, s.photoEdit, s.type === 'hero' && s.variant !== 'behind' ? 0.8 : s.type === 'hero' ? 16 / 9 : 0) : '<div class="ws-bigphoto"><span class="ws-nophoto">' + esc(tr('ws.noPhoto')) + '</span></div>') +
         /* A crop decides a band's shape itself; the heights are for an uncropped one. */
         (s.type === 'photo' && !(s.photoEdit && s.photoEdit.w) ? '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.photoHeight')) + '</span>' +
           chips('pheight:' + i, ['short', 'medium', 'tall', 'whole'], s.height || 'medium', function (v) { return tr('ws.photoHeight.' + v); }) + '</div>' : '') +
@@ -934,16 +960,6 @@
       if (s.type === 'text' || s.type === 'photoText') {
         html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.verseStyle')) + '</span>' +
           chips('verse:' + i, ['quote', 'line', 'mark'], s.verseStyle || 'quote', function (v) { return tr('ws.verseStyle.' + v); }) + '</div>';
-        /* Where the verse goes: before, after any paragraph written so far,
-           or after them all. */
-        var paras = String(((s.words || {})[state.langA] || {}).text || '').split(/\n{2,}/).filter(function (x) { return x.trim(); }).length;
-        var spots = ['start'];
-        for (var pn = 1; pn < paras; pn++) spots.push('p' + pn);
-        spots.push('end');
-        html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.versePos')) + '</span>' +
-          chips('vpos:' + i, spots, spots.indexOf(s.versePos) !== -1 ? s.versePos : 'end', function (v) {
-            return v === 'start' || v === 'end' ? tr('ws.versePos.' + v) : tr('ws.versePos.p').replace('{n}', v.slice(1));
-          }) + '</div>';
         var tA = s.titleAlign || (s.align === 'center' || s.align === 'right' ? s.align : 'left');
         html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.titleAlign')) + '</span>' +
           chips('talign:' + i, ['left', 'center', 'right'], tA, function (v) { return tr('ws.titleAlign.' + v); }) + '</div>' +

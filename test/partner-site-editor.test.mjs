@@ -29,6 +29,7 @@ function answer(opts = {}) {
   const { edit = true, owner = true, published = false } = opts;
   const draft = cleanDoc(starter("full", { name: "Chase Roush", langs: ["en", "hr"], fallback: "en" }), ["en", "hr"]);
   if (opts.ownAccent) { draft.design.look = "custom"; draft.design.colors = { background: "#0D0D0D", accent: opts.ownAccent }; }
+  if (opts.paras) { const t = draft.pages.find((p) => p.id === "home").sections[1]; t.words = { en: { ...(t.words.en || {}), text: opts.paras, verse: "Draw near to God" } }; }
   if (opts.photo) draft.pages.find((p) => p.id === "home").sections[1].photo = opts.photo;
   return {
     published: published ? JSON.parse(JSON.stringify(draft)) : null,
@@ -476,6 +477,21 @@ await check("Design: the ministry's colors with the Sharing page's picker; a cha
   eq(saved.length, 1, "one colors save");
   eq(saved[0].colors.accent, "#2266DD", "the new first color");
   assert(!sent.some((b) => b.action === "save"), "not a draft save");
+});
+
+await check("the verse's place is chosen under the verse, by the words it follows (Chase: a verse in the middle)", async () => {
+  const { d, sent, click, pages } = await boot({ paras: "I grew up surrounded by ministry, always.\n\nGod has been faithful to me.\n\nThe end." });
+  pages();
+  click(d.querySelector('[data-open-page="home"]'));
+  click(d.querySelector('[data-edit-sec="1"]'));
+  const place = d.querySelector(".ws-verseplace");
+  assert(place, "on the Words tab, with the verse");
+  const labels = [...place.querySelectorAll("[data-chip]")].map((b) => b.textContent);
+  eq(labels, ["Before the words", "After “I grew up surrounded…”", "After “God has been faithful…”", "After the words"], "named by the words they follow");
+  click(place.querySelectorAll("[data-chip]")[1]);
+  await settle(900);
+  const saved = sent.filter((b) => b.action === "save").pop();
+  eq(saved.draft.pages.find((p) => p.id === "home").sections[1].versePos, "p1", "saved as after the first paragraph");
 });
 
 await check("a replaced photo is handed back when the page closes, not when it is saved (Undo can still bring it back)", async () => {

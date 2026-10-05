@@ -2700,6 +2700,8 @@ html.has-ai .ai-one{display:inline-flex;align-items:center;justify-content:cente
 .ws-bigphoto img{width:100%;height:100%;object-fit:cover}
 .ws-bigphoto{position:relative}
 .ws-bigphoto>i{position:absolute;inset:0;background:#000;pointer-events:none}
+.ws-bigphoto.is-whole{aspect-ratio:auto;width:fit-content;max-width:min(420px,100%);background:none}
+.ws-bigphoto.is-whole img{width:auto;height:auto;max-width:100%;max-height:340px;object-fit:contain;display:block}
 /* A crop: the box takes the crop's shape and the photo is placed in it, as
    on the site (render.js .pe-crop); capped so a tall crop stays on screen. */
 .ws-bigphoto.is-crop{display:block;border:0;overflow:hidden;max-width:none}
