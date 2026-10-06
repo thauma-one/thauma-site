@@ -13,6 +13,10 @@
    screen itself switching off like an old CRT — because by then there is
    no page left to act on.
 
+   THE COLLAPSE (2026-10-05): the page falls apart partly, then CORRUPTS —
+   everything breaks visually at once — freezes on that broken frame with
+   one small twitch, and only then switches off.
+
    FOUR STAGES, then the collapse. The LETTERS lead (Chase, 2026-10-05: "I
    like the page lettering glitching out more than the overlays … the first
    press subtle yes, but clear that something was happening. Like a letter
@@ -82,6 +86,7 @@
     var tickers = [];
     var healTimer = null, onHealed = null;
     var fallen = [];                /* the collapse's animations, reversed on the way back */
+    var corrupted = [];             /* the corruption's frozen frame, dropped on the way back */
     /* The element a door is being tapped on is never torn: a torn element
        is clipped, and a tap on a clipped-away band does not reach it — the
        fifth tap would miss (found on the closed page, 2026-09-29). */
@@ -363,7 +368,11 @@
         return true;
       });
     }
-    function fallAll(first) {
+    /* SOME: the page falls apart only partly (Chase, 2026-10-05: "I want the
+       page to fall apart some, but I want it to 'corrupt' before that
+       animation of turning off plays") — most pieces slip, tilt and sag
+       where they hang; a few let go entirely. */
+    function fallAll(first, some) {
       var list = pieces();
       /* The biggest word comes apart letter by letter, as the 404 always did. */
       var big = list.filter(function (el) { return el.matches('.wordmark,.dict-word,main h1') && plain(el); })[0];
@@ -373,12 +382,12 @@
         else parts.push({ el: el });
       });
       parts.forEach(function (p) {
-        var r = p.el.getBoundingClientRect();
-        var dy = innerHeight - r.top + r.height + rnd(40, 260);
-        var dx = rnd(-240, 240) * (p.ch ? 1.3 : 1);
-        var rot = rnd(-70, 70) * (p.ch ? 1.4 : .6);
-        var delay = (first && (p.el === first || first.contains(p.el))) ? 0 : rnd(60, 520);
-        var dur = rnd(900, 1400);
+        var r = p.el.getBoundingClientRect(), sag = some && Math.random() < .85;
+        var dy = sag ? rnd(8, 110) : innerHeight - r.top + r.height + rnd(40, 260);
+        var dx = sag ? rnd(-30, 30) : rnd(-240, 240) * (p.ch ? 1.3 : 1);
+        var rot = sag ? rnd(-14, 14) : rnd(-70, 70) * (p.ch ? 1.4 : .6);
+        var delay = (first && (p.el === first || first.contains(p.el))) ? 0 : rnd(60, some ? 380 : 520);
+        var dur = some ? rnd(600, 1000) : rnd(900, 1400);
         /* a moment's grip lost, then gravity */
         var shake = p.el.animate([{ translate: '0 0' }, { translate: rnd(-3, 3) + 'px ' + rnd(-2, 2) + 'px' }, { translate: '0 0' }],
           { duration: 120, delay: Math.max(0, delay - 120), iterations: 1 });
@@ -387,6 +396,41 @@
         fallen.push(a); void shake;
       });
       return parts.length;
+    }
+    /* THE CORRUPTION: the whole page breaks at once — every piece torn into
+       bands, thrown sideways, its colors gone wrong, a third of the letters
+       turned to noise — and stops dead on a broken frame ("a glitch that
+       makes everything break visually and then freezes (maybe with a small
+       glitch)"). Animations only, added on top of the fall, so the way back
+       just drops them; the letters come back with the page's own text. */
+    function corrupt() {
+      var list = pieces();
+      list.forEach(function (el) {
+        if (!el.animate) return;
+        var fr = [], n = 5;
+        var glitch = function (k) {
+          var t = rnd(0, 60), h = rnd(30, 85), cut = Math.random() < .45;
+          return { clipPath: cut ? 'inset(' + t.toFixed(0) + '% 0 ' + Math.max(0, 100 - t - h).toFixed(0) + '% 0)' : 'inset(0 0 0 0)',
+            translate: (rnd(-1, 1) * 44 * k).toFixed(0) + 'px ' + (rnd(-1, 1) * 6 * k).toFixed(0) + 'px',
+            /* the color channels pulled apart, the hue thrown, brighter: never darker, so the wreck stays visible */
+            filter: 'drop-shadow(' + (4 * k + 1).toFixed(0) + 'px 0 rgba(255,40,90,.85)) drop-shadow(' + (-4 * k - 1).toFixed(0) + 'px 0 rgba(0,230,255,.85)) hue-rotate(' + rnd(-150, 150).toFixed(0) + 'deg) saturate(' + rnd(1.2, 3).toFixed(1) + ') brightness(' + rnd(1.05, 1.7).toFixed(2) + ')' };
+        };
+        for (var i = 0; i < n; i++) { var f = glitch(1); f.easing = 'step-end'; f.offset = i / n; fr.push(f); }
+        /* the frame it freezes on: torn a little less */
+        var last = glitch(.45); last.offset = 1; fr.push(last);
+        corrupted.push(el.animate(fr, { duration: 380, fill: 'forwards', composite: 'add' }));
+      });
+      var cs = chars();
+      pick(cs, Math.floor(cs.length * .34)).forEach(function (c) { c.textContent = GLYPHS[Math.floor(Math.random() * GLYPHS.length)]; });
+      return list;
+    }
+    /* frozen, but not quite still: one small twitch */
+    function twitch(list) {
+      pick(list, 3).forEach(function (el) {
+        corrupted.push(el.animate([{ translate: rnd(-10, 10).toFixed(0) + 'px 0', easing: 'step-end' }, { translate: rnd(-6, 6).toFixed(0) + 'px 0', easing: 'step-end', offset: .5 }, { translate: '0 0' }],
+          { duration: 110, composite: 'add' }));
+      });
+      pick(chars(), 3).forEach(function (c) { jolt(c, .7); });
     }
     function beam(off) {
       var b = document.createElement('div'); b.className = 'arc-beam';
@@ -424,7 +468,11 @@
         var kept = opts.word ? converge(opts.word) : 0;
         return new Promise(function (res) { setTimeout(res, kept ? 1000 : 200); });
       })
-        .then(function () { fallAll(opts.first); return new Promise(function (res) { setTimeout(res, 1150); }); })
+        .then(function () { fallAll(opts.first, true); return new Promise(function (res) { setTimeout(res, 880); }); })
+        .then(function () {
+          var list = corrupt();
+          return new Promise(function (res) { setTimeout(function () { twitch(list); }, 380 + 300); setTimeout(res, 380 + 620); });
+        })
         .then(function () {
           /* The page itself squeezes into the line, then the line to a dot. */
           var body = document.body, off = beam(true);
@@ -461,6 +509,7 @@
       body.animate([{ transform: 'scale(1,.004)', filter: 'brightness(3)' }, { transform: 'none', filter: 'brightness(1)' }],
         { duration: 380, delay: 200, easing: EASE, fill: 'backwards' }).onfinish = function () { body.style.transformOrigin = ''; };
       if (keepLayer) { keepLayer.remove(); keepLayer = null; }
+      corrupted.forEach(function (a) { a.cancel(); }); corrupted = [];
       fallen.forEach(function (a) { a.playbackRate = 1.6; a.reverse(); });
       return Promise.all([on, new Promise(function (res) { setTimeout(res, 1000); })]).then(function () {
         fallen.forEach(function (a) { a.cancel(); }); fallen = [];
