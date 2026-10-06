@@ -67,7 +67,11 @@
   if (!A) return;
 
   var W = 600, H = 400;
-  var G = 980, STEP = 16, MIN = 170;
+  /* round 8 (Chase, 2026-10-06: "The jumps are too flighty and needs less
+     floatiness"): the air pulls harder than the slope (GA), and the pop and
+     the flip are quicker to match, so a jump is shorter and snappier but
+     still holds a backflip */
+  var G = 980, GA = 1420, STEP = 16, MIN = 170;
   var POWER_T = { magnet: 12, balloon: 12, banner: 8 };
 
   function rnd(a, b) { return a + Math.random() * (b - a); }
@@ -102,6 +106,10 @@
       var rails = [], cases = [], ramps = [], sticks = [], balls = [], powers = [], fireworks = [], sparks = [], dust = [], snow = [], clouds = [];
       var trail = [], pines = [], lanterns = [], birds = [];
       var genX = 0, genY = 200, slope = .26, nextFeature = 700, made = 0;
+      /* VARIETY (round 8: "There isn't much variety in the hills either. Add
+         some steep down hills and even a few cliffs"): a steep run holds the
+         slope at 0.6–0.85 for a while; a cliff drops the hill straight down */
+      var steep = null, cliffAt = 0, cliffDrop = 0;
       var me = { x: 160, y: 0, vx: MIN, vy: 0, ang: 0, ground: true, rail: null, spin: 0, flips: 0, air: 0, crashed: false };
       var body = null;                       /* the rider, once a crash parts them from the lid */
       var pose = { c: .3, tuck: 0, lean: .2, aL: -.5, aR: .8, eL: .3, eR: -.2, lift: 0 };
@@ -134,9 +142,12 @@
         while (genX < until) {
           /* the hills: a falling line with swells in it */
           /* long, smooth swells (round 7: "meant to be relaxing") */
-          slope = clamp(slope + rnd(-.014, .014), .14, .4);
-          var swell = Math.sin(genX * .0042) * 38 + Math.sin(genX * .011) * 7;
+          if (steep && genX < steep.until) slope += (steep.slope - slope) * .08;
+          else { steep = null; slope = slope > .4 ? slope - .012 : clamp(slope + rnd(-.014, .014), .14, .4); }   /* after a steep run, easing back */
+          /* the swells grow and shrink along the course: long rollers, then calmer */
+          var swell = (Math.sin(genX * .0042) * 38 + Math.sin(genX * .011) * 7) * (.55 + .9 * Math.abs(Math.sin(genX * .00071)));
           genY += slope * STEP;
+          if (cliffAt && genX >= cliffAt) { genY += cliffDrop; cliffAt = 0; slope = .32; }
           var y = genY + swell, i = Math.round(genX / STEP);
           if (genX > nextFeature) feature();
           ground[i] = { x: genX, y: ground[i] && ground[i].y === null ? null : y };
@@ -151,6 +162,17 @@
       function feature() {
         var d = genX / 10, r = Math.random(), x0 = genX + 120;
         made++;
+        if (!steep && !cliffAt && d > 120 && Math.random() < .16) {
+          steep = { until: genX + rnd(280, 560), slope: rnd(.6, .85) };
+          arc(genX + 150, genY + 40, 220);
+          nextFeature = steep.until + rnd(300, 500); return;
+        }
+        if (!steep && !cliffAt && d > 300 && Math.random() < .12) {
+          /* a cliff: the hill stops, and carries on far below */
+          cliffAt = genX + 140; cliffDrop = rnd(90, 150) + Math.min(90, d / 40);
+          nextFeature = cliffAt + rnd(500, 700); return;
+        }
+        if (steep) { nextFeature = steep.until + 200; return; }
         if (d > 300 && made % 4 === 0) {
           var kinds = ['magnet', 'hat', 'balloon', 'banner'];
           powers.push({ x: x0, y: null, kind: kinds[Math.floor(Math.random() * kinds.length)] });
@@ -199,7 +221,7 @@
              the slope's surface — off a rise it throws you up and back
              less, off a drop it carries you out — harder the faster you go. */
           var a = me.rail ? Math.atan(me.rail.slope) : slopeAt(me.x), sp = me.vx;
-          var lift = (me.rail ? 300 : 330) + sp * .28;
+          var lift = (me.rail ? 360 : 390) + sp * .3;
           me.vx = Math.max(MIN * .8, sp * Math.cos(a) + Math.sin(a) * lift);
           me.vy = sp * Math.sin(a) - Math.cos(a) * lift;
           me.ground = false; me.rail = null; me.spin = 0; me.air = 0; me.released = 0;
@@ -328,35 +350,47 @@
         }
         if (me.ground) {
           var a = slopeAt(me.x);
-          /* downhill gathers speed; uphill and the snow slow it */
-          me.vx = clamp(me.vx + (Math.sin(a) * G * .55 - me.vx * .08) * dt, MIN, top);
+          var onRamp = ramps.some(function (rp) { return me.x >= rp.x && me.x <= rp.x + rp.len; });
+          /* downhill gathers speed; uphill and the snow slow it — but a RAMP
+             keeps your momentum and adds a little (round 8: "The ramp slows
+             the person down instead of maintaining momentum"); a steep run
+             lets you go faster than the usual top */
+          var topHere = top * (1 + Math.max(0, Math.sin(a) - .35) * .9);
+          if (onRamp) me.vx = Math.min(topHere, me.vx + 60 * dt);
+          else me.vx = clamp(me.vx + (Math.sin(a) * G * .55 - me.vx * .06) * dt, MIN, Math.max(topHere, me.vx * (1 - .4 * dt)));   /* over the top: bleeds off, never snaps */
           var nx = me.x + me.vx * Math.cos(a) * dt;
           var ny = groundAt(nx);
-          if (ny === null) { me.ground = false; me.vy = me.vx * Math.sin(a); me.vx *= Math.cos(a); me.spin = 0; me.air = 0; me.x = nx; return; }
+          if (ny === null) { me.ground = false; me.vy = me.vx * Math.sin(me.ang); me.vx *= Math.cos(me.ang); me.spin = 0; me.air = 0; me.x = nx; return; }
           /* off the end of a ramp: launched */
           for (var k = 0; k < ramps.length; k++) {
             var rp = ramps[k];
             if (me.x <= rp.x + rp.len && nx > rp.x + rp.len) {
-              me.ground = false; me.vy = Math.min(-240, me.vx * Math.sin(a) - 120); me.vx *= Math.cos(a); me.spin = 0; me.air = 0; me.x = nx;
+              /* THE RAMP'S OWN ANGLE: measured across its lip, the slope read
+                 as a near-vertical drop and cut the speed to under half — the
+                 "ramp slows the person down" (round 8) */
+              var ra = slopeAt(rp.x + rp.len * .6);
+              me.ground = false; me.vy = Math.min(-300, me.vx * Math.sin(ra) - 140); me.vx *= Math.cos(ra); me.spin = 0; me.air = 0; me.x = nx;
               ctx.sfx('jump'); return;
             }
           }
           /* over a crest faster than the ground falls away: airborne */
           var fall = ny - me.y, ballistic = me.vx * Math.sin(a) * dt + G * dt * dt;
-          if (fall > ballistic + 1.5 && me.vx > 260) { me.ground = false; me.vy = me.vx * Math.sin(a); me.vx *= Math.cos(a); me.spin = 0; me.air = 0; me.x = nx; return; }
+          /* (a cliff's edge always throws you off, whatever the speed) */
+          /* launched along the slope you were on (me.ang), never the edge */
+          if (fall > ballistic + 1.5 && (me.vx > 260 || fall > 24)) { me.ground = false; me.vy = me.vx * Math.sin(me.ang); me.vx *= Math.cos(me.ang); me.spin = 0; me.air = 0; me.x = nx; return; }
           me.x = nx; me.y = ny; me.ang += wrap(a - me.ang) * Math.min(1, dt * 18);
           hitCases();
           return;
         }
         /* in the air */
         me.air += dt;
-        var grav = active === 'banner' ? G * .3 : G;
+        var grav = active === 'banner' ? G * .3 : GA;
         me.vy += grav * dt;
         if (active === 'banner' && holding) me.vy -= 900 * dt;                  /* the banner climbs */
         if (active === 'banner') { me.vy = clamp(me.vy, -260, 220); me.vx = Math.max(me.vx, 300); }
         if (active === 'balloon' && holding && me.vy > 50) me.vy = 50;           /* the balloons float you */
         me.x += me.vx * dt; me.y += me.vy * dt;
-        var turn = holding && active !== 'banner' ? -6.4 : 0;
+        var turn = holding && active !== 'banner' ? -8.6 : 0;
         if (active === 'banner') me.ang += wrap(-.15 - me.ang) * Math.min(1, dt * 6);
         me.ang += turn * dt; me.spin += turn * dt;
         /* LET GO MID-FLIP and the rider slowly rights themself toward the
