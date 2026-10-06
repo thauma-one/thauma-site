@@ -89,6 +89,10 @@
       var pose = { c: .3, tuck: 0, lean: .2, aL: -.5, aR: .8, eL: .3, eR: -.2, lift: 0 };
       var score = 0, glow = 0, dist = 0, combo = 0, comboT = 0, time = 0, sky = 0, landT = 0;
       var hat = 0, active = null, activeT = 0, holding = false, started = false, intro = -1, camX = 0, camY = 0, banner = null;
+      /* the view: 1 at walking pace, widening smoothly as you go faster */
+      var zoom = 1;
+      function VW() { return W / zoom; }
+      function VH() { return H / zoom; }
       var caseAt = 0;                        /* where the opened case stands, at the top */
 
       function maxSpeed() { return 470 + Math.min(150, dist / 20); }
@@ -249,9 +253,21 @@
 
         /* a quarter point a metre (round 4: the distance alone ran to thousands a minute) */
         ctx.score(Math.floor(dist / 4) + score);
-        /* the camera leads you downhill */
-        var tx = me.x - W * .32, ty = me.y - H * .56;
-        camX += (tx - camX) * Math.min(1, dt * 6); camY += (ty - camY) * Math.min(1, dt * 3);
+        /* THE CAMERA (round 6, Chase: "the camera lags behind the person the
+           faster they go, so you crash often. The faster they go, the wider
+           the camera gets, but it needs to happen smoothly"). It trailed by
+           speed ÷ 6 — 100px at full speed, the rider sliding toward the
+           right edge. Now: the view widens with speed (to ×1.43 the
+           ground), slowly so it never jumps; the camera follows tightly and
+           looks ahead by your speed; and the rider is held between 20% and
+           45% across, whatever happens. */
+        var zt = 1 - .3 * clamp((me.vx - 220) / 400, 0, 1);
+        zoom += (zt - zoom) * Math.min(1, dt * .8);
+        var vw = VW(), vh = VH();
+        var tx = me.x - vw * .3 + me.vx * .12, ty = me.y - vh * .56;
+        camX += (tx - camX) * Math.min(1, dt * 10); camY += (ty - camY) * Math.min(1, dt * 4);
+        camX = clamp(camX, me.x - vw * .45, me.x - vw * .2);
+        camY = clamp(camY, me.y - vh * .78, me.y - vh * .3);
         cases = cases.filter(function (c) { return c.x > me.x - 400; });
         rails = rails.filter(function (r) { return r.x1 > me.x - 400; });
         ramps = ramps.filter(function (r) { return r.x + r.len > me.x - 400; });
@@ -331,7 +347,7 @@
           }
         }
         var gy = groundAt(me.x);
-        if (gy === null) { if (me.y > camY + H + 140) crash(true); return; }
+        if (gy === null) { if (me.y > camY + VH() + 140) crash(true); return; }
         if (me.y >= gy) {
           var ga = slopeAt(me.x);
           /* the banner always sets you down clean */
@@ -399,7 +415,7 @@
           if (by !== null && body.y > by - 6) { body.y = by - 6; body.vy = -Math.abs(body.vy) * .35; body.vx *= .7; body.vr *= .6; if (Math.abs(body.vy) > 60) puff(body.x, by, 4); }
         }
         var fx = body ? body.x : me.x, fy = body ? body.y : me.y;
-        camX += (fx - W * .4 - camX) * Math.min(1, dt * 4); camY += (fy - H * .56 - camY) * Math.min(1, dt * 3);
+        camX += (fx - VW() * .4 - camX) * Math.min(1, dt * 4); camY += (fy - VH() * .56 - camY) * Math.min(1, dt * 3);
       }
 
       /* The rider's body follows what is happening, smoothly. */
@@ -457,7 +473,8 @@
         layer(g, .35, 220, mix(A1.far, A1.hill, .5), 26, .009, true, night);
         mist(g, 265, col('low'), .14);
         fireworks.forEach(function (fw) { firework(g, fw); });
-        /* the ground you ride */
+        /* the ground you ride, at the camera's zoom */
+        g.save(); g.scale(zoom, zoom);
         terrain(g, col('hill'), col('edge'));
         rails.forEach(function (r) { rail(g, r); });
         ramps.forEach(function (r) { ramp(g, r); });
@@ -469,6 +486,7 @@
         sparks.forEach(function (p) { g.fillStyle = 'rgba(255,214,120,' + p.life * 2.5 + ')'; g.fillRect(p.x - camX, p.y - camY, 2, 2); });
         dust.forEach(function (p) { g.fillStyle = 'rgba(255,246,230,' + (p.life * .9).toFixed(2) + ')'; g.beginPath(); g.arc(p.x - camX, p.y - camY, p.r, 0, 7); g.fill(); });
         drawMe(g);
+        g.restore();
         /* the air: a drift of pollen by day, snow at night */
         snow.forEach(function (p) { p.y += p.v * .016; p.x -= me.vx * .002; if (p.y > H) p.y = -4; if (p.x < 0) p.x = W; g.fillStyle = 'rgba(255,255,255,' + (.15 + night * .4) + ')'; g.fillRect(p.x, p.y, 1.5, 1.5); });
         hud(g, night);
@@ -529,16 +547,16 @@
       }
       /* the hill: a lit band along its top (the snow line, Alto's), then the body */
       function terrain(g, c, edge) {
-        var x0 = Math.floor(camX / STEP) - 1, x1 = Math.ceil((camX + W) / STEP) + 1;
+        var x0 = Math.floor(camX / STEP) - 1, x1 = Math.ceil((camX + VW()) / STEP) + 1, BOT = VH() + 50;
         function shape(dy) {
           var open = false;
           for (var i = x0; i <= x1; i++) {
             var p = ground[i];
-            if (!p || p.y === null) { if (open) { g.lineTo((i * STEP) - camX, H + 50); g.closePath(); g.fill(); open = false; } continue; }
-            if (!open) { g.beginPath(); g.moveTo(p.x - camX, H + 50); open = true; }
+            if (!p || p.y === null) { if (open) { g.lineTo((i * STEP) - camX, BOT); g.closePath(); g.fill(); open = false; } continue; }
+            if (!open) { g.beginPath(); g.moveTo(p.x - camX, BOT); open = true; }
             g.lineTo(p.x - camX, p.y - camY + dy);
           }
-          if (open) { g.lineTo((x1 * STEP) - camX, H + 50); g.closePath(); g.fill(); }
+          if (open) { g.lineTo((x1 * STEP) - camX, BOT); g.closePath(); g.fill(); }
         }
         g.fillStyle = edge; g.globalAlpha = .55; shape(0); g.globalAlpha = 1;
         g.fillStyle = c; shape(5);
@@ -619,7 +637,7 @@
         g.restore();
       }
       function stick(g, s) {
-        var x = s.x - camX, y = s.y - camY; if (x < -10 || x > W + 10) return;
+        var x = s.x - camX, y = s.y - camY; if (x < -10 || x > VW() + 10) return;
         g.save(); g.translate(x, y); g.rotate(Math.sin(time * 3 + s.x) * .4);
         g.fillStyle = ['#5CF2C4', '#FF4FD8', '#2FD8FF', '#FFB547'][Math.floor(s.x) % 4]; g.shadowColor = g.fillStyle; g.shadowBlur = 10;
         g.fillRect(-2, -8, 4, 16); g.shadowBlur = 0; g.restore();
