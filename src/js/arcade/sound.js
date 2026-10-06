@@ -531,6 +531,11 @@
     whiff: function (at) { noise(at, .08, { filter: 'lowpass', freq: 900, vol: .1, to: sfxBus }); },
     zap: function (at) { voice(at, 1800, .12, { wave: .125, vol: .08, to: sfxBus, slide: 200 }); },
     boom: function (at) { noise(at, .8, { filter: 'lowpass', freq: 900, vol: .5, to: sfxBus }); voice(at, 90, .6, { type: 'sine', slide: 30, vol: .5, to: sfxBus }); },
+    /* the pause: a bright little run up as it opens, and down as it closes
+       (Chase: "an arcadey sound effect for when the pause menu comes up and
+       down … like the classic Mario Party games") */
+    pausein: function (at) { seq(at, ['C6', 'E6', 'G6', 'C7'], { wave: .25, gap: .045, len: .07, vol: .1 }); voice(at + .18, hz(midi('E7')), .22, { type: 'sine', vol: .08, to: sfxBus, rel: .2 }); },
+    pauseout: function (at) { seq(at, ['C7', 'G6', 'E6', 'C6'], { wave: .25, gap: .045, len: .07, vol: .09 }); },
     gameover: function (at) { seq(at, ['G5', 'E5', 'C5', 'G4'], { wave: .5, gap: .16, len: .18, vol: .11 }); },
     newbest: function (at) { seq(at, ['C6', 'C6', 'C6', 'G6', 'E6', 'G6', 'C7'], { wave: .25, gap: .09, len: .1, vol: .11 }); }
   };

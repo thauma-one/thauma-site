@@ -268,10 +268,10 @@
 .arc-final b{display:block;font:600 52px/1 'Sora',sans-serif;color:var(--c,var(--ar-amber));font-variant-numeric:tabular-nums;
   text-shadow:0 0 22px color-mix(in srgb,var(--c,var(--ar-amber)) 55%,transparent)}
 .arc-final span{display:inline-block;margin-top:8px;font-size:11px;letter-spacing:.18em;text-transform:uppercase;font-weight:600;color:var(--ar-amber)}
-/* the joke, on the game-over card */
-.arc-joke{display:flex;gap:9px;align-items:flex-start;margin:16px 0 0;padding:11px 12px;border-radius:12px;text-align:left;
-  background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px var(--ar-edge);font:500 14px/1.4 'Inter',system-ui,sans-serif;color:var(--ar-ink)}
-.arc-joke b{flex:none;margin-top:1px;padding:3px 6px;border-radius:6px;font:700 9px/1 'Sora',sans-serif;letter-spacing:.12em;background:var(--c,var(--ar-amber));color:#0b0e14}
+/* the pause card: which game, and the score so far */
+.arc-pause-game{display:block;margin-bottom:6px;font:600 11px/1 'Sora',sans-serif;letter-spacing:.24em;text-transform:uppercase;color:var(--c,var(--ar-amber))}
+.arc-final.is-small b{font-size:34px}
+.arc-final.is-small span{display:block;margin-top:4px;color:var(--ar-dim)}
 .arc-card .arc-board{margin-top:16px;flex-direction:column;align-items:stretch;gap:4px;display:flex}
 .arc-card .arc-board li{display:flex;justify-content:space-between;gap:10px;color:var(--ar-dim)}
 .arc-card .arc-board li i{font-style:normal;width:18px;text-align:left;opacity:.6}
