@@ -452,11 +452,18 @@
     "stagerunner_t_slide": "Провуци се испод",
     "stagerunner_t_dodge": "Заобиђи",
     "stagerunner_hype": "Подршка екипе",
-    "menu_confirm": "Ентер за почетак",
-    "menu_confirm_touch": "Додирни поновно за почетак",
+    "menu_confirm": "Ентер за одабир",
+    "menu_confirm_touch": "Додирни поновно за одабир",
     "soundcheck_mode_pick": "Која игра?",
     "panelfixer_phase": "Фазна лоптица",
     "panelfixer_electric": "Електрична лоптица",
-    "panelfixer_bloom": "Процват"
+    "panelfixer_bloom": "Процват",
+    "cuestack_song_pick": "Одабери пјесму",
+    "cuestack_song_main": "Главна позорница",
+    "cuestack_song_main_line": "Плесни хит за велику дворану",
+    "cuestack_song_funk": "Пухачи",
+    "cuestack_song_funk_line": "Функ с пухачком секцијом",
+    "cuestack_song_synth": "Пуни гас",
+    "cuestack_song_synth_line": "Ведри синтпоп"
   }
 }

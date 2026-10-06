@@ -452,11 +452,18 @@
     "stagerunner_t_slide": "Slide under",
     "stagerunner_t_dodge": "Go around",
     "stagerunner_hype": "Crew hype",
-    "menu_confirm": "Enter to start",
-    "menu_confirm_touch": "Tap again to start",
+    "menu_confirm": "Enter to choose",
+    "menu_confirm_touch": "Tap again to choose",
     "soundcheck_mode_pick": "Which game?",
     "panelfixer_phase": "Phase ball",
     "panelfixer_electric": "Electric ball",
-    "panelfixer_bloom": "Bloom"
+    "panelfixer_bloom": "Bloom",
+    "cuestack_song_pick": "Pick a song",
+    "cuestack_song_main": "Main Stage",
+    "cuestack_song_main_line": "Big room dance",
+    "cuestack_song_funk": "Horn Line",
+    "cuestack_song_funk_line": "Funk with a horn section",
+    "cuestack_song_synth": "Overdrive",
+    "cuestack_song_synth_line": "Bright synth pop"
   }
 }

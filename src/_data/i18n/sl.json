@@ -452,11 +452,18 @@
     "stagerunner_t_slide": "Zdrsni spodaj",
     "stagerunner_t_dodge": "Obidi",
     "stagerunner_hype": "Navdušenje ekipe",
-    "menu_confirm": "Enter za začetek",
-    "menu_confirm_touch": "Dotakni znova za začetek",
+    "menu_confirm": "Enter za izbiro",
+    "menu_confirm_touch": "Dotakni znova za izbiro",
     "soundcheck_mode_pick": "Katera igra?",
     "panelfixer_phase": "Fazna žogica",
     "panelfixer_electric": "Električna žogica",
-    "panelfixer_bloom": "Razcvet"
+    "panelfixer_bloom": "Razcvet",
+    "cuestack_song_pick": "Izberi pesem",
+    "cuestack_song_main": "Glavni oder",
+    "cuestack_song_main_line": "Plesna uspešnica za veliko dvorano",
+    "cuestack_song_funk": "Pihala",
+    "cuestack_song_funk_line": "Funk s pihalno sekcijo",
+    "cuestack_song_synth": "Polni plin",
+    "cuestack_song_synth_line": "Vedri sintpop"
   }
 }

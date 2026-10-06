@@ -452,11 +452,18 @@
     "stagerunner_t_slide": "Provuci se ispod",
     "stagerunner_t_dodge": "Zaobiđi",
     "stagerunner_hype": "Podrška ekipe",
-    "menu_confirm": "Enter za početak",
-    "menu_confirm_touch": "Dodirni ponovno za početak",
+    "menu_confirm": "Enter za odabir",
+    "menu_confirm_touch": "Dodirni ponovno za odabir",
     "soundcheck_mode_pick": "Koja igra?",
     "panelfixer_phase": "Fazna loptica",
     "panelfixer_electric": "Električna loptica",
-    "panelfixer_bloom": "Procvat"
+    "panelfixer_bloom": "Procvat",
+    "cuestack_song_pick": "Odaberi pjesmu",
+    "cuestack_song_main": "Glavna pozornica",
+    "cuestack_song_main_line": "Plesni hit za veliku dvoranu",
+    "cuestack_song_funk": "Puhači",
+    "cuestack_song_funk_line": "Funk s puhačkom sekcijom",
+    "cuestack_song_synth": "Puni gas",
+    "cuestack_song_synth_line": "Vedri sintpop"
   }
 }

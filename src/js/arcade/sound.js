@@ -378,7 +378,34 @@
         ['Bm7', 'F#5.6 D5.2 C#5.8'],
         ['Gmaj7', 'B4.6 D5.2 F#5.8'],
         ['Em7', 'E5.4 F#5.4 G5.8'],
-        ['Aadd9', 'r.16']] }
+        ['Aadd9', 'r.16']] },
+    /* Cue Stack's other songs (round 7, Chase: "This game should also have
+       multiple different songs to choose from. And they all need to be
+       bops!!!!"). A funk tune with a horn line, a chugging bass riff and
+       wah chords, 112 */
+    cuestack_funk: { bpm: 112, bass: 'riff', arp: 'funk', lead: 'brass', kit: 'rock',
+      k: 'x.....x...x.....', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.', cp: '..x...x...x..x..',
+      bars: [
+        ['Em7', 'B5.2 r.1 B5.1 D6.2 E6.2 r.2 D6.1 B5.1 A5.2 B5.2'],
+        ['A7', 'C#6.2 r.2 E6.2 C#6.2 r.4 A5.2 B5.2'],
+        ['Em7', 'G6.2 r.1 G6.1 F#6.2 E6.2 r.2 D6.2 E6.4'],
+        ['A7', 'E6.6 D6.2 C#6.4 A5.4'],
+        ['Cmaj7', 'G6.2 r.1 G6.1 E6.2 G6.2 r.2 A6.2 G6.4'],
+        ['D', 'F#6.2 r.2 A6.2 F#6.2 D6.4 E6.4'],
+        ['Em7', 'B5.2 D6.2 E6.2 G6.2 F#6.2 E6.2 D6.2 B5.2'],
+        ['B7', 'D#6.8 F#6.4 r.4']] },
+    /* and bright synth pop, a gated snare and a sweeping saw arp, 140 */
+    cuestack_synth: { bpm: 140, bass: 'synth8', arp: 'sawarp', lead: 'pulse', leadWave: .25, kit: 'gated',
+      k: 'x...x...x...x...', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.',
+      bars: [
+        ['D', 'F#6.2 A6.2 D7.2 A6.2 F#6.2 A6.2 E6.4'],
+        ['A', 'E6.2 A6.2 C#7.2 A6.2 E6.4 r.4'],
+        ['Bm', 'D6.2 F#6.2 B6.2 F#6.2 D6.2 F#6.2 A6.4'],
+        ['G', 'G6.4 F#6.4 E6.4 D6.4'],
+        ['D', 'F#6.2 A6.2 D7.2 A6.2 F#6.2 A6.2 B6.4'],
+        ['A', 'C#7.4 B6.2 A6.2 E6.8'],
+        ['G', 'B6.2 A6.2 G6.2 F#6.2 G6.4 A6.4'],
+        ['A', 'A6.12 r.4']] }
   };
   /* Parsed once: per bar, the chords by sixteenth and the melody's notes. */
   Object.keys(TUNES).forEach(function (k) {
