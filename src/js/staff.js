@@ -314,6 +314,15 @@
       }).join('')) || any;
     }
 
+    /* bounced copies since the warning was last cleared */
+    if (h) {
+      var bn = h.bounces && h.bounces.n;
+      any = showSection('hmBounce', bn ? homeRow(
+        esc(bn === 1 ? tr('home.bounce1') : fill('home.bounceN', { n: bn })), '',
+        '<span class="sev crit hm-sev">' + esc(String(bn)) + '</span>',
+        homeLink('/staff/mail/', 'home.open') + ' <button type="button" class="ghost-btn" data-clear-bounces>' + esc(tr('home.bounceClear')) + '</button>') : '') || any;
+    }
+
     if (h) {
       any = showSection('hmTodo', h.unfinished.map(function (u) {
         if (u.kind === 'milestone' || u.kind === 'prayer') {
@@ -358,6 +367,15 @@
 
   function wireHome() {
     if (!$('hmQuietRows')) return;
+    document.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-clear-bounces]');
+      if (!b) return;
+      b.disabled = true;
+      fetch('/api/staff-home', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'clear-bounces' }) })
+        .then(function (r) { return r.ok ? loadHome() : (b.disabled = false); })
+        .catch(function () { b.disabled = false; });
+    });
     $('hmQuietRows').addEventListener('click', function (e) {
       var b = e.target.closest('[data-log]');
       if (b && window.StaffSupporterDialog) window.StaffSupporterDialog.open(b.getAttribute('data-log'), b, true);

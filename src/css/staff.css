@@ -1238,6 +1238,19 @@ button.ml-sentall-row:focus-visible .ml-sentall-subject{color:var(--voice-tech)}
 .ml-sentall-subject{flex:1 1 auto;min-width:0;font-size:14px;overflow-wrap:anywhere}
 .ml-sentall-meta{flex:none;font-size:12.5px;color:var(--dim);font-variant-numeric:tabular-nums}
 .ml-sentall .link-btn{margin-top:8px}
+/* a sent mailing's row opens to its details (2026-10-05) */
+.ml-sent-item+.ml-sent-item .ml-sentall-row{border-top:1px solid var(--line)}
+button.ml-sentall-row{width:100%;background:none;border:0;text-align:left;font:inherit;cursor:pointer}
+.ml-sent-item.is-open{background:color-mix(in srgb,var(--voice-tech) 4%,transparent)}
+.ml-sent-detail{padding:4px 18px 16px}
+.ml-sent-actions{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 14px}
+.ml-sent-people{list-style:none;margin:6px 0 14px;padding:0}
+.ml-sent-people li{display:flex;align-items:baseline;gap:12px;padding:7px 0;border-top:1px solid var(--line);font-size:13px}
+.ml-sent-who{flex:1 1 auto;min-width:0;overflow-wrap:anywhere}.ml-sent-who i{font-style:normal;color:var(--dim);margin-left:6px}
+.ml-sent-st{flex:none;color:var(--dim);display:flex;gap:6px;align-items:baseline}
+.ml-mark{font-size:11px;padding:1px 7px;border-radius:999px;background:var(--line);color:var(--text)}
+.ml-mark.is-open{background:color-mix(in srgb,var(--voice-ministry) 25%,transparent)}
+.ml-mark.is-click{background:color-mix(in srgb,var(--voice-tech) 25%,transparent)}
 @media (max-width:560px){
   .ml-sentall-row{flex-direction:column;gap:3px}
 }

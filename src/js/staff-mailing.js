@@ -143,6 +143,21 @@
      copy where the list publishes one; where it does not, the row says so —
      that is how somebody finds the list's switch for it. */
   var SENT_SHOWN = 5;
+  /* EVERY ROW SAYS WHAT HAPPENED, and opens to say who (2026-10-05, Chase:
+     "it should also detail how many messages were sent and how many people
+     have seen/opened the email and should update that value in real time.
+     How do we view the other statistics? And how do we resend an email if
+     someone says they didn't receive it?"). A row's numbers are always
+     there — sent, opened (and its share), clicked, bounced — and are
+     refreshed every 20 seconds while the page is open. Pressing a row opens
+     its details: each person and what became of their copy, Send again for
+     one of them, the links by clicks, the public copy, and Remove. */
+  function sentLink(m, l) {
+    return l.archive_public && m.slug && state.partnerSlug
+      ? window.location.origin + '/archive/' + encodeURIComponent(state.partnerSlug) + '/' +
+        encodeURIComponent(l.slug) + '/' + encodeURIComponent(m.slug) + '/'
+      : null;
+  }
   function renderSentAll() {
     var rows = [];
     state.lists.forEach(function (l) {
@@ -151,31 +166,82 @@
     rows.sort(function (a, b) { return String(b.m.finished_at || '').localeCompare(String(a.m.finished_at || '')); });
     $('mlSentAll').hidden = !rows.length;
     var shown = state.sentAll ? rows : rows.slice(0, SENT_SHOWN);
-    var origin = window.location.origin;
     $('mlSentRows').innerHTML = shown.map(function (r) {
-      var m = r.m, l = r.l;
-      var link = l.archive_public && m.slug && state.partnerSlug
-        ? origin + '/archive/' + encodeURIComponent(state.partnerSlug) + '/' +
-          encodeURIComponent(l.slug) + '/' + encodeURIComponent(m.slug) + '/'
-        : null;
+      var m = r.m, l = r.l, n = Number(m.sent_count) || 0, op = Number(m.opened) || 0;
+      var pct = n ? Math.round(op / n * 100) : 0;
       var meta = esc(l.name) + ' · ' +
-        esc(m.finished_at ? new Date(m.finished_at).toLocaleDateString() : '') +
-        (m.sent_count ? ' · ' + esc(fill('ml.sentTo', { n: m.sent_count })) : '') +
-        /* What became of the copies (resend-webhook.js), only what happened:
-           a bounce in the warning color, opens and clicks once tracked. */
+        esc(m.finished_at ? new Date(m.finished_at).toLocaleDateString() : '') + ' · ' +
+        esc(fill('ml.sentTo', { n: n })) + ' · ' + esc(fill('ml.opened', { n: op })) + (n ? ' (' + pct + '%)' : '') +
+        (m.clicked ? ' · ' + esc(fill('ml.clicked', { n: m.clicked })) : '') +
         (m.bounced ? ' · <b class="ml-bounced">' + esc(fill('ml.bounced', { n: m.bounced })) + '</b>' : '') +
-        (m.opened ? ' · ' + esc(fill('ml.opened', { n: m.opened })) : '') +
-        (m.clicked ? ' · ' + esc(fill('ml.clicked', { n: m.clicked })) : '');
-      var inner = '<span class="ml-sentall-subject">' + esc(m.subject) + '</span>' +
-        '<span class="ml-sentall-meta">' + meta +
-          (link ? '' : ' · <i>' + esc(tr('ml.notPublished')) + '</i>') + '</span>';
-      return link
-        ? '<a class="ml-sentall-row" href="' + esc(link) + '" target="_blank" rel="noopener">' + inner + '</a>'
-        : '<div class="ml-sentall-row">' + inner + '</div>';
+        (sentLink(m, l) ? '' : ' · <i>' + esc(tr('ml.notPublished')) + '</i>');
+      var open = state.sentOpen === m.id;
+      return '<div class="ml-sent-item' + (open ? ' is-open' : '') + '">' +
+        '<button type="button" class="ml-sentall-row" data-sent="' + esc(m.id) + '" aria-expanded="' + open + '">' +
+          '<span class="ml-sentall-subject">' + esc(m.subject) + '</span>' +
+          '<span class="ml-sentall-meta">' + meta + '</span></button>' +
+        (open ? '<div class="ml-sent-detail" id="mlSentDetail">' + sentDetail(m, l) + '</div>' : '') +
+      '</div>';
     }).join('');
     $('mlSentMore').hidden = rows.length <= SENT_SHOWN;
     $('mlSentMore').textContent = state.sentAll ? tr('ml.sentFewer') : fill('ml.sentAllN', { n: rows.length });
   }
+  /* one mailing's details: drawn from what mailing-details returned */
+  function sentDetail(m, l) {
+    var d = state.sentDetail && state.sentDetail.id === m.id ? state.sentDetail : null;
+    var link = sentLink(m, l);
+    var head = '<div class="ml-sent-actions">' +
+      (link ? '<a class="ghost-btn sm" href="' + esc(link) + '" target="_blank" rel="noopener">' + esc(tr('ml.sentView')) + '</a>' : '') +
+      '<button type="button" class="ghost-btn sm danger" data-sent-remove="' + esc(m.id) + '">' + esc(tr('ml.sentRemove')) + '</button></div>';
+    if (!d) return head + '<p class="ml-sent-wait">…</p>';
+    var people = d.people.map(function (p) {
+      var st = p.status === 'bounced' ? '<b class="ml-bounced">' + esc(tr('ml.stBounced')) + '</b>'
+        : p.status === 'failed' ? '<b class="ml-bounced">' + esc(tr('ml.stFailed')) + '</b>'
+        : esc(tr('ml.stSent'));
+      var marks = (p.opened_at ? '<span class="ml-mark is-open">' + esc(tr('ml.stOpened')) + '</span>' : '') +
+        (p.click_count ? '<span class="ml-mark is-click">' + esc(fill('ml.stClicked', { n: p.click_count })) + '</span>' : '');
+      var again = p.subscriber_status === 'subscribed'
+        ? '<button type="button" class="link-btn" data-sent-again="' + esc(p.subscriber_id) + '">' + esc(tr('ml.sentAgain')) + '</button>' : '';
+      return '<li><span class="ml-sent-who">' + esc(p.name || p.email) + (p.name ? ' <i>' + esc(p.email) + '</i>' : '') + '</span>' +
+        '<span class="ml-sent-st">' + st + marks + '</span>' + again + '</li>';
+    }).join('');
+    var links = (d.links || []).filter(function (k) { return k.clicks > 0; }).map(function (k) {
+      return '<li><span class="ml-sent-who">' + esc(k.label || k.url) + '</span><span class="ml-sent-st">' + esc(fill('ml.stClicked', { n: k.clicks })) + '</span></li>';
+    }).join('');
+    return head +
+      '<span class="sh-lbl">' + esc(tr('ml.sentPeople')) + '</span><ul class="ml-sent-people">' + people + '</ul>' +
+      (links ? '<span class="sh-lbl">' + esc(tr('ml.sentLinks')) + '</span><ul class="ml-sent-people">' + links + '</ul>' : '');
+  }
+  async function openSent(id) {
+    state.sentOpen = state.sentOpen === id ? null : id;
+    renderSentAll();
+    if (!state.sentOpen) return;
+    var b = await postJson({ action: 'mailing-details', id: id });
+    if (b.error) { toast(b.error, 'bad'); return; }
+    state.sentDetail = { id: id, people: b.people || [], links: b.links || [] };
+    if (state.sentOpen === id) renderSentAll();
+  }
+  /* the numbers, kept live while the page is open and on screen */
+  async function refreshSent() {
+    if (document.hidden || $('mlSentAll').hidden) return;
+    var b = await postJson({ action: 'sent-stats' });
+    if (b.error || !b.stats) return;
+    var by = {};
+    b.stats.forEach(function (x) { by[x.id] = x; });
+    var changed = false;
+    state.lists.forEach(function (l) {
+      (l.sent || []).forEach(function (m) {
+        var x = by[m.id]; if (!x) return;
+        ['sent_count', 'opened', 'clicked', 'bounced'].forEach(function (k) { if (Number(m[k]) !== Number(x[k])) { m[k] = x[k]; changed = true; } });
+      });
+    });
+    if (changed) {
+      renderSentAll();
+      if (state.sentOpen) { var d = await postJson({ action: 'mailing-details', id: state.sentOpen }); if (!d.error) { state.sentDetail = { id: state.sentOpen, people: d.people || [], links: d.links || [] }; renderSentAll(); } }
+    }
+  }
+  setInterval(refreshSent, 20000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) refreshSent(); });
 
   /* ---- drafts, every list together ------------------------------------
      Sent's shape, above it: what is waiting is what somebody came back for.
@@ -1079,6 +1145,30 @@
   $('mlSentMore').addEventListener('click', function () {
     state.sentAll = !state.sentAll;
     renderSentAll();
+  });
+  $('mlSentRows').addEventListener('click', async function (e) {
+    var row = e.target.closest('[data-sent]');
+    if (row) { openSent(row.dataset.sent); return; }
+    var again = e.target.closest('[data-sent-again]');
+    if (again) {
+      again.disabled = true;
+      var r = await postJson({ action: 'mailing-resend', id: state.sentOpen, subscriber_id: again.dataset.sentAgain });
+      again.disabled = false;
+      if (r.error) toast(r.error, 'bad'); else toast(fill('ml.sentAgainDone', { email: r.to }), 'ok');
+      return;
+    }
+    var rm = e.target.closest('[data-sent-remove]');
+    if (rm) {
+      var subj = '';
+      state.lists.forEach(function (l) { (l.sent || []).forEach(function (m) { if (m.id === rm.dataset.sentRemove) subj = m.subject; }); });
+      var ok = await window.StaffConfirm({ title: fill('ml.sentRemoveAsk', { subject: subj }), body: tr('ml.sentRemoveBody'),
+        confirm: tr('ml.sentRemove'), cancel: tr('ms.cancel'), danger: true });
+      if (!ok) return;
+      var d = await postJson({ action: 'mailing-remove', id: rm.dataset.sentRemove });
+      if (d.error) { toast(d.error, 'bad'); return; }
+      state.sentOpen = null; state.sentDetail = null;
+      await load(true);
+    }
   });
   $('mlForm').addEventListener('submit', submitSettings);
 
