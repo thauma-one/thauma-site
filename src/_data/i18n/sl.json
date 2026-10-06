@@ -663,6 +663,11 @@
     "followspot_s_pose": "Poza!",
     "followspot_s_climb": "Po lestvah!",
     "strike_wide": "Širši drsnik",
-    "strike_multi": "Več žogic"
+    "strike_multi": "Več žogic",
+    "stagerunner_t_climb": "Teci po tem",
+    "stagerunner_t_jump": "Preskoči",
+    "stagerunner_t_slide": "Zdrsni spodaj",
+    "stagerunner_t_dodge": "Obidi",
+    "stagerunner_hype": "Navdušenje ekipe"
   }
 }

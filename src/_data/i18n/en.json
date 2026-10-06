@@ -663,6 +663,11 @@
     "followspot_s_pose": "Strike a pose!",
     "followspot_s_climb": "Up the ladder!",
     "strike_wide": "Wide fader",
-    "strike_multi": "Multiball"
+    "strike_multi": "Multiball",
+    "stagerunner_t_climb": "Run on it",
+    "stagerunner_t_jump": "Jump over",
+    "stagerunner_t_slide": "Slide under",
+    "stagerunner_t_dodge": "Go around",
+    "stagerunner_hype": "Crew hype"
   }
 }

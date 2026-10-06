@@ -663,6 +663,11 @@
     "followspot_s_pose": "Poza!",
     "followspot_s_climb": "Uz ljestve!",
     "strike_wide": "Širi fader",
-    "strike_multi": "Više loptica"
+    "strike_multi": "Više loptica",
+    "stagerunner_t_climb": "Trči po tome",
+    "stagerunner_t_jump": "Preskoči",
+    "stagerunner_t_slide": "Provuci se ispod",
+    "stagerunner_t_dodge": "Zaobiđi",
+    "stagerunner_hype": "Podrška ekipe"
   }
 }
