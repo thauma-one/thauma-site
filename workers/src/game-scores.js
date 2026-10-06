@@ -33,12 +33,15 @@ const keyFor = (game) => "board:" + game;
 const BLOCKLIST = [
   "fuck", "shit", "bitch", "cunt", "asshole", "bastard", "dick", "pussy",
   "nigger", "nigga", "faggot", "fag", "retard", "whore", "slut", "rape",
-  "nazi", "hitler", "kike", "spic", "chink", "tranny",
+  "nazi", "hitler", "kike", "spic", "chink", "tranny", "cuck", "penis",
 ];
 /* Three letters is short enough that the classic arcade offenders need
    naming on their own. */
 const THREE = new Set(["ASS", "FUK", "FUC", "FCK", "FKU", "KKK", "CUM", "TIT", "FAG", "NIG", "NGR", "SEX",
-  "DIK", "DIC", "CNT", "KYS", "SS", "HH", "WTF", "STD", "POO", "PEE", "JIZ", "COK", "COC", "VAG", "PUS", "HOE"]);
+  "DIK", "DIC", "CNT", "KYS", "SS", "HH", "WTF", "STD", "POO", "PEE", "JIZ", "COK", "COC", "VAG", "PUS", "HOE",
+  /* Chase, 2026-10-05: "Add CUK to the blacklist. Maybe PNS as well if that
+     isn't on it and the variants of those words." */
+  "CUK", "KUK", "CUC", "KUC", "CUQ", "QUK", "PNS", "PNZ", "PNX"]);
 
 export function normalizeForModeration(s) {
   return String(s)

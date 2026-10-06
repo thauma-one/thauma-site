@@ -65,7 +65,7 @@ await check("initials: three letters or digits, upper-cased", async () => {
 });
 
 await check("crude initials become ???, leetspeak and the classics included", async () => {
-  for (const bad of ["ASS", "a55", "KKK", "FUK", "cum", "SEX", "sh1t", "fag"]) eq(game.sanitizeInitials(bad), "???", bad);
+  for (const bad of ["ASS", "a55", "KKK", "FUK", "cum", "SEX", "sh1t", "fag", "CUK", "kuk", "cuc", "PNS", "pn5", "PNZ"]) eq(game.sanitizeInitials(bad), "???", bad);
   for (const ok of ["CHR", "DAD", "ANA", "007"]) eq(game.sanitizeInitials(ok), ok, ok);
 });
 
