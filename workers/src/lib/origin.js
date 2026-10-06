@@ -36,3 +36,27 @@ export function siteOrigin(env, request) {
   if (configured) return configured.replace(/\/+$/, "");
   return new URL(request.url).origin;
 }
+
+/**
+ * WHERE A SUBSCRIBER'S LINKS POINT — confirm, unsubscribe, the archive.
+ *
+ * Not the same question as siteOrigin(). A link in a newsletter lives in an
+ * inbox for years and must work whichever deployment sent it; a test sent
+ * from dev went out with a dev.thauma.one unsubscribe link that works only
+ * while the Pi is on (BACKLOG, "Links in emails point at whichever site sent
+ * them", 2026-10-03). So these links can be pointed at the live site with
+ * SUBSCRIBER_ORIGIN, per environment, in wrangler.toml.
+ *
+ * SET TO https://thauma.one ON ALL THREE (2026-10-05), which is safe only
+ * because all three now share one SIGNUP_SALT: unsubscribe links are signed
+ * with it (lib/unsub.js), so live verifies a link dev signed. If the salts
+ * ever differ again, take SUBSCRIBER_ORIGIN off dev and staging first.
+ * Confirmation tokens live in the shared database and verify anywhere.
+ * Unset, this is siteOrigin(). Staff-facing links (invites, test inboxes, address changes) stay
+ * on siteOrigin(): those belong to the console that sent them.
+ */
+export function subscriberOrigin(env, request) {
+  const configured = String((env && env.SUBSCRIBER_ORIGIN) || "").trim();
+  if (configured) return configured.replace(/\/+$/, "");
+  return siteOrigin(env, request);
+}

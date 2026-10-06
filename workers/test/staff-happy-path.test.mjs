@@ -855,6 +855,28 @@ await check("Design's colors are the ministry's: saved to the partner, and the s
   } finally { EXTRA = {}; }
 });
 
+await check("saved versions (0049): saved by name from the stored draft, made at every Publish, opened cleaned, only by editors", async () => {
+  const row = SITE_ROW();
+  EXTRA = { partner_site_get: [row], site_save_get: [{ id: "sv_1", name: "Old", kind: "manual", doc: row.draft, created_at: "x" }] };
+  try {
+    let db = makeDb();
+    eq((await staffSite.fetch(post("/api/staff-site", { action: "version-save", name: "  Summer   look " }), env(db))).status, 200, "saved");
+    const add = called(db, "site_save_add")[0].args;
+    assert(add.includes("Summer look") && add.includes("manual") && add.includes(row.draft), "name tidied, the stored draft kept");
+    assert(called(db, "site_saves_trim").length === 1, "old manual saves trimmed");
+    eq((await staffSite.fetch(post("/api/staff-site", { action: "version-save", name: " " }), env(makeDb()))).status, 400, "a name is needed");
+    db = makeDb();
+    await staffSite.fetch(post("/api/staff-site", { action: "publish" }), env(db));
+    assert(called(db, "site_save_add")[0].args.includes("published"), "Publish keeps a version");
+    const got = await (await staffSite.fetch(post("/api/staff-site", { action: "version-open", id: "sv_1" }), env(makeDb()))).json();
+    assert(got.draft && got.draft.pages && got.draft.v === 1, "the copy comes back cleaned");
+  } finally { EXTRA = {}; }
+  EXTRA = { partner_site_get: [SITE_ROW()], partners_for_user: [{ ...PARTNER, access_role: "assist" }] };
+  try {
+    eq((await staffSite.fetch(post("/api/staff-site", { action: "version-save", name: "x" }), env(makeDb()))).status, 403, "only editors");
+  } finally { EXTRA = {}; }
+});
+
 await check("someone on the team who is not the owner sees it, cannot change it, and may ask", async () => {
   EXTRA = { partner_site_get: [SITE_ROW()], partners_for_user: [{ ...PARTNER, access_role: "assist" }] };
   try {
@@ -1140,9 +1162,9 @@ await check("Home lists what is not finished and what is waiting for translation
   }
 });
 
-await check("Home only reads", async () => {
+await check("Home only reads, apart from clearing its bounce warning", async () => {
   const res = await worker.fetch(post("/api/staff-home", {}), env(makeDb()));
-  eq(res.status, 405, "status");
+  eq(res.status, 400, "an unknown action is refused");
 });
 
 await check("an admin NOT acting gets their own 403, not somebody's data", async () => {

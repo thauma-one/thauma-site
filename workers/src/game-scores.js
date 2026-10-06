@@ -20,7 +20,7 @@ import { kvStore, json, readJson, timingSafeEqualStr } from "./lib/store.js";
 
 /* The cabinets (js/arcade/arcade.js). A board exists only for a game that
    does, so the KV namespace cannot be filled with invented keys. */
-export const GAMES = ["loadout", "soundcheck", "panelfixer", "cablerun", "followspot", "strike", "cuestack"];
+export const GAMES = ["loadout", "soundcheck", "panelfixer", "cablerun", "stagerunner", "goldenhour", "followspot", "strike", "cuestack"];
 const MAX_SCORES = 5;
 const MAX_SCORE_VALUE = 9999999;
 const HIDDEN = "???";

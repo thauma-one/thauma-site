@@ -295,7 +295,8 @@ check("the preheader is hidden and padded", () => {
   assert(at > -1, "the preheader is missing");
   const block = html.slice(html.lastIndexOf("<div", at), at + 400);
   assert(/display:none/.test(block), "the preheader must not be visible in the body");
-  assert(/&#8199;|&#65279;/.test(block), "it must be padded, or the body leaks into the preview");
+  assert(/(&zwnj;&nbsp;){12}/.test(block), "it must be padded, or the body leaks into the preview");
+  assert(!/&#8199;|&#65279;|&#847;/.test(block), "no exotic invisible characters: spam filters score them as hidden text");
 });
 
 check("the subject is escaped everywhere it appears", () => {

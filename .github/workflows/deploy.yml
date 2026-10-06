@@ -220,6 +220,9 @@ jobs:
       - name: Test · workers/lang-redirect
         working-directory: workers
         run: node test/lang-redirect.test.mjs
+      - name: Test · workers/mail-brand
+        working-directory: workers
+        run: node test/mail-brand.test.mjs
       - name: Test · workers/mail-i18n
         working-directory: workers
         run: node test/mail-i18n.test.mjs

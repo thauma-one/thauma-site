@@ -24,22 +24,13 @@
  * row and says the same thing as the first.
  */
 import { createDb } from "./lib/db.js";
+import { t } from "./lib/mail-i18n.js";
+import { brandForMail } from "./lib/mail-brand.js";
+import { page as publicPage } from "./lib/public-page.js";
 
+/* Thauma's public page (lib/public-page.js), the unsubscribe page's look. */
 const page = (title, body, status = 200) =>
-  new Response(
-    `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">` +
-    `<meta name="viewport" content="width=device-width,initial-scale=1">` +
-    `<meta name="robots" content="noindex">` +
-    `<title>${title}</title><style>` +
-    `body{margin:0;min-height:100vh;display:flex;align-items:center;` +
-    `justify-content:center;background:#0b1119;color:#e8ecf1;` +
-    `font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:24px}` +
-    `main{max-width:32rem;text-align:center}` +
-    `h1{font-size:1.5rem;margin:0 0 .75rem;font-weight:700}` +
-    `p{margin:0 0 .5rem;color:#9aa4b2}` +
-    `</style></head><body><main>${body}</main></body></html>`,
-    { status, headers: { "Content-Type": "text/html; charset=utf-8",
-                         "Cache-Control": "no-store" } });
+  new Response(publicPage(title, body), { status, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
 
 /* One message for every failure. A token that never existed, one already spent
    and one belonging to somebody unsubscribed must be indistinguishable — the
@@ -85,15 +76,20 @@ export default {
     const esc = (v) => String(v == null ? "" : v)
       .replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;",
                                      '"': "&quot;", "'": "&#39;" }[c]));
+    /* In the language they signed up in (emailsAndForms.json "confirmed"). */
+    const lang = subs[0].lang || null;
     const names = subs.map((s) => esc(s.list_name));
     const listed = names.length === 1
       ? names[0]
-      : names.slice(0, -1).join(", ") + " and " + names[names.length - 1];
+      : names.slice(0, -1).join(", ") + " " + t(lang, "confirmed.and") + " " + names[names.length - 1];
+    const body = `<h1>${esc(t(lang, "confirmed.heading"))}</h1>` +
+      `<p>${t(lang, "confirmed.body", { lists: listed })}</p>` +
+      `<p>${esc(t(lang, "confirmed.stop"))}</p>`;
 
-    return page("Subscribed",
-      `<h1>You are subscribed</h1>
-       <p>You will now receive <b>${listed}</b>.</p>
-       <p>Every message includes a link to stop, and it works without signing
-          in to anything.</p>`);
+    /* Thauma's page — in the ministry's color and name for a partner's list
+       (lib/mail-brand.js), now that the token proved this is a real sign-up. */
+    const brand = subs[0].partner_id ? await brandForMail(db, subs[0].partner_id).catch(() => null) : null;
+    return new Response(publicPage(esc(t(lang, "confirmed.title")), body, undefined, lang, brand),
+      { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
   },
 };

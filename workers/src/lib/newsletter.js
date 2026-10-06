@@ -372,6 +372,8 @@ export function fillVariables(html, name) {
  * @param opts.unsubscribeUrl  REQUIRED for a real send. See the note below.
  * @param opts.recipientName   the subscriber's name, for variables; null on
  *                             the archive and the size measure (fallbacks).
+ * @param opts.credit          a partner ministry's line crediting Thauma
+ *                             ("A Thauma ministry"); Thauma's own mail, none.
  */
 export function render(body, opts = {}) {
   const accent = /^#[0-9a-fA-F]{6}$/.test(String(opts.accent || "")) ? opts.accent : "#6D4AFF";
@@ -397,11 +399,18 @@ export function render(body, opts = {}) {
 
   /* THE PREHEADER. Hidden, and followed by enough blank characters to stop the
      client filling the rest of the preview with the first words of the body.
-     Every serious sender does this; it looks like a hack because it is one. */
+     Every serious sender does this; it looks like a hack because it is one.
+     KEPT SHORT AND PLAIN (2026-10-05, BACKLOG "Tests and real sends still
+     land in Gmail spam"): it was 240 characters of figure spaces, byte-order
+     marks and combining joiners — invisible-character runs are one of the
+     things spam filters score as hiding text, and the confirmation email,
+     which reaches the inbox, has none. Now the common &zwnj;&nbsp; pair, 24
+     times: enough for the preview, nothing exotic. A guess, not a proven
+     cause; see BACKLOG. */
   const pre = opts.preheader
     ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;` +
       `mso-hide:all">${escapeHtml(opts.preheader)}` +
-      "&#8199;&#65279;&#847; ".repeat(60) + "</div>"
+      "&zwnj;&nbsp;".repeat(24) + "</div>"
     : "";
 
   const archive = opts.archiveUrl
@@ -498,6 +507,7 @@ ${pre}
                      font-family:${FONT};font-size:12.5px;line-height:1.6;color:${dim}">
         <p style="margin:0 0 8px;color:${dim}">${escapeHtml(opts.listName || "")}</p>
         <p style="margin:0;color:${dim}">${archive}${unsub}</p>
+        ${opts.credit ? `<p style="margin:10px 0 0;color:${dim};font-size:11.5px">${escapeHtml(opts.credit)}</p>` : ""}
       </td></tr>
 
     </table>

@@ -4,13 +4,10 @@ A living document: append and revise, don't rediscover. Replaces
 GAME-SPEC.md (the single hidden Flappy-style game, retired 2026-09-29; its
 full history is in git).
 
-**Status (2026-09-30):**
-- **Built:** the ways in, the failure engine, the arcade shell, the game
-  runtime, and Load Out.
-- **The launch four are all built:** Load Out, Soundcheck, Panel Fixer and
-  Cable Run.
-- **Not built yet:** the three "Out of order" cabinets (Follow Spot,
-  Strike, Cue Stack).
+**Status (2026-10-05):**
+- **Nine cabinets, all playable:** Load Out, Soundcheck, Panel Fixer,
+  Cable Run, Stage Runner, Golden Hour, Follow Spot, Strike, Cue Stack.
+- **Music and sound** (sound.js): synthesized, off by default.
 - **Release:** switched ON for dev and OFF for the live site
   (`site.json › visibility.sections.arcade`, or Website › Settings). Turn
   it on for live only once the games are worth finding.
@@ -272,3 +269,116 @@ Later:
   - Verified in headless Chromium at 1280×800 and 390×844 (touch) on the
     dev server, stage by stage, including the round trip back to the page
     and reduced motion.
+- 2026-10-04/05: Chase's full round of notes, and the rest of the arcade.
+  - **The way in:** a coin into the cabinet's door (B5→E6), CREDIT 1, the
+    start jingle, a dive into the screen, then PLAYER 1 · title · READY ·
+    GO (about 3s; 1s on Again). Desktop games sit in a cabinet sized to
+    their shape (marquee, bezel, a deck that moves with the keys).
+  - **sound.js:** Web Audio only, no files. Pulse leads doubled and
+    echoed, triangle bass + sine, noise drums; ten loops (menu and one per
+    game) written as chords + melody in the file; ~30 effects. One switch
+    (top right, or M), OFF by default, remembered. `beat()` gives Cue
+    Stack the tune's clock.
+  - **The radio (play.js ctx.quip):** 85 jokes in `jokes_<game>_<event>`
+    lists (en/hr/sl written, sr from hr), a speaker tag in [brackets], shown
+    3.6–6.5s by length, round-robin, placed per game (`quipAt`) where it
+    covers no play. Jokes need native speakers to check, as before.
+  - **Controls:** tap with hold (`release`), stick (a fader to drag on a
+    phone), aim (drag + let go), lanes (D F J K / four pads), swipe-only
+    and cross d-pads, `ctx.pad()` per game. Frame time 0–0.1s; no zoom,
+    magnifier or selection while playing.
+  - **Load Out:** faster; drops before the tower settles score less
+    (RUSHED 30 / STEADY 100); mic case, amp rack, LED panels, cable trunk,
+    lighting, speaker in lbs (±12%); weight lights; camera moves only
+    between drops.
+  - **Soundcheck:** CLASSIC / MODERN; 22 powers in four kinds (good, hex,
+    trick = the meme throws, bad); FOH plans its return line by the
+    capsules' worth (imperfectly); the dB meter charges a SMASH.
+  - **Panel Fixer:** rebuilt Peggle-style on an LED wall that is a
+    picture; broken panels are the targets, green ones powers (spare
+    balls, power cycle, laser guide, hot ball), a catch case, SHOWTIME;
+    the tech is animated with moods.
+  - **Cable Run:** speeds with length, early turns, gliding head, cross pad.
+  - **New:** Stage Runner (Subway Surfers: the stage manager's errands,
+    the PM chasing), Golden Hour (Alto-like festival hills, day/night),
+    Follow Spot, Strike (spell for WILD powers), Cue Stack (rhythm).
+  - **Doors:** stage 1 is one blink now; 2 noticeable; 3 adds red/cyan
+    text and the picture lurching; 4 tears whole sections in bands. A
+    faint joystick in the footer's corner is a one-press door. A page
+    that comes back from the browser's memory after the closed page's
+    hand-off rebuilds itself (the fall reversed).
+
+- 2026-10-05, round 3: Chase played it. "Everything progresses too fast …
+  ease you into games and pace them … Give things time to breath. But also,
+  work on the graphics some more too."
+  - **The way in:** the letters lead again (he preferred the lettering
+    glitching to the overlays). A JOLT throws one real letter far off its
+    line for three frames (big, skewed, red/cyan, sometimes the wrong
+    character) and back. Stage 1: two letters of a big word jolt, one
+    aftershock. 2: slips, misfires, jolts every 1.1s. 3: the voice swap,
+    jolts in bunches, a big word slices for 170ms. 4: photos tear, a section
+    slices every 1.3s. The whole-page hue flicker and constant color/band
+    overlays are gone.
+  - **Sound on phones:** every touch wakes the audio inside the gesture;
+    audioSession 'playback' (or a silent <audio> loop) past the iPhone's
+    silent switch; resume from 'interrupted'. Not tested on a phone here.
+  - **Pace, every game:** Soundcheck 215→540 (was 270→790), powers one at
+    a time 7–11s apart, families introduced in turn; Load Out back to the
+    first version's physics (kg 12–120, motor 58+5/case, 0.45s) with lb
+    stencils, height scoring (+10 a steady drop); Panel Fixer slower ball,
+    6 broken on wall 1; Cable Run 0.18→0.075s; Strike 255→520; Cue Stack a
+    new pattern every 7 bars; Follow Spot in four acts; Stage Runner
+    8.5→20, teaching one obstacle at a time; Golden Hour top speed 470→620
+    over 3 km, features further apart.
+  - **Phones:** Soundcheck and Strike take two arrow buttons (no drag
+    fader); Follow Spot a d-pad cross whose up/down arrive with "tilt".
+  - **Panel Fixer:** the score-while-aiming bug (the preview called the
+    real collide()) fixed; the ball goes where you point (solved arc); a
+    chute down the middle; seven drawn powers; CREW CALL brings two crew
+    who throw at the middle.
+  - **Golden Hour:** an opening that pulls the lid off a road case; the lid
+    drawn as one (ball corners, extrusion, handle); a fully animated rider
+    (crouch, pop, tuck, grab, squash, grind, a tumble apart on a crash);
+    taped, lit, glowing obstacles; ramps; BALLOONS (hover) and BANNER
+    (wingsuit) with the HEADLAMP and HARD HAT; clouds, mist, pines, string
+    lights.
+  - **Stage Runner:** errands from the talent, drummer, pastor and kids'
+    choir, carried overhead to the green room where they wait and say
+    thanks; crew who wave and high-five; the runner from behind (CREW on
+    the back) with a run cycle, a tucked jump, a slide; yellow-jacket
+    cable ramps, a lit tug, hazard-taped truss; a dressed venue.
+  - **Follow Spot:** WELCOME / WORSHIP / THE MESSAGE / ONE MORE SONG; a
+    sheep (the sermon illustration), a moth in the beam, the fog machine.
+  - **Strike:** a stage behind the letters, LED-tile bricks, a ball trail.
+- 2026-10-05, round 4: Chase's second play-through.
+  - **Music:** the menu kept; a genre and instruments per game (blues-rock
+    shuffle, synthwave, bossa lounge, drum & bass, big-band swing, punk,
+    an EDM anthem for Cue Stack — "the most catchy" — disco-funk, lo-fi).
+    sound.js gained filtered unison synths, distortion, a room, five kits,
+    swing.
+  - **Jokes:** never over the play. ctx.quip only remembers; the game-over
+    card shows one of the funniest (play.js BEST) for the last thing that
+    happened. Calls during play are small and brief.
+  - **Cabinet:** thin marquee, slim bezel and deck; ~100px more screen.
+  - **Choices:** ctx.cards()/cardAt() and tapAt() — difficulty cards in
+    Soundcheck and Cue Stack, four performers in Follow Spot.
+  - **Load Out:** the shake came from landing effects firing on a heavy
+    awake stack's resting contacts; now only a first landing. 120 Hz
+    physics, damping, a live camera, less grip, wider swing.
+  - **Soundcheck:** EASY/NORMAL/HARD; serves wait for you; FOH predicts
+    curving balls; 14 distinct powers, labeled and explained; arrows on
+    phones.
+  - **Panel Fixer:** Peggle's way (hit panels light, then drop out and the
+    picture glows through); stuck balls clear their panels; a smooth aim.
+  - **Cable Run:** quicker; wedges and mic stands accumulate.
+  - **Stage Runner:** floor arrows (jump / slide / dodge), red-edged
+    stacks, cases you can land on, explained powers, people popping out
+    for high fives; the PM no longer catches you.
+  - **Golden Hour:** self-righting after a released flip; powers with a
+    beam, ring and name, each explained.
+  - **Follow Spot:** stricter; THE KID; levels and tilt from the start
+    (risers, drum riser, ladders, catwalk); eight new moves.
+  - **Strike:** a straight brick breaker; the wild powers drop as named
+    capsules.
+  - **Cue Stack:** EASY/NORMAL/HARD; busier every 2–6 bars (was 7).
+  - **Scoring:** every game brought to roughly 500–1000 a minute.

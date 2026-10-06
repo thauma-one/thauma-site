@@ -38,7 +38,8 @@ in the 2026-10-03 session; start a fresh one.
 - **BUG Pictures in a draft are not saved** (the text is).
 - **BUG Back deletes the draft.** Wanted: autosave; drafts deleted only by
   hand or once sent; a list of drafts to reopen.
-- **BUG Confirmation email:**
+- **BUG Confirmation email:** branding DONE on dev (6ddeeb9): a ministry's
+  confirmation is in its own email look with "Powered by Thauma".
   - ~~a small "undefined" at the bottom~~ FIXED on dev (a37d63e);
   - a download button on the banner image;
   - branded THAUMA for Chase Roush's list. It must be the ministry's brand,
@@ -50,11 +51,14 @@ in the 2026-10-03 session; start a fresh one.
   - a link editor;
   - the photo editor (see §4);
   - variables such as the recipient's name.
-- **DESIGN Email look:** make it feel like a real email rather than a box
+- **Email look: DONE on dev (9532d1d)** — follows the published website,
+  with a designer (Mail › Email look); needs migration 0050 applied for
+  the designer to save. Was: make it feel like a real email rather than a box
   on a dark background. Must hold up in Gmail, Apple Mail and Outlook, on
   desktop and mobile. Per ministry, not Thauma's look: either derived from
   their site's design and kept up to date, or an email style designer.
-- **DESIGN Subscribe / confirm / unsubscribe pages:** "just so plain and
+- **Confirm / unsubscribe pages: DONE on dev (6ddeeb9)** in the ministry's
+  look after the link verifies. Was: "just so plain and
   boring compared to the rest of the site." Match the brand everywhere.
 - ~~**DESIGN Tags management:** "not user friendly."~~ DONE on dev (13bff11):
   chips on each subscriber row, + to add or create, × to remove, press to
@@ -70,6 +74,13 @@ in the 2026-10-03 session; start a fresh one.
   .dev.vars), THEN build every subscriber-facing link from thauma.one.
   Changing the salt voids links already sent (today only Chase's tests) and
   pending account/address/test-inbox links. Pictures already use thauma.one.
+  **Code side DONE on dev (003f6c5):** every subscriber link (confirm,
+  unsubscribe, List-Unsubscribe, archive) is built from
+  lib/origin.js subscriberOrigin() — SUBSCRIBER_ORIGIN if set, else as
+  before. **Switched on 2026-10-05:** Chase set one SIGNUP_SALT on all
+  three (and RESEND_WEBHOOK_SECRET on both workers); SUBSCRIBER_ORIGIN =
+  "https://thauma.one" in all three envs. To prove end to end: subscribe
+  a real address from dev, send to it from dev, press its unsubscribe.
 - **BUG Tests and real sends still land in Gmail spam** (2026-10-03),
   even to a proven Gmail test inbox. Confirmations from the same address
   reach the inbox. Ruled out: SPF/DKIM present on both domains, DMARC p=none
@@ -78,6 +89,10 @@ in the 2026-10-03 session; start a fresh one.
   newsletter template adds List-Unsubscribe headers and ~180 invisible
   preheader characters that the confirmation template lacks; links point at
   dev/next. Chase deferred this until after the Site Creator work.
+  **Tried on dev (003f6c5), unproven:** the preheader padding is now the
+  plain &zwnj;&nbsp; pair ×24 instead of 240 figure spaces / BOMs /
+  combining joiners. The other difference (links on dev/next) goes with
+  the item above.
 - **Opens and bounces: BUILT on dev (1215533), NOT SWITCHED ON.**
   /api/resend-webhook (signed) records bounces (permanent → subscriber
   bounced), complaints (→ unsubscribed), opens, clicks; Sent rows show
@@ -118,7 +133,7 @@ deleted; never at the save, because of Undo) and deleted if nothing
 anywhere names it; a daily sweep removes anything unused for 30 days
 (media-cleanup.js). Text sizes in px like Word
 (4–200, − / + or typed). Console loads Sora/Inter.
-Set aside by Chase for later: "Bold" and "Dot below" nav looks. Still open:
+"Bold" and "Dot below" nav looks: added back on dev (2026-10-05). Still open:
 Footer: small print under the tagline (Split, Columns), Background /
 Line above / Room options. Colors: ONE ministry pair shared with
 Sharing, same picker (color-pair.js), saved at once; a site's old own
@@ -127,6 +142,10 @@ accent is kept until changed. Thauma's uploads use the one photo editor
 stays (it models the parallax drift). Thauma's four
 page photos now in R2 (site/…, dfefacc); the old src/img copies and
 the stray _site_devtest/ build are for Chase to delete.
+
+Also on dev (2026-10-04): verse placement on the Words tab, named by the
+words it follows; Photo tab preview frames like the site; Advanced ›
+Saved versions (migration 0049, apply it).
 
 Chase: "the general interface for the Site Creator is really good!"
 
@@ -249,7 +268,22 @@ Chase: "the general interface for the Site Creator is really good!"
 - About page shows only the quote. Fill "Who we are" from the Thauma team
   profile? (asked, unanswered).
 
-## 4. Arcade (extras, "not imperative at this time")
+## 4. Arcade
+**DONE on dev (2026-10-05, see ARCADE-SPEC.md revision log):** every note
+below, plus Stage Runner, Golden Hour, Follow Spot, Strike and Cue Stack,
+music (off by default), the coin-and-dive way in, and 85 jokes.
+**Round 3 DONE on dev (2026-10-05):** Chase's play-through notes — pace
+eased in every game, letter-led door glitches, phone audio wake-up, phone
+arrows (Soundcheck, Strike) and cross (Follow Spot), Load Out's physics
+and scoring restored, Panel Fixer's aiming-score bug and powers, Golden
+Hour and Stage Runner reworked.
+**Round 4 DONE on dev (2026-10-05):** a genre per game, jokes on the
+game-over card only, a quieter bigger cabinet, difficulty choices
+(Soundcheck, Cue Stack, Follow Spot's kid), the per-game notes, and
+scoring at one pace (see ARCADE-SPEC.md). Still for Chase: play it again,
+music on a phone, and a native check of the hr/sr/sl words. The online
+boards hold scores from the old, faster scoring — clear them with the
+scores API (GAME_ADMIN_TOKEN) if wanted.
 
 ### Everywhere
 - **Same feel on mobile and desktop,** only different controls:

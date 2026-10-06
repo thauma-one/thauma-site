@@ -26,9 +26,11 @@ import { sanitise, render, toText, plainLine, tooBig, sizeOf, fillVariables } fr
 import { unsubscribeUrl } from "./lib/unsub.js";
 import { sendMail, listConfirmEmail, testInboxEmail } from "./lib/mail.js";
 import { linkParams } from "./lib/signed-link.js";
-import { siteOrigin } from "./lib/origin.js";
+import { siteOrigin, subscriberOrigin } from "./lib/origin.js";
 import { topicLabels, cleanLabels } from "./lib/topics.js";
 import { releaseMedia } from "./media-cleanup.js";
+import { brandForMail } from "./lib/mail-brand.js";
+import { t as mailWord } from "./lib/mail-i18n.js";
 import { changedSince, changedAnswer } from "./lib/fresh.js";
 import { readTexts, cleanTexts } from "./lib/texts.js";
 import { lookFor } from "./embed-colour.js";
@@ -237,7 +239,12 @@ async function buildMailing(db, env, { mailing, list, origin }) {
      after it can fail to render at all. Checked on the FULL rendered email
      rather than on what was typed, because the shell, the inline styles and
      the Outlook block all count toward the limit. */
+  /* A partner's mail is Thauma's, rebranded (lib/mail-brand.js): worked out
+     once per send and carried with what was built, so the size measure, the
+     test and every message wear the same colors and credit. */
+  const brand = await brandForMail(db, mailing.partner_id || list.partner_id || null);
   const sample = render(html, {
+    ...brandOpts(brand),
     subject, preheader, fromName: list.from_name, listName: list.name,
     unsubscribeUrl: `${origin}/unsubscribe?s=x&t=` + "0".repeat(32),
     archiveUrl: list.archive_public ? `${origin}/archive/x/y/z` : null,
@@ -245,7 +252,7 @@ async function buildMailing(db, env, { mailing, list, origin }) {
   const big = tooBig(sample);
   if (big) return { error: big };
 
-  return { value: { subject, html, preheader,
+  return { value: { subject, html, preheader, brand,
                     text: mailing.body_text || toText(html),
                     bytes: sizeOf(sample) } };
 }
@@ -271,9 +278,17 @@ async function loadAttachments(env, rows) {
   return out;
 }
 
+/* What a partner's brand changes in Thauma's newsletter (render()): the
+   colors, and a line crediting Thauma. Spread AFTER any older theme, so the
+   brand's colors win; null (Thauma's own lists) changes nothing. */
+function brandOpts(brand) {
+  return brand ? { accent: brand.accent, accent2: brand.accent2, mode: brand.mode, credit: mailWord(null, "brand.note") } : {};
+}
+
 /** One message, addressed to one person. */
-async function messageFor(env, { built, list, sub, origin, theme, archiveUrl, attachments }) {
-  const unsubscribe = await unsubscribeUrl(env, origin, sub.id);
+async function messageFor(env, { built, list, sub, origin, links, theme, archiveUrl, attachments }) {
+  /* links: where the subscriber's own links point (lib/origin.js subscriberOrigin) */
+  const unsubscribe = await unsubscribeUrl(env, links || origin, sub.id);
   const body = render(built.html, {
     subject: built.subject,
     preheader: built.preheader,
@@ -282,6 +297,7 @@ async function messageFor(env, { built, list, sub, origin, theme, archiveUrl, at
     accent: theme && theme.accent,
     accent2: theme && theme.accent2,
     mode: theme && theme.mode,
+    ...brandOpts(built.brand),
     unsubscribeUrl: unsubscribe,
     archiveUrl,
     recipientName: sub.name || null,
@@ -454,6 +470,7 @@ const api = {
         const look = partnerId
           ? await db.queryOne("partner_settings", { partner_id: partnerId }) : null;
         const previewHtml = render(m.body_html || "", {
+            ...brandOpts(await brandForMail(db, partnerId)),
             subject: m.subject,
             preheader: m.preheader,
             fromName: list ? list.from_name : "",
@@ -732,7 +749,8 @@ const api = {
           name: clean(body.name, MAX.name),
           listName: list.name,
           fromName: list.from_name, origin,
-          confirmUrl: `${origin}/confirm?t=${token}`,
+          confirmUrl: `${subscriberOrigin(env, request)}/confirm?t=${token}`,
+          brand: await brandForMail(db, partnerId),
         });
         const sent = await sendMail(env, {
           to: email,
@@ -785,7 +803,8 @@ const api = {
         const origin = siteOrigin(env, request);
         const mail = listConfirmEmail({
           name: sub.name, listName: sub.list_name, fromName: sub.from_name, origin,
-          confirmUrl: `${origin}/confirm?t=${token}`,
+          confirmUrl: `${subscriberOrigin(env, request)}/confirm?t=${token}`,
+          brand: await brandForMail(db, partnerId),
         });
         const sent = await sendMail(env, {
           to: sub.email, subject: mail.subject, html: mail.html, text: mail.text,
@@ -894,6 +913,65 @@ const api = {
         return json({ ok: true, mailing: saved });
       }
 
+      /* ---- what became of a sent mailing (2026-10-05) ----
+         The Sent card's live numbers for every sent mailing; one mailing's
+         people and links; a copy sent again to one person; and taking a
+         sent mailing away — from Sent and from the public archive. */
+      if (body.action === "sent-stats") {
+        return json({ ok: true, stats: await db.query("mailing_sent_stats", { partner_id: partnerId }) });
+      }
+      if (body.action === "mailing-details") {
+        const mailing_id = clean(body.id, 60);
+        const [people, links] = await Promise.all([
+          db.query("mailing_recipients_detail", { mailing_id, partner_id: partnerId }),
+          db.query("mailing_links_detail", { mailing_id, partner_id: partnerId }),
+        ]);
+        return json({ ok: true, people, links });
+      }
+      if (body.action === "mailing-resend") {
+        /* THE SAME COPY, to one person who says it never came: their own
+           unsubscribe link, the same words and attachments. Only while they
+           are still subscribed — someone who left is not written to again. */
+        const mailing_id = clean(body.id, 60), subscriber_id = clean(body.subscriber_id, 60);
+        const m = await db.queryOne("mailing_one", { id: mailing_id, partner_id: partnerId });
+        if (!m || m.status !== "sent") return json({ error: "Only a sent mailing can be sent again." }, 404);
+        const sub = await db.queryOne("mailing_recipient_for_resend", { mailing_id, subscriber_id, partner_id: partnerId });
+        if (!sub) return json({ error: "That person was not on this mailing." }, 404);
+        if (sub.status !== "subscribed") return json({ error: `They are ${sub.status} now, so it was not sent again.` }, 409);
+        const list = await db.queryOne("mailing_list_one", { id: m.list_id, partner_id: partnerId });
+        if (!list) return json({ error: "No such list." }, 404);
+        const origin = siteOrigin(env, request);
+        const prepared = await buildMailing(db, env, { mailing: m, list, origin });
+        if (prepared.error) return json({ error: prepared.error }, 400);
+        const look = partnerId ? await db.queryOne("partner_settings", { partner_id: partnerId }) : null;
+        const theme = look ? { accent: look.embed_accent, accent2: lookFor(look).accent2, mode: look.embed_theme } : null;
+        const files = await loadAttachments(env, await db.query("mailing_attachments_for", { mailing_id }));
+        const archiveUrl = list.archive_public && m.slug
+          ? `${subscriberOrigin(env, request)}/archive/${s.partner ? s.partner.slug : "thauma"}/${list.slug}/${m.slug}`
+          : null;
+        const msg = await messageFor(env, { built: prepared.value, list, sub, origin, links: subscriberOrigin(env, request),
+                                            theme, archiveUrl, attachments: files });
+        const r = await sendMail(env, msg);
+        await db.query("mailing_recipient_result", {
+          mailing_id, subscriber_id, status: r.ok ? "sent" : "failed",
+          provider_id: r.id || null, error: r.ok ? null : String(r.error || "").slice(0, 300), now,
+        });
+        if (!r.ok) return json({ error: `It was not sent again: ${r.error || "the mail service refused it"}.` }, 502);
+        return json({ ok: true, to: sub.email });
+      }
+      if (body.action === "mailing-remove") {
+        /* Gone from Sent and from the archive, with its record of who it
+           went to and what was clicked. Its pictures stay in storage until
+           the daily sweep finds nothing names them (media-cleanup.js). */
+        const id = clean(body.id, 60);
+        const m = await db.queryOne("mailing_one", { id, partner_id: partnerId });
+        if (!m || (m.status !== "sent" && m.status !== "failed")) return json({ error: "Only a sent mailing can be removed here." }, 404);
+        await db.query("mailing_remove_recipients", { id, partner_id: partnerId });
+        await db.query("mailing_remove_links", { id, partner_id: partnerId });
+        await db.query("mailing_remove_sent", { id, partner_id: partnerId });
+        return json({ ok: true });
+      }
+
       if (body.action === "mailing-delete") {
         /* Its pictures and attachments go with it, unless something else
            uses them (media-cleanup.js re-checks). A draft has no undo once
@@ -981,7 +1059,7 @@ const api = {
            it was for — seeing what actually arrives — is exactly what it
            would fail to show. */
         const msg = await messageFor(env, {
-          built, list, origin,
+          built, list, origin, links: subscriberOrigin(env, request),
           sub: { id: "test-" + ((actor.me && actor.me.user_id) || "x"), email: testTo,
                  name: (s.me && s.me.user_name) || null },
           theme: look ? { accent: look.embed_accent, accent2: lookFor(look).accent2, mode: look.embed_theme } : null,
@@ -1075,7 +1153,7 @@ const api = {
             await db.query("mailing_attachments_for", { mailing_id: id }));
 
           const archiveUrl = list.archive_public
-            ? `${origin}/archive/${s.partner ? s.partner.slug : "thauma"}/${list.slug}/${slug}`
+            ? `${subscriberOrigin(env, request)}/archive/${s.partner ? s.partner.slug : "thauma"}/${list.slug}/${slug}`
             : null;
 
           /* ONE MESSAGE PER PERSON, deliberately not a batch. Each carries its
@@ -1083,7 +1161,7 @@ const api = {
              it from somebody else's row. */
           for (const sub of people) {
             const msg = await messageFor(env,
-              { built, list, sub, origin, theme, archiveUrl, attachments: files });
+              { built, list, sub, origin, links: subscriberOrigin(env, request), theme, archiveUrl, attachments: files });
             const r = await sendMail(env, msg);
             if (r.ok) sent++; else failed++;
             await db.query("mailing_recipient_result", {
@@ -1286,7 +1364,11 @@ const api = {
         const origin = siteOrigin(env, request);
         const sent = await sendMail(env, {
           to: email,
-          ...listConfirmEmail({ list, token, origin, name: name || null }),
+          /* Named arguments, as listConfirmEmail takes them: this passed
+             { list, token } and sent a confirmation with no link in it and
+             "undefined" where the list's name goes. */
+          ...listConfirmEmail({ name: name || null, listName: list.name, fromName: list.from_name, origin,
+                                confirmUrl: `${subscriberOrigin(env, request)}/confirm?t=${token}`, brand: await brandForMail(db, partnerId) }),
           from: `${list.from_name} <${list.from_email}>`,
           replyTo: list.reply_to || undefined,
         });

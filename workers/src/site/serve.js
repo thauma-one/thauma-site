@@ -114,6 +114,15 @@ p{margin:44px 0 0}
     }
     fx().then(function (e) { e.spare(mark); e.progress('closed', Math.ceil(n * 4 / 5), function () { n = 0; }); });
   });
+  /* BACK FROM THE ARCADE with the browser's Back: the page comes out of the
+     browser's memory as it was left, in pieces (BACKLOG §4: "returning to
+     Thauma remembered the broken look"). It builds itself again instead —
+     the fall in reverse — or, if that cannot run, loads fresh. */
+  window.addEventListener('pageshow', function (ev) {
+    if (!ev.persisted || !going) return;
+    going = false; n = 0;
+    fx().then(function (e) { return e.restore(); }).catch(function () { location.reload(); });
+  });
 })();
 </script>` : ""}</body></html>`;
   return new Response(html, { status: 404, headers: {

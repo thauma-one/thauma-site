@@ -2700,6 +2700,8 @@ html.has-ai .ai-one{display:inline-flex;align-items:center;justify-content:cente
 .ws-bigphoto img{width:100%;height:100%;object-fit:cover}
 .ws-bigphoto{position:relative}
 .ws-bigphoto>i{position:absolute;inset:0;background:#000;pointer-events:none}
+.ws-bigphoto.is-whole{aspect-ratio:auto;width:fit-content;max-width:min(420px,100%);background:none}
+.ws-bigphoto.is-whole img{width:auto;height:auto;max-width:100%;max-height:340px;object-fit:contain;display:block}
 /* A crop: the box takes the crop's shape and the photo is placed in it, as
    on the site (render.js .pe-crop); capped so a tall crop stays on screen. */
 .ws-bigphoto.is-crop{display:block;border:0;overflow:hidden;max-width:none}
@@ -2825,6 +2827,9 @@ html.has-ai .ai-one{display:inline-flex;align-items:center;justify-content:cente
 .ws-nav-sample[data-cur="grow"] .on{color:#EDEDED}
 .ws-nav-sample[data-cur="grow"] .on::after{content:"";position:absolute;left:0;right:0;bottom:-5px;height:2px;background:var(--nav-tint)}
 .ws-nav-sample[data-cur="pill"] .on{color:#EDEDED;background:color-mix(in srgb,var(--nav-tint) 18%,transparent);padding:4px 9px;margin:-4px -9px;border-radius:999px}
+.ws-nav-sample[data-cur="bold"] .on{font-weight:700}
+.ws-nav-sample[data-cur="dot"] .on{color:#EDEDED}
+.ws-nav-sample[data-cur="dot"] .on::after{content:"";position:absolute;left:50%;bottom:-8px;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:var(--nav-tint)}
 .ws-phone-sample{display:block;position:relative;height:56px;background:#0D0D0D}
 .ws-phone-sample i{position:absolute;background:#2A2A2A;border-radius:3px}
 .ws-phone-sample[data-phone="drop"] i{left:8px;right:8px;top:8px;height:28px}
@@ -2905,3 +2910,14 @@ html.pe-open{overflow:hidden}
 .ws-fmt-step input::-webkit-inner-spin-button{display:none}
 /* A sent newsletter's bounced copies (resend-webhook.js). */
 .ml-bounced{font-weight:600;color:var(--warn)}
+/* Saved versions of a site (Advanced; staff-site.js versionsHtml). */
+.ws-vsave{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 14px}
+.ws-vsave input{flex:1 1 260px;min-width:0}
+.ws-vlist{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--radius)}
+.ws-vlist>.ws-small{padding:14px 16px}
+.ws-vrow{display:flex;align-items:center;gap:12px;padding:10px 16px}
+.ws-vrow+.ws-vrow{border-top:1px solid var(--line)}
+.ws-vname{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.ws-vname b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ws-vname small{color:var(--dim);font-size:12px}
+.ws-vrow.is-pub .ws-vname b{color:var(--dim);font-weight:500}

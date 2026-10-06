@@ -29,6 +29,7 @@ function answer(opts = {}) {
   const { edit = true, owner = true, published = false } = opts;
   const draft = cleanDoc(starter("full", { name: "Chase Roush", langs: ["en", "hr"], fallback: "en" }), ["en", "hr"]);
   if (opts.ownAccent) { draft.design.look = "custom"; draft.design.colors = { background: "#0D0D0D", accent: opts.ownAccent }; }
+  if (opts.paras) { const t = draft.pages.find((p) => p.id === "home").sections[1]; t.words = { en: { ...(t.words.en || {}), text: opts.paras, verse: "Draw near to God" } }; }
   if (opts.photo) draft.pages.find((p) => p.id === "home").sections[1].photo = opts.photo;
   return {
     published: published ? JSON.parse(JSON.stringify(draft)) : null,
@@ -42,6 +43,7 @@ function answer(opts = {}) {
     page_names: Object.fromEntries(["en", "hr"].map((l) => [l, Object.fromEntries(PAGES.map((id) => [id, word(l, id)]))])),
     placeholders: placeholders ? Object.fromEntries(["en", "hr"].map((l) => [l, placeholders(l, "Chase Roush")])) : undefined,
     theme: { accent: "#1AE4FF", accent2: "#25FFA1" },
+    saves: opts.saves,
     can: { edit, owner }, owner: { name: "Chase Roush" }, editors: [], requests: [], my_request: null,
   };
 }
@@ -357,7 +359,7 @@ await check("Navigation: the page-you-are-on look, its color, the line and the p
   click(d.querySelector('[data-ws-tab="nav"]'));
   assert(!d.getElementById("wsNav").hidden, "the Navigation panel");
   assert(!d.getElementById("wsPreviewPane").hidden, "with the site beside it");
-  assert(d.querySelectorAll('#wsNav .ws-look[data-chip="nav:current"]').length === 4, "four looks");
+  assert(d.querySelectorAll('#wsNav .ws-look[data-chip="nav:current"]').length === 6, "six looks");
   click(d.querySelector('[data-chip="nav:current"][data-value="under"]'));
   click(d.querySelector('[data-chip="nav:tint"][data-value="accent"]'));
   click(d.querySelector('[data-chip="nav:line"][data-value="accent"]'));
@@ -476,6 +478,49 @@ await check("Design: the ministry's colors with the Sharing page's picker; a cha
   eq(saved.length, 1, "one colors save");
   eq(saved[0].colors.accent, "#2266DD", "the new first color");
   assert(!sent.some((b) => b.action === "save"), "not a draft save");
+});
+
+await check("the verse's place is chosen under the verse, by the words it follows (Chase: a verse in the middle)", async () => {
+  const { d, sent, click, pages } = await boot({ paras: "I grew up surrounded by ministry, always.\n\nGod has been faithful to me.\n\nThe end." });
+  pages();
+  click(d.querySelector('[data-open-page="home"]'));
+  click(d.querySelector('[data-edit-sec="1"]'));
+  const place = d.querySelector(".ws-verseplace");
+  assert(place, "on the Words tab, with the verse");
+  const labels = [...place.querySelectorAll("[data-chip]")].map((b) => b.textContent);
+  eq(labels, ["Before the words", "After “I grew up surrounded…”", "After “God has been faithful…”", "After the words"], "named by the words they follow");
+  click(place.querySelectorAll("[data-chip]")[1]);
+  await settle(900);
+  const saved = sent.filter((b) => b.action === "save").pop();
+  eq(saved.draft.pages.find((p) => p.id === "home").sections[1].versePos, "p1", "saved as after the first paragraph");
+});
+
+await check("Advanced: a version is saved by name, and bringing one back puts it in the working copy", async () => {
+  const { w, d, sent, click } = await boot({ saves: [
+    { id: "sv_1", name: "Before the new colors", kind: "manual", created_at: "2026-10-04T10:00:00Z", created_by: "Chase Roush" },
+    { id: "sv_2", name: "Published", kind: "published", created_at: "2026-10-03T10:00:00Z", created_by: "Chase Roush" }] });
+  w.StaffConfirm = async () => true;
+  click(d.querySelector('[data-ws-tab="advanced"]'));
+  const rows = [...d.querySelectorAll(".ws-vrow b")].map((b) => b.textContent);
+  eq(rows, ["Before the new colors", "Published"], "the list");
+  const f = d.querySelector("[data-vsave]");
+  f.querySelector("[data-vname]").value = "Summer look";
+  f.dispatchEvent(new w.Event("submit", { bubbles: true, cancelable: true }));
+  await settle(50);
+  eq(sent.filter((b) => b.action === "version-save").map((b) => b.name), ["Summer look"], "saved by name");
+  click(d.querySelector('[data-vopen="sv_1"]'));
+  /* the save is debounced (650ms) behind a fetch; on a busy machine a fixed
+     wait was not always enough, so wait for it, up to 4s */
+  for (let i = 0; i < 40 && !sent.some((b) => b.action === "save"); i++) await settle(100);
+  assert(sent.some((b) => b.action === "version-open" && b.id === "sv_1"), "asked for it");
+  assert(sent.some((b) => b.action === "save"), "then saved as the working copy, through the ordinary save");
+  assert(!d.getElementById("wsUndo").disabled, "and Undo can step back from it");
+});
+
+await check("Advanced: no Saved versions until the database has them", async () => {
+  const { d, click } = await boot({});
+  click(d.querySelector('[data-ws-tab="advanced"]'));
+  assert(!d.querySelector("[data-vsave]"), "hidden while saves is missing");
 });
 
 await check("a replaced photo is handed back when the page closes, not when it is saved (Undo can still bring it back)", async () => {

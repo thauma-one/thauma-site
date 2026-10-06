@@ -13,7 +13,16 @@
    screen itself switching off like an old CRT — because by then there is
    no page left to act on.
 
-   FOUR STAGES, then the collapse. A door calls progress(door, 1..4); each
+   FOUR STAGES, then the collapse. The LETTERS lead (Chase, 2026-10-05: "I
+   like the page lettering glitching out more than the overlays … the first
+   press subtle yes, but clear that something was happening. Like a letter
+   or 2 goes way out of whack for a couple frames … then progressively
+   worse"): two letters jolt for three frames; then letters slip and stay,
+   links drift, the jolts keep coming; then the voices swap and the jolts
+   bunch up, split red and cyan, a big word slicing now and then; then the
+   photos tear and whole sections slice for a few frames. Tearing and color
+   split ride along as short bursts; nothing filters the whole page.
+   A door calls progress(door, 1..4); each
    stage adds to the ones before it. Stop, and the page HEALS: everything
    snaps back after a moment, which is what keeps it from overstaying ("some
    elements are up long enough … to not be worth it") and makes the site feel
@@ -149,6 +158,41 @@
     function every(ms, fn) { var id = setInterval(fn, ms); tickers.push(id); return id; }
     var GLYPHS = '#%&@$*?!/\\<>[]{}=+~^0123456789';
 
+    var BIG = '.wordmark,.dict-word,main h1,main h2,.hero-line';
+    var SECTIONS = 'main > section, main > header, header.hero, main .wrap > section';
+    function chars() { return Array.prototype.slice.call(document.querySelectorAll('.arc-ch')); }
+    function anyChar() { var cs = chars(); return cs[Math.floor(Math.random() * cs.length)]; }
+    function later(ms, fn) { var id = setTimeout(function () { if (level) fn(); }, ms); tickers.push(id); }
+    /* A JOLT: one real letter thrown far off its line for three frames —
+       big, skewed, split into red and cyan, maybe the wrong character —
+       then exactly back. An animation, so nothing is left on the letter. */
+    function jolt(c, k) {
+      if (!c || !c.animate) return;
+      var r = function () { return (Math.random() < .5 ? -1 : 1) * rnd(.5, 1); };
+      var f = function (x) {
+        var dx = r() * 22 * k, dy = r() * 14 * k, sc = 1 + rnd(.2, .8) * k, sk = r() * 18 * k;
+        return { transform: 'translate(' + dx.toFixed(1) + 'px,' + dy.toFixed(1) + 'px) scale(' + sc.toFixed(2) + ') skewX(' + sk.toFixed(1) + 'deg)',
+          textShadow: (3 * k).toFixed(1) + 'px 0 rgba(255,40,90,.85),' + (-3 * k).toFixed(1) + 'px 0 rgba(0,230,255,.85)', easing: 'step-end', offset: x };
+      };
+      c.animate([f(0), f(.34), f(.67), { transform: 'none', textShadow: 'none', offset: 1 }], { duration: 70 + 40 * k });
+      if (Math.random() < .5 && c.dataset.c) {
+        c.textContent = GLYPHS[Math.floor(Math.random() * GLYPHS.length)];
+        setTimeout(function () { if (c.isConnected) c.textContent = c.dataset.c; }, 60 + 30 * k);
+      }
+    }
+    /* A SLICE: an element tears into bands that jump sideways for a few
+       frames, then snaps whole. */
+    function slice(el, k) {
+      if (!el.animate) return;
+      var fr = [];
+      for (var i = 0; i < 4; i++) {
+        var t = rnd(0, 70), h = rnd(8, 26);
+        fr.push({ clipPath: 'inset(' + t.toFixed(0) + '% 0 ' + Math.max(0, 100 - t - h).toFixed(0) + '% 0)', translate: (rnd(-1, 1) * 26 * k).toFixed(0) + 'px 0', easing: 'step-end', offset: i / 4 });
+      }
+      fr.push({ clipPath: 'inset(0 0 0 0)', translate: '0 0', offset: 1 });
+      el.animate(fr, { duration: 170 });
+    }
+
     /* One letter rolls, like the page wheel: the old one leaves upward and
        the new one arrives from below. Used for the doors' own words too. */
     function rollChar(span, to, ms) {
@@ -162,37 +206,40 @@
 
     /* ----------------------------------------------------------- stages */
     var STAGES = [null,
-      /* 1 — HAIRLINE CRACKS. A handful of real letters slip off the line.
-         Easy to miss, which is the point. */
+      /* 1 — SOMETHING HAPPENED. (Chase, 2026-10-05: "the first press …
+         subtle yes, but clear that something was happening. Like a letter or
+         2 goes way out of whack for a couple frames".) Two letters jolt far
+         off their line for three frames, then one small aftershock; nothing
+         stays moved. */
+      function () {
+        var el = pick(visible(BIG).filter(plain), 1)[0] || pick(visible(WORDS).filter(plain), 1)[0];
+        if (!el) return;
+        pick(split(el), 2).forEach(function (c) { jolt(c, 1); });
+        later(430, function () { var c = pick(split(el), 1)[0]; if (c) jolt(c, .45); });
+      },
+      /* 2 — WORSE. Letters slip off the line and stay there, links drift,
+         letters misfire to the wrong character, a button looks pressed that
+         nobody touched, and the jolts keep coming. */
       function () {
         pick(visible(WORDS).filter(plain), 3).forEach(function (el) {
           split(el).forEach(function (c) { if (Math.random() < .14) nudge(c, rnd(-1, 1), rnd(-2.5, 2.5), rnd(-4, 4)); });
         });
-        every(900, function () {
-          var cs = document.querySelectorAll('.arc-ch'); if (!cs.length) return;
-          var c = cs[Math.floor(Math.random() * cs.length)];
-          nudge(c, rnd(-1.5, 1.5), rnd(-3, 3), rnd(-6, 6));
-        });
-      },
-      /* 2 — LOSING GRIP. Links drift out of line; letters misfire to the
-         wrong character and back; something looks pressed that nobody
-         touched. */
-      function () {
         visible(LINKS).forEach(function (el) { if (Math.random() < .6) nudge(el, rnd(-4, 4), rnd(-3, 3), rnd(-1.5, 1.5)); });
-        pick(visible(WORDS).filter(plain), 2).forEach(split);
-        every(240, function () {
-          var cs = document.querySelectorAll('.arc-ch'); if (!cs.length) return;
-          var c = cs[Math.floor(Math.random() * cs.length)], was = c.dataset.c;
+        every(320, function () {
+          var c = anyChar(); if (!c) return;
+          var was = c.dataset.c;
           c.textContent = GLYPHS[Math.floor(Math.random() * GLYPHS.length)];
           setTimeout(function () { if (level) c.textContent = was; }, 110);
         });
+        every(1100, function () { pick(chars(), 1 + (Math.random() < .5)).forEach(function (c) { jolt(c, .8); }); });
         var b = pick(visible('.btn,.give-btn'), 1)[0];
         if (b) { remember(b); b.classList.add('arc-pressed'); moved.add(b); }
       },
       /* 3 — THE WRONG VOICE. Blue and seafoam trade places across the whole
          site for a beat (the two-voice split is the site's grammar, so this
-         reads as the page misspeaking), and headings stutter between their
-         thin and bold weights. */
+         reads as the page misspeaking), headings stutter between their thin
+         and bold weights, and the jolts come in bunches, split red and cyan.
+         A big word slips sideways in slices now and then. */
       function () {
         var cs = getComputedStyle(root), real = {};
         TOKENS.forEach(function (p) { real[p[0]] = cs.getPropertyValue(p[0]); real[p[1]] = cs.getPropertyValue(p[1]); });
@@ -203,19 +250,23 @@
           });
         }
         [0, 130, 300, 420].forEach(function (t, i) { setTimeout(function () { if (level >= 3) swap(i % 2 === 0); }, t); });
-        every(1300, function () { swap(true); setTimeout(function () { swap(false); }, 90 + Math.random() * 120); });
-        every(170, function () {
-          var cs2 = document.querySelectorAll('.arc-ch'); if (!cs2.length) return;
-          var c = cs2[Math.floor(Math.random() * cs2.length)];
-          c.style.fontWeight = c.style.fontWeight ? '' : '600';
-        });
+        every(1500, function () { swap(true); setTimeout(function () { swap(false); }, 90 + Math.random() * 120); });
+        every(170, function () { var c = anyChar(); if (c) c.style.fontWeight = c.style.fontWeight ? '' : '600'; });
         swap.real = real; STAGES.swap = swap;
+        every(650, function () { pick(chars(), 2 + Math.floor(Math.random() * 3)).forEach(function (c) { jolt(c, 1.1); }); });
+        every(1900, function () { var w = pick(visible(BIG), 1)[0]; if (w) slice(w, 1); });
       },
-      /* 4 — TEARING. The page's own pictures and biggest words are sliced
-         into bands that jump sideways. */
+      /* 4 — TEARING. The page's own pictures slice into bands that jump
+         sideways, links come loose, whole sections tear for a few frames,
+         and the letters barely stay put. */
       function () {
         pick(visible(MEDIA).filter(function (el) { return !spared.has(el); }), 4).forEach(function (el) { remember(el); el.classList.add('arc-tear'); el.style.animationDelay = (-Math.random()).toFixed(2) + 's'; torn.add(el); });
         visible(LINKS).forEach(function (el) { nudge(el, rnd(-9, 9), rnd(-6, 6), rnd(-4, 4)); });
+        every(300, function () { pick(chars(), 2 + Math.floor(Math.random() * 4)).forEach(function (c) { jolt(c, 1.3); }); });
+        every(1300, function () {
+          var sec = pick(visible(SECTIONS).filter(function (el) { return !spared.has(el) && !el.contains(Array.from(spared)[0] || null); }), 1)[0];
+          if (sec) slice(sec, .6);
+        });
       }
     ];
 
@@ -415,6 +466,8 @@
         fallen.forEach(function (a) { a.cancel(); }); fallen = [];
         document.querySelectorAll('.arc-ch').forEach(function (c) { c.getAnimations().forEach(function (a) { a.cancel(); }); });
         root.style.overflow = ''; document.body.style.overflow = '';
+        /* no empty style="" left behind where there was none */
+        if (document.body.getAttribute('style') === '') document.body.removeAttribute('style');
         litByLetter = {};
         healNow(true);
         busy = false;
