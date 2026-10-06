@@ -592,7 +592,7 @@
         g.fillStyle = who.skin; g.beginPath(); g.arc(x, y, 7, 0, 7); g.fill();
         g.beginPath(); g.arc(x - 1.5, y + 1, 1.8, 0, 7); g.fillStyle = shade(who.skin); g.fill();          /* an ear */
         g.fillStyle = who.hair;
-        if (who.key === 'pastor') { g.beginPath(); g.arc(x - 1, y - 2, 7.2, Math.PI * .95, Math.PI * 1.75); g.fill(); g.fillRect(x - 7.5, y - 3, 3, 6); }   /* grey, short, a side part */
+        if (who.key === 'pastor') { g.beginPath(); g.arc(x - 1, y - 2, 7.2, Math.PI * .95, Math.PI * 1.75); g.fill(); g.fillRect(x - 7.5, y - 3, 3, 6); }   /* gray, short, a side part */
         else if (who.key === 'leader') { g.beginPath(); g.arc(x, y - 2.5, 7.4, Math.PI, 0); g.fill(); g.beginPath(); g.ellipse(x - 6, y + 2, 3, 6, .2, 0, 7); g.fill(); }   /* longer, to the shoulder */
         else if (who.key === 'youth') { g.beginPath(); g.arc(x, y - 3, 7.2, Math.PI, 0); g.fill(); g.fillStyle = '#FF4FD8'; g.fillRect(x - 8, y - 7, 15, 3.4); g.fillRect(x - 11, y - 5, 5, 2); }   /* a backwards cap */
         else { g.beginPath(); g.arc(x, y - 2.5, 7.2, Math.PI, 0); g.fill(); g.fillStyle = '#FF4FD8'; g.beginPath(); g.arc(x - 6.5, y - 6, 3, 0, 7); g.arc(x + 5, y - 7.5, 3, 0, 7); g.fill(); }   /* pigtails */
