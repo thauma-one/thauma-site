@@ -23,10 +23,20 @@
   if (!A) return;
 
   var W = 360, H = 600, BPM = 128, SPB = 60 / BPM;
-  var LINE = H - 70, PX_PER_BEAT = 120, TOP = 150;
+  var LINE = H - 70, TOP = 150;
   var COLS = ['#9B7BFF', '#2FD8FF', '#5CF2C4', '#FFB547'];
   var LANES = ['lights', 'sound', 'video', 'pyro'];
-  var PERFECT = .05, GOOD = .1, MISS = .16;
+  /* HOW HARD (round 4, Chase: "Cue stack need to get harder faster. And
+     having different difficulty levels would be good"): how fast the cues
+     fall (px a beat), how many bars before a busier pattern joins (it was
+     7 for everyone), which pattern it starts on, the timing windows (s),
+     and what a miss costs the house. */
+  var DIFF = {
+    easy:   { px: 115, every: 6, start: 0, win: [.06, .12, .18], drain: .06,  col: '#5CF2C4' },
+    normal: { px: 145, every: 3, start: 1, win: [.05, .1, .16],  drain: .085, col: '#FFB547' },
+    hard:   { px: 180, every: 2, start: 3, win: [.04, .08, .13], drain: .1,   col: '#FF5A6E' }
+  };
+  var LEVELS = ['easy', 'normal', 'hard'];
 
   function rnd(a, b) { return a + Math.random() * (b - a); }
 
@@ -38,7 +48,14 @@
       var words = ctx.words;
       var notes = [], chartTo = 0, clock = 0, house = 1, combo = 0, best = 0, score = 0, time = 0;
       var judge = null, fired = [0, 0, 0, 0], laneFlash = [0, 0, 0, 0], held = [null, null, null, null];
-      var lastBeat = 0, wallAt = performance.now();
+      var lastBeat = 0, wallAt = performance.now(), level = null, D = DIFF.normal, barBase = 0;
+      function choose(l) {
+        if (level) return;
+        level = l; D = DIFF[l]; ctx.sfx('go');
+        /* two bars to listen first, from the next bar line */
+        chartTo = Math.ceil(clock / 4) * 4 + 8; barBase = chartTo / 4;
+        ctx.say(words('diff_' + l), { tag: 'SM' });
+      }
 
       /* THE CHART: bars of four beats, written from patterns, busier as
          the show goes on; never two cues on one lane closer than a half
@@ -56,9 +73,9 @@
       ];
       function chart(toBeat) {
         while (chartTo < toBeat) {
-          var bar = Math.floor(chartTo / 4), lvl = Math.min(PAT.length - 1, Math.floor(bar / 7));   /* a new pattern every 7 bars (was 4): ~13s at 128 BPM */
-          var p = PAT[Math.floor(Math.random() * (lvl + 1)) + (bar % 8 === 7 ? 0 : 0)];
-          if (bar < 2) { chartTo += 4; continue; }                /* two bars to listen first */
+          var bar = Math.floor(chartTo / 4), lvl = Math.min(PAT.length - 1, D.start + Math.floor((bar - barBase) / D.every));
+          /* mostly the newest patterns, now and then an easier one for breath */
+          var p = PAT[Math.random() < .7 ? Math.max(0, lvl - Math.floor(Math.random() * 2)) : Math.floor(Math.random() * (lvl + 1))];
           var shift = Math.floor(Math.random() * 4);
           p.forEach(function (n) {
             notes.push({ beat: chartTo + n[0], lane: (n[1] + shift) % 4, len: n[2] || 0, state: 'wait' });
@@ -85,10 +102,11 @@
         /* back from a pause: the cues that went by while away just go */
         var now = performance.now(), gap = (now - wallAt) / 1000; wallAt = now;
         var beat = beatNow(dt);
+        if (!level) return;
         chart(beat + 12);
         notes.forEach(function (n) {
           if (gap > .4 && n.state === 'wait' && n.beat < beat) n.state = 'gone';
-          if (n.state === 'wait' && (beat - n.beat) * SPB > MISS) miss(n);
+          if (n.state === 'wait' && (beat - n.beat) * SPB > D.win[2]) miss(n);
           if (n.state === 'hold') {
             if (!held[n.lane]) { n.state = 'gone'; combo = 0; }
             else if (beat >= n.beat + n.len) { n.state = 'done'; score += 100; ctx.score(score); fire(n.lane); }
@@ -104,7 +122,7 @@
         ctx.score(Math.floor(score));
       }
       function miss(n) {
-        n.state = 'gone'; combo = 0; house -= .085;
+        n.state = 'gone'; combo = 0; house -= D.drain;
         judge = { text: words('cuestack_miss'), col: '#FF5A6E', t: .5 };
         ctx.sfx('whiff');
         if (house <= .3) ctx.quip('jokes_cuestack_miss', { mood: 'bad' });
@@ -116,10 +134,10 @@
         notes.forEach(function (n) {
           if (n.state !== 'wait' || n.lane !== lane) return;
           var off = Math.abs(n.beat - beat) * SPB;
-          if (off <= MISS && (!best || off < best.off)) best = { n: n, off: off };
+          if (off <= D.win[2] && (!best || off < best.off)) best = { n: n, off: off };
         });
         if (!best) return;                                       /* a press on nothing costs nothing */
-        var n = best.n, perfect = best.off <= PERFECT, good = best.off <= GOOD;
+        var n = best.n, perfect = best.off <= D.win[0], good = best.off <= D.win[1];
         if (!good) { miss(n); return; }
         combo++; if (combo > bestCombo) bestCombo = combo;
         var mult = combo >= 50 ? 4 : combo >= 25 ? 3 : combo >= 10 ? 2 : 1;
@@ -138,6 +156,9 @@
       function draw(g) {
         g.fillStyle = '#07080f'; g.fillRect(-20, -20, W + 40, H + 40);
         stage(g);
+        if (!level) return ctx.cards(g, words('diff_pick'), LEVELS.map(function (l, i) {
+          return { title: words('diff_' + l), line: words('diff_' + l + '_line'), key: ['←', '↓ ↑', '→'][i], col: DIFF[l].col };
+        }), time);
         var beat = clock, lw = W / 4;
         /* the stack */
         for (var l = 0; l < 4; l++) {
@@ -146,7 +167,7 @@
         }
         /* beat lines */
         for (var b = Math.ceil(beat); b < beat + 5; b++) {
-          var y = LINE - (b - beat) * PX_PER_BEAT; if (y < TOP) break;
+          var y = LINE - (b - beat) * D.px; if (y < TOP) break;
           g.fillStyle = b % 4 === 0 ? 'rgba(255,255,255,.12)' : 'rgba(255,255,255,.04)'; g.fillRect(0, y, W, 1);
         }
         /* the GO line, pulsing on the beat */
@@ -162,9 +183,9 @@
         /* the cues */
         notes.forEach(function (n) {
           if (n.state === 'done' || n.state === 'gone') return;
-          var y = LINE - (n.beat - beat) * PX_PER_BEAT, x = n.lane * lw;
+          var y = LINE - (n.beat - beat) * D.px, x = n.lane * lw;
           if (n.len) {
-            var y2 = LINE - (n.beat + n.len - beat) * PX_PER_BEAT;
+            var y2 = LINE - (n.beat + n.len - beat) * D.px;
             g.fillStyle = hexA(COLS[n.lane], n.state === 'hold' ? .6 : .3); g.fillRect(x + lw / 2 - 7, Math.max(TOP, y2), 14, Math.min(LINE, y) - Math.max(TOP, y2));
             if (n.state === 'hold') y = LINE;
           }
@@ -227,7 +248,17 @@
 
       return {
         update: function (dt) { update(dt); }, draw: draw,
-        press: function (d) { var m = /^l(\d)$/.exec(d); if (m) { held[+m[1]] = true; press(+m[1]); } },
+        press: function (d) {
+          var m = /^l(\d)$/.exec(d); if (!m) return;
+          /* the choice: the left lane easy, the middle two normal, the right hard */
+          if (!level) { choose(LEVELS[[0, 1, 1, 2][+m[1]]]); return; }
+          held[+m[1]] = true; press(+m[1]);
+        },
+        tapAt: function (x, y) {
+          if (level) return false;
+          var i = ctx.cardAt(x, y); if (i >= 0) { choose(LEVELS[i]); return true; }
+          return false;
+        },
         release: function (d) { var m = /^l(\d)$/.exec(d); if (m) held[+m[1]] = null; },
         stop: function () {}
       };
