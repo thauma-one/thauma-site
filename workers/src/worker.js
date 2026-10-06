@@ -65,6 +65,7 @@ import adminProfile from "./admin-profile.js";
 import staffVideos from "./staff-videos.js";
 import adminDbSync from "./admin-dbsync.js";
 import adminTranslationNotes from "./admin-translation-notes.js";
+import adminArcade from "./admin-arcade.js";
 import adminTranslate from "./admin-translate.js";
 import confirmAccount from "./confirm-account.js";
 import confirmEmail from "./confirm-email.js";
@@ -410,6 +411,9 @@ const ROUTES = {
   // guide per language. Read by anyone signed in, changed by admin and
   // communications. See admin-translation-notes.js.
   "/api/admin/translation-notes": adminTranslationNotes,
+  // The arcade's control room: games open or out of order, the boards, blocked
+  // names. See admin-arcade.js.
+  "/api/admin/arcade": adminArcade,
   // Every line of every language for the Content page: what is missing or
   // outdated, saving, the file handed to a translator, and approving what
   // comes back. See admin-translate.js.

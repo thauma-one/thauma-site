@@ -314,6 +314,17 @@
       var title = el.querySelector('.arc-title'), line = el.querySelector('.arc-line');
       var meta = el.querySelector('.arc-meta'), board = el.querySelector('.arc-board');
       var sel = 0, closing = false, raf = 0, boards = {};
+      /* OUT OF ORDER: games an admin has closed for this site (Website ›
+         Arcade, /api/game-scores?config). Asked once as the arcade opens; if
+         the answer never comes, every game stays open. */
+      var closed = {};
+      function playable(c) { return !!c.ready && !closed[c.id]; }
+      fetch('/api/game-scores?config=1', { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+        if (!d || !d.closed) return;
+        d.closed.forEach(function (id) { closed[id] = true; });
+        cabs.forEach(function (cab, i) { cab.classList.toggle('is-closed', !!closed[CABINETS[i].id]); });
+        if (!closing && !playing) describe();
+      }).catch(function () {});
 
       /* ---- the chosen cabinet ---- */
       function place() {
@@ -330,19 +341,19 @@
         });
       }
       function describe() {
-        var c = CABINETS[sel], ready = !!c.ready;
+        var c = CABINETS[sel], ready = playable(c);
         el.style.setProperty('--c', 'var(' + c.c + ')');
         rollTitle(w(c.id + '_title'));
         line.textContent = w(c.id + '_line');
         var chips = '<span class="arc-chip">' + esc(w(c.controls + '_hint')) + '</span>';
-        if (!ready) chips += '<span class="arc-chip is-soon">' + esc(w('soon_label')) + '</span>';
+        if (!ready) chips += '<span class="arc-chip is-soon">' + esc(w(closed[c.id] ? 'broken_label' : 'soon_label')) + '</span>';
         else chips += '<span class="arc-chip" style="--c:var(' + c.c + ')">' + esc(w('best_label')) + ' <b>' + best(c.id) + '</b></span>';
         meta.innerHTML = chips;
         showBoard(c);
       }
       function showBoard(c) {
         board.innerHTML = '';
-        if (!c.ready) return;
+        if (!playable(c)) return;
         var paint = function (list) {
           if (CABINETS[sel] !== c) return;
           board.innerHTML = list.length
@@ -369,7 +380,7 @@
       function play() {
         var c = CABINETS[sel], cab = cabs[sel];
         if (playing) return;
-        if (!c.ready) return flash(cab, w('soon_label'));
+        if (!playable(c)) return flash(cab, w(closed[c.id] ? 'broken_label' : 'soon_label'));
         /* A game takes the whole arcade screen until Menu (play.js). */
         playing = true;
         var loaded = Promise.all([script('play', '/js/arcade/play.js'), script(c.id, '/js/arcade/games/' + c.id + '.js')]);
@@ -443,9 +454,22 @@
           var c = CABINETS[i];
           s.g.clearRect(0, 0, s.W, s.H);
           ATTRACT[c.id](s.g, s.W, s.H, reduced ? 1 : t, s.col);
+          if (closed[c.id]) outOfOrder(s.g, s.W, s.H, t);
         });
       }
       raf = requestAnimationFrame(frame);
+      /* the game still playing to itself behind static, and a strip of tape
+         across the glass */
+      function outOfOrder(g, W, H, t) {
+        g.fillStyle = 'rgba(4,6,10,.55)'; g.fillRect(0, 0, W, H);
+        for (var i = 0; i < 260; i++) { var v = Math.random() * 255 | 0; g.fillStyle = 'rgba(' + v + ',' + v + ',' + v + ',.35)'; g.fillRect(Math.random() * W, Math.random() * H, 2, 2); }
+        var band = (t * 60) % H; g.fillStyle = 'rgba(237,242,248,.08)'; g.fillRect(0, band, W, 10);
+        g.save(); g.translate(W / 2, H / 2); g.rotate(-.18);
+        g.fillStyle = '#FFD34A'; g.fillRect(-W * .62, -13, W * 1.24, 26);
+        g.fillStyle = '#10131a'; g.font = '800 12px Sora, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+        g.fillText(w('broken_label').toUpperCase(), 0, 1);
+        g.restore();
+      }
 
       /* ---- controls: the same three the games use ---- */
       function onKey(e) {

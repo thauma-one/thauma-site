@@ -120,6 +120,10 @@ const website = [
     page: "events", heading: "What is <b>coming up</b>" },
   { tab: "photos", url: "/admin/website/photos/", label: "Photos",
     page: "photos", heading: "Frame what <b>matters</b>" },
+  /* The hidden arcade's control room (Chase, 2026-10-06): games open or out
+     of order, the high scores, blocked names. Saves at once, like Forms. */
+  { tab: "arcade", url: "/admin/website/arcade/", label: "Arcade",
+    page: "arcade", heading: "The <b>arcade</b>" },
   { tab: "settings", url: "/admin/website/settings/", label: "Settings",
     page: "site", heading: "Site <b>settings</b>" },
 ];

@@ -13,8 +13,16 @@
  * (GAME_ADMIN_TOKEN), compared in constant time.
  *
  * GET  ?game=<id>                              -> { game, scores: [{ name, score }] } (top 5, desc)
+ * GET  ?config=1                               -> { closed: [ids] } for THIS site (dev or live)
  * POST { game, name, score }                   -> adds a score, returns the board
  * POST { action:"delete", game, index, token } -> removes scores[index]
+ *
+ * THE ARCADE'S SETTINGS (2026-10-06, Website › Arcade, admin-arcade.js) live
+ * beside the boards under CONFIG_KEY: which games are open on the live site
+ * and on dev (a closed game's cabinet is OUT OF ORDER), and names an admin
+ * has blocked. They take effect at once — no Publish — because a broken game
+ * on the live site has to be closable now. dev and live share this KV, so
+ * each site reads its own column (siteColumn()).
  */
 import { kvStore, json, readJson, timingSafeEqualStr } from "./lib/store.js";
 
@@ -25,6 +33,23 @@ const MAX_SCORES = 5;
 const MAX_SCORE_VALUE = 9999999;
 const HIDDEN = "???";
 const keyFor = (game) => "board:" + game;
+export const CONFIG_KEY = "arcade:config";
+
+/** dev.thauma.one reads the dev column; every other site the live one. */
+export function siteColumn(env) {
+  return /\/\/dev\./.test(String(env?.SITE_ORIGIN || "")) ? "dev" : "live";
+}
+/** The settings, with every game present and open unless switched off. */
+export function readConfig(raw) {
+  const c = raw && typeof raw === "object" ? raw : {};
+  const games = {};
+  for (const id of GAMES) {
+    const g = (c.games || {})[id] || {};
+    games[id] = { live: g.live !== false, dev: g.dev !== false };
+  }
+  const blocked = Array.isArray(c.blocked) ? c.blocked.filter((b) => b && typeof b.name === "string") : [];
+  return { games, blocked };
+}
 
 // Deliberately non-exhaustive. Normalized matching (below) catches the common
 // leetspeak dodges without needing a huge word list for a low-stakes hidden
@@ -62,10 +87,12 @@ export function isCrude(s) {
  * and 0–9). Anything crude — as it stands, spelled in leetspeak, or one of
  * the classic three-letter offenders — becomes "???".
  */
-export function sanitizeInitials(v) {
+export function sanitizeInitials(v, blocked) {
   const raw = typeof v === "string" ? v : "";
   const clean = raw.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 3);
   if (!clean) return HIDDEN;
+  /* names an admin has blocked (Website › Arcade) */
+  if (blocked && blocked.some((b) => b.name === clean)) return HIDDEN;
   if (THREE.has(clean) || THREE.has(clean.replace(/[0-9]/g, (d) => ({ 0: "O", 1: "I", 3: "E", 4: "A", 5: "S", 7: "T" })[d] || d))) return HIDDEN;
   if (isCrude(raw) || isCrude(clean)) return HIDDEN;
   return clean;
@@ -87,11 +114,15 @@ export async function handle(request, env, store) {
     body = await readJson(request);
     if (body === null) return json({ error: "Invalid JSON" }, 400);
   }
+  if (request.method === "GET" && new URL(request.url).searchParams.get("config")) {
+    const cfg = readConfig(await store.get(CONFIG_KEY)), col = siteColumn(env);
+    return json({ closed: GAMES.filter((id) => !cfg.games[id][col]) }, 200, { "Cache-Control": "no-store" });
+  }
   const game = request.method === "GET" ? new URL(request.url).searchParams.get("game") : body.game;
   if (!GAMES.includes(game)) return json({ error: "No such game." }, 404);
 
   const board = (await store.get(keyFor(game))) || { scores: [] };
-  const answer = () => json({ game, scores: board.scores });
+  const answer = () => json({ game, scores: board.scores.map((x) => ({ name: x.name, score: x.score })) });
   if (request.method === "GET") return answer();
 
   if (body.action === "delete") {
@@ -108,9 +139,13 @@ export async function handle(request, env, store) {
     return answer();
   }
 
+  const cfg = readConfig(await store.get(CONFIG_KEY));
+  /* an out-of-order game takes no scores */
+  if (!cfg.games[game][siteColumn(env)]) return json({ error: "This game is out of order." }, 403);
   const score = sanitizeScore(body.score);
   if (score > 0) {
-    board.scores.push({ name: sanitizeInitials(body.name), score });
+    /* `at`: when, so an admin can tell an old score from a new one */
+    board.scores.push({ name: sanitizeInitials(body.name, cfg.blocked), score, at: new Date().toISOString() });
     board.scores.sort((a, b) => b.score - a.score);
     board.scores = board.scores.slice(0, MAX_SCORES);
     await store.put(keyFor(game), board);
