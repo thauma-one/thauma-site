@@ -248,6 +248,11 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
     cp.savedSubject = $("cpSubject").value;
     cp.savedPreheader = $("cpPreheader").value;
     cp.savedFiles = filesKey(cp.attachments);
+    /* the layout: the draft's own, or for a new one the last one chosen */
+    let last = "card"; try { last = localStorage.getItem("thauma.mail.layout") || "card"; } catch (e) { /* private mode */ }
+    cp.layout = m ? (m.layout === "integrated" ? "integrated" : "card") : last;
+    cp.savedLayout = m ? cp.layout : null;
+    drawLayout();
     cp.dirty = false;
     setState("");
     /* the picker shows the draft that is open (it was drawn while the
@@ -260,6 +265,17 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
 
   const setState = (msg) => { $("cpState").textContent = msg || ""; };
 
+  function drawLayout() {
+    document.querySelectorAll(".cp-layout [data-layout]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.layout === cp.layout ? "true" : "false"));
+  }
+  document.querySelector(".cp-layout").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-layout]");
+    if (!b) return;
+    cp.layout = b.dataset.layout;
+    try { localStorage.setItem("thauma.mail.layout", cp.layout); } catch (err) { /* private mode */ }
+    drawLayout(); markDirty(); measureSoon();
+  });
+
   /* THE ATTACHMENTS COUNT AS A CHANGE (2026-10-05, Chase: "the attachment
      never arrived"). Only the words did, so adding a file changed nothing
      the save looked at: no autosave, and Send — which saves only what is
@@ -269,7 +285,8 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
     cp.dirty = editor.getHTML() !== cp.savedHtml ||
       $("cpSubject").value !== cp.savedSubject ||
       $("cpPreheader").value !== cp.savedPreheader ||
-      filesKey(cp.attachments) !== cp.savedFiles;
+      filesKey(cp.attachments) !== cp.savedFiles ||
+      cp.layout !== cp.savedLayout;
     setState(cp.dirty ? tr("ml.cpUnsaved") : "");
     if (cp.dirty) autosaveSoon(); else clearTimeout(autoTimer);
   }
@@ -480,6 +497,7 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
       subject: $("cpSubject").value, preheader: $("cpPreheader").value,
       body_html: editor.getHTML(),
       attachments: cp.attachments.slice(),
+      layout: cp.layout,
       base: cp.id ? cp.base : undefined,
     };
     const wasNew = !cp.id;
@@ -513,6 +531,7 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
     cp.savedSubject = payload.subject;
     cp.savedPreheader = payload.preheader;
     cp.savedFiles = filesKey(payload.attachments);
+    cp.savedLayout = payload.layout;
     markDirty();
     if (!cp.dirty) setState(tr("ml.cpSaved"));
 

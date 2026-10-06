@@ -381,6 +381,9 @@ export function fillVariables(html, name) {
  * @param opts.unsubscribeUrl  REQUIRED for a real send. See the note below.
  * @param opts.recipientName   the subscriber's name, for variables; null on
  *                             the archive and the size measure (fallbacks).
+ * @param opts.layout          "card" (default: the letter on a card, on a soft
+ *                             ground) or "integrated" (no card: the letter is
+ *                             the page). Chase, 2026-10-05.
  * @param opts.credit          a partner ministry's line crediting Thauma
  *                             ("A Thauma ministry"); Thauma's own mail, none.
  */
@@ -471,11 +474,20 @@ export function render(body, opts = {}) {
      already works on a phone because the table is width:600 with
      max-width:100%. Delete this block and nothing breaks; that is the test it
      has to pass. */
+  /* CARD OR INTEGRATED. A card on a phone goes edge to edge (no ground
+     around it, no rounded corners — a card inside a 360px screen is a
+     border and nothing else). Integrated has no card at all: the page is
+     the letter's own color and the column sits in it. Pictures are
+     max-width:100% in both, so neither can push past the column. */
+  const integrated = opts.layout === "integrated";
+  const pageBg = integrated ? card : bg;
   const media = `<style>
 @media only screen and (max-width:620px) {
   .w { width: 100% !important; }
   .pad { padding-left: 22px !important; padding-right: 22px !important; }
   .h1 { font-size: 23px !important; line-height: 1.3 !important; }
+  .outer { padding: 0 !important; }
+  .w { border-radius: 0 !important; border-left: 0 !important; border-right: 0 !important; }
 }
 </style>`;
 
@@ -490,16 +502,16 @@ export function render(body, opts = {}) {
 ${mso}
 ${media}
 </head>
-<body style="margin:0;padding:0;background:${bg};-webkit-font-smoothing:antialiased">
+<body style="margin:0;padding:0;background:${pageBg};-webkit-font-smoothing:antialiased">
 ${pre}
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
-       style="background:${bg};width:100%">
-  <tr><td align="center" style="padding:28px 12px">
+       style="background:${pageBg};width:100%">
+  <tr><td align="center" class="outer" style="padding:${integrated ? "0 12px" : "28px 12px"}">
 
     <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"
            class="w"
-           style="width:600px;max-width:100%;background:${card};border:1px solid ${line};
-                  border-radius:10px;overflow:hidden">
+           style="width:600px;max-width:100%;background:${card};${integrated ? "" : `border:1px solid ${line};
+                  border-radius:10px;`}overflow:hidden">
 
       <tr><td style="height:4px;background:${accent};font-size:0;line-height:0">&nbsp;</td></tr>
 

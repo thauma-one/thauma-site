@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "af4e2f5756045f48";
+export const SOURCE_DIGEST = "56961e6d803210e7";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -415,6 +415,11 @@ WHERE id = :id AND partner_id IS :partner_id AND status = 'draft';`,
   mailing_finish: `UPDATE mailings
 SET status = :status, finished_at = :now, sent_count = :sent_count
 WHERE id = :id AND partner_id IS :partner_id;`,
+  mailing_layout_of: `SELECT layout FROM mailings WHERE id = :id AND partner_id IS :partner_id;`,
+  mailing_layout_set: `UPDATE mailings SET layout = :layout
+ WHERE id = :id AND partner_id IS :partner_id AND status = 'draft';`,
+  mailing_layouts_for_list: `SELECT id, layout FROM mailings
+ WHERE list_id = :list_id AND partner_id IS :partner_id;`,
   mailing_link_add: `INSERT INTO mailing_links (id, mailing_id, url, clicks, created_at) VALUES (:id, :mailing_id, :url, 1, :now);`,
   mailing_link_count: `UPDATE mailing_links SET clicks = clicks + 1 WHERE id = :id;`,
   mailing_link_find: `SELECT id FROM mailing_links WHERE mailing_id = :mailing_id AND url = :url;`,
@@ -805,7 +810,7 @@ WHERE l.slug = :list_slug AND l.archive_public = 1 AND l.archived_at IS NULL
   AND m.status = 'sent' AND m.slug IS NOT NULL
 ORDER BY m.finished_at DESC
 LIMIT 50;`,
-  public_archive_one: `SELECT m.subject, m.preheader, m.body_html, m.finished_at,
+  public_archive_one: `SELECT m.id, m.subject, m.preheader, m.body_html, m.finished_at,
        l.name AS list_name, l.from_name,
        p.id AS partner_id, p.display_name, p.embed_accent, p.embed_theme
 FROM mailings m

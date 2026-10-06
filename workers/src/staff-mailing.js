@@ -197,9 +197,19 @@ function formWords(rows) {
   return out;
 }
 
+/* A mailing's layout (0052): "integrated" or "card". TOLERANT of the
+   column not existing yet — then everything is a card, as before. */
+async function layoutOf(db, id, partnerId) {
+  try { const r = await db.queryOne("mailing_layout_of", { id, partner_id: partnerId }); return r && r.layout === "integrated" ? "integrated" : "card"; }
+  catch { return "card"; }
+}
 async function withAttachments(db, listId, partnerId) {
   const rows = await db.query("mailings_for_list",
     { list_id: listId, partner_id: partnerId });
+  const layouts = {};
+  try { (await db.query("mailing_layouts_for_list", { list_id: listId, partner_id: partnerId })).forEach((r) => { layouts[r.id] = r.layout; }); }
+  catch { /* before 0052: every mailing a card */ }
+  for (const m of rows) m.layout = layouts[m.id] === "integrated" ? "integrated" : "card";
   for (const m of rows) {
     if (m.status !== "draft") continue;
     m.attachments = await db.query("mailing_attachments_for", { mailing_id: m.id });
@@ -243,8 +253,9 @@ async function buildMailing(db, env, { mailing, list, origin }) {
      once per send and carried with what was built, so the size measure, the
      test and every message wear the same colors and credit. */
   const brand = await brandForMail(db, mailing.partner_id || list.partner_id || null);
+  const layout = await layoutOf(db, mailing.id, mailing.partner_id || null);
   const sample = render(html, {
-    ...brandOpts(brand),
+    ...brandOpts(brand), layout,
     subject, preheader, fromName: list.from_name, listName: list.name,
     unsubscribeUrl: `${origin}/unsubscribe?s=x&t=` + "0".repeat(32),
     archiveUrl: list.archive_public ? `${origin}/archive/x/y/z` : null,
@@ -252,7 +263,7 @@ async function buildMailing(db, env, { mailing, list, origin }) {
   const big = tooBig(sample);
   if (big) return { error: big };
 
-  return { value: { subject, html, preheader, brand,
+  return { value: { subject, html, preheader, brand, layout,
                     text: mailing.body_text || toText(html),
                     bytes: sizeOf(sample) } };
 }
@@ -290,6 +301,7 @@ async function messageFor(env, { built, list, sub, origin, links, theme, archive
   /* links: where the subscriber's own links point (lib/origin.js subscriberOrigin) */
   const unsubscribe = await unsubscribeUrl(env, links || origin, sub.id);
   const body = render(built.html, {
+    layout: built.layout,
     subject: built.subject,
     preheader: built.preheader,
     fromName: list.from_name,
@@ -472,6 +484,7 @@ const api = {
           ? await db.queryOne("partner_settings", { partner_id: partnerId }) : null;
         const previewHtml = render(m.body_html || "", {
             ...brandOpts(await brandForMail(db, partnerId)),
+            layout: await layoutOf(db, m.id, partnerId),
             subject: m.subject,
             preheader: m.preheader,
             fromName: list ? list.from_name : "",
@@ -869,6 +882,9 @@ const api = {
         });
         const saved = await db.queryOne("mailing_one", { id, partner_id: partnerId });
         if (!saved) return json({ error: "That mailing has already been sent." }, 409);
+        /* the layout, in its own statement so a deploy ahead of 0052 still saves */
+        try { await db.query("mailing_layout_set", { id, partner_id: partnerId, layout: body.layout === "integrated" ? "integrated" : null }); } catch { /* before 0052 */ }
+        saved.layout = await layoutOf(db, id, partnerId);
 
         /* REPLACED, not diffed. The console sends the whole list every save,
            so removing one is a matter of not sending it — which is exactly

@@ -102,7 +102,11 @@ export default {
        drift from the inbox. No unsubscribe link: this is a web page, and the
        reader may never have been subscribed at all. */
     const brand = await brandForMail(db, m.partner_id).catch(() => null);
+    /* card or integrated, as it was sent (0052; a card before it exists) */
+    const layout = await db.queryOne("mailing_layout_of", { id: m.id, partner_id: m.partner_id })
+      .then((r) => (r && r.layout === "integrated" ? "integrated" : "card")).catch(() => "card");
     const html = render(m.body_html || "", {
+      layout,
       subject: m.subject,
       preheader: null,
       fromName: m.from_name || m.display_name,

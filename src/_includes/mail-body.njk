@@ -318,6 +318,14 @@
           </label>
         </div>
 
+        {#- CARD OR INTEGRATED, per mailing (2026-10-05). The two little
+           drawings say which is which. -#}
+        <div class="cp-layout" role="group" data-i18n-attr="aria-label:ml.cpLayout" aria-label="Layout">
+          <span class="cp-legend-label" data-i18n="ml.cpLayout">Layout</span>
+          <button type="button" data-layout="card" aria-pressed="true"><i class="cp-lay-card" aria-hidden="true"></i><span data-i18n="ml.cpLayoutCard">Card</span></button>
+          <button type="button" data-layout="integrated" aria-pressed="false"><i class="cp-lay-int" aria-hidden="true"></i><span data-i18n="ml.cpLayoutInt">Integrated</span></button>
+        </div>
+
         {#- EVERY BUTTON HERE IS REAL and shows whether it is currently on.
            `aria-pressed` is maintained from the editor's own state on both
            content changes AND cursor movement — clicking into bold text with

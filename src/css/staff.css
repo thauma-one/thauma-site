@@ -1426,6 +1426,13 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
 .cp-row[hidden]{display:none}
 /* the variables legend, always shown */
 .cp-legend{background:color-mix(in srgb,var(--voice-tech) 5%,transparent)}
+/* card or integrated: two small drawings */
+.cp-layout{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:10px 0 0}
+.cp-layout button{display:inline-flex;align-items:center;gap:7px;min-height:30px;padding:0 10px;border-radius:8px;border:1px solid var(--line);background:none;color:var(--dim);font:inherit;font-size:13px;cursor:pointer}
+.cp-layout button[aria-pressed="true"]{border-color:var(--voice-tech);color:var(--text)}
+.cp-lay-card,.cp-lay-int{width:22px;height:16px;border-radius:3px;position:relative;flex:none}
+.cp-lay-card{background:var(--line)}.cp-lay-card::after{content:"";position:absolute;inset:3px 5px;border-radius:2px;background:var(--text);opacity:.85}
+.cp-lay-int{background:var(--text);opacity:.85}.cp-lay-int::after{content:"";position:absolute;left:4px;right:4px;top:3px;height:2px;background:var(--panel)}
 .cp-legend-label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:600;color:var(--dim);margin-right:4px}
 /* a picture's chosen width, as the email will show it */
 .cp-body img[data-w]{margin-left:auto;margin-right:auto}
