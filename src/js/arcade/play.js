@@ -356,6 +356,39 @@
     /* ---- the context a game gets ---- */
     var score = 0;
     var cardRects = [];
+    function rows(g, heading, list, t, sel) {
+      var rh = 34, gap = 6, rw = Math.min(W - 32, 320), x = (W - rw) / 2;
+      var room = Math.floor((H * .66) / (rh + gap)), n = list.length, shown = Math.min(n, room);
+      var first = Math.max(0, Math.min(n - shown, (sel || 0) - Math.floor(shown / 2)));
+      var y0 = (H - shown * (rh + gap) + gap) / 2 + 12;
+      g.fillStyle = 'rgba(5,7,12,.78)'; g.fillRect(0, 0, W, H);
+      g.fillStyle = '#EDF2F8'; g.font = '700 16px Sora, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(String(heading).toUpperCase(), W / 2, y0 - 30);
+      cardRects = [];
+      for (var k = 0; k < n; k++) cardRects.push({ x: -1, y: -1, w: 0, h: 0 });
+      for (var i = first; i < first + shown; i++) {
+        var c = list[i], y = y0 + (i - first) * (rh + gap), chosen = sel === i;
+        cardRects[i] = { x: x, y: y, w: rw, h: rh };
+        g.globalAlpha = sel == null || chosen ? 1 : .6;
+        g.fillStyle = chosen ? 'rgba(20,26,40,.98)' : 'rgba(12,16,26,.96)'; g.fillRect(x, y, rw, rh);
+        if (chosen) { g.shadowColor = c.col; g.shadowBlur = 14; }
+        g.strokeStyle = c.col; g.lineWidth = chosen ? 2.5 : 1; g.strokeRect(x + .5, y + .5, rw - 1, rh - 1); g.shadowBlur = 0;
+        g.fillStyle = c.col; g.font = '700 13px Sora, sans-serif'; g.textAlign = 'left';
+        g.fillText(String(c.title).toUpperCase(), x + 12, y + rh / 2);
+        g.fillStyle = 'rgba(237,242,248,.75)'; g.font = '500 11px Inter, sans-serif'; g.textAlign = 'right';
+        g.fillText(String(c.line || ''), x + rw - 12, y + rh / 2);
+        g.globalAlpha = 1;
+      }
+      /* more above or below: a small arrow */
+      g.fillStyle = 'rgba(237,242,248,.6)'; g.font = '700 12px Sora, sans-serif'; g.textAlign = 'center';
+      if (first > 0) g.fillText('▲', W / 2, y0 - 12);
+      if (first + shown < n) g.fillText('▼', W / 2, y0 + shown * (rh + gap) + 2);
+      if (sel != null) {
+        g.fillStyle = 'rgba(237,242,248,' + (.55 + .35 * Math.sin((t || 0) * 4)).toFixed(2) + ')';
+        g.font = '700 12px Sora, sans-serif';
+        g.fillText(w(touch ? 'menu_confirm_touch' : 'menu_confirm').toUpperCase(), W / 2, y0 + shown * (rh + gap) + 24);
+      }
+    }
     var ctx = {
       W: W, H: H, held: held, reduced: reduced, touch: touch, words: w, best: best(id),
       score: function (n) { score = Math.max(0, Math.floor(n)); scoreEl.textContent = score; },
@@ -380,6 +413,7 @@
       /* { heading, items: [{ title, line, col }], start, pick(i) } */
       menu: function (o) { hasMenu = true; menu = { heading: o.heading, items: o.items, sel: o.start || 0, pick: o.pick }; },
       cards: function (g, heading, list, t, sel) {
+        if (list.length > 4) return rows(g, heading, list, t, sel);
         var n = list.length, gap = 10, cw = Math.min(150, (W - 28 - gap * (n - 1)) / n), ch = Math.min(230, H * .42);
         var x0 = (W - (cw * n + gap * (n - 1))) / 2, y0 = H / 2 - ch / 2;
         g.fillStyle = 'rgba(5,7,12,.72)'; g.fillRect(0, 0, W, H);
@@ -413,6 +447,9 @@
           g.fillText(w(touch ? 'menu_confirm_touch' : 'menu_confirm').toUpperCase(), W / 2, y0 + ch + 30);
         }
       },
+      /* MORE THAN FOUR CHOICES: a list instead of cards (Cue Stack's songs,
+         round 8), the chosen row centered when the list is taller than the
+         screen; the same keys, taps and hit boxes as the cards */
       cardAt: function (x, y) {
         for (var i = 0; i < cardRects.length; i++) { var r = cardRects[i]; if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) return i; }
         return -1;

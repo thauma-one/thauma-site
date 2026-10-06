@@ -33,6 +33,11 @@
     { key: 'funk', tune: 'cuestack_funk', bpm: 112, col: '#FFB547' },
     { key: 'synth', tune: 'cuestack_synth', bpm: 140, col: '#FF4FD8' }
   ];
+  /* and every other song in the arcade (Chase, 2026-10-06: "What if in Cue
+     Stack, we gave the option to play any song from arcade as well!") —
+     the chart follows each one's own tempo, 72 to 172 */
+  var ARCADE = [['menu', 'jukebox_theme'], ['loadout'], ['soundcheck'], ['panelfixer'], ['cablerun'], ['stagerunner'], ['goldenhour'], ['followspot'], ['strike']];
+  var ARCOL = ['#FFB547', '#2FD8FF', '#5CF2C4', '#FF4FD8', '#9B7BFF', '#FF5A6E'];
   var LINE = H - 70, TOP = 150;
   var COLS = ['#9B7BFF', '#2FD8FF', '#5CF2C4', '#FFB547'];
   var LANES = ['lights', 'sound', 'video', 'pyro'];
@@ -68,12 +73,19 @@
         /* two bars to listen first, from the next bar line */
         chartTo = Math.ceil(clock / 4) * 4 + 8; barBase = chartTo / 4;
       }
-      /* the song first (it starts playing as it is picked), then how hard */
+      /* the song first (it starts playing as it is picked), then how hard;
+         Cue Stack's own three, then the rest of the arcade's */
+      var S0 = window.ThaumaSound;
+      var list = SONGS.map(function (sg) { return { tune: sg.tune, bpm: sg.bpm, col: sg.col, title: words('cuestack_song_' + sg.key), line: sg.bpm + ' BPM · ' + words('cuestack_song_' + sg.key + '_line') }; })
+        .concat(ARCADE.map(function (a, i) {
+          var bpm = S0 && S0.bpm ? S0.bpm(a[0]) : 0;
+          return { tune: a[0], bpm: bpm, col: ARCOL[i % ARCOL.length], title: words(a[1] || a[0] + '_title'), line: bpm + ' BPM' };
+        }).filter(function (sg) { return sg.bpm > 0; }));
       ctx.menu({
         heading: words('cuestack_song_pick'), start: 0,
-        items: SONGS.map(function (sg) { return { title: words('cuestack_song_' + sg.key), line: sg.bpm + ' BPM · ' + words('cuestack_song_' + sg.key + '_line'), col: sg.col }; }),
+        items: list.map(function (sg) { return { title: sg.title, line: sg.line, col: sg.col }; }),
         pick: function (i) {
-          song = SONGS[i]; BPM = song.bpm; SPB = 60 / BPM;
+          song = list[i]; BPM = song.bpm; SPB = 60 / BPM;
           var S = window.ThaumaSound; if (S && S.music) S.music(song.tune);
           ctx.menu({
             heading: words('diff_pick'), start: 1,
