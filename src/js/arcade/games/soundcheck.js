@@ -134,7 +134,7 @@
       /* A return: where it met the fader sets the angle, as in every Pong,
          and the fader's own movement carries into it */
       function bounce(b, p, dir) {
-        var off = clamp((b.x - p.x) / (width(p) / 2), -1, 1);
+        var off = clamp((b.x - p.x) / (width(p) / 2), -1, 1), inVx = b.vx;
         b.speed = Math.min(TOP * D.pace, Math.max(BASE * D.pace, b.speed) * GROW + (rally % 5 === 4 ? 12 : 0));
         b.fx = null; b.t = 0; b.plan = null; b.owner = p; b.smash = false; b.looped = false; b.loop = null;
         p.meter = Math.min(1, p.meter + .13);
@@ -142,9 +142,16 @@
         setVel(b, off * 1.05, dir);
         /* INERTIA: a third of the fader's speed goes into the ball sideways,
            and a swing adds a little pace; the angle is kept playable */
-        b.vx += p.v * .33;
+        /* round 8 (Chase: "The movement of the platform aligns with the
+           movement of the ball, it can speed up the ball"): swinging the way
+           the ball travels sends it up to 40% faster, against it up to 40%
+           slower, and the speed is kept (round 7 renormalized it, so a
+           swing only turned the ball) */
+        var along = Math.abs(inVx) > 20 ? Math.sign(inVx) : Math.sign(b.vx) || Math.sign(p.v);
+        var push = p.v / SPEED * along;                      /* +1 with the ball at full speed, -1 against */
+        b.vx += p.v * .3;
         var ang = clamp(Math.atan2(b.vx, Math.abs(b.vy)), -1.15, 1.15);
-        b.speed = Math.min(TOP * 1.2, b.speed * (1 + Math.min(.12, Math.abs(p.v) / SPEED * .12)));
+        b.speed = clamp(b.speed * (1 + .4 * push), BASE * D.pace * .8, TOP * 1.25);
         setVel(b, ang, dir);
         for (var i = 0; i < 10; i++) sparks.push({ x: b.x, y: b.y, vx: rnd(-90, 90), vy: dir * rnd(0, 120), life: .4, c: b.smash ? '#FFB547' : '#8FEBFF' });
         if (b.speed > 500) ctx.shake(1.5 + (b.speed - 500) / 110);

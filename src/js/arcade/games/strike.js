@@ -34,7 +34,7 @@
 
   /* small bricks, many of them (round 7, Chase: "We should make the blocks
      smaller and add a LOT more"): 12 across, up to 14 rows */
-  var W = 360, BW = 28, BH = 13, COLS = 12, GAP = 3, R = 5;
+  var W = 360, BW = 22, BH = 11, COLS = 15, GAP = 3, R = 5;   /* round 8: "add even more bricks" (15 across, was 12) */
   /* each row is a piece of stage gear, drawn to fill exactly its brick (the
      hit box is the brick; round 7: "Maybe we just make the bricks in the
      shape of different stage elements") */
@@ -76,7 +76,7 @@
         bricks = [];
         /* whatever was still burning stops with the set: it must not clear the next one */
         fx = []; drops = []; balls.forEach(function (b) { b.big = false; });
-        var rows = Math.min(14, 7 + Math.floor(level / 2) * 2), pat = PATTERNS[(level - 1) % PATTERNS.length];
+        var rows = Math.min(18, 9 + Math.floor(level / 2) * 2), pat = PATTERNS[(level - 1) % PATTERNS.length];
         var left = (W - COLS * BW) / 2;
         for (var r = 0; r < rows; r++) for (var c = 0; c < COLS; c++) {
           if (!pat(c / (COLS - 1), r / Math.max(1, rows - 1), r, c)) continue;
@@ -183,6 +183,12 @@
         var n = Math.max(1, Math.ceil(dt * 700 / 5));
         for (var k = 0; k < n; k++) balls.forEach(function (b) { step(b, dt / n); });
         balls = balls.filter(function (b) { return !b.gone; });
+        var pace = 255 + level * 14;
+        balls.forEach(function (b) {
+          if (b.stuck || b.confetti || !b.speed || b.speed <= pace) return;
+          var k = Math.max(pace / b.speed, 1 - .06 * dt);   /* a boost fades over ~10s */
+          b.speed *= k; b.vx *= k; b.vy *= k;
+        });
         balls.forEach(function (b) { if (b.stuck) { b.trail = []; return; } (b.trail = b.trail || []).push({ x: b.x, y: b.y }); if (b.trail.length > 7) b.trail.shift(); });
         if (!balls.some(function (b) { return !b.confetti; })) {
           lives--; ctx.sfx('miss'); ctx.shake(5);
@@ -229,13 +235,25 @@
         if (b.vy > 0 && b.y + r >= PY - 5 && b.y < PY + 6 && Math.abs(b.x - pad.x) < pad.w / 2 + r) {
           var off = clamp((b.x - pad.x) / (pad.w / 2), -1, 1), a = off * 1.05;
           b.speed = Math.min(520, (b.speed || 255) * 1.008);   /* gentler (round 3: was ×1.012 to 620) */
+          var inVx = b.vx;
           b.vx = Math.sin(a) * b.speed; b.vy = -Math.cos(a) * b.speed; b.y = PY - 5 - r;
-          /* INERTIA (round 7, Chase: "We should add inertia to them. It gives
-             more finesse control over the ball's speed"): the fader's own
-             movement carries into the ball sideways, and a swing adds pace */
-          b.vx += pad.v * .3;
-          var ia = clamp(Math.atan2(b.vx, -b.vy), -1.15, 1.15), boost = 1 + Math.min(.1, Math.abs(pad.v) / 520 * .1);
-          b.vx = Math.sin(ia) * b.speed * boost; b.vy = -Math.cos(ia) * b.speed * boost;
+          /* INERTIA (round 8, Chase: "The movement of the
+             platform aligns with the movement of the ball, it can speed up
+             the ball. Basic physics principles"): a
+             swing the way the ball travels sends it up to 40% faster,
+             against it up to 40% slower, and the speed is kept (fading back
+             over ~10s). Round 7 renormalized the speed afterwards, so a
+             swing only turned the ball. */
+          /* which way the ball is travelling across: where it was going,
+             or where the hit sends it if it came straight down */
+          var along = Math.abs(inVx) > 20 ? Math.sign(inVx) : Math.sign(b.vx) || Math.sign(pad.v);
+          var push = pad.v / 520 * along;                    /* +1 with it at full speed, -1 against */
+          var sp = clamp(b.speed * (1 + .4 * push), 200, 700);
+          b.vx += pad.v * .3;                                 /* and it steers, a little */
+          var ia = clamp(Math.atan2(b.vx, -b.vy), -1.2, 1.2);
+          b.vx = Math.sin(ia) * sp; b.vy = -Math.cos(ia) * sp;
+          var gain = sp - b.speed; b.speed = sp;
+          if (gain > 40) { ctx.sfx('zap'); for (var q = 0; q < 8; q++) sparks.push({ x: b.x, y: b.y, vx: rnd(-60, 60) - pad.v * .2, vy: rnd(-160, -40), life: .35, c: '#FFB547' }); }
           ctx.sfx('hit');
         }
         /* the bricks */
@@ -297,7 +315,8 @@
           g.fillStyle = '#0b0e14'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(name, d.x, d.y + 1);
         });
         balls.forEach(function (b) {
-          var r = b.big ? R * 3 : R, col = b.confetti ? 'hsl(' + b.hue + ',90%,65%)' : b.big ? '#FFB547' : '#ffffff';
+          var fast = !b.confetti && b.speed > (255 + level * 14) * 1.15;
+          var r = b.big ? R * 3 : R, col = b.confetti ? 'hsl(' + b.hue + ',90%,65%)' : b.big || fast ? '#FFB547' : '#ffffff';
           /* a short trail, so its path can be read at speed */
           (b.trail || []).forEach(function (t, i, all) {
             g.globalAlpha = (i + 1) / all.length * .35; g.fillStyle = col;
