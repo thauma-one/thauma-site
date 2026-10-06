@@ -121,7 +121,9 @@
       }
       function start(k) {
         p.act = k; p.t = 0;
-        if (NAMED[k]) pops.push({ x: p.x, y: p.y - 80 * who.size, text: words('followspot_s_' + k), life: 1.3, col: who.col });
+        /* the ladder from the catwalk goes down, and says so (round 6) */
+        var label = k === 'climb' && p.plat !== 0 ? 'climbdown' : k;
+        if (NAMED[k]) pops.push({ x: p.x, y: p.y - 80 * who.size, text: words('followspot_s_' + label), life: 1.3, col: who.col });
         if (k === 'talk' || k === 'pose') return;
         if (k === 'jump') { p.vy = -430; p.air = true; return; }
         if (k === 'flip') { p.vy = -560; p.air = true; ctx.quip('jokes_followspot_stunt'); return; }

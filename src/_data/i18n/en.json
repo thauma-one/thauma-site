@@ -668,6 +668,7 @@
     "stagerunner_t_jump": "Jump over",
     "stagerunner_t_slide": "Slide under",
     "stagerunner_t_dodge": "Go around",
-    "stagerunner_hype": "Crew hype"
+    "stagerunner_hype": "Crew hype",
+    "followspot_s_climbdown": "Down the ladder!"
   }
 }

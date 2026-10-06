@@ -668,6 +668,7 @@
     "stagerunner_t_jump": "Preskoči",
     "stagerunner_t_slide": "Provuci se ispod",
     "stagerunner_t_dodge": "Zaobiđi",
-    "stagerunner_hype": "Podrška ekipe"
+    "stagerunner_hype": "Podrška ekipe",
+    "followspot_s_climbdown": "Niz ljestve!"
   }
 }

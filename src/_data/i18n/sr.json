@@ -668,6 +668,7 @@
     "stagerunner_t_jump": "Прескочи",
     "stagerunner_t_slide": "Провуци се испод",
     "stagerunner_t_dodge": "Заобиђи",
-    "stagerunner_hype": "Подршка екипе"
+    "stagerunner_hype": "Подршка екипе",
+    "followspot_s_climbdown": "Низ љестве!"
   }
 }
