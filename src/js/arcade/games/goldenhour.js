@@ -40,6 +40,23 @@
      BANNER     (the wingsuit) the festival banner as a wing: hold to
                 climb, let go to glide; the landing is always clean
 
+   ROUND 7 (Chase, 2026-10-05: "the gameplay is just meh. It's meant to be
+   relaxing and beautiful, but isn't really either … let's work on the
+   player graphics … the music needs to change"; and the camera that let
+   a falling rider outrun it):
+   - THE CAMERA looks ahead in the air, to halfway down to the ground you
+     will land on, follows faster, and keeps the rider above 66% of the
+     view, so the landing is on screen before you reach it.
+   - CALMER: longer, smoother swells; features further apart; a landing up
+     to 57° off the slope still lands (was 41°).
+   - PRETTIER: far mountains washed into the sky, slow sun rays, birds by
+     day, paper lanterns rising at night, silhouette pines on your own
+     hill, a hill that darkens with depth, the lid's line drawn in the
+     slope, a soft shadow under it; the evening turns more slowly.
+   - THE RIDER: a padded jacket with a shaded back, a beanie with its fold
+     and pompom, a nose, mittens, and a long scarf streaming in a wave.
+   - THE MUSIC is ambient piano (sound.js 'goldenhour').
+
    THE PACE (round 3): the top speed starts at 470 and grows to 620 over
    the first 3 km; the first cases come after 250 m, ramps after 120 m,
    gaps after 700 m; features come further apart, and closer slowly.
@@ -83,6 +100,7 @@
       /* ---- the world ---- */
       var ground = [];                       /* { x, y } every STEP px; null y = a gap */
       var rails = [], cases = [], ramps = [], sticks = [], balls = [], powers = [], fireworks = [], sparks = [], dust = [], snow = [], clouds = [];
+      var trail = [], pines = [], lanterns = [], birds = [];
       var genX = 0, genY = 200, slope = .26, nextFeature = 700, made = 0;
       var me = { x: 160, y: 0, vx: MIN, vy: 0, ang: 0, ground: true, rail: null, spin: 0, flips: 0, air: 0, crashed: false };
       var body = null;                       /* the rider, once a crash parts them from the lid */
@@ -115,13 +133,16 @@
       function generate(until) {
         while (genX < until) {
           /* the hills: a falling line with swells in it */
-          slope = clamp(slope + rnd(-.03, .03), .12, .46);
-          var swell = Math.sin(genX * .006) * 30 + Math.sin(genX * .017) * 10;
+          /* long, smooth swells (round 7: "meant to be relaxing") */
+          slope = clamp(slope + rnd(-.014, .014), .14, .4);
+          var swell = Math.sin(genX * .0042) * 38 + Math.sin(genX * .011) * 7;
           genY += slope * STEP;
           var y = genY + swell, i = Math.round(genX / STEP);
           if (genX > nextFeature) feature();
           ground[i] = { x: genX, y: ground[i] && ground[i].y === null ? null : y };
           if (genX > 500 && Math.random() < .05) sticks.push({ x: genX, y: y - 30 - rnd(0, 40) });
+          /* pines on the hill you ride, in silhouette: scenery only */
+          if (Math.random() < .045) pines.push({ x: genX, h: rnd(26, 58), w: rnd(.8, 1.2) });
           genX += STEP;
         }
       }
@@ -151,7 +172,7 @@
         } else {
           balls.push({ x: x0 + 200, y: 0, vy: 0, caught: false });
         }
-        nextFeature = genX + rnd(560, 900) - Math.min(240, d / 40);
+        nextFeature = genX + rnd(640, 980) - Math.min(220, d / 45);
       }
       function arc(x0, y0, len) { for (var i = 0; i < 5; i++) sticks.push({ x: x0 + len * (i + .5) / 5, y: y0 - Math.sin((i + .5) / 5 * Math.PI) * 60 }); }
       function railY(r, x) {
@@ -190,7 +211,13 @@
       /* ------------------------------------------------------ update */
       function update(dt) {
         time += dt;
-        sky = (sky + dt / 50) % SKY.length;            /* a whole evening every few minutes */
+        sky = (sky + dt / 70) % SKY.length;            /* a whole evening every six minutes */
+        /* lanterns rise at dusk and night; birds cross by day */
+        var nightNow = Math.max(0, 1 - Math.abs(sky - 2) * .9);
+        if (nightNow > .2 && Math.random() < dt * .9) lanterns.push({ x: rnd(0, W * 1.4), y: H + 10, v: rnd(10, 22), ph: rnd(0, 6), k: rnd(.15, .45) });
+        lanterns.forEach(function (l) { l.y -= l.v * dt; l.x -= me.vx * l.k * dt * .2; }); lanterns = lanterns.filter(function (l) { return l.y > -20 && l.x > -30; });
+        if (nightNow < .2 && !birds.length && Math.random() < dt * .06) for (var bi = 0; bi < 5; bi++) birds.push({ x: W + 20 + bi * 14, y: rnd(50, 110) + Math.abs(bi - 2) * 8, ph: rnd(0, 6) });
+        birds.forEach(function (b) { b.x -= (26 + me.vx * .05) * dt; }); birds = birds.filter(function (b) { return b.x > -20; });
         generate(me.x + 1600);
         dust.forEach(function (p) { p.x += p.vx * dt; p.y += p.vy * dt; p.vy -= 20 * dt; p.life -= dt; }); dust = dust.filter(function (p) { return p.life > 0; });
         sparks.forEach(function (p) { p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 400 * dt; p.life -= dt; }); sparks = sparks.filter(function (p) { return p.life > 0; });
@@ -208,6 +235,9 @@
         var steps = 3, h = dt / steps;
         for (var k = 0; k < steps; k++) stepMe(h);
         dist = Math.max(0, me.x - 160) / 10;
+        /* the line the lid draws on the hill, as Alto's board does */
+        if (me.ground) trail.push({ x: me.x, y: me.y }); else if (trail.length && trail[trail.length - 1]) trail.push(null);
+        while (trail.length && (!trail[0] || trail[0].x < me.x - 700)) trail.shift();
         if (comboT > 0) { comboT -= dt; if (comboT <= 0 && combo > 1) combo = 0; }
         if (landT > 0) landT -= dt;
         if (active) { activeT -= dt; if (activeT <= 0) active = null; }
@@ -264,10 +294,18 @@
         var zt = 1 - .3 * clamp((me.vx - 220) / 400, 0, 1);
         zoom += (zt - zoom) * Math.min(1, dt * .8);
         var vw = VW(), vh = VH();
-        var tx = me.x - vw * .3 + me.vx * .12, ty = me.y - vh * .56;
-        camX += (tx - camX) * Math.min(1, dt * 10); camY += (ty - camY) * Math.min(1, dt * 4);
+        /* ROUND 7 (Chase: "The camera, when jumping follows the person, but
+           then the person falls faster than the camera goes, so you have no
+           time to react"): in the air the camera looks AHEAD — halfway to
+           the ground you will come down on, and further down the faster you
+           fall — follows faster, and never lets the rider below 66% of the
+           view, so the landing is always on screen before you reach it. */
+        var air = !(me.ground || me.rail), focus = me.y;
+        if (air) { var land = groundAt(me.x + me.vx * .5); focus = land === null ? me.y + Math.max(0, me.vy) * .4 : lerp(me.y, Math.max(me.y, land), .5); }
+        var tx = me.x - vw * .3 + me.vx * .12, ty = focus - vh * .5 + clamp(me.vy, -200, 700) * (air ? .1 : 0);
+        camX += (tx - camX) * Math.min(1, dt * 10); camY += (ty - camY) * Math.min(1, dt * (air ? 6 : 4));
         camX = clamp(camX, me.x - vw * .45, me.x - vw * .2);
-        camY = clamp(camY, me.y - vh * .78, me.y - vh * .3);
+        camY = clamp(camY, me.y - vh * .66, me.y - vh * .22);
         cases = cases.filter(function (c) { return c.x > me.x - 400; });
         rails = rails.filter(function (r) { return r.x1 > me.x - 400; });
         ramps = ramps.filter(function (r) { return r.x + r.len > me.x - 400; });
@@ -351,7 +389,8 @@
         if (me.y >= gy) {
           var ga = slopeAt(me.x);
           /* the banner always sets you down clean */
-          if (active !== 'banner' && Math.abs(wrap(me.ang - ga)) > .72) return crash();
+          /* forgiving (round 7: relaxing): up to 57° off the slope still lands */
+          if (active !== 'banner' && Math.abs(wrap(me.ang - ga)) > 1) return crash();
           me.y = gy; me.ground = true; landOn(ga); me.ang = ga; landed(false);
         }
       }
@@ -362,7 +401,7 @@
          landing (the lid well off the slope) loses up to 45% more. */
       function landOn(ga) {
         var along = me.vx * Math.cos(ga) + me.vy * Math.sin(ga);
-        var q = Math.min(1, Math.abs(wrap(me.ang - ga)) / .72);
+        var q = Math.min(1, Math.abs(wrap(me.ang - ga)) / 1);
         me.vx = clamp(along * (1 - .45 * q * q), MIN, maxSpeed());
       }
       function landed(onRail) {
@@ -401,7 +440,6 @@
         /* the rider and the lid part ways */
         body = { x: me.x, y: me.y - 14, vx: me.vx * .55, vy: Math.min(-160, me.vy - 120), rot: me.ang, vr: 7 + rnd(0, 4) };
         puff(me.x, me.y, 14);
-        ctx.quip('jokes_goldenhour_crash', { mood: 'bad', force: true });
         setTimeout(function () { ctx.over(); }, 1700);
       }
       function crashed(dt) {
@@ -458,7 +496,19 @@
         var halo = g.createRadialGradient(W * .74, sunY, 10, W * .74, sunY, 110);
         halo.addColorStop(0, 'rgba(255,240,200,' + (.45 - night * .25).toFixed(2) + ')'); halo.addColorStop(1, 'rgba(255,240,200,0)');
         g.fillStyle = halo; g.fillRect(W * .74 - 110, sunY - 110, 220, 220);
+        /* slow rays from the sun, very faint */
+        g.save(); g.translate(W * .74, sunY); g.rotate(time * .02);
+        for (var ry = 0; ry < 9; ry++) {
+          g.rotate(Math.PI * 2 / 9);
+          var rg = g.createLinearGradient(0, 0, 0, 260);
+          rg.addColorStop(0, 'rgba(255,236,200,' + ((1 - night) * .055).toFixed(3) + ')'); rg.addColorStop(1, 'rgba(255,236,200,0)');
+          g.fillStyle = rg; g.beginPath(); g.moveTo(-5, 0); g.lineTo(5, 0); g.lineTo(34, 260); g.lineTo(-34, 260); g.closePath(); g.fill();
+        }
+        g.restore();
         g.fillStyle = col('sun'); g.globalAlpha = .95; g.beginPath(); g.arc(W * .74, sunY, 24, 0, 7); g.fill(); g.globalAlpha = 1;
+        /* a few birds by day */
+        g.strokeStyle = 'rgba(40,24,40,.55)'; g.lineWidth = 1.3;
+        birds.forEach(function (b) { var f = Math.sin(time * 8 + b.ph) * 3; g.beginPath(); g.moveTo(b.x - 5, b.y - f); g.quadraticCurveTo(b.x - 2, b.y - 2, b.x, b.y); g.quadraticCurveTo(b.x + 2, b.y - 2, b.x + 5, b.y - f); g.stroke(); });
         /* clouds, lit from below by whatever the sky is doing */
         clouds.forEach(function (cl) {
           var x = ((cl.x - camX * cl.k) % (W * 3) + W * 3) % (W * 3) - W * .5;
@@ -467,15 +517,27 @@
           g.beginPath(); g.ellipse(x, cl.y, cl.w * .5, 9, 0, 0, 7); g.ellipse(x + cl.w * .2, cl.y - 6, cl.w * .28, 9, 0, 0, 7); g.ellipse(x - cl.w * .2, cl.y - 3, cl.w * .22, 7, 0, 0, 7); g.fill();
         });
         /* the far hills, the festival on them, mist, the near hills with trees */
+        /* far mountains, washed into the sky (Alto's depth) */
+        layer(g, .05, 128, mix(A1.low, A1.far, .45), 58, .0024);
         layer(g, .12, 150, col('far'), 40, .004);
         festival(g, .2, night);
         mist(g, 200, col('low'), .22);
         layer(g, .35, 220, mix(A1.far, A1.hill, .5), 26, .009, true, night);
         mist(g, 265, col('low'), .14);
         fireworks.forEach(function (fw) { firework(g, fw); });
+        /* paper lanterns drifting up from the festival */
+        lanterns.forEach(function (l) {
+          var lx = l.x + Math.sin(time * .8 + l.ph) * 6, a = Math.min(1, (H + 10 - l.y) / 60) * night;
+          var lg = g.createRadialGradient(lx, l.y, 1, lx, l.y, 14);
+          lg.addColorStop(0, 'rgba(255,190,110,' + (.5 * a).toFixed(2) + ')'); lg.addColorStop(1, 'rgba(255,190,110,0)');
+          g.fillStyle = lg; g.fillRect(lx - 14, l.y - 14, 28, 28);
+          g.fillStyle = 'rgba(255,214,150,' + (.9 * a).toFixed(2) + ')'; g.beginPath(); g.ellipse(lx, l.y, 2.6, 3.4, 0, 0, 7); g.fill();
+        });
         /* the ground you ride, at the camera's zoom */
         g.save(); g.scale(zoom, zoom);
+        pineRow(g, mix(A1.hill, A1.far, .35));
         terrain(g, col('hill'), col('edge'));
+        rideTrail(g);
         rails.forEach(function (r) { rail(g, r); });
         ramps.forEach(function (r) { ramp(g, r); });
         cases.forEach(function (c) { caseOn(g, c, night); });
@@ -559,7 +621,29 @@
           if (open) { g.lineTo((x1 * STEP) - camX, BOT); g.closePath(); g.fill(); }
         }
         g.fillStyle = edge; g.globalAlpha = .55; shape(0); g.globalAlpha = 1;
-        g.fillStyle = c; shape(5);
+        /* the body darkens with depth, so the slope has weight */
+        var top = me.y - camY - 60, gb = g.createLinearGradient(0, top, 0, top + VH() * 1.6);
+        gb.addColorStop(0, c); gb.addColorStop(1, 'rgba(10,7,16,.95)');
+        g.fillStyle = gb; shape(5);
+      }
+      /* pines standing on the hill you ride, behind it, in silhouette */
+      function pineRow(g, c) {
+        g.fillStyle = c;
+        pines.forEach(function (p) {
+          var x = p.x - camX; if (x < -40 || x > VW() + 40) return;
+          var gy = heightAt(p.x); if (gy === null) return;
+          var y = gy - camY + 6, h = p.h, w = h * .32 * p.w;
+          g.beginPath(); g.moveTo(x - w, y); g.lineTo(x, y - h); g.lineTo(x + w, y); g.closePath(); g.fill();
+          g.beginPath(); g.moveTo(x - w * .8, y - h * .38); g.lineTo(x, y - h - 6); g.lineTo(x + w * .8, y - h * .38); g.closePath(); g.fill();
+        });
+        pines = pines.filter(function (p) { return p.x > me.x - 600; });
+      }
+      /* the lid's line in the hill */
+      function rideTrail(g) {
+        g.strokeStyle = 'rgba(255,248,236,.35)'; g.lineWidth = 1.6; g.lineCap = 'round';
+        g.beginPath(); var open = false;
+        trail.forEach(function (p) { if (!p) { open = false; return; } if (!open) { g.moveTo(p.x - camX, p.y - camY + 1); open = true; } else g.lineTo(p.x - camX, p.y - camY + 1); });
+        g.stroke();
       }
       function rail(g, r) {
         var y0 = railY(r, r.x0), y1 = railY(r, r.x1); if (y0 === null) return;
@@ -725,34 +809,51 @@
           g.beginPath(); g.moveTo(hp.x, hp.y); g.lineTo(kn.x, kn.y); g.lineTo(f.x, f.y); g.stroke();
           g.fillStyle = '#0d0f15'; g.fillRect(f.x - 3, f.y - 2, 7, 3);                       /* boots */
         });
-        /* the jacket */
-        g.strokeStyle = JACKET; g.lineWidth = 8.5;
+        /* THE SCARF, long, streaming back in a wave (round 7: "Make him more
+           visually appealing"), drawn behind the body */
+        var sc = [{ x: sh.x, y: sh.y - 1 }];
+        for (var si = 1; si <= 7; si++) sc.push({ x: sh.x - si * (3.4 + me.vx * .006), y: sh.y - 1 + Math.sin(time * 9 - si * .9) * si * .55 + si * .25 });
+        for (var sj = 1; sj < sc.length; sj++) { g.strokeStyle = SCARF; g.lineWidth = 3.2 - sj * .3; g.beginPath(); g.moveTo(sc[sj - 1].x, sc[sj - 1].y); g.lineTo(sc[sj].x, sc[sj].y); g.stroke(); }
+        g.fillStyle = '#1fb6d8'; g.beginPath(); g.arc(sc[7].x, sc[7].y, 1.2, 0, 7); g.fill();
+        /* the jacket: a padded body, a shaded back, the hi-vis band */
+        g.strokeStyle = JACKET; g.lineWidth = 10;
         g.beginPath(); g.moveTo(hip.x, hip.y + 1); g.lineTo(sh.x, sh.y); g.stroke();
-        g.strokeStyle = 'rgba(255,255,255,.85)'; g.lineWidth = 1.4;                       /* hi-vis stripe */
-        var mx = lerp(hip.x, sh.x, .45), my = lerp(hip.y, sh.y, .45), nx = Math.cos(P.lean) * 4.2, ny = Math.sin(P.lean) * 4.2;
+        var bx = -Math.cos(P.lean) * 2.6, by = -Math.sin(P.lean) * 2.6;
+        g.strokeStyle = '#d98b2b'; g.lineWidth = 3.4;
+        g.beginPath(); g.moveTo(hip.x + bx, hip.y + 1 + by); g.lineTo(sh.x + bx, sh.y + by); g.stroke();
+        g.strokeStyle = 'rgba(255,255,255,.9)'; g.lineWidth = 1.6;
+        var mx = lerp(hip.x, sh.x, .45), my = lerp(hip.y, sh.y, .45), nx = Math.cos(P.lean) * 5, ny = Math.sin(P.lean) * 5;
         g.beginPath(); g.moveTo(mx - nx, my - ny); g.lineTo(mx + nx, my + ny); g.stroke();
-        /* head, beanie (or the hard hat), the scarf streaming */
-        g.fillStyle = SKIN; g.beginPath(); g.arc(head.x, head.y, 5, 0, 7); g.fill();
-        g.fillStyle = hat ? '#FFD34A' : BEANIE; g.beginPath(); g.arc(head.x, head.y - 1.2, 5.4, Math.PI * 1.02, Math.PI * 1.98); g.fill();
-        if (hat) g.fillRect(head.x - 7, head.y - 1.8, 14, 1.8);
-        else { g.beginPath(); g.arc(head.x - 1, head.y - 6.6, 1.8, 0, 7); g.fill(); }
-        g.fillStyle = '#10131a'; g.fillRect(head.x + 1.6, head.y - .8, 1.6, 1.6);
-        g.strokeStyle = SCARF; g.lineWidth = 2.2; g.beginPath(); g.moveTo(sh.x, sh.y - 1);
-        g.quadraticCurveTo(sh.x - 9, sh.y - 3 + Math.sin(time * 14) * 2, sh.x - 15 - me.vx * .012, sh.y + 1 + Math.sin(time * 11) * 3); g.stroke();
+        /* the scarf's wrap at the neck */
+        g.strokeStyle = SCARF; g.lineWidth = 3.4; g.beginPath(); g.moveTo(sh.x - 2.6, sh.y - .6); g.lineTo(sh.x + 2.6, sh.y - 1.4); g.stroke();
+        /* head: hair at the back, a nose, the beanie with its fold and pompom (or the hard hat) */
+        g.fillStyle = SKIN; g.beginPath(); g.arc(head.x, head.y, 5.6, 0, 7); g.fill();
+        g.fillStyle = '#3b2a20'; g.beginPath(); g.arc(head.x - 1.4, head.y + .6, 5, Math.PI * .55, Math.PI * 1.15); g.fill();
+        g.fillStyle = SKIN; g.beginPath(); g.arc(head.x + 5.6, head.y + .8, 1.3, 0, 7); g.fill();
+        if (hat) {
+          g.fillStyle = '#FFD34A'; g.beginPath(); g.arc(head.x, head.y - 1.2, 6, Math.PI, 0); g.fill(); g.fillRect(head.x - 7.5, head.y - 1.8, 15, 2);
+        } else {
+          g.fillStyle = BEANIE; g.beginPath(); g.arc(head.x, head.y - 1, 6, Math.PI * 1.02, Math.PI * 1.98); g.fill();
+          g.fillStyle = '#c93f52'; g.fillRect(head.x - 6, head.y - 2.6, 12, 2.2);                   /* the fold */
+          g.fillStyle = '#fff3e6'; g.beginPath(); g.arc(head.x - 1.5 - me.vx * .003, head.y - 7.6, 2.2, 0, 7); g.fill();   /* the pompom */
+        }
+        g.fillStyle = '#10131a'; g.beginPath(); g.arc(head.x + 2.4, head.y - .2, .9, 0, 7); g.fill();
         /* the front arm */
         arm(g, sh, P.aR, P.eR, SKIN);
       }
       function arm(g, sh, a, e, c) {
         var el = { x: sh.x + Math.sin(a) * 7, y: sh.y + Math.cos(a) * 7 }, hd = { x: el.x + Math.sin(a + e) * 7, y: el.y + Math.cos(a + e) * 7 };
-        g.strokeStyle = JACKET; g.lineWidth = 3.4; g.beginPath(); g.moveTo(sh.x, sh.y); g.lineTo(el.x, el.y); g.stroke();
-        g.strokeStyle = c; g.lineWidth = 2.6; g.beginPath(); g.moveTo(el.x, el.y); g.lineTo(hd.x, hd.y); g.stroke();
+        g.strokeStyle = c === SKIN ? JACKET : '#d98b2b'; g.lineWidth = 4; g.beginPath(); g.moveTo(sh.x, sh.y); g.lineTo(el.x, el.y); g.lineTo(hd.x, hd.y); g.stroke();
+        /* mittens, in the scarf's color */
+        g.fillStyle = c === SKIN ? SCARF : '#1fb6d8'; g.beginPath(); g.arc(hd.x, hd.y, 2.3, 0, 7); g.fill();
       }
       function drawMe(g) {
         if (!started) return drawIntro(g);
         var x = me.x - camX, y = me.y - camY;
         /* the balloons or the banner, above */
         if (active === 'balloon' && !me.crashed) balloons(g, x, y - 46);
-        g.save(); g.translate(x, y); g.rotate(me.ang); g.scale(1.2, 1.2);
+        if (me.ground || me.rail) { g.fillStyle = 'rgba(0,0,0,.18)'; g.beginPath(); g.ellipse(x, y + 1, 24, 3, me.ang, 0, 7); g.fill(); }
+        g.save(); g.translate(x, y); g.rotate(me.ang); g.scale(1.3, 1.3);
         lid(g);
         if (!me.crashed) rider(g, pose, false);
         g.restore();

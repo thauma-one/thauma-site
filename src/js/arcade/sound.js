@@ -80,7 +80,7 @@
     return NAMES[m[1]] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0) + (+m[3] + 1) * 12;
   }
   function hz(n) { return 440 * Math.pow(2, (n - 69) / 12); }
-  var QUAL = { '': [0, 4, 7], m: [0, 3, 7], '7': [0, 4, 7, 10], m7: [0, 3, 7, 10], maj7: [0, 4, 7, 11], sus4: [0, 5, 7], dim: [0, 3, 6] };
+  var QUAL = { '': [0, 4, 7], m: [0, 3, 7], '7': [0, 4, 7, 10], m7: [0, 3, 7, 10], maj7: [0, 4, 7, 11], sus4: [0, 5, 7], dim: [0, 3, 6], add9: [0, 4, 7, 14] };
   function chord(sym) {
     var m = /^([A-G][#b]?)(.*)$/.exec(sym);
     var root = midi(m[1] + '3') % 12;
@@ -175,6 +175,12 @@
     ep: function (at, f, len) { synth(at, f, len, { type: 'sine', cutoff: 8000, vol: .16, s: .35, d: .35, r: .4, verb: .25 });
                                 synth(at, f * 4, .25, { type: 'sine', cutoff: 8000, vol: .035, s: .05, d: .06 }); },
     /* brass: saws whose filter opens as the note speaks */
+    /* a soft felt piano: a quick strike, a long fade, the room around it */
+    piano: function (at, f, len, t) {
+      var v = (t && t.pianoVol) || 1;
+      synth(at, f, Math.max(len, 1.6), { type: 'triangle', cutoff: 2600, cutTo: 900, cutTime: .6, a: .004, vol: .11 * v, s: .18, d: .9, r: 1.2, verb: .55 });
+      synth(at, f * 2, .5, { type: 'sine', cutoff: 6000, vol: .025 * v, s: .05, d: .3, r: .4, verb: .4 });
+    },
     brass: function (at, f, len, t, long) { synth(at, f, len, { voices: 3, spread: 10, cutoff: 500, cutTo: 2600, cutTime: .09, q: 1.5, a: .03, vol: .1, s: .8, vib: long, verb: .15 }); }
   };
   /* The drum kits */
@@ -222,7 +228,7 @@
   var TUNES = {
     /* the menu: bright and bouncy, the hidden-arcade theme (unchanged —
        Chase: "I love the arcade music on the home screen") */
-    menu: { bpm: 148, bass: 'octave', arp: 'up16', lead: 'pulse', kit: 'chip',
+    menu: { bpm: 148, vol: .62, bass: 'octave', arp: 'up16', lead: 'pulse', kit: 'chip',
       k: 'x...x...x...x...', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.',
       bars: [
         ['C', 'E5.2 G5.2 C6.2 G5.2 E5.2 G5.2 C6.4'],
@@ -285,18 +291,21 @@
         ['Gm', 'G6.4 F6.2 D6.2 Bb5.8'],
         ['Bb', 'F6.2 D6.2 Bb5.2 D6.2 F6.4 A6.4'],
         ['A', 'E6.4 C#6.4 A5.8']] },
-    /* Follow Spot: big-band swing — brass, a walking bass, the ride */
-    followspot: { bpm: 152, swing: .33, bass: 'walk', arp: 'brass', lead: 'brass', kit: 'jazz',
-      k: 'x.......x.......', s: '......x.......x.', h: 'r...r.r.r...r.r.', cp: '......x.......x.',
+    /* Follow Spot: feel-good pop with a light, laid-back groove — soft
+       electric-piano chords, a round sub bass, a plucked hook, a lo-fi kit
+       (round 7, Chase: the big band was something he'd "hate listening to
+       … on repeat for 5 minutes") */
+    followspot: { bpm: 100, bass: 'sub', arp: 'epchords', lead: 'pluck', kit: 'lofi',
+      k: 'x.....x...x.....', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.',
       bars: [
-        ['Bb', 'D6.3 F6.3 G6.2 F6.4 D6.4'],
-        ['Gm', 'Bb5.3 D6.3 F6.2 G6.8'],
-        ['Cm7', 'Eb6.3 G6.3 Bb6.2 A6.4 G6.4'],
-        ['F7', 'A6.4 F6.4 C6.4 Eb6.4'],
-        ['Bb', 'D6.3 F6.3 G6.2 Bb6.4 D7.4'],
-        ['Gm', 'C7.2 Bb6.2 G6.2 F6.2 D6.8'],
-        ['Cm7,F7', 'Eb6.4 G6.4 A6.4 C7.4'],
-        ['Bb', 'Bb6.12 r.4']] },
+        ['G', 'D6.3 B5.3 G5.2 A5.4 B5.4'],
+        ['D', 'A5.3 F#5.3 D5.2 E5.4 F#5.4'],
+        ['Em7', 'G5.3 B5.3 E6.2 D6.4 B5.4'],
+        ['Cmaj7', 'C6.6 B5.2 G5.8'],
+        ['G', 'D6.3 B5.3 G5.2 A5.4 B5.4'],
+        ['D', 'A5.3 D6.3 F#6.2 E6.4 D6.4'],
+        ['Cmaj7', 'E6.4 D6.4 B5.4 C6.4'],
+        ['D', 'A5.8 r.8']] },
     /* Strike: heroic space-arcade electro — a saw arpeggio sweeping under
        a bright lead, four on the floor (round 5: the punk "vibe" was wrong) */
     strike: { bpm: 150, bass: 'synth8', arp: 'sawarp', lead: 'saw', kit: 'house',
@@ -347,25 +356,29 @@
     /* Golden Hour: the first tune again (round 5: "go back to the other
        music"), warm and slow, the sun going down — and a second half that
        lifts, the festival glowing on the far hills */
-    goldenhour: { bpm: 92, bass: 'pad', arp: 'up8', lead: 'soft', kit: 'chip',
-      k: 'x.........x.....', s: '................', h: '..x...x...x...x.',
+    /* Golden Hour: ambient piano, Alto's evening — a slow broken chord, a
+       few long notes over it, a soft pad underneath, no drums (round 7,
+       Chase: "the music needs to change … I feel like I'm exploring a forest
+       in Legend of Zelda") */
+    goldenhour: { bpm: 72, vol: .9, bass: 'pad', arp: 'pianoarp', lead: 'piano', kit: 'chip',
+      k: '................', s: '................', h: '................',
       bars: [
-        ['D', 'F#5.8 A5.4 E5.4'],
-        ['G', 'D5.6 B4.2 D5.8'],
-        ['Bm', 'F#5.8 E5.4 D5.4'],
-        ['A', 'C#5.12 r.4'],
-        ['D', 'F#5.4 A5.4 D6.8'],
-        ['G', 'B5.6 A5.2 G5.8'],
-        ['Em', 'E5.4 F#5.4 G5.4 B5.4'],
-        ['A', 'A5.16'],
-        ['G', 'B5.4 D6.4 G6.8'],
-        ['A', 'C#6.4 E6.4 A6.8'],
-        ['F#m', 'A6.6 F#6.2 E6.8'],
-        ['Bm', 'D6.6 C#6.2 B5.8'],
-        ['G', 'B5.4 A5.4 G5.4 F#5.4'],
-        ['A', 'E5.4 F#5.4 A5.8'],
-        ['D', 'F#5.6 E5.2 D5.8'],
-        ['A', 'C#5.8 E5.8']] }
+        ['Dmaj7', 'F#5.6 A5.2 E5.8'],
+        ['Bm7', 'D5.6 F#5.2 C#5.8'],
+        ['Gmaj7', 'B4.4 D5.4 F#5.8'],
+        ['Aadd9', 'E5.12 r.4'],
+        ['Dmaj7', 'A5.6 F#5.2 E5.4 D5.4'],
+        ['F#m7', 'C#5.8 E5.8'],
+        ['Gmaj7', 'D5.4 B4.4 A4.8'],
+        ['Aadd9', 'r.16'],
+        ['Em7', 'G5.6 B5.2 A5.8'],
+        ['Gmaj7', 'F#5.6 D5.2 B4.8'],
+        ['Dmaj7', 'A5.4 C#6.4 A5.8'],
+        ['Aadd9', 'E5.16'],
+        ['Bm7', 'F#5.6 D5.2 C#5.8'],
+        ['Gmaj7', 'B4.6 D5.2 F#5.8'],
+        ['Em7', 'E5.4 F#5.4 G5.8'],
+        ['Aadd9', 'r.16']] }
   };
   /* Parsed once: per bar, the chords by sixteenth and the melody's notes. */
   Object.keys(TUNES).forEach(function (k) {
@@ -454,6 +467,11 @@
       var up = tones.concat([12, tones[1] + 12]), seq2 = up.concat(up.slice(1, -1).reverse());
       var sweep = 900 + 2000 * (.5 + .5 * Math.sin(i / 16 * Math.PI * 2 - Math.PI / 2));
       synth(at, hz(top + seq2[i % seq2.length]), dur * .7, { type: 'sawtooth', cutoff: sweep, q: 4, vol: .032, s: .3, d: .05, echo: true });
+    } else if (t.arp === 'pianoarp' && i % 2 === 0) {
+      /* a slow broken chord, low to high and back, eighths */
+      var pt = tones.length > 3 ? tones : tones.concat([12]);
+      var walk = [-12, -5, pt[1], pt[2], pt[3], pt[2], pt[1], -5][i / 2];
+      LEAD.piano(at, hz(top + walk), dur * 6, { pianoVol: .55 });
     } else if (t.arp === 'epchords' && (i === 0 || i === 6)) {
       tones.forEach(function (tn) { LEAD.ep(at, hz(top + tn - 12), dur * (i === 0 ? 5.5 : 9.5)); });
     }
@@ -490,9 +508,12 @@
     echo.delay.delayTime.setValueAtTime(60 / TUNES[name].bpm * .75, ac.currentTime);
     nextStep = songStart = ac.currentTime + .06;
     musicBus.gain.cancelScheduledValues(ac.currentTime);
-    musicBus.gain.setValueAtTime(ducked ? .18 : .62, ac.currentTime);
+    musicBus.gain.setValueAtTime(level(), ac.currentTime);
     timer = setInterval(schedule, 25); schedule();
   }
+  /* each tune's own loudness (round 7, Chase: "the arcade home music is
+     louder than the other games"), ducked under the pause */
+  function level() { var t = playing && TUNES[playing]; return (ducked ? .18 : .62) * (t && t.vol || 1); }
   function stopTune() { clearInterval(timer); timer = 0; playing = null; }
 
   /* ------------------------------------------------------------ sounds */
@@ -606,7 +627,7 @@
     },
     duck: function (d) {
       ducked = !!d;
-      if (ac && musicBus) musicBus.gain.setTargetAtTime(ducked ? .18 : .62, ac.currentTime, .12);
+      if (ac && musicBus) musicBus.gain.setTargetAtTime(level(), ac.currentTime, .12);
     },
     /* Where the tune is: { t: seconds since its first beat, bpm }, or null
        when nothing is playing. Cue Stack plays to it. */
