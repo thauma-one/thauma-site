@@ -33,7 +33,7 @@
   try { on = localStorage.getItem(KEY) === '1'; } catch (e) { /* private mode */ }
   var listeners = [];
 
-  var ac = null, master, musicBus, sfxBus, echo, dirt, verb, noiseBuf, waves = {};
+  var ac = null, master, musicBus, sfxBus, echo, verb, noiseBuf, waves = {};
   function audio() {
     if (ac) return ac;
     var AC = window.AudioContext || window.webkitAudioContext;
@@ -50,12 +50,6 @@
     echo.send.gain.value = .22; echo.fb.gain.value = .3; echo.tone.type = 'lowpass'; echo.tone.frequency.value = 3200;
     echo.send.connect(echo.delay); echo.delay.connect(echo.tone); echo.tone.connect(echo.fb); echo.fb.connect(echo.delay);
     echo.tone.connect(musicBus);
-    /* distortion, for the guitars and the punk */
-    dirt = ac.createWaveShaper();
-    var curve = new Float32Array(1024);
-    for (var ci = 0; ci < 1024; ci++) { var xx = ci / 512 - 1; curve[ci] = Math.tanh(xx * 6) * .6; }
-    dirt.curve = curve; dirt.oversample = '2x';
-    var dirtOut = ac.createGain(); dirtOut.gain.value = .5; dirt.connect(dirtOut); dirtOut.connect(musicBus);
     /* a small room, made of decaying noise */
     verb = ac.createConvolver();
     var len = Math.floor(ac.sampleRate * 1.4), ir = ac.createBuffer(2, len, ac.sampleRate);
@@ -140,7 +134,7 @@
      bass, one chip kit for all of them. */
 
   /* a synth note: oscillators (unison, detuned) through a filter with its
-     own envelope, then an amp envelope; optional distortion, echo, reverb */
+     own envelope, then an amp envelope; optional echo and reverb */
   function synth(at, freq, dur, o) {
     var n = o.voices || 1, env = ac.createGain(), f = ac.createBiquadFilter();
     f.type = o.filter || 'lowpass'; f.Q.value = o.q || 1;
@@ -164,7 +158,7 @@
     env.gain.linearRampToValueAtTime(v, at + a);
     env.gain.setTargetAtTime(v * (o.s == null ? .7 : o.s), at + a, o.d || .1);
     env.gain.setTargetAtTime(0, at + dur, r / 3);
-    f.connect(env); env.connect(o.dirt ? dirt : (o.to || musicBus));
+    f.connect(env); env.connect(o.to || musicBus);
     if (o.echo) env.connect(echo.send);
     if (o.verb) { var vs = ac.createGain(); vs.gain.value = o.verb; env.connect(vs); vs.connect(verb); }
   }
@@ -174,8 +168,6 @@
     soft: function (at, f, len) { voice(at, f, len, { type: 'triangle', vol: .2, a: .03, sus: .8, dec: .3, rel: .5, echo: true, vib: true }); voice(at, f * 2, len, { type: 'sine', vol: .04, a: .05, sus: .6, rel: .5 }); },
     /* a bright synth lead, two saws */
     saw: function (at, f, len, t, long) { synth(at, f, len, { voices: 2, spread: 12, cutoff: 900, cutTo: 3400, cutTime: .06, q: 2, vol: .075, s: .75, echo: true, vib: long }); },
-    /* a distorted guitar-ish lead */
-    grit: function (at, f, len, t, long) { synth(at, f, len, { voices: 2, spread: 8, cutoff: 2600, vol: .05, s: .8, dirt: true, vib: long }); },
     /* the hook: a supersaw pluck, the filter snapping shut */
     pluck: function (at, f, len) { synth(at, f, Math.min(len, .5), { voices: 3, spread: 22, cutoff: 5200, cutTo: 700, cutTime: .22, vol: .1, s: .25, d: .12, r: .18, echo: true, verb: .3 });
                                    synth(at, f * 2, Math.min(len, .3), { type: 'square', cutoff: 3000, cutTo: 900, cutTime: .15, vol: .025, s: .2 }); },
@@ -241,31 +233,34 @@
         ['G', 'B5.2 D6.2 G6.4 F6.2 E6.2 D6.4'],
         ['F', 'C6.2 A5.2 F5.2 A5.2 C6.2 D6.2 E6.2 F6.2'],
         ['G', 'G6.6 F6.2 E6.2 D6.2 B5.4']] },
-    /* Load Out: a blues-rock shuffle, power chords chugging under a dirty
-       lead — heavy cases */
-    loadout: { bpm: 104, swing: .3, bass: 'dirt', arp: 'power', lead: 'grit', kit: 'rock',
-      k: 'x.......x.x.....', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.', cp: 'x.x.x.x.x.x.x.x.',
+    /* Load Out: a folk march in a minor key, an oom-pah bass under it —
+       the falling-block puzzle's spirit, an original tune (round 5: the
+       blues-rock "vibe" was wrong) */
+    loadout: { bpm: 140, bass: 'walk', arp: 'stab', lead: 'pulse', leadWave: .5, kit: 'chip',
+      k: 'x.......x.......', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.',
       bars: [
-        ['E', 'E5.2 G5.2 A5.2 Bb5.1 B5.3 r.6'],
-        ['E', 'r.8 D6.2 B5.2 A5.2 G5.2'],
-        ['A', 'A5.2 C6.2 D6.2 Eb6.1 E6.3 r.6'],
-        ['E', 'G5.3 E5.3 D5.2 E5.8'],
-        ['B', 'F#5.2 A5.2 B5.4 D6.2 B5.2 A5.4'],
-        ['A', 'E6.4 D6.2 C6.2 A5.8'],
-        ['E', 'E5.2 G5.2 A5.2 Bb5.1 B5.3 D6.2 E6.4'],
-        ['B', 'D#6.4 B5.4 F#5.4 B4.4']] },
-    /* Soundcheck: 80s synthwave, half-time, a gated snare, saw pads */
-    soundcheck: { bpm: 112, bass: 'synth8', arp: 'pad', lead: 'saw', kit: 'gated',
-      k: 'x.........x.....', s: '........x.......', h: 'x.x.x.x.x.x.x.x.',
+        ['Em', 'B5.4 G5.2 A5.2 B5.4 A5.2 G5.2'],
+        ['B', 'F#5.4 F#5.2 A5.2 B5.4 A5.2 F#5.2'],
+        ['Em', 'G5.4 E5.2 G5.2 B5.4 E6.4'],
+        ['B7', 'D#6.4 B5.2 A5.2 F#5.8'],
+        ['Am', 'C6.4 A5.2 C6.2 E6.4 D6.2 C6.2'],
+        ['Em', 'B5.4 G5.2 B5.2 E6.4 D6.2 B5.2'],
+        ['B7', 'A5.2 B5.2 C6.2 A5.2 F#5.2 A5.2 D#5.4'],
+        ['Em', 'E5.8 r.4 B4.4']] },
+    /* Soundcheck: bright arcade pop, the melody bouncing high and low like
+       a rally, bell chords off the beat, a clean punchy kit (round 5: the
+       synthwave "vibe" was wrong) */
+    soundcheck: { bpm: 136, bass: 'octave', arp: 'bellstab', lead: 'pulse', leadWave: .125, kit: 'rock',
+      k: 'x.....x.x.......', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.', cp: '..x...x...x...x.',
       bars: [
-        ['Fm', 'C6.6 Ab5.2 F5.4 G5.4'],
-        ['Db', 'Ab5.6 F5.2 Db6.8'],
-        ['Ab', 'Eb6.6 C6.2 Ab5.4 Bb5.4'],
-        ['Eb', 'G5.8 Bb5.4 Eb6.4'],
-        ['Fm', 'C6.6 Ab5.2 F6.4 Eb6.4'],
-        ['Db', 'Db6.6 C6.2 Ab5.8'],
-        ['Ab', 'C6.4 Eb6.4 Ab6.4 G6.4'],
-        ['Eb', 'G6.12 r.4']] },
+        ['C', 'E6.2 r.2 C6.2 r.2 G6.2 r.2 E6.4'],
+        ['G', 'D6.2 r.2 B5.2 r.2 G6.2 r.2 D6.4'],
+        ['Am', 'C6.2 r.2 A5.2 r.2 E6.2 r.2 C6.2 D6.2'],
+        ['F', 'C6.4 A5.4 F6.4 E6.4'],
+        ['C', 'G6.2 r.2 E6.2 r.2 C7.2 r.2 G6.4'],
+        ['G', 'B6.2 A6.2 G6.2 F6.2 D6.4 B5.4'],
+        ['F', 'A6.2 r.2 F6.2 r.2 C7.4 A6.4'],
+        ['G', 'G6.6 F6.2 D6.4 B5.4']] },
     /* Panel Fixer: bossa lounge — a vibraphone, brushes and a ride */
     panelfixer: { bpm: 132, bass: 'bossa', arp: 'bossa', lead: 'ep', kit: 'jazz',
       k: 'x.......x.......', s: '...x..x....x..x.', h: 'r.rr.rr.r.rr.rr.',
@@ -302,18 +297,19 @@
         ['Gm', 'C7.2 Bb6.2 G6.2 F6.2 D6.8'],
         ['Cm7,F7', 'Eb6.4 G6.4 A6.4 C7.4'],
         ['Bb', 'Bb6.12 r.4']] },
-    /* Strike: punk — fast, distorted, a double kick */
-    strike: { bpm: 184, bass: 'dirt', arp: 'power', lead: 'grit', kit: 'rock',
-      k: 'x.x.x.x.x.x.x.x.', s: '....x.......x...', h: 'x...x...x...x...', cp: 'x.x.x.x.x.x.x.x.',
+    /* Strike: heroic space-arcade electro — a saw arpeggio sweeping under
+       a bright lead, four on the floor (round 5: the punk "vibe" was wrong) */
+    strike: { bpm: 150, bass: 'synth8', arp: 'sawarp', lead: 'saw', kit: 'house',
+      k: 'x...x...x...x...', s: '....x.......x...', h: 'x.o.x.o.x.o.x.o.',
       bars: [
-        ['Em', 'B5.2 E6.2 G6.2 B6.2 A6.2 G6.2 E6.4'],
-        ['C', 'G6.2 E6.2 C6.2 E6.2 G6.8'],
-        ['G', 'D6.2 G6.2 B6.2 D7.2 B6.4 G6.4'],
-        ['D', 'A6.2 F#6.2 D6.4 F#6.8'],
-        ['Em', 'B5.2 E6.2 G6.2 B6.2 E7.4 D7.4'],
-        ['C', 'C7.2 B6.2 G6.2 E6.2 C6.8'],
-        ['Am', 'A5.2 C6.2 E6.2 A6.2 G6.4 E6.4'],
-        ['B', 'F#6.4 D#6.4 B5.8']] },
+        ['Am', 'A5.4 C6.4 E6.4 A6.4'],
+        ['F', 'G6.4 F6.4 E6.4 C6.4'],
+        ['C', 'E6.4 G6.4 C7.4 B6.4'],
+        ['G', 'D7.8 B6.8'],
+        ['Am', 'A6.4 G6.2 E6.2 A6.4 C7.4'],
+        ['F', 'B6.4 A6.4 F6.4 A6.4'],
+        ['G', 'G6.4 B6.4 D7.4 G7.4'],
+        ['E', 'G#6.8 E6.8']] },
     /* Cue Stack: THE catchy one — an EDM anthem at 128 (the game plays to
        this clock). Four on the floor, pumping supersaw chords, a pluck
        hook built on one repeated rhythm, a lift in the middle eight. */
@@ -348,18 +344,28 @@
         ['G7', 'B5.2 D6.2 r.2 F6.2 D6.4 r.4'],
         ['Em7', 'E6.2 G6.2 B6.4 A6.2 G6.2 E6.4'],
         ['A7', 'C#7.4 B6.2 A6.2 E6.8']] },
-    /* Golden Hour: lo-fi — lazy drums, an electric piano, a warm lead */
-    goldenhour: { bpm: 80, swing: .22, bass: 'sub', arp: 'epchords', lead: 'soft', kit: 'lofi',
-      k: 'x.........x.....', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.',
+    /* Golden Hour: the first tune again (round 5: "go back to the other
+       music"), warm and slow, the sun going down — and a second half that
+       lifts, the festival glowing on the far hills */
+    goldenhour: { bpm: 92, bass: 'pad', arp: 'up8', lead: 'soft', kit: 'chip',
+      k: 'x.........x.....', s: '................', h: '..x...x...x...x.',
       bars: [
-        ['Dmaj7', 'F#5.8 A5.4 E5.4'],
-        ['Gmaj7', 'D5.6 B4.2 D5.8'],
-        ['Bm7', 'F#5.8 E5.4 D5.4'],
+        ['D', 'F#5.8 A5.4 E5.4'],
+        ['G', 'D5.6 B4.2 D5.8'],
+        ['Bm', 'F#5.8 E5.4 D5.4'],
         ['A', 'C#5.12 r.4'],
-        ['Dmaj7', 'F#5.4 A5.4 D6.8'],
-        ['Gmaj7', 'B5.6 A5.2 G5.8'],
-        ['Em7', 'E5.4 F#5.4 G5.4 B5.4'],
-        ['A7', 'A5.16']] }
+        ['D', 'F#5.4 A5.4 D6.8'],
+        ['G', 'B5.6 A5.2 G5.8'],
+        ['Em', 'E5.4 F#5.4 G5.4 B5.4'],
+        ['A', 'A5.16'],
+        ['G', 'B5.4 D6.4 G6.8'],
+        ['A', 'C#6.4 E6.4 A6.8'],
+        ['F#m', 'A6.6 F#6.2 E6.8'],
+        ['Bm', 'D6.6 C#6.2 B5.8'],
+        ['G', 'B5.4 A5.4 G5.4 F#5.4'],
+        ['A', 'E5.4 F#5.4 A5.8'],
+        ['D', 'F#5.6 E5.2 D5.8'],
+        ['A', 'C#5.8 E5.8']] }
   };
   /* Parsed once: per bar, the chords by sixteenth and the melody's notes. */
   Object.keys(TUNES).forEach(function (k) {
@@ -401,7 +407,6 @@
       walk: i % 4 === 0 ? b + [0, 7, 12, 7][i / 4] : null,
       offbeat: i % 4 === 2 ? b + 12 : null,
       riff: RIFF[i] == null ? null : b + RIFF[i],
-      dirt: RIFF[i] == null ? null : b + RIFF[i],
       pad: i === 0 ? b : null,
       sub: i === 0 || i === 10 ? b : null,
       synth8: i % 2 === 0 ? b + (i % 8 === 6 ? 12 : 0) : null,
@@ -411,7 +416,6 @@
       pumpbass: i % 4 === 2 ? b : null }[t.bass];
     if (bp != null) {
       if (t.bass === 'reese') synth(at, hz(bp), dur * (i === 0 ? 9.5 : 5.5), { voices: 2, spread: 28, cutoff: 380, cutTo: 900, cutTime: dur * 4, q: 3, vol: .2, s: .9, r: .1 });
-      else if (t.bass === 'dirt') synth(at, hz(bp), dur * 1.6, { voices: 1, cutoff: 900, vol: .12, s: .8, dirt: true });
       else if (t.bass === 'synth8') synth(at, hz(bp), dur * 1.6, { voices: 2, spread: 8, cutoff: 600, cutTo: 300, cutTime: dur * 1.5, vol: .16, s: .6 });
       else if (t.bass === 'disco') { synth(at, hz(bp), dur * 1.4, { type: 'square', cutoff: 1400, cutTo: 400, cutTime: .1, vol: .12, s: .5 }); voice(at, hz(bp), dur * 1.4, { type: 'sine', vol: .14, sus: .7 }); }
       else if (t.bass === 'pumpbass') { synth(at, hz(bp), dur * 1.8, { voices: 2, spread: 10, cutoff: 700, vol: .14, s: .8 }); voice(at, hz(bp - 12), dur * 1.8, { type: 'sine', vol: .22, sus: .8 }); }
@@ -429,8 +433,6 @@
       voice(at, hz(top + seq[k]), dur * .8, { wave: .125, vol: .035, sus: .4, dec: .04 });
     } else if (t.arp === 'stab' && (i === 4 || i === 12)) {
       tones.forEach(function (tn) { voice(at, hz(top + tn), dur * 1.4, { wave: .125, vol: .04, sus: .3, dec: .05 }); });
-    } else if (t.arp === 'power' && cp) {
-      [0, 7, 12].forEach(function (tn) { synth(at, hz(48 + root + tn), dur * 1.5, { voices: 1, cutoff: 1800, vol: .045, s: .7, dirt: true }); });
     } else if (t.arp === 'pad' && i === 0) {
       tones.forEach(function (tn) { synth(at, hz(top + tn), dur * 15.5, { voices: 2, spread: 16, cutoff: 1300, a: .35, s: .9, r: .5, vol: .045, verb: .3 }); });
     } else if (t.arp === 'bossa' && '1..1..1...1..1..'[i] === '1') {
@@ -444,6 +446,14 @@
       /* wah: the filter sweeping across the bar */
       var wah = 700 + 1800 * (.5 + .5 * Math.sin(i / 16 * Math.PI * 2));
       tones.forEach(function (tn) { synth(at, hz(top + tn), dur * .45, { type: 'square', cutoff: wah, q: 6, vol: .035, s: .3, d: .04 }); });
+    } else if (t.arp === 'bellstab' && cp) {
+      /* bells off the beat: an electric piano's top */
+      tones.forEach(function (tn) { synth(at, hz(top + tn + 12), dur * 1.2, { type: 'sine', cutoff: 8000, vol: .05, s: .2, d: .12, r: .2 }); });
+    } else if (t.arp === 'sawarp') {
+      /* sixteenths up and down the chord, the filter sweeping across the bar */
+      var up = tones.concat([12, tones[1] + 12]), seq2 = up.concat(up.slice(1, -1).reverse());
+      var sweep = 900 + 2000 * (.5 + .5 * Math.sin(i / 16 * Math.PI * 2 - Math.PI / 2));
+      synth(at, hz(top + seq2[i % seq2.length]), dur * .7, { type: 'sawtooth', cutoff: sweep, q: 4, vol: .032, s: .3, d: .05, echo: true });
     } else if (t.arp === 'epchords' && (i === 0 || i === 6)) {
       tones.forEach(function (tn) { LEAD.ep(at, hz(top + tn - 12), dur * (i === 0 ? 5.5 : 9.5)); });
     }

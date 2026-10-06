@@ -168,10 +168,16 @@
         holding = true;
         if (me.crashed) return;
         if (me.ground || me.rail) {
-          var lift = me.rail ? 420 : 470;
-          var a = me.rail ? Math.atan(me.rail.slope) : slopeAt(me.x);
-          me.vy = Math.sin(a) * me.vx / Math.max(.3, Math.cos(a)) - lift;
-          me.ground = false; me.rail = null; me.spin = 0; me.air = 0;
+          /* THE JUMP FOLLOWS THE GROUND (round 5, Chase: "the jumps also
+             change based on physics of when you jump off"): the speed you
+             have along the slope carries on, and the pop pushes away from
+             the slope's surface — off a rise it throws you up and back
+             less, off a drop it carries you out — harder the faster you go. */
+          var a = me.rail ? Math.atan(me.rail.slope) : slopeAt(me.x), sp = me.vx;
+          var lift = (me.rail ? 300 : 330) + sp * .28;
+          me.vx = Math.max(MIN * .8, sp * Math.cos(a) + Math.sin(a) * lift);
+          me.vy = sp * Math.sin(a) - Math.cos(a) * lift;
+          me.ground = false; me.rail = null; me.spin = 0; me.air = 0; me.released = 0;
           ctx.sfx('jump');
         }
       }
@@ -272,18 +278,18 @@
           me.vx = clamp(me.vx + (Math.sin(a) * G * .55 - me.vx * .08) * dt, MIN, top);
           var nx = me.x + me.vx * Math.cos(a) * dt;
           var ny = groundAt(nx);
-          if (ny === null) { me.ground = false; me.vy = me.vx * Math.sin(a); me.spin = 0; me.air = 0; me.x = nx; return; }
+          if (ny === null) { me.ground = false; me.vy = me.vx * Math.sin(a); me.vx *= Math.cos(a); me.spin = 0; me.air = 0; me.x = nx; return; }
           /* off the end of a ramp: launched */
           for (var k = 0; k < ramps.length; k++) {
             var rp = ramps[k];
             if (me.x <= rp.x + rp.len && nx > rp.x + rp.len) {
-              me.ground = false; me.vy = Math.min(-240, me.vx * Math.sin(a) - 120); me.spin = 0; me.air = 0; me.x = nx;
+              me.ground = false; me.vy = Math.min(-240, me.vx * Math.sin(a) - 120); me.vx *= Math.cos(a); me.spin = 0; me.air = 0; me.x = nx;
               ctx.sfx('jump'); return;
             }
           }
           /* over a crest faster than the ground falls away: airborne */
           var fall = ny - me.y, ballistic = me.vx * Math.sin(a) * dt + G * dt * dt;
-          if (fall > ballistic + 1.5 && me.vx > 260) { me.ground = false; me.vy = me.vx * Math.sin(a); me.spin = 0; me.air = 0; me.x = nx; return; }
+          if (fall > ballistic + 1.5 && me.vx > 260) { me.ground = false; me.vy = me.vx * Math.sin(a); me.vx *= Math.cos(a); me.spin = 0; me.air = 0; me.x = nx; return; }
           me.x = nx; me.y = ny; me.ang += wrap(a - me.ang) * Math.min(1, dt * 18);
           hitCases();
           return;
@@ -304,9 +310,12 @@
            bring you back to nominal orientation if you let go in the middle
            of a flip") — the shorter way round, ~3.2 rad/s, so a half-flip
            released early can still land. Only holding counts as flipping. */
-        if (!holding && active !== 'banner') {
+        if (holding) me.released = 0; else me.released = (me.released || 0) + dt;
+        /* subtle (round 5: "the auto correction is too much"): only after
+           a moment let go, and slowly */
+        if (!holding && active !== 'banner' && me.released > .25) {
           var below = groundAt(me.x + me.vx * .25), want = below === null ? 0 : slopeAt(me.x + me.vx * .25);
-          var off = wrap(want - me.ang), stepA = 3.2 * dt;
+          var off = wrap(want - me.ang), stepA = 1 * dt;
           me.ang += Math.abs(off) < stepA ? off : (off > 0 ? stepA : -stepA);
         }
         hitCases();
@@ -318,7 +327,7 @@
           if (ry !== null && me.y >= ry && me.y - me.vy * dt <= ry + 4) {
             /* a cable only catches a rider who is upright; mid-flip, you go past it */
             if (Math.abs(wrap(me.ang - Math.atan(r2.slope))) > .75) continue;
-            me.rail = r2; me.y = ry; landed(true); return;
+            me.rail = r2; me.y = ry; landOn(Math.atan(r2.slope)); landed(true); return;
           }
         }
         var gy = groundAt(me.x);
@@ -327,8 +336,18 @@
           var ga = slopeAt(me.x);
           /* the banner always sets you down clean */
           if (active !== 'banner' && Math.abs(wrap(me.ang - ga)) > .72) return crash();
-          me.y = gy; me.ground = true; me.ang = ga; landed(false);
+          me.y = gy; me.ground = true; landOn(ga); me.ang = ga; landed(false);
         }
+      }
+      /* THE LANDING DECIDES THE SPEED (round 5: "the speed need to be based
+         on landing physics"): what carries on is the part of your velocity
+         that runs along the slope you land on — dropping onto a downslope
+         speeds you up, slamming flat into a rise slows you — and a sloppy
+         landing (the lid well off the slope) loses up to 45% more. */
+      function landOn(ga) {
+        var along = me.vx * Math.cos(ga) + me.vy * Math.sin(ga);
+        var q = Math.min(1, Math.abs(wrap(me.ang - ga)) / .72);
+        me.vx = clamp(along * (1 - .45 * q * q), MIN, maxSpeed());
       }
       function landed(onRail) {
         var flips = Math.floor(Math.abs(me.spin) / (Math.PI * 2) + .2);
