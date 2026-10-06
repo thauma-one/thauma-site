@@ -22,14 +22,13 @@
    raises the multiplier; too slow and they get "creative" (and the
    multiplier goes back to one).
 
-   THE CREW along the walls wave you past, and now and then one holds a
-   hand out: run the lane beside them for a HIGH FIVE.
+   THE CREW along the walls hold a hand out: run the lane beside them for a
+   HIGH FIVE.
 
-   THE PM. Stumble — clip a cable ramp, a wet floor, the side of a case —
-   and the production manager is right behind you, clipboard up, and you
-   lose speed. They never catch you (round 4: "Caught by the PM isn't
-   needed"). Hit something head on and it's over, unless you are riding a
-   road case (it takes the hit).
+   Stumble — clip a cable ramp, a wet floor, the side of a case — and you
+   lose speed. Hit something head on and it's over, unless you are riding
+   a road case (it takes the hit). (The PM who chased you is gone, round
+   7: "Just remove the PM from the game entirely.")
 
    ONE COLOR CODE (round 5, Chase: "Make it really clear what I can climb
    and run on and what I should avoid"): GREEN you can stand and run on (a
@@ -38,6 +37,30 @@
    stack, the tug). The floor arrows use the same colors, and the first two
    of each kind carry a tag — RUN ON IT, JUMP OVER, SLIDE UNDER, GO AROUND.
    Nothing else in the venue uses those four colors for decoration.
+
+   ROUND 7 (Chase, 2026-10-05):
+   - "We HAVE to get the hit boxes correct": every hit test uses where the
+     runner actually is (me.x, mid lane change included) against each
+     thing's drawn half-width (HW), and the drawn heights. The green room
+     door is the whole width, as drawn (it only counted the middle lane).
+   - "There are these green ramps … I crash every time I just run on
+     them. And if I jump over them, then I kind of phase through the
+     platform": the riser's front checked 0.62 while the ramp had only
+     carried you to 0.59, and whatever you stood on was drawn over you.
+     A riser or case is now floor only once you are at its top (its front
+     is a wall), and what the runner stands on is drawn before the runner.
+   - The duck-under obstacle is a hanging LED screen from 0.8 to 2.0, with a
+     slide chevron on it and the spring shoes drawn over its top: a plain
+     jump peaks at 1.54 and hits it; spring shoes (2.9) clear it.
+   - Every crew member offers a hand. A slap has a hit-stop, the runner's
+     arm flung out, a comic star with the streak in it, and pays 25 × the
+     streak (up to ×5) × the multiplier.
+   - "I have NO idea what the power ups do … Visuals my friend": a card
+     with the icon, the name and what it does, and the runner WEARS each
+     one — the headset glows violet and sends out rings while picks
+     stream in; spring shoes are green soles on coils that leave rings; all
+     access is a gold lanyard with a ×2 laminate; case surf is an
+     amber-lit road case under the runner, blinking as it runs out.
 
    HIGH FIVES DO SOMETHING (round 5): stars burst from the hand, the crew
    member jumps and cheers, and you get CREW HYPE for a few seconds — a
@@ -98,11 +121,11 @@
     quipAt: .19,
     create: function (ctx) {
       var words = ctx.words;
-      var me = { lane: 1, x: 0, y: 0, vy: 0, ground: 0, slide: 0, run: 0, lean: 0, land: 0, onCase: 0, shoes: 0, magnet: 0, pass: 0, hype: 0 };
-      var fiveStreak = 0, bursts = [], tagged = {};
+      var me = { lane: 1, x: 0, y: 0, vy: 0, ground: 0, slide: 0, run: 0, lean: 0, land: 0, onCase: 0, shoes: 0, magnet: 0, pass: 0, hype: 0, slap: 0, slapSide: 1 };
+      var fiveStreak = 0, bursts = [], tagged = {}, hold = 0, slaps = [], card = null, rings = [];
       var things = [];                 /* obstacles, picks, items, doors, powers, crew: { kind, lane, z, len, ... } */
       var dist = 0, speed = 8.5, spawnZ = 16, picks = 0, mult = 1, pts = 0, made = 0;
-      var mission = null, nextMission = 90, pm = 0, stumbles = 0, dead = false, time = 0;
+      var mission = null, nextMission = 90, dead = false, time = 0;
       var zone = 0, zoneAt = 0, banner = null, dust = [], pops = [], camX = 0;
       var started = false;
 
@@ -170,9 +193,9 @@
         }
         /* the crew along the walls; now and then one wants a high five */
         if (Math.random() < .55) {
-          var side = Math.random() < .5 ? -1 : 1, five = d > 40 && Math.random() < .6;
+          var side = Math.random() < .5 ? -1 : 1, five = d > 40;
           add({ kind: 'crew', side: side, lane: side < 0 ? 0 : 2, z: z + rnd(0, len), len: .4, five: five, shirt: pickOf(SHIRTS), cup: Math.random() < .3, ph: rnd(0, 6),
-                who: pickOf(['crew', 'crew', 'drums', 'pm', 'pastor', 'kid', 'singer']) });
+                who: pickOf(['crew', 'crew', 'drums', 'pastor', 'kid', 'singer']) });
         }
         /* the errand: the thing someone needs, or the door to bring it to */
         if (!mission && d > nextMission) {
@@ -198,7 +221,7 @@
           var to = clamp(me.lane + (d === 'left' ? -1 : 1), 0, 2);
           if (to === me.lane) { stumble('wall'); return; }
           /* the side of something in the way: bump back */
-          var side = things.some(function (o) { return (o.kind === 'stack' || o.kind === 'cart' || o.kind === 'riser' || (o.kind === 'case' && me.y < .5)) && o.lane === to && o.z < .5 && o.z + o.len > -.4 && me.y < topOf(o); });
+          var side = things.some(function (o) { return (o.kind === 'stack' || o.kind === 'cart' || o.kind === 'riser' || o.kind === 'case') && o.lane === to && o.z < .5 && o.z + o.len > -.4 && me.y < topOf(o) - .16; });
           if (side) { stumble('side'); me.lean = d === 'left' ? -1 : 1; return; }
           me.lane = to; me.lean = d === 'left' ? -1 : 1; ctx.sfx('move');
         }
@@ -208,35 +231,57 @@
           me.slide = .62; ctx.sfx('slide');
         }
       }
-      function topOf(o) { return o.kind === 'stack' ? 2 : o.kind === 'case' ? .55 : o.kind === 'riser' ? .72 : o.kind === 'cart' ? 1.3 : 0; }
-      function groundAt(lane) {
+      function topOf(o) { return o.kind === 'stack' ? 2 : o.kind === 'case' ? .58 : o.kind === 'riser' ? .72 : o.kind === 'cart' ? 1.3 : 0; }
+      /* THE HIT BOXES ARE WHAT YOU SEE (round 7, Chase: "Make sure the hit
+         boxes match what we see … We HAVE to get the hit boxes correct"):
+         each thing is as wide as it is drawn (HW, half-widths in lane
+         units), the runner is RUN_HW either side of where the runner
+         actually is — mid lane change included — and the heights below
+         are the drawn heights. */
+      var HW = { case: .42, stack: .44, cart: .44, riser: .46, ramp: .45, truss: .52, cable: .5, wet: .42, pick: .3, item: .45, power: .45, door: 1.6 };   /* the door is the whole width, as drawn */
+      var RUN_HW = .2;
+      var BANNER_LO = .8, BANNER_HI = 2.0;  /* the hanging LED screen you slide under */
+      function over(o, pad) { return Math.abs(me.x - laneX(o.lane)) < (HW[o.kind] || .45) + (pad == null ? RUN_HW : pad); }
+      function spans(o) { return o.z < .3 && o.z + o.len > -.3; }
+      /* the height of something you can stand on, where the runner is */
+      function standAt(o) {
+        if (o.kind === 'ramp') return clamp(-o.z / o.len, 0, 1) * .72;
+        if (o.kind === 'riser') return .72;
+        if (o.kind === 'case') return .58;
+        return -1;
+      }
+      /* the floor under the runner: a ramp from its foot; a riser or a case
+         only once you are up at its top (its front is a wall) */
+      function groundAt() {
         var gnd = 0;
         things.forEach(function (o) {
-          if (o.lane !== lane || o.z > .3 || o.z + o.len < -.3) return;
-          if (o.kind === 'ramp') gnd = Math.max(gnd, clamp((-o.z) / o.len, 0, 1) * .72);
-          if (o.kind === 'riser') gnd = Math.max(gnd, .72);
-          /* the top of a single case is somewhere to run, once you are on it */
-          if (o.kind === 'case' && me.y >= .45) gnd = Math.max(gnd, .58);
+          var h = standAt(o);
+          if (h < 0 || !spans(o) || !over(o, .05)) return;
+          if (o.kind === 'ramp' || me.y >= h - .16) gnd = Math.max(gnd, h);
         });
         return gnd;
+      }
+      /* the runner is above it: draw it before the runner */
+      function under(o) {
+        if (!spans(o) || !over(o)) return false;
+        var h = standAt(o);
+        if (h < 0) h = o.kind === 'cable' ? .14 : o.kind === 'wet' ? 0 : 99;
+        return me.y >= h - .08;
       }
 
       function stumble() {
         if (dead) return;
         ctx.shake(3); ctx.sfx('whiff');
         speed = Math.max(7.5, speed * .85);
-        pm = 6; stumbles++;
-        ctx.quip('jokes_stagerunner_stumble', { mood: 'bad', chance: .5 });
       }
       function crash() {
         if (me.onCase > 0) {
           me.onCase = 0; ctx.shake(6); ctx.sfx('break');
           ctx.say(words('stagerunner_p_case_gone'), { mood: 'bad' });
-          things = things.filter(function (o) { return !(o.lane === me.lane && o.z < 1.5 && o.z > -1 && o.kind !== 'pick' && o.kind !== 'crew'); });
+          things = things.filter(function (o) { return !(over(o) && o.z < 1.5 && o.z + o.len > -1 && o.kind !== 'pick' && o.kind !== 'crew' && o.kind !== 'door'); });
           return;
         }
         dead = true; ctx.shake(9); ctx.sfx('crash');
-        ctx.quip('jokes_stagerunner_crash', { mood: 'bad', force: true });
         setTimeout(function () { ctx.over(); }, 1200);
       }
       function pop(text, col) { pops.push({ text: text, col: col || '#5CF2C4', life: 1.2 }); }
@@ -247,6 +292,8 @@
         me.run += dt * (5 + speed * .5);
         if (!started) { while (spawnZ < 60) spawn(); return; }
         if (dead) { me.y = Math.max(me.ground, me.y - dt * 2); return; }
+        /* a high five lands with a beat of stillness */
+        if (hold > 0) { hold -= dt; tickFx(dt); return; }
 
         speed = Math.min(20, speed + dt * .06 * (speed < 12 ? 1.4 : 1));
         var move = speed * dt * (me.hype > 0 ? 1.15 : 1);
@@ -259,40 +306,54 @@
         me.x += (laneX(me.lane) - me.x) * Math.min(1, dt * 16);
         camX += (me.x - camX) * Math.min(1, dt * 4);
         me.lean *= Math.pow(.02, dt);
-        me.ground = groundAt(me.lane);
+        me.ground = groundAt();
         var wasAir = me.y > me.ground + .05;
         me.vy -= GRAV * dt; me.y += me.vy * dt;
         if (me.y <= me.ground) { if (me.vy < -6) { ctx.sfx('thud', { vol: .3 }); me.land = .16; } me.y = me.ground; me.vy = 0; }
         if (wasAir && me.y <= me.ground) for (var q = 0; q < 6; q++) dust.push({ x: me.x + rnd(-.3, .3), z: rnd(-.2, .2), y: me.y, vy: rnd(.4, 1), life: .5 });
         me.slide = Math.max(0, me.slide - dt); me.land = Math.max(0, me.land - dt);
-        ['onCase', 'shoes', 'magnet', 'pass', 'hype'].forEach(function (k) { me[k] = Math.max(0, me[k] - dt); });
-        bursts.forEach(function (b) { b.x += b.vx * dt; b.y += b.vy * dt; b.vy += 300 * dt; b.life -= dt; }); bursts = bursts.filter(function (b) { return b.life > 0; });
-        if (pm > 0) { pm -= dt; if (pm <= 0) stumbles = 0; }
+        ['onCase', 'shoes', 'magnet', 'pass', 'hype', 'slap'].forEach(function (k) { me[k] = Math.max(0, me[k] - dt); });
+        /* spring shoes leave rings where they push off */
+        if (me.shoes > 0 && me.vy > 6 && Math.random() < dt * 30) rings.push({ x: me.x, y: me.y, z: 0, life: .45 });
+        rings.forEach(function (r) { r.z -= move; });
+        tickFx(dt);
 
         /* what you run into */
-        var lane = me.lane, sliding = me.slide > 0, tall = sliding ? .42 : .95;
+        var sliding = me.slide > 0, tall = sliding ? .42 : .95;
         things.forEach(function (o) {
           if (o.hit) return;
           var near = o.z < .45 && o.z + o.len > -.35;
-          var magnet = (me.magnet > 0 || me.hype > 0) && o.kind === 'pick' && o.z < 5 && o.z > -.5;
-          if (magnet) { o.lane = lane; o.y = me.y + .4; }
+          /* the headset (or the hype) pulls picks in: they fly to you */
+          var magnet = (me.magnet > 0 || me.hype > 0) && o.kind === 'pick' && o.z < 6 && o.z > -.5;
+          if (magnet) {
+            var k = Math.min(1, dt * 9);
+            o.fx = (o.fx == null ? laneX(o.lane) : o.fx) + (me.x - (o.fx == null ? laneX(o.lane) : o.fx)) * k;
+            o.y = (o.y || .35) + (me.y + .5 - (o.y || .35)) * k;
+          }
           if (o.kind === 'crew') {
-            /* a high five, from the lane beside them */
-            if (o.five && near && lane === o.lane && me.y < .9) {
+            /* a high five, from the lane beside them (every one of them
+               offers a hand now — round 7: "Not all of the people seem to
+               give me that high five effect") */
+            if (o.five && near && Math.abs(me.x - laneX(o.lane)) < .5 && me.y < 1.2) {
               o.hit = true; o.slapped = time; fiveStreak++;
-              var hf = 25 * mult; pts += hf;
+              var hf = 25 * mult * Math.min(fiveStreak, 5); pts += hf;
               /* the hype: longer for a streak */
               me.hype = Math.min(7, 3 + (fiveStreak - 1) * .8);
+              me.slap = .4; me.slapSide = o.side;
+              hold = .07;                 /* the hit-stop that makes a slap land */
               pop(words('stagerunner_highfive') + (fiveStreak > 1 ? ' ×' + fiveStreak : '') + ' +' + hf, '#FFB547');
-              ctx.sfx('combo'); ctx.sfx('cheer'); ctx.shake(2);
-              var hp = proj(o.side * 1.35, 1.25, Math.max(.3, o.z));
-              if (hp) for (var bi = 0; bi < 18; bi++) { var ang = bi / 18 * Math.PI * 2; bursts.push({ x: hp.x, y: hp.y, vx: Math.cos(ang) * rnd(80, 200), vy: Math.sin(ang) * rnd(80, 200) - 60, life: .7, col: ['#FFD34A', '#FFB547', '#fff'][bi % 3] }); }
+              ctx.sfx('combo'); ctx.sfx('cheer'); ctx.shake(3);
+              var hp = proj(me.x + o.side * .42, me.y + 1.15, .2);
+              if (hp) {
+                slaps.push({ x: hp.x, y: hp.y, life: .5, n: fiveStreak });
+                for (var bi = 0; bi < 22; bi++) { var ang = bi / 22 * Math.PI * 2; bursts.push({ x: hp.x, y: hp.y, vx: Math.cos(ang) * rnd(90, 230), vy: Math.sin(ang) * rnd(90, 230) - 60, life: .8, col: ['#FFD34A', '#FFB547', '#fff'][bi % 3] }); }
+              }
             }
             /* an offered hand left hanging breaks the streak */
             if (o.five && !o.slapped && !o.passed && o.z < -.5) { o.passed = true; fiveStreak = 0; }
             return;
           }
-          if (!near || (o.lane !== lane && !magnet)) return;
+          if (!near || (!over(o) && !magnet)) return;
           switch (o.kind) {
             case 'pick':
               if (Math.abs((o.y || .35) - (me.y + .45)) < .7 || magnet) { o.hit = true; picks += me.pass > 0 ? 2 : 1; pts += 5 * mult * (me.pass > 0 ? 2 : 1) * (me.hype > 0 ? 2 : 1); ctx.sfx('collect'); }
@@ -311,7 +372,6 @@
                 ctx.sfx('cheer'); ctx.shake(3);
                 banner = { text: words('stagerunner_delivered') + '  +' + bonus + '  ×' + mult, t: 2.2, good: true };
                 pop(pickOf([].concat(words('stagerunner_thanks'))), WHO[mission.who].col);
-                ctx.quip('jokes_stagerunner_deliver', { mood: 'good', chance: .6 });
                 mission = null; nextMission = dist + 220 + Math.random() * 160;
               }
               break;
@@ -321,27 +381,34 @@
               if (o.power === 'case') me.onCase = 14;
               if (o.power === 'shoes') me.shoes = 10;
               if (o.power === 'pass') me.pass = 15;
-              banner = { text: words('stagerunner_p_' + o.power).toUpperCase(), sub: words('stagerunner_d_' + o.power), t: 2.4, good: true };
-              ctx.quip('jokes_stagerunner_power', { mood: 'good', chance: .5 });
+              /* what you got and what it does, on a card, while the runner
+                 starts showing it */
+              card = { power: o.power, t: 2.6 };
               break;
             case 'cable': case 'wet':
               if (me.y < .22 && me.onCase <= 0) { o.hit = true; stumble(); }
               break;
             case 'case':
-              if (me.y < .45) { o.hit = true; crash(); }
+              if (me.y < .58 - .16) { o.hit = true; crash(); }
               break;
             case 'stack': case 'cart':
               if (me.y < topOf(o) - .05) { o.hit = true; crash(); }
               break;
             case 'truss':
-              if (me.y + tall > .78) { o.hit = true; crash(); }
+              /* the screen hangs from BANNER_LO to BANNER_HI: slide under
+                 it, or clear its top with spring shoes (a plain jump peaks
+                 at 1.54, under its top) */
+              if (me.y + tall > BANNER_LO && me.y < BANNER_HI) { o.hit = true; crash(); }
               break;
             case 'riser':
-              if (me.y < .62 && o.z > -.2 && o.z < .4) { o.hit = true; crash(); }
+              /* its front is a wall unless you come up the ramp (or drop on
+                 from above); off the ramp you are already at its top */
+              if (me.y < .72 - .16 && o.z > -.35) { o.hit = true; crash(); }
               break;
           }
         });
         things = things.filter(function (o) { return o.z + o.len > -3 && !(o.hit && (o.kind === 'pick' || o.kind === 'item' || o.kind === 'power')); });
+        if (card) { card.t -= dt; if (card.t <= 0) card = null; }
 
         /* the errand's clock */
         if (mission) {
@@ -350,7 +417,6 @@
             mission = null; mult = 1; nextMission = dist + 160;
             things = things.filter(function (o) { return o.kind !== 'item' && o.kind !== 'door'; });
             banner = { text: words('stagerunner_late'), t: 2, good: false };
-            ctx.quip('jokes_stagerunner_late', { mood: 'bad', force: true });
           }
         }
         /* the venue changes as you go */
@@ -366,6 +432,12 @@
 
         /* a metre is half a point: the run's length alone outpaced every other game (round 4) */
         ctx.score(Math.floor(dist / 2) + pts);
+      }
+
+      function tickFx(dt) {
+        bursts.forEach(function (b) { b.x += b.vx * dt; b.y += b.vy * dt; b.vy += 300 * dt; b.life -= dt; }); bursts = bursts.filter(function (b) { return b.life > 0; });
+        slaps.forEach(function (q) { q.life -= dt; }); slaps = slaps.filter(function (q) { return q.life > 0; });
+        rings.forEach(function (r) { r.life -= dt; }); rings = rings.filter(function (r) { return r.life > 0; });
       }
 
       /* ------------------------------------------------------ drawing */
@@ -389,18 +461,32 @@
         glow.addColorStop(0, Z.light + '.35)'); glow.addColorStop(1, Z.light + '0)');
         g.fillStyle = glow; g.fillRect(0, HOR - 120, W, 240);
         /* everything, far to near */
+        /* far to near; what the runner is standing on or over goes before
+           the runner, keyed by its far end (round 7: running along a riser
+           drew the riser over the runner, so they seemed to sink into it) */
         var list = things.slice().sort(function (a, b) { return b.z - a.z; });
         list.forEach(function (o) { if (SIGN[o.kind] && !o.hit) floorSign(g, o); });
-        var drewMe = false;
-        list.forEach(function (o) {
-          if (!drewMe && o.z < -.1) { runner(g); drewMe = true; }
+        var order = things.map(function (o) { return { o: o, key: under(o) ? o.z + o.len : o.z }; });
+        order.push({ me: true, key: -.1 });
+        order.sort(function (a, b) { return b.key - a.key; });
+        order.forEach(function (it) {
+          if (it.me) { springRings(g); runner(g); return; }
+          var o = it.o;
           if (!o.hit || o.kind === 'door' || o.kind === 'crew') { g.globalAlpha = fogA(o.z); thing(g, o); g.globalAlpha = 1; }
         });
-        if (!drewMe) runner(g);
         list.forEach(function (o) { if (o.tag && !o.hit) tagDraw(g, o); });
         bursts.forEach(function (b) { g.globalAlpha = Math.min(1, b.life * 2); g.fillStyle = b.col; g.beginPath(); g.arc(b.x, b.y, 2.5, 0, 7); g.fill(); });
         g.globalAlpha = 1;
-        if (pm > 0 || (dead && stumbles)) chaser(g);
+        slaps.forEach(function (q) {
+          var k = 1 - q.life / .5, r = 18 + k * 26;
+          g.save(); g.translate(q.x, q.y); g.rotate(k * .6); g.globalAlpha = Math.min(1, q.life * 4);
+          g.fillStyle = '#FFD34A'; g.shadowColor = '#FFB547'; g.shadowBlur = 18;
+          g.beginPath(); for (var i = 0; i < 16; i++) { var a = i / 16 * Math.PI * 2, rr = i % 2 ? r * .5 : r; g.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); } g.closePath(); g.fill();
+          g.shadowBlur = 0; g.rotate(-k * .6);
+          g.fillStyle = '#10131a'; g.font = '800 ' + Math.round(11 + Math.min(q.n, 6) * 1.5) + 'px Sora, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+          if (q.n > 1) g.fillText('×' + q.n, 0, 1);
+          g.restore();
+        });
         dust.forEach(function (d) { var p = proj(d.x, d.y, d.z); if (p) { g.fillStyle = 'rgba(220,225,235,' + (d.life * .7) + ')'; g.beginPath(); g.arc(p.x, p.y, Math.max(1, p.k * .025), 0, 7); g.fill(); } });
         speedLines(g);
         hud(g);
@@ -578,26 +664,45 @@
             break;
           }
           case 'truss': {
-            var a = proj(x - .52, 1.08, o.z), b = proj(x + .52, .8, o.z);
+            /* A HANGING LED SCREEN from BANNER_LO to BANNER_HI on a truss,
+               drawn at exactly the heights that hit (round 7, Chase: "the
+               obstacles … supposed to duck under need a height limit to
+               them. I want to be able to jump over them if I have the spring
+               shoes … adjust the visuals … so I don't think I can just jump
+               over it with a regular jump"): a tall screen, a slide arrow on
+               it, and the shoes drawn over its top edge */
+            var a = proj(x - .52, BANNER_HI, o.z), b = proj(x + .52, BANNER_LO, o.z);
             if (!a) break;
-            var u = a.k / 100;
-            /* the chain hoists that hold it up, in red */
-            var ceil = proj(x, 2.6, o.z), cy = ceil ? ceil.y : 0;
-            g.strokeStyle = '#3a4456'; g.lineWidth = Math.max(1, u * 2); g.beginPath(); g.moveTo(a.x + 3 * u, a.y); g.lineTo(a.x + 3 * u, cy); g.moveTo(b.x - 3 * u, a.y); g.lineTo(b.x - 3 * u, cy); g.stroke();
-            g.fillStyle = '#c0392b'; g.fillRect(a.x - 2 * u, a.y - 22 * u, 10 * u, 12 * u); g.fillRect(b.x - 8 * u, a.y - 22 * u, 10 * u, 12 * u);
-            /* silver chords and lattice */
-            g.fillStyle = '#1d222c'; g.fillRect(a.x, a.y, b.x - a.x, b.y - a.y);
-            g.strokeStyle = '#dfe5ee'; g.lineWidth = Math.max(1, u * 2.4);
-            g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(b.x, a.y); g.moveTo(a.x, b.y); g.lineTo(b.x, b.y);
-            var n = 7; for (var i = 0; i < n; i++) { var x0 = a.x + (b.x - a.x) * i / n, x1 = a.x + (b.x - a.x) * (i + 1) / n; g.moveTo(x0, a.y); g.lineTo((x0 + x1) / 2, b.y); g.lineTo(x1, a.y); }
-            g.stroke();
-            /* hazard tape hanging off it, swinging: duck */
-            var tp = Math.max(3, u * 5), sw = Math.sin(time * 4 + o.z) * u * 2;
-            /* BLUE: slide under */
-            for (var s = 0; s < 8; s++) { g.fillStyle = s % 2 ? '#10131a' : '#2FD8FF'; g.fillRect(a.x + (b.x - a.x) * s / 8 + sw, b.y, (b.x - a.x) / 8 + 1, tp); }
+            var u = a.k / 100, top = proj(x - .52, BANNER_HI + .12, o.z);
+            /* the truss bar it hangs from, and chains to the roof */
+            var ceil = proj(x, 3.4, o.z), cy = ceil ? ceil.y : 0;
+            g.strokeStyle = '#3a4456'; g.lineWidth = Math.max(1, u * 2); g.beginPath(); g.moveTo(a.x + 6 * u, top.y); g.lineTo(a.x + 6 * u, cy); g.moveTo(b.x - 6 * u, top.y); g.lineTo(b.x - 6 * u, cy); g.stroke();
+            g.fillStyle = '#1d222c'; g.fillRect(a.x - 3 * u, top.y, b.x - a.x + 6 * u, a.y - top.y);
+            g.strokeStyle = '#dfe5ee'; g.lineWidth = Math.max(1, u * 1.6); g.strokeRect(a.x - 3 * u, top.y, b.x - a.x + 6 * u, a.y - top.y);
+            /* the screen: dark panels, a slow color wash, the pixel grid */
+            var gw = g.createLinearGradient(a.x, 0, b.x, 0);
+            gw.addColorStop(0, 'hsl(' + ((time * 30 + o.z * 9) % 360).toFixed(0) + ',70%,22%)'); gw.addColorStop(1, 'hsl(' + ((time * 30 + o.z * 9 + 90) % 360).toFixed(0) + ',70%,22%)');
+            g.fillStyle = gw; g.fillRect(a.x, a.y, b.x - a.x, b.y - a.y);
+            g.fillStyle = 'rgba(0,0,0,.3)';
+            var cell = Math.max(3, u * 5);
+            for (var gx = a.x; gx < b.x; gx += cell) g.fillRect(gx, a.y, 1, b.y - a.y);
+            for (var gy = a.y; gy < b.y; gy += cell) g.fillRect(a.x, gy, b.x - a.x, 1);
+            /* BLUE edge all round: slide under */
+            g.strokeStyle = '#2FD8FF'; g.lineWidth = Math.max(1.5, u * 3); g.shadowColor = '#2FD8FF'; g.shadowBlur = 8;
+            g.strokeRect(a.x, a.y, b.x - a.x, b.y - a.y); g.shadowBlur = 0;
+            /* on the screen: a big down chevron (slide) */
+            var mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, ch = (b.y - a.y) * .22;
+            g.strokeStyle = '#2FD8FF'; g.lineWidth = Math.max(2, u * 5); g.lineCap = 'round';
+            g.beginPath(); g.moveTo(mx - ch, my - ch * .5 + Math.sin(time * 5) * ch * .15); g.lineTo(mx, my + ch * .5 + Math.sin(time * 5) * ch * .15); g.lineTo(mx + ch, my - ch * .5 + Math.sin(time * 5) * ch * .15); g.stroke();
+            /* and over the top, the spring shoes: only they clear it */
+            powerIcon(g, 'shoes', mx, top.y - 12 * u, Math.max(.5, u * .9));
+            /* the bottom edge, in hazard tape, at the height that hits */
+            var tp = Math.max(2, u * 3);
+            for (var hs = 0; hs < 8; hs++) { g.fillStyle = hs % 2 ? '#10131a' : '#2FD8FF'; g.fillRect(a.x + (b.x - a.x) * hs / 8, b.y, (b.x - a.x) / 8 + 1, tp); }
             break;
           }
           case 'ramp': {
+            /* a riser's ramp is as wide as it is drawn (HW.ramp) */
             var r0 = proj(x - .45, 0, o.z), r1 = proj(x + .45, 0, o.z), r2 = proj(x + .45, .72, o.z + o.len), r3 = proj(x - .45, .72, o.z + o.len);
             if (!r0 || !r3) break;
             /* GREEN: run up it */
@@ -657,7 +762,11 @@
             break;
           }
           case 'pick': {
-            p = proj(x, o.y, o.z); if (!p) break;
+            p = proj(o.fx != null ? o.fx : x, o.y, o.z); if (!p) break;
+            if (o.fx != null) {           /* pulled in: a streak behind it */
+              var tl = proj(x, o.y, o.z + .8);
+              if (tl) { g.strokeStyle = 'rgba(155,123,255,.45)'; g.lineWidth = Math.max(1, p.k * .03); g.beginPath(); g.moveTo(tl.x, tl.y); g.lineTo(p.x, p.y); g.stroke(); }
+            }
             var sp = Math.cos(time * 5 + o.z), s2 = p.k * .13;
             g.fillStyle = me.pass > 0 ? '#FF4FD8' : '#FFB547'; g.shadowColor = g.fillStyle; g.shadowBlur = 8;
             g.beginPath(); g.moveTo(p.x - s2 * sp, p.y - s2); g.quadraticCurveTo(p.x + s2 * sp * 1.2, p.y - s2, p.x + s2 * sp, p.y - s2 * .2); g.quadraticCurveTo(p.x, p.y + s2 * 1.4, p.x - s2 * sp, p.y - s2 * .2); g.closePath(); g.fill();
@@ -807,8 +916,8 @@
            a high five") */
         var out = clamp((16 - o.z) / 5, 0, 1), x = o.side * (1.78 - .3 * out * out * (3 - 2 * out)), pp = proj(x, 0, o.z); if (!pp) return;
         var u = pp.k / 100 * (o.who === 'kid' ? .72 : 1), wave = Math.sin(time * 8 + o.ph);
-        var SH = { crew: o.shirt, drums: '#3b2b42', pm: '#39445a', pastor: '#1c2330', kid: '#5CF2C4', singer: '#FF4FD8' };
-        var LABEL = { crew: 'CREW', drums: 'BAND', pm: 'PM', pastor: '', kid: '', singer: '' };
+        var SH = { crew: o.shirt, drums: '#3b2b42', pastor: '#1c2330', kid: '#5CF2C4', singer: '#FF4FD8' };
+        var LABEL = { crew: 'CREW', drums: 'BAND', pastor: '', kid: '', singer: '' };
         /* slapped: they jump and cheer, both arms up, for a moment */
         var cheer = o.slapped && time - o.slapped < 1.4 ? Math.abs(Math.sin((time - o.slapped) * 9)) * 9 * u : 0;
         g.save(); g.translate(pp.x, pp.y - cheer);
@@ -818,7 +927,6 @@
         g.fillStyle = SH[o.who || 'crew']; roundRect(g, -12 * u, -84 * u, 24 * u, 42 * u, 6 * u); g.fill();
         if (o.who === 'pastor') { g.fillStyle = '#fff'; g.fillRect(-2 * u, -84 * u, 4 * u, 4 * u); }
         g.fillStyle = '#EDF2F8'; g.font = '700 ' + (6 * u).toFixed(1) + 'px Sora, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(LABEL[o.who || 'crew'], 0, -70 * u);
-        if (o.who === 'pm') { g.fillStyle = '#c9a26b'; g.fillRect(-o.side * 14 * u, -66 * u, 10 * u, 13 * u); }
         if (o.who === 'drums') { g.strokeStyle = '#e8c48a'; g.lineWidth = 2 * u; g.beginPath(); g.moveTo(o.side * 14 * u, -56 * u); g.lineTo(o.side * 24 * u, -70 * u); g.stroke(); }
         if (o.who === 'singer') { g.fillStyle = '#c9d1dc'; g.fillRect(o.side * 13 * u, -66 * u, 3 * u, 9 * u); }
         g.strokeStyle = '#d9a37e'; g.lineWidth = 5.5 * u; g.beginPath();
@@ -833,7 +941,7 @@
         if (o.cup) { g.fillStyle = '#EDF2F8'; g.fillRect(-toward * 17 * u, -58 * u, 6 * u, 8 * u); }
         g.fillStyle = '#d9a37e'; g.beginPath(); g.arc(0, -96 * u, 10 * u, 0, 7); g.fill();
         g.fillStyle = '#3b2a20'; g.beginPath(); g.arc(0, -99 * u, 10 * u, Math.PI, 0); g.fill();
-        if (o.who === 'crew' || o.who === 'pm') { g.strokeStyle = '#2FD8FF'; g.lineWidth = 2 * u; g.beginPath(); g.arc(0, -96 * u, 12 * u, Math.PI * 1.1, Math.PI * 1.9); g.stroke(); }
+        if (o.who === 'crew') { g.strokeStyle = '#2FD8FF'; g.lineWidth = 2 * u; g.beginPath(); g.arc(0, -96 * u, 12 * u, Math.PI * 1.1, Math.PI * 1.9); g.stroke(); }
         if (o.who === 'kid') { g.fillStyle = '#FFB547'; g.fillRect(-10 * u, -104 * u, 20 * u, 4 * u); }
         g.restore();
       }
@@ -848,9 +956,16 @@
         g.fillStyle = 'rgba(0,0,0,' + (.4 - hgt * .25) + ')'; g.beginPath(); g.ellipse(sp.x, sp.y, k * .22 * (1 - hgt * .4), k * .06, 0, 0, 7); g.fill();
         var lift = me.onCase > 0 ? k * .14 : 0;
         if (me.onCase > 0) {
-          g.fillStyle = '#262b37'; g.fillRect(p.x - k * .32, p.y - k * .14, k * .64, k * .14);
-          g.strokeStyle = '#c9d1dc'; g.lineWidth = Math.max(1, k * .015); g.strokeRect(p.x - k * .32, p.y - k * .14, k * .64, k * .14);
-          g.fillStyle = '#FFB547'; g.fillRect(p.x - k * .32, p.y - k * .07, k * .64, k * .03);
+          /* CASE SURF: riding a road case, amber-lit, sparks off its wheels;
+             it blinks when it is about to run out */
+          var blink = me.onCase < 2 && Math.sin(time * 20) < 0;
+          g.shadowColor = '#FFB547'; g.shadowBlur = blink ? 0 : 14;
+          g.fillStyle = '#262b37'; g.fillRect(p.x - k * .34, p.y - k * .16, k * .68, k * .16);
+          g.shadowBlur = 0;
+          g.strokeStyle = '#FFB547'; g.lineWidth = Math.max(1.5, k * .02); g.strokeRect(p.x - k * .34, p.y - k * .16, k * .68, k * .16);
+          g.fillStyle = '#FFB547'; g.fillRect(p.x - k * .34, p.y - k * .08, k * .68, k * .03);
+          g.fillStyle = '#c9d1dc'; [-1, 1].forEach(function (sd) { g.beginPath(); g.arc(p.x + sd * k * .26, p.y, k * .04, 0, 7); g.fill(); });
+          if (Math.random() < .6) bursts.push({ x: p.x + (Math.random() < .5 ? -1 : 1) * k * .26, y: p.y, vx: rnd(-40, 40), vy: rnd(-80, -20), life: .25, col: '#FFD34A' });
         }
         var squash = me.land > 0 ? 1 - me.land * 1.1 : 1;
         g.save(); g.translate(p.x, p.y - lift); g.rotate(me.lean * .14); g.scale(1 + (1 - squash) * .5, squash);
@@ -884,7 +999,7 @@
             var fy = -2 * u - up * 18 * u, ky = -26 * u - up * 6 * u;
             g.strokeStyle = '#1c2330'; g.lineWidth = 9 * u;
             g.beginPath(); g.moveTo(hx, -48 * u); g.lineTo(hx * 1.3, ky); g.lineTo(hx, fy); g.stroke();
-            if (up > .2) sole(g, hx, fy, u); else { g.fillStyle = '#0d0f15'; g.fillRect(hx - 5 * u, fy - 2 * u, 10 * u, 5 * u); }
+            if (up > .2 || me.shoes > 0) sole(g, hx, fy, u); else { g.fillStyle = '#0d0f15'; g.fillRect(hx - 5 * u, fy - 2 * u, 10 * u, 5 * u); }
           });
           var bob = Math.abs(Math.sin(ph)) * 3 * u;
           g.translate(0, -bob);
@@ -896,6 +1011,13 @@
           g.stroke();
           g.fillStyle = '#e2b48f'; g.beginPath(); g.arc(-13 * u, -53 * u + aL, 3 * u, 0, 7); if (!carry) g.arc(13 * u, -53 * u - aL, 3 * u, 0, 7); g.fill();
           head(g, 0, -100 * u, u);
+        }
+        /* the high five: an arm flung out to the side, open hand */
+        if (me.slap > 0) {
+          var sd = me.slapSide, kk = me.slap / .4;
+          var hx2 = sd * (22 + 14 * kk) * u, hy2 = -112 * u - kk * 6 * u;
+          g.strokeStyle = '#151a24'; g.lineWidth = 6 * u; g.beginPath(); g.moveTo(sd * 12 * u, -82 * u); g.lineTo(hx2, hy2); g.stroke();
+          g.fillStyle = '#e2b48f'; g.beginPath(); g.arc(hx2, hy2, 5 * u, 0, 7); g.fill();
         }
         /* the errand, held high in one hand */
         if (carry && !sliding) {
@@ -911,7 +1033,6 @@
           hg.addColorStop(0, 'rgba(255,214,120,' + (.35 * Math.min(1, me.hype)).toFixed(2) + ')'); hg.addColorStop(1, 'rgba(255,214,120,0)');
           g.fillStyle = hg; g.fillRect(p.x - k, p.y - k * 1.4, k * 2, k * 1.6);
         }
-        if (me.magnet > 0) { g.strokeStyle = 'rgba(155,123,255,.5)'; g.lineWidth = 2; g.beginPath(); g.arc(p.x, p.y - k * .55, k * .45 + Math.sin(time * 10) * 3, 0, 7); g.stroke(); }
       }
       /* the back of a black crew tee: CREW across the shoulders, the
          lanyard's strap, a belt, the walkie on it with its antenna */
@@ -920,35 +1041,50 @@
         g.fillStyle = '#151a24'; roundRect(g, x - 13 * u, top, 26 * u, 40 * u * h + 2 * u, 6 * u); g.fill();
         g.fillStyle = '#EDF2F8'; g.font = '700 ' + (7 * u).toFixed(1) + 'px Sora, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
         g.fillText('CREW', x, top + 11 * u * h);
-        g.strokeStyle = '#FF5A6E'; g.lineWidth = 2 * u; g.beginPath(); g.moveTo(x - 6 * u, top + 1 * u); g.quadraticCurveTo(x, top + 5 * u, x + 6 * u, top + 1 * u); g.stroke();
+        g.strokeStyle = me.pass > 0 ? '#FFD34A' : '#FF5A6E'; g.lineWidth = (me.pass > 0 ? 3 : 2) * u; g.beginPath(); g.moveTo(x - 6 * u, top + 1 * u); g.quadraticCurveTo(x, top + 5 * u, x + 6 * u, top + 1 * u); g.stroke();
+        if (me.pass > 0) {
+          /* ALL ACCESS: the gold laminate, flung over the shoulder as you run */
+          var sw = Math.sin(time * 9) * 3 * u;
+          g.beginPath(); g.moveTo(x + 6 * u, top + 1 * u); g.lineTo(x + 15 * u + sw, top + 14 * u); g.stroke();
+          g.fillStyle = '#FFD34A'; g.shadowColor = '#FFD34A'; g.shadowBlur = 10; g.fillRect(x + 11 * u + sw, top + 13 * u, 10 * u, 13 * u); g.shadowBlur = 0;
+          g.fillStyle = '#10131a'; g.font = '800 ' + (5.5 * u).toFixed(1) + 'px Sora, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+          g.fillText('×2', x + 16 * u + sw, top + 20 * u);
+        }
         g.fillStyle = '#0b0d12'; g.fillRect(x - 13 * u, hipY - 4 * u, 26 * u, 4 * u);
         g.fillStyle = '#2a3142'; g.fillRect(x + 6 * u, hipY - 10 * u, 6 * u, 10 * u);
         g.strokeStyle = '#2a3142'; g.lineWidth = 1.6 * u; g.beginPath(); g.moveTo(x + 10 * u, hipY - 10 * u); g.lineTo(x + 10 * u, hipY - 18 * u); g.stroke();
       }
-      function sole(g, x, y, u) { g.fillStyle = '#c9d1dc'; g.beginPath(); g.ellipse(x, y, 5 * u, 3.4 * u, 0, 0, 7); g.fill(); }
+      /* SPRING SHOES show: green soles on coils */
+      function sole(g, x, y, u) {
+        if (me.shoes > 0) {
+          var n = 4, h = 10 * u * (me.y > me.ground + .05 ? 1.3 : .8);
+          g.strokeStyle = '#5CF2C4'; g.lineWidth = 1.8 * u; g.beginPath(); g.moveTo(x, y);
+          for (var i = 1; i <= n; i++) g.lineTo(x + (i % 2 ? 4 : -4) * u, y + h * i / n);
+          g.stroke();
+          g.fillStyle = '#5CF2C4'; g.beginPath(); g.ellipse(x, y + h, 5 * u, 2.4 * u, 0, 0, 7); g.fill();
+        }
+        g.fillStyle = me.shoes > 0 ? '#5CF2C4' : '#c9d1dc'; g.beginPath(); g.ellipse(x, y, 5 * u, 3.4 * u, 0, 0, 7); g.fill();
+      }
       /* the head from behind: hair, the headset's band and both cups, the boom peeking out */
       function head(g, x, y, u) {
         g.fillStyle = '#e2b48f'; g.beginPath(); g.arc(x - 11 * u, y + 1 * u, 3 * u, 0, 7); g.arc(x + 11 * u, y + 1 * u, 3 * u, 0, 7); g.fill();
         g.fillStyle = '#2a1d16'; g.beginPath(); g.arc(x, y, 11 * u, 0, 7); g.fill();
         g.fillStyle = '#3b2a20'; g.beginPath(); g.arc(x - 3 * u, y - 4 * u, 5 * u, 0, 7); g.fill();
-        g.strokeStyle = '#2FD8FF'; g.lineWidth = 2.6 * u; g.beginPath(); g.arc(x, y + 1 * u, 12.5 * u, Math.PI * 1.05, Math.PI * 1.95); g.stroke();
-        g.fillStyle = '#10131a'; g.fillRect(x - 15 * u, y - 3 * u, 5 * u, 9 * u); g.fillRect(x + 10 * u, y - 3 * u, 5 * u, 9 * u);
+        /* THE HEADSET powered: violet, glowing, sending rings out */
+        var hs = me.magnet > 0;
+        if (hs) for (var r = 0; r < 2; r++) { var ph = (time * 1.8 + r * .5) % 1; g.strokeStyle = 'rgba(155,123,255,' + (1 - ph).toFixed(2) + ')'; g.lineWidth = 2 * u; g.beginPath(); g.arc(x, y, (16 + ph * 26) * u, 0, 7); g.stroke(); }
+        g.strokeStyle = hs ? '#C9B8FF' : '#2FD8FF'; g.lineWidth = (hs ? 3.4 : 2.6) * u; if (hs) { g.shadowColor = '#9B7BFF'; g.shadowBlur = 12; }
+        g.beginPath(); g.arc(x, y + 1 * u, 12.5 * u, Math.PI * 1.05, Math.PI * 1.95); g.stroke(); g.shadowBlur = 0;
+        g.fillStyle = hs ? '#9B7BFF' : '#10131a'; g.fillRect(x - 15 * u, y - 3 * u, 5 * u, 9 * u); g.fillRect(x + 10 * u, y - 3 * u, 5 * u, 9 * u);
         g.strokeStyle = '#10131a'; g.lineWidth = 1.6 * u; g.beginPath(); g.moveTo(x + 14 * u, y + 4 * u); g.lineTo(x + 17 * u, y + 11 * u); g.stroke();
       }
-      /* the PM, clipboard up, right behind you */
-      function chaser(g) {
-        var p = proj(me.x + Math.sin(time * 3) * .2, 0, -1.2 + Math.max(0, pm - 4) * .5);
-        if (!p) return;
-        var u = p.k / 100, sw = Math.sin(time * 14);
-        g.save(); g.translate(p.x - 60 * u, p.y);
-        g.strokeStyle = '#2a3346'; g.lineWidth = 9 * u; g.lineCap = 'round';
-        g.beginPath(); g.moveTo(-5 * u, -48 * u); g.lineTo(-5 * u + sw * 10 * u, 0); g.moveTo(5 * u, -48 * u); g.lineTo(5 * u - sw * 10 * u, 0); g.stroke();
-        g.fillStyle = '#39445a'; roundRect(g, -13 * u, -88 * u, 26 * u, 42 * u, 6 * u); g.fill();
-        g.fillStyle = '#EDF2F8'; g.font = '700 ' + 12 * u + 'px Sora, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('PM', 0, -70 * u);
-        g.strokeStyle = '#e2b48f'; g.lineWidth = 6 * u; g.beginPath(); g.moveTo(-12 * u, -82 * u); g.lineTo(-20 * u, -98 * u); g.stroke();
-        g.fillStyle = '#c9a26b'; g.fillRect(-28 * u, -114 * u, 16 * u, 20 * u); g.fillStyle = '#EDF2F8'; g.fillRect(-26 * u, -111 * u, 12 * u, 14 * u);
-        g.fillStyle = '#5a5f6b'; g.beginPath(); g.arc(0, -100 * u, 11 * u, 0, 7); g.fill();
-        g.restore();
+      function springRings(g) {
+        rings.forEach(function (r) {
+          var p = proj(r.x, r.y, r.z); if (!p) return;
+          var k = 1 - r.life / .45;
+          g.strokeStyle = 'rgba(92,242,196,' + (r.life / .45 * .7).toFixed(2) + ')'; g.lineWidth = 2;
+          g.beginPath(); g.ellipse(p.x, p.y, p.k * (.15 + k * .3), p.k * (.05 + k * .08), 0, 0, 7); g.stroke();
+        });
       }
       function hud(g) {
         g.font = '600 9px Inter, sans-serif'; g.textBaseline = 'top'; g.textAlign = 'left';
@@ -988,6 +1124,22 @@
           g.fillStyle = '#FFD34A'; g.font = '700 8px Sora, sans-serif'; g.textAlign = 'left'; g.textBaseline = 'middle';
           g.fillText(words('stagerunner_hype').toUpperCase() + (fiveStreak > 1 ? '  ×' + fiveStreak : ''), 12, py - 3);
           g.fillStyle = 'rgba(255,255,255,.1)'; g.fillRect(12, py + 4, 70, 3); g.fillStyle = '#FFD34A'; g.fillRect(12, py + 4, 70 * me.hype / 7, 3);
+        }
+        /* THE POWER CARD: the icon, its name, what it does, and where to
+           look for it on the runner (round 7, Chase: "I have NO idea what
+           the power ups do … Visuals my friend") */
+        if (card) {
+          var ca = Math.min(1, card.t * 3, (2.6 - card.t) * 6), cw = 250, ch = 64, cx0 = (W - cw) / 2, cy0 = HOR + 30;
+          g.globalAlpha = ca;
+          g.fillStyle = 'rgba(8,10,16,.9)'; roundRect(g, cx0, cy0, cw, ch, 10); g.fill();
+          g.strokeStyle = '#9B7BFF'; g.lineWidth = 2; g.stroke();
+          g.fillStyle = 'rgba(155,123,255,.45)'; g.beginPath(); g.arc(cx0 + 34, cy0 + ch / 2, 22, 0, 7); g.fill();
+          powerIcon(g, card.power, cx0 + 34, cy0 + ch / 2, 1.4);
+          g.fillStyle = '#EDF2F8'; g.font = '700 15px Sora, sans-serif'; g.textAlign = 'left'; g.textBaseline = 'middle';
+          g.fillText(words('stagerunner_p_' + card.power).toUpperCase(), cx0 + 66, cy0 + 22);
+          g.fillStyle = '#C9B8FF'; g.font = '600 11px Inter, sans-serif';
+          g.fillText(words('stagerunner_d_' + card.power), cx0 + 66, cy0 + 43);
+          g.globalAlpha = 1;
         }
         if (banner) {
           g.globalAlpha = Math.min(1, banner.t * 2);
