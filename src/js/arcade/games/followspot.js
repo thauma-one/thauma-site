@@ -89,9 +89,13 @@
 
       function choose(i) {
         if (who) return;
-        who = WHO[i]; ctx.sfx('go');
-        ctx.say(words('followspot_' + who.key + '_line'), { tag: 'DIR' });
+        who = WHO[i];
       }
+      ctx.menu({
+        heading: words('followspot_pick'), start: 0,
+        items: WHO.map(function (w2, i) { return { title: words('followspot_' + w2.key), line: '★'.repeat(i + 1) + ' ' + words('followspot_' + w2.key + '_line'), col: w2.col }; }),
+        pick: choose
+      });
       function cur() { return ACTS[act]; }
       function platAt(i) { return PLATS[i]; }
       function onPlat(x, i) { var q = PLATS[i]; return x >= q.x0 && x <= q.x1; }
@@ -345,9 +349,7 @@
         if (who) light(g);
         if (moth) mothDraw(g);
         crowdDraw(g);
-        if (!who) return ctx.cards(g, words('followspot_pick'), WHO.map(function (w2, i) {
-          return { title: words('followspot_' + w2.key), line: '★'.repeat(i + 1) + ' ' + words('followspot_' + w2.key + '_line'), key: ['←', '↑', '→', '↓'][i], col: w2.col };
-        }), time);
+        if (!who) return;                       /* play.js draws the choice */
         hud(g);
         pops.forEach(function (q) {
           g.globalAlpha = Math.min(1, q.life * 2); g.fillStyle = q.col || '#FFB547';
@@ -535,14 +537,7 @@
 
       return {
         update: update, draw: draw,
-        press: function (d) {
-          if (!who) { var i = { left: 0, up: 1, go: 1, right: 2, down: 3 }[d]; if (i != null) choose(i); }
-        },
-        tapAt: function (x, y) {
-          if (who) return false;
-          var i = ctx.cardAt(x, y); if (i >= 0) { choose(i); return true; }
-          return false;
-        },
+        press: function () {},
         stop: function () {}
       };
     }

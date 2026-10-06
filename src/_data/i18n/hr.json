@@ -402,7 +402,6 @@
     "cuestack_miss": "Promašaj",
     "cuestack_house": "Publika",
     "cuestack_combo": "zaredom",
-    "panelfixer_big": "Lopta za plažu",
     "panelfixer_magnet": "Magnet",
     "panelfixer_pattern": "Testna slika",
     "panelfixer_crew": "Poziv ekipi",
@@ -465,6 +464,9 @@
     "followspot_s_climbdown": "Niz ljestve!",
     "menu_confirm": "Enter za početak",
     "menu_confirm_touch": "Dodirni ponovno za početak",
-    "soundcheck_mode_pick": "Koja igra?"
+    "soundcheck_mode_pick": "Koja igra?",
+    "panelfixer_phase": "Fazna loptica",
+    "panelfixer_electric": "Električna loptica",
+    "panelfixer_bloom": "Procvat"
   }
 }

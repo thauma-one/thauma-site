@@ -21,6 +21,11 @@
    stand behind, for good, and touching one ends the run; the worship
    leader crosses more often (every 6–13s, was 8–16) and faster.
 
+   ROUND 7: a point for every step and 30 + twice the length for each plug
+   (it scored far below the other games). The leader waits at the edge for
+   2.4s plus a little for every piece of cable (up to 5s), walks the row
+   with the least bare cable, and walks a touch slower.
+
    D-pad: arrows / WASD, the strip of four buttons on a touch screen, or
    a swipe.
    ===================================================================== */
@@ -91,10 +96,13 @@
         if (props.some(function (p) { return p.x === nx && p.y === ny; })) return crash('cablerun_crash');
         cable.unshift({ x: nx, y: ny });
         if (grow) grow--; else cable.pop();
+        /* every step of cable run pays a point (round 7: the score ran far
+           below the other games) */
+        score += 1; ctx.score(score);
 
         if (gear && gear.x === nx && gear.y === ny) {
           plugged++; grow += 2;
-          score += 15 + cable.length; ctx.score(score);
+          score += 30 + cable.length * 2; ctx.score(score);
           ctx.sfx('collect');
           /* faster as it grows (BACKLOG §4: "speed up as the cable grows"),
              but gently (Chase, 2026-10-05: "ease you into games"): 0.18s a
@@ -129,14 +137,23 @@
         /* the worship leader: a row glows, then they walk it */
         nextLeader -= dt;
         if (!leader && nextLeader <= 0) {
-          var row = 2 + rnd(ROWS - 4), fromLeft = Math.random() < .5;
-          leader = { row: row, x: fromLeft ? -1 : COLS, dir: fromLeft ? 1 : -1, warn: 1.9 };
+          /* the row with the least cable on it (round 7, Chase: "give the
+             player plenty of time before the person walks across the
+             screen. If the cable gets really long, then the person could
+             walk across the screen before the player has time to
+             respond"): the warning grows with the cable, up to 5s */
+          var rows = [];
+          for (var r = 2; r < ROWS - 2; r++) rows.push({ r: r, n: cable.filter(function (c, i) { return c.y === r && !isTaped(i); }).length + Math.random() * .9 });
+          rows.sort(function (a, b) { return a.n - b.n; });
+          var row = rows[0].r, fromLeft = Math.random() < .5;
+          leader = { row: row, x: fromLeft ? -1 : COLS, dir: fromLeft ? 1 : -1, warn: Math.min(5, 2.4 + cable.length * .07) };
+          leader.warn0 = leader.warn;
           ctx.say(words('cablerun_leader'), { tag: 'SM' }); ctx.sfx('zap');
         }
         if (leader) {
           if (leader.warn > 0) leader.warn -= dt;
           else {
-            leader.x += leader.dir * dt * (3.6 + Math.min(1.6, plugged * .06));
+            leader.x += leader.dir * dt * (3 + Math.min(1.2, plugged * .04));
             var cx = Math.round(leader.x);
             for (var i = 0; i < cable.length; i++) {
               if (cable[i].y === leader.row && cable[i].x === cx && !isTaped(i)) return crash('cablerun_trip');
@@ -163,14 +180,22 @@
         g.strokeStyle = 'rgba(255,181,71,.55)'; g.lineWidth = 2; g.strokeRect(1, 1, W - 2, H - 2);   /* the stage's taped edge */
 
         if (leader && leader.warn > 0) {
-          g.fillStyle = 'rgba(255,181,71,' + (.08 + .08 * Math.sin(time * 14)).toFixed(3) + ')';
+          /* the glow quickens as they get closer to walking on */
+          var left = leader.warn / leader.warn0, sp = 6 + (1 - left) * 18;
+          g.fillStyle = 'rgba(255,181,71,' + (.08 + .08 * Math.sin(time * sp)).toFixed(3) + ')';
           g.fillRect(0, leader.row * C, W, C);
+          /* and how long is left fills the row from the side they come in */
+          g.fillStyle = 'rgba(255,181,71,.35)';
+          var wd = W * (1 - left);
+          g.fillRect(leader.dir > 0 ? 0 : W - wd, leader.row * C + C - 3, wd, 2);
         }
         props.forEach(function (p) { drawProp(g, p); });
         if (gear) drawGear(g, gear);
         if (tape) drawTape(g, tape);
         drawCable(g);
         if (leader && leader.warn <= 0) drawLeader(g, leader);
+        /* waiting in the wings: peeking in at the edge */
+        else if (leader) drawLeader(g, { x: leader.dir > 0 ? -.35 : COLS - .65, row: leader.row });
         if (!started) hint(g);
       }
       /* four small arrows around the plug end, breathing, until the first press */

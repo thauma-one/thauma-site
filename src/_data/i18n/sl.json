@@ -402,7 +402,6 @@
     "cuestack_miss": "Zgrešeno",
     "cuestack_house": "Publika",
     "cuestack_combo": "zapored",
-    "panelfixer_big": "Žoga za na plažo",
     "panelfixer_magnet": "Magnet",
     "panelfixer_pattern": "Testna slika",
     "panelfixer_crew": "Klic ekipi",
@@ -465,6 +464,9 @@
     "followspot_s_climbdown": "Po lestvah dol!",
     "menu_confirm": "Enter za začetek",
     "menu_confirm_touch": "Dotakni znova za začetek",
-    "soundcheck_mode_pick": "Katera igra?"
+    "soundcheck_mode_pick": "Katera igra?",
+    "panelfixer_phase": "Fazna žogica",
+    "panelfixer_electric": "Električna žogica",
+    "panelfixer_bloom": "Razcvet"
   }
 }

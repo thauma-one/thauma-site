@@ -402,7 +402,6 @@
     "cuestack_miss": "Miss",
     "cuestack_house": "The house",
     "cuestack_combo": "in a row",
-    "panelfixer_big": "Beach ball",
     "panelfixer_magnet": "Magnet",
     "panelfixer_pattern": "Test pattern",
     "panelfixer_crew": "Crew call",
@@ -465,6 +464,9 @@
     "followspot_s_climbdown": "Down the ladder!",
     "menu_confirm": "Enter to start",
     "menu_confirm_touch": "Tap again to start",
-    "soundcheck_mode_pick": "Which game?"
+    "soundcheck_mode_pick": "Which game?",
+    "panelfixer_phase": "Phase ball",
+    "panelfixer_electric": "Electric ball",
+    "panelfixer_bloom": "Bloom"
   }
 }

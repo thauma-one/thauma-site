@@ -402,7 +402,6 @@
     "cuestack_miss": "Промашај",
     "cuestack_house": "Публика",
     "cuestack_combo": "заредом",
-    "panelfixer_big": "Лопта за плажу",
     "panelfixer_magnet": "Магнет",
     "panelfixer_pattern": "Тестна слика",
     "panelfixer_crew": "Позив екипи",
@@ -465,6 +464,9 @@
     "followspot_s_climbdown": "Низ љестве!",
     "menu_confirm": "Ентер за почетак",
     "menu_confirm_touch": "Додирни поновно за почетак",
-    "soundcheck_mode_pick": "Која игра?"
+    "soundcheck_mode_pick": "Која игра?",
+    "panelfixer_phase": "Фазна лоптица",
+    "panelfixer_electric": "Електрична лоптица",
+    "panelfixer_bloom": "Процват"
   }
 }

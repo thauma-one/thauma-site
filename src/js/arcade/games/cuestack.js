@@ -54,8 +54,12 @@
         level = l; D = DIFF[l]; ctx.sfx('go');
         /* two bars to listen first, from the next bar line */
         chartTo = Math.ceil(clock / 4) * 4 + 8; barBase = chartTo / 4;
-        ctx.say(words('diff_' + l), { tag: 'SM' });
       }
+      ctx.menu({
+        heading: words('diff_pick'), start: 1,
+        items: LEVELS.map(function (l) { return { title: words('diff_' + l), line: words('diff_' + l + '_line'), col: DIFF[l].col }; }),
+        pick: function (i) { choose(LEVELS[i]); }
+      });
 
       /* THE CHART: bars of four beats, written from patterns, busier as
          the show goes on; never two cues on one lane closer than a half
@@ -157,9 +161,7 @@
       function draw(g) {
         g.fillStyle = '#07080f'; g.fillRect(-20, -20, W + 40, H + 40);
         stage(g);
-        if (!level) return ctx.cards(g, words('diff_pick'), LEVELS.map(function (l, i) {
-          return { title: words('diff_' + l), line: words('diff_' + l + '_line'), key: ['←', '↓ ↑', '→'][i], col: DIFF[l].col };
-        }), time);
+        if (!level) return;                     /* play.js draws the choice */
         var beat = clock, lw = W / 4;
         /* the stack */
         for (var l = 0; l < 4; l++) {
@@ -251,14 +253,8 @@
         update: function (dt) { update(dt); }, draw: draw,
         press: function (d) {
           var m = /^l(\d)$/.exec(d); if (!m) return;
-          /* the choice: the left lane easy, the middle two normal, the right hard */
-          if (!level) { choose(LEVELS[[0, 1, 1, 2][+m[1]]]); return; }
+          if (!level) return;
           held[+m[1]] = true; press(+m[1]);
-        },
-        tapAt: function (x, y) {
-          if (level) return false;
-          var i = ctx.cardAt(x, y); if (i >= 0) { choose(LEVELS[i]); return true; }
-          return false;
         },
         release: function (d) { var m = /^l(\d)$/.exec(d); if (m) held[+m[1]] = null; },
         stop: function () {}
