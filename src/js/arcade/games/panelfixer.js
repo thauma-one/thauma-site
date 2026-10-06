@@ -25,7 +25,8 @@
 
    Four balls a wall (round 5, Chase: "Just give the person 4 balls to
    start"; free balls from the case add to them). Out of balls with panels
-   still broken, and it's over.
+   still broken, and it's over. Every wall starts fresh; clear one with
+   balls to spare and they fly with the next wall's first throw (round 6).
 
    ROUND 3 (Chase, 2026-10-05: "figure out some way to make it easier to
    hit the panels in the middle. And add some special power up systems.
@@ -141,7 +142,7 @@
       var panels = [], balls = [], sparks = [], pops = [], arcs = [], confetti = [], sweeps = [];
       var level = 0, left = BALLS, score = 0, total = 0, fixedThisShot = 0, guide = 0;
       var crew = 0, crewOn = false, crewT = 0, nextBig = false, nextMagnet = false;
-      var revealed = [], litThisShot = 0, shotT = 0, aimTarget = 0;
+      var revealed = [], litThisShot = 0, shotT = 0, aimTarget = 0, carry = 0;
       var aim = 0, aimFrom = null, time = 0, slow = 0, showtime = 0;
       var state = 'aim';               /* aim | windup | flight | show | done */
       var windup = 0, mood = 'idle', moodT = 0, thrown = false;
@@ -166,11 +167,14 @@
           return { x: s.x, y: s.y, u: u, v: v, col: picture(u, v), state: 'ok', hitAt: -9, fixedAt: -9, fault: null };
         });
         /* the broken ones, spread across the wall, then two green */
-        var n = Math.min(Math.floor(panels.length * .45), 4 + level * 2), order = panels.slice().sort(function () { return Math.random() - .5; });
+        /* more to fix each wall (round 6): 8, then 3 more a wall, up to 60% */
+        var n = Math.min(Math.floor(panels.length * .6), 5 + level * 3), order = panels.slice().sort(function () { return Math.random() - .5; });
         for (var i = 0; i < n; i++) { order[i].state = 'broken'; order[i].fault = ['dead', 'flicker', 'tint'][i % 3]; }
         /* three powers, never two the same on one wall */
         var kinds = POWERS.slice().sort(function () { return Math.random() - .5; });
         for (var k = n; k < n + 3 && k < order.length; k++) { order[k].state = 'power'; order[k].power = kinds[k - n]; }
+        /* every wall starts fresh with its balls; any left over from clearing
+           the last one fly with the first throw here (round 6) */
         total = n; left = BALLS; state = 'aim'; mood = 'idle'; showtime = 0; revealed = [];
         ctx.say(words('panelfixer_wall') + ' ' + level, { tag: 'LD' });
       }
@@ -191,13 +195,24 @@
       }
       function throwNow() {
         if (state !== 'aim' || left <= 0) return;
+        aim = aimTarget;   /* thrown where it is pointed, not where the easing had got to */
         state = 'windup'; windup = .22; mood = 'throw'; thrown = true;
         ctx.sfx('flip');
       }
       function launch() {
+        /* from exactly the point the aim is solved from (round 6: "the
+           aiming seems a bit off" — it left 10px along the aim, so every
+           throw landed a little past where it was pointed) */
         var d = dirOf(aim);
-        balls.push({ x: LX + d.x * 10, y: LY + d.y * 10, vx: d.x * SPEED, vy: d.y * SPEED, slowT: 0, fire: 0, bounces: 0,
+        balls.push({ x: LX, y: LY, vx: d.x * SPEED, vy: d.y * SPEED, slowT: 0, fire: 0, bounces: 0,
           r: nextBig ? R * 2.2 : R, magnet: nextMagnet ? 1 : 0 });
+        /* the balls carried over from the last wall go with it, fanned out */
+        for (var cb = 0; cb < carry; cb++) {
+          var da = dirOf(aim + (cb % 2 ? 1 : -1) * (.08 + Math.floor(cb / 2) * .08));
+          balls.push({ x: LX, y: LY, vx: da.x * SPEED, vy: da.y * SPEED, slowT: 0, fire: 0, bounces: 0, r: R, magnet: 0 });
+        }
+        if (carry) pops.push({ x: LX, y: LY + 30, text: '+' + carry, col: '#d8f55a', life: 1.2 });
+        carry = 0;
         nextBig = nextMagnet = false;
         left--; fixedThisShot = 0; litThisShot = 0; shotT = 0; state = 'flight';
         ctx.sfx('jump');
@@ -344,6 +359,7 @@
         ctx.sfx('cheer');
         ctx.quip('jokes_panelfixer_showtime', { mood: 'good', force: true });
         var bonus = left * 100; score += bonus; ctx.score(score);
+        carry = left;   /* the spare balls go with the next wall's first throw */
         pops.push({ x: W / 2, y: TOPF + 60, text: words('panelfixer_showtime').toUpperCase() + (bonus ? '  +' + bonus : ''), col: '#FFB547', life: 3, big: true });
         for (var i = 0; i < 90; i++) confetti.push({ x: rnd(0, W), y: rnd(-120, 0), vx: rnd(-30, 30), vy: rnd(60, 160), r: rnd(0, 6), c: ['#FF4FD8', '#2FD8FF', '#5CF2C4', '#FFB547'][i % 4], life: 3.4 });
       }
@@ -499,7 +515,7 @@
       /* the path the throw will take: the first stretch, or with GUIDE the
          whole way through the first two bounces */
       function preview(g) {
-        var d = dirOf(aim), b = { x: LX + d.x * 10, y: LY + d.y * 10, vx: d.x * SPEED, vy: d.y * SPEED }, bounces = 0, limit = guide > 0 ? 3 : 0;
+        var d = dirOf(aim), b = { x: LX, y: LY, vx: d.x * SPEED, vy: d.y * SPEED }, bounces = 0, limit = guide > 0 ? 3 : 0;
         var br = nextBig ? R * 2.2 : R;
         g.fillStyle = guide > 0 ? 'rgba(92,242,196,.8)' : 'rgba(216,245,90,.7)';
         for (var t = 0, f = 0; t < (guide > 0 ? 3.2 : 1.6); t += 1 / 60, f++) {
@@ -597,7 +613,7 @@
         g.font = '600 9px Inter, sans-serif'; g.textBaseline = 'top'; g.textAlign = 'left';
         g.fillStyle = 'rgba(138,150,166,.9)';
         g.fillText(words('panelfixer_wall').toUpperCase() + ' ' + level, 12, 48);
-        g.fillText(words('panelfixer_throws').toUpperCase(), 12, 64);
+        g.fillText(words('panelfixer_throws').toUpperCase() + (carry ? '  +' + carry : ''), 12, 64);
         for (var i = 0; i < Math.max(BALLS, left); i++) {
           if (i >= left && i >= BALLS) break;
           g.fillStyle = i < left ? '#d8f55a' : 'rgba(255,255,255,.08)';
