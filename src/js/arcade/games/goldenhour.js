@@ -219,7 +219,7 @@
           b.vy += G * .6 * dt; b.y += b.vy * dt;
           if (gy2 !== null && b.y > gy2 - 10) { b.y = gy2 - 10; b.vy = -rnd(260, 380); }
           if (Math.hypot(b.x - me.x, b.y - (me.y - 14)) < 26) {
-            b.caught = true; score += 150; ctx.sfx('cheer');
+            b.caught = true; score += 100; ctx.sfx('cheer');
             banner = { text: words('goldenhour_ball'), t: 1.6 };
             ctx.quip('jokes_goldenhour_ball', { mood: 'good', chance: .7 });
           }
@@ -241,7 +241,8 @@
         fireworks.forEach(function (f) { f.t += dt; }); fireworks = fireworks.filter(function (f) { return f.t < 1.6; });
         if (banner) { banner.t -= dt; if (banner.t <= 0) banner = null; }
 
-        ctx.score(Math.floor(dist) + score);
+        /* a quarter point a metre (round 4: the distance alone ran to thousands a minute) */
+        ctx.score(Math.floor(dist / 4) + score);
         /* the camera leads you downhill */
         var tx = me.x - W * .32, ty = me.y - H * .56;
         camX += (tx - camX) * Math.min(1, dt * 6); camY += (ty - camY) * Math.min(1, dt * 3);
@@ -259,7 +260,7 @@
           var r = me.rail;
           me.vx = clamp(me.vx + 120 * dt, MIN, top);
           me.x += me.vx * dt; me.y = railY(r, me.x); me.ang = Math.atan(r.slope);
-          score += 40 * dt; comboT = 1.2;
+          score += 20 * dt; comboT = 1.2;
           if (Math.random() < dt * 40) sparks.push({ x: me.x - 8, y: me.y, vx: rnd(-160, -40), vy: rnd(-120, 0), life: .35 });
           if (Math.random() < dt * 10) ctx.sfx('grind');
           if (me.x > r.x1) { me.rail = null; me.ground = false; me.vy = me.vx * r.slope - 60; me.spin = 0; me.air = 0; }
@@ -333,13 +334,13 @@
         var flips = Math.floor(Math.abs(me.spin) / (Math.PI * 2) + .2);
         if (flips > 0) {
           combo += flips; comboT = 1.6;
-          var pts = 100 * flips * Math.max(1, combo);
+          var pts = 50 * flips * Math.min(4, Math.max(1, combo));   /* the combo multiplies to ×4 at most (it had no cap) */
           score += pts;
           me.vx = Math.min(maxSpeed(), me.vx + 50 * flips);
           banner = { text: (flips > 1 ? flips + '× ' : '') + words('goldenhour_flip') + '  +' + pts, t: 1.2 };
           ctx.sfx('combo');
           if (combo >= 3) ctx.quip('jokes_goldenhour_trick', { mood: 'good', chance: .5 });
-        } else if (me.air > .9) { score += 30; }
+        } else if (me.air > .9) { score += 15; }
         if (onRail) { combo = Math.max(1, combo); ctx.sfx('grind'); }
         else { ctx.sfx('thud', { vol: .3 }); landT = .22; puff(me.x, me.y, Math.min(12, 4 + me.air * 6)); }
         me.spin = 0; me.air = 0;

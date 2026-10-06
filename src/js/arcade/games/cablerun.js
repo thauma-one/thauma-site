@@ -94,7 +94,7 @@
 
         if (gear && gear.x === nx && gear.y === ny) {
           plugged++; grow += 2;
-          score += 10 + cable.length; ctx.score(score);
+          score += 15 + cable.length; ctx.score(score);
           ctx.sfx('collect');
           /* faster as it grows (BACKLOG §4: "speed up as the cable grows"),
              but gently (Chase, 2026-10-05: "ease you into games"): 0.18s a

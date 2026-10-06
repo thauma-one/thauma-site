@@ -291,11 +291,12 @@
         gags(dt, on);
         if (on) {
           offBy = 0; streak += dt;
-          var m = streak > 8 ? 4 : streak > 4 ? 3 : streak > 2 ? 2 : 1;
-          score += dt * 30 * m * who.worth;
+          var m = streak > 6 ? 3 : streak > 3 ? 2 : 1;
+          /* 5 a second, ×3 at most, × who (round 4: it was 30 ×4 ×who, up to 300 a second) */
+          score += dt * 5 * m * who.worth;
           patience = Math.min(1, patience + dt * .08);
           if ((p.act === 'flip' || p.act === 'surf' || p.act === 'cartwheel' || p.act === 'worm') && !p.nailed) {
-            p.nailed = true; score += 150; pops.push({ x: p.x, y: p.y - 70, text: words('followspot_nailed'), life: 1.4 }); ctx.sfx('combo');
+            p.nailed = true; score += 50; pops.push({ x: p.x, y: p.y - 70, text: words('followspot_nailed'), life: 1.4 }); ctx.sfx('combo');
           }
         } else {
           offBy += dt;
@@ -526,7 +527,7 @@
         g.fillStyle = patience > .5 ? '#5CF2C4' : patience > .25 ? '#FFB547' : '#FF5A6E'; g.fillRect(12, 26, 110 * patience, 6);
         g.textAlign = 'center'; g.fillStyle = 'rgba(' + cur().wall.join(',') + ',.85)';
         g.fillText(words('followspot_act_' + cur().key).toUpperCase(), W / 2, 12);
-        var m = streak > 8 ? 4 : streak > 4 ? 3 : streak > 2 ? 2 : 1;
+        var m = streak > 6 ? 3 : streak > 3 ? 2 : 1;
         if (m > 1) { g.textAlign = 'right'; g.fillStyle = '#FFB547'; g.font = '700 14px Sora, sans-serif'; g.fillText('×' + m, W - 12, 12); }
       }
 

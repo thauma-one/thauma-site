@@ -256,13 +256,13 @@
           if (magnet) { o.lane = lane; o.y = me.y + .4; }
           if (o.kind === 'crew') {
             /* a high five, from the lane beside them */
-            if (o.five && near && lane === o.lane && me.y < .9) { o.hit = true; o.slapped = time; var hf = 50 * mult; pts += hf; pop(words('stagerunner_highfive') + ' +' + hf, '#FFB547'); ctx.sfx('combo'); }
+            if (o.five && near && lane === o.lane && me.y < .9) { o.hit = true; o.slapped = time; var hf = 25 * mult; pts += hf; pop(words('stagerunner_highfive') + ' +' + hf, '#FFB547'); ctx.sfx('combo'); }
             return;
           }
           if (!near || (o.lane !== lane && !magnet)) return;
           switch (o.kind) {
             case 'pick':
-              if (Math.abs((o.y || .35) - (me.y + .45)) < .7 || magnet) { o.hit = true; picks += me.pass > 0 ? 2 : 1; pts += 10 * mult * (me.pass > 0 ? 2 : 1); ctx.sfx('collect'); }
+              if (Math.abs((o.y || .35) - (me.y + .45)) < .7 || magnet) { o.hit = true; picks += me.pass > 0 ? 2 : 1; pts += 5 * mult * (me.pass > 0 ? 2 : 1); ctx.sfx('collect'); }
               break;
             case 'item':
               if (Math.abs(o.y - (me.y + .4)) < .8) {
@@ -273,7 +273,7 @@
             case 'door':
               o.hit = true;
               if (mission && mission.have) {
-                var bonus = 500 * mult; pts += bonus; mult = Math.min(8, mult + 1);
+                var bonus = 200 * mult; pts += bonus; mult = Math.min(4, mult + 1);   /* round 4: was 500, ×8 at most */
                 o.happy = time;
                 ctx.sfx('cheer'); ctx.shake(3);
                 banner = { text: words('stagerunner_delivered') + '  +' + bonus + '  ×' + mult, t: 2.2, good: true };
@@ -331,7 +331,8 @@
         dust = dust.filter(function (d) { return d.life > 0; });
         pops.forEach(function (p) { p.life -= dt; }); pops = pops.filter(function (p) { return p.life > 0; });
 
-        ctx.score(Math.floor(dist) + pts);
+        /* a metre is half a point: the run's length alone outpaced every other game (round 4) */
+        ctx.score(Math.floor(dist / 2) + pts);
       }
 
       /* ------------------------------------------------------ drawing */

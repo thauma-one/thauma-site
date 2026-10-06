@@ -109,8 +109,8 @@
           if (n.state === 'wait' && (beat - n.beat) * SPB > D.win[2]) miss(n);
           if (n.state === 'hold') {
             if (!held[n.lane]) { n.state = 'gone'; combo = 0; }
-            else if (beat >= n.beat + n.len) { n.state = 'done'; score += 100; ctx.score(score); fire(n.lane); }
-            else { score += dt * 60; }
+            else if (beat >= n.beat + n.len) { n.state = 'done'; score += 20; ctx.score(score); fire(n.lane); }
+            else { score += dt * 10; }
           }
         });
         notes = notes.filter(function (n) { return n.state === 'wait' || n.state === 'hold' || (beat - n.beat) < 2; });
@@ -140,8 +140,9 @@
         var n = best.n, perfect = best.off <= D.win[0], good = best.off <= D.win[1];
         if (!good) { miss(n); return; }
         combo++; if (combo > bestCombo) bestCombo = combo;
-        var mult = combo >= 50 ? 4 : combo >= 25 ? 3 : combo >= 10 ? 2 : 1;
-        score += (perfect ? 300 : 120) * mult;
+        var mult = combo >= 25 ? 3 : combo >= 10 ? 2 : 1;
+        /* round 4: the same pace as the other games (was 300/120, ×4) */
+        score += (perfect ? 5 : 2) * mult;
         house = Math.min(1, house + .02);
         judge = { text: words(perfect ? 'cuestack_perfect' : 'cuestack_good'), col: perfect ? '#5CF2C4' : '#FFB547', t: .45 };
         ctx.sfx(perfect ? 'perfect' : 'good');

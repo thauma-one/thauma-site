@@ -237,7 +237,8 @@
         for (var k = 0; k < 480 && c.y > FOH_Y + PH; k++) motion(c, 1 / 120);
         return c.x;
       }
-      function score() { return hits + mine * 10 + caught * 5; }
+      /* the same pace as the other games (round 4): a return 10, a point 100, a catch 25 */
+      function score() { return hits * 10 + mine * 100 + caught * 25; }
       function choose(m) { if (mode) return; mode = m; ctx.sfx('go'); }
       function chooseLevel(l) { if (!mode || level) return; level = l; D = DIFF[l]; ctx.sfx('go'); ctx.say(words('soundcheck_' + mode) + ' · ' + words('diff_' + l)); }
       var LEVELS = ['easy', 'normal', 'hard'];

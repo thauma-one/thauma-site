@@ -149,7 +149,7 @@
       function brokenLeft() { return panels.filter(function (p) { return p.state === 'broken'; }).length; }
       function mult() {
         var f = 1 - brokenLeft() / Math.max(1, total);
-        return f >= .9 ? 5 : f >= .75 ? 3 : f >= .5 ? 2 : 1;
+        return f >= .9 ? 4 : f >= .75 ? 3 : f >= .5 ? 2 : 1;
       }
 
       function nextWall() {
@@ -233,7 +233,7 @@
         else if (p.state === 'power') {
           p.state = 'ok';
           power(p.power, p, b);
-        } else { var g0 = 10 * mult(); score += g0; ctx.score(score); pops.push({ x: p.x, y: p.y - 12, text: '+' + g0, col: '#8FEBFF', life: .7 }); }
+        } else { var g0 = 5 * mult(); score += g0; ctx.score(score); pops.push({ x: p.x, y: p.y - 12, text: '+' + g0, col: '#8FEBFF', life: .7 }); }
       }
       /* the shot is over (or stuck): the lit panels drop out */
       function clearLit(only) {
@@ -246,7 +246,7 @@
       }
       function fix(p) {
         p.state = 'ok'; p.fixedAt = time; p.fault = null;
-        var gain = 100 * mult();
+        var gain = 50 * mult();   /* round 4: the same pace as the other games (was 100, ×5 at most) */
         score += gain; ctx.score(score); fixedThisShot++;
         if (crew < CREW) { crew++; if (crew === CREW) { ctx.sfx('powerup'); pops.push({ x: W / 2, y: 132, text: words('panelfixer_crew').toUpperCase() + '!', col: '#FFB547', life: 1.8 }); ctx.say('[SM] ' + words('panelfixer_crew_ready'), { mood: 'good' }); } }
         pops.push({ x: p.x, y: p.y - 14, text: '+' + gain, col: '#5CF2C4', life: 1 });
@@ -341,7 +341,7 @@
         state = 'show'; slow = 1.3; showtime = 3.4; mood = 'dance';
         ctx.sfx('cheer');
         ctx.quip('jokes_panelfixer_showtime', { mood: 'good', force: true });
-        var bonus = left * 200; score += bonus; ctx.score(score);
+        var bonus = left * 100; score += bonus; ctx.score(score);
         pops.push({ x: W / 2, y: TOPF + 60, text: words('panelfixer_showtime').toUpperCase() + (bonus ? '  +' + bonus : ''), col: '#FFB547', life: 3, big: true });
         for (var i = 0; i < 90; i++) confetti.push({ x: rnd(0, W), y: rnd(-120, 0), vx: rnd(-30, 30), vy: rnd(60, 160), r: rnd(0, 6), c: ['#FF4FD8', '#2FD8FF', '#5CF2C4', '#FFB547'][i % 4], life: 3.4 });
       }
