@@ -74,7 +74,8 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
   /* ---- size, color, link, name: one row under the toolbar --------------
      Each opens a row of choices instead of a dialog or a prompt, and the
      size and color buttons show what the cursor is in now. */
-  const ROWS = { size: "cpSizeRow", color: "cpColorRow", link: "cpLinkRow", variable: "cpVarRow" };
+  /* the variables are no longer a hidden row: an always-visible legend (2026-10-05) */
+  const ROWS = { size: "cpSizeRow", color: "cpColorRow", link: "cpLinkRow" };
 
   function showChoices(ed) {
     const sz = ed.getAttributes("size").sz || "";
@@ -89,6 +90,13 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
     const anyColor = /^#[0-9a-f]{6}$/i.test(tone);
     $("cpColorAny").closest(".cp-tone-any").classList.toggle("is-on", anyColor);
     if (anyColor) $("cpColorAny").value = tone;
+    /* a picture selected: its size choices show, the one it has pressed */
+    const onImg = ed.isActive("image");
+    $("cpImgRow").hidden = !onImg;
+    if (onImg) {
+      const w = ed.getAttributes("image").w || "";
+      document.querySelectorAll("#cpImgRow [data-w]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.w === w ? "true" : "false"));
+    }
     const sizeBtn = document.querySelector('.cp-tools [data-cmd="size"]');
     if (sizeBtn) sizeBtn.dataset.sz = sz;
     const colorBtn = document.querySelector('.cp-tools [data-cmd="color"]');
@@ -131,6 +139,12 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
     editor.chain().setTone(e.target.value.toLowerCase()).run();
   });
   $("cpColorAny").addEventListener("change", () => { editor.commands.focus(); closeRows(); });
+  $("cpImgRow").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-w]");
+    if (!b || !editor.isActive("image")) return;
+    editor.chain().focus().updateAttributes("image", { w: b.dataset.w || null }).run();
+    markDirty(); measureSoon();
+  });
   $("cpVarRow").addEventListener("click", (e) => {
     const b = e.target.closest("[data-var]");
     if (!b) return;
@@ -233,8 +247,12 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
     cp.savedHtml = editor.getHTML();
     cp.savedSubject = $("cpSubject").value;
     cp.savedPreheader = $("cpPreheader").value;
+    cp.savedFiles = filesKey(cp.attachments);
     cp.dirty = false;
     setState("");
+    /* the picker shows the draft that is open (it was drawn while the
+       mailings loaded, before this one was chosen, so it said New draft) */
+    $("cpDraft").value = cp.id || "";
     renderAttachments();
     refresh();
     measure();
@@ -242,10 +260,16 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
 
   const setState = (msg) => { $("cpState").textContent = msg || ""; };
 
+  /* THE ATTACHMENTS COUNT AS A CHANGE (2026-10-05, Chase: "the attachment
+     never arrived"). Only the words did, so adding a file changed nothing
+     the save looked at: no autosave, and Send — which saves only what is
+     unsaved — sent the stored draft, which had no file. */
+  const filesKey = (list) => (list || []).map((a) => a.object_key).join("\n");
   function markDirty() {
     cp.dirty = editor.getHTML() !== cp.savedHtml ||
       $("cpSubject").value !== cp.savedSubject ||
-      $("cpPreheader").value !== cp.savedPreheader;
+      $("cpPreheader").value !== cp.savedPreheader ||
+      filesKey(cp.attachments) !== cp.savedFiles;
     setState(cp.dirty ? tr("ml.cpUnsaved") : "");
     if (cp.dirty) autosaveSoon(); else clearTimeout(autoTimer);
   }
@@ -488,6 +512,7 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
     cp.savedHtml = payload.body_html;
     cp.savedSubject = payload.subject;
     cp.savedPreheader = payload.preheader;
+    cp.savedFiles = filesKey(payload.attachments);
     markDirty();
     if (!cp.dirty) setState(tr("ml.cpSaved"));
 

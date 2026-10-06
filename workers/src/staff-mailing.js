@@ -286,7 +286,7 @@ function brandOpts(brand) {
 }
 
 /** One message, addressed to one person. */
-async function messageFor(env, { built, list, sub, origin, links, theme, archiveUrl, attachments }) {
+async function messageFor(env, { built, list, sub, origin, links, theme, archiveUrl, attachments, test }) {
   /* links: where the subscriber's own links point (lib/origin.js subscriberOrigin) */
   const unsubscribe = await unsubscribeUrl(env, links || origin, sub.id);
   const body = render(built.html, {
@@ -299,6 +299,7 @@ async function messageFor(env, { built, list, sub, origin, links, theme, archive
     mode: theme && theme.mode,
     ...brandOpts(built.brand),
     unsubscribeUrl: unsubscribe,
+    test: !!test,
     archiveUrl,
     recipientName: sub.name || null,
   });
@@ -1059,7 +1060,7 @@ const api = {
            it was for — seeing what actually arrives — is exactly what it
            would fail to show. */
         const msg = await messageFor(env, {
-          built, list, origin, links: subscriberOrigin(env, request),
+          built, list, origin, links: subscriberOrigin(env, request), test: true,
           sub: { id: "test-" + ((actor.me && actor.me.user_id) || "x"), email: testTo,
                  name: (s.me && s.me.user_name) || null },
           theme: look ? { accent: look.embed_accent, accent2: lookFor(look).accent2, mode: look.embed_theme } : null,

@@ -1411,6 +1411,12 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
 .cp-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:8px 16px;
   border-bottom:1px solid var(--line);background:var(--bg2,#0b1119)}
 .cp-row[hidden]{display:none}
+/* the variables legend, always shown */
+.cp-legend{background:color-mix(in srgb,var(--voice-tech) 5%,transparent)}
+.cp-legend-label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:600;color:var(--dim);margin-right:4px}
+/* a picture's chosen width, as the email will show it */
+.cp-body img[data-w]{margin-left:auto;margin-right:auto}
+.cp-body img[data-w="sm"]{width:33%}.cp-body img[data-w="md"]{width:50%}.cp-body img[data-w="lg"]{width:75%}
 .cp-row>button:not(.ghost-btn){min-height:29px;padding:0 10px;background:none;border:0;
   border-radius:6px;color:var(--dim,#8a93a3);font:inherit;font-size:13px;cursor:pointer}
 @media(hover:hover){ .cp-row>button:not(.ghost-btn):hover{background:var(--line);color:var(--text)} }

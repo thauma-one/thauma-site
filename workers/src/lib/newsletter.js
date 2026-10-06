@@ -107,7 +107,7 @@ const DROP_WHOLE = new Set(["script", "style", "head", "title", "meta", "link", 
 /* What each surviving tag may carry. Anything not listed is dropped — that
    includes every style, class and id, which is what keeps a paste from
    bringing another website's appearance along. */
-const ATTRS = { a: ["href"], img: ["src", "alt", "data-orig"],
+const ATTRS = { a: ["href"], img: ["src", "alt", "data-orig", "data-w"],
                 span: ["data-sz", "data-c", "data-var"] };
 
 export function escapeHtml(s) {
@@ -339,6 +339,15 @@ function inlineStyles(html, accent, ink, dim, line, dark = false, accent2 = acce
       return bits.length ? `<span style="${bits.join(";")}">` : m;
     }
 
+    /* a picture made smaller is centered at a fixed width (width= for
+       Outlook, which ignores percentages), never wider than the column */
+    if (name === "img") {
+      const w = /data-w="(sm|md|lg)"/.exec(rest);
+      if (w) {
+        const px = { sm: 176, md: 264, lg: 396 }[w[1]];
+        return `<${tag}${rest} width="${px}" style="width:${px}px;max-width:100%;height:auto;display:block;border:0;margin:0 auto 16px">`;
+      }
+    }
     const style = S[name];
     if (!style) return m;
     return `<${tag}${rest} style="${style}">`;
@@ -423,7 +432,10 @@ export function render(body, opts = {}) {
      of the places this will be read, unlawful. */
   const unsub = opts.unsubscribeUrl
     ? `<a href="${escapeHtml(opts.unsubscribeUrl)}" style="color:${dim};text-decoration:underline">` +
-      "Unsubscribe</a>"
+      "Unsubscribe</a>" +
+      /* a test says so: its link is built never to remove anybody (2026-10-05:
+         pressing it in a test, then seeing "unsubscribed", read as broken) */
+      (opts.test ? ` <span style="color:${dim}">(inactive in this test — it works in the real email)</span>` : "")
     : "";
 
   /* MSO CONDITIONALS. Outlook desktop is a Word rendering engine wearing a

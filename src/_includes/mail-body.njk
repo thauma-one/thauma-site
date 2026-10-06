@@ -356,8 +356,6 @@
           <button type="button" data-cmd="image" title="Picture in the message">&#128247;</button>
           <button type="button" data-cmd="editimage" disabled data-i18n-attr="title:pe.edit, aria-label:pe.edit" title="Edit photo" aria-label="Edit photo">&#9998;</button>
           <button type="button" data-tool="rule" title="Divider">&mdash;</button>
-          <button type="button" data-cmd="variable" aria-expanded="false" aria-controls="cpVarRow"
-                  data-i18n-attr="title:ml.cpVar, aria-label:ml.cpVar" title="Their name" aria-label="Their name">&#128100;</button>
         </div>
 
         {#- One row at a time opens here, under the toolbar. -#}
@@ -387,7 +385,18 @@
           <button type="button" class="ghost-btn" id="cpLinkApply" data-i18n="ml.cpLinkApply">Link</button>
           <button type="button" class="ghost-btn" id="cpLinkRemove" data-i18n="ml.cpLinkRemove" hidden>Remove link</button>
         </div>
-        <div class="cp-row" id="cpVarRow" hidden>
+        {#- A picture's width, shown while a picture is selected (2026-10-05). -#}
+        <div class="cp-row" id="cpImgRow" hidden role="group" data-i18n-attr="aria-label:ml.cpImgSize" aria-label="Picture size">
+          <span class="cp-legend-label" data-i18n="ml.cpImgSize">Picture size</span>
+          <button type="button" data-w="sm" data-i18n="ml.cpImgSm">Small</button>
+          <button type="button" data-w="md" data-i18n="ml.cpImgMd">Medium</button>
+          <button type="button" data-w="lg" data-i18n="ml.cpImgLg">Large</button>
+          <button type="button" data-w="" data-i18n="ml.cpImgFull">Full width</button>
+        </div>
+        {#- THE VARIABLES, as a legend that is always there (2026-10-05, Chase:
+           "The composer needs a legend for the variables"). -#}
+        <div class="cp-row cp-legend" id="cpVarRow">
+          <span class="cp-legend-label" data-i18n="ml.cpVarLegend">Personal touches</span>
           <button type="button" class="ghost-btn" data-var="first_name" data-i18n="ml.cpVarFirst">First name</button>
           <button type="button" class="ghost-btn" data-var="name" data-i18n="ml.cpVarFull">Full name</button>
         </div>

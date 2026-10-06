@@ -225,7 +225,12 @@ export function createEditor(opts) {
         addAttributes() {
           return { ...this.parent?.(), orig: { default: null,
             parseHTML: (el) => el.getAttribute("data-orig"),
-            renderHTML: (a) => (a.orig ? { "data-orig": a.orig } : {}) } };
+            renderHTML: (a) => (a.orig ? { "data-orig": a.orig } : {}) },
+            /* how wide it shows (2026-10-05, Chase: "Can we add ways to
+               resize the photos?"): sm / md / lg, or full width when unset */
+            w: { default: null,
+              parseHTML: (el) => (["sm", "md", "lg"].includes(el.getAttribute("data-w")) ? el.getAttribute("data-w") : null),
+              renderHTML: (a) => (a.w ? { "data-w": a.w } : {}) } };
         },
       }).configure({ inline: false, allowBase64: false }),
       Tone,

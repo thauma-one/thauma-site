@@ -349,7 +349,6 @@ await check("a name chip saves as a variable the sanitiser keeps", async () => {
   const { editor, D, w } = ctx;
   const press = (el) => el.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
   editor.chain().focus().clearContent().insertContent("Hi ").run();
-  press(D.querySelector('.cp-tools [data-cmd="variable"]'));
   press(D.querySelector('#cpVarRow [data-var="first_name"]'));
   const html = editor.getHTML();
   assert(/<span data-var="first_name"[^>]*>[^<]+<\/span>/.test(html) && !/data-fallback/.test(html),
