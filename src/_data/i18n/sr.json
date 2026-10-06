@@ -464,6 +464,9 @@
     "cuestack_song_funk": "Пухачи",
     "cuestack_song_funk_line": "Функ с пухачком секцијом",
     "cuestack_song_synth": "Пуни гас",
-    "cuestack_song_synth_line": "Ведри синтпоп"
+    "cuestack_song_synth_line": "Ведри синтпоп",
+    "jukebox_label": "Џубокс",
+    "jukebox_theme": "Тема аркаде",
+    "jukebox_close": "Затвори"
   }
 }

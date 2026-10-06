@@ -464,6 +464,9 @@
     "cuestack_song_funk": "Pihala",
     "cuestack_song_funk_line": "Funk s pihalno sekcijo",
     "cuestack_song_synth": "Polni plin",
-    "cuestack_song_synth_line": "Vedri sintpop"
+    "cuestack_song_synth_line": "Vedri sintpop",
+    "jukebox_label": "Džuboks",
+    "jukebox_theme": "Tema arkade",
+    "jukebox_close": "Zapri"
   }
 }

@@ -642,6 +642,9 @@
     toggle: function () { set(!on); if (on) this.sfx('coin'); },
     set: set,
     onChange: function (fn) { listeners.push(fn); },
+    /* for the jukebox: a tune's tempo, and what is playing */
+    bpm: function (name) { return TUNES[name] ? TUNES[name].bpm : 0; },
+    now: function () { return want; },
     music: function (name) {
       if (name === want && playing === name) return;
       want = name || null;

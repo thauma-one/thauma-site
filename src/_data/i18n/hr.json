@@ -464,6 +464,9 @@
     "cuestack_song_funk": "Puhači",
     "cuestack_song_funk_line": "Funk s puhačkom sekcijom",
     "cuestack_song_synth": "Puni gas",
-    "cuestack_song_synth_line": "Vedri sintpop"
+    "cuestack_song_synth_line": "Vedri sintpop",
+    "jukebox_label": "Džuboks",
+    "jukebox_theme": "Tema arkade",
+    "jukebox_close": "Zatvori"
   }
 }

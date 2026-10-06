@@ -464,6 +464,9 @@
     "cuestack_song_funk": "Horn Line",
     "cuestack_song_funk_line": "Funk with a horn section",
     "cuestack_song_synth": "Overdrive",
-    "cuestack_song_synth_line": "Bright synth pop"
+    "cuestack_song_synth_line": "Bright synth pop",
+    "jukebox_label": "Jukebox",
+    "jukebox_theme": "Arcade theme",
+    "jukebox_close": "Close"
   }
 }
