@@ -135,8 +135,8 @@
           if (n.state === 'wait' && (beat - n.beat) * SPB > D.win[2]) miss(n);
           if (n.state === 'hold') {
             if (!held[n.lane]) { n.state = 'gone'; breakStreak(); }
-            else if (beat >= n.beat + n.len) { n.state = 'done'; score += 20; ctx.score(score); fire(n.lane); }
-            else { score += dt * 10; }
+            else if (beat >= n.beat + n.len) { n.state = 'done'; score += 40; ctx.score(score); fire(n.lane); }
+            else { score += dt * 30; }
           }
         });
         notes = notes.filter(function (n) { return n.state === 'wait' || n.state === 'hold' || (beat - n.beat) < 2; });
@@ -175,8 +175,9 @@
         combo++; if (combo > bestCombo) bestCombo = combo;
         var mult = combo >= 50 ? 4 : combo >= 25 ? 3 : combo >= 10 ? 2 : 1;
         if (combo === 10 || combo === 25 || combo === 50 || combo === 100 || (combo > 100 && combo % 50 === 0)) milestone(combo);
-        /* round 4: the same pace as the other games (was 300/120, ×4) */
-        score += (perfect ? 5 : 2) * mult;
+        /* round 8 (Chase, 2026-10-06: "the scoring needs elevated"): 12 a
+           perfect, 6 a good (were 5 and 2), times the streak multiplier */
+        score += (perfect ? 12 : 6) * mult;
         house = Math.min(1, house + .02);
         judge = { text: words(perfect ? 'cuestack_perfect' : 'cuestack_good'), col: perfect ? '#5CF2C4' : '#FFB547', t: .45 };
         ctx.sfx(perfect ? 'perfect' : 'good');
@@ -191,6 +192,7 @@
          Losing a long one flashes red. */
       function milestone(n) {
         burst = { n: n, t: 1.2, mult: n >= 50 ? 4 : n >= 25 ? 3 : 2 };
+        score += n * 10;                         /* a bonus for the streak itself */
         ctx.sfx('combo'); ctx.sfx('cheer'); ctx.shake(n >= 50 ? 6 : 3);
         fired = [1, 1, 1, 1];
         if (n >= 100) for (var i = 0; i < 80; i++) confetti.push({ x: Math.random() * W, y: -Math.random() * 200, vy: rnd(80, 180), vx: rnd(-30, 30), r: rnd(0, 6), c: COLS[i % 4], life: 4 });
