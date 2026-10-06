@@ -18,6 +18,12 @@
      a hit, three times) · ENCORE (the ball three times the size, going
      straight through)
 
+   ROUND 7 (Chase, 2026-10-05): small bricks and a lot more of them (12
+   across, 7 to 14 rows), each row a piece of stage gear drawn to fill its
+   brick exactly; the wild powers cut down (see wild()); capsules from 5%
+   of bricks, the helpers three times as likely; and INERTIA — the fader's
+   movement carries into the ball.
+
    The stick (play.js): drag the fader under the play area on a phone,
    ← → on a desktop. Space (or a tap) serves.
    ===================================================================== */
@@ -26,10 +32,16 @@
   var A = window.ThaumaArcade;
   if (!A) return;
 
-  var W = 360, BW = 42, BH = 20, COLS = 8, R = 5;
+  /* small bricks, many of them (round 7, Chase: "We should make the blocks
+     smaller and add a LOT more"): 12 across, up to 14 rows */
+  var W = 360, BW = 28, BH = 13, COLS = 12, GAP = 3, R = 5;
+  /* each row is a piece of stage gear, drawn to fill exactly its brick (the
+     hit box is the brick; round 7: "Maybe we just make the bricks in the
+     shape of different stage elements") */
+  var KINDS = ['led', 'par', 'cab', 'amp', 'console'];
   var WILD = ['pyro', 'laser', 'confetti', 'bass', 'encore'];
   /* what a capsule can hold: the two helpers more often than the wild five */
-  var DROPS = ['wide', 'wide', 'multi', 'multi', 'pyro', 'laser', 'confetti', 'bass', 'encore'];
+  var DROPS = ['wide', 'wide', 'wide', 'multi', 'multi', 'multi', 'pyro', 'laser', 'confetti', 'bass', 'encore'];
   var DROPCOL = { wide: '#5CF2C4', multi: '#2FD8FF', pyro: '#FF5A6E', laser: '#FF4FD8', confetti: '#FFD34A', bass: '#9B7BFF', encore: '#FFB547' };
 
   function rnd(a, b) { return a + Math.random() * (b - a); }
@@ -45,29 +57,31 @@
     create: function (ctx) {
       var words = ctx.words, H = ctx.H, PY = H - 36;
       var bricks = [], balls = [], drops = [], fx = [], sparks = [], pops = [];
-      var pad = { x: W / 2, w: 74, wide: 0 }, lives = 3, level = 0, score = 0, time = 0, serveT = 1.2, wildT = 0, wildName = null;
+      var pad = { x: W / 2, w: 74, wide: 0, v: 0 }, lives = 3, level = 0, score = 0, time = 0, serveT = 1.2, wildT = 0, wildName = null;
 
       /* the wall, set by set: a pattern to clear (a full wall, a pyramid,
          a checkerboard, a heart, arches, stripes), more rows and more
          armor as the sets go */
       var PATTERNS = [
-        function (r, c) { return true; },
-        function (r, c) { return Math.abs(c - 3.5) <= r * .7 + .5; },
-        function (r, c) { return (r + c) % 2 === 0; },
-        function (r, c) { var x = (c - 3.5) / 3.6, y = (2.8 - r) / 3; return Math.pow(x * x + y * y - 1, 3) - x * x * y * y * y < 0; },
-        function (r, c) { return r < 2 || c % 3 !== 1; },
-        function (r, c) { return r % 2 === 0 || c === 0 || c === 7; }
+        function (u, v) { return true; },
+        function (u, v) { return Math.abs(u - .5) <= v * .5 + .06; },
+        function (u, v, r, c) { return (r + c) % 2 === 0; },
+        function (u, v) { var x = (u - .5) * 2.3, y = (.62 - v) * 2.3; return Math.pow(x * x + y * y - 1, 3) - x * x * y * y * y < 0; },
+        function (u, v, r, c) { return r < 2 || c % 4 !== 1; },
+        function (u, v, r, c) { return r % 2 === 0 || c === 0 || c === COLS - 1; },
+        function (u, v) { return Math.abs(Math.sin(u * Math.PI * 3)) > v * .8; }
       ];
       function nextLevel() {
         level++;
         bricks = [];
         /* whatever was still burning stops with the set: it must not clear the next one */
         fx = []; drops = []; balls.forEach(function (b) { b.big = false; });
-        var rows = Math.min(8, 4 + Math.floor(level / 2)), pat = PATTERNS[(level - 1) % PATTERNS.length];
+        var rows = Math.min(14, 7 + Math.floor(level / 2) * 2), pat = PATTERNS[(level - 1) % PATTERNS.length];
+        var left = (W - COLS * BW) / 2;
         for (var r = 0; r < rows; r++) for (var c = 0; c < COLS; c++) {
-          if (!pat(r, c)) continue;
-          var armor = level > 1 && Math.random() < Math.min(.3, .06 * level) ? (level > 3 && Math.random() < .3 ? 3 : 2) : 1;
-          bricks.push({ x: 12 + c * BW + BW / 2 - 6, y: 96 + r * (BH + 4), hp: armor, max: armor, row: r, hitT: -9 });
+          if (!pat(c / (COLS - 1), r / Math.max(1, rows - 1), r, c)) continue;
+          var armor = level > 1 && Math.random() < Math.min(.22, .05 * level) ? (level > 3 && Math.random() < .3 ? 3 : 2) : 1;
+          bricks.push({ x: left + c * BW + BW / 2, y: 92 + r * (BH + GAP), hp: armor, max: armor, row: r, hitT: -9, kind: KINDS[(r + level) % KINDS.length] });
         }
         if (!bricks.length) return nextLevel();
         balls = []; serve();
@@ -79,12 +93,12 @@
       /* --------------------------------------------------- the letters */
       function hit(br, b) {
         br.hp--; br.hitT = time;
-        score += 10; ctx.sfx(br.hp > 0 ? 'wall' : 'good');
+        score += 4; ctx.sfx(br.hp > 0 ? 'wall' : 'good');
         if (br.hp <= 0) {
-          br.dead = true; score += 10 * br.max;
+          br.dead = true; score += 4 * br.max;
           for (var i = 0; i < 8; i++) sparks.push({ x: br.x, y: br.y, vx: rnd(-120, 120), vy: rnd(-120, 60), life: .45, c: colorOf(br) });
           /* a capsule, now and then: catch it with the fader */
-          if (Math.random() < .13) drops.push({ x: br.x, y: br.y, kind: DROPS[Math.floor(Math.random() * DROPS.length)] });
+          if (Math.random() < .05) drops.push({ x: br.x, y: br.y, kind: DROPS[Math.floor(Math.random() * DROPS.length)] });
         }
         ctx.score(score);
       }
@@ -97,12 +111,23 @@
         ctx.sfx('boom'); ctx.shake(8);
         ctx.say('[PYRO] ' + words('strike_' + wildName), { mood: 'good' });
         ctx.quip('jokes_strike_wild', { mood: 'good', force: false });
-        if (wildName === 'pyro') for (var c = 0; c < 5; c++) fx.push({ kind: 'pyro', x: 30 + c * 75 + rnd(-10, 10), t: -c * .12 });
-        /* two beams, a narrower sweep, six bricks each (round 6: "too powerful … it destroys everything for multiple stages") */
-        if (wildName === 'laser') for (var k = 0; k < 2; k++) fx.push({ kind: 'laser', t: -k * .3, dir: k % 2 ? 1 : -1, y0: 110 + k * 60, left: 6 });
-        if (wildName === 'confetti') for (var j = 0; j < 24; j++) { var a = rnd(-1.2, 1.2); balls.push({ x: pad.x, y: PY - 14, vx: Math.sin(a) * 380, vy: -Math.cos(a) * 380, speed: 380, confetti: 6, hue: j * 15 }); }
+        /* BALANCED (round 7, Chase: "for those special power up like the
+           pyro and lasers, I like that they are stage elements, but they
+           are TOO strong. We need to balance the power ups better"):
+           PYRO   three jets, each burning at most four bricks from below
+           LASER  one beam, a narrow sweep, one hit each to at most eight
+           CONFETTI ten little balls for four seconds
+           BASS   one drop: a hit to the bottom three rows
+           ENCORE a ball twice the size, straight through, for five seconds */
+        if (wildName === 'pyro') {
+          var cols = [], cand = bricks.filter(function (br) { return !br.dead; }).map(function (br) { return br.x; });
+          for (var c = 0; c < 3 && cand.length; c++) { var x0 = cand[Math.floor(Math.random() * cand.length)]; cols.push(x0); cand = cand.filter(function (x) { return Math.abs(x - x0) > BW * 2; }); }
+          cols.forEach(function (x0, i) { fx.push({ kind: 'pyro', x: x0, t: -i * .15, left: 4 }); });
+        }
+        if (wildName === 'laser') fx.push({ kind: 'laser', t: 0, dir: Math.random() < .5 ? 1 : -1, y0: 100 + Math.random() * 80, left: 8 });
+        if (wildName === 'confetti') for (var j = 0; j < 10; j++) { var a = rnd(-1.1, 1.1); balls.push({ x: pad.x, y: PY - 14, vx: Math.sin(a) * 360, vy: -Math.cos(a) * 360, speed: 360, confetti: 4, hue: j * 36 }); }
         if (wildName === 'bass') fx.push({ kind: 'bass', t: 0, drops: 0 });
-        if (wildName === 'encore') balls.forEach(function (b) { b.big = 8; });
+        if (wildName === 'encore') balls.forEach(function (b) { b.big = 5; });
       }
       function runFx(dt) {
         fx.forEach(function (f) {
@@ -111,31 +136,33 @@
           if (f.kind === 'pyro') {
             /* a jet of flame up the column, burning what it touches */
             var top = H - f.t * 900;
-            bricks.forEach(function (br) { if (!br.dead && Math.abs(br.x - f.x) < 26 && br.y > top) { br.hp = 0; hitDead(br); } });
+            bricks.slice().sort(function (a, b) { return b.y - a.y; }).forEach(function (br) { if (!br.dead && f.left > 0 && Math.abs(br.x - f.x) < BW / 2 && br.y > top) { br.hp = 0; hitDead(br); f.left--; } });
             if (Math.random() < .6) sparks.push({ x: f.x + rnd(-14, 14), y: Math.max(top, 60), vx: rnd(-40, 40), vy: rnd(-80, 0), life: .5, c: Math.random() < .5 ? '#FFB547' : '#FF5A6E' });
           }
           if (f.kind === 'laser') {
-            var ang = f.dir * (-.3 + f.t * .5), x0 = f.dir > 0 ? 0 : W;
+            var ang = f.dir * (-.2 + f.t * .35), x0 = f.dir > 0 ? 0 : W;
             bricks.forEach(function (br) {
-              if (br.dead || f.left <= 0) return;
+              if (br.dead || f.left <= 0 || br.lasered) return;
               var y = f.y0 + Math.tan(ang) * (br.x - x0) * f.dir;
-              if (Math.abs(br.y - y) < 8) { br.hp = 0; hitDead(br); f.left--; }
+              if (Math.abs(br.y - y) < BH / 2) { br.lasered = true; br.hp--; br.hitT = time; if (br.hp <= 0) hitDead(br); f.left--; }
             });
             f.ang = ang;
           }
           if (f.kind === 'bass') {
             var n = Math.floor(f.t / .55);
-            if (n > f.drops && f.drops < 3) {
+            if (n >= f.drops && f.drops < 1) {
               f.drops++; ctx.shake(10); ctx.sfx('boom');
-              bricks.forEach(function (br) { if (!br.dead) { br.hp--; br.y += 6; if (br.hp <= 0) hitDead(br); } });
+              var low = bricks.filter(function (br) { return !br.dead; }).map(function (br) { return br.row; });
+              var maxRow = Math.max.apply(null, low.concat([0]));
+              bricks.forEach(function (br) { if (!br.dead && br.row > maxRow - 3) { br.hp--; br.hitT = time; if (br.hp <= 0) hitDead(br); } });
             }
           }
         });
-        fx = fx.filter(function (f) { return f.t < (f.kind === 'pyro' ? .9 : f.kind === 'laser' ? 1.2 : 1.8); });
+        fx = fx.filter(function (f) { return f.t < (f.kind === 'pyro' ? .9 : f.kind === 'laser' ? 1.2 : .7); });
       }
       function hitDead(br) {
         if (br.dead) return;
-        br.dead = true; score += 15; ctx.score(score);
+        br.dead = true; score += 6; ctx.score(score);
         for (var i = 0; i < 6; i++) sparks.push({ x: br.x, y: br.y, vx: rnd(-160, 160), vy: rnd(-160, 40), life: .5, c: colorOf(br) });
       }
 
@@ -147,7 +174,9 @@
         var s = ctx.stick();
         pad.wide = Math.max(0, pad.wide - dt);
         pad.w = pad.wide > 0 ? 120 : 74;
+        var was = pad.x;
         pad.x = clamp(pad.x + s * 520 * dt, pad.w / 2, W - pad.w / 2);
+        pad.v = dt > 0 ? (pad.x - was) / dt : 0;
         wildT = Math.max(0, wildT - dt);
         runFx(dt);
 
@@ -201,13 +230,19 @@
           var off = clamp((b.x - pad.x) / (pad.w / 2), -1, 1), a = off * 1.05;
           b.speed = Math.min(520, (b.speed || 255) * 1.008);   /* gentler (round 3: was ×1.012 to 620) */
           b.vx = Math.sin(a) * b.speed; b.vy = -Math.cos(a) * b.speed; b.y = PY - 5 - r;
+          /* INERTIA (round 7, Chase: "We should add inertia to them. It gives
+             more finesse control over the ball's speed"): the fader's own
+             movement carries into the ball sideways, and a swing adds pace */
+          b.vx += pad.v * .3;
+          var ia = clamp(Math.atan2(b.vx, -b.vy), -1.15, 1.15), boost = 1 + Math.min(.1, Math.abs(pad.v) / 520 * .1);
+          b.vx = Math.sin(ia) * b.speed * boost; b.vy = -Math.cos(ia) * b.speed * boost;
           ctx.sfx('hit');
         }
         /* the bricks */
         for (var i = 0; i < bricks.length; i++) {
           var br = bricks[i];
           if (br.dead) continue;
-          var hw = BW / 2 - 1 + r, hh = BH / 2 + r;
+          var hw = (BW - 2) / 2 + r, hh = BH / 2 + r;   /* exactly the drawn brick */
           var dx = b.x - br.x, dy = b.y - br.y;
           if (Math.abs(dx) < hw && Math.abs(dy) < hh) {
             hit(br, b);
@@ -297,21 +332,53 @@
         g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r);
         g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath();
       }
-      /* a brick is a lit LED tile: rounded, a highlight along its top, a
-         shade along its foot; the next letter you need breathes and glows */
+      /* a brick is a piece of stage gear, filling its box exactly:
+         LED tile (the pixel grid), PAR can (a lit lens at one end), speaker
+         cab (two cones), amp head (a row of knobs), console (fader caps);
+         an armored brick is a road case, a light per hit left */
       function brick(g, br) {
-        var x = br.x - BW / 2 + 1, y = br.y - BH / 2;
+        var w = BW - 2, x = br.x - w / 2, y = br.y - BH / 2;
         var col = colorOf(br), flash = time - br.hitT < .1;
-        g.fillStyle = flash ? '#fff' : br.max > 1 ? '#2b3242' : col;
-        round(g, x, y, BW - 2, BH, 4); g.fill();
+        if (flash) { g.fillStyle = '#fff'; round(g, x, y, w, BH, 3); g.fill(); return; }
         if (br.max > 1) {
-          /* armor: a road case, its corners and a light per hit left */
-          g.strokeStyle = '#c9d1dc'; g.lineWidth = 1.5; round(g, x + 1, y + 1, BW - 4, BH - 2, 3); g.stroke();
-          for (var k = 0; k < br.hp; k++) { g.fillStyle = col; g.beginPath(); g.arc(br.x - (br.hp - 1) * 5 + k * 10, br.y, 3, 0, 7); g.fill(); }
-        } else {
-          g.fillStyle = 'rgba(255,255,255,.28)'; g.fillRect(x + 3, y + 2, BW - 8, 2);
-          g.fillStyle = 'rgba(0,0,0,.22)'; g.fillRect(x + 2, y + BH - 4, BW - 6, 3);
-          g.fillStyle = 'rgba(0,0,0,.18)'; for (var gx = x + 5; gx < x + BW - 4; gx += 5) g.fillRect(gx, y + 4, 1, BH - 8);
+          g.fillStyle = '#2b3242'; round(g, x, y, w, BH, 3); g.fill();
+          g.strokeStyle = '#c9d1dc'; g.lineWidth = 1.2; round(g, x + .6, y + .6, w - 1.2, BH - 1.2, 2.5); g.stroke();
+          g.fillStyle = '#c9d1dc'; [[x + 1.5, y + 1.5], [x + w - 1.5, y + 1.5], [x + 1.5, y + BH - 1.5], [x + w - 1.5, y + BH - 1.5]].forEach(function (q) { g.fillRect(q[0] - 1, q[1] - 1, 2, 2); });
+          for (var k = 0; k < br.hp; k++) { g.fillStyle = col; g.beginPath(); g.arc(br.x - (br.hp - 1) * 3.5 + k * 7, br.y, 2.2, 0, 7); g.fill(); }
+          return;
+        }
+        switch (br.kind) {
+          case 'par':
+            g.fillStyle = '#1b2130'; round(g, x, y, w, BH, 3); g.fill();
+            g.fillStyle = '#2b3242'; g.fillRect(x + 2, y + 2, w - BH - 2, BH - 4);
+            g.fillStyle = col; g.shadowColor = col; g.shadowBlur = 8; g.beginPath(); g.arc(x + w - BH / 2, br.y, BH / 2 - 1.5, 0, 7); g.fill(); g.shadowBlur = 0;
+            g.fillStyle = 'rgba(255,255,255,.6)'; g.beginPath(); g.arc(x + w - BH / 2 - 1.5, br.y - 1.5, 1.4, 0, 7); g.fill();
+            break;
+          case 'cab':
+            g.fillStyle = '#151922'; round(g, x, y, w, BH, 2); g.fill();
+            g.strokeStyle = col; g.lineWidth = 1.2; round(g, x + .6, y + .6, w - 1.2, BH - 1.2, 2); g.stroke();
+            g.fillStyle = '#05070b'; [x + w * .3, x + w * .7].forEach(function (cx) { g.beginPath(); g.arc(cx, br.y, BH / 2 - 2.2, 0, 7); g.fill(); });
+            g.fillStyle = col; [x + w * .3, x + w * .7].forEach(function (cx) { g.beginPath(); g.arc(cx, br.y, 1.6, 0, 7); g.fill(); });
+            break;
+          case 'amp':
+            g.fillStyle = col; round(g, x, y, w, BH, 2); g.fill();
+            g.fillStyle = 'rgba(0,0,0,.45)'; g.fillRect(x + 1.5, y + BH * .52, w - 3, BH * .4);
+            g.fillStyle = '#e9edf3'; for (var kx = x + 4; kx < x + w - 2; kx += 4.4) { g.beginPath(); g.arc(kx, y + BH * .72, 1.1, 0, 7); g.fill(); }
+            g.fillStyle = 'rgba(255,255,255,.3)'; g.fillRect(x + 2, y + 1.5, w - 4, 1.5);
+            break;
+          case 'console':
+            g.fillStyle = '#1b2130'; round(g, x, y, w, BH, 2); g.fill();
+            for (var fx2 = 0; fx2 < 5; fx2++) {
+              var cx2 = x + 3.5 + fx2 * (w - 7) / 4, up = (Math.sin(br.x * .3 + fx2 * 1.7) * .5 + .5) * (BH - 6);
+              g.fillStyle = '#05070b'; g.fillRect(cx2 - .5, y + 2, 1, BH - 4);
+              g.fillStyle = col; g.fillRect(cx2 - 2, y + 2 + up, 4, 2.4);
+            }
+            break;
+          default:
+            g.fillStyle = col; round(g, x, y, w, BH, 3); g.fill();
+            g.fillStyle = 'rgba(255,255,255,.28)'; g.fillRect(x + 2, y + 1.5, w - 4, 1.5);
+            g.fillStyle = 'rgba(0,0,0,.2)'; for (var gx = x + 3.5; gx < x + w - 2; gx += 3.5) g.fillRect(gx, y + 2, .8, BH - 4);
+            for (var gy = y + 3.5; gy < y + BH - 2; gy += 3.5) g.fillRect(x + 1, gy, w - 2, .8);
         }
       }
       function drawFx(g, f) {
@@ -319,15 +386,16 @@
         if (f.kind === 'pyro') {
           var top = H - f.t * 900;
           var gr = g.createLinearGradient(0, H, 0, Math.max(60, top));
+          /* a narrower jet, a brick wide */
           gr.addColorStop(0, 'rgba(255,90,40,.9)'); gr.addColorStop(.5, 'rgba(255,181,71,.7)'); gr.addColorStop(1, 'rgba(255,240,200,0)');
-          g.fillStyle = gr; g.beginPath(); g.moveTo(f.x - 14, H); g.quadraticCurveTo(f.x + Math.sin(time * 30) * 10, (H + top) / 2, f.x, Math.max(60, top)); g.quadraticCurveTo(f.x - Math.sin(time * 27) * 10, (H + top) / 2, f.x + 14, H); g.fill();
+          g.fillStyle = gr; g.beginPath(); g.moveTo(f.x - 9, H); g.quadraticCurveTo(f.x + Math.sin(time * 30) * 6, (H + top) / 2, f.x, Math.max(60, top)); g.quadraticCurveTo(f.x - Math.sin(time * 27) * 6, (H + top) / 2, f.x + 9, H); g.fill();
         }
         if (f.kind === 'laser' && f.ang != null) {
           var x0 = f.dir > 0 ? 0 : W, x1 = f.dir > 0 ? W : 0, y1 = f.y0 + Math.tan(f.ang) * W;
           g.strokeStyle = ['#5CF2C4', '#FF4FD8', '#2FD8FF', '#FFB547'][Math.floor(f.y0 / 50) % 4]; g.lineWidth = 3; g.shadowColor = g.strokeStyle; g.shadowBlur = 14;
           g.beginPath(); g.moveTo(x0, f.y0); g.lineTo(x1, y1); g.stroke(); g.shadowBlur = 0;
         }
-        if (f.kind === 'bass') { g.strokeStyle = 'rgba(155,123,255,' + Math.max(0, .6 - (f.t % .55)) + ')'; g.lineWidth = 3; g.beginPath(); g.arc(W / 2, H, (f.t % .55) * 700, Math.PI, 0); g.stroke(); }
+        if (f.kind === 'bass') { g.strokeStyle = 'rgba(155,123,255,' + Math.max(0, .6 - f.t).toFixed(2) + ')'; g.lineWidth = 3; g.beginPath(); g.arc(W / 2, H, f.t * 900, Math.PI, 0); g.stroke(); }
       }
 
       return {
