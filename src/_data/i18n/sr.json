@@ -265,7 +265,7 @@
     "initials_ok": "Спреми",
     "over_title": "Крај игре",
     "again_label": "Поновно",
-    "menu_label": "Изборник",
+    "menu_label": "Аркада",
     "score_label": "Бодови",
     "loadout_title": "Load Out",
     "loadout_line": "Сложи кофере. Пази на нагиб.",
@@ -467,6 +467,7 @@
     "cuestack_song_synth_line": "Ведри синтпоп",
     "jukebox_label": "Џубокс",
     "jukebox_theme": "Тема аркаде",
-    "jukebox_close": "Затвори"
+    "jukebox_close": "Затвори",
+    "game_menu_label": "Изборник игре"
   }
 }

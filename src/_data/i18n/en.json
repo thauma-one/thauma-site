@@ -265,7 +265,7 @@
     "initials_ok": "Save",
     "over_title": "Game over",
     "again_label": "Again",
-    "menu_label": "Menu",
+    "menu_label": "Arcade",
     "score_label": "Score",
     "loadout_title": "Load Out",
     "loadout_line": "Stack the cases. Mind the lean.",
@@ -467,6 +467,7 @@
     "cuestack_song_synth_line": "Bright synth pop",
     "jukebox_label": "Jukebox",
     "jukebox_theme": "Arcade theme",
-    "jukebox_close": "Close"
+    "jukebox_close": "Close",
+    "game_menu_label": "Game menu"
   }
 }

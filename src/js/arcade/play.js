@@ -152,6 +152,9 @@
 
     /* ---- input ---- */
     var held = { left: false, right: false, up: false, down: false, go: false, l0: false, l1: false, l2: false, l3: false };
+    /* a game that opens on its own choices (a mode, a song, a performer) can
+       be taken back to them from the pause card and the game-over card */
+    var hasMenu = false;
     var paused = false, over = false, saved = false, run = null, raf = 0, last = 0, shakeT = 0, shakeA = 0;
     var readyUntil = 0;
     function live() { return !paused && !over && run && performance.now() >= readyUntil; }
@@ -375,7 +378,7 @@
          to four cards side by side, each { title, line, key, col }. Drawn
          the same in every game; cardAt(x, y) says which one a tap hit. */
       /* { heading, items: [{ title, line, col }], start, pick(i) } */
-      menu: function (o) { menu = { heading: o.heading, items: o.items, sel: o.start || 0, pick: o.pick }; },
+      menu: function (o) { hasMenu = true; menu = { heading: o.heading, items: o.items, sel: o.start || 0, pick: o.pick }; },
       cards: function (g, heading, list, t, sel) {
         var n = list.length, gap = 10, cw = Math.min(150, (W - 28 - gap * (n - 1)) / n), ch = Math.min(230, H * .42);
         var x0 = (W - (cw * n + gap * (n - 1))) / 2, y0 = H / 2 - ch / 2;
@@ -490,6 +493,7 @@
           '<h3>' + esc(w('paused_label')) + '</h3>' +
           '<div class="arc-final is-small"><b>' + score + '</b><span>' + esc(w('score_label')) + '</span></div>' +
           '<div class="arc-btns"><button type="button" class="arc-btn is-main" data-act="resume">' + esc(w('resume_label')) + '</button>' +
+          gameMenuBtn() +
           '<button type="button" class="arc-btn" data-act="menu">' + esc(w('menu_label')) + '</button></div></div>';
         overEl.querySelector('[data-act=resume]').focus({ preventScroll: true });
       } else { overEl.hidden = true; overEl.innerHTML = ''; last = performance.now(); }
@@ -515,6 +519,7 @@
         '<div class="arc-final"><b>' + score + '</b>' + (isBest ? '<span>' + esc(w('newbest_label')) + '</span>' : '') + '</div>' +
         '<div class="arc-initials" hidden></div><ol class="arc-board"></ol>' +
         '<div class="arc-btns"><button type="button" class="arc-btn is-main" data-act="again">' + esc(w('again_label')) + '</button>' +
+        gameMenuBtn() +
         '<button type="button" class="arc-btn" data-act="menu">' + esc(w('menu_label')) + '</button></div></div>';
       var boardEl = overEl.querySelector('.arc-board');
       /* the card's buttons wake up with the lock, so the pause reads as meant */
@@ -593,7 +598,12 @@
       if (b.dataset.act === 'again') again();
       else if (b.dataset.act === 'menu') leave();
       else if (b.dataset.act === 'resume') togglePause();
+      else if (b.dataset.act === 'gamemenu') { var S = snd(); if (S) S.duck(false); start(true); }
     });
+    /* WHERE TO GO from a card (Chase, 2026-10-06: "we need the ability to
+       navigate to the arcade menu and the main menu of the game if it has
+       one"): the game's own first choice, and the arcade */
+    function gameMenuBtn() { return hasMenu ? '<button type="button" class="arc-btn" data-act="gamemenu">' + esc(w('game_menu_label')) + '</button>' : ''; }
 
     function leave() {
       cancelAnimationFrame(raf);

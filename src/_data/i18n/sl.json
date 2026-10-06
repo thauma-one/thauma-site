@@ -265,7 +265,7 @@
     "initials_ok": "Shrani",
     "over_title": "Konec igre",
     "again_label": "Znova",
-    "menu_label": "Meni",
+    "menu_label": "Arkada",
     "score_label": "Točke",
     "loadout_title": "Load Out",
     "loadout_line": "Zloži kovčke. Pazi na nagib.",
@@ -467,6 +467,7 @@
     "cuestack_song_synth_line": "Vedri sintpop",
     "jukebox_label": "Džuboks",
     "jukebox_theme": "Tema arkade",
-    "jukebox_close": "Zapri"
+    "jukebox_close": "Zapri",
+    "game_menu_label": "Meni igre"
   }
 }

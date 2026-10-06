@@ -265,7 +265,7 @@
     "initials_ok": "Spremi",
     "over_title": "Kraj igre",
     "again_label": "Ponovno",
-    "menu_label": "Izbornik",
+    "menu_label": "Arkada",
     "score_label": "Bodovi",
     "loadout_title": "Load Out",
     "loadout_line": "Složi kofere. Pazi na nagib.",
@@ -467,6 +467,7 @@
     "cuestack_song_synth_line": "Vedri sintpop",
     "jukebox_label": "Džuboks",
     "jukebox_theme": "Tema arkade",
-    "jukebox_close": "Zatvori"
+    "jukebox_close": "Zatvori",
+    "game_menu_label": "Izbornik igre"
   }
 }
