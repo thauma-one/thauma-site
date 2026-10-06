@@ -3285,3 +3285,88 @@ DELETE FROM partner_site_saves
                    WHERE partner_id = :partner_id AND kind = :kind
                    ORDER BY created_at DESC LIMIT :keep);
 
+
+
+-- ===================================================================
+-- What became of a sent mailing (Chase, 2026-10-05: "how many messages
+-- were sent and how many people have seen/opened the email … How do we
+-- view the other statistics? And how do we resend an email if someone
+-- says they didn't receive it?")
+-- ===================================================================
+
+-- name: mailing_sent_stats
+-- The Sent card's numbers, for every sent mailing of the ministry at once —
+-- polled while the Mail page is open, so it stays live without a reload.
+SELECT m.id, m.sent_count,
+       (SELECT COUNT(*) FROM mailing_recipients r WHERE r.mailing_id = m.id AND r.status = 'bounced') AS bounced,
+       (SELECT COUNT(*) FROM mailing_recipients r WHERE r.mailing_id = m.id AND r.opened_at IS NOT NULL) AS opened,
+       (SELECT COUNT(*) FROM mailing_recipients r WHERE r.mailing_id = m.id AND r.clicked_at IS NOT NULL) AS clicked
+  FROM mailings m
+  JOIN mailing_lists l ON l.id = m.list_id
+ WHERE l.partner_id IS :partner_id AND m.status = 'sent'
+ ORDER BY m.finished_at DESC
+ LIMIT 200;
+
+-- name: mailing_recipients_detail
+-- Everyone one mailing went to, and what became of their copy. The address
+-- is the one it went to; the name and status are the subscriber's now.
+SELECT r.subscriber_id, r.email, r.status, r.error, r.opened_at, r.clicked_at,
+       r.click_count, r.updated_at, s.name, s.status AS subscriber_status
+  FROM mailing_recipients r
+  JOIN mailings m ON m.id = r.mailing_id
+  JOIN mailing_lists l ON l.id = m.list_id
+  LEFT JOIN subscribers s ON s.id = r.subscriber_id
+ WHERE r.mailing_id = :mailing_id AND l.partner_id IS :partner_id
+ ORDER BY r.email
+ LIMIT 1000;
+
+-- name: mailing_links_detail
+-- Which links in it were clicked, most first.
+SELECT k.url, k.label, k.clicks
+  FROM mailing_links k
+  JOIN mailings m ON m.id = k.mailing_id
+  JOIN mailing_lists l ON l.id = m.list_id
+ WHERE k.mailing_id = :mailing_id AND l.partner_id IS :partner_id
+ ORDER BY k.clicks DESC, k.url
+ LIMIT 200;
+
+-- name: mailing_recipient_for_resend
+-- One person's copy, to send again: only while they are still subscribed.
+SELECT r.subscriber_id, s.id, s.email, s.name, s.status
+  FROM mailing_recipients r
+  JOIN mailings m ON m.id = r.mailing_id
+  JOIN mailing_lists l ON l.id = m.list_id
+  JOIN subscribers s ON s.id = r.subscriber_id
+ WHERE r.mailing_id = :mailing_id AND r.subscriber_id = :subscriber_id
+   AND l.partner_id IS :partner_id;
+
+-- name: mailing_remove_recipients
+-- Taking a sent mailing away (from the Sent list and the public archive):
+-- its record of who it went to first.
+DELETE FROM mailing_recipients
+ WHERE mailing_id IN (SELECT m.id FROM mailings m JOIN mailing_lists l ON l.id = m.list_id
+                       WHERE m.id = :id AND l.partner_id IS :partner_id AND m.status <> 'sending');
+
+-- name: mailing_remove_links
+DELETE FROM mailing_links
+ WHERE mailing_id IN (SELECT m.id FROM mailings m JOIN mailing_lists l ON l.id = m.list_id
+                       WHERE m.id = :id AND l.partner_id IS :partner_id AND m.status <> 'sending');
+
+-- name: mailing_remove_sent
+-- Then the mailing itself: gone from Sent and from the archive. Never one
+-- that is going out this moment.
+DELETE FROM mailings
+ WHERE id = :id AND status IN ('sent', 'failed')
+   AND list_id IN (SELECT id FROM mailing_lists WHERE partner_id IS :partner_id);
+
+-- name: mail_bounces_unseen
+-- Home's warning: copies that bounced since the ministry last cleared it (0051).
+SELECT COUNT(*) AS n, MAX(r.updated_at) AS latest
+  FROM mailing_recipients r
+  JOIN mailings m ON m.id = r.mailing_id
+  JOIN mailing_lists l ON l.id = m.list_id
+ WHERE l.partner_id = :partner_id AND r.status = 'bounced'
+   AND r.updated_at > COALESCE((SELECT mail_bounces_seen_at FROM partners WHERE id = :partner_id), '');
+
+-- name: mail_bounces_seen
+UPDATE partners SET mail_bounces_seen_at = :now WHERE id = :partner_id;

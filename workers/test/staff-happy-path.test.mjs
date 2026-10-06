@@ -1162,9 +1162,9 @@ await check("Home lists what is not finished and what is waiting for translation
   }
 });
 
-await check("Home only reads", async () => {
+await check("Home only reads, apart from clearing its bounce warning", async () => {
   const res = await worker.fetch(post("/api/staff-home", {}), env(makeDb()));
-  eq(res.status, 405, "status");
+  eq(res.status, 400, "an unknown action is refused");
 });
 
 await check("an admin NOT acting gets their own 403, not somebody's data", async () => {

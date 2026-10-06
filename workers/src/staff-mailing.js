@@ -913,6 +913,65 @@ const api = {
         return json({ ok: true, mailing: saved });
       }
 
+      /* ---- what became of a sent mailing (2026-10-05) ----
+         The Sent card's live numbers for every sent mailing; one mailing's
+         people and links; a copy sent again to one person; and taking a
+         sent mailing away — from Sent and from the public archive. */
+      if (body.action === "sent-stats") {
+        return json({ ok: true, stats: await db.query("mailing_sent_stats", { partner_id: partnerId }) });
+      }
+      if (body.action === "mailing-details") {
+        const mailing_id = clean(body.id, 60);
+        const [people, links] = await Promise.all([
+          db.query("mailing_recipients_detail", { mailing_id, partner_id: partnerId }),
+          db.query("mailing_links_detail", { mailing_id, partner_id: partnerId }),
+        ]);
+        return json({ ok: true, people, links });
+      }
+      if (body.action === "mailing-resend") {
+        /* THE SAME COPY, to one person who says it never came: their own
+           unsubscribe link, the same words and attachments. Only while they
+           are still subscribed — someone who left is not written to again. */
+        const mailing_id = clean(body.id, 60), subscriber_id = clean(body.subscriber_id, 60);
+        const m = await db.queryOne("mailing_one", { id: mailing_id, partner_id: partnerId });
+        if (!m || m.status !== "sent") return json({ error: "Only a sent mailing can be sent again." }, 404);
+        const sub = await db.queryOne("mailing_recipient_for_resend", { mailing_id, subscriber_id, partner_id: partnerId });
+        if (!sub) return json({ error: "That person was not on this mailing." }, 404);
+        if (sub.status !== "subscribed") return json({ error: `They are ${sub.status} now, so it was not sent again.` }, 409);
+        const list = await db.queryOne("mailing_list_one", { id: m.list_id, partner_id: partnerId });
+        if (!list) return json({ error: "No such list." }, 404);
+        const origin = siteOrigin(env, request);
+        const prepared = await buildMailing(db, env, { mailing: m, list, origin });
+        if (prepared.error) return json({ error: prepared.error }, 400);
+        const look = partnerId ? await db.queryOne("partner_settings", { partner_id: partnerId }) : null;
+        const theme = look ? { accent: look.embed_accent, accent2: lookFor(look).accent2, mode: look.embed_theme } : null;
+        const files = await loadAttachments(env, await db.query("mailing_attachments_for", { mailing_id }));
+        const archiveUrl = list.archive_public && m.slug
+          ? `${subscriberOrigin(env, request)}/archive/${s.partner ? s.partner.slug : "thauma"}/${list.slug}/${m.slug}`
+          : null;
+        const msg = await messageFor(env, { built: prepared.value, list, sub, origin, links: subscriberOrigin(env, request),
+                                            theme, archiveUrl, attachments: files });
+        const r = await sendMail(env, msg);
+        await db.query("mailing_recipient_result", {
+          mailing_id, subscriber_id, status: r.ok ? "sent" : "failed",
+          provider_id: r.id || null, error: r.ok ? null : String(r.error || "").slice(0, 300), now,
+        });
+        if (!r.ok) return json({ error: `It was not sent again: ${r.error || "the mail service refused it"}.` }, 502);
+        return json({ ok: true, to: sub.email });
+      }
+      if (body.action === "mailing-remove") {
+        /* Gone from Sent and from the archive, with its record of who it
+           went to and what was clicked. Its pictures stay in storage until
+           the daily sweep finds nothing names them (media-cleanup.js). */
+        const id = clean(body.id, 60);
+        const m = await db.queryOne("mailing_one", { id, partner_id: partnerId });
+        if (!m || (m.status !== "sent" && m.status !== "failed")) return json({ error: "Only a sent mailing can be removed here." }, 404);
+        await db.query("mailing_remove_recipients", { id, partner_id: partnerId });
+        await db.query("mailing_remove_links", { id, partner_id: partnerId });
+        await db.query("mailing_remove_sent", { id, partner_id: partnerId });
+        return json({ ok: true });
+      }
+
       if (body.action === "mailing-delete") {
         /* Its pictures and attachments go with it, unless something else
            uses them (media-cleanup.js re-checks). A draft has no undo once

@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "67f993e3ef6a78ae";
+export const SOURCE_DIGEST = "af4e2f5756045f48";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -395,6 +395,13 @@ LEFT JOIN users u ON u.id = e.logged_by
 WHERE e.contact_id = :contact_id
   AND e.partner_id = :partner_id
 ORDER BY (e.occurred_on IS NULL) DESC, e.occurred_on DESC, e.created_at DESC;`,
+  mail_bounces_seen: `UPDATE partners SET mail_bounces_seen_at = :now WHERE id = :partner_id;`,
+  mail_bounces_unseen: `SELECT COUNT(*) AS n, MAX(r.updated_at) AS latest
+  FROM mailing_recipients r
+  JOIN mailings m ON m.id = r.mailing_id
+  JOIN mailing_lists l ON l.id = m.list_id
+ WHERE l.partner_id = :partner_id AND r.status = 'bounced'
+   AND r.updated_at > COALESCE((SELECT mail_bounces_seen_at FROM partners WHERE id = :partner_id), '');`,
   mailing_attachment_add: `INSERT INTO mailing_attachments
   (id, mailing_id, filename, content_type, bytes, object_key, sort_order, created_at)
 VALUES (:id, :mailing_id, :filename, :content_type, :bytes, :object_key, :sort_order, :now);`,
@@ -411,6 +418,13 @@ WHERE id = :id AND partner_id IS :partner_id;`,
   mailing_link_add: `INSERT INTO mailing_links (id, mailing_id, url, clicks, created_at) VALUES (:id, :mailing_id, :url, 1, :now);`,
   mailing_link_count: `UPDATE mailing_links SET clicks = clicks + 1 WHERE id = :id;`,
   mailing_link_find: `SELECT id FROM mailing_links WHERE mailing_id = :mailing_id AND url = :url;`,
+  mailing_links_detail: `SELECT k.url, k.label, k.clicks
+  FROM mailing_links k
+  JOIN mailings m ON m.id = k.mailing_id
+  JOIN mailing_lists l ON l.id = m.list_id
+ WHERE k.mailing_id = :mailing_id AND l.partner_id IS :partner_id
+ ORDER BY k.clicks DESC, k.url
+ LIMIT 200;`,
   mailing_list_archive: `UPDATE mailing_lists
 SET archived_at = :now, updated_at = :now
 WHERE id = :id AND partner_id IS :partner_id;`,
@@ -473,11 +487,45 @@ WHERE id = :id AND partner_id IS :partner_id;`,
 VALUES (:mailing_id, :subscriber_id, :email, :status, :now)
 ON CONFLICT(mailing_id, subscriber_id) DO UPDATE SET
   status = excluded.status, updated_at = excluded.updated_at;`,
+  mailing_recipient_for_resend: `SELECT r.subscriber_id, s.id, s.email, s.name, s.status
+  FROM mailing_recipients r
+  JOIN mailings m ON m.id = r.mailing_id
+  JOIN mailing_lists l ON l.id = m.list_id
+  JOIN subscribers s ON s.id = r.subscriber_id
+ WHERE r.mailing_id = :mailing_id AND r.subscriber_id = :subscriber_id
+   AND l.partner_id IS :partner_id;`,
   mailing_recipient_result: `UPDATE mailing_recipients
 SET status = :status, provider_id = :provider_id, error = :error, updated_at = :now
 WHERE mailing_id = :mailing_id AND subscriber_id = :subscriber_id;`,
   mailing_recipients_clear_pending: `DELETE FROM mailing_recipients
 WHERE mailing_id = :mailing_id AND status = 'pending';`,
+  mailing_recipients_detail: `SELECT r.subscriber_id, r.email, r.status, r.error, r.opened_at, r.clicked_at,
+       r.click_count, r.updated_at, s.name, s.status AS subscriber_status
+  FROM mailing_recipients r
+  JOIN mailings m ON m.id = r.mailing_id
+  JOIN mailing_lists l ON l.id = m.list_id
+  LEFT JOIN subscribers s ON s.id = r.subscriber_id
+ WHERE r.mailing_id = :mailing_id AND l.partner_id IS :partner_id
+ ORDER BY r.email
+ LIMIT 1000;`,
+  mailing_remove_links: `DELETE FROM mailing_links
+ WHERE mailing_id IN (SELECT m.id FROM mailings m JOIN mailing_lists l ON l.id = m.list_id
+                       WHERE m.id = :id AND l.partner_id IS :partner_id AND m.status <> 'sending');`,
+  mailing_remove_recipients: `DELETE FROM mailing_recipients
+ WHERE mailing_id IN (SELECT m.id FROM mailings m JOIN mailing_lists l ON l.id = m.list_id
+                       WHERE m.id = :id AND l.partner_id IS :partner_id AND m.status <> 'sending');`,
+  mailing_remove_sent: `DELETE FROM mailings
+ WHERE id = :id AND status IN ('sent', 'failed')
+   AND list_id IN (SELECT id FROM mailing_lists WHERE partner_id IS :partner_id);`,
+  mailing_sent_stats: `SELECT m.id, m.sent_count,
+       (SELECT COUNT(*) FROM mailing_recipients r WHERE r.mailing_id = m.id AND r.status = 'bounced') AS bounced,
+       (SELECT COUNT(*) FROM mailing_recipients r WHERE r.mailing_id = m.id AND r.opened_at IS NOT NULL) AS opened,
+       (SELECT COUNT(*) FROM mailing_recipients r WHERE r.mailing_id = m.id AND r.clicked_at IS NOT NULL) AS clicked
+  FROM mailings m
+  JOIN mailing_lists l ON l.id = m.list_id
+ WHERE l.partner_id IS :partner_id AND m.status = 'sent'
+ ORDER BY m.finished_at DESC
+ LIMIT 200;`,
   mailing_start: `UPDATE mailings
 SET status = 'sending', started_at = :now, slug = :slug
 WHERE id = :id AND partner_id IS :partner_id AND status = 'draft';`,

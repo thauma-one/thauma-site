@@ -48,10 +48,20 @@ export default {
   async fetch(request, env) {
     const { db, user, me, partner, actor, denied } = await partnerFor(request, env);
     if (denied) return denied;
-    if (request.method !== "GET") {
-      return json({ error: "Method not allowed" }, 405, { Allow: "GET" });
-    }
     const partner_id = partner.id;
+    /* Clear the bounce warning (0051): bounces before now stop counting. */
+    if (request.method === "POST") {
+      const body = await request.json().catch(() => ({}));
+      if (body.action !== "clear-bounces") return json({ error: "Unknown action" }, 400);
+      await db.query("mail_bounces_seen", { partner_id, now: new Date().toISOString() });
+      return json({ ok: true });
+    }
+    if (request.method !== "GET") {
+      return json({ error: "Method not allowed" }, 405, { Allow: "GET, POST" });
+    }
+    /* Copies that bounced since the warning was last cleared. Tolerant: until
+       migration 0051 is applied the column is missing, and Home still loads. */
+    const bounces = await db.queryOne("mail_bounces_unseen", { partner_id }).catch(() => null);
 
     const [milestones, msText, prayer, prText, lists, languages] = await Promise.all([
       db.query("milestones_for_staff", { partner_id }),
@@ -93,6 +103,7 @@ export default {
       languages: on.map((l) => ({ code: l.code, name: l.name, native_name: l.native_name })),
       published: milestones.filter((m) => m.is_public).length,
       unfinished,
+      bounces: bounces ? { n: Number(bounces.n) || 0, latest: bounces.latest || null } : null,
       missing: {
         milestones: gaps(milestones, msTitles, codes),
         prayer: gaps(prayer, prTitles, codes),
