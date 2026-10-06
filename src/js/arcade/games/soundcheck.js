@@ -53,7 +53,7 @@
      a fader effect lasts. `v` is how much the computer wants it. */
   /* Round 4 (Chase, 2026-10-05: "Some of the power ups feel too similar or
      I didn't know what to do"): fourteen, each doing one clearly different
-     thing, each capsule labelled, each catch saying what it did. Gone: the
+     thing, each capsule labeled, each catch saying what it did. Gone: the
      ones that looked like another (tornado, banana, moon, count-in, sleepy,
      gain boost, haze, unplugged); BUTTERFINGERS is now ice, not a second
      Tiny fader. The trick balls are the five Chase asked for: fast,

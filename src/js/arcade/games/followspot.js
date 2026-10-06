@@ -57,7 +57,7 @@
     { key: 'youth', speed: 96, rate: 1, plats: [0, 1, 2, 3, 4], moves: ['hop', 'jump', 'flip', 'kneeslide', 'cartwheel', 'hide', 'climb', 'dive', 'worm', 'crawl', 'moonwalk', 'pose'], col: '#FF4FD8', skin: '#efc29b', hair: '#FFB547', size: 1, worth: 2 },
     { key: 'kid', speed: 118, rate: 1.25, plats: [0, 1, 2, 3, 4], moves: ['hop', 'jump', 'flip', 'cartwheel', 'hide', 'climb', 'worm', 'crawl', 'kneeslide', 'pose', 'dive'], col: '#FFB547', skin: '#f1c7a1', hair: '#8a4b24', size: .7, worth: 2.6 }
   ];
-  /* the acts: when each starts, the LED wall's colour, which moves unlock, the pace */
+  /* the acts: when each starts, the LED wall's color, which moves unlock, the pace */
   var ACTS = [
     { key: 'welcome', at: 0,  wall: [47, 216, 255],  moves: ['talk', 'pose', 'hop', 'jump', 'moonwalk', 'climb'], pace: .85 },
     { key: 'worship', at: 22, wall: [155, 123, 255], moves: ['talk', 'pose', 'hop', 'jump', 'moonwalk', 'climb', 'flip', 'kneeslide', 'cartwheel', 'hide'], pace: 1 },
@@ -258,7 +258,7 @@
       }
 
       /* where the light has to be: the middle of them, lower when they are low */
-      function centre() {
+      function center() {
         var s = who.size;
         if (p.act === 'surf') return { x: p.x, y: p.y - 6 };
         if (p.low) return { x: p.x, y: p.y - 9 * s };
@@ -286,7 +286,7 @@
         spot.r = Math.max(24, 38 - played * .05);
 
         /* on them: their middle inside the pool, with no leeway past its edge */
-        var c = centre(), on = Math.hypot(c.x - spot.x, c.y - spot.y) < spot.r - 2;
+        var c = center(), on = Math.hypot(c.x - spot.x, c.y - spot.y) < spot.r - 2;
         if (p.hidden) on = Math.abs(p.x - spot.x) < spot.r * .8 && Math.abs(p.y - 30 - spot.y) < spot.r * 1.5;
         gags(dt, on);
         if (on) {
@@ -404,7 +404,7 @@
           if (b && b.h) { g.strokeStyle = who.skin; g.lineWidth = 3; g.lineCap = 'round'; var wv = Math.sin(time * 9) * 4, by = PLATS[b.plat].y; g.beginPath(); g.moveTo(b.x + 10, by - b.h + 4); g.lineTo(b.x + 15 + wv, by - b.h - 8); g.stroke(); }
           return;
         }
-        var c = centre(), lit = Math.hypot(c.x - spot.x, c.y - spot.y) < spot.r + 6;
+        var c = center(), lit = Math.hypot(c.x - spot.x, c.y - spot.y) < spot.r + 6;
         var s = who.size, facing = p.act === 'moonwalk' ? -p.dir : p.dir;
         g.save(); g.translate(p.x, p.y);
         g.globalAlpha = lit ? 1 : fog > 0 ? .18 : .5;

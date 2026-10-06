@@ -11,7 +11,7 @@
    crazy powerful power ups"): no spelling. A brick breaker on an LED
    wall, a new pattern every set, armored bricks (road cases) that take
    two or three hits, and bricks that drop CAPSULES — catch one with the
-   fader for its power, each labelled with its name:
+   fader for its power, each labeled with its name:
      WIDE (a wider fader) · MULTIBALL (two more balls)
      PYRO (flame up every column) · LASER SHOW (lasers cut the wall)
      CONFETTI CANNON (two dozen little balls) · BASS DROP (every brick takes

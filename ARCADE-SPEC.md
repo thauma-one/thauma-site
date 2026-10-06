@@ -350,3 +350,35 @@ Later:
   - **Follow Spot:** WELCOME / WORSHIP / THE MESSAGE / ONE MORE SONG; a
     sheep (the sermon illustration), a moth in the beam, the fog machine.
   - **Strike:** a stage behind the letters, LED-tile bricks, a ball trail.
+- 2026-10-05, round 4: Chase's second play-through.
+  - **Music:** the menu kept; a genre and instruments per game (blues-rock
+    shuffle, synthwave, bossa lounge, drum & bass, big-band swing, punk,
+    an EDM anthem for Cue Stack — "the most catchy" — disco-funk, lo-fi).
+    sound.js gained filtered unison synths, distortion, a room, five kits,
+    swing.
+  - **Jokes:** never over the play. ctx.quip only remembers; the game-over
+    card shows one of the funniest (play.js BEST) for the last thing that
+    happened. Calls during play are small and brief.
+  - **Cabinet:** thin marquee, slim bezel and deck; ~100px more screen.
+  - **Choices:** ctx.cards()/cardAt() and tapAt() — difficulty cards in
+    Soundcheck and Cue Stack, four performers in Follow Spot.
+  - **Load Out:** the shake came from landing effects firing on a heavy
+    awake stack's resting contacts; now only a first landing. 120 Hz
+    physics, damping, a live camera, less grip, wider swing.
+  - **Soundcheck:** EASY/NORMAL/HARD; serves wait for you; FOH predicts
+    curving balls; 14 distinct powers, labeled and explained; arrows on
+    phones.
+  - **Panel Fixer:** Peggle's way (hit panels light, then drop out and the
+    picture glows through); stuck balls clear their panels; a smooth aim.
+  - **Cable Run:** quicker; wedges and mic stands accumulate.
+  - **Stage Runner:** floor arrows (jump / slide / dodge), red-edged
+    stacks, cases you can land on, explained powers, people popping out
+    for high fives; the PM no longer catches you.
+  - **Golden Hour:** self-righting after a released flip; powers with a
+    beam, ring and name, each explained.
+  - **Follow Spot:** stricter; THE KID; levels and tilt from the start
+    (risers, drum riser, ladders, catwalk); eight new moves.
+  - **Strike:** a straight brick breaker; the wild powers drop as named
+    capsules.
+  - **Cue Stack:** EASY/NORMAL/HARD; busier every 2–6 bars (was 7).
+  - **Scoring:** every game brought to roughly 500–1000 a minute.

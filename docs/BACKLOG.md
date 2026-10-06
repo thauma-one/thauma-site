@@ -276,8 +276,14 @@ music (off by default), the coin-and-dive way in, and 85 jokes.
 eased in every game, letter-led door glitches, phone audio wake-up, phone
 arrows (Soundcheck, Strike) and cross (Follow Spot), Load Out's physics
 and scoring restored, Panel Fixer's aiming-score bug and powers, Golden
-Hour and Stage Runner reworked. Still for Chase: play it again (and the
-music on a phone), and a native check of the hr/sr/sl jokes.
+Hour and Stage Runner reworked.
+**Round 4 DONE on dev (2026-10-05):** a genre per game, jokes on the
+game-over card only, a quieter bigger cabinet, difficulty choices
+(Soundcheck, Cue Stack, Follow Spot's kid), the per-game notes, and
+scoring at one pace (see ARCADE-SPEC.md). Still for Chase: play it again,
+music on a phone, and a native check of the hr/sr/sl words. The online
+boards hold scores from the old, faster scoring — clear them with the
+scores API (GAME_ADMIN_TOKEN) if wanted.
 
 ### Everywhere
 - **Same feel on mobile and desktop,** only different controls:
