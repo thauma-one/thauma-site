@@ -10,6 +10,38 @@ decision or a look first.
 
 ---
 
+## 0. When the site is built: cycle every key (BUILD, last)
+Chase, 2026-10-05: "when we are done building the site, we should probably
+just cycle all of the keys out. It would be some work, but would probably
+be good. You always seem to accidentally expose the keys at some point and
+I don't want to keep cycling them until we are done."
+
+**Status:** deliberately LAST, after everything else here. Until then, a
+key known to have been exposed is only noted here, not rotated. Already
+known: the GitHub App private key was printed into a session's output on
+2026-10-05.
+
+Every secret, on every worker (thauma-production, thauma, and the Pi's
+.dev.vars):
+- GITHUB_APP_PRIVATE_KEY: a new key on the GitHub App, then delete the old
+  one on GitHub. GITHUB_TOKEN too, if it is still set anywhere.
+- RESEND_API_KEY: a new key in Resend, then revoke the old one.
+- RESEND_WEBHOOK_SECRET: rotate the webhook's signing secret in Resend.
+- ACCESS_API_TOKEN and SITE_DNS_TOKEN (Cloudflare API tokens): roll them
+  in the Cloudflare dashboard.
+- GAME_ADMIN_TOKEN: any new random value.
+- The Cloudflare Tunnel's credentials for dev.thauma.one, and wrangler's
+  own login on the Pi.
+- **SIGNUP_SALT — careful:** it signs every unsubscribe link in every email
+  already sent. Changing it breaks those links, so either keep it, or keep
+  the old salt as a second accepted value for a while (a code change first).
+
+Then confirm by checking the seams, not just the units: send a test
+mailing, unsubscribe through its link, publish once, and open
+dev.thauma.one.
+
+---
+
 ## 1. Mail (highest: it blocks testing everything downstream)
 
 Chase: "the whole mailing situation needs looked at and fixed." All of it
@@ -269,6 +301,22 @@ Chase: "the general interface for the Site Creator is really good!"
   profile? (asked, unanswered).
 
 ## 4. Arcade
+**Round 7 DONE on dev (2026-10-05, see ARCADE-SPEC.md revision log):** no
+jokes, choices confirmed with Enter, the pause card with the game, score,
+sounds and Esc-to-leave, Soundcheck's seven visible powers, inertia,
+a smarter computer, Load Out's lively weights, Panel Fixer's aim/powers/ball
+looks, Cable Run's scoring and warning, Stage Runner's hit boxes,
+ramps, screen, high fives and visible powers (no PM), Golden Hour's
+camera, calm, looks and piano, Follow Spot's tells and performer, Strike's
+small gear bricks and balanced powers, Cue Stack's songs and streaks, a
+jukebox, quieter menu music, CUK/PNS blocked, and an entrance that
+corrupts and freezes before it switches off. Still for Chase: play it
+again.
+**Asked, not built — auto-save:** a game in progress is not kept if the
+tab closes. The arcade already pauses itself when the tab is hidden, and
+the best score is saved the moment a game ends. Keeping a half-played game
+across a reload would mean saving each game's whole state; for runs this
+short it is not worth it, unless Chase wants it for Load Out's tall towers.
 **DONE on dev (2026-10-05, see ARCADE-SPEC.md revision log):** every note
 below, plus Stage Runner, Golden Hour, Follow Spot, Strike and Cue Stack,
 music (off by default), the coin-and-dive way in, and 85 jokes.

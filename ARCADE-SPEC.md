@@ -382,3 +382,41 @@ Later:
     capsules.
   - **Cue Stack:** EASY/NORMAL/HARD; busier every 2–6 bars (was 7).
   - **Scoring:** every game brought to roughly 500–1000 a minute.
+- **2026-10-05, round 7** (Chase's long list, commits 9ac1a61 … 929f195):
+  - **Everywhere:** no jokes at all (the 38 jokes_* words and play.js BEST
+    are gone; ctx.quip is a no-op). Choices go through ctx.menu: arrows pick
+    and Enter confirms, and on a phone a tap picks and a second tap
+    confirms. The pause card shows the game and the score, with a sound
+    in and out, and Esc while paused leaves (after 450 ms, so a double tap
+    doesn't). Tunes have their own volume, and the menu tune is quieter.
+  - **Jukebox** (J or the header button): every tune, playable from the
+    arcade.
+  - **The entrance:** the page falls apart partly, corrupts (torn, the
+    color channels split, the letters turned to noise), freezes on that
+    frame with one twitch, then switches off.
+  - **Soundcheck:** seven powers, each with its own color and drawing, worn
+    by the ball or the fader, no names; multiball's extra balls never cost
+    a point; inertia from the fader; the computer follows a magnet or loop
+    ball itself at the end.
+  - **Load Out:** first-version weights in the physics (lively), no damping.
+  - **Panel Fixer:** → aims right; no beach ball; phase, electric and bloom
+    added; ball powers ride the next throw and show in the hand; every ball
+    looks like what it is.
+  - **Cable Run:** 1 a step + 30 + 2×length a plug; the leader warns
+    2.4–5s by cable length and walks the emptiest row.
+  - **Stage Runner:** hit boxes from the runner's real x and the drawn
+    sizes; ramps onto risers fixed, and what you stand on is drawn under
+    you; the low obstacle is a hanging screen only spring shoes clear;
+    high fives from everyone with a hit-stop slap; powers worn by the
+    runner and shown on a card; the PM is gone.
+  - **Golden Hour:** a camera that looks to the landing; calmer hills and
+    landings; mountains, rays, lanterns, birds, pines, a trail; a better
+    rider; ambient piano.
+  - **Follow Spot:** every move told by the body first (PREP), no move
+    names, a jointed and outlined performer, more humor (poses, the kid
+    trips, the pastor's coffee); new laid-back pop music.
+  - **Strike:** 28×13 bricks, 12 across, up to 14 rows, each a piece of
+    stage gear; pyro, laser, confetti, bass and encore cut down; inertia.
+  - **Cue Stack:** three songs (dance, funk, synth pop) at their own
+    tempos; streak celebrations at 10, 25, 50 and 100 with up to ×4.
+  - **Scores:** CUK, PNS and their variants are blocked.
