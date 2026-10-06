@@ -61,6 +61,8 @@
       function nextLevel() {
         level++;
         bricks = [];
+        /* whatever was still burning stops with the set: it must not clear the next one */
+        fx = []; drops = []; balls.forEach(function (b) { b.big = false; });
         var rows = Math.min(8, 4 + Math.floor(level / 2)), pat = PATTERNS[(level - 1) % PATTERNS.length];
         for (var r = 0; r < rows; r++) for (var c = 0; c < COLS; c++) {
           if (!pat(r, c)) continue;
@@ -96,7 +98,8 @@
         ctx.say('[PYRO] ' + words('strike_' + wildName), { mood: 'good' });
         ctx.quip('jokes_strike_wild', { mood: 'good', force: false });
         if (wildName === 'pyro') for (var c = 0; c < 5; c++) fx.push({ kind: 'pyro', x: 30 + c * 75 + rnd(-10, 10), t: -c * .12 });
-        if (wildName === 'laser') for (var k = 0; k < 4; k++) fx.push({ kind: 'laser', t: -k * .25, dir: k % 2 ? 1 : -1, y0: 80 + k * 50 });
+        /* two beams, a narrower sweep, six bricks each (round 6: "too powerful … it destroys everything for multiple stages") */
+        if (wildName === 'laser') for (var k = 0; k < 2; k++) fx.push({ kind: 'laser', t: -k * .3, dir: k % 2 ? 1 : -1, y0: 110 + k * 60, left: 6 });
         if (wildName === 'confetti') for (var j = 0; j < 24; j++) { var a = rnd(-1.2, 1.2); balls.push({ x: pad.x, y: PY - 14, vx: Math.sin(a) * 380, vy: -Math.cos(a) * 380, speed: 380, confetti: 6, hue: j * 15 }); }
         if (wildName === 'bass') fx.push({ kind: 'bass', t: 0, drops: 0 });
         if (wildName === 'encore') balls.forEach(function (b) { b.big = 8; });
@@ -112,11 +115,11 @@
             if (Math.random() < .6) sparks.push({ x: f.x + rnd(-14, 14), y: Math.max(top, 60), vx: rnd(-40, 40), vy: rnd(-80, 0), life: .5, c: Math.random() < .5 ? '#FFB547' : '#FF5A6E' });
           }
           if (f.kind === 'laser') {
-            var ang = f.dir * (-.6 + f.t * .8), x0 = f.dir > 0 ? 0 : W;
+            var ang = f.dir * (-.3 + f.t * .5), x0 = f.dir > 0 ? 0 : W;
             bricks.forEach(function (br) {
-              if (br.dead) return;
+              if (br.dead || f.left <= 0) return;
               var y = f.y0 + Math.tan(ang) * (br.x - x0) * f.dir;
-              if (Math.abs(br.y - y) < 12) { br.hp = 0; hitDead(br); }
+              if (Math.abs(br.y - y) < 8) { br.hp = 0; hitDead(br); f.left--; }
             });
             f.ang = ang;
           }
@@ -128,7 +131,7 @@
             }
           }
         });
-        fx = fx.filter(function (f) { return f.t < (f.kind === 'pyro' ? .9 : f.kind === 'laser' ? 1.7 : 1.8); });
+        fx = fx.filter(function (f) { return f.t < (f.kind === 'pyro' ? .9 : f.kind === 'laser' ? 1.2 : 1.8); });
       }
       function hitDead(br) {
         if (br.dead) return;
