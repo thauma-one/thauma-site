@@ -23,7 +23,9 @@
    facepalm, sweat on the last ball, and dance at SHOWTIME. A road case
    rolls along the floor; a ball that lands in it is thrown again free.
 
-   Ten balls a wall. Out of balls with panels still broken, and it's over.
+   Four balls a wall (round 5, Chase: "Just give the person 4 balls to
+   start"; free balls from the case add to them). Out of balls with panels
+   still broken, and it's over.
 
    ROUND 3 (Chase, 2026-10-05: "figure out some way to make it easier to
    hit the panels in the middle. And add some special power up systems.
@@ -59,7 +61,7 @@
   var TOPF = 150, BOTF = 540, FLOOR = 606;
   var PW = 28, PH = 18, R = 6;
   var G = 430, SPEED = 400, REST = .72;
-  var BALLS = 10;
+  var BALLS = 4;
   var POWERS = ['multi', 'zap', 'guide', 'fire', 'big', 'magnet', 'pattern'];
   var CREW = 12;                            /* fixes to fill the crew meter */
 
@@ -596,7 +598,7 @@
         g.fillStyle = 'rgba(138,150,166,.9)';
         g.fillText(words('panelfixer_wall').toUpperCase() + ' ' + level, 12, 48);
         g.fillText(words('panelfixer_throws').toUpperCase(), 12, 64);
-        for (var i = 0; i < BALLS + 4; i++) {
+        for (var i = 0; i < Math.max(BALLS, left); i++) {
           if (i >= left && i >= BALLS) break;
           g.fillStyle = i < left ? '#d8f55a' : 'rgba(255,255,255,.08)';
           g.beginPath(); g.arc(16 + (i % 7) * 11, 82 + Math.floor(i / 7) * 11, 4, 0, 7); g.fill();
