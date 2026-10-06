@@ -55,8 +55,9 @@
    - Every crew member offers a hand. A slap has a hit-stop, the runner's
      arm flung out, a comic star with the streak in it, and pays 25 × the
      streak (up to ×5) × the multiplier.
-   - "I have NO idea what the power ups do … Visuals my friend": a card
-     with the icon, the name and what it does, and the runner WEARS each
+   - "I have NO idea what the power ups do … Visuals my friend": the HUD
+     says what it does for its first seconds (round 8: never over the run),
+     and the runner WEARS each
      one — the headset glows violet and sends out rings while picks
      stream in; spring shoes are green soles on coils that leave rings; all
      access is a gold lanyard with a ×2 laminate; case surf is an
@@ -122,7 +123,7 @@
     create: function (ctx) {
       var words = ctx.words;
       var me = { lane: 1, x: 0, y: 0, vy: 0, ground: 0, slide: 0, run: 0, lean: 0, land: 0, onCase: 0, shoes: 0, magnet: 0, pass: 0, hype: 0, slap: 0, slapSide: 1 };
-      var fiveStreak = 0, bursts = [], tagged = {}, hold = 0, slaps = [], card = null, rings = [];
+      var fiveStreak = 0, bursts = [], tagged = {}, hold = 0, slaps = [], rings = [];
       var things = [];                 /* obstacles, picks, items, doors, powers, crew: { kind, lane, z, len, ... } */
       var dist = 0, speed = 8.5, spawnZ = 16, picks = 0, mult = 1, pts = 0, made = 0;
       var mission = null, nextMission = 90, dead = false, time = 0;
@@ -381,9 +382,6 @@
               if (o.power === 'case') me.onCase = 14;
               if (o.power === 'shoes') me.shoes = 10;
               if (o.power === 'pass') me.pass = 15;
-              /* what you got and what it does, on a card, while the runner
-                 starts showing it */
-              card = { power: o.power, t: 2.6 };
               break;
             case 'cable': case 'wet':
               if (me.y < .22 && me.onCase <= 0) { o.hit = true; stumble(); }
@@ -408,7 +406,6 @@
           }
         });
         things = things.filter(function (o) { return o.z + o.len > -3 && !(o.hit && (o.kind === 'pick' || o.kind === 'item' || o.kind === 'power')); });
-        if (card) { card.t -= dt; if (card.t <= 0) card = null; }
 
         /* the errand's clock */
         if (mission) {
@@ -1109,14 +1106,20 @@
         }
         /* powers running */
         /* powers running: each with its name and its time left */
+        /* round 8 (Chase, 2026-10-06: "the power ups go over the screen …
+           it makes it hard to play"): nothing over the run. What a power does
+           is said up here in the corner, on its own line, for its first
+           seconds — the runner shows the rest */
         var py = 90;
         [['magnet', 'headset', 10], ['onCase', 'case', 14], ['shoes', 'shoes', 10], ['pass', 'pass', 15]].forEach(function (pw) {
           if (me[pw[0]] <= 0) return;
-          g.fillStyle = 'rgba(155,123,255,.4)'; g.beginPath(); g.arc(22, py, 10, 0, 7); g.fill();
+          var fresh = pw[2] - me[pw[0]] < 3;
+          g.fillStyle = fresh ? 'rgba(155,123,255,.75)' : 'rgba(155,123,255,.4)'; g.beginPath(); g.arc(22, py, 10, 0, 7); g.fill();
           powerIcon(g, pw[1], 22, py, .8);
           g.fillStyle = '#EDF2F8'; g.font = '700 8px Sora, sans-serif'; g.textAlign = 'left'; g.textBaseline = 'middle';
           g.fillText(words('stagerunner_p_' + pw[1]).toUpperCase(), 36, py - 3);
           g.fillStyle = 'rgba(255,255,255,.1)'; g.fillRect(36, py + 4, 46, 3); g.fillStyle = '#9B7BFF'; g.fillRect(36, py + 4, 46 * me[pw[0]] / pw[2], 3);
+          if (fresh) { g.fillStyle = '#C9B8FF'; g.font = '600 8px Inter, sans-serif'; g.fillText(words('stagerunner_d_' + pw[1]), 12, py + 15); py += 12; }
           py += 26;
         });
         /* the crew's hype, and the streak behind it */
@@ -1124,22 +1127,6 @@
           g.fillStyle = '#FFD34A'; g.font = '700 8px Sora, sans-serif'; g.textAlign = 'left'; g.textBaseline = 'middle';
           g.fillText(words('stagerunner_hype').toUpperCase() + (fiveStreak > 1 ? '  ×' + fiveStreak : ''), 12, py - 3);
           g.fillStyle = 'rgba(255,255,255,.1)'; g.fillRect(12, py + 4, 70, 3); g.fillStyle = '#FFD34A'; g.fillRect(12, py + 4, 70 * me.hype / 7, 3);
-        }
-        /* THE POWER CARD: the icon, its name, what it does, and where to
-           look for it on the runner (round 7, Chase: "I have NO idea what
-           the power ups do … Visuals my friend") */
-        if (card) {
-          var ca = Math.min(1, card.t * 3, (2.6 - card.t) * 6), cw = 250, ch = 64, cx0 = (W - cw) / 2, cy0 = HOR + 30;
-          g.globalAlpha = ca;
-          g.fillStyle = 'rgba(8,10,16,.9)'; roundRect(g, cx0, cy0, cw, ch, 10); g.fill();
-          g.strokeStyle = '#9B7BFF'; g.lineWidth = 2; g.stroke();
-          g.fillStyle = 'rgba(155,123,255,.45)'; g.beginPath(); g.arc(cx0 + 34, cy0 + ch / 2, 22, 0, 7); g.fill();
-          powerIcon(g, card.power, cx0 + 34, cy0 + ch / 2, 1.4);
-          g.fillStyle = '#EDF2F8'; g.font = '700 15px Sora, sans-serif'; g.textAlign = 'left'; g.textBaseline = 'middle';
-          g.fillText(words('stagerunner_p_' + card.power).toUpperCase(), cx0 + 66, cy0 + 22);
-          g.fillStyle = '#C9B8FF'; g.font = '600 11px Inter, sans-serif';
-          g.fillText(words('stagerunner_d_' + card.power), cx0 + 66, cy0 + 43);
-          g.globalAlpha = 1;
         }
         if (banner) {
           g.globalAlpha = Math.min(1, banner.t * 2);
