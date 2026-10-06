@@ -11,7 +11,8 @@
    THE WALL is a field of LED panels, and the ball bounces through them
    like Peggle's pegs. Each panel is one pixel of a picture the wall is
    meant to be showing; the BROKEN ones (dark, flickering, the wrong
-   color, a red flag in the corner) are holes in it. Hit a broken panel and
+   color, a red flag in the corner) are holes in it. (2026-10-06: now always
+   a dark, cracked, staticky panel in a pulsing red frame — see panel().) Hit a broken panel and
    it is reseated — its piece of the picture lights up. Fix them all and
    it's SHOWTIME: the slow-motion last hit, the whole picture, and a bonus
    for every ball left. Working panels just bounce the ball (and pay a
@@ -582,15 +583,29 @@
         var x = p.x - PW / 2, y = p.y - PH / 2, flash = time - p.hitAt < .15, fixedGlow = time - p.fixedAt < .6;
         g.fillStyle = '#0b0e14'; g.fillRect(x - 1, y - 1, PW + 2, PH + 2);
         if (p.state === 'broken') {
-          var on = p.fault === 'flicker' ? Math.sin(time * 37 + p.x) > .3 : p.fault === 'tint';
-          g.fillStyle = p.fault === 'tint' ? 'hsl(310,90%,45%)' : on ? p.col : '#0d1119';
-          g.fillRect(x, y, PW, PH);
-          g.fillStyle = Math.sin(time * 6 + p.y) > 0 ? '#FF5A6E' : '#8a2432';
-          g.beginPath(); g.moveTo(x, y); g.lineTo(x + 9, y); g.lineTo(x, y + 9); g.closePath(); g.fill();
+          /* BROKEN reads at a glance and only one way (Chase, 2026-10-06:
+             "some of the blocks that need fixed are hard to see … At a
+             glance, we need to know what needs fixing"): always a DARK body
+             — never the picture's color, so it can't pass for a working
+             panel — with its fault inside it (static, a flicker, a torn
+             band), a crack across it, and, drawn over everything below, a
+             pulsing red frame with a glow. Nothing else on the wall is red
+             or dark. */
+          g.fillStyle = '#07090e'; g.fillRect(x, y, PW, PH);
+          if (p.fault === 'flicker' && Math.sin(time * 37 + p.x) > .3) { g.globalAlpha = .35; g.fillStyle = p.col; g.fillRect(x, y, PW, PH); g.globalAlpha = 1; }
+          else if (p.fault === 'tint') { g.fillStyle = 'rgba(255,90,110,.35)'; g.fillRect(x, y + PH * .35, PW, PH * .3); }
+          g.fillStyle = 'rgba(237,242,248,.35)';
+          for (var nz = 0; nz < 7; nz++) g.fillRect(x + ((p.x * 7 + nz * 13 + Math.floor(time * 20) * 5) % (PW - 2)), y + ((p.y * 3 + nz * 7 + Math.floor(time * 20) * 3) % (PH - 2)), 2, 1);
         } else {
-          g.fillStyle = p.col; g.globalAlpha = state === 'show' ? 1 : .62; g.fillRect(x, y, PW, PH); g.globalAlpha = 1;
+          g.fillStyle = p.col; g.globalAlpha = state === 'show' ? 1 : .55; g.fillRect(x, y, PW, PH); g.globalAlpha = 1;
           if (p.state === 'power') {
-            g.fillStyle = 'rgba(92,242,196,' + (.55 + .35 * Math.sin(time * 5)).toFixed(2) + ')'; g.fillRect(x, y, PW, PH);
+            /* a POWER is solid seafoam, never the picture's color, with a
+               soft white glow: three kinds of panel, told apart at a glance —
+               dim picture (working), dark in a red frame (broken), bright
+               seafoam (a power) */
+            g.fillStyle = '#5CF2C4'; g.globalAlpha = .82 + .18 * Math.sin(time * 5); g.fillRect(x, y, PW, PH); g.globalAlpha = 1;
+            g.strokeStyle = 'rgba(255,255,255,.85)'; g.lineWidth = 1.5; g.shadowColor = '#5CF2C4'; g.shadowBlur = 12;
+            g.strokeRect(x - 1, y - 1, PW + 2, PH + 2); g.shadowBlur = 0;
             icon(g, p.power, p.x, p.y);
           }
         }
@@ -598,6 +613,14 @@
         g.fillStyle = 'rgba(0,0,0,.28)';
         for (var gx = 4; gx < PW; gx += 4) g.fillRect(x + gx, y, 1, PH);
         for (var gy = 4; gy < PH; gy += 4) g.fillRect(x, y + gy, PW, 1);
+        if (p.state === 'broken') {
+          /* the crack, and the red frame breathing */
+          g.strokeStyle = 'rgba(237,242,248,.75)'; g.lineWidth = 1.2; g.beginPath();
+          g.moveTo(x + 3, y + 2); g.lineTo(x + PW * .4, y + PH * .55); g.lineTo(x + PW * .55, y + PH * .3); g.lineTo(x + PW - 3, y + PH - 2); g.stroke();
+          var pulse = .82 + .18 * Math.sin(time * 6 + p.x * .05);
+          g.strokeStyle = 'rgba(255,90,110,' + pulse.toFixed(2) + ')'; g.lineWidth = 2.5; g.shadowColor = '#FF5A6E'; g.shadowBlur = 8 + 6 * pulse;
+          g.strokeRect(x - 1.5, y - 1.5, PW + 3, PH + 3); g.shadowBlur = 0;
+        }
         if (flash) { g.fillStyle = 'rgba(255,255,255,.55)'; g.fillRect(x, y, PW, PH); }
         if (p.lit) { g.strokeStyle = '#ffffff'; g.lineWidth = 2; g.shadowColor = '#ffffff'; g.shadowBlur = 10; g.strokeRect(x - 1, y - 1, PW + 2, PH + 2); g.shadowBlur = 0; }
         if (fixedGlow) { g.strokeStyle = 'rgba(92,242,196,' + (.6 - (time - p.fixedAt)).toFixed(2) + ')'; g.lineWidth = 3; g.strokeRect(x - 2, y - 2, PW + 4, PH + 4); }
