@@ -790,6 +790,12 @@ export function cleanDoc(raw, catalog) {
     line: f.line !== false,
     space: pick(f.space, FOOT_SPACES),
     words: cleanWords(f.words, ["tagline", "small"], langs),
+    /* THE OWNER'S OWN LINKS (2026-10-07, Chase: "options for In Line (in
+       line with the other social links) or Separated (apart from the social
+       links …) … Icon or Word for the Separated option"). A footer saved
+       before reads as it looked: in line when a link was shown as an icon. */
+    linkPlace: ["inline", "apart"].includes(f.linkPlace) ? f.linkPlace : links.some((k) => k.icon) ? "inline" : "apart",
+    linkStyle: f.linkStyle === "icon" ? "icon" : "words",
   };
 
   return {

@@ -659,6 +659,12 @@ main section.is-editing{outline:2px solid var(--acc);outline-offset:-2px}
 /* A site's own icon, quieted to sit with the line icons; full color on hover. */
 .socials .favi img{width:18px;height:18px;border-radius:4px;filter:grayscale(1);opacity:.8;transition:filter .2s,opacity .2s}
 .socials .favi:hover img{filter:none;opacity:1}
+.socials a{text-decoration:none}
+.socials .favi .lt{display:none;font:600 11px/1 var(--body);letter-spacing:.02em}
+.socials .favi.no-icon img{display:none}.socials .favi.no-icon .lt{display:inline}
+.socials .favi.mono img{display:none}
+.socials .favi.mono::before{content:"";width:18px;height:18px;background:currentColor;-webkit-mask:var(--fi) center/contain no-repeat;mask:var(--fi) center/contain no-repeat}
+.foot .words+.owns{margin-top:4px}
 .customlinks{display:flex;gap:16px;flex-wrap:wrap}.customlinks a{color:var(--fg)}
 .powered{font-size:12px;opacity:.7}
 body.only-foot .foot{border-top:0}
@@ -1241,15 +1247,35 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
      as its site's icon joins the social icons. The icon comes through
      Thauma (embed/v1/icon), so a visitor never calls a third party. */
   const own = doc.links.filter((k) => k.kind === "custom").map((k) => ({ ...k, href: ctx.linkHref(k.url) })).filter((k) => k.href);
-  const nameOf = (k) => k.label[lang] || k.label[fallback] || k.href;
-  const custom = [...own.filter((k) => k.url.startsWith("page:")), ...own.filter((k) => !k.url.startsWith("page:") && !k.icon)].map((k) =>
-    `<a href="${esc(k.href)}"${rel(k.href)}>${esc(nameOf(k))}</a>`).join("");
-  const favicons = own.filter((k) => k.icon).map((k) => {
-    let host = ""; try { host = new URL(k.href).hostname; } catch { /* not a web address */ }
-    return host ? `<a class="favi" href="${esc(k.href)}"${rel(k.href)} aria-label="${esc(nameOf(k))}" title="${esc(nameOf(k))}"><img src="${esc(origin)}/embed/v1/icon?d=${esc(encodeURIComponent(host))}" alt="" width="18" height="18" loading="lazy"></a>` : "";
+  const nameOf = (k) => k.label[lang] || k.label[fallback] || (k.url.startsWith("page:") ? label(k.url.slice(5)) : k.href);
+  const ordered = [...own.filter((k) => k.url.startsWith("page:")), ...own.filter((k) => !k.url.startsWith("page:"))];
+  const customWords = ordered.map((k) => `<a href="${esc(k.href)}"${rel(k.href)}>${esc(nameOf(k))}</a>`).join("");
+  /* AS ICONS, in the social icons' own style (2026-10-07, Chase: "read the
+     favicon from the custom link and then convert it into the same style as
+     the social links … If it doesn't have a favicon, then we just … create
+     an icon based on the letters"): the site's icon comes through Thauma
+     (embed/v1/icon), so a visitor never calls a third party; MOTION_JS draws
+     one with a clear background as a silhouette in the icon color, like the
+     social icons, keeps a solid one as a small gray picture, and shows the
+     link's initials when there is none — as a page of the site always does. */
+  const initials = (t) => {
+    const ws = String(t || "").replace(/^https?:\/\/(www\.)?/i, "").split(/[\s./_-]+/).filter((x) => /[\p{L}\p{N}]/u.test(x));
+    return ((ws.length > 1 ? ws[0][0] + ws[1][0] : (ws[0] || "?").slice(0, 2)) || "?").toUpperCase();
+  };
+  const customIcons = ordered.map((k) => {
+    let host = ""; try { if (/^https?:/.test(k.href)) host = new URL(k.href).hostname; } catch { /* not a web address */ }
+    const lt = `<span class="lt" aria-hidden="true">${esc(initials(nameOf(k)))}</span>`;
+    return `<a class="favi${host ? "" : " no-icon"}" href="${esc(k.href)}"${rel(k.href)} aria-label="${esc(nameOf(k))}" title="${esc(nameOf(k))}">` +
+      (host ? `<img src="${esc(origin)}/embed/v1/icon?d=${esc(encodeURIComponent(host))}" alt="" width="18" height="18" loading="lazy" crossorigin="anonymous">` : "") + `${lt}</a>`;
   }).join("");
-  const socials = socialIcons + favicons;
-  const foot = footer({ doc, lang, fallback, name, pages, href, label, socials, custom });
+  const F0 = doc.footer || {};
+  const inline = F0.linkPlace === "inline";
+  /* in line: with the social icons (or, socials as words, in their line);
+     separated: their own row, as words or as icons */
+  const socials = socialIcons + (inline ? customIcons : "");
+  const custom = inline ? (F0.socials === "words" ? customWords : "") : F0.linkStyle === "icon" ? "" : customWords;
+  const ownIcons = !inline && F0.linkStyle === "icon" ? customIcons : "";
+  const foot = footer({ doc, lang, fallback, name, pages, href, label, socials, custom, ownIcons });
 
   const thePage = doc.pages.find((p) => p.id === pageId) || doc.pages[0];
   const seo = thePage.seo || {};
@@ -1371,7 +1397,7 @@ export function newTabs(html) {
  * The foot of the page, in the owner's chosen layout (model.FOOTERS). The
  * credit line is in every one of them.
  */
-function footer({ doc, lang, fallback, name, pages, href, label, socials, custom }) {
+function footer({ doc, lang, fallback, name, pages, href, label, socials, custom, ownIcons = "" }) {
   const F = doc.footer || { layout: "split", menu: false, socials: "icons", words: {} };
   const fw = (f) => (F.words[lang] && F.words[lang][f]) || (F.words[fallback] && F.words[fallback][f]) || "";
   const tagline = fw("tagline") ? `<p class="tagline tagline-${esc(F.tagline || "plain")}">${esc(fw("tagline"))}</p>` : "";
@@ -1384,7 +1410,7 @@ function footer({ doc, lang, fallback, name, pages, href, label, socials, custom
     `<a href="${esc(k.url)}" rel="noopener">${esc(SOCIAL_NAME[k.kind])}</a>`).join("");
   const asWords = F.socials === "words";
   const linkRow = (asWords ? socialWords : "") + custom;
-  const words = linkRow ? `<span class="words">${linkRow}</span>` : "";
+  const words = (linkRow ? `<span class="words">${linkRow}</span>` : "") + (ownIcons ? `<span class="socials owns">${ownIcons}</span>` : "");
   const icons = !asWords && socials ? `<span class="socials">${socials}</span>` : "";
   const credit = `<span class="powered">© ${new Date().getFullYear()} ${esc(name)} · ${esc(word(lang, "poweredBy"))}</span>`;
   /* NOT IN THE FOOTER (Chase, 2026-10-01): the name as a brand, and the
@@ -1444,6 +1470,9 @@ function glideTo(el){var m=parseFloat(getComputedStyle(el).scrollMarginTop)||0;g
 document.addEventListener('click',function(e){if(e.defaultPrevented||e.button||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;var a=e.target.closest&&e.target.closest('a[href*="#"]');if(!a)return;
  var u;try{u=new URL(a.getAttribute('href'),location.href)}catch(x){return}if(!u.hash||u.pathname!==location.pathname||u.search!==location.search)return;
  var t=document.getElementById(decodeURIComponent(u.hash.slice(1)));if(!t)return;e.preventDefault();glideTo(t);try{history.pushState(null,'',u.hash)}catch(x){}});
+[].forEach.call(document.querySelectorAll('.favi img'),function(im){var a=im.parentNode;function no(){a.classList.add('no-icon')}
+ function ok(){if(!im.naturalWidth)return no();try{var c=document.createElement('canvas');c.width=c.height=16;var x=c.getContext('2d');x.drawImage(im,0,0,16,16);var p=x.getImageData(0,0,16,16).data,n=0;for(var i=3;i<p.length;i+=4)if(p[i]<40)n++;if(n>40){a.style.setProperty('--fi','url("'+im.src+'")');a.classList.add('mono')}}catch(e){}}
+ if(im.complete)ok();else{im.addEventListener('load',ok);im.addEventListener('error',no)}});
 var cue=document.querySelector('.scrollcue');if(cue)cue.addEventListener('click',function(){var n=cue.closest('section').nextElementSibling;if(n)glideTo(n)});
 document.addEventListener('click',function(e){var h=e.target.closest&&e.target.closest('[data-widget="roadmap"]');if(!h)return;
  setTimeout(function(){var p=h.shadowRoot&&h.shadowRoot.querySelector('.detail:not(.leaving)'),s=h.closest('section'),t=s&&(s.querySelector('.h')||s);if(!p||!t)return;

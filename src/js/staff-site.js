@@ -1822,6 +1822,13 @@
     var custom = links.map(function (l, i) { return { l: l, i: i }; }).filter(function (x) { return x.l.kind === 'custom'; });
     html += '<div class="ws-head ws-head-row"><h2>' + esc(tr('ws.custom')) + '</h2>' +
       '<button type="button" class="solid-btn sm" data-custom-add>+ ' + esc(tr('ws.addLink')) + '</button></div>';
+    /* WHERE THEY SIT IN THE FOOTER, for all of them at once (2026-10-07):
+       in line with the social links (as icons, each its site's own icon or
+       its initials), or separated — as words or as icons. */
+    var ft = state.doc.footer || (state.doc.footer = {});
+    var place = ft.linkPlace || (links.some(function (x) { return x.kind === 'custom' && x.icon; }) ? 'inline' : 'apart');
+    html += '<div class="ws-rows">' + row(tr('ws.linkPlace'), chips('lplace', ['inline', 'apart'], place, function (v) { return tr('ws.linkPlace.' + v); })) +
+      (place === 'apart' ? row(tr('ws.showAs'), chips('lstyle', ['icon', 'words'], ft.linkStyle === 'icon' ? 'icon' : 'words', function (v) { return tr('ws.showAs.' + v); })) : '') + '</div>';
     if (custom.length) {
       html += '<div class="ws-linkrows">' + custom.map(function (x, n) {
         var open = state.openCustom === x.i, u = x.l.url || '';
@@ -1837,10 +1844,7 @@
         return row1 + '<div class="ws-linkedit">' +
           '<label class="fld"><span>' + esc(tr('ws.linkName')) + '</span>' + ref(x.l.label) +
             '<input type="text" maxlength="40" data-custom-label="' + x.i + '" value="' + esc((x.l.label || {})[state.langA] || '') + '" lang="' + esc(state.langA) + '"></label>' +
-          '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.link.goesTo')) + '</span>' + linkPicker('custom:' + x.i, u || 'https://', false) + '</div>' +
-          /* A web address may show as its site's icon, beside the social icons. */
-          (/^https?:\/\/[^/]+\.[^/]+/.test(u) ? '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.showAs')) + '</span>' +
-            chips('cshow:' + x.i, ['words', 'icon'], x.l.icon ? 'icon' : 'words', function (v) { return tr('ws.showAs.' + v); }) + '</div>' : '') + '</div>';
+          '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.link.goesTo')) + '</span>' + linkPicker('custom:' + x.i, u || 'https://', false) + '</div></div>';
       }).join('') + '</div>';
     } else {
       html += '<p class="ws-small">' + esc(tr('ws.noCustom')) + '</p>';
@@ -2411,7 +2415,7 @@
       else if (name.indexOf('talign:') === 0) { p.sections[+name.slice(7)].titleAlign = val; drawSections(); }
       else if (name.indexOf('tline:') === 0) { p.sections[+name.slice(6)].titleLine = val === 'on'; drawSections(); }
       else if (name.indexOf('tinline:') === 0) { p.sections[+name.slice(8)].titleInline = val === 'with'; drawSections(); }
-      else if (name.indexOf('cshow:') === 0) { state.doc.links[+name.slice(6)].icon = val === 'icon'; drawLinks(); }
+      else if (name === 'lplace' || name === 'lstyle') { state.doc.footer = state.doc.footer || {}; state.doc.footer[name === 'lplace' ? 'linkPlace' : 'linkStyle'] = val; drawLinks(); }
       else if (name.indexOf('pheight:') === 0) { p.sections[+name.slice(8)].height = val; drawSections(); }
       else if (name.indexOf('vtitle:') === 0) { p.sections[+name.slice(7)].titleFrom = val; drawSections(); }
       else if (name.indexOf('vlinks:') === 0) { p.sections[+name.slice(7)].linkStyle = val; drawSections(); }

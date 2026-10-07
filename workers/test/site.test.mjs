@@ -879,10 +879,14 @@ check("own links: a page of the site first; a web address may be its site's icon
   ];
   const c = cleanDoc(d, ["en"]);
   eq(c.links.map((k) => !!k.icon), [false, false, true, false, false], "only a web address can be an icon");
+  /* separated, as words: pages first; in line: every one an icon beside the socials (2026-10-07) */
+  d.footer.linkPlace = "apart";
   const foot = page(d).match(/<footer[\s\S]*<\/footer>/)[0];
-  const words = [...foot.matchAll(/<a href="[^"]*"[^>]*>(About me|Mission|Blog)<\/a>/g)].map((m) => m[1]);
-  eq(words, ["About me", "Mission", "Blog"], "pages first, then the web");
-  assert(/class="socials"[^>]*>[\s\S]*aria-label="YouTube"[\s\S]*<a class="favi" href="https:\/\/chaseroush\.com\/"[^>]*aria-label="chaseroush\.com"[^>]*><img src="https:\/\/thauma\.one\/embed\/v1\/icon\?d=chaseroush\.com"/.test(foot), "the icon, through Thauma, beside the socials");
+  const words = [...foot.matchAll(/<a href="[^"]*"[^>]*>(About me|Mission|Blog|chaseroush\.com)<\/a>/g)].map((m) => m[1]);
+  eq(words, ["About me", "Mission", "Blog", "chaseroush.com"], "pages first, then the web");
+  d.footer.linkPlace = "inline";
+  const foot2 = page(d).match(/<footer[\s\S]*<\/footer>/)[0];
+  assert(/class="socials"[^>]*>[\s\S]*aria-label="YouTube"[\s\S]*<a class="favi" href="https:\/\/chaseroush\.com\/"[^>]*aria-label="chaseroush\.com"[^>]*><img src="https:\/\/thauma\.one\/embed\/v1\/icon\?d=chaseroush\.com"/.test(foot2), "the icon, through Thauma, beside the socials");
 });
 
 check("clean links: socials, page names in any language and alphabet, Give, the owner's own links", () => {
@@ -1042,6 +1046,23 @@ check("an open sign-up or contact form's fields are the other color from the gro
   st.sections[0].raised = false; st.sections[0].variant = "card";
   const card = look(page(d, "stay"));
   assert(card.field === card.bg, "inside a card, unchanged: the page color");
+});
+
+
+check("the owner's own footer links: in line with the socials as icons, or separated as words or icons; letters where there is no icon", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  d.links = [{ kind: "youtube", url: "@chase" }, { kind: "custom", url: "page:about", label: { en: "Our Story" } },
+    { kind: "custom", url: "https://github.com", label: { en: "GitHub" } }];
+  const foot = (place, style) => { d.footer.linkPlace = place; d.footer.linkStyle = style; return page(d).match(/<footer[\s\S]*<\/footer>/)[0]; };
+  const inl = foot("inline", "words");
+  assert(/<span class="socials"><a href="https:\/\/www\.youtube\.com\/@chase"[^]*?<a class="favi no-icon" href="\/site\/chaseroush\/en\/about\/"[^>]*><span class="lt" aria-hidden="true">OS<\/span><\/a><a class="favi" href="https:\/\/github\.com\/"[^>]*><img src="https:\/\/thauma\.one\/embed\/v1\/icon\?d=github\.com"[^>]*crossorigin="anonymous"><span class="lt" aria-hidden="true">GI<\/span>/.test(inl), "in line: after the socials, a page's initials, a site's icon with initials behind it");
+  assert(!/class="words"/.test(inl), "and no separate words");
+  const words = foot("apart", "words");
+  assert(/<span class="words"><a href="\/site\/chaseroush\/en\/about\/">Our Story<\/a><a href="https:\/\/github\.com\/"[^>]*>GitHub<\/a><\/span>/.test(words) && !/class="favi/.test(words), "separated, as words");
+  const icons = foot("apart", "icon");
+  assert(/<span class="socials owns"><a class="favi no-icon"/.test(icons), "separated, as a row of icons of their own");
+  d.footer = { ...d.footer }; delete d.footer.linkPlace; d.links[2].icon = true;
+  eq(cleanDoc(d, ["en"]).footer.linkPlace, "inline", "a footer saved with an icon link reads as in line");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);
