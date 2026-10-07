@@ -396,7 +396,8 @@ scores API (GAME_ADMIN_TOKEN) if wanted.
   - a word blocklist plus a list of three-letter offenders;
   - any match becomes "???" (workers/src/game-scores.js).
 - **Removing a score:** an API exists (`POST {action:"delete", game, index,
-  token}`), gated by the GAME_ADMIN_TOKEN secret, but there is no console
-  control. BUILD a "Scores" control for admins.
+  token}`), gated by the GAME_ADMIN_TOKEN secret. **DONE 2026-10-06:**
+  Website › Arcade (admins) hides (???), blocks, removes and clears scores,
+  and closes a game (out of order) on the live site or the preview site.
 - Scores are client-submitted and forgeable by design. Decide whether that
   still holds once the arcade is public.
