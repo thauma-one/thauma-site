@@ -22,7 +22,7 @@
 
   var API = '/api/staff-site';
   var $ = function (id) { return document.getElementById(id); };
-  var state = { body: null, doc: null, openSocial: null, openCustom: null, tab: 'design', page: null, edit: null, anchor: null, animate: null, sectab: 'words', openItem: null, showKicker: false,
+  var state = { body: null, doc: null, openSocial: null, openCustom: null, tab: 'design', page: null, edit: null, anchor: null, animate: null, sectab: 'words', openItem: null, showKicker: false, showVerse: false,
                 insertAt: null, frameDirty: false, langA: null, langB: null,
                 timer: null, saving: false, again: false, frameTimer: null };
 
@@ -1034,10 +1034,18 @@
       }).join('') + '</div><div class="ws-panelbody">';
 
     if (state.sectab === 'words') {
+      var hasVerseHere = Object.keys(s.words || {}).some(function (l) { return (s.words[l] || {}).verse; });
       spec.words.filter(function (f) { return f !== 'button'; }).forEach(function (f) {
         /* The small line above the heading waits behind a button until wanted. */
         if (f === 'kicker' && !w.kicker && !state.showKicker) {
           html += '<button type="button" class="link-btn ws-more" data-show-kicker>+ ' + esc(tr('ws.kickerAdd')) + '</button>';
+          return;
+        }
+        /* …and so does a verse, with where it is from and where it goes
+           (2026-10-07: three fields and a row of chips for a verse nobody
+           had written yet was half of every Words tab). */
+        if ((f === 'verse' || f === 'verseRef') && !hasVerseHere && !state.showVerse) {
+          if (f === 'verse') html += '<button type="button" class="link-btn ws-more" data-show-verse>+ ' + esc(tr('ws.verseAdd')) + '</button>';
           return;
         }
         html += field(i, f, w[f], src(f), s.type);
@@ -1684,7 +1692,6 @@
         '</div>';
     }
     html += '<div class="ws-rows">' +
-      row(tr('ws.menu'), chips('menu', ['top', 'center', 'button'], d.menu, function (v) { return tr('ws.menu.' + v); })) +
       row(tr('ws.brand'), chips('brand', ['name', 'logo'], d.brand, function (v) { return v === 'name' ? name : tr('ws.brand.logo'); }) +
         (d.brand === 'logo' ? (d.logo ? '<img class="ws-logo" src="' + esc(d.logo) + '" alt="">' : '') +
           '<label class="ghost-btn sm ws-file">' + esc(d.logo ? tr('ws.changePhoto') : tr('ws.chooseLogo')) + '<input type="file" accept="image/*" data-logo hidden></label>' : '')) +
@@ -1702,6 +1709,8 @@
         '<span class="hint"></span>') +
       '</div><div class="ws-head"><h2>' + esc(tr('ws.motion')) + '</h2></div><div class="ws-rows">' +
       Object.keys(MOTION).map(function (k) {
+        /* on or off is a switch, not two chips */
+        if (k === 'progress') return row(tr('ws.m.' + k), sw('data-motion-progress', d.motion.progress === 'on', ''));
         return row(tr('ws.m.' + k), chips('motion:' + k, MOTION[k], d.motion[k], function (v) { return tr('ws.m.' + k + '.' + v); }));
       }).join('') + '</div>';
     $('wsDesign').innerHTML = html;
@@ -2123,7 +2132,9 @@
         '<span class="ws-look-cap"><b>' + esc(tr('ws.nav.' + (group === 'current' ? 'cur' : group) + '.' + k)) + '</b><span>' +
         esc(tr('ws.nav.' + (group === 'current' ? 'cur' : group) + '.' + k + '.what')) + '</span></span></button>';
     };
-    var html = '<div class="ws-head"><h2>' + esc(tr('ws.nav.current')) + '</h2></div><div class="ws-looks ws-navs" data-tint="' + esc(n.tint) + '">' +
+    /* WHERE THE MENU SITS, with the rest of the menu (it was on Design). */
+    var html = '<div class="ws-rows">' + row(tr('ws.menu'), chips('menu', ['top', 'center', 'button'], d.menu, function (v) { return tr('ws.menu.' + v); })) + '</div>' +
+      '<div class="ws-head"><h2>' + esc(tr('ws.nav.current')) + '</h2></div><div class="ws-looks ws-navs" data-tint="' + esc(n.tint) + '">' +
       ['lit', 'under', 'grow', 'pill', 'bold', 'dot'].map(function (k) {
         return look('current', k, n.current === k, '<span class="ws-nav-sample" data-cur="' + k + '" aria-hidden="true"><span>' +
           esc(tr('ws.page.about')) + '</span><span class="on">' + esc(tr('ws.page.mission')) + '</span><span>' + esc(tr('ws.page.timeline')) + '</span></span>');
@@ -2162,6 +2173,13 @@
       (inIt.length ? inIt.map(function (x) { return '<span class="ws-pill">' + esc(x) + '</span>'; }).join('')
                    : '<span class="ws-small">' + esc(tr('ws.footer.nothing')) + '</span>') +
       '<button type="button" class="ghost-btn sm" data-goto-tab="links">' + esc(tr('ws.footer.editLinks')) + ' →</button></div>';
+    /* THE WORDS FIRST: what is written in the footer is what is changed most. */
+    html += '<div class="ws-fields">' +
+      '<label class="fld ws-wide"><span>' + esc(tr('ws.footer.tagline')) + '</span>' + ref(src('tagline')) +
+        '<input type="text" maxlength="120" data-footer-word="tagline" value="' + esc(w.tagline || '') + '" lang="' + esc(state.langA) + '"></label>' +
+      '<label class="fld ws-wide"><span>' + esc(tr('ws.footer.small')) + '</span>' + ref(src('small')) +
+        '<textarea rows="2" maxlength="400" data-footer-word="small" lang="' + esc(state.langA) + '">' + esc(w.small || '') + '</textarea></label>' +
+      '</div>';
     html += '<div class="ws-head"><h2>' + esc(tr('ws.footer.layout')) + '</h2></div><div class="ws-looks ws-foots">' + FOOTERS.map(function (k) {
       return '<button type="button" class="ws-look" data-chip="footer:layout" data-value="' + k + '" aria-pressed="' + (f.layout === k) + '">' +
         '<span class="ws-sketch ws-foot-sketch" aria-hidden="true">' + (FOOT_SKETCH[k] || []).map(function (r) {
@@ -2178,11 +2196,6 @@
       row(tr('ws.footer.ground'), chips('footer:ground', ['page', 'raised', 'tint'], f.ground || 'page', function (v) { return tr('ws.footer.ground.' + v); })) +
       row(tr('ws.footer.line'), sw('data-footer-line', f.line !== false, '')) +
       row(tr('ws.footer.space'), chips('footer:space', ['compact', 'regular', 'roomy'], f.space || 'regular', function (v) { return tr('ws.footer.space.' + v); })) +
-      '</div><div class="ws-fields">' +
-      '<label class="fld ws-wide"><span>' + esc(tr('ws.footer.tagline')) + '</span>' + ref(src('tagline')) +
-        '<input type="text" maxlength="120" data-footer-word="tagline" value="' + esc(w.tagline || '') + '" lang="' + esc(state.langA) + '"></label>' +
-      '<label class="fld ws-wide"><span>' + esc(tr('ws.footer.small')) + '</span>' + ref(src('small')) +
-        '<textarea rows="2" maxlength="400" data-footer-word="small" lang="' + esc(state.langA) + '">' + esc(w.small || '') + '</textarea></label>' +
       '</div>';
     $('wsFooter').innerHTML = html;
   }
@@ -2398,13 +2411,14 @@
       /* A row opens where it is; pressing it again, or Done, folds it. */
       var si = +d.editSec;
       state.anchor = si;
-      if (state.edit === si) { state.edit = null; } else { state.edit = si; state.animate = si; state.sectab = 'words'; state.openItem = null; state.showKicker = false; }
+      if (state.edit === si) { state.edit = null; } else { state.edit = si; state.animate = si; state.sectab = 'words'; state.openItem = null; state.showKicker = false; state.showVerse = false; }
       drawPages(); refreshFrame(); return;
     }
     if (d.panelBack !== undefined) { state.anchor = state.edit; state.edit = null; drawPages(); refreshFrame(); return; }
     if (d.sectab) { state.sectab = d.sectab; drawPages(); return; }
     if (d.insertAt !== undefined) return openAdd(+d.insertAt);
     if (d.itemOpen !== undefined) { state.openItem = state.openItem === +d.itemOpen ? null : +d.itemOpen; drawPages(); return; }
+    if (d.showVerse !== undefined) { state.showVerse = true; drawPages(); var vb = $('wsPages').querySelector('[data-rt$=":verse"]'); if (vb) vb.focus(); return; }
     if (d.showKicker !== undefined) { state.showKicker = true; drawPages(); var k = $('wsPages').querySelector('[data-sec-word$=":kicker"]'); if (k) k.focus(); return; }
     /* a section's on/off settings on its Look tab */
     if (d.secFlag) {
@@ -2456,6 +2470,7 @@
       pc.cue = pc.cue === false;
       drawSections(); return changed();
     }
+    if (d.motionProgress !== undefined) { var mo = state.doc.design.motion; mo.progress = mo.progress === 'on' ? 'off' : 'on'; drawDesign(); return changed(); }
     if (d.headerLinks !== undefined) { state.doc.design.headerLinks = !state.doc.design.headerLinks; drawNav(); return changed(); }
     if (d.chip) {
       var val = d.value, name = d.chip;
@@ -2467,11 +2482,9 @@
          detached is with vertical lines for that") */
       else if (name.indexOf('clines:') === 0) { var cs = p.sections[+name.slice(7)]; cs.lines = cs.variant === 'open' ? val === 'detached' : val === 'attached'; drawSections(); }
       else if (name.indexOf('raised:') === 0) { var rs = p.sections[+name.slice(7)]; rs.raised = val === 'raised'; rs.tint = val === 'tint'; if (rs.type === 'header') rs.bg = val === 'accent' ? 'accent' : 'plain'; drawSections(); }
-      else if (name.indexOf('divider:') === 0) { p.sections[+name.slice(8)].divider = val === 'on'; drawSections(); }
       else if (name === 'advpic') { var ap = advPage(); ap.seo = ap.seo || { title: {}, desc: {} }; ap.seo.image = val; drawAdvanced(); }
       else if (name.indexOf('vpos:') === 0) { p.sections[+name.slice(5)].versePos = val; drawSections(); }
       else if (name.indexOf('talign:') === 0) { p.sections[+name.slice(7)].titleAlign = val; drawSections(); }
-      else if (name.indexOf('tline:') === 0) { p.sections[+name.slice(6)].titleLine = val === 'on'; drawSections(); }
       else if (name.indexOf('tinline:') === 0) { p.sections[+name.slice(8)].titleInline = val === 'with'; drawSections(); }
       else if (name.indexOf('cplace:') === 0) { var cl = state.doc.links[+name.slice(7)]; cl.place = val; delete cl.icon; drawLinks(); }
       else if (name.indexOf('cshow:') === 0) { state.doc.links[+name.slice(6)].show = val; drawLinks(); }
@@ -2480,13 +2493,8 @@
       else if (name.indexOf('vlinks:') === 0) { p.sections[+name.slice(7)].linkStyle = val; drawSections(); }
       else if (name.indexOf('lcolor:') === 0) { var lk = name.slice(7).split(':'); p.sections[+lk[0]].items[+lk[1]].color = val; drawSections(); }
       else if (name.indexOf('tier:') === 0) { var tk = name.slice(5).split(':'); p.sections[+tk[0]].items[+tk[1]].tier = val; drawSections(); }
-      else if (name.indexOf('numbers:') === 0) { p.sections[+name.slice(8)].numbers = val === 'on'; drawSections(); }
-      else if (name.indexOf('topline:') === 0) { p.sections[+name.slice(8)].topline = val === 'on'; drawSections(); }
       else if (name.indexOf('verse:') === 0) { p.sections[+name.slice(6)].verseStyle = val; drawSections(); }
       else if (name.indexOf('align:') === 0) { var as = p.sections[+name.slice(6)]; if (as.align === 'indent') as.indent = true; as.align = val; drawSections(); }
-      else if (name.indexOf('tbars:') === 0) { p.sections[+name.slice(6)].titleBars = val === 'on'; drawSections(); }
-      else if (name.indexOf('join:') === 0) { p.sections[+name.slice(5)].join = val === 'on'; drawSections(); }
-      else if (name.indexOf('indent:') === 0) { var is = p.sections[+name.slice(7)]; if (is.align === 'indent') is.align = 'left'; is.indent = val === 'on'; drawSections(); }
       else if (name.indexOf('linkkind:') === 0) {
         var key = name.slice(9);
         var firstPage = (state.doc.pages.filter(function (x) { return x.on && x.id !== 'home'; })[0] || state.doc.pages[0]).id;
@@ -2506,7 +2514,8 @@
       }
       else if (name === 'giveTo') { state.doc.design.giveTo = val; drawNav(); }
       else if (name.indexOf('motion:') === 0) { state.doc.design.motion[name.slice(7)] = val; drawDesign(); }
-      else if (name === 'look' || name === 'menu' || name === 'brand' || name === 'mode' || name === 'faviconStyle') { state.doc.design[name] = val; drawDesign(); }
+      else if (name === 'menu') { state.doc.design.menu = val; drawNav(); }
+      else if (name === 'look' || name === 'brand' || name === 'mode' || name === 'faviconStyle') { state.doc.design[name] = val; drawDesign(); }
       return changed();
     }
     if (d.start) {
