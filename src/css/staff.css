@@ -1238,8 +1238,64 @@ button.ml-sentall-row:focus-visible .ml-sentall-subject{color:var(--voice-tech)}
 .ml-sentall-subject{flex:1 1 auto;min-width:0;font-size:14px;overflow-wrap:anywhere}
 .ml-sentall-meta{flex:none;font-size:12.5px;color:var(--dim);font-variant-numeric:tabular-nums}
 .ml-sentall .link-btn{margin-top:8px}
+/* a sent mailing's row opens its report; the × on its right removes it (2026-10-06) */
+.ml-sent-item{display:flex;align-items:center}
+.ml-sent-item+.ml-sent-item{border-top:1px solid var(--line)}
+.ml-sent-item .ml-sentall-row{flex:1 1 auto;min-width:0;border:0}
+button.ml-sentall-row{width:100%;background:none;border:0;text-align:left;font:inherit;cursor:pointer}
+.ml-sent-x{flex:none;width:32px;height:32px;margin-right:10px;border-radius:50%;background:none;border:0;color:var(--dim);
+  font-size:20px;line-height:1;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+.ml-sent-x:hover,.ml-sent-x:focus-visible{color:var(--crit);background:color-mix(in srgb,var(--crit) 12%,transparent)}
+.ghost-btn.xs{font-size:10px;padding:3px 8px;line-height:1.3}
+.ml-sent-people{list-style:none;margin:6px 0 14px;padding:0}
+.ml-sent-people li{display:flex;align-items:baseline;gap:12px;padding:7px 0;border-top:1px solid var(--line);font-size:13px}
+.ml-sent-who{flex:1 1 auto;min-width:0;overflow-wrap:anywhere}.ml-sent-who i{font-style:normal;color:var(--dim);margin-left:6px}
+.ml-sent-st{flex:none;color:var(--dim);display:flex;gap:6px;align-items:baseline}
+.ml-mark{font-size:11px;padding:1px 7px;border-radius:999px;background:var(--line);color:var(--text)}
+.ml-mark.is-open{background:color-mix(in srgb,var(--voice-human) 25%,transparent)}
+.ml-mark.is-click{background:color-mix(in srgb,var(--voice-tech) 25%,transparent)}
 @media (max-width:560px){
   .ml-sentall-row{flex-direction:column;gap:3px}
+}
+
+/* ONE MAILING'S REPORT (2026-10-06): tiles, a funnel, when it was opened,
+   the links, and everyone it went to, filterable. */
+.ml-report .ml-back{margin-bottom:14px}
+.ml-rp-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+.ml-rp-subject{margin:0;font-family:var(--font-display);font-weight:300;font-size:clamp(20px,3vw,28px);overflow-wrap:anywhere}
+.ml-rp-meta{margin:6px 0 0;color:var(--dim);font-size:13px}
+.ml-rp-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.ml-rp-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:1px;background:var(--line);
+  border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;margin-bottom:16px}
+.ml-rp-tile{background:var(--panel);padding:16px 18px;display:flex;flex-direction:column;gap:4px}
+.ml-rp-n{font-family:var(--font-display);font-size:26px;font-weight:300;font-variant-numeric:tabular-nums}
+.ml-rp-l{font-size:12px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
+.ml-rp-s{font-size:12px;color:var(--text)}
+.ml-rp-tile.is-open .ml-rp-n{color:var(--voice-human)}
+.ml-rp-tile.is-click .ml-rp-n{color:var(--voice-tech)}
+.ml-rp-tile.is-bad .ml-rp-n{color:var(--crit)}
+.ml-rp-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px 18px;margin-bottom:16px}
+.ml-rp-funnel{display:flex;flex-direction:column;gap:8px}
+.ml-rp-bar{display:grid;grid-template-columns:110px 1fr 48px;align-items:center;gap:12px;font-size:13px}
+.ml-rp-bl{color:var(--dim)}
+.ml-rp-bar b{text-align:right;font-variant-numeric:tabular-nums}
+.ml-rp-track{height:8px;border-radius:999px;background:var(--line);overflow:hidden}
+.ml-rp-track i{display:block;height:100%;background:linear-gradient(90deg,var(--voice-tech),var(--voice-human))}
+.ml-rp-chart{display:flex;align-items:flex-end;gap:2px;height:90px;margin-top:10px}
+.ml-rp-chart span{flex:1 1 0;height:100%;display:flex;align-items:flex-end}
+.ml-rp-axis{display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:var(--dim)}
+.ml-rp-chart i{display:block;width:100%;background:var(--voice-human);border-radius:2px 2px 0 0;min-height:0}
+.ml-rp-filter{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:10px 0 8px}
+.ml-rp-chip{font:inherit;font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--line-hard);background:none;color:var(--text);cursor:pointer}
+.ml-rp-chip b{font-weight:600;margin-left:3px}
+.ml-rp-chip.is-on{border-color:var(--voice-tech);color:var(--voice-tech)}
+.ml-rp-q{margin-left:auto;min-width:180px}
+.ml-rp-people li{align-items:center}
+.ml-mark.is-left{background:color-mix(in srgb,var(--crit) 18%,transparent)}
+@media (max-width:560px){
+  .ml-rp-bar{grid-template-columns:80px 1fr 40px}
+  .ml-rp-q{margin-left:0;width:100%}
+  .ml-rp-people li{flex-wrap:wrap}
 }
 
 /* A list's settings: every row spaced the same. */
@@ -1391,8 +1447,11 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
    Every button is real and shows whether it is on. `.is-on` comes from the
    editor's own state on both content changes and cursor movement — clicking
    into bold text with no typing lights the Bold button. */
+/* ONE LEFT EDGE (2026-10-06, Chase: "Somethings don't line up properly"):
+   the fields, Layout and Colors, the toolbar's first glyph and every row
+   under it start 20px in from the card */
 .cp-tools{display:flex;align-items:center;gap:2px;flex-wrap:wrap;
-  padding:8px 16px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+  padding:8px 12px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);
   background:var(--bg2,#0b1119)}
 .cp-tools button{min-width:30px;height:29px;padding:0 8px;background:none;border:0;
   border-radius:6px;color:var(--dim,#8a93a3);font-size:13px;font-family:inherit;
@@ -1408,9 +1467,71 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
 .cp-tools [aria-expanded="true"]{background:var(--line);color:var(--text)}
 
 /* ---- one row of choices under the toolbar: size, color, link, name ---- */
-.cp-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:8px 16px;
+.cp-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:8px 20px;
   border-bottom:1px solid var(--line);background:var(--bg2,#0b1119)}
 .cp-row[hidden]{display:none}
+/* THE VARIABLES, QUIET (2026-10-07, Chase: "can we make it more subtle? I
+   don't like that it is in your face"): a row like the others, the tokens
+   in the ministry voice and nothing else colored. */
+.cp-legend .cp-legend-label{color:var(--dim)}
+.cp-row.cp-legend>button.cp-varchip{display:inline-flex;min-height:0;align-items:baseline;gap:6px;padding:3px 8px;border-radius:6px;cursor:pointer;
+  font:inherit;font-size:12.5px;border:0;background:none;color:var(--dim)}
+.cp-varchip code{font:500 12px/1.2 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:color-mix(in srgb,var(--voice-human) 80%,var(--dim))}
+.cp-row.cp-legend>button.cp-varchip:hover,.cp-row.cp-legend>button.cp-varchip:focus-visible{background:var(--line);color:var(--text)}
+/* card or integrated: two small drawings */
+.cp-layout{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:0;padding:12px 20px}
+.cp-layout button{display:inline-flex;align-items:center;gap:7px;min-height:30px;padding:0 10px;border-radius:8px;border:1px solid var(--line);background:none;color:var(--dim);font:inherit;font-size:13px;cursor:pointer}
+.cp-layout button[aria-pressed="true"]{border-color:var(--voice-tech);color:var(--text)}
+.cp-lay-card,.cp-lay-int{width:22px;height:16px;border-radius:3px;position:relative;flex:none}
+.cp-lay-card{background:var(--line)}.cp-lay-card::after{content:"";position:absolute;inset:3px 5px;border-radius:2px;background:var(--text);opacity:.85}
+.cp-lay-int{background:var(--text);opacity:.85}.cp-lay-int::after{content:"";position:absolute;left:4px;right:4px;top:3px;height:2px;background:var(--panel)}
+.cp-legend-label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:600;color:var(--dim);margin-right:4px}
+/* A PICTURE IN THE MESSAGE (2026-10-06; 2026-10-07 after chaseroush.com's
+   composer, kept quiet): at its width, centered or beside the words.
+   Selected: a thin outline, a small bar on its top edge, four small corner
+   handles. The width shows only while a corner is being dragged. */
+.cp-body .cp-img{position:relative;margin:0 auto 14px;max-width:100%;line-height:0;cursor:grab}
+.cp-body .cp-img.al-left{float:left;margin:4px 18px 10px 0}
+.cp-body .cp-img.al-right{float:right;margin:4px 0 10px 18px}
+.cp-body .ProseMirror::after{content:"";display:block;clear:both}
+.cp-body .cp-img img{width:100%;height:auto;display:block;border-radius:4px;margin:0}
+.cp-img.is-sel{outline:1.5px solid var(--voice-tech);outline-offset:2px}
+.cp-img-handle{position:absolute;width:10px;height:10px;border-radius:2px;background:var(--panel,#0f141c);
+  border:1.5px solid var(--voice-tech);display:none;touch-action:none;z-index:2}
+/* a bigger target than it looks, for a finger */
+.cp-img-handle::before{content:"";position:absolute;inset:-9px}
+.cp-img-handle.tl{left:-6px;top:-6px;cursor:nwse-resize}.cp-img-handle.tr{right:-6px;top:-6px;cursor:nesw-resize}
+.cp-img-handle.bl{left:-6px;bottom:-6px;cursor:nesw-resize}.cp-img-handle.br{right:-6px;bottom:-6px;cursor:nwse-resize}
+.cp-img-pct{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:none;font:600 12px/1 var(--font-body,inherit);
+  padding:5px 9px;border-radius:999px;background:rgba(8,10,16,.82);color:#fff;font-variant-numeric:tabular-nums}
+.cp-img-bar{position:absolute;left:50%;top:8px;transform:translateX(-50%);display:none;align-items:center;gap:2px;padding:3px;
+  border-radius:8px;background:rgba(10,13,19,.9);border:1px solid rgba(255,255,255,.12);line-height:0;z-index:3;white-space:nowrap}
+.cp-img-bar button{width:28px;height:26px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:6px;
+  background:none;color:#c9d2de;cursor:pointer;padding:0}
+.cp-img-bar button:hover,.cp-img-bar button:focus-visible{background:rgba(255,255,255,.1);color:#fff}
+.cp-img-bar button[aria-pressed="true"]{color:var(--voice-tech);background:color-mix(in srgb,var(--voice-tech) 16%,transparent)}
+.cp-img-bar button[data-pic="remove"]:hover{color:#ff8a8a}
+.cp-img-bar svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.cp-img-bar svg rect{fill:currentColor;stroke:none;opacity:.85}
+.cp-img-sep{width:1px;height:16px;background:rgba(255,255,255,.14);margin:0 3px}
+.cp-img.is-sel .cp-img-handle,.cp-img.is-drag .cp-img-handle{display:block}
+.cp-img.is-sel .cp-img-bar{display:inline-flex}
+.cp-img.is-drag .cp-img-bar{display:none}
+.cp-img.is-drag .cp-img-pct{display:block}
+/* files held over the message: a quiet dashed edge, nothing more */
+.cp-body.is-dropping{outline:1.5px dashed var(--voice-tech);outline-offset:-6px}
+/* any text size: − number + (as Site Creator) */
+.cp-step{display:inline-flex;align-items:center;margin-left:8px;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.cp-step button{width:30px;height:29px;background:none;border:0;color:var(--text);font:inherit;font-size:16px;cursor:pointer}
+.cp-step button:hover{background:var(--line)}
+.cp-row .cp-step input{min-width:0;width:52px;flex:none;height:29px;border:0;border-left:1px solid var(--line);border-right:1px solid var(--line);
+  border-radius:0;text-align:center;background:none;-moz-appearance:textfield}
+.cp-step input::-webkit-inner-spin-button,.cp-step input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+/* the Colors choice beside Layout, each with its little drawing */
+.cp-layout-sep{width:1px;height:22px;background:var(--line);margin:0 6px}
+.cp-mode-light,.cp-mode-dark,.cp-mode-auto{width:16px;height:16px;border-radius:50%;flex:none;border:1px solid var(--line)}
+.cp-mode-light{background:#f4f5f8}.cp-mode-dark{background:#1c1c25}
+.cp-mode-auto{background:linear-gradient(135deg,#f4f5f8 50%,#1c1c25 50%)}
 .cp-row>button:not(.ghost-btn){min-height:29px;padding:0 10px;background:none;border:0;
   border-radius:6px;color:var(--dim,#8a93a3);font:inherit;font-size:13px;cursor:pointer}
 @media(hover:hover){ .cp-row>button:not(.ghost-btn):hover{background:var(--line);color:var(--text)} }
@@ -1436,6 +1557,11 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
 /* ANY COLOR: the browser's own picker, drawn as one more swatch. Its well is
    a rainbow until a color is picked, then that color. */
 .cp-tone-any{display:inline-flex;align-items:center;cursor:pointer;position:relative}
+/* a link button's own color, beside its quick picks (staff-site.js) */
+.ws-thumb-icon{width:28px;height:28px;object-fit:contain;border-radius:6px;background:var(--bg)}
+.ws-anycolor{display:inline-flex;align-items:center;margin-left:6px;cursor:pointer}
+.ws-anycolor input{width:30px;height:28px;padding:0;border:1px solid var(--line);border-radius:6px;background:none;cursor:pointer}
+.ws-anycolor.is-on input{border-color:var(--voice-tech);box-shadow:0 0 0 1px var(--voice-tech)}
 .cp-tone-any input{width:18px;height:18px;padding:0;border:1px solid rgba(255,255,255,.2);
   border-radius:50%;background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red);
   cursor:pointer;-webkit-appearance:none;appearance:none;overflow:hidden}
@@ -1448,7 +1574,7 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
 .cp-swatch[data-tone="any"] span{background:var(--any)}
 
 /* ---- the writing surface ---- */
-.cp-body{min-height:400px;max-height:64vh;overflow-y:auto;padding:24px 28px;
+.cp-body{min-height:400px;max-height:64vh;overflow-y:auto;padding:24px 20px;
   color:var(--text);font-size:15.5px;line-height:1.7}
 .cp-body .ProseMirror{outline:0;min-height:352px}
 .cp-body .ProseMirror>*:first-child{margin-top:0}
@@ -1476,11 +1602,11 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
 .cp-body [data-c="green"]{color:#6FE3A6}
 .cp-body [data-c="blue"]{color:#8DB8FF}
 .cp-body [data-c="gold"]{color:#F2C14E}
-/* A personal word: a chip, so it reads as "filled in for each person". */
-.cp-body .cp-var{display:inline-block;padding:0 7px;border-radius:10px;
-  background:rgba(47,216,255,.14);color:var(--voice-tech);font-size:.9em;
-  line-height:1.5;white-space:nowrap}
-.cp-body .cp-var.ProseMirror-selectednode{outline:2px solid var(--voice-tech)}
+/* A variable in the message: the token itself, in the ministry voice, so it
+   reads as "filled in for each person" and as what can be typed. */
+.cp-body .cp-var{display:inline;white-space:nowrap;font:500 .9em/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color:color-mix(in srgb,var(--voice-human) 75%,var(--text))}
+.cp-body .cp-var.ProseMirror-selectednode{outline:2px solid var(--voice-human)}
 .cp-body .ProseMirror.is-editor-empty:first-child::before{content:attr(data-placeholder);
   float:left;height:0;pointer-events:none;color:var(--dim,#8a93a3);opacity:.5}
 
@@ -1503,6 +1629,7 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
 /* ---- the bottom bar ---- */
 .cp-actions{display:flex;align-items:center;gap:10px;margin-top:16px;flex-wrap:wrap}
 .cp-actions-gap{flex:1}
+.cp-actions-end{display:inline-flex;gap:8px;margin-left:auto;flex-wrap:nowrap}
 /* Where "Send me a test" goes (0048): the address, pressable to change it. */
 .cp-testto{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap}
 .cp-testto-addr{background:none;border:0;padding:4px 2px;color:var(--dim,#9AA6B6);
@@ -1514,9 +1641,11 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
 .cp-testto-box{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap}
 .cp-testto-box[hidden]{display:none}
 .cp-testto-box input{min-width:220px}
-.cp-icon{width:34px;height:34px;background:none;border:1px solid var(--line);
-  border-radius:8px;color:var(--dim,#8a93a3);font-size:15px;cursor:pointer;
+.cp-icon{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 12px;background:none;border:1px solid var(--line);
+  border-radius:8px;color:var(--dim,#8a93a3);font:inherit;font-size:13px;cursor:pointer;
   transition:.15s}
+.cp-icon svg,.cp-tool-word svg{width:15px;height:15px;flex:none;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
+.cp-tools .cp-tool-word{display:inline-flex;align-items:center;gap:6px;width:auto;padding:0 9px;font-size:13px}
 @media(hover:hover){
   .cp-icon:hover{border-color:var(--voice-tech);color:var(--text)}
   .cp-icon-del:hover{border-color:var(--crit,#FF6B6B);color:var(--crit,#FF6B6B)}
@@ -2603,6 +2732,11 @@ html.has-ai .lang-ai{display:inline-block}
    folds into the hamburger, above the phone layout. Now 1280px wide, scaled
    by --ws-scale, which staff-site.js measures from the pane. */
 .ws-preview-frame iframe{width:1280px;height:calc(100% / var(--ws-scale,.4));border:0;transform:scale(var(--ws-scale,.4));transform-origin:0 0}
+/* the phone: 390px, centered, at full size where the pane allows */
+.ws-preview.is-phone .ws-preview-frame iframe{width:390px;margin-left:var(--ws-left,0)}
+.ws-dev{margin-left:auto;display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.ws-dev button{font:inherit;font-size:11px;padding:3px 9px;background:none;border:0;color:var(--dim);cursor:pointer}
+.ws-dev button[aria-pressed="true"]{background:var(--line);color:var(--text)}
 /* The Footer tab shows the footer alone, so the frame is only as tall as one. */
 .ws-preview.only-foot .ws-preview-frame{height:170px}
 
@@ -2683,6 +2817,10 @@ html.has-ai .ai-one{display:inline-flex;align-items:center;justify-content:cente
 .ws-stile-words{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1 1 auto}
 .ws-stile-words b{font-weight:600;display:flex;align-items:center}
 .ws-stile-words span{color:var(--dim);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Languages still in stand-in words (staff-site.js missingNote), as Updates marks them. */
+.ws-stile-words .ws-miss,.ws-prow-open .ws-miss{color:var(--warn);font-size:12.5px}
+.ws-prow-sub{display:flex;flex-direction:column;gap:3px;flex:1 1 auto;min-width:0}
+.ws-prow-open .ws-prow-sub .ws-miss{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ws-stile-edit{font-size:12.5px;color:var(--voice-tech)}
 .ws-stile-tools{display:flex;flex-direction:column;gap:4px;justify-content:center}
 .ws-stile-tools .ws-icon{width:28px;height:28px}
@@ -2725,11 +2863,15 @@ html.has-ai .ai-one{display:inline-flex;align-items:center;justify-content:cente
 .rt-heading{font:100 22px/1.3 var(--font-display)}.rt-heading b{font-weight:600}
 .rt-text{min-height:96px}
 .rt[contenteditable="false"]{opacity:.7;cursor:default}
-/* The suggestion in an empty box, styled like a field's placeholder. A box
-   emptied by deleting keeps a lone <br>, which :empty does not match. */
-.rt[data-ph]:empty::before,.rt[data-ph]:has(>br:only-child)::before{content:attr(data-ph);
-  color:var(--dim);opacity:.55;pointer-events:none}
-.rt[data-ph]:has(>br:only-child)>br{display:none}
+/* The suggestion in an empty box, styled like a field's placeholder.
+   EMPTINESS IS DECIDED IN staff-site.js (is-empty), not by :empty or a lone
+   <br>: CSS cannot see text, so a box holding typed words and a stray <br>
+   looked empty, and the suggestion sat in front of the words (2026-10-07,
+   Chase: select all, type, and "faded text shows up and the text starts
+   typing just past that"). Laid over the box, so it never moves the caret. */
+.rt{position:relative}
+.rt[data-ph].is-empty::before{content:attr(data-ph);position:absolute;top:11px;left:13px;right:13px;
+  color:var(--dim);opacity:.55;pointer-events:none;white-space:pre-wrap}
 .ws-rfld{display:flex;flex-direction:column;gap:6px}
 .ws-fmt{position:absolute;z-index:200;display:flex;background:#EDF2F8;border-radius:6px;box-shadow:0 10px 24px -8px rgba(0,0,0,.7);overflow:hidden}
 .ws-fmt[hidden]{display:none}
@@ -2836,7 +2978,10 @@ html.has-ai .ai-one{display:inline-flex;align-items:center;justify-content:cente
 .ws-phone-sample[data-phone="full"] i{inset:8px}
 .ws-phone-sample[data-phone="drawer"] i{right:8px;top:8px;bottom:8px;width:44%}
 /* A Custom Cards row's number, as the site draws it. */
-.ws-cnum{flex:none;width:22px;height:22px;border-radius:50%;background:var(--ws-acc,#1AE4FF);color:#0B0F15;
+/* .ws-linkrow span (the row's words) is more specific, and stretched the
+   badge into an oval with its number in the dim words' color — so named
+   through the row as well. */
+.ws-cnum,.ws-linkrow .ws-cnum{flex:none;width:22px;height:22px;border-radius:50%;background:var(--ws-acc,#1AE4FF);color:#0B0F15;
   display:inline-flex;align-items:center;justify-content:center;font:700 11px var(--font-body)}
 
 /* ---- the photo editor (photo-editor.js, 2026-10-04) ----
@@ -2921,3 +3066,20 @@ html.pe-open{overflow:hidden}
 .ws-vname b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ws-vname small{color:var(--dim);font-size:12px}
 .ws-vrow.is-pub .ws-vname b{color:var(--dim);font-weight:500}
+
+/* A PAGE'S TABS in Site Creator (2026-10-06): a strip like a browser's —
+   the page's own sections, each tab, + for another — and the chosen tab's
+   name and order under it; the bar's look stays behind "Tab style". */
+.ws-tabs{display:flex;flex-wrap:wrap;align-items:flex-end;gap:4px;margin:16px 0 0;border-bottom:1px solid var(--line)}
+.ws-tabchip{font:inherit;font-size:13px;padding:8px 14px;background:var(--bg2,#0b1119);color:var(--dim);border:1px solid var(--line);border-bottom:0;
+  border-radius:8px 8px 0 0;cursor:pointer;margin-bottom:-1px}
+.ws-tabchip:hover{color:var(--text)}
+.ws-tabchip.is-on{background:var(--panel);color:var(--text);border-color:var(--line-hard,var(--line));box-shadow:inset 0 2px 0 var(--voice-tech)}
+.ws-tab-plus{font-size:16px;line-height:1;padding:7px 12px}
+.ws-tabs-add{font:inherit;font-size:12.5px;background:none;border:0;color:var(--dim);padding:6px 0;cursor:pointer;margin-bottom:6px}
+.ws-tabs-add:hover{color:var(--voice-tech)}
+.ws-tabs:has(.ws-tabs-add){border-bottom:0}
+.ws-tabstyle-btn{margin:0 0 6px auto}
+.ws-tabstyle{display:flex;flex-wrap:wrap;gap:6px 24px;padding:12px 0 4px}
+.ws-tabedit{display:flex;align-items:flex-end;gap:12px;padding:12px 0 0}
+.ws-tabedit .ws-pagename{flex:1;margin:0}

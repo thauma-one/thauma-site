@@ -265,7 +265,7 @@
     "initials_ok": "Save",
     "over_title": "Game over",
     "again_label": "Again",
-    "menu_label": "Menu",
+    "menu_label": "Arcade",
     "score_label": "Score",
     "loadout_title": "Load Out",
     "loadout_line": "Stack the cases. Mind the lean.",
@@ -298,11 +298,6 @@
     ],
     "soundcheck_you": "You",
     "soundcheck_foh": "FOH",
-    "soundcheck_serve": [
-      "Check, one-two.",
-      "Is this thing on?",
-      "Testing, testing."
-    ],
     "cablerun_crash": [
       "That's a trip hazard.",
       "Cable management: none.",
@@ -339,85 +334,10 @@
     "loadout_speaker": "Speaker",
     "loadout_steady": "Steady",
     "loadout_rushed": "Rushed",
-    "jokes_loadout_lost": [
-      "[SM] That one's coming out of your paycheck.",
-      "[A2] Gravity: still undefeated.",
-      "[PM] I'll just put 'acts of God' on the damage report.",
-      "[DRUMS] Was that my kit? Please tell me that wasn't my kit."
-    ],
-    "jokes_loadout_heavy": [
-      "[CREW] Lift with your legs. And your prayers.",
-      "[SM] That case weighs more than the sermon notes.",
-      "[A2] Who packed a bowling ball in the speaker?"
-    ],
-    "jokes_loadout_steady": [
-      "[SM] Tetris champion of the loading dock.",
-      "[PM] Now THAT is how you pack a truck."
-    ],
-    "jokes_loadout_tall": [
-      "[SM] We're going to need a taller truck.",
-      "[LD] Can I hang a light off that?"
-    ],
-    "soundcheck_smash": "That was a smash!",
-    "soundcheck_muted": "Muted",
     "soundcheck_classic": "Classic",
     "soundcheck_modern": "Modern",
     "soundcheck_classic_line": "Just you, FOH and the ball.",
-    "soundcheck_modern_line": "Power-ups for both of you. Some of them bite.",
-    "soundcheck_p_wide": "Wide fader",
-    "soundcheck_p_magnet": "Mic magnet",
-    "soundcheck_p_shield": "Limiter",
-    "soundcheck_p_slowmo": "Slow-mo",
-    "soundcheck_p_tiny": "Tiny fader",
-    "soundcheck_p_mute": "Mute",
-    "soundcheck_p_flip": "Phase flip",
-    "soundcheck_p_fast": "Fastball",
-    "soundcheck_p_ghost": "Ghost ball",
-    "soundcheck_p_split": "Split ball",
-    "soundcheck_p_zigzag": "Double bounce",
-    "soundcheck_p_squiggle": "Squiggle ball",
-    "soundcheck_p_butter": "Butterfingers",
-    "soundcheck_p_blackout": "Blackout",
-    "jokes_soundcheck_miss": [
-      "[FOH] Check, one, two… nope, that was a miss.",
-      "[FOH] Is your fader even plugged in?",
-      "[A2] I'll blame the wireless frequencies.",
-      "[FOH] Bold strategy, letting that one go by.",
-      "[WL] Can I get more me in my monitor? And maybe the ball?",
-      "[FOH] That's what we in the business call dead air."
-    ],
-    "jokes_soundcheck_win": [
-      "[FOH] Okay, okay. Who taught you to mix?",
-      "[A2] Somebody print that on a T-shirt.",
-      "[FOH] That one's going in my highlight reel."
-    ],
-    "jokes_soundcheck_power": [
-      "[FOH] That's not in the stage plot.",
-      "[A2] I've seen weirder things at youth camp.",
-      "[FOH] Somebody's been messing with my presets."
-    ],
-    "jokes_soundcheck_rally": [
-      "[FOH] This rally is longer than the announcements.",
-      "[A2] Somebody tell the pastor we're running long."
-    ],
-    "jokes_cablerun_crash": [
-      "[A2] That's not a cable run, that's spaghetti.",
-      "[SM] Cable management: none.",
-      "[A2] I'll be untangling that until Christmas."
-    ],
-    "jokes_cablerun_trip": [
-      "[SM] The worship leader is fine. Their pride, less so.",
-      "[SM] Gaff tape exists for a reason.",
-      "[PM] Filing this under trip hazards. Again."
-    ],
-    "jokes_cablerun_plug": [
-      "[A2] Look at that signal flow. Beautiful.",
-      "[FOH] All inputs green. I could cry."
-    ],
-    "jokes_cablerun_tape": [
-      "[A2] Gaff tape: the true backbone of live production.",
-      "[SM] If it moves and shouldn't, gaff it."
-    ],
+    "soundcheck_modern_line": "Power-ups for both of you. You can see each one on the ball.",
     "panelfixer_wall": "Wall",
     "panelfixer_broken": "Broken",
     "panelfixer_free": "Free ball!",
@@ -429,27 +349,6 @@
     "panelfixer_fire": "Hot ball",
     "panelfixer_hint": "← → to aim · Space to throw · or drag and let go",
     "panelfixer_hint_touch": "Drag to aim · let go to throw",
-    "jokes_panelfixer_miss": [
-      "[LD] The wall saw that. The wall is judging you.",
-      "[LD] Have you tried turning it off and on again?",
-      "[VIDEO] That panel is still showing the blue screen of sadness."
-    ],
-    "jokes_panelfixer_great": [
-      "[LD] Years of engineering school, and the tennis ball wins again.",
-      "[VIDEO] The wall is healed. Hallelujah."
-    ],
-    "jokes_panelfixer_last": [
-      "[LD] Last ball. No pressure. Just the whole service.",
-      "[SM] Doors open in five. Just saying."
-    ],
-    "jokes_panelfixer_showtime": [
-      "[LD] Lights, wall, action! It's showtime!",
-      "[VIDEO] That picture is crisper than the pastor's ironed shirt."
-    ],
-    "jokes_panelfixer_free": [
-      "[SM] Nothing but road case!",
-      "[A2] Put that on the highlight reel."
-    ],
     "stagerunner_item_coffee": "Coffee",
     "stagerunner_item_batteries": "AA batteries",
     "stagerunner_item_setlist": "The setlist",
@@ -471,89 +370,28 @@
     "stagerunner_p_case_gone": "The case took the hit!",
     "stagerunner_hint": "← → lanes · ↑ jump · ↓ slide",
     "stagerunner_hint_touch": "Swipe: lanes, jump, slide",
-    "jokes_stagerunner_crash": [
-      "[PM] Did you just hit a road case at full speed? On the clock?",
-      "[TALENT] And that is why I asked for a different stage manager.",
-      "[SM] Note to self: cases don't move. I do."
-    ],
-    "jokes_stagerunner_stumble": [
-      "[PM] Hey! Walk, don't run! …Actually, run.",
-      "[SM] I'm fine! Everything's fine! It's all on the clipboard!",
-      "[PM] I'm right behind you. With a clipboard."
-    ],
-    "jokes_stagerunner_deliver": [
-      "[TALENT] Finally. Did you take out the green ones?",
-      "[TALENT] Perfect temperature. You may stay on this tour.",
-      "[SM] Delivered with eleven seconds to spare. Living legend."
-    ],
-    "jokes_stagerunner_late": [
-      "[TALENT] I'll just sit here. In silence. Thinking about this.",
-      "[TALENT] I asked for that during the last tour.",
-      "[PM] The talent is now doing vocal warmups. That's screaming."
-    ],
-    "jokes_stagerunner_power": [
-      "[SM] Never underestimate a stage manager with a headset.",
-      "[A2] Whoever invented case surfing deserves a raise."
-    ],
     "goldenhour_ball": "Ball returned!",
     "goldenhour_flip": "Backflip",
     "goldenhour_hint": "Tap to jump · hold to flip",
     "goldenhour_p_magnet": "Headlamp",
     "goldenhour_p_hat": "Hard hat",
     "goldenhour_p_hat_used": "Saved by the hard hat!",
-    "jokes_goldenhour_crash": [
-      "[LX] Golden hour, meet face plant.",
-      "[SM] We'll call that a dramatic exit.",
-      "[LX] The sunset was gorgeous right up until that."
-    ],
-    "jokes_goldenhour_trick": [
-      "[LX] Somebody get that on the big screen!",
-      "[SM] Showing off on company time. Love it."
-    ],
-    "jokes_goldenhour_ball": [
-      "[CROWD] Hey, that's our ball! Thanks!",
-      "[LX] Returning lost property at forty miles an hour."
-    ],
     "followspot_pastor": "The pastor",
     "followspot_leader": "Worship leader",
     "followspot_youth": "Youth pastor",
     "followspot_pastor_line": "Walks and talks. A good place to start.",
     "followspot_leader_line": "Roams the stage. Watch the bridge.",
     "followspot_youth_line": "Everywhere at once. Good luck.",
-    "followspot_dive": "Stage dive! Follow them!",
     "followspot_nailed": "Nailed it",
     "followspot_fired": "You're off the spot.",
     "followspot_pick": "Who are you lighting?",
     "followspot_patience": "Director's patience",
-    "jokes_followspot_stunt": [
-      "[DIR] Did they just backflip? During the sermon?",
-      "[DIR] Nobody told me there'd be acrobatics."
-    ],
-    "jokes_followspot_lost": [
-      "[DIR] Spot, they're over here. No, the other here.",
-      "[DIR] Lovely shot of an empty stage."
-    ],
-    "jokes_followspot_dark": [
-      "[DIR] One more miss and you're on mic batteries.",
-      "[DIR] I'd love to see the performer. Any part of them."
-    ],
     "strike_level": "Set",
     "strike_pyro": "Pyro!",
     "strike_laser": "Laser show!",
     "strike_confetti": "Confetti cannon!",
     "strike_bass": "Bass drop!",
     "strike_encore": "Encore!",
-    "jokes_strike_wild": [
-      "[PYRO] The fire marshal is not going to love this.",
-      "[PYRO] Stand back! Nobody told me we had this much budget."
-    ],
-    "jokes_strike_drop": [
-      "[PYRO] Dropped it. Like the bass, but sadder.",
-      "[PYRO] The ball has left the building."
-    ],
-    "jokes_strike_clear": [
-      "[PYRO] Wall's down. Next set!"
-    ],
     "cuestack_lights": "Lights",
     "cuestack_sound": "Sound",
     "cuestack_video": "Video",
@@ -563,18 +401,6 @@
     "cuestack_miss": "Miss",
     "cuestack_house": "The house",
     "cuestack_combo": "in a row",
-    "jokes_cuestack_show": [
-      "[SM] Standby everything. Best show we've done all week.",
-      "[SM] Lights, sound, video, pyro: GO. Look at us."
-    ],
-    "jokes_cuestack_miss": [
-      "[SM] Uh, video? Video's gone to the screensaver.",
-      "[SM] Somebody hit the cue. Any cue."
-    ],
-    "jokes_cuestack_combo": [
-      "[SM] Fifty cues clean. Somebody get this caller a coffee."
-    ],
-    "panelfixer_big": "Beach ball",
     "panelfixer_magnet": "Magnet",
     "panelfixer_pattern": "Test pattern",
     "panelfixer_crew": "Crew call",
@@ -584,31 +410,10 @@
     "followspot_act_worship": "Worship",
     "followspot_act_message": "The message",
     "followspot_act_encore": "One more song",
-    "jokes_followspot_sheep": [
-      "[DIR] That is a sheep. You are lighting a sheep.",
-      "[DIR] The sheep is the sermon illustration. It is not the sermon.",
-      "[PASTOR] Lovely. Now the one with the microphone, please.",
-      "[DIR] Ninety-nine in the fold, one in my follow spot."
-    ],
-    "jokes_followspot_moth": [
-      "[DIR] Is that a moth? That's a moth. It's on the screen. It's huge.",
-      "[LD] The moth has found the brightest thing in the room. Respect.",
-      "[DIR] Nobody move. Maybe it will follow the pastor instead."
-    ],
-    "jokes_followspot_fog": [
-      "[DIR] Who touched the hazer? Who touched the hazer?",
-      "[SM] Fog's on. The front row can no longer see the front row.",
-      "[DIR] Great, it's a cloud. Light whoever's in the cloud."
-    ],
     "goldenhour_p_balloon": "Balloons",
     "goldenhour_p_banner": "Banner",
     "goldenhour_p_balloon_how": "Hold in the air to float",
     "goldenhour_p_banner_how": "Hold to climb, let go to glide",
-    "jokes_goldenhour_banner": [
-      "[SM] Is that our banner? That was our banner.",
-      "[LX] Sponsor visibility has never been higher.",
-      "[PM] Please return the banner in one piece. Or at least in a few large pieces."
-    ],
     "stagerunner_who_talent": "The talent needs:",
     "stagerunner_who_drums": "The drummer needs:",
     "stagerunner_who_pastor": "The pastor needs:",
@@ -632,36 +437,14 @@
     "diff_hard_line": "For the booth veterans.",
     "soundcheck_serve_keys": "Press an arrow to serve",
     "soundcheck_serve_touch": "Tap to serve",
-    "soundcheck_d_wide": "a wider fader",
-    "soundcheck_d_shield": "one missed ball comes back",
-    "soundcheck_d_slowmo": "the ball slows on their side",
-    "soundcheck_d_magnet": "the ball bends toward their fader",
-    "soundcheck_d_tiny": "the other fader shrinks",
-    "soundcheck_d_flip": "the other controls are reversed",
-    "soundcheck_d_mute": "the other fader freezes for a moment",
-    "soundcheck_d_split": "the ball splits in three",
-    "soundcheck_d_ghost": "the ball turns nearly invisible",
-    "soundcheck_d_fast": "the ball speeds up",
-    "soundcheck_d_zigzag": "the ball turns back halfway",
-    "soundcheck_d_squiggle": "the ball wiggles all the way",
-    "soundcheck_d_butter": "their fader slides like on ice",
-    "soundcheck_d_blackout": "the lights go out for a moment",
     "stagerunner_d_headset": "Picks fly to you",
     "stagerunner_d_case": "Ride a road case: it takes one hit",
-    "stagerunner_d_shoes": "Jump much higher",
+    "stagerunner_d_shoes": "Jump twice as high, even over a hanging screen",
     "stagerunner_d_pass": "Every pick counts double",
     "goldenhour_p_magnet_how": "Glow sticks come to you",
     "goldenhour_p_hat_how": "One crash forgiven",
     "followspot_kid": "The kid",
     "followspot_kid_line": "The lead in the kids' musical. Two juice boxes in.",
-    "followspot_s_flip": "Backflip!",
-    "followspot_s_cartwheel": "Cartwheel!",
-    "followspot_s_moonwalk": "Moonwalk!",
-    "followspot_s_crawl": "Army crawl!",
-    "followspot_s_kneeslide": "Knee slide!",
-    "followspot_s_worm": "The worm!",
-    "followspot_s_pose": "Strike a pose!",
-    "followspot_s_climb": "Up the ladder!",
     "strike_wide": "Wide fader",
     "strike_multi": "Multiball",
     "stagerunner_t_climb": "Run on it",
@@ -669,6 +452,22 @@
     "stagerunner_t_slide": "Slide under",
     "stagerunner_t_dodge": "Go around",
     "stagerunner_hype": "Crew hype",
-    "followspot_s_climbdown": "Down the ladder!"
+    "menu_confirm": "Enter to choose",
+    "menu_confirm_touch": "Tap again to choose",
+    "soundcheck_mode_pick": "Which game?",
+    "panelfixer_phase": "Phase ball",
+    "panelfixer_electric": "Electric ball",
+    "panelfixer_bloom": "Bloom",
+    "cuestack_song_pick": "Pick a song",
+    "cuestack_song_main": "Main Stage",
+    "cuestack_song_main_line": "Big room dance",
+    "cuestack_song_funk": "Horn Line",
+    "cuestack_song_funk_line": "Funk with a horn section",
+    "cuestack_song_synth": "Overdrive",
+    "cuestack_song_synth_line": "Bright synth pop",
+    "jukebox_label": "Jukebox",
+    "jukebox_theme": "Arcade theme",
+    "jukebox_close": "Close",
+    "game_menu_label": "Game menu"
   }
 }

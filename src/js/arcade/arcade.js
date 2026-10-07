@@ -216,6 +216,12 @@
   }
 
   /* ----------------------------------------------------------- mount */
+  /* the jukebox's tracks: the arcade's own theme, then each cabinet's tune,
+     then Cue Stack's other two songs */
+  var JUKE = [{ tune: 'menu', key: 'jukebox_theme' }].concat(CABINETS.map(function (c) {
+    return { tune: c.id, key: c.id + '_title', sub: c.id === 'cuestack' ? 'cuestack_song_main' : null };
+  })).concat([{ tune: 'cuestack_funk', key: 'cuestack_title', sub: 'cuestack_song_funk' }, { tune: 'cuestack_synth', key: 'cuestack_title', sub: 'cuestack_song_synth' }]);
+
   function mount(opts) {
     if (open) return Promise.resolve();
     opts = opts || {};
@@ -233,12 +239,25 @@
         '<header class="arc-top">' +
           '<button class="arc-back" type="button"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M10 3 5 8l5 5"/></svg><span>' + esc(w('back_label')) + '</span></button>' +
           '<div class="arc-logo"><b>THAUMA</b><span>' + esc(w('title')).toUpperCase() + '</span></div>' +
+          '<div class="arc-tools">' +
+          /* the jukebox: every tune the arcade has, to play here (J) */
+          '<button class="arc-jukebtn" type="button" aria-expanded="false" aria-label="' + esc(w('jukebox_label')) + '">' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>' +
+            '<span>' + esc(w('jukebox_label')) + '</span></button>' +
           /* the one switch for music and sound, off until it is turned on (M) */
           '<button class="arc-sound" type="button" aria-pressed="false" aria-label="' + esc(w('sound_label')) + '">' +
             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' +
             '<path d="M4 9h4l5-4v14l-5-4H4z"/><path class="on" d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/><path class="off" d="M17 9l5 6M22 9l-5 6"/></svg>' +
             '<span>' + esc(w('sound_label')) + '</span></button>' +
+          '</div>' +
         '</header>' +
+        '<div class="arc-juke" role="dialog" aria-label="' + esc(w('jukebox_label')) + '" hidden>' +
+          '<div class="arc-juke-head"><b>' + esc(w('jukebox_label')).toUpperCase() + '</b>' +
+            '<button class="arc-juke-x" type="button" aria-label="' + esc(w('jukebox_close')) + '"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 4l8 8M12 4l-8 8"/></svg></button></div>' +
+          '<ol>' + JUKE.map(function (t) {
+            return '<li><button type="button" data-tune="' + t.tune + '"><span class="t">' + esc(w(t.key)) + (t.sub ? ' <small>' + esc(w(t.sub)) + '</small>' : '') + '</span>' +
+              '<span class="b">' + (window.ThaumaSound && window.ThaumaSound.bpm ? window.ThaumaSound.bpm(t.tune) + ' BPM' : '') + '</span><i class="eq"><i></i><i></i><i></i></i></button></li>';
+          }).join('') + '</ol></div>' +
         '<div class="arc-floor"><div class="arc-zoom"><div class="arc-row">' + CABINETS.map(function (c) {
           return '<div class="cab" data-id="' + c.id + '" style="--c:var(' + c.c + ')">' +
             '<div class="cab-body">' +
@@ -265,11 +284,47 @@
       } else soundBtn.hidden = true;
       function sfx(n) { if (S) S.sfx(n); }
 
+      /* ---- the jukebox (Chase, 2026-10-05: "Can we also add a Jukebox????
+         We can add these custom arcade songs!") ---- */
+      var juke = el.querySelector('.arc-juke'), jukeBtn = el.querySelector('.arc-jukebtn');
+      if (!S) jukeBtn.hidden = true;
+      function jukeShown() {
+        var now = S && S.on ? S.now() : null;
+        Array.prototype.forEach.call(juke.querySelectorAll('[data-tune]'), function (b) {
+          var on = b.dataset.tune === now; b.classList.toggle('is-playing', on); b.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+      }
+      function jukeOpen(v) {
+        juke.hidden = !v; jukeBtn.setAttribute('aria-expanded', v ? 'true' : 'false');
+        if (v) { jukeShown(); var cur = juke.querySelector('.is-playing') || juke.querySelector('[data-tune]'); cur.focus({ preventScroll: true }); cur.scrollIntoView({ block: 'nearest' }); }
+        else el.focus({ preventScroll: true });
+        sfx(v ? 'pausein' : 'pauseout');
+      }
+      jukeBtn.addEventListener('click', function () { jukeOpen(juke.hidden); });
+      juke.querySelector('.arc-juke-x').addEventListener('click', function () { jukeOpen(false); });
+      juke.addEventListener('click', function (e) {
+        var b = e.target.closest('[data-tune]'); if (!b || !S) return;
+        if (!S.on) S.set(true);
+        S.music(b.dataset.tune); jukeShown();
+      });
+      if (S) S.onChange(function () { if (document.body.contains(juke)) jukeShown(); });
+
       var row = el.querySelector('.arc-row'), floor = el.querySelector('.arc-floor'), zoom = el.querySelector('.arc-zoom');
       var cabs = Array.prototype.slice.call(el.querySelectorAll('.cab'));
       var title = el.querySelector('.arc-title'), line = el.querySelector('.arc-line');
       var meta = el.querySelector('.arc-meta'), board = el.querySelector('.arc-board');
       var sel = 0, closing = false, raf = 0, boards = {};
+      /* OUT OF ORDER: games an admin has closed for this site (Website ›
+         Arcade, /api/game-scores?config). Asked once as the arcade opens; if
+         the answer never comes, every game stays open. */
+      var closed = {};
+      function playable(c) { return !!c.ready && !closed[c.id]; }
+      fetch('/api/game-scores?config=1', { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+        if (!d || !d.closed) return;
+        d.closed.forEach(function (id) { closed[id] = true; });
+        cabs.forEach(function (cab, i) { cab.classList.toggle('is-closed', !!closed[CABINETS[i].id]); });
+        if (!closing && !playing) describe();
+      }).catch(function () {});
 
       /* ---- the chosen cabinet ---- */
       function place() {
@@ -286,19 +341,19 @@
         });
       }
       function describe() {
-        var c = CABINETS[sel], ready = !!c.ready;
+        var c = CABINETS[sel], ready = playable(c);
         el.style.setProperty('--c', 'var(' + c.c + ')');
         rollTitle(w(c.id + '_title'));
         line.textContent = w(c.id + '_line');
         var chips = '<span class="arc-chip">' + esc(w(c.controls + '_hint')) + '</span>';
-        if (!ready) chips += '<span class="arc-chip is-soon">' + esc(w('soon_label')) + '</span>';
+        if (!ready) chips += '<span class="arc-chip is-soon">' + esc(w(closed[c.id] ? 'broken_label' : 'soon_label')) + '</span>';
         else chips += '<span class="arc-chip" style="--c:var(' + c.c + ')">' + esc(w('best_label')) + ' <b>' + best(c.id) + '</b></span>';
         meta.innerHTML = chips;
         showBoard(c);
       }
       function showBoard(c) {
         board.innerHTML = '';
-        if (!c.ready) return;
+        if (!playable(c)) return;
         var paint = function (list) {
           if (CABINETS[sel] !== c) return;
           board.innerHTML = list.length
@@ -325,7 +380,7 @@
       function play() {
         var c = CABINETS[sel], cab = cabs[sel];
         if (playing) return;
-        if (!c.ready) return flash(cab, w('soon_label'));
+        if (!playable(c)) return flash(cab, w(closed[c.id] ? 'broken_label' : 'soon_label'));
         /* A game takes the whole arcade screen until Menu (play.js). */
         playing = true;
         var loaded = Promise.all([script('play', '/js/arcade/play.js'), script(c.id, '/js/arcade/games/' + c.id + '.js')]);
@@ -399,14 +454,40 @@
           var c = CABINETS[i];
           s.g.clearRect(0, 0, s.W, s.H);
           ATTRACT[c.id](s.g, s.W, s.H, reduced ? 1 : t, s.col);
+          if (closed[c.id]) outOfOrder(s.g, s.W, s.H, t);
         });
       }
       raf = requestAnimationFrame(frame);
+      /* the game still playing to itself behind static, and a strip of tape
+         across the glass */
+      function outOfOrder(g, W, H, t) {
+        g.fillStyle = 'rgba(4,6,10,.55)'; g.fillRect(0, 0, W, H);
+        for (var i = 0; i < 260; i++) { var v = Math.random() * 255 | 0; g.fillStyle = 'rgba(' + v + ',' + v + ',' + v + ',.35)'; g.fillRect(Math.random() * W, Math.random() * H, 2, 2); }
+        var band = (t * 60) % H; g.fillStyle = 'rgba(237,242,248,.08)'; g.fillRect(0, band, W, 10);
+        g.save(); g.translate(W / 2, H / 2); g.rotate(-.18);
+        g.fillStyle = '#FFD34A'; g.fillRect(-W * .62, -13, W * 1.24, 26);
+        g.fillStyle = '#10131a'; g.font = '800 12px Sora, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+        g.fillText(w('broken_label').toUpperCase(), 0, 1);
+        g.restore();
+      }
 
       /* ---- controls: the same three the games use ---- */
       function onKey(e) {
         if (closing || playing) return;
         var k = e.key;
+        /* the jukebox open: Esc (or J) closes it, ↑ ↓ move through it, Enter plays */
+        if (!juke.hidden) {
+          if (k === 'Escape' || k === 'j' || k === 'J') { jukeOpen(false); e.preventDefault(); }
+          else if (k === 'ArrowDown' || k === 'ArrowUp') {
+            var list = Array.prototype.slice.call(juke.querySelectorAll('[data-tune]')), at = list.indexOf(document.activeElement);
+            var to = list[Math.max(0, Math.min(list.length - 1, at + (k === 'ArrowDown' ? 1 : -1)))]; to.focus(); to.scrollIntoView({ block: 'nearest' }); e.preventDefault();
+          }
+          else if ((k === 'Enter' || k === ' ') && document.activeElement && juke.contains(document.activeElement)) { document.activeElement.click(); e.preventDefault(); }
+          else if (k === 'm' || k === 'M') { if (S) S.toggle(); }
+          e.stopPropagation();
+          return;
+        }
+        if (k === 'j' || k === 'J') { if (S) jukeOpen(true); e.preventDefault(); e.stopPropagation(); return; }
         if (k === 'ArrowLeft' || k === 'a' || k === 'A') { choose(sel - 1); e.preventDefault(); }
         else if (k === 'ArrowRight' || k === 'd' || k === 'D') { choose(sel + 1); e.preventDefault(); }
         else if (k === 'Enter' || k === ' ') { play(); e.preventDefault(); }

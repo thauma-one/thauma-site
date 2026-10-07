@@ -169,9 +169,9 @@ export function formScript(lists, partnerSlug, origin, theme, own = {}) {
       '<p class="blurb" hidden></p>' +
       '<form class="form">' +
         '<label class="fld"><span data-w="form.name">Your name</span>' +
-          '<input name="name" autocomplete="name" data-wp="form.name" placeholder="Your name"></label>' +
+          '<input name="name" autocomplete="name" data-1p-ignore data-lpignore="true" data-bwignore="true" data-form-type="other" data-wp="form.name" placeholder="Your name"></label>' +
         '<label class="fld"><span data-w="form.email">Email address</span>' +
-          '<input name="email" type="email" required autocomplete="email" ' +
+          '<input name="email" type="email" required autocomplete="email" data-1p-ignore data-lpignore="true" data-bwignore="true" data-form-type="other" ' +
             'placeholder="you@example.com"></label>' +
         picks +
         /* THE HONEYPOT. Hidden from people three ways — off-screen, zero
@@ -182,7 +182,7 @@ export function formScript(lists, partnerSlug, origin, theme, own = {}) {
         '<div aria-hidden="true" style="position:absolute;left:-9999px;opacity:0;' +
           'height:0;overflow:hidden">' +
           '<label>Leave this field empty' +
-            '<input name="website" tabindex="-1" autocomplete="off">' +
+            '<input name="website" tabindex="-1" autocomplete="off" data-1p-ignore data-lpignore="true" data-bwignore="true">' +
           '</label>' +
         '</div>' +
         `<button type="submit" class="go" data-w="form.button">${escapeHtml(t("en", "form.button"))}</button>` +
@@ -246,7 +246,7 @@ ${LOOK_JS}
        otherwise reach in and reshape controls somebody has to type into. */
     var root = node.attachShadow ? node.attachShadow({ mode: 'open' }) : node;
     var style = document.createElement('style');
-    style.textContent = STYLES.replace('SCHEME', scheme) + siteLook(node, accent, second) +
+    style.textContent = STYLES.replace('SCHEME', scheme) + siteLook(node, accent, second) + hostLook(node, mode, accent, second, 'form') +
       ':host{--acc:' + accent + ';--acc2:' + second + ';--on-acc:' + onColor(accent) + ';' +
       '--faint:' + alpha(accent, 0.22) + '}';
     root.appendChild(style);

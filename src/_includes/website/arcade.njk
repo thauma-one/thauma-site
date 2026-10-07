@@ -1,0 +1,35 @@
+{#- THE HIDDEN ARCADE'S CONTROL ROOM (Chase, 2026-10-06: "an arcade editor
+   for the admins. It can turn on and off games on the live site (turns it to
+   out of order) and can manage the high scores and delete/??? names").
+
+   Saves at once and applies at once (/api/admin/arcade) — like Forms, it is
+   not part of the site's files, so it does not wait for Publish. The arcade
+   itself being on or off is a page switch, in Settings. -#}
+<div class="ae" id="aeRoot">
+  <p class="rolegate" id="aeProblem" hidden></p>
+
+  <section class="s-group v-group">
+    <h3 data-i18n="ae.games">Games</h3>
+    <div class="v-head">
+      <div class="v-label"></div>
+      <span class="v-cell is-dev"><b data-i18n="vis.devCol">Preview site</b></span>
+      <span class="v-cell is-live"><b data-i18n="vis.liveCol">Everyone</b></span>
+    </div>
+    <div id="aeGames"></div>
+  </section>
+
+  <section class="s-group">
+    <h3 data-i18n="ae.scores">High scores</h3>
+    <div class="ae-boards" id="aeBoards"></div>
+  </section>
+
+  <section class="s-group">
+    <h3 data-i18n="ae.blocked">Blocked names</h3>
+    <div class="ae-blocked" id="aeBlocked"></div>
+    <form class="ae-block" id="aeBlockForm">
+      <input type="text" id="aeBlockName" maxlength="3" autocomplete="off" spellcheck="false"
+             data-i18n-attr="aria-label:ae.blockName" aria-label="Name to block" placeholder="ABC">
+      <button type="submit" class="ghost-btn sm" data-i18n="ae.block">Block</button>
+    </form>
+  </section>
+</div>

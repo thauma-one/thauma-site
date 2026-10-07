@@ -11,7 +11,8 @@
    THE WALL is a field of LED panels, and the ball bounces through them
    like Peggle's pegs. Each panel is one pixel of a picture the wall is
    meant to be showing; the BROKEN ones (dark, flickering, the wrong
-   color, a red flag in the corner) are holes in it. Hit a broken panel and
+   color, a red flag in the corner) are holes in it. (2026-10-06: now always
+   a dark, cracked, staticky panel in a pulsing red frame — see panel().) Hit a broken panel and
    it is reseated — its piece of the picture lights up. Fix them all and
    it's SHOWTIME: the slow-motion last hit, the whole picture, and a bonus
    for every ball left. Working panels just bounce the ball (and pay a
@@ -19,7 +20,7 @@
 
    THE TECH stands on a scissor lift above the wall with a tennis ball:
    drag to aim (the first stretch of the path shows), let go to throw — or
-   ← → and Space. They lean into the aim, wind up, throw, then cheer,
+   ← → and Space (→ aims right on screen, whichever way the tech faces). They lean into the aim, wind up, throw, then cheer,
    facepalm, sweat on the last ball, and dance at SHOWTIME. A road case
    rolls along the floor; a ball that lands in it is thrown again free.
 
@@ -43,11 +44,28 @@
      strip of its top half), so a straight drop reaches the middle.
    - Slower, so it can be followed: speed 470 → 400, gravity 520 → 430.
      The first wall breaks 6 panels, then 2 more a wall up to 45%.
-   - POWERS, each a green panel with its own drawn icon, three a wall:
-     MULTI (two more balls), ZAP (lightning to the 3 nearest broken), GUIDE
-     (the whole path for 3 throws), FIRE (burns through), BEACH BALL (this
-     ball and the next, twice the size), MAGNET (this ball and the next
-     curve toward broken panels), TEST PATTERN (every broken panel in that row lights).
+   - POWERS, each a green panel with its own drawn icon, three a wall.
+     ROUND 7 (Chase, 2026-10-05: "Get rid of the beach ball … I like the
+     magnet ball. We should add a phase ball … have all ball power ups
+     start on the next toss, but we can add a few passive improvements like
+     bloom. OH! Maybe an electric ball! We also need the ball to have
+     distinct looks for all of these"):
+       for the NEXT throw (it flies to the tech's hand, and the ball there
+       already looks the part):
+         MULTI     two small cyan balls go with it
+         FIRE      orange, a flame trail: burns through everything
+         MAGNET    pink, pulsing rings: curves toward broken panels
+         PHASE     violet, see-through, a dashed ring: passes through every
+                   panel that isn't broken
+         ELECTRIC  white, crackling: each fix jumps to the nearest broken
+                   panel within reach
+       for the rest of the wall: BLOOM (every fix opens like a flower and
+       takes the broken panels right beside it), GUIDE (the whole path for
+       3 throws);
+       at once: ZAP (lightning to the 3 nearest broken), TEST PATTERN
+       (every broken panel in that row lights).
+     The extra balls are told apart too: the crew's are amber with a band,
+     a carried-over ball is white with a lime ring.
    - CREW CALL, the second system: every fix fills the tech's meter;
      full, the next throw brings two crew onto the truss ends who throw
      with them, each at the broken panel nearest the middle.
@@ -63,7 +81,9 @@
   var PW = 28, PH = 18, R = 6;
   var G = 430, SPEED = 400, REST = .72;
   var BALLS = 4;
-  var POWERS = ['multi', 'zap', 'guide', 'fire', 'big', 'magnet', 'pattern'];
+  var POWERS = ['multi', 'zap', 'guide', 'fire', 'magnet', 'pattern', 'phase', 'electric', 'bloom'];
+  /* the ones that ride the NEXT throw (round 7) */
+  var BALLFX = { multi: 1, fire: 1, magnet: 1, phase: 1, electric: 1 };
   var CREW = 12;                            /* fixes to fill the crew meter */
 
   function rnd(a, b) { return a + Math.random() * (b - a); }
@@ -139,9 +159,9 @@
     quipAt: .205,
     create: function (ctx) {
       var words = ctx.words;
-      var panels = [], balls = [], sparks = [], pops = [], arcs = [], confetti = [], sweeps = [];
+      var panels = [], balls = [], sparks = [], pops = [], arcs = [], confetti = [], sweeps = [], blooms = [];
       var level = 0, left = BALLS, score = 0, total = 0, fixedThisShot = 0, guide = 0;
-      var crew = 0, crewOn = false, crewT = 0, nextBig = false, nextMagnet = false;
+      var crew = 0, crewOn = false, crewT = 0, nextFx = {}, bloom = false, flyers = [];
       var revealed = [], litThisShot = 0, shotT = 0, aimTarget = 0, carry = 0;
       var aim = 0, aimFrom = null, time = 0, slow = 0, showtime = 0;
       var state = 'aim';               /* aim | windup | flight | show | done */
@@ -175,7 +195,7 @@
         for (var k = n; k < n + 3 && k < order.length; k++) { order[k].state = 'power'; order[k].power = kinds[k - n]; }
         /* every wall starts fresh with its balls; any left over from clearing
            the last one fly with the first throw here (round 6) */
-        total = n; left = BALLS; state = 'aim'; mood = 'idle'; showtime = 0; revealed = [];
+        total = n; left = BALLS; bloom = false; state = 'aim'; mood = 'idle'; showtime = 0; revealed = [];
         ctx.say(words('panelfixer_wall') + ' ' + level, { tag: 'LD' });
       }
       nextWall();
@@ -203,17 +223,18 @@
         /* from exactly the point the aim is solved from (round 6: "the
            aiming seems a bit off" — it left 10px along the aim, so every
            throw landed a little past where it was pointed) */
-        var d = dirOf(aim);
-        balls.push({ x: LX, y: LY, vx: d.x * SPEED, vy: d.y * SPEED, slowT: 0, fire: 0, bounces: 0,
-          r: nextBig ? R * 2.2 : R, magnet: nextMagnet ? 1 : 0 });
+        var d = dirOf(aim), fx = nextFx;
+        balls.push(newBall(LX, LY, d.x * SPEED, d.y * SPEED, 'main', fx));
+        /* MULTI: two small cyan balls go with it, one each side */
+        if (fx.multi) [-1, 1].forEach(function (k) { var dm = dirOf(aim + k * .16); balls.push(newBall(LX, LY, dm.x * SPEED, dm.y * SPEED, 'multi', {})); });
         /* the balls carried over from the last wall go with it, fanned out */
         for (var cb = 0; cb < carry; cb++) {
           var da = dirOf(aim + (cb % 2 ? 1 : -1) * (.08 + Math.floor(cb / 2) * .08));
-          balls.push({ x: LX, y: LY, vx: da.x * SPEED, vy: da.y * SPEED, slowT: 0, fire: 0, bounces: 0, r: R, magnet: 0 });
+          balls.push(newBall(LX, LY, da.x * SPEED, da.y * SPEED, 'carry', {}));
         }
         if (carry) pops.push({ x: LX, y: LY + 30, text: '+' + carry, col: '#d8f55a', life: 1.2 });
         carry = 0;
-        nextBig = nextMagnet = false;
+        nextFx = {};
         left--; fixedThisShot = 0; litThisShot = 0; shotT = 0; state = 'flight';
         ctx.sfx('jump');
         if (guide > 0) guide--;
@@ -228,11 +249,21 @@
               { x: W / 2, y: (TOPF + BOTF) / 2 };
             setTimeout(function () {
               var a = solve(o[0], o[1], t.x, t.y, SPEED * .9), dd = dirOf(a);
-              balls.push({ x: o[0], y: o[1], vx: dd.x * SPEED * .9, vy: dd.y * SPEED * .9, slowT: 0, fire: 0, bounces: 0, r: R, magnet: 0, crew: true });
+              balls.push(newBall(o[0], o[1], dd.x * SPEED * .9, dd.y * SPEED * .9, 'crew', {}));
               ctx.sfx('jump');
             }, 260 + i * 180);
           });
         }
+      }
+
+      /* every ball says what it is: kind is main / multi / carry / crew,
+         and the powers it carries change how it looks (round 7, Chase:
+         "We also need the ball to have distinct looks for all of these to
+         make it clear … Same for if there are extra balls on the sides of
+         the screen. This is a UX thing where I want it pristine.") */
+      function newBall(x, y, vx, vy, kind, fx) {
+        return { x: x, y: y, vx: vx, vy: vy, slowT: 0, bounces: 0, kind: kind, trail: [],
+          r: kind === 'multi' ? R * .8 : R, fire: fx.fire ? 2.6 : 0, magnet: fx.magnet ? 1 : 0, phase: !!fx.phase, electric: !!fx.electric };
       }
 
       /* ------------------------------------------------------- the ball */
@@ -246,11 +277,20 @@
         if (p.lit) { ctx.sfx('wall'); return; }
         p.lit = true; p.litAt = time; litThisShot++;
         ctx.sfx(p.state === 'broken' ? 'fix' : p.state === 'power' ? 'powerup' : 'wall');
-        if (p.state === 'broken') fix(p);
+        if (p.state === 'broken') { fix(p); if (b && b.electric) chain(p); }
         else if (p.state === 'power') {
           p.state = 'ok';
           power(p.power, p, b);
         } else { var g0 = 5 * mult(); score += g0; ctx.score(score); pops.push({ x: p.x, y: p.y - 12, text: '+' + g0, col: '#8FEBFF', life: .7 }); }
+      }
+      /* ELECTRIC: a fix jumps to the nearest broken panel within reach */
+      function chain(p) {
+        var q = panels.filter(function (o) { return o.state === 'broken'; })
+          .sort(function (a, c) { return Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(c.x - p.x, c.y - p.y); })[0];
+        if (!q || Math.hypot(q.x - p.x, q.y - p.y) > 120) return;
+        arcs.push({ x1: p.x, y1: p.y, x2: q.x, y2: q.y, life: .45 });
+        ctx.sfx('zap');
+        setTimeout(function () { if (q.state === 'broken') { q.lit = true; q.litAt = time; fix(q); } }, 110);
       }
       /* the shot is over (or stuck): the lit panels drop out */
       function clearLit(only) {
@@ -269,12 +309,25 @@
         pops.push({ x: p.x, y: p.y - 14, text: '+' + gain, col: '#5CF2C4', life: 1 });
         for (var i = 0; i < 12; i++) sparks.push({ x: p.x, y: p.y, vx: rnd(-120, 120), vy: rnd(-140, 60), life: .55, c: p.col });
         ctx.shake(1.5);
+        /* BLOOM (for the rest of the wall): every fix opens like a flower
+           and takes any broken panel right beside it */
+        if (bloom && !p.bloomed) {
+          blooms.push({ x: p.x, y: p.y, life: .6 });
+          panels.forEach(function (q) {
+            if (q.state === 'broken' && Math.hypot(q.x - p.x, q.y - p.y) < 50) {
+              q.bloomed = true;
+              setTimeout(function () { if (q.state === 'broken') { q.lit = true; q.litAt = time; fix(q); } }, 140);
+            }
+          });
+        }
         if (!brokenLeft()) startShow();
       }
       function power(name, p, b) {
         pops.push({ x: p.x, y: p.y - 16, text: words('panelfixer_' + name).toUpperCase(), col: '#5CF2C4', life: 1.4 });
-        ctx.say('[LD] ' + words('panelfixer_' + name), { mood: 'good' });
-        if (name === 'multi') [-1, 1].forEach(function (k) { balls.push({ x: b.x, y: b.y, vx: k * 160 + b.vx * .3, vy: -120, slowT: 0, fire: 0, bounces: 0 }); });
+        /* a ball power waits for the next throw: it flies to the tech's hand,
+           and the ball there wears it from then on (round 7, Chase: "have all
+           ball power ups start on the next toss") */
+        if (BALLFX[name]) { nextFx[name] = true; flyers.push({ name: name, x: p.x, y: p.y, x0: p.x, y0: p.y, t: 0 }); return; }
         if (name === 'zap') {
           panels.filter(function (q) { return q.state === 'broken'; })
             .sort(function (a, c) { return Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(c.x - p.x, c.y - p.y); })
@@ -282,9 +335,7 @@
           ctx.sfx('zap');
         }
         if (name === 'guide') guide = 3;
-        if (name === 'fire') b.fire = 2.2;
-        if (name === 'big') { b.r = R * 2.2; nextBig = true; }
-        if (name === 'magnet') { b.magnet = 1; nextMagnet = true; }
+        if (name === 'bloom') bloom = true;
         if (name === 'pattern') {
           var row = panels.filter(function (q) { return q.state === 'broken' && Math.abs(q.y - p.y) < 14; });
           if (!row.length) row = panels.filter(function (q) { return q.state === 'broken'; })
@@ -302,6 +353,9 @@
         var dx = b.x - cx, dy = b.y - cy, d = Math.hypot(dx, dy), br = b.r || R;
         if (d >= br) return false;
         if (b.fire > 0) { if (p.state !== 'ok' || time - p.hitAt > .3) hitPanel(p, b); return false; }
+        /* PHASE: through every panel that isn't broken (a green one still
+           gives its power) */
+        if (b.phase && p.state !== 'broken') { if (p.state === 'power') hitPanel(p, b); return false; }
         if (d < .001) { dx = 0; dy = -1; d = 1; }
         var nx = dx / d, ny = dy / d;
         b.x = cx + nx * br; b.y = cy + ny * br;
@@ -375,7 +429,7 @@
 
         if (state === 'aim') {
           var turn = (ctx.held.right ? 1 : 0) - (ctx.held.left ? 1 : 0);
-          if (turn) aimTarget = clamp(aimTarget - turn * 1.5 * dt, -1.38, 1.38);
+          if (turn) aimTarget = clamp(aimTarget + turn * 1.5 * dt, -1.38, 1.38);   /* → aims right on screen (round 7) */
           /* the aim eases to where it is pointed, so the line never jumps */
           aim += (aimTarget - aim) * Math.min(1, dt * 18);
           if (left === 1 && mood !== 'nervous') { mood = 'nervous'; ctx.quip('jokes_panelfixer_last', { mood: 'bad', chance: .8 }); }
@@ -387,6 +441,7 @@
           var steps = Math.ceil(sdt * 900 / 6) || 1;
           for (var s = 0; s < steps; s++) balls.forEach(function (b) { if (!b.out) stepBall(b, sdt / steps); });
           balls = balls.filter(function (b) { return !b.out; });
+          balls.forEach(function (b) { b.trail.push({ x: b.x, y: b.y }); if (b.trail.length > 10) b.trail.shift(); });
           if (!balls.length && state === 'flight') endShot();
         }
         if (state === 'show') {
@@ -400,6 +455,9 @@
         pops = pops.filter(function (p) { return p.life > 0; });
         arcs.forEach(function (a) { a.life -= dt; }); arcs = arcs.filter(function (a) { return a.life > 0; });
         sweeps.forEach(function (a) { a.life -= dt; }); sweeps = sweeps.filter(function (a) { return a.life > 0; });
+        blooms.forEach(function (a) { a.life -= dt; }); blooms = blooms.filter(function (a) { return a.life > 0; });
+        flyers.forEach(function (f) { f.t += dt * 1.6; var k = 1 - Math.pow(1 - Math.min(1, f.t), 3); f.x = f.x0 + (LX + 10 - f.x0) * k; f.y = f.y0 + (LY + 4 - f.y0) * k - Math.sin(k * Math.PI) * 40; });
+        flyers = flyers.filter(function (f) { return f.t < 1; });
         if (crewOn) { crewT += dt; if (crewT > 3.2 && state !== 'flight') crewOn = false; }
         confetti.forEach(function (c) { c.x += c.vx * dt; c.y += c.vy * dt; c.r += dt * 6; c.life -= dt; });
         confetti = confetti.filter(function (c) { return c.life > 0 && c.y < H + 10; });
@@ -452,21 +510,14 @@
           g.fillStyle = 'rgba(255,255,255,' + (a.life * .5).toFixed(2) + ')'; g.fillRect(6, a.y - 12, W - 12, 24);
         });
         if (state === 'aim') preview(g);
-        balls.forEach(function (b) {
-          var br = b.r || R;
-          if (b.fire > 0) { g.fillStyle = 'rgba(255,140,40,.45)'; g.beginPath(); g.arc(b.x, b.y, br + 5, 0, 7); g.fill(); }
-          if (b.magnet) { g.strokeStyle = 'rgba(255,79,216,' + (.4 + .3 * Math.sin(time * 14)).toFixed(2) + ')'; g.lineWidth = 2; g.beginPath(); g.arc(b.x, b.y, br + 4, 0, 7); g.stroke(); }
-          if (br > R) {
-            /* the beach ball: panels of color */
-            ['#FF4FD8', '#2FD8FF', '#FFB547', '#5CF2C4'].forEach(function (c, k) {
-              g.fillStyle = c; g.beginPath(); g.moveTo(b.x, b.y); g.arc(b.x, b.y, br, k * Math.PI / 2 + time * 3, (k + 1) * Math.PI / 2 + time * 3); g.fill();
-            });
-            g.fillStyle = '#fff'; g.beginPath(); g.arc(b.x, b.y, br * .25, 0, 7); g.fill();
-          } else {
-            g.fillStyle = '#d8f55a'; g.beginPath(); g.arc(b.x, b.y, br, 0, 7); g.fill();
-            g.strokeStyle = 'rgba(255,255,255,.75)'; g.lineWidth = 1; g.beginPath(); g.arc(b.x - 2, b.y, br * .8, -1, 1); g.stroke();
-          }
+        balls.forEach(function (b) { drawBall(g, b); });
+        blooms.forEach(function (a) {
+          var k = 1 - a.life / .6;
+          g.globalAlpha = a.life / .6; g.fillStyle = '#FF9BD8';
+          for (var i = 0; i < 6; i++) { var an = i / 6 * Math.PI * 2 + k; g.beginPath(); g.arc(a.x + Math.cos(an) * 46 * k, a.y + Math.sin(an) * 46 * k, 6 * (1 - k) + 2, 0, 7); g.fill(); }
+          g.globalAlpha = 1;
         });
+        flyers.forEach(function (f) { drawBall(g, fxBall(f.x, f.y, 5, (function () { var o = {}; o[f.name] = true; return o; })())); });
         sparks.forEach(function (p) { g.globalAlpha = Math.min(1, p.life * 2); g.fillStyle = p.c; g.fillRect(p.x, p.y, 2.5, 2.5); });
         g.globalAlpha = 1;
         rig(g);
@@ -488,19 +539,73 @@
           g.fillText(words(ctx.touch ? 'panelfixer_hint_touch' : 'panelfixer_hint'), W / 2, BOTF + 44);
         }
       }
+      /* how a ball looks: its kind, then what it carries */
+      var LOOK = { main: '#d8f55a', multi: '#2FD8FF', carry: '#ffffff', crew: '#FFB547' };
+      function fxBall(x, y, r, fx) { return { x: x, y: y, r: r, kind: 'main', trail: [], fire: fx.fire ? 1 : 0, magnet: fx.magnet ? 1 : 0, phase: !!fx.phase, electric: !!fx.electric, multi: !!fx.multi }; }
+      function drawBall(g, b) {
+        var br = b.r || R, x = b.x, y = b.y, tr = b.trail || [];
+        /* the trail */
+        tr.forEach(function (p, i) {
+          var k = (i + 1) / tr.length;
+          if (b.fire > 0) { g.fillStyle = 'rgba(255,' + Math.round(110 + 90 * k) + ',40,' + (k * .55).toFixed(2) + ')'; g.beginPath(); g.arc(p.x + rnd(-1.5, 1.5), p.y + rnd(-1.5, 1.5), br * (.35 + k * .7), 0, 7); g.fill(); }
+          else if (b.phase) { g.strokeStyle = 'rgba(155,123,255,' + (k * .4).toFixed(2) + ')'; g.lineWidth = 1; g.beginPath(); g.arc(p.x, p.y, br * k, 0, 7); g.stroke(); }
+          else if (b.electric) { if (i % 2) { g.fillStyle = 'rgba(160,240,255,' + (k * .7).toFixed(2) + ')'; g.fillRect(p.x + rnd(-4, 4), p.y + rnd(-4, 4), 2, 2); } }
+          else if (b.kind !== 'main') { g.fillStyle = LOOK[b.kind]; g.globalAlpha = k * .25; g.beginPath(); g.arc(p.x, p.y, br * k, 0, 7); g.fill(); g.globalAlpha = 1; }
+        });
+        /* the body: fire, then electric, then phase, then magnet, then its kind */
+        var col = b.fire > 0 ? '#FF7A2E' : b.electric ? '#E8FBFF' : b.phase ? '#9B7BFF' : b.magnet ? '#FF4FD8' : LOOK[b.kind || 'main'];
+        g.save();
+        if (b.phase) g.globalAlpha = .5;
+        g.shadowColor = b.fire > 0 ? '#FF5A1E' : b.electric ? '#2FD8FF' : col; g.shadowBlur = b.fire > 0 || b.electric || b.phase || b.magnet ? 14 : b.kind === 'main' ? 0 : 8;
+        g.fillStyle = col; g.beginPath(); g.arc(x, y, br, 0, 7); g.fill();
+        g.restore();
+        if (b.kind === 'main' && !(b.fire > 0) && !b.electric && !b.phase && !b.magnet) {
+          /* a plain tennis ball: its seam */
+          g.strokeStyle = 'rgba(255,255,255,.75)'; g.lineWidth = 1; g.beginPath(); g.arc(x - 2, y, br * .8, -1, 1); g.stroke();
+        }
+        if (b.kind === 'crew') { g.fillStyle = '#7a4a10'; g.fillRect(x - br, y - 1, br * 2, 2); }       /* hi-vis band */
+        if (b.kind === 'carry') { g.strokeStyle = '#d8f55a'; g.lineWidth = 2; g.beginPath(); g.arc(x, y, br + 2, 0, 7); g.stroke(); }
+        if (b.fire > 0) { g.fillStyle = '#FFD36E'; g.beginPath(); g.arc(x, y, br * .45, 0, 7); g.fill(); }
+        if (b.phase) { g.save(); g.setLineDash([2, 2]); g.strokeStyle = '#C9B8FF'; g.lineWidth = 1.5; g.beginPath(); g.arc(x, y, br + 1.5, time * 4, time * 4 + 7); g.stroke(); g.restore(); }
+        if (b.magnet) { var ph = (time * 2.2) % 1; g.strokeStyle = 'rgba(255,79,216,' + (1 - ph).toFixed(2) + ')'; g.lineWidth = 1.5; g.beginPath(); g.arc(x, y, br + 2 + ph * 9, 0, 7); g.stroke(); }
+        if (b.electric) {
+          g.strokeStyle = '#8FEBFF'; g.lineWidth = 1.2;
+          for (var k2 = 0; k2 < 3; k2++) {
+            var a0 = rnd(0, 7), a1 = a0 + rnd(.6, 1.4);
+            g.beginPath(); g.moveTo(x + Math.cos(a0) * br, y + Math.sin(a0) * br);
+            g.lineTo(x + Math.cos((a0 + a1) / 2) * (br + rnd(4, 8)), y + Math.sin((a0 + a1) / 2) * (br + rnd(4, 8)));
+            g.lineTo(x + Math.cos(a1) * br, y + Math.sin(a1) * br); g.stroke();
+          }
+        }
+        if (b.multi) [-1, 1].forEach(function (k) { g.fillStyle = '#2FD8FF'; g.beginPath(); g.arc(x + k * (br + 4), y + 2, br * .55, 0, 7); g.fill(); });
+      }
       function panel(g, p) {
         var x = p.x - PW / 2, y = p.y - PH / 2, flash = time - p.hitAt < .15, fixedGlow = time - p.fixedAt < .6;
         g.fillStyle = '#0b0e14'; g.fillRect(x - 1, y - 1, PW + 2, PH + 2);
         if (p.state === 'broken') {
-          var on = p.fault === 'flicker' ? Math.sin(time * 37 + p.x) > .3 : p.fault === 'tint';
-          g.fillStyle = p.fault === 'tint' ? 'hsl(310,90%,45%)' : on ? p.col : '#0d1119';
-          g.fillRect(x, y, PW, PH);
-          g.fillStyle = Math.sin(time * 6 + p.y) > 0 ? '#FF5A6E' : '#8a2432';
-          g.beginPath(); g.moveTo(x, y); g.lineTo(x + 9, y); g.lineTo(x, y + 9); g.closePath(); g.fill();
+          /* BROKEN reads at a glance and only one way (Chase, 2026-10-06:
+             "some of the blocks that need fixed are hard to see … At a
+             glance, we need to know what needs fixing"): always a DARK body
+             — never the picture's color, so it can't pass for a working
+             panel — with its fault inside it (static, a flicker, a torn
+             band), a crack across it, and, drawn over everything below, a
+             pulsing red frame with a glow. Nothing else on the wall is red
+             or dark. */
+          g.fillStyle = '#07090e'; g.fillRect(x, y, PW, PH);
+          if (p.fault === 'flicker' && Math.sin(time * 37 + p.x) > .3) { g.globalAlpha = .35; g.fillStyle = p.col; g.fillRect(x, y, PW, PH); g.globalAlpha = 1; }
+          else if (p.fault === 'tint') { g.fillStyle = 'rgba(255,90,110,.35)'; g.fillRect(x, y + PH * .35, PW, PH * .3); }
+          g.fillStyle = 'rgba(237,242,248,.35)';
+          for (var nz = 0; nz < 7; nz++) g.fillRect(x + ((p.x * 7 + nz * 13 + Math.floor(time * 20) * 5) % (PW - 2)), y + ((p.y * 3 + nz * 7 + Math.floor(time * 20) * 3) % (PH - 2)), 2, 1);
         } else {
-          g.fillStyle = p.col; g.globalAlpha = state === 'show' ? 1 : .62; g.fillRect(x, y, PW, PH); g.globalAlpha = 1;
+          g.fillStyle = p.col; g.globalAlpha = state === 'show' ? 1 : .55; g.fillRect(x, y, PW, PH); g.globalAlpha = 1;
           if (p.state === 'power') {
-            g.fillStyle = 'rgba(92,242,196,' + (.55 + .35 * Math.sin(time * 5)).toFixed(2) + ')'; g.fillRect(x, y, PW, PH);
+            /* a POWER is solid seafoam, never the picture's color, with a
+               soft white glow: three kinds of panel, told apart at a glance —
+               dim picture (working), dark in a red frame (broken), bright
+               seafoam (a power) */
+            g.fillStyle = '#5CF2C4'; g.globalAlpha = .82 + .18 * Math.sin(time * 5); g.fillRect(x, y, PW, PH); g.globalAlpha = 1;
+            g.strokeStyle = 'rgba(255,255,255,.85)'; g.lineWidth = 1.5; g.shadowColor = '#5CF2C4'; g.shadowBlur = 12;
+            g.strokeRect(x - 1, y - 1, PW + 2, PH + 2); g.shadowBlur = 0;
             icon(g, p.power, p.x, p.y);
           }
         }
@@ -508,6 +613,14 @@
         g.fillStyle = 'rgba(0,0,0,.28)';
         for (var gx = 4; gx < PW; gx += 4) g.fillRect(x + gx, y, 1, PH);
         for (var gy = 4; gy < PH; gy += 4) g.fillRect(x, y + gy, PW, 1);
+        if (p.state === 'broken') {
+          /* the crack, and the red frame breathing */
+          g.strokeStyle = 'rgba(237,242,248,.75)'; g.lineWidth = 1.2; g.beginPath();
+          g.moveTo(x + 3, y + 2); g.lineTo(x + PW * .4, y + PH * .55); g.lineTo(x + PW * .55, y + PH * .3); g.lineTo(x + PW - 3, y + PH - 2); g.stroke();
+          var pulse = .82 + .18 * Math.sin(time * 6 + p.x * .05);
+          g.strokeStyle = 'rgba(255,90,110,' + pulse.toFixed(2) + ')'; g.lineWidth = 2.5; g.shadowColor = '#FF5A6E'; g.shadowBlur = 8 + 6 * pulse;
+          g.strokeRect(x - 1.5, y - 1.5, PW + 3, PH + 3); g.shadowBlur = 0;
+        }
         if (flash) { g.fillStyle = 'rgba(255,255,255,.55)'; g.fillRect(x, y, PW, PH); }
         if (p.lit) { g.strokeStyle = '#ffffff'; g.lineWidth = 2; g.shadowColor = '#ffffff'; g.shadowBlur = 10; g.strokeRect(x - 1, y - 1, PW + 2, PH + 2); g.shadowBlur = 0; }
         if (fixedGlow) { g.strokeStyle = 'rgba(92,242,196,' + (.6 - (time - p.fixedAt)).toFixed(2) + ')'; g.lineWidth = 3; g.strokeRect(x - 2, y - 2, PW + 4, PH + 4); }
@@ -516,13 +629,13 @@
          whole way through the first two bounces */
       function preview(g) {
         var d = dirOf(aim), b = { x: LX, y: LY, vx: d.x * SPEED, vy: d.y * SPEED }, bounces = 0, limit = guide > 0 ? 3 : 0;
-        var br = nextBig ? R * 2.2 : R;
+        var br = R;
         g.fillStyle = guide > 0 ? 'rgba(92,242,196,.8)' : 'rgba(216,245,90,.7)';
         for (var t = 0, f = 0; t < (guide > 0 ? 3.2 : 1.6); t += 1 / 60, f++) {
           b.vy += G / 60; b.x += b.vx / 60; b.y += b.vy / 60;
           if (b.x < br || b.x > W - br) { b.vx = -b.vx; b.x = clamp(b.x, br, W - br); }
           var p = null;
-          for (var i = 0; i < panels.length; i++) if (touches(b.x, b.y, panels[i], br)) { p = panels[i]; break; }
+          for (var i = 0; i < panels.length; i++) if ((!nextFx.phase || panels[i].state === 'broken') && touches(b.x, b.y, panels[i], br)) { p = panels[i]; break; }
           if (p) {
             /* where the throw first lands: a ring on that panel */
             if (bounces++ >= limit) { g.strokeStyle = g.fillStyle; g.lineWidth = 2; g.beginPath(); g.arc(b.x, b.y, br + 2, 0, 7); g.stroke(); break; }
@@ -590,7 +703,7 @@
         var other = arms === 'up' || arms === 'wave' ? { x: sh2.x - 6, y: sh2.y - 16 } : arms === 'palm' ? { x: sh2.x - 4, y: sh2.y + 10 } : { x: sh2.x - 4, y: sh2.y + 12 };
         g.beginPath(); g.moveTo(sh2.x, sh2.y); g.lineTo(other.x, other.y); g.stroke();
         /* the ball in hand, until it is thrown */
-        if ((state === 'aim' || state === 'windup') && left > 0) { g.fillStyle = '#d8f55a'; g.beginPath(); g.arc(hand.x, hand.y, 4.5, 0, 7); g.fill(); }
+        if ((state === 'aim' || state === 'windup') && left > 0) drawBall(g, fxBall(hand.x, hand.y, 4.5, nextFx));
         /* head, hair, headset */
         g.fillStyle = '#e2b48f'; g.beginPath(); g.arc(hx, hy, 8, 0, 7); g.fill();
         g.fillStyle = '#3b2a20'; g.beginPath(); g.arc(hx, hy - 3, 8, Math.PI * 1.05, Math.PI * 1.95); g.fill();
@@ -619,6 +732,14 @@
           g.fillStyle = i < left ? '#d8f55a' : 'rgba(255,255,255,.08)';
           g.beginPath(); g.arc(16 + (i % 7) * 11, 82 + Math.floor(i / 7) * 11, 4, 0, 7); g.fill();
         }
+        /* what the next throw carries, and the wall's passives */
+        var q = Object.keys(nextFx).concat(bloom ? ['bloom'] : []).concat(guide > 0 ? ['guide'] : []);
+        q.forEach(function (name, i) {
+          var cx = 20 + i * 24, cy = 112;
+          g.fillStyle = name === 'bloom' || name === 'guide' ? 'rgba(92,242,196,.25)' : 'rgba(92,242,196,.85)';
+          g.fillRect(cx - 10, cy - 7, 20, 14);
+          icon(g, name, cx, cy, name === 'bloom' || name === 'guide' ? '#5CF2C4' : null);
+        });
         g.textAlign = 'right'; g.fillStyle = 'rgba(138,150,166,.9)';
         g.fillText(words('panelfixer_broken').toUpperCase() + ' ' + brokenLeft(), W - 12, 48);
         var m = mult();
@@ -632,14 +753,16 @@
         g.fillStyle = full ? (Math.sin(time * 8) > 0 ? '#FFB547' : '#ffd38a') : '#FFB547'; g.fillRect(W - 82, 95, 70 * crew / CREW, 5);
       }
       /* each power's own mark, drawn, so the wall can be read at a glance */
-      function icon(g, name, x, y) {
-        g.save(); g.translate(x, y); g.fillStyle = '#0b0e14'; g.strokeStyle = '#0b0e14'; g.lineWidth = 2; g.lineCap = 'round';
+      function icon(g, name, x, y, ink) {
+        g.save(); g.translate(x, y); g.fillStyle = ink || '#0b0e14'; g.strokeStyle = ink || '#0b0e14'; g.lineWidth = 2; g.lineCap = 'round';
         g.beginPath();
         if (name === 'multi') { [-6, 0, 6].forEach(function (k) { g.moveTo(k + 2.4, 0); g.arc(k, 0, 2.4, 0, 7); }); g.fill(); }
         else if (name === 'zap') { g.moveTo(2, -7); g.lineTo(-3, 1); g.lineTo(1, 1); g.lineTo(-2, 7); g.lineTo(4, -1); g.lineTo(0, -1); g.closePath(); g.fill(); }
         else if (name === 'guide') { for (var k = 0; k < 4; k++) { g.moveTo(-8 + k * 5 + 1.2, -3 + k * k * .9); g.arc(-8 + k * 5, -3 + k * k * .9, 1.2, 0, 7); } g.fill(); }
         else if (name === 'fire') { g.moveTo(0, -7); g.quadraticCurveTo(6, -1, 4, 4); g.quadraticCurveTo(0, 8, -4, 4); g.quadraticCurveTo(-6, -1, 0, -7); g.fill(); }
-        else if (name === 'big') { g.arc(0, 0, 6, 0, 7); g.stroke(); g.beginPath(); g.moveTo(-6, 0); g.lineTo(6, 0); g.moveTo(0, -6); g.lineTo(0, 6); g.lineWidth = 1.2; g.stroke(); }
+        else if (name === 'phase') { g.setLineDash([2, 2]); g.arc(0, 0, 6, 0, 7); g.stroke(); g.setLineDash([]); g.beginPath(); g.arc(0, 0, 2, 0, 7); g.fill(); }
+        else if (name === 'electric') { g.arc(0, 0, 6, 0, 7); g.lineWidth = 1.5; g.stroke(); g.beginPath(); g.moveTo(-4, -1); g.lineTo(-1, 2); g.lineTo(1, -2); g.lineTo(4, 1); g.stroke(); }
+        else if (name === 'bloom') { for (var b2 = 0; b2 < 5; b2++) { var an = b2 / 5 * Math.PI * 2; g.moveTo(Math.cos(an) * 4.5 + 2.4, Math.sin(an) * 4.5); g.arc(Math.cos(an) * 4.5, Math.sin(an) * 4.5, 2.4, 0, 7); } g.fill(); }
         else if (name === 'magnet') { g.arc(0, -1, 5, Math.PI, 0); g.moveTo(5, -1); g.lineTo(5, 5); g.moveTo(-5, -1); g.lineTo(-5, 5); g.lineWidth = 3; g.stroke(); }
         else if (name === 'pattern') { for (var j = 0; j < 4; j++) g.rect(-9 + j * 4.6, -5, 3.4, 10); g.fill(); }
         g.restore();

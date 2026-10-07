@@ -87,7 +87,9 @@
      asking questions that do not apply. */
   var FIELDS = {
     resources: [
-      { name: 'moment', kind: 'choice', label: 'Which moment', vocab: 'moment' },
+      /* The four doors of the Resources page, in the page's own words, so
+         choosing one says where a visitor will find it (2026-10-07). */
+      { name: 'moment', kind: 'choice', label: 'Where a visitor finds it', vocab: 'moment' },
       { name: 'format', kind: 'choice', label: 'Format', vocab: 'format' },
       { name: 'symptoms', kind: 'tags', label: 'Symptoms',
         when: function (it) { return it.moment === 'crisis'; } },
@@ -309,7 +311,7 @@
     if (spec.kind === 'choice') {
       var options = (state.vocabulary[spec.vocab] || []).map(function (o) {
         return '<option value="' + esc(o) + '"' + (v === o ? ' selected' : '') + '>' +
-          esc(label(o)) + '</option>';
+          esc(tr('lib.v.' + spec.vocab + '.' + o, label(o))) + '</option>';
       }).join('');
       return '<label class="fld"><span>' + esc(spec.label) + '</span>' +
         '<select data-lib-field="' + esc(spec.name) + '">' + options + '</select></label>';
@@ -362,6 +364,9 @@
         '<input type="hidden" data-lib-field="' + esc(spec.name) + '" value="' + esc(v || '') + '">' +
         '<input type="hidden" data-lib-field="' + esc(spec.name) + '_master" value="' +
           esc(item[spec.name + '_master'] || '') + '">' +
+        /* its shape, width ÷ height, so the page's frame matches it */
+        '<input type="hidden" data-lib-field="' + esc(spec.name) + '_ar" value="' +
+          esc(item[spec.name + '_ar'] || '') + '">' +
         '<input type="file" accept="image/*" hidden data-lib-file>' +
         '<div class="pf-photo-acts">' +
           '<button type="button" class="ghost-btn" data-lib-pick>' +
@@ -517,7 +522,7 @@
     var status = slot.querySelector('[data-lib-shot-status]');
     var say = function (k, f) { if (status) status.textContent = tr(k, f); };
     try {
-      var shot = window.PhotoCrop ? await window.PhotoCrop.open(file, 'wide') : null;
+      var shot = window.PhotoCrop ? await window.PhotoCrop.open(file, 'library') : null;
       if (window.PhotoCrop && !shot) return say('lib.cropCancelled', 'Nothing changed.');
 
       say('lib.keepingOriginal', 'Keeping the original…');
@@ -529,7 +534,7 @@
 
       say('lib.uploading', 'Uploading…');
       var body = await putMedia(shot ? shot.blob : await shrink(file, 1600), baseName(file.name));
-      setPhoto(slot, body.url, masterUrl);
+      setPhoto(slot, body.url, masterUrl, shot ? shot.aspect : null);
       say('lib.photoReady', 'Picture added — press Save to keep it.');
     } catch (e) {
       if (status) status.textContent = e.message;
@@ -552,22 +557,23 @@
       if (!res.ok) throw new Error(tr('lib.gone', 'That picture could not be loaded'));
       var blob = await res.blob();
       var shot = await window.PhotoCrop.open(
-        new File([blob], 'photo', { type: blob.type || 'image/webp' }), 'wide');
+        new File([blob], 'photo', { type: blob.type || 'image/webp' }), 'library');
       if (!shot) { if (status) status.textContent = ''; return; }
       var body = await putMedia(shot.blob, baseName(from.split('/').pop()).replace(/-?[0-9a-f]{16}$/, '').replace(/-original$/, ''));
       /* The master is NOT replaced — writing the new crop over it would make
          the next edit one-way again. */
-      setPhoto(slot, body.url, master);
+      setPhoto(slot, body.url, master, shot.aspect);
       if (status) status.textContent = tr('lib.photoReady', 'Picture updated — press Save to keep it.');
     } catch (e) {
       if (status) status.textContent = e.message;
     }
   }
 
-  function setPhoto(slot, url, master) {
+  function setPhoto(slot, url, master, ar) {
     var fields = slot.querySelectorAll('[data-lib-field]');
     fields[0].value = url || '';
     if (master !== undefined) fields[1].value = master || '';
+    if (ar !== undefined && fields[2]) fields[2].value = url && ar ? String(Math.round(ar * 1000) / 1000) : '';
     slot.querySelector('.lib-shot').innerHTML = url
       ? '<img src="' + esc(url) + '" alt="">'
       : '<span class="pf-empty">' + esc(tr('lib.noPhoto', 'No picture yet')) + '</span>';
@@ -600,6 +606,13 @@
       }
       if (!el) return;                       // not applicable to this item
       if (spec.kind === 'flag') { out[spec.name] = el.checked; return; }
+      /* a picture carries its original and its shape beside it */
+      if (spec.kind === 'photo') {
+        ['_master', '_ar'].forEach(function (x) {
+          var h = node.querySelector('[data-lib-field="' + spec.name + x + '"]');
+          if (h) out[spec.name + x] = h.value.trim();
+        });
+      }
       if (spec.kind === 'tags') {
         out[spec.name] = el.value.split(',').map(function (x) { return x.trim(); })
           .filter(Boolean);
@@ -706,7 +719,7 @@
     var unphoto = e.target.closest('[data-lib-unphoto]');
     if (unphoto) {
       var slot = unphoto.closest('[data-lib-photo]');
-      setPhoto(slot, '', '');
+      setPhoto(slot, '', '', null);
       unphoto.remove();
       var cropBtn = slot.querySelector('[data-lib-crop]');
       if (cropBtn) cropBtn.remove();

@@ -26,8 +26,11 @@
 
    THE MOVES: walking and talking, hopping between levels, climbing the
    ladders, jumps and backflips, cartwheels, the moonwalk, the army crawl,
-   knee slides, the worm, striking a pose, hiding behind the band, stage
-   dives and crowd surfing. Each new move is named as it starts.
+   knee slides, the worm, striking a pose (each their own: a thumbs up, a
+   worship hand, the dab, a superhero), singing (notes float up — the one
+   time words-ish things appear), the pastor's coffee, and the kid going
+   flat on their face. No move is named on screen; each is told by the
+   body first (PREP, below).
 
    THE SERVICE runs in acts (WELCOME, WORSHIP, THE MESSAGE, ONE MORE SONG)
    that unlock the moves and quicken the pace. And the funny things: a
@@ -52,20 +55,30 @@
   /* who you light: pace, how often they do something, which levels they
      use, which moves they have, and their size (the kid is small) */
   var WHO = [
-    { key: 'pastor', speed: 48, rate: .45, plats: [0, 1, 3], moves: ['talk', 'pose', 'moonwalk', 'hop', 'jump', 'hide', 'kneeslide'], col: '#2FD8FF', skin: '#e2b48f', hair: '#6d6d72', size: 1, worth: 1 },
-    { key: 'leader', speed: 72, rate: .7, plats: [0, 1, 2, 3, 4], moves: ['hop', 'jump', 'flip', 'kneeslide', 'cartwheel', 'hide', 'pose', 'climb', 'dive', 'moonwalk'], col: '#5CF2C4', skin: '#c68e6a', hair: '#2a1d16', size: 1, worth: 1.5 },
-    { key: 'youth', speed: 96, rate: 1, plats: [0, 1, 2, 3, 4], moves: ['hop', 'jump', 'flip', 'kneeslide', 'cartwheel', 'hide', 'climb', 'dive', 'worm', 'crawl', 'moonwalk', 'pose'], col: '#FF4FD8', skin: '#efc29b', hair: '#FFB547', size: 1, worth: 2 },
-    { key: 'kid', speed: 118, rate: 1.25, plats: [0, 1, 2, 3, 4], moves: ['hop', 'jump', 'flip', 'cartwheel', 'hide', 'climb', 'worm', 'crawl', 'kneeslide', 'pose', 'dive'], col: '#FFB547', skin: '#f1c7a1', hair: '#8a4b24', size: .7, worth: 2.6 }
+    { key: 'pastor', speed: 48, rate: .45, plats: [0, 1, 3], moves: ['talk', 'pose', 'moonwalk', 'hop', 'jump', 'hide', 'kneeslide', 'sip'], col: '#2FD8FF', skin: '#e2b48f', hair: '#6d6d72', size: 1, worth: 1 },
+    { key: 'leader', speed: 72, rate: .7, plats: [0, 1, 2, 3, 4], moves: ['hop', 'jump', 'flip', 'kneeslide', 'cartwheel', 'hide', 'pose', 'climb', 'dive', 'moonwalk', 'sing', 'sing'], col: '#5CF2C4', skin: '#c68e6a', hair: '#2a1d16', size: 1, worth: 1.5 },
+    { key: 'youth', speed: 96, rate: 1, plats: [0, 1, 2, 3, 4], moves: ['hop', 'jump', 'flip', 'kneeslide', 'cartwheel', 'hide', 'climb', 'dive', 'worm', 'crawl', 'moonwalk', 'pose', 'sing'], col: '#FF4FD8', skin: '#efc29b', hair: '#FFB547', size: 1, worth: 2 },
+    { key: 'kid', speed: 118, rate: 1.25, plats: [0, 1, 2, 3, 4], moves: ['hop', 'jump', 'flip', 'cartwheel', 'hide', 'climb', 'worm', 'crawl', 'kneeslide', 'pose', 'dive', 'trip', 'sing'], col: '#FFB547', skin: '#f1c7a1', hair: '#8a4b24', size: .7, worth: 2.6 }
   ];
   /* the acts: when each starts, the LED wall's color, which moves unlock, the pace */
   var ACTS = [
-    { key: 'welcome', at: 0,  wall: [47, 216, 255],  moves: ['talk', 'pose', 'hop', 'jump', 'moonwalk', 'climb'], pace: .85 },
-    { key: 'worship', at: 22, wall: [155, 123, 255], moves: ['talk', 'pose', 'hop', 'jump', 'moonwalk', 'climb', 'flip', 'kneeslide', 'cartwheel', 'hide'], pace: 1 },
-    { key: 'message', at: 55, wall: [255, 181, 71],  moves: ['talk', 'pose', 'hop', 'jump', 'moonwalk', 'climb', 'flip', 'kneeslide', 'cartwheel', 'hide', 'crawl', 'worm', 'dive'], pace: 1.12 },
+    { key: 'welcome', at: 0,  wall: [47, 216, 255],  moves: ['talk', 'pose', 'hop', 'jump', 'moonwalk', 'climb', 'sip', 'trip'], pace: .85 },
+    { key: 'worship', at: 22, wall: [155, 123, 255], moves: ['talk', 'pose', 'hop', 'jump', 'moonwalk', 'climb', 'flip', 'kneeslide', 'cartwheel', 'hide', 'sing', 'sip', 'trip'], pace: 1 },
+    { key: 'message', at: 55, wall: [255, 181, 71],  moves: ['talk', 'pose', 'hop', 'jump', 'moonwalk', 'climb', 'flip', 'kneeslide', 'cartwheel', 'hide', 'crawl', 'worm', 'dive', 'sing', 'sip', 'trip'], pace: 1.12 },
     { key: 'encore',  at: 95, wall: [255, 79, 216],  moves: null, pace: 1.25 }
   ];
-  /* moves that are announced as they start */
-  var NAMED = { flip: 1, cartwheel: 1, moonwalk: 1, crawl: 1, kneeslide: 1, worm: 1, pose: 1, climb: 1 };
+  /* THE TELL (round 7, Chase: "We need better visual indicators for what
+     the person is about to do … Most of the indicators happen the moment
+     they happen. I'd rather they be from the person as well and not words
+     that pop on the screen, unless it's a singing part"): before every
+     move the performer winds up for it, in their body, for this long —
+     a crouch with the arms back before a jump, deeper before a flip, a
+     point at where they'll land before a hop, a reach for the ladder, arms
+     up before a cartwheel, a hat-tip before the moonwalk, a run-up lean
+     before a knee slide, down to the floor before a crawl, a glance and a
+     shush before hiding, a point at the crowd before a dive, the mic up
+     before a song, a wobble before the kid trips. */
+  var PREP = { jump: .55, flip: .7, hop: .6, climb: .55, cartwheel: .55, moonwalk: .5, kneeslide: .5, crawl: .5, worm: .5, hide: .6, dive: .75, sing: .45, trip: .6, sip: .3 };
 
   function rnd(a, b) { return a + Math.random() * (b - a); }
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
@@ -84,14 +97,20 @@
       var spot = { x: W / 2, y: DECK - 50, vx: 0, vy: 0, r: 38 };
       var p = { x: W / 2, y: DECK, vx: 0, vy: 0, plat: 0, act: 'walk', t: 0, dir: 1, rot: 0, goal: W / 2, hidden: false, air: false, low: false };
       var band = [{ x: 74, plat: 1, h: 64, kind: 'bass', col: '#3a3350' }, { x: 326, plat: 3, h: 70, kind: 'guitar', col: '#38304a' }, { x: 200, plat: 2, h: 58, kind: 'drums', col: '#2c2740' }];
-      var crowd = [], pops = [], nextMove = 2, gagIn = 12, sheep = null, moth = null, fog = 0;
+      var crowd = [], pops = [], notes = [], nextMove = 2, gagIn = 12, sheep = null, moth = null, fog = 0;
+      /* the body's pose, eased toward what the moment asks */
+      var P = { crouch: 0, lean: .05, aB: .15, eB: .3, aF: .2, eF: .4, look: 0, tuck: 0 };
       for (var i = 0; i < 46; i++) crowd.push({ x: i * 9 + rnd(-3, 3), h: rnd(16, 28), ph: rnd(0, 6), phone: Math.random() < .3 });
 
       function choose(i) {
         if (who) return;
-        who = WHO[i]; ctx.sfx('go');
-        ctx.say(words('followspot_' + who.key + '_line'), { tag: 'DIR' });
+        who = WHO[i];
       }
+      ctx.menu({
+        heading: words('followspot_pick'), start: 0,
+        items: WHO.map(function (w2, i) { return { title: words('followspot_' + w2.key), line: '★'.repeat(i + 1) + ' ' + words('followspot_' + w2.key + '_line'), col: w2.col }; }),
+        pick: choose
+      });
       function cur() { return ACTS[act]; }
       function platAt(i) { return PLATS[i]; }
       function onPlat(x, i) { var q = PLATS[i]; return x >= q.x0 && x <= q.x1; }
@@ -103,7 +122,7 @@
         return who.moves.filter(function (k) { return !m || m.indexOf(k) >= 0; });
       }
       function nextAction() {
-        p.t = 0; p.hidden = false; p.low = false; p.rot = 0; p.label = null;
+        p.t = 0; p.hidden = false; p.low = false; p.rot = 0; p.sat = 0;
         var plat = platAt(p.plat);
         /* mostly a walk somewhere on this level; otherwise a move */
         if (Math.random() > Math.min(.75, .3 + who.rate * .3)) {
@@ -112,42 +131,53 @@
           return;
         }
         var list = allowed().filter(function (k) {
-          if (k === 'hide' || k === 'dive' || k === 'kneeslide' || k === 'worm' || k === 'crawl') return p.plat === 0;
+          if (k === 'hide' || k === 'dive' || k === 'kneeslide' || k === 'worm' || k === 'crawl' || k === 'trip') return p.plat === 0;
           if (k === 'climb') return (p.plat === 0 || p.plat === 4) && who.plats.indexOf(4) >= 0;
           return true;
         });
         var k = pickOf(list.length ? list : ['walk']);
         start(k);
       }
+      /* the move is chosen now — which way, where to — and the body winds up
+         for it; launch() is the move itself */
       function start(k) {
-        p.act = k; p.t = 0;
-        /* the ladder from the catwalk goes down, and says so (round 6) */
-        var label = k === 'climb' && p.plat !== 0 ? 'climbdown' : k;
-        if (NAMED[k]) pops.push({ x: p.x, y: p.y - 80 * who.size, text: words('followspot_s_' + label), life: 1.3, col: who.col });
-        if (k === 'talk' || k === 'pose') return;
-        if (k === 'jump') { p.vy = -430; p.air = true; return; }
-        if (k === 'flip') { p.vy = -560; p.air = true; ctx.quip('jokes_followspot_stunt'); return; }
+        p.t = 0; p.next = k;
+        if (k === 'cartwheel' || k === 'moonwalk') p.dir = Math.random() < .5 ? -1 : 1;
+        if (k === 'kneeslide' || k === 'crawl' || k === 'worm') p.dir = p.x < W / 2 ? 1 : -1;
+        if (k === 'dive') p.dir = p.x < W / 2 ? -1 : 1;
         if (k === 'hop') {
           /* to another level they use: up onto a riser, or down off it */
           var near = who.plats.filter(function (i) { return i !== p.plat && i !== 4 && Math.abs(platAt(i).y - platAt(p.plat).y) < 90; });
           if (!near.length) { p.act = 'walk'; p.goal = p.x; return; }
           var to = pickOf(near), q = platAt(to), tx = clamp(p.x + (q.x0 + q.x1) / 2 - p.x, q.x0 + 14, q.x1 - 14);
           if (Math.abs(tx - p.x) > 170) tx = p.x + Math.sign(tx - p.x) * 170;
-          var T = .7, dy = q.y - p.y;
-          p.vx = (tx - p.x) / T; p.vy = (dy - .5 * GRAV * T * T) / T; p.air = true; p.dir = p.vx > 0 ? 1 : -1;
-          return;
+          p.hop = { x: tx, y: q.y, plat: to }; p.dir = tx > p.x ? 1 : -1;
         }
         if (k === 'climb') {
           var lad = LADDERS.reduce(function (a, b) { return Math.abs(a.x - p.x) < Math.abs(b.x - p.x) ? a : b; });
-          p.ladder = lad; p.toPlat = p.plat === 0 ? lad.hi : lad.lo; p.goal = lad.x; p.phase = 'to';
+          p.ladder = lad; p.toPlat = p.plat === 0 ? lad.hi : lad.lo; p.dir = lad.x > p.x ? 1 : -1;
+        }
+        if (k === 'hide') { p.hideAt = pickOf(band); p.dir = p.hideAt.x > p.x ? 1 : -1; }
+        var prep = PREP[k];
+        if (!prep) return launch(k);
+        p.act = 'prep'; p.prep = prep * (who.key === 'kid' ? .8 : 1) / Math.min(1.25, cur().pace);
+      }
+      function launch(k) {
+        p.act = k; p.t = 0;
+        if (k === 'talk' || k === 'pose' || k === 'sing' || k === 'sip') return;
+        if (k === 'jump') { p.vy = -430; p.air = true; return; }
+        if (k === 'flip') { p.vy = -560; p.air = true; return; }
+        if (k === 'hop') {
+          var T = .7, dy = p.hop.y - p.y;
+          p.vx = (p.hop.x - p.x) / T; p.vy = (dy - .5 * GRAV * T * T) / T; p.air = true;
           return;
         }
-        if (k === 'cartwheel') { p.dir = Math.random() < .5 ? -1 : 1; return; }
-        if (k === 'moonwalk') { p.dir = Math.random() < .5 ? -1 : 1; return; }
-        if (k === 'kneeslide') { p.dir = p.x < W / 2 ? 1 : -1; p.vx = p.dir * 270; p.low = true; return; }
-        if (k === 'crawl' || k === 'worm') { p.dir = p.x < W / 2 ? 1 : -1; p.low = true; return; }
-        if (k === 'hide') { var b = pickOf(band); p.hideAt = b; p.goal = b.x; return; }   /* behind a band member's riser */
-        if (k === 'dive') { p.dir = p.x < W / 2 ? -1 : 1; p.vy = -380; p.vx = p.dir * 60; p.air = true; ctx.say(words('followspot_dive'), { tag: 'DIR' }); return; }
+        if (k === 'climb') { p.goal = p.ladder.x; p.phase = 'to'; return; }
+        if (k === 'kneeslide') { p.vx = p.dir * 270; p.low = true; return; }
+        if (k === 'crawl' || k === 'worm') { p.low = true; return; }
+        if (k === 'hide') { p.goal = p.hideAt.x; return; }   /* behind a band member's riser */
+        if (k === 'dive') { p.vy = -380; p.vx = p.dir * 60; p.air = true; return; }
+        if (k === 'trip') { p.low = true; return; }
       }
 
       function think(dt) {
@@ -161,8 +191,20 @@
             if (Math.abs(d) < 3 || p.t > 3.5) nextIn(who.key === 'kid' ? rnd(.1, .5) : rnd(.3, 1.2));
             break;
           }
+          case 'prep': if (p.t >= p.prep) launch(p.next); break;
           case 'talk': if (p.t > 1.8) nextAction(); break;
           case 'pose': if (p.t > 1.3) nextAction(); break;
+          case 'sip': if (p.t > 1.4) nextAction(); break;
+          case 'sing':
+            /* a singing part: notes float up from the mic */
+            if (Math.random() < dt * 4) notes.push({ x: p.x + p.dir * 10 * who.size, y: p.y - 52 * who.size, vx: p.dir * rnd(6, 20), life: 1.6, n: Math.random() < .5 ? '♪' : '♫' });
+            if (p.t > 2.4) nextAction();
+            break;
+          case 'trip':
+            /* the kid goes down flat, sits up, dusts off, and carries on */
+            p.x += p.dir * Math.max(0, 70 - p.t * 160) * dt;
+            if (p.t > 1.5) { p.low = false; nextAction(); }
+            break;
           case 'cartwheel':
             p.x += p.dir * 120 * dt; p.rot = p.t / 1 * Math.PI * 2 * p.dir;
             if (p.t > 1 || p.x < plat.x0 + 8 || p.x > plat.x1 - 8) { p.rot = 0; p.x = clamp(p.x, plat.x0 + 8, plat.x1 - 8); nextAction(); }
@@ -263,8 +305,47 @@
       function center() {
         var s = who.size;
         if (p.act === 'surf') return { x: p.x, y: p.y - 6 };
-        if (p.low) return { x: p.x, y: p.y - 9 * s };
+        if (p.low) return { x: p.x, y: p.y - (p.act === 'trip' && p.t > .9 ? 16 : 9) * s };
         return { x: p.x, y: p.y - 30 * s };
+      }
+
+      /* ---- the body: what each moment looks like ----
+         angles: arms from straight down, + swings forward (the way they
+         face), e bends the elbow; lean tips the torso forward; look tips
+         the head (- up). */
+      function posture(dt) {
+        var T = { crouch: 0, lean: .05, aB: .15, eB: .3, aF: .2, eF: .4, look: 0, tuck: 0 };
+        var a = p.act, k = p.next, u = p.prep ? clamp(p.t / p.prep, 0, 1) : 1, t = time;
+        if (a === 'prep') {
+          if (k === 'jump') { T.crouch = u + Math.sin(t * 22) * .06; T.lean = .3; T.aB = T.aF = -.9 * u; T.eB = T.eF = .2; T.look = -.25; }
+          else if (k === 'flip') { T.crouch = u; T.lean = -.2; T.aB = T.aF = -2.5 * u; T.eB = T.eF = .3; T.look = -.55; }   /* leaning back, arms up behind, eyes up */
+          else if (k === 'hop') { T.crouch = .7 * u; T.lean = .3; T.aF = 1.2 + (p.hop && p.hop.y < p.y ? .5 : -.2); T.eF = 0; T.aB = -.6; T.look = p.hop && p.hop.y < p.y ? -.35 : .3; }
+          else if (k === 'climb') { var upw = p.toPlat !== 0; T.aF = upw ? 2.7 : .7; T.eF = upw ? .2 : 0; T.look = upw ? -.6 : .5; T.lean = upw ? -.1 : .25; }
+          else if (k === 'cartwheel') { T.aB = T.aF = 2.8 * u; T.eB = T.eF = 0; T.lean = .35 * u; T.crouch = .2; }
+          else if (k === 'moonwalk') { T.aF = 2.6; T.eF = 1.5; T.lean = -.18; T.crouch = .1; T.aB = -.3 + Math.sin(t * 14) * .25; }   /* tips the hat, shimmies */
+          else if (k === 'kneeslide') { T.lean = .55; T.crouch = .5; T.aB = -.9; T.aF = -.9; T.look = .1; }
+          else if (k === 'crawl' || k === 'worm') { T.crouch = 1; T.lean = .9 * u; T.aF = .9; T.aB = .7; T.look = .2; }
+          else if (k === 'hide') { T.aF = 2.3; T.eF = 2.3; T.look = .1; T.lean = -.05; T.glance = 1; }      /* a finger to the lips, a look back */
+          else if (k === 'dive') { T.aF = .9; T.eF = 0; T.lean = .45; T.crouch = .4; T.look = .5; T.aB = -.4; }
+          else if (k === 'sing') { T.aF = 2.1; T.eF = 2.2; T.lean = -.05; T.look = -.1; }
+          else if (k === 'trip') { T.lean = Math.sin(t * 18) * .35; T.aB = 2 + Math.sin(t * 20) * .8; T.aF = 2 - Math.sin(t * 20) * .8; T.eB = T.eF = .2; }
+          else if (k === 'sip') { T.aF = 1.6; T.eF = 1.8; }
+        } else if (p.air) {
+          T.tuck = a === 'flip' ? 1 : .6; T.crouch = .3; T.aB = 2.6; T.aF = 2.4; T.eB = T.eF = .3; T.look = -.15;
+          if (a === 'dive') { T.lean = .9; T.aB = T.aF = 1.5; T.tuck = 0; }
+        } else if (a === 'talk') { T.aF = 1.3 + Math.sin(t * 5) * .35; T.eF = .9; T.aB = .3; T.look = Math.sin(t * 2.3) * .08; }
+        else if (a === 'pose') {
+          if (who.key === 'pastor') { T.aF = 1.5; T.eF = 1.4; }                                   /* a thumbs up */
+          else if (who.key === 'leader') { T.aF = 2.9; T.eF = .1; T.aB = .4; T.look = -.35; T.lean = -.1; }   /* worship hand */
+          else if (who.key === 'youth') { T.aF = 2.3; T.eF = 2.4; T.aB = 1.9; T.eB = 0; T.lean = .3; T.look = .35; }  /* the dab */
+          else { T.aF = 2.9; T.aB = 2.9; T.eB = T.eF = -.3; T.crouch = .25; }                     /* superhero */
+        }
+        else if (a === 'sing') { T.aF = 2.1; T.eF = 2.2; T.aB = 2.4 + Math.sin(t * 2) * .2; T.eB = .2; T.look = -.25; }
+        else if (a === 'sip') { T.aF = 2.3; T.eF = 2.4; T.look = -.2; T.lean = -.08; }
+        else if (a === 'climb' && p.phase !== 'to') { var cl = Math.sin(t * 8); T.aB = 2.7 + cl * .3; T.aF = 2.7 - cl * .3; T.eB = T.eF = .3; T.look = -.3; }
+        else if (a === 'moonwalk') { T.aF = 1.6; T.eF = 1; T.aB = -.2; T.lean = -.12; }
+        var kk = Math.min(1, dt * 12);
+        for (var key in T) P[key] = (P[key] || 0) + (T[key] - (P[key] || 0)) * kk;
       }
 
       /* ---- your light ---- */
@@ -297,7 +378,7 @@
           /* 5 a second, ×3 at most, × who (round 4: it was 30 ×4 ×who, up to 300 a second) */
           score += dt * 5 * m * who.worth;
           patience = Math.min(1, patience + dt * .08);
-          if ((p.act === 'flip' || p.act === 'surf' || p.act === 'cartwheel' || p.act === 'worm') && !p.nailed) {
+          if ((p.act === 'flip' || p.act === 'surf' || p.act === 'cartwheel' || p.act === 'worm' || p.act === 'trip') && !p.nailed) {
             p.nailed = true; score += 50; pops.push({ x: p.x, y: p.y - 70, text: words('followspot_nailed'), life: 1.4 }); ctx.sfx('combo');
           }
         } else {
@@ -312,6 +393,8 @@
         if (p.act === 'walk' || p.act === 'talk') p.nailed = false;
         ctx.score(score);
         pops.forEach(function (q) { q.y -= 20 * dt; q.life -= dt; }); pops = pops.filter(function (q) { return q.life > 0; });
+        notes.forEach(function (q) { q.y -= 26 * dt; q.x += q.vx * dt; q.life -= dt; }); notes = notes.filter(function (q) { return q.life > 0; });
+        posture(dt);
       }
 
       /* ------------------------------------------------------ drawing */
@@ -345,10 +428,10 @@
         if (who) light(g);
         if (moth) mothDraw(g);
         crowdDraw(g);
-        if (!who) return ctx.cards(g, words('followspot_pick'), WHO.map(function (w2, i) {
-          return { title: words('followspot_' + w2.key), line: '★'.repeat(i + 1) + ' ' + words('followspot_' + w2.key + '_line'), key: ['←', '↑', '→', '↓'][i], col: w2.col };
-        }), time);
+        if (!who) return;                       /* play.js draws the choice */
         hud(g);
+        /* the only words a move gets: notes, when they sing */
+        notes.forEach(function (q) { g.globalAlpha = Math.min(1, q.life); g.fillStyle = who ? who.col : '#FFB547'; g.font = '700 14px Sora, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(q.n, q.x, q.y); });
         pops.forEach(function (q) {
           g.globalAlpha = Math.min(1, q.life * 2); g.fillStyle = q.col || '#FFB547';
           g.font = (q.big ? '700 20px' : '700 13px') + ' Sora, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
@@ -399,6 +482,11 @@
         /* the pool's hard edge, so its size can be judged */
         g.strokeStyle = 'rgba(255,245,220,.25)'; g.lineWidth = 1; g.beginPath(); g.ellipse(spot.x, spot.y, spot.r, spot.r * .92, 0, 0, 7); g.stroke();
       }
+      /* THE PERFORMER, better defined (round 7, Chase: "can we work on the
+         visuals of this person as well. More well defined"): jointed legs
+         with shoes, a shaped torso, two-part arms with hands, a neck, a
+         head with an ear and its own hair, and a dark outline that keeps
+         the shape in the light and out of it. */
       function performer(g) {
         if (p.hidden) {
           /* a hand waving from behind the band member, to be found */
@@ -412,43 +500,112 @@
         g.globalAlpha = lit ? 1 : fog > 0 ? .18 : .5;
         g.scale(s * (facing < 0 ? -1 : 1), s);
         g.lineCap = 'round'; g.lineJoin = 'round';
-        var a = p.act, t = time, air = p.air;
+        var a = p.act, t = time;
         if (a === 'surf') { g.rotate(-Math.PI / 2); g.translate(0, 10); }
         if (a === 'flip' || a === 'cartwheel') { g.translate(0, -26); g.rotate(p.rot * (facing < 0 ? -1 : 1)); g.translate(0, 26); }
+        if (a === 'trip') {
+          /* down on the face, a moment, then back up (with stars) */
+          var tr = p.t < .3 ? p.t / .3 : p.t < .9 ? 1 : Math.max(0, 1 - (p.t - .9) / .6);
+          g.rotate(tr * 1.45);
+          if (p.t > .3 && p.t < 1.2) for (var st = 0; st < 3; st++) { var sa = time * 6 + st * 2.1; g.fillStyle = '#FFD34A'; g.fillRect(Math.cos(sa) * 9 - 1.5, -58 + Math.sin(sa) * 3, 3, 3); }
+        }
         if (a === 'crawl' || a === 'worm') { lowBody(g, a, t); g.restore(); g.globalAlpha = 1; return; }
         if (a === 'kneeslide') { kneel(g); g.restore(); g.globalAlpha = 1; return; }
-        var walking = a === 'walk' || a === 'moonwalk' || a === 'hide' || (a === 'climb' && p.phase === 'to');
-        var sw = walking ? Math.sin(t * (a === 'moonwalk' ? 7 : 11)) : 0;
-        /* legs */
-        g.strokeStyle = '#1c1f2b'; g.lineWidth = 5; g.beginPath();
-        if (air || a === 'cartwheel') { g.moveTo(-3, -18); g.lineTo(-8, -9); g.lineTo(-3, -2); g.moveTo(3, -18); g.lineTo(9, -10); g.lineTo(5, -3); }
-        else if (a === 'moonwalk') { g.moveTo(-3, -18); g.lineTo(-3 - sw * 7, 0); g.moveTo(3, -18); g.lineTo(3 + Math.max(0, sw) * 5, -Math.max(0, -sw) * 4); }
-        else if (a === 'pose') { g.moveTo(-3, -18); g.lineTo(-9, 0); g.moveTo(3, -18); g.lineTo(9, -8); g.lineTo(6, 0); }
-        else { g.moveTo(-3, -18); g.lineTo(-3 + sw * 6, 0); g.moveTo(3, -18); g.lineTo(3 - sw * 6, 0); }
-        g.stroke();
-        /* body */
-        g.fillStyle = who.col; g.beginPath(); g.moveTo(-8, -18); g.lineTo(-9, -38); g.quadraticCurveTo(0, -44, 9, -38); g.lineTo(8, -18); g.closePath(); g.fill();
-        if (who.key === 'pastor') { g.fillStyle = '#0d1018'; g.beginPath(); g.moveTo(-9, -38); g.lineTo(-3, -38); g.lineTo(-6, -18); g.lineTo(-8, -18); g.closePath(); g.moveTo(9, -38); g.lineTo(3, -38); g.lineTo(6, -18); g.lineTo(8, -18); g.closePath(); g.fill(); }
-        /* arms */
-        g.strokeStyle = who.skin; g.lineWidth = 3.5; g.beginPath();
-        if (air || a === 'cartwheel' || a === 'pose') { g.moveTo(-7, -38); g.lineTo(-15, -56); g.moveTo(7, -38); g.lineTo(a === 'pose' ? 18 : 15, a === 'pose' ? -50 : -56); }
-        else if (a === 'climb' && p.phase !== 'to') { var cl = Math.sin(t * 8) * 6; g.moveTo(-7, -38); g.lineTo(-9, -52 + cl); g.moveTo(7, -38); g.lineTo(9, -52 - cl); }
-        else if (a === 'talk') { g.moveTo(-7, -37); g.lineTo(-12, -26); g.moveTo(7, -37); g.lineTo(16 + Math.sin(t * 5) * 3, -46 + Math.sin(t * 5) * 4); }
-        else if (a === 'moonwalk') { g.moveTo(-7, -37); g.lineTo(-11, -24); g.moveTo(7, -37); g.lineTo(12, -48); }
-        else { g.moveTo(-7, -37); g.lineTo(-11 - sw * 3, -22); g.moveTo(7, -37); g.lineTo(5, -46); }
-        g.stroke();
-        if (!air && who.key === 'pastor' && a !== 'pose') { g.fillStyle = '#5a3720'; g.fillRect(-17, -30, 9, 11); }
-        else if (!air && a !== 'pose' && a !== 'climb') { g.fillStyle = '#c9d1dc'; g.fillRect(3, -50, 3, 7); }
-        if (a === 'moonwalk') { g.fillStyle = '#EDF2F8'; g.beginPath(); g.arc(12, -48, 2.5, 0, 7); g.fill(); }   /* one white glove */
-        head(g);
+        var walking = a === 'walk' || a === 'moonwalk' || a === 'hide' || (a === 'climb' && p.phase === 'to') || (a === 'prep' && p.next === 'kneeslide');
+        var sw = walking ? Math.sin(t * (a === 'moonwalk' ? 7 : a === 'prep' ? 18 : 11)) : 0;
+        body(g, P, sw, a === 'moonwalk');
         g.restore(); g.globalAlpha = 1;
       }
-      function head(g) {
-        g.fillStyle = who.skin; g.beginPath(); g.arc(0, -50, 7, 0, 7); g.fill();
-        g.fillStyle = who.hair; g.beginPath(); g.arc(0, -53, 7, Math.PI, 0); g.fill();
-        if (who.key === 'youth') { g.fillRect(-7, -56, 14, 3); g.fillRect(-1, -57, 11, 3); }
-        if (who.key === 'kid') { g.fillStyle = '#FF4FD8'; g.beginPath(); g.arc(-6, -55, 3, 0, 7); g.arc(6, -55, 3, 0, 7); g.fill(); }  /* pigtails */
-        g.fillStyle = '#10131a'; g.fillRect(1, -51, 2, 2); g.fillRect(4, -51, 2, 2);
+      var INK = 'rgba(6,6,10,.85)';
+      function limb(g, pts, w, col) {
+        g.strokeStyle = INK; g.lineWidth = w + 2; g.beginPath(); g.moveTo(pts[0].x, pts[0].y); for (var i = 1; i < pts.length; i++) g.lineTo(pts[i].x, pts[i].y); g.stroke();
+        g.strokeStyle = col; g.lineWidth = w; g.stroke();
+      }
+      function body(g, Q, sw, moon) {
+        var hipY = -19 + Q.crouch * 9 + Q.tuck * 4, hip = { x: 0, y: hipY };
+        var sh = { x: hip.x + Math.sin(Q.lean) * 19, y: hip.y - Math.cos(Q.lean) * 19 };
+        var nk = { x: sh.x + Math.sin(Q.lean) * 3, y: sh.y - Math.cos(Q.lean) * 3 };
+        var hd = { x: nk.x + Math.sin(Q.lean + Q.look) * 7, y: nk.y - Math.cos(Q.lean + Q.look) * 7 };
+        var pants = who.key === 'pastor' ? '#262a36' : who.key === 'kid' ? '#3b5bdb' : '#1c1f2b';
+        /* feet: under the hips, apart; walking swings them; tucked in the air */
+        var feet = [{ x: -4 + sw * 6, y: 0 }, { x: 4 - sw * 6, y: 0 }];
+        if (moon) feet = [{ x: -3 - sw * 7, y: 0 }, { x: 3 + Math.max(0, sw) * 5, y: -Math.max(0, -sw) * 4 }];
+        if (Q.tuck > .05) feet = feet.map(function (f, i) { return { x: f.x * (1 - Q.tuck) + (i ? 6 : 2) * Q.tuck, y: f.y - 9 * Q.tuck }; });
+        /* the back arm first, behind everything */
+        arm(g, sh, Q.aB, Q.eB, true);
+        /* legs: thigh and shin, the knee bending forward */
+        feet.forEach(function (f, i) {
+          var hp = { x: hip.x + (i ? 2 : -2), y: hip.y }, kn = bend(hp, f, 10, 1);
+          limb(g, [hp, kn, f], 5.5, pants);
+          g.fillStyle = '#0b0c12'; g.beginPath(); g.ellipse(f.x + 2, f.y - 1.5, 4.5, 2.4, 0, 0, 7); g.fill();
+          g.fillStyle = 'rgba(237,242,248,.55)'; g.fillRect(f.x - 2, f.y - .6, 8, 1);
+        });
+        /* the torso: shoulders wider than the waist, a shaded back */
+        g.save(); g.translate(hip.x, hip.y); g.rotate(Q.lean);
+        g.fillStyle = INK; roundRect(g, -8.5, -21, 17, 23, 5); g.fill();
+        g.fillStyle = who.col; g.beginPath(); g.moveTo(-6.5, 1); g.lineTo(-8, -17); g.quadraticCurveTo(0, -21.5, 8, -17); g.lineTo(6.5, 1); g.closePath(); g.fill();
+        g.fillStyle = 'rgba(0,0,0,.22)'; g.beginPath(); g.moveTo(-6.5, 1); g.lineTo(-8, -17); g.lineTo(-3, -19); g.lineTo(-2.5, 1); g.closePath(); g.fill();
+        if (who.key === 'pastor') {
+          /* the blazer's lapels, and a shirt beneath */
+          g.fillStyle = '#EDF2F8'; g.beginPath(); g.moveTo(1, -19); g.lineTo(5, -19); g.lineTo(3, -10); g.closePath(); g.fill();
+          g.fillStyle = '#0d1018'; g.beginPath(); g.moveTo(-8, -17); g.lineTo(-1, -19); g.lineTo(-4, 1); g.lineTo(-6.5, 1); g.closePath(); g.fill();
+        }
+        if (who.key === 'youth') { g.fillStyle = 'rgba(255,255,255,.85)'; g.fillRect(-2, -14, 7, 4); }       /* a graphic tee */
+        if (who.key === 'kid') {
+          /* the costume's little cape, flapping */
+          g.fillStyle = '#FF5A6E'; g.beginPath(); g.moveTo(-7, -18); g.quadraticCurveTo(-14 - Math.sin(time * 9) * 3, -6, -11, 4); g.lineTo(-5, 0); g.closePath(); g.fill();
+        }
+        g.restore();
+        /* neck and head */
+        limb(g, [sh, nk], 3.5, who.skin);
+        head(g, hd, Q);
+        /* the front arm, and what is in its hand */
+        var hand = arm(g, sh, Q.aF, Q.eF, false);
+        if (p.act === 'sing' || (p.act === 'prep' && p.next === 'sing') || who.key === 'leader') { g.fillStyle = '#c9d1dc'; g.save(); g.translate(hand.x, hand.y); g.rotate(Q.aF + Q.eF + Math.PI); g.fillRect(-1.5, -1, 3, 7); g.fillStyle = '#5a6478'; g.beginPath(); g.arc(0, 7, 2.6, 0, 7); g.fill(); g.restore(); }
+        else if (who.key === 'pastor' && p.act === 'sip') { g.fillStyle = '#EDF2F8'; g.fillRect(hand.x - 2.5, hand.y - 6, 5, 6); g.fillStyle = '#8a5a3a'; g.fillRect(hand.x - 2.5, hand.y - 6, 5, 1.5); }
+        else if (who.key === 'pastor' && p.act !== 'pose') { g.fillStyle = '#5a3720'; g.fillRect(hand.x - 4, hand.y - 2, 8, 9); g.fillStyle = '#d8c690'; g.fillRect(hand.x - 3, hand.y - 1, 1, 7); }   /* the Bible */
+        if (p.act === 'moonwalk') { g.fillStyle = '#EDF2F8'; g.beginPath(); g.arc(hand.x, hand.y, 2.6, 0, 7); g.fill(); }   /* one white glove */
+        if (p.act === 'pose' && who.key === 'pastor') { g.fillStyle = who.skin; g.fillRect(hand.x - 1, hand.y - 6, 2.4, 5); }   /* the thumb up */
+      }
+      /* two bones from a to b, the joint bending toward `side` (+: forward) */
+      function bend(a, b, l, side) {
+        var dx = b.x - a.x, dy = b.y - a.y, d = Math.min(Math.hypot(dx, dy), l * 2 - .01), h = Math.sqrt(Math.max(0, l * l - d * d / 4)), n = Math.hypot(dx, dy) || 1;
+        var px = -dy / n * h, py = dx / n * h, mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+        return (px * side > 0) ? { x: mx + px, y: my + py } : { x: mx - px, y: my - py };
+      }
+      function arm(g, sh, ang, e, back) {
+        var el = { x: sh.x + Math.sin(ang) * 8.5, y: sh.y + Math.cos(ang) * 8.5 }, hd = { x: el.x + Math.sin(ang + e) * 8, y: el.y + Math.cos(ang + e) * 8 };
+        limb(g, [sh, el], 4, back ? shade(who.col) : who.col);
+        limb(g, [el, hd], 3.2, back ? shade(who.skin) : who.skin);
+        g.fillStyle = back ? shade(who.skin) : who.skin; g.beginPath(); g.arc(hd.x, hd.y, 2.2, 0, 7); g.fill();
+        return hd;
+      }
+      function roundRect(g, x, y, w, h, r) {
+        g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r);
+        g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath();
+      }
+      function shade(hex) { var n = parseInt(hex.slice(1), 16); return 'rgb(' + Math.round((n >> 16) * .72) + ',' + Math.round(((n >> 8) & 255) * .72) + ',' + Math.round((n & 255) * .72) + ')'; }
+      function head(g, h, Q) {
+        h = h || { x: 0, y: -50 }; Q = Q || P;
+        var x = h.x, y = h.y;
+        g.fillStyle = INK; g.beginPath(); g.arc(x, y, 8, 0, 7); g.fill();
+        g.fillStyle = who.skin; g.beginPath(); g.arc(x, y, 7, 0, 7); g.fill();
+        g.beginPath(); g.arc(x - 1.5, y + 1, 1.8, 0, 7); g.fillStyle = shade(who.skin); g.fill();          /* an ear */
+        g.fillStyle = who.hair;
+        if (who.key === 'pastor') { g.beginPath(); g.arc(x - 1, y - 2, 7.2, Math.PI * .95, Math.PI * 1.75); g.fill(); g.fillRect(x - 7.5, y - 3, 3, 6); }   /* gray, short, a side part */
+        else if (who.key === 'leader') { g.beginPath(); g.arc(x, y - 2.5, 7.4, Math.PI, 0); g.fill(); g.beginPath(); g.ellipse(x - 6, y + 2, 3, 6, .2, 0, 7); g.fill(); }   /* longer, to the shoulder */
+        else if (who.key === 'youth') { g.beginPath(); g.arc(x, y - 3, 7.2, Math.PI, 0); g.fill(); g.fillStyle = '#FF4FD8'; g.fillRect(x - 8, y - 7, 15, 3.4); g.fillRect(x - 11, y - 5, 5, 2); }   /* a backwards cap */
+        else { g.beginPath(); g.arc(x, y - 2.5, 7.2, Math.PI, 0); g.fill(); g.fillStyle = '#FF4FD8'; g.beginPath(); g.arc(x - 6.5, y - 6, 3, 0, 7); g.arc(x + 5, y - 7.5, 3, 0, 7); g.fill(); }   /* pigtails */
+        /* the face, toward the way they face: eyes shut when singing, a glance back before hiding */
+        var gl = Q.glance ? -1 : 1, ex = x + 3 * gl;
+        g.fillStyle = '#10131a';
+        if (p.act === 'sing' || (p.act === 'pose' && who.key === 'leader')) { g.fillRect(ex - 1, y - 1, 2.6, 1); g.fillRect(ex + 2.6, y - 1, 2.6, 1); }
+        else { g.fillRect(ex, y - 1.5, 1.8, 2); g.fillRect(ex + 3, y - 1.5, 1.8, 2); }
+        g.strokeStyle = '#10131a'; g.lineWidth = 1; g.beginPath();
+        if (p.act === 'trip') g.arc(ex + 2, y + 4.5, 1.6, 0, 7);                        /* an O */
+        else if (p.act === 'prep' && (p.next === 'flip' || p.next === 'dive')) { g.moveTo(ex, y + 3.5); g.lineTo(ex + 4, y + 3.5); }   /* a set jaw */
+        else g.arc(ex + 2, y + 2.2, 2, .2, Math.PI - .2);
+        g.stroke();
       }
       /* the army crawl and the worm: along the deck */
       function lowBody(g, a, t) {
@@ -535,14 +692,7 @@
 
       return {
         update: update, draw: draw,
-        press: function (d) {
-          if (!who) { var i = { left: 0, up: 1, go: 1, right: 2, down: 3 }[d]; if (i != null) choose(i); }
-        },
-        tapAt: function (x, y) {
-          if (who) return false;
-          var i = ctx.cardAt(x, y); if (i >= 0) { choose(i); return true; }
-          return false;
-        },
+        press: function () {},
         stop: function () {}
       };
     }

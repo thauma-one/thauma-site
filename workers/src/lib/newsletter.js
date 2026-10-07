@@ -56,6 +56,8 @@
    kept and its tag discarded — rather than deleted, because silently losing a
    paragraph somebody wrote is worse than losing its styling. */
 import { TONES, isColor, HEX_COLOR } from "./tones.js";
+import { band, bandDarkCss } from "./mail-band.js";
+import { t } from "./mail-i18n.js";
 
 const KEEP = new Set([
   "p", "br", "strong", "em", "u", "s",
@@ -84,6 +86,25 @@ const KEEP = new Set([
  * partner chose, so it is right by construction.
  */
 const SIZES = { sm: "13.5px", lg: "19px", xl: "23px" };
+/* ANY SIZE, as Site Creator allows (2026-10-06, Chase: "the controls for the
+   text should be similar to what we made in the Site Creator, including the
+   colors and text size options"): besides the three names, a size in px from
+   10 to 60. Font-size is honored by every client, so what is chosen is what
+   arrives. */
+export function sizeOf_(v) {
+  if (SIZES[v]) return SIZES[v];
+  const n = /^\d{1,2}$/.test(String(v || "")) ? +v : 0;
+  return n >= 10 && n <= 60 ? n + "px" : null;
+}
+/* A PICTURE'S WIDTH, as a share of the column: dragged freely in the composer
+   (2026-10-06, Chase: "freeform size adjustment … It's easier to understand
+   than the Small Medium Large"), 10–100. The old names still read. */
+export function picWidth(v) {
+  const named = { sm: 33, md: 50, lg: 75 }[v];
+  if (named) return named;
+  const n = /^\d{1,3}$/.test(String(v || "")) ? +v : 0;
+  return n >= 10 && n < 100 ? n : null;
+}
 
 /* A FEW TONES BESIDES THE BRAND, each with a light-email and a dark-email
    shade, so a colored word stays readable on either card (both pass 4.5:1).
@@ -107,7 +128,7 @@ const DROP_WHOLE = new Set(["script", "style", "head", "title", "meta", "link", 
 /* What each surviving tag may carry. Anything not listed is dropped — that
    includes every style, class and id, which is what keeps a paste from
    bringing another website's appearance along. */
-const ATTRS = { a: ["href"], img: ["src", "alt", "data-orig"],
+const ATTRS = { a: ["href"], img: ["src", "alt", "data-orig", "data-w", "data-al"],
                 span: ["data-sz", "data-c", "data-var"] };
 
 export function escapeHtml(s) {
@@ -214,7 +235,9 @@ export function sanitise(html) {
          editor writes ?a=1&amp;b=2 — and escaping that again stored
          &amp;amp;, so every link with an & in it went somewhere else. */
       let value = unescapeHtml(m[1]);
-      if (key === "data-sz" && !SIZES[value]) continue;
+      if (key === "data-sz" && !sizeOf_(value)) continue;
+      if (key === "data-w" && !picWidth(value)) continue;
+      if (key === "data-al" && value !== "left" && value !== "right") continue;
       if (key === "data-c") {
         if (!isColor(value)) continue;
         if (HEX.test(value)) value = value.toLowerCase();
@@ -330,7 +353,7 @@ function inlineStyles(html, accent, ink, dim, line, dark = false, accent2 = acce
       const sz = /data-sz="([^"]*)"/.exec(rest);
       const c = /data-c="([^"]*)"/.exec(rest);
       const bits = [];
-      if (sz && S.__sizes[sz[1]]) bits.push("font-size:" + S.__sizes[sz[1]]);
+      if (sz && sizeOf_(sz[1])) bits.push("font-size:" + sizeOf_(sz[1]));
       if (c && c[1] === "accent") bits.push("color:" + accent);
       if (c && c[1] === "accent2") bits.push("color:" + accent2);
       if (c && c[1] === "dim") bits.push("color:" + dim);
@@ -339,6 +362,24 @@ function inlineStyles(html, accent, ink, dim, line, dark = false, accent2 = acce
       return bits.length ? `<span style="${bits.join(";")}">` : m;
     }
 
+    /* a picture made smaller is centered at a fixed width (width= for
+       Outlook, which ignores percentages), never wider than the column */
+    if (name === "img") {
+      const w = /data-w="([^"]*)"/.exec(rest), al = /data-al="(left|right)"/.exec(rest);
+      /* BESIDE THE WORDS (2026-10-07): floated, with align= for Outlook,
+         which ignores float; never full width, which would not be beside
+         anything. */
+      if (al) {
+        const p = Math.min(picWidth(w && w[1]) || 40, 60), side = al[1];
+        const gap = side === "left" ? "0 18px 12px 0" : "0 0 12px 18px";
+        return `<${tag}${rest} align="${side}" width="${Math.round(528 * p / 100)}" style="float:${side};width:${p}%;max-width:${p}%;height:auto;border:0;margin:${gap}">`;
+      }
+      const pct = w && picWidth(w[1]);
+      if (pct) {
+        /* a share of the column; width= is Outlook's, at the 600px it draws */
+        return `<${tag}${rest} width="${Math.round(528 * pct / 100)}" style="width:${pct}%;max-width:100%;height:auto;display:block;border:0;margin:0 auto 16px">`;
+      }
+    }
     const style = S[name];
     if (!style) return m;
     return `<${tag}${rest} style="${style}">`;
@@ -358,10 +399,13 @@ const unescapeHtml = (v) => String(v)
  */
 export function fillVariables(html, name) {
   const full = String(name || "").replace(/\s+/g, " ").trim();
+  const word = (v) => (!full ? "\u0000" : escapeHtml(v === "first_name" ? full.split(" ")[0] : full));
   return String(html || "").replace(
-    /<span\b([^>]*\bdata-var="([a-z_]+)"[^>]*)>[\s\S]*?<\/span>/g,
-    (m, attrs, v) => (!full ? "\u0000"
-      : escapeHtml(v === "first_name" ? full.split(" ")[0] : full)))
+    /<span\b([^>]*\bdata-var="([a-z_]+)"[^>]*)>[\s\S]*?<\/span>/g, (m, attrs, v) => word(v))
+    /* AND AS TYPED (2026-10-07): {{first_name}} or {{full_name}} written as
+       plain text — the composer turns them into variables as they are
+       typed, but a token that arrived some other way still works. */
+    .replace(/\{\{\s*(first_name|full_name|name)\s*\}\}/g, (m, v) => word(v === "first_name" ? "first_name" : "name"))
     .replace(/(?: |&nbsp;|\u00a0)?\u0000/g, "");
 }
 
@@ -372,29 +416,62 @@ export function fillVariables(html, name) {
  * @param opts.unsubscribeUrl  REQUIRED for a real send. See the note below.
  * @param opts.recipientName   the subscriber's name, for variables; null on
  *                             the archive and the size measure (fallbacks).
+ * @param opts.layout          "card" (default: the letter on a card, on a soft
+ *                             ground) or "integrated" (no card: the letter is
+ *                             the page). Chase, 2026-10-05.
  * @param opts.credit          a partner ministry's line crediting Thauma
  *                             ("A Thauma ministry"); Thauma's own mail, none.
  */
-export function render(body, opts = {}) {
-  const accent = /^#[0-9a-fA-F]{6}$/.test(String(opts.accent || "")) ? opts.accent : "#6D4AFF";
-  const accent2 = /^#[0-9a-fA-F]{6}$/.test(String(opts.accent2 || "")) ? opts.accent2 : accent;
-  const dark = opts.mode === "dark";
+/* EVERY PICTURE A LINK (2026-10-07, Chase: "a small download button shows up
+   in GMail for the images in the bottom right hand corner … Is there a way to
+   turn that off?"). Gmail puts it on any picture that is not a link, and
+   there is no setting for it; a linked picture has none. A picture already
+   inside a link keeps that link; the rest open the web copy where the list
+   publishes one, else the picture itself. */
+export function linkPictures(html, archiveUrl) {
+  let open = 0;
+  return html.replace(/<a\b[^>]*>|<\/a>|<img\b[^>]*>/gi, (m) => {
+    if (/^<a\b/i.test(m)) { open++; return m; }
+    if (/^<\/a>/i.test(m)) { open = Math.max(0, open - 1); return m; }
+    if (open) return m;
+    const src = /\ssrc="([^"]*)"/i.exec(m);
+    /* the picture's src is already escaped in the HTML; the archive's is not */
+    const href = archiveUrl ? escapeHtml(archiveUrl) : src && src[1];
+    return href ? `<a href="${href}" style="text-decoration:none;border:0">${m}</a>` : m;
+  });
+}
 
-  /* Fixed, not theme-aware. An email cannot ask what the reader prefers, and a
-     client that inverts a light email does a better job than one asked to
-     render a dark one it did not expect. Light unless somebody asks. */
-  const bg   = dark ? "#15151c" : "#f4f5f8";
-  const card = dark ? "#1c1c25" : "#ffffff";
-  const ink  = dark ? "#f2f2f7" : "#1a1a22";
-  const dim  = dark ? "#9a9aad" : "#5c5c6b";
-  const line = dark ? "#2a2a36" : "#e6e6ee";
+export function render(body, opts = {}) {
+  const accent = /^#[0-9a-fA-F]{6}$/.test(String(opts.accent || "")) ? opts.accent : "#1AE4FF";
+  const accent2 = /^#[0-9a-fA-F]{6}$/.test(String(opts.accent2 || "")) ? opts.accent2 : accent;
+  /* LIGHT, DARK OR THE READER'S OWN (2026-10-06, Chase: "Maybe the mailer
+     needs a selection tool for light mail, dark mail, or match system
+     settings of the receiver"). "auto" is drawn light, and a
+     prefers-color-scheme block repaints it dark where the client honors one
+     (Apple Mail, iOS, Outlook for Mac and others); a client that ignores it
+     — Gmail does — shows the light letter, or darkens it its own way. */
+  const auto = opts.mode === "auto";
+  const dark = opts.mode === "dark";
+  /* THE SITE'S OWN GROUNDS (2026-10-07, Chase: "In dark mode, the text body
+     is using the wrong color background. It needs to change depending on the
+     color scheme"): a partner's palette comes from their published site
+     (render.js mailPalette, via lib/mail-brand.js); Thauma's own, and a
+     ministry with no site, get Thauma's night and a plain light letter. It
+     was a fixed gray-violet that belonged to nobody. */
+  const NIGHT = { bg: "#0A0D12", card: "#10161E", ink: "#EDF2F8", dim: "#9AA6B6", line: "#232B36" };
+  const DAY = { bg: "#f4f5f8", card: "#ffffff", ink: "#1a1a22", dim: "#5c5c6b", line: "#e6e6ee" };
+  const okPal = (p) => (p && ["bg", "card", "ink", "dim", "line"].every((k) => /^#[0-9a-fA-F]{6}$/.test(p[k] || "")) ? p : null);
+  const pal = opts.palette || {};
+  const D = okPal(pal.dark) || NIGHT, Lt = okPal(pal.light) || DAY;
+  const P = dark ? D : Lt;
+  const bg = P.bg, card = P.card, ink = P.ink, dim = P.dim, line = P.line;
 
   const mediaOrigin = String(opts.mediaOrigin || MEDIA_ORIGIN).replace(/\/+$/, "");
   /* Personal words first, so nothing below ever sees a variable: a send
      passes the recipient's name, everything else (the archive, the size
      measure) gets each variable's fallback. */
-  const styled = inlineStyles(fillVariables(body, opts.recipientName), accent, ink, dim, line, dark, accent2)
-    .replace(/(<img\b[^>]*\ssrc=")(\/media\/)/gi, `$1${mediaOrigin}$2`);
+  const styled = linkPictures(inlineStyles(fillVariables(body, opts.recipientName), accent, ink, dim, line, dark, accent2)
+    .replace(/(<img\b[^>]*\ssrc=")(\/media\/)/gi, `$1${mediaOrigin}$2`), opts.archiveUrl);
   const title = escapeHtml(opts.subject || "");
 
   /* THE PREHEADER. Hidden, and followed by enough blank characters to stop the
@@ -423,7 +500,10 @@ export function render(body, opts = {}) {
      of the places this will be read, unlawful. */
   const unsub = opts.unsubscribeUrl
     ? `<a href="${escapeHtml(opts.unsubscribeUrl)}" style="color:${dim};text-decoration:underline">` +
-      "Unsubscribe</a>"
+      "Unsubscribe</a>" +
+      /* a test says so: its link is built never to remove anybody (2026-10-05:
+         pressing it in a test, then seeing "unsubscribed", read as broken) */
+      (opts.test ? ` <span style="color:${dim}">(inactive in this test — it works in the real email)</span>` : "")
     : "";
 
   /* MSO CONDITIONALS. Outlook desktop is a Word rendering engine wearing a
@@ -459,13 +539,40 @@ export function render(body, opts = {}) {
      already works on a phone because the table is width:600 with
      max-width:100%. Delete this block and nothing breaks; that is the test it
      has to pass. */
+  /* CARD OR INTEGRATED. A card on a phone goes edge to edge (no ground
+     around it, no rounded corners — a card inside a 360px screen is a
+     border and nothing else). Integrated has no card at all: the page is
+     the letter's own color and the column sits in it. Pictures are
+     max-width:100% in both, so neither can push past the column. */
+  /* AS WIDE AS THE INBOX (2026-10-06, Chase: "The integrated and even the
+     card need to match the width of the email inbox window"): integrated is
+     the whole width of the reading pane; the card grows with it, to 720px,
+     with the ground showing around it. Outlook for Windows, which ignores
+     max-width, is given the card at 680px inside a conditional. */
+  const integrated = opts.layout === "integrated";
+  const pageBg = integrated ? card : bg;
+  const autoDark = auto ? `
+@media (prefers-color-scheme: dark) {
+  .tpage, body { background: ${integrated ? D.card : D.bg} !important; }
+  .w { background: ${D.card} !important; border-color: ${D.line} !important; }
+  .tink, .tbody p, .tbody li, .tbody h1, .tbody h2, .tbody h3, .tbody blockquote, .tbody td { color: ${D.ink} !important; }
+  .tdim, .tdim p, .tdim span { color: ${D.dim} !important; }
+  .tdim a { color: ${D.dim} !important; }
+  .tline { border-color: ${D.line} !important; }
+  .tbody hr { border-color: ${D.line} !important; background: ${D.line} !important; }
+  ${bandDarkCss({ accent, accent2, ground: D.card, ink: D.ink })}
+}` : "";
   const media = `<style>
 @media only screen and (max-width:620px) {
-  .w { width: 100% !important; }
   .pad { padding-left: 22px !important; padding-right: 22px !important; }
   .h1 { font-size: 23px !important; line-height: 1.3 !important; }
-}
+  .band { padding: 34px 22px 30px !important; }
+  .bname { font-size: 21px !important; letter-spacing: 6px !important; }
+  .outer { padding: 0 !important; }
+  .w { border-radius: 0 !important; border-left: 0 !important; border-right: 0 !important; }
+}${autoDark}
 </style>`;
+  const scheme = auto ? "light dark" : dark ? "dark" : "light";
 
   return `<!doctype html>
 <html lang="${escapeHtml(opts.lang || "en")}" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
@@ -474,36 +581,43 @@ export function render(body, opts = {}) {
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="x-apple-disable-message-reformatting">
+<meta name="color-scheme" content="${scheme}">
+<meta name="supported-color-schemes" content="${scheme}">
 <title>${title}</title>
 ${mso}
 ${media}
 </head>
-<body style="margin:0;padding:0;background:${bg};-webkit-font-smoothing:antialiased">
+<body class="tpage" style="margin:0;padding:0;background:${pageBg};-webkit-font-smoothing:antialiased">
 ${pre}
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
-       style="background:${bg};width:100%">
-  <tr><td align="center" style="padding:28px 12px">
-
-    <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"
+       class="tpage" style="background:${pageBg};width:100%">
+  <tr><td align="center" class="outer" style="padding:${integrated ? "0" : "28px 12px"}">
+    ${integrated ? "" : `<!--[if mso]><table role="presentation" width="680" align="center" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->`}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
            class="w"
-           style="width:600px;max-width:100%;background:${card};border:1px solid ${line};
-                  border-radius:10px;overflow:hidden">
+           style="width:100%;${integrated ? "" : "max-width:720px;"}background:${card};${integrated ? "" : `border:1px solid ${line};
+                  border-radius:10px;`}overflow:hidden">
 
-      <tr><td style="height:4px;background:${accent};font-size:0;line-height:0">&nbsp;</td></tr>
+      ${/* THE BAND (lib/mail-band.js): the sender's name and what this is — the
+           list's own name ("Prayer Updates"), else "Newsletter" — on a wash of
+           their two colors, as Thauma's own mail opens. The subject follows in
+           the body. It replaced a 4px accent line over the name in small caps
+           (2026-10-07). */ band({
+        name: opts.fromName || "",
+        kind: opts.listName || t(opts.lang, "brand.newsletter"),
+        accent, accent2, ground: card, ink,
+      })}
 
-      <tr><td class="pad" style="padding:32px 36px 8px">
-        <p style="margin:0;font-family:${FONT};font-size:12px;letter-spacing:.08em;
-                  text-transform:uppercase;color:${dim};font-weight:600">
-          ${escapeHtml(opts.fromName || "")}</p>
-        <h1 class="h1" style="margin:10px 0 0;font-family:${SERIF};font-size:27px;line-height:1.25;
+      <tr><td class="pad" style="padding:32px 36px 4px">
+        <h1 class="h1 tink" style="margin:0;font-family:${SERIF};font-size:27px;line-height:1.25;
                    font-weight:700;color:${ink}">${title}</h1>
       </td></tr>
 
-      <tr><td class="pad" style="padding:20px 36px 30px;font-family:${FONT}">
+      <tr><td class="pad tbody" style="padding:20px 36px 30px;font-family:${FONT}">
         ${styled}
       </td></tr>
 
-      <tr><td class="pad" style="padding:20px 36px 28px;border-top:1px solid ${line};
+      <tr><td class="pad tdim tline" style="padding:20px 36px 28px;border-top:1px solid ${line};
                      font-family:${FONT};font-size:12.5px;line-height:1.6;color:${dim}">
         <p style="margin:0 0 8px;color:${dim}">${escapeHtml(opts.listName || "")}</p>
         <p style="margin:0;color:${dim}">${archive}${unsub}</p>
@@ -511,7 +625,7 @@ ${pre}
       </td></tr>
 
     </table>
-
+    ${integrated ? "" : "<!--[if mso]></td></tr></table><![endif]-->"}
   </td></tr>
 </table>
 </body>

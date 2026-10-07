@@ -89,7 +89,7 @@ export const SECTIONS = {
   prayer:    { variants: ["list"], words: ["heading", "text"], align: true },
   videos:    { variants: ["stage"], words: ["heading", "text"], align: true },
   /* latest: the newest one, and a small way to the rest (Chase, 2026-09-29). */
-  newsletters: { variants: ["latest", "list"], words: ["heading", "text"], align: true },
+  newsletters: { variants: ["latest", "list", "combined"], words: ["heading", "text"], align: true },
   /* THE FORM AND GIVE STYLES (BACKLOG §3, 2026-10-04): Floating (a card of
      its own) or Integrated (part of the page), each in a few shapes. The
      first of each list is what a site saved before had, so nothing moves.
@@ -103,8 +103,8 @@ export const SECTIONS = {
   give:      { variants: ["band", "card", "split", "spotlight"], words: ["heading", "text", "button"] },
   /* Cards a person writes (chaseroush.com's Mission): Attached, joined by a
      line between their numbers, or Detached, side by side. */
-  cards:     { variants: ["attached", "detached"], words: ["heading", "text"], items: "cards" },
-  links:     { variants: ["list", "cards"], words: ["heading", "text"], items: true, align: true },
+  cards:     { variants: ["vertical", "horizontal", "open"], words: ["heading", "text"], items: "cards" },
+  links:     { variants: ["list", "cards", "buttons"], words: ["heading", "text"], items: true, align: true },
 };
 /* EVERY SECTION LINES UP (BACKLOG §3, 2026-10-03: "Alignment for every
    section: left, right, center, indent. Buttons must follow their section's
@@ -115,7 +115,10 @@ export const SECTIONS = {
      - a Words section saved with the old Centered layout, the sign-up card,
        and the opening in words alone: centered;
      - everything else: left. */
-export const ALIGNS = ["left", "center", "right", "indent"];
+/* Indented is not a fourth way to line up but a switch on any of the three
+   (2026-10-07, Chase: "It should be Left, center, or Right with Indented as
+   a on or off style option"); "indent" saved before reads as Left, indented. */
+export const ALIGNS = ["left", "center", "right"];
 export function defaultAlign(type, variant) {
   const spec = SECTIONS[type] || {};
   if (spec.align) return "center";
@@ -123,8 +126,6 @@ export function defaultAlign(type, variant) {
       (type === "hero" && variant === "words")) return "center";
   return "left";
 }
-/* The header has its own Background choice (bg), which includes raised. */
-const NOT_RAISED = new Set(["hero", "photo", "header"]);
 
 /* PLACEHOLDERS (Chase, 2026-10-03: "Placeholder words in every language
    whenever a section is added … It helps those who may not know how to
@@ -332,7 +333,7 @@ export function starter(kind, { name, langs, fallback, give }) {
       section("newsletters", "latest", L, { thin: "newsThin", bold: "newsBold", text: "newsFill" }),
     ],
     give: [
-      section("give", "band", L, { thin: "giveThin", bold: "giveBold", text: "giveText", button: "giveBtn" }),
+      section("give", "band", L, { thin: "giveThin", bold: "giveBold", text: "giveText", button: "giveBtn" }, { tint: true }),
       section("goals", "cards", L, { thin: "goalsThin", bold: "goalsBold", text: "goalsFill" }),
     ],
     stay: [section("signup", "card", L, { thin: "signupThin", bold: "signupBold", text: "signupFill" })],
@@ -374,6 +375,30 @@ export function starter(kind, { name, langs, fallback, give }) {
               words: kind === "blank" ? {} : Object.fromEntries(L.map((l) => [l, { tagline: word(l, "taglineFill"), small: word(l, "smallFill") }])) },
     pages: PAGES.map((p) => pages[p]),
   };
+}
+
+
+/**
+ * A TITLE AS A LANGUAGE WRITES ONE (2026-10-07, Chase: "the Description
+ * needs to be Title Case or whatever is normal for their culture and
+ * language"). English capitalizes every word but the small ones (not first
+ * or last); Croatian, Serbian, Slovenian and most others write titles as a
+ * sentence, so they are left as written. Used for the description a page
+ * makes for itself when the owner has written none.
+ */
+const SMALL_EN = new Set(["a", "an", "the", "and", "but", "or", "nor", "for", "as", "at", "by", "in", "of", "on", "per", "to", "via", "with", "from"]);
+export function titleCase(text, lang) {
+  if (String(lang || "").split("-")[0] !== "en") return text;
+  const ws = String(text || "").split(/(\s+)/);
+  const real = ws.map((w, i) => (/\S/.test(w) ? i : -1)).filter((i) => i >= 0);
+  const first = real[0], last = real[real.length - 1];
+  return ws.map((w, i) => {
+    if (!/\S/.test(w)) return w;
+    const bare = w.replace(/^[^\p{L}]+|[^\p{L}]+$/gu, "").toLowerCase();
+    if (i !== first && i !== last && SMALL_EN.has(bare)) return w.toLowerCase();
+    /* a word already capitalized inside (iPhone, McDonald) is left alone */
+    return /\p{Lu}/u.test(w.slice(1)) ? w : w.replace(/\p{L}/u, (c) => c.toUpperCase());
+  }).join("");
 }
 
 /* ------------------------------------------------------------- cleaning -- */
@@ -552,24 +577,44 @@ function cleanSection(raw, langs) {
   const s = {
     id: /^[a-z0-9]{2,24}$/i.test(String(raw.id || "")) ? String(raw.id) : sid(),
     type: raw.type,
-    variant: pick(raw.variant, spec.variants),
+    variant: pick(raw.type === "cards" ? ({ attached: "vertical", detached: "horizontal" }[raw.variant] || raw.variant) : raw.variant, spec.variants),
     words: cleanWords(raw.words, spec.words, langs),
   };
   if (spec.photo) s.photo = safePhoto(raw.photo);
   if (spec.link) s.link = safeLink(raw.link);
   if (spec.link === "both") s.photoLink = !!raw.photoLink;
-  if (!NOT_RAISED.has(raw.type)) s.raised = !!raw.raised;
-  s.align = ALIGNS.includes(raw.align) ? raw.align : defaultAlign(raw.type, s.variant);
+  /* PLAIN, RAISED OR TINT (2026-10-06, Chase: "I actually really like that
+     accent tinted look. We should add that as a 3rd option next to Plain
+     and Raised"): one ground at a time */
+  /* Every section, the opening, the header and a full-width photo too
+     (2026-10-07). A header saved before kept its ground in bg. */
+  const oldBg = raw.type === "header" && raw.tint === undefined && raw.raised === undefined ? raw.bg : null;
+  s.tint = !!raw.tint || oldBg === "tint"; s.raised = (!!raw.raised || oldBg === "raised") && !s.tint;
+  s.align = ALIGNS.includes(raw.align) ? raw.align : raw.align === "indent" ? "left" : defaultAlign(raw.type, s.variant);
+  s.indent = raw.indent === true || raw.align === "indent";
+  /* bars beside the title, and joined to the section above (render.js) */
+  s.titleBars = raw.titleBars === true;
+  s.join = raw.join === true;
   if (spec.buttons) {
     s.buttons = (Array.isArray(raw.buttons) ? raw.buttons : []).filter((b) => ["give", "stay", "contact"].includes(b)).slice(0, 2);
   }
   /* The hero's line under the title (render.js): kept only when it was
      chosen, so a hero saved before the option renders as it always did. */
   if (raw.type === "hero" && typeof raw.divider === "boolean") s.divider = raw.divider;
+  /* PAST UPDATES (2026-10-06, Chase: "There needs to be a dropdown menu that
+     defines what list you can select … maybe we make the quantity of past
+     updates definable"): one public list's mailings, or all of them; how
+     many (3–12). */
+  if (raw.type === "newsletters") {
+    s.list = /^[a-z0-9-]{1,60}$/.test(String(raw.list || "")) ? String(raw.list) : "";
+    const n = Math.round(Number(raw.count));
+    s.count = n >= 3 && n <= 12 ? n : 5;
+  }
   /* The header (render.js): its background, the line along its top and the
      line under its title. Absent means the default look. */
   if (raw.type === "header") {
-    s.bg = ["plain", "raised", "tint", "accent"].includes(raw.bg) ? raw.bg : "plain";
+    s.bg = raw.bg === "accent" ? "accent" : "plain";
+    if (s.bg === "accent") { s.raised = false; s.tint = false; }
     s.topline = raw.topline !== false;
     s.divider = raw.divider !== false;
   }
@@ -626,6 +671,11 @@ function cleanSection(raw, langs) {
     /* Written words only. A blank card is kept (it was just added and is
        being typed into); the page simply does not draw it. */
     s.numbers = raw.numbers !== false;
+    /* LINES BETWEEN, apart from the direction (2026-10-06, Chase: "the
+       settings should have horizontal … and vertical … and then attached
+       detached as a setting for the lines between the cards"). A section
+       saved as Attached is vertical with lines; Detached, horizontal without. */
+    s.lines = typeof raw.lines === "boolean" ? raw.lines : raw.variant !== "detached" && raw.variant !== "horizontal";
     s.items = (Array.isArray(raw.items) ? raw.items : []).slice(0, 12).map((it) => ({
       words: cleanWords(it && it.words, ["title", "text"], langs),
     }));
@@ -640,9 +690,40 @@ function cleanSection(raw, langs) {
          importance"). Standard, the section's own style, is the default. */
       words: cleanWords(it && it.words, ["title", "text", "type"], langs),
       tier: ["big", "small"].includes(it && it.tier) ? it.tier : "std",
+      /* a button's color, in the Buttons layout */
+      color: ["accent2", "outline"].includes(it && it.color) ? it.color
+        : /^#[0-9a-f]{6}$/i.test(String((it && it.color) || "")) ? it.color.toLowerCase() : "accent",
     })).filter((it) => it.url);
   }
   return s;
+}
+
+/**
+ * A PAGE'S TABS (2026-10-06, Chase: "Maybe it isn't a section at all, but an
+ * option at the top of each page that acts like tabs open on a browser,
+ * where + adds a tab to the page with distinct looks"), after chaseroush.com's
+ * Give | Pray. The page's own sections come first and are on every tab; then
+ * the bar, and each tab's own sections under it. Up to six tabs. How the bar
+ * looks: joined (chaseroush.com's), pills or an underline; centered or left.
+ */
+export const TAB_STYLES = ["joined", "pills", "underline"];
+export function cleanTabs(raw, langs) {
+  if (!raw || typeof raw !== "object" || !Array.isArray(raw.items)) return null;
+  const seen = new Set();
+  const items = raw.items.slice(0, 6).map((t, i) => {
+    let id = /^[a-z0-9]{2,24}$/i.test(String(t && t.id || "")) ? String(t.id) : "t" + i + Math.random().toString(36).slice(2, 7);
+    while (seen.has(id)) id += "x";
+    seen.add(id);
+    const label = {};
+    for (const l of langs) { const v = str(t && t.label && t.label[l], 30); if (v) label[l] = v; }
+    return { id, label, sections: (Array.isArray(t && t.sections) ? t.sections : []).slice(0, 30).map((x) => cleanSection(x, langs)).filter(Boolean) };
+  });
+  if (!items.length) return null;
+  return { style: TAB_STYLES.includes(raw.style) ? raw.style : "joined", align: raw.align === "left" ? "left" : "center", items };
+}
+/** Every section of a page, its tabs' too, in order. */
+export function allSections(page) {
+  return [...((page && page.sections) || []), ...((page && page.tabs && page.tabs.items) || []).flatMap((t) => t.sections || [])];
 }
 
 /**
@@ -703,6 +784,7 @@ export function cleanDoc(raw, catalog) {
       })(),
       label,
       sections: (Array.isArray(p.sections) ? p.sections : []).slice(0, 30).map((s) => cleanSection(s, langs)).filter(Boolean),
+      ...(cleanTabs(p.tabs, langs) ? { tabs: cleanTabs(p.tabs, langs) } : {}),
     };
   });
 
@@ -719,7 +801,18 @@ export function cleanDoc(raw, catalog) {
     /* A web address may be shown as its site's own icon, beside the social
        icons (BACKLOG §3 "smart order"). A page of the site is always words. */
     const icon = kind === "custom" && !!(k && k.icon) && /^https?:\/\//.test(url);
-    return icon ? { kind, url, label, icon } : { kind, url, label };
+    if (kind !== "custom") return { kind, url, label };
+    /* EACH LINK ITS OWN PLACE (2026-10-07, Chase: "I wanted those options
+       different PER link, not all the same"): in line with the social links,
+       or separated — as words or as an icon — and its icon may be a picture
+       of the owner's own ("an option for a custom icon, just in case").
+       Saved before: a link shown as an icon was in line; a footer-wide
+       choice from the one day it existed is each link's. */
+    const ff = d.footer && typeof d.footer === "object" ? d.footer : {};
+    const place = ["inline", "apart"].includes(k && k.place) ? k.place : icon ? "inline" : ff.linkPlace === "inline" ? "inline" : "apart";
+    const show = ["icon", "words"].includes(k && k.show) ? k.show : ff.linkStyle === "icon" ? "icon" : "words";
+    const iconImg = safePhoto(k && k.iconImg);
+    return { kind, url, label, place, show, ...(iconImg ? { iconImg } : {}) };
   }).filter((k) => k.url);
 
   const f = d.footer && typeof d.footer === "object" ? d.footer : {};

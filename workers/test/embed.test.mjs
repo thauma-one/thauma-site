@@ -259,7 +259,7 @@ await check("a junk accent in the database falls back rather than reaching CSS",
     partner: { ...ENABLED, embed_accent: "red;}body{display:none}" },
   }));
   const body = await res.json();
-  eq(body.theme.accent, "#6D4AFF", "must fall back to the house color");
+  eq(body.theme.accent, "#1AE4FF", "must fall back to the house color");
 });
 
 await check("a junk theme mode falls back too", async () => {

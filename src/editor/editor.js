@@ -42,7 +42,7 @@
  * in a quieter voice.
  * ============================================================================
  */
-import { Editor, Mark, Node, mergeAttributes } from "@tiptap/core";
+import { Editor, Mark, Node, mergeAttributes, nodeInputRule, nodePasteRule } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
 
@@ -92,9 +92,32 @@ const Tone = Mark.create({
 
 /* A PERSONAL WORD (2026-10-03): the recipient's first or full name, filled
    per person by the server (fillVariables in newsletter.js). An atom, so it
-   is moved and deleted as one piece and its label can't be half-edited. The
-   label inside is the editor's only; a reader gets the name, or nothing. */
+   is moved and deleted as one piece and can't be half-edited.
+
+   WRITTEN AS {{first_name}} AND {{full_name}} (2026-10-07, Chase: "change the
+   variables again … reference chaseroush.com's code in its email composer for
+   what it does with variables … in Thauma's styling"). chaseroush.com's
+   composer shows the token itself and lets you type it; so does this one —
+   typed or pasted, {{first_name}} becomes the variable (input and paste
+   rules below), and the legend's buttons insert the same thing. Stored as
+   data-var ("name" for the full name, as before) so every saved draft and
+   sent mailing still reads. */
 export const VARIABLES = ["first_name", "name"];
+export const VAR_TOKENS = { first_name: "{{first_name}}", name: "{{full_name}}" };
+const VAR_FROM = { first_name: "first_name", full_name: "name", name: "name" };
+const tokenVar = (t) => VAR_FROM[/[a-z_]+/.exec(t)[0]];
+/* A token already in saved words (written before, or arrived as text) shown
+   as the variable it is. Only in text, never inside a tag's attributes. */
+export function tokensToVariables(html) {
+  return String(html || "").replace(/(<[^>]*>)|\{\{\s*(first_name|full_name|name)\s*\}\}/g,
+    (m, tag, v) => (tag ? tag : `<span data-var="${VAR_FROM[v]}"></span>`));
+}
+/* a picture's width: 10–99 (% of the column), or an old name; else full */
+export function picPct(v) {
+  const named = { sm: "33", md: "50", lg: "75" }[v];
+  if (named) return named;
+  return /^\d{1,2}$/.test(String(v || "")) && +v >= 10 ? String(+v) : null;
+}
 
 const Variable = Node.create({
   name: "variable",
@@ -102,7 +125,6 @@ const Variable = Node.create({
   inline: true,
   atom: true,
   selectable: true,
-  addOptions() { return { labels: { first_name: "First name", name: "Name" } }; },
   addAttributes() {
     return {
       v: { default: "first_name", parseHTML: (el) => el.getAttribute("data-var"),
@@ -113,10 +135,18 @@ const Variable = Node.create({
     return [{ tag: "span[data-var]", getAttrs: (el) => (VARIABLES.includes(el.getAttribute("data-var")) ? null : false) }];
   },
   renderHTML({ node, HTMLAttributes }) {
-    return ["span", mergeAttributes(HTMLAttributes, { class: "cp-var" }),
-            this.options.labels[node.attrs.v] || node.attrs.v];
+    return ["span", mergeAttributes(HTMLAttributes, { class: "cp-var" }), VAR_TOKENS[node.attrs.v] || node.attrs.v];
   },
-  renderText({ node }) { return this.options.labels[node.attrs.v] || node.attrs.v; },
+  renderText({ node }) { return VAR_TOKENS[node.attrs.v] || node.attrs.v; },
+  addInputRules() {
+    /* the whole token is the group: a rule with a group replaces only it */
+    return [nodeInputRule({ find: /(\{\{\s*(?:first_name|full_name|name)\s*\}\})$/, type: this.type,
+      getAttributes: (m) => ({ v: tokenVar(m[1]) }) })];
+  },
+  addPasteRules() {
+    return [nodePasteRule({ find: /(\{\{\s*(?:first_name|full_name|name)\s*\}\})/g, type: this.type,
+      getAttributes: (m) => ({ v: tokenVar(m[1]) }) })];
+  },
   addCommands() {
     return {
       insertVariable: (v) => ({ commands }) =>
@@ -140,7 +170,9 @@ const Size = Mark.create({
       sz: {
         default: null,
         parseHTML: (el) => el.getAttribute("data-sz"),
-        renderHTML: (attrs) => (attrs.sz ? { "data-sz": attrs.sz } : {}),
+        /* a size in px (2026-10-06) shows at its size while writing; the
+           stored copy keeps only data-sz, which the email resolves itself */
+        renderHTML: (attrs) => (attrs.sz ? (/^\d+$/.test(attrs.sz) ? { "data-sz": attrs.sz, style: "font-size:" + attrs.sz + "px" } : { "data-sz": attrs.sz }) : {}),
       },
     };
   },
@@ -211,6 +243,8 @@ export function createEditor(opts) {
         code: false,
         codeBlock: false,
         heading: { levels: [2, 3] },
+        /* where a moved picture will land */
+        dropcursor: { color: "var(--voice-tech)", width: 2 },
         link: {
           openOnClick: false,
           /* An href the sanitiser would strip must not be creatable here, or
@@ -225,13 +259,162 @@ export function createEditor(opts) {
         addAttributes() {
           return { ...this.parent?.(), orig: { default: null,
             parseHTML: (el) => el.getAttribute("data-orig"),
-            renderHTML: (a) => (a.orig ? { "data-orig": a.orig } : {}) } };
+            renderHTML: (a) => (a.orig ? { "data-orig": a.orig } : {}) },
+            /* how wide it shows, as a share of the column, dragged freely
+               (2026-10-06, Chase: "The picture size needs to be adjustable in
+               the composer itself, and freeform size adjustment"): 10–99,
+               full width when unset. The old sm / md / lg still read. */
+            w: { default: null,
+              parseHTML: (el) => picPct(el.getAttribute("data-w")),
+              renderHTML: (a) => (a.w ? { "data-w": a.w } : {}) },
+            /* left or right with the words beside it, or (unset) on a line
+               of its own, centered — chaseroush.com's three (2026-10-07) */
+            al: { default: null,
+              parseHTML: (el) => (/^(left|right)$/.test(el.getAttribute("data-al") || "") ? el.getAttribute("data-al") : null),
+              renderHTML: (a) => (a.al ? { "data-al": a.al } : {}) } };
+        },
+        /* THE PICTURE IN THE EDITOR (2026-10-07, after chaseroush.com's
+           composer, which Chase liked for pictures but found "a little in
+           your face"): selected, it shows a small bar on the picture —
+           left, center, right, full width, edit, remove — and a handle at
+           each corner. Dragging a corner follows the pointer (a centered
+           picture grows on both sides, so it moves twice as far) and the
+           width shows only while dragging; it is written when the drag
+           ends, as one change to undo. The picture itself is dragged to
+           move it (the editor's own drop line shows where). */
+        addNodeView() {
+          const labels = opts.picLabels || {};
+          return ({ node, editor, getPos }) => {
+            const wrap = document.createElement("div");
+            wrap.className = "cp-img";
+            wrap.draggable = true;
+            const img = document.createElement("img");
+            img.draggable = false;
+            const pct = document.createElement("span");
+            pct.className = "cp-img-pct";
+            const bar = document.createElement("span");
+            bar.className = "cp-img-bar";
+            bar.setAttribute("role", "toolbar");
+            const ICON = {
+              left: '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1" y="3" width="6" height="6" rx="1"/><path d="M9 4h6M9 7h6M1 12h14"/></svg>',
+              center: '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="4" y="2" width="8" height="7" rx="1"/><path d="M1 12h14"/></svg>',
+              right: '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="9" y="3" width="6" height="6" rx="1"/><path d="M1 4h6M1 7h6M1 12h14"/></svg>',
+              full: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1 8h14M4 5 1 8l3 3M12 5l3 3-3 3"/></svg>',
+              edit: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13l1-3 7-7 2 2-7 7-3 1z"/></svg>',
+              remove: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>',
+            };
+            for (const k of ["left", "center", "right", "full", "edit", "remove"]) {
+              if (k === "edit" && !opts.onEditImage) continue;
+              const b = document.createElement("button");
+              b.type = "button"; b.dataset.pic = k; b.innerHTML = ICON[k];
+              b.title = labels[k] || k; b.setAttribute("aria-label", labels[k] || k);
+              if (k === "full" || k === "remove") bar.appendChild(Object.assign(document.createElement("i"), { className: "cp-img-sep" }));
+              bar.appendChild(b);
+            }
+            const corners = ["tl", "tr", "bl", "br"].map((c) => {
+              const h = document.createElement("span");
+              h.className = "cp-img-handle " + c; h.dataset.corner = c;
+              h.setAttribute("aria-hidden", "true");
+              return h;
+            });
+            wrap.append(img, bar, pct, ...corners);
+            const draw = (n) => {
+              img.src = n.attrs.src || ""; img.alt = n.attrs.alt || "";
+              const w = n.attrs.w ? +n.attrs.w : 100;
+              wrap.style.width = w + "%"; pct.textContent = w + "%";
+              wrap.classList.toggle("al-left", n.attrs.al === "left");
+              wrap.classList.toggle("al-right", n.attrs.al === "right");
+              for (const b of bar.querySelectorAll("[data-pic]")) {
+                const on = (b.dataset.pic === "left" && n.attrs.al === "left") || (b.dataset.pic === "right" && n.attrs.al === "right") ||
+                  (b.dataset.pic === "center" && !n.attrs.al) || (b.dataset.pic === "full" && w >= 100);
+                b.setAttribute("aria-pressed", on ? "true" : "false");
+              }
+            };
+            draw(node);
+            const set = (attrs) => {
+              const pos = typeof getPos === "function" ? getPos() : null;
+              if (pos == null) return;
+              editor.view.dispatch(editor.view.state.tr.setNodeMarkup(pos, undefined, Object.assign({}, node.attrs, attrs)));
+            };
+            /* A picture set beside the words starts at under half the column:
+               full width beside anything is not beside it. */
+            const beside = () => (node.attrs.w && +node.attrs.w <= 60 ? node.attrs.w : "40");
+            bar.addEventListener("mousedown", (e) => e.preventDefault());
+            bar.addEventListener("click", (e) => {
+              const b = e.target.closest("[data-pic]");
+              if (!b) return;
+              e.preventDefault(); e.stopPropagation();
+              const k = b.dataset.pic;
+              if (k === "left" || k === "right") set({ al: k, w: beside() });
+              else if (k === "center") set({ al: null });
+              else if (k === "full") set({ al: null, w: null });
+              else if (k === "edit") opts.onEditImage();
+              else if (k === "remove") {
+                const pos = getPos();
+                editor.view.dispatch(editor.view.state.tr.delete(pos, pos + node.nodeSize));
+                editor.commands.focus();
+              }
+            });
+            for (const h of corners) {
+              h.addEventListener("pointerdown", (e) => {
+                e.preventDefault(); e.stopPropagation();
+                const col = wrap.parentElement.getBoundingClientRect().width || 1;
+                const x0 = e.clientX, w0 = wrap.getBoundingClientRect().width;
+                /* a left corner grows leftward; a centered picture grows both ways */
+                const dir = (h.dataset.corner[1] === "l" ? -1 : 1) * (node.attrs.al ? 1 : 2);
+                let w = node.attrs.w ? +node.attrs.w : 100;
+                wrap.classList.add("is-drag");
+                h.setPointerCapture(e.pointerId);
+                const move = (ev) => {
+                  w = Math.max(10, Math.min(100, Math.round((w0 + (ev.clientX - x0) * dir) / col * 100)));
+                  wrap.style.width = w + "%"; pct.textContent = w + "%";
+                };
+                const up = () => {
+                  h.removeEventListener("pointermove", move);
+                  wrap.classList.remove("is-drag");
+                  set({ w: w >= 100 ? null : String(w) });
+                };
+                h.addEventListener("pointermove", move);
+                h.addEventListener("pointerup", up, { once: true });
+              });
+            }
+            return {
+              dom: wrap,
+              update(n) { if (n.type !== node.type) return false; node = n; draw(n); return true; },
+              selectNode() { wrap.classList.add("is-sel"); },
+              deselectNode() { wrap.classList.remove("is-sel"); },
+              stopEvent: (e) => bar.contains(e.target) || corners.includes(e.target),
+              ignoreMutation: () => true,
+            };
+          };
         },
       }).configure({ inline: false, allowBase64: false }),
       Tone,
       Size,
-      Variable.configure({ labels: opts.varLabels || { first_name: "First name", name: "Name" } }),
+      Variable,
     ],
+
+    /* PICTURES DROPPED OR PASTED IN (2026-10-07, after chaseroush.com's
+       drop-to-upload): files go to opts.onImageFiles, which uploads them and
+       puts them where they landed. A picture dragged within the message is
+       not a file, and moves as before. */
+    editorProps: {
+      handleDrop: (view, event, slice, moved) => {
+        const files = !moved && event.dataTransfer ? pictureFiles(event.dataTransfer.files) : [];
+        if (!files.length || !opts.onImageFiles) return false;
+        event.preventDefault();
+        const at = view.posAtCoords({ left: event.clientX, top: event.clientY });
+        opts.onImageFiles(files, at ? at.pos : null);
+        return true;
+      },
+      handlePaste: (view, event) => {
+        const files = event.clipboardData ? pictureFiles(event.clipboardData.files) : [];
+        if (!files.length || !opts.onImageFiles) return false;
+        event.preventDefault();
+        opts.onImageFiles(files, null);
+        return true;
+      },
+    },
 
     /* BOTH OF THESE, and that is the whole fix.
        onUpdate fires when the content changes. onSelectionUpdate fires when
@@ -296,6 +479,12 @@ export function applyLink(editor, href) {
     .setLink({ href }).run();
 }
 
-export function insertImage(editor, src) {
+export function insertImage(editor, src, at) {
+  if (at != null) return editor.chain().focus().insertContentAt(at, { type: "image", attrs: { src } }).run();
   return editor.chain().focus().setImage({ src }).run();
+}
+
+/* The pictures among some files: what the upload takes. */
+export function pictureFiles(list) {
+  return Array.from(list || []).filter((f) => /^image\/(jpeg|png|webp|gif)$/i.test(f.type));
 }

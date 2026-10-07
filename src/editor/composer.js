@@ -22,7 +22,7 @@
    So the recipient row is a list picker, and the count beside it is real.
    ============================================================ */
 import { EditorState } from "@tiptap/pm/state";
-import { createEditor, applyLink, insertImage } from "./editor.js";
+import { createEditor, applyLink, insertImage, tokensToVariables } from "./editor.js";
 
 (function () {
   "use strict";
@@ -67,14 +67,19 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
     element: mount,
     toolbar: document.querySelector(".cp-tools"),
     onChange: () => { markDirty(); measureSoon(); },
-    varLabels: { first_name: tr("ml.cpVarFirst"), name: tr("ml.cpVarFull") },
     onRefresh: (ed) => showChoices(ed),
+    /* the small bar on a selected picture (editor.js) */
+    picLabels: { left: tr("ml.cpImgLeft"), center: tr("ml.cpImgCenter"), right: tr("ml.cpImgRight"),
+                 full: tr("ml.cpImgFull"), edit: tr("pe.edit"), remove: tr("ml.cpImgRemove") },
+    onEditImage: () => editImage(),
+    onImageFiles: (files, at) => uploadPictures(files, at),
   });
 
   /* ---- size, color, link, name: one row under the toolbar --------------
      Each opens a row of choices instead of a dialog or a prompt, and the
      size and color buttons show what the cursor is in now. */
-  const ROWS = { size: "cpSizeRow", color: "cpColorRow", link: "cpLinkRow", variable: "cpVarRow" };
+  /* the variables are no longer a hidden row: an always-visible legend (2026-10-05) */
+  const ROWS = { size: "cpSizeRow", color: "cpColorRow", link: "cpLinkRow" };
 
   function showChoices(ed) {
     const sz = ed.getAttributes("size").sz || "";
@@ -82,6 +87,10 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
     document.querySelectorAll("#cpSizeRow [data-size]").forEach((b) => {
       b.setAttribute("aria-pressed", b.dataset.size === sz ? "true" : "false");
     });
+    /* the size in numbers, as Site Creator shows it: a chosen px size, or what
+       the cursor is in now */
+    const szBox = $("cpSizeVal");
+    if (szBox && document.activeElement !== szBox) szBox.value = /^\d+$/.test(sz) ? sz : ({ sm: 13.5, lg: 19, xl: 23 }[sz] || 16);
     document.querySelectorAll("#cpColorRow [data-tone]").forEach((b) => {
       b.setAttribute("aria-pressed", b.dataset.tone === tone ? "true" : "false");
     });
@@ -115,11 +124,25 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
   const closeRows = () => openRow(null);
 
   $("cpSizeRow").addEventListener("click", (e) => {
+    const step = e.target.closest("[data-size-step]");
+    if (step) {
+      const now = +$("cpSizeVal").value || 16;
+      setPx(Math.round(now) + +step.dataset.sizeStep);
+      return;
+    }
     const b = e.target.closest("[data-size]");
     if (!b) return;
     editor.chain().focus().setFontSize(b.dataset.size || null).run();
     closeRows();
   });
+  /* ANY SIZE, 10–60px (2026-10-06): the number box and its − / + */
+  function setPx(n) {
+    n = Math.max(10, Math.min(60, Math.round(+n || 16)));
+    $("cpSizeVal").value = n;
+    editor.chain().focus().setFontSize(n === 16 ? null : String(n)).run();
+  }
+  $("cpSizeVal").addEventListener("change", (e) => setPx(e.target.value));
+  $("cpSizeVal").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); setPx(e.target.value); } });
   $("cpColorRow").addEventListener("click", (e) => {
     const b = e.target.closest("[data-tone]");
     if (!b) return;
@@ -219,7 +242,7 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
 
     /* `false` so loading a draft is not recorded as an edit — otherwise every
        draft is dirty the moment it opens and the unsaved warning cries wolf. */
-    editor.commands.setContent(m ? (m.body_html || "") : "", false);
+    editor.commands.setContent(tokensToVariables(m ? (m.body_html || "") : ""), false);
     /* A FRESH UNDO HISTORY per draft. Loading is otherwise an undoable step,
        so Undo in one draft reached back into the last one, and to pictures
        already handed back above. */
@@ -233,8 +256,21 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
     cp.savedHtml = editor.getHTML();
     cp.savedSubject = $("cpSubject").value;
     cp.savedPreheader = $("cpPreheader").value;
+    cp.savedFiles = filesKey(cp.attachments);
+    /* the layout: the draft's own, or for a new one the last one chosen */
+    let last = "card"; try { last = localStorage.getItem("thauma.mail.layout") || "card"; } catch (e) { /* private mode */ }
+    cp.layout = m ? (m.layout === "integrated" ? "integrated" : "card") : last;
+    cp.savedLayout = m ? cp.layout : null;
+    /* light, dark or the reader's own (0053): the draft's, or the last chosen */
+    let lastMode = "auto"; try { lastMode = localStorage.getItem("thauma.mail.mode") || "auto"; } catch (e) { /* private mode */ }
+    cp.mode = m ? (["light", "dark"].includes(m.color_mode) ? m.color_mode : "auto") : lastMode;
+    cp.savedMode = m ? cp.mode : null;
+    drawLayout();
     cp.dirty = false;
     setState("");
+    /* the picker shows the draft that is open (it was drawn while the
+       mailings loaded, before this one was chosen, so it said New draft) */
+    $("cpDraft").value = cp.id || "";
     renderAttachments();
     refresh();
     measure();
@@ -242,10 +278,36 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
 
   const setState = (msg) => { $("cpState").textContent = msg || ""; };
 
+  function drawLayout() {
+    document.querySelectorAll(".cp-layout [data-layout]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.layout === cp.layout ? "true" : "false"));
+    document.querySelectorAll(".cp-layout [data-mode]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.mode === cp.mode ? "true" : "false"));
+  }
+  document.querySelector(".cp-layout").addEventListener("click", (e) => {
+    const md = e.target.closest("[data-mode]");
+    if (md) {
+      cp.mode = md.dataset.mode;
+      try { localStorage.setItem("thauma.mail.mode", cp.mode); } catch (err) { /* private mode */ }
+      drawLayout(); markDirty(); return;
+    }
+    const b = e.target.closest("[data-layout]");
+    if (!b) return;
+    cp.layout = b.dataset.layout;
+    try { localStorage.setItem("thauma.mail.layout", cp.layout); } catch (err) { /* private mode */ }
+    drawLayout(); markDirty(); measureSoon();
+  });
+
+  /* THE ATTACHMENTS COUNT AS A CHANGE (2026-10-05, Chase: "the attachment
+     never arrived"). Only the words did, so adding a file changed nothing
+     the save looked at: no autosave, and Send — which saves only what is
+     unsaved — sent the stored draft, which had no file. */
+  const filesKey = (list) => (list || []).map((a) => a.object_key).join("\n");
   function markDirty() {
     cp.dirty = editor.getHTML() !== cp.savedHtml ||
       $("cpSubject").value !== cp.savedSubject ||
-      $("cpPreheader").value !== cp.savedPreheader;
+      $("cpPreheader").value !== cp.savedPreheader ||
+      filesKey(cp.attachments) !== cp.savedFiles ||
+      cp.layout !== cp.savedLayout ||
+      cp.mode !== cp.savedMode;
     setState(cp.dirty ? tr("ml.cpUnsaved") : "");
     if (cp.dirty) autosaveSoon(); else clearTimeout(autoTimer);
   }
@@ -296,15 +358,14 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
     return new Promise((res) => canvas.toBlob(res, "image/jpeg", 0.85));
   }
 
-  function pickImage() {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = "image/jpeg,image/png,image/webp";
-    input.addEventListener("change", async function () {
-      const file = this.files && this.files[0];
-      if (!file) return;
-      setState(tr("ml.cpUploading"));
-      try {
+  /* Up, then into the message where it was dropped (or at the cursor), one
+     after another; a single picture goes straight into the photo editor
+     (one step, not two). */
+  async function uploadPictures(files, at) {
+    setState(tr("ml.cpUploading"));
+    let last = null;
+    try {
+      for (const file of files) {
         const blob = await shrink(file, 1200);
         const res = await fetch("/api/admin/media?kind=newsletter", {
           method: "POST", credentials: "same-origin",
@@ -312,18 +373,38 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
         });
         const body = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(body.error || `failed (${res.status})`);
-        insertImage(editor, body.url);
+        insertImage(editor, body.url, at);
+        if (at != null) at = null;
         note(body.url);
-        markDirty(); measureSoon();
-        setState("");
-        /* Chosen, then straight into the editor (one step, not two). */
-        let at = null;
-        editor.state.doc.descendants((n, pos) => { if (n.type.name === "image" && n.attrs.src === body.url) at = pos; });
-        if (at !== null) { editor.commands.setNodeSelection(at); editImage(); }
-      } catch (e) { setState(""); toast(e.message, "bad"); }
+        last = body.url;
+      }
+      markDirty(); measureSoon();
+      setState("");
+      if (files.length === 1 && last) {
+        let pos = null;
+        editor.state.doc.descendants((n, p) => { if (n.type.name === "image" && n.attrs.src === last) pos = p; });
+        if (pos !== null) { editor.commands.setNodeSelection(pos); editImage(); }
+      }
+    } catch (e) { setState(""); toast(e.message, "bad"); }
+  }
+
+  function pickImage() {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/jpeg,image/png,image/webp";
+    input.addEventListener("change", function () {
+      const file = this.files && this.files[0];
+      if (file) uploadPictures([file], null);
     });
     input.click();
   }
+
+  /* Files held over the message: a quiet outline says it can take them. */
+  let dragDepth = 0;
+  const isFiles = (e) => e.dataTransfer && Array.from(e.dataTransfer.types || []).includes("Files");
+  mount.addEventListener("dragenter", (e) => { if (isFiles(e)) { dragDepth++; mount.classList.add("is-dropping"); } });
+  mount.addEventListener("dragleave", (e) => { if (isFiles(e) && --dragDepth <= 0) { dragDepth = 0; mount.classList.remove("is-dropping"); } });
+  mount.addEventListener("drop", () => { dragDepth = 0; mount.classList.remove("is-dropping"); });
 
   /* THE PHOTO EDITOR, for a picture in the message (photo-editor.js, the
      same editor as the Site Creator's). A mail client cannot apply settings,
@@ -456,6 +537,8 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
       subject: $("cpSubject").value, preheader: $("cpPreheader").value,
       body_html: editor.getHTML(),
       attachments: cp.attachments.slice(),
+      layout: cp.layout,
+      color_mode: cp.mode,
       base: cp.id ? cp.base : undefined,
     };
     const wasNew = !cp.id;
@@ -488,6 +571,9 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
     cp.savedHtml = payload.body_html;
     cp.savedSubject = payload.subject;
     cp.savedPreheader = payload.preheader;
+    cp.savedFiles = filesKey(payload.attachments);
+    cp.savedLayout = payload.layout;
+    cp.savedMode = payload.color_mode;
     markDirty();
     if (!cp.dirty) setState(tr("ml.cpSaved"));
 
@@ -609,10 +695,20 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
     const list = cp.lists.filter((l) => l.id === cp.listId)[0];
     if (!list) return;
 
+    /* EVERY CHECK BEFORE THE QUESTION (2026-10-06, Chase: "That check for if
+       someone is signed up for the mailing list or not after you press send
+       should happen before you type SEND, not after"). The server runs all
+       of a send's checks and stops; the number it gives is the one asked
+       about. */
+    btn.disabled = true;
+    const check = await post({ action: "mailing-check", id: cp.id });
+    btn.disabled = false;
+    if (check.error) { toast(check.error, "bad"); return; }
+
     const ok = await window.StaffConfirm({
       title: tr("ml.cpConfirmTitle"),
       body: tr("ml.cpConfirmBody")
-        .replace("{n}", list.subscribed)
+        .replace("{n}", check.n != null ? check.n : list.subscribed)
         .replace("{list}", list.name)
         .replace("{subject}", $("cpSubject").value.trim()),
       note: tr("ml.cpConfirmNote"),

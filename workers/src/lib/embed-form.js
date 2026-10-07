@@ -42,7 +42,7 @@ export const DARK  = ":host{--bg:#15151c;--fg:#f2f2f7;--dim:#9a9aad;--line:#2a2a
 
 /** The palette, worked out where there is a real language to work it out in. */
 export function palette(accent, accent2) {
-  const a = /^#[0-9a-fA-F]{6}$/.test(String(accent || "")) ? accent : "#6D4AFF";
+  const a = /^#[0-9a-fA-F]{6}$/.test(String(accent || "")) ? accent : "#1AE4FF";
   const b = /^#[0-9a-fA-F]{6}$/.test(String(accent2 || "")) ? accent2 : companion(a);
   return { a, b };
 }

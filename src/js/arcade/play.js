@@ -82,25 +82,6 @@
     });
   }
 
-  /* THE FUNNIEST LINES, per game (Chase, 2026-10-05: "they overlay over
-     the game themselves and block the screen. How about we just make a joke
-     when the game is over. Note the funniest ones and have those come up!").
-     During play a joke is only remembered; the game-over card shows the best
-     line for the last thing that happened (the crash, the sheep, the late
-     coffee), or any of the game's best when nothing on this list did.
-     [key, [indexes into that key's list]] */
-  var BEST = {
-    loadout: [['jokes_loadout_lost', [1, 2, 3]], ['jokes_loadout_heavy', [1, 2]], ['jokes_loadout_tall', [0, 1]], ['jokes_loadout_steady', [0]]],
-    soundcheck: [['jokes_soundcheck_miss', [1, 3, 4, 5]], ['jokes_soundcheck_rally', [0, 1]], ['jokes_soundcheck_win', [0]], ['jokes_soundcheck_power', [1]]],
-    cablerun: [['jokes_cablerun_crash', [0, 2]], ['jokes_cablerun_trip', [0, 2]], ['jokes_cablerun_plug', [1]], ['jokes_cablerun_tape', [1]]],
-    panelfixer: [['jokes_panelfixer_miss', [0, 1, 2]], ['jokes_panelfixer_last', [0, 1]], ['jokes_panelfixer_great', [0]], ['jokes_panelfixer_showtime', [1]]],
-    stagerunner: [['jokes_stagerunner_crash', [1, 2]], ['jokes_stagerunner_late', [0, 2]], ['jokes_stagerunner_deliver', [0, 1, 2]], ['jokes_stagerunner_stumble', [1]], ['jokes_stagerunner_power', [1]]],
-    goldenhour: [['jokes_goldenhour_crash', [0, 2]], ['jokes_goldenhour_banner', [0, 1, 2]], ['jokes_goldenhour_trick', [1]], ['jokes_goldenhour_ball', [1]]],
-    followspot: [['jokes_followspot_sheep', [0, 1, 3]], ['jokes_followspot_moth', [0, 2]], ['jokes_followspot_fog', [0, 1]], ['jokes_followspot_dark', [0, 1]], ['jokes_followspot_lost', [0, 1]], ['jokes_followspot_stunt', [0]]],
-    strike: [['jokes_strike_drop', [0, 1]], ['jokes_strike_wild', [0, 1]], ['jokes_strike_clear', [0]]],
-    cuestack: [['jokes_cuestack_miss', [0, 1]], ['jokes_cuestack_combo', [0]], ['jokes_cuestack_show', [0]]]
-  };
-
   function screen(game, opts, done) {
     var w = opts.words, id = opts.id;
     var reduced = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -171,10 +152,34 @@
 
     /* ---- input ---- */
     var held = { left: false, right: false, up: false, down: false, go: false, l0: false, l1: false, l2: false, l3: false };
+    /* a game that opens on its own choices (a mode, a song, a performer) can
+       be taken back to them from the pause card and the game-over card */
+    var hasMenu = false;
     var paused = false, over = false, saved = false, run = null, raf = 0, last = 0, shakeT = 0, shakeA = 0;
     var readyUntil = 0;
     function live() { return !paused && !over && run && performance.now() >= readyUntil; }
-    function press(dir) { deck(dir, true); if (live() && run.press) run.press(dir); }
+    function press(dir) { deck(dir, true); if (menuKey(dir)) return; if (live() && run.press) run.press(dir); }
+    /* A CHOICE ON SCREEN (ctx.menu): arrows move the highlight, Enter or
+       Space confirms — nothing starts on the first press (2026-10-05,
+       Chase: "select the direction they want and then press enter to
+       confirm. That way it doesn't go straight into the games"). The lane
+       keys work too: the outer two move, the inner two confirm. */
+    var menu = null;
+    function menuKey(dir) {
+      if (!menu || !live()) return false;
+      var n = menu.items.length;
+      if (dir === 'left' || dir === 'up' || dir === 'l0') menu.sel = Math.max(0, menu.sel - 1);
+      else if (dir === 'right' || dir === 'down' || dir === 'l3') menu.sel = Math.min(n - 1, menu.sel + 1);
+      else if (dir === 'enter' || dir === 'go' || dir === 'tap' || dir === 'l1' || dir === 'l2') { confirmMenu(); return true; }
+      else return true;
+      ctx.sfx('move');
+      return true;
+    }
+    function confirmMenu() {
+      var m = menu; menu = null;
+      ctx.sfx('go');
+      m.pick(m.sel);
+    }
     function release(dir) { deck(dir, false); if (live() && run.release) run.release(dir); }
 
     var KEYS = { ArrowLeft: 'left', a: 'left', A: 'left', ArrowRight: 'right', d: 'right', D: 'right',
@@ -193,9 +198,16 @@
       if (overEl.contains(e.target) && e.target.tagName === 'BUTTON' && e.key === 'Enter') return;
       e.stopPropagation();
       if (over) { if (e.key === ' ' && !slots) e.preventDefault(); overKey(e); return; }
+      if (e.key === 'Escape' && paused) { e.preventDefault(); if (performance.now() - pausedAt > 450) leave(); return; }
       if (e.key === 'Escape' || e.key === 'p' || e.key === 'P') { e.preventDefault(); togglePause(); return; }
       if (paused) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); togglePause(); } return; }
       if (e.key === 'm' || e.key === 'M') { var S = snd(); if (S) S.toggle(); return; }
+      if (menu) {
+        var mk = e.key === 'Enter' || e.key === ' ' ? 'enter'
+          : scheme === 'lanes' && /^[dfjkDFJK]$/.test(e.key) ? 'l' + LANE_KEYS[e.key] : KEYS[e.key] || null;
+        if (mk) { e.preventDefault(); if (!e.repeat) menuKey(mk); }
+        return;
+      }
       if (scheme === 'lanes') {
         var ln = LANE_KEYS[e.key];
         if (ln !== undefined) { e.preventDefault(); if (!e.repeat) { held['l' + ln] = true; press('l' + ln); } }
@@ -251,6 +263,11 @@
       e.preventDefault();
       /* a tap on the picture itself, for a game's own menus (difficulty
          cards): any scheme, if the game asks for it and takes it */
+      if (e.target === canvas && live() && menu) {
+        var mr = canvas.getBoundingClientRect(), hit = ctx.cardAt((e.clientX - mr.left) / scale, (e.clientY - mr.top) / scale);
+        if (hit >= 0) { if (hit === menu.sel) confirmMenu(); else { menu.sel = hit; ctx.sfx('move'); } }
+        return;
+      }
       if (e.target === canvas && live() && run.tapAt) {
         var cr = canvas.getBoundingClientRect();
         if (run.tapAt((e.clientX - cr.left) / scale, (e.clientY - cr.top) / scale)) return;
@@ -314,22 +331,7 @@
     }
 
     /* ---- the radio: jokes and calls, in a banner that can be read ---- */
-    var quipTimer = 0, heard = [];
-    /* the line for the game-over card: the best one for the most recent
-       thing that happened, else any of this game's best */
-    function overJoke() {
-      var best = BEST[id] || [], pool = [];
-      for (var i = heard.length - 1; i >= 0 && !pool.length; i--) {
-        best.forEach(function (b) { if (b[0] === heard[i]) b[1].forEach(function (n) { pool.push([b[0], n]); }); });
-      }
-      if (!pool.length) best.forEach(function (b) { b[1].forEach(function (n) { pool.push([b[0], n]); }); });
-      if (!pool.length) return null;
-      var pick = pool[Math.floor(Math.random() * pool.length)], list = w(pick[0]);
-      var line = Array.isArray(list) ? list[pick[1]] : null;
-      if (!line) return null;
-      var m = /^\[([^\]]{1,10})\]\s*/.exec(line);
-      return m ? { tag: m[1], text: line.slice(m[0].length) } : { tag: game.speaker || 'SM', text: line };
-    }
+    var quipTimer = 0;
     function showLine(text, opts) {
       opts = opts || {};
       if (!text) return;
@@ -354,6 +356,39 @@
     /* ---- the context a game gets ---- */
     var score = 0;
     var cardRects = [];
+    function rows(g, heading, list, t, sel) {
+      var rh = 34, gap = 6, rw = Math.min(W - 32, 320), x = (W - rw) / 2;
+      var room = Math.floor((H * .66) / (rh + gap)), n = list.length, shown = Math.min(n, room);
+      var first = Math.max(0, Math.min(n - shown, (sel || 0) - Math.floor(shown / 2)));
+      var y0 = (H - shown * (rh + gap) + gap) / 2 + 12;
+      g.fillStyle = 'rgba(5,7,12,.78)'; g.fillRect(0, 0, W, H);
+      g.fillStyle = '#EDF2F8'; g.font = '700 16px Sora, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(String(heading).toUpperCase(), W / 2, y0 - 30);
+      cardRects = [];
+      for (var k = 0; k < n; k++) cardRects.push({ x: -1, y: -1, w: 0, h: 0 });
+      for (var i = first; i < first + shown; i++) {
+        var c = list[i], y = y0 + (i - first) * (rh + gap), chosen = sel === i;
+        cardRects[i] = { x: x, y: y, w: rw, h: rh };
+        g.globalAlpha = sel == null || chosen ? 1 : .6;
+        g.fillStyle = chosen ? 'rgba(20,26,40,.98)' : 'rgba(12,16,26,.96)'; g.fillRect(x, y, rw, rh);
+        if (chosen) { g.shadowColor = c.col; g.shadowBlur = 14; }
+        g.strokeStyle = c.col; g.lineWidth = chosen ? 2.5 : 1; g.strokeRect(x + .5, y + .5, rw - 1, rh - 1); g.shadowBlur = 0;
+        g.fillStyle = c.col; g.font = '700 13px Sora, sans-serif'; g.textAlign = 'left';
+        g.fillText(String(c.title).toUpperCase(), x + 12, y + rh / 2);
+        g.fillStyle = 'rgba(237,242,248,.75)'; g.font = '500 11px Inter, sans-serif'; g.textAlign = 'right';
+        g.fillText(String(c.line || ''), x + rw - 12, y + rh / 2);
+        g.globalAlpha = 1;
+      }
+      /* more above or below: a small arrow */
+      g.fillStyle = 'rgba(237,242,248,.6)'; g.font = '700 12px Sora, sans-serif'; g.textAlign = 'center';
+      if (first > 0) g.fillText('▲', W / 2, y0 - 12);
+      if (first + shown < n) g.fillText('▼', W / 2, y0 + shown * (rh + gap) + 2);
+      if (sel != null) {
+        g.fillStyle = 'rgba(237,242,248,' + (.55 + .35 * Math.sin((t || 0) * 4)).toFixed(2) + ')';
+        g.font = '700 12px Sora, sans-serif';
+        g.fillText(w(touch ? 'menu_confirm_touch' : 'menu_confirm').toUpperCase(), W / 2, y0 + shown * (rh + gap) + 24);
+      }
+    }
     var ctx = {
       W: W, H: H, held: held, reduced: reduced, touch: touch, words: w, best: best(id),
       score: function (n) { score = Math.max(0, Math.floor(n)); scoreEl.textContent = score; },
@@ -367,16 +402,18 @@
       /* A JOKE: one of words(key)'s list, when the radio is free (or
          `force`), at most every few seconds, and only `chance` of the time —
          a joke on every event is no joke. { mood: 'good' | 'bad', at } */
-      quip: function (key) {
-        /* remembered for the game-over card, never shown over the play */
-        heard = heard.filter(function (k) { return k !== key; }); heard.push(key);
-        return false;
-      },
+      /* NO JOKES (2026-10-05, Chase: "we should just remove all of the
+         jokes. They wind up getting in the way"). Games still call it at
+         their moments; it does nothing. */
+      quip: function () { return false; },
       sfx: function (name, o) { var S = snd(); if (S) S.sfx(name, o); },
       /* A game's own choice screen (difficulty, mode): a heading and two
          to four cards side by side, each { title, line, key, col }. Drawn
          the same in every game; cardAt(x, y) says which one a tap hit. */
-      cards: function (g, heading, list, t) {
+      /* { heading, items: [{ title, line, col }], start, pick(i) } */
+      menu: function (o) { hasMenu = true; menu = { heading: o.heading, items: o.items, sel: o.start || 0, pick: o.pick }; },
+      cards: function (g, heading, list, t, sel) {
+        if (list.length > 4) return rows(g, heading, list, t, sel);
         var n = list.length, gap = 10, cw = Math.min(150, (W - 28 - gap * (n - 1)) / n), ch = Math.min(230, H * .42);
         var x0 = (W - (cw * n + gap * (n - 1))) / 2, y0 = H / 2 - ch / 2;
         g.fillStyle = 'rgba(5,7,12,.72)'; g.fillRect(0, 0, W, H);
@@ -384,10 +421,12 @@
         g.fillText(String(heading).toUpperCase(), W / 2, y0 - 34);
         cardRects = [];
         list.forEach(function (c, i) {
-          var x = x0 + i * (cw + gap), on = Math.sin((t || 0) * 4 + i * 2) > 0;
+          var x = x0 + i * (cw + gap), chosen = sel === i;
           cardRects.push({ x: x, y: y0, w: cw, h: ch });
-          g.fillStyle = 'rgba(12,16,26,.96)'; g.fillRect(x, y0, cw, ch);
-          g.strokeStyle = c.col; g.lineWidth = on ? 2 : 1; g.strokeRect(x + .5, y0 + .5, cw - 1, ch - 1);
+          g.globalAlpha = sel == null || chosen ? 1 : .55;
+          g.fillStyle = chosen ? 'rgba(20,26,40,.98)' : 'rgba(12,16,26,.96)'; g.fillRect(x, y0, cw, ch);
+          if (chosen) { g.shadowColor = c.col; g.shadowBlur = 18; }
+          g.strokeStyle = c.col; g.lineWidth = chosen ? 3 : 1; g.strokeRect(x + .5, y0 + .5, cw - 1, ch - 1); g.shadowBlur = 0;
           /* the title shrinks until it fits the card */
           var tt = String(c.title).toUpperCase(), fs = 15;
           g.font = '700 ' + fs + 'px Sora, sans-serif';
@@ -399,8 +438,18 @@
           words2.forEach(function (wd) { var tst = line ? line + ' ' + wd : wd; if (g.measureText(tst).width > cw - 16 && line) { g.fillText(line, x + cw / 2, yy); line = wd; yy += 15; } else line = tst; });
           g.fillText(line, x + cw / 2, yy);
           if (c.key) { g.fillStyle = c.col; g.font = '700 20px Sora, sans-serif'; g.fillText(c.key, x + cw / 2, y0 + ch - 28); }
+          g.globalAlpha = 1;
         });
+        /* how to confirm, under the cards, breathing */
+        if (sel != null) {
+          g.fillStyle = 'rgba(237,242,248,' + (.55 + .35 * Math.sin((t || 0) * 4)).toFixed(2) + ')';
+          g.font = '700 12px Sora, sans-serif'; g.textAlign = 'center';
+          g.fillText(w(touch ? 'menu_confirm_touch' : 'menu_confirm').toUpperCase(), W / 2, y0 + ch + 30);
+        }
       },
+      /* MORE THAN FOUR CHOICES: a list instead of cards (Cue Stack's songs,
+         round 8), the chosen row centered when the list is taller than the
+         screen; the same keys, taps and hit boxes as the cards */
       cardAt: function (x, y) {
         for (var i = 0; i < cardRects.length; i++) { var r = cardRects[i]; if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) return i; }
         return -1;
@@ -419,7 +468,7 @@
 
     function start(short) {
       if (run && run.stop) run.stop();
-      over = false; paused = false; saved = false; overEl.hidden = true; overEl.innerHTML = ''; heard = [];
+      over = false; paused = false; saved = false; overEl.hidden = true; overEl.innerHTML = '';
       ctx.best = best(id); bestEl.textContent = ctx.best;
       ctx.score(0);
       run = game.create(ctx);
@@ -461,17 +510,27 @@
         if (!shakeT) shakeA = 0;
       }
       if (run) run.draw(g);
+      if (menu) ctx.cards(g, menu.heading, menu.items, performance.now() / 1000, menu.sel);
     }
 
     /* ---- pause ---- */
+    /* THE PAUSE (2026-10-05, Chase): a little arcade jingle up and down,
+       the game's name and the score so far on the card, and Escape again —
+       not straight away, a double press is not a decision — goes back to
+       the arcade. */
+    var pausedAt = 0;
     function togglePause() {
       if (over) return;
       paused = !paused;
-      var S = snd(); if (S) S.duck(paused);
+      var S = snd(); if (S) { S.duck(paused); S.sfx(paused ? 'pausein' : 'pauseout'); }
       if (paused) {
+        pausedAt = performance.now();
         overEl.hidden = false;
-        overEl.innerHTML = '<div class="arc-card"><h3>' + esc(w('paused_label')) + '</h3>' +
+        overEl.innerHTML = '<div class="arc-card"><small class="arc-pause-game">' + esc(w(id + '_title')) + '</small>' +
+          '<h3>' + esc(w('paused_label')) + '</h3>' +
+          '<div class="arc-final is-small"><b>' + score + '</b><span>' + esc(w('score_label')) + '</span></div>' +
           '<div class="arc-btns"><button type="button" class="arc-btn is-main" data-act="resume">' + esc(w('resume_label')) + '</button>' +
+          gameMenuBtn() +
           '<button type="button" class="arc-btn" data-act="menu">' + esc(w('menu_label')) + '</button></div></div>';
         overEl.querySelector('[data-act=resume]').focus({ preventScroll: true });
       } else { overEl.hidden = true; overEl.innerHTML = ''; last = performance.now(); }
@@ -495,9 +554,9 @@
       overEl.hidden = false;
       overEl.innerHTML = '<div class="arc-card"><h3>' + esc(w('over_title')) + '</h3>' +
         '<div class="arc-final"><b>' + score + '</b>' + (isBest ? '<span>' + esc(w('newbest_label')) + '</span>' : '') + '</div>' +
-        (function () { var j = overJoke(); return j ? '<p class="arc-joke"><b>' + esc(j.tag) + '</b><span>' + esc(j.text) + '</span></p>' : ''; })() +
         '<div class="arc-initials" hidden></div><ol class="arc-board"></ol>' +
         '<div class="arc-btns"><button type="button" class="arc-btn is-main" data-act="again">' + esc(w('again_label')) + '</button>' +
+        gameMenuBtn() +
         '<button type="button" class="arc-btn" data-act="menu">' + esc(w('menu_label')) + '</button></div></div>';
       var boardEl = overEl.querySelector('.arc-board');
       /* the card's buttons wake up with the lock, so the pause reads as meant */
@@ -576,7 +635,12 @@
       if (b.dataset.act === 'again') again();
       else if (b.dataset.act === 'menu') leave();
       else if (b.dataset.act === 'resume') togglePause();
+      else if (b.dataset.act === 'gamemenu') { var S = snd(); if (S) S.duck(false); start(true); }
     });
+    /* WHERE TO GO from a card (Chase, 2026-10-06: "we need the ability to
+       navigate to the arcade menu and the main menu of the game if it has
+       one"): the game's own first choice, and the arcade */
+    function gameMenuBtn() { return hasMenu ? '<button type="button" class="arc-btn" data-act="gamemenu">' + esc(w('game_menu_label')) + '</button>' : ''; }
 
     function leave() {
       cancelAnimationFrame(raf);

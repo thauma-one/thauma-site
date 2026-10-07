@@ -43,7 +43,7 @@ check("a new site: seven pages on in Chase's order; Home is an opening and one p
   eq(d.pages.find((p) => p.id === "updates").sections.map((x) => x.type + ":" + x.variant), ["videos:stage", "newsletters:latest"], "Updates");
   eq(d.design.motion, { entrance: "rise", photos: "still", headings: "plain", buttons: "lift", pages: "fade", progress: "off" }, "Chase's motion defaults");
   eq([d.design.menu, d.design.brand], ["top", "name"], "across the top, the name in the corner");
-  eq(d.pages[0].sections[0].words.en.heading, "Follow the work of <b>Chase Roush.</b>", "the name in the opening, bold");
+  eq(d.pages[0].sections[0].words.en.heading, "Follow the Work of <b>Chase Roush.</b>", "the name in the opening, bold");
   eq(d.pages[0].sections[0].words.hr.heading, "Pratite rad — <b>Chase Roush.</b>", "Croatian words for Croatian");
 });
 
@@ -163,7 +163,7 @@ check("a section's button goes to a page of the site, or anywhere safe; never to
   ]);
   const html = page(d);
   assert(html.includes('href="/site/chaseroush/en/mission/">Read the story →'), "to the Mission page, in the owner's words");
-  assert(/href="https:\/\/blog\.example\.org\/" rel="noopener">Read more →/.test(html), "outward, with the built-in words");
+  assert(/href="https:\/\/blog\.example\.org\/" rel="noopener">Read More →/.test(html), "outward, with the built-in words");
   assert(!html.includes("/en/resources/"), "a hidden page is not linked");
   assert(!html.includes("javascript:"), "an unsafe link is dropped");
   eq(cleanDoc(d, ["en"]).pages[0].sections[3].link, "", "and not even stored");
@@ -259,7 +259,7 @@ check("the ministry's widgets sit centered unless put left; the newest newslette
   assert(/<section class="data al-left"[^>]*>/.test(html), "left, when chosen");
   assert(html.includes('<a class="latest m" href="https://thauma.one/archive/chase-roush/news/september/">'), "the newest");
   assert(!html.includes('href="https://thauma.one/archive/chase-roush/news/august/"'), "only the newest is linked");
-  assert(html.includes('<a href="https://thauma.one/archive/chase-roush/news/" target="_blank" rel="noopener">See past newsletters</a>'), "the rest, at the list's archive");
+  assert(html.includes('<a href="https://thauma.one/archive/chase-roush/news/" target="_blank" rel="noopener">See Past Newsletters</a>'), "the rest, at the list's archive");
 });
 
 check("a site's own tab icon", () => {
@@ -368,7 +368,7 @@ check("the footer: three layouts, a tagline and small print in each language, th
   assert(/<span class="words"><a href="https:\/\/youtube\.com\/@c" target="_blank" rel="noopener">YouTube<\/a><a href="https:\/\/cal\.example\/"/.test(html), "socials as names, beside the owner's links");
   assert(html.includes('<p class="tagline tagline-plain">All of me for all of Him</p>') && html.includes("Donations are tax-deductible."), "the words");
   assert(/<nav class="menu"[^>]*><a href="\/site\/chaseroush\/en\/">Home<\/a>/.test(html), "the pages");
-  assert(html.includes("A Thauma site"), "the credit");
+  assert(html.includes("A Thauma Site"), "the credit");
   const hr = page(d, "home", "hr");
   assert(hr.includes("Sve od mene") && hr.includes("Donations are tax-deductible."), "Croatian where written, the fallback where not");
   eq(cleanDoc({ footer: { layout: "sideways", socials: "smoke" } }, ["en"]).footer.layout, "split", "an unknown layout is the first");
@@ -458,10 +458,12 @@ check("a Words section's button follows its alignment", () => {
   }
 });
 
-check("a Band is a band, and Raised changes it, on Give and Sign-up, in every look", () => {
-  /* Chase's review, 2026-10-03: Raised looked the same as Plain on the band
-     layouts (both painted --panel), and Give's Band barely changed the
-     background (--panel is a 7% step on a dark custom look). */
+check("on Give and Sign-up, Plain is the page, and Raised and Tint each set it apart, in every look", () => {
+  /* Chase, 2026-10-03: Raised looked the same as Plain on the band layouts.
+     2026-10-06: "The Site Creator Sign Up form section still has the accent
+     color tinted background instead of the plain look. Also... I actually
+     really like that accent tinted look. We should add that as a 3rd option"
+     — so the band layout no longer forces the tint; Background decides. */
   const rootVar = (html, name) => {
     const m = html.match(new RegExp(":root\\{[^}]*--" + name + ":(#[0-9A-Fa-f]{6})"));
     return m && m[1].toUpperCase();
@@ -474,10 +476,10 @@ check("a Band is a band, and Raised changes it, on Give and Sign-up, in every lo
     { look: "custom", mode: "dark", colors: { background: "#0D0D0D", accent: "#FD5812" } }];
   for (const design of looks) {
     for (const type of ["give", "signup"]) {
-      const bgs = [false, true].map((raised) => {
+      const [plain, raised, tint] = [{}, { raised: true }, { tint: true }].map((ground) => {
         const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
         Object.assign(d.design, design);
-        d.pages[0].sections = [{ id: "s1", type, variant: "band", raised,
+        d.pages[0].sections = [{ id: "s1", type, variant: "band", ...ground,
           words: { en: { heading: "Hi", text: "", button: "" } } }];
         const html = renderPage({ doc: cleanDoc(d, ["en"]), site: { slug: "c", display_name: "C", giving_url: "https://give.example/" },
           payload, theme: payload.theme, lang: "en", pageId: "home", base: "/site/c", origin: "https://thauma.one", draft: false });
@@ -485,10 +487,10 @@ check("a Band is a band, and Raised changes it, on Give and Sign-up, in every lo
         return { band: resolve(html, st.backgroundColor), page: rootVar(html, "bg") };
       });
       const label = `${design.look} ${type}`;
-      assert(bgs[0].band && bgs[1].band, `${label}: no band color (${JSON.stringify(bgs)})`);
-      assert(bgs[0].band !== bgs[0].page, `${label}: the band is the page's color`);
-      assert(bgs[1].band !== bgs[0].band, `${label}: Raised changed nothing (${bgs[0].band})`);
-      assert(bgs[1].band !== bgs[1].page, `${label}: the raised band is the page's color`);
+      assert(!/^#/.test(plain.band || "") || plain.band === plain.page, `${label}: Plain is not the page (${JSON.stringify(plain)})`);
+      assert(raised.band && raised.band !== raised.page, `${label}: Raised is the page's color`);
+      assert(tint.band && tint.band !== tint.page, `${label}: Tint is the page's color`);
+      assert(tint.band !== raised.band, `${label}: Tint and Raised are the same`);
     }
   }
 });
@@ -542,8 +544,11 @@ check("a button can jump to a section of the same page, which a visitor's page c
   assert(html.includes(`href="#s-${second.id}"`), "the button does not point at the section");
   assert(new RegExp(`<section[^>]*id="s-${second.id}"`).test(html), "a VISITOR's page has no anchor to land on");
   assert(/main section\[id\]\{scroll-margin-top:68px\}/.test(html), "it would land under the sticky header");
-  assert(/@media \(prefers-reduced-motion:no-preference\)\{html\{scroll-behavior:smooth\}\}/.test(html),
-    "smooth only for those who allow motion");
+  /* an eased glide (2026-10-07, Chase: "a smooth scroll to the section … With
+     both ease in and ease out"), a jump for those who ask for less motion */
+  assert(/function glide\(y\)\{[^]*?if\(still\)\{scrollTo\(0,y\);return\}/.test(html), "a jump when motion is reduced");
+  assert(/function ease\(t\)\{return t<\.5\?4\*t\*t\*t:1-Math\.pow\(-2\*t\+2,3\)\/2\}/.test(html), "eased in and out");
+  assert(/closest\('a\[href\*="#"\]'\)/.test(html) && !/scroll-behavior:smooth/.test(html), "in-page links glide, and CSS does not smooth every step");
 });
 
 check("a jump to a section that is gone goes nowhere, and a page's sections never point at another page's", () => {
@@ -559,7 +564,7 @@ check("opening a milestone scrolls just enough, never past the timeline's title"
   const html = page(starter("full", { name: "Chase Roush", langs: ["en", "hr"], fallback: "en" }));
   assert(/closest\('\[data-widget="roadmap"\]'\)/.test(html), "the timeline is not watched");
   assert(/by=Math\.min\(need,room\)/.test(html), "the scroll is not capped at the title");
-  assert(/behavior:still\?'auto':'smooth'\}\)\},380\)/.test(html), "it ignores reduced motion");
+  assert(/if\(by>0\)glide\(scrollY\+by\)\},380\)/.test(html), "it glides (a jump when motion is reduced)");
 });
 
 /* ---------------------------------------------------------- placeholders */
@@ -624,7 +629,8 @@ check("a section never lined up keeps the look it had; a chosen one is kept", ()
     mk("hero", "words"), mk("hero", "behind"), mk("goals", "cards"), mk("quote", "large"), mk("text", "left", { align: "right" }),
     mk("give", "band", { align: "indent" }), mk("text", "left", { align: "sideways" })];
   eq(cleanDoc(d, ["en"]).pages[0].sections.map((x) => x.align),
-    ["left", "center", "center", "left", "center", "left", "center", "left", "right", "indent", "left"], "aligns");
+    ["left", "center", "center", "left", "center", "left", "center", "left", "right", "left", "left"], "aligns");
+  eq(cleanDoc(d, ["en"]).pages[0].sections.map((x) => x.indent).filter(Boolean).length, 1, "Indented saved before reads as Left, indented");
 });
 
 check("the page carries each section's alignment, and its buttons follow it", () => {
@@ -637,9 +643,9 @@ check("the page carries each section's alignment, and its buttons follow it", ()
   const html = page(d);
   assert(/<section[^>]*class="al-right"[^>]*><div class="wrap"><h2 class="h m">H<\/h2>[\s\S]*?<div class="btns m"><a class="btn solid" href="https:\/\/x\.org\/"/.test(html), "text section, right, with its button");
   assert(/<section class="hero hero-behind al-center/.test(html), "the opening");
-  assert(/<section[^>]*class="quote quote-large al-indent"[^>]*>/.test(html), "the quote");
+  assert(/<section[^>]*class="quote quote-large al-left indented"[^>]*>/.test(html), "the quote, indented on the left");
   for (const rule of [".al-right .btns{justify-content:flex-end}", ".al-center .btns{justify-content:center}",
-                      ".al-indent>.wrap", ".al-right .bandrow{flex-direction:row-reverse}"]) {
+                      ".indented.al-left>.wrap", ".indented.al-right>.wrap", ".al-right .bandrow{flex-direction:row-reverse}"]) {
     assert(html.includes(rule), "missing rule " + rule);
   }
 });
@@ -751,16 +757,68 @@ check("Give goes straight to the giving link only when there is one", () => {
 
 /* ---- card sections (2026-10-04) ---- */
 
-check("Custom Cards: numbered and joined when Attached, side by side when Detached; blank cards are not drawn", () => {
+check("Custom Cards: vertical or horizontal, with or without lines between; numbered; blank cards are not drawn; Attached/Detached still read", () => {
+  /* Chase, 2026-10-06: "the settings should have horizontal … and vertical
+     … and then attached detached as a setting for the lines between the
+     cards". */
   const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
   const card = (title, text) => ({ words: { en: { title, text } } });
-  d.pages[0].sections = [{ id: "c1", type: "cards", variant: "attached", numbers: true,
+  d.pages[0].sections = [{ id: "c1", type: "cards", variant: "vertical", lines: true, numbers: true,
     words: { en: { heading: "How we work" } }, items: [card("Reliable", "Always there."), card("", ""), card("Kind", "")] }];
   let html = page(d);
-  assert(/<section[^>]*class="cards-attached[^"]*"[\s\S]*<ol class="ccards m numbered"><li><span class="cnum"[^>]*>1<\/span><div><h3>Reliable<\/h3><p>Always there\.<\/p><\/div><\/li><li><span class="cnum"[^>]*>2<\/span><div><h3>Kind<\/h3>/.test(html), "attached, numbered, blank skipped");
-  d.pages[0].sections[0].variant = "detached"; d.pages[0].sections[0].numbers = false;
+  assert(/<section[^>]*class="cards-vertical cards-lines[^"]*"[\s\S]*<ol class="ccards m numbered"><li><span class="cnum"[^>]*>1<\/span><div><h3>Reliable<\/h3><p>Always there\.<\/p><\/div><\/li><li><span class="cnum"[^>]*>2<\/span><div><h3>Kind<\/h3>/.test(html), "vertical, lines, numbered, blank skipped");
+  d.pages[0].sections[0].variant = "horizontal"; d.pages[0].sections[0].lines = false; d.pages[0].sections[0].numbers = false;
   html = page(d);
-  assert(/class="cards-detached[\s\S]*<ol class="ccards m">/.test(html) && !/class="cnum"/.test(html), "detached, no numbers");
+  assert(/class="cards-horizontal[^"]*"[\s\S]*<ol class="ccards m">/.test(html) && !/class="cards-horizontal cards-lines/.test(html) && !/class="cnum"/.test(html), "horizontal, no lines, no numbers");
+  /* a section saved as Attached / Detached */
+  d.pages[0].sections[0] = { ...d.pages[0].sections[0], variant: "attached", lines: undefined };
+  assert(/class="cards-vertical cards-lines/.test(page(d)), "Attached reads as vertical with lines");
+  d.pages[0].sections[0] = { ...d.pages[0].sections[0], variant: "detached", lines: undefined };
+  html = page(d);
+  assert(/class="cards-horizontal/.test(html) && !/class="cards-horizontal cards-lines/.test(html), "Detached reads as horizontal without");
+});
+
+check("Past updates: from one list or all; Newest and the rest shows the newest, then a few, then See All Updates", () => {
+  /* Chase, 2026-10-06: "There needs to be a dropdown menu that defines what
+     list you can select … a combined look where the newest one can be
+     highlighted special, but it lists the last 3-5 updates underneath it …
+     'See All Updates' at the bottom in small subtle print" */
+  const mail = (n, list) => ({ slug: "m" + n, subject: "Update " + n, preheader: null, sent_at: "2026-0" + (9 - (n % 9)) + "-01T10:00:00Z",
+    list: { slug: list, name: list }, url: `https://thauma.one/archive/chase-roush/${list}/m${n}/` });
+  const mailings = [mail(1, "news"), mail(2, "prayer"), mail(3, "news"), mail(4, "news"), mail(5, "news"), mail(6, "news")];
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  d.pages[0].sections = [{ id: "n1", type: "newsletters", variant: "combined", list: "news", count: 3, words: { en: { heading: "Past" } } }];
+  const html = renderPage({ doc: cleanDoc(d, ["en"]), site: { slug: "chase-roush", display_name: "Chase Roush", giving_url: "" },
+    payload: { ...payload, mailings }, theme: payload.theme, lang: "en", pageId: "home", base: "/site/c", origin: "https://thauma.one", draft: false });
+  assert(/class="latest m" href="[^"]*\/news\/m1\/"/.test(html), "the newest of that list, as the card");
+  const rows = [...html.matchAll(/<li><a href="[^"]*\/(m\d)\/"/g)].map((m) => m[1]);
+  eq(rows, ["m3", "m4"], "then the next ones of that list, the card included in the count of 3");
+  assert(!/prayer\/m2/.test(html), "not another list's");
+  assert(/<p class="past m"><a href="https:\/\/thauma.one\/archive\/chase-roush\/news\/"[^>]*>See All Updates<\/a>/.test(html), "and See All Updates, at the list's archive");
+  assert(cleanDoc({ pages: [{ id: "home", sections: [{ type: "newsletters", list: "../x", count: 99 }] }] }, ["en"]).pages[0].sections[0].count === 5, "cleaned");
+});
+
+check("a page's tabs: the page's own sections, then the bar, then a panel per tab; one tab is no bar", () => {
+  /* Chase, 2026-10-06: "an option at the top of each page that acts like tabs
+     open on a browser, where + adds a tab to the page with distinct looks" */
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  const give = d.pages.find((p) => p.id === "give");
+  const txt = (id, h) => ({ id, type: "text", variant: "left", words: { en: { heading: h, text: "words" } } });
+  give.sections = [txt("top1", "Above")];
+  give.tabs = { style: "pills", align: "left", items: [
+    { id: "give", label: { en: "Give" }, sections: [txt("g1", "Giving")] },
+    { id: "pray", label: {}, sections: [txt("p1", "Praying")] }] };
+  const html = page(d, "give");
+  assert(html.indexOf(">Above<") > 0 && html.indexOf(">Above<") < html.indexOf('<section class="ptabs-bar'), "the page's own sections first");
+  assert(/class="ptabs-bar ptabs-pills al-left"/.test(html), "the bar's look");
+  assert(/<button[^>]*aria-selected="true" data-tab="give">Give<\/button><button[^>]*aria-selected="false" data-tab="pray">Tab 2<\/button>/.test(html), "named tabs, and a blank name falls back");
+  assert(/<div class="ptab" id="t-give"[^>]*><section/.test(html) && /<div class="ptab" id="t-pray"[^>]*hidden>/.test(html), "the first panel shows, the rest wait");
+  give.tabs.items.pop();
+  const one = page(d, "give");
+  assert(!/<section class="ptabs-bar/.test(one) && /Giving/.test(one), "one tab is part of the page, no bar");
+  const bad = cleanDoc({ ...d, pages: [{ id: "give", tabs: { style: "nope", items: Array.from({ length: 9 }, () => ({ id: "../x", sections: [] })) } }] }, ["en"]);
+  const t = bad.pages.find((p) => p.id === "give").tabs;
+  assert(t.style === "joined" && t.items.length === 6 && t.items.every((x) => /^[a-z0-9]+$/i.test(x.id)), "cleaned: a known style, six at most, safe ids");
 });
 
 check("the new form and Give styles draw; a site saved before keeps its old one", () => {
@@ -820,11 +878,15 @@ check("own links: a page of the site first; a web address may be its site's icon
     { kind: "youtube", url: "https://youtube.com/@x" },
   ];
   const c = cleanDoc(d, ["en"]);
-  eq(c.links.map((k) => !!k.icon), [false, false, true, false, false], "only a web address can be an icon");
+  eq(c.links.map((k) => k.place || "-"), ["apart", "apart", "inline", "apart", "-"], "a link saved as an icon reads as in line; a page of the site cannot have been one");
+  /* separated, as words: pages first; in line: an icon beside the socials (2026-10-07) */
+  d.links.forEach((k) => { if (k.kind === "custom") { k.place = "apart"; delete k.icon; } });
   const foot = page(d).match(/<footer[\s\S]*<\/footer>/)[0];
-  const words = [...foot.matchAll(/<a href="[^"]*"[^>]*>(About me|Mission|Blog)<\/a>/g)].map((m) => m[1]);
-  eq(words, ["About me", "Mission", "Blog"], "pages first, then the web");
-  assert(/class="socials"[^>]*>[\s\S]*aria-label="YouTube"[\s\S]*<a class="favi" href="https:\/\/chaseroush\.com\/"[^>]*aria-label="chaseroush\.com"[^>]*><img src="https:\/\/thauma\.one\/embed\/v1\/icon\?d=chaseroush\.com"/.test(foot), "the icon, through Thauma, beside the socials");
+  const words = [...foot.matchAll(/<a href="[^"]*"[^>]*>(About me|Mission|Blog|chaseroush\.com)<\/a>/g)].map((m) => m[1]);
+  eq(words, ["About me", "Mission", "Blog", "chaseroush.com"], "pages first, then the web");
+  d.links[2].place = "inline";
+  const foot2 = page(d).match(/<footer[\s\S]*<\/footer>/)[0];
+  assert(/class="socials"[^>]*>[\s\S]*aria-label="YouTube"[\s\S]*<a class="favi" href="https:\/\/chaseroush\.com\/"[^>]*aria-label="chaseroush\.com"[^>]*><img src="https:\/\/thauma\.one\/embed\/v1\/icon\?d=chaseroush\.com"/.test(foot2), "the icon, through Thauma, beside the socials");
 });
 
 check("clean links: socials, page names in any language and alphabet, Give, the owner's own links", () => {
@@ -879,7 +941,7 @@ check("sharing and search: each page's own words and picture, the real public ad
   about.sections = [{ id: "a1", type: "photoText", variant: "left", photo: "/media/partnersite/x/p.webp", words: { en: { heading: "H", text: "I grew up surrounded by ministry, and it shaped everything." } } }];
   const head = (extra) => page(d, "about", "en", { site: { slug: "chase-roush", display_name: "Chase Roush", subdomain: "chaseroush" }, ...extra }).match(/<head>[\s\S]*<\/head>/)[0];
   const h = head();
-  assert(h.includes('<meta name="description" content="I grew up surrounded by ministry, and it shaped everything.">'), "this page's own words");
+  assert(h.includes('<meta name="description" content="I Grew Up Surrounded by Ministry, and It Shaped Everything.">'), "this page's own words, in Title Case (English)");
   assert(h.includes('<link rel="canonical" href="https://chaseroush.thauma.one/en/about/">'), "canonical");
   assert(h.includes('<meta property="og:image" content="https://thauma.one/media/partnersite/x/p.webp">'), "its first photo, as a full address");
   assert(h.includes('hreflang="hr" href="https://chaseroush.thauma.one/hr/about/"') && h.includes('hreflang="x-default"'), "alternates, full");
@@ -924,6 +986,93 @@ check("any text size like Word: 4–200px kept and drawn; the first version's mu
   assert(!/font-size:2px|data-sz="2px"/.test(html), "below 4px survived");
   assert(!/font-size:9em|data-sz="9"/.test(html), "an out-of-range size survived");
   assert(html.includes('<span class="ts-lg" style="color:#ff00aa">both</span>'), "a preset with a picked color");
+});
+
+
+check("every section has Plain, Raised and Tint — the opening, the header and a full-width photo too", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  const home = d.pages.find((p) => p.id === "home");
+  home.sections[0].raised = true;
+  home.sections.push({ id: "h1", type: "header", variant: "plain", bg: "tint", words: { en: { heading: "Hi", label: "small words" } } });
+  home.sections.push({ id: "p1", type: "photo", variant: "still", tint: true, photo: "/media/site/x.webp", words: { en: {} } });
+  const html = page(d);
+  assert(/<section class="hero hero-behind al-left raised/.test(html), "the opening, raised");
+  assert(/class="phead[^"]*ph-tint[^"]*band/.test(html), "a header saved with bg tint reads as Tint");
+  assert(/<section class="fullphoto[^"]* band"/.test(html), "a full-width photo, tinted");
+  assert(/main section:is\(\.raised,\.band\) :is\(\.card,\.givepanel,\.ccards li,\.news a,\.linklist a,\.latest\)\{background:var\(--bg\)\}/.test(html), "every card swaps on Raised and Tint");
+  assert(!/\.kicker\{[^}]*uppercase/.test(html) && !/\.ph-label\{[^}]*uppercase/.test(html), "what a person types keeps its own capitals");
+});
+
+
+check("chaseroush.com's Give page: Open cards with lines between, joined to the band above, bars beside a title", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  const g = d.pages.find((p) => p.id === "give");
+  g.sections.splice(1, 0, { id: "cc1", type: "cards", variant: "open", lines: true, join: true, align: "center", words: { en: {} },
+    items: [{ words: { en: { title: "You Give", text: "with confidence" } } }, { words: { en: { title: "I Go", text: "with excellence" } } }] });
+  g.sections[2].titleBars = true;
+  d.pages.find((p) => p.id === "mission").sections[0].titleBars = true;
+  const doc = cleanDoc(d, ["en"]);
+  const c = doc.pages.find((p) => p.id === "give").sections[1];
+  eq([c.variant, c.join, doc.pages.find((p) => p.id === "give").sections[2].titleBars], ["open", true, true], "kept");
+  const html = page(d, "give", "en", { draft: true });
+  assert(/<section class="cards-open cards-lines band al-center" id="s-cc1" data-joined>/.test(html), "open, lined, and wearing the tinted band above it: " + (html.match(/<section[^>]*s-cc1[^>]*>/) || [""])[0]);
+  assert(/\nmain section\.cards-open \.ccards li\{background:none;border:0/.test(html), "open cards have no boxes (a rule of its own, not glued to another selector)");
+  assert(/main section\[data-joined\]\{padding-top:0;border-top-color:transparent\}/.test(html), "no gap and no line above a joined section");
+  assert(/class="[^"]*tbars[^"]*"[^>]*><div class="wrap"><h2 class="h m"><span class="tbw">/.test(page(d, "mission")), "the title held together between its bars");
+});
+
+check("Links: a Buttons layout, each button its own color; a lone link or card follows the line-up", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  const r = d.pages.find((p) => p.id === "resources"); r.on = true;
+  const L = r.sections[0]; L.variant = "buttons"; L.align = "center";
+  L.items[0].color = "accent2"; L.items[1].color = "#AA3355";
+  const html = page(d, "resources");
+  assert(/<a class="btn solid lb-accent2" href="\/site\/chaseroush\/en\/about\/">/.test(html), "the second color");
+  assert(/<a class="btn solid lb-own" href="\/site\/chaseroush\/en\/mission\/" style="background:#aa3355;border-color:#aa3355;color:#ffffff">/.test(html), "any color, with readable words");
+  assert(/\.al-center \.linklist a\{text-align:center\}/.test(html) && /\.al-center\.links-cards \.linklist:not\(\.lt-small,\.lt-big\)\{[^}]*justify-content:center\}/.test(html), "centering a lone link and a lone card");
+  L.items[0].color = "javascript:alert(1)";
+  eq(cleanDoc(d, ["en"]).pages.find((p) => p.id === "resources").sections[0].items[0].color, "accent", "nonsense is the accent");
+});
+
+check("an open sign-up or contact form's fields are the other color from the ground it sits on", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  const st = d.pages.find((p) => p.id === "stay"); st.sections[0].variant = "open";
+  const look = (html) => JSON.parse(html.match(/data-thauma-form[^>]*data-look="([^"]*)"/)[1].replace(/&quot;/g, '"'));
+  const plain = look(page(d, "stay"));
+  assert(plain.field === plain.panel && plain.field !== plain.bg, "on the page's ground, fields are the panel color");
+  st.sections[0].raised = true;
+  const raised = look(page(d, "stay"));
+  assert(raised.field === raised.bg, "on a raised ground, fields are the page color");
+  st.sections[0].raised = false; st.sections[0].variant = "card";
+  const card = look(page(d, "stay"));
+  assert(card.field === card.bg, "inside a card, unchanged: the page color");
+});
+
+
+check("each of the owner's own footer links: in line with the socials, or separated as words or an icon; its own picture, its site's icon, or its initials", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  d.links = [{ kind: "youtube", url: "@chase" },
+    { kind: "custom", url: "page:about", label: { en: "Our Story" }, place: "inline" },
+    { kind: "custom", url: "https://github.com", label: { en: "GitHub" }, place: "inline" },
+    { kind: "custom", url: "https://blog.example.org/", label: { en: "Blog" }, place: "apart", show: "words" },
+    { kind: "custom", url: "https://shop.example.org/", label: { en: "Shop" }, place: "apart", show: "icon", iconImg: "/media/site/shop.png" }];
+  const foot = page(d).match(/<footer[\s\S]*<\/footer>/)[0];
+  assert(/<span class="socials"><a href="https:\/\/www\.youtube\.com\/@chase"[^]*?<a class="favi no-icon" href="\/site\/chaseroush\/en\/about\/"[^>]*><span class="lt" aria-hidden="true">OS<\/span><\/a><a class="favi" href="https:\/\/github\.com\/"[^>]*><img src="https:\/\/thauma\.one\/embed\/v1\/icon\?d=github\.com"[^>]*crossorigin="anonymous"><span class="lt" aria-hidden="true">GI<\/span>/.test(foot), "in line: after the socials, a page's initials, a site's icon with initials behind it");
+  assert(/<span class="words"><a href="https:\/\/blog\.example\.org\/"[^>]*>Blog<\/a><\/span>/.test(foot), "separated, as words");
+  assert(/<span class="socials owns"><a class="favi own" href="https:\/\/shop\.example\.org\/"[^>]*><img src="\/media\/site\/shop\.png"/.test(foot), "separated, as its own picture");
+  d.links[4].iconImg = "javascript:alert(1)";
+  assert(!("iconImg" in cleanDoc(d, ["en"]).links[4]), "a picture address that is not one is not kept");
+});
+
+
+check("a page's own description is a title as its language writes one: Title Case in English, as written in Croatian", () => {
+  eq(MODEL.titleCase("tell your story here: who you are and why it matters to the people of iPhone land.", "en"),
+    "Tell Your Story Here: Who You Are and Why It Matters to the People of iPhone Land.", "English");
+  eq(MODEL.titleCase("Recite svoju priču ovdje.", "hr"), "Recite svoju priču ovdje.", "Croatian");
+  const d = starter("full", { name: "Chase Roush", langs: ["en", "hr"], fallback: "en" });
+  assert(/<meta name="description" content="News, Prayer and the Road Ahead — All in One Place\.">/.test(page(d)), "the page's own, in English");
+  d.pages[0].seo = { title: {}, desc: { en: "written by me, as I like it" }, image: null };
+  assert(/<meta name="description" content="written by me, as I like it"/.test(page(d)), "what the owner wrote is kept as written");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

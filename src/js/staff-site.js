@@ -51,15 +51,13 @@
     goals: { variants: ['cards'], words: ['heading', 'text'], data: 'updates/#goals', align: true },
     prayer: { variants: ['list'], words: ['heading', 'text'], data: 'updates/#prayer', align: true },
     videos: { variants: ['stage'], words: ['heading', 'text'], data: 'updates/#videos', align: true },
-    newsletters: { variants: ['latest', 'list'], words: ['heading', 'text'], data: 'mail/', align: true },
+    newsletters: { variants: ['latest', 'list', 'combined'], words: ['heading', 'text'], data: 'mail/', align: true },
     signup: { variants: ['band', 'card', 'split', 'open'], words: ['heading', 'text'], data: 'sharing/#signup' },
     contact: { variants: ['form', 'split', 'wide', 'open'], words: ['heading', 'text'], data: 'sharing/#contact', align: true },
     give: { variants: ['band', 'card', 'split', 'spotlight'], words: ['heading', 'text', 'button'] },
-    cards: { variants: ['attached', 'detached'], words: ['heading', 'text'], items: 'cards' },
-    links: { variants: ['list', 'cards'], words: ['heading', 'text'], items: true, align: true },
+    cards: { variants: ['vertical', 'horizontal', 'open'], words: ['heading', 'text'], items: 'cards' },
+    links: { variants: ['list', 'cards', 'buttons'], words: ['heading', 'text'], items: true, align: true },
   };
-  /* Everything but the opening and a full-width photo can sit on a raised band. */
-  var FLAT = { hero: 1, photo: 1, header: 1 };
   /* On a section of the ministry's data, "text" is the line under the heading;
      on a header it is the small print below the title. */
   function fieldName(type, f) {
@@ -84,6 +82,120 @@
     var l = (state.body.languages || []).filter(function (x) { return x.code === code; })[0];
     return l ? (l.native_name || l.name) : code;
   }
+  /* ---- stand-in words --------------------------------------------------- */
+
+  /* Chase, 2026-10-07: "every section that is added should have basic
+     styling and text added in when the section is added to show off what
+     the sections can and remind the person to add different languages as
+     well. It doesn't need to be meaningful … just random words … and remind
+     the person that they haven't done that text yet since it is gibberish."
+     So a new section, and every section when a language is turned on, gets
+     Latin stand-in words — a heading with its bold half, words with a bold
+     phrase — and anything made only of these words counts as NOT WRITTEN:
+     the rows say which languages are still missing, as Updates does. One
+     real word typed into a field and it is written. The vocabulary leaves
+     out short Latin that is also a real word somewhere (a, in, et, non, est). */
+  var LOREM = ('lorem ipsum dolor amet consectetur adipiscing elit eiusmod tempor incididunt labore dolore magna ' +
+    'aliqua minim veniam quis nostrud exercitation ullamco laboris aliquip commodo consequat duis aute irure ' +
+    'reprehenderit voluptate velit cillum fugiat nulla pariatur excepteur occaecat cupidatat proident culpa ' +
+    'officia deserunt mollit laborum').split(' ');
+  var LOREM_SET = {};
+  LOREM.forEach(function (x) { LOREM_SET[x] = 1; });
+  function loremWords(n) {
+    var out = [];
+    while (out.length < n) {
+      var x = LOREM[Math.floor(Math.random() * LOREM.length)];
+      if (x !== out[out.length - 1]) out.push(x);
+    }
+    return out;
+  }
+  function titleCase(ws) { return ws.map(function (x) { return x[0].toUpperCase() + x.slice(1); }).join(' '); }
+  function sentence(n, boldAt) {
+    var ws = loremWords(n);
+    ws[0] = ws[0][0].toUpperCase() + ws[0].slice(1);
+    if (boldAt != null) { ws[boldAt] = '<b>' + ws[boldAt]; ws[boldAt + 1] = ws[boldAt + 1] + '</b>'; }
+    return ws.join(' ') + '.';
+  }
+  /* Stand-in words shaped like what the field holds. */
+  function lorem(f) {
+    var r = function (a, b) { return a + Math.floor(Math.random() * (b - a + 1)); };
+    if (f === 'heading') return titleCase(loremWords(r(1, 2))) + ' <b>' + titleCase(loremWords(r(1, 2))) + '</b>';
+    if (f === 'text') return sentence(r(10, 14), 3) + ' ' + sentence(r(7, 11));
+    if (f === 'quote' || f === 'verse') return sentence(r(8, 12));
+    if (f === 'caption' || f === 'tagline') return sentence(r(4, 7)).slice(0, -1);
+    if (f === 'small') return sentence(r(10, 14));
+    if (f === 'verseRef') return titleCase(loremWords(1)) + ' ' + r(1, 9) + ':' + r(1, 20);
+    if (f === 'mark') return titleCase(loremWords(1));
+    return titleCase(loremWords(2));
+  }
+  /* Only stand-in words, nothing a person wrote. Tags, digits and
+     punctuation are not words. */
+  function isLorem(v) {
+    var ws = String(v || '').replace(/<[^>]*>/g, ' ').replace(/&[a-z#0-9]+;/gi, ' ').toLowerCase().match(/[a-zÀ-ɏЀ-ӿ]+/g);
+    return !!ws && ws.every(function (x) { return LOREM_SET[x]; });
+  }
+  /* The fields a new section starts with words in: the ones every look of it
+     shows. A verse, a button that needs a link and a watermark wait to be
+     asked for. */
+  var LOREM_SKIP = { verse: 1, verseRef: 1, mark: 1 };
+  function loremFields(type) {
+    return SECTIONS[type].words.filter(function (f) { return !LOREM_SKIP[f] && (f !== 'button' || type === 'give'); });
+  }
+  /* The languages a set of words is still missing: a field that is stand-in
+     words, or empty where another language has it written. A field nobody
+     has written in any language is optional, not missing. */
+  function missingIn(words, fields, out) {
+    var langs = state.doc.languages;
+    fields.forEach(function (f) {
+      var vals = langs.map(function (l) { return ((words || {})[l] || {})[f] || ''; });
+      var written = vals.some(function (v) { return v && !isLorem(v); });
+      langs.forEach(function (l, i) {
+        if (isLorem(vals[i]) || (!vals[i] && written)) out[l] = 1;
+      });
+    });
+    return out;
+  }
+  function sectionMissing(s, out) {
+    out = out || {};
+    missingIn(s.words, SECTIONS[s.type] ? SECTIONS[s.type].words : [], out);
+    (s.items || []).forEach(function (it) { missingIn(it.words, ['title', 'text'], out); });
+    return out;
+  }
+  /* "missing HR, SR" (Chase's own words for it), in the site's language
+     order; the full names on hover. Codes, because a page row has room for
+     three of them and not for three names. */
+  function missingNote(out) {
+    var codes = state.doc.languages.filter(function (l) { return out[l]; });
+    if (!codes.length) return '';
+    return '<span class="ws-miss" title="' + esc(tr('ms.missing') + ' ' + codes.map(langName).join(', ')) + '">' +
+      esc(tr('ms.missing') + ' ' + codes.join(', ').toUpperCase()) + '</span>';
+  }
+  /* A language turned on: every field written in another language gets
+     stand-in words in this one, on every page, tab, card and link, and in
+     the footer — so the page in that language shows what is there to
+     write rather than quietly borrowing another language's words. */
+  function fillLanguage(code) {
+    var others = state.doc.languages.filter(function (l) { return l !== code; });
+    function fillWords(words, fields) {
+      fields.forEach(function (f) {
+        var had = others.some(function (l) { return words[l] && words[l][f]; });
+        if (!had) return;
+        words[code] = words[code] || {};
+        if (!words[code][f]) words[code][f] = lorem(f);
+      });
+    }
+    state.doc.pages.forEach(function (pg) {
+      allSecs(pg).forEach(function (sec) {
+        if (!SECTIONS[sec.type]) return;
+        sec.words = sec.words || {};
+        fillWords(sec.words, SECTIONS[sec.type].words);
+        (sec.items || []).forEach(function (it) { it.words = it.words || {}; fillWords(it.words, ['title', 'text']); });
+      });
+    });
+    var foot = state.doc.footer || {};
+    if (foot.words) fillWords(foot.words, ['tagline', 'small']);
+  }
+
   function fillPair() {
     var langs = state.doc.languages;
     if (langs.indexOf(state.langA) === -1) state.langA = langs.indexOf(state.doc.fallback) !== -1 ? state.doc.fallback : langs[0];
@@ -502,9 +614,28 @@
 
   /* The preview is a 1280px desktop shrunk to the pane's width (see the
      .ws-preview-frame rule in staff.css). */
+  /* A COMPUTER OR A PHONE (2026-10-06, Chase: "For the navigation in site
+     creator (or anywhere where there are specific mobile options), the
+     preview window should change to mobile when changing those options").
+     The phone is a 390px screen, at full size where the pane allows. */
+  var PHONE_W = 390;
+  function setDevice(dev) {
+    if (state.device === dev) return;
+    state.device = dev;
+    $('wsPreviewPane').classList.toggle('is-phone', dev === 'phone');
+    [].forEach.call(document.querySelectorAll('.ws-dev [data-dev]'), function (b) { b.setAttribute('aria-pressed', b.dataset.dev === dev ? 'true' : 'false'); });
+    fitFrame();
+  }
+  [].forEach.call(document.querySelectorAll('.ws-dev [data-dev]'), function (b) {
+    b.addEventListener('click', function () { setDevice(b.dataset.dev); refreshFrame(); });
+  });
   function fitFrame() {
     var box = $('wsFrame').parentNode, w = box.clientWidth;
-    if (w) box.style.setProperty('--ws-scale', (w / 1280).toFixed(4));
+    if (!w) return;
+    var phone = state.device === 'phone';
+    var scale = phone ? Math.min(1, w / PHONE_W) : w / 1280;
+    box.style.setProperty('--ws-scale', scale.toFixed(4));
+    box.style.setProperty('--ws-left', phone ? Math.max(0, (w - PHONE_W * scale) / 2).toFixed(1) + 'px' : '0px');
   }
   if (window.ResizeObserver) new ResizeObserver(fitFrame).observe($('wsFrame').parentNode);
 
@@ -525,7 +656,9 @@
        into view: the jump Chase saw when opening a section. */
     var open = state.tab === 'pages' && state.page && state.edit != null && currentPage().sections[state.edit];
     state.frameTarget = open ? 's-' + open.id : null;
-    $('wsFrame').src = path + '?draft' + (foot ? '&part=footer' : '') + '&t=' + Date.now();
+    /* a tab chosen in the editor opens in the preview too (#its id) */
+    var vt = state.tab === 'pages' && state.page ? activeTab(realPage()) : null;
+    $('wsFrame').src = path + '?draft' + (foot ? '&part=footer' : '') + '&t=' + Date.now() + (vt ? '#' + vt.id : '');
   }
 
   $('wsFrame').addEventListener('load', function () {
@@ -620,7 +753,7 @@
   function jumpTargets(key) {
     if (!/^(sec|item):/.test(key)) return [];
     var self = currentPage().sections[+key.split(':')[1]];
-    return currentPage().sections.filter(function (x) { return x !== self; });
+    return allSecs(realPage()).filter(function (x) { return x !== self; });
   }
   function sectionName(x) {
     var w = (x.words && (x.words[state.langA] || x.words[state.doc.fallback])) || {};
@@ -661,11 +794,62 @@
      alone, in the same place, its settings sorted into a few tabs, while
      the site beside it keeps showing the result. */
 
-  function currentPage() {
+  function realPage() {
     var id = state.page || 'home';
     var p = state.doc.pages.filter(function (x) { return x.id === id; })[0];
     if (!p) { state.page = null; state.edit = null; p = state.doc.pages[0]; }
+    /* a page opened afresh opens on its own sections, not a tab */
+    if (state.viewFor !== p.id) { state.viewFor = p.id; state.view = null; }
     return p;
+  }
+  /* THE PAGE AS IT IS BEING EDITED (2026-10-06): its own sections, or — with
+     one of its tabs chosen — that tab's. Every section control works on
+     currentPage().sections, so a tab's sections are edited exactly as the
+     page's are; everything else reads through to the page itself. */
+  function activeTab(p) {
+    if (!state.view || !p.tabs || !p.tabs.items) return null;
+    return p.tabs.items.filter(function (t) { return t.id === state.view; })[0] || null;
+  }
+  function currentPage() {
+    var p = realPage(), t = activeTab(p);
+    if (!t) { state.view = null; return p; }
+    return Object.create(p, { sections: { value: t.sections, writable: true, enumerable: true } });
+  }
+  /* every section of a page, its tabs' too */
+  function allSecs(p) {
+    return (p.sections || []).concat(((p.tabs && p.tabs.items) || []).reduce(function (a, t) { return a.concat(t.sections || []); }, []));
+  }
+  function tabName(t, i) { return (t.label || {})[state.langA] || (t.label || {})[state.doc.fallback] || tr('ws.tabs.new') + ' ' + (i + 1); }
+  function newTab(i) { var l = {}; return { id: 't' + Date.now().toString(36) + i, label: l, sections: [] }; }
+  /* the strip of tabs, like a browser's: the page's own sections, each tab,
+     + for another; the bar's look behind "Tab style", so it stays out of the way */
+  function tabsHtml(p) {
+    if (!p.tabs || !p.tabs.items || !p.tabs.items.length) {
+      return '<div class="ws-tabs"><button type="button" class="ws-tabs-add" data-tabs-add>+ ' + esc(tr('ws.tabs.add')) + '</button></div>';
+    }
+    var items = p.tabs.items, t = activeTab(p), ti = t ? items.indexOf(t) : -1;
+    var html = '<div class="ws-tabs" role="tablist">' +
+      '<button type="button" class="ws-tabchip' + (!t ? ' is-on' : '') + '" data-tab-view="" aria-pressed="' + !t + '">' + esc(tr('ws.tabs.page')) + '</button>' +
+      items.map(function (x, i) {
+        return '<button type="button" class="ws-tabchip' + (x === t ? ' is-on' : '') + '" data-tab-view="' + esc(x.id) + '" aria-pressed="' + (x === t) + '">' + esc(tabName(x, i)) + '</button>';
+      }).join('') +
+      (items.length < 6 ? '<button type="button" class="ws-tabchip ws-tab-plus" data-tab-add aria-label="' + esc(tr('ws.tabs.addOne')) + '" title="' + esc(tr('ws.tabs.addOne')) + '">+</button>' : '') +
+      '<button type="button" class="ghost-btn sm ws-tabstyle-btn" data-tab-style aria-expanded="' + !!state.tabStyleOpen + '">' + esc(tr('ws.tabs.style')) + '</button>' +
+      '</div>';
+    if (state.tabStyleOpen) {
+      html += '<div class="ws-tabstyle">' +
+        '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.tabs.style')) + '</span>' + chips('tabstyle', ['joined', 'pills', 'underline'], p.tabs.style || 'joined', function (v) { return tr('ws.tabs.style.' + v); }) + '</div>' +
+        '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.tabs.align')) + '</span>' + chips('tabalign', ['center', 'left'], p.tabs.align || 'center', function (v) { return tr('ws.tabs.align.' + v); }) + '</div></div>';
+    }
+    if (t) {
+      html += '<div class="ws-tabedit"><label class="ws-pagename"><span>' + esc(tr('ws.tabs.name')) + '</span>' +
+        '<input type="text" maxlength="30" data-tab-name value="' + esc((t.label || {})[state.langA] || '') + '" placeholder="' + esc(tr('ws.tabs.new') + ' ' + (ti + 1)) + '" lang="' + esc(state.langA) + '"></label>' +
+        '<span class="ws-stile-tools">' +
+          '<button type="button" class="ws-icon" data-tab-move="-1" aria-label="' + esc(tr('ws.tabs.left')) + '" title="' + esc(tr('ws.tabs.left')) + '"' + (ti === 0 ? ' disabled' : '') + '>←</button>' +
+          '<button type="button" class="ws-icon" data-tab-move="1" aria-label="' + esc(tr('ws.tabs.right')) + '" title="' + esc(tr('ws.tabs.right')) + '"' + (ti === items.length - 1 ? ' disabled' : '') + '>→</button>' +
+          '<button type="button" class="ws-icon del" data-tab-remove aria-label="' + esc(tr('ws.tabs.remove')) + '" title="' + esc(tr('ws.tabs.remove')) + '">✕</button></span></div>';
+    }
+    return html;
   }
   function plain(html) {
     var d = document.createElement('div'); d.innerHTML = String(html || '').replace(/\n/g, ' ');
@@ -680,7 +864,7 @@
   function sectionChanged(s) {
     var pub = state.body.published, p = currentPage();
     if (!pub) return false;
-    var was = (pub.pages.filter(function (x) { return x.id === p.id; })[0] || { sections: [] }).sections.filter(function (x) { return x.id === s.id; })[0];
+    var was = allSecs(pub.pages.filter(function (x) { return x.id === p.id; })[0] || { sections: [] }).filter(function (x) { return x.id === s.id; })[0];
     return JSON.stringify(s) !== JSON.stringify(was);
   }
   function dot(on) { return on ? '<i class="ws-dot" title="' + esc(tr('ws.changedHere')) + '"></i>' : ''; }
@@ -704,7 +888,7 @@
     var was = anchorAt != null && $('wsPages').querySelector('.ws-acc[data-si="' + anchorAt + '"]');
     var before = was ? was.getBoundingClientRect().top : null;
 
-    var pi = state.doc.pages.indexOf(p);
+    var pi = state.doc.pages.indexOf(realPage());
     var html = '<div class="ws-crumb">' +
       '<button type="button" class="ghost-btn sm" data-all-pages>← ' + esc(tr('ws.allPages')) + '</button>' +
       '<label class="ws-pagepick"><span class="sr-only">' + esc(tr('ws.tab.pages')) + '</span>' +
@@ -716,6 +900,7 @@
       '</div>' +
       '<label class="ws-pagename"><span>' + esc(tr('ws.nameInMenu')) + '</span>' + refPage(p) +
         '<input type="text" maxlength="40" data-page-label="' + pi + '" value="' + esc((p.label || {})[state.langA] || '') + '" placeholder="' + esc(builtInName(p.id, state.langA)) + '" lang="' + esc(state.langA) + '"></label>';
+    html += tabsHtml(realPage());
 
     var n = p.sections.length;
     /* Room below an open section, so even the last one can rise to the top. */
@@ -727,7 +912,7 @@
           '<div class="ws-acc-head">' +
             '<button type="button" class="ws-stile" data-edit-sec="' + i + '" aria-expanded="' + open + '">' +
               '<span class="ws-sketch ws-sketch-sm" aria-hidden="true">' + sketch(x.type) + '</span>' +
-              '<span class="ws-stile-words"><b>' + esc(tr('ws.sec.' + x.type)) + dot(sectionChanged(x)) + '</b><span>' + esc(summary(x)) + '</span></span>' +
+              '<span class="ws-stile-words"><b>' + esc(tr('ws.sec.' + x.type)) + dot(sectionChanged(x)) + '</b><span>' + esc(summary(x)) + '</span>' + missingNote(sectionMissing(x)) + '</span>' +
               '<span class="ws-chev" aria-hidden="true"></span></button>' +
             '<span class="ws-stile-tools">' +
               '<button type="button" class="ws-icon" data-sec-up="' + i + '" aria-label="' + esc(tr('ws.up')) + '"' + (i === 0 ? ' disabled' : '') + '>↑</button>' +
@@ -767,11 +952,12 @@
     var pages = state.doc.pages, last = pages.length - 1;
     $('wsPages').innerHTML = '<div class="ws-head"><h2>' + esc(tr('ws.yourPages')) + '</h2></div>' +
       '<ol class="ws-plist">' + pages.map(function (x, i) {
-        var n = x.sections.length;
+        var n = allSecs(x).length;
         return '<li class="ws-prow' + (x.on ? '' : ' is-off') + '">' +
           '<button type="button" class="ws-prow-open" data-open-page="' + esc(x.id) + '">' +
             '<b>' + esc(pageLabel(x, state.langA)) + dot(pageChanged(x)) + '</b>' +
-            '<span>' + esc(n === 1 ? tr('ws.nSections1') : n ? fill('ws.nSections', { n: n }) : tr('ws.noSectionsShort')) + '</span>' +
+            '<span class="ws-prow-sub"><span>' + esc(n === 1 ? tr('ws.nSections1') : n ? fill('ws.nSections', { n: n }) : tr('ws.noSectionsShort')) + '</span>' +
+            missingNote(allSecs(x).reduce(function (o, sec) { return sectionMissing(sec, o); }, {})) + '</span>' +
             '<span class="ws-chev ws-chev-r" aria-hidden="true"></span></button>' +
           (x.id === 'home' ? '<span class="ws-always">' + esc(tr('ws.always')) + '</span>' : sw('data-page-on="' + i + '"', x.on, tr('ws.shown'))) +
           '<span class="ws-move">' +
@@ -892,7 +1078,7 @@
       html += '<div class="ws-linkrows">' + (s.items || []).map(function (it, j) {
         var t = (it.words || {})[state.langA] || {}, k = i + ':' + j, open = state.openItem === j;
         var jump = it.url && it.url.indexOf('section:') === 0 &&
-          currentPage().sections.filter(function (x) { return 'section:' + x.id === it.url; })[0];
+          allSecs(realPage()).filter(function (x) { return 'section:' + x.id === it.url; })[0];
         var where = !it.url || it.url === 'https://' ? tr('ws.link.nowhere') : jump ? sectionName(jump) : it.url.indexOf('page:') === 0
           ? pageLabel(state.doc.pages.filter(function (x) { return 'page:' + x.id === it.url; })[0] || { id: it.url.slice(5) }, state.langA) : it.url.replace(/^https?:\/\//, '');
         var head = '<div class="ws-linkrow' + (open ? ' is-open' : '') + '">' +
@@ -905,8 +1091,13 @@
           '<label class="fld"><span>' + esc(tr('ws.itemTitle')) + '</span><input type="text" data-item="' + k + ':title" value="' + esc(t.title || '') + '" placeholder="' + esc(ph('item', 'title')) + '" lang="' + esc(state.langA) + '"></label>' +
           '<label class="fld"><span>' + esc(tr('ws.itemText')) + '</span><input type="text" data-item="' + k + ':text" value="' + esc(t.text || '') + '" placeholder="' + esc(ph('item', 'text')) + '" lang="' + esc(state.langA) + '"></label>' +
           '<label class="fld"><span>' + esc(tr('ws.itemType')) + '</span><input type="text" maxlength="40" data-item="' + k + ':type" value="' + esc(t.type || '') + '" lang="' + esc(state.langA) + '"></label>' +
-          '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.tier')) + '</span>' +
-            chips('tier:' + k, ['big', 'std', 'small'], it.tier || 'std', function (v) { return tr('ws.tier.' + v); }) + '</div>' +
+          (s.variant === 'buttons'
+            /* each button its own color (2026-10-07) */
+            ? '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.lcolor')) + '</span>' +
+              chips('lcolor:' + k, ['accent', 'accent2', 'outline'], /^#/.test(it.color || '') ? '' : it.color || 'accent', function (v) { return tr('ws.lcolor.' + v); }) +
+              '<label class="ws-anycolor' + (/^#/.test(it.color || '') ? ' is-on' : '') + '" title="' + esc(tr('ws.lcolor.any')) + '"><input type="color" data-item-color="' + k + '" value="' + esc(/^#/.test(it.color || '') ? it.color : '#3366cc') + '" aria-label="' + esc(tr('ws.lcolor.any')) + '"></label></div>'
+            : '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.tier')) + '</span>' +
+              chips('tier:' + k, ['big', 'std', 'small'], it.tier || 'std', function (v) { return tr('ws.tier.' + v); }) + '</div>') +
           '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.link.goesTo')) + '</span>' + linkPicker('item:' + k, it.url || 'https://', false) + '</div>' +
           '<div class="ws-sec-row">' + (it.photo ? '<img class="ws-thumb" src="' + esc(it.photo) + '" alt="">' : '') +
             '<label class="ghost-btn sm ws-file">' + esc(it.photo ? tr('ws.changePhoto') : tr('ws.choosePhoto')) + '<input type="file" accept="image/*" data-item-photo="' + k + '" hidden></label>' +
@@ -917,17 +1108,38 @@
 
     if (state.sectab === 'look') {
       /* A Words section's old Left / Centered layout IS its alignment now. */
+      /* cards saved as Attached / Detached read as Vertical / Horizontal with
+         or without lines (2026-10-06) */
+      if (s.type === 'cards' && (s.variant === 'attached' || s.variant === 'detached')) {
+        if (typeof s.lines !== 'boolean') s.lines = s.variant === 'attached';
+        s.variant = s.variant === 'attached' ? 'vertical' : 'horizontal';
+      }
       if (spec.variants.length > 1 && s.type !== 'text') {
         html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.layout')) + '</span>' +
           chips('variant:' + i, spec.variants, s.variant, function (v) { return tr('ws.v.' + s.type + '.' + v); }) + '</div>';
+      /* Past updates: which list, and how many (2026-10-06) */
+      if (s.type === 'newsletters') {
+        var lists = state.body.mail_lists || [];
+        html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.news.list')) + '</span><select data-news-list="' + i + '">' +
+          '<option value="">' + esc(tr('ws.news.all')) + '</option>' + lists.map(function (l) {
+            return '<option value="' + esc(l.slug) + '"' + (s.list === l.slug ? ' selected' : '') + '>' + esc(l.name) + '</option>';
+          }).join('') + '</select></div>';
+        if (s.variant !== 'latest') {
+          html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.news.count')) + '</span>' +
+            chips('newscount:' + i, ['3', '4', '5', '6', '8', '10', '12'], String(s.count || 5), function (v) { return v; }) + '</div>';
+        }
+      }
       }
       html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.align')) + '</span>' +
-        chips('align:' + i, ['left', 'center', 'right', 'indent'], s.align || defaultAlign(s), function (v) { return tr('ws.align.' + v); }) + '</div>';
+        chips('align:' + i, ['left', 'center', 'right'], s.align === 'indent' ? 'left' : s.align || defaultAlign(s), function (v) { return tr('ws.align.' + v); }) + '</div>' +
+        /* Indented: a switch on any of the three (2026-10-07) */
+        '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.indent')) + '</span>' +
+        chips('indent:' + i, ['on', 'off'], s.indent || s.align === 'indent' ? 'on' : 'off', function (v) { return tr('ws.onoff.' + v); }) + '</div>';
       /* The opening's scroll indicator, for this page. Stored on the page;
          offered here, where it shows. Not offered while the site's Scroll
          hint is None: there would be nothing to show. */
       if (s.type === 'hero' && (state.doc.design.motion || {}).cue !== 'none') {
-        html += '<div class="ws-field">' + sw('data-page-cue="' + state.doc.pages.indexOf(p) + '"', p.cue !== false, tr('ws.cueOnPage')) + '</div>';
+        html += '<div class="ws-field">' + sw('data-page-cue="' + state.doc.pages.indexOf(realPage()) + '"', p.cue !== false, tr('ws.cueOnPage')) + '</div>';
       }
       /* The hero's line under the title (render.js). Unset, the monogram
          shows it and the rest do not — exactly as before the option. */
@@ -938,9 +1150,7 @@
       }
       /* The header's own looks (render.js .phead). */
       if (s.type === 'header') {
-        html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.bg')) + '</span>' +
-          chips('hbg:' + i, ['plain', 'raised', 'tint', 'accent'], s.bg || 'plain', function (v) { return tr('ws.bg.' + v); }) + '</div>' +
-          '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.topline')) + '</span>' +
+        html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.topline')) + '</span>' +
           chips('topline:' + i, ['on', 'off'], s.topline === false ? 'off' : 'on', function (v) { return tr('ws.divider.' + v); }) + '</div>' +
           '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.divider')) + '</span>' +
           chips('divider:' + i, ['on', 'off'], s.divider === false ? 'off' : 'on', function (v) { return tr('ws.divider.' + v); }) + '</div>';
@@ -953,6 +1163,9 @@
           chips('vlinks:' + i, ['buttons', 'outline', 'subtle'], s.linkStyle || 'buttons', function (v) { return tr('ws.vLinks.' + v); }) + '</div>';
       }
       if (s.type === 'cards') {
+        html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.cardLines')) + '</span>' +
+          chips('clines:' + i, ['attached', 'detached'], s.variant === 'open' ? (s.lines ? 'detached' : 'attached')
+            : (typeof s.lines === 'boolean' ? s.lines : s.variant !== 'horizontal') ? 'attached' : 'detached', function (v) { return tr('ws.cardLines.' + v); }) + '</div>';
         html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.numbers')) + '</span>' +
           chips('numbers:' + i, ['on', 'off'], s.numbers === false ? 'off' : 'on', function (v) { return tr('ws.divider.' + v); }) + '</div>';
       }
@@ -972,10 +1185,23 @@
             chips('tinline:' + i, ['with', 'above'], withW ? 'with' : 'above', function (v) { return tr('ws.titlePlace.' + v); }) + '</div>';
         }
       }
-      if (!FLAT[s.type]) {
-        html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.bg')) + '</span>' +
-          chips('raised:' + i, ['plain', 'raised'], s.raised ? 'raised' : 'plain', function (v) { return tr('ws.bg.' + v); }) + '</div>';
+      /* Plain, Raised or Tint for EVERY section (2026-10-07, Chase: "Headers
+         don't have the plain, raised, and tint options like the other
+         sections. All sections need those same options"); the header's
+         Accent stays beside them. */
+      /* Bars beside the title, chaseroush.com's Give page (2026-10-07) */
+      if (spec.words.indexOf('heading') !== -1) {
+        html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.titleBars')) + '</span>' +
+          chips('tbars:' + i, ['on', 'off'], s.titleBars ? 'on' : 'off', function (v) { return tr('ws.onoff.' + v); }) + '</div>';
       }
+      /* Joined to the section above: no gap, its ground (2026-10-07) */
+      if (i > 0) {
+        html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.join')) + '</span>' +
+          chips('join:' + i, ['on', 'off'], s.join ? 'on' : 'off', function (v) { return tr('ws.onoff.' + v); }) + '</div>';
+      }
+      var grounds = s.type === 'header' ? ['plain', 'raised', 'tint', 'accent'] : ['plain', 'raised', 'tint'];
+      if (!s.join || i === 0) html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.bg')) + '</span>' +
+        chips('raised:' + i, grounds, s.type === 'header' && s.bg === 'accent' ? 'accent' : s.tint ? 'tint' : s.raised ? 'raised' : 'plain', function (v) { return tr('ws.bg.' + v); }) + '</div>';
     }
 
     html += '</div><div class="ws-panelfoot">' +
@@ -999,7 +1225,7 @@
       var b = state.langB, r = b && refWords && refWords[b];
       return '<div class="fld ws-rfld">' + label +
         (r ? '<small class="ms-ref" lang="' + esc(b) + '">' + inlineHtml(r) + '</small>' : '') +
-        '<div class="rt rt-' + f + '" contenteditable="true" role="textbox" aria-multiline="' + (f !== 'heading') + '" data-rt="' + i + ':' + f + '"' +
+        '<div class="rt rt-' + f + (hint && !plain(value || '').trim() ? ' is-empty' : '') + '" contenteditable="true" role="textbox" aria-multiline="' + (f !== 'heading') + '" data-rt="' + i + ':' + f + '"' +
         (hint ? ' data-ph="' + esc(hint) + '" aria-placeholder="' + esc(hint) + '"' : '') + ' lang="' + esc(state.langA) + '">' +
         inlineHtml(value, true) + '</div></div>';
     }
@@ -1009,6 +1235,12 @@
   }
   /* Stored formatted words back into a box: only the marks it may hold, links
      kept only inside the box being edited. */
+  /* A formatted box is empty when it holds no words, whatever markup the
+     browser left behind; only then does its suggestion show (staff.css). */
+  document.addEventListener('input', function (e) {
+    var rt = e.target && e.target.closest && e.target.closest('.rt[data-ph]');
+    if (rt) rt.classList.toggle('is-empty', !rt.textContent.trim());
+  });
   function inlineHtml(v, withLinks) {
     var out = String(v || '').replace(/<(?!\/?(b|i|u)>)(?!a href="[^"]*">)(?!\/a>)(?!span( data-(sz|c)="[^"]*")+>)(?!\/span>)[^>]*>/g, '');
     if (!withLinks) out = out.replace(/<\/?a[^>]*>/g, '');
@@ -1375,14 +1607,25 @@
     if (e.target === this) return closeAdd();
     var t = e.target.closest('[data-add-type]');
     if (!t) return;
-    var type = t.getAttribute('data-add-type'), spec = SECTIONS[type], words = {};
-    state.doc.languages.forEach(function (l) { words[l] = {}; spec.words.forEach(function (f) { words[l][f] = ''; }); });
+    var type = t.getAttribute('data-add-type'), spec = SECTIONS[type], words = {}, fills = loremFields(type);
+    state.doc.languages.forEach(function (l) {
+      words[l] = {};
+      spec.words.forEach(function (f) { words[l][f] = fills.indexOf(f) !== -1 ? lorem(f) : ''; });
+    });
     var s = { id: uid(), type: type, variant: spec.variants[0], words: words };
     if (type === 'hero') s.divider = true;
     s.align = defaultAlign(s);
     if (spec.photo) s.photo = null;
     if (spec.buttons) s.buttons = ['give', 'stay'];
-    if (spec.items) s.items = [];
+    /* Something to see in the cards and links too: three cards, two links
+       to pages the site has, each in stand-in words. */
+    var itemWords = function () {
+      var w = {};
+      state.doc.languages.forEach(function (l) { w[l] = { title: lorem('title'), text: lorem('caption') + '.' }; });
+      return w;
+    };
+    if (spec.items === 'cards') s.items = [0, 1, 2].map(function () { return { words: itemWords() }; });
+    else if (spec.items) s.items = ['page:about', 'page:mission'].map(function (u) { return { url: u, photo: null, words: itemWords() }; });
     if (spec.items === 'cards') s.numbers = true;
     /* Where it was asked for, and straight into it: a new section is one
        to be filled in. */
@@ -1557,6 +1800,8 @@
      the site, and a tap opens its one box. The owner's other links as
      plain rows — what it says, where it goes — one opened at a time. The
      preview beside shows the footer, where they appear. */
+  /* a link saved as an icon, before each link had its place, is in line */
+  function placeOf(l) { return l.place === 'inline' || l.place === 'apart' ? l.place : l.icon ? 'inline' : 'apart'; }
   function drawLinks() {
     var links = state.doc.links;
     var social = function (k) { return links.filter(function (x) { return x.kind === k; })[0]; };
@@ -1579,6 +1824,7 @@
     var custom = links.map(function (l, i) { return { l: l, i: i }; }).filter(function (x) { return x.l.kind === 'custom'; });
     html += '<div class="ws-head ws-head-row"><h2>' + esc(tr('ws.custom')) + '</h2>' +
       '<button type="button" class="solid-btn sm" data-custom-add>+ ' + esc(tr('ws.addLink')) + '</button></div>';
+
     if (custom.length) {
       html += '<div class="ws-linkrows">' + custom.map(function (x, n) {
         var open = state.openCustom === x.i, u = x.l.url || '';
@@ -1595,9 +1841,17 @@
           '<label class="fld"><span>' + esc(tr('ws.linkName')) + '</span>' + ref(x.l.label) +
             '<input type="text" maxlength="40" data-custom-label="' + x.i + '" value="' + esc((x.l.label || {})[state.langA] || '') + '" lang="' + esc(state.langA) + '"></label>' +
           '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.link.goesTo')) + '</span>' + linkPicker('custom:' + x.i, u || 'https://', false) + '</div>' +
-          /* A web address may show as its site's icon, beside the social icons. */
-          (/^https?:\/\/[^/]+\.[^/]+/.test(u) ? '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.showAs')) + '</span>' +
-            chips('cshow:' + x.i, ['words', 'icon'], x.l.icon ? 'icon' : 'words', function (v) { return tr('ws.showAs.' + v); }) + '</div>' : '') + '</div>';
+          /* WHERE IT SITS, per link (2026-10-07, Chase: "I wanted those
+             options different PER link"): in line with the social links, or
+             separated — as words or as an icon; and its icon may be a
+             picture of the owner's own. */
+          '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.linkPlace')) + '</span>' +
+            chips('cplace:' + x.i, ['inline', 'apart'], placeOf(x.l), function (v) { return tr('ws.linkPlace.' + v); }) + '</div>' +
+          (placeOf(x.l) === 'apart' ? '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.showAs')) + '</span>' +
+            chips('cshow:' + x.i, ['icon', 'words'], x.l.show === 'icon' ? 'icon' : 'words', function (v) { return tr('ws.showAs.' + v); }) + '</div>' : '') +
+          (placeOf(x.l) === 'inline' || x.l.show === 'icon' ? '<div class="ws-sec-row">' + (x.l.iconImg ? '<img class="ws-thumb ws-thumb-icon" src="' + esc(x.l.iconImg) + '" alt="">' : '') +
+            '<label class="ghost-btn sm ws-file">' + esc(tr(x.l.iconImg ? 'ws.iconChange' : 'ws.iconOwn')) + '<input type="file" accept="image/*" data-custom-icon="' + x.i + '" hidden></label>' +
+            (x.l.iconImg ? '<button type="button" class="link-btn" data-custom-unicon="' + x.i + '">' + esc(tr('ws.iconAuto')) + '</button>' : '') + '</div>' : '') + '</div>';
       }).join('') + '</div>';
     } else {
       html += '<p class="ws-small">' + esc(tr('ws.noCustom')) + '</p>';
@@ -1634,10 +1888,26 @@
      owns the site (that read "Thauma Master Account"). */
   function siteName() { return state.body.partner.display_name || (state.body.owner && state.body.owner.name) || ''; }
   function autoTitle(p, l) { var nm = siteName(); return p.id === 'home' ? nm : pageLabel(p, l) + ' · ' + nm; }
-  function autoDesc(p, l) {
+  /* Titles as each language writes them: English in Title Case, the rest
+     as written (model.js titleCase, the same rule the page uses). */
+  var SMALL_EN = ['a', 'an', 'the', 'and', 'but', 'or', 'nor', 'for', 'as', 'at', 'by', 'in', 'of', 'on', 'per', 'to', 'via', 'with', 'from'];
+  function titleOf(text, lang) {
+    if (String(lang || '').split('-')[0] !== 'en') return text;
+    var ws = String(text || '').split(/(\s+)/), real = [];
+    ws.forEach(function (w, i) { if (/\S/.test(w)) real.push(i); });
+    return ws.map(function (w, i) {
+      if (!/\S/.test(w)) return w;
+      var bare = w.replace(/^[^\p{L}]+|[^\p{L}]+$/gu, '').toLowerCase();
+      if (i !== real[0] && i !== real[real.length - 1] && SMALL_EN.indexOf(bare) !== -1) return w.toLowerCase();
+      return /\p{Lu}/u.test(w.slice(1)) ? w : w.replace(/\p{L}/u, function (c) { return c.toUpperCase(); });
+    }).join('');
+  }
+  function autoDesc(p, l) { return titleOf(autoDesc0(p, l), l); }
+  function autoDesc0(p, l) {
     var pick = function (pg) {
-      for (var a = 0; a < pg.sections.length; a++) {
-        var w = (pg.sections[a].words || {})[l] || (pg.sections[a].words || {})[state.doc.fallback] || {};
+      var secs = allSecs(pg);
+      for (var a = 0; a < secs.length; a++) {
+        var w = (secs[a].words || {})[l] || (secs[a].words || {})[state.doc.fallback] || {};
         var f = ['text', 'kicker', 'sub'];
         for (var b = 0; b < f.length; b++) {
           var t = String(w[f[b]] || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
@@ -1648,7 +1918,7 @@
     };
     return pick(p) || pick(state.doc.pages[0]);
   }
-  function firstPhotoOf(p) { return p.sections.map(function (x) { return x.photo; }).filter(Boolean)[0] || null; }
+  function firstPhotoOf(p) { return allSecs(p).map(function (x) { return x.photo; }).filter(Boolean)[0] || null; }
   function shareMode(p) { var o = p.seo || {}; return o.image || (p.shareImage ? 'custom' : 'card'); }
 
   /* The look a name card wears: the site's own ground, ink and accent. */
@@ -1959,6 +2229,13 @@
   $('wsRoot').addEventListener('input', function (e) {
     var t = e.target, p = currentPage(), v = t.value;
     if (t.dataset.pageLabel !== undefined) { var pg = state.doc.pages[+t.dataset.pageLabel]; pg.label = pg.label || {}; pg.label[state.langA] = v; return changed(); }
+    if (t.dataset.tabName !== undefined) {
+      var tn = activeTab(realPage()); if (!tn) return;
+      tn.label = tn.label || {}; tn.label[state.langA] = v;
+      var chip = $('wsPages').querySelector('[data-tab-view="' + tn.id + '"]');
+      if (chip) chip.textContent = tabName(tn, realPage().tabs.items.indexOf(tn));
+      return changed();
+    }
     if (t.dataset.secWord) { var a = t.dataset.secWord.split(':'); words(p.sections[+a[0]], state.langA)[a[1]] = v; return changed(); }
     if (t.dataset && t.dataset.rt) { var rt = t.dataset.rt.split(':'); words(p.sections[+rt[0]], state.langA)[rt[1]] = richFrom(t); return changed(); }
     if (t.dataset.item) { var b = t.dataset.item.split(':'); words(p.sections[+b[0]].items[+b[1]], state.langA)[b[2]] = v; return changed(); }
@@ -2033,15 +2310,18 @@
     }
     if (t.dataset.siteLang) {
       var code = t.dataset.siteLang, langs = state.doc.languages;
-      if (t.checked && langs.indexOf(code) === -1) langs.push(code);
+      if (t.checked && langs.indexOf(code) === -1) { langs.push(code); fillLanguage(code); }
       if (!t.checked) state.doc.languages = langs.filter(function (l) { return l !== code; });
       if (state.doc.languages.indexOf(state.doc.fallback) === -1) state.doc.fallback = state.doc.languages[0];
       fillPair(); drawSettings(); return changed();
     }
     if (t.dataset.fallback !== undefined) { state.doc.fallback = t.value; return changed(); }
+    if (t.dataset.itemColor) { var ck = t.dataset.itemColor.split(':'); p.sections[+ck[0]].items[+ck[1]].color = t.value.toLowerCase(); drawSections(); return changed(); }
+    if (t.dataset.newsList !== undefined) { p.sections[+t.dataset.newsList].list = t.value; drawSections(); return changed(); }
     /* Chosen, then straight into the editor: one step, not two (Chase,
        2026-10-04). Canceling keeps the photo as it came. */
     if (t.dataset.secPhoto) return upload(t, function (url) { var ps = p.sections[+t.dataset.secPhoto]; ps.photo = url; ps.photoEdit = null; drawSections(); editSectionPhoto(ps); });
+    if (t.dataset.customIcon) return upload(t, function (url) { state.doc.links[+t.dataset.customIcon].iconImg = url; drawLinks(); }, 256);
     if (t.dataset.logo !== undefined) return upload(t, function (url) { state.doc.design.logo = url; drawDesign(); });
     if (t.dataset.favicon !== undefined) return upload(t, function (url) { state.doc.design.favicon = url; drawDesign(); }, 256);
   });
@@ -2051,6 +2331,29 @@
     if (!t || t.disabled) return;
     var p = currentPage(), d = t.dataset;
     if (d.openPage) { state.page = d.openPage; state.edit = null; drawPages(); refreshFrame(); editorIntoView(); return; }
+    /* ---- a page's tabs (2026-10-06) ---- */
+    if (d.tabsAdd !== undefined || d.tabAdd !== undefined) {
+      var rp = realPage();
+      if (!rp.tabs || !rp.tabs.items) rp.tabs = { style: 'joined', align: 'center', items: [newTab(0)] };
+      var nt = newTab(rp.tabs.items.length); rp.tabs.items.push(nt);
+      state.view = (d.tabsAdd !== undefined ? rp.tabs.items[0] : nt).id; state.edit = null;
+      drawPages(); refreshFrame(); return changed();
+    }
+    if (d.tabView !== undefined) { state.view = d.tabView || null; state.edit = null; drawPages(); refreshFrame(); return; }
+    if (d.tabStyle !== undefined) { state.tabStyleOpen = !state.tabStyleOpen; drawPages(); return; }
+    if (d.tabMove) {
+      var mp = realPage(), mt = activeTab(mp); if (!mt) return;
+      move(mp.tabs.items, mp.tabs.items.indexOf(mt), +d.tabMove); drawPages(); refreshFrame(); return changed();
+    }
+    if (d.tabRemove !== undefined) {
+      var xp = realPage(), xt = activeTab(xp); if (!xt) return;
+      var okT = !xt.sections.length || await window.StaffConfirm({ title: fill('ws.tabs.removeQ', { name: tabName(xt, xp.tabs.items.indexOf(xt)) }),
+        confirm: tr('ws.tabs.remove'), cancel: tr('ms.cancel'), danger: true });
+      if (!okT) return;
+      xp.tabs.items.splice(xp.tabs.items.indexOf(xt), 1);
+      if (!xp.tabs.items.length) delete xp.tabs;
+      state.view = null; state.edit = null; drawPages(); refreshFrame(); return changed();
+    }
     if (d.allPages !== undefined) { state.page = null; state.edit = null; drawPages(); refreshFrame(); editorIntoView(); return; }
     if (d.editSec !== undefined) {
       /* A row opens where it is; pressing it again, or Done, folds it. */
@@ -2092,6 +2395,7 @@
       var nm = $('wsLinks').querySelector('[data-custom-label="' + state.openCustom + '"]'); if (nm) nm.focus();
       return;
     }
+    if (d.customUnicon) { delete state.doc.links[+d.customUnicon].iconImg; drawLinks(); return changed(); }
     if (d.customRemove) { state.doc.links.splice(+d.customRemove, 1); state.openCustom = null; drawLinks(); return changed(); }
     if (d.customOpen !== undefined) { state.openCustom = state.openCustom === +d.customOpen ? null : +d.customOpen; drawLinks(); return; }
     if (d.customUp || d.customDown) {
@@ -2122,23 +2426,33 @@
     if (d.chip) {
       var val = d.value, name = d.chip;
       if (name.indexOf('variant:') === 0) { p.sections[+name.slice(8)].variant = val; drawSections(); }
-      else if (name.indexOf('raised:') === 0) { p.sections[+name.slice(7)].raised = val === 'raised'; drawSections(); }
+      else if (name === 'tabstyle' || name === 'tabalign') { var sp = realPage(); if (sp.tabs) sp.tabs[name === 'tabstyle' ? 'style' : 'align'] = val; drawPages(); }
+      else if (name.indexOf('newscount:') === 0) { p.sections[+name.slice(10)].count = +val; drawSections(); }
+      /* Open cards: Detached draws the upright lines between them, Attached
+         none (2026-10-07, Chase: "Maybe the attached is without lines and
+         detached is with vertical lines for that") */
+      else if (name.indexOf('clines:') === 0) { var cs = p.sections[+name.slice(7)]; cs.lines = cs.variant === 'open' ? val === 'detached' : val === 'attached'; drawSections(); }
+      else if (name.indexOf('raised:') === 0) { var rs = p.sections[+name.slice(7)]; rs.raised = val === 'raised'; rs.tint = val === 'tint'; if (rs.type === 'header') rs.bg = val === 'accent' ? 'accent' : 'plain'; drawSections(); }
       else if (name.indexOf('divider:') === 0) { p.sections[+name.slice(8)].divider = val === 'on'; drawSections(); }
       else if (name === 'advpic') { var ap = advPage(); ap.seo = ap.seo || { title: {}, desc: {} }; ap.seo.image = val; drawAdvanced(); }
       else if (name.indexOf('vpos:') === 0) { p.sections[+name.slice(5)].versePos = val; drawSections(); }
       else if (name.indexOf('talign:') === 0) { p.sections[+name.slice(7)].titleAlign = val; drawSections(); }
       else if (name.indexOf('tline:') === 0) { p.sections[+name.slice(6)].titleLine = val === 'on'; drawSections(); }
       else if (name.indexOf('tinline:') === 0) { p.sections[+name.slice(8)].titleInline = val === 'with'; drawSections(); }
-      else if (name.indexOf('cshow:') === 0) { state.doc.links[+name.slice(6)].icon = val === 'icon'; drawLinks(); }
+      else if (name.indexOf('cplace:') === 0) { var cl = state.doc.links[+name.slice(7)]; cl.place = val; delete cl.icon; drawLinks(); }
+      else if (name.indexOf('cshow:') === 0) { state.doc.links[+name.slice(6)].show = val; drawLinks(); }
       else if (name.indexOf('pheight:') === 0) { p.sections[+name.slice(8)].height = val; drawSections(); }
       else if (name.indexOf('vtitle:') === 0) { p.sections[+name.slice(7)].titleFrom = val; drawSections(); }
       else if (name.indexOf('vlinks:') === 0) { p.sections[+name.slice(7)].linkStyle = val; drawSections(); }
+      else if (name.indexOf('lcolor:') === 0) { var lk = name.slice(7).split(':'); p.sections[+lk[0]].items[+lk[1]].color = val; drawSections(); }
       else if (name.indexOf('tier:') === 0) { var tk = name.slice(5).split(':'); p.sections[+tk[0]].items[+tk[1]].tier = val; drawSections(); }
       else if (name.indexOf('numbers:') === 0) { p.sections[+name.slice(8)].numbers = val === 'on'; drawSections(); }
       else if (name.indexOf('topline:') === 0) { p.sections[+name.slice(8)].topline = val === 'on'; drawSections(); }
-      else if (name.indexOf('hbg:') === 0) { p.sections[+name.slice(4)].bg = val; drawSections(); }
       else if (name.indexOf('verse:') === 0) { p.sections[+name.slice(6)].verseStyle = val; drawSections(); }
-      else if (name.indexOf('align:') === 0) { p.sections[+name.slice(6)].align = val; drawSections(); }
+      else if (name.indexOf('align:') === 0) { var as = p.sections[+name.slice(6)]; if (as.align === 'indent') as.indent = true; as.align = val; drawSections(); }
+      else if (name.indexOf('tbars:') === 0) { p.sections[+name.slice(6)].titleBars = val === 'on'; drawSections(); }
+      else if (name.indexOf('join:') === 0) { p.sections[+name.slice(5)].join = val === 'on'; drawSections(); }
+      else if (name.indexOf('indent:') === 0) { var is = p.sections[+name.slice(7)]; if (is.align === 'indent') is.align = 'left'; is.indent = val === 'on'; drawSections(); }
       else if (name.indexOf('linkkind:') === 0) {
         var key = name.slice(9);
         var firstPage = (state.doc.pages.filter(function (x) { return x.on && x.id !== 'home'; })[0] || state.doc.pages[0]).id;
@@ -2150,7 +2464,12 @@
         if (box) box.focus();
       }
       else if (name.indexOf('footer:') === 0) { state.doc.footer[name.slice(7)] = val; drawFooter(); }
-      else if (name.indexOf('nav:') === 0) { navOf(state.doc)[name.slice(4)] = val; drawNav(); }
+      else if (name.indexOf('nav:') === 0) {
+        navOf(state.doc)[name.slice(4)] = val;
+        /* the phone's menu is seen on a phone */
+        if (name === 'nav:phone') setDevice('phone');
+        drawNav();
+      }
       else if (name === 'giveTo') { state.doc.design.giveTo = val; drawNav(); }
       else if (name.indexOf('motion:') === 0) { state.doc.design.motion[name.slice(7)] = val; drawDesign(); }
       else if (name === 'look' || name === 'menu' || name === 'brand' || name === 'mode' || name === 'faviconStyle') { state.doc.design[name] = val; drawDesign(); }

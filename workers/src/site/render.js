@@ -17,7 +17,7 @@
  * are attributes on <html> that the CSS and the small script below read, all
  * of it switched off for anyone whose device asks for less motion.
  */
-import { word, SECTIONS, plainOf } from "./model.js";
+import { word, SECTIONS, plainOf, allSections, titleCase } from "./model.js";
 import { TONES, HEX_COLOR, SIZE_NAMES } from "../lib/tones.js";
 import { readable, onColor, alpha, luminance, companion, hexToHsl, hslToHex } from "../embed-colour.js";
 
@@ -91,6 +91,28 @@ function looks(lookName, theme, colors = {}, mode = "auto") {
   return { ...type, ...light, alt: dark };
 }
 
+/**
+ * THE SITE'S GROUNDS, FOR ITS EMAIL (2026-10-07, Chase: "In dark mode, the
+ * text body is using the wrong color background. It needs to change
+ * depending on the color scheme"). A newsletter's dark letter is the site's
+ * dark ground and panel, its light letter the site's light ones — Night,
+ * Paper and Bold as they are, Custom from the owner's background — as plain
+ * hexes, because a mail client cannot mix colors. A look with no dark (or no
+ * light) version gets Night (or a plain light one).
+ */
+export function mailPalette(design, theme) {
+  const d = design || {}, colors = d.colors || {};
+  const L = looks(d.look || "night", theme, colors, "auto");
+  /* a light letter's card is lighter than its ground, as paper on a desk;
+     a dark one's is the site's raised panel */
+  const one = (P) => ({ bg: P.bg, card: P.scheme === "dark" ? P.panel : mix(P.bg, "#FFFFFF", 0.75), ink: P.fg, dim: /^#/.test(P.dim) ? P.dim : mix(P.bg, P.fg, 0.62),
+    line: mix(P.panel, P.fg, P.scheme === "dark" ? 0.12 : 0.1) });
+  const night = baseLook("night", theme);
+  if (d.look === "custom") return { light: one(L), dark: one(L.alt || L) };
+  if (L.scheme === "light") return { light: one(L), dark: one(night) };
+  return { light: null, dark: one(L) };
+}
+
 function baseLook(look, theme) {
   const acc = theme.accent, acc2 = theme.accent2;
   if (look === "paper") {
@@ -153,10 +175,10 @@ export function styledSpans(html) {
 
 function css(L, design) {
   return `
-:root{--bg:${L.bg};--panel:${L.panel};--fg:${L.fg};--dim:${L.dim};--line:${L.line};--acc:${L.acc};--acc2:${L.acc2};--ink:${L.ink};--on-acc:${L.onAcc};--herobg:${L.heroBg};${bands(L)}
+:root{--bg:${L.bg};--panel:${L.panel};--fg:${L.fg};--dim:${L.dim};--line:${L.line};--acc:${L.acc};--acc2:${L.acc2};--ink:${L.ink};--on-acc:${L.onAcc};--on-acc2:${onColor(L.acc2)};--herobg:${L.heroBg};${bands(L)}
 --display:${L.display};--body:${L.body};--thin:${L.thin};--boldw:${L.boldW};${toneVars(L.scheme)}color-scheme:${L.scheme}}
 ${L.alt ? `@media (prefers-color-scheme:dark){:root{--bg:${L.alt.bg};--panel:${L.alt.panel};--fg:${L.alt.fg};--dim:${L.alt.dim};--line:${L.alt.line};` +
-  `--acc:${L.alt.acc};--acc2:${L.alt.acc2};--ink:${L.alt.ink};--on-acc:${L.alt.onAcc};--herobg:${L.alt.heroBg};${bands(L.alt)}${toneVars("dark")}color-scheme:dark}}` : ""}
+  `--acc:${L.alt.acc};--acc2:${L.alt.acc2};--ink:${L.alt.ink};--on-acc:${L.alt.onAcc};--on-acc2:${onColor(L.alt.acc2)};--herobg:${L.alt.heroBg};${bands(L.alt)}${toneVars("dark")}color-scheme:dark}}` : ""}
 *{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--fg);font:400 17px/1.65 var(--body);-webkit-font-smoothing:antialiased}
 a{color:var(--ink)}img{max-width:100%;display:block}
@@ -168,7 +190,7 @@ a{color:var(--ink)}img{max-width:100%;display:block}
 /* A button that jumps to a section lands it under the sticky header,
    gliding there only for a visitor who has not asked for less motion. */
 main section[id]{scroll-margin-top:68px}
-@media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
+/* In-page links glide by script (MOTION_JS glide), eased in and out; CSS smooth scrolling cannot be eased and would smooth every step of it. */
 .brand{font:var(--thin) 19px/1 var(--display);color:var(--fg);text-decoration:none;letter-spacing:.02em;white-space:nowrap}
 .brand b{font-weight:var(--boldw)}.brand img{height:36px;width:auto}
 .nav{display:flex;gap:22px;flex-wrap:wrap;margin-left:auto;align-items:center}
@@ -254,6 +276,19 @@ html[data-navphone="full"] .navlang{text-align:center;width:min(100%,260px)}html
 /* sections */
 main section{padding:88px 0}
 main section + section{border-top:1px solid var(--line)}
+main section[data-joined]{padding-top:0;border-top-color:transparent}
+main section:has(+ section[data-joined]){padding-bottom:40px}
+/* SIDE BARS (2026-10-07, after chaseroush.com's Give page, "the two gradient
+   colored bars extruding horizontally from the Current Goals and Prayer
+   Requests titles"): a thin bar in the two colors on each side of a centered
+   title; on the open side of one lined up left or right. */
+section.tbars>.wrap>.h,section.tbars>.wrap>.mono-words>.h{display:flex;align-items:center;gap:.6em}
+section.tbars>.wrap>.h::before,section.tbars>.wrap>.h::after{content:"";flex:1 1 0;max-width:140px;min-width:28px;height:2px;border-radius:2px}
+section.tbars>.wrap>.h::before{background:linear-gradient(90deg,transparent,var(--acc2),var(--acc))}
+section.tbars>.wrap>.h::after{background:linear-gradient(90deg,var(--acc),var(--acc2),transparent)}
+section.tbars.al-center>.wrap>.h{justify-content:center}
+section.tbars.al-left>.wrap>.h::before,section.tbars.al-right>.wrap>.h::after{display:none}
+section.tbars.al-right>.wrap>.h{justify-content:flex-end}
 .h{font:var(--thin) clamp(30px,4.4vw,52px)/1.1 var(--display);margin:0 0 20px;letter-spacing:-.01em}
 .h b{font-weight:var(--boldw)}
 /* Sizes and colors within formatted words (Chase, 2026-10-03), relative to
@@ -261,7 +296,8 @@ main section + section{border-top:1px solid var(--line)}
 .ts-sm{font-size:.82em}.ts-lg{font-size:1.25em}.ts-xl{font-size:1.6em}
 .tc-accent{color:var(--ink)}.tc-accent2{color:var(--acc2)}.tc-dim{color:var(--dim)}
 ${Object.keys(TONES).map((k) => `.tc-${k}{color:var(--t-${k})}`).join("")}
-.kicker{font:600 12px var(--body);letter-spacing:.28em;text-transform:uppercase;color:var(--ink);margin:0 0 16px}
+/* NO FORCED CAPITALS on anything a person types (2026-10-07, Chase: "all editable text lines need to support lower case text. If they want it to be full capitalized or title case, it needs to be done manually"). Only built-in words (the scroll cue, a link's type) keep theirs. */
+.kicker{font:600 12px var(--body);letter-spacing:.28em;color:var(--ink);margin:0 0 16px}
 .lede{font-size:clamp(17px,1.6vw,20px);color:var(--dim);max-width:60ch;margin:0}
 .prose p{margin:0 0 1em;max-width:68ch}.prose p:last-child{margin-bottom:0}
 .btns{display:flex;gap:12px;flex-wrap:wrap;margin-top:30px}
@@ -286,12 +322,14 @@ ${L.heroFg ? `.hero-behind:not(.has-photo),.hero-words{color:${L.heroFg}}.hero-b
 /* the monogram opening — chaseroush.com's: initials behind the title, a short
    rule, a spaced line, a picture beside it, a cue to scroll */
 .hero-monogram{align-items:center;background:var(--herobg)}
+main section.hero.raised,main section.hero.raised .hero-media{background:var(--panel)}main section.hero.band,main section.hero.band .hero-media{background:var(--band)}
+main section.fullphoto.raised{background:var(--panel)}main section.fullphoto.band{background:var(--band)}
 .hero-monogram .wrap{display:grid;grid-template-columns:1.05fr .95fr;gap:48px;align-items:center;padding:120px 0 150px}
 .mono-words{position:relative}
 .mono-mark{position:absolute;left:-.06em;top:50%;transform:translateY(-58%);font:700 clamp(150px,19vw,280px)/1 var(--display);color:var(--fg);opacity:.05;pointer-events:none;user-select:none;letter-spacing:-.04em;white-space:nowrap}
 .hero-monogram .h{position:relative;font-size:clamp(44px,6vw,80px);line-height:1.08}
 .rule{display:block;width:90px;height:2px;background:var(--acc);margin:30px 0 26px}
-.spaced{font:400 13px/1.7 var(--body);letter-spacing:.2em;text-transform:uppercase;color:var(--dim);margin:0;max-width:60ch}
+.spaced{font:400 13px/1.7 var(--body);letter-spacing:.2em;color:var(--dim);margin:0;max-width:60ch}
 .mono-pic img{width:100%;max-height:460px;object-fit:contain}
 /* A slowly bouncing arrow, on every opening, until the visitor scrolls. */
 .scrollcue{position:absolute;left:50%;bottom:2rem;margin-left:-40px;width:80px;display:flex;flex-direction:column;align-items:center;gap:6px;
@@ -352,7 +390,7 @@ main section.raised + section{border-top-color:transparent}
 .fullphoto figcaption{font-size:13px;color:var(--dim);padding:10px 24px}
 .quote blockquote{margin:0;font:var(--thin) clamp(26px,3.4vw,44px)/1.25 var(--display);max-width:26ch}
 .quote-quiet blockquote{font-size:clamp(20px,2.2vw,28px);max-width:40ch}
-.quote cite{display:block;margin-top:18px;font:600 13px var(--body);letter-spacing:.2em;text-transform:uppercase;color:var(--ink);font-style:normal}
+.quote cite{display:block;margin-top:18px;font:600 13px var(--body);letter-spacing:.2em;color:var(--ink);font-style:normal}
 /* a verse inside Words or Photo and words, in three looks */
 .verse{margin:28px 0}
 /* The photo editor's crop window, corners, border and darkening. */
@@ -372,7 +410,7 @@ main section.raised + section{border-top-color:transparent}
 .th-right{text-align:right}.th-right .h{margin-left:auto;margin-right:0}.th-right .rule{margin:14px 0 26px auto}
 .wrap>.th,.wrap>.h+.rule{margin-bottom:8px}
 .verse blockquote{margin:0}
-.verse figcaption{margin-top:12px;font:600 12px var(--body);letter-spacing:.2em;text-transform:uppercase;color:var(--ink)}
+.verse figcaption{margin-top:12px;font:600 12px var(--body);letter-spacing:.2em;color:var(--ink)}
 .verse-quote blockquote{font:var(--thin) clamp(22px,2.6vw,32px)/1.3 var(--display);max-width:32ch}
 .verse-line{border-left:3px solid var(--acc);padding:4px 0 4px 22px}
 .verse-line blockquote{font-size:clamp(17px,1.5vw,19px);line-height:1.7;max-width:60ch}
@@ -386,16 +424,21 @@ main section.raised + section{border-top-color:transparent}
 main section.phead{position:relative;overflow:hidden;padding:clamp(56px,8vw,112px) 0 clamp(40px,6vw,76px)}
 .phead .wrap{position:relative;z-index:1}
 .phead .h{margin:0}
-.phead .rule{margin:22px 0}
+/* nearer the title than the small print (2026-10-06): a title already leaves room under its letters */
+.phead .rule{margin:14px 0 24px}
 .phead.al-center .rule{margin-left:auto;margin-right:auto}.phead.al-right .rule{margin-left:auto}
 .phead.al-center :is(.ph-label,.ph-sub,.h){text-align:center;margin-left:auto;margin-right:auto}
 .phead.al-right :is(.ph-label,.ph-sub,.h){text-align:right;margin-left:auto}
-.ph-label{font:600 13px var(--body);letter-spacing:.18em;text-transform:uppercase;color:var(--ink);margin:0 0 14px}
-.ph-sub{font:400 14px/1.7 var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin:0;max-width:60ch}
+.ph-label{font:600 13px var(--body);letter-spacing:.18em;color:var(--ink);margin:0 0 14px}
+.ph-sub{font:400 14px/1.7 var(--body);letter-spacing:.08em;color:var(--dim);margin:0;max-width:60ch}
 .phead:not(:has(.rule)) .ph-sub{margin-top:18px}
 .ph-top::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:var(--acc)}
-.ph-mark{position:absolute;left:clamp(16px,4vw,64px);top:50%;transform:translateY(-46%);font:700 clamp(110px,17vw,250px)/1 var(--display);color:var(--fg);opacity:.05;white-space:nowrap;pointer-events:none;user-select:none;letter-spacing:-.03em;z-index:0}
-.phead.al-center .ph-mark{left:50%;transform:translate(-50%,-46%)}.phead.al-right .ph-mark{left:auto;right:clamp(16px,4vw,64px)}
+.ph-mark{position:absolute;left:max(24px,calc((100% - 1120px) / 2));margin-left:-.055em;top:50%;transform:translateY(-46%);font:700 clamp(110px,17vw,250px)/1 var(--display);color:var(--fg);opacity:.05;white-space:nowrap;pointer-events:none;user-select:none;letter-spacing:-.03em;z-index:0}
+/* the watermark's left side on the text's (2026-10-06, Chase: "needs to
+   align with the text of the header so both left sides are aligned"): the
+   column's own edge, less the letters' side bearing */
+.phead.al-center .ph-mark{left:50%;margin-left:0;transform:translate(-50%,-46%)}.phead.al-right .ph-mark{left:auto;margin-left:0;right:max(24px,calc((100% - 1120px) / 2));margin-right:-.055em}
+
 main section.ph-raised{background:var(--panel)}
 main section.ph-tint{background:var(--band)}
 main section.ph-accent{background:var(--acc);color:var(--on-acc)}
@@ -410,7 +453,9 @@ main section.phead + section{border-top-color:transparent}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:40px}
 /* On a raised band (the card color) a card takes the page color instead, so
    it never melts into the band (Chase, 2026-10-01). */
-main section.raised .card{background:var(--bg)}
+/* CARDS ON A RAISED OR TINTED GROUND, ALL OF THEM (2026-10-07, Chase: "check every section carefully and make sure that won't happen anymore anywhere. Same for Tint"): on Plain a card is the panel color; on Raised or Tint — both a ground of their own — it is the page color, so it never melts into the band. One rule for every card the sections draw; a picture slot inside a link card swaps the other way. */
+main section:is(.raised,.band) :is(.card,.givepanel,.ccards li,.news a,.linklist a,.latest){background:var(--bg)}
+main section:is(.raised,.band) .lpic{background:var(--panel)}
 /* The sign-up card: as wide as a form wants, centered, not the whole column
    with the boxes pushed left (Chase, 2026-10-01: "extra wide with left
    alignment of the boxes"). */
@@ -441,14 +486,55 @@ main section.raised .card{background:var(--bg)}
 .ccards h3{margin:2px 0 6px;font:600 19px var(--display);color:var(--fg)}
 .ccards p{margin:0;color:var(--dim);line-height:1.65}
 .cnum{flex:none;width:44px;height:44px;border-radius:50%;background:var(--acc);color:var(--on-acc);display:flex;align-items:center;justify-content:center;font:700 17px var(--body)}
-.cards-attached .ccards{max-width:800px;display:flex;flex-direction:column}
-.cards-attached .ccards.numbered li+li{position:relative;margin-top:32px}
-.cards-attached .ccards.numbered li+li::before{content:"";position:absolute;left:45px;top:-33px;width:2px;height:32px;background:var(--line)}
-.cards-attached .ccards:not(.numbered) li+li{margin-top:16px}
-.cards-detached .ccards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:22px}
-.cards-detached .ccards li{flex-direction:column;gap:14px}
-.al-center .cards-attached .ccards,.cards-attached.al-center .ccards{margin-left:auto;margin-right:auto}
-.al-right .cards-attached .ccards,.cards-attached.al-right .ccards{margin-left:auto}
+/* A PAGE'S TABS (2026-10-06): joined (chaseroush.com's Give | Pray), pills,
+   or an underline; the chosen one in the accent. */
+main section.ptabs-bar{padding:28px 0 0}
+.ptabs{display:flex;flex-wrap:wrap;gap:0}
+.ptabs-bar.al-center .ptabs{justify-content:center}
+.ptabs button{font:600 13px/1 var(--body);letter-spacing:.12em;padding:12px 30px;background:transparent;color:var(--dim);border:1px solid var(--line);cursor:pointer;transition:color .2s,border-color .2s,background .2s}
+.ptabs button:hover{color:var(--fg);border-color:var(--acc)}
+.ptabs button[aria-selected="true"]{background:var(--acc);border-color:var(--acc);color:var(--on-acc)}
+.ptabs-joined .ptabs button+button{border-left:0}
+.ptabs-joined .ptabs button:first-child{border-radius:8px 0 0 8px}.ptabs-joined .ptabs button:last-child{border-radius:0 8px 8px 0}
+.ptabs-pills .ptabs{gap:10px}.ptabs-pills .ptabs button{border-radius:999px}
+.ptabs-underline .ptabs{gap:28px;border-bottom:1px solid var(--line)}
+.ptabs-underline .ptabs button{border:0;padding:12px 2px;margin-bottom:-1px;border-bottom:2px solid transparent}
+.ptabs-underline .ptabs button[aria-selected="true"]{background:none;color:var(--fg);border-bottom-color:var(--acc)}
+.ptab[hidden]{display:none}
+/* CHASEROUSH.COM'S MISSION, closely (2026-10-06): each card a shade apart
+   from its section (on a raised band, the page's color), lifting and
+   lighting its border under the pointer — or, on a phone, the card nearest
+   the middle of the screen (MOTION_JS, .is-near). Vertical stacks them,
+   Horizontal sets them side by side; Lines draws a faint line between them
+   that stops short of both. */
+.ccards{color:var(--fg)}
+.ccards li{position:relative;transition:transform .3s cubic-bezier(.16,1,.3,1),border-color .3s,box-shadow .3s}
+
+.ccards li:hover,.ccards li.is-near{transform:translateY(-5px);border-color:var(--acc);box-shadow:0 10px 30px color-mix(in srgb,var(--acc) 20%,transparent)}
+@media (prefers-reduced-motion:reduce){.ccards li{transition:none}.ccards li:hover,.ccards li.is-near{transform:none}}
+.cards-vertical .ccards{max-width:800px;display:flex;flex-direction:column;gap:16px}
+.cards-vertical.cards-lines .ccards{gap:40px}
+.cards-vertical.cards-lines .ccards li+li::before{content:"";position:absolute;left:50%;top:-32px;width:2px;height:24px;margin-left:-1px;background:color-mix(in srgb,currentColor 22%,transparent)}
+.cards-vertical.cards-lines .ccards.numbered li+li::before{left:45px}
+.cards-horizontal .ccards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:22px}
+.cards-horizontal .ccards li{flex-direction:column;gap:14px}
+.cards-horizontal.cards-lines .ccards{gap:22px 40px}
+.cards-horizontal.cards-lines .ccards li+li::before{content:"";position:absolute;left:-32px;top:50%;width:24px;height:2px;margin-top:-1px;background:color-mix(in srgb,currentColor 22%,transparent)}
+@media (max-width:760px){.cards-horizontal.cards-lines .ccards{gap:40px}.cards-horizontal.cards-lines .ccards li+li::before{left:50%;top:-32px;width:2px;height:24px;margin:0 0 0 -1px}}
+/* OPEN (2026-10-07, chaseroush.com's Give page "You Give · I Go · They
+   Receive"): no boxes, side by side, centered words; Lines on draws a short
+   upright line between them (one across between them on a phone). */
+main section.cards-open .ccards li{background:none;border:0;border-radius:0;box-shadow:none;transform:none;padding:4px clamp(22px,3vw,40px);
+  flex-direction:column;align-items:center;text-align:center;gap:8px;flex:0 1 auto}
+.cards-open .ccards{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:18px 0}
+.cards-open.al-left .ccards{justify-content:flex-start}.cards-open.al-right .ccards{justify-content:flex-end}
+.cards-open .ccards h3{font-size:clamp(19px,2vw,26px);font-weight:var(--boldw);margin:0}
+.cards-open .ccards p{font-style:italic;font-size:15px}
+.cards-open.cards-lines .ccards li+li::before{content:"";position:absolute;left:0;top:50%;width:1px;height:44px;margin-top:-22px;background:color-mix(in srgb,currentColor 22%,transparent)}
+@media (max-width:700px){.cards-open .ccards{flex-direction:column;gap:28px}
+  .cards-open.cards-lines .ccards li+li::before{left:50%;top:-15px;width:40px;height:1px;margin:0 0 0 -20px}}
+.al-center .cards-vertical .ccards,.cards-vertical.al-center .ccards{margin-left:auto;margin-right:auto}
+.al-right .cards-vertical .ccards,.cards-vertical.al-right .ccards{margin-left:auto}
 .signcard .signform{margin:22px auto 0;text-align:left}
 .news{list-style:none;margin:0;padding:0;display:grid;gap:10px}
 .news a{display:flex;justify-content:space-between;gap:20px;padding:18px 20px;background:var(--panel);border:1px solid var(--line);border-radius:12px;color:var(--fg);text-decoration:none}
@@ -490,6 +576,16 @@ main section.is-editing{outline:2px solid var(--acc);outline-offset:-2px}
 .al-center .h,.al-center .lede{text-align:center;margin-left:auto;margin-right:auto}
 .al-center [data-thauma],.al-center .news,.al-center .linklist,.al-center .formbox,.al-center .latest{margin-left:auto;margin-right:auto}
 .al-center .past{text-align:center}
+/* A lone link or card follows the line-up too (2026-10-07, Chase: "when there
+   is only 1 link and the Line Up is set to Centered, the text doesn't
+   center"): a list's words, and cards that fill only part of a row. */
+.al-center .linklist a{text-align:center}.al-right .linklist a{text-align:right}
+.al-center .linklist .lpic,.al-right .linklist .lpic{justify-content:center}
+.al-center.links-cards .linklist:not(.lt-small,.lt-big){grid-template-columns:repeat(auto-fit,minmax(260px,340px));justify-content:center}
+.al-right.links-cards .linklist:not(.lt-small,.lt-big){grid-template-columns:repeat(auto-fit,minmax(260px,340px));justify-content:end}
+.al-center .linklist.lt-big,.al-center .linklist.lt-small{justify-content:center}
+.lb-accent2{background:var(--acc2);border-color:var(--acc2);color:var(--on-acc2)}
+.linkbtns{flex-wrap:wrap}
 /* EVERY SECTION LINES UP (2026-10-03): left (as written), centered, right,
    or indented. The WORDS follow, and so do the buttons, a flex row that
    text-align alone never moves; a widget, list or form keeps its own inside
@@ -507,11 +603,19 @@ main section.is-editing{outline:2px solid var(--acc);outline-offset:-2px}
 .al-left .signcard{margin-left:0}.al-right .signcard{margin-right:0}
 .al-indent>.wrap,.al-indent>figure>figcaption{padding-left:clamp(20px,9vw,140px)}
 .al-indent .signcard{margin-left:0}
+/* INDENTED, on any line-up: the words move in from the side they line up on
+   — both sides when centered. */
+.indented.al-left>.wrap,.indented.al-left>figure>figcaption,.indented.al-center>.wrap,.indented.al-center>figure>figcaption{padding-left:clamp(20px,9vw,140px)}
+.indented.al-right>.wrap,.indented.al-right>figure>figcaption,.indented.al-center>.wrap,.indented.al-center>figure>figcaption{padding-right:clamp(20px,9vw,140px)}
+.indented.al-left .signcard{margin-left:0}
 .latest{display:block;max-width:720px;padding:28px 30px;background:var(--panel);border:1px solid var(--line);border-radius:16px;color:var(--fg);text-decoration:none}
 .latest:hover{border-color:var(--acc)}.latest small{color:var(--dim);font-size:13px}
 .latest b{display:block;font:var(--boldw) clamp(20px,2vw,26px)/1.25 var(--display);margin:6px 0 8px}.latest span{color:var(--dim)}
 .latest em{display:inline-block;margin-top:14px;font-style:normal;font-weight:600;color:var(--ink)}
 .past{margin:16px 0 0;font-size:14px}.past a{color:var(--dim)}.past a:hover{color:var(--fg)}
+.news-combined .latest{max-width:none;border-color:color-mix(in srgb,var(--acc) 45%,var(--line));box-shadow:inset 3px 0 0 var(--acc)}
+.news-combined .news{margin-top:12px}
+.news-combined .past{font-size:12.5px;letter-spacing:.06em;margin-top:18px}
 /* footer */
 .foot{border-top:1px solid var(--line);padding:48px 0 60px;color:var(--dim);font-size:14px}
 .foot .wrap{display:flex;gap:28px;flex-wrap:wrap;justify-content:space-between;align-items:flex-start}
@@ -534,7 +638,7 @@ main section.is-editing{outline:2px solid var(--acc);outline-offset:-2px}
 /* No color here: the tagline's own choice (Standard / Subtle / Accent) sets
    it. This rule's var(--dim), equal in weight and later, made Standard look
    exactly like Subtle on Center (Chase, 2026-10-03). */
-.foot-center .tagline{font:600 13px var(--body);letter-spacing:.2em;text-transform:uppercase}
+.foot-center .tagline{font:600 13px var(--body);letter-spacing:.2em;}
 .foot-center .small{margin:0 auto}
 /* Columns: only the columns that have something, spread across; the pages
    as a two-column grid rather than a long list; then a bar under a rule for
@@ -555,6 +659,12 @@ main section.is-editing{outline:2px solid var(--acc);outline-offset:-2px}
 /* A site's own icon, quieted to sit with the line icons; full color on hover. */
 .socials .favi img{width:18px;height:18px;border-radius:4px;filter:grayscale(1);opacity:.8;transition:filter .2s,opacity .2s}
 .socials .favi:hover img{filter:none;opacity:1}
+.socials a{text-decoration:none}
+.socials .favi .lt{display:none;font:600 11px/1 var(--body);letter-spacing:.02em}
+.socials .favi.no-icon img{display:none}.socials .favi.no-icon .lt{display:inline}
+.socials .favi.mono img{display:none}
+.socials .favi.mono::before{content:"";width:18px;height:18px;background:currentColor;-webkit-mask:var(--fi) center/contain no-repeat;mask:var(--fi) center/contain no-repeat}
+.foot .words+.owns{margin-top:4px}
 .customlinks{display:flex;gap:16px;flex-wrap:wrap}.customlinks a{color:var(--fg)}
 .powered{font-size:12px;opacity:.7}
 body.only-foot .foot{border-top:0}
@@ -728,13 +838,17 @@ function renderSection(sec, ctx) {
   /* Where a photo is wanted and none is chosen yet, a preview shows the
      place for it, so the owner sees the page as it will be. Visitors never do. */
   const wanted = () => ctx.draft ? `<span class="wanted">${esc(word(lang, "photoWanted"))}</span>` : "";
+  /* Plain, Raised or Tint, for the sections that write their own class list
+     (the opening, the header, a full-width photo): every section has the
+     three now (2026-10-07, Chase: "All sections need those same options"). */
+  const ground = (sec.raised ? " raised" : "") + (sec.tint ? " band" : "") + (sec.indent ? " indented" : "") + (sec.titleBars ? " tbars" : "");
   const cls = (...c) => {
-    const k = [...c, sec.raised ? "raised" : "", sec.align ? "al-" + sec.align : ""].filter(Boolean).join(" ");
+    const k = [...c, sec.raised ? "raised" : "", sec.tint ? "band" : "", sec.align ? "al-" + sec.align : "", sec.indent ? "indented" : "", sec.titleBars ? "tbars" : ""].filter(Boolean).join(" ");
     return k ? ` class="${k}"` : "";
   };
   const widget = (kind, extra = "") =>
     `<div class="m" data-thauma="${esc(ctx.slug)}" data-widget="${kind}" data-lang="${esc(lang)}" data-theme="${ctx.widgetTheme}" data-foot="off"` +
-    `${ctx.widgetAccent ? ` data-accent="${esc(ctx.widgetAccent)}"` : ""}${ctx.widgetLook(!!sec.raised)}${extra}></div>`;
+    `${ctx.widgetAccent ? ` data-accent="${esc(ctx.widgetAccent)}"` : ""}${ctx.widgetLook(!!(sec.raised || sec.tint))}${extra}></div>`;
 
   switch (sec.type) {
     case "hero": {
@@ -767,7 +881,7 @@ function renderSection(sec, ctx) {
       if (sec.variant === "monogram") {
         const initials = initialsOf(ctx.name);
         const h = heading(w("heading"), "h1");
-        return `<section class="hero hero-monogram al-${sec.align || "left"}"><div class="wrap"><div class="mono-words"><span class="mono-mark" aria-hidden="true">${esc(initials)}</span>` +
+        return `<section class="hero hero-monogram al-${sec.align || "left"}${ground}"><div class="wrap"><div class="mono-words"><span class="mono-mark" aria-hidden="true">${esc(initials)}</span>` +
           `${w("kicker") ? `<p class="kicker m">${esc(w("kicker"))}</p>` : ""}${h}${line}` +
           `${w("text") ? `<p class="spaced m">${inline(w("text"))}</p>` : ""}${btns ? `<div class="btns m">${btns}</div>` : ""}</div>` +
           `${sec.photo ? `<div class="mono-pic m">${edited(sec.photo, sec.photoEdit)}</div>` : ctx.draft ? `<div class="pic m">${wanted()}</div>` : ""}</div>` +
@@ -776,10 +890,10 @@ function renderSection(sec, ctx) {
       const words = `${w("kicker") ? `<p class="kicker m">${esc(w("kicker"))}</p>` : ""}${heading(w("heading"), "h1")}${line}` +
         `${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}${btns ? `<div class="btns m">${btns}</div>` : ""}`;
       if (sec.variant === "beside") {
-        return `<section class="hero hero-beside al-${sec.align || "left"}"><div class="wrap"><div>${words}</div>${sec.photo ? `<div class="pic m ${photoMotion === "zoom" ? "kb" : ""}">${edited(sec.photo, sec.photoEdit)}</div>` : ctx.draft ? `<div class="pic m">${wanted()}</div>` : ""}</div>${cue}</section>`;
+        return `<section class="hero hero-beside al-${sec.align || "left"}${ground}"><div class="wrap"><div>${words}</div>${sec.photo ? `<div class="pic m ${photoMotion === "zoom" ? "kb" : ""}">${edited(sec.photo, sec.photoEdit)}</div>` : ctx.draft ? `<div class="pic m">${wanted()}</div>` : ""}</div>${cue}</section>`;
       }
-      if (sec.variant === "words") return `<section class="hero hero-words al-${sec.align || "center"}"><div class="wrap">${words}</div>${cue}</section>`;
-      return `<section class="hero hero-behind al-${sec.align || "left"}${sec.photo ? " has-photo" : ""}"><div class="hero-media ${photoMotion === "zoom" ? "kb" : ""}"${photoMotion === "drift" ? " data-drift" : ""}>${edited(sec.photo, sec.photoEdit)}</div><div class="wrap">${words}</div>${cue}</section>`;
+      if (sec.variant === "words") return `<section class="hero hero-words al-${sec.align || "center"}${ground}"><div class="wrap">${words}</div>${cue}</section>`;
+      return `<section class="hero hero-behind al-${sec.align || "left"}${ground}${sec.photo ? " has-photo" : ""}"><div class="hero-media ${photoMotion === "zoom" ? "kb" : ""}"${photoMotion === "drift" ? " data-drift" : ""}>${edited(sec.photo, sec.photoEdit)}</div><div class="wrap">${words}</div>${cue}</section>`;
     }
     case "header": {
       /* A page's title area, chaseroush.com's page header made adjustable:
@@ -789,8 +903,12 @@ function renderSection(sec, ctx) {
       if (!w("heading") && !w("label") && !ctx.draft) return "";
       const mark = sec.variant === "watermark"
         ? `<span class="ph-mark" aria-hidden="true">${esc(raw("mark") || ctx.label(ctx.pageId) || "")}</span>` : "";
-      const k = ["phead", "phead-" + sec.variant, "ph-" + (sec.bg || "plain"), sec.topline !== false ? "ph-top" : "",
-        sec.bg === "raised" ? "raised" : "", "al-" + (sec.align || "left")].filter(Boolean).join(" ");
+      /* Its ground is the same Plain / Raised / Tint as every section's, plus
+         the header's own Accent (bg); a header saved with bg raised or tint
+         reads as that (model.js). */
+      const hb = sec.bg === "accent" ? "accent" : sec.tint ? "tint" : sec.raised ? "raised" : "plain";
+      const k = ["phead", "phead-" + sec.variant, "ph-" + hb, sec.topline !== false ? "ph-top" : "",
+        hb === "raised" ? "raised" : "", hb === "tint" ? "band" : "", "al-" + (sec.align || "left"), sec.indent ? "indented" : "", sec.titleBars ? "tbars" : ""].filter(Boolean).join(" ");
       return `<section class="${k}">${mark}<div class="wrap">` +
         `${w("label") ? `<p class="ph-label m">${esc(w("label"))}</p>` : ""}${heading(w("heading"), "h1")}` +
         `${sec.divider !== false ? `<span class="rule m" aria-hidden="true"></span>` : ""}` +
@@ -816,9 +934,9 @@ function renderSection(sec, ctx) {
     }
     case "photo":
       if (!sec.photo) {
-        return ctx.draft ? `<section class="fullphoto al-${sec.align || "left"}"><div class="frame">${wanted()}</div>${w("caption") ? `<p class="wrap caption">${esc(w("caption"))}</p>` : ""}</section>` : "";
+        return ctx.draft ? `<section class="fullphoto al-${sec.align || "left"}${ground}"><div class="frame">${wanted()}</div>${w("caption") ? `<p class="wrap caption">${esc(w("caption"))}</p>` : ""}</section>` : "";
       }
-      return `<section class="fullphoto h-${esc(sec.height || "medium")} al-${sec.align || "left"}" style="--fy:${Number.isFinite(sec.focusY) ? sec.focusY : 50}%"><figure style="margin:0"><div class="frame ${sec.variant === "zoom" ? "kb" : ""}"${sec.variant === "drift" && sec.height !== "whole" && !(sec.photoEdit && sec.photoEdit.w) ? " data-drift" : ""}>${pictured(edited(sec.photo, sec.photoEdit, w("caption")), w("caption") || word(lang, "more"))}</div>${w("caption") ? `<figcaption class="wrap">${esc(w("caption"))}</figcaption>` : ""}</figure></section>`;
+      return `<section class="fullphoto h-${esc(sec.height || "medium")} al-${sec.align || "left"}${ground}" style="--fy:${Number.isFinite(sec.focusY) ? sec.focusY : 50}%"><figure style="margin:0"><div class="frame ${sec.variant === "zoom" ? "kb" : ""}"${sec.variant === "drift" && sec.height !== "whole" && !(sec.photoEdit && sec.photoEdit.w) ? " data-drift" : ""}>${pictured(edited(sec.photo, sec.photoEdit, w("caption")), w("caption") || word(lang, "more"))}</div>${w("caption") ? `<figcaption class="wrap">${esc(w("caption"))}</figcaption>` : ""}</figure></section>`;
     case "quote":
       if (!w("quote")) return "";
       return `<section${cls("quote", "quote-" + sec.variant)}><div class="wrap m"><blockquote>“${w("quote")}”</blockquote>${w("who") ? `<cite>${esc(w("who"))}</cite>` : ""}</div></section>`;
@@ -850,20 +968,32 @@ function renderSection(sec, ctx) {
       return `<section${cls("data")}><div class="wrap">${head}${sub}${widget("videos", extra)}</div></section>`;
     }
     case "newsletters": {
-      const list = (ctx.payload.mailings || []).filter((m) => m.url).slice(0, 12);
+      const count = sec.count >= 3 && sec.count <= 12 ? sec.count : 5;
+      const list = (ctx.payload.mailings || []).filter((m) => m.url && (!sec.list || (m.list && m.list.slug === sec.list))).slice(0, 12);
       if (!list.length) return "";
       const date = (d) => { try { return new Date(d).toLocaleDateString(lang, { day: "numeric", month: "long", year: "numeric" }); } catch { return String(d || "").slice(0, 10); } };
+      /* the list's own archive, where every one of them is */
+      const archive = list[0].url.replace(/[^/]+\/?$/, "");
+      const card = (m) => `<a class="latest m" href="${esc(m.url)}"><small>${esc(date(m.sent_at))}</small><b>${esc(m.subject)}</b>` +
+        `${m.preheader ? `<span>${esc(m.preheader)}</span>` : ""}<em>${esc(word(lang, "readIt"))} →</em></a>`;
+      const rows = (ms) => `<ul class="news m">${ms.map((m) =>
+        `<li><a href="${esc(m.url)}"><span>${esc(m.subject)}</span><small>${esc(date(m.sent_at))}</small></a></li>`).join("")}</ul>`;
       if (sec.variant === "latest") {
         /* The newest, as a card; below it, quietly, the list's own archive. */
-        const m = list[0];
-        const archive = m.url.replace(/[^/]+\/?$/, "");
-        return `<section${cls("data")}><div class="wrap">${heading(w("heading"))}${sub}` +
-          `<a class="latest m" href="${esc(m.url)}"><small>${esc(date(m.sent_at))}</small><b>${esc(m.subject)}</b>` +
-          `${m.preheader ? `<span>${esc(m.preheader)}</span>` : ""}<em>${esc(word(lang, "readIt"))} →</em></a>` +
+        return `<section${cls("data")}><div class="wrap">${heading(w("heading"))}${sub}${card(list[0])}` +
           `<p class="past m"><a href="${esc(archive)}">${esc(word(lang, "pastNews"))}</a></p></div></section>`;
       }
-      return `<section${cls("data")}><div class="wrap">${heading(w("heading"))}${sub}<ul class="news m">${list.map((m) =>
-        `<li><a href="${esc(m.url)}"><span>${esc(m.subject)}</span><small>${esc(date(m.sent_at))}</small></a></li>`).join("")}</ul></div></section>`;
+      if (sec.variant === "combined") {
+        /* NEWEST AND THE REST (2026-10-06, Chase: "a combined look where the
+           newest one can be highlighted special, but it lists the last 3-5
+           updates underneath it … with an option to 'See All Updates' at the
+           bottom in small subtle print") */
+        return `<section${cls("data", "news-combined")}><div class="wrap">${heading(w("heading"))}${sub}${card(list[0])}` +
+          `${list.length > 1 ? rows(list.slice(1, count)) : ""}` +
+          `<p class="past m"><a href="${esc(archive)}">${esc(word(lang, "allUpdates"))}</a></p></div></section>`;
+      }
+      return `<section${cls("data")}><div class="wrap">${heading(w("heading"))}${sub}${rows(list.slice(0, count))}` +
+        `${list.length > count ? `<p class="past m"><a href="${esc(archive)}">${esc(word(lang, "allUpdates"))}</a></p>` : ""}</div></section>`;
     }
     case "signup":
       ctx.needs.signup = true;
@@ -871,12 +1001,12 @@ function renderSection(sec, ctx) {
          straight on the page with no card of its own. */
       if (sec.variant === "split") {
         return `<section${cls("fsplit")}><div class="wrap"><div class="split"><div>${heading(w("heading"))}${sub}<span class="rule m" aria-hidden="true"></span></div>` +
-          `<div class="m"><div data-thauma-form data-lang="${esc(lang)}"${ctx.formLook(false, !!sec.raised)}></div></div></div></div></section>`;
+          `<div class="m"><div data-thauma-form data-lang="${esc(lang)}"${ctx.formLook(false, !!(sec.raised || sec.tint))}></div></div></div></div></section>`;
       }
       if (sec.variant === "open") {
-        return `<section${cls()}><div class="wrap">${heading(w("heading"))}${sub}<div class="m formbox openform"><div data-thauma-form data-lang="${esc(lang)}"${ctx.formLook(true, !!sec.raised)}></div></div></div></section>`;
+        return `<section${cls()}><div class="wrap">${heading(w("heading"))}${sub}<div class="m formbox openform"><div data-thauma-form data-lang="${esc(lang)}"${ctx.formLook(true, !!(sec.raised || sec.tint), true)}></div></div></div></section>`;
       }
-      return `<section${cls(sec.variant === "band" ? "band" : "")}><div class="wrap">${sec.variant === "card" ? '<div class="card signcard">' : '<div class="bandrow">'}<div>${heading(w("heading"))}${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}</div><div class="m${sec.variant === "card" ? " signform" : ""}" style="flex:1 1 360px;max-width:${sec.variant === "card" ? "100%" : "460px"}"><div data-thauma-form data-lang="${esc(lang)}"${ctx.formLook(sec.variant === "card", !!sec.raised)}></div></div></div></div></section>`;
+      return `<section${cls()}><div class="wrap">${sec.variant === "card" ? '<div class="card signcard">' : '<div class="bandrow">'}<div>${heading(w("heading"))}${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}</div><div class="m${sec.variant === "card" ? " signform" : ""}" style="flex:1 1 360px;max-width:${sec.variant === "card" ? "100%" : "460px"}"><div data-thauma-form data-lang="${esc(lang)}"${ctx.formLook(sec.variant === "card", !!(sec.raised || sec.tint))}></div></div></div></div></section>`;
     case "contact":
       ctx.needs.contact = true;
       /* "The card is really skinny on a desktop" (Chase, 2026-10-03): Side
@@ -884,12 +1014,12 @@ function renderSection(sec, ctx) {
          Wide widens the card; Open drops the card. Form stays the original. */
       if (sec.variant === "split") {
         return `<section${cls("fsplit csplit")}><div class="wrap"><div class="split"><div>${heading(w("heading"))}${sub}<span class="rule m" aria-hidden="true"></span></div>` +
-          `<div class="m"><div data-thauma-contact data-lang="${esc(lang)}"${ctx.formLook(false, !!sec.raised)}></div></div></div></div></section>`;
+          `<div class="m"><div data-thauma-contact data-lang="${esc(lang)}"${ctx.formLook(false, !!(sec.raised || sec.tint))}></div></div></div></div></section>`;
       }
       if (sec.variant === "wide" || sec.variant === "open") {
-        return `<section${cls()}><div class="wrap">${heading(w("heading"))}${sub}<div class="m formbox ${sec.variant === "wide" ? "wideform" : "openform"}"><div data-thauma-contact data-lang="${esc(lang)}"${ctx.formLook(sec.variant === "open", !!sec.raised)}></div></div></div></section>`;
+        return `<section${cls()}><div class="wrap">${heading(w("heading"))}${sub}<div class="m formbox ${sec.variant === "wide" ? "wideform" : "openform"}"><div data-thauma-contact data-lang="${esc(lang)}"${ctx.formLook(sec.variant === "open", !!(sec.raised || sec.tint), sec.variant === "open")}></div></div></div></section>`;
       }
-      return `<section${cls()}><div class="wrap">${heading(w("heading"))}${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}<div class="m formbox" style="max-width:560px;margin-top:24px"><div data-thauma-contact data-lang="${esc(lang)}"${ctx.formLook(false, !!sec.raised)}></div></div></div></section>`;
+      return `<section${cls()}><div class="wrap">${heading(w("heading"))}${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}<div class="m formbox" style="max-width:560px;margin-top:24px"><div data-thauma-contact data-lang="${esc(lang)}"${ctx.formLook(false, !!(sec.raised || sec.tint))}></div></div></div></section>`;
     case "give": {
       if (!ctx.giveUrl) return "";
       const giveBtn = (big) => `<a class="btn solid${big ? " big" : ""}" href="${esc(ctx.giveUrl)}">${esc(w("button") || word(lang, "giveBtn"))} →</a>`;
@@ -906,7 +1036,7 @@ function renderSection(sec, ctx) {
       if (sec.variant === "spotlight") {
         return `<section${cls()}><div class="wrap"><div class="spot m">${heading(w("heading"))}${sub}<div class="btns">${giveBtn(true)}</div></div></div></section>`;
       }
-      return `<section${cls(sec.variant === "band" ? "band" : "")}><div class="wrap">${sec.variant === "card" ? '<div class="card">' : '<div class="bandrow">'}<div>${heading(w("heading"))}${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}</div><div class="btns m" style="margin:0"><a class="btn solid" href="${esc(ctx.giveUrl)}">${esc(w("button") || word(lang, "giveBtn"))} →</a></div></div></div></section>`;
+      return `<section${cls()}><div class="wrap">${sec.variant === "card" ? '<div class="card">' : '<div class="bandrow">'}<div>${heading(w("heading"))}${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}</div><div class="btns m" style="margin:0"><a class="btn solid" href="${esc(ctx.giveUrl)}">${esc(w("button") || word(lang, "giveBtn"))} →</a></div></div></div></section>`;
     }
     case "cards": {
       /* chaseroush.com's Mission: numbered cards joined by a line between
@@ -915,7 +1045,10 @@ function renderSection(sec, ctx) {
       const items = (sec.items || []).filter((it) => t(it, "title") || t(it, "text"));
       if (!items.length) return "";
       const num = sec.numbers !== false;
-      return `<section${cls("cards-" + sec.variant)}><div class="wrap">${heading(w("heading"))}${sub}<ol class="ccards m${num ? " numbered" : ""}">${items.map((it, i) =>
+      /* direction and lines; a section saved before them reads as it looked */
+      const dir = sec.variant === "open" ? "open" : sec.variant === "detached" || sec.variant === "horizontal" ? "horizontal" : "vertical";
+      const lines = typeof sec.lines === "boolean" ? sec.lines : dir === "vertical";
+      return `<section${cls("cards-" + dir, lines ? "cards-lines" : "")}><div class="wrap">${heading(w("heading"))}${sub}<ol class="ccards m${num ? " numbered" : ""}">${items.map((it, i) =>
         `<li>${num ? `<span class="cnum" aria-hidden="true">${i + 1}</span>` : ""}<div>${t(it, "title") ? `<h3>${esc(t(it, "title"))}</h3>` : ""}${t(it, "text") ? `<p>${inline(esc(t(it, "text")))}</p>` : ""}</div></li>`).join("")}</ol></div></section>`;
     }
     case "links": {
@@ -926,6 +1059,18 @@ function renderSection(sec, ctx) {
          the owner's order. Small cards carry no picture. */
       const card = (it, pic) => `<li><a href="${esc(it.href)}"${rel(it.href)}>${t(it, "type") ? `<em class="ltype">${esc(t(it, "type"))}</em>` : ""}` +
         `${pic && it.photo ? `<span class="lpic">${img(it.photo)}</span>` : ""}<b>${esc(t(it, "title") || it.href)}</b>${t(it, "text") ? `<span>${esc(t(it, "text"))}</span>` : ""}</a></li>`;
+      /* BUTTONS (2026-10-07, Chase: "The list section should also include a
+         buttons layout with different coloring options for each individual
+         button"): a row of the site's buttons, each its own color — the
+         accent, the second color, an outline, or any color picked. */
+      if (sec.variant === "buttons") {
+        const b = (it) => {
+          const c = it.color || "accent", own = /^#[0-9a-f]{6}$/i.test(c);
+          const style = own ? ` style="background:${c};border-color:${c};color:${onColor(c)}"` : "";
+          return `<a class="btn${c === "outline" ? "" : " solid"} lb-${own ? "own" : c}" href="${esc(it.href)}"${rel(it.href)}${style}>${esc(t(it, "title") || it.href)}</a>`;
+        };
+        return `<section${cls("links-buttons")}><div class="wrap">${heading(w("heading"))}${sub}<div class="btns linkbtns m">${items.map(b).join("")}</div></div></section>`;
+      }
       const group = (tier, cls2, pic) => {
         const g = items.filter((it) => (it.tier || "std") === tier);
         return g.length ? `<ul class="linklist m${cls2}">${g.map((it) => card(it, pic)).join("")}</ul>` : "";
@@ -994,12 +1139,17 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
          rather than a box dropped onto it — for both schemes when the site
          follows the visitor's device. On a RAISED band (which is the site's
          card color) the card and its fields swap, so it stands apart. */
-      const look = (P, raised) => ({ bg: P.bg, fg: P.fg, dim: P.dim, line: P.line,
-        panel: raised ? P.bg : P.panel, field: raised ? P.panel : P.bg, font: P.body });
-      return (flat, raised) => {
+      /* BARE: an open form sits straight on the section, with no card of its
+         own, so its fields are the OTHER color from the section's ground —
+         they were the ground's own and vanished (2026-10-07, Chase: "the
+         text fields are the same color as the background instead of being
+         the other color"). Inside a card, the card is the ground. */
+      const look = (P, raised, bare) => ({ bg: P.bg, fg: P.fg, dim: P.dim, line: P.line,
+        panel: raised ? P.bg : P.panel, field: bare ? (raised ? P.bg : P.panel) : (raised ? P.panel : P.bg), font: P.body });
+      return (flat, raised, bare = false) => {
         /* The section's heading already names the form, so it has no title
            of its own here; its words are in the site's display face. */
-        const both = { ...(L.alt ? { ...look(L, raised), dark: look(L.alt, raised) } : look(L, raised)),
+        const both = { ...(L.alt ? { ...look(L, raised, bare), dark: look(L.alt, raised, bare) } : look(L, raised, bare)),
           display: L.display, notitle: true, ...(flat ? { flat: true } : {}) };
         return ` data-theme="${L.alt ? "auto" : L.scheme === "dark" ? "dark" : "light"}"` +
           (a ? ` data-accent="${esc(a)}"` : "") + (a2 ? ` data-accent2="${esc(a2)}"` : "") +
@@ -1013,7 +1163,7 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
       if (!link) return "";
       /* A section of THIS page: its anchor, or nowhere once it is gone. */
       const sec = /^section:([a-z0-9]{2,24})$/i.exec(link);
-      if (sec) return page.sections.some((s) => s.id === sec[1]) ? "#s-" + sec[1] : "";
+      if (sec) return allSections(page).some((s) => s.id === sec[1]) ? "#s-" + sec[1] : "";
       const m = /^page:([a-z]+)$/.exec(link);
       if (!m) return link;
       return pages.some((p) => p.id === m[1]) ? href(m[1]) : "";
@@ -1026,13 +1176,38 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
      "doesn't get added properly"). Visitors never see an empty one. Every
      section carries its id: the editor scrolls to the one being edited, and
      a button can jump to it (section:<id>). */
-  const body = page.sections.map((s) => {
-    const html = renderSection(s, ctx);
+  /* JOINED (2026-10-07, Chase: "a 'Merge Sections' option that gives you
+     the parts of other sections, just without the gap that is between
+     sections … the Give section merged with the Custom Cards section to
+     create the style of chaseroush.com Give page"): a section joined to the
+     one above wears its ground and sits under it with no gap or line. */
+  const drawn = (list) => list.map((s0, i) => {
+    let s = s0;
+    if (s0.join && i > 0) {
+      let k = i - 1;
+      while (k > 0 && list[k].join) k--;
+      const top = list[k];
+      const hb = top.type === "header" && top.bg === "accent";
+      s = { ...s0, raised: !hb && !!top.raised, tint: !hb && !!top.tint };
+    }
+    let html = renderSection(s, ctx);
+    /* the title's words held together between its side bars */
+    if (html && s.titleBars) html = html.replace(/(<h([12]) class="h m">)([\s\S]*?)(<\/h\2>)/, '$1<span class="tbw">$3</span>$4');
     if (!html) {
       return draft ? `<section id="s-${esc(s.id)}" class="empty"><div class="wrap"><p>${esc(word(lang, "emptyPreview"))}</p></div></section>` : "";
     }
-    return html.replace(/^<section([^>]*)>/, `<section$1 id="s-${esc(s.id)}">`);
+    return html.replace(/^<section([^>]*)>/, `<section$1 id="s-${esc(s.id)}"${s.join && i > 0 ? " data-joined" : ""}>`);
   }).join("\n");
+  /* THE PAGE'S TABS: its own sections, then the bar, then a panel per tab,
+     the first one showing (a #tab address opens another; MOTION_JS). One tab
+     alone is no choice, so it is drawn as part of the page. */
+  const tabs = page.tabs && page.tabs.items && page.tabs.items.length ? page.tabs : null;
+  const tabName = (t, i) => (t.label && (t.label[lang] || t.label[fallback])) || word(lang, "tabFill") + " " + (i + 1);
+  const body = drawn(page.sections) + (!tabs ? "" : tabs.items.length === 1 ? "\n" + drawn(tabs.items[0].sections) :
+    `\n<section class="ptabs-bar ptabs-${esc(tabs.style)} al-${tabs.align === "left" ? "left" : "center"}"><div class="wrap"><div class="ptabs" role="tablist">` +
+    tabs.items.map((t, i) => `<button type="button" role="tab" id="tb-${esc(t.id)}" aria-controls="t-${esc(t.id)}" aria-selected="${i === 0}" data-tab="${esc(t.id)}">${esc(tabName(t, i))}</button>`).join("") +
+    `</div></div></section>\n` +
+    tabs.items.map((t, i) => `<div class="ptab" id="t-${esc(t.id)}" role="tabpanel" aria-labelledby="tb-${esc(t.id)}"${i ? " hidden" : ""}>${drawn(t.sections)}</div>`).join("\n"));
   const name = String(site.display_name || "").trim();
   const parts = name.split(/\s+/);
   const brand = design.brand === "logo" && design.logo
@@ -1072,15 +1247,37 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
      as its site's icon joins the social icons. The icon comes through
      Thauma (embed/v1/icon), so a visitor never calls a third party. */
   const own = doc.links.filter((k) => k.kind === "custom").map((k) => ({ ...k, href: ctx.linkHref(k.url) })).filter((k) => k.href);
-  const nameOf = (k) => k.label[lang] || k.label[fallback] || k.href;
-  const custom = [...own.filter((k) => k.url.startsWith("page:")), ...own.filter((k) => !k.url.startsWith("page:") && !k.icon)].map((k) =>
-    `<a href="${esc(k.href)}"${rel(k.href)}>${esc(nameOf(k))}</a>`).join("");
-  const favicons = own.filter((k) => k.icon).map((k) => {
-    let host = ""; try { host = new URL(k.href).hostname; } catch { /* not a web address */ }
-    return host ? `<a class="favi" href="${esc(k.href)}"${rel(k.href)} aria-label="${esc(nameOf(k))}" title="${esc(nameOf(k))}"><img src="${esc(origin)}/embed/v1/icon?d=${esc(encodeURIComponent(host))}" alt="" width="18" height="18" loading="lazy"></a>` : "";
-  }).join("");
-  const socials = socialIcons + favicons;
-  const foot = footer({ doc, lang, fallback, name, pages, href, label, socials, custom });
+  const nameOf = (k) => k.label[lang] || k.label[fallback] || (k.url.startsWith("page:") ? label(k.url.slice(5)) : k.href);
+  const ordered = [...own.filter((k) => k.url.startsWith("page:")), ...own.filter((k) => !k.url.startsWith("page:"))];
+  /* AS ICONS, in the social icons' own style (2026-10-07, Chase: "read the
+     favicon from the custom link and then convert it into the same style as
+     the social links … If it doesn't have a favicon, then we just … create
+     an icon based on the letters"): the site's icon comes through Thauma
+     (embed/v1/icon), so a visitor never calls a third party; MOTION_JS draws
+     one with a clear background as a silhouette in the icon color, like the
+     social icons, keeps a solid one as a small gray picture, and shows the
+     link's initials when there is none — as a page of the site always does. */
+  const initials = (t) => {
+    const ws = String(t || "").replace(/^https?:\/\/(www\.)?/i, "").split(/[\s./_-]+/).filter((x) => /[\p{L}\p{N}]/u.test(x));
+    return ((ws.length > 1 ? ws[0][0] + ws[1][0] : (ws[0] || "?").slice(0, 2)) || "?").toUpperCase();
+  };
+  const iconOf = (k) => {
+    let host = ""; try { if (/^https?:/.test(k.href)) host = new URL(k.href).hostname; } catch { /* not a web address */ }
+    const lt = `<span class="lt" aria-hidden="true">${esc(initials(nameOf(k)))}</span>`;
+    /* the owner's own picture first, then the site's icon, then initials */
+    const src = k.iconImg ? k.iconImg : host ? `${origin}/embed/v1/icon?d=${encodeURIComponent(host)}` : "";
+    return `<a class="favi${src ? "" : " no-icon"}${k.iconImg ? " own" : ""}" href="${esc(k.href)}"${rel(k.href)} aria-label="${esc(nameOf(k))}" title="${esc(nameOf(k))}">` +
+      (src ? `<img src="${esc(src)}" alt="" width="18" height="18" loading="lazy"${k.iconImg ? "" : ' crossorigin="anonymous"'}>` : "") + `${lt}</a>`;
+  };
+  const wordOf = (k) => `<a href="${esc(k.href)}"${rel(k.href)}>${esc(nameOf(k))}</a>`;
+  const asWordsF = (doc.footer || {}).socials === "words";
+  const inl = ordered.filter((k) => k.place === "inline"), apart = ordered.filter((k) => k.place !== "inline");
+  /* in line: with the social icons (or, socials as words, in their line);
+     separated: their own row, each as words or as an icon */
+  const socials = socialIcons + (asWordsF ? "" : inl.map(iconOf).join(""));
+  const custom = (asWordsF ? inl.map(wordOf).join("") : "") + apart.filter((k) => k.show !== "icon").map(wordOf).join("");
+  const ownIcons = apart.filter((k) => k.show === "icon").map(iconOf).join("");
+  const foot = footer({ doc, lang, fallback, name, pages, href, label, socials, custom, ownIcons });
 
   const thePage = doc.pages.find((p) => p.id === pageId) || doc.pages[0];
   const seo = thePage.seo || {};
@@ -1092,7 +1289,7 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
      site's real public ones, whichever host is drawing the page. */
   const thisPage = doc.pages.find((p) => p.id === pageId) || doc.pages[0];
   const firstWords = (pg) => {
-    for (const s of (pg && pg.sections) || []) {
+    for (const s of allSections(pg)) {
       for (const f of ["text", "kicker", "sub"]) {
         const t = plainOf(wf(s, lang, fallback, f) || "").replace(/\s+/g, " ").trim();
         if (t.length > 20) return t;
@@ -1101,8 +1298,8 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
     return "";
   };
   const clip = (t) => (t.length > 160 ? t.slice(0, 157).replace(/\s+\S*$/, "") + "…" : t);
-  const desc = (seo.desc && seo.desc[lang]) || clip(firstWords(thisPage) || firstWords(doc.pages[0]));
-  const firstPhoto = (pg) => ((pg && pg.sections) || []).map((s) => s.photo).find(Boolean) || null;
+  const desc = (seo.desc && seo.desc[lang]) || titleCase(clip(firstWords(thisPage) || firstWords(doc.pages[0])), lang);
+  const firstPhoto = (pg) => allSections(pg).map((s) => s.photo).find(Boolean) || null;
   const absolute = (u) => (!u ? null : /^https?:/.test(u) ? u : "https://thauma.one" + (u.startsWith("/") ? u : "/" + u));
   /* The picture: the owner's own; the page's photo; or (the default) the
      page's name card in this language — until one is made, the photo. */
@@ -1202,7 +1399,7 @@ export function newTabs(html) {
  * The foot of the page, in the owner's chosen layout (model.FOOTERS). The
  * credit line is in every one of them.
  */
-function footer({ doc, lang, fallback, name, pages, href, label, socials, custom }) {
+function footer({ doc, lang, fallback, name, pages, href, label, socials, custom, ownIcons = "" }) {
   const F = doc.footer || { layout: "split", menu: false, socials: "icons", words: {} };
   const fw = (f) => (F.words[lang] && F.words[lang][f]) || (F.words[fallback] && F.words[fallback][f]) || "";
   const tagline = fw("tagline") ? `<p class="tagline tagline-${esc(F.tagline || "plain")}">${esc(fw("tagline"))}</p>` : "";
@@ -1215,7 +1412,7 @@ function footer({ doc, lang, fallback, name, pages, href, label, socials, custom
     `<a href="${esc(k.url)}" rel="noopener">${esc(SOCIAL_NAME[k.kind])}</a>`).join("");
   const asWords = F.socials === "words";
   const linkRow = (asWords ? socialWords : "") + custom;
-  const words = linkRow ? `<span class="words">${linkRow}</span>` : "";
+  const words = (linkRow ? `<span class="words">${linkRow}</span>` : "") + (ownIcons ? `<span class="socials owns">${ownIcons}</span>` : "");
   const icons = !asWords && socials ? `<span class="socials">${socials}</span>` : "";
   const credit = `<span class="powered">© ${new Date().getFullYear()} ${esc(name)} · ${esc(word(lang, "poweredBy"))}</span>`;
   /* NOT IN THE FOOTER (Chase, 2026-10-01): the name as a brand, and the
@@ -1255,17 +1452,34 @@ var io=('IntersectionObserver' in window)&&!still?new IntersectionObserver(funct
 [].forEach.call(document.querySelectorAll('.m,.h'),function(el){if(io)io.observe(el);else el.classList.add('in')});
 var drift=!still&&d.getAttribute('data-photos')==='drift'?[].slice.call(document.querySelectorAll('[data-drift] img')):[];
 var bar=document.querySelector('.progress'),tick=false;
+var near=window.matchMedia&&matchMedia('(hover: none)').matches?[].slice.call(document.querySelectorAll('.ccards li')):[];
 function frame(){tick=false;var vh=innerHeight;
  drift.forEach(function(i){var r=i.parentNode.getBoundingClientRect();var p=((r.top+r.height/2)-vh/2)/(vh/2+r.height/2);p=Math.max(-1,Math.min(1,p));i.style.transform='translate3d(0,'+(-p*0.05*r.height).toFixed(1)+'px,0)'});
- if(bar&&!still){var m=document.documentElement.scrollHeight-vh;bar.style.transform='scaleX('+(m>0?scrollY/m:0)+')'}}
+ if(bar&&!still){var m=document.documentElement.scrollHeight-vh;bar.style.transform='scaleX('+(m>0?scrollY/m:0)+')'}
+ if(near.length){var best=null,bd=1e9;near.forEach(function(c){var r=c.getBoundingClientRect();if(r.top<0||r.bottom>vh)return;var dd=Math.abs(r.top+r.height/2-vh/2);if(dd<bd){bd=dd;best=c}});near.forEach(function(c){c.classList.toggle('is-near',c===best)})}}
 addEventListener('scroll',function(){if(!tick){tick=true;requestAnimationFrame(frame)}d.classList.toggle('scrolled',scrollY>40)},{passive:true});frame();
 document.addEventListener('click',function(e){[].forEach.call(document.querySelectorAll('details.langmenu[open]'),function(m){if(!m.contains(e.target))m.removeAttribute('open')})});
 document.addEventListener('keydown',function(e){if(e.key==='Escape')[].forEach.call(document.querySelectorAll('details.langmenu[open]'),function(m){m.removeAttribute('open')})});
-var cue=document.querySelector('.scrollcue');if(cue)cue.addEventListener('click',function(){var n=cue.closest('section').nextElementSibling;if(n)n.scrollIntoView({behavior:still?'auto':'smooth'})});
+[].forEach.call(document.querySelectorAll('.ptabs'),function(bar){var bs=[].slice.call(bar.querySelectorAll('[data-tab]'));
+ function show(id,keep){bs.forEach(function(b){var on=b.getAttribute('data-tab')===id;b.setAttribute('aria-selected',on);var p=document.getElementById('t-'+b.getAttribute('data-tab'));if(p)p.hidden=!on});
+  if(!keep)try{history.replaceState(null,'','#'+id)}catch(e){}frame()}
+ bs.forEach(function(b){b.addEventListener('click',function(){show(b.getAttribute('data-tab'))})});
+ var h=(location.hash||'').slice(1);if(h&&bs.some(function(b){return b.getAttribute('data-tab')===h}))show(h,true)});
+function glide(y){y=Math.max(0,Math.min(y,document.documentElement.scrollHeight-innerHeight));if(still){scrollTo(0,y);return}var y0=scrollY,dy=y-y0;if(!dy)return;var dur=Math.min(1100,Math.max(450,Math.abs(dy)*0.5)),t0=null;
+ function ease(t){return t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2}
+ requestAnimationFrame(function step(ts){if(t0===null)t0=ts;var k=Math.min(1,(ts-t0)/dur);scrollTo(0,y0+dy*ease(k));if(k<1)requestAnimationFrame(step)})}
+function glideTo(el){var m=parseFloat(getComputedStyle(el).scrollMarginTop)||0;glide(el.getBoundingClientRect().top+scrollY-m)}
+document.addEventListener('click',function(e){if(e.defaultPrevented||e.button||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;var a=e.target.closest&&e.target.closest('a[href*="#"]');if(!a)return;
+ var u;try{u=new URL(a.getAttribute('href'),location.href)}catch(x){return}if(!u.hash||u.pathname!==location.pathname||u.search!==location.search)return;
+ var t=document.getElementById(decodeURIComponent(u.hash.slice(1)));if(!t)return;e.preventDefault();glideTo(t);try{history.pushState(null,'',u.hash)}catch(x){}});
+[].forEach.call(document.querySelectorAll('.favi img'),function(im){var a=im.parentNode;function no(){a.classList.add('no-icon')}
+ function ok(){if(!im.naturalWidth)return no();try{var c=document.createElement('canvas');c.width=c.height=16;var x=c.getContext('2d');x.drawImage(im,0,0,16,16);var p=x.getImageData(0,0,16,16).data,n=0;for(var i=3;i<p.length;i+=4)if(p[i]<40)n++;if(n>40){a.style.setProperty('--fi','url("'+im.src+'")');a.classList.add('mono')}}catch(e){}}
+ if(im.complete)ok();else{im.addEventListener('load',ok);im.addEventListener('error',no)}});
+var cue=document.querySelector('.scrollcue');if(cue)cue.addEventListener('click',function(){var n=cue.closest('section').nextElementSibling;if(n)glideTo(n)});
 document.addEventListener('click',function(e){var h=e.target.closest&&e.target.closest('[data-widget="roadmap"]');if(!h)return;
  setTimeout(function(){var p=h.shadowRoot&&h.shadowRoot.querySelector('.detail:not(.leaving)'),s=h.closest('section'),t=s&&(s.querySelector('.h')||s);if(!p||!t)return;
   var top=document.querySelector('.top'),off=(top?top.getBoundingClientRect().height:0)+12,need=p.getBoundingClientRect().bottom-(innerHeight-16),room=t.getBoundingClientRect().top-off;
-  var by=Math.min(need,room);if(by>0)scrollBy({top:by,behavior:still?'auto':'smooth'})},380)});
+  var by=Math.min(need,room);if(by>0)glide(scrollY+by)},380)});
 })();`;
 
 /** The two pages a visitor can hit that are not a page: not there, and not yet. */

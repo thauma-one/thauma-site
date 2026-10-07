@@ -67,7 +67,7 @@ const click = (w, d, tab) => d.querySelector(`[data-web-tab="${tab}"]`).dispatch
   new w.MouseEvent("click", { bubbles: true, cancelable: true, button: 0 }));
 
 await check("every tab is on the page, and the address decides which is showing", async () => {
-  const TABS = ["pages", "forms", "mail", "resources", "events", "photos", "settings"];
+  const TABS = ["pages", "forms", "mail", "resources", "events", "photos", "arcade", "settings"];
   for (const tab of TABS) {
     const { d } = await boot(tab);
     assert(d.querySelectorAll("[data-web-panel]").length === TABS.length, "not every tab is on the page");

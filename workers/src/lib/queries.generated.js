@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "af4e2f5756045f48";
+export const SOURCE_DIGEST = "54588d4e9635f439";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -415,6 +415,11 @@ WHERE id = :id AND partner_id IS :partner_id AND status = 'draft';`,
   mailing_finish: `UPDATE mailings
 SET status = :status, finished_at = :now, sent_count = :sent_count
 WHERE id = :id AND partner_id IS :partner_id;`,
+  mailing_layout_of: `SELECT layout FROM mailings WHERE id = :id AND partner_id IS :partner_id;`,
+  mailing_layout_set: `UPDATE mailings SET layout = :layout
+ WHERE id = :id AND partner_id IS :partner_id AND status = 'draft';`,
+  mailing_layouts_for_list: `SELECT id, layout FROM mailings
+ WHERE list_id = :list_id AND partner_id IS :partner_id;`,
   mailing_link_add: `INSERT INTO mailing_links (id, mailing_id, url, clicks, created_at) VALUES (:id, :mailing_id, :url, 1, :now);`,
   mailing_link_count: `UPDATE mailing_links SET clicks = clicks + 1 WHERE id = :id;`,
   mailing_link_find: `SELECT id FROM mailing_links WHERE mailing_id = :mailing_id AND url = :url;`,
@@ -479,6 +484,11 @@ ORDER BY l.name COLLATE NOCASE;`,
        (SELECT group_concat(a.object_key, char(10)) FROM mailing_attachments a WHERE a.mailing_id = m.id) AS attachment_keys
 FROM mailings m
 WHERE m.id = :id AND m.partner_id IS :partner_id AND m.status = 'draft';`,
+  mailing_mode_of: `SELECT color_mode FROM mailings WHERE id = :id AND partner_id IS :partner_id;`,
+  mailing_mode_set: `UPDATE mailings SET color_mode = :color_mode
+ WHERE id = :id AND partner_id IS :partner_id AND status = 'draft';`,
+  mailing_modes_for_list: `SELECT id, color_mode FROM mailings
+ WHERE list_id = :list_id AND partner_id IS :partner_id;`,
   mailing_one: `SELECT id, list_id, partner_id, subject, preheader, body_md, body_html, body_text,
        status, slug, sent_count, created_at, started_at, finished_at
 FROM mailings
@@ -805,7 +815,7 @@ WHERE l.slug = :list_slug AND l.archive_public = 1 AND l.archived_at IS NULL
   AND m.status = 'sent' AND m.slug IS NOT NULL
 ORDER BY m.finished_at DESC
 LIMIT 50;`,
-  public_archive_one: `SELECT m.subject, m.preheader, m.body_html, m.finished_at,
+  public_archive_one: `SELECT m.id, m.subject, m.preheader, m.body_html, m.finished_at,
        l.name AS list_name, l.from_name,
        p.id AS partner_id, p.display_name, p.embed_accent, p.embed_theme
 FROM mailings m
@@ -813,7 +823,7 @@ JOIN mailing_lists l ON l.id = m.list_id
 JOIN partners p ON p.slug = :partner_slug AND l.partner_id IS p.id
 WHERE l.slug = :list_slug AND l.archive_public = 1 AND l.archived_at IS NULL
   AND m.status = 'sent' AND m.slug = :slug;`,
-  public_contact_form: `SELECT c.deliver_to, c.from_address, c.heading, c.blurb, c.button, c.thanks,
+  public_contact_form: `SELECT c.partner_id, c.deliver_to, c.from_address, c.heading, c.blurb, c.button, c.thanks,
        p.display_name, p.embed_accent, p.embed_accent2, p.embed_theme, p.embed_turn,
        k.accent AS look_accent, k.accent2 AS look_accent2,
        k.turn AS look_turn, k.theme AS look_theme

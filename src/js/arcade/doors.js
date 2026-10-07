@@ -160,7 +160,12 @@
        rolls straight back, as if the error itself were unsteady — the
        "something's here" the original door always had. */
     var still = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-    Array.prototype.forEach.call(document.querySelectorAll('.dict-word'), function (word) {
+    /* THE 404's OWN, marked as the door (2026-10-06, Chase: "The thau-ma on
+       the About page is glitching without pressing anything. also... it's
+       another entry into the site. It shouldn't be an entry point"). This
+       found every .dict-word, and the About page's heading has the class
+       too, so it hinted and opened the arcade there as well. */
+    Array.prototype.forEach.call(document.querySelectorAll('[data-arcade-door="404"]'), function (word) {
       word.style.cursor = 'pointer';
       word.addEventListener('click', function () { enter('404', { first: word }); });
       if (still || !word.animate) return;

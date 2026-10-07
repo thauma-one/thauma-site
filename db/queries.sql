@@ -2061,7 +2061,7 @@ LIMIT 50;
 
 
 -- name: public_archive_one
-SELECT m.subject, m.preheader, m.body_html, m.finished_at,
+SELECT m.id, m.subject, m.preheader, m.body_html, m.finished_at,
        l.name AS list_name, l.from_name,
        p.id AS partner_id, p.display_name, p.embed_accent, p.embed_theme
 FROM mailings m
@@ -2175,7 +2175,7 @@ ON CONFLICT ((partner_id IS NULL)) WHERE partner_id IS NULL DO UPDATE SET
 --
 -- `is_open` is the switch, so closing the form takes it off every page it is
 -- embedded on without anybody editing those pages.
-SELECT c.deliver_to, c.from_address, c.heading, c.blurb, c.button, c.thanks,
+SELECT c.partner_id, c.deliver_to, c.from_address, c.heading, c.blurb, c.button, c.thanks,
        p.display_name, p.embed_accent, p.embed_accent2, p.embed_theme, p.embed_turn,
        k.accent AS look_accent, k.accent2 AS look_accent2,
        k.turn AS look_turn, k.theme AS look_theme
@@ -3370,3 +3370,31 @@ SELECT COUNT(*) AS n, MAX(r.updated_at) AS latest
 
 -- name: mail_bounces_seen
 UPDATE partners SET mail_bounces_seen_at = :now WHERE id = :partner_id;
+
+-- name: mailing_layout_of
+-- A mailing's layout (0052): "card" or "integrated"; NULL is a card.
+SELECT layout FROM mailings WHERE id = :id AND partner_id IS :partner_id;
+
+-- name: mailing_layout_set
+UPDATE mailings SET layout = :layout
+ WHERE id = :id AND partner_id IS :partner_id AND status = 'draft';
+
+-- name: mailing_mode_of
+-- A mailing's light/dark choice (0053): 'light', 'dark' or 'auto'; NULL is auto.
+SELECT color_mode FROM mailings WHERE id = :id AND partner_id IS :partner_id;
+
+-- name: mailing_mode_set
+UPDATE mailings SET color_mode = :color_mode
+ WHERE id = :id AND partner_id IS :partner_id AND status = 'draft';
+
+-- name: mailing_modes_for_list
+-- The composer's drafts with their light/dark choice, read apart from the main
+-- load so the main load works before 0053 is applied.
+SELECT id, color_mode FROM mailings
+ WHERE list_id = :list_id AND partner_id IS :partner_id;
+
+-- name: mailing_layouts_for_list
+-- The composer's drafts with their layouts, read apart from the main load so
+-- the main load works before 0052 is applied.
+SELECT id, layout FROM mailings
+ WHERE list_id = :list_id AND partner_id IS :partner_id;

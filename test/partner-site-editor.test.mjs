@@ -38,7 +38,8 @@ function answer(opts = {}) {
     site: { subdomain: "chaseroush", address: "/site/chaseroush/", preview: "/site/chaseroush/?draft",
             enabled: false, published_at: null, unpublished: true, dns: null },
     draft,
-    languages: [{ code: "en", name: "English", native_name: "English" }, { code: "hr", name: "Croatian", native_name: "Hrvatski" }],
+    languages: [{ code: "en", name: "English", native_name: "English" }, { code: "hr", name: "Croatian", native_name: "Hrvatski" }]
+      .concat(opts.moreLangs ? [{ code: "sr", name: "Serbian", native_name: "Српски" }] : []),
     /* As staff-site.js builds it: the site's own page names per language. */
     page_names: Object.fromEntries(["en", "hr"].map((l) => [l, Object.fromEntries(PAGES.map((id) => [id, word(l, id)]))])),
     placeholders: placeholders ? Object.fromEntries(["en", "hr"].map((l) => [l, placeholders(l, "Chase Roush")])) : undefined,
@@ -80,9 +81,37 @@ await check("it opens on Design; Pages lists every page, Timeline and Resources 
   assert(!d.getElementById("wsDesign").hidden && d.getElementById("wsPages").hidden, "Design first");
   pages();
   const rows = [...d.querySelectorAll(".ws-prow")];
-  eq(rows.map((r) => r.querySelector("b").textContent), ["Home", "About", "Mission", "Updates", "Give", "Stay connected", "Contact", "Timeline", "Resources"], "pages");
+  eq(rows.map((r) => r.querySelector("b").textContent), ["Home", "About", "Mission", "Updates", "Give", "Stay Connected", "Contact", "Timeline", "Resources"], "pages");
   assert(rows[7].classList.contains("is-off") && rows[8].classList.contains("is-off"), "Timeline and Resources off");
   eq(d.querySelectorAll("#wsPages input[type=text], #wsPages [data-rt]").length, 0, "no box to type in");
+});
+
+await check("a page's tabs: + Add tabs opens two, each with its own sections; the page's own stay above; named in place", async () => {
+  /* Chase, 2026-10-06: "an option at the top of each page that acts like
+     tabs open on a browser, where + adds a tab to the page with distinct
+     looks … we would need a way to style the tabs without cluttering up the
+     interface" */
+  const { w, d, click, pages } = await boot();
+  pages();
+  click(d.querySelector('[data-open-page="give"]'));
+  const own = d.querySelectorAll(".ws-acc").length;
+  assert(own > 0, "Give has its own sections");
+  click(d.querySelector("[data-tabs-add]"));
+  const chips = () => [...d.querySelectorAll(".ws-tabchip")].map((c) => c.textContent);
+  eq(chips(), ["Above the tabs", "Tab 1", "Tab 2", "+"], "the strip");
+  eq(d.querySelector(".ws-tabchip.is-on").textContent, "Tab 1", "the first tab is open");
+  eq(d.querySelectorAll(".ws-acc").length, 0, "a new tab has no sections of its own");
+  assert(!d.querySelector(".ws-tabstyle"), "the bar's look is out of the way");
+  click(d.querySelector("[data-tab-style]"));
+  assert(d.querySelector('.ws-tabstyle [data-chip="tabstyle"][data-value="joined"][aria-pressed="true"]'), "joined, chosen");
+  const name = d.querySelector("[data-tab-name]");
+  name.value = "Give";
+  name.dispatchEvent(new w.Event("input", { bubbles: true }));
+  eq(chips()[1], "Give", "named in place");
+  click(d.querySelector('[data-tab-view=""]'));
+  eq(d.querySelectorAll(".ws-acc").length, own, "above the tabs: the page's own sections");
+  click(d.querySelector("[data-tab-add]"));
+  eq(chips(), ["Above the tabs", "Give", "Tab 2", "Tab 3", "+"], "+ adds another, and opens it");
 });
 
 await check("a page opens to its sections as rows; All pages and the page menu lead out", async () => {
@@ -90,7 +119,7 @@ await check("a page opens to its sections as rows; All pages and the page menu l
   pages();
   click(d.querySelector('[data-open-page="home"]'));
   eq([...d.querySelectorAll(".ws-stile-words b")].map((n) => n.textContent), ["Hero", "Photo and words"], "Home's sections");
-  assert(/Follow the work of/.test(d.querySelector(".ws-stile-words span").textContent), "each with one line of its words");
+  assert(/Follow the Work of/.test(d.querySelector(".ws-stile-words span").textContent), "each with one line of its words");
   const pick = d.querySelector("[data-pick-page]");
   pick.value = "give";
   pick.dispatchEvent(new w.Event("change", { bubbles: true }));
@@ -135,24 +164,77 @@ await check("a row unfolds where it is, one at a time; a new section goes where 
   assert(d.querySelector('.ws-acc[data-si="1"]').classList.contains("is-open"), "and open");
 });
 
-await check("a new section suggests words in the language being written, and saves none of them", async () => {
-  /* Chase, 2026-10-03: placeholder words in every language whenever a
-     section is added, for those unsure how to phrase things. */
+await check("no password manager is offered any field: every text box says so, ones drawn later too", async () => {
+  const { d, click, pages } = await boot();
+  pages();
+  click(d.querySelector('[data-open-page="home"]'));
+  click(d.querySelector('[data-edit-sec="0"]'));
+  await settle(50);
+  const boxes = [...d.querySelectorAll('input[type="text"], input:not([type]), textarea')];
+  assert(boxes.length > 0 && d.querySelector("[data-page-label]"), "nothing to check");
+  const loud = boxes.filter((b) => !(b.hasAttribute("data-1p-ignore") && b.getAttribute("data-lpignore") === "true" && b.getAttribute("data-bwignore") === "true" && b.getAttribute("autocomplete")));
+  eq(loud.length, 0, "fields a manager may take for a sign-in");
+});
+
+await check("a new section starts in stand-in words in every language, and says which are still missing", async () => {
+  /* Chase, 2026-10-07: "every section that is added should have basic
+     styling and text added in … just random words … and remind the person
+     that they haven't done that text yet since it is gibberish." */
   const { w, d, sent, click, pages } = await boot();
   pages();
-  const pick = d.getElementById("wsLangA");
-  pick.value = "hr";
-  pick.dispatchEvent(new w.Event("change", { bubbles: true }));
   click(d.querySelector('[data-open-page="home"]'));
+  assert(!d.querySelector(".ws-miss"), "the starter's written words are not missing");
   click(d.querySelector('[data-insert-at="1"]'));
   click(d.querySelector('[data-add-type="text"]'));
-  const heading = d.querySelector('[data-rt="1:heading"]');
-  assert(heading, "the new section is not open");
-  eq(heading.getAttribute("data-ph"), word("hr", "aboutThin") + " " + word("hr", "aboutBold"), "its heading, in Croatian");
-  eq(d.querySelector('[data-rt="1:text"]').getAttribute("data-ph"), word("hr", "aboutFill"), "its words, in Croatian");
   await settle(900);
   const saved = sent.filter((x) => x.action === "save").pop().draft.pages[0].sections[1];
-  eq([saved.words.hr.heading, saved.words.hr.text], ["", ""], "nothing suggested was saved");
+  assert(/^[A-Z][a-z]+( [A-Z][a-z]+)? <b>[A-Z][a-z]+( [A-Z][a-z]+)?<\/b>$/.test(saved.words.en.heading), "a heading with its bold half: " + saved.words.en.heading);
+  assert(/<b>\w+ \w+<\/b>/.test(saved.words.hr.text), "words with a bold phrase, in Croatian too: " + saved.words.hr.text);
+  eq(saved.words.en.verse, "", "a verse waits to be asked for");
+  eq(d.querySelector('.ws-acc[data-si="1"] .ws-miss').textContent, "missing EN, HR", "both still to write");
+  /* One real word and that language is written. */
+  const heading = d.querySelector('[data-rt="1:heading"]'), text = d.querySelector('[data-rt="1:text"]');
+  heading.innerHTML = "Who <b>We Are</b>"; heading.dispatchEvent(new w.Event("input", { bubbles: true }));
+  text.innerHTML = "Serving churches across the Balkans."; text.dispatchEvent(new w.Event("input", { bubbles: true }));
+  await settle(900);
+  click(d.querySelector("[data-all-pages]"));
+  eq(d.querySelector('[data-open-page="home"] .ws-miss').textContent, "missing HR", "the page list says so too");
+  const hint = d.querySelector('[data-rt="1:heading"]');
+  assert(!hint || hint.getAttribute("data-ph"), "an emptied field still suggests words");
+});
+
+await check("cards and links arrive with something in them", async () => {
+  const { d, sent, click, pages } = await boot();
+  pages();
+  click(d.querySelector('[data-open-page="home"]'));
+  click(d.querySelector('[data-insert-at="1"]'));
+  click(d.querySelector('[data-add-type="cards"]'));
+  click(d.querySelector('[data-insert-at="1"]'));
+  click(d.querySelector('[data-add-type="links"]'));
+  await settle(900);
+  const secs = sent.filter((x) => x.action === "save").pop().draft.pages[0].sections;
+  eq(secs[2].items.length, 3, "three cards");
+  assert(secs[2].items[0].words.hr.title, "each card titled in every language");
+  eq(secs[1].items.map((it) => it.url), ["page:about", "page:mission"], "two links to the site's own pages");
+});
+
+await check("a language turned on gets stand-in words wherever another language is written", async () => {
+  const { d, sent, click } = await boot({ moreLangs: true });
+  click(d.querySelector('[data-ws-tab="settings"]'));
+  const sr = d.querySelector('[data-site-lang="sr"]');
+  assert(sr && !sr.checked, "Serbian offered, off");
+  sr.checked = true;
+  sr.dispatchEvent(new d.defaultView.Event("change", { bubbles: true }));
+  await settle(900);
+  const draft = sent.filter((x) => x.action === "save").pop().draft;
+  const hero = draft.pages[0].sections[0];
+  assert(hero.words.sr && /<b>/.test(hero.words.sr.heading) && hero.words.sr.text, "the hero, in stand-in words");
+  assert(!hero.words.sr.verse, "nothing where no language has words");
+  assert(draft.footer.words.sr && draft.footer.words.sr.tagline, "the footer too");
+  eq(hero.words.en.heading, "Follow the Work of <b>Chase Roush.</b>", "the other languages untouched");
+  click(d.querySelector('[data-ws-tab="pages"]'));
+  const note = d.querySelector('[data-open-page="home"] .ws-miss');
+  eq([note.textContent, note.title], ["missing SR", "missing Српски"], "and the page list says it is missing");
 });
 
 await check("one section at a time: only its tabs; formatted words saved clean", async () => {
@@ -163,7 +245,7 @@ await check("one section at a time: only its tabs; formatted words saved clean",
   eq([...d.querySelectorAll("[data-sectab]")].map((b) => b.dataset.sectab), ["words", "photo", "buttons", "look"], "the opening's tabs");
   const heading = d.querySelector('[data-rt="0:heading"]');
   assert(heading && heading.getAttribute("contenteditable") === "true", "one heading box");
-  eq(heading.innerHTML, "Follow the work of <b>Chase Roush.</b>", "its bold half shown bold");
+  eq(heading.innerHTML, "Follow the Work of <b>Chase Roush.</b>", "its bold half shown bold");
   assert(!d.querySelector('[data-rt="0:thin"], [data-sec-word="0:thin"]'), "no second heading box");
   const text = d.querySelector('[data-rt="0:text"]');
   text.innerHTML = '<div>Serving <strong>Croatia</strong></div><div><span style="color:red">churches</span> <i>well</i></div>';
@@ -210,18 +292,21 @@ await check("words can take a size and a color, a quick pick or any color; a wor
   assert(box.querySelector('[data-c="#ff00aa"]').style.color, "a picked color shows in the box");
 });
 
-await check("every section lines up: left, centered, right or indented; a Words section has no second layout control", async () => {
+await check("every section lines up left, centered or right, and Indented is a switch on any of them; a Words section has no second layout control", async () => {
   const { d, sent, click, pages } = await boot();
   pages();
   click(d.querySelector('[data-open-page="mission"]'));
   click(d.querySelector('[data-edit-sec="0"]'));            // the Mission page's Words section
   click(d.querySelector('[data-sectab="look"]'));
-  eq([...d.querySelectorAll('[data-chip="align:0"]')].map((b) => b.dataset.value), ["left", "center", "right", "indent"], "choices");
+  eq([...d.querySelectorAll('[data-chip="align:0"]')].map((b) => b.dataset.value), ["left", "center", "right"], "choices");
+  eq([...d.querySelectorAll('[data-chip="indent:0"]')].map((b) => b.dataset.value), ["on", "off"], "Indented, on or off");
   eq(d.querySelector('[data-chip="align:0"][aria-pressed="true"]').dataset.value, "left", "as it was");
   assert(!d.querySelector('[data-chip="variant:0"]'), "the old Left/Centered layout chips are gone for Words");
   click(d.querySelector('[data-chip="align:0"][data-value="right"]'));
+  click(d.querySelector('[data-chip="indent:0"][data-value="on"]'));
   await settle(900);
-  eq(sent.filter((x) => x.action === "save").pop().draft.pages.filter((p) => p.id === "mission")[0].sections[0].align, "right", "saved");
+  const saved = sent.filter((x) => x.action === "save").pop().draft.pages.filter((p) => p.id === "mission")[0].sections[0];
+  eq([saved.align, saved.indent], ["right", true], "saved: right, indented");
 });
 
 await check("a header can be added; its Look has background, top line and title line; a verse has its own look", async () => {
@@ -232,13 +317,13 @@ await check("a header can be added; its Look has background, top line and title 
   click(d.querySelector('[data-add-type="header"]'));
   assert(d.querySelector('[data-rt="0:heading"]'), "the new header is not open");
   click(d.querySelector('[data-sectab="look"]'));
-  eq([...d.querySelectorAll('[data-chip="hbg:0"]')].map((b) => b.dataset.value), ["plain", "raised", "tint", "accent"], "backgrounds");
-  assert(!d.querySelector('[data-chip="raised:0"]'), "no second background control");
-  click(d.querySelector('[data-chip="hbg:0"][data-value="tint"]'));
+  eq([...d.querySelectorAll('[data-chip="raised:0"]')].map((b) => b.dataset.value), ["plain", "raised", "tint", "accent"], "every section's backgrounds, and the header's Accent");
+  assert(!d.querySelector('[data-chip^="hbg:"]'), "no second background control");
+  click(d.querySelector('[data-chip="raised:0"][data-value="tint"]'));
   click(d.querySelector('[data-chip="topline:0"][data-value="off"]'));
   await settle(900);
   const s = sent.filter((x) => x.action === "save").pop().draft.pages.filter((p) => p.id === "mission")[0].sections;
-  eq([s[0].type, s[0].bg, s[0].topline], ["header", "tint", false], "saved");
+  eq([s[0].type, s[0].tint, s[0].bg, s[0].topline], ["header", true, "plain", false], "saved");
 
   click(d.querySelector('[data-edit-sec="1"]'));            // the Words section, now second
   click(d.querySelector('[data-sectab="look"]'));

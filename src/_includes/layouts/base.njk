@@ -121,7 +121,9 @@
     <div class="foot-legal">{{ t.footer.legal }}</div>
   </div>
   <div class="foot-col foot-right">
-    {%- set hasSocials = site.socials.youtube or site.socials.instagram or site.socials.facebook or site.socials.x %}
+    {#- Website › Settings › Social links switches these (2026-10-07: the
+        switch existed since August and nothing read it). -#}
+    {%- set hasSocials = visible.sections.socialLinks and (site.socials.youtube or site.socials.instagram or site.socials.facebook or site.socials.x) %}
     {%- if hasSocials %}<div class="foot-socials">
     {%- if site.socials.youtube %}<a href="{{ site.socials.youtube }}" aria-label="YouTube" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M23 7.2s-.2-1.6-.9-2.3c-.9-.9-1.9-.9-2.3-1C16.6 3.6 12 3.6 12 3.6s-4.6 0-7.8.3c-.4.1-1.4.1-2.3 1-.7.7-.9 2.3-.9 2.3S.8 9.1.8 11v1.8c0 1.9.2 3.8.2 3.8s.2 1.6.9 2.3c.9.9 2 .9 2.5 1 1.8.2 7.6.3 7.6.3s4.6 0 7.8-.4c.4-.1 1.4-.1 2.3-1 .7-.7.9-2.3.9-2.3s.2-1.9.2-3.8V11c0-1.9-.2-3.8-.2-3.8zM9.9 15V8.5l6.1 3.3-6.1 3.2z"/></svg></a>{% endif %}
     {%- if site.socials.instagram %}<a href="{{ site.socials.instagram }}" aria-label="Instagram" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4.2"/><circle cx="17.3" cy="6.7" r="1.1" fill="currentColor" stroke="none"/></svg></a>{% endif %}

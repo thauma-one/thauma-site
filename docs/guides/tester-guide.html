@@ -1,0 +1,264 @@
+<!--
+  THE TESTER'S GUIDE (2026-10-06): a branded, 6-page PDF for someone trying
+  the Staff Site for the first time. The big three come first (Site Creator,
+  Updates, Mail), then the management pages, with Sharing for advanced users.
+  Detailed guides for every page come later, in this same look, once the
+  test coding is done.
+
+  TO MAKE THE PDF: replace the /*FONTS*/ line below with @font-face rules
+  for Sora and Inter whose src are data: URLs of src/fonts/*-latin-v2.woff2
+  (so the PDF carries its own fonts), open the file in Chromium, and print
+  with backgrounds on and no margins (A4; the page size is set in @page).
+  Headless: DevTools Page.printToPDF {printBackground:true,
+  preferCSSPageSize:true}. The PDF is not kept in the repo.
+-->
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<title>Thauma Staff Site — a first look</title>
+<style>
+/*FONTS*/
+@page{size:A4;margin:0}
+*{box-sizing:border-box}
+:root{--bg:#0B0F15;--bg2:#0E141C;--panel:#101823;--text:#EDF2F8;--dim:#8A96A6;--line:rgba(237,242,248,.09);
+  --blue:#2FD8FF;--blue-hi:#8FEBFF;--blue-dim:rgba(47,216,255,.14);--foam:#5CF2C4;--foam-dim:rgba(92,242,196,.14);--amber:#FFB547}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-weight:300;font-size:10.5pt;line-height:1.55;
+  -webkit-print-color-adjust:exact;print-color-adjust:exact}
+.page{width:210mm;height:297mm;padding:22mm 20mm 18mm;position:relative;overflow:hidden;page-break-after:always;background:var(--bg)}
+.page:last-child{page-break-after:auto}
+h1,h2,h3{font-family:'Sora',sans-serif;font-weight:100;margin:0;letter-spacing:.01em}
+h1 b,h2 b,h3 b{font-weight:600}
+h2{font-size:24pt;line-height:1.15;margin:0 0 6mm}
+h3{font-size:12pt;font-weight:600;margin:0 0 2mm}
+p{margin:0 0 3mm}
+.cue{display:flex;align-items:center;gap:10px;font-family:'Sora',sans-serif;font-weight:600;font-size:8pt;letter-spacing:.32em;text-transform:uppercase;color:var(--blue);margin-bottom:5mm}
+.cue::before{content:"";width:14mm;height:1px;background:var(--blue)}
+.cue.foam{color:var(--foam)}.cue.foam::before{background:var(--foam)}
+.dim{color:var(--dim)}
+.foot{position:absolute;left:20mm;right:20mm;bottom:10mm;display:flex;justify-content:space-between;font-size:7.5pt;color:var(--dim);letter-spacing:.18em;text-transform:uppercase;font-family:'Sora',sans-serif;font-weight:200}
+.btn{display:inline-block;font-family:'Sora',sans-serif;font-weight:600;font-size:7.5pt;letter-spacing:.16em;text-transform:uppercase;padding:1.2mm 2.6mm;border:1px solid rgba(47,216,255,.5);color:var(--blue);border-radius:2px;white-space:nowrap;line-height:1.3}
+.btn.solid{background:var(--foam);border-color:var(--foam);color:#06110c}
+.ui{font-weight:500;color:var(--text);border-bottom:1px solid rgba(237,242,248,.25)}
+/* COVER */
+.cover{display:flex;flex-direction:column;justify-content:space-between;padding:26mm 22mm 20mm;
+  background:radial-gradient(ellipse 120mm 90mm at 72% 30%,rgba(47,216,255,.13),transparent 70%),radial-gradient(ellipse 110mm 80mm at 20% 85%,rgba(92,242,196,.08),transparent 70%),var(--bg)}
+.mark{position:absolute;left:50%;top:34%;width:150mm;height:150mm;transform:translate(-30%,-50%);opacity:.9}
+.word{font-family:'Sora',sans-serif;font-weight:100;font-size:12pt;letter-spacing:.62em}
+.cover h1{font-size:40pt;line-height:1.05;margin-bottom:6mm}
+.cover .lede{font-size:12pt;color:var(--dim);max-width:120mm}
+.cover .meta{display:flex;gap:12mm;font-size:8pt;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);font-family:'Sora',sans-serif;font-weight:200}
+.cover .meta b{display:block;white-space:nowrap;color:var(--text);font-weight:600;letter-spacing:.14em;margin-top:1.5mm}
+/* the top bar, drawn */
+.bar{background:var(--bg2);border:1px solid var(--line);border-radius:3px;padding:4mm 4mm;display:flex;align-items:center;gap:3mm;margin:4mm 0 3mm}
+.bar .w{font-family:'Sora',sans-serif;font-weight:100;letter-spacing:.5em;font-size:9pt}
+.bar .tag{font-family:'Sora',sans-serif;font-weight:600;font-size:6pt;letter-spacing:.2em;color:var(--blue)}
+.bar nav{display:flex;gap:2.6mm;font-size:7.4pt;white-space:nowrap;color:var(--dim);flex:1;justify-content:center}
+.bar nav span:first-child{color:var(--text);border-bottom:1px solid var(--blue);padding-bottom:.6mm}
+.bar .me{white-space:nowrap;font-size:7pt;border:1px solid var(--line);padding:1mm 2.5mm;color:var(--text)}
+.navlist{display:grid;grid-template-columns:30mm 1fr;gap:2.2mm 5mm;margin:4mm 0 6mm}
+.navlist dt{font-family:'Sora',sans-serif;font-weight:600;font-size:9.5pt}
+.navlist dd{margin:0;color:var(--dim)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:3px;padding:5mm 6mm;margin-bottom:4mm}
+.card.blue{border-left:2px solid var(--blue)}.card.foam{border-left:2px solid var(--foam)}.card.amber{border-left:2px solid var(--amber)}
+.card h3 .n{display:inline-block;width:6mm;color:var(--blue);font-weight:100}
+.steps{counter-reset:s;list-style:none;margin:2mm 0 0;padding:0}
+.steps li{counter-increment:s;position:relative;padding:1.4mm 0 1.4mm 8mm;border-top:1px solid var(--line)}
+.steps li:first-child{border-top:0}
+.steps li::before{content:"";position:absolute;left:0;top:2.6mm;width:3.2mm;height:3.2mm;border:1px solid var(--foam);border-radius:1px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:4mm}
+.note{font-size:9pt;color:var(--dim);border-top:1px solid var(--line);padding-top:3mm;margin-top:3mm}
+.rate{display:flex;gap:2.4mm;margin-top:1.5mm}
+.rate span{width:7mm;height:7mm;border:1px solid var(--line);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:7.5pt;color:var(--dim)}
+.lines{height:20mm;background:repeating-linear-gradient(180deg,transparent 0 6.4mm,var(--line) 6.4mm 6.6mm)}
+.qa{display:grid;grid-template-columns:1fr;gap:4mm}
+.areas{display:grid;grid-template-columns:repeat(2,1fr);gap:2.5mm 8mm;margin:3mm 0 0}
+.areas div{display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--line);padding-top:2mm}
+</style></head><body>
+
+<!-- 1 · COVER -->
+<section class="page cover">
+  <svg class="mark" viewBox="0 0 64 64" aria-hidden="true">
+    <defs>
+      <linearGradient id="v" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0B0F15" stop-opacity="0"/><stop offset=".5" stop-color="#C9F6FF"/><stop offset="1" stop-color="#0B0F15" stop-opacity="0"/></linearGradient>
+      <linearGradient id="h" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#0B0F15" stop-opacity="0"/><stop offset=".5" stop-color="#C9F6FF"/><stop offset="1" stop-color="#0B0F15" stop-opacity="0"/></linearGradient>
+      <radialGradient id="g"><stop offset="0" stop-color="#2FD8FF" stop-opacity=".5"/><stop offset="1" stop-color="#2FD8FF" stop-opacity="0"/></radialGradient>
+    </defs>
+    <circle cx="32" cy="32" r="14" fill="url(#g)"/>
+    <rect x="31.85" y="2" width=".3" height="60" fill="url(#v)"/>
+    <rect x="2" y="31.85" width="60" height=".3" fill="url(#h)"/>
+    <circle cx="32" cy="32" r="1.1" fill="#F4FFFF"/>
+  </svg>
+  <div class="word">THAUMA</div>
+  <div>
+    <div class="cue">For testers</div>
+    <h1>The Staff Site,<br><b>a first look</b></h1>
+    <p class="lede">A short guide to getting around, and a handful of things to try. It is deliberately brief: we want to see how easy the site is to use on its own.</p>
+  </div>
+  <div class="meta">
+    <div>Where<b>thauma.one/staff</b></div>
+    <div>Time<b>About 30 minutes</b></div>
+    <div>Edition<b>October 2026</b></div>
+  </div>
+</section>
+
+<!-- 2 · GETTING AROUND -->
+<section class="page">
+  <div class="cue">Start here</div>
+  <h2>Getting <b>around</b></h2>
+
+  <h3>Signing in</h3>
+  <p>Open <span class="ui">thauma.one/staff</span> and enter your email address. A one-time code arrives in your inbox; type it in and you are in. There is no password to remember.</p>
+
+  <h3 style="margin-top:6mm">The top bar</h3>
+  <p class="dim">Everything lives in one row along the top. The page you are on is underlined.</p>
+  <div class="bar">
+    <span class="w">THAUMA</span><span class="tag">STAFF</span>
+    <nav><span>Home</span><span>Updates</span><span>Mail</span><span>Sharing</span><span>Stewardship</span><span>Directory</span><span>Resources</span><span>Site Creator</span></nav>
+    <span class="me">Your name ▾</span>
+  </div>
+  <dl class="navlist">
+    <dt>Home</dt><dd>What needs you today: numbers at a glance, supporters gone quiet, things left unfinished.</dd>
+    <dt>Updates</dt><dd>Your ministry's timeline, goals, prayer requests and videos.</dd>
+    <dt>Mail</dt><dd>Your mailing lists, writing and sending updates, and everything already sent.</dd>
+    <dt>Sharing</dt><dd>The pieces you can put on other websites, such as a sign-up form, with the code to paste.</dd>
+    <dt>Stewardship</dt><dd>The people who support you, and your history with each of them. Only you see it.</dd>
+    <dt>Directory</dt><dd>Contacts shared with your whole team: churches, venues, people you work with.</dd>
+    <dt>Resources</dt><dd>Documents and files, shared with the people you choose.</dd>
+    <dt>Site Creator</dt><dd>Your own website: its look, pages, links and footer.</dd>
+  </dl>
+
+  <div class="two">
+    <div class="card"><h3>Your name, top right</h3><p class="dim" style="margin:0">Opens <span class="ui">Settings</span> (your account and languages), <span class="ui">Activity</span> (what has changed and who changed it) and signing out.</p></div>
+    <div class="card"><h3>On a phone</h3><p class="dim" style="margin:0">The row folds into a <span class="btn">Menu</span> button. Everything is still there, one tap away.</p></div>
+  </div>
+  <div class="foot"><span>Thauma · Staff Site</span><span>2</span></div>
+</section>
+
+<!-- 3 · HOW SAVING WORKS -->
+<section class="page">
+  <div class="cue foam">Good to know</div>
+  <h2>How saving <b>works</b></h2>
+  <p class="dim" style="margin-bottom:6mm">There are three kinds of save. Knowing which one you are using is most of the learning.</p>
+
+  <div class="card blue">
+    <h3><span class="n">1</span>Save</h3>
+    <p style="margin:0">Forms such as a contact or a supporter have their own button, like <span class="btn">Save contact</span>. Once pressed, it is stored for you and your team. Nobody outside sees it.</p>
+  </div>
+  <div class="card foam">
+    <h3><span class="n">2</span>Publish</h3>
+    <p style="margin:0">On <b>Updates</b> and <b>Site Creator</b> you can change as much as you like. Nothing is public until you press <span class="btn solid">Publish</span>. Until then, <span class="btn">Discard</span> takes it all back.</p>
+  </div>
+  <div class="card amber">
+    <h3><span class="n">3</span>Send</h3>
+    <p style="margin:0">Mail goes out only when you press <span class="btn solid">Send</span>. <span class="btn">Save draft</span> keeps it for later, and <span class="btn">Send me a test</span> sends one copy to you alone. Always send yourself a test first.</p>
+  </div>
+
+  <h3 style="margin-top:7mm">Other languages</h3>
+  <p class="dim">Where something can be written in more than one language, you write in one and see another beside it. <span class="btn">Translate</span> fills in a first draft for you to check.</p>
+
+  <h3 style="margin-top:5mm">If two people edit the same thing</h3>
+  <p class="dim">If someone else saves while you are working, the site tells you and lets you choose: keep yours, or take theirs. Nothing is overwritten quietly.</p>
+
+  <div class="note"><b style="color:var(--amber);font-weight:600">Please note.</b> This is the real site: what you publish or send is seen by real people. Use names like "Test Person", send mail only to your own Test list, and remove what you add when you are done.</div>
+  <div class="foot"><span>Thauma · Staff Site</span><span>3</span></div>
+</section>
+
+<!-- 4 · THE BIG THREE -->
+<section class="page">
+  <div class="cue">The test</div>
+  <h2>The <b>big three</b></h2>
+  <p class="dim" style="margin-bottom:5mm">These are what most ministries come for, so spend most of your time here. Try each one without help first. If you get stuck, note where, then carry on: getting stuck is useful to us, not a failure.</p>
+
+  <div class="card foam">
+    <h3><span class="n">1</span>Site Creator: your website</h3>
+    <ul class="steps">
+      <li>In <b>Design</b>, change your site's colors or type and watch the preview change.</li>
+      <li>In <b>Pages</b>, rewrite a few words on one of your pages.</li>
+      <li>In <b>Navigation</b>, change what your site's menu shows.</li>
+      <li>Decide: <span class="btn solid">Publish</span> it, or put everything back with <span class="btn">Discard</span>.</li>
+    </ul>
+  </div>
+  <div class="card blue">
+    <h3><span class="n">2</span>Updates: what's happening</h3>
+    <ul class="steps">
+      <li>Add a milestone to the timeline, with a date.</li>
+      <li>Add a goal, and a prayer request.</li>
+      <li>Look at how they appear on a computer and on a phone.</li>
+      <li>Decide: <span class="btn solid">Publish</span> them, or <span class="btn">Discard</span>.</li>
+    </ul>
+  </div>
+  <div class="card amber">
+    <h3><span class="n">3</span>Mail: telling people</h3>
+    <ul class="steps">
+      <li>Make a new list called <b>Test</b> and add your own email address. Confirm it from your inbox.</li>
+      <li>Write an update to the Test list, with a picture and a link. Try a different picture size, and both looks: Card and Integrated.</li>
+      <li><span class="btn">Send me a test</span>, check it in your inbox, then <span class="btn solid">Send</span>.</li>
+      <li>Open it under <b>Sent</b>: who opened it? Send it again to yourself.</li>
+    </ul>
+  </div>
+  <div class="foot"><span>Thauma · Staff Site</span><span>4</span></div>
+</section>
+
+<!-- 5 · IF YOU HAVE TIME -->
+<section class="page">
+  <div class="cue foam">If you have time</div>
+  <h2>The <b>rest</b> of the site</h2>
+  <p class="dim" style="margin-bottom:5mm">These keep a ministry organized behind the scenes. Quicker to try, and still worth a look.</p>
+
+  <div class="two">
+    <div class="card">
+      <h3>Stewardship</h3>
+      <ul class="steps">
+        <li>Add "Test Person" and log a phone call with them.</li>
+        <li>Remove them again.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Directory</h3>
+      <ul class="steps">
+        <li>Add a contact your team would need, such as a church office.</li>
+        <li>Remove it again.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Resources</h3>
+    <ul class="steps"><li>Find this guide in Resources and open it.</li></ul>
+  </div>
+
+  <div class="card blue" style="margin-top:6mm">
+    <h3>For advanced users: Sharing</h3>
+    <p class="dim" style="margin:0 0 1mm">For ministries that build their own website apart from Thauma, Sharing gives the pieces to put on it.</p>
+    <ul class="steps">
+      <li>Find the sign-up form and copy its code.</li>
+      <li>Change how the timeline looks, between Full and Condensed.</li>
+    </ul>
+  </div>
+  <div class="foot"><span>Thauma · Staff Site</span><span>5</span></div>
+</section>
+
+<!-- 5 · FEEDBACK -->
+<section class="page">
+  <div class="cue foam">Afterwards</div>
+  <h2>Tell us how it <b>went</b></h2>
+  <p class="dim" style="margin-bottom:6mm">Short answers are fine. What you noticed in the moment matters more than polish.</p>
+
+  <h3>How easy was each part?</h3>
+  <p class="dim" style="font-size:9pt">1 is "I gave up", 5 is "I didn't have to think".</p>
+  <div class="areas">
+    <div><span>Site Creator</span><span class="rate"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></span></div>
+    <div><span>Updates</span><span class="rate"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></span></div>
+    <div><span>Mail</span><span class="rate"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></span></div>
+    <div><span>Getting around</span><span class="rate"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></span></div>
+    <div><span>Stewardship &amp; Directory</span><span class="rate"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></span></div>
+    <div><span>Sharing</span><span class="rate"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></span></div>
+  </div>
+
+  <div class="qa" style="margin-top:8mm">
+    <div><h3>Where did you get stuck, or hesitate?</h3><div class="lines"></div></div>
+    <div><h3>Was anything named differently from what you expected?</h3><div class="lines"></div></div>
+    <div><h3>What did you look for and not find?</h3><div class="lines"></div></div>
+    <div><h3>Anything that felt good?</h3><div class="lines"></div></div>
+  </div>
+  <div class="foot"><span>Thauma · Staff Site</span><span>Thank you</span></div>
+</section>
+</body></html>

@@ -32,6 +32,7 @@
 const RESEND = "https://api.resend.com/emails";
 
 import { t } from "./mail-i18n.js";
+import { band } from "./mail-band.js";
 
 const esc = (s) =>
   String(s == null ? "" : s).replace(/[&<>"']/g, (c) =>
@@ -71,7 +72,7 @@ const esc = (s) =>
  * invert it; saying "dark light" tells them it is deliberate and to leave it
  * be. Every text color is set explicitly for the ones that ignore that.
  */
-export function shell({ heading, rows, footer = "", origin, brand = null }) {
+export function shell({ heading, rows, footer = "", origin, brand = null, kind = "" }) {
   /* WHERE THE BAND IMAGE IS FETCHED FROM. The sending deployment's own origin,
      so a message from staging shows staging's copy and one from production
      shows production's. Falling back to the live site means an environment
@@ -94,7 +95,7 @@ export function shell({ heading, rows, footer = "", origin, brand = null }) {
     <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"
            style="width:100%;max-width:600px;">
 
-      ${brand ? brandBand(brand) : `<tr><td bgcolor="#070A10" align="left"
+      ${brand ? band({ name: brand.name, kind, accent: brand.accent, accent2: brand.accent2, ground: "#10161F" }) : `<tr><td bgcolor="#070A10" align="left"
               style="background:#070A10;font-size:0;line-height:0;">
         <img src="${base}/img/email-band.png" width="600" alt="THAUMA"
              style="display:block;width:100%;max-width:600px;height:auto;border:0;
@@ -124,18 +125,12 @@ ${/* NO FOOTER, NO ROW. A list confirmation passes none, and the template
 </body></html>`;
 }
 
-/* THE BAND, REBRANDED (lib/mail-brand.js; Chase: "change the name Thauma to
+/* THE BAND, REBRANDED (lib/mail-band.js; Chase: "change the name Thauma to
    their First and Last name"). Thauma's band is an image with THAUMA drawn
    in it; a partner's is the same shape in live text — the name spaced wide
-   and thin on the same night ground, over a line in the ministry's color —
-   so it needs no image per ministry and reads with images off. */
-function brandBand(brand) {
-  const name = esc(String(brand.name || "").toUpperCase());
-  return `<tr><td bgcolor="#070A10" align="left"
-              style="background:#070A10;padding:46px 34px 44px;font-family:Helvetica,Arial,sans-serif;
-                     font-size:24px;line-height:1.2;font-weight:200;letter-spacing:10px;color:#EDF2F8;">${name}</td></tr>
-      <tr><td bgcolor="${brand.accent}" style="background:${brand.accent};height:4px;font-size:0;line-height:0;">&nbsp;</td></tr>`;
-}
+   and thin over a wash of the ministry's two colors, with what the email is
+   beneath it ("Sign-up confirmation") — so it needs no image per ministry and
+   reads with images off. The newsletter opens with the same band. */
 
 /** A primary action. A table, not an <a> with padding — Outlook ignores the padding. */
 export function button(href, label, color = "#2FD8FF") {
@@ -517,7 +512,7 @@ export function contactNotificationEmail({ name, email, topic, subject, message,
 }
 
 export function contactReceiptEmail({ name, ministry, topic, subject, message,
-                                      origin, lang }) {
+                                      origin, lang, brand = null }) {
   const T = (k, v) => t(lang, k, v);
   const hello = name ? T("confirm.hello", { name: esc(name) }) : T("confirm.helloAnon");
 
@@ -557,7 +552,10 @@ export function contactReceiptEmail({ name, ministry, topic, subject, message,
 
   return {
     subject: T("receipt.subject") + (subject ? ` — ${subject}` : ""),
-    html: shell({ heading: T("receipt.heading"), rows, footer, origin }),
+    /* A partner's receipt wears their band, as their sign-up confirmation
+       does; Thauma's own keeps the wordmark. */
+    html: shell({ heading: T("receipt.heading"), rows, origin, brand, kind: T("brand.contact"),
+                  footer: brand ? `${footer}<br>${esc(T("brand.note"))}` : footer }),
     text,
   };
 }
@@ -585,11 +583,15 @@ export function listConfirmEmail({ name, listName, confirmUrl, fromName, origin,
       heading: T("confirm.heading"),
       origin,
       brand,
+      kind: T("brand.confirm"),
       footer: brand ? esc(T("brand.note")) : "",
       /* p() rather than a bare <p>, so the color is stated. On a dark ground
          an inherited color is one client's reset away from black on black,
          and #666 — which the refusal line used to set — is unreadable on it. */
       rows: [
+        /* The heading in the body, under the band, as every email now has
+           it: band says who and what, heading says this one's point. */
+        h1(T("confirm.heading")),
         p(esc(hello)),
         /* The string carries <b> deliberately; the VALUES going into it are
            escaped first, which is the only part a person supplied. */

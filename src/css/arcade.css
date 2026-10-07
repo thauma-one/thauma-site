@@ -67,7 +67,36 @@
 .arc-sound .on{display:none}.arc-sound.is-on .on{display:inline}.arc-sound.is-on .off{display:none}
 .arc-sound.is-on{color:var(--ar-amber)}
 .arc-sound:hover{color:var(--ar-ink)}
-@media (max-width:640px){ .arc-back span,.arc-sound span{display:none} .arc-spacer{width:40px} }
+@media (max-width:640px){ .arc-back span,.arc-sound span,.arc-jukebtn span{display:none} .arc-spacer{width:40px} }
+
+/* the jukebox: a button beside the sound switch, and a list that drops from it */
+.arc-tools{display:flex;align-items:center;gap:clamp(8px,2vw,18px)}
+.arc-jukebtn{display:inline-flex;align-items:center;gap:8px;padding:10px 4px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;color:var(--ar-dim);transition:color .2s}
+.arc-jukebtn svg{width:19px;height:19px}
+.arc-jukebtn:hover,.arc-jukebtn[aria-expanded="true"]{color:var(--ar-ink)}
+.arc-juke{position:absolute;z-index:6;top:64px;right:clamp(16px,4vw,40px);width:min(320px,calc(100vw - 32px));max-height:min(70vh,520px);
+  display:flex;flex-direction:column;background:rgba(11,15,23,.97);border:1px solid var(--ar-edge);border-radius:12px;
+  box-shadow:0 18px 50px rgba(0,0,0,.6),0 0 0 1px rgba(155,123,255,.15);animation:arc-juke-in .22s var(--unfurl)}
+.arc-juke[hidden]{display:none}
+@keyframes arc-juke-in{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.arc-juke-head{display:flex;align-items:center;justify-content:space-between;padding:12px 12px 8px 16px;border-bottom:1px solid var(--ar-edge)}
+.arc-juke-head b{font:600 11px/1 'Sora',sans-serif;letter-spacing:.24em;color:var(--ar-violet)}
+.arc-juke-x{color:var(--ar-dim);padding:6px;display:inline-flex}.arc-juke-x:hover{color:var(--ar-ink)}
+.arc-juke-x svg{width:14px;height:14px}
+.arc-juke ol{list-style:none;margin:0;padding:6px;overflow-y:auto}
+.arc-juke [data-tune]{width:100%;display:flex;align-items:center;gap:10px;padding:10px 10px;border-radius:8px;text-align:left;color:var(--ar-ink);font-size:14px}
+.arc-juke [data-tune]:hover,.arc-juke [data-tune]:focus-visible{background:rgba(237,242,248,.06);outline:none}
+.arc-juke [data-tune]:focus-visible{box-shadow:inset 0 0 0 1px var(--ar-violet)}
+.arc-juke .t{flex:1;min-width:0}
+.arc-juke .t small{color:var(--ar-dim);font-size:12px}
+.arc-juke .b{color:var(--ar-dim);font-size:11px;letter-spacing:.08em}
+.arc-juke .eq{display:inline-flex;align-items:flex-end;gap:2px;width:14px;height:12px;visibility:hidden}
+.arc-juke .eq i{display:block;width:3px;height:100%;background:var(--ar-amber);transform-origin:50% 100%;animation:arc-eq .9s ease-in-out infinite}
+.arc-juke .eq i:nth-child(2){animation-delay:-.3s}.arc-juke .eq i:nth-child(3){animation-delay:-.6s}
+.arc-juke .is-playing{color:var(--ar-amber)}
+.arc-juke .is-playing .eq{visibility:visible}
+@keyframes arc-eq{0%,100%{transform:scaleY(.3)}50%{transform:scaleY(1)}}
+@media (prefers-reduced-motion:reduce){ .arc-juke{animation:none} .arc-juke .eq i{animation:none;transform:scaleY(.7)} }
 
 /* ---- the row of cabinets --------------------------------------------- */
 /* Swipes are the menu's, not the browser's (a claimed pan cancels the pointer). */
@@ -268,15 +297,15 @@
 .arc-final b{display:block;font:600 52px/1 'Sora',sans-serif;color:var(--c,var(--ar-amber));font-variant-numeric:tabular-nums;
   text-shadow:0 0 22px color-mix(in srgb,var(--c,var(--ar-amber)) 55%,transparent)}
 .arc-final span{display:inline-block;margin-top:8px;font-size:11px;letter-spacing:.18em;text-transform:uppercase;font-weight:600;color:var(--ar-amber)}
-/* the joke, on the game-over card */
-.arc-joke{display:flex;gap:9px;align-items:flex-start;margin:16px 0 0;padding:11px 12px;border-radius:12px;text-align:left;
-  background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px var(--ar-edge);font:500 14px/1.4 'Inter',system-ui,sans-serif;color:var(--ar-ink)}
-.arc-joke b{flex:none;margin-top:1px;padding:3px 6px;border-radius:6px;font:700 9px/1 'Sora',sans-serif;letter-spacing:.12em;background:var(--c,var(--ar-amber));color:#0b0e14}
+/* the pause card: which game, and the score so far */
+.arc-pause-game{display:block;margin-bottom:6px;font:600 11px/1 'Sora',sans-serif;letter-spacing:.24em;text-transform:uppercase;color:var(--c,var(--ar-amber))}
+.arc-final.is-small b{font-size:34px}
+.arc-final.is-small span{display:block;margin-top:4px;color:var(--ar-dim)}
 .arc-card .arc-board{margin-top:16px;flex-direction:column;align-items:stretch;gap:4px;display:flex}
 .arc-card .arc-board li{display:flex;justify-content:space-between;gap:10px;color:var(--ar-dim)}
 .arc-card .arc-board li i{font-style:normal;width:18px;text-align:left;opacity:.6}
 .arc-card .arc-board li b{margin-left:auto}
-.arc-btns{display:flex;justify-content:center;gap:10px;margin-top:20px}
+.arc-btns{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:20px}
 .arc-btn{min-width:110px;padding:12px 18px;border-radius:10px;font-size:12px!important;font-weight:600!important;letter-spacing:.16em;text-transform:uppercase;
   box-shadow:inset 0 0 0 1px var(--ar-edge);color:var(--ar-ink)}
 /* #arcade button{background:none} outranks a bare class. */

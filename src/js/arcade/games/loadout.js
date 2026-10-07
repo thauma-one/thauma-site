@@ -38,14 +38,15 @@
 
   /* The cases (Chase, 2026-10-04: "Those are good cases. Weight is lbs"),
      at their real weights, each one a little different from the last (a
-     cable trunk is never packed the same twice). */
+     cable trunk is never packed the same twice). kg is what the physics
+     uses. */
   var CASES = [
-    { key: 'mic',     w: 64,  h: 32, lb: 38,  tape: '#5CF2C4', build: 'light' },
-    { key: 'amp',     w: 82,  h: 56, lb: 165, tape: '#FFB547', build: 'trunk' },
-    { key: 'led',     w: 116, h: 30, lb: 190, tape: '#9B7BFF', build: 'trunk' },
-    { key: 'cable',   w: 96,  h: 46, lb: 240, tape: '#2FD8FF', build: 'heavy' },
-    { key: 'lights',  w: 124, h: 44, lb: 260, tape: '#FF4FD8', build: 'heavy' },
-    { key: 'speaker', w: 92,  h: 70, lb: 310, tape: '#FF5A6E', build: 'heavy' }
+    { key: 'mic',     w: 64,  h: 32, lb: 38,  kg: 12,  tape: '#5CF2C4', build: 'light' },
+    { key: 'amp',     w: 82,  h: 56, lb: 165, kg: 85,  tape: '#FFB547', build: 'trunk' },
+    { key: 'led',     w: 116, h: 30, lb: 190, kg: 30,  tape: '#9B7BFF', build: 'trunk' },
+    { key: 'cable',   w: 96,  h: 46, lb: 240, kg: 38,  tape: '#2FD8FF', build: 'heavy' },
+    { key: 'lights',  w: 124, h: 44, lb: 260, kg: 55,  tape: '#FF4FD8', build: 'heavy' },
+    { key: 'speaker', w: 92,  h: 70, lb: 310, kg: 120, tape: '#FF5A6E', build: 'heavy' }
   ];
   /* The weight light: green light, amber, red heavy. */
   function tier(lb) { return lb < 100 ? 0 : lb < 220 ? 1 : 2; }
@@ -58,12 +59,12 @@
     var pool = n < 3 ? [0, 1, 1, 2] : n < 8 ? [0, 1, 2, 3, 4] : [1, 2, 3, 4, 5, 5];
     var t = CASES[pool[Math.floor(Math.random() * pool.length)]];
     var lb = Math.round(t.lb * rnd(.88, 1.12) / 5) * 5;
-    /* The stencil says the real pounds; the PHYSICS keeps the first
-       version's 12-120 range (Chase, 2026-10-05: "the physics feel
-       different for some reason" — real pounds made every case 1.2-1.4x
-       heavier than the light ones it lands on, and lengthened every
-       chain). */
-    return Object.assign({}, t, { lb: lb, kg: 12 + (lb - 38) / (310 - 38) * 108 });
+    /* The stencil says the real pounds; the PHYSICS uses each case's own
+       weight from the first version, so a light case lands lively on a
+       heavy one (Chase, 2026-10-05: "I like that the weight numbers are
+       more accurate … can the actual weights go back to what they were
+       originally? I liked the more bouncy nature they had"). */
+    return Object.assign({}, t, { lb: lb });
   }
 
   A.games.loadout = {
@@ -157,9 +158,7 @@
           position: pl.Vec2(h.cx / S, (DECK_Y + cam - h.cy) / S),
           angle: -h.ang,
           linearVelocity: pl.Vec2(motorDir * motorSpeed() / S, 0),
-          angularVelocity: 0,
-          /* a little damping: a settled stack stays settled */
-          linearDamping: .05, angularDamping: .35
+          angularVelocity: 0
         });
         body.createFixture(new pl.Box(t.w / 2 / S, t.h / 2 / S), {
           density: t.kg / ((t.w / S) * (t.h / S)) / 22, friction: .62, restitution: .02   /* less grip than .78 (round 4: "the physics feel easier") */

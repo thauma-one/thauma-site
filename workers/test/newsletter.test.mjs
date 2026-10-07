@@ -164,7 +164,7 @@ check("NOTHING IN THE STYLE BLOCK IS LOAD-BEARING", () => {
   const stripped = html.replace(/<style[\s\S]*?<\/style>/gi, "");
   for (const [what, needle] of [
     ["the accent", "#E4572E"],
-    ["the body width", 'width="600"'],
+    ["the body width", 'max-width:720px'],
     ["the page background", "#f4f5f8"],
     ["the card background", "#ffffff"],
     ["the unsubscribe link", "https://thauma.one/u?t=abc"],
@@ -265,7 +265,31 @@ check("the layout is tables, because Outlook renders through Word", () => {
   assert(/<table/i.test(html), "no table layout");
   assert(/role="presentation"/.test(html),
     "layout tables must be hidden from screen readers");
-  assert(/width="600"/.test(html), "expected the standard 600px body width");
+  /* AS WIDE AS THE INBOX (2026-10-06, Chase: "The integrated and even the
+     card need to match the width of the email inbox window"): the card grows
+     with the pane to 720px, inline; Outlook for Windows, which ignores
+     max-width, gets it at 680px in a conditional; integrated is the pane. */
+  assert(/width="100%"[^>]*class="w"[^>]*max-width:720px/.test(html.replace(/\s+/g, " ")), "the card grows to 720px, inline");
+  assert(/<!--\[if mso\]><table[^>]*width="680"/.test(html), "Outlook gets the card at 680px");
+  const flat = render(BODY, { ...OPTS, layout: "integrated" }).replace(/\s+/g, " ");
+  assert(/class="w" style="width:100%;background/.test(flat), "integrated fills the pane, no max");
+  assert(!/width="680"/.test(flat), "integrated has no Outlook card width");
+});
+
+check("light, dark, or the reader's own", () => {
+  const auto = render(BODY, { ...OPTS, mode: "auto" });
+  assert(/prefers-color-scheme: dark/.test(auto), "auto repaints dark where the client says so");
+  assert(/name="color-scheme" content="light dark"/.test(auto), "and says it supports both");
+  const light = render(BODY, { ...OPTS, mode: "light" });
+  assert(!/prefers-color-scheme/.test(light) && /content="light"/.test(light), "light stays light");
+  assert(/#10161E/.test(render(BODY, { ...OPTS, mode: "dark" })), "dark is drawn dark");
+});
+
+check("any text size from 10 to 60px, and a picture's width as a share of the column", () => {
+  const html = render('<p><span data-sz="22">big</span> <span data-sz="99">no</span></p><img src="https://x/a.png" data-w="60">', OPTS);
+  assert(/font-size:22px/.test(html), "a size in px");
+  assert(!/font-size:99px/.test(html), "out of range refused");
+  assert(/width="317"[^>]*width:60%/.test(html), "60% of the column, width= for Outlook");
 });
 
 check("no webfont is requested", () => {
@@ -278,7 +302,7 @@ check("the accent reaches the email, and nonsense does not", () => {
   assert(render(BODY, OPTS).includes("#E4572E"), "the ministry's color is missing");
   const bad = render(BODY, { ...OPTS, accent: "red;}</style><script>" });
   assert(!/<script/i.test(bad), "an accent must never become markup");
-  assert(bad.includes("#6D4AFF"), "expected the default accent");
+  assert(bad.includes("#1AE4FF"), "expected the default accent");
 });
 
 check("the unsubscribe link is in the email", () => {
@@ -310,8 +334,8 @@ check("the subject is escaped everywhere it appears", () => {
 check("dark mode states every color", () => {
   // A client that inverts a half-stated palette produces something unreadable.
   const html = render(BODY, { ...OPTS, mode: "dark" });
-  assert(/#15151c/.test(html), "no dark background");
-  assert(/#f2f2f7/.test(html), "no light ink to go with it");
+  assert(/#0A0D12/.test(html), "no dark background");
+  assert(/#EDF2F8/.test(html), "no light ink to go with it");
 });
 
 /* -------------------------------- text --------------------------------- */
@@ -434,6 +458,22 @@ check("an edited picture keeps its original, but only one of our own uploads", (
   assert(ok.includes('data-orig="/media/newsletter/p/orig.jpg"'), "kept: " + ok);
   const no = sanitise('<img src="/media/newsletter/p/cut.jpg" data-orig="https://evil.example/x.jpg">');
   assert(!no.includes("data-orig"), "an outside address was kept: " + no);
+});
+
+check("a picture beside the words: floated, aligned for Outlook, never wider than 60%", () => {
+  const kept = sanitise('<img src="https://x/a.jpg" data-al="left" data-w="30"><img src="https://x/b.jpg" data-al="middle">');
+  assert(/data-al="left"/.test(kept) && !/data-al="middle"/.test(kept), "only left or right survive: " + kept);
+  const html = render('<img src="https://x/a.jpg" data-al="right" data-w="90"><p>Words</p>', { subject: "S" });
+  const img = html.match(/<img[^>]*>/)[0];
+  assert(/align="right"/.test(img) && /float:right;width:60%/.test(img), "right, capped at 60%: " + img);
+  const def = render('<img src="https://x/a.jpg" data-al="left"><p>Words</p>', { subject: "S" }).match(/<img[^>]*>/)[0];
+  assert(/float:left;width:40%/.test(def), "beside the words with no width: 40%: " + def);
+});
+
+check("variables typed as {{first_name}} and {{full_name}} are filled like the editor's", () => {
+  eq(NL.fillVariables("<p>Hi {{first_name}}, from {{ full_name }}</p>", "Ana Marić"), "<p>Hi Ana, from Ana Marić</p>", "with a name");
+  eq(NL.fillVariables("<p>Hi {{first_name}}, welcome</p>", null), "<p>Hi, welcome</p>", "no name: gone, with its space");
+  eq(NL.fillVariables('<p>Hi <span data-var="first_name">{{first_name}}</span>!</p>', "Ana"), "<p>Hi Ana!</p>", "the editor's own");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

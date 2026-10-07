@@ -23,7 +23,12 @@ export default {
     const cache = typeof caches !== "undefined" ? caches.default : null;
     const key = new Request("https://thauma-icon.cache/" + d);
     const hit = cache && await cache.match(key);
-    if (hit) return hit;
+    if (hit) {
+      /* one cached before it carried the header gets it on the way out */
+      const again = new Response(hit.body, hit);
+      again.headers.set("Access-Control-Allow-Origin", "*");
+      return again;
+    }
 
     let res;
     try {
@@ -35,8 +40,12 @@ export default {
     if (!res.ok || !TYPES.test(type)) {
       return new Response("", { status: 404, headers: { "Cache-Control": "public, max-age=86400" } });
     }
+    /* Readable by a partner site's own script (render.js MOTION_JS looks at
+       whether the icon has a clear background, to draw it like the social
+       icons), so any origin may read it — it is a public picture. */
     const out = new Response(res.body, { headers: {
       "Content-Type": type, "Cache-Control": "public, max-age=604800", "X-Content-Type-Options": "nosniff",
+      "Access-Control-Allow-Origin": "*",
     } });
     if (cache && ctx && ctx.waitUntil) ctx.waitUntil(cache.put(key, out.clone()));
     return out;

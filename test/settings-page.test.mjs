@@ -106,7 +106,7 @@ await check("languages and pictures are not shown here twice", async () => {
 
 await check("what visitors can see is in Preview site and Everyone columns", async () => {
   const { d } = await boot();
-  const heads = [...d.querySelectorAll(".v-head b")].map((b) => b.textContent);
+  const heads = [...d.querySelectorAll("[data-web-panel=\"settings\"] .v-head b")].map((b) => b.textContent);
   assert(heads.join() === "Preview site,Everyone", `columns: ${heads}`);
 });
 

@@ -314,6 +314,15 @@
       }).join('')) || any;
     }
 
+    /* bounced copies since the warning was last cleared */
+    if (h) {
+      var bn = h.bounces && h.bounces.n;
+      any = showSection('hmBounce', bn ? homeRow(
+        esc(bn === 1 ? tr('home.bounce1') : fill('home.bounceN', { n: bn })), '',
+        '<span class="sev crit hm-sev">' + esc(String(bn)) + '</span>',
+        homeLink('/staff/mail/', 'home.open') + ' <button type="button" class="ghost-btn" data-clear-bounces>' + esc(tr('home.bounceClear')) + '</button>') : '') || any;
+    }
+
     if (h) {
       any = showSection('hmTodo', h.unfinished.map(function (u) {
         if (u.kind === 'milestone' || u.kind === 'prayer') {
@@ -358,6 +367,15 @@
 
   function wireHome() {
     if (!$('hmQuietRows')) return;
+    document.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-clear-bounces]');
+      if (!b) return;
+      b.disabled = true;
+      fetch('/api/staff-home', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'clear-bounces' }) })
+        .then(function (r) { return r.ok ? loadHome() : (b.disabled = false); })
+        .catch(function () { b.disabled = false; });
+    });
     $('hmQuietRows').addEventListener('click', function (e) {
       var b = e.target.closest('[data-log]');
       if (b && window.StaffSupporterDialog) window.StaffSupporterDialog.open(b.getAttribute('data-log'), b, true);
@@ -2020,4 +2038,39 @@
     wireResourceForm();
     loadStaffData();
   }
+})();
+
+/* NO PASSWORD MANAGER ON THESE FIELDS (2026-10-07, Chase: "sometimes my
+   password manager is thinking that some of the text fields … are password
+   or account info fields … The last thing I want to happen is for a password
+   suggestion field to open while using my site"). Nothing on this console is
+   a sign-in — Cloudflare Access does that before the page loads — so every
+   text field says so to each manager in its own words: autocomplete off for
+   the browser, data-1p-ignore (1Password), data-lpignore (LastPass),
+   data-bwignore (Bitwarden), data-form-type="other" (Dashlane). Fields drawn
+   later (dialogs, editors, rows) are caught as they appear. */
+(function () {
+  var SKIP = { hidden: 1, checkbox: 1, radio: 1, file: 1, range: 1, color: 1, submit: 1, button: 1, reset: 1, image: 1 };
+  function quiet(el) {
+    if (el.dataset.pmQuiet) return;
+    if (el.tagName === 'INPUT' && SKIP[(el.getAttribute('type') || 'text').toLowerCase()]) return;
+    el.dataset.pmQuiet = '1';
+    if (!el.hasAttribute('autocomplete')) el.setAttribute('autocomplete', 'off');
+    el.setAttribute('data-1p-ignore', '');
+    el.setAttribute('data-lpignore', 'true');
+    el.setAttribute('data-bwignore', 'true');
+    el.setAttribute('data-form-type', 'other');
+  }
+  function sweep(root) {
+    if (!root || !root.querySelectorAll) return;
+    if (root.matches && root.matches('input, textarea')) quiet(root);
+    [].forEach.call(root.querySelectorAll('input, textarea'), quiet);
+  }
+  function start() {
+    sweep(document.body);
+    new MutationObserver(function (list) {
+      list.forEach(function (m) { [].forEach.call(m.addedNodes, sweep); });
+    }).observe(document.body, { childList: true, subtree: true });
+  }
+  if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);
 })();

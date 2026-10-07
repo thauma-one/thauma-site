@@ -11,6 +11,7 @@
  */
 import { memoryStore } from "../src/lib/store.js";
 import * as game from "../src/game-scores.js";
+import * as arcade from "../src/admin-arcade.js";
 import * as staff from "../src/staff-data.js";
 import worker, { isProtected } from "../src/worker.js";
 
@@ -65,8 +66,53 @@ await check("initials: three letters or digits, upper-cased", async () => {
 });
 
 await check("crude initials become ???, leetspeak and the classics included", async () => {
-  for (const bad of ["ASS", "a55", "KKK", "FUK", "cum", "SEX", "sh1t", "fag"]) eq(game.sanitizeInitials(bad), "???", bad);
+  for (const bad of ["ASS", "a55", "KKK", "FUK", "cum", "SEX", "sh1t", "fag", "CUK", "kuk", "cuc", "PNS", "pn5", "PNZ"]) eq(game.sanitizeInitials(bad), "???", bad);
   for (const ok of ["CHR", "DAD", "ANA", "007"]) eq(game.sanitizeInitials(ok), ok, ok);
+});
+
+/* ---- Website › Arcade (admin-arcade.js) and what the public API makes of it ---- */
+const DEV = { SITE_ORIGIN: "https://dev.thauma.one" }, LIVE = { SITE_ORIGIN: "https://thauma.one" };
+const admin = async (s, body) => (await arcade.handle(body ? post(body) : get(""), LIVE, s)).json();
+
+await check("every game is open until an admin closes it, and each site reads its own column", async () => {
+  const s = memoryStore();
+  eq(await (await game.handle(get("?config=1"), LIVE, s)).json(), { closed: [] }, "all open");
+  await admin(s, { action: "game", game: "strike", column: "live", on: false });
+  eq((await (await game.handle(get("?config=1"), LIVE, s)).json()).closed, ["strike"], "closed on live");
+  eq((await (await game.handle(get("?config=1"), DEV, s)).json()).closed, [], "still open on dev");
+  eq((await game.handle(post({ game: "strike", name: "AAA", score: 50 }), LIVE, s)).status, 403, "an out-of-order game takes no scores");
+  eq((await game.handle(post({ game: "strike", name: "AAA", score: 50 }), DEV, s)).status, 200, "dev still does");
+  await admin(s, { action: "game", game: "strike", column: "live", on: true });
+  eq((await (await game.handle(get("?config=1"), LIVE, s)).json()).closed, [], "open again");
+});
+
+await check("an admin removes a score or hides its name, named by name and value, not place", async () => {
+  const s = memoryStore();
+  for (const [n, v] of [["BOB", 300], ["ZED", 200], ["AMY", 100]]) await game.handle(post({ game: "loadout", name: n, score: v }), LIVE, s);
+  let st = await admin(s);
+  assert(st.games[0].scores[0].at, "scores carry when they were made");
+  st = await admin(s, { action: "hide", game: "loadout", name: "ZED", score: 200 });
+  eq(st.games[0].scores.map((x) => x.name), ["BOB", "???", "AMY"], "hidden");
+  st = await admin(s, { action: "remove", game: "loadout", name: "BOB", score: 300 });
+  eq(st.games[0].scores.map((x) => x.name), ["???", "AMY"], "removed");
+  const again = await arcade.handle(post({ action: "remove", game: "loadout", name: "BOB", score: 300 }), LIVE, s);
+  eq(again.status, 409, "a score already gone is refused, with the boards as they are");
+  eq((await again.json()).games[0].scores.length, 2, "and the answer is the current board");
+  st = await admin(s, { action: "clear", game: "loadout" });
+  eq(st.games[0].scores, [], "cleared");
+});
+
+await check("a blocked name is ??? on the boards now and on every score after", async () => {
+  const s = memoryStore();
+  await game.handle(post({ game: "cuestack", name: "XYZ", score: 90 }), LIVE, s);
+  let st = await admin(s, { action: "block", name: "xyz" });
+  eq(st.blocked.map((b) => b.name), ["XYZ"], "blocked, upper-cased");
+  eq(st.games.find((g) => g.id === "cuestack").scores[0].name, "???", "the board now");
+  await game.handle(post({ game: "cuestack", name: "xyz", score: 95 }), LIVE, s);
+  eq((await read(s, "cuestack")).map((x) => x.name), ["???", "???"], "and after");
+  st = await admin(s, { action: "unblock", name: "XYZ" });
+  eq(st.blocked, [], "unblocked");
+  eq((await (await arcade.handle(post({ action: "block", name: "!!" }), LIVE, s)).status), 400, "a name needs a letter or digit");
 });
 
 await check("scores are clamped and never negative", async () => {

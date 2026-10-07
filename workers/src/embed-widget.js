@@ -57,7 +57,7 @@ export const WIDGET_JS = String.raw`
      data-style    condensed   the roadmap as a still timeline: no legend,
                                nothing to press, no details
      data-lang     en | hr | sr | ...    (default: the host page's own language)
-     data-accent   #6D4AFF               overrides the ministry's color
+     data-accent   #1AE4FF               overrides the ministry's color
      data-theme    auto | light | dark
 */
 (function () {
@@ -1487,10 +1487,10 @@ ${COLOUR_JS}
     /* What this widget wears: its own look if the ministry gave it one,
        the ministry's otherwise (0040). */
     var look = (data.looks && data.looks[kind]) || data.theme || {};
-    var accent = node.getAttribute('data-accent') || look.accent || '#6D4AFF';
+    var accent = node.getAttribute('data-accent') || look.accent || '#1AE4FF';
     var mode   = node.getAttribute('data-theme')  || look.mode   || 'auto';
 
-    if (!/^#[0-9a-fA-F]{6}$/.test(accent)) accent = '#6D4AFF';
+    if (!/^#[0-9a-fA-F]{6}$/.test(accent)) accent = '#1AE4FF';
     if (['auto', 'light', 'dark'].indexOf(mode) === -1) mode = 'auto';
 
     /* The pair: chosen if the ministry chose one, derived if not. An override
@@ -1508,7 +1508,7 @@ ${COLOUR_JS}
     root.textContent = '';
 
     var style = document.createElement('style');
-    style.textContent = styles(accent, second, mode) + siteLook(node, accent, second);
+    style.textContent = styles(accent, second, mode) + siteLook(node, accent, second) + hostLook(node, mode, accent, second, 'widget');
     root.appendChild(style);
 
     var host = el('div', 'host');
@@ -1579,7 +1579,7 @@ ${COLOUR_JS}
     var root = node.shadowRoot || node.attachShadow({ mode: 'open' });
     root.textContent = '';
     var style = document.createElement('style');
-    style.textContent = styles('#6D4AFF', companion('#6D4AFF'),
+    style.textContent = styles('#1AE4FF', companion('#1AE4FF'),
                                 node.getAttribute('data-theme') || 'auto');
     root.appendChild(style);
     var box = el('div');

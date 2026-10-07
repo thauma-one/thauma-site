@@ -1329,3 +1329,29 @@ body:has(.web-panel:not([hidden]) .ms-savebar:not([hidden])) .web-bar{display:no
 @media (max-width:640px){
   .web-bar-stages li:not(.is-running):not(.is-failed){display:none}
 }
+
+/* ---- Website › Arcade (admin-arcade.js) ---------------------------------
+   The games' switches use the Settings rows (.v-row); the boards sit in a
+   grid of small cards, one per game; blocked names are chips. */
+.ae.is-busy{cursor:progress}
+.ae-out{margin-left:8px;font-size:var(--fs-micro);letter-spacing:.08em;text-transform:uppercase;color:var(--warn,#F5B845)}
+.ae-boards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr));gap:12px;padding-top:6px}
+.ae-board{border:1px solid var(--line);border-radius:var(--radius);padding:10px 12px}
+.ae-board-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.ae-board ol{list-style:none;margin:0;padding:0}
+.ae-board li{display:grid;grid-template-columns:16px 40px 1fr auto auto;align-items:center;gap:8px;padding:5px 0;border-top:1px solid var(--line)}
+.ae-rank{color:var(--dim);font-size:var(--fs-tiny)}
+.ae-name{font-family:var(--font-display);letter-spacing:.12em}
+.ae-name.is-hidden{color:var(--dim)}
+.ae-score{font-variant-numeric:tabular-nums}
+.ae-day{color:var(--dim);font-size:var(--fs-tiny);white-space:nowrap}
+.ae-acts{display:flex;align-items:center;gap:4px}
+.ae-x{width:24px;height:24px;border-radius:50%;color:var(--dim);font-size:16px;line-height:1;display:inline-flex;align-items:center;justify-content:center}
+.ae-x:hover,.ae-x:focus-visible{color:var(--crit);background:rgba(255,90,110,.1)}
+.ae-empty{color:var(--dim);font-size:var(--fs-tiny);margin:4px 0}
+.ae-blocked{display:flex;flex-wrap:wrap;gap:8px;padding:6px 0 10px}
+.ae-chip{display:inline-flex;align-items:center;gap:4px;padding:2px 4px 2px 10px;border:1px solid var(--line-hard);border-radius:999px}
+.ae-chip b{font-family:var(--font-display);letter-spacing:.12em;font-size:var(--fs-tiny)}
+.ae-block{display:flex;gap:8px;align-items:center}
+.ae-block input{width:80px;text-transform:uppercase;letter-spacing:.2em;font-family:var(--font-display)}
+@media (max-width:640px){ .ae-board li{grid-template-columns:16px 40px 1fr auto;} .ae-day{display:none} }

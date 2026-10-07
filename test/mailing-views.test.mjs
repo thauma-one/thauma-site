@@ -292,13 +292,25 @@ await check("no drafts, no Drafts button", async () => {
   eq2(d.getElementById("mlDrafts").hidden, true, "Drafts with none waiting");
 });
 
-await check("Sent is every list together, newest first, linking where the list publishes", async () => {
-  const { d } = await bootMail("https://dev.thauma.one/staff/mail/");
+await check("Sent is every list together, newest first; a row opens its report page, an × removes it", async () => {
+  const { w, d, click } = await bootMail("https://dev.thauma.one/staff/mail/");
   const rows = [...d.querySelectorAll("#mlSentRows .ml-sentall-row")];
   eq2(rows.map((r) => r.querySelector(".ml-sentall-subject").textContent), ["Week one", "June"], "order");
-  eq2(rows[0].tagName, "DIV", "a prayer update with no public copy became a link");
-  eq2(rows[1].getAttribute("href"), "https://dev.thauma.one/archive/chase-roush/newsletter/june/", "public copy");
   assert(/Newsletter/.test(rows[1].textContent) && /11/.test(rows[1].textContent), rows[1].textContent);
+  assert(/opened/.test(rows[1].textContent), "the opened count is always shown: " + rows[1].textContent);
+  /* Chase, 2026-10-06: "just put an X on the right side of the newsletter in Sent Mail to delete it" */
+  eq2([...d.querySelectorAll("#mlSentRows .ml-sent-item")].map((i) => !!i.querySelector("[data-sent-remove]")), [true, true], "an × on every row");
+  click(rows[1]);
+  eq2(d.getElementById("mlReportView").hidden, false, "the report is its own page");
+  eq2(d.getElementById("mlHome").hidden, true, "the list of mail steps aside");
+  assert(/#report-m1$/.test(w.location.href), "the address names the report: " + w.location.href);
+  assert(/June/.test(d.querySelector(".ml-rp-subject").textContent), "its subject");
+  const link = d.querySelector("#mlReport a[href]");
+  eq2(link && link.getAttribute("href"), "https://dev.thauma.one/archive/chase-roush/newsletter/june/", "public copy");
+  click(d.getElementById("mlReportBack"));
+  eq2(d.getElementById("mlReportView").hidden, true, "back to Mail");
+  click(d.querySelectorAll("#mlSentRows .ml-sentall-row")[0]);
+  assert(!d.querySelector("#mlReport a[href]"), "a prayer update with no public copy offered a link");
 });
 
 await check("Write opens the composer on the list on screen, and the way back returns to it", async () => {
