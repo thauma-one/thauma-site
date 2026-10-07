@@ -1800,6 +1800,8 @@
      the site, and a tap opens its one box. The owner's other links as
      plain rows — what it says, where it goes — one opened at a time. The
      preview beside shows the footer, where they appear. */
+  /* a link saved as an icon, before each link had its place, is in line */
+  function placeOf(l) { return l.place === 'inline' || l.place === 'apart' ? l.place : l.icon ? 'inline' : 'apart'; }
   function drawLinks() {
     var links = state.doc.links;
     var social = function (k) { return links.filter(function (x) { return x.kind === k; })[0]; };
@@ -1822,13 +1824,7 @@
     var custom = links.map(function (l, i) { return { l: l, i: i }; }).filter(function (x) { return x.l.kind === 'custom'; });
     html += '<div class="ws-head ws-head-row"><h2>' + esc(tr('ws.custom')) + '</h2>' +
       '<button type="button" class="solid-btn sm" data-custom-add>+ ' + esc(tr('ws.addLink')) + '</button></div>';
-    /* WHERE THEY SIT IN THE FOOTER, for all of them at once (2026-10-07):
-       in line with the social links (as icons, each its site's own icon or
-       its initials), or separated — as words or as icons. */
-    var ft = state.doc.footer || (state.doc.footer = {});
-    var place = ft.linkPlace || (links.some(function (x) { return x.kind === 'custom' && x.icon; }) ? 'inline' : 'apart');
-    html += '<div class="ws-rows">' + row(tr('ws.linkPlace'), chips('lplace', ['inline', 'apart'], place, function (v) { return tr('ws.linkPlace.' + v); })) +
-      (place === 'apart' ? row(tr('ws.showAs'), chips('lstyle', ['icon', 'words'], ft.linkStyle === 'icon' ? 'icon' : 'words', function (v) { return tr('ws.showAs.' + v); })) : '') + '</div>';
+
     if (custom.length) {
       html += '<div class="ws-linkrows">' + custom.map(function (x, n) {
         var open = state.openCustom === x.i, u = x.l.url || '';
@@ -1844,7 +1840,18 @@
         return row1 + '<div class="ws-linkedit">' +
           '<label class="fld"><span>' + esc(tr('ws.linkName')) + '</span>' + ref(x.l.label) +
             '<input type="text" maxlength="40" data-custom-label="' + x.i + '" value="' + esc((x.l.label || {})[state.langA] || '') + '" lang="' + esc(state.langA) + '"></label>' +
-          '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.link.goesTo')) + '</span>' + linkPicker('custom:' + x.i, u || 'https://', false) + '</div></div>';
+          '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.link.goesTo')) + '</span>' + linkPicker('custom:' + x.i, u || 'https://', false) + '</div>' +
+          /* WHERE IT SITS, per link (2026-10-07, Chase: "I wanted those
+             options different PER link"): in line with the social links, or
+             separated — as words or as an icon; and its icon may be a
+             picture of the owner's own. */
+          '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.linkPlace')) + '</span>' +
+            chips('cplace:' + x.i, ['inline', 'apart'], placeOf(x.l), function (v) { return tr('ws.linkPlace.' + v); }) + '</div>' +
+          (placeOf(x.l) === 'apart' ? '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.showAs')) + '</span>' +
+            chips('cshow:' + x.i, ['icon', 'words'], x.l.show === 'icon' ? 'icon' : 'words', function (v) { return tr('ws.showAs.' + v); }) + '</div>' : '') +
+          (placeOf(x.l) === 'inline' || x.l.show === 'icon' ? '<div class="ws-sec-row">' + (x.l.iconImg ? '<img class="ws-thumb ws-thumb-icon" src="' + esc(x.l.iconImg) + '" alt="">' : '') +
+            '<label class="ghost-btn sm ws-file">' + esc(tr(x.l.iconImg ? 'ws.iconChange' : 'ws.iconOwn')) + '<input type="file" accept="image/*" data-custom-icon="' + x.i + '" hidden></label>' +
+            (x.l.iconImg ? '<button type="button" class="link-btn" data-custom-unicon="' + x.i + '">' + esc(tr('ws.iconAuto')) + '</button>' : '') + '</div>' : '') + '</div>';
       }).join('') + '</div>';
     } else {
       html += '<p class="ws-small">' + esc(tr('ws.noCustom')) + '</p>';
@@ -2299,6 +2306,7 @@
     /* Chosen, then straight into the editor: one step, not two (Chase,
        2026-10-04). Canceling keeps the photo as it came. */
     if (t.dataset.secPhoto) return upload(t, function (url) { var ps = p.sections[+t.dataset.secPhoto]; ps.photo = url; ps.photoEdit = null; drawSections(); editSectionPhoto(ps); });
+    if (t.dataset.customIcon) return upload(t, function (url) { state.doc.links[+t.dataset.customIcon].iconImg = url; drawLinks(); }, 256);
     if (t.dataset.logo !== undefined) return upload(t, function (url) { state.doc.design.logo = url; drawDesign(); });
     if (t.dataset.favicon !== undefined) return upload(t, function (url) { state.doc.design.favicon = url; drawDesign(); }, 256);
   });
@@ -2372,6 +2380,7 @@
       var nm = $('wsLinks').querySelector('[data-custom-label="' + state.openCustom + '"]'); if (nm) nm.focus();
       return;
     }
+    if (d.customUnicon) { delete state.doc.links[+d.customUnicon].iconImg; drawLinks(); return changed(); }
     if (d.customRemove) { state.doc.links.splice(+d.customRemove, 1); state.openCustom = null; drawLinks(); return changed(); }
     if (d.customOpen !== undefined) { state.openCustom = state.openCustom === +d.customOpen ? null : +d.customOpen; drawLinks(); return; }
     if (d.customUp || d.customDown) {
@@ -2415,7 +2424,8 @@
       else if (name.indexOf('talign:') === 0) { p.sections[+name.slice(7)].titleAlign = val; drawSections(); }
       else if (name.indexOf('tline:') === 0) { p.sections[+name.slice(6)].titleLine = val === 'on'; drawSections(); }
       else if (name.indexOf('tinline:') === 0) { p.sections[+name.slice(8)].titleInline = val === 'with'; drawSections(); }
-      else if (name === 'lplace' || name === 'lstyle') { state.doc.footer = state.doc.footer || {}; state.doc.footer[name === 'lplace' ? 'linkPlace' : 'linkStyle'] = val; drawLinks(); }
+      else if (name.indexOf('cplace:') === 0) { var cl = state.doc.links[+name.slice(7)]; cl.place = val; delete cl.icon; drawLinks(); }
+      else if (name.indexOf('cshow:') === 0) { state.doc.links[+name.slice(6)].show = val; drawLinks(); }
       else if (name.indexOf('pheight:') === 0) { p.sections[+name.slice(8)].height = val; drawSections(); }
       else if (name.indexOf('vtitle:') === 0) { p.sections[+name.slice(7)].titleFrom = val; drawSections(); }
       else if (name.indexOf('vlinks:') === 0) { p.sections[+name.slice(7)].linkStyle = val; drawSections(); }

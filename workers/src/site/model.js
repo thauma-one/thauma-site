@@ -777,7 +777,18 @@ export function cleanDoc(raw, catalog) {
     /* A web address may be shown as its site's own icon, beside the social
        icons (BACKLOG §3 "smart order"). A page of the site is always words. */
     const icon = kind === "custom" && !!(k && k.icon) && /^https?:\/\//.test(url);
-    return icon ? { kind, url, label, icon } : { kind, url, label };
+    if (kind !== "custom") return { kind, url, label };
+    /* EACH LINK ITS OWN PLACE (2026-10-07, Chase: "I wanted those options
+       different PER link, not all the same"): in line with the social links,
+       or separated — as words or as an icon — and its icon may be a picture
+       of the owner's own ("an option for a custom icon, just in case").
+       Saved before: a link shown as an icon was in line; a footer-wide
+       choice from the one day it existed is each link's. */
+    const ff = d.footer && typeof d.footer === "object" ? d.footer : {};
+    const place = ["inline", "apart"].includes(k && k.place) ? k.place : icon ? "inline" : ff.linkPlace === "inline" ? "inline" : "apart";
+    const show = ["icon", "words"].includes(k && k.show) ? k.show : ff.linkStyle === "icon" ? "icon" : "words";
+    const iconImg = safePhoto(k && k.iconImg);
+    return { kind, url, label, place, show, ...(iconImg ? { iconImg } : {}) };
   }).filter((k) => k.url);
 
   const f = d.footer && typeof d.footer === "object" ? d.footer : {};
@@ -790,12 +801,6 @@ export function cleanDoc(raw, catalog) {
     line: f.line !== false,
     space: pick(f.space, FOOT_SPACES),
     words: cleanWords(f.words, ["tagline", "small"], langs),
-    /* THE OWNER'S OWN LINKS (2026-10-07, Chase: "options for In Line (in
-       line with the other social links) or Separated (apart from the social
-       links …) … Icon or Word for the Separated option"). A footer saved
-       before reads as it looked: in line when a link was shown as an icon. */
-    linkPlace: ["inline", "apart"].includes(f.linkPlace) ? f.linkPlace : links.some((k) => k.icon) ? "inline" : "apart",
-    linkStyle: f.linkStyle === "icon" ? "icon" : "words",
   };
 
   return {

@@ -1249,7 +1249,6 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
   const own = doc.links.filter((k) => k.kind === "custom").map((k) => ({ ...k, href: ctx.linkHref(k.url) })).filter((k) => k.href);
   const nameOf = (k) => k.label[lang] || k.label[fallback] || (k.url.startsWith("page:") ? label(k.url.slice(5)) : k.href);
   const ordered = [...own.filter((k) => k.url.startsWith("page:")), ...own.filter((k) => !k.url.startsWith("page:"))];
-  const customWords = ordered.map((k) => `<a href="${esc(k.href)}"${rel(k.href)}>${esc(nameOf(k))}</a>`).join("");
   /* AS ICONS, in the social icons' own style (2026-10-07, Chase: "read the
      favicon from the custom link and then convert it into the same style as
      the social links … If it doesn't have a favicon, then we just … create
@@ -1262,19 +1261,22 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
     const ws = String(t || "").replace(/^https?:\/\/(www\.)?/i, "").split(/[\s./_-]+/).filter((x) => /[\p{L}\p{N}]/u.test(x));
     return ((ws.length > 1 ? ws[0][0] + ws[1][0] : (ws[0] || "?").slice(0, 2)) || "?").toUpperCase();
   };
-  const customIcons = ordered.map((k) => {
+  const iconOf = (k) => {
     let host = ""; try { if (/^https?:/.test(k.href)) host = new URL(k.href).hostname; } catch { /* not a web address */ }
     const lt = `<span class="lt" aria-hidden="true">${esc(initials(nameOf(k)))}</span>`;
-    return `<a class="favi${host ? "" : " no-icon"}" href="${esc(k.href)}"${rel(k.href)} aria-label="${esc(nameOf(k))}" title="${esc(nameOf(k))}">` +
-      (host ? `<img src="${esc(origin)}/embed/v1/icon?d=${esc(encodeURIComponent(host))}" alt="" width="18" height="18" loading="lazy" crossorigin="anonymous">` : "") + `${lt}</a>`;
-  }).join("");
-  const F0 = doc.footer || {};
-  const inline = F0.linkPlace === "inline";
+    /* the owner's own picture first, then the site's icon, then initials */
+    const src = k.iconImg ? k.iconImg : host ? `${origin}/embed/v1/icon?d=${encodeURIComponent(host)}` : "";
+    return `<a class="favi${src ? "" : " no-icon"}${k.iconImg ? " own" : ""}" href="${esc(k.href)}"${rel(k.href)} aria-label="${esc(nameOf(k))}" title="${esc(nameOf(k))}">` +
+      (src ? `<img src="${esc(src)}" alt="" width="18" height="18" loading="lazy"${k.iconImg ? "" : ' crossorigin="anonymous"'}>` : "") + `${lt}</a>`;
+  };
+  const wordOf = (k) => `<a href="${esc(k.href)}"${rel(k.href)}>${esc(nameOf(k))}</a>`;
+  const asWordsF = (doc.footer || {}).socials === "words";
+  const inl = ordered.filter((k) => k.place === "inline"), apart = ordered.filter((k) => k.place !== "inline");
   /* in line: with the social icons (or, socials as words, in their line);
-     separated: their own row, as words or as icons */
-  const socials = socialIcons + (inline ? customIcons : "");
-  const custom = inline ? (F0.socials === "words" ? customWords : "") : F0.linkStyle === "icon" ? "" : customWords;
-  const ownIcons = !inline && F0.linkStyle === "icon" ? customIcons : "";
+     separated: their own row, each as words or as an icon */
+  const socials = socialIcons + (asWordsF ? "" : inl.map(iconOf).join(""));
+  const custom = (asWordsF ? inl.map(wordOf).join("") : "") + apart.filter((k) => k.show !== "icon").map(wordOf).join("");
+  const ownIcons = apart.filter((k) => k.show === "icon").map(iconOf).join("");
   const foot = footer({ doc, lang, fallback, name, pages, href, label, socials, custom, ownIcons });
 
   const thePage = doc.pages.find((p) => p.id === pageId) || doc.pages[0];

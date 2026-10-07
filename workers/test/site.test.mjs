@@ -878,13 +878,13 @@ check("own links: a page of the site first; a web address may be its site's icon
     { kind: "youtube", url: "https://youtube.com/@x" },
   ];
   const c = cleanDoc(d, ["en"]);
-  eq(c.links.map((k) => !!k.icon), [false, false, true, false, false], "only a web address can be an icon");
-  /* separated, as words: pages first; in line: every one an icon beside the socials (2026-10-07) */
-  d.footer.linkPlace = "apart";
+  eq(c.links.map((k) => k.place || "-"), ["apart", "apart", "inline", "apart", "-"], "a link saved as an icon reads as in line; a page of the site cannot have been one");
+  /* separated, as words: pages first; in line: an icon beside the socials (2026-10-07) */
+  d.links.forEach((k) => { if (k.kind === "custom") { k.place = "apart"; delete k.icon; } });
   const foot = page(d).match(/<footer[\s\S]*<\/footer>/)[0];
   const words = [...foot.matchAll(/<a href="[^"]*"[^>]*>(About me|Mission|Blog|chaseroush\.com)<\/a>/g)].map((m) => m[1]);
   eq(words, ["About me", "Mission", "Blog", "chaseroush.com"], "pages first, then the web");
-  d.footer.linkPlace = "inline";
+  d.links[2].place = "inline";
   const foot2 = page(d).match(/<footer[\s\S]*<\/footer>/)[0];
   assert(/class="socials"[^>]*>[\s\S]*aria-label="YouTube"[\s\S]*<a class="favi" href="https:\/\/chaseroush\.com\/"[^>]*aria-label="chaseroush\.com"[^>]*><img src="https:\/\/thauma\.one\/embed\/v1\/icon\?d=chaseroush\.com"/.test(foot2), "the icon, through Thauma, beside the socials");
 });
@@ -1049,20 +1049,19 @@ check("an open sign-up or contact form's fields are the other color from the gro
 });
 
 
-check("the owner's own footer links: in line with the socials as icons, or separated as words or icons; letters where there is no icon", () => {
+check("each of the owner's own footer links: in line with the socials, or separated as words or an icon; its own picture, its site's icon, or its initials", () => {
   const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
-  d.links = [{ kind: "youtube", url: "@chase" }, { kind: "custom", url: "page:about", label: { en: "Our Story" } },
-    { kind: "custom", url: "https://github.com", label: { en: "GitHub" } }];
-  const foot = (place, style) => { d.footer.linkPlace = place; d.footer.linkStyle = style; return page(d).match(/<footer[\s\S]*<\/footer>/)[0]; };
-  const inl = foot("inline", "words");
-  assert(/<span class="socials"><a href="https:\/\/www\.youtube\.com\/@chase"[^]*?<a class="favi no-icon" href="\/site\/chaseroush\/en\/about\/"[^>]*><span class="lt" aria-hidden="true">OS<\/span><\/a><a class="favi" href="https:\/\/github\.com\/"[^>]*><img src="https:\/\/thauma\.one\/embed\/v1\/icon\?d=github\.com"[^>]*crossorigin="anonymous"><span class="lt" aria-hidden="true">GI<\/span>/.test(inl), "in line: after the socials, a page's initials, a site's icon with initials behind it");
-  assert(!/class="words"/.test(inl), "and no separate words");
-  const words = foot("apart", "words");
-  assert(/<span class="words"><a href="\/site\/chaseroush\/en\/about\/">Our Story<\/a><a href="https:\/\/github\.com\/"[^>]*>GitHub<\/a><\/span>/.test(words) && !/class="favi/.test(words), "separated, as words");
-  const icons = foot("apart", "icon");
-  assert(/<span class="socials owns"><a class="favi no-icon"/.test(icons), "separated, as a row of icons of their own");
-  d.footer = { ...d.footer }; delete d.footer.linkPlace; d.links[2].icon = true;
-  eq(cleanDoc(d, ["en"]).footer.linkPlace, "inline", "a footer saved with an icon link reads as in line");
+  d.links = [{ kind: "youtube", url: "@chase" },
+    { kind: "custom", url: "page:about", label: { en: "Our Story" }, place: "inline" },
+    { kind: "custom", url: "https://github.com", label: { en: "GitHub" }, place: "inline" },
+    { kind: "custom", url: "https://blog.example.org/", label: { en: "Blog" }, place: "apart", show: "words" },
+    { kind: "custom", url: "https://shop.example.org/", label: { en: "Shop" }, place: "apart", show: "icon", iconImg: "/media/site/shop.png" }];
+  const foot = page(d).match(/<footer[\s\S]*<\/footer>/)[0];
+  assert(/<span class="socials"><a href="https:\/\/www\.youtube\.com\/@chase"[^]*?<a class="favi no-icon" href="\/site\/chaseroush\/en\/about\/"[^>]*><span class="lt" aria-hidden="true">OS<\/span><\/a><a class="favi" href="https:\/\/github\.com\/"[^>]*><img src="https:\/\/thauma\.one\/embed\/v1\/icon\?d=github\.com"[^>]*crossorigin="anonymous"><span class="lt" aria-hidden="true">GI<\/span>/.test(foot), "in line: after the socials, a page's initials, a site's icon with initials behind it");
+  assert(/<span class="words"><a href="https:\/\/blog\.example\.org\/"[^>]*>Blog<\/a><\/span>/.test(foot), "separated, as words");
+  assert(/<span class="socials owns"><a class="favi own" href="https:\/\/shop\.example\.org\/"[^>]*><img src="\/media\/site\/shop\.png"/.test(foot), "separated, as its own picture");
+  d.links[4].iconImg = "javascript:alert(1)";
+  assert(!("iconImg" in cleanDoc(d, ["en"]).links[4]), "a picture address that is not one is not kept");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

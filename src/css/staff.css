@@ -1558,6 +1558,7 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
    a rainbow until a color is picked, then that color. */
 .cp-tone-any{display:inline-flex;align-items:center;cursor:pointer;position:relative}
 /* a link button's own color, beside its quick picks (staff-site.js) */
+.ws-thumb-icon{width:28px;height:28px;object-fit:contain;border-radius:6px;background:var(--bg)}
 .ws-anycolor{display:inline-flex;align-items:center;margin-left:6px;cursor:pointer}
 .ws-anycolor input{width:30px;height:28px;padding:0;border:1px solid var(--line);border-radius:6px;background:none;cursor:pointer}
 .ws-anycolor.is-on input{border-color:var(--voice-tech);box-shadow:0 0 0 1px var(--voice-tech)}
