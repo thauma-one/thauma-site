@@ -190,7 +190,7 @@ a{color:var(--ink)}img{max-width:100%;display:block}
 /* A button that jumps to a section lands it under the sticky header,
    gliding there only for a visitor who has not asked for less motion. */
 main section[id]{scroll-margin-top:68px}
-@media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
+/* In-page links glide by script (MOTION_JS glide), eased in and out; CSS smooth scrolling cannot be eased and would smooth every step of it. */
 .brand{font:var(--thin) 19px/1 var(--display);color:var(--fg);text-decoration:none;letter-spacing:.02em;white-space:nowrap}
 .brand b{font-weight:var(--boldw)}.brand img{height:36px;width:auto}
 .nav{display:flex;gap:22px;flex-wrap:wrap;margin-left:auto;align-items:center}
@@ -568,6 +568,11 @@ main section.is-editing{outline:2px solid var(--acc);outline-offset:-2px}
 .al-left .signcard{margin-left:0}.al-right .signcard{margin-right:0}
 .al-indent>.wrap,.al-indent>figure>figcaption{padding-left:clamp(20px,9vw,140px)}
 .al-indent .signcard{margin-left:0}
+/* INDENTED, on any line-up: the words move in from the side they line up on
+   — both sides when centered. */
+.indented.al-left>.wrap,.indented.al-left>figure>figcaption,.indented.al-center>.wrap,.indented.al-center>figure>figcaption{padding-left:clamp(20px,9vw,140px)}
+.indented.al-right>.wrap,.indented.al-right>figure>figcaption,.indented.al-center>.wrap,.indented.al-center>figure>figcaption{padding-right:clamp(20px,9vw,140px)}
+.indented.al-left .signcard{margin-left:0}
 .latest{display:block;max-width:720px;padding:28px 30px;background:var(--panel);border:1px solid var(--line);border-radius:16px;color:var(--fg);text-decoration:none}
 .latest:hover{border-color:var(--acc)}.latest small{color:var(--dim);font-size:13px}
 .latest b{display:block;font:var(--boldw) clamp(20px,2vw,26px)/1.25 var(--display);margin:6px 0 8px}.latest span{color:var(--dim)}
@@ -795,9 +800,9 @@ function renderSection(sec, ctx) {
   /* Plain, Raised or Tint, for the sections that write their own class list
      (the opening, the header, a full-width photo): every section has the
      three now (2026-10-07, Chase: "All sections need those same options"). */
-  const ground = (sec.raised ? " raised" : "") + (sec.tint ? " band" : "");
+  const ground = (sec.raised ? " raised" : "") + (sec.tint ? " band" : "") + (sec.indent ? " indented" : "");
   const cls = (...c) => {
-    const k = [...c, sec.raised ? "raised" : "", sec.tint ? "band" : "", sec.align ? "al-" + sec.align : ""].filter(Boolean).join(" ");
+    const k = [...c, sec.raised ? "raised" : "", sec.tint ? "band" : "", sec.align ? "al-" + sec.align : "", sec.indent ? "indented" : ""].filter(Boolean).join(" ");
     return k ? ` class="${k}"` : "";
   };
   const widget = (kind, extra = "") =>
@@ -862,7 +867,7 @@ function renderSection(sec, ctx) {
          reads as that (model.js). */
       const hb = sec.bg === "accent" ? "accent" : sec.tint ? "tint" : sec.raised ? "raised" : "plain";
       const k = ["phead", "phead-" + sec.variant, "ph-" + hb, sec.topline !== false ? "ph-top" : "",
-        hb === "raised" ? "raised" : "", hb === "tint" ? "band" : "", "al-" + (sec.align || "left")].filter(Boolean).join(" ");
+        hb === "raised" ? "raised" : "", hb === "tint" ? "band" : "", "al-" + (sec.align || "left"), sec.indent ? "indented" : ""].filter(Boolean).join(" ");
       return `<section class="${k}">${mark}<div class="wrap">` +
         `${w("label") ? `<p class="ph-label m">${esc(w("label"))}</p>` : ""}${heading(w("heading"), "h1")}` +
         `${sec.divider !== false ? `<span class="rule m" aria-hidden="true"></span>` : ""}` +
@@ -1365,11 +1370,18 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape')[].forEach.c
   if(!keep)try{history.replaceState(null,'','#'+id)}catch(e){}frame()}
  bs.forEach(function(b){b.addEventListener('click',function(){show(b.getAttribute('data-tab'))})});
  var h=(location.hash||'').slice(1);if(h&&bs.some(function(b){return b.getAttribute('data-tab')===h}))show(h,true)});
-var cue=document.querySelector('.scrollcue');if(cue)cue.addEventListener('click',function(){var n=cue.closest('section').nextElementSibling;if(n)n.scrollIntoView({behavior:still?'auto':'smooth'})});
+function glide(y){y=Math.max(0,Math.min(y,document.documentElement.scrollHeight-innerHeight));if(still){scrollTo(0,y);return}var y0=scrollY,dy=y-y0;if(!dy)return;var dur=Math.min(1100,Math.max(450,Math.abs(dy)*0.5)),t0=null;
+ function ease(t){return t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2}
+ requestAnimationFrame(function step(ts){if(t0===null)t0=ts;var k=Math.min(1,(ts-t0)/dur);scrollTo(0,y0+dy*ease(k));if(k<1)requestAnimationFrame(step)})}
+function glideTo(el){var m=parseFloat(getComputedStyle(el).scrollMarginTop)||0;glide(el.getBoundingClientRect().top+scrollY-m)}
+document.addEventListener('click',function(e){if(e.defaultPrevented||e.button||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;var a=e.target.closest&&e.target.closest('a[href*="#"]');if(!a)return;
+ var u;try{u=new URL(a.getAttribute('href'),location.href)}catch(x){return}if(!u.hash||u.pathname!==location.pathname||u.search!==location.search)return;
+ var t=document.getElementById(decodeURIComponent(u.hash.slice(1)));if(!t)return;e.preventDefault();glideTo(t);try{history.pushState(null,'',u.hash)}catch(x){}});
+var cue=document.querySelector('.scrollcue');if(cue)cue.addEventListener('click',function(){var n=cue.closest('section').nextElementSibling;if(n)glideTo(n)});
 document.addEventListener('click',function(e){var h=e.target.closest&&e.target.closest('[data-widget="roadmap"]');if(!h)return;
  setTimeout(function(){var p=h.shadowRoot&&h.shadowRoot.querySelector('.detail:not(.leaving)'),s=h.closest('section'),t=s&&(s.querySelector('.h')||s);if(!p||!t)return;
   var top=document.querySelector('.top'),off=(top?top.getBoundingClientRect().height:0)+12,need=p.getBoundingClientRect().bottom-(innerHeight-16),room=t.getBoundingClientRect().top-off;
-  var by=Math.min(need,room);if(by>0)scrollBy({top:by,behavior:still?'auto':'smooth'})},380)});
+  var by=Math.min(need,room);if(by>0)glide(scrollY+by)},380)});
 })();`;
 
 /** The two pages a visitor can hit that are not a page: not there, and not yet. */

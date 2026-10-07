@@ -1126,7 +1126,10 @@
       }
       }
       html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.align')) + '</span>' +
-        chips('align:' + i, ['left', 'center', 'right', 'indent'], s.align || defaultAlign(s), function (v) { return tr('ws.align.' + v); }) + '</div>';
+        chips('align:' + i, ['left', 'center', 'right'], s.align === 'indent' ? 'left' : s.align || defaultAlign(s), function (v) { return tr('ws.align.' + v); }) + '</div>' +
+        /* Indented: a switch on any of the three (2026-10-07) */
+        '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.indent')) + '</span>' +
+        chips('indent:' + i, ['on', 'off'], s.indent || s.align === 'indent' ? 'on' : 'off', function (v) { return tr('ws.divider.' + v); }) + '</div>';
       /* The opening's scroll indicator, for this page. Stored on the page;
          offered here, where it shows. Not offered while the site's Scroll
          hint is None: there would be nothing to show. */
@@ -2396,7 +2399,8 @@
       else if (name.indexOf('numbers:') === 0) { p.sections[+name.slice(8)].numbers = val === 'on'; drawSections(); }
       else if (name.indexOf('topline:') === 0) { p.sections[+name.slice(8)].topline = val === 'on'; drawSections(); }
       else if (name.indexOf('verse:') === 0) { p.sections[+name.slice(6)].verseStyle = val; drawSections(); }
-      else if (name.indexOf('align:') === 0) { p.sections[+name.slice(6)].align = val; drawSections(); }
+      else if (name.indexOf('align:') === 0) { var as = p.sections[+name.slice(6)]; if (as.align === 'indent') as.indent = true; as.align = val; drawSections(); }
+      else if (name.indexOf('indent:') === 0) { var is = p.sections[+name.slice(7)]; if (is.align === 'indent') is.align = 'left'; is.indent = val === 'on'; drawSections(); }
       else if (name.indexOf('linkkind:') === 0) {
         var key = name.slice(9);
         var firstPage = (state.doc.pages.filter(function (x) { return x.on && x.id !== 'home'; })[0] || state.doc.pages[0]).id;

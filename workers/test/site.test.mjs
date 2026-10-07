@@ -544,8 +544,11 @@ check("a button can jump to a section of the same page, which a visitor's page c
   assert(html.includes(`href="#s-${second.id}"`), "the button does not point at the section");
   assert(new RegExp(`<section[^>]*id="s-${second.id}"`).test(html), "a VISITOR's page has no anchor to land on");
   assert(/main section\[id\]\{scroll-margin-top:68px\}/.test(html), "it would land under the sticky header");
-  assert(/@media \(prefers-reduced-motion:no-preference\)\{html\{scroll-behavior:smooth\}\}/.test(html),
-    "smooth only for those who allow motion");
+  /* an eased glide (2026-10-07, Chase: "a smooth scroll to the section … With
+     both ease in and ease out"), a jump for those who ask for less motion */
+  assert(/function glide\(y\)\{[^]*?if\(still\)\{scrollTo\(0,y\);return\}/.test(html), "a jump when motion is reduced");
+  assert(/function ease\(t\)\{return t<\.5\?4\*t\*t\*t:1-Math\.pow\(-2\*t\+2,3\)\/2\}/.test(html), "eased in and out");
+  assert(/closest\('a\[href\*="#"\]'\)/.test(html) && !/scroll-behavior:smooth/.test(html), "in-page links glide, and CSS does not smooth every step");
 });
 
 check("a jump to a section that is gone goes nowhere, and a page's sections never point at another page's", () => {
@@ -561,7 +564,7 @@ check("opening a milestone scrolls just enough, never past the timeline's title"
   const html = page(starter("full", { name: "Chase Roush", langs: ["en", "hr"], fallback: "en" }));
   assert(/closest\('\[data-widget="roadmap"\]'\)/.test(html), "the timeline is not watched");
   assert(/by=Math\.min\(need,room\)/.test(html), "the scroll is not capped at the title");
-  assert(/behavior:still\?'auto':'smooth'\}\)\},380\)/.test(html), "it ignores reduced motion");
+  assert(/if\(by>0\)glide\(scrollY\+by\)\},380\)/.test(html), "it glides (a jump when motion is reduced)");
 });
 
 /* ---------------------------------------------------------- placeholders */
@@ -626,7 +629,8 @@ check("a section never lined up keeps the look it had; a chosen one is kept", ()
     mk("hero", "words"), mk("hero", "behind"), mk("goals", "cards"), mk("quote", "large"), mk("text", "left", { align: "right" }),
     mk("give", "band", { align: "indent" }), mk("text", "left", { align: "sideways" })];
   eq(cleanDoc(d, ["en"]).pages[0].sections.map((x) => x.align),
-    ["left", "center", "center", "left", "center", "left", "center", "left", "right", "indent", "left"], "aligns");
+    ["left", "center", "center", "left", "center", "left", "center", "left", "right", "left", "left"], "aligns");
+  eq(cleanDoc(d, ["en"]).pages[0].sections.map((x) => x.indent).filter(Boolean).length, 1, "Indented saved before reads as Left, indented");
 });
 
 check("the page carries each section's alignment, and its buttons follow it", () => {
@@ -639,9 +643,9 @@ check("the page carries each section's alignment, and its buttons follow it", ()
   const html = page(d);
   assert(/<section[^>]*class="al-right"[^>]*><div class="wrap"><h2 class="h m">H<\/h2>[\s\S]*?<div class="btns m"><a class="btn solid" href="https:\/\/x\.org\/"/.test(html), "text section, right, with its button");
   assert(/<section class="hero hero-behind al-center/.test(html), "the opening");
-  assert(/<section[^>]*class="quote quote-large al-indent"[^>]*>/.test(html), "the quote");
+  assert(/<section[^>]*class="quote quote-large al-left indented"[^>]*>/.test(html), "the quote, indented on the left");
   for (const rule of [".al-right .btns{justify-content:flex-end}", ".al-center .btns{justify-content:center}",
-                      ".al-indent>.wrap", ".al-right .bandrow{flex-direction:row-reverse}"]) {
+                      ".indented.al-left>.wrap", ".indented.al-right>.wrap", ".al-right .bandrow{flex-direction:row-reverse}"]) {
     assert(html.includes(rule), "missing rule " + rule);
   }
 });

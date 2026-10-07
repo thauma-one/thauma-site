@@ -280,18 +280,21 @@ await check("words can take a size and a color, a quick pick or any color; a wor
   assert(box.querySelector('[data-c="#ff00aa"]').style.color, "a picked color shows in the box");
 });
 
-await check("every section lines up: left, centered, right or indented; a Words section has no second layout control", async () => {
+await check("every section lines up left, centered or right, and Indented is a switch on any of them; a Words section has no second layout control", async () => {
   const { d, sent, click, pages } = await boot();
   pages();
   click(d.querySelector('[data-open-page="mission"]'));
   click(d.querySelector('[data-edit-sec="0"]'));            // the Mission page's Words section
   click(d.querySelector('[data-sectab="look"]'));
-  eq([...d.querySelectorAll('[data-chip="align:0"]')].map((b) => b.dataset.value), ["left", "center", "right", "indent"], "choices");
+  eq([...d.querySelectorAll('[data-chip="align:0"]')].map((b) => b.dataset.value), ["left", "center", "right"], "choices");
+  eq([...d.querySelectorAll('[data-chip="indent:0"]')].map((b) => b.dataset.value), ["on", "off"], "Indented, on or off");
   eq(d.querySelector('[data-chip="align:0"][aria-pressed="true"]').dataset.value, "left", "as it was");
   assert(!d.querySelector('[data-chip="variant:0"]'), "the old Left/Centered layout chips are gone for Words");
   click(d.querySelector('[data-chip="align:0"][data-value="right"]'));
+  click(d.querySelector('[data-chip="indent:0"][data-value="on"]'));
   await settle(900);
-  eq(sent.filter((x) => x.action === "save").pop().draft.pages.filter((p) => p.id === "mission")[0].sections[0].align, "right", "saved");
+  const saved = sent.filter((x) => x.action === "save").pop().draft.pages.filter((p) => p.id === "mission")[0].sections[0];
+  eq([saved.align, saved.indent], ["right", true], "saved: right, indented");
 });
 
 await check("a header can be added; its Look has background, top line and title line; a verse has its own look", async () => {

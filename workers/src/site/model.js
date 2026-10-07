@@ -115,7 +115,10 @@ export const SECTIONS = {
      - a Words section saved with the old Centered layout, the sign-up card,
        and the opening in words alone: centered;
      - everything else: left. */
-export const ALIGNS = ["left", "center", "right", "indent"];
+/* Indented is not a fourth way to line up but a switch on any of the three
+   (2026-10-07, Chase: "It should be Left, center, or Right with Indented as
+   a on or off style option"); "indent" saved before reads as Left, indented. */
+export const ALIGNS = ["left", "center", "right"];
 export function defaultAlign(type, variant) {
   const spec = SECTIONS[type] || {};
   if (spec.align) return "center";
@@ -563,7 +566,8 @@ function cleanSection(raw, langs) {
      (2026-10-07). A header saved before kept its ground in bg. */
   const oldBg = raw.type === "header" && raw.tint === undefined && raw.raised === undefined ? raw.bg : null;
   s.tint = !!raw.tint || oldBg === "tint"; s.raised = (!!raw.raised || oldBg === "raised") && !s.tint;
-  s.align = ALIGNS.includes(raw.align) ? raw.align : defaultAlign(raw.type, s.variant);
+  s.align = ALIGNS.includes(raw.align) ? raw.align : raw.align === "indent" ? "left" : defaultAlign(raw.type, s.variant);
+  s.indent = raw.indent === true || raw.align === "indent";
   if (spec.buttons) {
     s.buttons = (Array.isArray(raw.buttons) ? raw.buttons : []).filter((b) => ["give", "stay", "contact"].includes(b)).slice(0, 2);
   }
