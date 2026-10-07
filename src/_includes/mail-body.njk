@@ -254,6 +254,15 @@
    in every mail client; the ones missing are missing because they do not.
    Text color, font family and font size are absent for that reason — they
    render three different ways and the third is unreadable. -#}
+{#- ONE MAILING, IN DETAIL (Chase, 2026-10-06: "I'd rather have another page
+   open up that gives me the ability to see the stats of the newsletter in
+   more detail as well as having the ability to resend an email if needed").
+   A sent row opens this; staff-mailing.js draws it (renderReport). -#}
+<section class="ml-view ml-report" data-view="report" id="mlReportView" hidden>
+  <button type="button" class="ml-back" id="mlReportBack">&larr;&nbsp;<span data-i18n="nav.mail">Mail</span></button>
+  <div id="mlReport"></div>
+</section>
+
 <section class="ml-view" data-view="composer" id="mlComposerView" hidden>
   <button type="button" class="ml-back" id="mlBack">&larr;&nbsp;<span data-i18n="nav.mail">Mail</span></button>
 

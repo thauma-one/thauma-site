@@ -1346,7 +1346,6 @@ body:has(.web-panel:not([hidden]) .ms-savebar:not([hidden])) .web-bar{display:no
 .ae-score{font-variant-numeric:tabular-nums}
 .ae-day{color:var(--dim);font-size:var(--fs-tiny);white-space:nowrap}
 .ae-acts{display:flex;align-items:center;gap:4px}
-.ghost-btn.xs{font-size:10px;padding:3px 7px;line-height:1.2}
 .ae-x{width:24px;height:24px;border-radius:50%;color:var(--dim);font-size:16px;line-height:1;display:inline-flex;align-items:center;justify-content:center}
 .ae-x:hover,.ae-x:focus-visible{color:var(--crit);background:rgba(255,90,110,.1)}
 .ae-empty{color:var(--dim);font-size:var(--fs-tiny);margin:4px 0}

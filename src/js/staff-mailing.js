@@ -175,51 +175,130 @@
         (m.clicked ? ' · ' + esc(fill('ml.clicked', { n: m.clicked })) : '') +
         (m.bounced ? ' · <b class="ml-bounced">' + esc(fill('ml.bounced', { n: m.bounced })) + '</b>' : '') +
         (sentLink(m, l) ? '' : ' · <i>' + esc(tr('ml.notPublished')) + '</i>');
-      var open = state.sentOpen === m.id;
-      return '<div class="ml-sent-item' + (open ? ' is-open' : '') + '">' +
-        '<button type="button" class="ml-sentall-row" data-sent="' + esc(m.id) + '" aria-expanded="' + open + '">' +
+      /* the row opens its report; the × on its right removes it (2026-10-06,
+         Chase: "just put an X on the right side of the newsletter in Sent
+         Mail to delete it") */
+      return '<div class="ml-sent-item">' +
+        '<button type="button" class="ml-sentall-row" data-sent="' + esc(m.id) + '">' +
           '<span class="ml-sentall-subject">' + esc(m.subject) + '</span>' +
           '<span class="ml-sentall-meta">' + meta + '</span></button>' +
-        (open ? '<div class="ml-sent-detail" id="mlSentDetail">' + sentDetail(m, l) + '</div>' : '') +
+        '<button type="button" class="ml-sent-x" data-sent-remove="' + esc(m.id) + '" aria-label="' + esc(fill('ml.sentRemoveAsk', { subject: m.subject })) + '" title="' + esc(tr('ml.sentRemove')) + '">&times;</button>' +
       '</div>';
     }).join('');
     $('mlSentMore').hidden = rows.length <= SENT_SHOWN;
     $('mlSentMore').textContent = state.sentAll ? tr('ml.sentFewer') : fill('ml.sentAllN', { n: rows.length });
   }
-  /* one mailing's details: drawn from what mailing-details returned */
-  function sentDetail(m, l) {
-    var d = state.sentDetail && state.sentDetail.id === m.id ? state.sentDetail : null;
+  /* ONE MAILING'S REPORT (the report view, mail-body.njk): the numbers as
+     tiles and a funnel, when people opened it, the links by clicks, and
+     everyone it went to — filtered to who opened, who didn't, who clicked,
+     who bounced — each with Send again while they are still subscribed. */
+  function findSent(id) {
+    var hit = null;
+    state.lists.forEach(function (l) { (l.sent || []).forEach(function (m) { if (m.id === id) hit = { m: m, l: l }; }); });
+    return hit;
+  }
+  function pctOf(a, b) { return b ? Math.round(a / b * 100) : 0; }
+  function when(at) { try { return new Date(at).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } }
+  function renderReport() {
+    var hit = findSent(state.reportId), box = $('mlReport');
+    if (!box) return;
+    if (!hit) { box.innerHTML = ''; return; }
+    var m = hit.m, l = hit.l, d = state.sentDetail && state.sentDetail.id === m.id ? state.sentDetail : null;
     var link = sentLink(m, l);
-    var head = '<div class="ml-sent-actions">' +
-      (link ? '<a class="ghost-btn sm" href="' + esc(link) + '" target="_blank" rel="noopener">' + esc(tr('ml.sentView')) + '</a>' : '') +
-      '<button type="button" class="ghost-btn sm danger" data-sent-remove="' + esc(m.id) + '">' + esc(tr('ml.sentRemove')) + '</button></div>';
-    if (!d) return head + '<p class="ml-sent-wait">…</p>';
-    var people = d.people.map(function (p) {
+    var people = d ? d.people : [];
+    var n = Number(m.sent_count) || people.length;
+    var bounced = d ? people.filter(function (p) { return p.status === 'bounced'; }).length : Number(m.bounced) || 0;
+    var failed = d ? people.filter(function (p) { return p.status === 'failed'; }).length : 0;
+    var delivered = Math.max(0, n - bounced - failed);
+    var opened = d ? people.filter(function (p) { return p.opened_at; }).length : Number(m.opened) || 0;
+    var clicked = d ? people.filter(function (p) { return p.click_count > 0; }).length : Number(m.clicked) || 0;
+    var left = d ? people.filter(function (p) { return p.subscriber_status && p.subscriber_status !== 'subscribed'; }).length : 0;
+    function tile(label, value, sub, cls) {
+      return '<div class="ml-rp-tile' + (cls ? ' ' + cls : '') + '"><span class="ml-rp-n">' + value + '</span>' +
+        '<span class="ml-rp-l">' + esc(label) + '</span>' + (sub != null ? '<span class="ml-rp-s">' + sub + '%</span>' : '') + '</div>';
+    }
+    function bar(label, value, of) {
+      var w = of ? Math.max(value ? 2 : 0, Math.round(value / of * 100)) : 0;
+      return '<div class="ml-rp-bar"><span class="ml-rp-bl">' + esc(label) + '</span><span class="ml-rp-track"><i style="width:' + w + '%"></i></span><b>' + value + '</b></div>';
+    }
+    /* when they opened it: by hour over the first two days, by day after */
+    var times = people.filter(function (p) { return p.opened_at; }).map(function (p) { return new Date(p.opened_at).getTime(); }).sort();
+    var chart = '';
+    if (times.length) {
+      var t0 = m.finished_at ? new Date(m.finished_at).getTime() : times[0], span = times[times.length - 1] - t0;
+      var byHour = span < 48 * 3600e3, step = byHour ? 3600e3 : 86400e3, nb = Math.max(1, Math.min(byHour ? 48 : 30, Math.ceil(span / step) + 1));
+      var buckets = []; for (var bi = 0; bi < nb; bi++) buckets.push(0);
+      times.forEach(function (t) { var k = Math.min(nb - 1, Math.max(0, Math.floor((t - t0) / step))); buckets[k]++; });
+      var top = Math.max.apply(null, buckets);
+      chart = '<section class="ml-rp-card"><span class="sh-lbl">' + esc(tr(byHour ? 'ml.rpOpensHours' : 'ml.rpOpensDays')) + '</span>' +
+        '<div class="ml-rp-chart">' + buckets.map(function (v, k) {
+          return '<span title="' + esc((byHour ? '+' + k + 'h' : '+' + k + 'd') + ': ' + v) + '"><i style="height:' + (top ? Math.max(v ? 4 : 0, Math.round(v / top * 100)) : 0) + '%"></i></span>';
+        }).join('') + '</div>' +
+        '<div class="ml-rp-axis"><span>' + esc(when(t0)) + '</span><span>' + esc(when(t0 + (nb - 1) * step)) + '</span></div></section>';
+    }
+    var links = d ? (d.links || []).filter(function (k) { return k.clicks > 0; }) : [];
+    var F = state.reportFilter || 'all', q = (state.reportQ || '').toLowerCase();
+    var FILTERS = [['all', tr('ml.rpAll'), people.length],
+      ['opened', tr('ml.stOpened'), opened], ['unopened', tr('ml.rpUnopened'), people.length - opened],
+      ['clicked', tr('ml.rpClickedF'), clicked], ['bounced', tr('ml.stBounced'), bounced + failed]];
+    var shown = people.filter(function (p) {
+      if (F === 'opened' && !p.opened_at) return false;
+      if (F === 'unopened' && p.opened_at) return false;
+      if (F === 'clicked' && !(p.click_count > 0)) return false;
+      if (F === 'bounced' && p.status !== 'bounced' && p.status !== 'failed') return false;
+      return !q || String(p.email).toLowerCase().indexOf(q) >= 0 || String(p.name || '').toLowerCase().indexOf(q) >= 0;
+    });
+    var rows = shown.map(function (p) {
       var st = p.status === 'bounced' ? '<b class="ml-bounced">' + esc(tr('ml.stBounced')) + '</b>'
         : p.status === 'failed' ? '<b class="ml-bounced">' + esc(tr('ml.stFailed')) + '</b>'
         : esc(tr('ml.stSent'));
-      var marks = (p.opened_at ? '<span class="ml-mark is-open">' + esc(tr('ml.stOpened')) + '</span>' : '') +
-        (p.click_count ? '<span class="ml-mark is-click">' + esc(fill('ml.stClicked', { n: p.click_count })) + '</span>' : '');
+      var marks = (p.opened_at ? '<span class="ml-mark is-open" title="' + esc(when(p.opened_at)) + '">' + esc(tr('ml.stOpened')) + '</span>' : '') +
+        (p.click_count ? '<span class="ml-mark is-click">' + esc(fill('ml.stClicked', { n: p.click_count })) + '</span>' : '') +
+        (p.subscriber_status && p.subscriber_status !== 'subscribed' ? '<span class="ml-mark is-left">' + esc(tr('ml.rpLeft')) + '</span>' : '');
       var again = p.subscriber_status === 'subscribed'
-        ? '<button type="button" class="link-btn" data-sent-again="' + esc(p.subscriber_id) + '">' + esc(tr('ml.sentAgain')) + '</button>' : '';
+        ? '<button type="button" class="ghost-btn xs" data-sent-again="' + esc(p.subscriber_id) + '">' + esc(tr('ml.sentAgain')) + '</button>' : '<span></span>';
       return '<li><span class="ml-sent-who">' + esc(p.name || p.email) + (p.name ? ' <i>' + esc(p.email) + '</i>' : '') + '</span>' +
         '<span class="ml-sent-st">' + st + marks + '</span>' + again + '</li>';
     }).join('');
-    var links = (d.links || []).filter(function (k) { return k.clicks > 0; }).map(function (k) {
-      return '<li><span class="ml-sent-who">' + esc(k.label || k.url) + '</span><span class="ml-sent-st">' + esc(fill('ml.stClicked', { n: k.clicks })) + '</span></li>';
-    }).join('');
-    return head +
-      '<span class="sh-lbl">' + esc(tr('ml.sentPeople')) + '</span><ul class="ml-sent-people">' + people + '</ul>' +
-      (links ? '<span class="sh-lbl">' + esc(tr('ml.sentLinks')) + '</span><ul class="ml-sent-people">' + links + '</ul>' : '');
+    box.innerHTML =
+      '<header class="ml-rp-head"><div><h2 class="ml-rp-subject">' + esc(m.subject) + '</h2>' +
+        '<p class="ml-rp-meta">' + esc(l.name) + ' · ' + esc(m.finished_at ? when(m.finished_at) : '') + '</p></div>' +
+        '<div class="ml-rp-actions">' +
+          (link ? '<a class="ghost-btn sm" href="' + esc(link) + '" target="_blank" rel="noopener">' + esc(tr('ml.sentView')) + '</a>' : '<span class="ml-rp-meta"><i>' + esc(tr('ml.notPublished')) + '</i></span>') +
+          '<button type="button" class="ghost-btn sm danger" data-sent-remove="' + esc(m.id) + '">' + esc(tr('ml.sentRemove')) + '</button></div></header>' +
+      '<div class="ml-rp-tiles">' +
+        tile(tr('ml.stSent'), n) + tile(tr('ml.rpDelivered'), delivered, pctOf(delivered, n)) +
+        tile(tr('ml.stOpened'), opened, pctOf(opened, delivered), 'is-open') + tile(tr('ml.rpClickedF'), clicked, pctOf(clicked, delivered), 'is-click') +
+        tile(tr('ml.stBounced'), bounced + failed, pctOf(bounced + failed, n), bounced + failed ? 'is-bad' : '') +
+        (left ? tile(tr('ml.rpLeftN'), left, pctOf(left, n)) : '') +
+      '</div>' +
+      '<section class="ml-rp-card ml-rp-funnel">' + bar(tr('ml.rpDelivered'), delivered, n) + bar(tr('ml.stOpened'), opened, n) + bar(tr('ml.rpClickedF'), clicked, n) + '</section>' +
+      chart +
+      (links.length ? '<section class="ml-rp-card"><span class="sh-lbl">' + esc(tr('ml.sentLinks')) + '</span><ul class="ml-sent-people ml-rp-links">' +
+        links.map(function (k) { return '<li><span class="ml-sent-who">' + esc(k.label || k.url) + (k.label ? ' <i>' + esc(k.url) + '</i>' : '') + '</span><span class="ml-sent-st"><b>' + k.clicks + '</b></span></li>'; }).join('') +
+        '</ul></section>' : '') +
+      '<section class="ml-rp-card"><span class="sh-lbl">' + esc(tr('ml.rpPeople')) + '</span>' +
+        '<div class="ml-rp-filter">' + FILTERS.map(function (f) {
+          return '<button type="button" class="ml-rp-chip' + (F === f[0] ? ' is-on' : '') + '" data-rp-filter="' + f[0] + '" aria-pressed="' + (F === f[0]) + '">' + esc(f[1]) + ' <b>' + f[2] + '</b></button>';
+        }).join('') +
+        '<input type="search" class="ml-rp-q" id="mlRpQ" value="' + esc(state.reportQ || '') + '" data-i18n-attr="aria-label:ml.rpSearch,placeholder:ml.rpSearch" aria-label="' + esc(tr('ml.rpSearch')) + '" placeholder="' + esc(tr('ml.rpSearch')) + '"></div>' +
+        (d ? (rows ? '<ul class="ml-sent-people ml-rp-people">' + rows + '</ul>' : '<p class="ml-sent-wait">' + esc(tr('ml.rpNone')) + '</p>') : '<p class="ml-sent-wait">…</p>') +
+      '</section>';
   }
-  async function openSent(id) {
-    state.sentOpen = state.sentOpen === id ? null : id;
-    renderSentAll();
-    if (!state.sentOpen) return;
+  async function loadReport(id) {
     var b = await postJson({ action: 'mailing-details', id: id });
     if (b.error) { toast(b.error, 'bad'); return; }
     state.sentDetail = { id: id, people: b.people || [], links: b.links || [] };
-    if (state.sentOpen === id) renderSentAll();
+    if (state.reportId === id) renderReport();
+  }
+  function openReport(id) {
+    if (!findSent(id)) return;
+    state.reportId = id; state.reportFilter = 'all'; state.reportQ = '';
+    if (!(state.sentDetail && state.sentDetail.id === id)) state.sentDetail = null;
+    show('report');
+    renderReport();
+    try { window.scrollTo(0, 0); } catch (e) {}
+    loadReport(id);
   }
   /* the numbers, kept live while the page is open and on screen */
   async function refreshSent() {
@@ -237,8 +316,8 @@
     });
     if (changed) {
       renderSentAll();
-      if (state.sentOpen) { var d = await postJson({ action: 'mailing-details', id: state.sentOpen }); if (!d.error) { state.sentDetail = { id: state.sentOpen, people: d.people || [], links: d.links || [] }; renderSentAll(); } }
     }
+    if (state.view === 'report' && state.reportId) await loadReport(state.reportId);
   }
   setInterval(refreshSent, 20000);
   document.addEventListener('visibilitychange', function () { if (!document.hidden) refreshSent(); });
@@ -268,7 +347,7 @@
   /* The tool tabs — the views that are not a list. Kept as one list so a new
      one cannot be added to the tab bar and forgotten here, which is what
      leaves a tab that highlights and shows nothing. */
-  var TOOLS = ['composer'];
+  var TOOLS = ['composer', 'report'];
 
   /* ONE VIEW AT A TIME, found by what the markup says it is rather than by a
      list of ids kept here.
@@ -292,7 +371,7 @@
     var isTool = TOOLS.indexOf(view) >= 0;
     onlyView(isTool ? view : (listById(view) ? 'list' : null));
     /* The composer fills the page; everything else sits under the first card. */
-    $('mlHome').hidden = view === 'composer';
+    $('mlHome').hidden = view === 'composer' || view === 'report';
     if (listById(view)) state.lastList = view;
 
     renderTabs();
@@ -321,7 +400,7 @@
        is the page itself. In the Website area every tab is one page, so the
        address is only this tab's to change while this tab is on screen. */
     if (FIXED && !onScreen()) return;
-    try { history.replaceState(null, '', location.pathname + '#' + view); } catch (e) {}
+    try { history.replaceState(null, '', location.pathname + '#' + (view === 'report' ? 'report-' + state.reportId : view)); } catch (e) {}
   }
   function onScreen() {
     var panel = $('mlHome').closest('[data-web-panel]');
@@ -1082,7 +1161,10 @@
       else window.addEventListener('load', toDrafts, { once: true });
       return;
     }
-    var valid = TOOLS.indexOf(wanted) >= 0 || !!listById(wanted);
+    var rp = /^report-(.+)$/.exec(wanted || '');
+    if (rp && findSent(rp[1])) { openReport(rp[1]); return; }
+    if (state.view === 'report' && state.reportId && findSent(state.reportId)) { renderReport(); return; }
+    var valid = (TOOLS.indexOf(wanted) >= 0 && wanted !== 'report') || !!listById(wanted);
     /* With no list there is nothing to write to: the page itself, with New
        list, rather than a composer with an empty picker and no way out. */
     if (wanted === 'composer' && !state.lists.length) valid = false;
@@ -1146,13 +1228,15 @@
     state.sentAll = !state.sentAll;
     renderSentAll();
   });
-  $('mlSentRows').addEventListener('click', async function (e) {
+  async function sentClick(e) {
     var row = e.target.closest('[data-sent]');
-    if (row) { openSent(row.dataset.sent); return; }
+    if (row) { openReport(row.dataset.sent); return; }
+    var chip = e.target.closest('[data-rp-filter]');
+    if (chip) { state.reportFilter = chip.dataset.rpFilter; renderReport(); return; }
     var again = e.target.closest('[data-sent-again]');
     if (again) {
       again.disabled = true;
-      var r = await postJson({ action: 'mailing-resend', id: state.sentOpen, subscriber_id: again.dataset.sentAgain });
+      var r = await postJson({ action: 'mailing-resend', id: state.reportId, subscriber_id: again.dataset.sentAgain });
       again.disabled = false;
       if (r.error) toast(r.error, 'bad'); else toast(fill('ml.sentAgainDone', { email: r.to }), 'ok');
       return;
@@ -1166,10 +1250,22 @@
       if (!ok) return;
       var d = await postJson({ action: 'mailing-remove', id: rm.dataset.sentRemove });
       if (d.error) { toast(d.error, 'bad'); return; }
-      state.sentOpen = null; state.sentDetail = null;
+      var wasOpen = state.view === 'report' && state.reportId === rm.dataset.sentRemove;
+      state.reportId = null; state.sentDetail = null;
       await load(true);
+      if (wasOpen) show(state.lastList || firstList());
     }
+  }
+  $('mlSentRows').addEventListener('click', sentClick);
+  $('mlReport').addEventListener('click', sentClick);
+  $('mlReport').addEventListener('input', function (e) {
+    if (e.target.id !== 'mlRpQ') return;
+    state.reportQ = e.target.value;
+    var at = e.target.selectionStart;
+    renderReport();
+    var q = $('mlRpQ'); if (q) { q.focus(); try { q.setSelectionRange(at, at); } catch (x) {} }
   });
+  $('mlReportBack').addEventListener('click', function () { show(state.lastList || firstList()); });
   $('mlForm').addEventListener('submit', submitSettings);
 
   /* CANCEL PUTS IT BACK. On an existing list, the saved values return; on one
