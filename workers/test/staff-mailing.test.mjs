@@ -363,6 +363,15 @@ await check("adding by hand is refused an address that cannot be one", async () 
   eq(res.status, 400, "status");
 });
 
+await check("adding by hand takes their name and the language of their confirmation (it failed on a missing lang)", async () => {
+  const { env, ran } = stubbed({ mailing_list_one: [{ id: "ml_1", name: "Newsletter", from_name: "Chase", from_email: "news@x.one" }], subscriber_add: [] });
+  const res = await handler.fetch(req("POST", {
+    body: { action: "add-subscriber", list_id: "ml_1", email: "ana@example.org", name: "Ana", lang: "hr" },
+  }), env);
+  const body = await res.json().catch(() => ({}));
+  assert(res.status === 200 && ran.includes("subscriber_add"), "not added: " + res.status + " " + JSON.stringify(body));
+});
+
 await check("adding by hand needs a list that is yours", async () => {
   /* mailing_list_one returns nothing for a list belonging to somebody else,
      which is how this becomes 404 rather than a write into their list. */

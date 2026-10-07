@@ -764,10 +764,14 @@ const api = {
         const token = [...crypto.getRandomValues(new Uint8Array(32))]
           .map((b) => b.toString(16).padStart(2, "0")).join("");
 
+        /* THE LANGUAGE THEIR CONFIRMATION IS WRITTEN IN, chosen in the Add
+           dialog. subscriber_add stores it, and the call without it failed
+           every time ("missing query parameter(s): lang", 2026-10-07). */
+        const lang = /^[a-z]{2,3}(-[a-z0-9]{2,8})?$/.test(String(body.lang || "")) ? String(body.lang) : null;
         try {
           await db.query("subscriber_add", {
             id: newId("sub"), list_id: listId, partner_id: partnerId,
-            email, name: clean(body.name, MAX.name), token,
+            email, name: clean(body.name, MAX.name), token, lang,
             source: clean(body.source, 60) || "added by hand", now,
           });
         } catch (e) {
@@ -782,7 +786,7 @@ const api = {
         const origin = siteOrigin(env, request);
         const mail = listConfirmEmail({
           name: clean(body.name, MAX.name),
-          listName: list.name,
+          listName: list.name, lang,
           fromName: list.from_name, origin,
           confirmUrl: `${subscriberOrigin(env, request)}/confirm?t=${token}`,
           brand: await brandForMail(db, partnerId),

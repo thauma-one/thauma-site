@@ -59,14 +59,27 @@
       <input type="search" id="subsQ" class="subs-q"
              data-i18n-attr="placeholder:ml.subsSearch, aria-label:ml.subsSearch" aria-label="Search a name or address"
              placeholder="Search a name or address">
-      <form class="ml-add" id="mlAddPerson">
-        <input type="email" id="mlNewEmail" maxlength="200" required
-               data-i18n-attr="placeholder:ml.addAnEmail, aria-label:ml.addAnEmail"
-               aria-label="Add an email address" placeholder="Add an email address">
-        <button type="submit" class="ghost-btn" data-i18n="ml.addPerson">Add</button>
-      </form>
+      {#- ADD EMAIL opens a dialog, as Resources' Add does (2026-10-07, Chase:
+          "it also doesn't let me put in a name for the person … make the Add
+          button an Add Email button that pops up like the resource tab"). -#}
+      <button type="button" class="ghost-btn" id="mlAddEmailBtn" data-i18n="ml.addEmailBtn">+ Add email</button>
     </div>
     <span class="hint ml-add-status" id="mlAddStatus"></span>
+    <div class="dlg-back" id="mlAddBack" hidden>
+      <form class="form dlg" id="mlAddPerson" autocomplete="off">
+        <h3 data-i18n="ml.addEmailTitle">Add someone to this list</h3>
+        <label class="fld"><span data-i18n="ml.personName">Their name</span>
+          <input type="text" id="mlNewName" maxlength="120" autocomplete="off" data-1p-ignore data-lpignore="true" data-bwignore></label>
+        <label class="fld"><span data-i18n="ml.personEmail">Their email address</span>
+          <input type="email" id="mlNewEmail" maxlength="200" required autocomplete="off" data-1p-ignore data-lpignore="true" data-bwignore></label>
+        <label class="fld"><span data-i18n="ml.personLang">The language of their confirmation email</span>
+          <select id="mlNewLang"></select></label>
+        <div class="dlg-actions">
+          <button class="ghost-btn" type="button" id="mlAddCancel" data-i18n="common.cancel">Cancel</button>
+          <button class="solid-btn" type="submit" data-i18n="ml.addPerson">Add</button>
+        </div>
+      </form>
+    </div>
 
     {#- The three numbers, then what narrows the table: status, order, tag. -#}
     <div class="subs-bar">
@@ -453,13 +466,16 @@
             <button type="button" class="ghost-btn" id="cpTestReset" data-i18n="ml.cpTestUseSignIn" hidden>Use my sign-in address</button>
           </span>
         </span>
-        <span class="cp-actions-gap"></span>
+        {#- Attach and Delete as one group on the right: on a narrow screen they
+            move to the next line together rather than one under Send. -#}
+        <span class="cp-actions-end">
         {#- Words beside the icons (2026-10-07, Chase: the trash can is "cool,
             but hard to see what it is"). -#}
         <button type="button" class="cp-icon" id="cpAttach"
                 data-i18n-attr="title:ml.cpAttach" title="Attach a file"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10.5 4.5 5.8 9.2a1.3 1.3 0 0 0 1.9 1.9l5-5a2.6 2.6 0 0 0-3.7-3.7l-5 5a3.9 3.9 0 0 0 5.5 5.5L13 9.4"/></svg><span data-i18n="ml.cpAttachShort">Attach a file</span></button>
         <button type="button" class="cp-icon cp-icon-del" id="cpDelete"
                 data-i18n-attr="title:ml.cpDelete" title="Delete draft"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 4h11M6 4V2.5h4V4M4 4l.7 9.5h6.6L12 4"/></svg><span data-i18n="ml.cpDelete">Delete draft</span></button>
+        </span>
       </div>
     </div>
 

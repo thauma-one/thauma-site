@@ -1329,12 +1329,29 @@
        and Settings tabs became the List settings button (board 10). */
   });
 
+  /* + Add email: a dialog with their name, address and the language their
+     confirmation is written in (2026-10-07). */
+  function addClose() { $('mlAddBack').hidden = true; $('mlAddBack').classList.remove('in'); $('mlAddPerson').reset(); }
+  $('mlAddEmailBtn').addEventListener('click', function () {
+    $('mlNewLang').innerHTML = state.langs.map(function (x) {
+      return '<option value="' + esc(x.code) + '">' + esc(x.native_name || x.name || x.code) + '</option>';
+    }).join('');
+    $('mlNewLang').value = state.home;
+    $('mlAddBack').hidden = false; void $('mlAddBack').offsetHeight; $('mlAddBack').classList.add('in');
+    $('mlNewName').focus();
+  });
+  $('mlAddCancel').addEventListener('click', addClose);
+  $('mlAddBack').addEventListener('click', function (e) { if (e.target === this) addClose(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('mlAddBack').hidden) addClose(); });
+
   $('mlAddPerson').addEventListener('submit', async function (e) {
     e.preventDefault();
     var l = currentList();
     if (!l) return;
     var email = $('mlNewEmail').value.trim();
     if (!email) return;
+    var name = $('mlNewName').value.trim(), lang = $('mlNewLang').value;
+    addClose();
 
     setStatus($('mlAddStatus'), tr('ml.adding'));
     var res, body;
@@ -1343,7 +1360,7 @@
         method: 'POST', credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'add-subscriber', list_id: l.id,
-                               email: email, name: '' }),
+                               email: email, name: name, lang: lang }),
       });
       body = await res.json();
     } catch (err) {
@@ -1352,7 +1369,6 @@
     }
     if (!res.ok) { setStatus($('mlAddStatus'), body.error || tr('err.refused')); return; }
 
-    $('mlNewEmail').value = '';
     setStatus($('mlAddStatus'), '');
 
     /* Which of the two happened. The row exists and is pending either way, and
