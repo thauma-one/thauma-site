@@ -37,7 +37,7 @@
   var PREVIEW = '/api/staff-embed';
   var MAILING = '/api/staff-mailing';
   var HEX = /^#[0-9a-fA-F]{6}$/;
-  var DEFAULT_ACCENT = '#6D4AFF';
+  var DEFAULT_ACCENT = '#1AE4FF';
   var PREVIEW_MAX_H = 480;
   /* A widget on a desktop page is drawn at a desktop page's width and scaled
      to fit, because the widget chooses its layout from the width it is given:

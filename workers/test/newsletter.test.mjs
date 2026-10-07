@@ -302,7 +302,7 @@ check("the accent reaches the email, and nonsense does not", () => {
   assert(render(BODY, OPTS).includes("#E4572E"), "the ministry's color is missing");
   const bad = render(BODY, { ...OPTS, accent: "red;}</style><script>" });
   assert(!/<script/i.test(bad), "an accent must never become markup");
-  assert(bad.includes("#6D4AFF"), "expected the default accent");
+  assert(bad.includes("#1AE4FF"), "expected the default accent");
 });
 
 check("the unsubscribe link is in the email", () => {

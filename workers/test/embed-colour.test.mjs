@@ -87,7 +87,7 @@ check("an embed wears its own colors, else the ministry's; its own background, e
   eq(lookFor(ministry, { accent: "#E4572E", accent2: "#111111" }).accent2, "#111111", "its own free choice");
   eq(JSON.stringify(rowLook({ embed_accent: "#00D4FF", look_accent: "#22C55E", look_theme: "dark" })),
     JSON.stringify({ accent: "#22C55E", accent2: companion("#22C55E"), mode: "dark" }), "a form's row");
-  eq(lookFor({}, null).accent, "#6D4AFF", "no colors at all is the house purple");
+  eq(lookFor({}, null).accent, "#1AE4FF", "no colors at all is Thauma's cyan");
 });
 
 check("alpha agrees", () => {

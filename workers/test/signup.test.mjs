@@ -278,7 +278,7 @@ await check("a nonsense accent falls back rather than emitting broken CSS", asyn
                         { accent: "red; } :host { display:none", mode: "sideways" });
   assert(!js.includes("display:none"),
     "a color that is not a hex value must never reach the stylesheet");
-  assert(js.includes("#6D4AFF"), "expected the default accent");
+  assert(js.includes("#1AE4FF"), "expected the default accent");
 });
 
 await check("a checkbox shows its list's NAME and nothing else", async () => {

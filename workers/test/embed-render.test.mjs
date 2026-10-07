@@ -307,7 +307,7 @@ await check("a junk data-accent cannot reach the stylesheet", async () => {
   });
   const css = root.children.find((c) => c.tagName === "STYLE").textContent;
   assert(!css.includes("red;}body"), "CSS injection got through");
-  assert(css.includes("#6D4AFF"), "should fall back to the house color");
+  assert(css.includes("#1AE4FF"), "should fall back to the house color");
 });
 
 /* ---- the roadmap ---- */

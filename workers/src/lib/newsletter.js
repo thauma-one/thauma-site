@@ -407,8 +407,27 @@ export function fillVariables(html, name) {
  * @param opts.credit          a partner ministry's line crediting Thauma
  *                             ("A Thauma ministry"); Thauma's own mail, none.
  */
+/* EVERY PICTURE A LINK (2026-10-07, Chase: "a small download button shows up
+   in GMail for the images in the bottom right hand corner … Is there a way to
+   turn that off?"). Gmail puts it on any picture that is not a link, and
+   there is no setting for it; a linked picture has none. A picture already
+   inside a link keeps that link; the rest open the web copy where the list
+   publishes one, else the picture itself. */
+export function linkPictures(html, archiveUrl) {
+  let open = 0;
+  return html.replace(/<a\b[^>]*>|<\/a>|<img\b[^>]*>/gi, (m) => {
+    if (/^<a\b/i.test(m)) { open++; return m; }
+    if (/^<\/a>/i.test(m)) { open = Math.max(0, open - 1); return m; }
+    if (open) return m;
+    const src = /\ssrc="([^"]*)"/i.exec(m);
+    /* the picture's src is already escaped in the HTML; the archive's is not */
+    const href = archiveUrl ? escapeHtml(archiveUrl) : src && src[1];
+    return href ? `<a href="${href}" style="text-decoration:none;border:0">${m}</a>` : m;
+  });
+}
+
 export function render(body, opts = {}) {
-  const accent = /^#[0-9a-fA-F]{6}$/.test(String(opts.accent || "")) ? opts.accent : "#6D4AFF";
+  const accent = /^#[0-9a-fA-F]{6}$/.test(String(opts.accent || "")) ? opts.accent : "#1AE4FF";
   const accent2 = /^#[0-9a-fA-F]{6}$/.test(String(opts.accent2 || "")) ? opts.accent2 : accent;
   /* LIGHT, DARK OR THE READER'S OWN (2026-10-06, Chase: "Maybe the mailer
      needs a selection tool for light mail, dark mail, or match system
@@ -429,8 +448,8 @@ export function render(body, opts = {}) {
   /* Personal words first, so nothing below ever sees a variable: a send
      passes the recipient's name, everything else (the archive, the size
      measure) gets each variable's fallback. */
-  const styled = inlineStyles(fillVariables(body, opts.recipientName), accent, ink, dim, line, dark, accent2)
-    .replace(/(<img\b[^>]*\ssrc=")(\/media\/)/gi, `$1${mediaOrigin}$2`);
+  const styled = linkPictures(inlineStyles(fillVariables(body, opts.recipientName), accent, ink, dim, line, dark, accent2)
+    .replace(/(<img\b[^>]*\ssrc=")(\/media\/)/gi, `$1${mediaOrigin}$2`), opts.archiveUrl);
   const title = escapeHtml(opts.subject || "");
 
   /* THE PREHEADER. Hidden, and followed by enough blank characters to stop the

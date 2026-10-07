@@ -46,7 +46,7 @@ import { lookFor } from "./embed-colour.js";
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,62}$/;
 
 /** The house color, used when a partner has not chosen one. */
-const DEFAULT_ACCENT = "#6D4AFF";
+const DEFAULT_ACCENT = "#1AE4FF";   /* Thauma's cyan, as Site Creator shows a ministry with no color yet (2026-10-07; was a purple nothing here uses) */
 
 /**
  * CORS, and it has to be `*`.

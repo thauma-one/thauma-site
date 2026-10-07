@@ -467,19 +467,19 @@ main section.ptabs-bar{padding:28px 0 0}
    the middle of the screen (MOTION_JS, .is-near). Vertical stacks them,
    Horizontal sets them side by side; Lines draws a faint line between them
    that stops short of both. */
+.ccards{color:var(--fg)}
 .ccards li{position:relative;transition:transform .3s cubic-bezier(.16,1,.3,1),border-color .3s,box-shadow .3s}
-.raised .ccards li{background:var(--bg)}
+.raised .ccards li,.band .ccards li{background:var(--bg)}
 .ccards li:hover,.ccards li.is-near{transform:translateY(-5px);border-color:var(--acc);box-shadow:0 10px 30px color-mix(in srgb,var(--acc) 20%,transparent)}
 @media (prefers-reduced-motion:reduce){.ccards li{transition:none}.ccards li:hover,.ccards li.is-near{transform:none}}
 .cards-vertical .ccards{max-width:800px;display:flex;flex-direction:column;gap:16px}
 .cards-vertical.cards-lines .ccards{gap:40px}
-.cards-vertical.cards-lines .ccards li+li::before{content:"";position:absolute;left:50%;top:-32px;width:2px;height:24px;margin-left:-1px;background:var(--line)}
+.cards-vertical.cards-lines .ccards li+li::before{content:"";position:absolute;left:50%;top:-32px;width:2px;height:24px;margin-left:-1px;background:color-mix(in srgb,currentColor 22%,transparent)}
 .cards-vertical.cards-lines .ccards.numbered li+li::before{left:45px}
 .cards-horizontal .ccards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:22px}
 .cards-horizontal .ccards li{flex-direction:column;gap:14px}
 .cards-horizontal.cards-lines .ccards{gap:22px 40px}
-.cards-horizontal.cards-lines .ccards li+li::before{content:"";position:absolute;left:-32px;top:50%;width:24px;height:2px;margin-top:-1px;background:var(--line)}
-.cards-horizontal.cards-lines .ccards.numbered li+li::before{top:44px}
+.cards-horizontal.cards-lines .ccards li+li::before{content:"";position:absolute;left:-32px;top:50%;width:24px;height:2px;margin-top:-1px;background:color-mix(in srgb,currentColor 22%,transparent)}
 @media (max-width:760px){.cards-horizontal.cards-lines .ccards{gap:40px}.cards-horizontal.cards-lines .ccards li+li::before{left:50%;top:-32px;width:2px;height:24px;margin:0 0 0 -1px}}
 .al-center .cards-vertical .ccards,.cards-vertical.al-center .ccards{margin-left:auto;margin-right:auto}
 .al-right .cards-vertical .ccards,.cards-vertical.al-right .ccards{margin-left:auto}
@@ -771,7 +771,7 @@ function renderSection(sec, ctx) {
   };
   const widget = (kind, extra = "") =>
     `<div class="m" data-thauma="${esc(ctx.slug)}" data-widget="${kind}" data-lang="${esc(lang)}" data-theme="${ctx.widgetTheme}" data-foot="off"` +
-    `${ctx.widgetAccent ? ` data-accent="${esc(ctx.widgetAccent)}"` : ""}${ctx.widgetLook(!!sec.raised)}${extra}></div>`;
+    `${ctx.widgetAccent ? ` data-accent="${esc(ctx.widgetAccent)}"` : ""}${ctx.widgetLook(!!(sec.raised || sec.tint))}${extra}></div>`;
 
   switch (sec.type) {
     case "hero": {
@@ -920,12 +920,12 @@ function renderSection(sec, ctx) {
          straight on the page with no card of its own. */
       if (sec.variant === "split") {
         return `<section${cls("fsplit")}><div class="wrap"><div class="split"><div>${heading(w("heading"))}${sub}<span class="rule m" aria-hidden="true"></span></div>` +
-          `<div class="m"><div data-thauma-form data-lang="${esc(lang)}"${ctx.formLook(false, !!sec.raised)}></div></div></div></div></section>`;
+          `<div class="m"><div data-thauma-form data-lang="${esc(lang)}"${ctx.formLook(false, !!(sec.raised || sec.tint))}></div></div></div></div></section>`;
       }
       if (sec.variant === "open") {
-        return `<section${cls()}><div class="wrap">${heading(w("heading"))}${sub}<div class="m formbox openform"><div data-thauma-form data-lang="${esc(lang)}"${ctx.formLook(true, !!sec.raised)}></div></div></div></section>`;
+        return `<section${cls()}><div class="wrap">${heading(w("heading"))}${sub}<div class="m formbox openform"><div data-thauma-form data-lang="${esc(lang)}"${ctx.formLook(true, !!(sec.raised || sec.tint))}></div></div></div></section>`;
       }
-      return `<section${cls()}><div class="wrap">${sec.variant === "card" ? '<div class="card signcard">' : '<div class="bandrow">'}<div>${heading(w("heading"))}${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}</div><div class="m${sec.variant === "card" ? " signform" : ""}" style="flex:1 1 360px;max-width:${sec.variant === "card" ? "100%" : "460px"}"><div data-thauma-form data-lang="${esc(lang)}"${ctx.formLook(sec.variant === "card", !!sec.raised)}></div></div></div></div></section>`;
+      return `<section${cls()}><div class="wrap">${sec.variant === "card" ? '<div class="card signcard">' : '<div class="bandrow">'}<div>${heading(w("heading"))}${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}</div><div class="m${sec.variant === "card" ? " signform" : ""}" style="flex:1 1 360px;max-width:${sec.variant === "card" ? "100%" : "460px"}"><div data-thauma-form data-lang="${esc(lang)}"${ctx.formLook(sec.variant === "card", !!(sec.raised || sec.tint))}></div></div></div></div></section>`;
     case "contact":
       ctx.needs.contact = true;
       /* "The card is really skinny on a desktop" (Chase, 2026-10-03): Side
@@ -933,12 +933,12 @@ function renderSection(sec, ctx) {
          Wide widens the card; Open drops the card. Form stays the original. */
       if (sec.variant === "split") {
         return `<section${cls("fsplit csplit")}><div class="wrap"><div class="split"><div>${heading(w("heading"))}${sub}<span class="rule m" aria-hidden="true"></span></div>` +
-          `<div class="m"><div data-thauma-contact data-lang="${esc(lang)}"${ctx.formLook(false, !!sec.raised)}></div></div></div></div></section>`;
+          `<div class="m"><div data-thauma-contact data-lang="${esc(lang)}"${ctx.formLook(false, !!(sec.raised || sec.tint))}></div></div></div></div></section>`;
       }
       if (sec.variant === "wide" || sec.variant === "open") {
-        return `<section${cls()}><div class="wrap">${heading(w("heading"))}${sub}<div class="m formbox ${sec.variant === "wide" ? "wideform" : "openform"}"><div data-thauma-contact data-lang="${esc(lang)}"${ctx.formLook(sec.variant === "open", !!sec.raised)}></div></div></div></section>`;
+        return `<section${cls()}><div class="wrap">${heading(w("heading"))}${sub}<div class="m formbox ${sec.variant === "wide" ? "wideform" : "openform"}"><div data-thauma-contact data-lang="${esc(lang)}"${ctx.formLook(sec.variant === "open", !!(sec.raised || sec.tint))}></div></div></div></section>`;
       }
-      return `<section${cls()}><div class="wrap">${heading(w("heading"))}${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}<div class="m formbox" style="max-width:560px;margin-top:24px"><div data-thauma-contact data-lang="${esc(lang)}"${ctx.formLook(false, !!sec.raised)}></div></div></div></section>`;
+      return `<section${cls()}><div class="wrap">${heading(w("heading"))}${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}<div class="m formbox" style="max-width:560px;margin-top:24px"><div data-thauma-contact data-lang="${esc(lang)}"${ctx.formLook(false, !!(sec.raised || sec.tint))}></div></div></div></section>`;
     case "give": {
       if (!ctx.giveUrl) return "";
       const giveBtn = (big) => `<a class="btn solid${big ? " big" : ""}" href="${esc(ctx.giveUrl)}">${esc(w("button") || word(lang, "giveBtn"))} →</a>`;

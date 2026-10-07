@@ -113,7 +113,7 @@ const MODES = ["auto", "light", "dark"];
  * the embed's embed_looks row or null. A stored second color is the free
  * choice; without one, the second sits `turn` degrees from the first.
  */
-export function lookFor(row, look, fallback = "#6D4AFF") {
+export function lookFor(row, look, fallback = "#1AE4FF") {
   row = row || {};
   const own = look && HEX.test(look.accent || "");
   const accent = own ? look.accent : HEX.test(row.embed_accent || "") ? row.embed_accent : fallback;

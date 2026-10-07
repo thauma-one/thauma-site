@@ -348,7 +348,8 @@ header.hero{min-height:100vh;display:flex;flex-direction:column;justify-content:
 /* touch-action:manipulation — this is also one of the arcade's doors (5
    quick taps, ARCADE-SPEC.md); without it, rapid taps register as a
    native double-tap-zoom gesture instead of 5 clean clicks. */
-.wordmark{font-family:'Sora',sans-serif;font-weight:100;font-size:clamp(56px,11vw,150px);letter-spacing:.14em;line-height:1;
+/* not selectable (2026-10-07, Chase: "the words can highlight, but that is an entry point"): five taps are the door, and a tap-run selects text */
+.wordmark{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;font-family:'Sora',sans-serif;font-weight:100;font-size:clamp(56px,11vw,150px);letter-spacing:.14em;line-height:1;
   text-shadow:0 0 60px rgba(47,216,255,.22);touch-action:manipulation}
 .hero-line{font-family:'Sora',sans-serif;font-weight:100;font-size:clamp(20px,2.6vw,30px);letter-spacing:.02em;margin-top:22px;color:var(--dim);text-wrap:balance}
 .hero-line b{font-weight:600;color:var(--text)}
