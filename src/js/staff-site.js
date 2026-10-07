@@ -714,9 +714,25 @@
         esc(labelOf(o)) + '</button>';
     }).join('') + '</div>';
   }
+  /* THE GRIP every reorderable row carries: dragged, or focused and moved
+     with the arrow keys (StaffSort, staff.js). It replaced the ↑ ↓ pair. */
+  var GRIP_ICON = '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="5.5" cy="3.5" r="1.3"/><circle cx="10.5" cy="3.5" r="1.3"/><circle cx="5.5" cy="8" r="1.3"/><circle cx="10.5" cy="8" r="1.3"/><circle cx="5.5" cy="12.5" r="1.3"/><circle cx="10.5" cy="12.5" r="1.3"/></svg>';
+  var LINK_ICON = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.6 9.4a2.6 2.6 0 0 0 3.7 0l2.4-2.4a2.6 2.6 0 0 0-3.7-3.7L8 4.3M9.4 6.6a2.6 2.6 0 0 0-3.7 0L3.3 9a2.6 2.6 0 0 0 3.7 3.7L8 11.7"/></svg>';
+  function grip() {
+    return '<button type="button" class="ws-icon sort-grip" aria-label="' + esc(tr('ws.dragMove')) + '" title="' + esc(tr('ws.dragMove')) + '">' + GRIP_ICON + '</button>';
+  }
+  function moveTo(a, from, to) { a.splice(to, 0, a.splice(from, 1)[0]); }
+  /* where an index that was `at` is after an item moved from → to */
+  function afterMove(at, from, to) {
+    if (at == null) return at;
+    if (at === from) return to;
+    if (from < at && to >= at) return at - 1;
+    if (from > at && to <= at) return at + 1;
+    return at;
+  }
   function sw(attr, on, label) {
     return '<button type="button" class="switch small" role="switch" ' + attr + ' aria-checked="' + (on ? 'true' : 'false') + '"' +
-      (label ? ' aria-label="' + esc(label) + '"' : '') + '><span class="switch-track"><span class="switch-state">' + (on ? 'On' : 'Off') +
+      (label ? ' aria-label="' + esc(label) + '"' : '') + '><span class="switch-track"><span class="switch-state">' + esc(tr(on ? 'ws.onoff.on' : 'ws.onoff.off')) +
       '</span><span class="switch-knob"></span></span>' + (label ? '<span class="switch-label">' + esc(label) + '</span>' : '') + '</button>';
   }
   function row(label, control) {
@@ -831,7 +847,7 @@
     var html = '<div class="ws-tabs" role="tablist">' +
       '<button type="button" class="ws-tabchip' + (!t ? ' is-on' : '') + '" data-tab-view="" aria-pressed="' + !t + '">' + esc(tr('ws.tabs.page')) + '</button>' +
       items.map(function (x, i) {
-        return '<button type="button" class="ws-tabchip' + (x === t ? ' is-on' : '') + '" data-tab-view="' + esc(x.id) + '" aria-pressed="' + (x === t) + '">' + esc(tabName(x, i)) + '</button>';
+        return '<button type="button" class="ws-tabchip is-tab' + (x === t ? ' is-on' : '') + '" data-tab-view="' + esc(x.id) + '" aria-pressed="' + (x === t) + '" title="' + esc(tr('ws.tabs.drag')) + '">' + esc(tabName(x, i)) + '</button>';
       }).join('') +
       (items.length < 6 ? '<button type="button" class="ws-tabchip ws-tab-plus" data-tab-add aria-label="' + esc(tr('ws.tabs.addOne')) + '" title="' + esc(tr('ws.tabs.addOne')) + '">+</button>' : '') +
       '<button type="button" class="ghost-btn sm ws-tabstyle-btn" data-tab-style aria-expanded="' + !!state.tabStyleOpen + '">' + esc(tr('ws.tabs.style')) + '</button>' +
@@ -908,20 +924,25 @@
     html += '<div class="ws-stack' + (state.edit != null ? ' has-open' : '') + '">' + (n ? '<button type="button" class="ws-insert" data-insert-at="0">+ ' + esc(tr('ws.addHere')) + '</button>' : '<p class="empty">' + esc(tr('ws.noSections')) + '</p>') +
       p.sections.map(function (x, i) {
         var open = state.edit === i;
-        return '<article class="ws-acc' + (open ? ' is-open' + (state.animate === i ? ' is-entering' : '') : '') + '" data-si="' + i + '">' +
+        return '<article class="ws-acc' + (open ? ' is-open' + (state.animate === i ? ' is-entering' : '') : '') + (x.join && i > 0 ? ' is-joined' : '') + '" data-si="' + i + '" data-sid="' + esc(x.id) + '">' +
           '<div class="ws-acc-head">' +
             '<button type="button" class="ws-stile" data-edit-sec="' + i + '" aria-expanded="' + open + '">' +
               '<span class="ws-sketch ws-sketch-sm" aria-hidden="true">' + sketch(x.type) + '</span>' +
               '<span class="ws-stile-words"><b>' + esc(tr('ws.sec.' + x.type)) + dot(sectionChanged(x)) + '</b><span>' + esc(summary(x)) + '</span>' + missingNote(sectionMissing(x)) + '</span>' +
               '<span class="ws-chev" aria-hidden="true"></span></button>' +
-            '<span class="ws-stile-tools">' +
-              '<button type="button" class="ws-icon" data-sec-up="' + i + '" aria-label="' + esc(tr('ws.up')) + '"' + (i === 0 ? ' disabled' : '') + '>↑</button>' +
-              '<button type="button" class="ws-icon" data-sec-down="' + i + '" aria-label="' + esc(tr('ws.down')) + '"' + (i === n - 1 ? ' disabled' : '') + '>↓</button>' +
+            '<span class="ws-stile-tools">' + grip() +
               '<button type="button" class="ws-icon del" data-sec-remove="' + i + '" aria-label="' + esc(tr('ws.remove')) + '">✕</button>' +
             '</span></div>' +
           '<div class="ws-acc-body"><div class="ws-acc-inner">' + (open ? panelHtml(p, i) : '') + '</div></div>' +
         '</article>' +
-        '<button type="button" class="ws-insert" data-insert-at="' + (i + 1) + '">+ ' + esc(tr('ws.addHere')) + '</button>';
+        /* JOINED TO THE ONE ABOVE (2026-10-07, Chase: "Can there be a visual
+           indicator when a section is merged with the one above it"): the
+           two rows sit together, tied by a link marked in words, where the
+           gap with its "Add a section here" would be. */
+        (p.sections[i + 1] && p.sections[i + 1].join
+          ? '<div class="ws-joinmark"><span class="ws-joinmark-line" aria-hidden="true"></span><span class="ws-joinmark-word">' + LINK_ICON + esc(tr('ws.joined')) + '</span>' +
+            '<button type="button" class="ws-joinmark-add" data-insert-at="' + (i + 1) + '" aria-label="' + esc(tr('ws.addHere')) + '" title="' + esc(tr('ws.addHere')) + '">+</button></div>'
+          : '<button type="button" class="ws-insert" data-insert-at="' + (i + 1) + '">+ ' + esc(tr('ws.addHere')) + '</button>');
       }).join('') +
       (n ? '' : '<button type="button" class="ws-addbtn" data-insert-at="0">+ ' + esc(tr('ws.addSection')) + '</button>') + '</div>';
     $('wsPages').innerHTML = html;
@@ -949,21 +970,18 @@
   var drawSections = function () { drawPages(); };
 
   function drawOverview() {
-    var pages = state.doc.pages, last = pages.length - 1;
+    var pages = state.doc.pages;
     $('wsPages').innerHTML = '<div class="ws-head"><h2>' + esc(tr('ws.yourPages')) + '</h2></div>' +
       '<ol class="ws-plist">' + pages.map(function (x, i) {
         var n = allSecs(x).length;
-        return '<li class="ws-prow' + (x.on ? '' : ' is-off') + '">' +
+        return '<li class="ws-prow' + (x.on ? '' : ' is-off') + '" data-pid="' + esc(x.id) + '">' +
           '<button type="button" class="ws-prow-open" data-open-page="' + esc(x.id) + '">' +
             '<b>' + esc(pageLabel(x, state.langA)) + dot(pageChanged(x)) + '</b>' +
             '<span class="ws-prow-sub"><span>' + esc(n === 1 ? tr('ws.nSections1') : n ? fill('ws.nSections', { n: n }) : tr('ws.noSectionsShort')) + '</span>' +
             missingNote(allSecs(x).reduce(function (o, sec) { return sectionMissing(sec, o); }, {})) + '</span>' +
             '<span class="ws-chev ws-chev-r" aria-hidden="true"></span></button>' +
           (x.id === 'home' ? '<span class="ws-always">' + esc(tr('ws.always')) + '</span>' : sw('data-page-on="' + i + '"', x.on, tr('ws.shown'))) +
-          '<span class="ws-move">' +
-            '<button type="button" class="ws-icon" data-page-up="' + i + '" aria-label="' + esc(tr('ws.earlier')) + '"' + (i === 0 ? ' disabled' : '') + '>↑</button>' +
-            '<button type="button" class="ws-icon" data-page-down="' + i + '" aria-label="' + esc(tr('ws.later')) + '"' + (i === last ? ' disabled' : '') + '>↓</button>' +
-          '</span></li>';
+          grip() + '</li>';
       }).join('') + '</ol>';
   }
 
@@ -1060,33 +1078,33 @@
     }
 
     if (state.sectab === 'cards') {
-      html += '<div class="ws-linkrows">' + (s.items || []).map(function (it, j) {
+      html += '<div class="ws-linkrows ws-sec-items">' + (s.items || []).map(function (it, j) {
         var t = (it.words || {})[state.langA] || {}, k = i + ':' + j, open = state.openItem === j;
-        var head = '<div class="ws-linkrow' + (open ? ' is-open' : '') + '">' +
+        var head = '<div class="ws-linkitem" data-k="c' + j + '"><div class="ws-linkrow' + (open ? ' is-open' : '') + '">' + grip() +
           (s.numbers !== false ? '<span class="ws-cnum">' + (j + 1) + '</span>' : '') +
           '<b>' + esc(t.title || tr('ws.itemUntitled')) + '</b><span>' + esc(t.text || '') + '</span>' +
           '<button type="button" class="link-btn" data-item-open="' + j + '">' + esc(open ? tr('ws.close') : tr('ws.edit')) + '</button>' +
           '<button type="button" class="ws-icon del" data-item-remove="' + k + '" aria-label="' + esc(tr('ws.remove')) + '">✕</button></div>';
-        if (!open) return head;
+        if (!open) return head + '</div>';
         return head + '<div class="ws-linkedit">' +
           '<label class="fld"><span>' + esc(tr('ws.itemTitle')) + '</span><input type="text" data-item="' + k + ':title" value="' + esc(t.title || '') + '" placeholder="' + esc(ph('card', 'title')) + '" lang="' + esc(state.langA) + '"></label>' +
-          '<label class="fld"><span>' + esc(tr('ws.itemText')) + '</span><textarea rows="3" data-item="' + k + ':text" placeholder="' + esc(ph('card', 'text')) + '" lang="' + esc(state.langA) + '">' + esc(t.text || '') + '</textarea></label></div>';
+          '<label class="fld"><span>' + esc(tr('ws.itemText')) + '</span><textarea rows="3" data-item="' + k + ':text" placeholder="' + esc(ph('card', 'text')) + '" lang="' + esc(state.langA) + '">' + esc(t.text || '') + '</textarea></label></div></div>';
       }).join('') + '</div><button type="button" class="ghost-btn" data-item-add="' + i + '">+ ' + esc(tr('ws.addCard')) + '</button>';
     }
 
     if (state.sectab === 'links') {
-      html += '<div class="ws-linkrows">' + (s.items || []).map(function (it, j) {
+      html += '<div class="ws-linkrows ws-sec-items">' + (s.items || []).map(function (it, j) {
         var t = (it.words || {})[state.langA] || {}, k = i + ':' + j, open = state.openItem === j;
         var jump = it.url && it.url.indexOf('section:') === 0 &&
           allSecs(realPage()).filter(function (x) { return 'section:' + x.id === it.url; })[0];
         var where = !it.url || it.url === 'https://' ? tr('ws.link.nowhere') : jump ? sectionName(jump) : it.url.indexOf('page:') === 0
           ? pageLabel(state.doc.pages.filter(function (x) { return 'page:' + x.id === it.url; })[0] || { id: it.url.slice(5) }, state.langA) : it.url.replace(/^https?:\/\//, '');
-        var head = '<div class="ws-linkrow' + (open ? ' is-open' : '') + '">' +
+        var head = '<div class="ws-linkitem" data-k="l' + j + '"><div class="ws-linkrow' + (open ? ' is-open' : '') + '">' + grip() +
           (it.photo ? '<img src="' + esc(it.photo) + '" alt="">' : '') +
           '<b>' + esc(t.title || tr('ws.itemUntitled')) + '</b><span>→ ' + esc(where) + '</span>' +
           '<button type="button" class="link-btn" data-item-open="' + j + '">' + esc(open ? tr('ws.close') : tr('ws.edit')) + '</button>' +
           '<button type="button" class="ws-icon del" data-item-remove="' + k + '" aria-label="' + esc(tr('ws.remove')) + '">✕</button></div>';
-        if (!open) return head;
+        if (!open) return head + '</div>';
         return head + '<div class="ws-linkedit">' +
           '<label class="fld"><span>' + esc(tr('ws.itemTitle')) + '</span><input type="text" data-item="' + k + ':title" value="' + esc(t.title || '') + '" placeholder="' + esc(ph('item', 'title')) + '" lang="' + esc(state.langA) + '"></label>' +
           '<label class="fld"><span>' + esc(tr('ws.itemText')) + '</span><input type="text" data-item="' + k + ':text" value="' + esc(t.text || '') + '" placeholder="' + esc(ph('item', 'text')) + '" lang="' + esc(state.langA) + '"></label>' +
@@ -1102,106 +1120,89 @@
           '<div class="ws-sec-row">' + (it.photo ? '<img class="ws-thumb" src="' + esc(it.photo) + '" alt="">' : '') +
             '<label class="ghost-btn sm ws-file">' + esc(it.photo ? tr('ws.changePhoto') : tr('ws.choosePhoto')) + '<input type="file" accept="image/*" data-item-photo="' + k + '" hidden></label>' +
             (it.photo ? '<button type="button" class="link-btn" data-item-unphoto="' + k + '">' + esc(tr('ws.removePhoto')) + '</button>' : '') +
-            '<span class="hint"></span></div></div>';
+            '<span class="hint"></span></div></div></div>';
       }).join('') + '</div><button type="button" class="ghost-btn" data-item-add="' + i + '">+ ' + esc(tr('ws.addLink')) + '</button>';
     }
 
     if (state.sectab === 'look') {
-      /* A Words section's old Left / Centered layout IS its alignment now. */
       /* cards saved as Attached / Detached read as Vertical / Horizontal with
          or without lines (2026-10-06) */
       if (s.type === 'cards' && (s.variant === 'attached' || s.variant === 'detached')) {
         if (typeof s.lines !== 'boolean') s.lines = s.variant === 'attached';
         s.variant = s.variant === 'attached' ? 'vertical' : 'horizontal';
       }
+      /* FOUR GROUPS, NOT TWENTY ROWS (2026-10-07, Chase: "the looks tab of
+         each section is really busy"): Layout, Line up, Title, Background,
+         each only with what this section has. A choice of several is chips;
+         anything on or off is one switch, side by side with the others —
+         a whole row of "On | Off" chips per setting is what crowded it. */
+      var grp = function (title, body) { return body ? '<fieldset class="ws-grp"><legend>' + esc(title) + '</legend>' + body + '</fieldset>' : ''; };
+      var opt = function (label, ctl) { return '<div class="ws-field"><span class="ws-lbl2">' + esc(label) + '</span>' + ctl + '</div>'; };
+      var flag = function (key, on, label) { return sw('data-sec-flag="' + i + ':' + key + '"', on, label); };
+      var flags = function (list) { var f = list.filter(Boolean).join(''); return f ? '<div class="ws-flags">' + f + '</div>' : ''; };
+      var hasVerse = Object.keys(s.words || {}).some(function (l) { return (s.words[l] || {}).verse; });
+
+      var lay = '';
       if (spec.variants.length > 1 && s.type !== 'text') {
-        html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.layout')) + '</span>' +
-          chips('variant:' + i, spec.variants, s.variant, function (v) { return tr('ws.v.' + s.type + '.' + v); }) + '</div>';
-      /* Past updates: which list, and how many (2026-10-06) */
+        lay += chips('variant:' + i, spec.variants, s.variant, function (v) { return tr('ws.v.' + s.type + '.' + v); });
+      }
       if (s.type === 'newsletters') {
         var lists = state.body.mail_lists || [];
-        html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.news.list')) + '</span><select data-news-list="' + i + '">' +
-          '<option value="">' + esc(tr('ws.news.all')) + '</option>' + lists.map(function (l) {
-            return '<option value="' + esc(l.slug) + '"' + (s.list === l.slug ? ' selected' : '') + '>' + esc(l.name) + '</option>';
-          }).join('') + '</select></div>';
-        if (s.variant !== 'latest') {
-          html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.news.count')) + '</span>' +
-            chips('newscount:' + i, ['3', '4', '5', '6', '8', '10', '12'], String(s.count || 5), function (v) { return v; }) + '</div>';
-        }
+        lay += opt(tr('ws.news.list'), '<select data-news-list="' + i + '"><option value="">' + esc(tr('ws.news.all')) + '</option>' + lists.map(function (l) {
+          return '<option value="' + esc(l.slug) + '"' + (s.list === l.slug ? ' selected' : '') + '>' + esc(l.name) + '</option>';
+        }).join('') + '</select>');
+        if (s.variant !== 'latest') lay += opt(tr('ws.news.count'), chips('newscount:' + i, ['3', '4', '5', '6', '8', '10', '12'], String(s.count || 5), function (v) { return v; }));
       }
-      }
-      html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.align')) + '</span>' +
-        chips('align:' + i, ['left', 'center', 'right'], s.align === 'indent' ? 'left' : s.align || defaultAlign(s), function (v) { return tr('ws.align.' + v); }) + '</div>' +
-        /* Indented: a switch on any of the three (2026-10-07) */
-        '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.indent')) + '</span>' +
-        chips('indent:' + i, ['on', 'off'], s.indent || s.align === 'indent' ? 'on' : 'off', function (v) { return tr('ws.onoff.' + v); }) + '</div>';
-      /* The opening's scroll indicator, for this page. Stored on the page;
-         offered here, where it shows. Not offered while the site's Scroll
-         hint is None: there would be nothing to show. */
-      if (s.type === 'hero' && (state.doc.design.motion || {}).cue !== 'none') {
-        html += '<div class="ws-field">' + sw('data-page-cue="' + state.doc.pages.indexOf(realPage()) + '"', p.cue !== false, tr('ws.cueOnPage')) + '</div>';
-      }
-      /* The hero's line under the title (render.js). Unset, the monogram
-         shows it and the rest do not — exactly as before the option. */
-      if (s.type === 'hero') {
-        var lined = s.variant === 'monogram' ? s.divider !== false : s.divider === true;
-        html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.divider')) + '</span>' +
-          chips('divider:' + i, ['on', 'off'], lined ? 'on' : 'off', function (v) { return tr('ws.divider.' + v); }) + '</div>';
-      }
-      /* The header's own looks (render.js .phead). */
-      if (s.type === 'header') {
-        html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.topline')) + '</span>' +
-          chips('topline:' + i, ['on', 'off'], s.topline === false ? 'off' : 'on', function (v) { return tr('ws.divider.' + v); }) + '</div>' +
-          '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.divider')) + '</span>' +
-          chips('divider:' + i, ['on', 'off'], s.divider === false ? 'off' : 'on', function (v) { return tr('ws.divider.' + v); }) + '</div>';
-      }
-      /* Custom Cards: numbered or not. */
       if (s.type === 'videos') {
-        html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.vTitle')) + '</span>' +
-          chips('vtitle:' + i, ['words', 'latest'], s.titleFrom || 'words', function (v) { return tr('ws.vTitle.' + v); }) + '</div>' +
-          '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.vLinks')) + '</span>' +
-          chips('vlinks:' + i, ['buttons', 'outline', 'subtle'], s.linkStyle || 'buttons', function (v) { return tr('ws.vLinks.' + v); }) + '</div>';
+        lay += opt(tr('ws.vTitle'), chips('vtitle:' + i, ['words', 'latest'], s.titleFrom || 'words', function (v) { return tr('ws.vTitle.' + v); })) +
+          opt(tr('ws.vLinks'), chips('vlinks:' + i, ['buttons', 'outline', 'subtle'], s.linkStyle || 'buttons', function (v) { return tr('ws.vLinks.' + v); }));
       }
       if (s.type === 'cards') {
-        html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.cardLines')) + '</span>' +
-          chips('clines:' + i, ['attached', 'detached'], s.variant === 'open' ? (s.lines ? 'detached' : 'attached')
-            : (typeof s.lines === 'boolean' ? s.lines : s.variant !== 'horizontal') ? 'attached' : 'detached', function (v) { return tr('ws.cardLines.' + v); }) + '</div>';
-        html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.numbers')) + '</span>' +
-          chips('numbers:' + i, ['on', 'off'], s.numbers === false ? 'off' : 'on', function (v) { return tr('ws.divider.' + v); }) + '</div>';
+        /* Open cards: Detached draws the upright lines between them, Attached none */
+        lay += opt(tr('ws.cardLines'), chips('clines:' + i, ['attached', 'detached'], s.variant === 'open' ? (s.lines ? 'detached' : 'attached')
+          : (typeof s.lines === 'boolean' ? s.lines : s.variant !== 'horizontal') ? 'attached' : 'detached', function (v) { return tr('ws.cardLines.' + v); }));
       }
-      /* A verse's look, where a section can carry one. */
+      if (s.type === 'photoText') {
+        var wrapped = s.variant === 'wrapLeft' || s.variant === 'wrapRight';
+        lay += opt(tr('ws.titlePlace'), chips('tinline:' + i, ['with', 'above'], (typeof s.titleInline === 'boolean' ? s.titleInline : !wrapped) ? 'with' : 'above', function (v) { return tr('ws.titlePlace.' + v); }));
+      }
+      /* a verse's look only once there is a verse to look like something */
+      if ((s.type === 'text' || s.type === 'photoText') && hasVerse) {
+        lay += opt(tr('ws.verseStyle'), chips('verse:' + i, ['quote', 'line', 'mark'], s.verseStyle || 'quote', function (v) { return tr('ws.verseStyle.' + v); }));
+      }
+      lay += flags([
+        s.type === 'cards' ? flag('numbers', s.numbers !== false, tr('ws.numbers')) : '',
+        /* the opening's scroll indicator, for this page (not while the
+           site's Scroll hint is None: there would be nothing to show) */
+        s.type === 'hero' && (state.doc.design.motion || {}).cue !== 'none'
+          ? sw('data-page-cue="' + state.doc.pages.indexOf(realPage()) + '"', p.cue !== false, tr('ws.cueOnPage')) : ''
+      ]);
+      html += grp(tr('ws.layout'), lay);
+
+      var lu = chips('align:' + i, ['left', 'center', 'right'], s.align === 'indent' ? 'left' : s.align || defaultAlign(s), function (v) { return tr('ws.align.' + v); });
       if (s.type === 'text' || s.type === 'photoText') {
-        html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.verseStyle')) + '</span>' +
-          chips('verse:' + i, ['quote', 'line', 'mark'], s.verseStyle || 'quote', function (v) { return tr('ws.verseStyle.' + v); }) + '</div>';
         var tA = s.titleAlign || (s.align === 'center' || s.align === 'right' ? s.align : 'left');
-        html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.titleAlign')) + '</span>' +
-          chips('talign:' + i, ['left', 'center', 'right'], tA, function (v) { return tr('ws.titleAlign.' + v); }) + '</div>' +
-          '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.divider')) + '</span>' +
-          chips('tline:' + i, ['on', 'off'], s.titleLine ? 'on' : 'off', function (v) { return tr('ws.divider.' + v); }) + '</div>';
-        if (s.type === 'photoText') {
-          var wrapped = s.variant === 'wrapLeft' || s.variant === 'wrapRight';
-          var withW = typeof s.titleInline === 'boolean' ? s.titleInline : !wrapped;
-          html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.titlePlace')) + '</span>' +
-            chips('tinline:' + i, ['with', 'above'], withW ? 'with' : 'above', function (v) { return tr('ws.titlePlace.' + v); }) + '</div>';
-        }
+        lu += opt(tr('ws.titleAlign'), chips('talign:' + i, ['left', 'center', 'right'], tA, function (v) { return tr('ws.titleAlign.' + v); }));
       }
-      /* Plain, Raised or Tint for EVERY section (2026-10-07, Chase: "Headers
-         don't have the plain, raised, and tint options like the other
-         sections. All sections need those same options"); the header's
-         Accent stays beside them. */
-      /* Bars beside the title, chaseroush.com's Give page (2026-10-07) */
+      lu += flags([flag('indent', !!s.indent || s.align === 'indent', tr('ws.indent'))]);
+      html += grp(tr('ws.align'), lu);
+
       if (spec.words.indexOf('heading') !== -1) {
-        html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.titleBars')) + '</span>' +
-          chips('tbars:' + i, ['on', 'off'], s.titleBars ? 'on' : 'off', function (v) { return tr('ws.onoff.' + v); }) + '</div>';
+        var lined = s.type === 'hero' ? (s.variant === 'monogram' ? s.divider !== false : s.divider === true)
+          : s.type === 'header' ? s.divider !== false : s.type === 'text' || s.type === 'photoText' ? !!s.titleLine : null;
+        html += grp(tr('ws.grp.title'), flags([
+          lined === null ? '' : flag(s.type === 'text' || s.type === 'photoText' ? 'tline' : 'divider', lined, tr('ws.divider')),
+          flag('bars', !!s.titleBars, tr('ws.titleBars')),
+          s.type === 'header' ? flag('topline', s.topline !== false, tr('ws.topline')) : ''
+        ]));
       }
-      /* Joined to the section above: no gap, its ground (2026-10-07) */
-      if (i > 0) {
-        html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.join')) + '</span>' +
-          chips('join:' + i, ['on', 'off'], s.join ? 'on' : 'off', function (v) { return tr('ws.onoff.' + v); }) + '</div>';
-      }
+
       var grounds = s.type === 'header' ? ['plain', 'raised', 'tint', 'accent'] : ['plain', 'raised', 'tint'];
-      if (!s.join || i === 0) html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.bg')) + '</span>' +
-        chips('raised:' + i, grounds, s.type === 'header' && s.bg === 'accent' ? 'accent' : s.tint ? 'tint' : s.raised ? 'raised' : 'plain', function (v) { return tr('ws.bg.' + v); }) + '</div>';
+      var joined = i > 0 && !!s.join;
+      html += grp(tr('ws.bg'),
+        (joined ? '<p class="ws-note">' + esc(tr('ws.joinedBg')) + '</p>'
+          : chips('raised:' + i, grounds, s.type === 'header' && s.bg === 'accent' ? 'accent' : s.tint ? 'tint' : s.raised ? 'raised' : 'plain', function (v) { return tr('ws.bg.' + v); })) +
+        (i > 0 ? flags([flag('join', joined, tr('ws.join'))]) : ''));
     }
 
     html += '</div><div class="ws-panelfoot">' +
@@ -1826,17 +1827,15 @@
       '<button type="button" class="solid-btn sm" data-custom-add>+ ' + esc(tr('ws.addLink')) + '</button></div>';
 
     if (custom.length) {
-      html += '<div class="ws-linkrows">' + custom.map(function (x, n) {
+      html += '<div class="ws-linkrows ws-own-links">' + custom.map(function (x) {
         var open = state.openCustom === x.i, u = x.l.url || '';
         var where = !u || u === 'https://' ? tr('ws.link.nowhere') : u.indexOf('page:') === 0
           ? pageLabel(state.doc.pages.filter(function (p) { return 'page:' + p.id === u; })[0] || { id: u.slice(5) }, state.langA) : u.replace(/^https?:\/\//, '');
-        var row1 = '<div class="ws-linkrow' + (open ? ' is-open' : '') + '">' +
+        var row1 = '<div class="ws-linkitem" data-k="o' + x.i + '"><div class="ws-linkrow' + (open ? ' is-open' : '') + '">' + grip() +
           '<b>' + esc((x.l.label || {})[state.langA] || tr('ws.itemUntitled')) + '</b><span>→ ' + esc(where) + '</span>' +
-          '<button type="button" class="ws-icon" data-custom-up="' + x.i + '" aria-label="' + esc(tr('ws.up')) + '"' + (n === 0 ? ' disabled' : '') + '>↑</button>' +
-          '<button type="button" class="ws-icon" data-custom-down="' + x.i + '" aria-label="' + esc(tr('ws.down')) + '"' + (n === custom.length - 1 ? ' disabled' : '') + '>↓</button>' +
           '<button type="button" class="link-btn" data-custom-open="' + x.i + '">' + esc(open ? tr('ws.close') : tr('ws.edit')) + '</button>' +
           '<button type="button" class="ws-icon del" data-custom-remove="' + x.i + '" aria-label="' + esc(tr('ws.remove')) + '">✕</button></div>';
-        if (!open) return row1;
+        if (!open) return row1 + '</div>';
         return row1 + '<div class="ws-linkedit">' +
           '<label class="fld"><span>' + esc(tr('ws.linkName')) + '</span>' + ref(x.l.label) +
             '<input type="text" maxlength="40" data-custom-label="' + x.i + '" value="' + esc((x.l.label || {})[state.langA] || '') + '" lang="' + esc(state.langA) + '"></label>' +
@@ -1851,7 +1850,7 @@
             chips('cshow:' + x.i, ['icon', 'words'], x.l.show === 'icon' ? 'icon' : 'words', function (v) { return tr('ws.showAs.' + v); }) + '</div>' : '') +
           (placeOf(x.l) === 'inline' || x.l.show === 'icon' ? '<div class="ws-sec-row">' + (x.l.iconImg ? '<img class="ws-thumb ws-thumb-icon" src="' + esc(x.l.iconImg) + '" alt="">' : '') +
             '<label class="ghost-btn sm ws-file">' + esc(tr(x.l.iconImg ? 'ws.iconChange' : 'ws.iconOwn')) + '<input type="file" accept="image/*" data-custom-icon="' + x.i + '" hidden></label>' +
-            (x.l.iconImg ? '<button type="button" class="link-btn" data-custom-unicon="' + x.i + '">' + esc(tr('ws.iconAuto')) + '</button>' : '') + '</div>' : '') + '</div>';
+            (x.l.iconImg ? '<button type="button" class="link-btn" data-custom-unicon="' + x.i + '">' + esc(tr('ws.iconAuto')) + '</button>' : '') + '</div>' : '') + '</div></div>';
       }).join('') + '</div>';
     } else {
       html += '<p class="ws-small">' + esc(tr('ws.noCustom')) + '</p>';
@@ -2326,6 +2325,46 @@
     if (t.dataset.favicon !== undefined) return upload(t, function (url) { state.doc.design.favicon = url; drawDesign(); }, 256);
   });
 
+  /* ---- dragging into order (StaffSort, staff.js) ---------------------
+     Pages, sections, a page's tabs, a section's cards and links, and the
+     owner's own links: each moves its own data and redraws. */
+  if (window.StaffSort) {
+    var root = $('wsRoot');
+    StaffSort(root, { items: '.ws-plist > .ws-prow', handle: '.ws-prow .sort-grip',
+      key: function (it) { return it.dataset.pid; },
+      drop: function (l, from, to) { moveTo(state.doc.pages, from, to); drawPages(); changed(); } });
+    StaffSort(root, { items: '.ws-stack > .ws-acc', handle: '.ws-acc-head .sort-grip',
+      key: function (it) { return it.dataset.sid; },
+      drop: function (l, from, to) {
+        moveTo(currentPage().sections, from, to);
+        state.edit = afterMove(state.edit, from, to);
+        drawSections(); changed();
+      } });
+    StaffSort(root, { items: '.ws-tabs > .is-tab', handle: '.ws-tabs > .is-tab',
+      key: function (it) { return it.dataset.tabView; },
+      drop: function (l, from, to) { moveTo(realPage().tabs.items, from, to); drawPages(); refreshFrame(); changed(); } });
+    StaffSort(root, { items: '.ws-sec-items > .ws-linkitem', handle: '.ws-linkitem .sort-grip',
+      key: function (it) { return it.dataset.k; },
+      drop: function (l, from, to) {
+        var sec = currentPage().sections[state.edit];
+        moveTo(sec.items, from, to);
+        state.openItem = afterMove(state.openItem, from, to);
+        drawSections(); changed();
+      } });
+    StaffSort(root, { items: '.ws-own-links > .ws-linkitem', handle: '.ws-linkitem .sort-grip',
+      key: function (it) { return it.dataset.k; },
+      drop: function (l, from, to) {
+        /* the owner's own links sit among the social ones in doc.links */
+        var all = state.doc.links, own = all.filter(function (x) { return x.kind === 'custom'; });
+        var opened = state.openCustom != null ? all[state.openCustom] : null;
+        moveTo(own, from, to);
+        var k = 0;
+        all.forEach(function (x, n) { if (x.kind === 'custom') all[n] = own[k++]; });
+        state.openCustom = opened ? all.indexOf(opened) : null;
+        drawLinks(); changed();
+      } });
+  }
+
   $('wsRoot').addEventListener('click', async function (e) {
     var t = e.target.closest('button');
     if (!t || t.disabled) return;
@@ -2367,11 +2406,16 @@
     if (d.insertAt !== undefined) return openAdd(+d.insertAt);
     if (d.itemOpen !== undefined) { state.openItem = state.openItem === +d.itemOpen ? null : +d.itemOpen; drawPages(); return; }
     if (d.showKicker !== undefined) { state.showKicker = true; drawPages(); var k = $('wsPages').querySelector('[data-sec-word$=":kicker"]'); if (k) k.focus(); return; }
-    if (d.pageUp) { move(state.doc.pages, +d.pageUp, -1); drawPages(); return changed(); }
-    if (d.pageDown) { move(state.doc.pages, +d.pageDown, 1); drawPages(); return changed(); }
+    /* a section's on/off settings on its Look tab */
+    if (d.secFlag) {
+      var fa = d.secFlag.split(':'), fsec = p.sections[+fa[0]], fon = t.getAttribute('aria-checked') !== 'true';
+      if (fa[1] === 'indent') { if (fsec.align === 'indent') fsec.align = 'left'; fsec.indent = fon; }
+      else if (fa[1] === 'bars') fsec.titleBars = fon;
+      else if (fa[1] === 'tline') fsec.titleLine = fon;
+      else if (fa[1] === 'numbers' || fa[1] === 'divider' || fa[1] === 'topline' || fa[1] === 'join') fsec[fa[1]] = fon;
+      drawSections(); return changed();
+    }
     if (d.pageOn) { var pg = state.doc.pages[+d.pageOn]; pg.on = !pg.on; drawPages(); return changed(); }
-    if (d.secUp) { move(p.sections, +d.secUp, -1); drawSections(); return changed(); }
-    if (d.secDown) { move(p.sections, +d.secDown, 1); drawSections(); return changed(); }
     if (d.secRemove) {
       var s = p.sections[+d.secRemove];
       var ok = window.StaffConfirm ? await window.StaffConfirm({ title: fill('ws.removeTitle', { kind: tr('ws.sec.' + s.type) }), confirm: tr('ws.remove'), cancel: tr('ms.cancel'), danger: true }) : true;
@@ -2398,16 +2442,6 @@
     if (d.customUnicon) { delete state.doc.links[+d.customUnicon].iconImg; drawLinks(); return changed(); }
     if (d.customRemove) { state.doc.links.splice(+d.customRemove, 1); state.openCustom = null; drawLinks(); return changed(); }
     if (d.customOpen !== undefined) { state.openCustom = state.openCustom === +d.customOpen ? null : +d.customOpen; drawLinks(); return; }
-    if (d.customUp || d.customDown) {
-      /* Moved among the other links only; the social ones keep their place. */
-      var at = +(d.customUp || d.customDown), list = state.doc.links;
-      var idx = list.map(function (l, n) { return l.kind === 'custom' ? n : -1; }).filter(function (n) { return n !== -1; });
-      var pos = idx.indexOf(at), to = idx[pos + (d.customUp ? -1 : 1)];
-      if (to == null) return;
-      var tmp = list[at]; list[at] = list[to]; list[to] = tmp;
-      if (state.openCustom === at) state.openCustom = to; else if (state.openCustom === to) state.openCustom = at;
-      drawLinks(); return changed();
-    }
     if (d.socialPick) {
       state.openSocial = state.openSocial === d.socialPick ? null : d.socialPick; drawLinks();
       var sb = $('wsLinks').querySelector('[data-social="' + state.openSocial + '"]'); if (sb) sb.focus();

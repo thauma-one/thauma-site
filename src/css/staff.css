@@ -2847,6 +2847,10 @@ html.has-ai .ai-one{display:inline-flex;align-items:center;justify-content:cente
 .ws-linkrows{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--radius);background:var(--panel)}
 .ws-linkrow{display:flex;align-items:center;gap:12px;padding:12px 14px;border-top:1px solid var(--line)}
 .ws-linkrow:first-child{border-top:0}
+/* one link or card (its row and, open, its editing) moves as one */
+.ws-linkitem+.ws-linkitem>.ws-linkrow{border-top:1px solid var(--line)}
+.ws-linkitem:first-child>.ws-linkrow{border-top:0}
+.ws-linkitem>.ws-linkrow{border-top:0}
 .ws-linkrow img{width:44px;height:30px;object-fit:cover;border-radius:3px}
 .ws-linkrow b{font-weight:600}.ws-linkrow span{flex:1 1 auto;color:var(--dim);font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ws-linkrow.is-open{background:rgba(47,216,255,.06)}
@@ -3083,3 +3087,39 @@ html.pe-open{overflow:hidden}
 .ws-tabstyle{display:flex;flex-wrap:wrap;gap:6px 24px;padding:12px 0 4px}
 .ws-tabedit{display:flex;align-items:flex-end;gap:12px;padding:12px 0 0}
 .ws-tabedit .ws-pagename{flex:1;margin:0}
+
+/* ---- the Site Creator, tidied (2026-10-07) ----------------------------- */
+
+/* A SECTION'S LOOK IN FOUR GROUPS: a small heading, its chips, and any
+   on/off settings as switches side by side. */
+.ws-grp{border:0;margin:0;padding:14px 0 0;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:12px;min-width:0}
+.ws-grp:first-of-type{border-top:0;padding-top:0}
+.ws-grp legend{float:left;width:100%;padding:0;margin:0 0 2px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:600;color:var(--dim)}
+.ws-grp legend+*{clear:both}
+.ws-flags{display:flex;flex-wrap:wrap;gap:10px 22px}
+.ws-flags .switch-label{font-size:13px}
+.ws-note{margin:0;font-size:13px;color:var(--dim)}
+
+/* THE GRIP: drag it, or focus it and use the arrow keys (StaffSort). */
+.sort-grip{cursor:grab;touch-action:none;color:var(--dim)}
+.sort-grip svg{width:14px;height:14px;fill:currentColor}
+.sort-grip:active{cursor:grabbing}
+.ws-linkrow .sort-grip{width:26px;height:26px;flex:none;margin-left:-6px}
+.ws-prow .sort-grip{flex:none}
+.is-dragging{position:relative;z-index:5;box-shadow:0 14px 34px -12px rgba(0,0,0,.75);outline:1px solid var(--voice-tech);opacity:.96}
+.is-sorting>.ws-insert,.is-sorting>.ws-joinmark{visibility:hidden}
+.ws-tabs .is-tab{cursor:grab;touch-action:pan-y}
+.ws-tabs .is-tab.is-dragging{cursor:grabbing}
+@media (prefers-reduced-motion:no-preference){.ws-acc,.ws-prow,.ws-linkitem,.ws-tabchip{transition:transform .15s ease}}
+
+/* JOINED TO THE SECTION ABOVE: the two rows close together, tied by a line
+   and said in words, where "Add a section here" would be. */
+.ws-joinmark{display:flex;align-items:center;gap:8px;margin:-6px 0;padding:0 14px;height:26px;position:relative}
+.ws-joinmark-line{position:absolute;left:34px;top:-2px;bottom:-2px;width:2px;background:color-mix(in srgb,var(--voice-tech) 55%,transparent)}
+.ws-joinmark-word{position:relative;display:inline-flex;align-items:center;gap:6px;margin-left:30px;padding:2px 9px;border-radius:999px;
+  background:var(--panel);border:1px solid color-mix(in srgb,var(--voice-tech) 45%,transparent);font-size:11.5px;color:var(--voice-tech)}
+.ws-joinmark-word svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round}
+.ws-joinmark-add{margin-left:auto;width:22px;height:22px;border-radius:50%;border:1px dashed rgba(255,255,255,.2);background:none;color:var(--dim);cursor:pointer;line-height:1}
+.ws-joinmark-add:hover,.ws-joinmark-add:focus-visible{color:var(--voice-tech);border-color:var(--voice-tech)}
+.ws-acc.is-joined{border-top-color:color-mix(in srgb,var(--voice-tech) 45%,transparent)}
+

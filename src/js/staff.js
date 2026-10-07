@@ -2074,3 +2074,93 @@
   }
   if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);
 })();
+
+/* REORDER BY DRAGGING (2026-10-07, Chase: "anytime there is the ability to
+   reorder something, I want the ability to drag it to a new location as
+   well"). One helper for every list that can be put in order.
+
+     StaffSort(root, {
+       items:  selector of the things in order (siblings in one list),
+       handle: selector of what is grabbed inside one (a grip, or the item),
+       key:    function (item) -> a stable id, to keep focus after a redraw,
+       drop:   function (list, from, to) — the page moves its own data and
+               redraws; indexes count only the items, not what sits between
+     })
+
+   Pointer events, so a finger works as a mouse does. The item moves through
+   the list as it is dragged (no ghost to line up); a drag only starts after
+   a few pixels, so an item that is also clicked (a tab) still clicks. The
+   grip is a button: focused, the arrow keys move it one place, so nothing
+   here needs a mouse. Bound once on a root that survives redraws. */
+window.StaffSort = function (root, o) {
+  var drag = null, NEAR = 56;
+  function list(el) { return [].filter.call(el.parentElement.children, function (c) { return c.matches(o.items); }); }
+  function refocus(key) {
+    requestAnimationFrame(function () {
+      [].some.call(root.querySelectorAll(o.handle), function (h) {
+        var it = h.closest(o.items);
+        if (it && o.key(it) === key) { h.focus(); return true; }
+      });
+    });
+  }
+  root.addEventListener('pointerdown', function (e) {
+    if (e.button) return;
+    var h = e.target.closest && e.target.closest(o.handle), item = h && h.closest(o.items);
+    if (!item || !root.contains(item)) return;
+    var all = list(item);
+    if (all.length < 2) return;
+    var horiz = Math.abs(all[1].getBoundingClientRect().top - all[0].getBoundingClientRect().top) < 4;
+    drag = { item: item, h: h, from: all.indexOf(item), horiz: horiz, x: e.clientX, y: e.clientY, on: false, id: e.pointerId };
+  });
+  root.addEventListener('pointermove', function (e) {
+    if (!drag || e.pointerId !== drag.id) return;
+    if (!drag.on) {
+      if (Math.abs(e.clientX - drag.x) + Math.abs(e.clientY - drag.y) < 6) return;
+      drag.on = true;
+      try { drag.h.setPointerCapture(e.pointerId); } catch (x) { /* already released */ }
+      drag.item.parentElement.classList.add('is-sorting');
+      drag.item.classList.add('is-dragging');
+    }
+    e.preventDefault();
+    var others = list(drag.item).filter(function (c) { return c !== drag.item; }), before = null;
+    for (var i = 0; i < others.length; i++) {
+      var r = others[i].getBoundingClientRect();
+      if (drag.horiz ? e.clientX < r.left + r.width / 2 : e.clientY < r.top + r.height / 2) { before = others[i]; break; }
+    }
+    var parent = drag.item.parentElement;
+    if (before) { if (drag.item.nextElementSibling !== before) parent.insertBefore(drag.item, before); }
+    else { var last = others[others.length - 1]; if (last && last.nextSibling !== drag.item) parent.insertBefore(drag.item, last.nextSibling); }
+    /* near the window's edge, the page scrolls to meet the pointer */
+    if (!drag.horiz) {
+      if (e.clientY < NEAR) window.scrollBy(0, -12);
+      else if (e.clientY > innerHeight - NEAR) window.scrollBy(0, 12);
+    }
+  });
+  function end(e) {
+    if (!drag || (e && e.pointerId !== drag.id)) return;
+    var d = drag; drag = null;
+    if (!d.on) return;
+    d.item.parentElement.classList.remove('is-sorting');
+    d.item.classList.remove('is-dragging');
+    var to = list(d.item).indexOf(d.item);
+    /* the click a drag ends with is not a click on the thing dragged */
+    var stop = function (ev) { ev.stopPropagation(); ev.preventDefault(); };
+    root.addEventListener('click', stop, true);
+    setTimeout(function () { root.removeEventListener('click', stop, true); }, 60);
+    if (to !== d.from) { var k = o.key(d.item); o.drop(d.item.parentElement, d.from, to); refocus(k); }
+  }
+  root.addEventListener('pointerup', end);
+  root.addEventListener('pointercancel', end);
+  root.addEventListener('keydown', function (e) {
+    var h = e.target.closest && e.target.closest(o.handle), item = h && h.closest(o.items);
+    if (!item || !root.contains(item) || !h.classList.contains('sort-grip')) return;
+    var by = { ArrowUp: -1, ArrowLeft: -1, ArrowDown: 1, ArrowRight: 1 }[e.key];
+    if (!by) return;
+    var all = list(item), from = all.indexOf(item), to = from + by;
+    if (to < 0 || to >= all.length) return;
+    e.preventDefault();
+    var k = o.key(item);
+    o.drop(item.parentElement, from, to);
+    refocus(k);
+  });
+};
