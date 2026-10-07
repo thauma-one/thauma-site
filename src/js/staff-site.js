@@ -1134,7 +1134,7 @@
         chips('align:' + i, ['left', 'center', 'right'], s.align === 'indent' ? 'left' : s.align || defaultAlign(s), function (v) { return tr('ws.align.' + v); }) + '</div>' +
         /* Indented: a switch on any of the three (2026-10-07) */
         '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.indent')) + '</span>' +
-        chips('indent:' + i, ['on', 'off'], s.indent || s.align === 'indent' ? 'on' : 'off', function (v) { return tr('ws.divider.' + v); }) + '</div>';
+        chips('indent:' + i, ['on', 'off'], s.indent || s.align === 'indent' ? 'on' : 'off', function (v) { return tr('ws.onoff.' + v); }) + '</div>';
       /* The opening's scroll indicator, for this page. Stored on the page;
          offered here, where it shows. Not offered while the site's Scroll
          hint is None: there would be nothing to show. */
@@ -1192,12 +1192,12 @@
       /* Bars beside the title, chaseroush.com's Give page (2026-10-07) */
       if (spec.words.indexOf('heading') !== -1) {
         html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.titleBars')) + '</span>' +
-          chips('tbars:' + i, ['on', 'off'], s.titleBars ? 'on' : 'off', function (v) { return tr('ws.divider.' + v); }) + '</div>';
+          chips('tbars:' + i, ['on', 'off'], s.titleBars ? 'on' : 'off', function (v) { return tr('ws.onoff.' + v); }) + '</div>';
       }
       /* Joined to the section above: no gap, its ground (2026-10-07) */
       if (i > 0) {
         html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.join')) + '</span>' +
-          chips('join:' + i, ['on', 'off'], s.join ? 'on' : 'off', function (v) { return tr('ws.divider.' + v); }) + '</div>';
+          chips('join:' + i, ['on', 'off'], s.join ? 'on' : 'off', function (v) { return tr('ws.onoff.' + v); }) + '</div>';
       }
       var grounds = s.type === 'header' ? ['plain', 'raised', 'tint', 'accent'] : ['plain', 'raised', 'tint'];
       if (!s.join || i === 0) html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.bg')) + '</span>' +
