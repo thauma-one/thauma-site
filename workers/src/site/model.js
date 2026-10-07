@@ -377,6 +377,30 @@ export function starter(kind, { name, langs, fallback, give }) {
   };
 }
 
+
+/**
+ * A TITLE AS A LANGUAGE WRITES ONE (2026-10-07, Chase: "the Description
+ * needs to be Title Case or whatever is normal for their culture and
+ * language"). English capitalizes every word but the small ones (not first
+ * or last); Croatian, Serbian, Slovenian and most others write titles as a
+ * sentence, so they are left as written. Used for the description a page
+ * makes for itself when the owner has written none.
+ */
+const SMALL_EN = new Set(["a", "an", "the", "and", "but", "or", "nor", "for", "as", "at", "by", "in", "of", "on", "per", "to", "via", "with", "from"]);
+export function titleCase(text, lang) {
+  if (String(lang || "").split("-")[0] !== "en") return text;
+  const ws = String(text || "").split(/(\s+)/);
+  const real = ws.map((w, i) => (/\S/.test(w) ? i : -1)).filter((i) => i >= 0);
+  const first = real[0], last = real[real.length - 1];
+  return ws.map((w, i) => {
+    if (!/\S/.test(w)) return w;
+    const bare = w.replace(/^[^\p{L}]+|[^\p{L}]+$/gu, "").toLowerCase();
+    if (i !== first && i !== last && SMALL_EN.has(bare)) return w.toLowerCase();
+    /* a word already capitalized inside (iPhone, McDonald) is left alone */
+    return /\p{Lu}/u.test(w.slice(1)) ? w : w.replace(/\p{L}/u, (c) => c.toUpperCase());
+  }).join("");
+}
+
 /* ------------------------------------------------------------- cleaning -- */
 
 const LANG_RE = /^[a-z]{2,3}(-[a-z0-9]{2,8})?$/;

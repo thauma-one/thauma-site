@@ -941,7 +941,7 @@ check("sharing and search: each page's own words and picture, the real public ad
   about.sections = [{ id: "a1", type: "photoText", variant: "left", photo: "/media/partnersite/x/p.webp", words: { en: { heading: "H", text: "I grew up surrounded by ministry, and it shaped everything." } } }];
   const head = (extra) => page(d, "about", "en", { site: { slug: "chase-roush", display_name: "Chase Roush", subdomain: "chaseroush" }, ...extra }).match(/<head>[\s\S]*<\/head>/)[0];
   const h = head();
-  assert(h.includes('<meta name="description" content="I grew up surrounded by ministry, and it shaped everything.">'), "this page's own words");
+  assert(h.includes('<meta name="description" content="I Grew Up Surrounded by Ministry, and It Shaped Everything.">'), "this page's own words, in Title Case (English)");
   assert(h.includes('<link rel="canonical" href="https://chaseroush.thauma.one/en/about/">'), "canonical");
   assert(h.includes('<meta property="og:image" content="https://thauma.one/media/partnersite/x/p.webp">'), "its first photo, as a full address");
   assert(h.includes('hreflang="hr" href="https://chaseroush.thauma.one/hr/about/"') && h.includes('hreflang="x-default"'), "alternates, full");
@@ -1062,6 +1062,17 @@ check("each of the owner's own footer links: in line with the socials, or separa
   assert(/<span class="socials owns"><a class="favi own" href="https:\/\/shop\.example\.org\/"[^>]*><img src="\/media\/site\/shop\.png"/.test(foot), "separated, as its own picture");
   d.links[4].iconImg = "javascript:alert(1)";
   assert(!("iconImg" in cleanDoc(d, ["en"]).links[4]), "a picture address that is not one is not kept");
+});
+
+
+check("a page's own description is a title as its language writes one: Title Case in English, as written in Croatian", () => {
+  eq(MODEL.titleCase("tell your story here: who you are and why it matters to the people of iPhone land.", "en"),
+    "Tell Your Story Here: Who You Are and Why It Matters to the People of iPhone Land.", "English");
+  eq(MODEL.titleCase("Recite svoju priču ovdje.", "hr"), "Recite svoju priču ovdje.", "Croatian");
+  const d = starter("full", { name: "Chase Roush", langs: ["en", "hr"], fallback: "en" });
+  assert(/<meta name="description" content="News, Prayer and the Road Ahead — All in One Place\.">/.test(page(d)), "the page's own, in English");
+  d.pages[0].seo = { title: {}, desc: { en: "written by me, as I like it" }, image: null };
+  assert(/<meta name="description" content="written by me, as I like it"/.test(page(d)), "what the owner wrote is kept as written");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

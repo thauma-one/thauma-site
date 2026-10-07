@@ -17,7 +17,7 @@
  * are attributes on <html> that the CSS and the small script below read, all
  * of it switched off for anyone whose device asks for less motion.
  */
-import { word, SECTIONS, plainOf, allSections } from "./model.js";
+import { word, SECTIONS, plainOf, allSections, titleCase } from "./model.js";
 import { TONES, HEX_COLOR, SIZE_NAMES } from "../lib/tones.js";
 import { readable, onColor, alpha, luminance, companion, hexToHsl, hslToHex } from "../embed-colour.js";
 
@@ -1298,7 +1298,7 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
     return "";
   };
   const clip = (t) => (t.length > 160 ? t.slice(0, 157).replace(/\s+\S*$/, "") + "…" : t);
-  const desc = (seo.desc && seo.desc[lang]) || clip(firstWords(thisPage) || firstWords(doc.pages[0]));
+  const desc = (seo.desc && seo.desc[lang]) || titleCase(clip(firstWords(thisPage) || firstWords(doc.pages[0])), lang);
   const firstPhoto = (pg) => allSections(pg).map((s) => s.photo).find(Boolean) || null;
   const absolute = (u) => (!u ? null : /^https?:/.test(u) ? u : "https://thauma.one" + (u.startsWith("/") ? u : "/" + u));
   /* The picture: the owner's own; the page's photo; or (the default) the

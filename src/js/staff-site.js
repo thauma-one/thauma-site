@@ -1888,7 +1888,22 @@
      owns the site (that read "Thauma Master Account"). */
   function siteName() { return state.body.partner.display_name || (state.body.owner && state.body.owner.name) || ''; }
   function autoTitle(p, l) { var nm = siteName(); return p.id === 'home' ? nm : pageLabel(p, l) + ' · ' + nm; }
-  function autoDesc(p, l) {
+  /* Titles as each language writes them: English in Title Case, the rest
+     as written (model.js titleCase, the same rule the page uses). */
+  var SMALL_EN = ['a', 'an', 'the', 'and', 'but', 'or', 'nor', 'for', 'as', 'at', 'by', 'in', 'of', 'on', 'per', 'to', 'via', 'with', 'from'];
+  function titleOf(text, lang) {
+    if (String(lang || '').split('-')[0] !== 'en') return text;
+    var ws = String(text || '').split(/(\s+)/), real = [];
+    ws.forEach(function (w, i) { if (/\S/.test(w)) real.push(i); });
+    return ws.map(function (w, i) {
+      if (!/\S/.test(w)) return w;
+      var bare = w.replace(/^[^\p{L}]+|[^\p{L}]+$/gu, '').toLowerCase();
+      if (i !== real[0] && i !== real[real.length - 1] && SMALL_EN.indexOf(bare) !== -1) return w.toLowerCase();
+      return /\p{Lu}/u.test(w.slice(1)) ? w : w.replace(/\p{L}/u, function (c) { return c.toUpperCase(); });
+    }).join('');
+  }
+  function autoDesc(p, l) { return titleOf(autoDesc0(p, l), l); }
+  function autoDesc0(p, l) {
     var pick = function (pg) {
       var secs = allSecs(pg);
       for (var a = 0; a < secs.length; a++) {
