@@ -1508,7 +1508,7 @@ ${COLOUR_JS}
     root.textContent = '';
 
     var style = document.createElement('style');
-    style.textContent = styles(accent, second, mode) + siteLook(node, accent, second);
+    style.textContent = styles(accent, second, mode) + siteLook(node, accent, second) + hostLook(node, mode, accent, second, 'widget');
     root.appendChild(style);
 
     var host = el('div', 'host');

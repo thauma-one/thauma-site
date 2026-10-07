@@ -129,5 +129,23 @@ check("hexToHsl and hslToHex round-trip", () => {
   }
 });
 
+
+check("an embed with no site palette takes its cards from the page behind it, when that page agrees with its mode", () => {
+  /* The browser half of it, with getComputedStyle answered for a navy page. */
+  const run = (pageBg, mode, kind, look = null) => {
+    const body = { parentElement: null, bg: pageBg };
+    const wrap = { parentElement: body, bg: "rgba(0, 0, 0, 0)" };
+    const node = { parentElement: wrap, getAttribute: (n) => (n === "data-look" ? look : null) };
+    const f = new Function("getComputedStyle", "window", COLOUR_JS + "\nreturn hostLook;")((el) => ({ backgroundColor: el.bg }), {});
+    return f(node, mode, "#1AE4FF", "#25FFA1", kind);
+  };
+  const w = run("rgb(13, 27, 42)", "auto", "widget");
+  assert(/--panel:#0d1b2a;/.test(w) && /--bg:#[0-9a-f]{6};/.test(w) && !/--bg:#15151c/.test(w), "a widget's cards from the navy: " + w);
+  const f = run("rgb(13, 27, 42)", "dark", "form");
+  assert(/--bg:#0d1b2a;--panel:#[0-9a-f]{6};--field:#0d1b2a;/.test(f), "a form's card and fields from the navy: " + f);
+  eq(run("rgb(255, 255, 255)", "dark", "widget"), "", "a dark embed on a white page keeps its own");
+  eq(run("rgb(13, 27, 42)", "auto", "widget", "{}"), "", "a Site Creator page's own palette wins");
+});
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

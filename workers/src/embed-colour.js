@@ -270,4 +270,40 @@ export const COLOUR_JS = [
   "  var n = parseInt(m[1], 16);",
   "  return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';",
   "}",
+  /* MATCHING THE PAGE IT SITS ON (2026-10-07, Chase: on the Sharing page "the
+     card backgrounds don't try to match the color scheme"). With no data-look
+     from a Site Creator page, an embed reads the background actually behind
+     it and makes its cards, inner panels, lines and quieter text from that,
+     as the Site Creator's own palette does — so on a navy page the cards are
+     a lighter navy, not a fixed gray-violet. Only when that ground agrees
+     with the mode asked for: a "dark" embed on a white page keeps its own. */
+  "function hostGround(node) {",
+  "  var el = node.parentElement;",
+  "  while (el) {",
+  "    var m = /rgba?\\(([^)]+)\\)/.exec(getComputedStyle(el).backgroundColor || '');",
+  "    if (m) {",
+  "      var p = m[1].split(/[\\s,\\/]+/).filter(Boolean).map(parseFloat);",
+  "      if ((p.length > 3 ? p[3] : 1) > 0.5) return '#' + p.slice(0, 3).map(function (v) { var h = Math.round(v).toString(16); return h.length < 2 ? '0' + h : h; }).join('');",
+  "    }",
+  "    el = el.parentElement;",
+  "  }",
+  "  return window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? '#121212' : '#ffffff';",
+  "}",
+  "function mixHex(a, b, t) {",
+  "  var x = parseInt(a.slice(1), 16), y = parseInt(b.slice(1), 16);",
+  "  return '#' + [16, 8, 0].map(function (s) { var v = Math.round(((x >> s) & 255) + ((((y >> s) & 255) - ((x >> s) & 255)) * t)).toString(16); return v.length < 2 ? '0' + v : v; }).join('');",
+  "}",
+  /* kind: 'widget' (--bg is the card, --panel what opens inside it) or
+     'form' (--panel is the card, --bg and --field the page's own ground). */
+  "function hostLook(node, mode, accent, second, kind) {",
+  "  if (node.getAttribute('data-look')) return '';",
+  "  var g; try { g = hostGround(node); } catch (e) { return ''; }",
+  "  var dark = luminance(g) < 0.25;",
+  "  if ((mode === 'light' && dark) || (mode === 'dark' && !dark)) return '';",
+  "  var fg = dark ? '#f2f3f5' : '#15171c', card = mixHex(g, fg, dark ? 0.07 : 0.04);",
+  "  var css = '--fg:' + fg + ';--dim:' + mixHex(fg, g, 0.38) + ';--line:' + mixHex(card, fg, 0.13) + ';';",
+  "  if (kind === 'form') css += '--bg:' + g + ';--panel:' + card + ';--field:' + g + ';--acc-t:' + readable(accent, card) + ';--acc2-t:' + readable(second, card) + ';';",
+  "  else css += '--bg:' + card + ';--panel:' + g + ';--track:' + mixHex(g, fg, 0.12) + ';--prog-t:' + readable(accent, card) + ';--done-t:' + readable(second, card) + ';';",
+  "  return ':host{' + css + '}';",
+  "}",
 ].join("\n");

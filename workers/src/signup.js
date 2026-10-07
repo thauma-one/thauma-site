@@ -246,7 +246,7 @@ ${LOOK_JS}
        otherwise reach in and reshape controls somebody has to type into. */
     var root = node.attachShadow ? node.attachShadow({ mode: 'open' }) : node;
     var style = document.createElement('style');
-    style.textContent = STYLES.replace('SCHEME', scheme) + siteLook(node, accent, second) +
+    style.textContent = STYLES.replace('SCHEME', scheme) + siteLook(node, accent, second) + hostLook(node, mode, accent, second, 'form') +
       ':host{--acc:' + accent + ';--acc2:' + second + ';--on-acc:' + onColor(accent) + ';' +
       '--faint:' + alpha(accent, 0.22) + '}';
     root.appendChild(style);
