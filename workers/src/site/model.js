@@ -103,7 +103,7 @@ export const SECTIONS = {
   give:      { variants: ["band", "card", "split", "spotlight"], words: ["heading", "text", "button"] },
   /* Cards a person writes (chaseroush.com's Mission): Attached, joined by a
      line between their numbers, or Detached, side by side. */
-  cards:     { variants: ["attached", "detached"], words: ["heading", "text"], items: "cards" },
+  cards:     { variants: ["vertical", "horizontal"], words: ["heading", "text"], items: "cards" },
   links:     { variants: ["list", "cards"], words: ["heading", "text"], items: true, align: true },
 };
 /* EVERY SECTION LINES UP (BACKLOG §3, 2026-10-03: "Alignment for every
@@ -332,7 +332,7 @@ export function starter(kind, { name, langs, fallback, give }) {
       section("newsletters", "latest", L, { thin: "newsThin", bold: "newsBold", text: "newsFill" }),
     ],
     give: [
-      section("give", "band", L, { thin: "giveThin", bold: "giveBold", text: "giveText", button: "giveBtn" }),
+      section("give", "band", L, { thin: "giveThin", bold: "giveBold", text: "giveText", button: "giveBtn" }, { tint: true }),
       section("goals", "cards", L, { thin: "goalsThin", bold: "goalsBold", text: "goalsFill" }),
     ],
     stay: [section("signup", "card", L, { thin: "signupThin", bold: "signupBold", text: "signupFill" })],
@@ -552,13 +552,16 @@ function cleanSection(raw, langs) {
   const s = {
     id: /^[a-z0-9]{2,24}$/i.test(String(raw.id || "")) ? String(raw.id) : sid(),
     type: raw.type,
-    variant: pick(raw.variant, spec.variants),
+    variant: pick(raw.type === "cards" ? ({ attached: "vertical", detached: "horizontal" }[raw.variant] || raw.variant) : raw.variant, spec.variants),
     words: cleanWords(raw.words, spec.words, langs),
   };
   if (spec.photo) s.photo = safePhoto(raw.photo);
   if (spec.link) s.link = safeLink(raw.link);
   if (spec.link === "both") s.photoLink = !!raw.photoLink;
-  if (!NOT_RAISED.has(raw.type)) s.raised = !!raw.raised;
+  /* PLAIN, RAISED OR TINT (2026-10-06, Chase: "I actually really like that
+     accent tinted look. We should add that as a 3rd option next to Plain
+     and Raised"): one ground at a time */
+  if (!NOT_RAISED.has(raw.type)) { s.tint = !!raw.tint; s.raised = !!raw.raised && !s.tint; }
   s.align = ALIGNS.includes(raw.align) ? raw.align : defaultAlign(raw.type, s.variant);
   if (spec.buttons) {
     s.buttons = (Array.isArray(raw.buttons) ? raw.buttons : []).filter((b) => ["give", "stay", "contact"].includes(b)).slice(0, 2);
@@ -626,6 +629,11 @@ function cleanSection(raw, langs) {
     /* Written words only. A blank card is kept (it was just added and is
        being typed into); the page simply does not draw it. */
     s.numbers = raw.numbers !== false;
+    /* LINES BETWEEN, apart from the direction (2026-10-06, Chase: "the
+       settings should have horizontal … and vertical … and then attached
+       detached as a setting for the lines between the cards"). A section
+       saved as Attached is vertical with lines; Detached, horizontal without. */
+    s.lines = typeof raw.lines === "boolean" ? raw.lines : raw.variant !== "detached" && raw.variant !== "horizontal";
     s.items = (Array.isArray(raw.items) ? raw.items : []).slice(0, 12).map((it) => ({
       words: cleanWords(it && it.words, ["title", "text"], langs),
     }));
@@ -643,6 +651,34 @@ function cleanSection(raw, langs) {
     })).filter((it) => it.url);
   }
   return s;
+}
+
+/**
+ * A PAGE'S TABS (2026-10-06, Chase: "Maybe it isn't a section at all, but an
+ * option at the top of each page that acts like tabs open on a browser,
+ * where + adds a tab to the page with distinct looks"), after chaseroush.com's
+ * Give | Pray. The page's own sections come first and are on every tab; then
+ * the bar, and each tab's own sections under it. Up to six tabs. How the bar
+ * looks: joined (chaseroush.com's), pills or an underline; centered or left.
+ */
+export const TAB_STYLES = ["joined", "pills", "underline"];
+export function cleanTabs(raw, langs) {
+  if (!raw || typeof raw !== "object" || !Array.isArray(raw.items)) return null;
+  const seen = new Set();
+  const items = raw.items.slice(0, 6).map((t, i) => {
+    let id = /^[a-z0-9]{2,24}$/i.test(String(t && t.id || "")) ? String(t.id) : "t" + i + Math.random().toString(36).slice(2, 7);
+    while (seen.has(id)) id += "x";
+    seen.add(id);
+    const label = {};
+    for (const l of langs) { const v = str(t && t.label && t.label[l], 30); if (v) label[l] = v; }
+    return { id, label, sections: (Array.isArray(t && t.sections) ? t.sections : []).slice(0, 30).map((x) => cleanSection(x, langs)).filter(Boolean) };
+  });
+  if (!items.length) return null;
+  return { style: TAB_STYLES.includes(raw.style) ? raw.style : "joined", align: raw.align === "left" ? "left" : "center", items };
+}
+/** Every section of a page, its tabs' too, in order. */
+export function allSections(page) {
+  return [...((page && page.sections) || []), ...((page && page.tabs && page.tabs.items) || []).flatMap((t) => t.sections || [])];
 }
 
 /**
@@ -703,6 +739,7 @@ export function cleanDoc(raw, catalog) {
       })(),
       label,
       sections: (Array.isArray(p.sections) ? p.sections : []).slice(0, 30).map((s) => cleanSection(s, langs)).filter(Boolean),
+      ...(cleanTabs(p.tabs, langs) ? { tabs: cleanTabs(p.tabs, langs) } : {}),
     };
   });
 

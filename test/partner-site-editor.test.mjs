@@ -80,9 +80,37 @@ await check("it opens on Design; Pages lists every page, Timeline and Resources 
   assert(!d.getElementById("wsDesign").hidden && d.getElementById("wsPages").hidden, "Design first");
   pages();
   const rows = [...d.querySelectorAll(".ws-prow")];
-  eq(rows.map((r) => r.querySelector("b").textContent), ["Home", "About", "Mission", "Updates", "Give", "Stay connected", "Contact", "Timeline", "Resources"], "pages");
+  eq(rows.map((r) => r.querySelector("b").textContent), ["Home", "About", "Mission", "Updates", "Give", "Stay Connected", "Contact", "Timeline", "Resources"], "pages");
   assert(rows[7].classList.contains("is-off") && rows[8].classList.contains("is-off"), "Timeline and Resources off");
   eq(d.querySelectorAll("#wsPages input[type=text], #wsPages [data-rt]").length, 0, "no box to type in");
+});
+
+await check("a page's tabs: + Add tabs opens two, each with its own sections; the page's own stay above; named in place", async () => {
+  /* Chase, 2026-10-06: "an option at the top of each page that acts like
+     tabs open on a browser, where + adds a tab to the page with distinct
+     looks … we would need a way to style the tabs without cluttering up the
+     interface" */
+  const { w, d, click, pages } = await boot();
+  pages();
+  click(d.querySelector('[data-open-page="give"]'));
+  const own = d.querySelectorAll(".ws-acc").length;
+  assert(own > 0, "Give has its own sections");
+  click(d.querySelector("[data-tabs-add]"));
+  const chips = () => [...d.querySelectorAll(".ws-tabchip")].map((c) => c.textContent);
+  eq(chips(), ["Above the tabs", "Tab 1", "Tab 2", "+"], "the strip");
+  eq(d.querySelector(".ws-tabchip.is-on").textContent, "Tab 1", "the first tab is open");
+  eq(d.querySelectorAll(".ws-acc").length, 0, "a new tab has no sections of its own");
+  assert(!d.querySelector(".ws-tabstyle"), "the bar's look is out of the way");
+  click(d.querySelector("[data-tab-style]"));
+  assert(d.querySelector('.ws-tabstyle [data-chip="tabstyle"][data-value="joined"][aria-pressed="true"]'), "joined, chosen");
+  const name = d.querySelector("[data-tab-name]");
+  name.value = "Give";
+  name.dispatchEvent(new w.Event("input", { bubbles: true }));
+  eq(chips()[1], "Give", "named in place");
+  click(d.querySelector('[data-tab-view=""]'));
+  eq(d.querySelectorAll(".ws-acc").length, own, "above the tabs: the page's own sections");
+  click(d.querySelector("[data-tab-add]"));
+  eq(chips(), ["Above the tabs", "Give", "Tab 2", "Tab 3", "+"], "+ adds another, and opens it");
 });
 
 await check("a page opens to its sections as rows; All pages and the page menu lead out", async () => {
@@ -90,7 +118,7 @@ await check("a page opens to its sections as rows; All pages and the page menu l
   pages();
   click(d.querySelector('[data-open-page="home"]'));
   eq([...d.querySelectorAll(".ws-stile-words b")].map((n) => n.textContent), ["Hero", "Photo and words"], "Home's sections");
-  assert(/Follow the work of/.test(d.querySelector(".ws-stile-words span").textContent), "each with one line of its words");
+  assert(/Follow the Work of/.test(d.querySelector(".ws-stile-words span").textContent), "each with one line of its words");
   const pick = d.querySelector("[data-pick-page]");
   pick.value = "give";
   pick.dispatchEvent(new w.Event("change", { bubbles: true }));
@@ -163,7 +191,7 @@ await check("one section at a time: only its tabs; formatted words saved clean",
   eq([...d.querySelectorAll("[data-sectab]")].map((b) => b.dataset.sectab), ["words", "photo", "buttons", "look"], "the opening's tabs");
   const heading = d.querySelector('[data-rt="0:heading"]');
   assert(heading && heading.getAttribute("contenteditable") === "true", "one heading box");
-  eq(heading.innerHTML, "Follow the work of <b>Chase Roush.</b>", "its bold half shown bold");
+  eq(heading.innerHTML, "Follow the Work of <b>Chase Roush.</b>", "its bold half shown bold");
   assert(!d.querySelector('[data-rt="0:thin"], [data-sec-word="0:thin"]'), "no second heading box");
   const text = d.querySelector('[data-rt="0:text"]');
   text.innerHTML = '<div>Serving <strong>Croatia</strong></div><div><span style="color:red">churches</span> <i>well</i></div>';

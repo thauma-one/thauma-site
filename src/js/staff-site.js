@@ -55,7 +55,7 @@
     signup: { variants: ['band', 'card', 'split', 'open'], words: ['heading', 'text'], data: 'sharing/#signup' },
     contact: { variants: ['form', 'split', 'wide', 'open'], words: ['heading', 'text'], data: 'sharing/#contact', align: true },
     give: { variants: ['band', 'card', 'split', 'spotlight'], words: ['heading', 'text', 'button'] },
-    cards: { variants: ['attached', 'detached'], words: ['heading', 'text'], items: 'cards' },
+    cards: { variants: ['vertical', 'horizontal'], words: ['heading', 'text'], items: 'cards' },
     links: { variants: ['list', 'cards'], words: ['heading', 'text'], items: true, align: true },
   };
   /* Everything but the opening and a full-width photo can sit on a raised band. */
@@ -502,9 +502,28 @@
 
   /* The preview is a 1280px desktop shrunk to the pane's width (see the
      .ws-preview-frame rule in staff.css). */
+  /* A COMPUTER OR A PHONE (2026-10-06, Chase: "For the navigation in site
+     creator (or anywhere where there are specific mobile options), the
+     preview window should change to mobile when changing those options").
+     The phone is a 390px screen, at full size where the pane allows. */
+  var PHONE_W = 390;
+  function setDevice(dev) {
+    if (state.device === dev) return;
+    state.device = dev;
+    $('wsPreviewPane').classList.toggle('is-phone', dev === 'phone');
+    [].forEach.call(document.querySelectorAll('.ws-dev [data-dev]'), function (b) { b.setAttribute('aria-pressed', b.dataset.dev === dev ? 'true' : 'false'); });
+    fitFrame();
+  }
+  [].forEach.call(document.querySelectorAll('.ws-dev [data-dev]'), function (b) {
+    b.addEventListener('click', function () { setDevice(b.dataset.dev); refreshFrame(); });
+  });
   function fitFrame() {
     var box = $('wsFrame').parentNode, w = box.clientWidth;
-    if (w) box.style.setProperty('--ws-scale', (w / 1280).toFixed(4));
+    if (!w) return;
+    var phone = state.device === 'phone';
+    var scale = phone ? Math.min(1, w / PHONE_W) : w / 1280;
+    box.style.setProperty('--ws-scale', scale.toFixed(4));
+    box.style.setProperty('--ws-left', phone ? Math.max(0, (w - PHONE_W * scale) / 2).toFixed(1) + 'px' : '0px');
   }
   if (window.ResizeObserver) new ResizeObserver(fitFrame).observe($('wsFrame').parentNode);
 
@@ -525,7 +544,9 @@
        into view: the jump Chase saw when opening a section. */
     var open = state.tab === 'pages' && state.page && state.edit != null && currentPage().sections[state.edit];
     state.frameTarget = open ? 's-' + open.id : null;
-    $('wsFrame').src = path + '?draft' + (foot ? '&part=footer' : '') + '&t=' + Date.now();
+    /* a tab chosen in the editor opens in the preview too (#its id) */
+    var vt = state.tab === 'pages' && state.page ? activeTab(realPage()) : null;
+    $('wsFrame').src = path + '?draft' + (foot ? '&part=footer' : '') + '&t=' + Date.now() + (vt ? '#' + vt.id : '');
   }
 
   $('wsFrame').addEventListener('load', function () {
@@ -620,7 +641,7 @@
   function jumpTargets(key) {
     if (!/^(sec|item):/.test(key)) return [];
     var self = currentPage().sections[+key.split(':')[1]];
-    return currentPage().sections.filter(function (x) { return x !== self; });
+    return allSecs(realPage()).filter(function (x) { return x !== self; });
   }
   function sectionName(x) {
     var w = (x.words && (x.words[state.langA] || x.words[state.doc.fallback])) || {};
@@ -661,11 +682,62 @@
      alone, in the same place, its settings sorted into a few tabs, while
      the site beside it keeps showing the result. */
 
-  function currentPage() {
+  function realPage() {
     var id = state.page || 'home';
     var p = state.doc.pages.filter(function (x) { return x.id === id; })[0];
     if (!p) { state.page = null; state.edit = null; p = state.doc.pages[0]; }
+    /* a page opened afresh opens on its own sections, not a tab */
+    if (state.viewFor !== p.id) { state.viewFor = p.id; state.view = null; }
     return p;
+  }
+  /* THE PAGE AS IT IS BEING EDITED (2026-10-06): its own sections, or — with
+     one of its tabs chosen — that tab's. Every section control works on
+     currentPage().sections, so a tab's sections are edited exactly as the
+     page's are; everything else reads through to the page itself. */
+  function activeTab(p) {
+    if (!state.view || !p.tabs || !p.tabs.items) return null;
+    return p.tabs.items.filter(function (t) { return t.id === state.view; })[0] || null;
+  }
+  function currentPage() {
+    var p = realPage(), t = activeTab(p);
+    if (!t) { state.view = null; return p; }
+    return Object.create(p, { sections: { value: t.sections, writable: true, enumerable: true } });
+  }
+  /* every section of a page, its tabs' too */
+  function allSecs(p) {
+    return (p.sections || []).concat(((p.tabs && p.tabs.items) || []).reduce(function (a, t) { return a.concat(t.sections || []); }, []));
+  }
+  function tabName(t, i) { return (t.label || {})[state.langA] || (t.label || {})[state.doc.fallback] || tr('ws.tabs.new') + ' ' + (i + 1); }
+  function newTab(i) { var l = {}; return { id: 't' + Date.now().toString(36) + i, label: l, sections: [] }; }
+  /* the strip of tabs, like a browser's: the page's own sections, each tab,
+     + for another; the bar's look behind "Tab style", so it stays out of the way */
+  function tabsHtml(p) {
+    if (!p.tabs || !p.tabs.items || !p.tabs.items.length) {
+      return '<div class="ws-tabs"><button type="button" class="ws-tabs-add" data-tabs-add>+ ' + esc(tr('ws.tabs.add')) + '</button></div>';
+    }
+    var items = p.tabs.items, t = activeTab(p), ti = t ? items.indexOf(t) : -1;
+    var html = '<div class="ws-tabs" role="tablist">' +
+      '<button type="button" class="ws-tabchip' + (!t ? ' is-on' : '') + '" data-tab-view="" aria-pressed="' + !t + '">' + esc(tr('ws.tabs.page')) + '</button>' +
+      items.map(function (x, i) {
+        return '<button type="button" class="ws-tabchip' + (x === t ? ' is-on' : '') + '" data-tab-view="' + esc(x.id) + '" aria-pressed="' + (x === t) + '">' + esc(tabName(x, i)) + '</button>';
+      }).join('') +
+      (items.length < 6 ? '<button type="button" class="ws-tabchip ws-tab-plus" data-tab-add aria-label="' + esc(tr('ws.tabs.addOne')) + '" title="' + esc(tr('ws.tabs.addOne')) + '">+</button>' : '') +
+      '<button type="button" class="ghost-btn sm ws-tabstyle-btn" data-tab-style aria-expanded="' + !!state.tabStyleOpen + '">' + esc(tr('ws.tabs.style')) + '</button>' +
+      '</div>';
+    if (state.tabStyleOpen) {
+      html += '<div class="ws-tabstyle">' +
+        '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.tabs.style')) + '</span>' + chips('tabstyle', ['joined', 'pills', 'underline'], p.tabs.style || 'joined', function (v) { return tr('ws.tabs.style.' + v); }) + '</div>' +
+        '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.tabs.align')) + '</span>' + chips('tabalign', ['center', 'left'], p.tabs.align || 'center', function (v) { return tr('ws.tabs.align.' + v); }) + '</div></div>';
+    }
+    if (t) {
+      html += '<div class="ws-tabedit"><label class="ws-pagename"><span>' + esc(tr('ws.tabs.name')) + '</span>' +
+        '<input type="text" maxlength="30" data-tab-name value="' + esc((t.label || {})[state.langA] || '') + '" placeholder="' + esc(tr('ws.tabs.new') + ' ' + (ti + 1)) + '" lang="' + esc(state.langA) + '"></label>' +
+        '<span class="ws-stile-tools">' +
+          '<button type="button" class="ws-icon" data-tab-move="-1" aria-label="' + esc(tr('ws.tabs.left')) + '" title="' + esc(tr('ws.tabs.left')) + '"' + (ti === 0 ? ' disabled' : '') + '>←</button>' +
+          '<button type="button" class="ws-icon" data-tab-move="1" aria-label="' + esc(tr('ws.tabs.right')) + '" title="' + esc(tr('ws.tabs.right')) + '"' + (ti === items.length - 1 ? ' disabled' : '') + '>→</button>' +
+          '<button type="button" class="ws-icon del" data-tab-remove aria-label="' + esc(tr('ws.tabs.remove')) + '" title="' + esc(tr('ws.tabs.remove')) + '">✕</button></span></div>';
+    }
+    return html;
   }
   function plain(html) {
     var d = document.createElement('div'); d.innerHTML = String(html || '').replace(/\n/g, ' ');
@@ -680,7 +752,7 @@
   function sectionChanged(s) {
     var pub = state.body.published, p = currentPage();
     if (!pub) return false;
-    var was = (pub.pages.filter(function (x) { return x.id === p.id; })[0] || { sections: [] }).sections.filter(function (x) { return x.id === s.id; })[0];
+    var was = allSecs(pub.pages.filter(function (x) { return x.id === p.id; })[0] || { sections: [] }).filter(function (x) { return x.id === s.id; })[0];
     return JSON.stringify(s) !== JSON.stringify(was);
   }
   function dot(on) { return on ? '<i class="ws-dot" title="' + esc(tr('ws.changedHere')) + '"></i>' : ''; }
@@ -704,7 +776,7 @@
     var was = anchorAt != null && $('wsPages').querySelector('.ws-acc[data-si="' + anchorAt + '"]');
     var before = was ? was.getBoundingClientRect().top : null;
 
-    var pi = state.doc.pages.indexOf(p);
+    var pi = state.doc.pages.indexOf(realPage());
     var html = '<div class="ws-crumb">' +
       '<button type="button" class="ghost-btn sm" data-all-pages>← ' + esc(tr('ws.allPages')) + '</button>' +
       '<label class="ws-pagepick"><span class="sr-only">' + esc(tr('ws.tab.pages')) + '</span>' +
@@ -716,6 +788,7 @@
       '</div>' +
       '<label class="ws-pagename"><span>' + esc(tr('ws.nameInMenu')) + '</span>' + refPage(p) +
         '<input type="text" maxlength="40" data-page-label="' + pi + '" value="' + esc((p.label || {})[state.langA] || '') + '" placeholder="' + esc(builtInName(p.id, state.langA)) + '" lang="' + esc(state.langA) + '"></label>';
+    html += tabsHtml(realPage());
 
     var n = p.sections.length;
     /* Room below an open section, so even the last one can rise to the top. */
@@ -767,7 +840,7 @@
     var pages = state.doc.pages, last = pages.length - 1;
     $('wsPages').innerHTML = '<div class="ws-head"><h2>' + esc(tr('ws.yourPages')) + '</h2></div>' +
       '<ol class="ws-plist">' + pages.map(function (x, i) {
-        var n = x.sections.length;
+        var n = allSecs(x).length;
         return '<li class="ws-prow' + (x.on ? '' : ' is-off') + '">' +
           '<button type="button" class="ws-prow-open" data-open-page="' + esc(x.id) + '">' +
             '<b>' + esc(pageLabel(x, state.langA)) + dot(pageChanged(x)) + '</b>' +
@@ -892,7 +965,7 @@
       html += '<div class="ws-linkrows">' + (s.items || []).map(function (it, j) {
         var t = (it.words || {})[state.langA] || {}, k = i + ':' + j, open = state.openItem === j;
         var jump = it.url && it.url.indexOf('section:') === 0 &&
-          currentPage().sections.filter(function (x) { return 'section:' + x.id === it.url; })[0];
+          allSecs(realPage()).filter(function (x) { return 'section:' + x.id === it.url; })[0];
         var where = !it.url || it.url === 'https://' ? tr('ws.link.nowhere') : jump ? sectionName(jump) : it.url.indexOf('page:') === 0
           ? pageLabel(state.doc.pages.filter(function (x) { return 'page:' + x.id === it.url; })[0] || { id: it.url.slice(5) }, state.langA) : it.url.replace(/^https?:\/\//, '');
         var head = '<div class="ws-linkrow' + (open ? ' is-open' : '') + '">' +
@@ -917,6 +990,12 @@
 
     if (state.sectab === 'look') {
       /* A Words section's old Left / Centered layout IS its alignment now. */
+      /* cards saved as Attached / Detached read as Vertical / Horizontal with
+         or without lines (2026-10-06) */
+      if (s.type === 'cards' && (s.variant === 'attached' || s.variant === 'detached')) {
+        if (typeof s.lines !== 'boolean') s.lines = s.variant === 'attached';
+        s.variant = s.variant === 'attached' ? 'vertical' : 'horizontal';
+      }
       if (spec.variants.length > 1 && s.type !== 'text') {
         html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.layout')) + '</span>' +
           chips('variant:' + i, spec.variants, s.variant, function (v) { return tr('ws.v.' + s.type + '.' + v); }) + '</div>';
@@ -927,7 +1006,7 @@
          offered here, where it shows. Not offered while the site's Scroll
          hint is None: there would be nothing to show. */
       if (s.type === 'hero' && (state.doc.design.motion || {}).cue !== 'none') {
-        html += '<div class="ws-field">' + sw('data-page-cue="' + state.doc.pages.indexOf(p) + '"', p.cue !== false, tr('ws.cueOnPage')) + '</div>';
+        html += '<div class="ws-field">' + sw('data-page-cue="' + state.doc.pages.indexOf(realPage()) + '"', p.cue !== false, tr('ws.cueOnPage')) + '</div>';
       }
       /* The hero's line under the title (render.js). Unset, the monogram
          shows it and the rest do not — exactly as before the option. */
@@ -953,6 +1032,8 @@
           chips('vlinks:' + i, ['buttons', 'outline', 'subtle'], s.linkStyle || 'buttons', function (v) { return tr('ws.vLinks.' + v); }) + '</div>';
       }
       if (s.type === 'cards') {
+        html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.cardLines')) + '</span>' +
+          chips('clines:' + i, ['attached', 'detached'], (typeof s.lines === 'boolean' ? s.lines : s.variant !== 'horizontal') ? 'attached' : 'detached', function (v) { return tr('ws.cardLines.' + v); }) + '</div>';
         html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.numbers')) + '</span>' +
           chips('numbers:' + i, ['on', 'off'], s.numbers === false ? 'off' : 'on', function (v) { return tr('ws.divider.' + v); }) + '</div>';
       }
@@ -974,7 +1055,7 @@
       }
       if (!FLAT[s.type]) {
         html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.bg')) + '</span>' +
-          chips('raised:' + i, ['plain', 'raised'], s.raised ? 'raised' : 'plain', function (v) { return tr('ws.bg.' + v); }) + '</div>';
+          chips('raised:' + i, ['plain', 'raised', 'tint'], s.tint ? 'tint' : s.raised ? 'raised' : 'plain', function (v) { return tr('ws.bg.' + v); }) + '</div>';
       }
     }
 
@@ -1636,8 +1717,9 @@
   function autoTitle(p, l) { var nm = siteName(); return p.id === 'home' ? nm : pageLabel(p, l) + ' · ' + nm; }
   function autoDesc(p, l) {
     var pick = function (pg) {
-      for (var a = 0; a < pg.sections.length; a++) {
-        var w = (pg.sections[a].words || {})[l] || (pg.sections[a].words || {})[state.doc.fallback] || {};
+      var secs = allSecs(pg);
+      for (var a = 0; a < secs.length; a++) {
+        var w = (secs[a].words || {})[l] || (secs[a].words || {})[state.doc.fallback] || {};
         var f = ['text', 'kicker', 'sub'];
         for (var b = 0; b < f.length; b++) {
           var t = String(w[f[b]] || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
@@ -1648,7 +1730,7 @@
     };
     return pick(p) || pick(state.doc.pages[0]);
   }
-  function firstPhotoOf(p) { return p.sections.map(function (x) { return x.photo; }).filter(Boolean)[0] || null; }
+  function firstPhotoOf(p) { return allSecs(p).map(function (x) { return x.photo; }).filter(Boolean)[0] || null; }
   function shareMode(p) { var o = p.seo || {}; return o.image || (p.shareImage ? 'custom' : 'card'); }
 
   /* The look a name card wears: the site's own ground, ink and accent. */
@@ -1959,6 +2041,13 @@
   $('wsRoot').addEventListener('input', function (e) {
     var t = e.target, p = currentPage(), v = t.value;
     if (t.dataset.pageLabel !== undefined) { var pg = state.doc.pages[+t.dataset.pageLabel]; pg.label = pg.label || {}; pg.label[state.langA] = v; return changed(); }
+    if (t.dataset.tabName !== undefined) {
+      var tn = activeTab(realPage()); if (!tn) return;
+      tn.label = tn.label || {}; tn.label[state.langA] = v;
+      var chip = $('wsPages').querySelector('[data-tab-view="' + tn.id + '"]');
+      if (chip) chip.textContent = tabName(tn, realPage().tabs.items.indexOf(tn));
+      return changed();
+    }
     if (t.dataset.secWord) { var a = t.dataset.secWord.split(':'); words(p.sections[+a[0]], state.langA)[a[1]] = v; return changed(); }
     if (t.dataset && t.dataset.rt) { var rt = t.dataset.rt.split(':'); words(p.sections[+rt[0]], state.langA)[rt[1]] = richFrom(t); return changed(); }
     if (t.dataset.item) { var b = t.dataset.item.split(':'); words(p.sections[+b[0]].items[+b[1]], state.langA)[b[2]] = v; return changed(); }
@@ -2051,6 +2140,29 @@
     if (!t || t.disabled) return;
     var p = currentPage(), d = t.dataset;
     if (d.openPage) { state.page = d.openPage; state.edit = null; drawPages(); refreshFrame(); editorIntoView(); return; }
+    /* ---- a page's tabs (2026-10-06) ---- */
+    if (d.tabsAdd !== undefined || d.tabAdd !== undefined) {
+      var rp = realPage();
+      if (!rp.tabs || !rp.tabs.items) rp.tabs = { style: 'joined', align: 'center', items: [newTab(0)] };
+      var nt = newTab(rp.tabs.items.length); rp.tabs.items.push(nt);
+      state.view = (d.tabsAdd !== undefined ? rp.tabs.items[0] : nt).id; state.edit = null;
+      drawPages(); refreshFrame(); return changed();
+    }
+    if (d.tabView !== undefined) { state.view = d.tabView || null; state.edit = null; drawPages(); refreshFrame(); return; }
+    if (d.tabStyle !== undefined) { state.tabStyleOpen = !state.tabStyleOpen; drawPages(); return; }
+    if (d.tabMove) {
+      var mp = realPage(), mt = activeTab(mp); if (!mt) return;
+      move(mp.tabs.items, mp.tabs.items.indexOf(mt), +d.tabMove); drawPages(); refreshFrame(); return changed();
+    }
+    if (d.tabRemove !== undefined) {
+      var xp = realPage(), xt = activeTab(xp); if (!xt) return;
+      var okT = !xt.sections.length || await window.StaffConfirm({ title: fill('ws.tabs.removeQ', { name: tabName(xt, xp.tabs.items.indexOf(xt)) }),
+        confirm: tr('ws.tabs.remove'), cancel: tr('ms.cancel'), danger: true });
+      if (!okT) return;
+      xp.tabs.items.splice(xp.tabs.items.indexOf(xt), 1);
+      if (!xp.tabs.items.length) delete xp.tabs;
+      state.view = null; state.edit = null; drawPages(); refreshFrame(); return changed();
+    }
     if (d.allPages !== undefined) { state.page = null; state.edit = null; drawPages(); refreshFrame(); editorIntoView(); return; }
     if (d.editSec !== undefined) {
       /* A row opens where it is; pressing it again, or Done, folds it. */
@@ -2122,7 +2234,9 @@
     if (d.chip) {
       var val = d.value, name = d.chip;
       if (name.indexOf('variant:') === 0) { p.sections[+name.slice(8)].variant = val; drawSections(); }
-      else if (name.indexOf('raised:') === 0) { p.sections[+name.slice(7)].raised = val === 'raised'; drawSections(); }
+      else if (name === 'tabstyle' || name === 'tabalign') { var sp = realPage(); if (sp.tabs) sp.tabs[name === 'tabstyle' ? 'style' : 'align'] = val; drawPages(); }
+      else if (name.indexOf('clines:') === 0) { p.sections[+name.slice(7)].lines = val === 'attached'; drawSections(); }
+      else if (name.indexOf('raised:') === 0) { var rs = p.sections[+name.slice(7)]; rs.raised = val === 'raised'; rs.tint = val === 'tint'; drawSections(); }
       else if (name.indexOf('divider:') === 0) { p.sections[+name.slice(8)].divider = val === 'on'; drawSections(); }
       else if (name === 'advpic') { var ap = advPage(); ap.seo = ap.seo || { title: {}, desc: {} }; ap.seo.image = val; drawAdvanced(); }
       else if (name.indexOf('vpos:') === 0) { p.sections[+name.slice(5)].versePos = val; drawSections(); }
@@ -2150,7 +2264,12 @@
         if (box) box.focus();
       }
       else if (name.indexOf('footer:') === 0) { state.doc.footer[name.slice(7)] = val; drawFooter(); }
-      else if (name.indexOf('nav:') === 0) { navOf(state.doc)[name.slice(4)] = val; drawNav(); }
+      else if (name.indexOf('nav:') === 0) {
+        navOf(state.doc)[name.slice(4)] = val;
+        /* the phone's menu is seen on a phone */
+        if (name === 'nav:phone') setDevice('phone');
+        drawNav();
+      }
       else if (name === 'giveTo') { state.doc.design.giveTo = val; drawNav(); }
       else if (name.indexOf('motion:') === 0) { state.doc.design.motion[name.slice(7)] = val; drawDesign(); }
       else if (name === 'look' || name === 'menu' || name === 'brand' || name === 'mode' || name === 'faviconStyle') { state.doc.design[name] = val; drawDesign(); }

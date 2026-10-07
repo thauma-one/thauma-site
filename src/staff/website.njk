@@ -77,7 +77,12 @@ staffHeading: Site <b>Creator</b>
       site, drawn from the working copy, redrawn after each change — the page
       being arranged on Pages, Home on Design, Links and Footer. -#}
   <aside class="ws-preview" id="wsPreviewPane" hidden>
-    <div class="ws-preview-head"><span data-i18n="ws.onSite">On the site</span><span id="wsPreviewPath"></span></div>
+    <div class="ws-preview-head"><span data-i18n="ws.onSite">On the site</span><span id="wsPreviewPath"></span>
+      {#- a computer or a phone (2026-10-06); changing a phone-only option shows the phone -#}
+      <span class="ws-dev" role="group" data-i18n-attr="aria-label:ws.onSite" aria-label="On the site">
+        <button type="button" data-dev="desktop" aria-pressed="true" data-i18n="emb.desktop">Desktop</button>
+        <button type="button" data-dev="phone" aria-pressed="false" data-i18n="emb.mobile">Mobile</button>
+      </span></div>
     <div class="ws-preview-frame"><iframe id="wsFrame" title="Preview" loading="lazy"></iframe></div>
   </aside>
 </div>

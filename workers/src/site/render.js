@@ -17,7 +17,7 @@
  * are attributes on <html> that the CSS and the small script below read, all
  * of it switched off for anyone whose device asks for less motion.
  */
-import { word, SECTIONS, plainOf } from "./model.js";
+import { word, SECTIONS, plainOf, allSections } from "./model.js";
 import { TONES, HEX_COLOR, SIZE_NAMES } from "../lib/tones.js";
 import { readable, onColor, alpha, luminance, companion, hexToHsl, hslToHex } from "../embed-colour.js";
 
@@ -386,7 +386,8 @@ main section.raised + section{border-top-color:transparent}
 main section.phead{position:relative;overflow:hidden;padding:clamp(56px,8vw,112px) 0 clamp(40px,6vw,76px)}
 .phead .wrap{position:relative;z-index:1}
 .phead .h{margin:0}
-.phead .rule{margin:22px 0}
+/* nearer the title than the small print (2026-10-06): a title already leaves room under its letters */
+.phead .rule{margin:14px 0 24px}
 .phead.al-center .rule{margin-left:auto;margin-right:auto}.phead.al-right .rule{margin-left:auto}
 .phead.al-center :is(.ph-label,.ph-sub,.h){text-align:center;margin-left:auto;margin-right:auto}
 .phead.al-right :is(.ph-label,.ph-sub,.h){text-align:right;margin-left:auto}
@@ -394,8 +395,12 @@ main section.phead{position:relative;overflow:hidden;padding:clamp(56px,8vw,112p
 .ph-sub{font:400 14px/1.7 var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin:0;max-width:60ch}
 .phead:not(:has(.rule)) .ph-sub{margin-top:18px}
 .ph-top::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:var(--acc)}
-.ph-mark{position:absolute;left:clamp(16px,4vw,64px);top:50%;transform:translateY(-46%);font:700 clamp(110px,17vw,250px)/1 var(--display);color:var(--fg);opacity:.05;white-space:nowrap;pointer-events:none;user-select:none;letter-spacing:-.03em;z-index:0}
-.phead.al-center .ph-mark{left:50%;transform:translate(-50%,-46%)}.phead.al-right .ph-mark{left:auto;right:clamp(16px,4vw,64px)}
+.ph-mark{position:absolute;left:max(24px,calc((100% - 1120px) / 2));margin-left:-.055em;top:50%;transform:translateY(-46%);font:700 clamp(110px,17vw,250px)/1 var(--display);color:var(--fg);opacity:.05;white-space:nowrap;pointer-events:none;user-select:none;letter-spacing:-.03em;z-index:0}
+/* the watermark's left side on the text's (2026-10-06, Chase: "needs to
+   align with the text of the header so both left sides are aligned"): the
+   column's own edge, less the letters' side bearing */
+.phead.al-center .ph-mark{left:50%;margin-left:0;transform:translate(-50%,-46%)}.phead.al-right .ph-mark{left:auto;margin-left:0;right:max(24px,calc((100% - 1120px) / 2));margin-right:-.055em}
+
 main section.ph-raised{background:var(--panel)}
 main section.ph-tint{background:var(--band)}
 main section.ph-accent{background:var(--acc);color:var(--on-acc)}
@@ -441,14 +446,43 @@ main section.raised .card{background:var(--bg)}
 .ccards h3{margin:2px 0 6px;font:600 19px var(--display);color:var(--fg)}
 .ccards p{margin:0;color:var(--dim);line-height:1.65}
 .cnum{flex:none;width:44px;height:44px;border-radius:50%;background:var(--acc);color:var(--on-acc);display:flex;align-items:center;justify-content:center;font:700 17px var(--body)}
-.cards-attached .ccards{max-width:800px;display:flex;flex-direction:column}
-.cards-attached .ccards.numbered li+li{position:relative;margin-top:32px}
-.cards-attached .ccards.numbered li+li::before{content:"";position:absolute;left:45px;top:-33px;width:2px;height:32px;background:var(--line)}
-.cards-attached .ccards:not(.numbered) li+li{margin-top:16px}
-.cards-detached .ccards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:22px}
-.cards-detached .ccards li{flex-direction:column;gap:14px}
-.al-center .cards-attached .ccards,.cards-attached.al-center .ccards{margin-left:auto;margin-right:auto}
-.al-right .cards-attached .ccards,.cards-attached.al-right .ccards{margin-left:auto}
+/* A PAGE'S TABS (2026-10-06): joined (chaseroush.com's Give | Pray), pills,
+   or an underline; the chosen one in the accent. */
+main section.ptabs-bar{padding:28px 0 0}
+.ptabs{display:flex;flex-wrap:wrap;gap:0}
+.ptabs-bar.al-center .ptabs{justify-content:center}
+.ptabs button{font:600 13px/1 var(--body);letter-spacing:.12em;text-transform:uppercase;padding:12px 30px;background:transparent;color:var(--dim);border:1px solid var(--line);cursor:pointer;transition:color .2s,border-color .2s,background .2s}
+.ptabs button:hover{color:var(--fg);border-color:var(--acc)}
+.ptabs button[aria-selected="true"]{background:var(--acc);border-color:var(--acc);color:var(--on-acc)}
+.ptabs-joined .ptabs button+button{border-left:0}
+.ptabs-joined .ptabs button:first-child{border-radius:8px 0 0 8px}.ptabs-joined .ptabs button:last-child{border-radius:0 8px 8px 0}
+.ptabs-pills .ptabs{gap:10px}.ptabs-pills .ptabs button{border-radius:999px}
+.ptabs-underline .ptabs{gap:28px;border-bottom:1px solid var(--line)}
+.ptabs-underline .ptabs button{border:0;padding:12px 2px;margin-bottom:-1px;border-bottom:2px solid transparent}
+.ptabs-underline .ptabs button[aria-selected="true"]{background:none;color:var(--fg);border-bottom-color:var(--acc)}
+.ptab[hidden]{display:none}
+/* CHASEROUSH.COM'S MISSION, closely (2026-10-06): each card a shade apart
+   from its section (on a raised band, the page's color), lifting and
+   lighting its border under the pointer — or, on a phone, the card nearest
+   the middle of the screen (MOTION_JS, .is-near). Vertical stacks them,
+   Horizontal sets them side by side; Lines draws a faint line between them
+   that stops short of both. */
+.ccards li{position:relative;transition:transform .3s cubic-bezier(.16,1,.3,1),border-color .3s,box-shadow .3s}
+.raised .ccards li{background:var(--bg)}
+.ccards li:hover,.ccards li.is-near{transform:translateY(-5px);border-color:var(--acc);box-shadow:0 10px 30px color-mix(in srgb,var(--acc) 20%,transparent)}
+@media (prefers-reduced-motion:reduce){.ccards li{transition:none}.ccards li:hover,.ccards li.is-near{transform:none}}
+.cards-vertical .ccards{max-width:800px;display:flex;flex-direction:column;gap:16px}
+.cards-vertical.cards-lines .ccards{gap:40px}
+.cards-vertical.cards-lines .ccards li+li::before{content:"";position:absolute;left:50%;top:-32px;width:2px;height:24px;margin-left:-1px;background:var(--line)}
+.cards-vertical.cards-lines .ccards.numbered li+li::before{left:45px}
+.cards-horizontal .ccards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:22px}
+.cards-horizontal .ccards li{flex-direction:column;gap:14px}
+.cards-horizontal.cards-lines .ccards{gap:22px 40px}
+.cards-horizontal.cards-lines .ccards li+li::before{content:"";position:absolute;left:-32px;top:50%;width:24px;height:2px;margin-top:-1px;background:var(--line)}
+.cards-horizontal.cards-lines .ccards.numbered li+li::before{top:44px}
+@media (max-width:760px){.cards-horizontal.cards-lines .ccards{gap:40px}.cards-horizontal.cards-lines .ccards li+li::before{left:50%;top:-32px;width:2px;height:24px;margin:0 0 0 -1px}}
+.al-center .cards-vertical .ccards,.cards-vertical.al-center .ccards{margin-left:auto;margin-right:auto}
+.al-right .cards-vertical .ccards,.cards-vertical.al-right .ccards{margin-left:auto}
 .signcard .signform{margin:22px auto 0;text-align:left}
 .news{list-style:none;margin:0;padding:0;display:grid;gap:10px}
 .news a{display:flex;justify-content:space-between;gap:20px;padding:18px 20px;background:var(--panel);border:1px solid var(--line);border-radius:12px;color:var(--fg);text-decoration:none}
@@ -729,7 +763,7 @@ function renderSection(sec, ctx) {
      place for it, so the owner sees the page as it will be. Visitors never do. */
   const wanted = () => ctx.draft ? `<span class="wanted">${esc(word(lang, "photoWanted"))}</span>` : "";
   const cls = (...c) => {
-    const k = [...c, sec.raised ? "raised" : "", sec.align ? "al-" + sec.align : ""].filter(Boolean).join(" ");
+    const k = [...c, sec.raised ? "raised" : "", sec.tint ? "band" : "", sec.align ? "al-" + sec.align : ""].filter(Boolean).join(" ");
     return k ? ` class="${k}"` : "";
   };
   const widget = (kind, extra = "") =>
@@ -876,7 +910,7 @@ function renderSection(sec, ctx) {
       if (sec.variant === "open") {
         return `<section${cls()}><div class="wrap">${heading(w("heading"))}${sub}<div class="m formbox openform"><div data-thauma-form data-lang="${esc(lang)}"${ctx.formLook(true, !!sec.raised)}></div></div></div></section>`;
       }
-      return `<section${cls(sec.variant === "band" ? "band" : "")}><div class="wrap">${sec.variant === "card" ? '<div class="card signcard">' : '<div class="bandrow">'}<div>${heading(w("heading"))}${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}</div><div class="m${sec.variant === "card" ? " signform" : ""}" style="flex:1 1 360px;max-width:${sec.variant === "card" ? "100%" : "460px"}"><div data-thauma-form data-lang="${esc(lang)}"${ctx.formLook(sec.variant === "card", !!sec.raised)}></div></div></div></div></section>`;
+      return `<section${cls()}><div class="wrap">${sec.variant === "card" ? '<div class="card signcard">' : '<div class="bandrow">'}<div>${heading(w("heading"))}${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}</div><div class="m${sec.variant === "card" ? " signform" : ""}" style="flex:1 1 360px;max-width:${sec.variant === "card" ? "100%" : "460px"}"><div data-thauma-form data-lang="${esc(lang)}"${ctx.formLook(sec.variant === "card", !!sec.raised)}></div></div></div></div></section>`;
     case "contact":
       ctx.needs.contact = true;
       /* "The card is really skinny on a desktop" (Chase, 2026-10-03): Side
@@ -906,7 +940,7 @@ function renderSection(sec, ctx) {
       if (sec.variant === "spotlight") {
         return `<section${cls()}><div class="wrap"><div class="spot m">${heading(w("heading"))}${sub}<div class="btns">${giveBtn(true)}</div></div></div></section>`;
       }
-      return `<section${cls(sec.variant === "band" ? "band" : "")}><div class="wrap">${sec.variant === "card" ? '<div class="card">' : '<div class="bandrow">'}<div>${heading(w("heading"))}${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}</div><div class="btns m" style="margin:0"><a class="btn solid" href="${esc(ctx.giveUrl)}">${esc(w("button") || word(lang, "giveBtn"))} →</a></div></div></div></section>`;
+      return `<section${cls()}><div class="wrap">${sec.variant === "card" ? '<div class="card">' : '<div class="bandrow">'}<div>${heading(w("heading"))}${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}</div><div class="btns m" style="margin:0"><a class="btn solid" href="${esc(ctx.giveUrl)}">${esc(w("button") || word(lang, "giveBtn"))} →</a></div></div></div></section>`;
     }
     case "cards": {
       /* chaseroush.com's Mission: numbered cards joined by a line between
@@ -915,7 +949,10 @@ function renderSection(sec, ctx) {
       const items = (sec.items || []).filter((it) => t(it, "title") || t(it, "text"));
       if (!items.length) return "";
       const num = sec.numbers !== false;
-      return `<section${cls("cards-" + sec.variant)}><div class="wrap">${heading(w("heading"))}${sub}<ol class="ccards m${num ? " numbered" : ""}">${items.map((it, i) =>
+      /* direction and lines; a section saved before them reads as it looked */
+      const dir = sec.variant === "detached" || sec.variant === "horizontal" ? "horizontal" : "vertical";
+      const lines = typeof sec.lines === "boolean" ? sec.lines : dir === "vertical";
+      return `<section${cls("cards-" + dir, lines ? "cards-lines" : "")}><div class="wrap">${heading(w("heading"))}${sub}<ol class="ccards m${num ? " numbered" : ""}">${items.map((it, i) =>
         `<li>${num ? `<span class="cnum" aria-hidden="true">${i + 1}</span>` : ""}<div>${t(it, "title") ? `<h3>${esc(t(it, "title"))}</h3>` : ""}${t(it, "text") ? `<p>${inline(esc(t(it, "text")))}</p>` : ""}</div></li>`).join("")}</ol></div></section>`;
     }
     case "links": {
@@ -1013,7 +1050,7 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
       if (!link) return "";
       /* A section of THIS page: its anchor, or nowhere once it is gone. */
       const sec = /^section:([a-z0-9]{2,24})$/i.exec(link);
-      if (sec) return page.sections.some((s) => s.id === sec[1]) ? "#s-" + sec[1] : "";
+      if (sec) return allSections(page).some((s) => s.id === sec[1]) ? "#s-" + sec[1] : "";
       const m = /^page:([a-z]+)$/.exec(link);
       if (!m) return link;
       return pages.some((p) => p.id === m[1]) ? href(m[1]) : "";
@@ -1026,13 +1063,23 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
      "doesn't get added properly"). Visitors never see an empty one. Every
      section carries its id: the editor scrolls to the one being edited, and
      a button can jump to it (section:<id>). */
-  const body = page.sections.map((s) => {
+  const drawn = (list) => list.map((s) => {
     const html = renderSection(s, ctx);
     if (!html) {
       return draft ? `<section id="s-${esc(s.id)}" class="empty"><div class="wrap"><p>${esc(word(lang, "emptyPreview"))}</p></div></section>` : "";
     }
     return html.replace(/^<section([^>]*)>/, `<section$1 id="s-${esc(s.id)}">`);
   }).join("\n");
+  /* THE PAGE'S TABS: its own sections, then the bar, then a panel per tab,
+     the first one showing (a #tab address opens another; MOTION_JS). One tab
+     alone is no choice, so it is drawn as part of the page. */
+  const tabs = page.tabs && page.tabs.items && page.tabs.items.length ? page.tabs : null;
+  const tabName = (t, i) => (t.label && (t.label[lang] || t.label[fallback])) || word(lang, "tabFill") + " " + (i + 1);
+  const body = drawn(page.sections) + (!tabs ? "" : tabs.items.length === 1 ? "\n" + drawn(tabs.items[0].sections) :
+    `\n<section class="ptabs-bar ptabs-${esc(tabs.style)} al-${tabs.align === "left" ? "left" : "center"}"><div class="wrap"><div class="ptabs" role="tablist">` +
+    tabs.items.map((t, i) => `<button type="button" role="tab" id="tb-${esc(t.id)}" aria-controls="t-${esc(t.id)}" aria-selected="${i === 0}" data-tab="${esc(t.id)}">${esc(tabName(t, i))}</button>`).join("") +
+    `</div></div></section>\n` +
+    tabs.items.map((t, i) => `<div class="ptab" id="t-${esc(t.id)}" role="tabpanel" aria-labelledby="tb-${esc(t.id)}"${i ? " hidden" : ""}>${drawn(t.sections)}</div>`).join("\n"));
   const name = String(site.display_name || "").trim();
   const parts = name.split(/\s+/);
   const brand = design.brand === "logo" && design.logo
@@ -1092,7 +1139,7 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
      site's real public ones, whichever host is drawing the page. */
   const thisPage = doc.pages.find((p) => p.id === pageId) || doc.pages[0];
   const firstWords = (pg) => {
-    for (const s of (pg && pg.sections) || []) {
+    for (const s of allSections(pg)) {
       for (const f of ["text", "kicker", "sub"]) {
         const t = plainOf(wf(s, lang, fallback, f) || "").replace(/\s+/g, " ").trim();
         if (t.length > 20) return t;
@@ -1102,7 +1149,7 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
   };
   const clip = (t) => (t.length > 160 ? t.slice(0, 157).replace(/\s+\S*$/, "") + "…" : t);
   const desc = (seo.desc && seo.desc[lang]) || clip(firstWords(thisPage) || firstWords(doc.pages[0]));
-  const firstPhoto = (pg) => ((pg && pg.sections) || []).map((s) => s.photo).find(Boolean) || null;
+  const firstPhoto = (pg) => allSections(pg).map((s) => s.photo).find(Boolean) || null;
   const absolute = (u) => (!u ? null : /^https?:/.test(u) ? u : "https://thauma.one" + (u.startsWith("/") ? u : "/" + u));
   /* The picture: the owner's own; the page's photo; or (the default) the
      page's name card in this language — until one is made, the photo. */
@@ -1255,12 +1302,19 @@ var io=('IntersectionObserver' in window)&&!still?new IntersectionObserver(funct
 [].forEach.call(document.querySelectorAll('.m,.h'),function(el){if(io)io.observe(el);else el.classList.add('in')});
 var drift=!still&&d.getAttribute('data-photos')==='drift'?[].slice.call(document.querySelectorAll('[data-drift] img')):[];
 var bar=document.querySelector('.progress'),tick=false;
+var near=window.matchMedia&&matchMedia('(hover: none)').matches?[].slice.call(document.querySelectorAll('.ccards li')):[];
 function frame(){tick=false;var vh=innerHeight;
  drift.forEach(function(i){var r=i.parentNode.getBoundingClientRect();var p=((r.top+r.height/2)-vh/2)/(vh/2+r.height/2);p=Math.max(-1,Math.min(1,p));i.style.transform='translate3d(0,'+(-p*0.05*r.height).toFixed(1)+'px,0)'});
- if(bar&&!still){var m=document.documentElement.scrollHeight-vh;bar.style.transform='scaleX('+(m>0?scrollY/m:0)+')'}}
+ if(bar&&!still){var m=document.documentElement.scrollHeight-vh;bar.style.transform='scaleX('+(m>0?scrollY/m:0)+')'}
+ if(near.length){var best=null,bd=1e9;near.forEach(function(c){var r=c.getBoundingClientRect();if(r.top<0||r.bottom>vh)return;var dd=Math.abs(r.top+r.height/2-vh/2);if(dd<bd){bd=dd;best=c}});near.forEach(function(c){c.classList.toggle('is-near',c===best)})}}
 addEventListener('scroll',function(){if(!tick){tick=true;requestAnimationFrame(frame)}d.classList.toggle('scrolled',scrollY>40)},{passive:true});frame();
 document.addEventListener('click',function(e){[].forEach.call(document.querySelectorAll('details.langmenu[open]'),function(m){if(!m.contains(e.target))m.removeAttribute('open')})});
 document.addEventListener('keydown',function(e){if(e.key==='Escape')[].forEach.call(document.querySelectorAll('details.langmenu[open]'),function(m){m.removeAttribute('open')})});
+[].forEach.call(document.querySelectorAll('.ptabs'),function(bar){var bs=[].slice.call(bar.querySelectorAll('[data-tab]'));
+ function show(id,keep){bs.forEach(function(b){var on=b.getAttribute('data-tab')===id;b.setAttribute('aria-selected',on);var p=document.getElementById('t-'+b.getAttribute('data-tab'));if(p)p.hidden=!on});
+  if(!keep)try{history.replaceState(null,'','#'+id)}catch(e){}frame()}
+ bs.forEach(function(b){b.addEventListener('click',function(){show(b.getAttribute('data-tab'))})});
+ var h=(location.hash||'').slice(1);if(h&&bs.some(function(b){return b.getAttribute('data-tab')===h}))show(h,true)});
 var cue=document.querySelector('.scrollcue');if(cue)cue.addEventListener('click',function(){var n=cue.closest('section').nextElementSibling;if(n)n.scrollIntoView({behavior:still?'auto':'smooth'})});
 document.addEventListener('click',function(e){var h=e.target.closest&&e.target.closest('[data-widget="roadmap"]');if(!h)return;
  setTimeout(function(){var p=h.shadowRoot&&h.shadowRoot.querySelector('.detail:not(.leaving)'),s=h.closest('section'),t=s&&(s.querySelector('.h')||s);if(!p||!t)return;
