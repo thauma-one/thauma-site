@@ -145,9 +145,9 @@ export function contactScript(form, partnerSlug, origin, theme, topics, own = {}
       '<p class="blurb" hidden></p>' +
       '<form class="form">' +
         '<label class="fld"><span data-w="form.name">Your name</span>' +
-          '<input name="name" autocomplete="name" required data-wp="form.name" placeholder="Your name"></label>' +
+          '<input name="name" autocomplete="name" data-1p-ignore data-lpignore="true" data-bwignore="true" data-form-type="other" required data-wp="form.name" placeholder="Your name"></label>' +
         '<label class="fld"><span data-w="form.email">Email address</span>' +
-          '<input name="email" type="email" required autocomplete="email" ' +
+          '<input name="email" type="email" required autocomplete="email" data-1p-ignore data-lpignore="true" data-bwignore="true" data-form-type="other" ' +
             'placeholder="you@example.com"></label>' +
         reason +
         /* A SUBJECT, because CR has one and it earns its place: "Prayer
@@ -155,10 +155,10 @@ export function contactScript(form, partnerSlug, origin, theme, topics, own = {}
            you whether to open it now. Optional — somebody who has nothing to
            add to the dropdown should not be made to invent something. */
         '<label class="fld"><span data-w="contact.subject">Subject</span>' +
-          '<input name="subject" maxlength="160" data-wp="contact.subjectHint" ' +
+          '<input name="subject" maxlength="160" autocomplete="off" data-1p-ignore data-lpignore="true" data-bwignore="true" data-form-type="other" data-wp="contact.subjectHint" ' +
             'placeholder="A few words about it"></label>' +
         '<label class="fld"><span data-w="contact.message">Message</span>' +
-          '<textarea name="message" rows="5" required data-wp="contact.messageHint" ' +
+          '<textarea name="message" rows="5" autocomplete="off" data-1p-ignore data-lpignore="true" data-bwignore="true" data-form-type="other" required data-wp="contact.messageHint" ' +
             'placeholder="What would you like to say?"></textarea></label>' +
         /* THE HONEYPOT. Hidden from people three ways — off-screen, zero
            opacity and aria-hidden — because a bot reading only one of them
@@ -168,7 +168,7 @@ export function contactScript(form, partnerSlug, origin, theme, topics, own = {}
         '<div aria-hidden="true" style="position:absolute;left:-9999px;opacity:0;' +
           'height:0;overflow:hidden">' +
           '<label>Leave this field empty' +
-            '<input name="website" tabindex="-1" autocomplete="off">' +
+            '<input name="website" tabindex="-1" autocomplete="off" data-1p-ignore data-lpignore="true" data-bwignore="true">' +
           '</label>' +
         '</div>' +
         `<button type="submit" class="go" data-w="contact.button">${escapeHtml(t("en", "contact.button"))}</button>` +

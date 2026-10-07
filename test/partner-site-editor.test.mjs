@@ -164,6 +164,18 @@ await check("a row unfolds where it is, one at a time; a new section goes where 
   assert(d.querySelector('.ws-acc[data-si="1"]').classList.contains("is-open"), "and open");
 });
 
+await check("no password manager is offered any field: every text box says so, ones drawn later too", async () => {
+  const { d, click, pages } = await boot();
+  pages();
+  click(d.querySelector('[data-open-page="home"]'));
+  click(d.querySelector('[data-edit-sec="0"]'));
+  await settle(50);
+  const boxes = [...d.querySelectorAll('input[type="text"], input:not([type]), textarea')];
+  assert(boxes.length > 0 && d.querySelector("[data-page-label]"), "nothing to check");
+  const loud = boxes.filter((b) => !(b.hasAttribute("data-1p-ignore") && b.getAttribute("data-lpignore") === "true" && b.getAttribute("data-bwignore") === "true" && b.getAttribute("autocomplete")));
+  eq(loud.length, 0, "fields a manager may take for a sign-in");
+});
+
 await check("a new section starts in stand-in words in every language, and says which are still missing", async () => {
   /* Chase, 2026-10-07: "every section that is added should have basic
      styling and text added in … just random words … and remind the person
