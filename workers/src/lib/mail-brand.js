@@ -20,6 +20,7 @@
  * read is tolerant, so a missing row never stops a send.
  */
 import { lookFor, companion } from "../embed-colour.js";
+import { mailPalette } from "../site/render.js";
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
 
@@ -28,13 +29,16 @@ export async function brandForMail(db, partnerId) {
   const face = await db.queryOne("partner_for_site", { partner_id: partnerId }).catch(() => null);
   if (!face) return null;
   const pair = lookFor(face);
-  let accent = pair.accent, accent2 = pair.accent2;
+  let accent = pair.accent, accent2 = pair.accent2, palette = null;
   const site = await db.queryOne("partner_site_get", { partner_id: partnerId }).catch(() => null);
   if (site && site.published) {
     try {
-      const own = JSON.parse(site.published).design.colors.accent;
+      const design = JSON.parse(site.published).design || {};
+      const own = (design.colors || {}).accent;
       if (HEX.test(own || "")) { accent = own.toUpperCase(); accent2 = companion(accent, -33); }
+      /* the letter's light and dark grounds are the site's (render.js) */
+      palette = mailPalette(design, { accent, accent2 });
     } catch { /* no site colors of its own */ }
   }
-  return { accent, accent2, mode: face.embed_theme === "dark" ? "dark" : "light", name: face.display_name || "" };
+  return { accent, accent2, palette, mode: face.embed_theme === "dark" ? "dark" : "light", name: face.display_name || "" };
 }

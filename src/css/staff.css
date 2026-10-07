@@ -1470,20 +1470,14 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
 .cp-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:8px 20px;
   border-bottom:1px solid var(--line);background:var(--bg2,#0b1119)}
 .cp-row[hidden]{display:none}
-/* the variables legend, always shown */
-.cp-legend{background:color-mix(in srgb,var(--voice-human) 9%,transparent);border-top:1px solid color-mix(in srgb,var(--voice-human) 35%,transparent);
-  border-bottom:1px solid color-mix(in srgb,var(--voice-human) 35%,transparent)}
-/* THE PERSONAL TOUCHES STAND OUT (2026-10-06, Chase: "I almost missed where
-   you added those variables, so can we make those not blend in as much"):
-   seafoam chips with a + in the legend, and the same chip where one sits in
-   the message */
-.cp-legend .cp-legend-label{color:var(--voice-human)}
-/* A variable in the legend (2026-10-07): the token, as typed, and what it
-   becomes — chaseroush.com's legend, in the ministry voice */
-.cp-row.cp-legend>button.cp-varchip{display:inline-flex;min-height:0;align-items:baseline;gap:8px;padding:4px 10px;border-radius:6px;cursor:pointer;font:inherit;font-size:12.5px;
-  border:1px solid color-mix(in srgb,var(--voice-human) 45%,transparent);background:color-mix(in srgb,var(--voice-human) 10%,transparent);color:var(--dim)}
-.cp-varchip code{font:600 12.5px/1.2 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--voice-human)}
-.cp-row.cp-legend>button.cp-varchip:hover,.cp-row.cp-legend>button.cp-varchip:focus-visible{border-color:var(--voice-human);color:var(--text)}
+/* THE VARIABLES, QUIET (2026-10-07, Chase: "can we make it more subtle? I
+   don't like that it is in your face"): a row like the others, the tokens
+   in the ministry voice and nothing else colored. */
+.cp-legend .cp-legend-label{color:var(--dim)}
+.cp-row.cp-legend>button.cp-varchip{display:inline-flex;min-height:0;align-items:baseline;gap:6px;padding:3px 8px;border-radius:6px;cursor:pointer;
+  font:inherit;font-size:12.5px;border:0;background:none;color:var(--dim)}
+.cp-varchip code{font:500 12px/1.2 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:color-mix(in srgb,var(--voice-human) 80%,var(--dim))}
+.cp-row.cp-legend>button.cp-varchip:hover,.cp-row.cp-legend>button.cp-varchip:focus-visible{background:var(--line);color:var(--text)}
 /* card or integrated: two small drawings */
 .cp-layout{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:0;padding:12px 20px}
 .cp-layout button{display:inline-flex;align-items:center;gap:7px;min-height:30px;padding:0 10px;border-radius:8px;border:1px solid var(--line);background:none;color:var(--dim);font:inherit;font-size:13px;cursor:pointer}
@@ -1605,9 +1599,8 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
 .cp-body [data-c="gold"]{color:#F2C14E}
 /* A variable in the message: the token itself, in the ministry voice, so it
    reads as "filled in for each person" and as what can be typed. */
-.cp-body .cp-var{display:inline;padding:1px 4px;border-radius:4px;white-space:nowrap;
-  font:600 .88em/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--voice-human);
-  background:color-mix(in srgb,var(--voice-human) 14%,transparent)}
+.cp-body .cp-var{display:inline;white-space:nowrap;font:500 .9em/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color:color-mix(in srgb,var(--voice-human) 75%,var(--text))}
 .cp-body .cp-var.ProseMirror-selectednode{outline:2px solid var(--voice-human)}
 .cp-body .ProseMirror.is-editor-empty:first-child::before{content:attr(data-placeholder);
   float:left;height:0;pointer-events:none;color:var(--dim,#8a93a3);opacity:.5}
@@ -1642,9 +1635,11 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
 .cp-testto-box{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap}
 .cp-testto-box[hidden]{display:none}
 .cp-testto-box input{min-width:220px}
-.cp-icon{width:34px;height:34px;background:none;border:1px solid var(--line);
-  border-radius:8px;color:var(--dim,#8a93a3);font-size:15px;cursor:pointer;
+.cp-icon{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 12px;background:none;border:1px solid var(--line);
+  border-radius:8px;color:var(--dim,#8a93a3);font:inherit;font-size:13px;cursor:pointer;
   transition:.15s}
+.cp-icon svg,.cp-tool-word svg{width:15px;height:15px;flex:none;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
+.cp-tools .cp-tool-word{display:inline-flex;align-items:center;gap:6px;width:auto;padding:0 9px;font-size:13px}
 @media(hover:hover){
   .cp-icon:hover{border-color:var(--voice-tech);color:var(--text)}
   .cp-icon-del:hover{border-color:var(--crit,#FF6B6B);color:var(--crit,#FF6B6B)}

@@ -51,7 +51,7 @@ await check("the confirmation is Thauma's template with the name in the band, th
   assert(!/email-band\.png/.test(m.html), "no THAUMA image");
   assert(/class="bname"[^>]*letter-spacing:10px;text-transform:uppercase;color:#EDF2F8;">Chase Roush</.test(m.html), "the name, spaced like Thauma's");
   assert(/class="bkind"[^>]*>Sign-up confirmation</.test(m.html), "what it is, beneath the name");
-  assert(/linear-gradient\(45deg,#[0-9A-F]{6} 0%,#070A10 46%/.test(m.html), "on a wash of their two colors");
+  assert(/linear-gradient\(45deg,#[0-9A-F]{6} 0%,#10161F 40%/.test(m.html), "on a wash of their two colors, on the card");
   assert(/<h1[^>]*>Confirm your subscription</.test(m.html), "the heading in the body");
   assert(/bgcolor="#FD5812"/.test(m.html), "their color");
   assert(/A Thauma ministry/.test(m.html), "the credit");
@@ -66,6 +66,19 @@ await check("a partner's contact receipt wears their band; Thauma's keeps the wo
   assert(/A Thauma ministry/.test(m.html), "the credit");
   const own = contactReceiptEmail({ name: "Ana", ministry: "Thauma", message: "Hello", origin: "https://thauma.one", lang: "en" });
   assert(/email-band\.png/.test(own.html) && !/class="bname"/.test(own.html), "Thauma's own, unchanged");
+});
+
+await check("the letter's light and dark grounds are the site's, and the band is drawn on them", async () => {
+  const { mailPalette } = await import("../src/site/render.js");
+  const palette = mailPalette({ look: "custom", colors: { background: "#1B1430", accent: "#E8613C" } }, { accent: "#E8613C", accent2: "#C23CE8" });
+  const dark = render("<p>Hi</p>", { subject: "S", fromName: "C", mode: "dark", palette });
+  assert(dark.includes(`background:${palette.dark.card}`) && /class="band" bgcolor="#2A243E"/.test(dark), "dark: the site's panel, band on it");
+  const light = render("<p>Hi</p>", { subject: "S", fromName: "C", mode: "light", palette });
+  assert(new RegExp(`class="band" bgcolor="${palette.light.card}"`).test(light), "light: a light band");
+  const auto = render("<p>Hi</p>", { subject: "S", fromName: "C", mode: "auto", palette });
+  assert(/prefers-color-scheme: dark[\s\S]*\.band \{ background-color: #2A243E/.test(auto), "matching the reader: the band repainted dark too");
+  const own = render("<p>Hi</p>", { subject: "S", fromName: "C", mode: "dark" });
+  assert(/class="band" bgcolor="#10161E"/.test(own), "no site: Thauma's night");
 });
 
 await check("a newsletter: Thauma's template, the ministry's color, the credit line", async () => {

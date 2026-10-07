@@ -336,11 +336,14 @@
       var m = r.m, l = r.l;
       var meta = esc(l.name) + ' · ' +
         esc(m.created_at ? new Date(m.created_at).toLocaleDateString() : '');
-      return '<button type="button" class="ml-sentall-row" data-open-draft="' + esc(m.id) +
+      /* an × to delete it, asked first, as Sent has (2026-10-07) */
+      var subj = m.subject || tr('ml.cpUntitled');
+      return '<div class="ml-sent-item"><button type="button" class="ml-sentall-row" data-open-draft="' + esc(m.id) +
           '" data-draft-list="' + esc(l.id) + '">' +
-        '<span class="ml-sentall-subject' + (m.subject ? '' : ' is-untitled') + '">' +
-          esc(m.subject || tr('ml.cpUntitled')) + '</span>' +
-        '<span class="ml-sentall-meta">' + meta + '</span></button>';
+        '<span class="ml-sentall-subject' + (m.subject ? '' : ' is-untitled') + '">' + esc(subj) + '</span>' +
+        '<span class="ml-sentall-meta">' + meta + '</span></button>' +
+        '<button type="button" class="ml-sent-x" data-draft-remove="' + esc(m.id) + '" data-draft-subject="' + esc(subj) +
+          '" aria-label="' + esc(fill('ml.draftRemoveAsk', { subject: subj })) + '" title="' + esc(tr('ml.cpDelete')) + '">&times;</button></div>';
     }).join('');
   }
 
@@ -1217,7 +1220,18 @@
     if (!currentList()) return;
     showSub(state.sub === 'settings' ? 'people' : 'settings');
   });
-  $('mlDraftRows').addEventListener('click', function (e) {
+  $('mlDraftRows').addEventListener('click', async function (e) {
+    var rm = e.target.closest('[data-draft-remove]');
+    if (rm) {
+      var ok = await window.StaffConfirm({ title: fill('ml.draftRemoveAsk', { subject: rm.dataset.draftSubject }), body: tr('ml.cpDeleteBody'),
+        confirm: tr('ml.cpDeleteDo'), cancel: tr('ms.cancel'), danger: true });
+      if (!ok) return;
+      var d = await postJson({ action: 'mailing-delete', id: rm.dataset.draftRemove });
+      if (d.error) { toast(d.error, 'bad'); return; }
+      await load(true);
+      toast(tr('toast.deleted'), 'ok');
+      return;
+    }
     var row = e.target.closest('[data-open-draft]');
     if (!row) return;
     show('composer');

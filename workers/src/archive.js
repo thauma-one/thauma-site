@@ -118,7 +118,7 @@ export default {
       mode: m.embed_theme === "dark" ? "dark" : "light",
       /* As the inbox had it: the ministry's colors and the Thauma credit
          (lib/mail-brand.js). */
-      ...(brand ? { accent: brand.accent, accent2: brand.accent2, mode: brand.mode, credit: t(null, "brand.note") } : {}),
+      ...(brand ? { accent: brand.accent, accent2: brand.accent2, palette: brand.palette, mode: brand.mode, credit: t(null, "brand.note") } : {}),
       mode: color,
     });
     return new Response(html, { headers: HEADERS });

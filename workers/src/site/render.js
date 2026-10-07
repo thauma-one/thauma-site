@@ -91,6 +91,28 @@ function looks(lookName, theme, colors = {}, mode = "auto") {
   return { ...type, ...light, alt: dark };
 }
 
+/**
+ * THE SITE'S GROUNDS, FOR ITS EMAIL (2026-10-07, Chase: "In dark mode, the
+ * text body is using the wrong color background. It needs to change
+ * depending on the color scheme"). A newsletter's dark letter is the site's
+ * dark ground and panel, its light letter the site's light ones — Night,
+ * Paper and Bold as they are, Custom from the owner's background — as plain
+ * hexes, because a mail client cannot mix colors. A look with no dark (or no
+ * light) version gets Night (or a plain light one).
+ */
+export function mailPalette(design, theme) {
+  const d = design || {}, colors = d.colors || {};
+  const L = looks(d.look || "night", theme, colors, "auto");
+  /* a light letter's card is lighter than its ground, as paper on a desk;
+     a dark one's is the site's raised panel */
+  const one = (P) => ({ bg: P.bg, card: P.scheme === "dark" ? P.panel : mix(P.bg, "#FFFFFF", 0.75), ink: P.fg, dim: /^#/.test(P.dim) ? P.dim : mix(P.bg, P.fg, 0.62),
+    line: mix(P.panel, P.fg, P.scheme === "dark" ? 0.12 : 0.1) });
+  const night = baseLook("night", theme);
+  if (d.look === "custom") return { light: one(L), dark: one(L.alt || L) };
+  if (L.scheme === "light") return { light: one(L), dark: one(night) };
+  return { light: null, dark: one(L) };
+}
+
 function baseLook(look, theme) {
   const acc = theme.accent, acc2 = theme.accent2;
   if (look === "paper") {

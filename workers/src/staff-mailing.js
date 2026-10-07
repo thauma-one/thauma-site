@@ -305,7 +305,7 @@ async function loadAttachments(env, rows) {
    colors, and a line crediting Thauma. Spread AFTER any older theme, so the
    brand's colors win; null (Thauma's own lists) changes nothing. */
 function brandOpts(brand) {
-  return brand ? { accent: brand.accent, accent2: brand.accent2, mode: brand.mode, credit: mailWord(null, "brand.note") } : {};
+  return brand ? { accent: brand.accent, accent2: brand.accent2, palette: brand.palette, mode: brand.mode, credit: mailWord(null, "brand.note") } : {};
 }
 
 /** One message, addressed to one person. */

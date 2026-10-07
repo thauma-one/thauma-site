@@ -95,7 +95,7 @@ export function shell({ heading, rows, footer = "", origin, brand = null, kind =
     <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"
            style="width:100%;max-width:600px;">
 
-      ${brand ? band({ name: brand.name, kind, accent: brand.accent, accent2: brand.accent2 }) : `<tr><td bgcolor="#070A10" align="left"
+      ${brand ? band({ name: brand.name, kind, accent: brand.accent, accent2: brand.accent2, ground: "#10161F" }) : `<tr><td bgcolor="#070A10" align="left"
               style="background:#070A10;font-size:0;line-height:0;">
         <img src="${base}/img/email-band.png" width="600" alt="THAUMA"
              style="display:block;width:100%;max-width:600px;height:auto;border:0;

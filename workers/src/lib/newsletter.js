@@ -56,7 +56,7 @@
    kept and its tag discarded — rather than deleted, because silently losing a
    paragraph somebody wrote is worse than losing its styling. */
 import { TONES, isColor, HEX_COLOR } from "./tones.js";
-import { band } from "./mail-band.js";
+import { band, bandDarkCss } from "./mail-band.js";
 import { t } from "./mail-i18n.js";
 
 const KEEP = new Set([
@@ -452,12 +452,19 @@ export function render(body, opts = {}) {
      — Gmail does — shows the light letter, or darkens it its own way. */
   const auto = opts.mode === "auto";
   const dark = opts.mode === "dark";
-  const D = { bg: "#15151c", card: "#1c1c25", ink: "#f2f2f7", dim: "#9a9aad", line: "#2a2a36" };
-  const bg   = dark ? "#15151c" : "#f4f5f8";
-  const card = dark ? "#1c1c25" : "#ffffff";
-  const ink  = dark ? "#f2f2f7" : "#1a1a22";
-  const dim  = dark ? "#9a9aad" : "#5c5c6b";
-  const line = dark ? "#2a2a36" : "#e6e6ee";
+  /* THE SITE'S OWN GROUNDS (2026-10-07, Chase: "In dark mode, the text body
+     is using the wrong color background. It needs to change depending on the
+     color scheme"): a partner's palette comes from their published site
+     (render.js mailPalette, via lib/mail-brand.js); Thauma's own, and a
+     ministry with no site, get Thauma's night and a plain light letter. It
+     was a fixed gray-violet that belonged to nobody. */
+  const NIGHT = { bg: "#0A0D12", card: "#10161E", ink: "#EDF2F8", dim: "#9AA6B6", line: "#232B36" };
+  const DAY = { bg: "#f4f5f8", card: "#ffffff", ink: "#1a1a22", dim: "#5c5c6b", line: "#e6e6ee" };
+  const okPal = (p) => (p && ["bg", "card", "ink", "dim", "line"].every((k) => /^#[0-9a-fA-F]{6}$/.test(p[k] || "")) ? p : null);
+  const pal = opts.palette || {};
+  const D = okPal(pal.dark) || NIGHT, Lt = okPal(pal.light) || DAY;
+  const P = dark ? D : Lt;
+  const bg = P.bg, card = P.card, ink = P.ink, dim = P.dim, line = P.line;
 
   const mediaOrigin = String(opts.mediaOrigin || MEDIA_ORIGIN).replace(/\/+$/, "");
   /* Personal words first, so nothing below ever sees a variable: a send
@@ -553,6 +560,7 @@ export function render(body, opts = {}) {
   .tdim a { color: ${D.dim} !important; }
   .tline { border-color: ${D.line} !important; }
   .tbody hr { border-color: ${D.line} !important; background: ${D.line} !important; }
+  ${bandDarkCss({ accent, accent2, ground: D.card, ink: D.ink })}
 }` : "";
   const media = `<style>
 @media only screen and (max-width:620px) {
@@ -597,7 +605,7 @@ ${pre}
            (2026-10-07). */ band({
         name: opts.fromName || "",
         kind: opts.listName || t(opts.lang, "brand.newsletter"),
-        accent, accent2,
+        accent, accent2, ground: card, ink,
       })}
 
       <tr><td class="pad" style="padding:32px 36px 4px">
