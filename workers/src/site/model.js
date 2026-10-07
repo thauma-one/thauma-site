@@ -103,8 +103,8 @@ export const SECTIONS = {
   give:      { variants: ["band", "card", "split", "spotlight"], words: ["heading", "text", "button"] },
   /* Cards a person writes (chaseroush.com's Mission): Attached, joined by a
      line between their numbers, or Detached, side by side. */
-  cards:     { variants: ["vertical", "horizontal"], words: ["heading", "text"], items: "cards" },
-  links:     { variants: ["list", "cards"], words: ["heading", "text"], items: true, align: true },
+  cards:     { variants: ["vertical", "horizontal", "open"], words: ["heading", "text"], items: "cards" },
+  links:     { variants: ["list", "cards", "buttons"], words: ["heading", "text"], items: true, align: true },
 };
 /* EVERY SECTION LINES UP (BACKLOG §3, 2026-10-03: "Alignment for every
    section: left, right, center, indent. Buttons must follow their section's
@@ -568,6 +568,9 @@ function cleanSection(raw, langs) {
   s.tint = !!raw.tint || oldBg === "tint"; s.raised = (!!raw.raised || oldBg === "raised") && !s.tint;
   s.align = ALIGNS.includes(raw.align) ? raw.align : raw.align === "indent" ? "left" : defaultAlign(raw.type, s.variant);
   s.indent = raw.indent === true || raw.align === "indent";
+  /* bars beside the title, and joined to the section above (render.js) */
+  s.titleBars = raw.titleBars === true;
+  s.join = raw.join === true;
   if (spec.buttons) {
     s.buttons = (Array.isArray(raw.buttons) ? raw.buttons : []).filter((b) => ["give", "stay", "contact"].includes(b)).slice(0, 2);
   }
@@ -663,6 +666,9 @@ function cleanSection(raw, langs) {
          importance"). Standard, the section's own style, is the default. */
       words: cleanWords(it && it.words, ["title", "text", "type"], langs),
       tier: ["big", "small"].includes(it && it.tier) ? it.tier : "std",
+      /* a button's color, in the Buttons layout */
+      color: ["accent2", "outline"].includes(it && it.color) ? it.color
+        : /^#[0-9a-f]{6}$/i.test(String((it && it.color) || "")) ? it.color.toLowerCase() : "accent",
     })).filter((it) => it.url);
   }
   return s;

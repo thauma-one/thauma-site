@@ -999,5 +999,50 @@ check("every section has Plain, Raised and Tint — the opening, the header and 
   assert(!/\.kicker\{[^}]*uppercase/.test(html) && !/\.ph-label\{[^}]*uppercase/.test(html), "what a person types keeps its own capitals");
 });
 
+
+check("chaseroush.com's Give page: Open cards with lines between, joined to the band above, bars beside a title", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  const g = d.pages.find((p) => p.id === "give");
+  g.sections.splice(1, 0, { id: "cc1", type: "cards", variant: "open", lines: true, join: true, align: "center", words: { en: {} },
+    items: [{ words: { en: { title: "You Give", text: "with confidence" } } }, { words: { en: { title: "I Go", text: "with excellence" } } }] });
+  g.sections[2].titleBars = true;
+  d.pages.find((p) => p.id === "mission").sections[0].titleBars = true;
+  const doc = cleanDoc(d, ["en"]);
+  const c = doc.pages.find((p) => p.id === "give").sections[1];
+  eq([c.variant, c.join, doc.pages.find((p) => p.id === "give").sections[2].titleBars], ["open", true, true], "kept");
+  const html = page(d, "give", "en", { draft: true });
+  assert(/<section class="cards-open cards-lines band al-center" id="s-cc1" data-joined>/.test(html), "open, lined, and wearing the tinted band above it: " + (html.match(/<section[^>]*s-cc1[^>]*>/) || [""])[0]);
+  assert(/\nmain section\.cards-open \.ccards li\{background:none;border:0/.test(html), "open cards have no boxes (a rule of its own, not glued to another selector)");
+  assert(/main section\[data-joined\]\{padding-top:0;border-top-color:transparent\}/.test(html), "no gap and no line above a joined section");
+  assert(/class="[^"]*tbars[^"]*"[^>]*><div class="wrap"><h2 class="h m"><span class="tbw">/.test(page(d, "mission")), "the title held together between its bars");
+});
+
+check("Links: a Buttons layout, each button its own color; a lone link or card follows the line-up", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  const r = d.pages.find((p) => p.id === "resources"); r.on = true;
+  const L = r.sections[0]; L.variant = "buttons"; L.align = "center";
+  L.items[0].color = "accent2"; L.items[1].color = "#AA3355";
+  const html = page(d, "resources");
+  assert(/<a class="btn solid lb-accent2" href="\/site\/chaseroush\/en\/about\/">/.test(html), "the second color");
+  assert(/<a class="btn solid lb-own" href="\/site\/chaseroush\/en\/mission\/" style="background:#aa3355;border-color:#aa3355;color:#ffffff">/.test(html), "any color, with readable words");
+  assert(/\.al-center \.linklist a\{text-align:center\}/.test(html) && /\.al-center\.links-cards \.linklist:not\(\.lt-small,\.lt-big\)\{[^}]*justify-content:center\}/.test(html), "centering a lone link and a lone card");
+  L.items[0].color = "javascript:alert(1)";
+  eq(cleanDoc(d, ["en"]).pages.find((p) => p.id === "resources").sections[0].items[0].color, "accent", "nonsense is the accent");
+});
+
+check("an open sign-up or contact form's fields are the other color from the ground it sits on", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  const st = d.pages.find((p) => p.id === "stay"); st.sections[0].variant = "open";
+  const look = (html) => JSON.parse(html.match(/data-thauma-form[^>]*data-look="([^"]*)"/)[1].replace(/&quot;/g, '"'));
+  const plain = look(page(d, "stay"));
+  assert(plain.field === plain.panel && plain.field !== plain.bg, "on the page's ground, fields are the panel color");
+  st.sections[0].raised = true;
+  const raised = look(page(d, "stay"));
+  assert(raised.field === raised.bg, "on a raised ground, fields are the page color");
+  st.sections[0].raised = false; st.sections[0].variant = "card";
+  const card = look(page(d, "stay"));
+  assert(card.field === card.bg, "inside a card, unchanged: the page color");
+});
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

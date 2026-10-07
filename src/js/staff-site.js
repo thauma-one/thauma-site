@@ -55,8 +55,8 @@
     signup: { variants: ['band', 'card', 'split', 'open'], words: ['heading', 'text'], data: 'sharing/#signup' },
     contact: { variants: ['form', 'split', 'wide', 'open'], words: ['heading', 'text'], data: 'sharing/#contact', align: true },
     give: { variants: ['band', 'card', 'split', 'spotlight'], words: ['heading', 'text', 'button'] },
-    cards: { variants: ['vertical', 'horizontal'], words: ['heading', 'text'], items: 'cards' },
-    links: { variants: ['list', 'cards'], words: ['heading', 'text'], items: true, align: true },
+    cards: { variants: ['vertical', 'horizontal', 'open'], words: ['heading', 'text'], items: 'cards' },
+    links: { variants: ['list', 'cards', 'buttons'], words: ['heading', 'text'], items: true, align: true },
   };
   /* On a section of the ministry's data, "text" is the line under the heading;
      on a header it is the small print below the title. */
@@ -1091,8 +1091,13 @@
           '<label class="fld"><span>' + esc(tr('ws.itemTitle')) + '</span><input type="text" data-item="' + k + ':title" value="' + esc(t.title || '') + '" placeholder="' + esc(ph('item', 'title')) + '" lang="' + esc(state.langA) + '"></label>' +
           '<label class="fld"><span>' + esc(tr('ws.itemText')) + '</span><input type="text" data-item="' + k + ':text" value="' + esc(t.text || '') + '" placeholder="' + esc(ph('item', 'text')) + '" lang="' + esc(state.langA) + '"></label>' +
           '<label class="fld"><span>' + esc(tr('ws.itemType')) + '</span><input type="text" maxlength="40" data-item="' + k + ':type" value="' + esc(t.type || '') + '" lang="' + esc(state.langA) + '"></label>' +
-          '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.tier')) + '</span>' +
-            chips('tier:' + k, ['big', 'std', 'small'], it.tier || 'std', function (v) { return tr('ws.tier.' + v); }) + '</div>' +
+          (s.variant === 'buttons'
+            /* each button its own color (2026-10-07) */
+            ? '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.lcolor')) + '</span>' +
+              chips('lcolor:' + k, ['accent', 'accent2', 'outline'], /^#/.test(it.color || '') ? '' : it.color || 'accent', function (v) { return tr('ws.lcolor.' + v); }) +
+              '<label class="ws-anycolor' + (/^#/.test(it.color || '') ? ' is-on' : '') + '" title="' + esc(tr('ws.lcolor.any')) + '"><input type="color" data-item-color="' + k + '" value="' + esc(/^#/.test(it.color || '') ? it.color : '#3366cc') + '" aria-label="' + esc(tr('ws.lcolor.any')) + '"></label></div>'
+            : '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.tier')) + '</span>' +
+              chips('tier:' + k, ['big', 'std', 'small'], it.tier || 'std', function (v) { return tr('ws.tier.' + v); }) + '</div>') +
           '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.link.goesTo')) + '</span>' + linkPicker('item:' + k, it.url || 'https://', false) + '</div>' +
           '<div class="ws-sec-row">' + (it.photo ? '<img class="ws-thumb" src="' + esc(it.photo) + '" alt="">' : '') +
             '<label class="ghost-btn sm ws-file">' + esc(it.photo ? tr('ws.changePhoto') : tr('ws.choosePhoto')) + '<input type="file" accept="image/*" data-item-photo="' + k + '" hidden></label>' +
@@ -1159,7 +1164,8 @@
       }
       if (s.type === 'cards') {
         html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.cardLines')) + '</span>' +
-          chips('clines:' + i, ['attached', 'detached'], (typeof s.lines === 'boolean' ? s.lines : s.variant !== 'horizontal') ? 'attached' : 'detached', function (v) { return tr('ws.cardLines.' + v); }) + '</div>';
+          chips('clines:' + i, ['attached', 'detached'], s.variant === 'open' ? (s.lines ? 'detached' : 'attached')
+            : (typeof s.lines === 'boolean' ? s.lines : s.variant !== 'horizontal') ? 'attached' : 'detached', function (v) { return tr('ws.cardLines.' + v); }) + '</div>';
         html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.numbers')) + '</span>' +
           chips('numbers:' + i, ['on', 'off'], s.numbers === false ? 'off' : 'on', function (v) { return tr('ws.divider.' + v); }) + '</div>';
       }
@@ -1183,8 +1189,18 @@
          don't have the plain, raised, and tint options like the other
          sections. All sections need those same options"); the header's
          Accent stays beside them. */
+      /* Bars beside the title, chaseroush.com's Give page (2026-10-07) */
+      if (spec.words.indexOf('heading') !== -1) {
+        html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.titleBars')) + '</span>' +
+          chips('tbars:' + i, ['on', 'off'], s.titleBars ? 'on' : 'off', function (v) { return tr('ws.divider.' + v); }) + '</div>';
+      }
+      /* Joined to the section above: no gap, its ground (2026-10-07) */
+      if (i > 0) {
+        html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.join')) + '</span>' +
+          chips('join:' + i, ['on', 'off'], s.join ? 'on' : 'off', function (v) { return tr('ws.divider.' + v); }) + '</div>';
+      }
       var grounds = s.type === 'header' ? ['plain', 'raised', 'tint', 'accent'] : ['plain', 'raised', 'tint'];
-      html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.bg')) + '</span>' +
+      if (!s.join || i === 0) html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.bg')) + '</span>' +
         chips('raised:' + i, grounds, s.type === 'header' && s.bg === 'accent' ? 'accent' : s.tint ? 'tint' : s.raised ? 'raised' : 'plain', function (v) { return tr('ws.bg.' + v); }) + '</div>';
     }
 
@@ -2274,6 +2290,7 @@
       fillPair(); drawSettings(); return changed();
     }
     if (t.dataset.fallback !== undefined) { state.doc.fallback = t.value; return changed(); }
+    if (t.dataset.itemColor) { var ck = t.dataset.itemColor.split(':'); p.sections[+ck[0]].items[+ck[1]].color = t.value.toLowerCase(); drawSections(); return changed(); }
     if (t.dataset.newsList !== undefined) { p.sections[+t.dataset.newsList].list = t.value; drawSections(); return changed(); }
     /* Chosen, then straight into the editor: one step, not two (Chase,
        2026-10-04). Canceling keeps the photo as it came. */
@@ -2383,7 +2400,10 @@
       if (name.indexOf('variant:') === 0) { p.sections[+name.slice(8)].variant = val; drawSections(); }
       else if (name === 'tabstyle' || name === 'tabalign') { var sp = realPage(); if (sp.tabs) sp.tabs[name === 'tabstyle' ? 'style' : 'align'] = val; drawPages(); }
       else if (name.indexOf('newscount:') === 0) { p.sections[+name.slice(10)].count = +val; drawSections(); }
-      else if (name.indexOf('clines:') === 0) { p.sections[+name.slice(7)].lines = val === 'attached'; drawSections(); }
+      /* Open cards: Detached draws the upright lines between them, Attached
+         none (2026-10-07, Chase: "Maybe the attached is without lines and
+         detached is with vertical lines for that") */
+      else if (name.indexOf('clines:') === 0) { var cs = p.sections[+name.slice(7)]; cs.lines = cs.variant === 'open' ? val === 'detached' : val === 'attached'; drawSections(); }
       else if (name.indexOf('raised:') === 0) { var rs = p.sections[+name.slice(7)]; rs.raised = val === 'raised'; rs.tint = val === 'tint'; if (rs.type === 'header') rs.bg = val === 'accent' ? 'accent' : 'plain'; drawSections(); }
       else if (name.indexOf('divider:') === 0) { p.sections[+name.slice(8)].divider = val === 'on'; drawSections(); }
       else if (name === 'advpic') { var ap = advPage(); ap.seo = ap.seo || { title: {}, desc: {} }; ap.seo.image = val; drawAdvanced(); }
@@ -2395,11 +2415,14 @@
       else if (name.indexOf('pheight:') === 0) { p.sections[+name.slice(8)].height = val; drawSections(); }
       else if (name.indexOf('vtitle:') === 0) { p.sections[+name.slice(7)].titleFrom = val; drawSections(); }
       else if (name.indexOf('vlinks:') === 0) { p.sections[+name.slice(7)].linkStyle = val; drawSections(); }
+      else if (name.indexOf('lcolor:') === 0) { var lk = name.slice(7).split(':'); p.sections[+lk[0]].items[+lk[1]].color = val; drawSections(); }
       else if (name.indexOf('tier:') === 0) { var tk = name.slice(5).split(':'); p.sections[+tk[0]].items[+tk[1]].tier = val; drawSections(); }
       else if (name.indexOf('numbers:') === 0) { p.sections[+name.slice(8)].numbers = val === 'on'; drawSections(); }
       else if (name.indexOf('topline:') === 0) { p.sections[+name.slice(8)].topline = val === 'on'; drawSections(); }
       else if (name.indexOf('verse:') === 0) { p.sections[+name.slice(6)].verseStyle = val; drawSections(); }
       else if (name.indexOf('align:') === 0) { var as = p.sections[+name.slice(6)]; if (as.align === 'indent') as.indent = true; as.align = val; drawSections(); }
+      else if (name.indexOf('tbars:') === 0) { p.sections[+name.slice(6)].titleBars = val === 'on'; drawSections(); }
+      else if (name.indexOf('join:') === 0) { p.sections[+name.slice(5)].join = val === 'on'; drawSections(); }
       else if (name.indexOf('indent:') === 0) { var is = p.sections[+name.slice(7)]; if (is.align === 'indent') is.align = 'left'; is.indent = val === 'on'; drawSections(); }
       else if (name.indexOf('linkkind:') === 0) {
         var key = name.slice(9);
