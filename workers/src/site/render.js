@@ -283,7 +283,8 @@ main section + section{border-top:1px solid var(--line)}
 .ts-sm{font-size:.82em}.ts-lg{font-size:1.25em}.ts-xl{font-size:1.6em}
 .tc-accent{color:var(--ink)}.tc-accent2{color:var(--acc2)}.tc-dim{color:var(--dim)}
 ${Object.keys(TONES).map((k) => `.tc-${k}{color:var(--t-${k})}`).join("")}
-.kicker{font:600 12px var(--body);letter-spacing:.28em;text-transform:uppercase;color:var(--ink);margin:0 0 16px}
+/* NO FORCED CAPITALS on anything a person types (2026-10-07, Chase: "all editable text lines need to support lower case text. If they want it to be full capitalized or title case, it needs to be done manually"). Only built-in words (the scroll cue, a link's type) keep theirs. */
+.kicker{font:600 12px var(--body);letter-spacing:.28em;color:var(--ink);margin:0 0 16px}
 .lede{font-size:clamp(17px,1.6vw,20px);color:var(--dim);max-width:60ch;margin:0}
 .prose p{margin:0 0 1em;max-width:68ch}.prose p:last-child{margin-bottom:0}
 .btns{display:flex;gap:12px;flex-wrap:wrap;margin-top:30px}
@@ -308,12 +309,14 @@ ${L.heroFg ? `.hero-behind:not(.has-photo),.hero-words{color:${L.heroFg}}.hero-b
 /* the monogram opening — chaseroush.com's: initials behind the title, a short
    rule, a spaced line, a picture beside it, a cue to scroll */
 .hero-monogram{align-items:center;background:var(--herobg)}
+main section.hero.raised,main section.hero.raised .hero-media{background:var(--panel)}main section.hero.band,main section.hero.band .hero-media{background:var(--band)}
+main section.fullphoto.raised{background:var(--panel)}main section.fullphoto.band{background:var(--band)}
 .hero-monogram .wrap{display:grid;grid-template-columns:1.05fr .95fr;gap:48px;align-items:center;padding:120px 0 150px}
 .mono-words{position:relative}
 .mono-mark{position:absolute;left:-.06em;top:50%;transform:translateY(-58%);font:700 clamp(150px,19vw,280px)/1 var(--display);color:var(--fg);opacity:.05;pointer-events:none;user-select:none;letter-spacing:-.04em;white-space:nowrap}
 .hero-monogram .h{position:relative;font-size:clamp(44px,6vw,80px);line-height:1.08}
 .rule{display:block;width:90px;height:2px;background:var(--acc);margin:30px 0 26px}
-.spaced{font:400 13px/1.7 var(--body);letter-spacing:.2em;text-transform:uppercase;color:var(--dim);margin:0;max-width:60ch}
+.spaced{font:400 13px/1.7 var(--body);letter-spacing:.2em;color:var(--dim);margin:0;max-width:60ch}
 .mono-pic img{width:100%;max-height:460px;object-fit:contain}
 /* A slowly bouncing arrow, on every opening, until the visitor scrolls. */
 .scrollcue{position:absolute;left:50%;bottom:2rem;margin-left:-40px;width:80px;display:flex;flex-direction:column;align-items:center;gap:6px;
@@ -374,7 +377,7 @@ main section.raised + section{border-top-color:transparent}
 .fullphoto figcaption{font-size:13px;color:var(--dim);padding:10px 24px}
 .quote blockquote{margin:0;font:var(--thin) clamp(26px,3.4vw,44px)/1.25 var(--display);max-width:26ch}
 .quote-quiet blockquote{font-size:clamp(20px,2.2vw,28px);max-width:40ch}
-.quote cite{display:block;margin-top:18px;font:600 13px var(--body);letter-spacing:.2em;text-transform:uppercase;color:var(--ink);font-style:normal}
+.quote cite{display:block;margin-top:18px;font:600 13px var(--body);letter-spacing:.2em;color:var(--ink);font-style:normal}
 /* a verse inside Words or Photo and words, in three looks */
 .verse{margin:28px 0}
 /* The photo editor's crop window, corners, border and darkening. */
@@ -394,7 +397,7 @@ main section.raised + section{border-top-color:transparent}
 .th-right{text-align:right}.th-right .h{margin-left:auto;margin-right:0}.th-right .rule{margin:14px 0 26px auto}
 .wrap>.th,.wrap>.h+.rule{margin-bottom:8px}
 .verse blockquote{margin:0}
-.verse figcaption{margin-top:12px;font:600 12px var(--body);letter-spacing:.2em;text-transform:uppercase;color:var(--ink)}
+.verse figcaption{margin-top:12px;font:600 12px var(--body);letter-spacing:.2em;color:var(--ink)}
 .verse-quote blockquote{font:var(--thin) clamp(22px,2.6vw,32px)/1.3 var(--display);max-width:32ch}
 .verse-line{border-left:3px solid var(--acc);padding:4px 0 4px 22px}
 .verse-line blockquote{font-size:clamp(17px,1.5vw,19px);line-height:1.7;max-width:60ch}
@@ -413,8 +416,8 @@ main section.phead{position:relative;overflow:hidden;padding:clamp(56px,8vw,112p
 .phead.al-center .rule{margin-left:auto;margin-right:auto}.phead.al-right .rule{margin-left:auto}
 .phead.al-center :is(.ph-label,.ph-sub,.h){text-align:center;margin-left:auto;margin-right:auto}
 .phead.al-right :is(.ph-label,.ph-sub,.h){text-align:right;margin-left:auto}
-.ph-label{font:600 13px var(--body);letter-spacing:.18em;text-transform:uppercase;color:var(--ink);margin:0 0 14px}
-.ph-sub{font:400 14px/1.7 var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin:0;max-width:60ch}
+.ph-label{font:600 13px var(--body);letter-spacing:.18em;color:var(--ink);margin:0 0 14px}
+.ph-sub{font:400 14px/1.7 var(--body);letter-spacing:.08em;color:var(--dim);margin:0;max-width:60ch}
 .phead:not(:has(.rule)) .ph-sub{margin-top:18px}
 .ph-top::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:var(--acc)}
 .ph-mark{position:absolute;left:max(24px,calc((100% - 1120px) / 2));margin-left:-.055em;top:50%;transform:translateY(-46%);font:700 clamp(110px,17vw,250px)/1 var(--display);color:var(--fg);opacity:.05;white-space:nowrap;pointer-events:none;user-select:none;letter-spacing:-.03em;z-index:0}
@@ -437,7 +440,9 @@ main section.phead + section{border-top-color:transparent}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:40px}
 /* On a raised band (the card color) a card takes the page color instead, so
    it never melts into the band (Chase, 2026-10-01). */
-main section.raised .card{background:var(--bg)}
+/* CARDS ON A RAISED OR TINTED GROUND, ALL OF THEM (2026-10-07, Chase: "check every section carefully and make sure that won't happen anymore anywhere. Same for Tint"): on Plain a card is the panel color; on Raised or Tint — both a ground of their own — it is the page color, so it never melts into the band. One rule for every card the sections draw; a picture slot inside a link card swaps the other way. */
+main section:is(.raised,.band) :is(.card,.givepanel,.ccards li,.news a,.linklist a,.latest){background:var(--bg)}
+main section:is(.raised,.band) .lpic{background:var(--panel)}
 /* The sign-up card: as wide as a form wants, centered, not the whole column
    with the boxes pushed left (Chase, 2026-10-01: "extra wide with left
    alignment of the boxes"). */
@@ -473,7 +478,7 @@ main section.raised .card{background:var(--bg)}
 main section.ptabs-bar{padding:28px 0 0}
 .ptabs{display:flex;flex-wrap:wrap;gap:0}
 .ptabs-bar.al-center .ptabs{justify-content:center}
-.ptabs button{font:600 13px/1 var(--body);letter-spacing:.12em;text-transform:uppercase;padding:12px 30px;background:transparent;color:var(--dim);border:1px solid var(--line);cursor:pointer;transition:color .2s,border-color .2s,background .2s}
+.ptabs button{font:600 13px/1 var(--body);letter-spacing:.12em;padding:12px 30px;background:transparent;color:var(--dim);border:1px solid var(--line);cursor:pointer;transition:color .2s,border-color .2s,background .2s}
 .ptabs button:hover{color:var(--fg);border-color:var(--acc)}
 .ptabs button[aria-selected="true"]{background:var(--acc);border-color:var(--acc);color:var(--on-acc)}
 .ptabs-joined .ptabs button+button{border-left:0}
@@ -491,7 +496,7 @@ main section.ptabs-bar{padding:28px 0 0}
    that stops short of both. */
 .ccards{color:var(--fg)}
 .ccards li{position:relative;transition:transform .3s cubic-bezier(.16,1,.3,1),border-color .3s,box-shadow .3s}
-.raised .ccards li,.band .ccards li{background:var(--bg)}
+
 .ccards li:hover,.ccards li.is-near{transform:translateY(-5px);border-color:var(--acc);box-shadow:0 10px 30px color-mix(in srgb,var(--acc) 20%,transparent)}
 @media (prefers-reduced-motion:reduce){.ccards li{transition:none}.ccards li:hover,.ccards li.is-near{transform:none}}
 .cards-vertical .ccards{max-width:800px;display:flex;flex-direction:column;gap:16px}
@@ -593,7 +598,7 @@ main section.is-editing{outline:2px solid var(--acc);outline-offset:-2px}
 /* No color here: the tagline's own choice (Standard / Subtle / Accent) sets
    it. This rule's var(--dim), equal in weight and later, made Standard look
    exactly like Subtle on Center (Chase, 2026-10-03). */
-.foot-center .tagline{font:600 13px var(--body);letter-spacing:.2em;text-transform:uppercase}
+.foot-center .tagline{font:600 13px var(--body);letter-spacing:.2em;}
 .foot-center .small{margin:0 auto}
 /* Columns: only the columns that have something, spread across; the pages
    as a two-column grid rather than a long list; then a bar under a rule for
@@ -787,6 +792,10 @@ function renderSection(sec, ctx) {
   /* Where a photo is wanted and none is chosen yet, a preview shows the
      place for it, so the owner sees the page as it will be. Visitors never do. */
   const wanted = () => ctx.draft ? `<span class="wanted">${esc(word(lang, "photoWanted"))}</span>` : "";
+  /* Plain, Raised or Tint, for the sections that write their own class list
+     (the opening, the header, a full-width photo): every section has the
+     three now (2026-10-07, Chase: "All sections need those same options"). */
+  const ground = (sec.raised ? " raised" : "") + (sec.tint ? " band" : "");
   const cls = (...c) => {
     const k = [...c, sec.raised ? "raised" : "", sec.tint ? "band" : "", sec.align ? "al-" + sec.align : ""].filter(Boolean).join(" ");
     return k ? ` class="${k}"` : "";
@@ -826,7 +835,7 @@ function renderSection(sec, ctx) {
       if (sec.variant === "monogram") {
         const initials = initialsOf(ctx.name);
         const h = heading(w("heading"), "h1");
-        return `<section class="hero hero-monogram al-${sec.align || "left"}"><div class="wrap"><div class="mono-words"><span class="mono-mark" aria-hidden="true">${esc(initials)}</span>` +
+        return `<section class="hero hero-monogram al-${sec.align || "left"}${ground}"><div class="wrap"><div class="mono-words"><span class="mono-mark" aria-hidden="true">${esc(initials)}</span>` +
           `${w("kicker") ? `<p class="kicker m">${esc(w("kicker"))}</p>` : ""}${h}${line}` +
           `${w("text") ? `<p class="spaced m">${inline(w("text"))}</p>` : ""}${btns ? `<div class="btns m">${btns}</div>` : ""}</div>` +
           `${sec.photo ? `<div class="mono-pic m">${edited(sec.photo, sec.photoEdit)}</div>` : ctx.draft ? `<div class="pic m">${wanted()}</div>` : ""}</div>` +
@@ -835,10 +844,10 @@ function renderSection(sec, ctx) {
       const words = `${w("kicker") ? `<p class="kicker m">${esc(w("kicker"))}</p>` : ""}${heading(w("heading"), "h1")}${line}` +
         `${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}${btns ? `<div class="btns m">${btns}</div>` : ""}`;
       if (sec.variant === "beside") {
-        return `<section class="hero hero-beside al-${sec.align || "left"}"><div class="wrap"><div>${words}</div>${sec.photo ? `<div class="pic m ${photoMotion === "zoom" ? "kb" : ""}">${edited(sec.photo, sec.photoEdit)}</div>` : ctx.draft ? `<div class="pic m">${wanted()}</div>` : ""}</div>${cue}</section>`;
+        return `<section class="hero hero-beside al-${sec.align || "left"}${ground}"><div class="wrap"><div>${words}</div>${sec.photo ? `<div class="pic m ${photoMotion === "zoom" ? "kb" : ""}">${edited(sec.photo, sec.photoEdit)}</div>` : ctx.draft ? `<div class="pic m">${wanted()}</div>` : ""}</div>${cue}</section>`;
       }
-      if (sec.variant === "words") return `<section class="hero hero-words al-${sec.align || "center"}"><div class="wrap">${words}</div>${cue}</section>`;
-      return `<section class="hero hero-behind al-${sec.align || "left"}${sec.photo ? " has-photo" : ""}"><div class="hero-media ${photoMotion === "zoom" ? "kb" : ""}"${photoMotion === "drift" ? " data-drift" : ""}>${edited(sec.photo, sec.photoEdit)}</div><div class="wrap">${words}</div>${cue}</section>`;
+      if (sec.variant === "words") return `<section class="hero hero-words al-${sec.align || "center"}${ground}"><div class="wrap">${words}</div>${cue}</section>`;
+      return `<section class="hero hero-behind al-${sec.align || "left"}${ground}${sec.photo ? " has-photo" : ""}"><div class="hero-media ${photoMotion === "zoom" ? "kb" : ""}"${photoMotion === "drift" ? " data-drift" : ""}>${edited(sec.photo, sec.photoEdit)}</div><div class="wrap">${words}</div>${cue}</section>`;
     }
     case "header": {
       /* A page's title area, chaseroush.com's page header made adjustable:
@@ -848,8 +857,12 @@ function renderSection(sec, ctx) {
       if (!w("heading") && !w("label") && !ctx.draft) return "";
       const mark = sec.variant === "watermark"
         ? `<span class="ph-mark" aria-hidden="true">${esc(raw("mark") || ctx.label(ctx.pageId) || "")}</span>` : "";
-      const k = ["phead", "phead-" + sec.variant, "ph-" + (sec.bg || "plain"), sec.topline !== false ? "ph-top" : "",
-        sec.bg === "raised" ? "raised" : "", "al-" + (sec.align || "left")].filter(Boolean).join(" ");
+      /* Its ground is the same Plain / Raised / Tint as every section's, plus
+         the header's own Accent (bg); a header saved with bg raised or tint
+         reads as that (model.js). */
+      const hb = sec.bg === "accent" ? "accent" : sec.tint ? "tint" : sec.raised ? "raised" : "plain";
+      const k = ["phead", "phead-" + sec.variant, "ph-" + hb, sec.topline !== false ? "ph-top" : "",
+        hb === "raised" ? "raised" : "", hb === "tint" ? "band" : "", "al-" + (sec.align || "left")].filter(Boolean).join(" ");
       return `<section class="${k}">${mark}<div class="wrap">` +
         `${w("label") ? `<p class="ph-label m">${esc(w("label"))}</p>` : ""}${heading(w("heading"), "h1")}` +
         `${sec.divider !== false ? `<span class="rule m" aria-hidden="true"></span>` : ""}` +
@@ -875,9 +888,9 @@ function renderSection(sec, ctx) {
     }
     case "photo":
       if (!sec.photo) {
-        return ctx.draft ? `<section class="fullphoto al-${sec.align || "left"}"><div class="frame">${wanted()}</div>${w("caption") ? `<p class="wrap caption">${esc(w("caption"))}</p>` : ""}</section>` : "";
+        return ctx.draft ? `<section class="fullphoto al-${sec.align || "left"}${ground}"><div class="frame">${wanted()}</div>${w("caption") ? `<p class="wrap caption">${esc(w("caption"))}</p>` : ""}</section>` : "";
       }
-      return `<section class="fullphoto h-${esc(sec.height || "medium")} al-${sec.align || "left"}" style="--fy:${Number.isFinite(sec.focusY) ? sec.focusY : 50}%"><figure style="margin:0"><div class="frame ${sec.variant === "zoom" ? "kb" : ""}"${sec.variant === "drift" && sec.height !== "whole" && !(sec.photoEdit && sec.photoEdit.w) ? " data-drift" : ""}>${pictured(edited(sec.photo, sec.photoEdit, w("caption")), w("caption") || word(lang, "more"))}</div>${w("caption") ? `<figcaption class="wrap">${esc(w("caption"))}</figcaption>` : ""}</figure></section>`;
+      return `<section class="fullphoto h-${esc(sec.height || "medium")} al-${sec.align || "left"}${ground}" style="--fy:${Number.isFinite(sec.focusY) ? sec.focusY : 50}%"><figure style="margin:0"><div class="frame ${sec.variant === "zoom" ? "kb" : ""}"${sec.variant === "drift" && sec.height !== "whole" && !(sec.photoEdit && sec.photoEdit.w) ? " data-drift" : ""}>${pictured(edited(sec.photo, sec.photoEdit, w("caption")), w("caption") || word(lang, "more"))}</div>${w("caption") ? `<figcaption class="wrap">${esc(w("caption"))}</figcaption>` : ""}</figure></section>`;
     case "quote":
       if (!w("quote")) return "";
       return `<section${cls("quote", "quote-" + sec.variant)}><div class="wrap m"><blockquote>“${w("quote")}”</blockquote>${w("who") ? `<cite>${esc(w("who"))}</cite>` : ""}</div></section>`;

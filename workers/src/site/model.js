@@ -123,8 +123,6 @@ export function defaultAlign(type, variant) {
       (type === "hero" && variant === "words")) return "center";
   return "left";
 }
-/* The header has its own Background choice (bg), which includes raised. */
-const NOT_RAISED = new Set(["hero", "photo", "header"]);
 
 /* PLACEHOLDERS (Chase, 2026-10-03: "Placeholder words in every language
    whenever a section is added … It helps those who may not know how to
@@ -561,7 +559,10 @@ function cleanSection(raw, langs) {
   /* PLAIN, RAISED OR TINT (2026-10-06, Chase: "I actually really like that
      accent tinted look. We should add that as a 3rd option next to Plain
      and Raised"): one ground at a time */
-  if (!NOT_RAISED.has(raw.type)) { s.tint = !!raw.tint; s.raised = !!raw.raised && !s.tint; }
+  /* Every section, the opening, the header and a full-width photo too
+     (2026-10-07). A header saved before kept its ground in bg. */
+  const oldBg = raw.type === "header" && raw.tint === undefined && raw.raised === undefined ? raw.bg : null;
+  s.tint = !!raw.tint || oldBg === "tint"; s.raised = (!!raw.raised || oldBg === "raised") && !s.tint;
   s.align = ALIGNS.includes(raw.align) ? raw.align : defaultAlign(raw.type, s.variant);
   if (spec.buttons) {
     s.buttons = (Array.isArray(raw.buttons) ? raw.buttons : []).filter((b) => ["give", "stay", "contact"].includes(b)).slice(0, 2);
@@ -581,7 +582,8 @@ function cleanSection(raw, langs) {
   /* The header (render.js): its background, the line along its top and the
      line under its title. Absent means the default look. */
   if (raw.type === "header") {
-    s.bg = ["plain", "raised", "tint", "accent"].includes(raw.bg) ? raw.bg : "plain";
+    s.bg = raw.bg === "accent" ? "accent" : "plain";
+    if (s.bg === "accent") { s.raised = false; s.tint = false; }
     s.topline = raw.topline !== false;
     s.divider = raw.divider !== false;
   }

@@ -980,5 +980,20 @@ check("any text size like Word: 4–200px kept and drawn; the first version's mu
   assert(html.includes('<span class="ts-lg" style="color:#ff00aa">both</span>'), "a preset with a picked color");
 });
 
+
+check("every section has Plain, Raised and Tint — the opening, the header and a full-width photo too", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  const home = d.pages.find((p) => p.id === "home");
+  home.sections[0].raised = true;
+  home.sections.push({ id: "h1", type: "header", variant: "plain", bg: "tint", words: { en: { heading: "Hi", label: "small words" } } });
+  home.sections.push({ id: "p1", type: "photo", variant: "still", tint: true, photo: "/media/site/x.webp", words: { en: {} } });
+  const html = page(d);
+  assert(/<section class="hero hero-behind al-left raised/.test(html), "the opening, raised");
+  assert(/class="phead[^"]*ph-tint[^"]*band/.test(html), "a header saved with bg tint reads as Tint");
+  assert(/<section class="fullphoto[^"]* band"/.test(html), "a full-width photo, tinted");
+  assert(/main section:is\(\.raised,\.band\) :is\(\.card,\.givepanel,\.ccards li,\.news a,\.linklist a,\.latest\)\{background:var\(--bg\)\}/.test(html), "every card swaps on Raised and Tint");
+  assert(!/\.kicker\{[^}]*uppercase/.test(html) && !/\.ph-label\{[^}]*uppercase/.test(html), "what a person types keeps its own capitals");
+});
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

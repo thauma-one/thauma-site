@@ -302,13 +302,13 @@ await check("a header can be added; its Look has background, top line and title 
   click(d.querySelector('[data-add-type="header"]'));
   assert(d.querySelector('[data-rt="0:heading"]'), "the new header is not open");
   click(d.querySelector('[data-sectab="look"]'));
-  eq([...d.querySelectorAll('[data-chip="hbg:0"]')].map((b) => b.dataset.value), ["plain", "raised", "tint", "accent"], "backgrounds");
-  assert(!d.querySelector('[data-chip="raised:0"]'), "no second background control");
-  click(d.querySelector('[data-chip="hbg:0"][data-value="tint"]'));
+  eq([...d.querySelectorAll('[data-chip="raised:0"]')].map((b) => b.dataset.value), ["plain", "raised", "tint", "accent"], "every section's backgrounds, and the header's Accent");
+  assert(!d.querySelector('[data-chip^="hbg:"]'), "no second background control");
+  click(d.querySelector('[data-chip="raised:0"][data-value="tint"]'));
   click(d.querySelector('[data-chip="topline:0"][data-value="off"]'));
   await settle(900);
   const s = sent.filter((x) => x.action === "save").pop().draft.pages.filter((p) => p.id === "mission")[0].sections;
-  eq([s[0].type, s[0].bg, s[0].topline], ["header", "tint", false], "saved");
+  eq([s[0].type, s[0].tint, s[0].bg, s[0].topline], ["header", true, "plain", false], "saved");
 
   click(d.querySelector('[data-edit-sec="1"]'));            // the Words section, now second
   click(d.querySelector('[data-sectab="look"]'));

@@ -58,8 +58,6 @@
     cards: { variants: ['vertical', 'horizontal'], words: ['heading', 'text'], items: 'cards' },
     links: { variants: ['list', 'cards'], words: ['heading', 'text'], items: true, align: true },
   };
-  /* Everything but the opening and a full-width photo can sit on a raised band. */
-  var FLAT = { hero: 1, photo: 1, header: 1 };
   /* On a section of the ministry's data, "text" is the line under the heading;
      on a header it is the small print below the title. */
   function fieldName(type, f) {
@@ -1144,9 +1142,7 @@
       }
       /* The header's own looks (render.js .phead). */
       if (s.type === 'header') {
-        html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.bg')) + '</span>' +
-          chips('hbg:' + i, ['plain', 'raised', 'tint', 'accent'], s.bg || 'plain', function (v) { return tr('ws.bg.' + v); }) + '</div>' +
-          '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.topline')) + '</span>' +
+        html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.topline')) + '</span>' +
           chips('topline:' + i, ['on', 'off'], s.topline === false ? 'off' : 'on', function (v) { return tr('ws.divider.' + v); }) + '</div>' +
           '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.divider')) + '</span>' +
           chips('divider:' + i, ['on', 'off'], s.divider === false ? 'off' : 'on', function (v) { return tr('ws.divider.' + v); }) + '</div>';
@@ -1180,10 +1176,13 @@
             chips('tinline:' + i, ['with', 'above'], withW ? 'with' : 'above', function (v) { return tr('ws.titlePlace.' + v); }) + '</div>';
         }
       }
-      if (!FLAT[s.type]) {
-        html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.bg')) + '</span>' +
-          chips('raised:' + i, ['plain', 'raised', 'tint'], s.tint ? 'tint' : s.raised ? 'raised' : 'plain', function (v) { return tr('ws.bg.' + v); }) + '</div>';
-      }
+      /* Plain, Raised or Tint for EVERY section (2026-10-07, Chase: "Headers
+         don't have the plain, raised, and tint options like the other
+         sections. All sections need those same options"); the header's
+         Accent stays beside them. */
+      var grounds = s.type === 'header' ? ['plain', 'raised', 'tint', 'accent'] : ['plain', 'raised', 'tint'];
+      html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.bg')) + '</span>' +
+        chips('raised:' + i, grounds, s.type === 'header' && s.bg === 'accent' ? 'accent' : s.tint ? 'tint' : s.raised ? 'raised' : 'plain', function (v) { return tr('ws.bg.' + v); }) + '</div>';
     }
 
     html += '</div><div class="ws-panelfoot">' +
@@ -1207,7 +1206,7 @@
       var b = state.langB, r = b && refWords && refWords[b];
       return '<div class="fld ws-rfld">' + label +
         (r ? '<small class="ms-ref" lang="' + esc(b) + '">' + inlineHtml(r) + '</small>' : '') +
-        '<div class="rt rt-' + f + '" contenteditable="true" role="textbox" aria-multiline="' + (f !== 'heading') + '" data-rt="' + i + ':' + f + '"' +
+        '<div class="rt rt-' + f + (hint && !plain(value || '').trim() ? ' is-empty' : '') + '" contenteditable="true" role="textbox" aria-multiline="' + (f !== 'heading') + '" data-rt="' + i + ':' + f + '"' +
         (hint ? ' data-ph="' + esc(hint) + '" aria-placeholder="' + esc(hint) + '"' : '') + ' lang="' + esc(state.langA) + '">' +
         inlineHtml(value, true) + '</div></div>';
     }
@@ -1217,6 +1216,12 @@
   }
   /* Stored formatted words back into a box: only the marks it may hold, links
      kept only inside the box being edited. */
+  /* A formatted box is empty when it holds no words, whatever markup the
+     browser left behind; only then does its suggestion show (staff.css). */
+  document.addEventListener('input', function (e) {
+    var rt = e.target && e.target.closest && e.target.closest('.rt[data-ph]');
+    if (rt) rt.classList.toggle('is-empty', !rt.textContent.trim());
+  });
   function inlineHtml(v, withLinks) {
     var out = String(v || '').replace(/<(?!\/?(b|i|u)>)(?!a href="[^"]*">)(?!\/a>)(?!span( data-(sz|c)="[^"]*")+>)(?!\/span>)[^>]*>/g, '');
     if (!withLinks) out = out.replace(/<\/?a[^>]*>/g, '');
@@ -2376,7 +2381,7 @@
       else if (name === 'tabstyle' || name === 'tabalign') { var sp = realPage(); if (sp.tabs) sp.tabs[name === 'tabstyle' ? 'style' : 'align'] = val; drawPages(); }
       else if (name.indexOf('newscount:') === 0) { p.sections[+name.slice(10)].count = +val; drawSections(); }
       else if (name.indexOf('clines:') === 0) { p.sections[+name.slice(7)].lines = val === 'attached'; drawSections(); }
-      else if (name.indexOf('raised:') === 0) { var rs = p.sections[+name.slice(7)]; rs.raised = val === 'raised'; rs.tint = val === 'tint'; drawSections(); }
+      else if (name.indexOf('raised:') === 0) { var rs = p.sections[+name.slice(7)]; rs.raised = val === 'raised'; rs.tint = val === 'tint'; if (rs.type === 'header') rs.bg = val === 'accent' ? 'accent' : 'plain'; drawSections(); }
       else if (name.indexOf('divider:') === 0) { p.sections[+name.slice(8)].divider = val === 'on'; drawSections(); }
       else if (name === 'advpic') { var ap = advPage(); ap.seo = ap.seo || { title: {}, desc: {} }; ap.seo.image = val; drawAdvanced(); }
       else if (name.indexOf('vpos:') === 0) { p.sections[+name.slice(5)].versePos = val; drawSections(); }
@@ -2390,7 +2395,6 @@
       else if (name.indexOf('tier:') === 0) { var tk = name.slice(5).split(':'); p.sections[+tk[0]].items[+tk[1]].tier = val; drawSections(); }
       else if (name.indexOf('numbers:') === 0) { p.sections[+name.slice(8)].numbers = val === 'on'; drawSections(); }
       else if (name.indexOf('topline:') === 0) { p.sections[+name.slice(8)].topline = val === 'on'; drawSections(); }
-      else if (name.indexOf('hbg:') === 0) { p.sections[+name.slice(4)].bg = val; drawSections(); }
       else if (name.indexOf('verse:') === 0) { p.sections[+name.slice(6)].verseStyle = val; drawSections(); }
       else if (name.indexOf('align:') === 0) { p.sections[+name.slice(6)].align = val; drawSections(); }
       else if (name.indexOf('linkkind:') === 0) {
