@@ -282,7 +282,7 @@ check("light, dark, or the reader's own", () => {
   assert(/name="color-scheme" content="light dark"/.test(auto), "and says it supports both");
   const light = render(BODY, { ...OPTS, mode: "light" });
   assert(!/prefers-color-scheme/.test(light) && /content="light"/.test(light), "light stays light");
-  assert(/#1c1c25/.test(render(BODY, { ...OPTS, mode: "dark" })), "dark is drawn dark");
+  assert(/#10161E/.test(render(BODY, { ...OPTS, mode: "dark" })), "dark is drawn dark");
 });
 
 check("any text size from 10 to 60px, and a picture's width as a share of the column", () => {
@@ -334,8 +334,8 @@ check("the subject is escaped everywhere it appears", () => {
 check("dark mode states every color", () => {
   // A client that inverts a half-stated palette produces something unreadable.
   const html = render(BODY, { ...OPTS, mode: "dark" });
-  assert(/#15151c/.test(html), "no dark background");
-  assert(/#f2f2f7/.test(html), "no light ink to go with it");
+  assert(/#0A0D12/.test(html), "no dark background");
+  assert(/#EDF2F8/.test(html), "no light ink to go with it");
 });
 
 /* -------------------------------- text --------------------------------- */
