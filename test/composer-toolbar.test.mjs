@@ -359,6 +359,45 @@ await check("a name chip saves as a variable the sanitiser keeps", async () => {
   assert(/data-var="first_name"/.test(editor.getHTML()), "a saved draft did not reopen with it");
 });
 
+await check("{{first_name}} typed becomes the variable, shown as the token", async () => {
+  const { editor } = ctx;
+  editor.chain().focus().clearContent().insertContent("Hi ").run();
+  const v = editor.view;
+  for (const ch of "{{full_name}}") {
+    const f = v.state.selection.from;
+    if (!v.someProp("handleTextInput", (h) => h(v, f, f, ch))) v.dispatch(v.state.tr.insertText(ch));
+  }
+  const html = editor.getHTML();
+  assert(/^<p>Hi <span data-var="name"[^>]*>\{\{full_name\}\}<\/span><\/p>$/.test(html), `not one variable: ${html}`);
+});
+
+await check("a token already in saved words opens as the variable, never inside a link's address", async () => {
+  const { tokensToVariables } = await import("../src/editor/editor.js");
+  const { editor } = ctx;
+  const html = tokensToVariables('<p>Hi {{first_name}}, <a href="https://x/?q={{first_name}}">{{ full_name }}</a></p>');
+  assert(/href="https:\/\/x\/\?q=\{\{first_name\}\}"/.test(html), "the address was changed: " + html);
+  editor.commands.setContent(html);
+  const out = editor.getHTML();
+  assert(/Hi <span data-var="first_name"/.test(out) && /<span data-var="name"/.test(out), "not variables: " + out);
+});
+
+await check("a picture beside the words: left or right, under half the column, kept on save", async () => {
+  const { sanitise } = await import("../workers/src/lib/newsletter.js");
+  const { editor, D, w } = ctx;
+  editor.commands.setContent('<p>a</p><img src="/media/newsletter/p/a.jpg"><p>words</p>');
+  let pos = null;
+  editor.state.doc.descendants((n, p) => { if (n.type.name === "image" && pos === null) pos = p; });
+  editor.commands.setNodeSelection(pos);
+  const bar = D.querySelector(".cp-img .cp-img-bar");
+  assert(bar, "no bar on the picture");
+  bar.querySelector('[data-pic="left"]').dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+  const html = editor.getHTML();
+  assert(/data-w="40"/.test(html) && /data-al="left"/.test(html), "not beside the words: " + html);
+  assert(/data-al="left"/.test(sanitise(html)), "lost on save");
+  bar.querySelector('[data-pic="full"]').dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+  assert(!/data-al|data-w/.test(editor.getHTML()), "full width did not undo it: " + editor.getHTML());
+});
+
 await check("what the editor emits is what the sanitiser keeps", async () => {
   /* If the two ever disagreed, formatting would vanish on save with no
      explanation — which is the single most demoralising bug an editor can

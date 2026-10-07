@@ -460,5 +460,21 @@ check("an edited picture keeps its original, but only one of our own uploads", (
   assert(!no.includes("data-orig"), "an outside address was kept: " + no);
 });
 
+check("a picture beside the words: floated, aligned for Outlook, never wider than 60%", () => {
+  const kept = sanitise('<img src="https://x/a.jpg" data-al="left" data-w="30"><img src="https://x/b.jpg" data-al="middle">');
+  assert(/data-al="left"/.test(kept) && !/data-al="middle"/.test(kept), "only left or right survive: " + kept);
+  const html = render('<img src="https://x/a.jpg" data-al="right" data-w="90"><p>Words</p>', { subject: "S" });
+  const img = html.match(/<img[^>]*>/)[0];
+  assert(/align="right"/.test(img) && /float:right;width:60%/.test(img), "right, capped at 60%: " + img);
+  const def = render('<img src="https://x/a.jpg" data-al="left"><p>Words</p>', { subject: "S" }).match(/<img[^>]*>/)[0];
+  assert(/float:left;width:40%/.test(def), "beside the words with no width: 40%: " + def);
+});
+
+check("variables typed as {{first_name}} and {{full_name}} are filled like the editor's", () => {
+  eq(NL.fillVariables("<p>Hi {{first_name}}, from {{ full_name }}</p>", "Ana Marić"), "<p>Hi Ana, from Ana Marić</p>", "with a name");
+  eq(NL.fillVariables("<p>Hi {{first_name}}, welcome</p>", null), "<p>Hi, welcome</p>", "no name: gone, with its space");
+  eq(NL.fillVariables('<p>Hi <span data-var="first_name">{{first_name}}</span>!</p>', "Ana"), "<p>Hi Ana!</p>", "the editor's own");
+});
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

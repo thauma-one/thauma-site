@@ -412,19 +412,13 @@
           <button type="button" class="ghost-btn" id="cpLinkApply" data-i18n="ml.cpLinkApply">Link</button>
           <button type="button" class="ghost-btn" id="cpLinkRemove" data-i18n="ml.cpLinkRemove" hidden>Remove link</button>
         </div>
-        {#- A picture's width, shown while a picture is selected (2026-10-05). -#}
-        <div class="cp-row" id="cpImgRow" hidden role="group" data-i18n-attr="aria-label:ml.cpImgSize" aria-label="Picture size">
-          <span class="cp-legend-label" data-i18n="ml.cpImgSize">Picture size</span>
-          <input type="range" id="cpImgW" min="10" max="100" step="1" value="100" data-i18n-attr="aria-label:ml.cpImgSize" aria-label="Picture size">
-          <span class="cp-img-val" id="cpImgWVal">100%</span>
-          <button type="button" id="cpImgFull" data-i18n="ml.cpImgFull">Full width</button>
-        </div>
-        {#- THE VARIABLES, as a legend that is always there (2026-10-05, Chase:
-           "The composer needs a legend for the variables"). -#}
+        {#- THE VARIABLES, always there (2026-10-05), shown as what they are
+           (2026-10-07, after chaseroush.com's composer): the token, which
+           can also be typed, and what it becomes. -#}
         <div class="cp-row cp-legend" id="cpVarRow">
-          <span class="cp-legend-label" data-i18n="ml.cpVarLegend">Personal touches</span>
-          <button type="button" class="ghost-btn" data-var="first_name" data-i18n="ml.cpVarFirst">First name</button>
-          <button type="button" class="ghost-btn" data-var="name" data-i18n="ml.cpVarFull">Full name</button>
+          <span class="cp-legend-label" data-i18n="ml.cpVarLegend">Variables</span>
+          <button type="button" class="cp-varchip" data-var="first_name"><code>{% raw %}{{first_name}}{% endraw %}</code><span data-i18n="ml.cpVarFirst">First name</span></button>
+          <button type="button" class="cp-varchip" data-var="name"><code>{% raw %}{{full_name}}{% endraw %}</code><span data-i18n="ml.cpVarFull">Full name</span></button>
         </div>
 
         <div id="cpBody" class="cp-body"></div>

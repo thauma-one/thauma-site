@@ -128,7 +128,7 @@ const DROP_WHOLE = new Set(["script", "style", "head", "title", "meta", "link", 
 /* What each surviving tag may carry. Anything not listed is dropped — that
    includes every style, class and id, which is what keeps a paste from
    bringing another website's appearance along. */
-const ATTRS = { a: ["href"], img: ["src", "alt", "data-orig", "data-w"],
+const ATTRS = { a: ["href"], img: ["src", "alt", "data-orig", "data-w", "data-al"],
                 span: ["data-sz", "data-c", "data-var"] };
 
 export function escapeHtml(s) {
@@ -237,6 +237,7 @@ export function sanitise(html) {
       let value = unescapeHtml(m[1]);
       if (key === "data-sz" && !sizeOf_(value)) continue;
       if (key === "data-w" && !picWidth(value)) continue;
+      if (key === "data-al" && value !== "left" && value !== "right") continue;
       if (key === "data-c") {
         if (!isColor(value)) continue;
         if (HEX.test(value)) value = value.toLowerCase();
@@ -364,7 +365,16 @@ function inlineStyles(html, accent, ink, dim, line, dark = false, accent2 = acce
     /* a picture made smaller is centered at a fixed width (width= for
        Outlook, which ignores percentages), never wider than the column */
     if (name === "img") {
-      const w = /data-w="([^"]*)"/.exec(rest), pct = w && picWidth(w[1]);
+      const w = /data-w="([^"]*)"/.exec(rest), al = /data-al="(left|right)"/.exec(rest);
+      /* BESIDE THE WORDS (2026-10-07): floated, with align= for Outlook,
+         which ignores float; never full width, which would not be beside
+         anything. */
+      if (al) {
+        const p = Math.min(picWidth(w && w[1]) || 40, 60), side = al[1];
+        const gap = side === "left" ? "0 18px 12px 0" : "0 0 12px 18px";
+        return `<${tag}${rest} align="${side}" width="${Math.round(528 * p / 100)}" style="float:${side};width:${p}%;max-width:${p}%;height:auto;border:0;margin:${gap}">`;
+      }
+      const pct = w && picWidth(w[1]);
       if (pct) {
         /* a share of the column; width= is Outlook's, at the 600px it draws */
         return `<${tag}${rest} width="${Math.round(528 * pct / 100)}" style="width:${pct}%;max-width:100%;height:auto;display:block;border:0;margin:0 auto 16px">`;
@@ -389,10 +399,13 @@ const unescapeHtml = (v) => String(v)
  */
 export function fillVariables(html, name) {
   const full = String(name || "").replace(/\s+/g, " ").trim();
+  const word = (v) => (!full ? "\u0000" : escapeHtml(v === "first_name" ? full.split(" ")[0] : full));
   return String(html || "").replace(
-    /<span\b([^>]*\bdata-var="([a-z_]+)"[^>]*)>[\s\S]*?<\/span>/g,
-    (m, attrs, v) => (!full ? "\u0000"
-      : escapeHtml(v === "first_name" ? full.split(" ")[0] : full)))
+    /<span\b([^>]*\bdata-var="([a-z_]+)"[^>]*)>[\s\S]*?<\/span>/g, (m, attrs, v) => word(v))
+    /* AND AS TYPED (2026-10-07): {{first_name}} or {{full_name}} written as
+       plain text — the composer turns them into variables as they are
+       typed, but a token that arrived some other way still works. */
+    .replace(/\{\{\s*(first_name|full_name|name)\s*\}\}/g, (m, v) => word(v === "first_name" ? "first_name" : "name"))
     .replace(/(?: |&nbsp;|\u00a0)?\u0000/g, "");
 }
 

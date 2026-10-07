@@ -22,7 +22,7 @@
    So the recipient row is a list picker, and the count beside it is real.
    ============================================================ */
 import { EditorState } from "@tiptap/pm/state";
-import { createEditor, applyLink, insertImage } from "./editor.js";
+import { createEditor, applyLink, insertImage, tokensToVariables } from "./editor.js";
 
 (function () {
   "use strict";
@@ -67,8 +67,12 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
     element: mount,
     toolbar: document.querySelector(".cp-tools"),
     onChange: () => { markDirty(); measureSoon(); },
-    varLabels: { first_name: tr("ml.cpVarFirst"), name: tr("ml.cpVarFull") },
     onRefresh: (ed) => showChoices(ed),
+    /* the small bar on a selected picture (editor.js) */
+    picLabels: { left: tr("ml.cpImgLeft"), center: tr("ml.cpImgCenter"), right: tr("ml.cpImgRight"),
+                 full: tr("ml.cpImgFull"), edit: tr("pe.edit"), remove: tr("ml.cpImgRemove") },
+    onEditImage: () => editImage(),
+    onImageFiles: (files, at) => uploadPictures(files, at),
   });
 
   /* ---- size, color, link, name: one row under the toolbar --------------
@@ -94,14 +98,6 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
     const anyColor = /^#[0-9a-f]{6}$/i.test(tone);
     $("cpColorAny").closest(".cp-tone-any").classList.toggle("is-on", anyColor);
     if (anyColor) $("cpColorAny").value = tone;
-    /* a picture selected: its size choices show, the one it has pressed */
-    const onImg = ed.isActive("image");
-    $("cpImgRow").hidden = !onImg;
-    if (onImg) {
-      const w = +(ed.getAttributes("image").w || 100);
-      $("cpImgW").value = w; $("cpImgWVal").textContent = w + "%";
-      $("cpImgFull").setAttribute("aria-pressed", w >= 100 ? "true" : "false");
-    }
     const sizeBtn = document.querySelector('.cp-tools [data-cmd="size"]');
     if (sizeBtn) sizeBtn.dataset.sz = sz;
     const colorBtn = document.querySelector('.cp-tools [data-cmd="color"]');
@@ -158,17 +154,6 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
     editor.chain().setTone(e.target.value.toLowerCase()).run();
   });
   $("cpColorAny").addEventListener("change", () => { editor.commands.focus(); closeRows(); });
-  /* A PICTURE'S WIDTH: drag its corner in the message, or this slider (for
-     a phone, where a corner is a small target); Full width puts it back */
-  function picTo(w) {
-    if (!editor.isActive("image")) return;
-    w = Math.max(10, Math.min(100, Math.round(+w)));
-    editor.chain().updateAttributes("image", { w: w >= 100 ? null : String(w) }).run();
-    $("cpImgWVal").textContent = w + "%";
-    markDirty(); measureSoon();
-  }
-  $("cpImgW").addEventListener("input", (e) => picTo(e.target.value));
-  $("cpImgFull").addEventListener("click", () => { picTo(100); editor.commands.focus(); });
   $("cpVarRow").addEventListener("click", (e) => {
     const b = e.target.closest("[data-var]");
     if (!b) return;
@@ -257,7 +242,7 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
 
     /* `false` so loading a draft is not recorded as an edit — otherwise every
        draft is dirty the moment it opens and the unsaved warning cries wolf. */
-    editor.commands.setContent(m ? (m.body_html || "") : "", false);
+    editor.commands.setContent(tokensToVariables(m ? (m.body_html || "") : ""), false);
     /* A FRESH UNDO HISTORY per draft. Loading is otherwise an undoable step,
        so Undo in one draft reached back into the last one, and to pictures
        already handed back above. */
@@ -373,15 +358,14 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
     return new Promise((res) => canvas.toBlob(res, "image/jpeg", 0.85));
   }
 
-  function pickImage() {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = "image/jpeg,image/png,image/webp";
-    input.addEventListener("change", async function () {
-      const file = this.files && this.files[0];
-      if (!file) return;
-      setState(tr("ml.cpUploading"));
-      try {
+  /* Up, then into the message where it was dropped (or at the cursor), one
+     after another; a single picture goes straight into the photo editor
+     (one step, not two). */
+  async function uploadPictures(files, at) {
+    setState(tr("ml.cpUploading"));
+    let last = null;
+    try {
+      for (const file of files) {
         const blob = await shrink(file, 1200);
         const res = await fetch("/api/admin/media?kind=newsletter", {
           method: "POST", credentials: "same-origin",
@@ -389,18 +373,38 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
         });
         const body = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(body.error || `failed (${res.status})`);
-        insertImage(editor, body.url);
+        insertImage(editor, body.url, at);
+        if (at != null) at = null;
         note(body.url);
-        markDirty(); measureSoon();
-        setState("");
-        /* Chosen, then straight into the editor (one step, not two). */
-        let at = null;
-        editor.state.doc.descendants((n, pos) => { if (n.type.name === "image" && n.attrs.src === body.url) at = pos; });
-        if (at !== null) { editor.commands.setNodeSelection(at); editImage(); }
-      } catch (e) { setState(""); toast(e.message, "bad"); }
+        last = body.url;
+      }
+      markDirty(); measureSoon();
+      setState("");
+      if (files.length === 1 && last) {
+        let pos = null;
+        editor.state.doc.descendants((n, p) => { if (n.type.name === "image" && n.attrs.src === last) pos = p; });
+        if (pos !== null) { editor.commands.setNodeSelection(pos); editImage(); }
+      }
+    } catch (e) { setState(""); toast(e.message, "bad"); }
+  }
+
+  function pickImage() {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/jpeg,image/png,image/webp";
+    input.addEventListener("change", function () {
+      const file = this.files && this.files[0];
+      if (file) uploadPictures([file], null);
     });
     input.click();
   }
+
+  /* Files held over the message: a quiet outline says it can take them. */
+  let dragDepth = 0;
+  const isFiles = (e) => e.dataTransfer && Array.from(e.dataTransfer.types || []).includes("Files");
+  mount.addEventListener("dragenter", (e) => { if (isFiles(e)) { dragDepth++; mount.classList.add("is-dropping"); } });
+  mount.addEventListener("dragleave", (e) => { if (isFiles(e) && --dragDepth <= 0) { dragDepth = 0; mount.classList.remove("is-dropping"); } });
+  mount.addEventListener("drop", () => { dragDepth = 0; mount.classList.remove("is-dropping"); });
 
   /* THE PHOTO EDITOR, for a picture in the message (photo-editor.js, the
      same editor as the Site Creator's). A mail client cannot apply settings,

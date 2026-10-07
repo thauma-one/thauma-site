@@ -1478,9 +1478,12 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
    seafoam chips with a + in the legend, and the same chip where one sits in
    the message */
 .cp-legend .cp-legend-label{color:var(--voice-human)}
-.cp-legend [data-var]{border-color:var(--voice-human);color:var(--voice-human);background:color-mix(in srgb,var(--voice-human) 12%,transparent)}
-.cp-legend [data-var]::before{content:"+ ";font-weight:700}
-.cp-legend [data-var]:hover{background:var(--voice-human);color:#06110c}
+/* A variable in the legend (2026-10-07): the token, as typed, and what it
+   becomes — chaseroush.com's legend, in the ministry voice */
+.cp-row.cp-legend>button.cp-varchip{display:inline-flex;min-height:0;align-items:baseline;gap:8px;padding:4px 10px;border-radius:6px;cursor:pointer;font:inherit;font-size:12.5px;
+  border:1px solid color-mix(in srgb,var(--voice-human) 45%,transparent);background:color-mix(in srgb,var(--voice-human) 10%,transparent);color:var(--dim)}
+.cp-varchip code{font:600 12.5px/1.2 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--voice-human)}
+.cp-row.cp-legend>button.cp-varchip:hover,.cp-row.cp-legend>button.cp-varchip:focus-visible{border-color:var(--voice-human);color:var(--text)}
 /* card or integrated: two small drawings */
 .cp-layout{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:0;padding:12px 20px}
 .cp-layout button{display:inline-flex;align-items:center;gap:7px;min-height:30px;padding:0 10px;border-radius:8px;border:1px solid var(--line);background:none;color:var(--dim);font:inherit;font-size:13px;cursor:pointer}
@@ -1489,19 +1492,40 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
 .cp-lay-card{background:var(--line)}.cp-lay-card::after{content:"";position:absolute;inset:3px 5px;border-radius:2px;background:var(--text);opacity:.85}
 .cp-lay-int{background:var(--text);opacity:.85}.cp-lay-int::after{content:"";position:absolute;left:4px;right:4px;top:3px;height:2px;background:var(--panel)}
 .cp-legend-label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:600;color:var(--dim);margin-right:4px}
-/* a picture's chosen width, as the email will show it */
-/* A PICTURE IN THE MESSAGE (2026-10-06): at its width, centered; selected,
-   it shows its corner handle and its width, to drag */
-.cp-body .cp-img{position:relative;margin:0 auto 14px;max-width:100%;line-height:0}
+/* A PICTURE IN THE MESSAGE (2026-10-06; 2026-10-07 after chaseroush.com's
+   composer, kept quiet): at its width, centered or beside the words.
+   Selected: a thin outline, a small bar on its top edge, four small corner
+   handles. The width shows only while a corner is being dragged. */
+.cp-body .cp-img{position:relative;margin:0 auto 14px;max-width:100%;line-height:0;cursor:grab}
+.cp-body .cp-img.al-left{float:left;margin:4px 18px 10px 0}
+.cp-body .cp-img.al-right{float:right;margin:4px 0 10px 18px}
+.cp-body .ProseMirror::after{content:"";display:block;clear:both}
 .cp-body .cp-img img{width:100%;height:auto;display:block;border-radius:4px;margin:0}
-.cp-img-handle{position:absolute;right:-7px;bottom:-7px;width:16px;height:16px;border-radius:4px;background:var(--voice-tech);
-  border:2px solid var(--panel);cursor:nwse-resize;display:none;touch-action:none}
-.cp-img-pct{position:absolute;right:8px;top:8px;display:none;font:600 11px/1 var(--font-body,inherit);padding:4px 7px;border-radius:999px;
-  background:rgba(8,10,16,.8);color:#fff}
-.cp-img.is-sel{outline:2px solid var(--voice-tech);outline-offset:2px}
-.cp-img.is-sel .cp-img-handle,.cp-img.is-drag .cp-img-handle,.cp-img.is-sel .cp-img-pct,.cp-img.is-drag .cp-img-pct{display:block}
-#cpImgRow input[type=range]{min-width:0;flex:0 1 220px;accent-color:var(--voice-tech)}
-.cp-img-val{min-width:40px;font-variant-numeric:tabular-nums;font-size:13px;color:var(--text)}
+.cp-img.is-sel{outline:1.5px solid var(--voice-tech);outline-offset:2px}
+.cp-img-handle{position:absolute;width:10px;height:10px;border-radius:2px;background:var(--panel,#0f141c);
+  border:1.5px solid var(--voice-tech);display:none;touch-action:none;z-index:2}
+/* a bigger target than it looks, for a finger */
+.cp-img-handle::before{content:"";position:absolute;inset:-9px}
+.cp-img-handle.tl{left:-6px;top:-6px;cursor:nwse-resize}.cp-img-handle.tr{right:-6px;top:-6px;cursor:nesw-resize}
+.cp-img-handle.bl{left:-6px;bottom:-6px;cursor:nesw-resize}.cp-img-handle.br{right:-6px;bottom:-6px;cursor:nwse-resize}
+.cp-img-pct{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:none;font:600 12px/1 var(--font-body,inherit);
+  padding:5px 9px;border-radius:999px;background:rgba(8,10,16,.82);color:#fff;font-variant-numeric:tabular-nums}
+.cp-img-bar{position:absolute;left:50%;top:8px;transform:translateX(-50%);display:none;align-items:center;gap:2px;padding:3px;
+  border-radius:8px;background:rgba(10,13,19,.9);border:1px solid rgba(255,255,255,.12);line-height:0;z-index:3;white-space:nowrap}
+.cp-img-bar button{width:28px;height:26px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:6px;
+  background:none;color:#c9d2de;cursor:pointer;padding:0}
+.cp-img-bar button:hover,.cp-img-bar button:focus-visible{background:rgba(255,255,255,.1);color:#fff}
+.cp-img-bar button[aria-pressed="true"]{color:var(--voice-tech);background:color-mix(in srgb,var(--voice-tech) 16%,transparent)}
+.cp-img-bar button[data-pic="remove"]:hover{color:#ff8a8a}
+.cp-img-bar svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.cp-img-bar svg rect{fill:currentColor;stroke:none;opacity:.85}
+.cp-img-sep{width:1px;height:16px;background:rgba(255,255,255,.14);margin:0 3px}
+.cp-img.is-sel .cp-img-handle,.cp-img.is-drag .cp-img-handle{display:block}
+.cp-img.is-sel .cp-img-bar{display:inline-flex}
+.cp-img.is-drag .cp-img-bar{display:none}
+.cp-img.is-drag .cp-img-pct{display:block}
+/* files held over the message: a quiet dashed edge, nothing more */
+.cp-body.is-dropping{outline:1.5px dashed var(--voice-tech);outline-offset:-6px}
 /* any text size: − number + (as Site Creator) */
 .cp-step{display:inline-flex;align-items:center;margin-left:8px;border:1px solid var(--line);border-radius:8px;overflow:hidden}
 .cp-step button{width:30px;height:29px;background:none;border:0;color:var(--text);font:inherit;font-size:16px;cursor:pointer}
@@ -1579,11 +1603,11 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
 .cp-body [data-c="green"]{color:#6FE3A6}
 .cp-body [data-c="blue"]{color:#8DB8FF}
 .cp-body [data-c="gold"]{color:#F2C14E}
-/* A personal word: a chip, so it reads as "filled in for each person". */
-.cp-body .cp-var{display:inline-block;padding:0 8px;border-radius:10px;
-  background:color-mix(in srgb,var(--voice-human) 18%,transparent);color:var(--voice-human);font-size:.9em;font-weight:600;
-  border:1px solid color-mix(in srgb,var(--voice-human) 55%,transparent);line-height:1.45;white-space:nowrap}
-.cp-body .cp-var::before{content:"\2726  ";font-size:.8em;opacity:.8}
+/* A variable in the message: the token itself, in the ministry voice, so it
+   reads as "filled in for each person" and as what can be typed. */
+.cp-body .cp-var{display:inline;padding:1px 4px;border-radius:4px;white-space:nowrap;
+  font:600 .88em/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--voice-human);
+  background:color-mix(in srgb,var(--voice-human) 14%,transparent)}
 .cp-body .cp-var.ProseMirror-selectednode{outline:2px solid var(--voice-human)}
 .cp-body .ProseMirror.is-editor-empty:first-child::before{content:attr(data-placeholder);
   float:left;height:0;pointer-events:none;color:var(--dim,#8a93a3);opacity:.5}
