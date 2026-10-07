@@ -38,7 +38,8 @@ function answer(opts = {}) {
     site: { subdomain: "chaseroush", address: "/site/chaseroush/", preview: "/site/chaseroush/?draft",
             enabled: false, published_at: null, unpublished: true, dns: null },
     draft,
-    languages: [{ code: "en", name: "English", native_name: "English" }, { code: "hr", name: "Croatian", native_name: "Hrvatski" }],
+    languages: [{ code: "en", name: "English", native_name: "English" }, { code: "hr", name: "Croatian", native_name: "Hrvatski" }]
+      .concat(opts.moreLangs ? [{ code: "sr", name: "Serbian", native_name: "Српски" }] : []),
     /* As staff-site.js builds it: the site's own page names per language. */
     page_names: Object.fromEntries(["en", "hr"].map((l) => [l, Object.fromEntries(PAGES.map((id) => [id, word(l, id)]))])),
     placeholders: placeholders ? Object.fromEntries(["en", "hr"].map((l) => [l, placeholders(l, "Chase Roush")])) : undefined,
@@ -163,24 +164,65 @@ await check("a row unfolds where it is, one at a time; a new section goes where 
   assert(d.querySelector('.ws-acc[data-si="1"]').classList.contains("is-open"), "and open");
 });
 
-await check("a new section suggests words in the language being written, and saves none of them", async () => {
-  /* Chase, 2026-10-03: placeholder words in every language whenever a
-     section is added, for those unsure how to phrase things. */
+await check("a new section starts in stand-in words in every language, and says which are still missing", async () => {
+  /* Chase, 2026-10-07: "every section that is added should have basic
+     styling and text added in … just random words … and remind the person
+     that they haven't done that text yet since it is gibberish." */
   const { w, d, sent, click, pages } = await boot();
   pages();
-  const pick = d.getElementById("wsLangA");
-  pick.value = "hr";
-  pick.dispatchEvent(new w.Event("change", { bubbles: true }));
   click(d.querySelector('[data-open-page="home"]'));
+  assert(!d.querySelector(".ws-miss"), "the starter's written words are not missing");
   click(d.querySelector('[data-insert-at="1"]'));
   click(d.querySelector('[data-add-type="text"]'));
-  const heading = d.querySelector('[data-rt="1:heading"]');
-  assert(heading, "the new section is not open");
-  eq(heading.getAttribute("data-ph"), word("hr", "aboutThin") + " " + word("hr", "aboutBold"), "its heading, in Croatian");
-  eq(d.querySelector('[data-rt="1:text"]').getAttribute("data-ph"), word("hr", "aboutFill"), "its words, in Croatian");
   await settle(900);
   const saved = sent.filter((x) => x.action === "save").pop().draft.pages[0].sections[1];
-  eq([saved.words.hr.heading, saved.words.hr.text], ["", ""], "nothing suggested was saved");
+  assert(/^[A-Z][a-z]+( [A-Z][a-z]+)? <b>[A-Z][a-z]+( [A-Z][a-z]+)?<\/b>$/.test(saved.words.en.heading), "a heading with its bold half: " + saved.words.en.heading);
+  assert(/<b>\w+ \w+<\/b>/.test(saved.words.hr.text), "words with a bold phrase, in Croatian too: " + saved.words.hr.text);
+  eq(saved.words.en.verse, "", "a verse waits to be asked for");
+  eq(d.querySelector('.ws-acc[data-si="1"] .ws-miss').textContent, "missing EN, HR", "both still to write");
+  /* One real word and that language is written. */
+  const heading = d.querySelector('[data-rt="1:heading"]'), text = d.querySelector('[data-rt="1:text"]');
+  heading.innerHTML = "Who <b>We Are</b>"; heading.dispatchEvent(new w.Event("input", { bubbles: true }));
+  text.innerHTML = "Serving churches across the Balkans."; text.dispatchEvent(new w.Event("input", { bubbles: true }));
+  await settle(900);
+  click(d.querySelector("[data-all-pages]"));
+  eq(d.querySelector('[data-open-page="home"] .ws-miss').textContent, "missing HR", "the page list says so too");
+  const hint = d.querySelector('[data-rt="1:heading"]');
+  assert(!hint || hint.getAttribute("data-ph"), "an emptied field still suggests words");
+});
+
+await check("cards and links arrive with something in them", async () => {
+  const { d, sent, click, pages } = await boot();
+  pages();
+  click(d.querySelector('[data-open-page="home"]'));
+  click(d.querySelector('[data-insert-at="1"]'));
+  click(d.querySelector('[data-add-type="cards"]'));
+  click(d.querySelector('[data-insert-at="1"]'));
+  click(d.querySelector('[data-add-type="links"]'));
+  await settle(900);
+  const secs = sent.filter((x) => x.action === "save").pop().draft.pages[0].sections;
+  eq(secs[2].items.length, 3, "three cards");
+  assert(secs[2].items[0].words.hr.title, "each card titled in every language");
+  eq(secs[1].items.map((it) => it.url), ["page:about", "page:mission"], "two links to the site's own pages");
+});
+
+await check("a language turned on gets stand-in words wherever another language is written", async () => {
+  const { d, sent, click } = await boot({ moreLangs: true });
+  click(d.querySelector('[data-ws-tab="settings"]'));
+  const sr = d.querySelector('[data-site-lang="sr"]');
+  assert(sr && !sr.checked, "Serbian offered, off");
+  sr.checked = true;
+  sr.dispatchEvent(new d.defaultView.Event("change", { bubbles: true }));
+  await settle(900);
+  const draft = sent.filter((x) => x.action === "save").pop().draft;
+  const hero = draft.pages[0].sections[0];
+  assert(hero.words.sr && /<b>/.test(hero.words.sr.heading) && hero.words.sr.text, "the hero, in stand-in words");
+  assert(!hero.words.sr.verse, "nothing where no language has words");
+  assert(draft.footer.words.sr && draft.footer.words.sr.tagline, "the footer too");
+  eq(hero.words.en.heading, "Follow the Work of <b>Chase Roush.</b>", "the other languages untouched");
+  click(d.querySelector('[data-ws-tab="pages"]'));
+  const note = d.querySelector('[data-open-page="home"] .ws-miss');
+  eq([note.textContent, note.title], ["missing SR", "missing Српски"], "and the page list says it is missing");
 });
 
 await check("one section at a time: only its tabs; formatted words saved clean", async () => {

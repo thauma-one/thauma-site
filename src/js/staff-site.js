@@ -84,6 +84,120 @@
     var l = (state.body.languages || []).filter(function (x) { return x.code === code; })[0];
     return l ? (l.native_name || l.name) : code;
   }
+  /* ---- stand-in words --------------------------------------------------- */
+
+  /* Chase, 2026-10-07: "every section that is added should have basic
+     styling and text added in when the section is added to show off what
+     the sections can and remind the person to add different languages as
+     well. It doesn't need to be meaningful … just random words … and remind
+     the person that they haven't done that text yet since it is gibberish."
+     So a new section, and every section when a language is turned on, gets
+     Latin stand-in words — a heading with its bold half, words with a bold
+     phrase — and anything made only of these words counts as NOT WRITTEN:
+     the rows say which languages are still missing, as Updates does. One
+     real word typed into a field and it is written. The vocabulary leaves
+     out short Latin that is also a real word somewhere (a, in, et, non, est). */
+  var LOREM = ('lorem ipsum dolor amet consectetur adipiscing elit eiusmod tempor incididunt labore dolore magna ' +
+    'aliqua minim veniam quis nostrud exercitation ullamco laboris aliquip commodo consequat duis aute irure ' +
+    'reprehenderit voluptate velit cillum fugiat nulla pariatur excepteur occaecat cupidatat proident culpa ' +
+    'officia deserunt mollit laborum').split(' ');
+  var LOREM_SET = {};
+  LOREM.forEach(function (x) { LOREM_SET[x] = 1; });
+  function loremWords(n) {
+    var out = [];
+    while (out.length < n) {
+      var x = LOREM[Math.floor(Math.random() * LOREM.length)];
+      if (x !== out[out.length - 1]) out.push(x);
+    }
+    return out;
+  }
+  function titleCase(ws) { return ws.map(function (x) { return x[0].toUpperCase() + x.slice(1); }).join(' '); }
+  function sentence(n, boldAt) {
+    var ws = loremWords(n);
+    ws[0] = ws[0][0].toUpperCase() + ws[0].slice(1);
+    if (boldAt != null) { ws[boldAt] = '<b>' + ws[boldAt]; ws[boldAt + 1] = ws[boldAt + 1] + '</b>'; }
+    return ws.join(' ') + '.';
+  }
+  /* Stand-in words shaped like what the field holds. */
+  function lorem(f) {
+    var r = function (a, b) { return a + Math.floor(Math.random() * (b - a + 1)); };
+    if (f === 'heading') return titleCase(loremWords(r(1, 2))) + ' <b>' + titleCase(loremWords(r(1, 2))) + '</b>';
+    if (f === 'text') return sentence(r(10, 14), 3) + ' ' + sentence(r(7, 11));
+    if (f === 'quote' || f === 'verse') return sentence(r(8, 12));
+    if (f === 'caption' || f === 'tagline') return sentence(r(4, 7)).slice(0, -1);
+    if (f === 'small') return sentence(r(10, 14));
+    if (f === 'verseRef') return titleCase(loremWords(1)) + ' ' + r(1, 9) + ':' + r(1, 20);
+    if (f === 'mark') return titleCase(loremWords(1));
+    return titleCase(loremWords(2));
+  }
+  /* Only stand-in words, nothing a person wrote. Tags, digits and
+     punctuation are not words. */
+  function isLorem(v) {
+    var ws = String(v || '').replace(/<[^>]*>/g, ' ').replace(/&[a-z#0-9]+;/gi, ' ').toLowerCase().match(/[a-zÀ-ɏЀ-ӿ]+/g);
+    return !!ws && ws.every(function (x) { return LOREM_SET[x]; });
+  }
+  /* The fields a new section starts with words in: the ones every look of it
+     shows. A verse, a button that needs a link and a watermark wait to be
+     asked for. */
+  var LOREM_SKIP = { verse: 1, verseRef: 1, mark: 1 };
+  function loremFields(type) {
+    return SECTIONS[type].words.filter(function (f) { return !LOREM_SKIP[f] && (f !== 'button' || type === 'give'); });
+  }
+  /* The languages a set of words is still missing: a field that is stand-in
+     words, or empty where another language has it written. A field nobody
+     has written in any language is optional, not missing. */
+  function missingIn(words, fields, out) {
+    var langs = state.doc.languages;
+    fields.forEach(function (f) {
+      var vals = langs.map(function (l) { return ((words || {})[l] || {})[f] || ''; });
+      var written = vals.some(function (v) { return v && !isLorem(v); });
+      langs.forEach(function (l, i) {
+        if (isLorem(vals[i]) || (!vals[i] && written)) out[l] = 1;
+      });
+    });
+    return out;
+  }
+  function sectionMissing(s, out) {
+    out = out || {};
+    missingIn(s.words, SECTIONS[s.type] ? SECTIONS[s.type].words : [], out);
+    (s.items || []).forEach(function (it) { missingIn(it.words, ['title', 'text'], out); });
+    return out;
+  }
+  /* "missing HR, SR" (Chase's own words for it), in the site's language
+     order; the full names on hover. Codes, because a page row has room for
+     three of them and not for three names. */
+  function missingNote(out) {
+    var codes = state.doc.languages.filter(function (l) { return out[l]; });
+    if (!codes.length) return '';
+    return '<span class="ws-miss" title="' + esc(tr('ms.missing') + ' ' + codes.map(langName).join(', ')) + '">' +
+      esc(tr('ms.missing') + ' ' + codes.join(', ').toUpperCase()) + '</span>';
+  }
+  /* A language turned on: every field written in another language gets
+     stand-in words in this one, on every page, tab, card and link, and in
+     the footer — so the page in that language shows what is there to
+     write rather than quietly borrowing another language's words. */
+  function fillLanguage(code) {
+    var others = state.doc.languages.filter(function (l) { return l !== code; });
+    function fillWords(words, fields) {
+      fields.forEach(function (f) {
+        var had = others.some(function (l) { return words[l] && words[l][f]; });
+        if (!had) return;
+        words[code] = words[code] || {};
+        if (!words[code][f]) words[code][f] = lorem(f);
+      });
+    }
+    state.doc.pages.forEach(function (pg) {
+      allSecs(pg).forEach(function (sec) {
+        if (!SECTIONS[sec.type]) return;
+        sec.words = sec.words || {};
+        fillWords(sec.words, SECTIONS[sec.type].words);
+        (sec.items || []).forEach(function (it) { it.words = it.words || {}; fillWords(it.words, ['title', 'text']); });
+      });
+    });
+    var foot = state.doc.footer || {};
+    if (foot.words) fillWords(foot.words, ['tagline', 'small']);
+  }
+
   function fillPair() {
     var langs = state.doc.languages;
     if (langs.indexOf(state.langA) === -1) state.langA = langs.indexOf(state.doc.fallback) !== -1 ? state.doc.fallback : langs[0];
@@ -800,7 +914,7 @@
           '<div class="ws-acc-head">' +
             '<button type="button" class="ws-stile" data-edit-sec="' + i + '" aria-expanded="' + open + '">' +
               '<span class="ws-sketch ws-sketch-sm" aria-hidden="true">' + sketch(x.type) + '</span>' +
-              '<span class="ws-stile-words"><b>' + esc(tr('ws.sec.' + x.type)) + dot(sectionChanged(x)) + '</b><span>' + esc(summary(x)) + '</span></span>' +
+              '<span class="ws-stile-words"><b>' + esc(tr('ws.sec.' + x.type)) + dot(sectionChanged(x)) + '</b><span>' + esc(summary(x)) + '</span>' + missingNote(sectionMissing(x)) + '</span>' +
               '<span class="ws-chev" aria-hidden="true"></span></button>' +
             '<span class="ws-stile-tools">' +
               '<button type="button" class="ws-icon" data-sec-up="' + i + '" aria-label="' + esc(tr('ws.up')) + '"' + (i === 0 ? ' disabled' : '') + '>↑</button>' +
@@ -844,7 +958,8 @@
         return '<li class="ws-prow' + (x.on ? '' : ' is-off') + '">' +
           '<button type="button" class="ws-prow-open" data-open-page="' + esc(x.id) + '">' +
             '<b>' + esc(pageLabel(x, state.langA)) + dot(pageChanged(x)) + '</b>' +
-            '<span>' + esc(n === 1 ? tr('ws.nSections1') : n ? fill('ws.nSections', { n: n }) : tr('ws.noSectionsShort')) + '</span>' +
+            '<span class="ws-prow-sub"><span>' + esc(n === 1 ? tr('ws.nSections1') : n ? fill('ws.nSections', { n: n }) : tr('ws.noSectionsShort')) + '</span>' +
+            missingNote(allSecs(x).reduce(function (o, sec) { return sectionMissing(sec, o); }, {})) + '</span>' +
             '<span class="ws-chev ws-chev-r" aria-hidden="true"></span></button>' +
           (x.id === 'home' ? '<span class="ws-always">' + esc(tr('ws.always')) + '</span>' : sw('data-page-on="' + i + '"', x.on, tr('ws.shown'))) +
           '<span class="ws-move">' +
@@ -1468,14 +1583,25 @@
     if (e.target === this) return closeAdd();
     var t = e.target.closest('[data-add-type]');
     if (!t) return;
-    var type = t.getAttribute('data-add-type'), spec = SECTIONS[type], words = {};
-    state.doc.languages.forEach(function (l) { words[l] = {}; spec.words.forEach(function (f) { words[l][f] = ''; }); });
+    var type = t.getAttribute('data-add-type'), spec = SECTIONS[type], words = {}, fills = loremFields(type);
+    state.doc.languages.forEach(function (l) {
+      words[l] = {};
+      spec.words.forEach(function (f) { words[l][f] = fills.indexOf(f) !== -1 ? lorem(f) : ''; });
+    });
     var s = { id: uid(), type: type, variant: spec.variants[0], words: words };
     if (type === 'hero') s.divider = true;
     s.align = defaultAlign(s);
     if (spec.photo) s.photo = null;
     if (spec.buttons) s.buttons = ['give', 'stay'];
-    if (spec.items) s.items = [];
+    /* Something to see in the cards and links too: three cards, two links
+       to pages the site has, each in stand-in words. */
+    var itemWords = function () {
+      var w = {};
+      state.doc.languages.forEach(function (l) { w[l] = { title: lorem('title'), text: lorem('caption') + '.' }; });
+      return w;
+    };
+    if (spec.items === 'cards') s.items = [0, 1, 2].map(function () { return { words: itemWords() }; });
+    else if (spec.items) s.items = ['page:about', 'page:mission'].map(function (u) { return { url: u, photo: null, words: itemWords() }; });
     if (spec.items === 'cards') s.numbers = true;
     /* Where it was asked for, and straight into it: a new section is one
        to be filled in. */
@@ -2134,7 +2260,7 @@
     }
     if (t.dataset.siteLang) {
       var code = t.dataset.siteLang, langs = state.doc.languages;
-      if (t.checked && langs.indexOf(code) === -1) langs.push(code);
+      if (t.checked && langs.indexOf(code) === -1) { langs.push(code); fillLanguage(code); }
       if (!t.checked) state.doc.languages = langs.filter(function (l) { return l !== code; });
       if (state.doc.languages.indexOf(state.doc.fallback) === -1) state.doc.fallback = state.doc.languages[0];
       fillPair(); drawSettings(); return changed();
