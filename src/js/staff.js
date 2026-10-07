@@ -2164,3 +2164,10 @@ window.StaffSort = function (root, o) {
     refocus(k);
   });
 };
+/* The grip itself, for a list drawn as a string. */
+window.StaffSort.grip = function (label) {
+  var l = String(label || '').replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; });
+  return '<button type="button" class="sort-grip" aria-label="' + l + '" title="' + l + '"><svg viewBox="0 0 16 16" aria-hidden="true">' +
+    '<circle cx="5.5" cy="3.5" r="1.3"/><circle cx="10.5" cy="3.5" r="1.3"/><circle cx="5.5" cy="8" r="1.3"/><circle cx="10.5" cy="8" r="1.3"/>' +
+    '<circle cx="5.5" cy="12.5" r="1.3"/><circle cx="10.5" cy="12.5" r="1.3"/></svg></button>';
+};

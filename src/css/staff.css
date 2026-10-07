@@ -1663,29 +1663,19 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
 .ct-topics{margin:24px 0 20px;padding-top:20px;border-top:1px solid var(--line)}
 .ct-topics .hint{display:block;margin:6px 0 12px;line-height:1.5;max-width:64ch}
 .ct-topic{display:grid;
-  grid-template-columns:minmax(0,1fr) minmax(0,1.3fr) auto auto;
+  grid-template-columns:auto minmax(0,1fr) minmax(0,1.3fr) auto;
   gap:10px;align-items:center;margin-bottom:8px}
 
-/* Stacked arrows in one column, so reordering costs one column rather than
-   two and the row keeps its shape at four reasons or at ten. */
 /* A reason's name, with its other language small above it (0041). */
 .ct-topic-name{display:flex;flex-direction:column;gap:3px;min-width:0}
-.ct-topic-move{display:flex;flex-direction:column;gap:2px}
-.ct-topic-move button{background:none;border:0;color:var(--dim,#8a93a3);
-  font-size:9px;line-height:1;padding:3px 5px;cursor:pointer;
-  border-radius:4px;transition:.15s}
-.ct-topic-move button[disabled]{opacity:.25;cursor:default}
-@media(hover:hover){
-  .ct-topic-move button:not([disabled]):hover{color:var(--text);
-    background:rgba(255,255,255,.08)}
-}
 .ct-topic input{font-size:13px;padding:8px 10px;min-width:0}
+.ct-topic .sort-grip{background:none;border:0;padding:4px;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;border-radius:6px}
 .ct-topic .del{background:none;border:0;color:var(--dim,#8a93a3);font-size:18px;
   line-height:1;padding:2px 6px;cursor:pointer;border-radius:6px;transition:.15s}
 @media(hover:hover){
   .ct-topic .del:hover{color:var(--crit,#FF6B6B);background:rgba(255,107,107,.1)}
 }
-@media (max-width:620px){ .ct-topic{grid-template-columns:1fr auto} }
+@media (max-width:620px){ .ct-topic{grid-template-columns:auto 1fr auto} .ct-topic-to{grid-column:2} }
 
 /* ---- the contact form's visualiser ----
    Settings on the left, the real widget on the right. A browser preview is
@@ -2412,10 +2402,10 @@ html.console-menu-open{overflow:hidden}
 .sh-period{display:grid;grid-template-columns:1fr;gap:0}
 /* Reasons in a narrow column: what it says above where it goes. */
 .sh-side .ct-topics{margin:4px 0 0;padding-top:14px}
-.sh-side .ct-topic{grid-template-columns:minmax(0,1fr) auto auto;grid-template-rows:auto auto;
+.sh-side .ct-topic{grid-template-columns:auto minmax(0,1fr) auto;grid-template-rows:auto auto;
   row-gap:6px;padding-bottom:10px;border-bottom:1px solid var(--line)}
-.sh-side .ct-topic-to{grid-column:1;grid-row:2}
-.sh-side .ct-topic-move{grid-column:2;grid-row:1 / span 2}
+.sh-side .ct-topic .sort-grip{grid-column:1;grid-row:1 / span 2}
+.sh-side .ct-topic-to{grid-column:2;grid-row:2}
 .sh-side .ct-topic .del{grid-column:3;grid-row:1 / span 2}
 .sh-side .ct-topics .ghost-btn{margin-top:10px}
 
