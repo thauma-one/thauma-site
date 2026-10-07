@@ -2175,7 +2175,7 @@ ON CONFLICT ((partner_id IS NULL)) WHERE partner_id IS NULL DO UPDATE SET
 --
 -- `is_open` is the switch, so closing the form takes it off every page it is
 -- embedded on without anybody editing those pages.
-SELECT c.deliver_to, c.from_address, c.heading, c.blurb, c.button, c.thanks,
+SELECT c.partner_id, c.deliver_to, c.from_address, c.heading, c.blurb, c.button, c.thanks,
        p.display_name, p.embed_accent, p.embed_accent2, p.embed_theme, p.embed_turn,
        k.accent AS look_accent, k.accent2 AS look_accent2,
        k.turn AS look_turn, k.theme AS look_theme

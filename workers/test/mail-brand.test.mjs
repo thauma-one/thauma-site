@@ -10,7 +10,7 @@
  * Ministry' … to credit Thauma."
  */
 import { brandForMail } from "../src/lib/mail-brand.js";
-import { listConfirmEmail } from "../src/lib/mail.js";
+import { listConfirmEmail, contactReceiptEmail } from "../src/lib/mail.js";
 import { render } from "../src/lib/newsletter.js";
 import { page } from "../src/lib/public-page.js";
 import { QUERIES } from "../src/lib/db.js";
@@ -49,16 +49,31 @@ await check("the confirmation is Thauma's template with the name in the band, th
   const brand = { accent: "#FD5812", accent2: "#FF1854", mode: "light", name: "Chase Roush" };
   const m = listConfirmEmail({ name: "Ana", listName: "Newsletter", fromName: "Chase Roush", origin: "https://thauma.one", confirmUrl: "https://thauma.one/confirm?t=a", lang: "en", brand });
   assert(!/email-band\.png/.test(m.html), "no THAUMA image");
-  assert(/letter-spacing:10px;color:#EDF2F8;">CHASE ROUSH</.test(m.html), "the name, spaced like Thauma's");
+  assert(/class="bname"[^>]*letter-spacing:10px;text-transform:uppercase;color:#EDF2F8;">Chase Roush</.test(m.html), "the name, spaced like Thauma's");
+  assert(/class="bkind"[^>]*>Sign-up confirmation</.test(m.html), "what it is, beneath the name");
+  assert(/linear-gradient\(45deg,#[0-9A-F]{6} 0%,#070A10 46%/.test(m.html), "on a wash of their two colors");
+  assert(/<h1[^>]*>Confirm your subscription</.test(m.html), "the heading in the body");
   assert(/bgcolor="#FD5812"/.test(m.html), "their color");
   assert(/A Thauma ministry/.test(m.html), "the credit");
   const thauma = listConfirmEmail({ name: "Ana", listName: "News", fromName: "Thauma", origin: "https://thauma.one", confirmUrl: "https://thauma.one/confirm?t=a", lang: "en" });
   assert(/email-band\.png/.test(thauma.html) && !/A Thauma ministry/.test(thauma.html), "Thauma's own, unchanged");
 });
 
+await check("a partner's contact receipt wears their band; Thauma's keeps the wordmark", async () => {
+  const brand = { accent: "#FD5812", accent2: "#FF1854", mode: "light", name: "Chase Roush" };
+  const m = contactReceiptEmail({ name: "Ana", ministry: "Chase Roush", message: "Hello", origin: "https://thauma.one", lang: "en", brand });
+  assert(/class="bname"[^>]*>Chase Roush</.test(m.html) && /class="bkind"[^>]*>Message received</.test(m.html), "name and kind");
+  assert(/A Thauma ministry/.test(m.html), "the credit");
+  const own = contactReceiptEmail({ name: "Ana", ministry: "Thauma", message: "Hello", origin: "https://thauma.one", lang: "en" });
+  assert(/email-band\.png/.test(own.html) && !/class="bname"/.test(own.html), "Thauma's own, unchanged");
+});
+
 await check("a newsletter: Thauma's template, the ministry's color, the credit line", async () => {
   const html = render("<p>Hi</p>", { subject: "S", fromName: "Chase Roush", accent: "#FD5812", credit: "A Thauma ministry", unsubscribeUrl: "#" });
-  assert(/height:4px;background:#FD5812/.test(html) && /A Thauma ministry/.test(html), "color and credit");
+  assert(/bgcolor="#FD5812"/.test(html) && /A Thauma ministry/.test(html), "color and credit");
+  assert(/class="bname"[^>]*>Chase Roush</.test(html) && /class="bkind"[^>]*>Newsletter</.test(html), "the band: name, then Newsletter when the list has no name");
+  assert(/class="bkind"[^>]*>Prayer</.test(render("<p>Hi</p>", { subject: "S", fromName: "C", listName: "Prayer" })), "the list's own name as the kind");
+  assert(!/height:4px/.test(html), "no bare accent line over the letter any more");
   assert(!/A Thauma ministry/.test(render("<p>Hi</p>", { subject: "S", unsubscribeUrl: "#" })), "none without it");
 });
 

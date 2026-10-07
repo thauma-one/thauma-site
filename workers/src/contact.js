@@ -43,6 +43,7 @@
 import { createDb } from "./lib/db.js";
 import { json } from "./lib/store.js";
 import { sendMail, contactReceiptEmail } from "./lib/mail.js";
+import { brandForMail } from "./lib/mail-brand.js";
 import { detectLang } from "./contact-form.js";
 import { COLOUR_JS, rowLook } from "./embed-colour.js";
 import { escapeHtml, palette, formStyles, LIGHT, DARK, BEHAVIOUR_JS, WORDS_JS, LOOK_JS } from "./lib/embed-form.js";
@@ -600,6 +601,8 @@ export default {
         name: fields.name, ministry: form.display_name,
         topic: topic ? topic.label : null, subject: fields.subject,
         message: fields.message, origin: siteOrigin(env, request),
+        /* The ministry's band and colors, as its sign-up confirmation has. */
+        brand: form.partner_id ? await brandForMail(db, form.partner_id).catch(() => null) : null,
         /* The widget posts the language it was read in; the Referer covers an
            older copy of the widget that does not. */
         lang,

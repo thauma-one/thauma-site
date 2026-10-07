@@ -166,7 +166,10 @@
       "allUpdates": "See All Updates"
     },
     "brand": {
-      "note": "A Thauma ministry"
+      "note": "A Thauma ministry",
+      "newsletter": "Newsletter",
+      "confirm": "Sign-up confirmation",
+      "contact": "Message received"
     },
     "confirmed": {
       "title": "Subscribed",
@@ -343,7 +346,10 @@
       "allUpdates": "Sva izdanja"
     },
     "brand": {
-      "note": "Služba Thaume"
+      "note": "Služba Thaume",
+      "newsletter": "Bilten",
+      "confirm": "Potvrda prijave",
+      "contact": "Poruka primljena"
     },
     "confirmed": {
       "title": "Pretplaćeni ste",
@@ -520,7 +526,10 @@
       "allUpdates": "Сва издања"
     },
     "brand": {
-      "note": "Служба Тауме"
+      "note": "Служба Тауме",
+      "newsletter": "Билтен",
+      "confirm": "Потврда пријаве",
+      "contact": "Порука примљена"
     },
     "confirmed": {
       "title": "Претплаћени сте",
@@ -697,7 +706,10 @@
       "allUpdates": "Vse novice"
     },
     "brand": {
-      "note": "Služba Thaume"
+      "note": "Služba Thaume",
+      "newsletter": "Novice",
+      "confirm": "Potrditev prijave",
+      "contact": "Sporočilo prejeto"
     },
     "confirmed": {
       "title": "Naročeni ste",

@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "5e379dc4dc84c8f6";
+export const SOURCE_DIGEST = "54588d4e9635f439";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -823,7 +823,7 @@ JOIN mailing_lists l ON l.id = m.list_id
 JOIN partners p ON p.slug = :partner_slug AND l.partner_id IS p.id
 WHERE l.slug = :list_slug AND l.archive_public = 1 AND l.archived_at IS NULL
   AND m.status = 'sent' AND m.slug = :slug;`,
-  public_contact_form: `SELECT c.deliver_to, c.from_address, c.heading, c.blurb, c.button, c.thanks,
+  public_contact_form: `SELECT c.partner_id, c.deliver_to, c.from_address, c.heading, c.blurb, c.button, c.thanks,
        p.display_name, p.embed_accent, p.embed_accent2, p.embed_theme, p.embed_turn,
        k.accent AS look_accent, k.accent2 AS look_accent2,
        k.turn AS look_turn, k.theme AS look_theme

@@ -56,6 +56,8 @@
    kept and its tag discarded — rather than deleted, because silently losing a
    paragraph somebody wrote is worse than losing its styling. */
 import { TONES, isColor, HEX_COLOR } from "./tones.js";
+import { band } from "./mail-band.js";
+import { t } from "./mail-i18n.js";
 
 const KEEP = new Set([
   "p", "br", "strong", "em", "u", "s",
@@ -543,6 +545,8 @@ export function render(body, opts = {}) {
 @media only screen and (max-width:620px) {
   .pad { padding-left: 22px !important; padding-right: 22px !important; }
   .h1 { font-size: 23px !important; line-height: 1.3 !important; }
+  .band { padding: 34px 22px 30px !important; }
+  .bname { font-size: 21px !important; letter-spacing: 6px !important; }
   .outer { padding: 0 !important; }
   .w { border-radius: 0 !important; border-left: 0 !important; border-right: 0 !important; }
 }${autoDark}
@@ -573,13 +577,18 @@ ${pre}
            style="width:100%;${integrated ? "" : "max-width:720px;"}background:${card};${integrated ? "" : `border:1px solid ${line};
                   border-radius:10px;`}overflow:hidden">
 
-      <tr><td style="height:4px;background:${accent};font-size:0;line-height:0">&nbsp;</td></tr>
+      ${/* THE BAND (lib/mail-band.js): the sender's name and what this is — the
+           list's own name ("Prayer Updates"), else "Newsletter" — on a wash of
+           their two colors, as Thauma's own mail opens. The subject follows in
+           the body. It replaced a 4px accent line over the name in small caps
+           (2026-10-07). */ band({
+        name: opts.fromName || "",
+        kind: opts.listName || t(opts.lang, "brand.newsletter"),
+        accent, accent2,
+      })}
 
-      <tr><td class="pad" style="padding:32px 36px 8px">
-        <p class="tdim" style="margin:0;font-family:${FONT};font-size:12px;letter-spacing:.08em;
-                  text-transform:uppercase;color:${dim};font-weight:600">
-          ${escapeHtml(opts.fromName || "")}</p>
-        <h1 class="h1 tink" style="margin:10px 0 0;font-family:${SERIF};font-size:27px;line-height:1.25;
+      <tr><td class="pad" style="padding:32px 36px 4px">
+        <h1 class="h1 tink" style="margin:0;font-family:${SERIF};font-size:27px;line-height:1.25;
                    font-weight:700;color:${ink}">${title}</h1>
       </td></tr>
 
