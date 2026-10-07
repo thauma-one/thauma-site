@@ -95,6 +95,12 @@ const Tone = Mark.create({
    is moved and deleted as one piece and its label can't be half-edited. The
    label inside is the editor's only; a reader gets the name, or nothing. */
 export const VARIABLES = ["first_name", "name"];
+/* a picture's width: 10–99 (% of the column), or an old name; else full */
+export function picPct(v) {
+  const named = { sm: "33", md: "50", lg: "75" }[v];
+  if (named) return named;
+  return /^\d{1,2}$/.test(String(v || "")) && +v >= 10 ? String(+v) : null;
+}
 
 const Variable = Node.create({
   name: "variable",
@@ -140,7 +146,9 @@ const Size = Mark.create({
       sz: {
         default: null,
         parseHTML: (el) => el.getAttribute("data-sz"),
-        renderHTML: (attrs) => (attrs.sz ? { "data-sz": attrs.sz } : {}),
+        /* a size in px (2026-10-06) shows at its size while writing; the
+           stored copy keeps only data-sz, which the email resolves itself */
+        renderHTML: (attrs) => (attrs.sz ? (/^\d+$/.test(attrs.sz) ? { "data-sz": attrs.sz, style: "font-size:" + attrs.sz + "px" } : { "data-sz": attrs.sz }) : {}),
       },
     };
   },
@@ -226,11 +234,66 @@ export function createEditor(opts) {
           return { ...this.parent?.(), orig: { default: null,
             parseHTML: (el) => el.getAttribute("data-orig"),
             renderHTML: (a) => (a.orig ? { "data-orig": a.orig } : {}) },
-            /* how wide it shows (2026-10-05, Chase: "Can we add ways to
-               resize the photos?"): sm / md / lg, or full width when unset */
+            /* how wide it shows, as a share of the column, dragged freely
+               (2026-10-06, Chase: "The picture size needs to be adjustable in
+               the composer itself, and freeform size adjustment"): 10–99,
+               full width when unset. The old sm / md / lg still read. */
             w: { default: null,
-              parseHTML: (el) => (["sm", "md", "lg"].includes(el.getAttribute("data-w")) ? el.getAttribute("data-w") : null),
+              parseHTML: (el) => picPct(el.getAttribute("data-w")),
               renderHTML: (a) => (a.w ? { "data-w": a.w } : {}) } };
+        },
+        /* THE PICTURE IN THE EDITOR: at its width, with a handle on its
+           corner to drag. Dragging follows the pointer (a centered picture
+           grows on both sides, so the width moves twice the pointer); the
+           width is written when the drag ends, as one change to undo. */
+        addNodeView() {
+          return ({ node, editor, getPos }) => {
+            const wrap = document.createElement("div");
+            wrap.className = "cp-img";
+            const img = document.createElement("img");
+            const handle = document.createElement("span");
+            handle.className = "cp-img-handle";
+            handle.setAttribute("aria-hidden", "true");
+            const pct = document.createElement("span");
+            pct.className = "cp-img-pct";
+            wrap.append(img, handle, pct);
+            const draw = (n) => {
+              img.src = n.attrs.src || ""; img.alt = n.attrs.alt || "";
+              const w = n.attrs.w ? +n.attrs.w : 100;
+              wrap.style.width = w + "%"; pct.textContent = w + "%";
+            };
+            draw(node);
+            handle.addEventListener("pointerdown", (e) => {
+              e.preventDefault(); e.stopPropagation();
+              const col = wrap.parentElement.getBoundingClientRect().width || 1;
+              const x0 = e.clientX, w0 = wrap.getBoundingClientRect().width;
+              let w = node.attrs.w ? +node.attrs.w : 100;
+              wrap.classList.add("is-drag");
+              handle.setPointerCapture(e.pointerId);
+              const move = (ev) => {
+                w = Math.max(10, Math.min(100, Math.round((w0 + (ev.clientX - x0) * 2) / col * 100)));
+                wrap.style.width = w + "%"; pct.textContent = w + "%";
+              };
+              const up = () => {
+                handle.removeEventListener("pointermove", move);
+                wrap.classList.remove("is-drag");
+                const pos = typeof getPos === "function" ? getPos() : null;
+                if (pos == null) return;
+                editor.view.dispatch(editor.view.state.tr.setNodeMarkup(pos, undefined,
+                  Object.assign({}, node.attrs, { w: w >= 100 ? null : String(w) })));
+              };
+              handle.addEventListener("pointermove", move);
+              handle.addEventListener("pointerup", up, { once: true });
+            });
+            return {
+              dom: wrap,
+              update(n) { if (n.type !== node.type) return false; node = n; draw(n); return true; },
+              selectNode() { wrap.classList.add("is-sel"); },
+              deselectNode() { wrap.classList.remove("is-sel"); },
+              stopEvent: (e) => e.target === handle,
+              ignoreMutation: () => true,
+            };
+          };
         },
       }).configure({ inline: false, allowBase64: false }),
       Tone,

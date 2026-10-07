@@ -3379,6 +3379,20 @@ SELECT layout FROM mailings WHERE id = :id AND partner_id IS :partner_id;
 UPDATE mailings SET layout = :layout
  WHERE id = :id AND partner_id IS :partner_id AND status = 'draft';
 
+-- name: mailing_mode_of
+-- A mailing's light/dark choice (0053): 'light', 'dark' or 'auto'; NULL is auto.
+SELECT color_mode FROM mailings WHERE id = :id AND partner_id IS :partner_id;
+
+-- name: mailing_mode_set
+UPDATE mailings SET color_mode = :color_mode
+ WHERE id = :id AND partner_id IS :partner_id AND status = 'draft';
+
+-- name: mailing_modes_for_list
+-- The composer's drafts with their light/dark choice, read apart from the main
+-- load so the main load works before 0053 is applied.
+SELECT id, color_mode FROM mailings
+ WHERE list_id = :list_id AND partner_id IS :partner_id;
+
 -- name: mailing_layouts_for_list
 -- The composer's drafts with their layouts, read apart from the main load so
 -- the main load works before 0052 is applied.

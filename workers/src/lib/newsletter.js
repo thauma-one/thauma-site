@@ -84,6 +84,25 @@ const KEEP = new Set([
  * partner chose, so it is right by construction.
  */
 const SIZES = { sm: "13.5px", lg: "19px", xl: "23px" };
+/* ANY SIZE, as Site Creator allows (2026-10-06, Chase: "the controls for the
+   text should be similar to what we made in the Site Creator, including the
+   colors and text size options"): besides the three names, a size in px from
+   10 to 60. Font-size is honored by every client, so what is chosen is what
+   arrives. */
+export function sizeOf_(v) {
+  if (SIZES[v]) return SIZES[v];
+  const n = /^\d{1,2}$/.test(String(v || "")) ? +v : 0;
+  return n >= 10 && n <= 60 ? n + "px" : null;
+}
+/* A PICTURE'S WIDTH, as a share of the column: dragged freely in the composer
+   (2026-10-06, Chase: "freeform size adjustment … It's easier to understand
+   than the Small Medium Large"), 10–100. The old names still read. */
+export function picWidth(v) {
+  const named = { sm: 33, md: 50, lg: 75 }[v];
+  if (named) return named;
+  const n = /^\d{1,3}$/.test(String(v || "")) ? +v : 0;
+  return n >= 10 && n < 100 ? n : null;
+}
 
 /* A FEW TONES BESIDES THE BRAND, each with a light-email and a dark-email
    shade, so a colored word stays readable on either card (both pass 4.5:1).
@@ -214,7 +233,8 @@ export function sanitise(html) {
          editor writes ?a=1&amp;b=2 — and escaping that again stored
          &amp;amp;, so every link with an & in it went somewhere else. */
       let value = unescapeHtml(m[1]);
-      if (key === "data-sz" && !SIZES[value]) continue;
+      if (key === "data-sz" && !sizeOf_(value)) continue;
+      if (key === "data-w" && !picWidth(value)) continue;
       if (key === "data-c") {
         if (!isColor(value)) continue;
         if (HEX.test(value)) value = value.toLowerCase();
@@ -330,7 +350,7 @@ function inlineStyles(html, accent, ink, dim, line, dark = false, accent2 = acce
       const sz = /data-sz="([^"]*)"/.exec(rest);
       const c = /data-c="([^"]*)"/.exec(rest);
       const bits = [];
-      if (sz && S.__sizes[sz[1]]) bits.push("font-size:" + S.__sizes[sz[1]]);
+      if (sz && sizeOf_(sz[1])) bits.push("font-size:" + sizeOf_(sz[1]));
       if (c && c[1] === "accent") bits.push("color:" + accent);
       if (c && c[1] === "accent2") bits.push("color:" + accent2);
       if (c && c[1] === "dim") bits.push("color:" + dim);
@@ -342,10 +362,10 @@ function inlineStyles(html, accent, ink, dim, line, dark = false, accent2 = acce
     /* a picture made smaller is centered at a fixed width (width= for
        Outlook, which ignores percentages), never wider than the column */
     if (name === "img") {
-      const w = /data-w="(sm|md|lg)"/.exec(rest);
-      if (w) {
-        const px = { sm: 176, md: 264, lg: 396 }[w[1]];
-        return `<${tag}${rest} width="${px}" style="width:${px}px;max-width:100%;height:auto;display:block;border:0;margin:0 auto 16px">`;
+      const w = /data-w="([^"]*)"/.exec(rest), pct = w && picWidth(w[1]);
+      if (pct) {
+        /* a share of the column; width= is Outlook's, at the 600px it draws */
+        return `<${tag}${rest} width="${Math.round(528 * pct / 100)}" style="width:${pct}%;max-width:100%;height:auto;display:block;border:0;margin:0 auto 16px">`;
       }
     }
     const style = S[name];
@@ -390,11 +410,15 @@ export function fillVariables(html, name) {
 export function render(body, opts = {}) {
   const accent = /^#[0-9a-fA-F]{6}$/.test(String(opts.accent || "")) ? opts.accent : "#6D4AFF";
   const accent2 = /^#[0-9a-fA-F]{6}$/.test(String(opts.accent2 || "")) ? opts.accent2 : accent;
+  /* LIGHT, DARK OR THE READER'S OWN (2026-10-06, Chase: "Maybe the mailer
+     needs a selection tool for light mail, dark mail, or match system
+     settings of the receiver"). "auto" is drawn light, and a
+     prefers-color-scheme block repaints it dark where the client honors one
+     (Apple Mail, iOS, Outlook for Mac and others); a client that ignores it
+     — Gmail does — shows the light letter, or darkens it its own way. */
+  const auto = opts.mode === "auto";
   const dark = opts.mode === "dark";
-
-  /* Fixed, not theme-aware. An email cannot ask what the reader prefers, and a
-     client that inverts a light email does a better job than one asked to
-     render a dark one it did not expect. Light unless somebody asks. */
+  const D = { bg: "#15151c", card: "#1c1c25", ink: "#f2f2f7", dim: "#9a9aad", line: "#2a2a36" };
   const bg   = dark ? "#15151c" : "#f4f5f8";
   const card = dark ? "#1c1c25" : "#ffffff";
   const ink  = dark ? "#f2f2f7" : "#1a1a22";
@@ -479,17 +503,32 @@ export function render(body, opts = {}) {
      border and nothing else). Integrated has no card at all: the page is
      the letter's own color and the column sits in it. Pictures are
      max-width:100% in both, so neither can push past the column. */
+  /* AS WIDE AS THE INBOX (2026-10-06, Chase: "The integrated and even the
+     card need to match the width of the email inbox window"): integrated is
+     the whole width of the reading pane; the card grows with it, to 720px,
+     with the ground showing around it. Outlook for Windows, which ignores
+     max-width, is given the card at 680px inside a conditional. */
   const integrated = opts.layout === "integrated";
   const pageBg = integrated ? card : bg;
+  const autoDark = auto ? `
+@media (prefers-color-scheme: dark) {
+  .tpage, body { background: ${integrated ? D.card : D.bg} !important; }
+  .w { background: ${D.card} !important; border-color: ${D.line} !important; }
+  .tink, .tbody p, .tbody li, .tbody h1, .tbody h2, .tbody h3, .tbody blockquote, .tbody td { color: ${D.ink} !important; }
+  .tdim, .tdim p, .tdim span { color: ${D.dim} !important; }
+  .tdim a { color: ${D.dim} !important; }
+  .tline { border-color: ${D.line} !important; }
+  .tbody hr { border-color: ${D.line} !important; background: ${D.line} !important; }
+}` : "";
   const media = `<style>
 @media only screen and (max-width:620px) {
-  .w { width: 100% !important; }
   .pad { padding-left: 22px !important; padding-right: 22px !important; }
   .h1 { font-size: 23px !important; line-height: 1.3 !important; }
   .outer { padding: 0 !important; }
   .w { border-radius: 0 !important; border-left: 0 !important; border-right: 0 !important; }
-}
+}${autoDark}
 </style>`;
+  const scheme = auto ? "light dark" : dark ? "dark" : "light";
 
   return `<!doctype html>
 <html lang="${escapeHtml(opts.lang || "en")}" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
@@ -498,36 +537,38 @@ export function render(body, opts = {}) {
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="x-apple-disable-message-reformatting">
+<meta name="color-scheme" content="${scheme}">
+<meta name="supported-color-schemes" content="${scheme}">
 <title>${title}</title>
 ${mso}
 ${media}
 </head>
-<body style="margin:0;padding:0;background:${pageBg};-webkit-font-smoothing:antialiased">
+<body class="tpage" style="margin:0;padding:0;background:${pageBg};-webkit-font-smoothing:antialiased">
 ${pre}
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
-       style="background:${pageBg};width:100%">
-  <tr><td align="center" class="outer" style="padding:${integrated ? "0 12px" : "28px 12px"}">
-
-    <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"
+       class="tpage" style="background:${pageBg};width:100%">
+  <tr><td align="center" class="outer" style="padding:${integrated ? "0" : "28px 12px"}">
+    ${integrated ? "" : `<!--[if mso]><table role="presentation" width="680" align="center" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->`}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
            class="w"
-           style="width:600px;max-width:100%;background:${card};${integrated ? "" : `border:1px solid ${line};
+           style="width:100%;${integrated ? "" : "max-width:720px;"}background:${card};${integrated ? "" : `border:1px solid ${line};
                   border-radius:10px;`}overflow:hidden">
 
       <tr><td style="height:4px;background:${accent};font-size:0;line-height:0">&nbsp;</td></tr>
 
       <tr><td class="pad" style="padding:32px 36px 8px">
-        <p style="margin:0;font-family:${FONT};font-size:12px;letter-spacing:.08em;
+        <p class="tdim" style="margin:0;font-family:${FONT};font-size:12px;letter-spacing:.08em;
                   text-transform:uppercase;color:${dim};font-weight:600">
           ${escapeHtml(opts.fromName || "")}</p>
-        <h1 class="h1" style="margin:10px 0 0;font-family:${SERIF};font-size:27px;line-height:1.25;
+        <h1 class="h1 tink" style="margin:10px 0 0;font-family:${SERIF};font-size:27px;line-height:1.25;
                    font-weight:700;color:${ink}">${title}</h1>
       </td></tr>
 
-      <tr><td class="pad" style="padding:20px 36px 30px;font-family:${FONT}">
+      <tr><td class="pad tbody" style="padding:20px 36px 30px;font-family:${FONT}">
         ${styled}
       </td></tr>
 
-      <tr><td class="pad" style="padding:20px 36px 28px;border-top:1px solid ${line};
+      <tr><td class="pad tdim tline" style="padding:20px 36px 28px;border-top:1px solid ${line};
                      font-family:${FONT};font-size:12.5px;line-height:1.6;color:${dim}">
         <p style="margin:0 0 8px;color:${dim}">${escapeHtml(opts.listName || "")}</p>
         <p style="margin:0;color:${dim}">${archive}${unsub}</p>
@@ -535,7 +576,7 @@ ${pre}
       </td></tr>
 
     </table>
-
+    ${integrated ? "" : "<!--[if mso]></td></tr></table><![endif]-->"}
   </td></tr>
 </table>
 </body>

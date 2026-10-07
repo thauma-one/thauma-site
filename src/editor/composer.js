@@ -83,6 +83,10 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
     document.querySelectorAll("#cpSizeRow [data-size]").forEach((b) => {
       b.setAttribute("aria-pressed", b.dataset.size === sz ? "true" : "false");
     });
+    /* the size in numbers, as Site Creator shows it: a chosen px size, or what
+       the cursor is in now */
+    const szBox = $("cpSizeVal");
+    if (szBox && document.activeElement !== szBox) szBox.value = /^\d+$/.test(sz) ? sz : ({ sm: 13.5, lg: 19, xl: 23 }[sz] || 16);
     document.querySelectorAll("#cpColorRow [data-tone]").forEach((b) => {
       b.setAttribute("aria-pressed", b.dataset.tone === tone ? "true" : "false");
     });
@@ -94,8 +98,9 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
     const onImg = ed.isActive("image");
     $("cpImgRow").hidden = !onImg;
     if (onImg) {
-      const w = ed.getAttributes("image").w || "";
-      document.querySelectorAll("#cpImgRow [data-w]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.w === w ? "true" : "false"));
+      const w = +(ed.getAttributes("image").w || 100);
+      $("cpImgW").value = w; $("cpImgWVal").textContent = w + "%";
+      $("cpImgFull").setAttribute("aria-pressed", w >= 100 ? "true" : "false");
     }
     const sizeBtn = document.querySelector('.cp-tools [data-cmd="size"]');
     if (sizeBtn) sizeBtn.dataset.sz = sz;
@@ -123,11 +128,25 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
   const closeRows = () => openRow(null);
 
   $("cpSizeRow").addEventListener("click", (e) => {
+    const step = e.target.closest("[data-size-step]");
+    if (step) {
+      const now = +$("cpSizeVal").value || 16;
+      setPx(Math.round(now) + +step.dataset.sizeStep);
+      return;
+    }
     const b = e.target.closest("[data-size]");
     if (!b) return;
     editor.chain().focus().setFontSize(b.dataset.size || null).run();
     closeRows();
   });
+  /* ANY SIZE, 10–60px (2026-10-06): the number box and its − / + */
+  function setPx(n) {
+    n = Math.max(10, Math.min(60, Math.round(+n || 16)));
+    $("cpSizeVal").value = n;
+    editor.chain().focus().setFontSize(n === 16 ? null : String(n)).run();
+  }
+  $("cpSizeVal").addEventListener("change", (e) => setPx(e.target.value));
+  $("cpSizeVal").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); setPx(e.target.value); } });
   $("cpColorRow").addEventListener("click", (e) => {
     const b = e.target.closest("[data-tone]");
     if (!b) return;
@@ -139,12 +158,17 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
     editor.chain().setTone(e.target.value.toLowerCase()).run();
   });
   $("cpColorAny").addEventListener("change", () => { editor.commands.focus(); closeRows(); });
-  $("cpImgRow").addEventListener("click", (e) => {
-    const b = e.target.closest("[data-w]");
-    if (!b || !editor.isActive("image")) return;
-    editor.chain().focus().updateAttributes("image", { w: b.dataset.w || null }).run();
+  /* A PICTURE'S WIDTH: drag its corner in the message, or this slider (for
+     a phone, where a corner is a small target); Full width puts it back */
+  function picTo(w) {
+    if (!editor.isActive("image")) return;
+    w = Math.max(10, Math.min(100, Math.round(+w)));
+    editor.chain().updateAttributes("image", { w: w >= 100 ? null : String(w) }).run();
+    $("cpImgWVal").textContent = w + "%";
     markDirty(); measureSoon();
-  });
+  }
+  $("cpImgW").addEventListener("input", (e) => picTo(e.target.value));
+  $("cpImgFull").addEventListener("click", () => { picTo(100); editor.commands.focus(); });
   $("cpVarRow").addEventListener("click", (e) => {
     const b = e.target.closest("[data-var]");
     if (!b) return;
@@ -252,6 +276,10 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
     let last = "card"; try { last = localStorage.getItem("thauma.mail.layout") || "card"; } catch (e) { /* private mode */ }
     cp.layout = m ? (m.layout === "integrated" ? "integrated" : "card") : last;
     cp.savedLayout = m ? cp.layout : null;
+    /* light, dark or the reader's own (0053): the draft's, or the last chosen */
+    let lastMode = "auto"; try { lastMode = localStorage.getItem("thauma.mail.mode") || "auto"; } catch (e) { /* private mode */ }
+    cp.mode = m ? (["light", "dark"].includes(m.color_mode) ? m.color_mode : "auto") : lastMode;
+    cp.savedMode = m ? cp.mode : null;
     drawLayout();
     cp.dirty = false;
     setState("");
@@ -267,8 +295,15 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
 
   function drawLayout() {
     document.querySelectorAll(".cp-layout [data-layout]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.layout === cp.layout ? "true" : "false"));
+    document.querySelectorAll(".cp-layout [data-mode]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.mode === cp.mode ? "true" : "false"));
   }
   document.querySelector(".cp-layout").addEventListener("click", (e) => {
+    const md = e.target.closest("[data-mode]");
+    if (md) {
+      cp.mode = md.dataset.mode;
+      try { localStorage.setItem("thauma.mail.mode", cp.mode); } catch (err) { /* private mode */ }
+      drawLayout(); markDirty(); return;
+    }
     const b = e.target.closest("[data-layout]");
     if (!b) return;
     cp.layout = b.dataset.layout;
@@ -286,7 +321,8 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
       $("cpSubject").value !== cp.savedSubject ||
       $("cpPreheader").value !== cp.savedPreheader ||
       filesKey(cp.attachments) !== cp.savedFiles ||
-      cp.layout !== cp.savedLayout;
+      cp.layout !== cp.savedLayout ||
+      cp.mode !== cp.savedMode;
     setState(cp.dirty ? tr("ml.cpUnsaved") : "");
     if (cp.dirty) autosaveSoon(); else clearTimeout(autoTimer);
   }
@@ -498,6 +534,7 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
       body_html: editor.getHTML(),
       attachments: cp.attachments.slice(),
       layout: cp.layout,
+      color_mode: cp.mode,
       base: cp.id ? cp.base : undefined,
     };
     const wasNew = !cp.id;
@@ -532,6 +569,7 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
     cp.savedPreheader = payload.preheader;
     cp.savedFiles = filesKey(payload.attachments);
     cp.savedLayout = payload.layout;
+    cp.savedMode = payload.color_mode;
     markDirty();
     if (!cp.dirty) setState(tr("ml.cpSaved"));
 
@@ -653,10 +691,20 @@ import { createEditor, applyLink, insertImage } from "./editor.js";
     const list = cp.lists.filter((l) => l.id === cp.listId)[0];
     if (!list) return;
 
+    /* EVERY CHECK BEFORE THE QUESTION (2026-10-06, Chase: "That check for if
+       someone is signed up for the mailing list or not after you press send
+       should happen before you type SEND, not after"). The server runs all
+       of a send's checks and stops; the number it gives is the one asked
+       about. */
+    btn.disabled = true;
+    const check = await post({ action: "mailing-check", id: cp.id });
+    btn.disabled = false;
+    if (check.error) { toast(check.error, "bad"); return; }
+
     const ok = await window.StaffConfirm({
       title: tr("ml.cpConfirmTitle"),
       body: tr("ml.cpConfirmBody")
-        .replace("{n}", list.subscribed)
+        .replace("{n}", check.n != null ? check.n : list.subscribed)
         .replace("{list}", list.name)
         .replace("{subject}", $("cpSubject").value.trim()),
       note: tr("ml.cpConfirmNote"),

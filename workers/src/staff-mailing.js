@@ -203,6 +203,13 @@ async function layoutOf(db, id, partnerId) {
   try { const r = await db.queryOne("mailing_layout_of", { id, partner_id: partnerId }); return r && r.layout === "integrated" ? "integrated" : "card"; }
   catch { return "card"; }
 }
+/* A mailing's light/dark choice (0053): "light", "dark" or "auto". TOLERANT
+   of the column not existing yet — then "auto". */
+const MODES = ["light", "dark", "auto"];
+async function modeOf(db, id, partnerId) {
+  try { const r = await db.queryOne("mailing_mode_of", { id, partner_id: partnerId }); return r && MODES.includes(r.color_mode) ? r.color_mode : "auto"; }
+  catch { return "auto"; }
+}
 async function withAttachments(db, listId, partnerId) {
   const rows = await db.query("mailings_for_list",
     { list_id: listId, partner_id: partnerId });
@@ -210,6 +217,10 @@ async function withAttachments(db, listId, partnerId) {
   try { (await db.query("mailing_layouts_for_list", { list_id: listId, partner_id: partnerId })).forEach((r) => { layouts[r.id] = r.layout; }); }
   catch { /* before 0052: every mailing a card */ }
   for (const m of rows) m.layout = layouts[m.id] === "integrated" ? "integrated" : "card";
+  const modes = {};
+  try { (await db.query("mailing_modes_for_list", { list_id: listId, partner_id: partnerId })).forEach((r) => { modes[r.id] = r.color_mode; }); }
+  catch { /* before 0053: every mailing "auto" */ }
+  for (const m of rows) m.color_mode = MODES.includes(modes[m.id]) ? modes[m.id] : "auto";
   for (const m of rows) {
     if (m.status !== "draft") continue;
     m.attachments = await db.query("mailing_attachments_for", { mailing_id: m.id });
@@ -254,8 +265,9 @@ async function buildMailing(db, env, { mailing, list, origin }) {
      test and every message wear the same colors and credit. */
   const brand = await brandForMail(db, mailing.partner_id || list.partner_id || null);
   const layout = await layoutOf(db, mailing.id, mailing.partner_id || null);
+  const mode = await modeOf(db, mailing.id, mailing.partner_id || null);
   const sample = render(html, {
-    ...brandOpts(brand), layout,
+    ...brandOpts(brand), layout, mode,
     subject, preheader, fromName: list.from_name, listName: list.name,
     unsubscribeUrl: `${origin}/unsubscribe?s=x&t=` + "0".repeat(32),
     archiveUrl: list.archive_public ? `${origin}/archive/x/y/z` : null,
@@ -263,7 +275,7 @@ async function buildMailing(db, env, { mailing, list, origin }) {
   const big = tooBig(sample);
   if (big) return { error: big };
 
-  return { value: { subject, html, preheader, brand, layout,
+  return { value: { subject, html, preheader, brand, layout, mode,
                     text: mailing.body_text || toText(html),
                     bytes: sizeOf(sample) } };
 }
@@ -310,6 +322,8 @@ async function messageFor(env, { built, list, sub, origin, links, theme, archive
     accent2: theme && theme.accent2,
     mode: theme && theme.mode,
     ...brandOpts(built.brand),
+    /* the mailing's own light/dark choice (0053) wins over the ministry's look */
+    mode: built.mode || (theme && theme.mode),
     unsubscribeUrl: unsubscribe,
     test: !!test,
     archiveUrl,
@@ -334,6 +348,13 @@ async function messageFor(env, { built, list, sub, origin, links, theme, archive
     headers: {
       "List-Unsubscribe": `<${unsubscribe}>`,
       "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      /* ONE CONVERSATION PER MESSAGE (2026-10-06, Chase: "Is the [Test]
+         showing up on my actual email because the address I have as my test
+         address and the final send address is the same?"). It was not in the
+         real subject — Gmail had gathered the test and the real send into one
+         conversation, which shows the first one's subject. A unique ref is
+         how Resend says to keep Gmail from threading them. */
+      "X-Entity-Ref-ID": crypto.randomUUID(),
     },
     attachments: attachments && attachments.length ? attachments : undefined,
   };
@@ -490,7 +511,7 @@ const api = {
             fromName: list ? list.from_name : "",
             listName: list ? list.name : "",
             accent: look && look.embed_accent,
-            mode: look && look.embed_theme,
+            mode: await modeOf(db, m.id, partnerId),
             /* Included because it costs bytes, and bytes are the point of
                this call. Measuring a message without its footer would report a
                size the real one never has. */
@@ -885,6 +906,9 @@ const api = {
         /* the layout, in its own statement so a deploy ahead of 0052 still saves */
         try { await db.query("mailing_layout_set", { id, partner_id: partnerId, layout: body.layout === "integrated" ? "integrated" : null }); } catch { /* before 0052 */ }
         saved.layout = await layoutOf(db, id, partnerId);
+        /* light, dark or the reader's own (0053), likewise on its own */
+        try { await db.query("mailing_mode_set", { id, partner_id: partnerId, color_mode: MODES.includes(body.color_mode) && body.color_mode !== "auto" ? body.color_mode : null }); } catch { /* before 0053 */ }
+        saved.color_mode = await modeOf(db, id, partnerId);
 
         /* REPLACED, not diffed. The console sends the whole list every save,
            so removing one is a matter of not sending it — which is exactly
@@ -1092,7 +1116,11 @@ const api = {
       }
 
       /* ---- the real one ---- */
-      if (body.action === "mailing-send") {
+      /* "mailing-check" runs every check a send does and stops there
+         (2026-10-06, Chase: "That check for if someone is signed up … should
+         happen before you type SEND, not after"). The composer asks it before
+         the confirmation opens, and the count it gives is the one shown. */
+      if (body.action === "mailing-send" || body.action === "mailing-check") {
         const id = clean(body.id, 60);
         const m = await db.queryOne("mailing_one", { id, partner_id: partnerId });
         if (!m) return json({ error: "No such mailing." }, 404);
@@ -1127,6 +1155,7 @@ const api = {
                    `than one send can carry. Splitting large sends is not built yet.`,
           }, 400);
         }
+        if (body.action === "mailing-check") return json({ ok: true, n: total.n });
 
         /* THE GUARD AGAINST SENDING TWICE, and it is a WHERE clause rather
            than the if-statement above: two requests arriving together both

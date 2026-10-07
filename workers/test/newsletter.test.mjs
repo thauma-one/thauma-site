@@ -164,7 +164,7 @@ check("NOTHING IN THE STYLE BLOCK IS LOAD-BEARING", () => {
   const stripped = html.replace(/<style[\s\S]*?<\/style>/gi, "");
   for (const [what, needle] of [
     ["the accent", "#E4572E"],
-    ["the body width", 'width="600"'],
+    ["the body width", 'max-width:720px'],
     ["the page background", "#f4f5f8"],
     ["the card background", "#ffffff"],
     ["the unsubscribe link", "https://thauma.one/u?t=abc"],
@@ -265,7 +265,31 @@ check("the layout is tables, because Outlook renders through Word", () => {
   assert(/<table/i.test(html), "no table layout");
   assert(/role="presentation"/.test(html),
     "layout tables must be hidden from screen readers");
-  assert(/width="600"/.test(html), "expected the standard 600px body width");
+  /* AS WIDE AS THE INBOX (2026-10-06, Chase: "The integrated and even the
+     card need to match the width of the email inbox window"): the card grows
+     with the pane to 720px, inline; Outlook for Windows, which ignores
+     max-width, gets it at 680px in a conditional; integrated is the pane. */
+  assert(/width="100%"[^>]*class="w"[^>]*max-width:720px/.test(html.replace(/\s+/g, " ")), "the card grows to 720px, inline");
+  assert(/<!--\[if mso\]><table[^>]*width="680"/.test(html), "Outlook gets the card at 680px");
+  const flat = render(BODY, { ...OPTS, layout: "integrated" }).replace(/\s+/g, " ");
+  assert(/class="w" style="width:100%;background/.test(flat), "integrated fills the pane, no max");
+  assert(!/width="680"/.test(flat), "integrated has no Outlook card width");
+});
+
+check("light, dark, or the reader's own", () => {
+  const auto = render(BODY, { ...OPTS, mode: "auto" });
+  assert(/prefers-color-scheme: dark/.test(auto), "auto repaints dark where the client says so");
+  assert(/name="color-scheme" content="light dark"/.test(auto), "and says it supports both");
+  const light = render(BODY, { ...OPTS, mode: "light" });
+  assert(!/prefers-color-scheme/.test(light) && /content="light"/.test(light), "light stays light");
+  assert(/#1c1c25/.test(render(BODY, { ...OPTS, mode: "dark" })), "dark is drawn dark");
+});
+
+check("any text size from 10 to 60px, and a picture's width as a share of the column", () => {
+  const html = render('<p><span data-sz="22">big</span> <span data-sz="99">no</span></p><img src="https://x/a.png" data-w="60">', OPTS);
+  assert(/font-size:22px/.test(html), "a size in px");
+  assert(!/font-size:99px/.test(html), "out of range refused");
+  assert(/width="317"[^>]*width:60%/.test(html), "60% of the column, width= for Outlook");
 });
 
 check("no webfont is requested", () => {

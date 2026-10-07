@@ -105,6 +105,9 @@ export default {
     /* card or integrated, as it was sent (0052; a card before it exists) */
     const layout = await db.queryOne("mailing_layout_of", { id: m.id, partner_id: m.partner_id })
       .then((r) => (r && r.layout === "integrated" ? "integrated" : "card")).catch(() => "card");
+    /* light, dark or the reader's own, as it was sent (0053; "auto" before it exists) */
+    const color = await db.queryOne("mailing_mode_of", { id: m.id, partner_id: m.partner_id })
+      .then((r) => (r && ["light", "dark"].includes(r.color_mode) ? r.color_mode : "auto")).catch(() => "auto");
     const html = render(m.body_html || "", {
       layout,
       subject: m.subject,
@@ -116,6 +119,7 @@ export default {
       /* As the inbox had it: the ministry's colors and the Thauma credit
          (lib/mail-brand.js). */
       ...(brand ? { accent: brand.accent, accent2: brand.accent2, mode: brand.mode, credit: t(null, "brand.note") } : {}),
+      mode: color,
     });
     return new Response(html, { headers: HEADERS });
   },

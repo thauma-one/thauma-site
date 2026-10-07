@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "56961e6d803210e7";
+export const SOURCE_DIGEST = "5e379dc4dc84c8f6";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -484,6 +484,11 @@ ORDER BY l.name COLLATE NOCASE;`,
        (SELECT group_concat(a.object_key, char(10)) FROM mailing_attachments a WHERE a.mailing_id = m.id) AS attachment_keys
 FROM mailings m
 WHERE m.id = :id AND m.partner_id IS :partner_id AND m.status = 'draft';`,
+  mailing_mode_of: `SELECT color_mode FROM mailings WHERE id = :id AND partner_id IS :partner_id;`,
+  mailing_mode_set: `UPDATE mailings SET color_mode = :color_mode
+ WHERE id = :id AND partner_id IS :partner_id AND status = 'draft';`,
+  mailing_modes_for_list: `SELECT id, color_mode FROM mailings
+ WHERE list_id = :list_id AND partner_id IS :partner_id;`,
   mailing_one: `SELECT id, list_id, partner_id, subject, preheader, body_md, body_html, body_text,
        status, slug, sent_count, created_at, started_at, finished_at
 FROM mailings
