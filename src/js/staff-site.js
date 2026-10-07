@@ -51,7 +51,7 @@
     goals: { variants: ['cards'], words: ['heading', 'text'], data: 'updates/#goals', align: true },
     prayer: { variants: ['list'], words: ['heading', 'text'], data: 'updates/#prayer', align: true },
     videos: { variants: ['stage'], words: ['heading', 'text'], data: 'updates/#videos', align: true },
-    newsletters: { variants: ['latest', 'list'], words: ['heading', 'text'], data: 'mail/', align: true },
+    newsletters: { variants: ['latest', 'list', 'combined'], words: ['heading', 'text'], data: 'mail/', align: true },
     signup: { variants: ['band', 'card', 'split', 'open'], words: ['heading', 'text'], data: 'sharing/#signup' },
     contact: { variants: ['form', 'split', 'wide', 'open'], words: ['heading', 'text'], data: 'sharing/#contact', align: true },
     give: { variants: ['band', 'card', 'split', 'spotlight'], words: ['heading', 'text', 'button'] },
@@ -999,6 +999,18 @@
       if (spec.variants.length > 1 && s.type !== 'text') {
         html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.layout')) + '</span>' +
           chips('variant:' + i, spec.variants, s.variant, function (v) { return tr('ws.v.' + s.type + '.' + v); }) + '</div>';
+      /* Past updates: which list, and how many (2026-10-06) */
+      if (s.type === 'newsletters') {
+        var lists = state.body.mail_lists || [];
+        html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.news.list')) + '</span><select data-news-list="' + i + '">' +
+          '<option value="">' + esc(tr('ws.news.all')) + '</option>' + lists.map(function (l) {
+            return '<option value="' + esc(l.slug) + '"' + (s.list === l.slug ? ' selected' : '') + '>' + esc(l.name) + '</option>';
+          }).join('') + '</select></div>';
+        if (s.variant !== 'latest') {
+          html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.news.count')) + '</span>' +
+            chips('newscount:' + i, ['3', '4', '5', '6', '8', '10', '12'], String(s.count || 5), function (v) { return v; }) + '</div>';
+        }
+      }
       }
       html += '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.align')) + '</span>' +
         chips('align:' + i, ['left', 'center', 'right', 'indent'], s.align || defaultAlign(s), function (v) { return tr('ws.align.' + v); }) + '</div>';
@@ -2128,6 +2140,7 @@
       fillPair(); drawSettings(); return changed();
     }
     if (t.dataset.fallback !== undefined) { state.doc.fallback = t.value; return changed(); }
+    if (t.dataset.newsList !== undefined) { p.sections[+t.dataset.newsList].list = t.value; drawSections(); return changed(); }
     /* Chosen, then straight into the editor: one step, not two (Chase,
        2026-10-04). Canceling keeps the photo as it came. */
     if (t.dataset.secPhoto) return upload(t, function (url) { var ps = p.sections[+t.dataset.secPhoto]; ps.photo = url; ps.photoEdit = null; drawSections(); editSectionPhoto(ps); });
@@ -2235,6 +2248,7 @@
       var val = d.value, name = d.chip;
       if (name.indexOf('variant:') === 0) { p.sections[+name.slice(8)].variant = val; drawSections(); }
       else if (name === 'tabstyle' || name === 'tabalign') { var sp = realPage(); if (sp.tabs) sp.tabs[name === 'tabstyle' ? 'style' : 'align'] = val; drawPages(); }
+      else if (name.indexOf('newscount:') === 0) { p.sections[+name.slice(10)].count = +val; drawSections(); }
       else if (name.indexOf('clines:') === 0) { p.sections[+name.slice(7)].lines = val === 'attached'; drawSections(); }
       else if (name.indexOf('raised:') === 0) { var rs = p.sections[+name.slice(7)]; rs.raised = val === 'raised'; rs.tint = val === 'tint'; drawSections(); }
       else if (name.indexOf('divider:') === 0) { p.sections[+name.slice(8)].divider = val === 'on'; drawSections(); }

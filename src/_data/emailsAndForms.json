@@ -162,7 +162,8 @@
       "cardsFill": "What guides every decision.",
       "cardTitle": "Reliability",
       "cardText": "A few words about what this means and why it matters.",
-      "tabFill": "Tab"
+      "tabFill": "Tab",
+      "allUpdates": "See All Updates"
     },
     "brand": {
       "note": "A Thauma ministry"
@@ -338,7 +339,8 @@
       "cardsFill": "Što vodi svaku odluku.",
       "cardTitle": "Pouzdanost",
       "cardText": "Nekoliko riječi o tome što to znači i zašto je važno.",
-      "tabFill": "Kartica"
+      "tabFill": "Kartica",
+      "allUpdates": "Sva izdanja"
     },
     "brand": {
       "note": "Služba Thaume"
@@ -514,7 +516,8 @@
       "cardsFill": "Што води сваку одлуку.",
       "cardTitle": "Поузданост",
       "cardText": "Неколико ријечи о томе што то значи и зашто је важно.",
-      "tabFill": "Картица"
+      "tabFill": "Картица",
+      "allUpdates": "Сва издања"
     },
     "brand": {
       "note": "Служба Тауме"
@@ -690,7 +693,8 @@
       "cardsFill": "Kaj vodi vsako odločitev.",
       "cardTitle": "Zanesljivost",
       "cardText": "Nekaj besed o tem, kaj to pomeni in zakaj je pomembno.",
-      "tabFill": "Zavihek"
+      "tabFill": "Zavihek",
+      "allUpdates": "Vse novice"
     },
     "brand": {
       "note": "Služba Thaume"

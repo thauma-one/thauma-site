@@ -89,7 +89,7 @@ export const SECTIONS = {
   prayer:    { variants: ["list"], words: ["heading", "text"], align: true },
   videos:    { variants: ["stage"], words: ["heading", "text"], align: true },
   /* latest: the newest one, and a small way to the rest (Chase, 2026-09-29). */
-  newsletters: { variants: ["latest", "list"], words: ["heading", "text"], align: true },
+  newsletters: { variants: ["latest", "list", "combined"], words: ["heading", "text"], align: true },
   /* THE FORM AND GIVE STYLES (BACKLOG §3, 2026-10-04): Floating (a card of
      its own) or Integrated (part of the page), each in a few shapes. The
      first of each list is what a site saved before had, so nothing moves.
@@ -569,6 +569,15 @@ function cleanSection(raw, langs) {
   /* The hero's line under the title (render.js): kept only when it was
      chosen, so a hero saved before the option renders as it always did. */
   if (raw.type === "hero" && typeof raw.divider === "boolean") s.divider = raw.divider;
+  /* PAST UPDATES (2026-10-06, Chase: "There needs to be a dropdown menu that
+     defines what list you can select … maybe we make the quantity of past
+     updates definable"): one public list's mailings, or all of them; how
+     many (3–12). */
+  if (raw.type === "newsletters") {
+    s.list = /^[a-z0-9-]{1,60}$/.test(String(raw.list || "")) ? String(raw.list) : "";
+    const n = Math.round(Number(raw.count));
+    s.count = n >= 3 && n <= 12 ? n : 5;
+  }
   /* The header (render.js): its background, the line along its top and the
      line under its title. Absent means the default look. */
   if (raw.type === "header") {

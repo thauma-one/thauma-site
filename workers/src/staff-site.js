@@ -159,6 +159,9 @@ export default {
            working copy differs from it (Chase, 2026-09-29: the yellow dot). */
         published: fresh.published ? cleanDoc(JSON.parse(fresh.published), catalog.map((l) => l.code)) : null,
         languages: catalog.map((l) => ({ code: l.code, name: l.name, native_name: l.native_name })),
+        /* the ministry's public lists, for Past updates' "From the list" */
+        mail_lists: await db.query("mailing_lists_for_partner", { partner_id: partner.id })
+          .then((ls) => ls.filter((l) => l.archive_public).map((l) => ({ slug: l.slug, name: l.name }))).catch(() => []),
         /* Each page's built-in name in each language, as the site itself
            names a page the owner has not renamed (render.js label()). The
            editor showed the CONSOLE's word instead, so page names ignored

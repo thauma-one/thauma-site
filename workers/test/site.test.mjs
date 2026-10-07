@@ -774,6 +774,26 @@ check("Custom Cards: vertical or horizontal, with or without lines between; numb
   assert(/class="cards-horizontal/.test(html) && !/class="cards-horizontal cards-lines/.test(html), "Detached reads as horizontal without");
 });
 
+check("Past updates: from one list or all; Newest and the rest shows the newest, then a few, then See All Updates", () => {
+  /* Chase, 2026-10-06: "There needs to be a dropdown menu that defines what
+     list you can select … a combined look where the newest one can be
+     highlighted special, but it lists the last 3-5 updates underneath it …
+     'See All Updates' at the bottom in small subtle print" */
+  const mail = (n, list) => ({ slug: "m" + n, subject: "Update " + n, preheader: null, sent_at: "2026-0" + (9 - (n % 9)) + "-01T10:00:00Z",
+    list: { slug: list, name: list }, url: `https://thauma.one/archive/chase-roush/${list}/m${n}/` });
+  const mailings = [mail(1, "news"), mail(2, "prayer"), mail(3, "news"), mail(4, "news"), mail(5, "news"), mail(6, "news")];
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  d.pages[0].sections = [{ id: "n1", type: "newsletters", variant: "combined", list: "news", count: 3, words: { en: { heading: "Past" } } }];
+  const html = renderPage({ doc: cleanDoc(d, ["en"]), site: { slug: "chase-roush", display_name: "Chase Roush", giving_url: "" },
+    payload: { ...payload, mailings }, theme: payload.theme, lang: "en", pageId: "home", base: "/site/c", origin: "https://thauma.one", draft: false });
+  assert(/class="latest m" href="[^"]*\/news\/m1\/"/.test(html), "the newest of that list, as the card");
+  const rows = [...html.matchAll(/<li><a href="[^"]*\/(m\d)\/"/g)].map((m) => m[1]);
+  eq(rows, ["m3", "m4"], "then the next ones of that list, the card included in the count of 3");
+  assert(!/prayer\/m2/.test(html), "not another list's");
+  assert(/<p class="past m"><a href="https:\/\/thauma.one\/archive\/chase-roush\/news\/"[^>]*>See All Updates<\/a>/.test(html), "and See All Updates, at the list's archive");
+  assert(cleanDoc({ pages: [{ id: "home", sections: [{ type: "newsletters", list: "../x", count: 99 }] }] }, ["en"]).pages[0].sections[0].count === 5, "cleaned");
+});
+
 check("a page's tabs: the page's own sections, then the bar, then a panel per tab; one tab is no bar", () => {
   /* Chase, 2026-10-06: "an option at the top of each page that acts like tabs
      open on a browser, where + adds a tab to the page with distinct looks" */

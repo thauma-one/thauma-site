@@ -546,6 +546,9 @@ main section.is-editing{outline:2px solid var(--acc);outline-offset:-2px}
 .latest b{display:block;font:var(--boldw) clamp(20px,2vw,26px)/1.25 var(--display);margin:6px 0 8px}.latest span{color:var(--dim)}
 .latest em{display:inline-block;margin-top:14px;font-style:normal;font-weight:600;color:var(--ink)}
 .past{margin:16px 0 0;font-size:14px}.past a{color:var(--dim)}.past a:hover{color:var(--fg)}
+.news-combined .latest{max-width:none;border-color:color-mix(in srgb,var(--acc) 45%,var(--line));box-shadow:inset 3px 0 0 var(--acc)}
+.news-combined .news{margin-top:12px}
+.news-combined .past{font-size:12.5px;letter-spacing:.06em;margin-top:18px}
 /* footer */
 .foot{border-top:1px solid var(--line);padding:48px 0 60px;color:var(--dim);font-size:14px}
 .foot .wrap{display:flex;gap:28px;flex-wrap:wrap;justify-content:space-between;align-items:flex-start}
@@ -884,20 +887,32 @@ function renderSection(sec, ctx) {
       return `<section${cls("data")}><div class="wrap">${head}${sub}${widget("videos", extra)}</div></section>`;
     }
     case "newsletters": {
-      const list = (ctx.payload.mailings || []).filter((m) => m.url).slice(0, 12);
+      const count = sec.count >= 3 && sec.count <= 12 ? sec.count : 5;
+      const list = (ctx.payload.mailings || []).filter((m) => m.url && (!sec.list || (m.list && m.list.slug === sec.list))).slice(0, 12);
       if (!list.length) return "";
       const date = (d) => { try { return new Date(d).toLocaleDateString(lang, { day: "numeric", month: "long", year: "numeric" }); } catch { return String(d || "").slice(0, 10); } };
+      /* the list's own archive, where every one of them is */
+      const archive = list[0].url.replace(/[^/]+\/?$/, "");
+      const card = (m) => `<a class="latest m" href="${esc(m.url)}"><small>${esc(date(m.sent_at))}</small><b>${esc(m.subject)}</b>` +
+        `${m.preheader ? `<span>${esc(m.preheader)}</span>` : ""}<em>${esc(word(lang, "readIt"))} →</em></a>`;
+      const rows = (ms) => `<ul class="news m">${ms.map((m) =>
+        `<li><a href="${esc(m.url)}"><span>${esc(m.subject)}</span><small>${esc(date(m.sent_at))}</small></a></li>`).join("")}</ul>`;
       if (sec.variant === "latest") {
         /* The newest, as a card; below it, quietly, the list's own archive. */
-        const m = list[0];
-        const archive = m.url.replace(/[^/]+\/?$/, "");
-        return `<section${cls("data")}><div class="wrap">${heading(w("heading"))}${sub}` +
-          `<a class="latest m" href="${esc(m.url)}"><small>${esc(date(m.sent_at))}</small><b>${esc(m.subject)}</b>` +
-          `${m.preheader ? `<span>${esc(m.preheader)}</span>` : ""}<em>${esc(word(lang, "readIt"))} →</em></a>` +
+        return `<section${cls("data")}><div class="wrap">${heading(w("heading"))}${sub}${card(list[0])}` +
           `<p class="past m"><a href="${esc(archive)}">${esc(word(lang, "pastNews"))}</a></p></div></section>`;
       }
-      return `<section${cls("data")}><div class="wrap">${heading(w("heading"))}${sub}<ul class="news m">${list.map((m) =>
-        `<li><a href="${esc(m.url)}"><span>${esc(m.subject)}</span><small>${esc(date(m.sent_at))}</small></a></li>`).join("")}</ul></div></section>`;
+      if (sec.variant === "combined") {
+        /* NEWEST AND THE REST (2026-10-06, Chase: "a combined look where the
+           newest one can be highlighted special, but it lists the last 3-5
+           updates underneath it … with an option to 'See All Updates' at the
+           bottom in small subtle print") */
+        return `<section${cls("data", "news-combined")}><div class="wrap">${heading(w("heading"))}${sub}${card(list[0])}` +
+          `${list.length > 1 ? rows(list.slice(1, count)) : ""}` +
+          `<p class="past m"><a href="${esc(archive)}">${esc(word(lang, "allUpdates"))}</a></p></div></section>`;
+      }
+      return `<section${cls("data")}><div class="wrap">${heading(w("heading"))}${sub}${rows(list.slice(0, count))}` +
+        `${list.length > count ? `<p class="past m"><a href="${esc(archive)}">${esc(word(lang, "allUpdates"))}</a></p>` : ""}</div></section>`;
     }
     case "signup":
       ctx.needs.signup = true;
