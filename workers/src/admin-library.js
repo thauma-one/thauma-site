@@ -51,7 +51,7 @@ const COLLECTIONS = {
     },
     flags: ["pinned"],
     lists: ["symptoms"],
-    plain: ["link", "photo", "created"],
+    plain: ["link", "photo", "photo_ar", "created"],
     /* Where an uploaded picture is kept, so the editor can offer it back for
        re-cropping rather than only ever replacing it. Same idea as a staff
        photo's master. */
@@ -78,7 +78,7 @@ const COLLECTIONS = {
        weekend, and one date with a start time cannot say so — leaving people
        to work it out from a sentence somebody wrote in prose. */
     plain: ["date", "end_date", "time", "location", "map_url", "registration",
-            "cohort_name", "capacity", "photo"],
+            "cohort_name", "capacity", "photo", "photo_ar"],
     hidden: ["photo_master"],
   },
 };

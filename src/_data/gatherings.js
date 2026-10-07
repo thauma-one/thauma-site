@@ -127,6 +127,10 @@ module.exports = () => {
            — and otherwise it follows the place, so moving the venue moves the
            link and nobody has to remember two fields. */
         map_url: data.map_url ? webUrl(data.map_url) : mapUrl(data.location),
+        /* THE PICTURE'S OWN SHAPE, width ÷ height (2026-10-07: the editor
+           takes any shape and the page's frame follows it). Pictures from
+           before were all cropped wide. */
+        photo_ar: data.photo ? (Number(data.photo_ar) >= 0.4 && Number(data.photo_ar) <= 2.5 ? Number(data.photo_ar) : 16 / 9) : null,
       };
     })
     .sort((a, b) => {

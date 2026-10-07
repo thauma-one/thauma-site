@@ -65,8 +65,12 @@ pageTitle: events
     {% set g = upcoming[0] %}
     {%- set title = g.title[lang] or g.title.en or g.title[g.langs[0]] %}
     {%- set summary = g.summary[lang] or g.summary.en %}
-    <article class="invite is-next">
-      {% if g.photo %}<div class="invite-photo"><img src="{{ g.photo }}" alt="" loading="lazy" decoding="async"></div>{% endif %}
+    {#- THE PICTURE IN ITS OWN SHAPE (photo_ar, gatherings.js), the same
+       shape it keeps when the gathering moves to the record below. With no
+       picture there is no empty frame: the card alone, with a slow shimmer
+       across it that says "new, and coming" (2026-10-07). -#}
+    <article class="invite is-next{% if not g.photo %} is-new{% endif %}">
+      {% if g.photo %}<div class="invite-photo" style="aspect-ratio:{{ g.photo_ar }}"><img src="{{ g.photo }}" alt="" loading="lazy" decoding="async"></div>{% endif %}
 
       <div class="invite-card">
         <p class="invite-cue">{{ t.events.invited }}</p>
@@ -191,11 +195,9 @@ pageTitle: events
     {% for g in past %}
     {%- set title = g.title[lang] or g.title.en or g.title[g.langs[0]] %}
     {%- set summary = g.summary[lang] or g.summary.en %}
-    <article class="record-band{% if loop.index0 % 2 %} is-flipped{% endif %}">
-      <div class="record-photo">
-        {% if g.photo %}<img src="{{ g.photo }}" alt="" loading="lazy" decoding="async">
-        {% else %}<span class="record-noshot" aria-hidden="true"></span>{% endif %}
-      </div>
+    {#- No picture, no frame: the words take the whole width. -#}
+    <article class="record-band{% if loop.index0 % 2 %} is-flipped{% endif %}{% if not g.photo %} no-photo{% endif %}">
+      {% if g.photo %}<div class="record-photo" style="aspect-ratio:{{ g.photo_ar }}"><img src="{{ g.photo }}" alt="" loading="lazy" decoding="async"></div>{% endif %}
       <div class="record-body">
         <p class="record-when">{{ g.date | when(g.end_date, lang) }}{% if g.location %} · {{ g.location }}{% endif %}</p>
         <h3>{{ title }}</h3>

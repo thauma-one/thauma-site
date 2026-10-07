@@ -226,10 +226,16 @@ await check("past gatherings alternate sides down the page", async () => {
     "nothing swaps the photo's side, so every band reads identically");
 });
 
-await check("a gathering with no photograph still holds its shape", async () => {
-  /* There will be no photographs at all for a long time, and a record that
-     collapses without them is a record nobody can start. */
-  assert(d.querySelector(".record-noshot"), "an empty photo slot renders nothing");
+await check("a gathering with no photograph draws no frame for one; a picture keeps its own shape", async () => {
+  /* 2026-10-07, Chase: "if there is no photo, it doesn't try to display one."
+     The record's words take the whole band instead of sitting beside an
+     empty striped slot; an upcoming one with no picture shimmers instead. */
+  assert(!d.querySelector(".record-noshot"), "an empty photo slot is still drawn");
+  const bare = [...d.querySelectorAll(".record-band")].filter((b) => !b.querySelector("img"));
+  assert(bare.length && bare.every((b) => b.classList.contains("no-photo") && !b.querySelector(".record-photo")), "a record with no picture still has a picture frame");
+  const next = d.querySelector(".invite.is-next");
+  if (next && !next.querySelector(".invite-photo")) assert(next.classList.contains("is-new"), "an upcoming gathering with no picture does not shimmer");
+  [...d.querySelectorAll(".invite-photo, .record-photo")].forEach((f) => assert(/aspect-ratio:\s*[\d.]+/.test(f.getAttribute("style") || ""), "a picture frame without its picture's shape"));
 });
 
 /* ------------------------------------------------- the wait, and languages */

@@ -123,6 +123,10 @@ module.exports = () => {
         body: (content || "").trim(),
         langs: Object.keys(data.title || {}).filter((k) => (data.title || {})[k]),
         link: webUrl(data.link),
+        /* THE PICTURE'S OWN SHAPE, width ÷ height (2026-10-07: the editor
+           takes any shape and the page's frame follows it). Pictures from
+           before were all cropped wide. */
+        photo_ar: data.photo ? (Number(data.photo_ar) >= 0.4 && Number(data.photo_ar) <= 2.5 ? Number(data.photo_ar) : 16 / 9) : null,
       };
     })
     /* PINNED FIRST, then newest. The glossary is the thing everything else

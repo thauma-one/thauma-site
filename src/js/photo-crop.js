@@ -55,7 +55,11 @@
        shows a window of the picture chosen by its focus point (Website ›
        Photos), and a picture cropped to exactly the frame's shape would leave
        that point nowhere to move. */
-    site:        { aspect: null,   max: 2400, label: 'Site photo' }
+    site:        { aspect: null,   max: 2400, label: 'Site photo' },
+    /* An event's or a resource's picture: ANY SHAPE (2026-10-07, Chase: "it
+       should be able to be any size and the photo frame adjusts to match");
+       the page reads the shape back from photo_ar. */
+    library:     { aspect: null,   max: 1600, label: 'Event or resource picture' }
   };
   var FREE_MIN = 0.4, FREE_MAX = 2.5;
 
@@ -74,7 +78,7 @@
      given the purpose that matches each frame below. This file keeps what
      Thauma's frames want and turns the choice into the pixels uploaded,
      because the static site shows exactly the file it is given. */
-  var PURPOSE = { photo: 'team', bio_photo: 'bio', home: 'home', wide: 'wide', newsletter: 'mail', site: 'site' };
+  var PURPOSE = { photo: 'team', bio_photo: 'bio', home: 'home', wide: 'wide', newsletter: 'mail', site: 'site', library: 'bio' };
 
   /**
    * @param {File}   file   what the person chose

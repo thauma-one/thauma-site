@@ -31,7 +31,7 @@ pagination:
 
 <section><div class="wrap">
   {% if resource.photo %}
-  <div class="resource-photo"><img src="{{ resource.photo }}" alt="" loading="lazy" decoding="async"></div>
+  <div class="resource-photo" style="aspect-ratio:{{ resource.photo_ar }}"><img src="{{ resource.photo }}" alt="" loading="lazy" decoding="async"></div>
   {% endif %}
 
   {% if resource.symptoms.length %}

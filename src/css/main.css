@@ -840,15 +840,27 @@ section .cue::before{content:counter(cue,decimal-leading-zero);width:auto;height
      separate boxes — one object, two halves. */
   .invite:has(.invite-photo){grid-template-columns:minmax(0,5fr) minmax(0,6fr)}
 }
-.invite-photo{overflow:hidden;border:1px solid rgba(47,216,255,.18);border-right:0;
-  min-height:280px}
+/* The picture in its own shape (aspect-ratio inline, from photo_ar), set
+   against the card's middle rather than stretched to the card's height —
+   stretched, a wide photo was shown square (2026-10-07). */
+.invite-photo{overflow:hidden;border:1px solid rgba(47,216,255,.18);border-right:0;align-self:center}
 .invite-photo img{width:100%;height:100%;object-fit:cover;display:block}
 @media (max-width: 899px){
-  .invite-photo{border-right:1px solid rgba(47,216,255,.18);aspect-ratio:16/9;min-height:0}
+  .invite-photo{border-right:1px solid rgba(47,216,255,.18)}
 }
 
 .invite-card{background:var(--panel);border:1px solid rgba(92,242,196,.22);
   padding:44px 46px 40px;position:relative;overflow:hidden}
+/* NEW AND COMING, with no picture (2026-10-07, Chase: "a kind of shimmer to
+   it kinda like it's saying 'Look at this New and upcoming event'"): a soft
+   band of seafoam light crosses the card every few seconds. Held while a page
+   transition runs; none at all for reduced motion. */
+.invite.is-new .invite-card::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(105deg,transparent 35%,rgba(92,242,196,.09) 50%,transparent 65%);
+  background-size:250% 100%;background-position:120% 0;animation:inviteShimmer 5.5s cubic-bezier(.55,.05,.45,.95) 1.2s infinite}
+@keyframes inviteShimmer{0%{background-position:120% 0}45%,100%{background-position:-20% 0}}
+.vt-active .invite.is-new .invite-card::after{animation-play-state:paused}
+@media (prefers-reduced-motion: reduce){.invite.is-new .invite-card::after{animation:none;background:none}}
 @media (max-width: 560px){ .invite-card{padding:34px 26px 30px} }
 
 /* THE SEAM. The card's top edge lights up as it arrives — one line, drawn
@@ -969,10 +981,11 @@ section .cue::before{content:counter(cue,decimal-leading-zero);width:auto;height
   .record-band.is-flipped .record-photo{order:2}
 }
 .record-photo{overflow:hidden;background:var(--bg2,#0b1119);
-  border:1px solid rgba(255,255,255,.07);min-height:230px}
+  border:1px solid rgba(255,255,255,.07);align-self:center}
+/* No picture: the words take the whole band. */
+@media (min-width: 820px){ .record-band.no-photo{grid-template-columns:minmax(0,1fr)} }
+.record-band.no-photo .record-body{border-left:1px solid rgba(255,255,255,.07)}
 .record-photo img{width:100%;height:100%;object-fit:cover;display:block}
-.record-noshot{display:block;width:100%;height:100%;
-  background:repeating-linear-gradient(45deg,rgba(255,255,255,.02) 0 10px,transparent 10px 20px)}
 .record-body{padding:34px 38px;background:var(--panel);
   border:1px solid rgba(255,255,255,.07);border-left:0;
   display:flex;flex-direction:column;justify-content:center}
