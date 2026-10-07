@@ -66,7 +66,7 @@ async function boot(opts = {}) {
   w.scrollTo = () => {};
   w.scrollBy = () => {};
   w.HTMLElement.prototype.scrollIntoView = () => {};
-  for (const f of ["staff-i18n.js", "staff.js", "color-pair.js", "staff-site.js"]) w.eval(readFileSync("src/js/" + f, "utf8"));
+  for (const f of ["staff-i18n.js", "staff.js", "color-pair.js", "rich-text.js", "staff-site.js"]) w.eval(readFileSync("src/js/" + f, "utf8"));
   w.StaffToast = () => {};
   await settle(200);
   const d = w.document;

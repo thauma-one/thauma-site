@@ -97,7 +97,8 @@
 {% if staffPage == "sharing" %}<script src="/js/staff-sharing.js?v={{ "/js/staff-sharing.js" | v }}"></script>{% endif %}
 {#- The one photo editor (photo-editor.js), for every place a photo goes. -#}
 <script src="/js/photo-editor.js?v={{ "/js/photo-editor.js" | v }}"></script>
-{% if staffPage == "website" %}<script src="/js/staff-site.js?v={{ "/js/staff-site.js" | v }}"></script>{% endif %}
+{% if staffPage == "website" %}<script src="/js/rich-text.js?v={{ "/js/rich-text.js" | v }}"></script>
+<script src="/js/staff-site.js?v={{ "/js/staff-site.js" | v }}"></script>{% endif %}
 {#- The preview beside the editing, on the page that AUTHORS what it
    shows; sharing, colors and code are on Sharing. -#}
 {% if staffPage == "updates" %}<script src="/js/staff-updates-preview.js?v={{ "/js/staff-updates-preview.js" | v }}"></script>{% endif %}
