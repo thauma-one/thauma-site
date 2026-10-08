@@ -269,8 +269,8 @@
   function visRow(label, base) {
     return '<div class="v-row">' +
       '<div class="v-label"><span class="s-name">' + esc(label) + '</span></div>' +
-      switchCell(base + '.dev', 'is-dev') +
       switchCell(base + '.live', 'is-live') +
+      switchCell(base + '.dev', 'is-dev') +
       '<span></span>' +
     '</div>';
   }
@@ -295,8 +295,14 @@
     var head =
       '<div class="v-head">' +
         '<div class="v-label"></div>' +
-        '<span class="v-cell is-dev"><b>' + esc(tr('vis.devCol')) + '</b></span>' +
-        '<span class="v-cell is-live"><b>' + esc(tr('vis.liveCol')) + '</b></span>' +
+        /* WHO SEES IT, and a way to look (2026-10-07, suggestion 6): visitors on
+           the live site first, then the team's own dev.thauma.one. (The
+           preview build at next.thauma.one follows the visitors' column, so
+           it shows what is about to be published — visible.js.) */
+        '<span class="v-cell is-live"><b>' + esc(tr('vis.liveCol')) + '</b>' +
+          '<a class="v-open" href="https://thauma.one/" target="_blank" rel="noopener">thauma.one ↗</a></span>' +
+        '<span class="v-cell is-dev"><b>' + esc(tr('vis.devCol')) + '</b>' +
+          '<a class="v-open" href="https://dev.thauma.one/" target="_blank" rel="noopener">dev.thauma.one ↗</a></span>' +
       '</div>';
 
     var body = '';
@@ -313,7 +319,7 @@
     if (sections.length) {
       body += '<div class="v-sub">' + esc(tr('vis.sections')) + '</div>' +
         sections.map(function (id) {
-          return visRow(humanise(id), 'visibility.sections.' + id);
+          return visRow(has('vis.sec.' + id) ? tr('vis.sec.' + id) : humanise(id), 'visibility.sections.' + id);
         }).join('');
     }
 

@@ -105,10 +105,12 @@ await check("languages and pictures are not shown here twice", async () => {
   assert(!d.querySelector('[data-path="defaultLang"]'), "the default language on Settings");
 });
 
-await check("what visitors can see is in Preview site and Everyone columns", async () => {
+await check("what visitors can see: Visitors, then Only your team, each with its site to open", async () => {
   const { d } = await boot();
   const heads = [...d.querySelectorAll("[data-web-panel=\"settings\"] .v-head b")].map((b) => b.textContent);
-  assert(heads.join() === "Preview site,Everyone", `columns: ${heads}`);
+  assert(heads.join() === "Visitors,Only your team", `columns: ${heads}`);
+  const opens = [...d.querySelectorAll("[data-web-panel=\"settings\"] .v-head .v-open")].map((a) => a.getAttribute("href"));
+  assert(opens.join() === "https://thauma.one/,https://dev.thauma.one/", `links: ${opens}`);
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

@@ -1395,3 +1395,7 @@ body:has(.web-panel:not([hidden]) .ms-savebar:not([hidden])) .web-bar{display:no
 @media (max-width:820px){.c-seo{grid-template-columns:1fr}}
 /* Website › Links: a link's name in each language, side by side */
 .lk-names{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+/* Settings › who sees it: a way to look under each column */
+.v-head .v-cell{display:flex;flex-direction:column;align-items:center;gap:2px}
+.v-open{font-size:var(--fs-micro);color:var(--dim);text-decoration:none;font-weight:var(--w-body)}
+.v-open:hover,.v-open:focus-visible{color:var(--text)}
