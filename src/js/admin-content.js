@@ -433,6 +433,117 @@
     renderRows();
     renderMore();
     renderSaveBar();
+    previewSync();
+  }
+
+  /* ---- the live preview -------------------------------------------------
+     Chase, 2026-10-07 (asked for beside the words, "like the Site Editor"):
+     the page these words are on, in the language being written, with what
+     is typed shown in it before it is saved. The site marks each of its
+     words with the key it came from (<span data-k>, site-rich.js); a
+     change is drawn into those with the very function the build uses
+     (SiteRich.richHtml), so the preview and the page cannot disagree.
+     Focusing a line scrolls the preview to it and lights it up. */
+  var PAGE_OF = { home: '', about: 'about/', mission: 'mission/', values: 'values/', resources: 'resources/',
+    give: 'give/', contact: 'contact/', events: 'events/', team: 'team/', coming: 'coming-soon/' };
+  var prev = { on: false, url: null, device: 'wide', section: null };
+  try { prev.on = localStorage.getItem('thauma.pages.preview') === '1'; } catch (e) { /* private mode */ }
+  function prevSection() {
+    if (prev.section) return prev.section;
+    var v = state.view || '';
+    return v.indexOf('section:') === 0 ? v.slice(8) : 'home';
+  }
+  function prevUrl() {
+    var sec = prevSection();
+    return '/' + (state.lang || 'en') + '/' + (PAGE_OF[sec] != null ? PAGE_OF[sec] : '');
+  }
+  function prevDoc() {
+    var f = $('cPrevFrame');
+    try { return f && f.contentDocument; } catch (e) { return null; }
+  }
+  /* One line's words, drawn wherever the page shows them. */
+  function prevDraw(id) {
+    var doc = prevDoc(), line = state.byId[id];
+    if (!doc || !line || line.source !== 'site' || !window.SiteRich) return;
+    [].forEach.call(doc.querySelectorAll('[data-k="' + line.key + '"]'), function (el) {
+      el.innerHTML = window.SiteRich.richHtml(state.draft[id]);
+    });
+  }
+  function prevDrawAll() { dirtyIds().forEach(prevDraw); }
+  function prevShow(id) {
+    var doc = prevDoc(), line = state.byId[id];
+    if (!doc || !line) return;
+    var el = doc.querySelector('[data-k="' + line.key + '"]');
+    [].forEach.call(doc.querySelectorAll('.c-prev-on'), function (x) { x.classList.remove('c-prev-on'); });
+    if (!el) return;
+    el.classList.add('c-prev-on');
+    el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }
+  /* DESKTOP IS A DESKTOP: the page drawn at 1280px and scaled to the room
+     there is, rather than a narrow window that gets the phone's layout. */
+  function prevFit() {
+    var box = $('cPreview') && $('cPreview').querySelector('.c-prev-frame'), f = $('cPrevFrame');
+    if (!box || !f) return;
+    if (prev.device === 'phone') { f.style.width = ''; f.style.height = ''; f.style.transform = ''; return; }
+    var k = Math.min(1, box.clientWidth / 1280);
+    f.style.width = '1280px';
+    f.style.height = Math.round(box.clientHeight / k) + 'px';
+    f.style.transform = 'scale(' + k + ')';
+  }
+  window.addEventListener('resize', function () { if (prev.on) prevFit(); });
+  function previewSync() {
+    var box = $('cPreview');
+    if (!box) return;
+    $('cRoot').classList.toggle('has-preview', prev.on);
+    box.hidden = !prev.on;
+    $('cPrevBtn').setAttribute('aria-pressed', prev.on ? 'true' : 'false');
+    if (!prev.on) return;
+    prevFit();
+    var url = prevUrl();
+    if (url !== prev.url) {
+      prev.url = url;
+      $('cPrevUrl').textContent = url;
+      $('cPrevOpen').href = url;
+      $('cPrevGone').hidden = true;
+      $('cPrevFrame').src = url;
+    } else prevDrawAll();
+  }
+  if ($('cPreview')) {
+    $('cPrevFrame').addEventListener('load', function () {
+      var doc = prevDoc();
+      /* A page this build does not have (a coming-soon site builds only its
+         landing page): said, not shown as a blank. */
+      var missing = !doc || !doc.querySelector('[data-k]') || /404/.test(doc.title || '');
+      $('cPrevGone').hidden = !missing;
+      if (!doc) return;
+      var st = doc.createElement('style');
+      st.textContent = '.c-prev-on{outline:2px solid #2FD8FF;outline-offset:6px;border-radius:3px;transition:outline-color .3s}';
+      doc.head.appendChild(st);
+      prevDrawAll();
+    });
+    $('cPrevBtn').addEventListener('click', function () {
+      prev.on = !prev.on;
+      try { localStorage.setItem('thauma.pages.preview', prev.on ? '1' : '0'); } catch (e) { /* private mode */ }
+      previewSync();
+    });
+    [].forEach.call(document.querySelectorAll('[data-prev-dev]'), function (b) {
+      b.addEventListener('click', function () {
+        prev.device = b.getAttribute('data-prev-dev');
+        $('cPreview').setAttribute('data-device', prev.device);
+        prevFit();
+        [].forEach.call(document.querySelectorAll('[data-prev-dev]'), function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+      });
+    });
+    /* A line from another page (a search, Needs work) shows its own page. */
+    $('cRows').addEventListener('focusin', function (e) {
+      if (!prev.on) return;
+      var rowEl = e.target.closest && e.target.closest('.c-row');
+      var row = rowEl && state.rows.filter(function (r) { return r.id === rowEl.getAttribute('data-row'); })[0];
+      if (!row) return;
+      var sec = PAGE_OF[row.section] != null ? row.section : 'home';
+      if (sec !== prevSection()) { prev.section = sec; previewSync(); setTimeout(function () { prevShow(row.lines[0].id); }, 700); return; }
+      prevShow(row.lines[0].id);
+    });
   }
 
   function renderSections() {
@@ -470,7 +581,7 @@
      is started defined in the text box itself"). A page's words are a
      formatted box with the Site Creator's bar (rich-text.js): bold, italic,
      underline, a link, a size, a color, and Enter for a new line, which is
-     where the page breaks it (lib/rich.js). Email and form words stay plain:
+     where the page breaks it (src/js/site-rich.js). Email and form words stay plain:
      an email cannot show the page's formatting. */
   var RT = window.RichText;
   function isRich(r) { return !!RT && r.source === 'site'; }
@@ -590,6 +701,7 @@
     if (t.tagName === 'TEXTAREA') {
       state.draft[t.getAttribute('data-id')] = t.value;
       autosize(t);
+      prevDraw(t.getAttribute('data-id'));
       return markRow(t);
     }
     var box = t.closest && t.closest('.c-rt');
@@ -598,8 +710,10 @@
       var parts = readSplit(box);
       state.draft[box.getAttribute('data-thin')] = parts.thin;
       state.draft[box.getAttribute('data-bold')] = parts.bold;
+      prevDraw(box.getAttribute('data-thin')); prevDraw(box.getAttribute('data-bold'));
     } else {
       state.draft[box.getAttribute('data-id')] = boxWords(box);
+      prevDraw(box.getAttribute('data-id'));
     }
     markRow(box);
   });
@@ -636,6 +750,7 @@
 
   function openView(view) {
     state.view = view;
+    prev.section = null;
     try { sessionStorage.setItem('thauma.content.view.' + state.lang, state.view); } catch (e2) { /* private mode */ }
     // A page and a search are two ways of choosing what is on screen;
     // leaving both on shows neither.
@@ -698,6 +813,7 @@
     if (!ok) return;
     state.lines.forEach(function (l) { state.draft[l.id] = state.saved[l.id]; });
     state.blocked = {};
+    prev.url = null;
     render();
   });
 

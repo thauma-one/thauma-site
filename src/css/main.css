@@ -334,7 +334,7 @@ nav{position:fixed;inset:0 0 auto;z-index:20;backdrop-filter:blur(12px);
 h1,h2{font-family:'Sora',sans-serif;font-weight:100;letter-spacing:.01em;text-wrap:balance}
 /* NO WIDTH OF THEIR OWN (2026-10-07, Chase: "the times when a new line is
    started defined in the text box itself"): a heading's lines break where
-   they were typed in Website › Pages (lib/rich.js turns each into <br>). It
+   they were typed in Website › Pages (src/js/site-rich.js turns each into <br>). It
    was a 660px cap that broke them wherever the width ran out, which the box
    never showed. On a screen too narrow for a typed line, the line still
    wraps, balanced. */
@@ -346,7 +346,7 @@ h2{font-size:clamp(30px,4.4vw,48px);line-height:1.15}
    line and About's dictionary word are also h1 now and set their own. */
 h1.page-h1{font-size:clamp(30px,4.4vw,48px);line-height:1.15}
 h1 b,h2 b{font-weight:600}
-/* Formatted words (lib/rich.js, Website › Pages): the named sizes, relative
+/* Formatted words (src/js/site-rich.js, Website › Pages): the named sizes, relative
    to whatever the words are; a picked size or color arrives inline. */
 .rt-sm{font-size:.82em}.rt-lg{font-size:1.25em}.rt-xl{font-size:1.6em}
 

@@ -615,7 +615,7 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'Intersect
       var labelLs = parseFloat(cs.letterSpacing); if (isNaN(labelLs)) labelLs = 0;
       var label = el.textContent;
       /* what was there, markup and all — the words' formatting and the
-         preview's data-k marker (lib/rich.js) — put back after the roll */
+         preview's data-k marker (src/js/site-rich.js) — put back after the roll */
       var was = el.innerHTML;
       var num = el.dataset.crNum;
       el.textContent = '';

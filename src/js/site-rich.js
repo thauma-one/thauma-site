@@ -1,5 +1,5 @@
 /**
- * rich.js — one of the site's words, with the formatting it was given
+ * site-rich.js — one of the site's words, with the formatting it was given
  *
  * Website › Pages writes formatted words (2026-10-07, Chase: "allowing the
  * text controls that the Site Creator has … how the text styles, sizes,
@@ -21,10 +21,15 @@
  * <span data-k="…">, which is how Website › Pages finds them in its live
  * preview to show what is being typed before it is saved.
  *
+ * ONE FILE, TWO READERS: Eleventy's `rich` filter (.eleventy.js) draws the
+ * page with it, and Website › Pages loads it in the browser to draw what is
+ * being typed into its live preview, so the two cannot disagree.
+ *
  * THE TWO VOICES (CLAUDE.md rule 3): "accent" is the technical blue, the
  * second color the ministry's seafoam. The quick picks use their shade for a
  * dark ground (workers/src/lib/tones.js), which is the site's.
  */
+(function () {
 const TONES = { red: "#FF8A80", green: "#6FE3A6", blue: "#8DB8FF", gold: "#F2C14E" };
 const NAMED = { accent: "var(--blue)", accent2: "var(--foam)", dim: "var(--dim)" };
 const SIZES = { sm: "rt-sm", lg: "rt-lg", xl: "rt-xl" };
@@ -52,6 +57,7 @@ function richHtml(value) {
     if (!m) { out += esc(part); continue; }
     const close = !!m[1], tag = m[2].toLowerCase(), attrs = m[3];
     if (close) {
+      if (!["b", "i", "u", "a", "span"].includes(tag)) { out += esc(part); continue; }
       const at = open.lastIndexOf(tag);
       if (at === -1) continue;
       while (open.length > at) out += `</${open.pop()}>`;
@@ -92,4 +98,6 @@ function richPlain(value) {
   return unesc(String(value == null ? "" : value).replace(/<[^>]*>/g, "")).replace(/\s*\n\s*/g, " ").trim();
 }
 
-module.exports = { richHtml, richPlain };
+if (typeof module !== "undefined" && module.exports) module.exports = { richHtml, richPlain };
+else window.SiteRich = { richHtml, richPlain };
+})();

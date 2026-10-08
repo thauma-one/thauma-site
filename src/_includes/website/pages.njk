@@ -33,6 +33,7 @@
   <input type="search" id="cFind" autocomplete="off"
          placeholder="Find a word" aria-label="Find a word"
          data-i18n-attr="placeholder:con.find,aria-label:con.find">
+  <button type="button" class="ghost-btn" id="cPrevBtn" aria-pressed="false" data-i18n="con.preview">Preview</button>
   <button type="button" class="ghost-btn" id="cLangs" disabled data-i18n="con.languages">Languages</button>
   <div class="c-more">
     <button type="button" class="ghost-btn" id="cMoreBtn" aria-expanded="false" aria-controls="cMore">
@@ -59,6 +60,20 @@
     <span class="c-count" id="cCount" role="status"></span>
     <div class="c-rows" id="cRows"></div>
   </div>
+  {#- THE LIVE PREVIEW (2026-10-07): the page these words are on, with what
+      is typed drawn into it before it is saved (admin-content.js). -#}
+  <aside class="c-preview" id="cPreview" data-device="wide" hidden>
+    <div class="c-prev-bar">
+      <span class="c-prev-url" id="cPrevUrl"></span>
+      <span class="ws-dev" role="group" data-i18n-attr="aria-label:con.previewSize" aria-label="Preview size">
+        <button type="button" data-prev-dev="wide" aria-pressed="true" data-i18n="emb.desktop">Desktop</button>
+        <button type="button" data-prev-dev="phone" aria-pressed="false" data-i18n="emb.mobile">Mobile</button>
+      </span>
+      <a class="c-prev-open" id="cPrevOpen" href="/" target="_blank" rel="noopener" data-i18n-attr="title:con.previewOpen,aria-label:con.previewOpen" title="Open in a new tab">&#8599;</a>
+    </div>
+    <p class="hint c-prev-gone" id="cPrevGone" hidden data-i18n="con.previewGone">This page is not built on this site yet — it is showing “coming soon”. Its preview is on dev.thauma.one.</p>
+    <div class="c-prev-frame"><iframe id="cPrevFrame" title="Preview" data-i18n-attr="title:con.preview"></iframe></div>
+  </aside>
 </div>
 
 {#- A returned translation, line by line, in place of the editor until it is

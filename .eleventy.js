@@ -9,12 +9,12 @@ module.exports = function (eleventyConfig) {
   const md = require("markdown-it")({ html: false, linkify: true });
   eleventyConfig.addFilter("md", (s) => (s ? md.render(String(s)) : ""));
 
-  /* THE SITE'S WORDS WITH THEIR FORMATTING (lib/rich.js; Website › Pages,
+  /* THE SITE'S WORDS WITH THEIR FORMATTING (src/js/site-rich.js; Website › Pages,
      2026-10-07). `rich` where words are shown: bold, italic, underline, a
      link, a size, a color and the line breaks that were typed — and, given
      the key, a <span data-k> the live preview finds them by. `plain` where
      formatting cannot go (an attribute, a <title>): the words alone. */
-  const { richHtml, richPlain } = require("./lib/rich.js");
+  const { richHtml, richPlain } = require("./src/js/site-rich.js");
   const { runtime } = require("nunjucks");
   eleventyConfig.addFilter("rich", (s, key) => {
     const html = richHtml(s);
