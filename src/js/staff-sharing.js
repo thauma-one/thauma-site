@@ -455,7 +455,7 @@
       state.lang = langs.some(function (l) { return l.code === 'en'; }) ? 'en' : (langs[0] ? langs[0].code : 'en');
     }
     $('shLang').innerHTML = langs.map(function (l) {
-      return '<option value="' + esc(l.code) + '">' + esc((l.native_name || l.name) + ' (' + l.code + ')') + '</option>';
+      return '<option value="' + esc(l.code) + '">' + esc(l.native_name || l.name) + '</option>';
     }).join('');
     $('shLang').value = state.lang;
   }

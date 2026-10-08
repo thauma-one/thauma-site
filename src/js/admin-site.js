@@ -188,7 +188,7 @@
   function langName(code) {
     try {
       var n = new Intl.DisplayNames([code], { type: 'language' }).of(code);
-      if (n && n !== code) return n.charAt(0).toUpperCase() + n.slice(1) + ' (' + code + ')';
+      if (n && n !== code) return n.charAt(0).toUpperCase() + n.slice(1);
     } catch (e) { /* a code Intl does not know */ }
     return code;
   }

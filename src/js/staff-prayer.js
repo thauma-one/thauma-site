@@ -62,7 +62,7 @@
     return s;
   }
 
-  function langLabel(l) { return (l.native_name || l.name) + ' (' + l.code + ')'; }
+  function langLabel(l) { return l.native_name || l.name; }
 
   /* The title in whichever language has one — the list is a list of things,
      and a row with no words in it is unusable whatever the reason. */

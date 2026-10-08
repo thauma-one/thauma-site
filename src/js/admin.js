@@ -318,7 +318,7 @@
       profileLangs().map(function (l) {
         return '<option value="' + esc(l.code) + '"' +
           (l.code === selected ? ' selected' : '') + '>' +
-          esc((l.native_name || l.name) + ' (' + l.code + ')') + '</option>';
+          esc(l.native_name || l.name) + '</option>';
       }).join('') + '</select>';
   }
 
@@ -1022,7 +1022,7 @@
               langs.map(function (l) {
                 return '<option value="' + esc(l.code) + '"' +
                   (l.code === p.default_lang ? ' selected' : '') + '>' +
-                  esc((l.native_name || l.name) + ' (' + l.code + ')') +
+                  esc(l.native_name || l.name) +
                   (l.retired ? ' — ' + esc(tr('adm.langRetired')) : '') + '</option>';
               }).join('') +
             '</select>' +

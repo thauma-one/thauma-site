@@ -128,7 +128,8 @@
     } catch (e) { /* a code Intl does not know */ }
     return code;
   }
-  function langLabel(code) { return langName(code) + ' (' + code + ')'; }
+  /* The language's own name, not its code (Chase, 2026-10-08). */
+  function langLabel(code) { return langName(code); }
 
   /* `helloAnon` or `who_h2` -> "Hello anon", "Who h2". The last resort, for a
      line the vocabulary below does not know yet. */

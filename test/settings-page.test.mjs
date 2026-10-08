@@ -83,7 +83,7 @@ await check("a donation form for every language, the missing one ready to fill",
   const fields = [...card.querySelectorAll("[data-path]")].map((i) => i.getAttribute("data-path"));
   assert(fields.join() === "donorbox.en,donorbox.hr,donorbox.sr", `fields: ${fields}`);
   assert(card.querySelector('[data-path="donorbox.en"]').value === "en-form", "English's form");
-  assert(/\(sr\)/.test(card.textContent), "each line named by its language");
+  assert(/Српски|Serbian/.test(card.textContent) && !/\(sr\)/.test(card.textContent), "each line named by its language, not its code");
   assert(d.getElementById("sSaveBar").hidden, "an untouched empty slot counts as an unsaved change");
 });
 

@@ -248,6 +248,14 @@ nav{position:fixed;inset:0 0 auto;z-index:20;backdrop-filter:blur(12px);
 }
 .lang-dropdown-current{display:block;padding:8px 10px;color:var(--foam);font-family:'Inter',sans-serif;
   font-size:12px;letter-spacing:.1em;font-weight:600}
+/* The button's words: the code closed, the language's name open (main.js).
+   Letter-spacing off while a code rolls, as the cascade does, so each
+   character box sits where the resting letter will. */
+.lang-dropdown-label{display:inline-block;white-space:nowrap}
+.lang-dropdown.open .lang-dropdown-label{letter-spacing:.06em}
+.lang-dropdown-label.is-rolling{letter-spacing:0;font-kerning:none}
+.lang-dropdown-label.is-rolling .cr-box{margin-right:.15em}
+.lang-dropdown-list{white-space:nowrap}
 
 /* Upward variant — the landing page puts the picker at the bottom of a
    viewport locked to 100% height with overflow:hidden, so the default
@@ -269,13 +277,14 @@ nav{position:fixed;inset:0 0 auto;z-index:20;backdrop-filter:blur(12px);
    navigates. Its buttons were styled by a bare `.lang-toggle` rule until
    7b724c3 rescoped that to `.lang-dropdown-list .lang-toggle` to unify the
    picker — which orphaned them, leaving default browser chrome on the page.
-   Scoped to .nav-actions rather than restoring the bare selector, so it can
-   never bleed back into the dropdown's own buttons. */
-.nav-actions .lang-toggle{background:none;border:1px solid rgba(255,255,255,.18);
+   Scoped to buttons directly in .nav-actions rather than restoring the bare
+   selector, so it can never bleed back into the dropdown's own buttons —
+   which also sit in .nav-actions, and wore these borders until 2026-10-08. */
+.nav-actions > .lang-toggle{background:none;border:1px solid rgba(255,255,255,.18);
   color:var(--dim);font-family:'Inter',sans-serif;font-size:11px;letter-spacing:.15em;
   font-weight:600;padding:7px 12px;border-radius:2px;cursor:pointer;transition:.2s}
 @media(hover:hover){
-  .nav-actions .lang-toggle:hover{border-color:var(--blue);color:var(--blue)}
+  .nav-actions > .lang-toggle:hover{border-color:var(--blue);color:var(--blue)}
 }
 
 /* will-change:transform gives the button its own compositor layer — it

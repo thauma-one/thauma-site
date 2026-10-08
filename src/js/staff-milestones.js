@@ -575,7 +575,7 @@
     var show = w.mode !== 'custom' && !!w.start;
     el.hidden = !show;
     el.innerHTML = show ? enabledLangs().map(function (l) {
-      return '<div><b>' + esc(l.code.toUpperCase()) + '</b>' +
+      return '<div><b>' + esc(l.native_name || l.name || l.code) + '</b>' +
         esc(whenLabel(l.code, w.precision, w.start, w.end)) + '</div>';
     }).join('') : '';
   }

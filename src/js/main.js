@@ -28,13 +28,17 @@ document.querySelectorAll('.lang-toggle').forEach(function (btn) {
     var trigger = dd.querySelector('.lang-dropdown-trigger');
     var list = dd.querySelector('.lang-dropdown-list');
     if (!trigger || !list) return;
+    var label = trigger.querySelector('.lang-dropdown-label');
     function open() {
       dd.classList.add('open');
       trigger.setAttribute('aria-expanded', 'true');
+      if (label) { label.classList.remove('is-rolling'); label.textContent = label.dataset.name; }
     }
     function close() {
+      if (!dd.classList.contains('open')) return;
       dd.classList.remove('open');
       trigger.setAttribute('aria-expanded', 'false');
+      if (label) rollCode(label);
     }
     trigger.addEventListener('click', function (e) {
       e.stopPropagation();
@@ -42,6 +46,39 @@ document.querySelectorAll('.lang-toggle').forEach(function (btn) {
     });
     dropdowns.push({ el: dd, close: close });
   });
+  /* THE NAME CLEARS AND THE CODE ROLLS IN (2026-10-08): per character, top
+     down, with the cascade's curve and stagger (see the character cascade
+     below), quicker because it is a button answering a press. Put back as
+     plain text once it lands; at once for reduced motion. */
+  function rollCode(el) {
+    var code = el.dataset.code;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { el.textContent = code; return; }
+    var lh = el.getBoundingClientRect().height || 14;
+    el.textContent = '';
+    el.classList.add('is-rolling');
+    var inners = [];
+    for (var i = 0; i < code.length; i++) {
+      var box = document.createElement('span'), inner = document.createElement('span');
+      box.className = 'cr-box'; box.style.height = lh + 'px';
+      inner.className = 'cr-in'; inner.style.height = inner.style.lineHeight = lh + 'px';
+      inner.textContent = code[i];
+      inner.style.transition = 'none';
+      inner.style.transform = 'translateY(-' + lh + 'px)';
+      box.appendChild(inner); el.appendChild(box); inners.push(inner);
+    }
+    el.getBoundingClientRect();
+    requestAnimationFrame(function () {
+      inners.forEach(function (inner, i) {
+        inner.style.transition = 'transform .7s cubic-bezier(.55,.05,.45,.95) ' + (i * 40) + 'ms';
+        inner.style.transform = 'translateY(0)';
+      });
+    });
+    setTimeout(function () {
+      if (!el.classList.contains('is-rolling')) return;
+      el.classList.remove('is-rolling');
+      el.textContent = code;
+    }, 700 + code.length * 40 + 60);
+  }
   if (!dropdowns.length) return;
   document.addEventListener('click', function (e) {
     dropdowns.forEach(function (d) { if (!d.el.contains(e.target)) d.close(); });

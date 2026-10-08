@@ -51,7 +51,7 @@
     if (text && kind && window.StaffToast) window.StaffToast(text, kind);
   }
 
-  function langLabel(l) { return (l.native_name || l.name) + ' (' + l.code + ')'; }
+  function langLabel(l) { return l.native_name || l.name; }
 
   /* ---- tabs ---------------------------------------------------------- */
 

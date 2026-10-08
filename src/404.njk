@@ -39,7 +39,7 @@ permalink: /404.html
   </div>
   <div class="nav-actions">
     {%- for l in activeLangs %}{% if l != lang %}
-    <button class="lang-toggle" data-lang="{{ l }}" aria-label="Switch language to {{ l }}">{{ l | upper }}</button>{% endif %}{% endfor %}
+    <button class="lang-toggle" data-lang="{{ l }}" lang="{{ l }}" aria-label="{{ i18n[l].name or l }}" title="{{ i18n[l].name or l }}">{{ l | upper }}</button>{% endif %}{% endfor %}
     <a class="give-btn" href="/{{ lang }}/give/">{{ t.nav.give | rich("nav.give") }}</a>
   </div>
 </div></nav>

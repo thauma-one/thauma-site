@@ -223,7 +223,7 @@ check("the language menu is always a dropdown, by each language's own name, on a
     payload, theme: payload.theme, lang: "hr", pageId: "home", base: "/site/c", origin: "", draft: false,
     langNames: { en: "English", hr: "Hrvatski", sr: "Српски" } });
   const header = html.slice(html.indexOf("<header"), html.indexOf("</header>"));
-  assert(/<details class="langmenu"><summary[^>]*><span>HR<\/span>/.test(header), "in the header, showing the language in use");
+  assert(/<details class="langmenu"><summary[^>]*><span data-name="Hrvatski">HR<\/span>/.test(header), "in the header, showing the language in use (its name kept for when it opens)");
   assert(header.indexOf("langmenu") > header.indexOf("</nav>"), "outside the page menu, so a phone still shows it");
   assert(html.includes('hreflang="sr" lang="sr">Српски</a>'), "each language by its own name");
   /* Not in the footer (Chase, 2026-10-01: "We also don't need the language
