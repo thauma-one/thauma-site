@@ -2592,7 +2592,10 @@ html.has-ai .lang-ai{display:inline-block}
 .ws-preview{position:sticky;top:calc(var(--header-h,64px) + 16px);display:flex;flex-direction:column;gap:8px}
 .ws-preview[hidden]{display:none}
 .ws-preview-head{display:flex;justify-content:space-between;font-size:12px;color:var(--dim);text-transform:uppercase;letter-spacing:.14em}
-.ws-preview-frame{height:min(78vh,760px);overflow:hidden;border:1px solid var(--line);border-radius:6px;background:#000}
+.ws-preview-frame{position:relative;height:min(78vh,760px);overflow:hidden;border:1px solid var(--line);border-radius:6px;background:#000}
+/* The next copy of the page, drawn hidden over the one showing until it has
+   loaded (staff-site.js refreshFrame) — so a change never blanks the preview. */
+.ws-preview-frame iframe.is-next{position:absolute;left:0;top:0;visibility:hidden}
 /* ALWAYS A REAL DESKTOP, shrunk to fit (Chase, 2026-10-04: the preview was
    "this weird hybrid between desktop and mobile"). It was 250% of the pane,
    so a narrow pane gave the site ~1100px: below the width where a long menu
@@ -2988,3 +2991,29 @@ html.pe-open{overflow:hidden}
 .ws-joinmark-add:hover,.ws-joinmark-add:focus-visible{color:var(--voice-tech);border-color:var(--voice-tech)}
 .ws-acc.is-joined{border-top-color:color-mix(in srgb,var(--voice-tech) 45%,transparent)}
 
+
+/* THE TABS ROW among a page's sections (staff-site.js): a row like the
+   others, dashed because it holds sections rather than being one, and its
+   arrow points in (ws-chev-r) — it opens the tabs, it does not unfold. */
+.ws-tabsrow .ws-stile{border-style:dashed}
+
+/* THE LOOK TAB'S ROWS (2026-10-08): what it is, its control, and any switch
+   that belongs to that choice beside it. The label column is fixed so the
+   controls line up down the tab; switches sit on the control's line with
+   room around them, never under the row above. */
+.ws-lrow{display:grid;grid-template-columns:96px minmax(0,1fr);gap:14px;align-items:center;min-height:40px}
+.ws-lctl{display:flex;align-items:center;flex-wrap:wrap;gap:12px 20px;min-width:0}
+.ws-lctl .ws-note{margin:0}
+.ws-grp{gap:14px}
+.ws-grp .ws-flags{padding:4px 0}
+/* one choice, one joined control */
+.ws-seg{display:inline-flex;border:1px solid rgba(255,255,255,.16);border-radius:999px;overflow:hidden;flex:none}
+.ws-segbtn{font:13px var(--font-body);padding:7px 14px;background:none;border:0;border-left:1px solid rgba(255,255,255,.12);color:var(--dim);cursor:pointer;white-space:nowrap}
+.ws-segbtn:first-child{border-left:0}
+.ws-segbtn:hover{color:var(--text)}
+.ws-segbtn[aria-pressed="true"]{background:var(--voice-tech-dim);color:var(--text)}
+.ws-segbtn:focus-visible{outline:2px solid var(--voice-tech);outline-offset:-2px}
+.ws-seg-icons .ws-segbtn{padding:7px 12px;line-height:0}
+.ws-seg-icons svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round}
+.ws-pick{min-width:0;max-width:100%;padding:8px 12px;font-size:13px}
+@media (max-width:560px){.ws-lrow{grid-template-columns:1fr;gap:8px}}

@@ -683,6 +683,9 @@ html[data-photos="zoom"] .kb img{animation:kb 18s ease-in-out infinite alternate
 .h.in .ch{opacity:1;transform:none}
 html[data-pages="fade"]{view-transition-name:root}
 @view-transition{navigation:auto}
+/* A preview redrawn after a change arrives as it was, not arriving again
+   (?settled, from the Site Creator; staff-site.js refreshFrame). */
+html.settled .m,html.settled .h .ch{opacity:1!important;transform:none!important;transition:none!important}
 @media (prefers-reduced-motion:reduce){.m,.h .ch{opacity:1!important;transform:none!important;transition:none!important}
  .scrollcue,.cue-mouse em{animation:none}
  .kb img{animation:none!important}.progress{display:none}.btn{transition:none}}
@@ -1186,16 +1189,20 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
     }
     return html.replace(/^<section([^>]*)>/, `<section$1 id="s-${esc(s.id)}"${s.join && i > 0 ? " data-joined" : ""}>`);
   }).join("\n");
-  /* THE PAGE'S TABS: its own sections, then the bar, then a panel per tab,
-     the first one showing (a #tab address opens another; MOTION_JS). One tab
-     alone is no choice, so it is drawn as part of the page. */
+  /* THE PAGE'S TABS: the bar where it sits among the page's own sections
+     (tabs.at; the end unless moved), then a panel per tab, the first one
+     showing (a #tab address opens another; MOTION_JS), then the rest of the
+     page's sections. One tab alone is no choice, so it is drawn as part of
+     the page. */
   const tabs = page.tabs && page.tabs.items && page.tabs.items.length ? page.tabs : null;
   const tabName = (t, i) => (t.label && (t.label[lang] || t.label[fallback])) || word(lang, "tabFill") + " " + (i + 1);
-  const body = drawn(page.sections) + (!tabs ? "" : tabs.items.length === 1 ? "\n" + drawn(tabs.items[0].sections) :
+  const tabsAt = tabs && Number.isInteger(tabs.at) ? Math.min(tabs.at, page.sections.length) : page.sections.length;
+  const after = tabs && tabsAt < page.sections.length ? "\n" + drawn(page.sections.slice(tabsAt)) : "";
+  const body = drawn(page.sections.slice(0, tabsAt)) + (!tabs ? "" : tabs.items.length === 1 ? "\n" + drawn(tabs.items[0].sections) :
     `\n<section class="ptabs-bar ptabs-${esc(tabs.style)} al-${tabs.align === "left" ? "left" : "center"}"><div class="wrap"><div class="ptabs" role="tablist">` +
     tabs.items.map((t, i) => `<button type="button" role="tab" id="tb-${esc(t.id)}" aria-controls="t-${esc(t.id)}" aria-selected="${i === 0}" data-tab="${esc(t.id)}">${esc(tabName(t, i))}</button>`).join("") +
     `</div></div></section>\n` +
-    tabs.items.map((t, i) => `<div class="ptab" id="t-${esc(t.id)}" role="tabpanel" aria-labelledby="tb-${esc(t.id)}"${i ? " hidden" : ""}>${drawn(t.sections)}</div>`).join("\n"));
+    tabs.items.map((t, i) => `<div class="ptab" id="t-${esc(t.id)}" role="tabpanel" aria-labelledby="tb-${esc(t.id)}"${i ? " hidden" : ""}>${drawn(t.sections)}</div>`).join("\n")) + after;
   const name = String(site.display_name || "").trim();
   const parts = name.split(/\s+/);
   const brand = design.brand === "logo" && design.logo
@@ -1286,7 +1293,9 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
     return "";
   };
   const clip = (t) => (t.length > 160 ? t.slice(0, 157).replace(/\s+\S*$/, "") + "…" : t);
-  const desc = (seo.desc && seo.desc[lang]) || titleCase(clip(firstWords(thisPage) || firstWords(doc.pages[0])), lang);
+  /* Typed or taken from the page, a description reads as the language writes
+     one: English in Title Case, the rest as written (titleCase). */
+  const desc = titleCase((seo.desc && seo.desc[lang]) || clip(firstWords(thisPage) || firstWords(doc.pages[0])), lang);
   const firstPhoto = (pg) => allSections(pg).map((s) => s.photo).find(Boolean) || null;
   const absolute = (u) => (!u ? null : /^https?:/.test(u) ? u : "https://thauma.one" + (u.startsWith("/") ? u : "/" + u));
   /* The picture: the owner's own; the page's photo; or (the default) the
@@ -1428,7 +1437,8 @@ const MOTION_JS = `(function(){
 var d=document.documentElement,b=document.querySelector('.menubtn');
 [].forEach.call(document.querySelectorAll('time[data-local]'),function(t){try{var x=new Date(t.dateTime);if(!isNaN(x))t.textContent=x.toLocaleDateString(d.lang,{day:'numeric',month:'long',year:'numeric'})}catch(e){}});
 if(b)b.addEventListener('click',function(){var o=d.classList.toggle('menu-open');b.setAttribute('aria-expanded',o)});
-var still=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+var settled=/[?&]settled(&|$)/.test(location.search);if(settled)d.classList.add('settled');
+var still=settled||window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
 var hs=d.getAttribute('data-headings');
 if(!still&&hs!=='plain'){[].forEach.call(document.querySelectorAll('.h'),function(h){
  var n=0;[].forEach.call(h.childNodes,function(c){var el=c.nodeType===3?null:c;var t=c.textContent;var parts=hs==='words'?t.split(/(\\s+)/):t.split('');

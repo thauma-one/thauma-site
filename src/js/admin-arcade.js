@@ -59,7 +59,7 @@
     $('aeGames').innerHTML = state.games.map(function (g) {
       return '<div class="v-row"><div class="v-label"><span class="s-name">' + esc(name(g.id)) + '</span>' +
         (!g.live ? ' <span class="ae-out" data-i18n="ae.out">' + esc(tr('ae.out')) + '</span>' : '') + '</div>' +
-        sw(g.id, 'live', g.live) + sw(g.id, 'dev', g.dev) + '<span></span></div>';
+        sw(g.id, 'dev', g.dev) + sw(g.id, 'live', g.live) + '<span></span></div>';
     }).join('');
 
     $('aeBoards').innerHTML = state.games.map(function (g) {

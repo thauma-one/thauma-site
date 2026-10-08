@@ -658,10 +658,41 @@
     state.frameTarget = open ? 's-' + open.id : null;
     /* a tab chosen in the editor opens in the preview too (#its id) */
     var vt = state.tab === 'pages' && state.page ? activeTab(realPage()) : null;
-    $('wsFrame').src = path + '?draft' + (foot ? '&part=footer' : '') + '&t=' + Date.now() + (vt ? '#' + vt.id : '');
+    /* NO FLASH (Chase, 2026-10-08: "The screen preview … flashes every time
+       there is a change"). The new copy is drawn in a second, hidden frame
+       over the one showing, and swapped in once it has loaded — at the same
+       scroll, when it is the same page and the same section. A redraw of the
+       same page also arrives SETTLED (render.js): its entrance animations
+       are the page arriving, not the change, and replaying them was half the
+       flash. A change to Motion plays them, since that is what it changes. */
+    var now = $('wsFrame'), base = path + '?draft' + (foot ? '&part=footer' : '');
+    var same = now.dataset.base === base && now.dataset.target === String(state.frameTarget);
+    var settle = same && !state.playMotion;
+    state.playMotion = false;
+    var box = now.parentNode, old = box.querySelector('iframe.is-next');
+    if (old) box.removeChild(old);
+    var next = document.createElement('iframe');
+    next.className = 'is-next';
+    next.title = now.title;
+    next.dataset.base = base; next.dataset.target = String(state.frameTarget);
+    next.dataset.keep = same ? String(frameScroll(now)) : '';
+    next.addEventListener('load', frameLoaded);
+    box.appendChild(next);
+    next.src = base + (settle ? '&settled' : '') + '&t=' + Date.now() + (vt ? '#' + vt.id : '');
+  }
+  function frameScroll(f) { try { return f.contentWindow.scrollY || 0; } catch (e) { return 0; } }
+  /* The loaded copy takes the shown one's place; the old one goes. */
+  function swapIn(next) {
+    var now = $('wsFrame');
+    if (now === next) return;
+    now.removeAttribute('id');
+    next.id = 'wsFrame';
+    next.classList.remove('is-next');
+    if (now.parentNode) now.parentNode.removeChild(now);
   }
 
-  $('wsFrame').addEventListener('load', function () {
+  $('wsFrame').addEventListener('load', frameLoaded);
+  function frameLoaded() {
     /* THE EDITOR FOLLOWS THE PREVIEW (Chase, 2026-10-04): a page opened by
        clicking inside the preview becomes the page being edited, so the two
        never show different pages. Same origin, so its address is readable. */
@@ -689,22 +720,25 @@
     } else {
       box.style.height = '';
     }
-    if (!state.frameTarget) return;
+    /* The section being edited: outlined, with room below it in the
+       editor's copy so one near the end of the page can still come to the
+       middle. A redraw of the same page and section stays where it was
+       scrolled; otherwise the section comes to the middle of the preview (a
+       section taller than the preview starts at its top). */
+    var keep = this.dataset.keep;
     try {
-      var w = this.contentWindow, el = w.document.getElementById(state.frameTarget);
-      /* In the middle of the preview, so the outline is easy to see; a
-         section taller than the preview starts at its top instead. */
+      var w = this.contentWindow, el = state.frameTarget && w.document.getElementById(state.frameTarget);
       if (el) {
         el.classList.add('is-editing');
-        /* Room below, in the editor's copy only, so a section near the end
-           of the page can still come to the middle. */
         var pad = w.document.createElement('div');
         pad.style.height = Math.round(w.innerHeight / 2) + 'px';
         w.document.body.appendChild(pad);
-        w.scrollTo(0, Math.max(0, el.offsetTop - Math.max(24, (w.innerHeight - el.offsetHeight) / 2)));
       }
+      if (keep) w.scrollTo(0, +keep);
+      else if (el) w.scrollTo(0, Math.max(0, el.offsetTop - Math.max(24, (w.innerHeight - el.offsetHeight) / 2)));
     } catch (e) {}
-  });
+    swapIn(this);
+  }
 
   /* ---- small pieces ---------------------------------------------------- */
 
@@ -712,6 +746,34 @@
     return '<div class="ws-chips" role="group">' + options.map(function (o) {
       return '<button type="button" class="ws-chip" data-chip="' + esc(name) + '" data-value="' + esc(o) + '" aria-pressed="' + (o === current) + '">' +
         esc(labelOf(o)) + '</button>';
+    }).join('') + '</div>';
+  }
+  /* ONE CHOICE (2026-10-08): a few short options as one joined control,
+     all visible and one press away; a long list (more than three, unless
+     `keep`) as a menu, where a row of words would wrap and crowd. Both
+     carry the same name, so they do the same thing (applyChip). */
+  function choice(name, options, current, labelOf, keep) {
+    if (options.length > 3 && !keep) {
+      return '<select class="ws-pick" data-chip-pick="' + esc(name) + '">' + options.map(function (o) {
+        return '<option value="' + esc(o) + '"' + (o === current ? ' selected' : '') + '>' + esc(labelOf(o)) + '</option>';
+      }).join('') + '</select>';
+    }
+    return '<div class="ws-seg" role="group">' + options.map(function (o) {
+      return '<button type="button" class="ws-segbtn" data-chip="' + esc(name) + '" data-value="' + esc(o) + '" aria-pressed="' + (o === current) + '">' + esc(labelOf(o)) + '</button>';
+    }).join('') + '</div>';
+  }
+  /* Left, centered, right as the lines of text they make — a picture says
+     it faster than the word, and three of them fit beside a switch. */
+  var ALIGN_ICON = {
+    left: '<path d="M2 3.5h12M2 6.5h8M2 9.5h12M2 12.5h7"/>',
+    center: '<path d="M2 3.5h12M4 6.5h8M2 9.5h12M4.5 12.5h7"/>',
+    right: '<path d="M2 3.5h12M6 6.5h8M2 9.5h12M7 12.5h7"/>'
+  };
+  function alignPick(name, current, words) {
+    return '<div class="ws-seg ws-seg-icons" role="group">' + ['left', 'center', 'right'].map(function (o) {
+      var label = tr(words + o);
+      return '<button type="button" class="ws-segbtn" data-chip="' + esc(name) + '" data-value="' + o + '" aria-pressed="' + (o === current) + '" aria-label="' + esc(label) + '" title="' + esc(label) + '">' +
+        '<svg viewBox="0 0 16 16" aria-hidden="true">' + ALIGN_ICON[o] + '</svg></button>';
     }).join('') + '</div>';
   }
   /* THE GRIP every reorderable row carries: dragged, or focused and moved
@@ -835,6 +897,15 @@
   function allSecs(p) {
     return (p.sections || []).concat(((p.tabs && p.tabs.items) || []).reduce(function (a, t) { return a.concat(t.sections || []); }, []));
   }
+  /* WHERE THE TABS SIT among the page's own sections (2026-10-08, Chase: "we
+     have the ability to add sections above the tab, but we also need the
+     ability to add sections below"): -1 with no tabs; otherwise an index in
+     page.sections, the end unless moved. */
+  var TABS_ROW = '__tabs';
+  function tabsAt(p) {
+    if (!p.tabs || !p.tabs.items || !p.tabs.items.length) return -1;
+    return typeof p.tabs.at === 'number' ? Math.max(0, Math.min(p.tabs.at, p.sections.length)) : p.sections.length;
+  }
   function tabName(t, i) { return (t.label || {})[state.langA] || (t.label || {})[state.doc.fallback] || tr('ws.tabs.new') + ' ' + (i + 1); }
   function newTab(i) { var l = {}; return { id: 't' + Date.now().toString(36) + i, label: l, sections: [] }; }
   /* the strip of tabs, like a browser's: the page's own sections, each tab,
@@ -919,12 +990,27 @@
     html += tabsHtml(realPage());
 
     var n = p.sections.length;
-    /* Room below an open section, so even the last one can rise to the top. */
-    /* A place above the first section too: a Header belongs at the top. */
-    html += '<div class="ws-stack' + (state.edit != null ? ' has-open' : '') + '">' + (n ? '<button type="button" class="ws-insert" data-insert-at="0">+ ' + esc(tr('ws.addHere')) + '</button>' : '<p class="empty">' + esc(tr('ws.noSections')) + '</p>') +
-      p.sections.map(function (x, i) {
+    /* THE TABS ARE A ROW among the page's own sections — dragged like one,
+       opened to edit what is on them, with a place to add a section on
+       either side. Only on the page's own view; a tab's view is that tab. */
+    var real = realPage(), tAt = activeTab(real) ? -1 : tabsAt(real);
+    var insert = function (at, after) {
+      return '<button type="button" class="ws-insert" data-insert-at="' + at + '"' + (after ? ' data-after-tabs' : '') + '>+ ' + esc(tr('ws.addHere')) + '</button>';
+    };
+    var tabsRow = function () {
+      var items = real.tabs.items;
+      return '<article class="ws-acc ws-tabsrow" data-sid="' + TABS_ROW + '">' +
+        '<div class="ws-acc-head">' +
+          '<button type="button" class="ws-stile" data-tab-view="' + esc(items[0].id) + '">' +
+            '<span class="ws-sketch ws-sketch-sm" aria-hidden="true">' + sketch('tabs') + '</span>' +
+            '<span class="ws-stile-words"><b>' + esc(tr('ws.tabs.row')) + '</b><span>' + esc(items.map(tabName).join(' · ')) + '</span></span>' +
+            '<span class="ws-chev ws-chev-r" aria-hidden="true"></span></button>' +
+          '<span class="ws-stile-tools">' + grip() + '</span></div>' +
+        '</article>' + insert(tAt, true);
+    };
+    var section = function (x, i) {
         var open = state.edit === i;
-        return '<article class="ws-acc' + (open ? ' is-open' + (state.animate === i ? ' is-entering' : '') : '') + (x.join && i > 0 ? ' is-joined' : '') + '" data-si="' + i + '" data-sid="' + esc(x.id) + '">' +
+        return '<article class="ws-acc' + (open ? ' is-open' + (state.animate === i ? ' is-entering' : '') : '') + (x.join && i > 0 && i !== tAt ? ' is-joined' : '') + '" data-si="' + i + '" data-sid="' + esc(x.id) + '">' +
           '<div class="ws-acc-head">' +
             '<button type="button" class="ws-stile" data-edit-sec="' + i + '" aria-expanded="' + open + '">' +
               '<span class="ws-sketch ws-sketch-sm" aria-hidden="true">' + sketch(x.type) + '</span>' +
@@ -935,16 +1021,25 @@
             '</span></div>' +
           '<div class="ws-acc-body"><div class="ws-acc-inner">' + (open ? panelHtml(p, i) : '') + '</div></div>' +
         '</article>' +
-        /* JOINED TO THE ONE ABOVE (2026-10-07, Chase: "Can there be a visual
+        /* MERGED WITH THE ONE ABOVE (2026-10-07, Chase: "Can there be a visual
            indicator when a section is merged with the one above it"): the
            two rows sit together, tied by a link marked in words, where the
            gap with its "Add a section here" would be. */
-        (p.sections[i + 1] && p.sections[i + 1].join
+        (p.sections[i + 1] && p.sections[i + 1].join && i + 1 !== tAt
           ? '<div class="ws-joinmark"><span class="ws-joinmark-line" aria-hidden="true"></span><span class="ws-joinmark-word">' + LINK_ICON + esc(tr('ws.joined')) + '</span>' +
             '<button type="button" class="ws-joinmark-add" data-insert-at="' + (i + 1) + '" aria-label="' + esc(tr('ws.addHere')) + '" title="' + esc(tr('ws.addHere')) + '">+</button></div>'
-          : '<button type="button" class="ws-insert" data-insert-at="' + (i + 1) + '">+ ' + esc(tr('ws.addHere')) + '</button>');
-      }).join('') +
-      (n ? '' : '<button type="button" class="ws-addbtn" data-insert-at="0">+ ' + esc(tr('ws.addSection')) + '</button>') + '</div>';
+          : insert(i + 1, false));
+    };
+    /* Room below an open section, so even the last one can rise to the top. */
+    /* A place above the first section too: a Header belongs at the top. */
+    var rows = '';
+    for (var si = 0; si <= n; si++) {
+      if (si === tAt) rows += tabsRow();
+      if (si < n) rows += section(p.sections[si], si);
+    }
+    html += '<div class="ws-stack' + (state.edit != null ? ' has-open' : '') + '">' +
+      (n || tAt >= 0 ? insert(0, false) : '<p class="empty">' + esc(tr('ws.noSections')) + '</p>') + rows +
+      (n || tAt >= 0 ? '' : '<button type="button" class="ws-addbtn" data-insert-at="0">+ ' + esc(tr('ws.addSection')) + '</button>') + '</div>';
     $('wsPages').innerHTML = html;
     sizeOnScreen($('wsPages'));
     if (!canEdit()) [].forEach.call($('wsPages').querySelectorAll('[contenteditable]'), function (el) { el.setAttribute('contenteditable', 'false'); });
@@ -1139,78 +1234,82 @@
         if (typeof s.lines !== 'boolean') s.lines = s.variant === 'attached';
         s.variant = s.variant === 'attached' ? 'vertical' : 'horizontal';
       }
-      /* FOUR GROUPS, NOT TWENTY ROWS (2026-10-07, Chase: "the looks tab of
-         each section is really busy"): Layout, Line up, Title, Background,
-         each only with what this section has. A choice of several is chips;
-         anything on or off is one switch, side by side with the others —
-         a whole row of "On | Off" chips per setting is what crowded it. */
+      /* FOUR GROUPS OF ROWS (2026-10-07, Chase: "the looks tab of each
+         section is really busy"; 2026-10-08: "if there is a toggle tied to
+         that selection, then it is positioned just to the right of it").
+         Each row: what it is, then its control, then any switch that belongs
+         to that choice beside it — Indented beside the alignment, Merge
+         beside the background. A few short choices are one joined control
+         (choice()); a long list is a menu; alignment is pictures. */
       var grp = function (title, body) { return body ? '<fieldset class="ws-grp"><legend>' + esc(title) + '</legend>' + body + '</fieldset>' : ''; };
-      var opt = function (label, ctl) { return '<div class="ws-field"><span class="ws-lbl2">' + esc(label) + '</span>' + ctl + '</div>'; };
+      var lrow = function (label, ctl, side) { return '<div class="ws-lrow"><span class="ws-lbl2">' + esc(label) + '</span><div class="ws-lctl">' + ctl + (side || '') + '</div></div>'; };
       var flag = function (key, on, label) { return sw('data-sec-flag="' + i + ':' + key + '"', on, label); };
-      var flags = function (list) { var f = list.filter(Boolean).join(''); return f ? '<div class="ws-flags">' + f + '</div>' : ''; };
       var hasVerse = Object.keys(s.words || {}).some(function (l) { return (s.words[l] || {}).verse; });
+      var vlabel = function (v) { return tr('ws.v.' + s.type + '.' + v); };
 
       var lay = '';
+      var layFlag = s.type === 'cards' ? flag('numbers', s.numbers !== false, tr('ws.numbers'))
+        /* the opening's scroll indicator, for this page (not while the
+           site's Scroll hint is None: there would be nothing to show) */
+        : s.type === 'hero' && (state.doc.design.motion || {}).cue !== 'none'
+          ? sw('data-page-cue="' + state.doc.pages.indexOf(realPage()) + '"', p.cue !== false, tr('ws.cueOnPage')) : '';
       if (spec.variants.length > 1 && s.type !== 'text') {
-        lay += chips('variant:' + i, spec.variants, s.variant, function (v) { return tr('ws.v.' + s.type + '.' + v); });
+        lay += lrow(tr('ws.layout.style'), choice('variant:' + i, spec.variants, s.variant, vlabel), layFlag);
+        layFlag = '';
       }
       if (s.type === 'newsletters') {
         var lists = state.body.mail_lists || [];
-        lay += opt(tr('ws.news.list'), '<select data-news-list="' + i + '"><option value="">' + esc(tr('ws.news.all')) + '</option>' + lists.map(function (l) {
+        lay += lrow(tr('ws.news.list'), '<select class="ws-pick" data-news-list="' + i + '"><option value="">' + esc(tr('ws.news.all')) + '</option>' + lists.map(function (l) {
           return '<option value="' + esc(l.slug) + '"' + (s.list === l.slug ? ' selected' : '') + '>' + esc(l.name) + '</option>';
         }).join('') + '</select>');
-        if (s.variant !== 'latest') lay += opt(tr('ws.news.count'), chips('newscount:' + i, ['3', '4', '5', '6', '8', '10', '12'], String(s.count || 5), function (v) { return v; }));
+        if (s.variant !== 'latest') lay += lrow(tr('ws.news.count'), choice('newscount:' + i, ['3', '4', '5', '6', '8', '10', '12'], String(s.count || 5), function (v) { return v; }));
       }
       if (s.type === 'videos') {
-        lay += opt(tr('ws.vTitle'), chips('vtitle:' + i, ['words', 'latest'], s.titleFrom || 'words', function (v) { return tr('ws.vTitle.' + v); })) +
-          opt(tr('ws.vLinks'), chips('vlinks:' + i, ['buttons', 'outline', 'subtle'], s.linkStyle || 'buttons', function (v) { return tr('ws.vLinks.' + v); }));
+        lay += lrow(tr('ws.vTitle'), choice('vtitle:' + i, ['words', 'latest'], s.titleFrom || 'words', function (v) { return tr('ws.vTitle.' + v); })) +
+          lrow(tr('ws.vLinks'), choice('vlinks:' + i, ['buttons', 'outline', 'subtle'], s.linkStyle || 'buttons', function (v) { return tr('ws.vLinks.' + v); }));
       }
       if (s.type === 'cards') {
         /* Open cards: Detached draws the upright lines between them, Attached none */
-        lay += opt(tr('ws.cardLines'), chips('clines:' + i, ['attached', 'detached'], s.variant === 'open' ? (s.lines ? 'detached' : 'attached')
+        lay += lrow(tr('ws.cardLines'), choice('clines:' + i, ['attached', 'detached'], s.variant === 'open' ? (s.lines ? 'detached' : 'attached')
           : (typeof s.lines === 'boolean' ? s.lines : s.variant !== 'horizontal') ? 'attached' : 'detached', function (v) { return tr('ws.cardLines.' + v); }));
       }
       if (s.type === 'photoText') {
         var wrapped = s.variant === 'wrapLeft' || s.variant === 'wrapRight';
-        lay += opt(tr('ws.titlePlace'), chips('tinline:' + i, ['with', 'above'], (typeof s.titleInline === 'boolean' ? s.titleInline : !wrapped) ? 'with' : 'above', function (v) { return tr('ws.titlePlace.' + v); }));
+        lay += lrow(tr('ws.titlePlace'), choice('tinline:' + i, ['with', 'above'], (typeof s.titleInline === 'boolean' ? s.titleInline : !wrapped) ? 'with' : 'above', function (v) { return tr('ws.titlePlace.' + v); }));
       }
       /* a verse's look only once there is a verse to look like something */
       if ((s.type === 'text' || s.type === 'photoText') && hasVerse) {
-        lay += opt(tr('ws.verseStyle'), chips('verse:' + i, ['quote', 'line', 'mark'], s.verseStyle || 'quote', function (v) { return tr('ws.verseStyle.' + v); }));
+        lay += lrow(tr('ws.verseStyle'), choice('verse:' + i, ['quote', 'line', 'mark'], s.verseStyle || 'quote', function (v) { return tr('ws.verseStyle.' + v); }));
       }
-      lay += flags([
-        s.type === 'cards' ? flag('numbers', s.numbers !== false, tr('ws.numbers')) : '',
-        /* the opening's scroll indicator, for this page (not while the
-           site's Scroll hint is None: there would be nothing to show) */
-        s.type === 'hero' && (state.doc.design.motion || {}).cue !== 'none'
-          ? sw('data-page-cue="' + state.doc.pages.indexOf(realPage()) + '"', p.cue !== false, tr('ws.cueOnPage')) : ''
-      ]);
+      if (layFlag) lay += '<div class="ws-lrow"><span></span><div class="ws-lctl">' + layFlag + '</div></div>';
       html += grp(tr('ws.layout'), lay);
 
-      var lu = chips('align:' + i, ['left', 'center', 'right'], s.align === 'indent' ? 'left' : s.align || defaultAlign(s), function (v) { return tr('ws.align.' + v); });
+      var lu = lrow(tr('ws.lineup.words'), alignPick('align:' + i, s.align === 'indent' ? 'left' : s.align || defaultAlign(s), 'ws.align.'),
+        flag('indent', !!s.indent || s.align === 'indent', tr('ws.indent')));
       if (s.type === 'text' || s.type === 'photoText') {
         var tA = s.titleAlign || (s.align === 'center' || s.align === 'right' ? s.align : 'left');
-        lu += opt(tr('ws.titleAlign'), chips('talign:' + i, ['left', 'center', 'right'], tA, function (v) { return tr('ws.titleAlign.' + v); }));
+        lu += lrow(tr('ws.titleAlign'), alignPick('talign:' + i, tA, 'ws.titleAlign.'));
       }
-      lu += flags([flag('indent', !!s.indent || s.align === 'indent', tr('ws.indent'))]);
       html += grp(tr('ws.align'), lu);
 
       if (spec.words.indexOf('heading') !== -1) {
         var lined = s.type === 'hero' ? (s.variant === 'monogram' ? s.divider !== false : s.divider === true)
           : s.type === 'header' ? s.divider !== false : s.type === 'text' || s.type === 'photoText' ? !!s.titleLine : null;
-        html += grp(tr('ws.grp.title'), flags([
+        html += grp(tr('ws.grp.title'), '<div class="ws-flags">' + [
           lined === null ? '' : flag(s.type === 'text' || s.type === 'photoText' ? 'tline' : 'divider', lined, tr('ws.divider')),
           flag('bars', !!s.titleBars, tr('ws.titleBars')),
           s.type === 'header' ? flag('topline', s.topline !== false, tr('ws.topline')) : ''
-        ]));
+        ].join('') + '</div>');
       }
 
       var grounds = s.type === 'header' ? ['plain', 'raised', 'tint', 'accent'] : ['plain', 'raised', 'tint'];
       var joined = i > 0 && !!s.join;
       html += grp(tr('ws.bg'),
-        (joined ? '<p class="ws-note">' + esc(tr('ws.joinedBg')) + '</p>'
-          : chips('raised:' + i, grounds, s.type === 'header' && s.bg === 'accent' ? 'accent' : s.tint ? 'tint' : s.raised ? 'raised' : 'plain', function (v) { return tr('ws.bg.' + v); })) +
-        (i > 0 ? flags([flag('join', joined, tr('ws.join'))]) : ''));
+        lrow(tr('ws.bg.fill'), joined ? '<p class="ws-note">' + esc(tr('ws.joinedBg')) + '</p>'
+          /* backgrounds are short words, so they stay one joined control
+             even with the header's fourth */
+          : choice('raised:' + i, grounds, s.type === 'header' && s.bg === 'accent' ? 'accent' : s.tint ? 'tint' : s.raised ? 'raised' : 'plain', function (v) { return tr('ws.bg.' + v); }, true),
+          i > 0 ? flag('join', joined, tr('ws.join')) : ''));
     }
 
     html += '</div><div class="ws-panelfoot">' +
@@ -1249,6 +1348,7 @@
   /* ---- adding a section ------------------------------------------------ */
 
   var SKETCH = {
+    tabs: [[8,18,24,16,'a','3px'],[34,18,24,16,'l','3px'],[60,18,24,16,'l','3px'],[8,48,84,7,'l'],[8,62,64,7,'l']],
     hero: [[0,0,100,100,'p'],[8,50,60,12,'t'],[8,70,18,10,'a'],[29,70,22,10,'o']],
     text: [[10,14,50,12,'t'],[10,36,80,6,'l'],[10,48,76,6,'l'],[10,60,82,6,'l'],[10,72,60,6,'l']],
     photoText: [[6,14,42,72,'p'],[54,22,36,10,'t'],[54,42,38,6,'l'],[54,54,34,6,'l'],[54,66,36,6,'l']],
@@ -1271,9 +1371,10 @@
         (r[5] ? ';border-radius:' + r[5] : '') + '"></span>';
     }).join('');
   }
-  function openAdd(at) {
+  function openAdd(at, afterTabs) {
     var p = currentPage();
     state.insertAt = at == null ? p.sections.length : at;
+    state.insertAfterTabs = !!afterTabs;
     $('wsAddTitle').innerHTML = esc(tr('ws.addTo')) + ' <b>' + esc(pageLabel(p, state.langA)) + '</b>';
     $('wsTiles').innerHTML = ORDER.map(function (t) {
       return '<button type="button" class="ws-tile" data-add-type="' + t + '"><span class="ws-sketch" aria-hidden="true">' + sketch(t) + '</span>' +
@@ -1311,6 +1412,10 @@
     /* Where it was asked for, and straight into it: a new section is one
        to be filled in. */
     var at = Math.min(state.insertAt == null ? 1e9 : state.insertAt, currentPage().sections.length);
+    /* Above the tabs pushes them down one; at the tabs' own place, the
+       button under the Tabs row adds below them and the one over it above. */
+    var rp = realPage(), ta = activeTab(rp) ? -1 : tabsAt(rp);
+    if (ta >= 0) rp.tabs.at = at < ta || (at === ta && !state.insertAfterTabs) ? ta + 1 : ta;
     currentPage().sections.splice(at, 0, s);
     state.edit = at; state.animate = at; state.sectab = spec.items ? (spec.items === 'cards' ? 'cards' : 'links') : 'words'; state.openItem = null;
     closeAdd(); drawPages(); changed(); refreshFrame();
@@ -1975,6 +2080,18 @@
     var t = e.target, p = currentPage();
     if (t.dataset.pickPage !== undefined) { state.page = t.value; state.edit = null; drawPages(); refreshFrame(); return; }
     if (t.dataset.advPage !== undefined) { state.advPage = t.value; drawAdvanced(); return; }
+    if (t.dataset.chipPick) return applyChip(t.dataset.chipPick, t.value);
+    /* A description typed in reads as the language writes one — English in
+       Title Case (Chase, 2026-10-08) — once the box is left, so what is in
+       the box is what a search shows. */
+    if (t.dataset.advDesc !== undefined && t.value.trim()) {
+      var cased = titleOf(t.value, state.langA);
+      if (cased !== t.value) {
+        t.value = cased;
+        var aqd = advPage(); aqd.seo.desc[state.langA] = cased; drawAdvanced(); return changed();
+      }
+      return;
+    }
     if (t.dataset.advUpload !== undefined) { var au = advPage(); return upload(t, function (url) { au.shareImage = url; au.shareOrig = null; au.seo = au.seo || {}; au.seo.image = 'custom'; drawAdvanced(); editSharePicture(au); }); }
     /* A color settled on: the look cards redraw in it (not while dragging,
        which would close the picker under the pointer). */
@@ -2021,9 +2138,21 @@
     StaffSort(root, { items: '.ws-stack > .ws-acc', handle: '.ws-acc-head .sort-grip',
       key: function (it) { return it.dataset.sid; },
       drop: function (l, from, to) {
-        moveTo(currentPage().sections, from, to);
-        state.edit = afterMove(state.edit, from, to);
-        drawSections(); changed();
+        var cp = currentPage(), rp = realPage(), ta = activeTab(rp) ? -1 : tabsAt(rp);
+        if (ta < 0) {
+          moveTo(cp.sections, from, to);
+          state.edit = afterMove(state.edit, from, to);
+        } else {
+          /* The Tabs row is one of the rows: its place is where it lands. */
+          var editing = state.edit != null ? cp.sections[state.edit] : null;
+          var rows = cp.sections.slice(); rows.splice(ta, 0, TABS_ROW);
+          moveTo(rows, from, to);
+          rp.tabs.at = rows.indexOf(TABS_ROW);
+          var secs = rows.filter(function (r) { return r !== TABS_ROW; });
+          cp.sections.splice.apply(cp.sections, [0, cp.sections.length].concat(secs));
+          state.edit = editing ? secs.indexOf(editing) : null;
+        }
+        drawSections(); changed(); refreshFrame();
       } });
     StaffSort(root, { items: '.ws-tabs > .is-tab', handle: '.ws-tabs > .is-tab',
       key: function (it) { return it.dataset.tabView; },
@@ -2088,7 +2217,7 @@
     }
     if (d.panelBack !== undefined) { state.anchor = state.edit; state.edit = null; drawPages(); refreshFrame(); return; }
     if (d.sectab) { state.sectab = d.sectab; drawPages(); return; }
-    if (d.insertAt !== undefined) return openAdd(+d.insertAt);
+    if (d.insertAt !== undefined) return openAdd(+d.insertAt, d.afterTabs !== undefined);
     if (d.itemOpen !== undefined) { state.openItem = state.openItem === +d.itemOpen ? null : +d.itemOpen; drawPages(); return; }
     if (d.showVerse !== undefined) { state.showVerse = true; drawPages(); var vb = $('wsPages').querySelector('[data-rt$=":verse"]'); if (vb) vb.focus(); return; }
     if (d.showKicker !== undefined) { state.showKicker = true; drawPages(); var k = $('wsPages').querySelector('[data-sec-word$=":kicker"]'); if (k) k.focus(); return; }
@@ -2105,7 +2234,11 @@
     if (d.secRemove) {
       var s = p.sections[+d.secRemove];
       var ok = window.StaffConfirm ? await window.StaffConfirm({ title: fill('ws.removeTitle', { kind: tr('ws.sec.' + s.type) }), confirm: tr('ws.remove'), cancel: tr('ms.cancel'), danger: true }) : true;
-      if (ok) { p.sections.splice(+d.secRemove, 1); state.edit = null; drawSections(); changed(); }
+      if (ok) {
+        var rr = realPage(), rt = activeTab(rr) ? -1 : tabsAt(rr);
+        if (rt > +d.secRemove) rr.tabs.at = rt - 1;
+        p.sections.splice(+d.secRemove, 1); state.edit = null; drawSections(); changed();
+      }
       return;
     }
     if (d.secUnphoto) { p.sections[+d.secUnphoto].photo = null; p.sections[+d.secUnphoto].photoEdit = null; drawSections(); return changed(); }
@@ -2144,52 +2277,7 @@
     }
     if (d.motionProgress !== undefined) { var mo = state.doc.design.motion; mo.progress = mo.progress === 'on' ? 'off' : 'on'; drawDesign(); return changed(); }
     if (d.headerLinks !== undefined) { state.doc.design.headerLinks = !state.doc.design.headerLinks; drawNav(); return changed(); }
-    if (d.chip) {
-      var val = d.value, name = d.chip;
-      if (name.indexOf('variant:') === 0) { p.sections[+name.slice(8)].variant = val; drawSections(); }
-      else if (name === 'tabstyle' || name === 'tabalign') { var sp = realPage(); if (sp.tabs) sp.tabs[name === 'tabstyle' ? 'style' : 'align'] = val; drawPages(); }
-      else if (name.indexOf('newscount:') === 0) { p.sections[+name.slice(10)].count = +val; drawSections(); }
-      /* Open cards: Detached draws the upright lines between them, Attached
-         none (2026-10-07, Chase: "Maybe the attached is without lines and
-         detached is with vertical lines for that") */
-      else if (name.indexOf('clines:') === 0) { var cs = p.sections[+name.slice(7)]; cs.lines = cs.variant === 'open' ? val === 'detached' : val === 'attached'; drawSections(); }
-      else if (name.indexOf('raised:') === 0) { var rs = p.sections[+name.slice(7)]; rs.raised = val === 'raised'; rs.tint = val === 'tint'; if (rs.type === 'header') rs.bg = val === 'accent' ? 'accent' : 'plain'; drawSections(); }
-      else if (name === 'advpic') { var ap = advPage(); ap.seo = ap.seo || { title: {}, desc: {} }; ap.seo.image = val; drawAdvanced(); }
-      else if (name.indexOf('vpos:') === 0) { p.sections[+name.slice(5)].versePos = val; drawSections(); }
-      else if (name.indexOf('talign:') === 0) { p.sections[+name.slice(7)].titleAlign = val; drawSections(); }
-      else if (name.indexOf('tinline:') === 0) { p.sections[+name.slice(8)].titleInline = val === 'with'; drawSections(); }
-      else if (name.indexOf('cplace:') === 0) { var cl = state.doc.links[+name.slice(7)]; cl.place = val; delete cl.icon; drawLinks(); }
-      else if (name.indexOf('cshow:') === 0) { state.doc.links[+name.slice(6)].show = val; drawLinks(); }
-      else if (name.indexOf('pheight:') === 0) { p.sections[+name.slice(8)].height = val; drawSections(); }
-      else if (name.indexOf('vtitle:') === 0) { p.sections[+name.slice(7)].titleFrom = val; drawSections(); }
-      else if (name.indexOf('vlinks:') === 0) { p.sections[+name.slice(7)].linkStyle = val; drawSections(); }
-      else if (name.indexOf('lcolor:') === 0) { var lk = name.slice(7).split(':'); p.sections[+lk[0]].items[+lk[1]].color = val; drawSections(); }
-      else if (name.indexOf('tier:') === 0) { var tk = name.slice(5).split(':'); p.sections[+tk[0]].items[+tk[1]].tier = val; drawSections(); }
-      else if (name.indexOf('verse:') === 0) { p.sections[+name.slice(6)].verseStyle = val; drawSections(); }
-      else if (name.indexOf('align:') === 0) { var as = p.sections[+name.slice(6)]; if (as.align === 'indent') as.indent = true; as.align = val; drawSections(); }
-      else if (name.indexOf('linkkind:') === 0) {
-        var key = name.slice(9);
-        var firstPage = (state.doc.pages.filter(function (x) { return x.on && x.id !== 'home'; })[0] || state.doc.pages[0]).id;
-        var firstSec = jumpTargets(key)[0];
-        setLink(key, val === 'none' ? '' : val === 'page' ? 'page:' + firstPage :
-          val === 'section' ? (firstSec ? 'section:' + firstSec.id : '') : 'https://');
-        if (state.tab === 'links') drawLinks(); else drawSections();
-        var box = val === 'url' && $('wsRoot').querySelector('[data-link-url="' + key + '"]');
-        if (box) box.focus();
-      }
-      else if (name.indexOf('footer:') === 0) { state.doc.footer[name.slice(7)] = val; drawFooter(); }
-      else if (name.indexOf('nav:') === 0) {
-        navOf(state.doc)[name.slice(4)] = val;
-        /* the phone's menu is seen on a phone */
-        if (name === 'nav:phone') setDevice('phone');
-        drawNav();
-      }
-      else if (name === 'giveTo') { state.doc.design.giveTo = val; drawNav(); }
-      else if (name.indexOf('motion:') === 0) { state.doc.design.motion[name.slice(7)] = val; drawDesign(); }
-      else if (name === 'menu') { state.doc.design.menu = val; drawNav(); }
-      else if (name === 'look' || name === 'brand' || name === 'mode' || name === 'faviconStyle') { state.doc.design[name] = val; drawDesign(); }
-      return changed();
-    }
+    if (d.chip) return applyChip(d.chip, d.value);
     if (d.start) {
       var ok2 = window.StaffConfirm ? await window.StaffConfirm({ title: fill('ws.startTitle', { kind: tr('ws.start.' + d.start) }),
         body: tr('ws.startBody'), confirm: tr('ws.startGo'), cancel: tr('ms.cancel'), danger: true }) : true;
@@ -2200,6 +2288,54 @@
     if (d.decline) return act({ action: 'decline', user_id: d.decline });
     if (d.revoke) return act({ action: 'revoke', user_id: d.revoke });
   });
+
+  /* A choice made — by a button or a menu with the same name (choice()). */
+  function applyChip(name, val) {
+    var p = currentPage();
+    if (name.indexOf('variant:') === 0) { p.sections[+name.slice(8)].variant = val; drawSections(); }
+    else if (name === 'tabstyle' || name === 'tabalign') { var sp = realPage(); if (sp.tabs) sp.tabs[name === 'tabstyle' ? 'style' : 'align'] = val; drawPages(); }
+    else if (name.indexOf('newscount:') === 0) { p.sections[+name.slice(10)].count = +val; drawSections(); }
+    /* Open cards: Detached draws the upright lines between them, Attached
+       none (2026-10-07, Chase: "Maybe the attached is without lines and
+       detached is with vertical lines for that") */
+    else if (name.indexOf('clines:') === 0) { var cs = p.sections[+name.slice(7)]; cs.lines = cs.variant === 'open' ? val === 'detached' : val === 'attached'; drawSections(); }
+    else if (name.indexOf('raised:') === 0) { var rs = p.sections[+name.slice(7)]; rs.raised = val === 'raised'; rs.tint = val === 'tint'; if (rs.type === 'header') rs.bg = val === 'accent' ? 'accent' : 'plain'; drawSections(); }
+    else if (name === 'advpic') { var ap = advPage(); ap.seo = ap.seo || { title: {}, desc: {} }; ap.seo.image = val; drawAdvanced(); }
+    else if (name.indexOf('vpos:') === 0) { p.sections[+name.slice(5)].versePos = val; drawSections(); }
+    else if (name.indexOf('talign:') === 0) { p.sections[+name.slice(7)].titleAlign = val; drawSections(); }
+    else if (name.indexOf('tinline:') === 0) { p.sections[+name.slice(8)].titleInline = val === 'with'; drawSections(); }
+    else if (name.indexOf('cplace:') === 0) { var cl = state.doc.links[+name.slice(7)]; cl.place = val; delete cl.icon; drawLinks(); }
+    else if (name.indexOf('cshow:') === 0) { state.doc.links[+name.slice(6)].show = val; drawLinks(); }
+    else if (name.indexOf('pheight:') === 0) { p.sections[+name.slice(8)].height = val; drawSections(); }
+    else if (name.indexOf('vtitle:') === 0) { p.sections[+name.slice(7)].titleFrom = val; drawSections(); }
+    else if (name.indexOf('vlinks:') === 0) { p.sections[+name.slice(7)].linkStyle = val; drawSections(); }
+    else if (name.indexOf('lcolor:') === 0) { var lk = name.slice(7).split(':'); p.sections[+lk[0]].items[+lk[1]].color = val; drawSections(); }
+    else if (name.indexOf('tier:') === 0) { var tk = name.slice(5).split(':'); p.sections[+tk[0]].items[+tk[1]].tier = val; drawSections(); }
+    else if (name.indexOf('verse:') === 0) { p.sections[+name.slice(6)].verseStyle = val; drawSections(); }
+    else if (name.indexOf('align:') === 0) { var as = p.sections[+name.slice(6)]; if (as.align === 'indent') as.indent = true; as.align = val; drawSections(); }
+    else if (name.indexOf('linkkind:') === 0) {
+      var key = name.slice(9);
+      var firstPage = (state.doc.pages.filter(function (x) { return x.on && x.id !== 'home'; })[0] || state.doc.pages[0]).id;
+      var firstSec = jumpTargets(key)[0];
+      setLink(key, val === 'none' ? '' : val === 'page' ? 'page:' + firstPage :
+        val === 'section' ? (firstSec ? 'section:' + firstSec.id : '') : 'https://');
+      if (state.tab === 'links') drawLinks(); else drawSections();
+      var box = val === 'url' && $('wsRoot').querySelector('[data-link-url="' + key + '"]');
+      if (box) box.focus();
+    }
+    else if (name.indexOf('footer:') === 0) { state.doc.footer[name.slice(7)] = val; drawFooter(); }
+    else if (name.indexOf('nav:') === 0) {
+      navOf(state.doc)[name.slice(4)] = val;
+      /* the phone's menu is seen on a phone */
+      if (name === 'nav:phone') setDevice('phone');
+      drawNav();
+    }
+    else if (name === 'giveTo') { state.doc.design.giveTo = val; drawNav(); }
+    else if (name.indexOf('motion:') === 0) { state.doc.design.motion[name.slice(7)] = val; state.playMotion = true; drawDesign(); }
+    else if (name === 'menu') { state.doc.design.menu = val; drawNav(); }
+    else if (name === 'look' || name === 'brand' || name === 'mode' || name === 'faviconStyle') { state.doc.design[name] = val; drawDesign(); }
+    return changed();
+  }
 
   /* A header carries plain words only: the name without its ending, and
      nothing a header could not hold. The server makes it readable. */

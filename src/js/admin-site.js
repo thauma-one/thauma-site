@@ -269,8 +269,8 @@
   function visRow(label, base) {
     return '<div class="v-row">' +
       '<div class="v-label"><span class="s-name">' + esc(label) + '</span></div>' +
-      switchCell(base + '.live', 'is-live') +
       switchCell(base + '.dev', 'is-dev') +
+      switchCell(base + '.live', 'is-live') +
       '<span></span>' +
     '</div>';
   }
@@ -295,14 +295,15 @@
     var head =
       '<div class="v-head">' +
         '<div class="v-label"></div>' +
-        /* WHO SEES IT, and a way to look (2026-10-07, suggestion 6): visitors on
-           the live site first, then the team's own dev.thauma.one. (The
+        /* WHO SEES IT, and a way to look: the team's own dev.thauma.one
+           first, then visitors on the live site — the order the work goes in
+           (Chase, 2026-10-08: "the workflow is dev and then public"). The
            preview build at next.thauma.one follows the visitors' column, so
-           it shows what is about to be published — visible.js.) */
-        '<span class="v-cell is-live"><b>' + esc(tr('vis.liveCol')) + '</b>' +
-          '<a class="v-open" href="https://thauma.one/" target="_blank" rel="noopener">thauma.one ↗</a></span>' +
+           it shows what is about to be published (visible.js). */
         '<span class="v-cell is-dev"><b>' + esc(tr('vis.devCol')) + '</b>' +
           '<a class="v-open" href="https://dev.thauma.one/" target="_blank" rel="noopener">dev.thauma.one ↗</a></span>' +
+        '<span class="v-cell is-live"><b>' + esc(tr('vis.liveCol')) + '</b>' +
+          '<a class="v-open" href="https://thauma.one/" target="_blank" rel="noopener">thauma.one ↗</a></span>' +
       '</div>';
 
     var body = '';

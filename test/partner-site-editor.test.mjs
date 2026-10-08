@@ -98,7 +98,7 @@ await check("a page's tabs: + Add tabs opens two, each with its own sections; th
   assert(own > 0, "Give has its own sections");
   click(d.querySelector("[data-tabs-add]"));
   const chips = () => [...d.querySelectorAll(".ws-tabchip")].map((c) => c.textContent);
-  eq(chips(), ["Above the tabs", "Tab 1", "Tab 2", "+"], "the strip");
+  eq(chips(), ["The page", "Tab 1", "Tab 2", "+"], "the strip");
   eq(d.querySelector(".ws-tabchip.is-on").textContent, "Tab 1", "the first tab is open");
   eq(d.querySelectorAll(".ws-acc").length, 0, "a new tab has no sections of its own");
   assert(!d.querySelector(".ws-tabstyle"), "the bar's look is out of the way");
@@ -109,9 +109,36 @@ await check("a page's tabs: + Add tabs opens two, each with its own sections; th
   name.dispatchEvent(new w.Event("input", { bubbles: true }));
   eq(chips()[1], "Give", "named in place");
   click(d.querySelector('[data-tab-view=""]'));
-  eq(d.querySelectorAll(".ws-acc").length, own, "above the tabs: the page's own sections");
+  eq(d.querySelectorAll(".ws-acc:not(.ws-tabsrow)").length, own, "the page: its own sections");
   click(d.querySelector("[data-tab-add]"));
-  eq(chips(), ["Above the tabs", "Give", "Tab 2", "Tab 3", "+"], "+ adds another, and opens it");
+  eq(chips(), ["The page", "Give", "Tab 2", "Tab 3", "+"], "+ adds another, and opens it");
+});
+
+await check("the tabs are a row among the page's sections: a section can go below them, and the row drags", async () => {
+  /* Chase, 2026-10-08: "we have the ability to add sections above the tab,
+     but we also need the ability to add sections below." */
+  const { d, sent, click, pages } = await boot();
+  pages();
+  click(d.querySelector('[data-open-page="give"]'));
+  const own = d.querySelectorAll(".ws-acc").length;
+  click(d.querySelector("[data-tabs-add]"));
+  click(d.querySelector('[data-tab-view=""]'));
+  const rows = () => [...d.querySelectorAll(".ws-stack > .ws-acc")].map((r) => r.classList.contains("ws-tabsrow") ? "TABS" : r.dataset.sid);
+  eq(rows()[own], "TABS", "the Tabs row comes after the page's own sections");
+  assert(/Tab 1 · Tab 2/.test(d.querySelector(".ws-tabsrow").textContent), "it names its tabs");
+  const below = d.querySelector(".ws-tabsrow + .ws-insert");
+  assert(below && below.hasAttribute("data-after-tabs"), "no place to add a section below the tabs");
+  click(below);
+  click(d.querySelector('[data-add-type="text"]'));
+  eq(rows().indexOf("TABS"), own, "the tabs stayed where they were");
+  eq(rows().length, own + 2, "the new section is below them");
+  /* Up one with the keyboard: the Tabs row moves above the last section. */
+  const grip = d.querySelector(".ws-tabsrow .sort-grip");
+  grip.focus();
+  grip.dispatchEvent(new d.defaultView.KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true }));
+  eq(rows().indexOf("TABS"), own - 1, "moved up one");
+  await settle(900);
+  eq(sent.filter((x) => x.action === "save").pop().draft.pages.find((p) => p.id === "give").tabs.at, own - 1, "saved where it sits");
 });
 
 await check("a page opens to its sections as rows; All pages and the page menu lead out", async () => {
@@ -510,7 +537,7 @@ await check("Design: Custom's colors and what visitors see appear only when Cust
   eq([design.look, design.mode], ["custom", "dark"], "saved");
 });
 
-await check("a section joined to the one above says so in the list, and its background is the one above's", async () => {
+await check("a section merged with the one above says Merged in the list, and its background is the one above's", async () => {
   const { d, sent, click, pages } = await boot();
   pages();
   click(d.querySelector('[data-open-page="home"]'));
@@ -520,10 +547,30 @@ await check("a section joined to the one above says so in the list, and its back
   click(d.querySelector('[data-sec-flag="1:join"]'));
   assert(d.querySelector('.ws-acc[data-si="1"]').classList.contains("is-joined"), "the row is not marked");
   const mark = d.querySelector(".ws-joinmark");
-  assert(mark && mark.nextElementSibling === d.querySelector('.ws-acc[data-si="1"]') && /Joined/.test(mark.textContent), "no marker between the two");
-  assert(!d.querySelector('[data-chip="raised:1"]') && /background of the section above/.test(d.querySelector(".ws-grp .ws-note").textContent), "its own background still offered");
+  assert(mark && mark.nextElementSibling === d.querySelector('.ws-acc[data-si="1"]') && /Merged/.test(mark.textContent), "no marker between the two");
+  assert(!d.querySelector('[data-chip="raised:1"]') && /background of the section it is merged with/.test(d.querySelector(".ws-grp .ws-note").textContent), "its own background still offered");
   await settle(900);
   eq(sent.filter((x) => x.action === "save").pop().draft.pages[0].sections[1].join, true, "saved");
+});
+
+await check("the Look tab is rows: a long list of layouts is a menu, and a switch sits beside the choice it belongs to", async () => {
+  /* Chase, 2026-10-08: "if there is a toggle tied to that selection, then it
+     is positioned just to the right of it". */
+  const { w, d, sent, click, pages } = await boot();
+  pages();
+  click(d.querySelector('[data-open-page="home"]'));
+  click(d.querySelector('[data-edit-sec="1"]'));            // Photo and words: five layouts
+  click(d.querySelector('[data-sectab="look"]'));
+  const menu = d.querySelector('select[data-chip-pick="variant:1"]');
+  assert(menu && menu.options.length === 5, "five layouts are not a menu");
+  menu.value = "above";
+  menu.dispatchEvent(new w.Event("change", { bubbles: true }));
+  const rowOf = (sel) => d.querySelector(sel).closest(".ws-lrow");
+  assert(rowOf('[data-sec-flag="1:indent"]') === rowOf('[data-chip="align:1"]'), "Indented is not beside the alignment");
+  assert(rowOf('[data-sec-flag="1:join"]') === rowOf('[data-chip="raised:1"]'), "Merge is not beside the background");
+  assert(d.querySelector('[data-chip="align:1"] svg') && d.querySelector('[data-chip="align:1"]').getAttribute("aria-label"), "alignment is not pictures with names");
+  await settle(900);
+  eq(sent.filter((x) => x.action === "save").pop().draft.pages[0].sections[1].variant, "above", "the menu's choice saved");
 });
 
 await check("Undo steps back through changes; a reload opens where you left off", async () => {
