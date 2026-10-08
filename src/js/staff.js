@@ -529,13 +529,6 @@
     $('resourceList').innerHTML = html || '<p class="empty">' + esc(tr('res.empty')) + '</p>';
   }
 
-  function showUpdated(data) {
-    setStatus(data.updatedAt
-      ? 'Last updated ' + new Date(data.updatedAt).toLocaleString() +
-        (data.updatedBy ? ' by ' + data.updatedBy : '')
-      : '', false);
-  }
-
   async function loadStaffData() {
     try {
       var res = await fetch(STAFF_API, { credentials: 'same-origin' });
@@ -1705,8 +1698,8 @@
           yes.disabled = typeField.value.trim() !== opts.type;
         });
       }
-      yes.textContent = opts.confirm || 'Confirm';
-      no.textContent = opts.cancel || 'Cancel';
+      yes.textContent = opts.confirm || tr('common.confirm');
+      no.textContent = opts.cancel || tr('common.cancel');
       if (opts.danger) yes.classList.add('is-danger');
       /* `only` makes it a NOTICE rather than a question: something has already
          happened and this says what to go and do about it. A Cancel button
@@ -1811,7 +1804,7 @@
       var yes = wrap.querySelector('.dlg-yes');
       var no = wrap.querySelector('.dlg-no');
       yes.textContent = opts.confirm || 'OK';
-      no.textContent = opts.cancel || 'Cancel';
+      no.textContent = opts.cancel || tr('common.cancel');
       yes.disabled = true;
 
       function validate() {

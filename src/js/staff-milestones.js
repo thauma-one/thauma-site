@@ -99,10 +99,6 @@
     var l = state.languages.filter(function (x) { return x.code === code; })[0];
     return l ? (l.native_name || l.name) : code;
   }
-  function isEnabled(code) {
-    var l = state.languages.filter(function (x) { return x.code === code; })[0];
-    return !!(l && l.is_enabled);
-  }
 
   /* ONLY the languages this partner publishes. A language switched off in
      Settings does not appear here at all — offering a column for a language

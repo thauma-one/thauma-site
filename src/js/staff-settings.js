@@ -378,7 +378,7 @@
       r.selectNode($('setKeyValue'));
       window.getSelection().removeAllRanges();
       window.getSelection().addRange(r);
-      setStatus('Selected — press Ctrl/Cmd C', 'ok');
+      toastKey('set.keySelected', 'ok');
     }
   });
 
