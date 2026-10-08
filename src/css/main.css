@@ -738,6 +738,17 @@ section .cue, .work .label, .val .n, .conviction .num{font-kerning:none;font-var
 .foot-socials{display:flex;align-items:center;gap:16px}
 .foot-socials a{color:var(--dim);display:inline-flex;transition:.2s}
 .foot-socials a:hover{color:var(--foam)}
+/* The site's own links as icons (Website › Links): the site's icon drawn as
+   a silhouette in the icons' color when it has a clear ground (main.js), a
+   small gray picture when it does not, the initials when there is none. */
+.foot-socials .favi{width:18px;height:18px;align-items:center;justify-content:center;text-decoration:none}
+.foot-socials .favi img{width:18px;height:18px;border-radius:4px;filter:grayscale(1);opacity:.75}
+.foot-socials .favi.own img{filter:none;opacity:1}
+.foot-socials .favi .lt{display:none;font:600 10px/1 'Inter',sans-serif;letter-spacing:.02em}
+.foot-socials .favi.no-icon img{display:none}.foot-socials .favi.no-icon .lt{display:inline}
+.foot-socials .favi.mono img{display:none}
+.foot-socials .favi.mono::before{content:"";width:18px;height:18px;background:currentColor;-webkit-mask:var(--fi) center/contain no-repeat;mask:var(--fi) center/contain no-repeat}
+.foot-own{margin-top:12px}
 
 /* ---------- Numbered cue labels (sections only; header cues keep the line) ---------- */
 body{counter-reset:cue}

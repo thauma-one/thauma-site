@@ -834,3 +834,27 @@ if (document.body.scrollHeight > window.innerHeight * 1.3) {
     }).then(function () { btn.disabled = false; msg.textContent = msg.className.indexOf('bad') > -1 ? msg.textContent : ''; });
   });
 })();
+
+/* THE FOOTER'S OWN LINKS AS ICONS (Website › Links, 2026-10-07), as a partner
+   site draws them (site/render.js): a site icon with a clear ground becomes a
+   silhouette in the icons' color, a solid one stays a small picture, and none
+   at all shows the link's initials. */
+(function () {
+  [].forEach.call(document.querySelectorAll('.foot-socials .favi img'), function (im) {
+    var a = im.parentNode;
+    if (a.classList.contains('own')) return;
+    function no() { a.classList.add('no-icon'); }
+    function ok() {
+      if (!im.naturalWidth) return no();
+      try {
+        var c = document.createElement('canvas'); c.width = c.height = 16;
+        var x = c.getContext('2d'); x.drawImage(im, 0, 0, 16, 16);
+        var p = x.getImageData(0, 0, 16, 16).data, n = 0;
+        for (var i = 3; i < p.length; i += 4) if (p[i] < 40) n++;
+        if (n > 40) { a.style.setProperty('--fi', 'url("' + im.src + '")'); a.classList.add('mono'); }
+      } catch (e) { /* a picture the page may not read stays a picture */ }
+    }
+    if (im.complete) ok(); else { im.addEventListener('load', ok); im.addEventListener('error', no); }
+  });
+})();
+

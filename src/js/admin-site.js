@@ -203,6 +203,9 @@
   }
 
   var isImage = function (p) { return p.indexOf('images.') === 0; };
+  /* Edited on their own tabs: the social links and the site's own links on
+     Website › Links, each page's share picture on Pages (2026-10-07). */
+  var isElsewhere = function (p) { return /^(socials|links|share)(\.|$)/.test(p); };
 
   /* THE PICTURES ARE ON Website › Photos (mockup board 14), where the focus
      is a dot on the picture rather than four numbers. isImage() keeps their
@@ -220,7 +223,7 @@
     var seen = {};
     state.order.forEach(function (p) {
       // Visibility and images each get their own block below.
-      if (isVisibility(p) || isImage(p) || isFrozenList(p) || isLanguage(p) || isDonation(p)) return;
+      if (isVisibility(p) || isImage(p) || isFrozenList(p) || isLanguage(p) || isDonation(p) || isElsewhere(p)) return;
       var g = cardOf(p);
       if (!seen[g]) { seen[g] = true; groups.push(g); }
     });
@@ -229,7 +232,7 @@
     $('sRoot').innerHTML =
       groups.map(function (g) {
         var rows = state.order.filter(function (p) {
-          return !isVisibility(p) && !isImage(p) && !isFrozenList(p) && !isLanguage(p) && !isDonation(p) && cardOf(p) === g;
+          return !isVisibility(p) && !isImage(p) && !isFrozenList(p) && !isLanguage(p) && !isDonation(p) && !isElsewhere(p) && cardOf(p) === g;
         });
         return '<section class="s-group">' +
           '<h3>' + esc(groupLabel(g)) + '</h3>' +

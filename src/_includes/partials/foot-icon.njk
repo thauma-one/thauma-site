@@ -1,0 +1,10 @@
+{#- One of the site's own footer links (base.njk, Website › Links): where it
+    goes — one of the site's pages in the reader's language, or the web — and
+    its name in that language. -#}
+{%- set kPage = k.url.slice(5) if k.url.indexOf("page:") == 0 else "" -%}
+{%- set kHref = ("/" ~ lang ~ "/" ~ ("" if kPage == "home" else kPage ~ "/")) if kPage else k.url -%}
+{%- set kName = k.label[lang] or k.label.en or (t.nav[kPage] if kPage else "") or (k.url | hostOf) or k.url -%}
+{%- set kAway = k.url.indexOf("https:") == 0 -%}
+{%- set kHost = k.url | hostOf -%}
+{%- set kSrc = k.iconImg or (("/embed/v1/icon?d=" ~ kHost) if kHost else "") -%}
+<a class="favi{% if not kSrc %} no-icon{% endif %}{% if k.iconImg %} own{% endif %}" href="{{ kHref }}"{% if kAway %} target="_blank" rel="noopener"{% endif %} aria-label="{{ kName }}" title="{{ kName }}">{% if kSrc %}<img src="{{ kSrc }}" alt="" width="18" height="18" loading="lazy"{% if not k.iconImg %} crossorigin="anonymous"{% endif %}>{% endif %}<span class="lt" aria-hidden="true">{{ kName | initials }}</span></a>

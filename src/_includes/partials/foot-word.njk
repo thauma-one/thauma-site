@@ -1,0 +1,8 @@
+{#- One of the site's own footer links (base.njk, Website › Links): where it
+    goes — one of the site's pages in the reader's language, or the web — and
+    its name in that language. -#}
+{%- set kPage = k.url.slice(5) if k.url.indexOf("page:") == 0 else "" -%}
+{%- set kHref = ("/" ~ lang ~ "/" ~ ("" if kPage == "home" else kPage ~ "/")) if kPage else k.url -%}
+{%- set kName = k.label[lang] or k.label.en or (t.nav[kPage] if kPage else "") or (k.url | hostOf) or k.url -%}
+{%- set kAway = k.url.indexOf("https:") == 0 -%}
+<a href="{{ kHref }}"{% if kAway %} target="_blank" rel="noopener"{% endif %}>{{ kName }}</a>

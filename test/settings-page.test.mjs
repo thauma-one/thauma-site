@@ -67,10 +67,11 @@ async function boot() {
 }
 const names = (d) => [...d.querySelectorAll("#sRoot .s-name")].map((n) => n.textContent);
 
-await check("settings carry their real names, the social links in the site's own card", async () => {
+await check("settings carry their real names; the social links are on Website › Links now", async () => {
   const { d } = await boot();
   const n = names(d);
-  for (const want of ["Site name", "Address", "YouTube link", "X link"]) assert(n.includes(want), `no "${want}" in ${n}`);
+  for (const want of ["Site name", "Address"]) assert(n.includes(want), `no "${want}" in ${n}`);
+  assert(!n.includes("YouTube link") && !d.querySelector('[data-path^="socials."]'), "the social links are still here too");
   const first = d.querySelector("#sRoot .s-group h3").textContent;
   assert(first === "The site", `the first card is "${first}"`);
 });

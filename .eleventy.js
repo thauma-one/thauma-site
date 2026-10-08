@@ -22,6 +22,15 @@ module.exports = function (eleventyConfig) {
   });
   eleventyConfig.addFilter("plain", (s) => richPlain(s));
 
+  /* A footer link as an icon (Website › Links, 2026-10-07): the host its
+     site's icon is asked for (embed/v1/icon), and the initials shown when
+     there is none — as the partner sites do (site/render.js). */
+  eleventyConfig.addFilter("hostOf", (u) => { try { return /^https?:/.test(u) ? new URL(u).hostname : ""; } catch { return ""; } });
+  eleventyConfig.addFilter("initials", (t) => {
+    const ws = String(t || "").replace(/^https?:\/\/(www\.)?/i, "").split(/[\s./_-]+/).filter((x) => /[\p{L}\p{N}]/u.test(x));
+    return ((ws.length > 1 ? ws[0][0] + ws[1][0] : (ws[0] || "?").slice(0, 2)) || "?").toUpperCase();
+  });
+
   /* A DATE, OR A SPAN OF THEM, IN THE READER'S LANGUAGE.
    *
    * "2027-03-14 – 2027-03-15" is a database value shown to a person. On an

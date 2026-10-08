@@ -67,7 +67,7 @@ const click = (w, d, tab) => d.querySelector(`[data-web-tab="${tab}"]`).dispatch
   new w.MouseEvent("click", { bubbles: true, cancelable: true, button: 0 }));
 
 await check("every tab is on the page, and the address decides which is showing", async () => {
-  const TABS = ["pages", "forms", "mail", "resources", "events", "photos", "arcade", "settings"];
+  const TABS = ["pages", "forms", "mail", "resources", "events", "photos", "links", "arcade", "settings"];
   for (const tab of TABS) {
     const { d } = await boot(tab);
     assert(d.querySelectorAll("[data-web-panel]").length === TABS.length, "not every tab is on the page");
@@ -125,9 +125,9 @@ await check("a save on one tab moves the others on, so their next save is not re
   z.value = 120; z.dispatchEvent(new w.Event("input"));
   d.getElementById("phSave").click();
   await tick(100);
-  const youtube = d.querySelector('[data-path="socials.youtube"]');
-  youtube.value = "https://youtube.com/@thauma";
-  youtube.dispatchEvent(new w.Event("input", { bubbles: true }));
+  const name = d.querySelector('[data-path="name"]');
+  name.value = "Thauma.";
+  name.dispatchEvent(new w.Event("input", { bubbles: true }));
   d.getElementById("sSave").click();
   await tick(100);
   const puts = sent.filter((s) => s.method === "PUT");

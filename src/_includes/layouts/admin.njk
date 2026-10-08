@@ -100,7 +100,7 @@
    and nowhere else. -#}
 {#- THE WEBSITE AREA IS ONE PAGE: every tab's script, so every tab loads at
    once, then the shell that moves between them (admin-website.js). -#}
-{% if websiteTab %}{% for f in ["admin-content", "admin-library", "admin-photos", "admin-site", "admin-publish", "admin-dbsync", "admin-forms", "admin-arcade", "staff-mailing", "admin-website"] %}
+{% if websiteTab %}{% for f in ["admin-content", "admin-library", "admin-photos", "admin-site", "admin-publish", "admin-dbsync", "admin-forms", "admin-arcade", "admin-links", "staff-mailing", "admin-website"] %}
 <script src="/js/{{ f }}.js?v={{ ("/js/" + f + ".js") | v }}"></script>{% endfor %}
 {#- Thauma's Mail tab writes with the same composer as the staff Mail page,
    after staff-mailing.js, which it reads (see staff.njk). -#}

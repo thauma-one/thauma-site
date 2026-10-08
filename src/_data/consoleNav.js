@@ -122,6 +122,10 @@ const website = [
     page: "photos", heading: "Frame what <b>matters</b>" },
   /* The hidden arcade's control room (Chase, 2026-10-06): games open or out
      of order, the high scores, blocked names. Saves at once, like Forms. */
+  /* The footer's social and own links (2026-10-07), as a partner site's
+     Links tab has them. Saves at once, like Settings. */
+  { tab: "links", url: "/admin/website/links/", label: "Links",
+    page: "links", heading: "Where the site <b>links</b>" },
   { tab: "arcade", url: "/admin/website/arcade/", label: "Arcade",
     page: "arcade", heading: "The <b>arcade</b>" },
   { tab: "settings", url: "/admin/website/settings/", label: "Settings",
