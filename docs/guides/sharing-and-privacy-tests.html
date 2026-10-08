@@ -1,0 +1,426 @@
+<!--
+  WHO SEES WHAT (2026-10-08, Chase: "a document for my site tester that
+  details all of the sharing aspects between team members … what they
+  should be seeing, versus what they shouldn't … phrase it in a way that
+  could be tested"). A checklist page, published as an Artifact for the
+  tester; the ticks are kept in the tester's own browser only. Written from
+  the rules in the code: workers/src/staff-data.js (resources and their
+  sharing), staff-stewardship.js (owner only, never through "view as"),
+  lib/actas.js, site/serve.js (unpublished sites), lib/db.js PRIVATE_TABLES
+  (what the public API refuses), admin.js (ministry access: owner, assist,
+  view). Update it when one of those changes.
+-->
+<title>Who Sees What</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Sora:wght@100;300;600&display=swap">
+<style>
+/* Layout: one reading column; a sticky progress line; each check a row of
+   who / do / expect, with "should see" and "should not see" set apart. */
+:root{
+  --bg:#0B0F15; --panel:#101823; --raised:#0E141C; --line:rgba(237,242,248,.10);
+  --text:#EDF2F8; --dim:#93A0B1;
+  --blue:#2FD8FF; --blue-dim:rgba(47,216,255,.12);
+  --foam:#5CF2C4; --foam-dim:rgba(92,242,196,.12);
+  --no:#FF8A8A; --no-dim:rgba(255,138,138,.10);
+  --display:'Sora',system-ui,sans-serif; --body:'Inter',system-ui,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font:300 15px/1.6 var(--body);margin:0}
+.wrap{max-width:860px;margin:0 auto;padding-inline:20px;padding-block:48px 80px}
+h1,h2,h3{font-family:var(--display);font-weight:100;margin:0;text-wrap:balance;letter-spacing:.01em}
+h1{font-size:clamp(34px,6vw,52px);line-height:1.08}
+h1 b,h2 b{font-weight:600}
+h2{font-size:26px;line-height:1.2;margin-bottom:6px}
+h3{font-family:var(--body);font-weight:600;font-size:15px}
+p{margin:0}
+.cue{display:flex;align-items:center;gap:12px;font:600 11px var(--display);letter-spacing:.3em;text-transform:uppercase;color:var(--blue);margin-bottom:14px}
+.cue::before{content:"";width:40px;height:1px;background:currentColor}
+.lede{color:var(--dim);max-width:62ch;margin-top:16px;font-size:16px}
+.how{display:grid;gap:10px;margin-top:28px;padding:18px 20px;border:1px solid var(--line);border-radius:4px;background:var(--panel)}
+.how p{max-width:66ch}
+.how b{font-weight:600;color:var(--text)}
+code,.addr{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;color:var(--blue)}
+
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:color-mix(in srgb,var(--bg) 92%,transparent);
+  backdrop-filter:blur(8px);border-bottom:1px solid var(--line);margin-top:36px}
+.bar .in{max-width:860px;margin:0 auto;padding:10px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.meter{flex:1 1 160px;height:3px;background:var(--line);border-radius:2px;overflow:hidden;min-width:120px}
+.meter i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--blue),var(--foam));transition:width .3s}
+.count{font:500 13px var(--body);color:var(--dim);font-variant-numeric:tabular-nums}
+.reset{background:none;border:1px solid var(--line);color:var(--dim);font:500 12px var(--body);padding:6px 10px;border-radius:3px;cursor:pointer}
+.reset:hover,.reset:focus-visible{color:var(--text);border-color:var(--blue);outline:none}
+
+section{margin-top:56px}
+.intro{color:var(--dim);max-width:66ch;margin-top:4px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+.tablebox{overflow-x:auto;margin-top:18px;border:1px solid var(--line);border-radius:4px}
+th,td{text-align:left;padding:10px 14px;border-top:1px solid var(--line);vertical-align:top}
+thead th{border-top:0;font:600 11px var(--display);letter-spacing:.18em;text-transform:uppercase;color:var(--dim);background:var(--raised)}
+td.k{font:600 14px var(--display);color:var(--foam);white-space:nowrap}
+
+.checks{list-style:none;margin:18px 0 0;padding:0;display:grid;gap:10px}
+.check{display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;padding:14px 16px;border:1px solid var(--line);border-radius:4px;background:var(--panel)}
+.check input{appearance:none;width:20px;height:20px;margin:2px 0 0;border:1.5px solid var(--dim);border-radius:3px;cursor:pointer;display:grid;place-content:center}
+.check input::after{content:"";width:10px;height:6px;border-left:2px solid var(--bg);border-bottom:2px solid var(--bg);transform:rotate(-45deg) translate(1px,-1px);opacity:0}
+.check input:checked{background:var(--foam);border-color:var(--foam)}
+.check input:checked::after{opacity:1}
+.check input:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.check.done{opacity:.6}
+.body{display:grid;gap:6px;min-width:0}
+.who{font:600 11px var(--display);letter-spacing:.16em;text-transform:uppercase;color:var(--blue)}
+.do{max-width:68ch}
+.exp{display:grid;gap:4px;margin-top:2px}
+.exp p{padding-left:22px;position:relative;max-width:68ch}
+.exp .yes::before,.exp .no::before{position:absolute;left:0;top:0;font-weight:600}
+.exp .yes::before{content:"✓";color:var(--foam)}
+.exp .no::before{content:"✕";color:var(--no)}
+.note{margin-top:14px;padding:12px 16px;border-left:2px solid var(--blue);color:var(--dim);max-width:68ch;font-size:14px}
+footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);color:var(--dim);font-size:13px}
+@media (prefers-reduced-motion:reduce){.meter i{transition:none}}
+@media (max-width:560px){h2{font-size:22px}.check{padding:12px}}
+</style>
+
+<div class="wrap">
+  <div class="cue">Thauma · Staff Site</div>
+  <h1>Who sees <b>what</b></h1>
+  <p class="lede">Checks for the privacy rules between team members, ministries and the public. Each one says who to sign in as, what to do, and what that person should and should not be able to see. None of it depends on particular content: make test items as you go and name them so you can tell them apart (for example "Test resource, staff only").</p>
+
+  <div class="how">
+    <p><b>How to use this.</b> Work through each section with the accounts below. Tick a check when the result matches what is written. Your ticks are kept in this browser only.</p>
+    <p><b>When something is wrong,</b> write down which account you were signed in as, the page and its address, what you did, and what you saw, with a screenshot. Anything you can see that this page says you should not is the most important kind of report.</p>
+    <p><b>Use a separate browser window for each account</b> (or a private window), so one sign-in does not carry over to the next.</p>
+  </div>
+</div>
+
+<div class="bar" role="region" aria-label="Progress">
+  <div class="in">
+    <div class="meter" aria-hidden="true"><i id="fill"></i></div>
+    <span class="count" id="count" aria-live="polite">0 of 0 checked</span>
+    <button type="button" class="reset" id="reset">Clear my ticks</button>
+  </div>
+</div>
+
+<div class="wrap" style="padding-block-start:0">
+
+<section id="accounts">
+  <div class="cue">Before you start</div>
+  <h2>The test <b>accounts</b></h2>
+  <p class="intro">Ask the administrator to set these up on the People and Partners pages. Two ministries are needed, so that "my ministry" and "someone else's ministry" can both be tested.</p>
+  <div class="tablebox">
+    <table>
+      <thead><tr><th>Account</th><th>What it is</th><th>How it is set up</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Admin</td><td>An administrator</td><td>Administration role</td></tr>
+        <tr><td class="k">Owner 1</td><td>The owner of Ministry 1</td><td>Staff role; Ministry 1 with the Owner level</td></tr>
+        <tr><td class="k">Teammate 1</td><td>Someone else on Ministry 1</td><td>Staff role; Ministry 1 with the Assist level</td></tr>
+        <tr><td class="k">Viewer 1</td><td>A view-only member of Ministry 1</td><td>Staff role; Ministry 1 with the View level</td></tr>
+        <tr><td class="k">Owner 2</td><td>The owner of Ministry 2</td><td>Staff role; Ministry 2 with the Owner level</td></tr>
+        <tr><td class="k">Unplaced</td><td>An account with no ministry yet</td><td>Staff role; no ministry</td></tr>
+        <tr><td class="k">Stranger</td><td>An email address nobody invited</td><td>Not added anywhere</td></tr>
+        <tr><td class="k">Visitor</td><td>Someone on the public website</td><td>Not signed in (a private window)</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="gate">
+  <div class="cue">1</div>
+  <h2>Getting <b>in</b></h2>
+  <p class="intro">Only invited, active accounts reach the Staff Site at all.</p>
+  <ul class="checks">
+    <li class="check" data-id="gate-stranger"><input type="checkbox" id="c-gate-stranger" aria-label="Checked"><div class="body">
+      <span class="who">Stranger</span>
+      <p class="do">Try to open the Staff Site and the Administration pages by their addresses.</p>
+      <div class="exp"><p class="no">No page of either loads. The sign-in step refuses the address.</p></div></div></li>
+    <li class="check" data-id="gate-unplaced"><input type="checkbox" id="c-gate-unplaced" aria-label="Checked"><div class="body">
+      <span class="who">Unplaced</span>
+      <p class="do">Sign in and open Home, Stewardship, Directory and Resources.</p>
+      <div class="exp"><p class="yes">A plain message that the account is not attached to a ministry yet.</p><p class="no">Any ministry's people, contacts, numbers or resources.</p></div></div></li>
+    <li class="check" data-id="gate-removed"><input type="checkbox" id="c-gate-removed" aria-label="Checked"><div class="body">
+      <span class="who">Admin, then Teammate 1</span>
+      <p class="do">As Admin, set Teammate 1's sign-in status to anything other than Active. Then sign in as Teammate 1. Set it back to Active afterwards.</p>
+      <div class="exp"><p class="no">Teammate 1 reaches nothing while not active.</p><p class="yes">Access returns once they are active again.</p></div></div></li>
+  </ul>
+</section>
+
+<section id="admin">
+  <div class="cue">2</div>
+  <h2>The Administration <b>pages</b></h2>
+  <p class="intro">Overview, People, Partners, Website and the organization's Activity are for administrators only.</p>
+  <ul class="checks">
+    <li class="check" data-id="admin-nav"><input type="checkbox" id="c-admin-nav" aria-label="Checked"><div class="body">
+      <span class="who">Owner 1, Teammate 1, Viewer 1</span>
+      <p class="do">Look at the menu at the top of every page.</p>
+      <div class="exp"><p class="yes">The Staff row (Home, Updates, Mail and the rest).</p><p class="no">An Administration row, or any link into it.</p></div></div></li>
+    <li class="check" data-id="admin-typed"><input type="checkbox" id="c-admin-typed" aria-label="Checked"><div class="body">
+      <span class="who">Owner 1</span>
+      <p class="do">Type the address of each Administration page directly (Overview, People, Partners, Website, Activity).</p>
+      <div class="exp"><p class="no">Any list of people, ministries, site words or activity. At most, a page frame that says it is for administrators.</p></div></div></li>
+    <li class="check" data-id="admin-sees"><input type="checkbox" id="c-admin-sees" aria-label="Checked"><div class="body">
+      <span class="who">Admin</span>
+      <p class="do">Open each Administration page.</p>
+      <div class="exp"><p class="yes">Every page loads with real content.</p></div></div></li>
+  </ul>
+</section>
+
+<section id="ministries">
+  <div class="cue">3</div>
+  <h2>My ministry, not <b>someone else's</b></h2>
+  <p class="intro">Each ministry's work is visible to its own team and to administrators, and to nobody on another ministry.</p>
+  <ul class="checks">
+    <li class="check" data-id="min-make"><input type="checkbox" id="c-min-make" aria-label="Checked"><div class="body">
+      <span class="who">Owner 1</span>
+      <p class="do">Make one of each: an update (a milestone or a prayer request), a mailing list with one address on it, a Directory contact, and a change in the Site Creator. Name each "Ministry 1 test".</p>
+      <div class="exp"><p class="yes">Each one saves and shows on its page.</p></div></div></li>
+    <li class="check" data-id="min-team"><input type="checkbox" id="c-min-team" aria-label="Checked"><div class="body">
+      <span class="who">Teammate 1</span>
+      <p class="do">Open Updates, Mail, Directory and the Site Creator.</p>
+      <div class="exp"><p class="yes">Everything Owner 1 just made.</p></div></div></li>
+    <li class="check" data-id="min-other"><input type="checkbox" id="c-min-other" aria-label="Checked"><div class="body">
+      <span class="who">Owner 2</span>
+      <p class="do">Open Updates, Mail, Directory, Sharing, Site Creator and Activity.</p>
+      <div class="exp"><p class="no">Anything named "Ministry 1 test", Ministry 1's subscribers, contacts or site.</p><p class="yes">Only Ministry 2's own work.</p></div></div></li>
+    <li class="check" data-id="min-draft"><input type="checkbox" id="c-min-draft" aria-label="Checked"><div class="body">
+      <span class="who">Owner 2</span>
+      <p class="do">Ask Owner 1 for the address of their site's preview (the Preview button in the Site Creator opens it). Open it while signed in as Owner 2.</p>
+      <div class="exp"><p class="no">Ministry 1's unpublished site. The page says only the ministry's team can preview it.</p></div></div></li>
+    <li class="check" data-id="min-admin"><input type="checkbox" id="c-min-admin" aria-label="Checked"><div class="body">
+      <span class="who">Admin</span>
+      <p class="do">Open Ministry 1's site preview the same way.</p>
+      <div class="exp"><p class="yes">The unpublished site loads for an administrator.</p></div></div></li>
+  </ul>
+</section>
+
+<section id="stewardship">
+  <div class="cue">4</div>
+  <h2>Stewardship: the owner <b>only</b></h2>
+  <p class="intro">A ministry's supporters, their contact details, notes and life events are the most private things in the system. Only the ministry's owner sees them. Not a teammate, not a view-only member, and not an administrator, even while viewing as the owner.</p>
+  <ul class="checks">
+    <li class="check" data-id="st-owner"><input type="checkbox" id="c-st-owner" aria-label="Checked"><div class="body">
+      <span class="who">Owner 1</span>
+      <p class="do">Add a test supporter with an email and a phone number. Log a contact and add a life event.</p>
+      <div class="exp"><p class="yes">The supporter in the list, and the full record when opened.</p><p class="no">Email addresses or phone numbers in the list itself. They appear only inside one opened record.</p></div></div></li>
+    <li class="check" data-id="st-team"><input type="checkbox" id="c-st-team" aria-label="Checked"><div class="body">
+      <span class="who">Teammate 1 and Viewer 1</span>
+      <p class="do">Open Stewardship. Then open Home.</p>
+      <div class="exp"><p class="no">The test supporter, any supporter's name in the list, or the "Gone quiet" names on Home. A message says the list is the owner's.</p></div></div></li>
+    <li class="check" data-id="st-admin"><input type="checkbox" id="c-st-admin" aria-label="Checked"><div class="body">
+      <span class="who">Admin</span>
+      <p class="do">On People, use "View their console" on Owner 1, then open Stewardship. Stop viewing afterwards.</p>
+      <div class="exp"><p class="no">The supporter list or any record, even while viewing as the owner.</p></div></div></li>
+    <li class="check" data-id="st-activity"><input type="checkbox" id="c-st-activity" aria-label="Checked"><div class="body">
+      <span class="who">Owner 1, then Teammate 1</span>
+      <p class="do">Open Activity after the steps above.</p>
+      <div class="exp"><p class="yes">Owner 1: each time a record was opened, with the supporter's name.</p><p class="no">Teammate 1: supporters' names in those lines (they read as "a supporter").</p></div></div></li>
+    <li class="check" data-id="st-delete"><input type="checkbox" id="c-st-delete" aria-label="Checked"><div class="body">
+      <span class="who">Owner 1</span>
+      <p class="do">Remove the test supporter.</p>
+      <div class="exp"><p class="yes">It asks you to type a word to confirm, then removes the person and everything about them.</p></div></div></li>
+  </ul>
+</section>
+
+<section id="resources">
+  <div class="cue">5</div>
+  <h2>Resources: three <b>shelves</b></h2>
+  <p class="intro">The Resources page shows the organization's resources (each marked for all staff or administrators only), your own, and what others have shared with you.</p>
+  <ul class="checks">
+    <li class="check" data-id="res-level"><input type="checkbox" id="c-res-level" aria-label="Checked"><div class="body">
+      <span class="who">Admin</span>
+      <p class="do">Add two organization resources: one "Shared with all staff", one "Administrators only".</p>
+      <div class="exp"><p class="yes">Both show for the Admin, each marked with who it is for.</p></div></div></li>
+    <li class="check" data-id="res-staff"><input type="checkbox" id="c-res-staff" aria-label="Checked"><div class="body">
+      <span class="who">Owner 1, Teammate 1, Owner 2</span>
+      <p class="do">Open Resources.</p>
+      <div class="exp"><p class="yes">The "all staff" resource.</p><p class="no">The "Administrators only" resource, for any of them.</p></div></div></li>
+    <li class="check" data-id="res-mine"><input type="checkbox" id="c-res-mine" aria-label="Checked"><div class="body">
+      <span class="who">Owner 1, then everyone else</span>
+      <p class="do">As Owner 1, add a personal resource and share it with nobody. Look for it as every other account.</p>
+      <div class="exp"><p class="yes">Owner 1 sees it on their own shelf.</p><p class="no">Anyone else sees it, including Teammate 1 and the Admin.</p></div></div></li>
+    <li class="check" data-id="res-person"><input type="checkbox" id="c-res-person" aria-label="Checked"><div class="body">
+      <span class="who">Owner 1, then Owner 2</span>
+      <p class="do">Share that resource with Owner 2 alone, as "can view". Open Resources as Owner 2.</p>
+      <div class="exp"><p class="yes">Owner 2 sees it on a "shared with you" shelf, and can open it.</p><p class="no">Owner 2 can change it, delete it, or share it on.</p></div></div></li>
+    <li class="check" data-id="res-edit"><input type="checkbox" id="c-res-edit" aria-label="Checked"><div class="body">
+      <span class="who">Owner 1, then Owner 2</span>
+      <p class="do">Change the share to "can edit". As Owner 2, edit the resource's title.</p>
+      <div class="exp"><p class="yes">The edit saves, and Owner 1 sees the new title.</p><p class="no">Owner 2 can share it with anyone else. Only the person it belongs to shares.</p></div></div></li>
+    <li class="check" data-id="res-team"><input type="checkbox" id="c-res-team" aria-label="Checked"><div class="body">
+      <span class="who">Owner 1, then Teammate 1 and Owner 2</span>
+      <p class="do">Share a second personal resource with "my ministry's team".</p>
+      <div class="exp"><p class="yes">Teammate 1 and Viewer 1 see it.</p><p class="no">Owner 2 sees it (another ministry).</p></div></div></li>
+    <li class="check" data-id="res-everyone"><input type="checkbox" id="c-res-everyone" aria-label="Checked"><div class="body">
+      <span class="who">Owner 1, then Admin</span>
+      <p class="do">Look for a way to share with everyone, as Owner 1 and as the Admin.</p>
+      <div class="exp"><p class="no">Owner 1 can share with everyone.</p><p class="yes">The Admin can.</p></div></div></li>
+    <li class="check" data-id="res-unshare"><input type="checkbox" id="c-res-unshare" aria-label="Checked"><div class="body">
+      <span class="who">Owner 1, then Owner 2</span>
+      <p class="do">Remove Owner 2 from the first resource's sharing. Reload Resources as Owner 2.</p>
+      <div class="exp"><p class="no">The resource, once it is unshared.</p></div></div></li>
+    <li class="check" data-id="res-inactive"><input type="checkbox" id="c-res-inactive" aria-label="Checked"><div class="body">
+      <span class="who">Owner 1</span>
+      <p class="do">Try to share with an email address that has no active account.</p>
+      <div class="exp"><p class="yes">A message that the person needs to be added and confirmed first. Nothing is shared.</p></div></div></li>
+  </ul>
+</section>
+
+<section id="team">
+  <div class="cue">6</div>
+  <h2>Working <b>together</b></h2>
+  <p class="intro">What a ministry's team shares, and what stays with the owner.</p>
+  <ul class="checks">
+    <li class="check" data-id="team-directory"><input type="checkbox" id="c-team-directory" aria-label="Checked"><div class="body">
+      <span class="who">Teammate 1, then Owner 1</span>
+      <p class="do">As Teammate 1, add a Directory contact. Open Directory as Owner 1.</p>
+      <div class="exp"><p class="yes">Owner 1 sees it. Directory contacts are shared by the whole ministry team, and each card records who added it.</p></div></div></li>
+    <li class="check" data-id="team-site-ask"><input type="checkbox" id="c-team-site-ask" aria-label="Checked"><div class="body">
+      <span class="who">Teammate 1</span>
+      <p class="do">Open the Site Creator.</p>
+      <div class="exp"><p class="yes">Everything about the site, and a way to ask to edit it.</p><p class="no">Controls that change the site before the owner allows it.</p></div></div></li>
+    <li class="check" data-id="team-site-grant"><input type="checkbox" id="c-team-site-grant" aria-label="Checked"><div class="body">
+      <span class="who">Owner 1, then Teammate 1</span>
+      <p class="do">Ask as Teammate 1. Allow it as Owner 1. Make an edit and publish it as Teammate 1.</p>
+      <div class="exp"><p class="yes">Teammate 1 can edit and publish.</p><p class="no">Teammate 1 can switch the site on or off, or answer someone else's request.</p></div></div></li>
+    <li class="check" data-id="team-site-revoke"><input type="checkbox" id="c-team-site-revoke" aria-label="Checked"><div class="body">
+      <span class="who">Owner 1, then Teammate 1</span>
+      <p class="do">Take the permission back. Reload the Site Creator as Teammate 1.</p>
+      <div class="exp"><p class="no">Editing controls for Teammate 1.</p></div></div></li>
+    <li class="check" data-id="team-viewer"><input type="checkbox" id="c-team-viewer" aria-label="Checked"><div class="body">
+      <span class="who">Viewer 1</span>
+      <p class="do">Go through Updates, Mail, Directory, Sharing and Settings and try to change something on each.</p>
+      <div class="exp"><p class="yes">Write down every page where a View-level member can save a change. The administrator wants this list to decide what View should allow.</p></div></div></li>
+    <li class="check" data-id="team-together"><input type="checkbox" id="c-team-together" aria-label="Checked"><div class="body">
+      <span class="who">Owner 1 and Teammate 1, at the same time</span>
+      <p class="do">Both open the same update or the same Site Creator page. Both change it, and save one after the other.</p>
+      <div class="exp"><p class="yes">The second save says someone else changed it first and offers a choice.</p><p class="no">The second save silently replaces the first.</p></div></div></li>
+  </ul>
+</section>
+
+<section id="mail">
+  <div class="cue">7</div>
+  <h2><b>Mail</b></h2>
+  <ul class="checks">
+    <li class="check" data-id="mail-lists"><input type="checkbox" id="c-mail-lists" aria-label="Checked"><div class="body">
+      <span class="who">Owner 2</span>
+      <p class="do">Open Mail and search for the address Owner 1 added to their list.</p>
+      <div class="exp"><p class="no">Ministry 1's lists, subscribers or sent mailings.</p></div></div></li>
+    <li class="check" data-id="mail-org"><input type="checkbox" id="c-mail-org" aria-label="Checked"><div class="body">
+      <span class="who">Owner 1, then Admin</span>
+      <p class="do">Look for a way to write to Thauma's own lists (the organization's), as Owner 1 and as the Admin.</p>
+      <div class="exp"><p class="no">Owner 1 can send as the organization.</p><p class="yes">The Admin can.</p></div></div></li>
+  </ul>
+</section>
+
+<section id="viewas">
+  <div class="cue">8</div>
+  <h2>Viewing as <b>someone</b></h2>
+  <p class="intro">An administrator can open another person's console to help them. It must always be obvious, recorded, and never more than that person could see.</p>
+  <ul class="checks">
+    <li class="check" data-id="va-only-admin"><input type="checkbox" id="c-va-only-admin" aria-label="Checked"><div class="body">
+      <span class="who">Owner 1</span>
+      <p class="do">Look for "View their console" anywhere.</p>
+      <div class="exp"><p class="no">Any way to view as another person.</p></div></div></li>
+    <li class="check" data-id="va-visible"><input type="checkbox" id="c-va-visible" aria-label="Checked"><div class="body">
+      <span class="who">Admin</span>
+      <p class="do">View as Teammate 1. Move between several pages.</p>
+      <div class="exp"><p class="yes">A border round the whole screen and a banner naming whose console it is, on every page.</p><p class="yes">Only what Teammate 1 can see. Nothing extra because the viewer is an administrator.</p></div></div></li>
+    <li class="check" data-id="va-recorded"><input type="checkbox" id="c-va-recorded" aria-label="Checked"><div class="body">
+      <span class="who">Admin</span>
+      <p class="do">While viewing as Teammate 1, change something small. Stop viewing. Open the organization's Activity (Administration › Activity).</p>
+      <div class="exp"><p class="yes">The start, the change and the stop, with the Admin named as the person who did them.</p><p class="yes">Write down whether Teammate 1's own Activity also shows the change, so the administrator knows what a person can see about visits to their console.</p></div></div></li>
+    <li class="check" data-id="va-stop"><input type="checkbox" id="c-va-stop" aria-label="Checked"><div class="body">
+      <span class="who">Admin</span>
+      <p class="do">Stop viewing, then close and reopen the browser while viewing.</p>
+      <div class="exp"><p class="yes">Stopping returns to the Admin's own console. Closing the browser also ends it.</p></div></div></li>
+  </ul>
+</section>
+
+<section id="public">
+  <div class="cue">9</div>
+  <h2>What the <b>public</b> sees</h2>
+  <p class="intro">Nothing reaches the public website, a ministry's own site, or another website's embedded widgets until someone switches it on.</p>
+  <ul class="checks">
+    <li class="check" data-id="pub-updates"><input type="checkbox" id="c-pub-updates" aria-label="Checked"><div class="body">
+      <span class="who">Owner 1, then Visitor</span>
+      <p class="do">Make two updates; switch one on and leave one off. Look at Ministry 1's published site and any embedded widget as the Visitor.</p>
+      <div class="exp"><p class="yes">The one switched on.</p><p class="no">The one left off.</p></div></div></li>
+    <li class="check" data-id="pub-widgets"><input type="checkbox" id="c-pub-widgets" aria-label="Checked"><div class="body">
+      <span class="who">Owner 1, then Visitor</span>
+      <p class="do">On Sharing, set one widget to not shared. Load a page that embeds it.</p>
+      <div class="exp"><p class="no">That widget's content.</p></div></div></li>
+    <li class="check" data-id="pub-private"><input type="checkbox" id="c-pub-private" aria-label="Checked"><div class="body">
+      <span class="who">Visitor</span>
+      <p class="do">Look through Ministry 1's site and its widgets for anything from Stewardship, Directory or Resources.</p>
+      <div class="exp"><p class="no">Supporters, contacts, notes, life events, directory entries or resources. These are never sent to websites, whatever is switched on.</p></div></div></li>
+    <li class="check" data-id="pub-site-off"><input type="checkbox" id="c-pub-site-off" aria-label="Checked"><div class="body">
+      <span class="who">Owner 1, then Visitor</span>
+      <p class="do">Switch Ministry 1's site off in the Site Creator. Open its address as the Visitor.</p>
+      <div class="exp"><p class="no">The ministry's name or any of its pages. A closed page from Thauma instead.</p></div></div></li>
+    <li class="check" data-id="pub-unpublished"><input type="checkbox" id="c-pub-unpublished" aria-label="Checked"><div class="body">
+      <span class="who">Owner 1, then Visitor</span>
+      <p class="do">With the site on, change some words without publishing. Open the site as the Visitor.</p>
+      <div class="exp"><p class="yes">The last published version.</p><p class="no">The unpublished words.</p></div></div></li>
+    <li class="check" data-id="pub-thauma"><input type="checkbox" id="c-pub-thauma" aria-label="Checked"><div class="body">
+      <span class="who">Admin, then Visitor</span>
+      <p class="do">In Website › Settings, look at what is switched off for Visitors. Check each on thauma.one as the Visitor. (Only change these switches if the administrator asks you to: they affect the real public site.)</p>
+      <div class="exp"><p class="no">Any page or section switched off for Visitors.</p><p class="yes">With Active off, only the holding page.</p></div></div></li>
+    <li class="check" data-id="pub-dev"><input type="checkbox" id="c-pub-dev" aria-label="Checked"><div class="body">
+      <span class="who">Visitor, then Stranger</span>
+      <p class="do">Open the team's development site (dev.thauma.one).</p>
+      <div class="exp"><p class="no">Any of it without signing in as an invited account.</p></div></div></li>
+  </ul>
+</section>
+
+<section id="keys">
+  <div class="cue">10</div>
+  <h2>Keys and <b>settings</b></h2>
+  <ul class="checks">
+    <li class="check" data-id="keys-own"><input type="checkbox" id="c-keys-own" aria-label="Checked"><div class="body">
+      <span class="who">Owner 1, then Owner 2</span>
+      <p class="do">As Owner 1, make an API key in Settings. Open Settings as Owner 2.</p>
+      <div class="exp"><p class="yes">Owner 1 sees the whole key once, when it is made, and only its name and dates after that.</p><p class="no">Owner 2 sees Ministry 1's key.</p></div></div></li>
+    <li class="check" data-id="keys-revoke"><input type="checkbox" id="c-keys-revoke" aria-label="Checked"><div class="body">
+      <span class="who">Owner 1</span>
+      <p class="do">Revoke the key. Ask whoever uses it (or the administrator) to try it.</p>
+      <div class="exp"><p class="no">Anything returned for a revoked key.</p></div></div></li>
+  </ul>
+</section>
+
+<footer>
+  <p>Thauma Staff Site · privacy and sharing checks · October 2026. When the rules change, this list changes with them.</p>
+</footer>
+</div>
+
+<script>
+(function () {
+  var KEY = 'thauma.privacy-checks';
+  var saved = {};
+  try { saved = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { saved = {}; }
+  var boxes = [].slice.call(document.querySelectorAll('.check input[type="checkbox"]'));
+  function paint() {
+    var done = 0;
+    boxes.forEach(function (b) {
+      var row = b.closest('.check');
+      row.classList.toggle('done', b.checked);
+      if (b.checked) done++;
+    });
+    document.getElementById('count').textContent = done + ' of ' + boxes.length + ' checked';
+    document.getElementById('fill').style.width = (boxes.length ? done / boxes.length * 100 : 0) + '%';
+  }
+  function store() {
+    var out = {};
+    boxes.forEach(function (b) { if (b.checked) out[b.closest('.check').dataset.id] = 1; });
+    try { localStorage.setItem(KEY, JSON.stringify(out)); } catch (e) {}
+  }
+  boxes.forEach(function (b) {
+    b.checked = !!saved[b.closest('.check').dataset.id];
+    b.addEventListener('change', function () { store(); paint(); });
+  });
+  document.getElementById('reset').addEventListener('click', function () {
+    boxes.forEach(function (b) { b.checked = false; });
+    store(); paint();
+  });
+  paint();
+})();
+</script>
