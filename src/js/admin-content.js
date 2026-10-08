@@ -54,7 +54,7 @@
   var state = {
     site: null, siteSha: null,
     langs: [], lang: null, names: {}, summary: {},
-    lines: [], byId: {}, rows: [], saved: {}, draft: {}, blocked: {}, others: {},
+    lines: [], byId: {}, rows: [], saved: {}, draft: {}, blocked: {}, waiting: {}, others: {},
     beside: 'en', besideLines: {},
     view: null, find: '',
     notes: { keep: [], glossary: [], guides: {} }, notesWrite: false, openNotes: null,
@@ -376,8 +376,15 @@
     state.lang = code;
     if (data.name && data.name !== code) state.names[code] = data.name;
     state.lines = data.lines || [];
-    state.saved = {}; state.draft = {}; state.blocked = {};
-    state.lines.forEach(function (l) { state.saved[l.id] = l.current; state.draft[l.id] = l.current; });
+    state.saved = {}; state.draft = {}; state.blocked = {}; state.waiting = {};
+    /* A line changed on dev and not published yet shows dev's text — what
+       dev.thauma.one draws — and waits for Publish (admin-translate.js
+       waitingOnDev). */
+    state.lines.forEach(function (l) {
+      var v = l.waiting != null ? l.waiting : l.current;
+      state.saved[l.id] = v; state.draft[l.id] = v;
+      if (l.waiting != null) state.waiting[l.id] = true;
+    });
     buildRows();
     try { localStorage.setItem('thauma.content.lang', code); } catch (e) { /* private mode */ }
 
@@ -408,7 +415,7 @@
     var data = await send(WORDS + '?lang=' + encodeURIComponent(b), 'GET', null, true);
     if (!data || data.failed) return;
     var map = {};
-    (data.lines || []).forEach(function (l) { map[l.id] = l.current; });
+    (data.lines || []).forEach(function (l) { map[l.id] = l.waiting != null ? l.waiting : l.current; });
     state.besideLines[b] = map;
   }
   function besideText(line) {
@@ -639,6 +646,8 @@
     var dirty = rowDirty(r);
     var mark = needsWork(r) && !dirty ? rowStatus(r) : '';
     var blocked = r.lines.some(function (l) { return state.blocked[l.id]; });
+    var waits = r.lines.some(function (l) { return state.waiting[l.id]; });
+    var edit = waits ? 'false' : 'true';
     var lang = esc(state.lang);
     var aria = esc(r.label + ' — ' + langName(state.lang));
     var ref = '';
@@ -649,21 +658,22 @@
         : '<p class="c-ref" lang="' + bl + '">' + (isRich(r) ? (RT ? RT.html(besideText(r.line), false) : esc(besideText(r.line))) : esc(besideText(r.line))) + '</p>';
     }
     var field = r.split
-      ? '<div class="rt c-rt c-splitbox" contenteditable="true" role="textbox" aria-multiline="true" spellcheck="true" lang="' + lang + '"' +
+      ? '<div class="rt c-rt c-splitbox" contenteditable="' + edit + '" role="textbox" aria-multiline="true" spellcheck="true" lang="' + lang + '"' +
           ' data-rt="split" data-thin="' + esc(r.thin.id) + '" data-bold="' + esc(r.bold.id) + '" aria-label="' + aria + '">' +
           splitHtml(state.draft[r.thin.id], state.draft[r.bold.id]) + '</div>'
       : isRich(r)
-        ? '<div class="rt c-rt" contenteditable="true" role="textbox" aria-multiline="true" spellcheck="true" lang="' + lang + '"' +
+        ? '<div class="rt c-rt" contenteditable="' + edit + '" role="textbox" aria-multiline="true" spellcheck="true" lang="' + lang + '"' +
             ' data-rt="one" data-id="' + esc(r.line.id) + '" aria-label="' + aria + '">' + wordsHtml(state.draft[r.line.id]) + '</div>'
-        : '<textarea rows="1" data-id="' + esc(r.line.id) + '" lang="' + lang + '" spellcheck="true"' +
+        : '<textarea rows="1" data-id="' + esc(r.line.id) + '" lang="' + lang + '" spellcheck="true"' + (waits ? ' readonly' : '') +
             ' aria-label="' + aria + '">' + esc(state.draft[r.line.id]) + '</textarea>';
     return '<div class="c-row' + (dirty ? ' is-dirty' : '') + (mark ? ' is-' + mark : '') +
-        (blocked ? ' is-blocked' : '') + '" data-row="' + esc(r.id) + '">' +
+        (blocked ? ' is-blocked' : '') + (waits ? ' is-waiting' : '') + '" data-row="' + esc(r.id) + '">' +
       '<div class="c-key">' +
         '<span class="c-name">' + esc(name) + '</span>' +
         '<code>' + esc(r.split ? r.key + '_thin + _bold' : r.key) + '</code>' +
         (mark ? '<span class="tl-st is-' + mark + '">' + esc(tr('tl.status.' + mark)) + '</span>' : '') +
         (dirty ? '<span class="badge unsaved">' + esc(tr('ms.unsaved')) + '</span>' : '') +
+        (waits ? '<span class="badge waiting">' + esc(tr('con.waiting')) + '</span>' : '') +
       '</div>' + ref + field +
     '</div>';
   }

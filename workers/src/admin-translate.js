@@ -46,11 +46,11 @@
 import { createDb } from "./lib/db.js";
 import { requireAccess } from "./lib/access.js";
 import { json, readJson } from "./lib/store.js";
-import { getFile, putFile } from "./lib/github.js";
+import { getFile, getFileAt, putFile, compareBranches, githubConfig } from "./lib/github.js";
 import { EDITORS } from "./admin-content.js";
 import { loadNotes, briefFor } from "./lib/translation-notes.js";
 import {
-  SOURCES, linesFor, withStatus, buildFile, readFile, checkLine, cleanValue, setLine, hashText,
+  SOURCES, linesFor, leafMap, withStatus, buildFile, readFile, checkLine, cleanValue, setLine, hashText,
 } from "./lib/translation-file.js";
 
 const SITE = "src/_data/site.json";
@@ -173,6 +173,43 @@ async function load(env, db, lang, { english = false, shared = null } = {}) {
   return { lang, name, languages: langs.languages, lines: withS, files, unavailable, englishSite: en.doc };
 }
 
+/* WORDS CHANGED ON DEV AND NOT PUBLISHED YET (2026-10-08). The words are
+   saved on the site's branch, but a code change can alter them on `dev` —
+   line breaks measured into the headings did — and dev.thauma.one draws dev's
+   copy. Without this the editor showed "Three expressions of one ministry."
+   on one line while the page beside it showed two.
+
+   Per line, dev's text when dev changed it since the two branches last
+   agreed and it differs from the saved one. Against the merge base, not a
+   plain comparison: a word saved a minute ago is on `main` and not yet on
+   `dev` (sync-dev.yml runs every ten minutes), and that is not a change
+   waiting on dev — the base tells the two apart. Publish carries these
+   across; until then the editor shows them and does not edit them, so a save
+   cannot collide with them in the merge.
+
+   Quiet on failure: the editor works as before without it. */
+export async function waitingOnDev(env, wanted, fetchImpl = fetch) {
+  const cfg = githubConfig(env);
+  const dev = env.STAGING_BRANCH;
+  if (cfg.error || !dev || dev === cfg.branch) return {};
+  const cmp = await compareBranches(env, cfg.branch, dev, fetchImpl);
+  if (cmp.error || !cmp.merge_base) return {};
+  const out = {};
+  await Promise.all(wanted.filter((w) => cmp.files.includes(w.path)).map(async (w) => {
+    const [d, b] = await Promise.all([getFileAt(env, w.path, dev, fetchImpl), getFileAt(env, w.path, cmp.merge_base, fetchImpl)]);
+    if (d.error) return;
+    const dp = parse(d), bp = b.error ? { doc: {} } : parse(b);
+    if (dp.error || bp.error) return;
+    const now = leafMap(w.doc || {}), then = leafMap(bp.doc), next = leafMap(dp.doc);
+    const map = {};
+    for (const [key, v] of Object.entries(next)) {
+      if (typeof v === "string" && v !== then[key] && v !== now[key]) map[key] = v;
+    }
+    out[w.path] = map;
+  }));
+  return out;
+}
+
 /* English text by key, for the split-heading notes — site words only, where
    the _thin/_bold convention lives. */
 const englishByKey = (lines) =>
@@ -218,10 +255,19 @@ export default {
       }
       const r = await load(env, db, String(lang).toLowerCase(), { english: true });
       if (r.error) return fail(r);
+      const waiting = await waitingOnDev(env, [
+        { path: langPath(r.lang), doc: r.files.site.doc },
+        ...(r.lang === "en" ? [] : [{ path: langPath("en"), doc: r.englishSite }]),
+      ]);
+      const mine = waiting[langPath(r.lang)] || {}, eng = waiting[langPath("en")] || {};
       return json({
         lang: r.lang, name: r.name, languages: r.languages, unavailable: r.unavailable,
-        lines: r.lines.map(({ id, source, key, english, current, status }) =>
-          ({ id, source, key, english, current, status })),
+        lines: r.lines.map(({ id, source, key, english, current, status }) => {
+          const line = { id, source, key, english, current, status };
+          if (source === "site" && key in mine) line.waiting = mine[key];
+          if (source === "site" && key in eng) line.english = r.lang === "en" ? english : eng[key];
+          return line;
+        }),
       });
     }
 

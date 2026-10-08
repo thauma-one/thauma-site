@@ -264,18 +264,26 @@ export async function getFile(env, path, fetchImpl = fetch) {
   finally { if (inFlight.get(key) && inFlight.get(key).promise === promise) inFlight.delete(key); }
 }
 
+/** One file as another branch or commit holds it. Not shared in flight:
+    a read of a past commit is rare and never the same as the live one. */
+export async function getFileAt(env, path, ref, fetchImpl = fetch) {
+  const cfg = githubConfig(env);
+  if (cfg.error) return { error: cfg.error, status: 500 };
+  return readFile(env, cfg, path, fetchImpl, ref);
+}
+
 function forget(env, path) {
   const cfg = githubConfig(env);
   if (!cfg.error) inFlight.delete(`${cfg.repo}@${cfg.branch}:${path}`);
 }
 
-async function readFile(env, cfg, path, fetchImpl) {
+async function readFile(env, cfg, path, fetchImpl, ref = cfg.branch) {
 
   const h = await headers(env, fetchImpl);
   if (h.error) return { error: h.error, status: 500 };
 
   const url = `${API}/repos/${cfg.repo}/contents/${encodeURI(path)}` +
-              `?ref=${encodeURIComponent(cfg.branch)}`;
+              `?ref=${encodeURIComponent(ref)}`;
 
   const res = await fetchImpl(url, { headers: h.headers });
 
@@ -453,6 +461,9 @@ export async function compareBranches(env, base, head, fetchImpl = fetch) {
       date: (c.commit && c.commit.author && c.commit.author.date) || "",
     })).reverse(), // newest first, as everything else in this console is
     files: (body.files || []).map((f) => f.filename),
+    /* Where the two last agreed — what tells "changed on head" apart from
+       "changed on base and not carried across yet". */
+    merge_base: (body.merge_base_commit && body.merge_base_commit.sha) || null,
     permalink: body.permalink_url || body.html_url || null,
   };
 }

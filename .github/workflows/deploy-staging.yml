@@ -248,6 +248,9 @@ jobs:
       - name: Test · workers/widgets-run
         working-directory: workers
         run: node test/widgets-run.test.mjs
+      - name: Test · workers/words-waiting
+        working-directory: workers
+        run: node test/words-waiting.test.mjs
       # ---- END TEST STEPS ----
 
       # CHECK, DON'T APPLY. Staging shares live's database since 2026-09-29

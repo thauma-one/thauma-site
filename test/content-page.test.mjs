@@ -367,5 +367,21 @@ await check("a language is added by name, or by its code for one the list lacks"
   assert(asked.some((a) => a.placeholder === "sl"), "Add a language… in the picker did not ask for a code");
 });
 
+await check("a line changed on dev and not published shows dev's text, marked and not editable", async () => {
+  /* Chase, 2026-10-08: the editor showed the Mission heading on one line while
+     dev.thauma.one drew two — the break was on dev, waiting for Publish. */
+  const was = EN_LINES[6];
+  EN_LINES[6] = { ...was, waiting: "Real\nchurches," };
+  try {
+    const { d } = await boot();
+    const box = d.querySelector('[data-thin="site:home.who_h2_thin"]');
+    assert(box, "the heading's box is missing");
+    assert(/Real<br>churches,/.test(box.innerHTML), `the box shows ${box.innerHTML}, not dev's two lines`);
+    assert(box.getAttribute("contenteditable") === "false", "a waiting line can be edited, and its save would collide on Publish");
+    assert(box.closest(".c-row").querySelector(".badge.waiting"), "nothing says the line is waiting to publish");
+    assert(!box.closest(".c-row").classList.contains("is-dirty"), "a waiting line counts as an unsaved change");
+  } finally { EN_LINES[6] = was; }
+});
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
