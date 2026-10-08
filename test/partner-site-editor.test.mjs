@@ -355,7 +355,7 @@ await check("a header can be added; its Look has background, top line and title 
   click(d.querySelector('[data-edit-sec="1"]'));            // the Words section, now second
   click(d.querySelector('[data-sectab="look"]'));
   /* the Look tab in its four groups; a verse's look waits for a verse */
-  eq([...d.querySelectorAll(".ws-grp legend")].map((l) => l.textContent), ["Layout", "Line up", "Title", "Background"].filter((x) => x !== "Layout" || d.querySelector(".ws-grp:first-of-type [data-chip^=variant]")), "the groups");
+  eq([...d.querySelectorAll(".ws-grp legend")].map((l) => l.textContent), ["Layout", "Alignment", "Title", "Background"].filter((x) => x !== "Layout" || d.querySelector(".ws-grp:first-of-type [data-chip^=variant]")), "the groups");
   assert(!d.querySelector('[data-chip="verse:1"]'), "a verse's look offered with no verse");
 });
 
@@ -473,8 +473,15 @@ await check("Navigation: the page-you-are-on look, its color, the line and the p
   click(d.querySelector('[data-ws-tab="nav"]'));
   assert(!d.getElementById("wsNav").hidden, "the Navigation panel");
   assert(!d.getElementById("wsPreviewPane").hidden, "with the site beside it");
-  assert(d.querySelectorAll('#wsNav .ws-look[data-chip="nav:current"]').length === 6, "six looks");
+  /* Chase, 2026-10-08: a choice with pictures is a wide box that opens to
+     every option, its picture left and its name right. */
+  assert(d.querySelectorAll('#wsNav .ws-pp-opt[data-chip="nav:current"]').length === 6, "six looks");
+  const box = d.querySelector('#wsNav [data-pp-toggle="nav:current"]');
+  assert(/Lit/.test(box.textContent) && box.querySelector(".ws-pp-pic") && d.querySelector("#wsNav .ws-pp-list").hidden, "the box shows the chosen look, closed");
+  click(box);
+  assert(!d.querySelector("#wsNav .ws-pp-list").hidden, "the box does not open");
   click(d.querySelector('[data-chip="nav:current"][data-value="under"]'));
+  assert(d.querySelector("#wsNav .ws-pp-list").hidden && /underlined/i.test(d.querySelector('#wsNav [data-pp-toggle="nav:current"]').textContent), "choosing closes it and shows the choice");
   click(d.querySelector('[data-chip="nav:tint"][data-value="accent"]'));
   click(d.querySelector('[data-chip="nav:line"][data-value="accent"]'));
   click(d.querySelector('[data-chip="nav:phone"][data-value="drawer"]'));
@@ -530,8 +537,11 @@ await check("Design: Custom's colors and what visitors see appear only when Cust
   const { d, sent, click } = await boot();
   assert(!d.querySelector('[data-color="background"]'), "a preset has no color pickers");
   click(d.querySelector('[data-chip="look"][data-value="custom"]'));
-  assert(d.querySelector('[data-color="background"]') && d.querySelector('[data-chip="mode"][data-value="auto"]'), "Custom does");
-  click(d.querySelector('[data-chip="mode"][data-value="dark"]'));
+  /* long choices are a menu (2026-10-08) */
+  const mode = d.querySelector('select[data-chip-pick="mode"]');
+  assert(d.querySelector('[data-color="background"]') && mode && mode.value === "auto", "Custom does");
+  mode.value = "dark";
+  mode.dispatchEvent(new d.defaultView.Event("change", { bubbles: true }));
   await settle(900);
   const design = sent.filter((x) => x.action === "save").pop().draft.design;
   eq([design.look, design.mode], ["custom", "dark"], "saved");

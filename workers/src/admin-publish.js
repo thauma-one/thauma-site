@@ -37,10 +37,11 @@ import { createDb } from "./lib/db.js";
 import { pendingMigrations } from "./admin-migrate.js";
 import { requireAccess } from "./lib/access.js";
 import { json, readJson } from "./lib/store.js";
-import { compareBranches, dispatchWorkflow, lastSuccessfulRun, latestRun, mergeBranch, refSha, githubConfig, runJobs }
+import { compareBranches, dispatchWorkflow, lastSuccessfulRun, latestRun, mergeBranch, refSha, githubConfig, runJobs, getFileAt }
   from "./lib/github.js";
 import { summarize } from "./lib/build-progress.js";
 import { carry, carryConfig } from "./lib/carry.js";
+import { leafMap } from "./lib/translation-file.js";
 
 const CONFIRM_WORD = "PUBLISH";
 
@@ -124,12 +125,64 @@ export default {
     if (request.method === "GET") {
       const which = new URL(request.url).searchParams.get("progress");
       if (which) return progress(env, which === "preview" ? "preview" : "publish");
+      if (new URL(request.url).searchParams.has("changes")) return json(await changes(env));
       return status(env);
     }
     if (request.method === "POST") return act(request, env, db, user, me);
     return json({ error: `${request.method} is not supported here.` }, 405);
   },
 };
+
+/* ------------------------------- changes --------------------------------
+   GET ?changes — WHAT IN THE WEBSITE AREA DIFFERS FROM WHAT IS LIVE, for the
+   dots on its tabs and on each page in Pages (Chase, 2026-10-08: "add the dot
+   to the tabs … to show that there has been changes to those sections like we
+   do for Site Creator"). Measured against the last successful production
+   build, on both dev and main: words are saved on main and reach dev up to
+   ten minutes later, and a dot should not wait for that. Only content counts —
+   a code change is not a change to Events. Asked for once by the Website
+   page, not by every console page's publish bar. */
+const TAB_OF_FILE = [
+  [/^src\/content\/gatherings\//, "events"],
+  [/^src\/content\/resources\//, "resources"],
+];
+const SITE_KEY_TAB = { socials: "links", links: "links", images: "photos", share: "pages" };
+export async function changes(env, fetchImpl = fetch) {
+  const live = await lastSuccessfulRun(env, PROD_WORKFLOW, fetchImpl);
+  if (live.error || live.never) return { tabs: [], lines: [] };
+  const heads = [...new Set([stagingBranch(env), liveBranch(env)])];
+  const cmps = await Promise.all(heads.map((h) => compareBranches(env, live.sha, h, fetchImpl)));
+  const files = new Set();
+  for (const c of cmps) if (!c.error) c.files.forEach((f) => files.add(f));
+  const tabs = new Set(), lines = new Set();
+  for (const f of files) for (const [re, tab] of TAB_OF_FILE) if (re.test(f)) tabs.add(tab);
+  /* keys whose text differs from live's on either head */
+  const differ = async (path) => {
+    const read = (ref) => getFileAt(env, path, ref, fetchImpl).then((r) => {
+      if (r.error) return {};
+      try { return leafMap(JSON.parse(r.text)); } catch { return {}; }
+    });
+    const [was, ...now] = await Promise.all([live.sha, ...heads].map(read));
+    const out = new Set();
+    for (const m of now) for (const k of new Set([...Object.keys(m), ...Object.keys(was)])) {
+      if (m[k] !== was[k]) out.add(k);
+    }
+    return out;
+  };
+  const jobs = [];
+  for (const f of files) {
+    if (/^src\/_data\/i18n\/[a-z-]+\.json$/.test(f)) {
+      jobs.push(differ(f).then((ks) => { if (ks.size) tabs.add("pages"); ks.forEach((k) => lines.add("site:" + k)); }));
+    } else if (f === "src/_data/emailsAndForms.json") {
+      /* { en: {...}, hr: {...} } — the line is the key under the language */
+      jobs.push(differ(f).then((ks) => { if (ks.size) tabs.add("pages"); ks.forEach((k) => lines.add("emails:" + k.split(".").slice(1).join("."))); }));
+    } else if (f === "src/_data/site.json") {
+      jobs.push(differ(f).then((ks) => ks.forEach((k) => tabs.add(SITE_KEY_TAB[k.split(".")[0]] || "settings"))));
+    }
+  }
+  await Promise.all(jobs);
+  return { tabs: [...tabs], lines: [...lines] };
+}
 
 /* ------------------------------- progress -------------------------------
    GET ?progress=publish|preview — the newest run of that workflow, as the

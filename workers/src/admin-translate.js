@@ -362,7 +362,7 @@ export default {
            line is reported so it can be looked at again. */
         if (typeof it.was === "string" && it.was !== line.current) { conflicts.push(line.id); continue; }
         const hash = /^[0-9a-f]{16}$/.test(String(it.english_hash)) ? it.english_hash : line.english_hash;
-        plan[line.source].push({ line, value, hash, text_hash: await hashText(value) });
+        plan[line.source].push({ line, value, hash, text_hash: await hashText(value), waiting: !!(it && it.waiting === true) });
       }
       if (broken.length) return json({ error: "Some lines cannot be saved as they are.", code: "problems", ids: broken }, 400);
 
@@ -370,6 +370,7 @@ export default {
       const now = new Date().toISOString();
       const verb = editing ? "edited" : "approved";
       const saved = [];
+      const devMissed = [];
       for (const source of Object.keys(plan)) {
         const todo = plan[source];
         if (!todo.length) continue;
@@ -402,6 +403,29 @@ export default {
             lang: r.lang, keys: edits.map((t) => t.line.key), commit: res.commit, how: body.action,
           });
         }
+        /* A LINE WAITING ON DEV (waitingOnDev) is written to dev as well, so
+           the two copies say the same thing: dev.thauma.one shows the edit at
+           once, and Publish's merge finds the same change on both sides
+           rather than two different ones to choose between. That is what
+           lets the editor leave these lines open (2026-10-08, Chase: "why
+           can't I edit the values right now"). */
+        const toDev = editing && source === "site" ? todo.filter((t) => t.waiting) : [];
+        if (toDev.length && env.STAGING_BRANCH) {
+          const dev = env.STAGING_BRANCH;
+          const df = await getFileAt(env, f.path, dev);
+          const dp = df.error ? { error: df.error } : parse(df);
+          let dres = dp.error ? { error: dp.error } : null;
+          if (!dres) {
+            for (const t of toDev) setLine(dp.doc, r.englishSite, t.line.key, t.value);
+            dres = await putFile(env, {
+              path: f.path, text: JSON.stringify(dp.doc, null, 2) + (df.text.endsWith("\n") ? "\n" : ""), sha: df.sha, branch: dev,
+              message: `${r.name} (${r.lang}): ${toDev.length} ${toDev.length === 1 ? "line" : "lines"} edited, kept the same on ${dev}\n\n` +
+                toDev.map((t) => `  ${t.line.key}`).join("\n") + `\n\nEdited by ${who} in the Thauma admin console.`,
+              quiet: true, authorName: who, authorEmail: user.email,
+            });
+          }
+          if (dres.error) devMissed.push(...toDev.map((t) => t.line.id));
+        }
         /* Recorded after the commit, never before: the database must not say
            a translation matches its English while the file does not have it.
            English has nothing to record — it is what the others are measured
@@ -415,7 +439,7 @@ export default {
         }
         saved.push(...todo.map((t) => t.line.id));
       }
-      return json({ ok: true, saved: saved.length, conflicts });
+      return json({ ok: true, saved: saved.length, conflicts, ...(devMissed.length ? { devMissed } : {}) });
     }
 
     return json({ error: "Unknown action." }, 400);

@@ -11,6 +11,7 @@
  * carried to dev, is NOT mistaken for a change waiting on dev.
  */
 import { waitingOnDev } from "../src/admin-translate.js";
+import { changes } from "../src/admin-publish.js";
 
 let pass = 0, fail = 0;
 async function check(name, fn) {
@@ -76,6 +77,33 @@ await check("where the editor saves to dev itself, nothing is waiting", async ()
 await check("GitHub failing leaves the editor as it was", async () => {
   const out = await waitingOnDev(env, [{ path: PATH, doc: {} }], async () => new Response("no", { status: 500 }));
   eq(out, {}, "nothing");
+});
+
+console.log("\nwhat differs from live, for the Website's dots\n");
+
+await check("a changed word marks Pages and its line; a changed event marks Events; a code change marks nothing", async () => {
+  /* Chase, 2026-10-08: "add the dot to the tabs … like we do for Site Creator" */
+  const live = { mission: { h2_thin: "Three expressions of" }, home: { title: "Home" } };
+  const dev = { mission: { h2_thin: "Three expressions\nof" }, home: { title: "Home" } };
+  const siteLive = { socials: { youtube: "" }, visibility: { comingSoon: { live: true } } };
+  const siteDev = { socials: { youtube: "https://youtube.com/@x" }, visibility: { comingSoon: { live: true } } };
+  const gh = async (url) => {
+    const u = new URL(url);
+    if (/\/actions\/workflows\//.test(u.pathname)) return Response.json({ workflow_runs: [{ head_sha: "livesha" }] });
+    if (/\/compare\//.test(u.pathname)) return Response.json({ files: ["src/_data/i18n/en.json", "src/_data/site.json",
+      "src/content/gatherings/x.md", "src/js/main.js"].map((filename) => ({ filename })), merge_base_commit: { sha: "livesha" } });
+    const ref = u.searchParams.get("ref"), path = decodeURIComponent(u.pathname.replace(/.*contents\//, ""));
+    const doc = path.endsWith("en.json") ? (ref === "livesha" ? live : dev) : (ref === "livesha" ? siteLive : siteDev);
+    return Response.json({ type: "file", content: b64(doc), sha: ref });
+  };
+  const out = await changes(env, gh);
+  eq(out.tabs.sort(), ["events", "links", "pages"], "tabs");
+  eq(out.lines, ["site:mission.h2_thin"], "lines");
+});
+
+await check("never published, or GitHub failing: no dots, no error", async () => {
+  eq(await changes(env, async () => Response.json({ workflow_runs: [] })), { tabs: [], lines: [] }, "never");
+  eq(await changes(env, async () => new Response("x", { status: 500 })), { tabs: [], lines: [] }, "failing");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

@@ -325,6 +325,8 @@
 @media(hover:hover){ .c-sec:hover{color:var(--text);border-color:var(--line-hard)} }
 .c-sec.is-on{color:var(--text);background:var(--panel);border-color:var(--line-hard)}
 .c-sec.is-dirty{box-shadow:inset 3px 0 0 var(--warn,#F5B845)}
+/* words not published yet: the Site Creator's dot (admin-website.js asks) */
+.c-sec-dot{display:inline-block;width:6px;height:6px;margin-left:8px;border-radius:50%;background:var(--warn,#F5B845);vertical-align:middle}
 
 .c-panel{min-width:0}
 
@@ -1003,7 +1005,7 @@ body.has-webbar{padding-bottom:72px}
    steps aside. The tab on screen only — the Website is one page, and another
    tab can be holding unsaved changes out of sight (its link says so). */
 body:has(.web-panel:not([hidden]) .ms-savebar:not([hidden])) .web-bar{display:none}
-.web-side a.is-dirty::after{content:"";display:inline-block;width:6px;height:6px;margin-left:8px;
+.web-side a.is-dirty::after,.web-side a.has-changes::after{content:"";display:inline-block;width:6px;height:6px;margin-left:8px;
   border-radius:50%;background:var(--warn);vertical-align:middle}
 
 /* The review: the list of what publishing sends, over the screen from the
@@ -1310,7 +1312,6 @@ body:has(.web-panel:not([hidden]) .ms-savebar:not([hidden])) .web-bar{display:no
 .v-open:hover,.v-open:focus-visible{color:var(--text)}
 
 /* A line changed on dev and waiting for Publish: shown as dev draws it, and
-   not editable until it is published (admin-content.js). Neutral, not the
-   amber of an unsaved change — nothing here is at risk. */
+   edited like any other (admin-content.js). Neutral, not the amber of an
+   unsaved change — nothing here is at risk. */
 .badge.waiting{color:var(--voice-tech);background:var(--voice-tech-dim);border:1px solid rgba(47,216,255,.3)}
-.c-row.is-waiting .c-rt,.c-row.is-waiting textarea{opacity:.75;cursor:default}

@@ -345,7 +345,7 @@ export async function listDir(env, path, fetchImpl = fetch) {
  * there" — the precise accident this whole mechanism is meant to prevent. A
  * caller that has genuinely lost the SHA should re-read the file, not omit it.
  */
-export async function putFile(env, { path, text, sha, message, authorName, authorEmail, quiet, create }, fetchImpl = fetch) {
+export async function putFile(env, { path, text, sha, message, authorName, authorEmail, quiet, create, branch }, fetchImpl = fetch) {
   forget(env, path);
   const cfg = githubConfig(env);
   if (cfg.error) return { error: cfg.error, status: 500 };
@@ -389,7 +389,9 @@ export async function putFile(env, { path, text, sha, message, authorName, autho
       content: toBase64(text),
       // Omitted entirely on a create; GitHub rejects an explicit null.
       ...(sha ? { sha } : {}),
-      branch: cfg.branch,
+      /* another branch only when asked: a line waiting on dev is saved to
+         both (admin-translate.js) */
+      branch: branch || cfg.branch,
       // Attribution is the point of an audit trail somebody else can read.
       // `git log` should name the person who typed the words, not the Worker.
       committer: { name: authorName || "Thauma console", email: authorEmail || "admin@thauma.one" },

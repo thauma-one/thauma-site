@@ -2565,7 +2565,7 @@ html.has-ai .lang-ai{display:inline-block}
 .ws-addbtn{display:flex;align-items:center;justify-content:center;height:48px;margin-top:10px;border:1px dashed rgba(47,216,255,.45);
   background:none;color:var(--voice-tech);font:500 11px var(--font-display);letter-spacing:.18em;text-transform:uppercase;cursor:pointer;width:100%}
 .ws-rows{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius)}
-.ws-row{display:grid;grid-template-columns:200px minmax(0,1fr);gap:10px 18px;align-items:center;padding:14px 16px;border-top:1px solid var(--line)}
+.ws-row{display:grid;grid-template-columns:170px minmax(0,1fr);gap:10px 18px;align-items:center;padding:14px 16px;border-top:1px solid var(--line)}
 .ws-row:first-child{border-top:0}
 .ws-lbl{font:300 15px var(--font-display)}
 .ws-ctl{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0}
@@ -2594,8 +2594,10 @@ html.has-ai .lang-ai{display:inline-block}
 .ws-preview-head{display:flex;justify-content:space-between;font-size:12px;color:var(--dim);text-transform:uppercase;letter-spacing:.14em}
 .ws-preview-frame{position:relative;height:min(78vh,760px);overflow:hidden;border:1px solid var(--line);border-radius:6px;background:#000}
 /* The next copy of the page, drawn hidden over the one showing until it has
-   loaded (staff-site.js refreshFrame) — so a change never blanks the preview. */
-.ws-preview-frame iframe.is-next{position:absolute;left:0;top:0;visibility:hidden}
+   loaded, then faded in over it (staff-site.js refreshFrame, swapIn) — so a
+   change never blanks the preview; it appears. */
+.ws-preview-frame iframe.is-next{position:absolute;left:0;top:0;visibility:hidden;opacity:0}
+.ws-preview-frame iframe.is-next.is-fading{visibility:visible;opacity:1;transition:opacity .35s cubic-bezier(.55,.05,.45,.95)}
 /* ALWAYS A REAL DESKTOP, shrunk to fit (Chase, 2026-10-04: the preview was
    "this weird hybrid between desktop and mobile"). It was 250% of the pane,
    so a narrow pane gave the site ~1100px: below the width where a long menu
@@ -3017,3 +3019,30 @@ html.pe-open{overflow:hidden}
 .ws-seg-icons svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round}
 .ws-pick{min-width:0;max-width:100%;padding:8px 12px;font-size:13px}
 @media (max-width:560px){.ws-lrow{grid-template-columns:1fr;gap:8px}}
+
+/* A CHOICE WITH PICTURES (staff-site.js picPick): a wide box showing the one
+   chosen — its small picture left, its name and what it is right — and,
+   opened, the same for every option, over what is below. The pictures are
+   the cards' own, drawn at twice the size and halved, so they stay crisp. */
+.ws-pp{position:relative;width:100%}
+.ws-row.ws-row-wide{grid-template-columns:1fr;gap:10px}
+.ws-pp[data-tint]{--nav-tint:var(--ws-acc,#1AE4FF)}.ws-pp[data-tint="white"]{--nav-tint:#FFFFFF}
+.ws-pp-btn,.ws-pp-opt{display:flex;align-items:center;gap:14px;width:100%;padding:8px 14px 8px 8px;background:var(--bg2,#0b1119);
+  border:1px solid rgba(255,255,255,.16);border-radius:var(--radius);color:var(--text);font:14px var(--font-body);text-align:left;cursor:pointer}
+.ws-pp-btn:hover,.ws-pp.is-open .ws-pp-btn{border-color:var(--voice-tech)}
+.ws-pp-btn .ws-chev{margin-left:auto;flex:none}
+.ws-pp-pic{flex:none;width:112px;height:64px;overflow:hidden;border-radius:3px;background:#0D0D0D;position:relative}
+.ws-pp-in{position:absolute;left:0;top:0;width:224px;height:128px;transform:scale(.5);transform-origin:0 0;display:flex;flex-direction:column;justify-content:center}
+.ws-pp-in > *{width:100%;flex:none}
+.ws-pp-in > .ws-look-sample,.ws-pp-in > .ws-foot-sketch,.ws-pp-in > .ws-phone-sample{height:100%}
+.ws-pp-txt{display:flex;flex-direction:column;gap:2px;min-width:0}
+.ws-pp-txt b{font-weight:600}
+.ws-pp-txt span{font-size:12.5px;color:var(--dim)}
+.ws-pp-list{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:20;display:flex;flex-direction:column;gap:4px;padding:6px;
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 18px 40px rgba(0,0,0,.45);max-height:60vh;overflow:auto}
+.ws-pp-list[hidden]{display:none}
+.ws-pp-opt{border-color:transparent;background:none}
+.ws-pp-opt:hover,.ws-pp-opt:focus-visible{background:var(--bg2,#0b1119);outline:none}
+.ws-pp-opt[aria-selected="true"]{border-color:var(--voice-tech);background:var(--voice-tech-dim)}
+/* words, then the rows of choices under them: room between the two */
+.ws-fields + .ws-rows{margin-top:22px}

@@ -387,8 +387,24 @@ export function starter(kind, { name, langs, fallback, give }) {
  * makes for itself when the owner has written none.
  */
 const SMALL_EN = new Set(["a", "an", "the", "and", "but", "or", "nor", "for", "as", "at", "by", "in", "of", "on", "per", "to", "via", "with", "from"]);
+/* Words typed in capitals ("NEWS, PRAYER AND THE ROAD AHEAD" — a small line
+   above a heading often is) read as shouting in a search result. Mostly
+   capitals is read as ordinary text first (Chase, 2026-10-08: the
+   description "still looks like it is in all caps"); a capitalized word or
+   two in ordinary text (USA, PCO) is left alone. */
+export function shouting(text) {
+  const letters = String(text || "").match(/\p{L}/gu) || [];
+  const upper = letters.filter((c) => c !== c.toLowerCase()).length;
+  return letters.length >= 6 && upper / letters.length > 0.6;
+}
 export function titleCase(text, lang) {
-  if (String(lang || "").split("-")[0] !== "en") return text;
+  const en = String(lang || "").split("-")[0] === "en";
+  if (shouting(text)) {
+    text = String(text).toLocaleLowerCase(lang || undefined);
+    /* other languages write a description as a sentence */
+    if (!en) return text.replace(/\p{L}/u, (c) => c.toLocaleUpperCase(lang || undefined));
+  }
+  if (!en) return text;
   const ws = String(text || "").split(/(\s+)/);
   const real = ws.map((w, i) => (/\S/.test(w) ? i : -1)).filter((i) => i >= 0);
   const first = real[0], last = real[real.length - 1];

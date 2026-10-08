@@ -1081,6 +1081,10 @@ check("a page's own description is a title as its language writes one: Title Cas
   eq(MODEL.titleCase("tell your story here: who you are and why it matters to the people of iPhone land.", "en"),
     "Tell Your Story Here: Who You Are and Why It Matters to the People of iPhone Land.", "English");
   eq(MODEL.titleCase("Recite svoju priču ovdje.", "hr"), "Recite svoju priču ovdje.", "Croatian");
+  /* Chase, 2026-10-08: typed in capitals, it still read as capitals. */
+  eq(MODEL.titleCase("NEWS, PRAYER AND THE ROAD AHEAD", "en"), "News, Prayer and the Road Ahead", "capitals, English");
+  eq(MODEL.titleCase("VIJESTI I MOLITVE S TERENA", "hr"), "Vijesti i molitve s terena", "capitals, Croatian: a sentence");
+  eq(MODEL.titleCase("our trip to the USA and back", "en"), "Our Trip to the USA and Back", "an acronym in ordinary words stays");
   const d = starter("full", { name: "Chase Roush", langs: ["en", "hr"], fallback: "en" });
   assert(/<meta name="description" content="News, Prayer and the Road Ahead — All in One Place\.">/.test(page(d)), "the page's own, in English");
   d.pages[0].seo = { title: {}, desc: { en: "written by me, as I like it" }, image: null };

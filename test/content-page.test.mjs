@@ -367,19 +367,31 @@ await check("a language is added by name, or by its code for one the list lacks"
   assert(asked.some((a) => a.placeholder === "sl"), "Add a language… in the picker did not ask for a code");
 });
 
-await check("a line changed on dev and not published shows dev's text, marked and not editable", async () => {
+await check("a line changed on dev and not published shows dev's text, marked, and saves to both copies", async () => {
   /* Chase, 2026-10-08: the editor showed the Mission heading on one line while
      dev.thauma.one drew two — the break was on dev, waiting for Publish. */
   const was = EN_LINES[6];
   EN_LINES[6] = { ...was, waiting: "Real\nchurches," };
   try {
-    const { d } = await boot();
+    const ctx = await boot();
+    const { d } = ctx;
     const box = d.querySelector('[data-thin="site:home.who_h2_thin"]');
     assert(box, "the heading's box is missing");
     assert(/Real<br>churches,/.test(box.innerHTML), `the box shows ${box.innerHTML}, not dev's two lines`);
-    assert(box.getAttribute("contenteditable") === "false", "a waiting line can be edited, and its save would collide on Publish");
+    assert(box.getAttribute("contenteditable") === "true", "a waiting line is locked");
     assert(box.closest(".c-row").querySelector(".badge.waiting"), "nothing says the line is waiting to publish");
     assert(!box.closest(".c-row").classList.contains("is-dirty"), "a waiting line counts as an unsaved change");
+    /* Chase, 2026-10-08: "why can't I edit the values right now" — edited,
+       it saves checked against the saved copy, and says it was waiting so
+       the server writes dev too. */
+    const { w } = ctx;
+    box.innerHTML = "Real<br>churches, all";
+    box.dispatchEvent(new w.Event("input", { bubbles: true }));
+    ctx.d.getElementById("cSave").click();
+    await tick(120);
+    const save = ctx.sent.find((x) => x.body && x.body.action === "save");
+    const item = save && save.body.items.find((i) => i.id === "site:home.who_h2_thin");
+    assert(item && item.waiting === true && item.was === "Real churches,", `saved as ${JSON.stringify(item)}`);
   } finally { EN_LINES[6] = was; }
 });
 

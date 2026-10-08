@@ -21,8 +21,9 @@
 
    comingSoon IS NOT AN ORDINARY SWITCH. It is the gate over the
    entire public site: with it on, every page is the holding
-   page. Turning it OFF is the launch, and it is the one control
-   here that says so and asks first.
+   page. It is shown as "Site on", the other way round (switchCell),
+   so turning the site ON is the launch — the one control here
+   that says so and asks first.
    ============================================================ */
 (function () {
   'use strict';
@@ -254,8 +255,12 @@
      because that is what a dev site is for. Turning one off there answers
      "what does this look like without it?" without touching the public. */
 
+  /* SITE ON (Chase, 2026-10-08: "just be like site on and site off" — the
+     holding page may one day say "maintenance" instead). Stored as it always
+     was, visibility.comingSoon, which is the opposite: shown inverted. */
+  var inverted = function (path) { return /^visibility\.comingSoon\./.test(path); };
   function switchCell(path, extraClass) {
-    var v = state.draft[path];
+    var v = inverted(path) ? !state.draft[path] : state.draft[path];
     var dirty = state.draft[path] !== state.saved[path];
     return '<span class="v-cell ' + (extraClass || '') + (dirty ? ' is-dirty' : '') +
              '" data-field="' + esc(path) + '">' +
@@ -467,9 +472,10 @@
     }
 
     state.draft[p] = next;
-    sw.setAttribute('aria-checked', next ? 'true' : 'false');
-    if (next) sw.setAttribute('data-on', '1'); else sw.removeAttribute('data-on');
-    sw.querySelector('.switch-state').textContent = tr(next ? 'switch.on' : 'switch.off');
+    var shown = inverted(p) ? !next : next;
+    sw.setAttribute('aria-checked', shown ? 'true' : 'false');
+    if (shown) sw.setAttribute('data-on', '1'); else sw.removeAttribute('data-on');
+    sw.querySelector('.switch-state').textContent = tr(shown ? 'switch.on' : 'switch.off');
     markField(p);
     renderSaveBar();
   });

@@ -54,7 +54,7 @@
   var state = {
     site: null, siteSha: null,
     langs: [], lang: null, names: {}, summary: {},
-    lines: [], byId: {}, rows: [], saved: {}, draft: {}, blocked: {}, waiting: {}, others: {},
+    lines: [], byId: {}, rows: [], saved: {}, draft: {}, blocked: {}, waiting: {}, base: {}, changedSecs: {}, others: {},
     beside: 'en', besideLines: {},
     view: null, find: '',
     notes: { keep: [], glossary: [], guides: {} }, notesWrite: false, openNotes: null,
@@ -376,16 +376,18 @@
     state.lang = code;
     if (data.name && data.name !== code) state.names[code] = data.name;
     state.lines = data.lines || [];
-    state.saved = {}; state.draft = {}; state.blocked = {}; state.waiting = {};
+    state.saved = {}; state.draft = {}; state.blocked = {}; state.waiting = {}; state.base = {};
     /* A line changed on dev and not published yet shows dev's text — what
-       dev.thauma.one draws — and waits for Publish (admin-translate.js
-       waitingOnDev). */
+       dev.thauma.one draws — marked as waiting for Publish, and is edited
+       like any other: a save writes it to both copies (admin-translate.js).
+       `base` is what the saved copy holds, which a save checks against. */
     state.lines.forEach(function (l) {
       var v = l.waiting != null ? l.waiting : l.current;
-      state.saved[l.id] = v; state.draft[l.id] = v;
+      state.saved[l.id] = v; state.draft[l.id] = v; state.base[l.id] = l.current;
       if (l.waiting != null) state.waiting[l.id] = true;
     });
     buildRows();
+    markChanged();
     try { localStorage.setItem('thauma.content.lang', code); } catch (e) { /* private mode */ }
 
     /* Where to start: what needs doing, if anything does; otherwise the first
@@ -595,9 +597,11 @@
     };
 
     function button(view, label, n, extra, dirty) {
+      var sec = view.indexOf('section:') === 0 ? view.slice(8) : null;
+      var pub = sec && state.changedSecs[sec];
       return '<button type="button" class="c-sec' + (view === on ? ' is-on' : '') + (dirty ? ' is-dirty' : '') +
         '" data-view="' + esc(view) + '"' + (view === on ? ' aria-current="true"' : '') + '>' +
-        '<span class="c-sec-n">' + esc(label) + '</span>' +
+        '<span class="c-sec-n">' + esc(label) + (pub ? '<span class="c-sec-dot" title="' + esc(tr('ws.unpublished')) + '" aria-label="' + esc(tr('ws.unpublished')) + '"></span>' : '') + '</span>' +
         '<span class="c-sec-c tnum">' + n + '</span>' + (extra || '') + '</button>';
     }
 
@@ -647,7 +651,6 @@
     var mark = needsWork(r) && !dirty ? rowStatus(r) : '';
     var blocked = r.lines.some(function (l) { return state.blocked[l.id]; });
     var waits = r.lines.some(function (l) { return state.waiting[l.id]; });
-    var edit = waits ? 'false' : 'true';
     var lang = esc(state.lang);
     var aria = esc(r.label + ' — ' + langName(state.lang));
     var ref = '';
@@ -658,13 +661,13 @@
         : '<p class="c-ref" lang="' + bl + '">' + (isRich(r) ? (RT ? RT.html(besideText(r.line), false) : esc(besideText(r.line))) : esc(besideText(r.line))) + '</p>';
     }
     var field = r.split
-      ? '<div class="rt c-rt c-splitbox" contenteditable="' + edit + '" role="textbox" aria-multiline="true" spellcheck="true" lang="' + lang + '"' +
+      ? '<div class="rt c-rt c-splitbox" contenteditable="true" role="textbox" aria-multiline="true" spellcheck="true" lang="' + lang + '"' +
           ' data-rt="split" data-thin="' + esc(r.thin.id) + '" data-bold="' + esc(r.bold.id) + '" aria-label="' + aria + '">' +
           splitHtml(state.draft[r.thin.id], state.draft[r.bold.id]) + '</div>'
       : isRich(r)
-        ? '<div class="rt c-rt" contenteditable="' + edit + '" role="textbox" aria-multiline="true" spellcheck="true" lang="' + lang + '"' +
+        ? '<div class="rt c-rt" contenteditable="true" role="textbox" aria-multiline="true" spellcheck="true" lang="' + lang + '"' +
             ' data-rt="one" data-id="' + esc(r.line.id) + '" aria-label="' + aria + '">' + wordsHtml(state.draft[r.line.id]) + '</div>'
-        : '<textarea rows="1" data-id="' + esc(r.line.id) + '" lang="' + lang + '" spellcheck="true"' + (waits ? ' readonly' : '') +
+        : '<textarea rows="1" data-id="' + esc(r.line.id) + '" lang="' + lang + '" spellcheck="true"' +
             ' aria-label="' + aria + '">' + esc(state.draft[r.line.id]) + '</textarea>';
     return '<div class="c-row' + (dirty ? ' is-dirty' : '') + (mark ? ' is-' + mark : '') +
         (blocked ? ' is-blocked' : '') + (waits ? ' is-waiting' : '') + '" data-row="' + esc(r.id) + '">' +
@@ -967,7 +970,9 @@
     var btn = this;
     btn.disabled = true; $('cDiscard').disabled = true;
     var data = await send(WORDS, 'POST', { action: 'save', lang: state.lang, items: ids.map(function (id) {
-      return { id: id, value: state.draft[id], was: state.saved[id] };
+      var it = { id: id, value: state.draft[id], was: state.base[id] };
+      if (state.waiting[id]) it.waiting = true;
+      return it;
     }) });
     btn.disabled = false; $('cDiscard').disabled = false;
     if (!data) return;
@@ -982,8 +987,10 @@
     var kept = {};
     ids.forEach(function (id) { kept[id] = state.draft[id]; });
     toast(fill('con.saved', { n: data.saved }), 'ok');
+    document.dispatchEvent(new CustomEvent('web:saved'));
     var conflicts = data.conflicts || [];
     if (conflicts.length) toast(fill('tl.conflicts', { n: conflicts.length }), 'err');
+    if (data.devMissed && data.devMissed.length) toast(tr('con.devMissed'), 'err');
     await openLang(state.lang, true);
     loadSummary();
     // A line left as somebody else's keeps what was typed, still unsaved.
@@ -992,6 +999,18 @@
       render();
     }
   });
+
+  /* THE PAGES WITH WORDS NOT PUBLISHED YET get the same dot as an unsaved
+     one (admin-website.js asks which lines differ from live). */
+  var changedLines = [];
+  function markChanged() {
+    var set = {};
+    changedLines.forEach(function (id) { set[id] = true; });
+    state.changedSecs = {};
+    state.lines.forEach(function (l) { if (set[l.id]) state.changedSecs[sectionOf(l)] = true; });
+    if (state.rows.length) renderSections();
+  }
+  document.addEventListener('web:changes', function (e) { changedLines = (e.detail && e.detail.lines) || []; markChanged(); });
 
   window.addEventListener('beforeunload', function (e) {
     if (dirtyIds().length || state.review) { e.preventDefault(); e.returnValue = ''; }

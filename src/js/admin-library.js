@@ -667,6 +667,7 @@
          so the panel that reopens has to be the one the server just wrote. */
       state.open = collection + '/' + body.slug;
       toast(tr('toast.saved', 'Saved'), 'ok');
+      document.dispatchEvent(new CustomEvent('web:saved'));
       await load();
     } catch (e) {
       say(tr('err.unreachable', 'Could not reach the server.') + ' ' + e.message);
@@ -697,6 +698,7 @@
       if (!res.ok) return toast(body.error || tr('err.refused', 'Refused.'), 'bad');
       state.open = null;
       toast(tr('toast.deleted', 'Removed'), 'ok');
+      document.dispatchEvent(new CustomEvent('web:saved'));
       await load();
     } catch (e) {
       toast(tr('err.unreachable', 'Could not reach the server.'), 'bad');

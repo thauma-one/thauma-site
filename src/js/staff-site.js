@@ -669,7 +669,7 @@
     var same = now.dataset.base === base && now.dataset.target === String(state.frameTarget);
     var settle = same && !state.playMotion;
     state.playMotion = false;
-    var box = now.parentNode, old = box.querySelector('iframe.is-next');
+    var box = now.parentNode, old = box.querySelector('iframe.is-next:not(#wsFrame)');
     if (old) box.removeChild(old);
     var next = document.createElement('iframe');
     next.className = 'is-next';
@@ -681,14 +681,23 @@
     next.src = base + (settle ? '&settled' : '') + '&t=' + Date.now() + (vt ? '#' + vt.id : '');
   }
   function frameScroll(f) { try { return f.contentWindow.scrollY || 0; } catch (e) { return 0; } }
-  /* The loaded copy takes the shown one's place; the old one goes. */
+  /* The loaded copy takes the shown one's place by fading in over it
+     (Chase, 2026-10-08: "fade between the changes … you can see the edits
+     you made just 'appear'"), already at the same scroll; then the old one
+     goes. At once for reduced motion. */
+  var STILL = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
   function swapIn(next) {
     var now = $('wsFrame');
     if (now === next) return;
     now.removeAttribute('id');
     next.id = 'wsFrame';
-    next.classList.remove('is-next');
-    if (now.parentNode) now.parentNode.removeChild(now);
+    var done = function () {
+      if (now.parentNode) now.parentNode.removeChild(now);
+      next.classList.remove('is-next', 'is-fading');
+    };
+    if (STILL) return done();
+    next.classList.add('is-fading');
+    setTimeout(done, 420);
   }
 
   $('wsFrame').addEventListener('load', frameLoaded);
@@ -749,11 +758,13 @@
     }).join('') + '</div>';
   }
   /* ONE CHOICE (2026-10-08): a few short options as one joined control,
-     all visible and one press away; a long list (more than three, unless
-     `keep`) as a menu, where a row of words would wrap and crowd. Both
+     all visible and one press away; a long list — more than three, or
+     names too long to sit side by side — as a menu (unless `keep`), where a
+     row of words would wrap and crowd. Both
      carry the same name, so they do the same thing (applyChip). */
   function choice(name, options, current, labelOf, keep) {
-    if (options.length > 3 && !keep) {
+    var words = options.reduce(function (n, o) { return n + String(labelOf(o)).length; }, 0);
+    if ((options.length > 3 || words > 32) && !keep) {
       return '<select class="ws-pick" data-chip-pick="' + esc(name) + '">' + options.map(function (o) {
         return '<option value="' + esc(o) + '"' + (o === current ? ' selected' : '') + '>' + esc(labelOf(o)) + '</option>';
       }).join('') + '</select>';
@@ -775,6 +786,26 @@
       return '<button type="button" class="ws-segbtn" data-chip="' + esc(name) + '" data-value="' + o + '" aria-pressed="' + (o === current) + '" aria-label="' + esc(label) + '" title="' + esc(label) + '">' +
         '<svg viewBox="0 0 16 16" aria-hidden="true">' + ALIGN_ICON[o] + '</svg></button>';
     }).join('') + '</div>';
+  }
+  /* A CHOICE WITH PICTURES (2026-10-08, Chase: "a dropdown selection where
+     the selection box is wide and a small preview of the look is on the left
+     side with the text on the right saying what the option is"). The box
+     shows the one chosen; opened, every option the same way. The options
+     are ordinary choice buttons (data-chip), so choosing one is applyChip
+     and the redraw closes the list. `opts`: [{ value, pic, name, what }]. */
+  function picPick(name, current, opts, extra) {
+    var cur = opts.filter(function (o) { return o.value === current; })[0] || opts[0];
+    var face = function (o) {
+      return '<span class="ws-pp-pic" aria-hidden="true"><span class="ws-pp-in">' + o.pic + '</span></span>' +
+        '<span class="ws-pp-txt"><b>' + esc(o.name) + '</b><span>' + esc(o.what) + '</span></span>';
+    };
+    var open = state.ppOpen === name;
+    return '<div class="ws-pp' + (open ? ' is-open' : '') + '"' + (extra || '') + '>' +
+      '<button type="button" class="ws-pp-btn" data-pp-toggle="' + esc(name) + '" aria-haspopup="listbox" aria-expanded="' + open + '">' +
+        face(cur) + '<span class="ws-chev" aria-hidden="true"></span></button>' +
+      '<div class="ws-pp-list" role="listbox"' + (open ? '' : ' hidden') + '>' + opts.map(function (o) {
+        return '<button type="button" role="option" class="ws-pp-opt" data-chip="' + esc(name) + '" data-value="' + esc(o.value) + '" aria-selected="' + (o.value === current) + '">' + face(o) + '</button>';
+      }).join('') + '</div></div>';
   }
   /* THE GRIP every reorderable row carries: dragged, or focused and moved
      with the arrow keys (StaffSort, staff.js). It replaced the ↑ ↓ pair. */
@@ -798,7 +829,9 @@
       '</span><span class="switch-knob"></span></span>' + (label ? '<span class="switch-label">' + esc(label) + '</span>' : '') + '</button>';
   }
   function row(label, control) {
-    return '<div class="ws-row"><span class="ws-lbl">' + esc(label) + '</span><div class="ws-ctl">' + control + '</div></div>';
+    /* a choice with pictures takes the row's whole width, under its name */
+    var wide = control.indexOf('<div class="ws-pp') === 0;
+    return '<div class="ws-row' + (wide ? ' ws-row-wide' : '') + '"><span class="ws-lbl">' + esc(label) + '</span><div class="ws-ctl">' + control + '</div></div>';
   }
   function ref(words) {
     var b = state.langB, v = b && words && words[b];
@@ -1439,7 +1472,7 @@
        Custom wears the owner's — as a dark and a light half, since that is
        what it makes (Chase, 2026-09-29). */
     var pair = colorPair(), cBg = col.background || '#15171C', cAcc = pair.accent;
-    var html = '<div class="ws-head"><h2>' + esc(tr('ws.look')) + '</h2></div><div class="ws-looks">' + LOOKS.map(function (l) {
+    var html = '<div class="ws-rows">' + row(tr('ws.look'), picPick('look', d.look, LOOKS.map(function (l) {
       var sample;
       if (l === 'custom') {
         var other = dark(cBg) ? '#F6F4F2' : '#16171B';
@@ -1455,9 +1488,8 @@
         sample = '<span class="ws-look-sample" style="' + bg + LOOK_SAMPLE[l] + '"><span class="ws-look-name">' + esc(name) + '</span>' +
           '<span class="ws-look-btn" style="' + btn + '">' + esc(tr('ws.btn.give')) + '</span></span>';
       }
-      return '<button type="button" class="ws-look" data-chip="look" data-value="' + l + '" aria-pressed="' + (d.look === l) + '">' + sample +
-        '<span class="ws-look-cap"><b>' + esc(tr('ws.look.' + l)) + '</b><span>' + esc(tr('ws.look.' + l + '.what')) + '</span></span></button>';
-    }).join('') + '</div>';
+      return { value: l, pic: sample, name: tr('ws.look.' + l), what: tr('ws.look.' + l + '.what') };
+    }))) + '</div>';
     /* The ministry's colors, which every look wears: the Sharing page's
        picker and the Sharing page's colors (color-pair.js). */
     html += '<div data-colors-slot></div>';
@@ -1465,17 +1497,17 @@
     if (d.look === 'custom') {
       html += '<div class="ws-rows ws-custom">' +
         row(tr('ws.bgColor'), colorPick('background', col.background, '#15171C')) +
-        row(tr('ws.mode'), chips('mode', ['auto', 'dark', 'light'], d.mode || 'auto', function (v) { return tr('ws.mode.' + v); })) +
+        row(tr('ws.mode'), choice('mode', ['auto', 'dark', 'light'], d.mode || 'auto', function (v) { return tr('ws.mode.' + v); })) +
         '</div>';
     }
     html += '<div class="ws-rows">' +
-      row(tr('ws.brand'), chips('brand', ['name', 'logo'], d.brand, function (v) { return v === 'name' ? name : tr('ws.brand.logo'); }) +
+      row(tr('ws.brand'), choice('brand', ['name', 'logo'], d.brand, function (v) { return v === 'name' ? name : tr('ws.brand.logo'); }) +
         (d.brand === 'logo' ? (d.logo ? '<img class="ws-logo" src="' + esc(d.logo) + '" alt="">' : '') +
           '<label class="ghost-btn sm ws-file">' + esc(d.logo ? tr('ws.changePhoto') : tr('ws.chooseLogo')) + '<input type="file" accept="image/*" data-logo hidden></label>' : '')) +
       /* The little picture in the browser tab. */
       /* Filled, Letters or Photo (Chase, 2026-10-01); the picture's controls
          only under Photo. Without a picture, Photo shows the filled initials. */
-      row(tr('ws.favicon'), chips('faviconStyle', ['filled', 'letters', 'photo'],
+      row(tr('ws.favicon'), choice('faviconStyle', ['filled', 'letters', 'photo'],
         d.faviconStyle || (d.favicon ? 'photo' : 'filled'), function (v) { return tr('ws.faviconStyle.' + v); }) +
         ((d.faviconStyle || (d.favicon ? 'photo' : 'filled')) === 'photo'
           ? (d.favicon ? '<img class="ws-favicon" src="' + esc(d.favicon) + '" alt="">' : '') +
@@ -1488,7 +1520,7 @@
       Object.keys(MOTION).map(function (k) {
         /* on or off is a switch, not two chips */
         if (k === 'progress') return row(tr('ws.m.' + k), sw('data-motion-progress', d.motion.progress === 'on', ''));
-        return row(tr('ws.m.' + k), chips('motion:' + k, MOTION[k], d.motion[k], function (v) { return tr('ws.m.' + k + '.' + v); }));
+        return row(tr('ws.m.' + k), choice('motion:' + k, MOTION[k], d.motion[k], function (v) { return tr('ws.m.' + k + '.' + v); }));
       }).join('') + '</div>';
     $('wsDesign').innerHTML = html;
     $('wsDesign').querySelector('[data-colors-slot]').replaceWith(colorsBox());
@@ -1676,8 +1708,19 @@
   /* Titles as each language writes them: English in Title Case, the rest
      as written (model.js titleCase, the same rule the page uses). */
   var SMALL_EN = ['a', 'an', 'the', 'and', 'but', 'or', 'nor', 'for', 'as', 'at', 'by', 'in', 'of', 'on', 'per', 'to', 'via', 'with', 'from'];
+  /* Mostly capitals is read as ordinary text first (model.js shouting). */
+  function shouting(text) {
+    var letters = String(text || '').match(/\p{L}/gu) || [];
+    var upper = letters.filter(function (c) { return c !== c.toLowerCase(); }).length;
+    return letters.length >= 6 && upper / letters.length > 0.6;
+  }
   function titleOf(text, lang) {
-    if (String(lang || '').split('-')[0] !== 'en') return text;
+    var en = String(lang || '').split('-')[0] === 'en';
+    if (shouting(text)) {
+      text = String(text).toLocaleLowerCase(lang || undefined);
+      if (!en) return text.replace(/\p{L}/u, function (c) { return c.toLocaleUpperCase(lang || undefined); });
+    }
+    if (!en) return text;
     var ws = String(text || '').split(/(\s+)/), real = [];
     ws.forEach(function (w, i) { if (/\S/.test(w)) real.push(i); });
     return ws.map(function (w, i) {
@@ -1904,34 +1947,31 @@
   }
   function drawNav() {
     var n = navOf(state.doc), d = state.doc.design;
-    var look = function (group, k, on, sample) {
-      return '<button type="button" class="ws-look" data-chip="nav:' + group + '" data-value="' + k + '" aria-pressed="' + on + '">' + sample +
-        '<span class="ws-look-cap"><b>' + esc(tr('ws.nav.' + (group === 'current' ? 'cur' : group) + '.' + k)) + '</b><span>' +
-        esc(tr('ws.nav.' + (group === 'current' ? 'cur' : group) + '.' + k + '.what')) + '</span></span></button>';
+    var look = function (group, k, sample) {
+      var w = 'ws.nav.' + (group === 'current' ? 'cur' : group) + '.' + k;
+      return { value: k, pic: sample, name: tr(w), what: tr(w + '.what') };
     };
     /* WHERE THE MENU SITS, with the rest of the menu (it was on Design). */
-    var html = '<div class="ws-rows">' + row(tr('ws.menu'), chips('menu', ['top', 'center', 'button'], d.menu, function (v) { return tr('ws.menu.' + v); })) + '</div>' +
-      '<div class="ws-head"><h2>' + esc(tr('ws.nav.current')) + '</h2></div><div class="ws-looks ws-navs" data-tint="' + esc(n.tint) + '">' +
-      ['lit', 'under', 'grow', 'pill', 'bold', 'dot'].map(function (k) {
-        return look('current', k, n.current === k, '<span class="ws-nav-sample" data-cur="' + k + '" aria-hidden="true"><span>' +
+    /* ROWS, as the Look tab (2026-10-08): the menu, the page you are on and
+       its color and line, the phone's menu, the Give button, the icons. */
+    var html = '<div class="ws-rows">' + row(tr('ws.menu'), choice('menu', ['top', 'center', 'button'], d.menu, function (v) { return tr('ws.menu.' + v); })) +
+      row(tr('ws.nav.current'), picPick('nav:current', n.current, ['lit', 'under', 'grow', 'pill', 'bold', 'dot'].map(function (k) {
+        return look('current', k, '<span class="ws-nav-sample" data-cur="' + k + '"><span>' +
           esc(tr('ws.page.about')) + '</span><span class="on">' + esc(tr('ws.page.mission')) + '</span><span>' + esc(tr('ws.page.timeline')) + '</span></span>');
-      }).join('') + '</div>';
-    html += '<div class="ws-rows">' +
-      row(tr('ws.nav.tint'), chips('nav:tint', ['accent', 'white'], n.tint, function (v) { return tr('ws.nav.tint.' + v); })) +
-      row(tr('ws.nav.line'), chips('nav:line', ['none', 'subtle', 'accent'], n.line, function (v) { return tr('ws.nav.line.' + v); })) +
-      '</div>';
-    html += '<div class="ws-head"><h2>' + esc(tr('ws.nav.phone')) + '</h2></div><div class="ws-looks ws-navs">' +
-      ['drop', 'full', 'drawer'].map(function (k) {
-        return look('phone', k, n.phone === k, '<span class="ws-phone-sample" data-phone="' + k + '" aria-hidden="true"><i></i></span>');
-      }).join('') + '</div>';
-    /* Straight to the giving link only when there is one to go to. */
-    html += '<div class="ws-rows">' + row(tr('ws.nav.give'), state.doc.give
-      ? chips('giveTo', ['page', 'link'], d.giveTo || 'page', function (v) { return tr('ws.nav.give.' + v); })
-      : chips('giveTo', ['page'], 'page', function (v) { return tr('ws.nav.give.' + v); }) +
-        '<button type="button" class="ghost-btn sm" data-goto-tab="settings">' + esc(tr('ws.nav.addGive')) + ' →</button>') + '</div>';
-    /* The social icons in the menu too — here, with the rest of the menu
-       (it was "Also show them at the top" on the Links tab). */
-    html += '<div class="ws-rows">' + row(tr('ws.nav.icons'), sw('data-header-links', d.headerLinks, '')) + '</div>';
+      }), ' data-tint="' + esc(n.tint) + '"')) +
+      row(tr('ws.nav.tint'), choice('nav:tint', ['accent', 'white'], n.tint, function (v) { return tr('ws.nav.tint.' + v); })) +
+      row(tr('ws.nav.line'), choice('nav:line', ['none', 'subtle', 'accent'], n.line, function (v) { return tr('ws.nav.line.' + v); })) +
+      row(tr('ws.nav.phone'), picPick('nav:phone', n.phone, ['drop', 'full', 'drawer'].map(function (k) {
+        return look('phone', k, '<span class="ws-phone-sample" data-phone="' + k + '"><i></i></span>');
+      }))) +
+      /* Straight to the giving link only when there is one to go to. */
+      row(tr('ws.nav.give'), state.doc.give
+        ? choice('giveTo', ['page', 'link'], d.giveTo || 'page', function (v) { return tr('ws.nav.give.' + v); })
+        : choice('giveTo', ['page'], 'page', function (v) { return tr('ws.nav.give.' + v); }) +
+          '<button type="button" class="ghost-btn sm" data-goto-tab="settings">' + esc(tr('ws.nav.addGive')) + ' →</button>') +
+      /* The social icons in the menu too — here, with the rest of the menu
+         (it was "Also show them at the top" on the Links tab). */
+      row(tr('ws.nav.icons'), sw('data-header-links', d.headerLinks, '')) + '</div>';
     $('wsNav').innerHTML = html;
   }
 
@@ -1957,22 +1997,23 @@
       '<label class="fld ws-wide"><span>' + esc(tr('ws.footer.small')) + '</span>' + ref(src('small')) +
         '<textarea rows="2" maxlength="400" data-footer-word="small" lang="' + esc(state.langA) + '">' + esc(w.small || '') + '</textarea></label>' +
       '</div>';
-    html += '<div class="ws-head"><h2>' + esc(tr('ws.footer.layout')) + '</h2></div><div class="ws-looks ws-foots">' + FOOTERS.map(function (k) {
-      return '<button type="button" class="ws-look" data-chip="footer:layout" data-value="' + k + '" aria-pressed="' + (f.layout === k) + '">' +
-        '<span class="ws-sketch ws-foot-sketch" aria-hidden="true">' + (FOOT_SKETCH[k] || []).map(function (r) {
-          return '<span class="sk sk-' + r[4] + '" style="left:' + r[0] + '%;top:' + r[1] + '%;width:' + r[2] + '%;height:' + r[3] + '%"></span>';
-        }).join('') + '</span>' +
-        '<span class="ws-look-cap"><b>' + esc(tr('ws.footer.' + k)) + '</b><span>' + esc(tr('ws.footer.' + k + '.what')) + '</span></span></button>';
-    }).join('') + '</div>';
+    /* ROWS, as the Look tab (2026-10-08): the layout as pictures, and the
+       line above beside the background it divides. */
     html += '<div class="ws-rows">' +
+      row(tr('ws.footer.layout'), picPick('footer:layout', f.layout, FOOTERS.map(function (k) {
+        return { value: k, name: tr('ws.footer.' + k), what: tr('ws.footer.' + k + '.what'),
+          pic: '<span class="ws-sketch ws-foot-sketch">' + (FOOT_SKETCH[k] || []).map(function (r) {
+            return '<span class="sk sk-' + r[4] + '" style="left:' + r[0] + '%;top:' + r[1] + '%;width:' + r[2] + '%;height:' + r[3] + '%"></span>';
+          }).join('') + '</span>' };
+      }))) +
       row(tr('ws.footer.menu'), sw('data-footer-menu', f.menu, '')) +
-      row(tr('ws.footer.socials'), chips('footer:socials', ['icons', 'words'], f.socials, function (v) { return tr('ws.footer.socials.' + v); })) +
+      row(tr('ws.footer.socials'), choice('footer:socials', ['icons', 'words'], f.socials, function (v) { return tr('ws.footer.socials.' + v); })) +
       /* The tagline's color (Chase, 2026-10-01): as now, quieter, or the accent. */
-      row(tr('ws.footer.taglineColor'), chips('footer:tagline', ['plain', 'subtle', 'accent'], f.tagline || 'plain', function (v) { return tr('ws.footer.tagline.' + v); })) +
+      row(tr('ws.footer.taglineColor'), choice('footer:tagline', ['plain', 'subtle', 'accent'], f.tagline || 'plain', function (v) { return tr('ws.footer.tagline.' + v); })) +
       /* Its ground, the line above it, its room (Chase, 2026-10-04). */
-      row(tr('ws.footer.ground'), chips('footer:ground', ['page', 'raised', 'tint'], f.ground || 'page', function (v) { return tr('ws.footer.ground.' + v); })) +
-      row(tr('ws.footer.line'), sw('data-footer-line', f.line !== false, '')) +
-      row(tr('ws.footer.space'), chips('footer:space', ['compact', 'regular', 'roomy'], f.space || 'regular', function (v) { return tr('ws.footer.space.' + v); })) +
+      row(tr('ws.footer.ground'), choice('footer:ground', ['page', 'raised', 'tint'], f.ground || 'page', function (v) { return tr('ws.footer.ground.' + v); }) +
+        sw('data-footer-line', f.line !== false, tr('ws.footer.line'))) +
+      row(tr('ws.footer.space'), choice('footer:space', ['compact', 'regular', 'roomy'], f.space || 'regular', function (v) { return tr('ws.footer.space.' + v); })) +
       '</div>';
     $('wsFooter').innerHTML = html;
   }
@@ -2277,7 +2318,16 @@
     }
     if (d.motionProgress !== undefined) { var mo = state.doc.design.motion; mo.progress = mo.progress === 'on' ? 'off' : 'on'; drawDesign(); return changed(); }
     if (d.headerLinks !== undefined) { state.doc.design.headerLinks = !state.doc.design.headerLinks; drawNav(); return changed(); }
-    if (d.chip) return applyChip(d.chip, d.value);
+    if (d.ppToggle !== undefined) {
+      state.ppOpen = state.ppOpen === d.ppToggle ? null : d.ppToggle;
+      var pp = t.closest('.ws-pp'), open = state.ppOpen === d.ppToggle;
+      pp.classList.toggle('is-open', open);
+      t.setAttribute('aria-expanded', open);
+      pp.querySelector('.ws-pp-list').hidden = !open;
+      if (open) { var sel = pp.querySelector('.ws-pp-opt[aria-selected="true"]'); if (sel) sel.focus(); }
+      return;
+    }
+    if (d.chip) { state.ppOpen = null; return applyChip(d.chip, d.value); }
     if (d.start) {
       var ok2 = window.StaffConfirm ? await window.StaffConfirm({ title: fill('ws.startTitle', { kind: tr('ws.start.' + d.start) }),
         body: tr('ws.startBody'), confirm: tr('ws.startGo'), cancel: tr('ms.cancel'), danger: true }) : true;
@@ -2290,6 +2340,29 @@
   });
 
   /* A choice made — by a button or a menu with the same name (choice()). */
+  /* A picture list closes on a press outside it or Escape, and its options
+     move with the arrow keys. */
+  function closePicks(focusBtn) {
+    if (!state.ppOpen) return;
+    var open = $('wsRoot').querySelector('.ws-pp.is-open');
+    state.ppOpen = null;
+    if (!open) return;
+    open.classList.remove('is-open');
+    open.querySelector('.ws-pp-list').hidden = true;
+    var b = open.querySelector('.ws-pp-btn'); b.setAttribute('aria-expanded', 'false');
+    if (focusBtn) b.focus();
+  }
+  document.addEventListener('pointerdown', function (e) { if (state.ppOpen && !e.target.closest('.ws-pp')) closePicks(false); });
+  document.addEventListener('keydown', function (e) {
+    if (!state.ppOpen) return;
+    if (e.key === 'Escape') { e.preventDefault(); return closePicks(true); }
+    var opt = e.target.closest && e.target.closest('.ws-pp-opt');
+    if (!opt || (e.key !== 'ArrowDown' && e.key !== 'ArrowUp')) return;
+    e.preventDefault();
+    var go = e.key === 'ArrowDown' ? opt.nextElementSibling : opt.previousElementSibling;
+    if (go) go.focus();
+  });
+
   function applyChip(name, val) {
     var p = currentPage();
     if (name.indexOf('variant:') === 0) { p.sections[+name.slice(8)].variant = val; drawSections(); }
