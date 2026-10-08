@@ -118,6 +118,7 @@ async function boot({ answers = {} } = {}) {
   const w = dom.window, d = w.document;
   w.eval(readFileSync("src/js/staff-i18n.js", "utf8"));
   w.eval(readFileSync("src/js/staff.js", "utf8"));
+  w.eval(readFileSync("src/js/rich-text.js", "utf8"));
   // Every question is answered yes, and recorded, so a test can say whether one was asked.
   w.StaffConfirm = async (o) => { asked.push(o); return true; };
   w.StaffPrompt = async (o) => { asked.push(o); return null; };
@@ -183,6 +184,25 @@ await check("editing it saves the two halves, split where the bold begins", asyn
     JSON.stringify(items));
 });
 
+await check("a heading keeps the line break typed into it; a page's words take formatting, an email's stay plain", async () => {
+  const { w, d, sent } = await boot();
+  await pick(w, d, "hr");
+  view(d, "section:home");
+  const box = d.querySelector('[data-row="split:site:home.h1"] .c-splitbox');
+  assert(box.hasAttribute("data-rt"), "the heading has no formatting bar");
+  box.innerHTML = "Na licu<br>mjesta,<br><b>iza <i>kulisa.</i></b>";
+  box.dispatchEvent(new w.Event("input", { bubbles: true }));
+  view(d, "needs");
+  const mail = d.querySelector('[data-row="emails:confirm.helloAnon"]');
+  assert(mail && mail.querySelector("textarea") && !mail.querySelector("[data-rt]"), "an email's words are offered formatting");
+  d.getElementById("cSave").click();
+  await tick(150);
+  const save = sent.find((s) => s.body && s.body.action === "save");
+  const items = Object.fromEntries(save.body.items.map((i) => [i.id, i.value]));
+  assert(JSON.stringify([items["site:home.h1_thin"], items["site:home.h1_bold"]]) === JSON.stringify(["Na licu\nmjesta,\n", "iza <i>kulisa.</i>"]),
+    "saved with its breaks and its italic: " + JSON.stringify(items));
+});
+
 await check("another language opens on what needs work, beside English", async () => {
   const { w, d } = await boot();
   await pick(w, d, "hr");
@@ -223,9 +243,10 @@ await check("the file holds exactly what is on screen, and More says how many", 
 /* ---------------------------------------------------------------- saving */
 
 async function type(w, d, id, value) {
-  const ta = d.querySelector(`#cRows textarea[data-id="${id}"]`);
-  ta.value = value;
-  ta.dispatchEvent(new w.Event("input", { bubbles: true }));
+  /* a page's words are a formatted box; an email's a plain one */
+  const el = d.querySelector(`#cRows [data-id="${id}"]`);
+  if (el.tagName === "TEXTAREA") el.value = value; else el.textContent = value;
+  el.dispatchEvent(new w.Event("input", { bubbles: true }));
 }
 
 await check("an edit is held until Save, which sends only it and asks nothing", async () => {

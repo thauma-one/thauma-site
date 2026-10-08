@@ -465,9 +465,29 @@
       }).join('');
   }
 
+  /* FORMATTED WORDS (2026-10-07, Chase: "allowing the text controls that the
+     Site Creator has … AND also the idea of having the times when a new line
+     is started defined in the text box itself"). A page's words are a
+     formatted box with the Site Creator's bar (rich-text.js): bold, italic,
+     underline, a link, a size, a color, and Enter for a new line, which is
+     where the page breaks it (lib/rich.js). Email and form words stay plain:
+     an email cannot show the page's formatting. */
+  var RT = window.RichText;
+  function isRich(r) { return !!RT && r.source === 'site'; }
+  /* A box's words as stored: the bar's markup, with its own escaping of
+     text undone so a plain word saves exactly as it was typed. */
+  function boxWords(box) {
+    return RT.from(box).replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+  }
+  function wordsHtml(v) { return RT ? RT.html(v, true) : esc(v); }
+  /* A heading is stored in two halves and printed `light <b>bold</b>`: the
+     box shows that and reads it back — everything before its first bold
+     word is the light half, everything from there on the bold half. A
+     line break typed between them is kept at the end of the light half. */
   function splitHtml(thin, bold) {
-    thin = String(thin || '').trim(); bold = String(bold || '').trim();
-    return esc(thin) + (thin && bold ? ' ' : '') + (bold ? '<b>' + esc(bold) + '</b>' : '');
+    thin = String(thin || '').replace(/[ \t]+$/, ''); bold = String(bold || '').replace(/^[ \t]+/, '');
+    var gap = thin && bold && !/\n$/.test(thin) ? ' ' : '';
+    return wordsHtml(thin) + gap + (bold ? '<b>' + wordsHtml(bold) + '</b>' : '');
   }
 
   function rowHtml(r) {
@@ -485,18 +505,17 @@
       var bl = esc(state.beside || 'en');
       ref = r.split
         ? '<p class="c-ref" lang="' + bl + '">' + splitHtml(besideText(r.thin), besideText(r.bold)) + '</p>'
-        : '<p class="c-ref" lang="' + bl + '">' + esc(besideText(r.line)) + '</p>';
+        : '<p class="c-ref" lang="' + bl + '">' + (isRich(r) ? (RT ? RT.html(besideText(r.line), false) : esc(besideText(r.line))) : esc(besideText(r.line))) + '</p>';
     }
     var field = r.split
-      ? '<div class="c-split">' +
-          '<div class="c-splitbox" contenteditable="true" role="textbox" spellcheck="true" lang="' + lang + '"' +
-            ' data-thin="' + esc(r.thin.id) + '" data-bold="' + esc(r.bold.id) + '" aria-label="' + aria + '">' +
-            splitHtml(state.draft[r.thin.id], state.draft[r.bold.id]) + '</div>' +
-          '<button type="button" class="c-bold" data-mark aria-label="' + esc(tr('con.markBold')) + '"' +
-            ' title="' + esc(tr('con.markBold')) + '">B</button>' +
-        '</div>'
-      : '<textarea rows="1" data-id="' + esc(r.line.id) + '" lang="' + lang + '" spellcheck="true"' +
-          ' aria-label="' + aria + '">' + esc(state.draft[r.line.id]) + '</textarea>';
+      ? '<div class="rt c-rt c-splitbox" contenteditable="true" role="textbox" aria-multiline="true" spellcheck="true" lang="' + lang + '"' +
+          ' data-rt="split" data-thin="' + esc(r.thin.id) + '" data-bold="' + esc(r.bold.id) + '" aria-label="' + aria + '">' +
+          splitHtml(state.draft[r.thin.id], state.draft[r.bold.id]) + '</div>'
+      : isRich(r)
+        ? '<div class="rt c-rt" contenteditable="true" role="textbox" aria-multiline="true" spellcheck="true" lang="' + lang + '"' +
+            ' data-rt="one" data-id="' + esc(r.line.id) + '" aria-label="' + aria + '">' + wordsHtml(state.draft[r.line.id]) + '</div>'
+        : '<textarea rows="1" data-id="' + esc(r.line.id) + '" lang="' + lang + '" spellcheck="true"' +
+            ' aria-label="' + aria + '">' + esc(state.draft[r.line.id]) + '</textarea>';
     return '<div class="c-row' + (dirty ? ' is-dirty' : '') + (mark ? ' is-' + mark : '') +
         (blocked ? ' is-blocked' : '') + '" data-row="' + esc(r.id) + '">' +
       '<div class="c-key">' +
@@ -573,84 +592,41 @@
       autosize(t);
       return markRow(t);
     }
-    var box = t.closest && t.closest('.c-splitbox');
-    if (box) {
+    var box = t.closest && t.closest('.c-rt');
+    if (!box) return;
+    if (box.hasAttribute('data-thin')) {
       var parts = readSplit(box);
       state.draft[box.getAttribute('data-thin')] = parts.thin;
       state.draft[box.getAttribute('data-bold')] = parts.bold;
-      markRow(box);
+    } else {
+      state.draft[box.getAttribute('data-id')] = boxWords(box);
     }
-  });
-
-  /* ---- a heading written as it reads -----------------------------------
-
-     The site prints `thin <b>bold</b>`. The box shows exactly that and
-     reads it back: everything before the first bold text is the thin part,
-     everything from there on is the bold part. B (or Ctrl/⌘+B) moves where
-     the bold begins to the cursor. One line, plain text only — a pasted
-     heading brings its words, not somebody else's formatting. */
-  function readSplit(box) {
-    var thin = '', bold = '', inBold = false;
-    (function walk(node, b) {
-      Array.prototype.forEach.call(node.childNodes, function (c) {
-        if (c.nodeType === 3) {
-          if (b) inBold = true;
-          if (inBold) bold += c.nodeValue; else thin += c.nodeValue;
-        } else if (c.nodeType === 1) {
-          if (c.tagName === 'BR') { if (inBold) bold += ' '; else thin += ' '; return; }
-          var weight = c.style && c.style.fontWeight;
-          walk(c, b || /^(B|STRONG)$/.test(c.tagName) || weight === 'bold' || Number(weight) >= 600);
-        }
-      });
-    })(box, false);
-    var clean = function (s) { return s.replace(/\s+/g, ' ').trim(); };
-    return { thin: clean(thin), bold: clean(bold) };
-  }
-
-  function caretOffset(box) {
-    var sel = window.getSelection && window.getSelection();
-    if (!sel || !sel.rangeCount || !box.contains(sel.anchorNode)) return null;
-    var r = sel.getRangeAt(0).cloneRange();
-    r.selectNodeContents(box);
-    r.setEnd(sel.getRangeAt(0).startContainer, sel.getRangeAt(0).startOffset);
-    return r.toString().length;
-  }
-
-  function markBold(box) {
-    var at = caretOffset(box);
-    if (at === null) return;
-    var all = box.textContent;
-    var thin = all.slice(0, at).replace(/\s+/g, ' ').trim();
-    var bold = all.slice(at).replace(/\s+/g, ' ').trim();
-    box.innerHTML = splitHtml(thin, bold);
-    state.draft[box.getAttribute('data-thin')] = thin;
-    state.draft[box.getAttribute('data-bold')] = bold;
     markRow(box);
-    box.focus();
+  });
+
+  function readSplit(box) {
+    var all = boxWords(box), at = all.indexOf('<b>');
+    if (at === -1) return { thin: all.replace(/[ \t]+$/, ''), bold: '' };
+    return { thin: all.slice(0, at).replace(/[ \t]+$/, ''), bold: all.slice(at).replace(/<\/?b>/g, '').replace(/^[ \t]+/, '') };
   }
 
-  $('cRows').addEventListener('click', function (e) {
-    var b = e.target.closest && e.target.closest('[data-mark]');
-    if (b) markBold(b.parentNode.querySelector('.c-splitbox'));
-  });
-  /* Pressing B takes the focus from the box; remember where the cursor was. */
-  $('cRows').addEventListener('mousedown', function (e) {
-    if (e.target.closest && e.target.closest('[data-mark]')) e.preventDefault();
-  });
+  /* Enter is a new line, never a new paragraph block; a paste brings the
+     words (and their line breaks), not another page's formatting. */
   $('cRows').addEventListener('keydown', function (e) {
-    var box = e.target.closest && e.target.closest('.c-splitbox');
-    if (!box) return;
-    if (e.key === 'Enter') { e.preventDefault(); return; }
-    if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) { e.preventDefault(); markBold(box); }
+    var box = e.target.closest && e.target.closest('.c-rt');
+    if (!box || e.key !== 'Enter') return;
+    e.preventDefault();
+    document.execCommand('insertLineBreak');
   });
   $('cRows').addEventListener('paste', function (e) {
-    var box = e.target.closest && e.target.closest('.c-splitbox');
+    var box = e.target.closest && e.target.closest('.c-rt');
     if (!box) return;
     e.preventDefault();
-    var text = ((e.clipboardData || window.clipboardData).getData('text') || '').replace(/\s+/g, ' ');
+    var text = ((e.clipboardData || window.clipboardData).getData('text') || '').replace(/\r/g, '').replace(/[ \t]+/g, ' ');
     if (document.execCommand) document.execCommand('insertText', false, text);
   });
-  /* Leaving the box shows it as it will be saved. */
+  /* Leaving a heading shows it as it will be saved: where its bold half
+     really begins. */
   $('cRows').addEventListener('focusout', function (e) {
     var box = e.target.closest && e.target.closest('.c-splitbox');
     if (!box) return;
