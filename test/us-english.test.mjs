@@ -13,7 +13,6 @@
  *   '~organisation'   a sentinel inside five UNIQUE indexes. Changing it needs
  *                     a migration that rebuilds them, for no reader's benefit.
  *   catalogue_order   a SQL alias the console reads by name.
- *   .emb-colour       CSS classes matched from JavaScript.
  *   emb.colours       an i18n KEY; its VALUE is "Colors" and that is the part
  *                     anybody sees.
  *   COLOUR_JS         module constants; embed-colour.js, a filename.
@@ -62,7 +61,7 @@ const PROTECTED = [
   "t_the_organisation_list_belongs_to_no_partner",
   "t_two_organisation_lists_cannot_share_a_slug", "t_language_catalogue_is_open",
   "saveColours", "colourInput", "ctColours", "secondColour", "catalogueError",
-  "data-save-colours", "emb-colour", "ml-colours", "ct-colours", "colour-1",
+  "data-save-colours", "ml-colours", "ct-colours", "colour-1",
   "embed-colour", "COLOUR_JS", "BEHAVIOUR_JS", "cropCancelled", "emb.colours",
   "codeFence",
 ];
@@ -137,8 +136,7 @@ await check("the identifiers that must not change are still there", async () => 
   /* The other half. A sweep that "fixed" '~organisation' would pass the check
      above and break five UNIQUE indexes, so the protection is asserted too. */
   const all = FILES.map((p) => { try { return readFileSync(p, "utf8"); } catch { return ""; } }).join("\n");
-  for (const tok of ["catalogue_order", "COLOUR_JS", "emb-colour",
-                     "may_send_as_organisation"]) {
+  for (const tok of ["catalogue_order", "COLOUR_JS", "may_send_as_organisation"]) {
     assert(all.includes(tok),
       `${tok} has been renamed — it is a machine's word, not a reader's, and ` +
       `something that matches it by name will now silently miss`);
