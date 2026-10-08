@@ -39,7 +39,9 @@
     "cta_h2_bold": "partnerstvo.",
     "cta_lede": "Thauma se financira iz darov podpornikov. Partnerji — posamezniki in cerkve — so tisti, ki nas postavijo ob ekipe, ki to potrebujejo.",
     "cta_give": "Podprite delo",
-    "cta_contact": "Stopite v stik"
+    "cta_contact": "Stopite v stik",
+    "seo_title": "Thauma | Domov",
+    "seo_desc": "Cerkve po Hrvaškem in v širši regiji imajo resnične tehnične potrebe — ozvočenje, luč, video, prenose v živo in ljudi, ki vse to upravljajo, pogosto brez…"
   },
   "about": {
     "title": "O nas",
@@ -59,7 +61,9 @@
     "body3": "V kulture, kjer služimo, prihajamo kot učenci in udeleženci. Nismo tam, da bi cerkve preoblikovali po podobi kakšnega tujega modela — pridružujemo se temu, kar je krajevna cerkev že vzpostavila, in odgovarjamo na potrebe tako, kot jih opredelijo same. Zato sta učenje jezika in kulture na prvem mestu, zaznamujeta prva leta in se nikoli povsem ne končata.",
     "posture_img_tag": "Fotografija — najprej učenje kulture, šele nato vse drugo",
     "posture_placeholder": "Fotografije še ni — dodajte jo na /admin/website/photos/.",
-    "status_note": "Thauma je neprofitna organizacija v ustanavljanju (zvezna država Missouri) in služi celotni protestantski cerkvi, ne glede na denominacijo."
+    "status_note": "Thauma je neprofitna organizacija v ustanavljanju (zvezna država Missouri) in služi celotni protestantski cerkvi, ne glede na denominacijo.",
+    "seo_title": "Thauma | O nas",
+    "seo_desc": "Thauma je produkcijska služba za protestantske cerkve na Hrvaškem in v širšem Balkanu. Potrebo je preprosto opisati: cerkve potrebujejo pomoč pri produkciji…"
   },
   "mission": {
     "title": "Poslanstvo",
@@ -82,7 +86,9 @@
     "horizon_text": "Obzorje je pošteno: pomembne sadove pričakujemo v petih do desetih letih, ne v dveh. Služenje zraste iz temeljev jezika in kulture; usposabljanje zraste iz služenja; skupnost in voditelji zrastejo iz obojega. Zavezujemo se celotnemu loku in ga nočemo prehitevati — počasen temelj je tisto, kar poznejši sad sploh omogoči.",
     "success_text": "Uspeh je videti kot skupnost cerkvenih produkcijskih ljudi — tehnikov, voditeljev bogoslužja in pastorjev — ki obstaja tam, kjer je prej ni bilo, in se srečuje ter si pomaga, ne da bi vsako povezavo poganjali mi.",
     "horizon_img_tag": "Fotografija — čez leta, skupaj",
-    "horizon_placeholder": "Fotografije še ni — dodajte jo na /admin/website/photos/."
+    "horizon_placeholder": "Fotografije še ni — dodajte jo na /admin/website/photos/.",
+    "seo_title": "Thauma | Poslanstvo",
+    "seo_desc": "To niso stopnje, ki bi jih dokončali, ampak trajni izrazi iste poklicanosti — vsak zraste iz prejšnjega in sčasoma vsi trije tečejo skupaj."
   },
   "values": {
     "title": "Vrednote",
@@ -118,7 +124,9 @@
         "title": "Mi sadimo, Bog daje rast",
         "text": "Vse zgoraj opisuje trud, sam trud pa ima svojo mejo. Lahko odpremo vrata, dosledno prihajamo in dobro služimo — skupnosti in razmnoževanja, ki sledita, pa ne moremo ustvariti. Če to povemo naravnost, to ni lažna skromnost; to je razlog, da prvih šest prepričanj nikoli ne zdrsne v pritisk po uspešnosti."
       }
-    ]
+    ],
+    "seo_title": "Thauma | Vrednote",
+    "seo_desc": "Cerkve po Hrvaškem in v širši regiji imajo resnične tehnične potrebe — ozvočenje, luč, video, prenose v živo in ljudi, ki vse to upravljajo, pogosto brez…"
   },
   "resources": {
     "title": "Gradiva",
@@ -142,7 +150,9 @@
     "fmt_diagram": "Diagram",
     "fmt_checklist": "Kontrolni seznam",
     "fmt_glossary-entry": "Slovarček",
-    "fmt_video": "Video"
+    "fmt_video": "Video",
+    "seo_title": "Thauma | Gradiva",
+    "seo_desc": "Ko bomo služili cerkvam na terenu, bodo tu živeli vodniki, prevodi in orodja, ki jih bomo ustvarili — v hrvaščini in angleščini, brezplačno za vsako cerkev.…"
   },
   "give": {
     "title": "Darujte",
@@ -157,7 +167,9 @@
     "impact_img_tag": "Fotografija — kaj omogoča vaše partnerstvo",
     "impact_placeholder": "Fotografije še ni — dodajte jo na /admin/website/photos/.",
     "legal_note": "Thauma je neprofitna organizacija v ustanavljanju (zvezna država Missouri). Dokler ne pridobimo zveznega statusa davčne oprostitve, darovi še niso davčno olajšani — takoj ko se to spremeni, bomo to tukaj jasno zapisali.",
-    "form_placeholder": "Tukaj bo naš varen obrazec za darovanje."
+    "form_placeholder": "Tukaj bo naš varen obrazec za darovanje.",
+    "seo_title": "Thauma | Darujte",
+    "seo_desc": "Thauma se po misijonarskem izročilu financira iz darov podpornikov: stroškov ne nosijo cerkve, ki jim služimo, ampak partnerji. Vaš dar postavi usposobljeno…"
   },
   "contact": {
     "title": "Kontakt",
@@ -172,7 +184,9 @@
     "form_success": "Hvala — kmalu se vam oglasimo.",
     "form_error": "Sporočilo ni bilo poslano — preverite ime, e-poštni naslov in sporočilo ter poskusite znova.",
     "form_subject": "O čem gre (neobvezno)",
-    "form_reason": "Izberite razlog…"
+    "form_reason": "Izberite razlog…",
+    "seo_title": "Thauma | Kontakt",
+    "seo_desc": "Cerkev, ki potrebuje pomoč, vprašanje o poslanstvu, želja po partnerstvu — vsako sporočilo prebere resničen človek."
   },
   "stay": {
     "h_thin": "Ostanimo",
@@ -210,7 +224,9 @@
     "cadence_fortnightly": "Vsaka dva tedna",
     "cadence_monthly": "Vsak mesec",
     "cadence_custom": "Glej datume spodaj",
-    "also_cue": "Prav tako prihaja"
+    "also_cue": "Prav tako prihaja",
+    "seo_title": "Thauma | Dogodki",
+    "seo_desc": "Regijska srečanja so del dolgoročne vizije — ljudje iz produkcije iz številnih občin, skupaj. Ko bo prvo načrtovano, se bodo tukaj odprle prijave."
   },
   "staff": {
     "title": "Osebje",
@@ -236,7 +252,9 @@
     "base_label": "Živi v",
     "contact": "Kontakt",
     "back": "Vsi člani ekipe",
-    "bio_cue": "Predstavitev"
+    "bio_cue": "Predstavitev",
+    "seo_title": "Thauma | Ekipa",
+    "seo_desc": "Cerkve po Hrvaškem in v širši regiji imajo resnične tehnične potrebe — ozvočenje, luč, video, prenose v živo in ljudi, ki vse to upravljajo, pogosto brez…"
   },
   "notFound": {
     "cue": "Napaka",

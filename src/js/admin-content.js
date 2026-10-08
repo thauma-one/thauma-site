@@ -200,6 +200,8 @@
 
   function labelFor(row) {
     if (row.source === 'emails') return emailLabel(row.key);
+    if (/\.seo_title$/.test(row.key)) return tr('con.seoTitle');
+    if (/\.seo_desc$/.test(row.key)) return tr('con.seoText');
     var dot = row.key.indexOf('.');
     if (dot === -1) return row.key === 'name' ? tr('lbl.p.name') : humanize(row.key);
     var section = row.key.slice(0, dot), rest = row.key.slice(dot + 1);
@@ -611,7 +613,8 @@
      where the page breaks it (src/js/site-rich.js). Email and form words stay plain:
      an email cannot show the page's formatting. */
   var RT = window.RichText;
-  function isRich(r) { return !!RT && r.source === 'site'; }
+  /* a search title and description are text only: an app shows no formatting */
+  function isRich(r) { return !!RT && r.source === 'site' && !/\.seo_(title|desc)$/.test(r.key); }
   /* A box's words as stored: the bar's markup, with its own escaping of
      text undone so a plain word saves exactly as it was typed. */
   function boxWords(box) {
@@ -665,6 +668,62 @@
     '</div>';
   }
 
+  function isSeo(r) { return !r.split && /\.seo_(title|desc)$/.test(r.key); }
+  function draftOf(key) { var id = 'site:' + key; return state.draft[id] != null ? state.draft[id] : ''; }
+  function plainOf(v) { return String(v || '').replace(/<[^>]*>/g, '').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim(); }
+  function seoCard(page) {
+    var share = (state.site && state.site.share && state.site.share[page]) || '';
+    var path = (location.host || 'thauma.one') + ' › ' + (state.lang || 'en') + (PAGE_OF[page] ? ' › ' + PAGE_OF[page].replace(/\/$/, '') : '');
+    return '<div class="c-seo" data-seo="' + esc(page) + '">' +
+      '<div class="c-seo-serp"><span class="c-seo-lbl">' + esc(tr('ws.adv.inSearch')) + '</span>' +
+        '<span class="c-seo-url">' + esc(path) + '</span>' +
+        '<b class="c-seo-title" data-seo-title>' + esc(plainOf(draftOf(page + '.seo_title'))) + '</b>' +
+        '<span class="c-seo-desc" data-seo-desc>' + esc(plainOf(draftOf(page + '.seo_desc'))) + '</span></div>' +
+      '<div class="c-seo-share"><span class="c-seo-lbl">' + esc(tr('ws.adv.inShare')) + '</span>' +
+        '<div class="c-seo-card"><img src="' + esc(share || '/img/og-default.png') + '" alt="">' +
+          '<b data-seo-title>' + esc(plainOf(draftOf(page + '.seo_title'))) + '</b><span>' + esc(location.host || 'thauma.one') + '</span></div>' +
+        '<div class="c-seo-acts"><label class="ghost-btn sm">' + esc(tr(share ? 'ws.changePhoto' : 'ws.sharePic.choose')) +
+          '<input type="file" accept="image/*" data-seo-pic="' + esc(page) + '" hidden></label>' +
+          (share ? '<button type="button" class="link-btn" data-seo-unpic="' + esc(page) + '">' + esc(tr('con.seoCard')) + '</button>' : '') +
+          '<span class="hint" data-seo-status></span></div></div></div>';
+  }
+  /* the card follows what is typed */
+  function seoLive(id) {
+    var line = state.byId[id], card = document.querySelector('.c-seo');
+    if (!line || !card || !/\.seo_(title|desc)$/.test(line.key)) return;
+    var which = /seo_title$/.test(line.key) ? '[data-seo-title]' : '[data-seo-desc]';
+    [].forEach.call(card.querySelectorAll(which), function (el) { el.textContent = plainOf(state.draft[id]); });
+  }
+  /* A PAGE'S OWN PICTURE WHEN SHARED: chosen, shaped in the photo editor to
+     a share card's 1.91:1, uploaded as the finished picture (an app shows
+     the file it is given), and saved to site.json at once, like the other
+     settings. "Use the Thauma card" goes back to the default. */
+  async function seoPicture(page, file) {
+    var status = document.querySelector('.c-seo [data-seo-status]');
+    var say = function (k) { if (status) status.textContent = tr(k); };
+    try {
+      var url = URL.createObjectURL(file), v = null;
+      if (window.PhotoEditor) v = await window.PhotoEditor.open(url, { purpose: 'share' });
+      if (window.PhotoEditor && !v) { URL.revokeObjectURL(url); return; }
+      say('lib.uploading');
+      var blob = v && window.PhotoEditor ? await window.PhotoEditor.exportBlob(url, v, { max: 1200 }) : file;
+      URL.revokeObjectURL(url);
+      var res = await fetch('/api/admin/media?kind=site', { method: 'PUT', credentials: 'same-origin',
+        headers: { 'Content-Type': blob.type || 'image/jpeg', 'X-File-Name': 'share-' + page }, body: blob });
+      var body = await res.json().catch(function () { return {}; });
+      if (!res.ok) throw new Error(body.error || tr('err.refused'));
+      if (await saveSetting('share.' + page, body.url)) renderRows();
+    } catch (e) { if (status) status.textContent = e.message; }
+  }
+  $('cRows').addEventListener('change', function (e) {
+    var t = e.target;
+    if (t.dataset && t.dataset.seoPic && t.files && t.files[0]) seoPicture(t.dataset.seoPic, t.files[0]);
+  });
+  $('cRows').addEventListener('click', async function (e) {
+    var b = e.target.closest && e.target.closest('[data-seo-unpic]');
+    if (b && await saveSetting('share.' + b.dataset.seoUnpic, '')) renderRows();
+  });
+
   function renderRows() {
     var rows = visible();
     $('cCount').textContent = state.find ? rows.length + ' ' + tr('con.matches') : '';
@@ -673,7 +732,15 @@
     var forms = !state.find && state.view === 'section:contact'
       ? '<a class="up-share-link c-formslink" href="/admin/website/forms/" data-web-go="forms">' +
           esc(tr('con.formsLink')) + '</a>' : '';
-    $('cRows').innerHTML = forms + (rows.length ? rows.map(rowHtml).join('')
+    /* SEARCH AND SHARING (2026-10-07, suggestion 4): on a page's own view,
+       how it shows in a search and when shared, first, with its two lines
+       under it and its picture beside — the rest of the page's words after. */
+    var seo = '', page = !state.find && /^section:/.test(state.view || '') ? state.view.slice(8) : null;
+    if (page && PAGE_OF[page] != null && rows.some(isSeo)) {
+      seo = seoCard(page) + rows.filter(isSeo).map(rowHtml).join('') + '<div class="c-seo-end"></div>';
+      rows = rows.filter(function (r) { return !isSeo(r); });
+    }
+    $('cRows').innerHTML = forms + seo + (rows.length ? rows.map(rowHtml).join('')
       : '<p class="empty">' + esc(tr('con.noMatches')) + '</p>');
     $('cRows').querySelectorAll('textarea').forEach(autosize);
   }
@@ -729,6 +796,7 @@
       state.draft[t.getAttribute('data-id')] = t.value;
       autosize(t);
       prevDraw(t.getAttribute('data-id'));
+      seoLive(t.getAttribute('data-id'));
       return markRow(t);
     }
     var box = t.closest && t.closest('.c-rt');
@@ -741,6 +809,7 @@
     } else {
       state.draft[box.getAttribute('data-id')] = boxWords(box);
       prevDraw(box.getAttribute('data-id'));
+      seoLive(box.getAttribute('data-id'));
     }
     markRow(box);
   });

@@ -39,7 +39,9 @@
     "cta_h2_bold": "partneri.",
     "cta_lede": "Thauma se financira potporom. Partneri — pojedinci i crkve — omogućuju nam da stanemo uz timove kojima je to potrebno.",
     "cta_give": "Podržite rad",
-    "cta_contact": "Javite nam se"
+    "cta_contact": "Javite nam se",
+    "seo_title": "Thauma | Početna",
+    "seo_desc": "Crkve u Hrvatskoj i okolnoj regiji nose stvarnu tehničku potrebu — zvuk, rasvjeta, video, prijenosi i ljudi koji sve to vode, često bez ikoga od koga bi…"
   },
   "about": {
     "title": "O nama",
@@ -59,7 +61,9 @@
     "body3": "Dolazimo kao učenici i sudionici kultura u kojima služimo. Nismo ondje da crkve preoblikujemo po bilo kojem vanjskom modelu — dolazimo uz ono što je lokalna crkva već izgradila i odgovaramo na potrebe onako kako ih te crkve same definiraju. Zato jezik i kultura dolaze prvi, dominiraju prvim godinama i nikada u potpunosti ne prestaju.",
     "posture_img_tag": "Fotografija — učenje kulture, prije svega ostalog",
     "posture_placeholder": "Još nema fotografije — dodajte je na /admin/website/photos/.",
-    "status_note": "Thauma je neprofitna organizacija u osnivanju (Missouri, SAD) i služi cijeloj protestantskoj Crkvi, bez obzira na denominaciju."
+    "status_note": "Thauma je neprofitna organizacija u osnivanju (Missouri, SAD) i služi cijeloj protestantskoj Crkvi, bez obzira na denominaciju.",
+    "seo_title": "Thauma | O nama",
+    "seo_desc": "Thauma je produkcijska služba za protestantske crkve u Hrvatskoj i na širem Balkanu. Potreba je jednostavna: crkvama treba pomoć s produkcijom — zvuk,…"
   },
   "mission": {
     "title": "Misija",
@@ -82,7 +86,9 @@
     "horizon_text": "Horizont je iskren: smisleni plod očekujemo u razdoblju od pet do deset godina, ne dvije. Služenje izrasta iz temelja jezika i kulture; obuka izrasta iz služenja; zajednica i vođe izrastaju iz oboje. Predani smo cijelom luku i odbijamo ga požurivati — spor temelj omogućuje kasniji plod.",
     "success_text": "Uspjeh izgleda ovako: zajednica crkvenih produkcijskih ljudi — tehničara, voditelja slavljenja, pastora — koja postoji ondje gdje je prije nije bilo, i koja se sastaje i pomaže jedna drugoj bez da mi pokrećemo svaku vezu.",
     "horizon_img_tag": "Fotografija — godinama poslije, zajedno",
-    "horizon_placeholder": "Još nema fotografije — dodajte je na /admin/website/photos/."
+    "horizon_placeholder": "Još nema fotografije — dodajte je na /admin/website/photos/.",
+    "seo_title": "Thauma | Misija",
+    "seo_desc": "Ovo nisu faze koje treba završiti, nego trajni izrazi istoga poziva — svaki izrasta iz prethodnog, a s vremenom sva tri teku zajedno."
   },
   "values": {
     "title": "Vrijednosti",
@@ -118,7 +124,9 @@
         "title": "Mi sadimo, Bog daje rast",
         "text": "Sve gore navedeno opis je truda, a trud sam po sebi ima strop. Možemo otvoriti vrata, dolaziti dosljedno i služiti stručno — ne možemo proizvesti zajednicu ili umnožavanje koje iz toga slijedi. Reći to jasno nije lažna skromnost; to je razlog zašto se prvih šest uvjerenja ne pretvara u pritisak da se nešto izvede."
       }
-    ]
+    ],
+    "seo_title": "Thauma | Vrijednosti",
+    "seo_desc": "Crkve u Hrvatskoj i okolnoj regiji nose stvarnu tehničku potrebu — zvuk, rasvjeta, video, prijenosi i ljudi koji sve to vode, često bez ikoga od koga bi…"
   },
   "resources": {
     "title": "Materijali",
@@ -142,7 +150,9 @@
     "fmt_diagram": "Dijagram",
     "fmt_checklist": "Kontrolna lista",
     "fmt_glossary-entry": "Pojmovnik",
-    "fmt_video": "Video"
+    "fmt_video": "Video",
+    "seo_title": "Thauma | Materijali",
+    "seo_desc": "Dok služimo crkvama na terenu, vodiči, prijevodi i alati koje gradimo živjet će ovdje — na hrvatskom i engleskom, besplatno za svaku crkvu. Ako vašem timu…"
   },
   "give": {
     "title": "Podrži",
@@ -157,7 +167,9 @@
     "impact_img_tag": "Fotografija — ono što vaše partnerstvo omogućuje",
     "impact_placeholder": "Još nema fotografije — dodajte je na /admin/website/photos/.",
     "legal_note": "Thauma je neprofitna organizacija u osnivanju (Missouri, SAD). Dok savezni status porezne izuzetosti ne bude odobren, darovi još nisu porezno priznati u SAD-u — ovdje ćemo to jasno objaviti čim se promijeni.",
-    "form_placeholder": "Ovdje će se nalaziti naš sigurni obrazac za darivanje."
+    "form_placeholder": "Ovdje će se nalaziti naš sigurni obrazac za darivanje.",
+    "seo_title": "Thauma | Podrži",
+    "seo_desc": "Thauma se financira potporom u misijskoj tradiciji: crkve kojima služimo nisu te koje nose trošak — nose ga partneri. Darovi ovdje stavljaju stručnu pomoć…"
   },
   "contact": {
     "title": "Kontakt",
@@ -172,7 +184,9 @@
     "form_success": "Hvala — javit ćemo vam se uskoro.",
     "form_error": "Poruka nije poslana — provjerite ime, adresu e-pošte i poruku pa pokušajte ponovno.",
     "form_subject": "O čemu se radi (neobavezno)",
-    "form_reason": "Odaberite razlog…"
+    "form_reason": "Odaberite razlog…",
+    "seo_title": "Thauma | Kontakt",
+    "seo_desc": "Crkva kojoj treba pomoć, pitanje o misiji, želja za partnerstvom — svaka poruka stiže do stvarne osobe."
   },
   "stay": {
     "h_thin": "Ostanimo",
@@ -210,7 +224,9 @@
     "cadence_fortnightly": "Svaka dva tjedna",
     "cadence_monthly": "Svaki mjesec",
     "cadence_custom": "Vidi datume ispod",
-    "also_cue": "Također dolazi"
+    "also_cue": "Također dolazi",
+    "seo_title": "Thauma | Događaji",
+    "seo_desc": "Regionalna okupljanja dio su dugoročne vizije — produkcijski ljudi iz mnogih zajednica, zajedno. Kad prvo bude isplanirano, prijave će se otvoriti ovdje."
   },
   "staff": {
     "title": "Tim",
@@ -236,7 +252,9 @@
     "base_label": "Baza",
     "contact": "Kontakt",
     "back": "Svi članovi tima",
-    "bio_cue": "Biografija"
+    "bio_cue": "Biografija",
+    "seo_title": "Thauma | Tim",
+    "seo_desc": "Crkve u Hrvatskoj i okolnoj regiji nose stvarnu tehničku potrebu — zvuk, rasvjeta, video, prijenosi i ljudi koji sve to vode, često bez ikoga od koga bi…"
   },
   "notFound": {
     "cue": "Pogreška",

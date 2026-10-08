@@ -39,7 +39,9 @@
     "cta_h2_bold": "by partnership.",
     "cta_lede": "Thauma is support-raised. Partners — individuals and churches — are what put us alongside the teams that need it.",
     "cta_give": "Support the Work",
-    "cta_contact": "Reach Out"
+    "cta_contact": "Reach Out",
+    "seo_title": "Thauma | Home",
+    "seo_desc": "Churches Across Croatia and the Surrounding Region Carry a Real Technical Need — Sound, Lighting, Video, Streaming, and the People Who Run Them, Often With…"
   },
   "about": {
     "title": "About",
@@ -59,7 +61,9 @@
     "body3": "We go as learners and participants of the cultures where we serve. We are not there to recreate churches in the image of any outside model — we come alongside what the local church has already established, meeting needs as those churches define them. That is why language and cultural learning come first, dominate the early years, and never fully end.",
     "posture_img_tag": "Photo — learning the culture, before anything else",
     "posture_placeholder": "No photo yet — add one at /admin/website/photos/.",
-    "status_note": "Thauma is a Missouri nonprofit in formation, serving the whole Protestant church across denominations."
+    "status_note": "Thauma is a Missouri nonprofit in formation, serving the whole Protestant church across denominations.",
+    "seo_title": "Thauma | About",
+    "seo_desc": "Thauma Is a Production Ministry for the Protestant Churches of Croatia and the Broader Balkans. the Need Is Simple to State: Churches Need Help With…"
   },
   "mission": {
     "title": "Mission",
@@ -82,7 +86,9 @@
     "horizon_text": "The horizon is honest: meaningful fruit is expected on a five-to-ten-year timeline, not a two-year one. Serving grows out of the language-and-culture foundation; training grows out of serving; community and leaders grow out of both. We commit to the whole arc and refuse to rush it — the slow foundation is what makes the later fruit possible.",
     "success_text": "Success looks like a community of church production people — techs, worship leaders, pastors — existing where it did not before, meeting and helping one another without us driving every connection.",
     "horizon_img_tag": "Photo — years down the road, together",
-    "horizon_placeholder": "No photo yet — add one at /admin/website/photos/."
+    "horizon_placeholder": "No photo yet — add one at /admin/website/photos/.",
+    "seo_title": "Thauma | Mission",
+    "seo_desc": "These Are Not Stages to Complete but Ongoing Expressions of the Same Calling — Each Grows Out of the Last, and in Time All Three Run Together."
   },
   "values": {
     "title": "Values",
@@ -118,7 +124,9 @@
         "title": "We plant, God grows",
         "text": "Everything above describes effort, and effort alone has a ceiling. We can open a door, show up consistently, and serve competently — we cannot manufacture the community or the multiplication that follows. Saying that plainly isn't false modesty; it's the reason the first six convictions never collapse into pressure to perform."
       }
-    ]
+    ],
+    "seo_title": "Thauma | Values",
+    "seo_desc": "Churches Across Croatia and the Surrounding Region Carry a Real Technical Need — Sound, Lighting, Video, Streaming, and the People Who Run Them, Often With…"
   },
   "resources": {
     "title": "Resources",
@@ -142,7 +150,9 @@
     "fmt_diagram": "Diagram",
     "fmt_checklist": "Checklist",
     "fmt_glossary-entry": "Glossary",
-    "fmt_video": "Video"
+    "fmt_video": "Video",
+    "seo_title": "Thauma | Resources",
+    "seo_desc": "As We Serve Churches on the Ground, the Guides, Translations, and Tools We Build Will Live Here — in Croatian and English, Free to Every Church. If There's…"
   },
   "give": {
     "title": "Give",
@@ -157,7 +167,9 @@
     "impact_img_tag": "Photo — what your partnership makes possible",
     "impact_placeholder": "No photo yet — add one at /admin/website/photos/.",
     "legal_note": "Thauma is a Missouri nonprofit in formation. Until federal tax-exempt status is granted, gifts are not yet tax-deductible — we will say so plainly here the moment that changes.",
-    "form_placeholder": "Our secure giving form will live here."
+    "form_placeholder": "Our secure giving form will live here.",
+    "seo_title": "Thauma | Give",
+    "seo_desc": "Thauma Is Support-raised in the Missionary Tradition: the Churches We Serve Are Not the Ones Who Carry the Cost — Partners Are. Giving Here Puts Skilled…"
   },
   "contact": {
     "title": "Contact",
@@ -172,7 +184,9 @@
     "form_success": "Thank you — we'll get back to you soon.",
     "form_error": "That did not send — please check your name, email address and message, and try again.",
     "form_subject": "What it's about (optional)",
-    "form_reason": "Choose a reason…"
+    "form_reason": "Choose a reason…",
+    "seo_title": "Thauma | Contact",
+    "seo_desc": "A Church That Needs Help, a Question About the Mission, a Desire to Partner — Every Message Lands with a Real Person."
   },
   "stay": {
     "h_thin": "Stay",
@@ -210,7 +224,9 @@
     "cadence_fortnightly": "Every two weeks",
     "cadence_monthly": "Every month",
     "cadence_custom": "See the dates below",
-    "also_cue": "Also ahead"
+    "also_cue": "Also ahead",
+    "seo_title": "Thauma | Events",
+    "seo_desc": "Regional Gatherings Are Part of the Long-term Vision — Production People from Many Congregations, Together. When the First One Is Planned, Registration Will…"
   },
   "staff": {
     "title": "Staff",
@@ -236,7 +252,9 @@
     "base_label": "Based in",
     "contact": "Contact",
     "back": "All team members",
-    "bio_cue": "Bio"
+    "bio_cue": "Bio",
+    "seo_title": "Thauma | Team",
+    "seo_desc": "Churches Across Croatia and the Surrounding Region Carry a Real Technical Need — Sound, Lighting, Video, Streaming, and the People Who Run Them, Often With…"
   },
   "notFound": {
     "cue": "Error",
