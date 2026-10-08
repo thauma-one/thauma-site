@@ -101,13 +101,11 @@ await check("an empty collection says so rather than looking broken", async () =
 await check("the row shows which languages an item actually has", async () => {
   /* What still needs translating is the thing somebody scanning wants, and it
      is invisible if you have to open every item to find out. */
+  /* Said as Updates says it (2026-10-07): "missing SR". */
   const { d } = await boot({ resources: [GLOSSARY] });
-  const chips = [...d.querySelectorAll(".lib-lang")];
-  assert(chips.length >= 3, `only ${chips.length} language chips`);
-  const on = chips.filter((c) => c.classList.contains("is-on")).map((c) => c.textContent);
-  assert(on.includes("en") && on.includes("hr"), `lit: ${on.join(",")}`);
-  const off = chips.filter((c) => !c.classList.contains("is-on")).map((c) => c.textContent);
-  assert(off.includes("sr"), "a language with no title is not shown as missing");
+  const note = d.querySelector(".lib-miss");
+  assert(note && /missing/.test(note.textContent) && /SR/.test(note.textContent), "a language with no title is not shown as missing");
+  assert(!/EN|HR/.test(note.textContent), `a language it has is called missing: ${note.textContent}`);
 });
 
 await check("an item with ONE language saves", async () => {

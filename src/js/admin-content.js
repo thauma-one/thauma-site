@@ -54,7 +54,7 @@
   var state = {
     site: null, siteSha: null,
     langs: [], lang: null, names: {}, summary: {},
-    lines: [], byId: {}, rows: [], saved: {}, draft: {}, blocked: {},
+    lines: [], byId: {}, rows: [], saved: {}, draft: {}, blocked: {}, others: {},
     beside: 'en', besideLines: {},
     view: null, find: '',
     notes: { keep: [], glossary: [], guides: {} }, notesWrite: false, openNotes: null,
@@ -351,6 +351,23 @@
     $('cBesideWrap').hidden = !others.length;
   }
 
+  /* Every other language's gaps by page, read quietly after a language opens
+     and after a save; the marks wait for it rather than hold the page up. */
+  async function loadOthers() {
+    var out = {};
+    await Promise.all(state.langs.filter(function (c) { return c !== 'en'; }).map(async function (c) {
+      var data = await send(WORDS + '?lang=' + encodeURIComponent(c), 'GET', null, true);
+      if (!data || data.failed) return;
+      var by = {};
+      (data.lines || []).forEach(function (l) {
+        if (l.status === 'missing' || l.status === 'outdated') { var sec = sectionOf(l); by[sec] = (by[sec] || 0) + 1; }
+      });
+      out[c] = by;
+    }));
+    state.others = out;
+    renderSections();
+  }
+
   async function openLang(code, keepView, already) {
     var data = already || await send(WORDS + '?lang=' + encodeURIComponent(code));
     if (!data || data.failed) { $('cLang').value = state.lang || ''; return false; }
@@ -377,6 +394,7 @@
     await loadBeside();
     $('cRoot').hidden = !!state.review;
     render();
+    loadOthers();
     return true;
   }
 
@@ -557,6 +575,15 @@
     });
     var needs = state.rows.filter(needsWork).length;
     var on = state.find ? null : state.view;
+    /* WHICH OTHER LANGUAGES ARE BEHIND on this page (2026-10-07, suggestion 2:
+       the Site Creator's "missing HR, SR"): missing or outdated lines in
+       each language other than the one being written. */
+    var behind = function (sec) {
+      var codes = Object.keys(state.others).filter(function (c) { return c !== state.lang && (state.others[c][sec] || 0) > 0; });
+      if (!codes.length) return '';
+      return '<span class="c-sec-miss" title="' + esc(tr('ms.missing') + ' ' + codes.map(langName).join(', ')) + '">' +
+        esc(codes.join(' ').toUpperCase()) + '</span>';
+    };
 
     function button(view, label, n, extra, dirty) {
       return '<button type="button" class="c-sec' + (view === on ? ' is-on' : '') + (dirty ? ' is-dirty' : '') +
@@ -572,7 +599,7 @@
       orderedSections().map(function (s) {
         var c = counts[s];
         return button('section:' + s, sectionLabel(s), c.n,
-          c.needs ? '<span class="c-sec-empty">' + c.needs + '</span>' : '', c.dirty);
+          (c.needs ? '<span class="c-sec-empty">' + c.needs + '</span>' : '') + behind(s), c.dirty);
       }).join('');
   }
 

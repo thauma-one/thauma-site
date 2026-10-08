@@ -179,11 +179,13 @@
   /* WHICH LANGUAGES THIS ITEM HAS, shown on the closed row. It is the thing
      somebody scanning the list wants to know — what still needs translating —
      and it is invisible if you have to open every item to find out. */
+  /* THE LANGUAGES IT IS STILL MISSING, said as Updates and the Site Creator
+     say it — "missing HR, SR" (2026-10-07, suggestion 2) — rather than a row
+     of lit and unlit codes to decode. Missing means no title, as Updates
+     counts it. */
   function langChips(item) {
-    return LANGS.map(function (l) {
-      var has = !!(item.title || {})[l];
-      return '<span class="lib-lang' + (has ? ' is-on' : '') + '">' + esc(l) + '</span>';
-    }).join('');
+    var miss = LANGS.filter(function (l) { return !String(((item.title || {})[l]) || '').trim(); });
+    return miss.length ? '<span class="lib-miss">' + esc(tr('ms.missing', 'missing') + ' ' + miss.join(', ').toUpperCase()) + '</span>' : '';
   }
 
   /* WHEN SOMETHING HAPPENS DECIDES WHERE IT SITS.

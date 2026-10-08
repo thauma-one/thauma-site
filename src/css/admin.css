@@ -321,6 +321,8 @@
 .c-sec-empty{font-size:var(--fs-micro);color:var(--warn,#F5B845);
   background:var(--warn-dim,rgba(245,184,69,.14));border-radius:999px;
   padding:1px 7px;font-variant-numeric:tabular-nums}
+/* the other languages still behind on this page: their codes, quietly */
+.c-sec-miss{font-size:var(--fs-micro);letter-spacing:.04em;color:var(--warn,#F5B845);opacity:.85;font-variant-numeric:tabular-nums}
 @media(hover:hover){ .c-sec:hover{color:var(--text);border-color:var(--line-hard)} }
 .c-sec.is-on{color:var(--text);background:var(--panel);border-color:var(--line-hard)}
 .c-sec.is-dirty{box-shadow:inset 3px 0 0 var(--warn,#F5B845)}
@@ -871,11 +873,6 @@
    the list actually wants — what still needs translating — and it is invisible
    if you have to open every item to find out. */
 .lib-langs{display:flex;gap:6px;align-items:center}
-.lib-lang{font-size:10px;letter-spacing:.1em;text-transform:uppercase;
-  font-weight:var(--w-bold);padding:3px 7px;border-radius:3px;
-  color:var(--dim,#8a93a3);border:1px solid rgba(255,255,255,.14)}
-.lib-lang.is-on{color:var(--voice-human);border-color:rgba(92,242,196,.4);
-  background:var(--voice-human-dim)}
 
 .lib-tags{display:flex;gap:8px;flex-wrap:wrap}
 
@@ -1377,3 +1374,5 @@ body:has(.web-panel:not([hidden]) .ms-savebar:not([hidden])) .web-bar{display:no
 .ae-block{display:flex;gap:8px;align-items:center}
 .ae-block input{width:80px;text-transform:uppercase;letter-spacing:.2em;font-family:var(--font-display)}
 @media (max-width:640px){ .ae-board li{grid-template-columns:16px 40px 1fr auto;} .ae-day{display:none} }
+/* Events and Resources: the languages an item still lacks (admin-library.js) */
+.lib-miss{font-size:var(--fs-micro);color:var(--warn,#F5B845);white-space:nowrap}
