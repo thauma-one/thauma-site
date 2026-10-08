@@ -116,8 +116,8 @@ await check("what visitors can see: Only your team, then Visitors — dev before
 await check("Site on: shown the right way round over the coming-soon gate, and turning it on is the launch", async () => {
   /* Chase, 2026-10-08: "just be like site on and site off". */
   const { w, d } = await boot();
-  const row = [...d.querySelectorAll(".v-row")].find((r) => /Site on/.test(r.textContent));
-  assert(row, "no Site on row");
+  const row = [...d.querySelectorAll(".v-row")].find((r) => /Active/.test(r.textContent));
+  assert(row, "no Active row");
   const live = row.querySelector('[data-path="visibility.comingSoon.live"]'), dev = row.querySelector('[data-path="visibility.comingSoon.dev"]');
   assert(live.getAttribute("aria-checked") === "false" && dev.getAttribute("aria-checked") === "true", "comingSoon live:true/dev:false should read Off for visitors, On for the team");
   let asked = 0; w.StaffConfirm = async () => { asked++; return true; };

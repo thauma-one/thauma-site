@@ -101,6 +101,8 @@
     gatherings: [
       { name: 'type', kind: 'choice', label: 'Kind', vocab: 'type' },
       { name: 'status', kind: 'choice', label: 'Status', vocab: 'status' },
+      { name: 'featured', kind: 'flag', label: tr('lib.featured', 'Highlighted at the top'),
+        when: function (it) { return (it.status || 'upcoming') === 'upcoming'; } },
       { name: 'date', kind: 'date', label: 'First day',
         when: function (it) { return it.type !== 'cohort'; } },
       { name: 'end_date', kind: 'date', label: 'Last day',
@@ -296,6 +298,15 @@
       /* No status tag: the group heading above already says Coming up,
          Canceled or Already happened, and saying it twice was a third of the
          row's tags. */
+      /* HIGHLIGHTED AT THE TOP (2026-10-08, Chase: "a toggle … for a
+         highlighted event … controls for highlighting multiple"): a star on
+         every coming event, pressed in the list without opening it. */
+      if ((item.status || 'upcoming') === 'upcoming') {
+        out.push('<button type="button" class="lib-star" data-lib-feature="' + esc(item.slug) + '" aria-pressed="' + (item.featured === true) + '"' +
+          ' title="' + esc(tr('lib.featured', 'Highlighted at the top')) + '">' +
+          '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.6l1.9 4 4.4.5-3.3 3 .9 4.3L8 11.2l-3.9 2.2.9-4.3-3.3-3 4.4-.5z"/></svg>' +
+          '<span>' + esc(tr(item.featured === true ? 'lib.featuredOn' : 'lib.featureIt', item.featured === true ? 'Highlighted' : 'Highlight')) + '</span></button>');
+      }
       if (item.type) out.push('<span class="role-tag partner">' + esc(label(item.type)) + '</span>');
       var when = whenText(item.date, item.end_date);
       if (when) out.push('<span class="role-tag">' + esc(when) + '</span>');
@@ -676,6 +687,26 @@
     }
   }
 
+  /* The star: the event saved as it is, highlighted or not. */
+  async function feature(btn) {
+    var item = find('gatherings', btn.dataset.libFeature);
+    if (!item) return;
+    var payload = Object.assign({}, item, { collection: 'gatherings', featured: item.featured !== true });
+    btn.disabled = true;
+    try {
+      var res = await fetch(API, { method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      var body = await res.json().catch(function () { return {}; });
+      if (!res.ok) { btn.disabled = false; return toast(body.error || tr('err.refused', 'Refused.'), 'bad'); }
+      toast(tr('toast.saved', 'Saved'), 'ok');
+      document.dispatchEvent(new CustomEvent('web:saved'));
+      await load();
+    } catch (e) {
+      btn.disabled = false;
+      toast(tr('err.unreachable', 'Could not reach the server.'), 'bad');
+    }
+  }
+
   async function remove(collection, slug) {
     var ok = window.StaffConfirm
       ? await window.StaffConfirm({
@@ -744,6 +775,9 @@
       if (cropBtn) cropBtn.remove();
       return;
     }
+
+    var star = e.target.closest('[data-lib-feature]');
+    if (star) return feature(star);
 
     var save0 = e.target.closest('[data-lib-save]');
     if (save0) {

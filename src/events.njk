@@ -61,8 +61,19 @@ pageTitle: events
   {#- `slice` in Nunjucks CHUNKS a list into N lists rather than taking the
      first n of it, which quietly rendered every gathering as the featured one.
      Naming the item is clearer than any filter would have been. -#}
+  {#- HIGHLIGHTED, THEN THE NEXT (2026-10-08, Chase: "a highlighted event
+     which is the one that populates at the top … highlighting multiple"):
+     every upcoming gathering marked featured (Website › Events, its star) is
+     an invitation, in date order; with none marked, the next one is, as
+     before. The rest are named quietly under them. -#}
+  {%- set top = [] %}{% set rest = [] %}
+  {%- for g in upcoming %}{% if g.featured %}{% set _ = top.push(g) %}{% else %}{% set _ = rest.push(g) %}{% endif %}{% endfor %}
+  {%- if upcoming.length and not top.length %}
+    {%- set top = [] %}{% set rest = [] %}
+    {%- for g in upcoming %}{% if loop.first %}{% set _ = top.push(g) %}{% else %}{% set _ = rest.push(g) %}{% endif %}{% endfor %}
+  {%- endif %}
   {% if upcoming.length %}
-    {% set g = upcoming[0] %}
+    {% for g in top %}
     {%- set title = g.title[lang] or g.title.en or g.title[g.langs[0]] %}
     {%- set summary = g.summary[lang] or g.summary.en %}
     {#- THE PICTURE IN ITS OWN SHAPE (photo_ar, gatherings.js), the same
@@ -153,13 +164,14 @@ pageTitle: events
         {% endif %}
       </div>
     </article>
+    {% endfor %}
 
     {#- ALSO AHEAD. Same card, no announcement line, no moment — quieter on
        purpose, so the featured one keeps being the featured one. -#}
-    {% if upcoming.length > 1 %}
+    {% if rest.length %}
     <div class="also">
       <p class="cue bare also-cue">{{ t.events.also_cue | rich("events.also_cue") }}</p>
-      {% for g in upcoming %}{% if not loop.first %}
+      {% for g in rest %}
       {%- set title = g.title[lang] or g.title.en or g.title[g.langs[0]] %}
       <article class="also-item">
         <p class="also-when">{{ g.date | when(g.end_date, lang) }}{% if g.location %} · {{ g.location }}{% endif %}</p>
@@ -169,7 +181,7 @@ pageTitle: events
         <p class="invite-act"><a href="{{ g.registration }}" target="_blank" rel="noopener">{{ t.events.register | rich("events.register") }}</a></p>
         {% endif %}
       </article>
-      {% endif %}{% endfor %}
+      {% endfor %}
     </div>
     {% endif %}
   {% else %}

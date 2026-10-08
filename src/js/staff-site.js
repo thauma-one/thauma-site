@@ -248,7 +248,7 @@
       state.body.site = body.site;
       $('wsSaved').textContent = tr('ws.saved');
       drawBar(); drawStatus();
-      if (state.frameDirty && !state.timer_pending) { state.frameDirty = false; refreshFrame(); }
+      if (state.frameDirty && !state.timer_pending) { state.frameDirty = false; redrawFrame(); }
     } catch (e) {
       $('wsSaved').textContent = '';
       toast(e.message, 'err');
@@ -275,7 +275,7 @@
     try {
       apply(await send(payload));
       if (message) toast(message, 'ok');
-      refreshFrame();
+      redrawFrame();
     } catch (e) { toast(e.message, 'err'); }
   }
 
@@ -639,34 +639,93 @@
   }
   if (window.ResizeObserver) new ResizeObserver(fitFrame).observe($('wsFrame').parentNode);
 
-  function refreshFrame() {
-    if ($('wsPreviewPane').hidden) return;
-    fitFrame();
+  /* WHERE THE PREVIEW SHOULD BE: the page and language, the footer alone or
+     the whole page, the section being edited, the tab open. */
+  function frameWant() {
     var s = state.body.site, lang = state.langA;
     var page = state.tab === 'pages' && state.page ? currentPage().id : 'home';
     var path = s.preview.replace(/\?draft$/, '') + lang + '/' + (page === 'home' ? '' : page + '/');
-    $('wsPreviewPath').textContent = '/' + lang + '/' + (page === 'home' ? '' : page + '/');
-    /* On the Footer tab, the footer and nothing else (Chase, 2026-09-29). */
     /* On Footer and Links, the footer and nothing else — links show there. */
     var foot = state.tab === 'footer' || state.tab === 'links';
-    $('wsPreviewPane').classList.toggle('only-foot', foot);
-    /* To the section being edited — scrolled INSIDE the preview once it has
-       loaded. A #fragment on the frame's address would do it too, but a
-       browser then scrolls this page as well, to bring the frame's target
-       into view: the jump Chase saw when opening a section. */
     var open = state.tab === 'pages' && state.page && state.edit != null && currentPage().sections[state.edit];
-    state.frameTarget = open ? 's-' + open.id : null;
-    /* a tab chosen in the editor opens in the preview too (#its id) */
     var vt = state.tab === 'pages' && state.page ? activeTab(realPage()) : null;
-    /* NO FLASH (Chase, 2026-10-08: "The screen preview … flashes every time
-       there is a change"). The new copy is drawn in a second, hidden frame
-       over the one showing, and swapped in once it has loaded — at the same
-       scroll, when it is the same page and the same section. A redraw of the
-       same page also arrives SETTLED (render.js): its entrance animations
-       are the page arriving, not the change, and replaying them was half the
-       flash. A change to Motion plays them, since that is what it changes. */
-    var now = $('wsFrame'), base = path + '?draft' + (foot ? '&part=footer' : '');
-    var same = now.dataset.base === base && now.dataset.target === String(state.frameTarget);
+    return { label: '/' + lang + '/' + (page === 'home' ? '' : page + '/'), foot: foot,
+      base: path + '?draft' + (foot ? '&part=footer' : ''), target: open ? 's-' + open.id : null, tab: vt ? vt.id : '' };
+  }
+  function frameDoc(f) { try { return f.contentWindow.document; } catch (e) { return null; } }
+
+  /* THE PREVIEW BEHAVES LIKE THE SITE (Chase, 2026-10-08: "operates similar
+     to a website"). Moving around never draws the page again:
+       - another page (or language) is a visit, with the site's own page
+         transition;
+       - a section is a smooth scroll to it, outlined;
+       - a tab is the tab's own switch.
+     Only an edit, once saved, draws the page again — redrawFrame, which
+     fades the new copy in over the old at the same scroll. */
+  function refreshFrame() {
+    if ($('wsPreviewPane').hidden) return;
+    fitFrame();
+    var want = frameWant(), now = $('wsFrame');
+    $('wsPreviewPath').textContent = want.label;
+    $('wsPreviewPane').classList.toggle('only-foot', want.foot);
+    state.frameTarget = want.target;
+    var nowFoot = /[?&]part=footer/.test(now.dataset.base || '');
+    if (!frameDoc(now) || !now.dataset.base || nowFoot !== want.foot) return loadFrame(want, false);
+    if (now.dataset.base !== want.base) return visit(now, want);
+    if ((now.dataset.tab || '') !== want.tab) frameTab(now, want.tab);
+    if (now.dataset.target !== String(want.target)) aim(now, want.target, 'smooth');
+  }
+  function redrawFrame() {
+    if ($('wsPreviewPane').hidden) return;
+    fitFrame();
+    var want = frameWant();
+    state.frameTarget = want.target;
+    loadFrame(want, true);
+  }
+  /* A visit: the frame goes to the other page itself, so the site's page
+     transition plays (render.js, @view-transition). */
+  function visit(f, want) {
+    f.dataset.base = want.base; f.dataset.tab = want.tab; f.dataset.target = ''; f.dataset.keep = '';
+    try { f.contentWindow.location.href = want.base + '&t=' + Date.now() + (want.tab ? '#' + want.tab : ''); }
+    catch (e) { loadFrame(want, false); }
+  }
+  /* A tab: pressed in the page, as a visitor would. */
+  function frameTab(f, tab) {
+    f.dataset.tab = tab;
+    var d = frameDoc(f), b = d && tab && d.querySelector('[data-tab="' + tab + '"]');
+    if (b) b.click();
+  }
+  /* The section being edited: outlined, and brought to the middle of the
+     preview ('smooth' or 'jump'), or left where it is ('stay'). Room below it
+     in the editor's copy, so one near the end can still come to the middle;
+     a section taller than the preview starts at its top. */
+  function aim(f, target, how) {
+    var d = frameDoc(f);
+    if (!d) return;
+    [].forEach.call(d.querySelectorAll('.is-editing'), function (x) { x.classList.remove('is-editing'); });
+    var el = target && d.getElementById(target);
+    if (!el) { if (!target) f.dataset.target = 'null'; return; }
+    f.dataset.target = target;
+    el.classList.add('is-editing');
+    var w = f.contentWindow;
+    if (!d.getElementById('wsRoom')) {
+      var pad = d.createElement('div');
+      pad.id = 'wsRoom'; pad.style.height = Math.round(w.innerHeight / 2) + 'px';
+      d.body.appendChild(pad);
+    }
+    if (how === 'stay') return;
+    var top = el.getBoundingClientRect().top + w.scrollY;
+    w.scrollTo({ top: Math.max(0, top - Math.max(24, (w.innerHeight - el.offsetHeight) / 2)), behavior: how === 'smooth' && !STILL ? 'smooth' : 'auto' });
+  }
+  /* DRAWING THE PAGE AGAIN, with no flash (2026-10-08): the new copy loads
+     in a second, hidden frame over the one showing, and is swapped in once
+     it has loaded — at the same scroll, when it is the same page and the
+     same section. A redraw of the same page arrives SETTLED (render.js): its
+     entrance animations are the page arriving, not the change. A change to
+     Motion plays them, since that is what it changes. */
+  function loadFrame(want, fade) {
+    var now = $('wsFrame');
+    var same = now.dataset.base === want.base && now.dataset.target === String(want.target);
     var settle = same && !state.playMotion;
     state.playMotion = false;
     var box = now.parentNode, old = box.querySelector('iframe.is-next:not(#wsFrame)');
@@ -674,17 +733,18 @@
     var next = document.createElement('iframe');
     next.className = 'is-next';
     next.title = now.title;
-    next.dataset.base = base; next.dataset.target = String(state.frameTarget);
+    next.dataset.base = want.base; next.dataset.tab = want.tab; next.dataset.target = String(want.target);
     next.dataset.keep = same ? String(frameScroll(now)) : '';
+    next.dataset.fade = fade && frameDoc(now) && now.dataset.base ? '1' : '';
     next.addEventListener('load', frameLoaded);
     box.appendChild(next);
-    next.src = base + (settle ? '&settled' : '') + '&t=' + Date.now() + (vt ? '#' + vt.id : '');
+    next.src = want.base + (settle ? '&settled' : '') + '&t=' + Date.now() + (want.tab ? '#' + want.tab : '');
   }
   function frameScroll(f) { try { return f.contentWindow.scrollY || 0; } catch (e) { return 0; } }
   /* The loaded copy takes the shown one's place by fading in over it
      (Chase, 2026-10-08: "fade between the changes … you can see the edits
      you made just 'appear'"), already at the same scroll; then the old one
-     goes. At once for reduced motion. */
+     goes. At once for reduced motion, and for a first drawing. */
   var STILL = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
   function swapIn(next) {
     var now = $('wsFrame');
@@ -695,13 +755,14 @@
       if (now.parentNode) now.parentNode.removeChild(now);
       next.classList.remove('is-next', 'is-fading');
     };
-    if (STILL) return done();
+    if (STILL || next.dataset.fade !== '1') return done();
     next.classList.add('is-fading');
     setTimeout(done, 420);
   }
 
   $('wsFrame').addEventListener('load', frameLoaded);
   function frameLoaded() {
+    if (!frameDoc(this) || this.contentWindow.location.href === 'about:blank') return;
     /* THE EDITOR FOLLOWS THE PREVIEW (Chase, 2026-10-04): a page opened by
        clicking inside the preview becomes the page being edited, so the two
        never show different pages. Same origin, so its address is readable. */
@@ -713,6 +774,7 @@
         state.page = seen; state.edit = null;
         if (state.tab === 'pages') drawPages();
         $('wsPreviewPath').textContent = '/' + m[1] + '/' + (seen === 'home' ? '' : seen + '/');
+        this.dataset.base = frameWant().base; this.dataset.tab = '';
       }
     } catch (e) { /* another origin: nothing to follow */ }
     /* THE FOOTER PREVIEW IS AS TALL AS THE FOOTER (Chase, 2026-10-01: the
@@ -729,23 +791,11 @@
     } else {
       box.style.height = '';
     }
-    /* The section being edited: outlined, with room below it in the
-       editor's copy so one near the end of the page can still come to the
-       middle. A redraw of the same page and section stays where it was
-       scrolled; otherwise the section comes to the middle of the preview (a
-       section taller than the preview starts at its top). */
+    /* A redraw of the same page and section stays where it was scrolled;
+       otherwise the section comes to the middle, at once. */
     var keep = this.dataset.keep;
-    try {
-      var w = this.contentWindow, el = state.frameTarget && w.document.getElementById(state.frameTarget);
-      if (el) {
-        el.classList.add('is-editing');
-        var pad = w.document.createElement('div');
-        pad.style.height = Math.round(w.innerHeight / 2) + 'px';
-        w.document.body.appendChild(pad);
-      }
-      if (keep) w.scrollTo(0, +keep);
-      else if (el) w.scrollTo(0, Math.max(0, el.offsetTop - Math.max(24, (w.innerHeight - el.offsetHeight) / 2)));
-    } catch (e) {}
+    aim(this, state.frameTarget, keep ? 'stay' : 'jump');
+    if (keep) { try { this.contentWindow.scrollTo(0, +keep); } catch (e) {} }
     swapIn(this);
   }
 
@@ -1586,7 +1636,7 @@
     state.body.published = body.published;
     state.base = body.draft;
     if (state.doc.design.colors) state.doc.design.colors.accent = null;
-    refreshFrame();
+    redrawFrame();
     if (colors.dragging) colors.redraw = true; else drawDesign();
   }
 

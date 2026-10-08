@@ -403,5 +403,22 @@ await check("resources are not forced into gathering groups", async () => {
     "the resources list grew a group heading it has no basis for");
 });
 
+await check("a coming event has a star: pressed in the list, it saves that event highlighted, body and all", async () => {
+  /* Chase, 2026-10-08: "a toggle … for a highlighted event … controls for
+     highlighting multiple". */
+  const ev = { slug: "weekend", title: { en: "Weekend" }, summary: {}, type: "gathering", status: "upcoming",
+    date: "2027-03-14", sessions: [], body: "Longer words." };
+  const past = { ...ev, slug: "old", status: "past" };
+  const { d, posts } = await boot({ gatherings: [ev, past] });
+  const star = d.querySelector('[data-lib-feature="weekend"]');
+  assert(star && star.getAttribute("aria-pressed") === "false", "no star on a coming event");
+  assert(!d.querySelector('[data-lib-feature="old"]'), "a past event can be highlighted");
+  star.click();
+  await new Promise((r) => setTimeout(r, 80));
+  const sent = posts.pop();
+  assert(sent && sent.featured === true && sent.body === "Longer words." && sent.collection === "gatherings", `sent ${JSON.stringify(sent)}`);
+  assert(!d.querySelector('[data-lib-item="gatherings/weekend"]').classList.contains("is-open"), "pressing the star opened the event");
+});
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
