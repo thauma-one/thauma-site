@@ -25,7 +25,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{{ fullTitle }}</title>
-<meta name="description" content="{{ t.home.sub }}">
+<meta name="description" content="{{ t.home.sub | plain }}">
 {#- WHERE THIS PAGE REALLY LIVES. Without it every translation of a page looks
    to a search engine like a separate page competing with the others, and a
    tracking parameter on the end of a URL makes a second copy of it. -#}
@@ -51,7 +51,7 @@
 <link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
 <meta property="og:type" content="website">
 <meta property="og:title" content="{{ fullTitle }}">
-<meta property="og:description" content="{{ t.home.sub }}">
+<meta property="og:description" content="{{ t.home.sub | plain }}">
 <meta property="og:url" content="{{ site.url }}{{ page.url }}">
 <meta property="og:image" content="{{ shareImage }}">
 <meta property="og:image:width" content="1200">
@@ -59,7 +59,7 @@
 <meta property="og:image:alt" content="Thauma">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="{{ fullTitle }}">
-<meta name="twitter:description" content="{{ t.home.sub }}">
+<meta name="twitter:description" content="{{ t.home.sub | plain }}">
 <meta name="twitter:image" content="{{ shareImage }}">
 <link rel="stylesheet" href="/css/main.css?v={{ "/css/main.css" | v }}">
 </head>
@@ -71,17 +71,17 @@
      that was not built is a 404 with the site's own navigation pointing at
      it, which is worse than the page simply not being offered. -#}
   <div class="links">
-    {% if visible.pages.about %}<a href="/{{ lang }}/about/">{{ t.nav.about }}</a>{% endif %}
-    {% if visible.pages.mission %}<a href="/{{ lang }}/mission/">{{ t.nav.mission }}</a>{% endif %}
-    {% if visible.pages.values %}<a href="/{{ lang }}/values/">{{ t.nav.values }}</a>{% endif %}
-    {% if visible.pages.team %}<a href="/{{ lang }}/team/">{{ t.nav.team }}</a>{% endif %}
-    {% if visible.pages.resources %}<a href="/{{ lang }}/resources/">{{ t.nav.resources }}</a>{% endif %}
-    {% if visible.pages.events %}<a href="/{{ lang }}/events/">{{ t.nav.events }}</a>{% endif %}
-    {% if visible.pages.contact %}<a href="/{{ lang }}/contact/">{{ t.nav.contact }}</a>{% endif %}
+    {% if visible.pages.about %}<a href="/{{ lang }}/about/">{{ t.nav.about | rich("nav.about") }}</a>{% endif %}
+    {% if visible.pages.mission %}<a href="/{{ lang }}/mission/">{{ t.nav.mission | rich("nav.mission") }}</a>{% endif %}
+    {% if visible.pages.values %}<a href="/{{ lang }}/values/">{{ t.nav.values | rich("nav.values") }}</a>{% endif %}
+    {% if visible.pages.team %}<a href="/{{ lang }}/team/">{{ t.nav.team | rich("nav.team") }}</a>{% endif %}
+    {% if visible.pages.resources %}<a href="/{{ lang }}/resources/">{{ t.nav.resources | rich("nav.resources") }}</a>{% endif %}
+    {% if visible.pages.events %}<a href="/{{ lang }}/events/">{{ t.nav.events | rich("nav.events") }}</a>{% endif %}
+    {% if visible.pages.contact %}<a href="/{{ lang }}/contact/">{{ t.nav.contact | rich("nav.contact") }}</a>{% endif %}
   </div>
   <div class="nav-actions">
     {{ langDropdown() }}
-    {% if visible.pages.give %}<a class="give-btn" href="/{{ lang }}/give/">{{ t.nav.give }}</a>{% endif %}
+    {% if visible.pages.give %}<a class="give-btn" href="/{{ lang }}/give/">{{ t.nav.give | rich("nav.give") }}</a>{% endif %}
   </div>
   <button class="menu-btn" aria-label="Menu"><span></span><span></span></button>
 </div></nav>
@@ -97,9 +97,9 @@
    width), not duplicated in here. #}
 <div class="mobile-menu">
   {%- for slug in navPages %}{% if slug != "give" %}
-  <a href="/{{ lang }}/{{ slug }}/">{{ t.nav[slug] }}</a>
+  <a href="/{{ lang }}/{{ slug }}/">{{ t.nav[slug] | plain }}</a>
   {%- endif %}{% endfor %}
-  <a href="/{{ lang }}/give/">{{ t.nav.give }}</a>
+  <a href="/{{ lang }}/give/">{{ t.nav.give | rich("nav.give") }}</a>
 </div>
 
 <main>
@@ -108,17 +108,17 @@
 
 <footer><div class="wrap foot-in">
   <div class="foot-col">
-    <div class="foot-tag">{{ t.footer.tagline }}</div>
+    <div class="foot-tag">{{ t.footer.tagline | rich("footer.tagline") }}</div>
     {#- Two ways to be in touch from every page (Chase, 2026-09-28). Contact
        follows its page's switch, as in the nav. Stay connected opens the
        sign-up form over the page rather than going anywhere, and is shown by
        main.js only once there is a list to join — a link that opens a form
        with nothing to choose is a broken promise. -#}
     <div class="foot-links">
-      {% if visible.pages.contact %}<a href="/{{ lang }}/contact/">{{ t.nav.contact }}</a>{% endif %}
-      <button type="button" class="foot-stay" data-stay-open hidden>{{ t.footer.stay }}</button>
+      {% if visible.pages.contact %}<a href="/{{ lang }}/contact/">{{ t.nav.contact | rich("nav.contact") }}</a>{% endif %}
+      <button type="button" class="foot-stay" data-stay-open hidden>{{ t.footer.stay | rich("footer.stay") }}</button>
     </div>
-    <div class="foot-legal">{{ t.footer.legal }}</div>
+    <div class="foot-legal">{{ t.footer.legal | rich("footer.legal") }}</div>
   </div>
   <div class="foot-col foot-right">
     {#- Website › Settings › Social links switches these (2026-10-07: the
@@ -130,7 +130,7 @@
     {%- if site.socials.facebook %}<a href="{{ site.socials.facebook }}" aria-label="Facebook" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M13.5 21v-8h2.7l.4-3.1h-3.1V7.9c0-.9.3-1.5 1.6-1.5h1.6V3.6c-.3 0-1.3-.1-2.4-.1-2.4 0-4 1.4-4 4.1v2.3H7.6V13h2.7v8h3.2z"/></svg></a>{% endif %}
     {%- if site.socials.x %}<a href="{{ site.socials.x }}" aria-label="X" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M17.7 3h3l-6.6 7.5L22 21h-6.1l-4.8-6.2L5.6 21h-3l7-8L2.5 3h6.2l4.3 5.7L17.7 3zm-1 16.2h1.7L7.8 4.7H6L16.7 19.2z"/></svg></a>{% endif %}
     </div>{% endif %}
-    <span class="foot-region">{{ t.footer.region }}</span>
+    <span class="foot-region">{{ t.footer.region | rich("footer.region") }}</span>
   </div>
 </div></footer>
 
@@ -142,22 +142,22 @@
    Stay connected). The server sends the confirmation email in the visitor's
    language and says the same thing whatever happened, so the form does too. -#}
 <dialog class="stay" id="stay" aria-labelledby="stayTitle"
-        data-pick-one="{{ t.stay.pick_one }}" data-sending="{{ t.stay.sending }}" data-error="{{ t.stay.error }}">
-  <button type="button" class="stay-x" data-stay-close aria-label="{{ t.stay.close }}">&times;</button>
-  <h2 class="stay-h" id="stayTitle">{{ t.stay.h_thin }} <b>{{ t.stay.h_bold }}</b></h2>
-  <p class="stay-lede">{{ t.stay.lede }}</p>
+        data-pick-one="{{ t.stay.pick_one | plain }}" data-sending="{{ t.stay.sending | plain }}" data-error="{{ t.stay.error | plain }}">
+  <button type="button" class="stay-x" data-stay-close aria-label="{{ t.stay.close | plain }}">&times;</button>
+  <h2 class="stay-h" id="stayTitle">{{ t.stay.h_thin | rich("stay.h_thin") }} <b>{{ t.stay.h_bold | rich("stay.h_bold") }}</b></h2>
+  <p class="stay-lede">{{ t.stay.lede | rich("stay.lede") }}</p>
   <form class="contact stay-form" id="stayForm" novalidate>
     <p hidden><label>Do not fill: <input name="website" tabindex="-1" autocomplete="off"></label></p>
-    <label class="vh" for="stay-name">{{ t.stay.name }}</label>
-    <input type="text" id="stay-name" name="name" maxlength="120" autocomplete="name" placeholder="{{ t.stay.name }}">
-    <label class="vh" for="stay-email">{{ t.stay.email }}</label>
-    <input type="email" id="stay-email" name="email" maxlength="200" autocomplete="email" required placeholder="{{ t.stay.email }}">
-    <fieldset class="stay-lists" id="stayLists" hidden><legend>{{ t.stay.choose }}</legend></fieldset>
-    <button class="btn solid" type="submit">{{ t.stay.send }}</button>
+    <label class="vh" for="stay-name">{{ t.stay.name | rich("stay.name") }}</label>
+    <input type="text" id="stay-name" name="name" maxlength="120" autocomplete="name" placeholder="{{ t.stay.name | plain }}">
+    <label class="vh" for="stay-email">{{ t.stay.email | rich("stay.email") }}</label>
+    <input type="email" id="stay-email" name="email" maxlength="200" autocomplete="email" required placeholder="{{ t.stay.email | plain }}">
+    <fieldset class="stay-lists" id="stayLists" hidden><legend>{{ t.stay.choose | rich("stay.choose") }}</legend></fieldset>
+    <button class="btn solid" type="submit">{{ t.stay.send | rich("stay.send") }}</button>
     <p class="stay-msg" id="stayMsg" role="status" aria-live="polite"></p>
   </form>
   <div class="contact-sent stay-done" id="stayDone" tabindex="-1" hidden>
-    <b>{{ t.stay.thanks_h }}</b><br>{{ t.stay.thanks }}
+    <b>{{ t.stay.thanks_h | rich("stay.thanks_h") }}</b><br>{{ t.stay.thanks | rich("stay.thanks") }}
   </div>
 </dialog>
 

@@ -12,8 +12,8 @@ pageTitle: events
    exist, replace the empty state below with event cards + registration. #}
 {% set t = i18n[lang] %}
 <header class="page"><div class="wrap">
-  <div class="cue foam rise">{{ t.events.cue }}</div>
-  <h1 class="page-h1 rise-2">{{ t.events.h2_thin }} <b>{{ t.events.h2_bold }}</b></h1>
+  <div class="cue foam rise">{{ t.events.cue | rich("events.cue") }}</div>
+  <h1 class="page-h1 rise-2">{{ t.events.h2_thin | rich("events.h2_thin") }} <b>{{ t.events.h2_bold | rich("events.h2_bold") }}</b></h1>
 </div></header>
 
 {#- BONES, NOT THE DESIGN. The spec keeps the visual pass for later — the
@@ -73,7 +73,7 @@ pageTitle: events
       {% if g.photo %}<div class="invite-photo" style="aspect-ratio:{{ g.photo_ar }}"><img src="{{ g.photo }}" alt="" loading="lazy" decoding="async"></div>{% endif %}
 
       <div class="invite-card">
-        <p class="invite-cue">{{ t.events.invited }}</p>
+        <p class="invite-cue">{{ t.events.invited | rich("events.invited") }}</p>
 
         {#- THE DATE AND THE NAME, side by side on a wide card, stacked on a
            narrow one. Two columns because the card is as wide as the page and
@@ -86,7 +86,7 @@ pageTitle: events
                directly under "you are invited", does not need the word WHEN
                in front of it — and printing one is the interface explaining
                itself instead of working. -#}
-            <span class="vh">{{ t.events.when_label }}</span>
+            <span class="vh">{{ t.events.when_label | rich("events.when_label") }}</span>
             {#- ONE STRING, NOT day / month-year split. Croatian, Serbian and
                Slovenian put the month in the genitive when a day precedes it
                ("14.-15. ozujka"), so splitting the parts to stack them would
@@ -103,7 +103,7 @@ pageTitle: events
             {#- Said where somebody is about to read words that are not theirs,
                rather than hiding the gathering from them. A Croatian-only entry
                is proof of real work, not a gap to apologize for. -#}
-            {% if not g.title[lang] %}<p class="invite-lang">{{ t.events.other_lang }}</p>{% endif %}
+            {% if not g.title[lang] %}<p class="invite-lang">{{ t.events.other_lang | rich("events.other_lang") }}</p>{% endif %}
 
             {% if summary %}<div class="invite-blurb">{{ summary | md | safe }}</div>{% endif %}
           </div>
@@ -117,7 +117,7 @@ pageTitle: events
            own. -#}
         {% if g.location %}
         <p class="invite-where">
-          <span class="vh">{{ t.events.where_label }}</span>
+          <span class="vh">{{ t.events.where_label | rich("events.where_label") }}</span>
           <a href="{{ g.map_url }}" data-map="{{ g.location }}"
              target="_blank" rel="noopener">{{ g.location }}</a>
         </p>
@@ -126,11 +126,11 @@ pageTitle: events
         {% if g.type == "cohort" and (g.cadence or g.capacity) %}
         <dl class="invite-facts">
           {% if g.cadence %}
-          <div><dt>{{ t.events.often_label }}</dt>
-            <dd>{{ t.events["cadence_" + g.cadence] or g.cadence }}</dd></div>
+          <div><dt>{{ t.events.often_label | rich("events.often_label") }}</dt>
+            <dd>{{ (t.events["cadence_" + g.cadence] or g.cadence) | plain }}</dd></div>
           {% endif %}
           {% if g.capacity %}
-          <div><dt>{{ t.events.places_label }}</dt><dd>{{ g.capacity }}</dd></div>
+          <div><dt>{{ t.events.places_label | rich("events.places_label") }}</dt><dd>{{ g.capacity }}</dd></div>
           {% endif %}
         </dl>
         {% endif %}
@@ -147,8 +147,8 @@ pageTitle: events
            an invitation is the thing being offered, not the button. -#}
         {% if g.registration %}
         <p class="invite-act">
-          <a href="{{ g.registration }}" target="_blank" rel="noopener">{{ t.events.register }}</a>
-          {% if g.application_required %}<span class="invite-note">{{ t.events.application }}</span>{% endif %}
+          <a href="{{ g.registration }}" target="_blank" rel="noopener">{{ t.events.register | rich("events.register") }}</a>
+          {% if g.application_required %}<span class="invite-note">{{ t.events.application | rich("events.application") }}</span>{% endif %}
         </p>
         {% endif %}
       </div>
@@ -158,7 +158,7 @@ pageTitle: events
        purpose, so the featured one keeps being the featured one. -#}
     {% if upcoming.length > 1 %}
     <div class="also">
-      <p class="cue bare also-cue">{{ t.events.also_cue }}</p>
+      <p class="cue bare also-cue">{{ t.events.also_cue | rich("events.also_cue") }}</p>
       {% for g in upcoming %}{% if not loop.first %}
       {%- set title = g.title[lang] or g.title.en or g.title[g.langs[0]] %}
       <article class="also-item">
@@ -166,7 +166,7 @@ pageTitle: events
         <h3>{{ title }}</h3>
         {% if g.summary[lang] or g.summary.en %}<p>{{ (g.summary[lang] or g.summary.en) | md | safe }}</p>{% endif %}
         {% if g.registration %}
-        <p class="invite-act"><a href="{{ g.registration }}" target="_blank" rel="noopener">{{ t.events.register }}</a></p>
+        <p class="invite-act"><a href="{{ g.registration }}" target="_blank" rel="noopener">{{ t.events.register | rich("events.register") }}</a></p>
         {% endif %}
       </article>
       {% endif %}{% endfor %}
@@ -178,10 +178,10 @@ pageTitle: events
      and a little embarrassed about it. It states the vision and names what has
      to mature first, in the same register the Mission page uses. -#}
   <div class="empty invite-waiting">
-    <h3>{{ t.events.empty_title }}</h3>
-    <p>{{ t.events.empty_text }}</p>
+    <h3>{{ t.events.empty_title | rich("events.empty_title") }}</h3>
+    <p>{{ t.events.empty_text | rich("events.empty_text") }}</p>
     <div class="workline"><i></i></div>
-    <a class="btn ghost" href="/{{ lang }}/contact/">{{ t.events.empty_cta }}</a>
+    <a class="btn ghost" href="/{{ lang }}/contact/">{{ t.events.empty_cta | rich("events.empty_cta") }}</a>
   </div>
   {% endif %}
 
@@ -191,7 +191,7 @@ pageTitle: events
      anyone to. -#}
   {% if past.length %}
   <div class="record">
-    <p class="cue bare record-cue">{{ t.events.past_cue }}</p>
+    <p class="cue bare record-cue">{{ t.events.past_cue | rich("events.past_cue") }}</p>
     {% for g in past %}
     {%- set title = g.title[lang] or g.title.en or g.title[g.langs[0]] %}
     {%- set summary = g.summary[lang] or g.summary.en %}

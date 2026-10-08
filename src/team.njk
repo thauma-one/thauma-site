@@ -9,8 +9,8 @@ pageTitle: team
 ---
 {% set t = i18n[lang] %}
 <header class="page"><div class="wrap">
-  <div class="cue foam rise">{{ t.team.cue }}</div>
-  <h1 class="page-h1 rise-2">{{ t.team.h2_thin }} <b>{{ t.team.h2_bold }}</b></h1>
+  <div class="cue foam rise">{{ t.team.cue | rich("team.cue") }}</div>
+  <h1 class="page-h1 rise-2">{{ t.team.h2_thin | rich("team.h2_thin") }} <b>{{ t.team.h2_bold | rich("team.h2_bold") }}</b></h1>
 </div></header>
 
 <section><div class="wrap">
@@ -23,7 +23,7 @@ pageTitle: team
       </div>
       <h3>{{ person.name }}</h3>
       <div class="person-role">{{ person.role[lang] }}</div>
-      <div class="person-base">{{ t.team.base_label }}: {{ person.base }}</div>
+      <div class="person-base">{{ t.team.base_label | rich("team.base_label") }}: {{ person.base }}</div>
     </a>
     {% endfor %}
   </div>

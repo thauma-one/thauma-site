@@ -136,26 +136,25 @@ check("wrapping and unwrapping is lossless for every real string", () => {
     } else leaves.push([p, String(o)]);
   })(en, "");
 
-  const lossy = leaves.filter(([, v]) => unwrapCell(wrapCell(v)) !== v).map(([k]) => k);
+  /* a line's own break travels as <br> (translation-file.js brOut) */
+  const lossy = leaves.filter(([, v]) => unwrapCell(wrapCell(v.replace(/\n/g, "<br>"))) !== v).map(([k]) => k);
   eq(lossy, [], "these strings do not survive the wrap");
 });
 
-check("NO SOURCE STRING CONTAINS A NEWLINE — the wrap depends on it", () => {
-  /* The whole scheme rests on this. Unwrapping collapses every newline back to
-     a space, so a string that legitimately contained one would come back
-     changed. It is true of all three languages today; if it ever stops being
-     true, wrapping has to go rather than quietly eating a line break in
-     somebody's copy. */
+check("a source string's own line break goes out as <br> and comes back a line break, in every language", () => {
+  /* Headings carry their own breaks since 2026-10-07 (Website › Pages: "the
+     times when a new line is started defined in the text box itself"). The
+     file's soft wrap still collapses to spaces; the real break rides as <br>. */
   for (const code of ["en", "hr", "sr"]) {
     const doc = JSON.parse(readFileSync(
       fileURLToPath(new URL(`../src/_data/i18n/${code}.json`, import.meta.url)), "utf8"));
-    const offenders = [];
+    const lost = [];
     (function walk(o, p) {
       if (o && typeof o === "object") {
         for (const k of Object.keys(o)) walk(o[k], p ? `${p}.${k}` : k);
-      } else if (typeof o === "string" && /[\r\n]/.test(o)) offenders.push(p);
+      } else if (typeof o === "string" && /\n/.test(o) && unwrapCell(wrapCell(o.replace(/\n/g, "<br>"))) !== o) lost.push(p);
     })(doc, "");
-    eq(offenders, [], `${code}.json has strings with newlines — the CSV wrap would eat them`);
+    eq(lost, [], `${code}.json: line breaks the file would lose`);
   }
 });
 

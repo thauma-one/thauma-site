@@ -299,10 +299,11 @@ export default {
       const plan = { site: [], emails: [] };
       for (const it of items) {
         const line = byId.get(String(it && it.id));
-        const raw = it && typeof it.value === "string" ? it.value.trim() : null;
+        /* not .trim(): cleanValue keeps a heading's closing line break */
+        const raw = it && typeof it.value === "string" ? it.value : null;
         /* Cleared: only on the page, and never English — every other language
            falls back to it, so an empty English line is an empty page. */
-        const cleared = editing && !isEn && raw === "";
+        const cleared = editing && !isEn && raw !== null && raw.trim() === "";
         const value = cleared ? "" : cleanValue(raw);
         if (!line || value === null) { broken.push(String(it && it.id)); continue; }
         /* English is checked against the English it replaces: the code fills

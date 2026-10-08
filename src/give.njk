@@ -9,24 +9,24 @@ pageTitle: give
 ---
 {% set t = i18n[lang] %}
 <header class="page"><div class="wrap">
-  <div class="cue foam rise">{{ t.give.cue }}</div>
-  <h1 class="page-h1 rise-2">{{ t.give.h2_thin }} <b>{{ t.give.h2_bold }}</b></h1>
-  <p class="lede rise-3">{{ t.give.lede }}</p>
+  <div class="cue foam rise">{{ t.give.cue | rich("give.cue") }}</div>
+  <h1 class="page-h1 rise-2">{{ t.give.h2_thin | rich("give.h2_thin") }} <b>{{ t.give.h2_bold | rich("give.h2_bold") }}</b></h1>
+  <p class="lede rise-3">{{ t.give.lede | rich("give.lede") }}</p>
 </div></header>
 
 <section><div class="wrap">
   <div class="give-grid">
-    <div class="give-card"><h3>{{ t.give.monthly_title }}</h3><p>{{ t.give.monthly_text }}</p></div>
-    <div class="give-card"><h3>{{ t.give.project_title }}</h3><p>{{ t.give.project_text }}</p></div>
+    <div class="give-card"><h3>{{ t.give.monthly_title | rich("give.monthly_title") }}</h3><p>{{ t.give.monthly_text | rich("give.monthly_text") }}</p></div>
+    <div class="give-card"><h3>{{ t.give.project_title | rich("give.project_title") }}</h3><p>{{ t.give.project_text | rich("give.project_text") }}</p></div>
   </div>
 
   {% if site.images.give_impact.src %}
   <div class="frame">
-    <img src="{{ site.images.give_impact.src }}" alt="{{ t.give.impact_img_tag }}" loading="lazy" decoding="async"
+    <img src="{{ site.images.give_impact.src }}" alt="{{ t.give.impact_img_tag | plain }}" loading="lazy" decoding="async"
       style="{{ site.images.give_impact | frameStyle }}">
   </div>
   {% elif not env.isProduction %}
-  <div class="frame-placeholder"><span>{{ t.give.impact_placeholder }}</span></div>
+  <div class="frame-placeholder"><span>{{ t.give.impact_placeholder | rich("give.impact_placeholder") }}</span></div>
   {% endif %}
 
   {# ---- DONATION EMBED SLOT ------------------------------------------
@@ -40,8 +40,8 @@ pageTitle: give
       allowpaymentrequest></iframe>
   </div>
   {% else %}
-  <div class="donate-slot"><p>{{ t.give.form_placeholder }}</p></div>
+  <div class="donate-slot"><p>{{ t.give.form_placeholder | rich("give.form_placeholder") }}</p></div>
   {% endif %}
 
-  <p class="legal-note">{{ t.give.legal_note }}</p>
+  <p class="legal-note">{{ t.give.legal_note | rich("give.legal_note") }}</p>
 </div></section>

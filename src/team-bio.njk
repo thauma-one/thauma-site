@@ -9,8 +9,8 @@ pagination:
 <header class="page"><div class="wrap">
   <div class="cue foam rise">{{ member.role[lang] }}</div>
   <h1 class="page-h1 rise-2">{{ member.name }}</h1>
-  <p class="lede rise-3">{{ t.team.base_label }}: {{ member.base }}
-  {% if member.email %} · <a href="mailto:{{ member.email }}" style="color:var(--blue)">{{ t.team.contact }}</a>{% endif %}</p>
+  <p class="lede rise-3">{{ t.team.base_label | rich("team.base_label") }}: {{ member.base }}
+  {% if member.email %} · <a href="mailto:{{ member.email }}" style="color:var(--blue)">{{ t.team.contact | rich("team.contact") }}</a>{% endif %}</p>
 </div></header>
 
 <section><div class="wrap bio-layout">
@@ -31,8 +31,8 @@ pagination:
     {% endif %}
   </div>
   <div>
-    <div class="cue">{{ t.team.bio_cue }}</div>
+    <div class="cue">{{ t.team.bio_cue | rich("team.bio_cue") }}</div>
     <div class="body-text bio-text">{{ member.bio[lang] | md | safe }}</div>
-    <p style="margin-top:40px"><a class="btn ghost" href="/{{ lang }}/team/">{{ t.team.back }}</a></p>
+    <p style="margin-top:40px"><a class="btn ghost" href="/{{ lang }}/team/">{{ t.team.back | rich("team.back") }}</a></p>
   </div>
 </div></section>

@@ -10,7 +10,7 @@
  * saved, and a line whose English changed shows up as outdated.
  */
 import { readFileSync } from "node:fs";
-import {
+import { unwrapCell, wrapCell,
   linesFor, withStatus, hashText, buildFile, readFile, parseCsv, csvCell, noteFor,
   checkLine, setLine, leafMap,
 } from "../src/lib/translation-file.js";
@@ -151,12 +151,14 @@ await check("each half of a split heading carries the whole heading", async () =
 });
 
 await check("the real site and email words would survive the file", async () => {
-  /* The unwrap on the way back turns line breaks into spaces. That is only
-     safe while no real line contains one. */
+  /* The unwrap on the way back turns the file's soft wraps into spaces; a
+     line's own breaks travel as <br> and come back as breaks. */
   const site = leafMap(JSON.parse(readFileSync(new URL("../../src/_data/i18n/en.json", import.meta.url))));
   const emails = leafMap(JSON.parse(readFileSync(new URL("../../src/_data/emailsAndForms.json", import.meta.url))));
   const withBreaks = Object.entries({ ...site, ...emails }).filter(([, v]) => typeof v === "string" && /\n/.test(v));
-  eq(withBreaks.map(([k]) => k), [], "lines with their own line breaks");
+  for (const [k, v] of withBreaks) {
+    eq(unwrapCell(wrapCell(v.replace(/\n/g, "<br>"))), v, "a line break survives the file: " + k);
+  }
 });
 
 /* ----------------------------------------------------------------- checks */

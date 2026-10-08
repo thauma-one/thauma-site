@@ -9,37 +9,37 @@ pageTitle: mission
 ---
 {% set t = i18n[lang] %}
 <header class="page"><div class="wrap">
-  <div class="cue rise">{{ t.mission.cue }}</div>
-  <h1 class="page-h1 rise-2">{{ t.mission.h2_thin }} <b>{{ t.mission.h2_bold }}</b></h1>
-  <p class="lede rise-3">{{ t.mission.lede }}</p>
+  <div class="cue rise">{{ t.mission.cue | rich("mission.cue") }}</div>
+  <h1 class="page-h1 rise-2">{{ t.mission.h2_thin | rich("mission.h2_thin") }} <b>{{ t.mission.h2_bold | rich("mission.h2_bold") }}</b></h1>
+  <p class="lede rise-3">{{ t.mission.lede | rich("mission.lede") }}</p>
 </div></header>
 
 <section><div class="wrap">
   <div class="work">
-    <div class="label">{{ t.mission.work1_label }}</div>
-    <div><h3>{{ t.mission.work1_title }}</h3><p>{{ t.mission.work1_text }}</p></div>
+    <div class="label">{{ t.mission.work1_label | rich("mission.work1_label") }}</div>
+    <div><h3>{{ t.mission.work1_title | rich("mission.work1_title") }}</h3><p>{{ t.mission.work1_text | rich("mission.work1_text") }}</p></div>
   </div>
   <div class="work">
-    <div class="label">{{ t.mission.work2_label }}</div>
-    <div><h3>{{ t.mission.work2_title }}</h3><p>{{ t.mission.work2_text }}</p></div>
+    <div class="label">{{ t.mission.work2_label | rich("mission.work2_label") }}</div>
+    <div><h3>{{ t.mission.work2_title | rich("mission.work2_title") }}</h3><p>{{ t.mission.work2_text | rich("mission.work2_text") }}</p></div>
   </div>
   <div class="work">
-    <div class="label">{{ t.mission.work3_label }}</div>
-    <div><h3>{{ t.mission.work3_title }}</h3><p>{{ t.mission.work3_text }}</p></div>
+    <div class="label">{{ t.mission.work3_label | rich("mission.work3_label") }}</div>
+    <div><h3>{{ t.mission.work3_title | rich("mission.work3_title") }}</h3><p>{{ t.mission.work3_text | rich("mission.work3_text") }}</p></div>
   </div>
 </div></section>
 
 <section class="alt"><div class="wrap">
-  <div class="cue foam">{{ t.mission.horizon_cue }}</div>
-  <h2>{{ t.mission.horizon_h2_thin }} <b>{{ t.mission.horizon_h2_bold }}</b></h2>
-  <p class="body-text">{{ t.mission.horizon_text }}</p>
-  <p class="body-text">{{ t.mission.success_text }}</p>
+  <div class="cue foam">{{ t.mission.horizon_cue | rich("mission.horizon_cue") }}</div>
+  <h2>{{ t.mission.horizon_h2_thin | rich("mission.horizon_h2_thin") }} <b>{{ t.mission.horizon_h2_bold | rich("mission.horizon_h2_bold") }}</b></h2>
+  <p class="body-text">{{ t.mission.horizon_text | rich("mission.horizon_text") }}</p>
+  <p class="body-text">{{ t.mission.success_text | rich("mission.success_text") }}</p>
   {% if site.images.mission_horizon.src %}
   <div class="frame">
-    <img src="{{ site.images.mission_horizon.src }}" alt="{{ t.mission.horizon_img_tag }}" loading="lazy" decoding="async"
+    <img src="{{ site.images.mission_horizon.src }}" alt="{{ t.mission.horizon_img_tag | plain }}" loading="lazy" decoding="async"
       style="{{ site.images.mission_horizon | frameStyle }}">
   </div>
   {% elif not env.isProduction %}
-  <div class="frame-placeholder"><span>{{ t.mission.horizon_placeholder }}</span></div>
+  <div class="frame-placeholder"><span>{{ t.mission.horizon_placeholder | rich("mission.horizon_placeholder") }}</span></div>
   {% endif %}
 </div></section>

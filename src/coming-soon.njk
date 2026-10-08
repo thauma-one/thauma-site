@@ -13,7 +13,7 @@ isComingSoonPage: true
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Thauma</title>
-<meta name="description" content="{{ t.coming.text }}">
+<meta name="description" content="{{ t.coming.text | plain }}">
 <meta name="robots" content="noindex">
 <link rel="preload" as="font" type="font/woff2" href="/fonts/Sora-latin-v2.woff2" crossorigin>
 <link rel="preload" as="font" type="font/woff2" href="/fonts/Inter-latin-v2.woff2" crossorigin>
@@ -74,10 +74,10 @@ isComingSoonPage: true
 <body>
 <main class="landing">
   <div class="wrap">
-    <div class="cue bare" style="display:inline-block">{{ t.home.cue }}</div>
+    <div class="cue bare" style="display:inline-block">{{ t.home.cue | rich("home.cue") }}</div>
     <div class="wordmark">THAUMA<span class="star"><i class="v"></i><i class="h"></i><i class="d1"></i><i class="d2"></i><i class="c"></i></span></div>
-    <p class="hero-line">{{ t.coming.line_thin }} <b>{{ t.coming.line_bold }}</b></p>
-    <p class="hero-sub" style="margin-left:auto;margin-right:auto">{{ t.coming.text }}</p>
+    <p class="hero-line">{{ t.coming.line_thin | rich("coming.line_thin") }} <b>{{ t.coming.line_bold | rich("coming.line_bold") }}</b></p>
+    <p class="hero-sub" style="margin-left:auto;margin-right:auto">{{ t.coming.text | rich("coming.text") }}</p>
   </div>
   <div class="workline"><i></i></div>
   {#- The same picker the rest of the site uses. "up" because this sits at

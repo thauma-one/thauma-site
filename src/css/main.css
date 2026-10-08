@@ -332,14 +332,24 @@ nav{position:fixed;inset:0 0 auto;z-index:20;backdrop-filter:blur(12px);
    longer body copy only touches the last few lines to prevent orphans.
    Both are progressive — ignored where unsupported, no fallback needed. */
 h1,h2{font-family:'Sora',sans-serif;font-weight:100;letter-spacing:.01em;text-wrap:balance}
-h2{font-size:clamp(30px,4.4vw,48px);line-height:1.15;max-width:660px}
+/* NO WIDTH OF THEIR OWN (2026-10-07, Chase: "the times when a new line is
+   started defined in the text box itself"): a heading's lines break where
+   they were typed in Website › Pages (lib/rich.js turns each into <br>). It
+   was a 660px cap that broke them wherever the width ran out, which the box
+   never showed. On a screen too narrow for a typed line, the line still
+   wraps, balanced. */
+h2{font-size:clamp(30px,4.4vw,48px);line-height:1.15}
 /* EVERY PAGE NEEDS EXACTLY ONE h1 and no page had one — the whole site
    opened at heading level two. On most pages the first section heading IS
    the page's title, so it became the h1 and wears the same look; the class
    carries the size rather than the element, because the home page's hero
    line and About's dictionary word are also h1 now and set their own. */
-h1.page-h1{font-size:clamp(30px,4.4vw,48px);line-height:1.15;max-width:660px}
+h1.page-h1{font-size:clamp(30px,4.4vw,48px);line-height:1.15}
 h1 b,h2 b{font-weight:600}
+/* Formatted words (lib/rich.js, Website › Pages): the named sizes, relative
+   to whatever the words are; a picked size or color arrives inline. */
+.rt-sm{font-size:.82em}.rt-lg{font-size:1.25em}.rt-xl{font-size:1.6em}
+
 .lede{margin-top:22px;max-width:560px;color:var(--dim);font-size:15.5px;font-weight:200;line-height:1.85;text-wrap:pretty}
 .body-text{margin-top:22px;max-width:620px;color:var(--dim);font-size:15.5px;font-weight:200;line-height:1.9;text-wrap:pretty}
 

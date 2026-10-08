@@ -9,8 +9,8 @@ pageTitle: values
 ---
 {% set t = i18n[lang] %}
 <header class="page"><div class="wrap">
-  <div class="cue foam rise">{{ t.values.cue }}</div>
-  <h1 class="page-h1 rise-2">{{ t.values.h2_thin }} <b>{{ t.values.h2_bold }}</b></h1>
+  <div class="cue foam rise">{{ t.values.cue | rich("values.cue") }}</div>
+  <h1 class="page-h1 rise-2">{{ t.values.h2_thin | rich("values.h2_thin") }} <b>{{ t.values.h2_bold | rich("values.h2_bold") }}</b></h1>
 </div></header>
 
 <section><div class="wrap">

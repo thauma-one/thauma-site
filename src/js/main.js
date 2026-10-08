@@ -614,6 +614,9 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'Intersect
       var lh = parseFloat(cs.lineHeight); if (isNaN(lh)) lh = fs * 1.25;
       var labelLs = parseFloat(cs.letterSpacing); if (isNaN(labelLs)) labelLs = 0;
       var label = el.textContent;
+      /* what was there, markup and all — the words' formatting and the
+         preview's data-k marker (lib/rich.js) — put back after the roll */
+      var was = el.innerHTML;
       var num = el.dataset.crNum;
       el.textContent = '';
       el.style.letterSpacing = '0';
@@ -637,7 +640,7 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'Intersect
       });
       var totalMs = elDelay + (inners.length - 1) * charStagger + 1300 + 80;
       setTimeout(function () {
-        el.textContent = label;       // back to plain text (counter reappears)
+        el.innerHTML = was;           // back as it was (counter reappears)
         el.style.letterSpacing = '';
         el.classList.remove('cr-nonum');
       }, totalMs);

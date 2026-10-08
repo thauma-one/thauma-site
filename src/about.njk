@@ -9,33 +9,33 @@ pageTitle: about
 ---
 {% set t = i18n[lang] %}
 <header class="dict"><div class="wrap">
-  <h1 class="dict-word rise">{{ t.about.dict_word }}</h1>
-  <div class="dict-ipa rise-2">{{ t.about.dict_ipa }}</div>
+  <h1 class="dict-word rise">{{ t.about.dict_word | rich("about.dict_word") }}</h1>
+  <div class="dict-ipa rise-2">{{ t.about.dict_ipa | rich("about.dict_ipa") }}</div>
   <div class="dict-defs rise-3">
-    <p>{{ t.about.dict_def1 }}</p>
-    <p>{{ t.about.dict_def2 }}</p>
-    <p>{{ t.about.dict_def3 }}</p>
+    <p>{{ t.about.dict_def1 | rich("about.dict_def1") }}</p>
+    <p>{{ t.about.dict_def2 | rich("about.dict_def2") }}</p>
+    <p>{{ t.about.dict_def3 | rich("about.dict_def3") }}</p>
   </div>
 </div></header>
 
 <section><div class="wrap">
-  <div class="cue">{{ t.about.who_cue }}</div>
-  <h2>{{ t.about.who_h2_thin }} <b>{{ t.about.who_h2_bold }}</b></h2>
-  <p class="body-text">{{ t.about.body1 }}</p>
-  <p class="body-text">{{ t.about.body2 }}</p>
+  <div class="cue">{{ t.about.who_cue | rich("about.who_cue") }}</div>
+  <h2>{{ t.about.who_h2_thin | rich("about.who_h2_thin") }} <b>{{ t.about.who_h2_bold | rich("about.who_h2_bold") }}</b></h2>
+  <p class="body-text">{{ t.about.body1 | rich("about.body1") }}</p>
+  <p class="body-text">{{ t.about.body2 | rich("about.body2") }}</p>
 </div></section>
 
 <section class="alt"><div class="wrap">
-  <div class="cue foam">{{ t.about.posture_cue }}</div>
-  <h2>{{ t.about.posture_h2_thin }} <b>{{ t.about.posture_h2_bold }}</b></h2>
-  <p class="body-text">{{ t.about.body3 }}</p>
+  <div class="cue foam">{{ t.about.posture_cue | rich("about.posture_cue") }}</div>
+  <h2>{{ t.about.posture_h2_thin | rich("about.posture_h2_thin") }} <b>{{ t.about.posture_h2_bold | rich("about.posture_h2_bold") }}</b></h2>
+  <p class="body-text">{{ t.about.body3 | rich("about.body3") }}</p>
   {% if site.images.about_posture.src %}
   <div class="frame">
-    <img src="{{ site.images.about_posture.src }}" alt="{{ t.about.posture_img_tag }}" loading="lazy" decoding="async"
+    <img src="{{ site.images.about_posture.src }}" alt="{{ t.about.posture_img_tag | plain }}" loading="lazy" decoding="async"
       style="{{ site.images.about_posture | frameStyle }}">
   </div>
   {% elif not env.isProduction %}
-  <div class="frame-placeholder"><span>{{ t.about.posture_placeholder }}</span></div>
+  <div class="frame-placeholder"><span>{{ t.about.posture_placeholder | rich("about.posture_placeholder") }}</span></div>
   {% endif %}
-  <p class="legal-note">{{ t.about.status_note }}</p>
+  <p class="legal-note">{{ t.about.status_note | rich("about.status_note") }}</p>
 </div></section>
