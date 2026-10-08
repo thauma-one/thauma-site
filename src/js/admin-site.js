@@ -262,7 +262,7 @@
       '<button type="button" class="switch small" role="switch" data-path="' + esc(path) + '"' +
       ' aria-checked="' + (v ? 'true' : 'false') + '"' + (v ? ' data-on="1"' : '') + '>' +
         '<span class="switch-track"><span class="switch-state">' +
-          (v ? 'On' : 'Off') + '</span><span class="switch-knob"></span></span>' +
+          tr(v ? 'switch.on' : 'switch.off') + '</span><span class="switch-knob"></span></span>' +
       '</button></span>';
   }
 
@@ -357,7 +357,7 @@
         '<button type="button" class="switch" role="switch" data-path="' + esc(p) + '"' +
         ' aria-checked="' + (v ? 'true' : 'false') + '"' + (v ? ' data-on="1"' : '') + '>' +
           '<span class="switch-track"><span class="switch-state">' +
-            (v ? 'On' : 'Off') + '</span><span class="switch-knob"></span></span>' +
+            tr(v ? 'switch.on' : 'switch.off') + '</span><span class="switch-knob"></span></span>' +
         '</button>';
     } else if (typeof v === 'number') {
       control = '<input type="number" data-path="' + esc(p) + '"' +
@@ -468,7 +468,7 @@
     state.draft[p] = next;
     sw.setAttribute('aria-checked', next ? 'true' : 'false');
     if (next) sw.setAttribute('data-on', '1'); else sw.removeAttribute('data-on');
-    sw.querySelector('.switch-state').textContent = next ? 'On' : 'Off';
+    sw.querySelector('.switch-state').textContent = tr(next ? 'switch.on' : 'switch.off');
     markField(p);
     renderSaveBar();
   });

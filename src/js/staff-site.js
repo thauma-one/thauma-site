@@ -379,7 +379,7 @@
     var s = state.body.site;
     var on = $('wsOn');
     on.setAttribute('aria-checked', s.enabled ? 'true' : 'false');
-    on.querySelector('.switch-state').textContent = s.enabled ? 'On' : 'Off';
+    on.querySelector('.switch-state').textContent = tr(s.enabled ? 'switch.on' : 'switch.off');
     on.disabled = !state.body.can.owner;
     on.hidden = !state.body.can.owner;
     $('wsState').textContent = s.enabled ? tr('ws.isLive') : s.archived ? tr('ws.isArchived') : tr('ws.isOff');
@@ -732,7 +732,7 @@
   }
   function sw(attr, on, label) {
     return '<button type="button" class="switch small" role="switch" ' + attr + ' aria-checked="' + (on ? 'true' : 'false') + '"' +
-      (label ? ' aria-label="' + esc(label) + '"' : '') + '><span class="switch-track"><span class="switch-state">' + esc(tr(on ? 'ws.onoff.on' : 'ws.onoff.off')) +
+      (label ? ' aria-label="' + esc(label) + '"' : '') + '><span class="switch-track"><span class="switch-state">' + esc(tr(on ? 'switch.on' : 'switch.off')) +
       '</span><span class="switch-knob"></span></span>' + (label ? '<span class="switch-label">' + esc(label) + '</span>' : '') + '</button>';
   }
   function row(label, control) {
@@ -912,7 +912,7 @@
           return '<option value="' + esc(x.id) + '"' + (x.id === p.id ? ' selected' : '') + '>' +
             esc(pageLabel(x, state.langA)) + (x.on ? '' : ' · ' + esc(tr('ws.off'))) + '</option>';
         }).join('') + '</select></label>' +
-      (p.id === 'home' ? '<span class="ws-always">' + esc(tr('ws.always')) + '</span>' : sw('data-page-on="' + pi + '"', p.on, tr('ws.shown'))) +
+      (p.id === 'home' ? '<span class="ws-always">' + esc(tr('ws.always')) + '</span>' : sw('data-page-on="' + pi + '"', p.on, tr(p.on ? 'ws.shown' : 'ws.hidden'))) +
       '</div>' +
       '<label class="ws-pagename"><span>' + esc(tr('ws.nameInMenu')) + '</span>' + refPage(p) +
         '<input type="text" maxlength="40" data-page-label="' + pi + '" value="' + esc((p.label || {})[state.langA] || '') + '" placeholder="' + esc(builtInName(p.id, state.langA)) + '" lang="' + esc(state.langA) + '"></label>';
@@ -980,7 +980,7 @@
             '<span class="ws-prow-sub"><span>' + esc(n === 1 ? tr('ws.nSections1') : n ? fill('ws.nSections', { n: n }) : tr('ws.noSectionsShort')) + '</span>' +
             missingNote(allSecs(x).reduce(function (o, sec) { return sectionMissing(sec, o); }, {})) + '</span>' +
             '<span class="ws-chev ws-chev-r" aria-hidden="true"></span></button>' +
-          (x.id === 'home' ? '<span class="ws-always">' + esc(tr('ws.always')) + '</span>' : sw('data-page-on="' + i + '"', x.on, tr('ws.shown'))) +
+          (x.id === 'home' ? '<span class="ws-always">' + esc(tr('ws.always')) + '</span>' : sw('data-page-on="' + i + '"', x.on, tr(x.on ? 'ws.shown' : 'ws.hidden'))) +
           grip() + '</li>';
       }).join('') + '</ol>';
   }

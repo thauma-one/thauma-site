@@ -189,9 +189,10 @@
           '<span class="sub">' + esc(shortDate(c.last_personal_contact)) + '</span></td>' +
         '<td data-label="' + esc(tr('stew.lastAny')) + '"><span class="sub" style="color:var(--text)">' +
           esc(shortDate(c.last_contact_any)) + '</span></td>' +
-        /* "1 of 2", not "1 / 2": personal contacts out of every contact. */
+        /* "1 personal of 2" under "Contacts": a bare "1 of 2" under
+           "Personal" left people guessing what the 2 counted. */
         '<td class="right tnum" data-label="' + esc(tr('stew.personalCol')) + '">' +
-          esc(fill('stew.personalOf', { n: c.personal_count, total: c.interaction_count })) + '</td>' +
+          esc(c.interaction_count ? fill('stew.personalOf', { n: c.personal_count, total: c.interaction_count }) : '—') + '</td>' +
       '</tr>';
     }).join('') ||
       /* An empty table reads as broken rather than as empty. People are added
@@ -648,7 +649,7 @@
       return '<div class="share-row">' +
         '<button type="button" class="switch small" role="switch" data-share-group="' + audience + '"' +
           ' aria-checked="' + (g ? 'true' : 'false') + '">' +
-          '<span class="switch-track"><span class="switch-state">' + (g ? 'On' : 'Off') +
+          '<span class="switch-track"><span class="switch-state">' + tr(g ? 'switch.on' : 'switch.off') +
           '</span><span class="switch-knob"></span></span>' +
           '<span class="switch-label">' + esc(label) + '</span></button>' +
         (g ? shareSelect('data-share-group-can="' + audience + '"', g.can_edit) : '') +

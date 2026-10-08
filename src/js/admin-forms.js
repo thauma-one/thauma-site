@@ -41,7 +41,7 @@
   function setSwitch(btn, on) {
     btn.setAttribute('aria-checked', on ? 'true' : 'false');
     var st = btn.querySelector('.switch-state');
-    if (st) st.textContent = on ? 'On' : 'Off';
+    if (st) st.textContent = tr(on ? 'switch.on' : 'switch.off');
   }
 
   var state = { mail: null, saved: null, draft: null, form: 'contact', busy: false,
@@ -164,7 +164,7 @@
       var on = !!d.lists[l.id];
       return '<button type="button" class="switch small" role="switch" aria-checked="' + on + '"' +
         ' data-list="' + esc(l.id) + '">' +
-        '<span class="switch-track"><span class="switch-state">' + (on ? 'On' : 'Off') +
+        '<span class="switch-track"><span class="switch-state">' + tr(on ? 'switch.on' : 'switch.off') +
         '</span><span class="switch-knob"></span></span>' +
         '<span class="switch-label">' + esc(l.name) + '</span></button>';
     }).join('') : '<p class="empty">' + esc(tr('ml.empty')) + '</p>';

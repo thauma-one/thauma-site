@@ -12,8 +12,11 @@
     <h3 data-i18n="ae.games">Games</h3>
     <div class="v-head">
       <div class="v-label"></div>
-      <span class="v-cell is-dev"><b data-i18n="vis.devCol">Preview site</b></span>
-      <span class="v-cell is-live"><b data-i18n="vis.liveCol">Everyone</b></span>
+      {#- The same columns, in the same order, as Settings: visitors first. -#}
+      <span class="v-cell is-live"><b data-i18n="vis.liveCol">Visitors</b>
+        <a class="v-open" href="https://thauma.one/" target="_blank" rel="noopener">thauma.one ↗</a></span>
+      <span class="v-cell is-dev"><b data-i18n="vis.devCol">Only your team</b>
+        <a class="v-open" href="https://dev.thauma.one/" target="_blank" rel="noopener">dev.thauma.one ↗</a></span>
     </div>
     <div id="aeGames"></div>
   </section>

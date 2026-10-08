@@ -94,14 +94,19 @@ main{max-width:1240px;margin:0 auto;padding:32px var(--gutter) 80px;
 .cue::before{content:"";width:26px;height:1px;background:currentColor;flex:none}
 
 /* ---------- stat tiles ---------- */
-.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
-  gap:1px;background:var(--line);border:1px solid var(--line)}
-.tile{background:var(--panel);padding:20px 22px;display:flex;flex-direction:column;gap:6px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:1px;margin:1px}
+.tile{background:var(--panel);padding:20px 22px;display:flex;flex-direction:column;gap:6px;
+  outline:1px solid var(--line)}
 .tile .k{font-size:10px;letter-spacing:var(--ls-label);text-transform:uppercase;
   font-weight:var(--w-bold);color:var(--dim)}
 .tile .v{font-family:var(--font-display);font-weight:var(--w-hair);font-size:38px;
   line-height:1;letter-spacing:.01em}
 .tile .s{font-size:var(--fs-tiny);color:var(--dim)}
+/* An Overview tile is a link: a number you can see but not click is an
+   invitation to go hunting for where it lives. */
+a.tile{color:inherit;text-decoration:none;transition:background var(--dur-2) var(--ease-main)}
+a.tile:hover{background:var(--bg2)}
+a.tile:focus-visible{outline:2px solid var(--voice-tech);outline-offset:-2px}
 .tile.alert{background:linear-gradient(180deg,var(--crit-dim),transparent 70%),var(--panel);
   box-shadow:inset 2px 0 0 var(--crit)}
 .tile.alert .v{color:var(--crit)}
@@ -274,9 +279,11 @@ tbody tr[aria-expanded="true"]{background:rgba(255,255,255,.045)}
 .rolegate b{color:var(--warn)}
 
 /* ---------- directory / resource cards ---------- */
-.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1px;
-  background:var(--line);border:1px solid var(--line)}
-.card{background:var(--panel);padding:20px 22px;position:relative}
+/* Hairlines between cards are each card's own outline, meeting in the 1px gap.
+   (They were the grid's background showing through the gap, which also
+   filled the empty cells of a short last row with a gray block.) */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1px;margin:1px}
+.card{background:var(--panel);padding:20px 22px;position:relative;outline:1px solid var(--line)}
 .card h4{font-family:var(--font-display);font-weight:var(--w-bold);font-size:15px;
   letter-spacing:.02em;padding-right:76px}
 .card .role{font-size:var(--fs-tiny);color:var(--voice-human);letter-spacing:.08em;
@@ -328,21 +335,6 @@ tbody tr[aria-expanded="true"]{background:rgba(255,255,255,.045)}
 .top nav a[aria-current]{color:var(--text);border-bottom-color:var(--voice-tech)}
 .page-head{margin-bottom:4px}
 .page-head .sec-h{margin-bottom:0}
-
-/* Dashboard quick-links. Each is a number worth acting on, and the whole
-   card is the target — a number you can see but not click is an invitation
-   to go hunting for where it lives. */
-.quick{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1px;
-  background:var(--line);border:1px solid var(--line);margin-top:38px}
-.quick-card{background:var(--panel);padding:22px 24px;display:flex;flex-direction:column;
-  gap:5px;text-decoration:none;transition:background var(--dur-3) var(--ease-main)}
-.quick-card:hover{background:var(--bg2)}
-.quick-card:focus-visible{outline:2px solid var(--voice-tech);outline-offset:-2px}
-.qk{font-size:10px;letter-spacing:var(--ls-label);text-transform:uppercase;
-  font-weight:var(--w-bold);color:var(--voice-tech)}
-.qv{font-family:var(--font-display);font-weight:var(--w-hair);font-size:34px;
-  line-height:1;color:var(--text)}
-.qs{font-size:var(--fs-tiny);color:var(--dim)}
 
 .empty code{font-family:var(--font-mono);font-size:11.5px;color:var(--text)}
 
@@ -2791,7 +2783,9 @@ html.has-ai .ai-one{display:inline-flex;align-items:center;justify-content:cente
 @media (max-width:760px){.ws-card{grid-template-columns:1fr}}
 .ws-looks{margin-bottom:12px}
 .ws-head + .ws-rows{margin-top:0}
-.ws-rows + .ws-head{margin-top:22px}
+/* Every heading after the first starts a new group, whatever came before it
+   (an empty "No links yet", a text box) — not only after a block of rows. */
+* + .ws-head{margin-top:26px}
 
 /* ---- Website › Pages, reworked (Chase, 2026-09-29; canvas "Round two") --
    Page tabs; the page as a stack of pictures with one line each; one
@@ -3029,7 +3023,7 @@ html.pe-open{overflow:hidden}
 
 /* ---- Advanced: search and sharing previews (2026-10-04) ---- */
 .ws-adv-previews{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;margin-bottom:18px}
-.ws-serp{display:flex;flex-direction:column;gap:4px;padding:16px 18px;background:#fff;border-radius:10px;color:#202124;font-family:Arial,sans-serif}
+.ws-serp{align-self:start;display:flex;flex-direction:column;gap:4px;padding:16px 18px;background:#fff;border-radius:10px;color:#202124;font-family:Arial,sans-serif}
 .ws-serp .ws-lbl2{color:#70757a}
 .ws-serp-url{font-size:13px;color:#202124}
 .ws-serp-title{font-size:19px;font-weight:400;color:#1a0dab;line-height:1.3}

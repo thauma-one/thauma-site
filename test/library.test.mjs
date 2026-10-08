@@ -236,8 +236,10 @@ await check("a gathering's row shows the whole span, not just the first day", as
     slug: "weekend", title: { en: "Weekend" }, summary: {}, type: "gathering",
     status: "upcoming", date: "2027-03-14", end_date: "2027-03-15", sessions: [] }] });
   const tags = [...d.querySelectorAll(".lib-tags .role-tag")].map((t) => t.textContent);
-  assert(tags.some((t) => t.includes("2027-03-14") && t.includes("2027-03-15")),
+  assert(tags.some((t) => /Mar 14/.test(t) && /15/.test(t) && /2027/.test(t)),
     `the row shows ${tags.join(" | ")} — a weekend reads as a single day`);
+  assert(!tags.some((t) => /\d{4}-\d{2}-\d{2}/.test(t)), `a stored date reached the row: ${tags.join(" | ")}`);
+  assert(!tags.some((t) => /^upcoming$/i.test(t)), "the row repeats its group's heading");
 });
 
 /* ----------------------------------------------------- multi-day and cadence */

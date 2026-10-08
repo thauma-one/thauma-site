@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Stewardship's list — search, "1 of 2", cards on a phone (board 11)
+ * Stewardship's list — search, "1 personal of 2", cards on a phone (board 11)
  *   node test/stewardship-list.test.mjs
  *
  * Runs the real console script against the built page with a snapshot
@@ -56,10 +56,10 @@ async function boot() {
 }
 const names = (d) => [...d.querySelectorAll("#rows tr[data-id] .nm")].map((n) => n.textContent);
 
-await check("personal contacts read as \"1 of 2\", and nobody yet as \"Not yet\"", async () => {
+await check("contacts read as \"1 personal of 2\", nobody yet as a dash, and \"Not yet\"", async () => {
   const { d } = await boot();
   const cells = [...d.querySelectorAll("#rows tr[data-id] td:last-child")].map((t) => t.textContent);
-  eq(cells, ["0 of 0", "1 of 2", "2 of 2"], "the Personal column");
+  eq(cells, ["—", "1 personal of 2", "2 personal of 2"], "the Contacts column");
   assert(/Not yet/.test(d.querySelector('#rows tr[data-id="c1"]').textContent), "Ivana has not been contacted yet");
 });
 
@@ -83,7 +83,7 @@ await check("search narrows the list by name, city or country, and says when nob
 await check("each cell says what it is, for the phone's cards", async () => {
   const { d } = await boot();
   const labels = [...d.querySelectorAll('#rows tr[data-id="c2"] td[data-label]')].map((t) => t.dataset.label);
-  eq(labels, ["Last personal contact", "Last contact of any kind", "Personal"], "labels");
+  eq(labels, ["Last personal contact", "Last contact of any kind", "Contacts"], "labels");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

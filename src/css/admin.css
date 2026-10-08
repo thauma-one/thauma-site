@@ -910,12 +910,6 @@
   font-family:var(--font-mono,ui-monospace,SFMono-Regular,Menlo,monospace);
   font-size:13px;line-height:1.6;resize:vertical}
 
-/* Status, at a glance. Canceled has to read as different from past — both are
-   "not upcoming" and only one of them is a disappointment. */
-.role-tag.st-upcoming{color:var(--voice-tech);border-color:rgba(47,216,255,.4);
-  background:var(--voice-tech-dim)}
-.role-tag.st-canceled{color:var(--crit,#FF6B6B);border-color:rgba(255,107,107,.35)}
-
 @media (max-width: 640px){
   .lib-session{grid-template-columns:1fr}
 }
@@ -1133,7 +1127,9 @@ body:has(.web-panel:not([hidden]) .ms-savebar:not([hidden])) .web-bar{display:no
    One toolbar: Writing X beside Y, find, Languages, More. Each line is its
    name and key, the other language above it, then the box — one column,
    read top to bottom the way it is written. */
-.c-tools{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.c-tools{display:flex;flex-direction:column;gap:12px}
+.c-tools-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.c-tools-end{margin-left:auto}
 .c-tools input[type="search"]{flex:1 1 200px;min-width:0}
 .c-tools .c-pick{text-transform:none;letter-spacing:0;font-family:var(--font-body);
   font-weight:var(--w-body);font-size:var(--fs-sm)}
@@ -1381,7 +1377,7 @@ body:has(.web-panel:not([hidden]) .ms-savebar:not([hidden])) .web-bar{display:no
    reads in a search and when shared, as the Site Creator's Advanced shows it. */
 .c-seo{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:16px;padding:18px 18px 6px}
 .c-seo-lbl{display:block;font-size:var(--fs-micro);color:var(--dim);margin-bottom:8px}
-.c-seo-serp{background:#fff;color:#202124;border-radius:var(--radius);padding:16px 18px;font-family:Arial,sans-serif}
+.c-seo-serp{align-self:start;background:#fff;color:#202124;border-radius:var(--radius);padding:16px 18px;font-family:Arial,sans-serif}
 .c-seo-serp .c-seo-lbl{color:#5f6368}
 .c-seo-url{display:block;font-size:12px;color:#202124;margin-bottom:4px}
 .c-seo-title{display:block;font-weight:400;font-size:19px;color:#1a0dab;line-height:1.3;margin-bottom:4px}

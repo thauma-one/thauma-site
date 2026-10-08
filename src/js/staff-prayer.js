@@ -106,7 +106,7 @@
           ? '<button type="button" class="ghost-btn sm" data-keep="' + esc(id) + '">' + esc(tr('up.keep')) + '</button>'
           : '<button type="button" class="switch" role="switch" data-pub="' + esc(id) + '"' +
             ' aria-checked="' + (p.is_public ? 'true' : 'false') + '" aria-label="' + esc(tr('ms.published')) + '">' +
-            '<span class="switch-track"><span class="switch-state">' + (p.is_public ? 'On' : 'Off') +
+            '<span class="switch-track"><span class="switch-state">' + tr(p.is_public ? 'switch.on' : 'switch.off') +
             '</span><span class="switch-knob"></span></span></button>') +
         '</div>' +
       '</div>';
@@ -179,7 +179,7 @@
   function setSwitch(id, on) {
     var b = $(id);
     b.setAttribute('aria-checked', on ? 'true' : 'false');
-    b.querySelector('.switch-state').textContent = on ? 'On' : 'Off';
+    b.querySelector('.switch-state').textContent = tr(on ? 'switch.on' : 'switch.off');
   }
 
   async function openForm(id) {

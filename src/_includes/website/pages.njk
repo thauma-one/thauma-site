@@ -18,33 +18,39 @@
    written, adding and removing — are one button away, in a table. -#}
 
 <div class="c-tools">
-  <label class="c-pick">
-    <span data-i18n="con.editing">Editing</span>
-    <select id="cLang" disabled data-lang-edit></select>
-  </label>
-  <span class="lang-ref" id="cBesideWrap" hidden>
-    <button type="button" class="lang-swap" data-lang-swap data-i18n-attr="aria-label:con.swap,title:con.swap" aria-label="Swap" title="Swap">&#8644;</button>
+  {#- Two rows on purpose: the languages being written, then finding and
+     looking. One row wrapped wherever the window happened to cut it. -#}
+  <div class="c-tools-row">
     <label class="c-pick">
-      <span data-i18n="con.reference">Reference</span>
-      <select id="cBeside" data-lang-ref></select>
+      <span data-i18n="con.editing">Editing</span>
+      <select id="cLang" disabled data-lang-edit></select>
     </label>
-    <button type="button" class="ghost-btn sm lang-ai" data-lang-translate data-i18n="ai.translate">Translate</button>
-  </span>
-  <input type="search" id="cFind" autocomplete="off"
-         placeholder="Find a word" aria-label="Find a word"
-         data-i18n-attr="placeholder:con.find,aria-label:con.find">
-  <button type="button" class="ghost-btn" id="cPrevBtn" aria-pressed="false" data-i18n="con.preview">Preview</button>
-  <button type="button" class="ghost-btn" id="cLangs" disabled data-i18n="con.languages">Languages</button>
-  <div class="c-more">
-    <button type="button" class="ghost-btn" id="cMoreBtn" aria-expanded="false" aria-controls="cMore">
-      <span data-i18n="con.more">More</span><span class="console-caret" aria-hidden="true"></span>
-    </button>
-    <div class="c-more-menu" id="cMore">
-      <button type="button" id="cDown"></button>
-      <button type="button" id="cUp" data-i18n="tl.upload">Upload translation</button>
-      {#- "Nothing has changed" is a claim about the copy this page loaded; the
-         remedy for doubting it is to read again. -#}
-      <button type="button" id="cReload" data-i18n="con.reload">Reload from GitHub</button>
+    <span class="lang-ref" id="cBesideWrap" hidden>
+      <button type="button" class="lang-swap" data-lang-swap data-i18n-attr="aria-label:con.swap,title:con.swap" aria-label="Swap" title="Swap">&#8644;</button>
+      <label class="c-pick">
+        <span data-i18n="con.reference">Reference</span>
+        <select id="cBeside" data-lang-ref></select>
+      </label>
+      <button type="button" class="ghost-btn sm lang-ai" data-lang-translate data-i18n="ai.translate">Translate</button>
+    </span>
+    <button type="button" class="ghost-btn c-tools-end" id="cLangs" disabled data-i18n="con.languages">Languages</button>
+  </div>
+  <div class="c-tools-row">
+    <input type="search" id="cFind" autocomplete="off"
+           placeholder="Find a word" aria-label="Find a word"
+           data-i18n-attr="placeholder:con.find,aria-label:con.find">
+    <button type="button" class="ghost-btn" id="cPrevBtn" aria-pressed="false" data-i18n="con.preview">Preview</button>
+    <div class="c-more">
+      <button type="button" class="ghost-btn" id="cMoreBtn" aria-expanded="false" aria-controls="cMore">
+        <span data-i18n="con.more">More</span><span class="console-caret" aria-hidden="true"></span>
+      </button>
+      <div class="c-more-menu" id="cMore">
+        <button type="button" id="cDown"></button>
+        <button type="button" id="cUp" data-i18n="tl.upload">Upload translation</button>
+        {#- "Nothing has changed" is a claim about the copy this page loaded; the
+           remedy for doubting it is to read again. -#}
+        <button type="button" id="cReload" data-i18n="con.reload">Reload from GitHub</button>
+      </div>
     </div>
   </div>
   <input type="file" id="cFile" accept=".csv,text/csv" hidden

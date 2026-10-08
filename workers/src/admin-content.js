@@ -317,7 +317,9 @@ function languageNames(code) {
       return n && n !== code ? n : null;
     } catch { return null; }
   };
-  return { name: nameIn("en") || code, native_name: nameIn(code) || nameIn("en") || code };
+  /* Capitalized as a name in a list: Intl gives Slovenian as "slovenščina". */
+  const cap = (n) => n.charAt(0).toLocaleUpperCase(code) + n.slice(1);
+  return { name: nameIn("en") || code, native_name: cap(nameIn(code) || nameIn("en") || code) };
 }
 
 /* THE CATALOG IS THE OTHER HALF OF ADDING A LANGUAGE, and for a long time it

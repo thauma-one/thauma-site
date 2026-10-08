@@ -1306,7 +1306,7 @@
     return '<button type="button" class="switch small" role="switch" data-set="' + esc(path) + '"' +
       ' aria-checked="' + (on ? 'true' : 'false') + '"' + (on ? ' data-on="1"' : '') +
       ' aria-label="' + esc(label) + '">' +
-        '<span class="switch-track"><span class="switch-state">' + (on ? 'On' : 'Off') +
+        '<span class="switch-track"><span class="switch-state">' + tr(on ? 'switch.on' : 'switch.off') +
         '</span><span class="switch-knob"></span></span></button>';
   }
 

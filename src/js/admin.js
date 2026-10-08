@@ -210,22 +210,20 @@
   function renderOverview() {
     var active = state.users.filter(function (u) { return u.status === 'active'; }).length;
     var admins = state.users.filter(function (u) { return u.roles.indexOf('admin') >= 0; }).length;
-    $('admUserCount').textContent = state.users.length;
-    $('admPartnerCount').textContent = state.partners.length;
-    $('admAuditCount').textContent = state.audit.length;
-
     $('admTiles').innerHTML = [
-      { k: tr('adm.tile.people'), v: state.users.length, s: active + ' active' },
-      { k: tr('adm.tile.admins'), v: admins,
+      { k: tr('adm.tile.people'), v: state.users.length, href: '/admin/users/',
+        s: StaffI18n.fill('adm.tile.active', { n: active }) },
+      { k: tr('adm.tile.admins'), v: admins, href: '/admin/users/',
         s: admins === 1 ? tr('adm.tile.onlyAdmin') : tr('adm.tile.canAdminister'),
         cls: admins === 1 ? 'alert' : '' },
-      { k: tr('adm.tile.partners'), v: state.partners.length, s: tr('adm.tile.sending') },
-      { k: tr('adm.tile.languages'), v: state.languages.length, s: tr('adm.tile.offered') }
+      { k: tr('adm.tile.partners'), v: state.partners.length, href: '/admin/partners/', s: tr('adm.tile.sending') },
+      { k: tr('adm.tile.languages'), v: state.languages.length, href: '/admin/website/', s: tr('adm.tile.offered') },
+      { k: tr('adm.nav.activity'), v: state.audit.length, href: '/admin/activity/', s: tr('adm.tile.activity') }
     ].map(function (t) {
-      return '<div class="tile ' + (t.cls || '') + '">' +
+      return '<a class="tile ' + (t.cls || '') + '" href="' + t.href + '">' +
         '<span class="k">' + esc(t.k) + '</span>' +
         '<span class="v tnum">' + esc(t.v) + '</span>' +
-        '<span class="s">' + esc(t.s) + '</span></div>';
+        '<span class="s">' + esc(t.s) + '</span></a>';
     }).join('');
   }
 
@@ -595,7 +593,7 @@
 
       '<button type="button" class="switch small" role="switch" data-pf-public="' + esc(u.id) + '"' +
         ' aria-checked="' + (on ? 'true' : 'false') + '">' +
-        '<span class="switch-track"><span class="switch-state">' + (on ? 'On' : 'Off') +
+        '<span class="switch-track"><span class="switch-state">' + tr(on ? 'switch.on' : 'switch.off') +
           '</span><span class="switch-knob"></span></span>' +
         '<span class="switch-label">' + esc(tr('adm.pf.shown')) + '</span></button>' +
 
@@ -730,7 +728,7 @@
         ' data-user="' + esc(u.id) + '" data-role="' + esc(r) + '"' +
         ' aria-checked="' + (on ? 'true' : 'false') + '">' +
         '<span class="switch-track"><span class="switch-state">' +
-          (on ? 'On' : 'Off') + '</span><span class="switch-knob"></span></span>' +
+          tr(on ? 'switch.on' : 'switch.off') + '</span><span class="switch-knob"></span></span>' +
         '<span class="switch-label">' + esc(ROLE_LABEL[r]) + '</span></button>';
     }).join('');
 
@@ -1417,7 +1415,7 @@
   function toggleProfilePublic(btn) {
     var on = btn.getAttribute('aria-checked') !== 'true';
     btn.setAttribute('aria-checked', on ? 'true' : 'false');
-    btn.querySelector('.switch-state').textContent = on ? 'On' : 'Off';
+    btn.querySelector('.switch-state').textContent = tr(on ? 'switch.on' : 'switch.off');
     /* The panel stays; only its published-ness changes. */
     var body = btn.parentNode.querySelector('.pf-body');
     if (body) {
@@ -1736,7 +1734,7 @@
         title: (grant ? tr('adm.confirm.grant') : tr('adm.confirm.revoke')) +
                ' ' + ROLE_LABEL[role],
         body: u.name + ' (' + u.email + ')',
-        note: tr('adm.confirm.' + role + (grant ? 'On' : 'Off')),
+        note: tr('adm.confirm.' + role + tr(grant ? 'switch.on' : 'switch.off')),
         confirm: grant ? tr('adm.confirm.doGrant') : tr('adm.confirm.doRevoke'),
         cancel: tr('ms.cancel'),
         danger: !grant || role === 'admin'

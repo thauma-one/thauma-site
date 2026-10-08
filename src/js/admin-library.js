@@ -293,15 +293,30 @@
       if (item.format) out.push('<span class="role-tag partner">' + esc(label(item.format)) + '</span>');
       if (item.moment) out.push('<span class="role-tag">' + esc(label(item.moment)) + '</span>');
     } else {
-      if (item.status) out.push('<span class="role-tag st-' + esc(item.status) + '">' +
-        esc(label(item.status)) + '</span>');
+      /* No status tag: the group heading above already says Coming up,
+         Canceled or Already happened, and saying it twice was a third of the
+         row's tags. */
       if (item.type) out.push('<span class="role-tag partner">' + esc(label(item.type)) + '</span>');
-      var when = item.date || '';
-      /* A gathering can run over a weekend, and one date cannot say so. */
-      if (item.end_date && item.end_date !== item.date) when += ' – ' + item.end_date;
+      var when = whenText(item.date, item.end_date);
       if (when) out.push('<span class="role-tag">' + esc(when) + '</span>');
     }
     return out.join('');
+  }
+
+  /* A date as a person says it, in the console's language — "Mar 14 – 15,
+     2027" — rather than 2027-03-14. A gathering can run over a weekend, and
+     one date cannot say so. A date typed as prose is shown as typed. */
+  function whenText(from, to) {
+    if (!ISO.test(String(from || ''))) return from || '';
+    var a = new Date(from + 'T00:00:00Z');
+    var b = ISO.test(String(to || '')) && to !== from ? new Date(to + 'T00:00:00Z') : null;
+    try {
+      var f = new Intl.DateTimeFormat((window.StaffI18n && window.StaffI18n.lang) || 'en',
+        { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+      return b && f.formatRange ? f.formatRange(a, b) : f.format(a) + (b ? ' – ' + f.format(b) : '');
+    } catch (e) {
+      return from + (b ? ' – ' + to : '');
+    }
   }
 
   /* One field, drawn from its description. */

@@ -89,7 +89,7 @@
   function setSwitch(btn, on) {
     btn.setAttribute('aria-checked', on ? 'true' : 'false');
     var label = btn.querySelector('.switch-state');
-    if (label) label.textContent = on ? 'On' : 'Off';
+    if (label) label.textContent = tr(on ? 'switch.on' : 'switch.off');
   }
 
   function has(code) {
@@ -236,7 +236,7 @@
             ' aria-checked="' + (m.is_public ? 'true' : 'false') + '"' +
             ' aria-label="' + esc(tr('ms.published')) + '">' +
             '<span class="switch-track"><span class="switch-state">' +
-              (m.is_public ? 'On' : 'Off') + '</span><span class="switch-knob"></span></span>' +
+              tr(m.is_public ? 'switch.on' : 'switch.off') + '</span><span class="switch-knob"></span></span>' +
           '</button>') +
         '</div>' +
       '</div>';
