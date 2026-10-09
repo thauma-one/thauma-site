@@ -15,4 +15,5 @@ location: "Kuća molitve, Zagreb"
 map_url: "https://www.openstreetmap.org/search?query=Ku%C4%87a%20molitve%2C%20Zagreb"
 registration: "https://thauma.one/register"
 photo: "/media/library/group-photo-1-98dd89b1915d0271.webp"
+featured: true
 ---
