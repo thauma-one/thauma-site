@@ -16,5 +16,4 @@ map_url: "https://www.openstreetmap.org/search?query=Ku%C4%87a%20molitve%2C%20Za
 registration: "https://thauma.one/register"
 photo: "/media/library/group-photo-1-898dccb003dce733.webp"
 photo_ar: "1"
-featured: true
 ---
